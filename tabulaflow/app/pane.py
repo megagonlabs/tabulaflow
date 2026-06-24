@@ -23,6 +23,7 @@ from tabulaflow.app.theme import GITHUB_SLUG, GITHUB_URL
 DEFAULT_OUTPUT_PANE_PORT_START = 61111
 DEFAULT_OUTPUT_PANE_PORT_END = 61130
 DEFAULT_OUTPUT_PANE_PORTS = tuple(range(DEFAULT_OUTPUT_PANE_PORT_START, DEFAULT_OUTPUT_PANE_PORT_END + 1))
+DEFAULT_OUTPUT_PANE_HOST = "127.0.0.1"
 
 _GITHUB_SVG = (
     '<svg viewBox="0 0 16 16" aria-hidden="true">'
@@ -378,10 +379,14 @@ class OutputPane:
         self,
         dumps_dir: Path,
         *,
+        host: str = DEFAULT_OUTPUT_PANE_HOST,
         port: int | None = None,
         port_range: Sequence[int] = DEFAULT_OUTPUT_PANE_PORTS,
     ) -> None:
         self._dumps_dir = dumps_dir
+        self._host = host.strip()
+        if not self._host:
+            raise ValueError("Output pane host cannot be empty.")
         self._port_config = port
         self._port_range = tuple(port_range)
         self._results: list[dict[str, object]] = []
@@ -391,11 +396,12 @@ class OutputPane:
         self._browser_opened = False
 
     def start(self) -> None:
-        """Bind a loopback server and serve it in a daemon thread.
+        """Bind the pane server and serve it in a daemon thread.
 
         With no explicit port, the pane takes the first available port from the
         stable default range. An explicit port is strict and fails if occupied.
         """
+        host = self._host
         handler = functools.partial(_Handler, directory=str(self._dumps_dir))
         ports = (self._port_config,) if self._port_config is not None else self._port_range
         last_error: OSError | None = None
@@ -403,15 +409,15 @@ class OutputPane:
             if not 1 <= port <= 65535:
                 raise ValueError(f"Output pane port must be between 1 and 65535, got {port}.")
             try:
-                self._server = _PaneServer(("127.0.0.1", port), handler, self)
+                self._server = _PaneServer((host, port), handler, self)
                 break
             except OSError as exc:
                 last_error = exc
         if self._server is None:
             if self._port_config is not None:
-                message = f"Output pane port {self._port_config} is unavailable."
+                message = f"Output pane port {self._port_config} on {host} is unavailable."
             elif self._port_range:
-                message = f"Output pane ports {self._port_range[0]}-{self._port_range[-1]} are unavailable."
+                message = f"Output pane ports {self._port_range[0]}-{self._port_range[-1]} on {host} are unavailable."
             else:
                 message = "Output pane has no ports configured."
             raise OutputPanePortError(message) from last_error
@@ -420,7 +426,16 @@ class OutputPane:
 
     @property
     def url(self) -> str | None:
-        return f"http://127.0.0.1:{self._port}/" if self._port is not None else None
+        if self._port is None:
+            return None
+        host = "127.0.0.1" if self._host in ("0.0.0.0", "::", "localhost") else self._host
+        if ":" in host and not host.startswith("["):
+            host = f"[{host}]"
+        return f"http://{host}:{self._port}/"
+
+    @property
+    def bind_host(self) -> str:
+        return self._host
 
     def push(self, turn: dict[str, object]) -> None:
         """Record a turn ({"records": [{"label", "views": [...]}, ...]}) for the pane."""

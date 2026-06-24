@@ -5,10 +5,10 @@ import json
 import socket
 import urllib.error
 import urllib.request
+from collections.abc import Iterator
 from importlib.resources import files
 from pathlib import Path
 from types import SimpleNamespace
-from collections.abc import Iterator
 
 import pandas as pd
 import pytest
@@ -78,6 +78,30 @@ def test_output_pane_explicit_port_is_strict(tmp_path: Path) -> None:
         pane = OutputPane(tmp_path, port=occupied_port)
         with pytest.raises(OutputPanePortError, match=str(occupied_port)):
             pane.start()
+
+
+def test_output_pane_wildcard_bind_uses_loopback_browser_url(tmp_path: Path) -> None:
+    available_port = _unused_loopback_port()
+    pane = OutputPane(tmp_path, host="0.0.0.0", port=available_port)
+    pane.start()
+    try:
+        assert pane.bind_host == "0.0.0.0"
+        assert pane.url == f"http://127.0.0.1:{available_port}/"
+        with urllib.request.urlopen(pane.url, timeout=2) as response:
+            assert response.status == 200
+    finally:
+        pane.stop()
+
+
+def test_output_pane_localhost_bind_uses_loopback_browser_url(tmp_path: Path) -> None:
+    available_port = _unused_loopback_port()
+    pane = OutputPane(tmp_path, host="localhost", port=available_port)
+    pane.start()
+    try:
+        assert pane.bind_host == "localhost"
+        assert pane.url == f"http://127.0.0.1:{available_port}/"
+    finally:
+        pane.stop()
 
 
 def test_record_card_includes_data_view_meta(tmp_path: Path) -> None:

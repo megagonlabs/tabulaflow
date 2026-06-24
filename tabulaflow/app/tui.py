@@ -92,13 +92,22 @@ class TabulaflowApp(App[None]):
 
     _INTERRUPT_DOUBLE_PRESS_WINDOW = 1.0
 
-    def __init__(self, *, model: str, agent: str, reasoning_effort: str, output_pane_port: int | None = None) -> None:
+    def __init__(
+        self,
+        *,
+        model: str,
+        agent: str,
+        reasoning_effort: str,
+        output_pane_host: str = "127.0.0.1",
+        output_pane_port: int | None = None,
+    ) -> None:
         import asyncio
 
         super().__init__()
         self._model = model
         self._agent = agent
         self._reasoning_effort = reasoning_effort
+        self._output_pane_host = output_pane_host
         self._output_pane_port = output_pane_port
         self._session_id = generate_session_id()
         self._runtime_paths = RuntimePaths.for_session(self._session_id)
@@ -456,7 +465,11 @@ class TabulaflowApp(App[None]):
 
             try:
                 ensure_dumps_dir(self._runtime_paths.dumps_dir)
-                self._pane = OutputPane(self._runtime_paths.dumps_dir, port=self._output_pane_port)
+                self._pane = OutputPane(
+                    self._runtime_paths.dumps_dir,
+                    host=self._output_pane_host,
+                    port=self._output_pane_port,
+                )
                 self._pane.start()
             except Exception:
                 logger.debug("output pane failed to start", exc_info=True)
@@ -843,12 +856,20 @@ class TabulaflowApp(App[None]):
         self.call_after_refresh(chat_log.scroll_end, animate=False)
 
 
-async def run_tui(model: str, agent: str, reasoning_effort: str, *, output_pane_port: int | None = None) -> None:
+async def run_tui(
+    model: str,
+    agent: str,
+    reasoning_effort: str,
+    *,
+    output_pane_host: str = "127.0.0.1",
+    output_pane_port: int | None = None,
+) -> None:
     """Launch the Textual TUI app."""
     app = TabulaflowApp(
         model=model,
         agent=agent,
         reasoning_effort=reasoning_effort,
+        output_pane_host=output_pane_host,
         output_pane_port=output_pane_port,
     )
     await app.run_async()

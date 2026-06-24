@@ -33,7 +33,12 @@ def chat(
     output_pane_port: int | None = typer.Option(
         None,
         "--output-pane-port",
-        help="Strict loopback port for the browser output pane. Defaults to the first free port in 61111-61130.",
+        help="Strict port for the browser output pane. Defaults to the first free port in 61111-61130.",
+    ),
+    output_pane_host: str = typer.Option(
+        "127.0.0.1",
+        "--output-pane-host",
+        help="Bind host for the browser output pane.",
     ),
 ) -> None:
     """Start an interactive database chat session (SQL or Neo4j Cypher)."""
@@ -55,6 +60,7 @@ def chat(
             model=model,
             agent=agent,
             reasoning_effort=reasoning_effort,
+            output_pane_host=output_pane_host,
             output_pane_port=output_pane_port,
         )
     )
