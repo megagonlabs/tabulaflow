@@ -328,8 +328,14 @@ June 21
 
 June 22
 - [x] Support viewing local pdf in file_editor tool
-- [ ] Open visualization in browser
-- [ ] Improve tool progress display for all tools
+- [x] Open visualization in browser
+
+June 23
+- [x] Constent verb-based tool progress display for all tools
+- [x] Fix visualization issues
+- [x] Output pane
+
+
 - [ ] Tune prompt for non-data tasks
 - [ ] Chrome browser
 
