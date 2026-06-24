@@ -58,14 +58,28 @@ _PANE_HTML = """<!doctype html>
   #stack { padding: 12px; max-width: 1100px; margin: 0 auto; }
   .card { border: 1px solid #21262d; border-radius: 8px; margin: 0 0 14px;
           background: #131720; overflow: hidden; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3); }
-  .cardbar { display: flex; align-items: center; gap: 8px; padding: 6px 10px;
-             border-bottom: 1px solid #21262d; font: 12px ui-monospace, monospace; }
+  .railcard { display: flex; align-items: stretch; }
+  .rail { flex: 0 0 170px; border-right: 1px solid #21262d; padding: 6px 0; }
+  .railitem { padding: 8px 14px; color: #6a737d; cursor: pointer; border-left: 2px solid transparent;
+              font: 12px ui-monospace, monospace; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .railitem:hover { color: #e4e4e7; }
+  .railitem.active { color: #3eb489; border-left-color: #3eb489; background: #1a1f2a; }
+  .railcontent { flex: 1 1 auto; min-width: 0; position: relative; }
+  .recordpane { width: 100%; }
+  .recordpane.hidden { position: absolute; top: 0; left: 0; visibility: hidden; pointer-events: none; }
+  .cardbar { display: flex; align-items: center; justify-content: flex-end; gap: 8px; padding: 8px 10px;
+             font: 12px ui-monospace, monospace; }
   .cardlabel { color: #e4e4e7; margin-right: auto; }
-  .tab { background: transparent; border: 1px solid #21262d; border-radius: 6px;
-         color: #6a737d; padding: 2px 10px; cursor: pointer; text-transform: capitalize;
-         font: 12px ui-monospace, monospace; }
-  .tab:hover { color: #e4e4e7; }
-  .tab.active { color: #3eb489; border-color: #3eb489; }
+  .seg { position: relative; display: inline-flex; padding: 3px; border-radius: 999px;
+         box-shadow: inset 0 0 0 1px #21262d; }
+  .seg-opt { position: relative; z-index: 1; background: transparent; border: 0; cursor: pointer;
+             color: #6a737d; padding: 4px 14px; border-radius: 999px; text-transform: capitalize;
+             font: 12px ui-monospace, monospace; transition: color 0.18s ease; }
+  .seg-opt:hover { color: #e4e4e7; }
+  .seg-opt.active { color: #3eb489; }
+  .seg-thumb { position: absolute; top: 3px; bottom: 3px; left: 0; width: 0; border-radius: 999px;
+               background: #262c36; }
+  .seg-thumb.ready { transition: transform 0.22s ease, width 0.22s ease; }
   .cardframe { display: block; width: 100%; height: 320px; border: 0; background: #131720; }
   #empty { color: #6a737d; font: 14px ui-monospace, monospace; padding: 24px; }
 </style>
@@ -89,58 +103,99 @@ __BANNER__
       } catch (e) { /* cross-origin / detached — keep the CSS height */ }
     });
   }
-  // A card is a label + a Chart|Data|Query tab strip over one iframe whose src
-  // swaps between the record's views (only the active view is ever loaded).
-  function makeCard(card) {
-    var wrap = document.createElement('div');
-    wrap.className = 'card';
-    var bar = document.createElement('div');
-    bar.className = 'cardbar';
-    if (card.label) {
-      var lbl = document.createElement('span');
-      lbl.className = 'cardlabel';
-      lbl.textContent = card.label;
-      bar.appendChild(lbl);
-    }
-    var frame = document.createElement('iframe');
-    frame.className = 'cardframe';
+  function el(tag, cls) { var e = document.createElement(tag); if (cls) { e.className = cls; } return e; }
+  function moveThumb(thumb, opt) {
+    thumb.style.width = opt.offsetWidth + 'px';
+    thumb.style.transform = 'translateX(' + opt.offsetLeft + 'px)';
+  }
+  // Build one record's pane: a Chart|Data|Query tab strip + iframe. The chart
+  // loads up front; Data/Query load lazily on tab click.
+  function buildRecord(record, labelText) {
+    var pane = el('div', 'recordpane');
+    var bar = el('div', 'cardbar');
+    if (labelText) { var lbl = el('span', 'cardlabel'); lbl.textContent = labelText; bar.appendChild(lbl); }
+    var frame = el('iframe', 'cardframe');
     frame.scrolling = 'no';
     autosize(frame);
-    var tabs = [];
-    card.views.forEach(function (v) {
-      var b = document.createElement('button');
-      b.className = 'tab';
-      b.textContent = v.kind;
-      b.onclick = function () {
+    var seg = el('div', 'seg');
+    var thumb = el('span', 'seg-thumb');
+    seg.appendChild(thumb);
+    var opts = [];
+    (record.views || []).forEach(function (v) {
+      var o = el('button', 'seg-opt');
+      o.textContent = v.kind;
+      o.onclick = function () {
         frame.src = '/' + v.file;
-        tabs.forEach(function (t) { t.classList.remove('active'); });
-        b.classList.add('active');
+        opts.forEach(function (x) { x.classList.remove('active'); });
+        o.classList.add('active');
+        moveThumb(thumb, o);
       };
-      tabs.push(b);
-      bar.appendChild(b);
+      opts.push(o);
+      seg.appendChild(o);
     });
-    wrap.appendChild(bar);
-    wrap.appendChild(frame);
-    if (card.views.length) {
-      frame.src = '/' + card.views[0].file;
-      tabs[0].classList.add('active');
+    if (opts.length) { bar.appendChild(seg); }
+    pane.appendChild(bar);
+    pane.appendChild(frame);
+    if (opts.length) {
+      frame.src = '/' + record.views[0].file;
+      opts[0].classList.add('active');
+      requestAnimationFrame(function () {
+        moveThumb(thumb, opts[0]);
+        requestAnimationFrame(function () { thumb.classList.add('ready'); });
+      });
     }
-    return wrap;
+    return pane;
+  }
+  // A turn is one card with a left record rail (one item per cited result); all
+  // record panes are pre-built and toggled by visibility, so switching is a CSS
+  // toggle (no iframe reload, no flicker), not a re-render.
+  function makeTurn(turn) {
+    var card = el('div', 'card');
+    var records = turn.records || [];
+    if (records.length === 0) {
+      card.appendChild(buildRecord({ views: [] }, null));
+      return card;
+    }
+    card.classList.add('railcard');
+    var rail = el('div', 'rail');
+    var content = el('div', 'railcontent');
+    var items = [];
+    var panes = [];
+    records.forEach(function (rec, i) {
+      var pane = buildRecord(rec, null);
+      if (i !== 0) { pane.classList.add('hidden'); }
+      content.appendChild(pane);
+      panes.push(pane);
+      var it = el('div', 'railitem');
+      it.textContent = rec.label || ('result ' + (i + 1));
+      it.title = it.textContent;
+      it.onclick = function () {
+        items.forEach(function (x) { x.classList.remove('active'); });
+        it.classList.add('active');
+        panes.forEach(function (p, j) { p.classList.toggle('hidden', j !== i); });
+      };
+      items.push(it);
+      rail.appendChild(it);
+    });
+    items[0].classList.add('active');
+    card.appendChild(rail);
+    card.appendChild(content);
+    return card;
   }
   var shown = 0;
   function poll() {
-    fetch('/__index__').then(function (r) { return r.json(); }).then(function (cards) {
-      if (cards.length > 0) {
+    fetch('/__index__').then(function (r) { return r.json(); }).then(function (turns) {
+      if (turns.length > 0) {
         var e = document.getElementById('empty');
         if (e) { e.remove(); }
       }
       var stack = document.getElementById('stack');
-      for (var i = shown; i < cards.length; i++) {
-        var el = makeCard(cards[i]);
-        stack.appendChild(el);
-        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      for (var i = shown; i < turns.length; i++) {
+        var node = makeTurn(turns[i]);
+        stack.appendChild(node);
+        node.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }
-      shown = cards.length;
+      shown = turns.length;
     }).catch(function () {});
   }
   setInterval(poll, 1000);
@@ -212,10 +267,10 @@ class OutputPane:
     def url(self) -> str | None:
         return f"http://127.0.0.1:{self._port}/" if self._port is not None else None
 
-    def push(self, card: dict[str, object]) -> None:
-        """Record a card descriptor ({"label", "views": [{"kind", "file"}, ...]})."""
+    def push(self, turn: dict[str, object]) -> None:
+        """Record a turn ({"records": [{"label", "views": [...]}, ...]}) for the pane."""
         with self._lock:
-            self._results.append(card)
+            self._results.append(turn)
 
     def open_browser(self, *, force: bool = False) -> None:
         """Open the pane in the system browser (once unless ``force``; no-op if headless)."""

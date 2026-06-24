@@ -470,7 +470,7 @@ class TabulaflowApp(App[None]):
         if pane is None or pane.url is None:
             return False
         kind = {"V": "chart", "T": "data", "C": "data", "Q": "query"}.get(path.name[:1], "data")
-        pane.push({"label": None, "views": [{"kind": kind, "file": path.name}]})
+        pane.push({"records": [{"label": None, "views": [{"kind": kind, "file": path.name}]}]})
         pane.reopen()
         return True
 
@@ -491,11 +491,12 @@ class TabulaflowApp(App[None]):
         """
         from tabulaflow.app.render import render_record_card
 
-        started = self._pane is None
-        pane = self._ensure_pane()
-        if pane is None:
-            return
         dumps_dir = self._runtime_paths.dumps_dir
+        try:
+            dumps_dir.mkdir(parents=True, exist_ok=True)
+        except Exception:
+            return
+        records: list[dict[str, object]] = []
         for record in result.records:
             try:
                 card = render_record_card(record, dumps_dir)
@@ -503,7 +504,14 @@ class TabulaflowApp(App[None]):
                 logger.debug("output pane card render failed", exc_info=True)
                 continue
             if card is not None:
-                pane.push(card)
+                records.append(card)
+        if not records:
+            return
+        started = self._pane is None
+        pane = self._ensure_pane()
+        if pane is None:
+            return
+        pane.push({"records": records})
 
         if started and pane.url is not None:
             await chat_log.mount(
