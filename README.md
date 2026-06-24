@@ -335,13 +335,16 @@ June 23
 - [x] Fix visualization issues
 - [x] Output pane
 
+June 24
+- [x] Output pane
+- [ ] Remote server support
+- [ ] Dump to /tmp vs session dir?
+- [ ] web_fetch tool for static html
 
 - [ ] Tune prompt for non-data tasks
 - [ ] Chrome browser
 
-- [ ] Remote server support
 - [ ] sample_data disconnect policy
-- [ ] Dump to /tmp vs session dir?
 - [ ] Banner - /connect pre-built data sources as most important use case
 - [ ] Include multimodal data in sample_data
 - [ ] Guard against long messages and context overflow
@@ -354,7 +357,7 @@ June 23
 - [ ] Auto-close old tab on re-navigate
 - [ ] Handle records with empty results or zero-row results
 - [ ] One-time subagent tool
-- [ ] web_fetch tool for static html
+
 - [ ] Bash tool
 - [ ] Partial trajectory when exeption during agent turn
 - [ ] Captcha
