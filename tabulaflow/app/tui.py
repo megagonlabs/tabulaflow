@@ -17,7 +17,7 @@ from textual.widgets import Button, Input, Static
 from tabulaflow.app.commands import COMMAND_PREFIX, handle_command
 from tabulaflow.app.session import SessionState
 from tabulaflow.app.debug import debug_enabled, mount_debug_widgets
-from tabulaflow.app.runtime_paths import RuntimePaths, generate_session_id, prune_old_dumps
+from tabulaflow.app.runtime_paths import RuntimePaths, ensure_dumps_dir, generate_session_id, prune_old_dumps
 from tabulaflow.app.theme import ERROR, FOCUS_SURFACE, KEY_HINT
 from tabulaflow.app.widgets import (
     AgentProgressWidget,
@@ -109,6 +109,7 @@ class TabulaflowApp(App[None]):
         # dir" design holds only while those two stay equal, i.e. cwd never changes.
         self._project_dir = Path(os.getcwd())
         prune_old_dumps()
+        ensure_dumps_dir(self._runtime_paths.dumps_dir)
         self._session: SessionState | None = None
         self._pane: OutputPane | None = None
         self._session_lock = asyncio.Lock()
@@ -444,6 +445,7 @@ class TabulaflowApp(App[None]):
             if self._pane is not None:
                 self._pane.stop()
             shutil.rmtree(self._runtime_paths.scratch_dir, ignore_errors=True)
+            shutil.rmtree(self._runtime_paths.dumps_dir, ignore_errors=True)
             self.exit()
 
     def _ensure_pane(self) -> "OutputPane | None":
@@ -452,7 +454,7 @@ class TabulaflowApp(App[None]):
             from tabulaflow.app.pane import OutputPane
 
             try:
-                self._runtime_paths.dumps_dir.mkdir(parents=True, exist_ok=True)
+                ensure_dumps_dir(self._runtime_paths.dumps_dir)
                 self._pane = OutputPane(self._runtime_paths.dumps_dir)
                 self._pane.start()
             except Exception:
@@ -500,7 +502,7 @@ class TabulaflowApp(App[None]):
 
         dumps_dir = self._runtime_paths.dumps_dir
         try:
-            dumps_dir.mkdir(parents=True, exist_ok=True)
+            ensure_dumps_dir(dumps_dir)
         except Exception:
             return
         records: list[dict[str, object]] = []

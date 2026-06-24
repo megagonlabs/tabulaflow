@@ -11,6 +11,19 @@ import tempfile
 import time
 
 
+def _dumps_root() -> Path:
+    """Per-user root for transient view dumps under the OS temp dir.
+
+    Namespaced by uid so users on a shared box neither collide on nor read each
+    other's dir; locked to 0700 (see ``ensure_dumps_dir``) so a multi-user
+    ``/tmp`` can't expose dump contents. Windows has no ``getuid`` and a per-user
+    temp dir already, so it stays un-namespaced there.
+    """
+    getuid = getattr(os, "getuid", None)
+    name = f"tabulaflow-{getuid()}" if getuid is not None else "tabulaflow"
+    return Path(tempfile.gettempdir()) / name
+
+
 def generate_session_id() -> str:
     """Create a collision-resistant session identifier."""
     timestamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
@@ -45,11 +58,11 @@ class RuntimePaths:
         # the session. Sibling of ``data/`` (which holds live connector DBs) so
         # transient blobs never mix with materialized datasets. Wiped on exit.
         scratch_dir = session_dir / "scratch"
-        # Cell and table dumps are transient view artifacts (open in
-        # browser, look, done). Keep them out of ~/.tabulaflow so they get
-        # OS-level cleanup, and skip the per-session subdir to keep paths
-        # short — uniqueness comes from the random per-file suffix.
-        dumps_dir = Path(tempfile.gettempdir()) / "tabulaflow"
+        # Cell/table/chart dumps are transient view artifacts (open in browser,
+        # look, done). Kept under the OS temp dir (not ~/.tabulaflow) for OS-level
+        # cleanup, in a per-session subdir under a per-user 0700 root so a shared
+        # /tmp can't expose them and sessions clean up independently.
+        dumps_dir = _dumps_root() / session_id
         return cls(
             logs_dir=logs_dir,
             trajectories_dir=trajectories_dir,
@@ -62,40 +75,41 @@ class RuntimePaths:
         )
 
 
-def prune_old_dumps(max_age_seconds: float = 7 * 86400.0) -> None:
-    """Delete cell-, table-, and chart-dump artifacts older than ``max_age_seconds``.
+def ensure_dumps_dir(dumps_dir: Path) -> Path:
+    """Create the per-session dumps dir and its per-user root, both 0700.
 
-    Cleans up three kinds of entries in the shared dumps dir:
-      - ``C_*`` cell dumps (single files)
-      - ``T_*`` table dumps (an ``.html`` file plus a sibling directory of
-        spilled media blobs sharing the same stem)
-      - ``V_*`` chart dumps (single ``.html`` files)
+    0700 on the directories means no other user on a shared box can traverse in to
+    read the dump files, so the files themselves need no special mode. Returns
+    ``dumps_dir``. A chmod failure (e.g. an exotic filesystem) is swallowed.
+    """
+    for directory in (dumps_dir.parent, dumps_dir):
+        directory.mkdir(parents=True, exist_ok=True)
+        try:
+            directory.chmod(0o700)
+        except OSError:
+            pass
+    return dumps_dir
 
-    Belt-and-suspenders on top of the OS's TMPDIR cleanup, which on macOS
-    has no firm schedule. The default 7-day window covers the common
-    "left a browser tab open over a weekend / short trip" case while
-    still bounding accumulated tmp usage. Errors are swallowed so a
-    cleanup failure never blocks app startup.
+
+def prune_old_dumps(max_age_seconds: float = 7 * 86400.0, *, root: Path | None = None) -> None:
+    """Delete per-session dump dirs older than ``max_age_seconds``.
+
+    Belt-and-suspenders on top of the OS's TMPDIR cleanup (no firm schedule on
+    macOS) and the per-session cleanup on exit, for sessions that crashed or were
+    killed. The default 7-day window covers the "left a tab open over a weekend"
+    case while bounding tmp usage. Errors are swallowed so a cleanup failure never
+    blocks startup.
     """
     import shutil
 
-    tmp_root = Path(tempfile.gettempdir()) / "tabulaflow"
-    if not tmp_root.is_dir():
+    root = root or _dumps_root()
+    if not root.is_dir():
         return
     cutoff = time.time() - max_age_seconds
-    for entry in tmp_root.iterdir():
-        name = entry.name
-        if not (name.startswith("C_") or name.startswith("T_") or name.startswith("V_")):
-            continue
+    for entry in root.iterdir():
         try:
-            if entry.stat().st_mtime >= cutoff:
+            if not entry.is_dir() or entry.stat().st_mtime >= cutoff:
                 continue
         except OSError:
             continue
-        try:
-            if entry.is_dir():
-                shutil.rmtree(entry, ignore_errors=True)
-            else:
-                entry.unlink()
-        except OSError:
-            continue
+        shutil.rmtree(entry, ignore_errors=True)
