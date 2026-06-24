@@ -88,7 +88,7 @@ _PANE_HTML = """<!doctype html>
   .panesbox { position: relative; }
   .recordpane { width: 100%; }
   .recordpane.hidden { position: absolute; top: 0; left: 0; visibility: hidden; pointer-events: none; }
-  .cardbar { display: flex; align-items: center; gap: 8px; min-height: 40px; padding: 6px 4px 14px;
+  .cardbar { display: flex; align-items: flex-end; gap: 8px; min-height: 40px; padding: 6px 4px 14px;
              font: 13px ui-monospace, monospace; }
   .cardlabel { display: inline-flex; margin-right: auto; padding: 5px 10px; white-space: nowrap;
                color: #06120e; background: #3eb489; border-radius: 2px;
@@ -97,7 +97,7 @@ _PANE_HTML = """<!doctype html>
          box-shadow: inset 0 0 0 1px #21262d; }
   .seg-opt { position: relative; z-index: 1; background: transparent; border: 0; cursor: pointer;
              color: #6a737d; padding: 7px 16px; border-radius: 999px; text-transform: capitalize;
-             font: 13px/1.2 ui-monospace, monospace; transition: color 0.18s ease; }
+             font: 14px/1.25 ui-monospace, monospace; transition: color 0.18s ease; }
   .seg-opt:hover { color: #e4e4e7; }
   .seg-opt.active { color: #3eb489; }
   .seg-thumb { position: absolute; top: 3px; bottom: 3px; left: 0; width: 0; border-radius: 999px;
