@@ -241,10 +241,13 @@ __BANNER__
     return view;
   }
   // Turn navigator: the sidebar lists every turn; only the selected turn is
-  // rendered (iframes never accumulate). New turns are appended and auto-selected.
+  // rendered (iframes never accumulate). New turns are appended, and auto-selected
+  // only when you're already on the latest (so navigating back isn't interrupted).
   var turns = [];
+  var activeTurn = -1;
   function selectTurn(i) {
     if (i < 0 || i >= turns.length) { return; }
+    activeTurn = i;
     var items = document.querySelectorAll('#turns .turnitem');
     for (var k = 0; k < items.length; k++) { items[k].classList.toggle('active', k === i); }
     var inner = document.getElementById('content-inner');
@@ -254,6 +257,10 @@ __BANNER__
   function poll() {
     fetch('/__index__').then(function (r) { return r.json(); }).then(function (server) {
       if (server.length <= turns.length) { return; }
+      // Follow new turns only when already on the latest; if the user has
+      // navigated back to an older turn, leave them there (the new turns still
+      // appear in the rail to click).
+      var wasOnLatest = activeTurn === turns.length - 1;
       var sidebar = document.getElementById('turns');
       for (var i = turns.length; i < server.length; i++) {
         turns.push(server[i]);
@@ -263,7 +270,7 @@ __BANNER__
         (function (idx) { it.onclick = function () { selectTurn(idx); }; })(i);
         sidebar.appendChild(it);
       }
-      selectTurn(turns.length - 1);
+      if (wasOnLatest) { selectTurn(turns.length - 1); }
     }).catch(function () {});
   }
   setInterval(poll, 1000);
