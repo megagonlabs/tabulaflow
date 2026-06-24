@@ -463,13 +463,14 @@ class TabulaflowApp(App[None]):
     def view_in_pane(self, path: Path) -> bool:
         """Push an already-written dump file to the pane and raise it (manual view).
 
-        Returns True when the pane is available and the artifact was shown, so
-        callers can fall back to a direct file open otherwise.
+        Wraps the single file as a one-view card; returns True when the pane is
+        available and shown, so callers can fall back to a direct file open.
         """
         pane = self._ensure_pane()
         if pane is None or pane.url is None:
             return False
-        pane.push(path)
+        kind = {"V": "chart", "T": "data", "C": "data", "Q": "query"}.get(path.name[:1], "data")
+        pane.push({"label": None, "views": [{"kind": kind, "file": path.name}]})
         pane.reopen()
         return True
 
@@ -482,15 +483,13 @@ class TabulaflowApp(App[None]):
             self.notify("Results pane unavailable.", severity="warning")
 
     async def _push_results_to_pane(self, result: "ChatResult", chat_log: VerticalScroll) -> None:
-        """Render each cited result to the dumps dir and push it to the browser pane.
+        """Render each cited result to a card and push it to the browser pane.
 
         Auto-push path: the pane lazily starts and opens once on the first result,
         then updates silently (no focus steal). Best-effort — any failure is
         swallowed so the pane never blocks or fails a chat turn.
         """
-        import secrets
-
-        from tabulaflow.app.render import render_chart_html, render_table_html
+        from tabulaflow.app.render import render_record_card
 
         started = self._pane is None
         pane = self._ensure_pane()
@@ -498,19 +497,13 @@ class TabulaflowApp(App[None]):
             return
         dumps_dir = self._runtime_paths.dumps_dir
         for record in result.records:
-            if record.df is None or record.df.empty:
-                continue
             try:
-                if record.chart_spec is not None:
-                    path = dumps_dir / f"V_{secrets.token_hex(3)}.html"
-                    render_chart_html(record.df, record.chart_spec, path, title=record.label)
-                else:
-                    path = dumps_dir / f"T_{secrets.token_hex(3)}.html"
-                    render_table_html(record.df, path, title=record.label)
+                card = render_record_card(record, dumps_dir)
             except Exception:
-                logger.debug("output pane render failed", exc_info=True)
+                logger.debug("output pane card render failed", exc_info=True)
                 continue
-            pane.push(path)
+            if card is not None:
+                pane.push(card)
 
         if started and pane.url is not None:
             await chat_log.mount(

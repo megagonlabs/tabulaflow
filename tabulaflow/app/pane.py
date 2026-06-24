@@ -26,10 +26,17 @@ _PANE_HTML = """<!doctype html>
 <style>
   html, body { margin: 0; background: #0f1117; }
   #stack { padding: 12px; }
-  .card {
-    display: block; width: 100%; height: 60vh; border: 1px solid #21262d;
-    border-radius: 8px; margin: 0 0 12px; background: #131720;
-  }
+  .card { border: 1px solid #21262d; border-radius: 8px; margin: 0 0 12px;
+          background: #131720; overflow: hidden; }
+  .cardbar { display: flex; align-items: center; gap: 8px; padding: 6px 10px;
+             border-bottom: 1px solid #21262d; font: 12px ui-monospace, monospace; }
+  .cardlabel { color: #e4e4e7; margin-right: auto; }
+  .tab { background: transparent; border: 1px solid #21262d; border-radius: 6px;
+         color: #6a737d; padding: 2px 10px; cursor: pointer; text-transform: capitalize;
+         font: 12px ui-monospace, monospace; }
+  .tab:hover { color: #e4e4e7; }
+  .tab.active { color: #3eb489; border-color: #3eb489; }
+  .cardframe { display: block; width: 100%; height: 60vh; border: 0; background: #131720; }
   #empty { color: #6a737d; font: 14px ui-monospace, monospace; padding: 24px; }
 </style>
 </head>
@@ -37,38 +44,72 @@ _PANE_HTML = """<!doctype html>
 <div id="empty">waiting for results…</div>
 <div id="stack"></div>
 <script>
-  // Size each card to its content. The dump files are served from this same
-  // origin, so the parent may read the iframe document and track its height as
-  // Tabulator/Vega render asynchronously (ResizeObserver). Falls back to the
-  // CSS height on any access error.
+  // Cards are served same-origin, so the parent tracks each iframe's content
+  // height (ResizeObserver) and resizes the card to fit as Tabulator/Vega render.
   function autosize(frame) {
+    var ro = null;
     frame.addEventListener('load', function () {
       try {
         var doc = frame.contentWindow.document;
         var fit = function () { frame.style.height = doc.documentElement.scrollHeight + 'px'; };
         fit();
-        if (window.ResizeObserver) { new ResizeObserver(fit).observe(doc.documentElement); }
+        if (ro) { ro.disconnect(); }
+        if (window.ResizeObserver) { ro = new ResizeObserver(fit); ro.observe(doc.documentElement); }
       } catch (e) { /* cross-origin / detached — keep the CSS height */ }
     });
   }
+  // A card is a label + a Chart|Data|Query tab strip over one iframe whose src
+  // swaps between the record's views (only the active view is ever loaded).
+  function makeCard(card) {
+    var wrap = document.createElement('div');
+    wrap.className = 'card';
+    var bar = document.createElement('div');
+    bar.className = 'cardbar';
+    if (card.label) {
+      var lbl = document.createElement('span');
+      lbl.className = 'cardlabel';
+      lbl.textContent = card.label;
+      bar.appendChild(lbl);
+    }
+    var frame = document.createElement('iframe');
+    frame.className = 'cardframe';
+    frame.scrolling = 'no';
+    autosize(frame);
+    var tabs = [];
+    card.views.forEach(function (v) {
+      var b = document.createElement('button');
+      b.className = 'tab';
+      b.textContent = v.kind;
+      b.onclick = function () {
+        frame.src = '/' + v.file;
+        tabs.forEach(function (t) { t.classList.remove('active'); });
+        b.classList.add('active');
+      };
+      tabs.push(b);
+      bar.appendChild(b);
+    });
+    wrap.appendChild(bar);
+    wrap.appendChild(frame);
+    if (card.views.length) {
+      frame.src = '/' + card.views[0].file;
+      tabs[0].classList.add('active');
+    }
+    return wrap;
+  }
   var shown = 0;
   function poll() {
-    fetch('/__index__').then(function (r) { return r.json(); }).then(function (names) {
-      if (names.length > 0) {
+    fetch('/__index__').then(function (r) { return r.json(); }).then(function (cards) {
+      if (cards.length > 0) {
         var e = document.getElementById('empty');
         if (e) { e.remove(); }
       }
       var stack = document.getElementById('stack');
-      for (var i = shown; i < names.length; i++) {
-        var f = document.createElement('iframe');
-        f.className = 'card';
-        f.scrolling = 'no';
-        autosize(f);
-        f.src = '/' + names[i];
-        stack.appendChild(f);
-        f.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      for (var i = shown; i < cards.length; i++) {
+        var el = makeCard(cards[i]);
+        stack.appendChild(el);
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }
-      shown = names.length;
+      shown = cards.length;
     }).catch(function () {});
   }
   setInterval(poll, 1000);
@@ -123,7 +164,7 @@ class OutputPane:
 
     def __init__(self, dumps_dir: Path) -> None:
         self._dumps_dir = dumps_dir
-        self._results: list[str] = []
+        self._results: list[dict[str, object]] = []
         self._lock = threading.Lock()
         self._server: _PaneServer | None = None
         self._port: int | None = None
@@ -140,10 +181,10 @@ class OutputPane:
     def url(self) -> str | None:
         return f"http://127.0.0.1:{self._port}/" if self._port is not None else None
 
-    def push(self, html_path: Path) -> None:
-        """Record a result file (already written under the dumps dir) for the pane."""
+    def push(self, card: dict[str, object]) -> None:
+        """Record a card descriptor ({"label", "views": [{"kind", "file"}, ...]})."""
         with self._lock:
-            self._results.append(html_path.name)
+            self._results.append(card)
 
     def open_browser(self, *, force: bool = False) -> None:
         """Open the pane in the system browser (once unless ``force``; no-op if headless)."""
