@@ -247,23 +247,24 @@ video { width: 240px; height: 160px; object-fit: contain; background: #000;
 }
 .tabulator .tabulator-row .tabulator-cell {
     color: var(--text);
-    border-right: none;
-    border-top: 1px solid rgba(58, 67, 82, 0.72);
+    border-right: 1px solid #3a4352;
+    border-top: none;
     padding: 6px 12px;
 }
 .tabulator .tabulator-row .tabulator-cell.tabulator-row-header {
     color: var(--text-dim);
     background-color: var(--card) !important;
     border: none !important;
+    border-right: 1px solid #3a4352 !important;
 }
-/* Kill border + frozen-column shadow on the row-number column in both
-   header and body — midnight theme adds horizontal borders on row-header
-   cells and a frozen-column shadow that shows as a stray vertical line
-   on the left of the header. */
-.tabulator .tabulator-header .tabulator-col.tabulator-row-header,
+/* Kill the frozen-column shadow on the row-number column — midnight theme
+   adds a shadow that shows as a stray vertical line on the left. */
 .tabulator .tabulator-frozen,
-.tabulator .tabulator-row .tabulator-frozen { border: none !important;
+.tabulator .tabulator-row .tabulator-frozen {
     box-shadow: none !important; }
+.tabulator .tabulator-header .tabulator-col.tabulator-row-header {
+    border-right: 1px solid #3a4352 !important;
+}
 
 /* Modal (ours, not Tabulator's). */
 #modal { position: fixed; inset: 0; background: rgba(0,0,0,0.65); display: none;
