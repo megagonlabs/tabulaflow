@@ -50,7 +50,7 @@ TabulaflowApp {
     height: 1;
     padding: 0;
     background: transparent;
-    color: #666666;
+    color: #444444;
 }
 
 #input-bar {

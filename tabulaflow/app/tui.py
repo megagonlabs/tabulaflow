@@ -40,7 +40,7 @@ class BottomSeparator(Static):
     """One-row separator that fills its current width without layout side effects."""
 
     def render(self) -> Text:
-        return Text("─" * max(1, self.size.width), style="#333333", overflow="crop", no_wrap=True)
+        return Text("━" * max(1, self.size.width), style="#333333", overflow="crop", no_wrap=True)
 
 
 def _warm_session_imports() -> None:
