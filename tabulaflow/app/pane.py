@@ -109,6 +109,8 @@ _PANE_HTML = """<!doctype html>
                      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35); }
   .cardframe-shell::after { content: ""; position: absolute; inset: 0; pointer-events: none; border-radius: inherit;
                             box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.03); }
+  .cardframe-shell.view-data { border-radius: 0; }
+  .cardframe-shell.view-data::after { box-shadow: inset 0 0 0 1px rgba(58, 67, 82, 0.48); }
   .cardframe { display: block; width: 100%; height: 320px; background: transparent; border: 0; }
 </style>
 </head>
@@ -188,15 +190,19 @@ __BANNER__
     var thumb = el('span', 'seg-thumb');
     seg.appendChild(thumb);
     var opts = [];
+    function showView(v, opt) {
+      frame.src = '/' + v.file;
+      meta.textContent = v.meta || '';
+      shell.className = 'cardframe-shell view-' + (v.kind || '').toLowerCase();
+      opts.forEach(function (x) { x.classList.remove('active'); });
+      opt.classList.add('active');
+      moveThumb(thumb, opt);
+    }
     (record.views || []).forEach(function (v) {
       var o = el('button', 'seg-opt');
       o.textContent = v.kind;
       o.onclick = function () {
-        frame.src = '/' + v.file;
-        meta.textContent = v.meta || '';
-        opts.forEach(function (x) { x.classList.remove('active'); });
-        o.classList.add('active');
-        moveThumb(thumb, o);
+        showView(v, o);
       };
       opts.push(o);
       seg.appendChild(o);
@@ -208,9 +214,7 @@ __BANNER__
     pane.appendChild(shell);
     pane.appendChild(meta);
     if (opts.length) {
-      frame.src = '/' + record.views[0].file;
-      meta.textContent = record.views[0].meta || '';
-      opts[0].classList.add('active');
+      showView(record.views[0], opts[0]);
       requestAnimationFrame(function () {
         moveThumb(thumb, opts[0]);
         requestAnimationFrame(function () { thumb.classList.add('ready'); });

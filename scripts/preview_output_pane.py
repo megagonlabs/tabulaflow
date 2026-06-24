@@ -1,6 +1,7 @@
 """Run a local output-pane preview server with representative result fixtures.
 
     uv run scripts/preview_output_pane.py --port 61111
+    uv run scripts/preview_output_pane.py --port 61111 --full
 
 The script reuses the production pane server, index shape, and record renderers,
 but pushes synthetic turns directly. It is intended for browser inspection while
@@ -77,9 +78,12 @@ def _push_turn(
     )
 
 
-def _chart_cards(dumps_dir: Path) -> list[dict[str, object]]:
+def _chart_cards(dumps_dir: Path, *, limit: int | None) -> list[dict[str, object]]:
     cards: list[dict[str, object]] = []
-    for record_id, label, query, df, spec in debug_chart_fixtures():
+    fixtures = debug_chart_fixtures()
+    if limit is not None:
+        fixtures = fixtures[:limit]
+    for record_id, label, query, df, spec in fixtures:
         card = render_record_card(
             _record(record_id=record_id, label=label, query=query, df=df, chart_spec=spec),
             dumps_dir,
@@ -90,6 +94,8 @@ def _chart_cards(dumps_dir: Path) -> list[dict[str, object]]:
 
 
 def _many_record_cards(cards: Sequence[dict[str, object]]) -> list[dict[str, object]]:
+    if not cards:
+        return []
     labels = [
         "q1",
         "top_regions",
@@ -104,7 +110,7 @@ def _many_record_cards(cards: Sequence[dict[str, object]]) -> list[dict[str, obj
         "x",
         "warehouse_inventory_reconciliation_status",
     ]
-    return [{"label": labels[i], "views": cards[i]["views"]} for i in range(min(len(labels), len(cards)))]
+    return [{"label": label, "views": cards[i % len(cards)]["views"]} for i, label in enumerate(labels)]
 
 
 def _large_table_record(num_rows: int) -> SimpleNamespace:
@@ -185,8 +191,9 @@ def _populate_pane(
     large_rows: int,
     include_large: bool,
     include_media: bool,
+    all_chart_turns: bool,
 ) -> None:
-    chart_cards = _chart_cards(dumps_dir)
+    chart_cards = _chart_cards(dumps_dir, limit=None if all_chart_turns else 6)
 
     pane.push(
         {
@@ -250,15 +257,16 @@ def _populate_pane(
             records=[_media_table_record()],
         )
 
-    for i, card in enumerate(chart_cards[4:], start=5):
-        pane.push(
-            {
-                "title": card.get("label") or f"query {i}",
-                "user": f"Show fixture {i}.",
-                "assistant": "Here is the rendered chart, source data, and query for this fixture.",
-                "records": [card],
-            }
-        )
+    if all_chart_turns:
+        for i, card in enumerate(chart_cards[4:], start=5):
+            pane.push(
+                {
+                    "title": card.get("label") or f"query {i}",
+                    "user": f"Show fixture {i}.",
+                    "assistant": "Here is the rendered chart, source data, and query for this fixture.",
+                    "records": [card],
+                }
+            )
 
 
 def main() -> None:
@@ -266,8 +274,12 @@ def main() -> None:
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=61111)
     parser.add_argument("--large-rows", type=int, default=60_000)
-    parser.add_argument("--no-large-table", action="store_true")
-    parser.add_argument("--no-media", action="store_true")
+    parser.add_argument("--full", action="store_true", help="Include all chart turns and expensive stress fixtures.")
+    parser.add_argument("--all-chart-turns", action="store_true", help="Render every chart fixture as its own turn.")
+    parser.add_argument("--large-table", action="store_true", help="Include the very large table stress fixture.")
+    parser.add_argument("--media", action="store_true", help="Include the multimedia table stress fixture.")
+    parser.add_argument("--no-large-table", action="store_true", help=argparse.SUPPRESS)
+    parser.add_argument("--no-media", action="store_true", help=argparse.SUPPRESS)
     args = parser.parse_args()
 
     dumps_dir = Path(tempfile.mkdtemp(prefix="tabulaflow-pane-preview-"))
@@ -276,8 +288,9 @@ def main() -> None:
         pane,
         dumps_dir,
         large_rows=args.large_rows,
-        include_large=not args.no_large_table,
-        include_media=not args.no_media,
+        include_large=(args.full or args.large_table) and not args.no_large_table,
+        include_media=(args.full or args.media) and not args.no_media,
+        all_chart_turns=args.full or args.all_chart_turns,
     )
 
     print(f"READY http://{args.host}:{args.port}/", flush=True)
