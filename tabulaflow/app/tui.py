@@ -517,7 +517,7 @@ class TabulaflowApp(App[None]):
         except Exception:
             return
         url = self._pane.url if self._pane is not None else None
-        pane_url.update(Text(url or "", style="dim"))
+        pane_url.update(Text(f"View output in browser: {url}" if url else "", style="dim"))
         pane_url.disabled = url is None
 
     async def _push_turn_to_pane(
