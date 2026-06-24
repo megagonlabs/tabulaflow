@@ -34,7 +34,7 @@ _PANE_TABLE_MAX_H = 520
 # linking beats re-inlining ~0.8 MB of Vega into every chart dump.
 _ASSET_BASE = "/assets"
 
-_QUERY_BG = "#202020"
+_QUERY_BG = "#1e1e1e"
 
 
 def _plural(n: int, word: str) -> str:
@@ -53,7 +53,7 @@ _QUERY_CSS = (
     "body { margin: 0; background: %(bg)s; }"
     ".query-card { background: %(bg)s; color: %(text)s; }"
     ".query-bar { height: 42px; display: flex; align-items: center; justify-content: space-between;"
-    " padding: 0 14px 0 18px; box-sizing: border-box; border-bottom: 1px solid #242424;"
+    " padding: 0 14px 0 18px; box-sizing: border-box; border-bottom: 1px solid #303030;"
     " color: #f5f5f5; font: 600 13px/1.2 -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }"
     ".query-lang { letter-spacing: 0; }"
     ".query-copy { display: inline-flex; align-items: center; justify-content: center; height: 30px; width: 30px;"

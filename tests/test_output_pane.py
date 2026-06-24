@@ -68,7 +68,8 @@ def test_query_view_renders_code_header_and_dracula_theme(tmp_path: Path) -> Non
     assert '<span class="query-lang">Python</span>' in html
     assert 'data-copy-query aria-label="Copy query" title="Copy query"' in html
     assert '<span class="copy-label">Copy</span>' not in html
-    assert "#202020" in html
+    assert "#1e1e1e" in html
+    assert "#303030" in html
     assert "#8BE9FD" in html  # Dracula builtin/token color.
 
 
