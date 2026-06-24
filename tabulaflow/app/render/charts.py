@@ -264,6 +264,7 @@ def render_chart_html(
     html_path: Path,
     *,
     title: str | None = None,
+    asset_base: str | None = None,
 ) -> None:
     """Render a Vega-Lite spec as a self-contained interactive HTML chart.
 
@@ -279,6 +280,9 @@ def render_chart_html(
         vegalite_spec: The Vega-Lite specification (semantic; unthemed).
         html_path: Output HTML path.
         title: Document title (browser tab); defaults to the file stem.
+        asset_base: When set (e.g. ``"/assets"``), link the Vega runtime from
+            that URL base instead of inlining it (~0.8 MB/file). ``None`` inlines
+            for a self-contained, ``file://``-openable page.
     """
     spec = copy.deepcopy(vegalite_spec)
     colmap = {str(c).lower(): str(c) for c in df.columns}
@@ -312,8 +316,6 @@ def render_chart_html(
     else:
         wrap_class = "content"
 
-    vega_js, vega_lite_js, vega_embed_js = _load_vega_assets()
-
     # ``</`` inside an inline <script> string can prematurely close the tag.
     data_json = (df.to_json(orient="records", date_format="iso", default_handler=str) or "[]").replace("</", "<\\/")
     spec_json = json.dumps(spec, ensure_ascii=False, default=str).replace("</", "<\\/")
@@ -332,12 +334,20 @@ def render_chart_html(
         'el.innerHTML="";el.appendChild(pre);});})();'
     )
 
-    head = (
-        f"<script>{vega_js}</script>"
-        f"<script>{vega_lite_js}</script>"
-        f"<script>{vega_embed_js}</script>"
-        f"<style>{_CHART_CSS}</style>"
-    )
+    if asset_base is None:
+        vega_js, vega_lite_js, vega_embed_js = _load_vega_assets()
+        vega_head = (
+            f"<script>{vega_js}</script>"
+            f"<script>{vega_lite_js}</script>"
+            f"<script>{vega_embed_js}</script>"
+        )
+    else:
+        vega_head = (
+            f'<script src="{asset_base}/vega/vega.min.js"></script>'
+            f'<script src="{asset_base}/vega/vega-lite.min.js"></script>'
+            f'<script src="{asset_base}/vega/vega-embed.min.js"></script>'
+        )
+    head = f"{vega_head}<style>{_CHART_CSS}</style>"
     doc = render_page(
         title=title or html_path.stem,
         body=f'<div id="vis-stage"><div id="vis-wrap" class="{wrap_class}"><div id="vis"></div></div></div>',

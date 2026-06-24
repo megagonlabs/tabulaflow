@@ -31,6 +31,10 @@ if TYPE_CHECKING:
 # scroll internally (≈ the chart panel height), rather than tracking the viewport.
 _PANE_TABLE_MAX_H = 520
 
+# URL base the pane serves the bundled Vega/Tabulator libs under (see pane.py);
+# linking beats re-inlining ~0.8 MB of Vega into every chart dump.
+_ASSET_BASE = "/assets"
+
 _QUERY_BG = CARD_BG  # same panel surface as the chart/data views
 
 
@@ -95,10 +99,10 @@ def render_record_card(record: "ChatResultRecord", dumps_dir: Path) -> dict[str,
     if df is not None and not df.empty:
         if record.chart_spec is not None:
             path = dumps_dir / f"V_{secrets.token_hex(3)}.html"
-            render_chart_html(df, record.chart_spec, path, title=record.label)
+            render_chart_html(df, record.chart_spec, path, title=record.label, asset_base=_ASSET_BASE)
             views.append({"kind": "chart", "file": path.name})
         path = dumps_dir / f"T_{secrets.token_hex(3)}.html"
-        render_table_html(df, path, title=record.label, max_height=_PANE_TABLE_MAX_H)
+        render_table_html(df, path, title=record.label, max_height=_PANE_TABLE_MAX_H, asset_base=_ASSET_BASE)
         views.append({"kind": "data", "file": path.name, "meta": _data_view_meta(len(df), len(df.columns))})
     if record.query:
         path = dumps_dir / f"Q_{secrets.token_hex(3)}.html"

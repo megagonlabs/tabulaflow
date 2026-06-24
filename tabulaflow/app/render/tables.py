@@ -598,6 +598,7 @@ def render_table_html(
     max_rows: int = _DEFAULT_MAX_ROWS,
     inline_cap: int = _DEFAULT_INLINE_CAP,
     max_height: int | None = None,
+    asset_base: str | None = None,
 ) -> None:
     """Render ``df`` as a single HTML file at ``html_path`` using Tabulator.
 
@@ -623,6 +624,9 @@ def render_table_html(
         max_height: Fixed pixel cap for the table when a host frames it in a
             panel (short tables hug, long tables cap + scroll). ``None`` tracks
             the viewport so a standalone full-window page fills the screen.
+        asset_base: When set (e.g. ``"/assets"``), link Tabulator from that URL
+            base instead of inlining it (~460 KB/file). ``None`` inlines for a
+            self-contained, ``file://``-openable page.
     """
     truncated_rows = max(0, len(df) - max_rows)
     view = df.head(max_rows)
@@ -738,7 +742,6 @@ def render_table_html(
                 row_data[field] = _coerce_text_value(val)
         rows.append(row_data)
 
-    tabulator_js, tabulator_css = _load_tabulator_assets()
     # ``</`` inside an inline <script> string can prematurely end the tag.
     data_json = json.dumps(rows, ensure_ascii=False, default=str).replace("</", "<\\/")
     cols_json = json.dumps(column_defs, ensure_ascii=False).replace("</", "<\\/")
@@ -768,10 +771,18 @@ def render_table_html(
         '<div id="modal-body"></div>'
         "</div></div>"
     )
+    if asset_base is None:
+        tabulator_js, tabulator_css = _load_tabulator_assets()
+        asset_head = f"<style>{tabulator_css}</style><script>{tabulator_js}</script>"
+    else:
+        asset_head = (
+            f'<link rel="stylesheet" href="{asset_base}/tabulator/tabulator.min.css">'
+            f'<script src="{asset_base}/tabulator/tabulator.min.js"></script>'
+        )
     doc = render_page(
         title=doc_title,
         body=body,
-        head=f"<style>{tabulator_css}</style><style>{_CUSTOM_CSS}</style><script>{tabulator_js}</script>",
+        head=f"{asset_head}<style>{_CUSTOM_CSS}</style>",
         scripts=f"<script>{init_js}</script>",
     )
     html_path.parent.mkdir(parents=True, exist_ok=True)
