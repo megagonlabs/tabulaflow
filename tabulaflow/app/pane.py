@@ -105,8 +105,11 @@ _PANE_HTML = """<!doctype html>
   .seg-thumb { position: absolute; top: 3px; bottom: 3px; left: 0; width: 0; border-radius: 999px;
                background: #262c36; }
   .seg-thumb.ready { transition: transform 0.22s ease, width 0.22s ease; }
-  .cardframe { display: block; width: 100%; height: 320px; background: #1a212c;
-               border: 0; border-radius: 10px; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35); }
+  .cardframe-shell { position: relative; width: 100%; background: #1f2532; border-radius: 10px; overflow: hidden;
+                     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35); }
+  .cardframe-shell::after { content: ""; position: absolute; inset: 0; pointer-events: none; border-radius: inherit;
+                            box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.03); }
+  .cardframe { display: block; width: 100%; height: 320px; background: transparent; border: 0; }
 </style>
 </head>
 <body>
@@ -175,9 +178,11 @@ __BANNER__
       lbl.textContent = record.label;
       bar.appendChild(lbl);
     }
+    var shell = el('div', 'cardframe-shell');
     var frame = el('iframe', 'cardframe');
     frame.scrolling = 'no';
     autosize(frame);
+    shell.appendChild(frame);
     var meta = el('div', 'viewmeta');
     var seg = el('div', 'seg');
     var thumb = el('span', 'seg-thumb');
@@ -200,7 +205,7 @@ __BANNER__
       bar.appendChild(seg);
     }
     pane.appendChild(bar);
-    pane.appendChild(frame);
+    pane.appendChild(shell);
     pane.appendChild(meta);
     if (opts.length) {
       frame.src = '/' + record.views[0].file;
