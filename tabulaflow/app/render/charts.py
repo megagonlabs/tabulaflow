@@ -7,7 +7,7 @@ import json
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from tabulaflow.app.page import BORDER, CARD_BG, TEXT, TEXT_MUTED, render_page
+from tabulaflow.app.page import CARD_BG, TEXT, TEXT_MUTED, render_page
 from tabulaflow.app.theme import ACCENT
 
 if TYPE_CHECKING:
@@ -22,6 +22,7 @@ if TYPE_CHECKING:
 # tool caps attachable results well below pathological sizes; this is just the
 # crisp-vs-fast tradeoff within that range.
 _SVG_ROW_LIMIT = 5_000
+_CHART_GRID = "#3a4352"
 
 # Dark/mint Vega config applied as *defaults* (lowest precedence). Anything the
 # spec sets explicitly — including agent-requested colors — overrides it, since
@@ -34,9 +35,10 @@ _VEGA_DARK_CONFIG: dict[str, object] = {
     "axis": {
         "labelColor": TEXT_MUTED,
         "titleColor": TEXT,
-        "gridColor": BORDER,
-        "domainColor": BORDER,
-        "tickColor": BORDER,
+        "gridColor": _CHART_GRID,
+        "gridOpacity": 0.9,
+        "domainColor": _CHART_GRID,
+        "tickColor": _CHART_GRID,
         "labelFontSize": 12,
         "titleFontSize": 14,
         "labelLimit": 160,

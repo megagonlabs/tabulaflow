@@ -218,21 +218,21 @@ video { width: 240px; height: 160px; object-fit: contain; background: #000;
 /* Header */
 .tabulator .tabulator-header {
     background-color: var(--card) !important;
-    border-bottom: 1px solid var(--border);
+    border-bottom: 1px solid #3a4352;
 }
 .tabulator .tabulator-header .tabulator-col {
     background-color: transparent !important;
-    border-right: 1px solid var(--border);
+    border-right: 1px solid #3a4352;
 }
 .tabulator .tabulator-header .tabulator-col:last-child { border-right: none; }
 .tabulator .tabulator-header .tabulator-col,
 .tabulator .tabulator-header .tabulator-col .tabulator-col-title {
     color: var(--accent);
     font-weight: 600;
-    font-size: 15px;
+    font-size: 14px;
     letter-spacing: 0.02em;
 }
-.tabulator .tabulator-header .tabulator-col .tabulator-col-content { padding: 12px 12px; }
+.tabulator .tabulator-header .tabulator-col .tabulator-col-content { padding: 10px 12px; }
 .tabulator .tabulator-header .tabulator-col.tabulator-sortable:hover {
     background-color: rgba(62, 180, 137, 0.06) !important;
 }
@@ -248,7 +248,7 @@ video { width: 240px; height: 160px; object-fit: contain; background: #000;
 .tabulator .tabulator-row .tabulator-cell {
     color: var(--text);
     border-right: none;
-    border-top: none;
+    border-top: 1px solid rgba(58, 67, 82, 0.72);
     padding: 6px 12px;
 }
 .tabulator .tabulator-row .tabulator-cell.tabulator-row-header {
@@ -458,7 +458,7 @@ _INIT_JS_TEMPLATE = """
         clipboardCopyRowRange: "range",
         clipboardCopyConfig: { rowHeaders: false, columnHeaders: false },
         rowHeader: { resizable: false, frozen: true, headerSort: false,
-            formatter: "rownum", hozAlign: "right", width: 50, cssClass: "tabulator-row-header" }
+            formatter: "rownum", hozAlign: "right", width: 44, cssClass: "tabulator-row-header" }
     }));
 
     // Tabulator measures columns at init, before any <img> has decoded —
