@@ -59,33 +59,13 @@ def _normalize_json_like(value: object) -> object:
 # ---------------------------------------------------------------------------
 
 
-def _open_path_in_browser(path: Path, *, status: "Callable[[Text], None]") -> bool:
-    """Open ``path`` in the system browser, reporting via ``status``.
-
-    ``webbrowser_open.open`` returns None and raises on failure; we use
-    absence of exception (combined with a default-browser probe for the
-    headless case) as the success signal.
-    """
-    import webbrowser_open
-
-    try:
-        webbrowser_open.open(path.absolute().as_uri())
-        opened = webbrowser_open.get_default_browser() is not None
-    except Exception:
-        opened = False
-    if opened:
-        status(Text(f"opened in browser: {path}", style="dim"))
-    else:
-        status(Text(f"no browser, saved to {path}", style="dim"))
-    return opened
-
-
 def _show_path(path: Path, app: object, *, status: "Callable[[Text], None]") -> None:
-    """Show a dumped artifact in the live results pane, falling back to a file open.
+    """Show a dumped artifact in the live results pane.
 
     Manual "view in browser" actions route here so one pane accumulates both agent
-    results and explorer views. When the pane is unavailable, open the file
-    directly (the pre-pane behavior).
+    results and explorer views. The loopback pane reliably starts, so it's the
+    single viewing surface; in the rare case it can't, we report the on-disk path
+    rather than opening a divergent ``file://`` channel.
     """
     try:
         shown = bool(app.view_in_pane(path))  # type: ignore[attr-defined]
@@ -94,7 +74,7 @@ def _show_path(path: Path, app: object, *, status: "Callable[[Text], None]") -> 
     if shown:
         status(Text("opened in results pane", style="dim"))
     else:
-        _open_path_in_browser(path, status=status)
+        status(Text(f"results pane unavailable; artifact saved to {path}", style="dim"))
 
 
 def open_cell_in_browser(value: object, app: object, *, status: "Callable[[Text], None]") -> "Path | None":
@@ -860,13 +840,7 @@ class CellBrowserScreen(Screen[None]):
         self.dismiss()
 
     async def action_open_in_browser(self) -> None:
-        """Save the raw value with its native extension and open it in a browser.
-
-        Uses ``webbrowser_open`` (which queries the system's default browser
-        directly rather than going through file-extension associations) so
-        ``.json`` reaches Chrome's native tree viewer regardless of how
-        ``.json`` is otherwise associated. Falls back to reporting the
-        saved path if no browser is available (headless / SSH).
+        """Save the raw value with its native extension and show it in the results pane.
 
         Shows ``Opening...`` while the serialize/write runs so the user
         sees an immediate response on click. Only paints the wait status
