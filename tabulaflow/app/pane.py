@@ -62,8 +62,22 @@ _PANE_HTML = """<!doctype html>
   .turnitem:hover { color: #e4e4e7; }
   .turnitem.active { color: #3eb489; border-left-color: #3eb489; background: #1a1f2a; }
   #content { flex: 1 1 auto; overflow-y: auto; min-width: 0; display: flex; }
-  #content-inner { width: min(1000px, 100%); margin: auto; padding: 16px; box-sizing: border-box; }
+  #content-inner { width: min(1000px, 100%); margin: 0 auto; padding: 16px; box-sizing: border-box; }
   #empty { color: #6a737d; font: 14px ui-monospace, monospace; padding: 28px; }
+  .turnview { display: flex; flex-direction: column; gap: 20px; }
+  .transcript { display: flex; flex-direction: column; gap: 18px; padding: 2px 4px 0; }
+  .message { display: flex; min-width: 0; }
+  .message-label { display: none; }
+  .message-body { font-size: 15px; line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; }
+  .message.user { justify-content: flex-end; }
+  .message.user .message-body { max-width: min(720px, 78%); padding: 10px 14px; color: #e4e4e7;
+                                background: #1f2532; border-radius: 16px 16px 4px 16px;
+                                box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.03); }
+  .message.assistant { justify-content: stretch; }
+  .message.assistant .message-body { width: 100%; color: #e4e4e7; }
+  @media (max-width: 640px) {
+    .message.user .message-body { max-width: 92%; }
+  }
   .rectabs { display: flex; align-items: center; gap: 12px; margin-right: auto; min-height: 32px; }
   .rectab { background: transparent; border: 0; color: #6a737d; cursor: pointer;
             padding: 6px 1px; border-bottom: 2px solid transparent; max-width: 160px;
@@ -115,9 +129,26 @@ __BANNER__
     });
   }
   function el(tag, cls) { var e = document.createElement(tag); if (cls) { e.className = cls; } return e; }
+  function hasText(value) { return typeof value === 'string' && value.trim().length > 0; }
   function moveThumb(thumb, opt) {
     thumb.style.width = opt.offsetWidth + 'px';
     thumb.style.transform = 'translateX(' + opt.offsetLeft + 'px)';
+  }
+  function buildMessage(role, text) {
+    var msg = el('div', 'message ' + role);
+    var label = el('div', 'message-label');
+    var body = el('div', 'message-body');
+    label.textContent = role === 'user' ? 'user' : 'tabulaflow';
+    body.textContent = text;
+    msg.appendChild(label);
+    msg.appendChild(body);
+    return msg;
+  }
+  function buildTranscript(turn) {
+    var wrap = el('section', 'transcript');
+    if (hasText(turn.user)) { wrap.appendChild(buildMessage('user', turn.user)); }
+    if (hasText(turn.assistant)) { wrap.appendChild(buildMessage('assistant', turn.assistant)); }
+    return wrap.children.length ? wrap : null;
   }
   // Build one record's pane: a Chart|Data|Query tab strip + iframe. The chart
   // loads up front; Data/Query load lazily on tab click.
@@ -176,9 +207,16 @@ __BANNER__
   // multi-result turn carries record tabs in each pane's header (left of the view
   // segmented); panes are pre-built and toggled by visibility (flicker-free switch).
   function renderTurn(turn) {
+    var view = el('div', 'turnview');
+    var transcript = buildTranscript(turn);
+    if (transcript) { view.appendChild(transcript); }
     var records = turn.records || [];
+    if (!records.length) {
+      return view;
+    }
     if (records.length <= 1) {
-      return buildRecord(records[0] || { views: [] }, null);
+      view.appendChild(buildRecord(records[0], null));
+      return view;
     }
     var box = el('div', 'panesbox');
     var panes = [];
@@ -189,7 +227,8 @@ __BANNER__
       box.appendChild(pane);
       panes.push(pane);
     });
-    return box;
+    view.appendChild(box);
+    return view;
   }
   // Turn navigator: the sidebar lists every turn; only the selected turn is
   // rendered (iframes never accumulate). New turns are appended and auto-selected.

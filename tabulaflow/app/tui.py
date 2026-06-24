@@ -482,8 +482,15 @@ class TabulaflowApp(App[None]):
         else:
             self.notify("Results pane unavailable.", severity="warning")
 
-    async def _push_results_to_pane(self, result: "ChatResult", chat_log: VerticalScroll, title: str) -> None:
-        """Render each cited result to a card and push it to the browser pane.
+    async def _push_turn_to_pane(
+        self,
+        result: "ChatResult",
+        chat_log: VerticalScroll,
+        *,
+        title: str,
+        user_text: str,
+    ) -> None:
+        """Render a completed turn and push it to the browser pane.
 
         Auto-push path: the pane lazily starts and opens once on the first result,
         then updates silently (no focus steal). Best-effort — any failure is
@@ -505,18 +512,16 @@ class TabulaflowApp(App[None]):
                 continue
             if card is not None:
                 records.append(card)
-        if not records:
+        if not records and not user_text and not result.text:
             return
         started = self._pane is None
         pane = self._ensure_pane()
         if pane is None:
             return
-        pane.push({"title": title, "records": records})
+        pane.push({"title": title, "user": user_text, "assistant": result.text, "records": records})
 
         if started and pane.url is not None:
-            await chat_log.mount(
-                SystemMessage(Text(f"Results pane → {pane.url}  ·  ctrl+b to reopen", style="dim"))
-            )
+            await chat_log.mount(SystemMessage(Text(f"Results pane → {pane.url}  ·  ctrl+b to reopen", style="dim")))
             pane.open_browser()
 
     def _restore_input_text(self, text: str) -> None:
@@ -804,10 +809,15 @@ class TabulaflowApp(App[None]):
             return  # normal completion always yields a terminal Finished
 
         session.last_result = result
+        # Push to the browser pane BEFORE building the widget: AgentResultWidget
+        # -> build_result_views() nulls each record.df after rendering to Rich.
+        await self._push_turn_to_pane(
+            result,
+            chat_log,
+            title=display_text or question,
+            user_text=display_text or question,
+        )
         if result.records:
-            # Push to the browser pane BEFORE building the widget: AgentResultWidget
-            # -> build_result_views() nulls each record.df after rendering to Rich.
-            await self._push_results_to_pane(result, chat_log, title=display_text or question)
             # chat-log padding (2) + scrollbar (2) + widget margin (5) + widget padding (2) = 11
             result_widget = AgentResultWidget(
                 result,
