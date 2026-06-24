@@ -81,7 +81,7 @@ _PANE_HTML = """<!doctype html>
   .rectabs { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px;
              margin-right: auto; min-height: 36px; }
   .rectab { background: transparent; border: 0; border-radius: 2px; color: #9aa4b2; cursor: pointer;
-            padding: 5px 10px; max-width: 180px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+            padding: 5px 10px; white-space: nowrap;
             font: 14px/1.25 ui-monospace, monospace; }
   .rectab:hover { color: #e4e4e7; background: #1f2532; }
   .rectab.active { color: #06120e; background: #3eb489; font-weight: 700; }
@@ -90,8 +90,7 @@ _PANE_HTML = """<!doctype html>
   .recordpane.hidden { position: absolute; top: 0; left: 0; visibility: hidden; pointer-events: none; }
   .cardbar { display: flex; align-items: center; gap: 8px; min-height: 40px; padding: 6px 4px 14px;
              font: 13px ui-monospace, monospace; }
-  .cardlabel { display: inline-flex; max-width: 180px; margin-right: auto; padding: 5px 10px;
-               overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+  .cardlabel { display: inline-flex; margin-right: auto; padding: 5px 10px; white-space: nowrap;
                color: #06120e; background: #3eb489; border-radius: 2px;
                font: 700 14px/1.25 ui-monospace, monospace; }
   .seg { position: relative; display: inline-flex; padding: 3px; border-radius: 999px;
