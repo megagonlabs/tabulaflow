@@ -64,8 +64,8 @@ _PANE_HTML = """<!doctype html>
   #content { flex: 1 1 auto; overflow-y: auto; min-width: 0; display: flex; }
   #content-inner { width: min(1000px, 100%); margin: 0 auto; padding: 16px; box-sizing: border-box; }
   #empty { color: #6a737d; font: 14px ui-monospace, monospace; padding: 28px; }
-  .turnview { display: flex; flex-direction: column; gap: 20px; }
-  .transcript { display: flex; flex-direction: column; gap: 18px; padding: 2px 4px 0; }
+  .turnview { display: flex; flex-direction: column; gap: 36px; }
+  .transcript { display: flex; flex-direction: column; gap: 32px; padding: 2px 4px 0; }
   .message { display: flex; min-width: 0; }
   .message-label { display: none; }
   .message-body { font-size: 15px; line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; }
