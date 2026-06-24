@@ -1,7 +1,7 @@
 """Tool that attaches a Vega-Lite chart spec to a query result.
 
 Simple x/y specs also get a plotext terminal preview here; the full chart
-renders in the browser (see ``tabulaflow.app.dump.render_chart_html``).
+renders in the browser (see ``tabulaflow.app.render.charts.render_chart_html``).
 """
 
 from __future__ import annotations

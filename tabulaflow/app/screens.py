@@ -103,7 +103,7 @@ def open_cell_in_browser(value: object, app: object, *, status: "Callable[[Text]
     Returns the written path on success, or ``None`` if no dumps dir is
     configured or the write failed.
     """
-    from tabulaflow.app.dump import write_cell_dump
+    from tabulaflow.app.render import write_cell_dump
 
     try:
         dumps_dir: Path = app._runtime_paths.dumps_dir  # type: ignore[attr-defined]
@@ -135,7 +135,7 @@ def open_table_in_browser(
     """
     import secrets
 
-    from tabulaflow.app.dump import render_table_html
+    from tabulaflow.app.render import render_table_html
 
     try:
         dumps_dir: Path = app._runtime_paths.dumps_dir  # type: ignore[attr-defined]
@@ -169,7 +169,7 @@ def open_chart_in_browser(
     """
     import secrets
 
-    from tabulaflow.app.dump import render_chart_html
+    from tabulaflow.app.render import render_chart_html
 
     try:
         dumps_dir: Path = app._runtime_paths.dumps_dir  # type: ignore[attr-defined]
@@ -764,7 +764,7 @@ class CellBrowserScreen(Screen[None]):
             pass
 
         if isinstance(value, (bytes, bytearray, memoryview)):
-            from tabulaflow.app.dump import sniff_binary
+            from tabulaflow.app.render import sniff_binary
 
             raw = bytes(value)
             sniffed = sniff_binary(raw)
@@ -779,7 +779,7 @@ class CellBrowserScreen(Screen[None]):
         if isinstance(value, dict):
             inner = value.get("bytes")
             if isinstance(inner, (bytes, bytearray, memoryview)):
-                from tabulaflow.app.dump import sniff_binary
+                from tabulaflow.app.render import sniff_binary
 
                 raw = bytes(inner)
                 sniffed = sniff_binary(raw)

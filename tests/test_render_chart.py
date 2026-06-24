@@ -8,7 +8,7 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-from tabulaflow.app.dump import _add_line_hover, render_chart_html
+from tabulaflow.app.render import _add_line_hover, render_chart_html
 from tabulaflow.core.types import ExecResult, PredQuery
 from tabulaflow.toolhub.query_history import QueryHistory
 from tabulaflow.toolhub.render_chart import (

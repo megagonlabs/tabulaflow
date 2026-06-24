@@ -490,7 +490,7 @@ class TabulaflowApp(App[None]):
         """
         import secrets
 
-        from tabulaflow.app.dump import render_chart_html, render_table_html
+        from tabulaflow.app.render import render_chart_html, render_table_html
 
         started = self._pane is None
         pane = self._ensure_pane()

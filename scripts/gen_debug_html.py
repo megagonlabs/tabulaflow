@@ -16,7 +16,7 @@ from pathlib import Path
 import pandas as pd
 
 from tabulaflow.app.debug import debug_chart_fixtures
-from tabulaflow.app.dump import render_chart_html, render_table_html
+from tabulaflow.app.render import render_chart_html, render_table_html
 from tabulaflow.app.page import render_page
 
 OUT = Path("/tmp/mintq")
