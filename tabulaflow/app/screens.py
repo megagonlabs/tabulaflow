@@ -1,6 +1,6 @@
 """Full-screen modal explorers — the data / cell / query / chart / schema browser
-screens (pushed on demand) and the browser-open helpers. Distinct from the inline
-chat-flow widgets in ``widgets.py``.
+screens (pushed on demand) and output-pane artifact helpers. Distinct from the
+inline chat-flow widgets in ``widgets.py``.
 """
 
 from __future__ import annotations
@@ -55,30 +55,28 @@ def _normalize_json_like(value: object) -> object:
 
 
 # ---------------------------------------------------------------------------
-# Browser-open helpers (used by Data and Cell browsers)
+# Output-pane helpers (used by Data, Cell, and Chart browsers)
 # ---------------------------------------------------------------------------
 
 
 def _show_path(path: Path, app: object, *, status: "Callable[[Text], None]") -> None:
     """Show a dumped artifact in the live results pane.
 
-    Manual "view in browser" actions route here so one pane accumulates both agent
-    results and explorer views. The loopback pane reliably starts, so it's the
-    single viewing surface; in the rare case it can't, we report the on-disk path
-    rather than opening a divergent ``file://`` channel.
+    Manual "send to output pane" actions route here so one pane accumulates
+    both agent results and explorer views.
     """
     try:
         shown = bool(app.view_in_pane(path))  # type: ignore[attr-defined]
     except Exception:
         shown = False
     if shown:
-        status(Text("opened in results pane", style="dim"))
+        status(Text("sent to output pane", style="dim"))
     else:
         status(Text(f"results pane unavailable; artifact saved to {path}", style="dim"))
 
 
-def open_cell_in_browser(value: object, app: object, *, status: "Callable[[Text], None]") -> "Path | None":
-    """Serialize ``value`` to the dumps dir and open it in the browser.
+def send_cell_to_output_pane(value: object, app: object, *, status: "Callable[[Text], None]") -> "Path | None":
+    """Serialize ``value`` to the dumps dir and send it to the output pane.
 
     Returns the written path on success, or ``None`` if no dumps dir is
     configured or the write failed.
@@ -102,14 +100,14 @@ def open_cell_in_browser(value: object, app: object, *, status: "Callable[[Text]
     return path
 
 
-def open_table_in_browser(
+def send_table_to_output_pane(
     df: "pd.DataFrame",
     title: str,
     app: object,
     *,
     status: "Callable[[Text], None]",
 ) -> "Path | None":
-    """Render ``df`` as inline-media HTML in the dumps dir and open it.
+    """Render ``df`` as inline-media HTML in the dumps dir and send it to the output pane.
 
     Returns the written HTML path on success, or ``None`` on failure.
     """
@@ -135,7 +133,7 @@ def open_table_in_browser(
     return html_path
 
 
-def open_chart_in_browser(
+def send_chart_to_output_pane(
     df: "pd.DataFrame",
     vegalite_spec: dict[str, object],
     title: str,
@@ -143,7 +141,7 @@ def open_chart_in_browser(
     *,
     status: "Callable[[Text], None]",
 ) -> "Path | None":
-    """Render ``vegalite_spec`` over ``df`` as interactive HTML and open it.
+    """Render ``vegalite_spec`` over ``df`` as interactive HTML and send it to the output pane.
 
     Returns the written HTML path on success, or ``None`` on failure.
     """
@@ -271,7 +269,7 @@ class DataBrowserScreen(Screen[None]):
         Binding("enter", "open_cell", "Inspect cell", priority=True),
         Binding("[", "prev_page", "Prev page", show=True),
         Binding("]", "next_page", "Next page", show=True),
-        Binding("b", "open_table_in_browser", "Open table in browser", show=True, priority=True),
+        Binding("b", "send_table_to_output_pane", "Send table to output pane", show=True, priority=True),
     ]
 
     def __init__(self, *, title: str, df: "pd.DataFrame", page_size: int = 50) -> None:
@@ -370,24 +368,18 @@ class DataBrowserScreen(Screen[None]):
             self._page_index = self._max_page_index
         self._render_page()
 
-    async def action_open_table_in_browser(self) -> None:
-        """Open the current DataFrame as HTML in the system browser.
-
-        Shows ``Opening...`` while the (blocking) render runs, paints
-        before the block, then the helper overwrites the status with the
-        final result (``opened in browser: <path>`` or ``no browser, saved
-        to: <path>``).
-        """
+    async def action_send_table_to_output_pane(self) -> None:
+        """Render the current DataFrame as HTML and send it to the output pane."""
         import asyncio
 
-        self._set_status_message(Text("Opening...", style="dim"))
+        self._set_status_message(Text("Sending...", style="dim"))
         painted: asyncio.Future[None] = asyncio.get_running_loop().create_future()
         self.call_after_refresh(lambda: painted.done() or painted.set_result(None))
         await painted
-        open_table_in_browser(self._df, self._title, self.app, status=self._set_status_message)
+        send_table_to_output_pane(self._df, self._title, self.app, status=self._set_status_message)
 
     def _set_status_message(self, message: "Text") -> None:
-        """Display a transient status message from a browser-open helper."""
+        """Display a transient status message from an output-pane helper."""
         self._status.update(message)
 
     @property
@@ -460,7 +452,7 @@ class DataBrowserScreen(Screen[None]):
             ("]", KEY_HINT),
             (" Prev/Next page    ", hint_fg),
             ("B", KEY_HINT),
-            (" Open table in browser", hint_fg),
+            (" Send table to output pane", hint_fg),
         ]
         hint = Text()
         for text, style in hint_segments:
@@ -638,7 +630,7 @@ class CellBrowserScreen(Screen[None]):
 
     BINDINGS = [
         Binding("escape", "close_browser", "Back", show=True),
-        Binding("b", "open_in_browser", "Open cell in browser", show=True, priority=True),
+        Binding("b", "send_to_output_pane", "Send cell to output pane", show=True, priority=True),
     ]
 
     # Skip syntax highlighting above this many rendered chars — Pygments'
@@ -667,7 +659,7 @@ class CellBrowserScreen(Screen[None]):
         self._row_number = row_number
         self._raw_value = value
         self._dtype_str = dtype_str
-        # Cache the path written by ``action_open_in_browser`` so repeated
+        # Cache the path written by ``action_send_to_output_pane`` so repeated
         # presses of `b` reuse the same file (and may reuse the same
         # browser tab) instead of writing a new dump every time.
         self._dumped_path: Path | None = None
@@ -822,7 +814,7 @@ class CellBrowserScreen(Screen[None]):
         hint.append("Esc", style=KEY_HINT)
         hint.append(" Back    ", style="dim")
         hint.append("B", style=KEY_HINT)
-        hint.append(" Open cell in browser    ", style="dim")
+        hint.append(" Send cell to output pane    ", style="dim")
         self.query_one(".cell-browser-hint", Static).update(hint)
 
     def _refresh_status(self, extra: Text | None = None) -> None:
@@ -839,10 +831,10 @@ class CellBrowserScreen(Screen[None]):
     def action_close_browser(self) -> None:
         self.dismiss()
 
-    async def action_open_in_browser(self) -> None:
+    async def action_send_to_output_pane(self) -> None:
         """Save the raw value with its native extension and show it in the results pane.
 
-        Shows ``Opening...`` while the serialize/write runs so the user
+        Shows ``Sending...`` while the serialize/write runs so the user
         sees an immediate response on click. Only paints the wait status
         when a dump is actually being produced — if the cached path
         already exists, the reuse-path is fast and skips the flicker.
@@ -850,11 +842,11 @@ class CellBrowserScreen(Screen[None]):
         if self._dumped_path is None or not self._dumped_path.exists():
             import asyncio
 
-            self._refresh_status(Text("Opening...", style="dim"))
+            self._refresh_status(Text("Sending...", style="dim"))
             painted: asyncio.Future[None] = asyncio.get_running_loop().create_future()
             self.call_after_refresh(lambda: painted.done() or painted.set_result(None))
             await painted
-            path = open_cell_in_browser(self._raw_value, self.app, status=self._refresh_status)
+            path = send_cell_to_output_pane(self._raw_value, self.app, status=self._refresh_status)
             if path is None:
                 return
             self._dumped_path = path
@@ -1002,7 +994,7 @@ class ChartBrowserScreen(Screen[None]):
 
     BINDINGS = [
         Binding("escape", "close_browser", "Back", show=True),
-        Binding("b", "open_chart_in_browser", "Open chart in browser", show=True, priority=True),
+        Binding("b", "send_chart_to_output_pane", "Send chart to output pane", show=True, priority=True),
     ]
 
     def __init__(self, *, title: str, df: "pd.DataFrame", vegalite_spec: dict[str, object]) -> None:
@@ -1030,19 +1022,15 @@ class ChartBrowserScreen(Screen[None]):
     def action_close_browser(self) -> None:
         self.dismiss()
 
-    async def action_open_chart_in_browser(self) -> None:
-        """Render the chart as interactive HTML and open it in the system browser.
-
-        Mirrors the data browser: show ``Opening...``, paint, then let the
-        helper overwrite the status with the final result.
-        """
+    async def action_send_chart_to_output_pane(self) -> None:
+        """Render the chart as interactive HTML and send it to the output pane."""
         import asyncio
 
-        self._set_status_message(Text("Opening...", style="dim"))
+        self._set_status_message(Text("Sending...", style="dim"))
         painted: asyncio.Future[None] = asyncio.get_running_loop().create_future()
         self.call_after_refresh(lambda: painted.done() or painted.set_result(None))
         await painted
-        open_chart_in_browser(self._df, self._vegalite_spec, self._title, self.app, status=self._set_status_message)
+        send_chart_to_output_pane(self._df, self._vegalite_spec, self._title, self.app, status=self._set_status_message)
 
     def _set_status_message(self, message: "Text") -> None:
         self._status.update(message)
@@ -1060,7 +1048,7 @@ class ChartBrowserScreen(Screen[None]):
 
         hint = Text()
         hint.append("b", style=KEY_HINT)
-        hint.append(" Open in browser    ", style="dim")
+        hint.append(" Send to output pane    ", style="dim")
         hint.append("Esc", style=KEY_HINT)
         hint.append(" Back    ", style="dim")
         self._hint.update(hint)

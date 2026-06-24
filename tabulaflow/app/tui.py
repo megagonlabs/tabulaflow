@@ -498,17 +498,16 @@ class TabulaflowApp(App[None]):
         return self._pane
 
     def view_in_pane(self, path: Path) -> bool:
-        """Push an already-written dump file to the pane and raise it (manual view).
+        """Push an already-written dump file to the pane.
 
         Wraps the single file as a one-view card; returns True when the pane is
-        available and shown, so callers can fall back to a direct file open.
+        available, so callers can report whether the artifact was published.
         """
         pane = self._ensure_pane()
         if pane is None or pane.url is None:
             return False
         kind = {"V": "chart", "T": "data", "C": "data", "Q": "query"}.get(path.name[:1], "data")
         pane.push({"title": kind, "records": [{"label": None, "views": [{"kind": kind, "file": path.name}]}]})
-        pane.reopen()
         return True
 
     def _refresh_pane_url(self) -> None:
