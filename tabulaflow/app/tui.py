@@ -176,6 +176,7 @@ class TabulaflowApp(App[None]):
         self.query_one("#input-bar", Input).focus()
         chat_log.scroll_end(animate=False)
         self._refresh_esc_hint()
+        self._ensure_pane()
         self.run_worker(self._ensure_session())
 
     def _refresh_esc_hint(self) -> None:
@@ -447,9 +448,20 @@ class TabulaflowApp(App[None]):
         and DuckDB file locks are always released cleanly.
         """
         if self._session is None:
+            self._cleanup_runtime_paths()
             self.exit()
             return
         self.run_worker(self._shutdown_then_exit(), exclusive=False, group="shutdown")
+
+    def _cleanup_runtime_paths(self) -> None:
+        """Stop session-local services and remove transient runtime files."""
+        import shutil
+
+        if self._pane is not None:
+            self._pane.stop()
+            self._pane = None
+        shutil.rmtree(self._runtime_paths.scratch_dir, ignore_errors=True)
+        shutil.rmtree(self._runtime_paths.dumps_dir, ignore_errors=True)
 
     async def _shutdown_then_exit(self) -> None:
         assert self._session is not None
@@ -462,17 +474,11 @@ class TabulaflowApp(App[None]):
         except Exception:
             logger.debug("disconnect_all_async failed during exit", exc_info=True)
         finally:
-            # Transient agent working files don't outlive the session.
-            import shutil
-
-            if self._pane is not None:
-                self._pane.stop()
-            shutil.rmtree(self._runtime_paths.scratch_dir, ignore_errors=True)
-            shutil.rmtree(self._runtime_paths.dumps_dir, ignore_errors=True)
+            self._cleanup_runtime_paths()
             self.exit()
 
     def _ensure_pane(self) -> "OutputPane | None":
-        """Lazily start the output pane; return it, or None if it couldn't start."""
+        """Start the output pane if needed; return it, or None if it couldn't start."""
         if self._pane is None:
             from tabulaflow.app.pane import OutputPane
 
@@ -505,14 +511,6 @@ class TabulaflowApp(App[None]):
         pane.reopen()
         return True
 
-    def action_open_results_pane(self) -> None:
-        """(Re)open the live results pane in the browser."""
-        pane = self._ensure_pane()
-        if pane is not None and pane.url is not None:
-            pane.reopen()
-        else:
-            self.notify("Results pane unavailable.", severity="warning")
-
     def _refresh_pane_url(self) -> None:
         """Show the persistent pane URL below the input row once available."""
         try:
@@ -532,9 +530,9 @@ class TabulaflowApp(App[None]):
     ) -> None:
         """Render a completed turn and push it to the browser pane.
 
-        Auto-push path: the pane lazily starts and opens once on the first result,
-        then updates silently (no focus steal). Best-effort — any failure is
-        swallowed so the pane never blocks or fails a chat turn.
+        The pane starts during TUI mount so the URL is available before an
+        agent run; completed turns update it silently. Best-effort — any failure
+        is swallowed so the pane never blocks or fails a chat turn.
         """
         from tabulaflow.app.render import render_record_card
 
@@ -554,14 +552,10 @@ class TabulaflowApp(App[None]):
                 records.append(card)
         if not records and not user_text and not result.text:
             return
-        started = self._pane is None
         pane = self._ensure_pane()
         if pane is None:
             return
         pane.push({"title": title, "user": user_text, "assistant": result.text, "records": records})
-
-        if started and pane.url is not None:
-            pane.open_browser()
 
     def _restore_input_text(self, text: str) -> None:
         """Put `text` back into the input bar and focus it. Used after a
