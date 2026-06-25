@@ -1,7 +1,7 @@
 """Run a local output-pane preview server with representative result fixtures.
 
-    uv run scripts/preview_output_pane.py --port 61111
-    uv run scripts/preview_output_pane.py --port 61111 --full
+    uv run scripts/preview_output_pane.py --port 61211
+    uv run scripts/preview_output_pane.py --port 61211 --full
 
 The script reuses the production pane server, index shape, and record renderers,
 but pushes synthetic turns directly. It is intended for browser inspection while
@@ -272,7 +272,7 @@ def _populate_pane(
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--host", default="127.0.0.1")
-    parser.add_argument("--port", type=int, default=61111)
+    parser.add_argument("--port", type=int, default=61211)
     parser.add_argument("--large-rows", type=int, default=60_000)
     parser.add_argument("--full", action="store_true", help="Include all chart turns and expensive stress fixtures.")
     parser.add_argument("--all-chart-turns", action="store_true", help="Render every chart fixture as its own turn.")
