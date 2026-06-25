@@ -104,29 +104,33 @@ _PANE_HTML = """<!doctype html>
   }
   .rectabs { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px;
              margin-right: auto; min-height: 32px; }
-  .rectab { background: transparent; border: 0; border-radius: 4px; color: #9aa4b2; cursor: pointer;
-            padding: 4px 9px; white-space: nowrap;
+  .rectab { position: relative; background: transparent; border: 0; border-radius: 4px; color: #9aa4b2; cursor: pointer;
+            padding: 5px 8px 7px; white-space: nowrap;
             font: 500 13px/1.25 ui-monospace, monospace; }
   .rectab:hover { color: #e4e4e7; background: rgba(255, 255, 255, 0.035); }
-  .rectab.active { color: #06120e; background: #3eb489; font-weight: 700; }
+  .rectab.active { color: #e4e4e7; background: #1f2532; font-weight: 700; }
+  .rectab.active::after { content: ""; position: absolute; left: 8px; right: 8px; bottom: 2px;
+                          height: 2px; border-radius: 999px; background: #3eb489; }
   .panesbox { position: relative; }
   .recordpane { width: 100%; }
   .recordpane.hidden { position: absolute; top: 0; left: 0; visibility: hidden; pointer-events: none; }
-  .cardbar { display: flex; align-items: flex-end; gap: 8px; min-height: 36px; padding: 5px 4px 8px;
+  .cardbar { display: flex; align-items: flex-end; gap: 8px; min-height: 36px; padding: 5px 4px 12px;
              font: 13px ui-monospace, monospace; }
-  .cardlabel { display: inline-flex; margin-right: auto; padding: 4px 9px; white-space: nowrap;
-               color: #06120e; background: #3eb489; border-radius: 4px;
+  .cardlabel { position: relative; display: inline-flex; margin-right: auto; padding: 5px 8px 7px; white-space: nowrap;
+               color: #e4e4e7; background: #1f2532; border-radius: 4px;
                font: 700 13px/1.25 ui-monospace, monospace; }
+  .cardlabel::after { content: ""; position: absolute; left: 8px; right: 8px; bottom: 2px;
+                      height: 2px; border-radius: 999px; background: #3eb489; }
   .viewmeta { min-height: 15px; padding: 8px 4px 0; color: #6a737d; white-space: nowrap; text-align: left;
               font: 12px/1.25 ui-monospace, monospace; }
-  .seg { position: relative; display: inline-flex; padding: 3px; border-radius: 999px;
+  .seg { position: relative; display: inline-flex; padding: 2px; border-radius: 999px;
          box-shadow: inset 0 0 0 1px #21262d; }
   .seg-opt { position: relative; z-index: 1; background: transparent; border: 0; cursor: pointer;
-             color: #6a737d; padding: 6px 14px; border-radius: 999px; text-transform: capitalize;
-             font: 13px/1.25 ui-monospace, monospace; transition: color 0.18s ease; }
+             color: #6a737d; padding: 5px 12px; border-radius: 999px; text-transform: capitalize;
+             font: 12px/1.25 ui-monospace, monospace; transition: color 0.18s ease; }
   .seg-opt:hover { color: #e4e4e7; }
   .seg-opt.active { color: #3eb489; }
-  .seg-thumb { position: absolute; top: 3px; bottom: 3px; left: 0; width: 0; border-radius: 999px;
+  .seg-thumb { position: absolute; top: 2px; bottom: 2px; left: 0; width: 0; border-radius: 999px;
                background: #262c36; }
   .seg-thumb.ready { transition: transform 0.22s ease, width 0.22s ease; }
   .cardframe-shell { position: relative; width: 100%; background: #1f2532; border-radius: 10px; overflow: hidden;

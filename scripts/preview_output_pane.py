@@ -271,6 +271,17 @@ def _populate_pane(
         _push_turn(
             pane,
             dumps_dir,
+            title="Single chart result",
+            user="Show one chart result with its supporting data and query.",
+            assistant=_long_result_response(
+                "I generated one chart result. Use the Chart, Data, and Query tabs to inspect the "
+                "visualization, the backing rows, and the generated SQL."
+            ),
+            cards=chart_cards[:1],
+        )
+        _push_turn(
+            pane,
+            dumps_dir,
             title="Compare the first four chart fixtures",
             user="Compare the first four chart fixtures and call out the useful result views.",
             assistant=_long_result_response(
