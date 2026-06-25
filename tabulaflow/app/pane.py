@@ -104,12 +104,12 @@ _PANE_HTML = """<!doctype html>
   }
   .rectabs { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px;
              margin-right: auto; min-height: 32px; padding: 4px; border-radius: 6px;
-             background: transparent; box-shadow: inset 0 0 0 1px #21262d; }
+             background: #131720; }
   .rectab { position: relative; background: transparent; border: 0; border-radius: 4px; color: #9aa4b2; cursor: pointer;
             padding: 5px 8px 7px; white-space: nowrap;
             font: 500 13px/1.25 ui-monospace, monospace; }
-  .rectab:hover { color: #e4e4e7; background: rgba(255, 255, 255, 0.035); }
-  .rectab.active { color: #e4e4e7; background: #1f2532; font-weight: 700; }
+  .rectab:hover { color: #e4e4e7; background: #1a1f2a; }
+  .rectab.active { color: #e4e4e7; background: #232b38; font-weight: 700; }
   .rectab.active::after { content: ""; position: absolute; left: 8px; right: 8px; bottom: 2px;
                           height: 2px; border-radius: 999px; background: #3eb489; }
   .panesbox { position: relative; }
