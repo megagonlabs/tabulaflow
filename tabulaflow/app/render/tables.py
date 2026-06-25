@@ -128,8 +128,8 @@ TABLE_RENDER_MAX_ROWS = 50_000
 _DEFAULT_MAX_ROWS = TABLE_RENDER_MAX_ROWS
 _DEFAULT_INLINE_CAP = 256 * 1024  # 256 KB
 # Cap on the full text stored per non-media cell (sent to Tabulator's data
-# array). Truncated text above this is replaced with a head excerpt + note;
-# users can press `b` on the source row/cell for full content.
+# array). Truncated text above this is replaced with a head excerpt + note so
+# generated table HTML stays bounded.
 _CELL_TEXT_HARD_CAP = 1024 * 1024
 # Display truncation in the cell view (full value still in row data; modal
 # shows full).

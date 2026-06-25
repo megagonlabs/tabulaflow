@@ -7,13 +7,12 @@ from __future__ import annotations
 
 import json
 import re
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 from rich.text import Text
-from pathlib import Path
-
-from textual.binding import Binding
 from textual.app import ComposeResult
+from textual.binding import Binding
 from textual.screen import Screen
 from textual.widgets import DataTable, Static, TextArea
 
@@ -55,7 +54,7 @@ def _normalize_json_like(value: object) -> object:
 
 
 # ---------------------------------------------------------------------------
-# Output-pane helpers (used by Data, Cell, and Chart browsers)
+# Output-pane helpers for manual table previews
 # ---------------------------------------------------------------------------
 
 
@@ -73,31 +72,6 @@ def _show_path(path: Path, app: object, *, status: "Callable[[Text], None]") -> 
         status(Text("sent to output pane", style="dim"))
     else:
         status(Text(f"results pane unavailable; artifact saved to {path}", style="dim"))
-
-
-def send_cell_to_output_pane(value: object, app: object, *, status: "Callable[[Text], None]") -> "Path | None":
-    """Serialize ``value`` to the dumps dir and send it to the output pane.
-
-    Returns the written path on success, or ``None`` if no dumps dir is
-    configured or the write failed.
-    """
-    from tabulaflow.app.render import write_cell_dump
-
-    try:
-        dumps_dir: Path = app._runtime_paths.dumps_dir  # type: ignore[attr-defined]
-    except AttributeError:
-        status(Text("save failed: no cell dumps dir", style=ERROR))
-        return None
-    try:
-        path = write_cell_dump(value, dumps_dir)
-    except OSError as exc:
-        status(Text(f"write failed: {exc}", style=ERROR))
-        return None
-    except Exception as exc:
-        status(Text(f"serialize failed: {exc}", style=ERROR))
-        return None
-    _show_path(path, app, status=status)
-    return path
 
 
 def send_table_to_output_pane(
@@ -123,40 +97,6 @@ def send_table_to_output_pane(
     html_path = dumps_dir / f"T_{secrets.token_hex(3)}.html"
     try:
         render_table_html(df, html_path, title=title)
-    except OSError as exc:
-        status(Text(f"write failed: {exc}", style=ERROR))
-        return None
-    except Exception as exc:
-        status(Text(f"render failed: {exc}", style=ERROR))
-        return None
-    _show_path(html_path, app, status=status)
-    return html_path
-
-
-def send_chart_to_output_pane(
-    df: "pd.DataFrame",
-    vegalite_spec: dict[str, object],
-    title: str,
-    app: object,
-    *,
-    status: "Callable[[Text], None]",
-) -> "Path | None":
-    """Render ``vegalite_spec`` over ``df`` as interactive HTML and send it to the output pane.
-
-    Returns the written HTML path on success, or ``None`` on failure.
-    """
-    import secrets
-
-    from tabulaflow.app.render import render_chart_html
-
-    try:
-        dumps_dir: Path = app._runtime_paths.dumps_dir  # type: ignore[attr-defined]
-    except AttributeError:
-        status(Text("save failed: no dumps dir", style=ERROR))
-        return None
-    html_path = dumps_dir / f"V_{secrets.token_hex(3)}.html"
-    try:
-        render_chart_html(df, vegalite_spec, html_path, title=title)
     except OSError as exc:
         status(Text(f"write failed: {exc}", style=ERROR))
         return None
@@ -630,7 +570,6 @@ class CellBrowserScreen(Screen[None]):
 
     BINDINGS = [
         Binding("escape", "close_browser", "Back", show=True),
-        Binding("b", "send_to_output_pane", "Send cell to output pane", show=True, priority=True),
     ]
 
     # Skip syntax highlighting above this many rendered chars — Pygments'
@@ -640,8 +579,7 @@ class CellBrowserScreen(Screen[None]):
     # on a single very long line dominates scroll/cursor cost in TextArea.
     _MAX_SOFT_WRAP_LINE = 500
     # Soft cap on the rendered display text. Beyond this, append a footer
-    # pointing the user at `b` for full-fidelity content via the browser
-    # (which goes through ``dump.serialize_cell``, bypassing this cap).
+    # so the TUI stays responsive for unusually large cells.
     _MAX_DISPLAY_CHARS = 1_000_000
 
     def __init__(
@@ -657,12 +595,7 @@ class CellBrowserScreen(Screen[None]):
         super().__init__()
         self._column_name = column_name
         self._row_number = row_number
-        self._raw_value = value
         self._dtype_str = dtype_str
-        # Cache the path written by ``action_send_to_output_pane`` so repeated
-        # presses of `b` reuse the same file (and may reuse the same
-        # browser tab) instead of writing a new dump every time.
-        self._dumped_path: Path | None = None
         if display_text is None:
             self._display_text, self._language = self._format_value(value)
         else:
@@ -721,11 +654,9 @@ class CellBrowserScreen(Screen[None]):
     def _format_value(value: object) -> tuple[str, str | None]:
         """Return (display_text, language) for the cell value.
 
-        Output is soft-capped at ``_MAX_DISPLAY_CHARS``; truncated text gets
-        a footer pointing the user at `b` for full content (which goes
-        through ``dump.serialize_cell``, bypassing this cap). Per-leaf
-        truncation (``_MAX_JSON_LEAF``) keeps individual JSON strings
-        bounded so pretty-printed JSON has short lines.
+        Output is soft-capped at ``_MAX_DISPLAY_CHARS``. Per-leaf truncation
+        (``_MAX_JSON_LEAF``) keeps individual JSON strings bounded so
+        pretty-printed JSON has short lines.
         """
         import pandas as pd_
 
@@ -745,9 +676,7 @@ class CellBrowserScreen(Screen[None]):
             return f"<{label}: {len(raw):,} bytes>\n{preview} ...", None
 
         # HuggingFace Image/Audio struct: surface the blob preview rather
-        # than the JSON tree of ``{"bytes": ..., "path": ...}``. Matches the
-        # serialize_cell path so the in-TUI cell view and the file written
-        # by ``b`` are consistent (both treat the cell as media, not JSON).
+        # than the JSON tree of ``{"bytes": ..., "path": ...}``.
         if isinstance(value, dict):
             inner = value.get("bytes")
             if isinstance(inner, (bytes, bytearray, memoryview)):
@@ -776,9 +705,7 @@ class CellBrowserScreen(Screen[None]):
         if len(text) <= cls._MAX_DISPLAY_CHARS:
             return text
         return (
-            text[: cls._MAX_DISPLAY_CHARS]
-            + f"\n\n... (truncated to {cls._MAX_DISPLAY_CHARS:,} of {len(text):,} chars; "
-            "press `b` for full content in browser)"
+            text[: cls._MAX_DISPLAY_CHARS] + f"\n\n... (truncated to {cls._MAX_DISPLAY_CHARS:,} of {len(text):,} chars)"
         )
 
     def _resolved_language(self) -> str | None:
@@ -813,45 +740,18 @@ class CellBrowserScreen(Screen[None]):
         hint = Text()
         hint.append("Esc", style=KEY_HINT)
         hint.append(" Back    ", style="dim")
-        hint.append("B", style=KEY_HINT)
-        hint.append(" Send cell to output pane    ", style="dim")
         self.query_one(".cell-browser-hint", Static).update(hint)
 
-    def _refresh_status(self, extra: Text | None = None) -> None:
+    def _refresh_status(self) -> None:
         status = Text()
         status.append(
             f"{self._column_name} ({self._dtype_str})  |  Row {self._row_number:,}",
             style="dim",
         )
-        if extra is not None:
-            status.append("  |  ", style="dim")
-            status.append_text(extra)
         self.query_one(".cell-browser-status", Static).update(status)
 
     def action_close_browser(self) -> None:
         self.dismiss()
-
-    async def action_send_to_output_pane(self) -> None:
-        """Save the raw value with its native extension and show it in the results pane.
-
-        Shows ``Sending...`` while the serialize/write runs so the user
-        sees an immediate response on click. Only paints the wait status
-        when a dump is actually being produced — if the cached path
-        already exists, the reuse-path is fast and skips the flicker.
-        """
-        if self._dumped_path is None or not self._dumped_path.exists():
-            import asyncio
-
-            self._refresh_status(Text("Sending...", style="dim"))
-            painted: asyncio.Future[None] = asyncio.get_running_loop().create_future()
-            self.call_after_refresh(lambda: painted.done() or painted.set_result(None))
-            await painted
-            path = send_cell_to_output_pane(self._raw_value, self.app, status=self._refresh_status)
-            if path is None:
-                return
-            self._dumped_path = path
-        else:
-            _show_path(self._dumped_path, self.app, status=self._refresh_status)
 
 
 # ---------------------------------------------------------------------------
@@ -975,15 +875,6 @@ class ChartBrowserScreen(Screen[None]):
         color: $text;
     }
 
-    ChartBrowserScreen .chart-browser-status {
-        padding: 0 1;
-        color: #f5f5f5;
-    }
-
-    ChartBrowserScreen .chart-browser-gap {
-        height: 1;
-    }
-
     ChartBrowserScreen .chart-browser-hint {
         dock: bottom;
         padding: 0 1;
@@ -994,23 +885,17 @@ class ChartBrowserScreen(Screen[None]):
 
     BINDINGS = [
         Binding("escape", "close_browser", "Back", show=True),
-        Binding("b", "send_chart_to_output_pane", "Send chart to output pane", show=True, priority=True),
     ]
 
     def __init__(self, *, title: str, df: "pd.DataFrame", vegalite_spec: dict[str, object]) -> None:
         super().__init__()
-        self._title = title
         self._df = df
         self._vegalite_spec = vegalite_spec
         self._content = Static(classes="chart-browser-content")
-        self._status = Static(classes="chart-browser-status")
-        self._gap = Static(classes="chart-browser-gap")
         self._hint = Static(classes="chart-browser-hint")
 
     def compose(self) -> ComposeResult:
         yield self._content
-        yield self._status
-        yield self._gap
         yield self._hint
 
     def on_mount(self) -> None:
@@ -1021,19 +906,6 @@ class ChartBrowserScreen(Screen[None]):
 
     def action_close_browser(self) -> None:
         self.dismiss()
-
-    async def action_send_chart_to_output_pane(self) -> None:
-        """Render the chart as interactive HTML and send it to the output pane."""
-        import asyncio
-
-        self._set_status_message(Text("Sending...", style="dim"))
-        painted: asyncio.Future[None] = asyncio.get_running_loop().create_future()
-        self.call_after_refresh(lambda: painted.done() or painted.set_result(None))
-        await painted
-        send_chart_to_output_pane(self._df, self._vegalite_spec, self._title, self.app, status=self._set_status_message)
-
-    def _set_status_message(self, message: "Text") -> None:
-        self._status.update(message)
 
     def on_click(self, event: object) -> None:
         self.dismiss()
@@ -1047,8 +919,6 @@ class ChartBrowserScreen(Screen[None]):
         self._content.update(renderable)
 
         hint = Text()
-        hint.append("b", style=KEY_HINT)
-        hint.append(" Send to output pane    ", style="dim")
         hint.append("Esc", style=KEY_HINT)
         hint.append(" Back    ", style="dim")
         self._hint.update(hint)
