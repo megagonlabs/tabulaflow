@@ -78,6 +78,29 @@ def _push_turn(
     )
 
 
+def _long_result_response(summary: str) -> str:
+    return "\n\n".join(
+        [
+            summary,
+            (
+                "I kept the written response above the artifacts because it should provide context "
+                "before the user starts inspecting the cited records. The result panel below should "
+                "feel attached to this explanation, but not crowded against it."
+            ),
+            (
+                "Each record can expose multiple views. The Chart view is useful for scanning shape "
+                "and trend, the Data view is useful for checking exact rows, and the Query view keeps "
+                "the generated source available for audit."
+            ),
+            (
+                "This longer preview response is meant to exercise the spacing between user bubble, "
+                "assistant text, and result controls. It should remain readable as prose while leaving "
+                "the first panel visible soon after the text ends."
+            ),
+        ]
+    )
+
+
 def _chart_cards(dumps_dir: Path, *, limit: int | None) -> list[dict[str, object]]:
     cards: list[dict[str, object]] = []
     fixtures = debug_chart_fixtures()
@@ -197,12 +220,48 @@ def _populate_pane(
 
     pane.push(
         {
-            "title": "text-only answer",
-            "user": "Explain what this workspace is for.",
-            "assistant": (
-                "tabulaflow is a minimalist text-to-query toolkit for NL2SQL research. "
-                "It supports interactive exploration and benchmark workflows without "
-                "requiring every answer to produce a table."
+            "title": "long text-only answer",
+            "user": "Explain the output pane experience in detail.",
+            "assistant": "\n\n".join(
+                [
+                    (
+                        "The output pane mirrors the agent's useful artifacts in a browser surface. "
+                        "It is intentionally separate from the terminal so large tables, charts, query "
+                        "text, and longer written answers can breathe without crowding the TUI."
+                    ),
+                    (
+                        "A text-only turn should still feel complete. The user message anchors the "
+                        "request, and the assistant response takes the full content width so it reads "
+                        "like a document rather than a chat bubble."
+                    ),
+                    (
+                        "When cited records are present, each result gets the same inspection model: "
+                        "record selection first, then the Chart, Data, and Query views. This keeps the "
+                        "mental model predictable even when one turn contains many records."
+                    ),
+                    (
+                        "The browser pane should also handle idle and transitional states cleanly. "
+                        "Before the first output arrives, it shows a quiet empty state. After output "
+                        "arrives, the turn rail becomes a stable navigation surface rather than a log "
+                        "that constantly reshapes the current view."
+                    ),
+                    (
+                        "Long text needs extra scroll breathing room at the bottom. Without that padding, "
+                        "the last paragraph lands against the viewport edge, which makes reading and "
+                        "selection feel cramped."
+                    ),
+                    (
+                        "This fixture is deliberately verbose so the preview has enough vertical content "
+                        "to test scrolling, bottom padding, and transcript spacing without relying on a "
+                        "table or chart iframe."
+                    ),
+                    (
+                        "The desired behavior is simple: the final paragraph should be scrollable past "
+                        "the bottom edge a bit, the sidebar should stay fixed, and the message rhythm "
+                        "should remain calm even when the response is long."
+                    ),
+                ]
+                * 3
             ),
             "records": [],
         }
@@ -214,7 +273,7 @@ def _populate_pane(
             dumps_dir,
             title="Compare the first four chart fixtures",
             user="Compare the first four chart fixtures and call out the useful result views.",
-            assistant=(
+            assistant=_long_result_response(
                 "I generated four cited result records. Use the record tabs to switch between fixtures, "
                 "then the Chart, Data, and Query tabs to inspect each record."
             ),
@@ -225,7 +284,7 @@ def _populate_pane(
             dumps_dir,
             title="Many-record wrapping test",
             user="Show a single turn with many records and varied label lengths.",
-            assistant=(
+            assistant=_long_result_response(
                 "This turn intentionally mixes short, medium, and long record labels to exercise "
                 "wrapping and active-tab sizing without label truncation."
             ),
