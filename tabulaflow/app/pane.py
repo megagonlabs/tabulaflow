@@ -69,7 +69,7 @@ _PANE_HTML = """<!doctype html>
   .turnitem.active { border-left-color: #3eb489; background: #1a1f2a; }
   .turnindex { color: #6a737d; font: 600 12px/1.2 ui-monospace, monospace; text-align: right; }
   .turntext { min-width: 0; display: grid; gap: 5px; }
-  .turntitle { color: #9aa4b2; font: 500 13px/1.2 ui-monospace, monospace; white-space: nowrap;
+  .turntitle { color: #9aa4b2; font: 500 13px/1.25 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; white-space: nowrap;
                overflow: hidden; text-overflow: ellipsis; }
   .turnmeta { color: #6a737d; font: 12px/1 ui-monospace, monospace; white-space: nowrap;
               overflow: hidden; text-overflow: ellipsis; }
