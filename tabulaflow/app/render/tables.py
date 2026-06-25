@@ -125,7 +125,7 @@ def _safe_col_name(name: str) -> str:
 
 
 TABLE_RENDER_MAX_ROWS = 50_000
-PANE_TABLE_MAX_HEIGHT = 520
+PANE_TABLE_MAX_HEIGHT = 640
 _DEFAULT_MAX_ROWS = TABLE_RENDER_MAX_ROWS
 _DEFAULT_INLINE_CAP = 256 * 1024  # 256 KB
 # Cap on the full text stored per non-media cell (sent to Tabulator's data
