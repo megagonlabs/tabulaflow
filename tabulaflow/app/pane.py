@@ -102,8 +102,9 @@ _PANE_HTML = """<!doctype html>
   @media (max-width: 640px) {
     .message.user .message-body { max-width: 92%; }
   }
-  .rectabs { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px;
-             margin-right: auto; min-height: 32px; }
+  .rectabs { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px;
+             margin-right: auto; min-height: 32px; padding: 4px; border-radius: 6px;
+             background: transparent; box-shadow: inset 0 0 0 1px #21262d; }
   .rectab { position: relative; background: transparent; border: 0; border-radius: 4px; color: #9aa4b2; cursor: pointer;
             padding: 5px 8px 7px; white-space: nowrap;
             font: 500 13px/1.25 ui-monospace, monospace; }
@@ -114,7 +115,7 @@ _PANE_HTML = """<!doctype html>
   .panesbox { position: relative; }
   .recordpane { width: 100%; }
   .recordpane.hidden { position: absolute; top: 0; left: 0; visibility: hidden; pointer-events: none; }
-  .cardbar { display: flex; align-items: flex-end; gap: 8px; min-height: 36px; padding: 5px 4px 12px;
+  .cardbar { display: flex; align-items: flex-end; gap: 32px; min-height: 36px; padding: 5px 4px 12px;
              font: 13px ui-monospace, monospace; }
   .cardlabel { position: relative; display: inline-flex; margin-right: auto; padding: 5px 8px 7px; white-space: nowrap;
                color: #e4e4e7; background: #1f2532; border-radius: 4px;
