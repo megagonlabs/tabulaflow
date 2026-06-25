@@ -638,20 +638,32 @@ def summarize_outcome(outcome: ToolOutcome) -> str:
 
 
 def _styled_label(name: str, label: str) -> Text:
-    """Render a step label as dim text, coloring the file editor's git diffstat —
-    ``+N`` green, ``-M`` red. Scoped to the file editor so arithmetic in a SQL snippet
-    (``SELECT -1``) is never mistaken for a removed-line count. Tool failures are not
-    reddened — the ``error`` outcome stays dim like the rest of the label."""
-    if name != "file_editor" or not _DIFFSTAT_TOKEN_RE.search(label):
-        return Text(label, style="dim")
+    """Render a step label with a bold-dim verb and dim details.
+
+    File-editor git diffstat tokens keep their add/remove colors. That coloring is
+    scoped to the file editor so arithmetic in a SQL snippet (``SELECT -1``) is never
+    mistaken for a removed-line count. Tool failures are not reddened — the ``error``
+    outcome stays dim like the rest of the label.
+    """
     text = Text()
+    verb_end = label.find(" ")
+    if verb_end == -1:
+        text.append(label, style="bold dim")
+        return text
+
+    text.append(label[:verb_end], style="bold dim")
     pos = 0
-    for m in _DIFFSTAT_TOKEN_RE.finditer(label):
-        text.append(label[pos : m.start()], style="dim")
+    rest = label[verb_end:]
+    if name != "file_editor" or not _DIFFSTAT_TOKEN_RE.search(rest):
+        text.append(rest, style="dim")
+        return text
+
+    for m in _DIFFSTAT_TOKEN_RE.finditer(rest):
+        text.append(rest[pos : m.start()], style="dim")
         token = m.group(1)
         text.append(token, style=DIFF_ADDED if token.startswith("+") else DIFF_REMOVED)
         pos = m.end()
-    text.append(label[pos:], style="dim")
+    text.append(rest[pos:], style="dim")
     return text
 
 

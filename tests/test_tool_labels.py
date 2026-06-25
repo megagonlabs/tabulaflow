@@ -77,24 +77,34 @@ class TestStyledLabel:
     def test_diffstat_colored(self) -> None:
         text = _styled_label("file_editor", "Edit x.sql +2 -1")
         styled = {text.plain[s.start : s.end]: s.style for s in text.spans}
+        assert styled["Edit"] == "bold dim"
         assert styled["+2"] == DIFF_ADDED  # added: green
         assert styled["-1"] == DIFF_REMOVED  # removed: red
 
-    def test_non_editor_label_uniform_dim(self) -> None:
+    def test_non_editor_label_bolds_verb_but_stays_dim(self) -> None:
         text = _styled_label("run_query", "SELECT a - 1, b + 2")
-        assert text.style == "dim"
-        assert text.spans == []  # no per-token coloring
+        styled = {text.plain[s.start : s.end]: s.style for s in text.spans}
+        assert styled["SELECT"] == "bold dim"
+        assert styled[" a - 1, b + 2"] == "dim"
 
     def test_path_dash_not_reddened(self) -> None:
         # a hyphen-number in a path must not be mistaken for a removed-line count
         text = _styled_label("file_editor", "View model-2.sql")
-        assert text.spans == []
+        styled = {text.plain[s.start : s.end]: s.style for s in text.spans}
+        assert styled["View"] == "bold dim"
+        assert styled[" model-2.sql"] == "dim"
 
     def test_error_outcome_not_colored(self) -> None:
         # tool failures aren't reddened — the "error" suffix stays dim like the label
         text = _styled_label("execute_bash", "Run pytest → error")
-        assert text.style == "dim"
-        assert text.spans == []
+        styled = {text.plain[s.start : s.end]: s.style for s in text.spans}
+        assert styled["Run"] == "bold dim"
+        assert styled[" pytest → error"] == "dim"
+
+    def test_single_word_label_bolds_verb_but_stays_dim(self) -> None:
+        text = _styled_label("browser_back", "Back")
+        styled = {text.plain[s.start : s.end]: s.style for s in text.spans}
+        assert styled["Back"] == "bold dim"
 
 
 class TestSummarizeOutcome:
