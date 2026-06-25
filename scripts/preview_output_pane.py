@@ -165,6 +165,16 @@ def _manual_table_card(dumps_dir: Path) -> PaneRecord:
     )
 
 
+def _push_manual_table_turn(pane: pane_mod.OutputPane, dumps_dir: Path) -> None:
+    pane.push(
+        turn_payload(
+            title="manual_table",
+            source="manual",
+            records=[_manual_table_card(dumps_dir)],
+        )
+    )
+
+
 def _large_table_record(num_rows: int) -> SimpleNamespace:
     df = pd.DataFrame(
         {
@@ -297,15 +307,7 @@ def _populate_pane(
     )
 
     if chart_cards:
-        _push_turn(
-            pane,
-            dumps_dir,
-            title="Manual table preview",
-            user="Send the current data browser table to the output pane.",
-            assistant="This fixture matches a manually sent table: one table artifact, no record label, and no redundant view menu.",
-            cards=[_manual_table_card(dumps_dir)],
-            source="manual",
-        )
+        _push_manual_table_turn(pane, dumps_dir)
         _push_turn(
             pane,
             dumps_dir,

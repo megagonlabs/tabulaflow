@@ -88,6 +88,16 @@ function buildTranscript(turn) {
   return wrap.children.length ? wrap : null;
 }
 
+function isManualPreview(turn) {
+  return turn.source === 'manual' && (turn.records || []).length === 1;
+}
+
+function buildManualArtifactTitle(turn) {
+  var title = el('div', 'manual-artifact-title');
+  title.textContent = turn.title || 'table preview';
+  return title;
+}
+
 function turnMeta(turn) {
   var counts = { chart: 0, table: 0 };
   (turn.records || []).forEach(function (record) {
@@ -155,7 +165,7 @@ function buildViewSwitcher(views, showView) {
 // Build one record's pane: optional record tabs + optional Chart/Data/Query
 // switcher + one iframe. The first view loads up front; other views load on
 // click.
-function buildRecord(record, recOpts) {
+function buildRecord(record, recOpts, opts) {
   var pane = el('div', 'recordpane');
   var bar = el('div', 'cardbar');
   var views = record.views || [];
@@ -164,15 +174,18 @@ function buildRecord(record, recOpts) {
   var shell = el('div', 'cardframe-shell');
   var frame = el('iframe', 'cardframe');
   var meta = el('div', 'viewmeta');
+  var fixedFrame = opts && opts.fixedFrame;
 
-  frame.scrolling = 'no';
-  autosize(frame);
+  frame.scrolling = fixedFrame ? 'auto' : 'no';
+  if (!fixedFrame) { autosize(frame); }
   shell.appendChild(frame);
 
   function showView(view, opt) {
+    var shellClasses = 'cardframe-shell view-' + (view.kind || '').toLowerCase();
+    if (fixedFrame) { shellClasses += ' fixed-frame'; }
     frame.src = '/' + view.file;
     meta.textContent = view.meta || '';
-    shell.className = 'cardframe-shell view-' + (view.kind || '').toLowerCase();
+    shell.className = shellClasses;
     if (switcher) {
       switcher.opts.forEach(function (x) { x.classList.remove('active'); });
     }
@@ -222,12 +235,17 @@ function renderTurn(turn) {
   var view = el('div', 'turnview');
   var transcript = buildTranscript(turn);
   var records = turn.records || [];
-  if (transcript) { view.appendChild(transcript); }
+  if (isManualPreview(turn)) {
+    view.classList.add('manual-preview');
+    view.appendChild(buildManualArtifactTitle(turn));
+  } else if (transcript) {
+    view.appendChild(transcript);
+  }
   if (!records.length) {
     return view;
   }
   if (records.length <= 1) {
-    view.appendChild(buildRecord(records[0], null));
+    view.appendChild(buildRecord(records[0], null, { fixedFrame: isManualPreview(turn) }));
     return view;
   }
   var box = el('div', 'panesbox');
@@ -259,8 +277,11 @@ function selectTurn(i) {
   for (var k = 0; k < items.length; k++) { items[k].classList.toggle('active', k === i); }
   var inner = document.getElementById('content-inner');
   inner.innerHTML = '';
+  inner.classList.toggle('manual-preview-content', isManualPreview(turns[i]));
   inner.appendChild(renderTurn(turns[i]));
-  inner.appendChild(el('div', 'scroll-pad'));
+  if (!isManualPreview(turns[i])) {
+    inner.appendChild(el('div', 'scroll-pad'));
+  }
 }
 
 function poll() {
