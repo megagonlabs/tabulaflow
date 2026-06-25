@@ -15,6 +15,7 @@ import pytest
 
 from tabulaflow.app.render.cards import render_query_html, render_record_card
 from tabulaflow.app.pane import OutputPane, OutputPanePortError
+from tabulaflow.app.screens import send_table_to_output_pane
 
 
 @contextlib.contextmanager
@@ -120,6 +121,27 @@ def test_record_card_includes_data_view_meta(tmp_path: Path) -> None:
 
     assert card is not None
     assert card["views"] == [{"kind": "data", "file": card["views"][0]["file"], "meta": "2 rows · 2 columns"}]
+
+
+def test_manual_table_send_includes_data_view_meta(tmp_path: Path) -> None:
+    calls: list[tuple[Path, dict[str, object]]] = []
+    statuses = []
+
+    class FakeApp:
+        _runtime_paths = SimpleNamespace(dumps_dir=tmp_path)
+
+        def view_in_pane(self, path: Path, **kwargs: object) -> bool:
+            calls.append((path, kwargs))
+            return True
+
+    df = pd.DataFrame({"sample_id": ["ex-0001", "ex-0002"], "answer": ["A", "B"]})
+    path = send_table_to_output_pane(df, "manual_table", FakeApp(), status=statuses.append)
+
+    assert path is not None
+    assert path.exists()
+    assert "var fixedMax = 520;" in path.read_text()
+    assert calls == [(path, {"title": "manual_table", "meta": "2 rows · 2 columns"})]
+    assert str(statuses[-1]) == "sent to output pane"
 
 
 def test_query_view_renders_code_header_and_dracula_theme(tmp_path: Path) -> None:

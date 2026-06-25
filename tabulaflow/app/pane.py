@@ -119,6 +119,7 @@ _PANE_HTML = """<!doctype html>
              font: 13px ui-monospace, monospace; }
   .cardbar.multi-record .rectabs { flex: 0 1 auto; min-width: 0; max-width: 100%; box-sizing: border-box;
                                    flex-wrap: nowrap; overflow: hidden; }
+  .cardbar.multi-record.no-view-menu .rectabs { width: 100%; flex-wrap: wrap; overflow: visible; }
   .cardbar.multi-record.stacked { flex-direction: column; align-items: stretch; gap: 10px; }
   .cardbar.multi-record.stacked .rectabs { width: 100%; margin-right: 0; flex-wrap: wrap; overflow: visible; }
   .cardbar.multi-record.stacked .seg { align-self: flex-end; }
@@ -202,7 +203,11 @@ __BANNER__
     }
     var tabs = bar.querySelector('.rectabs');
     var seg = bar.querySelector('.seg');
-    if (!tabs || !seg) { return; }
+    if (!tabs) { return; }
+    if (!seg) {
+      bar.classList.remove('stacked');
+      return;
+    }
     bar.classList.remove('stacked');
     var gap = parseFloat(getComputedStyle(bar).columnGap || getComputedStyle(bar).gap || '0') || 0;
     var required = tabs.scrollWidth + seg.offsetWidth + gap;
@@ -268,8 +273,11 @@ __BANNER__
   function buildRecord(record, recOpts) {
     var pane = el('div', 'recordpane');
     var bar = el('div', 'cardbar');
+    var views = record.views || [];
+    var showViewMenu = views.length > 1;
     if (recOpts) {
       bar.classList.add('multi-record');
+      if (!showViewMenu) { bar.classList.add('no-view-menu'); }
       var tabs = el('div', 'rectabs');
       recOpts.records.forEach(function (rt, i) {
         var t = el('button', 'rectab');
@@ -300,30 +308,36 @@ __BANNER__
       meta.textContent = v.meta || '';
       shell.className = 'cardframe-shell view-' + (v.kind || '').toLowerCase();
       opts.forEach(function (x) { x.classList.remove('active'); });
-      opt.classList.add('active');
-      moveThumb(thumb, opt);
+      if (opt) {
+        opt.classList.add('active');
+        moveThumb(thumb, opt);
+      }
     }
-    (record.views || []).forEach(function (v) {
-      var o = el('button', 'seg-opt');
-      o.textContent = v.kind;
-      o.onclick = function () {
-        showView(v, o);
-      };
-      opts.push(o);
-      seg.appendChild(o);
-    });
-    if (opts.length) {
+    if (showViewMenu) {
+      views.forEach(function (v) {
+        var o = el('button', 'seg-opt');
+        o.textContent = v.kind;
+        o.onclick = function () {
+          showView(v, o);
+        };
+        opts.push(o);
+        seg.appendChild(o);
+      });
       bar.appendChild(seg);
     }
-    pane.appendChild(bar);
+    if (bar.children.length) {
+      pane.appendChild(bar);
+    }
     pane.appendChild(shell);
     pane.appendChild(meta);
-    if (opts.length) {
-      showView(record.views[0], opts[0]);
+    if (views.length) {
+      showView(views[0], opts[0] || null);
       requestAnimationFrame(function () {
         syncRecordHeader(bar);
-        moveThumb(thumb, opts[0]);
-        requestAnimationFrame(function () { thumb.classList.add('ready'); });
+        if (opts[0]) {
+          moveThumb(thumb, opts[0]);
+          requestAnimationFrame(function () { thumb.classList.add('ready'); });
+        }
       });
     }
     return pane;

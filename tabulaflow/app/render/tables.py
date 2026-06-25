@@ -125,6 +125,7 @@ def _safe_col_name(name: str) -> str:
 
 
 TABLE_RENDER_MAX_ROWS = 50_000
+PANE_TABLE_MAX_HEIGHT = 520
 _DEFAULT_MAX_ROWS = TABLE_RENDER_MAX_ROWS
 _DEFAULT_INLINE_CAP = 256 * 1024  # 256 KB
 # Cap on the full text stored per non-media cell (sent to Tabulator's data
@@ -134,6 +135,18 @@ _CELL_TEXT_HARD_CAP = 1024 * 1024
 # Display truncation in the cell view (full value still in row data; modal
 # shows full).
 _CELL_DISPLAY_CAP = 120
+
+
+def _plural(n: int, word: str) -> str:
+    return f"{n:,} {word}" if n == 1 else f"{n:,} {word}s"
+
+
+def table_view_meta(num_rows: int, num_cols: int, *, max_rows: int = TABLE_RENDER_MAX_ROWS) -> str:
+    """Return the compact row/column caption used below pane table views."""
+    row_text = (
+        f"showing {max_rows:,} of {_plural(num_rows, 'row')}" if num_rows > max_rows else _plural(num_rows, "row")
+    )
+    return f"{row_text} · {_plural(num_cols, 'column')}"
 
 
 def _load_tabulator_assets() -> tuple[str, str]:

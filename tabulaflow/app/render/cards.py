@@ -21,31 +21,16 @@ from pygments.util import ClassNotFound
 
 from tabulaflow.app.page import TEXT, render_page
 from tabulaflow.app.render.charts import render_chart_html
-from tabulaflow.app.render.tables import TABLE_RENDER_MAX_ROWS, render_table_html
+from tabulaflow.app.render.tables import PANE_TABLE_MAX_HEIGHT, render_table_html, table_view_meta
 
 if TYPE_CHECKING:
     from tabulaflow.chat.result import ChatResultRecord
-
-# Fixed pixel cap for the data-table panel: short tables hug, long ones cap +
-# scroll internally (≈ the chart panel height), rather than tracking the viewport.
-_PANE_TABLE_MAX_H = 520
 
 # URL base the pane serves the bundled Vega/Tabulator libs under (see pane.py);
 # linking beats re-inlining ~0.8 MB of Vega into every chart dump.
 _ASSET_BASE = "/assets"
 
 _QUERY_BG = "#1e1e1e"
-
-
-def _plural(n: int, word: str) -> str:
-    return f"{n:,} {word}" if n == 1 else f"{n:,} {word}s"
-
-
-def _data_view_meta(num_rows: int, num_cols: int, *, max_rows: int = TABLE_RENDER_MAX_ROWS) -> str:
-    row_text = (
-        f"showing {max_rows:,} of {_plural(num_rows, 'row')}" if num_rows > max_rows else _plural(num_rows, "row")
-    )
-    return f"{row_text} · {_plural(num_cols, 'column')}"
 
 
 _QUERY_CSS = (
@@ -147,8 +132,8 @@ def render_record_card(record: "ChatResultRecord", dumps_dir: Path) -> dict[str,
             render_chart_html(df, record.chart_spec, path, title=record.label, asset_base=_ASSET_BASE)
             views.append({"kind": "chart", "file": path.name})
         path = dumps_dir / f"T_{secrets.token_hex(3)}.html"
-        render_table_html(df, path, title=record.label, max_height=_PANE_TABLE_MAX_H, asset_base=_ASSET_BASE)
-        views.append({"kind": "data", "file": path.name, "meta": _data_view_meta(len(df), len(df.columns))})
+        render_table_html(df, path, title=record.label, max_height=PANE_TABLE_MAX_HEIGHT, asset_base=_ASSET_BASE)
+        views.append({"kind": "data", "file": path.name, "meta": table_view_meta(len(df), len(df.columns))})
     if record.query:
         path = dumps_dir / f"Q_{secrets.token_hex(3)}.html"
         render_query_html(record.query, path, lexer=record.query_lexer or "sql")

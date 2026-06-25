@@ -29,6 +29,7 @@ import pandas as pd
 from tabulaflow.app import pane as pane_mod
 from tabulaflow.app.debug import debug_chart_fixtures
 from tabulaflow.app.render.cards import render_record_card
+from tabulaflow.app.render.tables import PANE_TABLE_MAX_HEIGHT, render_table_html, table_view_meta
 
 
 def _record(
@@ -134,6 +135,31 @@ def _many_record_cards(cards: Sequence[dict[str, object]]) -> list[dict[str, obj
         "warehouse_inventory_reconciliation_status",
     ]
     return [{"label": label, "views": cards[i % len(cards)]["views"]} for i, label in enumerate(labels)]
+
+
+def _manual_table_card(dumps_dir: Path) -> dict[str, object]:
+    df = pd.DataFrame(
+        {
+            "sample_id": [f"ex-{i:04d}" for i in range(1, 13)],
+            "domain": ["geography", "general", "math", "science", "history", "math"] * 2,
+            "question": [
+                "What is the smallest country in the world?",
+                "What is the freezing point of water in Fahrenheit?",
+                "What is the smallest prime number?",
+                "What is the chemical symbol for gold?",
+                "In what year did World War II end?",
+                "How many sides does a hexagon have?",
+            ]
+            * 2,
+            "expected_answer": ["Vatican City", "32", "2", "Au", "1945", "6"] * 2,
+        }
+    )
+    path = dumps_dir / "T_manual_table_preview.html"
+    render_table_html(df, path, title="manual_table", max_height=PANE_TABLE_MAX_HEIGHT)
+    return {
+        "label": None,
+        "views": [{"kind": "data", "file": path.name, "meta": table_view_meta(len(df), len(df.columns))}],
+    }
 
 
 def _large_table_record(num_rows: int) -> SimpleNamespace:
@@ -268,6 +294,14 @@ def _populate_pane(
     )
 
     if chart_cards:
+        _push_turn(
+            pane,
+            dumps_dir,
+            title="Manual table preview",
+            user="Send the current data browser table to the output pane.",
+            assistant="This fixture matches a manually sent table: one table artifact, no record label, and no redundant view menu.",
+            cards=[_manual_table_card(dumps_dir)],
+        )
         _push_turn(
             pane,
             dumps_dir,

@@ -525,7 +525,9 @@ class TabulaflowApp(App[None]):
                 self._refresh_bottom_status()
         return self._pane
 
-    def view_in_pane(self, path: Path) -> bool:
+    def view_in_pane(
+        self, path: Path, *, title: str | None = None, label: str | None = None, meta: str | None = None
+    ) -> bool:
         """Push an already-written dump file to the pane.
 
         Wraps the single file as a one-view card; returns True when the pane is
@@ -535,7 +537,10 @@ class TabulaflowApp(App[None]):
         if pane is None or pane.url is None:
             return False
         kind = {"V": "chart", "T": "data", "C": "data", "Q": "query"}.get(path.name[:1], "data")
-        pane.push({"title": kind, "records": [{"label": None, "views": [{"kind": kind, "file": path.name}]}]})
+        view = {"kind": kind, "file": path.name}
+        if meta:
+            view["meta"] = meta
+        pane.push({"title": title or kind, "records": [{"label": label, "views": [view]}]})
         return True
 
     def _refresh_bottom_status(self) -> None:

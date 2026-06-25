@@ -58,14 +58,21 @@ def _normalize_json_like(value: object) -> object:
 # ---------------------------------------------------------------------------
 
 
-def _show_path(path: Path, app: object, *, status: "Callable[[Text], None]") -> None:
+def _show_path(
+    path: Path,
+    app: object,
+    *,
+    status: "Callable[[Text], None]",
+    title: str | None = None,
+    meta: str | None = None,
+) -> None:
     """Show a dumped artifact in the live results pane.
 
     Manual "send to output pane" actions route here so one pane accumulates
     both agent results and explorer views.
     """
     try:
-        shown = bool(app.view_in_pane(path))  # type: ignore[attr-defined]
+        shown = bool(app.view_in_pane(path, title=title, meta=meta))  # type: ignore[attr-defined]
     except Exception:
         shown = False
     if shown:
@@ -88,6 +95,7 @@ def send_table_to_output_pane(
     import secrets
 
     from tabulaflow.app.render import render_table_html
+    from tabulaflow.app.render.tables import PANE_TABLE_MAX_HEIGHT, table_view_meta
 
     try:
         dumps_dir: Path = app._runtime_paths.dumps_dir  # type: ignore[attr-defined]
@@ -96,14 +104,16 @@ def send_table_to_output_pane(
         return None
     html_path = dumps_dir / f"T_{secrets.token_hex(3)}.html"
     try:
-        render_table_html(df, html_path, title=title)
+        render_table_html(df, html_path, title=title, max_height=PANE_TABLE_MAX_HEIGHT)
     except OSError as exc:
         status(Text(f"write failed: {exc}", style=ERROR))
         return None
     except Exception as exc:
         status(Text(f"render failed: {exc}", style=ERROR))
         return None
-    _show_path(html_path, app, status=status)
+    _show_path(
+        html_path, app, status=status, title=title or "Table preview", meta=table_view_meta(len(df), len(df.columns))
+    )
     return html_path
 
 
