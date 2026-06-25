@@ -178,38 +178,6 @@ def _wordmark(surface: Color, version: str | None = None) -> list[Text]:
     return rows
 
 
-# Provider prefixes -> human-friendly vendor names for the banner.
-_PROVIDER_NAMES = {
-    "openai-responses": "OpenAI",
-    "openai": "OpenAI",
-    "anthropic": "Anthropic",
-    "google-vertex": "Google",
-    "google": "Google",
-    "fireworks": "Fireworks",
-    "together": "Together",
-}
-# Model-name tokens shown as an uppercase acronym rather than title-cased.
-_MODEL_ACRONYMS = {"gpt"}
-
-
-def _pretty_model(model: str) -> str:
-    """Humanize a model id, e.g. ``openai-responses:gpt-5.4`` -> ``OpenAI GPT 5.4``."""
-    provider, sep, name = model.partition(":")
-    if not sep:  # no provider prefix
-        provider, name = "", provider
-    provider_label = _PROVIDER_NAMES.get(provider, provider.replace("-", " ").title())
-
-    parts = []
-    for tok in name.split("-"):
-        if tok.lower() in _MODEL_ACRONYMS:
-            parts.append(tok.upper())
-        elif tok[:1].isalpha():
-            parts.append(tok.capitalize())
-        else:  # version numbers like 5.4, 2.0
-            parts.append(tok)
-    return " ".join([provider_label, *parts]).strip()
-
-
 def _examples() -> list[Text]:
     """Render the starter-question block: each category as a heading, its example
     questions beneath as bulleted lines, with a blank line between categories.
@@ -249,23 +217,15 @@ def build_wordmark(surface: str | None = None) -> RenderableType:
 
 
 def build_banner_text(*, model: str, reasoning_effort: str | None = None) -> Text:
-    """Build the banner's text block — tagline, starter examples, model/help line.
+    """Build the banner's text block — tagline and starter examples.
 
     Returned as a single ``Text`` (rows joined with newlines) rather than a
     ``Group`` so the widget rendering it is selectable: Textual only extracts
     selection text from widgets whose render is a ``Text``/``Content``.
 
-    ``reasoning_effort`` is appended to the model label as ``(medium effort)`` —
-    but only for OpenAI models, the only provider the chat lib applies the effort to.
+    ``model`` and ``reasoning_effort`` are accepted so callers don't need a
+    separate code path when the bottom status owns the model display.
     """
-    model_label = _pretty_model(model)
-    if reasoning_effort and model.partition(":")[0] in ("openai-responses", "openai"):
-        model_label += f" ({reasoning_effort} effort)"
-    # Model name, then the same dim `·` divider as the tagline line, then the hint.
-    info = Text()
-    info.append(model_label, style="dim")
-    info.append(" · ", style="dim")
-    info.append_text(Text.from_markup("[dim]Type [bold]/help[/bold] for commands, [bold]/exit[/bold] to exit[/dim]"))
     # Tagline on the left, then a 4-col gap, then the GitHub URL on the same line.
     # Styles are per-span (not a base style) so the URL stays plain dim grey rather
     # than inheriting the tagline's mint color. The scheme is dropped from the
@@ -277,4 +237,4 @@ def build_banner_text(*, model: str, reasoning_effort: str | None = None) -> Tex
     tagline.append(_TAGLINE, style=f"bold italic {COLOR_TABULA}")
     tagline.append(" · ", style="dim")
     tagline.append(url_label, style="dim")
-    return Text("\n").join([tagline, Text(), *_examples(), Text(), info])
+    return Text("\n").join([tagline, Text(), *_examples()])

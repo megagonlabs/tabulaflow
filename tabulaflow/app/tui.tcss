@@ -103,17 +103,32 @@ TabulaflowApp {
     min-width: 0;
 }
 
-#pane-url {
+#bottom-status {
+    layout: horizontal;
+    height: 1;
+    background: transparent;
+}
+
+#bottom-status-model {
+    width: 1fr;
+    min-width: 0;
+    height: 1;
+    padding: 0 1;
+    background: transparent;
+    color: #666666;
+    text-wrap: nowrap;
+    text-overflow: ellipsis;
+    text-align: left;
+}
+
+#bottom-status-url {
+    width: auto;
     height: 1;
     padding: 0 1;
     background: transparent;
     color: #666666;
     text-wrap: nowrap;
     text-align: right;
-}
-
-#pane-url:disabled {
-    opacity: 0;
 }
 
 #open-explorer-btn:hover {

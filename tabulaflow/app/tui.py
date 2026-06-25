@@ -43,6 +43,32 @@ class BottomSeparator(Static):
         return Text("━" * max(1, self.size.width), style="#333333", overflow="crop", no_wrap=True)
 
 
+def _compact_model_label(model: str, reasoning_effort: str | None = None) -> str:
+    """Return a compact model status label, e.g. ``GPT 5.4 medium``."""
+    provider, sep, name = model.partition(":")
+    if not sep:
+        provider, name = "", provider
+    parts = []
+    for tok in name.split("-"):
+        if tok.lower() == "gpt":
+            parts.append(tok.upper())
+        elif tok[:1].isalpha():
+            parts.append(tok.capitalize())
+        else:
+            parts.append(tok)
+    if reasoning_effort and provider in ("openai-responses", "openai"):
+        parts.append(reasoning_effort)
+    return " ".join(parts)
+
+
+def _compact_project_dir(path: Path) -> str:
+    """Return a compact display path for the project directory."""
+    try:
+        return f"~/{path.resolve().relative_to(Path.home()).as_posix()}"
+    except ValueError:
+        return path.resolve().as_posix()
+
+
 def _warm_session_imports() -> None:
     """Import the workspace connector's sqlalchemy/duckdb stack off the UI thread.
 
@@ -165,7 +191,9 @@ class TabulaflowApp(App[None]):
                 # transient loading state, not a permanently unavailable feature.
                 yield Button(self._explorer_label(ready=False), id="open-explorer-btn", disabled=True)
             yield BottomSeparator(classes="bottom-sep")
-            yield Static(id="pane-url", disabled=True)
+            with Horizontal(id="bottom-status"):
+                yield Static(id="bottom-status-model")
+                yield Static(id="bottom-status-url")
 
     def on_mount(self) -> None:
         self._setup_logging()
@@ -297,7 +325,7 @@ class TabulaflowApp(App[None]):
 
     def on_click(self, event: events.Click) -> None:
         """Reopen the output pane when the persistent pane URL row is clicked."""
-        if getattr(event.widget, "id", None) != "pane-url":
+        if getattr(event.widget, "id", None) != "bottom-status-url":
             return
         pane = self._pane
         if pane is not None and pane.url is not None:
@@ -490,11 +518,11 @@ class TabulaflowApp(App[None]):
                     port=self._output_pane_port,
                 )
                 self._pane.start()
-                self._refresh_pane_url()
+                self._refresh_bottom_status()
             except Exception:
                 logger.debug("output pane failed to start", exc_info=True)
                 self._pane = None
-                self._refresh_pane_url()
+                self._refresh_bottom_status()
         return self._pane
 
     def view_in_pane(self, path: Path) -> bool:
@@ -510,15 +538,19 @@ class TabulaflowApp(App[None]):
         pane.push({"title": kind, "records": [{"label": None, "views": [{"kind": kind, "file": path.name}]}]})
         return True
 
-    def _refresh_pane_url(self) -> None:
-        """Show the persistent pane URL below the input row once available."""
+    def _refresh_bottom_status(self) -> None:
+        """Show model status and the persistent pane URL below the input row."""
         try:
-            pane_url = self.query_one("#pane-url", Static)
+            model_status = self.query_one("#bottom-status-model", Static)
+            url_status = self.query_one("#bottom-status-url", Static)
         except Exception:
             return
         url = self._pane.url if self._pane is not None else None
-        pane_url.update(Text(f"View output in browser: {url}" if url else "", style="dim"))
-        pane_url.disabled = url is None
+        model = self._session.model if self._session is not None else self._model
+        reasoning_effort = self._session.reasoning_effort if self._session is not None else self._reasoning_effort
+        model_label = _compact_model_label(model, reasoning_effort)
+        model_status.update(Text(f"{model_label} · {_compact_project_dir(self._project_dir)}", style="dim"))
+        url_status.update(Text(f"View output in browser: {url}" if url else "", style="dim"))
 
     async def _push_turn_to_pane(
         self,
@@ -757,6 +789,7 @@ class TabulaflowApp(App[None]):
                 await spinner.remove()
 
         self._show_command_result(result, session, chat_log)
+        self._refresh_bottom_status()
 
     def _show_command_result(
         self,
