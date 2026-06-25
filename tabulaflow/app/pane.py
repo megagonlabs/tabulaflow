@@ -78,7 +78,7 @@ _PANE_HTML = """<!doctype html>
   .turnitem.active .turntitle { color: #e4e4e7; }
   .turns-empty { padding: 12px 16px; color: #6a737d; font: 12px/1.35 ui-monospace, monospace; }
   #content { flex: 1 1 auto; overflow-y: auto; min-width: 0; display: flex; }
-  #content-inner { width: min(1000px, 100%); margin: 0 auto; padding: 16px; box-sizing: border-box; }
+  #content-inner { width: min(850px, 100%); margin: 0 auto; padding: 16px; box-sizing: border-box; }
   .scroll-pad { height: 72px; }
   #empty { min-height: calc(100vh - 58px - 32px); display: grid; place-items: center; color: #9aa4b2; }
   .empty-state { display: grid; justify-items: center; gap: 12px; max-width: 400px; text-align: center; }
