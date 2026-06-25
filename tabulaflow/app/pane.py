@@ -66,9 +66,17 @@ _PANE_HTML = """<!doctype html>
               font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .turnitem:hover { color: #e4e4e7; }
   .turnitem.active { color: #3eb489; border-left-color: #3eb489; background: #1a1f2a; }
+  .turns-empty { padding: 12px 16px; color: #6a737d; font: 12px/1.35 ui-monospace, monospace; }
   #content { flex: 1 1 auto; overflow-y: auto; min-width: 0; display: flex; }
   #content-inner { width: min(1000px, 100%); margin: 0 auto; padding: 16px; box-sizing: border-box; }
-  #empty { color: #6a737d; font: 14px ui-monospace, monospace; padding: 28px; }
+  #empty { min-height: calc(100vh - 58px - 32px); display: grid; place-items: center; color: #9aa4b2; }
+  .empty-state { display: grid; justify-items: center; gap: 12px; max-width: 400px; text-align: center; }
+  .empty-mark { width: 38px; height: 38px; border-radius: 10px; display: grid; place-items: center;
+                color: #3eb489; background: #1a212c; box-shadow: inset 0 0 0 1px rgba(62, 180, 137, 0.18); }
+  .empty-mark svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.8;
+                    stroke-linecap: round; stroke-linejoin: round; }
+  .empty-title { color: #e4e4e7; font-size: 18px; font-weight: 600; letter-spacing: 0; }
+  .empty-copy { color: #6a737d; font-size: 14px; line-height: 1.5; margin: 0; }
   .turnview { display: flex; flex-direction: column; gap: 36px; }
   .transcript { display: flex; flex-direction: column; gap: 32px; padding: 2px 4px 0; }
   .message { display: flex; min-width: 0; }
@@ -122,8 +130,16 @@ _PANE_HTML = """<!doctype html>
 <body>
 __BANNER__
 <div id="main">
-<aside id="turns"></aside>
-<div id="content"><div id="content-inner"><div id="empty">waiting for results…</div></div></div>
+<aside id="turns"><div class="turns-empty">No output yet</div></aside>
+<div id="content"><div id="content-inner"><div id="empty">
+  <div class="empty-state">
+    <div class="empty-mark" aria-hidden="true">
+      <svg viewBox="0 0 24 24"><path d="M5 8h14"/><path d="M5 12h10"/><path d="M5 16h7"/><path d="M4 4h16v16H4z"/></svg>
+    </div>
+    <div class="empty-title">Waiting for output</div>
+    <p class="empty-copy">Results will appear here as the agent works.</p>
+  </div>
+</div></div></div>
 </div>
 <script>
   // Cards are served same-origin, so the parent tracks each iframe's content
@@ -276,6 +292,8 @@ __BANNER__
       // appear in the rail to click).
       var wasOnLatest = activeTurn === turns.length - 1;
       var sidebar = document.getElementById('turns');
+      var sidebarEmpty = sidebar.querySelector('.turns-empty');
+      if (sidebarEmpty) { sidebarEmpty.remove(); }
       for (var i = turns.length; i < server.length; i++) {
         turns.push(server[i]);
         var it = el('div', 'turnitem');
