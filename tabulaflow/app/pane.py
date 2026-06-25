@@ -117,6 +117,11 @@ _PANE_HTML = """<!doctype html>
   .recordpane.hidden { position: absolute; top: 0; left: 0; visibility: hidden; pointer-events: none; }
   .cardbar { display: flex; align-items: flex-end; gap: 32px; min-height: 36px; padding: 5px 4px 12px;
              font: 13px ui-monospace, monospace; }
+  .cardbar.multi-record .rectabs { flex: 0 1 auto; min-width: 0; max-width: 100%; box-sizing: border-box;
+                                   flex-wrap: nowrap; overflow: hidden; }
+  .cardbar.multi-record.stacked { flex-direction: column; align-items: stretch; gap: 10px; }
+  .cardbar.multi-record.stacked .rectabs { width: 100%; margin-right: 0; flex-wrap: wrap; overflow: visible; }
+  .cardbar.multi-record.stacked .seg { align-self: flex-end; }
   .cardlabel { position: relative; display: inline-flex; margin-right: auto; padding: 5px 8px 7px; white-space: nowrap;
                color: #e4e4e7; background: #1f2532; border-radius: 4px;
                font: 700 13px/1.25 ui-monospace, monospace; }
@@ -180,6 +185,35 @@ __BANNER__
     thumb.style.width = opt.offsetWidth + 'px';
     thumb.style.transform = 'translateX(' + opt.offsetLeft + 'px)';
   }
+  function syncSegment(seg) {
+    var thumb = seg ? seg.querySelector('.seg-thumb') : null;
+    var opt = seg ? seg.querySelector('.seg-opt.active') : null;
+    if (thumb && opt) { moveThumb(thumb, opt); }
+  }
+  function isHiddenRecordPane(node) {
+    var pane = node.closest ? node.closest('.recordpane') : null;
+    return pane && pane.classList.contains('hidden');
+  }
+  function syncRecordHeader(bar) {
+    if (!bar || !bar.classList.contains('multi-record') || isHiddenRecordPane(bar) || !bar.offsetWidth) {
+      return;
+    }
+    var tabs = bar.querySelector('.rectabs');
+    var seg = bar.querySelector('.seg');
+    if (!tabs || !seg) { return; }
+    bar.classList.remove('stacked');
+    var gap = parseFloat(getComputedStyle(bar).columnGap || getComputedStyle(bar).gap || '0') || 0;
+    var required = tabs.scrollWidth + seg.offsetWidth + gap;
+    var available = bar.clientWidth;
+    if (required > available + 1) {
+      bar.classList.add('stacked');
+    }
+    syncSegment(seg);
+  }
+  function syncRecordHeaders(root) {
+    (root || document).querySelectorAll('.cardbar.multi-record').forEach(syncRecordHeader);
+  }
+  window.addEventListener('resize', function () { requestAnimationFrame(function () { syncRecordHeaders(document); }); });
   function buildMessage(role, text) {
     var msg = el('div', 'message ' + role);
     var label = el('div', 'message-label');
@@ -233,6 +267,7 @@ __BANNER__
     var pane = el('div', 'recordpane');
     var bar = el('div', 'cardbar');
     if (recOpts) {
+      bar.classList.add('multi-record');
       var tabs = el('div', 'rectabs');
       recOpts.records.forEach(function (rt, i) {
         var t = el('button', 'rectab');
@@ -284,6 +319,7 @@ __BANNER__
     if (opts.length) {
       showView(record.views[0], opts[0]);
       requestAnimationFrame(function () {
+        syncRecordHeader(bar);
         moveThumb(thumb, opts[0]);
         requestAnimationFrame(function () { thumb.classList.add('ready'); });
       });
@@ -307,7 +343,10 @@ __BANNER__
     }
     var box = el('div', 'panesbox');
     var panes = [];
-    function onSelect(i) { panes.forEach(function (p, j) { p.classList.toggle('hidden', j !== i); }); }
+    function onSelect(i) {
+      panes.forEach(function (p, j) { p.classList.toggle('hidden', j !== i); });
+      requestAnimationFrame(function () { syncRecordHeaders(box); });
+    }
     records.forEach(function (rec, i) {
       var pane = buildRecord(rec, { records: records, activeIndex: i, onSelect: onSelect });
       if (i !== 0) { pane.classList.add('hidden'); }
