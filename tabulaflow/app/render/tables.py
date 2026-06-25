@@ -486,7 +486,7 @@ _INIT_JS_TEMPLATE = """
         clipboardCopyRowRange: "range",
         clipboardCopyConfig: { rowHeaders: false, columnHeaders: false },
         rowHeader: { resizable: false, frozen: true, headerSort: false,
-            formatter: "rownum", hozAlign: "right", width: 44, cssClass: "tabulator-row-header" }
+            formatter: "rownum", hozAlign: "right", width: __ROW_HEADER_WIDTH__, cssClass: "tabulator-row-header" }
     }));
 
     // Tabulator measures columns at init, before any <img> has decoded —
@@ -800,6 +800,8 @@ def render_table_html(
                 row_data[field] = _coerce_text_value(val)
         rows.append(row_data)
 
+    row_header_width = max(44, len(str(max(len(view), 1))) * 10 + 28)
+
     # ``</`` inside an inline <script> string can prematurely end the tag.
     data_json = json.dumps(rows, ensure_ascii=False, default=str).replace("</", "<\\/")
     cols_json = json.dumps(column_defs, ensure_ascii=False).replace("</", "<\\/")
@@ -809,6 +811,7 @@ def render_table_html(
         .replace("__DISPLAY_CAP__", str(_CELL_DISPLAY_CAP))
         .replace("__HAS_MEDIA__", "true" if col_types else "false")
         .replace("__MAX_HEIGHT__", str(max_height) if max_height is not None else "null")
+        .replace("__ROW_HEADER_WIDTH__", str(row_header_width))
     )
 
     doc_title = title or html_path.stem
