@@ -61,11 +61,21 @@ _PANE_HTML = """<!doctype html>
   #repo:hover { background: #1f2532; color: #e4e4e7; }
   #repo svg { width: 16px; height: 16px; fill: currentColor; }
   #main { flex: 1 1 auto; display: flex; min-height: 0; }
-  #turns { flex: 0 0 230px; border-right: 1px solid #21262d; overflow-y: auto; padding: 8px 0; }
-  .turnitem { padding: 9px 16px; color: #6a737d; cursor: pointer; border-left: 2px solid transparent;
-              font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .turnitem:hover { color: #e4e4e7; }
-  .turnitem.active { color: #3eb489; border-left-color: #3eb489; background: #1a1f2a; }
+  #turns { flex: 0 0 272px; border-right: 1px solid #21262d; overflow-y: auto; padding: 8px 0; }
+  .turnitem { display: grid; grid-template-columns: 28px minmax(0, 1fr); column-gap: 10px; align-items: start;
+              min-height: 54px; padding: 10px 14px 7px 12px; box-sizing: border-box; color: #6a737d;
+              cursor: pointer; border-left: 2px solid transparent; }
+  .turnitem:hover { background: rgba(255, 255, 255, 0.025); }
+  .turnitem.active { border-left-color: #3eb489; background: #1a1f2a; }
+  .turnindex { color: #6a737d; font: 600 12px/1.2 ui-monospace, monospace; text-align: right; }
+  .turntext { min-width: 0; display: grid; gap: 5px; }
+  .turntitle { color: #9aa4b2; font: 500 13px/1.2 ui-monospace, monospace; white-space: nowrap;
+               overflow: hidden; text-overflow: ellipsis; }
+  .turnmeta { color: #6a737d; font: 12px/1 ui-monospace, monospace; white-space: nowrap;
+              overflow: hidden; text-overflow: ellipsis; }
+  .turnitem:hover .turntitle { color: #e4e4e7; }
+  .turnitem.active .turnindex { color: #3eb489; }
+  .turnitem.active .turntitle { color: #e4e4e7; }
   .turns-empty { padding: 12px 16px; color: #6a737d; font: 12px/1.35 ui-monospace, monospace; }
   #content { flex: 1 1 auto; overflow-y: auto; min-width: 0; display: flex; }
   #content-inner { width: min(1000px, 100%); margin: 0 auto; padding: 16px; box-sizing: border-box; }
@@ -180,6 +190,37 @@ __BANNER__
     if (hasText(turn.user)) { wrap.appendChild(buildMessage('user', turn.user)); }
     if (hasText(turn.assistant)) { wrap.appendChild(buildMessage('assistant', turn.assistant)); }
     return wrap.children.length ? wrap : null;
+  }
+  function turnMeta(turn) {
+    var counts = { chart: 0, table: 0 };
+    (turn.records || []).forEach(function (record) {
+      var kinds = (record.views || []).map(function (view) { return (view.kind || '').toLowerCase(); });
+      if (kinds.indexOf('chart') !== -1) {
+        counts.chart += 1;
+      } else if (kinds.indexOf('data') !== -1) {
+        counts.table += 1;
+      }
+    });
+    var parts = [];
+    if (counts.chart) { parts.push(counts.chart + (counts.chart === 1 ? ' chart' : ' charts')); }
+    if (counts.table) { parts.push(counts.table + (counts.table === 1 ? ' table' : ' tables')); }
+    return parts.length ? parts.join(' · ') : 'text only';
+  }
+  function buildTurnItem(turn, index) {
+    var it = el('div', 'turnitem');
+    var idx = el('div', 'turnindex');
+    var text = el('div', 'turntext');
+    var title = el('div', 'turntitle');
+    var meta = el('div', 'turnmeta');
+    title.textContent = turn.title || ('Turn ' + (index + 1));
+    idx.textContent = String(index + 1).padStart(2, '0');
+    meta.textContent = turnMeta(turn);
+    it.title = title.textContent + ' · ' + meta.textContent;
+    text.appendChild(title);
+    text.appendChild(meta);
+    it.appendChild(idx);
+    it.appendChild(text);
+    return it;
   }
   // Build one record's pane: a Chart|Data|Query tab strip + iframe. The chart
   // loads up front; Data/Query load lazily on tab click.
@@ -298,9 +339,7 @@ __BANNER__
       if (sidebarEmpty) { sidebarEmpty.remove(); }
       for (var i = turns.length; i < server.length; i++) {
         turns.push(server[i]);
-        var it = el('div', 'turnitem');
-        it.textContent = server[i].title || ('Turn ' + (i + 1));
-        it.title = it.textContent;
+        var it = buildTurnItem(server[i], i);
         (function (idx) { it.onclick = function () { selectTurn(idx); }; })(i);
         sidebar.appendChild(it);
       }
