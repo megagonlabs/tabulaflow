@@ -114,7 +114,7 @@ function turnMeta(turn) {
   var parts = [];
   if (counts.chart) { parts.push(counts.chart + (counts.chart === 1 ? ' chart' : ' charts')); }
   if (counts.table) { parts.push(counts.table + (counts.table === 1 ? ' table' : ' tables')); }
-  return parts.length ? parts.join(' · ') : 'text only';
+  return parts.join(' · ');
 }
 
 function buildTurnItem(turn, index) {
@@ -125,10 +125,11 @@ function buildTurnItem(turn, index) {
   var meta = el('div', 'turnmeta');
   title.textContent = turn.title || ('Turn ' + (index + 1));
   idx.textContent = String(index + 1).padStart(2, '0');
-  meta.textContent = turnMeta(turn);
-  it.title = title.textContent + ' · ' + meta.textContent;
+  var metaText = turnMeta(turn);
+  if (metaText) { meta.textContent = metaText; }
+  it.title = metaText ? title.textContent + ' · ' + metaText : title.textContent;
   text.appendChild(title);
-  text.appendChild(meta);
+  if (metaText) { text.appendChild(meta); }
   it.appendChild(idx);
   it.appendChild(text);
   return it;

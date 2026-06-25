@@ -151,6 +151,11 @@ def test_pane_labels_manual_table_turn_as_preview() -> None:
     assert "return 'table preview';" in _PANE_HTML
 
 
+def test_pane_omits_text_only_turn_meta() -> None:
+    assert "'text only'" not in _PANE_HTML
+    assert "metaText ? title.textContent + ' · ' + metaText : title.textContent" in _PANE_HTML
+
+
 def test_view_in_pane_marks_turn_as_manual(tmp_path: Path) -> None:
     pushed: list[PaneTurn] = []
 

@@ -337,8 +337,8 @@ June 23
 
 June 24
 - [x] Output pane
+
 - [ ] Remote server support
-- [ ] Dump to /tmp vs session dir?
 - [ ] web_fetch tool for static html
 
 - [ ] Tune prompt for non-data tasks
