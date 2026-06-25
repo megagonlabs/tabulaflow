@@ -135,7 +135,7 @@ Dark-app feel, mint accent, modern data-app references (Linear, Stripe, GitHub).
 - **Layout**:
   - Views render **bare** (no banner/page chrome), sized to their content, so they embed cleanly in the output pane (`app/pane.py`) — which frames each cited result as a card with a `Chart | Data | Query` tab strip and caps the stack width. The `tabulaflow` banner is reserved for standalone share exports.
   - When developing the output pane, preview fast fixtures with `uv run scripts/preview_output_pane.py --port 61211`; add `--full` only for stress fixtures.
-  - Table layout `fitColumns`: columns stretch to fill the panel width.
+  - Table layout `fitColumns`: columns stretch to panel width with renderer-assigned `minWidth` values.
   - Height: only force a pixel height when row count > 100 (so virtual scroll engages); otherwise free-flow at content height.
 - **No double boxes**: kill midnight's inner `.tabulator` border, the only frame is the outer card.
 - **Row separators**: none on body cells; vertical 1px dividers on header cells only.

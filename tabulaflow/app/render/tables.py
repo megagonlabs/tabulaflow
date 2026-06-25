@@ -497,7 +497,9 @@ _INIT_JS_TEMPLATE = """
         if (document.readyState === "complete"){
             table.redraw(true);
         } else {
-            window.addEventListener("load", function(){ table.redraw(true); });
+            window.addEventListener("load", function(){
+                table.redraw(true);
+            });
         }
     }
 
@@ -612,6 +614,26 @@ def _coerce_text_value(value: object) -> object:
     return s
 
 
+def _sample_text_width(series: "pd.Series", title: str, *, sample_n: int = 50) -> int:
+    """Estimate a stable Tabulator minimum width for a text column."""
+    sample = [*(str(v) for v in series.dropna().head(sample_n))]
+    if not sample:
+        return 120
+    longest = max(len(value) for value in sample)
+    if longest > 80:
+        return 260
+    if longest > 32:
+        return 220
+    if longest > 18:
+        return 160
+    return 120
+
+
+def _header_min_width(title: str) -> int:
+    """Estimate width needed to show a sortable column header."""
+    return min(260, max(96, (len(title) * 9) + 56))
+
+
 def render_table_html(
     df: "pd.DataFrame",
     html_path: Path,
@@ -668,6 +690,7 @@ def render_table_html(
     for col_idx, col in enumerate(view.columns):
         field = f"c{col_idx}"
         title_str = str(col)
+        header_width = _header_min_width(title_str)
         if title_str in col_types:
             column_defs.append(
                 {
@@ -676,6 +699,8 @@ def render_table_html(
                     "formatter": "media",
                     "headerSort": False,
                     "resizable": True,
+                    "minWidth": max(220, header_width),
+                    "widthGrow": 1,
                 }
             )
             fields.append((field, "media"))
@@ -689,6 +714,8 @@ def render_table_html(
                     "sorterParams": {"alignEmptyValues": "bottom"},
                     "hozAlign": "center",
                     "resizable": True,
+                    "minWidth": max(96, header_width),
+                    "widthGrow": 1,
                 }
             )
             fields.append((field, "bool"))
@@ -701,10 +728,13 @@ def render_table_html(
                     "sorter": "number",
                     "sorterParams": {"alignEmptyValues": "bottom"},
                     "resizable": True,
+                    "minWidth": max(96, header_width),
+                    "widthGrow": 1,
                 }
             )
             fields.append((field, "num"))
         else:
+            min_width = max(_sample_text_width(view[col], title_str), header_width)
             column_defs.append(
                 {
                     "title": title_str,
@@ -712,6 +742,8 @@ def render_table_html(
                     "formatter": "text",
                     "sorterParams": {"alignEmptyValues": "bottom"},
                     "resizable": True,
+                    "minWidth": min_width,
+                    "widthGrow": 2 if min_width >= 160 else 1,
                 }
             )
             fields.append((field, "text"))
