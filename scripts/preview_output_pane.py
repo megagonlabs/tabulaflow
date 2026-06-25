@@ -165,12 +165,38 @@ def _manual_table_card(dumps_dir: Path) -> PaneRecord:
     )
 
 
+def _wide_manual_table_card(dumps_dir: Path) -> PaneRecord:
+    rows = 1_000
+    cols = 60
+    data: dict[str, list[object]] = {
+        "row_id": list(range(1, rows + 1)),
+        "segment": [f"segment_{i % 8}" for i in range(rows)],
+        "status": [["ok", "review", "hold", "blocked"][i % 4] for i in range(rows)],
+    }
+    for col in range(1, cols - len(data) + 1):
+        data[f"metric_{col:02d}"] = [round(((row * (col + 7)) % 100_000) / 37.0, 2) for row in range(rows)]
+    df = pd.DataFrame(data)
+    path = dumps_dir / "T_wide_manual_table_preview.html"
+    render_table_html(df, path, title="wide_manual_table", max_height=PANE_TABLE_MAX_HEIGHT)
+    return record_payload(
+        label=None,
+        views=[view_payload("data", path.name, meta=table_view_meta(len(df), len(df.columns)))],
+    )
+
+
 def _push_manual_table_turn(pane: pane_mod.OutputPane, dumps_dir: Path) -> None:
     pane.push(
         turn_payload(
             title="manual_table",
             source="manual",
             records=[_manual_table_card(dumps_dir)],
+        )
+    )
+    pane.push(
+        turn_payload(
+            title="wide_manual_table",
+            source="manual",
+            records=[_wide_manual_table_card(dumps_dir)],
         )
     )
 

@@ -464,7 +464,7 @@ _INIT_JS_TEMPLATE = """
     var tableOpts = {
         data: data,
         columns: cols,
-        layout: "fitDataFill",
+        layout: "fitColumns",
         renderVerticalBuffer: 600,
         movableColumns: false,
         maxHeight: viewportCap,
