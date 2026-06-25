@@ -267,9 +267,12 @@ video { width: 240px; height: 160px; object-fit: contain; background: #000;
 }
 .tabulator .tabulator-row .tabulator-cell.tabulator-row-header {
     color: var(--text-dim);
-    background-color: var(--card) !important;
     border: none !important;
     border-right: 1px solid #3a4352 !important;
+}
+.tabulator .tabulator-row:last-child .tabulator-cell { border-bottom: 1px solid rgba(58, 67, 82, 0.48); }
+.tabulator .tabulator-row:last-child .tabulator-cell.tabulator-row-header {
+    border-bottom: 1px solid rgba(58, 67, 82, 0.48) !important;
 }
 /* Kill the frozen-column shadow on the row-number column — midnight theme
    adds a shadow that shows as a stray vertical line on the left. */
