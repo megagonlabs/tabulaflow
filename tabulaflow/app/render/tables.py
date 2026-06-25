@@ -182,6 +182,10 @@ body,
     overflow: hidden;
     background-color: #171d25;
 }
+#table-wrap.pane-short {
+    padding-bottom: 16px;
+    box-sizing: border-box;
+}
 
 /* Cell helpers shared across formatters. */
 .trunc { cursor: pointer; }
@@ -818,8 +822,9 @@ def render_table_html(
     if truncated_rows:
         doc_title = f"{doc_title} (showing {max_rows:,} of {len(df):,} rows)"
 
+    wrap_class = ' class="pane-short"' if max_height is not None and len(view) <= 12 else ""
     body = (
-        '<div id="table-wrap"><div id="table"></div></div>'
+        f'<div id="table-wrap"{wrap_class}><div id="table"></div></div>'
         '<div id="modal" role="dialog" aria-hidden="true">'
         '<div id="modal-card">'
         '<div id="modal-header">'

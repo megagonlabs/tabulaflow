@@ -219,6 +219,23 @@ def _large_table_record(num_rows: int) -> SimpleNamespace:
     )
 
 
+def _large_agent_table_record() -> SimpleNamespace:
+    rows = 1_000
+    data: dict[str, list[object]] = {
+        "row_id": list(range(1, rows + 1)),
+        "segment": [f"segment_{i % 8}" for i in range(rows)],
+        "status": [["ok", "review", "hold", "blocked"][i % 4] for i in range(rows)],
+    }
+    for col in range(1, 10):
+        data[f"metric_{col:02d}"] = [round(((row * (col + 5)) % 50_000) / 29.0, 2) for row in range(rows)]
+    return _record(
+        record_id="QDEBUG_LARGE_AGENT_TABLE",
+        label="large_agent_table",
+        query="-- synthetic 1,000-row agent result table",
+        df=pd.DataFrame(data),
+    )
+
+
 def _wav_bytes(freq_hz: float, seconds: float = 0.4, rate: int = 8000) -> bytes:
     n_samples = int(seconds * rate)
     samples = bytearray()
@@ -334,6 +351,17 @@ def _populate_pane(
 
     if chart_cards:
         _push_manual_table_turn(pane, dumps_dir)
+        _push_turn(
+            pane,
+            dumps_dir,
+            title="Large agent table",
+            user="Show a large table as a normal agent result.",
+            assistant=(
+                "This is a normal agent result record with 1,000 rows, so the Data view should use "
+                "the compact output-pane table frame and internal scrolling."
+            ),
+            records=[_large_agent_table_record()],
+        )
         _push_turn(
             pane,
             dumps_dir,

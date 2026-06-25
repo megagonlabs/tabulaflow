@@ -203,6 +203,18 @@ class TestRenderTableHtml:
         # (user wants only the table visible, no header chrome).
         assert "showing 10 of 1,000 rows" in text
 
+    def test_short_pane_table_gets_bottom_inset(self, tmp_path: Path) -> None:
+        df = pd.DataFrame({"a": [1, 2, 3]})
+        html_path = tmp_path / "T_short_pane.html"
+        render_table_html(df, html_path, max_height=640)
+        assert '<div id="table-wrap" class="pane-short">' in html_path.read_text()
+
+    def test_standalone_table_does_not_get_bottom_inset(self, tmp_path: Path) -> None:
+        df = pd.DataFrame({"a": [1, 2, 3]})
+        html_path = tmp_path / "T_standalone.html"
+        render_table_html(df, html_path)
+        assert '<div id="table-wrap"><div id="table"></div></div>' in html_path.read_text()
+
     def test_mixed_column_not_treated_as_media(self, tmp_path: Path) -> None:
         df = pd.DataFrame({"col": [PNG_MAGIC, "plain string", 42, None, b"random"]})
         html_path = tmp_path / "T_mix.html"
