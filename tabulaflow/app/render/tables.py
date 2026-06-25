@@ -171,10 +171,16 @@ _CUSTOM_CSS = """
 /* The pane wraps this table in a rounded panel (the iframe), so drop the page
    padding and let the table fill it edge-to-edge — the panel is the table's
    outer frame. */
+html,
+body,
+#content {
+    background-color: #171d25;
+}
 #content { padding: 0; }
 #table-wrap {
     width: 100%;
     overflow: hidden;
+    background-color: #171d25;
 }
 
 /* Cell helpers shared across formatters. */
@@ -220,7 +226,7 @@ video { width: 240px; height: 160px; object-fit: contain; background: #000;
 .tabulator,
 .tabulator .tabulator-tableholder,
 .tabulator .tabulator-table {
-    background-color: var(--card) !important;
+    background-color: #171d25 !important;
     border: none !important;
 }
 /* Kill the macOS rubber-band overscroll on the body's scroll container.
@@ -251,8 +257,8 @@ video { width: 240px; height: 160px; object-fit: contain; background: #000;
     background-color: rgba(62, 180, 137, 0.06) !important;
 }
 
-/* Rows: transparent so right-side blank space stays page-dark; zebra on
-   cells only. Even row gets a very subtle lift, not a hard contrast. */
+/* Rows: transparent so the unused viewport reads as the table base surface;
+   zebra on cells only. Even row gets a very subtle lift, not a hard contrast. */
 .tabulator .tabulator-row { background-color: transparent !important; border: none; }
 .tabulator .tabulator-row.tabulator-row-odd .tabulator-cell { background-color: var(--card); }
 .tabulator .tabulator-row.tabulator-row-even .tabulator-cell { background-color: var(--stripe); }
