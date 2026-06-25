@@ -28,6 +28,7 @@ import pandas as pd
 
 from tabulaflow.app import pane as pane_mod
 from tabulaflow.app.debug import debug_chart_fixtures
+from tabulaflow.app.pane_types import PaneRecord, PaneSource, record_payload, turn_payload, view_payload
 from tabulaflow.app.render.cards import render_record_card
 from tabulaflow.app.render.tables import PANE_TABLE_MAX_HEIGHT, render_table_html, table_view_meta
 
@@ -50,8 +51,8 @@ def _record(
     )
 
 
-def _render_records(records: Sequence[SimpleNamespace], dumps_dir: Path) -> list[dict[str, object]]:
-    cards: list[dict[str, object]] = []
+def _render_records(records: Sequence[SimpleNamespace], dumps_dir: Path) -> list[PaneRecord]:
+    cards: list[PaneRecord] = []
     for record in records:
         card = render_record_card(record, dumps_dir)
         if card is not None:
@@ -67,18 +68,18 @@ def _push_turn(
     user: str,
     assistant: str,
     records: Sequence[SimpleNamespace] = (),
-    cards: Sequence[dict[str, object]] = (),
-    source: str | None = None,
+    cards: Sequence[PaneRecord] = (),
+    source: PaneSource | None = None,
 ) -> None:
-    turn = {
-        "title": title,
-        "user": user,
-        "assistant": assistant,
-        "records": [*cards, *_render_records(records, dumps_dir)],
-    }
-    if source is not None:
-        turn["source"] = source
-    pane.push(turn)
+    pane.push(
+        turn_payload(
+            title=title,
+            user=user,
+            assistant=assistant,
+            records=[*cards, *_render_records(records, dumps_dir)],
+            source=source,
+        )
+    )
 
 
 def _long_result_response(summary: str) -> str:
@@ -104,8 +105,8 @@ def _long_result_response(summary: str) -> str:
     )
 
 
-def _chart_cards(dumps_dir: Path, *, limit: int | None) -> list[dict[str, object]]:
-    cards: list[dict[str, object]] = []
+def _chart_cards(dumps_dir: Path, *, limit: int | None) -> list[PaneRecord]:
+    cards: list[PaneRecord] = []
     fixtures = debug_chart_fixtures()
     if limit is not None:
         fixtures = fixtures[:limit]
@@ -119,7 +120,7 @@ def _chart_cards(dumps_dir: Path, *, limit: int | None) -> list[dict[str, object
     return cards
 
 
-def _many_record_cards(cards: Sequence[dict[str, object]]) -> list[dict[str, object]]:
+def _many_record_cards(cards: Sequence[PaneRecord]) -> list[PaneRecord]:
     if not cards:
         return []
     labels = [
@@ -136,10 +137,10 @@ def _many_record_cards(cards: Sequence[dict[str, object]]) -> list[dict[str, obj
         "x",
         "warehouse_inventory_reconciliation_status",
     ]
-    return [{"label": label, "views": cards[i % len(cards)]["views"]} for i, label in enumerate(labels)]
+    return [record_payload(label=label, views=cards[i % len(cards)]["views"]) for i, label in enumerate(labels)]
 
 
-def _manual_table_card(dumps_dir: Path) -> dict[str, object]:
+def _manual_table_card(dumps_dir: Path) -> PaneRecord:
     df = pd.DataFrame(
         {
             "sample_id": [f"ex-{i:04d}" for i in range(1, 13)],
@@ -158,10 +159,10 @@ def _manual_table_card(dumps_dir: Path) -> dict[str, object]:
     )
     path = dumps_dir / "T_manual_table_preview.html"
     render_table_html(df, path, title="manual_table", max_height=PANE_TABLE_MAX_HEIGHT)
-    return {
-        "label": None,
-        "views": [{"kind": "data", "file": path.name, "meta": table_view_meta(len(df), len(df.columns))}],
-    }
+    return record_payload(
+        label=None,
+        views=[view_payload("data", path.name, meta=table_view_meta(len(df), len(df.columns)))],
+    )
 
 
 def _large_table_record(num_rows: int) -> SimpleNamespace:
@@ -247,10 +248,10 @@ def _populate_pane(
     chart_cards = _chart_cards(dumps_dir, limit=None if all_chart_turns else 6)
 
     pane.push(
-        {
-            "title": "long text-only answer",
-            "user": "Explain the output pane experience in detail.",
-            "assistant": "\n\n".join(
+        turn_payload(
+            title="long text-only answer",
+            user="Explain the output pane experience in detail.",
+            assistant="\n\n".join(
                 [
                     (
                         "The output pane mirrors the agent's useful artifacts in a browser surface. "
@@ -291,8 +292,8 @@ def _populate_pane(
                 ]
                 * 3
             ),
-            "records": [],
-        }
+            records=[],
+        )
     )
 
     if chart_cards:
@@ -367,12 +368,12 @@ def _populate_pane(
     if all_chart_turns:
         for i, card in enumerate(chart_cards[4:], start=5):
             pane.push(
-                {
-                    "title": card.get("label") or f"query {i}",
-                    "user": f"Show fixture {i}.",
-                    "assistant": "Here is the rendered chart, source data, and query for this fixture.",
-                    "records": [card],
-                }
+                turn_payload(
+                    title=card["label"] or f"query {i}",
+                    user=f"Show fixture {i}.",
+                    assistant="Here is the rendered chart, source data, and query for this fixture.",
+                    records=[card],
+                )
             )
 
 

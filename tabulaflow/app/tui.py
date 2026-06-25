@@ -15,9 +15,10 @@ from textual.containers import Horizontal, Vertical, VerticalScroll
 from textual.widgets import Button, Input, Static
 
 from tabulaflow.app.commands import COMMAND_PREFIX, handle_command
-from tabulaflow.app.session import SessionState
 from tabulaflow.app.debug import debug_enabled, mount_debug_widgets
+from tabulaflow.app.pane_types import PaneRecord, manual_artifact_turn, turn_payload
 from tabulaflow.app.runtime_paths import RuntimePaths, ensure_dumps_dir, generate_session_id, prune_old_dumps
+from tabulaflow.app.session import SessionState
 from tabulaflow.app.theme import ERROR, FOCUS_SURFACE, KEY_HINT
 from tabulaflow.app.widgets import (
     AgentProgressWidget,
@@ -536,11 +537,7 @@ class TabulaflowApp(App[None]):
         pane = self._ensure_pane()
         if pane is None or pane.url is None:
             return False
-        kind = {"V": "chart", "T": "data", "C": "data", "Q": "query"}.get(path.name[:1], "data")
-        view = {"kind": kind, "file": path.name}
-        if meta:
-            view["meta"] = meta
-        pane.push({"title": title or kind, "source": "manual", "records": [{"label": label, "views": [view]}]})
+        pane.push(manual_artifact_turn(path, title=title, label=label, meta=meta))
         return True
 
     def _refresh_bottom_status(self) -> None:
@@ -577,7 +574,7 @@ class TabulaflowApp(App[None]):
             ensure_dumps_dir(dumps_dir)
         except Exception:
             return
-        records: list[dict[str, object]] = []
+        records: list[PaneRecord] = []
         for record in result.records:
             try:
                 card = render_record_card(record, dumps_dir)
@@ -591,7 +588,7 @@ class TabulaflowApp(App[None]):
         pane = self._ensure_pane()
         if pane is None:
             return
-        pane.push({"title": title, "user": user_text, "assistant": result.text, "records": records})
+        pane.push(turn_payload(title=title, user=user_text, assistant=result.text, records=records))
 
     def _restore_input_text(self, text: str) -> None:
         """Put `text` back into the input bar and focus it. Used after a

@@ -12,7 +12,7 @@ import html
 import json
 import secrets
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Protocol
 
 from pygments import highlight
 from pygments.formatters import HtmlFormatter
@@ -20,11 +20,21 @@ from pygments.lexers import get_lexer_by_name
 from pygments.util import ClassNotFound
 
 from tabulaflow.app.page import TEXT, render_page
+from tabulaflow.app.pane_types import PaneRecord, PaneView, record_payload, view_payload
 from tabulaflow.app.render.charts import render_chart_html
 from tabulaflow.app.render.tables import PANE_TABLE_MAX_HEIGHT, render_table_html, table_view_meta
 
 if TYPE_CHECKING:
-    from tabulaflow.chat.result import ChatResultRecord
+    import pandas as pd
+
+
+class ResultRecordLike(Protocol):
+    df: "pd.DataFrame | None"
+    chart_spec: dict[str, object] | None
+    query: str | None
+    label: str | None
+    query_lexer: str
+
 
 # URL base the pane serves the bundled Vega/Tabulator libs under (see pane.py);
 # linking beats re-inlining ~0.8 MB of Vega into every chart dump.
@@ -117,27 +127,27 @@ def render_query_html(sql: str, html_path: Path, *, lexer: str = "sql") -> None:
     html_path.write_text(page, encoding="utf-8")
 
 
-def render_record_card(record: "ChatResultRecord", dumps_dir: Path) -> dict[str, object] | None:
+def render_record_card(record: ResultRecordLike, dumps_dir: Path) -> PaneRecord | None:
     """Render a record's chart/data/query views to files; return a card descriptor.
 
     The descriptor is ``{"label": str | None, "views": [{"kind", "file"}, ...]}``
     ordered chart -> data -> query, including only the views the record has, or
     ``None`` when the record has nothing displayable.
     """
-    views: list[dict[str, str]] = []
+    views: list[PaneView] = []
     df = record.df
     if df is not None and not df.empty:
         if record.chart_spec is not None:
             path = dumps_dir / f"V_{secrets.token_hex(3)}.html"
             render_chart_html(df, record.chart_spec, path, title=record.label, asset_base=_ASSET_BASE)
-            views.append({"kind": "chart", "file": path.name})
+            views.append(view_payload("chart", path.name))
         path = dumps_dir / f"T_{secrets.token_hex(3)}.html"
         render_table_html(df, path, title=record.label, max_height=PANE_TABLE_MAX_HEIGHT, asset_base=_ASSET_BASE)
-        views.append({"kind": "data", "file": path.name, "meta": table_view_meta(len(df), len(df.columns))})
+        views.append(view_payload("data", path.name, meta=table_view_meta(len(df), len(df.columns))))
     if record.query:
         path = dumps_dir / f"Q_{secrets.token_hex(3)}.html"
         render_query_html(record.query, path, lexer=record.query_lexer or "sql")
-        views.append({"kind": "query", "file": path.name})
+        views.append(view_payload("query", path.name))
     if not views:
         return None
-    return {"label": record.label, "views": views}
+    return record_payload(label=record.label, views=views)

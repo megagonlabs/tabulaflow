@@ -18,6 +18,7 @@ import threading
 from collections.abc import Callable, Sequence
 from pathlib import Path
 
+from tabulaflow.app.pane_types import PaneTurn
 from tabulaflow.app.theme import GITHUB_SLUG, GITHUB_URL
 
 DEFAULT_OUTPUT_PANE_PORT_START = 61111
@@ -43,378 +44,53 @@ _BANNER = (
     "</div></header>"
 )
 
-_PANE_HTML = """<!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<title>tabulaflow · results</title>
-<style>
-  html, body { height: 100%; }
-  body { margin: 0; background: #0f1117; color: #e4e4e7; display: flex; flex-direction: column;
-         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
-  #banner { border-bottom: 1px solid #21262d; background: #0f1117; flex: 0 0 auto; }
-  #banner-inner { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; }
-  #logo { color: #3eb489; font: 700 16px ui-monospace, "SF Mono", Menlo, monospace;
-          letter-spacing: 0.05em; user-select: none; }
-  #repo { display: inline-flex; align-items: center; gap: 6px; color: #9aa4b2;
-          text-decoration: none; font-size: 13px; padding: 4px 10px; border-radius: 4px; }
-  #repo:hover { background: #1f2532; color: #e4e4e7; }
-  #repo svg { width: 16px; height: 16px; fill: currentColor; }
-  #main { flex: 1 1 auto; display: flex; min-height: 0; }
-  #turns { flex: 0 0 272px; border-right: 1px solid #21262d; overflow-y: auto; padding: 8px 0; }
-  .turnitem { display: grid; grid-template-columns: 28px minmax(0, 1fr); column-gap: 10px; align-items: start;
-              min-height: 54px; padding: 10px 14px 7px 12px; box-sizing: border-box; color: #6a737d;
-              cursor: pointer; border-left: 2px solid transparent; }
-  .turnitem:hover { background: rgba(255, 255, 255, 0.025); }
-  .turnitem.active { border-left-color: #3eb489; background: #1a1f2a; }
-  .turnindex { color: #6a737d; font: 600 12px/1.2 ui-monospace, monospace; text-align: right; }
-  .turntext { min-width: 0; display: grid; gap: 5px; }
-  .turntitle { color: #9aa4b2; font: 500 13px/1.25 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; white-space: nowrap;
-               overflow: hidden; text-overflow: ellipsis; }
-  .turnmeta { color: #6a737d; font: 12px/1 ui-monospace, monospace; white-space: nowrap;
-              overflow: hidden; text-overflow: ellipsis; }
-  .turnitem:hover .turntitle { color: #e4e4e7; }
-  .turnitem.active .turnindex { color: #3eb489; }
-  .turnitem.active .turntitle { color: #e4e4e7; }
-  .turns-empty { padding: 12px 16px; color: #6a737d; font: 12px/1.35 ui-monospace, monospace; }
-  #content { flex: 1 1 auto; overflow-y: auto; min-width: 0; display: flex; }
-  #content-inner { width: min(850px, 100%); margin: 0 auto; padding: 16px; box-sizing: border-box; }
-  .scroll-pad { height: 72px; }
-  #empty { min-height: calc(100vh - 58px - 32px); display: grid; place-items: center; color: #9aa4b2; }
-  .empty-state { display: grid; justify-items: center; gap: 12px; max-width: 400px; text-align: center; }
-  .empty-mark { width: 38px; height: 38px; border-radius: 10px; display: grid; place-items: center;
-                color: #3eb489; background: #1a212c; box-shadow: inset 0 0 0 1px rgba(62, 180, 137, 0.18); }
-  .empty-mark svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.8;
-                    stroke-linecap: round; stroke-linejoin: round; }
-  .empty-title { color: #e4e4e7; font-size: 18px; font-weight: 600; letter-spacing: 0; }
-  .empty-copy { color: #6a737d; font-size: 14px; line-height: 1.5; margin: 0; }
-  .turnview { display: flex; flex-direction: column; gap: 36px; }
-  .transcript { display: flex; flex-direction: column; gap: 32px; padding: 2px 4px 0; }
-  .message { display: flex; min-width: 0; }
-  .message-label { display: none; }
-  .message-body { font-size: 16px; line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; }
-  .message.user { justify-content: flex-end; }
-  .message.user .message-body { max-width: min(720px, 78%); padding: 10px 14px; color: #e4e4e7;
-                                background: #1f2532; border-radius: 16px 16px 4px 16px;
-                                box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.03); }
-  .message.assistant { justify-content: stretch; }
-  .message.assistant .message-body { width: 100%; color: #e4e4e7; }
-  @media (max-width: 640px) {
-    .message.user .message-body { max-width: 92%; }
-  }
-  .rectabs { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px;
-             margin-right: auto; min-height: 32px; padding: 4px; border-radius: 6px;
-             background: #131720; }
-  .rectab { position: relative; background: transparent; border: 0; border-radius: 4px; color: #9aa4b2; cursor: pointer;
-            padding: 5px 8px 7px; white-space: nowrap;
-            font: 500 13px/1.25 ui-monospace, monospace; }
-  .rectab:hover { color: #e4e4e7; background: #1a1f2a; }
-  .rectab.active { color: #e4e4e7; background: #232b38; font-weight: 700; }
-  .rectab.active::after { content: ""; position: absolute; left: 8px; right: 8px; bottom: 2px;
-                          height: 2px; border-radius: 999px; background: #3eb489; }
-  .panesbox { position: relative; }
-  .recordpane { width: 100%; }
-  .recordpane.hidden { position: absolute; top: 0; left: 0; visibility: hidden; pointer-events: none; }
-  .cardbar { display: flex; align-items: flex-end; gap: 32px; min-height: 36px; padding: 5px 4px 12px;
-             font: 13px ui-monospace, monospace; }
-  .cardbar.multi-record .rectabs { flex: 0 1 auto; min-width: 0; max-width: 100%; box-sizing: border-box;
-                                   flex-wrap: nowrap; overflow: hidden; }
-  .cardbar.multi-record.no-view-menu .rectabs { width: 100%; flex-wrap: wrap; overflow: visible; }
-  .cardbar.multi-record.stacked { flex-direction: column; align-items: stretch; gap: 10px; }
-  .cardbar.multi-record.stacked .rectabs { width: 100%; margin-right: 0; flex-wrap: wrap; overflow: visible; }
-  .cardbar.multi-record.stacked .seg { align-self: flex-end; }
-  .cardlabel { position: relative; display: inline-flex; margin-right: auto; padding: 5px 8px 7px; white-space: nowrap;
-               color: #e4e4e7; background: #1f2532; border-radius: 4px;
-               font: 700 13px/1.25 ui-monospace, monospace; }
-  .cardlabel::after { content: ""; position: absolute; left: 8px; right: 8px; bottom: 2px;
-                      height: 2px; border-radius: 999px; background: #3eb489; }
-  .viewmeta { width: min(800px, 100%); margin: 0 auto; box-sizing: border-box;
-              min-height: 15px; padding: 8px 4px 0; color: #6a737d; white-space: nowrap; text-align: left;
-              font: 12px/1.25 ui-monospace, monospace; }
-  .seg { position: relative; display: inline-flex; padding: 2px; border-radius: 999px;
-         box-shadow: inset 0 0 0 1px #21262d; }
-  .seg-opt { position: relative; z-index: 1; background: transparent; border: 0; cursor: pointer;
-             color: #6a737d; padding: 5px 12px; border-radius: 999px; text-transform: capitalize;
-             font: 12px/1.25 ui-monospace, monospace; transition: color 0.18s ease; }
-  .seg-opt:hover { color: #e4e4e7; }
-  .seg-opt.active { color: #3eb489; }
-  .seg-thumb { position: absolute; top: 2px; bottom: 2px; left: 0; width: 0; border-radius: 999px;
-               background: #262c36; }
-  .seg-thumb.ready { transition: transform 0.22s ease, width 0.22s ease; }
-  .cardframe-shell { position: relative; width: min(800px, 100%); margin: 0 auto;
-                     background: #1f2532; border-radius: 10px; overflow: hidden;
-                     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35); }
-  .cardframe-shell::after { content: ""; position: absolute; inset: 0; pointer-events: none; border-radius: inherit;
-                            box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.03); }
-  .cardframe-shell.view-data { border-radius: 0; }
-  .cardframe-shell.view-data::after { box-shadow: inset 0 0 0 1px rgba(58, 67, 82, 0.48); }
-  .cardframe { display: block; width: 100%; height: 320px; background: transparent; border: 0; }
-</style>
-</head>
-<body>
-__BANNER__
-<div id="main">
-<aside id="turns"><div class="turns-empty">No output yet</div></aside>
-<div id="content"><div id="content-inner"><div id="empty">
-  <div class="empty-state">
-    <div class="empty-mark" aria-hidden="true">
-      <svg viewBox="0 0 24 24"><path d="M5 8h14"/><path d="M5 12h10"/><path d="M5 16h7"/><path d="M4 4h16v16H4z"/></svg>
-    </div>
-    <div class="empty-title">Waiting for output</div>
-    <p class="empty-copy">Results will appear here as the agent works.</p>
-  </div>
-</div></div></div>
-</div>
-<script>
-  // Cards are served same-origin, so the parent tracks each iframe's content
-  // height (ResizeObserver) and resizes to fit as Tabulator/Vega render. Measure
-  // <body> (whose scrollHeight hugs the content) rather than documentElement
-  // (floored at the iframe viewport, so it can't shrink back for short content).
-  function autosize(frame) {
-    var ro = null;
-    frame.addEventListener('load', function () {
-      try {
-        var doc = frame.contentWindow.document;
-        var fit = function () { frame.style.height = doc.body.scrollHeight + 'px'; };
-        fit();
-        if (ro) { ro.disconnect(); }
-        if (window.ResizeObserver) { ro = new ResizeObserver(fit); ro.observe(doc.body); }
-      } catch (e) { /* cross-origin / detached — keep the CSS height */ }
-    });
-  }
-  function el(tag, cls) { var e = document.createElement(tag); if (cls) { e.className = cls; } return e; }
-  function hasText(value) { return typeof value === 'string' && value.trim().length > 0; }
-  function moveThumb(thumb, opt) {
-    thumb.style.width = opt.offsetWidth + 'px';
-    thumb.style.transform = 'translateX(' + opt.offsetLeft + 'px)';
-  }
-  function syncSegment(seg) {
-    var thumb = seg ? seg.querySelector('.seg-thumb') : null;
-    var opt = seg ? seg.querySelector('.seg-opt.active') : null;
-    if (thumb && opt) { moveThumb(thumb, opt); }
-  }
-  function isHiddenRecordPane(node) {
-    var pane = node.closest ? node.closest('.recordpane') : null;
-    return pane && pane.classList.contains('hidden');
-  }
-  function syncRecordHeader(bar) {
-    if (!bar || !bar.classList.contains('multi-record') || isHiddenRecordPane(bar) || !bar.offsetWidth) {
-      return;
-    }
-    var tabs = bar.querySelector('.rectabs');
-    var seg = bar.querySelector('.seg');
-    if (!tabs) { return; }
-    if (!seg) {
-      bar.classList.remove('stacked');
-      return;
-    }
-    bar.classList.remove('stacked');
-    var gap = parseFloat(getComputedStyle(bar).columnGap || getComputedStyle(bar).gap || '0') || 0;
-    var required = tabs.scrollWidth + seg.offsetWidth + gap;
-    var available = bar.clientWidth;
-    if (required > available + 1) {
-      bar.classList.add('stacked');
-    }
-    syncSegment(seg);
-  }
-  function syncRecordHeaders(root) {
-    (root || document).querySelectorAll('.cardbar.multi-record').forEach(syncRecordHeader);
-  }
-  window.addEventListener('resize', function () { requestAnimationFrame(function () { syncRecordHeaders(document); }); });
-  function buildMessage(role, text) {
-    var msg = el('div', 'message ' + role);
-    var label = el('div', 'message-label');
-    var body = el('div', 'message-body');
-    label.textContent = role === 'user' ? 'user' : 'tabulaflow';
-    body.textContent = text;
-    msg.appendChild(label);
-    msg.appendChild(body);
-    return msg;
-  }
-  function buildTranscript(turn) {
-    var wrap = el('section', 'transcript');
-    if (hasText(turn.user)) { wrap.appendChild(buildMessage('user', turn.user)); }
-    if (hasText(turn.assistant)) { wrap.appendChild(buildMessage('assistant', turn.assistant)); }
-    return wrap.children.length ? wrap : null;
-  }
-  function turnMeta(turn) {
-    var counts = { chart: 0, table: 0 };
-    (turn.records || []).forEach(function (record) {
-      var kinds = (record.views || []).map(function (view) { return (view.kind || '').toLowerCase(); });
-      if (kinds.indexOf('chart') !== -1) {
-        counts.chart += 1;
-      } else if (kinds.indexOf('data') !== -1) {
-        counts.table += 1;
-      }
-    });
-    if (turn.source === 'manual' && counts.table === 1 && counts.chart === 0) {
-      return 'table preview';
-    }
-    var parts = [];
-    if (counts.chart) { parts.push(counts.chart + (counts.chart === 1 ? ' chart' : ' charts')); }
-    if (counts.table) { parts.push(counts.table + (counts.table === 1 ? ' table' : ' tables')); }
-    return parts.length ? parts.join(' · ') : 'text only';
-  }
-  function buildTurnItem(turn, index) {
-    var it = el('div', 'turnitem');
-    var idx = el('div', 'turnindex');
-    var text = el('div', 'turntext');
-    var title = el('div', 'turntitle');
-    var meta = el('div', 'turnmeta');
-    title.textContent = turn.title || ('Turn ' + (index + 1));
-    idx.textContent = String(index + 1).padStart(2, '0');
-    meta.textContent = turnMeta(turn);
-    it.title = title.textContent + ' · ' + meta.textContent;
-    text.appendChild(title);
-    text.appendChild(meta);
-    it.appendChild(idx);
-    it.appendChild(text);
-    return it;
-  }
-  // Build one record's pane: a Chart|Data|Query tab strip + iframe. The chart
-  // loads up front; Data/Query load lazily on tab click.
-  function buildRecord(record, recOpts) {
-    var pane = el('div', 'recordpane');
-    var bar = el('div', 'cardbar');
-    var views = record.views || [];
-    var showViewMenu = views.length > 1;
-    if (recOpts) {
-      bar.classList.add('multi-record');
-      if (!showViewMenu) { bar.classList.add('no-view-menu'); }
-      var tabs = el('div', 'rectabs');
-      recOpts.records.forEach(function (rt, i) {
-        var t = el('button', 'rectab');
-        t.textContent = rt.label || ('result ' + (i + 1));
-        t.title = t.textContent;
-        if (i === recOpts.activeIndex) { t.classList.add('active'); }
-        t.onclick = function () { recOpts.onSelect(i); };
-        tabs.appendChild(t);
-      });
-      bar.appendChild(tabs);
-    } else if (record.label) {
-      var lbl = el('span', 'cardlabel');
-      lbl.textContent = record.label;
-      bar.appendChild(lbl);
-    }
-    var shell = el('div', 'cardframe-shell');
-    var frame = el('iframe', 'cardframe');
-    frame.scrolling = 'no';
-    autosize(frame);
-    shell.appendChild(frame);
-    var meta = el('div', 'viewmeta');
-    var seg = el('div', 'seg');
-    var thumb = el('span', 'seg-thumb');
-    seg.appendChild(thumb);
-    var opts = [];
-    function showView(v, opt) {
-      frame.src = '/' + v.file;
-      meta.textContent = v.meta || '';
-      shell.className = 'cardframe-shell view-' + (v.kind || '').toLowerCase();
-      opts.forEach(function (x) { x.classList.remove('active'); });
-      if (opt) {
-        opt.classList.add('active');
-        moveThumb(thumb, opt);
-      }
-    }
-    if (showViewMenu) {
-      views.forEach(function (v) {
-        var o = el('button', 'seg-opt');
-        o.textContent = v.kind;
-        o.onclick = function () {
-          showView(v, o);
-        };
-        opts.push(o);
-        seg.appendChild(o);
-      });
-      bar.appendChild(seg);
-    }
-    if (bar.children.length) {
-      pane.appendChild(bar);
-    }
-    pane.appendChild(shell);
-    pane.appendChild(meta);
-    if (views.length) {
-      showView(views[0], opts[0] || null);
-      requestAnimationFrame(function () {
-        syncRecordHeader(bar);
-        if (opts[0]) {
-          moveThumb(thumb, opts[0]);
-          requestAnimationFrame(function () { thumb.classList.add('ready'); });
-        }
-      });
-    }
-    return pane;
-  }
-  // Render the active turn: the record's pane(s) directly (no card frame). A
-  // multi-result turn carries record tabs in each pane's header (left of the view
-  // segmented); panes are pre-built and toggled by visibility (flicker-free switch).
-  function renderTurn(turn) {
-    var view = el('div', 'turnview');
-    var transcript = buildTranscript(turn);
-    if (transcript) { view.appendChild(transcript); }
-    var records = turn.records || [];
-    if (!records.length) {
-      return view;
-    }
-    if (records.length <= 1) {
-      view.appendChild(buildRecord(records[0], null));
-      return view;
-    }
-    var box = el('div', 'panesbox');
-    var panes = [];
-    function onSelect(i) {
-      panes.forEach(function (p, j) { p.classList.toggle('hidden', j !== i); });
-      requestAnimationFrame(function () { syncRecordHeaders(box); });
-    }
-    records.forEach(function (rec, i) {
-      var pane = buildRecord(rec, { records: records, activeIndex: i, onSelect: onSelect });
-      if (i !== 0) { pane.classList.add('hidden'); }
-      box.appendChild(pane);
-      panes.push(pane);
-    });
-    view.appendChild(box);
-    return view;
-  }
-  // Turn navigator: the sidebar lists every turn; only the selected turn is
-  // rendered (iframes never accumulate). New turns are appended, and auto-selected
-  // only when you're already on the latest (so navigating back isn't interrupted).
-  var turns = [];
-  var activeTurn = -1;
-  function selectTurn(i) {
-    if (i < 0 || i >= turns.length) { return; }
-    activeTurn = i;
-    var items = document.querySelectorAll('#turns .turnitem');
-    for (var k = 0; k < items.length; k++) { items[k].classList.toggle('active', k === i); }
-    var inner = document.getElementById('content-inner');
-    inner.innerHTML = '';
-    inner.appendChild(renderTurn(turns[i]));
-    inner.appendChild(el('div', 'scroll-pad'));
-  }
-  function poll() {
-    fetch('/__index__').then(function (r) { return r.json(); }).then(function (server) {
-      if (server.length <= turns.length) { return; }
-      // Follow new turns only when already on the latest; if the user has
-      // navigated back to an older turn, leave them there (the new turns still
-      // appear in the rail to click).
-      var wasOnLatest = activeTurn === turns.length - 1;
-      var sidebar = document.getElementById('turns');
-      var sidebarEmpty = sidebar.querySelector('.turns-empty');
-      if (sidebarEmpty) { sidebarEmpty.remove(); }
-      for (var i = turns.length; i < server.length; i++) {
-        turns.push(server[i]);
-        var it = buildTurnItem(server[i], i);
-        (function (idx) { it.onclick = function () { selectTurn(idx); }; })(i);
-        sidebar.appendChild(it);
-      }
-      if (wasOnLatest) { selectTurn(turns.length - 1); }
-    }).catch(function () {});
-  }
-  setInterval(poll, 1000);
-  poll();
-</script>
-</body>
-</html>
-""".replace("__BANNER__", _BANNER)
+
+def _pane_css_vars() -> str:
+    from tabulaflow.app.page import (
+        BORDER,
+        CARD_BG,
+        PAGE_BG,
+        ROW_HOVER,
+        ROW_STRIPE,
+        TEXT,
+        TEXT_DIM,
+        TEXT_MUTED,
+    )
+    from tabulaflow.app.theme import ACCENT
+
+    return (
+        ":root {"
+        f"--accent: {ACCENT};"
+        f"--bg: {PAGE_BG};"
+        f"--card: {CARD_BG};"
+        f"--stripe: {ROW_STRIPE};"
+        f"--hover: {ROW_HOVER};"
+        f"--border: {BORDER};"
+        f"--text: {TEXT};"
+        f"--text-muted: {TEXT_MUTED};"
+        f"--text-dim: {TEXT_DIM};"
+        "--panel: #1f2532;"
+        "--rail-bg: #131720;"
+        "}"
+    )
+
+
+def _load_pane_html() -> str:
+    from importlib.resources import files
+
+    base = files("tabulaflow.app.assets.pane")
+    html = base.joinpath("index.html").read_text(encoding="utf-8")
+    css = base.joinpath("pane.css").read_text(encoding="utf-8")
+    js = base.joinpath("pane.js").read_text(encoding="utf-8")
+    return (
+        html.replace("__CSS_VARS__", _pane_css_vars())
+        .replace("__PANE_CSS__", css)
+        .replace("__PANE_JS__", js)
+        .replace("__BANNER__", _BANNER)
+    )
+
+
+_PANE_HTML = _load_pane_html()
 
 
 class _PaneServer(http.server.ThreadingHTTPServer):
@@ -511,7 +187,7 @@ class OutputPane:
             raise ValueError("Output pane host cannot be empty.")
         self._port_config = port
         self._port_range = tuple(port_range)
-        self._results: list[dict[str, object]] = []
+        self._results: list[PaneTurn] = []
         self._lock = threading.Lock()
         self._server: _PaneServer | None = None
         self._port: int | None = None
@@ -559,7 +235,7 @@ class OutputPane:
     def bind_host(self) -> str:
         return self._host
 
-    def push(self, turn: dict[str, object]) -> None:
+    def push(self, turn: PaneTurn) -> None:
         """Record a turn ({"records": [{"label", "views": [...]}, ...]}) for the pane."""
         with self._lock:
             self._results.append(turn)

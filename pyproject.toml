@@ -67,7 +67,13 @@ tabulaflow = "tabulaflow.app.main:main"
 include = ["tabulaflow*"]
 
 [tool.setuptools.package-data]
-tabulaflow = ["app/assets/tabulator/*", "app/assets/debug/*", "app/assets/samples/*"]
+tabulaflow = [
+    "app/assets/debug/*",
+    "app/assets/pane/*",
+    "app/assets/samples/*",
+    "app/assets/tabulator/*",
+    "app/assets/vega/*",
+]
 
 [tool.ruff]
 line-length = 120

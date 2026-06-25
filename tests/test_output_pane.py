@@ -15,6 +15,7 @@ import pytest
 
 from tabulaflow.app.render.cards import render_query_html, render_record_card
 from tabulaflow.app.pane import OutputPane, OutputPanePortError, _PANE_HTML
+from tabulaflow.app.pane_types import PaneTurn, turn_payload
 from tabulaflow.app.screens import send_table_to_output_pane
 from tabulaflow.app.tui import TabulaflowApp
 
@@ -40,12 +41,12 @@ def test_output_pane_serves_text_only_turn(tmp_path: Path) -> None:
     pane.start()
     try:
         pane.push(
-            {
-                "title": "summarize",
-                "user": "Summarize the latest result.",
-                "assistant": "The result has three rows.",
-                "records": [],
-            }
+            turn_payload(
+                title="summarize",
+                user="Summarize the latest result.",
+                assistant="The result has three rows.",
+                records=[],
+            )
         )
 
         assert pane.url is not None
@@ -126,7 +127,7 @@ def test_record_card_includes_data_view_meta(tmp_path: Path) -> None:
 
 def test_manual_table_send_includes_data_view_meta(tmp_path: Path) -> None:
     calls: list[tuple[Path, dict[str, object]]] = []
-    statuses = []
+    statuses: list[object] = []
 
     class FakeApp:
         _runtime_paths = SimpleNamespace(dumps_dir=tmp_path)
@@ -151,12 +152,12 @@ def test_pane_labels_manual_table_turn_as_preview() -> None:
 
 
 def test_view_in_pane_marks_turn_as_manual(tmp_path: Path) -> None:
-    pushed: list[dict[str, object]] = []
+    pushed: list[PaneTurn] = []
 
     class FakePane:
         url = "http://127.0.0.1:61111/"
 
-        def push(self, turn: dict[str, object]) -> None:
+        def push(self, turn: PaneTurn) -> None:
             pushed.append(turn)
 
     app = TabulaflowApp(model="openai-responses:gpt-5", agent="sql_agent", reasoning_effort="medium")
