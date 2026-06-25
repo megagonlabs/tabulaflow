@@ -540,7 +540,7 @@ class TabulaflowApp(App[None]):
         view = {"kind": kind, "file": path.name}
         if meta:
             view["meta"] = meta
-        pane.push({"title": title or kind, "records": [{"label": label, "views": [view]}]})
+        pane.push({"title": title or kind, "source": "manual", "records": [{"label": label, "views": [view]}]})
         return True
 
     def _refresh_bottom_status(self) -> None:

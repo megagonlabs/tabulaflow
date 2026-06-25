@@ -247,6 +247,9 @@ __BANNER__
         counts.table += 1;
       }
     });
+    if (turn.source === 'manual' && counts.table === 1 && counts.chart === 0) {
+      return 'table preview';
+    }
     var parts = [];
     if (counts.chart) { parts.push(counts.chart + (counts.chart === 1 ? ' chart' : ' charts')); }
     if (counts.table) { parts.push(counts.table + (counts.table === 1 ? ' table' : ' tables')); }

@@ -14,8 +14,9 @@ import pandas as pd
 import pytest
 
 from tabulaflow.app.render.cards import render_query_html, render_record_card
-from tabulaflow.app.pane import OutputPane, OutputPanePortError
+from tabulaflow.app.pane import OutputPane, OutputPanePortError, _PANE_HTML
 from tabulaflow.app.screens import send_table_to_output_pane
+from tabulaflow.app.tui import TabulaflowApp
 
 
 @contextlib.contextmanager
@@ -142,6 +143,35 @@ def test_manual_table_send_includes_data_view_meta(tmp_path: Path) -> None:
     assert "var fixedMax = 520;" in path.read_text()
     assert calls == [(path, {"title": "manual_table", "meta": "2 rows · 2 columns"})]
     assert str(statuses[-1]) == "sent to output pane"
+
+
+def test_pane_labels_manual_table_turn_as_preview() -> None:
+    assert "turn.source === 'manual'" in _PANE_HTML
+    assert "return 'table preview';" in _PANE_HTML
+
+
+def test_view_in_pane_marks_turn_as_manual(tmp_path: Path) -> None:
+    pushed: list[dict[str, object]] = []
+
+    class FakePane:
+        url = "http://127.0.0.1:61111/"
+
+        def push(self, turn: dict[str, object]) -> None:
+            pushed.append(turn)
+
+    app = TabulaflowApp(model="openai-responses:gpt-5", agent="sql_agent", reasoning_effort="medium")
+    app._pane = FakePane()  # type: ignore[assignment]  # noqa: SLF001
+
+    assert app.view_in_pane(tmp_path / "T_table.html", title="orders", meta="2 rows · 3 columns")
+    assert pushed == [
+        {
+            "title": "orders",
+            "source": "manual",
+            "records": [
+                {"label": None, "views": [{"kind": "data", "file": "T_table.html", "meta": "2 rows · 3 columns"}]}
+            ],
+        }
+    ]
 
 
 def test_query_view_renders_code_header_and_dracula_theme(tmp_path: Path) -> None:

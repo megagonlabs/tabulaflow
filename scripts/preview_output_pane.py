@@ -68,15 +68,17 @@ def _push_turn(
     assistant: str,
     records: Sequence[SimpleNamespace] = (),
     cards: Sequence[dict[str, object]] = (),
+    source: str | None = None,
 ) -> None:
-    pane.push(
-        {
-            "title": title,
-            "user": user,
-            "assistant": assistant,
-            "records": [*cards, *_render_records(records, dumps_dir)],
-        }
-    )
+    turn = {
+        "title": title,
+        "user": user,
+        "assistant": assistant,
+        "records": [*cards, *_render_records(records, dumps_dir)],
+    }
+    if source is not None:
+        turn["source"] = source
+    pane.push(turn)
 
 
 def _long_result_response(summary: str) -> str:
@@ -301,6 +303,7 @@ def _populate_pane(
             user="Send the current data browser table to the output pane.",
             assistant="This fixture matches a manually sent table: one table artifact, no record label, and no redundant view menu.",
             cards=[_manual_table_card(dumps_dir)],
+            source="manual",
         )
         _push_turn(
             pane,
