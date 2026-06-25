@@ -127,7 +127,8 @@ _PANE_HTML = """<!doctype html>
                font: 700 13px/1.25 ui-monospace, monospace; }
   .cardlabel::after { content: ""; position: absolute; left: 8px; right: 8px; bottom: 2px;
                       height: 2px; border-radius: 999px; background: #3eb489; }
-  .viewmeta { min-height: 15px; padding: 8px 4px 0; color: #6a737d; white-space: nowrap; text-align: left;
+  .viewmeta { width: min(800px, 100%); margin: 0 auto; box-sizing: border-box;
+              min-height: 15px; padding: 8px 4px 0; color: #6a737d; white-space: nowrap; text-align: left;
               font: 12px/1.25 ui-monospace, monospace; }
   .seg { position: relative; display: inline-flex; padding: 2px; border-radius: 999px;
          box-shadow: inset 0 0 0 1px #21262d; }
@@ -139,7 +140,8 @@ _PANE_HTML = """<!doctype html>
   .seg-thumb { position: absolute; top: 2px; bottom: 2px; left: 0; width: 0; border-radius: 999px;
                background: #262c36; }
   .seg-thumb.ready { transition: transform 0.22s ease, width 0.22s ease; }
-  .cardframe-shell { position: relative; width: 100%; background: #1f2532; border-radius: 10px; overflow: hidden;
+  .cardframe-shell { position: relative; width: min(800px, 100%); margin: 0 auto;
+                     background: #1f2532; border-radius: 10px; overflow: hidden;
                      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35); }
   .cardframe-shell::after { content: ""; position: absolute; inset: 0; pointer-events: none; border-radius: inherit;
                             box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.03); }
