@@ -229,6 +229,10 @@ video { width: 240px; height: 160px; object-fit: contain; background: #000;
     background-color: #171d25 !important;
     border: none !important;
 }
+.tabulator,
+.tabulator .tabulator-tableholder {
+    width: 100% !important;
+}
 /* Kill the macOS rubber-band overscroll on the body's scroll container.
    Tabulator syncs the header position from the body's scrollLeft; when
    the body bounces past its boundary the header doesn't (it's not the
@@ -453,14 +457,14 @@ _INIT_JS_TEMPLATE = """
     //    content exceeds the cap (otherwise the page scrolls and the sticky
     //    header / horizontal-scroll sync break). Short content still flows
     //    naturally because the table is below the cap.
-    //  - The cap is a fixed pixel value when a host frames the table in a
-    //    panel (``__MAX_HEIGHT__``), so short tables hug; otherwise it tracks
-    //    the viewport so a standalone page fills the window.
+    //  - The cap is a fixed pixel value when a compact host frames the table
+    //    in a result card (``__MAX_HEIGHT__``); otherwise it tracks the iframe
+    //    viewport so manual table previews can fill their panel.
     //  - ``height`` set only for large tables to activate Tabulator's
     //    virtual scroll. Without ``height``, virtual scroll doesn't
     //    engage and 1000s of rows freeze the tab.
     var fixedMax = __MAX_HEIGHT__;
-    var viewportCap = fixedMax != null ? fixedMax : Math.max(240, window.innerHeight - 100);
+    var viewportCap = fixedMax != null ? fixedMax : Math.max(240, window.innerHeight);
     var tableOpts = {
         data: data,
         columns: cols,

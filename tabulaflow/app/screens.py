@@ -95,7 +95,7 @@ def send_table_to_output_pane(
     import secrets
 
     from tabulaflow.app.render import render_table_html
-    from tabulaflow.app.render.tables import PANE_TABLE_MAX_HEIGHT, table_view_meta
+    from tabulaflow.app.render.tables import table_view_meta
 
     try:
         dumps_dir: Path = app._runtime_paths.dumps_dir  # type: ignore[attr-defined]
@@ -104,7 +104,7 @@ def send_table_to_output_pane(
         return None
     html_path = dumps_dir / f"T_{secrets.token_hex(3)}.html"
     try:
-        render_table_html(df, html_path, title=title, max_height=PANE_TABLE_MAX_HEIGHT)
+        render_table_html(df, html_path, title=title)
     except OSError as exc:
         status(Text(f"write failed: {exc}", style=ERROR))
         return None

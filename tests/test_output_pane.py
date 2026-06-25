@@ -141,7 +141,7 @@ def test_manual_table_send_includes_data_view_meta(tmp_path: Path) -> None:
 
     assert path is not None
     assert path.exists()
-    assert "var fixedMax = 520;" in path.read_text()
+    assert "var fixedMax = null;" in path.read_text()
     assert calls == [(path, {"title": "manual_table", "meta": "2 rows · 2 columns"})]
     assert str(statuses[-1]) == "sent to output pane"
 

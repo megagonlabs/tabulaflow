@@ -30,7 +30,7 @@ from tabulaflow.app import pane as pane_mod
 from tabulaflow.app.debug import debug_chart_fixtures
 from tabulaflow.app.pane_types import PaneRecord, PaneSource, record_payload, turn_payload, view_payload
 from tabulaflow.app.render.cards import render_record_card
-from tabulaflow.app.render.tables import PANE_TABLE_MAX_HEIGHT, render_table_html, table_view_meta
+from tabulaflow.app.render.tables import render_table_html, table_view_meta
 
 
 def _record(
@@ -158,7 +158,7 @@ def _manual_table_card(dumps_dir: Path) -> PaneRecord:
         }
     )
     path = dumps_dir / "T_manual_table_preview.html"
-    render_table_html(df, path, title="manual_table", max_height=PANE_TABLE_MAX_HEIGHT)
+    render_table_html(df, path, title="manual_table")
     return record_payload(
         label=None,
         views=[view_payload("data", path.name, meta=table_view_meta(len(df), len(df.columns)))],
@@ -177,7 +177,7 @@ def _wide_manual_table_card(dumps_dir: Path) -> PaneRecord:
         data[f"metric_{col:02d}"] = [round(((row * (col + 7)) % 100_000) / 37.0, 2) for row in range(rows)]
     df = pd.DataFrame(data)
     path = dumps_dir / "T_wide_manual_table_preview.html"
-    render_table_html(df, path, title="wide_manual_table", max_height=PANE_TABLE_MAX_HEIGHT)
+    render_table_html(df, path, title="wide_manual_table")
     return record_payload(
         label=None,
         views=[view_payload("data", path.name, meta=table_view_meta(len(df), len(df.columns)))],
