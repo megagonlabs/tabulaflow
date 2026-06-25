@@ -364,6 +364,7 @@ June 24
 - [ ] View stepper - dont switch other record's view
 
 - General
+  - [ ] Table readiblity: small table -> readible (e.g. KB, MB, GB), large table -> normalized
   - [ ] Improve transfer_record?
   - [ ] /reconnect
   - [ ] Session resume
