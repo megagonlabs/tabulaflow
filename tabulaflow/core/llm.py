@@ -155,9 +155,7 @@ class _ToolCallParsingModel(WrapperModel):
 # ---------------------------------------------------------------------------
 
 
-def _resolve_base(llm: str | Model) -> Model:
-    if isinstance(llm, Model):
-        return llm
+def _build_base(llm: str) -> Model:
     if llm.startswith("google-vertex:claude"):
         import os
 
@@ -175,6 +173,30 @@ def _resolve_base(llm: str | Model) -> Model:
             ),
         )
     return infer_model(llm)
+
+
+# Resolved base models, cached per event loop (like the throttle caches above). A
+# base model owns its provider's ``httpx.AsyncClient`` (connection pool), so reusing
+# it means every agent for the same model shares one client instead of leaking a
+# fresh, never-closed one per ``make_agent`` call — which otherwise exhausts file
+# descriptors under fan-out. Keyed by loop so a client is reused only within the
+# loop it is bound to; the per-loop dict maps the model identifier to its base model.
+_base_model_cache: dict[int, dict[str, Model]] = {}
+
+
+def _resolve_base(llm: str | Model) -> Model:
+    if isinstance(llm, Model):
+        return llm
+    try:
+        loop_id = id(asyncio.get_running_loop())
+    except RuntimeError:
+        # Resolved outside a running loop (e.g. sync agent construction): no loop
+        # to key on, so build a fresh client and let it bind to its first caller's loop.
+        return _build_base(llm)
+    per_loop = _base_model_cache.setdefault(loop_id, {})
+    if llm not in per_loop:
+        per_loop[llm] = _build_base(llm)
+    return per_loop[llm]
 
 
 def _make_model(llm: str | Model) -> Model:
