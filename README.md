@@ -340,8 +340,8 @@ June 24
 
 June 29
 - Fix bugs
-  - [ ] Fix "too many open files" error
-  - [ ] Debug /Users/yanlinf/.tabulaflow/sessions/20260625T225353Z-39707-89a790/trajectories/trajectory.md
+  - [x] Fix "too many open files" error
+  - [x] Fix huggingface already imported warning
   - [ ] Debug "analyze root directory" (mdc)
   - [ ] Debug manual push + "analyze" very slow
 
