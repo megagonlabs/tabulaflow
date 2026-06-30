@@ -66,6 +66,7 @@ if TYPE_CHECKING:
         RegistryRunQueryTool,
         RegistryTransferRecordTool,
         RenderChartTool,
+        RenderMapTool,
         RunSubagentForEachRowTool,
         WebBrowserTool,
     )
@@ -209,6 +210,9 @@ Visualization:
 - Do NOT render charts for single-row results, heterogeneous tables, or when the user only asks for a specific value.
 - Prefer a simple single-view chart — `bar`, `line`, or `point` with x/y encoding — which previews directly in the terminal: bar for categorical comparisons, line for time series, point for correlations.
 - Any Vega-Lite spec is accepted, but richer ones (color/size grouping, faceting, `rect` heatmaps, transforms, composite layer/concat views) render only in the browser. Use them only when a simple chart can't convey the answer; do NOT build composite/multi-view charts by default.
+- Call `render_map` when spatial position or geometry is essential to the answer. It accepts an optional `record_id` and a declarative map spec with `layers`.
+- Use a `points` layer for latitude/longitude columns: `{"layers":[{"type":"points","lat":"lat","lng":"lng","label":"name","tooltip":["name","status"]}]}`.
+- Use a `geojson` layer when a result column already contains WGS84 GeoJSON. If a database has native geometry, convert it in SQL first (e.g. `ST_AsGeoJSON(ST_Transform(geom, 4326)) AS geom_geojson`) and map that column.
 </tool_calling>
 
 <plan_mode>
@@ -263,6 +267,7 @@ class _Toolset:
     extract_rows_from_documents: ExtractRowsFromDocumentsTool | None
     add_canonical_name: AddCanonicalNameTool
     render_chart: RenderChartTool
+    render_map: RenderMapTool
     web_browser: WebBrowserTool
     # Host-facing tools; ``None`` when the app didn't supply the dirs they need.
     connect_data_source: ConnectDataSourceTool | None
@@ -362,6 +367,7 @@ class ChatAgent:
             RegistryRunQueryTool,
             RegistryTransferRecordTool,
             RenderChartTool,
+            RenderMapTool,
             RunSubagentForEachRowTool,
             WebBrowserTool,
         )
@@ -408,6 +414,7 @@ class ChatAgent:
                 trajectory_log_dir=subagent_dir,
             ),
             render_chart=RenderChartTool(history=self._query_history),
+            render_map=RenderMapTool(history=self._query_history),
             web_browser=WebBrowserTool(),
             connect_data_source=(
                 ConnectDataSourceTool(self.registry, self.data_dir) if self.data_dir is not None else None
@@ -528,6 +535,7 @@ class ChatAgent:
                 *host_tools,
                 self._tools.add_canonical_name.as_pydantic_ai_tool(),
                 self._tools.render_chart.as_pydantic_ai_tool(),
+                self._tools.render_map.as_pydantic_ai_tool(),
                 *self._tools.web_browser.as_pydantic_ai_tools(),
             ],
             capabilities=[
@@ -886,6 +894,7 @@ def _chat_result_record_from_query_record(
         query=pred.query,
         df=pred.exec_result.df if pred.exec_result else None,
         chart_spec=query_record.vegalite_spec,
+        map_spec=query_record.map_spec,
         query_lexer="cypher" if query_record.connector_type == "property_graph" else "sql",
     )
 

@@ -1,0 +1,508 @@
+# Agent-Facing Map Spec
+
+Declarative map interface for agents. The goal is to let an agent attach a map
+view to a query result without exposing Leaflet internals or requiring browser
+rendering knowledge.
+
+The map spec is intentionally much smaller than Vega-Lite. Vega-Lite is a full
+visual grammar; maps need a stable semantic contract over spatial query results:
+points from latitude/longitude columns, GeoJSON geometry, styling encodings,
+tooltips, and viewport behavior.
+
+## 1. Tool Contract
+
+```python
+render_map(
+    map_spec: dict,
+    record_id: str | None = None,
+) -> str
+```
+
+- If `record_id` is omitted, the map uses the latest query result.
+- If `record_id` is provided, the map uses that prior query result.
+- `map_spec` references query-result columns by their original names.
+- The app validates the spec, rewrites column names to pane field ids, writes the
+  record payload, and the output pane renders it.
+
+The tool should accept a declarative TabulaFlow map spec, not raw Leaflet
+options. Leaflet is the current renderer, but the agent-facing contract should
+remain semantic enough to survive a future renderer change.
+
+## 2. Top-Level Spec
+
+```json
+{
+  "title": "Store locations by revenue",
+  "view": {
+    "fit": true,
+    "center": [37.7749, -122.4194],
+    "zoom": 10
+  },
+  "layers": []
+}
+```
+
+Fields:
+
+| Field | Required | Description |
+|---|---:|---|
+| `title` | no | Human-readable map label. |
+| `view` | no | Initial viewport behavior. Defaults to fit all valid layers. |
+| `layers` | yes | Non-empty list of map layers. |
+
+Coordinate convention:
+
+- `view.center` uses `[lat, lng]`, matching Leaflet's user-facing API.
+- GeoJSON coordinates use standard GeoJSON order: `[lng, lat]`.
+
+## 3. Basemap
+
+V1 uses the bundled OpenStreetMap tile configuration. `basemap`, `tileUrl`,
+`attribution`, and basemap-level `maxZoom` are not part of the public map spec.
+
+Custom basemaps are deferred because they create attribution, licensing,
+privacy, API-key, and availability concerns. Add them only when there is a
+specific user-facing need.
+
+## 4. View
+
+```json
+{
+  "view": {
+    "fit": true,
+    "center": [37.7749, -122.4194],
+    "zoom": 10,
+    "maxZoom": 14
+  }
+}
+```
+
+Supported fields:
+
+| Field | Required | Description |
+|---|---:|---|
+| `fit` | no | If true, fit the viewport to all valid rendered features. Default true. |
+| `center` | no | Initial center as `[lat, lng]`. Used when `fit` is false or no bounds exist. |
+| `zoom` | no | Initial zoom. |
+| `maxZoom` | no | Maximum zoom used by fit behavior. |
+
+If `fit` is true and valid geometry exists, `center` and `zoom` are fallback
+values only.
+
+## 5. Layer Types
+
+### 5.1 Points Layer
+
+Use for ordinary SQL results with separate latitude and longitude columns.
+
+```json
+{
+  "type": "points",
+  "lat": "latitude",
+  "lng": "longitude",
+  "label": "city",
+  "tooltip": ["city", "state", "revenue"],
+  "marker": {
+    "type": "pin"
+  }
+}
+```
+
+Fields:
+
+| Field | Required | Description |
+|---|---:|---|
+| `type` | yes | Must be `"points"`. |
+| `lat` | yes | Latitude column. Values must be numeric and in `[-90, 90]`. |
+| `lng` | yes | Longitude column. Values must be numeric and in `[-180, 180]`. |
+| `label` | no | Short identity column used for marker titles and default feature names. |
+| `tooltip` | no | Detail content shown on hover and click in V1. Column, list of columns, or `true` for all safe scalar fields. |
+| `marker` | no | Marker presentation. Defaults to `{"type": "pin"}`. |
+| `color` | no | Fixed color or field encoding. |
+| `size` | no | Fixed size or numeric field encoding. |
+
+Marker types:
+
+```json
+{"marker": {"type": "pin"}}
+```
+
+```json
+{"marker": {"type": "circle"}}
+```
+
+`pin` is the default for small and moderate point sets. `circle` is better when
+the map uses color or size encodings.
+
+### 5.2 GeoJSON Layer
+
+Use for browser-ready geometry: points, lines, polygons, multipolygons, and
+feature collections.
+
+```json
+{
+  "type": "geojson",
+  "geojson": "boundary_geojson",
+  "label": "region_name",
+  "tooltip": ["region_name", "population"],
+  "style": {
+    "stroke": "#3eb489",
+    "fill": "#3eb489",
+    "fillOpacity": 0.25,
+    "weight": 2
+  }
+}
+```
+
+Fields:
+
+| Field | Required | Description |
+|---|---:|---|
+| `type` | yes | Must be `"geojson"`. |
+| `geojson` | yes | Column name containing GeoJSON, or an inline GeoJSON object. |
+| `label` | no | Short identity column/property used for feature names. |
+| `tooltip` | no | Detail content shown on hover and click in V1. Column/property, list of columns/properties, or `true`. |
+| `style` | no | Fixed vector style. |
+| `color` | no | Fixed color or field/property encoding. |
+
+The `geojson` value can be:
+
+- a column containing GeoJSON strings
+- a column containing JSON-like objects
+- an inline GeoJSON `Geometry`
+- an inline GeoJSON `Feature`
+- an inline GeoJSON `FeatureCollection`
+
+When row-level GeoJSON is supplied, the renderer should merge normal row fields
+into each feature's `properties` so tooltip, label, and color encodings can
+reference ordinary query-result columns.
+
+### 5.3 Future Geometry Layer
+
+Database-native geometry formats are intentionally not first-class in V1.
+Instead, agents should convert geometry to GeoJSON in SQL and use a `geojson`
+layer.
+
+Examples:
+
+```sql
+-- PostGIS
+SELECT ST_AsGeoJSON(ST_Transform(geom, 4326)) AS geom_geojson
+FROM regions;
+```
+
+```sql
+-- Snowflake
+SELECT ST_ASGEOJSON(geom) AS geom_geojson
+FROM regions;
+```
+
+```sql
+-- BigQuery
+SELECT ST_ASGEOJSON(geog) AS geom_geojson
+FROM regions;
+```
+
+```sql
+-- DuckDB spatial
+SELECT ST_AsGeoJSON(geom) AS geom_geojson
+FROM regions;
+```
+
+A later `geometry` layer may support:
+
+```json
+{
+  "type": "geometry",
+  "geometry": "geom",
+  "format": "wkt"
+}
+```
+
+Do not implement this until WKT/WKB parsing is needed in practice.
+
+## 6. Styling Encodings
+
+Styling should use a small declarative encoding model. It is inspired by
+Vega-Lite but intentionally limited.
+
+### Fixed Color
+
+```json
+"color": "#3eb489"
+```
+
+### Categorical Color
+
+```json
+"color": {
+  "field": "status"
+}
+```
+
+The renderer chooses a stable palette.
+
+### Explicit Color Mapping
+
+```json
+"color": {
+  "field": "risk",
+  "domain": ["low", "medium", "high"],
+  "range": ["#3eb489", "#f59e0b", "#ef4444"]
+}
+```
+
+### Numeric Size
+
+```json
+"size": {
+  "field": "revenue",
+  "range": [5, 18]
+}
+```
+
+### Vector Style
+
+For GeoJSON lines and polygons:
+
+```json
+"style": {
+  "stroke": "#3eb489",
+  "fill": "#3eb489",
+  "fillOpacity": 0.25,
+  "weight": 2
+}
+```
+
+Supported style fields:
+
+| Field | Description |
+|---|---|
+| `stroke` | Stroke color. |
+| `fill` | Fill color for polygons. |
+| `fillOpacity` | Polygon fill opacity. |
+| `weight` | Stroke width in pixels. |
+| `opacity` | Stroke opacity. |
+
+For polygons, `color` should apply to both stroke and fill unless overridden by
+`style.stroke` or `style.fill`.
+
+## 7. Label and Tooltip Semantics
+
+`label` is a short identity field. It should usually be one column/property and
+should answer "what is this feature?".
+
+Use `label` for:
+
+- marker titles
+- accessibility names
+- default feature names
+- future always-visible text labels, if added later
+
+`tooltip` is the feature detail content. In V1, the same `tooltip` content is
+used for both hover and click interactions. Do not add a separate `popup` field
+until the UI needs different hover content and click-detail content.
+
+Tooltip forms:
+
+```json
+"tooltip": "name"
+```
+
+```json
+"tooltip": ["name", "status", "value"]
+```
+
+```json
+"tooltip": true
+```
+
+Rules:
+
+- A string displays one field.
+- A list displays a compact key-value table in the listed order.
+- `true` displays all safe scalar fields, capped to a small count.
+- If `tooltip` is absent, `label` is used as the fallback detail text when
+  present.
+
+Label and tooltip text must be HTML-escaped by the renderer.
+
+## 8. Coordinate and CRS Requirements
+
+GeoJSON layers must be WGS84 longitude/latitude GeoJSON.
+
+- GeoJSON coordinates are `[lng, lat]`.
+- Latitude must be in `[-90, 90]`.
+- Longitude must be in `[-180, 180]`.
+- If source geometry uses another CRS, the query should transform it before
+  calling `render_map`.
+
+The output pane should not reproject geometry in JavaScript. Reprojection
+belongs in SQL or in an explicit preprocessing layer, because the database
+usually knows the source CRS and has mature spatial functions.
+
+## 9. Validation Rules
+
+The tool should fail fast when:
+
+- no query result exists
+- `layers` is missing or empty
+- a layer has an unsupported `type`
+- a referenced column does not exist
+- point coordinates are not numeric
+- all point rows are invalid or outside valid ranges
+- GeoJSON is invalid JSON
+- GeoJSON has an unsupported geometry type
+- GeoJSON coordinates are obviously not WGS84 lon/lat
+
+The tool may skip individual invalid rows when at least one valid feature
+remains. The payload should include skipped-row metadata so the pane can show a
+small non-blocking warning later.
+
+Suggested metadata:
+
+```json
+{
+  "skippedRows": 3,
+  "skipReasons": {
+    "invalid_coordinate": 2,
+    "invalid_geojson": 1
+  }
+}
+```
+
+## 10. V1 Implementation Scope
+
+Implement the smallest useful contract first:
+
+```json
+{
+  "layers": [
+    {
+      "type": "points",
+      "lat": "lat",
+      "lng": "lng",
+      "label": "name",
+      "tooltip": ["name", "status"]
+    }
+  ]
+}
+```
+
+```json
+{
+  "layers": [
+    {
+      "type": "geojson",
+      "geojson": "geom_geojson",
+      "tooltip": ["name", "value"]
+    }
+  ]
+}
+```
+
+V1 should support:
+
+- one or more layers
+- points from `lat`/`lng`
+- GeoJSON from a column or inline object
+- fixed pin markers for points
+- fixed vector style for GeoJSON
+- labels and key-value tooltips
+- fit-to-data viewport
+- fixed OpenStreetMap basemap
+
+Defer:
+
+- clustering
+- heatmaps
+- time sliders
+- table-map linked selection
+- WKT/WKB parsing
+- custom CRS/reprojection
+- complex legends
+- map exports beyond the existing pane/export path
+
+## 11. Examples
+
+### Store Locations
+
+```json
+{
+  "title": "Store locations",
+  "layers": [
+    {
+      "type": "points",
+      "lat": "latitude",
+      "lng": "longitude",
+      "label": "store_name",
+      "tooltip": ["store_name", "city", "revenue"]
+    }
+  ]
+}
+```
+
+### Regions From GeoJSON
+
+```json
+{
+  "title": "Revenue by region",
+  "layers": [
+    {
+      "type": "geojson",
+      "geojson": "region_geojson",
+      "label": "region",
+      "tooltip": ["region", "revenue"],
+      "color": {
+        "field": "tier",
+        "domain": ["low", "medium", "high"],
+        "range": ["#3eb489", "#f59e0b", "#ef4444"]
+      },
+      "style": {
+        "fillOpacity": 0.3,
+        "weight": 1.5
+      }
+    }
+  ]
+}
+```
+
+### Boundaries Plus Points
+
+```json
+{
+  "title": "Facilities by service area",
+  "layers": [
+    {
+      "type": "geojson",
+      "geojson": "service_area_geojson",
+      "label": "service_area",
+      "style": {
+        "stroke": "#3eb489",
+        "fill": "#3eb489",
+        "fillOpacity": 0.18,
+        "weight": 2
+      }
+    },
+    {
+      "type": "points",
+      "lat": "facility_lat",
+      "lng": "facility_lng",
+      "label": "facility_name",
+      "tooltip": ["facility_name", "service_area", "status"]
+    }
+  ]
+}
+```
+
+## 12. Agent Guidance
+
+Agents should:
+
+- Use `points` when the result has latitude and longitude columns.
+- Use `geojson` when the result already contains map geometry.
+- Convert database geometry to WGS84 GeoJSON in SQL before calling
+  `render_map`.
+- Prefer simple map specs with labels and tooltips over complex styling.
+- Use `render_chart` for ordinary statistical charts; use `render_map` only when
+  spatial position or geometry is essential to the answer.

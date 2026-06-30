@@ -173,7 +173,7 @@ def test_record_card_writes_map_view_payload(tmp_path: Path) -> None:
         SimpleNamespace(
             df=df,
             chart_spec=None,
-            map_spec={"lat": "latitude", "lng": "longitude", "label": "city"},
+            map_spec={"layers": [{"type": "points", "lat": "latitude", "lng": "longitude", "label": "city"}]},
             query=None,
             label="locations",
             record_id="r1",
@@ -186,12 +186,80 @@ def test_record_card_writes_map_view_payload(tmp_path: Path) -> None:
     assert card["views"] == ["map", "data"]
     payload = json.loads((tmp_path / f"{card['id']}.data.json").read_text())
     assert payload["map"]["provider"] == "leaflet"
-    assert payload["map"]["lat"] == "c1"
-    assert payload["map"]["lng"] == "c2"
-    assert payload["map"]["label"] == "c0"
-    assert payload["map"]["tileUrl"] == "https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+    assert payload["map"]["layers"] == [
+        {"type": "points", "lat": "c1", "lng": "c2", "label": "c0"},
+    ]
+    assert "tileUrl" not in payload["map"]
+    assert "attribution" not in payload["map"]
     assert payload["dataset"]["rows"][0]["c1"] == 37.7749
     assert payload["dataset"]["rows"][0]["c2"] == -122.4194
+
+
+def test_record_card_writes_layered_map_view_payload(tmp_path: Path) -> None:
+    df = pd.DataFrame(
+        {
+            "city": ["San Francisco"],
+            "latitude": [37.7749],
+            "longitude": [-122.4194],
+            "region": ["Bay Area"],
+            "boundary_geojson": [
+                {
+                    "type": "Feature",
+                    "geometry": {
+                        "type": "Polygon",
+                        "coordinates": [
+                            [
+                                [-122.52, 37.70],
+                                [-122.35, 37.70],
+                                [-122.35, 37.84],
+                                [-122.52, 37.84],
+                                [-122.52, 37.70],
+                            ]
+                        ],
+                    },
+                    "properties": {"kind": "region"},
+                }
+            ],
+        }
+    )
+    card = render_record_data(
+        SimpleNamespace(
+            df=df,
+            chart_spec=None,
+            map_spec={
+                "layers": [
+                    {
+                        "type": "geojson",
+                        "geojson": "boundary_geojson",
+                        "label": "region",
+                        "tooltip": ["region"],
+                        "style": {"fillOpacity": 0.2},
+                    },
+                    {"type": "points", "lat": "latitude", "lng": "longitude", "label": "city", "tooltip": ["city"]},
+                ]
+            },
+            query=None,
+            label="locations",
+            record_id="r1",
+            query_lexer="sql",
+        ),
+        tmp_path,
+    )
+
+    assert card is not None
+    assert card["views"] == ["map", "data"]
+    payload = json.loads((tmp_path / f"{card['id']}.data.json").read_text())
+    assert payload["map"]["layers"][0]["type"] == "geojson"
+    assert payload["map"]["layers"][0]["geojson"] == "c4"
+    assert payload["map"]["layers"][0]["label"] == "c3"
+    assert payload["map"]["layers"][0]["tooltip"] == ["c3"]
+    assert payload["map"]["layers"][1] == {
+        "type": "points",
+        "lat": "c1",
+        "lng": "c2",
+        "label": "c0",
+        "tooltip": ["c0"],
+    }
 
 
 def test_manual_table_send_includes_data_view_meta(tmp_path: Path) -> None:
@@ -255,7 +323,16 @@ def test_pane_map_view_is_leaflet_based() -> None:
     assert "entry.handle.afterVisible" in _PANE_HTML
     assert "renderMap: renderMap" in renderer
     assert "L.map(mapNode" in renderer
-    assert "L.tileLayer(String(mapData.tileUrl" in renderer
+    assert "L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png'" in renderer
+    assert "function mapLayers(mapData)" in renderer
+    assert "if (mapData.lat && mapData.lng)" not in renderer
+    assert "mapData.center" not in renderer
+    assert "mapData.zoom" not in renderer
+    assert "mapData.tileUrl" not in renderer
+    assert "mapData.attribution" not in renderer
+    assert "mapData.maxZoom" not in renderer
+    assert "L.geoJSON(geojson" in renderer
+    assert "bindTooltip" in renderer
     assert "function mapMarkerIcon()" in renderer
     assert "iconSize: [25, 41]" in renderer
     assert "iconAnchor: [12, 41]" in renderer

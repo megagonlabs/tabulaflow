@@ -159,5 +159,7 @@ class TestWithConnector:
         await h.add("db", "sql", _make_pred_query())
         assert "Q1" in h._spilled
         h.attach_chart("Q1", {"mark": "bar"})
+        h.attach_map("Q1", {"layers": [{"type": "points", "lat": "lat", "lng": "lng"}]})
         assert "Q1" in h._spilled
         assert h._records["Q1"].vegalite_spec == {"mark": "bar"}
+        assert h._records["Q1"].map_spec == {"layers": [{"type": "points", "lat": "lat", "lng": "lng"}]}

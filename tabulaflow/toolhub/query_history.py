@@ -28,6 +28,7 @@ class QueryRecord:
     db_alias: str
     pred_query: PredQuery
     vegalite_spec: dict[str, Any] | None = None
+    map_spec: dict[str, Any] | None = None
 
 
 class QueryHistory:
@@ -98,6 +99,14 @@ class QueryHistory:
         except KeyError:
             raise KeyError(f"No query with id {record_id}") from None
         record.vegalite_spec = vegalite_spec
+
+    def attach_map(self, record_id: str, map_spec: dict[str, Any]) -> None:
+        """Attach a map spec to an existing query record."""
+        try:
+            record = self._records[record_id]
+        except KeyError:
+            raise KeyError(f"No query with id {record_id}") from None
+        record.map_spec = map_spec
 
     # -- spill / hydrate internals --
 

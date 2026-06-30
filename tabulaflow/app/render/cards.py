@@ -26,6 +26,7 @@ if TYPE_CHECKING:
 class ResultRecordLike(Protocol):
     df: "pd.DataFrame | None"
     chart_spec: dict[str, object] | None
+    map_spec: dict[str, object] | None
     query: str | None
     label: str | None
     query_lexer: str

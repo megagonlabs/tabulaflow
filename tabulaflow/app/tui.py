@@ -571,6 +571,7 @@ class TabulaflowApp(App[None]):
             SimpleNamespace(
                 df=record.df,
                 chart_spec=record.chart_spec,
+                map_spec=record.map_spec,
                 query=record.query,
                 label=record.label,
                 query_lexer=record.query_lexer,

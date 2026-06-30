@@ -297,13 +297,135 @@
     });
   }
 
+  function mapLayers(mapData) {
+    if (Array.isArray(mapData.layers)) return mapData.layers;
+    return [];
+  }
+
+  function fieldLabels(recordData) {
+    var out = {};
+    var cols = (recordData.table && recordData.table.columns) || [];
+    cols.forEach(function (col) {
+      if (col && col.field) out[String(col.field)] = String(col.title || col.field);
+    });
+    return out;
+  }
+
+  function safeScalar(value) {
+    return value == null || ['string', 'number', 'boolean'].indexOf(typeof value) !== -1;
+  }
+
+  function tooltipFields(tooltip, row) {
+    if (tooltip === true) {
+      return Object.keys(row || {}).filter(function (key) { return safeScalar(row[key]); }).slice(0, 8);
+    }
+    if (Array.isArray(tooltip)) return tooltip.filter(function (field) { return typeof field === 'string' && field; });
+    if (typeof tooltip === 'string' && tooltip) return [tooltip];
+    return [];
+  }
+
+  function detailHtml(row, tooltip, labels, fallback) {
+    var fields = tooltipFields(tooltip, row);
+    if (!fields.length) return fallback == null ? '' : '<div class="tf-map-popup">' + escapeHtml(fallback) + '</div>';
+    var html = '<div class="tf-map-popup"><table>';
+    fields.forEach(function (field) {
+      var value = fieldValue(row, field);
+      if (value == null || !safeScalar(value)) return;
+      html += '<tr><th>' + escapeHtml(labels[field] || field) + '</th><td>' + escapeHtml(value) + '</td></tr>';
+    });
+    html += '</table></div>';
+    return html.indexOf('<tr>') === -1
+      ? (fallback == null ? '' : '<div class="tf-map-popup">' + escapeHtml(fallback) + '</div>')
+      : html;
+  }
+
+  function encodingField(encoding) {
+    return encoding && typeof encoding === 'object' && !Array.isArray(encoding) && typeof encoding.field === 'string'
+      ? encoding.field : '';
+  }
+
+  var mapPalette = ['#3eb489', '#60a5fa', '#f59e0b', '#ef4444', '#a78bfa', '#f472b6', '#22d3ee', '#84cc16'];
+
+  function colorFor(encoding, row, fallback) {
+    if (typeof encoding === 'string' && encoding) return encoding;
+    if (!encoding || typeof encoding !== 'object' || Array.isArray(encoding)) return fallback;
+    var field = encodingField(encoding);
+    if (!field) return fallback;
+    var value = fieldValue(row, field);
+    if (Array.isArray(encoding.domain) && Array.isArray(encoding.range)) {
+      var index = encoding.domain.map(String).indexOf(String(value));
+      if (index >= 0 && encoding.range[index]) return String(encoding.range[index]);
+    }
+    var text = String(value == null ? '' : value);
+    var hash = 0;
+    for (var i = 0; i < text.length; i++) hash = ((hash * 31) + text.charCodeAt(i)) >>> 0;
+    return mapPalette[hash % mapPalette.length];
+  }
+
+  function sizeFor(encoding, row, rows, fallback) {
+    if (typeof encoding === 'number' && Number.isFinite(encoding)) return encoding;
+    if (!encoding || typeof encoding !== 'object' || Array.isArray(encoding)) return fallback;
+    var field = encodingField(encoding);
+    if (!field) return fallback;
+    var value = numberValue(fieldValue(row, field));
+    if (value == null) return fallback;
+    var range = Array.isArray(encoding.range) ? encoding.range : [5, 18];
+    var minSize = numberOr(range[0], 5);
+    var maxSize = numberOr(range[1], 18);
+    var values = rows.map(function (r) { return numberValue(fieldValue(r, field)); })
+      .filter(function (v) { return v != null; });
+    if (!values.length) return fallback;
+    var min = Math.min.apply(Math, values);
+    var max = Math.max.apply(Math, values);
+    if (max === min) return (minSize + maxSize) / 2;
+    return minSize + ((value - min) / (max - min)) * (maxSize - minSize);
+  }
+
+  function parseGeoJson(value) {
+    if (!value) return null;
+    if (typeof value === 'string') {
+      try { return JSON.parse(value); } catch (e) { return null; }
+    }
+    if (typeof value === 'object') return clone(value);
+    return null;
+  }
+
+  function mergeFeatureProperties(geojson, row) {
+    if (!geojson || typeof geojson !== 'object') return null;
+    if (geojson.type === 'Feature') {
+      geojson.properties = Object.assign({}, row || {}, geojson.properties || {});
+      return geojson;
+    }
+    if (geojson.type === 'FeatureCollection' && Array.isArray(geojson.features)) {
+      geojson.features = geojson.features.map(function (feature) {
+        return mergeFeatureProperties(feature, row);
+      }).filter(Boolean);
+      return geojson;
+    }
+    if (geojson.type) {
+      return { type: 'Feature', geometry: geojson, properties: Object.assign({}, row || {}) };
+    }
+    return null;
+  }
+
+  function leafletStyle(layer, feature, fallback) {
+    var row = feature && feature.properties ? feature.properties : {};
+    var style = layer.style && typeof layer.style === 'object' ? layer.style : {};
+    var color = colorFor(layer.color, row, style.stroke || fallback || '#3eb489');
+    return {
+      color: style.stroke || color,
+      fillColor: style.fill || color,
+      fillOpacity: numberOr(style.fillOpacity, 0.25),
+      opacity: numberOr(style.opacity, 0.95),
+      weight: numberOr(style.weight, 2)
+    };
+  }
+
   function renderMap(container, recordData) {
     var mapData = recordData.map || {};
     var rows = (recordData.dataset && recordData.dataset.rows) || [];
-    var latField = String(mapData.lat || '');
-    var lngField = String(mapData.lng || '');
-    var labelField = String(mapData.label || '');
-    var tooltipField = String(mapData.tooltip || labelField || '');
+    var layers = mapLayers(mapData);
+    var labels = fieldLabels(recordData);
     container.className = 'tf-view tf-map-view';
     container.innerHTML = '<div class="tf-map-stage"><div class="tf-map"></div><div class="tf-map-empty"></div></div>';
     var mapNode = container.querySelector('.tf-map');
@@ -313,50 +435,116 @@
       emptyNode.classList.add('show');
       return { destroy: function () { container.innerHTML = ''; } };
     }
-    if (!latField || !lngField) {
-      emptyNode.textContent = 'Map needs latitude and longitude fields.';
+    if (!layers.length) {
+      emptyNode.textContent = 'Map needs at least one layer.';
       emptyNode.classList.add('show');
       return { destroy: function () { container.innerHTML = ''; } };
     }
 
     var map = L.map(mapNode, { zoomControl: true, attributionControl: true });
-    L.tileLayer(String(mapData.tileUrl || 'https://tile.openstreetmap.org/{z}/{x}/{y}.png'), {
-      maxZoom: numberOr(mapData.maxZoom, 19),
-      attribution: escapeHtml(mapData.attribution || '© OpenStreetMap contributors')
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '© OpenStreetMap contributors'
     }).addTo(map);
 
     var bounds = [];
     var markerIcon = mapMarkerIcon();
-    rows.forEach(function (row) {
-      var lat = numberValue(fieldValue(row, latField));
-      var lng = numberValue(fieldValue(row, lngField));
-      if (lat == null || lng == null) return;
-      if (lat < -90 || lat > 90 || lng < -180 || lng > 180) return;
-      var label = fieldValue(row, labelField);
-      var tooltip = fieldValue(row, tooltipField);
-      var text = label != null ? label : tooltip;
-      var marker = L.marker([lat, lng], { icon: markerIcon, title: text == null ? '' : String(text) }).addTo(map);
-      if (label != null || tooltip != null) {
-        marker.bindPopup('<div class="tf-map-popup">' + escapeHtml(text) + '</div>');
+    layers.forEach(function (layer) {
+      if (!layer || layer.type === 'points') {
+        var latField = String(layer.lat || '');
+        var lngField = String(layer.lng || '');
+        var labelField = String(layer.label || '');
+        if (!latField || !lngField) return;
+        var markerType = layer.marker && layer.marker.type === 'circle' ? 'circle' : 'pin';
+        rows.forEach(function (row) {
+          var lat = numberValue(fieldValue(row, latField));
+          var lng = numberValue(fieldValue(row, lngField));
+          if (lat == null || lng == null) return;
+          if (lat < -90 || lat > 90 || lng < -180 || lng > 180) return;
+          var label = fieldValue(row, labelField);
+          var tooltip = layer.tooltip || labelField;
+          var popup = detailHtml(row, tooltip, labels, label);
+          var title = label == null ? '' : String(label);
+          var marker;
+          if (markerType === 'circle') {
+            marker = L.circleMarker([lat, lng], {
+              radius: sizeFor(layer.size, row, rows, 6),
+              color: colorFor(layer.color, row, '#3eb489'),
+              weight: 1,
+              fillColor: colorFor(layer.color, row, '#3eb489'),
+              fillOpacity: 0.82
+            }).addTo(map);
+          } else {
+            marker = L.marker([lat, lng], { icon: markerIcon, title: title }).addTo(map);
+          }
+          if (popup) {
+            marker.bindTooltip(title || popup.replace(/<[^>]+>/g, ''), { direction: 'top', opacity: 0.88 });
+            marker.bindPopup(popup);
+          }
+          bounds.push([lat, lng]);
+        });
+        return;
       }
-      bounds.push([lat, lng]);
+      if (layer.type === 'geojson') {
+        var geojsonItems = [];
+        if (typeof layer.geojson === 'string') {
+          rows.forEach(function (row) {
+            var parsed = mergeFeatureProperties(parseGeoJson(fieldValue(row, layer.geojson)), row);
+            if (parsed) geojsonItems.push(parsed);
+          });
+        } else {
+          var parsedInline = mergeFeatureProperties(parseGeoJson(layer.geojson), {});
+          if (parsedInline) geojsonItems.push(parsedInline);
+        }
+        geojsonItems.forEach(function (geojson) {
+          var geoLayer = L.geoJSON(geojson, {
+            style: function (feature) { return leafletStyle(layer, feature, '#3eb489'); },
+            pointToLayer: function (feature, latlng) {
+              var style = leafletStyle(layer, feature, '#3eb489');
+              style.radius = numberOr(layer.size, 6);
+              return L.circleMarker(latlng, style);
+            },
+            onEachFeature: function (feature, leafletLayer) {
+              var props = feature && feature.properties ? feature.properties : {};
+              var label = fieldValue(props, layer.label);
+              var popup = detailHtml(props, layer.tooltip || layer.label, labels, label);
+              if (popup) {
+                leafletLayer.bindTooltip(label == null ? popup.replace(/<[^>]+>/g, '') : String(label), {
+                  direction: 'top',
+                  opacity: 0.88
+                });
+                leafletLayer.bindPopup(popup);
+              }
+            }
+          }).addTo(map);
+          try {
+            var layerBounds = geoLayer.getBounds();
+            if (layerBounds && layerBounds.isValid()) bounds.push(layerBounds);
+          } catch (e) {}
+        });
+      }
     });
 
     function syncView() {
       map.invalidateSize();
-      if (bounds.length > 1) {
-        map.fitBounds(bounds, { padding: [24, 24], maxZoom: numberOr(mapData.zoom, 14) });
+      var view = mapData.view && typeof mapData.view === 'object' ? mapData.view : {};
+      var fit = view.fit !== false;
+      if (fit && bounds.length > 1) {
+        var aggregateBounds = L.latLngBounds([]);
+        bounds.forEach(function (item) { aggregateBounds.extend(item); });
+        map.fitBounds(aggregateBounds, { padding: [24, 24], maxZoom: numberOr(view.maxZoom, 14) });
         return;
       }
-      if (bounds.length === 1) {
-        map.setView(bounds[0], numberOr(mapData.zoom, 12));
+      if (fit && bounds.length === 1) {
+        if (Array.isArray(bounds[0])) map.setView(bounds[0], numberOr(view.zoom, 12));
+        else map.fitBounds(bounds[0], { padding: [24, 24], maxZoom: numberOr(view.maxZoom, 14) });
         return;
       }
-      var center = Array.isArray(mapData.center) ? mapData.center : null;
+      var center = Array.isArray(view.center) ? view.center : null;
       var centerLat = center ? numberValue(center[0]) : null;
       var centerLng = center ? numberValue(center[1]) : null;
       if (centerLat != null && centerLng != null) {
-        map.setView([centerLat, centerLng], numberOr(mapData.zoom, 10));
+        map.setView([centerLat, centerLng], numberOr(view.zoom, 10));
         return;
       }
       map.setView([0, 0], 2);

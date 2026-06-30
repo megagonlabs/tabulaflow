@@ -67,6 +67,10 @@ class TestVerbLedLabels:
         spec = '{"mark": "bar", "title": "Revenue"}'
         assert summarize_tool_args("render_chart", {"vegalite_spec": spec}) == "Chart Revenue"
 
+    def test_map(self) -> None:
+        spec = {"title": "Store locations", "layers": [{"type": "points", "lat": "lat", "lng": "lng"}]}
+        assert summarize_tool_args("render_map", {"map_spec": spec}) == "Map Store locations"
+
     def test_unknown_tool_falls_back_to_titlecased_name(self) -> None:
         # single arg -> bare value; multiple -> key=value pairs (generic fallback)
         assert summarize_tool_args("some_new_tool", {"foo": "bar"}) == "Some new tool bar"

@@ -577,6 +577,21 @@ def summarize_tool_args(name: str, args: dict[str, object]) -> str:
         except (json.JSONDecodeError, TypeError):
             target = "chart"
         return f"Chart {target}".rstrip()
+    if name == "render_map":
+        spec_value = args.get("map_spec", {})
+        try:
+            spec = json.loads(spec_value) if isinstance(spec_value, str) else spec_value
+            title = spec.get("title", "") if isinstance(spec, dict) else ""
+            layers = spec.get("layers", []) if isinstance(spec, dict) else []
+            if title:
+                target = str(title)
+            elif isinstance(layers, list) and len(layers) == 1 and isinstance(layers[0], dict):
+                target = str(layers[0].get("type") or "map")
+            else:
+                target = "map"
+        except (json.JSONDecodeError, TypeError):
+            target = "map"
+        return f"Map {target}".rstrip()
     if name == "transfer_record":
         record_id = str(args.get("record_id", ""))
         target_alias = str(args.get("target_alias", ""))

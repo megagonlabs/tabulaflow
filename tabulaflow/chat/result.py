@@ -26,6 +26,7 @@ class ChatResultRecord(BaseModel):
     query: str | None
     df: pd.DataFrame | None
     chart_spec: dict[str, Any] | None
+    map_spec: dict[str, Any] | None = None
     query_lexer: str = "sql"
 
     @field_serializer("df", when_used="always")
