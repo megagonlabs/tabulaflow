@@ -343,10 +343,11 @@ June 29
   - [x] Fix "too many open files" error
   - [x] Fix huggingface already imported warning
   - [x] Debug "analyze root directory" (mdc) -> cause is command itself is slow
-- Output pane refactor
+  - [x] Fix output pane freezed caused by tabulator
+- [x] Output pane refactor
 
 
-- [ ] Debug manual push + "analyze" very slow
+
 
 
 - [ ] Remote server support
