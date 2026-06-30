@@ -57,6 +57,9 @@ def _pane_css_vars() -> str:
         PAGE_BG,
         ROW_HOVER,
         ROW_STRIPE,
+        SCROLLBAR_THUMB,
+        SCROLLBAR_THUMB_HOVER,
+        SCROLLBAR_TRACK,
         TEXT,
         TEXT_DIM,
         TEXT_MUTED,
@@ -74,6 +77,9 @@ def _pane_css_vars() -> str:
         f"--text: {TEXT};"
         f"--text-muted: {TEXT_MUTED};"
         f"--text-dim: {TEXT_DIM};"
+        f"--scrollbar-track: {SCROLLBAR_TRACK};"
+        f"--scrollbar-thumb: {SCROLLBAR_THUMB};"
+        f"--scrollbar-thumb-hover: {SCROLLBAR_THUMB_HOVER};"
         "--panel: #1f2532;"
         "--rail-bg: #131720;"
         "}"

@@ -211,6 +211,15 @@ def test_pane_chart_shell_matches_vega_background() -> None:
     assert ".tf-chart-view,\n.tf-vis-stage { background: var(--card); }" in _PANE_HTML
 
 
+def test_pane_table_scrollbars_use_dark_theme() -> None:
+    assert "--scrollbar-track: #1a1d23;" in _PANE_HTML
+    assert "--scrollbar-thumb: #3a4049;" in _PANE_HTML
+    assert "* { scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);" in _PANE_HTML
+    assert ".tabulator-tableholder {\n    overscroll-behavior: none;" in _PANE_HTML
+    assert "scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);" in _PANE_HTML
+    assert "::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb);" in _PANE_HTML
+
+
 def test_view_record_in_pane_marks_turn_as_manual(tmp_path: Path) -> None:
     pushed: list[PaneTurn] = []
 

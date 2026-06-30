@@ -1,6 +1,12 @@
 html, body { height: 100%; }
 body { margin: 0; background: var(--bg); color: var(--text); display: flex; flex-direction: column;
        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+* { scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track); scrollbar-width: thin; }
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: var(--scrollbar-track); }
+::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 5px; border: 2px solid var(--scrollbar-track); }
+::-webkit-scrollbar-thumb:hover { background: var(--scrollbar-thumb-hover); }
+::-webkit-scrollbar-corner { background: var(--scrollbar-track); }
 #banner { border-bottom: 1px solid var(--border); background: var(--bg); flex: 0 0 auto; }
 #banner-inner { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; }
 #logo { color: var(--accent); font: 700 16px ui-monospace, "SF Mono", Menlo, monospace;
@@ -138,7 +144,18 @@ body { margin: 0; background: var(--bg); color: var(--text); display: flex; flex
 }
 .tf-table-view .tabulator,
 .tf-table-view .tabulator .tabulator-tableholder { width: 100% !important; }
-.tf-table-view .tabulator .tabulator-tableholder { overscroll-behavior: none; }
+.tf-table-view .tabulator .tabulator-tableholder {
+    overscroll-behavior: none;
+    scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+    scrollbar-width: thin;
+}
+.tf-table-view .tabulator .tabulator-tableholder::-webkit-scrollbar { width: 10px; height: 10px; }
+.tf-table-view .tabulator .tabulator-tableholder::-webkit-scrollbar-track { background: var(--scrollbar-track); }
+.tf-table-view .tabulator .tabulator-tableholder::-webkit-scrollbar-thumb {
+    background: var(--scrollbar-thumb); border-radius: 5px; border: 2px solid var(--scrollbar-track);
+}
+.tf-table-view .tabulator .tabulator-tableholder::-webkit-scrollbar-thumb:hover { background: var(--scrollbar-thumb-hover); }
+.tf-table-view .tabulator .tabulator-tableholder::-webkit-scrollbar-corner { background: var(--scrollbar-track); }
 .tf-table-view .tabulator .tabulator-header { background-color: var(--card) !important; border-bottom: 1px solid #3a4352; }
 .tf-table-view .tabulator .tabulator-header .tabulator-col {
     background-color: transparent !important;
