@@ -255,17 +255,32 @@ def test_pane_view_switches_keep_cached_nodes_mounted() -> None:
     assert "function getCachedRecordData(record)" in _PANE_HTML
     assert "function scheduleIdle(fn)" in _PANE_HTML
     assert "var navState = {};" in _PANE_HTML
+    assert "var suppressScrollMemory = false;" in _PANE_HTML
     assert "function getTurnState(turn, index)" in _PANE_HTML
+    assert "activeRecord: 0, views: {}, scrollTop: 0" in _PANE_HTML
+    assert "state.viewScroll" not in _PANE_HTML
+    assert "viewScrollKey" not in _PANE_HTML
     assert "function savedViewKind(state, record, recordIndex, views)" in _PANE_HTML
     assert "function rememberViewKind(state, record, recordIndex, kind)" in _PANE_HTML
+    assert "function rememberTurnScroll(state)" in _PANE_HTML
+    assert "function restoreTurnScroll(state)" in _PANE_HTML
+    assert "function rememberActiveContentScroll()" in _PANE_HTML
+    assert "function watchContentScroll()" in _PANE_HTML
+    assert "if (suppressScrollMemory) return;" in _PANE_HTML
+    assert "scroller.addEventListener('scroll', rememberActiveContentScroll, { passive: true });" in _PANE_HTML
+    assert "watchContentScroll();" in _PANE_HTML
     assert "function viewOptionForKind(switcher, kind)" in _PANE_HTML
     assert "opt.dataset.kind = kind;" in _PANE_HTML
-    assert "showView(activeKind, viewOptionForKind(switcher, activeKind));" in _PANE_HTML
+    assert "showView(activeKind, viewOptionForKind(switcher, activeKind), true);" in _PANE_HTML
     assert "state.activeRecord = i;" in _PANE_HTML
+    assert "node.toggleAttribute('inert', !active);" in _PANE_HTML
+    assert "node.setAttribute('aria-hidden', active ? 'false' : 'true');" in _PANE_HTML
     assert "function prewarmDataView(record, views, activeKind, shell)" in _PANE_HTML
     assert "function hideViewNode(node)" in _PANE_HTML
+    assert "function blurHiddenFocus(node)" in _PANE_HTML
     assert "function syncActiveShellView(shell)" in _PANE_HTML
     assert "function renderHiddenDataView(entry, data)" in _PANE_HTML
+    assert "node.setAttribute('inert', '');" in _PANE_HTML
     assert "if (activeKind === 'data' || views.indexOf('data') === -1) return;" in _PANE_HTML
     assert "if (!shell.isConnected || viewCache[key]) return;" in _PANE_HTML
     assert "if (entry.node.parentNode !== shell) shell.appendChild(entry.node);" in _PANE_HTML

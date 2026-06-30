@@ -150,6 +150,7 @@ var viewCache = {};
 var navState = {};
 var lru = [];
 var CACHE_LIMIT = 24;
+var suppressScrollMemory = false;
 
 function turnStateKey(turn, index) {
   return String(turn.id == null ? index : turn.id);
@@ -157,7 +158,7 @@ function turnStateKey(turn, index) {
 
 function getTurnState(turn, index) {
   var key = turnStateKey(turn, index);
-  if (!navState[key]) navState[key] = { activeRecord: 0, views: {} };
+  if (!navState[key]) navState[key] = { activeRecord: 0, views: {}, scrollTop: 0 };
   return navState[key];
 }
 
@@ -173,6 +174,44 @@ function savedViewKind(state, record, recordIndex, views) {
 
 function rememberViewKind(state, record, recordIndex, kind) {
   state.views[recordStateKey(record, recordIndex)] = kind;
+}
+
+function contentScroller() {
+  return document.getElementById('content');
+}
+
+function rememberTurnScroll(state) {
+  var scroller = contentScroller();
+  if (!state || !scroller) return;
+  state.scrollTop = scroller.scrollTop;
+}
+
+function restoreTurnScroll(state) {
+  var scroller = contentScroller();
+  if (!state || !scroller) return;
+  var scrollTop = state.scrollTop || 0;
+  suppressScrollMemory = true;
+  requestAnimationFrame(function () {
+    scroller.scrollTop = scrollTop;
+    requestAnimationFrame(function () {
+      scroller.scrollTop = scrollTop;
+      requestAnimationFrame(function () { suppressScrollMemory = false; });
+    });
+  });
+}
+
+function rememberActiveContentScroll() {
+  if (suppressScrollMemory) return;
+  if (activeTurn < 0 || activeTurn >= turns.length) return;
+  var turn = turns[activeTurn];
+  var state = getTurnState(turn, activeTurn);
+  rememberTurnScroll(state);
+}
+
+function watchContentScroll() {
+  var scroller = contentScroller();
+  if (!scroller) return;
+  scroller.addEventListener('scroll', rememberActiveContentScroll, { passive: true });
 }
 
 function scheduleIdle(fn) {
@@ -229,12 +268,21 @@ function setActiveShellView(shell, activeNode) {
     var active = node === activeNode;
     node.classList.toggle('view-active', active);
     node.classList.toggle('view-hidden', !active);
+    node.toggleAttribute('inert', !active);
+    node.setAttribute('aria-hidden', active ? 'false' : 'true');
   });
 }
 
 function hideViewNode(node) {
   node.classList.remove('view-active');
   node.classList.add('view-hidden');
+  node.setAttribute('inert', '');
+  node.setAttribute('aria-hidden', 'true');
+}
+
+function blurHiddenFocus(node) {
+  var active = document.activeElement;
+  if (active && node.contains(active) && active.blur) active.blur();
 }
 
 function syncActiveShellView(shell) {
@@ -264,8 +312,10 @@ function renderLoadedView(entry, kind, data, meta) {
 }
 
 function renderHiddenDataView(entry, data) {
+  hideViewNode(entry.node);
   renderLoadedView(entry, 'data', data, { textContent: '' });
   hideViewNode(entry.node);
+  blurHiddenFocus(entry.node);
 }
 
 function prewarmDataView(record, views, activeKind, shell) {
@@ -344,7 +394,7 @@ function buildRecord(record, opts) {
   var meta = el('div', 'viewmeta');
   var switcher = null;
 
-  function showView(kind, opt) {
+  function showView(kind, opt, initial) {
     activeKind = kind;
     if (state) rememberViewKind(state, record, recordIndex, kind);
     if (switcher) {
@@ -356,6 +406,7 @@ function buildRecord(record, opts) {
     }
     mountView(record, kind, shell, meta);
     prewarmDataView(record, views, kind, shell);
+    if (!initial && state) restoreTurnScroll(state);
   }
 
   if (opts && opts.records) {
@@ -374,7 +425,7 @@ function buildRecord(record, opts) {
   if (bar.children.length) pane.appendChild(bar);
   pane.appendChild(shell);
   pane.appendChild(meta);
-  if (views.length) showView(activeKind, viewOptionForKind(switcher, activeKind));
+  if (views.length) showView(activeKind, viewOptionForKind(switcher, activeKind), true);
   requestAnimationFrame(function () { syncRecordHeader(bar); });
   return pane;
 }
@@ -408,6 +459,7 @@ function renderTurn(turn, index) {
         activeRecord = i;
         state.activeRecord = i;
         renderActiveRecord();
+        restoreTurnScroll(state);
       }
     }));
   }
@@ -426,6 +478,7 @@ function selectTurn(i) {
   inner.classList.toggle('manual-preview-content', isManualPreview(turns[i]));
   inner.appendChild(renderTurn(turns[i], i));
   if (!isManualPreview(turns[i])) inner.appendChild(el('div', 'scroll-pad'));
+  restoreTurnScroll(getTurnState(turns[i], i));
 }
 
 function appendTurn(turn) {
@@ -449,3 +502,4 @@ function startEvents() {
 }
 
 startEvents();
+watchContentScroll();
