@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import contextlib
+import hashlib
 import json
 import socket
 import urllib.error
@@ -193,11 +194,16 @@ def test_pane_omits_text_only_turn_meta() -> None:
 
 
 def test_pane_table_renderer_does_not_max_height_short_tables() -> None:
-    renderer = files("tabulaflow.app.assets.pane").joinpath("pane-render.js").read_text(encoding="utf-8")
+    renderer_path = files("tabulaflow.app.assets.pane").joinpath("pane-render.js")
+    renderer = renderer_path.read_text(encoding="utf-8")
+    renderer_version = hashlib.sha256(renderer_path.read_bytes()).hexdigest()[:12]
     assert "maxHeight: viewportCap" not in renderer
     assert "estimatedTableHeight > viewportCap" in renderer
     assert "opts.height = viewportCap" in renderer
     assert ".turnview.manual-preview { min-height: calc(100vh - 82px);" in _PANE_HTML
+    assert f"/assets/pane/pane-render.js?v={renderer_version}" in _PANE_HTML
+    assert "__PANE_RENDER_VERSION__" not in _PANE_HTML
+    assert "20260630-table-sizing" not in _PANE_HTML
 
 
 def test_view_record_in_pane_marks_turn_as_manual(tmp_path: Path) -> None:
@@ -258,6 +264,9 @@ def test_pane_serves_bundled_assets_cached(tmp_path: Path) -> None:
     pane.start()
     try:
         assert pane.url is not None
+        with urllib.request.urlopen(pane.url, timeout=2) as resp:
+            assert resp.headers.get("Cache-Control") == "no-cache"
+
         with urllib.request.urlopen(f"{pane.url}assets/vega/vega-embed.min.js", timeout=2) as resp:
             body = resp.read()
             cache = resp.headers.get("Cache-Control")

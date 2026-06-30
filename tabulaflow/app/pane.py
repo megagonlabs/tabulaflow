@@ -12,6 +12,7 @@ interface, and every failure here is swallowed so it can never block a chat turn
 from __future__ import annotations
 
 import functools
+import hashlib
 import http.server
 import json
 import logging
@@ -86,10 +87,13 @@ def _load_pane_html() -> str:
     html = base.joinpath("index.html").read_text(encoding="utf-8")
     css = base.joinpath("pane.css").read_text(encoding="utf-8")
     js = base.joinpath("pane.js").read_text(encoding="utf-8")
+    render_js = base.joinpath("pane-render.js").read_bytes()
+    render_version = hashlib.sha256(render_js).hexdigest()[:12]
     return (
         html.replace("__CSS_VARS__", _pane_css_vars())
         .replace("__PANE_CSS__", css)
         .replace("__PANE_JS__", js)
+        .replace("__PANE_RENDER_VERSION__", render_version)
         .replace("__BANNER__", _BANNER)
     )
 
@@ -115,7 +119,7 @@ class _Handler(http.server.SimpleHTTPRequestHandler):
 
     def do_GET(self) -> None:  # noqa: N802 (http.server API name)
         if self.path in ("/", "/index.html"):
-            self._send(_PANE_HTML.encode("utf-8"), "text/html; charset=utf-8")
+            self._send(_PANE_HTML.encode("utf-8"), "text/html; charset=utf-8", cache_control="no-cache")
             return
         if self.path == "/events":
             self._serve_events()
@@ -125,10 +129,12 @@ class _Handler(http.server.SimpleHTTPRequestHandler):
             return
         super().do_GET()
 
-    def _send(self, body: bytes, content_type: str) -> None:
+    def _send(self, body: bytes, content_type: str, *, cache_control: str | None = None) -> None:
         self.send_response(200)
         self.send_header("Content-Type", content_type)
         self.send_header("Content-Length", str(len(body)))
+        if cache_control is not None:
+            self.send_header("Cache-Control", cache_control)
         self.end_headers()
         self.wfile.write(body)
 
