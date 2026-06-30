@@ -85,8 +85,9 @@
     var tableData = recordData.table || {};
     var rows = (recordData.dataset && recordData.dataset.rows) || [];
     var displayCap = tableData.displayCap || 120;
+    var wrapClass = rows.length <= 12 ? 'tf-table-wrap pane-short' : 'tf-table-wrap';
     container.className = 'tf-view tf-table-view';
-    container.innerHTML = '<div class="tf-table-wrap"><div class="tf-table"></div></div>'
+    container.innerHTML = '<div class="' + wrapClass + '"><div class="tf-table"></div></div>'
       + '<div class="tf-modal" role="dialog" aria-hidden="true">'
       + '<div class="tf-modal-card"><div class="tf-modal-header">'
       + '<span class="tf-modal-title"></span><button class="tf-modal-close" type="button" aria-label="Close">'

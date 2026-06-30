@@ -120,6 +120,7 @@ body { margin: 0; background: var(--bg); color: var(--text); display: flex; flex
 
 /* Direct table rendering. */
 .tf-table-wrap { width: 100%; overflow: hidden; background-color: #171d25; }
+.tf-table-wrap.pane-short { padding-bottom: 16px; box-sizing: border-box; }
 .manual-preview .tf-table-wrap { min-height: 0; }
 .trunc { cursor: pointer; }
 .trunc::after { content: " ..."; color: var(--accent); }

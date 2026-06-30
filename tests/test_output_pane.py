@@ -220,6 +220,12 @@ def test_pane_table_scrollbars_use_dark_theme() -> None:
     assert "::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb);" in _PANE_HTML
 
 
+def test_pane_short_tables_keep_bottom_inset() -> None:
+    renderer = files("tabulaflow.app.assets.pane").joinpath("pane-render.js").read_text(encoding="utf-8")
+    assert "rows.length <= 12 ? 'tf-table-wrap pane-short' : 'tf-table-wrap'" in renderer
+    assert ".tf-table-wrap.pane-short { padding-bottom: 16px; box-sizing: border-box; }" in _PANE_HTML
+
+
 def test_view_record_in_pane_marks_turn_as_manual(tmp_path: Path) -> None:
     pushed: list[PaneTurn] = []
 
