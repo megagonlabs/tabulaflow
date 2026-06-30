@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Literal, Required, TypedDict
 
-ViewKind = Literal["chart", "data", "query"]
+ViewKind = Literal["map", "chart", "data", "query"]
 PaneSource = Literal["manual"]
 
 

@@ -69,6 +69,21 @@
       + '" target="_blank" rel="noopener">' + escapeHtml(text) + '</a>';
   }
 
+  function numberValue(value) {
+    var n = Number(value);
+    return Number.isFinite(n) ? n : null;
+  }
+
+  function numberOr(value, fallback) {
+    var n = numberValue(value);
+    return n == null ? fallback : n;
+  }
+
+  function fieldValue(row, field) {
+    if (!field || !row || typeof row !== 'object') return null;
+    return row[field];
+  }
+
   function maybeFormatJson(text) {
     if (typeof text !== 'string') return text;
     var trimmed = text.trim();
@@ -263,6 +278,95 @@
     return { destroy: function () { disposed = true; if (view) view.finalize(); } };
   }
 
+  function renderMap(container, recordData) {
+    var mapData = recordData.map || {};
+    var rows = (recordData.dataset && recordData.dataset.rows) || [];
+    var latField = String(mapData.lat || '');
+    var lngField = String(mapData.lng || '');
+    var labelField = String(mapData.label || '');
+    var tooltipField = String(mapData.tooltip || labelField || '');
+    var markerStyle = mapData.marker || {};
+    container.className = 'tf-view tf-map-view';
+    container.innerHTML = '<div class="tf-map-stage"><div class="tf-map"></div><div class="tf-map-empty"></div></div>';
+    var mapNode = container.querySelector('.tf-map');
+    var emptyNode = container.querySelector('.tf-map-empty');
+    if (!window.L) {
+      emptyNode.textContent = 'Leaflet is not available.';
+      emptyNode.classList.add('show');
+      return { destroy: function () { container.innerHTML = ''; } };
+    }
+    if (!latField || !lngField) {
+      emptyNode.textContent = 'Map needs latitude and longitude fields.';
+      emptyNode.classList.add('show');
+      return { destroy: function () { container.innerHTML = ''; } };
+    }
+
+    var map = L.map(mapNode, { zoomControl: true, attributionControl: true });
+    L.tileLayer(String(mapData.tileUrl || 'https://tile.openstreetmap.org/{z}/{x}/{y}.png'), {
+      maxZoom: numberOr(mapData.maxZoom, 19),
+      attribution: escapeHtml(mapData.attribution || '© OpenStreetMap contributors')
+    }).addTo(map);
+
+    var bounds = [];
+    var markerColor = String(markerStyle.color || '#3eb489');
+    var fillColor = String(markerStyle.fillColor || markerColor);
+    var radius = numberValue(markerStyle.radius);
+    rows.forEach(function (row) {
+      var lat = numberValue(fieldValue(row, latField));
+      var lng = numberValue(fieldValue(row, lngField));
+      if (lat == null || lng == null) return;
+      if (lat < -90 || lat > 90 || lng < -180 || lng > 180) return;
+      var marker = L.circleMarker([lat, lng], {
+        radius: radius || 6,
+        color: markerColor,
+        weight: 1,
+        fillColor: fillColor,
+        fillOpacity: 0.82
+      }).addTo(map);
+      var label = fieldValue(row, labelField);
+      var tooltip = fieldValue(row, tooltipField);
+      if (label != null || tooltip != null) {
+        var text = label != null ? label : tooltip;
+        marker.bindPopup('<div class="tf-map-popup">' + escapeHtml(text) + '</div>');
+      }
+      bounds.push([lat, lng]);
+    });
+
+    function syncView() {
+      map.invalidateSize();
+      if (bounds.length > 1) {
+        map.fitBounds(bounds, { padding: [24, 24], maxZoom: numberOr(mapData.zoom, 14) });
+        return;
+      }
+      if (bounds.length === 1) {
+        map.setView(bounds[0], numberOr(mapData.zoom, 12));
+        return;
+      }
+      var center = Array.isArray(mapData.center) ? mapData.center : null;
+      var centerLat = center ? numberValue(center[0]) : null;
+      var centerLng = center ? numberValue(center[1]) : null;
+      if (centerLat != null && centerLng != null) {
+        map.setView([centerLat, centerLng], numberOr(mapData.zoom, 10));
+        return;
+      }
+      map.setView([0, 0], 2);
+      emptyNode.textContent = 'No valid coordinates in this result.';
+      emptyNode.classList.add('show');
+    }
+
+    requestAnimationFrame(function () {
+      syncView();
+      requestAnimationFrame(syncView);
+    });
+    return {
+      afterVisible: syncView,
+      destroy: function () {
+        map.remove();
+        container.innerHTML = '';
+      }
+    };
+  }
+
   function renderQuery(container, recordData) {
     var queryData = recordData.query || {};
     var sql = String(queryData.sql || '');
@@ -296,6 +400,7 @@
   window.TF = {
     renderTable: renderTable,
     renderChart: renderChart,
+    renderMap: renderMap,
     renderQuery: renderQuery
   };
 })();

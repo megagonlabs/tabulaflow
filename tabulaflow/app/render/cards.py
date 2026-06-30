@@ -16,6 +16,7 @@ from pygments.util import ClassNotFound
 from tabulaflow.app.page import TEXT, render_page
 from tabulaflow.app.pane_types import PaneRecord, ViewKind, record_payload
 from tabulaflow.app.render.charts import build_chart_data
+from tabulaflow.app.render.maps import build_map_data
 from tabulaflow.app.render.tables import PANE_TABLE_MAX_HEIGHT, _build_table_data
 
 if TYPE_CHECKING:
@@ -142,6 +143,12 @@ def render_record_data(record: ResultRecordLike, pane_dir: Path) -> PaneRecord |
             max_height=PANE_TABLE_MAX_HEIGHT,
         )
         record_data.update(table_build.data)
+        map_spec = getattr(record, "map_spec", None)
+        if map_spec is not None:
+            map_data = build_map_data(df, map_spec, field_by_column=table_build.field_by_column)
+            if map_data is not None:
+                record_data.update(map_data)
+                views.append("map")
         if record.chart_spec is not None:
             record_data.update(build_chart_data(df, record.chart_spec, field_by_column=table_build.field_by_column))
             views.append("chart")

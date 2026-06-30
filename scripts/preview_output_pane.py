@@ -39,6 +39,7 @@ def _record(
     query: str | None,
     df: pd.DataFrame | None,
     chart_spec: dict[str, object] | None = None,
+    map_spec: dict[str, object] | None = None,
 ) -> SimpleNamespace:
     return SimpleNamespace(
         record_id=record_id,
@@ -46,6 +47,7 @@ def _record(
         query=query,
         df=df,
         chart_spec=chart_spec,
+        map_spec=map_spec,
         query_lexer="sql",
     )
 
@@ -232,6 +234,31 @@ def _large_agent_table_record() -> SimpleNamespace:
     )
 
 
+def _map_record() -> SimpleNamespace:
+    df = pd.DataFrame(
+        {
+            "city": ["San Francisco", "Oakland", "Berkeley", "San Jose", "Palo Alto"],
+            "latitude": [37.7749, 37.8044, 37.8715, 37.3382, 37.4419],
+            "longitude": [-122.4194, -122.2712, -122.2730, -121.8863, -122.1430],
+            "category": ["hub", "hub", "campus", "office", "office"],
+        }
+    )
+    return _record(
+        record_id="QDEBUG_MAP",
+        label="bay_area_locations",
+        query="-- synthetic latitude/longitude result for map preview",
+        df=df,
+        map_spec={
+            "lat": "latitude",
+            "lng": "longitude",
+            "label": "city",
+            "tooltip": "category",
+            "zoom": 11,
+            "marker": {"color": "#3eb489", "radius": 7},
+        },
+    )
+
+
 def _wav_bytes(freq_hz: float, seconds: float = 0.4, rate: int = 8000) -> bytes:
     n_samples = int(seconds * rate)
     samples = bytearray()
@@ -368,6 +395,14 @@ def _populate_pane(
                 "visualization, the backing rows, and the generated SQL."
             ),
             cards=chart_cards[:1],
+        )
+        _push_turn(
+            pane,
+            pane_dir,
+            title="Map result",
+            user="Show locations on an interactive map.",
+            assistant="This result includes a Map view backed by latitude and longitude columns.",
+            records=[_map_record()],
         )
         _push_turn(
             pane,

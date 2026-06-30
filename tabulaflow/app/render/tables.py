@@ -633,9 +633,9 @@ def _coerce_text_value(value: object) -> object:
     # (which Tabulator's bool formatter then renders as truthy regardless).
     if isinstance(value, (bool, np.bool_)):
         return bool(value)
-    if isinstance(value, (int, float, np.integer)):
+    if isinstance(value, (int, np.integer)):
         return int(value)
-    if isinstance(value, np.floating):
+    if isinstance(value, (float, np.floating)):
         return float(value)
     if isinstance(value, (dict, list)):
         try:

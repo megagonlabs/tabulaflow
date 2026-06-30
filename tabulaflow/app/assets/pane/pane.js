@@ -70,14 +70,16 @@ function buildManualArtifactTitle(turn) {
 }
 
 function turnMeta(turn) {
-  var counts = { chart: 0, table: 0 };
+  var counts = { map: 0, chart: 0, table: 0 };
   (turn.records || []).forEach(function (record) {
     var kinds = record.views || [];
-    if (kinds.indexOf('chart') !== -1) counts.chart += 1;
+    if (kinds.indexOf('map') !== -1) counts.map += 1;
+    else if (kinds.indexOf('chart') !== -1) counts.chart += 1;
     else if (kinds.indexOf('data') !== -1) counts.table += 1;
   });
-  if (turn.source === 'manual' && counts.table === 1 && counts.chart === 0) return 'table preview';
+  if (turn.source === 'manual' && counts.table === 1 && counts.chart === 0 && counts.map === 0) return 'table preview';
   var parts = [];
+  if (counts.map) parts.push(counts.map + (counts.map === 1 ? ' map' : ' maps'));
   if (counts.chart) parts.push(counts.chart + (counts.chart === 1 ? ' chart' : ' charts'));
   if (counts.table) parts.push(counts.table + (counts.table === 1 ? ' table' : ' tables'));
   return parts.join(' · ');
@@ -256,11 +258,17 @@ function getCachedRecordData(record) {
 }
 
 function renderKind(node, kind, data) {
+  if (kind === 'map') return TF.renderMap(node, data);
   if (kind === 'chart') return TF.renderChart(node, data);
   if (kind === 'data') return TF.renderTable(node, data);
   if (kind === 'query') return TF.renderQuery(node, data);
   node.textContent = 'Unknown view: ' + kind;
   return { destroy: function () {} };
+}
+
+function afterVisible(entry) {
+  if (!entry || !entry.handle || !entry.handle.afterVisible) return;
+  requestAnimationFrame(function () { entry.handle.afterVisible(); });
 }
 
 function setActiveShellView(shell, activeNode) {
@@ -271,6 +279,7 @@ function setActiveShellView(shell, activeNode) {
     node.classList.remove('view-pending');
     node.toggleAttribute('inert', !active);
     node.setAttribute('aria-hidden', active ? 'false' : 'true');
+    if (active) afterVisible(node._tfViewEntry);
   });
 }
 
@@ -330,6 +339,7 @@ function renderLoadedView(entry, kind, data, meta) {
   entry.data = data;
   entry.node.textContent = '';
   entry.handle = renderKind(entry.node, kind, data);
+  entry.node._tfViewEntry = entry;
   if (kind === 'data' && data.table) meta.textContent = data.table.meta || '';
 }
 
@@ -397,13 +407,17 @@ function mountView(record, kind, shell, meta) {
     }
     attachView(shell, entry.node);
     cacheTouch(key);
-    if (entry.data && !entry.handle) renderLoadedView(entry, kind, entry.data, meta);
+    if (entry.data && !entry.handle) {
+      renderLoadedView(entry, kind, entry.data, meta);
+      afterVisible(entry);
+    }
     else if (entry.data && kind === 'data' && entry.data.table) meta.textContent = entry.data.table.meta || '';
     return;
   }
   var node = el('div', 'tf-view loading');
   node.textContent = 'Loading...';
   entry = { node: node, handle: null, data: null };
+  node._tfViewEntry = entry;
   viewCache[key] = entry;
   cacheTouch(key);
   attachView(shell, node);

@@ -161,6 +161,39 @@ def test_record_card_includes_data_view_meta(tmp_path: Path) -> None:
     assert payload["table"]["meta"] == "2 rows · 2 columns"
 
 
+def test_record_card_writes_map_view_payload(tmp_path: Path) -> None:
+    df = pd.DataFrame(
+        {
+            "city": ["San Francisco", "Oakland"],
+            "latitude": [37.7749, 37.8044],
+            "longitude": [-122.4194, -122.2712],
+        }
+    )
+    card = render_record_data(
+        SimpleNamespace(
+            df=df,
+            chart_spec=None,
+            map_spec={"lat": "latitude", "lng": "longitude", "label": "city"},
+            query=None,
+            label="locations",
+            record_id="r1",
+            query_lexer="sql",
+        ),
+        tmp_path,
+    )
+
+    assert card is not None
+    assert card["views"] == ["map", "data"]
+    payload = json.loads((tmp_path / f"{card['id']}.data.json").read_text())
+    assert payload["map"]["provider"] == "leaflet"
+    assert payload["map"]["lat"] == "c1"
+    assert payload["map"]["lng"] == "c2"
+    assert payload["map"]["label"] == "c0"
+    assert payload["map"]["tileUrl"] == "https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+    assert payload["dataset"]["rows"][0]["c1"] == 37.7749
+    assert payload["dataset"]["rows"][0]["c2"] == -122.4194
+
+
 def test_manual_table_send_includes_data_view_meta(tmp_path: Path) -> None:
     calls: list[tuple[Path, dict[str, object]]] = []
     statuses: list[object] = []
@@ -207,8 +240,23 @@ def test_pane_table_renderer_does_not_max_height_short_tables() -> None:
 
 
 def test_pane_chart_shell_matches_vega_background() -> None:
-    assert ".view-shell.view-chart { background: var(--card); }" in _PANE_HTML
+    assert ".view-shell.view-chart,\n.view-shell.view-map { background: var(--card); }" in _PANE_HTML
     assert ".tf-chart-view,\n.tf-vis-stage { background: var(--card); }" in _PANE_HTML
+
+
+def test_pane_map_view_is_leaflet_based() -> None:
+    renderer = files("tabulaflow.app.assets.pane").joinpath("pane-render.js").read_text(encoding="utf-8")
+    assert '<link rel="stylesheet" href="/assets/leaflet/leaflet.css">' in _PANE_HTML
+    assert '<script src="/assets/leaflet/leaflet.js"></script>' in _PANE_HTML
+    assert "if (kind === 'map') return TF.renderMap(node, data);" in _PANE_HTML
+    assert "function afterVisible(entry)" in _PANE_HTML
+    assert "entry.handle.afterVisible" in _PANE_HTML
+    assert "renderMap: renderMap" in renderer
+    assert "L.map(mapNode" in renderer
+    assert "L.tileLayer(String(mapData.tileUrl" in renderer
+    assert "L.circleMarker([lat, lng]" in renderer
+    assert "map.invalidateSize();" in renderer
+    assert ".tf-map-stage { position: relative; height: min(560px, 68vh); min-height: 420px;" in _PANE_HTML
 
 
 def test_pane_table_scrollbars_use_dark_theme() -> None:
@@ -382,6 +430,12 @@ def test_pane_serves_bundled_assets_cached(tmp_path: Path) -> None:
         expected = files("tabulaflow.app.assets").joinpath("vega").joinpath("vega-embed.min.js").read_bytes()
         assert body == expected
         assert cache is not None and "immutable" in cache
+
+        with urllib.request.urlopen(f"{pane.url}assets/leaflet/leaflet.js", timeout=2) as resp:
+            assert resp.headers.get("Cache-Control") is not None and "immutable" in resp.headers.get(
+                "Cache-Control", ""
+            )
+            assert b"Leaflet" in resp.read()
 
         try:
             urllib.request.urlopen(f"{pane.url}assets/does-not-exist.js", timeout=2)
