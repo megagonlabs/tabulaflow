@@ -187,13 +187,13 @@
 
     var fixedMax = tableData.maxHeight == null ? null : tableData.maxHeight;
     var viewportCap = fixedMax != null ? fixedMax : Math.max(240, window.innerHeight);
+    var estimatedTableHeight = 38 + rows.length * 29;
     var opts = {
       data: rows,
       columns: cols,
       layout: 'fitColumns',
       renderVerticalBuffer: 600,
       movableColumns: false,
-      maxHeight: viewportCap,
       selectableRange: 1,
       selectableRangeColumns: true,
       selectableRangeRows: true,
@@ -212,7 +212,8 @@
         cssClass: 'tabulator-row-header'
       }
     };
-    if (rows.length > 100) opts.height = viewportCap;
+    var shouldConstrainHeight = rows.length > 100 || (fixedMax != null && estimatedTableHeight > viewportCap);
+    if (shouldConstrainHeight) opts.height = viewportCap;
     var table = new Tabulator(container.querySelector('.tf-table'), opts);
     if (tableData.hasMedia) {
       window.setTimeout(function () { table.redraw(true); }, 0);

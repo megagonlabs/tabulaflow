@@ -192,6 +192,14 @@ def test_pane_omits_text_only_turn_meta() -> None:
     assert "metaText ? title.textContent + ' · ' + metaText : title.textContent" in _PANE_HTML
 
 
+def test_pane_table_renderer_does_not_max_height_short_tables() -> None:
+    renderer = files("tabulaflow.app.assets.pane").joinpath("pane-render.js").read_text(encoding="utf-8")
+    assert "maxHeight: viewportCap" not in renderer
+    assert "estimatedTableHeight > viewportCap" in renderer
+    assert "opts.height = viewportCap" in renderer
+    assert ".turnview.manual-preview { min-height: calc(100vh - 82px);" in _PANE_HTML
+
+
 def test_view_record_in_pane_marks_turn_as_manual(tmp_path: Path) -> None:
     pushed: list[PaneTurn] = []
 
@@ -265,7 +273,7 @@ def test_pane_serves_bundled_assets_cached(tmp_path: Path) -> None:
         assert missing_is_404
 
         with urllib.request.urlopen(f"{pane.url}assets/pane/pane-render.js", timeout=2) as resp:
-            assert resp.headers.get("Cache-Control") is not None
+            assert resp.headers.get("Cache-Control") == "no-cache"
             assert b"renderTable" in resp.read()
     finally:
         pane.stop()

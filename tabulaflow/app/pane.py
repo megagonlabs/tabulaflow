@@ -168,7 +168,7 @@ class _Handler(http.server.SimpleHTTPRequestHandler):
                 return
 
     def _serve_asset(self, rel: str) -> None:
-        """Serve bundled browser assets with immutable caching."""
+        """Serve bundled browser assets."""
         from importlib.resources import files
 
         clean = rel.split("?", 1)[0]
@@ -193,7 +193,10 @@ class _Handler(http.server.SimpleHTTPRequestHandler):
         self.send_response(200)
         self.send_header("Content-Type", ctype)
         self.send_header("Content-Length", str(len(data)))
-        self.send_header("Cache-Control", "max-age=31536000, immutable")
+        if clean.startswith("pane/"):
+            self.send_header("Cache-Control", "no-cache")
+        else:
+            self.send_header("Cache-Control", "max-age=31536000, immutable")
         self.end_headers()
         self.wfile.write(data)
 
