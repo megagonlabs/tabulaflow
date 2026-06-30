@@ -238,6 +238,7 @@ def test_pane_manual_tables_use_fixed_panel() -> None:
     assert ".manual-preview .recordpane { flex: 1 1 auto; min-height: 0;" in _PANE_HTML
     assert ".manual-preview .view-shell { flex: 1 1 auto; min-height: 360px; overflow: hidden; }" in _PANE_HTML
     assert ".manual-preview .tf-table-view,\n.manual-preview .tf-table-wrap { height: 100%;" in _PANE_HTML
+    assert ".manual-preview .tf-table-wrap.pane-short { padding-bottom: 0; }" in _PANE_HTML
     assert ".manual-preview .tf-table-view .tabulator { height: 100% !important; }" in _PANE_HTML
     assert "max-height: calc(100% - 38px) !important;" in _PANE_HTML
 

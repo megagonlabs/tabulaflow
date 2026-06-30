@@ -123,6 +123,7 @@ body { margin: 0; background: var(--bg); color: var(--text); display: flex; flex
 .tf-table-wrap.pane-short { padding-bottom: 16px; box-sizing: border-box; }
 .manual-preview .tf-table-view,
 .manual-preview .tf-table-wrap { height: 100%; min-height: 0; }
+.manual-preview .tf-table-wrap.pane-short { padding-bottom: 0; }
 .manual-preview .tf-table-view .tabulator { height: 100% !important; }
 .manual-preview .tf-table-view .tabulator .tabulator-tableholder {
     height: calc(100% - 38px) !important;
