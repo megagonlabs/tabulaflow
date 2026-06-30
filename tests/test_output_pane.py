@@ -227,10 +227,19 @@ def test_pane_short_tables_keep_bottom_inset() -> None:
 
 
 def test_pane_manual_tables_use_fixed_panel() -> None:
+    renderer = files("tabulaflow.app.assets.pane").joinpath("pane-render.js").read_text(encoding="utf-8")
+    assert "container.closest && container.closest('.manual-preview')" in renderer
+    assert "container.closest('.view-shell')" in renderer
+    assert "panelHeight > 0 ? panelHeight" in renderer
+    assert "panelHeight > 0 || rows.length > 100" in renderer
+    assert "table.setHeight(height)" in renderer
+    assert "requestAnimationFrame(fitFixedPanelHeight)" in renderer
     assert ".turnview.manual-preview { height: calc(100vh - 82px); min-height: 460px;" in _PANE_HTML
     assert ".manual-preview .recordpane { flex: 1 1 auto; min-height: 0;" in _PANE_HTML
     assert ".manual-preview .view-shell { flex: 1 1 auto; min-height: 360px; overflow: hidden; }" in _PANE_HTML
     assert ".manual-preview .tf-table-view,\n.manual-preview .tf-table-wrap { height: 100%;" in _PANE_HTML
+    assert ".manual-preview .tf-table-view .tabulator { height: 100% !important; }" in _PANE_HTML
+    assert "max-height: calc(100% - 38px) !important;" in _PANE_HTML
 
 
 def test_pane_tables_keep_last_row_gridline() -> None:

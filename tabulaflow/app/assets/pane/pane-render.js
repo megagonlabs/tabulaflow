@@ -187,7 +187,10 @@
     });
 
     var fixedMax = tableData.maxHeight == null ? null : tableData.maxHeight;
-    var viewportCap = fixedMax != null ? fixedMax : Math.max(240, window.innerHeight);
+    var fixedPanel = container.closest && container.closest('.manual-preview');
+    var panelShell = fixedPanel && container.closest('.view-shell');
+    var panelHeight = panelShell ? Math.floor(panelShell.getBoundingClientRect().height) : 0;
+    var viewportCap = panelHeight > 0 ? panelHeight : (fixedMax != null ? fixedMax : Math.max(240, window.innerHeight));
     var estimatedTableHeight = 38 + rows.length * 29;
     var opts = {
       data: rows,
@@ -213,9 +216,20 @@
         cssClass: 'tabulator-row-header'
       }
     };
-    var shouldConstrainHeight = rows.length > 100 || (fixedMax != null && estimatedTableHeight > viewportCap);
+    var shouldConstrainHeight = panelHeight > 0 || rows.length > 100 || (fixedMax != null && estimatedTableHeight > viewportCap);
     if (shouldConstrainHeight) opts.height = viewportCap;
     var table = new Tabulator(container.querySelector('.tf-table'), opts);
+    function fitFixedPanelHeight() {
+      if (!panelShell || !table.setHeight) return;
+      var height = Math.floor(panelShell.getBoundingClientRect().height);
+      if (height > 0) table.setHeight(height);
+    }
+    if (panelShell) {
+      requestAnimationFrame(function () {
+        fitFixedPanelHeight();
+        requestAnimationFrame(fitFixedPanelHeight);
+      });
+    }
     if (tableData.hasMedia) {
       window.setTimeout(function () { table.redraw(true); }, 0);
     }
