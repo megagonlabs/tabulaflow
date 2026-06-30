@@ -3,7 +3,7 @@
 Public API re-exported here so callers keep ``from tabulaflow.app.render import ...``.
 """
 
-from tabulaflow.app.render.cards import build_query_data, render_record_card
+from tabulaflow.app.render.cards import build_query_data, render_record_data
 from tabulaflow.app.render.charts import _add_line_hover, build_chart_data, render_chart_html
 from tabulaflow.app.render.media import (
     serialize_cell,
@@ -19,7 +19,7 @@ __all__ = [
     "build_query_data",
     "build_table_data",
     "render_chart_html",
-    "render_record_card",
+    "render_record_data",
     "render_table_html",
     "serialize_cell",
     "sniff_binary",

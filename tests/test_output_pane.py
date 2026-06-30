@@ -13,7 +13,7 @@ from types import SimpleNamespace
 import pandas as pd
 import pytest
 
-from tabulaflow.app.render.cards import render_query_html, render_record_card
+from tabulaflow.app.render.cards import render_query_html, render_record_data
 from tabulaflow.app.pane import OutputPane, OutputPanePortError, _PANE_HTML
 from tabulaflow.app.pane_types import PaneRecord, PaneTurn, turn_payload
 from tabulaflow.app.screens import send_table_to_output_pane
@@ -70,6 +70,34 @@ def test_output_pane_serves_text_only_turn(tmp_path: Path) -> None:
         pane.stop()
 
 
+def test_output_pane_replays_persisted_turns(tmp_path: Path) -> None:
+    port = _unused_loopback_port()
+    first = OutputPane(tmp_path, port=port)
+    first.start()
+    try:
+        first.push(turn_payload(title="persisted", records=[]))
+        manifest = tmp_path / "turns.jsonl"
+        assert manifest.exists()
+    finally:
+        first.stop()
+
+    second = OutputPane(tmp_path, port=port)
+    second.start()
+    try:
+        assert second.url is not None
+        with urllib.request.urlopen(f"{second.url}events", timeout=2) as response:
+            data_line = ""
+            for raw_line in response:
+                line = raw_line.decode("utf-8").strip()
+                if line.startswith("data: "):
+                    data_line = line[len("data: ") :]
+                    break
+
+        assert json.loads(data_line) == {"id": 0, "title": "persisted", "records": []}
+    finally:
+        second.stop()
+
+
 def test_output_pane_uses_first_available_port_in_range(tmp_path: Path) -> None:
     with _bound_loopback_port() as occupied_port:
         available_port = _unused_loopback_port()
@@ -114,7 +142,7 @@ def test_output_pane_localhost_bind_uses_loopback_browser_url(tmp_path: Path) ->
 
 def test_record_card_includes_data_view_meta(tmp_path: Path) -> None:
     df = pd.DataFrame({"region": ["North", "South"], "revenue": [10, 20]})
-    card = render_record_card(
+    card = render_record_data(
         SimpleNamespace(
             df=df,
             chart_spec=None,
@@ -137,7 +165,7 @@ def test_manual_table_send_includes_data_view_meta(tmp_path: Path) -> None:
     statuses: list[object] = []
 
     class FakeApp:
-        _runtime_paths = SimpleNamespace(dumps_dir=tmp_path)
+        _runtime_paths = SimpleNamespace(pane_dir=tmp_path)
 
         def view_record_in_pane(self, record: object, **kwargs: object) -> bool:
             calls.append((Path(f"{record['id']}.data.json"), kwargs))  # type: ignore[index]
@@ -203,7 +231,7 @@ def test_query_view_renders_code_header_and_dracula_theme(tmp_path: Path) -> Non
 def test_record_card_writes_structured_data_instead_of_html(tmp_path: Path) -> None:
     df = pd.DataFrame({"cat": ["a", "b"], "n": [3, 5]})
     spec = {"mark": "bar", "encoding": {"x": {"field": "cat"}, "y": {"field": "n"}}}
-    card = render_record_card(
+    card = render_record_data(
         SimpleNamespace(df=df, chart_spec=spec, query=None, label="x", record_id="r1", query_lexer="sql"),
         tmp_path,
     )

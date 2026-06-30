@@ -55,7 +55,8 @@ conflation:
 ## 3. Architecture Overview
 
 ```
-ChatResult ── render layer ──▶ <id>.data.json (+ spilled blobs)   [disk, dumps_dir]
+ChatResult ── render layer ──▶ <id>.data.json (+ spilled blobs)
+                                [~/.tabulaflow/sessions/<session_id>/pane]
                   │
                   └─ PaneTurn manifest ──▶ OutputPane._results ──▶ /events (SSE)
                                                                        │
@@ -68,12 +69,13 @@ ChatResult ── render layer ──▶ <id>.data.json (+ spilled blobs)   [dis
 - **Transport:** one SSE stream replaces the 1 s poll.
 - **Render unit:** a `<div>` rendered by the shared runtime replaces an `<iframe>`
   loading a full document.
-- **Persistence:** small `*.data.json` files replace self-contained HTML dumps.
+- **Persistence:** small `*.data.json` files and `turns.jsonl` live under the
+  durable session pane directory, so a resumed session can replay prior output.
 
 ## 4. HTTP Wire API
 
-One dynamic endpoint (SSE); everything else is plain static serving from
-`dumps_dir` / package assets.
+One dynamic endpoint (SSE); everything else is plain static serving from the
+session pane directory / package assets.
 
 | Method / path | Type | Purpose |
 |---|---|---|
@@ -178,7 +180,7 @@ Signature-compatible with today; internals change.
 
 ```python
 class OutputPane:
-    def __init__(self, dumps_dir, *, host=..., port=None, port_range=...): ...
+    def __init__(self, pane_dir, *, host=..., port=None, port_range=...): ...
     def start(self) -> None              # binds, serves; sets up self._cond
     def push(self, turn: PaneTurn) -> None   # assigns turn["id"]; append; self._cond.notify_all()
     @property
@@ -190,7 +192,8 @@ class OutputPane:
 
 - New internal state: `self._cond = threading.Condition(self._lock)` (SSE wakeup).
 - `_results` stays a `list[PaneTurn]` of **manifests** — server RAM is unchanged
-  (metadata only; no DataFrames retained).
+  (metadata only; no DataFrames retained). Manifests are also appended to
+  `turns.jsonl` and loaded on pane startup.
 - TUI call sites (`tui.py:540`, `tui.py:591`) are **unchanged**: still build a
   `PaneTurn` and call `pane.push(...)`.
 - Pane data preparation runs off the Textual event loop. The TUI snapshots the
@@ -207,7 +210,7 @@ build_chart_data(df, spec, *, title=None)                 -> dict   # the "chart
 build_query_data(sql, *, lexer="sql")                     -> dict   # the "query" payload
 
 # writes <id>.data.json (+ spills blobs); returns the manifest record {id, label, views}
-render_record_card(record, dumps_dir) -> PaneRecord
+render_record_data(record, pane_dir) -> PaneRecord
 
 # unified export: same data builders → one self-contained file
 export_record_html(record_data: dict, out_path: Path) -> None
@@ -281,11 +284,11 @@ flicker — with long-session memory now explicitly LRU-bounded.
 
 | File | Change |
 |---|---|
-| `app/pane.py` | Add `/events` SSE handler + `threading.Condition`; drop `/__index__`; static-serve `*.data.json` & blobs (already serves `dumps_dir`). |
+| `app/pane.py` | Add `/events` SSE handler + `threading.Condition`; drop `/__index__`; static-serve `*.data.json` & blobs (already serves `pane_dir`). |
 | `app/pane_types.py` | `PaneTurn` gains `id`; `PaneRecord` becomes `{id, label, views}` (views = kind list). |
 | `app/render/tables.py` | Extract `build_table_data` (data) from `render_table_html` (assembly). |
 | `app/render/charts.py` | Extract `build_chart_data`; keep theming/normalization. |
-| `app/render/cards.py` | `render_record_card` writes `<id>.data.json`; add `export_record_html`. |
+| `app/render/cards.py` | `render_record_data` writes `<id>.data.json`; add `export_record_html`. |
 | `app/assets/pane/` | New `pane-render.js`; rewrite `pane.js` (EventSource + LRU mount-cache); fold render CSS into `pane.css`. |
 | `tui.py` | Unchanged call sites; `_push_turn_to_pane` builds data via the new builders. |
 | `scripts/preview_output_pane.py`, `gen_debug_html.py` | Repoint to data builders / `export_record_html`. |
@@ -308,7 +311,7 @@ surface, separate follow-up if desired).
 ## 11. Implementation Order
 
 1. **Data builders + `RecordData` contract** — `build_table_data` /
-   `build_chart_data` / `build_query_data`; `render_record_card` writes
+   `build_chart_data` / `build_query_data`; `render_record_data` writes
    `*.data.json`. (Foundation for both pane and export.)
 2. **Shared `pane-render.js`** — generalize current inline templates to
    container-oriented `TF.render*`; unit-render against a data file.

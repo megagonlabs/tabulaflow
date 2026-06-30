@@ -29,7 +29,7 @@ import pandas as pd
 from tabulaflow.app import pane as pane_mod
 from tabulaflow.app.debug import debug_chart_fixtures
 from tabulaflow.app.pane_types import PaneRecord, PaneSource, record_payload, turn_payload
-from tabulaflow.app.render.cards import render_record_card
+from tabulaflow.app.render.cards import render_record_data
 
 
 def _record(
@@ -50,10 +50,10 @@ def _record(
     )
 
 
-def _render_records(records: Sequence[SimpleNamespace], dumps_dir: Path) -> list[PaneRecord]:
+def _render_records(records: Sequence[SimpleNamespace], pane_dir: Path) -> list[PaneRecord]:
     cards: list[PaneRecord] = []
     for record in records:
-        card = render_record_card(record, dumps_dir)
+        card = render_record_data(record, pane_dir)
         if card is not None:
             cards.append(card)
     return cards
@@ -61,7 +61,7 @@ def _render_records(records: Sequence[SimpleNamespace], dumps_dir: Path) -> list
 
 def _push_turn(
     pane: pane_mod.OutputPane,
-    dumps_dir: Path,
+    pane_dir: Path,
     *,
     title: str,
     user: str,
@@ -75,7 +75,7 @@ def _push_turn(
             title=title,
             user=user,
             assistant=assistant,
-            records=[*cards, *_render_records(records, dumps_dir)],
+            records=[*cards, *_render_records(records, pane_dir)],
             source=source,
         )
     )
@@ -104,15 +104,15 @@ def _long_result_response(summary: str) -> str:
     )
 
 
-def _chart_cards(dumps_dir: Path, *, limit: int | None) -> list[PaneRecord]:
+def _chart_cards(pane_dir: Path, *, limit: int | None) -> list[PaneRecord]:
     cards: list[PaneRecord] = []
     fixtures = debug_chart_fixtures()
     if limit is not None:
         fixtures = fixtures[:limit]
     for record_id, label, query, df, spec in fixtures:
-        card = render_record_card(
+        card = render_record_data(
             _record(record_id=record_id, label=label, query=query, df=df, chart_spec=spec),
-            dumps_dir,
+            pane_dir,
         )
         if card is not None:
             cards.append(card)
@@ -142,7 +142,7 @@ def _many_record_cards(cards: Sequence[PaneRecord]) -> list[PaneRecord]:
     ]
 
 
-def _manual_table_card(dumps_dir: Path) -> PaneRecord:
+def _manual_table_card(pane_dir: Path) -> PaneRecord:
     df = pd.DataFrame(
         {
             "sample_id": [f"ex-{i:04d}" for i in range(1, 13)],
@@ -159,12 +159,12 @@ def _manual_table_card(dumps_dir: Path) -> PaneRecord:
             "expected_answer": ["Vatican City", "32", "2", "Au", "1945", "6"] * 2,
         }
     )
-    card = render_record_card(_record(record_id="manual", label="", query=None, df=df), dumps_dir)
+    card = render_record_data(_record(record_id="manual", label="", query=None, df=df), pane_dir)
     assert card is not None
     return card
 
 
-def _wide_manual_table_card(dumps_dir: Path) -> PaneRecord:
+def _wide_manual_table_card(pane_dir: Path) -> PaneRecord:
     rows = 1_000
     cols = 60
     data: dict[str, list[object]] = {
@@ -175,24 +175,24 @@ def _wide_manual_table_card(dumps_dir: Path) -> PaneRecord:
     for col in range(1, cols - len(data) + 1):
         data[f"metric_{col:02d}"] = [round(((row * (col + 7)) % 100_000) / 37.0, 2) for row in range(rows)]
     df = pd.DataFrame(data)
-    card = render_record_card(_record(record_id="wide_manual", label="", query=None, df=df), dumps_dir)
+    card = render_record_data(_record(record_id="wide_manual", label="", query=None, df=df), pane_dir)
     assert card is not None
     return card
 
 
-def _push_manual_table_turn(pane: pane_mod.OutputPane, dumps_dir: Path) -> None:
+def _push_manual_table_turn(pane: pane_mod.OutputPane, pane_dir: Path) -> None:
     pane.push(
         turn_payload(
             title="manual_table",
             source="manual",
-            records=[_manual_table_card(dumps_dir)],
+            records=[_manual_table_card(pane_dir)],
         )
     )
     pane.push(
         turn_payload(
             title="wide_manual_table",
             source="manual",
-            records=[_wide_manual_table_card(dumps_dir)],
+            records=[_wide_manual_table_card(pane_dir)],
         )
     )
 
@@ -275,9 +275,9 @@ def _media_table_record() -> SimpleNamespace:
     )
 
 
-def _serve_fixed_port(host: str, port: int, dumps_dir: Path) -> pane_mod.OutputPane:
-    pane = pane_mod.OutputPane(dumps_dir)
-    handler = functools.partial(pane_mod._Handler, directory=str(dumps_dir))  # noqa: SLF001
+def _serve_fixed_port(host: str, port: int, pane_dir: Path) -> pane_mod.OutputPane:
+    pane = pane_mod.OutputPane(pane_dir)
+    handler = functools.partial(pane_mod._Handler, directory=str(pane_dir))  # noqa: SLF001
     server = pane_mod._PaneServer((host, port), handler, pane)  # noqa: SLF001
     pane._server = server  # noqa: SLF001
     pane._port = port  # noqa: SLF001
@@ -287,14 +287,14 @@ def _serve_fixed_port(host: str, port: int, dumps_dir: Path) -> pane_mod.OutputP
 
 def _populate_pane(
     pane: pane_mod.OutputPane,
-    dumps_dir: Path,
+    pane_dir: Path,
     *,
     large_rows: int,
     include_large: bool,
     include_media: bool,
     all_chart_turns: bool,
 ) -> None:
-    chart_cards = _chart_cards(dumps_dir, limit=None if all_chart_turns else 6)
+    chart_cards = _chart_cards(pane_dir, limit=None if all_chart_turns else 6)
 
     pane.push(
         turn_payload(
@@ -346,10 +346,10 @@ def _populate_pane(
     )
 
     if chart_cards:
-        _push_manual_table_turn(pane, dumps_dir)
+        _push_manual_table_turn(pane, pane_dir)
         _push_turn(
             pane,
-            dumps_dir,
+            pane_dir,
             title="Large agent table",
             user="Show a large table as a normal agent result.",
             assistant=(
@@ -360,7 +360,7 @@ def _populate_pane(
         )
         _push_turn(
             pane,
-            dumps_dir,
+            pane_dir,
             title="Single chart result",
             user="Show one chart result with its supporting data and query.",
             assistant=_long_result_response(
@@ -371,7 +371,7 @@ def _populate_pane(
         )
         _push_turn(
             pane,
-            dumps_dir,
+            pane_dir,
             title="Compare the first four chart fixtures",
             user="Compare the first four chart fixtures and call out the useful result views.",
             assistant=_long_result_response(
@@ -382,7 +382,7 @@ def _populate_pane(
         )
         _push_turn(
             pane,
-            dumps_dir,
+            pane_dir,
             title="Many-record wrapping test",
             user="Show a single turn with many records and varied label lengths.",
             assistant=_long_result_response(
@@ -395,7 +395,7 @@ def _populate_pane(
     if include_large:
         _push_turn(
             pane,
-            dumps_dir,
+            pane_dir,
             title="Very large table",
             user="Render a very large table so I can inspect truncation and internal scrolling.",
             assistant=(
@@ -408,7 +408,7 @@ def _populate_pane(
     if include_media:
         _push_turn(
             pane,
-            dumps_dir,
+            pane_dir,
             title="Multimedia table",
             user="Render the debug multimedia table.",
             assistant=(
@@ -442,11 +442,11 @@ def main() -> None:
     parser.add_argument("--no-media", action="store_true", help=argparse.SUPPRESS)
     args = parser.parse_args()
 
-    dumps_dir = Path(tempfile.mkdtemp(prefix="tabulaflow-pane-preview-"))
-    pane = _serve_fixed_port(args.host, args.port, dumps_dir)
+    pane_dir = Path(tempfile.mkdtemp(prefix="tabulaflow-pane-preview-"))
+    pane = _serve_fixed_port(args.host, args.port, pane_dir)
     _populate_pane(
         pane,
-        dumps_dir,
+        pane_dir,
         large_rows=args.large_rows,
         include_large=(args.full or args.large_table) and not args.no_large_table,
         include_media=(args.full or args.media) and not args.no_media,
@@ -454,7 +454,7 @@ def main() -> None:
     )
 
     print(f"READY http://{args.host}:{args.port}/", flush=True)
-    print(f"dumps: {dumps_dir}", flush=True)
+    print(f"pane: {pane_dir}", flush=True)
     print("Press Ctrl-C to stop.", flush=True)
 
     stop = threading.Event()

@@ -14,6 +14,7 @@ from __future__ import annotations
 import functools
 import http.server
 import json
+import logging
 import threading
 from collections.abc import Callable, Sequence
 from pathlib import Path
@@ -21,6 +22,8 @@ from typing import cast
 
 from tabulaflow.app.pane_types import PaneTurn
 from tabulaflow.app.theme import GITHUB_SLUG, GITHUB_URL
+
+logger = logging.getLogger(__name__)
 
 DEFAULT_OUTPUT_PANE_PORT_START = 61111
 DEFAULT_OUTPUT_PANE_PORT_END = 61130
@@ -207,13 +210,14 @@ class OutputPane:
 
     def __init__(
         self,
-        dumps_dir: Path,
+        pane_dir: Path,
         *,
         host: str = DEFAULT_OUTPUT_PANE_HOST,
         port: int | None = None,
         port_range: Sequence[int] = DEFAULT_OUTPUT_PANE_PORTS,
     ) -> None:
-        self._dumps_dir = dumps_dir
+        self._pane_dir = pane_dir
+        self._manifest_path = pane_dir / "turns.jsonl"
         self._host = host.strip()
         if not self._host:
             raise ValueError("Output pane host cannot be empty.")
@@ -223,6 +227,7 @@ class OutputPane:
         self._lock = threading.Lock()
         self._cond = threading.Condition(self._lock)
         self._next_id = 0
+        self._loaded = False
         self._server: _PaneServer | None = None
         self._port: int | None = None
         self._browser_opened = False
@@ -233,8 +238,10 @@ class OutputPane:
         With no explicit port, the pane takes the first available port from the
         stable default range. An explicit port is strict and fails if occupied.
         """
+        with self._cond:
+            self._load_manifest_locked()
         host = self._host
-        handler = functools.partial(_Handler, directory=str(self._dumps_dir))
+        handler = functools.partial(_Handler, directory=str(self._pane_dir))
         ports = (self._port_config,) if self._port_config is not None else self._port_range
         last_error: OSError | None = None
         for port in ports:
@@ -272,11 +279,54 @@ class OutputPane:
     def push(self, turn: PaneTurn) -> None:
         """Record a turn ({"records": [{"label", "views": [...]}, ...]}) for the pane."""
         with self._cond:
+            self._load_manifest_locked()
             assigned = cast(PaneTurn, dict(turn))
             assigned["id"] = self._next_id
             self._next_id += 1
             self._results.append(assigned)
+            self._append_manifest_locked(assigned)
             self._cond.notify_all()
+
+    def _load_manifest_locked(self) -> None:
+        """Load persisted pane turns once. Caller must hold ``_cond``."""
+        if self._loaded:
+            return
+        self._loaded = True
+        max_id = -1
+        try:
+            lines = self._manifest_path.read_text(encoding="utf-8").splitlines()
+        except FileNotFoundError:
+            return
+        except OSError:
+            return
+        results: list[PaneTurn] = []
+        for line in lines:
+            if not line.strip():
+                continue
+            try:
+                raw = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            if not isinstance(raw, dict):
+                continue
+            turn = cast(PaneTurn, raw)
+            turn_id = turn.get("id")
+            if not isinstance(turn_id, int):
+                turn_id = max_id + 1
+                turn["id"] = turn_id
+            max_id = max(max_id, turn_id)
+            results.append(turn)
+        self._results = results
+        self._next_id = max_id + 1
+
+    def _append_manifest_locked(self, turn: PaneTurn) -> None:
+        """Persist one turn manifest. Caller must hold ``_cond``."""
+        try:
+            self._manifest_path.parent.mkdir(parents=True, exist_ok=True)
+            with self._manifest_path.open("a", encoding="utf-8") as fh:
+                fh.write(json.dumps(turn, ensure_ascii=False) + "\n")
+        except OSError:
+            logger.debug("output pane manifest write failed", exc_info=True)
 
     def open_browser(self, *, force: bool = False) -> None:
         """Open the pane in the system browser (once unless ``force``; no-op if headless)."""

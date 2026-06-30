@@ -124,7 +124,7 @@ def build_query_data(sql: str, *, lexer: str = "sql") -> dict[str, object]:
     return {"query": {"sql": sql, "lexer": lexer or "sql", "language": language, "html": highlighted}}
 
 
-def render_record_card(record: ResultRecordLike, dumps_dir: Path) -> PaneRecord | None:
+def render_record_data(record: ResultRecordLike, pane_dir: Path) -> PaneRecord | None:
     """Render a record's chart/data/query payload to JSON; return a pane manifest.
 
     The descriptor is ordered chart -> data -> query, including only the views
@@ -138,7 +138,7 @@ def render_record_card(record: ResultRecordLike, dumps_dir: Path) -> PaneRecord 
         table_build = _build_table_data(
             df,
             asset_stem=record_id,
-            output_dir=dumps_dir,
+            output_dir=pane_dir,
             max_height=PANE_TABLE_MAX_HEIGHT,
         )
         record_data.update(table_build.data)
@@ -151,8 +151,8 @@ def render_record_card(record: ResultRecordLike, dumps_dir: Path) -> PaneRecord 
         views.append("query")
     if not views:
         return None
-    dumps_dir.mkdir(parents=True, exist_ok=True)
-    (dumps_dir / f"{record_id}.data.json").write_text(
+    pane_dir.mkdir(parents=True, exist_ok=True)
+    (pane_dir / f"{record_id}.data.json").write_text(
         json.dumps(record_data, ensure_ascii=False, default=str),
         encoding="utf-8",
     )

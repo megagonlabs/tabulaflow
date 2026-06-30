@@ -17,7 +17,7 @@ from textual.widgets import Button, Input, Static
 from tabulaflow.app.commands import COMMAND_PREFIX, handle_command
 from tabulaflow.app.debug import debug_enabled, mount_debug_widgets
 from tabulaflow.app.pane_types import PaneRecord, manual_record_turn, turn_payload
-from tabulaflow.app.runtime_paths import RuntimePaths, ensure_dumps_dir, generate_session_id, prune_old_dumps
+from tabulaflow.app.runtime_paths import RuntimePaths, ensure_pane_dir, generate_session_id
 from tabulaflow.app.session import SessionState
 from tabulaflow.app.theme import ERROR, FOCUS_SURFACE, KEY_HINT
 from tabulaflow.app.widgets import (
@@ -151,8 +151,7 @@ class TabulaflowApp(App[None]):
         # resolve relative paths against the *live* process cwd; the "relative = project
         # dir" design holds only while those two stay equal, i.e. cwd never changes.
         self._project_dir = Path(os.getcwd())
-        prune_old_dumps()
-        ensure_dumps_dir(self._runtime_paths.dumps_dir)
+        ensure_pane_dir(self._runtime_paths.pane_dir)
         self._session: SessionState | None = None
         self._pane: OutputPane | None = None
         self._session_lock = asyncio.Lock()
@@ -490,7 +489,6 @@ class TabulaflowApp(App[None]):
             self._pane.stop()
             self._pane = None
         shutil.rmtree(self._runtime_paths.scratch_dir, ignore_errors=True)
-        shutil.rmtree(self._runtime_paths.dumps_dir, ignore_errors=True)
 
     async def _shutdown_then_exit(self) -> None:
         assert self._session is not None
@@ -512,9 +510,9 @@ class TabulaflowApp(App[None]):
             from tabulaflow.app.pane import OutputPane
 
             try:
-                ensure_dumps_dir(self._runtime_paths.dumps_dir)
+                ensure_pane_dir(self._runtime_paths.pane_dir)
                 self._pane = OutputPane(
-                    self._runtime_paths.dumps_dir,
+                    self._runtime_paths.pane_dir,
                     host=self._output_pane_host,
                     port=self._output_pane_port,
                 )
@@ -564,9 +562,9 @@ class TabulaflowApp(App[None]):
         import asyncio
         from types import SimpleNamespace
 
-        dumps_dir = self._runtime_paths.dumps_dir
+        pane_dir = self._runtime_paths.pane_dir
         try:
-            ensure_dumps_dir(dumps_dir)
+            ensure_pane_dir(pane_dir)
         except Exception:
             return
         snapshots = [
@@ -586,13 +584,13 @@ class TabulaflowApp(App[None]):
             return
 
         async def render_and_push() -> None:
-            from tabulaflow.app.render import render_record_card
+            from tabulaflow.app.render import render_record_data
 
             def render_records() -> list[PaneRecord]:
                 records: list[PaneRecord] = []
                 for record in snapshots:
                     try:
-                        card = render_record_card(record, dumps_dir)
+                        card = render_record_data(record, pane_dir)
                     except Exception:
                         logger.debug("output pane card render failed", exc_info=True)
                         continue

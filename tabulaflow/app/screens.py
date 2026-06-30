@@ -93,17 +93,17 @@ def send_table_to_output_pane(
     """
     from types import SimpleNamespace
 
-    from tabulaflow.app.render import render_record_card
+    from tabulaflow.app.render import render_record_data
 
     try:
-        dumps_dir: Path = app._runtime_paths.dumps_dir  # type: ignore[attr-defined]
+        pane_dir: Path = app._runtime_paths.pane_dir  # type: ignore[attr-defined]
     except AttributeError:
-        status(Text("save failed: no cell dumps dir", style=ERROR))
+        status(Text("save failed: no pane dir", style=ERROR))
         return None
     try:
-        card = render_record_card(
+        card = render_record_data(
             SimpleNamespace(df=df, chart_spec=None, query=None, label=None, query_lexer="sql"),
-            dumps_dir,
+            pane_dir,
         )
     except OSError as exc:
         status(Text(f"write failed: {exc}", style=ERROR))
@@ -115,7 +115,7 @@ def send_table_to_output_pane(
         status(Text("render failed: no table data", style=ERROR))
         return None
     _show_path(card, app, status=status, title=title or "Table preview")
-    return dumps_dir / f"{card['id']}.data.json"
+    return pane_dir / f"{card['id']}.data.json"
 
 
 # ---------------------------------------------------------------------------
