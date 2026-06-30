@@ -268,6 +268,7 @@ function setActiveShellView(shell, activeNode) {
     var active = node === activeNode;
     node.classList.toggle('view-active', active);
     node.classList.toggle('view-hidden', !active);
+    node.classList.remove('view-pending');
     node.toggleAttribute('inert', !active);
     node.setAttribute('aria-hidden', active ? 'false' : 'true');
   });
@@ -275,7 +276,16 @@ function setActiveShellView(shell, activeNode) {
 
 function hideViewNode(node) {
   node.classList.remove('view-active');
+  node.classList.remove('view-pending');
   node.classList.add('view-hidden');
+  node.setAttribute('inert', '');
+  node.setAttribute('aria-hidden', 'true');
+}
+
+function stageViewNode(node) {
+  node.classList.remove('view-active');
+  node.classList.remove('view-hidden');
+  node.classList.add('view-pending');
   node.setAttribute('inert', '');
   node.setAttribute('aria-hidden', 'true');
 }
@@ -300,6 +310,18 @@ function attachView(shell, node) {
   setActiveShellView(shell, node);
 }
 
+function stageShellView(shell, pendingNode) {
+  Array.prototype.forEach.call(shell.children, function (node) {
+    if (node === pendingNode) stageViewNode(node);
+    else hideViewNode(node);
+  });
+}
+
+function stageView(shell, node) {
+  if (node.parentNode !== shell) shell.appendChild(node);
+  stageShellView(shell, node);
+}
+
 function isActiveShellView(shell, key) {
   return shell.dataset.activeViewKey === key;
 }
@@ -316,6 +338,23 @@ function renderHiddenDataView(entry, data) {
   renderLoadedView(entry, 'data', data, { textContent: '' });
   hideViewNode(entry.node);
   blurHiddenFocus(entry.node);
+}
+
+function revealStagedView(shell, key, node) {
+  requestAnimationFrame(function () {
+    requestAnimationFrame(function () {
+      if (isActiveShellView(shell, key) && node.parentNode === shell) setActiveShellView(shell, node);
+    });
+  });
+}
+
+function stageDataView(entry, shell, key, meta) {
+  stageView(shell, entry.node);
+  cacheTouch(key);
+  if (entry.data && !entry.handle) renderLoadedView(entry, 'data', entry.data, meta);
+  else if (entry.data && entry.data.table) meta.textContent = entry.data.table.meta || '';
+  stageShellView(shell, entry.node);
+  revealStagedView(shell, key, entry.node);
 }
 
 function prewarmDataView(record, views, activeKind, shell) {
@@ -352,6 +391,10 @@ function mountView(record, kind, shell, meta) {
   shell.dataset.activeViewKey = key;
   meta.textContent = '';
   if (entry) {
+    if (kind === 'data') {
+      stageDataView(entry, shell, key, meta);
+      return;
+    }
     attachView(shell, entry.node);
     cacheTouch(key);
     if (entry.data && !entry.handle) renderLoadedView(entry, kind, entry.data, meta);
@@ -366,15 +409,24 @@ function mountView(record, kind, shell, meta) {
   attachView(shell, node);
   var cachedData = getCachedRecordData(record);
   if (cachedData) {
-    renderLoadedView(entry, kind, cachedData, meta);
-    setActiveShellView(shell, node);
+    if (kind === 'data') {
+      entry.data = cachedData;
+      stageDataView(entry, shell, key, meta);
+    } else {
+      renderLoadedView(entry, kind, cachedData, meta);
+      setActiveShellView(shell, node);
+    }
     return;
   }
   fetchRecordData(record).then(function (data) {
     entry.data = data;
     if (isActiveShellView(shell, key)) {
-      renderLoadedView(entry, kind, data, meta);
-      setActiveShellView(shell, node);
+      if (kind === 'data') {
+        stageDataView(entry, shell, key, meta);
+      } else {
+        renderLoadedView(entry, kind, data, meta);
+        setActiveShellView(shell, node);
+      }
     }
   }).catch(function (err) {
     node.className = 'tf-view error';
@@ -409,11 +461,7 @@ function buildRecord(record, opts) {
     if (!initial && state) restoreTurnScroll(state);
   }
 
-  if (opts && opts.records) {
-    bar.classList.add('multi-record');
-    if (views.length <= 1) bar.classList.add('no-view-menu');
-    bar.appendChild(buildRecordTabs(opts.records, opts.activeIndex, opts.onSelect));
-  } else if (record.label) {
+  if (record.label) {
     var label = el('span', 'cardlabel');
     label.textContent = record.label;
     bar.appendChild(label);
@@ -427,6 +475,70 @@ function buildRecord(record, opts) {
   pane.appendChild(meta);
   if (views.length) showView(activeKind, viewOptionForKind(switcher, activeKind), true);
   requestAnimationFrame(function () { syncRecordHeader(bar); });
+  return pane;
+}
+
+function buildMultiRecord(records, state) {
+  var pane = el('div', 'recordpane');
+  var bar = el('div', 'cardbar multi-record');
+  var shell = el('div', 'view-shell');
+  var meta = el('div', 'viewmeta');
+  var activeRecord = Math.min(Math.max(state.activeRecord || 0, 0), records.length - 1);
+  var switcher = null;
+
+  function updateRecordTabs() {
+    var tabs = bar.querySelectorAll('.rectab');
+    for (var i = 0; i < tabs.length; i++) tabs[i].classList.toggle('active', i === activeRecord);
+  }
+
+  function currentRecord() {
+    return records[activeRecord];
+  }
+
+  function showView(kind, opt, initial) {
+    var record = currentRecord();
+    var views = record.views || [];
+    rememberViewKind(state, record, activeRecord, kind);
+    if (switcher) {
+      switcher.opts.forEach(function (x) { x.classList.remove('active'); });
+      if (opt) {
+        opt.classList.add('active');
+        moveThumb(switcher.thumb, opt);
+      }
+    }
+    mountView(record, kind, shell, meta);
+    prewarmDataView(record, views, kind, shell);
+    if (!initial) restoreTurnScroll(state);
+  }
+
+  function rebuildViewSwitcher(views, activeKind) {
+    if (switcher && switcher.seg.parentNode) switcher.seg.parentNode.removeChild(switcher.seg);
+    switcher = null;
+    bar.classList.toggle('no-view-menu', views.length <= 1);
+    if (views.length > 1) {
+      switcher = buildViewSwitcher(views, activeKind, showView);
+      bar.appendChild(switcher.seg);
+    }
+    requestAnimationFrame(function () { syncRecordHeader(bar); });
+  }
+
+  function showRecord(index, initial) {
+    activeRecord = Math.min(Math.max(index, 0), records.length - 1);
+    state.activeRecord = activeRecord;
+    updateRecordTabs();
+    var record = currentRecord();
+    var views = record.views || [];
+    var activeKind = savedViewKind(state, record, activeRecord, views);
+    rebuildViewSwitcher(views, activeKind);
+    if (views.length) showView(activeKind, viewOptionForKind(switcher, activeKind), initial);
+    else if (!initial) restoreTurnScroll(state);
+  }
+
+  bar.appendChild(buildRecordTabs(records, activeRecord, function (i) { showRecord(i, false); }));
+  pane.appendChild(bar);
+  pane.appendChild(shell);
+  pane.appendChild(meta);
+  showRecord(activeRecord, true);
   return pane;
 }
 
@@ -447,23 +559,7 @@ function renderTurn(turn, index) {
     return view;
   }
   var box = el('div', 'panesbox');
-  var activeRecord = Math.min(Math.max(state.activeRecord || 0, 0), records.length - 1);
-  state.activeRecord = activeRecord;
-  function renderActiveRecord() {
-    box.replaceChildren(buildRecord(records[activeRecord], {
-      records: records,
-      activeIndex: activeRecord,
-      state: state,
-      recordIndex: activeRecord,
-      onSelect: function (i) {
-        activeRecord = i;
-        state.activeRecord = i;
-        renderActiveRecord();
-        restoreTurnScroll(state);
-      }
-    }));
-  }
-  renderActiveRecord();
+  box.appendChild(buildMultiRecord(records, state));
   view.appendChild(box);
   return view;
 }

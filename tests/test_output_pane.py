@@ -272,9 +272,21 @@ def test_pane_view_switches_keep_cached_nodes_mounted() -> None:
     assert "function viewOptionForKind(switcher, kind)" in _PANE_HTML
     assert "opt.dataset.kind = kind;" in _PANE_HTML
     assert "showView(activeKind, viewOptionForKind(switcher, activeKind), true);" in _PANE_HTML
-    assert "state.activeRecord = i;" in _PANE_HTML
+    assert "function buildMultiRecord(records, state)" in _PANE_HTML
+    assert "box.appendChild(buildMultiRecord(records, state));" in _PANE_HTML
+    assert "state.activeRecord = activeRecord;" in _PANE_HTML
+    assert (
+        "bar.appendChild(buildRecordTabs(records, activeRecord, function (i) { showRecord(i, false); }));" in _PANE_HTML
+    )
     assert "node.toggleAttribute('inert', !active);" in _PANE_HTML
     assert "node.setAttribute('aria-hidden', active ? 'false' : 'true');" in _PANE_HTML
+    assert "function stageViewNode(node)" in _PANE_HTML
+    assert "function stageShellView(shell, pendingNode)" in _PANE_HTML
+    assert "function stageDataView(entry, shell, key, meta)" in _PANE_HTML
+    assert "function revealStagedView(shell, key, node)" in _PANE_HTML
+    assert "if (kind === 'data') {\n      stageDataView(entry, shell, key, meta);" in _PANE_HTML
+    assert "if (node === pendingNode) stageViewNode(node);" in _PANE_HTML
+    assert "else hideViewNode(node);" in _PANE_HTML
     assert "function prewarmDataView(record, views, activeKind, shell)" in _PANE_HTML
     assert "function hideViewNode(node)" in _PANE_HTML
     assert "function blurHiddenFocus(node)" in _PANE_HTML
@@ -294,8 +306,12 @@ def test_pane_view_switches_keep_cached_nodes_mounted() -> None:
     assert "if (isActiveShellView(shell, key))" in _PANE_HTML
     assert "shell.replaceChildren(entry.node)" not in _PANE_HTML
     assert "shell.replaceChildren(node)" not in _PANE_HTML
+    assert "box.replaceChildren(buildRecord" not in _PANE_HTML
+    assert "records: records" not in _PANE_HTML
+    assert "onSelect: function (i)" not in _PANE_HTML
     assert ".view-shell > .tf-view.view-hidden {" in _PANE_HTML
     assert "opacity: 0;" in _PANE_HTML
+    assert ".view-shell > .tf-view.view-pending { position: relative; opacity: 0; pointer-events: none; }" in _PANE_HTML
     assert ".view-shell > .tf-view.view-active { position: relative; opacity: 1; }" in _PANE_HTML
 
 

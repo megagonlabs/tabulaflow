@@ -119,6 +119,7 @@ body { margin: 0; background: var(--bg); color: var(--text); display: flex; flex
     opacity: 0;
     pointer-events: none;
 }
+.view-shell > .tf-view.view-pending { position: relative; opacity: 0; pointer-events: none; }
 .view-shell > .tf-view.view-active { position: relative; opacity: 1; }
 .manual-preview .view-shell,
 .manual-preview .viewmeta { width: min(1280px, 100%); }
