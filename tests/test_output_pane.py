@@ -246,17 +246,36 @@ def test_pane_chart_shell_matches_vega_background() -> None:
 
 def test_pane_map_view_is_leaflet_based() -> None:
     renderer = files("tabulaflow.app.assets.pane").joinpath("pane-render.js").read_text(encoding="utf-8")
+    leaflet_assets = files("tabulaflow.app.assets.leaflet")
     assert '<link rel="stylesheet" href="/assets/leaflet/leaflet.css">' in _PANE_HTML
     assert '<script src="/assets/leaflet/leaflet.js"></script>' in _PANE_HTML
+    assert leaflet_assets.joinpath("images/marker-shadow.png").is_file()
     assert "if (kind === 'map') return TF.renderMap(node, data);" in _PANE_HTML
     assert "function afterVisible(entry)" in _PANE_HTML
     assert "entry.handle.afterVisible" in _PANE_HTML
     assert "renderMap: renderMap" in renderer
     assert "L.map(mapNode" in renderer
     assert "L.tileLayer(String(mapData.tileUrl" in renderer
-    assert "L.circleMarker([lat, lng]" in renderer
+    assert "function mapMarkerIcon()" in renderer
+    assert "iconSize: [25, 41]" in renderer
+    assert "iconAnchor: [12, 41]" in renderer
+    assert "shadowUrl: '/assets/leaflet/images/marker-shadow.png'" in renderer
+    assert "shadowSize: [41, 41]" in renderer
+    assert "shadowAnchor" not in renderer
+    assert "data:image/svg+xml;charset=UTF-8," in renderer
+    assert "#5bd0a8" in renderer
+    assert "#2f9a74" in renderer
+    assert "#52c79f" not in renderer
+    assert "#35a47d" not in renderer
+    assert "#68d7b5" not in renderer
+    assert "#278b69" not in renderer
+    assert "rgba(255,255,255,0.35)" not in renderer
+    assert "L.marker([lat, lng]" in renderer
+    assert "L.divIcon" not in renderer
+    assert "tf-map-pin" not in renderer
     assert "map.invalidateSize();" in renderer
     assert ".tf-map-stage { position: relative; height: min(560px, 68vh); min-height: 420px;" in _PANE_HTML
+    assert ".tf-map-pin" not in _PANE_HTML
 
 
 def test_pane_table_scrollbars_use_dark_theme() -> None:
@@ -444,6 +463,12 @@ def test_pane_serves_bundled_assets_cached(tmp_path: Path) -> None:
                 "Cache-Control", ""
             )
             assert b"Leaflet" in resp.read()
+
+        with urllib.request.urlopen(f"{pane.url}assets/leaflet/images/marker-shadow.png", timeout=2) as resp:
+            assert resp.headers.get("Cache-Control") is not None and "immutable" in resp.headers.get(
+                "Cache-Control", ""
+            )
+            assert resp.read().startswith(b"\x89PNG")
 
         try:
             urllib.request.urlopen(f"{pane.url}assets/does-not-exist.js", timeout=2)

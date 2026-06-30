@@ -278,6 +278,25 @@
     return { destroy: function () { disposed = true; if (view) view.finalize(); } };
   }
 
+  function mapMarkerIcon() {
+    var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="25" height="41" viewBox="0 0 25 41">'
+      + '<defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1">'
+      + '<stop offset="0" stop-color="#5bd0a8"/><stop offset="1" stop-color="#2f9a74"/></linearGradient></defs>'
+      + '<path fill="#1f7c5d" d="M12.5 0C5.6 0 0 5.6 0 12.5c0 8.9 12.5 28.5 12.5 28.5S25 21.4 25 12.5C25 5.6 19.4 0 12.5 0z"/>'
+      + '<path fill="url(#g)" d="M12.5 1.25C6.3 1.25 1.25 6.3 1.25 12.5c0 7.9 8.9 22.6 11.25 26.2C14.85 35.1 23.75 20.4 23.75 12.5c0-6.2-5.05-11.25-11.25-11.25z"/>'
+      + '<circle cx="12.5" cy="12.6" r="5.7" fill="#f8fafc"/>'
+      + '<circle cx="12.5" cy="12.6" r="4.2" fill="#e8fff6"/>'
+      + '</svg>';
+    return L.icon({
+      iconUrl: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg),
+      shadowUrl: '/assets/leaflet/images/marker-shadow.png',
+      iconSize: [25, 41],
+      iconAnchor: [12, 41],
+      shadowSize: [41, 41],
+      popupAnchor: [1, -34]
+    });
+  }
+
   function renderMap(container, recordData) {
     var mapData = recordData.map || {};
     var rows = (recordData.dataset && recordData.dataset.rows) || [];
@@ -285,7 +304,6 @@
     var lngField = String(mapData.lng || '');
     var labelField = String(mapData.label || '');
     var tooltipField = String(mapData.tooltip || labelField || '');
-    var markerStyle = mapData.marker || {};
     container.className = 'tf-view tf-map-view';
     container.innerHTML = '<div class="tf-map-stage"><div class="tf-map"></div><div class="tf-map-empty"></div></div>';
     var mapNode = container.querySelector('.tf-map');
@@ -308,25 +326,17 @@
     }).addTo(map);
 
     var bounds = [];
-    var markerColor = String(markerStyle.color || '#3eb489');
-    var fillColor = String(markerStyle.fillColor || markerColor);
-    var radius = numberValue(markerStyle.radius);
+    var markerIcon = mapMarkerIcon();
     rows.forEach(function (row) {
       var lat = numberValue(fieldValue(row, latField));
       var lng = numberValue(fieldValue(row, lngField));
       if (lat == null || lng == null) return;
       if (lat < -90 || lat > 90 || lng < -180 || lng > 180) return;
-      var marker = L.circleMarker([lat, lng], {
-        radius: radius || 6,
-        color: markerColor,
-        weight: 1,
-        fillColor: fillColor,
-        fillOpacity: 0.82
-      }).addTo(map);
       var label = fieldValue(row, labelField);
       var tooltip = fieldValue(row, tooltipField);
+      var text = label != null ? label : tooltip;
+      var marker = L.marker([lat, lng], { icon: markerIcon, title: text == null ? '' : String(text) }).addTo(map);
       if (label != null || tooltip != null) {
-        var text = label != null ? label : tooltip;
         marker.bindPopup('<div class="tf-map-popup">' + escapeHtml(text) + '</div>');
       }
       bounds.push([lat, lng]);
