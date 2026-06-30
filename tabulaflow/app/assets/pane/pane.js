@@ -141,6 +141,13 @@ var viewCache = {};
 var lru = [];
 var CACHE_LIMIT = 24;
 
+function scheduleIdle(fn) {
+  if (window.requestIdleCallback) {
+    return window.requestIdleCallback(fn, { timeout: 800 });
+  }
+  return window.setTimeout(fn, 80);
+}
+
 function cacheTouch(key) {
   var idx = lru.indexOf(key);
   if (idx !== -1) lru.splice(idx, 1);
@@ -156,12 +163,23 @@ function cacheTouch(key) {
 }
 
 function fetchRecordData(record) {
-  if (recordDataCache[record.id]) return recordDataCache[record.id];
-  recordDataCache[record.id] = fetch('/' + record.id + '.data.json').then(function (response) {
+  var cached = recordDataCache[record.id];
+  if (cached) return cached.promise;
+  cached = { data: null, promise: null };
+  cached.promise = fetch('/' + record.id + '.data.json').then(function (response) {
     if (!response.ok) throw new Error('HTTP ' + response.status);
     return response.json();
+  }).then(function (data) {
+    cached.data = data;
+    return data;
   });
-  return recordDataCache[record.id];
+  recordDataCache[record.id] = cached;
+  return cached.promise;
+}
+
+function getCachedRecordData(record) {
+  var cached = recordDataCache[record.id];
+  return cached && cached.data ? cached.data : null;
 }
 
 function renderKind(node, kind, data) {
@@ -172,15 +190,88 @@ function renderKind(node, kind, data) {
   return { destroy: function () {} };
 }
 
+function setActiveShellView(shell, activeNode) {
+  Array.prototype.forEach.call(shell.children, function (node) {
+    var active = node === activeNode;
+    node.classList.toggle('view-active', active);
+    node.classList.toggle('view-hidden', !active);
+  });
+}
+
+function hideViewNode(node) {
+  node.classList.remove('view-active');
+  node.classList.add('view-hidden');
+}
+
+function syncActiveShellView(shell) {
+  var entry = viewCache[shell.dataset.activeViewKey];
+  if (entry && entry.node.parentNode === shell) {
+    setActiveShellView(shell, entry.node);
+    return;
+  }
+  var activeNode = shell.querySelector('.tf-view.view-active');
+  if (activeNode) setActiveShellView(shell, activeNode);
+}
+
+function attachView(shell, node) {
+  if (node.parentNode !== shell) shell.appendChild(node);
+  setActiveShellView(shell, node);
+}
+
+function isActiveShellView(shell, key) {
+  return shell.dataset.activeViewKey === key;
+}
+
+function renderLoadedView(entry, kind, data, meta) {
+  entry.data = data;
+  entry.node.textContent = '';
+  entry.handle = renderKind(entry.node, kind, data);
+  if (kind === 'data' && data.table) meta.textContent = data.table.meta || '';
+}
+
+function renderHiddenDataView(entry, data) {
+  renderLoadedView(entry, 'data', data, { textContent: '' });
+  hideViewNode(entry.node);
+}
+
+function prewarmDataView(record, views, activeKind, shell) {
+  if (activeKind === 'data' || views.indexOf('data') === -1) return;
+  var key = record.id + ':data';
+  scheduleIdle(function () {
+    if (!shell.isConnected) return;
+    var entry = viewCache[key];
+    if (entry) {
+      if (entry.node.parentNode !== shell) shell.appendChild(entry.node);
+      hideViewNode(entry.node);
+      if (entry.data && !entry.handle) renderHiddenDataView(entry, entry.data);
+      cacheTouch(key);
+      syncActiveShellView(shell);
+      return;
+    }
+    fetchRecordData(record).then(function (data) {
+      if (!shell.isConnected || viewCache[key]) return;
+      var node = el('div', 'tf-view view-hidden');
+      var entry = { node: node, handle: null, data: data };
+      viewCache[key] = entry;
+      cacheTouch(key);
+      shell.appendChild(node);
+      renderHiddenDataView(entry, data);
+      syncActiveShellView(shell);
+    });
+  });
+}
+
 function mountView(record, kind, shell, meta) {
   var key = record.id + ':' + kind;
   var entry = viewCache[key];
   shell.className = 'view-shell view-' + kind;
+  shell.dataset.activeViewKey = key;
   meta.textContent = '';
   if (entry) {
-    shell.replaceChildren(entry.node);
+    attachView(shell, entry.node);
     cacheTouch(key);
-    if (entry.data && kind === 'data' && entry.data.table) meta.textContent = entry.data.table.meta || '';
+    if (entry.data && !entry.handle) renderLoadedView(entry, kind, entry.data, meta);
+    else if (entry.data && kind === 'data' && entry.data.table) meta.textContent = entry.data.table.meta || '';
     return;
   }
   var node = el('div', 'tf-view loading');
@@ -188,15 +279,23 @@ function mountView(record, kind, shell, meta) {
   entry = { node: node, handle: null, data: null };
   viewCache[key] = entry;
   cacheTouch(key);
-  shell.replaceChildren(node);
+  attachView(shell, node);
+  var cachedData = getCachedRecordData(record);
+  if (cachedData) {
+    renderLoadedView(entry, kind, cachedData, meta);
+    setActiveShellView(shell, node);
+    return;
+  }
   fetchRecordData(record).then(function (data) {
     entry.data = data;
-    node.textContent = '';
-    entry.handle = renderKind(node, kind, data);
-    if (kind === 'data' && data.table) meta.textContent = data.table.meta || '';
+    if (isActiveShellView(shell, key)) {
+      renderLoadedView(entry, kind, data, meta);
+      setActiveShellView(shell, node);
+    }
   }).catch(function (err) {
     node.className = 'tf-view error';
     node.textContent = 'Failed to load view: ' + String(err);
+    if (isActiveShellView(shell, key)) setActiveShellView(shell, node);
   });
 }
 
@@ -219,6 +318,7 @@ function buildRecord(record, opts) {
       }
     }
     mountView(record, kind, shell, meta);
+    prewarmDataView(record, views, kind, shell);
   }
 
   if (opts && opts.records) {

@@ -251,6 +251,31 @@ def test_pane_tables_keep_last_row_gridline() -> None:
     assert ".tabulator-row:last-child .tabulator-cell.tabulator-row-header" in _PANE_HTML
 
 
+def test_pane_view_switches_keep_cached_nodes_mounted() -> None:
+    assert "function getCachedRecordData(record)" in _PANE_HTML
+    assert "function scheduleIdle(fn)" in _PANE_HTML
+    assert "function prewarmDataView(record, views, activeKind, shell)" in _PANE_HTML
+    assert "function hideViewNode(node)" in _PANE_HTML
+    assert "function syncActiveShellView(shell)" in _PANE_HTML
+    assert "function renderHiddenDataView(entry, data)" in _PANE_HTML
+    assert "if (activeKind === 'data' || views.indexOf('data') === -1) return;" in _PANE_HTML
+    assert "if (!shell.isConnected || viewCache[key]) return;" in _PANE_HTML
+    assert "if (entry.node.parentNode !== shell) shell.appendChild(entry.node);" in _PANE_HTML
+    assert "hideViewNode(entry.node);" in _PANE_HTML
+    assert "renderHiddenDataView(entry, data);" in _PANE_HTML
+    assert "syncActiveShellView(shell);" in _PANE_HTML
+    assert "fetchRecordData(record).then(function (data)" in _PANE_HTML
+    assert "prewarmDataView(record, views, kind, shell);" in _PANE_HTML
+    assert "shell.dataset.activeViewKey = key;" in _PANE_HTML
+    assert "if (node.parentNode !== shell) shell.appendChild(node);" in _PANE_HTML
+    assert "if (isActiveShellView(shell, key))" in _PANE_HTML
+    assert "shell.replaceChildren(entry.node)" not in _PANE_HTML
+    assert "shell.replaceChildren(node)" not in _PANE_HTML
+    assert ".view-shell > .tf-view.view-hidden {" in _PANE_HTML
+    assert "opacity: 0;" in _PANE_HTML
+    assert ".view-shell > .tf-view.view-active { position: relative; opacity: 1; }" in _PANE_HTML
+
+
 def test_view_record_in_pane_marks_turn_as_manual(tmp_path: Path) -> None:
     pushed: list[PaneTurn] = []
 

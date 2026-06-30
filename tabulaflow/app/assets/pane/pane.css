@@ -111,6 +111,15 @@ body { margin: 0; background: var(--bg); color: var(--text); display: flex; flex
 .view-shell.view-data { border-radius: 0; }
 .view-shell.view-data::after { box-shadow: inset 0 0 0 1px rgba(58, 67, 82, 0.48); }
 .view-shell.view-chart { background: var(--card); }
+.view-shell > .tf-view.view-hidden {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    opacity: 0;
+    pointer-events: none;
+}
+.view-shell > .tf-view.view-active { position: relative; opacity: 1; }
 .manual-preview .view-shell,
 .manual-preview .viewmeta { width: min(1280px, 100%); }
 .manual-preview .view-shell { flex: 1 1 auto; min-height: 360px; overflow: hidden; }
