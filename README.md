@@ -345,6 +345,7 @@ June 29
   - [x] Debug "analyze root directory" (mdc) -> cause is command itself is slow
   - [x] Fix output pane freezed caused by tabulator
 - [x] Output pane refactor
+- [x] Improve output pane UI
 
 
 
