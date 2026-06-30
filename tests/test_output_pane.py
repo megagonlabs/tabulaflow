@@ -200,7 +200,7 @@ def test_pane_table_renderer_does_not_max_height_short_tables() -> None:
     assert "maxHeight: viewportCap" not in renderer
     assert "estimatedTableHeight > viewportCap" in renderer
     assert "opts.height = viewportCap" in renderer
-    assert ".turnview.manual-preview { min-height: calc(100vh - 82px);" in _PANE_HTML
+    assert ".turnview.manual-preview { height: calc(100vh - 82px); min-height: 460px;" in _PANE_HTML
     assert f"/assets/pane/pane-render.js?v={renderer_version}" in _PANE_HTML
     assert "__PANE_RENDER_VERSION__" not in _PANE_HTML
     assert "20260630-table-sizing" not in _PANE_HTML
@@ -224,6 +224,21 @@ def test_pane_short_tables_keep_bottom_inset() -> None:
     renderer = files("tabulaflow.app.assets.pane").joinpath("pane-render.js").read_text(encoding="utf-8")
     assert "rows.length <= 12 ? 'tf-table-wrap pane-short' : 'tf-table-wrap'" in renderer
     assert ".tf-table-wrap.pane-short { padding-bottom: 16px; box-sizing: border-box; }" in _PANE_HTML
+
+
+def test_pane_manual_tables_use_fixed_panel() -> None:
+    assert ".turnview.manual-preview { height: calc(100vh - 82px); min-height: 460px;" in _PANE_HTML
+    assert ".manual-preview .recordpane { flex: 1 1 auto; min-height: 0;" in _PANE_HTML
+    assert ".manual-preview .view-shell { flex: 1 1 auto; min-height: 360px; overflow: hidden; }" in _PANE_HTML
+    assert ".manual-preview .tf-table-view,\n.manual-preview .tf-table-wrap { height: 100%;" in _PANE_HTML
+
+
+def test_pane_tables_keep_last_row_gridline() -> None:
+    assert (
+        ".tabulator-row:last-child .tabulator-cell {\n    border-bottom: 1px solid rgba(58, 67, 82, 0.48);"
+        in _PANE_HTML
+    )
+    assert ".tabulator-row:last-child .tabulator-cell.tabulator-row-header" in _PANE_HTML
 
 
 def test_view_record_in_pane_marks_turn_as_manual(tmp_path: Path) -> None:
