@@ -151,7 +151,7 @@ var recordDataCache = {};
 var viewCache = {};
 var navState = {};
 var lru = [];
-var CACHE_LIMIT = 24;
+var CACHE_WEIGHT_LIMIT = 24;
 var suppressScrollMemory = false;
 
 function turnStateKey(turn, index) {
@@ -223,11 +223,23 @@ function scheduleIdle(fn) {
   return window.setTimeout(fn, 80);
 }
 
+function cacheEntryWeight(entry) {
+  if (!entry) return 0;
+  if (entry.kind === 'map') return 3;
+  return 1;
+}
+
+function cacheWeight() {
+  var total = 0;
+  for (var i = 0; i < lru.length; i++) total += cacheEntryWeight(viewCache[lru[i]]);
+  return total;
+}
+
 function cacheTouch(key) {
   var idx = lru.indexOf(key);
   if (idx !== -1) lru.splice(idx, 1);
   lru.push(key);
-  while (lru.length > CACHE_LIMIT) {
+  while (cacheWeight() > CACHE_WEIGHT_LIMIT) {
     var evict = lru.shift();
     var entry = viewCache[evict];
     if (!entry) continue;
@@ -384,7 +396,7 @@ function prewarmDataView(record, views, activeKind, shell) {
     fetchRecordData(record).then(function (data) {
       if (!shell.isConnected || viewCache[key]) return;
       var node = el('div', 'tf-view view-hidden');
-      var entry = { node: node, handle: null, data: data };
+      var entry = { node: node, handle: null, data: data, kind: 'data' };
       viewCache[key] = entry;
       cacheTouch(key);
       shell.appendChild(node);
@@ -416,7 +428,7 @@ function mountView(record, kind, shell, meta) {
   }
   var node = el('div', 'tf-view loading');
   node.textContent = 'Loading...';
-  entry = { node: node, handle: null, data: null };
+  entry = { node: node, handle: null, data: null, kind: kind };
   node._tfViewEntry = entry;
   viewCache[key] = entry;
   cacheTouch(key);

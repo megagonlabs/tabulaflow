@@ -302,6 +302,14 @@ def test_pane_tables_keep_last_row_gridline() -> None:
 def test_pane_view_switches_keep_cached_nodes_mounted() -> None:
     assert "function getCachedRecordData(record)" in _PANE_HTML
     assert "function scheduleIdle(fn)" in _PANE_HTML
+    assert "var CACHE_WEIGHT_LIMIT = 24;" in _PANE_HTML
+    assert "function cacheEntryWeight(entry)" in _PANE_HTML
+    assert "if (entry.kind === 'map') return 3;" in _PANE_HTML
+    assert "function cacheWeight()" in _PANE_HTML
+    assert "while (cacheWeight() > CACHE_WEIGHT_LIMIT)" in _PANE_HTML
+    assert "CACHE_LIMIT" not in _PANE_HTML
+    assert "kind: kind" in _PANE_HTML
+    assert "kind: 'data'" in _PANE_HTML
     assert "var navState = {};" in _PANE_HTML
     assert "var suppressScrollMemory = false;" in _PANE_HTML
     assert "function getTurnState(turn, index)" in _PANE_HTML
