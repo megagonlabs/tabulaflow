@@ -15,7 +15,7 @@ import pytest
 
 from tabulaflow.app.render.cards import render_query_html, render_record_card
 from tabulaflow.app.pane import OutputPane, OutputPanePortError, _PANE_HTML
-from tabulaflow.app.pane_types import PaneTurn, turn_payload
+from tabulaflow.app.pane_types import PaneRecord, PaneTurn, turn_payload
 from tabulaflow.app.screens import send_table_to_output_pane
 from tabulaflow.app.tui import TabulaflowApp
 
@@ -50,17 +50,22 @@ def test_output_pane_serves_text_only_turn(tmp_path: Path) -> None:
         )
 
         assert pane.url is not None
-        with urllib.request.urlopen(f"{pane.url}__index__", timeout=2) as response:
-            payload = json.loads(response.read().decode("utf-8"))
+        with urllib.request.urlopen(f"{pane.url}events", timeout=2) as response:
+            data_line = ""
+            for raw_line in response:
+                line = raw_line.decode("utf-8").strip()
+                if line.startswith("data: "):
+                    data_line = line[len("data: ") :]
+                    break
 
-        assert payload == [
-            {
-                "title": "summarize",
-                "user": "Summarize the latest result.",
-                "assistant": "The result has three rows.",
-                "records": [],
-            }
-        ]
+        payload = json.loads(data_line)
+        assert payload == {
+            "id": 0,
+            "title": "summarize",
+            "user": "Summarize the latest result.",
+            "assistant": "The result has three rows.",
+            "records": [],
+        }
     finally:
         pane.stop()
 
@@ -122,7 +127,9 @@ def test_record_card_includes_data_view_meta(tmp_path: Path) -> None:
     )
 
     assert card is not None
-    assert card["views"] == [{"kind": "data", "file": card["views"][0]["file"], "meta": "2 rows · 2 columns"}]
+    assert card["views"] == ["data"]
+    payload = json.loads((tmp_path / f"{card['id']}.data.json").read_text())
+    assert payload["table"]["meta"] == "2 rows · 2 columns"
 
 
 def test_manual_table_send_includes_data_view_meta(tmp_path: Path) -> None:
@@ -132,8 +139,8 @@ def test_manual_table_send_includes_data_view_meta(tmp_path: Path) -> None:
     class FakeApp:
         _runtime_paths = SimpleNamespace(dumps_dir=tmp_path)
 
-        def view_in_pane(self, path: Path, **kwargs: object) -> bool:
-            calls.append((path, kwargs))
+        def view_record_in_pane(self, record: object, **kwargs: object) -> bool:
+            calls.append((Path(f"{record['id']}.data.json"), kwargs))  # type: ignore[index]
             return True
 
     df = pd.DataFrame({"sample_id": ["ex-0001", "ex-0002"], "answer": ["A", "B"]})
@@ -141,8 +148,9 @@ def test_manual_table_send_includes_data_view_meta(tmp_path: Path) -> None:
 
     assert path is not None
     assert path.exists()
-    assert "var fixedMax = null;" in path.read_text()
-    assert calls == [(path, {"title": "manual_table", "meta": "2 rows · 2 columns"})]
+    payload = json.loads(path.read_text())
+    assert payload["table"]["meta"] == "2 rows · 2 columns"
+    assert calls == [(Path(path.name), {"title": "manual_table"})]
     assert str(statuses[-1]) == "sent to output pane"
 
 
@@ -156,7 +164,7 @@ def test_pane_omits_text_only_turn_meta() -> None:
     assert "metaText ? title.textContent + ' · ' + metaText : title.textContent" in _PANE_HTML
 
 
-def test_view_in_pane_marks_turn_as_manual(tmp_path: Path) -> None:
+def test_view_record_in_pane_marks_turn_as_manual(tmp_path: Path) -> None:
     pushed: list[PaneTurn] = []
 
     class FakePane:
@@ -168,14 +176,13 @@ def test_view_in_pane_marks_turn_as_manual(tmp_path: Path) -> None:
     app = TabulaflowApp(model="openai-responses:gpt-5", agent="sql_agent", reasoning_effort="medium")
     app._pane = FakePane()  # type: ignore[assignment]  # noqa: SLF001
 
-    assert app.view_in_pane(tmp_path / "T_table.html", title="orders", meta="2 rows · 3 columns")
+    record: PaneRecord = {"id": "rec_orders", "label": None, "views": ["data"]}
+    assert app.view_record_in_pane(record, title="orders")
     assert pushed == [
         {
             "title": "orders",
             "source": "manual",
-            "records": [
-                {"label": None, "views": [{"kind": "data", "file": "T_table.html", "meta": "2 rows · 3 columns"}]}
-            ],
+            "records": [{"id": "rec_orders", "label": None, "views": ["data"]}],
         }
     ]
 
@@ -193,7 +200,7 @@ def test_query_view_renders_code_header_and_dracula_theme(tmp_path: Path) -> Non
     assert "#8BE9FD" in html  # Dracula builtin/token color.
 
 
-def test_record_card_links_assets_instead_of_inlining(tmp_path: Path) -> None:
+def test_record_card_writes_structured_data_instead_of_html(tmp_path: Path) -> None:
     df = pd.DataFrame({"cat": ["a", "b"], "n": [3, 5]})
     spec = {"mark": "bar", "encoding": {"x": {"field": "cat"}, "y": {"field": "n"}}}
     card = render_record_card(
@@ -201,16 +208,13 @@ def test_record_card_links_assets_instead_of_inlining(tmp_path: Path) -> None:
         tmp_path,
     )
     assert card is not None
-    by_kind = {v["kind"]: tmp_path / v["file"] for v in card["views"]}
-
-    chart_html = by_kind["chart"].read_text()
-    assert '<script src="/assets/vega/vega.min.js"></script>' in chart_html
-    assert len(chart_html) < 100_000, "Vega should be linked, not inlined (~0.8 MB)"
-
-    data_html = by_kind["data"].read_text()
-    assert '<link rel="stylesheet" href="/assets/tabulator/tabulator.min.css">' in data_html
-    assert '<script src="/assets/tabulator/tabulator.min.js"></script>' in data_html
-    assert len(data_html) < 100_000, "Tabulator should be linked, not inlined (~0.46 MB)"
+    assert card["views"] == ["chart", "data"]
+    payload_path = tmp_path / f"{card['id']}.data.json"
+    payload = json.loads(payload_path.read_text())
+    assert set(payload) == {"dataset", "table", "chart"}
+    assert payload["dataset"]["rows"] == [{"c0": "a", "c1": 3}, {"c0": "b", "c1": 5}]
+    assert payload["chart"]["spec"]["encoding"]["x"] == {"field": "c0", "title": "cat"}
+    assert payload_path.stat().st_size < 100_000
 
 
 def test_pane_serves_bundled_assets_cached(tmp_path: Path) -> None:
@@ -231,5 +235,9 @@ def test_pane_serves_bundled_assets_cached(tmp_path: Path) -> None:
         except urllib.error.HTTPError as exc:
             missing_is_404 = exc.code == 404
         assert missing_is_404
+
+        with urllib.request.urlopen(f"{pane.url}assets/pane/pane-render.js", timeout=2) as resp:
+            assert resp.headers.get("Cache-Control") is not None
+            assert b"renderTable" in resp.read()
     finally:
         pane.stop()

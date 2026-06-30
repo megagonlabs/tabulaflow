@@ -184,6 +184,23 @@ def _normalize_field_refs(node: object, colmap: dict[str, str]) -> None:
             _normalize_field_refs(item, colmap)
 
 
+def _alias_field_refs(node: object, alias: dict[str, str], *, in_encoding: bool = False) -> None:
+    """Rewrite normalized field references to shared dataset field names."""
+    if isinstance(node, dict):
+        field = node.get("field")
+        if isinstance(field, str):
+            target = alias.get(field)
+            if target is not None:
+                node["field"] = target
+                if in_encoding and "title" not in node:
+                    node["title"] = field
+        for key, val in node.items():
+            _alias_field_refs(val, alias, in_encoding=key == "encoding" or in_encoding)
+    elif isinstance(node, list):
+        for item in node:
+            _alias_field_refs(item, alias, in_encoding=in_encoding)
+
+
 def _has_input_binding(spec: dict[str, object]) -> bool:
     """Whether the spec binds a param to an HTML input widget (slider/dropdown/…).
 
@@ -258,6 +275,53 @@ def _add_line_hover(spec: dict[str, object]) -> dict[str, object]:
     return wrapper
 
 
+def build_chart_data(
+    df: "pd.DataFrame",
+    vegalite_spec: dict[str, object],
+    *,
+    field_by_column: dict[str, str] | None = None,
+) -> dict[str, object]:
+    """Build a structured chart payload for the browser pane.
+
+    Args:
+        df: Source data.
+        vegalite_spec: The Vega-Lite specification.
+        field_by_column: Optional mapping from DataFrame column names to shared
+            dataset field names.
+
+    Returns:
+        A record-data fragment containing a ``chart`` payload. Row values are
+        not included; the live pane attaches the record-level dataset at mount.
+    """
+    spec = copy.deepcopy(vegalite_spec)
+    colmap = {str(c).lower(): str(c) for c in df.columns}
+    _normalize_field_refs(spec, colmap)
+    spec = _add_line_hover(spec)
+    if field_by_column:
+        _alias_field_refs(spec, field_by_column)
+
+    existing_config = spec.get("config")
+    spec["config"] = _deep_merge(_VEGA_DARK_CONFIG, existing_config if isinstance(existing_config, dict) else {})
+    spec.setdefault("$schema", "https://vega.github.io/schema/vega-lite/v5.json")
+
+    encoding = spec.get("encoding")
+    has_facet_channel = isinstance(encoding, dict) and any(ch in encoding for ch in ("facet", "row", "column"))
+    is_single_cell = ("mark" in spec or "layer" in spec) and not has_facet_channel
+    if is_single_cell and not _has_input_binding(spec):
+        spec.setdefault("width", "container")
+        spec.setdefault("height", "container")
+        wrap_class = "fill"
+    elif is_single_cell:
+        spec.setdefault("width", "container")
+        spec.setdefault("height", 460)
+        wrap_class = "content"
+    else:
+        wrap_class = "content"
+
+    renderer = "canvas" if len(df) > _SVG_ROW_LIMIT else "svg"
+    return {"chart": {"spec": spec, "renderer": renderer, "wrapClass": wrap_class}}
+
+
 def render_chart_html(
     df: "pd.DataFrame",
     vegalite_spec: dict[str, object],
@@ -284,42 +348,15 @@ def render_chart_html(
             that URL base instead of inlining it (~0.8 MB/file). ``None`` inlines
             for a self-contained, ``file://``-openable page.
     """
-    spec = copy.deepcopy(vegalite_spec)
-    colmap = {str(c).lower(): str(c) for c in df.columns}
-    _normalize_field_refs(spec, colmap)
-    spec = _add_line_hover(spec)
-
-    existing_config = spec.get("config")
-    spec["config"] = _deep_merge(_VEGA_DARK_CONFIG, existing_config if isinstance(existing_config, dict) else {})
-    spec.setdefault("$schema", "https://vega.github.io/schema/vega-lite/v5.json")
-    # Sizing modes (the spec's own width/height always wins via setdefault):
-    #  - single-cell spec (a unit ``mark`` or a ``layer`` of marks) -> fill a
-    #    fixed-height card both ways (responsive width/height = "container").
-    #  - single-cell spec with bound inputs (sliders/dropdowns) -> size the chart
-    #    explicitly so the controls have room below it; the card grows/scrolls.
-    #  - genuinely multi-cell: faceted (top-level facet/repeat or a
-    #    facet/row/column channel) or concat -> can't size to a container, so
-    #    keep the intrinsic size and scroll inside the card.
-    encoding = spec.get("encoding")
-    has_facet_channel = isinstance(encoding, dict) and any(ch in encoding for ch in ("facet", "row", "column"))
-    # ``layer`` shares one plotting area, so it supports container sizing;
-    # facet/concat/repeat have sub-views and don't.
-    is_single_cell = ("mark" in spec or "layer" in spec) and not has_facet_channel
-    if is_single_cell and not _has_input_binding(spec):
-        spec.setdefault("width", "container")
-        spec.setdefault("height", "container")
-        wrap_class = "fill"
-    elif is_single_cell:
-        spec.setdefault("width", "container")
-        spec.setdefault("height", 460)
-        wrap_class = "content"
-    else:
-        wrap_class = "content"
+    chart_payload = build_chart_data(df, vegalite_spec)["chart"]
+    assert isinstance(chart_payload, dict)
+    spec = chart_payload["spec"]
+    wrap_class = str(chart_payload["wrapClass"])
 
     # ``</`` inside an inline <script> string can prematurely close the tag.
     data_json = (df.to_json(orient="records", date_format="iso", default_handler=str) or "[]").replace("</", "<\\/")
     spec_json = json.dumps(spec, ensure_ascii=False, default=str).replace("</", "<\\/")
-    renderer = "canvas" if len(df) > _SVG_ROW_LIMIT else "svg"
+    renderer = str(chart_payload["renderer"])
 
     init_js = (
         "(function(){"

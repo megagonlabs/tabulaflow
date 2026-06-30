@@ -1,10 +1,4 @@
-"""Compose a cited result record into a tabbed card for the browser pane.
-
-Renders a record's available views (chart / data / query) to self-contained files
-in the dumps dir and returns a small descriptor the pane uses to build a
-``Chart | Data | Query`` tab strip. The table/chart renderers are reused unchanged;
-the tab UI itself lives in the pane (one iframe whose ``src`` swaps between views).
-"""
+"""Compose a cited result record into structured browser-pane data."""
 
 from __future__ import annotations
 
@@ -20,9 +14,9 @@ from pygments.lexers import get_lexer_by_name
 from pygments.util import ClassNotFound
 
 from tabulaflow.app.page import TEXT, render_page
-from tabulaflow.app.pane_types import PaneRecord, PaneView, record_payload, view_payload
-from tabulaflow.app.render.charts import render_chart_html
-from tabulaflow.app.render.tables import PANE_TABLE_MAX_HEIGHT, render_table_html, table_view_meta
+from tabulaflow.app.pane_types import PaneRecord, ViewKind, record_payload
+from tabulaflow.app.render.charts import build_chart_data
+from tabulaflow.app.render.tables import PANE_TABLE_MAX_HEIGHT, _build_table_data
 
 if TYPE_CHECKING:
     import pandas as pd
@@ -35,10 +29,6 @@ class ResultRecordLike(Protocol):
     label: str | None
     query_lexer: str
 
-
-# URL base the pane serves the bundled Vega/Tabulator libs under (see pane.py);
-# linking beats re-inlining ~0.8 MB of Vega into every chart dump.
-_ASSET_BASE = "/assets"
 
 _QUERY_BG = "#1e1e1e"
 
@@ -105,21 +95,17 @@ _QUERY_SCRIPT = """
 
 def render_query_html(sql: str, html_path: Path, *, lexer: str = "sql") -> None:
     """Render SQL as a self-contained, syntax-highlighted HTML page."""
-    try:
-        lex = get_lexer_by_name(lexer or "sql")
-    except ClassNotFound:
-        lex = get_lexer_by_name("sql")
-    highlighted = highlight(sql, lex, HtmlFormatter(style="dracula", noclasses=True))
-    language = lex.name or (lexer or "sql").upper()
+    query_data = build_query_data(sql, lexer=lexer)["query"]
+    assert isinstance(query_data, dict)
     body = (
         '<section class="query-card">'
         '<div class="query-bar">'
-        f'<span class="query-lang">{html.escape(language)}</span>'
+        f'<span class="query-lang">{html.escape(str(query_data["language"]))}</span>'
         '<button class="query-copy" type="button" data-copy-query aria-label="Copy query" title="Copy query">'
         '<span class="copy-icon" aria-hidden="true"></span>'
         "</button>"
         "</div>"
-        f"{highlighted}"
+        f"{query_data['html']}"
         "</section>"
     )
     script = _QUERY_SCRIPT.replace("__QUERY_JSON__", json.dumps(sql))
@@ -127,27 +113,47 @@ def render_query_html(sql: str, html_path: Path, *, lexer: str = "sql") -> None:
     html_path.write_text(page, encoding="utf-8")
 
 
-def render_record_card(record: ResultRecordLike, dumps_dir: Path) -> PaneRecord | None:
-    """Render a record's chart/data/query views to files; return a card descriptor.
+def build_query_data(sql: str, *, lexer: str = "sql") -> dict[str, object]:
+    """Build a structured query payload for the browser pane."""
+    try:
+        lex = get_lexer_by_name(lexer or "sql")
+    except ClassNotFound:
+        lex = get_lexer_by_name("sql")
+    highlighted = highlight(sql, lex, HtmlFormatter(style="dracula", noclasses=True))
+    language = lex.name or (lexer or "sql").upper()
+    return {"query": {"sql": sql, "lexer": lexer or "sql", "language": language, "html": highlighted}}
 
-    The descriptor is ``{"label": str | None, "views": [{"kind", "file"}, ...]}``
-    ordered chart -> data -> query, including only the views the record has, or
-    ``None`` when the record has nothing displayable.
+
+def render_record_card(record: ResultRecordLike, dumps_dir: Path) -> PaneRecord | None:
+    """Render a record's chart/data/query payload to JSON; return a pane manifest.
+
+    The descriptor is ordered chart -> data -> query, including only the views
+    the record has, or ``None`` when the record has nothing displayable.
     """
-    views: list[PaneView] = []
+    views: list[ViewKind] = []
+    record_id = f"rec_{secrets.token_hex(6)}"
+    record_data: dict[str, object] = {}
     df = record.df
     if df is not None and not df.empty:
+        table_build = _build_table_data(
+            df,
+            asset_stem=record_id,
+            output_dir=dumps_dir,
+            max_height=PANE_TABLE_MAX_HEIGHT,
+        )
+        record_data.update(table_build.data)
         if record.chart_spec is not None:
-            path = dumps_dir / f"V_{secrets.token_hex(3)}.html"
-            render_chart_html(df, record.chart_spec, path, title=record.label, asset_base=_ASSET_BASE)
-            views.append(view_payload("chart", path.name))
-        path = dumps_dir / f"T_{secrets.token_hex(3)}.html"
-        render_table_html(df, path, title=record.label, max_height=PANE_TABLE_MAX_HEIGHT, asset_base=_ASSET_BASE)
-        views.append(view_payload("data", path.name, meta=table_view_meta(len(df), len(df.columns))))
+            record_data.update(build_chart_data(df, record.chart_spec, field_by_column=table_build.field_by_column))
+            views.append("chart")
+        views.append("data")
     if record.query:
-        path = dumps_dir / f"Q_{secrets.token_hex(3)}.html"
-        render_query_html(record.query, path, lexer=record.query_lexer or "sql")
-        views.append(view_payload("query", path.name))
+        record_data.update(build_query_data(record.query, lexer=record.query_lexer or "sql"))
+        views.append("query")
     if not views:
         return None
-    return record_payload(label=record.label, views=views)
+    dumps_dir.mkdir(parents=True, exist_ok=True)
+    (dumps_dir / f"{record_id}.data.json").write_text(
+        json.dumps(record_data, ensure_ascii=False, default=str),
+        encoding="utf-8",
+    )
+    return record_payload(record_id=record_id, label=record.label, views=views)

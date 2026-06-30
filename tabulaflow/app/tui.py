@@ -16,7 +16,7 @@ from textual.widgets import Button, Input, Static
 
 from tabulaflow.app.commands import COMMAND_PREFIX, handle_command
 from tabulaflow.app.debug import debug_enabled, mount_debug_widgets
-from tabulaflow.app.pane_types import PaneRecord, manual_artifact_turn, turn_payload
+from tabulaflow.app.pane_types import PaneRecord, manual_record_turn, turn_payload
 from tabulaflow.app.runtime_paths import RuntimePaths, ensure_dumps_dir, generate_session_id, prune_old_dumps
 from tabulaflow.app.session import SessionState
 from tabulaflow.app.theme import ERROR, FOCUS_SURFACE, KEY_HINT
@@ -526,18 +526,12 @@ class TabulaflowApp(App[None]):
                 self._refresh_bottom_status()
         return self._pane
 
-    def view_in_pane(
-        self, path: Path, *, title: str | None = None, label: str | None = None, meta: str | None = None
-    ) -> bool:
-        """Push an already-written dump file to the pane.
-
-        Wraps the single file as a one-view card; returns True when the pane is
-        available, so callers can report whether the artifact was published.
-        """
+    def view_record_in_pane(self, record: PaneRecord, *, title: str | None = None) -> bool:
+        """Push an already-written record-data payload to the pane."""
         pane = self._ensure_pane()
         if pane is None or pane.url is None:
             return False
-        pane.push(manual_artifact_turn(path, title=title, label=label, meta=meta))
+        pane.push(manual_record_turn(record, title=title))
         return True
 
     def _refresh_bottom_status(self) -> None:
@@ -567,28 +561,59 @@ class TabulaflowApp(App[None]):
         agent run; completed turns update it silently. Best-effort — any failure
         is swallowed so the pane never blocks or fails a chat turn.
         """
-        from tabulaflow.app.render import render_record_card
+        import asyncio
+        from types import SimpleNamespace
 
         dumps_dir = self._runtime_paths.dumps_dir
         try:
             ensure_dumps_dir(dumps_dir)
         except Exception:
             return
-        records: list[PaneRecord] = []
-        for record in result.records:
-            try:
-                card = render_record_card(record, dumps_dir)
-            except Exception:
-                logger.debug("output pane card render failed", exc_info=True)
-                continue
-            if card is not None:
-                records.append(card)
-        if not records and not user_text and not result.text:
+        snapshots = [
+            SimpleNamespace(
+                df=record.df,
+                chart_spec=record.chart_spec,
+                query=record.query,
+                label=record.label,
+                query_lexer=record.query_lexer,
+            )
+            for record in result.records
+        ]
+        if not snapshots and not user_text and not result.text:
             return
         pane = self._ensure_pane()
         if pane is None:
             return
-        pane.push(turn_payload(title=title, user=user_text, assistant=result.text, records=records))
+
+        async def render_and_push() -> None:
+            from tabulaflow.app.render import render_record_card
+
+            def render_records() -> list[PaneRecord]:
+                records: list[PaneRecord] = []
+                for record in snapshots:
+                    try:
+                        card = render_record_card(record, dumps_dir)
+                    except Exception:
+                        logger.debug("output pane card render failed", exc_info=True)
+                        continue
+                    if card is not None:
+                        records.append(card)
+                return records
+
+            records = await asyncio.to_thread(render_records)
+            if records or user_text or result.text:
+                pane.push(turn_payload(title=title, user=user_text, assistant=result.text, records=records))
+
+        def log_background_error(task: asyncio.Task[None]) -> None:
+            try:
+                exc = task.exception()
+            except asyncio.CancelledError:
+                return
+            if exc is not None:
+                logger.debug("output pane push failed", exc_info=(type(exc), exc, exc.__traceback__))
+
+        task = asyncio.create_task(render_and_push())
+        task.add_done_callback(log_background_error)
 
     def _restore_input_text(self, text: str) -> None:
         """Put `text` back into the input bar and focus it. Used after a

@@ -59,26 +59,25 @@ def _normalize_json_like(value: object) -> object:
 
 
 def _show_path(
-    path: Path,
+    record: object,
     app: object,
     *,
     status: "Callable[[Text], None]",
     title: str | None = None,
-    meta: str | None = None,
 ) -> None:
-    """Show a dumped artifact in the live results pane.
+    """Show a dumped record-data payload in the live results pane.
 
     Manual "send to output pane" actions route here so one pane accumulates
     both agent results and explorer views.
     """
     try:
-        shown = bool(app.view_in_pane(path, title=title, meta=meta))  # type: ignore[attr-defined]
+        shown = bool(app.view_record_in_pane(record, title=title))  # type: ignore[attr-defined]
     except Exception:
         shown = False
     if shown:
         status(Text("sent to output pane", style="dim"))
     else:
-        status(Text(f"results pane unavailable; artifact saved to {path}", style="dim"))
+        status(Text("results pane unavailable; data preview was written", style="dim"))
 
 
 def send_table_to_output_pane(
@@ -88,33 +87,35 @@ def send_table_to_output_pane(
     *,
     status: "Callable[[Text], None]",
 ) -> "Path | None":
-    """Render ``df`` as inline-media HTML in the dumps dir and send it to the output pane.
+    """Render ``df`` as pane record data and send it to the output pane.
 
-    Returns the written HTML path on success, or ``None`` on failure.
+    Returns the written data path on success, or ``None`` on failure.
     """
-    import secrets
+    from types import SimpleNamespace
 
-    from tabulaflow.app.render import render_table_html
-    from tabulaflow.app.render.tables import table_view_meta
+    from tabulaflow.app.render import render_record_card
 
     try:
         dumps_dir: Path = app._runtime_paths.dumps_dir  # type: ignore[attr-defined]
     except AttributeError:
         status(Text("save failed: no cell dumps dir", style=ERROR))
         return None
-    html_path = dumps_dir / f"T_{secrets.token_hex(3)}.html"
     try:
-        render_table_html(df, html_path, title=title)
+        card = render_record_card(
+            SimpleNamespace(df=df, chart_spec=None, query=None, label=None, query_lexer="sql"),
+            dumps_dir,
+        )
     except OSError as exc:
         status(Text(f"write failed: {exc}", style=ERROR))
         return None
     except Exception as exc:
         status(Text(f"render failed: {exc}", style=ERROR))
         return None
-    _show_path(
-        html_path, app, status=status, title=title or "Table preview", meta=table_view_meta(len(df), len(df.columns))
-    )
-    return html_path
+    if card is None:
+        status(Text("render failed: no table data", style=ERROR))
+        return None
+    _show_path(card, app, status=status, title=title or "Table preview")
+    return dumps_dir / f"{card['id']}.data.json"
 
 
 # ---------------------------------------------------------------------------

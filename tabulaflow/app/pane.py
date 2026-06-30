@@ -1,9 +1,9 @@
 """Embedded HTTP server that mirrors the agent's cited results in a live browser pane.
 
-Phase 1 (MVP): a stdlib ``http.server`` running in a daemon thread serves the
-self-contained result HTML files written to the session dumps dir, plus a single
-pane page that polls an index and appends an ``<iframe>`` per new result. The
-server binds loopback only and adds no third-party dependencies.
+A stdlib ``http.server`` running in a daemon thread serves the single-page pane,
+structured record-data files written to the session dumps dir, and a Server-Sent
+Events stream of turn manifests. The server binds loopback only and adds no
+third-party dependencies.
 
 The pane is an *additive, output-only* surface: the TUI remains the primary
 interface, and every failure here is swallowed so it can never block a chat turn.
@@ -17,6 +17,7 @@ import json
 import threading
 from collections.abc import Callable, Sequence
 from pathlib import Path
+from typing import cast
 
 from tabulaflow.app.pane_types import PaneTurn
 from tabulaflow.app.theme import GITHUB_SLUG, GITHUB_URL
@@ -113,11 +114,8 @@ class _Handler(http.server.SimpleHTTPRequestHandler):
         if self.path in ("/", "/index.html"):
             self._send(_PANE_HTML.encode("utf-8"), "text/html; charset=utf-8")
             return
-        if self.path == "/__index__":
-            assert isinstance(self.server, _PaneServer)
-            with self.server.pane._lock:
-                payload = json.dumps(self.server.pane._results)
-            self._send(payload.encode("utf-8"), "application/json")
+        if self.path == "/events":
+            self._serve_events()
             return
         if self.path.startswith("/assets/"):
             self._serve_asset(self.path[len("/assets/") :])
@@ -131,9 +129,43 @@ class _Handler(http.server.SimpleHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
+    def _serve_events(self) -> None:
+        """Stream pane turns as Server-Sent Events, replaying missed turns."""
+        assert isinstance(self.server, _PaneServer)
+        pane = self.server.pane
+        try:
+            last_id = int(self.headers.get("Last-Event-ID", "-1"))
+        except ValueError:
+            last_id = -1
+        self.send_response(200)
+        self.send_header("Content-Type", "text/event-stream; charset=utf-8")
+        self.send_header("Cache-Control", "no-cache")
+        self.send_header("Connection", "keep-alive")
+        self.end_headers()
+        while True:
+            heartbeat = False
+            with pane._cond:
+                pending = [turn for turn in pane._results if int(turn.get("id", -1)) > last_id]
+                if not pending:
+                    pane._cond.wait(timeout=15)
+                    pending = [turn for turn in pane._results if int(turn.get("id", -1)) > last_id]
+                    heartbeat = not pending
+            try:
+                if heartbeat:
+                    self.wfile.write(b": ping\n\n")
+                    self.wfile.flush()
+                    continue
+                for turn in pending:
+                    turn_id = int(turn["id"])
+                    data = json.dumps(turn, ensure_ascii=False)
+                    self.wfile.write(f"id: {turn_id}\nevent: turn\ndata: {data}\n\n".encode("utf-8"))
+                    last_id = turn_id
+                self.wfile.flush()
+            except (BrokenPipeError, ConnectionError, OSError):
+                return
+
     def _serve_asset(self, rel: str) -> None:
-        """Serve a bundled Vega/Tabulator lib once (cached hard) so dump iframes
-        can link to it instead of inlining hundreds of KB per chart/table."""
+        """Serve bundled browser assets with immutable caching."""
         from importlib.resources import files
 
         clean = rel.split("?", 1)[0]
@@ -189,6 +221,8 @@ class OutputPane:
         self._port_range = tuple(port_range)
         self._results: list[PaneTurn] = []
         self._lock = threading.Lock()
+        self._cond = threading.Condition(self._lock)
+        self._next_id = 0
         self._server: _PaneServer | None = None
         self._port: int | None = None
         self._browser_opened = False
@@ -237,8 +271,12 @@ class OutputPane:
 
     def push(self, turn: PaneTurn) -> None:
         """Record a turn ({"records": [{"label", "views": [...]}, ...]}) for the pane."""
-        with self._lock:
-            self._results.append(turn)
+        with self._cond:
+            assigned = cast(PaneTurn, dict(turn))
+            assigned["id"] = self._next_id
+            self._next_id += 1
+            self._results.append(assigned)
+            self._cond.notify_all()
 
     def open_browser(self, *, force: bool = False) -> None:
         """Open the pane in the system browser (once unless ``force``; no-op if headless)."""

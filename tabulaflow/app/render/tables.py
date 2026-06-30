@@ -5,6 +5,7 @@ from __future__ import annotations
 import base64
 import json
 import re
+from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -137,6 +138,14 @@ _CELL_TEXT_HARD_CAP = 1024 * 1024
 _CELL_DISPLAY_CAP = 120
 
 
+@dataclass(frozen=True)
+class TableDataBuild:
+    """Structured table payload plus Python-only field mapping."""
+
+    data: dict[str, object]
+    field_by_column: dict[str, str]
+
+
 def _plural(n: int, word: str) -> str:
     return f"{n:,} {word}" if n == 1 else f"{n:,} {word}s"
 
@@ -168,9 +177,8 @@ def _load_tabulator_assets() -> tuple[str, str]:
 _CUSTOM_CSS = """
 /* Table-specific styling — page chrome (banner, base palette, scrollbars)
    lives in app/page.py; Tabulator's bundled midnight CSS handles the grid. */
-/* The pane wraps this table in a rounded panel (the iframe), so drop the page
-   padding and let the table fill it edge-to-edge — the panel is the table's
-   outer frame. */
+/* Framed hosts wrap this table in a rounded panel, so drop the page padding and
+   let the table fill it edge-to-edge — the panel is the table's outer frame. */
 html,
 body,
 #content {
@@ -337,6 +345,30 @@ _INIT_JS_TEMPLATE = """
         return '<a class="cell-link" href="' + escapeAttr(href)
             + '" target="_blank" rel="noopener">' + escapeHtml(text) + '</a>';
     }
+    function fmtSize(n){
+        if (n < 1024) return n + " B";
+        if (n < 1024 * 1024) return (n / 1024).toFixed(1) + " KB";
+        return (n / (1024 * 1024)).toFixed(1) + " MB";
+    }
+    function fileLink(src, label, size, newTab){
+        var target = newTab ? ' target="_blank" rel="noopener"' : "";
+        return '<a class="file-link" href="' + escapeAttr(src) + '"' + target + '>'
+            + '__FILE_ICON__<span>' + escapeHtml(label) + '</span>'
+            + '<span class="file-size">' + escapeHtml(fmtSize(size || 0)) + '</span></a>';
+    }
+    function renderMedia(v){
+        if (!v || typeof v !== "object" || v.kind !== "media") {
+            return v == null ? "" : escapeHtml(v);
+        }
+        var mime = String(v.mime || "");
+        var src = String(v.src || "");
+        var size = Number(v.size || 0);
+        if (mime.indexOf("image/") === 0) return '<img src="' + escapeAttr(src) + '">';
+        if (mime.indexOf("audio/") === 0) return '<audio controls preload="none" src="' + escapeAttr(src) + '"></audio>';
+        if (mime.indexOf("video/") === 0) return '<video controls preload="none" src="' + escapeAttr(src) + '"></video>';
+        if (mime === "application/pdf") return fileLink(src, "PDF", size, true);
+        return fileLink(src, "binary", size, false);
+    }
     // Linkify only when the whole cell is URL(s): a single URL, a
     // delimiter-separated list where *every* token is an http(s) URL (e.g.
     // a references column), or a JSON array whose elements are all URLs.
@@ -402,9 +434,7 @@ _INIT_JS_TEMPLATE = """
             return '<span class="multiline">' + escapeHtml(head) + '</span>';
         },
         media: function(cell){
-            var key = cell.getField() + "_display";
-            var html = cell.getRow().getData()[key];
-            return html != null ? html : "";
+            return renderMedia(cell.getValue());
         },
         bool: function(cell){
             var v = cell.getValue();
@@ -442,15 +472,13 @@ _INIT_JS_TEMPLATE = """
             }
             if (name === "media"){
                 col.cellClick = function(e, cell){
-                    var html = cell.getRow().getData()[cell.getField() + "_display"] || "";
+                    var value = cell.getValue();
                     var title = cell.getColumn().getDefinition().title;
-                    // Pull the ``src`` from the rendered HTML and pop the
-                    // appropriate big-media element. PDFs/anchors keep the
-                    // default link behavior (new tab) — no modal.
                     // Video cells skip the modal — the player's built-in
                     // fullscreen button is a better "view bigger" affordance.
-                    var imgMatch = html.match(/<img[^>]*src="([^"]+)"/);
-                    if (imgMatch){ openModalImage(title, imgMatch[1]); return; }
+                    if (value && value.kind === "media" && String(value.mime || "").indexOf("image/") === 0){
+                        openModalImage(title, value.src);
+                    }
                 };
             }
         }
@@ -462,7 +490,7 @@ _INIT_JS_TEMPLATE = """
     //    header / horizontal-scroll sync break). Short content still flows
     //    naturally because the table is below the cap.
     //  - The cap is a fixed pixel value when a compact host frames the table
-    //    in a result card (``__MAX_HEIGHT__``); otherwise it tracks the iframe
+    //    in a result card (``__MAX_HEIGHT__``); otherwise it tracks the browser
     //    viewport so manual table previews can fill their panel.
     //  - ``height`` set only for large tables to activate Tabulator's
     //    virtual scroll. Without ``height``, virtual scroll doesn't
@@ -605,8 +633,10 @@ def _coerce_text_value(value: object) -> object:
     # (which Tabulator's bool formatter then renders as truthy regardless).
     if isinstance(value, (bool, np.bool_)):
         return bool(value)
-    if isinstance(value, (int, float)):
-        return value
+    if isinstance(value, (int, float, np.integer)):
+        return int(value)
+    if isinstance(value, np.floating):
+        return float(value)
     if isinstance(value, (dict, list)):
         try:
             value = json.dumps(value, indent=2, ensure_ascii=False, default=str)
@@ -642,44 +672,16 @@ def _header_min_width(title: str) -> int:
     return min(260, max(96, (len(title) * 9) + 56))
 
 
-def render_table_html(
+def _build_table_data(
     df: "pd.DataFrame",
-    html_path: Path,
     *,
-    title: str | None = None,
+    asset_stem: str,
+    output_dir: Path,
     max_rows: int = _DEFAULT_MAX_ROWS,
     inline_cap: int = _DEFAULT_INLINE_CAP,
     max_height: int | None = None,
-    asset_base: str | None = None,
-) -> None:
-    """Render ``df`` as a single HTML file at ``html_path`` using Tabulator.
-
-    Binary-typed columns (detected by sampling) are rendered with inline
-    ``<img>``/``<audio>``/``<video>`` markup. Blobs up to ``inline_cap``
-    bytes are inlined as ``data:`` URIs; larger blobs are written to a
-    sibling directory (``html_path.with_suffix("")``) and referenced by
-    relative URL. Tables longer than ``max_rows`` are truncated (note
-    propagated to the document ``<title>`` only — the page itself is just
-    the table, no header chrome).
-
-    Long text cells are display-truncated; clicking a truncated cell
-    opens a modal with the full value. Numeric columns sort numerically;
-    media columns are not sortable. Range-select + Cmd/Ctrl+C copies as
-    TSV-compatible clipboard data via Tabulator's built-in clipboard.
-
-    Args:
-        df: DataFrame to render.
-        html_path: Output HTML path. Sibling dir is derived from its stem.
-        title: Document title (browser tab); defaults to the file stem.
-        max_rows: Row cap. Rows past this are dropped.
-        inline_cap: Per-cell size threshold for inline vs spilled rendering.
-        max_height: Fixed pixel cap for the table when a host frames it in a
-            panel (short tables hug, long tables cap + scroll). ``None`` tracks
-            the viewport so a standalone full-window page fills the screen.
-        asset_base: When set (e.g. ``"/assets"``), link Tabulator from that URL
-            base instead of inlining it (~460 KB/file). ``None`` inlines for a
-            self-contained, ``file://``-openable page.
-    """
+) -> TableDataBuild:
+    """Build the structured table payload shared by live pane and HTML export."""
     truncated_rows = max(0, len(df) - max_rows)
     view = df.head(max_rows)
 
@@ -689,15 +691,16 @@ def render_table_html(
         if sniffed is not None:
             col_types[str(col)] = sniffed
 
-    sib_dir = html_path.parent / html_path.stem
+    sib_dir = output_dir / asset_stem
     sib_dir_created = False
 
-    # Build Tabulator column defs and row data.
     column_defs: list[dict[str, object]] = []
-    fields: list[tuple[str, str]] = []  # (field_name, mode) where mode in {"media","text","num","bool"}
+    fields: list[tuple[str, str]] = []
+    field_by_column: dict[str, str] = {}
     for col_idx, col in enumerate(view.columns):
         field = f"c{col_idx}"
         title_str = str(col)
+        field_by_column[title_str] = field
         header_width = _header_min_width(title_str)
         if title_str in col_types:
             column_defs.append(
@@ -767,26 +770,18 @@ def render_table_html(
                 ext, mime = col_types[col_name]
                 if blob is None:
                     row_data[field] = None
-                    row_data[f"{field}_display"] = ""
                     continue
-                # PDFs always spill: Chrome blocks top-level navigation to
-                # ``data:application/pdf`` URLs (security policy), so an
-                # inlined PDF anchor opens a blank tab that only renders
-                # after a manual refresh. A real ``file://`` URL works
-                # cleanly. For non-PDF media the data URI is fine.
                 if mime != "application/pdf" and len(blob) <= inline_cap:
                     b64 = base64.b64encode(blob).decode("ascii")
                     src = f"data:{mime};base64,{b64}"
-                    row_data[field] = f"({mime})"
-                    row_data[f"{field}_display"] = _render_blob(src, mime, len(blob))
+                    row_data[field] = {"kind": "media", "mime": mime, "src": src, "size": len(blob)}
                     continue
                 if not sib_dir_created:
                     try:
                         sib_dir.mkdir(parents=True, exist_ok=True)
                         sib_dir_created = True
                     except OSError:
-                        row_data[field] = f"<binary: {len(blob):,} bytes>"
-                        row_data[f"{field}_display"] = f"<binary: {len(blob):,} bytes (write failed)>"
+                        row_data[field] = f"<binary: {len(blob):,} bytes (write failed)>"
                         continue
                 safe = _safe_col_name(col_name)
                 filename = f"r{row_idx}_c{safe}{ext}"
@@ -794,17 +789,119 @@ def render_table_html(
                 try:
                     spill_path.write_bytes(blob)
                 except OSError:
-                    row_data[field] = f"<binary: {len(blob):,} bytes>"
-                    row_data[f"{field}_display"] = f"<binary: {len(blob):,} bytes (write failed)>"
+                    row_data[field] = f"<binary: {len(blob):,} bytes (write failed)>"
                     continue
-                src = f"./{sib_dir.name}/{filename}"
-                row_data[field] = f"({mime}, {len(blob):,} bytes)"
-                row_data[f"{field}_display"] = _render_blob(src, mime, len(blob))
+                row_data[field] = {
+                    "kind": "media",
+                    "mime": mime,
+                    "src": f"./{sib_dir.name}/{filename}",
+                    "size": len(blob),
+                }
             else:
                 row_data[field] = _coerce_text_value(val)
         rows.append(row_data)
 
     row_header_width = max(44, len(str(max(len(view), 1))) * 10 + 28)
+    table_payload: dict[str, object] = {
+        "columns": column_defs,
+        "hasMedia": bool(col_types),
+        "maxHeight": max_height,
+        "rowHeaderWidth": row_header_width,
+        "displayCap": _CELL_DISPLAY_CAP,
+        "meta": table_view_meta(len(df), len(df.columns), max_rows=max_rows),
+        "numRows": len(df),
+        "numCols": len(df.columns),
+    }
+    if truncated_rows:
+        table_payload["truncatedRows"] = truncated_rows
+        table_payload["maxRows"] = max_rows
+    return TableDataBuild(data={"dataset": {"rows": rows}, "table": table_payload}, field_by_column=field_by_column)
+
+
+def build_table_data(
+    df: "pd.DataFrame",
+    *,
+    asset_stem: str,
+    output_dir: Path,
+    max_rows: int = _DEFAULT_MAX_ROWS,
+    inline_cap: int = _DEFAULT_INLINE_CAP,
+    max_height: int | None = None,
+) -> dict[str, object]:
+    """Build a structured table payload for the browser pane.
+
+    Args:
+        df: DataFrame to render.
+        asset_stem: Stable stem for spilled media files.
+        output_dir: Directory where media spill directories are written.
+        max_rows: Row cap. Rows past this are dropped.
+        inline_cap: Per-cell size threshold for inline vs spilled rendering.
+        max_height: Fixed pixel cap for framed table views.
+
+    Returns:
+        A record-data fragment containing ``dataset`` and ``table``.
+    """
+    return _build_table_data(
+        df,
+        asset_stem=asset_stem,
+        output_dir=output_dir,
+        max_rows=max_rows,
+        inline_cap=inline_cap,
+        max_height=max_height,
+    ).data
+
+
+def render_table_html(
+    df: "pd.DataFrame",
+    html_path: Path,
+    *,
+    title: str | None = None,
+    max_rows: int = _DEFAULT_MAX_ROWS,
+    inline_cap: int = _DEFAULT_INLINE_CAP,
+    max_height: int | None = None,
+    asset_base: str | None = None,
+) -> None:
+    """Render ``df`` as a single HTML file at ``html_path`` using Tabulator.
+
+    Binary-typed columns (detected by sampling) are rendered with inline
+    ``<img>``/``<audio>``/``<video>`` markup. Blobs up to ``inline_cap``
+    bytes are inlined as ``data:`` URIs; larger blobs are written to a
+    sibling directory (``html_path.with_suffix("")``) and referenced by
+    relative URL. Tables longer than ``max_rows`` are truncated (note
+    propagated to the document ``<title>`` only — the page itself is just
+    the table, no header chrome).
+
+    Long text cells are display-truncated; clicking a truncated cell
+    opens a modal with the full value. Numeric columns sort numerically;
+    media columns are not sortable. Range-select + Cmd/Ctrl+C copies as
+    TSV-compatible clipboard data via Tabulator's built-in clipboard.
+
+    Args:
+        df: DataFrame to render.
+        html_path: Output HTML path. Sibling dir is derived from its stem.
+        title: Document title (browser tab); defaults to the file stem.
+        max_rows: Row cap. Rows past this are dropped.
+        inline_cap: Per-cell size threshold for inline vs spilled rendering.
+        max_height: Fixed pixel cap for the table when a host frames it in a
+            panel (short tables hug, long tables cap + scroll). ``None`` tracks
+            the viewport so a standalone full-window page fills the screen.
+        asset_base: When set (e.g. ``"/assets"``), link Tabulator from that URL
+            base instead of inlining it (~460 KB/file). ``None`` inlines for a
+            self-contained, ``file://``-openable page.
+    """
+    built = _build_table_data(
+        df,
+        asset_stem=html_path.stem,
+        output_dir=html_path.parent,
+        max_rows=max_rows,
+        inline_cap=inline_cap,
+        max_height=max_height,
+    )
+    dataset = built.data["dataset"]
+    assert isinstance(dataset, dict)
+    rows = dataset["rows"]
+    table_payload = built.data["table"]
+    assert isinstance(table_payload, dict)
+    column_defs = table_payload["columns"]
 
     # ``</`` inside an inline <script> string can prematurely end the tag.
     data_json = json.dumps(rows, ensure_ascii=False, default=str).replace("</", "<\\/")
@@ -812,17 +909,18 @@ def render_table_html(
     init_js = (
         _INIT_JS_TEMPLATE.replace("__DATA__", data_json)
         .replace("__COLS__", cols_json)
-        .replace("__DISPLAY_CAP__", str(_CELL_DISPLAY_CAP))
-        .replace("__HAS_MEDIA__", "true" if col_types else "false")
+        .replace("__DISPLAY_CAP__", str(table_payload["displayCap"]))
+        .replace("__HAS_MEDIA__", "true" if table_payload["hasMedia"] else "false")
         .replace("__MAX_HEIGHT__", str(max_height) if max_height is not None else "null")
-        .replace("__ROW_HEADER_WIDTH__", str(row_header_width))
+        .replace("__ROW_HEADER_WIDTH__", str(table_payload["rowHeaderWidth"]))
+        .replace("__FILE_ICON__", _FILE_ICON_SVG.replace("\n", ""))
     )
 
     doc_title = title or html_path.stem
-    if truncated_rows:
+    if table_payload.get("truncatedRows"):
         doc_title = f"{doc_title} (showing {max_rows:,} of {len(df):,} rows)"
 
-    wrap_class = ' class="pane-short"' if max_height is not None and len(view) <= 12 else ""
+    wrap_class = ' class="pane-short"' if max_height is not None and len(rows) <= 12 else ""
     body = (
         f'<div id="table-wrap"{wrap_class}><div id="table"></div></div>'
         '<div id="modal" role="dialog" aria-hidden="true">'

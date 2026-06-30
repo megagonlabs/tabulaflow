@@ -28,9 +28,8 @@ import pandas as pd
 
 from tabulaflow.app import pane as pane_mod
 from tabulaflow.app.debug import debug_chart_fixtures
-from tabulaflow.app.pane_types import PaneRecord, PaneSource, record_payload, turn_payload, view_payload
+from tabulaflow.app.pane_types import PaneRecord, PaneSource, record_payload, turn_payload
 from tabulaflow.app.render.cards import render_record_card
-from tabulaflow.app.render.tables import render_table_html, table_view_meta
 
 
 def _record(
@@ -137,7 +136,10 @@ def _many_record_cards(cards: Sequence[PaneRecord]) -> list[PaneRecord]:
         "x",
         "warehouse_inventory_reconciliation_status",
     ]
-    return [record_payload(label=label, views=cards[i % len(cards)]["views"]) for i, label in enumerate(labels)]
+    return [
+        record_payload(record_id=cards[i % len(cards)]["id"], label=label, views=cards[i % len(cards)]["views"])
+        for i, label in enumerate(labels)
+    ]
 
 
 def _manual_table_card(dumps_dir: Path) -> PaneRecord:
@@ -157,12 +159,9 @@ def _manual_table_card(dumps_dir: Path) -> PaneRecord:
             "expected_answer": ["Vatican City", "32", "2", "Au", "1945", "6"] * 2,
         }
     )
-    path = dumps_dir / "T_manual_table_preview.html"
-    render_table_html(df, path, title="manual_table")
-    return record_payload(
-        label=None,
-        views=[view_payload("data", path.name, meta=table_view_meta(len(df), len(df.columns)))],
-    )
+    card = render_record_card(_record(record_id="manual", label="", query=None, df=df), dumps_dir)
+    assert card is not None
+    return card
 
 
 def _wide_manual_table_card(dumps_dir: Path) -> PaneRecord:
@@ -176,12 +175,9 @@ def _wide_manual_table_card(dumps_dir: Path) -> PaneRecord:
     for col in range(1, cols - len(data) + 1):
         data[f"metric_{col:02d}"] = [round(((row * (col + 7)) % 100_000) / 37.0, 2) for row in range(rows)]
     df = pd.DataFrame(data)
-    path = dumps_dir / "T_wide_manual_table_preview.html"
-    render_table_html(df, path, title="wide_manual_table")
-    return record_payload(
-        label=None,
-        views=[view_payload("data", path.name, meta=table_view_meta(len(df), len(df.columns)))],
-    )
+    card = render_record_card(_record(record_id="wide_manual", label="", query=None, df=df), dumps_dir)
+    assert card is not None
+    return card
 
 
 def _push_manual_table_turn(pane: pane_mod.OutputPane, dumps_dir: Path) -> None:
@@ -335,7 +331,7 @@ def _populate_pane(
                     (
                         "This fixture is deliberately verbose so the preview has enough vertical content "
                         "to test scrolling, bottom padding, and transcript spacing without relying on a "
-                        "table or chart iframe."
+                        "table or chart view."
                     ),
                     (
                         "The desired behavior is simple: the final paragraph should be scrollable past "
