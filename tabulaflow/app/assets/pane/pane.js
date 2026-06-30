@@ -122,6 +122,7 @@ function buildViewSwitcher(views, activeKind, showView) {
   views.forEach(function (kind) {
     var opt = el('button', 'seg-opt');
     opt.textContent = kind;
+    opt.dataset.kind = kind;
     opt.classList.toggle('active', kind === activeKind);
     opt.onclick = function () { showView(kind, opt); };
     opts.push(opt);
@@ -134,12 +135,45 @@ function buildViewSwitcher(views, activeKind, showView) {
   return { seg: seg, thumb: thumb, opts: opts };
 }
 
+function viewOptionForKind(switcher, kind) {
+  if (!switcher) return null;
+  for (var i = 0; i < switcher.opts.length; i++) {
+    if (switcher.opts[i].dataset.kind === kind) return switcher.opts[i];
+  }
+  return null;
+}
+
 var turns = [];
 var activeTurn = -1;
 var recordDataCache = {};
 var viewCache = {};
+var navState = {};
 var lru = [];
 var CACHE_LIMIT = 24;
+
+function turnStateKey(turn, index) {
+  return String(turn.id == null ? index : turn.id);
+}
+
+function getTurnState(turn, index) {
+  var key = turnStateKey(turn, index);
+  if (!navState[key]) navState[key] = { activeRecord: 0, views: {} };
+  return navState[key];
+}
+
+function recordStateKey(record, recordIndex) {
+  return recordIndex + ':' + record.id;
+}
+
+function savedViewKind(state, record, recordIndex, views) {
+  var saved = state.views[recordStateKey(record, recordIndex)];
+  if (saved && views.indexOf(saved) !== -1) return saved;
+  return views[0] || 'data';
+}
+
+function rememberViewKind(state, record, recordIndex, kind) {
+  state.views[recordStateKey(record, recordIndex)] = kind;
+}
 
 function scheduleIdle(fn) {
   if (window.requestIdleCallback) {
@@ -303,13 +337,16 @@ function buildRecord(record, opts) {
   var pane = el('div', 'recordpane');
   var bar = el('div', 'cardbar');
   var views = record.views || [];
-  var activeKind = views[0] || 'data';
+  var state = opts && opts.state;
+  var recordIndex = opts && opts.recordIndex != null ? opts.recordIndex : 0;
+  var activeKind = state ? savedViewKind(state, record, recordIndex, views) : (views[0] || 'data');
   var shell = el('div', 'view-shell view-' + activeKind);
   var meta = el('div', 'viewmeta');
   var switcher = null;
 
   function showView(kind, opt) {
     activeKind = kind;
+    if (state) rememberViewKind(state, record, recordIndex, kind);
     if (switcher) {
       switcher.opts.forEach(function (x) { x.classList.remove('active'); });
       if (opt) {
@@ -337,15 +374,16 @@ function buildRecord(record, opts) {
   if (bar.children.length) pane.appendChild(bar);
   pane.appendChild(shell);
   pane.appendChild(meta);
-  if (views.length) showView(activeKind, switcher ? switcher.opts[0] : null);
+  if (views.length) showView(activeKind, viewOptionForKind(switcher, activeKind));
   requestAnimationFrame(function () { syncRecordHeader(bar); });
   return pane;
 }
 
-function renderTurn(turn) {
+function renderTurn(turn, index) {
   var view = el('div', 'turnview');
   var transcript = buildTranscript(turn);
   var records = turn.records || [];
+  var state = getTurnState(turn, index);
   if (isManualPreview(turn)) {
     view.classList.add('manual-preview');
     view.appendChild(buildManualArtifactTitle(turn));
@@ -354,17 +392,21 @@ function renderTurn(turn) {
   }
   if (!records.length) return view;
   if (records.length <= 1) {
-    view.appendChild(buildRecord(records[0], null));
+    view.appendChild(buildRecord(records[0], { state: state, recordIndex: 0 }));
     return view;
   }
   var box = el('div', 'panesbox');
-  var activeRecord = 0;
+  var activeRecord = Math.min(Math.max(state.activeRecord || 0, 0), records.length - 1);
+  state.activeRecord = activeRecord;
   function renderActiveRecord() {
     box.replaceChildren(buildRecord(records[activeRecord], {
       records: records,
       activeIndex: activeRecord,
+      state: state,
+      recordIndex: activeRecord,
       onSelect: function (i) {
         activeRecord = i;
+        state.activeRecord = i;
         renderActiveRecord();
       }
     }));
@@ -382,7 +424,7 @@ function selectTurn(i) {
   var inner = document.getElementById('content-inner');
   inner.replaceChildren();
   inner.classList.toggle('manual-preview-content', isManualPreview(turns[i]));
-  inner.appendChild(renderTurn(turns[i]));
+  inner.appendChild(renderTurn(turns[i], i));
   if (!isManualPreview(turns[i])) inner.appendChild(el('div', 'scroll-pad'));
 }
 

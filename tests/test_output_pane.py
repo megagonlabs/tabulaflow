@@ -254,6 +254,14 @@ def test_pane_tables_keep_last_row_gridline() -> None:
 def test_pane_view_switches_keep_cached_nodes_mounted() -> None:
     assert "function getCachedRecordData(record)" in _PANE_HTML
     assert "function scheduleIdle(fn)" in _PANE_HTML
+    assert "var navState = {};" in _PANE_HTML
+    assert "function getTurnState(turn, index)" in _PANE_HTML
+    assert "function savedViewKind(state, record, recordIndex, views)" in _PANE_HTML
+    assert "function rememberViewKind(state, record, recordIndex, kind)" in _PANE_HTML
+    assert "function viewOptionForKind(switcher, kind)" in _PANE_HTML
+    assert "opt.dataset.kind = kind;" in _PANE_HTML
+    assert "showView(activeKind, viewOptionForKind(switcher, activeKind));" in _PANE_HTML
+    assert "state.activeRecord = i;" in _PANE_HTML
     assert "function prewarmDataView(record, views, activeKind, shell)" in _PANE_HTML
     assert "function hideViewNode(node)" in _PANE_HTML
     assert "function syncActiveShellView(shell)" in _PANE_HTML
