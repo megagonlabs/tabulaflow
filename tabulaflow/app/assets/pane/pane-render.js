@@ -394,7 +394,9 @@
       ? encoding.field : '';
   }
 
-  var mapPalette = ['#4285f4', '#ea4335', '#fbbc04', '#34a853', '#a142f4', '#fbbc54', '#46bdc6', '#7cb342'];
+  var mapDefaultColor = '#4285f4';
+  var mapRouteColor = '#1558d6';
+  var mapPalette = [mapDefaultColor, '#ea4335', '#fbbc04', '#34a853', '#a142f4', '#fbbc54', '#46bdc6', '#7cb342'];
 
   function colorFor(encoding, row, fallback) {
     if (!encoding || typeof encoding !== 'object' || Array.isArray(encoding)) return fallback;
@@ -461,15 +463,15 @@
 
   function leafletStyle(layer, feature, fallback) {
     var row = feature && feature.properties ? feature.properties : {};
-    var color = colorFor(layer.color, row, fallback || '#4285f4');
     var type = geometryType(feature);
     var isLine = type === 'LineString' || type === 'MultiLineString';
+    var color = colorFor(layer.color, row, isLine ? mapRouteColor : (fallback || mapDefaultColor));
     return {
       color: color,
       fillColor: color,
       fillOpacity: 0.25,
       opacity: 0.95,
-      weight: isLine ? 4 : 2
+      weight: isLine ? 5 : 2
     };
   }
 
@@ -521,9 +523,9 @@
           if (markerType === 'circle') {
             marker = L.circleMarker([lat, lng], {
               radius: sizeFor(layer.size, row, rows, 6),
-              color: colorFor(layer.color, row, '#4285f4'),
+              color: colorFor(layer.color, row, mapDefaultColor),
               weight: 1,
-              fillColor: colorFor(layer.color, row, '#4285f4'),
+              fillColor: colorFor(layer.color, row, mapDefaultColor),
               fillOpacity: 0.82
             }).addTo(map);
           } else {
@@ -547,9 +549,9 @@
         }
         geojsonItems.forEach(function (geojson) {
           var geoLayer = L.geoJSON(geojson, {
-            style: function (feature) { return leafletStyle(layer, feature, '#4285f4'); },
+            style: function (feature) { return leafletStyle(layer, feature, mapDefaultColor); },
             pointToLayer: function (feature, latlng) {
-              var style = leafletStyle(layer, feature, '#4285f4');
+              var style = leafletStyle(layer, feature, mapDefaultColor);
               style.radius = 6;
               return L.circleMarker(latlng, style);
             },

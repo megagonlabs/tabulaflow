@@ -451,11 +451,12 @@ def test_pane_map_view_is_leaflet_based() -> None:
     assert "#a52714" in renderer
     assert "#ea4335" in renderer
     assert "#4285f4" in renderer
-    assert "colorFor(layer.color, row, '#4285f4')" in renderer
-    assert "leafletStyle(layer, feature, '#4285f4')" in renderer
+    assert "#1558d6" in renderer
+    assert "colorFor(layer.color, row, isLine ? mapRouteColor : (fallback || mapDefaultColor))" in renderer
+    assert "leafletStyle(layer, feature, mapDefaultColor)" in renderer
     assert "function geometryType(feature)" in renderer
     assert "type === 'LineString' || type === 'MultiLineString'" in renderer
-    assert "weight: isLine ? 4 : 2" in renderer
+    assert "weight: isLine ? 5 : 2" in renderer
     assert "#5bd0a8" not in renderer
     assert "#2f9a74" not in renderer
     assert "rgba(255,255,255,0.35)" not in renderer
