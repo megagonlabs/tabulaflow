@@ -49,6 +49,13 @@ def _field_encoding(value: object, field_by_column: Mapping[str, str]) -> object
     return out
 
 
+def _literal_field_encoding(value: object) -> object:
+    if not isinstance(value, Mapping):
+        return None
+    out = {key: value[key] for key in ("field", "domain") if key in value}
+    return out if isinstance(out.get("field"), str) else None
+
+
 def _size_encoding(value: object, field_by_column: Mapping[str, str]) -> object:
     if not isinstance(value, Mapping):
         return None
@@ -56,10 +63,42 @@ def _size_encoding(value: object, field_by_column: Mapping[str, str]) -> object:
     return {"field": field} if field is not None else None
 
 
+def _literal_size_encoding(value: object) -> object:
+    if not isinstance(value, Mapping):
+        return None
+    field = value.get("field")
+    return {"field": field} if isinstance(field, str) else None
+
+
 def _normalize_points_layer(
     layer: Mapping[str, object],
     field_by_column: Mapping[str, str],
 ) -> dict[str, object] | None:
+    inline_points = layer.get("points")
+    if isinstance(inline_points, Sequence) and not isinstance(inline_points, (str, bytes, bytearray)):
+        points = [dict(point) for point in inline_points if isinstance(point, Mapping)]
+        if not points:
+            return None
+        out: dict[str, object] = {"type": "points", "points": points}
+        label = _as_str(layer.get("label"))
+        if label is not None:
+            out["label"] = label
+        tooltip = _field_list(layer.get("tooltip"), {})
+        if tooltip is not None:
+            out["tooltip"] = tooltip
+        marker = layer.get("marker")
+        if isinstance(marker, Mapping):
+            marker_type = marker.get("type")
+            if marker_type in {"pin", "circle"}:
+                out["marker"] = {"type": marker_type}
+        color = _literal_field_encoding(layer.get("color"))
+        if color is not None:
+            out["color"] = color
+        size = _literal_size_encoding(layer.get("size"))
+        if size is not None:
+            out["size"] = size
+        return out
+
     lat = _field_name(layer.get("lat") or layer.get("latitude"), field_by_column)
     lng = _field_name(layer.get("lng") or layer.get("lon") or layer.get("longitude"), field_by_column)
     if lat is None or lng is None:

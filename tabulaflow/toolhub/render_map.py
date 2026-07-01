@@ -75,9 +75,7 @@ def _color_encoding(df: pd.DataFrame, value: object, *, path: str) -> dict[str, 
     out = dict(value)
     out["field"] = _field(df, out.get("field"), path=f"{path}.field")
     domain = out.get("domain")
-    if domain is not None and (
-        not isinstance(domain, Sequence) or isinstance(domain, (str, bytes, bytearray))
-    ):
+    if domain is not None and (not isinstance(domain, Sequence) or isinstance(domain, (str, bytes, bytearray))):
         raise MapSpecError(f"{path}.domain must be a list")
     return out
 
@@ -94,6 +92,65 @@ def _size_encoding(df: pd.DataFrame, value: object, *, path: str) -> dict[str, A
     return out
 
 
+def _safe_inline_value(value: object) -> bool:
+    return value is None or isinstance(value, str | int | float | bool)
+
+
+def _inline_field(points: Sequence[Mapping[str, object]], value: object, *, path: str) -> str:
+    if not isinstance(value, str) or not value:
+        raise MapSpecError(f"{path} must be an inline point property name")
+    if not any(value in point for point in points):
+        raise MapSpecError(f"inline point property not found: {value!r}")
+    return value
+
+
+def _inline_optional_field(points: Sequence[Mapping[str, object]], value: object, *, path: str) -> str | None:
+    if value is None:
+        return None
+    return _inline_field(points, value, path=path)
+
+
+def _inline_tooltip(
+    points: Sequence[Mapping[str, object]], value: object, *, path: str
+) -> str | list[str] | bool | None:
+    if value is None:
+        return None
+    if value is True:
+        return True
+    if isinstance(value, str):
+        return _inline_field(points, value, path=path)
+    if isinstance(value, Sequence) and not isinstance(value, (str, bytes, bytearray)):
+        return [_inline_field(points, item, path=f"{path}[]") for item in value]
+    raise MapSpecError(f"{path} must be an inline point property name, list of property names, or true")
+
+
+def _inline_color_encoding(points: Sequence[Mapping[str, object]], value: object, *, path: str) -> dict[str, Any]:
+    if not isinstance(value, Mapping):
+        raise MapSpecError(f"{path} must be an object with 'field' and optional 'domain'")
+    allowed = {"field", "domain"}
+    unsupported = sorted(set(value) - allowed)
+    if unsupported:
+        raise MapSpecError(f"unsupported {path} field(s): {unsupported}")
+    out = dict(value)
+    out["field"] = _inline_field(points, out.get("field"), path=f"{path}.field")
+    domain = out.get("domain")
+    if domain is not None and (not isinstance(domain, Sequence) or isinstance(domain, (str, bytes, bytearray))):
+        raise MapSpecError(f"{path}.domain must be a list")
+    return out
+
+
+def _inline_size_encoding(points: Sequence[Mapping[str, object]], value: object, *, path: str) -> dict[str, Any]:
+    if not isinstance(value, Mapping):
+        raise MapSpecError(f"{path} must be an object with 'field'")
+    allowed = {"field"}
+    unsupported = sorted(set(value) - allowed)
+    if unsupported:
+        raise MapSpecError(f"unsupported {path} field(s): {unsupported}")
+    out = dict(value)
+    out["field"] = _inline_field(points, out.get("field"), path=f"{path}.field")
+    return out
+
+
 def _has_valid_point(df: pd.DataFrame, lat_col: str, lng_col: str) -> bool:
     lat = pd.to_numeric(df[lat_col], errors="coerce")
     lng = pd.to_numeric(df[lng_col], errors="coerce")
@@ -101,22 +158,79 @@ def _has_valid_point(df: pd.DataFrame, lat_col: str, lng_col: str) -> bool:
     return bool(valid.any())
 
 
+def _normalize_inline_points(value: object, *, path: str) -> list[dict[str, object]]:
+    if not isinstance(value, Sequence) or isinstance(value, (str, bytes, bytearray)) or not value:
+        raise MapSpecError(f"{path} must be a non-empty list of point objects")
+    points: list[dict[str, object]] = []
+    for index, raw in enumerate(value):
+        if not isinstance(raw, Mapping):
+            raise MapSpecError(f"{path}[{index}] must be an object")
+        lat = raw.get("lat")
+        lng = raw.get("lng")
+        if isinstance(lat, bool) or isinstance(lng, bool):
+            raise MapSpecError(f"{path}[{index}].lat/lng must be numbers")
+        try:
+            lat_num = float(lat)
+            lng_num = float(lng)
+        except (TypeError, ValueError):
+            raise MapSpecError(f"{path}[{index}].lat/lng must be numbers") from None
+        if not (-90 <= lat_num <= 90 and -180 <= lng_num <= 180):
+            raise MapSpecError(f"{path}[{index}] has invalid latitude/longitude")
+        point: dict[str, object] = {}
+        for key, item in raw.items():
+            if not isinstance(key, str) or not key:
+                raise MapSpecError(f"{path}[{index}] property names must be non-empty strings")
+            if not _safe_inline_value(item):
+                raise MapSpecError(f"{path}[{index}].{key} must be a string, number, boolean, or null")
+            point[key] = copy.deepcopy(item)
+        point["lat"] = lat_num
+        point["lng"] = lng_num
+        points.append(point)
+    return points
+
+
 def _normalize_points_layer(df: pd.DataFrame, layer: Mapping[str, object], index: int) -> dict[str, Any]:
-    allowed = {"type", "lat", "latitude", "lng", "lon", "longitude", "label", "tooltip", "marker", "color", "size"}
+    allowed = {
+        "type",
+        "points",
+        "lat",
+        "latitude",
+        "lng",
+        "lon",
+        "longitude",
+        "label",
+        "tooltip",
+        "marker",
+        "color",
+        "size",
+    }
     unsupported = sorted(set(layer) - allowed)
     if unsupported:
         raise MapSpecError(f"unsupported layers[{index}] field(s): {unsupported}")
 
-    lat = _field(df, layer.get("lat") or layer.get("latitude"), path=f"layers[{index}].lat")
-    lng = _field(df, layer.get("lng") or layer.get("lon") or layer.get("longitude"), path=f"layers[{index}].lng")
-    if not _has_valid_point(df, lat, lng):
-        raise MapSpecError(f"layers[{index}] has no valid latitude/longitude rows")
+    has_inline_points = "points" in layer
+    has_column_points = any(key in layer for key in ("lat", "latitude", "lng", "lon", "longitude"))
+    if has_inline_points and has_column_points:
+        raise MapSpecError(f"layers[{index}] must use either points or lat/lng columns, not both")
+    if not has_inline_points and not has_column_points:
+        raise MapSpecError(f"layers[{index}] must define points or lat/lng columns")
 
-    out: dict[str, Any] = {"type": "points", "lat": lat, "lng": lng}
-    label = _optional_field(df, layer.get("label"), path=f"layers[{index}].label")
+    inline_points: list[dict[str, object]] | None = None
+    if has_inline_points:
+        inline_points = _normalize_inline_points(layer.get("points"), path=f"layers[{index}].points")
+        out: dict[str, Any] = {"type": "points", "points": inline_points}
+        label = _inline_optional_field(inline_points, layer.get("label"), path=f"layers[{index}].label")
+        tooltip = _inline_tooltip(inline_points, layer.get("tooltip"), path=f"layers[{index}].tooltip")
+    else:
+        lat = _field(df, layer.get("lat") or layer.get("latitude"), path=f"layers[{index}].lat")
+        lng = _field(df, layer.get("lng") or layer.get("lon") or layer.get("longitude"), path=f"layers[{index}].lng")
+        if not _has_valid_point(df, lat, lng):
+            raise MapSpecError(f"layers[{index}] has no valid latitude/longitude rows")
+        out = {"type": "points", "lat": lat, "lng": lng}
+        label = _optional_field(df, layer.get("label"), path=f"layers[{index}].label")
+        tooltip = _tooltip(df, layer.get("tooltip"), path=f"layers[{index}].tooltip")
     if label is not None:
         out["label"] = label
-    tooltip = _tooltip(df, layer.get("tooltip"), path=f"layers[{index}].tooltip")
     if tooltip is not None:
         out["tooltip"] = tooltip
     marker = layer.get("marker")
@@ -131,9 +245,17 @@ def _normalize_points_layer(df: pd.DataFrame, layer: Mapping[str, object], index
             raise MapSpecError(f"layers[{index}].marker.type must be 'pin' or 'circle'")
         out["marker"] = dict(marker)
     if "color" in layer:
-        out["color"] = _color_encoding(df, layer["color"], path=f"layers[{index}].color")
+        out["color"] = (
+            _inline_color_encoding(inline_points, layer["color"], path=f"layers[{index}].color")
+            if inline_points is not None
+            else _color_encoding(df, layer["color"], path=f"layers[{index}].color")
+        )
     if "size" in layer:
-        out["size"] = _size_encoding(df, layer["size"], path=f"layers[{index}].size")
+        out["size"] = (
+            _inline_size_encoding(inline_points, layer["size"], path=f"layers[{index}].size")
+            if inline_points is not None
+            else _size_encoding(df, layer["size"], path=f"layers[{index}].size")
+        )
     return out
 
 
@@ -276,8 +398,12 @@ class RenderMapTool:
           ``{"field":"status","domain":[...]}``; the output pane chooses the
           palette.
         - ``points`` layer:
-          ``{"type":"points","lat":"lat","lng":"lng"}`` plus optional
-          ``label``, ``tooltip``, ``color``, ``marker``, and ``size``.
+          Column mode: ``{"type":"points","lat":"lat","lng":"lng"}``.
+          Inline mode:
+          ``{"type":"points","points":[{"lat":37.7,"lng":-122.4,"label":"Destination"}]}``.
+          Add optional ``label``, ``tooltip``, ``color``, ``marker``, and
+          ``size``. Inline ``label``, ``tooltip``, ``color``, and ``size``
+          reference inline point property names.
           ``marker`` is ``{"type":"pin"}`` or ``{"type":"circle"}``.
           ``size`` is ``{"field":"value"}``; the output pane chooses the
           radius range.
@@ -288,6 +414,7 @@ class RenderMapTool:
 
         Minimal examples:
         ``{"layers":[{"type":"points","lat":"lat","lng":"lng","label":"name","tooltip":["name","status"]}]}``
+        ``{"layers":[{"type":"points","points":[{"lat":37.7,"lng":-122.4,"label":"Destination"}],"label":"label"}]}``
         ``{"layers":[{"type":"geojson","geojson":"geom_geojson","label":"name","tooltip":["name"]}]}``
 
         Prefer defaults unless the user asks for styling or a fixed viewport.

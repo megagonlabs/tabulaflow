@@ -357,6 +357,58 @@ def test_record_card_writes_layered_map_view_payload(tmp_path: Path) -> None:
     }
 
 
+def test_record_card_writes_inline_point_map_layer(tmp_path: Path) -> None:
+    df = pd.DataFrame(
+        {
+            "route_geojson": [
+                {
+                    "type": "LineString",
+                    "coordinates": [[-122.42, 37.77], [-122.27, 37.80]],
+                }
+            ],
+            "route_name": ["Route"],
+        }
+    )
+    card = render_record_data(
+        SimpleNamespace(
+            df=df,
+            chart_spec=None,
+            map_spec={
+                "layers": [
+                    {
+                        "type": "geojson",
+                        "geojson": "route_geojson",
+                        "label": "route_name",
+                    },
+                    {
+                        "type": "points",
+                        "points": [{"lat": 37.8044, "lng": -122.2712, "label": "Destination", "kind": "destination"}],
+                        "label": "label",
+                        "tooltip": ["label", "kind"],
+                    },
+                ]
+            },
+            query=None,
+            label="route",
+            record_id="r1",
+            query_lexer="sql",
+        ),
+        tmp_path,
+    )
+
+    assert card is not None
+    assert card["views"] == ["map", "data"]
+    payload = json.loads((tmp_path / f"{card['id']}.data.json").read_text())
+    assert payload["map"]["layers"][0]["geojson"] == "c0"
+    assert payload["map"]["layers"][0]["label"] == "c1"
+    assert payload["map"]["layers"][1] == {
+        "type": "points",
+        "points": [{"lat": 37.8044, "lng": -122.2712, "label": "Destination", "kind": "destination"}],
+        "label": "label",
+        "tooltip": ["label", "kind"],
+    }
+
+
 def test_manual_table_send_includes_data_view_meta(tmp_path: Path) -> None:
     calls: list[tuple[Path, dict[str, object]]] = []
     statuses: list[object] = []
@@ -439,6 +491,9 @@ def test_pane_map_view_is_leaflet_based() -> None:
     assert "field !== labelField" in renderer
     assert "detailHtml(row, tooltip, labels, label, labelField)" in renderer
     assert "detailHtml(props, layer.tooltip || layer.label, labels, label, layer.label)" in renderer
+    assert "var pointRows = Array.isArray(layer.points) ? layer.points : rows;" in renderer
+    assert "var latField = Array.isArray(layer.points) ? 'lat' : String(layer.lat || '');" in renderer
+    assert "radius: sizeFor(layer.size, row, pointRows, 6)" in renderer
     assert "function bindMapDetail(layer, html, opts)" in renderer
     assert "tooltipOpts.offset = opts.tooltipOffset;" in renderer
     assert "layer.bindTooltip(html, tooltipOpts)" in renderer

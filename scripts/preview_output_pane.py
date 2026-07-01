@@ -352,11 +352,7 @@ def _map_record() -> SimpleNamespace:
     return _record(
         record_id="QDEBUG_MAP",
         label="geometry_showcase",
-        query=(
-            "-- synthetic geometry showcase\n"
-            "SELECT name, kind, lat, lng, geom\n"
-            "FROM geometry_showcase"
-        ),
+        query=("-- synthetic geometry showcase\nSELECT name, kind, lat, lng, geom\nFROM geometry_showcase"),
         df=df,
         map_spec={
             "title": "Geometry showcase",
@@ -373,7 +369,20 @@ def _map_record() -> SimpleNamespace:
                     "geojson": "geom",
                     "label": "name",
                     "tooltip": ["name", "kind"],
-                }
+                },
+                {
+                    "type": "points",
+                    "points": [
+                        {
+                            "lat": 37.350,
+                            "lng": -121.890,
+                            "label": "Inline destination",
+                            "kind": "inline point",
+                        }
+                    ],
+                    "label": "label",
+                    "tooltip": ["label", "kind"],
+                },
             ],
         },
     )

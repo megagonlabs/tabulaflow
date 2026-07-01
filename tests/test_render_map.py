@@ -36,6 +36,50 @@ class TestNormalizeMapSpec:
         spec = {"layers": [{"type": "points", "lat": "lat", "lng": "lng", "label": "name"}]}
         assert normalize_map_spec(df, spec) == spec
 
+    def test_points_layer_accepts_inline_points(self) -> None:
+        df = pd.DataFrame({"route": ["r1"]})
+        spec = {
+            "layers": [
+                {
+                    "type": "points",
+                    "points": [{"lat": 37.7, "lng": -122.4, "label": "Destination", "kind": "destination"}],
+                    "label": "label",
+                    "tooltip": ["label", "kind"],
+                    "color": {"field": "kind", "domain": ["destination"]},
+                    "marker": {"type": "pin"},
+                }
+            ]
+        }
+        assert normalize_map_spec(df, spec) == spec
+
+    def test_inline_points_are_mutually_exclusive_with_column_points(self) -> None:
+        df = pd.DataFrame({"lat": [37.7], "lng": [-122.4]})
+        spec = {"layers": [{"type": "points", "lat": "lat", "lng": "lng", "points": [{"lat": 37.7, "lng": -122.4}]}]}
+
+        try:
+            normalize_map_spec(df, spec)
+        except ValueError as exc:
+            assert "either points or lat/lng columns" in str(exc)
+        else:  # pragma: no cover - defensive
+            raise AssertionError("mixed points modes should be rejected")
+
+    def test_inline_points_validate_coordinates_and_properties(self) -> None:
+        df = pd.DataFrame({"route": ["r1"]})
+        cases = [
+            {"layers": [{"type": "points", "points": [{"lat": None, "lng": -122.4}]}]},
+            {"layers": [{"type": "points", "points": [{"lat": 999, "lng": -122.4}]}]},
+            {"layers": [{"type": "points", "points": [{"lat": 37.7, "lng": -122.4, "meta": {"x": 1}}]}]},
+            {"layers": [{"type": "points", "points": [{"lat": 37.7, "lng": -122.4}], "label": "missing"}]},
+        ]
+
+        for spec in cases:
+            try:
+                normalize_map_spec(df, spec)
+            except ValueError:
+                pass
+            else:  # pragma: no cover - defensive
+                raise AssertionError(f"invalid inline points should be rejected: {spec}")
+
     def test_geojson_layer_accepts_column(self) -> None:
         df = pd.DataFrame(
             {
@@ -85,7 +129,11 @@ class TestNormalizeMapSpec:
                 ]
             },
             {"layers": [{"type": "points", "lat": "value", "lng": "value", "size": 12}]},
-            {"layers": [{"type": "points", "lat": "value", "lng": "value", "size": {"field": "value", "range": [5, 18]}}]},
+            {
+                "layers": [
+                    {"type": "points", "lat": "value", "lng": "value", "size": {"field": "value", "range": [5, 18]}}
+                ]
+            },
         ]
 
         for spec in cases:

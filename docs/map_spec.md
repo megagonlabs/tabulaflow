@@ -95,7 +95,9 @@ values only.
 
 ### 5.1 Points Layer
 
-Use for ordinary SQL results with separate latitude and longitude columns.
+Use for point markers. A points layer has either column mode or inline mode.
+Column mode uses ordinary SQL results with separate latitude and longitude
+columns:
 
 ```json
 {
@@ -115,13 +117,40 @@ Fields:
 | Field | Required | Description |
 |---|---:|---|
 | `type` | yes | Must be `"points"`. |
-| `lat` | yes | Latitude column. Values must be numeric and in `[-90, 90]`. |
-| `lng` | yes | Longitude column. Values must be numeric and in `[-180, 180]`. |
-| `label` | no | Short identity column used for marker titles and default feature names. |
-| `tooltip` | no | Detail content shown on hover and click in V1. Column, list of columns, or `true` for all safe scalar fields. |
+| `lat` | yes in column mode | Latitude column. Values must be numeric and in `[-90, 90]`. |
+| `lng` | yes in column mode | Longitude column. Values must be numeric and in `[-180, 180]`. |
+| `points` | yes in inline mode | Non-empty list of inline point objects with numeric `lat` and `lng`. |
+| `label` | no | Short identity field/property used for marker titles and default feature names. |
+| `tooltip` | no | Detail content shown on hover and click in V1. Field/property, list of fields/properties, or `true` for all safe scalar fields. |
 | `marker` | no | Point mark type. Defaults to `{"type": "pin"}`. |
 | `color` | no | Semantic categorical color encoding. |
 | `size` | no | Semantic numeric size encoding. |
+
+Inline mode is useful for adding a small number of agent-specified markers,
+such as a destination pin on top of a route geometry:
+
+```json
+{
+  "type": "points",
+  "points": [
+    {
+      "lat": 37.7749,
+      "lng": -122.4194,
+      "label": "Destination",
+      "address": "San Francisco"
+    }
+  ],
+  "label": "label",
+  "tooltip": ["label", "address"]
+}
+```
+
+Inline point objects must contain `lat` and `lng`. Other inline point
+properties must be strings, numbers, booleans, or null. In inline mode,
+`label`, `tooltip`, `color.field`, and `size.field` reference inline point
+property names, not query-result columns.
+
+`lat`/`lng` column mode and `points` inline mode are mutually exclusive.
 
 Marker types:
 
@@ -385,7 +414,7 @@ Implement the smallest useful contract first:
 V1 should support:
 
 - one or more layers
-- points from `lat`/`lng`
+- points from `lat`/`lng` columns or inline point objects
 - GeoJSON from a column or inline object
 - pin and circle point marks
 - renderer-owned styling for markers and GeoJSON
@@ -471,6 +500,8 @@ Defer:
 Agents should:
 
 - Use `points` when the result has latitude and longitude columns.
+- Use inline `points` for a small number of explicit markers, such as an origin
+  or destination pin over a route.
 - Use `geojson` when the result already contains map geometry.
 - Convert database geometry to WGS84 GeoJSON in SQL before calling
   `render_map`.

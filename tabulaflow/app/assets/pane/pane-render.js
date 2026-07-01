@@ -524,12 +524,13 @@
     var markerIcon = mapMarkerIcon();
     layers.forEach(function (layer) {
       if (!layer || layer.type === 'points') {
-        var latField = String(layer.lat || '');
-        var lngField = String(layer.lng || '');
+        var pointRows = Array.isArray(layer.points) ? layer.points : rows;
+        var latField = Array.isArray(layer.points) ? 'lat' : String(layer.lat || '');
+        var lngField = Array.isArray(layer.points) ? 'lng' : String(layer.lng || '');
         var labelField = String(layer.label || '');
         if (!latField || !lngField) return;
         var markerType = layer.marker && layer.marker.type === 'circle' ? 'circle' : 'pin';
-        rows.forEach(function (row) {
+        pointRows.forEach(function (row) {
           var lat = numberValue(fieldValue(row, latField));
           var lng = numberValue(fieldValue(row, lngField));
           if (lat == null || lng == null) return;
@@ -541,7 +542,7 @@
           var marker;
           if (markerType === 'circle') {
             marker = L.circleMarker([lat, lng], {
-              radius: sizeFor(layer.size, row, rows, 6),
+              radius: sizeFor(layer.size, row, pointRows, 6),
               color: colorFor(layer.color, row, mapDefaultColor),
               weight: 1,
               fillColor: colorFor(layer.color, row, mapDefaultColor),
