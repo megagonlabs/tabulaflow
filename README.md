@@ -350,7 +350,9 @@ June 29
 June 30
 - [x] Map rendering
 
-
+July 1
+- [ ] Graph rendering
+- [ ] code diff rendering
 
 - [ ] Remote server support
 - [ ] web_fetch tool for static html
