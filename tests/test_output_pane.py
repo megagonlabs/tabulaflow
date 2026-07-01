@@ -578,6 +578,18 @@ def test_pane_map_view_is_maplibre_based() -> None:
     ]
     assert layer_by_id["street-labels-local"]["layout"]["text-size"] == ["interpolate", ["linear"], ["zoom"], 14, 11, 16, 13]
     assert layer_by_id["water-labels"]["layout"]["text-size"] == ["interpolate", ["linear"], ["zoom"], 13, 11, 16, 14]
+    assert layer_by_id["ferries"]["source-layer"] == "ferries"
+    assert layer_by_id["ferries"]["minzoom"] == 11
+    assert layer_by_id["ferries"]["paint"]["line-dasharray"] == [3, 3]
+    assert layer_by_id["ferry-labels"]["source-layer"] == "ferries"
+    assert layer_by_id["ferry-labels"]["layout"]["symbol-placement"] == "line"
+    assert layer_by_id["water-line-labels"]["source-layer"] == "water_lines_labels"
+    assert layer_by_id["water-line-labels"]["minzoom"] == 13
+    assert layer_by_id["public-transport-labels"]["source-layer"] == "public_transport"
+    assert layer_by_id["public-transport-labels"]["filter"] == ["has", "name"]
+    assert layer_by_id["poi-labels"]["source-layer"] == "pois"
+    assert layer_by_id["poi-labels"]["minzoom"] == 14.5
+    assert layer_by_id["poi-labels"]["filter"] == ["has", "name"]
     assert "if (kind === 'map') return TF.renderMap(node, data);" in _PANE_HTML
     assert "function afterVisible(entry)" in _PANE_HTML
     assert "function afterHidden(entry)" in _PANE_HTML
