@@ -71,6 +71,7 @@ tabulaflow = [
     "app/assets/debug/*",
     "app/assets/pane/*",
     "app/assets/samples/*",
+    "app/assets/maplibre/*",
     "app/assets/tabulator/*",
     "app/assets/vega/*",
 ]

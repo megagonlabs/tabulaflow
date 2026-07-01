@@ -1,4 +1,4 @@
-"""Build structured Leaflet map payloads for the browser output pane."""
+"""Build structured map payloads for the browser output pane."""
 
 from __future__ import annotations
 
@@ -199,7 +199,7 @@ def build_map_data(
         return None
 
     out: dict[str, object] = {
-        "provider": "leaflet",
+        "provider": "maplibre",
         "layers": layers,
     }
     view = map_spec.get("view")
