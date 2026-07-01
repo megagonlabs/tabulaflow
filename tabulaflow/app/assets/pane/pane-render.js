@@ -330,12 +330,54 @@
   var mapPinInner = cssVar('--map-pin-inner', '#fff4f2');
   var mapStyleUrl = '/assets/maplibre/shortbread-light.json';
 
+  function hexRgb(value) {
+    var text = String(value || '').trim();
+    var match = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(text);
+    if (!match) return null;
+    var hex = match[1];
+    if (hex.length === 3) {
+      hex = hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2];
+    }
+    return {
+      r: parseInt(hex.slice(0, 2), 16),
+      g: parseInt(hex.slice(2, 4), 16),
+      b: parseInt(hex.slice(4, 6), 16)
+    };
+  }
+
+  function hexChannel(value) {
+    var text = Math.round(Math.max(0, Math.min(255, value))).toString(16);
+    return text.length === 1 ? '0' + text : text;
+  }
+
+  function mixHex(a, b, amount) {
+    var left = hexRgb(a);
+    var right = hexRgb(b);
+    if (!left || !right) return a;
+    return '#'
+      + hexChannel(left.r + (right.r - left.r) * amount)
+      + hexChannel(left.g + (right.g - left.g) * amount)
+      + hexChannel(left.b + (right.b - left.b) * amount);
+  }
+
+  function pinColorRamp(color) {
+    var base = hexRgb(color) ? String(color).trim() : mapPinBottom;
+    if (!hexRgb(base)) {
+      return { top: mapPinTop, bottom: mapPinBottom, outline: mapPinOutline };
+    }
+    return {
+      top: mixHex(base, '#ffffff', 0.46),
+      bottom: base,
+      outline: mixHex(base, '#000000', 0.34)
+    };
+  }
+
   function mapPinSvg(color) {
-    var fill = color || mapPinBottom;
+    var ramp = pinColorRamp(color);
     var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="25" height="41" viewBox="0 0 25 41">'
       + '<defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1">'
-      + '<stop offset="0" stop-color="' + mapPinTop + '"/><stop offset="1" stop-color="' + fill + '"/></linearGradient></defs>'
-      + '<path fill="' + mapPinOutline + '" d="M12.5 0C5.6 0 0 5.6 0 12.5c0 8.9 12.5 28.5 12.5 28.5S25 21.4 25 12.5C25 5.6 19.4 0 12.5 0z"/>'
+      + '<stop offset="0" stop-color="' + ramp.top + '"/><stop offset="1" stop-color="' + ramp.bottom + '"/></linearGradient></defs>'
+      + '<path fill="' + ramp.outline + '" d="M12.5 0C5.6 0 0 5.6 0 12.5c0 8.9 12.5 28.5 12.5 28.5S25 21.4 25 12.5C25 5.6 19.4 0 12.5 0z"/>'
       + '<path fill="url(#g)" d="M12.5 1.25C6.3 1.25 1.25 6.3 1.25 12.5c0 7.9 8.9 22.6 11.25 26.2C14.85 35.1 23.75 20.4 23.75 12.5c0-6.2-5.05-11.25-11.25-11.25z"/>'
       + '<circle cx="12.5" cy="12.6" r="5.7" fill="' + mapPinHole + '"/>'
       + '<circle cx="12.5" cy="12.6" r="4.2" fill="' + mapPinInner + '"/>'

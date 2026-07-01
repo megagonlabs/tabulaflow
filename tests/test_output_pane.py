@@ -564,6 +564,10 @@ def test_pane_map_view_is_maplibre_based() -> None:
     assert "title || popup.replace" not in renderer
     assert "label == null ? popup.replace" not in renderer
     assert "function mapPinSvg(color)" in renderer
+    assert "function pinColorRamp(color)" in renderer
+    assert "function mixHex(a, b, amount)" in renderer
+    assert "top: mixHex(base, '#ffffff', 0.46)" in renderer
+    assert "outline: mixHex(base, '#000000', 0.34)" in renderer
     assert "function mapPinElement(color, scale, title)" in renderer
     assert "node.className = 'tf-map-pin';" in renderer
     assert "data:image/svg+xml;charset=UTF-8," in renderer
