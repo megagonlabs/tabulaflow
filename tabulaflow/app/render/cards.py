@@ -145,7 +145,9 @@ def render_record_data(record: ResultRecordLike, pane_dir: Path) -> PaneRecord |
         )
         record_data.update(table_build.data)
         map_spec = getattr(record, "map_spec", None)
-        if map_spec is not None:
+        table_payload = table_build.data.get("table")
+        table_truncated = isinstance(table_payload, dict) and bool(table_payload.get("truncatedRows"))
+        if map_spec is not None and not table_truncated:
             map_data = build_map_data(df, map_spec, field_by_column=table_build.field_by_column)
             if map_data is not None:
                 record_data.update(map_data)

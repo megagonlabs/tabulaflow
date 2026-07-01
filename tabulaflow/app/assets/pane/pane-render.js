@@ -70,6 +70,7 @@
   }
 
   function numberValue(value) {
+    if (typeof value === 'string' && value.trim() === '') return null;
     var n = Number(value);
     return Number.isFinite(n) ? n : null;
   }

@@ -8,7 +8,7 @@ import pandas as pd
 
 from tabulaflow.core.types import ExecResult, PredQuery
 from tabulaflow.toolhub.query_history import QueryHistory
-from tabulaflow.toolhub.render_map import RenderMapTool, normalize_map_spec
+from tabulaflow.toolhub.render_map import MAP_RENDER_MAX_ROWS, RenderMapTool, normalize_map_spec
 
 
 async def _history_with(df: pd.DataFrame) -> QueryHistory:
@@ -24,6 +24,17 @@ class TestNormalizeMapSpec:
         assert normalize_map_spec(df, spec) == {
             "layers": [{"type": "points", "lat": "Lat", "lng": "Lng", "label": "Name"}]
         }
+
+    def test_points_layer_allows_mixed_missing_coordinates(self) -> None:
+        df = pd.DataFrame(
+            {
+                "lat": [None, 37.7, 999],
+                "lng": [-122.4, -122.4, -122.4],
+                "name": ["missing", "valid", "invalid"],
+            }
+        )
+        spec = {"layers": [{"type": "points", "lat": "lat", "lng": "lng", "label": "name"}]}
+        assert normalize_map_spec(df, spec) == spec
 
     def test_geojson_layer_accepts_column(self) -> None:
         df = pd.DataFrame(
@@ -134,4 +145,19 @@ class TestRenderMapTool:
         spec = {"layers": [{"type": "points", "lat": "lat", "lng": "lng"}]}
         msg = await RenderMapTool(history=history)(map_spec=spec)
         assert "no valid latitude/longitude" in msg
+        assert (await history.last()).map_spec is None
+
+    async def test_too_many_rows_error_without_attaching(self) -> None:
+        history = await _history_with(
+            pd.DataFrame(
+                {
+                    "lat": [37.7] * (MAP_RENDER_MAX_ROWS + 1),
+                    "lng": [-122.4] * (MAP_RENDER_MAX_ROWS + 1),
+                }
+            )
+        )
+        spec = {"layers": [{"type": "points", "lat": "lat", "lng": "lng"}]}
+        msg = await RenderMapTool(history=history)(map_spec=spec)
+        assert "too large to map directly" in msg
+        assert f"max {MAP_RENDER_MAX_ROWS:,} rows" in msg
         assert (await history.last()).map_spec is None

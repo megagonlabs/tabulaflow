@@ -12,7 +12,7 @@ from pydantic_ai import Tool
 
 from tabulaflow.toolhub.query_history import QueryHistory
 
-_MAX_MAP_ROWS = 50_000
+MAP_RENDER_MAX_ROWS = 50_000
 _GEOJSON_TYPES = {
     "Feature",
     "FeatureCollection",
@@ -329,10 +329,10 @@ class RenderMapTool:
         df = pred.exec_result.df
         if df.empty:
             return f"(error: query {record.record_id} result is empty)"
-        if len(df) > _MAX_MAP_ROWS:
+        if len(df) > MAP_RENDER_MAX_ROWS:
             return (
                 f"(error: {len(df):,} rows is too large to map directly — filter or aggregate the result first; "
-                f"max {_MAX_MAP_ROWS:,} rows)"
+                f"max {MAP_RENDER_MAX_ROWS:,} rows)"
             )
 
         try:

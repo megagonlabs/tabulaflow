@@ -15,10 +15,12 @@ import pandas as pd
 import pytest
 
 from tabulaflow.app.render.cards import render_query_html, render_record_data
+from tabulaflow.app.render.tables import TABLE_RENDER_MAX_ROWS
 from tabulaflow.app.pane import OutputPane, OutputPanePortError, _PANE_HTML
 from tabulaflow.app.pane_types import PaneRecord, PaneTurn, turn_payload
 from tabulaflow.app.screens import send_table_to_output_pane
 from tabulaflow.app.tui import TabulaflowApp
+from tabulaflow.toolhub.render_map import MAP_RENDER_MAX_ROWS
 
 
 @contextlib.contextmanager
@@ -163,6 +165,30 @@ def test_record_card_includes_data_view_meta(tmp_path: Path) -> None:
     assert payload["dataset"]["rows"][0]["c1"] == 10
 
 
+def test_map_and_table_row_caps_are_aligned() -> None:
+    assert TABLE_RENDER_MAX_ROWS == MAP_RENDER_MAX_ROWS
+
+
+def test_record_card_preserves_null_cells(tmp_path: Path) -> None:
+    df = pd.DataFrame({"name": ["valid", None], "score": [0.019593312555829002, None]})
+    card = render_record_data(
+        SimpleNamespace(
+            df=df,
+            chart_spec=None,
+            query=None,
+            label="nulls",
+            record_id="r1",
+            query_lexer="sql",
+        ),
+        tmp_path,
+    )
+
+    assert card is not None
+    payload = json.loads((tmp_path / f"{card['id']}.data.json").read_text())
+    assert payload["dataset"]["rows"][1] == {"c0": None, "c1": None}
+    assert payload["table"]["columns"][1]["formatter"] == "num"
+
+
 def test_record_card_writes_map_view_payload(tmp_path: Path) -> None:
     df = pd.DataFrame(
         {
@@ -195,6 +221,62 @@ def test_record_card_writes_map_view_payload(tmp_path: Path) -> None:
     assert "attribution" not in payload["map"]
     assert payload["dataset"]["rows"][0]["c1"] == 37.7749
     assert payload["dataset"]["rows"][0]["c2"] == -122.4194
+
+
+def test_record_card_preserves_blank_coordinate_strings_for_map_renderer(tmp_path: Path) -> None:
+    df = pd.DataFrame(
+        {
+            "city": ["Missing", "San Francisco"],
+            "latitude": ["", "37.7749"],
+            "longitude": ["", "-122.4194"],
+        }
+    )
+    card = render_record_data(
+        SimpleNamespace(
+            df=df,
+            chart_spec=None,
+            map_spec={"layers": [{"type": "points", "lat": "latitude", "lng": "longitude", "label": "city"}]},
+            query=None,
+            label="locations",
+            record_id="r1",
+            query_lexer="sql",
+        ),
+        tmp_path,
+    )
+
+    assert card is not None
+    assert card["views"] == ["map", "data"]
+    payload = json.loads((tmp_path / f"{card['id']}.data.json").read_text())
+    assert payload["dataset"]["rows"][0]["c1"] == ""
+    assert payload["dataset"]["rows"][0]["c2"] == ""
+
+
+def test_record_card_skips_map_view_when_table_payload_is_truncated(tmp_path: Path) -> None:
+    df = pd.DataFrame(
+        {
+            "city": ["San Francisco"] * (TABLE_RENDER_MAX_ROWS + 1),
+            "latitude": [37.7749] * (TABLE_RENDER_MAX_ROWS + 1),
+            "longitude": [-122.4194] * (TABLE_RENDER_MAX_ROWS + 1),
+        }
+    )
+    card = render_record_data(
+        SimpleNamespace(
+            df=df,
+            chart_spec=None,
+            map_spec={"layers": [{"type": "points", "lat": "latitude", "lng": "longitude", "label": "city"}]},
+            query=None,
+            label="too_many_locations",
+            record_id="r1",
+            query_lexer="sql",
+        ),
+        tmp_path,
+    )
+
+    assert card is not None
+    assert card["views"] == ["data"]
+    payload = json.loads((tmp_path / f"{card['id']}.data.json").read_text())
+    assert "map" not in payload
+    assert payload["table"]["truncatedRows"] == 1
 
 
 def test_record_card_writes_layered_map_view_payload(tmp_path: Path) -> None:
@@ -328,6 +410,7 @@ def test_pane_map_view_is_leaflet_based() -> None:
     assert "L.map(mapNode" in renderer
     assert "L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png'" in renderer
     assert "function mapLayers(mapData)" in renderer
+    assert "if (typeof value === 'string' && value.trim() === '') return null;" in renderer
     assert "function formatNumber(value)" in renderer
     assert "function displayValue(value)" in renderer
     assert "num: function (cell)" in renderer
