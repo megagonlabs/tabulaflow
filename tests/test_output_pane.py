@@ -554,6 +554,15 @@ def test_pane_map_view_is_maplibre_based() -> None:
     assert "map.queryRenderedFeatures(event.point, { layers: layerIds })" in renderer
     assert "var detailLayerIds = [];" in renderer
     assert "popupState.hoverHtml !== html" in renderer
+    assert "function geometryAnchor(geometry)" in renderer
+    assert "__tfAnchorLng: lng" in renderer
+    assert "__tfAnchorLat: lat" in renderer
+    assert "__tfAnchorLng: anchor ? anchor[0] : null" in renderer
+    assert "function mapFeatureAnchor(feature, fallback)" in renderer
+    assert "popupState.hoverAnchor !== hoverAnchor" in renderer
+    assert "popupState.hover.setLngLat(lngLat)" not in renderer
+    assert "syncHoverPopup(map, mapFeatureAnchor(feature, event.lngLat), html, popupState)" in renderer
+    assert "setClickPopup(map, mapFeatureAnchor(feature, event.lngLat), html, popupState)" in renderer
     assert "if (popupState.click) {\n      clearHoverPopup(map, popupState);" in renderer
     assert "function setClickPopup(map, lngLat, html, popupState)" in renderer
     assert "if (popupState.click === popup) popupState.click = null;" in renderer

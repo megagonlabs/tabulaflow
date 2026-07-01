@@ -558,6 +558,33 @@
     return !!(feature && feature.geometry && extendCoordinateBounds(bounds, feature.geometry.coordinates));
   }
 
+  function collectCoordinateBounds(coords, state) {
+    if (!Array.isArray(coords)) return false;
+    if (coords.length >= 2 && typeof coords[0] !== 'object') {
+      var lng = numberValue(coords[0]);
+      var lat = numberValue(coords[1]);
+      if (lat == null || lng == null) return false;
+      if (lat < -90 || lat > 90 || lng < -180 || lng > 180) return false;
+      state.minLng = Math.min(state.minLng, lng);
+      state.maxLng = Math.max(state.maxLng, lng);
+      state.minLat = Math.min(state.minLat, lat);
+      state.maxLat = Math.max(state.maxLat, lat);
+      return true;
+    }
+    var any = false;
+    coords.forEach(function (item) {
+      if (collectCoordinateBounds(item, state)) any = true;
+    });
+    return any;
+  }
+
+  function geometryAnchor(geometry) {
+    if (!geometry || !Array.isArray(geometry.coordinates)) return null;
+    var state = { minLng: Infinity, maxLng: -Infinity, minLat: Infinity, maxLat: -Infinity };
+    if (!collectCoordinateBounds(geometry.coordinates, state)) return null;
+    return [(state.minLng + state.maxLng) / 2, (state.minLat + state.maxLat) / 2];
+  }
+
   function buildPointFeatures(layer, rows, labels) {
     var pointRows = Array.isArray(layer.points) ? layer.points : rows;
     var latField = Array.isArray(layer.points) ? 'lat' : String(layer.lat || '');
@@ -587,7 +614,9 @@
           __tfPinHitRadius: Math.max(24, 26 * pinScale),
           __tfPopup: popup,
           __tfTitle: label == null ? '' : displayValue(label),
-          __tfMarker: markerType
+          __tfMarker: markerType,
+          __tfAnchorLng: lng,
+          __tfAnchorLat: lat
         })
       });
     });
@@ -610,13 +639,16 @@
       var label = fieldValue(props, layer.label);
       var popup = detailHtml(props, layer.tooltip || layer.label, labels, label, layer.label);
       var color = colorFor(layer.color, props, line ? mapRouteColor : mapDefaultColor);
+      var anchor = geometryAnchor(feature.geometry);
       return {
         type: 'Feature',
         geometry: feature.geometry,
         properties: Object.assign({}, props, {
           __tfColor: color,
           __tfLineWidth: line ? 5 : 2,
-          __tfPopup: popup
+          __tfPopup: popup,
+          __tfAnchorLng: anchor ? anchor[0] : null,
+          __tfAnchorLat: anchor ? anchor[1] : null
         })
       };
     });
@@ -632,6 +664,15 @@
       if (mapFeaturePopup(features[i])) return features[i];
     }
     return null;
+  }
+
+  function mapFeatureAnchor(feature, fallback) {
+    var props = feature && feature.properties ? feature.properties : {};
+    var lng = numberValue(props.__tfAnchorLng);
+    var lat = numberValue(props.__tfAnchorLat);
+    if (lng != null && lat != null) return [lng, lat];
+    var anchor = feature && feature.geometry ? geometryAnchor(feature.geometry) : null;
+    return anchor || fallback;
   }
 
   function renderMapPopup(map, lngLat, html, className, closeButton) {
@@ -650,6 +691,7 @@
     if (popupState.hover) popupState.hover.remove();
     popupState.hover = null;
     popupState.hoverHtml = '';
+    popupState.hoverAnchor = '';
   }
 
   function syncHoverPopup(map, lngLat, html, popupState) {
@@ -658,13 +700,14 @@
       return;
     }
     map.getCanvas().style.cursor = 'pointer';
-    if (!popupState.hover || popupState.hoverHtml !== html) {
+    var hoverAnchor = JSON.stringify(lngLat);
+    if (!popupState.hover || popupState.hoverHtml !== html || popupState.hoverAnchor !== hoverAnchor) {
       if (popupState.hover) popupState.hover.remove();
       popupState.hover = renderMapPopup(map, lngLat, html, 'tf-map-detail-tooltip', false);
       popupState.hoverHtml = html;
+      popupState.hoverAnchor = hoverAnchor;
       return;
     }
-    popupState.hover.setLngLat(lngLat);
   }
 
   function setClickPopup(map, lngLat, html, popupState) {
@@ -672,6 +715,7 @@
     if (popupState.click) popupState.click.remove();
     popupState.hover = null;
     popupState.hoverHtml = '';
+    popupState.hoverAnchor = '';
     var popup = renderMapPopup(map, lngLat, html, 'tf-map-detail-popup', true);
     popupState.click = popup;
     if (popup && popup.on) {
@@ -690,7 +734,7 @@
         clearHoverPopup(map, popupState);
         return;
       }
-      syncHoverPopup(map, event.lngLat, html, popupState);
+      syncHoverPopup(map, mapFeatureAnchor(feature, event.lngLat), html, popupState);
     });
     map.on('mouseleave', function () {
       clearHoverPopup(map, popupState);
@@ -699,7 +743,7 @@
       var feature = firstPopupFeature(map.queryRenderedFeatures(event.point, { layers: layerIds }));
       var html = mapFeaturePopup(feature);
       if (!html) return;
-      setClickPopup(map, event.lngLat, html, popupState);
+      setClickPopup(map, mapFeatureAnchor(feature, event.lngLat), html, popupState);
     });
   }
 
