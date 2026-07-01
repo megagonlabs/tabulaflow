@@ -432,7 +432,7 @@ def _media_table_record() -> SimpleNamespace:
 
 
 def _serve_fixed_port(host: str, port: int, pane_dir: Path) -> pane_mod.OutputPane:
-    pane = pane_mod.OutputPane(pane_dir)
+    pane = pane_mod.OutputPane(pane_dir, host=host, port=port)
     handler = functools.partial(pane_mod._Handler, directory=str(pane_dir))  # noqa: SLF001
     server = pane_mod._PaneServer((host, port), handler, pane)  # noqa: SLF001
     pane._server = server  # noqa: SLF001
@@ -617,7 +617,7 @@ def main() -> None:
         all_chart_turns=args.full or args.all_chart_turns,
     )
 
-    print(f"READY http://{args.host}:{args.port}/", flush=True)
+    print(f"READY {pane.url}", flush=True)
     print(f"pane: {pane_dir}", flush=True)
     print("Press Ctrl-C to stop.", flush=True)
 

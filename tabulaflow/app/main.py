@@ -40,6 +40,11 @@ def chat(
         "--output-pane-host",
         help="Bind host for the browser output pane.",
     ),
+    output_pane_public_url: str | None = typer.Option(
+        None,
+        "--output-pane-public-url",
+        help="Browser-facing base URL for the output pane. The session token is appended automatically.",
+    ),
 ) -> None:
     """Start an interactive database chat session (SQL or Neo4j Cypher)."""
     import asyncio
@@ -62,6 +67,7 @@ def chat(
             reasoning_effort=reasoning_effort,
             output_pane_host=output_pane_host,
             output_pane_port=output_pane_port,
+            output_pane_public_url=output_pane_public_url,
         )
     )
 

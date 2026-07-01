@@ -133,6 +133,7 @@ class TabulaflowApp(App[None]):
         reasoning_effort: str,
         output_pane_host: str = "127.0.0.1",
         output_pane_port: int | None = None,
+        output_pane_public_url: str | None = None,
     ) -> None:
         import asyncio
 
@@ -142,6 +143,7 @@ class TabulaflowApp(App[None]):
         self._reasoning_effort = reasoning_effort
         self._output_pane_host = output_pane_host
         self._output_pane_port = output_pane_port
+        self._output_pane_public_url = output_pane_public_url
         self._session_id = generate_session_id()
         self._runtime_paths = RuntimePaths.for_session(self._session_id)
         # The directory the app was launched from — the user's project, where source
@@ -515,6 +517,7 @@ class TabulaflowApp(App[None]):
                     self._runtime_paths.pane_dir,
                     host=self._output_pane_host,
                     port=self._output_pane_port,
+                    public_url=self._output_pane_public_url,
                 )
                 self._pane.start()
                 self._refresh_bottom_status()
@@ -937,6 +940,7 @@ async def run_tui(
     *,
     output_pane_host: str = "127.0.0.1",
     output_pane_port: int | None = None,
+    output_pane_public_url: str | None = None,
 ) -> None:
     """Launch the Textual TUI app."""
     app = TabulaflowApp(
@@ -945,5 +949,6 @@ async def run_tui(
         reasoning_effort=reasoning_effort,
         output_pane_host=output_pane_host,
         output_pane_port=output_pane_port,
+        output_pane_public_url=output_pane_public_url,
     )
     await app.run_async()

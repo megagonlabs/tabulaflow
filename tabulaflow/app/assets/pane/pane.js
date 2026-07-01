@@ -253,7 +253,7 @@ function fetchRecordData(record) {
   var cached = recordDataCache[record.id];
   if (cached) return cached.promise;
   cached = { data: null, promise: null };
-  cached.promise = fetch('/' + record.id + '.data.json').then(function (response) {
+  cached.promise = fetch(record.id + '.data.json').then(function (response) {
     if (!response.ok) throw new Error('HTTP ' + response.status);
     return response.json();
   }).then(function (data) {
@@ -617,7 +617,7 @@ function appendTurn(turn) {
 }
 
 function startEvents() {
-  var source = new EventSource('/events');
+  var source = new EventSource('events');
   source.addEventListener('turn', function (event) {
     appendTurn(JSON.parse(event.data));
   });

@@ -5,6 +5,7 @@ import hashlib
 import json
 import socket
 import urllib.error
+import urllib.parse
 import urllib.request
 from collections.abc import Iterator
 from importlib.resources import files
@@ -47,6 +48,11 @@ def _bound_loopback_port() -> Iterator[int]:
 def _unused_loopback_port() -> int:
     with _bound_loopback_port() as port:
         return port
+
+
+def _origin_url(url: str) -> str:
+    parsed = urllib.parse.urlsplit(url)
+    return urllib.parse.urlunsplit((parsed.scheme, parsed.netloc, "/", "", ""))
 
 
 def test_output_pane_serves_text_only_turn(tmp_path: Path) -> None:
@@ -117,7 +123,7 @@ def test_output_pane_uses_first_available_port_in_range(tmp_path: Path) -> None:
         pane = OutputPane(tmp_path, port_range=(occupied_port, available_port))
         pane.start()
         try:
-            assert pane.url == f"http://127.0.0.1:{available_port}/"
+            assert pane.url == f"http://127.0.0.1:{available_port}/{pane.token}/"
         finally:
             pane.stop()
 
@@ -135,7 +141,7 @@ def test_output_pane_wildcard_bind_uses_loopback_browser_url(tmp_path: Path) -> 
     pane.start()
     try:
         assert pane.bind_host == "0.0.0.0"
-        assert pane.url == f"http://127.0.0.1:{available_port}/"
+        assert pane.url == f"http://127.0.0.1:{available_port}/{pane.token}/"
         with urllib.request.urlopen(pane.url, timeout=2) as response:
             assert response.status == 200
     finally:
@@ -148,7 +154,36 @@ def test_output_pane_localhost_bind_uses_loopback_browser_url(tmp_path: Path) ->
     pane.start()
     try:
         assert pane.bind_host == "localhost"
-        assert pane.url == f"http://127.0.0.1:{available_port}/"
+        assert pane.url == f"http://127.0.0.1:{available_port}/{pane.token}/"
+    finally:
+        pane.stop()
+
+
+def test_output_pane_public_url_gets_token_path(tmp_path: Path) -> None:
+    available_port = _unused_loopback_port()
+    pane = OutputPane(tmp_path, port=available_port, public_url=f"http://127.0.0.1:{available_port}/tf")
+    pane.start()
+    try:
+        assert pane.url == f"http://127.0.0.1:{available_port}/tf/{pane.token}/"
+        with urllib.request.urlopen(pane.url, timeout=2) as response:
+            assert response.status == 200
+    finally:
+        pane.stop()
+
+
+def test_output_pane_rejects_missing_or_wrong_token(tmp_path: Path) -> None:
+    pane = OutputPane(tmp_path)
+    pane.start()
+    try:
+        assert pane.url is not None
+        origin = _origin_url(pane.url)
+        for path in ("", "events", "wrong/events"):
+            try:
+                urllib.request.urlopen(f"{origin}{path}", timeout=2)
+                rejected = False
+            except urllib.error.HTTPError as exc:
+                rejected = exc.code == 404
+            assert rejected
     finally:
         pane.stop()
 
@@ -450,6 +485,8 @@ def test_pane_table_renderer_does_not_max_height_short_tables() -> None:
     assert "opts.height = viewportCap" in renderer
     assert ".turnview.manual-preview { height: calc(100vh - 82px); min-height: 460px;" in _PANE_HTML
     assert f"/assets/pane/pane-render.js?v={renderer_version}" in _PANE_HTML
+    assert "fetch(record.id + '.data.json')" in _PANE_HTML
+    assert "new EventSource('events')" in _PANE_HTML
     assert "__PANE_RENDER_VERSION__" not in _PANE_HTML
     assert "20260630-table-sizing" not in _PANE_HTML
 
@@ -732,41 +769,69 @@ def test_record_card_writes_structured_data_instead_of_html(tmp_path: Path) -> N
     assert payload_path.stat().st_size < 100_000
 
 
+def test_output_pane_serves_record_payload_only_under_token(tmp_path: Path) -> None:
+    df = pd.DataFrame({"cat": ["a"], "n": [3]})
+    card = render_record_data(
+        SimpleNamespace(df=df, chart_spec=None, query=None, label="x", record_id="r1", query_lexer="sql"),
+        tmp_path,
+    )
+    assert card is not None
+
+    pane = OutputPane(tmp_path)
+    pane.start()
+    try:
+        assert pane.url is not None
+        with urllib.request.urlopen(f"{pane.url}{card['id']}.data.json", timeout=2) as resp:
+            payload = json.loads(resp.read())
+        assert payload["dataset"]["rows"] == [{"c0": "a", "c1": 3}]
+
+        try:
+            urllib.request.urlopen(f"{_origin_url(pane.url)}{card['id']}.data.json", timeout=2)
+            rejected = False
+        except urllib.error.HTTPError as exc:
+            rejected = exc.code == 404
+        assert rejected
+    finally:
+        pane.stop()
+
+
 def test_pane_serves_bundled_assets_cached(tmp_path: Path) -> None:
     pane = OutputPane(tmp_path)
     pane.start()
     try:
         assert pane.url is not None
         with urllib.request.urlopen(pane.url, timeout=2) as resp:
-            assert resp.headers.get("Cache-Control") == "no-cache"
+            assert resp.headers.get("Cache-Control") == "no-store"
+            assert resp.headers.get("Referrer-Policy") == "no-referrer"
 
-        with urllib.request.urlopen(f"{pane.url}assets/vega/vega-embed.min.js", timeout=2) as resp:
+        origin = _origin_url(pane.url)
+        with urllib.request.urlopen(f"{origin}assets/vega/vega-embed.min.js", timeout=2) as resp:
             body = resp.read()
             cache = resp.headers.get("Cache-Control")
         expected = files("tabulaflow.app.assets").joinpath("vega").joinpath("vega-embed.min.js").read_bytes()
         assert body == expected
         assert cache is not None and "immutable" in cache
 
-        with urllib.request.urlopen(f"{pane.url}assets/leaflet/leaflet.js", timeout=2) as resp:
+        with urllib.request.urlopen(f"{origin}assets/leaflet/leaflet.js", timeout=2) as resp:
             assert resp.headers.get("Cache-Control") is not None and "immutable" in resp.headers.get(
                 "Cache-Control", ""
             )
             assert b"Leaflet" in resp.read()
 
-        with urllib.request.urlopen(f"{pane.url}assets/leaflet/images/marker-shadow.png", timeout=2) as resp:
+        with urllib.request.urlopen(f"{origin}assets/leaflet/images/marker-shadow.png", timeout=2) as resp:
             assert resp.headers.get("Cache-Control") is not None and "immutable" in resp.headers.get(
                 "Cache-Control", ""
             )
             assert resp.read().startswith(b"\x89PNG")
 
         try:
-            urllib.request.urlopen(f"{pane.url}assets/does-not-exist.js", timeout=2)
+            urllib.request.urlopen(f"{origin}assets/does-not-exist.js", timeout=2)
             missing_is_404 = False
         except urllib.error.HTTPError as exc:
             missing_is_404 = exc.code == 404
         assert missing_is_404
 
-        with urllib.request.urlopen(f"{pane.url}assets/pane/pane-render.js", timeout=2) as resp:
+        with urllib.request.urlopen(f"{origin}assets/pane/pane-render.js", timeout=2) as resp:
             assert resp.headers.get("Cache-Control") == "no-cache"
             assert b"renderTable" in resp.read()
     finally:

@@ -2,8 +2,8 @@
 
 A stdlib ``http.server`` running in a daemon thread serves the single-page pane,
 structured record-data files written to the session dumps dir, and a Server-Sent
-Events stream of turn manifests. The server binds loopback only and adds no
-third-party dependencies.
+Events stream of turn manifests. Session data routes are protected by a
+per-session URL token; bundled assets are public and cacheable.
 
 The pane is an *additive, output-only* surface: the TUI remains the primary
 interface, and every failure here is swallowed so it can never block a chat turn.
@@ -16,10 +16,13 @@ import hashlib
 import http.server
 import json
 import logging
+import posixpath
+import secrets
 import threading
 from collections.abc import Callable, Sequence
 from pathlib import Path
 from typing import cast
+from urllib.parse import unquote, urlsplit, urlunsplit
 
 from tabulaflow.app.pane_types import PaneTurn
 from tabulaflow.app.theme import GITHUB_SLUG, GITHUB_URL
@@ -144,26 +147,37 @@ class _PaneServer(http.server.ThreadingHTTPServer):
 
 
 class _Handler(http.server.SimpleHTTPRequestHandler):
-    """Serves the pane page and result index; falls back to static dump files."""
+    """Serves the pane page, protected session data, and bundled assets."""
 
     def do_GET(self) -> None:  # noqa: N802 (http.server API name)
-        if self.path in ("/", "/index.html"):
-            self._send(_PANE_HTML.encode("utf-8"), "text/html; charset=utf-8", cache_control="no-cache")
-            return
-        if self.path == "/events":
-            self._serve_events()
-            return
         if self.path.startswith("/assets/"):
             self._serve_asset(self.path[len("/assets/") :])
             return
-        super().do_GET()
+        assert isinstance(self.server, _PaneServer)
+        pane = self.server.pane
+        session_path = pane._session_path(self.path)
+        if session_path is None:
+            self.send_error(404)
+            return
+        if session_path in ("", "index.html"):
+            self._send_pane_html()
+            return
+        if session_path == "events":
+            self._serve_events()
+            return
+        if session_path.endswith(".data.json") or "/" in session_path:
+            self._serve_pane_file(session_path)
+            return
+        self.send_error(404)
 
-    def _send(self, body: bytes, content_type: str, *, cache_control: str | None = None) -> None:
+    def _send_pane_html(self) -> None:
+        body = _PANE_HTML.encode("utf-8")
         self.send_response(200)
-        self.send_header("Content-Type", content_type)
+        self.send_header("Content-Type", "text/html; charset=utf-8")
         self.send_header("Content-Length", str(len(body)))
-        if cache_control is not None:
-            self.send_header("Cache-Control", cache_control)
+        self.send_header("Cache-Control", "no-store")
+        self.send_header("Referrer-Policy", "no-referrer")
+        self.send_header("X-Content-Type-Options", "nosniff")
         self.end_headers()
         self.wfile.write(body)
 
@@ -235,6 +249,66 @@ class _Handler(http.server.SimpleHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(data)
 
+    def _serve_pane_file(self, rel: str) -> None:
+        """Serve explicitly allowed session artifact files."""
+        assert isinstance(self.server, _PaneServer)
+        pane = self.server.pane
+        clean = posixpath.normpath(unquote(rel.split("?", 1)[0])).lstrip("/")
+        if clean in ("", ".") or clean.startswith("../") or clean == "..":
+            self.send_error(404)
+            return
+        allowed = clean.startswith("rec_") and (clean.endswith(".data.json") or "/" in clean)
+        if not allowed:
+            self.send_error(404)
+            return
+        path = pane._pane_dir / clean
+        try:
+            resolved = path.resolve()
+            root = pane._pane_dir.resolve()
+            resolved.relative_to(root)
+        except (OSError, ValueError):
+            self.send_error(404)
+            return
+        if not resolved.is_file():
+            self.send_error(404)
+            return
+        try:
+            data = resolved.read_bytes()
+        except OSError:
+            self.send_error(404)
+            return
+        if clean.endswith(".json"):
+            ctype = "application/json; charset=utf-8"
+        elif clean.endswith(".svg"):
+            ctype = "image/svg+xml"
+        elif clean.endswith(".png"):
+            ctype = "image/png"
+        elif clean.endswith(".jpg") or clean.endswith(".jpeg"):
+            ctype = "image/jpeg"
+        elif clean.endswith(".gif"):
+            ctype = "image/gif"
+        elif clean.endswith(".webp"):
+            ctype = "image/webp"
+        elif clean.endswith(".pdf"):
+            ctype = "application/pdf"
+        elif clean.endswith(".wav"):
+            ctype = "audio/wav"
+        elif clean.endswith(".mp3"):
+            ctype = "audio/mpeg"
+        elif clean.endswith(".mp4"):
+            ctype = "video/mp4"
+        elif clean.endswith(".webm"):
+            ctype = "video/webm"
+        else:
+            ctype = "application/octet-stream"
+        self.send_response(200)
+        self.send_header("Content-Type", ctype)
+        self.send_header("Content-Length", str(len(data)))
+        self.send_header("Cache-Control", "no-store")
+        self.send_header("X-Content-Type-Options", "nosniff")
+        self.end_headers()
+        self.wfile.write(data)
+
     def log_message(self, format: str, *args: object) -> None:
         """Silence request logging — stray stderr would corrupt the TUI."""
 
@@ -244,7 +318,7 @@ class OutputPanePortError(RuntimeError):
 
 
 class OutputPane:
-    """A loopback HTTP server plus browser tab showing cited results as they arrive."""
+    """An HTTP server plus browser tab showing cited results as they arrive."""
 
     def __init__(
         self,
@@ -253,12 +327,28 @@ class OutputPane:
         host: str = DEFAULT_OUTPUT_PANE_HOST,
         port: int | None = None,
         port_range: Sequence[int] = DEFAULT_OUTPUT_PANE_PORTS,
+        public_url: str | None = None,
+        token: str | None = None,
     ) -> None:
         self._pane_dir = pane_dir
         self._manifest_path = pane_dir / "turns.jsonl"
         self._host = host.strip()
         if not self._host:
             raise ValueError("Output pane host cannot be empty.")
+        self._public_url = public_url.strip() if public_url is not None else None
+        if self._public_url == "":
+            raise ValueError("Output pane public URL cannot be empty.")
+        self._public_path_parts: tuple[str, ...] = ()
+        if self._public_url is not None:
+            public_parts = urlsplit(self._public_url)
+            if not public_parts.scheme or not public_parts.netloc:
+                raise ValueError(f"Output pane public URL must be absolute, got {self._public_url!r}.")
+            if public_parts.query or public_parts.fragment:
+                raise ValueError("Output pane public URL cannot include query parameters or a fragment.")
+            self._public_path_parts = tuple(unquote(part) for part in public_parts.path.split("/") if part)
+        self._token = token or secrets.token_urlsafe(12)
+        if not self._token:
+            raise ValueError("Output pane token cannot be empty.")
         self._port_config = port
         self._port_range = tuple(port_range)
         self._results: list[PaneTurn] = []
@@ -305,14 +395,43 @@ class OutputPane:
     def url(self) -> str | None:
         if self._port is None:
             return None
+        if self._public_url is not None:
+            return self._tokenized_url(self._public_url)
         host = "127.0.0.1" if self._host in ("0.0.0.0", "::", "localhost") else self._host
         if ":" in host and not host.startswith("["):
             host = f"[{host}]"
-        return f"http://{host}:{self._port}/"
+        return self._tokenized_url(f"http://{host}:{self._port}/")
 
     @property
     def bind_host(self) -> str:
         return self._host
+
+    @property
+    def token(self) -> str:
+        return self._token
+
+    def _tokenized_url(self, base_url: str) -> str:
+        """Append the session token as the final path segment of ``base_url``."""
+        parsed = urlsplit(base_url)
+        if not parsed.scheme or not parsed.netloc:
+            raise ValueError(f"Output pane public URL must be absolute, got {base_url!r}.")
+        path = parsed.path.rstrip("/")
+        token_path = f"{path}/{self._token}/" if path else f"/{self._token}/"
+        return urlunsplit((parsed.scheme, parsed.netloc, token_path, "", ""))
+
+    def _session_path(self, request_path: str) -> str | None:
+        """Return the token-scoped relative path, or None for an invalid token."""
+        clean = request_path.split("?", 1)[0]
+        parts = [unquote(part) for part in clean.split("/") if part]
+        if self._public_path_parts and tuple(parts[: len(self._public_path_parts)]) == self._public_path_parts:
+            parts = parts[len(self._public_path_parts) :]
+        if not parts:
+            return None
+        if not secrets.compare_digest(parts[0], self._token):
+            return None
+        if len(parts) == 1:
+            return ""
+        return "/".join(parts[1:])
 
     def push(self, turn: PaneTurn) -> None:
         """Record a turn ({"records": [{"label", "views": [...]}, ...]}) for the pane."""
