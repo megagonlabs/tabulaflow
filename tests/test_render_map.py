@@ -53,6 +53,53 @@ class TestNormalizeMapSpec:
         else:  # pragma: no cover - defensive
             raise AssertionError("basemap should be rejected")
 
+    def test_raw_styling_fields_are_rejected(self) -> None:
+        df = pd.DataFrame(
+            {
+                "geom": [{"type": "Point", "coordinates": [-122.4, 37.7]}],
+                "status": ["open"],
+                "value": [10],
+            }
+        )
+        cases = [
+            {"layers": [{"type": "geojson", "geojson": "geom", "style": {"weight": 1}}]},
+            {"layers": [{"type": "geojson", "geojson": "geom", "color": "#3eb489"}]},
+            {
+                "layers": [
+                    {
+                        "type": "geojson",
+                        "geojson": "geom",
+                        "color": {"field": "status", "range": ["#3eb489"]},
+                    }
+                ]
+            },
+            {"layers": [{"type": "points", "lat": "value", "lng": "value", "size": 12}]},
+            {"layers": [{"type": "points", "lat": "value", "lng": "value", "size": {"field": "value", "range": [5, 18]}}]},
+        ]
+
+        for spec in cases:
+            try:
+                normalize_map_spec(df, spec)
+            except ValueError:
+                pass
+            else:  # pragma: no cover - defensive
+                raise AssertionError(f"raw styling should be rejected: {spec}")
+
+    def test_semantic_color_and_size_encodings_are_kept(self) -> None:
+        df = pd.DataFrame({"lat": [37.7], "lng": [-122.4], "status": ["open"], "value": [10]})
+        spec = {
+            "layers": [
+                {
+                    "type": "points",
+                    "lat": "lat",
+                    "lng": "lng",
+                    "color": {"field": "status", "domain": ["open", "closed"]},
+                    "size": {"field": "value"},
+                }
+            ]
+        }
+        assert normalize_map_spec(df, spec) == spec
+
 
 class TestRenderMapTool:
     async def test_points_map_attaches(self) -> None:

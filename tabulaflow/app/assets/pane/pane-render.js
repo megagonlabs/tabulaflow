@@ -367,14 +367,13 @@
   var mapPalette = ['#3eb489', '#60a5fa', '#f59e0b', '#ef4444', '#a78bfa', '#f472b6', '#22d3ee', '#84cc16'];
 
   function colorFor(encoding, row, fallback) {
-    if (typeof encoding === 'string' && encoding) return encoding;
     if (!encoding || typeof encoding !== 'object' || Array.isArray(encoding)) return fallback;
     var field = encodingField(encoding);
     if (!field) return fallback;
     var value = fieldValue(row, field);
-    if (Array.isArray(encoding.domain) && Array.isArray(encoding.range)) {
+    if (Array.isArray(encoding.domain)) {
       var index = encoding.domain.map(String).indexOf(String(value));
-      if (index >= 0 && encoding.range[index]) return String(encoding.range[index]);
+      if (index >= 0) return mapPalette[index % mapPalette.length];
     }
     var text = String(value == null ? '' : value);
     var hash = 0;
@@ -383,15 +382,13 @@
   }
 
   function sizeFor(encoding, row, rows, fallback) {
-    if (typeof encoding === 'number' && Number.isFinite(encoding)) return encoding;
     if (!encoding || typeof encoding !== 'object' || Array.isArray(encoding)) return fallback;
     var field = encodingField(encoding);
     if (!field) return fallback;
     var value = numberValue(fieldValue(row, field));
     if (value == null) return fallback;
-    var range = Array.isArray(encoding.range) ? encoding.range : [5, 18];
-    var minSize = numberOr(range[0], 5);
-    var maxSize = numberOr(range[1], 18);
+    var minSize = 5;
+    var maxSize = 18;
     var values = rows.map(function (r) { return numberValue(fieldValue(r, field)); })
       .filter(function (v) { return v != null; });
     if (!values.length) return fallback;
@@ -430,14 +427,13 @@
 
   function leafletStyle(layer, feature, fallback) {
     var row = feature && feature.properties ? feature.properties : {};
-    var style = layer.style && typeof layer.style === 'object' ? layer.style : {};
-    var color = colorFor(layer.color, row, style.stroke || fallback || '#3eb489');
+    var color = colorFor(layer.color, row, fallback || '#3eb489');
     return {
-      color: style.stroke || color,
-      fillColor: style.fill || color,
-      fillOpacity: numberOr(style.fillOpacity, 0.25),
-      opacity: numberOr(style.opacity, 0.95),
-      weight: numberOr(style.weight, 2)
+      color: color,
+      fillColor: color,
+      fillOpacity: 0.25,
+      opacity: 0.95,
+      weight: 2
     };
   }
 
@@ -518,7 +514,7 @@
             style: function (feature) { return leafletStyle(layer, feature, '#3eb489'); },
             pointToLayer: function (feature, latlng) {
               var style = leafletStyle(layer, feature, '#3eb489');
-              style.radius = numberOr(layer.size, 6);
+              style.radius = 6;
               return L.circleMarker(latlng, style);
             },
             onEachFeature: function (feature, leafletLayer) {

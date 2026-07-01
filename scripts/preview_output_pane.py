@@ -270,9 +270,7 @@ def _map_record() -> SimpleNamespace:
                     "color": {
                         "field": "borough",
                         "domain": ["Manhattan", "Queens"],
-                        "range": ["#3eb489", "#60a5fa"],
                     },
-                    "style": {"fillOpacity": 0.28, "weight": 1.4},
                 }
             ],
         },

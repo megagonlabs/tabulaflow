@@ -6,8 +6,10 @@ rendering knowledge.
 
 The map spec is intentionally much smaller than Vega-Lite. Vega-Lite is a full
 visual grammar; maps need a stable semantic contract over spatial query results:
-points from latitude/longitude columns, GeoJSON geometry, styling encodings,
-tooltips, and viewport behavior.
+points from latitude/longitude columns, GeoJSON geometry, semantic encodings,
+tooltips, and viewport behavior. Concrete presentation such as exact colors,
+opacity, stroke width, and point radius ranges belongs to the output pane
+renderer, not the agent-facing spec.
 
 ## 1. Tool Contract
 
@@ -117,9 +119,9 @@ Fields:
 | `lng` | yes | Longitude column. Values must be numeric and in `[-180, 180]`. |
 | `label` | no | Short identity column used for marker titles and default feature names. |
 | `tooltip` | no | Detail content shown on hover and click in V1. Column, list of columns, or `true` for all safe scalar fields. |
-| `marker` | no | Marker presentation. Defaults to `{"type": "pin"}`. |
-| `color` | no | Fixed color or field encoding. |
-| `size` | no | Fixed size or numeric field encoding. |
+| `marker` | no | Point mark type. Defaults to `{"type": "pin"}`. |
+| `color` | no | Semantic categorical color encoding. |
+| `size` | no | Semantic numeric size encoding. |
 
 Marker types:
 
@@ -145,12 +147,7 @@ feature collections.
   "geojson": "boundary_geojson",
   "label": "region_name",
   "tooltip": ["region_name", "population"],
-  "style": {
-    "stroke": "#3eb489",
-    "fill": "#3eb489",
-    "fillOpacity": 0.25,
-    "weight": 2
-  }
+  "color": {"field": "region_type"}
 }
 ```
 
@@ -162,8 +159,7 @@ Fields:
 | `geojson` | yes | Column name containing GeoJSON, or an inline GeoJSON object. |
 | `label` | no | Short identity column/property used for feature names. |
 | `tooltip` | no | Detail content shown on hover and click in V1. Column/property, list of columns/properties, or `true`. |
-| `style` | no | Fixed vector style. |
-| `color` | no | Fixed color or field/property encoding. |
+| `color` | no | Semantic categorical color encoding. |
 
 The `geojson` value can be:
 
@@ -221,16 +217,11 @@ A later `geometry` layer may support:
 
 Do not implement this until WKT/WKB parsing is needed in practice.
 
-## 6. Styling Encodings
+## 6. Semantic Encodings
 
-Styling should use a small declarative encoding model. It is inspired by
-Vega-Lite but intentionally limited.
-
-### Fixed Color
-
-```json
-"color": "#3eb489"
-```
+The public spec exposes data semantics, not concrete styling. The agent can say
+which field should control color or size; the output pane chooses the actual
+palette, opacity, stroke width, and radius range.
 
 ### Categorical Color
 
@@ -242,50 +233,40 @@ Vega-Lite but intentionally limited.
 
 The renderer chooses a stable palette.
 
-### Explicit Color Mapping
+### Ordered Categorical Color
 
 ```json
 "color": {
   "field": "risk",
-  "domain": ["low", "medium", "high"],
-  "range": ["#3eb489", "#f59e0b", "#ef4444"]
+  "domain": ["low", "medium", "high"]
 }
 ```
 
-### Numeric Size
+`domain` is useful when category order matters or when stable color assignment
+across related maps is important. The renderer still chooses the palette.
+
+### Numeric Point Size
 
 ```json
 "size": {
-  "field": "revenue",
-  "range": [5, 18]
+  "field": "revenue"
 }
 ```
 
-### Vector Style
+`size` is only supported on `points` layers. The renderer chooses the radius
+range.
 
-For GeoJSON lines and polygons:
+Supported encoding fields:
 
-```json
-"style": {
-  "stroke": "#3eb489",
-  "fill": "#3eb489",
-  "fillOpacity": 0.25,
-  "weight": 2
-}
-```
+| Encoding | Field | Description |
+|---|---|---|
+| `color` | `field` | Column/property used for categorical color. |
+| `color` | `domain` | Optional category order. |
+| `size` | `field` | Numeric column used for point size. |
 
-Supported style fields:
-
-| Field | Description |
-|---|---|
-| `stroke` | Stroke color. |
-| `fill` | Fill color for polygons. |
-| `fillOpacity` | Polygon fill opacity. |
-| `weight` | Stroke width in pixels. |
-| `opacity` | Stroke opacity. |
-
-For polygons, `color` should apply to both stroke and fill unless overridden by
-`style.stroke` or `style.fill`.
+Unsupported presentation fields include fixed hex colors, explicit color
+palettes/ranges, fixed numeric sizes, vector `style`, fill opacity, stroke
+opacity, stroke width, and fill/stroke colors.
 
 ## 7. Label and Tooltip Semantics
 
@@ -406,8 +387,9 @@ V1 should support:
 - one or more layers
 - points from `lat`/`lng`
 - GeoJSON from a column or inline object
-- fixed pin markers for points
-- fixed vector style for GeoJSON
+- pin and circle point marks
+- renderer-owned styling for markers and GeoJSON
+- semantic color and point-size encodings
 - labels and key-value tooltips
 - fit-to-data viewport
 - fixed OpenStreetMap basemap
@@ -455,12 +437,7 @@ Defer:
       "tooltip": ["region", "revenue"],
       "color": {
         "field": "tier",
-        "domain": ["low", "medium", "high"],
-        "range": ["#3eb489", "#f59e0b", "#ef4444"]
-      },
-      "style": {
-        "fillOpacity": 0.3,
-        "weight": 1.5
+        "domain": ["low", "medium", "high"]
       }
     }
   ]
@@ -476,13 +453,7 @@ Defer:
     {
       "type": "geojson",
       "geojson": "service_area_geojson",
-      "label": "service_area",
-      "style": {
-        "stroke": "#3eb489",
-        "fill": "#3eb489",
-        "fillOpacity": 0.18,
-        "weight": 2
-      }
+      "label": "service_area"
     },
     {
       "type": "points",
@@ -503,6 +474,7 @@ Agents should:
 - Use `geojson` when the result already contains map geometry.
 - Convert database geometry to WGS84 GeoJSON in SQL before calling
   `render_map`.
-- Prefer simple map specs with labels and tooltips over complex styling.
+- Prefer simple map specs with labels and tooltips; add color or size encodings
+  only when they clarify the spatial result.
 - Use `render_chart` for ordinary statistical charts; use `render_map` only when
   spatial position or geometry is essential to the answer.

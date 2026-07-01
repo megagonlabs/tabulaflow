@@ -233,7 +233,7 @@ def test_record_card_writes_layered_map_view_payload(tmp_path: Path) -> None:
                         "geojson": "boundary_geojson",
                         "label": "region",
                         "tooltip": ["region"],
-                        "style": {"fillOpacity": 0.2},
+                        "color": {"field": "region"},
                     },
                     {"type": "points", "lat": "latitude", "lng": "longitude", "label": "city", "tooltip": ["city"]},
                 ]
@@ -253,6 +253,7 @@ def test_record_card_writes_layered_map_view_payload(tmp_path: Path) -> None:
     assert payload["map"]["layers"][0]["geojson"] == "c4"
     assert payload["map"]["layers"][0]["label"] == "c3"
     assert payload["map"]["layers"][0]["tooltip"] == ["c3"]
+    assert payload["map"]["layers"][0]["color"] == {"field": "c3"}
     assert payload["map"]["layers"][1] == {
         "type": "points",
         "lat": "c1",
@@ -361,6 +362,11 @@ def test_pane_map_view_is_leaflet_based() -> None:
     assert "rgba(255,255,255,0.35)" not in renderer
     assert "L.marker([lat, lng]" in renderer
     assert "L.divIcon" not in renderer
+    assert "style.stroke" not in renderer
+    assert "style.fill" not in renderer
+    assert "style.fillOpacity" not in renderer
+    assert "style.weight" not in renderer
+    assert "encoding.range" not in renderer
     assert "tf-map-pin" not in renderer
     assert "map.invalidateSize();" in renderer
     assert ".tf-map-stage { position: relative; height: min(560px, 68vh); min-height: 420px;" in _PANE_HTML

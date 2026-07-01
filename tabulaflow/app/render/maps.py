@@ -40,12 +40,20 @@ def _field_list(value: object, field_by_column: Mapping[str, str]) -> list[str] 
 
 def _field_encoding(value: object, field_by_column: Mapping[str, str]) -> object:
     if not isinstance(value, Mapping):
-        return value
-    out = dict(value)
+        return None
+    out = {key: value[key] for key in ("field", "domain") if key in value}
     field = _field_name(out.get("field"), field_by_column)
-    if field is not None:
-        out["field"] = field
+    if field is None:
+        return None
+    out["field"] = field
     return out
+
+
+def _size_encoding(value: object, field_by_column: Mapping[str, str]) -> object:
+    if not isinstance(value, Mapping):
+        return None
+    field = _field_name(value.get("field"), field_by_column)
+    return {"field": field} if field is not None else None
 
 
 def _normalize_points_layer(
@@ -67,10 +75,15 @@ def _normalize_points_layer(
         out["tooltip"] = tooltip
     marker = layer.get("marker")
     if isinstance(marker, Mapping):
-        out["marker"] = dict(marker)
-    for key in ("color", "size"):
-        if key in layer:
-            out[key] = _field_encoding(layer[key], field_by_column)
+        marker_type = marker.get("type")
+        if marker_type in {"pin", "circle"}:
+            out["marker"] = {"type": marker_type}
+    color = _field_encoding(layer.get("color"), field_by_column)
+    if color is not None:
+        out["color"] = color
+    size = _size_encoding(layer.get("size"), field_by_column)
+    if size is not None:
+        out["size"] = size
     return out
 
 
@@ -91,12 +104,9 @@ def _normalize_geojson_layer(
     tooltip = _field_list(layer.get("tooltip"), field_by_column)
     if tooltip is not None:
         out["tooltip"] = tooltip
-    for key in ("style",):
-        value = layer.get(key)
-        if isinstance(value, Mapping):
-            out[key] = dict(value)
-    if "color" in layer:
-        out["color"] = _field_encoding(layer["color"], field_by_column)
+    color = _field_encoding(layer.get("color"), field_by_column)
+    if color is not None:
+        out["color"] = color
     return out
 
 

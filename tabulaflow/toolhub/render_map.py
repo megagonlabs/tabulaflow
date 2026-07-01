@@ -65,12 +65,32 @@ def _tooltip(df: pd.DataFrame, value: object, *, path: str) -> str | list[str] |
     raise MapSpecError(f"{path} must be a column name, list of column names, or true")
 
 
-def _field_encoding(df: pd.DataFrame, value: object, *, path: str) -> object:
+def _color_encoding(df: pd.DataFrame, value: object, *, path: str) -> dict[str, Any]:
     if not isinstance(value, Mapping):
-        return value
+        raise MapSpecError(f"{path} must be an object with 'field' and optional 'domain'")
+    allowed = {"field", "domain"}
+    unsupported = sorted(set(value) - allowed)
+    if unsupported:
+        raise MapSpecError(f"unsupported {path} field(s): {unsupported}")
     out = dict(value)
-    if "field" in out:
-        out["field"] = _field(df, out["field"], path=f"{path}.field")
+    out["field"] = _field(df, out.get("field"), path=f"{path}.field")
+    domain = out.get("domain")
+    if domain is not None and (
+        not isinstance(domain, Sequence) or isinstance(domain, (str, bytes, bytearray))
+    ):
+        raise MapSpecError(f"{path}.domain must be a list")
+    return out
+
+
+def _size_encoding(df: pd.DataFrame, value: object, *, path: str) -> dict[str, Any]:
+    if not isinstance(value, Mapping):
+        raise MapSpecError(f"{path} must be an object with 'field'")
+    allowed = {"field"}
+    unsupported = sorted(set(value) - allowed)
+    if unsupported:
+        raise MapSpecError(f"unsupported {path} field(s): {unsupported}")
+    out = dict(value)
+    out["field"] = _field(df, out.get("field"), path=f"{path}.field")
     return out
 
 
@@ -82,6 +102,11 @@ def _has_valid_point(df: pd.DataFrame, lat_col: str, lng_col: str) -> bool:
 
 
 def _normalize_points_layer(df: pd.DataFrame, layer: Mapping[str, object], index: int) -> dict[str, Any]:
+    allowed = {"type", "lat", "latitude", "lng", "lon", "longitude", "label", "tooltip", "marker", "color", "size"}
+    unsupported = sorted(set(layer) - allowed)
+    if unsupported:
+        raise MapSpecError(f"unsupported layers[{index}] field(s): {unsupported}")
+
     lat = _field(df, layer.get("lat") or layer.get("latitude"), path=f"layers[{index}].lat")
     lng = _field(df, layer.get("lng") or layer.get("lon") or layer.get("longitude"), path=f"layers[{index}].lng")
     if not _has_valid_point(df, lat, lng):
@@ -98,13 +123,17 @@ def _normalize_points_layer(df: pd.DataFrame, layer: Mapping[str, object], index
     if marker is not None:
         if not isinstance(marker, Mapping):
             raise MapSpecError(f"layers[{index}].marker must be an object")
+        unsupported_marker = sorted(set(marker) - {"type"})
+        if unsupported_marker:
+            raise MapSpecError(f"unsupported layers[{index}].marker field(s): {unsupported_marker}")
         marker_type = marker.get("type", "pin")
         if marker_type not in {"pin", "circle"}:
             raise MapSpecError(f"layers[{index}].marker.type must be 'pin' or 'circle'")
         out["marker"] = dict(marker)
-    for key in ("color", "size"):
-        if key in layer:
-            out[key] = _field_encoding(df, layer[key], path=f"layers[{index}].{key}")
+    if "color" in layer:
+        out["color"] = _color_encoding(df, layer["color"], path=f"layers[{index}].color")
+    if "size" in layer:
+        out["size"] = _size_encoding(df, layer["size"], path=f"layers[{index}].size")
     return out
 
 
@@ -133,6 +162,11 @@ def _has_geojson_value(df: pd.DataFrame, column: str) -> bool:
 
 
 def _normalize_geojson_layer(df: pd.DataFrame, layer: Mapping[str, object], index: int) -> dict[str, Any]:
+    allowed = {"type", "geojson", "label", "tooltip", "color"}
+    unsupported = sorted(set(layer) - allowed)
+    if unsupported:
+        raise MapSpecError(f"unsupported layers[{index}] field(s): {unsupported}")
+
     geojson = layer.get("geojson")
     if isinstance(geojson, str):
         geojson_value: object = _field(df, geojson, path=f"layers[{index}].geojson")
@@ -150,13 +184,8 @@ def _normalize_geojson_layer(df: pd.DataFrame, layer: Mapping[str, object], inde
     tooltip = _tooltip(df, layer.get("tooltip"), path=f"layers[{index}].tooltip")
     if tooltip is not None:
         out["tooltip"] = tooltip
-    style = layer.get("style")
-    if style is not None:
-        if not isinstance(style, Mapping):
-            raise MapSpecError(f"layers[{index}].style must be an object")
-        out["style"] = dict(style)
     if "color" in layer:
-        out["color"] = _field_encoding(df, layer["color"], path=f"layers[{index}].color")
+        out["color"] = _color_encoding(df, layer["color"], path=f"layers[{index}].color")
     return out
 
 
@@ -243,19 +272,19 @@ class RenderMapTool:
           ``label``: optional field name for the short feature identity.
           ``tooltip``: optional field name, list of field names, or ``true``;
           shown on hover and click.
-          ``color``: optional ``"#hex"``, ``{"field":"status"}``, or
-          ``{"field":"status","domain":[...],"range":[...]}``.
+          ``color``: optional ``{"field":"status"}`` or
+          ``{"field":"status","domain":[...]}``; the output pane chooses the
+          palette.
         - ``points`` layer:
           ``{"type":"points","lat":"lat","lng":"lng"}`` plus optional
           ``label``, ``tooltip``, ``color``, ``marker``, and ``size``.
           ``marker`` is ``{"type":"pin"}`` or ``{"type":"circle"}``.
-          ``size`` is a number or ``{"field":"value","range":[minPx,maxPx]}``.
+          ``size`` is ``{"field":"value"}``; the output pane chooses the
+          radius range.
         - ``geojson`` layer:
           ``{"type":"geojson","geojson":"geom_geojson"}`` plus optional
-          ``label``, ``tooltip``, ``color``, and ``style``. ``geojson`` is a
-          column name or inline WGS84 GeoJSON object.
-          ``style`` supports ``stroke``, ``fill``, ``fillOpacity``, ``weight``,
-          and ``opacity``.
+          ``label``, ``tooltip``, and ``color``. ``geojson`` is a column name
+          or inline WGS84 GeoJSON object.
 
         Minimal examples:
         ``{"layers":[{"type":"points","lat":"lat","lng":"lng","label":"name","tooltip":["name","status"]}]}``
