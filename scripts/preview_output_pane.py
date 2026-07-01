@@ -14,7 +14,6 @@ import argparse
 import functools
 import math
 import signal
-import sqlite3
 import struct
 import tempfile
 import threading
@@ -236,41 +235,144 @@ def _large_agent_table_record() -> SimpleNamespace:
 
 
 def _map_record() -> SimpleNamespace:
-    sample_db = resource_files("tabulaflow.app.assets.samples").joinpath("sample.sqlite")
-    with sqlite3.connect(sample_db) as conn:
-        df = pd.read_sql_query(
-            """
-            SELECT the_geom, shape_leng, shape_area, zone, locationid, borough
-            FROM nyc_taxi_zones
-            WHERE borough IN ('Manhattan', 'Queens')
-            ORDER BY locationid
-            LIMIT 24
-            """,
-            conn,
-        )
+    df = pd.DataFrame(
+        [
+            {
+                "name": "Red pin marker",
+                "kind": "points layer",
+                "lat": 37.3336,
+                "lng": -121.8906,
+                "geom": None,
+            },
+            {
+                "name": "GeoJSON point",
+                "kind": "Point",
+                "lat": None,
+                "lng": None,
+                "geom": {"type": "Point", "coordinates": [-121.8815, 37.3394]},
+            },
+            {
+                "name": "GeoJSON multipoint",
+                "kind": "MultiPoint",
+                "lat": None,
+                "lng": None,
+                "geom": {
+                    "type": "MultiPoint",
+                    "coordinates": [[-121.906, 37.329], [-121.900, 37.337], [-121.894, 37.331]],
+                },
+            },
+            {
+                "name": "GeoJSON line",
+                "kind": "LineString",
+                "lat": None,
+                "lng": None,
+                "geom": {
+                    "type": "LineString",
+                    "coordinates": [[-121.915, 37.345], [-121.904, 37.350], [-121.890, 37.346]],
+                },
+            },
+            {
+                "name": "GeoJSON multiline",
+                "kind": "MultiLineString",
+                "lat": None,
+                "lng": None,
+                "geom": {
+                    "type": "MultiLineString",
+                    "coordinates": [
+                        [[-121.925, 37.322], [-121.914, 37.327], [-121.905, 37.324]],
+                        [[-121.892, 37.321], [-121.882, 37.328], [-121.873, 37.323]],
+                    ],
+                },
+            },
+            {
+                "name": "GeoJSON polygon",
+                "kind": "Polygon",
+                "lat": None,
+                "lng": None,
+                "geom": {
+                    "type": "Polygon",
+                    "coordinates": [
+                        [
+                            [-121.923, 37.354],
+                            [-121.908, 37.354],
+                            [-121.908, 37.364],
+                            [-121.923, 37.364],
+                            [-121.923, 37.354],
+                        ]
+                    ],
+                },
+            },
+            {
+                "name": "GeoJSON multipolygon",
+                "kind": "MultiPolygon",
+                "lat": None,
+                "lng": None,
+                "geom": {
+                    "type": "MultiPolygon",
+                    "coordinates": [
+                        [
+                            [
+                                [-121.888, 37.352],
+                                [-121.879, 37.352],
+                                [-121.879, 37.359],
+                                [-121.888, 37.359],
+                                [-121.888, 37.352],
+                            ]
+                        ],
+                        [
+                            [
+                                [-121.874, 37.350],
+                                [-121.866, 37.350],
+                                [-121.866, 37.357],
+                                [-121.874, 37.357],
+                                [-121.874, 37.350],
+                            ]
+                        ],
+                    ],
+                },
+            },
+            {
+                "name": "GeoJSON geometry collection",
+                "kind": "GeometryCollection",
+                "lat": None,
+                "lng": None,
+                "geom": {
+                    "type": "GeometryCollection",
+                    "geometries": [
+                        {"type": "Point", "coordinates": [-121.864, 37.337]},
+                        {
+                            "type": "LineString",
+                            "coordinates": [[-121.869, 37.333], [-121.857, 37.342]],
+                        },
+                    ],
+                },
+            },
+        ]
+    )
     return _record(
         record_id="QDEBUG_MAP",
-        label="nyc_taxi_zones",
+        label="geometry_showcase",
         query=(
-            "SELECT the_geom, shape_leng, shape_area, zone, locationid, borough\n"
-            "FROM nyc_taxi_zones\n"
-            "WHERE borough IN ('Manhattan', 'Queens')\n"
-            "ORDER BY locationid\n"
-            "LIMIT 24"
+            "-- synthetic geometry showcase\n"
+            "SELECT name, kind, lat, lng, geom\n"
+            "FROM geometry_showcase"
         ),
         df=df,
         map_spec={
-            "title": "NYC taxi zones",
+            "title": "Geometry showcase",
             "layers": [
                 {
+                    "type": "points",
+                    "lat": "lat",
+                    "lng": "lng",
+                    "label": "name",
+                    "tooltip": ["name", "kind"],
+                },
+                {
                     "type": "geojson",
-                    "geojson": "the_geom",
-                    "label": "zone",
-                    "tooltip": ["zone", "borough", "locationid", "shape_area"],
-                    "color": {
-                        "field": "borough",
-                        "domain": ["Manhattan", "Queens"],
-                    },
+                    "geojson": "geom",
+                    "label": "name",
+                    "tooltip": ["name", "kind"],
                 }
             ],
         },

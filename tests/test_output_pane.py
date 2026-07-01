@@ -445,12 +445,18 @@ def test_pane_map_view_is_leaflet_based() -> None:
     assert "shadowSize: [41, 41]" in renderer
     assert "shadowAnchor" not in renderer
     assert "data:image/svg+xml;charset=UTF-8," in renderer
-    assert "#5bd0a8" in renderer
-    assert "#2f9a74" in renderer
-    assert "#52c79f" not in renderer
-    assert "#35a47d" not in renderer
-    assert "#68d7b5" not in renderer
-    assert "#278b69" not in renderer
+    assert "#ff6f61" in renderer
+    assert "#d93025" in renderer
+    assert "#a52714" in renderer
+    assert "#ea4335" in renderer
+    assert "#4285f4" in renderer
+    assert "colorFor(layer.color, row, '#4285f4')" in renderer
+    assert "leafletStyle(layer, feature, '#4285f4')" in renderer
+    assert "function geometryType(feature)" in renderer
+    assert "type === 'LineString' || type === 'MultiLineString'" in renderer
+    assert "weight: isLine ? 4 : 2" in renderer
+    assert "#5bd0a8" not in renderer
+    assert "#2f9a74" not in renderer
     assert "rgba(255,255,255,0.35)" not in renderer
     assert "L.marker([lat, lng]" in renderer
     assert "L.divIcon" not in renderer

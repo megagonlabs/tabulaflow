@@ -308,11 +308,11 @@
   function mapMarkerIcon() {
     var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="25" height="41" viewBox="0 0 25 41">'
       + '<defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1">'
-      + '<stop offset="0" stop-color="#5bd0a8"/><stop offset="1" stop-color="#2f9a74"/></linearGradient></defs>'
-      + '<path fill="#1f7c5d" d="M12.5 0C5.6 0 0 5.6 0 12.5c0 8.9 12.5 28.5 12.5 28.5S25 21.4 25 12.5C25 5.6 19.4 0 12.5 0z"/>'
+      + '<stop offset="0" stop-color="#ff6f61"/><stop offset="1" stop-color="#d93025"/></linearGradient></defs>'
+      + '<path fill="#a52714" d="M12.5 0C5.6 0 0 5.6 0 12.5c0 8.9 12.5 28.5 12.5 28.5S25 21.4 25 12.5C25 5.6 19.4 0 12.5 0z"/>'
       + '<path fill="url(#g)" d="M12.5 1.25C6.3 1.25 1.25 6.3 1.25 12.5c0 7.9 8.9 22.6 11.25 26.2C14.85 35.1 23.75 20.4 23.75 12.5c0-6.2-5.05-11.25-11.25-11.25z"/>'
       + '<circle cx="12.5" cy="12.6" r="5.7" fill="#f8fafc"/>'
-      + '<circle cx="12.5" cy="12.6" r="4.2" fill="#e8fff6"/>'
+      + '<circle cx="12.5" cy="12.6" r="4.2" fill="#fff4f2"/>'
       + '</svg>';
     return L.icon({
       iconUrl: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg),
@@ -393,7 +393,7 @@
       ? encoding.field : '';
   }
 
-  var mapPalette = ['#3eb489', '#60a5fa', '#f59e0b', '#ef4444', '#a78bfa', '#f472b6', '#22d3ee', '#84cc16'];
+  var mapPalette = ['#4285f4', '#ea4335', '#fbbc04', '#34a853', '#a142f4', '#fbbc54', '#46bdc6', '#7cb342'];
 
   function colorFor(encoding, row, fallback) {
     if (!encoding || typeof encoding !== 'object' || Array.isArray(encoding)) return fallback;
@@ -454,15 +454,21 @@
     return null;
   }
 
+  function geometryType(feature) {
+    return feature && feature.geometry && typeof feature.geometry.type === 'string' ? feature.geometry.type : '';
+  }
+
   function leafletStyle(layer, feature, fallback) {
     var row = feature && feature.properties ? feature.properties : {};
-    var color = colorFor(layer.color, row, fallback || '#3eb489');
+    var color = colorFor(layer.color, row, fallback || '#4285f4');
+    var type = geometryType(feature);
+    var isLine = type === 'LineString' || type === 'MultiLineString';
     return {
       color: color,
       fillColor: color,
       fillOpacity: 0.25,
       opacity: 0.95,
-      weight: 2
+      weight: isLine ? 4 : 2
     };
   }
 
@@ -514,9 +520,9 @@
           if (markerType === 'circle') {
             marker = L.circleMarker([lat, lng], {
               radius: sizeFor(layer.size, row, rows, 6),
-              color: colorFor(layer.color, row, '#3eb489'),
+              color: colorFor(layer.color, row, '#4285f4'),
               weight: 1,
-              fillColor: colorFor(layer.color, row, '#3eb489'),
+              fillColor: colorFor(layer.color, row, '#4285f4'),
               fillOpacity: 0.82
             }).addTo(map);
           } else {
@@ -540,9 +546,9 @@
         }
         geojsonItems.forEach(function (geojson) {
           var geoLayer = L.geoJSON(geojson, {
-            style: function (feature) { return leafletStyle(layer, feature, '#3eb489'); },
+            style: function (feature) { return leafletStyle(layer, feature, '#4285f4'); },
             pointToLayer: function (feature, latlng) {
-              var style = leafletStyle(layer, feature, '#3eb489');
+              var style = leafletStyle(layer, feature, '#4285f4');
               style.radius = 6;
               return L.circleMarker(latlng, style);
             },
