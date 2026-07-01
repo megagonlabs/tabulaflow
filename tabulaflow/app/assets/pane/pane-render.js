@@ -393,7 +393,7 @@
     node.style.width = width + 'px';
     node.style.height = height + 'px';
     node.style.backgroundImage = 'url("' + mapPinSvg(color) + '")';
-    if (title) node.title = title;
+    if (title) node.setAttribute('aria-label', title);
     return node;
   }
 
@@ -576,13 +576,15 @@
       var popup = detailHtml(row, tooltip, labels, label, labelField);
       var color = colorFor(layer.color, row, mapDefaultColor);
       var radius = sizeFor(layer.size, row, pointRows, 6);
+      var pinScale = Math.max(0.8, Math.min(1.45, radius / 6));
       features.push({
         type: 'Feature',
         geometry: { type: 'Point', coordinates: [lng, lat] },
         properties: Object.assign({}, row || {}, {
           __tfColor: color,
           __tfSize: radius,
-          __tfPinScale: Math.max(0.8, Math.min(1.45, radius / 6)),
+          __tfPinScale: pinScale,
+          __tfPinHitRadius: Math.max(24, 26 * pinScale),
           __tfPopup: popup,
           __tfTitle: label == null ? '' : displayValue(label),
           __tfMarker: markerType
@@ -701,25 +703,6 @@
     });
   }
 
-  function bindMarkerDetail(map, node, lngLat, html, popupState) {
-    if (!html) return;
-    node.addEventListener('mouseenter', function () {
-      if (popupState.click) return;
-      if (popupState.hover) popupState.hover.remove();
-      popupState.hover = renderMapPopup(map, lngLat, html, 'tf-map-detail-tooltip', false);
-      popupState.hoverHtml = html;
-    });
-    node.addEventListener('mouseleave', function () {
-      if (popupState.hover) popupState.hover.remove();
-      popupState.hover = null;
-      popupState.hoverHtml = '';
-    });
-    node.addEventListener('click', function (event) {
-      event.stopPropagation();
-      setClickPopup(map, lngLat, html, popupState);
-    });
-  }
-
   function addCircleLayer(map, id, sourceId) {
     map.addLayer({
       id: id,
@@ -732,6 +715,21 @@
         'circle-stroke-color': '#ffffff',
         'circle-stroke-width': 1.2,
         'circle-stroke-opacity': 0.9
+      }
+    });
+  }
+
+  function addPinHitLayer(map, id, sourceId) {
+    map.addLayer({
+      id: id,
+      type: 'circle',
+      source: sourceId,
+      paint: {
+        'circle-radius': ['coalesce', ['get', '__tfPinHitRadius'], 26],
+        'circle-color': '#000000',
+        'circle-opacity': 0.01,
+        'circle-stroke-opacity': 0,
+        'circle-translate': [0, -20]
       }
     });
   }
@@ -839,6 +837,9 @@
             addCircleLayer(map, circleId, sourceId);
             detailLayerIds.push(circleId);
           } else {
+            var pinHitId = sourceId + '-pin-hit';
+            addPinHitLayer(map, pinHitId, sourceId);
+            detailLayerIds.push(pinHitId);
             pointData.features.forEach(function (feature) {
               var props = feature.properties || {};
               var lngLat = feature.geometry.coordinates;
@@ -846,7 +847,6 @@
               var marker = new maplibregl.Marker({ element: node, anchor: 'bottom' })
                 .setLngLat(lngLat)
                 .addTo(map);
-              bindMarkerDetail(map, node, lngLat, props.__tfPopup, popupState);
               markers.push(marker);
             });
           }

@@ -564,8 +564,12 @@ def test_pane_map_view_is_maplibre_based() -> None:
     assert "var pointRows = Array.isArray(layer.points) ? layer.points : rows;" in renderer
     assert "var latField = Array.isArray(layer.points) ? 'lat' : String(layer.lat || '');" in renderer
     assert "var radius = sizeFor(layer.size, row, pointRows, 6);" in renderer
-    assert "function bindMarkerDetail(map, node, lngLat, html, popupState)" in renderer
-    assert "if (popupState.click) return;" in renderer
+    assert "__tfPinHitRadius: Math.max(24, 26 * pinScale)" in renderer
+    assert "function addPinHitLayer(map, id, sourceId)" in renderer
+    assert "'circle-radius': ['coalesce', ['get', '__tfPinHitRadius'], 26]" in renderer
+    assert "'circle-translate': [0, -20]" in renderer
+    assert "var pinHitId = sourceId + '-pin-hit';" in renderer
+    assert "detailLayerIds.push(pinHitId);" in renderer
     assert "closeButton: !!closeButton" in renderer
     assert "className: className" in renderer
     assert "title || popup.replace" not in renderer
@@ -577,6 +581,8 @@ def test_pane_map_view_is_maplibre_based() -> None:
     assert "outline: mixHex(base, '#000000', 0.34)" in renderer
     assert "function mapPinElement(color, scale, title)" in renderer
     assert "node.className = 'tf-map-pin';" in renderer
+    assert "node.setAttribute('aria-label', title)" in renderer
+    assert "node.title = title" not in renderer
     assert "data:image/svg+xml;charset=UTF-8," in renderer
     assert f"--map-default: {VIZ_MAP_DEFAULT_COLOR};" in _PANE_HTML
     assert f"--map-route: {VIZ_MAP_ROUTE_COLOR};" in _PANE_HTML
@@ -614,6 +620,7 @@ def test_pane_map_view_is_maplibre_based() -> None:
     assert ".tf-map-stage { position: relative; height: min(560px, 68vh); min-height: 420px;" in _PANE_HTML
     assert ".tf-map-view .maplibregl-map { background: var(--card);" in _PANE_HTML
     assert ".tf-map-pin {" in _PANE_HTML
+    assert "pointer-events: none; transform: translateY(1px);" in _PANE_HTML
     assert ".tf-map-view .maplibregl-popup.tf-map-detail-tooltip .maplibregl-popup-content," in _PANE_HTML
     assert "padding: 9px 14px 9px 12px; background: #fff; border: 0; border-radius: 12px;" in _PANE_HTML
     assert ".tf-map-view .maplibregl-popup.tf-map-detail-tooltip .maplibregl-popup-tip { pointer-events: none; }" in _PANE_HTML

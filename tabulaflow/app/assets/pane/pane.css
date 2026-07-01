@@ -298,7 +298,7 @@ body { margin: 0; background: var(--bg); color: var(--text); display: flex; flex
 .tf-map-view .maplibregl-canvas:focus { outline: none; }
 .tf-map-pin {
     background-position: center; background-repeat: no-repeat; background-size: contain;
-    cursor: pointer; transform: translateY(1px);
+    pointer-events: none; transform: translateY(1px);
 }
 .tf-map-view .maplibregl-popup.tf-map-detail-tooltip,
 .tf-map-view .maplibregl-popup.tf-map-detail-popup { z-index: 20; }
