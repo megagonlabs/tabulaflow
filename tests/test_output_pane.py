@@ -881,9 +881,7 @@ def test_pane_serves_bundled_assets_cached(tmp_path: Path) -> None:
             assert b"MapLibre GL JS" in resp.read()
 
         with urllib.request.urlopen(f"{origin}assets/maplibre/shortbread-light.json", timeout=2) as resp:
-            assert resp.headers.get("Cache-Control") is not None and "immutable" in resp.headers.get(
-                "Cache-Control", ""
-            )
+            assert resp.headers.get("Cache-Control") == "no-cache"
             assert b"vector.openstreetmap.org/shortbread_v1/tilejson.json" in resp.read()
 
         try:
