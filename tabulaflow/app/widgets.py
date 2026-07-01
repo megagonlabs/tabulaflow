@@ -576,7 +576,7 @@ def summarize_tool_args(name: str, args: dict[str, object]) -> str:
             target = str(title) if title else str(mark)
         except (json.JSONDecodeError, TypeError):
             target = "chart"
-        return f"Chart {target}".rstrip()
+        return f"Render Chart {target}".rstrip()
     if name == "render_map":
         spec_value = args.get("map_spec", {})
         try:
@@ -591,7 +591,7 @@ def summarize_tool_args(name: str, args: dict[str, object]) -> str:
                 target = "map"
         except (json.JSONDecodeError, TypeError):
             target = "map"
-        return f"Map {target}".rstrip()
+        return f"Render Map {target}".rstrip()
     if name == "transfer_record":
         record_id = str(args.get("record_id", ""))
         target_alias = str(args.get("target_alias", ""))
