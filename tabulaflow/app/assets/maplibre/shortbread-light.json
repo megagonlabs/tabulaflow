@@ -190,7 +190,7 @@
       "layout": {
         "text-field": ["coalesce", ["get", "name_en"], ["get", "name"]],
         "text-font": ["Noto Sans Italic"],
-        "text-size": ["interpolate", ["linear"], ["zoom"], 13, 9, 16, 12],
+        "text-size": ["interpolate", ["linear"], ["zoom"], 13, 11, 16, 14],
         "text-max-width": 8
       },
       "paint": {
@@ -209,7 +209,7 @@
         "symbol-placement": "line",
         "text-field": ["coalesce", ["get", "ref"], ["get", "name_en"], ["get", "name"]],
         "text-font": ["Noto Sans Regular"],
-        "text-size": ["interpolate", ["linear"], ["zoom"], 14, 10, 16, 12]
+        "text-size": ["interpolate", ["linear"], ["zoom"], 13, 11, 16, 14]
       },
       "paint": {
         "text-color": "#6f6b63",
@@ -231,7 +231,7 @@
       "layout": {
         "text-field": ["coalesce", ["get", "name_en"], ["get", "name"]],
         "text-font": ["Noto Sans Regular"],
-        "text-size": ["interpolate", ["linear"], ["zoom"], 4, 11, 10, 14, 14, 17],
+        "text-size": ["interpolate", ["linear"], ["zoom"], 4, 12, 10, 16, 14, 20],
         "text-padding": 16,
         "text-max-width": 9
       },
@@ -256,7 +256,7 @@
       "layout": {
         "text-field": ["coalesce", ["get", "name_en"], ["get", "name"]],
         "text-font": ["Noto Sans Regular"],
-        "text-size": ["interpolate", ["linear"], ["zoom"], 9, 10, 13, 12, 15, 13],
+        "text-size": ["interpolate", ["linear"], ["zoom"], 9, 12, 13, 14, 15, 15],
         "text-padding": 12,
         "text-max-width": 9
       },
@@ -281,7 +281,7 @@
       "layout": {
         "text-field": ["coalesce", ["get", "name_en"], ["get", "name"]],
         "text-font": ["Noto Sans Regular"],
-        "text-size": ["interpolate", ["linear"], ["zoom"], 12, 9, 15, 11],
+        "text-size": ["interpolate", ["linear"], ["zoom"], 12, 11, 15, 13],
         "text-padding": 12,
         "text-max-width": 9
       },

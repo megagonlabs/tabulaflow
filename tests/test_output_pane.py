@@ -523,7 +523,7 @@ def test_pane_map_view_is_maplibre_based() -> None:
         ["match", ["get", "kind"], ["city", "town"], True, False],
         [">=", ["to-number", ["get", "population"], 0], 250000],
     ]
-    assert major_labels["layout"]["text-size"] == ["interpolate", ["linear"], ["zoom"], 4, 11, 10, 14, 14, 17]
+    assert major_labels["layout"]["text-size"] == ["interpolate", ["linear"], ["zoom"], 4, 12, 10, 16, 14, 20]
     assert major_labels["layout"]["text-padding"] == 16
     assert regional_labels["minzoom"] == 9
     assert regional_labels["filter"] == [
@@ -532,7 +532,7 @@ def test_pane_map_view_is_maplibre_based() -> None:
         [">=", ["to-number", ["get", "population"], 0], 75000],
         ["<", ["to-number", ["get", "population"], 0], 250000],
     ]
-    assert regional_labels["layout"]["text-size"] == ["interpolate", ["linear"], ["zoom"], 9, 10, 13, 12, 15, 13]
+    assert regional_labels["layout"]["text-size"] == ["interpolate", ["linear"], ["zoom"], 9, 12, 13, 14, 15, 15]
     assert local_labels["minzoom"] == 12
     assert local_labels["filter"] == [
         "all",
@@ -540,11 +540,13 @@ def test_pane_map_view_is_maplibre_based() -> None:
         [">=", ["to-number", ["get", "population"], 0], 15000],
         ["<", ["to-number", ["get", "population"], 0], 75000],
     ]
-    assert local_labels["layout"]["text-size"] == ["interpolate", ["linear"], ["zoom"], 12, 9, 15, 11]
+    assert local_labels["layout"]["text-size"] == ["interpolate", ["linear"], ["zoom"], 12, 11, 15, 13]
     assert local_labels["paint"]["text-color"] == "#747b84"
     assert layer_by_id["street-labels"]["minzoom"] == 13.5
     assert layer_by_id["water-labels"]["minzoom"] == 13
     assert layer_by_id["water-labels"]["filter"] == [">=", ["to-number", ["get", "way_area"], 0], 200000]
+    assert layer_by_id["street-labels"]["layout"]["text-size"] == ["interpolate", ["linear"], ["zoom"], 13, 11, 16, 14]
+    assert layer_by_id["water-labels"]["layout"]["text-size"] == ["interpolate", ["linear"], ["zoom"], 13, 11, 16, 14]
     assert "if (kind === 'map') return TF.renderMap(node, data);" in _PANE_HTML
     assert "function afterVisible(entry)" in _PANE_HTML
     assert "function afterHidden(entry)" in _PANE_HTML
