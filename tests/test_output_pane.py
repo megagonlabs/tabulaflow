@@ -517,12 +517,14 @@ def test_pane_map_view_is_maplibre_based() -> None:
     layer_by_id = {str(layer.get("id")): layer for layer in style["layers"]}
     major_labels = layer_by_id["place-labels-major"]
     regional_labels = layer_by_id["place-labels-regional"]
+    neighborhood_labels = layer_by_id["place-labels-neighborhood"]
     local_labels = layer_by_id["place-labels-local"]
     assert major_labels["filter"] == [
         "all",
         ["match", ["get", "kind"], ["city", "town"], True, False],
         [">=", ["to-number", ["get", "population"], 0], 250000],
     ]
+    assert major_labels["layout"]["text-font"] == ["Noto Sans Bold"]
     assert major_labels["layout"]["text-size"] == ["interpolate", ["linear"], ["zoom"], 4, 12, 10, 16, 14, 20]
     assert major_labels["layout"]["text-padding"] == 16
     assert regional_labels["minzoom"] == 9
@@ -533,6 +535,16 @@ def test_pane_map_view_is_maplibre_based() -> None:
         ["<", ["to-number", ["get", "population"], 0], 250000],
     ]
     assert regional_labels["layout"]["text-size"] == ["interpolate", ["linear"], ["zoom"], 9, 12, 13, 14, 15, 15]
+    assert neighborhood_labels["minzoom"] == 12
+    assert neighborhood_labels["filter"] == [
+        "match",
+        ["get", "kind"],
+        ["suburb", "quarter", "neighbourhood"],
+        True,
+        False,
+    ]
+    assert neighborhood_labels["layout"]["text-transform"] == "uppercase"
+    assert neighborhood_labels["layout"]["text-size"] == ["interpolate", ["linear"], ["zoom"], 12, 12, 15, 15]
     assert local_labels["minzoom"] == 12
     assert local_labels["filter"] == [
         "all",
@@ -542,10 +554,29 @@ def test_pane_map_view_is_maplibre_based() -> None:
     ]
     assert local_labels["layout"]["text-size"] == ["interpolate", ["linear"], ["zoom"], 12, 11, 15, 13]
     assert local_labels["paint"]["text-color"] == "#747b84"
-    assert layer_by_id["street-labels"]["minzoom"] == 13.5
+    assert layer_by_id["street-labels-major"]["minzoom"] == 11
+    assert layer_by_id["street-labels-major"]["filter"] == [
+        "match",
+        ["get", "kind"],
+        ["motorway", "trunk", "primary", "secondary"],
+        True,
+        False,
+    ]
+    assert layer_by_id["street-labels-local"]["minzoom"] == 14
     assert layer_by_id["water-labels"]["minzoom"] == 13
     assert layer_by_id["water-labels"]["filter"] == [">=", ["to-number", ["get", "way_area"], 0], 200000]
-    assert layer_by_id["street-labels"]["layout"]["text-size"] == ["interpolate", ["linear"], ["zoom"], 13, 11, 16, 14]
+    assert layer_by_id["street-labels-major"]["layout"]["text-size"] == [
+        "interpolate",
+        ["linear"],
+        ["zoom"],
+        11,
+        11,
+        14,
+        13,
+        16,
+        15,
+    ]
+    assert layer_by_id["street-labels-local"]["layout"]["text-size"] == ["interpolate", ["linear"], ["zoom"], 14, 11, 16, 13]
     assert layer_by_id["water-labels"]["layout"]["text-size"] == ["interpolate", ["linear"], ["zoom"], 13, 11, 16, 14]
     assert "if (kind === 'map') return TF.renderMap(node, data);" in _PANE_HTML
     assert "function afterVisible(entry)" in _PANE_HTML
