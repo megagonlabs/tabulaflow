@@ -302,6 +302,9 @@ body { margin: 0; background: var(--bg); color: var(--text); display: flex; flex
 }
 .tf-map-view .maplibregl-popup.tf-map-detail-tooltip,
 .tf-map-view .maplibregl-popup.tf-map-detail-popup { z-index: 20; }
+.tf-map-view .maplibregl-popup.tf-map-detail-tooltip,
+.tf-map-view .maplibregl-popup.tf-map-detail-tooltip .maplibregl-popup-content,
+.tf-map-view .maplibregl-popup.tf-map-detail-tooltip .maplibregl-popup-tip { pointer-events: none; }
 .tf-map-view .maplibregl-popup.tf-map-detail-tooltip .maplibregl-popup-content,
 .tf-map-view .maplibregl-popup.tf-map-detail-popup .maplibregl-popup-content {
     padding: 9px 14px 9px 12px; background: #fff; border: 0; border-radius: 12px; color: #333;
