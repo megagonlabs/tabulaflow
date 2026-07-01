@@ -613,6 +613,7 @@ def test_pane_map_view_is_maplibre_based() -> None:
     assert "overflow-wrap: anywhere;" in _PANE_HTML
     assert "min-width: 220px; max-width: min(420px, 72vw);" in _PANE_HTML
     assert ".tf-map-view .maplibregl-canvas:focus { outline: none; }" in _PANE_HTML
+    assert ".tf-map-view .maplibregl-popup-anchor-bottom-right .maplibregl-popup-tip { margin-top: -1px; }" in _PANE_HTML
     assert ".tf-map-view .maplibregl-ctrl-attrib," in _PANE_HTML
     assert ".leaflet-" not in _PANE_HTML
 

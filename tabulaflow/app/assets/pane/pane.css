@@ -320,6 +320,14 @@ body { margin: 0; background: var(--bg); color: var(--text); display: flex; flex
 .tf-map-view .maplibregl-popup-anchor-bottom-right .maplibregl-popup-tip { border-top-color: #fff; }
 .tf-map-view .maplibregl-popup-anchor-left .maplibregl-popup-tip { border-right-color: #fff; }
 .tf-map-view .maplibregl-popup-anchor-right .maplibregl-popup-tip { border-left-color: #fff; }
+.tf-map-view .maplibregl-popup-anchor-top .maplibregl-popup-tip,
+.tf-map-view .maplibregl-popup-anchor-top-left .maplibregl-popup-tip,
+.tf-map-view .maplibregl-popup-anchor-top-right .maplibregl-popup-tip { margin-bottom: -1px; }
+.tf-map-view .maplibregl-popup-anchor-bottom .maplibregl-popup-tip,
+.tf-map-view .maplibregl-popup-anchor-bottom-left .maplibregl-popup-tip,
+.tf-map-view .maplibregl-popup-anchor-bottom-right .maplibregl-popup-tip { margin-top: -1px; }
+.tf-map-view .maplibregl-popup-anchor-left .maplibregl-popup-tip { margin-right: -1px; }
+.tf-map-view .maplibregl-popup-anchor-right .maplibregl-popup-tip { margin-left: -1px; }
 .tf-map-view .maplibregl-ctrl-attrib,
 .tf-map-view .maplibregl-ctrl-group {
     background: rgba(255, 255, 255, 0.9); color: #111827;
