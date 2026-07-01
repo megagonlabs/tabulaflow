@@ -328,24 +328,31 @@
   var mapPinOutline = cssVar('--map-pin-outline', '#a52714');
   var mapPinHole = cssVar('--map-pin-hole', '#f8fafc');
   var mapPinInner = cssVar('--map-pin-inner', '#fff4f2');
+  var mapStyleUrl = '/assets/maplibre/shortbread-light.json';
 
-  function mapMarkerIcon() {
+  function mapPinSvg(color) {
+    var fill = color || mapPinBottom;
     var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="25" height="41" viewBox="0 0 25 41">'
       + '<defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1">'
-      + '<stop offset="0" stop-color="' + mapPinTop + '"/><stop offset="1" stop-color="' + mapPinBottom + '"/></linearGradient></defs>'
+      + '<stop offset="0" stop-color="' + mapPinTop + '"/><stop offset="1" stop-color="' + fill + '"/></linearGradient></defs>'
       + '<path fill="' + mapPinOutline + '" d="M12.5 0C5.6 0 0 5.6 0 12.5c0 8.9 12.5 28.5 12.5 28.5S25 21.4 25 12.5C25 5.6 19.4 0 12.5 0z"/>'
       + '<path fill="url(#g)" d="M12.5 1.25C6.3 1.25 1.25 6.3 1.25 12.5c0 7.9 8.9 22.6 11.25 26.2C14.85 35.1 23.75 20.4 23.75 12.5c0-6.2-5.05-11.25-11.25-11.25z"/>'
       + '<circle cx="12.5" cy="12.6" r="5.7" fill="' + mapPinHole + '"/>'
       + '<circle cx="12.5" cy="12.6" r="4.2" fill="' + mapPinInner + '"/>'
       + '</svg>';
-    return L.icon({
-      iconUrl: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg),
-      shadowUrl: '/assets/leaflet/images/marker-shadow.png',
-      iconSize: [25, 41],
-      iconAnchor: [12, 41],
-      shadowSize: [41, 41],
-      popupAnchor: [1, -34]
-    });
+    return 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg);
+  }
+
+  function mapPinElement(color, scale, title) {
+    var node = document.createElement('div');
+    var width = Math.round(25 * scale);
+    var height = Math.round(41 * scale);
+    node.className = 'tf-map-pin';
+    node.style.width = width + 'px';
+    node.style.height = height + 'px';
+    node.style.backgroundImage = 'url("' + mapPinSvg(color) + '")';
+    if (title) node.title = title;
+    return node;
   }
 
   function mapLayers(mapData) {
@@ -392,24 +399,6 @@
     if (label) html += '<div class="tf-map-popup-title">' + escapeHtml(label) + '</div>';
     if (rows) html += '<table>' + rows + '</table>';
     return html + '</div>';
-  }
-
-  function bindMapDetail(layer, html, opts) {
-    if (!html) return;
-    var tooltipOpts = { direction: 'top', opacity: 0.94, className: 'tf-map-detail-tooltip' };
-    if (opts && Array.isArray(opts.tooltipOffset)) tooltipOpts.offset = opts.tooltipOffset;
-    layer.bindTooltip(html, tooltipOpts);
-    layer.bindPopup(html, { minWidth: 220, maxWidth: 420, className: 'tf-map-detail-popup' });
-    layer.on('popupopen', function () {
-      layer._tfPopupOpen = true;
-      layer.closeTooltip();
-    });
-    layer.on('popupclose', function () {
-      layer._tfPopupOpen = false;
-    });
-    layer.on('mouseover', function () {
-      if (layer._tfPopupOpen) layer.closeTooltip();
-    });
   }
 
   function encodingField(encoding) {
@@ -480,18 +469,241 @@
     return feature && feature.geometry && typeof feature.geometry.type === 'string' ? feature.geometry.type : '';
   }
 
-  function leafletStyle(layer, feature, fallback) {
-    var row = feature && feature.properties ? feature.properties : {};
+  function isLineFeature(feature) {
     var type = geometryType(feature);
-    var isLine = type === 'LineString' || type === 'MultiLineString';
-    var color = colorFor(layer.color, row, isLine ? mapRouteColor : (fallback || mapDefaultColor));
-    return {
-      color: color,
-      fillColor: color,
-      fillOpacity: 0.25,
-      opacity: 0.95,
-      weight: isLine ? 5 : 2
-    };
+    return type === 'LineString' || type === 'MultiLineString';
+  }
+
+  function featureCollection(features) {
+    return { type: 'FeatureCollection', features: features };
+  }
+
+  function appendGeoJsonFeatures(out, geojson) {
+    if (!geojson || typeof geojson !== 'object') return;
+    if (geojson.type === 'FeatureCollection' && Array.isArray(geojson.features)) {
+      geojson.features.forEach(function (feature) { appendGeoJsonFeatures(out, feature); });
+      return;
+    }
+    if (geojson.type === 'Feature' && geojson.geometry) {
+      out.push(geojson);
+      return;
+    }
+    if (geojson.type && geojson.coordinates) {
+      out.push({ type: 'Feature', geometry: geojson, properties: {} });
+    }
+  }
+
+  function extendLngLat(bounds, lng, lat) {
+    if (lat == null || lng == null) return false;
+    if (lat < -90 || lat > 90 || lng < -180 || lng > 180) return false;
+    bounds.extend([lng, lat]);
+    return true;
+  }
+
+  function extendCoordinateBounds(bounds, coords) {
+    if (!Array.isArray(coords)) return false;
+    if (coords.length >= 2 && typeof coords[0] !== 'object') {
+      return extendLngLat(bounds, numberValue(coords[0]), numberValue(coords[1]));
+    }
+    var any = false;
+    coords.forEach(function (item) {
+      if (extendCoordinateBounds(bounds, item)) any = true;
+    });
+    return any;
+  }
+
+  function extendFeatureBounds(bounds, feature) {
+    return !!(feature && feature.geometry && extendCoordinateBounds(bounds, feature.geometry.coordinates));
+  }
+
+  function buildPointFeatures(layer, rows, labels) {
+    var pointRows = Array.isArray(layer.points) ? layer.points : rows;
+    var latField = Array.isArray(layer.points) ? 'lat' : String(layer.lat || '');
+    var lngField = Array.isArray(layer.points) ? 'lng' : String(layer.lng || '');
+    var labelField = String(layer.label || '');
+    var markerType = layer.marker && layer.marker.type === 'circle' ? 'circle' : 'pin';
+    var features = [];
+    if (!latField || !lngField) return { features: features, markerType: markerType, rows: pointRows };
+    pointRows.forEach(function (row) {
+      var lat = numberValue(fieldValue(row, latField));
+      var lng = numberValue(fieldValue(row, lngField));
+      if (lat == null || lng == null) return;
+      if (lat < -90 || lat > 90 || lng < -180 || lng > 180) return;
+      var label = fieldValue(row, labelField);
+      var tooltip = layer.tooltip || labelField;
+      var popup = detailHtml(row, tooltip, labels, label, labelField);
+      var color = colorFor(layer.color, row, mapDefaultColor);
+      var radius = sizeFor(layer.size, row, pointRows, 6);
+      features.push({
+        type: 'Feature',
+        geometry: { type: 'Point', coordinates: [lng, lat] },
+        properties: Object.assign({}, row || {}, {
+          __tfColor: color,
+          __tfSize: radius,
+          __tfPinScale: Math.max(0.8, Math.min(1.45, radius / 6)),
+          __tfPopup: popup,
+          __tfTitle: label == null ? '' : displayValue(label),
+          __tfMarker: markerType
+        })
+      });
+    });
+    return { features: features, markerType: markerType, rows: pointRows };
+  }
+
+  function buildGeoJsonFeatures(layer, rows, labels) {
+    var raw = [];
+    if (typeof layer.geojson === 'string') {
+      rows.forEach(function (row) {
+        var parsed = mergeFeatureProperties(parseGeoJson(fieldValue(row, layer.geojson)), row);
+        appendGeoJsonFeatures(raw, parsed);
+      });
+    } else {
+      appendGeoJsonFeatures(raw, mergeFeatureProperties(parseGeoJson(layer.geojson), {}));
+    }
+    return raw.map(function (feature) {
+      var props = feature && feature.properties ? feature.properties : {};
+      var line = isLineFeature(feature);
+      var label = fieldValue(props, layer.label);
+      var popup = detailHtml(props, layer.tooltip || layer.label, labels, label, layer.label);
+      var color = colorFor(layer.color, props, line ? mapRouteColor : mapDefaultColor);
+      return {
+        type: 'Feature',
+        geometry: feature.geometry,
+        properties: Object.assign({}, props, {
+          __tfColor: color,
+          __tfLineWidth: line ? 5 : 2,
+          __tfPopup: popup
+        })
+      };
+    });
+  }
+
+  function mapFeaturePopup(feature) {
+    return feature && feature.properties ? String(feature.properties.__tfPopup || '') : '';
+  }
+
+  function renderMapPopup(map, lngLat, html, className, closeButton) {
+    if (!html || !window.maplibregl) return null;
+    return new maplibregl.Popup({
+      closeButton: !!closeButton,
+      closeOnClick: !!closeButton,
+      className: className,
+      maxWidth: '420px',
+      offset: 12
+    }).setLngLat(lngLat).setHTML(html).addTo(map);
+  }
+
+  function bindLayerDetail(map, layerId, popupState) {
+    map.on('mouseenter', layerId, function (event) {
+      var feature = event.features && event.features[0];
+      var html = mapFeaturePopup(feature);
+      map.getCanvas().style.cursor = html ? 'pointer' : '';
+      if (!html) return;
+      if (popupState.hover) popupState.hover.remove();
+      popupState.hover = renderMapPopup(map, event.lngLat, html, 'tf-map-detail-tooltip', false);
+    });
+    map.on('mousemove', layerId, function (event) {
+      if (popupState.hover) popupState.hover.setLngLat(event.lngLat);
+    });
+    map.on('mouseleave', layerId, function () {
+      map.getCanvas().style.cursor = '';
+      if (popupState.hover) popupState.hover.remove();
+      popupState.hover = null;
+    });
+    map.on('click', layerId, function (event) {
+      var feature = event.features && event.features[0];
+      var html = mapFeaturePopup(feature);
+      if (!html) return;
+      if (popupState.hover) popupState.hover.remove();
+      if (popupState.click) popupState.click.remove();
+      popupState.hover = null;
+      popupState.click = renderMapPopup(map, event.lngLat, html, 'tf-map-detail-popup', true);
+    });
+  }
+
+  function bindMarkerDetail(map, node, lngLat, html, popupState) {
+    if (!html) return;
+    node.addEventListener('mouseenter', function () {
+      if (popupState.hover) popupState.hover.remove();
+      popupState.hover = renderMapPopup(map, lngLat, html, 'tf-map-detail-tooltip', false);
+    });
+    node.addEventListener('mouseleave', function () {
+      if (popupState.hover) popupState.hover.remove();
+      popupState.hover = null;
+    });
+    node.addEventListener('click', function (event) {
+      event.stopPropagation();
+      if (popupState.hover) popupState.hover.remove();
+      if (popupState.click) popupState.click.remove();
+      popupState.hover = null;
+      popupState.click = renderMapPopup(map, lngLat, html, 'tf-map-detail-popup', true);
+    });
+  }
+
+  function addCircleLayer(map, id, sourceId) {
+    map.addLayer({
+      id: id,
+      type: 'circle',
+      source: sourceId,
+      paint: {
+        'circle-radius': ['coalesce', ['get', '__tfSize'], 6],
+        'circle-color': ['coalesce', ['get', '__tfColor'], mapDefaultColor],
+        'circle-opacity': 0.86,
+        'circle-stroke-color': '#ffffff',
+        'circle-stroke-width': 1.2,
+        'circle-stroke-opacity': 0.9
+      }
+    });
+  }
+
+  function addGeoJsonLayers(map, id, sourceId) {
+    map.addLayer({
+      id: id + '-fill',
+      type: 'fill',
+      source: sourceId,
+      filter: ['match', ['geometry-type'], ['Polygon', 'MultiPolygon'], true, false],
+      paint: {
+        'fill-color': ['coalesce', ['get', '__tfColor'], mapDefaultColor],
+        'fill-opacity': 0.24
+      }
+    });
+    map.addLayer({
+      id: id + '-outline',
+      type: 'line',
+      source: sourceId,
+      filter: ['match', ['geometry-type'], ['Polygon', 'MultiPolygon'], true, false],
+      paint: {
+        'line-color': ['coalesce', ['get', '__tfColor'], mapDefaultColor],
+        'line-opacity': 0.78,
+        'line-width': 2
+      }
+    });
+    map.addLayer({
+      id: id + '-line',
+      type: 'line',
+      source: sourceId,
+      filter: ['match', ['geometry-type'], ['LineString', 'MultiLineString'], true, false],
+      layout: { 'line-cap': 'round', 'line-join': 'round' },
+      paint: {
+        'line-color': ['coalesce', ['get', '__tfColor'], mapRouteColor],
+        'line-opacity': 0.95,
+        'line-width': ['coalesce', ['get', '__tfLineWidth'], 5]
+      }
+    });
+    map.addLayer({
+      id: id + '-point',
+      type: 'circle',
+      source: sourceId,
+      filter: ['match', ['geometry-type'], ['Point', 'MultiPoint'], true, false],
+      paint: {
+        'circle-radius': 6,
+        'circle-color': ['coalesce', ['get', '__tfColor'], mapDefaultColor],
+        'circle-opacity': 0.86,
+        'circle-stroke-color': '#ffffff',
+        'circle-stroke-width': 1.2
+      }
+    });
+    return [id + '-fill', id + '-outline', id + '-line', id + '-point'];
   }
 
   function renderMap(container, recordData) {
@@ -503,128 +715,159 @@
     container.innerHTML = '<div class="tf-map-stage"><div class="tf-map"></div><div class="tf-map-empty"></div></div>';
     var mapNode = container.querySelector('.tf-map');
     var emptyNode = container.querySelector('.tf-map-empty');
-    if (!window.L) {
-      emptyNode.textContent = 'Leaflet is not available.';
+
+    function showEmpty(message) {
+      emptyNode.textContent = message;
       emptyNode.classList.add('show');
+    }
+
+    function hideEmpty() {
+      emptyNode.textContent = '';
+      emptyNode.classList.remove('show');
+    }
+
+    if (!window.maplibregl) {
+      showEmpty('MapLibre GL is not available.');
       return { destroy: function () { container.innerHTML = ''; } };
     }
     if (!layers.length) {
-      emptyNode.textContent = 'Map needs at least one layer.';
-      emptyNode.classList.add('show');
+      showEmpty('Map needs at least one layer.');
       return { destroy: function () { container.innerHTML = ''; } };
     }
 
-    var map = L.map(mapNode, { zoomControl: true, attributionControl: true });
-    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom: 19,
-      attribution: '© OpenStreetMap contributors'
-    }).addTo(map);
+    var map = null;
+    var mapLoaded = false;
+    var markers = [];
+    var dataBounds = null;
+    var popupState = { hover: null, click: null };
 
-    var bounds = [];
-    var markerIcon = mapMarkerIcon();
-    layers.forEach(function (layer) {
-      if (!layer || layer.type === 'points') {
-        var pointRows = Array.isArray(layer.points) ? layer.points : rows;
-        var latField = Array.isArray(layer.points) ? 'lat' : String(layer.lat || '');
-        var lngField = Array.isArray(layer.points) ? 'lng' : String(layer.lng || '');
-        var labelField = String(layer.label || '');
-        if (!latField || !lngField) return;
-        var markerType = layer.marker && layer.marker.type === 'circle' ? 'circle' : 'pin';
-        pointRows.forEach(function (row) {
-          var lat = numberValue(fieldValue(row, latField));
-          var lng = numberValue(fieldValue(row, lngField));
-          if (lat == null || lng == null) return;
-          if (lat < -90 || lat > 90 || lng < -180 || lng > 180) return;
-          var label = fieldValue(row, labelField);
-          var tooltip = layer.tooltip || labelField;
-          var popup = detailHtml(row, tooltip, labels, label, labelField);
-          var title = label == null ? '' : displayValue(label);
-          var marker;
-          if (markerType === 'circle') {
-            marker = L.circleMarker([lat, lng], {
-              radius: sizeFor(layer.size, row, pointRows, 6),
-              color: colorFor(layer.color, row, mapDefaultColor),
-              weight: 1,
-              fillColor: colorFor(layer.color, row, mapDefaultColor),
-              fillOpacity: 0.82
-            }).addTo(map);
-          } else {
-            marker = L.marker([lat, lng], { icon: markerIcon, title: title }).addTo(map);
-          }
-          bindMapDetail(marker, popup, markerType === 'pin' ? { tooltipOffset: [0, -28] } : null);
-          bounds.push([lat, lng]);
-        });
-        return;
-      }
-      if (layer.type === 'geojson') {
-        var geojsonItems = [];
-        if (typeof layer.geojson === 'string') {
-          rows.forEach(function (row) {
-            var parsed = mergeFeatureProperties(parseGeoJson(fieldValue(row, layer.geojson)), row);
-            if (parsed) geojsonItems.push(parsed);
+    function addDataLayers() {
+      dataBounds = new maplibregl.LngLatBounds();
+      var hasBounds = false;
+      layers.forEach(function (layer, index) {
+        if (!layer || layer.type === 'points') {
+          var pointData = buildPointFeatures(layer || {}, rows, labels);
+          if (!pointData.features.length) return;
+          var sourceId = 'tf-points-' + index;
+          map.addSource(sourceId, { type: 'geojson', data: featureCollection(pointData.features) });
+          pointData.features.forEach(function (feature) {
+            if (extendFeatureBounds(dataBounds, feature)) hasBounds = true;
           });
-        } else {
-          var parsedInline = mergeFeatureProperties(parseGeoJson(layer.geojson), {});
-          if (parsedInline) geojsonItems.push(parsedInline);
+          if (pointData.markerType === 'circle') {
+            var circleId = sourceId + '-circle';
+            addCircleLayer(map, circleId, sourceId);
+            bindLayerDetail(map, circleId, popupState);
+          } else {
+            pointData.features.forEach(function (feature) {
+              var props = feature.properties || {};
+              var lngLat = feature.geometry.coordinates;
+              var node = mapPinElement(props.__tfColor, props.__tfPinScale || 1, props.__tfTitle);
+              var marker = new maplibregl.Marker({ element: node, anchor: 'bottom' })
+                .setLngLat(lngLat)
+                .addTo(map);
+              bindMarkerDetail(map, node, lngLat, props.__tfPopup, popupState);
+              markers.push(marker);
+            });
+          }
+          return;
         }
-        geojsonItems.forEach(function (geojson) {
-          var geoLayer = L.geoJSON(geojson, {
-            style: function (feature) { return leafletStyle(layer, feature, mapDefaultColor); },
-            pointToLayer: function (feature, latlng) {
-              var style = leafletStyle(layer, feature, mapDefaultColor);
-              style.radius = 6;
-              return L.circleMarker(latlng, style);
-            },
-            onEachFeature: function (feature, leafletLayer) {
-              var props = feature && feature.properties ? feature.properties : {};
-              var label = fieldValue(props, layer.label);
-              var popup = detailHtml(props, layer.tooltip || layer.label, labels, label, layer.label);
-              bindMapDetail(leafletLayer, popup);
-            }
-          }).addTo(map);
-          try {
-            var layerBounds = geoLayer.getBounds();
-            if (layerBounds && layerBounds.isValid()) bounds.push(layerBounds);
-          } catch (e) {}
-        });
-      }
-    });
+        if (layer.type === 'geojson') {
+          var features = buildGeoJsonFeatures(layer, rows, labels);
+          if (!features.length) return;
+          var geoSourceId = 'tf-geojson-' + index;
+          map.addSource(geoSourceId, { type: 'geojson', data: featureCollection(features) });
+          features.forEach(function (feature) {
+            if (extendFeatureBounds(dataBounds, feature)) hasBounds = true;
+          });
+          addGeoJsonLayers(map, geoSourceId, geoSourceId).forEach(function (layerId) {
+            bindLayerDetail(map, layerId, popupState);
+          });
+        }
+      });
+      if (!hasBounds) dataBounds = null;
+    }
 
     function syncView() {
-      map.invalidateSize();
+      if (!map) return;
+      map.resize();
+      if (!mapLoaded) return;
       var view = mapData.view && typeof mapData.view === 'object' ? mapData.view : {};
       var fit = view.fit !== false;
-      if (fit && bounds.length > 1) {
-        var aggregateBounds = L.latLngBounds([]);
-        bounds.forEach(function (item) { aggregateBounds.extend(item); });
-        map.fitBounds(aggregateBounds, { padding: [24, 24], maxZoom: numberOr(view.maxZoom, 14) });
-        return;
-      }
-      if (fit && bounds.length === 1) {
-        if (Array.isArray(bounds[0])) map.setView(bounds[0], numberOr(view.zoom, 12));
-        else map.fitBounds(bounds[0], { padding: [24, 24], maxZoom: numberOr(view.maxZoom, 14) });
+      if (fit && dataBounds && !dataBounds.isEmpty()) {
+        var north = dataBounds.getNorth();
+        var south = dataBounds.getSouth();
+        var east = dataBounds.getEast();
+        var west = dataBounds.getWest();
+        if (north === south && east === west) {
+          map.setCenter([west, south]);
+          map.setZoom(numberOr(view.zoom, 12));
+        } else {
+          map.fitBounds(dataBounds, { padding: 24, maxZoom: numberOr(view.maxZoom, 14), duration: 0 });
+        }
+        hideEmpty();
         return;
       }
       var center = Array.isArray(view.center) ? view.center : null;
       var centerLat = center ? numberValue(center[0]) : null;
       var centerLng = center ? numberValue(center[1]) : null;
       if (centerLat != null && centerLng != null) {
-        map.setView([centerLat, centerLng], numberOr(view.zoom, 10));
+        map.setCenter([centerLng, centerLat]);
+        map.setZoom(numberOr(view.zoom, 10));
+        hideEmpty();
         return;
       }
-      map.setView([0, 0], 2);
-      emptyNode.textContent = 'No valid coordinates in this result.';
-      emptyNode.classList.add('show');
+      map.setCenter([0, 0]);
+      map.setZoom(2);
+      showEmpty('No valid coordinates in this result.');
     }
 
-    requestAnimationFrame(function () {
-      syncView();
-      requestAnimationFrame(syncView);
-    });
+    function destroyMap() {
+      if (popupState.hover) popupState.hover.remove();
+      if (popupState.click) popupState.click.remove();
+      popupState.hover = null;
+      popupState.click = null;
+      markers.forEach(function (marker) { marker.remove(); });
+      markers = [];
+      if (map) map.remove();
+      map = null;
+      mapLoaded = false;
+      dataBounds = null;
+    }
+
+    function initMap() {
+      if (map) return;
+      hideEmpty();
+      map = new maplibregl.Map({
+        container: mapNode,
+        style: mapStyleUrl,
+        center: [0, 0],
+        zoom: 2,
+        attributionControl: false
+      });
+      map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-left');
+      map.addControl(new maplibregl.AttributionControl({ compact: true }), 'bottom-right');
+      map.once('load', function () {
+        if (!map) return;
+        mapLoaded = true;
+        addDataLayers();
+        syncView();
+      });
+      map.on('error', function (event) {
+        if (event && event.error) showEmpty('Map error: ' + String(event.error.message || event.error));
+      });
+    }
+
     return {
-      afterVisible: syncView,
+      afterVisible: function () {
+        initMap();
+        requestAnimationFrame(function () {
+          syncView();
+          requestAnimationFrame(syncView);
+        });
+      },
+      afterHidden: destroyMap,
       destroy: function () {
-        map.remove();
+        destroyMap();
         container.innerHTML = '';
       }
     };

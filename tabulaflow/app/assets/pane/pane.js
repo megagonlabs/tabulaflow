@@ -283,6 +283,11 @@ function afterVisible(entry) {
   requestAnimationFrame(function () { entry.handle.afterVisible(); });
 }
 
+function afterHidden(entry) {
+  if (!entry || !entry.handle || !entry.handle.afterHidden) return;
+  entry.handle.afterHidden();
+}
+
 function setActiveShellView(shell, activeNode) {
   Array.prototype.forEach.call(shell.children, function (node) {
     var active = node === activeNode;
@@ -292,6 +297,7 @@ function setActiveShellView(shell, activeNode) {
     node.toggleAttribute('inert', !active);
     node.setAttribute('aria-hidden', active ? 'false' : 'true');
     if (active) afterVisible(node._tfViewEntry);
+    else afterHidden(node._tfViewEntry);
   });
 }
 
@@ -301,6 +307,7 @@ function hideViewNode(node) {
   node.classList.add('view-hidden');
   node.setAttribute('inert', '');
   node.setAttribute('aria-hidden', 'true');
+  afterHidden(node._tfViewEntry);
 }
 
 function stageViewNode(node) {
@@ -309,6 +316,7 @@ function stageViewNode(node) {
   node.classList.add('view-pending');
   node.setAttribute('inert', '');
   node.setAttribute('aria-hidden', 'true');
+  afterHidden(node._tfViewEntry);
 }
 
 function blurHiddenFocus(node) {

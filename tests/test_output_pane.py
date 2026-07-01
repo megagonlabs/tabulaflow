@@ -262,7 +262,7 @@ def test_record_card_writes_map_view_payload(tmp_path: Path) -> None:
     assert card is not None
     assert card["views"] == ["map", "data"]
     payload = json.loads((tmp_path / f"{card['id']}.data.json").read_text())
-    assert payload["map"]["provider"] == "leaflet"
+    assert payload["map"]["provider"] == "maplibre"
     assert payload["map"]["layers"] == [
         {"type": "points", "lat": "c1", "lng": "c2", "label": "c0"},
     ]
@@ -500,18 +500,41 @@ def test_pane_chart_shell_matches_vega_background() -> None:
     assert ".tf-chart-view,\n.tf-vis-stage { background: var(--card); }" in _PANE_HTML
 
 
-def test_pane_map_view_is_leaflet_based() -> None:
+def test_pane_map_view_is_maplibre_based() -> None:
     renderer = files("tabulaflow.app.assets.pane").joinpath("pane-render.js").read_text(encoding="utf-8")
-    leaflet_assets = files("tabulaflow.app.assets.leaflet")
-    assert '<link rel="stylesheet" href="/assets/leaflet/leaflet.css">' in _PANE_HTML
-    assert '<script src="/assets/leaflet/leaflet.js"></script>' in _PANE_HTML
-    assert leaflet_assets.joinpath("images/marker-shadow.png").is_file()
+    maplibre_assets = files("tabulaflow.app.assets.maplibre")
+    style = json.loads(maplibre_assets.joinpath("shortbread-light.json").read_text(encoding="utf-8"))
+    assert '<link rel="stylesheet" href="/assets/maplibre/maplibre-gl.css">' in _PANE_HTML
+    assert '<script src="/assets/maplibre/maplibre-gl.js"></script>' in _PANE_HTML
+    assert maplibre_assets.joinpath("maplibre-gl.js").is_file()
+    assert maplibre_assets.joinpath("maplibre-gl.css").is_file()
+    assert maplibre_assets.joinpath("LICENSE.txt").is_file()
+    assert maplibre_assets.joinpath("shortbread-light.json").is_file()
+    assert style["sources"]["osm"]["url"] == "https://vector.openstreetmap.org/shortbread_v1/tilejson.json"
+    assert style["glyphs"] == "https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf"
+    assert any(layer.get("source-layer") == "streets" for layer in style["layers"])
+    assert any(layer.get("source-layer") == "place_labels" for layer in style["layers"])
     assert "if (kind === 'map') return TF.renderMap(node, data);" in _PANE_HTML
     assert "function afterVisible(entry)" in _PANE_HTML
+    assert "function afterHidden(entry)" in _PANE_HTML
     assert "entry.handle.afterVisible" in _PANE_HTML
+    assert "entry.handle.afterHidden" in _PANE_HTML
     assert "renderMap: renderMap" in renderer
-    assert "L.map(mapNode" in renderer
-    assert "L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png'" in renderer
+    assert "new maplibregl.Map({" in renderer
+    assert "style: mapStyleUrl" in renderer
+    assert "map.addSource(sourceId, { type: 'geojson'" in renderer
+    assert "function addCircleLayer(map, id, sourceId)" in renderer
+    assert "function addGeoJsonLayers(map, id, sourceId)" in renderer
+    assert "new maplibregl.Marker({ element: node, anchor: 'bottom' })" in renderer
+    assert "new maplibregl.Popup({" in renderer
+    assert "map.fitBounds(dataBounds" in renderer
+    assert "map.setCenter([centerLng, centerLat]);" in renderer
+    assert "function destroyMap()" in renderer
+    assert "afterHidden: destroyMap" in renderer
+    assert "if (map) map.remove();" in renderer
+    assert "L.map" not in renderer
+    assert "L.tileLayer" not in renderer
+    assert "/assets/leaflet" not in renderer
     assert "function mapLayers(mapData)" in renderer
     assert "if (value == null || typeof value === 'boolean') return null;" in renderer
     assert "if (typeof value === 'string' && value.trim() === '') return null;" in renderer
@@ -526,31 +549,23 @@ def test_pane_map_view_is_leaflet_based() -> None:
     assert "mapData.tileUrl" not in renderer
     assert "mapData.attribution" not in renderer
     assert "mapData.maxZoom" not in renderer
-    assert "L.geoJSON(geojson" in renderer
-    assert "bindTooltip" in renderer
+    assert "buildGeoJsonFeatures(layer, rows, labels)" in renderer
+    assert "bindLayerDetail(map, layerId, popupState)" in renderer
     assert "tf-map-popup-title" in renderer
     assert "field !== labelField" in renderer
     assert "detailHtml(row, tooltip, labels, label, labelField)" in renderer
     assert "detailHtml(props, layer.tooltip || layer.label, labels, label, layer.label)" in renderer
     assert "var pointRows = Array.isArray(layer.points) ? layer.points : rows;" in renderer
     assert "var latField = Array.isArray(layer.points) ? 'lat' : String(layer.lat || '');" in renderer
-    assert "radius: sizeFor(layer.size, row, pointRows, 6)" in renderer
-    assert "function bindMapDetail(layer, html, opts)" in renderer
-    assert "tooltipOpts.offset = opts.tooltipOffset;" in renderer
-    assert "layer.bindTooltip(html, tooltipOpts)" in renderer
-    assert "layer.bindPopup(html, { minWidth: 220, maxWidth: 420, className: 'tf-map-detail-popup' })" in renderer
-    assert "layer._tfPopupOpen = true;" in renderer
-    assert "if (layer._tfPopupOpen) layer.closeTooltip();" in renderer
-    assert "bindMapDetail(marker, popup, markerType === 'pin' ? { tooltipOffset: [0, -28] } : null)" in renderer
-    assert "bindMapDetail(leafletLayer, popup)" in renderer
+    assert "var radius = sizeFor(layer.size, row, pointRows, 6);" in renderer
+    assert "function bindMarkerDetail(map, node, lngLat, html, popupState)" in renderer
+    assert "closeButton: !!closeButton" in renderer
+    assert "className: className" in renderer
     assert "title || popup.replace" not in renderer
     assert "label == null ? popup.replace" not in renderer
-    assert "function mapMarkerIcon()" in renderer
-    assert "iconSize: [25, 41]" in renderer
-    assert "iconAnchor: [12, 41]" in renderer
-    assert "shadowUrl: '/assets/leaflet/images/marker-shadow.png'" in renderer
-    assert "shadowSize: [41, 41]" in renderer
-    assert "shadowAnchor" not in renderer
+    assert "function mapPinSvg(color)" in renderer
+    assert "function mapPinElement(color, scale, title)" in renderer
+    assert "node.className = 'tf-map-pin';" in renderer
     assert "data:image/svg+xml;charset=UTF-8," in renderer
     assert f"--map-default: {VIZ_MAP_DEFAULT_COLOR};" in _PANE_HTML
     assert f"--map-route: {VIZ_MAP_ROUTE_COLOR};" in _PANE_HTML
@@ -571,41 +586,31 @@ def test_pane_map_view_is_leaflet_based() -> None:
     assert "var mapPinOutline = cssVar('--map-pin-outline'" in renderer
     assert "var mapPinHole = cssVar('--map-pin-hole'" in renderer
     assert "var mapPinInner = cssVar('--map-pin-inner'" in renderer
+    assert "var mapStyleUrl = '/assets/maplibre/shortbread-light.json';" in renderer
     assert "#ea4335" in renderer
     assert "#4285f4" in renderer
     assert "#1558d6" in renderer
-    assert "colorFor(layer.color, row, isLine ? mapRouteColor : (fallback || mapDefaultColor))" in renderer
-    assert "leafletStyle(layer, feature, mapDefaultColor)" in renderer
     assert "function geometryType(feature)" in renderer
+    assert "function isLineFeature(feature)" in renderer
     assert "type === 'LineString' || type === 'MultiLineString'" in renderer
-    assert "weight: isLine ? 5 : 2" in renderer
+    assert "__tfLineWidth: line ? 5 : 2" in renderer
     assert "#5bd0a8" not in renderer
     assert "#2f9a74" not in renderer
     assert "rgba(255,255,255,0.35)" not in renderer
-    assert "L.marker([lat, lng]" in renderer
-    assert "L.divIcon" not in renderer
-    assert "style.stroke" not in renderer
-    assert "style.fill" not in renderer
-    assert "style.fillOpacity" not in renderer
-    assert "style.weight" not in renderer
+    assert "L.marker" not in renderer
     assert "encoding.range" not in renderer
-    assert "tf-map-pin" not in renderer
-    assert "map.invalidateSize();" in renderer
+    assert "map.resize();" in renderer
     assert ".tf-map-stage { position: relative; height: min(560px, 68vh); min-height: 420px;" in _PANE_HTML
-    assert ".tf-map-view .leaflet-tooltip.tf-map-detail-tooltip {" in _PANE_HTML
-    assert "padding: 0; background: #fff; border: 0; border-radius: 12px;" in _PANE_HTML
+    assert ".tf-map-view .maplibregl-map { background: var(--card);" in _PANE_HTML
+    assert ".tf-map-pin {" in _PANE_HTML
+    assert ".tf-map-view .maplibregl-popup.tf-map-detail-tooltip .maplibregl-popup-content," in _PANE_HTML
+    assert "padding: 9px 14px 9px 12px; background: #fff; border: 0; border-radius: 12px;" in _PANE_HTML
     assert "max-width: min(420px, 72vw); color: #111827;" in _PANE_HTML
     assert "overflow-wrap: anywhere;" in _PANE_HTML
     assert "min-width: 220px; max-width: min(420px, 72vw);" in _PANE_HTML
-    assert (
-        ".tf-map-view .leaflet-tooltip.tf-map-detail-tooltip .tf-map-popup { padding: 9px 14px 9px 12px; }"
-        in _PANE_HTML
-    )
-    assert ".tf-map-view .leaflet-popup.tf-map-detail-popup .leaflet-popup-content {" in _PANE_HTML
-    assert "width: auto !important; min-width: 220px; max-width: min(420px, 72vw);" in _PANE_HTML
-    assert ".tf-map-view .leaflet-interactive:focus," in _PANE_HTML
-    assert ".tf-map-view .leaflet-marker-icon:focus { outline: none; }" in _PANE_HTML
-    assert ".tf-map-pin" not in _PANE_HTML
+    assert ".tf-map-view .maplibregl-canvas:focus { outline: none; }" in _PANE_HTML
+    assert ".tf-map-view .maplibregl-ctrl-attrib," in _PANE_HTML
+    assert ".leaflet-" not in _PANE_HTML
 
 
 def test_pane_table_scrollbars_use_dark_theme() -> None:
@@ -816,17 +821,17 @@ def test_pane_serves_bundled_assets_cached(tmp_path: Path) -> None:
         assert body == expected
         assert cache is not None and "immutable" in cache
 
-        with urllib.request.urlopen(f"{origin}assets/leaflet/leaflet.js", timeout=2) as resp:
+        with urllib.request.urlopen(f"{origin}assets/maplibre/maplibre-gl.js", timeout=2) as resp:
             assert resp.headers.get("Cache-Control") is not None and "immutable" in resp.headers.get(
                 "Cache-Control", ""
             )
-            assert b"Leaflet" in resp.read()
+            assert b"MapLibre GL JS" in resp.read()
 
-        with urllib.request.urlopen(f"{origin}assets/leaflet/images/marker-shadow.png", timeout=2) as resp:
+        with urllib.request.urlopen(f"{origin}assets/maplibre/shortbread-light.json", timeout=2) as resp:
             assert resp.headers.get("Cache-Control") is not None and "immutable" in resp.headers.get(
                 "Cache-Control", ""
             )
-            assert resp.read().startswith(b"\x89PNG")
+            assert b"vector.openstreetmap.org/shortbread_v1/tilejson.json" in resp.read()
 
         try:
             urllib.request.urlopen(f"{origin}assets/does-not-exist.js", timeout=2)
