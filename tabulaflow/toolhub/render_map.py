@@ -366,7 +366,7 @@ class RenderMapTool:
     def __init__(self, history: QueryHistory | None = None) -> None:
         self._history = history or QueryHistory()
 
-    async def __call__(self, record_id: str | None = None, *, map_spec: str) -> str:
+    async def __call__(self, record_id: str, *, map_spec: str) -> str:
         """Attach a map view to a query result.
 
         Use for spatial results. The spec is a JSON string containing an object
@@ -412,14 +412,15 @@ class RenderMapTool:
         example, PostGIS:
         ``ST_AsGeoJSON(ST_Transform(geom, 4326)) AS geom_geojson``; DuckDB
         spatial: ``ST_AsGeoJSON(ST_Transform(geom, 'EPSG:4326')) AS geom_geojson``.
-        When ``record_id`` is omitted, the most recent query result is used.
 
         Args:
-            record_id: Optional query-history record ID (e.g. ``"Q3"``).
-                If omitted, use the most recent query result.
+            record_id: Query-history record ID (e.g. ``"Q3"``).
             map_spec: Declarative map specification as a JSON string. GeoJSON
                 coordinates must be WGS84 longitude/latitude.
         """
+        if not isinstance(record_id, str) or not record_id.strip():
+            return "(error: record_id must be a non-empty string)"
+
         try:
             spec = json.loads(map_spec)
         except (json.JSONDecodeError, TypeError) as e:
@@ -429,11 +430,9 @@ class RenderMapTool:
             return "(error: map_spec must be a JSON object)"
 
         try:
-            record = await self._history.get(record_id) if record_id else await self._history.last()
+            record = await self._history.get(record_id)
         except KeyError:
             return f"(error: unknown record_id {record_id!r})"
-        except ValueError:
-            return "(error: no query has been executed yet — run a query first)"
 
         pred = record.pred_query
         if pred.exec_result is None or pred.exec_result.df is None:

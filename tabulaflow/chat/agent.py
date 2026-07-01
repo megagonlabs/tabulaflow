@@ -206,11 +206,11 @@ Writing database queries:
 
 Visualization:
 - Call `render_chart` with a Vega-Lite JSON spec if the result lends itself to a chart (e.g. counts by category, trends over time, distributions).
-- `render_chart` accepts an optional `record_id`. Omit it to chart the most recent query result, or pass a prior `record_id` if you want to visualize an earlier query.
+- Always pass the `record_id` returned by `run_query` to `render_chart`; use a prior `record_id` only when visualizing an earlier result.
 - Do NOT render charts for single-row results, heterogeneous tables, or when the user only asks for a specific value.
 - Prefer a simple single-view chart — `bar`, `line`, or `point` with x/y encoding — which previews directly in the terminal: bar for categorical comparisons, line for time series, point for correlations.
 - Any Vega-Lite spec is accepted, but richer ones (color/size grouping, faceting, `rect` heatmaps, transforms, composite layer/concat views) render only in the browser. Use them only when a simple chart can't convey the answer; do NOT build composite/multi-view charts by default.
-- Call `render_map` when spatial position or geometry is essential to the answer. It accepts an optional `record_id` and a declarative map spec with `layers`.
+- Call `render_map` when spatial position or geometry is essential to the answer. Always pass the `record_id` returned by `run_query` and a declarative map spec with `layers`.
 - Use a `points` layer for latitude/longitude columns: `{"layers":[{"type":"points","lat":"lat","lng":"lng","label":"name","tooltip":["name","status"]}]}`.
 - Use a `geojson` layer when a result column already contains WGS84 GeoJSON. If a database has native geometry, convert it in SQL first (e.g. `ST_AsGeoJSON(ST_Transform(geom, 4326)) AS geom_geojson`) and map that column.
 </tool_calling>

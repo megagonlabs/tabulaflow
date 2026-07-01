@@ -350,7 +350,11 @@ def render_plotext(
             # reading order.
             rev_cats = list(reversed(y_data))
             plt.bar(
-                [str(v) for v in rev_cats], list(reversed(x_data)), orientation="horizontal", width=_BAR_WIDTH, **color_kw
+                [str(v) for v in rev_cats],
+                list(reversed(x_data)),
+                orientation="horizontal",
+                width=_BAR_WIDTH,
+                **color_kw,
             )
             plt.yticks(positions, _truncate_tick_labels(rev_cats, effective_width, stacked=True))
         else:
@@ -396,14 +400,13 @@ class RenderChartTool:
     def __init__(self, history: QueryHistory | None = None) -> None:
         self._history = history or QueryHistory()
 
-    async def __call__(self, record_id: str | None = None, *, vegalite_spec: str) -> str:
+    async def __call__(self, record_id: str, *, vegalite_spec: str) -> str:
         """Attach a Vega-Lite chart specification to a query result.
 
         Accepts any Vega-Lite spec — single or multi-view: bar, line, point,
         area, arc/pie, heatmap, stacked/grouped bars via a color encoding,
         faceting, transforms, etc. Simple x/y charts preview in the terminal;
-        richer charts open in the browser at full fidelity. When ``record_id``
-        is omitted, the most recent query result is used.
+        richer charts open in the browser at full fidelity.
 
         Specs may bind inputs (e.g. a range slider via ``params``/``bind``) or
         selections for interactive filtering and zoom in the browser.
@@ -415,10 +418,12 @@ class RenderChartTool:
             {"mark": "bar", "encoding": {"x": {"field": "status", "type": "nominal"}, "y": {"field": "count", "type": "quantitative"}}, "title": "Schools by Status"}
 
         Args:
-            record_id: Optional query-history record ID (e.g. ``"Q3"``).
-                If omitted, use the most recent query result.
+            record_id: Query-history record ID (e.g. ``"Q3"``).
             vegalite_spec: A Vega-Lite JSON specification string.
         """
+        if not isinstance(record_id, str) or not record_id.strip():
+            return "(error: record_id must be a non-empty string)"
+
         try:
             spec = json.loads(vegalite_spec)
         except (json.JSONDecodeError, TypeError) as e:
@@ -431,11 +436,9 @@ class RenderChartTool:
             return "(error: spec must have a 'mark' or be a multi-view spec (layer/facet/concat))"
 
         try:
-            record = await self._history.get(record_id) if record_id else await self._history.last()
+            record = await self._history.get(record_id)
         except KeyError:
             return f"(error: unknown record_id {record_id!r})"
-        except ValueError:
-            return "(error: no query has been executed yet — run a query first)"
 
         pred = record.pred_query
 
