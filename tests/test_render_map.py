@@ -164,11 +164,11 @@ class TestRenderMapTool:
     async def test_points_map_attaches(self) -> None:
         history = await _history_with(pd.DataFrame({"lat": [37.7], "lng": [-122.4], "name": ["SF"]}))
         spec = {"title": "Cities", "layers": [{"type": "points", "lat": "lat", "lng": "lng", "label": "name"}]}
-        msg = await RenderMapTool(history=history)(map_spec=spec)
+        msg = await RenderMapTool(history=history)(map_spec=json.dumps(spec))
         assert "Cities attached" in msg
         assert (await history.last()).map_spec == spec
 
-    async def test_geojson_map_attaches_from_json_string_spec(self) -> None:
+    async def test_geojson_map_attaches(self) -> None:
         df = pd.DataFrame(
             {
                 "geom": [json.dumps({"type": "Point", "coordinates": [-122.4, 37.7]})],
@@ -184,14 +184,14 @@ class TestRenderMapTool:
     async def test_unknown_column_errors_without_attaching(self) -> None:
         history = await _history_with(pd.DataFrame({"lat": [37.7], "lng": [-122.4]}))
         spec = {"layers": [{"type": "points", "lat": "lat", "lng": "missing"}]}
-        msg = await RenderMapTool(history=history)(map_spec=spec)
+        msg = await RenderMapTool(history=history)(map_spec=json.dumps(spec))
         assert "field not found" in msg and "missing" in msg
         assert (await history.last()).map_spec is None
 
     async def test_invalid_coordinates_error_without_attaching(self) -> None:
         history = await _history_with(pd.DataFrame({"lat": [4_547_675], "lng": [-13_627_665]}))
         spec = {"layers": [{"type": "points", "lat": "lat", "lng": "lng"}]}
-        msg = await RenderMapTool(history=history)(map_spec=spec)
+        msg = await RenderMapTool(history=history)(map_spec=json.dumps(spec))
         assert "no valid latitude/longitude" in msg
         assert (await history.last()).map_spec is None
 
@@ -205,7 +205,7 @@ class TestRenderMapTool:
             )
         )
         spec = {"layers": [{"type": "points", "lat": "lat", "lng": "lng"}]}
-        msg = await RenderMapTool(history=history)(map_spec=spec)
+        msg = await RenderMapTool(history=history)(map_spec=json.dumps(spec))
         assert "too large to map directly" in msg
         assert f"max {MAP_RENDER_MAX_ROWS:,} rows" in msg
         assert (await history.last()).map_spec is None

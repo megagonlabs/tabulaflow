@@ -366,11 +366,11 @@ class RenderMapTool:
     def __init__(self, history: QueryHistory | None = None) -> None:
         self._history = history or QueryHistory()
 
-    async def __call__(self, record_id: str | None = None, *, map_spec: dict[str, Any] | str) -> str:
+    async def __call__(self, record_id: str | None = None, *, map_spec: str) -> str:
         """Attach a map view to a query result.
 
-        Use for spatial results. The spec is a JSON object with a non-empty
-        ``layers`` list.
+        Use for spatial results. The spec is a JSON string containing an object
+        with a non-empty ``layers`` list.
 
         Full public V1 grammar:
         - Top level:
@@ -417,16 +417,13 @@ class RenderMapTool:
         Args:
             record_id: Optional query-history record ID (e.g. ``"Q3"``).
                 If omitted, use the most recent query result.
-            map_spec: Declarative map specification as a JSON object or JSON
-                string. GeoJSON coordinates must be WGS84 longitude/latitude.
+            map_spec: Declarative map specification as a JSON string. GeoJSON
+                coordinates must be WGS84 longitude/latitude.
         """
-        if isinstance(map_spec, str):
-            try:
-                spec = json.loads(map_spec)
-            except json.JSONDecodeError as e:
-                return f"(error: invalid JSON — {e})"
-        else:
-            spec = map_spec
+        try:
+            spec = json.loads(map_spec)
+        except (json.JSONDecodeError, TypeError) as e:
+            return f"(error: invalid JSON — {e})"
 
         if not isinstance(spec, dict):
             return "(error: map_spec must be a JSON object)"
