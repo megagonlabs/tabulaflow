@@ -333,6 +333,18 @@ def test_pane_map_view_is_leaflet_based() -> None:
     assert "mapData.maxZoom" not in renderer
     assert "L.geoJSON(geojson" in renderer
     assert "bindTooltip" in renderer
+    assert "tf-map-popup-title" in renderer
+    assert "field !== labelField" in renderer
+    assert "detailHtml(row, tooltip, labels, label, labelField)" in renderer
+    assert "detailHtml(props, layer.tooltip || layer.label, labels, label, layer.label)" in renderer
+    assert "function bindMapDetail(layer, html)" in renderer
+    assert "layer.bindTooltip(html" in renderer
+    assert "layer._tfPopupOpen = true;" in renderer
+    assert "if (layer._tfPopupOpen) layer.closeTooltip();" in renderer
+    assert "bindMapDetail(marker, popup)" in renderer
+    assert "bindMapDetail(leafletLayer, popup)" in renderer
+    assert "title || popup.replace" not in renderer
+    assert "label == null ? popup.replace" not in renderer
     assert "function mapMarkerIcon()" in renderer
     assert "iconSize: [25, 41]" in renderer
     assert "iconAnchor: [12, 41]" in renderer
@@ -352,6 +364,11 @@ def test_pane_map_view_is_leaflet_based() -> None:
     assert "tf-map-pin" not in renderer
     assert "map.invalidateSize();" in renderer
     assert ".tf-map-stage { position: relative; height: min(560px, 68vh); min-height: 420px;" in _PANE_HTML
+    assert ".tf-map-view .leaflet-tooltip.tf-map-detail-tooltip {" in _PANE_HTML
+    assert "padding: 0; background: #fff; border: 0; border-radius: 12px;" in _PANE_HTML
+    assert ".tf-map-view .leaflet-tooltip.tf-map-detail-tooltip .tf-map-popup { padding: 9px 14px 9px 12px; }" in _PANE_HTML
+    assert ".tf-map-view .leaflet-interactive:focus," in _PANE_HTML
+    assert ".tf-map-view .leaflet-marker-icon:focus { outline: none; }" in _PANE_HTML
     assert ".tf-map-pin" not in _PANE_HTML
 
 

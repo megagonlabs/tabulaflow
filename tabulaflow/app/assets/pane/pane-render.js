@@ -324,19 +324,39 @@
     return [];
   }
 
-  function detailHtml(row, tooltip, labels, fallback) {
+  function detailHtml(row, tooltip, labels, fallback, labelField) {
     var fields = tooltipFields(tooltip, row);
-    if (!fields.length) return fallback == null ? '' : '<div class="tf-map-popup">' + escapeHtml(fallback) + '</div>';
-    var html = '<div class="tf-map-popup"><table>';
+    var label = fallback == null ? '' : String(fallback);
+    if (labelField) {
+      fields = fields.filter(function (field) { return field !== labelField; });
+    }
+    var rows = '';
     fields.forEach(function (field) {
       var value = fieldValue(row, field);
       if (value == null || !safeScalar(value)) return;
-      html += '<tr><th>' + escapeHtml(labels[field] || field) + '</th><td>' + escapeHtml(value) + '</td></tr>';
+      rows += '<tr><th>' + escapeHtml(labels[field] || field) + '</th><td>' + escapeHtml(value) + '</td></tr>';
     });
-    html += '</table></div>';
-    return html.indexOf('<tr>') === -1
-      ? (fallback == null ? '' : '<div class="tf-map-popup">' + escapeHtml(fallback) + '</div>')
-      : html;
+    if (!label && !rows) return '';
+    var html = '<div class="tf-map-popup">';
+    if (label) html += '<div class="tf-map-popup-title">' + escapeHtml(label) + '</div>';
+    if (rows) html += '<table>' + rows + '</table>';
+    return html + '</div>';
+  }
+
+  function bindMapDetail(layer, html) {
+    if (!html) return;
+    layer.bindTooltip(html, { direction: 'top', opacity: 0.94, className: 'tf-map-detail-tooltip' });
+    layer.bindPopup(html);
+    layer.on('popupopen', function () {
+      layer._tfPopupOpen = true;
+      layer.closeTooltip();
+    });
+    layer.on('popupclose', function () {
+      layer._tfPopupOpen = false;
+    });
+    layer.on('mouseover', function () {
+      if (layer._tfPopupOpen) layer.closeTooltip();
+    });
   }
 
   function encodingField(encoding) {
@@ -463,7 +483,7 @@
           if (lat < -90 || lat > 90 || lng < -180 || lng > 180) return;
           var label = fieldValue(row, labelField);
           var tooltip = layer.tooltip || labelField;
-          var popup = detailHtml(row, tooltip, labels, label);
+          var popup = detailHtml(row, tooltip, labels, label, labelField);
           var title = label == null ? '' : String(label);
           var marker;
           if (markerType === 'circle') {
@@ -477,10 +497,7 @@
           } else {
             marker = L.marker([lat, lng], { icon: markerIcon, title: title }).addTo(map);
           }
-          if (popup) {
-            marker.bindTooltip(title || popup.replace(/<[^>]+>/g, ''), { direction: 'top', opacity: 0.88 });
-            marker.bindPopup(popup);
-          }
+          bindMapDetail(marker, popup);
           bounds.push([lat, lng]);
         });
         return;
@@ -507,14 +524,8 @@
             onEachFeature: function (feature, leafletLayer) {
               var props = feature && feature.properties ? feature.properties : {};
               var label = fieldValue(props, layer.label);
-              var popup = detailHtml(props, layer.tooltip || layer.label, labels, label);
-              if (popup) {
-                leafletLayer.bindTooltip(label == null ? popup.replace(/<[^>]+>/g, '') : String(label), {
-                  direction: 'top',
-                  opacity: 0.88
-                });
-                leafletLayer.bindPopup(popup);
-              }
+              var popup = detailHtml(props, layer.tooltip || layer.label, labels, label, layer.label);
+              bindMapDetail(leafletLayer, popup);
             }
           }).addTo(map);
           try {
