@@ -64,8 +64,19 @@ def _pane_css_vars() -> str:
         TEXT_DIM,
         TEXT_MUTED,
     )
-    from tabulaflow.app.theme import ACCENT
+    from tabulaflow.app.theme import (
+        ACCENT,
+        VIZ_MAP_CATEGORY_PALETTE,
+        VIZ_MAP_DEFAULT_COLOR,
+        VIZ_MAP_PIN_BOTTOM,
+        VIZ_MAP_PIN_HOLE,
+        VIZ_MAP_PIN_INNER,
+        VIZ_MAP_PIN_OUTLINE,
+        VIZ_MAP_PIN_TOP,
+        VIZ_MAP_ROUTE_COLOR,
+    )
 
+    map_category_vars = "".join(f"--map-category-{i}: {color};" for i, color in enumerate(VIZ_MAP_CATEGORY_PALETTE))
     return (
         ":root {"
         f"--accent: {ACCENT};"
@@ -82,6 +93,14 @@ def _pane_css_vars() -> str:
         f"--scrollbar-thumb-hover: {SCROLLBAR_THUMB_HOVER};"
         "--panel: #1f2532;"
         "--rail-bg: #131720;"
+        f"--map-default: {VIZ_MAP_DEFAULT_COLOR};"
+        f"--map-route: {VIZ_MAP_ROUTE_COLOR};"
+        f"{map_category_vars}"
+        f"--map-pin-top: {VIZ_MAP_PIN_TOP};"
+        f"--map-pin-bottom: {VIZ_MAP_PIN_BOTTOM};"
+        f"--map-pin-outline: {VIZ_MAP_PIN_OUTLINE};"
+        f"--map-pin-hole: {VIZ_MAP_PIN_HOLE};"
+        f"--map-pin-inner: {VIZ_MAP_PIN_INNER};"
         "}"
     )
 

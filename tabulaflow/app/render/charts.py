@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from tabulaflow.app.page import CARD_BG, TEXT, TEXT_MUTED, render_page
-from tabulaflow.app.theme import ACCENT
+from tabulaflow.app.theme import ACCENT, VIZ_CHART_CATEGORY_PALETTE, VIZ_CHART_GRID
 
 if TYPE_CHECKING:
     import pandas as pd
@@ -22,7 +22,6 @@ if TYPE_CHECKING:
 # tool caps attachable results well below pathological sizes; this is just the
 # crisp-vs-fast tradeoff within that range.
 _SVG_ROW_LIMIT = 5_000
-_CHART_GRID = "#3a4352"
 
 # Dark/mint Vega config applied as *defaults* (lowest precedence). Anything the
 # spec sets explicitly — including agent-requested colors — overrides it, since
@@ -35,10 +34,10 @@ _VEGA_DARK_CONFIG: dict[str, object] = {
     "axis": {
         "labelColor": TEXT_MUTED,
         "titleColor": TEXT,
-        "gridColor": _CHART_GRID,
+        "gridColor": VIZ_CHART_GRID,
         "gridOpacity": 0.9,
-        "domainColor": _CHART_GRID,
-        "tickColor": _CHART_GRID,
+        "domainColor": VIZ_CHART_GRID,
+        "tickColor": VIZ_CHART_GRID,
         "labelFontSize": 12,
         "titleFontSize": 14,
         "labelLimit": 160,
@@ -47,16 +46,7 @@ _VEGA_DARK_CONFIG: dict[str, object] = {
     # Categorical palette: the mint accent first, then off-palette hues used
     # only for chart series (not part of the page design tokens).
     "range": {
-        "category": [
-            ACCENT,  # mint
-            "#5ac8fa",  # sky blue
-            "#f5a623",  # amber
-            "#bd6cf0",  # violet
-            "#f06292",  # pink
-            "#4dd0e1",  # cyan
-            "#aed581",  # lime
-            "#ff8a65",  # coral
-        ],
+        "category": list(VIZ_CHART_CATEGORY_PALETTE),
         "ramp": {"scheme": "greens"},
         "heatmap": {"scheme": "greens"},
     },
@@ -373,11 +363,7 @@ def render_chart_html(
 
     if asset_base is None:
         vega_js, vega_lite_js, vega_embed_js = _load_vega_assets()
-        vega_head = (
-            f"<script>{vega_js}</script>"
-            f"<script>{vega_lite_js}</script>"
-            f"<script>{vega_embed_js}</script>"
-        )
+        vega_head = f"<script>{vega_js}</script><script>{vega_lite_js}</script><script>{vega_embed_js}</script>"
     else:
         vega_head = (
             f'<script src="{asset_base}/vega/vega.min.js"></script>'

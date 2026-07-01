@@ -20,6 +20,16 @@ from tabulaflow.app.pane import OutputPane, OutputPanePortError, _PANE_HTML
 from tabulaflow.app.pane_types import PaneRecord, PaneTurn, turn_payload
 from tabulaflow.app.screens import send_table_to_output_pane
 from tabulaflow.app.tui import TabulaflowApp
+from tabulaflow.app.theme import (
+    VIZ_MAP_CATEGORY_PALETTE,
+    VIZ_MAP_DEFAULT_COLOR,
+    VIZ_MAP_PIN_BOTTOM,
+    VIZ_MAP_PIN_HOLE,
+    VIZ_MAP_PIN_INNER,
+    VIZ_MAP_PIN_OUTLINE,
+    VIZ_MAP_PIN_TOP,
+    VIZ_MAP_ROUTE_COLOR,
+)
 from tabulaflow.toolhub.render_map import MAP_RENDER_MAX_ROWS
 
 
@@ -446,9 +456,25 @@ def test_pane_map_view_is_leaflet_based() -> None:
     assert "shadowSize: [41, 41]" in renderer
     assert "shadowAnchor" not in renderer
     assert "data:image/svg+xml;charset=UTF-8," in renderer
-    assert "#ff6f61" in renderer
-    assert "#d93025" in renderer
-    assert "#a52714" in renderer
+    assert f"--map-default: {VIZ_MAP_DEFAULT_COLOR};" in _PANE_HTML
+    assert f"--map-route: {VIZ_MAP_ROUTE_COLOR};" in _PANE_HTML
+    for index, color in enumerate(VIZ_MAP_CATEGORY_PALETTE):
+        assert f"--map-category-{index}: {color};" in _PANE_HTML
+    assert f"--map-pin-top: {VIZ_MAP_PIN_TOP};" in _PANE_HTML
+    assert f"--map-pin-bottom: {VIZ_MAP_PIN_BOTTOM};" in _PANE_HTML
+    assert f"--map-pin-outline: {VIZ_MAP_PIN_OUTLINE};" in _PANE_HTML
+    assert f"--map-pin-hole: {VIZ_MAP_PIN_HOLE};" in _PANE_HTML
+    assert f"--map-pin-inner: {VIZ_MAP_PIN_INNER};" in _PANE_HTML
+    assert "function cssVar(name, fallback)" in renderer
+    assert "var mapDefaultColor = cssVar('--map-default'" in renderer
+    assert "var mapRouteColor = cssVar('--map-route'" in renderer
+    assert "var mapPalette = [" in renderer
+    assert "cssVar('--map-category-0', mapDefaultColor)" in renderer
+    assert "var mapPinTop = cssVar('--map-pin-top'" in renderer
+    assert "var mapPinBottom = cssVar('--map-pin-bottom'" in renderer
+    assert "var mapPinOutline = cssVar('--map-pin-outline'" in renderer
+    assert "var mapPinHole = cssVar('--map-pin-hole'" in renderer
+    assert "var mapPinInner = cssVar('--map-pin-inner'" in renderer
     assert "#ea4335" in renderer
     assert "#4285f4" in renderer
     assert "#1558d6" in renderer
@@ -475,7 +501,10 @@ def test_pane_map_view_is_leaflet_based() -> None:
     assert "max-width: min(420px, 72vw); color: #111827;" in _PANE_HTML
     assert "overflow-wrap: anywhere;" in _PANE_HTML
     assert "min-width: 220px; max-width: min(420px, 72vw);" in _PANE_HTML
-    assert ".tf-map-view .leaflet-tooltip.tf-map-detail-tooltip .tf-map-popup { padding: 9px 14px 9px 12px; }" in _PANE_HTML
+    assert (
+        ".tf-map-view .leaflet-tooltip.tf-map-detail-tooltip .tf-map-popup { padding: 9px 14px 9px 12px; }"
+        in _PANE_HTML
+    )
     assert ".tf-map-view .leaflet-popup.tf-map-detail-popup .leaflet-popup-content {" in _PANE_HTML
     assert "width: auto !important; min-width: 220px; max-width: min(420px, 72vw);" in _PANE_HTML
     assert ".tf-map-view .leaflet-interactive:focus," in _PANE_HTML

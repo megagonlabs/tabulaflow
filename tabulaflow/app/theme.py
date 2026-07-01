@@ -66,6 +66,39 @@ KEY_HINT = f"bold {KEY_HINT_COLOR}"
 # text by weight.
 KEY_HINT_DIM = "bold dim"
 
+# Browser visualization colors. Chart specs can override these through
+# Vega-Lite; map specs only expose semantic encodings and the output pane owns
+# the concrete palette/strokes.
+VIZ_CHART_GRID = "#3a4352"
+VIZ_CHART_CATEGORY_PALETTE = (
+    ACCENT,
+    "#5ac8fa",
+    "#f5a623",
+    "#bd6cf0",
+    "#f06292",
+    "#4dd0e1",
+    "#aed581",
+    "#ff8a65",
+)
+
+VIZ_MAP_DEFAULT_COLOR = "#4285f4"
+VIZ_MAP_ROUTE_COLOR = "#1558d6"
+VIZ_MAP_CATEGORY_PALETTE = (
+    VIZ_MAP_DEFAULT_COLOR,
+    "#ea4335",
+    "#fbbc04",
+    "#34a853",
+    "#a142f4",
+    "#fbbc54",
+    "#46bdc6",
+    "#7cb342",
+)
+VIZ_MAP_PIN_TOP = "#ff6f61"
+VIZ_MAP_PIN_BOTTOM = "#d93025"
+VIZ_MAP_PIN_OUTLINE = "#a52714"
+VIZ_MAP_PIN_HOLE = "#f8fafc"
+VIZ_MAP_PIN_INNER = "#fff4f2"
+
 
 def _make_transparent_dracula() -> TextAreaTheme:
     """Dracula TextArea theme with backgrounds removed so CSS $surface shows through."""

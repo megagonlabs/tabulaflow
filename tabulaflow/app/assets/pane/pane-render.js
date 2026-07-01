@@ -8,6 +8,11 @@
   function clone(value) {
     return JSON.parse(JSON.stringify(value));
   }
+  function cssVar(name, fallback) {
+    var styles = window.getComputedStyle ? window.getComputedStyle(document.documentElement) : null;
+    var value = styles ? styles.getPropertyValue(name).trim() : '';
+    return value || fallback;
+  }
   function fmtSize(n) {
     if (n < 1024) return n + ' B';
     if (n < 1024 * 1024) return (n / 1024).toFixed(1) + ' KB';
@@ -306,14 +311,32 @@
     return { destroy: function () { disposed = true; if (view) view.finalize(); } };
   }
 
+  var mapDefaultColor = cssVar('--map-default', '#4285f4');
+  var mapRouteColor = cssVar('--map-route', '#1558d6');
+  var mapPalette = [
+    cssVar('--map-category-0', mapDefaultColor),
+    cssVar('--map-category-1', '#ea4335'),
+    cssVar('--map-category-2', '#fbbc04'),
+    cssVar('--map-category-3', '#34a853'),
+    cssVar('--map-category-4', '#a142f4'),
+    cssVar('--map-category-5', '#fbbc54'),
+    cssVar('--map-category-6', '#46bdc6'),
+    cssVar('--map-category-7', '#7cb342')
+  ];
+  var mapPinTop = cssVar('--map-pin-top', '#ff6f61');
+  var mapPinBottom = cssVar('--map-pin-bottom', '#d93025');
+  var mapPinOutline = cssVar('--map-pin-outline', '#a52714');
+  var mapPinHole = cssVar('--map-pin-hole', '#f8fafc');
+  var mapPinInner = cssVar('--map-pin-inner', '#fff4f2');
+
   function mapMarkerIcon() {
     var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="25" height="41" viewBox="0 0 25 41">'
       + '<defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1">'
-      + '<stop offset="0" stop-color="#ff6f61"/><stop offset="1" stop-color="#d93025"/></linearGradient></defs>'
-      + '<path fill="#a52714" d="M12.5 0C5.6 0 0 5.6 0 12.5c0 8.9 12.5 28.5 12.5 28.5S25 21.4 25 12.5C25 5.6 19.4 0 12.5 0z"/>'
+      + '<stop offset="0" stop-color="' + mapPinTop + '"/><stop offset="1" stop-color="' + mapPinBottom + '"/></linearGradient></defs>'
+      + '<path fill="' + mapPinOutline + '" d="M12.5 0C5.6 0 0 5.6 0 12.5c0 8.9 12.5 28.5 12.5 28.5S25 21.4 25 12.5C25 5.6 19.4 0 12.5 0z"/>'
       + '<path fill="url(#g)" d="M12.5 1.25C6.3 1.25 1.25 6.3 1.25 12.5c0 7.9 8.9 22.6 11.25 26.2C14.85 35.1 23.75 20.4 23.75 12.5c0-6.2-5.05-11.25-11.25-11.25z"/>'
-      + '<circle cx="12.5" cy="12.6" r="5.7" fill="#f8fafc"/>'
-      + '<circle cx="12.5" cy="12.6" r="4.2" fill="#fff4f2"/>'
+      + '<circle cx="12.5" cy="12.6" r="5.7" fill="' + mapPinHole + '"/>'
+      + '<circle cx="12.5" cy="12.6" r="4.2" fill="' + mapPinInner + '"/>'
       + '</svg>';
     return L.icon({
       iconUrl: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg),
@@ -393,10 +416,6 @@
     return encoding && typeof encoding === 'object' && !Array.isArray(encoding) && typeof encoding.field === 'string'
       ? encoding.field : '';
   }
-
-  var mapDefaultColor = '#4285f4';
-  var mapRouteColor = '#1558d6';
-  var mapPalette = [mapDefaultColor, '#ea4335', '#fbbc04', '#34a853', '#a142f4', '#fbbc54', '#46bdc6', '#7cb342'];
 
   function colorFor(encoding, row, fallback) {
     if (!encoding || typeof encoding !== 'object' || Array.isArray(encoding)) return fallback;
