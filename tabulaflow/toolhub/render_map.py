@@ -4,10 +4,11 @@ from __future__ import annotations
 
 import copy
 import json
-from collections.abc import Mapping, Sequence
-from typing import Any, ClassVar
+from collections.abc import Callable, Mapping, Sequence
+from typing import Annotated, Any, ClassVar, Literal
 
 import pandas as pd
+from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator, model_validator
 from pydantic_ai import Tool
 
 from tabulaflow.toolhub.query_history import QueryHistory
@@ -30,6 +31,113 @@ class MapSpecError(ValueError):
     """Raised when a map spec cannot be applied to a result."""
 
 
+class _StrictModel(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+
+class _ColorEncoding(_StrictModel):
+    field: str
+    domain: list[Any] | None = None
+
+
+class _SizeEncoding(_StrictModel):
+    field: str
+
+
+class _MarkerSpec(_StrictModel):
+    type: Literal["pin", "circle"] = "pin"
+
+
+class _MapView(_StrictModel):
+    fit: Any | None = None
+    center: Any | None = None
+    zoom: Any | None = None
+    maxZoom: Any | None = None
+
+
+class _InlinePoint(BaseModel):
+    model_config = ConfigDict(extra="allow")
+
+    lat: float
+    lng: float
+
+    @field_validator("lat", "lng", mode="before")
+    @classmethod
+    def _reject_bool_coordinates(cls, value: object) -> object:
+        if isinstance(value, bool):
+            raise ValueError("lat/lng must be numbers")
+        return value
+
+    @model_validator(mode="after")
+    def _validate_point(self) -> _InlinePoint:
+        if not (-90 <= self.lat <= 90 and -180 <= self.lng <= 180):
+            raise ValueError("invalid latitude/longitude")
+        for key, value in (self.__pydantic_extra__ or {}).items():
+            if not key:
+                raise ValueError("property names must be non-empty strings")
+            if value is not None and not isinstance(value, str | int | float | bool):
+                raise ValueError(f"{key} must be a string, number, boolean, or null")
+        return self
+
+    def to_payload(self) -> dict[str, object]:
+        """Return the inline point as the browser payload expects it."""
+        point = copy.deepcopy(self.__pydantic_extra__ or {})
+        point["lat"] = self.lat
+        point["lng"] = self.lng
+        return point
+
+
+class _PointsLayer(_StrictModel):
+    type: Literal["points"]
+    points: list[_InlinePoint] | None = None
+    lat: str | None = None
+    latitude: str | None = None
+    lng: str | None = None
+    lon: str | None = None
+    longitude: str | None = None
+    label: str | None = None
+    tooltip: str | list[str] | Literal[True] | None = None
+    marker: _MarkerSpec | None = None
+    color: _ColorEncoding | None = None
+    size: _SizeEncoding | None = None
+
+    @model_validator(mode="after")
+    def _validate_point_mode(self) -> _PointsLayer:
+        has_inline_points = self.points is not None
+        has_column_points = any(
+            value is not None for value in (self.lat, self.latitude, self.lng, self.lon, self.longitude)
+        )
+        if has_inline_points and has_column_points:
+            raise ValueError("points layers must use either points or lat/lng columns, not both")
+        if not has_inline_points and not has_column_points:
+            raise ValueError("points layers must define points or lat/lng columns")
+        return self
+
+
+class _GeoJsonLayer(_StrictModel):
+    type: Literal["geojson"]
+    geojson: str | dict[str, Any]
+    label: str | None = None
+    tooltip: str | list[str] | Literal[True] | None = None
+    color: _ColorEncoding | None = None
+
+
+_Layer = Annotated[_PointsLayer | _GeoJsonLayer, Field(discriminator="type")]
+
+
+class _MapSpec(_StrictModel):
+    title: Any | None = None
+    view: _MapView | None = None
+    layers: list[_Layer]
+
+    @field_validator("layers")
+    @classmethod
+    def _require_layers(cls, value: list[_Layer]) -> list[_Layer]:
+        if not value:
+            raise ValueError("map_spec.layers must be a non-empty list")
+        return value
+
+
 def resolve_column(df: pd.DataFrame, name: str) -> str | None:
     """Case-insensitive column name resolution."""
     for col in df.columns:
@@ -38,8 +146,29 @@ def resolve_column(df: pd.DataFrame, name: str) -> str | None:
     return None
 
 
-def _field(df: pd.DataFrame, value: object, *, path: str) -> str:
-    if not isinstance(value, str) or not value:
+def _validation_message(error: ValidationError) -> str:
+    errors = error.errors()
+    unsupported_top_level: list[str] = []
+    for item in errors:
+        loc = item.get("loc", ())
+        if item.get("type") == "extra_forbidden" and len(loc) == 1:
+            unsupported_top_level.append(str(loc[0]))
+    unsupported_top_level.sort()
+    if unsupported_top_level:
+        return f"unsupported map_spec field(s): {unsupported_top_level}"
+    if errors:
+        first = errors[0]
+        ctx_error = first.get("ctx", {}).get("error")
+        if ctx_error is not None:
+            return str(ctx_error)
+        loc_text = ".".join(str(part) for part in first.get("loc", ()) if part not in {"points", "geojson"})
+        msg = str(first.get("msg", "invalid map_spec"))
+        return f"{loc_text}: {msg}" if loc_text else msg
+    return "invalid map_spec"
+
+
+def _field(df: pd.DataFrame, value: str | None, *, path: str) -> str:
+    if not value:
         raise MapSpecError(f"{path} must be a column name")
     resolved = resolve_column(df, value)
     if resolved is None:
@@ -47,107 +176,49 @@ def _field(df: pd.DataFrame, value: object, *, path: str) -> str:
     return resolved
 
 
-def _optional_field(df: pd.DataFrame, value: object, *, path: str) -> str | None:
-    if value is None:
-        return None
-    return _field(df, value, path=path)
-
-
-def _tooltip(df: pd.DataFrame, value: object, *, path: str) -> str | list[str] | bool | None:
-    if value is None:
-        return None
-    if value is True:
-        return True
-    if isinstance(value, str):
-        return _field(df, value, path=path)
-    if isinstance(value, Sequence) and not isinstance(value, (str, bytes, bytearray)):
-        return [_field(df, item, path=f"{path}[]") for item in value]
-    raise MapSpecError(f"{path} must be a column name, list of column names, or true")
-
-
-def _color_encoding(df: pd.DataFrame, value: object, *, path: str) -> dict[str, Any]:
-    if not isinstance(value, Mapping):
-        raise MapSpecError(f"{path} must be an object with 'field' and optional 'domain'")
-    allowed = {"field", "domain"}
-    unsupported = sorted(set(value) - allowed)
-    if unsupported:
-        raise MapSpecError(f"unsupported {path} field(s): {unsupported}")
-    out = dict(value)
-    out["field"] = _field(df, out.get("field"), path=f"{path}.field")
-    domain = out.get("domain")
-    if domain is not None and (not isinstance(domain, Sequence) or isinstance(domain, (str, bytes, bytearray))):
-        raise MapSpecError(f"{path}.domain must be a list")
-    return out
-
-
-def _size_encoding(df: pd.DataFrame, value: object, *, path: str) -> dict[str, Any]:
-    if not isinstance(value, Mapping):
-        raise MapSpecError(f"{path} must be an object with 'field'")
-    allowed = {"field"}
-    unsupported = sorted(set(value) - allowed)
-    if unsupported:
-        raise MapSpecError(f"unsupported {path} field(s): {unsupported}")
-    out = dict(value)
-    out["field"] = _field(df, out.get("field"), path=f"{path}.field")
-    return out
-
-
-def _safe_inline_value(value: object) -> bool:
-    return value is None or isinstance(value, str | int | float | bool)
-
-
-def _inline_field(points: Sequence[Mapping[str, object]], value: object, *, path: str) -> str:
-    if not isinstance(value, str) or not value:
+def _inline_field(points: Sequence[Mapping[str, object]], value: str | None, *, path: str) -> str:
+    if not value:
         raise MapSpecError(f"{path} must be an inline point property name")
     if not any(value in point for point in points):
         raise MapSpecError(f"inline point property not found: {value!r}")
     return value
 
 
-def _inline_optional_field(points: Sequence[Mapping[str, object]], value: object, *, path: str) -> str | None:
+def _optional_field(resolve_field: Callable[..., str], value: str | None, *, path: str) -> str | None:
     if value is None:
         return None
-    return _inline_field(points, value, path=path)
+    return resolve_field(value, path=path)
 
 
-def _inline_tooltip(
-    points: Sequence[Mapping[str, object]], value: object, *, path: str
+def _tooltip(
+    resolve_field: Callable[..., str], value: str | list[str] | Literal[True] | None, *, path: str
 ) -> str | list[str] | bool | None:
     if value is None:
         return None
     if value is True:
         return True
     if isinstance(value, str):
-        return _inline_field(points, value, path=path)
-    if isinstance(value, Sequence) and not isinstance(value, (str, bytes, bytearray)):
-        return [_inline_field(points, item, path=f"{path}[]") for item in value]
-    raise MapSpecError(f"{path} must be an inline point property name, list of property names, or true")
+        return resolve_field(value, path=path)
+    return [resolve_field(item, path=f"{path}[]") for item in value]
 
 
-def _inline_color_encoding(points: Sequence[Mapping[str, object]], value: object, *, path: str) -> dict[str, Any]:
-    if not isinstance(value, Mapping):
-        raise MapSpecError(f"{path} must be an object with 'field' and optional 'domain'")
-    allowed = {"field", "domain"}
-    unsupported = sorted(set(value) - allowed)
-    if unsupported:
-        raise MapSpecError(f"unsupported {path} field(s): {unsupported}")
-    out = dict(value)
-    out["field"] = _inline_field(points, out.get("field"), path=f"{path}.field")
-    domain = out.get("domain")
-    if domain is not None and (not isinstance(domain, Sequence) or isinstance(domain, (str, bytes, bytearray))):
-        raise MapSpecError(f"{path}.domain must be a list")
+def _color_encoding(
+    resolve_field: Callable[..., str], value: _ColorEncoding | None, *, path: str
+) -> dict[str, Any] | None:
+    if value is None:
+        return None
+    out = value.model_dump(exclude_none=True)
+    out["field"] = resolve_field(value.field, path=f"{path}.field")
     return out
 
 
-def _inline_size_encoding(points: Sequence[Mapping[str, object]], value: object, *, path: str) -> dict[str, Any]:
-    if not isinstance(value, Mapping):
-        raise MapSpecError(f"{path} must be an object with 'field'")
-    allowed = {"field"}
-    unsupported = sorted(set(value) - allowed)
-    if unsupported:
-        raise MapSpecError(f"unsupported {path} field(s): {unsupported}")
-    out = dict(value)
-    out["field"] = _inline_field(points, out.get("field"), path=f"{path}.field")
+def _size_encoding(
+    resolve_field: Callable[..., str], value: _SizeEncoding | None, *, path: str
+) -> dict[str, Any] | None:
+    if value is None:
+        return None
+    out = value.model_dump()
+    out["field"] = resolve_field(value.field, path=f"{path}.field")
     return out
 
 
@@ -158,104 +229,38 @@ def _has_valid_point(df: pd.DataFrame, lat_col: str, lng_col: str) -> bool:
     return bool(valid.any())
 
 
-def _normalize_inline_points(value: object, *, path: str) -> list[dict[str, object]]:
-    if not isinstance(value, Sequence) or isinstance(value, (str, bytes, bytearray)) or not value:
-        raise MapSpecError(f"{path} must be a non-empty list of point objects")
-    points: list[dict[str, object]] = []
-    for index, raw in enumerate(value):
-        if not isinstance(raw, Mapping):
-            raise MapSpecError(f"{path}[{index}] must be an object")
-        lat = raw.get("lat")
-        lng = raw.get("lng")
-        if isinstance(lat, bool) or isinstance(lng, bool):
-            raise MapSpecError(f"{path}[{index}].lat/lng must be numbers")
-        try:
-            lat_num = float(lat)
-            lng_num = float(lng)
-        except (TypeError, ValueError):
-            raise MapSpecError(f"{path}[{index}].lat/lng must be numbers") from None
-        if not (-90 <= lat_num <= 90 and -180 <= lng_num <= 180):
-            raise MapSpecError(f"{path}[{index}] has invalid latitude/longitude")
-        point: dict[str, object] = {}
-        for key, item in raw.items():
-            if not isinstance(key, str) or not key:
-                raise MapSpecError(f"{path}[{index}] property names must be non-empty strings")
-            if not _safe_inline_value(item):
-                raise MapSpecError(f"{path}[{index}].{key} must be a string, number, boolean, or null")
-            point[key] = copy.deepcopy(item)
-        point["lat"] = lat_num
-        point["lng"] = lng_num
-        points.append(point)
-    return points
+def _normalize_points_layer(df: pd.DataFrame, layer: _PointsLayer, index: int) -> dict[str, Any]:
+    if layer.points is not None:
+        inline_points = [point.to_payload() for point in layer.points]
 
+        def resolve_field(value: str | None, *, path: str) -> str:
+            return _inline_field(inline_points, value, path=path)
 
-def _normalize_points_layer(df: pd.DataFrame, layer: Mapping[str, object], index: int) -> dict[str, Any]:
-    allowed = {
-        "type",
-        "points",
-        "lat",
-        "latitude",
-        "lng",
-        "lon",
-        "longitude",
-        "label",
-        "tooltip",
-        "marker",
-        "color",
-        "size",
-    }
-    unsupported = sorted(set(layer) - allowed)
-    if unsupported:
-        raise MapSpecError(f"unsupported layers[{index}] field(s): {unsupported}")
-
-    has_inline_points = "points" in layer
-    has_column_points = any(key in layer for key in ("lat", "latitude", "lng", "lon", "longitude"))
-    if has_inline_points and has_column_points:
-        raise MapSpecError(f"layers[{index}] must use either points or lat/lng columns, not both")
-    if not has_inline_points and not has_column_points:
-        raise MapSpecError(f"layers[{index}] must define points or lat/lng columns")
-
-    inline_points: list[dict[str, object]] | None = None
-    if has_inline_points:
-        inline_points = _normalize_inline_points(layer.get("points"), path=f"layers[{index}].points")
         out: dict[str, Any] = {"type": "points", "points": inline_points}
-        label = _inline_optional_field(inline_points, layer.get("label"), path=f"layers[{index}].label")
-        tooltip = _inline_tooltip(inline_points, layer.get("tooltip"), path=f"layers[{index}].tooltip")
     else:
-        lat = _field(df, layer.get("lat") or layer.get("latitude"), path=f"layers[{index}].lat")
-        lng = _field(df, layer.get("lng") or layer.get("lon") or layer.get("longitude"), path=f"layers[{index}].lng")
+        lat = _field(df, layer.lat or layer.latitude, path=f"layers[{index}].lat")
+        lng = _field(df, layer.lng or layer.lon or layer.longitude, path=f"layers[{index}].lng")
         if not _has_valid_point(df, lat, lng):
             raise MapSpecError(f"layers[{index}] has no valid latitude/longitude rows")
         out = {"type": "points", "lat": lat, "lng": lng}
-        label = _optional_field(df, layer.get("label"), path=f"layers[{index}].label")
-        tooltip = _tooltip(df, layer.get("tooltip"), path=f"layers[{index}].tooltip")
+
+        def resolve_field(value: str | None, *, path: str) -> str:
+            return _field(df, value, path=path)
+
+    label = _optional_field(resolve_field, layer.label, path=f"layers[{index}].label")
+    tooltip = _tooltip(resolve_field, layer.tooltip, path=f"layers[{index}].tooltip")
     if label is not None:
         out["label"] = label
     if tooltip is not None:
         out["tooltip"] = tooltip
-    marker = layer.get("marker")
-    if marker is not None:
-        if not isinstance(marker, Mapping):
-            raise MapSpecError(f"layers[{index}].marker must be an object")
-        unsupported_marker = sorted(set(marker) - {"type"})
-        if unsupported_marker:
-            raise MapSpecError(f"unsupported layers[{index}].marker field(s): {unsupported_marker}")
-        marker_type = marker.get("type", "pin")
-        if marker_type not in {"pin", "circle"}:
-            raise MapSpecError(f"layers[{index}].marker.type must be 'pin' or 'circle'")
-        out["marker"] = dict(marker)
-    if "color" in layer:
-        out["color"] = (
-            _inline_color_encoding(inline_points, layer["color"], path=f"layers[{index}].color")
-            if inline_points is not None
-            else _color_encoding(df, layer["color"], path=f"layers[{index}].color")
-        )
-    if "size" in layer:
-        out["size"] = (
-            _inline_size_encoding(inline_points, layer["size"], path=f"layers[{index}].size")
-            if inline_points is not None
-            else _size_encoding(df, layer["size"], path=f"layers[{index}].size")
-        )
+    if layer.marker is not None:
+        out["marker"] = layer.marker.model_dump()
+    color = _color_encoding(resolve_field, layer.color, path=f"layers[{index}].color")
+    if color is not None:
+        out["color"] = color
+    size = _size_encoding(resolve_field, layer.size, path=f"layers[{index}].size")
+    if size is not None:
+        out["size"] = size
     return out
 
 
@@ -283,13 +288,8 @@ def _has_geojson_value(df: pd.DataFrame, column: str) -> bool:
     return False
 
 
-def _normalize_geojson_layer(df: pd.DataFrame, layer: Mapping[str, object], index: int) -> dict[str, Any]:
-    allowed = {"type", "geojson", "label", "tooltip", "color"}
-    unsupported = sorted(set(layer) - allowed)
-    if unsupported:
-        raise MapSpecError(f"unsupported layers[{index}] field(s): {unsupported}")
-
-    geojson = layer.get("geojson")
+def _normalize_geojson_layer(df: pd.DataFrame, layer: _GeoJsonLayer, index: int) -> dict[str, Any]:
+    geojson = layer.geojson
     if isinstance(geojson, str):
         geojson_value: object = _field(df, geojson, path=f"layers[{index}].geojson")
         if not _has_geojson_value(df, str(geojson_value)):
@@ -300,53 +300,41 @@ def _normalize_geojson_layer(df: pd.DataFrame, layer: Mapping[str, object], inde
         raise MapSpecError(f"layers[{index}].geojson must be a GeoJSON column or object")
 
     out: dict[str, Any] = {"type": "geojson", "geojson": geojson_value}
-    label = _optional_field(df, layer.get("label"), path=f"layers[{index}].label")
+
+    def resolve_field(value: str | None, *, path: str) -> str:
+        return _field(df, value, path=path)
+
+    label = _optional_field(resolve_field, layer.label, path=f"layers[{index}].label")
     if label is not None:
         out["label"] = label
-    tooltip = _tooltip(df, layer.get("tooltip"), path=f"layers[{index}].tooltip")
+    tooltip = _tooltip(resolve_field, layer.tooltip, path=f"layers[{index}].tooltip")
     if tooltip is not None:
         out["tooltip"] = tooltip
-    if "color" in layer:
-        out["color"] = _color_encoding(df, layer["color"], path=f"layers[{index}].color")
+    color = _color_encoding(resolve_field, layer.color, path=f"layers[{index}].color")
+    if color is not None:
+        out["color"] = color
     return out
-
-
-def _normalize_view(value: object) -> dict[str, Any]:
-    if not isinstance(value, Mapping):
-        raise MapSpecError("view must be an object")
-    allowed = {"fit", "center", "zoom", "maxZoom"}
-    unsupported = sorted(set(value) - allowed)
-    if unsupported:
-        raise MapSpecError(f"unsupported view field(s): {unsupported}")
-    return dict(value)
 
 
 def normalize_map_spec(df: pd.DataFrame, spec: Mapping[str, object]) -> dict[str, Any]:
     """Validate and normalize a map spec against a result DataFrame."""
-    allowed_top_level = {"title", "view", "layers"}
-    unsupported_top_level = sorted(set(spec) - allowed_top_level)
-    if unsupported_top_level:
-        raise MapSpecError(f"unsupported map_spec field(s): {unsupported_top_level}")
-
-    raw_layers = spec.get("layers")
-    if not isinstance(raw_layers, Sequence) or isinstance(raw_layers, (str, bytes, bytearray)) or not raw_layers:
-        raise MapSpecError("map_spec.layers must be a non-empty list")
+    try:
+        parsed = _MapSpec.model_validate(spec)
+    except ValidationError as e:
+        raise MapSpecError(_validation_message(e)) from None
 
     out: dict[str, Any] = {}
     if "title" in spec:
-        out["title"] = copy.deepcopy(spec["title"])
-    if "view" in spec:
-        out["view"] = _normalize_view(spec["view"])
+        out["title"] = copy.deepcopy(parsed.title)
+    if parsed.view is not None:
+        out["view"] = parsed.view.model_dump(exclude_none=True)
 
     layers: list[dict[str, Any]] = []
-    for index, raw_layer in enumerate(raw_layers):
-        if not isinstance(raw_layer, Mapping):
-            raise MapSpecError(f"layers[{index}] must be an object")
-        layer_type = raw_layer.get("type")
-        if layer_type == "points":
-            layers.append(_normalize_points_layer(df, raw_layer, index))
-        elif layer_type == "geojson":
-            layers.append(_normalize_geojson_layer(df, raw_layer, index))
+    for index, layer in enumerate(parsed.layers):
+        if isinstance(layer, _PointsLayer):
+            layers.append(_normalize_points_layer(df, layer, index))
+        elif isinstance(layer, _GeoJsonLayer):
+            layers.append(_normalize_geojson_layer(df, layer, index))
         else:
             raise MapSpecError(f"layers[{index}].type must be 'points' or 'geojson'")
     out["layers"] = layers
