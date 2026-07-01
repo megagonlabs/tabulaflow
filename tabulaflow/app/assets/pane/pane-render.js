@@ -651,6 +651,10 @@
   }
 
   function syncHoverPopup(map, lngLat, html, popupState) {
+    if (popupState.click) {
+      clearHoverPopup(map, popupState);
+      return;
+    }
     map.getCanvas().style.cursor = 'pointer';
     if (!popupState.hover || popupState.hoverHtml !== html) {
       if (popupState.hover) popupState.hover.remove();
@@ -659,6 +663,20 @@
       return;
     }
     popupState.hover.setLngLat(lngLat);
+  }
+
+  function setClickPopup(map, lngLat, html, popupState) {
+    if (popupState.hover) popupState.hover.remove();
+    if (popupState.click) popupState.click.remove();
+    popupState.hover = null;
+    popupState.hoverHtml = '';
+    var popup = renderMapPopup(map, lngLat, html, 'tf-map-detail-popup', true);
+    popupState.click = popup;
+    if (popup && popup.on) {
+      popup.on('close', function () {
+        if (popupState.click === popup) popupState.click = null;
+      });
+    }
   }
 
   function bindLayerDetails(map, layerIds, popupState) {
@@ -679,30 +697,26 @@
       var feature = firstPopupFeature(map.queryRenderedFeatures(event.point, { layers: layerIds }));
       var html = mapFeaturePopup(feature);
       if (!html) return;
-      if (popupState.hover) popupState.hover.remove();
-      if (popupState.click) popupState.click.remove();
-      popupState.hover = null;
-      popupState.hoverHtml = '';
-      popupState.click = renderMapPopup(map, event.lngLat, html, 'tf-map-detail-popup', true);
+      setClickPopup(map, event.lngLat, html, popupState);
     });
   }
 
   function bindMarkerDetail(map, node, lngLat, html, popupState) {
     if (!html) return;
     node.addEventListener('mouseenter', function () {
+      if (popupState.click) return;
       if (popupState.hover) popupState.hover.remove();
       popupState.hover = renderMapPopup(map, lngLat, html, 'tf-map-detail-tooltip', false);
+      popupState.hoverHtml = html;
     });
     node.addEventListener('mouseleave', function () {
       if (popupState.hover) popupState.hover.remove();
       popupState.hover = null;
+      popupState.hoverHtml = '';
     });
     node.addEventListener('click', function (event) {
       event.stopPropagation();
-      if (popupState.hover) popupState.hover.remove();
-      if (popupState.click) popupState.click.remove();
-      popupState.hover = null;
-      popupState.click = renderMapPopup(map, lngLat, html, 'tf-map-detail-popup', true);
+      setClickPopup(map, lngLat, html, popupState);
     });
   }
 

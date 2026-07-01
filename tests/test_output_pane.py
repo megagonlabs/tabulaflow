@@ -554,6 +554,9 @@ def test_pane_map_view_is_maplibre_based() -> None:
     assert "map.queryRenderedFeatures(event.point, { layers: layerIds })" in renderer
     assert "var detailLayerIds = [];" in renderer
     assert "popupState.hoverHtml !== html" in renderer
+    assert "if (popupState.click) {\n      clearHoverPopup(map, popupState);" in renderer
+    assert "function setClickPopup(map, lngLat, html, popupState)" in renderer
+    assert "if (popupState.click === popup) popupState.click = null;" in renderer
     assert "tf-map-popup-title" in renderer
     assert "field !== labelField" in renderer
     assert "detailHtml(row, tooltip, labels, label, labelField)" in renderer
@@ -562,6 +565,7 @@ def test_pane_map_view_is_maplibre_based() -> None:
     assert "var latField = Array.isArray(layer.points) ? 'lat' : String(layer.lat || '');" in renderer
     assert "var radius = sizeFor(layer.size, row, pointRows, 6);" in renderer
     assert "function bindMarkerDetail(map, node, lngLat, html, popupState)" in renderer
+    assert "if (popupState.click) return;" in renderer
     assert "closeButton: !!closeButton" in renderer
     assert "className: className" in renderer
     assert "title || popup.replace" not in renderer
