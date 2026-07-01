@@ -55,6 +55,8 @@ def _pane_css_vars() -> str:
         BORDER,
         CARD_BG,
         PAGE_BG,
+        POPOVER_BG,
+        POPOVER_BORDER,
         ROW_HOVER,
         ROW_STRIPE,
         SCROLLBAR_THUMB,
@@ -88,6 +90,8 @@ def _pane_css_vars() -> str:
         f"--text: {TEXT};"
         f"--text-muted: {TEXT_MUTED};"
         f"--text-dim: {TEXT_DIM};"
+        f"--popover-bg: {POPOVER_BG};"
+        f"--popover-border: {POPOVER_BORDER};"
         f"--scrollbar-track: {SCROLLBAR_TRACK};"
         f"--scrollbar-thumb: {SCROLLBAR_THUMB};"
         f"--scrollbar-thumb-hover: {SCROLLBAR_THUMB_HOVER};"
