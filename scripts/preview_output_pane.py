@@ -433,12 +433,40 @@ def _media_table_record() -> SimpleNamespace:
 
 def _serve_fixed_port(host: str, port: int, pane_dir: Path) -> pane_mod.OutputPane:
     pane = pane_mod.OutputPane(pane_dir, host=host, port=port)
-    handler = functools.partial(pane_mod._Handler, directory=str(pane_dir))  # noqa: SLF001
+    handler = functools.partial(_PreviewHandler, directory=str(pane_dir))
     server = pane_mod._PaneServer((host, port), handler, pane)  # noqa: SLF001
     pane._server = server  # noqa: SLF001
     pane._port = port  # noqa: SLF001
     threading.Thread(target=server.serve_forever, daemon=True).start()
     return pane
+
+
+class _PreviewHandler(pane_mod._Handler):  # noqa: SLF001
+    """Serve the local preview at the origin root instead of a token path."""
+
+    def do_GET(self) -> None:  # noqa: N802 (http.server API name)
+        if self.path.startswith("/assets/"):
+            super().do_GET()
+            return
+        clean = self.path.split("?", 1)[0]
+        session_path = clean.lstrip("/")
+        if session_path in ("", "index.html"):
+            self._send_pane_html()
+            return
+        if session_path == "events":
+            self._serve_events()
+            return
+        if session_path.endswith(".data.json") or "/" in session_path:
+            self._serve_pane_file(self.path.lstrip("/"))
+            return
+        self.send_error(404)
+
+
+def _preview_url(host: str, port: int) -> str:
+    display_host = "127.0.0.1" if host in ("0.0.0.0", "::", "localhost") else host
+    if ":" in display_host and not display_host.startswith("["):
+        display_host = f"[{display_host}]"
+    return f"http://{display_host}:{port}/"
 
 
 def _populate_pane(
@@ -617,7 +645,7 @@ def main() -> None:
         all_chart_turns=args.full or args.all_chart_turns,
     )
 
-    print(f"READY {pane.url}", flush=True)
+    print(f"READY {_preview_url(args.host, args.port)}", flush=True)
     print(f"pane: {pane_dir}", flush=True)
     print("Press Ctrl-C to stop.", flush=True)
 
