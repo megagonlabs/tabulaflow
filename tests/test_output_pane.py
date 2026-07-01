@@ -521,22 +521,30 @@ def test_pane_map_view_is_maplibre_based() -> None:
     assert major_labels["filter"] == [
         "all",
         ["match", ["get", "kind"], ["city", "town"], True, False],
-        [">=", ["to-number", ["get", "population"], 0], 300000],
+        [">=", ["to-number", ["get", "population"], 0], 250000],
     ]
-    assert major_labels["layout"]["text-size"] == ["interpolate", ["linear"], ["zoom"], 4, 10, 10, 13, 14, 15]
-    assert major_labels["layout"]["text-padding"] == 18
-    assert regional_labels["minzoom"] == 12
+    assert major_labels["layout"]["text-size"] == ["interpolate", ["linear"], ["zoom"], 4, 11, 10, 14, 14, 17]
+    assert major_labels["layout"]["text-padding"] == 16
+    assert regional_labels["minzoom"] == 9
     assert regional_labels["filter"] == [
         "all",
         ["match", ["get", "kind"], ["city"], True, False],
-        [">=", ["to-number", ["get", "population"], 0], 100000],
-        ["<", ["to-number", ["get", "population"], 0], 300000],
+        [">=", ["to-number", ["get", "population"], 0], 75000],
+        ["<", ["to-number", ["get", "population"], 0], 250000],
     ]
-    assert local_labels["minzoom"] == 14.5
+    assert regional_labels["layout"]["text-size"] == ["interpolate", ["linear"], ["zoom"], 9, 10, 13, 12, 15, 13]
+    assert local_labels["minzoom"] == 12
+    assert local_labels["filter"] == [
+        "all",
+        ["match", ["get", "kind"], ["city", "town"], True, False],
+        [">=", ["to-number", ["get", "population"], 0], 15000],
+        ["<", ["to-number", ["get", "population"], 0], 75000],
+    ]
+    assert local_labels["layout"]["text-size"] == ["interpolate", ["linear"], ["zoom"], 12, 9, 15, 11]
     assert local_labels["paint"]["text-color"] == "#747b84"
-    assert layer_by_id["street-labels"]["minzoom"] == 14.5
-    assert layer_by_id["water-labels"]["minzoom"] == 14.25
-    assert layer_by_id["water-labels"]["filter"] == [">=", ["to-number", ["get", "way_area"], 0], 500000]
+    assert layer_by_id["street-labels"]["minzoom"] == 13.5
+    assert layer_by_id["water-labels"]["minzoom"] == 13
+    assert layer_by_id["water-labels"]["filter"] == [">=", ["to-number", ["get", "way_area"], 0], 200000]
     assert "if (kind === 'map') return TF.renderMap(node, data);" in _PANE_HTML
     assert "function afterVisible(entry)" in _PANE_HTML
     assert "function afterHidden(entry)" in _PANE_HTML

@@ -185,12 +185,12 @@
       "type": "symbol",
       "source": "osm",
       "source-layer": "water_polygons_labels",
-      "minzoom": 14.25,
-      "filter": [">=", ["to-number", ["get", "way_area"], 0], 500000],
+      "minzoom": 13,
+      "filter": [">=", ["to-number", ["get", "way_area"], 0], 200000],
       "layout": {
         "text-field": ["coalesce", ["get", "name_en"], ["get", "name"]],
         "text-font": ["Noto Sans Italic"],
-        "text-size": ["interpolate", ["linear"], ["zoom"], 14, 10, 16, 12],
+        "text-size": ["interpolate", ["linear"], ["zoom"], 13, 9, 16, 12],
         "text-max-width": 8
       },
       "paint": {
@@ -204,7 +204,7 @@
       "type": "symbol",
       "source": "osm",
       "source-layer": "street_labels",
-      "minzoom": 14.5,
+      "minzoom": 13.5,
       "layout": {
         "symbol-placement": "line",
         "text-field": ["coalesce", ["get", "ref"], ["get", "name_en"], ["get", "name"]],
@@ -226,13 +226,13 @@
       "filter": [
         "all",
         ["match", ["get", "kind"], ["city", "town"], true, false],
-        [">=", ["to-number", ["get", "population"], 0], 300000]
+        [">=", ["to-number", ["get", "population"], 0], 250000]
       ],
       "layout": {
         "text-field": ["coalesce", ["get", "name_en"], ["get", "name"]],
         "text-font": ["Noto Sans Regular"],
-        "text-size": ["interpolate", ["linear"], ["zoom"], 4, 10, 10, 13, 14, 15],
-        "text-padding": 18,
+        "text-size": ["interpolate", ["linear"], ["zoom"], 4, 11, 10, 14, 14, 17],
+        "text-padding": 16,
         "text-max-width": 9
       },
       "paint": {
@@ -246,18 +246,18 @@
       "type": "symbol",
       "source": "osm",
       "source-layer": "place_labels",
-      "minzoom": 12,
+      "minzoom": 9,
       "filter": [
         "all",
         ["match", ["get", "kind"], ["city"], true, false],
-        [">=", ["to-number", ["get", "population"], 0], 100000],
-        ["<", ["to-number", ["get", "population"], 0], 300000]
+        [">=", ["to-number", ["get", "population"], 0], 75000],
+        ["<", ["to-number", ["get", "population"], 0], 250000]
       ],
       "layout": {
         "text-field": ["coalesce", ["get", "name_en"], ["get", "name"]],
         "text-font": ["Noto Sans Regular"],
-        "text-size": ["interpolate", ["linear"], ["zoom"], 12, 11, 15, 13],
-        "text-padding": 14,
+        "text-size": ["interpolate", ["linear"], ["zoom"], 9, 10, 13, 12, 15, 13],
+        "text-padding": 12,
         "text-max-width": 9
       },
       "paint": {
@@ -271,18 +271,18 @@
       "type": "symbol",
       "source": "osm",
       "source-layer": "place_labels",
-      "minzoom": 14.5,
+      "minzoom": 12,
       "filter": [
         "all",
         ["match", ["get", "kind"], ["city", "town"], true, false],
-        [">=", ["to-number", ["get", "population"], 0], 30000],
-        ["<", ["to-number", ["get", "population"], 0], 100000]
+        [">=", ["to-number", ["get", "population"], 0], 15000],
+        ["<", ["to-number", ["get", "population"], 0], 75000]
       ],
       "layout": {
         "text-field": ["coalesce", ["get", "name_en"], ["get", "name"]],
         "text-font": ["Noto Sans Regular"],
-        "text-size": ["interpolate", ["linear"], ["zoom"], 14, 10, 16, 12],
-        "text-padding": 14,
+        "text-size": ["interpolate", ["linear"], ["zoom"], 12, 9, 15, 11],
+        "text-padding": 12,
         "text-max-width": 9
       },
       "paint": {
