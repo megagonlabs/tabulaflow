@@ -302,6 +302,7 @@ video { width: 240px; height: 160px; object-fit: contain; background: #000;
 .tabulator .tabulator-row .tabulator-frozen {
     box-shadow: none !important; }
 .tabulator .tabulator-header .tabulator-col.tabulator-row-header {
+    background-color: var(--card) !important;
     border-right: 1px solid #3a4352 !important;
 }
 

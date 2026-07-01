@@ -213,6 +213,7 @@ body { margin: 0; background: var(--bg); color: var(--text); display: flex; flex
 .tf-table-view .tabulator .tabulator-frozen,
 .tf-table-view .tabulator .tabulator-row .tabulator-frozen { box-shadow: none !important; }
 .tf-table-view .tabulator .tabulator-header .tabulator-col.tabulator-row-header {
+    background-color: var(--card) !important;
     border-right: 1px solid #3a4352 !important;
 }
 .tf-modal { position: fixed; inset: 0; background: rgba(0,0,0,0.65); display: none;
