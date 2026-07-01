@@ -1,6 +1,7 @@
 """Generate the bundled sample SQLite database shipped with tabulaflow.
 
-One database, three tables — one per banner example domain:
+One database, four tables — three synthetic banner-example domains plus one raw
+map dataset:
 
 * ``bank_transactions`` — personal spending (Analysis: "Analyze and visualize my
   monthly spending"). Raw, messy merchant strings (no category column — that's
@@ -13,6 +14,9 @@ One database, three tables — one per banner example domain:
   sample's error pattern as retrieval, reasoning, or output formatting"). Each
   row is one QA sample with a pass/fail flag; the failures are crafted to look
   like retrieval / reasoning / formatting errors so the labeling has real signal.
+* ``nyc_taxi_zones`` — raw NYC Open Data taxi zone polygons. Preserves the source
+  columns from the ``8meu-9t5y`` export: ``the_geom``, ``shape_leng``,
+  ``shape_area``, ``zone``, ``locationid``, and ``borough``.
 
 Output is deterministic (seeded), so regenerating produces a byte-identical file.
 The generated ``sample.sqlite`` is committed and shipped via package-data; this
@@ -23,12 +27,15 @@ script is the source of truth — run it to regenerate / audit.
 
 from __future__ import annotations
 
+import json
 import random
 import sqlite3
 import string
 from pathlib import Path
 
-_OUT = Path(__file__).resolve().parent.parent / "tabulaflow" / "app" / "assets" / "samples" / "sample.sqlite"
+_SAMPLE_DIR = Path(__file__).resolve().parent.parent / "tabulaflow" / "app" / "assets" / "samples"
+_OUT = _SAMPLE_DIR / "sample.sqlite"
+_NYC_TAXI_ZONES_JSON = _SAMPLE_DIR / "nyc_taxi_zones.json"
 _SEED = 7
 _YEAR = 2025  # fixed range keeps the file deterministic
 
@@ -315,6 +322,27 @@ def _gen_eval(rng: random.Random) -> list[tuple]:
 
 
 # ---------------------------------------------------------------------------
+# NYC taxi zones
+# ---------------------------------------------------------------------------
+
+
+def _gen_nyc_taxi_zones() -> list[tuple]:
+    rows = json.loads(_NYC_TAXI_ZONES_JSON.read_text(encoding="utf-8"))
+    rows.sort(key=lambda r: int(r["locationid"]))
+    return [
+        (
+            json.dumps(row["the_geom"], ensure_ascii=False, separators=(",", ":")),
+            float(row["shape_leng"]),
+            float(row["shape_area"]),
+            row["zone"],
+            int(row["locationid"]),
+            row["borough"],
+        )
+        for row in rows
+    ]
+
+
+# ---------------------------------------------------------------------------
 # build
 # ---------------------------------------------------------------------------
 
@@ -343,8 +371,14 @@ def main() -> None:
     )
     cur.executemany("INSERT INTO model_eval_results VALUES (?, ?, ?, ?, ?, ?)", _gen_eval(rng))
 
+    cur.execute(
+        "CREATE TABLE nyc_taxi_zones (the_geom TEXT, shape_leng REAL, shape_area REAL, zone TEXT, "
+        "locationid INTEGER, borough TEXT)"
+    )
+    cur.executemany("INSERT INTO nyc_taxi_zones VALUES (?, ?, ?, ?, ?, ?)", _gen_nyc_taxi_zones())
+
     conn.commit()
-    tables = ("bank_transactions", "product_reviews", "model_eval_results")
+    tables = ("bank_transactions", "product_reviews", "model_eval_results", "nyc_taxi_zones")
     counts = {t: cur.execute(f"SELECT COUNT(*) FROM {t}").fetchone()[0] for t in tables}
     conn.close()
     print(f"wrote {_OUT.relative_to(Path.cwd())}  ({_OUT.stat().st_size // 1024} KB)")

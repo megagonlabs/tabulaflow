@@ -1,10 +1,10 @@
 """Bundled sample database.
 
-A single SQLite file (``app/assets/samples/sample.sqlite``) with three example
-tables — ``bank_transactions``, ``product_reviews``, and ``model_eval_results``
-— backing the welcome-banner examples. It auto-connects when the app launches
-with no user data, so a first-time user can run the examples without supplying
-anything.
+A single SQLite file (``app/assets/samples/sample.sqlite``) with bundled example
+tables — ``bank_transactions``, ``product_reviews``, ``model_eval_results``, and
+``nyc_taxi_zones`` — backing the welcome-banner examples and map demos. It
+auto-connects when the app launches with no user data, so a first-time user can
+run the examples without supplying anything.
 
 Regenerate the file with ``scripts/gen_sample_db.py``.
 """
@@ -23,7 +23,7 @@ if TYPE_CHECKING:
     from tabulaflow.app.session import SessionState
 
 SAMPLE_ALIAS = "sample_data"
-SAMPLE_TABLES = ("bank_transactions", "product_reviews", "model_eval_results")
+SAMPLE_TABLES = ("bank_transactions", "product_reviews", "model_eval_results", "nyc_taxi_zones")
 _RESOURCE = "tabulaflow.app.assets.samples"
 _FILENAME = "sample.sqlite"
 # Shared per-user location (not per-session): copy once, reuse across sessions.
@@ -80,7 +80,7 @@ async def autoconnect_sample(session: SessionState) -> bool:
     session.register_source(("sample", _FILENAME), SAMPLE_ALIAS)
     session.chat_agent.note_event(
         f"sample data is connected as `{SAMPLE_ALIAS}` so the welcome examples are runnable "
-        f"(tables: {', '.join(SAMPLE_TABLES)}). It is placeholder demo data and will be removed "
-        "automatically as soon as the user connects a data source of their own."
+        f"(tables: {', '.join(SAMPLE_TABLES)}). It includes bundled demo data and public sample data, "
+        "and will be removed automatically as soon as the user connects a data source of their own."
     )
     return True

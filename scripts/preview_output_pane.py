@@ -14,6 +14,7 @@ import argparse
 import functools
 import math
 import signal
+import sqlite3
 import struct
 import tempfile
 import threading
@@ -235,26 +236,45 @@ def _large_agent_table_record() -> SimpleNamespace:
 
 
 def _map_record() -> SimpleNamespace:
-    df = pd.DataFrame(
-        {
-            "city": ["San Francisco", "Oakland", "Berkeley", "San Jose", "Palo Alto"],
-            "latitude": [37.7749, 37.8044, 37.8715, 37.3382, 37.4419],
-            "longitude": [-122.4194, -122.2712, -122.2730, -121.8863, -122.1430],
-            "category": ["hub", "hub", "campus", "office", "office"],
-        }
-    )
+    sample_db = resource_files("tabulaflow.app.assets.samples").joinpath("sample.sqlite")
+    with sqlite3.connect(sample_db) as conn:
+        df = pd.read_sql_query(
+            """
+            SELECT the_geom, shape_leng, shape_area, zone, locationid, borough
+            FROM nyc_taxi_zones
+            WHERE borough IN ('Manhattan', 'Queens')
+            ORDER BY locationid
+            LIMIT 24
+            """,
+            conn,
+        )
     return _record(
         record_id="QDEBUG_MAP",
-        label="bay_area_locations",
-        query="-- synthetic latitude/longitude result for map preview",
+        label="nyc_taxi_zones",
+        query=(
+            "SELECT the_geom, shape_leng, shape_area, zone, locationid, borough\n"
+            "FROM nyc_taxi_zones\n"
+            "WHERE borough IN ('Manhattan', 'Queens')\n"
+            "ORDER BY locationid\n"
+            "LIMIT 24"
+        ),
         df=df,
         map_spec={
-            "lat": "latitude",
-            "lng": "longitude",
-            "label": "city",
-            "tooltip": "category",
-            "zoom": 11,
-            "marker": {"color": "#3eb489", "radius": 7},
+            "title": "NYC taxi zones",
+            "layers": [
+                {
+                    "type": "geojson",
+                    "geojson": "the_geom",
+                    "label": "zone",
+                    "tooltip": ["zone", "borough", "locationid", "shape_area"],
+                    "color": {
+                        "field": "borough",
+                        "domain": ["Manhattan", "Queens"],
+                        "range": ["#3eb489", "#60a5fa"],
+                    },
+                    "style": {"fillOpacity": 0.28, "weight": 1.4},
+                }
+            ],
         },
     )
 
