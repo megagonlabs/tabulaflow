@@ -514,6 +514,16 @@ def test_pane_map_view_is_maplibre_based() -> None:
     assert style["glyphs"] == "https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf"
     assert any(layer.get("source-layer") == "streets" for layer in style["layers"])
     assert any(layer.get("source-layer") == "place_labels" for layer in style["layers"])
+    layer_by_id = {str(layer.get("id")): layer for layer in style["layers"]}
+    place_labels = layer_by_id["place-labels"]
+    assert place_labels["filter"] == ["match", ["get", "kind"], ["city", "town"], True, False]
+    assert place_labels["layout"]["text-font"] == ["Noto Sans Regular"]
+    assert place_labels["layout"]["text-size"] == ["interpolate", ["linear"], ["zoom"], 4, 10, 10, 12, 14, 14]
+    assert place_labels["layout"]["text-padding"] == 8
+    assert place_labels["paint"]["text-color"] == "#58606a"
+    assert place_labels["paint"]["text-halo-width"] == 1.2
+    assert layer_by_id["street-labels"]["minzoom"] == 14
+    assert layer_by_id["water-labels"]["minzoom"] == 9
     assert "if (kind === 'map') return TF.renderMap(node, data);" in _PANE_HTML
     assert "function afterVisible(entry)" in _PANE_HTML
     assert "function afterHidden(entry)" in _PANE_HTML
