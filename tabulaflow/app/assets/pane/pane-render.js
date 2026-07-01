@@ -972,7 +972,7 @@
         attributionControl: false
       });
       map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-left');
-      map.addControl(new maplibregl.AttributionControl({ compact: true }), 'bottom-right');
+      map.addControl(new maplibregl.AttributionControl({ compact: false }), 'bottom-right');
       map.once('load', function () {
         if (!map) return;
         mapLoaded = true;

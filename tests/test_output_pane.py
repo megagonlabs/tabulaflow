@@ -522,6 +522,7 @@ def test_pane_map_view_is_maplibre_based() -> None:
     assert "renderMap: renderMap" in renderer
     assert "new maplibregl.Map({" in renderer
     assert "style: mapStyleUrl" in renderer
+    assert "new maplibregl.AttributionControl({ compact: false })" in renderer
     assert "map.addSource(sourceId, { type: 'geojson'" in renderer
     assert "function addCircleLayer(map, id, sourceId)" in renderer
     assert "function addGeoJsonLayers(map, id, sourceId)" in renderer
