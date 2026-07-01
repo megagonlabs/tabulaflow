@@ -347,7 +347,8 @@ June 29
 - [x] Output pane refactor
 - [x] Improve output pane UI
 
-
+June 30
+- [x] Map rendering
 
 
 
