@@ -183,7 +183,11 @@ def test_output_pane_rejects_missing_or_wrong_token(tmp_path: Path) -> None:
                 rejected = False
             except urllib.error.HTTPError as exc:
                 rejected = exc.code == 404
+                body = exc.read().decode("utf-8")
             assert rejected
+            assert "Output pane URL is incomplete." in body
+            assert "Open the full URL shown in the tabulaflow terminal." in body
+            assert pane.token not in body
     finally:
         pane.stop()
 

@@ -132,6 +132,21 @@ def _load_pane_html() -> str:
 
 _PANE_HTML = _load_pane_html()
 
+_INVALID_PANE_URL_HTML = (
+    '<!doctype html><html lang="en"><head><meta charset="utf-8">'
+    "<title>Output pane URL incomplete</title>"
+    "<style>"
+    "html{color-scheme:dark;background:#0f1117;color:#e4e4e7;font-family:system-ui,sans-serif}"
+    "body{margin:0;min-height:100vh;display:grid;place-items:center}"
+    "main{max-width:36rem;padding:2rem;line-height:1.5}"
+    "h1{font-size:1rem;margin:0 0 .5rem}"
+    "p{margin:0;color:#a1a1aa}"
+    "</style></head><body><main>"
+    "<h1>Output pane URL is incomplete.</h1>"
+    "<p>Open the full URL shown in the tabulaflow terminal.</p>"
+    "</main></body></html>"
+)
+
 
 class _PaneServer(http.server.ThreadingHTTPServer):
     """``ThreadingHTTPServer`` carrying a back-reference to its ``OutputPane``."""
@@ -157,7 +172,7 @@ class _Handler(http.server.SimpleHTTPRequestHandler):
         pane = self.server.pane
         session_path = pane._session_path(self.path)
         if session_path is None:
-            self.send_error(404)
+            self._send_invalid_pane_url_html()
             return
         if session_path in ("", "index.html"):
             self._send_pane_html()
@@ -173,6 +188,17 @@ class _Handler(http.server.SimpleHTTPRequestHandler):
     def _send_pane_html(self) -> None:
         body = _PANE_HTML.encode("utf-8")
         self.send_response(200)
+        self.send_header("Content-Type", "text/html; charset=utf-8")
+        self.send_header("Content-Length", str(len(body)))
+        self.send_header("Cache-Control", "no-store")
+        self.send_header("Referrer-Policy", "no-referrer")
+        self.send_header("X-Content-Type-Options", "nosniff")
+        self.end_headers()
+        self.wfile.write(body)
+
+    def _send_invalid_pane_url_html(self) -> None:
+        body = _INVALID_PANE_URL_HTML.encode("utf-8")
+        self.send_response(404)
         self.send_header("Content-Type", "text/html; charset=utf-8")
         self.send_header("Content-Length", str(len(body)))
         self.send_header("Cache-Control", "no-store")
