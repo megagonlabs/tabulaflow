@@ -345,12 +345,13 @@ def test_pane_map_view_is_leaflet_based() -> None:
     assert "field !== labelField" in renderer
     assert "detailHtml(row, tooltip, labels, label, labelField)" in renderer
     assert "detailHtml(props, layer.tooltip || layer.label, labels, label, layer.label)" in renderer
-    assert "function bindMapDetail(layer, html)" in renderer
-    assert "layer.bindTooltip(html" in renderer
+    assert "function bindMapDetail(layer, html, opts)" in renderer
+    assert "tooltipOpts.offset = opts.tooltipOffset;" in renderer
+    assert "layer.bindTooltip(html, tooltipOpts)" in renderer
     assert "layer.bindPopup(html, { minWidth: 220, maxWidth: 420, className: 'tf-map-detail-popup' })" in renderer
     assert "layer._tfPopupOpen = true;" in renderer
     assert "if (layer._tfPopupOpen) layer.closeTooltip();" in renderer
-    assert "bindMapDetail(marker, popup)" in renderer
+    assert "bindMapDetail(marker, popup, markerType === 'pin' ? { tooltipOffset: [0, -28] } : null)" in renderer
     assert "bindMapDetail(leafletLayer, popup)" in renderer
     assert "title || popup.replace" not in renderer
     assert "label == null ? popup.replace" not in renderer

@@ -369,9 +369,11 @@
     return html + '</div>';
   }
 
-  function bindMapDetail(layer, html) {
+  function bindMapDetail(layer, html, opts) {
     if (!html) return;
-    layer.bindTooltip(html, { direction: 'top', opacity: 0.94, className: 'tf-map-detail-tooltip' });
+    var tooltipOpts = { direction: 'top', opacity: 0.94, className: 'tf-map-detail-tooltip' };
+    if (opts && Array.isArray(opts.tooltipOffset)) tooltipOpts.offset = opts.tooltipOffset;
+    layer.bindTooltip(html, tooltipOpts);
     layer.bindPopup(html, { minWidth: 220, maxWidth: 420, className: 'tf-map-detail-popup' });
     layer.on('popupopen', function () {
       layer._tfPopupOpen = true;
@@ -519,7 +521,7 @@
           } else {
             marker = L.marker([lat, lng], { icon: markerIcon, title: title }).addTo(map);
           }
-          bindMapDetail(marker, popup);
+          bindMapDetail(marker, popup, markerType === 'pin' ? { tooltipOffset: [0, -28] } : null);
           bounds.push([lat, lng]);
         });
         return;
