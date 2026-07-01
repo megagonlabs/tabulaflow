@@ -372,7 +372,7 @@
   function bindMapDetail(layer, html) {
     if (!html) return;
     layer.bindTooltip(html, { direction: 'top', opacity: 0.94, className: 'tf-map-detail-tooltip' });
-    layer.bindPopup(html);
+    layer.bindPopup(html, { minWidth: 220, maxWidth: 420, className: 'tf-map-detail-popup' });
     layer.on('popupopen', function () {
       layer._tfPopupOpen = true;
       layer.closeTooltip();

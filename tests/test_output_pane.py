@@ -347,6 +347,7 @@ def test_pane_map_view_is_leaflet_based() -> None:
     assert "detailHtml(props, layer.tooltip || layer.label, labels, label, layer.label)" in renderer
     assert "function bindMapDetail(layer, html)" in renderer
     assert "layer.bindTooltip(html" in renderer
+    assert "layer.bindPopup(html, { minWidth: 220, maxWidth: 420, className: 'tf-map-detail-popup' })" in renderer
     assert "layer._tfPopupOpen = true;" in renderer
     assert "if (layer._tfPopupOpen) layer.closeTooltip();" in renderer
     assert "bindMapDetail(marker, popup)" in renderer
@@ -379,7 +380,12 @@ def test_pane_map_view_is_leaflet_based() -> None:
     assert ".tf-map-stage { position: relative; height: min(560px, 68vh); min-height: 420px;" in _PANE_HTML
     assert ".tf-map-view .leaflet-tooltip.tf-map-detail-tooltip {" in _PANE_HTML
     assert "padding: 0; background: #fff; border: 0; border-radius: 12px;" in _PANE_HTML
+    assert "max-width: min(420px, 72vw); color: #111827;" in _PANE_HTML
+    assert "overflow-wrap: anywhere;" in _PANE_HTML
+    assert "min-width: 220px; max-width: min(420px, 72vw);" in _PANE_HTML
     assert ".tf-map-view .leaflet-tooltip.tf-map-detail-tooltip .tf-map-popup { padding: 9px 14px 9px 12px; }" in _PANE_HTML
+    assert ".tf-map-view .leaflet-popup.tf-map-detail-popup .leaflet-popup-content {" in _PANE_HTML
+    assert "width: auto !important; min-width: 220px; max-width: min(420px, 72vw);" in _PANE_HTML
     assert ".tf-map-view .leaflet-interactive:focus," in _PANE_HTML
     assert ".tf-map-view .leaflet-marker-icon:focus { outline: none; }" in _PANE_HTML
     assert ".tf-map-pin" not in _PANE_HTML
