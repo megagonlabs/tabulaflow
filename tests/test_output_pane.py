@@ -633,12 +633,12 @@ def test_pane_map_view_is_maplibre_based() -> None:
     assert "pointer-events: none; transform: translateY(1px);" in _PANE_HTML
     assert ".tf-map-view .maplibregl-popup.tf-map-detail-tooltip .maplibregl-popup-content," in _PANE_HTML
     assert "padding: 9px 14px 9px 12px; background: #fff; border: 0; border-radius: 12px;" in _PANE_HTML
-    assert ".tf-map-view .maplibregl-popup.tf-map-detail-tooltip .maplibregl-popup-tip { pointer-events: none; }" in _PANE_HTML
+    assert ".tf-map-view .maplibregl-popup.tf-map-detail-popup .maplibregl-popup-tip { display: none; }" in _PANE_HTML
     assert "max-width: min(420px, 72vw); color: #111827;" in _PANE_HTML
     assert "overflow-wrap: anywhere;" in _PANE_HTML
     assert "min-width: 220px; max-width: min(420px, 72vw);" in _PANE_HTML
     assert ".tf-map-view .maplibregl-canvas:focus { outline: none; }" in _PANE_HTML
-    assert ".tf-map-view .maplibregl-popup-anchor-bottom-right .maplibregl-popup-tip { margin-top: -1px; }" in _PANE_HTML
+    assert ".tf-map-view .maplibregl-popup-anchor-bottom-right .maplibregl-popup-tip" not in _PANE_HTML
     assert ".tf-map-view .maplibregl-ctrl-attrib," in _PANE_HTML
     assert ".leaflet-" not in _PANE_HTML
 
