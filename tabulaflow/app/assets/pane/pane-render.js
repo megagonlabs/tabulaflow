@@ -74,6 +74,27 @@
     return Number.isFinite(n) ? n : null;
   }
 
+  function formatNumber(value) {
+    var n = Number(value);
+    if (!Number.isFinite(n)) return String(value);
+    if (Object.is(n, -0)) return '0';
+    if (Number.isInteger(n)) return String(n);
+    var abs = Math.abs(n);
+    var text = abs !== 0 && (abs < 0.0001 || abs >= 1000000000)
+      ? n.toExponential(6)
+      : n.toPrecision(7);
+    return text
+      .replace(/(\.\d*?[1-9])0+(e[+-]?\d+)?$/, '$1$2')
+      .replace(/\.0+(e[+-]?\d+)?$/, '$1')
+      .replace(/e\+/, 'e');
+  }
+
+  function displayValue(value) {
+    if (typeof value === 'number') return formatNumber(value);
+    if (typeof value === 'boolean') return value ? 'true' : 'false';
+    return value == null ? '' : String(value);
+  }
+
   function numberOr(value, fallback) {
     var n = numberValue(value);
     return n == null ? fallback : n;
@@ -140,6 +161,7 @@
       text: function (cell) {
         var v = cell.getValue();
         if (v == null) return '';
+        if (typeof v === 'number') return escapeHtml(formatNumber(v));
         var s = String(v);
         var urls = asUrls(s);
         if (urls) {
@@ -160,6 +182,10 @@
         return '<span class="multiline">' + escapeHtml(head) + '</span>';
       },
       media: function (cell) { return renderMedia(cell.getValue()); },
+      num: function (cell) {
+        var v = cell.getValue();
+        return v == null ? '' : escapeHtml(formatNumber(v));
+      },
       bool: function (cell) {
         var v = cell.getValue();
         if (v == null) return '';
@@ -326,7 +352,7 @@
 
   function detailHtml(row, tooltip, labels, fallback, labelField) {
     var fields = tooltipFields(tooltip, row);
-    var label = fallback == null ? '' : String(fallback);
+    var label = fallback == null ? '' : displayValue(fallback);
     if (labelField) {
       fields = fields.filter(function (field) { return field !== labelField; });
     }
@@ -334,7 +360,7 @@
     fields.forEach(function (field) {
       var value = fieldValue(row, field);
       if (value == null || !safeScalar(value)) return;
-      rows += '<tr><th>' + escapeHtml(labels[field] || field) + '</th><td>' + escapeHtml(value) + '</td></tr>';
+      rows += '<tr><th>' + escapeHtml(labels[field] || field) + '</th><td>' + escapeHtml(displayValue(value)) + '</td></tr>';
     });
     if (!label && !rows) return '';
     var html = '<div class="tf-map-popup">';
@@ -480,7 +506,7 @@
           var label = fieldValue(row, labelField);
           var tooltip = layer.tooltip || labelField;
           var popup = detailHtml(row, tooltip, labels, label, labelField);
-          var title = label == null ? '' : String(label);
+          var title = label == null ? '' : displayValue(label);
           var marker;
           if (markerType === 'circle') {
             marker = L.circleMarker([lat, lng], {

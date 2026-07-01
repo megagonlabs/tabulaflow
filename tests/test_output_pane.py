@@ -159,6 +159,8 @@ def test_record_card_includes_data_view_meta(tmp_path: Path) -> None:
     assert card["views"] == ["data"]
     payload = json.loads((tmp_path / f"{card['id']}.data.json").read_text())
     assert payload["table"]["meta"] == "2 rows · 2 columns"
+    assert payload["table"]["columns"][1]["formatter"] == "num"
+    assert payload["dataset"]["rows"][0]["c1"] == 10
 
 
 def test_record_card_writes_map_view_payload(tmp_path: Path) -> None:
@@ -326,6 +328,11 @@ def test_pane_map_view_is_leaflet_based() -> None:
     assert "L.map(mapNode" in renderer
     assert "L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png'" in renderer
     assert "function mapLayers(mapData)" in renderer
+    assert "function formatNumber(value)" in renderer
+    assert "function displayValue(value)" in renderer
+    assert "num: function (cell)" in renderer
+    assert "escapeHtml(formatNumber(v))" in renderer
+    assert "escapeHtml(displayValue(value))" in renderer
     assert "if (mapData.lat && mapData.lng)" not in renderer
     assert "mapData.center" not in renderer
     assert "mapData.zoom" not in renderer

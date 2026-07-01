@@ -350,6 +350,20 @@ _INIT_JS_TEMPLATE = """
         if (n < 1024 * 1024) return (n / 1024).toFixed(1) + " KB";
         return (n / (1024 * 1024)).toFixed(1) + " MB";
     }
+    function formatNumber(value){
+        var n = Number(value);
+        if (!Number.isFinite(n)) return String(value);
+        if (Object.is(n, -0)) return "0";
+        if (Number.isInteger(n)) return String(n);
+        var abs = Math.abs(n);
+        var text = abs !== 0 && (abs < 0.0001 || abs >= 1000000000)
+            ? n.toExponential(6)
+            : n.toPrecision(7);
+        return text
+            .replace(/(\\.\\d*?[1-9])0+(e[+-]?\\d+)?$/, "$1$2")
+            .replace(/\\.0+(e[+-]?\\d+)?$/, "$1")
+            .replace(/e\\+/, "e");
+    }
     function fileLink(src, label, size, newTab){
         var target = newTab ? ' target="_blank" rel="noopener"' : "";
         return '<a class="file-link" href="' + escapeAttr(src) + '"' + target + '>'
@@ -405,6 +419,7 @@ _INIT_JS_TEMPLATE = """
         text: function(cell){
             var v = cell.getValue();
             if (v == null) return "";
+            if (typeof v === "number") return escapeHtml(formatNumber(v));
             var s = String(v);
             var urls = asUrls(s);
             if (urls){
@@ -435,6 +450,10 @@ _INIT_JS_TEMPLATE = """
         },
         media: function(cell){
             return renderMedia(cell.getValue());
+        },
+        num: function(cell){
+            var v = cell.getValue();
+            return v == null ? "" : escapeHtml(formatNumber(v));
         },
         bool: function(cell){
             var v = cell.getValue();
@@ -735,6 +754,7 @@ def _build_table_data(
                 {
                     "title": title_str,
                     "field": field,
+                    "formatter": "num",
                     "hozAlign": "right",
                     "sorter": "number",
                     "sorterParams": {"alignEmptyValues": "bottom"},
