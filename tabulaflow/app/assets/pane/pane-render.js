@@ -624,6 +624,14 @@
     return feature && feature.properties ? String(feature.properties.__tfPopup || '') : '';
   }
 
+  function firstPopupFeature(features) {
+    if (!Array.isArray(features)) return null;
+    for (var i = 0; i < features.length; i++) {
+      if (mapFeaturePopup(features[i])) return features[i];
+    }
+    return null;
+  }
+
   function renderMapPopup(map, lngLat, html, className, closeButton) {
     if (!html || !window.maplibregl) return null;
     return new maplibregl.Popup({
@@ -635,30 +643,46 @@
     }).setLngLat(lngLat).setHTML(html).addTo(map);
   }
 
-  function bindLayerDetail(map, layerId, popupState) {
-    map.on('mouseenter', layerId, function (event) {
-      var feature = event.features && event.features[0];
+  function clearHoverPopup(map, popupState) {
+    map.getCanvas().style.cursor = '';
+    if (popupState.hover) popupState.hover.remove();
+    popupState.hover = null;
+    popupState.hoverHtml = '';
+  }
+
+  function syncHoverPopup(map, lngLat, html, popupState) {
+    map.getCanvas().style.cursor = 'pointer';
+    if (!popupState.hover || popupState.hoverHtml !== html) {
+      if (popupState.hover) popupState.hover.remove();
+      popupState.hover = renderMapPopup(map, lngLat, html, 'tf-map-detail-tooltip', false);
+      popupState.hoverHtml = html;
+      return;
+    }
+    popupState.hover.setLngLat(lngLat);
+  }
+
+  function bindLayerDetails(map, layerIds, popupState) {
+    if (!layerIds.length) return;
+    map.on('mousemove', function (event) {
+      var feature = firstPopupFeature(map.queryRenderedFeatures(event.point, { layers: layerIds }));
       var html = mapFeaturePopup(feature);
-      map.getCanvas().style.cursor = html ? 'pointer' : '';
-      if (!html) return;
-      if (popupState.hover) popupState.hover.remove();
-      popupState.hover = renderMapPopup(map, event.lngLat, html, 'tf-map-detail-tooltip', false);
+      if (!html) {
+        clearHoverPopup(map, popupState);
+        return;
+      }
+      syncHoverPopup(map, event.lngLat, html, popupState);
     });
-    map.on('mousemove', layerId, function (event) {
-      if (popupState.hover) popupState.hover.setLngLat(event.lngLat);
+    map.on('mouseleave', function () {
+      clearHoverPopup(map, popupState);
     });
-    map.on('mouseleave', layerId, function () {
-      map.getCanvas().style.cursor = '';
-      if (popupState.hover) popupState.hover.remove();
-      popupState.hover = null;
-    });
-    map.on('click', layerId, function (event) {
-      var feature = event.features && event.features[0];
+    map.on('click', function (event) {
+      var feature = firstPopupFeature(map.queryRenderedFeatures(event.point, { layers: layerIds }));
       var html = mapFeaturePopup(feature);
       if (!html) return;
       if (popupState.hover) popupState.hover.remove();
       if (popupState.click) popupState.click.remove();
       popupState.hover = null;
+      popupState.hoverHtml = '';
       popupState.click = renderMapPopup(map, event.lngLat, html, 'tf-map-detail-popup', true);
     });
   }
@@ -781,7 +805,8 @@
     var mapLoaded = false;
     var markers = [];
     var dataBounds = null;
-    var popupState = { hover: null, click: null };
+    var popupState = { hover: null, hoverHtml: '', click: null };
+    var detailLayerIds = [];
 
     function addDataLayers() {
       dataBounds = new maplibregl.LngLatBounds();
@@ -798,7 +823,7 @@
           if (pointData.markerType === 'circle') {
             var circleId = sourceId + '-circle';
             addCircleLayer(map, circleId, sourceId);
-            bindLayerDetail(map, circleId, popupState);
+            detailLayerIds.push(circleId);
           } else {
             pointData.features.forEach(function (feature) {
               var props = feature.properties || {};
@@ -822,10 +847,11 @@
             if (extendFeatureBounds(dataBounds, feature)) hasBounds = true;
           });
           addGeoJsonLayers(map, geoSourceId, geoSourceId).forEach(function (layerId) {
-            bindLayerDetail(map, layerId, popupState);
+            detailLayerIds.push(layerId);
           });
         }
       });
+      bindLayerDetails(map, detailLayerIds, popupState);
       if (!hasBounds) dataBounds = null;
     }
 
@@ -867,6 +893,7 @@
       if (popupState.hover) popupState.hover.remove();
       if (popupState.click) popupState.click.remove();
       popupState.hover = null;
+      popupState.hoverHtml = '';
       popupState.click = null;
       markers.forEach(function (marker) { marker.remove(); });
       markers = [];

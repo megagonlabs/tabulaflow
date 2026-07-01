@@ -550,7 +550,10 @@ def test_pane_map_view_is_maplibre_based() -> None:
     assert "mapData.attribution" not in renderer
     assert "mapData.maxZoom" not in renderer
     assert "buildGeoJsonFeatures(layer, rows, labels)" in renderer
-    assert "bindLayerDetail(map, layerId, popupState)" in renderer
+    assert "function bindLayerDetails(map, layerIds, popupState)" in renderer
+    assert "map.queryRenderedFeatures(event.point, { layers: layerIds })" in renderer
+    assert "var detailLayerIds = [];" in renderer
+    assert "popupState.hoverHtml !== html" in renderer
     assert "tf-map-popup-title" in renderer
     assert "field !== labelField" in renderer
     assert "detailHtml(row, tooltip, labels, label, labelField)" in renderer
