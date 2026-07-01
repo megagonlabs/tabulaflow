@@ -410,6 +410,7 @@ def test_pane_map_view_is_leaflet_based() -> None:
     assert "L.map(mapNode" in renderer
     assert "L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png'" in renderer
     assert "function mapLayers(mapData)" in renderer
+    assert "if (value == null || typeof value === 'boolean') return null;" in renderer
     assert "if (typeof value === 'string' && value.trim() === '') return null;" in renderer
     assert "function formatNumber(value)" in renderer
     assert "function displayValue(value)" in renderer
