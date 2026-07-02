@@ -511,10 +511,15 @@ def test_pane_map_view_is_maplibre_based() -> None:
     assert maplibre_assets.joinpath("LICENSE.txt").is_file()
     assert maplibre_assets.joinpath("shortbread-light.json").is_file()
     assert maplibre_assets.joinpath("continent-labels.geojson").is_file()
+    assert maplibre_assets.joinpath("ocean-labels.geojson").is_file()
     assert style["sources"]["osm"]["url"] == "https://vector.openstreetmap.org/shortbread_v1/tilejson.json"
     assert style["sources"]["continent-labels"] == {
         "type": "geojson",
         "data": "/assets/maplibre/continent-labels.geojson",
+    }
+    assert style["sources"]["ocean-labels"] == {
+        "type": "geojson",
+        "data": "/assets/maplibre/ocean-labels.geojson",
     }
     assert "© OpenStreetMap" in style["sources"]["osm"]["attribution"]
     assert "OSM Bright" in style["sources"]["osm"]["attribution"]
@@ -535,6 +540,9 @@ def test_pane_map_view_is_maplibre_based() -> None:
     assert place_continent["maxzoom"] == 1
     assert place_continent["layout"]["text-transform"] == "uppercase"
     assert place_continent["paint"]["text-halo-width"] == 2
+    assert layer_by_id["water-name-ocean"]["source"] == "ocean-labels"
+    assert layer_by_id["water-name-ocean"]["layout"]["text-transform"] == "uppercase"
+    assert layer_by_id["water-name-ocean"]["layout"]["text-letter-spacing"] == 0.2
     assert place_other["minzoom"] == 12
     assert place_other["filter"] == [
         "match",
@@ -760,10 +768,10 @@ def test_pane_map_view_is_maplibre_based() -> None:
     ]
     assert layer_by_id["road-oneway"]["layout"]["text-field"] == ">"
     assert layer_by_id["road-oneway-opposite"]["layout"]["text-field"] == "<"
-    assert layer_by_id["road-shields"]["source-layer"] == "street_labels"
-    assert layer_by_id["road-shields"]["minzoom"] == 8
-    assert layer_by_id["road-shields"]["filter"] == ["has", "ref"]
-    assert layer_by_id["road-shields"]["layout"]["symbol-spacing"] == 220
+    assert layer_by_id["highway-shield"]["source-layer"] == "street_labels"
+    assert layer_by_id["highway-shield"]["minzoom"] == 8
+    assert layer_by_id["highway-shield"]["filter"] == ["has", "ref"]
+    assert layer_by_id["highway-shield"]["layout"]["symbol-spacing"] == 220
     assert layer_by_id["street-labels-major"]["minzoom"] == 12.2
     assert layer_by_id["street-labels-major"]["filter"] == [
         "match",
@@ -1218,6 +1226,16 @@ def test_pane_serves_bundled_assets_cached(tmp_path: Path) -> None:
             "Asia",
             "Europe",
             "North America",
+        }
+
+        with urllib.request.urlopen(f"{origin}assets/maplibre/ocean-labels.geojson", timeout=2) as resp:
+            assert resp.headers.get("Cache-Control") == "no-cache"
+            assert resp.headers.get("Content-Type") == "application/json; charset=utf-8"
+            ocean_labels = json.loads(resp.read())
+        assert ocean_labels["type"] == "FeatureCollection"
+        assert {feature["properties"]["name"] for feature in ocean_labels["features"]} >= {
+            "Atlantic Ocean",
+            "Pacific Ocean",
         }
 
         try:

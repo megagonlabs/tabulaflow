@@ -1,0 +1,10 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {"type": "Feature", "properties": {"name": "Pacific Ocean"}, "geometry": {"type": "Point", "coordinates": [-150, 5]}},
+    {"type": "Feature", "properties": {"name": "Atlantic Ocean"}, "geometry": {"type": "Point", "coordinates": [-35, 5]}},
+    {"type": "Feature", "properties": {"name": "Indian Ocean"}, "geometry": {"type": "Point", "coordinates": [80, -20]}},
+    {"type": "Feature", "properties": {"name": "Arctic Ocean"}, "geometry": {"type": "Point", "coordinates": [0, 78]}},
+    {"type": "Feature", "properties": {"name": "Southern Ocean"}, "geometry": {"type": "Point", "coordinates": [20, -58]}}
+  ]
+}

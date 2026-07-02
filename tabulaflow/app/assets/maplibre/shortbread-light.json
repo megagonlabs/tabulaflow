@@ -13,6 +13,10 @@
     "continent-labels": {
       "type": "geojson",
       "data": "/assets/maplibre/continent-labels.geojson"
+    },
+    "ocean-labels": {
+      "type": "geojson",
+      "data": "/assets/maplibre/ocean-labels.geojson"
     }
   },
   "layers": [
@@ -981,6 +985,24 @@
       }
     },
     {
+      "id": "water-name-ocean",
+      "type": "symbol",
+      "source": "ocean-labels",
+      "layout": {
+        "text-field": ["get", "name"],
+        "text-font": ["Noto Sans Italic"],
+        "text-size": ["interpolate", ["linear"], ["zoom"], 0, 12, 6, 16],
+        "text-transform": "uppercase",
+        "text-max-width": 6.25,
+        "text-letter-spacing": 0.2
+      },
+      "paint": {
+        "text-color": "#74aee9",
+        "text-halo-color": "rgba(255,255,255,0.72)",
+        "text-halo-width": 1.5
+      }
+    },
+    {
       "id": "water-name-lakeline",
       "type": "symbol",
       "source": "osm",
@@ -1100,7 +1122,7 @@
       }
     },
     {
-      "id": "road-shields",
+      "id": "highway-shield",
       "type": "symbol",
       "source": "osm",
       "source-layer": "street_labels",
