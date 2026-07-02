@@ -633,6 +633,32 @@
       }
     },
     {
+      "id": "state-labels",
+      "type": "symbol",
+      "source": "osm",
+      "source-layer": "boundary_labels",
+      "minzoom": 4,
+      "maxzoom": 10,
+      "filter": [
+        "all",
+        ["==", ["get", "admin_level"], 4],
+        [">=", ["to-number", ["get", "way_area"], 0], 50000000000]
+      ],
+      "layout": {
+        "text-field": ["coalesce", ["get", "name_en"], ["get", "name"]],
+        "text-font": ["Noto Sans Bold"],
+        "text-size": ["interpolate", ["exponential", 1.2], ["zoom"], 4, 10, 8, 12, 10, 14],
+        "text-transform": "uppercase",
+        "text-letter-spacing": 0.1,
+        "text-max-width": 9
+      },
+      "paint": {
+        "text-color": "#663333",
+        "text-halo-color": "rgba(255,255,255,0.8)",
+        "text-halo-width": 1.2
+      }
+    },
+    {
       "id": "country-labels-global",
       "type": "symbol",
       "source": "osm",

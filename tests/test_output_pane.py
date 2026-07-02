@@ -522,6 +522,7 @@ def test_pane_map_view_is_maplibre_based() -> None:
     neighborhood_labels = layer_by_id["place-labels-neighborhood"]
     local_labels = layer_by_id["place-labels-local"]
     small_labels = layer_by_id["place-labels-small"]
+    state_labels = layer_by_id["state-labels"]
     country_global_labels = layer_by_id["country-labels-global"]
     country_regional_labels = layer_by_id["country-labels-regional"]
     country_local_labels = layer_by_id["country-labels-local"]
@@ -567,6 +568,15 @@ def test_pane_map_view_is_maplibre_based() -> None:
         ["match", ["get", "kind"], ["village", "hamlet", "locality"], True, False],
         ["<", ["to-number", ["get", "population"], 0], 5000],
     ]
+    assert state_labels["minzoom"] == 4
+    assert state_labels["maxzoom"] == 10
+    assert state_labels["filter"] == [
+        "all",
+        ["==", ["get", "admin_level"], 4],
+        [">=", ["to-number", ["get", "way_area"], 0], 50000000000],
+    ]
+    assert state_labels["layout"]["text-transform"] == "uppercase"
+    assert state_labels["layout"]["text-letter-spacing"] == 0.1
     assert country_global_labels["minzoom"] == 0
     assert country_global_labels["maxzoom"] == 8
     assert country_global_labels["filter"] == [
