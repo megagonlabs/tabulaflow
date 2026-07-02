@@ -360,6 +360,7 @@ July 2
 - [x] Airport icon
 - [ ] Thinner borders
 - [ ] National parks and forest
+- [ ] Islands
 
 - [ ] Multiple records for map
 - [ ] Remote server improvements
