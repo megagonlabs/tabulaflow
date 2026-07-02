@@ -17,7 +17,7 @@ onto Shortbread's available layers instead of copying OpenMapTiles layer rules.
 | City/town/neighborhood label hierarchy | `place_labels` | Use `kind` and `population`; large cities are bold. |
 | Sparse high-zoom transit labels | `public_transport`, `ferries` | Shortbread exposes `kind` and names for these layers. |
 | Sparse high-zoom POI text | `pois` | TileJSON does not document POI fields, so avoid icon/category rules for now. |
-| Country/state boundaries and country labels | `boundaries`, `boundary_labels` | Keep low-contrast so they do not fight local analysis maps. |
+| Country/state boundaries and country labels | `boundaries`, `boundary_labels` | Keep country/state borders legible; keep lower local admin lines subtle. |
 
 ## Port Status Matrix
 
@@ -46,7 +46,7 @@ Status meanings:
 | `railway-*`, `railway-*-hatching` | `transportation.class=rail`, `service`, `brunnel` | `streets.rail`, `streets.service`, `streets.kind` | approximate | Normal, service, transit-like, tunnel, and bridge rail layers are split with Shortbread fields. |
 | `bridge-*` road layers | `transportation.brunnel=bridge`, `class`, `ramp`, `subclass` | `streets.bridge`, `bridges.kind` | approximate | Bridge polygons and bridge road casings/fills are styled by coarse Shortbread road kind and link fields. |
 | `cablecar`, `cablecar-dash` | `transportation.subclass=cable_car` | `aerialways.kind` | approximate | Shortbread aerialways are drawn as muted dashed lines without subtype-specific styling. |
-| `boundary-land-level-4`, `boundary-land-level-2`, `boundary-land-disputed`, `boundary-water` | `boundary.admin_level`, `maritime`, `disputed` | `boundaries.admin_level`, `maritime`, `disputed` | exact | Fields are compatible enough for a close port. |
+| `boundary-land-level-4`, `boundary-land-level-2`, `boundary-land-disputed`, `boundary-water` | `boundary.admin_level`, `maritime`, `disputed` | `boundaries.admin_level`, `maritime`, `disputed` | exact | Country borders are darker; state/province borders are distinct dashed lines. Lower local admin lines are kept in a subtle Shortbread-only `boundary-land-local` helper layer. |
 | `waterway-name`, `water-name-lakeline`, `water-name-ocean`, `water-name-other` | `waterway`, `water_name.class` | `water_lines_labels`, `water_polygons_labels`, bundled `ocean-labels.geojson` | approximate | Waterways, large water polygons, other water polygons, and stable local ocean labels are split into OSM Bright-style layers. |
 | `road_oneway`, `road_oneway_opposite` | sprite `oneway`, `transportation.oneway` | `streets.oneway`, `oneway_reverse` | approximate | Rendered as text arrows because OSM Bright sprites are not vendored. |
 | `poi-level-1`, `poi-level-2`, `poi-level-3`, `poi-railway` | `poi.class`, `subclass`, `rank`, `level`, sprite icons | `pois`, `public_transport` | approximate | Layer names and zoom tiers are ported; class/rank/icon behavior is unavailable because Shortbread TileJSON does not document POI fields. |
