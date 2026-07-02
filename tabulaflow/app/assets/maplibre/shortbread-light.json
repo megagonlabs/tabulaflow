@@ -789,6 +789,80 @@
       }
     },
     {
+      "id": "railway-transit",
+      "type": "line",
+      "source": "osm",
+      "source-layer": "streets",
+      "minzoom": 8,
+      "filter": [
+        "all",
+        ["==", ["get", "rail"], true],
+        ["!=", ["get", "tunnel"], true],
+        ["!=", ["get", "bridge"], true],
+        ["match", ["get", "kind"], ["tram", "subway", "light_rail", "monorail"], true, false]
+      ],
+      "paint": {
+        "line-color": "rgba(186, 186, 186, 0.77)",
+        "line-width": ["interpolate", ["linear"], ["zoom"], 8, 0.4, 14, 1]
+      }
+    },
+    {
+      "id": "railway-transit-hatching",
+      "type": "line",
+      "source": "osm",
+      "source-layer": "streets",
+      "minzoom": 14.5,
+      "filter": [
+        "all",
+        ["==", ["get", "rail"], true],
+        ["!=", ["get", "tunnel"], true],
+        ["!=", ["get", "bridge"], true],
+        ["match", ["get", "kind"], ["tram", "subway", "light_rail", "monorail"], true, false]
+      ],
+      "paint": {
+        "line-color": "rgba(186, 186, 186, 0.68)",
+        "line-width": ["interpolate", ["linear"], ["zoom"], 14.5, 0, 15, 2, 16, 4],
+        "line-dasharray": [0.2, 8]
+      }
+    },
+    {
+      "id": "railway-service",
+      "type": "line",
+      "source": "osm",
+      "source-layer": "streets",
+      "minzoom": 8,
+      "filter": [
+        "all",
+        ["==", ["get", "rail"], true],
+        ["!=", ["get", "tunnel"], true],
+        ["!=", ["get", "bridge"], true],
+        ["has", "service"]
+      ],
+      "paint": {
+        "line-color": "rgba(186, 186, 186, 0.77)",
+        "line-width": ["interpolate", ["linear"], ["zoom"], 8, 0.4, 14, 1]
+      }
+    },
+    {
+      "id": "railway-service-hatching",
+      "type": "line",
+      "source": "osm",
+      "source-layer": "streets",
+      "minzoom": 14.5,
+      "filter": [
+        "all",
+        ["==", ["get", "rail"], true],
+        ["!=", ["get", "tunnel"], true],
+        ["!=", ["get", "bridge"], true],
+        ["has", "service"]
+      ],
+      "paint": {
+        "line-color": "rgba(186, 186, 186, 0.68)",
+        "line-width": ["interpolate", ["linear"], ["zoom"], 14.5, 0, 15, 2, 16, 4],
+        "line-dasharray": [0.2, 8]
+      }
+    },
+    {
       "id": "railway",
       "type": "line",
       "source": "osm",
@@ -798,7 +872,9 @@
         "all",
         ["==", ["get", "rail"], true],
         ["!=", ["get", "tunnel"], true],
-        ["!=", ["get", "bridge"], true]
+        ["!=", ["get", "bridge"], true],
+        ["!", ["has", "service"]],
+        ["match", ["get", "kind"], ["tram", "subway", "light_rail", "monorail"], false, true]
       ],
       "paint": {
         "line-color": "#b8b0a8",
@@ -816,7 +892,9 @@
         "all",
         ["==", ["get", "rail"], true],
         ["!=", ["get", "tunnel"], true],
-        ["!=", ["get", "bridge"], true]
+        ["!=", ["get", "bridge"], true],
+        ["!", ["has", "service"]],
+        ["match", ["get", "kind"], ["tram", "subway", "light_rail", "monorail"], false, true]
       ],
       "paint": {
         "line-color": "#b8b0a8",

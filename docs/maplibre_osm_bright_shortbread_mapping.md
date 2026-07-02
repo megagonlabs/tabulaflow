@@ -43,7 +43,7 @@ Status meanings:
 | `airport-label-major` | `aerodrome_label.iata`, sprite `airport_11` | bundled `airport-labels.geojson` | approximate | A small local major-airport label layer is used because Shortbread has no documented aerodrome label layer or IATA field. |
 | `road_area_pier`, `road_pier` | `transportation.class=pier` | `pier_lines`, `pier_polygons` | approximate | Shortbread pier geometry is styled as land-colored fill/lines. |
 | `highway-*` road fill/casing layers | `transportation.class`, `ramp`, `brunnel`, `subclass` | `streets.kind`, `link`, `bridge`, `tunnel` | approximate | Roads are split into tunnel, normal, bridge, and link drawing order with minor, secondary/tertiary, trunk/primary, and motorway tiers. |
-| `railway-*`, `railway-*-hatching` | `transportation.class=rail`, `service`, `brunnel` | `streets.rail`, `bridges`, `street_labels` | approximate | Rail and hatching are drawn for normal and bridge rail; Shortbread does not expose OpenMapTiles service/transit classes. |
+| `railway-*`, `railway-*-hatching` | `transportation.class=rail`, `service`, `brunnel` | `streets.rail`, `streets.service`, `streets.kind` | approximate | Normal, service, transit-like, tunnel, and bridge rail layers are split with Shortbread fields. |
 | `bridge-*` road layers | `transportation.brunnel=bridge`, `class`, `ramp`, `subclass` | `streets.bridge`, `bridges.kind` | approximate | Bridge polygons and bridge road casings/fills are styled by coarse Shortbread road kind and link fields. |
 | `cablecar`, `cablecar-dash` | `transportation.subclass=cable_car` | `aerialways.kind` | approximate | Shortbread aerialways are drawn as muted dashed lines without subtype-specific styling. |
 | `boundary-land-level-4`, `boundary-land-level-2`, `boundary-land-disputed`, `boundary-water` | `boundary.admin_level`, `maritime`, `disputed` | `boundaries.admin_level`, `maritime`, `disputed` | exact | Fields are compatible enough for a close port. |
@@ -67,10 +67,8 @@ licensed local sprite set.
 
 OSM Bright also has detailed bridge, tunnel, ramp, and per-road-class layers.
 Shortbread has fewer fields, but the output pane style now keeps the OSM
-Bright layer IDs where `kind`, `link`, `bridge`, `tunnel`, or `rail` can
-support them. Remaining road/rail gaps are the OpenMapTiles-only
-`railway-service*` and `railway-transit*` layers because Shortbread does not
-expose compatible service/transit fields.
+Bright layer IDs where `kind`, `link`, `bridge`, `tunnel`, `rail`, or
+`service` can support them.
 
 The low-zoom country label port approximates OSM Bright's `place-country-*`
 rank tiers with mutually exclusive `boundary_labels.way_area` buckets:
@@ -86,7 +84,7 @@ not expose OSM Bright's `iso_a2`/missing-ISO split.
 
 The remaining missing OSM Bright layer IDs after the Shortbread port are
 intentionally limited to schema gaps: intermittent/patterned water polygons,
-rail service/transit, capital-city labels, and country labels without `iso_a2`.
+capital-city labels, and country labels without `iso_a2`.
 
 ## Licensing
 

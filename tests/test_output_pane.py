@@ -811,12 +811,30 @@ def test_pane_map_view_is_maplibre_based() -> None:
     assert layer_by_id["cablecar"]["source-layer"] == "aerialways"
     assert layer_by_id["cablecar-dash"]["source-layer"] == "aerialways"
     assert layer_by_id["cablecar-dash"]["paint"]["line-dasharray"] == [2, 3]
+    assert layer_by_id["railway-transit"]["filter"] == [
+        "all",
+        ["==", ["get", "rail"], True],
+        ["!=", ["get", "tunnel"], True],
+        ["!=", ["get", "bridge"], True],
+        ["match", ["get", "kind"], ["tram", "subway", "light_rail", "monorail"], True, False],
+    ]
+    assert layer_by_id["railway-service"]["filter"] == [
+        "all",
+        ["==", ["get", "rail"], True],
+        ["!=", ["get", "tunnel"], True],
+        ["!=", ["get", "bridge"], True],
+        ["has", "service"],
+    ]
     assert layer_by_id["railway"]["filter"] == [
         "all",
         ["==", ["get", "rail"], True],
         ["!=", ["get", "tunnel"], True],
         ["!=", ["get", "bridge"], True],
+        ["!", ["has", "service"]],
+        ["match", ["get", "kind"], ["tram", "subway", "light_rail", "monorail"], False, True],
     ]
+    assert layer_by_id["railway-transit-hatching"]["paint"]["line-dasharray"] == [0.2, 8]
+    assert layer_by_id["railway-service-hatching"]["paint"]["line-dasharray"] == [0.2, 8]
     assert layer_by_id["railway-hatching"]["paint"]["line-dasharray"] == [0.2, 8]
     assert layer_by_id["bridge-motorway"]["filter"] == [
         "all",
