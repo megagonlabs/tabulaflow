@@ -511,6 +511,8 @@ def test_pane_map_view_is_maplibre_based() -> None:
     assert maplibre_assets.joinpath("LICENSE.txt").is_file()
     assert maplibre_assets.joinpath("shortbread-light.json").is_file()
     assert style["sources"]["osm"]["url"] == "https://vector.openstreetmap.org/shortbread_v1/tilejson.json"
+    assert "© OpenStreetMap" in style["sources"]["osm"]["attribution"]
+    assert "OSM Bright" in style["sources"]["osm"]["attribution"]
     assert style["glyphs"] == "https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf"
     assert any(layer.get("source-layer") == "streets" for layer in style["layers"])
     assert any(layer.get("source-layer") == "place_labels" for layer in style["layers"])
@@ -519,22 +521,23 @@ def test_pane_map_view_is_maplibre_based() -> None:
     regional_labels = layer_by_id["place-labels-regional"]
     neighborhood_labels = layer_by_id["place-labels-neighborhood"]
     local_labels = layer_by_id["place-labels-local"]
+    small_labels = layer_by_id["place-labels-small"]
     assert major_labels["filter"] == [
         "all",
         ["match", ["get", "kind"], ["city", "town"], True, False],
         [">=", ["to-number", ["get", "population"], 0], 250000],
     ]
     assert major_labels["layout"]["text-font"] == ["Noto Sans Bold"]
-    assert major_labels["layout"]["text-size"] == ["interpolate", ["linear"], ["zoom"], 4, 12, 10, 16, 14, 20]
-    assert major_labels["layout"]["text-padding"] == 16
-    assert regional_labels["minzoom"] == 9
+    assert major_labels["layout"]["text-size"] == ["interpolate", ["linear"], ["zoom"], 4, 13, 10, 19, 14, 28]
+    assert major_labels["layout"]["text-padding"] == 18
+    assert regional_labels["minzoom"] == 8
     assert regional_labels["filter"] == [
         "all",
-        ["match", ["get", "kind"], ["city"], True, False],
-        [">=", ["to-number", ["get", "population"], 0], 75000],
+        ["match", ["get", "kind"], ["city", "town"], True, False],
+        [">=", ["to-number", ["get", "population"], 0], 50000],
         ["<", ["to-number", ["get", "population"], 0], 250000],
     ]
-    assert regional_labels["layout"]["text-size"] == ["interpolate", ["linear"], ["zoom"], 9, 12, 13, 14, 15, 15]
+    assert regional_labels["layout"]["text-size"] == ["interpolate", ["linear"], ["zoom"], 8, 13, 13, 17, 15, 20]
     assert neighborhood_labels["minzoom"] == 12
     assert neighborhood_labels["filter"] == [
         "match",
@@ -544,51 +547,76 @@ def test_pane_map_view_is_maplibre_based() -> None:
         False,
     ]
     assert neighborhood_labels["layout"]["text-transform"] == "uppercase"
-    assert neighborhood_labels["layout"]["text-size"] == ["interpolate", ["linear"], ["zoom"], 12, 12, 15, 15]
-    assert local_labels["minzoom"] == 12
+    assert neighborhood_labels["layout"]["text-font"] == ["Noto Sans Bold"]
+    assert neighborhood_labels["layout"]["text-size"] == ["interpolate", ["linear"], ["zoom"], 12, 12, 14, 15, 16, 17]
+    assert local_labels["minzoom"] == 11
     assert local_labels["filter"] == [
         "all",
-        ["match", ["get", "kind"], ["city", "town"], True, False],
-        [">=", ["to-number", ["get", "population"], 0], 15000],
-        ["<", ["to-number", ["get", "population"], 0], 75000],
+        ["match", ["get", "kind"], ["city", "town", "village"], True, False],
+        [">=", ["to-number", ["get", "population"], 0], 5000],
+        ["<", ["to-number", ["get", "population"], 0], 50000],
     ]
-    assert local_labels["layout"]["text-size"] == ["interpolate", ["linear"], ["zoom"], 12, 11, 15, 13]
-    assert local_labels["paint"]["text-color"] == "#747b84"
+    assert local_labels["layout"]["text-size"] == ["interpolate", ["linear"], ["zoom"], 11, 12, 14, 15, 16, 17]
+    assert local_labels["paint"]["text-color"] == "#5f6266"
+    assert small_labels["minzoom"] == 13
+    assert small_labels["filter"] == [
+        "all",
+        ["match", ["get", "kind"], ["village", "hamlet", "locality"], True, False],
+        ["<", ["to-number", ["get", "population"], 0], 5000],
+    ]
+    assert layer_by_id["streets-motorway"]["filter"] == ["==", ["get", "kind"], "motorway"]
+    assert layer_by_id["streets-primary"]["filter"] == [
+        "match",
+        ["get", "kind"],
+        ["trunk", "primary"],
+        True,
+        False,
+    ]
+    assert layer_by_id["streets-secondary-casing"]["paint"]["line-color"] == "#e7c27c"
+    assert layer_by_id["streets-minor-casing"]["minzoom"] == 12
     assert layer_by_id["street-labels-major"]["minzoom"] == 11
     assert layer_by_id["street-labels-major"]["filter"] == [
         "match",
         ["get", "kind"],
-        ["motorway", "trunk", "primary", "secondary"],
+        ["motorway", "trunk", "primary", "secondary", "tertiary"],
         True,
         False,
     ]
     assert layer_by_id["street-labels-local"]["minzoom"] == 14
-    assert layer_by_id["water-labels"]["minzoom"] == 13
-    assert layer_by_id["water-labels"]["filter"] == [">=", ["to-number", ["get", "way_area"], 0], 200000]
+    assert layer_by_id["street-labels-local"]["filter"] == [
+        "match",
+        ["get", "kind"],
+        ["residential", "unclassified"],
+        True,
+        False,
+    ]
+    assert layer_by_id["water-labels"]["minzoom"] == 10
+    assert layer_by_id["water-labels"]["filter"] == [">=", ["to-number", ["get", "way_area"], 0], 1000000]
     assert layer_by_id["street-labels-major"]["layout"]["text-size"] == [
         "interpolate",
         ["linear"],
         ["zoom"],
         11,
-        11,
+        12,
         14,
-        13,
+        14,
         16,
-        15,
+        16,
     ]
-    assert layer_by_id["street-labels-local"]["layout"]["text-size"] == ["interpolate", ["linear"], ["zoom"], 14, 11, 16, 13]
-    assert layer_by_id["water-labels"]["layout"]["text-size"] == ["interpolate", ["linear"], ["zoom"], 13, 11, 16, 14]
+    assert layer_by_id["street-labels-local"]["layout"]["text-size"] == ["interpolate", ["linear"], ["zoom"], 14, 12, 16, 14]
+    assert layer_by_id["water-labels"]["layout"]["text-size"] == ["interpolate", ["linear"], ["zoom"], 10, 12, 13, 14, 16, 16]
     assert layer_by_id["ferries"]["source-layer"] == "ferries"
     assert layer_by_id["ferries"]["minzoom"] == 11
-    assert layer_by_id["ferries"]["paint"]["line-dasharray"] == [3, 3]
+    assert layer_by_id["ferries"]["paint"]["line-dasharray"] == [2, 2]
     assert layer_by_id["ferry-labels"]["source-layer"] == "ferries"
     assert layer_by_id["ferry-labels"]["layout"]["symbol-placement"] == "line"
     assert layer_by_id["water-line-labels"]["source-layer"] == "water_lines_labels"
     assert layer_by_id["water-line-labels"]["minzoom"] == 13
     assert layer_by_id["public-transport-labels"]["source-layer"] == "public_transport"
+    assert layer_by_id["public-transport-labels"]["minzoom"] == 13
     assert layer_by_id["public-transport-labels"]["filter"] == ["has", "name"]
     assert layer_by_id["poi-labels"]["source-layer"] == "pois"
-    assert layer_by_id["poi-labels"]["minzoom"] == 14.5
+    assert layer_by_id["poi-labels"]["minzoom"] == 15
     assert layer_by_id["poi-labels"]["filter"] == ["has", "name"]
     assert "if (kind === 'map') return TF.renderMap(node, data);" in _PANE_HTML
     assert "function afterVisible(entry)" in _PANE_HTML
