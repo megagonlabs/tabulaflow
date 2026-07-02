@@ -513,6 +513,8 @@ def test_pane_map_view_is_maplibre_based() -> None:
     assert maplibre_assets.joinpath("continent-labels.geojson").is_file()
     assert maplibre_assets.joinpath("ocean-labels.geojson").is_file()
     assert maplibre_assets.joinpath("airport-labels.geojson").is_file()
+    assert maplibre_assets.joinpath("natural-earth-admin0-boundaries.geojson").is_file()
+    assert maplibre_assets.joinpath("natural-earth-admin1-boundaries.geojson").is_file()
     assert style["sources"]["osm"]["url"] == "https://vector.openstreetmap.org/shortbread_v1/tilejson.json"
     assert style["sources"]["continent-labels"] == {
         "type": "geojson",
@@ -525,6 +527,16 @@ def test_pane_map_view_is_maplibre_based() -> None:
     assert style["sources"]["airport-labels"] == {
         "type": "geojson",
         "data": "/assets/maplibre/airport-labels.geojson",
+    }
+    assert style["sources"]["natural-earth-admin0-boundaries"] == {
+        "type": "geojson",
+        "data": "/assets/maplibre/natural-earth-admin0-boundaries.geojson",
+        "attribution": "Natural Earth",
+    }
+    assert style["sources"]["natural-earth-admin1-boundaries"] == {
+        "type": "geojson",
+        "data": "/assets/maplibre/natural-earth-admin1-boundaries.geojson",
+        "attribution": "Natural Earth",
     }
     assert "© OpenStreetMap" in style["sources"]["osm"]["attribution"]
     assert "OSM Bright" in style["sources"]["osm"]["attribution"]
@@ -598,8 +610,9 @@ def test_pane_map_view_is_maplibre_based() -> None:
         "cablecar-dash",
     )
     assert_layer_order(
-        "boundary-land-level-4", "boundary-land-level-2", "boundary-land-disputed",
-        "boundary-water", "waterway-name", "water-name-lakeline", "water-name-ocean", "water-name-other",
+        "boundary-land-level-4-fallback", "boundary-land-level-4", "boundary-land-level-2-fallback",
+        "boundary-land-level-2", "boundary-land-disputed", "boundary-water", "waterway-name",
+        "water-name-lakeline", "water-name-ocean", "water-name-other",
         "road_oneway", "road_oneway_opposite", "poi-level-3", "poi-level-2", "poi-level-1", "poi-railway",
         "highway-name-path", "highway-name-minor", "highway-name-major", "highway-shield",
         "highway-shield-us-interstate", "highway-shield-us-other", "motorway-exit-labels", "ferry-labels",
@@ -979,6 +992,19 @@ def test_pane_map_view_is_maplibre_based() -> None:
     ]
     assert layer_by_id["highway-secondary-tertiary-casing"]["paint"]["line-color"] == "#e7c27c"
     assert layer_by_id["highway-minor-casing"]["minzoom"] == 12
+    assert layer_by_id["boundary-land-level-4-fallback"]["source"] == "natural-earth-admin1-boundaries"
+    assert layer_by_id["boundary-land-level-4-fallback"]["minzoom"] == 2
+    assert layer_by_id["boundary-land-level-4-fallback"]["maxzoom"] == 7
+    assert layer_by_id["boundary-land-level-4-fallback"]["layout"] == {
+        "line-join": "round",
+        "visibility": "visible",
+    }
+    assert layer_by_id["boundary-land-level-4-fallback"]["paint"] == {
+        "line-color": "#9e9cab",
+        "line-dasharray": [3, 1, 1, 1],
+        "line-width": ["interpolate", ["exponential", 1.4], ["zoom"], 4, 0.4, 5, 1, 12, 3],
+    }
+    assert layer_by_id["boundary-land-level-4"]["minzoom"] == 7
     assert layer_by_id["boundary-land-level-4"]["filter"] == [
         "all",
         [">=", ["to-number", ["get", "admin_level"], 0], 3],
@@ -1003,6 +1029,17 @@ def test_pane_map_view_is_maplibre_based() -> None:
         12,
         3,
     ]
+    assert layer_by_id["boundary-land-level-2-fallback"]["source"] == "natural-earth-admin0-boundaries"
+    assert layer_by_id["boundary-land-level-2-fallback"]["maxzoom"] == 2
+    assert layer_by_id["boundary-land-level-2-fallback"]["layout"] == {
+        "line-cap": "round",
+        "line-join": "round",
+        "visibility": "visible",
+    }
+    assert layer_by_id["boundary-land-level-2-fallback"]["paint"] == {
+        "line-color": "hsl(248, 7%, 66%)",
+        "line-width": ["interpolate", ["linear"], ["zoom"], 0, 0.6, 4, 1.4, 5, 2, 12, 8],
+    }
     assert layer_by_id["boundary-land-level-2"]["filter"] == [
         "all",
         ["==", ["to-number", ["get", "admin_level"], 0], 2],
@@ -1567,6 +1604,28 @@ def test_pane_serves_bundled_assets_cached(tmp_path: Path) -> None:
             airport_labels = json.loads(resp.read())
         assert airport_labels["type"] == "FeatureCollection"
         assert {feature["properties"]["name"] for feature in airport_labels["features"]} >= {"ATL", "LAX", "LHR"}
+
+        with urllib.request.urlopen(f"{origin}assets/maplibre/natural-earth-admin0-boundaries.geojson", timeout=2) as resp:
+            assert resp.headers.get("Cache-Control") == "no-cache"
+            assert resp.headers.get("Content-Type") == "application/json; charset=utf-8"
+            admin0_boundaries = json.loads(resp.read())
+        assert admin0_boundaries["type"] == "FeatureCollection"
+        assert len(admin0_boundaries["features"]) > 100
+        assert {feature["geometry"]["type"] for feature in admin0_boundaries["features"]} <= {
+            "LineString",
+            "MultiLineString",
+        }
+
+        with urllib.request.urlopen(f"{origin}assets/maplibre/natural-earth-admin1-boundaries.geojson", timeout=2) as resp:
+            assert resp.headers.get("Cache-Control") == "no-cache"
+            assert resp.headers.get("Content-Type") == "application/json; charset=utf-8"
+            admin1_boundaries = json.loads(resp.read())
+        assert admin1_boundaries["type"] == "FeatureCollection"
+        assert len(admin1_boundaries["features"]) > 500
+        assert {feature["geometry"]["type"] for feature in admin1_boundaries["features"]} <= {
+            "LineString",
+            "MultiLineString",
+        }
 
         try:
             urllib.request.urlopen(f"{origin}assets/does-not-exist.js", timeout=2)

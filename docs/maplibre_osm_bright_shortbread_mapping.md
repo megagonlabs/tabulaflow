@@ -17,7 +17,7 @@ onto Shortbread's available layers instead of copying OpenMapTiles layer rules.
 | City/town/neighborhood label hierarchy | `place_labels` | Use `kind` and `population`; large cities are bold. |
 | Sparse high-zoom transit labels | `public_transport`, `ferries` | Shortbread exposes `kind` and names for these layers. |
 | Sparse high-zoom POI text | `pois` | TileJSON does not document POI fields, so avoid icon/category rules for now. |
-| Country/state boundaries and country labels | `boundaries`, `boundary_labels` | Keep country/state borders legible; keep lower local admin lines subtle. |
+| Country/state boundaries and country labels | `boundaries`, `boundary_labels`, bundled Natural Earth boundary lines | Keep country/state borders legible; use bundled low-zoom fallback geometry where Shortbread has no matching boundary features. |
 
 ## Port Status Matrix
 
@@ -46,7 +46,7 @@ Status meanings:
 | `railway-*`, `railway-*-hatching` | `transportation.class=rail`, `service`, `brunnel` | `streets.rail`, `streets.service`, `streets.kind` | approximate | Normal, service, transit-like, tunnel, and bridge rail layers are split with Shortbread fields. |
 | `bridge-*` road layers | `transportation.brunnel=bridge`, `class`, `ramp`, `subclass` | `streets.bridge`, `bridges.kind` | approximate | Bridge polygons and bridge road casings/fills are styled by coarse Shortbread road kind and link fields. |
 | `cablecar`, `cablecar-dash` | `transportation.subclass=cable_car` | `aerialways.kind` | approximate | Shortbread aerialways are drawn as muted dashed lines without subtype-specific styling. |
-| `boundary-land-level-4`, `boundary-land-level-2`, `boundary-land-disputed`, `boundary-water` | `boundary.admin_level`, `maritime`, `disputed` | `boundaries.admin_level`, `maritime`, `disputed` | exact | Boundary zoom visibility, line widths, colors, joins, and dash patterns follow OSM Bright. Filters normalize `admin_level` and accept Shortbread boolean flags while preserving OSM Bright's land, maritime, and disputed policy. |
+| `boundary-land-level-4`, `boundary-land-level-2`, `boundary-land-disputed`, `boundary-water` | `boundary.admin_level`, `maritime`, `disputed` | `boundaries.admin_level`, `maritime`, `disputed`, bundled Natural Earth boundary lines | approximate | Boundary line widths, colors, joins, and dash patterns follow OSM Bright. Bundled Natural Earth country lines cover zooms below Shortbread `boundaries`; bundled Natural Earth admin-1 lines cover mid-zoom state/province visibility until Shortbread's detailed admin boundaries take over. |
 | `waterway-name`, `water-name-lakeline`, `water-name-ocean`, `water-name-other` | `waterway`, `water_name.class` | `water_lines_labels`, `water_polygons_labels`, bundled `ocean-labels.geojson` | approximate | Waterways, large water polygons, other water polygons, and stable local ocean labels are split into OSM Bright-style layers. |
 | `road_oneway`, `road_oneway_opposite` | sprite `oneway`, `transportation.oneway` | `streets.oneway`, `oneway_reverse` | approximate | Rendered as text arrows because OSM Bright sprites are not vendored. |
 | `poi-level-1`, `poi-level-2`, `poi-level-3`, `poi-railway` | `poi.class`, `subclass`, `rank`, `level`, sprite icons | `pois`, `public_transport` | approximate | Layer names and zoom tiers are ported; class/rank/icon behavior is unavailable because Shortbread TileJSON does not document POI fields. |
@@ -64,6 +64,19 @@ OSM Bright's POI and icon layers rely on OpenMapTiles fields such as `class`,
 fields for `pois`, so direct icon mapping would be brittle. Add icons only after
 inspecting real Shortbread POI feature properties and committing a small,
 licensed local sprite set.
+
+Shortbread's `boundaries` layer starts at source zoom `2`, and sampled
+Shortbread tiles generally do not expose `admin_level=4` state/province lines
+until around zoom `7`. The style therefore includes public-domain Natural
+Earth fallback layers:
+
+- `boundary-land-level-2-fallback`: Natural Earth 1:110m country boundary
+  lines below zoom `2`.
+- `boundary-land-level-4-fallback`: Natural Earth 1:50m admin-1/state
+  boundary lines from zoom `2` until zoom `7`.
+
+These fallbacks are intentionally low/mid-zoom only. Shortbread vector tiles
+remain the detailed boundary source at higher zooms.
 
 OSM Bright also has detailed bridge, tunnel, ramp, and per-road-class layers.
 Shortbread has fewer fields, but the output pane style now keeps the OSM

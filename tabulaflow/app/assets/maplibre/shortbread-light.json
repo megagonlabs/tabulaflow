@@ -22,6 +22,16 @@
     "airport-labels": {
       "type": "geojson",
       "data": "/assets/maplibre/airport-labels.geojson"
+    },
+    "natural-earth-admin0-boundaries": {
+      "type": "geojson",
+      "data": "/assets/maplibre/natural-earth-admin0-boundaries.geojson",
+      "attribution": "Natural Earth"
+    },
+    "natural-earth-admin1-boundaries": {
+      "type": "geojson",
+      "data": "/assets/maplibre/natural-earth-admin1-boundaries.geojson",
+      "attribution": "Natural Earth"
     }
   },
   "layers": [
@@ -1604,11 +1614,27 @@
       }
     },
     {
+      "id": "boundary-land-level-4-fallback",
+      "type": "line",
+      "source": "natural-earth-admin1-boundaries",
+      "minzoom": 2,
+      "maxzoom": 7,
+      "layout": {
+        "line-join": "round",
+        "visibility": "visible"
+      },
+      "paint": {
+        "line-color": "#9e9cab",
+        "line-dasharray": [3, 1, 1, 1],
+        "line-width": ["interpolate", ["exponential", 1.4], ["zoom"], 4, 0.4, 5, 1, 12, 3]
+      }
+    },
+    {
       "id": "boundary-land-level-4",
       "type": "line",
       "source": "osm",
       "source-layer": "boundaries",
-      "minzoom": 2,
+      "minzoom": 7,
       "filter": [
         "all",
         [">=", ["to-number", ["get", "admin_level"], 0], 3],
@@ -1624,6 +1650,21 @@
         "line-color": "#9e9cab",
         "line-dasharray": [3, 1, 1, 1],
         "line-width": ["interpolate", ["exponential", 1.4], ["zoom"], 4, 0.4, 5, 1, 12, 3]
+      }
+    },
+    {
+      "id": "boundary-land-level-2-fallback",
+      "type": "line",
+      "source": "natural-earth-admin0-boundaries",
+      "maxzoom": 2,
+      "layout": {
+        "line-cap": "round",
+        "line-join": "round",
+        "visibility": "visible"
+      },
+      "paint": {
+        "line-color": "hsl(248, 7%, 66%)",
+        "line-width": ["interpolate", ["linear"], ["zoom"], 0, 0.6, 4, 1.4, 5, 2, 12, 8]
       }
     },
     {

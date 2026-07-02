@@ -1,0 +1,10 @@
+Bundled low-zoom boundary fallback data.
+
+Source:
+- Natural Earth Admin 0 Boundary Lines Land, 1:110m
+  https://github.com/nvkelso/natural-earth-vector/blob/master/geojson/ne_110m_admin_0_boundary_lines_land.geojson
+- Natural Earth Admin 1 States Provinces Lines, 1:50m
+  https://github.com/nvkelso/natural-earth-vector/blob/master/geojson/ne_50m_admin_1_states_provinces_lines.geojson
+
+Natural Earth vector data is public domain. The bundled GeoJSON files strip
+source properties and keep only geometry plus a short source label.
