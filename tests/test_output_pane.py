@@ -600,6 +600,13 @@ def test_pane_map_view_is_maplibre_based() -> None:
         ["<", ["to-number", ["get", "way_area"], 0], 1000000000000],
     ]
     assert layer_by_id["streets-motorway"]["filter"] == ["==", ["get", "kind"], "motorway"]
+    assert layer_by_id["dam-polygons"]["source-layer"] == "dam_polygons"
+    assert layer_by_id["dam-lines"]["source-layer"] == "dam_lines"
+    assert layer_by_id["pier-polygons"]["source-layer"] == "pier_polygons"
+    assert layer_by_id["pier-lines"]["source-layer"] == "pier_lines"
+    assert layer_by_id["bridges"]["source-layer"] == "bridges"
+    assert layer_by_id["aerialways"]["source-layer"] == "aerialways"
+    assert layer_by_id["aerialways"]["paint"]["line-dasharray"] == [2, 3]
     assert layer_by_id["streets-primary"]["filter"] == [
         "match",
         ["get", "kind"],
