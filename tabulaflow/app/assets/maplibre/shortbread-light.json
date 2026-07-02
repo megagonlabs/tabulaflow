@@ -2153,15 +2153,19 @@
       "type": "symbol",
       "source": "airport-labels",
       "minzoom": 10,
+      "filter": ["has", "iata"],
       "layout": {
-        "text-field": ["coalesce", ["get", "label"], ["get", "name"]],
+        "icon-image": "airport_11",
+        "icon-size": 1,
+        "text-field": ["coalesce", ["get", "name_en"], ["get", "name"], ["get", "iata"]],
         "text-font": ["Noto Sans Regular"],
         "text-anchor": "top",
         "text-size": 12,
         "text-offset": [0, 0.6],
         "text-optional": true,
         "text-padding": 2,
-        "text-max-width": 9
+        "text-max-width": 9,
+        "visibility": "visible"
       },
       "paint": {
         "text-color": "#666666",

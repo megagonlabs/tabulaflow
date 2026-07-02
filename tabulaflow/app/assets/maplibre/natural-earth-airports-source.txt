@@ -1,0 +1,8 @@
+Bundled airport label fallback data.
+
+Source:
+- Natural Earth Airports, 1:10m
+  https://github.com/nvkelso/natural-earth-vector/blob/master/geojson/ne_10m_airports.geojson
+
+Natural Earth vector data is public domain. The bundled GeoJSON file keeps
+IATA-coded airport points and strips unused properties.

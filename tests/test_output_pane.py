@@ -513,6 +513,7 @@ def test_pane_map_view_is_maplibre_based() -> None:
     assert maplibre_assets.joinpath("continent-labels.geojson").is_file()
     assert maplibre_assets.joinpath("ocean-labels.geojson").is_file()
     assert maplibre_assets.joinpath("airport-labels.geojson").is_file()
+    assert maplibre_assets.joinpath("natural-earth-airports-source.txt").is_file()
     assert maplibre_assets.joinpath("natural-earth-admin0-boundaries.geojson").is_file()
     assert maplibre_assets.joinpath("natural-earth-admin1-boundaries.geojson").is_file()
     assert style["sources"]["osm"]["url"] == "https://vector.openstreetmap.org/shortbread_v1/tilejson.json"
@@ -1212,12 +1213,17 @@ def test_pane_map_view_is_maplibre_based() -> None:
     assert layer_by_id["poi-railway"]["source-layer"] == "public_transport"
     assert layer_by_id["airport-label-major"]["source"] == "airport-labels"
     assert layer_by_id["airport-label-major"]["minzoom"] == 10
+    assert layer_by_id["airport-label-major"]["filter"] == ["has", "iata"]
+    assert layer_by_id["airport-label-major"]["layout"]["icon-image"] == "airport_11"
+    assert layer_by_id["airport-label-major"]["layout"]["icon-size"] == 1
     assert layer_by_id["airport-label-major"]["layout"]["text-anchor"] == "top"
     assert layer_by_id["airport-label-major"]["layout"]["text-field"] == [
         "coalesce",
-        ["get", "label"],
+        ["get", "name_en"],
         ["get", "name"],
+        ["get", "iata"],
     ]
+    assert layer_by_id["airport-label-major"]["layout"]["visibility"] == "visible"
     assert layer_by_id["poi-railway"]["minzoom"] == 13
     assert layer_by_id["poi-railway"]["filter"] == ["has", "name"]
     assert layer_by_id["poi-railway"]["layout"]["text-anchor"] == "top"
@@ -1603,7 +1609,12 @@ def test_pane_serves_bundled_assets_cached(tmp_path: Path) -> None:
             assert resp.headers.get("Content-Type") == "application/json; charset=utf-8"
             airport_labels = json.loads(resp.read())
         assert airport_labels["type"] == "FeatureCollection"
-        assert {feature["properties"]["name"] for feature in airport_labels["features"]} >= {"ATL", "LAX", "LHR"}
+        assert len(airport_labels["features"]) > 800
+        airport_by_iata = {feature["properties"]["iata"]: feature for feature in airport_labels["features"]}
+        assert {"ATL", "LAX", "LHR", "SFO"} <= set(airport_by_iata)
+        assert airport_by_iata["SFO"]["properties"]["name"] == "San Francisco Int'l"
+        assert airport_by_iata["SFO"]["properties"]["scalerank"] == 2
+        assert {feature["geometry"]["type"] for feature in airport_labels["features"]} == {"Point"}
 
         with urllib.request.urlopen(f"{origin}assets/maplibre/natural-earth-admin0-boundaries.geojson", timeout=2) as resp:
             assert resp.headers.get("Cache-Control") == "no-cache"

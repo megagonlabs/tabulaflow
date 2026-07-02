@@ -40,7 +40,7 @@ Status meanings:
 | `tunnel-*` road layers | `transportation.class`, `brunnel`, `ramp`, `subclass` | `streets.kind`, `tunnel`, `link`, `rail` | approximate | Tunnel roads are split by minor, secondary/tertiary, trunk/primary, motorway, link, and rail, but Shortbread has fewer subtype fields. |
 | `ferry` | `transportation.class=ferry` | `ferries.kind` | approximate | Ferry geometry and labels are available. |
 | `aeroway-*` | `aeroway.class` | `streets.kind`, `street_polygons.kind` | approximate | Runway/taxiway casing, fill, and white interior are ported from Shortbread street geometry. |
-| `airport-label-major` | `aerodrome_label.iata`, sprite `airport_11` | bundled `airport-labels.geojson` | approximate | A small local major-airport label layer is used because Shortbread has no documented aerodrome label layer or IATA field. |
+| `airport-label-major` | `aerodrome_label.iata`, sprite `airport_11` | bundled Natural Earth IATA-coded airport points | approximate | Natural Earth airport points replace Shortbread's missing aerodrome label layer and use OSM Bright's IATA-code visibility policy and airport sprite. |
 | `road_area_pier`, `road_pier` | `transportation.class=pier` | `pier_lines`, `pier_polygons` | approximate | Shortbread pier geometry is styled as land-colored fill/lines. |
 | `highway-*` road fill/casing layers | `transportation.class`, `ramp`, `brunnel`, `subclass` | `streets.kind`, `link`, `bridge`, `tunnel` | approximate | Roads are split into tunnel, normal, bridge, and link drawing order with minor, secondary/tertiary, trunk/primary, and motorway tiers. |
 | `railway-*`, `railway-*-hatching` | `transportation.class=rail`, `service`, `brunnel` | `streets.rail`, `streets.service`, `streets.kind` | approximate | Normal, service, transit-like, tunnel, and bridge rail layers are split with Shortbread fields. |
@@ -64,6 +64,10 @@ OSM Bright's POI and icon layers rely on OpenMapTiles fields such as `class`,
 fields for `pois`, so direct icon mapping would be brittle. Add icons only after
 inspecting real Shortbread POI feature properties and committing a small,
 licensed local sprite set.
+
+Shortbread has no documented `aerodrome_label` layer with IATA codes. The
+style therefore uses public-domain Natural Earth 1:10m airport points with an
+IATA code as a cartographic fallback for `airport-label-major`.
 
 Shortbread's `boundaries` layer starts at source zoom `2`, and sampled
 Shortbread tiles generally do not expose `admin_level=4` state/province lines
