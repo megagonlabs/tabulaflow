@@ -534,6 +534,54 @@ def test_pane_map_view_is_maplibre_based() -> None:
     assert any(layer.get("source-layer") == "streets" for layer in style["layers"])
     assert any(layer.get("source-layer") == "place_labels" for layer in style["layers"])
     layer_by_id = {str(layer.get("id")): layer for layer in style["layers"]}
+    layer_ids = [str(layer.get("id")) for layer in style["layers"]]
+
+    def assert_layer_order(*ids: str) -> None:
+        assert [layer_ids.index(layer_id) for layer_id in ids] == sorted(layer_ids.index(layer_id) for layer_id in ids)
+
+    assert_layer_order(
+        "background", "ocean", "landcover-glacier", "landuse-residential", "landuse-commercial",
+        "landuse-industrial", "landuse-cemetery", "landuse-hospital", "landuse-school", "landuse-railway",
+        "landcover-wood", "landcover-grass", "landcover-grass-park", "dam-polygons", "dam-lines",
+        "waterway_tunnel", "waterway-other", "waterway-other-intermittent", "waterway-stream-canal",
+        "waterway-stream-canal-intermittent", "waterway-river", "waterway-river-intermittent", "water-offset",
+        "water", "water-intermittent", "water-pattern", "landcover-ice-shelf", "landcover-sand", "building",
+        "building-top",
+    )
+    assert_layer_order(
+        "tunnel-service-track-casing", "tunnel-motorway-link-casing", "tunnel-minor-casing",
+        "tunnel-link-casing", "tunnel-secondary-tertiary-casing", "tunnel-trunk-primary-casing",
+        "tunnel-motorway-casing", "tunnel-path-steps-casing", "tunnel-path-steps", "tunnel-path",
+        "tunnel-motorway-link", "tunnel-service-track", "tunnel-link", "tunnel-minor",
+        "tunnel-secondary-tertiary", "tunnel-trunk-primary", "tunnel-motorway", "tunnel-railway", "ferry",
+        "aeroway-taxiway-casing", "aeroway-runway-casing", "aeroway-area", "aeroway-taxiway",
+        "aeroway-runway", "road_area_pier", "road_pier", "highway-area",
+    )
+    assert_layer_order(
+        "highway-path-steps-casing", "highway-motorway-link-casing", "highway-link-casing",
+        "highway-minor-casing", "highway-secondary-tertiary-casing", "highway-primary-casing",
+        "highway-trunk-casing", "highway-motorway-casing", "highway-path", "highway-path-steps",
+        "highway-motorway-link", "highway-link", "highway-minor", "highway-secondary-tertiary",
+        "highway-primary", "highway-trunk", "highway-motorway", "railway-transit",
+        "railway-transit-hatching", "railway-service", "railway-service-hatching", "railway",
+        "railway-hatching", "bridges", "bridge-motorway-link-casing", "bridge-link-casing",
+        "bridge-secondary-tertiary-casing", "bridge-trunk-primary-casing", "bridge-motorway-casing",
+        "bridge-minor-casing", "bridge-path-casing", "bridge-path-steps", "bridge-path",
+        "bridge-motorway-link", "bridge-link", "bridge-minor", "bridge-secondary-tertiary",
+        "bridge-trunk-primary", "bridge-motorway", "bridge-railway", "bridge-railway-hatching", "cablecar",
+        "cablecar-dash",
+    )
+    assert_layer_order(
+        "boundary-land-level-4", "boundary-land-level-2", "boundary-land-disputed", "boundary-water",
+        "waterway-name", "water-name-lakeline", "water-name-ocean", "water-name-other", "road_oneway",
+        "road_oneway_opposite", "poi-level-3", "poi-level-2", "poi-level-1", "poi-railway",
+        "highway-name-path", "highway-name-minor", "highway-name-major", "highway-shield",
+        "highway-shield-us-interstate", "highway-shield-us-other", "motorway-exit-labels", "ferry-labels",
+        "airport-label-major", "place-other", "place-village", "place-town", "place-city",
+        "place-city-capital", "place-state", "place-country-other", "place-country-3", "place-country-2",
+        "place-country-1", "place-continent",
+    )
+
     place_city_capital = layer_by_id["place-city-capital"]
     place_city = layer_by_id["place-city"]
     place_town = layer_by_id["place-town"]

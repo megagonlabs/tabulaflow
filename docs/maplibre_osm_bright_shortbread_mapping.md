@@ -87,6 +87,12 @@ All OSM Bright layer IDs are represented. Layers that depend on unavailable
 Shortbread fields are intentionally dormant rather than approximated with
 incorrect duplicate labels or false intermittent styling.
 
+Common OSM Bright layer IDs are ordered to match upstream OSM Bright draw order.
+Shortbread-only helper layers are anchored next to the closest equivalent
+concept: `ocean` after the background, dam geometry before waterways, bridge
+polygons before bridge road strokes, and local motorway/ferry labels before
+place labels.
+
 ## Licensing
 
 The style in this repository is not vendored from OSM Bright. It is a
