@@ -468,9 +468,6 @@
   function legendValues(encoding, items) {
     var field = encodingField(encoding);
     if (!field) return null;
-    if (Array.isArray(encoding.domain)) {
-      return encoding.domain.slice(0, maxLegendEntries + 1);
-    }
     var seen = {};
     var values = [];
     items.forEach(function (item) {
@@ -482,6 +479,9 @@
       seen[key] = true;
       values.push(value);
     });
+    if (Array.isArray(encoding.domain)) {
+      return encoding.domain.filter(function (value) { return seen[String(value)]; }).slice(0, maxLegendEntries + 1);
+    }
     return values;
   }
 
@@ -523,7 +523,13 @@
     };
   }
 
+  function clearLegend(container) {
+    if (!container) return;
+    container.querySelectorAll('.tf-map-legend').forEach(function (node) { node.remove(); });
+  }
+
   function renderLegend(container, sections) {
+    clearLegend(container);
     if (!sections.length) return;
     var html = '';
     sections.forEach(function (section) {
@@ -948,6 +954,9 @@
 
     function addDataLayers() {
       dataBounds = new maplibregl.LngLatBounds();
+      detailLayerIds = [];
+      legendSections = [];
+      clearLegend(stageNode);
       var hasBounds = false;
       layers.forEach(function (layer, index) {
         if (!layer || layer.type === 'points') {
@@ -978,7 +987,7 @@
           }
           var pointLegend = buildLegendSection(
             layer || {},
-            pointData.rows,
+            pointData.features,
             labels,
             pointData.markerType === 'pin' ? 'pin' : 'circle',
             pointData.markerType === 'pin' ? mapPinDefaultColor : mapDefaultColor
@@ -1052,8 +1061,11 @@
       popupState.hover = null;
       popupState.hoverHtml = '';
       popupState.click = null;
+      clearLegend(stageNode);
       markers.forEach(function (marker) { marker.remove(); });
       markers = [];
+      detailLayerIds = [];
+      legendSections = [];
       if (map) map.remove();
       map = null;
       mapLoaded = false;

@@ -1401,9 +1401,16 @@ def test_pane_map_view_is_maplibre_based() -> None:
     assert "var maxLegendEntries = 12;" in renderer
     assert "function buildLegendSection(layer, items, labels, swatchType, fallbackColor)" in renderer
     assert "function legendSwatchTypeForFeatures(features)" in renderer
+    assert "function clearLegend(container)" in renderer
     assert "function renderLegend(container, sections)" in renderer
+    assert "encoding.domain.filter(function (value) { return seen[String(value)]; })" in renderer
+    assert "return encoding.domain.slice(0, maxLegendEntries + 1);" not in renderer
+    assert "clearLegend(container);" in renderer
+    assert "clearLegend(stageNode);" in renderer
     assert "node.className = 'tf-map-legend';" in renderer
     assert "renderLegend(stageNode, legendSections);" in renderer
+    assert "pointData.features,\n            labels," in renderer
+    assert "pointData.rows,\n            labels," not in renderer
     assert "pointData.markerType === 'pin' ? 'pin' : 'circle'" in renderer
     assert "legendSwatchTypeForFeatures(features)" in renderer
     assert "values.length < 2 || values.length > maxLegendEntries" in renderer
