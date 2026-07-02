@@ -305,19 +305,6 @@
       }
     },
     {
-      "id": "water-offset",
-      "type": "fill",
-      "source": "osm",
-      "source-layer": "water_polygons",
-      "minzoom": 5,
-      "maxzoom": 8,
-      "paint": {
-        "fill-color": "#a0c8f0",
-        "fill-opacity": 0.72,
-        "fill-translate": ["interpolate", ["linear"], ["zoom"], 6, ["literal", [2, 0]], 8, ["literal", [0, 0]]]
-      }
-    },
-    {
       "id": "water",
       "type": "fill",
       "source": "osm",
@@ -335,17 +322,6 @@
       "paint": {
         "fill-color": "#c2def3",
         "fill-opacity": 0.7
-      }
-    },
-    {
-      "id": "water-pattern",
-      "type": "fill",
-      "source": "osm",
-      "source-layer": "water_polygons",
-      "minzoom": 5,
-      "paint": {
-        "fill-pattern": "wave",
-        "fill-translate": [0, 2.5]
       }
     },
     {

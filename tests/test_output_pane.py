@@ -583,8 +583,8 @@ def test_pane_map_view_is_maplibre_based() -> None:
         "landuse-industrial", "landuse-cemetery", "landuse-hospital", "landuse-school", "landuse-railway",
         "landcover-wood", "landcover-grass", "landcover-grass-park", "dam-polygons", "dam-lines",
         "waterway_tunnel", "waterway-other", "waterway-other-intermittent", "waterway-stream-canal",
-        "waterway-stream-canal-intermittent", "waterway-river", "waterway-river-intermittent", "water-offset",
-        "water", "water-intermittent", "water-pattern", "landcover-ice-shelf", "landcover-sand", "building",
+        "waterway-stream-canal-intermittent", "waterway-river", "waterway-river-intermittent",
+        "water", "water-intermittent", "landcover-ice-shelf", "landcover-sand", "building",
         "building-top",
     )
     assert_layer_order(
@@ -790,23 +790,12 @@ def test_pane_map_view_is_maplibre_based() -> None:
     ]
     assert layer_by_id["landuse-hospital"]["filter"] == ["==", ["get", "kind"], "hospital"]
     assert layer_by_id["landuse-cemetery"]["filter"] == ["==", ["get", "kind"], "cemetery"]
-    assert layer_by_id["water-offset"]["source-layer"] == "water_polygons"
-    assert layer_by_id["water-offset"]["maxzoom"] == 8
-    assert layer_by_id["water-offset"]["paint"]["fill-translate"] == [
-        "interpolate",
-        ["linear"],
-        ["zoom"],
-        6,
-        ["literal", [2, 0]],
-        8,
-        ["literal", [0, 0]],
-    ]
+    assert "water-offset" not in layer_by_id
     assert layer_by_id["water"]["source-layer"] == "water_polygons"
     assert layer_by_id["water"]["paint"]["fill-color"] == "#c2def3"
     assert layer_by_id["water-intermittent"]["filter"] == ["==", ["get", "intermittent"], True]
     assert layer_by_id["water-intermittent"]["paint"]["fill-opacity"] == 0.7
-    assert layer_by_id["water-pattern"]["paint"]["fill-pattern"] == "wave"
-    assert layer_by_id["water-pattern"]["paint"]["fill-translate"] == [0, 2.5]
+    assert "water-pattern" not in layer_by_id
     assert layer_by_id["building"]["source-layer"] == "buildings"
     assert layer_by_id["building-top"]["source-layer"] == "buildings"
     assert layer_by_id["building-top"]["paint"]["fill-translate"] == [
