@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="240" height="180" viewBox="0 0 240 180">
+  <rect width="240" height="180" fill="#eef2f7"/>
+
+  <defs>
+    <symbol id="airport-icon" viewBox="0 0 64 64">
+      <path
+        d="M32 5.5C34.9 5.5 37.2 7.8 37.2 10.7V25.3L57.8 34.8C59.4 35.5 60.4 37.1 60.4 38.9V47.1L37.2 41.4V50.3L45.4 55.8V61.2L32 57.6L18.6 61.2V55.8L26.8 50.3V41.4L3.6 47.1V38.9C3.6 37.1 4.6 35.5 6.2 34.8L26.8 25.3V10.7C26.8 7.8 29.1 5.5 32 5.5Z"
+        fill="none"
+        stroke="#ffffff"
+        stroke-linejoin="round"
+        stroke-width="6"
+      />
+      <path
+        d="M32 5.5C34.9 5.5 37.2 7.8 37.2 10.7V25.3L57.8 34.8C59.4 35.5 60.4 37.1 60.4 38.9V47.1L37.2 41.4V50.3L45.4 55.8V61.2L32 57.6L18.6 61.2V55.8L26.8 50.3V41.4L3.6 47.1V38.9C3.6 37.1 4.6 35.5 6.2 34.8L26.8 25.3V10.7C26.8 7.8 29.1 5.5 32 5.5Z"
+        fill="#3f6fd8"
+        stroke="#3f6fd8"
+        stroke-linejoin="round"
+        stroke-width="1"
+      />
+    </symbol>
+  </defs>
+
+  <g transform="translate(28 24)">
+    <use href="#airport-icon" width="74" height="74"/>
+    <text x="37" y="106" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="13" fill="#111827">22px target</text>
+  </g>
+
+  <g transform="translate(120 12)">
+    <use href="#airport-icon" width="96" height="96"/>
+    <text x="48" y="114" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="13" fill="#111827">preview</text>
+  </g>
+
+  <g transform="translate(28 154)" font-family="Arial, Helvetica, sans-serif" font-size="13" fill="#3f6fd8">
+    <text>Airport label color draft: #3f6fd8</text>
+  </g>
+</svg>

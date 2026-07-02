@@ -2152,20 +2152,20 @@
       "minzoom": 10,
       "filter": ["has", "iata"],
       "layout": {
-        "icon-image": "airport_11",
+        "icon-image": "tf:airport_11",
         "icon-size": 1,
         "text-field": ["coalesce", ["get", "name_en"], ["get", "name"], ["get", "iata"]],
         "text-font": ["Noto Sans Regular"],
         "text-anchor": "top",
         "text-size": 12,
-        "text-offset": [0, 0.6],
+        "text-offset": [0, 0.85],
         "text-optional": true,
         "text-padding": 2,
         "text-max-width": 9,
         "visibility": "visible"
       },
       "paint": {
-        "text-color": "#666666",
+        "text-color": "#3f6fd8",
         "text-halo-blur": 0.5,
         "text-halo-color": "#ffffff",
         "text-halo-width": 1

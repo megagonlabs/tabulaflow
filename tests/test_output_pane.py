@@ -521,6 +521,7 @@ def test_pane_map_view_is_maplibre_based() -> None:
     assert maplibre_assets.joinpath("tf-route-sprite@2x.json").is_file()
     assert maplibre_assets.joinpath("tf-route-sprite@2x.png").is_file()
     assert maplibre_assets.joinpath("tf-route-sprite-source.txt").is_file()
+    assert maplibre_assets.joinpath("tf-airport-icon-draft.svg").is_file()
     assert maplibre_assets.joinpath("continent-labels.geojson").is_file()
     assert maplibre_assets.joinpath("ocean-labels.geojson").is_file()
     assert maplibre_assets.joinpath("airport-labels.geojson").is_file()
@@ -564,17 +565,23 @@ def test_pane_map_view_is_maplibre_based() -> None:
         sprite
     )
     route_sprite = json.loads(maplibre_assets.joinpath("tf-route-sprite.json").read_text(encoding="utf-8"))
-    assert set(route_sprite) == {"us-interstate_1", "us-interstate_2", "us-interstate_3"}
+    assert set(route_sprite) == {"airport_11", "us-interstate_1", "us-interstate_2", "us-interstate_3"}
+    assert route_sprite["airport_11"]["width"] == 20
+    assert route_sprite["airport_11"]["height"] == 20
+    assert route_sprite["airport_11"]["pixelRatio"] == 1
     assert route_sprite["us-interstate_1"]["width"] == 26
     assert route_sprite["us-interstate_2"]["width"] == 26
     assert route_sprite["us-interstate_3"]["width"] == 32
-    assert {entry["height"] for entry in route_sprite.values()} == {30}
+    assert {route_sprite[key]["height"] for key in ("us-interstate_1", "us-interstate_2", "us-interstate_3")} == {30}
     assert {entry["pixelRatio"] for entry in route_sprite.values()} == {1}
     route_sprite_2x = json.loads(maplibre_assets.joinpath("tf-route-sprite@2x.json").read_text(encoding="utf-8"))
+    assert route_sprite_2x["airport_11"]["width"] == 40
+    assert route_sprite_2x["airport_11"]["height"] == 40
+    assert route_sprite_2x["airport_11"]["pixelRatio"] == 2
     assert route_sprite_2x["us-interstate_1"]["width"] == 52
     assert route_sprite_2x["us-interstate_2"]["width"] == 52
     assert route_sprite_2x["us-interstate_3"]["width"] == 64
-    assert {entry["height"] for entry in route_sprite_2x.values()} == {60}
+    assert {route_sprite_2x[key]["height"] for key in ("us-interstate_1", "us-interstate_2", "us-interstate_3")} == {60}
     assert {entry["pixelRatio"] for entry in route_sprite_2x.values()} == {2}
     assert any(layer.get("source-layer") == "streets" for layer in style["layers"])
     assert any(layer.get("source-layer") == "place_labels" for layer in style["layers"])
@@ -1369,9 +1376,10 @@ def test_pane_map_view_is_maplibre_based() -> None:
     assert layer_by_id["airport-label-major"]["source"] == "airport-labels"
     assert layer_by_id["airport-label-major"]["minzoom"] == 10
     assert layer_by_id["airport-label-major"]["filter"] == ["has", "iata"]
-    assert layer_by_id["airport-label-major"]["layout"]["icon-image"] == "airport_11"
+    assert layer_by_id["airport-label-major"]["layout"]["icon-image"] == "tf:airport_11"
     assert layer_by_id["airport-label-major"]["layout"]["icon-size"] == 1
     assert layer_by_id["airport-label-major"]["layout"]["text-anchor"] == "top"
+    assert layer_by_id["airport-label-major"]["layout"]["text-offset"] == [0, 0.85]
     assert layer_by_id["airport-label-major"]["layout"]["text-field"] == [
         "coalesce",
         ["get", "name_en"],
@@ -1379,6 +1387,7 @@ def test_pane_map_view_is_maplibre_based() -> None:
         ["get", "iata"],
     ]
     assert layer_by_id["airport-label-major"]["layout"]["visibility"] == "visible"
+    assert layer_by_id["airport-label-major"]["paint"]["text-color"] == "#3f6fd8"
     assert layer_by_id["poi-railway"]["minzoom"] == 13
     assert layer_by_id["poi-railway"]["filter"] == ["has", "name"]
     assert layer_by_id["poi-railway"]["layout"]["text-anchor"] == "top"
@@ -1791,7 +1800,8 @@ def test_pane_serves_bundled_assets_cached(tmp_path: Path) -> None:
             assert resp.headers.get("Cache-Control") == "no-cache"
             assert resp.headers.get("Content-Type") == "application/json; charset=utf-8"
             route_sprite = json.loads(resp.read())
-        assert set(route_sprite) == {"us-interstate_1", "us-interstate_2", "us-interstate_3"}
+        assert set(route_sprite) == {"airport_11", "us-interstate_1", "us-interstate_2", "us-interstate_3"}
+        assert route_sprite["airport_11"]["width"] == 20
         assert route_sprite["us-interstate_1"]["width"] == 26
         assert route_sprite["us-interstate_2"]["width"] == 26
         assert route_sprite["us-interstate_3"]["width"] == 32

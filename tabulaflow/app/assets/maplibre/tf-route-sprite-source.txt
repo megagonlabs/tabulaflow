@@ -7,13 +7,14 @@ Files:
 - tf-route-sprite@2x.json
 - tf-route-sprite@2x.png
 
-These interstate shield backgrounds are generated for tabulaflow and bundled
-locally for MapLibre route labels. They are custom assets, not copied from
-Google Maps or another map provider.
+These interstate shield backgrounds and the airport icon are generated for
+tabulaflow and bundled locally for MapLibre labels. They are custom assets,
+not copied from Google Maps or another map provider.
 
 Design:
 - Runtime display sizes are 26x30 CSS px for 1- and 2-digit shields, and
   32x30 CSS px for 3-digit shields, preserving the draft SVG proportions.
+- The airport icon display size is 20x20 CSS px.
 - The @2x sprite is generated at double pixel dimensions with pixelRatio 2.
 - Shield colors are tuned for the light map theme: red #f25f6b, blue #5f72d6.
 - Regenerate with: uv run scripts/generate_route_sprite.py

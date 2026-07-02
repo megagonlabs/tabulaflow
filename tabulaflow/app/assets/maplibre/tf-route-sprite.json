@@ -19,5 +19,12 @@
     "x": 58,
     "y": 0,
     "pixelRatio": 1
+  },
+  "airport_11": {
+    "width": 20,
+    "height": 20,
+    "x": 93,
+    "y": 0,
+    "pixelRatio": 1
   }
 }

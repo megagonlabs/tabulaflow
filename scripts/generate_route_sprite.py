@@ -10,11 +10,13 @@ from playwright.sync_api import sync_playwright
 
 ASSET_DIR = Path(__file__).resolve().parents[1] / "tabulaflow" / "app" / "assets" / "maplibre"
 SVG_SOURCE = ASSET_DIR / "tf-interstate-shield-draft.svg"
+AIRPORT_SVG_SOURCE = ASSET_DIR / "tf-airport-icon-draft.svg"
 SPRITE_NAME = "tf-route-sprite"
 ICONS = [
-    ("us-interstate_1", "shield-2", 26, 30),
-    ("us-interstate_2", "shield-2", 26, 30),
-    ("us-interstate_3", "shield-3", 32, 30),
+    (SVG_SOURCE, "us-interstate_1", "shield-2", 26, 30),
+    (SVG_SOURCE, "us-interstate_2", "shield-2", 26, 30),
+    (SVG_SOURCE, "us-interstate_3", "shield-3", 32, 30),
+    (AIRPORT_SVG_SOURCE, "airport_11", "airport-icon", 20, 20),
 ]
 
 
@@ -24,7 +26,7 @@ def _extract_defs(svg: str) -> str:
     return svg[start:end]
 
 
-def _shield_svg(defs: str, symbol_id: str, width: int, height: int) -> str:
+def _symbol_svg(defs: str, symbol_id: str, width: int, height: int) -> str:
     return f"""<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" viewBox="0 0 {width} {height}">
   {defs}
   <use href="#{symbol_id}" width="{width}" height="{height}"/>
@@ -64,8 +66,10 @@ def _render_svg(page, svg: str, width: int, height: int, pixel_ratio: int) -> Im
 
 
 def _build_sprite(pixel_ratio: int) -> None:
-    source = SVG_SOURCE.read_text(encoding="utf-8")
-    defs = _extract_defs(source)
+    defs_by_source = {
+        source: _extract_defs(source.read_text(encoding="utf-8"))
+        for source, _name, _symbol_id, _width, _height in ICONS
+    }
     gap = 3 * pixel_ratio
 
     with sync_playwright() as playwright:
@@ -73,8 +77,17 @@ def _build_sprite(pixel_ratio: int) -> None:
         page = browser.new_page(device_scale_factor=1)
         try:
             rendered = [
-                (name, _render_svg(page, _shield_svg(defs, symbol_id, width, height), width, height, pixel_ratio))
-                for name, symbol_id, width, height in ICONS
+                (
+                    name,
+                    _render_svg(
+                        page,
+                        _symbol_svg(defs_by_source[source], symbol_id, width, height),
+                        width,
+                        height,
+                        pixel_ratio,
+                    ),
+                )
+                for source, name, symbol_id, width, height in ICONS
             ]
         finally:
             browser.close()
