@@ -323,6 +323,7 @@
     cssVar('--map-category-6', '#46bdc6'),
     cssVar('--map-category-7', '#7cb342')
   ];
+  var mapPinDefaultColor = cssVar('--map-pin-default', '#ea4335');
   var mapPinTop = cssVar('--map-pin-top', '#ff6f61');
   var mapPinBottom = cssVar('--map-pin-bottom', '#d93025');
   var mapPinOutline = cssVar('--map-pin-outline', '#a52714');
@@ -601,7 +602,7 @@
       var label = fieldValue(row, labelField);
       var tooltip = layer.tooltip || labelField;
       var popup = detailHtml(row, tooltip, labels, label, labelField);
-      var color = colorFor(layer.color, row, mapDefaultColor);
+      var color = colorFor(layer.color, row, markerType === 'pin' ? mapPinDefaultColor : mapDefaultColor);
       var radius = sizeFor(layer.size, row, pointRows, 6);
       var pinScale = Math.max(0.8, Math.min(1.45, radius / 6));
       features.push({

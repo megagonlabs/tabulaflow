@@ -74,6 +74,7 @@ def _pane_css_vars() -> str:
         VIZ_MAP_CATEGORY_PALETTE,
         VIZ_MAP_DEFAULT_COLOR,
         VIZ_MAP_PIN_BOTTOM,
+        VIZ_MAP_PIN_DEFAULT_COLOR,
         VIZ_MAP_PIN_HOLE,
         VIZ_MAP_PIN_INNER,
         VIZ_MAP_PIN_OUTLINE,
@@ -103,6 +104,7 @@ def _pane_css_vars() -> str:
         f"--map-default: {VIZ_MAP_DEFAULT_COLOR};"
         f"--map-route: {VIZ_MAP_ROUTE_COLOR};"
         f"{map_category_vars}"
+        f"--map-pin-default: {VIZ_MAP_PIN_DEFAULT_COLOR};"
         f"--map-pin-top: {VIZ_MAP_PIN_TOP};"
         f"--map-pin-bottom: {VIZ_MAP_PIN_BOTTOM};"
         f"--map-pin-outline: {VIZ_MAP_PIN_OUTLINE};"

@@ -25,13 +25,11 @@
     },
     "natural-earth-admin0-boundaries": {
       "type": "geojson",
-      "data": "/assets/maplibre/natural-earth-admin0-boundaries.geojson",
-      "attribution": "Natural Earth"
+      "data": "/assets/maplibre/natural-earth-admin0-boundaries.geojson"
     },
     "natural-earth-admin1-boundaries": {
       "type": "geojson",
-      "data": "/assets/maplibre/natural-earth-admin1-boundaries.geojson",
-      "attribution": "Natural Earth"
+      "data": "/assets/maplibre/natural-earth-admin1-boundaries.geojson"
     }
   },
   "layers": [

@@ -25,6 +25,7 @@ from tabulaflow.app.theme import (
     VIZ_MAP_CATEGORY_PALETTE,
     VIZ_MAP_DEFAULT_COLOR,
     VIZ_MAP_PIN_BOTTOM,
+    VIZ_MAP_PIN_DEFAULT_COLOR,
     VIZ_MAP_PIN_HOLE,
     VIZ_MAP_PIN_INNER,
     VIZ_MAP_PIN_OUTLINE,
@@ -532,13 +533,12 @@ def test_pane_map_view_is_maplibre_based() -> None:
     assert style["sources"]["natural-earth-admin0-boundaries"] == {
         "type": "geojson",
         "data": "/assets/maplibre/natural-earth-admin0-boundaries.geojson",
-        "attribution": "Natural Earth",
     }
     assert style["sources"]["natural-earth-admin1-boundaries"] == {
         "type": "geojson",
         "data": "/assets/maplibre/natural-earth-admin1-boundaries.geojson",
-        "attribution": "Natural Earth",
     }
+    assert "Natural Earth" not in json.dumps(style["sources"])
     assert "© OpenStreetMap" in style["sources"]["osm"]["attribution"]
     assert "OSM Bright" in style["sources"]["osm"]["attribution"]
     assert "Style and sprites inspired by" not in style["sources"]["osm"]["attribution"]
@@ -1374,20 +1374,24 @@ def test_pane_map_view_is_maplibre_based() -> None:
     assert "node.setAttribute('aria-label', title)" in renderer
     assert "node.title = title" not in renderer
     assert "data:image/svg+xml;charset=UTF-8," in renderer
+    assert VIZ_MAP_DEFAULT_COLOR == "#4285f4"
+    assert VIZ_MAP_PIN_DEFAULT_COLOR == "#ea4335"
     assert f"--map-default: {VIZ_MAP_DEFAULT_COLOR};" in _PANE_HTML
     assert f"--map-route: {VIZ_MAP_ROUTE_COLOR};" in _PANE_HTML
     for index, color in enumerate(VIZ_MAP_CATEGORY_PALETTE):
         assert f"--map-category-{index}: {color};" in _PANE_HTML
+    assert f"--map-pin-default: {VIZ_MAP_PIN_DEFAULT_COLOR};" in _PANE_HTML
     assert f"--map-pin-top: {VIZ_MAP_PIN_TOP};" in _PANE_HTML
     assert f"--map-pin-bottom: {VIZ_MAP_PIN_BOTTOM};" in _PANE_HTML
     assert f"--map-pin-outline: {VIZ_MAP_PIN_OUTLINE};" in _PANE_HTML
     assert f"--map-pin-hole: {VIZ_MAP_PIN_HOLE};" in _PANE_HTML
     assert f"--map-pin-inner: {VIZ_MAP_PIN_INNER};" in _PANE_HTML
     assert "function cssVar(name, fallback)" in renderer
-    assert "var mapDefaultColor = cssVar('--map-default'" in renderer
+    assert "var mapDefaultColor = cssVar('--map-default', '#4285f4');" in renderer
     assert "var mapRouteColor = cssVar('--map-route'" in renderer
     assert "var mapPalette = [" in renderer
     assert "cssVar('--map-category-0', mapDefaultColor)" in renderer
+    assert "var mapPinDefaultColor = cssVar('--map-pin-default', '#ea4335');" in renderer
     assert "var mapPinTop = cssVar('--map-pin-top'" in renderer
     assert "var mapPinBottom = cssVar('--map-pin-bottom'" in renderer
     assert "var mapPinOutline = cssVar('--map-pin-outline'" in renderer
@@ -1397,6 +1401,7 @@ def test_pane_map_view_is_maplibre_based() -> None:
     assert "#ea4335" in renderer
     assert "#4285f4" in renderer
     assert "#1558d6" in renderer
+    assert "markerType === 'pin' ? mapPinDefaultColor : mapDefaultColor" in renderer
     assert "function geometryType(feature)" in renderer
     assert "function isLineFeature(feature)" in renderer
     assert "type === 'LineString' || type === 'MultiLineString'" in renderer
