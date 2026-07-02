@@ -690,36 +690,68 @@ def test_pane_map_view_is_maplibre_based() -> None:
         ["match", ["get", "admin_level"], [2, 4], True, False],
         ["==", ["get", "maritime"], True],
     ]
-    assert layer_by_id["street-labels-major"]["minzoom"] == 11
+    assert layer_by_id["road-oneway"]["filter"] == [
+        "all",
+        ["==", ["get", "oneway"], True],
+        [
+            "match",
+            ["get", "kind"],
+            ["motorway", "trunk", "primary", "secondary", "tertiary", "residential", "unclassified", "service"],
+            True,
+            False,
+        ],
+    ]
+    assert layer_by_id["road-oneway"]["layout"]["text-field"] == ">"
+    assert layer_by_id["road-oneway-opposite"]["layout"]["text-field"] == "<"
+    assert layer_by_id["road-shields"]["source-layer"] == "street_labels"
+    assert layer_by_id["road-shields"]["minzoom"] == 8
+    assert layer_by_id["road-shields"]["filter"] == ["has", "ref"]
+    assert layer_by_id["road-shields"]["layout"]["symbol-spacing"] == 220
+    assert layer_by_id["street-labels-major"]["minzoom"] == 12.2
     assert layer_by_id["street-labels-major"]["filter"] == [
         "match",
         ["get", "kind"],
-        ["motorway", "trunk", "primary", "secondary", "tertiary"],
+        ["trunk", "primary", "secondary", "tertiary"],
         True,
         False,
     ]
-    assert layer_by_id["street-labels-local"]["minzoom"] == 14
+    assert layer_by_id["street-labels-major"]["layout"]["text-field"] == [
+        "coalesce",
+        ["get", "name_en"],
+        ["get", "name"],
+    ]
+    assert layer_by_id["street-labels-local"]["minzoom"] == 15
     assert layer_by_id["street-labels-local"]["filter"] == [
         "match",
         ["get", "kind"],
-        ["residential", "unclassified"],
+        ["residential", "unclassified", "service", "track"],
         True,
         False,
     ]
+    assert layer_by_id["street-labels-path"]["minzoom"] == 15.5
+    assert layer_by_id["street-labels-path"]["filter"] == [
+        "match",
+        ["get", "kind"],
+        ["path", "footway", "cycleway"],
+        True,
+        False,
+    ]
+    assert layer_by_id["motorway-exit-labels"]["source-layer"] == "street_labels_points"
+    assert layer_by_id["motorway-exit-labels"]["filter"] == ["has", "ref"]
     assert layer_by_id["water-labels"]["minzoom"] == 10
     assert layer_by_id["water-labels"]["filter"] == [">=", ["to-number", ["get", "way_area"], 0], 1000000]
     assert layer_by_id["street-labels-major"]["layout"]["text-size"] == [
         "interpolate",
         ["linear"],
         ["zoom"],
-        11,
+        12.2,
         12,
         14,
-        14,
+        13,
         16,
-        16,
+        15,
     ]
-    assert layer_by_id["street-labels-local"]["layout"]["text-size"] == ["interpolate", ["linear"], ["zoom"], 14, 12, 16, 14]
+    assert layer_by_id["street-labels-local"]["layout"]["text-size"] == ["interpolate", ["linear"], ["zoom"], 15, 12, 16, 13]
     assert layer_by_id["water-labels"]["layout"]["text-size"] == ["interpolate", ["linear"], ["zoom"], 10, 12, 13, 14, 16, 16]
     assert layer_by_id["ferries"]["source-layer"] == "ferries"
     assert layer_by_id["ferries"]["minzoom"] == 11

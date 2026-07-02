@@ -933,23 +933,102 @@
       }
     },
     {
+      "id": "road-oneway",
+      "type": "symbol",
+      "source": "osm",
+      "source-layer": "streets",
+      "minzoom": 15,
+      "filter": [
+        "all",
+        ["==", ["get", "oneway"], true],
+        ["match", ["get", "kind"], ["motorway", "trunk", "primary", "secondary", "tertiary", "residential", "unclassified", "service"], true, false]
+      ],
+      "layout": {
+        "symbol-placement": "line",
+        "symbol-spacing": 75,
+        "text-field": ">",
+        "text-font": ["Noto Sans Regular"],
+        "text-rotation-alignment": "map",
+        "text-keep-upright": false,
+        "text-size": ["interpolate", ["linear"], ["zoom"], 15, 10, 19, 14]
+      },
+      "paint": {
+        "text-color": "#666666",
+        "text-opacity": 0.5,
+        "text-halo-color": "#ffffff",
+        "text-halo-width": 0.4
+      }
+    },
+    {
+      "id": "road-oneway-opposite",
+      "type": "symbol",
+      "source": "osm",
+      "source-layer": "streets",
+      "minzoom": 15,
+      "filter": [
+        "all",
+        ["==", ["get", "oneway_reverse"], true],
+        ["match", ["get", "kind"], ["motorway", "trunk", "primary", "secondary", "tertiary", "residential", "unclassified", "service"], true, false]
+      ],
+      "layout": {
+        "symbol-placement": "line",
+        "symbol-spacing": 75,
+        "text-field": "<",
+        "text-font": ["Noto Sans Regular"],
+        "text-rotation-alignment": "map",
+        "text-keep-upright": false,
+        "text-size": ["interpolate", ["linear"], ["zoom"], 15, 10, 19, 14]
+      },
+      "paint": {
+        "text-color": "#666666",
+        "text-opacity": 0.5,
+        "text-halo-color": "#ffffff",
+        "text-halo-width": 0.4
+      }
+    },
+    {
+      "id": "road-shields",
+      "type": "symbol",
+      "source": "osm",
+      "source-layer": "street_labels",
+      "minzoom": 8,
+      "filter": ["has", "ref"],
+      "layout": {
+        "symbol-placement": "line",
+        "symbol-spacing": 220,
+        "text-field": ["get", "ref"],
+        "text-font": ["Noto Sans Regular"],
+        "text-size": 10,
+        "text-rotation-alignment": "map",
+        "text-padding": 2
+      },
+      "paint": {
+        "text-color": "#222222",
+        "text-halo-color": "rgba(255,255,255,0.9)",
+        "text-halo-width": 2,
+        "text-halo-blur": 0.4
+      }
+    },
+    {
       "id": "street-labels-major",
       "type": "symbol",
       "source": "osm",
       "source-layer": "street_labels",
-      "minzoom": 11,
-      "filter": ["match", ["get", "kind"], ["motorway", "trunk", "primary", "secondary", "tertiary"], true, false],
+      "minzoom": 12.2,
+      "filter": ["match", ["get", "kind"], ["trunk", "primary", "secondary", "tertiary"], true, false],
       "layout": {
         "symbol-placement": "line",
         "symbol-spacing": 320,
-        "text-field": ["coalesce", ["get", "ref"], ["get", "name_en"], ["get", "name"]],
+        "text-field": ["coalesce", ["get", "name_en"], ["get", "name"]],
         "text-font": ["Noto Sans Regular"],
-        "text-size": ["interpolate", ["linear"], ["zoom"], 11, 12, 14, 14, 16, 16]
+        "text-rotation-alignment": "map",
+        "text-size": ["interpolate", ["linear"], ["zoom"], 12.2, 12, 14, 13, 16, 15]
       },
       "paint": {
-        "text-color": "#6a6257",
+        "text-color": "#776655",
         "text-halo-color": "#ffffff",
-        "text-halo-width": 1.5
+        "text-halo-blur": 0.5,
+        "text-halo-width": 1
       }
     },
     {
@@ -957,19 +1036,61 @@
       "type": "symbol",
       "source": "osm",
       "source-layer": "street_labels",
-      "minzoom": 14,
-      "filter": ["match", ["get", "kind"], ["residential", "unclassified"], true, false],
+      "minzoom": 15,
+      "filter": ["match", ["get", "kind"], ["residential", "unclassified", "service", "track"], true, false],
       "layout": {
         "symbol-placement": "line",
         "symbol-spacing": 420,
         "text-field": ["coalesce", ["get", "name_en"], ["get", "name"]],
         "text-font": ["Noto Sans Regular"],
-        "text-size": ["interpolate", ["linear"], ["zoom"], 14, 12, 16, 14]
+        "text-rotation-alignment": "map",
+        "text-size": ["interpolate", ["linear"], ["zoom"], 15, 12, 16, 13]
       },
       "paint": {
-        "text-color": "#7a746d",
+        "text-color": "#776655",
         "text-halo-color": "#ffffff",
-        "text-halo-width": 1.4
+        "text-halo-blur": 0.5,
+        "text-halo-width": 1
+      }
+    },
+    {
+      "id": "street-labels-path",
+      "type": "symbol",
+      "source": "osm",
+      "source-layer": "street_labels",
+      "minzoom": 15.5,
+      "filter": ["match", ["get", "kind"], ["path", "footway", "cycleway"], true, false],
+      "layout": {
+        "symbol-placement": "line",
+        "symbol-spacing": 420,
+        "text-field": ["coalesce", ["get", "name_en"], ["get", "name"]],
+        "text-font": ["Noto Sans Regular"],
+        "text-rotation-alignment": "map",
+        "text-size": ["interpolate", ["linear"], ["zoom"], 15.5, 12, 16, 13]
+      },
+      "paint": {
+        "text-color": "#a28a73",
+        "text-halo-color": "#f8f4f0",
+        "text-halo-width": 0.5
+      }
+    },
+    {
+      "id": "motorway-exit-labels",
+      "type": "symbol",
+      "source": "osm",
+      "source-layer": "street_labels_points",
+      "minzoom": 12,
+      "filter": ["has", "ref"],
+      "layout": {
+        "text-field": ["get", "ref"],
+        "text-font": ["Noto Sans Regular"],
+        "text-size": ["interpolate", ["linear"], ["zoom"], 12, 9, 16, 11],
+        "text-padding": 3
+      },
+      "paint": {
+        "text-color": "#5f6368",
+        "text-halo-color": "#ffffff",
+        "text-halo-width": 1.2
       }
     },
     {
