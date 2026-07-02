@@ -351,8 +351,8 @@ June 30
 - [x] Map rendering
 
 July 1
-- [ ] per-session token for safety
-- [ ] Vector map?
+- [x] per-session token for safety
+- [x] Vector map using maplibre + OpenStreetMap vector tiles
 
 - [ ] Fix I5 + sites not shown bug
 - [ ] Remote server improvements
