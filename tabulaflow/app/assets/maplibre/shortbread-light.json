@@ -977,27 +977,51 @@
       }
     },
     {
-      "id": "water-labels",
+      "id": "water-name-lakeline",
+      "type": "symbol",
+      "source": "osm",
+      "source-layer": "water_polygons_labels",
+      "minzoom": 5,
+      "filter": [">=", ["to-number", ["get", "way_area"], 0], 50000000000],
+      "layout": {
+        "text-field": ["coalesce", ["get", "name_en"], ["get", "name"]],
+        "text-font": ["Noto Sans Italic"],
+        "text-size": ["interpolate", ["linear"], ["zoom"], 5, 12, 10, 14, 16, 16],
+        "text-max-width": 6.25,
+        "text-padding": 24
+      },
+      "paint": {
+        "text-color": "#74aee9",
+        "text-halo-color": "rgba(255,255,255,0.72)",
+        "text-halo-width": 1.5
+      }
+    },
+    {
+      "id": "water-name-other",
       "type": "symbol",
       "source": "osm",
       "source-layer": "water_polygons_labels",
       "minzoom": 10,
-      "filter": [">=", ["to-number", ["get", "way_area"], 0], 1000000],
+      "filter": [
+        "all",
+        [">=", ["to-number", ["get", "way_area"], 0], 1000000],
+        ["<", ["to-number", ["get", "way_area"], 0], 50000000000]
+      ],
       "layout": {
         "text-field": ["coalesce", ["get", "name_en"], ["get", "name"]],
         "text-font": ["Noto Sans Italic"],
-        "text-size": ["interpolate", ["linear"], ["zoom"], 10, 12, 13, 14, 16, 16],
-        "text-max-width": 7,
+        "text-size": ["interpolate", ["linear"], ["zoom"], 10, 12, 13, 14, 16, 15],
+        "text-max-width": 6.25,
         "text-padding": 20
       },
       "paint": {
-        "text-color": "#5b97bf",
+        "text-color": "#74aee9",
         "text-halo-color": "rgba(255,255,255,0.72)",
-        "text-halo-width": 1.4
+        "text-halo-width": 1.5
       }
     },
     {
-      "id": "water-line-labels",
+      "id": "waterway-name",
       "type": "symbol",
       "source": "osm",
       "source-layer": "water_lines_labels",
@@ -1007,13 +1031,14 @@
         "symbol-spacing": 350,
         "text-field": ["coalesce", ["get", "name_en"], ["get", "name"]],
         "text-font": ["Noto Sans Italic"],
+        "text-letter-spacing": 0.2,
         "text-size": ["interpolate", ["linear"], ["zoom"], 13, 12, 16, 14],
         "text-max-width": 6
       },
       "paint": {
-        "text-color": "#5b97bf",
+        "text-color": "#74aee9",
         "text-halo-color": "rgba(255,255,255,0.72)",
-        "text-halo-width": 1.4
+        "text-halo-width": 1.5
       }
     },
     {

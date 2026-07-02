@@ -801,8 +801,18 @@ def test_pane_map_view_is_maplibre_based() -> None:
     ]
     assert layer_by_id["motorway-exit-labels"]["source-layer"] == "street_labels_points"
     assert layer_by_id["motorway-exit-labels"]["filter"] == ["has", "ref"]
-    assert layer_by_id["water-labels"]["minzoom"] == 10
-    assert layer_by_id["water-labels"]["filter"] == [">=", ["to-number", ["get", "way_area"], 0], 1000000]
+    assert layer_by_id["water-name-lakeline"]["minzoom"] == 5
+    assert layer_by_id["water-name-lakeline"]["filter"] == [
+        ">=",
+        ["to-number", ["get", "way_area"], 0],
+        50000000000,
+    ]
+    assert layer_by_id["water-name-other"]["minzoom"] == 10
+    assert layer_by_id["water-name-other"]["filter"] == [
+        "all",
+        [">=", ["to-number", ["get", "way_area"], 0], 1000000],
+        ["<", ["to-number", ["get", "way_area"], 0], 50000000000],
+    ]
     assert layer_by_id["street-labels-major"]["layout"]["text-size"] == [
         "interpolate",
         ["linear"],
@@ -815,14 +825,36 @@ def test_pane_map_view_is_maplibre_based() -> None:
         15,
     ]
     assert layer_by_id["street-labels-local"]["layout"]["text-size"] == ["interpolate", ["linear"], ["zoom"], 15, 12, 16, 13]
-    assert layer_by_id["water-labels"]["layout"]["text-size"] == ["interpolate", ["linear"], ["zoom"], 10, 12, 13, 14, 16, 16]
+    assert layer_by_id["water-name-lakeline"]["layout"]["text-size"] == [
+        "interpolate",
+        ["linear"],
+        ["zoom"],
+        5,
+        12,
+        10,
+        14,
+        16,
+        16,
+    ]
+    assert layer_by_id["water-name-other"]["layout"]["text-size"] == [
+        "interpolate",
+        ["linear"],
+        ["zoom"],
+        10,
+        12,
+        13,
+        14,
+        16,
+        15,
+    ]
     assert layer_by_id["ferries"]["source-layer"] == "ferries"
     assert layer_by_id["ferries"]["minzoom"] == 11
     assert layer_by_id["ferries"]["paint"]["line-dasharray"] == [2, 2]
     assert layer_by_id["ferry-labels"]["source-layer"] == "ferries"
     assert layer_by_id["ferry-labels"]["layout"]["symbol-placement"] == "line"
-    assert layer_by_id["water-line-labels"]["source-layer"] == "water_lines_labels"
-    assert layer_by_id["water-line-labels"]["minzoom"] == 13
+    assert layer_by_id["waterway-name"]["source-layer"] == "water_lines_labels"
+    assert layer_by_id["waterway-name"]["minzoom"] == 13
+    assert layer_by_id["waterway-name"]["layout"]["text-letter-spacing"] == 0.2
     assert layer_by_id["public-transport-labels"]["source-layer"] == "public_transport"
     assert layer_by_id["public-transport-labels"]["minzoom"] == 13
     assert layer_by_id["public-transport-labels"]["filter"] == ["has", "name"]
