@@ -609,6 +609,28 @@ def test_pane_map_view_is_maplibre_based() -> None:
     ]
     assert layer_by_id["streets-secondary-casing"]["paint"]["line-color"] == "#e7c27c"
     assert layer_by_id["streets-minor-casing"]["minzoom"] == 12
+    assert layer_by_id["boundary-land-level-4"]["filter"] == [
+        "all",
+        [">=", ["to-number", ["get", "admin_level"], 0], 3],
+        ["<=", ["to-number", ["get", "admin_level"], 0], 8],
+        ["==", ["get", "maritime"], False],
+    ]
+    assert layer_by_id["boundary-land-level-2"]["filter"] == [
+        "all",
+        ["==", ["get", "admin_level"], 2],
+        ["==", ["get", "maritime"], False],
+        ["==", ["get", "disputed"], False],
+    ]
+    assert layer_by_id["boundary-land-disputed"]["filter"] == [
+        "all",
+        ["==", ["get", "maritime"], False],
+        ["==", ["get", "disputed"], True],
+    ]
+    assert layer_by_id["boundary-water"]["filter"] == [
+        "all",
+        ["match", ["get", "admin_level"], [2, 4], True, False],
+        ["==", ["get", "maritime"], True],
+    ]
     assert layer_by_id["street-labels-major"]["minzoom"] == 11
     assert layer_by_id["street-labels-major"]["filter"] == [
         "match",

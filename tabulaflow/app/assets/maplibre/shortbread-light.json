@@ -236,17 +236,75 @@
       "paint": {"fill-color": "#dfdbd7", "fill-opacity": 0.78}
     },
     {
-      "id": "boundaries",
+      "id": "boundary-land-level-4",
       "type": "line",
       "source": "osm",
       "source-layer": "boundaries",
       "minzoom": 2,
-      "filter": ["==", ["get", "maritime"], false],
+      "filter": [
+        "all",
+        [">=", ["to-number", ["get", "admin_level"], 0], 3],
+        ["<=", ["to-number", ["get", "admin_level"], 0], 8],
+        ["==", ["get", "maritime"], false]
+      ],
       "paint": {
-        "line-color": "#aaa7b4",
-        "line-width": ["interpolate", ["linear"], ["zoom"], 2, 0.6, 8, 1.1],
+        "line-color": "#9e9cab",
+        "line-width": ["interpolate", ["exponential", 1.4], ["zoom"], 4, 0.4, 5, 1, 12, 3],
         "line-dasharray": [3, 1, 1, 1],
-        "line-opacity": 0.62
+        "line-opacity": 0.68
+      }
+    },
+    {
+      "id": "boundary-land-level-2",
+      "type": "line",
+      "source": "osm",
+      "source-layer": "boundaries",
+      "minzoom": 0,
+      "filter": [
+        "all",
+        ["==", ["get", "admin_level"], 2],
+        ["==", ["get", "maritime"], false],
+        ["==", ["get", "disputed"], false]
+      ],
+      "paint": {
+        "line-color": "#a6a4ad",
+        "line-width": ["interpolate", ["linear"], ["zoom"], 0, 0.6, 4, 1.4, 5, 2, 12, 8],
+        "line-opacity": 0.7
+      }
+    },
+    {
+      "id": "boundary-land-disputed",
+      "type": "line",
+      "source": "osm",
+      "source-layer": "boundaries",
+      "minzoom": 0,
+      "filter": [
+        "all",
+        ["==", ["get", "maritime"], false],
+        ["==", ["get", "disputed"], true]
+      ],
+      "paint": {
+        "line-color": "#adabb4",
+        "line-width": ["interpolate", ["linear"], ["zoom"], 0, 0.6, 4, 1.4, 5, 2, 12, 8],
+        "line-dasharray": [1, 3],
+        "line-opacity": 0.72
+      }
+    },
+    {
+      "id": "boundary-water",
+      "type": "line",
+      "source": "osm",
+      "source-layer": "boundaries",
+      "minzoom": 4,
+      "filter": [
+        "all",
+        ["match", ["get", "admin_level"], [2, 4], true, false],
+        ["==", ["get", "maritime"], true]
+      ],
+      "paint": {
+        "line-color": "#9abdd6",
+        "line-opacity": ["interpolate", ["linear"], ["zoom"], 6, 0.6, 10, 1],
+        "line-width": ["interpolate", ["linear"], ["zoom"], 0, 0.6, 4, 1.4, 5, 2, 12, 8]
       }
     },
     {
