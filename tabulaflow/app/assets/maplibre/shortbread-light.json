@@ -2065,25 +2065,6 @@
       }
     },
     {
-      "id": "motorway-exit-labels",
-      "type": "symbol",
-      "source": "osm",
-      "source-layer": "street_labels_points",
-      "minzoom": 12,
-      "filter": ["has", "ref"],
-      "layout": {
-        "text-field": ["get", "ref"],
-        "text-font": ["Noto Sans Regular"],
-        "text-size": ["interpolate", ["linear"], ["zoom"], 12, 9, 16, 11],
-        "text-padding": 3
-      },
-      "paint": {
-        "text-color": "#5f6368",
-        "text-halo-color": "#ffffff",
-        "text-halo-width": 1.2
-      }
-    },
-    {
       "id": "ferry-labels",
       "type": "symbol",
       "source": "osm",

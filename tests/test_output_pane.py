@@ -617,7 +617,7 @@ def test_pane_map_view_is_maplibre_based() -> None:
         "water-name-lakeline", "water-name-ocean", "water-name-other",
         "road_oneway", "road_oneway_opposite", "poi-level-3", "poi-level-2", "poi-level-1", "poi-railway",
         "highway-name-path", "highway-name-minor", "highway-name-major", "highway-shield",
-        "highway-shield-us-interstate", "highway-shield-us-other", "motorway-exit-labels", "ferry-labels",
+        "highway-shield-us-interstate", "highway-shield-us-other", "ferry-labels",
         "airport-label-major", "place-other", "place-village", "place-town", "place-city",
         "place-city-medium", "place-city-small", "place-city-capital", "place-state", "place-country-other",
         "place-country-3", "place-country-2", "place-country-1", "place-continent",
@@ -1214,8 +1214,7 @@ def test_pane_map_view_is_maplibre_based() -> None:
         True,
         False,
     ]
-    assert layer_by_id["motorway-exit-labels"]["source-layer"] == "street_labels_points"
-    assert layer_by_id["motorway-exit-labels"]["filter"] == ["has", "ref"]
+    assert "motorway-exit-labels" not in layer_by_id
     assert layer_by_id["water-name-lakeline"]["minzoom"] == 5
     assert layer_by_id["water-name-lakeline"]["filter"] == [
         ">=",
