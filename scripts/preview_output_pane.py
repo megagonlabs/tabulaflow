@@ -363,12 +363,14 @@ def _map_record() -> SimpleNamespace:
                     "lng": "lng",
                     "label": "name",
                     "tooltip": ["name", "kind"],
+                    "color": {"field": "kind"},
                 },
                 {
                     "type": "geojson",
                     "geojson": "geom",
                     "label": "name",
                     "tooltip": ["name", "kind"],
+                    "color": {"field": "kind"},
                 },
                 {
                     "type": "points",
@@ -382,6 +384,7 @@ def _map_record() -> SimpleNamespace:
                     ],
                     "label": "label",
                     "tooltip": ["label", "kind"],
+                    "color": {"field": "kind"},
                 },
             ],
         },

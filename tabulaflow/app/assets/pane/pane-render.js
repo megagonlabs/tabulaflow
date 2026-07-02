@@ -330,6 +330,7 @@
   var mapPinHole = cssVar('--map-pin-hole', '#f8fafc');
   var mapPinInner = cssVar('--map-pin-inner', '#fff4f2');
   var mapStyleUrl = '/assets/maplibre/shortbread-light.json';
+  var maxLegendEntries = 12;
 
   function hexRgb(value) {
     var text = String(value || '').trim();
@@ -462,6 +463,84 @@
     var hash = 0;
     for (var i = 0; i < text.length; i++) hash = ((hash * 31) + text.charCodeAt(i)) >>> 0;
     return mapPalette[hash % mapPalette.length];
+  }
+
+  function legendValues(encoding, items) {
+    var field = encodingField(encoding);
+    if (!field) return null;
+    if (Array.isArray(encoding.domain)) {
+      return encoding.domain.slice(0, maxLegendEntries + 1);
+    }
+    var seen = {};
+    var values = [];
+    items.forEach(function (item) {
+      var row = item && item.properties ? item.properties : item;
+      var value = fieldValue(row, field);
+      if (value == null) return;
+      var key = String(value);
+      if (seen[key]) return;
+      seen[key] = true;
+      values.push(value);
+    });
+    return values;
+  }
+
+  function legendSwatchTypeForFeatures(features) {
+    var hasLine = false;
+    var hasPolygon = false;
+    var hasPoint = false;
+    features.forEach(function (feature) {
+      var type = geometryType(feature);
+      if (type === 'LineString' || type === 'MultiLineString') hasLine = true;
+      else if (type === 'Polygon' || type === 'MultiPolygon') hasPolygon = true;
+      else if (type === 'Point' || type === 'MultiPoint') hasPoint = true;
+    });
+    var kinds = (hasLine ? 1 : 0) + (hasPolygon ? 1 : 0) + (hasPoint ? 1 : 0);
+    if (kinds !== 1) return 'square';
+    if (hasLine) return 'line';
+    if (hasPolygon) return 'polygon';
+    return 'circle';
+  }
+
+  function buildLegendSection(layer, items, labels, swatchType, fallbackColor) {
+    var encoding = layer && layer.color;
+    var field = encodingField(encoding);
+    if (!field) return null;
+    var values = legendValues(encoding, items);
+    if (!values || values.length < 2 || values.length > maxLegendEntries) return null;
+    var entries = values.map(function (value) {
+      var row = {};
+      row[field] = value;
+      return {
+        label: displayValue(value),
+        color: colorFor(encoding, row, fallbackColor)
+      };
+    });
+    return {
+      title: labels[field] || field,
+      swatchType: swatchType,
+      entries: entries
+    };
+  }
+
+  function renderLegend(container, sections) {
+    if (!sections.length) return;
+    var html = '';
+    sections.forEach(function (section) {
+      html += '<section class="tf-map-legend-section"><div class="tf-map-legend-title">'
+        + escapeHtml(section.title) + '</div>';
+      section.entries.forEach(function (entry) {
+        var swatch = '<span class="tf-map-legend-swatch tf-map-legend-swatch-' + section.swatchType
+          + '" style="--legend-color:' + escapeHtml(entry.color) + '"></span>';
+        html += '<div class="tf-map-legend-item">' + swatch + '<span class="tf-map-legend-label">'
+          + escapeHtml(entry.label) + '</span></div>';
+      });
+      html += '</section>';
+    });
+    var node = document.createElement('div');
+    node.className = 'tf-map-legend';
+    node.innerHTML = html;
+    container.appendChild(node);
   }
 
   function sizeFor(encoding, row, rows, fallback) {
@@ -838,6 +917,7 @@
     container.innerHTML = '<div class="tf-map-stage"><div class="tf-map"></div><div class="tf-map-empty"></div></div>';
     var mapNode = container.querySelector('.tf-map');
     var emptyNode = container.querySelector('.tf-map-empty');
+    var stageNode = container.querySelector('.tf-map-stage');
 
     function showEmpty(message) {
       emptyNode.textContent = message;
@@ -864,6 +944,7 @@
     var dataBounds = null;
     var popupState = { hover: null, hoverHtml: '', click: null };
     var detailLayerIds = [];
+    var legendSections = [];
 
     function addDataLayers() {
       dataBounds = new maplibregl.LngLatBounds();
@@ -895,6 +976,14 @@
               markers.push(marker);
             });
           }
+          var pointLegend = buildLegendSection(
+            layer || {},
+            pointData.rows,
+            labels,
+            pointData.markerType === 'pin' ? 'pin' : 'circle',
+            pointData.markerType === 'pin' ? mapPinDefaultColor : mapDefaultColor
+          );
+          if (pointLegend) legendSections.push(pointLegend);
           return;
         }
         if (layer.type === 'geojson') {
@@ -908,9 +997,18 @@
           addGeoJsonLayers(map, geoSourceId, geoSourceId).forEach(function (layerId) {
             detailLayerIds.push(layerId);
           });
+          var geoLegend = buildLegendSection(
+            layer,
+            features,
+            labels,
+            legendSwatchTypeForFeatures(features),
+            mapDefaultColor
+          );
+          if (geoLegend) legendSections.push(geoLegend);
         }
       });
       bindLayerDetails(map, detailLayerIds, popupState);
+      renderLegend(stageNode, legendSections);
       if (!hasBounds) dataBounds = null;
     }
 

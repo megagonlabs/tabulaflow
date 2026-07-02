@@ -1399,6 +1399,15 @@ def test_pane_map_view_is_maplibre_based() -> None:
     assert "var mapPinHole = cssVar('--map-pin-hole'" in renderer
     assert "var mapPinInner = cssVar('--map-pin-inner'" in renderer
     assert "var mapStyleUrl = '/assets/maplibre/shortbread-light.json';" in renderer
+    assert "var maxLegendEntries = 12;" in renderer
+    assert "function buildLegendSection(layer, items, labels, swatchType, fallbackColor)" in renderer
+    assert "function legendSwatchTypeForFeatures(features)" in renderer
+    assert "function renderLegend(container, sections)" in renderer
+    assert "node.className = 'tf-map-legend';" in renderer
+    assert "renderLegend(stageNode, legendSections);" in renderer
+    assert "pointData.markerType === 'pin' ? 'pin' : 'circle'" in renderer
+    assert "legendSwatchTypeForFeatures(features)" in renderer
+    assert "values.length < 2 || values.length > maxLegendEntries" in renderer
     assert "#ea4335" in renderer
     assert "#4285f4" in renderer
     assert "#1558d6" in renderer
@@ -1415,6 +1424,10 @@ def test_pane_map_view_is_maplibre_based() -> None:
     assert "map.resize();" in renderer
     assert ".tf-map-stage { position: relative; height: min(560px, 68vh); min-height: 420px;" in _PANE_HTML
     assert ".tf-map-view .maplibregl-map { background: var(--card);" in _PANE_HTML
+    assert ".tf-map-legend {\n    position: absolute; top: 12px; right: 12px; z-index: 5;" in _PANE_HTML
+    assert ".tf-map-legend-swatch-pin::before" in _PANE_HTML
+    assert ".tf-map-legend-swatch-line" in _PANE_HTML
+    assert ".tf-map-legend-swatch-polygon" in _PANE_HTML
     assert ".tf-map-pin {" in _PANE_HTML
     assert "pointer-events: none; transform: translateY(1px);" in _PANE_HTML
     assert ".tf-map-view .maplibregl-popup.tf-map-detail-tooltip .maplibregl-popup-content," in _PANE_HTML

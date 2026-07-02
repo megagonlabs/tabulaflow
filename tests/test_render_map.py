@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 
 import pandas as pd
+import pytest
 
 from tabulaflow.core.types import ExecResult, PredQuery
 from tabulaflow.toolhub.query_history import QueryHistory
@@ -158,6 +159,12 @@ class TestNormalizeMapSpec:
             ]
         }
         assert normalize_map_spec(df, spec) == spec
+
+    def test_legend_is_not_agent_facing_map_spec(self) -> None:
+        df = pd.DataFrame({"lat": [37.7], "lng": [-122.4], "status": ["open"]})
+        spec = {"legend": True, "layers": [{"type": "points", "lat": "lat", "lng": "lng", "color": {"field": "status"}}]}
+        with pytest.raises(ValueError, match="unsupported map_spec field"):
+            normalize_map_spec(df, spec)
 
 
 class TestRenderMapTool:

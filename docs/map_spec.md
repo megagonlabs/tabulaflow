@@ -261,6 +261,9 @@ palette, opacity, stroke width, and radius range.
 ```
 
 The renderer chooses a stable palette.
+When a categorical color field has a compact set of values, the output pane
+automatically shows a top-right legend. Agents do not need to request or
+configure legends.
 
 ### Ordered Categorical Color
 
@@ -295,7 +298,7 @@ Supported encoding fields:
 
 Unsupported presentation fields include fixed hex colors, explicit color
 palettes/ranges, fixed numeric sizes, vector `style`, fill opacity, stroke
-opacity, stroke width, and fill/stroke colors.
+opacity, stroke width, fill/stroke colors, and custom legends.
 
 ## 7. Label and Tooltip Semantics
 
@@ -431,7 +434,7 @@ Defer:
 - table-map linked selection
 - WKT/WKB parsing
 - custom CRS/reprojection
-- complex legends
+- manual or complex legends
 - map exports beyond the existing pane/export path
 
 ## 11. Examples
