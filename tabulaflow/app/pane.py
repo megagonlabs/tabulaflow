@@ -267,6 +267,8 @@ class _Handler(http.server.SimpleHTTPRequestHandler):
             ctype = "text/css; charset=utf-8"
         elif clean.endswith(".json") or clean.endswith(".geojson"):
             ctype = "application/json; charset=utf-8"
+        elif clean.endswith(".png"):
+            ctype = "image/png"
         else:
             ctype = "application/octet-stream"
         self.send_response(200)

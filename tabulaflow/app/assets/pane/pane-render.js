@@ -330,7 +330,12 @@
   var mapPinHole = cssVar('--map-pin-hole', '#f8fafc');
   var mapPinInner = cssVar('--map-pin-inner', '#fff4f2');
   var mapStyleUrl = '/assets/maplibre/shortbread-light.json';
+  var mapStyleSpriteUrl = '/assets/maplibre/osm-bright-sprite';
   var maxLegendEntries = 12;
+
+  function absoluteUrl(path) {
+    return new URL(path, window.location.href).href;
+  }
 
   function hexRgb(value) {
     var text = String(value || '').trim();
@@ -946,6 +951,8 @@
 
     var map = null;
     var mapLoaded = false;
+    var mapInitPending = false;
+    var mapInitToken = 0;
     var markers = [];
     var dataBounds = null;
     var popupState = { hover: null, hoverHtml: '', click: null };
@@ -1069,29 +1076,45 @@
       if (map) map.remove();
       map = null;
       mapLoaded = false;
+      mapInitPending = false;
+      mapInitToken += 1;
       dataBounds = null;
     }
 
     function initMap() {
-      if (map) return;
+      if (map || mapInitPending) return;
+      mapInitPending = true;
+      var initToken = ++mapInitToken;
       hideEmpty();
-      map = new maplibregl.Map({
-        container: mapNode,
-        style: mapStyleUrl,
-        center: [0, 0],
-        zoom: 2,
-        attributionControl: false
-      });
-      map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-left');
-      map.addControl(new maplibregl.AttributionControl({ compact: false }), 'bottom-right');
-      map.once('load', function () {
-        if (!map) return;
-        mapLoaded = true;
-        addDataLayers();
-        syncView();
-      });
-      map.on('error', function (event) {
-        if (event && event.error) showEmpty('Map error: ' + String(event.error.message || event.error));
+      fetch(mapStyleUrl).then(function (response) {
+        if (!response.ok) throw new Error('Failed to load map style.');
+        return response.json();
+      }).then(function (style) {
+        mapInitPending = false;
+        if (initToken !== mapInitToken || map || !container.isConnected) return;
+        style.sprite = absoluteUrl(mapStyleSpriteUrl);
+        map = new maplibregl.Map({
+          container: mapNode,
+          style: style,
+          center: [0, 0],
+          zoom: 2,
+          attributionControl: false
+        });
+        map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-left');
+        map.addControl(new maplibregl.AttributionControl({ compact: false }), 'bottom-right');
+        map.once('load', function () {
+          if (!map) return;
+          mapLoaded = true;
+          addDataLayers();
+          syncView();
+        });
+        map.on('error', function (event) {
+          if (event && event.error) showEmpty('Map error: ' + String(event.error.message || event.error));
+        });
+      }).catch(function (error) {
+        mapInitPending = false;
+        if (initToken !== mapInitToken) return;
+        showEmpty('Map error: ' + String(error && error.message ? error.message : error));
       });
     }
 

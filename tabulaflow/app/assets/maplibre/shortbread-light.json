@@ -4,7 +4,7 @@
   "center": [0, 20],
   "zoom": 1.2,
   "glyphs": "https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf",
-  "sprite": "https://openmaptiles.github.io/osm-bright-gl-style/sprite",
+  "sprite": "osm-bright-sprite",
   "sources": {
     "osm": {
       "type": "vector",
@@ -1992,7 +1992,114 @@
       "filter": [
         "all",
         ["has", "ref"],
-        ["match", ["get", "kind"], ["motorway", "trunk", "primary"], false, true]
+        ["==", ["to-number", ["get", "ref_rows"], 1], 1],
+        [">", ["to-number", ["get", "ref_cols"], ["length", ["get", "ref"]]], 0],
+        ["<=", ["to-number", ["get", "ref_cols"], ["length", ["get", "ref"]]], 6],
+        ["!", ["any",
+          ["==", ["slice", ["upcase", ["get", "ref"]], 0, 2], "I-"],
+          ["==", ["slice", ["upcase", ["get", "ref"]], 0, 2], "I "],
+          ["==", ["slice", ["upcase", ["get", "ref"]], 0, 3], "US-"],
+          ["==", ["slice", ["upcase", ["get", "ref"]], 0, 3], "US "]
+        ]]
+      ],
+      "layout": {
+        "symbol-placement": "line",
+        "symbol-spacing": 220,
+        "icon-image": ["concat", "road_", ["to-string", ["to-number", ["get", "ref_cols"], ["length", ["get", "ref"]]]]],
+        "icon-rotation-alignment": "viewport",
+        "icon-size": 1,
+        "text-field": ["get", "ref"],
+        "text-font": ["Noto Sans Regular"],
+        "text-size": 10,
+        "text-rotation-alignment": "viewport",
+        "text-padding": 2
+      },
+      "paint": {
+        "text-color": "#111111"
+      }
+    },
+    {
+      "id": "highway-shield-us-interstate",
+      "type": "symbol",
+      "source": "osm",
+      "source-layer": "street_labels",
+      "minzoom": 7,
+      "filter": [
+        "all",
+        ["has", "ref"],
+        ["==", ["to-number", ["get", "ref_rows"], 1], 1],
+        ["any",
+          ["==", ["slice", ["upcase", ["get", "ref"]], 0, 2], "I-"],
+          ["==", ["slice", ["upcase", ["get", "ref"]], 0, 2], "I "]
+        ],
+        [">", ["length", ["slice", ["get", "ref"], 2]], 0],
+        ["<=", ["length", ["slice", ["get", "ref"], 2]], 3]
+      ],
+      "layout": {
+        "symbol-placement": "line",
+        "symbol-spacing": 200,
+        "icon-image": ["concat", "us-interstate_", ["to-string", ["length", ["slice", ["get", "ref"], 2]]]],
+        "icon-rotation-alignment": "viewport",
+        "icon-size": 1,
+        "text-field": ["slice", ["get", "ref"], 2],
+        "text-font": ["Noto Sans Regular"],
+        "text-size": 10,
+        "text-rotation-alignment": "viewport",
+        "text-padding": 2
+      },
+      "paint": {
+        "text-color": "#111111"
+      }
+    },
+    {
+      "id": "highway-shield-us-highway",
+      "type": "symbol",
+      "source": "osm",
+      "source-layer": "street_labels",
+      "minzoom": 9,
+      "filter": [
+        "all",
+        ["has", "ref"],
+        ["==", ["to-number", ["get", "ref_rows"], 1], 1],
+        ["any",
+          ["==", ["slice", ["upcase", ["get", "ref"]], 0, 3], "US-"],
+          ["==", ["slice", ["upcase", ["get", "ref"]], 0, 3], "US "]
+        ],
+        [">", ["length", ["slice", ["get", "ref"], 3]], 0],
+        ["<=", ["length", ["slice", ["get", "ref"], 3]], 3]
+      ],
+      "layout": {
+        "symbol-placement": "line",
+        "symbol-spacing": 200,
+        "icon-image": ["concat", "us-highway_", ["to-string", ["length", ["slice", ["get", "ref"], 3]]]],
+        "icon-rotation-alignment": "viewport",
+        "icon-size": 1,
+        "text-field": ["slice", ["get", "ref"], 3],
+        "text-font": ["Noto Sans Regular"],
+        "text-size": 10,
+        "text-rotation-alignment": "viewport",
+        "text-padding": 2
+      },
+      "paint": {
+        "text-color": "#111111"
+      }
+    },
+    {
+      "id": "highway-shield-long-ref",
+      "type": "symbol",
+      "source": "osm",
+      "source-layer": "street_labels",
+      "minzoom": 8,
+      "filter": [
+        "all",
+        ["has", "ref"],
+        [">", ["to-number", ["get", "ref_cols"], ["length", ["get", "ref"]]], 6],
+        ["!", ["any",
+          ["==", ["slice", ["upcase", ["get", "ref"]], 0, 2], "I-"],
+          ["==", ["slice", ["upcase", ["get", "ref"]], 0, 2], "I "],
+          ["==", ["slice", ["upcase", ["get", "ref"]], 0, 3], "US-"],
+          ["==", ["slice", ["upcase", ["get", "ref"]], 0, 3], "US "]
+        ]]
       ],
       "layout": {
         "symbol-placement": "line",
@@ -2005,60 +2112,6 @@
       },
       "paint": {
         "text-color": "#222222",
-        "text-halo-color": "rgba(255,255,255,0.9)",
-        "text-halo-width": 2,
-        "text-halo-blur": 0.4
-      }
-    },
-    {
-      "id": "highway-shield-us-interstate",
-      "type": "symbol",
-      "source": "osm",
-      "source-layer": "street_labels",
-      "minzoom": 7,
-      "filter": [
-        "all",
-        ["has", "ref"],
-        ["==", ["get", "kind"], "motorway"]
-      ],
-      "layout": {
-        "symbol-placement": "line",
-        "symbol-spacing": 200,
-        "text-field": ["get", "ref"],
-        "text-font": ["Noto Sans Regular"],
-        "text-size": 10,
-        "text-rotation-alignment": "map",
-        "text-padding": 2
-      },
-      "paint": {
-        "text-color": "#111111",
-        "text-halo-color": "rgba(255,255,255,0.92)",
-        "text-halo-width": 2.2,
-        "text-halo-blur": 0.4
-      }
-    },
-    {
-      "id": "highway-shield-us-other",
-      "type": "symbol",
-      "source": "osm",
-      "source-layer": "street_labels",
-      "minzoom": 9,
-      "filter": [
-        "all",
-        ["has", "ref"],
-        ["match", ["get", "kind"], ["trunk", "primary"], true, false]
-      ],
-      "layout": {
-        "symbol-placement": "line",
-        "symbol-spacing": 200,
-        "text-field": ["get", "ref"],
-        "text-font": ["Noto Sans Regular"],
-        "text-size": 10,
-        "text-rotation-alignment": "map",
-        "text-padding": 2
-      },
-      "paint": {
-        "text-color": "#111111",
         "text-halo-color": "rgba(255,255,255,0.9)",
         "text-halo-width": 2,
         "text-halo-blur": 0.4

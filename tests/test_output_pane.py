@@ -511,6 +511,11 @@ def test_pane_map_view_is_maplibre_based() -> None:
     assert maplibre_assets.joinpath("maplibre-gl.css").is_file()
     assert maplibre_assets.joinpath("LICENSE.txt").is_file()
     assert maplibre_assets.joinpath("shortbread-light.json").is_file()
+    assert maplibre_assets.joinpath("osm-bright-sprite.json").is_file()
+    assert maplibre_assets.joinpath("osm-bright-sprite.png").is_file()
+    assert maplibre_assets.joinpath("osm-bright-sprite@2x.json").is_file()
+    assert maplibre_assets.joinpath("osm-bright-sprite@2x.png").is_file()
+    assert maplibre_assets.joinpath("osm-bright-sprite-source.txt").is_file()
     assert maplibre_assets.joinpath("continent-labels.geojson").is_file()
     assert maplibre_assets.joinpath("ocean-labels.geojson").is_file()
     assert maplibre_assets.joinpath("airport-labels.geojson").is_file()
@@ -544,7 +549,12 @@ def test_pane_map_view_is_maplibre_based() -> None:
     )
     assert "OSM Bright" not in style["sources"]["osm"]["attribution"]
     assert style["glyphs"] == "https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf"
-    assert style["sprite"] == "https://openmaptiles.github.io/osm-bright-gl-style/sprite"
+    assert style["sprite"] == "osm-bright-sprite"
+    assert "openmaptiles.github.io/osm-bright-gl-style/sprite" not in json.dumps(style)
+    sprite = json.loads(maplibre_assets.joinpath("osm-bright-sprite.json").read_text(encoding="utf-8"))
+    assert {"road_1", "road_6", "us-interstate_1", "us-interstate_3", "us-highway_1", "us-highway_3"} <= set(
+        sprite
+    )
     assert any(layer.get("source-layer") == "streets" for layer in style["layers"])
     assert any(layer.get("source-layer") == "place_labels" for layer in style["layers"])
     layer_by_id = {str(layer.get("id")): layer for layer in style["layers"]}
@@ -617,7 +627,7 @@ def test_pane_map_view_is_maplibre_based() -> None:
         "water-name-lakeline", "water-name-ocean", "water-name-other",
         "road_oneway", "road_oneway_opposite", "poi-level-3", "poi-level-2", "poi-level-1", "poi-railway",
         "highway-name-path", "highway-name-minor", "highway-name-major", "highway-shield",
-        "highway-shield-us-interstate", "highway-shield-us-other", "ferry-labels",
+        "highway-shield-us-interstate", "highway-shield-us-highway", "highway-shield-long-ref", "ferry-labels",
         "airport-label-major", "place-other", "place-village", "place-town", "place-city",
         "place-city-medium", "place-city-small", "place-city-capital", "place-state", "place-country-other",
         "place-country-3", "place-country-2", "place-country-1", "place-continent",
@@ -1167,24 +1177,75 @@ def test_pane_map_view_is_maplibre_based() -> None:
     assert layer_by_id["road_oneway_opposite"]["layout"]["text-field"] == "<"
     assert layer_by_id["highway-shield"]["source-layer"] == "street_labels"
     assert layer_by_id["highway-shield"]["minzoom"] == 8
+    explicit_us_route_prefix_filter = [
+        "any",
+        ["==", ["slice", ["upcase", ["get", "ref"]], 0, 2], "I-"],
+        ["==", ["slice", ["upcase", ["get", "ref"]], 0, 2], "I "],
+        ["==", ["slice", ["upcase", ["get", "ref"]], 0, 3], "US-"],
+        ["==", ["slice", ["upcase", ["get", "ref"]], 0, 3], "US "],
+    ]
     assert layer_by_id["highway-shield"]["filter"] == [
         "all",
         ["has", "ref"],
-        ["match", ["get", "kind"], ["motorway", "trunk", "primary"], False, True],
+        ["==", ["to-number", ["get", "ref_rows"], 1], 1],
+        [">", ["to-number", ["get", "ref_cols"], ["length", ["get", "ref"]]], 0],
+        ["<=", ["to-number", ["get", "ref_cols"], ["length", ["get", "ref"]]], 6],
+        ["!", explicit_us_route_prefix_filter],
     ]
     assert layer_by_id["highway-shield"]["layout"]["symbol-spacing"] == 220
+    assert layer_by_id["highway-shield"]["layout"]["icon-image"] == [
+        "concat",
+        "road_",
+        ["to-string", ["to-number", ["get", "ref_cols"], ["length", ["get", "ref"]]]],
+    ]
+    assert layer_by_id["highway-shield"]["layout"]["text-field"] == ["get", "ref"]
+    assert layer_by_id["highway-shield"]["layout"]["text-rotation-alignment"] == "viewport"
     assert layer_by_id["highway-shield-us-interstate"]["minzoom"] == 7
     assert layer_by_id["highway-shield-us-interstate"]["filter"] == [
         "all",
         ["has", "ref"],
-        ["==", ["get", "kind"], "motorway"],
+        ["==", ["to-number", ["get", "ref_rows"], 1], 1],
+        [
+            "any",
+            ["==", ["slice", ["upcase", ["get", "ref"]], 0, 2], "I-"],
+            ["==", ["slice", ["upcase", ["get", "ref"]], 0, 2], "I "],
+        ],
+        [">", ["length", ["slice", ["get", "ref"], 2]], 0],
+        ["<=", ["length", ["slice", ["get", "ref"], 2]], 3],
     ]
-    assert layer_by_id["highway-shield-us-other"]["minzoom"] == 9
-    assert layer_by_id["highway-shield-us-other"]["filter"] == [
+    assert layer_by_id["highway-shield-us-interstate"]["layout"]["icon-image"] == [
+        "concat",
+        "us-interstate_",
+        ["to-string", ["length", ["slice", ["get", "ref"], 2]]],
+    ]
+    assert layer_by_id["highway-shield-us-interstate"]["layout"]["text-field"] == ["slice", ["get", "ref"], 2]
+    assert layer_by_id["highway-shield-us-highway"]["minzoom"] == 9
+    assert layer_by_id["highway-shield-us-highway"]["filter"] == [
         "all",
         ["has", "ref"],
-        ["match", ["get", "kind"], ["trunk", "primary"], True, False],
+        ["==", ["to-number", ["get", "ref_rows"], 1], 1],
+        [
+            "any",
+            ["==", ["slice", ["upcase", ["get", "ref"]], 0, 3], "US-"],
+            ["==", ["slice", ["upcase", ["get", "ref"]], 0, 3], "US "],
+        ],
+        [">", ["length", ["slice", ["get", "ref"], 3]], 0],
+        ["<=", ["length", ["slice", ["get", "ref"], 3]], 3],
     ]
+    assert layer_by_id["highway-shield-us-highway"]["layout"]["icon-image"] == [
+        "concat",
+        "us-highway_",
+        ["to-string", ["length", ["slice", ["get", "ref"], 3]]],
+    ]
+    assert layer_by_id["highway-shield-us-highway"]["layout"]["text-field"] == ["slice", ["get", "ref"], 3]
+    assert layer_by_id["highway-shield-long-ref"]["filter"] == [
+        "all",
+        ["has", "ref"],
+        [">", ["to-number", ["get", "ref_cols"], ["length", ["get", "ref"]]], 6],
+        ["!", explicit_us_route_prefix_filter],
+    ]
+    assert layer_by_id["highway-shield-long-ref"]["layout"]["text-field"] == ["get", "ref"]
+    assert "highway-shield-us-other" not in layer_by_id
     assert layer_by_id["highway-name-major"]["minzoom"] == 12.2
     assert layer_by_id["highway-name-major"]["filter"] == [
         "match",
@@ -1301,7 +1362,7 @@ def test_pane_map_view_is_maplibre_based() -> None:
     assert "entry.handle.afterHidden" in _PANE_HTML
     assert "renderMap: renderMap" in renderer
     assert "new maplibregl.Map({" in renderer
-    assert "style: mapStyleUrl" in renderer
+    assert "style: style" in renderer
     assert "new maplibregl.AttributionControl({ compact: false })" in renderer
     assert "map.addSource(sourceId, { type: 'geojson'" in renderer
     assert "function addCircleLayer(map, id, sourceId)" in renderer
@@ -1398,6 +1459,12 @@ def test_pane_map_view_is_maplibre_based() -> None:
     assert "var mapPinHole = cssVar('--map-pin-hole'" in renderer
     assert "var mapPinInner = cssVar('--map-pin-inner'" in renderer
     assert "var mapStyleUrl = '/assets/maplibre/shortbread-light.json';" in renderer
+    assert "var mapStyleSpriteUrl = '/assets/maplibre/osm-bright-sprite';" in renderer
+    assert "function absoluteUrl(path)" in renderer
+    assert "fetch(mapStyleUrl).then(function (response)" in renderer
+    assert "style.sprite = absoluteUrl(mapStyleSpriteUrl);" in renderer
+    assert "var mapInitToken = 0;" in renderer
+    assert "if (initToken !== mapInitToken || map || !container.isConnected) return;" in renderer
     assert "var maxLegendEntries = 12;" in renderer
     assert "function buildLegendSection(layer, items, labels, swatchType, fallbackColor)" in renderer
     assert "function legendSwatchTypeForFeatures(features)" in renderer
@@ -1666,6 +1733,22 @@ def test_pane_serves_bundled_assets_cached(tmp_path: Path) -> None:
         with urllib.request.urlopen(f"{origin}assets/maplibre/shortbread-light.json", timeout=2) as resp:
             assert resp.headers.get("Cache-Control") == "no-cache"
             assert b"vector.openstreetmap.org/shortbread_v1/tilejson.json" in resp.read()
+
+        maplibre_assets = files("tabulaflow.app.assets").joinpath("maplibre")
+        with urllib.request.urlopen(f"{origin}assets/maplibre/osm-bright-sprite.json", timeout=2) as resp:
+            assert resp.headers.get("Cache-Control") == "no-cache"
+            assert resp.headers.get("Content-Type") == "application/json; charset=utf-8"
+            sprite = json.loads(resp.read())
+        assert {"road_1", "us-interstate_1", "us-highway_1"} <= set(sprite)
+
+        with urllib.request.urlopen(f"{origin}assets/maplibre/osm-bright-sprite.png", timeout=2) as resp:
+            assert resp.headers.get("Cache-Control") is not None and "immutable" in resp.headers.get(
+                "Cache-Control", ""
+            )
+            assert resp.headers.get("Content-Type") == "image/png"
+            body = resp.read()
+        assert body == maplibre_assets.joinpath("osm-bright-sprite.png").read_bytes()
+        assert body.startswith(b"\x89PNG\r\n\x1a\n")
 
         with urllib.request.urlopen(f"{origin}assets/maplibre/continent-labels.geojson", timeout=2) as resp:
             assert resp.headers.get("Cache-Control") == "no-cache"
