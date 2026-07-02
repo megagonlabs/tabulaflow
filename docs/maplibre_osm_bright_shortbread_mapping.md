@@ -55,7 +55,7 @@ Status meanings:
 | `place-other`, `place-village`, `place-town`, `place-city`, `place-city-capital` | `place.class`, `capital`, `rank` | `place_labels.kind`, `population` | approximate | City/town/village/other layers use OSM Bright names and Shortbread `kind`; capital/rank-specific styling is unavailable. |
 | `place-state` | `place.class=state` | `boundary_labels.admin_level=4`, `way_area` | approximate | State/province labels are area-gated because Shortbread has no place rank. |
 | `place-country-other`, `place-country-1`, `place-country-2`, `place-country-3` | `place.class=country`, `rank`, `iso_a2` | `boundary_labels.admin_level`, `way_area` | approximate | Country rank is approximated by `way_area`. |
-| `place-continent` | `place.class=continent` | none | unsupported | Shortbread does not expose continent label points. |
+| `place-continent` | `place.class=continent` | bundled `continent-labels.geojson` | approximate | Shortbread has no continent layer, so stable local label points provide the OSM Bright low-zoom continent layer. |
 
 ## Non-Portable Concepts
 
@@ -77,8 +77,7 @@ rank tiers with mutually exclusive `boundary_labels.way_area` buckets:
 - `country-labels-local`: zoom `3-8`, `way_area < 1e12`
 
 This intentionally restores visible labels at the broadest zooms, but it is not
-an exact continent/country-rank match because Shortbread has no continent layer
-and no country rank field.
+an exact country-rank match because Shortbread has no country rank field.
 
 ## Licensing
 

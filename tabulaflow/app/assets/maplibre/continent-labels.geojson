@@ -1,0 +1,12 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {"type": "Feature", "properties": {"name": "North America"}, "geometry": {"type": "Point", "coordinates": [-105, 54]}},
+    {"type": "Feature", "properties": {"name": "South America"}, "geometry": {"type": "Point", "coordinates": [-60, -16]}},
+    {"type": "Feature", "properties": {"name": "Europe"}, "geometry": {"type": "Point", "coordinates": [15, 54]}},
+    {"type": "Feature", "properties": {"name": "Africa"}, "geometry": {"type": "Point", "coordinates": [20, 4]}},
+    {"type": "Feature", "properties": {"name": "Asia"}, "geometry": {"type": "Point", "coordinates": [90, 47]}},
+    {"type": "Feature", "properties": {"name": "Oceania"}, "geometry": {"type": "Point", "coordinates": [135, -24]}},
+    {"type": "Feature", "properties": {"name": "Antarctica"}, "geometry": {"type": "Point", "coordinates": [0, -78]}}
+  ]
+}

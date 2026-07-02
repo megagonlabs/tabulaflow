@@ -9,6 +9,10 @@
       "type": "vector",
       "url": "https://vector.openstreetmap.org/shortbread_v1/tilejson.json",
       "attribution": "<a href=\"https://www.openstreetmap.org/copyright\">© OpenStreetMap</a> | Style inspired by <a href=\"https://github.com/openmaptiles/osm-bright-gl-style\">OSM Bright</a>"
+    },
+    "continent-labels": {
+      "type": "geojson",
+      "data": "/assets/maplibre/continent-labels.geojson"
     }
   },
   "layers": [
@@ -1218,6 +1222,25 @@
         "text-color": "#3589b6",
         "text-halo-color": "#e7f6ff",
         "text-halo-width": 1.1
+      }
+    },
+    {
+      "id": "place-continent",
+      "type": "symbol",
+      "source": "continent-labels",
+      "maxzoom": 1,
+      "layout": {
+        "text-field": ["get", "name"],
+        "text-font": ["Noto Sans Bold"],
+        "text-size": 14,
+        "text-transform": "uppercase",
+        "text-max-width": 6.25
+      },
+      "paint": {
+        "text-color": "#333344",
+        "text-halo-blur": 1,
+        "text-halo-color": "rgba(255,255,255,0.8)",
+        "text-halo-width": 2
       }
     },
     {

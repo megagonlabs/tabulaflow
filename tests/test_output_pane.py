@@ -510,7 +510,12 @@ def test_pane_map_view_is_maplibre_based() -> None:
     assert maplibre_assets.joinpath("maplibre-gl.css").is_file()
     assert maplibre_assets.joinpath("LICENSE.txt").is_file()
     assert maplibre_assets.joinpath("shortbread-light.json").is_file()
+    assert maplibre_assets.joinpath("continent-labels.geojson").is_file()
     assert style["sources"]["osm"]["url"] == "https://vector.openstreetmap.org/shortbread_v1/tilejson.json"
+    assert style["sources"]["continent-labels"] == {
+        "type": "geojson",
+        "data": "/assets/maplibre/continent-labels.geojson",
+    }
     assert "© OpenStreetMap" in style["sources"]["osm"]["attribution"]
     assert "OSM Bright" in style["sources"]["osm"]["attribution"]
     assert style["glyphs"] == "https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf"
@@ -521,10 +526,15 @@ def test_pane_map_view_is_maplibre_based() -> None:
     place_town = layer_by_id["place-town"]
     place_village = layer_by_id["place-village"]
     place_other = layer_by_id["place-other"]
+    place_continent = layer_by_id["place-continent"]
     state_labels = layer_by_id["state-labels"]
     country_global_labels = layer_by_id["country-labels-global"]
     country_regional_labels = layer_by_id["country-labels-regional"]
     country_local_labels = layer_by_id["country-labels-local"]
+    assert place_continent["source"] == "continent-labels"
+    assert place_continent["maxzoom"] == 1
+    assert place_continent["layout"]["text-transform"] == "uppercase"
+    assert place_continent["paint"]["text-halo-width"] == 2
     assert place_other["minzoom"] == 12
     assert place_other["filter"] == [
         "match",
@@ -1197,6 +1207,18 @@ def test_pane_serves_bundled_assets_cached(tmp_path: Path) -> None:
         with urllib.request.urlopen(f"{origin}assets/maplibre/shortbread-light.json", timeout=2) as resp:
             assert resp.headers.get("Cache-Control") == "no-cache"
             assert b"vector.openstreetmap.org/shortbread_v1/tilejson.json" in resp.read()
+
+        with urllib.request.urlopen(f"{origin}assets/maplibre/continent-labels.geojson", timeout=2) as resp:
+            assert resp.headers.get("Cache-Control") == "no-cache"
+            assert resp.headers.get("Content-Type") == "application/json; charset=utf-8"
+            continent_labels = json.loads(resp.read())
+        assert continent_labels["type"] == "FeatureCollection"
+        assert {feature["properties"]["name"] for feature in continent_labels["features"]} >= {
+            "Africa",
+            "Asia",
+            "Europe",
+            "North America",
+        }
 
         try:
             urllib.request.urlopen(f"{origin}assets/does-not-exist.js", timeout=2)
