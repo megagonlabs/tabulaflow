@@ -2200,12 +2200,12 @@
       "type": "symbol",
       "source": "osm",
       "source-layer": "place_labels",
-      "minzoom": 10,
+      "minzoom": 11,
       "filter": ["==", ["get", "kind"], "village"],
       "layout": {
         "text-field": ["coalesce", ["get", "name_en"], ["get", "name"]],
         "text-font": ["Noto Sans Regular"],
-        "text-size": ["interpolate", ["exponential", 1.2], ["zoom"], 10, 12, 15, 22],
+        "text-size": ["interpolate", ["exponential", 1.2], ["zoom"], 11, 11, 15, 17],
         "text-max-width": 8
       },
       "paint": {
@@ -2224,7 +2224,7 @@
       "layout": {
         "text-field": ["coalesce", ["get", "name_en"], ["get", "name"]],
         "text-font": ["Noto Sans Regular"],
-        "text-size": ["interpolate", ["exponential", 1.2], ["zoom"], 10, 14, 15, 24],
+        "text-size": ["interpolate", ["exponential", 1.2], ["zoom"], 10, 12, 15, 19],
         "text-max-width": 8
       },
       "paint": {
@@ -2242,16 +2242,66 @@
       "filter": [
         "all",
         ["==", ["get", "kind"], "city"],
+        [">=", ["to-number", ["get", "population"], 0], 1000000],
+        ["match", ["to-string", ["get", "capital"]], ["2", "true", "yes"], false, true]
+      ],
+      "layout": {
+        "text-field": ["coalesce", ["get", "name_en"], ["get", "name"]],
+        "text-font": ["Noto Sans Bold"],
+        "text-size": ["interpolate", ["exponential", 1.2], ["zoom"], 4, 13, 7, 18, 11, 26],
+        "text-max-width": 8
+      },
+      "paint": {
+        "text-color": "#333333",
+        "text-halo-color": "rgba(255,255,255,0.8)",
+        "text-halo-width": 1.2
+      }
+    },
+    {
+      "id": "place-city-medium",
+      "type": "symbol",
+      "source": "osm",
+      "source-layer": "place_labels",
+      "minzoom": 6,
+      "filter": [
+        "all",
+        ["==", ["get", "kind"], "city"],
+        [">=", ["to-number", ["get", "population"], 0], 250000],
+        ["<", ["to-number", ["get", "population"], 0], 1000000],
         ["match", ["to-string", ["get", "capital"]], ["2", "true", "yes"], false, true]
       ],
       "layout": {
         "text-field": ["coalesce", ["get", "name_en"], ["get", "name"]],
         "text-font": ["Noto Sans Regular"],
-        "text-size": ["interpolate", ["exponential", 1.2], ["zoom"], 7, 14, 11, 24],
+        "text-size": ["interpolate", ["exponential", 1.2], ["zoom"], 6, 12, 10, 18, 14, 23],
         "text-max-width": 8
       },
       "paint": {
         "text-color": "#333333",
+        "text-halo-color": "rgba(255,255,255,0.8)",
+        "text-halo-width": 1.2
+      }
+    },
+    {
+      "id": "place-city-small",
+      "type": "symbol",
+      "source": "osm",
+      "source-layer": "place_labels",
+      "minzoom": 8,
+      "filter": [
+        "all",
+        ["==", ["get", "kind"], "city"],
+        ["<", ["to-number", ["get", "population"], 0], 250000],
+        ["match", ["to-string", ["get", "capital"]], ["2", "true", "yes"], false, true]
+      ],
+      "layout": {
+        "text-field": ["coalesce", ["get", "name_en"], ["get", "name"]],
+        "text-font": ["Noto Sans Regular"],
+        "text-size": ["interpolate", ["exponential", 1.2], ["zoom"], 8, 11, 12, 16, 15, 20],
+        "text-max-width": 8
+      },
+      "paint": {
+        "text-color": "#3f3f3f",
         "text-halo-color": "rgba(255,255,255,0.8)",
         "text-halo-width": 1.2
       }
@@ -2272,8 +2322,8 @@
         "icon-size": 0.8,
         "text-anchor": "left",
         "text-field": ["coalesce", ["get", "name_en"], ["get", "name"]],
-        "text-font": ["Noto Sans Regular"],
-        "text-size": ["interpolate", ["exponential", 1.2], ["zoom"], 7, 14, 11, 24],
+        "text-font": ["Noto Sans Bold"],
+        "text-size": ["interpolate", ["exponential", 1.2], ["zoom"], 4, 13, 7, 18, 11, 26],
         "text-offset": [0.4, 0],
         "text-max-width": 8
       },

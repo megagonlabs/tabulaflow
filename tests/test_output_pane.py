@@ -618,12 +618,14 @@ def test_pane_map_view_is_maplibre_based() -> None:
         "highway-name-path", "highway-name-minor", "highway-name-major", "highway-shield",
         "highway-shield-us-interstate", "highway-shield-us-other", "motorway-exit-labels", "ferry-labels",
         "airport-label-major", "place-other", "place-village", "place-town", "place-city",
-        "place-city-capital", "place-state", "place-country-other", "place-country-3", "place-country-2",
-        "place-country-1", "place-continent",
+        "place-city-medium", "place-city-small", "place-city-capital", "place-state", "place-country-other",
+        "place-country-3", "place-country-2", "place-country-1", "place-continent",
     )
 
     place_city_capital = layer_by_id["place-city-capital"]
     place_city = layer_by_id["place-city"]
+    place_city_medium = layer_by_id["place-city-medium"]
+    place_city_small = layer_by_id["place-city-small"]
     place_town = layer_by_id["place-town"]
     place_village = layer_by_id["place-village"]
     place_other = layer_by_id["place-other"]
@@ -650,20 +652,20 @@ def test_pane_map_view_is_maplibre_based() -> None:
     ]
     assert place_other["layout"]["text-transform"] == "uppercase"
     assert place_other["layout"]["text-letter-spacing"] == 0.1
-    assert place_village["minzoom"] == 10
+    assert place_village["minzoom"] == 11
     assert place_village["filter"] == ["==", ["get", "kind"], "village"]
     assert place_village["layout"]["text-size"] == [
         "interpolate",
         ["exponential", 1.2],
         ["zoom"],
-        10,
-        12,
+        11,
+        11,
         15,
-        22,
+        17,
     ]
     assert place_town["minzoom"] == 10
     assert place_town["filter"] == ["==", ["get", "kind"], "town"]
-    assert place_town["layout"]["text-size"] == ["interpolate", ["exponential", 1.2], ["zoom"], 10, 14, 15, 24]
+    assert place_town["layout"]["text-size"] == ["interpolate", ["exponential", 1.2], ["zoom"], 10, 12, 15, 19]
     assert place_city_capital["minzoom"] == 4
     assert place_city_capital["filter"] == [
         "all",
@@ -672,13 +674,65 @@ def test_pane_map_view_is_maplibre_based() -> None:
     ]
     assert place_city_capital["layout"]["icon-image"] == "star_11"
     assert place_city_capital["layout"]["text-anchor"] == "left"
+    assert place_city_capital["layout"]["text-font"] == ["Noto Sans Bold"]
     assert place_city["minzoom"] == 4
     assert place_city["filter"] == [
         "all",
         ["==", ["get", "kind"], "city"],
+        [">=", ["to-number", ["get", "population"], 0], 1000000],
         ["match", ["to-string", ["get", "capital"]], ["2", "true", "yes"], False, True],
     ]
-    assert place_city["layout"]["text-size"] == ["interpolate", ["exponential", 1.2], ["zoom"], 7, 14, 11, 24]
+    assert place_city["layout"]["text-font"] == ["Noto Sans Bold"]
+    assert place_city["layout"]["text-size"] == [
+        "interpolate",
+        ["exponential", 1.2],
+        ["zoom"],
+        4,
+        13,
+        7,
+        18,
+        11,
+        26,
+    ]
+    assert place_city_medium["minzoom"] == 6
+    assert place_city_medium["filter"] == [
+        "all",
+        ["==", ["get", "kind"], "city"],
+        [">=", ["to-number", ["get", "population"], 0], 250000],
+        ["<", ["to-number", ["get", "population"], 0], 1000000],
+        ["match", ["to-string", ["get", "capital"]], ["2", "true", "yes"], False, True],
+    ]
+    assert place_city_medium["layout"]["text-font"] == ["Noto Sans Regular"]
+    assert place_city_medium["layout"]["text-size"] == [
+        "interpolate",
+        ["exponential", 1.2],
+        ["zoom"],
+        6,
+        12,
+        10,
+        18,
+        14,
+        23,
+    ]
+    assert place_city_small["minzoom"] == 8
+    assert place_city_small["filter"] == [
+        "all",
+        ["==", ["get", "kind"], "city"],
+        ["<", ["to-number", ["get", "population"], 0], 250000],
+        ["match", ["to-string", ["get", "capital"]], ["2", "true", "yes"], False, True],
+    ]
+    assert place_city_small["layout"]["text-font"] == ["Noto Sans Regular"]
+    assert place_city_small["layout"]["text-size"] == [
+        "interpolate",
+        ["exponential", 1.2],
+        ["zoom"],
+        8,
+        11,
+        12,
+        16,
+        15,
+        20,
+    ]
     assert layer_by_id["landcover-glacier"]["source-layer"] == "land"
     assert layer_by_id["landcover-glacier"]["filter"] == ["==", ["get", "kind"], "glacier"]
     assert layer_by_id["landcover-ice-shelf"]["filter"] == ["==", ["get", "kind"], "ice_shelf"]
