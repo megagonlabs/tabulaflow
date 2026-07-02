@@ -2182,7 +2182,7 @@
       "minzoom": 12,
       "filter": ["match", ["get", "kind"], ["suburb", "quarter", "neighbourhood", "hamlet", "locality"], true, false],
       "layout": {
-        "text-field": ["coalesce", ["get", "name_en"], ["get", "name"]],
+        "text-field": ["case", ["all", ["has", "name"], ["has", "name_en"], ["!=", ["get", "name"], ["get", "name_en"]]], ["format", ["get", "name"], {}, "\n", {}, ["get", "name_en"], {}], ["coalesce", ["get", "name"], ["get", "name_en"]]],
         "text-font": ["Noto Sans Bold"],
         "text-size": ["interpolate", ["exponential", 1.2], ["zoom"], 12, 10, 15, 14],
         "text-transform": "uppercase",
@@ -2203,7 +2203,7 @@
       "minzoom": 11,
       "filter": ["==", ["get", "kind"], "village"],
       "layout": {
-        "text-field": ["coalesce", ["get", "name_en"], ["get", "name"]],
+        "text-field": ["case", ["all", ["has", "name"], ["has", "name_en"], ["!=", ["get", "name"], ["get", "name_en"]]], ["format", ["get", "name"], {}, "\n", {}, ["get", "name_en"], {}], ["coalesce", ["get", "name"], ["get", "name_en"]]],
         "text-font": ["Noto Sans Regular"],
         "text-size": ["interpolate", ["exponential", 1.2], ["zoom"], 11, 11, 15, 17],
         "text-max-width": 8
@@ -2222,7 +2222,7 @@
       "minzoom": 10,
       "filter": ["==", ["get", "kind"], "town"],
       "layout": {
-        "text-field": ["coalesce", ["get", "name_en"], ["get", "name"]],
+        "text-field": ["case", ["all", ["has", "name"], ["has", "name_en"], ["!=", ["get", "name"], ["get", "name_en"]]], ["format", ["get", "name"], {}, "\n", {}, ["get", "name_en"], {}], ["coalesce", ["get", "name"], ["get", "name_en"]]],
         "text-font": ["Noto Sans Regular"],
         "text-size": ["interpolate", ["exponential", 1.2], ["zoom"], 10, 12, 15, 19],
         "text-max-width": 8
@@ -2246,7 +2246,7 @@
         ["match", ["to-string", ["get", "capital"]], ["2", "true", "yes"], false, true]
       ],
       "layout": {
-        "text-field": ["coalesce", ["get", "name_en"], ["get", "name"]],
+        "text-field": ["case", ["all", ["has", "name"], ["has", "name_en"], ["!=", ["get", "name"], ["get", "name_en"]]], ["format", ["get", "name"], {}, "\n", {}, ["get", "name_en"], {}], ["coalesce", ["get", "name"], ["get", "name_en"]]],
         "text-font": ["Noto Sans Bold"],
         "text-size": ["interpolate", ["exponential", 1.2], ["zoom"], 4, 13, 7, 18, 11, 26],
         "text-max-width": 8
@@ -2271,7 +2271,7 @@
         ["match", ["to-string", ["get", "capital"]], ["2", "true", "yes"], false, true]
       ],
       "layout": {
-        "text-field": ["coalesce", ["get", "name_en"], ["get", "name"]],
+        "text-field": ["case", ["all", ["has", "name"], ["has", "name_en"], ["!=", ["get", "name"], ["get", "name_en"]]], ["format", ["get", "name"], {}, "\n", {}, ["get", "name_en"], {}], ["coalesce", ["get", "name"], ["get", "name_en"]]],
         "text-font": ["Noto Sans Bold"],
         "text-size": ["interpolate", ["exponential", 1.2], ["zoom"], 6, 12, 10, 18, 14, 23],
         "text-max-width": 8
@@ -2295,7 +2295,7 @@
         ["match", ["to-string", ["get", "capital"]], ["2", "true", "yes"], false, true]
       ],
       "layout": {
-        "text-field": ["coalesce", ["get", "name_en"], ["get", "name"]],
+        "text-field": ["case", ["all", ["has", "name"], ["has", "name_en"], ["!=", ["get", "name"], ["get", "name_en"]]], ["format", ["get", "name"], {}, "\n", {}, ["get", "name_en"], {}], ["coalesce", ["get", "name"], ["get", "name_en"]]],
         "text-font": ["Noto Sans Regular"],
         "text-size": ["interpolate", ["exponential", 1.2], ["zoom"], 8, 11, 12, 16, 15, 20],
         "text-max-width": 8
@@ -2321,7 +2321,7 @@
         "icon-image": "star_11",
         "icon-size": 0.8,
         "text-anchor": "left",
-        "text-field": ["coalesce", ["get", "name_en"], ["get", "name"]],
+        "text-field": ["case", ["all", ["has", "name"], ["has", "name_en"], ["!=", ["get", "name"], ["get", "name_en"]]], ["format", ["get", "name"], {}, "\n", {}, ["get", "name_en"], {}], ["coalesce", ["get", "name"], ["get", "name_en"]]],
         "text-font": ["Noto Sans Bold"],
         "text-size": ["interpolate", ["exponential", 1.2], ["zoom"], 4, 13, 7, 18, 11, 26],
         "text-offset": [0.4, 0],

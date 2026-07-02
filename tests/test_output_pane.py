@@ -629,6 +629,12 @@ def test_pane_map_view_is_maplibre_based() -> None:
     place_town = layer_by_id["place-town"]
     place_village = layer_by_id["place-village"]
     place_other = layer_by_id["place-other"]
+    local_place_text_field = [
+        "case",
+        ["all", ["has", "name"], ["has", "name_en"], ["!=", ["get", "name"], ["get", "name_en"]]],
+        ["format", ["get", "name"], {}, "\n", {}, ["get", "name_en"], {}],
+        ["coalesce", ["get", "name"], ["get", "name_en"]],
+    ]
     place_continent = layer_by_id["place-continent"]
     state_labels = layer_by_id["place-state"]
     country_global_labels = layer_by_id["place-country-1"]
@@ -652,8 +658,10 @@ def test_pane_map_view_is_maplibre_based() -> None:
     ]
     assert place_other["layout"]["text-transform"] == "uppercase"
     assert place_other["layout"]["text-letter-spacing"] == 0.1
+    assert place_other["layout"]["text-field"] == local_place_text_field
     assert place_village["minzoom"] == 11
     assert place_village["filter"] == ["==", ["get", "kind"], "village"]
+    assert place_village["layout"]["text-field"] == local_place_text_field
     assert place_village["layout"]["text-size"] == [
         "interpolate",
         ["exponential", 1.2],
@@ -665,6 +673,7 @@ def test_pane_map_view_is_maplibre_based() -> None:
     ]
     assert place_town["minzoom"] == 10
     assert place_town["filter"] == ["==", ["get", "kind"], "town"]
+    assert place_town["layout"]["text-field"] == local_place_text_field
     assert place_town["layout"]["text-size"] == ["interpolate", ["exponential", 1.2], ["zoom"], 10, 12, 15, 19]
     assert place_city_capital["minzoom"] == 4
     assert place_city_capital["filter"] == [
@@ -674,6 +683,7 @@ def test_pane_map_view_is_maplibre_based() -> None:
     ]
     assert place_city_capital["layout"]["icon-image"] == "star_11"
     assert place_city_capital["layout"]["text-anchor"] == "left"
+    assert place_city_capital["layout"]["text-field"] == local_place_text_field
     assert place_city_capital["layout"]["text-font"] == ["Noto Sans Bold"]
     assert place_city["minzoom"] == 4
     assert place_city["filter"] == [
@@ -682,6 +692,7 @@ def test_pane_map_view_is_maplibre_based() -> None:
         [">=", ["to-number", ["get", "population"], 0], 1000000],
         ["match", ["to-string", ["get", "capital"]], ["2", "true", "yes"], False, True],
     ]
+    assert place_city["layout"]["text-field"] == local_place_text_field
     assert place_city["layout"]["text-font"] == ["Noto Sans Bold"]
     assert place_city["layout"]["text-size"] == [
         "interpolate",
@@ -702,6 +713,7 @@ def test_pane_map_view_is_maplibre_based() -> None:
         ["<", ["to-number", ["get", "population"], 0], 1000000],
         ["match", ["to-string", ["get", "capital"]], ["2", "true", "yes"], False, True],
     ]
+    assert place_city_medium["layout"]["text-field"] == local_place_text_field
     assert place_city_medium["layout"]["text-font"] == ["Noto Sans Bold"]
     assert place_city_medium["layout"]["text-size"] == [
         "interpolate",
@@ -721,6 +733,7 @@ def test_pane_map_view_is_maplibre_based() -> None:
         ["<", ["to-number", ["get", "population"], 0], 250000],
         ["match", ["to-string", ["get", "capital"]], ["2", "true", "yes"], False, True],
     ]
+    assert place_city_small["layout"]["text-field"] == local_place_text_field
     assert place_city_small["layout"]["text-font"] == ["Noto Sans Regular"]
     assert place_city_small["layout"]["text-size"] == [
         "interpolate",

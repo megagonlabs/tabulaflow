@@ -59,6 +59,13 @@ Status meanings:
 
 ## Non-Portable Concepts
 
+OpenMapTiles exposes `name:latin` and `name:nonlatin`, which OSM Bright uses
+for bilingual local-place labels. Shortbread exposes `name`, `name_en`, and
+`name_de` instead. City, town, village, and local place labels therefore use
+`name` first and add `name_en` on a second line only when it differs. Country,
+state, road, airport, and water labels keep their existing English/Latin-first
+policy to avoid broad-map and street-level clutter.
+
 OSM Bright's POI and icon layers rely on OpenMapTiles fields such as `class`,
 `subclass`, and `rank`. The official Shortbread TileJSON does not document those
 fields for `pois`, so direct icon mapping would be brittle. Add icons only after
