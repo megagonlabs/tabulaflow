@@ -684,24 +684,64 @@ def test_pane_map_view_is_maplibre_based() -> None:
         "all",
         ["==", ["get", "tunnel"], True],
         ["==", ["get", "link"], True],
+        ["match", ["get", "kind"], ["trunk", "primary", "secondary", "tertiary"], True, False],
     ]
-    assert layer_by_id["streets-motorway"]["filter"] == [
+    assert layer_by_id["tunnel-service-track"]["filter"] == [
+        "all",
+        ["==", ["get", "tunnel"], True],
+        ["match", ["get", "kind"], ["service", "track"], True, False],
+    ]
+    assert layer_by_id["tunnel-motorway-link"]["filter"] == [
+        "all",
+        ["==", ["get", "tunnel"], True],
+        ["==", ["get", "link"], True],
+        ["==", ["get", "kind"], "motorway"],
+    ]
+    assert layer_by_id["tunnel-path"]["filter"] == [
+        "all",
+        ["==", ["get", "tunnel"], True],
+        ["match", ["get", "kind"], ["path", "footway", "cycleway"], True, False],
+    ]
+    assert layer_by_id["highway-motorway"]["filter"] == [
         "all",
         ["!=", ["get", "tunnel"], True],
         ["!=", ["get", "bridge"], True],
         ["!=", ["get", "link"], True],
         ["==", ["get", "kind"], "motorway"],
     ]
-    assert layer_by_id["streets-link"]["filter"] == [
+    assert layer_by_id["highway-link"]["filter"] == [
         "all",
         ["!=", ["get", "tunnel"], True],
         ["!=", ["get", "bridge"], True],
         ["==", ["get", "link"], True],
+        ["match", ["get", "kind"], ["trunk", "primary", "secondary", "tertiary"], True, False],
     ]
+    assert layer_by_id["highway-motorway-link"]["filter"] == [
+        "all",
+        ["!=", ["get", "tunnel"], True],
+        ["!=", ["get", "bridge"], True],
+        ["==", ["get", "link"], True],
+        ["==", ["get", "kind"], "motorway"],
+    ]
+    assert layer_by_id["highway-path"]["filter"] == [
+        "all",
+        ["!=", ["get", "tunnel"], True],
+        ["!=", ["get", "bridge"], True],
+        ["match", ["get", "kind"], ["path", "footway", "cycleway"], True, False],
+    ]
+    assert layer_by_id["highway-path-steps"]["filter"] == [
+        "all",
+        ["!=", ["get", "tunnel"], True],
+        ["!=", ["get", "bridge"], True],
+        ["==", ["get", "kind"], "steps"],
+    ]
+    assert layer_by_id["waterway-other"]["source-layer"] == "water_lines"
+    assert layer_by_id["waterway-other"]["minzoom"] == 9
     assert layer_by_id["dam-polygons"]["source-layer"] == "dam_polygons"
     assert layer_by_id["dam-lines"]["source-layer"] == "dam_lines"
     assert layer_by_id["road_area_pier"]["source-layer"] == "pier_polygons"
     assert layer_by_id["road_pier"]["source-layer"] == "pier_lines"
+    assert layer_by_id["highway-area"]["source-layer"] == "street_polygons"
     assert layer_by_id["aeroway-area"]["source-layer"] == "street_polygons"
     assert layer_by_id["aeroway-area"]["filter"] == [
         "match",
@@ -731,15 +771,16 @@ def test_pane_map_view_is_maplibre_based() -> None:
         1,
     ]
     assert layer_by_id["bridges"]["source-layer"] == "bridges"
-    assert layer_by_id["aerialways"]["source-layer"] == "aerialways"
-    assert layer_by_id["aerialways"]["paint"]["line-dasharray"] == [2, 3]
-    assert layer_by_id["streets-rail"]["filter"] == [
+    assert layer_by_id["cablecar"]["source-layer"] == "aerialways"
+    assert layer_by_id["cablecar-dash"]["source-layer"] == "aerialways"
+    assert layer_by_id["cablecar-dash"]["paint"]["line-dasharray"] == [2, 3]
+    assert layer_by_id["railway"]["filter"] == [
         "all",
         ["==", ["get", "rail"], True],
         ["!=", ["get", "tunnel"], True],
         ["!=", ["get", "bridge"], True],
     ]
-    assert layer_by_id["streets-rail-hatching"]["paint"]["line-dasharray"] == [0.2, 8]
+    assert layer_by_id["railway-hatching"]["paint"]["line-dasharray"] == [0.2, 8]
     assert layer_by_id["bridge-motorway"]["filter"] == [
         "all",
         ["==", ["get", "bridge"], True],
@@ -750,17 +791,36 @@ def test_pane_map_view_is_maplibre_based() -> None:
         "all",
         ["==", ["get", "bridge"], True],
         ["==", ["get", "link"], True],
+        ["match", ["get", "kind"], ["trunk", "primary", "secondary", "tertiary"], True, False],
+    ]
+    assert layer_by_id["bridge-motorway-link"]["filter"] == [
+        "all",
+        ["==", ["get", "bridge"], True],
+        ["==", ["get", "link"], True],
+        ["==", ["get", "kind"], "motorway"],
+    ]
+    assert layer_by_id["bridge-path"]["filter"] == [
+        "all",
+        ["==", ["get", "bridge"], True],
+        ["match", ["get", "kind"], ["path", "footway", "cycleway"], True, False],
     ]
     assert layer_by_id["bridge-railway-hatching"]["paint"]["line-dasharray"] == [0.2, 8]
-    assert layer_by_id["streets-primary"]["filter"] == [
+    assert layer_by_id["highway-primary"]["filter"] == [
         "all",
         ["!=", ["get", "tunnel"], True],
         ["!=", ["get", "bridge"], True],
         ["!=", ["get", "link"], True],
-        ["match", ["get", "kind"], ["trunk", "primary"], True, False],
+        ["==", ["get", "kind"], "primary"],
     ]
-    assert layer_by_id["streets-secondary-casing"]["paint"]["line-color"] == "#e7c27c"
-    assert layer_by_id["streets-minor-casing"]["minzoom"] == 12
+    assert layer_by_id["highway-trunk"]["filter"] == [
+        "all",
+        ["!=", ["get", "tunnel"], True],
+        ["!=", ["get", "bridge"], True],
+        ["!=", ["get", "link"], True],
+        ["==", ["get", "kind"], "trunk"],
+    ]
+    assert layer_by_id["highway-secondary-tertiary-casing"]["paint"]["line-color"] == "#e7c27c"
+    assert layer_by_id["highway-minor-casing"]["minzoom"] == 12
     assert layer_by_id["boundary-land-level-4"]["filter"] == [
         "all",
         [">=", ["to-number", ["get", "admin_level"], 0], 3],

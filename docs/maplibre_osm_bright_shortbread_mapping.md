@@ -66,8 +66,11 @@ inspecting real Shortbread POI feature properties and committing a small,
 licensed local sprite set.
 
 OSM Bright also has detailed bridge, tunnel, ramp, and per-road-class layers.
-Shortbread has fewer fields, so the output pane style uses a smaller hierarchy:
-rail, minor, secondary/tertiary, primary/trunk, and motorway.
+Shortbread has fewer fields, but the output pane style now keeps the OSM
+Bright layer IDs where `kind`, `link`, `bridge`, `tunnel`, or `rail` can
+support them. Remaining road/rail gaps are the OpenMapTiles-only
+`railway-service*` and `railway-transit*` layers because Shortbread does not
+expose compatible service/transit fields.
 
 The low-zoom country label port approximates OSM Bright's `place-country-*`
 rank tiers with mutually exclusive `boundary_labels.way_area` buckets:
@@ -78,6 +81,13 @@ rank tiers with mutually exclusive `boundary_labels.way_area` buckets:
 
 This intentionally restores visible labels at the broadest zooms, but it is not
 an exact country-rank match because Shortbread has no country rank field.
+`place-country-other` is not represented because Shortbread boundary labels do
+not expose OSM Bright's `iso_a2`/missing-ISO split.
+
+The remaining missing OSM Bright layer IDs after the Shortbread port are
+intentionally limited to schema gaps: intermittent and patterned water,
+detailed waterway classes, rail service/transit, capital-city labels, and
+country labels without `iso_a2`.
 
 ## Licensing
 
