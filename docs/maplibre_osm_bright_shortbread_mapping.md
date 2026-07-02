@@ -124,5 +124,7 @@ The style in this repository is not vendored from OSM Bright. It is a
 schema-native Shortbread style that references OSM Bright's visual hierarchy
 and its public sprite endpoint for icons such as `star_11` and `airport_11`.
 Because the design is intentionally OSM Bright-inspired and uses its sprites,
-the map attribution links to OSM Bright in addition to the required
-OpenStreetMap attribution.
+this document serves as the reasonably accessible OSM Bright attribution and
+licensing notice. The visible map attribution is limited to the required
+OpenStreetMap contributors credit because this style uses OpenStreetMap
+Shortbread tiles rather than OpenMapTiles tiles or schema.
