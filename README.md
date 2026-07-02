@@ -357,6 +357,9 @@ July 1
 July 2
 - [x] Map legend
 - [x] US highway labels and icons
+- [x] Airport icon
+- [ ] Thinner borders
+- [ ] National parks and forest
 
 - [ ] Multiple records for map
 - [ ] Remote server improvements
