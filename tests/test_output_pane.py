@@ -548,11 +548,22 @@ def test_pane_map_view_is_maplibre_based() -> None:
         for item in expression:
             assert_match_labels_are_homogeneous(item)
 
+    def assert_interpolate_array_outputs_are_literals(expression: object) -> None:
+        if not isinstance(expression, list):
+            return
+        if expression and expression[0] == "interpolate" and len(expression) >= 6:
+            for output in expression[4::2]:
+                if isinstance(output, list):
+                    assert output and output[0] == "literal"
+        for item in expression:
+            assert_interpolate_array_outputs_are_literals(item)
+
     def assert_layer_order(*ids: str) -> None:
         assert [layer_ids.index(layer_id) for layer_id in ids] == sorted(layer_ids.index(layer_id) for layer_id in ids)
 
     for layer in style["layers"]:
         assert_match_labels_are_homogeneous(layer)
+        assert_interpolate_array_outputs_are_literals(layer)
 
     assert_layer_order(
         "background", "ocean", "landcover-glacier", "landuse-residential", "landuse-commercial",
@@ -706,9 +717,9 @@ def test_pane_map_view_is_maplibre_based() -> None:
         ["linear"],
         ["zoom"],
         6,
-        [2, 0],
+        ["literal", [2, 0]],
         8,
-        [0, 0],
+        ["literal", [0, 0]],
     ]
     assert layer_by_id["water"]["source-layer"] == "water_polygons"
     assert layer_by_id["water"]["paint"]["fill-color"] == "#c2def3"
@@ -723,9 +734,9 @@ def test_pane_map_view_is_maplibre_based() -> None:
         ["linear"],
         ["zoom"],
         14,
-        [0, 0],
+        ["literal", [0, 0]],
         16,
-        [-2, -2],
+        ["literal", [-2, -2]],
     ]
     assert state_labels["minzoom"] == 4
     assert state_labels["maxzoom"] == 10
