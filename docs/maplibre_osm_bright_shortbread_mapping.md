@@ -36,7 +36,7 @@ Status meanings:
 | `landuse-residential`, `landuse-commercial`, `landuse-industrial`, `landuse-cemetery`, `landuse-hospital`, `landuse-school`, `landuse-railway` | `landuse.class` | `sites.kind`, `land.kind` | approximate | Residential/commercial/industrial classes are not exposed separately. |
 | `water`, `water-offset`, `water-intermittent`, `water-pattern` | `water.class`, `intermittent`, `brunnel` | `water_polygons.kind` | approximate | Intermittent/pattern styling is unsupported. |
 | `waterway_tunnel`, `waterway-other`, `waterway-other-intermittent`, `waterway-stream-canal`, `waterway-stream-canal-intermittent`, `waterway-river`, `waterway-river-intermittent` | `waterway.class`, `intermittent`, `brunnel` | `water_lines.kind`, `bridge`, `tunnel` | approximate | Shortbread has water-line kind/bridge/tunnel but not the same class split. |
-| `building`, `building-top` | `building` | `buildings` | approximate | Building fill is available; pseudo-3D translated tops are intentionally omitted. |
+| `building`, `building-top` | `building` | `buildings` | approximate | Building fill and translated high-zoom tops are ported against Shortbread's single building layer. |
 | `tunnel-*` road layers | `transportation.class`, `brunnel`, `ramp`, `subclass` | `streets.kind`, `tunnel`, `link`, `rail` | approximate | Tunnel roads are split by minor, secondary/tertiary, trunk/primary, motorway, link, and rail, but Shortbread has fewer subtype fields. |
 | `ferry` | `transportation.class=ferry` | `ferries.kind` | approximate | Ferry geometry and labels are available. |
 | `aeroway-*`, `airport-label-major` | `aeroway`, `aerodrome_label.class` | none or `streets.kind` if encoded | unsupported | No documented Shortbread aeroway label layer. |

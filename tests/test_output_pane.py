@@ -562,6 +562,41 @@ def test_pane_map_view_is_maplibre_based() -> None:
     ]
     assert local_labels["layout"]["text-size"] == ["interpolate", ["linear"], ["zoom"], 11, 12, 14, 15, 16, 17]
     assert local_labels["paint"]["text-color"] == "#5f6266"
+    assert layer_by_id["landcover"]["paint"]["fill-color"] == [
+        "match",
+        ["get", "kind"],
+        ["glacier", "ice_shelf"],
+        "#ffffff",
+        ["residential", "suburb", "neighbourhood"],
+        "rgba(232, 226, 219, 0.36)",
+        ["forest", "wood"],
+        "#d8e8c8",
+        ["grass", "meadow", "park", "recreation_ground"],
+        "#d8e8c8",
+        ["sand", "beach"],
+        "#f2e4bf",
+        ["scrub", "heath"],
+        "#e5ecd4",
+        "#edf1e3",
+    ]
+    assert layer_by_id["sites"]["paint"]["fill-color"][4:10] == [
+        ["commercial"],
+        "rgba(255, 210, 210, 0.28)",
+        ["industrial"],
+        "rgba(255, 235, 170, 0.34)",
+        ["railway"],
+        "rgba(232, 226, 219, 0.4)",
+    ]
+    assert layer_by_id["building-top"]["source-layer"] == "buildings"
+    assert layer_by_id["building-top"]["paint"]["fill-translate"] == [
+        "interpolate",
+        ["linear"],
+        ["zoom"],
+        14,
+        [0, 0],
+        16,
+        [-2, -2],
+    ]
     assert small_labels["minzoom"] == 13
     assert small_labels["filter"] == [
         "all",
