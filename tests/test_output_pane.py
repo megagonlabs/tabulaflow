@@ -536,8 +536,23 @@ def test_pane_map_view_is_maplibre_based() -> None:
     layer_by_id = {str(layer.get("id")): layer for layer in style["layers"]}
     layer_ids = [str(layer.get("id")) for layer in style["layers"]]
 
+    def assert_match_labels_are_homogeneous(expression: object) -> None:
+        if not isinstance(expression, list):
+            return
+        if expression and expression[0] == "match" and len(expression) >= 5:
+            label_types: set[type[object]] = set()
+            for label in expression[2:-2:2]:
+                labels = label if isinstance(label, list) else [label]
+                label_types.update(type(value) for value in labels)
+            assert len(label_types) <= 1
+        for item in expression:
+            assert_match_labels_are_homogeneous(item)
+
     def assert_layer_order(*ids: str) -> None:
         assert [layer_ids.index(layer_id) for layer_id in ids] == sorted(layer_ids.index(layer_id) for layer_id in ids)
+
+    for layer in style["layers"]:
+        assert_match_labels_are_homogeneous(layer)
 
     assert_layer_order(
         "background", "ocean", "landcover-glacier", "landuse-residential", "landuse-commercial",
@@ -628,7 +643,7 @@ def test_pane_map_view_is_maplibre_based() -> None:
     assert place_city_capital["filter"] == [
         "all",
         ["==", ["get", "kind"], "city"],
-        ["match", ["get", "capital"], [2, "2", True, "yes"], True, False],
+        ["match", ["to-string", ["get", "capital"]], ["2", "true", "yes"], True, False],
     ]
     assert place_city_capital["layout"]["icon-image"] == "star_11"
     assert place_city_capital["layout"]["text-anchor"] == "left"
@@ -636,7 +651,7 @@ def test_pane_map_view_is_maplibre_based() -> None:
     assert place_city["filter"] == [
         "all",
         ["==", ["get", "kind"], "city"],
-        ["match", ["get", "capital"], [2, "2", True, "yes"], False, True],
+        ["match", ["to-string", ["get", "capital"]], ["2", "true", "yes"], False, True],
     ]
     assert place_city["layout"]["text-size"] == ["interpolate", ["exponential", 1.2], ["zoom"], 7, 14, 11, 24]
     assert layer_by_id["landcover-glacier"]["source-layer"] == "land"

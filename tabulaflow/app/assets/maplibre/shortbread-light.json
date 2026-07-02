@@ -2179,7 +2179,7 @@
       "filter": [
         "all",
         ["==", ["get", "kind"], "city"],
-        ["match", ["get", "capital"], [2, "2", true, "yes"], false, true]
+        ["match", ["to-string", ["get", "capital"]], ["2", "true", "yes"], false, true]
       ],
       "layout": {
         "text-field": ["coalesce", ["get", "name_en"], ["get", "name"]],
@@ -2202,7 +2202,7 @@
       "filter": [
         "all",
         ["==", ["get", "kind"], "city"],
-        ["match", ["get", "capital"], [2, "2", true, "yes"], true, false]
+        ["match", ["to-string", ["get", "capital"]], ["2", "true", "yes"], true, false]
       ],
       "layout": {
         "icon-image": "star_11",
