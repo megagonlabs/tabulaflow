@@ -1431,7 +1431,7 @@ def test_pane_map_view_is_maplibre_based() -> None:
     assert ".tf-map-stage { position: relative; height: min(560px, 68vh); min-height: 420px;" in _PANE_HTML
     assert ".tf-map-view .maplibregl-map { background: var(--card);" in _PANE_HTML
     assert ".tf-map-legend {\n    position: absolute; top: 12px; right: 12px; z-index: 5;" in _PANE_HTML
-    assert "background: rgba(255, 255, 255, 0.78); color: #111827;" in _PANE_HTML
+    assert "background: rgba(255, 255, 255, 0.62); color: #111827;" in _PANE_HTML
     assert ".tf-map-legend-swatch-pin::before" in _PANE_HTML
     assert ".tf-map-legend-swatch-line" in _PANE_HTML
     assert ".tf-map-legend-swatch-polygon" in _PANE_HTML
