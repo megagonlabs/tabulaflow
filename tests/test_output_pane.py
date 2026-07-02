@@ -598,7 +598,7 @@ def test_pane_map_view_is_maplibre_based() -> None:
         "cablecar-dash",
     )
     assert_layer_order(
-        "boundary-land-level-4", "boundary-land-local", "boundary-land-level-2", "boundary-land-disputed",
+        "boundary-land-level-4", "boundary-land-level-2", "boundary-land-disputed",
         "boundary-water", "waterway-name", "water-name-lakeline", "water-name-ocean", "water-name-other",
         "road_oneway", "road_oneway_opposite", "poi-level-3", "poi-level-2", "poi-level-1", "poi-railway",
         "highway-name-path", "highway-name-minor", "highway-name-major", "highway-shield",
@@ -981,51 +981,79 @@ def test_pane_map_view_is_maplibre_based() -> None:
     assert layer_by_id["highway-minor-casing"]["minzoom"] == 12
     assert layer_by_id["boundary-land-level-4"]["filter"] == [
         "all",
-        ["==", ["to-number", ["get", "admin_level"], 0], 4],
-        ["!=", ["get", "maritime"], True],
-    ]
-    assert layer_by_id["boundary-land-level-4"]["paint"]["line-color"] == "#777f8f"
-    assert layer_by_id["boundary-land-level-4"]["paint"]["line-dasharray"] == [4, 2]
-    assert layer_by_id["boundary-land-local"]["filter"] == [
-        "all",
-        [">=", ["to-number", ["get", "admin_level"], 0], 5],
+        [">=", ["to-number", ["get", "admin_level"], 0], 3],
         ["<=", ["to-number", ["get", "admin_level"], 0], 8],
         ["!=", ["get", "maritime"], True],
+        ["!=", ["get", "maritime"], 1],
     ]
-    assert layer_by_id["boundary-land-local"]["minzoom"] == 7
-    assert layer_by_id["boundary-land-local"]["paint"]["line-color"] == "#a9afbb"
+    assert layer_by_id["boundary-land-level-4"]["layout"] == {
+        "line-join": "round",
+        "visibility": "visible",
+    }
+    assert layer_by_id["boundary-land-level-4"]["paint"]["line-color"] == "#9e9cab"
+    assert layer_by_id["boundary-land-level-4"]["paint"]["line-dasharray"] == [3, 1, 1, 1]
+    assert layer_by_id["boundary-land-level-4"]["paint"]["line-width"] == [
+        "interpolate",
+        ["exponential", 1.4],
+        ["zoom"],
+        4,
+        0.4,
+        5,
+        1,
+        12,
+        3,
+    ]
     assert layer_by_id["boundary-land-level-2"]["filter"] == [
         "all",
         ["==", ["to-number", ["get", "admin_level"], 0], 2],
         ["!=", ["get", "maritime"], True],
+        ["!=", ["get", "maritime"], 1],
         ["!=", ["get", "disputed"], True],
+        ["!=", ["get", "disputed"], 1],
     ]
-    assert layer_by_id["boundary-land-level-2"]["paint"]["line-color"] == "#4d5668"
+    assert layer_by_id["boundary-land-level-2"]["layout"] == {
+        "line-cap": "round",
+        "line-join": "round",
+        "visibility": "visible",
+    }
+    assert layer_by_id["boundary-land-level-2"]["paint"]["line-color"] == "hsl(248, 7%, 66%)"
     assert layer_by_id["boundary-land-level-2"]["paint"]["line-width"] == [
         "interpolate",
         ["linear"],
         ["zoom"],
         0,
-        0.8,
-        3,
+        0.6,
+        4,
         1.4,
         5,
-        2.2,
-        8,
-        3.6,
+        2,
         12,
-        7,
+        8,
     ]
     assert layer_by_id["boundary-land-disputed"]["filter"] == [
         "all",
         ["!=", ["get", "maritime"], True],
-        ["==", ["get", "disputed"], True],
+        ["!=", ["get", "maritime"], 1],
+        ["any", ["==", ["get", "disputed"], True], ["==", ["get", "disputed"], 1]],
     ]
+    assert layer_by_id["boundary-land-disputed"]["layout"] == {
+        "line-cap": "round",
+        "line-join": "round",
+        "visibility": "visible",
+    }
+    assert layer_by_id["boundary-land-disputed"]["paint"]["line-color"] == "hsl(248, 7%, 70%)"
+    assert layer_by_id["boundary-land-disputed"]["paint"]["line-dasharray"] == [1, 3]
     assert layer_by_id["boundary-water"]["filter"] == [
         "all",
         ["match", ["to-number", ["get", "admin_level"], 0], [2, 4], True, False],
-        ["==", ["get", "maritime"], True],
+        ["any", ["==", ["get", "maritime"], True], ["==", ["get", "maritime"], 1]],
     ]
+    assert layer_by_id["boundary-water"]["layout"] == {
+        "line-cap": "round",
+        "line-join": "round",
+        "visibility": "visible",
+    }
+    assert layer_by_id["boundary-water"]["paint"]["line-color"] == "rgba(154, 189, 214, 1)"
     assert layer_by_id["road_oneway"]["filter"] == [
         "all",
         ["==", ["get", "oneway"], True],

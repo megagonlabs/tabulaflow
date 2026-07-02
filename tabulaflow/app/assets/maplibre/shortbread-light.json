@@ -1611,33 +1611,19 @@
       "minzoom": 2,
       "filter": [
         "all",
-        ["==", ["to-number", ["get", "admin_level"], 0], 4],
-        ["!=", ["get", "maritime"], true]
-      ],
-      "paint": {
-        "line-color": "#777f8f",
-        "line-width": ["interpolate", ["exponential", 1.35], ["zoom"], 3, 0.6, 5, 1.1, 8, 1.8, 12, 3.2],
-        "line-dasharray": [4, 2],
-        "line-opacity": ["interpolate", ["linear"], ["zoom"], 2, 0.45, 5, 0.78, 10, 0.9]
-      }
-    },
-    {
-      "id": "boundary-land-local",
-      "type": "line",
-      "source": "osm",
-      "source-layer": "boundaries",
-      "minzoom": 7,
-      "filter": [
-        "all",
-        [">=", ["to-number", ["get", "admin_level"], 0], 5],
+        [">=", ["to-number", ["get", "admin_level"], 0], 3],
         ["<=", ["to-number", ["get", "admin_level"], 0], 8],
-        ["!=", ["get", "maritime"], true]
+        ["!=", ["get", "maritime"], true],
+        ["!=", ["get", "maritime"], 1]
       ],
+      "layout": {
+        "line-join": "round",
+        "visibility": "visible"
+      },
       "paint": {
-        "line-color": "#a9afbb",
-        "line-width": ["interpolate", ["linear"], ["zoom"], 7, 0.35, 10, 0.7, 13, 1.4],
-        "line-dasharray": [2, 2],
-        "line-opacity": ["interpolate", ["linear"], ["zoom"], 7, 0.18, 10, 0.36, 13, 0.55]
+        "line-color": "#9e9cab",
+        "line-dasharray": [3, 1, 1, 1],
+        "line-width": ["interpolate", ["exponential", 1.4], ["zoom"], 4, 0.4, 5, 1, 12, 3]
       }
     },
     {
@@ -1645,17 +1631,22 @@
       "type": "line",
       "source": "osm",
       "source-layer": "boundaries",
-      "minzoom": 0,
       "filter": [
         "all",
         ["==", ["to-number", ["get", "admin_level"], 0], 2],
         ["!=", ["get", "maritime"], true],
-        ["!=", ["get", "disputed"], true]
+        ["!=", ["get", "maritime"], 1],
+        ["!=", ["get", "disputed"], true],
+        ["!=", ["get", "disputed"], 1]
       ],
+      "layout": {
+        "line-cap": "round",
+        "line-join": "round",
+        "visibility": "visible"
+      },
       "paint": {
-        "line-color": "#4d5668",
-        "line-width": ["interpolate", ["linear"], ["zoom"], 0, 0.8, 3, 1.4, 5, 2.2, 8, 3.6, 12, 7],
-        "line-opacity": ["interpolate", ["linear"], ["zoom"], 0, 0.58, 3, 0.82, 8, 0.95]
+        "line-color": "hsl(248, 7%, 66%)",
+        "line-width": ["interpolate", ["linear"], ["zoom"], 0, 0.6, 4, 1.4, 5, 2, 12, 8]
       }
     },
     {
@@ -1663,17 +1654,21 @@
       "type": "line",
       "source": "osm",
       "source-layer": "boundaries",
-      "minzoom": 0,
       "filter": [
         "all",
         ["!=", ["get", "maritime"], true],
-        ["==", ["get", "disputed"], true]
+        ["!=", ["get", "maritime"], 1],
+        ["any", ["==", ["get", "disputed"], true], ["==", ["get", "disputed"], 1]]
       ],
+      "layout": {
+        "line-cap": "round",
+        "line-join": "round",
+        "visibility": "visible"
+      },
       "paint": {
-        "line-color": "#6c6472",
-        "line-width": ["interpolate", ["linear"], ["zoom"], 0, 0.8, 3, 1.4, 5, 2.2, 8, 3.6, 12, 7],
+        "line-color": "hsl(248, 7%, 70%)",
         "line-dasharray": [1, 3],
-        "line-opacity": ["interpolate", ["linear"], ["zoom"], 0, 0.58, 3, 0.82, 8, 0.95]
+        "line-width": ["interpolate", ["linear"], ["zoom"], 0, 0.6, 4, 1.4, 5, 2, 12, 8]
       }
     },
     {
@@ -1685,10 +1680,15 @@
       "filter": [
         "all",
         ["match", ["to-number", ["get", "admin_level"], 0], [2, 4], true, false],
-        ["==", ["get", "maritime"], true]
+        ["any", ["==", ["get", "maritime"], true], ["==", ["get", "maritime"], 1]]
       ],
+      "layout": {
+        "line-cap": "round",
+        "line-join": "round",
+        "visibility": "visible"
+      },
       "paint": {
-        "line-color": "#9abdd6",
+        "line-color": "rgba(154, 189, 214, 1)",
         "line-opacity": ["interpolate", ["linear"], ["zoom"], 6, 0.6, 10, 1],
         "line-width": ["interpolate", ["linear"], ["zoom"], 0, 0.6, 4, 1.4, 5, 2, 12, 8]
       }
