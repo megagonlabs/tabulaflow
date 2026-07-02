@@ -642,7 +642,7 @@ def test_pane_map_view_is_maplibre_based() -> None:
     country_other_labels = layer_by_id["place-country-other"]
     country_local_labels = layer_by_id["place-country-3"]
     assert place_continent["source"] == "continent-labels"
-    assert place_continent["maxzoom"] == 1
+    assert place_continent["maxzoom"] == 2
     assert place_continent["layout"]["text-transform"] == "uppercase"
     assert place_continent["paint"]["text-halo-width"] == 2
     assert layer_by_id["water-name-ocean"]["source"] == "ocean-labels"
@@ -1086,6 +1086,7 @@ def test_pane_map_view_is_maplibre_based() -> None:
         3,
     ]
     assert layer_by_id["boundary-land-level-2-fallback"]["source"] == "natural-earth-admin0-boundaries"
+    assert layer_by_id["boundary-land-level-2-fallback"]["minzoom"] == 1
     assert layer_by_id["boundary-land-level-2-fallback"]["maxzoom"] == 2
     assert layer_by_id["boundary-land-level-2-fallback"]["layout"] == {
         "line-cap": "round",

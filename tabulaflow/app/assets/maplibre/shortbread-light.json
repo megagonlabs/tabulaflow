@@ -1632,6 +1632,7 @@
       "id": "boundary-land-level-2-fallback",
       "type": "line",
       "source": "natural-earth-admin0-boundaries",
+      "minzoom": 1,
       "maxzoom": 2,
       "layout": {
         "line-cap": "round",
@@ -2427,7 +2428,7 @@
       "id": "place-continent",
       "type": "symbol",
       "source": "continent-labels",
-      "maxzoom": 1,
+      "maxzoom": 2,
       "layout": {
         "text-field": ["get", "name"],
         "text-font": ["Noto Sans Bold"],
