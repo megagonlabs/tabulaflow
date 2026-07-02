@@ -1689,28 +1689,6 @@
       }
     },
     {
-      "id": "boundary-water",
-      "type": "line",
-      "source": "osm",
-      "source-layer": "boundaries",
-      "minzoom": 4,
-      "filter": [
-        "all",
-        ["match", ["to-number", ["get", "admin_level"], 0], [2, 4], true, false],
-        ["any", ["==", ["get", "maritime"], true], ["==", ["get", "maritime"], 1]]
-      ],
-      "layout": {
-        "line-cap": "round",
-        "line-join": "round",
-        "visibility": "visible"
-      },
-      "paint": {
-        "line-color": "rgba(154, 189, 214, 1)",
-        "line-opacity": ["interpolate", ["linear"], ["zoom"], 6, 0.6, 10, 1],
-        "line-width": ["interpolate", ["linear"], ["zoom"], 0, 0.6, 4, 1.4, 5, 2, 12, 8]
-      }
-    },
-    {
       "id": "waterway-name",
       "type": "symbol",
       "source": "osm",

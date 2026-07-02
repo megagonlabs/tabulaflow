@@ -612,7 +612,7 @@ def test_pane_map_view_is_maplibre_based() -> None:
     )
     assert_layer_order(
         "boundary-land-level-4-fallback", "boundary-land-level-4", "boundary-land-level-2-fallback",
-        "boundary-land-level-2", "boundary-land-disputed", "boundary-water", "waterway-name",
+        "boundary-land-level-2", "boundary-land-disputed", "waterway-name",
         "water-name-lakeline", "water-name-ocean", "water-name-other",
         "road_oneway", "road_oneway_opposite", "poi-level-3", "poi-level-2", "poi-level-1", "poi-railway",
         "highway-name-path", "highway-name-minor", "highway-name-major", "highway-shield",
@@ -1136,17 +1136,7 @@ def test_pane_map_view_is_maplibre_based() -> None:
     }
     assert layer_by_id["boundary-land-disputed"]["paint"]["line-color"] == "hsl(248, 7%, 70%)"
     assert layer_by_id["boundary-land-disputed"]["paint"]["line-dasharray"] == [1, 3]
-    assert layer_by_id["boundary-water"]["filter"] == [
-        "all",
-        ["match", ["to-number", ["get", "admin_level"], 0], [2, 4], True, False],
-        ["any", ["==", ["get", "maritime"], True], ["==", ["get", "maritime"], 1]],
-    ]
-    assert layer_by_id["boundary-water"]["layout"] == {
-        "line-cap": "round",
-        "line-join": "round",
-        "visibility": "visible",
-    }
-    assert layer_by_id["boundary-water"]["paint"]["line-color"] == "rgba(154, 189, 214, 1)"
+    assert "boundary-water" not in layer_by_id
     assert layer_by_id["road_oneway"]["filter"] == [
         "all",
         ["==", ["get", "oneway"], True],
