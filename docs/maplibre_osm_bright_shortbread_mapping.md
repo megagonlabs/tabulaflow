@@ -39,7 +39,8 @@ Status meanings:
 | `building`, `building-top` | `building` | `buildings` | approximate | Building fill and translated high-zoom tops are ported against Shortbread's single building layer. |
 | `tunnel-*` road layers | `transportation.class`, `brunnel`, `ramp`, `subclass` | `streets.kind`, `tunnel`, `link`, `rail` | approximate | Tunnel roads are split by minor, secondary/tertiary, trunk/primary, motorway, link, and rail, but Shortbread has fewer subtype fields. |
 | `ferry` | `transportation.class=ferry` | `ferries.kind` | approximate | Ferry geometry and labels are available. |
-| `aeroway-*`, `airport-label-major` | `aeroway`, `aerodrome_label.class` | none or `streets.kind` if encoded | unsupported | No documented Shortbread aeroway label layer. |
+| `aeroway-*` | `aeroway.class` | `streets.kind`, `street_polygons.kind` | approximate | Runway/taxiway casing, fill, and white interior are ported from Shortbread street geometry. |
+| `airport-label-major` | `aerodrome_label.iata`, sprite `airport_11` | none | unsupported | Shortbread has no documented aerodrome label layer or IATA field. |
 | `road_area_pier`, `road_pier` | `transportation.class=pier` | `pier_lines`, `pier_polygons` | approximate | Shortbread pier geometry is styled as land-colored fill/lines. |
 | `highway-*` road fill/casing layers | `transportation.class`, `ramp`, `brunnel`, `subclass` | `streets.kind`, `link`, `bridge`, `tunnel` | approximate | Roads are split into tunnel, normal, bridge, and link drawing order with minor, secondary/tertiary, trunk/primary, and motorway tiers. |
 | `railway-*`, `railway-*-hatching` | `transportation.class=rail`, `service`, `brunnel` | `streets.rail`, `bridges`, `street_labels` | approximate | Rail and hatching are drawn for normal and bridge rail; Shortbread does not expose OpenMapTiles service/transit classes. |

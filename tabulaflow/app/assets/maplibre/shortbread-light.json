@@ -129,6 +129,18 @@
       }
     },
     {
+      "id": "aeroway-area",
+      "type": "fill",
+      "source": "osm",
+      "source-layer": "street_polygons",
+      "minzoom": 4,
+      "filter": ["match", ["get", "kind"], ["runway", "taxiway"], true, false],
+      "paint": {
+        "fill-color": "#ffffff",
+        "fill-opacity": ["interpolate", ["linear"], ["zoom"], 13, 0, 14, 1]
+      }
+    },
+    {
       "id": "street-polygons",
       "type": "fill",
       "source": "osm",
@@ -146,6 +158,60 @@
         "fill-color": "#f2eae2",
         "fill-outline-color": "#d0ccc8",
         "fill-opacity": ["interpolate", ["linear"], ["zoom"], 12, 0.55, 16, 0.95]
+      }
+    },
+    {
+      "id": "aeroway-taxiway-casing",
+      "type": "line",
+      "source": "osm",
+      "source-layer": "streets",
+      "minzoom": 12,
+      "filter": ["==", ["get", "kind"], "taxiway"],
+      "layout": {"line-cap": "round", "line-join": "round"},
+      "paint": {
+        "line-color": "#999999",
+        "line-width": ["interpolate", ["exponential", 1.5], ["zoom"], 11, 2, 17, 12]
+      }
+    },
+    {
+      "id": "aeroway-runway-casing",
+      "type": "line",
+      "source": "osm",
+      "source-layer": "streets",
+      "minzoom": 12,
+      "filter": ["==", ["get", "kind"], "runway"],
+      "layout": {"line-cap": "round", "line-join": "round"},
+      "paint": {
+        "line-color": "#999999",
+        "line-width": ["interpolate", ["exponential", 1.5], ["zoom"], 11, 5, 17, 55]
+      }
+    },
+    {
+      "id": "aeroway-taxiway",
+      "type": "line",
+      "source": "osm",
+      "source-layer": "streets",
+      "minzoom": 4,
+      "filter": ["==", ["get", "kind"], "taxiway"],
+      "layout": {"line-cap": "round", "line-join": "round"},
+      "paint": {
+        "line-color": "#ffffff",
+        "line-opacity": ["interpolate", ["linear"], ["zoom"], 11, 0, 12, 1],
+        "line-width": ["interpolate", ["exponential", 1.5], ["zoom"], 11, 1, 17, 10]
+      }
+    },
+    {
+      "id": "aeroway-runway",
+      "type": "line",
+      "source": "osm",
+      "source-layer": "streets",
+      "minzoom": 4,
+      "filter": ["==", ["get", "kind"], "runway"],
+      "layout": {"line-cap": "round", "line-join": "round"},
+      "paint": {
+        "line-color": "#ffffff",
+        "line-opacity": ["interpolate", ["linear"], ["zoom"], 11, 0, 12, 1],
+        "line-width": ["interpolate", ["exponential", 1.5], ["zoom"], 11, 4, 17, 50]
       }
     },
     {

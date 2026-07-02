@@ -672,6 +672,34 @@ def test_pane_map_view_is_maplibre_based() -> None:
     assert layer_by_id["dam-lines"]["source-layer"] == "dam_lines"
     assert layer_by_id["pier-polygons"]["source-layer"] == "pier_polygons"
     assert layer_by_id["pier-lines"]["source-layer"] == "pier_lines"
+    assert layer_by_id["aeroway-area"]["source-layer"] == "street_polygons"
+    assert layer_by_id["aeroway-area"]["filter"] == [
+        "match",
+        ["get", "kind"],
+        ["runway", "taxiway"],
+        True,
+        False,
+    ]
+    assert layer_by_id["aeroway-runway-casing"]["filter"] == ["==", ["get", "kind"], "runway"]
+    assert layer_by_id["aeroway-runway"]["paint"]["line-width"] == [
+        "interpolate",
+        ["exponential", 1.5],
+        ["zoom"],
+        11,
+        4,
+        17,
+        50,
+    ]
+    assert layer_by_id["aeroway-taxiway-casing"]["filter"] == ["==", ["get", "kind"], "taxiway"]
+    assert layer_by_id["aeroway-taxiway"]["paint"]["line-opacity"] == [
+        "interpolate",
+        ["linear"],
+        ["zoom"],
+        11,
+        0,
+        12,
+        1,
+    ]
     assert layer_by_id["bridges"]["source-layer"] == "bridges"
     assert layer_by_id["aerialways"]["source-layer"] == "aerialways"
     assert layer_by_id["aerialways"]["paint"]["line-dasharray"] == [2, 3]
