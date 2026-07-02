@@ -1228,7 +1228,7 @@ def test_pane_map_view_is_maplibre_based() -> None:
         "road_",
         ["to-string", ["to-number", ["get", "ref_cols"], ["length", ["get", "ref"]]]],
     ]
-    assert layer_by_id["highway-shield"]["layout"]["icon-size"] == 0.85
+    assert layer_by_id["highway-shield"]["layout"]["icon-size"] == 0.95
     assert layer_by_id["highway-shield"]["layout"]["text-field"] == ["get", "ref"]
     assert layer_by_id["highway-shield"]["layout"]["text-size"] == 10
     assert layer_by_id["highway-shield"]["layout"]["text-rotation-alignment"] == "viewport"

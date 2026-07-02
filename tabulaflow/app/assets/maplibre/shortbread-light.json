@@ -2011,7 +2011,7 @@
         "symbol-spacing": 220,
         "icon-image": ["concat", "road_", ["to-string", ["to-number", ["get", "ref_cols"], ["length", ["get", "ref"]]]]],
         "icon-rotation-alignment": "viewport",
-        "icon-size": 0.85,
+        "icon-size": 0.95,
         "text-field": ["get", "ref"],
         "text-font": ["Noto Sans Regular"],
         "text-size": 10,
