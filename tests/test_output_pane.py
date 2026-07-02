@@ -517,51 +517,41 @@ def test_pane_map_view_is_maplibre_based() -> None:
     assert any(layer.get("source-layer") == "streets" for layer in style["layers"])
     assert any(layer.get("source-layer") == "place_labels" for layer in style["layers"])
     layer_by_id = {str(layer.get("id")): layer for layer in style["layers"]}
-    major_labels = layer_by_id["place-labels-major"]
-    regional_labels = layer_by_id["place-labels-regional"]
-    neighborhood_labels = layer_by_id["place-labels-neighborhood"]
-    local_labels = layer_by_id["place-labels-local"]
-    small_labels = layer_by_id["place-labels-small"]
+    place_city = layer_by_id["place-city"]
+    place_town = layer_by_id["place-town"]
+    place_village = layer_by_id["place-village"]
+    place_other = layer_by_id["place-other"]
     state_labels = layer_by_id["state-labels"]
     country_global_labels = layer_by_id["country-labels-global"]
     country_regional_labels = layer_by_id["country-labels-regional"]
     country_local_labels = layer_by_id["country-labels-local"]
-    assert major_labels["filter"] == [
-        "all",
-        ["match", ["get", "kind"], ["city", "town"], True, False],
-        [">=", ["to-number", ["get", "population"], 0], 250000],
-    ]
-    assert major_labels["layout"]["text-font"] == ["Noto Sans Bold"]
-    assert major_labels["layout"]["text-size"] == ["interpolate", ["linear"], ["zoom"], 4, 13, 10, 19, 14, 28]
-    assert major_labels["layout"]["text-padding"] == 18
-    assert regional_labels["minzoom"] == 8
-    assert regional_labels["filter"] == [
-        "all",
-        ["match", ["get", "kind"], ["city", "town"], True, False],
-        [">=", ["to-number", ["get", "population"], 0], 50000],
-        ["<", ["to-number", ["get", "population"], 0], 250000],
-    ]
-    assert regional_labels["layout"]["text-size"] == ["interpolate", ["linear"], ["zoom"], 8, 13, 13, 17, 15, 20]
-    assert neighborhood_labels["minzoom"] == 12
-    assert neighborhood_labels["filter"] == [
+    assert place_other["minzoom"] == 12
+    assert place_other["filter"] == [
         "match",
         ["get", "kind"],
-        ["suburb", "quarter", "neighbourhood"],
+        ["suburb", "quarter", "neighbourhood", "hamlet", "locality"],
         True,
         False,
     ]
-    assert neighborhood_labels["layout"]["text-transform"] == "uppercase"
-    assert neighborhood_labels["layout"]["text-font"] == ["Noto Sans Bold"]
-    assert neighborhood_labels["layout"]["text-size"] == ["interpolate", ["linear"], ["zoom"], 12, 12, 14, 15, 16, 17]
-    assert local_labels["minzoom"] == 11
-    assert local_labels["filter"] == [
-        "all",
-        ["match", ["get", "kind"], ["city", "town", "village"], True, False],
-        [">=", ["to-number", ["get", "population"], 0], 5000],
-        ["<", ["to-number", ["get", "population"], 0], 50000],
+    assert place_other["layout"]["text-transform"] == "uppercase"
+    assert place_other["layout"]["text-letter-spacing"] == 0.1
+    assert place_village["minzoom"] == 10
+    assert place_village["filter"] == ["==", ["get", "kind"], "village"]
+    assert place_village["layout"]["text-size"] == [
+        "interpolate",
+        ["exponential", 1.2],
+        ["zoom"],
+        10,
+        12,
+        15,
+        22,
     ]
-    assert local_labels["layout"]["text-size"] == ["interpolate", ["linear"], ["zoom"], 11, 12, 14, 15, 16, 17]
-    assert local_labels["paint"]["text-color"] == "#5f6266"
+    assert place_town["minzoom"] == 10
+    assert place_town["filter"] == ["==", ["get", "kind"], "town"]
+    assert place_town["layout"]["text-size"] == ["interpolate", ["exponential", 1.2], ["zoom"], 10, 14, 15, 24]
+    assert place_city["minzoom"] == 4
+    assert place_city["filter"] == ["==", ["get", "kind"], "city"]
+    assert place_city["layout"]["text-size"] == ["interpolate", ["exponential", 1.2], ["zoom"], 7, 14, 11, 24]
     assert layer_by_id["landcover"]["paint"]["fill-color"] == [
         "match",
         ["get", "kind"],
@@ -596,12 +586,6 @@ def test_pane_map_view_is_maplibre_based() -> None:
         [0, 0],
         16,
         [-2, -2],
-    ]
-    assert small_labels["minzoom"] == 13
-    assert small_labels["filter"] == [
-        "all",
-        ["match", ["get", "kind"], ["village", "hamlet", "locality"], True, False],
-        ["<", ["to-number", ["get", "population"], 0], 5000],
     ]
     assert state_labels["minzoom"] == 4
     assert state_labels["maxzoom"] == 10
