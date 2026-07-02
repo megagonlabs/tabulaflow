@@ -1127,7 +1127,11 @@
       "source": "osm",
       "source-layer": "street_labels",
       "minzoom": 8,
-      "filter": ["has", "ref"],
+      "filter": [
+        "all",
+        ["has", "ref"],
+        ["match", ["get", "kind"], ["motorway", "trunk", "primary"], false, true]
+      ],
       "layout": {
         "symbol-placement": "line",
         "symbol-spacing": 220,
@@ -1139,6 +1143,60 @@
       },
       "paint": {
         "text-color": "#222222",
+        "text-halo-color": "rgba(255,255,255,0.9)",
+        "text-halo-width": 2,
+        "text-halo-blur": 0.4
+      }
+    },
+    {
+      "id": "highway-shield-us-interstate",
+      "type": "symbol",
+      "source": "osm",
+      "source-layer": "street_labels",
+      "minzoom": 7,
+      "filter": [
+        "all",
+        ["has", "ref"],
+        ["==", ["get", "kind"], "motorway"]
+      ],
+      "layout": {
+        "symbol-placement": "line",
+        "symbol-spacing": 200,
+        "text-field": ["get", "ref"],
+        "text-font": ["Noto Sans Regular"],
+        "text-size": 10,
+        "text-rotation-alignment": "map",
+        "text-padding": 2
+      },
+      "paint": {
+        "text-color": "#111111",
+        "text-halo-color": "rgba(255,255,255,0.92)",
+        "text-halo-width": 2.2,
+        "text-halo-blur": 0.4
+      }
+    },
+    {
+      "id": "highway-shield-us-other",
+      "type": "symbol",
+      "source": "osm",
+      "source-layer": "street_labels",
+      "minzoom": 9,
+      "filter": [
+        "all",
+        ["has", "ref"],
+        ["match", ["get", "kind"], ["trunk", "primary"], true, false]
+      ],
+      "layout": {
+        "symbol-placement": "line",
+        "symbol-spacing": 200,
+        "text-field": ["get", "ref"],
+        "text-font": ["Noto Sans Regular"],
+        "text-size": 10,
+        "text-rotation-alignment": "map",
+        "text-padding": 2
+      },
+      "paint": {
+        "text-color": "#111111",
         "text-halo-color": "rgba(255,255,255,0.9)",
         "text-halo-width": 2,
         "text-halo-blur": 0.4

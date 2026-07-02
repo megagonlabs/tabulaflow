@@ -770,8 +770,24 @@ def test_pane_map_view_is_maplibre_based() -> None:
     assert layer_by_id["road-oneway-opposite"]["layout"]["text-field"] == "<"
     assert layer_by_id["highway-shield"]["source-layer"] == "street_labels"
     assert layer_by_id["highway-shield"]["minzoom"] == 8
-    assert layer_by_id["highway-shield"]["filter"] == ["has", "ref"]
+    assert layer_by_id["highway-shield"]["filter"] == [
+        "all",
+        ["has", "ref"],
+        ["match", ["get", "kind"], ["motorway", "trunk", "primary"], False, True],
+    ]
     assert layer_by_id["highway-shield"]["layout"]["symbol-spacing"] == 220
+    assert layer_by_id["highway-shield-us-interstate"]["minzoom"] == 7
+    assert layer_by_id["highway-shield-us-interstate"]["filter"] == [
+        "all",
+        ["has", "ref"],
+        ["==", ["get", "kind"], "motorway"],
+    ]
+    assert layer_by_id["highway-shield-us-other"]["minzoom"] == 9
+    assert layer_by_id["highway-shield-us-other"]["filter"] == [
+        "all",
+        ["has", "ref"],
+        ["match", ["get", "kind"], ["trunk", "primary"], True, False],
+    ]
     assert layer_by_id["street-labels-major"]["minzoom"] == 12.2
     assert layer_by_id["street-labels-major"]["filter"] == [
         "match",
