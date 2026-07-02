@@ -2049,7 +2049,7 @@
         "text-field": ["slice", ["get", "ref"], 2],
         "text-font": ["Noto Sans Bold"],
         "text-size": 10,
-        "text-offset": [0, 0.18],
+        "text-offset": [0, 0.05],
         "text-rotation-alignment": "viewport",
         "text-padding": 2
       },

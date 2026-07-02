@@ -8,7 +8,7 @@
            C94 25 97 42 95 61 C91 95 76 116 51 126
            C26 116 11 95 7 61 C5 42 8 25 15 10Z"/>
       <clipPath id="clip-1"><use href="#shape-1"/></clipPath>
-      <use href="#shape-1" fill="#f8fafc" stroke="#9ca3af" stroke-width="7" stroke-linejoin="round"/>
+      <use href="#shape-1" fill="#f8fafc" stroke="#9ca3af" stroke-width="12" stroke-linejoin="round"/>
       <g clip-path="url(#clip-1)">
         <path d="M14 13 C26 17 39 16 51 10 C63 16 76 17 88 13 C91 22 93 29 94 36 H8 C9 29 11 22 14 13Z" fill="#f25f6b"/>
         <path d="M8 36H94V132H8Z" fill="#5f72d6"/>
@@ -23,7 +23,7 @@
            C109 25 112 42 110 61 C106 95 88 116 60 126
            C32 116 14 95 10 61 C8 42 11 25 18 10Z"/>
       <clipPath id="clip-2"><use href="#shape-2"/></clipPath>
-      <use href="#shape-2" fill="#f8fafc" stroke="#9ca3af" stroke-width="7" stroke-linejoin="round"/>
+      <use href="#shape-2" fill="#f8fafc" stroke="#9ca3af" stroke-width="12" stroke-linejoin="round"/>
       <g clip-path="url(#clip-2)">
         <path d="M17 13 C31 17 46 16 60 10 C74 16 89 17 103 13 C106 22 108 29 109 36 H11 C12 29 14 22 17 13Z" fill="#f25f6b"/>
         <path d="M11 36H109V132H11Z" fill="#5f72d6"/>
@@ -38,7 +38,7 @@
            C125 25 128 42 126 61 C122 95 101 116 69 126
            C37 116 16 95 12 61 C10 42 13 25 20 10Z"/>
       <clipPath id="clip-3"><use href="#shape-3"/></clipPath>
-      <use href="#shape-3" fill="#f8fafc" stroke="#9ca3af" stroke-width="7" stroke-linejoin="round"/>
+      <use href="#shape-3" fill="#f8fafc" stroke="#9ca3af" stroke-width="12" stroke-linejoin="round"/>
       <g clip-path="url(#clip-3)">
         <path d="M19 13 C36 17 53 16 69 10 C85 16 102 17 119 13 C122 22 124 29 125 36 H13 C14 29 16 22 19 13Z" fill="#f25f6b"/>
         <path d="M13 36H125V132H13Z" fill="#5f72d6"/>

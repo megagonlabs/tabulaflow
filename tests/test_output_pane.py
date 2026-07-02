@@ -1248,7 +1248,7 @@ def test_pane_map_view_is_maplibre_based() -> None:
     assert layer_by_id["highway-shield-us-interstate"]["layout"]["text-field"] == ["slice", ["get", "ref"], 2]
     assert layer_by_id["highway-shield-us-interstate"]["layout"]["text-font"] == ["Noto Sans Bold"]
     assert layer_by_id["highway-shield-us-interstate"]["layout"]["text-size"] == 10
-    assert layer_by_id["highway-shield-us-interstate"]["layout"]["text-offset"] == [0, 0.18]
+    assert layer_by_id["highway-shield-us-interstate"]["layout"]["text-offset"] == [0, 0.05]
     assert layer_by_id["highway-shield-us-interstate"]["paint"]["text-color"] == "#ffffff"
     assert layer_by_id["highway-shield-us-highway"]["minzoom"] == 9
     assert layer_by_id["highway-shield-us-highway"]["filter"] == [
