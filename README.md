@@ -354,9 +354,10 @@ July 1
 - [x] per-session token for safety
 - [x] Vector map using maplibre + OpenStreetMap vector tiles
 
+- [ ] Highway labels and icons
 - [ ] Fix I5 + sites not shown bug
-- [ ] Remote server improvements
 - [ ] Map legend
+- [ ] Remote server improvements
 - [ ] Allow links in tooltip
 - [ ] Graph rendering
 - [ ] code diff rendering
