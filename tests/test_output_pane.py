@@ -702,7 +702,7 @@ def test_pane_map_view_is_maplibre_based() -> None:
         ["<", ["to-number", ["get", "population"], 0], 1000000],
         ["match", ["to-string", ["get", "capital"]], ["2", "true", "yes"], False, True],
     ]
-    assert place_city_medium["layout"]["text-font"] == ["Noto Sans Regular"]
+    assert place_city_medium["layout"]["text-font"] == ["Noto Sans Bold"]
     assert place_city_medium["layout"]["text-size"] == [
         "interpolate",
         ["exponential", 1.2],

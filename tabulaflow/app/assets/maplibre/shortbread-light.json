@@ -2272,7 +2272,7 @@
       ],
       "layout": {
         "text-field": ["coalesce", ["get", "name_en"], ["get", "name"]],
-        "text-font": ["Noto Sans Regular"],
+        "text-font": ["Noto Sans Bold"],
         "text-size": ["interpolate", ["exponential", 1.2], ["zoom"], 6, 12, 10, 18, 14, 23],
         "text-max-width": 8
       },
