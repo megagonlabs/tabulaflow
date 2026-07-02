@@ -32,8 +32,8 @@ Status meanings:
 | OSM Bright layers | OpenMapTiles dependency | Shortbread target | Status | Notes |
 | --- | --- | --- | --- | --- |
 | `background` | none | `background` | exact | Color can be copied directly. |
-| `landcover-glacier`, `landcover-ice-shelf`, `landcover-wood`, `landcover-grass`, `landcover-grass-park`, `landcover-sand` | `landcover.class`, `landcover.subclass`, `park.class` | `land.kind`, `sites.kind` | approximate | Shortbread combines these into fewer land/site kinds. |
-| `landuse-residential`, `landuse-commercial`, `landuse-industrial`, `landuse-cemetery`, `landuse-hospital`, `landuse-school`, `landuse-railway` | `landuse.class` | `sites.kind`, `land.kind` | approximate | Residential/commercial/industrial classes are not exposed separately. |
+| `landcover-glacier`, `landcover-ice-shelf`, `landcover-wood`, `landcover-grass`, `landcover-grass-park`, `landcover-sand` | `landcover.class`, `landcover.subclass`, `park.class` | `land.kind`, `sites.kind` | approximate | Implemented as separate OSM Bright-named layers, but Shortbread combines these into fewer land/site kinds. |
+| `landuse-residential`, `landuse-commercial`, `landuse-industrial`, `landuse-cemetery`, `landuse-hospital`, `landuse-school`, `landuse-railway` | `landuse.class` | `sites.kind`, `land.kind` | approximate | Implemented as separate OSM Bright-named layers, but Shortbread landuse classes are coarser. |
 | `water`, `water-offset`, `water-intermittent`, `water-pattern` | `water.class`, `intermittent`, `brunnel` | `water_polygons.kind` | approximate | Intermittent/pattern styling is unsupported. |
 | `waterway_tunnel`, `waterway-other`, `waterway-other-intermittent`, `waterway-stream-canal`, `waterway-stream-canal-intermittent`, `waterway-river`, `waterway-river-intermittent` | `waterway.class`, `intermittent`, `brunnel` | `water_lines.kind`, `bridge`, `tunnel` | approximate | Shortbread has water-line kind/bridge/tunnel but not the same class split. |
 | `building`, `building-top` | `building` | `buildings` | approximate | Building fill and translated high-zoom tops are ported against Shortbread's single building layer. |
@@ -72,9 +72,9 @@ rail, minor, secondary/tertiary, primary/trunk, and motorway.
 The low-zoom country label port approximates OSM Bright's `place-country-*`
 rank tiers with mutually exclusive `boundary_labels.way_area` buckets:
 
-- `country-labels-global`: zoom `0-8`, `way_area >= 8e12`
-- `country-labels-regional`: zoom `2-8`, `1e12 <= way_area < 8e12`
-- `country-labels-local`: zoom `3-8`, `way_area < 1e12`
+- `place-country-1`: zoom `0-8`, `way_area >= 8e12`
+- `place-country-2`: zoom `2-8`, `1e12 <= way_area < 8e12`
+- `place-country-3`: zoom `3-8`, `way_area < 1e12`
 
 This intentionally restores visible labels at the broadest zooms, but it is not
 an exact country-rank match because Shortbread has no country rank field.

@@ -37,50 +37,132 @@
       "paint": {"fill-color": "#c2def3"}
     },
     {
-      "id": "landcover",
+      "id": "landcover-glacier",
       "type": "fill",
       "source": "osm",
       "source-layer": "land",
       "minzoom": 7,
+      "filter": ["==", ["get", "kind"], "glacier"],
+      "paint": {"fill-color": "#ffffff", "fill-opacity": 0.82}
+    },
+    {
+      "id": "landcover-ice-shelf",
+      "type": "fill",
+      "source": "osm",
+      "source-layer": "land",
+      "minzoom": 7,
+      "filter": ["==", ["get", "kind"], "ice_shelf"],
+      "paint": {"fill-color": "#ffffff", "fill-opacity": 0.82}
+    },
+    {
+      "id": "landuse-residential",
+      "type": "fill",
+      "source": "osm",
+      "source-layer": "land",
+      "minzoom": 7,
+      "filter": ["match", ["get", "kind"], ["residential", "suburb", "neighbourhood"], true, false],
+      "paint": {"fill-color": "rgba(232, 226, 219, 0.36)", "fill-opacity": 0.82}
+    },
+    {
+      "id": "landcover-wood",
+      "type": "fill",
+      "source": "osm",
+      "source-layer": "land",
+      "minzoom": 7,
+      "filter": ["match", ["get", "kind"], ["forest", "wood"], true, false],
+      "paint": {"fill-color": "#d8e8c8", "fill-opacity": 0.82}
+    },
+    {
+      "id": "landcover-grass",
+      "type": "fill",
+      "source": "osm",
+      "source-layer": "land",
+      "minzoom": 7,
+      "filter": ["match", ["get", "kind"], ["grass", "meadow", "park", "recreation_ground", "scrub", "heath"], true, false],
       "paint": {
         "fill-color": [
           "match",
           ["get", "kind"],
-          ["glacier", "ice_shelf"], "#ffffff",
-          ["residential", "suburb", "neighbourhood"], "rgba(232, 226, 219, 0.36)",
-          ["forest", "wood"], "#d8e8c8",
-          ["grass", "meadow", "park", "recreation_ground"], "#d8e8c8",
-          ["sand", "beach"], "#f2e4bf",
           ["scrub", "heath"], "#e5ecd4",
-          "#edf1e3"
+          "#d8e8c8"
         ],
         "fill-opacity": 0.82
       }
     },
     {
-      "id": "sites",
+      "id": "landcover-sand",
+      "type": "fill",
+      "source": "osm",
+      "source-layer": "land",
+      "minzoom": 7,
+      "filter": ["match", ["get", "kind"], ["sand", "beach"], true, false],
+      "paint": {"fill-color": "#f2e4bf", "fill-opacity": 0.82}
+    },
+    {
+      "id": "landcover-grass-park",
       "type": "fill",
       "source": "osm",
       "source-layer": "sites",
       "minzoom": 14,
-      "paint": {
-        "fill-color": [
-          "match",
-          ["get", "kind"],
-          ["park", "garden", "playground"], "#d8e8c8",
-          ["commercial"], "rgba(255, 210, 210, 0.28)",
-          ["industrial"], "rgba(255, 235, 170, 0.34)",
-          ["railway"], "rgba(232, 226, 219, 0.4)",
-          ["school", "university", "college"], "#f0e8f8",
-          ["hospital"], "#ffdde9",
-          ["cemetery"], "#e0e4dd",
-          "#eee9df"
-        ],
-        "fill-opacity": 0.78
-      }
+      "filter": ["match", ["get", "kind"], ["park", "garden", "playground"], true, false],
+      "paint": {"fill-color": "#d8e8c8", "fill-opacity": 0.78}
     },
     {
-      "id": "water-polygons",
+      "id": "landuse-commercial",
+      "type": "fill",
+      "source": "osm",
+      "source-layer": "sites",
+      "minzoom": 14,
+      "filter": ["==", ["get", "kind"], "commercial"],
+      "paint": {"fill-color": "rgba(255, 210, 210, 0.28)", "fill-opacity": 0.78}
+    },
+    {
+      "id": "landuse-industrial",
+      "type": "fill",
+      "source": "osm",
+      "source-layer": "sites",
+      "minzoom": 14,
+      "filter": ["==", ["get", "kind"], "industrial"],
+      "paint": {"fill-color": "rgba(255, 235, 170, 0.34)", "fill-opacity": 0.78}
+    },
+    {
+      "id": "landuse-railway",
+      "type": "fill",
+      "source": "osm",
+      "source-layer": "sites",
+      "minzoom": 14,
+      "filter": ["==", ["get", "kind"], "railway"],
+      "paint": {"fill-color": "rgba(232, 226, 219, 0.4)", "fill-opacity": 0.78}
+    },
+    {
+      "id": "landuse-school",
+      "type": "fill",
+      "source": "osm",
+      "source-layer": "sites",
+      "minzoom": 14,
+      "filter": ["match", ["get", "kind"], ["school", "university", "college"], true, false],
+      "paint": {"fill-color": "#f0e8f8", "fill-opacity": 0.78}
+    },
+    {
+      "id": "landuse-hospital",
+      "type": "fill",
+      "source": "osm",
+      "source-layer": "sites",
+      "minzoom": 14,
+      "filter": ["==", ["get", "kind"], "hospital"],
+      "paint": {"fill-color": "#ffdde9", "fill-opacity": 0.78}
+    },
+    {
+      "id": "landuse-cemetery",
+      "type": "fill",
+      "source": "osm",
+      "source-layer": "sites",
+      "minzoom": 14,
+      "filter": ["==", ["get", "kind"], "cemetery"],
+      "paint": {"fill-color": "#e0e4dd", "fill-opacity": 0.78}
+    },
+    {
+      "id": "water",
       "type": "fill",
       "source": "osm",
       "source-layer": "water_polygons",
@@ -121,7 +203,7 @@
       }
     },
     {
-      "id": "pier-polygons",
+      "id": "road_area_pier",
       "type": "fill",
       "source": "osm",
       "source-layer": "pier_polygons",
@@ -129,7 +211,7 @@
       "paint": {"fill-color": "#f8f4f0", "fill-opacity": 1}
     },
     {
-      "id": "pier-lines",
+      "id": "road_pier",
       "type": "line",
       "source": "osm",
       "source-layer": "pier_lines",
@@ -882,7 +964,7 @@
       }
     },
     {
-      "id": "ferries",
+      "id": "ferry",
       "type": "line",
       "source": "osm",
       "source-layer": "ferries",
@@ -896,7 +978,7 @@
       }
     },
     {
-      "id": "buildings",
+      "id": "building",
       "type": "fill",
       "source": "osm",
       "source-layer": "buildings",
@@ -1072,7 +1154,7 @@
       }
     },
     {
-      "id": "road-oneway",
+      "id": "road_oneway",
       "type": "symbol",
       "source": "osm",
       "source-layer": "streets",
@@ -1099,7 +1181,7 @@
       }
     },
     {
-      "id": "road-oneway-opposite",
+      "id": "road_oneway_opposite",
       "type": "symbol",
       "source": "osm",
       "source-layer": "streets",
@@ -1207,7 +1289,7 @@
       }
     },
     {
-      "id": "street-labels-major",
+      "id": "highway-name-major",
       "type": "symbol",
       "source": "osm",
       "source-layer": "street_labels",
@@ -1229,7 +1311,7 @@
       }
     },
     {
-      "id": "street-labels-local",
+      "id": "highway-name-minor",
       "type": "symbol",
       "source": "osm",
       "source-layer": "street_labels",
@@ -1251,7 +1333,7 @@
       }
     },
     {
-      "id": "street-labels-path",
+      "id": "highway-name-path",
       "type": "symbol",
       "source": "osm",
       "source-layer": "street_labels",
@@ -1522,7 +1604,7 @@
       }
     },
     {
-      "id": "state-labels",
+      "id": "place-state",
       "type": "symbol",
       "source": "osm",
       "source-layer": "boundary_labels",
@@ -1548,7 +1630,7 @@
       }
     },
     {
-      "id": "country-labels-global",
+      "id": "place-country-1",
       "type": "symbol",
       "source": "osm",
       "source-layer": "boundary_labels",
@@ -1575,7 +1657,7 @@
       }
     },
     {
-      "id": "country-labels-regional",
+      "id": "place-country-2",
       "type": "symbol",
       "source": "osm",
       "source-layer": "boundary_labels",
@@ -1603,7 +1685,7 @@
       }
     },
     {
-      "id": "country-labels-local",
+      "id": "place-country-3",
       "type": "symbol",
       "source": "osm",
       "source-layer": "boundary_labels",

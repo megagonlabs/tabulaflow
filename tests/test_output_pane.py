@@ -537,10 +537,10 @@ def test_pane_map_view_is_maplibre_based() -> None:
     place_village = layer_by_id["place-village"]
     place_other = layer_by_id["place-other"]
     place_continent = layer_by_id["place-continent"]
-    state_labels = layer_by_id["state-labels"]
-    country_global_labels = layer_by_id["country-labels-global"]
-    country_regional_labels = layer_by_id["country-labels-regional"]
-    country_local_labels = layer_by_id["country-labels-local"]
+    state_labels = layer_by_id["place-state"]
+    country_global_labels = layer_by_id["place-country-1"]
+    country_regional_labels = layer_by_id["place-country-2"]
+    country_local_labels = layer_by_id["place-country-3"]
     assert place_continent["source"] == "continent-labels"
     assert place_continent["maxzoom"] == 1
     assert place_continent["layout"]["text-transform"] == "uppercase"
@@ -575,31 +575,54 @@ def test_pane_map_view_is_maplibre_based() -> None:
     assert place_city["minzoom"] == 4
     assert place_city["filter"] == ["==", ["get", "kind"], "city"]
     assert place_city["layout"]["text-size"] == ["interpolate", ["exponential", 1.2], ["zoom"], 7, 14, 11, 24]
-    assert layer_by_id["landcover"]["paint"]["fill-color"] == [
+    assert layer_by_id["landcover-glacier"]["source-layer"] == "land"
+    assert layer_by_id["landcover-glacier"]["filter"] == ["==", ["get", "kind"], "glacier"]
+    assert layer_by_id["landcover-ice-shelf"]["filter"] == ["==", ["get", "kind"], "ice_shelf"]
+    assert layer_by_id["landuse-residential"]["filter"] == [
         "match",
         ["get", "kind"],
-        ["glacier", "ice_shelf"],
-        "#ffffff",
         ["residential", "suburb", "neighbourhood"],
-        "rgba(232, 226, 219, 0.36)",
+        True,
+        False,
+    ]
+    assert layer_by_id["landcover-wood"]["filter"] == [
+        "match",
+        ["get", "kind"],
         ["forest", "wood"],
-        "#d8e8c8",
-        ["grass", "meadow", "park", "recreation_ground"],
-        "#d8e8c8",
-        ["sand", "beach"],
-        "#f2e4bf",
+        True,
+        False,
+    ]
+    assert layer_by_id["landcover-grass"]["paint"]["fill-color"] == [
+        "match",
+        ["get", "kind"],
         ["scrub", "heath"],
         "#e5ecd4",
-        "#edf1e3",
+        "#d8e8c8",
     ]
-    assert layer_by_id["sites"]["paint"]["fill-color"][4:10] == [
-        ["commercial"],
-        "rgba(255, 210, 210, 0.28)",
-        ["industrial"],
-        "rgba(255, 235, 170, 0.34)",
-        ["railway"],
-        "rgba(232, 226, 219, 0.4)",
+    assert layer_by_id["landcover-sand"]["paint"]["fill-color"] == "#f2e4bf"
+    assert layer_by_id["landcover-grass-park"]["source-layer"] == "sites"
+    assert layer_by_id["landcover-grass-park"]["filter"] == [
+        "match",
+        ["get", "kind"],
+        ["park", "garden", "playground"],
+        True,
+        False,
     ]
+    assert layer_by_id["landuse-commercial"]["paint"]["fill-color"] == "rgba(255, 210, 210, 0.28)"
+    assert layer_by_id["landuse-industrial"]["paint"]["fill-color"] == "rgba(255, 235, 170, 0.34)"
+    assert layer_by_id["landuse-railway"]["paint"]["fill-color"] == "rgba(232, 226, 219, 0.4)"
+    assert layer_by_id["landuse-school"]["filter"] == [
+        "match",
+        ["get", "kind"],
+        ["school", "university", "college"],
+        True,
+        False,
+    ]
+    assert layer_by_id["landuse-hospital"]["filter"] == ["==", ["get", "kind"], "hospital"]
+    assert layer_by_id["landuse-cemetery"]["filter"] == ["==", ["get", "kind"], "cemetery"]
+    assert layer_by_id["water"]["source-layer"] == "water_polygons"
+    assert layer_by_id["water"]["paint"]["fill-color"] == "#c2def3"
+    assert layer_by_id["building"]["source-layer"] == "buildings"
     assert layer_by_id["building-top"]["source-layer"] == "buildings"
     assert layer_by_id["building-top"]["paint"]["fill-translate"] == [
         "interpolate",
@@ -677,8 +700,8 @@ def test_pane_map_view_is_maplibre_based() -> None:
     ]
     assert layer_by_id["dam-polygons"]["source-layer"] == "dam_polygons"
     assert layer_by_id["dam-lines"]["source-layer"] == "dam_lines"
-    assert layer_by_id["pier-polygons"]["source-layer"] == "pier_polygons"
-    assert layer_by_id["pier-lines"]["source-layer"] == "pier_lines"
+    assert layer_by_id["road_area_pier"]["source-layer"] == "pier_polygons"
+    assert layer_by_id["road_pier"]["source-layer"] == "pier_lines"
     assert layer_by_id["aeroway-area"]["source-layer"] == "street_polygons"
     assert layer_by_id["aeroway-area"]["filter"] == [
         "match",
@@ -760,7 +783,7 @@ def test_pane_map_view_is_maplibre_based() -> None:
         ["match", ["get", "admin_level"], [2, 4], True, False],
         ["==", ["get", "maritime"], True],
     ]
-    assert layer_by_id["road-oneway"]["filter"] == [
+    assert layer_by_id["road_oneway"]["filter"] == [
         "all",
         ["==", ["get", "oneway"], True],
         [
@@ -771,8 +794,8 @@ def test_pane_map_view_is_maplibre_based() -> None:
             False,
         ],
     ]
-    assert layer_by_id["road-oneway"]["layout"]["text-field"] == ">"
-    assert layer_by_id["road-oneway-opposite"]["layout"]["text-field"] == "<"
+    assert layer_by_id["road_oneway"]["layout"]["text-field"] == ">"
+    assert layer_by_id["road_oneway_opposite"]["layout"]["text-field"] == "<"
     assert layer_by_id["highway-shield"]["source-layer"] == "street_labels"
     assert layer_by_id["highway-shield"]["minzoom"] == 8
     assert layer_by_id["highway-shield"]["filter"] == [
@@ -793,29 +816,29 @@ def test_pane_map_view_is_maplibre_based() -> None:
         ["has", "ref"],
         ["match", ["get", "kind"], ["trunk", "primary"], True, False],
     ]
-    assert layer_by_id["street-labels-major"]["minzoom"] == 12.2
-    assert layer_by_id["street-labels-major"]["filter"] == [
+    assert layer_by_id["highway-name-major"]["minzoom"] == 12.2
+    assert layer_by_id["highway-name-major"]["filter"] == [
         "match",
         ["get", "kind"],
         ["trunk", "primary", "secondary", "tertiary"],
         True,
         False,
     ]
-    assert layer_by_id["street-labels-major"]["layout"]["text-field"] == [
+    assert layer_by_id["highway-name-major"]["layout"]["text-field"] == [
         "coalesce",
         ["get", "name_en"],
         ["get", "name"],
     ]
-    assert layer_by_id["street-labels-local"]["minzoom"] == 15
-    assert layer_by_id["street-labels-local"]["filter"] == [
+    assert layer_by_id["highway-name-minor"]["minzoom"] == 15
+    assert layer_by_id["highway-name-minor"]["filter"] == [
         "match",
         ["get", "kind"],
         ["residential", "unclassified", "service", "track"],
         True,
         False,
     ]
-    assert layer_by_id["street-labels-path"]["minzoom"] == 15.5
-    assert layer_by_id["street-labels-path"]["filter"] == [
+    assert layer_by_id["highway-name-path"]["minzoom"] == 15.5
+    assert layer_by_id["highway-name-path"]["filter"] == [
         "match",
         ["get", "kind"],
         ["path", "footway", "cycleway"],
@@ -836,7 +859,7 @@ def test_pane_map_view_is_maplibre_based() -> None:
         [">=", ["to-number", ["get", "way_area"], 0], 1000000],
         ["<", ["to-number", ["get", "way_area"], 0], 50000000000],
     ]
-    assert layer_by_id["street-labels-major"]["layout"]["text-size"] == [
+    assert layer_by_id["highway-name-major"]["layout"]["text-size"] == [
         "interpolate",
         ["linear"],
         ["zoom"],
@@ -847,7 +870,7 @@ def test_pane_map_view_is_maplibre_based() -> None:
         16,
         15,
     ]
-    assert layer_by_id["street-labels-local"]["layout"]["text-size"] == ["interpolate", ["linear"], ["zoom"], 15, 12, 16, 13]
+    assert layer_by_id["highway-name-minor"]["layout"]["text-size"] == ["interpolate", ["linear"], ["zoom"], 15, 12, 16, 13]
     assert layer_by_id["water-name-lakeline"]["layout"]["text-size"] == [
         "interpolate",
         ["linear"],
@@ -870,9 +893,9 @@ def test_pane_map_view_is_maplibre_based() -> None:
         16,
         15,
     ]
-    assert layer_by_id["ferries"]["source-layer"] == "ferries"
-    assert layer_by_id["ferries"]["minzoom"] == 11
-    assert layer_by_id["ferries"]["paint"]["line-dasharray"] == [2, 2]
+    assert layer_by_id["ferry"]["source-layer"] == "ferries"
+    assert layer_by_id["ferry"]["minzoom"] == 11
+    assert layer_by_id["ferry"]["paint"]["line-dasharray"] == [2, 2]
     assert layer_by_id["ferry-labels"]["source-layer"] == "ferries"
     assert layer_by_id["ferry-labels"]["layout"]["symbol-placement"] == "line"
     assert layer_by_id["waterway-name"]["source-layer"] == "water_lines_labels"
