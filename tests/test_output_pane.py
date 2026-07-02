@@ -620,6 +620,17 @@ def test_pane_map_view_is_maplibre_based() -> None:
     ]
     assert layer_by_id["landuse-hospital"]["filter"] == ["==", ["get", "kind"], "hospital"]
     assert layer_by_id["landuse-cemetery"]["filter"] == ["==", ["get", "kind"], "cemetery"]
+    assert layer_by_id["water-offset"]["source-layer"] == "water_polygons"
+    assert layer_by_id["water-offset"]["maxzoom"] == 8
+    assert layer_by_id["water-offset"]["paint"]["fill-translate"] == [
+        "interpolate",
+        ["linear"],
+        ["zoom"],
+        6,
+        [2, 0],
+        8,
+        [0, 0],
+    ]
     assert layer_by_id["water"]["source-layer"] == "water_polygons"
     assert layer_by_id["water"]["paint"]["fill-color"] == "#c2def3"
     assert layer_by_id["building"]["source-layer"] == "buildings"
@@ -737,6 +748,32 @@ def test_pane_map_view_is_maplibre_based() -> None:
     ]
     assert layer_by_id["waterway-other"]["source-layer"] == "water_lines"
     assert layer_by_id["waterway-other"]["minzoom"] == 9
+    assert layer_by_id["waterway_tunnel"]["filter"] == [
+        "all",
+        ["==", ["get", "tunnel"], True],
+        ["match", ["get", "kind"], ["river", "stream", "canal", "drain", "ditch"], True, False],
+    ]
+    assert layer_by_id["waterway-river"]["filter"] == [
+        "all",
+        ["!=", ["get", "tunnel"], True],
+        ["!=", ["get", "intermittent"], True],
+        ["==", ["get", "kind"], "river"],
+    ]
+    assert layer_by_id["waterway-stream-canal"]["filter"] == [
+        "all",
+        ["!=", ["get", "tunnel"], True],
+        ["!=", ["get", "intermittent"], True],
+        ["match", ["get", "kind"], ["stream", "canal", "drain", "ditch"], True, False],
+    ]
+    assert layer_by_id["waterway-other"]["filter"] == [
+        "all",
+        ["!=", ["get", "tunnel"], True],
+        ["!=", ["get", "intermittent"], True],
+        ["match", ["get", "kind"], ["river", "stream", "canal", "drain", "ditch"], False, True],
+    ]
+    assert layer_by_id["waterway-river-intermittent"]["filter"][2] == ["==", ["get", "intermittent"], True]
+    assert layer_by_id["waterway-stream-canal-intermittent"]["filter"][2] == ["==", ["get", "intermittent"], True]
+    assert layer_by_id["waterway-other-intermittent"]["filter"][2] == ["==", ["get", "intermittent"], True]
     assert layer_by_id["dam-polygons"]["source-layer"] == "dam_polygons"
     assert layer_by_id["dam-lines"]["source-layer"] == "dam_lines"
     assert layer_by_id["road_area_pier"]["source-layer"] == "pier_polygons"

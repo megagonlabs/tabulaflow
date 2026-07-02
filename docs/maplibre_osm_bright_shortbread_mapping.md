@@ -34,8 +34,8 @@ Status meanings:
 | `background` | none | `background` | exact | Color can be copied directly. |
 | `landcover-glacier`, `landcover-ice-shelf`, `landcover-wood`, `landcover-grass`, `landcover-grass-park`, `landcover-sand` | `landcover.class`, `landcover.subclass`, `park.class` | `land.kind`, `sites.kind` | approximate | Implemented as separate OSM Bright-named layers, but Shortbread combines these into fewer land/site kinds. |
 | `landuse-residential`, `landuse-commercial`, `landuse-industrial`, `landuse-cemetery`, `landuse-hospital`, `landuse-school`, `landuse-railway` | `landuse.class` | `sites.kind`, `land.kind` | approximate | Implemented as separate OSM Bright-named layers, but Shortbread landuse classes are coarser. |
-| `water`, `water-offset`, `water-intermittent`, `water-pattern` | `water.class`, `intermittent`, `brunnel` | `water_polygons.kind` | approximate | Intermittent/pattern styling is unsupported. |
-| `waterway_tunnel`, `waterway-other`, `waterway-other-intermittent`, `waterway-stream-canal`, `waterway-stream-canal-intermittent`, `waterway-river`, `waterway-river-intermittent` | `waterway.class`, `intermittent`, `brunnel` | `water_lines.kind`, `bridge`, `tunnel` | approximate | Shortbread has water-line kind/bridge/tunnel but not the same class split. |
+| `water`, `water-offset`, `water-intermittent`, `water-pattern` | `water.class`, `intermittent`, `brunnel` | `water_polygons.kind` | approximate | `water` and `water-offset` are active; intermittent/pattern polygon styling needs fields/sprites Shortbread does not expose. |
+| `waterway_tunnel`, `waterway-other`, `waterway-other-intermittent`, `waterway-stream-canal`, `waterway-stream-canal-intermittent`, `waterway-river`, `waterway-river-intermittent` | `waterway.class`, `intermittent`, `brunnel` | `water_lines.kind`, `tunnel` | approximate | Active layers split river, stream/canal/drain/ditch, other, and tunnel waterways; intermittent layers are present but dormant because Shortbread does not expose an `intermittent` field. |
 | `building`, `building-top` | `building` | `buildings` | approximate | Building fill and translated high-zoom tops are ported against Shortbread's single building layer. |
 | `tunnel-*` road layers | `transportation.class`, `brunnel`, `ramp`, `subclass` | `streets.kind`, `tunnel`, `link`, `rail` | approximate | Tunnel roads are split by minor, secondary/tertiary, trunk/primary, motorway, link, and rail, but Shortbread has fewer subtype fields. |
 | `ferry` | `transportation.class=ferry` | `ferries.kind` | approximate | Ferry geometry and labels are available. |
@@ -85,9 +85,8 @@ an exact country-rank match because Shortbread has no country rank field.
 not expose OSM Bright's `iso_a2`/missing-ISO split.
 
 The remaining missing OSM Bright layer IDs after the Shortbread port are
-intentionally limited to schema gaps: intermittent and patterned water,
-detailed waterway classes, rail service/transit, capital-city labels, and
-country labels without `iso_a2`.
+intentionally limited to schema gaps: intermittent/patterned water polygons,
+rail service/transit, capital-city labels, and country labels without `iso_a2`.
 
 ## Licensing
 

@@ -162,6 +162,19 @@
       "paint": {"fill-color": "#e0e4dd", "fill-opacity": 0.78}
     },
     {
+      "id": "water-offset",
+      "type": "fill",
+      "source": "osm",
+      "source-layer": "water_polygons",
+      "minzoom": 5,
+      "maxzoom": 8,
+      "paint": {
+        "fill-color": "#a0c8f0",
+        "fill-opacity": 0.72,
+        "fill-translate": ["interpolate", ["linear"], ["zoom"], 6, [2, 0], 8, [0, 0]]
+      }
+    },
+    {
       "id": "water",
       "type": "fill",
       "source": "osm",
@@ -170,15 +183,132 @@
       "paint": {"fill-color": "#c2def3"}
     },
     {
+      "id": "waterway_tunnel",
+      "type": "line",
+      "source": "osm",
+      "source-layer": "water_lines",
+      "minzoom": 14,
+      "filter": [
+        "all",
+        ["==", ["get", "tunnel"], true],
+        ["match", ["get", "kind"], ["river", "stream", "canal", "drain", "ditch"], true, false]
+      ],
+      "layout": {"line-cap": "round", "line-join": "round"},
+      "paint": {
+        "line-color": "#8bc9ed",
+        "line-dasharray": [2, 4],
+        "line-width": ["interpolate", ["linear"], ["zoom"], 13, 0.5, 14, 1.2, 16, 2.8]
+      }
+    },
+    {
       "id": "waterway-other",
       "type": "line",
       "source": "osm",
       "source-layer": "water_lines",
       "minzoom": 9,
+      "filter": [
+        "all",
+        ["!=", ["get", "tunnel"], true],
+        ["!=", ["get", "intermittent"], true],
+        ["match", ["get", "kind"], ["river", "stream", "canal", "drain", "ditch"], false, true]
+      ],
       "layout": {"line-cap": "round", "line-join": "round"},
       "paint": {
         "line-color": "#8bc9ed",
-        "line-width": ["interpolate", ["linear"], ["zoom"], 9, 0.7, 14, 2.4]
+        "line-width": ["interpolate", ["linear"], ["zoom"], 9, 0.5, 14, 1.6, 16, 2.2]
+      }
+    },
+    {
+      "id": "waterway-other-intermittent",
+      "type": "line",
+      "source": "osm",
+      "source-layer": "water_lines",
+      "minzoom": 9,
+      "filter": [
+        "all",
+        ["!=", ["get", "tunnel"], true],
+        ["==", ["get", "intermittent"], true],
+        ["match", ["get", "kind"], ["river", "stream", "canal", "drain", "ditch"], false, true]
+      ],
+      "layout": {"line-cap": "round", "line-join": "round"},
+      "paint": {
+        "line-color": "#8bc9ed",
+        "line-dasharray": [4, 3],
+        "line-width": ["interpolate", ["linear"], ["zoom"], 9, 0.5, 14, 1.6, 16, 2.2]
+      }
+    },
+    {
+      "id": "waterway-stream-canal",
+      "type": "line",
+      "source": "osm",
+      "source-layer": "water_lines",
+      "minzoom": 11,
+      "filter": [
+        "all",
+        ["!=", ["get", "tunnel"], true],
+        ["!=", ["get", "intermittent"], true],
+        ["match", ["get", "kind"], ["stream", "canal", "drain", "ditch"], true, false]
+      ],
+      "layout": {"line-cap": "round", "line-join": "round"},
+      "paint": {
+        "line-color": "#8bc9ed",
+        "line-width": ["interpolate", ["linear"], ["zoom"], 11, 0.5, 14, 1.8, 16, 3.2]
+      }
+    },
+    {
+      "id": "waterway-stream-canal-intermittent",
+      "type": "line",
+      "source": "osm",
+      "source-layer": "water_lines",
+      "minzoom": 11,
+      "filter": [
+        "all",
+        ["!=", ["get", "tunnel"], true],
+        ["==", ["get", "intermittent"], true],
+        ["match", ["get", "kind"], ["stream", "canal", "drain", "ditch"], true, false]
+      ],
+      "layout": {"line-cap": "round", "line-join": "round"},
+      "paint": {
+        "line-color": "#8bc9ed",
+        "line-dasharray": [4, 3],
+        "line-width": ["interpolate", ["linear"], ["zoom"], 11, 0.5, 14, 1.8, 16, 3.2]
+      }
+    },
+    {
+      "id": "waterway-river",
+      "type": "line",
+      "source": "osm",
+      "source-layer": "water_lines",
+      "minzoom": 9,
+      "filter": [
+        "all",
+        ["!=", ["get", "tunnel"], true],
+        ["!=", ["get", "intermittent"], true],
+        ["==", ["get", "kind"], "river"]
+      ],
+      "layout": {"line-cap": "round", "line-join": "round"},
+      "paint": {
+        "line-color": "#8bc9ed",
+        "line-width": ["interpolate", ["linear"], ["zoom"], 9, 0.8, 14, 2.4, 16, 4.2]
+      }
+    },
+    {
+      "id": "waterway-river-intermittent",
+      "type": "line",
+      "source": "osm",
+      "source-layer": "water_lines",
+      "minzoom": 9,
+      "filter": [
+        "all",
+        ["!=", ["get", "tunnel"], true],
+        ["==", ["get", "intermittent"], true],
+        ["==", ["get", "kind"], "river"]
+      ],
+      "layout": {"line-cap": "round", "line-join": "round"},
+      "paint": {
+        "line-color": "#8bc9ed",
+        "line-dasharray": [3, 2.5],
+        "line-width": ["interpolate", ["linear"], ["zoom"], 9, 0.8, 14, 2.4, 16, 4.2]
       }
     },
     {
