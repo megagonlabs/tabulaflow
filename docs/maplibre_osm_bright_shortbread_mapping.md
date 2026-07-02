@@ -19,6 +19,43 @@ onto Shortbread's available layers instead of copying OpenMapTiles layer rules.
 | Sparse high-zoom POI text | `pois` | TileJSON does not document POI fields, so avoid icon/category rules for now. |
 | Country/state boundaries and country labels | `boundaries`, `boundary_labels` | Keep low-contrast so they do not fight local analysis maps. |
 
+## Port Status Matrix
+
+Status meanings:
+
+- `exact`: Shortbread exposes a compatible layer and fields.
+- `approximate`: Shortbread exposes enough geometry/properties to mimic the
+  visual policy, but not the exact OpenMapTiles filters.
+- `unsupported`: Shortbread does not expose the required layer, fields, or
+  sprite inputs.
+
+| OSM Bright layers | OpenMapTiles dependency | Shortbread target | Status | Notes |
+| --- | --- | --- | --- | --- |
+| `background` | none | `background` | exact | Color can be copied directly. |
+| `landcover-glacier`, `landcover-ice-shelf`, `landcover-wood`, `landcover-grass`, `landcover-grass-park`, `landcover-sand` | `landcover.class`, `landcover.subclass`, `park.class` | `land.kind`, `sites.kind` | approximate | Shortbread combines these into fewer land/site kinds. |
+| `landuse-residential`, `landuse-commercial`, `landuse-industrial`, `landuse-cemetery`, `landuse-hospital`, `landuse-school`, `landuse-railway` | `landuse.class` | `sites.kind`, `land.kind` | approximate | Residential/commercial/industrial classes are not exposed separately. |
+| `water`, `water-offset`, `water-intermittent`, `water-pattern` | `water.class`, `intermittent`, `brunnel` | `water_polygons.kind` | approximate | Intermittent/pattern styling is unsupported. |
+| `waterway_tunnel`, `waterway-other`, `waterway-other-intermittent`, `waterway-stream-canal`, `waterway-stream-canal-intermittent`, `waterway-river`, `waterway-river-intermittent` | `waterway.class`, `intermittent`, `brunnel` | `water_lines.kind`, `bridge`, `tunnel` | approximate | Shortbread has water-line kind/bridge/tunnel but not the same class split. |
+| `building`, `building-top` | `building` | `buildings` | approximate | Building fill is available; pseudo-3D translated tops are intentionally omitted. |
+| `tunnel-*` road layers | `transportation.class`, `brunnel`, `ramp`, `subclass` | `streets.kind`, `tunnel`, `link`, `rail` | approximate | Tunnel-specific road hierarchy needs a dedicated pass. |
+| `ferry` | `transportation.class=ferry` | `ferries.kind` | approximate | Ferry geometry and labels are available. |
+| `aeroway-*`, `airport-label-major` | `aeroway`, `aerodrome_label.class` | none or `streets.kind` if encoded | unsupported | No documented Shortbread aeroway label layer. |
+| `road_area_pier`, `road_pier` | `transportation.class=pier` | `pier_lines`, `pier_polygons` | approximate | Shortbread exposes pier geometry but it is not yet styled. |
+| `highway-*` road fill/casing layers | `transportation.class`, `ramp`, `brunnel`, `subclass` | `streets.kind`, `link`, `bridge`, `tunnel` | approximate | Current style has minor, secondary/tertiary, primary/trunk, and motorway tiers. |
+| `railway-*`, `railway-*-hatching` | `transportation.class=rail`, `service`, `brunnel` | `streets.rail`, `bridges`, `street_labels` | approximate | Rail exists; hatching/service split is not fully ported. |
+| `bridge-*` road layers | `transportation.brunnel=bridge`, `class`, `ramp`, `subclass` | `streets.bridge`, `bridges.kind` | approximate | Bridge-specific casing/fill needs a dedicated pass. |
+| `cablecar`, `cablecar-dash` | `transportation.subclass=cable_car` | `aerialways.kind` | approximate | Shortbread exposes aerialways but this style does not yet draw them. |
+| `boundary-land-level-4`, `boundary-land-level-2`, `boundary-land-disputed`, `boundary-water` | `boundary.admin_level`, `maritime`, `disputed` | `boundaries.admin_level`, `maritime`, `disputed` | exact | Fields are compatible enough for a close port. |
+| `waterway-name`, `water-name-lakeline`, `water-name-ocean`, `water-name-other` | `waterway`, `water_name.class` | `water_lines_labels`, `water_polygons_labels` | approximate | Ocean labels are not separately exposed. |
+| `road_oneway`, `road_oneway_opposite` | sprite `oneway`, `transportation.oneway` | `streets.oneway`, `oneway_reverse` | approximate | Fields exist, but sprite icons are not vendored yet. |
+| `poi-level-1`, `poi-level-2`, `poi-level-3`, `poi-railway` | `poi.class`, `subclass`, `rank`, `level`, sprite icons | `pois`, `public_transport` | unsupported | Shortbread TileJSON does not document POI fields. |
+| `highway-name-path`, `highway-name-minor`, `highway-name-major` | `transportation_name.class`, `network`, `ref` | `street_labels.kind`, `ref`, `name` | approximate | Street labels are available, but OpenMapTiles naming classes are not. |
+| `highway-shield`, `highway-shield-us-interstate`, `highway-shield-us-other` | shield sprites, `network`, `ref`, `ref_length` | `street_labels.ref` | unsupported | Requires sprite/shield generation and network fields. |
+| `place-other`, `place-village`, `place-town`, `place-city`, `place-city-capital` | `place.class`, `capital`, `rank` | `place_labels.kind`, `population` | approximate | Population substitutes for OpenMapTiles rank/capital policy. |
+| `place-state` | `place.class=state` | `boundary_labels.admin_level` | approximate | State/province labels can be approximated from admin boundaries later. |
+| `place-country-other`, `place-country-1`, `place-country-2`, `place-country-3` | `place.class=country`, `rank`, `iso_a2` | `boundary_labels.admin_level`, `way_area` | approximate | Country rank is approximated by `way_area`. |
+| `place-continent` | `place.class=continent` | none | unsupported | Shortbread does not expose continent label points. |
+
 ## Non-Portable Concepts
 
 OSM Bright's POI and icon layers rely on OpenMapTiles fields such as `class`,
@@ -30,6 +67,17 @@ licensed local sprite set.
 OSM Bright also has detailed bridge, tunnel, ramp, and per-road-class layers.
 Shortbread has fewer fields, so the output pane style uses a smaller hierarchy:
 rail, minor, secondary/tertiary, primary/trunk, and motorway.
+
+The low-zoom country label port approximates OSM Bright's `place-country-*`
+rank tiers with mutually exclusive `boundary_labels.way_area` buckets:
+
+- `country-labels-global`: zoom `0-8`, `way_area >= 8e12`
+- `country-labels-regional`: zoom `2-8`, `1e12 <= way_area < 8e12`
+- `country-labels-local`: zoom `3-8`, `way_area < 1e12`
+
+This intentionally restores visible labels at the broadest zooms, but it is not
+an exact continent/country-rank match because Shortbread has no continent layer
+and no country rank field.
 
 ## Licensing
 

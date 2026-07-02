@@ -508,24 +508,85 @@
       }
     },
     {
-      "id": "boundary-labels",
+      "id": "country-labels-global",
+      "type": "symbol",
+      "source": "osm",
+      "source-layer": "boundary_labels",
+      "minzoom": 0,
+      "maxzoom": 8,
+      "filter": [
+        "all",
+        ["==", ["get", "admin_level"], 2],
+        [">=", ["to-number", ["get", "way_area"], 0], 8000000000000]
+      ],
+      "layout": {
+        "text-field": ["coalesce", ["get", "name_en"], ["get", "name"]],
+        "text-font": ["Noto Sans Bold"],
+        "text-size": ["interpolate", ["linear"], ["zoom"], 0, 11, 4, 17, 7, 19],
+        "text-transform": "uppercase",
+        "text-max-width": 6.25,
+        "text-letter-spacing": 0
+      },
+      "paint": {
+        "text-color": "#333344",
+        "text-halo-blur": 1,
+        "text-halo-color": "rgba(255,255,255,0.8)",
+        "text-halo-width": 2
+      }
+    },
+    {
+      "id": "country-labels-regional",
       "type": "symbol",
       "source": "osm",
       "source-layer": "boundary_labels",
       "minzoom": 2,
       "maxzoom": 8,
-      "filter": ["==", ["get", "admin_level"], 2],
+      "filter": [
+        "all",
+        ["==", ["get", "admin_level"], 2],
+        [">=", ["to-number", ["get", "way_area"], 0], 1000000000000],
+        ["<", ["to-number", ["get", "way_area"], 0], 8000000000000]
+      ],
       "layout": {
         "text-field": ["coalesce", ["get", "name_en"], ["get", "name"]],
         "text-font": ["Noto Sans Bold"],
-        "text-size": ["interpolate", ["linear"], ["zoom"], 2, 10, 6, 14],
+        "text-size": ["interpolate", ["linear"], ["zoom"], 2, 11, 5, 17, 7, 18],
         "text-transform": "uppercase",
+        "text-max-width": 6.25,
         "text-letter-spacing": 0
       },
       "paint": {
-        "text-color": "#6a6f76",
-        "text-halo-color": "#ffffff",
-        "text-halo-width": 1.4
+        "text-color": "#333344",
+        "text-halo-blur": 1,
+        "text-halo-color": "rgba(255,255,255,0.8)",
+        "text-halo-width": 2
+      }
+    },
+    {
+      "id": "country-labels-local",
+      "type": "symbol",
+      "source": "osm",
+      "source-layer": "boundary_labels",
+      "minzoom": 3,
+      "maxzoom": 8,
+      "filter": [
+        "all",
+        ["==", ["get", "admin_level"], 2],
+        ["<", ["to-number", ["get", "way_area"], 0], 1000000000000]
+      ],
+      "layout": {
+        "text-field": ["coalesce", ["get", "name_en"], ["get", "name"]],
+        "text-font": ["Noto Sans Bold"],
+        "text-size": ["interpolate", ["linear"], ["zoom"], 3, 10, 6, 15, 8, 16],
+        "text-transform": "uppercase",
+        "text-max-width": 6.25,
+        "text-letter-spacing": 0
+      },
+      "paint": {
+        "text-color": "#333344",
+        "text-halo-blur": 1,
+        "text-halo-color": "rgba(255,255,255,0.8)",
+        "text-halo-width": 2
       }
     }
   ]

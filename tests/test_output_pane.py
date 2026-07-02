@@ -522,6 +522,9 @@ def test_pane_map_view_is_maplibre_based() -> None:
     neighborhood_labels = layer_by_id["place-labels-neighborhood"]
     local_labels = layer_by_id["place-labels-local"]
     small_labels = layer_by_id["place-labels-small"]
+    country_global_labels = layer_by_id["country-labels-global"]
+    country_regional_labels = layer_by_id["country-labels-regional"]
+    country_local_labels = layer_by_id["country-labels-local"]
     assert major_labels["filter"] == [
         "all",
         ["match", ["get", "kind"], ["city", "town"], True, False],
@@ -563,6 +566,38 @@ def test_pane_map_view_is_maplibre_based() -> None:
         "all",
         ["match", ["get", "kind"], ["village", "hamlet", "locality"], True, False],
         ["<", ["to-number", ["get", "population"], 0], 5000],
+    ]
+    assert country_global_labels["minzoom"] == 0
+    assert country_global_labels["maxzoom"] == 8
+    assert country_global_labels["filter"] == [
+        "all",
+        ["==", ["get", "admin_level"], 2],
+        [">=", ["to-number", ["get", "way_area"], 0], 8000000000000],
+    ]
+    assert country_global_labels["layout"]["text-size"] == [
+        "interpolate",
+        ["linear"],
+        ["zoom"],
+        0,
+        11,
+        4,
+        17,
+        7,
+        19,
+    ]
+    assert country_global_labels["paint"]["text-halo-blur"] == 1
+    assert country_regional_labels["minzoom"] == 2
+    assert country_regional_labels["filter"] == [
+        "all",
+        ["==", ["get", "admin_level"], 2],
+        [">=", ["to-number", ["get", "way_area"], 0], 1000000000000],
+        ["<", ["to-number", ["get", "way_area"], 0], 8000000000000],
+    ]
+    assert country_local_labels["minzoom"] == 3
+    assert country_local_labels["filter"] == [
+        "all",
+        ["==", ["get", "admin_level"], 2],
+        ["<", ["to-number", ["get", "way_area"], 0], 1000000000000],
     ]
     assert layer_by_id["streets-motorway"]["filter"] == ["==", ["get", "kind"], "motorway"]
     assert layer_by_id["streets-primary"]["filter"] == [
