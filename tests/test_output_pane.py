@@ -1184,9 +1184,11 @@ def test_pane_map_view_is_maplibre_based() -> None:
         ["==", ["slice", ["upcase", ["get", "ref"]], 0, 3], "US-"],
         ["==", ["slice", ["upcase", ["get", "ref"]], 0, 3], "US "],
     ]
+    important_route_kind_filter = ["match", ["get", "kind"], ["motorway", "trunk"], True, False]
     assert layer_by_id["highway-shield"]["filter"] == [
         "all",
         ["has", "ref"],
+        important_route_kind_filter,
         ["==", ["to-number", ["get", "ref_rows"], 1], 1],
         [">", ["to-number", ["get", "ref_cols"], ["length", ["get", "ref"]]], 0],
         ["<=", ["to-number", ["get", "ref_cols"], ["length", ["get", "ref"]]], 6],
@@ -1204,6 +1206,7 @@ def test_pane_map_view_is_maplibre_based() -> None:
     assert layer_by_id["highway-shield-us-interstate"]["filter"] == [
         "all",
         ["has", "ref"],
+        important_route_kind_filter,
         ["==", ["to-number", ["get", "ref_rows"], 1], 1],
         [
             "any",
@@ -1223,6 +1226,7 @@ def test_pane_map_view_is_maplibre_based() -> None:
     assert layer_by_id["highway-shield-us-highway"]["filter"] == [
         "all",
         ["has", "ref"],
+        important_route_kind_filter,
         ["==", ["to-number", ["get", "ref_rows"], 1], 1],
         [
             "any",
@@ -1241,6 +1245,7 @@ def test_pane_map_view_is_maplibre_based() -> None:
     assert layer_by_id["highway-shield-long-ref"]["filter"] == [
         "all",
         ["has", "ref"],
+        important_route_kind_filter,
         [">", ["to-number", ["get", "ref_cols"], ["length", ["get", "ref"]]], 6],
         ["!", explicit_us_route_prefix_filter],
     ]

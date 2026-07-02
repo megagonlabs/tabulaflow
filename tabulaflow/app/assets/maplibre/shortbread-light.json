@@ -1992,6 +1992,7 @@
       "filter": [
         "all",
         ["has", "ref"],
+        ["match", ["get", "kind"], ["motorway", "trunk"], true, false],
         ["==", ["to-number", ["get", "ref_rows"], 1], 1],
         [">", ["to-number", ["get", "ref_cols"], ["length", ["get", "ref"]]], 0],
         ["<=", ["to-number", ["get", "ref_cols"], ["length", ["get", "ref"]]], 6],
@@ -2027,6 +2028,7 @@
       "filter": [
         "all",
         ["has", "ref"],
+        ["match", ["get", "kind"], ["motorway", "trunk"], true, false],
         ["==", ["to-number", ["get", "ref_rows"], 1], 1],
         ["any",
           ["==", ["slice", ["upcase", ["get", "ref"]], 0, 2], "I-"],
@@ -2060,6 +2062,7 @@
       "filter": [
         "all",
         ["has", "ref"],
+        ["match", ["get", "kind"], ["motorway", "trunk"], true, false],
         ["==", ["to-number", ["get", "ref_rows"], 1], 1],
         ["any",
           ["==", ["slice", ["upcase", ["get", "ref"]], 0, 3], "US-"],
@@ -2093,6 +2096,7 @@
       "filter": [
         "all",
         ["has", "ref"],
+        ["match", ["get", "kind"], ["motorway", "trunk"], true, false],
         [">", ["to-number", ["get", "ref_cols"], ["length", ["get", "ref"]]], 6],
         ["!", ["any",
           ["==", ["slice", ["upcase", ["get", "ref"]], 0, 2], "I-"],
