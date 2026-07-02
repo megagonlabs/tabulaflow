@@ -742,7 +742,7 @@ def test_pane_map_view_is_maplibre_based() -> None:
     assert state_labels["maxzoom"] == 10
     assert state_labels["filter"] == [
         "all",
-        ["==", ["get", "admin_level"], 4],
+        ["==", ["to-number", ["get", "admin_level"], 0], 4],
         [">=", ["to-number", ["get", "way_area"], 0], 50000000000],
     ]
     assert state_labels["layout"]["text-transform"] == "uppercase"
@@ -751,7 +751,7 @@ def test_pane_map_view_is_maplibre_based() -> None:
     assert country_global_labels["maxzoom"] == 8
     assert country_global_labels["filter"] == [
         "all",
-        ["==", ["get", "admin_level"], 2],
+        ["==", ["to-number", ["get", "admin_level"], 0], 2],
         [">=", ["to-number", ["get", "way_area"], 0], 8000000000000],
     ]
     assert country_global_labels["layout"]["text-size"] == [
@@ -769,7 +769,7 @@ def test_pane_map_view_is_maplibre_based() -> None:
     assert country_regional_labels["minzoom"] == 2
     assert country_regional_labels["filter"] == [
         "all",
-        ["==", ["get", "admin_level"], 2],
+        ["==", ["to-number", ["get", "admin_level"], 0], 2],
         [">=", ["to-number", ["get", "way_area"], 0], 1000000000000],
         ["<", ["to-number", ["get", "way_area"], 0], 8000000000000],
     ]
@@ -777,7 +777,7 @@ def test_pane_map_view_is_maplibre_based() -> None:
     assert country_other_labels["layout"]["text-font"] == ["Noto Sans Italic"]
     assert country_other_labels["filter"] == [
         "all",
-        ["==", ["get", "admin_level"], 2],
+        ["==", ["to-number", ["get", "admin_level"], 0], 2],
         ["<", ["to-number", ["get", "way_area"], 0], 1000000000000],
         ["has", "iso_a2"],
         ["==", ["get", "iso_a2"], ""],
@@ -785,7 +785,7 @@ def test_pane_map_view_is_maplibre_based() -> None:
     assert country_local_labels["minzoom"] == 3
     assert country_local_labels["filter"] == [
         "all",
-        ["==", ["get", "admin_level"], 2],
+        ["==", ["to-number", ["get", "admin_level"], 0], 2],
         ["<", ["to-number", ["get", "way_area"], 0], 1000000000000],
     ]
     assert layer_by_id["tunnel-motorway"]["filter"] == [
@@ -981,8 +981,8 @@ def test_pane_map_view_is_maplibre_based() -> None:
     assert layer_by_id["highway-minor-casing"]["minzoom"] == 12
     assert layer_by_id["boundary-land-level-4"]["filter"] == [
         "all",
-        ["==", ["get", "admin_level"], 4],
-        ["==", ["get", "maritime"], False],
+        ["==", ["to-number", ["get", "admin_level"], 0], 4],
+        ["!=", ["get", "maritime"], True],
     ]
     assert layer_by_id["boundary-land-level-4"]["paint"]["line-color"] == "#777f8f"
     assert layer_by_id["boundary-land-level-4"]["paint"]["line-dasharray"] == [4, 2]
@@ -990,15 +990,15 @@ def test_pane_map_view_is_maplibre_based() -> None:
         "all",
         [">=", ["to-number", ["get", "admin_level"], 0], 5],
         ["<=", ["to-number", ["get", "admin_level"], 0], 8],
-        ["==", ["get", "maritime"], False],
+        ["!=", ["get", "maritime"], True],
     ]
     assert layer_by_id["boundary-land-local"]["minzoom"] == 7
     assert layer_by_id["boundary-land-local"]["paint"]["line-color"] == "#a9afbb"
     assert layer_by_id["boundary-land-level-2"]["filter"] == [
         "all",
-        ["==", ["get", "admin_level"], 2],
-        ["==", ["get", "maritime"], False],
-        ["==", ["get", "disputed"], False],
+        ["==", ["to-number", ["get", "admin_level"], 0], 2],
+        ["!=", ["get", "maritime"], True],
+        ["!=", ["get", "disputed"], True],
     ]
     assert layer_by_id["boundary-land-level-2"]["paint"]["line-color"] == "#4d5668"
     assert layer_by_id["boundary-land-level-2"]["paint"]["line-width"] == [
@@ -1018,12 +1018,12 @@ def test_pane_map_view_is_maplibre_based() -> None:
     ]
     assert layer_by_id["boundary-land-disputed"]["filter"] == [
         "all",
-        ["==", ["get", "maritime"], False],
+        ["!=", ["get", "maritime"], True],
         ["==", ["get", "disputed"], True],
     ]
     assert layer_by_id["boundary-water"]["filter"] == [
         "all",
-        ["match", ["get", "admin_level"], [2, 4], True, False],
+        ["match", ["to-number", ["get", "admin_level"], 0], [2, 4], True, False],
         ["==", ["get", "maritime"], True],
     ]
     assert layer_by_id["road_oneway"]["filter"] == [

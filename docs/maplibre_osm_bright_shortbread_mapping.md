@@ -46,7 +46,7 @@ Status meanings:
 | `railway-*`, `railway-*-hatching` | `transportation.class=rail`, `service`, `brunnel` | `streets.rail`, `streets.service`, `streets.kind` | approximate | Normal, service, transit-like, tunnel, and bridge rail layers are split with Shortbread fields. |
 | `bridge-*` road layers | `transportation.brunnel=bridge`, `class`, `ramp`, `subclass` | `streets.bridge`, `bridges.kind` | approximate | Bridge polygons and bridge road casings/fills are styled by coarse Shortbread road kind and link fields. |
 | `cablecar`, `cablecar-dash` | `transportation.subclass=cable_car` | `aerialways.kind` | approximate | Shortbread aerialways are drawn as muted dashed lines without subtype-specific styling. |
-| `boundary-land-level-4`, `boundary-land-level-2`, `boundary-land-disputed`, `boundary-water` | `boundary.admin_level`, `maritime`, `disputed` | `boundaries.admin_level`, `maritime`, `disputed` | exact | Country borders are darker; state/province borders are distinct dashed lines. Lower local admin lines are kept in a subtle Shortbread-only `boundary-land-local` helper layer. |
+| `boundary-land-level-4`, `boundary-land-level-2`, `boundary-land-disputed`, `boundary-water` | `boundary.admin_level`, `maritime`, `disputed` | `boundaries.admin_level`, `maritime`, `disputed` | exact | Country borders are darker; state/province borders are distinct dashed lines. Filters normalize `admin_level` and treat missing false-like flags as land/non-disputed boundaries. Lower local admin lines are kept in a subtle Shortbread-only `boundary-land-local` helper layer. |
 | `waterway-name`, `water-name-lakeline`, `water-name-ocean`, `water-name-other` | `waterway`, `water_name.class` | `water_lines_labels`, `water_polygons_labels`, bundled `ocean-labels.geojson` | approximate | Waterways, large water polygons, other water polygons, and stable local ocean labels are split into OSM Bright-style layers. |
 | `road_oneway`, `road_oneway_opposite` | sprite `oneway`, `transportation.oneway` | `streets.oneway`, `oneway_reverse` | approximate | Rendered as text arrows because OSM Bright sprites are not vendored. |
 | `poi-level-1`, `poi-level-2`, `poi-level-3`, `poi-railway` | `poi.class`, `subclass`, `rank`, `level`, sprite icons | `pois`, `public_transport` | approximate | Layer names and zoom tiers are ported; class/rank/icon behavior is unavailable because Shortbread TileJSON does not document POI fields. |
@@ -71,7 +71,8 @@ Bright layer IDs where `kind`, `link`, `bridge`, `tunnel`, `rail`, or
 `service` can support them.
 
 The low-zoom country label port approximates OSM Bright's `place-country-*`
-rank tiers with mutually exclusive `boundary_labels.way_area` buckets:
+rank tiers with type-tolerant `admin_level` checks and mutually exclusive
+`boundary_labels.way_area` buckets:
 
 - `place-country-1`: zoom `0-8`, `way_area >= 8e12`
 - `place-country-2`: zoom `2-8`, `1e12 <= way_area < 8e12`
