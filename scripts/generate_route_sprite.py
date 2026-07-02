@@ -12,9 +12,9 @@ ASSET_DIR = Path(__file__).resolve().parents[1] / "tabulaflow" / "app" / "assets
 SVG_SOURCE = ASSET_DIR / "tf-interstate-shield-draft.svg"
 SPRITE_NAME = "tf-route-sprite"
 ICONS = [
-    ("us-interstate_1", "shield-2", 24, 30),
-    ("us-interstate_2", "shield-2", 24, 30),
-    ("us-interstate_3", "shield-3", 28, 30),
+    ("us-interstate_1", "shield-2", 26, 30),
+    ("us-interstate_2", "shield-2", 26, 30),
+    ("us-interstate_3", "shield-3", 32, 30),
 ]
 
 

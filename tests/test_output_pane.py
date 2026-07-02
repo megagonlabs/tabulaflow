@@ -565,15 +565,15 @@ def test_pane_map_view_is_maplibre_based() -> None:
     )
     route_sprite = json.loads(maplibre_assets.joinpath("tf-route-sprite.json").read_text(encoding="utf-8"))
     assert set(route_sprite) == {"us-interstate_1", "us-interstate_2", "us-interstate_3"}
-    assert route_sprite["us-interstate_1"]["width"] == 24
-    assert route_sprite["us-interstate_2"]["width"] == 24
-    assert route_sprite["us-interstate_3"]["width"] == 28
+    assert route_sprite["us-interstate_1"]["width"] == 26
+    assert route_sprite["us-interstate_2"]["width"] == 26
+    assert route_sprite["us-interstate_3"]["width"] == 32
     assert {entry["height"] for entry in route_sprite.values()} == {30}
     assert {entry["pixelRatio"] for entry in route_sprite.values()} == {1}
     route_sprite_2x = json.loads(maplibre_assets.joinpath("tf-route-sprite@2x.json").read_text(encoding="utf-8"))
-    assert route_sprite_2x["us-interstate_1"]["width"] == 48
-    assert route_sprite_2x["us-interstate_2"]["width"] == 48
-    assert route_sprite_2x["us-interstate_3"]["width"] == 56
+    assert route_sprite_2x["us-interstate_1"]["width"] == 52
+    assert route_sprite_2x["us-interstate_2"]["width"] == 52
+    assert route_sprite_2x["us-interstate_3"]["width"] == 64
     assert {entry["height"] for entry in route_sprite_2x.values()} == {60}
     assert {entry["pixelRatio"] for entry in route_sprite_2x.values()} == {2}
     assert any(layer.get("source-layer") == "streets" for layer in style["layers"])
@@ -1786,9 +1786,9 @@ def test_pane_serves_bundled_assets_cached(tmp_path: Path) -> None:
             assert resp.headers.get("Content-Type") == "application/json; charset=utf-8"
             route_sprite = json.loads(resp.read())
         assert set(route_sprite) == {"us-interstate_1", "us-interstate_2", "us-interstate_3"}
-        assert route_sprite["us-interstate_1"]["width"] == 24
-        assert route_sprite["us-interstate_2"]["width"] == 24
-        assert route_sprite["us-interstate_3"]["width"] == 28
+        assert route_sprite["us-interstate_1"]["width"] == 26
+        assert route_sprite["us-interstate_2"]["width"] == 26
+        assert route_sprite["us-interstate_3"]["width"] == 32
 
         with urllib.request.urlopen(f"{origin}assets/maplibre/tf-route-sprite.png", timeout=2) as resp:
             assert resp.headers.get("Cache-Control") is not None and "immutable" in resp.headers.get(

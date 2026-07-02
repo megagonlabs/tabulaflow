@@ -2,87 +2,87 @@
   <rect width="760" height="270" fill="#a7a9ac"/>
 
   <defs>
-    <symbol id="shield-1" viewBox="0 0 94 132">
+    <symbol id="shield-1" viewBox="0 0 102 132">
       <path id="shape-1"
-        d="M15 10 C25 14 36 13 47 7 C58 13 69 14 79 10
-           C86 25 89 42 87 61 C83 95 69 116 47 126
-           C25 116 11 95 7 61 C5 42 8 25 15 10Z"/>
+        d="M15 10 C26 14 39 13 51 7 C63 13 76 14 87 10
+           C94 25 97 42 95 61 C91 95 76 116 51 126
+           C26 116 11 95 7 61 C5 42 8 25 15 10Z"/>
       <clipPath id="clip-1"><use href="#shape-1"/></clipPath>
-      <use href="#shape-1" fill="#f8fafc" stroke="#d1d5db" stroke-width="2" stroke-linejoin="round"/>
+      <use href="#shape-1" fill="#f8fafc" stroke="#9ca3af" stroke-width="7" stroke-linejoin="round"/>
       <g clip-path="url(#clip-1)">
-        <path d="M14 13 C25 17 36 16 47 10 C58 16 69 17 80 13 C84 25 86 36 87 48 H7 C8 36 10 25 14 13Z" fill="#d9555e"/>
-        <path d="M7 48H87V132H7Z" fill="#4859a8"/>
-        <path d="M7 48H87" stroke="#f8fafc" stroke-width="5"/>
+        <path d="M14 13 C26 17 39 16 51 10 C63 16 76 17 88 13 C91 22 93 29 94 36 H8 C9 29 11 22 14 13Z" fill="#f25f6b"/>
+        <path d="M8 36H94V132H8Z" fill="#5f72d6"/>
+        <path d="M8 36H94" stroke="#f8fafc" stroke-width="5"/>
       </g>
       <use href="#shape-1" fill="none" stroke="#f8fafc" stroke-width="4" stroke-linejoin="round"/>
     </symbol>
 
-    <symbol id="shield-2" viewBox="0 0 108 132">
+    <symbol id="shield-2" viewBox="0 0 120 132">
       <path id="shape-2"
-        d="M17 10 C29 14 42 13 54 7 C66 13 79 14 91 10
-           C98 25 101 42 99 61 C95 95 79 116 54 126
-           C29 116 13 95 9 61 C7 42 10 25 17 10Z"/>
+        d="M18 10 C31 14 46 13 60 7 C74 13 89 14 102 10
+           C109 25 112 42 110 61 C106 95 88 116 60 126
+           C32 116 14 95 10 61 C8 42 11 25 18 10Z"/>
       <clipPath id="clip-2"><use href="#shape-2"/></clipPath>
-      <use href="#shape-2" fill="#f8fafc" stroke="#d1d5db" stroke-width="2" stroke-linejoin="round"/>
+      <use href="#shape-2" fill="#f8fafc" stroke="#9ca3af" stroke-width="7" stroke-linejoin="round"/>
       <g clip-path="url(#clip-2)">
-        <path d="M16 13 C29 17 42 16 54 10 C66 16 79 17 92 13 C96 25 98 36 99 48 H9 C10 36 12 25 16 13Z" fill="#d9555e"/>
-        <path d="M9 48H99V132H9Z" fill="#4859a8"/>
-        <path d="M9 48H99" stroke="#f8fafc" stroke-width="5"/>
+        <path d="M17 13 C31 17 46 16 60 10 C74 16 89 17 103 13 C106 22 108 29 109 36 H11 C12 29 14 22 17 13Z" fill="#f25f6b"/>
+        <path d="M11 36H109V132H11Z" fill="#5f72d6"/>
+        <path d="M11 36H109" stroke="#f8fafc" stroke-width="5"/>
       </g>
       <use href="#shape-2" fill="none" stroke="#f8fafc" stroke-width="4" stroke-linejoin="round"/>
     </symbol>
 
-    <symbol id="shield-3" viewBox="0 0 124 132">
+    <symbol id="shield-3" viewBox="0 0 138 132">
       <path id="shape-3"
-        d="M19 10 C33 14 47 13 62 7 C77 13 91 14 105 10
-           C112 25 115 42 113 61 C109 95 90 116 62 126
-           C34 116 15 95 11 61 C9 42 12 25 19 10Z"/>
+        d="M20 10 C36 14 53 13 69 7 C85 13 102 14 118 10
+           C125 25 128 42 126 61 C122 95 101 116 69 126
+           C37 116 16 95 12 61 C10 42 13 25 20 10Z"/>
       <clipPath id="clip-3"><use href="#shape-3"/></clipPath>
-      <use href="#shape-3" fill="#f8fafc" stroke="#d1d5db" stroke-width="2" stroke-linejoin="round"/>
+      <use href="#shape-3" fill="#f8fafc" stroke="#9ca3af" stroke-width="7" stroke-linejoin="round"/>
       <g clip-path="url(#clip-3)">
-        <path d="M18 13 C33 17 47 16 62 10 C77 16 91 17 106 13 C110 25 112 36 113 48 H11 C12 36 14 25 18 13Z" fill="#d9555e"/>
-        <path d="M11 48H113V132H11Z" fill="#4859a8"/>
-        <path d="M11 48H113" stroke="#f8fafc" stroke-width="5"/>
+        <path d="M19 13 C36 17 53 16 69 10 C85 16 102 17 119 13 C122 22 124 29 125 36 H13 C14 29 16 22 19 13Z" fill="#f25f6b"/>
+        <path d="M13 36H125V132H13Z" fill="#5f72d6"/>
+        <path d="M13 36H125" stroke="#f8fafc" stroke-width="5"/>
       </g>
       <use href="#shape-3" fill="none" stroke="#f8fafc" stroke-width="4" stroke-linejoin="round"/>
     </symbol>
   </defs>
 
   <g transform="translate(44 34)">
-    <use href="#shield-2" width="108" height="132"/>
-    <text x="54" y="101" text-anchor="middle"
+    <use href="#shield-2" width="120" height="132"/>
+    <text x="60" y="101" text-anchor="middle"
           font-family="Arial, Helvetica, sans-serif" font-weight="700"
           font-size="56" fill="#ffffff">5</text>
-    <text x="54" y="162" text-anchor="middle" font-family="Arial, Helvetica, sans-serif"
+    <text x="60" y="162" text-anchor="middle" font-family="Arial, Helvetica, sans-serif"
           font-size="13" fill="#111827">1 digit, 2-digit width</text>
   </g>
 
-  <g transform="translate(196 34)">
-    <use href="#shield-2" width="108" height="132"/>
-    <text x="54" y="100" text-anchor="middle"
+  <g transform="translate(210 34)">
+    <use href="#shield-2" width="120" height="132"/>
+    <text x="60" y="100" text-anchor="middle"
           font-family="Arial, Helvetica, sans-serif" font-weight="700"
           font-size="49" fill="#ffffff">80</text>
-    <text x="54" y="162" text-anchor="middle" font-family="Arial, Helvetica, sans-serif"
+    <text x="60" y="162" text-anchor="middle" font-family="Arial, Helvetica, sans-serif"
           font-size="13" fill="#111827">2 digits</text>
   </g>
 
-  <g transform="translate(368 34)">
-    <use href="#shield-3" width="124" height="132"/>
-    <text x="62" y="97" text-anchor="middle"
+  <g transform="translate(390 34)">
+    <use href="#shield-3" width="138" height="132"/>
+    <text x="69" y="97" text-anchor="middle"
           font-family="Arial, Helvetica, sans-serif" font-weight="700"
           font-size="39" fill="#ffffff">101</text>
-    <text x="62" y="162" text-anchor="middle" font-family="Arial, Helvetica, sans-serif"
+    <text x="69" y="162" text-anchor="middle" font-family="Arial, Helvetica, sans-serif"
           font-size="13" fill="#111827">3 digits</text>
   </g>
 
-  <g transform="translate(560 34)">
-    <use href="#shield-3" width="124" height="132"/>
-    <text x="62" y="162" text-anchor="middle" font-family="Arial, Helvetica, sans-serif"
+  <g transform="translate(570 34)">
+    <use href="#shield-3" width="138" height="132"/>
+    <text x="69" y="162" text-anchor="middle" font-family="Arial, Helvetica, sans-serif"
           font-size="13" fill="#111827">blank 3-digit width</text>
   </g>
 
   <g transform="translate(44 230)" fill="#111827"
      font-family="Arial, Helvetica, sans-serif" font-size="14">
-    <text>Width-aware draft: 1/2/3 digit shields keep the same height but progressively widen the shoulders and blue field.</text>
+    <text>Width-aware draft: wider shields, shorter red cap, and gray halo behind the white outline for light maps.</text>
   </g>
 </svg>
