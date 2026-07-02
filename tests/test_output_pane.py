@@ -541,7 +541,7 @@ def test_pane_map_view_is_maplibre_based() -> None:
     }
     assert "© OpenStreetMap" in style["sources"]["osm"]["attribution"]
     assert "OSM Bright" in style["sources"]["osm"]["attribution"]
-    assert "sprites" in style["sources"]["osm"]["attribution"]
+    assert "Style and sprites inspired by" not in style["sources"]["osm"]["attribution"]
     assert style["glyphs"] == "https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf"
     assert style["sprite"] == "https://openmaptiles.github.io/osm-bright-gl-style/sprite"
     assert any(layer.get("source-layer") == "streets" for layer in style["layers"])

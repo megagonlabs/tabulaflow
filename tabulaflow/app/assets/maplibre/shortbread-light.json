@@ -9,7 +9,7 @@
     "osm": {
       "type": "vector",
       "url": "https://vector.openstreetmap.org/shortbread_v1/tilejson.json",
-      "attribution": "<a href=\"https://www.openstreetmap.org/copyright\">© OpenStreetMap</a> | Style and sprites inspired by <a href=\"https://github.com/openmaptiles/osm-bright-gl-style\">OSM Bright</a>"
+      "attribution": "<a href=\"https://www.openstreetmap.org/copyright\">© OpenStreetMap</a> | <a href=\"https://github.com/openmaptiles/osm-bright-gl-style\">OSM Bright</a>"
     },
     "continent-labels": {
       "type": "geojson",
