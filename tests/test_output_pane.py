@@ -1056,7 +1056,7 @@ def test_pane_map_view_is_maplibre_based() -> None:
         "visibility": "visible",
     }
     assert layer_by_id["boundary-land-level-4-fallback"]["paint"] == {
-        "line-color": "#9e9cab",
+        "line-color": "#30343a",
         "line-dasharray": [3, 1, 1, 1],
         "line-width": ["interpolate", ["exponential", 1.4], ["zoom"], 4, 0.4, 5, 1, 12, 3],
     }
@@ -1072,7 +1072,7 @@ def test_pane_map_view_is_maplibre_based() -> None:
         "line-join": "round",
         "visibility": "visible",
     }
-    assert layer_by_id["boundary-land-level-4"]["paint"]["line-color"] == "#9e9cab"
+    assert layer_by_id["boundary-land-level-4"]["paint"]["line-color"] == "#30343a"
     assert layer_by_id["boundary-land-level-4"]["paint"]["line-dasharray"] == [3, 1, 1, 1]
     assert layer_by_id["boundary-land-level-4"]["paint"]["line-width"] == [
         "interpolate",
@@ -1093,8 +1093,8 @@ def test_pane_map_view_is_maplibre_based() -> None:
         "visibility": "visible",
     }
     assert layer_by_id["boundary-land-level-2-fallback"]["paint"] == {
-        "line-color": "hsl(248, 7%, 66%)",
-        "line-width": ["interpolate", ["linear"], ["zoom"], 0, 0.6, 4, 1.4, 5, 2, 12, 8],
+        "line-color": "#30343a",
+        "line-width": ["interpolate", ["linear"], ["zoom"], 0, 0.5, 4, 0.8, 6, 1.2, 12, 3],
     }
     assert layer_by_id["boundary-land-level-2"]["filter"] == [
         "all",
@@ -1109,19 +1109,19 @@ def test_pane_map_view_is_maplibre_based() -> None:
         "line-join": "round",
         "visibility": "visible",
     }
-    assert layer_by_id["boundary-land-level-2"]["paint"]["line-color"] == "hsl(248, 7%, 66%)"
+    assert layer_by_id["boundary-land-level-2"]["paint"]["line-color"] == "#30343a"
     assert layer_by_id["boundary-land-level-2"]["paint"]["line-width"] == [
         "interpolate",
         ["linear"],
         ["zoom"],
         0,
-        0.6,
+        0.5,
         4,
-        1.4,
-        5,
-        2,
+        0.8,
+        6,
+        1.2,
         12,
-        8,
+        3,
     ]
     assert layer_by_id["boundary-land-disputed"]["filter"] == [
         "all",
@@ -1134,8 +1134,21 @@ def test_pane_map_view_is_maplibre_based() -> None:
         "line-join": "round",
         "visibility": "visible",
     }
-    assert layer_by_id["boundary-land-disputed"]["paint"]["line-color"] == "hsl(248, 7%, 70%)"
+    assert layer_by_id["boundary-land-disputed"]["paint"]["line-color"] == "#30343a"
     assert layer_by_id["boundary-land-disputed"]["paint"]["line-dasharray"] == [1, 3]
+    assert layer_by_id["boundary-land-disputed"]["paint"]["line-width"] == [
+        "interpolate",
+        ["linear"],
+        ["zoom"],
+        0,
+        0.5,
+        4,
+        0.8,
+        6,
+        1.2,
+        12,
+        3,
+    ]
     assert "boundary-water" not in layer_by_id
     assert layer_by_id["road_oneway"]["filter"] == [
         "all",
