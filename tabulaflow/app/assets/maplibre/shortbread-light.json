@@ -4,11 +4,12 @@
   "center": [0, 20],
   "zoom": 1.2,
   "glyphs": "https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf",
+  "sprite": "https://openmaptiles.github.io/osm-bright-gl-style/sprite",
   "sources": {
     "osm": {
       "type": "vector",
       "url": "https://vector.openstreetmap.org/shortbread_v1/tilejson.json",
-      "attribution": "<a href=\"https://www.openstreetmap.org/copyright\">© OpenStreetMap</a> | Style inspired by <a href=\"https://github.com/openmaptiles/osm-bright-gl-style\">OSM Bright</a>"
+      "attribution": "<a href=\"https://www.openstreetmap.org/copyright\">© OpenStreetMap</a> | Style and sprites inspired by <a href=\"https://github.com/openmaptiles/osm-bright-gl-style\">OSM Bright</a>"
     },
     "continent-labels": {
       "type": "geojson",
@@ -181,6 +182,29 @@
       "source-layer": "water_polygons",
       "minzoom": 5,
       "paint": {"fill-color": "#c2def3"}
+    },
+    {
+      "id": "water-intermittent",
+      "type": "fill",
+      "source": "osm",
+      "source-layer": "water_polygons",
+      "minzoom": 5,
+      "filter": ["==", ["get", "intermittent"], true],
+      "paint": {
+        "fill-color": "#c2def3",
+        "fill-opacity": 0.7
+      }
+    },
+    {
+      "id": "water-pattern",
+      "type": "fill",
+      "source": "osm",
+      "source-layer": "water_polygons",
+      "minzoom": 5,
+      "paint": {
+        "fill-pattern": "wave",
+        "fill-translate": [0, 2.5]
+      }
     },
     {
       "id": "waterway_tunnel",
@@ -2050,12 +2074,43 @@
       }
     },
     {
+      "id": "place-city-capital",
+      "type": "symbol",
+      "source": "osm",
+      "source-layer": "place_labels",
+      "minzoom": 4,
+      "filter": [
+        "all",
+        ["==", ["get", "kind"], "city"],
+        ["match", ["get", "capital"], [2, "2", true, "yes"], true, false]
+      ],
+      "layout": {
+        "icon-image": "star_11",
+        "icon-size": 0.8,
+        "text-anchor": "left",
+        "text-field": ["coalesce", ["get", "name_en"], ["get", "name"]],
+        "text-font": ["Noto Sans Regular"],
+        "text-size": ["interpolate", ["exponential", 1.2], ["zoom"], 7, 14, 11, 24],
+        "text-offset": [0.4, 0],
+        "text-max-width": 8
+      },
+      "paint": {
+        "text-color": "#333333",
+        "text-halo-color": "rgba(255,255,255,0.8)",
+        "text-halo-width": 1.2
+      }
+    },
+    {
       "id": "place-city",
       "type": "symbol",
       "source": "osm",
       "source-layer": "place_labels",
       "minzoom": 4,
-      "filter": ["==", ["get", "kind"], "city"],
+      "filter": [
+        "all",
+        ["==", ["get", "kind"], "city"],
+        ["match", ["get", "capital"], [2, "2", true, "yes"], false, true]
+      ],
       "layout": {
         "text-field": ["coalesce", ["get", "name_en"], ["get", "name"]],
         "text-font": ["Noto Sans Regular"],
@@ -2254,6 +2309,35 @@
         "text-field": ["coalesce", ["get", "name_en"], ["get", "name"]],
         "text-font": ["Noto Sans Bold"],
         "text-size": ["interpolate", ["linear"], ["zoom"], 2, 11, 5, 17, 7, 18],
+        "text-transform": "uppercase",
+        "text-max-width": 6.25,
+        "text-letter-spacing": 0
+      },
+      "paint": {
+        "text-color": "#333344",
+        "text-halo-blur": 1,
+        "text-halo-color": "rgba(255,255,255,0.8)",
+        "text-halo-width": 2
+      }
+    },
+    {
+      "id": "place-country-other",
+      "type": "symbol",
+      "source": "osm",
+      "source-layer": "boundary_labels",
+      "minzoom": 3,
+      "maxzoom": 8,
+      "filter": [
+        "all",
+        ["==", ["get", "admin_level"], 2],
+        ["<", ["to-number", ["get", "way_area"], 0], 1000000000000],
+        ["has", "iso_a2"],
+        ["==", ["get", "iso_a2"], ""]
+      ],
+      "layout": {
+        "text-field": ["coalesce", ["get", "name_en"], ["get", "name"]],
+        "text-font": ["Noto Sans Italic"],
+        "text-size": ["interpolate", ["linear"], ["zoom"], 3, 10, 6, 15, 8, 16],
         "text-transform": "uppercase",
         "text-max-width": 6.25,
         "text-letter-spacing": 0

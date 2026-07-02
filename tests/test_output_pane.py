@@ -528,10 +528,13 @@ def test_pane_map_view_is_maplibre_based() -> None:
     }
     assert "© OpenStreetMap" in style["sources"]["osm"]["attribution"]
     assert "OSM Bright" in style["sources"]["osm"]["attribution"]
+    assert "sprites" in style["sources"]["osm"]["attribution"]
     assert style["glyphs"] == "https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf"
+    assert style["sprite"] == "https://openmaptiles.github.io/osm-bright-gl-style/sprite"
     assert any(layer.get("source-layer") == "streets" for layer in style["layers"])
     assert any(layer.get("source-layer") == "place_labels" for layer in style["layers"])
     layer_by_id = {str(layer.get("id")): layer for layer in style["layers"]}
+    place_city_capital = layer_by_id["place-city-capital"]
     place_city = layer_by_id["place-city"]
     place_town = layer_by_id["place-town"]
     place_village = layer_by_id["place-village"]
@@ -540,6 +543,7 @@ def test_pane_map_view_is_maplibre_based() -> None:
     state_labels = layer_by_id["place-state"]
     country_global_labels = layer_by_id["place-country-1"]
     country_regional_labels = layer_by_id["place-country-2"]
+    country_other_labels = layer_by_id["place-country-other"]
     country_local_labels = layer_by_id["place-country-3"]
     assert place_continent["source"] == "continent-labels"
     assert place_continent["maxzoom"] == 1
@@ -572,8 +576,20 @@ def test_pane_map_view_is_maplibre_based() -> None:
     assert place_town["minzoom"] == 10
     assert place_town["filter"] == ["==", ["get", "kind"], "town"]
     assert place_town["layout"]["text-size"] == ["interpolate", ["exponential", 1.2], ["zoom"], 10, 14, 15, 24]
+    assert place_city_capital["minzoom"] == 4
+    assert place_city_capital["filter"] == [
+        "all",
+        ["==", ["get", "kind"], "city"],
+        ["match", ["get", "capital"], [2, "2", True, "yes"], True, False],
+    ]
+    assert place_city_capital["layout"]["icon-image"] == "star_11"
+    assert place_city_capital["layout"]["text-anchor"] == "left"
     assert place_city["minzoom"] == 4
-    assert place_city["filter"] == ["==", ["get", "kind"], "city"]
+    assert place_city["filter"] == [
+        "all",
+        ["==", ["get", "kind"], "city"],
+        ["match", ["get", "capital"], [2, "2", True, "yes"], False, True],
+    ]
     assert place_city["layout"]["text-size"] == ["interpolate", ["exponential", 1.2], ["zoom"], 7, 14, 11, 24]
     assert layer_by_id["landcover-glacier"]["source-layer"] == "land"
     assert layer_by_id["landcover-glacier"]["filter"] == ["==", ["get", "kind"], "glacier"]
@@ -633,6 +649,10 @@ def test_pane_map_view_is_maplibre_based() -> None:
     ]
     assert layer_by_id["water"]["source-layer"] == "water_polygons"
     assert layer_by_id["water"]["paint"]["fill-color"] == "#c2def3"
+    assert layer_by_id["water-intermittent"]["filter"] == ["==", ["get", "intermittent"], True]
+    assert layer_by_id["water-intermittent"]["paint"]["fill-opacity"] == 0.7
+    assert layer_by_id["water-pattern"]["paint"]["fill-pattern"] == "wave"
+    assert layer_by_id["water-pattern"]["paint"]["fill-translate"] == [0, 2.5]
     assert layer_by_id["building"]["source-layer"] == "buildings"
     assert layer_by_id["building-top"]["source-layer"] == "buildings"
     assert layer_by_id["building-top"]["paint"]["fill-translate"] == [
@@ -678,6 +698,15 @@ def test_pane_map_view_is_maplibre_based() -> None:
         ["==", ["get", "admin_level"], 2],
         [">=", ["to-number", ["get", "way_area"], 0], 1000000000000],
         ["<", ["to-number", ["get", "way_area"], 0], 8000000000000],
+    ]
+    assert country_other_labels["minzoom"] == 3
+    assert country_other_labels["layout"]["text-font"] == ["Noto Sans Italic"]
+    assert country_other_labels["filter"] == [
+        "all",
+        ["==", ["get", "admin_level"], 2],
+        ["<", ["to-number", ["get", "way_area"], 0], 1000000000000],
+        ["has", "iso_a2"],
+        ["==", ["get", "iso_a2"], ""],
     ]
     assert country_local_labels["minzoom"] == 3
     assert country_local_labels["filter"] == [

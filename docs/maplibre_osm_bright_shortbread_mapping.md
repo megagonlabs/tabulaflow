@@ -34,7 +34,7 @@ Status meanings:
 | `background` | none | `background` | exact | Color can be copied directly. |
 | `landcover-glacier`, `landcover-ice-shelf`, `landcover-wood`, `landcover-grass`, `landcover-grass-park`, `landcover-sand` | `landcover.class`, `landcover.subclass`, `park.class` | `land.kind`, `sites.kind` | approximate | Implemented as separate OSM Bright-named layers, but Shortbread combines these into fewer land/site kinds. |
 | `landuse-residential`, `landuse-commercial`, `landuse-industrial`, `landuse-cemetery`, `landuse-hospital`, `landuse-school`, `landuse-railway` | `landuse.class` | `sites.kind`, `land.kind` | approximate | Implemented as separate OSM Bright-named layers, but Shortbread landuse classes are coarser. |
-| `water`, `water-offset`, `water-intermittent`, `water-pattern` | `water.class`, `intermittent`, `brunnel` | `water_polygons.kind` | approximate | `water` and `water-offset` are active; intermittent/pattern polygon styling needs fields/sprites Shortbread does not expose. |
+| `water`, `water-offset`, `water-intermittent`, `water-pattern` | `water.class`, `intermittent`, `brunnel`, sprite `wave` | `water_polygons.kind`, OSM Bright sprite endpoint | approximate | `water`, `water-offset`, and `water-pattern` are active; `water-intermittent` is present but dormant because Shortbread does not expose `intermittent`. |
 | `waterway_tunnel`, `waterway-other`, `waterway-other-intermittent`, `waterway-stream-canal`, `waterway-stream-canal-intermittent`, `waterway-river`, `waterway-river-intermittent` | `waterway.class`, `intermittent`, `brunnel` | `water_lines.kind`, `tunnel` | approximate | Active layers split river, stream/canal/drain/ditch, other, and tunnel waterways; intermittent layers are present but dormant because Shortbread does not expose an `intermittent` field. |
 | `building`, `building-top` | `building` | `buildings` | approximate | Building fill and translated high-zoom tops are ported against Shortbread's single building layer. |
 | `tunnel-*` road layers | `transportation.class`, `brunnel`, `ramp`, `subclass` | `streets.kind`, `tunnel`, `link`, `rail` | approximate | Tunnel roads are split by minor, secondary/tertiary, trunk/primary, motorway, link, and rail, but Shortbread has fewer subtype fields. |
@@ -52,9 +52,9 @@ Status meanings:
 | `poi-level-1`, `poi-level-2`, `poi-level-3`, `poi-railway` | `poi.class`, `subclass`, `rank`, `level`, sprite icons | `pois`, `public_transport` | approximate | Layer names and zoom tiers are ported; class/rank/icon behavior is unavailable because Shortbread TileJSON does not document POI fields. |
 | `highway-name-path`, `highway-name-minor`, `highway-name-major` | `transportation_name.class`, `network`, `ref` | `street_labels.kind`, `ref`, `name` | approximate | Street labels are split into major, local, and path layers using Shortbread `kind`. |
 | `highway-shield`, `highway-shield-us-interstate`, `highway-shield-us-other` | shield sprites, `network`, `ref`, `ref_length` | `street_labels.kind`, `street_labels.ref` | approximate | Rendered as text-only shields split by road kind; Shortbread does not expose network/ref_length fields. |
-| `place-other`, `place-village`, `place-town`, `place-city`, `place-city-capital` | `place.class`, `capital`, `rank` | `place_labels.kind`, `population` | approximate | City/town/village/other layers use OSM Bright names and Shortbread `kind`; capital/rank-specific styling is unavailable. |
+| `place-other`, `place-village`, `place-town`, `place-city`, `place-city-capital` | `place.class`, `capital`, `rank`, sprite `star_11` | `place_labels.kind`, OSM Bright sprite endpoint | approximate | City/town/village/other layers use Shortbread `kind`; `place-city-capital` is present and sprite-backed but dormant because Shortbread does not expose `capital`. |
 | `place-state` | `place.class=state` | `boundary_labels.admin_level=4`, `way_area` | approximate | State/province labels are area-gated because Shortbread has no place rank. |
-| `place-country-other`, `place-country-1`, `place-country-2`, `place-country-3` | `place.class=country`, `rank`, `iso_a2` | `boundary_labels.admin_level`, `way_area` | approximate | Country rank is approximated by `way_area`. |
+| `place-country-other`, `place-country-1`, `place-country-2`, `place-country-3` | `place.class=country`, `rank`, `iso_a2` | `boundary_labels.admin_level`, `way_area` | approximate | Country rank is approximated by `way_area`; `place-country-other` is present but dormant because Shortbread does not expose `iso_a2`. |
 | `place-continent` | `place.class=continent` | bundled `continent-labels.geojson` | approximate | Shortbread has no continent layer, so stable local label points provide the OSM Bright low-zoom continent layer. |
 
 ## Non-Portable Concepts
@@ -79,16 +79,19 @@ rank tiers with mutually exclusive `boundary_labels.way_area` buckets:
 
 This intentionally restores visible labels at the broadest zooms, but it is not
 an exact country-rank match because Shortbread has no country rank field.
-`place-country-other` is not represented because Shortbread boundary labels do
-not expose OSM Bright's `iso_a2`/missing-ISO split.
+`place-country-other` is included as a dormant, field-gated layer because
+Shortbread boundary labels do not expose OSM Bright's `iso_a2`/missing-ISO
+split.
 
-The remaining missing OSM Bright layer IDs after the Shortbread port are
-intentionally limited to schema gaps: intermittent/patterned water polygons,
-capital-city labels, and country labels without `iso_a2`.
+All OSM Bright layer IDs are represented. Layers that depend on unavailable
+Shortbread fields are intentionally dormant rather than approximated with
+incorrect duplicate labels or false intermittent styling.
 
 ## Licensing
 
 The style in this repository is not vendored from OSM Bright. It is a
-schema-native Shortbread style that references OSM Bright's visual hierarchy.
-Because the design is intentionally OSM Bright-inspired, the map attribution
-links to OSM Bright in addition to the required OpenStreetMap attribution.
+schema-native Shortbread style that references OSM Bright's visual hierarchy
+and its public sprite endpoint for the `wave` pattern and `star_11` icon.
+Because the design is intentionally OSM Bright-inspired and uses its sprites,
+the map attribution links to OSM Bright in addition to the required
+OpenStreetMap attribution.
