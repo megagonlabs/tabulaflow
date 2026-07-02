@@ -331,6 +331,7 @@
   var mapPinInner = cssVar('--map-pin-inner', '#fff4f2');
   var mapStyleUrl = '/assets/maplibre/shortbread-light.json';
   var mapStyleSpriteUrl = '/assets/maplibre/osm-bright-sprite';
+  var mapStyleRouteSpriteUrl = '/assets/maplibre/tf-route-sprite';
   var maxLegendEntries = 12;
 
   function absoluteUrl(path) {
@@ -1092,7 +1093,10 @@
       }).then(function (style) {
         mapInitPending = false;
         if (initToken !== mapInitToken || map || !container.isConnected) return;
-        style.sprite = absoluteUrl(mapStyleSpriteUrl);
+        style.sprite = [
+          { id: 'default', url: absoluteUrl(mapStyleSpriteUrl) },
+          { id: 'tf', url: absoluteUrl(mapStyleRouteSpriteUrl) }
+        ];
         map = new maplibregl.Map({
           container: mapNode,
           style: style,

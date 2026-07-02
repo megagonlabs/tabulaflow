@@ -1,0 +1,12 @@
+tabulaflow route sprite assets
+==============================
+
+Files:
+- tf-route-sprite.json
+- tf-route-sprite.png
+- tf-route-sprite@2x.json
+- tf-route-sprite@2x.png
+
+These interstate shield backgrounds are generated for tabulaflow and bundled
+locally for MapLibre route labels. They are custom assets, not copied from
+Google Maps or another map provider.

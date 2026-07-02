@@ -1,0 +1,88 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="760" height="270" viewBox="0 0 760 270">
+  <rect width="760" height="270" fill="#a7a9ac"/>
+
+  <defs>
+    <symbol id="shield-1" viewBox="0 0 94 132">
+      <path id="shape-1"
+        d="M15 10 C25 14 36 13 47 7 C58 13 69 14 79 10
+           C86 25 89 42 87 61 C83 95 69 116 47 126
+           C25 116 11 95 7 61 C5 42 8 25 15 10Z"/>
+      <clipPath id="clip-1"><use href="#shape-1"/></clipPath>
+      <use href="#shape-1" fill="#f8fafc" stroke="#d1d5db" stroke-width="2" stroke-linejoin="round"/>
+      <g clip-path="url(#clip-1)">
+        <path d="M14 13 C25 17 36 16 47 10 C58 16 69 17 80 13 C84 25 86 36 87 48 H7 C8 36 10 25 14 13Z" fill="#d3202a"/>
+        <path d="M7 48H87V132H7Z" fill="#303592"/>
+        <path d="M7 48H87" stroke="#f8fafc" stroke-width="5"/>
+      </g>
+      <use href="#shape-1" fill="none" stroke="#f8fafc" stroke-width="4" stroke-linejoin="round"/>
+    </symbol>
+
+    <symbol id="shield-2" viewBox="0 0 108 132">
+      <path id="shape-2"
+        d="M17 10 C29 14 42 13 54 7 C66 13 79 14 91 10
+           C98 25 101 42 99 61 C95 95 79 116 54 126
+           C29 116 13 95 9 61 C7 42 10 25 17 10Z"/>
+      <clipPath id="clip-2"><use href="#shape-2"/></clipPath>
+      <use href="#shape-2" fill="#f8fafc" stroke="#d1d5db" stroke-width="2" stroke-linejoin="round"/>
+      <g clip-path="url(#clip-2)">
+        <path d="M16 13 C29 17 42 16 54 10 C66 16 79 17 92 13 C96 25 98 36 99 48 H9 C10 36 12 25 16 13Z" fill="#d3202a"/>
+        <path d="M9 48H99V132H9Z" fill="#303592"/>
+        <path d="M9 48H99" stroke="#f8fafc" stroke-width="5"/>
+      </g>
+      <use href="#shape-2" fill="none" stroke="#f8fafc" stroke-width="4" stroke-linejoin="round"/>
+    </symbol>
+
+    <symbol id="shield-3" viewBox="0 0 124 132">
+      <path id="shape-3"
+        d="M19 10 C33 14 47 13 62 7 C77 13 91 14 105 10
+           C112 25 115 42 113 61 C109 95 90 116 62 126
+           C34 116 15 95 11 61 C9 42 12 25 19 10Z"/>
+      <clipPath id="clip-3"><use href="#shape-3"/></clipPath>
+      <use href="#shape-3" fill="#f8fafc" stroke="#d1d5db" stroke-width="2" stroke-linejoin="round"/>
+      <g clip-path="url(#clip-3)">
+        <path d="M18 13 C33 17 47 16 62 10 C77 16 91 17 106 13 C110 25 112 36 113 48 H11 C12 36 14 25 18 13Z" fill="#d3202a"/>
+        <path d="M11 48H113V132H11Z" fill="#303592"/>
+        <path d="M11 48H113" stroke="#f8fafc" stroke-width="5"/>
+      </g>
+      <use href="#shape-3" fill="none" stroke="#f8fafc" stroke-width="4" stroke-linejoin="round"/>
+    </symbol>
+  </defs>
+
+  <g transform="translate(44 34)">
+    <use href="#shield-2" width="108" height="132"/>
+    <text x="54" y="101" text-anchor="middle"
+          font-family="Arial, Helvetica, sans-serif" font-weight="700"
+          font-size="56" fill="#ffffff">5</text>
+    <text x="54" y="162" text-anchor="middle" font-family="Arial, Helvetica, sans-serif"
+          font-size="13" fill="#111827">1 digit, 2-digit width</text>
+  </g>
+
+  <g transform="translate(196 34)">
+    <use href="#shield-2" width="108" height="132"/>
+    <text x="54" y="100" text-anchor="middle"
+          font-family="Arial, Helvetica, sans-serif" font-weight="700"
+          font-size="49" fill="#ffffff">80</text>
+    <text x="54" y="162" text-anchor="middle" font-family="Arial, Helvetica, sans-serif"
+          font-size="13" fill="#111827">2 digits</text>
+  </g>
+
+  <g transform="translate(368 34)">
+    <use href="#shield-3" width="124" height="132"/>
+    <text x="62" y="97" text-anchor="middle"
+          font-family="Arial, Helvetica, sans-serif" font-weight="700"
+          font-size="39" fill="#ffffff">101</text>
+    <text x="62" y="162" text-anchor="middle" font-family="Arial, Helvetica, sans-serif"
+          font-size="13" fill="#111827">3 digits</text>
+  </g>
+
+  <g transform="translate(560 34)">
+    <use href="#shield-3" width="124" height="132"/>
+    <text x="62" y="162" text-anchor="middle" font-family="Arial, Helvetica, sans-serif"
+          font-size="13" fill="#111827">blank 3-digit width</text>
+  </g>
+
+  <g transform="translate(44 230)" fill="#111827"
+     font-family="Arial, Helvetica, sans-serif" font-size="14">
+    <text>Width-aware draft: 1/2/3 digit shields keep the same height but progressively widen the shoulders and blue field.</text>
+  </g>
+</svg>

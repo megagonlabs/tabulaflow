@@ -4,7 +4,10 @@
   "center": [0, 20],
   "zoom": 1.2,
   "glyphs": "https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf",
-  "sprite": "osm-bright-sprite",
+  "sprite": [
+    {"id": "default", "url": "osm-bright-sprite"},
+    {"id": "tf", "url": "tf-route-sprite"}
+  ],
   "sources": {
     "osm": {
       "type": "vector",
@@ -2040,17 +2043,20 @@
       "layout": {
         "symbol-placement": "line",
         "symbol-spacing": 200,
-        "icon-image": ["concat", "us-interstate_", ["to-string", ["length", ["slice", ["get", "ref"], 2]]]],
+        "icon-image": ["concat", "tf:us-interstate_", ["to-string", ["length", ["slice", ["get", "ref"], 2]]]],
         "icon-rotation-alignment": "viewport",
         "icon-size": 1,
         "text-field": ["slice", ["get", "ref"], 2],
-        "text-font": ["Noto Sans Regular"],
+        "text-font": ["Noto Sans Bold"],
         "text-size": 10,
+        "text-offset": [0, 0.18],
         "text-rotation-alignment": "viewport",
         "text-padding": 2
       },
       "paint": {
-        "text-color": "#111111"
+        "text-color": "#ffffff",
+        "text-halo-color": "rgba(20,39,86,0.35)",
+        "text-halo-width": 0.4
       }
     },
     {

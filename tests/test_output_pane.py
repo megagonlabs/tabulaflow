@@ -516,6 +516,11 @@ def test_pane_map_view_is_maplibre_based() -> None:
     assert maplibre_assets.joinpath("osm-bright-sprite@2x.json").is_file()
     assert maplibre_assets.joinpath("osm-bright-sprite@2x.png").is_file()
     assert maplibre_assets.joinpath("osm-bright-sprite-source.txt").is_file()
+    assert maplibre_assets.joinpath("tf-route-sprite.json").is_file()
+    assert maplibre_assets.joinpath("tf-route-sprite.png").is_file()
+    assert maplibre_assets.joinpath("tf-route-sprite@2x.json").is_file()
+    assert maplibre_assets.joinpath("tf-route-sprite@2x.png").is_file()
+    assert maplibre_assets.joinpath("tf-route-sprite-source.txt").is_file()
     assert maplibre_assets.joinpath("continent-labels.geojson").is_file()
     assert maplibre_assets.joinpath("ocean-labels.geojson").is_file()
     assert maplibre_assets.joinpath("airport-labels.geojson").is_file()
@@ -549,12 +554,17 @@ def test_pane_map_view_is_maplibre_based() -> None:
     )
     assert "OSM Bright" not in style["sources"]["osm"]["attribution"]
     assert style["glyphs"] == "https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf"
-    assert style["sprite"] == "osm-bright-sprite"
+    assert style["sprite"] == [
+        {"id": "default", "url": "osm-bright-sprite"},
+        {"id": "tf", "url": "tf-route-sprite"},
+    ]
     assert "openmaptiles.github.io/osm-bright-gl-style/sprite" not in json.dumps(style)
     sprite = json.loads(maplibre_assets.joinpath("osm-bright-sprite.json").read_text(encoding="utf-8"))
     assert {"road_1", "road_6", "us-interstate_1", "us-interstate_3", "us-highway_1", "us-highway_3"} <= set(
         sprite
     )
+    route_sprite = json.loads(maplibre_assets.joinpath("tf-route-sprite.json").read_text(encoding="utf-8"))
+    assert set(route_sprite) == {"us-interstate_1", "us-interstate_2", "us-interstate_3"}
     assert any(layer.get("source-layer") == "streets" for layer in style["layers"])
     assert any(layer.get("source-layer") == "place_labels" for layer in style["layers"])
     layer_by_id = {str(layer.get("id")): layer for layer in style["layers"]}
@@ -1218,10 +1228,13 @@ def test_pane_map_view_is_maplibre_based() -> None:
     ]
     assert layer_by_id["highway-shield-us-interstate"]["layout"]["icon-image"] == [
         "concat",
-        "us-interstate_",
+        "tf:us-interstate_",
         ["to-string", ["length", ["slice", ["get", "ref"], 2]]],
     ]
     assert layer_by_id["highway-shield-us-interstate"]["layout"]["text-field"] == ["slice", ["get", "ref"], 2]
+    assert layer_by_id["highway-shield-us-interstate"]["layout"]["text-font"] == ["Noto Sans Bold"]
+    assert layer_by_id["highway-shield-us-interstate"]["layout"]["text-offset"] == [0, 0.18]
+    assert layer_by_id["highway-shield-us-interstate"]["paint"]["text-color"] == "#ffffff"
     assert layer_by_id["highway-shield-us-highway"]["minzoom"] == 9
     assert layer_by_id["highway-shield-us-highway"]["filter"] == [
         "all",
@@ -1465,9 +1478,11 @@ def test_pane_map_view_is_maplibre_based() -> None:
     assert "var mapPinInner = cssVar('--map-pin-inner'" in renderer
     assert "var mapStyleUrl = '/assets/maplibre/shortbread-light.json';" in renderer
     assert "var mapStyleSpriteUrl = '/assets/maplibre/osm-bright-sprite';" in renderer
+    assert "var mapStyleRouteSpriteUrl = '/assets/maplibre/tf-route-sprite';" in renderer
     assert "function absoluteUrl(path)" in renderer
     assert "fetch(mapStyleUrl).then(function (response)" in renderer
-    assert "style.sprite = absoluteUrl(mapStyleSpriteUrl);" in renderer
+    assert "{ id: 'default', url: absoluteUrl(mapStyleSpriteUrl) }" in renderer
+    assert "{ id: 'tf', url: absoluteUrl(mapStyleRouteSpriteUrl) }" in renderer
     assert "var mapInitToken = 0;" in renderer
     assert "if (initToken !== mapInitToken || map || !container.isConnected) return;" in renderer
     assert "var maxLegendEntries = 12;" in renderer
@@ -1753,6 +1768,21 @@ def test_pane_serves_bundled_assets_cached(tmp_path: Path) -> None:
             assert resp.headers.get("Content-Type") == "image/png"
             body = resp.read()
         assert body == maplibre_assets.joinpath("osm-bright-sprite.png").read_bytes()
+        assert body.startswith(b"\x89PNG\r\n\x1a\n")
+
+        with urllib.request.urlopen(f"{origin}assets/maplibre/tf-route-sprite.json", timeout=2) as resp:
+            assert resp.headers.get("Cache-Control") == "no-cache"
+            assert resp.headers.get("Content-Type") == "application/json; charset=utf-8"
+            route_sprite = json.loads(resp.read())
+        assert set(route_sprite) == {"us-interstate_1", "us-interstate_2", "us-interstate_3"}
+
+        with urllib.request.urlopen(f"{origin}assets/maplibre/tf-route-sprite.png", timeout=2) as resp:
+            assert resp.headers.get("Cache-Control") is not None and "immutable" in resp.headers.get(
+                "Cache-Control", ""
+            )
+            assert resp.headers.get("Content-Type") == "image/png"
+            body = resp.read()
+        assert body == maplibre_assets.joinpath("tf-route-sprite.png").read_bytes()
         assert body.startswith(b"\x89PNG\r\n\x1a\n")
 
         with urllib.request.urlopen(f"{origin}assets/maplibre/continent-labels.geojson", timeout=2) as resp:

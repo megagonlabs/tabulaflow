@@ -1,0 +1,23 @@
+{
+  "us-interstate_1": {
+    "width": 48,
+    "height": 44,
+    "x": 0,
+    "y": 0,
+    "pixelRatio": 2
+  },
+  "us-interstate_2": {
+    "width": 48,
+    "height": 44,
+    "x": 52,
+    "y": 0,
+    "pixelRatio": 2
+  },
+  "us-interstate_3": {
+    "width": 56,
+    "height": 44,
+    "x": 104,
+    "y": 0,
+    "pixelRatio": 2
+  }
+}
