@@ -855,12 +855,18 @@ def test_pane_map_view_is_maplibre_based() -> None:
     assert layer_by_id["waterway-name"]["source-layer"] == "water_lines_labels"
     assert layer_by_id["waterway-name"]["minzoom"] == 13
     assert layer_by_id["waterway-name"]["layout"]["text-letter-spacing"] == 0.2
-    assert layer_by_id["public-transport-labels"]["source-layer"] == "public_transport"
-    assert layer_by_id["public-transport-labels"]["minzoom"] == 13
-    assert layer_by_id["public-transport-labels"]["filter"] == ["has", "name"]
-    assert layer_by_id["poi-labels"]["source-layer"] == "pois"
-    assert layer_by_id["poi-labels"]["minzoom"] == 15
-    assert layer_by_id["poi-labels"]["filter"] == ["has", "name"]
+    assert layer_by_id["poi-railway"]["source-layer"] == "public_transport"
+    assert layer_by_id["poi-railway"]["minzoom"] == 13
+    assert layer_by_id["poi-railway"]["filter"] == ["has", "name"]
+    assert layer_by_id["poi-railway"]["layout"]["text-anchor"] == "top"
+    assert layer_by_id["poi-level-1"]["source-layer"] == "pois"
+    assert layer_by_id["poi-level-1"]["minzoom"] == 14
+    assert layer_by_id["poi-level-1"]["maxzoom"] == 15
+    assert layer_by_id["poi-level-1"]["filter"] == ["has", "name"]
+    assert layer_by_id["poi-level-2"]["minzoom"] == 15
+    assert layer_by_id["poi-level-2"]["maxzoom"] == 16
+    assert layer_by_id["poi-level-3"]["minzoom"] == 16
+    assert layer_by_id["poi-level-3"]["paint"]["text-halo-blur"] == 0.5
     assert "if (kind === 'map') return TF.renderMap(node, data);" in _PANE_HTML
     assert "function afterVisible(entry)" in _PANE_HTML
     assert "function afterHidden(entry)" in _PANE_HTML
