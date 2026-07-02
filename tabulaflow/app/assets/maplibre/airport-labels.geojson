@@ -1,0 +1,18 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {"type": "Feature", "properties": {"name": "ATL", "label": "Hartsfield-Jackson Atlanta Intl"}, "geometry": {"type": "Point", "coordinates": [-84.4277, 33.6407]}},
+    {"type": "Feature", "properties": {"name": "LAX", "label": "Los Angeles Intl"}, "geometry": {"type": "Point", "coordinates": [-118.4085, 33.9416]}},
+    {"type": "Feature", "properties": {"name": "JFK", "label": "John F. Kennedy Intl"}, "geometry": {"type": "Point", "coordinates": [-73.7781, 40.6413]}},
+    {"type": "Feature", "properties": {"name": "ORD", "label": "Chicago O'Hare Intl"}, "geometry": {"type": "Point", "coordinates": [-87.9073, 41.9742]}},
+    {"type": "Feature", "properties": {"name": "DFW", "label": "Dallas Fort Worth Intl"}, "geometry": {"type": "Point", "coordinates": [-97.0403, 32.8998]}},
+    {"type": "Feature", "properties": {"name": "LHR", "label": "Heathrow"}, "geometry": {"type": "Point", "coordinates": [-0.4543, 51.47]}},
+    {"type": "Feature", "properties": {"name": "CDG", "label": "Charles de Gaulle"}, "geometry": {"type": "Point", "coordinates": [2.55, 49.0097]}},
+    {"type": "Feature", "properties": {"name": "AMS", "label": "Amsterdam Schiphol"}, "geometry": {"type": "Point", "coordinates": [4.7639, 52.3105]}},
+    {"type": "Feature", "properties": {"name": "DXB", "label": "Dubai Intl"}, "geometry": {"type": "Point", "coordinates": [55.3657, 25.2532]}},
+    {"type": "Feature", "properties": {"name": "SIN", "label": "Singapore Changi"}, "geometry": {"type": "Point", "coordinates": [103.9915, 1.3644]}},
+    {"type": "Feature", "properties": {"name": "HND", "label": "Tokyo Haneda"}, "geometry": {"type": "Point", "coordinates": [139.7798, 35.5494]}},
+    {"type": "Feature", "properties": {"name": "PEK", "label": "Beijing Capital"}, "geometry": {"type": "Point", "coordinates": [116.5975, 40.0799]}},
+    {"type": "Feature", "properties": {"name": "SYD", "label": "Sydney Kingsford Smith"}, "geometry": {"type": "Point", "coordinates": [151.1772, -33.9399]}}
+  ]
+}

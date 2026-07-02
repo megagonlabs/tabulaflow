@@ -17,6 +17,10 @@
     "ocean-labels": {
       "type": "geojson",
       "data": "/assets/maplibre/ocean-labels.geojson"
+    },
+    "airport-labels": {
+      "type": "geojson",
+      "data": "/assets/maplibre/airport-labels.geojson"
     }
   },
   "layers": [
@@ -1399,6 +1403,28 @@
         "text-color": "#333333",
         "text-halo-color": "rgba(255,255,255,0.8)",
         "text-halo-width": 1.2
+      }
+    },
+    {
+      "id": "airport-label-major",
+      "type": "symbol",
+      "source": "airport-labels",
+      "minzoom": 10,
+      "layout": {
+        "text-field": ["coalesce", ["get", "label"], ["get", "name"]],
+        "text-font": ["Noto Sans Regular"],
+        "text-anchor": "top",
+        "text-size": 12,
+        "text-offset": [0, 0.6],
+        "text-optional": true,
+        "text-padding": 2,
+        "text-max-width": 9
+      },
+      "paint": {
+        "text-color": "#666666",
+        "text-halo-blur": 0.5,
+        "text-halo-color": "#ffffff",
+        "text-halo-width": 1
       }
     },
     {

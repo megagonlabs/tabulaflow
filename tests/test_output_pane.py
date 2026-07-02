@@ -512,6 +512,7 @@ def test_pane_map_view_is_maplibre_based() -> None:
     assert maplibre_assets.joinpath("shortbread-light.json").is_file()
     assert maplibre_assets.joinpath("continent-labels.geojson").is_file()
     assert maplibre_assets.joinpath("ocean-labels.geojson").is_file()
+    assert maplibre_assets.joinpath("airport-labels.geojson").is_file()
     assert style["sources"]["osm"]["url"] == "https://vector.openstreetmap.org/shortbread_v1/tilejson.json"
     assert style["sources"]["continent-labels"] == {
         "type": "geojson",
@@ -520,6 +521,10 @@ def test_pane_map_view_is_maplibre_based() -> None:
     assert style["sources"]["ocean-labels"] == {
         "type": "geojson",
         "data": "/assets/maplibre/ocean-labels.geojson",
+    }
+    assert style["sources"]["airport-labels"] == {
+        "type": "geojson",
+        "data": "/assets/maplibre/airport-labels.geojson",
     }
     assert "© OpenStreetMap" in style["sources"]["osm"]["attribution"]
     assert "OSM Bright" in style["sources"]["osm"]["attribution"]
@@ -874,6 +879,14 @@ def test_pane_map_view_is_maplibre_based() -> None:
     assert layer_by_id["waterway-name"]["minzoom"] == 13
     assert layer_by_id["waterway-name"]["layout"]["text-letter-spacing"] == 0.2
     assert layer_by_id["poi-railway"]["source-layer"] == "public_transport"
+    assert layer_by_id["airport-label-major"]["source"] == "airport-labels"
+    assert layer_by_id["airport-label-major"]["minzoom"] == 10
+    assert layer_by_id["airport-label-major"]["layout"]["text-anchor"] == "top"
+    assert layer_by_id["airport-label-major"]["layout"]["text-field"] == [
+        "coalesce",
+        ["get", "label"],
+        ["get", "name"],
+    ]
     assert layer_by_id["poi-railway"]["minzoom"] == 13
     assert layer_by_id["poi-railway"]["filter"] == ["has", "name"]
     assert layer_by_id["poi-railway"]["layout"]["text-anchor"] == "top"
@@ -1253,6 +1266,13 @@ def test_pane_serves_bundled_assets_cached(tmp_path: Path) -> None:
             "Atlantic Ocean",
             "Pacific Ocean",
         }
+
+        with urllib.request.urlopen(f"{origin}assets/maplibre/airport-labels.geojson", timeout=2) as resp:
+            assert resp.headers.get("Cache-Control") == "no-cache"
+            assert resp.headers.get("Content-Type") == "application/json; charset=utf-8"
+            airport_labels = json.loads(resp.read())
+        assert airport_labels["type"] == "FeatureCollection"
+        assert {feature["properties"]["name"] for feature in airport_labels["features"]} >= {"ATL", "LAX", "LHR"}
 
         try:
             urllib.request.urlopen(f"{origin}assets/does-not-exist.js", timeout=2)
