@@ -10,3 +10,10 @@ Files:
 These interstate shield backgrounds are generated for tabulaflow and bundled
 locally for MapLibre route labels. They are custom assets, not copied from
 Google Maps or another map provider.
+
+Design:
+- Runtime display sizes are 24x30 CSS px for 1- and 2-digit shields, and
+  28x30 CSS px for 3-digit shields, preserving the draft SVG proportions.
+- The @2x sprite is generated at double pixel dimensions with pixelRatio 2.
+- Shield colors are tuned for the light map theme: red #d9555e, blue #4859a8.
+- Regenerate with: uv run scripts/generate_route_sprite.py
