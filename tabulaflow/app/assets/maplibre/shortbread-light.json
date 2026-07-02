@@ -2241,7 +2241,7 @@
       "minzoom": 4,
       "filter": [
         "all",
-        ["==", ["get", "kind"], "city"],
+        ["match", ["get", "kind"], ["city", "state_capital"], true, false],
         [">=", ["to-number", ["get", "population"], 0], 1000000],
         ["match", ["to-string", ["get", "capital"]], ["2", "true", "yes"], false, true]
       ],
@@ -2265,7 +2265,7 @@
       "minzoom": 6,
       "filter": [
         "all",
-        ["==", ["get", "kind"], "city"],
+        ["match", ["get", "kind"], ["city", "state_capital"], true, false],
         [">=", ["to-number", ["get", "population"], 0], 250000],
         ["<", ["to-number", ["get", "population"], 0], 1000000],
         ["match", ["to-string", ["get", "capital"]], ["2", "true", "yes"], false, true]
@@ -2290,7 +2290,7 @@
       "minzoom": 8,
       "filter": [
         "all",
-        ["==", ["get", "kind"], "city"],
+        ["match", ["get", "kind"], ["city", "state_capital"], true, false],
         ["<", ["to-number", ["get", "population"], 0], 250000],
         ["match", ["to-string", ["get", "capital"]], ["2", "true", "yes"], false, true]
       ],
@@ -2314,8 +2314,7 @@
       "minzoom": 4,
       "filter": [
         "all",
-        ["==", ["get", "kind"], "city"],
-        ["match", ["to-string", ["get", "capital"]], ["2", "true", "yes"], true, false]
+        ["==", ["get", "kind"], "capital"]
       ],
       "layout": {
         "icon-image": "star_11",

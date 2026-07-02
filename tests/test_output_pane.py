@@ -678,8 +678,7 @@ def test_pane_map_view_is_maplibre_based() -> None:
     assert place_city_capital["minzoom"] == 4
     assert place_city_capital["filter"] == [
         "all",
-        ["==", ["get", "kind"], "city"],
-        ["match", ["to-string", ["get", "capital"]], ["2", "true", "yes"], True, False],
+        ["==", ["get", "kind"], "capital"],
     ]
     assert place_city_capital["layout"]["icon-image"] == "star_11"
     assert place_city_capital["layout"]["text-anchor"] == "left"
@@ -688,7 +687,7 @@ def test_pane_map_view_is_maplibre_based() -> None:
     assert place_city["minzoom"] == 4
     assert place_city["filter"] == [
         "all",
-        ["==", ["get", "kind"], "city"],
+        ["match", ["get", "kind"], ["city", "state_capital"], True, False],
         [">=", ["to-number", ["get", "population"], 0], 1000000],
         ["match", ["to-string", ["get", "capital"]], ["2", "true", "yes"], False, True],
     ]
@@ -708,7 +707,7 @@ def test_pane_map_view_is_maplibre_based() -> None:
     assert place_city_medium["minzoom"] == 6
     assert place_city_medium["filter"] == [
         "all",
-        ["==", ["get", "kind"], "city"],
+        ["match", ["get", "kind"], ["city", "state_capital"], True, False],
         [">=", ["to-number", ["get", "population"], 0], 250000],
         ["<", ["to-number", ["get", "population"], 0], 1000000],
         ["match", ["to-string", ["get", "capital"]], ["2", "true", "yes"], False, True],
@@ -729,7 +728,7 @@ def test_pane_map_view_is_maplibre_based() -> None:
     assert place_city_small["minzoom"] == 8
     assert place_city_small["filter"] == [
         "all",
-        ["==", ["get", "kind"], "city"],
+        ["match", ["get", "kind"], ["city", "state_capital"], True, False],
         ["<", ["to-number", ["get", "population"], 0], 250000],
         ["match", ["to-string", ["get", "capital"]], ["2", "true", "yes"], False, True],
     ]
