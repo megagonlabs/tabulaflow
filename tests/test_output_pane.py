@@ -821,8 +821,8 @@ def test_pane_map_view_is_maplibre_based() -> None:
         "match",
         ["get", "kind"],
         ["scrub", "heath"],
-        "#e5ecd4",
-        "#d8e8c8",
+        "#d9e3bf",
+        "#c8ddb3",
     ]
     assert layer_by_id["landcover-wetland"]["filter"] == [
         "match",
@@ -831,7 +831,7 @@ def test_pane_map_view_is_maplibre_based() -> None:
         True,
         False,
     ]
-    assert layer_by_id["landcover-wetland"]["paint"]["fill-color"] == "#d5e7df"
+    assert layer_by_id["landcover-wetland"]["paint"]["fill-color"] == "#c5ddd6"
     assert layer_by_id["landcover-rock"]["filter"] == [
         "match",
         ["get", "kind"],
@@ -839,7 +839,7 @@ def test_pane_map_view_is_maplibre_based() -> None:
         True,
         False,
     ]
-    assert layer_by_id["landcover-rock"]["paint"]["fill-color"] == "#e1d7c9"
+    assert layer_by_id["landcover-rock"]["paint"]["fill-color"] == "#d5c7b7"
     assert layer_by_id["landcover-farmland"]["filter"] == [
         "match",
         ["get", "kind"],
@@ -847,8 +847,8 @@ def test_pane_map_view_is_maplibre_based() -> None:
         True,
         False,
     ]
-    assert layer_by_id["landcover-farmland"]["paint"]["fill-color"] == "#eee6c8"
-    assert layer_by_id["landcover-sand"]["paint"]["fill-color"] == "#f2e4bf"
+    assert layer_by_id["landcover-farmland"]["paint"]["fill-color"] == "#e1d6aa"
+    assert layer_by_id["landcover-sand"]["paint"]["fill-color"] == "#e6d29c"
     assert layer_by_id["landcover-grass-park"]["source-layer"] == "sites"
     assert layer_by_id["landcover-grass-park"]["filter"] == [
         "match",
@@ -859,7 +859,7 @@ def test_pane_map_view_is_maplibre_based() -> None:
     ]
     assert layer_by_id["landuse-commercial"]["paint"]["fill-color"] == "rgba(255, 210, 210, 0.28)"
     assert layer_by_id["landuse-industrial"]["paint"]["fill-color"] == "rgba(255, 235, 170, 0.34)"
-    assert layer_by_id["landuse-railway"]["paint"]["fill-color"] == "rgba(232, 226, 219, 0.4)"
+    assert layer_by_id["landuse-railway"]["paint"]["fill-color"] == "rgba(218, 210, 201, 0.48)"
     assert layer_by_id["landuse-school"]["filter"] == [
         "match",
         ["get", "kind"],
@@ -871,7 +871,7 @@ def test_pane_map_view_is_maplibre_based() -> None:
     assert layer_by_id["landuse-cemetery"]["filter"] == ["==", ["get", "kind"], "cemetery"]
     assert "water-offset" not in layer_by_id
     assert layer_by_id["water"]["source-layer"] == "water_polygons"
-    assert layer_by_id["water"]["paint"]["fill-color"] == "#c2def3"
+    assert layer_by_id["water"]["paint"]["fill-color"] == "#b9d7ed"
     assert layer_by_id["water-intermittent"]["filter"] == ["==", ["get", "intermittent"], True]
     assert layer_by_id["water-intermittent"]["paint"]["fill-opacity"] == 0.7
     assert "water-pattern" not in layer_by_id
@@ -1125,7 +1125,7 @@ def test_pane_map_view_is_maplibre_based() -> None:
         ["!=", ["get", "link"], True],
         ["==", ["get", "kind"], "trunk"],
     ]
-    assert layer_by_id["highway-secondary-tertiary-casing"]["paint"]["line-color"] == "#e7c27c"
+    assert layer_by_id["highway-secondary-tertiary-casing"]["paint"]["line-color"] == "#dcb36f"
     assert layer_by_id["highway-minor-casing"]["minzoom"] == 12
     assert layer_by_id["boundary-land-level-4-fallback"]["source"] == "natural-earth-admin1-boundaries"
     assert layer_by_id["boundary-land-level-4-fallback"]["minzoom"] == 2
