@@ -361,6 +361,7 @@ July 2
 - [ ] Thinner borders
 - [ ] National parks and forest
 - [ ] Islands
+- [ ] Multiple lines not shown
 
 - [ ] Multiple records for map
 - [ ] Remote server improvements
@@ -373,6 +374,7 @@ July 2
 - [ ] Tune prompt for non-data tasks
 - [ ] Chrome browser
 
+- [ ] IMPORTANT: decouple data and rendered format (show unit "cm" while still enabling sorting by value)
 - [ ] sample_data disconnect policy
 - [ ] Banner - /connect pre-built data sources as most important use case
 - [ ] Include multimodal data in sample_data
@@ -391,6 +393,7 @@ July 2
 - [ ] Partial trajectory when exeption during agent turn
 - [ ] Captcha
 - [ ] View stepper - dont switch other record's view
+- [ ] Subagent context re-use!
 
 - General
   - [ ] Table readiblity: small table -> readible (e.g. KB, MB, GB), large table -> normalized
