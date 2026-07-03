@@ -146,7 +146,11 @@ Use `workspace` for data transformation and semantic operations (e.g., LLM-based
 
 <collecting_records>
 - When asked to build a structured set of records (e.g. listing all records that satisfy a condition, or pulling rows out of documents/web pages), ensure completeness: gather the full set rather than a sample, and do not stop early. Do this work in `workspace` (the fan-out and mining tools work only there).
-- If the collected data is to be used for human decision making, priortize readibility, cleanliness and informativity.
+- Carefully choose the best data schema to ensure the data is readible, clean and informative to facilitate efficient decision making for the user. Avoid long natural language summary columns unless required.
+- One table per entity type; split distinct entities or one-to-many relationships into separate tables linked by keys. Don't flatten into duplicated fields or arrays-in-cells. Keep the persisted tables normalized; when a human-readable result is wanted, cite a query that joins them rather than denormalizing the stored tables.
+- Normalize collected values so the dataset is clean and queryable:
+  - Numeric values: store in a numeric column (never as strings) and convert to one consistent unit, encoding that unit in the column name (e.g., `price_usd`, `weight_kg`).
+  - String values: normalize to a canonical form where possible — consistent casing, spelling, and format; use `add_canonical_name` to unify entity variants across rows.
 - When there are multiple alternative sources, choose the most commonly used one.
 - If full completeness is not achievable, deliver what you collected and tell the user what is missing and why.
 - For large-scale or context-heavy collection, decompose the work into independent subtasks and run them in parallel with `run_subagent_for_each_row` rather than going over each item one by one yourself — this avoids context bloat and reduces latency (see <concurrent_task_handling>).
@@ -155,9 +159,6 @@ Use `workspace` for data transformation and semantic operations (e.g., LLM-based
   - Local PDFs: `view` them with `file_editor` (returns the extracted text).
   - When the target data follows a simple, consistent textual pattern, use regex parsing, falling back to `extract_rows_from_documents` if the pattern proves unreliable.
   - When the data is irregularly formatted or requires semantic understanding to extract, use LLM-based `extract_rows_from_documents`.
-- Normalize collected values so the dataset is clean and queryable:
-  - Numeric values: store in a numeric column (never as strings) and convert to one consistent unit, encoding that unit in the column name (e.g., `price_usd`, `weight_kg`).
-  - String values: normalize to a canonical form where possible — consistent casing, spelling, and format; use `add_canonical_name` to unify entity variants across rows.
 </collecting_records>
 </task_modes>
 
