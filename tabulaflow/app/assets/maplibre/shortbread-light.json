@@ -135,7 +135,7 @@
       "source": "osm",
       "source-layer": "land",
       "minzoom": 7,
-      "filter": ["match", ["get", "kind"], ["grass", "meadow", "park", "recreation_ground", "scrub", "heath"], true, false],
+      "filter": ["match", ["get", "kind"], ["grass", "grassland", "meadow", "park", "recreation_ground", "garden", "playground", "golf_course", "scrub", "heath"], true, false],
       "paint": {
         "fill-color": [
           "match",
@@ -145,6 +145,33 @@
         ],
         "fill-opacity": 0.82
       }
+    },
+    {
+      "id": "landcover-wetland",
+      "type": "fill",
+      "source": "osm",
+      "source-layer": "land",
+      "minzoom": 7,
+      "filter": ["match", ["get", "kind"], ["marsh", "swamp", "bog", "wet_meadow"], true, false],
+      "paint": {"fill-color": "#d5e7df", "fill-opacity": 0.72}
+    },
+    {
+      "id": "landcover-rock",
+      "type": "fill",
+      "source": "osm",
+      "source-layer": "land",
+      "minzoom": 7,
+      "filter": ["match", ["get", "kind"], ["bare_rock", "scree", "shingle"], true, false],
+      "paint": {"fill-color": "#e1d7c9", "fill-opacity": 0.68}
+    },
+    {
+      "id": "landcover-farmland",
+      "type": "fill",
+      "source": "osm",
+      "source-layer": "land",
+      "minzoom": 7,
+      "filter": ["match", ["get", "kind"], ["farmland", "farmyard", "orchard"], true, false],
+      "paint": {"fill-color": "#eee6c8", "fill-opacity": 0.58}
     },
     {
       "id": "landcover-grass-park",
@@ -2189,6 +2216,26 @@
       "paint": {
         "text-color": "#663333",
         "text-halo-color": "rgba(255,255,255,0.8)",
+        "text-halo-width": 1.2
+      }
+    },
+    {
+      "id": "place-island",
+      "type": "symbol",
+      "source": "osm",
+      "source-layer": "place_labels",
+      "minzoom": 10,
+      "filter": ["==", ["get", "kind"], "island"],
+      "layout": {
+        "text-field": ["case", ["all", ["has", "name"], ["has", "name_en"], ["!=", ["get", "name"], ["get", "name_en"]]], ["format", ["get", "name"], {}, "\n", {}, ["get", "name_en"], {}], ["coalesce", ["get", "name"], ["get", "name_en"]]],
+        "text-font": ["Noto Sans Italic"],
+        "text-size": ["interpolate", ["exponential", 1.2], ["zoom"], 10, 10, 14, 14],
+        "text-letter-spacing": 0.04,
+        "text-max-width": 8
+      },
+      "paint": {
+        "text-color": "#4f5f54",
+        "text-halo-color": "rgba(255,255,255,0.82)",
         "text-halo-width": 1.2
       }
     },

@@ -620,10 +620,11 @@ def test_pane_map_view_is_maplibre_based() -> None:
     assert_layer_order(
         "background", "ocean", "landcover-glacier", "landuse-residential", "landuse-commercial",
         "landuse-industrial", "landuse-cemetery", "landuse-hospital", "landuse-school", "landuse-railway",
-        "landcover-wood", "landcover-grass", "landcover-grass-park", "dam-polygons", "dam-lines",
-        "waterway_tunnel", "waterway-other", "waterway-other-intermittent", "waterway-stream-canal",
-        "waterway-stream-canal-intermittent", "waterway-river", "waterway-river-intermittent",
-        "water", "water-intermittent", "landcover-ice-shelf", "landcover-sand", "building",
+        "landcover-wood", "landcover-grass", "landcover-wetland", "landcover-rock", "landcover-farmland",
+        "landcover-grass-park", "dam-polygons", "dam-lines", "waterway_tunnel", "waterway-other",
+        "waterway-other-intermittent", "waterway-stream-canal", "waterway-stream-canal-intermittent",
+        "waterway-river", "waterway-river-intermittent", "water", "water-intermittent",
+        "landcover-ice-shelf", "landcover-sand", "building",
         "building-top",
     )
     assert_layer_order(
@@ -656,7 +657,7 @@ def test_pane_map_view_is_maplibre_based() -> None:
         "road_oneway", "road_oneway_opposite", "poi-level-3", "poi-level-2", "poi-level-1", "poi-railway",
         "highway-name-path", "highway-name-minor", "highway-name-major", "highway-shield",
         "highway-shield-us-interstate", "highway-shield-us-highway", "highway-shield-long-ref", "ferry-labels",
-        "airport-label-major", "place-other", "place-village", "place-town", "place-city",
+        "airport-label-major", "place-other", "place-island", "place-village", "place-town", "place-city",
         "place-city-medium", "place-city-small", "place-city-capital", "place-state", "place-country-other",
         "place-country-3", "place-country-2", "place-country-1", "place-continent",
     )
@@ -668,6 +669,7 @@ def test_pane_map_view_is_maplibre_based() -> None:
     place_town = layer_by_id["place-town"]
     place_village = layer_by_id["place-village"]
     place_other = layer_by_id["place-other"]
+    place_island = layer_by_id["place-island"]
     local_place_text_field = [
         "case",
         ["all", ["has", "name"], ["has", "name_en"], ["!=", ["get", "name"], ["get", "name_en"]]],
@@ -698,6 +700,13 @@ def test_pane_map_view_is_maplibre_based() -> None:
     assert place_other["layout"]["text-transform"] == "uppercase"
     assert place_other["layout"]["text-letter-spacing"] == 0.1
     assert place_other["layout"]["text-field"] == local_place_text_field
+    assert place_island["minzoom"] == 10
+    assert "maxzoom" not in place_island
+    assert place_island["filter"] == ["==", ["get", "kind"], "island"]
+    assert place_island["layout"]["text-field"] == local_place_text_field
+    assert place_island["layout"]["text-font"] == ["Noto Sans Italic"]
+    assert place_island["layout"]["text-size"] == ["interpolate", ["exponential", 1.2], ["zoom"], 10, 10, 14, 14]
+    assert place_island["paint"]["text-color"] == "#4f5f54"
     assert place_village["minzoom"] == 11
     assert place_village["filter"] == ["==", ["get", "kind"], "village"]
     assert place_village["layout"]["text-field"] == local_place_text_field
@@ -801,6 +810,13 @@ def test_pane_map_view_is_maplibre_based() -> None:
         True,
         False,
     ]
+    assert layer_by_id["landcover-grass"]["filter"] == [
+        "match",
+        ["get", "kind"],
+        ["grass", "grassland", "meadow", "park", "recreation_ground", "garden", "playground", "golf_course", "scrub", "heath"],
+        True,
+        False,
+    ]
     assert layer_by_id["landcover-grass"]["paint"]["fill-color"] == [
         "match",
         ["get", "kind"],
@@ -808,6 +824,30 @@ def test_pane_map_view_is_maplibre_based() -> None:
         "#e5ecd4",
         "#d8e8c8",
     ]
+    assert layer_by_id["landcover-wetland"]["filter"] == [
+        "match",
+        ["get", "kind"],
+        ["marsh", "swamp", "bog", "wet_meadow"],
+        True,
+        False,
+    ]
+    assert layer_by_id["landcover-wetland"]["paint"]["fill-color"] == "#d5e7df"
+    assert layer_by_id["landcover-rock"]["filter"] == [
+        "match",
+        ["get", "kind"],
+        ["bare_rock", "scree", "shingle"],
+        True,
+        False,
+    ]
+    assert layer_by_id["landcover-rock"]["paint"]["fill-color"] == "#e1d7c9"
+    assert layer_by_id["landcover-farmland"]["filter"] == [
+        "match",
+        ["get", "kind"],
+        ["farmland", "farmyard", "orchard"],
+        True,
+        False,
+    ]
+    assert layer_by_id["landcover-farmland"]["paint"]["fill-color"] == "#eee6c8"
     assert layer_by_id["landcover-sand"]["paint"]["fill-color"] == "#f2e4bf"
     assert layer_by_id["landcover-grass-park"]["source-layer"] == "sites"
     assert layer_by_id["landcover-grass-park"]["filter"] == [
