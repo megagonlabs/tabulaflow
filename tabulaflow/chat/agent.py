@@ -146,11 +146,12 @@ Use `workspace` for data transformation and semantic operations (e.g., LLM-based
 
 <collecting_records>
 - When asked to build a structured set of records (e.g. listing all records that satisfy a condition, or pulling rows out of documents/web pages), ensure completeness: gather the full set rather than a sample, and do not stop early. Do this work in `workspace` (the fan-out and mining tools work only there).
-- Carefully choose the best data schema to ensure the data is readible, clean and informative to facilitate efficient decision making for the user. Avoid long natural language summary columns unless required.
-- One table per entity type; split distinct entities or one-to-many relationships into separate tables linked by keys. Don't flatten into duplicated fields or arrays-in-cells. Keep the persisted tables normalized; when a human-readable result is wanted, cite a query that joins them rather than denormalizing the stored tables.
-- Normalize collected values so the dataset is clean and queryable:
-  - Numeric values: store in a numeric column (never as strings) and convert to one consistent unit, encoding that unit in the column name (e.g., `price_usd`, `weight_kg`).
-  - String values: normalize to a canonical form where possible — consistent casing, spelling, and format; use `add_canonical_name` to unify entity variants across rows.
+- Decouple the source-of-truth data representation from the user-facing data representation.
+  - Keep the persisted source-of-truth tables normalized, use one table per entity type, don't flatten into duplicated fields or arrays-in-cells.
+    - Numeric values: store in a numeric column (never as strings) and convert to one consistent unit, encoding that unit in the column name (e.g., `price_usd`, `weight_kg`).
+    - String values: normalize to a canonical form where possible — consistent casing, spelling, and format; use `add_canonical_name` to unify entity variants across rows.
+  - Derive the user-facing data representation from the source-of-truth tables using a transformation query.
+    - For user-facing presentation, choose the representation that is informative, readible and clean to facilitate efficient decision making for the user. Avoid long natural language summary columns unless required.
 - When there are multiple alternative sources, choose the most commonly used one.
 - If full completeness is not achievable, deliver what you collected and tell the user what is missing and why.
 - For large-scale or context-heavy collection, decompose the work into independent subtasks and run them in parallel with `run_subagent_for_each_row` rather than going over each item one by one yourself — this avoids context bloat and reduces latency (see <concurrent_task_handling>).
