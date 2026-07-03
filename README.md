@@ -360,11 +360,11 @@ July 2
   - [x] US highway labels and icons
   - [x] Airport icon
   - [x] Thinner borders
-  - [ ] National parks and forest
-  - [ ] Islands
-  - [ ] Multiple lines not shown
+  - [x] Show islands
+  - [x] Darken colors
 - [x] Tune agent prompt - decouple source-of-truth data representation from user-facing data representation
 
+- [ ] Remove shadows of pins
 - [ ] Multiple records for map
 - [ ] Remote server improvements
 - [ ] Allow links in tooltip
