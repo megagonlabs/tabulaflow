@@ -355,13 +355,15 @@ July 1
 - [x] Vector map using maplibre + OpenStreetMap vector tiles
 
 July 2
-- [x] Map legend
-- [x] US highway labels and icons
-- [x] Airport icon
-- [ ] Thinner borders
-- [ ] National parks and forest
-- [ ] Islands
-- [ ] Multiple lines not shown
+- Map rendering
+  - [x] Map legend
+  - [x] US highway labels and icons
+  - [x] Airport icon
+  - [x] Thinner borders
+  - [ ] National parks and forest
+  - [ ] Islands
+  - [ ] Multiple lines not shown
+- [x] Tune agent prompt - decouple source-of-truth data representation from user-facing data representation
 
 - [ ] Multiple records for map
 - [ ] Remote server improvements
