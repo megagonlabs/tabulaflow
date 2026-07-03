@@ -1097,7 +1097,7 @@ def test_pane_map_view_is_maplibre_based() -> None:
     assert layer_by_id["boundary-land-level-4-fallback"]["paint"] == {
         "line-color": "#333333",
         "line-dasharray": [3, 1, 1, 1],
-        "line-width": ["interpolate", ["exponential", 1.4], ["zoom"], 4, 0.4, 5, 1, 12, 3],
+        "line-width": ["interpolate", ["exponential", 1.4], ["zoom"], 4, 0.35, 5, 0.8, 12, 2.4],
     }
     assert layer_by_id["boundary-land-level-4"]["minzoom"] == 7
     assert layer_by_id["boundary-land-level-4"]["filter"] == [
@@ -1118,11 +1118,11 @@ def test_pane_map_view_is_maplibre_based() -> None:
         ["exponential", 1.4],
         ["zoom"],
         4,
-        0.4,
+        0.35,
         5,
-        1,
+        0.8,
         12,
-        3,
+        2.4,
     ]
     assert layer_by_id["boundary-land-level-2-fallback"]["source"] == "natural-earth-admin0-boundaries"
     assert layer_by_id["boundary-land-level-2-fallback"]["minzoom"] == 1
@@ -1134,7 +1134,7 @@ def test_pane_map_view_is_maplibre_based() -> None:
     }
     assert layer_by_id["boundary-land-level-2-fallback"]["paint"] == {
         "line-color": "#333333",
-        "line-width": ["interpolate", ["linear"], ["zoom"], 0, 0.5, 4, 0.8, 6, 1.2, 12, 3],
+        "line-width": ["interpolate", ["linear"], ["zoom"], 0, 0.4, 4, 0.65, 6, 1, 12, 2.4],
     }
     assert layer_by_id["boundary-land-level-2"]["filter"] == [
         "all",
@@ -1155,13 +1155,13 @@ def test_pane_map_view_is_maplibre_based() -> None:
         ["linear"],
         ["zoom"],
         0,
-        0.5,
+        0.4,
         4,
-        0.8,
+        0.65,
         6,
-        1.2,
+        1,
         12,
-        3,
+        2.4,
     ]
     assert layer_by_id["boundary-land-disputed"]["filter"] == [
         "all",
@@ -1181,13 +1181,13 @@ def test_pane_map_view_is_maplibre_based() -> None:
         ["linear"],
         ["zoom"],
         0,
-        0.5,
+        0.4,
         4,
-        0.8,
+        0.65,
         6,
-        1.2,
+        1,
         12,
-        3,
+        2.4,
     ]
     assert "boundary-water" not in layer_by_id
     assert layer_by_id["road_oneway"]["filter"] == [
