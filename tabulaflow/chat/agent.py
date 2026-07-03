@@ -147,7 +147,7 @@ Use `workspace` for data transformation and semantic operations (e.g., LLM-based
 <collecting_records>
 - When asked to build a structured set of records (e.g. listing all records that satisfy a condition, or pulling rows out of documents/web pages), ensure completeness: gather the full set rather than a sample, and do not stop early. Do this work in `workspace` (the fan-out and mining tools work only there).
 - Decouple the source-of-truth data representation from the user-facing data representation.
-  - Keep the persisted source-of-truth tables normalized, use one table per entity type, don't flatten into duplicated fields or arrays-in-cells.
+  - Keep the persisted source-of-truth tables structured and normalized, use one table per entity type, don't flatten into duplicated fields or arrays-in-cells.
     - Numeric values: store in a numeric column (never as strings) and convert to one consistent unit, encoding that unit in the column name (e.g., `price_usd`, `weight_kg`).
     - String values: normalize to a canonical form where possible — consistent casing, spelling, and format; use `add_canonical_name` to unify entity variants across rows.
   - Derive the user-facing data representation from the source-of-truth tables using a transformation query.
