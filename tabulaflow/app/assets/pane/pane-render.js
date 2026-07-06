@@ -804,11 +804,45 @@
   }
 
   function clearHoverPopup(map, popupState) {
+    if (popupState.hoverCloseTimer) {
+      clearTimeout(popupState.hoverCloseTimer);
+      popupState.hoverCloseTimer = null;
+    }
     map.getCanvas().style.cursor = '';
     if (popupState.hover) popupState.hover.remove();
     popupState.hover = null;
     popupState.hoverHtml = '';
     popupState.hoverAnchor = '';
+    popupState.hoverOverFeature = false;
+    popupState.hoverOverPopup = false;
+  }
+
+  function scheduleHoverPopupClose(map, popupState) {
+    popupState.hoverOverFeature = false;
+    if (popupState.hoverOverPopup) return;
+    if (popupState.hoverCloseTimer) clearTimeout(popupState.hoverCloseTimer);
+    popupState.hoverCloseTimer = setTimeout(function () {
+      popupState.hoverCloseTimer = null;
+      if (!popupState.hoverOverFeature && !popupState.hoverOverPopup) {
+        clearHoverPopup(map, popupState);
+      }
+    }, 60);
+  }
+
+  function bindHoverPopupPointer(map, popup, popupState) {
+    var element = popup && popup.getElement ? popup.getElement() : null;
+    if (!element) return;
+    element.addEventListener('mouseenter', function () {
+      popupState.hoverOverPopup = true;
+      if (popupState.hoverCloseTimer) {
+        clearTimeout(popupState.hoverCloseTimer);
+        popupState.hoverCloseTimer = null;
+      }
+    });
+    element.addEventListener('mouseleave', function () {
+      popupState.hoverOverPopup = false;
+      scheduleHoverPopupClose(map, popupState);
+    });
   }
 
   function syncHoverPopup(map, lngLat, html, popupState) {
@@ -817,10 +851,16 @@
       return;
     }
     map.getCanvas().style.cursor = 'pointer';
+    popupState.hoverOverFeature = true;
+    if (popupState.hoverCloseTimer) {
+      clearTimeout(popupState.hoverCloseTimer);
+      popupState.hoverCloseTimer = null;
+    }
     var hoverAnchor = JSON.stringify(lngLat);
     if (!popupState.hover || popupState.hoverHtml !== html || popupState.hoverAnchor !== hoverAnchor) {
       if (popupState.hover) popupState.hover.remove();
       popupState.hover = renderMapPopup(map, lngLat, html, 'tf-map-detail-tooltip', false);
+      bindHoverPopupPointer(map, popupState.hover, popupState);
       popupState.hoverHtml = html;
       popupState.hoverAnchor = hoverAnchor;
       return;
@@ -828,11 +868,17 @@
   }
 
   function setClickPopup(map, lngLat, html, popupState) {
+    if (popupState.hoverCloseTimer) {
+      clearTimeout(popupState.hoverCloseTimer);
+      popupState.hoverCloseTimer = null;
+    }
     if (popupState.hover) popupState.hover.remove();
     if (popupState.click) popupState.click.remove();
     popupState.hover = null;
     popupState.hoverHtml = '';
     popupState.hoverAnchor = '';
+    popupState.hoverOverFeature = false;
+    popupState.hoverOverPopup = false;
     var popup = renderMapPopup(map, lngLat, html, 'tf-map-detail-popup', true);
     popupState.click = popup;
     if (popup && popup.on) {
@@ -848,13 +894,13 @@
       var feature = firstPopupFeature(map.queryRenderedFeatures(event.point, { layers: layerIds }));
       var html = mapFeaturePopup(feature);
       if (!html) {
-        clearHoverPopup(map, popupState);
+        scheduleHoverPopupClose(map, popupState);
         return;
       }
       syncHoverPopup(map, mapFeatureAnchor(feature, event.lngLat), html, popupState);
     });
     map.on('mouseleave', function () {
-      clearHoverPopup(map, popupState);
+      scheduleHoverPopupClose(map, popupState);
     });
     map.on('click', function (event) {
       var feature = firstPopupFeature(map.queryRenderedFeatures(event.point, { layers: layerIds }));
@@ -981,7 +1027,15 @@
     var mapInitToken = 0;
     var markers = [];
     var dataBounds = null;
-    var popupState = { hover: null, hoverHtml: '', click: null };
+    var popupState = {
+      hover: null,
+      hoverHtml: '',
+      hoverAnchor: '',
+      hoverOverFeature: false,
+      hoverOverPopup: false,
+      hoverCloseTimer: null,
+      click: null
+    };
     var detailLayerIds = [];
     var legendSections = [];
 
@@ -1089,10 +1143,17 @@
     }
 
     function destroyMap() {
+      if (popupState.hoverCloseTimer) {
+        clearTimeout(popupState.hoverCloseTimer);
+        popupState.hoverCloseTimer = null;
+      }
       if (popupState.hover) popupState.hover.remove();
       if (popupState.click) popupState.click.remove();
       popupState.hover = null;
       popupState.hoverHtml = '';
+      popupState.hoverAnchor = '';
+      popupState.hoverOverFeature = false;
+      popupState.hoverOverPopup = false;
       popupState.click = null;
       clearLegend(stageNode);
       markers.forEach(function (marker) { marker.remove(); });

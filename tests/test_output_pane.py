@@ -1493,6 +1493,13 @@ def test_pane_map_view_is_maplibre_based() -> None:
     assert "function mapFeatureAnchor(feature, fallback)" in renderer
     assert "popupState.hoverAnchor !== hoverAnchor" in renderer
     assert "popupState.hover.setLngLat(lngLat)" not in renderer
+    assert "function scheduleHoverPopupClose(map, popupState)" in renderer
+    assert "function bindHoverPopupPointer(map, popup, popupState)" in renderer
+    assert "element.addEventListener('mouseenter'" in renderer
+    assert "element.addEventListener('mouseleave'" in renderer
+    assert "popupState.hoverOverPopup = false;\n      scheduleHoverPopupClose(map, popupState);" in renderer
+    assert "setTimeout(function ()" in renderer
+    assert "}, 60);" in renderer
     assert "syncHoverPopup(map, mapFeatureAnchor(feature, event.lngLat), html, popupState)" in renderer
     assert "setClickPopup(map, mapFeatureAnchor(feature, event.lngLat), html, popupState)" in renderer
     assert "if (popupState.click) {\n      clearHoverPopup(map, popupState);" in renderer
@@ -1598,6 +1605,7 @@ def test_pane_map_view_is_maplibre_based() -> None:
     assert ".tf-map-pin {" in _PANE_HTML
     assert "pointer-events: none; transform: translateY(1px);" in _PANE_HTML
     assert ".tf-map-view .maplibregl-popup.tf-map-detail-tooltip .maplibregl-popup-content," in _PANE_HTML
+    assert ".tf-map-view .maplibregl-popup.tf-map-detail-tooltip .maplibregl-popup-content { pointer-events: auto; }" in _PANE_HTML
     assert "padding: 9px 14px 9px 12px; background: #fff; border: 0; border-radius: 12px;" in _PANE_HTML
     assert ".tf-map-view .maplibregl-popup.tf-map-detail-popup .maplibregl-popup-tip { display: none; }" in _PANE_HTML
     assert "max-width: min(420px, 72vw); color: #111827;" in _PANE_HTML
