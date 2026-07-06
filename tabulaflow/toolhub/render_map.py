@@ -381,7 +381,8 @@ class RenderMapTool:
         - Common layer fields:
           ``label``: optional field name for the short feature identity.
           ``tooltip``: optional field name, list of field names, or ``true``;
-          shown on hover and click.
+          shown on hover and click. String values that are full ``http(s)``
+          URLs render as links.
           ``color``: optional ``{"field":"status"}`` or
           ``{"field":"status","domain":[...]}``; the output pane chooses the
           palette.

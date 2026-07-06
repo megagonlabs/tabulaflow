@@ -213,6 +213,7 @@ body,
 /* URL cells: mint accent, underline on hover — clickable, opens in new tab. */
 .cell-link { color: var(--accent); text-decoration: none; }
 .cell-link:hover { text-decoration: underline; }
+.cell-link:focus { outline: none; }
 img { max-height: 96px; max-width: 200px; display: block; }
 audio { max-width: 240px; display: block; }
 /* Native audio controls are cream-colored across all browsers; flip via

@@ -215,6 +215,12 @@ class TestRenderTableHtml:
         render_table_html(df, html_path)
         assert '<div id="table-wrap"><div id="table"></div></div>' in html_path.read_text()
 
+    def test_url_links_do_not_draw_focus_outline(self, tmp_path: Path) -> None:
+        df = pd.DataFrame({"url": ["https://example.com"]})
+        html_path = tmp_path / "T_links.html"
+        render_table_html(df, html_path)
+        assert ".cell-link:focus { outline: none; }" in html_path.read_text()
+
     def test_mixed_column_not_treated_as_media(self, tmp_path: Path) -> None:
         df = pd.DataFrame({"col": [PNG_MAGIC, "plain string", 42, None, b"random"]})
         html_path = tmp_path / "T_mix.html"

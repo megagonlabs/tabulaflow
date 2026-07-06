@@ -159,6 +159,15 @@ def _manual_table_card(pane_dir: Path) -> PaneRecord:
             ]
             * 2,
             "expected_answer": ["Vatican City", "32", "2", "Au", "1945", "6"] * 2,
+            "source_url": [
+                "https://www.cia.gov/the-world-factbook/countries/holy-see-vatican-city/",
+                "https://www.weather.gov/safety/cold-water",
+                "https://oeis.org/A000040",
+                "https://pubchem.ncbi.nlm.nih.gov/element/Gold",
+                "https://www.nationalww2museum.org/war/articles/world-war-ii-end-dates",
+                "https://mathworld.wolfram.com/Hexagon.html",
+            ]
+            * 2,
         }
     )
     card = render_record_data(_record(record_id="manual", label="", query=None, df=df), pane_dir)
@@ -240,6 +249,7 @@ def _map_record() -> SimpleNamespace:
             {
                 "name": "Red pin marker",
                 "kind": "points layer",
+                "url": "https://www.sanjose.org/",
                 "lat": 37.3336,
                 "lng": -121.8906,
                 "geom": None,
@@ -247,6 +257,7 @@ def _map_record() -> SimpleNamespace:
             {
                 "name": "GeoJSON point",
                 "kind": "Point",
+                "url": "https://geojson.org/",
                 "lat": None,
                 "lng": None,
                 "geom": {"type": "Point", "coordinates": [-121.8815, 37.3394]},
@@ -254,6 +265,7 @@ def _map_record() -> SimpleNamespace:
             {
                 "name": "GeoJSON multipoint",
                 "kind": "MultiPoint",
+                "url": "https://datatracker.ietf.org/doc/html/rfc7946#section-3.1.3",
                 "lat": None,
                 "lng": None,
                 "geom": {
@@ -264,6 +276,7 @@ def _map_record() -> SimpleNamespace:
             {
                 "name": "GeoJSON line",
                 "kind": "LineString",
+                "url": "https://datatracker.ietf.org/doc/html/rfc7946#section-3.1.4",
                 "lat": None,
                 "lng": None,
                 "geom": {
@@ -274,6 +287,7 @@ def _map_record() -> SimpleNamespace:
             {
                 "name": "GeoJSON multiline",
                 "kind": "MultiLineString",
+                "url": "https://datatracker.ietf.org/doc/html/rfc7946#section-3.1.5",
                 "lat": None,
                 "lng": None,
                 "geom": {
@@ -287,6 +301,7 @@ def _map_record() -> SimpleNamespace:
             {
                 "name": "GeoJSON polygon",
                 "kind": "Polygon",
+                "url": "https://datatracker.ietf.org/doc/html/rfc7946#section-3.1.6",
                 "lat": None,
                 "lng": None,
                 "geom": {
@@ -305,6 +320,7 @@ def _map_record() -> SimpleNamespace:
             {
                 "name": "GeoJSON multipolygon",
                 "kind": "MultiPolygon",
+                "url": "https://datatracker.ietf.org/doc/html/rfc7946#section-3.1.7",
                 "lat": None,
                 "lng": None,
                 "geom": {
@@ -334,6 +350,7 @@ def _map_record() -> SimpleNamespace:
             {
                 "name": "GeoJSON geometry collection",
                 "kind": "GeometryCollection",
+                "url": "https://datatracker.ietf.org/doc/html/rfc7946#section-3.1.8",
                 "lat": None,
                 "lng": None,
                 "geom": {
@@ -352,7 +369,7 @@ def _map_record() -> SimpleNamespace:
     return _record(
         record_id="QDEBUG_MAP",
         label="geometry_showcase",
-        query=("-- synthetic geometry showcase\nSELECT name, kind, lat, lng, geom\nFROM geometry_showcase"),
+        query=("-- synthetic geometry showcase\nSELECT name, kind, url, lat, lng, geom\nFROM geometry_showcase"),
         df=df,
         map_spec={
             "title": "Geometry showcase",
@@ -362,14 +379,14 @@ def _map_record() -> SimpleNamespace:
                     "lat": "lat",
                     "lng": "lng",
                     "label": "name",
-                    "tooltip": ["name", "kind"],
+                    "tooltip": ["name", "kind", "url"],
                     "color": {"field": "kind"},
                 },
                 {
                     "type": "geojson",
                     "geojson": "geom",
                     "label": "name",
-                    "tooltip": ["name", "kind"],
+                    "tooltip": ["name", "kind", "url"],
                     "color": {"field": "kind"},
                 },
                 {
@@ -380,10 +397,11 @@ def _map_record() -> SimpleNamespace:
                             "lng": -121.890,
                             "label": "Inline destination",
                             "kind": "inline point",
+                            "url": "https://www.sanjose.org/",
                         }
                     ],
                     "label": "label",
-                    "tooltip": ["label", "kind"],
+                    "tooltip": ["label", "kind", "url"],
                     "color": {"field": "kind"},
                 },
             ],

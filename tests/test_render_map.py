@@ -168,6 +168,9 @@ class TestNormalizeMapSpec:
 
 
 class TestRenderMapTool:
+    def test_tool_description_mentions_url_tooltip_links(self) -> None:
+        assert "URLs render as links" in RenderMapTool.__call__.__doc__
+
     async def test_record_id_required(self) -> None:
         history = await _history_with(pd.DataFrame({"lat": [37.7], "lng": [-122.4]}))
         spec = {"layers": [{"type": "points", "lat": "lat", "lng": "lng"}]}

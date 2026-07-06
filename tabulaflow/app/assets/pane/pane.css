@@ -152,6 +152,7 @@ body { margin: 0; background: var(--bg); color: var(--text); display: flex; flex
 .file-link .file-size { color: var(--text-dim); font-size: 12px; }
 .cell-link { color: var(--accent); text-decoration: none; }
 .cell-link:hover { text-decoration: underline; }
+.cell-link:focus { outline: none; }
 .tf-table-view img { max-height: 96px; max-width: 200px; display: block; }
 .tf-table-view audio { max-width: 240px; display: block; filter: invert(0.92) hue-rotate(180deg); }
 .tf-table-view video { width: 240px; height: 160px; object-fit: contain; background: #000; display: block; }

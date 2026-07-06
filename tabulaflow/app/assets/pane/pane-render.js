@@ -432,6 +432,19 @@
     return [];
   }
 
+  function detailValueHtml(value) {
+    var text = displayValue(value);
+    var urls = typeof value === 'string' ? asUrls(text) : null;
+    if (urls) {
+      if (text.trim().charAt(0) === '[') {
+        return '[' + urls.map(function (u) { return '"' + link(u, u) + '"'; }).join(', ') + ']';
+      }
+      if (urls.length === 1) return link(urls[0], urls[0]);
+      return urls.map(function (u) { return link(u, u); }).join(' ');
+    }
+    return escapeHtml(text);
+  }
+
   function detailHtml(row, tooltip, labels, fallback, labelField) {
     var fields = tooltipFields(tooltip, row);
     var label = fallback == null ? '' : displayValue(fallback);
@@ -442,7 +455,7 @@
     fields.forEach(function (field) {
       var value = fieldValue(row, field);
       if (value == null || !safeScalar(value)) return;
-      rows += '<tr><th>' + escapeHtml(labels[field] || field) + '</th><td>' + escapeHtml(displayValue(value)) + '</td></tr>';
+      rows += '<tr><th>' + escapeHtml(labels[field] || field) + '</th><td>' + detailValueHtml(value) + '</td></tr>';
     });
     if (!label && !rows) return '';
     var html = '<div class="tf-map-popup">';
