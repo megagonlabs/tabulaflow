@@ -365,10 +365,12 @@ July 2
 - [x] Tune agent prompt - decouple source-of-truth data representation from user-facing data representation
 
 July 6
-- [ ] Remove shadows of pins
+- [x] Remove shadows of pins
+- [x] Allow links in tooltip
 - [ ] Multiple records for map
+
 - [ ] Remote server improvements
-- [ ] Allow links in tooltip
+
 - [ ] Graph rendering
 - [ ] code diff rendering
 
