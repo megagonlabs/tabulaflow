@@ -1469,6 +1469,10 @@ def test_pane_map_view_is_maplibre_based() -> None:
     assert "num: function (cell)" in renderer
     assert "escapeHtml(formatNumber(v))" in renderer
     assert "function detailValueHtml(value)" in renderer
+    assert "function tooltipUrlLabel(url)" in renderer
+    assert "return text.slice(0, 40) + '...' + text.slice(-13);" in renderer
+    assert "function tooltipLink(href)" in renderer
+    assert "+ '\" title=\"' + escapeAttr(href)" in renderer
     assert "var urls = typeof value === 'string' ? asUrls(text) : null;" in renderer
     assert "detailValueHtml(value) + '</td></tr>'" in renderer
     assert "if (mapData.lat && mapData.lng)" not in renderer

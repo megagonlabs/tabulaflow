@@ -74,6 +74,18 @@
       + '" target="_blank" rel="noopener">' + escapeHtml(text) + '</a>';
   }
 
+  function tooltipUrlLabel(url) {
+    var text = String(url);
+    if (text.length <= 56) return text;
+    return text.slice(0, 40) + '...' + text.slice(-13);
+  }
+
+  function tooltipLink(href) {
+    return '<a class="cell-link" href="' + escapeAttr(href)
+      + '" title="' + escapeAttr(href)
+      + '" target="_blank" rel="noopener">' + escapeHtml(tooltipUrlLabel(href)) + '</a>';
+  }
+
   function numberValue(value) {
     if (value == null || typeof value === 'boolean') return null;
     if (typeof value === 'string' && value.trim() === '') return null;
@@ -437,10 +449,10 @@
     var urls = typeof value === 'string' ? asUrls(text) : null;
     if (urls) {
       if (text.trim().charAt(0) === '[') {
-        return '[' + urls.map(function (u) { return '"' + link(u, u) + '"'; }).join(', ') + ']';
+        return '[' + urls.map(function (u) { return '"' + tooltipLink(u) + '"'; }).join(', ') + ']';
       }
-      if (urls.length === 1) return link(urls[0], urls[0]);
-      return urls.map(function (u) { return link(u, u); }).join(' ');
+      if (urls.length === 1) return tooltipLink(urls[0]);
+      return urls.map(function (u) { return tooltipLink(u); }).join(' ');
     }
     return escapeHtml(text);
   }
