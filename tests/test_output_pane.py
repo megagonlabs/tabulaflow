@@ -1514,7 +1514,7 @@ def test_pane_map_view_is_maplibre_based() -> None:
     assert "function pinColorRamp(color)" in renderer
     assert "function mixHex(a, b, amount)" in renderer
     assert "top: mixHex(base, '#ffffff', 0.46)" in renderer
-    assert "outline: mixHex(base, '#000000', 0.34)" in renderer
+    assert "outline: mixHex(base, '#000000', 0.24)" in renderer
     assert "function mapPinElement(color, scale, title)" in renderer
     assert "node.className = 'tf-map-pin';" in renderer
     assert "node.setAttribute('aria-label', title)" in renderer

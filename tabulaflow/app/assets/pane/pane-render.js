@@ -376,7 +376,7 @@
     return {
       top: mixHex(base, '#ffffff', 0.46),
       bottom: base,
-      outline: mixHex(base, '#000000', 0.34)
+      outline: mixHex(base, '#000000', 0.24)
     };
   }
 
