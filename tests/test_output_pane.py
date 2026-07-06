@@ -1502,6 +1502,7 @@ def test_pane_map_view_is_maplibre_based() -> None:
     assert "__tfPinHitRadius: Math.max(24, 26 * pinScale)" in renderer
     assert "function addPinHitLayer(map, id, sourceId)" in renderer
     assert "'circle-radius': ['coalesce', ['get', '__tfPinHitRadius'], 26]" in renderer
+    assert "'circle-opacity': 0" in renderer
     assert "'circle-translate': [0, -20]" in renderer
     assert "var pinHitId = sourceId + '-pin-hit';" in renderer
     assert "detailLayerIds.push(pinHitId);" in renderer

@@ -364,6 +364,7 @@ July 2
   - [x] Darken colors
 - [x] Tune agent prompt - decouple source-of-truth data representation from user-facing data representation
 
+July 6
 - [ ] Remove shadows of pins
 - [ ] Multiple records for map
 - [ ] Remote server improvements

@@ -863,7 +863,7 @@
       paint: {
         'circle-radius': ['coalesce', ['get', '__tfPinHitRadius'], 26],
         'circle-color': '#000000',
-        'circle-opacity': 0.01,
+        'circle-opacity': 0,
         'circle-stroke-opacity': 0,
         'circle-translate': [0, -20]
       }
