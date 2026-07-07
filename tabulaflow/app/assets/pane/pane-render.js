@@ -499,6 +499,41 @@
     return mapPalette[hash % mapPalette.length];
   }
 
+  // When a categorical color encoding has no explicit domain, derive one from the
+  // layer's data (first-seen order) so distinct categories get distinct palette
+  // slots by index instead of by hash (which can collide). An explicit domain is
+  // left untouched.
+  function withDerivedColorDomain(layer, rows) {
+    var encoding = layer && layer.color;
+    if (!encoding || typeof encoding !== 'object' || Array.isArray(encoding) || Array.isArray(encoding.domain)) {
+      return layer;
+    }
+    var field = encodingField(encoding);
+    if (!field) return layer;
+    var seen = {};
+    var domain = [];
+    rows.forEach(function (row) {
+      var value = fieldValue(row, field);
+      if (value == null) return;
+      var key = String(value);
+      if (seen[key]) return;
+      seen[key] = true;
+      domain.push(value);
+    });
+    if (!domain.length) return layer;
+    var colorCopy = {};
+    for (var ck in encoding) {
+      if (Object.prototype.hasOwnProperty.call(encoding, ck)) colorCopy[ck] = encoding[ck];
+    }
+    colorCopy.domain = domain;
+    var layerCopy = {};
+    for (var lk in layer) {
+      if (Object.prototype.hasOwnProperty.call(layer, lk)) layerCopy[lk] = layer[lk];
+    }
+    layerCopy.color = colorCopy;
+    return layerCopy;
+  }
+
   function legendValues(encoding, items) {
     var field = encodingField(encoding);
     if (!field) return null;
@@ -1069,6 +1104,7 @@
       layers.forEach(function (layer, index) {
         var rows = rowsFor(layer);
         var labels = labelsFor(layer);
+        layer = withDerivedColorDomain(layer, rows);
         if (!layer || layer.type === 'points') {
           var pointData = buildPointFeatures(layer || {}, rows, labels);
           if (!pointData.features.length) return;
