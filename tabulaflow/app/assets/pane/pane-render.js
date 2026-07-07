@@ -136,9 +136,9 @@
     return text;
   }
 
-  function renderTable(container, recordData) {
-    var tableData = recordData.table || {};
-    var rows = (recordData.dataset && recordData.dataset.rows) || [];
+  function renderTable(container, cardData) {
+    var tableData = cardData.table || {};
+    var rows = (cardData.dataset && cardData.dataset.rows) || [];
     var displayCap = tableData.displayCap || 120;
     var wrapClass = rows.length <= 12 ? 'tf-table-wrap pane-short' : 'tf-table-wrap';
     container.className = 'tf-view tf-table-view';
@@ -296,9 +296,9 @@
     return { destroy: function () { table.destroy(); closeModal(); } };
   }
 
-  function renderChart(container, recordData) {
-    var chartData = recordData.chart || {};
-    var rows = (recordData.dataset && recordData.dataset.rows) || [];
+  function renderChart(container, cardData) {
+    var chartData = cardData.chart || {};
+    var rows = (cardData.dataset && cardData.dataset.rows) || [];
     var spec = clone(chartData.spec || {});
     spec.data = { values: rows };
     container.className = 'tf-view tf-chart-view';
@@ -430,8 +430,8 @@
     return out;
   }
 
-  function fieldLabels(recordData) {
-    return fieldLabelsFromColumns(recordData.table && recordData.table.columns);
+  function fieldLabels(cardData) {
+    return fieldLabelsFromColumns(cardData.table && cardData.table.columns);
   }
 
   function safeScalar(value) {
@@ -1029,11 +1029,11 @@
     return [id + '-fill', id + '-outline', id + '-line', id + '-point'];
   }
 
-  function renderMap(container, recordData) {
-    var mapData = recordData.map || {};
-    var datasets = recordData.datasets || {};
-    var fallbackRows = (recordData.dataset && recordData.dataset.rows) || [];
-    var fallbackLabels = fieldLabels(recordData);
+  function renderMap(container, cardData) {
+    var mapData = cardData.map || {};
+    var datasets = cardData.datasets || {};
+    var fallbackRows = (cardData.dataset && cardData.dataset.rows) || [];
+    var fallbackLabels = fieldLabels(cardData);
     var labelsCache = {};
     var layers = mapLayers(mapData);
 
@@ -1283,8 +1283,8 @@
     };
   }
 
-  function renderQuery(container, recordData) {
-    var queryData = recordData.query || {};
+  function renderQuery(container, cardData) {
+    var queryData = cardData.query || {};
     var sql = String(queryData.sql || '');
     container.className = 'tf-view tf-query-view';
     container.innerHTML = '<section class="query-card"><div class="query-bar">'

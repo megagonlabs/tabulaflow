@@ -315,15 +315,15 @@ class ViewItem:
 
 
 @dataclass
-class RecordGroup:
+class CardGroup:
     """Display-ready views for one record, ordered Chart -> Data -> Query."""
 
     label: str
-    record_id: str
+    artifact_id: str
     views: list[ViewItem] = field(default_factory=list)
 
 
-def build_result_views(result: object, width: int = 80) -> list[RecordGroup]:
+def build_card_views(result: object, width: int = 80) -> list[CardGroup]:
     """Build per-artifact view groups from a ChatResult, in citation order.
 
     Query-result artifacts yield Chart -> Data -> Query views (absent kinds
@@ -335,7 +335,7 @@ def build_result_views(result: object, width: int = 80) -> list[RecordGroup]:
 
     assert isinstance(result, ChatResult)
 
-    groups: list[RecordGroup] = []
+    groups: list[CardGroup] = []
     used_labels: set[str] = set()
     for artifact in result.artifacts:
         base_label = artifact.label or "result"
@@ -344,9 +344,9 @@ def build_result_views(result: object, width: int = 80) -> list[RecordGroup]:
 
         if isinstance(artifact, ChatResultMap):
             groups.append(
-                RecordGroup(
+                CardGroup(
                     label=label,
-                    record_id=artifact.map_id,
+                    artifact_id=artifact.map_id,
                     views=[ViewItem(kind=VIEW_KIND_MAP, renderable=_build_map_card(artifact.map_spec))],
                 )
             )
@@ -382,7 +382,7 @@ def build_result_views(result: object, width: int = 80) -> list[RecordGroup]:
             )
 
         if views:
-            groups.append(RecordGroup(label=label, record_id=record.record_id, views=views))
+            groups.append(CardGroup(label=label, artifact_id=record.record_id, views=views))
 
     # Release DataFrame references — previews have been rendered to Rich renderables.
     for artifact in result.artifacts:

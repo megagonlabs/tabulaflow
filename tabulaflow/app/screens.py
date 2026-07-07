@@ -71,7 +71,7 @@ def _show_path(
     both agent results and explorer views.
     """
     try:
-        shown = bool(app.view_record_in_pane(record, title=title))  # type: ignore[attr-defined]
+        shown = bool(app.view_card_in_pane(record, title=title))  # type: ignore[attr-defined]
     except Exception:
         shown = False
     if shown:

@@ -28,8 +28,8 @@ import pandas as pd
 
 from tabulaflow.app import pane as pane_mod
 from tabulaflow.app.debug import debug_chart_fixtures
-from tabulaflow.app.pane_types import PaneRecord, PaneSource, record_payload, turn_payload
-from tabulaflow.app.render.cards import render_map_card_data, render_record_data
+from tabulaflow.app.pane_types import PaneCard, PaneSource, card_payload, turn_payload
+from tabulaflow.app.render.cards import render_map_data, render_record_data
 from tabulaflow.toolhub.render_map import normalize_map_spec
 
 
@@ -59,10 +59,10 @@ def _map_card(
     layers: list[dict[str, object]],
     sources: dict[str, pd.DataFrame],
     pane_dir: Path,
-) -> PaneRecord:
+) -> PaneCard:
     """Build a map card via the real spec → normalize → render pipeline."""
     normalized = normalize_map_spec({"title": title, "layers": layers}, sources)
-    card = render_map_card_data(
+    card = render_map_data(
         SimpleNamespace(map_id=map_id, label=label, map_spec=normalized, sources=sources),
         pane_dir,
     )
@@ -70,8 +70,8 @@ def _map_card(
     return card
 
 
-def _render_records(records: Sequence[SimpleNamespace], pane_dir: Path) -> list[PaneRecord]:
-    cards: list[PaneRecord] = []
+def _render_records(records: Sequence[SimpleNamespace], pane_dir: Path) -> list[PaneCard]:
+    cards: list[PaneCard] = []
     for record in records:
         card = render_record_data(record, pane_dir)
         if card is not None:
@@ -87,7 +87,7 @@ def _push_turn(
     user: str,
     assistant: str,
     records: Sequence[SimpleNamespace] = (),
-    cards: Sequence[PaneRecord] = (),
+    cards: Sequence[PaneCard] = (),
     source: PaneSource | None = None,
 ) -> None:
     pane.push(
@@ -95,7 +95,7 @@ def _push_turn(
             title=title,
             user=user,
             assistant=assistant,
-            records=[*cards, *_render_records(records, pane_dir)],
+            cards=[*cards, *_render_records(records, pane_dir)],
             source=source,
         )
     )
@@ -124,8 +124,8 @@ def _long_result_response(summary: str) -> str:
     )
 
 
-def _chart_cards(pane_dir: Path, *, limit: int | None) -> list[PaneRecord]:
-    cards: list[PaneRecord] = []
+def _chart_cards(pane_dir: Path, *, limit: int | None) -> list[PaneCard]:
+    cards: list[PaneCard] = []
     fixtures = debug_chart_fixtures()
     if limit is not None:
         fixtures = fixtures[:limit]
@@ -139,7 +139,7 @@ def _chart_cards(pane_dir: Path, *, limit: int | None) -> list[PaneRecord]:
     return cards
 
 
-def _many_record_cards(cards: Sequence[PaneRecord]) -> list[PaneRecord]:
+def _many_record_cards(cards: Sequence[PaneCard]) -> list[PaneCard]:
     if not cards:
         return []
     labels = [
@@ -157,12 +157,12 @@ def _many_record_cards(cards: Sequence[PaneRecord]) -> list[PaneRecord]:
         "warehouse_inventory_reconciliation_status",
     ]
     return [
-        record_payload(record_id=cards[i % len(cards)]["id"], label=label, views=cards[i % len(cards)]["views"])
+        card_payload(card_id=cards[i % len(cards)]["id"], label=label, views=cards[i % len(cards)]["views"])
         for i, label in enumerate(labels)
     ]
 
 
-def _manual_table_card(pane_dir: Path) -> PaneRecord:
+def _manual_table_card(pane_dir: Path) -> PaneCard:
     df = pd.DataFrame(
         {
             "sample_id": [f"ex-{i:04d}" for i in range(1, 13)],
@@ -193,7 +193,7 @@ def _manual_table_card(pane_dir: Path) -> PaneRecord:
     return card
 
 
-def _wide_manual_table_card(pane_dir: Path) -> PaneRecord:
+def _wide_manual_table_card(pane_dir: Path) -> PaneCard:
     rows = 1_000
     cols = 60
     data: dict[str, list[object]] = {
@@ -214,14 +214,14 @@ def _push_manual_table_turn(pane: pane_mod.OutputPane, pane_dir: Path) -> None:
         turn_payload(
             title="manual_table",
             source="manual",
-            records=[_manual_table_card(pane_dir)],
+            cards=[_manual_table_card(pane_dir)],
         )
     )
     pane.push(
         turn_payload(
             title="wide_manual_table",
             source="manual",
-            records=[_wide_manual_table_card(pane_dir)],
+            cards=[_wide_manual_table_card(pane_dir)],
         )
     )
 
@@ -261,7 +261,7 @@ def _large_agent_table_record() -> SimpleNamespace:
     )
 
 
-def _map_showcase_card(pane_dir: Path) -> PaneRecord:
+def _map_showcase_card(pane_dir: Path) -> PaneCard:
     df = pd.DataFrame(
         [
             {
@@ -427,7 +427,7 @@ def _map_showcase_card(pane_dir: Path) -> PaneRecord:
     )
 
 
-def _map_overlay_card(pane_dir: Path) -> PaneRecord:
+def _map_overlay_card(pane_dir: Path) -> PaneCard:
     """Multi-record overlay: neighborhood boundaries (Q1) + store points (Q2)."""
     areas = pd.DataFrame(
         [
@@ -437,7 +437,13 @@ def _map_overlay_card(pane_dir: Path) -> PaneRecord:
                 "boundary": {
                     "type": "Polygon",
                     "coordinates": [
-                        [[-121.895, 37.330], [-121.878, 37.330], [-121.878, 37.342], [-121.895, 37.342], [-121.895, 37.330]]
+                        [
+                            [-121.895, 37.330],
+                            [-121.878, 37.330],
+                            [-121.878, 37.342],
+                            [-121.895, 37.342],
+                            [-121.895, 37.330],
+                        ]
                     ],
                 },
             },
@@ -447,7 +453,13 @@ def _map_overlay_card(pane_dir: Path) -> PaneRecord:
                 "boundary": {
                     "type": "Polygon",
                     "coordinates": [
-                        [[-121.945, 37.370], [-121.915, 37.370], [-121.915, 37.395], [-121.945, 37.395], [-121.945, 37.370]]
+                        [
+                            [-121.945, 37.370],
+                            [-121.915, 37.370],
+                            [-121.915, 37.395],
+                            [-121.945, 37.395],
+                            [-121.945, 37.370],
+                        ]
                     ],
                 },
             },
@@ -627,7 +639,7 @@ def _populate_pane(
                 ]
                 * 3
             ),
-            records=[],
+            cards=[],
         )
     )
 
@@ -729,7 +741,7 @@ def _populate_pane(
                     title=card["label"] or f"query {i}",
                     user=f"Show fixture {i}.",
                     assistant="Here is the rendered chart, source data, and query for this fixture.",
-                    records=[card],
+                    cards=[card],
                 )
             )
 

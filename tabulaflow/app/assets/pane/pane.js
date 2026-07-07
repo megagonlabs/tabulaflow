@@ -19,8 +19,8 @@ function syncSegment(seg) {
   if (thumb && opt) { moveThumb(thumb, opt); }
 }
 
-function syncRecordHeader(bar) {
-  if (!bar || !bar.classList.contains('multi-record') || !bar.offsetWidth) return;
+function syncCardHeader(bar) {
+  if (!bar || !bar.classList.contains('multi-card') || !bar.offsetWidth) return;
   var tabs = bar.querySelector('.rectabs');
   var seg = bar.querySelector('.seg');
   if (!tabs) return;
@@ -37,7 +37,7 @@ function syncRecordHeader(bar) {
 
 window.addEventListener('resize', function () {
   requestAnimationFrame(function () {
-    document.querySelectorAll('.cardbar.multi-record').forEach(syncRecordHeader);
+    document.querySelectorAll('.cardbar.multi-card').forEach(syncCardHeader);
   });
 });
 
@@ -60,7 +60,7 @@ function buildTranscript(turn) {
 }
 
 function isManualPreview(turn) {
-  return turn.source === 'manual' && (turn.records || []).length === 1;
+  return turn.source === 'manual' && (turn.cards || []).length === 1;
 }
 
 function buildManualArtifactTitle(turn) {
@@ -71,8 +71,8 @@ function buildManualArtifactTitle(turn) {
 
 function turnMeta(turn) {
   var counts = { map: 0, chart: 0, table: 0 };
-  (turn.records || []).forEach(function (record) {
-    var kinds = record.views || [];
+  (turn.cards || []).forEach(function (card) {
+    var kinds = card.views || [];
     if (kinds.indexOf('map') !== -1) counts.map += 1;
     else if (kinds.indexOf('chart') !== -1) counts.chart += 1;
     else if (kinds.indexOf('data') !== -1) counts.table += 1;
@@ -103,11 +103,11 @@ function buildTurnItem(turn, index) {
   return it;
 }
 
-function buildRecordTabs(records, activeIndex, onSelect) {
+function buildCardTabs(cards, activeIndex, onSelect) {
   var tabs = el('div', 'rectabs');
-  records.forEach(function (record, i) {
+  cards.forEach(function (card, i) {
     var tab = el('button', 'rectab');
-    tab.textContent = record.label || ('result ' + (i + 1));
+    tab.textContent = card.label || ('result ' + (i + 1));
     tab.title = tab.textContent;
     tab.classList.toggle('active', i === activeIndex);
     tab.onclick = function () { onSelect(i); };
@@ -147,7 +147,7 @@ function viewOptionForKind(switcher, kind) {
 
 var turns = [];
 var activeTurn = -1;
-var recordDataCache = {};
+var cardDataCache = {};
 var viewCache = {};
 var navState = {};
 var lru = [];
@@ -160,22 +160,22 @@ function turnStateKey(turn, index) {
 
 function getTurnState(turn, index) {
   var key = turnStateKey(turn, index);
-  if (!navState[key]) navState[key] = { activeRecord: 0, views: {}, scrollTop: 0 };
+  if (!navState[key]) navState[key] = { activeCard: 0, views: {}, scrollTop: 0 };
   return navState[key];
 }
 
-function recordStateKey(record, recordIndex) {
-  return recordIndex + ':' + record.id;
+function cardStateKey(card, cardIndex) {
+  return cardIndex + ':' + card.id;
 }
 
-function savedViewKind(state, record, recordIndex, views) {
-  var saved = state.views[recordStateKey(record, recordIndex)];
+function savedViewKind(state, card, cardIndex, views) {
+  var saved = state.views[cardStateKey(card, cardIndex)];
   if (saved && views.indexOf(saved) !== -1) return saved;
   return views[0] || 'data';
 }
 
-function rememberViewKind(state, record, recordIndex, kind) {
-  state.views[recordStateKey(record, recordIndex)] = kind;
+function rememberViewKind(state, card, cardIndex, kind) {
+  state.views[cardStateKey(card, cardIndex)] = kind;
 }
 
 function contentScroller() {
@@ -249,23 +249,23 @@ function cacheTouch(key) {
   }
 }
 
-function fetchRecordData(record) {
-  var cached = recordDataCache[record.id];
+function fetchCardData(card) {
+  var cached = cardDataCache[card.id];
   if (cached) return cached.promise;
   cached = { data: null, promise: null };
-  cached.promise = fetch(record.id + '.data.json').then(function (response) {
+  cached.promise = fetch(card.id + '.data.json').then(function (response) {
     if (!response.ok) throw new Error('HTTP ' + response.status);
     return response.json();
   }).then(function (data) {
     cached.data = data;
     return data;
   });
-  recordDataCache[record.id] = cached;
+  cardDataCache[card.id] = cached;
   return cached.promise;
 }
 
-function getCachedRecordData(record) {
-  var cached = recordDataCache[record.id];
+function getCachedCardData(card) {
+  var cached = cardDataCache[card.id];
   return cached && cached.data ? cached.data : null;
 }
 
@@ -387,9 +387,9 @@ function stageDataView(entry, shell, key, meta) {
   revealStagedView(shell, key, entry.node);
 }
 
-function prewarmDataView(record, views, activeKind, shell) {
+function prewarmDataView(card, views, activeKind, shell) {
   if (activeKind === 'data' || views.indexOf('data') === -1) return;
-  var key = record.id + ':data';
+  var key = card.id + ':data';
   scheduleIdle(function () {
     if (!shell.isConnected) return;
     var entry = viewCache[key];
@@ -401,7 +401,7 @@ function prewarmDataView(record, views, activeKind, shell) {
       syncActiveShellView(shell);
       return;
     }
-    fetchRecordData(record).then(function (data) {
+    fetchCardData(card).then(function (data) {
       if (!shell.isConnected || viewCache[key]) return;
       var node = el('div', 'tf-view view-hidden');
       var entry = { node: node, handle: null, data: data, kind: 'data' };
@@ -414,8 +414,8 @@ function prewarmDataView(record, views, activeKind, shell) {
   });
 }
 
-function mountView(record, kind, shell, meta) {
-  var key = record.id + ':' + kind;
+function mountView(card, kind, shell, meta) {
+  var key = card.id + ':' + kind;
   var entry = viewCache[key];
   shell.className = 'view-shell view-' + kind;
   shell.dataset.activeViewKey = key;
@@ -441,7 +441,7 @@ function mountView(record, kind, shell, meta) {
   viewCache[key] = entry;
   cacheTouch(key);
   attachView(shell, node);
-  var cachedData = getCachedRecordData(record);
+  var cachedData = getCachedCardData(card);
   if (cachedData) {
     if (kind === 'data') {
       entry.data = cachedData;
@@ -452,7 +452,7 @@ function mountView(record, kind, shell, meta) {
     }
     return;
   }
-  fetchRecordData(record).then(function (data) {
+  fetchCardData(card).then(function (data) {
     entry.data = data;
     if (isActiveShellView(shell, key)) {
       if (kind === 'data') {
@@ -469,20 +469,20 @@ function mountView(record, kind, shell, meta) {
   });
 }
 
-function buildRecord(record, opts) {
-  var pane = el('div', 'recordpane');
+function buildCard(card, opts) {
+  var pane = el('div', 'cardpane');
   var bar = el('div', 'cardbar');
-  var views = record.views || [];
+  var views = card.views || [];
   var state = opts && opts.state;
-  var recordIndex = opts && opts.recordIndex != null ? opts.recordIndex : 0;
-  var activeKind = state ? savedViewKind(state, record, recordIndex, views) : (views[0] || 'data');
+  var cardIndex = opts && opts.cardIndex != null ? opts.cardIndex : 0;
+  var activeKind = state ? savedViewKind(state, card, cardIndex, views) : (views[0] || 'data');
   var shell = el('div', 'view-shell view-' + activeKind);
   var meta = el('div', 'viewmeta');
   var switcher = null;
 
   function showView(kind, opt, initial) {
     activeKind = kind;
-    if (state) rememberViewKind(state, record, recordIndex, kind);
+    if (state) rememberViewKind(state, card, cardIndex, kind);
     if (switcher) {
       switcher.opts.forEach(function (x) { x.classList.remove('active'); });
       if (opt) {
@@ -490,14 +490,14 @@ function buildRecord(record, opts) {
         moveThumb(switcher.thumb, opt);
       }
     }
-    mountView(record, kind, shell, meta);
-    prewarmDataView(record, views, kind, shell);
+    mountView(card, kind, shell, meta);
+    prewarmDataView(card, views, kind, shell);
     if (!initial && state) restoreTurnScroll(state);
   }
 
-  if (record.label) {
+  if (card.label) {
     var label = el('span', 'cardlabel');
-    label.textContent = record.label;
+    label.textContent = card.label;
     bar.appendChild(label);
   }
   if (views.length > 1) {
@@ -508,31 +508,31 @@ function buildRecord(record, opts) {
   pane.appendChild(shell);
   pane.appendChild(meta);
   if (views.length) showView(activeKind, viewOptionForKind(switcher, activeKind), true);
-  requestAnimationFrame(function () { syncRecordHeader(bar); });
+  requestAnimationFrame(function () { syncCardHeader(bar); });
   return pane;
 }
 
-function buildMultiRecord(records, state) {
-  var pane = el('div', 'recordpane');
-  var bar = el('div', 'cardbar multi-record');
+function buildMultiCard(cards, state) {
+  var pane = el('div', 'cardpane');
+  var bar = el('div', 'cardbar multi-card');
   var shell = el('div', 'view-shell');
   var meta = el('div', 'viewmeta');
-  var activeRecord = Math.min(Math.max(state.activeRecord || 0, 0), records.length - 1);
+  var activeCard = Math.min(Math.max(state.activeCard || 0, 0), cards.length - 1);
   var switcher = null;
 
-  function updateRecordTabs() {
+  function updateCardTabs() {
     var tabs = bar.querySelectorAll('.rectab');
-    for (var i = 0; i < tabs.length; i++) tabs[i].classList.toggle('active', i === activeRecord);
+    for (var i = 0; i < tabs.length; i++) tabs[i].classList.toggle('active', i === activeCard);
   }
 
-  function currentRecord() {
-    return records[activeRecord];
+  function currentCard() {
+    return cards[activeCard];
   }
 
   function showView(kind, opt, initial) {
-    var record = currentRecord();
-    var views = record.views || [];
-    rememberViewKind(state, record, activeRecord, kind);
+    var card = currentCard();
+    var views = card.views || [];
+    rememberViewKind(state, card, activeCard, kind);
     if (switcher) {
       switcher.opts.forEach(function (x) { x.classList.remove('active'); });
       if (opt) {
@@ -540,8 +540,8 @@ function buildMultiRecord(records, state) {
         moveThumb(switcher.thumb, opt);
       }
     }
-    mountView(record, kind, shell, meta);
-    prewarmDataView(record, views, kind, shell);
+    mountView(card, kind, shell, meta);
+    prewarmDataView(card, views, kind, shell);
     if (!initial) restoreTurnScroll(state);
   }
 
@@ -553,33 +553,33 @@ function buildMultiRecord(records, state) {
       switcher = buildViewSwitcher(views, activeKind, showView);
       bar.appendChild(switcher.seg);
     }
-    requestAnimationFrame(function () { syncRecordHeader(bar); });
+    requestAnimationFrame(function () { syncCardHeader(bar); });
   }
 
-  function showRecord(index, initial) {
-    activeRecord = Math.min(Math.max(index, 0), records.length - 1);
-    state.activeRecord = activeRecord;
-    updateRecordTabs();
-    var record = currentRecord();
-    var views = record.views || [];
-    var activeKind = savedViewKind(state, record, activeRecord, views);
+  function showCard(index, initial) {
+    activeCard = Math.min(Math.max(index, 0), cards.length - 1);
+    state.activeCard = activeCard;
+    updateCardTabs();
+    var card = currentCard();
+    var views = card.views || [];
+    var activeKind = savedViewKind(state, card, activeCard, views);
     rebuildViewSwitcher(views, activeKind);
     if (views.length) showView(activeKind, viewOptionForKind(switcher, activeKind), initial);
     else if (!initial) restoreTurnScroll(state);
   }
 
-  bar.appendChild(buildRecordTabs(records, activeRecord, function (i) { showRecord(i, false); }));
+  bar.appendChild(buildCardTabs(cards, activeCard, function (i) { showCard(i, false); }));
   pane.appendChild(bar);
   pane.appendChild(shell);
   pane.appendChild(meta);
-  showRecord(activeRecord, true);
+  showCard(activeCard, true);
   return pane;
 }
 
 function renderTurn(turn, index) {
   var view = el('div', 'turnview');
   var transcript = buildTranscript(turn);
-  var records = turn.records || [];
+  var cards = turn.cards || [];
   var state = getTurnState(turn, index);
   if (isManualPreview(turn)) {
     view.classList.add('manual-preview');
@@ -587,13 +587,13 @@ function renderTurn(turn, index) {
   } else if (transcript) {
     view.appendChild(transcript);
   }
-  if (!records.length) return view;
-  if (records.length <= 1) {
-    view.appendChild(buildRecord(records[0], { state: state, recordIndex: 0 }));
+  if (!cards.length) return view;
+  if (cards.length <= 1) {
+    view.appendChild(buildCard(cards[0], { state: state, cardIndex: 0 }));
     return view;
   }
   var box = el('div', 'panesbox');
-  box.appendChild(buildMultiRecord(records, state));
+  box.appendChild(buildMultiCard(cards, state));
   view.appendChild(box);
   return view;
 }

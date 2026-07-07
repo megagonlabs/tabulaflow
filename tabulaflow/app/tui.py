@@ -16,7 +16,7 @@ from textual.widgets import Button, Input, Static
 
 from tabulaflow.app.commands import COMMAND_PREFIX, handle_command
 from tabulaflow.app.debug import debug_enabled, mount_debug_widgets
-from tabulaflow.app.pane_types import PaneRecord, manual_record_turn, turn_payload
+from tabulaflow.app.pane_types import PaneCard, manual_card_turn, turn_payload
 from tabulaflow.app.runtime_paths import RuntimePaths, ensure_pane_dir, generate_session_id
 from tabulaflow.app.session import SessionState
 from tabulaflow.app.theme import ERROR, FOCUS_SURFACE, KEY_HINT
@@ -527,12 +527,12 @@ class TabulaflowApp(App[None]):
                 self._refresh_bottom_status()
         return self._pane
 
-    def view_record_in_pane(self, record: PaneRecord, *, title: str | None = None) -> bool:
+    def view_card_in_pane(self, record: PaneCard, *, title: str | None = None) -> bool:
         """Push an already-written record-data payload to the pane."""
         pane = self._ensure_pane()
         if pane is None or pane.url is None:
             return False
-        pane.push(manual_record_turn(record, title=title))
+        pane.push(manual_card_turn(record, title=title))
         return True
 
     def _refresh_bottom_status(self) -> None:
@@ -570,7 +570,7 @@ class TabulaflowApp(App[None]):
             ensure_pane_dir(pane_dir)
         except Exception:
             return
-        # Snapshot each cited artifact (capturing DataFrames before build_result_views
+        # Snapshot each cited artifact (capturing DataFrames before build_card_views
         # nulls them), tagged by kind, preserving citation order.
         artifact_snapshots: list[tuple[str, SimpleNamespace]] = []
         for artifact in result.artifacts:
@@ -606,17 +606,13 @@ class TabulaflowApp(App[None]):
             return
 
         async def render_and_push() -> None:
-            from tabulaflow.app.render import render_map_card_data, render_record_data
+            from tabulaflow.app.render import render_map_data, render_record_data
 
-            def render_cards() -> list[PaneRecord]:
-                cards: list[PaneRecord] = []
+            def render_cards() -> list[PaneCard]:
+                cards: list[PaneCard] = []
                 for kind, snap in artifact_snapshots:
                     try:
-                        card = (
-                            render_map_card_data(snap, pane_dir)
-                            if kind == "map"
-                            else render_record_data(snap, pane_dir)
-                        )
+                        card = render_map_data(snap, pane_dir) if kind == "map" else render_record_data(snap, pane_dir)
                     except Exception:
                         logger.debug("output pane card render failed", exc_info=True)
                         continue
@@ -626,7 +622,7 @@ class TabulaflowApp(App[None]):
 
             cards = await asyncio.to_thread(render_cards)
             if cards or user_text or result.text:
-                pane.push(turn_payload(title=title, user=user_text, assistant=result.text, records=cards))
+                pane.push(turn_payload(title=title, user=user_text, assistant=result.text, cards=cards))
 
         def log_background_error(task: asyncio.Task[None]) -> None:
             try:
@@ -926,7 +922,7 @@ class TabulaflowApp(App[None]):
 
         session.last_result = result
         # Push to the browser pane BEFORE building the widget: AgentResultWidget
-        # -> build_result_views() nulls each record.df after rendering to Rich.
+        # -> build_card_views() nulls each record.df after rendering to Rich.
         await self._push_turn_to_pane(
             result,
             title=display_text or question,

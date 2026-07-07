@@ -75,7 +75,7 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-_QUERY_REF_RE = re.compile(r"\[\[record:((?:Q|MAP)\d+)(?::([^\]]+))?\]\]")
+_ARTIFACT_REF_RE = re.compile(r"\[\[artifact:((?:Q|MAP)\d+)(?::([^\]]+))?\]\]")
 
 
 SYSTEM_PROMPT = """\
@@ -98,9 +98,9 @@ CRITICAL: The user should feel as if they are directly interacting with their or
   - You can only reference `run_query` results. To present data that isn't one yet (e.g. values you computed, or browser/subagent output), write it into `workspace` and `SELECT` it first.
 - End every answer with a `---` on its own line: result references go above it, then `---`, then your plain-language answer. Only text AFTER the `---` reaches the user; text before it is intermediate narration. Always include the `---`, even with no references.
     - There is exactly ONE `---`, do NOT add a trailing `---` after the answer.
-    - Reference a result as `[[record:Q<id>:<label>]]` (e.g. `[[record:Q3:num_players]]`), or a map as `[[record:MAP<id>:<label>]]` (e.g. `[[record:MAP1:store locations]]`); every reference needs a short label describing it (e.g. `players`, `revenue_by_month`), or `result` if unsure — never the id itself.
+    - Reference a result as `[[artifact:Q<id>:<label>]]` (e.g. `[[artifact:Q3:num_players]]`), or a map as `[[artifact:MAP<id>:<label>]]` (e.g. `[[artifact:MAP1:store locations]]`); every reference needs a short label describing it (e.g. `players`, `revenue_by_month`), or `result` if unsure — never the id itself.
     - Example (with a table):
-      [[record:Q3:num_players]]
+      [[artifact:Q3:num_players]]
       ---
       There are 42 players.
     - Example (no table):
@@ -789,17 +789,17 @@ _SEPARATOR = "---"
 
 
 def _parse_refs(text: str) -> list[tuple[str, str | None]]:
-    """Extract ``(record_id, label)`` pairs from ``[[record:Q<id>:<label>]]`` markers
+    """Extract ``(record_id, label)`` pairs from ``[[artifact:Q<id>:<label>]]`` markers
     (label normalized to ``None`` when absent or blank)."""
-    return [(m.group(1), (m.group(2) or "").strip() or None) for m in _QUERY_REF_RE.finditer(text)]
+    return [(m.group(1), (m.group(2) or "").strip() or None) for m in _ARTIFACT_REF_RE.finditer(text)]
 
 
 def _is_citation_block(prefix: str) -> bool:
     """True if ``prefix`` (the text before the first ``---``) is a citation block:
-    only ``[[record:...]]`` markers and whitespace, possibly empty. This is what
+    only ``[[artifact:...]]`` markers and whitespace, possibly empty. This is what
     makes the ``---`` a refs/answer separator rather than content in a plain answer
     that happens to contain a ``---``."""
-    return _QUERY_REF_RE.sub("", prefix).strip() == ""
+    return _ARTIFACT_REF_RE.sub("", prefix).strip() == ""
 
 
 def _extract_result_refs(answer_text: str) -> tuple[str, list[tuple[str, str | None]]]:
@@ -810,10 +810,10 @@ def _extract_result_refs(answer_text: str) -> tuple[str, list[tuple[str, str | N
         if _is_citation_block(prefix):
             return display_text.strip(), _parse_refs(prefix)
     # No citation block: the whole output is user-facing. Still strip any inline
-    # ``[[record:...]]`` markers the agent may have left in the prose.
+    # ``[[artifact:...]]`` markers the agent may have left in the prose.
     refs = _parse_refs(answer_text)
     if refs:
-        answer_text = _QUERY_REF_RE.sub("", answer_text)
+        answer_text = _ARTIFACT_REF_RE.sub("", answer_text)
     return answer_text.strip(), refs
 
 
@@ -821,7 +821,7 @@ class _TextStreamRouter:
     """Routes a streamed text run into the final answer vs. mid-turn narration, and
     strips the citation-refs block from the answer.
 
-    A run that opens with a citation block — zero or more ``[[record:...]]`` lines
+    A run that opens with a citation block — zero or more ``[[artifact:...]]`` lines
     terminated by ``---`` (the final answer's format; the refs may be empty) — is the
     **answer**: held back until the ``---``, then the text after it streams. Any other
     run is **narration** and streams live. After the first chunk that yields text,
@@ -831,7 +831,7 @@ class _TextStreamRouter:
     agent's prompt — never crosses the layer boundary.
     """
 
-    _MARKER = "[[record:"
+    _MARKER = "[[artifact:"
 
     def __init__(self) -> None:
         self.reset()
@@ -865,7 +865,7 @@ class _TextStreamRouter:
         # No separator yet: keep waiting while the lead could still be a citation
         # block — its tail (after complete refs) is empty, a partial ref marker (a
         # prefix of one, or one being built), or a partial ``---``. Else it's narration.
-        tail = _QUERY_REF_RE.sub("", self._raw).lstrip()
+        tail = _ARTIFACT_REF_RE.sub("", self._raw).lstrip()
         building_ref = tail.startswith(self._MARKER) or self._MARKER.startswith(tail)
         if tail and not building_ref and not _SEPARATOR.startswith(tail):
             self._open = True

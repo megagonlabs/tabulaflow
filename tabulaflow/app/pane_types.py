@@ -8,7 +8,7 @@ ViewKind = Literal["map", "chart", "data", "query"]
 PaneSource = Literal["manual"]
 
 
-class PaneRecord(TypedDict):
+class PaneCard(TypedDict):
     id: str
     label: str | None
     views: list[ViewKind]
@@ -17,27 +17,27 @@ class PaneRecord(TypedDict):
 class PaneTurn(TypedDict, total=False):
     id: int
     title: Required[str]
-    records: Required[list[PaneRecord]]
+    cards: Required[list[PaneCard]]
     user: str
     assistant: str
     source: PaneSource
 
 
-def record_payload(*, record_id: str, label: str | None, views: list[ViewKind]) -> PaneRecord:
-    """Build one result record descriptor for the pane."""
-    return {"id": record_id, "label": label, "views": views}
+def card_payload(*, card_id: str, label: str | None, views: list[ViewKind]) -> PaneCard:
+    """Build one result card descriptor for the pane."""
+    return {"id": card_id, "label": label, "views": views}
 
 
 def turn_payload(
     *,
     title: str,
-    records: list[PaneRecord],
+    cards: list[PaneCard],
     user: str | None = None,
     assistant: str | None = None,
     source: PaneSource | None = None,
 ) -> PaneTurn:
     """Build one output-pane turn."""
-    turn: PaneTurn = {"title": title, "records": records}
+    turn: PaneTurn = {"title": title, "cards": cards}
     if user is not None:
         turn["user"] = user
     if assistant is not None:
@@ -47,6 +47,6 @@ def turn_payload(
     return turn
 
 
-def manual_record_turn(record: PaneRecord, *, title: str | None = None) -> PaneTurn:
-    """Wrap an already-written record-data payload as a manual pane turn."""
-    return turn_payload(title=title or record["label"] or "preview", source="manual", records=[record])
+def manual_card_turn(card: PaneCard, *, title: str | None = None) -> PaneTurn:
+    """Wrap an already-written card-data payload as a manual pane turn."""
+    return turn_payload(title=title or card["label"] or "preview", source="manual", cards=[card])

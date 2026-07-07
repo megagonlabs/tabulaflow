@@ -466,7 +466,7 @@ class OutputPane:
         return "/".join(parts[1:])
 
     def push(self, turn: PaneTurn) -> None:
-        """Record a turn ({"records": [{"label", "views": [...]}, ...]}) for the pane."""
+        """Record a turn ({"cards": [{"label", "views": [...]}, ...]}) for the pane."""
         with self._cond:
             self._load_manifest_locked()
             assigned = cast(PaneTurn, dict(turn))

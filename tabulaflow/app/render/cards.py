@@ -14,7 +14,7 @@ from pygments.lexers import get_lexer_by_name
 from pygments.util import ClassNotFound
 
 from tabulaflow.app.page import TEXT, render_page
-from tabulaflow.app.pane_types import PaneRecord, ViewKind, record_payload
+from tabulaflow.app.pane_types import PaneCard, ViewKind, card_payload
 from tabulaflow.app.render.charts import build_chart_data
 from tabulaflow.app.render.maps import build_map_data
 from tabulaflow.app.render.tables import PANE_TABLE_MAX_HEIGHT, _build_table_data
@@ -31,7 +31,7 @@ class ResultRecordLike(Protocol):
     query_lexer: str
 
 
-class MapRecordLike(Protocol):
+class MapArtifactLike(Protocol):
     map_id: str
     label: str | None
     map_spec: dict[str, object]
@@ -132,20 +132,20 @@ def build_query_data(sql: str, *, lexer: str = "sql") -> dict[str, object]:
     return {"query": {"sql": sql, "lexer": lexer or "sql", "language": language, "html": highlighted}}
 
 
-def render_record_data(record: ResultRecordLike, pane_dir: Path) -> PaneRecord | None:
+def render_record_data(record: ResultRecordLike, pane_dir: Path) -> PaneCard | None:
     """Render a record's chart/data/query payload to JSON; return a pane manifest.
 
     The descriptor is ordered chart -> data -> query, including only the views
     the record has, or ``None`` when the record has nothing displayable.
     """
     views: list[ViewKind] = []
-    record_id = f"rec_{secrets.token_hex(6)}"
+    card_id = f"rec_{secrets.token_hex(6)}"
     record_data: dict[str, object] = {}
     df = record.df
     if df is not None and not df.empty:
         table_build = _build_table_data(
             df,
-            asset_stem=record_id,
+            asset_stem=card_id,
             output_dir=pane_dir,
             max_height=PANE_TABLE_MAX_HEIGHT,
         )
@@ -160,14 +160,14 @@ def render_record_data(record: ResultRecordLike, pane_dir: Path) -> PaneRecord |
     if not views:
         return None
     pane_dir.mkdir(parents=True, exist_ok=True)
-    (pane_dir / f"{record_id}.data.json").write_text(
+    (pane_dir / f"{card_id}.data.json").write_text(
         json.dumps(record_data, ensure_ascii=False, default=str),
         encoding="utf-8",
     )
-    return record_payload(record_id=record_id, label=record.label, views=views)
+    return card_payload(card_id=card_id, label=record.label, views=views)
 
 
-def render_map_card_data(map_record: MapRecordLike, pane_dir: Path) -> PaneRecord | None:
+def render_map_data(map_record: MapArtifactLike, pane_dir: Path) -> PaneCard | None:
     """Render a standalone map card's payload to JSON; return a pane manifest.
 
     A map-only card (no chart/data/query views) assembled from one or more query
@@ -202,4 +202,4 @@ def render_map_card_data(map_record: MapRecordLike, pane_dir: Path) -> PaneRecor
         json.dumps(map_data, ensure_ascii=False, default=str),
         encoding="utf-8",
     )
-    return record_payload(record_id=card_id, label=map_record.label, views=["map"])
+    return card_payload(card_id=card_id, label=map_record.label, views=["map"])

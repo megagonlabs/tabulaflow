@@ -74,16 +74,16 @@ body { margin: 0; background: var(--bg); color: var(--text); display: flex; flex
 .rectab.active::after { content: ""; position: absolute; left: 8px; right: 8px; bottom: 2px;
                         height: 2px; border-radius: 999px; background: var(--accent); }
 .panesbox { position: relative; }
-.recordpane { width: 100%; }
-.recordpane.hidden { position: absolute; top: 0; left: 0; visibility: hidden; pointer-events: none; }
+.cardpane { width: 100%; }
+.cardpane.hidden { position: absolute; top: 0; left: 0; visibility: hidden; pointer-events: none; }
 .cardbar { display: flex; align-items: flex-end; gap: 32px; min-height: 36px; padding: 5px 4px 12px;
            font: 13px ui-monospace, monospace; }
-.cardbar.multi-record .rectabs { flex: 0 1 auto; min-width: 0; max-width: 100%; box-sizing: border-box;
+.cardbar.multi-card .rectabs { flex: 0 1 auto; min-width: 0; max-width: 100%; box-sizing: border-box;
                                  flex-wrap: nowrap; overflow: hidden; }
-.cardbar.multi-record.no-view-menu .rectabs { width: 100%; flex-wrap: wrap; overflow: visible; }
-.cardbar.multi-record.stacked { flex-direction: column; align-items: stretch; gap: 10px; }
-.cardbar.multi-record.stacked .rectabs { width: 100%; margin-right: 0; flex-wrap: wrap; overflow: visible; }
-.cardbar.multi-record.stacked .seg { align-self: flex-end; }
+.cardbar.multi-card.no-view-menu .rectabs { width: 100%; flex-wrap: wrap; overflow: visible; }
+.cardbar.multi-card.stacked { flex-direction: column; align-items: stretch; gap: 10px; }
+.cardbar.multi-card.stacked .rectabs { width: 100%; margin-right: 0; flex-wrap: wrap; overflow: visible; }
+.cardbar.multi-card.stacked .seg { align-self: flex-end; }
 .cardlabel { position: relative; display: inline-flex; margin-right: auto; padding: 5px 8px 7px; white-space: nowrap;
              color: var(--text); background: var(--panel); border-radius: 4px;
              font: 700 13px/1.25 ui-monospace, monospace; }
@@ -102,7 +102,7 @@ body { margin: 0; background: var(--bg); color: var(--text); display: flex; flex
 .seg-thumb { position: absolute; top: 2px; bottom: 2px; left: 0; width: 0; border-radius: 999px;
              background: #262c36; }
 .seg-thumb.ready { transition: transform 0.22s ease, width 0.22s ease; }
-.manual-preview .recordpane { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+.manual-preview .cardpane { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
 .view-shell { position: relative; width: min(800px, 100%); margin: 0 auto;
               background: var(--panel); border-radius: 10px; overflow: hidden;
               box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35); }

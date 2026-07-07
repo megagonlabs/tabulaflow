@@ -15,10 +15,10 @@ from types import SimpleNamespace
 import pandas as pd
 import pytest
 
-from tabulaflow.app.render.cards import render_map_card_data, render_query_html, render_record_data
+from tabulaflow.app.render.cards import render_map_data, render_query_html, render_record_data
 from tabulaflow.app.render.tables import TABLE_RENDER_MAX_ROWS
 from tabulaflow.app.pane import OutputPane, OutputPanePortError, _PANE_HTML
-from tabulaflow.app.pane_types import PaneRecord, PaneTurn, turn_payload
+from tabulaflow.app.pane_types import PaneCard, PaneTurn, turn_payload
 from tabulaflow.app.screens import send_table_to_output_pane
 from tabulaflow.app.tui import TabulaflowApp
 from tabulaflow.app.theme import (
@@ -65,7 +65,7 @@ def test_output_pane_serves_text_only_turn(tmp_path: Path) -> None:
                 title="summarize",
                 user="Summarize the latest result.",
                 assistant="The result has three rows.",
-                records=[],
+                cards=[],
             )
         )
 
@@ -84,7 +84,7 @@ def test_output_pane_serves_text_only_turn(tmp_path: Path) -> None:
             "title": "summarize",
             "user": "Summarize the latest result.",
             "assistant": "The result has three rows.",
-            "records": [],
+            "cards": [],
         }
     finally:
         pane.stop()
@@ -95,7 +95,7 @@ def test_output_pane_replays_persisted_turns(tmp_path: Path) -> None:
     first = OutputPane(tmp_path, port=port)
     first.start()
     try:
-        first.push(turn_payload(title="persisted", records=[]))
+        first.push(turn_payload(title="persisted", cards=[]))
         manifest = tmp_path / "turns.jsonl"
         assert manifest.exists()
     finally:
@@ -113,7 +113,7 @@ def test_output_pane_replays_persisted_turns(tmp_path: Path) -> None:
                     data_line = line[len("data: ") :]
                     break
 
-        assert json.loads(data_line) == {"id": 0, "title": "persisted", "records": []}
+        assert json.loads(data_line) == {"id": 0, "title": "persisted", "cards": []}
     finally:
         second.stop()
 
@@ -240,7 +240,7 @@ def test_record_card_preserves_null_cells(tmp_path: Path) -> None:
 
 
 def _map_card(map_spec: dict, sources: dict[str, pd.DataFrame], tmp_path: Path, *, label: str = "map") -> dict:
-    card = render_map_card_data(
+    card = render_map_data(
         SimpleNamespace(map_id="MAP1", label=label, map_spec=map_spec, sources=sources),
         tmp_path,
     )
@@ -448,8 +448,8 @@ def test_manual_table_send_includes_data_view_meta(tmp_path: Path) -> None:
     class FakeApp:
         _runtime_paths = SimpleNamespace(pane_dir=tmp_path)
 
-        def view_record_in_pane(self, record: object, **kwargs: object) -> bool:
-            calls.append((Path(f"{record['id']}.data.json"), kwargs))  # type: ignore[index]
+        def view_card_in_pane(self, card: object, **kwargs: object) -> bool:
+            calls.append((Path(f"{card['id']}.data.json"), kwargs))  # type: ignore[index]
             return True
 
     df = pd.DataFrame({"sample_id": ["ex-0001", "ex-0002"], "answer": ["A", "B"]})
@@ -482,7 +482,7 @@ def test_pane_table_renderer_does_not_max_height_short_tables() -> None:
     assert "opts.height = viewportCap" in renderer
     assert ".turnview.manual-preview { height: calc(100vh - 82px); min-height: 460px;" in _PANE_HTML
     assert f"/assets/pane/pane-render.js?v={renderer_version}" in _PANE_HTML
-    assert "fetch(record.id + '.data.json')" in _PANE_HTML
+    assert "fetch(card.id + '.data.json')" in _PANE_HTML
     assert "new EventSource('events')" in _PANE_HTML
     assert "__PANE_RENDER_VERSION__" not in _PANE_HTML
     assert "20260630-table-sizing" not in _PANE_HTML
@@ -1757,7 +1757,7 @@ def test_pane_manual_tables_use_fixed_panel() -> None:
     assert "table.setHeight(height)" in renderer
     assert "requestAnimationFrame(fitFixedPanelHeight)" in renderer
     assert ".turnview.manual-preview { height: calc(100vh - 82px); min-height: 460px;" in _PANE_HTML
-    assert ".manual-preview .recordpane { flex: 1 1 auto; min-height: 0;" in _PANE_HTML
+    assert ".manual-preview .cardpane { flex: 1 1 auto; min-height: 0;" in _PANE_HTML
     assert ".manual-preview .view-shell { flex: 1 1 auto; min-height: 360px; overflow: hidden; }" in _PANE_HTML
     assert ".manual-preview .tf-table-view,\n.manual-preview .tf-table-wrap { height: 100%;" in _PANE_HTML
     assert ".manual-preview .tf-table-wrap.pane-short { padding-bottom: 0; }" in _PANE_HTML
@@ -1774,7 +1774,7 @@ def test_pane_tables_keep_last_row_gridline() -> None:
 
 
 def test_pane_view_switches_keep_cached_nodes_mounted() -> None:
-    assert "function getCachedRecordData(record)" in _PANE_HTML
+    assert "function getCachedCardData(card)" in _PANE_HTML
     assert "function scheduleIdle(fn)" in _PANE_HTML
     assert "var CACHE_WEIGHT_LIMIT = 24;" in _PANE_HTML
     assert "function cacheEntryWeight(entry)" in _PANE_HTML
@@ -1787,11 +1787,11 @@ def test_pane_view_switches_keep_cached_nodes_mounted() -> None:
     assert "var navState = {};" in _PANE_HTML
     assert "var suppressScrollMemory = false;" in _PANE_HTML
     assert "function getTurnState(turn, index)" in _PANE_HTML
-    assert "activeRecord: 0, views: {}, scrollTop: 0" in _PANE_HTML
+    assert "activeCard: 0, views: {}, scrollTop: 0" in _PANE_HTML
     assert "state.viewScroll" not in _PANE_HTML
     assert "viewScrollKey" not in _PANE_HTML
-    assert "function savedViewKind(state, record, recordIndex, views)" in _PANE_HTML
-    assert "function rememberViewKind(state, record, recordIndex, kind)" in _PANE_HTML
+    assert "function savedViewKind(state, card, cardIndex, views)" in _PANE_HTML
+    assert "function rememberViewKind(state, card, cardIndex, kind)" in _PANE_HTML
     assert "function rememberTurnScroll(state)" in _PANE_HTML
     assert "function restoreTurnScroll(state)" in _PANE_HTML
     assert "function rememberActiveContentScroll()" in _PANE_HTML
@@ -1802,12 +1802,10 @@ def test_pane_view_switches_keep_cached_nodes_mounted() -> None:
     assert "function viewOptionForKind(switcher, kind)" in _PANE_HTML
     assert "opt.dataset.kind = kind;" in _PANE_HTML
     assert "showView(activeKind, viewOptionForKind(switcher, activeKind), true);" in _PANE_HTML
-    assert "function buildMultiRecord(records, state)" in _PANE_HTML
-    assert "box.appendChild(buildMultiRecord(records, state));" in _PANE_HTML
-    assert "state.activeRecord = activeRecord;" in _PANE_HTML
-    assert (
-        "bar.appendChild(buildRecordTabs(records, activeRecord, function (i) { showRecord(i, false); }));" in _PANE_HTML
-    )
+    assert "function buildMultiCard(cards, state)" in _PANE_HTML
+    assert "box.appendChild(buildMultiCard(cards, state));" in _PANE_HTML
+    assert "state.activeCard = activeCard;" in _PANE_HTML
+    assert "bar.appendChild(buildCardTabs(cards, activeCard, function (i) { showCard(i, false); }));" in _PANE_HTML
     assert "node.toggleAttribute('inert', !active);" in _PANE_HTML
     assert "node.setAttribute('aria-hidden', active ? 'false' : 'true');" in _PANE_HTML
     assert "function stageViewNode(node)" in _PANE_HTML
@@ -1817,7 +1815,7 @@ def test_pane_view_switches_keep_cached_nodes_mounted() -> None:
     assert "if (kind === 'data') {\n      stageDataView(entry, shell, key, meta);" in _PANE_HTML
     assert "if (node === pendingNode) stageViewNode(node);" in _PANE_HTML
     assert "else hideViewNode(node);" in _PANE_HTML
-    assert "function prewarmDataView(record, views, activeKind, shell)" in _PANE_HTML
+    assert "function prewarmDataView(card, views, activeKind, shell)" in _PANE_HTML
     assert "function hideViewNode(node)" in _PANE_HTML
     assert "function blurHiddenFocus(node)" in _PANE_HTML
     assert "function syncActiveShellView(shell)" in _PANE_HTML
@@ -1829,15 +1827,15 @@ def test_pane_view_switches_keep_cached_nodes_mounted() -> None:
     assert "hideViewNode(entry.node);" in _PANE_HTML
     assert "renderHiddenDataView(entry, data);" in _PANE_HTML
     assert "syncActiveShellView(shell);" in _PANE_HTML
-    assert "fetchRecordData(record).then(function (data)" in _PANE_HTML
-    assert "prewarmDataView(record, views, kind, shell);" in _PANE_HTML
+    assert "fetchCardData(card).then(function (data)" in _PANE_HTML
+    assert "prewarmDataView(card, views, kind, shell);" in _PANE_HTML
     assert "shell.dataset.activeViewKey = key;" in _PANE_HTML
     assert "if (node.parentNode !== shell) shell.appendChild(node);" in _PANE_HTML
     assert "if (isActiveShellView(shell, key))" in _PANE_HTML
     assert "shell.replaceChildren(entry.node)" not in _PANE_HTML
     assert "shell.replaceChildren(node)" not in _PANE_HTML
-    assert "box.replaceChildren(buildRecord" not in _PANE_HTML
-    assert "records: records" not in _PANE_HTML
+    assert "box.replaceChildren(buildCard" not in _PANE_HTML
+    assert "cards: cards" not in _PANE_HTML
     assert "onSelect: function (i)" not in _PANE_HTML
     assert ".view-shell > .tf-view.view-hidden {" in _PANE_HTML
     assert "opacity: 0;" in _PANE_HTML
@@ -1845,7 +1843,7 @@ def test_pane_view_switches_keep_cached_nodes_mounted() -> None:
     assert ".view-shell > .tf-view.view-active { position: relative; opacity: 1; }" in _PANE_HTML
 
 
-def test_view_record_in_pane_marks_turn_as_manual(tmp_path: Path) -> None:
+def test_view_card_in_pane_marks_turn_as_manual(tmp_path: Path) -> None:
     pushed: list[PaneTurn] = []
 
     class FakePane:
@@ -1857,13 +1855,13 @@ def test_view_record_in_pane_marks_turn_as_manual(tmp_path: Path) -> None:
     app = TabulaflowApp(model="openai-responses:gpt-5", agent="sql_agent", reasoning_effort="medium")
     app._pane = FakePane()  # type: ignore[assignment]  # noqa: SLF001
 
-    record: PaneRecord = {"id": "rec_orders", "label": None, "views": ["data"]}
-    assert app.view_record_in_pane(record, title="orders")
+    card: PaneCard = {"id": "rec_orders", "label": None, "views": ["data"]}
+    assert app.view_card_in_pane(card, title="orders")
     assert pushed == [
         {
             "title": "orders",
             "source": "manual",
-            "records": [{"id": "rec_orders", "label": None, "views": ["data"]}],
+            "cards": [{"id": "rec_orders", "label": None, "views": ["data"]}],
         }
     ]
 
@@ -1898,7 +1896,7 @@ def test_record_card_writes_structured_data_instead_of_html(tmp_path: Path) -> N
     assert payload_path.stat().st_size < 100_000
 
 
-def test_output_pane_serves_record_payload_only_under_token(tmp_path: Path) -> None:
+def test_output_pane_serves_card_data_only_under_token(tmp_path: Path) -> None:
     df = pd.DataFrame({"cat": ["a"], "n": [3]})
     card = render_record_data(
         SimpleNamespace(df=df, chart_spec=None, query=None, label="x", record_id="r1", query_lexer="sql"),

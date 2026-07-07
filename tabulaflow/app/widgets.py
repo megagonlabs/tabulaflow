@@ -44,7 +44,7 @@ if TYPE_CHECKING:
     from rich.console import RenderableType
 
     from tabulaflow.chat import ChatResult
-    from tabulaflow.app.display import RecordGroup, ViewItem
+    from tabulaflow.app.display import CardGroup, ViewItem
     from tabulaflow.core.types import Usage
 
 
@@ -983,7 +983,7 @@ class AgentResultWidget(Widget):
         margin: 0 0 1 0;
     }
 
-    AgentResultWidget .record-bar {
+    AgentResultWidget .card-bar {
         width: 1fr;
         height: auto;
         overflow-x: hidden;
@@ -1001,7 +1001,7 @@ class AgentResultWidget(Widget):
 
     """
 
-    current_record: reactive[int] = reactive(0, init=False)
+    current_card: reactive[int] = reactive(0, init=False)
     current_view: reactive[int] = reactive(0, init=False)
 
     def __init__(
@@ -1011,14 +1011,14 @@ class AgentResultWidget(Widget):
         query_history: object | None = None,
     ) -> None:
         super().__init__()
-        from tabulaflow.app.display import build_result_views
+        from tabulaflow.app.display import build_card_views
         from tabulaflow.toolhub.query_history import QueryHistory
 
-        self._records = build_result_views(result, width)
+        self._cards = build_card_views(result, width)
         self._query_history: QueryHistory | None = query_history if isinstance(query_history, QueryHistory) else None
         self._content = Static(id="result-content")
         self._mounted = False
-        self._record_bar_widget: Static | None = None
+        self._card_bar_widget: Static | None = None
         self._view_stepper_widget: Static | None = None
         self._bottom_hint_widget: Static | None = None
         # Record hit areas: (record_index, col_start, col_end, row) relative
@@ -1032,16 +1032,16 @@ class AgentResultWidget(Widget):
     @property
     def _has_top_bar(self) -> bool:
         """Top bar exists whenever the result has any displayable records."""
-        return bool(self._records)
+        return bool(self._cards)
 
     def compose(self) -> ComposeResult:
         from textual.containers import Horizontal
 
         if self._has_top_bar:
-            self._record_bar_widget = Static(classes="record-bar")
+            self._card_bar_widget = Static(classes="card-bar")
             self._view_stepper_widget = Static(classes="view-stepper")
             yield Horizontal(
-                self._record_bar_widget,
+                self._card_bar_widget,
                 self._view_stepper_widget,
                 classes="top-bar-row",
             )
@@ -1055,8 +1055,8 @@ class AgentResultWidget(Widget):
         self._refresh_all()
 
     def on_resize(self) -> None:
-        if self._record_bar_widget is not None:
-            self._update_record_bar()
+        if self._card_bar_widget is not None:
+            self._update_card_bar()
         if self._view_stepper_widget is not None:
             self._update_view_stepper()
         if self._bottom_hint_widget is not None:
@@ -1090,8 +1090,8 @@ class AgentResultWidget(Widget):
         self.set_class(has_focus, "-focused")
         if not self._mounted:
             return
-        if self._record_bar_widget is not None:
-            self._update_record_bar()
+        if self._card_bar_widget is not None:
+            self._update_card_bar()
         if self._view_stepper_widget is not None:
             self._update_view_stepper()
         if self._bottom_hint_widget is not None:
@@ -1107,8 +1107,8 @@ class AgentResultWidget(Widget):
 
     def _refresh_all(self) -> None:
         self._update_content()
-        if self._record_bar_widget is not None:
-            self._update_record_bar()
+        if self._card_bar_widget is not None:
+            self._update_card_bar()
         if self._view_stepper_widget is not None:
             self._update_view_stepper()
         if self._bottom_hint_widget is not None:
@@ -1126,11 +1126,11 @@ class AgentResultWidget(Widget):
         children = list(chat_log.children)
         return bool(children) and children[-1] is self
 
-    def _current_record_or_none(self) -> "RecordGroup | None":
-        if not self._records:
+    def _current_record_or_none(self) -> "CardGroup | None":
+        if not self._cards:
             return None
-        idx = min(self.current_record, len(self._records) - 1)
-        return self._records[idx]
+        idx = min(self.current_card, len(self._cards) - 1)
+        return self._cards[idx]
 
     def _current_view_or_none(self) -> "ViewItem | None":
         rec = self._current_record_or_none()
@@ -1139,7 +1139,7 @@ class AgentResultWidget(Widget):
         idx = min(self.current_view, len(rec.views) - 1)
         return rec.views[idx]
 
-    def _update_record_bar(self) -> None:
+    def _update_card_bar(self) -> None:
         """Render record pills left-anchored, wrapping across multiple lines.
 
         All pills are shown; when the row fills, subsequent pills wrap to a
@@ -1148,22 +1148,22 @@ class AgentResultWidget(Widget):
         line, otherwise on a new line below.
 
         Hit areas are stored as ``(record_index, col_start, col_end, row)``
-        relative to ``self._record_bar_widget`` so the click handler can test
+        relative to ``self._card_bar_widget`` so the click handler can test
         ``event.x``/``event.y`` directly without worrying about the enclosing
         layout.
         """
         from rich.style import Style
 
-        if self._record_bar_widget is None:
+        if self._card_bar_widget is None:
             return
 
-        available_width = self._record_bar_widget.size.width or 80
-        record_interactive = len(self._records) > 1
+        available_width = self._card_bar_widget.size.width or 80
+        card_interactive = len(self._cards) > 1
 
         HINT_SEP = " · "
         HINT_KEY = "←/→"
         HINT_TEXT = " Switch record"
-        hint_width = len(HINT_SEP) + len(HINT_KEY) + len(HINT_TEXT) if record_interactive else 0
+        hint_width = len(HINT_SEP) + len(HINT_KEY) + len(HINT_TEXT) if card_interactive else 0
 
         SEP = 1  # space between pills on the same row
         dim_style = Style(dim=True)
@@ -1173,7 +1173,7 @@ class AgentResultWidget(Widget):
         row = 0
         col = 0
 
-        for rec_idx, r in enumerate(self._records):
+        for rec_idx, r in enumerate(self._cards):
             pill = f" {r.label} "
             pill_width = len(pill)
             needed = pill_width + (SEP if col > 0 else 0)
@@ -1188,14 +1188,14 @@ class AgentResultWidget(Widget):
             col_start = col
             pill_style = (
                 Style(bold=True, color="black", bgcolor=self._focus_accent)
-                if rec_idx == self.current_record
+                if rec_idx == self.current_card
                 else Style(dim=True)
             )
             line.append_text(Text(pill, style=pill_style))
             col += pill_width
             self._record_hit_areas.append((rec_idx, col_start, col, row))
 
-        if record_interactive:
+        if card_interactive:
             if col + hint_width > available_width:
                 line.append("\n")
             line.append_text(Text(HINT_SEP, style=dim_style))
@@ -1204,7 +1204,7 @@ class AgentResultWidget(Widget):
             line.append_text(Text("→", style=self._focus_key_hint))
             line.append_text(Text(HINT_TEXT, style="dim"))
 
-        self._record_bar_widget.update(line)
+        self._card_bar_widget.update(line)
 
     def _update_view_stepper(self) -> None:
         """Render the view stepper with an optional switch-view hint on its left.
@@ -1354,11 +1354,11 @@ class AgentResultWidget(Widget):
 
         assert isinstance(event, Click)
 
-        if self._record_bar_widget is not None and event.widget is self._record_bar_widget:
+        if self._card_bar_widget is not None and event.widget is self._card_bar_widget:
             for rec_idx, col_start, col_end, row in self._record_hit_areas:
                 if row == event.y and col_start <= event.x < col_end:
-                    if rec_idx != self.current_record:
-                        self._switch_record(rec_idx)
+                    if rec_idx != self.current_card:
+                        self._switch_card(rec_idx)
                     return
             return
 
@@ -1416,20 +1416,20 @@ class AgentResultWidget(Widget):
         measurement = self.app.console.measure(view.renderable, options=options)
         return int(measurement.maximum)
 
-    def _switch_record(self, new_idx: int) -> None:
+    def _switch_card(self, new_idx: int) -> None:
         """Change the active record, preserving the current view kind if possible."""
-        if not self._records or new_idx == self.current_record:
+        if not self._cards or new_idx == self.current_card:
             return
         current_view = self._current_view_or_none()
         target_kind = current_view.kind if current_view is not None else None
-        new_rec = self._records[new_idx]
+        new_rec = self._cards[new_idx]
         new_view_idx = 0
         if target_kind is not None:
             for i, v in enumerate(new_rec.views):
                 if v.kind == target_kind:
                     new_view_idx = i
                     break
-        self.current_record = new_idx
+        self.current_card = new_idx
         self.current_view = new_view_idx
 
     def action_next_view(self) -> None:
@@ -1443,12 +1443,12 @@ class AgentResultWidget(Widget):
             self.current_view = (self.current_view - 1) % len(rec.views)
 
     def action_next_record(self) -> None:
-        if len(self._records) > 1:
-            self._switch_record((self.current_record + 1) % len(self._records))
+        if len(self._cards) > 1:
+            self._switch_card((self.current_card + 1) % len(self._cards))
 
     def action_prev_record(self) -> None:
-        if len(self._records) > 1:
-            self._switch_record((self.current_record - 1) % len(self._records))
+        if len(self._cards) > 1:
+            self._switch_card((self.current_card - 1) % len(self._cards))
 
     can_focus = True
 
@@ -1510,12 +1510,12 @@ class AgentResultWidget(Widget):
         title = f"{view.kind} ({rec.label})"
 
         if view.kind == VIEW_KIND_CHART and view.chart_spec is not None:
-            df = await self._fetch_df(rec.record_id)
+            df = await self._fetch_df(rec.artifact_id)
             if df is not None:
                 self.app.push_screen(ChartBrowserScreen(title=title, df=df, vegalite_spec=view.chart_spec))
             return
         if view.kind == VIEW_KIND_DATA:
-            df = await self._fetch_df(rec.record_id)
+            df = await self._fetch_df(rec.artifact_id)
             if df is not None:
                 self.app.push_screen(DataBrowserScreen(title=title, df=df))
             return

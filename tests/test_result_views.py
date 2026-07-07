@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pandas as pd
 
-from tabulaflow.app.display import VIEW_KIND_DATA, VIEW_KIND_MAP, VIEW_KIND_QUERY, build_result_views
+from tabulaflow.app.display import VIEW_KIND_DATA, VIEW_KIND_MAP, VIEW_KIND_QUERY, build_card_views
 from tabulaflow.chat.result import ChatResult, ChatResultMap, ChatResultRecord
 
 
@@ -30,10 +30,10 @@ def _map(map_id: str, label: str) -> ChatResultMap:
 
 def test_map_artifact_yields_single_map_placeholder_view() -> None:
     result = ChatResult(text="x", artifacts=[_map("MAP1", "cities")])
-    groups = build_result_views(result)
+    groups = build_card_views(result)
     assert len(groups) == 1
     assert [v.kind for v in groups[0].views] == [VIEW_KIND_MAP]
-    assert groups[0].record_id == "MAP1"
+    assert groups[0].artifact_id == "MAP1"
 
 
 def test_artifacts_render_in_citation_order() -> None:
@@ -41,8 +41,8 @@ def test_artifacts_render_in_citation_order() -> None:
         text="x",
         artifacts=[_record("Q1", "table1"), _map("MAP1", "map1"), _record("Q2", "table2")],
     )
-    groups = build_result_views(result)
-    assert [g.record_id for g in groups] == ["Q1", "MAP1", "Q2"]
+    groups = build_card_views(result)
+    assert [g.artifact_id for g in groups] == ["Q1", "MAP1", "Q2"]
     # The map group is map-only; the record groups keep their data/query views.
     assert [v.kind for v in groups[1].views] == [VIEW_KIND_MAP]
     assert VIEW_KIND_DATA in [v.kind for v in groups[0].views]
@@ -52,6 +52,6 @@ def test_artifacts_render_in_citation_order() -> None:
 def test_map_artifact_sources_released_after_render() -> None:
     chat_map = _map("MAP1", "cities")
     result = ChatResult(text="x", artifacts=[chat_map])
-    build_result_views(result)
+    build_card_views(result)
     # DataFrame references are dropped once previews are rendered.
     assert chat_map.sources == {}
