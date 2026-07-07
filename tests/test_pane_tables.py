@@ -9,10 +9,9 @@ from typing import Any, cast
 import pandas as pd
 import pytest
 
-from tabulaflow.app.render import (
+from tabulaflow.app.media import sniff_binary, try_decode_base64
+from tabulaflow.app.pane import (
     build_table_data,
-    sniff_binary,
-    try_decode_base64,
 )
 
 

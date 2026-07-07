@@ -28,8 +28,9 @@ import pandas as pd
 
 from tabulaflow.app import pane as pane_mod
 from tabulaflow.app.debug import debug_chart_fixtures
-from tabulaflow.app.pane_types import PaneCard, PaneSource, card_payload, turn_payload
-from tabulaflow.app.render.cards import render_map_data, render_record_data
+from tabulaflow.app.pane import PaneCard, PaneSource, card_payload, turn_payload
+from tabulaflow.app.pane.cards import render_map_data, render_record_data
+from tabulaflow.app.pane import server as pane_server
 from tabulaflow.toolhub.render_map import normalize_map_spec
 
 
@@ -548,14 +549,14 @@ def _media_table_record() -> SimpleNamespace:
 def _serve_fixed_port(host: str, port: int, pane_dir: Path) -> pane_mod.OutputPane:
     pane = pane_mod.OutputPane(pane_dir, host=host, port=port)
     handler = functools.partial(_PreviewHandler, directory=str(pane_dir))
-    server = pane_mod._PaneServer((host, port), handler, pane)  # noqa: SLF001
+    server = pane_server._PaneServer((host, port), handler, pane)  # noqa: SLF001
     pane._server = server  # noqa: SLF001
     pane._port = port  # noqa: SLF001
     threading.Thread(target=server.serve_forever, daemon=True).start()
     return pane
 
 
-class _PreviewHandler(pane_mod._Handler):  # noqa: SLF001
+class _PreviewHandler(pane_server._Handler):  # noqa: SLF001
     """Serve the local preview at the origin root instead of a token path."""
 
     def do_GET(self) -> None:  # noqa: N802 (http.server API name)

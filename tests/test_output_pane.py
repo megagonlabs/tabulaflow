@@ -15,10 +15,10 @@ from types import SimpleNamespace
 import pandas as pd
 import pytest
 
-from tabulaflow.app.render.cards import build_query_data, render_map_data, render_record_data
-from tabulaflow.app.render.tables import TABLE_RENDER_MAX_ROWS
+from tabulaflow.app.pane.cards import build_query_data, render_map_data, render_record_data
+from tabulaflow.app.pane.tables import TABLE_RENDER_MAX_ROWS
 from tabulaflow.app.pane import OutputPane, OutputPanePortError, _PANE_HTML
-from tabulaflow.app.pane_types import PaneCard, PaneTurn, turn_payload
+from tabulaflow.app.pane import PaneCard, PaneTurn, turn_payload
 from tabulaflow.app.screens import send_table_to_output_pane
 from tabulaflow.app.tui import TabulaflowApp
 from tabulaflow.app.theme import (
@@ -474,7 +474,7 @@ def test_pane_omits_text_only_turn_meta() -> None:
 
 
 def test_pane_table_renderer_does_not_max_height_short_tables() -> None:
-    renderer_path = files("tabulaflow.app.assets.pane").joinpath("pane-render.js")
+    renderer_path = files("tabulaflow.app.pane.assets.pane").joinpath("pane-render.js")
     renderer = renderer_path.read_text(encoding="utf-8")
     renderer_version = hashlib.sha256(renderer_path.read_bytes()).hexdigest()[:12]
     assert "maxHeight: viewportCap" not in renderer
@@ -494,8 +494,8 @@ def test_pane_chart_shell_matches_vega_background() -> None:
 
 
 def test_pane_map_view_is_maplibre_based() -> None:
-    renderer = files("tabulaflow.app.assets.pane").joinpath("pane-render.js").read_text(encoding="utf-8")
-    maplibre_assets = files("tabulaflow.app.assets.maplibre")
+    renderer = files("tabulaflow.app.pane.assets.pane").joinpath("pane-render.js").read_text(encoding="utf-8")
+    maplibre_assets = files("tabulaflow.app.pane.assets.maplibre")
     style = json.loads(maplibre_assets.joinpath("shortbread-light.json").read_text(encoding="utf-8"))
     assert '<link rel="stylesheet" href="/assets/maplibre/maplibre-gl.css">' in _PANE_HTML
     assert '<script src="/assets/maplibre/maplibre-gl.js"></script>' in _PANE_HTML
@@ -1743,13 +1743,13 @@ def test_pane_table_scrollbars_use_dark_theme() -> None:
 
 
 def test_pane_short_tables_keep_bottom_inset() -> None:
-    renderer = files("tabulaflow.app.assets.pane").joinpath("pane-render.js").read_text(encoding="utf-8")
+    renderer = files("tabulaflow.app.pane.assets.pane").joinpath("pane-render.js").read_text(encoding="utf-8")
     assert "rows.length <= 12 ? 'tf-table-wrap pane-short' : 'tf-table-wrap'" in renderer
     assert ".tf-table-wrap.pane-short { padding-bottom: 16px; box-sizing: border-box; }" in _PANE_HTML
 
 
 def test_pane_manual_tables_use_fixed_panel() -> None:
-    renderer = files("tabulaflow.app.assets.pane").joinpath("pane-render.js").read_text(encoding="utf-8")
+    renderer = files("tabulaflow.app.pane.assets.pane").joinpath("pane-render.js").read_text(encoding="utf-8")
     assert "container.closest && container.closest('.manual-preview')" in renderer
     assert "container.closest('.view-shell')" in renderer
     assert "panelHeight > 0 ? panelHeight" in renderer
@@ -1931,7 +1931,7 @@ def test_pane_serves_bundled_assets_cached(tmp_path: Path) -> None:
         with urllib.request.urlopen(f"{origin}assets/vega/vega-embed.min.js", timeout=2) as resp:
             body = resp.read()
             cache = resp.headers.get("Cache-Control")
-        expected = files("tabulaflow.app.assets").joinpath("vega").joinpath("vega-embed.min.js").read_bytes()
+        expected = files("tabulaflow.app.pane.assets").joinpath("vega").joinpath("vega-embed.min.js").read_bytes()
         assert body == expected
         assert cache is not None and "immutable" in cache
 
@@ -1945,7 +1945,7 @@ def test_pane_serves_bundled_assets_cached(tmp_path: Path) -> None:
             assert resp.headers.get("Cache-Control") == "no-cache"
             assert b"vector.openstreetmap.org/shortbread_v1/tilejson.json" in resp.read()
 
-        maplibre_assets = files("tabulaflow.app.assets").joinpath("maplibre")
+        maplibre_assets = files("tabulaflow.app.pane.assets").joinpath("maplibre")
         with urllib.request.urlopen(f"{origin}assets/maplibre/osm-bright-sprite.json", timeout=2) as resp:
             assert resp.headers.get("Cache-Control") == "no-cache"
             assert resp.headers.get("Content-Type") == "application/json; charset=utf-8"

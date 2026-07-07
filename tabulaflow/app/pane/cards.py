@@ -12,10 +12,10 @@ from pygments.formatters import HtmlFormatter
 from pygments.lexers import get_lexer_by_name
 from pygments.util import ClassNotFound
 
-from tabulaflow.app.pane_types import PaneCard, ViewKind, card_payload
-from tabulaflow.app.render.charts import build_chart_data
-from tabulaflow.app.render.maps import build_map_data
-from tabulaflow.app.render.tables import PANE_TABLE_MAX_HEIGHT, _build_table_data
+from tabulaflow.app.pane.types import PaneCard, ViewKind, card_payload
+from tabulaflow.app.pane.charts import build_chart_data
+from tabulaflow.app.pane.maps import build_map_data
+from tabulaflow.app.pane.tables import PANE_TABLE_MAX_HEIGHT, _build_table_data
 
 if TYPE_CHECKING:
     import pandas as pd

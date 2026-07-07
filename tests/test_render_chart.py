@@ -9,7 +9,7 @@ import pandas as pd
 import pytest
 
 from tabulaflow.app.page import CARD_BG
-from tabulaflow.app.render import _add_line_hover, build_chart_data
+from tabulaflow.app.pane import _add_line_hover, build_chart_data
 from tabulaflow.app.theme import VIZ_CHART_CATEGORY_PALETTE, VIZ_CHART_GRID
 from tabulaflow.core.types import ExecResult, PredQuery
 from tabulaflow.toolhub.query_history import QueryHistory

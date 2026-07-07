@@ -16,7 +16,7 @@ from textual.widgets import Button, Input, Static
 
 from tabulaflow.app.commands import COMMAND_PREFIX, handle_command
 from tabulaflow.app.debug import debug_enabled, mount_debug_widgets
-from tabulaflow.app.pane_types import PaneCard, manual_card_turn, turn_payload
+from tabulaflow.app.pane import PaneCard, manual_card_turn, turn_payload
 from tabulaflow.app.runtime_paths import RuntimePaths, ensure_pane_dir, generate_session_id
 from tabulaflow.app.session import SessionState
 from tabulaflow.app.theme import ERROR, FOCUS_SURFACE, KEY_HINT
@@ -606,7 +606,7 @@ class TabulaflowApp(App[None]):
             return
 
         async def render_and_push() -> None:
-            from tabulaflow.app.render import render_map_data, render_record_data
+            from tabulaflow.app.pane import render_map_data, render_record_data
 
             def render_cards() -> list[PaneCard]:
                 cards: list[PaneCard] = []

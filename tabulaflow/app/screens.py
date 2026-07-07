@@ -93,7 +93,7 @@ def send_table_to_output_pane(
     """
     from types import SimpleNamespace
 
-    from tabulaflow.app.render import render_record_data
+    from tabulaflow.app.pane import render_record_data
 
     try:
         pane_dir: Path = app._runtime_paths.pane_dir  # type: ignore[attr-defined]
@@ -678,7 +678,7 @@ class CellBrowserScreen(Screen[None]):
             pass
 
         if isinstance(value, (bytes, bytearray, memoryview)):
-            from tabulaflow.app.render import sniff_binary
+            from tabulaflow.app.media import sniff_binary
 
             raw = bytes(value)
             sniffed = sniff_binary(raw)
@@ -691,7 +691,7 @@ class CellBrowserScreen(Screen[None]):
         if isinstance(value, dict):
             inner = value.get("bytes")
             if isinstance(inner, (bytes, bytearray, memoryview)):
-                from tabulaflow.app.render import sniff_binary
+                from tabulaflow.app.media import sniff_binary
 
                 raw = bytes(inner)
                 sniffed = sniff_binary(raw)

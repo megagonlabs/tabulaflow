@@ -24,7 +24,7 @@ from pathlib import Path
 from typing import cast
 from urllib.parse import unquote, urlsplit, urlunsplit
 
-from tabulaflow.app.pane_types import PaneTurn
+from tabulaflow.app.pane.types import PaneTurn
 from tabulaflow.app.theme import GITHUB_SLUG, GITHUB_URL
 
 logger = logging.getLogger(__name__)
@@ -117,7 +117,7 @@ def _pane_css_vars() -> str:
 def _load_pane_html() -> str:
     from importlib.resources import files
 
-    base = files("tabulaflow.app.assets.pane")
+    base = files("tabulaflow.app.pane.assets.pane")
     html = base.joinpath("index.html").read_text(encoding="utf-8")
     css = base.joinpath("pane.css").read_text(encoding="utf-8")
     js = base.joinpath("pane.js").read_text(encoding="utf-8")
@@ -253,7 +253,7 @@ class _Handler(http.server.SimpleHTTPRequestHandler):
         if not parts or ".." in parts:
             self.send_error(404)
             return
-        resource = files("tabulaflow.app.assets")
+        resource = files("tabulaflow.app.pane.assets")
         for part in parts:
             resource = resource.joinpath(part)
         try:

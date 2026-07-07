@@ -75,25 +75,25 @@ def _normalize_points_layer(
         points = [dict(point) for point in inline_points if isinstance(point, Mapping)]
         if not points:
             return None
-        out: dict[str, object] = {"type": "points", "points": points}
+        inline_out: dict[str, object] = {"type": "points", "points": points}
         label = _as_str(layer.get("label"))
         if label is not None:
-            out["label"] = label
+            inline_out["label"] = label
         tooltip = _field_list(layer.get("tooltip"), {})
         if tooltip is not None:
-            out["tooltip"] = tooltip
+            inline_out["tooltip"] = tooltip
         marker = layer.get("marker")
         if isinstance(marker, Mapping):
             marker_type = marker.get("type")
             if marker_type in {"pin", "circle"}:
-                out["marker"] = {"type": marker_type}
+                inline_out["marker"] = {"type": marker_type}
         color = _literal_field_encoding(layer.get("color"))
         if color is not None:
-            out["color"] = color
+            inline_out["color"] = color
         size = _literal_size_encoding(layer.get("size"))
         if size is not None:
-            out["size"] = size
-        return out
+            inline_out["size"] = size
+        return inline_out
 
     lat = _field_name(layer.get("lat") or layer.get("latitude"), field_by_column)
     lng = _field_name(layer.get("lng") or layer.get("lon") or layer.get("longitude"), field_by_column)

@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from tabulaflow.app.render.media import sniff_binary, try_decode_base64
+from tabulaflow.app.media import sniff_binary, try_decode_base64
 
 if TYPE_CHECKING:
     import pandas as pd
