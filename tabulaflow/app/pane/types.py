@@ -5,7 +5,10 @@ from __future__ import annotations
 from typing import Literal, Required, TypedDict
 
 ViewKind = Literal["map", "chart", "data", "query"]
+VIEW_KINDS: tuple[ViewKind, ...] = ("map", "chart", "data", "query")
+CARD_ID_PREFIX = "rec_"
 PaneSource = Literal["manual"]
+ColumnFormatter = Literal["text", "num", "bool", "media"]
 
 
 class PaneCard(TypedDict):
@@ -21,6 +24,83 @@ class PaneTurn(TypedDict, total=False):
     user: str
     assistant: str
     source: PaneSource
+
+
+class ColumnDesc(TypedDict, total=False):
+    title: Required[str]
+    field: Required[str]
+    formatter: ColumnFormatter
+    headerSort: bool
+    sorter: str
+    sorterParams: dict[str, object]
+    hozAlign: str
+    resizable: bool
+    minWidth: int
+    widthGrow: int
+
+
+class TableData(TypedDict, total=False):
+    columns: Required[list[ColumnDesc]]
+    hasMedia: bool
+    maxHeight: int | None
+    rowHeaderWidth: int
+    displayCap: int
+    meta: str
+    numRows: int
+    numCols: int
+    truncatedRows: int
+    maxRows: int
+
+
+class DatasetData(TypedDict, total=False):
+    rows: Required[list[dict[str, object]]]
+    columns: list[ColumnDesc]
+
+
+class ChartData(TypedDict):
+    spec: dict[str, object]
+    renderer: str
+    wrapClass: str
+
+
+class QueryData(TypedDict):
+    sql: str
+    lexer: str
+    language: str
+    html: str
+
+
+class MapData(TypedDict, total=False):
+    provider: Required[str]
+    layers: Required[list[dict[str, object]]]
+    view: dict[str, object]
+
+
+class TableCardData(TypedDict):
+    dataset: DatasetData
+    table: TableData
+
+
+class ChartCardData(TypedDict):
+    chart: ChartData
+
+
+class QueryCardData(TypedDict):
+    query: QueryData
+
+
+class MapCardData(TypedDict):
+    map: MapData
+    datasets: dict[str, DatasetData]
+
+
+class CardData(TypedDict, total=False):
+    table: TableData
+    dataset: DatasetData
+    chart: ChartData
+    query: QueryData
+    map: MapData
+    datasets: dict[str, DatasetData]
 
 
 def card_payload(*, card_id: str, label: str | None, views: list[ViewKind]) -> PaneCard:

@@ -3,6 +3,9 @@
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
+from typing import cast
+
+from tabulaflow.app.pane.types import ColumnDesc, DatasetData, MapCardData, MapData
 
 
 def _as_str(value: object) -> str | None:
@@ -177,7 +180,7 @@ def _normalize_layers(
 def build_map_data(
     map_spec: Mapping[str, object],
     sources: Mapping[str, Mapping[str, object]],
-) -> dict[str, object] | None:
+) -> MapCardData | None:
     """Build a browser-pane map payload from a spec and its per-source datasets.
 
     Each column/geojson layer names the ``source`` record it reads from; column
@@ -205,14 +208,19 @@ def build_map_data(
     if not layers:
         return None
 
-    out: dict[str, object] = {
+    out: MapData = {
         "provider": "maplibre",
         "layers": layers,
     }
     view = map_spec.get("view")
     if isinstance(view, Mapping):
         out["view"] = dict(view)
-    datasets = {
-        rid: {"rows": source.get("rows", []), "columns": source.get("columns", [])} for rid, source in sources.items()
-    }
+    datasets: dict[str, DatasetData] = {}
+    for rid, source in sources.items():
+        rows = source.get("rows", [])
+        columns = source.get("columns", [])
+        datasets[rid] = {
+            "rows": cast(list[dict[str, object]], rows if isinstance(rows, list) else []),
+            "columns": cast(list[ColumnDesc], columns if isinstance(columns, list) else []),
+        }
     return {"map": out, "datasets": datasets}

@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from tabulaflow.app.media import sniff_binary, try_decode_base64
+from tabulaflow.app.pane.types import ColumnDesc, TableCardData, TableData
 
 if TYPE_CHECKING:
     import pandas as pd
@@ -74,7 +75,7 @@ _CELL_DISPLAY_CAP = 120
 class TableDataBuild:
     """Structured table payload plus Python-only field mapping."""
 
-    data: dict[str, object]
+    data: TableCardData
     field_by_column: dict[str, str]
 
 
@@ -189,7 +190,7 @@ def _build_table_data(
     sib_dir = output_dir / asset_stem
     sib_dir_created = False
 
-    column_defs: list[dict[str, object]] = []
+    column_defs: list[ColumnDesc] = []
     fields: list[tuple[str, str]] = []
     field_by_column: dict[str, str] = {}
     for col_idx, col in enumerate(view.columns):
@@ -298,7 +299,7 @@ def _build_table_data(
         rows.append(row_data)
 
     row_header_width = max(44, len(str(max(len(view), 1))) * 10 + 28)
-    table_payload: dict[str, object] = {
+    table_payload: TableData = {
         "columns": column_defs,
         "hasMedia": bool(col_types),
         "maxHeight": max_height,
@@ -322,7 +323,7 @@ def build_table_data(
     max_rows: int = _DEFAULT_MAX_ROWS,
     inline_cap: int = _DEFAULT_INLINE_CAP,
     max_height: int | None = None,
-) -> dict[str, object]:
+) -> TableCardData:
     """Build a structured table payload for the browser pane.
 
     Args:

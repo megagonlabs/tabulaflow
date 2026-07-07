@@ -12,7 +12,7 @@ from pygments.formatters import HtmlFormatter
 from pygments.lexers import get_lexer_by_name
 from pygments.util import ClassNotFound
 
-from tabulaflow.app.pane.types import PaneCard, ViewKind, card_payload
+from tabulaflow.app.pane.types import CARD_ID_PREFIX, PaneCard, QueryCardData, ViewKind, card_payload
 from tabulaflow.app.pane.charts import build_chart_data
 from tabulaflow.app.pane.maps import build_map_data
 from tabulaflow.app.pane.tables import PANE_TABLE_MAX_HEIGHT, _build_table_data
@@ -36,7 +36,7 @@ class MapArtifactLike(Protocol):
     sources: "dict[str, pd.DataFrame]"
 
 
-def build_query_data(sql: str, *, lexer: str = "sql") -> dict[str, object]:
+def build_query_data(sql: str, *, lexer: str = "sql") -> QueryCardData:
     """Build a structured query payload for the browser pane."""
     try:
         lex = get_lexer_by_name(lexer or "sql")
@@ -54,7 +54,7 @@ def render_record_data(record: ResultRecordLike, pane_dir: Path) -> PaneCard | N
     the record has, or ``None`` when the record has nothing displayable.
     """
     views: list[ViewKind] = []
-    card_id = f"rec_{secrets.token_hex(6)}"
+    card_id = f"{CARD_ID_PREFIX}{secrets.token_hex(6)}"
     record_data: dict[str, object] = {}
     df = record.df
     if df is not None and not df.empty:
@@ -89,9 +89,7 @@ def render_map_data(map_record: MapArtifactLike, pane_dir: Path) -> PaneCard | N
     results: each source DataFrame becomes a bundled dataset, and each layer reads
     from its ``source`` dataset. Returns ``None`` when no valid layer resolves.
     """
-    # ``rec_`` prefix: the pane server only serves session files under this
-    # convention (see ``app/pane.py``); the map's ``MAP*`` id lives in its label.
-    card_id = f"rec_{secrets.token_hex(6)}"
+    card_id = f"{CARD_ID_PREFIX}{secrets.token_hex(6)}"
     sources_payload: dict[str, dict[str, object]] = {}
     for source_id, df in map_record.sources.items():
         if df is None or df.empty:

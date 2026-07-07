@@ -6,6 +6,7 @@ import copy
 from typing import TYPE_CHECKING
 
 from tabulaflow.app.page import CARD_BG, TEXT, TEXT_MUTED
+from tabulaflow.app.pane.types import ChartCardData
 from tabulaflow.app.theme import ACCENT, VIZ_CHART_CATEGORY_PALETTE, VIZ_CHART_GRID
 
 if TYPE_CHECKING:
@@ -182,7 +183,7 @@ def build_chart_data(
     vegalite_spec: dict[str, object],
     *,
     field_by_column: dict[str, str] | None = None,
-) -> dict[str, object]:
+) -> ChartCardData:
     """Build a structured chart payload for the browser pane.
 
     Args:

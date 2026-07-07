@@ -24,7 +24,7 @@ from pathlib import Path
 from typing import cast
 from urllib.parse import unquote, urlsplit, urlunsplit
 
-from tabulaflow.app.pane.types import PaneTurn
+from tabulaflow.app.pane.types import CARD_ID_PREFIX, PaneTurn
 from tabulaflow.app.theme import GITHUB_SLUG, GITHUB_URL
 
 logger = logging.getLogger(__name__)
@@ -289,7 +289,7 @@ class _Handler(http.server.SimpleHTTPRequestHandler):
         if clean in ("", ".") or clean.startswith("../") or clean == "..":
             self.send_error(404)
             return
-        allowed = clean.startswith("rec_") and (clean.endswith(".data.json") or "/" in clean)
+        allowed = clean.startswith(CARD_ID_PREFIX) and (clean.endswith(".data.json") or "/" in clean)
         if not allowed:
             self.send_error(404)
             return
