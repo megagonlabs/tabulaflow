@@ -29,7 +29,8 @@ import pandas as pd
 from tabulaflow.app import pane as pane_mod
 from tabulaflow.app.debug import debug_chart_fixtures
 from tabulaflow.app.pane_types import PaneRecord, PaneSource, record_payload, turn_payload
-from tabulaflow.app.render.cards import render_record_data
+from tabulaflow.app.render.cards import render_map_card_data, render_record_data
+from tabulaflow.toolhub.render_map import normalize_map_spec
 
 
 def _record(
@@ -39,7 +40,6 @@ def _record(
     query: str | None,
     df: pd.DataFrame | None,
     chart_spec: dict[str, object] | None = None,
-    map_spec: dict[str, object] | None = None,
 ) -> SimpleNamespace:
     return SimpleNamespace(
         record_id=record_id,
@@ -47,9 +47,27 @@ def _record(
         query=query,
         df=df,
         chart_spec=chart_spec,
-        map_spec=map_spec,
         query_lexer="sql",
     )
+
+
+def _map_card(
+    *,
+    map_id: str,
+    label: str,
+    title: str,
+    layers: list[dict[str, object]],
+    sources: dict[str, pd.DataFrame],
+    pane_dir: Path,
+) -> PaneRecord:
+    """Build a map card via the real spec → normalize → render pipeline."""
+    normalized = normalize_map_spec({"title": title, "layers": layers}, sources)
+    card = render_map_card_data(
+        SimpleNamespace(map_id=map_id, label=label, map_spec=normalized, sources=sources),
+        pane_dir,
+    )
+    assert card is not None
+    return card
 
 
 def _render_records(records: Sequence[SimpleNamespace], pane_dir: Path) -> list[PaneRecord]:
@@ -243,7 +261,7 @@ def _large_agent_table_record() -> SimpleNamespace:
     )
 
 
-def _map_record() -> SimpleNamespace:
+def _map_showcase_card(pane_dir: Path) -> PaneRecord:
     df = pd.DataFrame(
         [
             {
@@ -366,46 +384,109 @@ def _map_record() -> SimpleNamespace:
             },
         ]
     )
-    return _record(
-        record_id="QDEBUG_MAP",
+    return _map_card(
+        map_id="MAPDEBUG_SHOWCASE",
         label="geometry_showcase",
-        query=("-- synthetic geometry showcase\nSELECT name, kind, url, lat, lng, geom\nFROM geometry_showcase"),
-        df=df,
-        map_spec={
-            "title": "Geometry showcase",
-            "layers": [
-                {
-                    "type": "points",
-                    "lat": "lat",
-                    "lng": "lng",
-                    "label": "name",
-                    "tooltip": ["name", "kind", "url"],
-                    "color": {"field": "kind"},
-                },
-                {
-                    "type": "geojson",
-                    "geojson": "geom",
-                    "label": "name",
-                    "tooltip": ["name", "kind", "url"],
-                    "color": {"field": "kind"},
-                },
-                {
-                    "type": "points",
-                    "points": [
-                        {
-                            "lat": 37.350,
-                            "lng": -121.890,
-                            "label": "Inline destination",
-                            "kind": "inline point",
-                            "url": "https://www.sanjose.org/",
-                        }
+        title="Geometry showcase (single source)",
+        sources={"QDEBUG_MAP": df},
+        pane_dir=pane_dir,
+        layers=[
+            {
+                "type": "points",
+                "record_id": "QDEBUG_MAP",
+                "lat": "lat",
+                "lng": "lng",
+                "label": "name",
+                "tooltip": ["name", "kind", "url"],
+                "color": {"field": "kind"},
+            },
+            {
+                "type": "geojson",
+                "record_id": "QDEBUG_MAP",
+                "geojson": "geom",
+                "label": "name",
+                "tooltip": ["name", "kind", "url"],
+                "color": {"field": "kind"},
+            },
+            {
+                "type": "points",
+                "points": [
+                    {
+                        "lat": 37.350,
+                        "lng": -121.890,
+                        "label": "Inline destination",
+                        "kind": "inline point",
+                        "url": "https://www.sanjose.org/",
+                    }
+                ],
+                "label": "label",
+                "tooltip": ["label", "kind", "url"],
+                "color": {"field": "kind"},
+            },
+        ],
+    )
+
+
+def _map_overlay_card(pane_dir: Path) -> PaneRecord:
+    """Multi-record overlay: neighborhood boundaries (Q1) + store points (Q2)."""
+    areas = pd.DataFrame(
+        [
+            {
+                "area": "Downtown",
+                "tier": "core",
+                "boundary": {
+                    "type": "Polygon",
+                    "coordinates": [
+                        [[-121.895, 37.330], [-121.878, 37.330], [-121.878, 37.342], [-121.895, 37.342], [-121.895, 37.330]]
                     ],
-                    "label": "label",
-                    "tooltip": ["label", "kind", "url"],
-                    "color": {"field": "kind"},
                 },
-            ],
-        },
+            },
+            {
+                "area": "North San Jose",
+                "tier": "growth",
+                "boundary": {
+                    "type": "Polygon",
+                    "coordinates": [
+                        [[-121.945, 37.370], [-121.915, 37.370], [-121.915, 37.395], [-121.945, 37.395], [-121.945, 37.370]]
+                    ],
+                },
+            },
+        ]
+    )
+    stores = pd.DataFrame(
+        [
+            {"store": "Market St", "status": "open", "lat": 37.335, "lng": -121.888},
+            {"store": "First St", "status": "open", "lat": 37.337, "lng": -121.886},
+            {"store": "Almaden", "status": "closed", "lat": 37.332, "lng": -121.890},
+            {"store": "Rio Robles", "status": "open", "lat": 37.382, "lng": -121.930},
+            {"store": "Zanker", "status": "closed", "lat": 37.388, "lng": -121.925},
+        ]
+    )
+    return _map_card(
+        map_id="MAPDEBUG_OVERLAY",
+        label="stores_by_area",
+        title="Stores by service area (two query results)",
+        sources={"Q_AREAS": areas, "Q_STORES": stores},
+        pane_dir=pane_dir,
+        layers=[
+            {
+                "type": "geojson",
+                "record_id": "Q_AREAS",
+                "geojson": "boundary",
+                "label": "area",
+                "tooltip": ["area", "tier"],
+                "color": {"field": "tier"},
+            },
+            {
+                "type": "points",
+                "record_id": "Q_STORES",
+                "lat": "lat",
+                "lng": "lng",
+                "label": "store",
+                "tooltip": ["store", "status"],
+                "color": {"field": "status"},
+            },
+        ],
     )
 
 
@@ -579,8 +660,19 @@ def _populate_pane(
             pane_dir,
             title="Map result",
             user="Show locations on an interactive map.",
-            assistant="This result includes a Map view backed by latitude and longitude columns.",
-            records=[_map_record()],
+            assistant="A standalone map card showing every supported geometry type from one query result.",
+            cards=[_map_showcase_card(pane_dir)],
+        )
+        _push_turn(
+            pane,
+            pane_dir,
+            title="Multi-record map overlay",
+            user="Overlay store locations on neighborhood service areas.",
+            assistant=(
+                "This map overlays two separate query results: neighborhood boundaries from one query and "
+                "store points from another. Each layer reads from its own source dataset."
+            ),
+            cards=[_map_overlay_card(pane_dir)],
         )
         _push_turn(
             pane,
