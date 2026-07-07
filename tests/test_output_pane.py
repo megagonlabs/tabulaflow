@@ -15,7 +15,7 @@ from types import SimpleNamespace
 import pandas as pd
 import pytest
 
-from tabulaflow.app.render.cards import render_query_html, render_record_data
+from tabulaflow.app.render.cards import render_map_card_data, render_query_html, render_record_data
 from tabulaflow.app.render.tables import TABLE_RENDER_MAX_ROWS
 from tabulaflow.app.pane import OutputPane, OutputPanePortError, _PANE_HTML
 from tabulaflow.app.pane_types import PaneRecord, PaneTurn, turn_payload
@@ -239,7 +239,16 @@ def test_record_card_preserves_null_cells(tmp_path: Path) -> None:
     assert payload["table"]["columns"][1]["formatter"] == "num"
 
 
-def test_record_card_writes_map_view_payload(tmp_path: Path) -> None:
+def _map_card(map_spec: dict, sources: dict[str, pd.DataFrame], tmp_path: Path, *, label: str = "map") -> dict:
+    card = render_map_card_data(
+        SimpleNamespace(map_id="MAP1", label=label, map_spec=map_spec, sources=sources),
+        tmp_path,
+    )
+    assert card is not None
+    return card
+
+
+def test_map_card_writes_points_payload(tmp_path: Path) -> None:
     df = pd.DataFrame(
         {
             "city": ["San Francisco", "Oakland"],
@@ -247,33 +256,25 @@ def test_record_card_writes_map_view_payload(tmp_path: Path) -> None:
             "longitude": [-122.4194, -122.2712],
         }
     )
-    card = render_record_data(
-        SimpleNamespace(
-            df=df,
-            chart_spec=None,
-            map_spec={"layers": [{"type": "points", "lat": "latitude", "lng": "longitude", "label": "city"}]},
-            query=None,
-            label="locations",
-            record_id="r1",
-            query_lexer="sql",
-        ),
+    card = _map_card(
+        {"layers": [{"type": "points", "source": "Q1", "lat": "latitude", "lng": "longitude", "label": "city"}]},
+        {"Q1": df},
         tmp_path,
+        label="locations",
     )
 
-    assert card is not None
-    assert card["views"] == ["map", "data"]
+    assert card["views"] == ["map"]
     payload = json.loads((tmp_path / f"{card['id']}.data.json").read_text())
     assert payload["map"]["provider"] == "maplibre"
     assert payload["map"]["layers"] == [
-        {"type": "points", "lat": "c1", "lng": "c2", "label": "c0"},
+        {"type": "points", "source": "Q1", "lat": "c1", "lng": "c2", "label": "c0"},
     ]
     assert "tileUrl" not in payload["map"]
-    assert "attribution" not in payload["map"]
-    assert payload["dataset"]["rows"][0]["c1"] == 37.7749
-    assert payload["dataset"]["rows"][0]["c2"] == -122.4194
+    assert payload["datasets"]["Q1"]["rows"][0]["c1"] == 37.7749
+    assert payload["datasets"]["Q1"]["rows"][0]["c2"] == -122.4194
 
 
-def test_record_card_preserves_blank_coordinate_strings_for_map_renderer(tmp_path: Path) -> None:
+def test_map_card_preserves_blank_coordinate_strings_for_map_renderer(tmp_path: Path) -> None:
     df = pd.DataFrame(
         {
             "city": ["Missing", "San Francisco"],
@@ -281,55 +282,19 @@ def test_record_card_preserves_blank_coordinate_strings_for_map_renderer(tmp_pat
             "longitude": ["", "-122.4194"],
         }
     )
-    card = render_record_data(
-        SimpleNamespace(
-            df=df,
-            chart_spec=None,
-            map_spec={"layers": [{"type": "points", "lat": "latitude", "lng": "longitude", "label": "city"}]},
-            query=None,
-            label="locations",
-            record_id="r1",
-            query_lexer="sql",
-        ),
+    card = _map_card(
+        {"layers": [{"type": "points", "source": "Q1", "lat": "latitude", "lng": "longitude", "label": "city"}]},
+        {"Q1": df},
         tmp_path,
     )
 
-    assert card is not None
-    assert card["views"] == ["map", "data"]
+    assert card["views"] == ["map"]
     payload = json.loads((tmp_path / f"{card['id']}.data.json").read_text())
-    assert payload["dataset"]["rows"][0]["c1"] == ""
-    assert payload["dataset"]["rows"][0]["c2"] == ""
+    assert payload["datasets"]["Q1"]["rows"][0]["c1"] == ""
+    assert payload["datasets"]["Q1"]["rows"][0]["c2"] == ""
 
 
-def test_record_card_skips_map_view_when_table_payload_is_truncated(tmp_path: Path) -> None:
-    df = pd.DataFrame(
-        {
-            "city": ["San Francisco"] * (TABLE_RENDER_MAX_ROWS + 1),
-            "latitude": [37.7749] * (TABLE_RENDER_MAX_ROWS + 1),
-            "longitude": [-122.4194] * (TABLE_RENDER_MAX_ROWS + 1),
-        }
-    )
-    card = render_record_data(
-        SimpleNamespace(
-            df=df,
-            chart_spec=None,
-            map_spec={"layers": [{"type": "points", "lat": "latitude", "lng": "longitude", "label": "city"}]},
-            query=None,
-            label="too_many_locations",
-            record_id="r1",
-            query_lexer="sql",
-        ),
-        tmp_path,
-    )
-
-    assert card is not None
-    assert card["views"] == ["data"]
-    payload = json.loads((tmp_path / f"{card['id']}.data.json").read_text())
-    assert "map" not in payload
-    assert payload["table"]["truncatedRows"] == 1
-
-
-def test_record_card_writes_layered_map_view_payload(tmp_path: Path) -> None:
+def test_map_card_writes_layered_single_source_payload(tmp_path: Path) -> None:
     df = pd.DataFrame(
         {
             "city": ["San Francisco"],
@@ -356,40 +321,42 @@ def test_record_card_writes_layered_map_view_payload(tmp_path: Path) -> None:
             ],
         }
     )
-    card = render_record_data(
-        SimpleNamespace(
-            df=df,
-            chart_spec=None,
-            map_spec={
-                "layers": [
-                    {
-                        "type": "geojson",
-                        "geojson": "boundary_geojson",
-                        "label": "region",
-                        "tooltip": ["region"],
-                        "color": {"field": "region"},
-                    },
-                    {"type": "points", "lat": "latitude", "lng": "longitude", "label": "city", "tooltip": ["city"]},
-                ]
-            },
-            query=None,
-            label="locations",
-            record_id="r1",
-            query_lexer="sql",
-        ),
+    card = _map_card(
+        {
+            "layers": [
+                {
+                    "type": "geojson",
+                    "source": "Q1",
+                    "geojson": "boundary_geojson",
+                    "label": "region",
+                    "tooltip": ["region"],
+                    "color": {"field": "region"},
+                },
+                {
+                    "type": "points",
+                    "source": "Q1",
+                    "lat": "latitude",
+                    "lng": "longitude",
+                    "label": "city",
+                    "tooltip": ["city"],
+                },
+            ]
+        },
+        {"Q1": df},
         tmp_path,
     )
 
-    assert card is not None
-    assert card["views"] == ["map", "data"]
+    assert card["views"] == ["map"]
     payload = json.loads((tmp_path / f"{card['id']}.data.json").read_text())
     assert payload["map"]["layers"][0]["type"] == "geojson"
+    assert payload["map"]["layers"][0]["source"] == "Q1"
     assert payload["map"]["layers"][0]["geojson"] == "c4"
     assert payload["map"]["layers"][0]["label"] == "c3"
     assert payload["map"]["layers"][0]["tooltip"] == ["c3"]
     assert payload["map"]["layers"][0]["color"] == {"field": "c3"}
     assert payload["map"]["layers"][1] == {
         "type": "points",
+        "source": "Q1",
         "lat": "c1",
         "lng": "c2",
         "label": "c0",
@@ -397,7 +364,41 @@ def test_record_card_writes_layered_map_view_payload(tmp_path: Path) -> None:
     }
 
 
-def test_record_card_writes_inline_point_map_layer(tmp_path: Path) -> None:
+def test_map_card_writes_multi_source_datasets(tmp_path: Path) -> None:
+    boundaries = pd.DataFrame(
+        {
+            "area": ["Bay Area"],
+            "boundary_geojson": [{"type": "Point", "coordinates": [-122.4, 37.7]}],
+        }
+    )
+    points = pd.DataFrame({"city": ["San Francisco"], "latitude": [37.7749], "longitude": [-122.4194]})
+    card = _map_card(
+        {
+            "layers": [
+                {"type": "geojson", "source": "Q1", "geojson": "boundary_geojson", "label": "area"},
+                {"type": "points", "source": "Q2", "lat": "latitude", "lng": "longitude", "label": "city"},
+            ]
+        },
+        {"Q1": boundaries, "Q2": points},
+        tmp_path,
+    )
+
+    assert card["views"] == ["map"]
+    payload = json.loads((tmp_path / f"{card['id']}.data.json").read_text())
+    # Each layer reads from its own source's compact field names.
+    assert payload["map"]["layers"][0] == {"type": "geojson", "source": "Q1", "geojson": "c1", "label": "c0"}
+    assert payload["map"]["layers"][1] == {
+        "type": "points",
+        "source": "Q2",
+        "lat": "c1",
+        "lng": "c2",
+        "label": "c0",
+    }
+    assert set(payload["datasets"]) == {"Q1", "Q2"}
+    assert payload["datasets"]["Q2"]["rows"][0]["c1"] == 37.7749
+
+
+def test_map_card_writes_inline_point_layer(tmp_path: Path) -> None:
     df = pd.DataFrame(
         {
             "route_geojson": [
@@ -409,35 +410,24 @@ def test_record_card_writes_inline_point_map_layer(tmp_path: Path) -> None:
             "route_name": ["Route"],
         }
     )
-    card = render_record_data(
-        SimpleNamespace(
-            df=df,
-            chart_spec=None,
-            map_spec={
-                "layers": [
-                    {
-                        "type": "geojson",
-                        "geojson": "route_geojson",
-                        "label": "route_name",
-                    },
-                    {
-                        "type": "points",
-                        "points": [{"lat": 37.8044, "lng": -122.2712, "label": "Destination", "kind": "destination"}],
-                        "label": "label",
-                        "tooltip": ["label", "kind"],
-                    },
-                ]
-            },
-            query=None,
-            label="route",
-            record_id="r1",
-            query_lexer="sql",
-        ),
+    card = _map_card(
+        {
+            "layers": [
+                {"type": "geojson", "source": "Q1", "geojson": "route_geojson", "label": "route_name"},
+                {
+                    "type": "points",
+                    "points": [{"lat": 37.8044, "lng": -122.2712, "label": "Destination", "kind": "destination"}],
+                    "label": "label",
+                    "tooltip": ["label", "kind"],
+                },
+            ]
+        },
+        {"Q1": df},
         tmp_path,
+        label="route",
     )
 
-    assert card is not None
-    assert card["views"] == ["map", "data"]
+    assert card["views"] == ["map"]
     payload = json.loads((tmp_path / f"{card['id']}.data.json").read_text())
     assert payload["map"]["layers"][0]["geojson"] == "c0"
     assert payload["map"]["layers"][0]["label"] == "c1"
@@ -561,9 +551,7 @@ def test_pane_map_view_is_maplibre_based() -> None:
     ]
     assert "openmaptiles.github.io/osm-bright-gl-style/sprite" not in json.dumps(style)
     sprite = json.loads(maplibre_assets.joinpath("osm-bright-sprite.json").read_text(encoding="utf-8"))
-    assert {"road_1", "road_6", "us-interstate_1", "us-interstate_3", "us-highway_1", "us-highway_3"} <= set(
-        sprite
-    )
+    assert {"road_1", "road_6", "us-interstate_1", "us-interstate_3", "us-highway_1", "us-highway_3"} <= set(sprite)
     route_sprite = json.loads(maplibre_assets.joinpath("tf-route-sprite.json").read_text(encoding="utf-8"))
     assert set(route_sprite) == {"airport_11", "us-interstate_1", "us-interstate_2", "us-interstate_3"}
     assert route_sprite["airport_11"]["width"] == 20
@@ -618,48 +606,151 @@ def test_pane_map_view_is_maplibre_based() -> None:
         assert_interpolate_array_outputs_are_literals(layer)
 
     assert_layer_order(
-        "background", "ocean", "landcover-glacier", "landuse-residential", "landuse-commercial",
-        "landuse-industrial", "landuse-cemetery", "landuse-hospital", "landuse-school", "landuse-railway",
-        "landcover-wood", "landcover-grass", "landcover-wetland", "landcover-rock", "landcover-farmland",
-        "landcover-grass-park", "dam-polygons", "dam-lines", "waterway_tunnel", "waterway-other",
-        "waterway-other-intermittent", "waterway-stream-canal", "waterway-stream-canal-intermittent",
-        "waterway-river", "waterway-river-intermittent", "water", "water-intermittent",
-        "landcover-ice-shelf", "landcover-sand", "building",
+        "background",
+        "ocean",
+        "landcover-glacier",
+        "landuse-residential",
+        "landuse-commercial",
+        "landuse-industrial",
+        "landuse-cemetery",
+        "landuse-hospital",
+        "landuse-school",
+        "landuse-railway",
+        "landcover-wood",
+        "landcover-grass",
+        "landcover-wetland",
+        "landcover-rock",
+        "landcover-farmland",
+        "landcover-grass-park",
+        "dam-polygons",
+        "dam-lines",
+        "waterway_tunnel",
+        "waterway-other",
+        "waterway-other-intermittent",
+        "waterway-stream-canal",
+        "waterway-stream-canal-intermittent",
+        "waterway-river",
+        "waterway-river-intermittent",
+        "water",
+        "water-intermittent",
+        "landcover-ice-shelf",
+        "landcover-sand",
+        "building",
         "building-top",
     )
     assert_layer_order(
-        "tunnel-service-track-casing", "tunnel-motorway-link-casing", "tunnel-minor-casing",
-        "tunnel-link-casing", "tunnel-secondary-tertiary-casing", "tunnel-trunk-primary-casing",
-        "tunnel-motorway-casing", "tunnel-path-steps-casing", "tunnel-path-steps", "tunnel-path",
-        "tunnel-motorway-link", "tunnel-service-track", "tunnel-link", "tunnel-minor",
-        "tunnel-secondary-tertiary", "tunnel-trunk-primary", "tunnel-motorway", "tunnel-railway", "ferry",
-        "aeroway-taxiway-casing", "aeroway-runway-casing", "aeroway-area", "aeroway-taxiway",
-        "aeroway-runway", "road_area_pier", "road_pier", "highway-area",
+        "tunnel-service-track-casing",
+        "tunnel-motorway-link-casing",
+        "tunnel-minor-casing",
+        "tunnel-link-casing",
+        "tunnel-secondary-tertiary-casing",
+        "tunnel-trunk-primary-casing",
+        "tunnel-motorway-casing",
+        "tunnel-path-steps-casing",
+        "tunnel-path-steps",
+        "tunnel-path",
+        "tunnel-motorway-link",
+        "tunnel-service-track",
+        "tunnel-link",
+        "tunnel-minor",
+        "tunnel-secondary-tertiary",
+        "tunnel-trunk-primary",
+        "tunnel-motorway",
+        "tunnel-railway",
+        "ferry",
+        "aeroway-taxiway-casing",
+        "aeroway-runway-casing",
+        "aeroway-area",
+        "aeroway-taxiway",
+        "aeroway-runway",
+        "road_area_pier",
+        "road_pier",
+        "highway-area",
     )
     assert_layer_order(
-        "highway-path-steps-casing", "highway-motorway-link-casing", "highway-link-casing",
-        "highway-minor-casing", "highway-secondary-tertiary-casing", "highway-primary-casing",
-        "highway-trunk-casing", "highway-motorway-casing", "highway-path", "highway-path-steps",
-        "highway-motorway-link", "highway-link", "highway-minor", "highway-secondary-tertiary",
-        "highway-primary", "highway-trunk", "highway-motorway", "railway-transit",
-        "railway-transit-hatching", "railway-service", "railway-service-hatching", "railway",
-        "railway-hatching", "bridges", "bridge-motorway-link-casing", "bridge-link-casing",
-        "bridge-secondary-tertiary-casing", "bridge-trunk-primary-casing", "bridge-motorway-casing",
-        "bridge-minor-casing", "bridge-path-casing", "bridge-path-steps", "bridge-path",
-        "bridge-motorway-link", "bridge-link", "bridge-minor", "bridge-secondary-tertiary",
-        "bridge-trunk-primary", "bridge-motorway", "bridge-railway", "bridge-railway-hatching", "cablecar",
+        "highway-path-steps-casing",
+        "highway-motorway-link-casing",
+        "highway-link-casing",
+        "highway-minor-casing",
+        "highway-secondary-tertiary-casing",
+        "highway-primary-casing",
+        "highway-trunk-casing",
+        "highway-motorway-casing",
+        "highway-path",
+        "highway-path-steps",
+        "highway-motorway-link",
+        "highway-link",
+        "highway-minor",
+        "highway-secondary-tertiary",
+        "highway-primary",
+        "highway-trunk",
+        "highway-motorway",
+        "railway-transit",
+        "railway-transit-hatching",
+        "railway-service",
+        "railway-service-hatching",
+        "railway",
+        "railway-hatching",
+        "bridges",
+        "bridge-motorway-link-casing",
+        "bridge-link-casing",
+        "bridge-secondary-tertiary-casing",
+        "bridge-trunk-primary-casing",
+        "bridge-motorway-casing",
+        "bridge-minor-casing",
+        "bridge-path-casing",
+        "bridge-path-steps",
+        "bridge-path",
+        "bridge-motorway-link",
+        "bridge-link",
+        "bridge-minor",
+        "bridge-secondary-tertiary",
+        "bridge-trunk-primary",
+        "bridge-motorway",
+        "bridge-railway",
+        "bridge-railway-hatching",
+        "cablecar",
         "cablecar-dash",
     )
     assert_layer_order(
-        "boundary-land-level-4-fallback", "boundary-land-level-4", "boundary-land-level-2-fallback",
-        "boundary-land-level-2", "boundary-land-disputed", "waterway-name",
-        "water-name-lakeline", "water-name-ocean", "water-name-other",
-        "road_oneway", "road_oneway_opposite", "poi-level-3", "poi-level-2", "poi-level-1", "poi-railway",
-        "highway-name-path", "highway-name-minor", "highway-name-major", "highway-shield",
-        "highway-shield-us-interstate", "highway-shield-us-highway", "highway-shield-long-ref", "ferry-labels",
-        "airport-label-major", "place-other", "place-island", "place-village", "place-town", "place-city",
-        "place-city-medium", "place-city-small", "place-city-capital", "place-state", "place-country-other",
-        "place-country-3", "place-country-2", "place-country-1", "place-continent",
+        "boundary-land-level-4-fallback",
+        "boundary-land-level-4",
+        "boundary-land-level-2-fallback",
+        "boundary-land-level-2",
+        "boundary-land-disputed",
+        "waterway-name",
+        "water-name-lakeline",
+        "water-name-ocean",
+        "water-name-other",
+        "road_oneway",
+        "road_oneway_opposite",
+        "poi-level-3",
+        "poi-level-2",
+        "poi-level-1",
+        "poi-railway",
+        "highway-name-path",
+        "highway-name-minor",
+        "highway-name-major",
+        "highway-shield",
+        "highway-shield-us-interstate",
+        "highway-shield-us-highway",
+        "highway-shield-long-ref",
+        "ferry-labels",
+        "airport-label-major",
+        "place-other",
+        "place-island",
+        "place-village",
+        "place-town",
+        "place-city",
+        "place-city-medium",
+        "place-city-small",
+        "place-city-capital",
+        "place-state",
+        "place-country-other",
+        "place-country-3",
+        "place-country-2",
+        "place-country-1",
+        "place-continent",
     )
 
     place_city_capital = layer_by_id["place-city-capital"]
@@ -813,7 +904,18 @@ def test_pane_map_view_is_maplibre_based() -> None:
     assert layer_by_id["landcover-grass"]["filter"] == [
         "match",
         ["get", "kind"],
-        ["grass", "grassland", "meadow", "park", "recreation_ground", "garden", "playground", "golf_course", "scrub", "heath"],
+        [
+            "grass",
+            "grassland",
+            "meadow",
+            "park",
+            "recreation_ground",
+            "garden",
+            "playground",
+            "golf_course",
+            "scrub",
+            "heath",
+        ],
         True,
         False,
     ]
@@ -1381,7 +1483,15 @@ def test_pane_map_view_is_maplibre_based() -> None:
         16,
         15,
     ]
-    assert layer_by_id["highway-name-minor"]["layout"]["text-size"] == ["interpolate", ["linear"], ["zoom"], 15, 12, 16, 13]
+    assert layer_by_id["highway-name-minor"]["layout"]["text-size"] == [
+        "interpolate",
+        ["linear"],
+        ["zoom"],
+        15,
+        12,
+        16,
+        13,
+    ]
     assert layer_by_id["water-name-lakeline"]["layout"]["text-size"] == [
         "interpolate",
         ["linear"],
@@ -1605,7 +1715,10 @@ def test_pane_map_view_is_maplibre_based() -> None:
     assert ".tf-map-pin {" in _PANE_HTML
     assert "pointer-events: none; transform: translateY(1px);" in _PANE_HTML
     assert ".tf-map-view .maplibregl-popup.tf-map-detail-tooltip .maplibregl-popup-content," in _PANE_HTML
-    assert ".tf-map-view .maplibregl-popup.tf-map-detail-tooltip .maplibregl-popup-content { pointer-events: auto; }" in _PANE_HTML
+    assert (
+        ".tf-map-view .maplibregl-popup.tf-map-detail-tooltip .maplibregl-popup-content { pointer-events: auto; }"
+        in _PANE_HTML
+    )
     assert "padding: 9px 14px 9px 12px; background: #fff; border: 0; border-radius: 12px;" in _PANE_HTML
     assert ".tf-map-view .maplibregl-popup.tf-map-detail-popup .maplibregl-popup-tip { display: none; }" in _PANE_HTML
     assert "max-width: min(420px, 72vw); color: #111827;" in _PANE_HTML
@@ -1905,7 +2018,9 @@ def test_pane_serves_bundled_assets_cached(tmp_path: Path) -> None:
         assert airport_by_iata["SFO"]["properties"]["scalerank"] == 2
         assert {feature["geometry"]["type"] for feature in airport_labels["features"]} == {"Point"}
 
-        with urllib.request.urlopen(f"{origin}assets/maplibre/natural-earth-admin0-boundaries.geojson", timeout=2) as resp:
+        with urllib.request.urlopen(
+            f"{origin}assets/maplibre/natural-earth-admin0-boundaries.geojson", timeout=2
+        ) as resp:
             assert resp.headers.get("Cache-Control") == "no-cache"
             assert resp.headers.get("Content-Type") == "application/json; charset=utf-8"
             admin0_boundaries = json.loads(resp.read())
@@ -1916,7 +2031,9 @@ def test_pane_serves_bundled_assets_cached(tmp_path: Path) -> None:
             "MultiLineString",
         }
 
-        with urllib.request.urlopen(f"{origin}assets/maplibre/natural-earth-admin1-boundaries.geojson", timeout=2) as resp:
+        with urllib.request.urlopen(
+            f"{origin}assets/maplibre/natural-earth-admin1-boundaries.geojson", timeout=2
+        ) as resp:
             assert resp.headers.get("Cache-Control") == "no-cache"
             assert resp.headers.get("Content-Type") == "application/json; charset=utf-8"
             admin1_boundaries = json.loads(resp.read())

@@ -26,10 +26,16 @@ if TYPE_CHECKING:
 class ResultRecordLike(Protocol):
     df: "pd.DataFrame | None"
     chart_spec: dict[str, object] | None
-    map_spec: dict[str, object] | None
     query: str | None
     label: str | None
     query_lexer: str
+
+
+class MapRecordLike(Protocol):
+    map_id: str
+    label: str | None
+    map_spec: dict[str, object]
+    sources: "dict[str, pd.DataFrame]"
 
 
 _QUERY_BG = "#1e1e1e"
@@ -144,14 +150,6 @@ def render_record_data(record: ResultRecordLike, pane_dir: Path) -> PaneRecord |
             max_height=PANE_TABLE_MAX_HEIGHT,
         )
         record_data.update(table_build.data)
-        map_spec = getattr(record, "map_spec", None)
-        table_payload = table_build.data.get("table")
-        table_truncated = isinstance(table_payload, dict) and bool(table_payload.get("truncatedRows"))
-        if map_spec is not None and not table_truncated:
-            map_data = build_map_data(df, map_spec, field_by_column=table_build.field_by_column)
-            if map_data is not None:
-                record_data.update(map_data)
-                views.append("map")
         if record.chart_spec is not None:
             record_data.update(build_chart_data(df, record.chart_spec, field_by_column=table_build.field_by_column))
             views.append("chart")
@@ -167,3 +165,39 @@ def render_record_data(record: ResultRecordLike, pane_dir: Path) -> PaneRecord |
         encoding="utf-8",
     )
     return record_payload(record_id=record_id, label=record.label, views=views)
+
+
+def render_map_card_data(map_record: MapRecordLike, pane_dir: Path) -> PaneRecord | None:
+    """Render a standalone map card's payload to JSON; return a pane manifest.
+
+    A map-only card (no chart/data/query views) assembled from one or more query
+    results: each source DataFrame becomes a bundled dataset, and each layer reads
+    from its ``source`` dataset. Returns ``None`` when no valid layer resolves.
+    """
+    card_id = f"map_{secrets.token_hex(6)}"
+    sources_payload: dict[str, dict[str, object]] = {}
+    for source_id, df in map_record.sources.items():
+        if df is None or df.empty:
+            continue
+        table_build = _build_table_data(
+            df,
+            asset_stem=f"{card_id}_{source_id}",
+            output_dir=pane_dir,
+            max_height=None,
+        )
+        dataset = table_build.data.get("dataset")
+        table_payload = table_build.data.get("table")
+        sources_payload[source_id] = {
+            "rows": dataset.get("rows", []) if isinstance(dataset, dict) else [],
+            "columns": table_payload.get("columns", []) if isinstance(table_payload, dict) else [],
+            "field_by_column": table_build.field_by_column,
+        }
+    map_data = build_map_data(map_record.map_spec, sources_payload)
+    if map_data is None:
+        return None
+    pane_dir.mkdir(parents=True, exist_ok=True)
+    (pane_dir / f"{card_id}.data.json").write_text(
+        json.dumps(map_data, ensure_ascii=False, default=str),
+        encoding="utf-8",
+    )
+    return record_payload(record_id=card_id, label=map_record.label, views=["map"])

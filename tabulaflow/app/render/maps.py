@@ -3,10 +3,6 @@
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    import pandas as pd
 
 
 def _as_str(value: object) -> str | None:
@@ -152,7 +148,7 @@ def _normalize_geojson_layer(
 def _normalize_layers(
     map_spec: Mapping[str, object],
     *,
-    field_by_column: Mapping[str, str],
+    field_by_column_by_source: Mapping[str, Mapping[str, str]],
 ) -> list[dict[str, object]]:
     raw_layers = map_spec.get("layers")
     layers: list[dict[str, object]] = []
@@ -160,6 +156,8 @@ def _normalize_layers(
         for raw_layer in raw_layers:
             if not isinstance(raw_layer, Mapping):
                 continue
+            source = _as_str(raw_layer.get("source"))
+            field_by_column = field_by_column_by_source.get(source, {}) if source else {}
             layer_type = _as_str(raw_layer.get("type")) or "points"
             if layer_type == "points":
                 layer = _normalize_points_layer(raw_layer, field_by_column)
@@ -168,6 +166,8 @@ def _normalize_layers(
             else:
                 layer = None
             if layer is not None:
+                if source is not None:
+                    layer["source"] = source
                 layers.append(layer)
         return layers
 
@@ -175,26 +175,33 @@ def _normalize_layers(
 
 
 def build_map_data(
-    df: pd.DataFrame,
     map_spec: Mapping[str, object],
-    *,
-    field_by_column: Mapping[str, str],
+    sources: Mapping[str, Mapping[str, object]],
 ) -> dict[str, object] | None:
-    """Build a browser-pane map payload from a DataFrame and declarative spec.
+    """Build a browser-pane map payload from a spec and its per-source datasets.
+
+    Each column/geojson layer names the ``source`` record it reads from; column
+    references (using each source's original column names) are rewritten to that
+    source's compact pane field names, and the source datasets are bundled so the
+    browser reads ``datasets[layer.source].rows`` per layer.
 
     Args:
-        df: DataFrame backing the output-pane record.
-        map_spec: Declarative map configuration with a non-empty ``layers``
-            list. Column references use the DataFrame's original column names;
-            they are rewritten to the pane dataset's compact field names.
-        field_by_column: Mapping from original DataFrame column names to pane
-            dataset field names.
+        map_spec: Normalized map configuration (layers carry a ``source`` record
+            id) with a non-empty ``layers`` list.
+        sources: Mapping from record id to a dataset dict with ``rows``,
+            ``columns``, and ``field_by_column`` (original column name → pane
+            field name).
 
     Returns:
-        A ``{"map": ...}`` payload, or ``None`` when no valid layer can be
-        resolved.
+        A ``{"map": ..., "datasets": ...}`` payload, or ``None`` when no valid
+        layer can be resolved.
     """
-    layers = _normalize_layers(map_spec, field_by_column=field_by_column)
+    field_by_column_by_source: dict[str, Mapping[str, str]] = {}
+    for rid, source in sources.items():
+        fbc = source.get("field_by_column", {})
+        if isinstance(fbc, Mapping):
+            field_by_column_by_source[rid] = {str(k): str(v) for k, v in fbc.items()}
+    layers = _normalize_layers(map_spec, field_by_column_by_source=field_by_column_by_source)
     if not layers:
         return None
 
@@ -205,4 +212,7 @@ def build_map_data(
     view = map_spec.get("view")
     if isinstance(view, Mapping):
         out["view"] = dict(view)
-    return {"map": out}
+    datasets = {
+        rid: {"rows": source.get("rows", []), "columns": source.get("columns", [])} for rid, source in sources.items()
+    }
+    return {"map": out, "datasets": datasets}

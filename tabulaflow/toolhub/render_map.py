@@ -89,6 +89,7 @@ class _InlinePoint(BaseModel):
 
 class _PointsLayer(_StrictModel):
     type: Literal["points"]
+    record_id: str | None = None
     points: list[_InlinePoint] | None = None
     lat: str | None = None
     latitude: str | None = None
@@ -111,15 +112,29 @@ class _PointsLayer(_StrictModel):
             raise ValueError("points layers must use either points or lat/lng columns, not both")
         if not has_inline_points and not has_column_points:
             raise ValueError("points layers must define points or lat/lng columns")
+        if has_inline_points and self.record_id is not None:
+            raise ValueError("inline points layers must not set record_id")
+        if has_column_points and self.record_id is None:
+            raise ValueError("points layers must set record_id (the source query result)")
         return self
 
 
 class _GeoJsonLayer(_StrictModel):
     type: Literal["geojson"]
+    record_id: str | None = None
     geojson: str | dict[str, Any]
     label: str | None = None
     tooltip: str | list[str] | Literal[True] | None = None
     color: _ColorEncoding | None = None
+
+    @model_validator(mode="after")
+    def _validate_source(self) -> _GeoJsonLayer:
+        is_column = isinstance(self.geojson, str)
+        if is_column and self.record_id is None:
+            raise ValueError("geojson layers must set record_id (the source query result)")
+        if not is_column and self.record_id is None and (self.label or self.tooltip or self.color):
+            raise ValueError("inline geojson with label/tooltip/color must set record_id")
+        return self
 
 
 _Layer = Annotated[_PointsLayer | _GeoJsonLayer, Field(discriminator="type")]
@@ -229,7 +244,7 @@ def _has_valid_point(df: pd.DataFrame, lat_col: str, lng_col: str) -> bool:
     return bool(valid.any())
 
 
-def _normalize_points_layer(df: pd.DataFrame, layer: _PointsLayer, index: int) -> dict[str, Any]:
+def _normalize_points_layer(df: pd.DataFrame | None, layer: _PointsLayer, index: int) -> dict[str, Any]:
     if layer.points is not None:
         inline_points = [point.to_payload() for point in layer.points]
 
@@ -238,11 +253,12 @@ def _normalize_points_layer(df: pd.DataFrame, layer: _PointsLayer, index: int) -
 
         out: dict[str, Any] = {"type": "points", "points": inline_points}
     else:
+        assert df is not None  # column mode implies a resolved source df
         lat = _field(df, layer.lat or layer.latitude, path=f"layers[{index}].lat")
         lng = _field(df, layer.lng or layer.lon or layer.longitude, path=f"layers[{index}].lng")
         if not _has_valid_point(df, lat, lng):
             raise MapSpecError(f"layers[{index}] has no valid latitude/longitude rows")
-        out = {"type": "points", "lat": lat, "lng": lng}
+        out = {"type": "points", "source": layer.record_id, "lat": lat, "lng": lng}
 
         def resolve_field(value: str | None, *, path: str) -> str:
             return _field(df, value, path=path)
@@ -288,9 +304,10 @@ def _has_geojson_value(df: pd.DataFrame, column: str) -> bool:
     return False
 
 
-def _normalize_geojson_layer(df: pd.DataFrame, layer: _GeoJsonLayer, index: int) -> dict[str, Any]:
+def _normalize_geojson_layer(df: pd.DataFrame | None, layer: _GeoJsonLayer, index: int) -> dict[str, Any]:
     geojson = layer.geojson
     if isinstance(geojson, str):
+        assert df is not None  # column mode implies a resolved source df
         geojson_value: object = _field(df, geojson, path=f"layers[{index}].geojson")
         if not _has_geojson_value(df, str(geojson_value)):
             raise MapSpecError(f"layers[{index}].geojson has no valid GeoJSON sample values")
@@ -300,8 +317,11 @@ def _normalize_geojson_layer(df: pd.DataFrame, layer: _GeoJsonLayer, index: int)
         raise MapSpecError(f"layers[{index}].geojson must be a GeoJSON column or object")
 
     out: dict[str, Any] = {"type": "geojson", "geojson": geojson_value}
+    if layer.record_id is not None:
+        out["source"] = layer.record_id
 
     def resolve_field(value: str | None, *, path: str) -> str:
+        assert df is not None
         return _field(df, value, path=path)
 
     label = _optional_field(resolve_field, layer.label, path=f"layers[{index}].label")
@@ -316,21 +336,42 @@ def _normalize_geojson_layer(df: pd.DataFrame, layer: _GeoJsonLayer, index: int)
     return out
 
 
-def normalize_map_spec(df: pd.DataFrame, spec: Mapping[str, object]) -> dict[str, Any]:
-    """Validate and normalize a map spec against a result DataFrame."""
+def parse_map_spec(spec: Mapping[str, object]) -> _MapSpec:
+    """Validate a raw map spec into a typed model, raising ``MapSpecError``."""
     try:
-        parsed = _MapSpec.model_validate(spec)
+        return _MapSpec.model_validate(spec)
     except ValidationError as e:
         raise MapSpecError(_validation_message(e)) from None
 
+
+def referenced_record_ids(parsed: _MapSpec) -> list[str]:
+    """Return the distinct source record ids referenced by a parsed spec, in order."""
+    ids: list[str] = []
+    for layer in parsed.layers:
+        rid = getattr(layer, "record_id", None)
+        if rid and rid not in ids:
+            ids.append(rid)
+    return ids
+
+
+def resolve_map_spec(parsed: _MapSpec, sources: Mapping[str, pd.DataFrame]) -> dict[str, Any]:
+    """Resolve a parsed spec against per-source DataFrames.
+
+    Each column/geojson layer is resolved against ``sources[layer.record_id]`` and
+    tagged with its ``source`` record id; inline layers need no source.
+    """
     out: dict[str, Any] = {}
-    if "title" in spec:
+    if parsed.title is not None:
         out["title"] = copy.deepcopy(parsed.title)
     if parsed.view is not None:
         out["view"] = parsed.view.model_dump(exclude_none=True)
 
     layers: list[dict[str, Any]] = []
     for index, layer in enumerate(parsed.layers):
+        rid = getattr(layer, "record_id", None)
+        if rid is not None and rid not in sources:
+            raise MapSpecError(f"layers[{index}] references unknown record_id {rid!r}")
+        df = sources.get(rid) if rid is not None else None
         if isinstance(layer, _PointsLayer):
             layers.append(_normalize_points_layer(df, layer, index))
         elif isinstance(layer, _GeoJsonLayer):
@@ -339,6 +380,11 @@ def normalize_map_spec(df: pd.DataFrame, spec: Mapping[str, object]) -> dict[str
             raise MapSpecError(f"layers[{index}].type must be 'points' or 'geojson'")
     out["layers"] = layers
     return out
+
+
+def normalize_map_spec(spec: Mapping[str, object], sources: Mapping[str, pd.DataFrame]) -> dict[str, Any]:
+    """Validate and normalize a map spec against its per-source DataFrames."""
+    return resolve_map_spec(parse_map_spec(spec), sources)
 
 
 def map_type_label(spec: Mapping[str, object]) -> str:
@@ -366,19 +412,25 @@ class RenderMapTool:
     def __init__(self, history: QueryHistory | None = None) -> None:
         self._history = history or QueryHistory()
 
-    async def __call__(self, record_id: str, *, map_spec: str) -> str:
-        """Attach a map view to a query result.
+    async def __call__(self, *, map_spec: str) -> str:
+        """Create a map from one or more query results.
 
-        Use for spatial results. The spec is a JSON string containing an object
-        with a non-empty ``layers`` list.
+        The spec is a JSON string containing an object with a non-empty
+        ``layers`` list. Each column/geojson layer names the query result it
+        reads from via ``record_id``; layers with different ``record_id`` values
+        overlay data from multiple query results on one map (e.g. GeoJSON
+        boundaries from one query and point markers from another).
 
-        Full public V1 grammar:
+        Full public grammar:
         - Top level:
           ``title``: optional string.
           ``view``: optional object with ``fit`` bool, ``center`` as
           ``[lat, lng]``, ``zoom`` number, and ``maxZoom`` number.
           ``layers``: required non-empty list.
         - Common layer fields:
+          ``record_id``: query-history record id the layer reads from (e.g.
+          ``"Q3"``). Required for column and geojson layers; omit for inline
+          ``points``.
           ``label``: optional field name for the short feature identity.
           ``tooltip``: optional field name, list of field names, or ``true``;
           shown on hover and click. String values that are full ``http(s)``
@@ -387,7 +439,7 @@ class RenderMapTool:
           ``{"field":"status","domain":[...]}``; the output pane chooses the
           palette.
         - ``points`` layer:
-          Column mode: ``{"type":"points","lat":"lat","lng":"lng"}``.
+          Column mode: ``{"type":"points","record_id":"Q3","lat":"lat","lng":"lng"}``.
           Inline mode:
           ``{"type":"points","points":[{"lat":37.7,"lng":-122.4,"label":"Destination"}]}``.
           Add optional ``label``, ``tooltip``, ``color``, ``marker``, and
@@ -397,14 +449,17 @@ class RenderMapTool:
           ``size`` is ``{"field":"value"}``; the output pane chooses the
           radius range.
         - ``geojson`` layer:
-          ``{"type":"geojson","geojson":"geom_geojson"}`` plus optional
-          ``label``, ``tooltip``, and ``color``. ``geojson`` is a column name
-          or inline WGS84 GeoJSON object.
+          ``{"type":"geojson","record_id":"Q3","geojson":"geom_geojson"}`` plus
+          optional ``label``, ``tooltip``, and ``color``. ``geojson`` is a
+          column name or inline WGS84 GeoJSON object.
 
         Minimal examples:
-        ``{"layers":[{"type":"points","lat":"lat","lng":"lng","label":"name","tooltip":["name","status"]}]}``
+        ``{"layers":[{"type":"points","record_id":"Q3","lat":"lat","lng":"lng","label":"name","tooltip":["name","status"]}]}``
         ``{"layers":[{"type":"points","points":[{"lat":37.7,"lng":-122.4,"label":"Destination"}],"label":"label"}]}``
-        ``{"layers":[{"type":"geojson","geojson":"geom_geojson","label":"name","tooltip":["name"]}]}``
+        ``{"layers":[{"type":"geojson","record_id":"Q3","geojson":"geom_geojson","label":"name","tooltip":["name"]}]}``
+
+        Multi-record overlay:
+        ``{"layers":[{"type":"geojson","record_id":"Q1","geojson":"area_geojson","label":"area"},{"type":"points","record_id":"Q2","lat":"lat","lng":"lng","label":"name"}]}``
 
         Prefer defaults unless the user asks for styling or a fixed viewport.
 
@@ -414,14 +469,12 @@ class RenderMapTool:
         ``ST_AsGeoJSON(ST_Transform(geom, 4326)) AS geom_geojson``; DuckDB
         spatial: ``ST_AsGeoJSON(ST_Transform(geom, 'EPSG:4326')) AS geom_geojson``.
 
+        Returns the new map id (``MAP1``, ``MAP2``, …) to cite in the answer.
+
         Args:
-            record_id: Query-history record ID (e.g. ``"Q3"``).
             map_spec: Declarative map specification as a JSON string. GeoJSON
                 coordinates must be WGS84 longitude/latitude.
         """
-        if not isinstance(record_id, str) or not record_id.strip():
-            return "(error: record_id must be a non-empty string)"
-
         try:
             spec = json.loads(map_spec)
         except (json.JSONDecodeError, TypeError) as e:
@@ -431,30 +484,43 @@ class RenderMapTool:
             return "(error: map_spec must be a JSON object)"
 
         try:
-            record = await self._history.get(record_id)
-        except KeyError:
-            return f"(error: unknown record_id {record_id!r})"
-
-        pred = record.pred_query
-        if pred.exec_result is None or pred.exec_result.df is None:
-            return f"(error: query {record.record_id} returned no data)"
-        df = pred.exec_result.df
-        if df.empty:
-            return f"(error: query {record.record_id} result is empty)"
-        if len(df) > MAP_RENDER_MAX_ROWS:
-            return (
-                f"(error: {len(df):,} rows is too large to map directly — filter or aggregate the result first; "
-                f"max {MAP_RENDER_MAX_ROWS:,} rows)"
-            )
-
-        try:
-            normalized = normalize_map_spec(df, spec)
+            parsed = parse_map_spec(spec)
         except MapSpecError as e:
             return f"(error: {e})"
 
+        record_ids = referenced_record_ids(parsed)
+        sources: dict[str, pd.DataFrame] = {}
+        row_counts: dict[str, int] = {}
+        for rid in record_ids:
+            try:
+                record = await self._history.get(rid)
+            except KeyError:
+                return f"(error: unknown record_id {rid!r})"
+            pred = record.pred_query
+            if pred.exec_result is None or pred.exec_result.df is None:
+                return f"(error: query {rid} returned no data)"
+            df = pred.exec_result.df
+            if df.empty:
+                return f"(error: query {rid} result is empty)"
+            if len(df) > MAP_RENDER_MAX_ROWS:
+                return (
+                    f"(error: {rid} has {len(df):,} rows — too large to map directly; filter or aggregate first; "
+                    f"max {MAP_RENDER_MAX_ROWS:,} rows)"
+                )
+            sources[rid] = df
+            row_counts[rid] = len(df)
+
+        try:
+            normalized = resolve_map_spec(parsed, sources)
+        except MapSpecError as e:
+            return f"(error: {e})"
+
+        map_id = self._history.add_map(normalized)
         label = map_type_label(normalized)
-        self._history.attach_map(record.record_id, normalized)
-        return f"{label} attached to {record.record_id} — {len(df):,} rows"
+        if record_ids:
+            rows_desc = " + ".join(f"{row_counts[rid]:,}" for rid in record_ids)
+            return f"{label} {map_id} created from {', '.join(record_ids)} — {rows_desc} rows"
+        return f"{label} {map_id} created"
 
     def as_pydantic_ai_tool(self) -> Tool:
         return Tool(self.__call__, name=self.name)

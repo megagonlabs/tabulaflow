@@ -279,6 +279,26 @@ def build_chart(
 VIEW_KIND_CHART = "Chart"
 VIEW_KIND_DATA = "Data"
 VIEW_KIND_QUERY = "Query"
+VIEW_KIND_MAP = "Map"
+
+
+def _build_map_card(map_spec: dict[str, object]) -> RenderableType:
+    """Placeholder box for a map (rendered in the browser, not the terminal).
+
+    Mirrors :func:`_build_chart_card`: a dim rounded box with the map's title/type
+    and a line directing the user to the browser pane.
+    """
+    from tabulaflow.toolhub.render_map import map_type_label
+
+    type_label = map_type_label(map_spec)
+    title = map_spec.get("title") if isinstance(map_spec, dict) else None
+    heading = str(title) if isinstance(title, str) and title.strip() else type_label
+    lines: list[RenderableType] = [Text(heading, style="dim bold", justify="center")]
+    if isinstance(title, str) and title.strip():
+        lines.append(Text(type_label, style="dim", justify="center"))
+    lines.append(Text(""))
+    lines.append(Text("Open the browser pane to view this map.", style="dim", justify="center"))
+    return Panel(Group(*lines), box=box.ROUNDED, border_style=ACCENT_DIM, padding=(1, 2))
 
 
 @dataclass
@@ -304,23 +324,35 @@ class RecordGroup:
 
 
 def build_result_views(result: object, width: int = 80) -> list[RecordGroup]:
-    """Build per-record view groups from a ChatResult.
+    """Build per-artifact view groups from a ChatResult, in citation order.
 
-    The returned list preserves record order; within each record, views are
-    ordered Chart -> Data -> Query and absent kinds are omitted. Records with
-    no views at all are dropped.
+    Query-result artifacts yield Chart -> Data -> Query views (absent kinds
+    omitted); map artifacts yield a single Map view — a browser-pane placeholder,
+    since maps don't render in the terminal. Query artifacts with no views are
+    dropped.
     """
-    from tabulaflow.chat import ChatResult
+    from tabulaflow.chat import ChatResult, ChatResultMap
 
     assert isinstance(result, ChatResult)
 
     groups: list[RecordGroup] = []
     used_labels: set[str] = set()
-    for record in result.records:
-        base_label = record.label or "result"
+    for artifact in result.artifacts:
+        base_label = artifact.label or "result"
         label = _unique_record_label(base_label, used_labels)
         used_labels.add(label)
 
+        if isinstance(artifact, ChatResultMap):
+            groups.append(
+                RecordGroup(
+                    label=label,
+                    record_id=artifact.map_id,
+                    views=[ViewItem(kind=VIEW_KIND_MAP, renderable=_build_map_card(artifact.map_spec))],
+                )
+            )
+            continue
+
+        record = artifact
         views: list[ViewItem] = []
         if record.chart_spec is not None and record.df is not None:
             views.append(
@@ -352,9 +384,12 @@ def build_result_views(result: object, width: int = 80) -> list[RecordGroup]:
         if views:
             groups.append(RecordGroup(label=label, record_id=record.record_id, views=views))
 
-    # Release DF references — previews have been rendered to Rich renderables.
-    for record in result.records:
-        record.df = None
+    # Release DataFrame references — previews have been rendered to Rich renderables.
+    for artifact in result.artifacts:
+        if isinstance(artifact, ChatResultMap):
+            artifact.sources = {}
+        else:
+            artifact.df = None
 
     return groups
 

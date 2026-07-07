@@ -23,7 +23,7 @@ from tabulaflow.chat.events import (
     ToolStarted,
     UsageUpdated,
 )
-from tabulaflow.chat.result import ChatResult, ChatResultRecord
+from tabulaflow.chat.result import ChatResult, ChatResultMap, ChatResultRecord
 
 if TYPE_CHECKING:
     from tabulaflow.chat.agent import SYSTEM_PROMPT, ChatAgent
@@ -48,6 +48,7 @@ __all__ = [
     "SYSTEM_PROMPT",
     "ChatResult",
     "ChatResultRecord",
+    "ChatResultMap",
     "ChatEvent",
     "AnswerDelta",
     "NarrationDelta",

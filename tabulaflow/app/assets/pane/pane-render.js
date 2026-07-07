@@ -422,13 +422,16 @@
     return [];
   }
 
-  function fieldLabels(recordData) {
+  function fieldLabelsFromColumns(cols) {
     var out = {};
-    var cols = (recordData.table && recordData.table.columns) || [];
-    cols.forEach(function (col) {
+    (cols || []).forEach(function (col) {
       if (col && col.field) out[String(col.field)] = String(col.title || col.field);
     });
     return out;
+  }
+
+  function fieldLabels(recordData) {
+    return fieldLabelsFromColumns(recordData.table && recordData.table.columns);
   }
 
   function safeScalar(value) {
@@ -993,9 +996,27 @@
 
   function renderMap(container, recordData) {
     var mapData = recordData.map || {};
-    var rows = (recordData.dataset && recordData.dataset.rows) || [];
+    var datasets = recordData.datasets || {};
+    var fallbackRows = (recordData.dataset && recordData.dataset.rows) || [];
+    var fallbackLabels = fieldLabels(recordData);
+    var labelsCache = {};
     var layers = mapLayers(mapData);
-    var labels = fieldLabels(recordData);
+
+    function rowsFor(layer) {
+      var source = layer && layer.source;
+      if (source && datasets[source]) return datasets[source].rows || [];
+      return fallbackRows;
+    }
+
+    function labelsFor(layer) {
+      var source = layer && layer.source;
+      if (source && datasets[source]) {
+        if (!labelsCache[source]) labelsCache[source] = fieldLabelsFromColumns(datasets[source].columns);
+        return labelsCache[source];
+      }
+      return fallbackLabels;
+    }
+
     container.className = 'tf-view tf-map-view';
     container.innerHTML = '<div class="tf-map-stage"><div class="tf-map"></div><div class="tf-map-empty"></div></div>';
     var mapNode = container.querySelector('.tf-map');
@@ -1046,6 +1067,8 @@
       clearLegend(stageNode);
       var hasBounds = false;
       layers.forEach(function (layer, index) {
+        var rows = rowsFor(layer);
+        var labels = labelsFor(layer);
         if (!layer || layer.type === 'points') {
           var pointData = buildPointFeatures(layer || {}, rows, labels);
           if (!pointData.features.length) return;

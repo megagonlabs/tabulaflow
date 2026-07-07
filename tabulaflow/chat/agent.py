@@ -27,7 +27,7 @@ from tabulaflow.toolhub.web_browser import (
     snapshot_snippet,
 )
 from tabulaflow.core.llm import make_agent
-from tabulaflow.chat.result import ChatResult, ChatResultRecord
+from tabulaflow.chat.result import ChatResult, ChatResultMap, ChatResultRecord
 from tabulaflow.chat.events import (
     ChatEvent,
     ColumnsReturned,
@@ -46,6 +46,7 @@ from tabulaflow.chat.events import (
 )
 
 if TYPE_CHECKING:
+    import pandas as pd
     from pydantic_ai import Agent
     from pydantic_ai.messages import ModelMessage, ToolReturnPart
 
@@ -58,6 +59,7 @@ if TYPE_CHECKING:
         ExecuteBashTool,
         ExtractRowsFromDocumentsTool,
         FileEditorTool,
+        MapArtifact,
         QueryHistory,
         QueryRecord,
         RegistryGetColumnJsonSchemaTool,
@@ -73,7 +75,7 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-_QUERY_REF_RE = re.compile(r"\[\[record:(Q\d+)(?::([^\]]+))?\]\]")
+_QUERY_REF_RE = re.compile(r"\[\[record:((?:Q|MAP)\d+)(?::([^\]]+))?\]\]")
 
 
 SYSTEM_PROMPT = """\
@@ -96,7 +98,7 @@ CRITICAL: The user should feel as if they are directly interacting with their or
   - You can only reference `run_query` results. To present data that isn't one yet (e.g. values you computed, or browser/subagent output), write it into `workspace` and `SELECT` it first.
 - End every answer with a `---` on its own line: result references go above it, then `---`, then your plain-language answer. Only text AFTER the `---` reaches the user; text before it is intermediate narration. Always include the `---`, even with no references.
     - There is exactly ONE `---`, do NOT add a trailing `---` after the answer.
-    - Reference a result as `[[record:Q<id>:<label>]]` (e.g. `[[record:Q3:num_players]]`); every reference needs a short label describing the table (e.g. `players`, `revenue_by_month`), or `result` if unsure — never the record id.
+    - Reference a result as `[[record:Q<id>:<label>]]` (e.g. `[[record:Q3:num_players]]`), or a map as `[[record:MAP<id>:<label>]]` (e.g. `[[record:MAP1:store locations]]`); every reference needs a short label describing it (e.g. `players`, `revenue_by_month`), or `result` if unsure — never the id itself.
     - Example (with a table):
       [[record:Q3:num_players]]
       ---
@@ -213,8 +215,8 @@ Visualization:
 - Do NOT render charts for single-row results, heterogeneous tables, or when the user only asks for a specific value.
 - Prefer a simple single-view chart — `bar`, `line`, or `point` with x/y encoding — which previews directly in the terminal: bar for categorical comparisons, line for time series, point for correlations.
 - Any Vega-Lite spec is accepted, but richer ones (color/size grouping, faceting, `rect` heatmaps, transforms, composite layer/concat views) render only in the browser. Use them only when a simple chart can't convey the answer; do NOT build composite/multi-view charts by default.
-- Call `render_map` when spatial position or geometry is essential to the answer. Always pass the `record_id` returned by `run_query` and a declarative map spec with `layers`.
-- Use a `points` layer for latitude/longitude columns: `{"layers":[{"type":"points","lat":"lat","lng":"lng","label":"name","tooltip":["name","status"]}]}`.
+- Call `render_map` when spatial position or geometry is essential to the answer. It returns a `MAP<n>` id; cite that id to show the map. Each column/geojson layer names the `record_id` it reads from — set different `record_id` values across layers to overlay multiple query results on one map.
+- Use a `points` layer for latitude/longitude columns: `{"layers":[{"type":"points","record_id":"Q3","lat":"lat","lng":"lng","label":"name","tooltip":["name","status"]}]}`.
 - Use a `geojson` layer when a result column already contains WGS84 GeoJSON. If a database has native geometry, convert it in SQL first (e.g. `ST_AsGeoJSON(ST_Transform(geom, 4326)) AS geom_geojson`) and map that column.
 </tool_calling>
 
@@ -730,9 +732,9 @@ async def _build_chat_result(
     query_history: QueryHistory,
 ) -> ChatResult:
     display_text, refs = _extract_result_refs(answer_text)
-    records = await _records_from_refs(refs, query_history)
-    primary_record_index: int | None = 0 if records else None
-    return ChatResult(text=display_text, records=records, primary_record_index=primary_record_index)
+    artifacts = await _artifacts_from_refs(refs, query_history)
+    primary_artifact_index: int | None = 0 if artifacts else None
+    return ChatResult(text=display_text, artifacts=artifacts, primary_artifact_index=primary_artifact_index)
 
 
 def _patch_incomplete_messages(
@@ -872,18 +874,51 @@ class _TextStreamRouter:
         return ""
 
 
-async def _records_from_refs(
+async def _artifacts_from_refs(
     refs: Iterable[tuple[str, str | None]],
     query_history: QueryHistory,
-) -> list[ChatResultRecord]:
-    records: list[ChatResultRecord] = []
-    for record_id, label in refs:
+) -> list[ChatResultRecord | ChatResultMap]:
+    """Resolve citation refs into display artifacts, preserving citation order."""
+    artifacts: list[ChatResultRecord | ChatResultMap] = []
+    for ref_id, label in refs:
+        if ref_id.startswith("MAP"):
+            try:
+                map_artifact = query_history.get_map(ref_id)
+            except (KeyError, ValueError):
+                continue
+            artifacts.append(await _chat_result_map_from_artifact(map_artifact, label, query_history))
+        else:
+            try:
+                query_record = await query_history.get(ref_id)
+            except (KeyError, ValueError):
+                continue
+            artifacts.append(_chat_result_record_from_query_record(query_record, label))
+    return artifacts
+
+
+async def _chat_result_map_from_artifact(
+    map_artifact: MapArtifact,
+    label: str | None,
+    query_history: QueryHistory,
+) -> ChatResultMap:
+    """Resolve a stored map artifact's per-source DataFrames into a display record."""
+    spec = map_artifact.map_spec
+    layers = spec.get("layers") or []
+    source_ids: list[str] = []
+    for layer in layers:
+        sid = layer.get("source") if isinstance(layer, dict) else None
+        if sid and sid not in source_ids:
+            source_ids.append(sid)
+    sources: dict[str, pd.DataFrame] = {}
+    for sid in source_ids:
         try:
-            query_record = await query_history.get(record_id)
+            record = await query_history.get(sid)
         except (KeyError, ValueError):
             continue
-        records.append(_chat_result_record_from_query_record(query_record, label))
-    return records
+        exec_result = record.pred_query.exec_result
+        if exec_result is not None and exec_result.df is not None:
+            sources[sid] = exec_result.df
+    return ChatResultMap(map_id=map_artifact.map_id, label=label, map_spec=spec, sources=sources)
 
 
 def _chat_result_record_from_query_record(
@@ -897,7 +932,6 @@ def _chat_result_record_from_query_record(
         query=pred.query,
         df=pred.exec_result.df if pred.exec_result else None,
         chart_spec=query_record.vegalite_spec,
-        map_spec=query_record.map_spec,
         query_lexer="cypher" if query_record.connector_type == "property_graph" else "sql",
     )
 

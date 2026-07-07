@@ -28,7 +28,19 @@ class QueryRecord:
     db_alias: str
     pred_query: PredQuery
     vegalite_spec: dict[str, Any] | None = None
-    map_spec: dict[str, Any] | None = None
+
+
+@dataclass
+class MapArtifact:
+    """A map assembled from one or more query results.
+
+    A standalone artifact (not attached to any single ``QueryRecord``) whose
+    normalized ``map_spec`` layers each carry the ``source`` record id they read
+    from — see ``toolhub.render_map``.
+    """
+
+    map_id: str
+    map_spec: dict[str, Any]
 
 
 class QueryHistory:
@@ -52,7 +64,9 @@ class QueryHistory:
         if max_in_memory < 1:
             raise ValueError("max_in_memory must be >= 1")
         self._records: dict[str, QueryRecord] = {}
+        self._maps: dict[str, MapArtifact] = {}
         self._next_query_id = 1
+        self._next_map_id = 1
         self._max_in_memory = max_in_memory
         self._in_memory: deque[str] = deque()
         self._spilled: set[str] = set()
@@ -100,13 +114,19 @@ class QueryHistory:
             raise KeyError(f"No query with id {record_id}") from None
         record.vegalite_spec = vegalite_spec
 
-    def attach_map(self, record_id: str, map_spec: dict[str, Any]) -> None:
-        """Attach a map spec to an existing query record."""
+    def add_map(self, map_spec: dict[str, Any]) -> str:
+        """Store a standalone map artifact and return its opaque ``MAP*`` id."""
+        map_id = f"MAP{self._next_map_id}"
+        self._maps[map_id] = MapArtifact(map_id=map_id, map_spec=map_spec)
+        self._next_map_id += 1
+        return map_id
+
+    def get_map(self, map_id: str) -> MapArtifact:
+        """Return a previously stored map artifact."""
         try:
-            record = self._records[record_id]
+            return self._maps[map_id]
         except KeyError:
-            raise KeyError(f"No query with id {record_id}") from None
-        record.map_spec = map_spec
+            raise KeyError(f"No map with id {map_id}") from None
 
     # -- spill / hydrate internals --
 

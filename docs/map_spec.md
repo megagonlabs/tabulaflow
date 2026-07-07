@@ -16,15 +16,19 @@ renderer, not the agent-facing spec.
 ```python
 render_map(
     map_spec: dict,
-    record_id: str | None = None,
 ) -> str
 ```
 
-- If `record_id` is omitted, the map uses the latest query result.
-- If `record_id` is provided, the map uses that prior query result.
-- `map_spec` references query-result columns by their original names.
-- The app validates the spec, rewrites column names to pane field ids, writes the
-  record payload, and the output pane renders it.
+- The map is a standalone artifact, not attached to a query record. Each
+  column/geojson layer names the query result it reads from via its own
+  `record_id`; inline `points` layers omit it. Layers with different `record_id`
+  values overlay data from multiple query results on one map.
+- `map_spec` references each source's query-result columns by their original names.
+- The tool returns a `MAP<n>` id; cite that id (e.g. `[[record:MAP1:label]]`) to
+  show the map. It renders as its own map-only card (no data/query tabs) — the
+  source tables are cited separately when the user wants them.
+- The app validates the spec, rewrites each layer's column names to its source's
+  pane field ids, bundles the per-source datasets, and the output pane renders it.
 
 The tool should accept a declarative TabulaFlow map spec, not raw Leaflet
 options. Leaflet is the current renderer, but the agent-facing contract should
@@ -117,6 +121,7 @@ Fields:
 | Field | Required | Description |
 |---|---:|---|
 | `type` | yes | Must be `"points"`. |
+| `record_id` | yes in column mode | Source query-result id (e.g. `"Q3"`). Omit for inline mode. |
 | `lat` | yes in column mode | Latitude column. Values must be numeric and in `[-90, 90]`. |
 | `lng` | yes in column mode | Longitude column. Values must be numeric and in `[-180, 180]`. |
 | `points` | yes in inline mode | Non-empty list of inline point objects with numeric `lat` and `lng`. |
@@ -185,6 +190,7 @@ Fields:
 | Field | Required | Description |
 |---|---:|---|
 | `type` | yes | Must be `"geojson"`. |
+| `record_id` | yes for a column source | Source query-result id (e.g. `"Q3"`). Required when `geojson` is a column; also required for an inline object that uses `label`/`tooltip`/`color`. |
 | `geojson` | yes | Column name containing GeoJSON, or an inline GeoJSON object. |
 | `label` | no | Short identity column/property used for feature names. |
 | `tooltip` | no | Detail content shown on hover and click in V1. Column/property, list of columns/properties, or `true`. |
@@ -393,6 +399,7 @@ Implement the smallest useful contract first:
   "layers": [
     {
       "type": "points",
+      "record_id": "Q1",
       "lat": "lat",
       "lng": "lng",
       "label": "name",
@@ -407,6 +414,7 @@ Implement the smallest useful contract first:
   "layers": [
     {
       "type": "geojson",
+      "record_id": "Q1",
       "geojson": "geom_geojson",
       "tooltip": ["name", "value"]
     }
@@ -447,6 +455,7 @@ Defer:
   "layers": [
     {
       "type": "points",
+      "record_id": "Q1",
       "lat": "latitude",
       "lng": "longitude",
       "label": "store_name",
@@ -464,6 +473,7 @@ Defer:
   "layers": [
     {
       "type": "geojson",
+      "record_id": "Q1",
       "geojson": "region_geojson",
       "label": "region",
       "tooltip": ["region", "revenue"],
@@ -476,7 +486,10 @@ Defer:
 }
 ```
 
-### Boundaries Plus Points
+### Boundaries Plus Points (multiple records)
+
+Overlay boundaries from one query (`Q1`) and facility points from another (`Q2`)
+— the layers come from different results and are joined only on the map.
 
 ```json
 {
@@ -484,15 +497,17 @@ Defer:
   "layers": [
     {
       "type": "geojson",
+      "record_id": "Q1",
       "geojson": "service_area_geojson",
       "label": "service_area"
     },
     {
       "type": "points",
+      "record_id": "Q2",
       "lat": "facility_lat",
       "lng": "facility_lng",
       "label": "facility_name",
-      "tooltip": ["facility_name", "service_area", "status"]
+      "tooltip": ["facility_name", "status"]
     }
   ]
 }

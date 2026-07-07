@@ -570,41 +570,63 @@ class TabulaflowApp(App[None]):
             ensure_pane_dir(pane_dir)
         except Exception:
             return
-        snapshots = [
-            SimpleNamespace(
-                df=record.df,
-                chart_spec=record.chart_spec,
-                map_spec=record.map_spec,
-                query=record.query,
-                label=record.label,
-                query_lexer=record.query_lexer,
-            )
-            for record in result.records
-        ]
-        if not snapshots and not user_text and not result.text:
+        # Snapshot each cited artifact (capturing DataFrames before build_result_views
+        # nulls them), tagged by kind, preserving citation order.
+        artifact_snapshots: list[tuple[str, SimpleNamespace]] = []
+        for artifact in result.artifacts:
+            if artifact.kind == "map":
+                artifact_snapshots.append(
+                    (
+                        "map",
+                        SimpleNamespace(
+                            map_id=artifact.map_id,
+                            label=artifact.label,
+                            map_spec=artifact.map_spec,
+                            sources=dict(artifact.sources),
+                        ),
+                    )
+                )
+            else:
+                artifact_snapshots.append(
+                    (
+                        "record",
+                        SimpleNamespace(
+                            df=artifact.df,
+                            chart_spec=artifact.chart_spec,
+                            query=artifact.query,
+                            label=artifact.label,
+                            query_lexer=artifact.query_lexer,
+                        ),
+                    )
+                )
+        if not artifact_snapshots and not user_text and not result.text:
             return
         pane = self._ensure_pane()
         if pane is None:
             return
 
         async def render_and_push() -> None:
-            from tabulaflow.app.render import render_record_data
+            from tabulaflow.app.render import render_map_card_data, render_record_data
 
-            def render_records() -> list[PaneRecord]:
-                records: list[PaneRecord] = []
-                for record in snapshots:
+            def render_cards() -> list[PaneRecord]:
+                cards: list[PaneRecord] = []
+                for kind, snap in artifact_snapshots:
                     try:
-                        card = render_record_data(record, pane_dir)
+                        card = (
+                            render_map_card_data(snap, pane_dir)
+                            if kind == "map"
+                            else render_record_data(snap, pane_dir)
+                        )
                     except Exception:
                         logger.debug("output pane card render failed", exc_info=True)
                         continue
                     if card is not None:
-                        records.append(card)
-                return records
+                        cards.append(card)
+                return cards
 
-            records = await asyncio.to_thread(render_records)
-            if records or user_text or result.text:
-                pane.push(turn_payload(title=title, user=user_text, assistant=result.text, records=records))
+            cards = await asyncio.to_thread(render_cards)
+            if cards or user_text or result.text:
+                pane.push(turn_payload(title=title, user=user_text, assistant=result.text, records=cards))
 
         def log_background_error(task: asyncio.Task[None]) -> None:
             try:
@@ -910,7 +932,7 @@ class TabulaflowApp(App[None]):
             title=display_text or question,
             user_text=display_text or question,
         )
-        if result.records:
+        if result.artifacts:
             # chat-log padding (2) + scrollbar (2) + widget margin (5) + widget padding (2) = 11
             result_widget = AgentResultWidget(
                 result,

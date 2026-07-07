@@ -13,7 +13,7 @@ from tabulaflow.toolhub.registry_get_column_json_schema import RegistryGetColumn
 from tabulaflow.toolhub.registry_get_db_document import RegistryGetDBDocumentTool
 from tabulaflow.toolhub.registry_get_schema import RegistryGetSchemaTool
 from tabulaflow.toolhub.registry_get_table_schema import RegistryGetTableSchemaTool
-from tabulaflow.toolhub.query_history import QueryHistory, QueryRecord
+from tabulaflow.toolhub.query_history import MapArtifact, QueryHistory, QueryRecord
 from tabulaflow.toolhub.registry_run_query import RegistryRunQueryTool
 from tabulaflow.toolhub.registry_transfer_record import RegistryTransferRecordTool
 from tabulaflow.toolhub.run_query import RunQueryTool
@@ -41,6 +41,7 @@ __all__ = [
     "RegistryGetDBDocumentTool",
     "RegistryGetSchemaTool",
     "RegistryGetTableSchemaTool",
+    "MapArtifact",
     "QueryHistory",
     "QueryRecord",
     "RegistryRunQueryTool",
