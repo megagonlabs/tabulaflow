@@ -15,7 +15,7 @@ from types import SimpleNamespace
 import pandas as pd
 import pytest
 
-from tabulaflow.app.render.cards import render_map_data, render_query_html, render_record_data
+from tabulaflow.app.render.cards import build_query_data, render_map_data, render_record_data
 from tabulaflow.app.render.tables import TABLE_RENDER_MAX_ROWS
 from tabulaflow.app.pane import OutputPane, OutputPanePortError, _PANE_HTML
 from tabulaflow.app.pane_types import PaneCard, PaneTurn, turn_payload
@@ -1866,17 +1866,13 @@ def test_view_card_in_pane_marks_turn_as_manual(tmp_path: Path) -> None:
     ]
 
 
-def test_query_view_renders_code_header_and_dracula_theme(tmp_path: Path) -> None:
-    path = tmp_path / "query.html"
-    render_query_html('print("Hello, world!")', path, lexer="python")
+def test_query_payload_contains_language_and_dracula_highlight() -> None:
+    payload = build_query_data('print("Hello, world!")', lexer="python")
 
-    html = path.read_text()
-    assert '<span class="query-lang">Python</span>' in html
-    assert 'data-copy-query aria-label="Copy query" title="Copy query"' in html
-    assert '<span class="copy-label">Copy</span>' not in html
-    assert "#1e1e1e" in html
-    assert "#303030" in html
-    assert "#8BE9FD" in html  # Dracula builtin/token color.
+    query = payload["query"]
+    assert isinstance(query, dict)
+    assert query["language"] == "Python"
+    assert "#8BE9FD" in str(query["html"])  # Dracula builtin/token color.
 
 
 def test_record_card_writes_structured_data_instead_of_html(tmp_path: Path) -> None:

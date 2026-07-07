@@ -1,7 +1,7 @@
 """Tool that attaches a Vega-Lite chart spec to a query result.
 
 Simple x/y specs also get a plotext terminal preview here; the full chart
-renders in the browser (see ``tabulaflow.app.render.charts.render_chart_html``).
+renders in the browser output pane.
 """
 
 from __future__ import annotations
@@ -26,10 +26,10 @@ _MARK_TO_PLOTEXT = {
 }
 _PLOTEXT_MARKS = frozenset(_MARK_TO_PLOTEXT)
 
-# Largest result that may be charted. The data is embedded inline in the
-# browser HTML, so beyond this the file balloons and Vega janks; a chart over
-# this many raw rows is also almost always un-aggregated. The tool refuses
-# rather than truncating (a partial chart would silently misrepresent the data).
+# Largest result that may be charted. The data is shipped to the browser pane,
+# so beyond this the payload balloons and Vega janks; a chart over this many raw
+# rows is also almost always un-aggregated. The tool refuses rather than
+# truncating (a partial chart would silently misrepresent the data).
 _MAX_CHART_ROWS = 20_000
 
 # Terminal preview gets unreadable past these counts (bar labels collapse to a

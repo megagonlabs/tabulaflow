@@ -320,7 +320,7 @@ class DataBrowserScreen(Screen[None]):
         self._render_page()
 
     async def action_send_table_to_output_pane(self) -> None:
-        """Render the current DataFrame as HTML and send it to the output pane."""
+        """Render the current DataFrame payload and send it to the output pane."""
         import asyncio
 
         self._set_status_message(Text("Sending...", style="dim"))

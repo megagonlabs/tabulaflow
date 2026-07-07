@@ -1,15 +1,15 @@
-"""Tests for the chart spec predicate, type labels, and Vega HTML rendering."""
+"""Tests for chart specs, type labels, and browser-pane chart payloads."""
 
 from __future__ import annotations
 
 import json
-from pathlib import Path
+from typing import Any, cast
 
 import pandas as pd
 import pytest
 
 from tabulaflow.app.page import CARD_BG
-from tabulaflow.app.render import _add_line_hover, render_chart_html
+from tabulaflow.app.render import _add_line_hover, build_chart_data
 from tabulaflow.app.theme import VIZ_CHART_CATEGORY_PALETTE, VIZ_CHART_GRID
 from tabulaflow.core.types import ExecResult, PredQuery
 from tabulaflow.toolhub.query_history import QueryHistory
@@ -77,53 +77,43 @@ class TestChartTypeLabel:
         assert chart_type_label(spec) == label
 
 
-class TestRenderChartHtml:
-    def _render(self, tmp_path: Path, df: pd.DataFrame, spec: dict[str, object]) -> str:
-        out = tmp_path / "chart.html"
-        render_chart_html(df, spec, out, title="t")
-        return out.read_text()
+class TestBuildChartData:
+    def _chart(self, df: pd.DataFrame, spec: dict[str, object]) -> dict[str, Any]:
+        return cast(dict[str, Any], build_chart_data(df, spec)["chart"])
 
-    def test_offline_self_contained(self, tmp_path: Path) -> None:
-        html = self._render(tmp_path, pd.DataFrame({"a": ["x", "y"], "b": [1, 2]}), SIMPLE_BAR)
-        assert "vegaEmbed" in html
-        # vendored libs are inlined — no external resource loads
-        assert "<script src=" not in html
-        assert 'src="http' not in html
-        assert "<link " not in html
-
-    def test_dark_theme_merged(self, tmp_path: Path) -> None:
-        html = self._render(tmp_path, pd.DataFrame({"a": ["x"], "b": [1]}), SIMPLE_BAR)
-        assert f'"background": "{CARD_BG}"' in html
-        assert f'"gridColor": "{VIZ_CHART_GRID}"' in html
+    def test_dark_theme_merged(self) -> None:
+        chart = self._chart(pd.DataFrame({"a": ["x"], "b": [1]}), SIMPLE_BAR)
+        spec = chart["spec"]
+        assert spec["config"]["background"] == CARD_BG
+        assert spec["config"]["axis"]["gridColor"] == VIZ_CHART_GRID
         for color in VIZ_CHART_CATEGORY_PALETTE:
-            assert color in html
+            assert color in spec["config"]["range"]["category"]
 
-    def test_field_case_normalized(self, tmp_path: Path) -> None:
+    def test_field_case_normalized(self) -> None:
         df = pd.DataFrame({"status": ["x"], "count": [1]})
         spec: dict[str, object] = {"mark": "bar", "encoding": {"x": {"field": "STATUS"}, "y": {"field": "Count"}}}
-        html = self._render(tmp_path, df, spec)
-        assert '"field": "status"' in html
-        assert '"field": "count"' in html
-        assert '"field": "STATUS"' not in html
+        out = self._chart(df, spec)["spec"]
+        assert out["encoding"]["x"]["field"] == "status"
+        assert out["encoding"]["y"]["field"] == "count"
 
-    def test_user_color_overrides_theme(self, tmp_path: Path) -> None:
+    def test_user_color_overrides_theme(self) -> None:
         df = pd.DataFrame({"a": ["x"], "b": [1]})
         spec = {"mark": {"type": "bar", "color": "#e11d48"}, "encoding": {"x": {"field": "a"}, "y": {"field": "b"}}}
-        assert "#e11d48" in self._render(tmp_path, df, spec)
+        assert self._chart(df, spec)["spec"]["mark"]["color"] == "#e11d48"
 
-    def test_unit_spec_gets_responsive_width(self, tmp_path: Path) -> None:
-        html = self._render(tmp_path, pd.DataFrame({"a": ["x"], "b": [1]}), SIMPLE_BAR)
-        assert '"width": "container"' in html
+    def test_unit_spec_gets_responsive_width(self) -> None:
+        spec = self._chart(pd.DataFrame({"a": ["x"], "b": [1]}), SIMPLE_BAR)["spec"]
+        assert spec["width"] == "container"
 
-    def test_facet_channel_not_forced_width(self, tmp_path: Path) -> None:
+    def test_facet_channel_not_forced_width(self) -> None:
         df = pd.DataFrame({"a": ["x"], "b": [1], "c": ["g"]})
         spec: dict[str, object] = {
             "mark": "bar",
             "encoding": {"x": {"field": "a"}, "y": {"field": "b"}, "facet": {"field": "c"}},
         }
-        assert '"width": "container"' not in self._render(tmp_path, df, spec)
+        assert "width" not in self._chart(df, spec)["spec"]
 
-    def test_layer_spec_gets_container_sizing(self, tmp_path: Path) -> None:
+    def test_layer_spec_gets_container_sizing(self) -> None:
         # layer shares one plotting area, so it fills the card (unlike facet/concat)
         df = pd.DataFrame({"a": ["x", "y"], "b": [1, 2]})
         spec: dict[str, object] = {
@@ -133,12 +123,7 @@ class TestRenderChartHtml:
                 {"mark": "point", "encoding": {"y": {"field": "b"}}},
             ],
         }
-        assert '"width": "container"' in self._render(tmp_path, df, spec)
-
-    def test_data_embedded_inline(self, tmp_path: Path) -> None:
-        html = self._render(tmp_path, pd.DataFrame({"a": ["xyz"], "b": [42]}), SIMPLE_BAR)
-        assert "spec.data={values:" in html
-        assert '{"a":"xyz","b":42}' in html
+        assert self._chart(df, spec)["spec"]["width"] == "container"
 
 
 class TestAutoLineHover:

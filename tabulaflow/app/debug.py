@@ -1027,10 +1027,9 @@ def _build_debug_multi_result_widget(app: TabulaflowApp) -> AgentResultWidget:
 def debug_chart_fixtures() -> list[tuple[str, str, str, pd.DataFrame, dict[str, object]]]:
     """Canonical debug chart specs: ``(record_id, label, query, df, spec)``.
 
-    Shared by the TUI debug gallery (``_build_debug_chart_result_widget``) and
-    ``scripts/gen_debug_html.py`` so the inline and browser renderings stay in
-    lockstep. Covers every render path: plotext-renderable (bar/line/scatter)
-    and beyond-plotext (stacked/pie/facet/heatmap).
+    Shared by the TUI debug gallery and output-pane preview fixtures. Covers
+    every render path: plotext-renderable (bar/line/scatter) and beyond-plotext
+    (stacked/pie/facet/heatmap).
     """
     import pandas as pd
 

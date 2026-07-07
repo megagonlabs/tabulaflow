@@ -9,7 +9,7 @@ ACCENT = "#3EB489"  # mint
 ACCENT_BOLD = f"bold {ACCENT}"
 ACCENT_RGB = (62, 180, 137)  # mint (RGB)
 
-# Project repository — shown in the TUI banner and the HTML dump header.
+# Project repository — shown in the TUI banner and browser output pane.
 GITHUB_SLUG = "megagonlabs/tabulaflow"
 GITHUB_URL = f"https://github.com/{GITHUB_SLUG}"
 
