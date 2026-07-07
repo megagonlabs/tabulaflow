@@ -103,7 +103,7 @@ def _is_bool_dtype(series: "pd.Series") -> bool:
 
     Pandas demotes ``bool`` to ``object`` dtype as soon as a None/NaN is
     present. Inspect non-null values directly so columns like
-    ``[True, None, False, True]`` still route to the bool formatter.
+    ``[True, None, False, True]`` still get the bool role.
     """
     import numpy as np
     import pandas as pd
@@ -148,26 +148,6 @@ def _coerce_text_value(value: object) -> object:
     return s
 
 
-def _sample_text_width(series: "pd.Series", title: str, *, sample_n: int = 50) -> int:
-    """Estimate a stable Tabulator minimum width for a text column."""
-    sample = [*(str(v) for v in series.dropna().head(sample_n))]
-    if not sample:
-        return 120
-    longest = max(len(value) for value in sample)
-    if longest > 80:
-        return 260
-    if longest > 32:
-        return 220
-    if longest > 18:
-        return 160
-    return 120
-
-
-def _header_min_width(title: str) -> int:
-    """Estimate width needed to show a sortable column header."""
-    return min(260, max(96, (len(title) * 9) + 56))
-
-
 def _build_table_data(
     df: "pd.DataFrame",
     *,
@@ -197,17 +177,12 @@ def _build_table_data(
         field = f"c{col_idx}"
         title_str = str(col)
         field_by_column[title_str] = field
-        header_width = _header_min_width(title_str)
         if title_str in col_types:
             column_defs.append(
                 {
                     "title": title_str,
                     "field": field,
-                    "formatter": "media",
-                    "headerSort": False,
-                    "resizable": True,
-                    "minWidth": max(220, header_width),
-                    "widthGrow": 1,
+                    "role": "media",
                 }
             )
             fields.append((field, "media"))
@@ -216,13 +191,7 @@ def _build_table_data(
                 {
                     "title": title_str,
                     "field": field,
-                    "formatter": "bool",
-                    "sorter": "boolean",
-                    "sorterParams": {"alignEmptyValues": "bottom"},
-                    "hozAlign": "center",
-                    "resizable": True,
-                    "minWidth": max(96, header_width),
-                    "widthGrow": 1,
+                    "role": "bool",
                 }
             )
             fields.append((field, "bool"))
@@ -231,27 +200,16 @@ def _build_table_data(
                 {
                     "title": title_str,
                     "field": field,
-                    "formatter": "num",
-                    "hozAlign": "right",
-                    "sorter": "number",
-                    "sorterParams": {"alignEmptyValues": "bottom"},
-                    "resizable": True,
-                    "minWidth": max(96, header_width),
-                    "widthGrow": 1,
+                    "role": "number",
                 }
             )
-            fields.append((field, "num"))
+            fields.append((field, "number"))
         else:
-            min_width = max(_sample_text_width(view[col], title_str), header_width)
             column_defs.append(
                 {
                     "title": title_str,
                     "field": field,
-                    "formatter": "text",
-                    "sorterParams": {"alignEmptyValues": "bottom"},
-                    "resizable": True,
-                    "minWidth": min_width,
-                    "widthGrow": 2 if min_width >= 160 else 1,
+                    "role": "text",
                 }
             )
             fields.append((field, "text"))
@@ -298,12 +256,10 @@ def _build_table_data(
                 row_data[field] = _coerce_text_value(val)
         rows.append(row_data)
 
-    row_header_width = max(44, len(str(max(len(view), 1))) * 10 + 28)
     table_payload: TableData = {
         "columns": column_defs,
         "hasMedia": bool(col_types),
         "maxHeight": max_height,
-        "rowHeaderWidth": row_header_width,
         "displayCap": _CELL_DISPLAY_CAP,
         "meta": table_view_meta(len(df), len(df.columns), max_rows=max_rows),
         "numRows": len(df),

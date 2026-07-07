@@ -8,7 +8,7 @@ ViewKind = Literal["map", "chart", "data", "query"]
 VIEW_KINDS: tuple[ViewKind, ...] = ("map", "chart", "data", "query")
 CARD_ID_PREFIX = "rec_"
 PaneSource = Literal["manual"]
-ColumnFormatter = Literal["text", "num", "bool", "media"]
+ColumnRole = Literal["text", "number", "bool", "media"]
 
 
 class PaneCard(TypedDict):
@@ -29,21 +29,13 @@ class PaneTurn(TypedDict, total=False):
 class ColumnDesc(TypedDict, total=False):
     title: Required[str]
     field: Required[str]
-    formatter: ColumnFormatter
-    headerSort: bool
-    sorter: str
-    sorterParams: dict[str, object]
-    hozAlign: str
-    resizable: bool
-    minWidth: int
-    widthGrow: int
+    role: Required[ColumnRole]
 
 
 class TableData(TypedDict, total=False):
     columns: Required[list[ColumnDesc]]
     hasMedia: bool
     maxHeight: int | None
-    rowHeaderWidth: int
     displayCap: int
     meta: str
     numRows: int

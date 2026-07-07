@@ -8,9 +8,7 @@ from typing import Any, cast
 import pandas as pd
 import pytest
 
-from tabulaflow.app.page import CARD_BG
 from tabulaflow.app.pane import _add_line_hover, build_chart_data
-from tabulaflow.app.theme import VIZ_CHART_CATEGORY_PALETTE, VIZ_CHART_GRID
 from tabulaflow.core.types import ExecResult, PredQuery
 from tabulaflow.toolhub.query_history import QueryHistory
 from tabulaflow.toolhub.render_chart import (
@@ -81,13 +79,19 @@ class TestBuildChartData:
     def _chart(self, df: pd.DataFrame, spec: dict[str, object]) -> dict[str, Any]:
         return cast(dict[str, Any], build_chart_data(df, spec)["chart"])
 
-    def test_dark_theme_merged(self) -> None:
+    def test_chart_spec_is_not_server_themed(self) -> None:
         chart = self._chart(pd.DataFrame({"a": ["x"], "b": [1]}), SIMPLE_BAR)
         spec = chart["spec"]
-        assert spec["config"]["background"] == CARD_BG
-        assert spec["config"]["axis"]["gridColor"] == VIZ_CHART_GRID
-        for color in VIZ_CHART_CATEGORY_PALETTE:
-            assert color in spec["config"]["range"]["category"]
+        assert "config" not in spec
+
+    def test_user_config_is_preserved(self) -> None:
+        spec: dict[str, object] = {
+            "mark": "bar",
+            "encoding": {"x": {"field": "a"}, "y": {"field": "b"}},
+            "config": {"axis": {"labelFontSize": 16}},
+        }
+        out = self._chart(pd.DataFrame({"a": ["x"], "b": [1]}), spec)["spec"]
+        assert out["config"] == {"axis": {"labelFontSize": 16}}
 
     def test_field_case_normalized(self) -> None:
         df = pd.DataFrame({"status": ["x"], "count": [1]})

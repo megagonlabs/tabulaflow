@@ -21,6 +21,7 @@ def _assert_columns(value: object) -> None:
         assert isinstance(column, dict)
         assert isinstance(column.get("field"), str)
         assert isinstance(column.get("title"), str)
+        assert column.get("role") in {"text", "number", "bool", "media"}
 
 
 def _assert_dataset(value: object) -> None:

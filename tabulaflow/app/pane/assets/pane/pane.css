@@ -1,3 +1,47 @@
+:root {
+    --accent: #3EB489; /* Duplicated from the TUI brand accent; the pane owns browser presentation. */
+    --bg: #0f1117;
+    --card: #1a212c;
+    --stripe: #232b38;
+    --hover: #2c3441;
+    --border: #21262d;
+    --text: #e4e4e7;
+    --text-muted: #9aa4b2;
+    --text-dim: #6a737d;
+    --popover-bg: #14171c;
+    --popover-border: #2c3038;
+    --scrollbar-track: #1a1d23;
+    --scrollbar-thumb: #3a4049;
+    --scrollbar-thumb-hover: #4a5260;
+    --panel: #1f2532;
+    --rail-bg: #131720;
+    --chart-grid: #3a4352;
+    --chart-category-0: #3EB489;
+    --chart-category-1: #5ac8fa;
+    --chart-category-2: #f5a623;
+    --chart-category-3: #bd6cf0;
+    --chart-category-4: #f06292;
+    --chart-category-5: #4dd0e1;
+    --chart-category-6: #aed581;
+    --chart-category-7: #ff8a65;
+    --map-default: #4285f4;
+    --map-route: #1558d6;
+    --map-category-0: #4285f4;
+    --map-category-1: #ea4335;
+    --map-category-2: #fbbc04;
+    --map-category-3: #34a853;
+    --map-category-4: #a142f4;
+    --map-category-5: #fbbc54;
+    --map-category-6: #46bdc6;
+    --map-category-7: #7cb342;
+    --map-pin-default: #ea4335;
+    --map-pin-top: #ff6f61;
+    --map-pin-bottom: #d93025;
+    --map-pin-outline: #a52714;
+    --map-pin-hole: #f8fafc;
+    --map-pin-inner: #fff4f2;
+}
+
 html, body { height: 100%; }
 body { margin: 0; background: var(--bg); color: var(--text); display: flex; flex-direction: column;
        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }

@@ -17,21 +17,10 @@ import pytest
 
 from tabulaflow.app.pane.cards import build_query_data, render_map_data, render_record_data
 from tabulaflow.app.pane.tables import TABLE_RENDER_MAX_ROWS
-from tabulaflow.app.pane import OutputPane, OutputPanePortError, _PANE_HTML
+from tabulaflow.app.pane import CARD_ID_PREFIX, OutputPane, OutputPanePortError, _PANE_HTML
 from tabulaflow.app.pane import PaneCard, PaneTurn, turn_payload
 from tabulaflow.app.screens import send_table_to_output_pane
 from tabulaflow.app.tui import TabulaflowApp
-from tabulaflow.app.theme import (
-    VIZ_MAP_CATEGORY_PALETTE,
-    VIZ_MAP_DEFAULT_COLOR,
-    VIZ_MAP_PIN_BOTTOM,
-    VIZ_MAP_PIN_DEFAULT_COLOR,
-    VIZ_MAP_PIN_HOLE,
-    VIZ_MAP_PIN_INNER,
-    VIZ_MAP_PIN_OUTLINE,
-    VIZ_MAP_PIN_TOP,
-    VIZ_MAP_ROUTE_COLOR,
-)
 from tabulaflow.toolhub.render_map import MAP_RENDER_MAX_ROWS
 
 
@@ -211,7 +200,7 @@ def test_record_card_includes_data_view_meta(tmp_path: Path) -> None:
     assert card["views"] == ["data"]
     payload = json.loads((tmp_path / f"{card['id']}.data.json").read_text())
     assert payload["table"]["meta"] == "2 rows · 2 columns"
-    assert payload["table"]["columns"][1]["formatter"] == "num"
+    assert payload["table"]["columns"][1]["role"] == "number"
     assert payload["dataset"]["rows"][0]["c1"] == 10
 
 
@@ -236,7 +225,7 @@ def test_record_card_preserves_null_cells(tmp_path: Path) -> None:
     assert card is not None
     payload = json.loads((tmp_path / f"{card['id']}.data.json").read_text())
     assert payload["dataset"]["rows"][1] == {"c0": None, "c1": None}
-    assert payload["table"]["columns"][1]["formatter"] == "num"
+    assert payload["table"]["columns"][1]["role"] == "number"
 
 
 def _map_card(map_spec: dict, sources: dict[str, pd.DataFrame], tmp_path: Path, *, label: str = "map") -> dict:
@@ -245,8 +234,7 @@ def _map_card(map_spec: dict, sources: dict[str, pd.DataFrame], tmp_path: Path, 
         tmp_path,
     )
     assert card is not None
-    # The pane server only serves session files under the ``rec_`` prefix (pane.py).
-    assert card["id"].startswith("rec_")
+    assert card["id"].startswith(CARD_ID_PREFIX)
     return card
 
 
@@ -491,6 +479,15 @@ def test_pane_table_renderer_does_not_max_height_short_tables() -> None:
 def test_pane_chart_shell_matches_vega_background() -> None:
     assert ".view-shell.view-chart,\n.view-shell.view-map { background: var(--card); }" in _PANE_HTML
     assert ".tf-chart-view,\n.tf-vis-stage { background: var(--card); }" in _PANE_HTML
+
+
+def test_pane_chart_theme_is_client_side() -> None:
+    renderer = files("tabulaflow.app.pane.assets.pane").joinpath("pane-render.js").read_text(encoding="utf-8")
+    assert "--chart-grid: #3a4352;" in _PANE_HTML
+    assert "--chart-category-0: #3EB489;" in _PANE_HTML
+    assert "function vegaDarkConfig()" in renderer
+    assert "spec.config = deepMerge(vegaDarkConfig(), spec.config || {});" in renderer
+    assert "cssVar('--chart-category-0', accent)" in renderer
 
 
 def test_pane_map_view_is_maplibre_based() -> None:
@@ -1645,18 +1642,16 @@ def test_pane_map_view_is_maplibre_based() -> None:
     assert "node.setAttribute('aria-label', title)" in renderer
     assert "node.title = title" not in renderer
     assert "data:image/svg+xml;charset=UTF-8," in renderer
-    assert VIZ_MAP_DEFAULT_COLOR == "#4285f4"
-    assert VIZ_MAP_PIN_DEFAULT_COLOR == "#ea4335"
-    assert f"--map-default: {VIZ_MAP_DEFAULT_COLOR};" in _PANE_HTML
-    assert f"--map-route: {VIZ_MAP_ROUTE_COLOR};" in _PANE_HTML
-    for index, color in enumerate(VIZ_MAP_CATEGORY_PALETTE):
+    assert "--map-default: #4285f4;" in _PANE_HTML
+    assert "--map-route: #1558d6;" in _PANE_HTML
+    for index, color in enumerate(("#4285f4", "#ea4335", "#fbbc04", "#34a853", "#a142f4", "#fbbc54", "#46bdc6", "#7cb342")):
         assert f"--map-category-{index}: {color};" in _PANE_HTML
-    assert f"--map-pin-default: {VIZ_MAP_PIN_DEFAULT_COLOR};" in _PANE_HTML
-    assert f"--map-pin-top: {VIZ_MAP_PIN_TOP};" in _PANE_HTML
-    assert f"--map-pin-bottom: {VIZ_MAP_PIN_BOTTOM};" in _PANE_HTML
-    assert f"--map-pin-outline: {VIZ_MAP_PIN_OUTLINE};" in _PANE_HTML
-    assert f"--map-pin-hole: {VIZ_MAP_PIN_HOLE};" in _PANE_HTML
-    assert f"--map-pin-inner: {VIZ_MAP_PIN_INNER};" in _PANE_HTML
+    assert "--map-pin-default: #ea4335;" in _PANE_HTML
+    assert "--map-pin-top: #ff6f61;" in _PANE_HTML
+    assert "--map-pin-bottom: #d93025;" in _PANE_HTML
+    assert "--map-pin-outline: #a52714;" in _PANE_HTML
+    assert "--map-pin-hole: #f8fafc;" in _PANE_HTML
+    assert "--map-pin-inner: #fff4f2;" in _PANE_HTML
     assert "function cssVar(name, fallback)" in renderer
     assert "var mapDefaultColor = cssVar('--map-default', '#4285f4');" in renderer
     assert "var mapRouteColor = cssVar('--map-route'" in renderer

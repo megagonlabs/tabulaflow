@@ -107,7 +107,7 @@ class TestBuildTableData:
         rows = _payload_rows(payload)
         table = _payload_table(payload)
         assert rows[0]["c0"]["src"].startswith("data:image/png;base64,")
-        assert table["columns"][0]["formatter"] == "media"
+        assert table["columns"][0]["role"] == "media"
         assert not (tmp_path / "rec_abc").exists()
 
     def test_spills_large_blobs(self, tmp_path: Path) -> None:
@@ -164,10 +164,10 @@ class TestBuildTableData:
         df = pd.DataFrame({"col": [PNG_MAGIC, "plain string", 42, None, b"random"]})
         payload = build_table_data(df, asset_stem="rec_mix", output_dir=tmp_path)
 
-        assert _payload_table(payload)["columns"][0]["formatter"] == "text"
+        assert _payload_table(payload)["columns"][0]["role"] == "text"
 
-    def test_numeric_column_gets_number_sorter(self, tmp_path: Path) -> None:
+    def test_numeric_column_gets_number_role(self, tmp_path: Path) -> None:
         df = pd.DataFrame({"a": [1, 2, 3]})
         payload = build_table_data(df, asset_stem="rec_assets", output_dir=tmp_path)
 
-        assert _payload_table(payload)["columns"][0]["sorter"] == "number"
+        assert _payload_table(payload)["columns"][0]["role"] == "number"

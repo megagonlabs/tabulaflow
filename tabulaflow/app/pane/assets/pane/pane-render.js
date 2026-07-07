@@ -136,6 +136,72 @@
     return text;
   }
 
+  function deepMerge(base, override) {
+    var out = {};
+    var key;
+    for (key in base) {
+      if (Object.prototype.hasOwnProperty.call(base, key)) out[key] = clone(base[key]);
+    }
+    for (key in override || {}) {
+      if (!Object.prototype.hasOwnProperty.call(override, key)) continue;
+      var left = out[key];
+      var right = override[key];
+      if (right && typeof right === 'object' && !Array.isArray(right)
+          && left && typeof left === 'object' && !Array.isArray(left)) {
+        out[key] = deepMerge(left, right);
+      } else {
+        out[key] = clone(right);
+      }
+    }
+    return out;
+  }
+
+  function vegaDarkConfig() {
+    var accent = cssVar('--accent', '#3EB489');
+    var card = cssVar('--card', '#1a212c');
+    var text = cssVar('--text', '#e4e4e7');
+    var muted = cssVar('--text-muted', '#9aa4b2');
+    var grid = cssVar('--chart-grid', '#3a4352');
+    return {
+      background: card,
+      view: { stroke: 'transparent' },
+      font: '-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif',
+      title: { color: text, subtitleColor: muted, fontSize: 17, fontWeight: 600 },
+      axis: {
+        labelColor: muted,
+        titleColor: text,
+        gridColor: grid,
+        gridOpacity: 0.9,
+        domainColor: grid,
+        tickColor: grid,
+        labelFontSize: 12,
+        titleFontSize: 14,
+        labelLimit: 160
+      },
+      legend: { labelColor: muted, titleColor: text, labelFontSize: 12, titleFontSize: 13 },
+      range: {
+        category: [
+          cssVar('--chart-category-0', accent),
+          cssVar('--chart-category-1', '#5ac8fa'),
+          cssVar('--chart-category-2', '#f5a623'),
+          cssVar('--chart-category-3', '#bd6cf0'),
+          cssVar('--chart-category-4', '#f06292'),
+          cssVar('--chart-category-5', '#4dd0e1'),
+          cssVar('--chart-category-6', '#aed581'),
+          cssVar('--chart-category-7', '#ff8a65')
+        ],
+        ramp: { scheme: 'greens' },
+        heatmap: { scheme: 'greens' }
+      },
+      mark: { color: accent, tooltip: true },
+      bar: { fill: accent },
+      line: { stroke: accent },
+      point: { fill: accent },
+      area: { fill: accent },
+      arc: { stroke: card }
+    };
+  }
+
   function renderTable(container, cardData) {
     var tableData = cardData.table || {};
     var rows = (cardData.dataset && cardData.dataset.rows) || [];
@@ -220,31 +286,78 @@
       return (a === b) ? 0 : (a ? 1 : -1);
     }
 
-    var cols = clone(tableData.columns || []);
-    cols.forEach(function (col) {
-      if (col.sorter === 'boolean') col.sorter = boolNullLastSorter;
-      if (typeof col.formatter === 'string' && formatters[col.formatter]) {
-        var name = col.formatter;
-        col.formatter = formatters[name];
-        if (name === 'text') {
-          col.cellClick = function (e, cell) {
-            var v = cell.getValue();
-            if (typeof v !== 'string' || asUrls(v)) return;
-            if (v.length > displayCap || v.indexOf('\n') >= 0) {
-              openModal(cell.getColumn().getDefinition().title, v);
-            }
-          };
-        }
-        if (name === 'media') {
-          col.cellClick = function (e, cell) {
-            var value = cell.getValue();
-            if (value && value.kind === 'media' && String(value.mime || '').indexOf('image/') === 0) {
-              openModalImage(cell.getColumn().getDefinition().title, value.src);
-            }
-          };
-        }
+    function headerMinWidth(title) {
+      return Math.min(260, Math.max(96, String(title || '').length * 9 + 56));
+    }
+
+    function sampleTextWidth(field, title) {
+      var longest = 0;
+      var seen = 0;
+      rows.some(function (row) {
+        if (!row || row[field] == null) return false;
+        longest = Math.max(longest, String(row[field]).length);
+        seen += 1;
+        return seen >= 50;
+      });
+      if (!seen) return 120;
+      if (longest > 80) return 260;
+      if (longest > 32) return 220;
+      if (longest > 18) return 160;
+      return 120;
+    }
+
+    function buildColumn(col) {
+      var title = String(col.title || col.field || '');
+      var field = String(col.field || '');
+      var role = col.role || col.formatter || 'text';
+      if (role === 'num') role = 'number';
+      var headerWidth = headerMinWidth(title);
+      var out = {
+        title: title,
+        field: field,
+        resizable: true,
+        sorterParams: { alignEmptyValues: 'bottom' }
+      };
+      if (role === 'media') {
+        out.formatter = formatters.media;
+        out.headerSort = false;
+        out.minWidth = Math.max(220, headerWidth);
+        out.widthGrow = 1;
+        out.cellClick = function (e, cell) {
+          var value = cell.getValue();
+          if (value && value.kind === 'media' && String(value.mime || '').indexOf('image/') === 0) {
+            openModalImage(cell.getColumn().getDefinition().title, value.src);
+          }
+        };
+      } else if (role === 'bool') {
+        out.formatter = formatters.bool;
+        out.sorter = boolNullLastSorter;
+        out.hozAlign = 'center';
+        out.minWidth = Math.max(96, headerWidth);
+        out.widthGrow = 1;
+      } else if (role === 'number') {
+        out.formatter = formatters.num;
+        out.hozAlign = 'right';
+        out.sorter = 'number';
+        out.minWidth = Math.max(96, headerWidth);
+        out.widthGrow = 1;
+      } else {
+        var minWidth = Math.max(sampleTextWidth(field, title), headerWidth);
+        out.formatter = formatters.text;
+        out.minWidth = minWidth;
+        out.widthGrow = minWidth >= 160 ? 2 : 1;
+        out.cellClick = function (e, cell) {
+          var v = cell.getValue();
+          if (typeof v !== 'string' || asUrls(v)) return;
+          if (v.length > displayCap || v.indexOf('\n') >= 0) {
+            openModal(cell.getColumn().getDefinition().title, v);
+          }
+        };
       }
-    });
+      return out;
+    }
+
+    var cols = (tableData.columns || []).map(buildColumn);
 
     var fixedMax = tableData.maxHeight == null ? null : tableData.maxHeight;
     var fixedPanel = container.closest && container.closest('.manual-preview');
@@ -272,7 +385,7 @@
         headerSort: false,
         formatter: 'rownum',
         hozAlign: 'right',
-        width: tableData.rowHeaderWidth || 44,
+        width: Math.max(44, String(Math.max(rows.length, 1)).length * 10 + 28),
         cssClass: 'tabulator-row-header'
       }
     };
@@ -300,6 +413,7 @@
     var chartData = cardData.chart || {};
     var rows = (cardData.dataset && cardData.dataset.rows) || [];
     var spec = clone(chartData.spec || {});
+    spec.config = deepMerge(vegaDarkConfig(), spec.config || {});
     spec.data = { values: rows };
     container.className = 'tf-view tf-chart-view';
     container.innerHTML = '<div class="tf-vis-stage"><div class="tf-vis-wrap '

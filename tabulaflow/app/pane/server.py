@@ -53,67 +53,6 @@ _BANNER = (
 )
 
 
-def _pane_css_vars() -> str:
-    from tabulaflow.app.page import (
-        BORDER,
-        CARD_BG,
-        PAGE_BG,
-        POPOVER_BG,
-        POPOVER_BORDER,
-        ROW_HOVER,
-        ROW_STRIPE,
-        SCROLLBAR_THUMB,
-        SCROLLBAR_THUMB_HOVER,
-        SCROLLBAR_TRACK,
-        TEXT,
-        TEXT_DIM,
-        TEXT_MUTED,
-    )
-    from tabulaflow.app.theme import (
-        ACCENT,
-        VIZ_MAP_CATEGORY_PALETTE,
-        VIZ_MAP_DEFAULT_COLOR,
-        VIZ_MAP_PIN_BOTTOM,
-        VIZ_MAP_PIN_DEFAULT_COLOR,
-        VIZ_MAP_PIN_HOLE,
-        VIZ_MAP_PIN_INNER,
-        VIZ_MAP_PIN_OUTLINE,
-        VIZ_MAP_PIN_TOP,
-        VIZ_MAP_ROUTE_COLOR,
-    )
-
-    map_category_vars = "".join(f"--map-category-{i}: {color};" for i, color in enumerate(VIZ_MAP_CATEGORY_PALETTE))
-    return (
-        ":root {"
-        f"--accent: {ACCENT};"
-        f"--bg: {PAGE_BG};"
-        f"--card: {CARD_BG};"
-        f"--stripe: {ROW_STRIPE};"
-        f"--hover: {ROW_HOVER};"
-        f"--border: {BORDER};"
-        f"--text: {TEXT};"
-        f"--text-muted: {TEXT_MUTED};"
-        f"--text-dim: {TEXT_DIM};"
-        f"--popover-bg: {POPOVER_BG};"
-        f"--popover-border: {POPOVER_BORDER};"
-        f"--scrollbar-track: {SCROLLBAR_TRACK};"
-        f"--scrollbar-thumb: {SCROLLBAR_THUMB};"
-        f"--scrollbar-thumb-hover: {SCROLLBAR_THUMB_HOVER};"
-        "--panel: #1f2532;"
-        "--rail-bg: #131720;"
-        f"--map-default: {VIZ_MAP_DEFAULT_COLOR};"
-        f"--map-route: {VIZ_MAP_ROUTE_COLOR};"
-        f"{map_category_vars}"
-        f"--map-pin-default: {VIZ_MAP_PIN_DEFAULT_COLOR};"
-        f"--map-pin-top: {VIZ_MAP_PIN_TOP};"
-        f"--map-pin-bottom: {VIZ_MAP_PIN_BOTTOM};"
-        f"--map-pin-outline: {VIZ_MAP_PIN_OUTLINE};"
-        f"--map-pin-hole: {VIZ_MAP_PIN_HOLE};"
-        f"--map-pin-inner: {VIZ_MAP_PIN_INNER};"
-        "}"
-    )
-
-
 def _load_pane_html() -> str:
     from importlib.resources import files
 
@@ -124,8 +63,7 @@ def _load_pane_html() -> str:
     render_js = base.joinpath("pane-render.js").read_bytes()
     render_version = hashlib.sha256(render_js).hexdigest()[:12]
     return (
-        html.replace("__CSS_VARS__", _pane_css_vars())
-        .replace("__PANE_CSS__", css)
+        html.replace("__PANE_CSS__", css)
         .replace("__PANE_JS__", js)
         .replace("__PANE_RENDER_VERSION__", render_version)
         .replace("__BANNER__", _BANNER)

@@ -5,9 +5,7 @@ from __future__ import annotations
 import copy
 from typing import TYPE_CHECKING
 
-from tabulaflow.app.page import CARD_BG, TEXT, TEXT_MUTED
 from tabulaflow.app.pane.types import ChartCardData
-from tabulaflow.app.theme import ACCENT, VIZ_CHART_CATEGORY_PALETTE, VIZ_CHART_GRID
 
 if TYPE_CHECKING:
     import pandas as pd
@@ -17,54 +15,6 @@ if TYPE_CHECKING:
 # tool caps attachable results well below pathological sizes; this is just the
 # crisp-vs-fast tradeoff within that range.
 _SVG_ROW_LIMIT = 5_000
-
-# Dark/mint Vega config applied as *defaults* (lowest precedence). Anything the
-# spec sets explicitly — including agent-requested colors — overrides it, since
-# Vega layers config underneath the spec's own mark/encoding properties.
-_VEGA_DARK_CONFIG: dict[str, object] = {
-    "background": CARD_BG,
-    "view": {"stroke": "transparent"},
-    "font": "-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif",
-    "title": {"color": TEXT, "subtitleColor": TEXT_MUTED, "fontSize": 17, "fontWeight": 600},
-    "axis": {
-        "labelColor": TEXT_MUTED,
-        "titleColor": TEXT,
-        "gridColor": VIZ_CHART_GRID,
-        "gridOpacity": 0.9,
-        "domainColor": VIZ_CHART_GRID,
-        "tickColor": VIZ_CHART_GRID,
-        "labelFontSize": 12,
-        "titleFontSize": 14,
-        "labelLimit": 160,
-    },
-    "legend": {"labelColor": TEXT_MUTED, "titleColor": TEXT, "labelFontSize": 12, "titleFontSize": 13},
-    # Categorical palette: the mint accent first, then off-palette hues used
-    # only for chart series (not part of the page design tokens).
-    "range": {
-        "category": list(VIZ_CHART_CATEGORY_PALETTE),
-        "ramp": {"scheme": "greens"},
-        "heatmap": {"scheme": "greens"},
-    },
-    "mark": {"color": ACCENT, "tooltip": True},
-    "bar": {"fill": ACCENT},
-    "line": {"stroke": ACCENT},
-    "point": {"fill": ACCENT},
-    "area": {"fill": ACCENT},
-    "arc": {"stroke": CARD_BG},
-}
-
-
-def _deep_merge(base: dict[str, object], override: dict[str, object]) -> dict[str, object]:
-    """Recursively merge ``override`` onto ``base``; ``override`` wins on conflict."""
-    out = dict(base)
-    for key, val in override.items():
-        existing = out.get(key)
-        if isinstance(val, dict) and isinstance(existing, dict):
-            out[key] = _deep_merge(existing, val)
-        else:
-            out[key] = val
-    return out
-
 
 def _normalize_field_refs(node: object, colmap: dict[str, str]) -> None:
     """Rewrite ``field`` references to the DataFrame's column-name casing, in place.
@@ -203,8 +153,6 @@ def build_chart_data(
     if field_by_column:
         _alias_field_refs(spec, field_by_column)
 
-    existing_config = spec.get("config")
-    spec["config"] = _deep_merge(_VEGA_DARK_CONFIG, existing_config if isinstance(existing_config, dict) else {})
     spec.setdefault("$schema", "https://vega.github.io/schema/vega-lite/v5.json")
 
     encoding = spec.get("encoding")
