@@ -174,7 +174,9 @@ def render_map_card_data(map_record: MapRecordLike, pane_dir: Path) -> PaneRecor
     results: each source DataFrame becomes a bundled dataset, and each layer reads
     from its ``source`` dataset. Returns ``None`` when no valid layer resolves.
     """
-    card_id = f"map_{secrets.token_hex(6)}"
+    # ``rec_`` prefix: the pane server only serves session files under this
+    # convention (see ``app/pane.py``); the map's ``MAP*`` id lives in its label.
+    card_id = f"rec_{secrets.token_hex(6)}"
     sources_payload: dict[str, dict[str, object]] = {}
     for source_id, df in map_record.sources.items():
         if df is None or df.empty:

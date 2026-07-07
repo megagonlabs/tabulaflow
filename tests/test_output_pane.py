@@ -245,6 +245,8 @@ def _map_card(map_spec: dict, sources: dict[str, pd.DataFrame], tmp_path: Path, 
         tmp_path,
     )
     assert card is not None
+    # The pane server only serves session files under the ``rec_`` prefix (pane.py).
+    assert card["id"].startswith("rec_")
     return card
 
 
