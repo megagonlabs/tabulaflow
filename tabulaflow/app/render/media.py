@@ -1,14 +1,10 @@
-"""Cell and media serialization: magic-byte sniffing, base64 decode, value -> (content, suffix)."""
+"""Media helpers for browser-pane table payloads and TUI cell inspection."""
 
 from __future__ import annotations
 
-import ast
 import base64
 import binascii
-import json
 import re
-import secrets
-from pathlib import Path
 
 # ---------------------------------------------------------------------------
 # Magic-byte sniffing
@@ -87,82 +83,3 @@ def try_decode_base64(s: str) -> bytes | None:
     except (binascii.Error, ValueError):
         return None
 
-
-# ---------------------------------------------------------------------------
-# Cell serialization
-# ---------------------------------------------------------------------------
-
-_SQL_RE = re.compile(
-    r"^\s*(SELECT|INSERT|UPDATE|DELETE|CREATE|ALTER|DROP|WITH|EXPLAIN)\b",
-    re.IGNORECASE,
-)
-_PY_RE = re.compile(r"^\s*(def |class |import |from |if __name__)")
-
-
-def serialize_cell(value: object) -> tuple[str | bytes, str]:
-    """Return ``(content, suffix)`` for writing ``value`` at full fidelity.
-
-    Binary inputs (``bytes``/``bytearray``/``memoryview``) get sniffed for
-    a known media extension. String inputs that decode as base64 of a
-    recognized media format are returned as the decoded bytes with that
-    extension — covers DB columns that store images as base64 text.
-    """
-    if isinstance(value, (bytes, bytearray, memoryview)):
-        raw = bytes(value)
-        sniffed = sniff_binary(raw)
-        return raw, sniffed[0] if sniffed else ".bin"
-
-    # HuggingFace ``Image``/``Audio`` struct: ``{"bytes": <blob>, "path": ...}``
-    # — DuckDB returns ``STRUCT(bytes BLOB, path VARCHAR)`` columns from
-    # cached HF parquet as dicts. Surface the blob with its native
-    # extension so ``b`` (open in browser) renders the image / plays the
-    # audio rather than dumping a JSON tree.
-    if isinstance(value, dict):
-        inner = value.get("bytes")
-        if isinstance(inner, (bytes, bytearray, memoryview)):
-            raw = bytes(inner)
-            sniffed = sniff_binary(raw)
-            return raw, sniffed[0] if sniffed else ".bin"
-
-    if isinstance(value, (dict, list)):
-        return json.dumps(value, indent=2, ensure_ascii=False, default=str), ".json"
-
-    if isinstance(value, str):
-        decoded = try_decode_base64(value)
-        if decoded is not None:
-            sniffed = sniff_binary(decoded)
-            if sniffed:
-                return decoded, sniffed[0]
-        for parser in (json.loads, ast.literal_eval):
-            try:
-                parsed = parser(value)
-            except Exception:
-                continue
-            if isinstance(parsed, (dict, list)):
-                return (
-                    json.dumps(parsed, indent=2, ensure_ascii=False, default=str),
-                    ".json",
-                )
-        if _SQL_RE.match(value):
-            return value, ".sql"
-        if _PY_RE.match(value):
-            return value, ".py"
-        return value, ".txt"
-
-    return str(value), ".txt"
-
-
-def write_cell_dump(value: object, dumps_dir: Path) -> Path:
-    """Serialize ``value`` and write it into ``dumps_dir``; return the path.
-
-    File name is ``C_<6 hex>{suffix}``. Caller is responsible for
-    deciding whether to reuse an existing dump.
-    """
-    content, suffix = serialize_cell(value)
-    path = dumps_dir / f"C_{secrets.token_hex(3)}{suffix}"
-    path.parent.mkdir(parents=True, exist_ok=True)
-    if isinstance(content, (bytes, bytearray)):
-        path.write_bytes(content)
-    else:
-        path.write_text(content, encoding="utf-8")
-    return path

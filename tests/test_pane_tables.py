@@ -1,4 +1,4 @@
-"""Tests for cell/media helpers and browser-pane table payloads."""
+"""Tests for media helpers and browser-pane table payloads."""
 
 from __future__ import annotations
 
@@ -11,10 +11,8 @@ import pytest
 
 from tabulaflow.app.render import (
     build_table_data,
-    serialize_cell,
     sniff_binary,
     try_decode_base64,
-    write_cell_dump,
 )
 
 
@@ -100,58 +98,6 @@ class TestTryDecodeBase64:
 
     def test_garbage_rejected(self) -> None:
         assert try_decode_base64("not base64 at all !!! " * 5) is None
-
-
-class TestSerializeCell:
-    def test_png_bytes_get_png_suffix(self) -> None:
-        content, suffix = serialize_cell(PNG_MAGIC)
-        assert isinstance(content, bytes)
-        assert suffix == ".png"
-
-    def test_unknown_bytes_get_bin_suffix(self) -> None:
-        content, suffix = serialize_cell(b"\x00\x01\x02\x03randomgarbage")
-        assert isinstance(content, bytes)
-        assert suffix == ".bin"
-
-    def test_base64_png_string_decoded(self) -> None:
-        png_b64 = base64.b64encode(PNG_MAGIC + b"\x00" * 64).decode("ascii")
-        content, suffix = serialize_cell(png_b64)
-        assert isinstance(content, bytes)
-        assert suffix == ".png"
-
-    def test_data_uri_string_decoded(self) -> None:
-        png_b64 = base64.b64encode(PNG_MAGIC + b"\x00" * 64).decode("ascii")
-        content, suffix = serialize_cell(f"data:image/png;base64,{png_b64}")
-        assert isinstance(content, bytes)
-        assert suffix == ".png"
-
-    def test_dict_serialized_as_json(self) -> None:
-        content, suffix = serialize_cell({"a": 1, "b": [2, 3]})
-        assert isinstance(content, str)
-        assert suffix == ".json"
-        assert '"a"' in content
-
-    def test_sql_string_gets_sql_suffix(self) -> None:
-        content, suffix = serialize_cell("SELECT * FROM t")
-        assert content == "SELECT * FROM t"
-        assert suffix == ".sql"
-
-    def test_plain_string_gets_txt(self) -> None:
-        content, suffix = serialize_cell("hello world")
-        assert content == "hello world"
-        assert suffix == ".txt"
-
-
-class TestWriteCellDump:
-    def test_writes_bytes_for_image(self, tmp_path: Path) -> None:
-        path = write_cell_dump(PNG_MAGIC, tmp_path)
-        assert path.suffix == ".png"
-        assert path.read_bytes() == PNG_MAGIC
-
-    def test_writes_text_for_string(self, tmp_path: Path) -> None:
-        path = write_cell_dump("hello", tmp_path)
-        assert path.suffix == ".txt"
-        assert path.read_text() == "hello"
 
 
 class TestBuildTableData:
