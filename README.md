@@ -367,7 +367,11 @@ July 2
 July 6
 - [x] Remove shadows of pins
 - [x] Allow links in tooltip
-- [ ] Multiple records for map
+- [x] Multiple records for map
+
+July 7 
+- [ ] Revise output pane code boundary and modularity
+- [ ] Graph rendering
 
 - [ ] Remote server improvements
 
