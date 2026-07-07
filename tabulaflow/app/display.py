@@ -280,6 +280,7 @@ VIEW_KIND_CHART = "Chart"
 VIEW_KIND_DATA = "Data"
 VIEW_KIND_QUERY = "Query"
 VIEW_KIND_MAP = "Map"
+VIEW_KIND_GRAPH = "Graph"
 
 
 def _build_map_card(map_spec: dict[str, object]) -> RenderableType:
@@ -298,6 +299,21 @@ def _build_map_card(map_spec: dict[str, object]) -> RenderableType:
         lines.append(Text(type_label, style="dim", justify="center"))
     lines.append(Text(""))
     lines.append(Text("Open the browser pane to view this map.", style="dim", justify="center"))
+    return Panel(Group(*lines), box=box.ROUNDED, border_style=ACCENT_DIM, padding=(1, 2))
+
+
+def _build_graph_card(graph_spec: dict[str, object]) -> RenderableType:
+    """Placeholder box for a graph (rendered in the browser, not the terminal)."""
+    from tabulaflow.toolhub.render_graph import graph_type_label
+
+    type_label = graph_type_label(graph_spec)
+    title = graph_spec.get("title") if isinstance(graph_spec, dict) else None
+    heading = str(title) if isinstance(title, str) and title.strip() else type_label
+    lines: list[RenderableType] = [Text(heading, style="dim bold", justify="center")]
+    if isinstance(title, str) and title.strip():
+        lines.append(Text(type_label, style="dim", justify="center"))
+    lines.append(Text(""))
+    lines.append(Text("Open the browser pane to view this graph.", style="dim", justify="center"))
     return Panel(Group(*lines), box=box.ROUNDED, border_style=ACCENT_DIM, padding=(1, 2))
 
 
@@ -331,7 +347,7 @@ def build_card_views(result: object, width: int = 80) -> list[CardGroup]:
     since maps don't render in the terminal. Query artifacts with no views are
     dropped.
     """
-    from tabulaflow.chat import ChatResult, ChatResultMap
+    from tabulaflow.chat import ChatResult, ChatResultGraph, ChatResultMap
 
     assert isinstance(result, ChatResult)
 
@@ -348,6 +364,15 @@ def build_card_views(result: object, width: int = 80) -> list[CardGroup]:
                     label=label,
                     artifact_id=artifact.map_id,
                     views=[ViewItem(kind=VIEW_KIND_MAP, renderable=_build_map_card(artifact.map_spec))],
+                )
+            )
+            continue
+        if isinstance(artifact, ChatResultGraph):
+            groups.append(
+                CardGroup(
+                    label=label,
+                    artifact_id=artifact.graph_id,
+                    views=[ViewItem(kind=VIEW_KIND_GRAPH, renderable=_build_graph_card(artifact.graph_spec))],
                 )
             )
             continue
@@ -387,6 +412,8 @@ def build_card_views(result: object, width: int = 80) -> list[CardGroup]:
     # Release DataFrame references — previews have been rendered to Rich renderables.
     for artifact in result.artifacts:
         if isinstance(artifact, ChatResultMap):
+            artifact.sources = {}
+        elif isinstance(artifact, ChatResultGraph):
             artifact.sources = {}
         else:
             artifact.df = None

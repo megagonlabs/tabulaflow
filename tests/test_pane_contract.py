@@ -8,7 +8,7 @@ from typing import cast
 import pandas as pd
 
 from tabulaflow.app.pane import CARD_ID_PREFIX, VIEW_KINDS, CardData, PaneCard
-from tabulaflow.app.pane.cards import render_map_data, render_record_data
+from tabulaflow.app.pane.cards import render_graph_data, render_map_data, render_record_data
 
 
 def _load_card_data(card: PaneCard, pane_dir: Path) -> CardData:
@@ -71,6 +71,22 @@ def _assert_card_payload(card: PaneCard, data: CardData) -> None:
             assert isinstance(source, str)
             assert source in datasets
 
+    if "graph" in card["views"]:
+        graph_data = data["graph"]
+        assert graph_data["layout"] in {"force", "layered", "tree"}
+        elements = graph_data["elements"]
+        assert isinstance(elements["nodes"], list)
+        assert isinstance(elements["edges"], list)
+        for node in elements["nodes"]:
+            assert isinstance(node.get("data"), dict)
+            assert isinstance(node["data"].get("id"), str)
+            assert isinstance(node["data"].get("color"), str)
+            assert isinstance(node["data"].get("size"), (int, float))
+        for edge in elements["edges"]:
+            assert isinstance(edge.get("data"), dict)
+            assert isinstance(edge["data"].get("source"), str)
+            assert isinstance(edge["data"].get("target"), str)
+
 
 def test_record_card_payload_matches_contract(tmp_path: Path) -> None:
     df = pd.DataFrame({"region": ["north", "south"], "revenue": [10, 20]})
@@ -99,4 +115,21 @@ def test_map_card_payload_matches_contract(tmp_path: Path) -> None:
 
     assert card is not None
     assert card["views"] == ["map"]
+    _assert_card_payload(card, _load_card_data(card, tmp_path))
+
+
+def test_graph_card_payload_matches_contract(tmp_path: Path) -> None:
+    df = pd.DataFrame({"src": ["a"], "dst": ["b"], "rel": ["feeds"]})
+    card = render_graph_data(
+        SimpleNamespace(
+            graph_id="GRAPH1",
+            label="lineage",
+            graph_spec={"layout": "layered", "nodes": [], "edges": [{"record_id": "Q1", "source": "src", "target": "dst", "label": "rel"}]},
+            sources={"Q1": df},
+        ),
+        tmp_path,
+    )
+
+    assert card is not None
+    assert card["views"] == ["graph"]
     _assert_card_payload(card, _load_card_data(card, tmp_path))

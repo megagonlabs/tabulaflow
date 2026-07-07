@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from typing import Literal, Required, TypedDict
 
-ViewKind = Literal["map", "chart", "data", "query"]
-VIEW_KINDS: tuple[ViewKind, ...] = ("map", "chart", "data", "query")
+ViewKind = Literal["map", "chart", "data", "query", "graph"]
+VIEW_KINDS: tuple[ViewKind, ...] = ("map", "chart", "data", "query", "graph")
 CARD_ID_PREFIX = "rec_"
 PaneSource = Literal["manual"]
 ColumnRole = Literal["text", "number", "bool", "media"]
@@ -68,6 +68,12 @@ class MapData(TypedDict, total=False):
     view: dict[str, object]
 
 
+class GraphData(TypedDict, total=False):
+    layout: Required[str]
+    elements: Required[dict[str, list[dict[str, object]]]]
+    meta: dict[str, object]
+
+
 class TableCardData(TypedDict):
     dataset: DatasetData
     table: TableData
@@ -86,12 +92,17 @@ class MapCardData(TypedDict):
     datasets: dict[str, DatasetData]
 
 
+class GraphCardData(TypedDict):
+    graph: GraphData
+
+
 class CardData(TypedDict, total=False):
     table: TableData
     dataset: DatasetData
     chart: ChartData
     query: QueryData
     map: MapData
+    graph: GraphData
     datasets: dict[str, DatasetData]
 
 

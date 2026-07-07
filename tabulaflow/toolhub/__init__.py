@@ -8,12 +8,13 @@ from tabulaflow.toolhub.execute_bash import BashToolMetrics, ExecuteBashTool
 from tabulaflow.toolhub.extract_rows_from_documents import ExtractRowsFromDocumentsTool
 from tabulaflow.toolhub.file_editor import FileEditorTool, FileEditorToolMetrics
 from tabulaflow.toolhub.render_chart import RenderChartTool
+from tabulaflow.toolhub.render_graph import RenderGraphTool
 from tabulaflow.toolhub.render_map import RenderMapTool
 from tabulaflow.toolhub.registry_get_column_json_schema import RegistryGetColumnJsonSchemaTool
 from tabulaflow.toolhub.registry_get_db_document import RegistryGetDBDocumentTool
 from tabulaflow.toolhub.registry_get_schema import RegistryGetSchemaTool
 from tabulaflow.toolhub.registry_get_table_schema import RegistryGetTableSchemaTool
-from tabulaflow.toolhub.query_history import MapArtifact, QueryHistory, QueryRecord
+from tabulaflow.toolhub.query_history import GraphArtifact, MapArtifact, QueryHistory, QueryRecord
 from tabulaflow.toolhub.registry_run_query import RegistryRunQueryTool
 from tabulaflow.toolhub.registry_transfer_record import RegistryTransferRecordTool
 from tabulaflow.toolhub.run_query import RunQueryTool
@@ -37,6 +38,7 @@ __all__ = [
     "ExtractRowsFromDocumentsTool",
     "FileEditorTool",
     "FileEditorToolMetrics",
+    "GraphArtifact",
     "RegistryGetColumnJsonSchemaTool",
     "RegistryGetDBDocumentTool",
     "RegistryGetSchemaTool",
@@ -47,6 +49,7 @@ __all__ = [
     "RegistryRunQueryTool",
     "RegistryTransferRecordTool",
     "RenderChartTool",
+    "RenderGraphTool",
     "RenderMapTool",
     "RunQueryTool",
     "RunSubagentForEachRowTool",

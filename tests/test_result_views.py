@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import pandas as pd
 
-from tabulaflow.app.display import VIEW_KIND_DATA, VIEW_KIND_MAP, VIEW_KIND_QUERY, build_card_views
-from tabulaflow.chat.result import ChatResult, ChatResultMap, ChatResultRecord
+from tabulaflow.app.display import VIEW_KIND_DATA, VIEW_KIND_GRAPH, VIEW_KIND_MAP, VIEW_KIND_QUERY, build_card_views
+from tabulaflow.chat.result import ChatResult, ChatResultGraph, ChatResultMap, ChatResultRecord
 
 
 def _record(record_id: str, label: str) -> ChatResultRecord:
@@ -28,6 +28,15 @@ def _map(map_id: str, label: str) -> ChatResultMap:
     )
 
 
+def _graph(graph_id: str, label: str) -> ChatResultGraph:
+    return ChatResultGraph(
+        graph_id=graph_id,
+        label=label,
+        graph_spec={"layout": "force", "nodes": [], "edges": [{"record_id": "Q1", "source": "src", "target": "dst"}]},
+        sources={"Q1": pd.DataFrame({"src": ["a"], "dst": ["b"]})},
+    )
+
+
 def test_map_artifact_yields_single_map_placeholder_view() -> None:
     result = ChatResult(text="x", artifacts=[_map("MAP1", "cities")])
     groups = build_card_views(result)
@@ -39,12 +48,13 @@ def test_map_artifact_yields_single_map_placeholder_view() -> None:
 def test_artifacts_render_in_citation_order() -> None:
     result = ChatResult(
         text="x",
-        artifacts=[_record("Q1", "table1"), _map("MAP1", "map1"), _record("Q2", "table2")],
+        artifacts=[_record("Q1", "table1"), _map("MAP1", "map1"), _graph("GRAPH1", "graph1"), _record("Q2", "table2")],
     )
     groups = build_card_views(result)
-    assert [g.artifact_id for g in groups] == ["Q1", "MAP1", "Q2"]
+    assert [g.artifact_id for g in groups] == ["Q1", "MAP1", "GRAPH1", "Q2"]
     # The map group is map-only; the record groups keep their data/query views.
     assert [v.kind for v in groups[1].views] == [VIEW_KIND_MAP]
+    assert [v.kind for v in groups[2].views] == [VIEW_KIND_GRAPH]
     assert VIEW_KIND_DATA in [v.kind for v in groups[0].views]
     assert VIEW_KIND_QUERY in [v.kind for v in groups[0].views]
 
@@ -55,3 +65,10 @@ def test_map_artifact_sources_released_after_render() -> None:
     build_card_views(result)
     # DataFrame references are dropped once previews are rendered.
     assert chat_map.sources == {}
+
+
+def test_graph_artifact_sources_released_after_render() -> None:
+    chat_graph = _graph("GRAPH1", "lineage")
+    result = ChatResult(text="x", artifacts=[chat_graph])
+    build_card_views(result)
+    assert chat_graph.sources == {}

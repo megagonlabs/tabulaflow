@@ -43,6 +43,14 @@ class MapArtifact:
     map_spec: dict[str, Any]
 
 
+@dataclass
+class GraphArtifact:
+    """A node-link graph assembled from one or more query results."""
+
+    graph_id: str
+    graph_spec: dict[str, Any]
+
+
 class QueryHistory:
     """Query history with write-through spill to a workspace DuckDB.
 
@@ -65,8 +73,10 @@ class QueryHistory:
             raise ValueError("max_in_memory must be >= 1")
         self._records: dict[str, QueryRecord] = {}
         self._maps: dict[str, MapArtifact] = {}
+        self._graphs: dict[str, GraphArtifact] = {}
         self._next_query_id = 1
         self._next_map_id = 1
+        self._next_graph_id = 1
         self._max_in_memory = max_in_memory
         self._in_memory: deque[str] = deque()
         self._spilled: set[str] = set()
@@ -127,6 +137,20 @@ class QueryHistory:
             return self._maps[map_id]
         except KeyError:
             raise KeyError(f"No map with id {map_id}") from None
+
+    def add_graph(self, graph_spec: dict[str, Any]) -> str:
+        """Store a standalone graph artifact and return its opaque ``GRAPH*`` id."""
+        graph_id = f"GRAPH{self._next_graph_id}"
+        self._graphs[graph_id] = GraphArtifact(graph_id=graph_id, graph_spec=graph_spec)
+        self._next_graph_id += 1
+        return graph_id
+
+    def get_graph(self, graph_id: str) -> GraphArtifact:
+        """Return a previously stored graph artifact."""
+        try:
+            return self._graphs[graph_id]
+        except KeyError:
+            raise KeyError(f"No graph with id {graph_id}") from None
 
     # -- spill / hydrate internals --
 

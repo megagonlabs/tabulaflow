@@ -71,6 +71,10 @@ class TestVerbLedLabels:
         spec = {"title": "Store locations", "layers": [{"type": "points", "lat": "lat", "lng": "lng"}]}
         assert summarize_tool_args("render_map", {"map_spec": spec}) == "Render Map Store locations"
 
+    def test_graph(self) -> None:
+        spec = {"title": "Lineage", "edges": [{"source": "src", "target": "dst"}]}
+        assert summarize_tool_args("render_graph", {"graph_spec": spec}) == "Render Graph Lineage"
+
     def test_unknown_tool_falls_back_to_titlecased_name(self) -> None:
         # single arg -> bare value; multiple -> key=value pairs (generic fallback)
         assert summarize_tool_args("some_new_tool", {"foo": "bar"}) == "Some new tool bar"

@@ -70,9 +70,35 @@ class ChatResultMap(BaseModel):
         return out
 
 
+class ChatResultGraph(BaseModel):
+    """Display-ready data for one cited graph artifact."""
+
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
+    kind: Literal["graph"] = "graph"
+    graph_id: str
+    label: str | None
+    graph_spec: dict[str, Any]
+    sources: dict[str, pd.DataFrame]
+
+    @field_serializer("sources", when_used="always")
+    def _serialize_sources(self, sources: dict[str, pd.DataFrame]) -> dict[str, Any]:
+        return {rid: _serialize_dataframe(df) for rid, df in sources.items()}
+
+    @field_validator("sources", mode="before")
+    @classmethod
+    def _deserialize_sources(cls, v: dict[str, Any]) -> dict[str, pd.DataFrame]:
+        out: dict[str, pd.DataFrame] = {}
+        for rid, df in (v or {}).items():
+            deserialized = _deserialize_dataframe(df)
+            if deserialized is not None:
+                out[rid] = deserialized
+        return out
+
+
 # A cited artifact is either a query result (record) or a standalone map,
 # discriminated by ``kind``; ``ChatResult.artifacts`` holds them in citation order.
-ChatResultArtifact = Annotated[ChatResultRecord | ChatResultMap, Field(discriminator="kind")]
+ChatResultArtifact = Annotated[ChatResultRecord | ChatResultMap | ChatResultGraph, Field(discriminator="kind")]
 
 
 class ChatResult(BaseModel):

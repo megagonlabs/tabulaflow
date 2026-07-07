@@ -27,7 +27,7 @@ from tabulaflow.toolhub.web_browser import (
     snapshot_snippet,
 )
 from tabulaflow.core.llm import make_agent
-from tabulaflow.chat.result import ChatResult, ChatResultMap, ChatResultRecord
+from tabulaflow.chat.result import ChatResult, ChatResultGraph, ChatResultMap, ChatResultRecord
 from tabulaflow.chat.events import (
     ChatEvent,
     ColumnsReturned,
@@ -59,6 +59,7 @@ if TYPE_CHECKING:
         ExecuteBashTool,
         ExtractRowsFromDocumentsTool,
         FileEditorTool,
+        GraphArtifact,
         MapArtifact,
         QueryHistory,
         QueryRecord,
@@ -68,6 +69,7 @@ if TYPE_CHECKING:
         RegistryRunQueryTool,
         RegistryTransferRecordTool,
         RenderChartTool,
+        RenderGraphTool,
         RenderMapTool,
         RunSubagentForEachRowTool,
         WebBrowserTool,
@@ -75,7 +77,7 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-_ARTIFACT_REF_RE = re.compile(r"\[\[artifact:((?:Q|MAP)\d+)(?::([^\]]+))?\]\]")
+_ARTIFACT_REF_RE = re.compile(r"\[\[artifact:((?:Q|MAP|GRAPH)\d+)(?::([^\]]+))?\]\]")
 
 
 SYSTEM_PROMPT = """\
@@ -98,7 +100,7 @@ CRITICAL: The user should feel as if they are directly interacting with their or
   - You can only reference `run_query` results. To present data that isn't one yet (e.g. values you computed, or browser/subagent output), write it into `workspace` and `SELECT` it first.
 - End every answer with a `---` on its own line: result references go above it, then `---`, then your plain-language answer. Only text AFTER the `---` reaches the user; text before it is intermediate narration. Always include the `---`, even with no references.
     - There is exactly ONE `---`, do NOT add a trailing `---` after the answer.
-    - Reference a result as `[[artifact:Q<id>:<label>]]` (e.g. `[[artifact:Q3:num_players]]`), or a map as `[[artifact:MAP<id>:<label>]]` (e.g. `[[artifact:MAP1:store locations]]`); every reference needs a short label describing it (e.g. `players`, `revenue_by_month`), or `result` if unsure — never the id itself.
+    - Reference a result as `[[artifact:Q<id>:<label>]]` (e.g. `[[artifact:Q3:num_players]]`), a map as `[[artifact:MAP<id>:<label>]]` (e.g. `[[artifact:MAP1:store locations]]`), or a graph as `[[artifact:GRAPH<id>:<label>]]` (e.g. `[[artifact:GRAPH1:lineage]]`); every reference needs a short label describing it (e.g. `players`, `revenue_by_month`), or `result` if unsure — never the id itself.
     - Example (with a table):
       [[artifact:Q3:num_players]]
       ---
@@ -218,6 +220,7 @@ Visualization:
 - Call `render_map` when spatial position or geometry is essential to the answer. It returns a `MAP<n>` id; cite that id to show the map. Each column/geojson layer names the `record_id` it reads from — set different `record_id` values across layers to overlay multiple query results on one map.
 - Use a `points` layer for latitude/longitude columns: `{"layers":[{"type":"points","record_id":"Q3","lat":"lat","lng":"lng","label":"name","tooltip":["name","status"]}]}`.
 - Use a `geojson` layer when a result column already contains WGS84 GeoJSON. If a database has native geometry, convert it in SQL first (e.g. `ST_AsGeoJSON(ST_Transform(geom, 4326)) AS geom_geojson`) and map that column.
+- Call `render_graph` for graph/network results (node-link). It returns a `GRAPH<n>` id; cite it to show the graph.
 </tool_calling>
 
 <plan_mode>
@@ -272,6 +275,7 @@ class _Toolset:
     extract_rows_from_documents: ExtractRowsFromDocumentsTool | None
     add_canonical_name: AddCanonicalNameTool
     render_chart: RenderChartTool
+    render_graph: RenderGraphTool
     render_map: RenderMapTool
     web_browser: WebBrowserTool
     # Host-facing tools; ``None`` when the app didn't supply the dirs they need.
@@ -372,6 +376,7 @@ class ChatAgent:
             RegistryRunQueryTool,
             RegistryTransferRecordTool,
             RenderChartTool,
+            RenderGraphTool,
             RenderMapTool,
             RunSubagentForEachRowTool,
             WebBrowserTool,
@@ -419,6 +424,7 @@ class ChatAgent:
                 trajectory_log_dir=subagent_dir,
             ),
             render_chart=RenderChartTool(history=self._query_history),
+            render_graph=RenderGraphTool(history=self._query_history),
             render_map=RenderMapTool(history=self._query_history),
             web_browser=WebBrowserTool(),
             connect_data_source=(
@@ -540,6 +546,7 @@ class ChatAgent:
                 *host_tools,
                 self._tools.add_canonical_name.as_pydantic_ai_tool(),
                 self._tools.render_chart.as_pydantic_ai_tool(),
+                self._tools.render_graph.as_pydantic_ai_tool(),
                 self._tools.render_map.as_pydantic_ai_tool(),
                 *self._tools.web_browser.as_pydantic_ai_tools(),
             ],
@@ -877,9 +884,9 @@ class _TextStreamRouter:
 async def _artifacts_from_refs(
     refs: Iterable[tuple[str, str | None]],
     query_history: QueryHistory,
-) -> list[ChatResultRecord | ChatResultMap]:
+) -> list[ChatResultRecord | ChatResultMap | ChatResultGraph]:
     """Resolve citation refs into display artifacts, preserving citation order."""
-    artifacts: list[ChatResultRecord | ChatResultMap] = []
+    artifacts: list[ChatResultRecord | ChatResultMap | ChatResultGraph] = []
     for ref_id, label in refs:
         if ref_id.startswith("MAP"):
             try:
@@ -887,6 +894,12 @@ async def _artifacts_from_refs(
             except (KeyError, ValueError):
                 continue
             artifacts.append(await _chat_result_map_from_artifact(map_artifact, label, query_history))
+        elif ref_id.startswith("GRAPH"):
+            try:
+                graph_artifact = query_history.get_graph(ref_id)
+            except (KeyError, ValueError):
+                continue
+            artifacts.append(await _chat_result_graph_from_artifact(graph_artifact, label, query_history))
         else:
             try:
                 query_record = await query_history.get(ref_id)
@@ -919,6 +932,32 @@ async def _chat_result_map_from_artifact(
         if exec_result is not None and exec_result.df is not None:
             sources[sid] = exec_result.df
     return ChatResultMap(map_id=map_artifact.map_id, label=label, map_spec=spec, sources=sources)
+
+
+async def _chat_result_graph_from_artifact(
+    graph_artifact: GraphArtifact,
+    label: str | None,
+    query_history: QueryHistory,
+) -> ChatResultGraph:
+    """Resolve a stored graph artifact's per-source DataFrames into a display record."""
+    spec = graph_artifact.graph_spec
+    source_ids: list[str] = []
+    for key in ("nodes", "edges"):
+        entries = spec.get(key) or []
+        for entry in entries:
+            rid = entry.get("record_id") if isinstance(entry, dict) else None
+            if rid and rid not in source_ids:
+                source_ids.append(rid)
+    sources: dict[str, pd.DataFrame] = {}
+    for sid in source_ids:
+        try:
+            record = await query_history.get(sid)
+        except (KeyError, ValueError):
+            continue
+        exec_result = record.pred_query.exec_result
+        if exec_result is not None and exec_result.df is not None:
+            sources[sid] = exec_result.df
+    return ChatResultGraph(graph_id=graph_artifact.graph_id, label=label, graph_spec=spec, sources=sources)
 
 
 def _chat_result_record_from_query_record(

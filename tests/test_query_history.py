@@ -172,3 +172,14 @@ class TestWithConnector:
         assert h.add_map(spec) == "MAP2"
         with pytest.raises(KeyError):
             h.get_map("MAP9")
+
+    @pytest.mark.asyncio
+    async def test_add_graph_stores_standalone_artifact(self, workspace: SQLConnector) -> None:
+        h = QueryHistory(spill_connector=workspace)
+        spec = {"layout": "force", "edges": [{"record_id": "Q1", "source": "src", "target": "dst"}]}
+        graph_id = h.add_graph(spec)
+        assert graph_id == "GRAPH1"
+        assert h.get_graph("GRAPH1").graph_spec == spec
+        assert h.add_graph(spec) == "GRAPH2"
+        with pytest.raises(KeyError):
+            h.get_graph("GRAPH9")

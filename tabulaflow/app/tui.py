@@ -586,6 +586,18 @@ class TabulaflowApp(App[None]):
                         ),
                     )
                 )
+            elif artifact.kind == "graph":
+                artifact_snapshots.append(
+                    (
+                        "graph",
+                        SimpleNamespace(
+                            graph_id=artifact.graph_id,
+                            label=artifact.label,
+                            graph_spec=artifact.graph_spec,
+                            sources=dict(artifact.sources),
+                        ),
+                    )
+                )
             else:
                 artifact_snapshots.append(
                     (
@@ -606,13 +618,18 @@ class TabulaflowApp(App[None]):
             return
 
         async def render_and_push() -> None:
-            from tabulaflow.app.pane import render_map_data, render_record_data
+            from tabulaflow.app.pane import render_graph_data, render_map_data, render_record_data
 
             def render_cards() -> list[PaneCard]:
                 cards: list[PaneCard] = []
                 for kind, snap in artifact_snapshots:
                     try:
-                        card = render_map_data(snap, pane_dir) if kind == "map" else render_record_data(snap, pane_dir)
+                        if kind == "map":
+                            card = render_map_data(snap, pane_dir)
+                        elif kind == "graph":
+                            card = render_graph_data(snap, pane_dir)
+                        else:
+                            card = render_record_data(snap, pane_dir)
                     except Exception:
                         logger.debug("output pane card render failed", exc_info=True)
                         continue
