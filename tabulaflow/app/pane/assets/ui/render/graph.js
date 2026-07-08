@@ -97,6 +97,7 @@ function graphLayoutOptions(layout) {
     fit: false,
     numIter: 1000,
     idealEdgeLength: idealForceEdgeLength,
+    edgeElasticity: 80,
     nodeOverlap: 10,
     nodeRepulsion: 2600,
     componentSpacing: 40,
