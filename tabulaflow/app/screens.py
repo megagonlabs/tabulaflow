@@ -1335,7 +1335,9 @@ class SchemaBrowserScreen(Screen[None]):
                 kind=_NODE_KIND_DB,
                 alias=alias,
                 path=(alias, None, None, None),
-                status_text=f"{alias}  |  {len(schema.nodes):,} labels  |  {len(schema.relationships):,} relationship types",
+                status_text=(
+                    f"{alias}  |  {len(schema.nodes):,} Node Types  |  {len(schema.relationships):,} Relationship Types"
+                ),
             ),
             expand=self._expand_for((alias, None, None, None), True),
         )
@@ -1363,17 +1365,13 @@ class SchemaBrowserScreen(Screen[None]):
             )
             self._add_graph_properties(label_node, alias, ("nodes", node.label), node.properties)
 
-        pattern_count = sum(len(rel.endpoints) for rel in schema.relationships)
         relationships = db_node.add(
             Text("Relationship Types", style="bold"),
             data=_NodeData(
                 kind=_NODE_KIND_GRAPH_GROUP,
                 alias=alias,
                 path=(alias, "relationships", None, None),
-                status_text=(
-                    f"{alias} > Relationship Types  |  {len(schema.relationships):,} types  |  "
-                    f"{pattern_count:,} patterns"
-                ),
+                status_text=f"{alias} > Relationship Types  |  {len(schema.relationships):,} types",
             ),
             expand=self._expand_for((alias, "relationships", None, None), True),
         )
@@ -1400,7 +1398,11 @@ class SchemaBrowserScreen(Screen[None]):
         name_width = max((len(prop.name) for prop in properties if isinstance(prop, GraphPropertySchema)), default=0)
         for prop in properties:
             assert isinstance(prop, GraphPropertySchema)
-            parent_label = " > ".join(part for part in parent_path if part is not None)
+            parent_label = " > ".join(
+                {"nodes": "Node Types", "relationships": "Relationship Types"}.get(part, part)
+                for part in parent_path
+                if part is not None
+            )
             parent_node.add_leaf(
                 Text.assemble(prop.name.ljust(name_width), (f"  {prop.dtype}", "dim")),
                 data=_NodeData(
