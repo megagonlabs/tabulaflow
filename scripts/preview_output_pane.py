@@ -545,7 +545,7 @@ def _graph_network_card(pane_dir: Path) -> PaneCard:
     )
     return _graph_card(
         graph_id="GRAPHDEBUG_NETWORK",
-        label="collaboration_network",
+        label="force_layout",
         pane_dir=pane_dir,
         sources={"Q_GRAPH_NODES": nodes, "Q_GRAPH_EDGES": edges},
         graph_spec={
@@ -575,6 +575,17 @@ def _graph_network_card(pane_dir: Path) -> PaneCard:
 
 
 def _graph_lineage_card(pane_dir: Path) -> PaneCard:
+    nodes = pd.DataFrame(
+        [
+            {"id": "raw_events", "label": "Raw Events", "layer": "Raw"},
+            {"id": "raw_accounts", "label": "Raw Accounts", "layer": "Raw"},
+            {"id": "stg_events", "label": "Stg Events", "layer": "Stage"},
+            {"id": "stg_accounts", "label": "Stg Accounts", "layer": "Stage"},
+            {"id": "fct_sessions", "label": "Sessions", "layer": "Fact"},
+            {"id": "dim_accounts", "label": "Accounts", "layer": "Dimension"},
+            {"id": "mart_growth", "label": "Growth Mart", "layer": "Mart"},
+        ]
+    )
     edges = pd.DataFrame(
         [
             {"from_id": "raw_events", "to_id": "stg_events", "rel": "feeds"},
@@ -587,17 +598,82 @@ def _graph_lineage_card(pane_dir: Path) -> PaneCard:
     )
     return _graph_card(
         graph_id="GRAPHDEBUG_LINEAGE",
-        label="dbt_lineage",
+        label="layered_layout",
         pane_dir=pane_dir,
-        sources={"Q_LINEAGE": edges},
+        sources={"Q_LINEAGE_NODES": nodes, "Q_LINEAGE": edges},
         graph_spec={
             "title": "dbt lineage DAG",
             "layout": "layered",
+            "nodes": [
+                {
+                    "record_id": "Q_LINEAGE_NODES",
+                    "id": "id",
+                    "label": "label",
+                    "group": "layer",
+                    "tooltip": ["label", "layer"],
+                }
+            ],
             "edges": [
                 {
                     "record_id": "Q_LINEAGE",
                     "source": "from_id",
                     "target": "to_id",
+                    "label": "rel",
+                    "tooltip": ["rel"],
+                }
+            ],
+        },
+    )
+
+
+def _graph_tree_card(pane_dir: Path) -> PaneCard:
+    nodes = pd.DataFrame(
+        [
+            {"id": "hq", "label": "HQ", "group": "Org"},
+            {"id": "sales", "label": "Sales", "group": "Dept"},
+            {"id": "product", "label": "Product", "group": "Dept"},
+            {"id": "data", "label": "Data", "group": "Dept"},
+            {"id": "east", "label": "East", "group": "Team"},
+            {"id": "west", "label": "West", "group": "Team"},
+            {"id": "growth", "label": "Growth", "group": "Team"},
+            {"id": "platform", "label": "Platform", "group": "Team"},
+            {"id": "analytics", "label": "Analytics", "group": "Team"},
+        ]
+    )
+    edges = pd.DataFrame(
+        [
+            {"src": "hq", "dst": "sales", "rel": "owns"},
+            {"src": "hq", "dst": "product", "rel": "owns"},
+            {"src": "hq", "dst": "data", "rel": "owns"},
+            {"src": "sales", "dst": "east", "rel": "leads"},
+            {"src": "sales", "dst": "west", "rel": "leads"},
+            {"src": "product", "dst": "growth", "rel": "leads"},
+            {"src": "product", "dst": "platform", "rel": "leads"},
+            {"src": "data", "dst": "analytics", "rel": "leads"},
+        ]
+    )
+    return _graph_card(
+        graph_id="GRAPHDEBUG_TREE",
+        label="tree_layout",
+        pane_dir=pane_dir,
+        sources={"Q_TREE_NODES": nodes, "Q_TREE_EDGES": edges},
+        graph_spec={
+            "title": "Org tree",
+            "layout": "tree",
+            "nodes": [
+                {
+                    "record_id": "Q_TREE_NODES",
+                    "id": "id",
+                    "label": "label",
+                    "group": "group",
+                    "tooltip": ["label", "group"],
+                }
+            ],
+            "edges": [
+                {
+                    "record_id": "Q_TREE_EDGES",
+                    "source": "src",
+                    "target": "dst",
                     "label": "rel",
                     "tooltip": ["rel"],
                 }
@@ -793,21 +869,13 @@ def _populate_pane(
         _push_turn(
             pane,
             pane_dir,
-            title="Graph network",
-            user="Show a collaboration network as a node-link graph.",
+            title="Graph layout comparison",
+            user="Show one graph for each graph layout mode.",
             assistant=(
-                "This graph uses one query result for node attributes and another for edges. "
-                "Node color and size are semantic encodings precomputed for the browser renderer."
+                "This turn contains one graph card for each supported layout mode: force, tree, and layered. "
+                "Use the record tabs to switch layouts while inspecting the same graph renderer styling."
             ),
-            cards=[_graph_network_card(pane_dir)],
-        )
-        _push_turn(
-            pane,
-            pane_dir,
-            title="Graph lineage DAG",
-            user="Show a lineage graph with a layered layout.",
-            assistant="This graph derives nodes from edge endpoints and renders them with a deterministic layered layout.",
-            cards=[_graph_lineage_card(pane_dir)],
+            cards=[_graph_network_card(pane_dir), _graph_tree_card(pane_dir), _graph_lineage_card(pane_dir)],
         )
         _push_turn(
             pane,

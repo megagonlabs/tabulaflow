@@ -3,8 +3,8 @@
 import { clone, cssVar, displayValue, escapeHtml } from './shared.js';
 
 const cytoscape = window.cytoscape;
-const GRAPH_FIT_PADDING = 56;
-const GRAPH_MAX_AUTO_ZOOM = 1.15;
+const GRAPH_FIT_PADDING = 64;
+const GRAPH_MAX_AUTO_ZOOM = 1.05;
 
 function graphElements(graphData) {
   var elements = graphData.elements || {};
@@ -16,10 +16,10 @@ function graphElements(graphData) {
 
 function graphLayoutOptions(layout) {
   if (layout === 'layered') {
-    return { name: 'dagre', rankDir: 'TB', nodeSep: 58, rankSep: 92, edgeSep: 18, fit: false, animate: false };
+    return { name: 'dagre', rankDir: 'TB', nodeSep: 74, rankSep: 112, edgeSep: 22, fit: false, animate: false };
   }
   if (layout === 'tree') {
-    return { name: 'breadthfirst', directed: true, spacingFactor: 1.45, fit: false, animate: false };
+    return { name: 'breadthfirst', directed: true, spacingFactor: 1.65, fit: false, animate: false };
   }
   return {
     name: 'cose',
@@ -27,11 +27,11 @@ function graphLayoutOptions(layout) {
     animate: false,
     fit: false,
     numIter: 1000,
-    idealEdgeLength: 140,
-    nodeOverlap: 12,
-    nodeRepulsion: 8800,
-    componentSpacing: 92,
-    gravity: 0.08
+    idealEdgeLength: 132,
+    nodeOverlap: 14,
+    nodeRepulsion: 9200,
+    componentSpacing: 96,
+    gravity: 0.09
   };
 }
 
@@ -41,43 +41,51 @@ function graphStyles() {
       selector: 'node',
       style: {
         'background-color': 'data(color)',
-        'border-color': '#0f1117',
-        'border-width': 1.5,
-        'color': cssVar('--text', '#e4e4e7'),
-        'font-size': 10,
-        'font-weight': 650,
-        'height': 'data(size)',
+        'border-color': '#101821',
+        'border-opacity': 0.98,
+        'border-width': 3,
+        'color': '#f8fafc',
+        'font-size': 10.5,
+        'font-weight': 700,
+        'height': 'mapData(size, 14, 44, 42, 66)',
         'label': 'data(label)',
-        'min-zoomed-font-size': 7,
+        'min-zoomed-font-size': 7.5,
         'overlay-opacity': 0,
+        'shadow-blur': 8,
+        'shadow-color': '#05080d',
+        'shadow-offset-x': 0,
+        'shadow-offset-y': 1,
+        'shadow-opacity': 0.35,
         'text-halign': 'center',
-        'text-margin-y': 7,
-        'text-max-width': 90,
-        'text-outline-color': cssVar('--card', '#1a212c'),
-        'text-outline-width': 1.25,
-        'text-valign': 'bottom',
+        'text-max-width': 52,
+        'text-outline-color': '#101821',
+        'text-outline-width': 1.5,
+        'text-overflow-wrap': 'anywhere',
+        'text-valign': 'center',
         'text-wrap': 'wrap',
-        'width': 'data(size)'
+        'width': 'mapData(size, 14, 44, 42, 66)'
       }
     },
     {
       selector: 'edge',
       style: {
-        'color': cssVar('--text-muted', '#9aa4b2'),
+        'color': '#cbd5e1',
         'curve-style': 'bezier',
-        'font-size': 8,
+        'font-size': 9,
+        'font-weight': 700,
         'label': 'data(label)',
-        'line-color': '#65707f',
-        'min-zoomed-font-size': 6,
-        'opacity': 0.66,
-        'arrow-scale': 0.85,
-        'target-arrow-color': '#65707f',
-        'text-background-color': cssVar('--card', '#1a212c'),
-        'text-background-opacity': 0.72,
-        'text-background-padding': 2,
-        'text-margin-y': -7,
+        'line-color': '#798494',
+        'min-zoomed-font-size': 7,
+        'opacity': 0.78,
+        'arrow-scale': 0.9,
+        'target-arrow-color': '#798494',
+        'text-background-color': '#263142',
+        'text-background-opacity': 0.94,
+        'text-background-padding': 4,
+        'text-background-shape': 'roundrectangle',
+        'text-margin-y': -8,
         'text-rotation': 'autorotate',
-        'width': 1
+        'width': 1.4
       }
     },
     {
@@ -89,8 +97,8 @@ function graphStyles() {
     {
       selector: 'node:selected',
       style: {
-        'border-color': cssVar('--accent', '#3eb489'),
-        'border-width': 2
+        'border-color': '#ffffff',
+        'border-width': 4
       }
     },
     {
@@ -98,7 +106,7 @@ function graphStyles() {
       style: {
         'line-color': cssVar('--accent', '#3eb489'),
         'target-arrow-color': cssVar('--accent', '#3eb489'),
-        'width': 2
+        'width': 2.4
       }
     }
   ];
