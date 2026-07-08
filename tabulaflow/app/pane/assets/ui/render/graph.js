@@ -48,6 +48,36 @@ function graphElements(graphData) {
   };
 }
 
+function seededForceNodes(nodes) {
+  var count = nodes.length;
+  if (!count) return [];
+  var radius = Math.max(80, count * 18);
+  return nodes
+    .slice()
+    .sort(function (a, b) {
+      var aId = a && a.data ? String(a.data.id || '') : '';
+      var bId = b && b.data ? String(b.data.id || '') : '';
+      return aId.localeCompare(bId);
+    })
+    .map(function (node, index) {
+      var angle = (Math.PI * 2 * index) / count - Math.PI / 2;
+      return Object.assign({}, node, {
+        position: {
+          x: Math.round(Math.cos(angle) * radius * 100) / 100,
+          y: Math.round(Math.sin(angle) * radius * 100) / 100
+        }
+      });
+    });
+}
+
+function graphInitElements(elements, layout) {
+  var cloned = clone(elements);
+  if (layout === 'force' || !layout) {
+    cloned.nodes = seededForceNodes(cloned.nodes);
+  }
+  return cloned;
+}
+
 function idealForceEdgeLength(edge) {
   var label = edge && edge.data ? String(edge.data('label') || '') : '';
   return Math.max(64, Math.min(116, 54 + label.length * 5));
@@ -262,7 +292,7 @@ export function renderGraph(container, cardData) {
       if (token !== initToken || cy || !container.isConnected) return;
       cy = cytoscape({
         container: graphNode,
-        elements: clone(elements),
+        elements: graphInitElements(elements, graphData.layout),
         style: graphStyles(),
         layout: graphLayoutOptions(graphData.layout),
         hideEdgesOnViewport: false,
