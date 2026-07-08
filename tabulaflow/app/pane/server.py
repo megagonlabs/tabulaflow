@@ -56,7 +56,7 @@ _BANNER = (
 def _load_pane_html() -> str:
     from importlib.resources import files
 
-    base = files("tabulaflow.app.pane.assets.pane")
+    base = files("tabulaflow.app.pane.assets.ui")
     html = base.joinpath("index.html").read_text(encoding="utf-8")
     css = base.joinpath("pane.css").read_text(encoding="utf-8")
     module_hash = hashlib.sha256()
@@ -216,7 +216,7 @@ class _Handler(http.server.SimpleHTTPRequestHandler):
         self.send_response(200)
         self.send_header("Content-Type", ctype)
         self.send_header("Content-Length", str(len(data)))
-        if clean.startswith("pane/") or clean.endswith(".json") or clean.endswith(".geojson"):
+        if clean.startswith("ui/") or clean.endswith(".json") or clean.endswith(".geojson"):
             self.send_header("Cache-Control", "no-cache")
         else:
             self.send_header("Cache-Control", "max-age=31536000, immutable")

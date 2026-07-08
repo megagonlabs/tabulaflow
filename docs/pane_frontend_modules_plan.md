@@ -4,48 +4,49 @@ Break the two large hand-written pane scripts into native ES modules — rendere
 by artifact, the shell kept whole — with **no bundler, no framework, no npm**.
 Add a `contract.d.ts` so the JS side of the Python↔JS boundary is type-checked.
 
-> **Status:** proposed, ready to implement. Pure frontend + a small `server.py`
-> loading change; does not touch the Python payload contract (`pane/types.py`).
+> **Status:** implemented. Pure frontend + a small `server.py` loading change;
+> does not touch the Python payload contract (`pane/types.py`).
 
 ---
 
-## 1. Current state (accurate)
+## 1. Current state
 
-`tabulaflow/app/pane/assets/pane/`:
+The output pane frontend is split into native ES modules. App-owned UI assets
+live under `tabulaflow/app/pane/assets/ui/`; vendored browser libraries and
+MapLibre data live under `tabulaflow/app/pane/assets/vendor/`.
 
-- `pane-render.js` — **1675 lines, 77 fns**, one IIFE that ends with
-  `window.TF = { renderTable, renderChart, renderMap, renderGraph, renderQuery, … }`.
-  Served as a file: `<script src="/assets/pane/pane-render.js?v=__PANE_RENDER_VERSION__">`.
-- `pane.js` — **639 lines, 60 fns**, top-level functions (not an IIFE). **Inlined**
-  into the page: `index.html` has `<script>__PANE_JS__</script>` and `server.py`
-  substitutes the file contents at serve time. Dispatches views via the global,
-  e.g. `if (kind === 'map') return TF.renderMap(node, data);`.
-- `pane.css` — 455 lines (owns the palette `:root` vars).
-- `index.html` — loads vendored libs as **classic global scripts** (`tabulator`,
-  `maplibre`, `vega`+`vega-lite`+`vega-embed`, `cytoscape`+`dagre`), then
-  `pane-render.js` (file), then inline `pane.js`.
+`index.html` loads vendored libraries as classic global scripts from
+`/assets/vendor/...`, then loads the pane shell as:
 
-So today: renderers are a global `window.TF` blob; the shell is server-inlined;
-vendored libs are globals (`window.Tabulator`, `maplibregl`, `vegaEmbed`,
-`cytoscape`). The Python payload contract lives in `pane/types.py` and is untyped
-on the JS side.
+```html
+<script type="module" src="/assets/ui/pane.js?v=__PANE_VERSION__"></script>
+```
+
+`pane.js` imports renderers directly and owns the kind→renderer dispatch.
+There is no `window.TF`, no inlined `__PANE_JS__`, and no `pane-render.js`.
 
 ## 2. Target structure (lean — split by weight, not taxonomy)
 
 ```
-tabulaflow/app/pane/assets/pane/
-├── index.html
-├── pane.css
-├── contract.d.ts        # JS mirror of pane/types.py — type-check only, never shipped/built
-├── pane.js              # THE SHELL (one module): bootstrap + SSE/manifest + turn rail
-│                        #   + card tabs + view lifecycle + the kind→renderer dispatch
-└── render/
-    ├── shared.js        # helpers used across renderers (see §4)
-    ├── table.js         # renderTable   (Tabulator)
-    ├── chart.js         # renderChart   (Vega)
-    ├── map.js           # renderMap     (MapLibre)
-    ├── graph.js         # renderGraph   (Cytoscape)
-    └── query.js         # renderQuery   (small; may fold into shared.js — implementer's call)
+tabulaflow/app/pane/assets/
+├── ui/
+│   ├── index.html
+│   ├── pane.css
+│   ├── contract.d.ts        # JS mirror of pane/types.py — type-check only
+│   ├── pane.js              # THE SHELL (one module): bootstrap + SSE/manifest + turn rail
+│   │                        #   + card tabs + view lifecycle + the kind→renderer dispatch
+│   └── render/
+│       ├── shared.js        # helpers used across renderers
+│       ├── table.js         # renderTable   (Tabulator)
+│       ├── chart.js         # renderChart   (Vega)
+│       ├── map.js           # renderMap     (MapLibre)
+│       ├── graph.js         # renderGraph   (Cytoscape)
+│       └── query.js         # renderQuery
+└── vendor/
+    ├── tabulator/
+    ├── maplibre/
+    ├── vega/
+    └── cytoscape/
 ```
 
 **2 files → 7** (one shell + six render modules). Each render module is large and
@@ -61,6 +62,9 @@ cohesive and mirrors one Python builder / view kind; the shell stays a single fi
   modules read them off `window` (`window.Tabulator`, `maplibregl`, `vegaEmbed`,
   `cytoscape`). Classic scripts run before deferred module scripts, so the globals
   exist when the module runs — no ordering work, churn stays contained.
+- **Own code and vendor code are separated.** App-owned UI assets are served under
+  `/assets/ui/...`; vendored libraries and MapLibre data are served under
+  `/assets/vendor/...`.
 - **The shell is one file.** `pane.js` keeps `el()`, SSE, turn rail, card tabs, and
   the view lifecycle together. Split it further *only later* and *only* if it stays
   unwieldy, along its one fault line (the stage/reveal/cache lifecycle). Do **not**
@@ -106,13 +110,14 @@ Each render module starts with `// @ts-check` and imports its helpers from
    already isolated — the old IIFE-vs-global distinction disappears).
 4. **`index.html`**: remove `<script src="pane-render.js?v=…">` and the inline
    `<script>__PANE_JS__</script>`; add a single
-   `<script type="module" src="/assets/pane/pane.js?v=__PANE_VERSION__"></script>`.
-   Keep the vendored `<script src>` (classic) lines as-is, before the module.
+   `<script type="module" src="/assets/ui/pane.js?v=__PANE_VERSION__"></script>`.
+   Keep the vendored `<script src>` (classic) lines before the module, served from
+   `/assets/vendor/...`.
 5. **`server.py`**: stop inlining `pane.js` (drop the `__PANE_JS__` substitution)
    and drop `__PANE_RENDER_VERSION__`; serve `pane.js` and `render/*.js` as static
    files. Keep one cache-bust token (`__PANE_VERSION__`, e.g. a content hash) on the
    module entry. **Confirm the `/assets/` handler serves nested paths**
-   (`/assets/pane/render/*.js`) — the module's relative `./render/x.js` resolves
+   (`/assets/ui/render/*.js`) — the module's relative `./render/x.js` resolves
    there.
 6. **`contract.d.ts`**: mirror `pane/types.py` — `CardData`, `TableData`,
    `ChartData`, `MapData`, `GraphData`, `QueryData`, `ColumnDesc`, `PaneTurn`,
@@ -145,12 +150,12 @@ brittleness). Instead:
 
 - `node --check` each `render/*.js` and `pane.js` (syntax; note it won't resolve
   imports — that's fine).
-- Optional: `npx tsc --noEmit --checkJs --allowJs` over `assets/pane/` to exercise
+- Optional: `npx tsc --noEmit --checkJs --allowJs` over `assets/ui/` to exercise
   `contract.d.ts` + `// @ts-check` (no install needed if `tsc` is available; skip if
   not — it's a bonus, not a gate).
 - **Preview smoke (the real gate):** `uv run scripts/preview_output_pane.py
   --port 61211`, then confirm the module + each `render/*.js` serve **200** under
-  `/assets/pane/…`, and eyeball that table/chart/map/graph/query cards render (the
+  `/assets/ui/…`, and eyeball that table/chart/map/graph/query cards render (the
   `type="module"` + relative-import + nested-path change is exactly what silently
   404s or fails to load).
 - `make test` green (after the §6 test fixup).
@@ -159,6 +164,3 @@ brittleness). Instead:
 
 - No bundler, framework (React/Preact/lit), `package.json`, or `.ts` sources.
 - No further shell split (nav/sse/cache) — deferred until proven necessary.
-- No `assets/pane/ → ui/` + `assets/vendor/` reorg — optional polish, separate PR;
-  it's a git-move of the vendored blobs + a `/assets/` path change, churn for
-  cosmetics. This plan keeps the current `assets/pane/` + `assets/<lib>/` layout.

@@ -45,7 +45,7 @@ def _origin_url(url: str) -> str:
 
 
 def _pane_asset_text(rel: str) -> str:
-    return files("tabulaflow.app.pane.assets.pane").joinpath(rel).read_text(encoding="utf-8")
+    return files("tabulaflow.app.pane.assets.ui").joinpath(rel).read_text(encoding="utf-8")
 
 
 def test_output_pane_serves_text_only_turn(tmp_path: Path) -> None:
@@ -455,15 +455,15 @@ def test_manual_table_send_includes_data_view_meta(tmp_path: Path) -> None:
 
 
 def test_pane_loads_shell_as_native_module() -> None:
-    assert '<script type="module" src="/assets/pane/pane.js?v=' in _PANE_HTML
-    assert "/assets/pane/pane-render.js" not in _PANE_HTML
+    assert '<script type="module" src="/assets/ui/pane.js?v=' in _PANE_HTML
+    assert "/assets/ui/pane-render.js" not in _PANE_HTML
     assert "__PANE_VERSION__" not in _PANE_HTML
     assert "__PANE_JS__" not in _PANE_HTML
     assert "__PANE_RENDER_VERSION__" not in _PANE_HTML
 
 
 def test_pane_renderer_modules_are_packaged() -> None:
-    pane_assets = files("tabulaflow.app.pane.assets.pane")
+    pane_assets = files("tabulaflow.app.pane.assets.ui")
     assert pane_assets.joinpath("contract.d.ts").is_file()
     assert pane_assets.joinpath("pane.js").is_file()
     for rel in ("shared.js", "table.js", "chart.js", "map.js", "graph.js", "query.js"):
@@ -489,10 +489,10 @@ def test_pane_chart_theme_is_client_side() -> None:
 
 
 def test_pane_map_view_is_maplibre_based() -> None:
-    maplibre_assets = files("tabulaflow.app.pane.assets.maplibre")
+    maplibre_assets = files("tabulaflow.app.pane.assets").joinpath("vendor").joinpath("maplibre")
     style = json.loads(maplibre_assets.joinpath("shortbread-light.json").read_text(encoding="utf-8"))
-    assert '<link rel="stylesheet" href="/assets/maplibre/maplibre-gl.css">' in _PANE_HTML
-    assert '<script src="/assets/maplibre/maplibre-gl.js"></script>' in _PANE_HTML
+    assert '<link rel="stylesheet" href="/assets/vendor/maplibre/maplibre-gl.css">' in _PANE_HTML
+    assert '<script src="/assets/vendor/maplibre/maplibre-gl.js"></script>' in _PANE_HTML
     assert maplibre_assets.joinpath("maplibre-gl.js").is_file()
     assert maplibre_assets.joinpath("maplibre-gl.css").is_file()
     assert maplibre_assets.joinpath("LICENSE.txt").is_file()
@@ -517,23 +517,23 @@ def test_pane_map_view_is_maplibre_based() -> None:
     assert style["sources"]["osm"]["url"] == "https://vector.openstreetmap.org/shortbread_v1/tilejson.json"
     assert style["sources"]["continent-labels"] == {
         "type": "geojson",
-        "data": "/assets/maplibre/continent-labels.geojson",
+        "data": "/assets/vendor/maplibre/continent-labels.geojson",
     }
     assert style["sources"]["ocean-labels"] == {
         "type": "geojson",
-        "data": "/assets/maplibre/ocean-labels.geojson",
+        "data": "/assets/vendor/maplibre/ocean-labels.geojson",
     }
     assert style["sources"]["airport-labels"] == {
         "type": "geojson",
-        "data": "/assets/maplibre/airport-labels.geojson",
+        "data": "/assets/vendor/maplibre/airport-labels.geojson",
     }
     assert style["sources"]["natural-earth-admin0-boundaries"] == {
         "type": "geojson",
-        "data": "/assets/maplibre/natural-earth-admin0-boundaries.geojson",
+        "data": "/assets/vendor/maplibre/natural-earth-admin0-boundaries.geojson",
     }
     assert style["sources"]["natural-earth-admin1-boundaries"] == {
         "type": "geojson",
-        "data": "/assets/maplibre/natural-earth-admin1-boundaries.geojson",
+        "data": "/assets/vendor/maplibre/natural-earth-admin1-boundaries.geojson",
     }
     assert "Natural Earth" not in json.dumps(style["sources"])
     assert style["sources"]["osm"]["attribution"] == (
@@ -1699,31 +1699,37 @@ def test_pane_serves_bundled_assets_cached(tmp_path: Path) -> None:
             assert resp.headers.get("Referrer-Policy") == "no-referrer"
 
         origin = _origin_url(pane.url)
-        with urllib.request.urlopen(f"{origin}assets/vega/vega-embed.min.js", timeout=2) as resp:
+        with urllib.request.urlopen(f"{origin}assets/vendor/vega/vega-embed.min.js", timeout=2) as resp:
             body = resp.read()
             cache = resp.headers.get("Cache-Control")
-        expected = files("tabulaflow.app.pane.assets").joinpath("vega").joinpath("vega-embed.min.js").read_bytes()
+        expected = (
+            files("tabulaflow.app.pane.assets")
+            .joinpath("vendor")
+            .joinpath("vega")
+            .joinpath("vega-embed.min.js")
+            .read_bytes()
+        )
         assert body == expected
         assert cache is not None and "immutable" in cache
 
-        with urllib.request.urlopen(f"{origin}assets/maplibre/maplibre-gl.js", timeout=2) as resp:
+        with urllib.request.urlopen(f"{origin}assets/vendor/maplibre/maplibre-gl.js", timeout=2) as resp:
             assert resp.headers.get("Cache-Control") is not None and "immutable" in resp.headers.get(
                 "Cache-Control", ""
             )
             assert b"MapLibre GL JS" in resp.read()
 
-        with urllib.request.urlopen(f"{origin}assets/maplibre/shortbread-light.json", timeout=2) as resp:
+        with urllib.request.urlopen(f"{origin}assets/vendor/maplibre/shortbread-light.json", timeout=2) as resp:
             assert resp.headers.get("Cache-Control") == "no-cache"
             assert b"vector.openstreetmap.org/shortbread_v1/tilejson.json" in resp.read()
 
-        maplibre_assets = files("tabulaflow.app.pane.assets").joinpath("maplibre")
-        with urllib.request.urlopen(f"{origin}assets/maplibre/osm-bright-sprite.json", timeout=2) as resp:
+        maplibre_assets = files("tabulaflow.app.pane.assets").joinpath("vendor").joinpath("maplibre")
+        with urllib.request.urlopen(f"{origin}assets/vendor/maplibre/osm-bright-sprite.json", timeout=2) as resp:
             assert resp.headers.get("Cache-Control") == "no-cache"
             assert resp.headers.get("Content-Type") == "application/json; charset=utf-8"
             sprite = json.loads(resp.read())
         assert {"road_1", "us-interstate_1", "us-highway_1"} <= set(sprite)
 
-        with urllib.request.urlopen(f"{origin}assets/maplibre/osm-bright-sprite.png", timeout=2) as resp:
+        with urllib.request.urlopen(f"{origin}assets/vendor/maplibre/osm-bright-sprite.png", timeout=2) as resp:
             assert resp.headers.get("Cache-Control") is not None and "immutable" in resp.headers.get(
                 "Cache-Control", ""
             )
@@ -1732,7 +1738,7 @@ def test_pane_serves_bundled_assets_cached(tmp_path: Path) -> None:
         assert body == maplibre_assets.joinpath("osm-bright-sprite.png").read_bytes()
         assert body.startswith(b"\x89PNG\r\n\x1a\n")
 
-        with urllib.request.urlopen(f"{origin}assets/maplibre/tf-route-sprite.json", timeout=2) as resp:
+        with urllib.request.urlopen(f"{origin}assets/vendor/maplibre/tf-route-sprite.json", timeout=2) as resp:
             assert resp.headers.get("Cache-Control") == "no-cache"
             assert resp.headers.get("Content-Type") == "application/json; charset=utf-8"
             route_sprite = json.loads(resp.read())
@@ -1742,7 +1748,7 @@ def test_pane_serves_bundled_assets_cached(tmp_path: Path) -> None:
         assert route_sprite["us-interstate_2"]["width"] == 26
         assert route_sprite["us-interstate_3"]["width"] == 32
 
-        with urllib.request.urlopen(f"{origin}assets/maplibre/tf-route-sprite.png", timeout=2) as resp:
+        with urllib.request.urlopen(f"{origin}assets/vendor/maplibre/tf-route-sprite.png", timeout=2) as resp:
             assert resp.headers.get("Cache-Control") is not None and "immutable" in resp.headers.get(
                 "Cache-Control", ""
             )
@@ -1751,7 +1757,7 @@ def test_pane_serves_bundled_assets_cached(tmp_path: Path) -> None:
         assert body == maplibre_assets.joinpath("tf-route-sprite.png").read_bytes()
         assert body.startswith(b"\x89PNG\r\n\x1a\n")
 
-        with urllib.request.urlopen(f"{origin}assets/maplibre/continent-labels.geojson", timeout=2) as resp:
+        with urllib.request.urlopen(f"{origin}assets/vendor/maplibre/continent-labels.geojson", timeout=2) as resp:
             assert resp.headers.get("Cache-Control") == "no-cache"
             assert resp.headers.get("Content-Type") == "application/json; charset=utf-8"
             continent_labels = json.loads(resp.read())
@@ -1763,7 +1769,7 @@ def test_pane_serves_bundled_assets_cached(tmp_path: Path) -> None:
             "North America",
         }
 
-        with urllib.request.urlopen(f"{origin}assets/maplibre/ocean-labels.geojson", timeout=2) as resp:
+        with urllib.request.urlopen(f"{origin}assets/vendor/maplibre/ocean-labels.geojson", timeout=2) as resp:
             assert resp.headers.get("Cache-Control") == "no-cache"
             assert resp.headers.get("Content-Type") == "application/json; charset=utf-8"
             ocean_labels = json.loads(resp.read())
@@ -1773,7 +1779,7 @@ def test_pane_serves_bundled_assets_cached(tmp_path: Path) -> None:
             "Pacific Ocean",
         }
 
-        with urllib.request.urlopen(f"{origin}assets/maplibre/airport-labels.geojson", timeout=2) as resp:
+        with urllib.request.urlopen(f"{origin}assets/vendor/maplibre/airport-labels.geojson", timeout=2) as resp:
             assert resp.headers.get("Cache-Control") == "no-cache"
             assert resp.headers.get("Content-Type") == "application/json; charset=utf-8"
             airport_labels = json.loads(resp.read())
@@ -1786,7 +1792,7 @@ def test_pane_serves_bundled_assets_cached(tmp_path: Path) -> None:
         assert {feature["geometry"]["type"] for feature in airport_labels["features"]} == {"Point"}
 
         with urllib.request.urlopen(
-            f"{origin}assets/maplibre/natural-earth-admin0-boundaries.geojson", timeout=2
+            f"{origin}assets/vendor/maplibre/natural-earth-admin0-boundaries.geojson", timeout=2
         ) as resp:
             assert resp.headers.get("Cache-Control") == "no-cache"
             assert resp.headers.get("Content-Type") == "application/json; charset=utf-8"
@@ -1799,7 +1805,7 @@ def test_pane_serves_bundled_assets_cached(tmp_path: Path) -> None:
         }
 
         with urllib.request.urlopen(
-            f"{origin}assets/maplibre/natural-earth-admin1-boundaries.geojson", timeout=2
+            f"{origin}assets/vendor/maplibre/natural-earth-admin1-boundaries.geojson", timeout=2
         ) as resp:
             assert resp.headers.get("Cache-Control") == "no-cache"
             assert resp.headers.get("Content-Type") == "application/json; charset=utf-8"
@@ -1827,13 +1833,13 @@ def test_pane_serves_bundled_assets_cached(tmp_path: Path) -> None:
             "render/graph.js",
             "render/query.js",
         ):
-            with urllib.request.urlopen(f"{origin}assets/pane/{rel}", timeout=2) as resp:
+            with urllib.request.urlopen(f"{origin}assets/ui/{rel}", timeout=2) as resp:
                 assert resp.headers.get("Cache-Control") == "no-cache"
                 assert resp.headers.get("Content-Type") == "text/javascript; charset=utf-8"
                 assert resp.read()
 
         try:
-            urllib.request.urlopen(f"{origin}assets/pane/pane-render.js", timeout=2)
+            urllib.request.urlopen(f"{origin}assets/ui/pane-render.js", timeout=2)
             old_renderer_is_404 = False
         except urllib.error.HTTPError as exc:
             old_renderer_is_404 = exc.code == 404

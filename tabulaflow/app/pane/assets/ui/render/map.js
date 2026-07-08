@@ -22,9 +22,9 @@ var mapPinBottom = cssVar('--map-pin-bottom', '#d93025');
 var mapPinOutline = cssVar('--map-pin-outline', '#a52714');
 var mapPinHole = cssVar('--map-pin-hole', '#f8fafc');
 var mapPinInner = cssVar('--map-pin-inner', '#fff4f2');
-var mapStyleUrl = '/assets/maplibre/shortbread-light.json';
-var mapStyleSpriteUrl = '/assets/maplibre/osm-bright-sprite';
-var mapStyleRouteSpriteUrl = '/assets/maplibre/tf-route-sprite';
+var mapStyleUrl = '/assets/vendor/maplibre/shortbread-light.json';
+var mapStyleSpriteUrl = '/assets/vendor/maplibre/osm-bright-sprite';
+var mapStyleRouteSpriteUrl = '/assets/vendor/maplibre/tf-route-sprite';
 var maxLegendEntries = 12;
 
 function absoluteUrl(path) {

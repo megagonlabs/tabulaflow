@@ -16,23 +16,23 @@
     },
     "continent-labels": {
       "type": "geojson",
-      "data": "/assets/maplibre/continent-labels.geojson"
+      "data": "/assets/vendor/maplibre/continent-labels.geojson"
     },
     "ocean-labels": {
       "type": "geojson",
-      "data": "/assets/maplibre/ocean-labels.geojson"
+      "data": "/assets/vendor/maplibre/ocean-labels.geojson"
     },
     "airport-labels": {
       "type": "geojson",
-      "data": "/assets/maplibre/airport-labels.geojson"
+      "data": "/assets/vendor/maplibre/airport-labels.geojson"
     },
     "natural-earth-admin0-boundaries": {
       "type": "geojson",
-      "data": "/assets/maplibre/natural-earth-admin0-boundaries.geojson"
+      "data": "/assets/vendor/maplibre/natural-earth-admin0-boundaries.geojson"
     },
     "natural-earth-admin1-boundaries": {
       "type": "geojson",
-      "data": "/assets/maplibre/natural-earth-admin1-boundaries.geojson"
+      "data": "/assets/vendor/maplibre/natural-earth-admin1-boundaries.geojson"
     }
   },
   "layers": [
