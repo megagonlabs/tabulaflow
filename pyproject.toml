@@ -69,11 +69,12 @@ include = ["tabulaflow*"]
 [tool.setuptools.package-data]
 tabulaflow = [
     "app/assets/debug/*",
-    "app/assets/pane/*",
     "app/assets/samples/*",
-    "app/assets/maplibre/*",
-    "app/assets/tabulator/*",
-    "app/assets/vega/*",
+    "app/pane/assets/pane/*",
+    "app/pane/assets/pane/render/*",
+    "app/pane/assets/maplibre/*",
+    "app/pane/assets/tabulator/*",
+    "app/pane/assets/vega/*",
     "app/pane/assets/cytoscape/*",
 ]
 

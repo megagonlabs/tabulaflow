@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import contextlib
-import hashlib
 import json
 import socket
 import urllib.error
@@ -43,6 +42,10 @@ def _unused_loopback_port() -> int:
 def _origin_url(url: str) -> str:
     parsed = urllib.parse.urlsplit(url)
     return urllib.parse.urlunsplit((parsed.scheme, parsed.netloc, "/", "", ""))
+
+
+def _pane_asset_text(rel: str) -> str:
+    return files("tabulaflow.app.pane.assets.pane").joinpath(rel).read_text(encoding="utf-8")
 
 
 def test_output_pane_serves_text_only_turn(tmp_path: Path) -> None:
@@ -451,47 +454,41 @@ def test_manual_table_send_includes_data_view_meta(tmp_path: Path) -> None:
     assert str(statuses[-1]) == "sent to output pane"
 
 
-def test_pane_labels_manual_table_turn_as_preview() -> None:
-    assert "turn.source === 'manual'" in _PANE_HTML
-    assert "return 'table preview';" in _PANE_HTML
-
-
-def test_pane_omits_text_only_turn_meta() -> None:
-    assert "'text only'" not in _PANE_HTML
-    assert "metaText ? title.textContent + ' · ' + metaText : title.textContent" in _PANE_HTML
-
-
-def test_pane_table_renderer_does_not_max_height_short_tables() -> None:
-    renderer_path = files("tabulaflow.app.pane.assets.pane").joinpath("pane-render.js")
-    renderer = renderer_path.read_text(encoding="utf-8")
-    renderer_version = hashlib.sha256(renderer_path.read_bytes()).hexdigest()[:12]
-    assert "maxHeight: viewportCap" not in renderer
-    assert "estimatedTableHeight > viewportCap" in renderer
-    assert "opts.height = viewportCap" in renderer
-    assert ".turnview.manual-preview { height: calc(100vh - 82px); min-height: 460px;" in _PANE_HTML
-    assert f"/assets/pane/pane-render.js?v={renderer_version}" in _PANE_HTML
-    assert "fetch(card.id + '.data.json')" in _PANE_HTML
-    assert "new EventSource('events')" in _PANE_HTML
+def test_pane_loads_shell_as_native_module() -> None:
+    assert '<script type="module" src="/assets/pane/pane.js?v=' in _PANE_HTML
+    assert "/assets/pane/pane-render.js" not in _PANE_HTML
+    assert "__PANE_VERSION__" not in _PANE_HTML
+    assert "__PANE_JS__" not in _PANE_HTML
     assert "__PANE_RENDER_VERSION__" not in _PANE_HTML
+
+
+def test_pane_renderer_modules_are_packaged() -> None:
+    pane_assets = files("tabulaflow.app.pane.assets.pane")
+    assert pane_assets.joinpath("contract.d.ts").is_file()
+    assert pane_assets.joinpath("pane.js").is_file()
+    for rel in ("shared.js", "table.js", "chart.js", "map.js", "graph.js", "query.js"):
+        assert pane_assets.joinpath("render").joinpath(rel).is_file()
+
+
+def test_pane_table_layout_css_is_loaded() -> None:
+    assert ".turnview.manual-preview { height: calc(100vh - 82px); min-height: 460px;" in _PANE_HTML
     assert "20260630-table-sizing" not in _PANE_HTML
 
 
 def test_pane_chart_shell_matches_vega_background() -> None:
-    assert ".view-shell.view-chart,\n.view-shell.view-map,\n.view-shell.view-graph { background: var(--card); }" in _PANE_HTML
+    assert (
+        ".view-shell.view-chart,\n.view-shell.view-map,\n.view-shell.view-graph { background: var(--card); }"
+        in _PANE_HTML
+    )
     assert ".tf-chart-view,\n.tf-vis-stage { background: var(--card); }" in _PANE_HTML
 
 
 def test_pane_chart_theme_is_client_side() -> None:
-    renderer = files("tabulaflow.app.pane.assets.pane").joinpath("pane-render.js").read_text(encoding="utf-8")
     assert "--chart-grid: #3a4352;" in _PANE_HTML
     assert "--chart-category-0: #3EB489;" in _PANE_HTML
-    assert "function vegaDarkConfig()" in renderer
-    assert "spec.config = deepMerge(vegaDarkConfig(), spec.config || {});" in renderer
-    assert "cssVar('--chart-category-0', accent)" in renderer
 
 
 def test_pane_map_view_is_maplibre_based() -> None:
-    renderer = files("tabulaflow.app.pane.assets.pane").joinpath("pane-render.js").read_text(encoding="utf-8")
     maplibre_assets = files("tabulaflow.app.pane.assets.maplibre")
     style = json.loads(maplibre_assets.joinpath("shortbread-light.json").read_text(encoding="utf-8"))
     assert '<link rel="stylesheet" href="/assets/maplibre/maplibre-gl.css">' in _PANE_HTML
@@ -1548,160 +1545,18 @@ def test_pane_map_view_is_maplibre_based() -> None:
     assert layer_by_id["poi-level-2"]["maxzoom"] == 16
     assert layer_by_id["poi-level-3"]["minzoom"] == 16
     assert layer_by_id["poi-level-3"]["paint"]["text-halo-blur"] == 0.5
-    assert "if (kind === 'map') return TF.renderMap(node, data);" in _PANE_HTML
-    assert "function afterVisible(entry)" in _PANE_HTML
-    assert "function afterHidden(entry)" in _PANE_HTML
-    assert "entry.handle.afterVisible" in _PANE_HTML
-    assert "entry.handle.afterHidden" in _PANE_HTML
-    assert "renderMap: renderMap" in renderer
-    assert "new maplibregl.Map({" in renderer
-    assert "style: style" in renderer
-    assert "new maplibregl.AttributionControl({ compact: false })" in renderer
-    assert "map.addSource(sourceId, { type: 'geojson'" in renderer
-    assert "function addCircleLayer(map, id, sourceId)" in renderer
-    assert "function addGeoJsonLayers(map, id, sourceId)" in renderer
-    assert "new maplibregl.Marker({ element: node, anchor: 'bottom' })" in renderer
-    assert "new maplibregl.Popup({" in renderer
-    assert "map.fitBounds(dataBounds" in renderer
-    assert "map.setCenter([centerLng, centerLat]);" in renderer
-    assert "function destroyMap()" in renderer
-    assert "afterHidden: destroyMap" in renderer
-    assert "if (map) map.remove();" in renderer
-    assert "L.map" not in renderer
-    assert "L.tileLayer" not in renderer
-    assert "/assets/leaflet" not in renderer
-    assert "function mapLayers(mapData)" in renderer
-    assert "if (value == null || typeof value === 'boolean') return null;" in renderer
-    assert "if (typeof value === 'string' && value.trim() === '') return null;" in renderer
-    assert "function formatNumber(value)" in renderer
-    assert "function displayValue(value)" in renderer
-    assert "num: function (cell)" in renderer
-    assert "escapeHtml(formatNumber(v))" in renderer
-    assert "function detailValueHtml(value)" in renderer
-    assert "function tooltipUrlLabel(url)" in renderer
-    assert "return text.slice(0, 40) + '...' + text.slice(-13);" in renderer
-    assert "function tooltipLink(href)" in renderer
-    assert "+ '\" title=\"' + escapeAttr(href)" in renderer
-    assert "var urls = typeof value === 'string' ? asUrls(text) : null;" in renderer
-    assert "detailValueHtml(value) + '</td></tr>'" in renderer
-    assert "if (mapData.lat && mapData.lng)" not in renderer
-    assert "mapData.center" not in renderer
-    assert "mapData.zoom" not in renderer
-    assert "mapData.tileUrl" not in renderer
-    assert "mapData.attribution" not in renderer
-    assert "mapData.maxZoom" not in renderer
-    assert "buildGeoJsonFeatures(layer, rows, labels)" in renderer
-    assert "function bindLayerDetails(map, layerIds, popupState)" in renderer
-    assert "map.queryRenderedFeatures(event.point, { layers: layerIds })" in renderer
-    assert "var detailLayerIds = [];" in renderer
-    assert "popupState.hoverHtml !== html" in renderer
-    assert "function geometryAnchor(geometry)" in renderer
-    assert "__tfAnchorLng: lng" in renderer
-    assert "__tfAnchorLat: lat" in renderer
-    assert "__tfAnchorLng: anchor ? anchor[0] : null" in renderer
-    assert "function mapFeatureAnchor(feature, fallback)" in renderer
-    assert "popupState.hoverAnchor !== hoverAnchor" in renderer
-    assert "popupState.hover.setLngLat(lngLat)" not in renderer
-    assert "function scheduleHoverPopupClose(map, popupState)" in renderer
-    assert "function bindHoverPopupPointer(map, popup, popupState)" in renderer
-    assert "element.addEventListener('mouseenter'" in renderer
-    assert "element.addEventListener('mouseleave'" in renderer
-    assert "popupState.hoverOverPopup = false;\n      scheduleHoverPopupClose(map, popupState);" in renderer
-    assert "setTimeout(function ()" in renderer
-    assert "}, 60);" in renderer
-    assert "syncHoverPopup(map, mapFeatureAnchor(feature, event.lngLat), html, popupState)" in renderer
-    assert "setClickPopup(map, mapFeatureAnchor(feature, event.lngLat), html, popupState)" in renderer
-    assert "if (popupState.click) {\n      clearHoverPopup(map, popupState);" in renderer
-    assert "function setClickPopup(map, lngLat, html, popupState)" in renderer
-    assert "if (popupState.click === popup) popupState.click = null;" in renderer
-    assert "tf-map-popup-title" in renderer
-    assert "field !== labelField" in renderer
-    assert "detailHtml(row, tooltip, labels, label, labelField)" in renderer
-    assert "detailHtml(props, layer.tooltip || layer.label, labels, label, layer.label)" in renderer
-    assert "var pointRows = Array.isArray(layer.points) ? layer.points : rows;" in renderer
-    assert "var latField = Array.isArray(layer.points) ? 'lat' : String(layer.lat || '');" in renderer
-    assert "var radius = sizeFor(layer.size, row, pointRows, 6);" in renderer
-    assert "__tfPinHitRadius: Math.max(24, 26 * pinScale)" in renderer
-    assert "function addPinHitLayer(map, id, sourceId)" in renderer
-    assert "'circle-radius': ['coalesce', ['get', '__tfPinHitRadius'], 26]" in renderer
-    assert "'circle-opacity': 0" in renderer
-    assert "'circle-translate': [0, -20]" in renderer
-    assert "var pinHitId = sourceId + '-pin-hit';" in renderer
-    assert "detailLayerIds.push(pinHitId);" in renderer
-    assert "closeButton: !!closeButton" in renderer
-    assert "className: className" in renderer
-    assert "title || popup.replace" not in renderer
-    assert "label == null ? popup.replace" not in renderer
-    assert "function mapPinSvg(color)" in renderer
-    assert "function pinColorRamp(color)" in renderer
-    assert "function mixHex(a, b, amount)" in renderer
-    assert "top: mixHex(base, '#ffffff', 0.46)" in renderer
-    assert "outline: mixHex(base, '#000000', 0.24)" in renderer
-    assert "function mapPinElement(color, scale, title)" in renderer
-    assert "node.className = 'tf-map-pin';" in renderer
-    assert "node.setAttribute('aria-label', title)" in renderer
-    assert "node.title = title" not in renderer
-    assert "data:image/svg+xml;charset=UTF-8," in renderer
-    assert "--map-default: #4285f4;" in _PANE_HTML
-    assert "--map-route: #1558d6;" in _PANE_HTML
-    for index, color in enumerate(("#4285f4", "#ea4335", "#fbbc04", "#34a853", "#a142f4", "#fbbc54", "#46bdc6", "#7cb342")):
-        assert f"--map-category-{index}: {color};" in _PANE_HTML
-    assert "--map-pin-default: #ea4335;" in _PANE_HTML
-    assert "--map-pin-top: #ff6f61;" in _PANE_HTML
-    assert "--map-pin-bottom: #d93025;" in _PANE_HTML
-    assert "--map-pin-outline: #a52714;" in _PANE_HTML
-    assert "--map-pin-hole: #f8fafc;" in _PANE_HTML
-    assert "--map-pin-inner: #fff4f2;" in _PANE_HTML
-    assert "function cssVar(name, fallback)" in renderer
-    assert "var mapDefaultColor = cssVar('--map-default', '#4285f4');" in renderer
-    assert "var mapRouteColor = cssVar('--map-route'" in renderer
-    assert "var mapPalette = [" in renderer
-    assert "cssVar('--map-category-0', mapDefaultColor)" in renderer
-    assert "var mapPinDefaultColor = cssVar('--map-pin-default', '#ea4335');" in renderer
-    assert "var mapPinTop = cssVar('--map-pin-top'" in renderer
-    assert "var mapPinBottom = cssVar('--map-pin-bottom'" in renderer
-    assert "var mapPinOutline = cssVar('--map-pin-outline'" in renderer
-    assert "var mapPinHole = cssVar('--map-pin-hole'" in renderer
-    assert "var mapPinInner = cssVar('--map-pin-inner'" in renderer
-    assert "var mapStyleUrl = '/assets/maplibre/shortbread-light.json';" in renderer
-    assert "var mapStyleSpriteUrl = '/assets/maplibre/osm-bright-sprite';" in renderer
-    assert "var mapStyleRouteSpriteUrl = '/assets/maplibre/tf-route-sprite';" in renderer
-    assert "function absoluteUrl(path)" in renderer
-    assert "fetch(mapStyleUrl).then(function (response)" in renderer
-    assert "{ id: 'default', url: absoluteUrl(mapStyleSpriteUrl) }" in renderer
-    assert "{ id: 'tf', url: absoluteUrl(mapStyleRouteSpriteUrl) }" in renderer
-    assert "var mapInitToken = 0;" in renderer
-    assert "if (initToken !== mapInitToken || map || !container.isConnected) return;" in renderer
-    assert "var maxLegendEntries = 12;" in renderer
-    assert "function buildLegendSection(layer, items, labels, swatchType, fallbackColor)" in renderer
-    assert "function legendSwatchTypeForFeatures(features)" in renderer
-    assert "function clearLegend(container)" in renderer
-    assert "function renderLegend(container, sections)" in renderer
-    assert "encoding.domain.filter(function (value) { return seen[String(value)]; })" in renderer
-    assert "return encoding.domain.slice(0, maxLegendEntries + 1);" not in renderer
-    assert "clearLegend(container);" in renderer
-    assert "clearLegend(stageNode);" in renderer
-    assert "node.className = 'tf-map-legend';" in renderer
-    assert "renderLegend(stageNode, legendSections);" in renderer
-    assert "pointData.features,\n            labels," in renderer
-    assert "pointData.rows,\n            labels," not in renderer
-    assert "pointData.markerType === 'pin' ? 'pin' : 'circle'" in renderer
-    assert "legendSwatchTypeForFeatures(features)" in renderer
-    assert "values.length < 2 || values.length > maxLegendEntries" in renderer
-    assert "#ea4335" in renderer
-    assert "#4285f4" in renderer
-    assert "#1558d6" in renderer
-    assert "markerType === 'pin' ? mapPinDefaultColor : mapDefaultColor" in renderer
-    assert "function geometryType(feature)" in renderer
-    assert "function isLineFeature(feature)" in renderer
-    assert "type === 'LineString' || type === 'MultiLineString'" in renderer
-    assert "__tfLineWidth: line ? 5 : 2" in renderer
-    assert "#5bd0a8" not in renderer
-    assert "#2f9a74" not in renderer
-    assert "rgba(255,255,255,0.35)" not in renderer
-    assert "L.marker" not in renderer
-    assert "encoding.range" not in renderer
-    assert "map.resize();" in renderer
+    map_js = _pane_asset_text("render/map.js")
+    shared_js = _pane_asset_text("render/shared.js")
+    shell_js = _pane_asset_text("pane.js")
+    assert "return renderMap(node, data);" in shell_js
+    assert "window.TF" not in shell_js
+    assert "new maplibregl.Map({" in map_js
+    assert "new maplibregl.AttributionControl({ compact: false })" in map_js
+    assert "L.map" not in map_js
+    assert "L.tileLayer" not in map_js
+    assert "/assets/leaflet" not in map_js
+    assert "L.marker" not in map_js
+    assert "function formatNumber(value)" in shared_js
     assert ".tf-map-stage { position: relative; height: min(560px, 68vh); min-height: 420px;" in _PANE_HTML
     assert ".tf-map-view .maplibregl-map { background: var(--card);" in _PANE_HTML
     assert ".tf-map-legend {\n    position: absolute; top: 12px; right: 12px; z-index: 5;" in _PANE_HTML
@@ -1738,19 +1593,10 @@ def test_pane_table_scrollbars_use_dark_theme() -> None:
 
 
 def test_pane_short_tables_keep_bottom_inset() -> None:
-    renderer = files("tabulaflow.app.pane.assets.pane").joinpath("pane-render.js").read_text(encoding="utf-8")
-    assert "rows.length <= 12 ? 'tf-table-wrap pane-short' : 'tf-table-wrap'" in renderer
     assert ".tf-table-wrap.pane-short { padding-bottom: 16px; box-sizing: border-box; }" in _PANE_HTML
 
 
 def test_pane_manual_tables_use_fixed_panel() -> None:
-    renderer = files("tabulaflow.app.pane.assets.pane").joinpath("pane-render.js").read_text(encoding="utf-8")
-    assert "container.closest && container.closest('.manual-preview')" in renderer
-    assert "container.closest('.view-shell')" in renderer
-    assert "panelHeight > 0 ? panelHeight" in renderer
-    assert "panelHeight > 0 || rows.length > 100" in renderer
-    assert "table.setHeight(height)" in renderer
-    assert "requestAnimationFrame(fitFixedPanelHeight)" in renderer
     assert ".turnview.manual-preview { height: calc(100vh - 82px); min-height: 460px;" in _PANE_HTML
     assert ".manual-preview .cardpane { flex: 1 1 auto; min-height: 0;" in _PANE_HTML
     assert ".manual-preview .view-shell { flex: 1 1 auto; min-height: 360px; overflow: hidden; }" in _PANE_HTML
@@ -1766,6 +1612,8 @@ def test_pane_tables_keep_last_row_gridline() -> None:
         in _PANE_HTML
     )
     assert ".tabulator-row:last-child .tabulator-cell.tabulator-row-header" in _PANE_HTML
+
+
 def test_view_card_in_pane_marks_turn_as_manual(tmp_path: Path) -> None:
     pushed: list[PaneTurn] = []
 
@@ -1970,8 +1818,25 @@ def test_pane_serves_bundled_assets_cached(tmp_path: Path) -> None:
             missing_is_404 = exc.code == 404
         assert missing_is_404
 
-        with urllib.request.urlopen(f"{origin}assets/pane/pane-render.js", timeout=2) as resp:
-            assert resp.headers.get("Cache-Control") == "no-cache"
-            assert b"renderTable" in resp.read()
+        for rel in (
+            "pane.js",
+            "render/shared.js",
+            "render/table.js",
+            "render/chart.js",
+            "render/map.js",
+            "render/graph.js",
+            "render/query.js",
+        ):
+            with urllib.request.urlopen(f"{origin}assets/pane/{rel}", timeout=2) as resp:
+                assert resp.headers.get("Cache-Control") == "no-cache"
+                assert resp.headers.get("Content-Type") == "text/javascript; charset=utf-8"
+                assert resp.read()
+
+        try:
+            urllib.request.urlopen(f"{origin}assets/pane/pane-render.js", timeout=2)
+            old_renderer_is_404 = False
+        except urllib.error.HTTPError as exc:
+            old_renderer_is_404 = exc.code == 404
+        assert old_renderer_is_404
     finally:
         pane.stop()

@@ -59,15 +59,19 @@ def _load_pane_html() -> str:
     base = files("tabulaflow.app.pane.assets.pane")
     html = base.joinpath("index.html").read_text(encoding="utf-8")
     css = base.joinpath("pane.css").read_text(encoding="utf-8")
-    js = base.joinpath("pane.js").read_text(encoding="utf-8")
-    render_js = base.joinpath("pane-render.js").read_bytes()
-    render_version = hashlib.sha256(render_js).hexdigest()[:12]
-    return (
-        html.replace("__PANE_CSS__", css)
-        .replace("__PANE_JS__", js)
-        .replace("__PANE_RENDER_VERSION__", render_version)
-        .replace("__BANNER__", _BANNER)
-    )
+    module_hash = hashlib.sha256()
+    for rel in (
+        "pane.js",
+        "render/shared.js",
+        "render/table.js",
+        "render/chart.js",
+        "render/map.js",
+        "render/graph.js",
+        "render/query.js",
+    ):
+        module_hash.update(base.joinpath(rel).read_bytes())
+    pane_version = module_hash.hexdigest()[:12]
+    return html.replace("__PANE_CSS__", css).replace("__PANE_VERSION__", pane_version).replace("__BANNER__", _BANNER)
 
 
 _PANE_HTML = _load_pane_html()

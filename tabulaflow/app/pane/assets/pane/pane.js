@@ -1,3 +1,11 @@
+// @ts-check
+
+import { renderTable } from './render/table.js';
+import { renderChart } from './render/chart.js';
+import { renderMap } from './render/map.js';
+import { renderGraph } from './render/graph.js';
+import { renderQuery } from './render/query.js';
+
 function el(tag, cls) {
   var e = document.createElement(tag);
   if (cls) { e.className = cls; }
@@ -273,11 +281,11 @@ function getCachedCardData(card) {
 }
 
 function renderKind(node, kind, data) {
-  if (kind === 'map') return TF.renderMap(node, data);
-  if (kind === 'graph') return TF.renderGraph(node, data);
-  if (kind === 'chart') return TF.renderChart(node, data);
-  if (kind === 'data') return TF.renderTable(node, data);
-  if (kind === 'query') return TF.renderQuery(node, data);
+  if (kind === 'map') return renderMap(node, data);
+  if (kind === 'graph') return renderGraph(node, data);
+  if (kind === 'chart') return renderChart(node, data);
+  if (kind === 'data') return renderTable(node, data);
+  if (kind === 'query') return renderQuery(node, data);
   node.textContent = 'Unknown view: ' + kind;
   return { destroy: function () {} };
 }
