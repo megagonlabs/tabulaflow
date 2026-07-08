@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Any
+
 from textual.app import App, ComposeResult
 from textual.widgets import Tree
 
@@ -77,6 +79,16 @@ def _tree_label_text(tree: Tree[object]) -> list[str]:
     return labels
 
 
+def _tree_nodes(tree: Tree[object]) -> list[Any]:
+    nodes: list[Any] = []
+    stack = list(tree.root.children)
+    while stack:
+        node = stack.pop(0)
+        nodes.append(node)
+        stack[0:0] = list(node.children)
+    return nodes
+
+
 async def test_schema_browser_renders_property_graph_schema() -> None:
     registry = DBRegistry()
     registry.register("neo", FakeGraphConnector())  # type: ignore[arg-type]
@@ -95,6 +107,20 @@ async def test_schema_browser_renders_property_graph_schema() -> None:
     assert "ACTED_IN" in labels
     assert "ACTED_IN  Person -> Movie" not in labels
     assert "roles  LIST OF STRING" in labels
+
+    title_node = next(
+        node
+        for node in _tree_nodes(tree)
+        if getattr(node.label, "plain", str(node.label)).strip() == "title     STRING"
+    )
+    assert title_node.data.status_text == "neo > Node Types > Movie > title  |  STRING"
+
+    roles_node = next(
+        node
+        for node in _tree_nodes(tree)
+        if getattr(node.label, "plain", str(node.label)).strip() == "roles  LIST OF STRING"
+    )
+    assert roles_node.data.status_text == "neo > Relationship Types > ACTED_IN > roles  |  LIST OF STRING"
 
 
 def test_cypher_formatter_renders_multi_endpoint_relationship_type_once() -> None:

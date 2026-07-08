@@ -955,6 +955,13 @@ _NODE_KIND_GRAPH_NODE = "graph_node"
 _NODE_KIND_GRAPH_RELATIONSHIP = "graph_relationship"
 _NODE_KIND_GRAPH_PROPERTY = "graph_property"
 
+_GRAPH_NODE_TYPES = "node_types"
+_GRAPH_REL_TYPES = "relationship_types"
+_GRAPH_GROUP_LABELS = {
+    _GRAPH_NODE_TYPES: "Node Types",
+    _GRAPH_REL_TYPES: "Relationship Types",
+}
+
 
 class _NodeData:
     """Metadata attached to each Tree node."""
@@ -1322,6 +1329,8 @@ class SchemaBrowserScreen(Screen[None]):
 
         assert isinstance(schema, PropertyGraphSchema)
         parent_node: Any = parent
+        node_types_label = _GRAPH_GROUP_LABELS[_GRAPH_NODE_TYPES]
+        rel_types_label = _GRAPH_GROUP_LABELS[_GRAPH_REL_TYPES]
 
         db_label = Text()
         db_label.append(alias, style="bold")
@@ -1336,21 +1345,22 @@ class SchemaBrowserScreen(Screen[None]):
                 alias=alias,
                 path=(alias, None, None, None),
                 status_text=(
-                    f"{alias}  |  {len(schema.nodes):,} Node Types  |  {len(schema.relationships):,} Relationship Types"
+                    f"{alias}  |  {len(schema.nodes):,} {node_types_label}  |  "
+                    f"{len(schema.relationships):,} {rel_types_label}"
                 ),
             ),
             expand=self._expand_for((alias, None, None, None), True),
         )
 
         nodes = db_node.add(
-            Text("Node Types", style="bold"),
+            Text(node_types_label, style="bold"),
             data=_NodeData(
                 kind=_NODE_KIND_GRAPH_GROUP,
                 alias=alias,
-                path=(alias, "nodes", None, None),
-                status_text=f"{alias} > Node Types  |  {len(schema.nodes):,} labels",
+                path=(alias, _GRAPH_NODE_TYPES, None, None),
+                status_text=f"{alias} > {node_types_label}  |  {len(schema.nodes):,} labels",
             ),
-            expand=self._expand_for((alias, "nodes", None, None), True),
+            expand=self._expand_for((alias, _GRAPH_NODE_TYPES, None, None), True),
         )
         for node in sorted(schema.nodes, key=lambda n: n.label):
             label_node = nodes.add(
@@ -1358,39 +1368,59 @@ class SchemaBrowserScreen(Screen[None]):
                 data=_NodeData(
                     kind=_NODE_KIND_GRAPH_NODE,
                     alias=alias,
-                    path=(alias, "nodes", node.label, None),
-                    status_text=f"{alias} > Node Types > {node.label}  |  {len(node.properties):,} properties",
+                    path=(alias, _GRAPH_NODE_TYPES, node.label, None),
+                    status_text=(
+                        f"{alias} > {node_types_label} > {node.label}  |  {len(node.properties):,} properties"
+                    ),
                 ),
-                expand=self._expand_for((alias, "nodes", node.label, None), False),
+                expand=self._expand_for((alias, _GRAPH_NODE_TYPES, node.label, None), False),
             )
-            self._add_graph_properties(label_node, alias, ("nodes", node.label), node.properties)
+            self._add_graph_properties(
+                label_node,
+                alias,
+                identity_path=(_GRAPH_NODE_TYPES, node.label),
+                display_path=(node_types_label, node.label),
+                properties=node.properties,
+            )
 
         relationships = db_node.add(
-            Text("Relationship Types", style="bold"),
+            Text(rel_types_label, style="bold"),
             data=_NodeData(
                 kind=_NODE_KIND_GRAPH_GROUP,
                 alias=alias,
-                path=(alias, "relationships", None, None),
-                status_text=f"{alias} > Relationship Types  |  {len(schema.relationships):,} types",
+                path=(alias, _GRAPH_REL_TYPES, None, None),
+                status_text=f"{alias} > {rel_types_label}  |  {len(schema.relationships):,} types",
             ),
-            expand=self._expand_for((alias, "relationships", None, None), True),
+            expand=self._expand_for((alias, _GRAPH_REL_TYPES, None, None), True),
         )
         for rel in sorted(schema.relationships, key=lambda rel: rel.label):
-            rel_path = ("relationships", rel.label, None, None)
+            rel_path = (_GRAPH_REL_TYPES, rel.label, None, None)
             rel_node = relationships.add(
                 Text(rel.label),
                 data=_NodeData(
                     kind=_NODE_KIND_GRAPH_RELATIONSHIP,
                     alias=alias,
                     path=(alias, *rel_path),
-                    status_text=(f"{alias} > Relationship Types > {rel.label}  |  {len(rel.properties):,} properties"),
+                    status_text=(f"{alias} > {rel_types_label} > {rel.label}  |  {len(rel.properties):,} properties"),
                 ),
                 expand=self._expand_for((alias, *rel_path), False),
             )
-            self._add_graph_properties(rel_node, alias, rel_path, rel.properties)
+            self._add_graph_properties(
+                rel_node,
+                alias,
+                identity_path=rel_path,
+                display_path=(rel_types_label, rel.label),
+                properties=rel.properties,
+            )
 
     def _add_graph_properties(
-        self, parent: object, alias: str, parent_path: tuple[str | None, ...], properties: list[Any]
+        self,
+        parent: object,
+        alias: str,
+        *,
+        identity_path: tuple[str | None, ...],
+        display_path: tuple[str, ...],
+        properties: list[Any],
     ) -> None:
         from tabulaflow.core.types import GraphPropertySchema
 
@@ -1398,17 +1428,13 @@ class SchemaBrowserScreen(Screen[None]):
         name_width = max((len(prop.name) for prop in properties if isinstance(prop, GraphPropertySchema)), default=0)
         for prop in properties:
             assert isinstance(prop, GraphPropertySchema)
-            parent_label = " > ".join(
-                {"nodes": "Node Types", "relationships": "Relationship Types"}.get(part, part)
-                for part in parent_path
-                if part is not None
-            )
+            parent_label = " > ".join(display_path)
             parent_node.add_leaf(
                 Text.assemble(prop.name.ljust(name_width), (f"  {prop.dtype}", "dim")),
                 data=_NodeData(
                     kind=_NODE_KIND_GRAPH_PROPERTY,
                     alias=alias,
-                    path=(alias, *parent_path, prop.name),
+                    path=(alias, *identity_path, prop.name),
                     status_text=f"{alias} > {parent_label} > {prop.name}  |  {prop.dtype}",
                 ),
             )
