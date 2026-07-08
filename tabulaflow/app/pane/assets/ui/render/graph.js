@@ -112,7 +112,7 @@ function graphStyles() {
         'target-distance-from-node': 4,
         'text-background-color': '#19212c',
         'text-background-opacity': 1,
-        'text-background-padding': 0,
+        'text-background-padding': 1,
         'text-background-shape': 'rectangle',
         'text-margin-x': 0,
         'text-margin-y': 0,
