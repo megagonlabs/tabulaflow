@@ -50,15 +50,15 @@ function graphElements(graphData) {
 
 function idealForceEdgeLength(edge) {
   var label = edge && edge.data ? String(edge.data('label') || '') : '';
-  return Math.max(70, Math.min(122, 58 + label.length * 5));
+  return Math.max(64, Math.min(116, 54 + label.length * 5));
 }
 
 function graphLayoutOptions(layout) {
   if (layout === 'layered') {
-    return { name: 'dagre', rankDir: 'TB', nodeSep: 52, rankSep: 78, edgeSep: 12, fit: false, animate: false };
+    return { name: 'dagre', rankDir: 'TB', nodeSep: 50, rankSep: 62, edgeSep: 14, fit: false, animate: false };
   }
   if (layout === 'tree') {
-    return { name: 'breadthfirst', directed: true, spacingFactor: 1.25, fit: false, animate: false };
+    return { name: 'breadthfirst', directed: true, spacingFactor: 1.2, fit: false, animate: false };
   }
   return {
     name: 'cose',
@@ -67,10 +67,10 @@ function graphLayoutOptions(layout) {
     fit: false,
     numIter: 1000,
     idealEdgeLength: idealForceEdgeLength,
-    nodeOverlap: 14,
-    nodeRepulsion: 3900,
-    componentSpacing: 48,
-    gravity: 0.22
+    nodeOverlap: 10,
+    nodeRepulsion: 2600,
+    componentSpacing: 40,
+    gravity: 0.55
   };
 }
 
