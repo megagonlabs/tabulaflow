@@ -374,9 +374,10 @@ July 7
 - [x] Graph rendering
 
 July 8
-- [x] Fix neo4j not shown in data explorer
+- [x] Support property graphs in data explorer
+- [x] Fix PropertyGraphSchema representation
 - [ ] Fix render_graph for generic Cypher queries like db.schema.visualization()
-- [ ] Fix PropertyGraphSchema representation
+
 - [ ] Physics simulation for graph layout
 
 - [ ] Stress-test graph rendering
