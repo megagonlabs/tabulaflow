@@ -33,7 +33,11 @@ class CypherSchemaFormatter:
             return "\n".join([title] + (lines or ["(none)"]))
 
         node_lines = [self.format_node(n) for n in schema.nodes]
-        rel_lines = [self.format_relationship(r) for r in schema.relationships]
+        rel_lines = [
+            self.format_pattern(rel.label, endpoint.source_label, endpoint.target_label)
+            for rel in schema.relationships
+            for endpoint in rel.endpoints
+        ]
         rel_prop_lines = self._format_relationship_properties(schema.relationships)
 
         header = f"Database: {schema.name} (Query Language: cypher)"
@@ -57,20 +61,17 @@ class CypherSchemaFormatter:
             line += f"  // {node.description}"
         return line
 
-    def format_relationship(self, rel: RelationshipSchema) -> str:
-        return f"(:{rel.source_label})-[:{rel.label}]->(:{rel.target_label})"
+    def format_pattern(self, label: str, source_label: str, target_label: str) -> str:
+        return f"(:{source_label})-[:{label}]->(:{target_label})"
 
     def format_property(self, prop: GraphPropertySchema) -> str:
         return f"{prop.name}: {prop.dtype}"
 
     def _format_relationship_properties(self, relationships: list[RelationshipSchema]) -> list[str]:
-        """Deduplicate relationship properties by label (multiple patterns may share a label)."""
-        seen: set[str] = set()
         lines: list[str] = []
         for rel in relationships:
-            if rel.label in seen or not (rel.properties or rel.description):
+            if not (rel.properties or rel.description):
                 continue
-            seen.add(rel.label)
             line = rel.label
             if rel.properties:
                 line += " {" + ", ".join(self.format_property(p) for p in rel.properties) + "}"

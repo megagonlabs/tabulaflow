@@ -1,4 +1,5 @@
 import copy
+from collections.abc import Iterator
 from decimal import Decimal
 import json
 import os
@@ -68,12 +69,18 @@ class NodeSchema(BaseModel):
     properties: list[GraphPropertySchema] = Field(default_factory=list)
 
 
-class RelationshipSchema(BaseModel):
-    """Schema for one (label, source, target) relationship pattern."""
+class RelationshipEndpoint(BaseModel):
+    """One (source, target) connectivity pattern for a relationship type."""
 
-    label: str
     source_label: str
     target_label: str
+
+
+class RelationshipSchema(BaseModel):
+    """Schema for one relationship type and all node patterns it connects."""
+
+    label: str
+    endpoints: list[RelationshipEndpoint] = Field(default_factory=list)
     description: str | None = None
     properties: list[GraphPropertySchema] = Field(default_factory=list)
 
@@ -92,23 +99,17 @@ class PropertyGraphSchema(BaseModel):
                 return n
         raise ValueError(f"Node type {label!r} not found.")
 
-    def get_relationships(
-        self,
-        label: str | None = None,
-        source_label: str | None = None,
-        target_label: str | None = None,
-    ) -> list[RelationshipSchema]:
-        """Return relationship types matching the given filters (all optional)."""
-        results: list[RelationshipSchema] = []
-        for rt in self.relationships:
-            if label is not None and rt.label != label:
-                continue
-            if source_label is not None and rt.source_label != source_label:
-                continue
-            if target_label is not None and rt.target_label != target_label:
-                continue
-            results.append(rt)
-        return results
+    def get_relationship(self, label: str) -> RelationshipSchema:
+        for r in self.relationships:
+            if r.label == label:
+                return r
+        raise ValueError(f"Relationship type {label!r} not found.")
+
+    def iter_patterns(self) -> Iterator[tuple[str, str, str]]:
+        """Yield ``(label, source_label, target_label)`` for every endpoint."""
+        for rel in self.relationships:
+            for endpoint in rel.endpoints:
+                yield (rel.label, endpoint.source_label, endpoint.target_label)
 
 
 # ---------------------------------------------------------------------------

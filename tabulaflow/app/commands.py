@@ -54,7 +54,7 @@ def database_info(connector: NL2QDBConnector) -> str:
 
     if isinstance(connector, Neo4jConnector):
         n_labels = len(connector.schema.nodes)
-        n_patterns = len(connector.schema.relationships)
+        n_patterns = sum(len(rel.endpoints) for rel in connector.schema.relationships)
         return f"cypher, {n_labels} label{'s' if n_labels != 1 else ''}, {n_patterns} rel pattern{'s' if n_patterns != 1 else ''}"
 
     from tabulaflow.core.types import SQLSchema

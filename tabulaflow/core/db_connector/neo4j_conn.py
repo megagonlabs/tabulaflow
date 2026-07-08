@@ -16,6 +16,7 @@ from tabulaflow.core.types import (
     NodeSchema,
     NonSQLLanguage,
     PropertyGraphSchema,
+    RelationshipEndpoint,
     RelationshipSchema,
 )
 
@@ -244,7 +245,7 @@ class Neo4jConnector:
 
     async def _build_schema(self) -> PropertyGraphSchema:
         nodes: dict[str, NodeSchema] = {}
-        rels: dict[tuple[str, str, str], RelationshipSchema] = {}
+        rels: dict[str, RelationshipSchema] = {}
 
         for record in await self._run_cypher("CALL db.labels() YIELD label RETURN label"):
             label: str = record["label"]
@@ -273,9 +274,10 @@ class Neo4jConnector:
             source: str = record["source"]
             rel_type: str = record["type"]
             target: str = record["target"]
-            key = (rel_type, source, target)
-            if key not in rels:
-                rels[key] = RelationshipSchema(label=rel_type, source_label=source, target_label=target)
+            rel = rels.setdefault(rel_type, RelationshipSchema(label=rel_type))
+            endpoint = RelationshipEndpoint(source_label=source, target_label=target)
+            if endpoint not in rel.endpoints:
+                rel.endpoints.append(endpoint)
             for lbl in (source, target):
                 if lbl not in nodes:
                     nodes[lbl] = NodeSchema(label=lbl)
@@ -294,12 +296,13 @@ class Neo4jConnector:
                 if prop_name in rel_prop_seen[rel_type]:
                     continue
                 rel_prop_seen[rel_type].add(prop_name)
-                for key, rel in rels.items():
-                    if key[0] == rel_type:
-                        rel.properties.append(GraphPropertySchema(name=prop_name, dtype=dtype))
+                rel = rels.setdefault(rel_type, RelationshipSchema(label=rel_type))
+                rel.properties.append(GraphPropertySchema(name=prop_name, dtype=dtype))
 
         sorted_nodes = sorted(nodes.values(), key=lambda n: n.label)
-        sorted_rels = sorted(rels.values(), key=lambda r: (r.label, r.source_label, r.target_label))
+        for rel in rels.values():
+            rel.endpoints.sort(key=lambda e: (e.source_label, e.target_label))
+        sorted_rels = sorted(rels.values(), key=lambda r: r.label)
 
         return PropertyGraphSchema(
             name=self._schema_name,

@@ -75,7 +75,8 @@ class RegistryGetDBDocumentTool:
         if connector.connector_type == "sql":
             return len(self._compressor.compress(connector.schema).tables)
         if connector.connector_type == "property_graph":
-            return len(connector.schema.nodes) + len(connector.schema.relationships)
+            pattern_count = sum(len(rel.endpoints) for rel in connector.schema.relationships)
+            return len(connector.schema.nodes) + len(connector.schema.relationships) + pattern_count
         return 0
 
     def _format_direct_document(self, db_alias: str) -> str:

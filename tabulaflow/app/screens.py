@@ -1335,9 +1335,7 @@ class SchemaBrowserScreen(Screen[None]):
                 kind=_NODE_KIND_DB,
                 alias=alias,
                 path=(alias, None, None, None),
-                status_text=(
-                    f"{alias}  |  {len(schema.nodes):,} labels  |  {len(schema.relationships):,} relationship patterns"
-                ),
+                status_text=f"{alias}  |  {len(schema.nodes):,} labels  |  {len(schema.relationships):,} relationship types",
             ),
             expand=self._expand_for((alias, None, None, None), True),
         )
@@ -1365,27 +1363,35 @@ class SchemaBrowserScreen(Screen[None]):
             )
             self._add_graph_properties(label_node, alias, ("nodes", node.label), node.properties)
 
+        pattern_count = sum(len(rel.endpoints) for rel in schema.relationships)
         relationships = db_node.add(
-            self._graph_count_label("Relationships", len(schema.relationships)),
+            self._graph_count_label("Relationship Types", len(schema.relationships)),
             data=_NodeData(
                 kind=_NODE_KIND_GRAPH_GROUP,
                 alias=alias,
                 path=(alias, "relationships", None, None),
-                status_text=f"{alias} > Relationships  |  {len(schema.relationships):,} relationship patterns",
+                status_text=(
+                    f"{alias} > Relationship Types  |  {len(schema.relationships):,} types  |  "
+                    f"{pattern_count:,} patterns"
+                ),
             ),
             expand=self._expand_for((alias, "relationships", None, None), True),
         )
-        for rel in sorted(schema.relationships, key=lambda r: (r.label, r.source_label, r.target_label)):
-            rel_path = ("relationships", rel.label, rel.source_label, rel.target_label)
+        patterns = sorted(
+            ((rel, endpoint) for rel in schema.relationships for endpoint in rel.endpoints),
+            key=lambda item: (item[0].label, item[1].source_label, item[1].target_label),
+        )
+        for rel, endpoint in patterns:
+            rel_path = ("relationships", rel.label, endpoint.source_label, endpoint.target_label)
             rel_node = relationships.add(
-                Text.assemble(rel.label, (f"  {rel.source_label} -> {rel.target_label}", "dim")),
+                Text.assemble(rel.label, (f"  {endpoint.source_label} -> {endpoint.target_label}", "dim")),
                 data=_NodeData(
                     kind=_NODE_KIND_GRAPH_RELATIONSHIP,
                     alias=alias,
                     path=(alias, *rel_path),
                     status_text=(
                         f"{alias} > Relationships > {rel.label}  |  "
-                        f"{rel.source_label} -> {rel.target_label}  |  {len(rel.properties):,} properties"
+                        f"{endpoint.source_label} -> {endpoint.target_label}  |  {len(rel.properties):,} properties"
                     ),
                 ),
                 expand=self._expand_for((alias, *rel_path), False),

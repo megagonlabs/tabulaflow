@@ -6,7 +6,6 @@ from tabulaflow.core.types import (
     SQLColumnSchema,
     PropertyGraphSchema,
     NodeSchema,
-    RelationshipSchema,
     GraphPropertySchema,
 )
 from tabulaflow.core.registry import Registry
@@ -38,7 +37,7 @@ class BasePropertyGraphSchemaFormatter(Protocol):
 
     def format_node(self, node: NodeSchema) -> str: ...
 
-    def format_relationship(self, rel: RelationshipSchema) -> str: ...
+    def format_pattern(self, label: str, source_label: str, target_label: str) -> str: ...
 
     def format_property(self, prop: GraphPropertySchema) -> str: ...
 

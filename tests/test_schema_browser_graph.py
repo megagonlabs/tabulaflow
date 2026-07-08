@@ -10,6 +10,7 @@ from tabulaflow.core.types import (
     GraphPropertySchema,
     NodeSchema,
     PropertyGraphSchema,
+    RelationshipEndpoint,
     RelationshipSchema,
 )
 
@@ -38,8 +39,7 @@ class FakeGraphConnector:
             relationships=[
                 RelationshipSchema(
                     label="ACTED_IN",
-                    source_label="Person",
-                    target_label="Movie",
+                    endpoints=[RelationshipEndpoint(source_label="Person", target_label="Movie")],
                     properties=[GraphPropertySchema(name="roles", dtype="LIST OF STRING")],
                 )
             ],
@@ -91,6 +91,30 @@ async def test_schema_browser_renders_property_graph_schema() -> None:
     assert "Nodes  2" in labels
     assert "Movie  label" in labels
     assert "title     STRING" in labels
-    assert "Relationships  1" in labels
+    assert "Relationship Types  1" in labels
     assert "ACTED_IN  Person -> Movie" in labels
     assert "roles  LIST OF STRING" in labels
+
+
+def test_cypher_formatter_renders_multi_endpoint_relationship_type_once() -> None:
+    from tabulaflow.core.formatters.cypher import CypherSchemaFormatter
+
+    schema = PropertyGraphSchema(
+        name="places",
+        relationships=[
+            RelationshipSchema(
+                label="LOCATED_IN",
+                endpoints=[
+                    RelationshipEndpoint(source_label="City", target_label="Country"),
+                    RelationshipEndpoint(source_label="Landmark", target_label="Country"),
+                ],
+                properties=[GraphPropertySchema(name="since", dtype="INTEGER")],
+            )
+        ],
+    )
+
+    formatted = CypherSchemaFormatter().format(schema)
+
+    assert "(:City)-[:LOCATED_IN]->(:Country)" in formatted
+    assert "(:Landmark)-[:LOCATED_IN]->(:Country)" in formatted
+    assert formatted.count("LOCATED_IN {since: INTEGER}") == 1
