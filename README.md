@@ -373,7 +373,15 @@ July 7
 - [x] Revise output pane code boundary -> /pane package
 - [x] Graph rendering
 
+July 8
+- [x] Fix neo4j not shown in data explorer
+- [ ] Fix render_graph for generic Cypher queries like db.schema.visualization()
+- [ ] Fix PropertyGraphSchema representation
+- [ ] Physics simulation for graph layout
+
 - [ ] Stress-test graph rendering
+- [ ] Debug neo4j urls
+- [ ]<arg name="vegalite_spec">{"mark":"bar","encoding":{"x":{"field":"product","type":"nominal","sort":"-y","title":"Product"},"y":{"field":"avg_rating","type":"quantitative","title":"Average rating"},"tooltip":[{"field":"product","type":"nominal"},{"field":"avg_rating","type":"quantitative"},{"field":"review_count","type":"quantitative"}]}}</arg>
 
 - [ ] Remote server improvements
 

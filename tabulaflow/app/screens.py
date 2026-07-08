@@ -950,12 +950,16 @@ _NODE_KIND_DB = "db"
 _NODE_KIND_SCHEMA = "schema"
 _NODE_KIND_TABLE = "table"
 _NODE_KIND_COLUMN = "column"
+_NODE_KIND_GRAPH_GROUP = "graph_group"
+_NODE_KIND_GRAPH_NODE = "graph_node"
+_NODE_KIND_GRAPH_RELATIONSHIP = "graph_relationship"
+_NODE_KIND_GRAPH_PROPERTY = "graph_property"
 
 
 class _NodeData:
     """Metadata attached to each Tree node."""
 
-    __slots__ = ("kind", "alias", "schema_name", "table_name", "column_name")
+    __slots__ = ("kind", "alias", "schema_name", "table_name", "column_name", "path", "status_text")
 
     def __init__(
         self,
@@ -964,18 +968,19 @@ class _NodeData:
         schema_name: str | None = None,
         table_name: str | None = None,
         column_name: str | None = None,
+        path: tuple[str | None, ...] | None = None,
+        status_text: str | None = None,
     ) -> None:
         self.kind = kind
         self.alias = alias
         self.schema_name = schema_name
         self.table_name = table_name
         self.column_name = column_name
+        self.path = path
+        self.status_text = status_text
 
 
-# 4-tuple identifier for any tree node: (alias, schema, table, column).
-# DB → (a, None, None, None); schema → (a, s, None, None); table → (a, s, t,
-# None); column → (a, s, t, c). All four levels are unique by tuple identity.
-_NodePath = tuple[str, str | None, str | None, str | None]
+_NodePath = tuple[str | None, ...]
 
 
 class _ExplorerState:
@@ -1150,6 +1155,8 @@ class SchemaBrowserScreen(Screen[None]):
     def _node_path(data: "_NodeData | None") -> _NodePath | None:
         if data is None:
             return None
+        if data.path is not None:
+            return data.path
         return (data.alias, data.schema_name, data.table_name, data.column_name)
 
     def _expand_for(self, path: _NodePath, default: bool) -> bool:
@@ -1262,13 +1269,16 @@ class SchemaBrowserScreen(Screen[None]):
     def _build_tree(self) -> None:
         from textual.widgets import Tree
 
-        from tabulaflow.core.types import SQLSchema, SQLTableSchema
+        from tabulaflow.core.types import PropertyGraphSchema, SQLSchema, SQLTableSchema
 
         tree = self.query_one("#browse-tree", Tree)
 
         for alias in self._visible_aliases():
             connector = self._registry.get(alias)
             schema = connector.schema
+            if isinstance(schema, PropertyGraphSchema):
+                self._add_graph_db_node(tree.root, alias, connector, schema)
+                continue
             if not isinstance(schema, SQLSchema):
                 continue
 
@@ -1306,6 +1316,104 @@ class SchemaBrowserScreen(Screen[None]):
             else:
                 for t in sorted(tables, key=lambda t: t.name):
                     self._add_table_node(db_node, alias, t)
+
+    def _add_graph_db_node(self, parent: object, alias: str, connector: object, schema: object) -> None:
+        from tabulaflow.core.types import PropertyGraphSchema
+
+        assert isinstance(schema, PropertyGraphSchema)
+        parent_node: Any = parent
+
+        db_label = Text()
+        db_label.append(alias, style="bold")
+        language = getattr(connector, "language", None)
+        if language:
+            db_label.append(f"  {language}", style="dim")
+
+        db_node = parent_node.add(
+            db_label,
+            data=_NodeData(
+                kind=_NODE_KIND_DB,
+                alias=alias,
+                path=(alias, None, None, None),
+                status_text=(
+                    f"{alias}  |  {len(schema.nodes):,} labels  |  {len(schema.relationships):,} relationship patterns"
+                ),
+            ),
+            expand=self._expand_for((alias, None, None, None), True),
+        )
+
+        nodes = db_node.add(
+            self._graph_count_label("Nodes", len(schema.nodes)),
+            data=_NodeData(
+                kind=_NODE_KIND_GRAPH_GROUP,
+                alias=alias,
+                path=(alias, "nodes", None, None),
+                status_text=f"{alias} > Nodes  |  {len(schema.nodes):,} labels",
+            ),
+            expand=self._expand_for((alias, "nodes", None, None), True),
+        )
+        for node in sorted(schema.nodes, key=lambda n: n.label):
+            label_node = nodes.add(
+                Text.assemble(node.label, ("  label", "dim")),
+                data=_NodeData(
+                    kind=_NODE_KIND_GRAPH_NODE,
+                    alias=alias,
+                    path=(alias, "nodes", node.label, None),
+                    status_text=f"{alias} > Nodes > {node.label}  |  {len(node.properties):,} properties",
+                ),
+                expand=self._expand_for((alias, "nodes", node.label, None), False),
+            )
+            self._add_graph_properties(label_node, alias, ("nodes", node.label), node.properties)
+
+        relationships = db_node.add(
+            self._graph_count_label("Relationships", len(schema.relationships)),
+            data=_NodeData(
+                kind=_NODE_KIND_GRAPH_GROUP,
+                alias=alias,
+                path=(alias, "relationships", None, None),
+                status_text=f"{alias} > Relationships  |  {len(schema.relationships):,} relationship patterns",
+            ),
+            expand=self._expand_for((alias, "relationships", None, None), True),
+        )
+        for rel in sorted(schema.relationships, key=lambda r: (r.label, r.source_label, r.target_label)):
+            rel_path = ("relationships", rel.label, rel.source_label, rel.target_label)
+            rel_node = relationships.add(
+                Text.assemble(rel.label, (f"  {rel.source_label} -> {rel.target_label}", "dim")),
+                data=_NodeData(
+                    kind=_NODE_KIND_GRAPH_RELATIONSHIP,
+                    alias=alias,
+                    path=(alias, *rel_path),
+                    status_text=(
+                        f"{alias} > Relationships > {rel.label}  |  "
+                        f"{rel.source_label} -> {rel.target_label}  |  {len(rel.properties):,} properties"
+                    ),
+                ),
+                expand=self._expand_for((alias, *rel_path), False),
+            )
+            self._add_graph_properties(rel_node, alias, rel_path, rel.properties)
+
+    @staticmethod
+    def _graph_count_label(name: str, count: int) -> Text:
+        return Text.assemble((name, "bold"), (f"  {count:,}", "dim"))
+
+    def _add_graph_properties(
+        self, parent: object, alias: str, parent_path: tuple[str, ...], properties: list[Any]
+    ) -> None:
+        from tabulaflow.core.types import GraphPropertySchema
+
+        parent_node: Any = parent
+        name_width = max((len(prop.name) for prop in properties if isinstance(prop, GraphPropertySchema)), default=0)
+        for prop in properties:
+            assert isinstance(prop, GraphPropertySchema)
+            parent_node.add_leaf(
+                Text.assemble(prop.name.ljust(name_width), (f"  {prop.dtype}", "dim")),
+                data=_NodeData(
+                    kind=_NODE_KIND_GRAPH_PROPERTY,
+                    alias=alias,
+                    path=(alias, *parent_path, prop.name),
+                    status_text=f"{alias} > {' > '.join(parent_path)} > {prop.name}  |  {prop.dtype}",
+                ),
+            )
 
     def _add_table_node(self, parent: object, alias: str, table: object) -> None:
         from tabulaflow.core.types import SQLTableSchema
@@ -1532,6 +1640,9 @@ class SchemaBrowserScreen(Screen[None]):
         node_data: _NodeData | None = node.data
         if node_data is None:
             self._status.update(Text(""))
+            return
+        if node_data.status_text is not None:
+            self._status.update(Text(node_data.status_text, style="dim"))
             return
 
         parts: list[str] = []

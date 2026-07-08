@@ -1,0 +1,96 @@
+from __future__ import annotations
+
+from textual.app import App, ComposeResult
+from textual.widgets import Tree
+
+from tabulaflow.app.screens import SchemaBrowserScreen
+from tabulaflow.core.db_connector import DBRegistry
+from tabulaflow.core.types import (
+    ExecResult,
+    GraphPropertySchema,
+    NodeSchema,
+    PropertyGraphSchema,
+    RelationshipSchema,
+)
+
+
+class FakeGraphConnector:
+    connector_type = "property_graph"
+    global_id = "test+neo"
+    language = "cypher"
+
+    def __init__(self) -> None:
+        self.schema = PropertyGraphSchema(
+            name="neo",
+            nodes=[
+                NodeSchema(
+                    label="Movie",
+                    properties=[
+                        GraphPropertySchema(name="title", dtype="STRING"),
+                        GraphPropertySchema(name="released", dtype="INTEGER"),
+                    ],
+                ),
+                NodeSchema(
+                    label="Person",
+                    properties=[GraphPropertySchema(name="name", dtype="STRING")],
+                ),
+            ],
+            relationships=[
+                RelationshipSchema(
+                    label="ACTED_IN",
+                    source_label="Person",
+                    target_label="Movie",
+                    properties=[GraphPropertySchema(name="roles", dtype="LIST OF STRING")],
+                )
+            ],
+        )
+
+    async def run_query_async(
+        self, query: str, parameters: object | None = None, timeout: int | None = None
+    ) -> ExecResult:
+        return ExecResult()
+
+    async def disconnect_async(self) -> None:
+        pass
+
+    async def refresh_schema_async(self) -> PropertyGraphSchema:
+        return self.schema
+
+
+class SchemaBrowserTestApp(App[None]):
+    def __init__(self, registry: DBRegistry) -> None:
+        super().__init__()
+        self.registry = registry
+
+    def compose(self) -> ComposeResult:
+        yield SchemaBrowserScreen(registry=self.registry)
+
+
+def _tree_label_text(tree: Tree[object]) -> list[str]:
+    labels: list[str] = []
+    stack = list(tree.root.children)
+    while stack:
+        node = stack.pop(0)
+        label = getattr(node.label, "plain", str(node.label))
+        labels.append(label)
+        stack[0:0] = list(node.children)
+    return labels
+
+
+async def test_schema_browser_renders_property_graph_schema() -> None:
+    registry = DBRegistry()
+    registry.register("neo", FakeGraphConnector())  # type: ignore[arg-type]
+    app = SchemaBrowserTestApp(registry)
+
+    async with app.run_test() as pilot:
+        await pilot.pause()
+        tree = app.query_one("#browse-tree", Tree)
+        labels = _tree_label_text(tree)
+
+    assert "neo  cypher" in labels
+    assert "Nodes  2" in labels
+    assert "Movie  label" in labels
+    assert "title     STRING" in labels
+    assert "Relationships  1" in labels
+    assert "ACTED_IN  Person -> Movie" in labels
+    assert "roles  LIST OF STRING" in labels
