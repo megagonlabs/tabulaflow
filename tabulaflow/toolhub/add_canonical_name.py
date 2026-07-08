@@ -14,6 +14,7 @@ import sqlalchemy
 from pydantic import BaseModel, Field
 from pydantic_ai import Agent, ModelRetry, RunContext, Tool
 from pydantic_ai.exceptions import UnexpectedModelBehavior
+from pydantic_ai.models import Model
 from pydantic_ai.settings import ModelSettings
 
 from tabulaflow.core.db_connector.sql_conn import SQLConnector
@@ -203,7 +204,7 @@ class AddCanonicalNameTool:
     def __init__(
         self,
         *,
-        subagent_llm: str = "openai-responses:gpt-5-mini",
+        subagent_llm: str | Model = "openai-responses:gpt-5-mini",
         model_settings: ModelSettings | None = None,
         max_concurrency: int = 200,
         trajectory_log_dir: Path | None = None,
@@ -211,7 +212,7 @@ class AddCanonicalNameTool:
         """Initialize the tool.
 
         Args:
-            subagent_llm: LLM identifier used by per-value and per-cluster subagents.
+            subagent_llm: LLM identifier or model object used by per-value and per-cluster subagents.
             model_settings: Optional pydantic-ai settings passed to subagent runs.
             max_concurrency: Maximum number of per-value subagents running
                 concurrently across one call.

@@ -10,7 +10,8 @@ from __future__ import annotations
 
 from pathlib import Path
 from types import SimpleNamespace
-from typing import AsyncGenerator
+from collections.abc import Callable
+from typing import Any, AsyncGenerator
 
 import pytest
 from pydantic_ai.messages import ModelMessage, ModelResponse, ToolCallPart
@@ -20,7 +21,7 @@ from tabulaflow.core.db_connector.sql_conn import SQLConnector
 from tabulaflow.toolhub.run_subagent_for_each_row import RunSubagentForEachRowTool
 
 
-def _emit_const(value: object):
+def _emit_const(value: object) -> Callable[[list[ModelMessage], AgentInfo], ModelResponse]:
     """Stub subagent: call ``submit_answer`` with every output field set to ``value``."""
 
     def fn(messages: list[ModelMessage], info: AgentInfo) -> ModelResponse:
@@ -31,14 +32,14 @@ def _emit_const(value: object):
     return fn
 
 
-def _ctx() -> SimpleNamespace:
+def _ctx() -> Any:
     return SimpleNamespace(tool_call_id="test-call")
 
 
-async def _rows(conn: SQLConnector, query: str) -> list[dict]:
+async def _rows(conn: SQLConnector, query: str) -> list[dict[str, Any]]:
     res = await conn.run_query_async(query)
     assert res.error is None and res.df is not None, res.error
-    return res.df.to_dict(orient="records")
+    return list(res.df.to_dict(orient="records"))
 
 
 @pytest.fixture

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from typing import Any
 
 import pandas as pd
 import pytest
@@ -19,7 +20,7 @@ async def _history_with(*dfs: pd.DataFrame) -> QueryHistory:
     return history
 
 
-def _norm(spec: dict, **sources: pd.DataFrame) -> dict:
+def _norm(spec: dict[str, Any], **sources: pd.DataFrame) -> dict[str, Any]:
     return normalize_map_spec(spec, sources)
 
 
@@ -86,7 +87,7 @@ class TestNormalizeMapSpec:
             _norm(spec, Q1=pd.DataFrame({"lat": [37.7], "lng": [-122.4]}))
 
     def test_inline_points_validate_coordinates_and_properties(self) -> None:
-        cases = [
+        cases: list[dict[str, Any]] = [
             {"layers": [{"type": "points", "points": [{"lat": None, "lng": -122.4}]}]},
             {"layers": [{"type": "points", "points": [{"lat": 999, "lng": -122.4}]}]},
             {"layers": [{"type": "points", "points": [{"lat": 37.7, "lng": -122.4, "meta": {"x": 1}}]}]},
@@ -131,7 +132,7 @@ class TestNormalizeMapSpec:
                 "value": [10],
             }
         )
-        cases = [
+        cases: list[dict[str, Any]] = [
             {"layers": [{"type": "geojson", "record_id": "Q1", "geojson": "geom", "style": {"weight": 1}}]},
             {"layers": [{"type": "geojson", "record_id": "Q1", "geojson": "geom", "color": "#3eb489"}]},
             {
@@ -216,7 +217,9 @@ class TestNormalizeMapSpec:
 
 class TestRenderMapTool:
     def test_tool_description_mentions_url_tooltip_links(self) -> None:
-        assert "URLs render as links" in RenderMapTool.__call__.__doc__
+        doc = RenderMapTool.__call__.__doc__
+        assert doc is not None
+        assert "URLs render as links" in doc
 
     async def test_column_layer_missing_record_id_errors(self) -> None:
         history = await _history_with(pd.DataFrame({"lat": [37.7], "lng": [-122.4]}))

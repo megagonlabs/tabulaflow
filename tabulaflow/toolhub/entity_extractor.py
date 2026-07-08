@@ -19,6 +19,7 @@ from pathlib import Path
 from typing import Any
 
 from pydantic import create_model
+from pydantic_ai.models import Model
 from pydantic_ai.settings import ModelSettings
 from tabulaflow.core.llm import make_agent
 from tabulaflow.core.types import Trajectory
@@ -86,7 +87,7 @@ class EntityExtractor:
         output_columns: list[str],
         *,
         column_types: dict[str, ColumnType] | None = None,
-        llm: str = "openai-responses:gpt-5-mini",
+        llm: str | Model = "openai-responses:gpt-5-mini",
         model_settings: ModelSettings | None = None,
         max_concurrency: int = 200,
         chunk_target: int = DEFAULT_TARGET_CHARS,
@@ -101,7 +102,7 @@ class EntityExtractor:
                 Each value must be one of ``str``, ``int``, ``float``, ``bool``, ``date``,
                 or ``datetime``. Columns absent from the mapping default to ``str`` (the
                 all-string behavior). Keys not in ``output_columns`` are ignored.
-            llm: LLM identifier used by per-chunk extraction subagents.
+            llm: LLM identifier or model object used by per-chunk extraction subagents.
             model_settings: Optional pydantic-ai model settings passed to each
                 subagent run (e.g. ``openai_service_tier``).
             max_concurrency: Maximum number of chunk subagents to run concurrently

@@ -231,7 +231,13 @@ def test_record_card_preserves_null_cells(tmp_path: Path) -> None:
     assert payload["table"]["columns"][1]["role"] == "number"
 
 
-def _map_card(map_spec: dict, sources: dict[str, pd.DataFrame], tmp_path: Path, *, label: str = "map") -> dict:
+def _map_card(
+    map_spec: dict[str, object],
+    sources: dict[str, pd.DataFrame],
+    tmp_path: Path,
+    *,
+    label: str = "map",
+) -> PaneCard:
     card = render_map_data(
         SimpleNamespace(map_id="MAP1", label=label, map_spec=map_spec, sources=sources),
         tmp_path,

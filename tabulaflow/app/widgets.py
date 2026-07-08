@@ -5,6 +5,7 @@ from __future__ import annotations
 import difflib
 import json
 import re
+from collections.abc import Mapping
 from typing import TYPE_CHECKING, TypedDict
 
 from rich.console import Group
@@ -489,7 +490,7 @@ def _fmt_arg_value(value: object, limit: int = 40) -> str:
     return text[: limit - 1] + "…" if len(text) > limit else text
 
 
-def _summarize_generic_args(args: dict[str, object]) -> str:
+def _summarize_generic_args(args: Mapping[str, object]) -> str:
     """Render arbitrary tool args as a clean label instead of a raw dict repr.
 
     Single meaningful arg → its bare value; multiple → ``key=value`` pairs. Drops
@@ -519,7 +520,7 @@ def _line_diffstat(old: str, new: str) -> tuple[int, int]:
     return added, removed
 
 
-def _summarize_file_editor(args: dict[str, object]) -> str:
+def _summarize_file_editor(args: Mapping[str, object]) -> str:
     """A verb-led label for the file editor: ``Edit foo.sql +5 -2`` (git diffstat)."""
     command = str(args.get("command", ""))
     path = _fmt_arg_value(args.get("path", "."), 48)
@@ -535,7 +536,7 @@ def _summarize_file_editor(args: dict[str, object]) -> str:
     return f"{command} {path}".strip()
 
 
-def summarize_tool_args(name: str, args: dict[str, object]) -> str:
+def summarize_tool_args(name: str, args: Mapping[str, object]) -> str:
     """Render a tool call as a compact, verb-led one-line label for the TUI.
 
     Every tool maps to ``<Verb> <target>`` — ``Query [main] SELECT …``,
@@ -939,7 +940,7 @@ class AgentProgressWidget(Widget):
         after the progress widget on first use."""
         if self._text_block is None:
             self._text_block = AgentTextBlock(Text(text))
-            if self.parent is not None:
+            if isinstance(self.parent, Widget):
                 self.parent.mount(self._text_block, after=self)
         else:
             self._text_block.update(Text(text))

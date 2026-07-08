@@ -16,6 +16,7 @@ import sqlalchemy
 from pydantic import BaseModel, Field, create_model
 from pydantic_ai import RunContext, Tool, ToolOutput
 from pydantic_ai.capabilities.abstract import AbstractCapability
+from pydantic_ai.models import Model
 from pydantic_ai.settings import ModelSettings
 
 from tabulaflow.core.db_connector.base import BaseSQLDBConnector
@@ -128,7 +129,7 @@ class RunSubagentForEachRowTool:
         *,
         registry: DBRegistry | None = None,
         message_store: MessageStore | None = None,
-        subagent_llm: str = "openai-responses:gpt-5-mini",
+        subagent_llm: str | Model = "openai-responses:gpt-5-mini",
         model_settings: ModelSettings | None = None,
         max_concurrency: int = 200,
         store_metadata: bool = False,
@@ -152,7 +153,7 @@ class RunSubagentForEachRowTool:
                 the subagent gets a registry-backed ``run_query`` tool to read
                 the full content back from ``workspace._internal.messages``.
                 Without a store, browser returns are neither mirrored nor tagged.
-            subagent_llm: LLM identifier used by per-row subagent runs.
+            subagent_llm: LLM identifier or model object used by per-row subagent runs.
             model_settings: Optional pydantic-ai model settings passed to
                 each subagent run (e.g. ``openai_service_tier``).
             max_concurrency: Maximum number of row subagents to run

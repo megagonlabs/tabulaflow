@@ -288,7 +288,12 @@ class DataBrowserScreen(Screen[None]):
         # Wait until Textual has actually painted the new status before we
         # block the main thread with _format_value (CPU-bound, holds GIL).
         painted: asyncio.Future[None] = asyncio.get_running_loop().create_future()
-        self.call_after_refresh(lambda: painted.done() or painted.set_result(None))
+
+        def mark_painted() -> None:
+            if not painted.done():
+                painted.set_result(None)
+
+        self.call_after_refresh(mark_painted)
         await painted
         try:
             display_text, language = CellBrowserScreen._format_value(raw_value)
@@ -325,7 +330,12 @@ class DataBrowserScreen(Screen[None]):
 
         self._set_status_message(Text("Sending...", style="dim"))
         painted: asyncio.Future[None] = asyncio.get_running_loop().create_future()
-        self.call_after_refresh(lambda: painted.done() or painted.set_result(None))
+
+        def mark_painted() -> None:
+            if not painted.done():
+                painted.set_result(None)
+
+        self.call_after_refresh(mark_painted)
         await painted
         send_table_to_output_pane(self._df, self._title, self.app, status=self._set_status_message)
 

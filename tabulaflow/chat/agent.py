@@ -12,7 +12,7 @@ from contextlib import suppress
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Final
 
-from pydantic_ai.models.openai import OpenAIChatModelSettings
+from pydantic_ai.models.openai import OpenAIResponsesModelSettings
 
 from tabulaflow.toolhub.message_store import (
     MESSAGE_THRESHOLD_CHARS,
@@ -249,7 +249,7 @@ _SUBAGENT_REASONING_EFFORT: Final = "medium"
 
 # Reasoning config shared by the subagent-backed tools (the fan-out / extraction
 # tools). ``run_subagent_for_each_row`` additionally requests reasoning summaries.
-_SUBAGENT_MODEL_SETTINGS = OpenAIChatModelSettings(
+_SUBAGENT_MODEL_SETTINGS = OpenAIResponsesModelSettings(
     openai_service_tier="priority",
     openai_reasoning_effort=_SUBAGENT_REASONING_EFFORT,
 )
@@ -392,7 +392,7 @@ class ChatAgent:
                 self.workspace,
                 registry=self.registry,
                 message_store=self._message_store,
-                model_settings=OpenAIChatModelSettings(
+                model_settings=OpenAIResponsesModelSettings(
                     openai_service_tier="priority",
                     openai_reasoning_effort=_SUBAGENT_REASONING_EFFORT,
                     openai_reasoning_summary="detailed",

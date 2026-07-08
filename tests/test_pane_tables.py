@@ -11,6 +11,7 @@ import pytest
 
 from tabulaflow.app.media import sniff_binary, try_decode_base64
 from tabulaflow.app.pane import (
+    TableCardData,
     build_table_data,
 )
 
@@ -33,12 +34,12 @@ WEBM_MAGIC = b"\x1a\x45\xdf\xa3" + b"\x00" * 16
 SVG_BYTES = b"<svg xmlns='http://www.w3.org/2000/svg'></svg>"
 
 
-def _payload_rows(payload: dict[str, object]) -> list[dict[str, Any]]:
+def _payload_rows(payload: TableCardData) -> list[dict[str, Any]]:
     dataset = cast(dict[str, Any], payload["dataset"])
     return cast(list[dict[str, Any]], dataset["rows"])
 
 
-def _payload_table(payload: dict[str, object]) -> dict[str, Any]:
+def _payload_table(payload: TableCardData) -> dict[str, Any]:
     return cast(dict[str, Any], payload["table"])
 
 

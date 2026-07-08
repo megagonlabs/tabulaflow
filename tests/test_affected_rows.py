@@ -5,7 +5,8 @@ from __future__ import annotations
 
 from pathlib import Path
 from types import SimpleNamespace
-from typing import AsyncGenerator
+from collections.abc import Callable
+from typing import Any, AsyncGenerator
 
 import pytest
 from pydantic_ai.messages import ModelMessage, ModelResponse, ToolCallPart
@@ -70,7 +71,7 @@ class TestAsyncEngineDML:
 class TestConnectorAffectedRows:
     @pytest.mark.asyncio
     async def test_counts_by_statement_kind(self, conn: SQLConnector) -> None:
-        async def run(sql):
+        async def run(sql: str) -> Any:
             return await conn.run_query_async(sql)
 
         # Non-row statements: success carried by error-is-None, df is None.
@@ -139,11 +140,11 @@ class TestRunQueryMessaging:
         assert "affected" not in msg  # plain DDL success carries no row-count clause
 
 
-def _ctx() -> SimpleNamespace:
+def _ctx() -> Any:
     return SimpleNamespace(tool_call_id="c")
 
 
-def _emit_const(value: object):
+def _emit_const(value: object) -> Callable[[list[ModelMessage], AgentInfo], ModelResponse]:
     """Stub subagent: call ``submit_answer`` with every output field set to ``value``."""
 
     def fn(messages: list[ModelMessage], info: AgentInfo) -> ModelResponse:
@@ -179,4 +180,5 @@ class TestSubagentZeroMatchGuard:
         assert "failed for 2 rows" in summary
         assert "write matched 0 rows" in summary
         rows = await conn.run_query_async("SELECT label FROM t")
+        assert rows.df is not None
         assert all(r["label"] is None for r in rows.df.to_dict("records"))

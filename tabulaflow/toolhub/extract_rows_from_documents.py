@@ -14,6 +14,7 @@ import jinja2.meta
 import pandas as pd
 from pandas.api import types as pdt
 from pydantic_ai import RunContext, Tool
+from pydantic_ai.models import Model
 from pydantic_ai.settings import ModelSettings
 
 from tabulaflow.core.db_connector.sql_conn import SQLConnector
@@ -49,7 +50,7 @@ class ExtractRowsFromDocumentsTool:
         self,
         db_connector: SQLConnector,
         *,
-        subagent_llm: str = "openai-responses:gpt-5-mini",
+        subagent_llm: str | Model = "openai-responses:gpt-5-mini",
         model_settings: ModelSettings | None = None,
         max_concurrency: int = 200,
         chunk_target: int = DEFAULT_TARGET_CHARS,
@@ -61,7 +62,7 @@ class ExtractRowsFromDocumentsTool:
         Args:
             db_connector: SQL connector that both evaluates ``task_query`` and
                 receives the appended rows (same database).
-            subagent_llm: LLM identifier used by per-chunk extraction subagents.
+            subagent_llm: LLM identifier or model object used by per-chunk extraction subagents.
             model_settings: Optional pydantic-ai model settings passed to each
                 subagent run (e.g. ``openai_service_tier``).
             max_concurrency: Maximum number of chunk subagents to run
