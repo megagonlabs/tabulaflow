@@ -50,10 +50,10 @@ function graphElements(graphData) {
 
 function graphLayoutOptions(layout) {
   if (layout === 'layered') {
-    return { name: 'dagre', rankDir: 'TB', nodeSep: 74, rankSep: 112, edgeSep: 22, fit: false, animate: false };
+    return { name: 'dagre', rankDir: 'TB', nodeSep: 60, rankSep: 92, edgeSep: 16, fit: false, animate: false };
   }
   if (layout === 'tree') {
-    return { name: 'breadthfirst', directed: true, spacingFactor: 1.65, fit: false, animate: false };
+    return { name: 'breadthfirst', directed: true, spacingFactor: 1.4, fit: false, animate: false };
   }
   return {
     name: 'cose',
