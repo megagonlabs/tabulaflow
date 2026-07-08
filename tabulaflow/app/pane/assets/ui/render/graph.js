@@ -254,8 +254,8 @@ export function renderGraph(container, cardData) {
         elements: clone(elements),
         style: graphStyles(),
         layout: graphLayoutOptions(graphData.layout),
-        hideEdgesOnViewport: true,
-        textureOnViewport: true,
+        hideEdgesOnViewport: false,
+        textureOnViewport: false,
         wheelSensitivity: 0.18,
         minZoom: 0.08,
         maxZoom: 2.25
