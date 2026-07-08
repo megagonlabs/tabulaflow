@@ -5,11 +5,45 @@ import { clone, cssVar, displayValue, escapeHtml } from './shared.js';
 const cytoscape = window.cytoscape;
 const GRAPH_FIT_PADDING = 64;
 const GRAPH_MAX_AUTO_ZOOM = 1.05;
+const GRAPH_DEFAULT_NODE_BORDER = '#253447';
+
+function normalizeHexColor(color) {
+  if (typeof color !== 'string') return null;
+  var match = color.trim().match(/^#([0-9a-f]{3}|[0-9a-f]{6})$/i);
+  if (!match) return null;
+  var hex = match[1];
+  if (hex.length === 3) {
+    hex = hex.split('').map(function (char) { return char + char; }).join('');
+  }
+  return hex.toLowerCase();
+}
+
+function nodeBorderColor(color) {
+  var hex = normalizeHexColor(color);
+  if (!hex) return GRAPH_DEFAULT_NODE_BORDER;
+  var factor = 0.56;
+  var out = [0, 2, 4].map(function (offset) {
+    var value = Math.round(parseInt(hex.slice(offset, offset + 2), 16) * factor);
+    return value.toString(16).padStart(2, '0');
+  });
+  return '#' + out.join('');
+}
+
+function graphNodeElements(nodes) {
+  return nodes.map(function (node) {
+    var data = node && node.data ? node.data : {};
+    return Object.assign({}, node, {
+      data: Object.assign({}, data, {
+        borderColor: data.borderColor || nodeBorderColor(data.color)
+      })
+    });
+  });
+}
 
 function graphElements(graphData) {
   var elements = graphData.elements || {};
   return {
-    nodes: Array.isArray(elements.nodes) ? elements.nodes : [],
+    nodes: Array.isArray(elements.nodes) ? graphNodeElements(elements.nodes) : [],
     edges: Array.isArray(elements.edges) ? elements.edges : []
   };
 }
@@ -41,7 +75,7 @@ function graphStyles() {
       selector: 'node',
       style: {
         'background-color': 'data(color)',
-        'border-color': '#253447',
+        'border-color': 'data(borderColor)',
         'border-opacity': 1,
         'border-width': 2,
         'color': '#f8fafc',
