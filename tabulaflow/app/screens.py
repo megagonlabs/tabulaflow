@@ -1341,23 +1341,23 @@ class SchemaBrowserScreen(Screen[None]):
         )
 
         nodes = db_node.add(
-            self._graph_count_label("Nodes", len(schema.nodes)),
+            Text("Node Types", style="bold"),
             data=_NodeData(
                 kind=_NODE_KIND_GRAPH_GROUP,
                 alias=alias,
                 path=(alias, "nodes", None, None),
-                status_text=f"{alias} > Nodes  |  {len(schema.nodes):,} labels",
+                status_text=f"{alias} > Node Types  |  {len(schema.nodes):,} labels",
             ),
             expand=self._expand_for((alias, "nodes", None, None), True),
         )
         for node in sorted(schema.nodes, key=lambda n: n.label):
             label_node = nodes.add(
-                Text.assemble(node.label, ("  label", "dim")),
+                Text(node.label),
                 data=_NodeData(
                     kind=_NODE_KIND_GRAPH_NODE,
                     alias=alias,
                     path=(alias, "nodes", node.label, None),
-                    status_text=f"{alias} > Nodes > {node.label}  |  {len(node.properties):,} properties",
+                    status_text=f"{alias} > Node Types > {node.label}  |  {len(node.properties):,} properties",
                 ),
                 expand=self._expand_for((alias, "nodes", node.label, None), False),
             )
@@ -1365,7 +1365,7 @@ class SchemaBrowserScreen(Screen[None]):
 
         pattern_count = sum(len(rel.endpoints) for rel in schema.relationships)
         relationships = db_node.add(
-            self._graph_count_label("Relationship Types", len(schema.relationships)),
+            Text("Relationship Types", style="bold"),
             data=_NodeData(
                 kind=_NODE_KIND_GRAPH_GROUP,
                 alias=alias,
@@ -1377,33 +1377,22 @@ class SchemaBrowserScreen(Screen[None]):
             ),
             expand=self._expand_for((alias, "relationships", None, None), True),
         )
-        patterns = sorted(
-            ((rel, endpoint) for rel in schema.relationships for endpoint in rel.endpoints),
-            key=lambda item: (item[0].label, item[1].source_label, item[1].target_label),
-        )
-        for rel, endpoint in patterns:
-            rel_path = ("relationships", rel.label, endpoint.source_label, endpoint.target_label)
+        for rel in sorted(schema.relationships, key=lambda rel: rel.label):
+            rel_path = ("relationships", rel.label, None, None)
             rel_node = relationships.add(
-                Text.assemble(rel.label, (f"  {endpoint.source_label} -> {endpoint.target_label}", "dim")),
+                Text(rel.label),
                 data=_NodeData(
                     kind=_NODE_KIND_GRAPH_RELATIONSHIP,
                     alias=alias,
                     path=(alias, *rel_path),
-                    status_text=(
-                        f"{alias} > Relationships > {rel.label}  |  "
-                        f"{endpoint.source_label} -> {endpoint.target_label}  |  {len(rel.properties):,} properties"
-                    ),
+                    status_text=(f"{alias} > Relationship Types > {rel.label}  |  {len(rel.properties):,} properties"),
                 ),
                 expand=self._expand_for((alias, *rel_path), False),
             )
             self._add_graph_properties(rel_node, alias, rel_path, rel.properties)
 
-    @staticmethod
-    def _graph_count_label(name: str, count: int) -> Text:
-        return Text.assemble((name, "bold"), (f"  {count:,}", "dim"))
-
     def _add_graph_properties(
-        self, parent: object, alias: str, parent_path: tuple[str, ...], properties: list[Any]
+        self, parent: object, alias: str, parent_path: tuple[str | None, ...], properties: list[Any]
     ) -> None:
         from tabulaflow.core.types import GraphPropertySchema
 
@@ -1411,13 +1400,14 @@ class SchemaBrowserScreen(Screen[None]):
         name_width = max((len(prop.name) for prop in properties if isinstance(prop, GraphPropertySchema)), default=0)
         for prop in properties:
             assert isinstance(prop, GraphPropertySchema)
+            parent_label = " > ".join(part for part in parent_path if part is not None)
             parent_node.add_leaf(
                 Text.assemble(prop.name.ljust(name_width), (f"  {prop.dtype}", "dim")),
                 data=_NodeData(
                     kind=_NODE_KIND_GRAPH_PROPERTY,
                     alias=alias,
                     path=(alias, *parent_path, prop.name),
-                    status_text=f"{alias} > {' > '.join(parent_path)} > {prop.name}  |  {prop.dtype}",
+                    status_text=f"{alias} > {parent_label} > {prop.name}  |  {prop.dtype}",
                 ),
             )
 

@@ -88,11 +88,12 @@ async def test_schema_browser_renders_property_graph_schema() -> None:
         labels = _tree_label_text(tree)
 
     assert "neo  cypher" in labels
-    assert "Nodes  2" in labels
-    assert "Movie  label" in labels
+    assert "Node Types" in labels
+    assert "Movie" in labels
     assert "title     STRING" in labels
-    assert "Relationship Types  1" in labels
-    assert "ACTED_IN  Person -> Movie" in labels
+    assert "Relationship Types" in labels
+    assert "ACTED_IN" in labels
+    assert "ACTED_IN  Person -> Movie" not in labels
     assert "roles  LIST OF STRING" in labels
 
 
