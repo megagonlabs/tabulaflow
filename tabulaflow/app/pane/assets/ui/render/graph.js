@@ -4,7 +4,7 @@ import { clone, cssVar, displayValue, escapeHtml } from './shared.js';
 
 const cytoscape = window.cytoscape;
 const GRAPH_FIT_PADDING = 64;
-const GRAPH_MAX_AUTO_ZOOM = 1.05;
+const GRAPH_MAX_AUTO_ZOOM = 1.25;
 const GRAPH_DEFAULT_NODE_BORDER = '#253447';
 
 function normalizeHexColor(color) {
@@ -61,11 +61,11 @@ function graphLayoutOptions(layout) {
     animate: false,
     fit: false,
     numIter: 1000,
-    idealEdgeLength: 132,
+    idealEdgeLength: 96,
     nodeOverlap: 14,
-    nodeRepulsion: 9200,
-    componentSpacing: 96,
-    gravity: 0.09
+    nodeRepulsion: 5200,
+    componentSpacing: 60,
+    gravity: 0.16
   };
 }
 
