@@ -82,7 +82,6 @@ def _assert_card_payload(card: PaneCard, data: CardData) -> None:
             assert isinstance(node_data, dict)
             assert isinstance(node_data.get("id"), str)
             assert isinstance(node_data.get("color"), str)
-            assert isinstance(node_data.get("size"), (int, float))
         for edge in elements["edges"]:
             edge_data = edge.get("data")
             assert isinstance(edge_data, dict)
@@ -94,7 +93,9 @@ def test_record_card_payload_matches_contract(tmp_path: Path) -> None:
     df = pd.DataFrame({"region": ["north", "south"], "revenue": [10, 20]})
     spec = {"mark": "bar", "encoding": {"x": {"field": "region"}, "y": {"field": "revenue"}}}
     card = render_record_data(
-        SimpleNamespace(df=df, chart_spec=spec, query="select region, revenue from sales", label="sales", query_lexer="sql"),
+        SimpleNamespace(
+            df=df, chart_spec=spec, query="select region, revenue from sales", label="sales", query_lexer="sql"
+        ),
         tmp_path,
     )
 
@@ -126,7 +127,11 @@ def test_graph_card_payload_matches_contract(tmp_path: Path) -> None:
         SimpleNamespace(
             graph_id="GRAPH1",
             label="lineage",
-            graph_spec={"layout": "layered", "nodes": [], "edges": [{"record_id": "Q1", "source": "src", "target": "dst", "label": "rel"}]},
+            graph_spec={
+                "layout": "layered",
+                "nodes": [],
+                "edges": [{"record_id": "Q1", "source": "src", "target": "dst", "label": "rel"}],
+            },
             sources={"Q1": df},
         ),
         tmp_path,
@@ -143,7 +148,11 @@ def test_graph_card_omits_directed_flag_for_undirected_edges(tmp_path: Path) -> 
         SimpleNamespace(
             graph_id="GRAPH1",
             label="network",
-            graph_spec={"layout": "force", "nodes": [], "edges": [{"record_id": "Q1", "source": "src", "target": "dst", "directed": False}]},
+            graph_spec={
+                "layout": "force",
+                "nodes": [],
+                "edges": [{"record_id": "Q1", "source": "src", "target": "dst", "directed": False}],
+            },
             sources={"Q1": df},
         ),
         tmp_path,

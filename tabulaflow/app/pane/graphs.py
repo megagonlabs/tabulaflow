@@ -9,9 +9,6 @@ from tabulaflow.app.pane.types import GraphCardData
 from tabulaflow.toolhub.render_graph import GRAPH_MAX_EDGES, GRAPH_MAX_NODES
 
 _DEFAULT_NODE_COLOR = "#3eb489"
-_DEFAULT_NODE_SIZE = 24
-_MIN_NODE_SIZE = 14
-_MAX_NODE_SIZE = 44
 _PALETTE = [
     "#3eb489",
     "#5ac8fa",
@@ -38,7 +35,9 @@ def _field_name(value: object, field_by_column: Mapping[str, str]) -> str | None
     return field_by_column.get(name, name)
 
 
-def _rows_for(source: Mapping[str, object], sources: Mapping[str, Mapping[str, object]]) -> tuple[list[dict[str, object]], Mapping[str, str]]:
+def _rows_for(
+    source: Mapping[str, object], sources: Mapping[str, Mapping[str, object]]
+) -> tuple[list[dict[str, object]], Mapping[str, str]]:
     inline = source.get("data")
     if isinstance(inline, Sequence) and not isinstance(inline, (str, bytes, bytearray)):
         rows = [dict(row) for row in inline if isinstance(row, Mapping)]
@@ -83,42 +82,14 @@ def _tooltip(
     return out or None
 
 
-def _numeric(value: object) -> float | None:
-    if isinstance(value, bool) or value is None:
-        return None
-    try:
-        return float(value)  # type: ignore[arg-type]  # numpy scalars et al. are float-able but not typed so
-    except (TypeError, ValueError):
-        return None
-
-
-def _scale_sizes(nodes: list[dict[str, object]]) -> None:
-    values = [_numeric(node.get("_raw_size")) for node in nodes]
-    numeric_values = [value for value in values if value is not None]
-    if not numeric_values:
-        for node in nodes:
-            node["size"] = _DEFAULT_NODE_SIZE
-        return
-
-    low = min(numeric_values)
-    high = max(numeric_values)
-    for node, value in zip(nodes, values):
-        if value is None:
-            node["size"] = _DEFAULT_NODE_SIZE
-        elif high == low:
-            node["size"] = (_MIN_NODE_SIZE + _MAX_NODE_SIZE) / 2
-        else:
-            ratio = (value - low) / (high - low)
-            node["size"] = round(_MIN_NODE_SIZE + ratio * (_MAX_NODE_SIZE - _MIN_NODE_SIZE), 2)
-        node.pop("_raw_size", None)
-
-
 def _assign_colors(nodes: list[dict[str, object]]) -> None:
     groups = sorted({str(node["group"]) for node in nodes if node.get("group") is not None})
     color_by_group = {group: _PALETTE[index % len(_PALETTE)] for index, group in enumerate(groups)}
     for node in nodes:
         group = node.get("group")
-        node["color"] = color_by_group.get(str(group), _DEFAULT_NODE_COLOR) if group is not None else _DEFAULT_NODE_COLOR
+        node["color"] = (
+            color_by_group.get(str(group), _DEFAULT_NODE_COLOR) if group is not None else _DEFAULT_NODE_COLOR
+        )
 
 
 def _edge_id(index: int, node_ids: set[str]) -> str:
@@ -146,7 +117,6 @@ def build_graph_data(
                 continue
             label_field = _field_name(raw_source.get("label"), field_by_column)
             group_field = _field_name(raw_source.get("group"), field_by_column)
-            size_field = _field_name(raw_source.get("size"), field_by_column)
             for row in rows:
                 node_id = _as_str(row.get(id_field))
                 if node_id is None or node_id in nodes_by_id:
@@ -157,8 +127,6 @@ def build_graph_data(
                 }
                 if group_field and row.get(group_field) is not None:
                     node["group"] = str(row[group_field])
-                if size_field:
-                    node["_raw_size"] = row.get(size_field)
                 tooltip = _tooltip(row, raw_source.get("tooltip"), field_by_column)
                 if tooltip is not None:
                     node["tooltip"] = tooltip
@@ -207,7 +175,6 @@ def build_graph_data(
 
     node_payloads = sorted(nodes_by_id.values(), key=lambda node: str(node["id"]))
     _assign_colors(node_payloads)
-    _scale_sizes(node_payloads)
     node_ids = {str(node["id"]) for node in node_payloads}
 
     edge_payloads = sorted(

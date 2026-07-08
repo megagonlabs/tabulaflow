@@ -117,7 +117,7 @@ function graphStyles() {
         'color': '#f8fafc',
         'font-size': 10.25,
         'font-weight': 650,
-        'height': 'mapData(size, 14, 44, 38, 58)',
+        'height': 48,
         'label': 'data(label)',
         'min-zoomed-font-size': 7.5,
         'overlay-opacity': 0,
@@ -128,7 +128,7 @@ function graphStyles() {
         'text-overflow-wrap': 'anywhere',
         'text-valign': 'center',
         'text-wrap': 'wrap',
-        'width': 'mapData(size, 14, 44, 38, 58)'
+        'width': 48
       }
     },
     {

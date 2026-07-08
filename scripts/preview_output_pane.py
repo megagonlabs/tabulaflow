@@ -557,7 +557,6 @@ def _graph_network_card(pane_dir: Path) -> PaneCard:
                     "id": "id",
                     "label": "name",
                     "group": "team",
-                    "size": "score",
                     "tooltip": ["name", "team", "score"],
                 }
             ],

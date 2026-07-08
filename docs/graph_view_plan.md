@@ -48,9 +48,9 @@ design discussion, not repeated here):
 - It is the one library that cleanly spans all three layout families we need —
   **force** network, **layered DAG** (dagre) for lineage, **tree** — under one
   uniform `layout` API and one data model.
-- Declarative stylesheet maps 1:1 onto our semantic encodings (color-by-group,
-  size-by-field), keeping the agent spec semantic and the renderer owning the
-  palette — same split as the map.
+- Declarative stylesheet maps 1:1 onto our semantic color encoding, keeping the
+  agent spec semantic and the renderer owning the palette — same split as the
+  map.
 - Canvas 2D, **not WebGL**: no WebGL-context cap, so lifecycle management is
   simpler than the map's (just `cy.destroy()` on hide).
 - Built-in node dragging (`grabbable`, default on) and edge-label auto-rotation
@@ -78,7 +78,7 @@ Plus top-level `title` (string, optional) and `layout`
 
 Each `nodes`/`edges` entry reads from **either** a query result (`record_id`)
 **or** inline literal data (`data`) — never both. Field keys
-(`id`/`label`/`group`/`size`/`source`/`target`/`tooltip`) name **columns** of the
+(`id`/`label`/`group`/`source`/`target`/`tooltip`) name **columns** of the
 named record in column mode, or **property names** of the inline objects in
 inline mode.
 
@@ -96,7 +96,6 @@ inline mode.
 | `id` | yes | Column/property holding the node's unique id. Edge endpoints join to this. |
 | `label` | no | Short display caption. Defaults to the id. |
 | `group` | no | Field name for categorical color, e.g. `"type"` (a plain string; the pane chooses the palette). |
-| `size` | no | Field name for numeric size, e.g. `"score"` (a plain string; the pane chooses the radius range). |
 | `tooltip` | no | Column/property, list, or `true` (all safe scalar fields). |
 
 ### 1.2 Edge source
@@ -141,7 +140,7 @@ Normalized two-source with encodings:
   "layout": "force",
   "nodes": [
     { "record_id": "Q1", "id": "id", "label": "name",
-      "group": "type", "size": "score", "tooltip": ["name","type"] }
+      "group": "type", "tooltip": ["name","type"] }
   ],
   "edges": [
     { "record_id": "Q2", "source": "from_id", "target": "to_id",
@@ -213,12 +212,12 @@ app/tui.py snapshot dispatch     render_graph_data(snap, dir)  window.TF.renderG
 ### 2.1 Tool (`tabulaflow/toolhub/render_graph.py`) — mirror `render_map.py`
 
 - Pydantic models with `extra="forbid"`: `_NodeSource`, `_EdgeSource`,
-  `_GraphSpec` (`title`, `layout`, `nodes`, `edges`, `subgraph`). Node `group`/
-  `size`, edge `source`/`target`/`label`, and `tooltip` are plain `str | None`
+  `_GraphSpec` (`title`, `layout`, `nodes`, `edges`, `subgraph`). Node `group`,
+  edge `source`/`target`/`label`, and `tooltip` are plain `str | None`
   (or `str | list[str] | Literal[True]` for tooltip) field names — **not**
-  encoding objects. v1 keeps `group: "type"` / `size: "score"` as simple
-  column/property names; the pane owns palette and radius range. `directed` is
-  `bool = True` per edge source. `layout` is `Literal["force","layered","tree"]`.
+  encoding objects. v1 keeps `group: "type"` as a simple column/property name;
+  the pane owns the palette. `directed` is `bool = True` per edge source.
+  `layout` is `Literal["force","layered","tree"]`.
 - `parse_graph_spec(spec) -> _GraphSpec` (raise `GraphSpecError` with a friendly
   message — copy `_validation_message`).
 - `referenced_record_ids(parsed) -> list[str]` over all `nodes`/`edges`/`subgraph`
@@ -353,17 +352,14 @@ the row values in hand).
 `build_graph_data` steps:
 1. For each `nodes` entry: read `sources[record_id].rows` (or the inline `data`);
    rewrite column names → compact field names via that source's
-   `field_by_column`; emit node records `{id, label, group?, size?, tooltip?}`.
+   `field_by_column`; emit node records `{id, label, group?, tooltip?}`.
 2. Assemble the merged node set; dedup by `id` (first wins).
-3. **Precompute presentation** (the pane owns palette/range, so do it here, in
+3. **Precompute presentation** (the pane owns the palette, so do it here, in
    Python, not in the stylesheet):
    - `color`: map each distinct `group` value → a stable categorical palette
      entry (a fixed hex list in `app/pane/graphs.py`); write it to each node's
      `data.color`. **Do not** rely on Cytoscape `mapData` for categories —
      `mapData` is numeric. Nodes without a `group` get the default mint.
-   - `size`: map the numeric `size` field over its min/max to a pixel radius
-     range (e.g. 12–48px) and write `data.size` as the final pixel value, so the
-     stylesheet needs no per-graph domain.
 4. For each `edges` entry: read rows; resolve `source`/`target`; for endpoints
    not already a node, create an id-only node and increment `unmatchedNodes`.
    Emit edge records `{id (synth), source, target, label?, directed, tooltip?}`
@@ -375,7 +371,7 @@ the row values in hand).
      "graph": {
        "layout": "force",
        "elements": {
-         "nodes": [{"data": {"id":"n1","label":"…","group":"team-a","color":"#3eb489","size":24}}],
+         "nodes": [{"data": {"id":"n1","label":"…","group":"team-a","color":"#3eb489"}}],
          "edges": [{"data": {"id":"e1","source":"n1","target":"n2","label":"…","directed":true}}]
        },
        "meta": {"unmatchedNodes": 0}
@@ -418,9 +414,8 @@ the row values in hand).
     is **precomputed into element data** by `build_graph_data`, so the stylesheet
     just reads it — no `mapData`:
     - `node`: `background-color: data(color)` (mint `#3eb489` default is baked in
-      when `color` is absent); `width/height: data(size)` (falls back to a fixed
-      default when absent); `label: data(label)`; `text-valign/halign`
-      centered/right.
+      when `color` is absent); fixed `width`/`height`; `label: data(label)`;
+      `text-valign/halign` centered/right.
     - `edge`: `curve-style: bezier`; `label: data(label)`;
       `text-rotation: autorotate`; `text-margin-y: -8`; muted stroke (`#6a737d`).
       Arrowheads are **per edge**: a selector `edge[?directed]` (or
@@ -480,7 +475,7 @@ gallery.
 
 **Phase 1 — Foundation (column mode, the whole vertical slice).**
 `nodes`/`edges` column sources (single + multi-record), force/layered/tree,
-color + size encodings, full plumbing (tool → history → citation → chat result →
+color encoding, full plumbing (tool → history → citation → chat result →
 tui snapshot → `render_graph_data` → `build_graph_data` → `renderGraph`), assets,
 CSS, view-only card, terminal placeholder. Ship the whole path for column mode
 before anything else. Add unit tests mirroring the render_map / build_map_data

@@ -46,7 +46,6 @@ class _NodeSource(_SourceModel):
     id: str
     label: str | None = None
     group: str | None = None
-    size: str | None = None
     tooltip: str | list[str] | Literal[True] | None = None
 
 
@@ -158,7 +157,7 @@ def _normalize_node_source(df: pd.DataFrame | None, source: _NodeSource, index: 
 
         out = {"record_id": source.record_id, "id": resolve_field(source.id, path=f"nodes[{index}].id")}
 
-    for key in ("label", "group", "size"):
+    for key in ("label", "group"):
         field = _optional_field(resolve_field, getattr(source, key), path=f"nodes[{index}].{key}")
         if field is not None:
             out[key] = field
@@ -239,7 +238,9 @@ def _neo4j_node_group(node: object, group: str | None) -> str:
     return ":".join(labels) if labels else "node"
 
 
-def _extract_subgraph_source(df: pd.DataFrame, source: _SubgraphSource, index: int) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+def _extract_subgraph_source(
+    df: pd.DataFrame, source: _SubgraphSource, index: int
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     nodes: dict[str, dict[str, Any]] = {}
     edges: dict[str, dict[str, Any]] = {}
 
@@ -367,7 +368,16 @@ def resolve_graph_spec(parsed: _GraphSpec, sources: Mapping[str, pd.DataFrame]) 
             raise GraphSpecError(f"subgraph[{index}] references unknown record_id {sub_source.record_id!r}")
         sub_nodes, sub_edges = _extract_subgraph_source(df, sub_source, index)
         nodes.append({"data": sub_nodes, "id": "id", "label": "label", "group": "group", "tooltip": True})
-        edges.append({"data": sub_edges, "source": "source", "target": "target", "label": "label", "directed": True, "tooltip": True})
+        edges.append(
+            {
+                "data": sub_edges,
+                "source": "source",
+                "target": "target",
+                "label": "label",
+                "directed": True,
+                "tooltip": True,
+            }
+        )
 
     if not edges:
         raise GraphSpecError("graph_spec must include at least one edge-bearing source")
@@ -488,7 +498,7 @@ class RenderGraphTool:
           nodes, relationships, or paths.
         - Node source:
           Column mode:
-          ``{"record_id":"Q1","id":"id","label":"name","group":"type","size":"score"}``.
+          ``{"record_id":"Q1","id":"id","label":"name","group":"type"}``.
           Inline mode:
           ``{"data":[{"id":"a","name":"A"}],"id":"id","label":"name"}``.
           Optional ``tooltip`` is a field name, list of field names, or ``true``.

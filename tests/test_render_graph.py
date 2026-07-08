@@ -39,12 +39,12 @@ class TestNormalizeGraphSpec:
         edges = pd.DataFrame({"from_id": ["a"], "to_id": ["b"], "rel": ["knows"]})
         spec = {
             "layout": "layered",
-            "nodes": [{"record_id": "Q1", "id": "id", "label": "name", "group": "team", "size": "score"}],
+            "nodes": [{"record_id": "Q1", "id": "id", "label": "name", "group": "team"}],
             "edges": [{"record_id": "Q2", "source": "from_id", "target": "to_id", "label": "rel", "directed": False}],
         }
         assert _norm(spec, Q1=nodes, Q2=edges) == {
             "layout": "layered",
-            "nodes": [{"record_id": "Q1", "id": "id", "label": "name", "group": "team", "size": "score"}],
+            "nodes": [{"record_id": "Q1", "id": "id", "label": "name", "group": "team"}],
             "edges": [{"record_id": "Q2", "source": "from_id", "target": "to_id", "label": "rel", "directed": False}],
         }
 
@@ -62,6 +62,14 @@ class TestNormalizeGraphSpec:
     def test_requires_edge_source(self) -> None:
         with pytest.raises(ValueError, match="edge-bearing"):
             _norm({"nodes": [{"data": [{"id": "a"}], "id": "id"}]})
+
+    def test_node_size_is_not_supported(self) -> None:
+        spec = {
+            "nodes": [{"data": [{"id": "a", "score": 1}], "id": "id", "size": "score"}],
+            "edges": [{"data": [{"from": "a", "to": "b"}], "source": "from", "target": "to"}],
+        }
+        with pytest.raises(ValueError, match="size"):
+            _norm(spec)
 
     def test_field_not_found_lists_columns(self) -> None:
         df = pd.DataFrame({"src": ["a"], "dst": ["b"]})
