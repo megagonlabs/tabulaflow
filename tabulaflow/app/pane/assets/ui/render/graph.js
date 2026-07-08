@@ -3,6 +3,8 @@
 import { clone, cssVar, displayValue, escapeHtml } from './shared.js';
 
 const cytoscape = window.cytoscape;
+const GRAPH_FIT_PADDING = 56;
+const GRAPH_MAX_AUTO_ZOOM = 1.15;
 
 function graphElements(graphData) {
   var elements = graphData.elements || {};
@@ -14,21 +16,22 @@ function graphElements(graphData) {
 
 function graphLayoutOptions(layout) {
   if (layout === 'layered') {
-    return { name: 'dagre', rankDir: 'TB', nodeSep: 36, rankSep: 74, edgeSep: 12, animate: false };
+    return { name: 'dagre', rankDir: 'TB', nodeSep: 58, rankSep: 92, edgeSep: 18, fit: false, animate: false };
   }
   if (layout === 'tree') {
-    return { name: 'breadthfirst', directed: true, spacingFactor: 1.25, animate: false };
+    return { name: 'breadthfirst', directed: true, spacingFactor: 1.45, fit: false, animate: false };
   }
   return {
     name: 'cose',
     randomize: false,
     animate: false,
-    fit: true,
-    padding: 32,
-    numIter: 800,
-    idealEdgeLength: 96,
-    nodeRepulsion: 6400,
-    gravity: 0.18
+    fit: false,
+    numIter: 1000,
+    idealEdgeLength: 140,
+    nodeOverlap: 12,
+    nodeRepulsion: 8800,
+    componentSpacing: 92,
+    gravity: 0.08
   };
 }
 
@@ -39,17 +42,21 @@ function graphStyles() {
       style: {
         'background-color': 'data(color)',
         'border-color': '#0f1117',
-        'border-width': 1,
+        'border-width': 1.5,
         'color': cssVar('--text', '#e4e4e7'),
-        'font-size': 11,
+        'font-size': 10,
+        'font-weight': 650,
         'height': 'data(size)',
         'label': 'data(label)',
-        'min-zoomed-font-size': 8,
+        'min-zoomed-font-size': 7,
         'overlay-opacity': 0,
         'text-halign': 'center',
+        'text-margin-y': 7,
+        'text-max-width': 90,
         'text-outline-color': cssVar('--card', '#1a212c'),
-        'text-outline-width': 2,
-        'text-valign': 'center',
+        'text-outline-width': 1.25,
+        'text-valign': 'bottom',
+        'text-wrap': 'wrap',
         'width': 'data(size)'
       }
     },
@@ -58,18 +65,19 @@ function graphStyles() {
       style: {
         'color': cssVar('--text-muted', '#9aa4b2'),
         'curve-style': 'bezier',
-        'font-size': 10,
+        'font-size': 8,
         'label': 'data(label)',
-        'line-color': '#6a737d',
-        'min-zoomed-font-size': 8,
-        'opacity': 0.78,
-        'target-arrow-color': '#6a737d',
+        'line-color': '#65707f',
+        'min-zoomed-font-size': 6,
+        'opacity': 0.66,
+        'arrow-scale': 0.85,
+        'target-arrow-color': '#65707f',
         'text-background-color': cssVar('--card', '#1a212c'),
-        'text-background-opacity': 0.86,
+        'text-background-opacity': 0.72,
         'text-background-padding': 2,
-        'text-margin-y': -8,
+        'text-margin-y': -7,
         'text-rotation': 'autorotate',
-        'width': 1.25
+        'width': 1
       }
     },
     {
@@ -94,6 +102,22 @@ function graphStyles() {
       }
     }
   ];
+}
+
+function fitGraph(cy, graphNode) {
+  if (!cy || !cy.elements().length || !graphNode) return;
+  cy.resize();
+  cy.fit(cy.elements(), GRAPH_FIT_PADDING);
+  if (cy.zoom() > GRAPH_MAX_AUTO_ZOOM) {
+    cy.zoom({
+      level: GRAPH_MAX_AUTO_ZOOM,
+      renderedPosition: {
+        x: graphNode.clientWidth / 2,
+        y: graphNode.clientHeight / 2
+      }
+    });
+    cy.center(cy.elements());
+  }
 }
 
 function graphDetailHtml(ele) {
@@ -197,11 +221,11 @@ export function renderGraph(container, cardData) {
         textureOnViewport: true,
         wheelSensitivity: 0.18,
         minZoom: 0.08,
-        maxZoom: 3
+        maxZoom: 2.25
       });
       container._tfCy = cy;
       cy.on('layoutstop', function () {
-        if (cy && cy.elements().length) cy.fit(cy.elements(), 28);
+        fitGraph(cy, graphNode);
       });
       cy.on('mouseover', 'node, edge', function (event) {
         graphNode.style.cursor = 'pointer';
@@ -229,8 +253,7 @@ export function renderGraph(container, cardData) {
       initGraph();
       requestAnimationFrame(function () {
         if (cy) {
-          cy.resize();
-          cy.fit(cy.elements(), 28);
+          fitGraph(cy, graphNode);
         }
       });
     },
