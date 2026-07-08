@@ -50,10 +50,10 @@ function graphElements(graphData) {
 
 function graphLayoutOptions(layout) {
   if (layout === 'layered') {
-    return { name: 'dagre', rankDir: 'TB', nodeSep: 60, rankSep: 92, edgeSep: 16, fit: false, animate: false };
+    return { name: 'dagre', rankDir: 'TB', nodeSep: 52, rankSep: 78, edgeSep: 12, fit: false, animate: false };
   }
   if (layout === 'tree') {
-    return { name: 'breadthfirst', directed: true, spacingFactor: 1.4, fit: false, animate: false };
+    return { name: 'breadthfirst', directed: true, spacingFactor: 1.25, fit: false, animate: false };
   }
   return {
     name: 'cose',
@@ -61,11 +61,11 @@ function graphLayoutOptions(layout) {
     animate: false,
     fit: false,
     numIter: 1000,
-    idealEdgeLength: 96,
+    idealEdgeLength: 82,
     nodeOverlap: 14,
-    nodeRepulsion: 5200,
-    componentSpacing: 60,
-    gravity: 0.16
+    nodeRepulsion: 3900,
+    componentSpacing: 48,
+    gravity: 0.22
   };
 }
 
