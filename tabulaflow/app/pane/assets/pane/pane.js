@@ -70,16 +70,18 @@ function buildManualArtifactTitle(turn) {
 }
 
 function turnMeta(turn) {
-  var counts = { map: 0, chart: 0, table: 0 };
+  var counts = { map: 0, graph: 0, chart: 0, table: 0 };
   (turn.cards || []).forEach(function (card) {
     var kinds = card.views || [];
     if (kinds.indexOf('map') !== -1) counts.map += 1;
+    else if (kinds.indexOf('graph') !== -1) counts.graph += 1;
     else if (kinds.indexOf('chart') !== -1) counts.chart += 1;
     else if (kinds.indexOf('data') !== -1) counts.table += 1;
   });
-  if (turn.source === 'manual' && counts.table === 1 && counts.chart === 0 && counts.map === 0) return 'table preview';
+  if (turn.source === 'manual' && counts.table === 1 && counts.chart === 0 && counts.map === 0 && counts.graph === 0) return 'table preview';
   var parts = [];
   if (counts.map) parts.push(counts.map + (counts.map === 1 ? ' map' : ' maps'));
+  if (counts.graph) parts.push(counts.graph + (counts.graph === 1 ? ' graph' : ' graphs'));
   if (counts.chart) parts.push(counts.chart + (counts.chart === 1 ? ' chart' : ' charts'));
   if (counts.table) parts.push(counts.table + (counts.table === 1 ? ' table' : ' tables'));
   return parts.join(' · ');
@@ -226,6 +228,7 @@ function scheduleIdle(fn) {
 function cacheEntryWeight(entry) {
   if (!entry) return 0;
   if (entry.kind === 'map') return 3;
+  if (entry.kind === 'graph') return 3;
   return 1;
 }
 
@@ -271,6 +274,7 @@ function getCachedCardData(card) {
 
 function renderKind(node, kind, data) {
   if (kind === 'map') return TF.renderMap(node, data);
+  if (kind === 'graph') return TF.renderGraph(node, data);
   if (kind === 'chart') return TF.renderChart(node, data);
   if (kind === 'data') return TF.renderTable(node, data);
   if (kind === 'query') return TF.renderQuery(node, data);

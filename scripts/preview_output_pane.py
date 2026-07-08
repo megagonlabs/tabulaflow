@@ -29,8 +29,9 @@ import pandas as pd
 from tabulaflow.app import pane as pane_mod
 from tabulaflow.app.debug import debug_chart_fixtures
 from tabulaflow.app.pane import PaneCard, PaneSource, card_payload, turn_payload
-from tabulaflow.app.pane.cards import render_map_data, render_record_data
+from tabulaflow.app.pane.cards import render_graph_data, render_map_data, render_record_data
 from tabulaflow.app.pane import server as pane_server
+from tabulaflow.toolhub.render_graph import normalize_graph_spec
 from tabulaflow.toolhub.render_map import normalize_map_spec
 
 
@@ -65,6 +66,24 @@ def _map_card(
     normalized = normalize_map_spec({"title": title, "layers": layers}, sources)
     card = render_map_data(
         SimpleNamespace(map_id=map_id, label=label, map_spec=normalized, sources=sources),
+        pane_dir,
+    )
+    assert card is not None
+    return card
+
+
+def _graph_card(
+    *,
+    graph_id: str,
+    label: str,
+    graph_spec: dict[str, object],
+    sources: dict[str, pd.DataFrame],
+    pane_dir: Path,
+) -> PaneCard:
+    """Build a graph card via the real spec → normalize → render pipeline."""
+    normalized = normalize_graph_spec(graph_spec, sources)
+    card = render_graph_data(
+        SimpleNamespace(graph_id=graph_id, label=label, graph_spec=normalized, sources=sources),
         pane_dir,
     )
     assert card is not None
@@ -503,6 +522,90 @@ def _map_overlay_card(pane_dir: Path) -> PaneCard:
     )
 
 
+def _graph_network_card(pane_dir: Path) -> PaneCard:
+    nodes = pd.DataFrame(
+        [
+            {"id": "alice", "name": "Alice", "team": "Research", "score": 94},
+            {"id": "bob", "name": "Bob", "team": "Research", "score": 78},
+            {"id": "carol", "name": "Carol", "team": "Product", "score": 88},
+            {"id": "dina", "name": "Dina", "team": "Design", "score": 70},
+            {"id": "eli", "name": "Eli", "team": "Data", "score": 82},
+            {"id": "faye", "name": "Faye", "team": "Data", "score": 66},
+        ]
+    )
+    edges = pd.DataFrame(
+        [
+            {"src": "alice", "dst": "bob", "rel": "coauthors", "weight": 5},
+            {"src": "alice", "dst": "carol", "rel": "advises", "weight": 3},
+            {"src": "bob", "dst": "dina", "rel": "reviews", "weight": 2},
+            {"src": "carol", "dst": "eli", "rel": "partners", "weight": 4},
+            {"src": "eli", "dst": "faye", "rel": "mentors", "weight": 2},
+            {"src": "faye", "dst": "alice", "rel": "syncs", "weight": 1},
+        ]
+    )
+    return _graph_card(
+        graph_id="GRAPHDEBUG_NETWORK",
+        label="collaboration_network",
+        pane_dir=pane_dir,
+        sources={"Q_GRAPH_NODES": nodes, "Q_GRAPH_EDGES": edges},
+        graph_spec={
+            "title": "Collaboration network",
+            "layout": "force",
+            "nodes": [
+                {
+                    "record_id": "Q_GRAPH_NODES",
+                    "id": "id",
+                    "label": "name",
+                    "group": "team",
+                    "size": "score",
+                    "tooltip": ["name", "team", "score"],
+                }
+            ],
+            "edges": [
+                {
+                    "record_id": "Q_GRAPH_EDGES",
+                    "source": "src",
+                    "target": "dst",
+                    "label": "rel",
+                    "tooltip": ["rel", "weight"],
+                }
+            ],
+        },
+    )
+
+
+def _graph_lineage_card(pane_dir: Path) -> PaneCard:
+    edges = pd.DataFrame(
+        [
+            {"from_id": "raw_events", "to_id": "stg_events", "rel": "feeds"},
+            {"from_id": "raw_accounts", "to_id": "stg_accounts", "rel": "feeds"},
+            {"from_id": "stg_events", "to_id": "fct_sessions", "rel": "builds"},
+            {"from_id": "stg_accounts", "to_id": "dim_accounts", "rel": "builds"},
+            {"from_id": "fct_sessions", "to_id": "mart_growth", "rel": "aggregates"},
+            {"from_id": "dim_accounts", "to_id": "mart_growth", "rel": "joins"},
+        ]
+    )
+    return _graph_card(
+        graph_id="GRAPHDEBUG_LINEAGE",
+        label="dbt_lineage",
+        pane_dir=pane_dir,
+        sources={"Q_LINEAGE": edges},
+        graph_spec={
+            "title": "dbt lineage DAG",
+            "layout": "layered",
+            "edges": [
+                {
+                    "record_id": "Q_LINEAGE",
+                    "source": "from_id",
+                    "target": "to_id",
+                    "label": "rel",
+                    "tooltip": ["rel"],
+                }
+            ],
+        },
+    )
+
+
 def _wav_bytes(freq_hz: float, seconds: float = 0.4, rate: int = 8000) -> bytes:
     n_samples = int(seconds * rate)
     samples = bytearray()
@@ -686,6 +789,25 @@ def _populate_pane(
                 "store points from another. Each layer reads from its own source dataset."
             ),
             cards=[_map_overlay_card(pane_dir)],
+        )
+        _push_turn(
+            pane,
+            pane_dir,
+            title="Graph network",
+            user="Show a collaboration network as a node-link graph.",
+            assistant=(
+                "This graph uses one query result for node attributes and another for edges. "
+                "Node color and size are semantic encodings precomputed for the browser renderer."
+            ),
+            cards=[_graph_network_card(pane_dir)],
+        )
+        _push_turn(
+            pane,
+            pane_dir,
+            title="Graph lineage DAG",
+            user="Show a lineage graph with a layered layout.",
+            assistant="This graph derives nodes from edge endpoints and renders them with a deterministic layered layout.",
+            cards=[_graph_lineage_card(pane_dir)],
         )
         _push_turn(
             pane,

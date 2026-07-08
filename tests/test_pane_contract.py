@@ -133,3 +133,21 @@ def test_graph_card_payload_matches_contract(tmp_path: Path) -> None:
     assert card is not None
     assert card["views"] == ["graph"]
     _assert_card_payload(card, _load_card_data(card, tmp_path))
+
+
+def test_graph_card_omits_directed_flag_for_undirected_edges(tmp_path: Path) -> None:
+    df = pd.DataFrame({"src": ["a"], "dst": ["b"]})
+    card = render_graph_data(
+        SimpleNamespace(
+            graph_id="GRAPH1",
+            label="network",
+            graph_spec={"layout": "force", "nodes": [], "edges": [{"record_id": "Q1", "source": "src", "target": "dst", "directed": False}]},
+            sources={"Q1": df},
+        ),
+        tmp_path,
+    )
+
+    assert card is not None
+    data = _load_card_data(card, tmp_path)
+    edge_data = data["graph"]["elements"]["edges"][0]["data"]
+    assert "directed" not in edge_data

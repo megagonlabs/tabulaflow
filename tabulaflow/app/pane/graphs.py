@@ -190,8 +190,9 @@ def build_graph_data(
                 edge: dict[str, object] = {
                     "source": source_id,
                     "target": target_id,
-                    "directed": directed,
                 }
+                if directed:
+                    edge["directed"] = True
                 if label_field and row.get(label_field) is not None:
                     edge["label"] = str(row[label_field])
                 tooltip = _tooltip(row, raw_source.get("tooltip"), field_by_column)

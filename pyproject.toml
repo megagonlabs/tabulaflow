@@ -74,6 +74,7 @@ tabulaflow = [
     "app/assets/maplibre/*",
     "app/assets/tabulator/*",
     "app/assets/vega/*",
+    "app/pane/assets/cytoscape/*",
 ]
 
 [tool.ruff]

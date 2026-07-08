@@ -477,7 +477,7 @@ def test_pane_table_renderer_does_not_max_height_short_tables() -> None:
 
 
 def test_pane_chart_shell_matches_vega_background() -> None:
-    assert ".view-shell.view-chart,\n.view-shell.view-map { background: var(--card); }" in _PANE_HTML
+    assert ".view-shell.view-chart,\n.view-shell.view-map,\n.view-shell.view-graph { background: var(--card); }" in _PANE_HTML
     assert ".tf-chart-view,\n.tf-vis-stage { background: var(--card); }" in _PANE_HTML
 
 
