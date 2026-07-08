@@ -78,14 +78,16 @@ def _assert_card_payload(card: PaneCard, data: CardData) -> None:
         assert isinstance(elements["nodes"], list)
         assert isinstance(elements["edges"], list)
         for node in elements["nodes"]:
-            assert isinstance(node.get("data"), dict)
-            assert isinstance(node["data"].get("id"), str)
-            assert isinstance(node["data"].get("color"), str)
-            assert isinstance(node["data"].get("size"), (int, float))
+            node_data = node.get("data")
+            assert isinstance(node_data, dict)
+            assert isinstance(node_data.get("id"), str)
+            assert isinstance(node_data.get("color"), str)
+            assert isinstance(node_data.get("size"), (int, float))
         for edge in elements["edges"]:
-            assert isinstance(edge.get("data"), dict)
-            assert isinstance(edge["data"].get("source"), str)
-            assert isinstance(edge["data"].get("target"), str)
+            edge_data = edge.get("data")
+            assert isinstance(edge_data, dict)
+            assert isinstance(edge_data.get("source"), str)
+            assert isinstance(edge_data.get("target"), str)
 
 
 def test_record_card_payload_matches_contract(tmp_path: Path) -> None:
@@ -150,4 +152,5 @@ def test_graph_card_omits_directed_flag_for_undirected_edges(tmp_path: Path) -> 
     assert card is not None
     data = _load_card_data(card, tmp_path)
     edge_data = data["graph"]["elements"]["edges"][0]["data"]
+    assert isinstance(edge_data, dict)
     assert "directed" not in edge_data

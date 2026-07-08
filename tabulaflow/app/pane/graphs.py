@@ -87,7 +87,7 @@ def _numeric(value: object) -> float | None:
     if isinstance(value, bool) or value is None:
         return None
     try:
-        return float(value)
+        return float(value)  # type: ignore[arg-type]  # numpy scalars et al. are float-able but not typed so
     except (TypeError, ValueError):
         return None
 
@@ -222,13 +222,18 @@ def build_graph_data(
     for index, edge in enumerate(edge_payloads, start=1):
         edge["id"] = _edge_id(index, node_ids)
 
-    return {
-        "graph": {
-            "layout": graph_spec.get("layout") if graph_spec.get("layout") in {"force", "layered", "tree"} else "force",
-            "elements": {
-                "nodes": [{"data": node} for node in node_payloads],
-                "edges": [{"data": edge} for edge in edge_payloads],
-            },
-            "meta": {"unmatchedNodes": unmatched_nodes},
-        }
-    }
+    raw_layout = graph_spec.get("layout")
+    layout = raw_layout if isinstance(raw_layout, str) and raw_layout in {"force", "layered", "tree"} else "force"
+    return cast(
+        GraphCardData,
+        {
+            "graph": {
+                "layout": layout,
+                "elements": {
+                    "nodes": [{"data": node} for node in node_payloads],
+                    "edges": [{"data": edge} for edge in edge_payloads],
+                },
+                "meta": {"unmatchedNodes": unmatched_nodes},
+            }
+        },
+    )

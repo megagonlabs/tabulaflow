@@ -370,12 +370,11 @@ July 6
 - [x] Multiple records for map
 
 July 7 
-- [ ] Revise output pane code boundary and modularity
+- [x] Revise output pane code boundary -> /pane package
 - [ ] Graph rendering
 
 - [ ] Remote server improvements
 
-- [ ] Graph rendering
 - [ ] code diff rendering
 
 - [ ] Remote server support

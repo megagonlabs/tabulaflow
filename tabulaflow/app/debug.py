@@ -815,7 +815,7 @@ def _build_debug_multi_result_widget(app: TabulaflowApp) -> AgentResultWidget:
 
     import pandas as pd
 
-    from tabulaflow.chat import ChatResult, ChatResultMap, ChatResultRecord
+    from tabulaflow.chat import ChatResult, ChatResultGraph, ChatResultMap, ChatResultRecord
 
     rng = random.Random(20260423)
 
@@ -991,7 +991,7 @@ def _build_debug_multi_result_widget(app: TabulaflowApp) -> AgentResultWidget:
             "title": label.replace("_", " ").title(),
         }
 
-    records: list[ChatResultRecord | ChatResultMap] = []
+    records: list[ChatResultRecord | ChatResultMap | ChatResultGraph] = []
     for i, (label, query, columns, n_rows) in enumerate(record_specs):
         # Every 3rd record is query-only, every 2nd of the rest has a chart,
         # so the final mix is: 5 chart+data+query, 5 data+query, 5 query-only.
@@ -1238,9 +1238,9 @@ def _build_debug_chart_result_widget(app: TabulaflowApp) -> AgentResultWidget:
     preview inline via plotext; stacked-bar/pie/facet/heatmap show the
     "open in browser" card (Enter → ``b`` renders the real chart).
     """
-    from tabulaflow.chat import ChatResult, ChatResultMap, ChatResultRecord
+    from tabulaflow.chat import ChatResult, ChatResultGraph, ChatResultMap, ChatResultRecord
 
-    records: list[ChatResultRecord | ChatResultMap] = [
+    records: list[ChatResultRecord | ChatResultMap | ChatResultGraph] = [
         ChatResultRecord(record_id=rid, label=label, query=query, df=df, chart_spec=spec, query_lexer="sql")
         for rid, label, query, df, spec in debug_chart_fixtures()
     ]

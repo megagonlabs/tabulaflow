@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Mapping
 
 import pandas as pd
 import pytest
@@ -19,7 +20,7 @@ async def _history_with(*dfs: pd.DataFrame) -> QueryHistory:
     return history
 
 
-def _norm(spec: dict, **sources: pd.DataFrame) -> dict:
+def _norm(spec: Mapping[str, object], **sources: pd.DataFrame) -> dict[str, object]:
     return normalize_graph_spec(spec, sources)
 
 

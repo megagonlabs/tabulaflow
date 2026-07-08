@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import copy
 import json
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any, ClassVar, Literal
 
@@ -124,13 +124,15 @@ def _inline_field(rows: Sequence[Mapping[str, object]], value: str | None, *, pa
     return value
 
 
-def _optional_field(resolve_field: Any, value: str | None, *, path: str) -> str | None:
+def _optional_field(resolve_field: Callable[..., str], value: str | None, *, path: str) -> str | None:
     if value is None:
         return None
     return resolve_field(value, path=path)
 
 
-def _tooltip(resolve_field: Any, value: str | list[str] | Literal[True] | None, *, path: str) -> str | list[str] | bool | None:
+def _tooltip(
+    resolve_field: Callable[..., str], value: str | list[str] | Literal[True] | None, *, path: str
+) -> str | list[str] | bool | None:
     if value is None:
         return None
     if value is True:
@@ -329,7 +331,12 @@ def parse_graph_spec(spec: Mapping[str, object]) -> _GraphSpec:
 def referenced_record_ids(parsed: _GraphSpec) -> list[str]:
     """Return the distinct query-history record ids referenced by a parsed spec."""
     ids: list[str] = []
-    for source in [*parsed.nodes, *parsed.edges, *parsed.subgraph]:
+    all_sources: list[_NodeSource | _EdgeSource | _SubgraphSource] = [
+        *parsed.nodes,
+        *parsed.edges,
+        *parsed.subgraph,
+    ]
+    for source in all_sources:
         rid = source.record_id
         if rid and rid not in ids:
             ids.append(rid)
@@ -344,21 +351,21 @@ def resolve_graph_spec(parsed: _GraphSpec, sources: Mapping[str, pd.DataFrame]) 
 
     nodes: list[dict[str, Any]] = []
     edges: list[dict[str, Any]] = []
-    for index, source in enumerate(parsed.nodes):
-        df = sources.get(source.record_id) if source.record_id is not None else None
-        if source.record_id is not None and df is None:
-            raise GraphSpecError(f"nodes[{index}] references unknown record_id {source.record_id!r}")
-        nodes.append(_normalize_node_source(df, source, index))
-    for index, source in enumerate(parsed.edges):
-        df = sources.get(source.record_id) if source.record_id is not None else None
-        if source.record_id is not None and df is None:
-            raise GraphSpecError(f"edges[{index}] references unknown record_id {source.record_id!r}")
-        edges.append(_normalize_edge_source(df, source, index))
-    for index, source in enumerate(parsed.subgraph):
-        df = sources.get(source.record_id)
+    for index, node_source in enumerate(parsed.nodes):
+        df = sources.get(node_source.record_id) if node_source.record_id is not None else None
+        if node_source.record_id is not None and df is None:
+            raise GraphSpecError(f"nodes[{index}] references unknown record_id {node_source.record_id!r}")
+        nodes.append(_normalize_node_source(df, node_source, index))
+    for index, edge_source in enumerate(parsed.edges):
+        df = sources.get(edge_source.record_id) if edge_source.record_id is not None else None
+        if edge_source.record_id is not None and df is None:
+            raise GraphSpecError(f"edges[{index}] references unknown record_id {edge_source.record_id!r}")
+        edges.append(_normalize_edge_source(df, edge_source, index))
+    for index, sub_source in enumerate(parsed.subgraph):
+        df = sources.get(sub_source.record_id)
         if df is None:
-            raise GraphSpecError(f"subgraph[{index}] references unknown record_id {source.record_id!r}")
-        sub_nodes, sub_edges = _extract_subgraph_source(df, source, index)
+            raise GraphSpecError(f"subgraph[{index}] references unknown record_id {sub_source.record_id!r}")
+        sub_nodes, sub_edges = _extract_subgraph_source(df, sub_source, index)
         nodes.append({"data": sub_nodes, "id": "id", "label": "label", "group": "group", "tooltip": True})
         edges.append({"data": sub_edges, "source": "source", "target": "target", "label": "label", "directed": True, "tooltip": True})
 
@@ -398,7 +405,8 @@ def _node_id(value: object) -> str | None:
 def graph_size(graph_spec: Mapping[str, object], sources: Mapping[str, pd.DataFrame]) -> GraphSize:
     """Compute final unique node and valid edge counts for a normalized graph spec."""
     node_ids: set[str] = set()
-    for raw_source in graph_spec.get("nodes", []):
+    raw_nodes = graph_spec.get("nodes")
+    for raw_source in raw_nodes if isinstance(raw_nodes, list) else []:
         if not isinstance(raw_source, Mapping):
             continue
         id_field = raw_source.get("id")
@@ -408,7 +416,8 @@ def graph_size(graph_spec: Mapping[str, object], sources: Mapping[str, pd.DataFr
                 node_ids.add(node_id)
 
     edge_count = 0
-    for raw_source in graph_spec.get("edges", []):
+    raw_edges = graph_spec.get("edges")
+    for raw_source in raw_edges if isinstance(raw_edges, list) else []:
         if not isinstance(raw_source, Mapping):
             continue
         source_field = raw_source.get("source")
