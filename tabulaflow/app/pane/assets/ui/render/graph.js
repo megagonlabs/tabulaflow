@@ -48,6 +48,11 @@ function graphElements(graphData) {
   };
 }
 
+function idealForceEdgeLength(edge) {
+  var label = edge && edge.data ? String(edge.data('label') || '') : '';
+  return Math.max(70, Math.min(122, 58 + label.length * 5));
+}
+
 function graphLayoutOptions(layout) {
   if (layout === 'layered') {
     return { name: 'dagre', rankDir: 'TB', nodeSep: 52, rankSep: 78, edgeSep: 12, fit: false, animate: false };
@@ -61,7 +66,7 @@ function graphLayoutOptions(layout) {
     animate: false,
     fit: false,
     numIter: 1000,
-    idealEdgeLength: 82,
+    idealEdgeLength: idealForceEdgeLength,
     nodeOverlap: 14,
     nodeRepulsion: 3900,
     componentSpacing: 48,
