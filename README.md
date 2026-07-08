@@ -371,7 +371,9 @@ July 6
 
 July 7 
 - [x] Revise output pane code boundary -> /pane package
-- [ ] Graph rendering
+- [x] Graph rendering
+
+- [ ] Stress-test graph rendering
 
 - [ ] Remote server improvements
 
