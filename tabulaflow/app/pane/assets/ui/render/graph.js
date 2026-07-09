@@ -420,6 +420,11 @@ export function renderGraph(container, cardData) {
     detailNode.innerHTML = '';
   }
 
+  function startLivePhysics() {
+    if (!cy || livePhysics || !usesLivePhysics(graphData)) return;
+    livePhysics = createLivePhysics(cy);
+  }
+
   function showDetail(ele, lock) {
     if (!ele || !stageNode) return;
     var html = graphDetailHtml(ele);
@@ -471,9 +476,12 @@ export function renderGraph(container, cardData) {
       container._tfCy = cy;
       cy.on('layoutstop', function () {
         fitGraph(cy, graphNode);
-        if (!livePhysics && usesLivePhysics(graphData)) {
-          livePhysics = createLivePhysics(cy);
-        }
+        startLivePhysics();
+      });
+      cy.ready(function () {
+        requestAnimationFrame(function () {
+          startLivePhysics();
+        });
       });
       cy.on('mouseover', 'node, edge', function (event) {
         graphNode.style.cursor = 'pointer';
@@ -502,6 +510,7 @@ export function renderGraph(container, cardData) {
       requestAnimationFrame(function () {
         if (cy) {
           fitGraph(cy, graphNode);
+          startLivePhysics();
         }
       });
     },
