@@ -747,9 +747,7 @@ def _physics_xlarge_data() -> tuple[pd.DataFrame, pd.DataFrame]:
     for i in range(count):
         edge_specs.append((i, (i + 1) % count, "ring"))
         edge_specs.append((i, (i + 13) % count, "bridge"))
-        edge_specs.append((i, (i + 37) % count, "long_link"))
-        edge_specs.append((i, (i + 83) % count, "cross_cluster"))
-    for i in range(count):
+    for i in range(100):
         edge_specs.append((i, (i + 97) % count, "long_link"))
     edges = pd.DataFrame({"src": f"x{src}", "dst": f"x{dst}", "rel": rel} for src, dst, rel in edge_specs)
     return nodes, edges
@@ -1081,7 +1079,7 @@ def _populate_pane(
             user="Show custom live physics on varied graph shapes.",
             assistant=(
                 "This preview-only turn exercises the custom live-physics behavior on social, chain, "
-                "disconnected, dense, medium, large, and 300-node / 1,500-edge extra-large graph fixtures."
+                "disconnected, dense, medium, large, and 300-node / 700-edge extra-large graph fixtures."
             ),
             cards=_graph_live_physics_stress_cards(pane_dir),
         )
