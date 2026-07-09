@@ -35,6 +35,17 @@ from tabulaflow.app.pane import server as pane_server
 from tabulaflow.toolhub.render_graph import normalize_graph_spec
 from tabulaflow.toolhub.render_map import normalize_map_spec
 
+_GRAPH_PREVIEW_PALETTE = [
+    "#3eb489",
+    "#5ac8fa",
+    "#f5a623",
+    "#bd6cf0",
+    "#f06292",
+    "#4dd0e1",
+    "#aed581",
+    "#ff8a65",
+]
+
 
 def _record(
     *,
@@ -99,6 +110,71 @@ def _with_graph_meta(card: PaneCard, pane_dir: Path, **meta: object) -> PaneCard
     graph_meta.update(meta)
     data_path.write_text(json.dumps(data, ensure_ascii=False, default=str), encoding="utf-8")
     return card
+
+
+def _preview_graph_card(
+    *,
+    graph_id: str,
+    label: str,
+    nodes: pd.DataFrame,
+    edges: pd.DataFrame,
+    pane_dir: Path,
+    physics: str,
+    initial_layout: str | None = None,
+) -> PaneCard:
+    """Build an uncapped graph payload for local renderer stress tests only."""
+    card_id = f"rec_{graph_id.lower()}"
+    groups = sorted(str(group) for group in nodes["group"].dropna().unique())
+    color_by_group = {
+        group: _GRAPH_PREVIEW_PALETTE[index % len(_GRAPH_PREVIEW_PALETTE)] for index, group in enumerate(groups)
+    }
+    node_payloads = []
+    for row in nodes.to_dict("records"):
+        group = str(row["group"])
+        node_payloads.append(
+            {
+                "data": {
+                    "id": str(row["id"]),
+                    "label": str(row["label"]),
+                    "group": group,
+                    "color": color_by_group.get(group, _GRAPH_PREVIEW_PALETTE[0]),
+                    "tooltip": {"label": row["label"], "group": group},
+                }
+            }
+        )
+    edge_payloads = []
+    for index, row in enumerate(edges.to_dict("records"), start=1):
+        edge_payloads.append(
+            {
+                "data": {
+                    "id": f"__tf_edge_{index}",
+                    "source": str(row["src"]),
+                    "target": str(row["dst"]),
+                    "label": str(row["rel"]),
+                    "directed": True,
+                    "tooltip": {"rel": row["rel"]},
+                }
+            }
+        )
+    meta: dict[str, object] = {"unmatchedNodes": 0, "physics": physics}
+    if initial_layout is not None:
+        meta["initialLayout"] = initial_layout
+    pane_dir.mkdir(parents=True, exist_ok=True)
+    (pane_dir / f"{card_id}.data.json").write_text(
+        json.dumps(
+            {
+                "graph": {
+                    "layout": "force",
+                    "elements": {"nodes": node_payloads, "edges": edge_payloads},
+                    "meta": meta,
+                }
+            },
+            ensure_ascii=False,
+            default=str,
+        ),
+        encoding="utf-8",
+    )
+    return card_payload(card_id=card_id, label=label, views=["graph"])
 
 
 def _render_records(records: Sequence[SimpleNamespace], pane_dir: Path) -> list[PaneCard]:
@@ -592,6 +668,16 @@ def _physics_graph_card(
     nodes: pd.DataFrame,
     edges: pd.DataFrame,
 ) -> PaneCard:
+    if len(nodes) > 500:
+        return _preview_graph_card(
+            graph_id=f"GRAPHDEBUG_{shape.upper()}_{physics.upper()}",
+            label=f"{physics}_{shape}",
+            pane_dir=pane_dir,
+            nodes=nodes,
+            edges=edges,
+            physics=physics,
+            initial_layout="preset",
+        )
     card = _graph_card(
         graph_id=f"GRAPHDEBUG_{shape.upper()}_{physics.upper()}",
         label=f"{physics}_{shape}",
@@ -747,7 +833,7 @@ def _physics_large_data() -> tuple[pd.DataFrame, pd.DataFrame]:
 
 
 def _physics_xlarge_data() -> tuple[pd.DataFrame, pd.DataFrame]:
-    count = 240
+    count = 1000
     nodes = pd.DataFrame(
         {
             "id": [f"x{i}" for i in range(count)],
@@ -760,11 +846,11 @@ def _physics_xlarge_data() -> tuple[pd.DataFrame, pd.DataFrame]:
         edges.append({"src": f"x{i}", "dst": f"x{(i + 1) % count}", "rel": "ring"})
         if i % 2 == 0:
             edges.append({"src": f"x{i}", "dst": f"x{(i + 13) % count}", "rel": "bridge"})
-        if i % 3 == 0:
+        if i % 10 == 0:
             edges.append({"src": f"x{i}", "dst": f"x{(i + 37) % count}", "rel": "long_link"})
-        if i % 5 == 0:
+        if i % 20 == 0:
             edges.append({"src": f"x{i}", "dst": f"x{(i + 83) % count}", "rel": "cross_cluster"})
-        if i % 30 == 0:
+        if i % 50 == 0:
             edges.append({"src": f"x{i}", "dst": f"x{(i + 121) % count}", "rel": "anchor"})
     return nodes, pd.DataFrame(edges)
 
@@ -1096,7 +1182,7 @@ def _populate_pane(
             user="Compare custom live physics against Cola on varied graph shapes.",
             assistant=(
                 "This preview-only turn pairs the custom live-physics prototype with Cytoscape-Cola "
-                "on the same social, chain, disconnected, dense, medium, large, and extra-large graph fixtures."
+                "on the same social, chain, disconnected, dense, medium, large, and 1,000-node extra-large graph fixtures."
             ),
             cards=_graph_physics_comparison_cards(pane_dir),
         )

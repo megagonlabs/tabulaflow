@@ -6,11 +6,11 @@ const cytoscape = window.cytoscape;
 const GRAPH_FIT_PADDING = 64;
 const GRAPH_MAX_AUTO_ZOOM = 1.25;
 const GRAPH_DEFAULT_NODE_BORDER = '#253447';
-const GRAPH_LIVE_PHYSICS_MAX_NODES = 320;
-const GRAPH_LIVE_PHYSICS_MAX_EDGES = 900;
+const GRAPH_LIVE_PHYSICS_MAX_NODES = 1100;
+const GRAPH_LIVE_PHYSICS_MAX_EDGES = 2200;
 const GRAPH_LIVE_PHYSICS_MIN_ALPHA = 0.012;
-const GRAPH_COLA_PHYSICS_MAX_NODES = 320;
-const GRAPH_COLA_PHYSICS_MAX_EDGES = 900;
+const GRAPH_COLA_PHYSICS_MAX_NODES = 1100;
+const GRAPH_COLA_PHYSICS_MAX_EDGES = 2200;
 
 function normalizeHexColor(color) {
   if (typeof color !== 'string') return null;
@@ -93,7 +93,11 @@ function idealColaEdgeLength(edge) {
   return Math.max(90, Math.min(150, 70 + label.length * 5));
 }
 
-function graphLayoutOptions(layout) {
+function graphLayoutOptions(layout, graphData) {
+  var meta = graphData && graphData.meta ? graphData.meta : {};
+  if (meta.initialLayout === 'preset') {
+    return { name: 'preset', fit: false, animate: false };
+  }
   if (layout === 'layered') {
     return { name: 'dagre', rankDir: 'TB', nodeSep: 50, rankSep: 62, edgeSep: 14, fit: false, animate: false };
   }
@@ -518,7 +522,7 @@ export function renderGraph(container, cardData) {
         container: graphNode,
         elements: graphInitElements(elements, graphData.layout),
         style: graphStyles(),
-        layout: graphLayoutOptions(graphData.layout),
+        layout: graphLayoutOptions(graphData.layout, graphData),
         hideEdgesOnViewport: false,
         textureOnViewport: false,
         wheelSensitivity: 0.18,
