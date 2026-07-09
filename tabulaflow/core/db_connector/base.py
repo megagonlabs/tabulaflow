@@ -42,6 +42,9 @@ class BasePropertyGraphDBConnector(Protocol):
     schema: PropertyGraphSchema
 
     @property
+    def backend(self) -> str: ...
+
+    @property
     def language(self) -> NonSQLLanguage: ...
 
     def __init__(self, global_id: str, **kwargs: Any): ...

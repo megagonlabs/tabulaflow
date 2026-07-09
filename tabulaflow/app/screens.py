@@ -1334,9 +1334,9 @@ class SchemaBrowserScreen(Screen[None]):
 
         db_label = Text()
         db_label.append(alias, style="bold")
-        language = getattr(connector, "language", None)
-        if language:
-            db_label.append(f"  {language}", style="dim")
+        backend = getattr(connector, "backend", None)
+        if backend:
+            db_label.append(f"  {backend}", style="dim")
 
         db_node = parent_node.add(
             db_label,

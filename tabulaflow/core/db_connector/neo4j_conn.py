@@ -72,6 +72,7 @@ class Neo4jConnector:
     """
 
     connector_type: ClassVar[Literal["property_graph"]] = "property_graph"
+    backend: ClassVar[Literal["neo4j"]] = "neo4j"
     global_id: str
     schema: PropertyGraphSchema
     language: NonSQLLanguage

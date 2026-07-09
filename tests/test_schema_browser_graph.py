@@ -19,6 +19,7 @@ from tabulaflow.core.types import (
 
 class FakeGraphConnector:
     connector_type = "property_graph"
+    backend = "neo4j"
     global_id = "test+neo"
     language = "cypher"
 
@@ -103,7 +104,7 @@ async def test_schema_browser_renders_property_graph_schema() -> None:
         tree = app.query_one("#browse-tree", Tree)
         labels = _tree_label_text(tree)
 
-    assert "neo  cypher" in labels
+    assert "neo  neo4j" in labels
     assert "Node Types" in labels
     assert "Movie" in labels
     assert "title     STRING" in labels
@@ -111,7 +112,7 @@ async def test_schema_browser_renders_property_graph_schema() -> None:
     assert "ACTED_IN" in labels
     assert "ACTED_IN  Person -> Movie" not in labels
     assert "roles  LIST OF STRING" in labels
-    assert not _tree_node_by_label(tree, "neo  cypher").is_expanded
+    assert not _tree_node_by_label(tree, "neo  neo4j").is_expanded
 
     title_node = next(
         node
