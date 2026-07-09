@@ -396,12 +396,11 @@ body { margin: 0; background: var(--bg); color: var(--text); display: flex; flex
 .tf-map-view .maplibregl-popup.tf-map-detail-tooltip .maplibregl-popup-content { pointer-events: auto; }
 .tf-map-view .maplibregl-popup.tf-map-detail-tooltip .maplibregl-popup-content,
 .tf-map-view .maplibregl-popup.tf-map-detail-popup .maplibregl-popup-content {
-    padding: 8px; background: #fff; border: 0; border-radius: 6px; color: #333;
+    padding: 8px 24px 8px 8px; background: #fff; border: 0; border-radius: 6px; color: #333;
     min-width: 220px; max-width: min(420px, 72vw); box-shadow: 0 3px 14px rgba(0, 0, 0, 0.34);
 }
 .tf-map-view .maplibregl-popup.tf-map-detail-tooltip .maplibregl-popup-tip,
 .tf-map-view .maplibregl-popup.tf-map-detail-popup .maplibregl-popup-tip { display: none; }
-.tf-map-view .maplibregl-popup.tf-map-detail-popup .maplibregl-popup-content { padding-right: 24px; }
 .tf-map-view .maplibregl-popup-close-button {
     color: #4b5563; font-size: 18px; line-height: 20px; padding: 2px 6px;
 }
