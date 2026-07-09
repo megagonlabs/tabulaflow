@@ -1073,7 +1073,7 @@ class AgentResultWidget(Widget):
         if self._bottom_hint_widget is not None:
             self._update_bottom_hint()
 
-    def watch_current_record(self) -> None:
+    def watch_current_card(self) -> None:
         if not self._mounted:
             return
         # Clamp current_view to the new record's view count; setting it will
