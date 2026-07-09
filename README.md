@@ -374,14 +374,12 @@ July 7
 - [x] Graph rendering
 
 July 8
-- [x] Support property graphs in data explorer
-- [x] Fix PropertyGraphSchema representation
-- [ ] Fix render_graph for generic Cypher queries like db.schema.visualization()
+- Graph rendering
+  - [x] Support property graphs in data explorer
+  - [x] Fix PropertyGraphSchema representation
+  - [x] Fix render_graph for generic Cypher queries like db.schema.visualization()
+  - [x] Physics simulation for graphs
 
-- [ ] Physics simulation for graph layout
-
-- [ ] Stress-test graph rendering
-- [ ] Debug neo4j urls
 - [ ]<arg name="vegalite_spec">{"mark":"bar","encoding":{"x":{"field":"product","type":"nominal","sort":"-y","title":"Product"},"y":{"field":"avg_rating","type":"quantitative","title":"Average rating"},"tooltip":[{"field":"product","type":"nominal"},{"field":"avg_rating","type":"quantitative"},{"field":"review_count","type":"quantitative"}]}}</arg>
 
 - [ ] Remote server improvements
