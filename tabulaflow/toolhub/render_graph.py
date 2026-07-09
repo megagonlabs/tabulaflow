@@ -238,6 +238,44 @@ def _neo4j_node_group(node: object, group: str | None) -> str:
     return ":".join(labels) if labels else "node"
 
 
+def _is_neo4j_node(value: object) -> bool:
+    return (
+        hasattr(value, "labels") and hasattr(value, "items") and (hasattr(value, "element_id") or hasattr(value, "id"))
+    )
+
+
+def _relationship_endpoints(rel: object) -> tuple[object, object] | None:
+    start = getattr(rel, "start_node", None)
+    end = getattr(rel, "end_node", None)
+    if start is not None and end is not None:
+        return start, end
+
+    rel_nodes = getattr(rel, "nodes", None)
+    if rel_nodes is None:
+        return None
+    try:
+        if len(rel_nodes) < 2:
+            return None
+        start, end = rel_nodes[0], rel_nodes[1]
+    except (TypeError, IndexError, KeyError):
+        return None
+    if start is None or end is None:
+        return None
+    return start, end
+
+
+def _is_neo4j_relationship(value: object) -> bool:
+    return (
+        _relationship_endpoints(value) is not None
+        and hasattr(value, "items")
+        and (hasattr(value, "type") or hasattr(value, "element_id") or hasattr(value, "id"))
+    )
+
+
+def _is_neo4j_path(value: object) -> bool:
+    return hasattr(value, "nodes") and hasattr(value, "relationships")
+
+
 def _extract_subgraph_source(
     df: pd.DataFrame, source: _SubgraphSource, index: int
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
@@ -261,14 +299,10 @@ def _extract_subgraph_source(
         return node_id
 
     def add_relationship(rel: object) -> None:
-        start = getattr(rel, "start_node", None)
-        end = getattr(rel, "end_node", None)
-        if start is None or end is None:
-            rel_nodes = getattr(rel, "nodes", None)
-            if rel_nodes and len(rel_nodes) >= 2:
-                start, end = rel_nodes[0], rel_nodes[1]
-        if start is None or end is None:
+        endpoints = _relationship_endpoints(rel)
+        if endpoints is None:
             return
+        start, end = endpoints
         source_id = add_node(start)
         target_id = add_node(end)
         rel_id = getattr(rel, "element_id", None) or getattr(rel, "id", None)
@@ -291,17 +325,18 @@ def _extract_subgraph_source(
     def walk(value: object) -> None:
         if value is None:
             return
-        class_name = type(value).__name__
-        if class_name == "Node" and hasattr(value, "labels"):
+        if _is_neo4j_node(value):
             add_node(value)
             return
-        if class_name == "Relationship" and hasattr(value, "start_node"):
+        if _is_neo4j_relationship(value):
             add_relationship(value)
             return
-        if class_name == "Path" and hasattr(value, "nodes") and hasattr(value, "relationships"):
-            for node in value.nodes:
+        if _is_neo4j_path(value):
+            path_nodes = getattr(value, "nodes")
+            path_relationships = getattr(value, "relationships")
+            for node in path_nodes:
                 add_node(node)
-            for rel in value.relationships:
+            for rel in path_relationships:
                 add_relationship(rel)
             return
         if isinstance(value, Mapping):
