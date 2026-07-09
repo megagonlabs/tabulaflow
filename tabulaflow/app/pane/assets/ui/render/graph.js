@@ -346,7 +346,7 @@ function graphStyles() {
         'overlay-opacity': 0.18,
         'overlay-padding': 8,
         'target-arrow-color': '#9aa4b2',
-        'width': 3
+        'width': 1.4
       }
     }
   ];
