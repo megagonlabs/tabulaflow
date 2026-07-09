@@ -383,10 +383,12 @@ July 8
   - [x] Fix chart not shown bug
   - [x] Fix map viewport fitting  
 
-- [ ] Graph - node/edge selection style
-- [ ] docs/output_pane_lifecycle_plan.md
-- [ ] Tab change fail in TUI using left/right arrow
-- [ ] Make hover tooltip font size consistent across artifacts
+July 9
+- [x] Refactor - docs/output_pane_lifecycle_plan.md
+- [x] Fix edge selection panning bug
+- [x] Graph - node/edge selection style
+- [x] Fix tab change fail in TUI using left/right arrow
+- [ ] Make tooltip style and behavior consistent across chart/map/graph
 - [ ] Check bug: passing a self constructed registry to chat agent?
 
 - [ ] Remote server improvements
