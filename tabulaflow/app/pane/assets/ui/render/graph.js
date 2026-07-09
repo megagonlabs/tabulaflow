@@ -112,12 +112,6 @@ function graphLayoutOptions(layout, graphData) {
   };
 }
 
-function livePhysicsMode(graphData) {
-  var meta = graphData && graphData.meta ? graphData.meta : {};
-  if (meta.physics === 'live' || meta.physics === 'custom') return 'custom';
-  return null;
-}
-
 function createLivePhysics(cy) {
   var nodes = cy.nodes().toArray();
   var edges = cy.edges().toArray();
@@ -427,10 +421,7 @@ export function renderGraph(container, cardData) {
 
   function startLivePhysics() {
     if (!cy || livePhysics) return;
-    var mode = livePhysicsMode(graphData);
-    if (mode === 'custom') {
-      livePhysics = createLivePhysics(cy);
-    }
+    livePhysics = createLivePhysics(cy);
   }
 
   function showDetail(ele, lock) {

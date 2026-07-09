@@ -12,7 +12,6 @@ from __future__ import annotations
 
 import argparse
 import functools
-import json
 import math
 import signal
 import struct
@@ -88,16 +87,6 @@ def _graph_card(
         pane_dir,
     )
     assert card is not None
-    return card
-
-
-def _with_graph_meta(card: PaneCard, pane_dir: Path, **meta: object) -> PaneCard:
-    data_path = pane_dir / f"{card['id']}.data.json"
-    data = json.loads(data_path.read_text(encoding="utf-8"))
-    graph = data.setdefault("graph", {})
-    graph_meta = graph.setdefault("meta", {})
-    graph_meta.update(meta)
-    data_path.write_text(json.dumps(data, ensure_ascii=False, default=str), encoding="utf-8")
     return card
 
 
@@ -554,7 +543,7 @@ def _graph_network_card(pane_dir: Path) -> PaneCard:
             {"src": "faye", "dst": "alice", "rel": "syncs", "weight": 1},
         ]
     )
-    card = _graph_card(
+    return _graph_card(
         graph_id="GRAPHDEBUG_NETWORK",
         label="force_layout",
         pane_dir=pane_dir,
@@ -582,7 +571,6 @@ def _graph_network_card(pane_dir: Path) -> PaneCard:
             ],
         },
     )
-    return _with_graph_meta(card, pane_dir, physics="custom")
 
 
 def _physics_graph_card(
@@ -593,7 +581,7 @@ def _physics_graph_card(
     nodes: pd.DataFrame,
     edges: pd.DataFrame,
 ) -> PaneCard:
-    card = _graph_card(
+    return _graph_card(
         graph_id=f"GRAPHDEBUG_{shape.upper()}_{physics.upper()}",
         label=f"{physics}_{shape}",
         pane_dir=pane_dir,
@@ -621,7 +609,6 @@ def _physics_graph_card(
             ],
         },
     )
-    return _with_graph_meta(card, pane_dir, physics=physics)
 
 
 def _physics_social_data() -> tuple[pd.DataFrame, pd.DataFrame]:
@@ -804,7 +791,7 @@ def _graph_lineage_card(pane_dir: Path) -> PaneCard:
             {"from_id": "dim_accounts", "to_id": "mart_growth", "rel": "joins"},
         ]
     )
-    card = _graph_card(
+    return _graph_card(
         graph_id="GRAPHDEBUG_LINEAGE",
         label="layered_layout",
         pane_dir=pane_dir,
@@ -832,7 +819,6 @@ def _graph_lineage_card(pane_dir: Path) -> PaneCard:
             ],
         },
     )
-    return _with_graph_meta(card, pane_dir, physics="custom")
 
 
 def _graph_tree_card(pane_dir: Path) -> PaneCard:
@@ -861,7 +847,7 @@ def _graph_tree_card(pane_dir: Path) -> PaneCard:
             {"src": "data", "dst": "analytics", "rel": "leads"},
         ]
     )
-    card = _graph_card(
+    return _graph_card(
         graph_id="GRAPHDEBUG_TREE",
         label="tree_layout",
         pane_dir=pane_dir,
@@ -889,7 +875,6 @@ def _graph_tree_card(pane_dir: Path) -> PaneCard:
             ],
         },
     )
-    return _with_graph_meta(card, pane_dir, physics="custom")
 
 
 def _wav_bytes(freq_hz: float, seconds: float = 0.4, rate: int = 8000) -> bytes:
