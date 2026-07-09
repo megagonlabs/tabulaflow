@@ -1,6 +1,6 @@
 // @ts-check
 
-import { asUrls, cssVar, displayValue, escapeAttr, escapeHtml, fieldValue, numberValue, tooltipLink } from './shared.js';
+import { asUrls, cssVar, displayValue, escapeAttr, escapeHtml, fieldValue, numberOr, numberValue, tooltipLink } from './shared.js';
 
 const maplibregl = window.maplibregl;
 

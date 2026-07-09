@@ -1558,6 +1558,8 @@ def test_pane_map_view_is_maplibre_based() -> None:
     assert "window.TF" not in shell_js
     assert "new maplibregl.Map({" in map_js
     assert "new maplibregl.AttributionControl({ compact: false })" in map_js
+    assert "fieldValue, numberOr, numberValue" in map_js
+    assert "numberOr" in shared_js
     assert "L.map" not in map_js
     assert "L.tileLayer" not in map_js
     assert "/assets/leaflet" not in map_js
