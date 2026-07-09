@@ -83,7 +83,7 @@ function graphInitElements(elements, layout) {
 
 function idealForceEdgeLength(edge) {
   var label = edge && edge.data ? String(edge.data('label') || '') : '';
-  return Math.max(64, Math.min(116, 54 + label.length * 5));
+  return Math.max(84, Math.min(150, 74 + label.length * 6));
 }
 
 function graphLayoutOptions(layout, graphData) {
