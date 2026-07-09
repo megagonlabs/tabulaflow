@@ -524,13 +524,15 @@ class RenderGraphTool:
           Inline mode:
           ``{"data":[{"id":"a","name":"A"}],"id":"id","label":"name"}``.
           Optional ``tooltip`` is a field name, list of field names, or ``true``.
+          Explicit tooltip lists define body fields; node titles use ``label`` or ``id``.
         - Edge source:
           Column mode:
           ``{"record_id":"Q2","source":"from_id","target":"to_id","label":"rel"}``.
           Inline mode:
           ``{"data":[{"from":"a","to":"b"}],"source":"from","target":"to"}``.
           Optional ``directed`` defaults to ``true``. Optional ``tooltip`` is a
-          field name, list of field names, or ``true``.
+          field name, list of field names, or ``true``. Explicit tooltip lists
+          define body fields; edge titles use ``label`` when present.
         - Subgraph source:
           ``{"record_id":"Q3","caption":"title"}``.
 

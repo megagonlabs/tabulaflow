@@ -417,7 +417,7 @@ def _map_showcase_card(pane_dir: Path) -> PaneCard:
                 "lat": "lat",
                 "lng": "lng",
                 "label": "name",
-                "tooltip": ["name", "kind", "url"],
+                "tooltip": ["kind", "url"],
                 "color": {"field": "kind"},
             },
             {
@@ -425,7 +425,7 @@ def _map_showcase_card(pane_dir: Path) -> PaneCard:
                 "record_id": "QDEBUG_MAP",
                 "geojson": "geom",
                 "label": "name",
-                "tooltip": ["name", "kind", "url"],
+                "tooltip": ["kind", "url"],
                 "color": {"field": "kind"},
             },
             {
@@ -440,7 +440,7 @@ def _map_showcase_card(pane_dir: Path) -> PaneCard:
                     }
                 ],
                 "label": "label",
-                "tooltip": ["label", "kind", "url"],
+                "tooltip": ["kind", "url"],
                 "color": {"field": "kind"},
             },
         ],
@@ -506,7 +506,7 @@ def _map_overlay_card(pane_dir: Path) -> PaneCard:
                 "record_id": "Q_AREAS",
                 "geojson": "boundary",
                 "label": "area",
-                "tooltip": ["area", "tier"],
+                "tooltip": ["tier"],
                 "color": {"field": "tier"},
             },
             {
@@ -515,7 +515,7 @@ def _map_overlay_card(pane_dir: Path) -> PaneCard:
                 "lat": "lat",
                 "lng": "lng",
                 "label": "store",
-                "tooltip": ["store", "status"],
+                "tooltip": ["status"],
                 "color": {"field": "status"},
             },
         ],
@@ -557,7 +557,7 @@ def _graph_network_card(pane_dir: Path) -> PaneCard:
                     "id": "id",
                     "label": "name",
                     "group": "team",
-                    "tooltip": ["name", "team", "score", "profile"],
+                    "tooltip": ["team", "score", "profile"],
                 }
             ],
             "edges": [
@@ -566,7 +566,7 @@ def _graph_network_card(pane_dir: Path) -> PaneCard:
                     "source": "src",
                     "target": "dst",
                     "label": "rel",
-                    "tooltip": ["rel", "weight", "doc"],
+                    "tooltip": ["weight", "doc"],
                 }
             ],
         },
@@ -595,7 +595,7 @@ def _physics_graph_card(
                     "id": "id",
                     "label": "label",
                     "group": "group",
-                    "tooltip": ["label", "group"],
+                    "tooltip": ["group"],
                 }
             ],
             "edges": [
@@ -604,7 +604,6 @@ def _physics_graph_card(
                     "source": "src",
                     "target": "dst",
                     "label": "rel",
-                    "tooltip": ["rel"],
                 }
             ],
         },
@@ -805,7 +804,7 @@ def _graph_lineage_card(pane_dir: Path) -> PaneCard:
                     "id": "id",
                     "label": "label",
                     "group": "layer",
-                    "tooltip": ["label", "layer"],
+                    "tooltip": ["layer"],
                 }
             ],
             "edges": [
@@ -814,7 +813,6 @@ def _graph_lineage_card(pane_dir: Path) -> PaneCard:
                     "source": "from_id",
                     "target": "to_id",
                     "label": "rel",
-                    "tooltip": ["rel"],
                 }
             ],
         },
@@ -861,7 +859,7 @@ def _graph_tree_card(pane_dir: Path) -> PaneCard:
                     "id": "id",
                     "label": "label",
                     "group": "group",
-                    "tooltip": ["label", "group"],
+                    "tooltip": ["group"],
                 }
             ],
             "edges": [
@@ -870,7 +868,6 @@ def _graph_tree_card(pane_dir: Path) -> PaneCard:
                     "source": "src",
                     "target": "dst",
                     "label": "rel",
-                    "tooltip": ["rel"],
                 }
             ],
         },

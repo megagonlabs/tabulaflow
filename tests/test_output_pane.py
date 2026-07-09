@@ -300,6 +300,7 @@ def test_map_card_writes_layered_single_source_payload(tmp_path: Path) -> None:
             "latitude": [37.7749],
             "longitude": [-122.4194],
             "region": ["Bay Area"],
+            "category": ["urban"],
             "boundary_geojson": [
                 {
                     "type": "Feature",
@@ -328,7 +329,7 @@ def test_map_card_writes_layered_single_source_payload(tmp_path: Path) -> None:
                     "source": "Q1",
                     "geojson": "boundary_geojson",
                     "label": "region",
-                    "tooltip": ["region"],
+                    "tooltip": ["category"],
                     "color": {"field": "region"},
                 },
                 {
@@ -337,7 +338,7 @@ def test_map_card_writes_layered_single_source_payload(tmp_path: Path) -> None:
                     "lat": "latitude",
                     "lng": "longitude",
                     "label": "city",
-                    "tooltip": ["city"],
+                    "tooltip": ["category"],
                 },
             ]
         },
@@ -349,9 +350,9 @@ def test_map_card_writes_layered_single_source_payload(tmp_path: Path) -> None:
     payload = json.loads((tmp_path / f"{card['id']}.data.json").read_text())
     assert payload["map"]["layers"][0]["type"] == "geojson"
     assert payload["map"]["layers"][0]["source"] == "Q1"
-    assert payload["map"]["layers"][0]["geojson"] == "c4"
+    assert payload["map"]["layers"][0]["geojson"] == "c5"
     assert payload["map"]["layers"][0]["label"] == "c3"
-    assert payload["map"]["layers"][0]["tooltip"] == ["c3"]
+    assert payload["map"]["layers"][0]["tooltip"] == ["c4"]
     assert payload["map"]["layers"][0]["color"] == {"field": "c3"}
     assert payload["map"]["layers"][1] == {
         "type": "points",
@@ -359,7 +360,7 @@ def test_map_card_writes_layered_single_source_payload(tmp_path: Path) -> None:
         "lat": "c1",
         "lng": "c2",
         "label": "c0",
-        "tooltip": ["c0"],
+        "tooltip": ["c4"],
     }
 
 
@@ -417,7 +418,7 @@ def test_map_card_writes_inline_point_layer(tmp_path: Path) -> None:
                     "type": "points",
                     "points": [{"lat": 37.8044, "lng": -122.2712, "label": "Destination", "kind": "destination"}],
                     "label": "label",
-                    "tooltip": ["label", "kind"],
+                    "tooltip": ["kind"],
                 },
             ]
         },
@@ -434,7 +435,7 @@ def test_map_card_writes_inline_point_layer(tmp_path: Path) -> None:
         "type": "points",
         "points": [{"lat": 37.8044, "lng": -122.2712, "label": "Destination", "kind": "destination"}],
         "label": "label",
-        "tooltip": ["label", "kind"],
+        "tooltip": ["kind"],
     }
 
 
@@ -476,12 +477,20 @@ def test_pane_renderer_modules_are_packaged() -> None:
         assert pane_assets.joinpath("render").joinpath(rel).is_file()
 
 
-def test_graph_tooltips_link_urls_and_skip_duplicate_title_fields() -> None:
+def test_graph_tooltips_link_urls() -> None:
     graph_js = _pane_asset_text("render/graph.js")
     assert "asUrls, clone, cssVar, displayValue, escapeHtml, tooltipLink" in graph_js
     assert "function graphDetailValueHtml(value)" in graph_js
     assert "tooltipLink(urls[0])" in graph_js
-    assert "if ((key === 'label' || key === 'id') && String(tooltip[key]) === String(label)) return;" in graph_js
+    assert "String(tooltip[key]) === String(label)" not in graph_js
+
+
+def test_map_label_does_not_create_implicit_tooltip_body() -> None:
+    map_js = _pane_asset_text("render/map.js")
+    assert "function detailHtml(row, tooltip, labels, fallback)" in map_js
+    assert "layer.tooltip || labelField" not in map_js
+    assert "layer.tooltip || layer.label" not in map_js
+    assert "fields.filter(function (field) { return field !== labelField; })" not in map_js
 
 
 def test_pane_table_layout_css_is_loaded() -> None:

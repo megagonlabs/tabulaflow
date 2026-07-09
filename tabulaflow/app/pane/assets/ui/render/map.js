@@ -141,12 +141,9 @@ function detailValueHtml(value) {
   return escapeHtml(text);
 }
 
-function detailHtml(row, tooltip, labels, fallback, labelField) {
+function detailHtml(row, tooltip, labels, fallback) {
   var fields = tooltipFields(tooltip, row);
   var label = fallback == null ? '' : displayValue(fallback);
-  if (labelField) {
-    fields = fields.filter(function (field) { return field !== labelField; });
-  }
   var rows = '';
   fields.forEach(function (field) {
     var value = fieldValue(row, field);
@@ -435,8 +432,7 @@ function buildPointFeatures(layer, rows, labels) {
     if (lat == null || lng == null) return;
     if (lat < -90 || lat > 90 || lng < -180 || lng > 180) return;
     var label = fieldValue(row, labelField);
-    var tooltip = layer.tooltip || labelField;
-    var popup = detailHtml(row, tooltip, labels, label, labelField);
+    var popup = detailHtml(row, layer.tooltip, labels, label);
     var color = colorFor(layer.color, row, markerType === 'pin' ? mapPinDefaultColor : mapDefaultColor);
     var radius = sizeFor(layer.size, row, pointRows, 6);
     var pinScale = Math.max(0.8, Math.min(1.45, radius / 6));
@@ -473,7 +469,7 @@ function buildGeoJsonFeatures(layer, rows, labels) {
     var props = feature && feature.properties ? feature.properties : {};
     var line = isLineFeature(feature);
     var label = fieldValue(props, layer.label);
-    var popup = detailHtml(props, layer.tooltip || layer.label, labels, label, layer.label);
+    var popup = detailHtml(props, layer.tooltip, labels, label);
     var color = colorFor(layer.color, props, line ? mapRouteColor : mapDefaultColor);
     var anchor = geometryAnchor(feature.geometry);
     return {

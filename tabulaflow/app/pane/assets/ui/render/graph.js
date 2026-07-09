@@ -391,7 +391,6 @@ function graphDetailHtml(ele) {
   if (tooltip && typeof tooltip === 'object') {
     html += '<table><tbody>';
     Object.keys(tooltip).forEach(function (key) {
-      if ((key === 'label' || key === 'id') && String(tooltip[key]) === String(label)) return;
       var value = tooltip[key];
       html += '<tr><th>' + escapeHtml(key) + '</th><td>' + graphDetailValueHtml(value) + '</td></tr>';
     });

@@ -421,8 +421,9 @@ class RenderMapTool:
           ``points``.
           ``label``: optional field name for the short feature identity.
           ``tooltip``: optional field name, list of field names, or ``true``;
-          shown on hover and click. String values that are full ``http(s)``
-          URLs render as links.
+          shown as popup body fields on hover and click. Popup titles use
+          ``label`` when present. String values that are full ``http(s)`` URLs
+          render as links.
           ``color``: optional ``{"field":"status"}`` or
           ``{"field":"status","domain":[...]}``; the output pane chooses the
           palette.
@@ -442,9 +443,9 @@ class RenderMapTool:
           column name or inline WGS84 GeoJSON object.
 
         Minimal examples:
-        ``{"layers":[{"type":"points","record_id":"Q3","lat":"lat","lng":"lng","label":"name","tooltip":["name","status"]}]}``
+        ``{"layers":[{"type":"points","record_id":"Q3","lat":"lat","lng":"lng","label":"name","tooltip":["status"]}]}``
         ``{"layers":[{"type":"points","points":[{"lat":37.7,"lng":-122.4,"label":"Destination"}],"label":"label"}]}``
-        ``{"layers":[{"type":"geojson","record_id":"Q3","geojson":"geom_geojson","label":"name","tooltip":["name"]}]}``
+        ``{"layers":[{"type":"geojson","record_id":"Q3","geojson":"geom_geojson","label":"name","tooltip":["status"]}]}``
 
         Multi-record overlay:
         ``{"layers":[{"type":"geojson","record_id":"Q1","geojson":"area_geojson","label":"area"},{"type":"points","record_id":"Q2","lat":"lat","lng":"lng","label":"name"}]}``
