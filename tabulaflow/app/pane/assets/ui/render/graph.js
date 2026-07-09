@@ -6,6 +6,9 @@ const cytoscape = window.cytoscape;
 const GRAPH_FIT_PADDING = 64;
 const GRAPH_MAX_AUTO_ZOOM = 1.25;
 const GRAPH_DEFAULT_NODE_BORDER = '#253447';
+const GRAPH_LIVE_PHYSICS_MAX_NODES = 180;
+const GRAPH_LIVE_PHYSICS_MAX_EDGES = 450;
+const GRAPH_LIVE_PHYSICS_MIN_ALPHA = 0.012;
 
 function normalizeHexColor(color) {
   if (typeof color !== 'string') return null;
@@ -102,6 +105,164 @@ function graphLayoutOptions(layout) {
     nodeRepulsion: 2600,
     componentSpacing: 40,
     gravity: 0.55
+  };
+}
+
+function usesLivePhysics(graphData) {
+  var meta = graphData && graphData.meta ? graphData.meta : {};
+  return graphData.layout === 'force' && meta.physics === 'live';
+}
+
+function createLivePhysics(cy) {
+  var nodes = cy.nodes().toArray();
+  var edges = cy.edges().toArray();
+  if (nodes.length > GRAPH_LIVE_PHYSICS_MAX_NODES || edges.length > GRAPH_LIVE_PHYSICS_MAX_EDGES) {
+    return { destroy: function () {} };
+  }
+
+  var velocities = new Map();
+  var frame = null;
+  var destroyed = false;
+  var alpha = 0;
+  var center = { x: 0, y: 0 };
+
+  function velocity(node) {
+    var id = node.id();
+    var value = velocities.get(id);
+    if (!value) {
+      value = { x: 0, y: 0 };
+      velocities.set(id, value);
+    }
+    return value;
+  }
+
+  function isPinned(node) {
+    return node.grabbed() || node.locked();
+  }
+
+  function hasGrabbedNode() {
+    return cy.nodes(':grabbed').length > 0;
+  }
+
+  function updateCenter() {
+    var box = cy.elements().boundingBox();
+    center = { x: box.x1 + box.w / 2, y: box.y1 + box.h / 2 };
+  }
+
+  function schedule() {
+    if (destroyed || frame !== null) return;
+    frame = requestAnimationFrame(step);
+  }
+
+  function kick(value) {
+    alpha = Math.max(alpha, value);
+    schedule();
+  }
+
+  function applyForce(node, x, y) {
+    if (isPinned(node)) return;
+    var v = velocity(node);
+    v.x += x;
+    v.y += y;
+  }
+
+  function step() {
+    frame = null;
+    if (destroyed) return;
+
+    var grabbed = hasGrabbedNode();
+    if (!grabbed && alpha < GRAPH_LIVE_PHYSICS_MIN_ALPHA) return;
+    updateCenter();
+
+    var positions = nodes.map(function (node) {
+      return node.position();
+    });
+
+    for (var i = 0; i < nodes.length; i += 1) {
+      for (var j = i + 1; j < nodes.length; j += 1) {
+        var a = positions[i];
+        var b = positions[j];
+        var dx = b.x - a.x;
+        var dy = b.y - a.y;
+        var distSq = dx * dx + dy * dy;
+        if (distSq < 1) {
+          dx = (j - i) * 0.37;
+          dy = (i + j + 1) * 0.23;
+          distSq = dx * dx + dy * dy;
+        }
+        var dist = Math.sqrt(distSq);
+        var force = (4200 * alpha) / Math.max(distSq, 900);
+        var fx = (dx / dist) * force;
+        var fy = (dy / dist) * force;
+        applyForce(nodes[i], -fx, -fy);
+        applyForce(nodes[j], fx, fy);
+      }
+    }
+
+    edges.forEach(function (edge) {
+      var source = edge.source();
+      var target = edge.target();
+      var sourcePos = source.position();
+      var targetPos = target.position();
+      var dx = targetPos.x - sourcePos.x;
+      var dy = targetPos.y - sourcePos.y;
+      var dist = Math.max(1, Math.sqrt(dx * dx + dy * dy));
+      var ideal = idealForceEdgeLength(edge);
+      var force = (dist - ideal) * 0.018 * alpha;
+      var fx = (dx / dist) * force;
+      var fy = (dy / dist) * force;
+      applyForce(source, fx, fy);
+      applyForce(target, -fx, -fy);
+    });
+
+    cy.batch(function () {
+      nodes.forEach(function (node) {
+        var v = velocity(node);
+        if (isPinned(node)) {
+          v.x = 0;
+          v.y = 0;
+          return;
+        }
+        var pos = node.position();
+        v.x += (center.x - pos.x) * 0.0014 * alpha;
+        v.y += (center.y - pos.y) * 0.0014 * alpha;
+        v.x *= 0.82;
+        v.y *= 0.82;
+
+        var speed = Math.sqrt(v.x * v.x + v.y * v.y);
+        if (speed > 7) {
+          v.x = (v.x / speed) * 7;
+          v.y = (v.y / speed) * 7;
+        }
+        node.position({ x: pos.x + v.x, y: pos.y + v.y });
+      });
+    });
+
+    alpha = grabbed ? Math.max(alpha * 0.985, 0.22) : alpha * 0.94;
+    schedule();
+  }
+
+  cy.on('grab', 'node', function (event) {
+    velocity(event.target).x = 0;
+    velocity(event.target).y = 0;
+    kick(0.9);
+  });
+  cy.on('drag', 'node', function () {
+    kick(0.9);
+  });
+  cy.on('free', 'node', function () {
+    kick(0.55);
+  });
+  kick(0.28);
+
+  return {
+    destroy: function () {
+      destroyed = true;
+      if (frame !== null) {
+        cancelAnimationFrame(frame);
+        frame = null;
+      }
+    }
   };
 }
 
@@ -248,6 +409,7 @@ export function renderGraph(container, cardData) {
   }
 
   var cy = null;
+  var livePhysics = null;
   var initPending = false;
   var initToken = 0;
   var lockedDetail = null;
@@ -275,6 +437,10 @@ export function renderGraph(container, cardData) {
     initPending = false;
     lockedDetail = null;
     if (cy) {
+      if (livePhysics) {
+        livePhysics.destroy();
+        livePhysics = null;
+      }
       cy.destroy();
       cy = null;
     }
@@ -305,6 +471,9 @@ export function renderGraph(container, cardData) {
       container._tfCy = cy;
       cy.on('layoutstop', function () {
         fitGraph(cy, graphNode);
+        if (!livePhysics && usesLivePhysics(graphData)) {
+          livePhysics = createLivePhysics(cy);
+        }
       });
       cy.on('mouseover', 'node, edge', function (event) {
         graphNode.style.cursor = 'pointer';

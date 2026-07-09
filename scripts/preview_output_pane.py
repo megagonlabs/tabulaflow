@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import argparse
 import functools
+import json
 import math
 import signal
 import struct
@@ -87,6 +88,16 @@ def _graph_card(
         pane_dir,
     )
     assert card is not None
+    return card
+
+
+def _with_graph_meta(card: PaneCard, pane_dir: Path, **meta: object) -> PaneCard:
+    data_path = pane_dir / f"{card['id']}.data.json"
+    data = json.loads(data_path.read_text(encoding="utf-8"))
+    graph = data.setdefault("graph", {})
+    graph_meta = graph.setdefault("meta", {})
+    graph_meta.update(meta)
+    data_path.write_text(json.dumps(data, ensure_ascii=False, default=str), encoding="utf-8")
     return card
 
 
@@ -573,6 +584,74 @@ def _graph_network_card(pane_dir: Path) -> PaneCard:
     )
 
 
+def _graph_live_physics_card(pane_dir: Path) -> PaneCard:
+    nodes = pd.DataFrame(
+        [
+            {"id": "alice", "name": "Alice", "team": "Research"},
+            {"id": "bob", "name": "Bob", "team": "Research"},
+            {"id": "dina", "name": "Dina", "team": "Design"},
+            {"id": "eli", "name": "Eli", "team": "Data"},
+            {"id": "faye", "name": "Faye", "team": "Data"},
+            {"id": "grace", "name": "Grace", "team": "Product"},
+            {"id": "hugo", "name": "Hugo", "team": "Product"},
+            {"id": "ivy", "name": "Ivy", "team": "Research"},
+            {"id": "jules", "name": "Jules", "team": "Design"},
+            {"id": "kai", "name": "Kai", "team": "Data"},
+            {"id": "lena", "name": "Lena", "team": "Product"},
+            {"id": "mira", "name": "Mira", "team": "Research"},
+        ]
+    )
+    edges = pd.DataFrame(
+        [
+            {"src": "alice", "dst": "bob", "rel": "coauthors"},
+            {"src": "alice", "dst": "dina", "rel": "advises"},
+            {"src": "alice", "dst": "faye", "rel": "syncs"},
+            {"src": "bob", "dst": "eli", "rel": "reviews"},
+            {"src": "bob", "dst": "ivy", "rel": "pairs"},
+            {"src": "dina", "dst": "jules", "rel": "designs"},
+            {"src": "eli", "dst": "kai", "rel": "mentors"},
+            {"src": "faye", "dst": "kai", "rel": "supports"},
+            {"src": "grace", "dst": "hugo", "rel": "partners"},
+            {"src": "grace", "dst": "lena", "rel": "plans"},
+            {"src": "hugo", "dst": "alice", "rel": "briefs"},
+            {"src": "ivy", "dst": "mira", "rel": "studies"},
+            {"src": "jules", "dst": "grace", "rel": "maps"},
+            {"src": "kai", "dst": "mira", "rel": "analyzes"},
+            {"src": "lena", "dst": "bob", "rel": "asks"},
+            {"src": "mira", "dst": "dina", "rel": "validates"},
+        ]
+    )
+    card = _graph_card(
+        graph_id="GRAPHDEBUG_LIVE_PHYSICS",
+        label="force_live_physics",
+        pane_dir=pane_dir,
+        sources={"Q_LIVE_GRAPH_NODES": nodes, "Q_LIVE_GRAPH_EDGES": edges},
+        graph_spec={
+            "title": "Live physics network",
+            "layout": "force",
+            "nodes": [
+                {
+                    "record_id": "Q_LIVE_GRAPH_NODES",
+                    "id": "id",
+                    "label": "name",
+                    "group": "team",
+                    "tooltip": ["name", "team"],
+                }
+            ],
+            "edges": [
+                {
+                    "record_id": "Q_LIVE_GRAPH_EDGES",
+                    "source": "src",
+                    "target": "dst",
+                    "label": "rel",
+                    "tooltip": ["rel"],
+                }
+            ],
+        },
+    )
+    return _with_graph_meta(card, pane_dir, physics="live")
+
+
 def _graph_lineage_card(pane_dir: Path) -> PaneCard:
     nodes = pd.DataFrame(
         [
@@ -875,6 +954,17 @@ def _populate_pane(
                 "Use the record tabs to switch layouts while inspecting the same graph renderer styling."
             ),
             cards=[_graph_network_card(pane_dir), _graph_tree_card(pane_dir), _graph_lineage_card(pane_dir)],
+        )
+        _push_turn(
+            pane,
+            pane_dir,
+            title="Graph live physics experiment",
+            user="Let me try a graph where dragging one node moves the others.",
+            assistant=(
+                "This preview-only graph keeps a live force simulation running while you drag nodes, "
+                "so connected and nearby nodes react instead of staying fixed."
+            ),
+            cards=[_graph_live_physics_card(pane_dir)],
         )
         _push_turn(
             pane,
