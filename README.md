@@ -388,7 +388,7 @@ July 9
 - [x] Fix edge selection panning bug
 - [x] Graph - node/edge selection style
 - [x] Fix tab change fail in TUI using left/right arrow
-- [ ] Make tooltip style and behavior consistent across chart/map/graph
+- [x] Make tooltip style and behavior consistent across chart/map/graph
 - [ ] Check bug: passing a self constructed registry to chat agent?
 
 - [ ] Remote server improvements
