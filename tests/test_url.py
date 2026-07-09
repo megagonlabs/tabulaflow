@@ -71,3 +71,16 @@ class TestNeo4jDriverParams:
         driver_url, database, auth = _neo4j_driver_params("neo4j://localhost:7687")
         assert driver_url == "neo4j://localhost:7687"
         assert auth is None
+
+
+class TestNeo4jGlobalId:
+    def test_db_and_database_params_share_cache_key(self) -> None:
+        from tabulaflow.core.db_connector.url import _neo4j_driver_params, _neo4j_global_id
+
+        driver_url_a, database_a, _ = _neo4j_driver_params("neo4j+s://u:p@demo.neo4jlabs.com?db=companies")
+        driver_url_b, database_b, _ = _neo4j_driver_params(
+            "neo4j+s://other:secret@demo.neo4jlabs.com?database=companies"
+        )
+
+        assert _neo4j_global_id(driver_url_a, database_a) == _neo4j_global_id(driver_url_b, database_b)
+        assert _neo4j_global_id(driver_url_a, database_a) == "cli+neo4j_s___demo_neo4jlabs_com_database_companies"

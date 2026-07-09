@@ -120,6 +120,18 @@ def global_id_from_url(url: str) -> str:
     return f"cli+{safe}"
 
 
+def _neo4j_global_id(driver_url: str, database: str | None) -> str:
+    """Derive a stable cache id from canonical Neo4j driver params."""
+    if database is None:
+        return global_id_from_url(driver_url)
+
+    parsed = urlparse(driver_url)
+    pairs = parse_qsl(parsed.query, keep_blank_values=True)
+    pairs.append(("database", database))
+    canonical = urlunparse(parsed._replace(query=urlencode(sorted(pairs))))
+    return global_id_from_url(canonical)
+
+
 async def connect_url(
     raw_url: str,
     *,
@@ -147,10 +159,10 @@ async def connect_url(
     from tabulaflow.core.db_connector.sql_conn import SQLConnector
 
     url = normalize_url(raw_url)
-    gid = global_id or global_id_from_url(url)
 
     if _is_neo4j_bolt_url(url):
         driver_url, database, auth = _neo4j_driver_params(url)
+        gid = global_id or _neo4j_global_id(driver_url, database)
         return await Neo4jConnector.from_url_async(
             global_id=gid,
             url=driver_url,
@@ -161,6 +173,7 @@ async def connect_url(
             enable_schema_caching=enable_schema_caching,
         )
 
+    gid = global_id or global_id_from_url(url)
     return await SQLConnector.from_url_async(
         global_id=gid,
         url=url,
