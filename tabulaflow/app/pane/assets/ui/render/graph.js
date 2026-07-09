@@ -247,7 +247,7 @@ function createLivePhysics(cy) {
   cy.on('free', 'node', function () {
     kick(0.55);
   });
-  kick(0.28);
+  kick(0.55);
 
   return {
     destroy: function () {
