@@ -60,16 +60,10 @@ export function renderChart(container, cardData) {
   container.className = 'tf-view tf-chart-view';
   container.innerHTML = '<div class="tf-vis-stage"><div class="tf-vis-wrap '
     + escapeAttr(wrapClass) + '"><div class="tf-vis"></div></div></div>';
+  var target = container.querySelector('.tf-vis');
   var view = null;
   var disposed = false;
   var renderStarted = false;
-  var pendingFrame = null;
-  var measureAttempts = 0;
-
-  function clearPendingFrame() {
-    if (pendingFrame != null) window.cancelAnimationFrame(pendingFrame);
-    pendingFrame = null;
-  }
 
   function showError(err) {
     if (disposed) return;
@@ -80,22 +74,8 @@ export function renderChart(container, cardData) {
     container.appendChild(pre);
   }
 
-  function hasMeasurableTarget(target) {
-    if (!target || !container.isConnected) return false;
-    var rect = target.getBoundingClientRect();
-    if (wrapClass === 'fill') return rect.width > 0 && rect.height > 0;
-    return rect.width > 0;
-  }
-
-  function renderWhenReady() {
-    clearPendingFrame();
+  function mountView() {
     if (disposed || renderStarted) return;
-    var target = container.querySelector('.tf-vis');
-    if (!hasMeasurableTarget(target)) {
-      measureAttempts += 1;
-      if (measureAttempts <= 20) pendingFrame = window.requestAnimationFrame(renderWhenReady);
-      return;
-    }
     renderStarted = true;
     vegaEmbed(target, spec, {
       renderer: chartData.renderer || 'svg',
@@ -113,19 +93,15 @@ export function renderChart(container, cardData) {
   }
 
   return {
-    afterVisible: function () {
-      clearPendingFrame();
-      if (renderStarted) {
-        pendingFrame = window.requestAnimationFrame(resizeView);
-        return;
-      }
-      measureAttempts = 0;
-      pendingFrame = window.requestAnimationFrame(renderWhenReady);
+    requires: { width: true, height: wrapClass === 'fill' },
+    mount: function () {
+      if (renderStarted) resizeView();
+      else mountView();
     },
-    afterHidden: clearPendingFrame,
+    resize: resizeView,
+    unmount: function () {},
     destroy: function () {
       disposed = true;
-      clearPendingFrame();
       if (view) view.finalize();
     }
   };

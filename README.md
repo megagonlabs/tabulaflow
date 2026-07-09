@@ -387,6 +387,7 @@ July 8
 - [ ] docs/output_pane_lifecycle_plan.md
 - [ ] Tab change fail in TUI using left/right arrow
 - [ ] Make hover tooltip font size consistent across artifacts
+- [ ] Check bug: passing a self constructed registry to chat agent?
 
 - [ ] Remote server improvements
 

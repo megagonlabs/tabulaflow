@@ -760,7 +760,6 @@ export function renderMap(container, cardData) {
 
   var map = null;
   var mapLoaded = false;
-  var mapInitPending = false;
   var mapInitToken = 0;
   var markers = [];
   var dataBounds = null;
@@ -903,22 +902,19 @@ export function renderMap(container, cardData) {
     if (map) map.remove();
     map = null;
     mapLoaded = false;
-    mapInitPending = false;
     mapInitToken += 1;
     dataBounds = null;
   }
 
   function initMap() {
-    if (map || mapInitPending) return;
-    mapInitPending = true;
+    if (map) return;
     var initToken = ++mapInitToken;
     hideEmpty();
     fetch(mapStyleUrl).then(function (response) {
       if (!response.ok) throw new Error('Failed to load map style.');
       return response.json();
     }).then(function (style) {
-      mapInitPending = false;
-      if (initToken !== mapInitToken || map || !container.isConnected) return;
+      if (initToken !== mapInitToken || map) return;
       style.sprite = [
         { id: 'default', url: absoluteUrl(mapStyleSpriteUrl) },
         { id: 'tf', url: absoluteUrl(mapStyleRouteSpriteUrl) }
@@ -942,21 +938,18 @@ export function renderMap(container, cardData) {
         if (event && event.error) showEmpty('Map error: ' + String(event.error.message || event.error));
       });
     }).catch(function (error) {
-      mapInitPending = false;
       if (initToken !== mapInitToken) return;
       showEmpty('Map error: ' + String(error && error.message ? error.message : error));
     });
   }
 
   return {
-    afterVisible: function () {
-      initMap();
-      requestAnimationFrame(function () {
-        syncView();
-        requestAnimationFrame(syncView);
-      });
+    requires: { width: true, height: true },
+    mount: initMap,
+    resize: function () {
+      if (map) map.resize();
     },
-    afterHidden: destroyMap,
+    unmount: destroyMap,
     destroy: function () {
       destroyMap();
       container.innerHTML = '';

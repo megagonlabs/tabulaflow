@@ -76,8 +76,10 @@ export interface CardData {
 }
 
 export interface ViewHandle {
-  afterVisible?: () => void;
-  afterHidden?: () => void;
+  requires?: { width?: boolean; height?: boolean };
+  mount?: () => void;
+  resize?: () => void;
+  unmount?: () => void;
   destroy?: () => void;
 }
 
@@ -86,6 +88,10 @@ export interface ViewCacheEntry {
   handle: ViewHandle | null;
   data: CardData | null;
   kind: ViewKind;
+  gated?: boolean;
+  mounted?: boolean;
+  observer?: ResizeObserver | null;
+  gateFrame?: number | null;
 }
 
 declare global {

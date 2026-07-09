@@ -1,19 +1,21 @@
-# Output Pane Renderer Lifecycle — Implementation Plan
+# Output Pane Renderer Lifecycle
 
 Consolidate the three hand-rolled renderer readiness loops (chart, map, graph)
 behind a single pane-owned measurability gate.
 
 ## Status
 
-The original "proposal" is superseded — most of it already shipped. Renderers
-already return lifecycle handles (`afterVisible`/`afterHidden`/`destroy`), and
-`setActiveShellView` already defers heavy library init until a node is the active
-view. The remaining work is **deduplication and robustness**, not new capability.
+Implemented. The pane shell now owns renderer readiness with a shared
+`ResizeObserver` gate. Renderers return lifecycle handles with
+`requires`/`mount`/`resize`/`unmount`/`destroy`, and `setActiveShellView`
+activates or deactivates that gate as views become active, hidden, staged, or
+evicted.
 
-## Why change working code
+## Why This Changed
 
-Each lifecycle-sensitive renderer reinvents the same "init once, but the view may
-be hidden mid-init" state machine, and they do it inconsistently:
+The previous code worked in common cases, but each lifecycle-sensitive renderer
+reinvented the same "init once, but the view may be hidden mid-init" state
+machine, and they did it inconsistently:
 
 | Renderer | Init guard state | Measurability check | Silent-failure path |
 |----------|------------------|---------------------|---------------------|
@@ -36,20 +38,21 @@ Three consequences:
    `view.resize()` / `map.resize()` / `cy.resize()` while a view is visible, so
    all three only re-fit on tab re-activation.
 
-A shared `ResizeObserver` gate fixes all three at once and deletes more code than
-it adds. This is not over-abstraction: it collapses three divergent copies of
-race-prone logic into one, for a real correctness gain.
+A shared `ResizeObserver` gate fixes all three at once. This is not
+over-abstraction: it collapses three divergent copies of race-prone logic into
+one, for a real correctness gain.
 
-## Decisions (locked)
+## Decisions
 
 - **Keep destroy-on-hide for map/graph.** MapLibre and Cytoscape are heavy
   (cache weight 3); tearing them down when hidden and rebuilding on return stays.
   Charts stay alive when hidden (weight 1).
-- **Convert all three renderers in one change.** The whole value is uniformity;
-  a chart-only proof would leave the invariant inconsistent.
-- **Three-method handle, not four.** `mount` / `resize` / `destroy`. No separate
-  `hide` — teardown-on-hide is expressed by `unmount` (map/graph tear down,
-  chart cancels pending work); permanent teardown is `destroy`.
+- **Convert all three renderers together.** The whole value is uniformity; a
+  chart-only proof would leave the invariant inconsistent.
+- **Use `unmount`, not `hide`.** The lifecycle handle uses
+  `mount` / `resize` / `unmount` / `destroy`. Teardown-on-hide is expressed by
+  `unmount` (map/graph tear down, chart keeps the Vega view alive); permanent
+  teardown is `destroy`.
 - **`resize()` does not re-fit camera/layout.** On a live resize, call
   `map.resize()` / `cy.resize()` only, preserving the user's pan/zoom. The
   initial fit happens once inside `mount()`.
@@ -73,9 +76,10 @@ race-prone logic into one, for a real correctness gain.
 
 ## Pane-owned gate (`pane.js`)
 
-Replace the `afterVisible`/`afterHidden` indirection with a `ResizeObserver`
-driven per active view node. The observer *is* the readiness wait — it fires on
-first non-zero layout, so no rAF loop and no attempt cap.
+`pane.js` replaces renderer-specific `afterVisible`/`afterHidden` indirection
+with a `ResizeObserver`-driven gate per active view node. The observer is the
+readiness wait: it fires on first non-zero layout, so renderers no longer need
+their own retry loops or attempt caps.
 
 ```js
 function measurable(node, requires) {
@@ -120,16 +124,14 @@ Touch points:
 - `hideViewNode` / `stageViewNode` — call `gateDeactivate(node._tfViewEntry)`.
 - `cacheTouch` eviction — before `handle.destroy()`, `gateDeactivate(entry)` so a
   mounted view unmounts and stops observing first.
-- Delete `afterVisible(entry)` and `afterHidden(entry)` helpers.
+- `afterVisible(entry)` and `afterHidden(entry)` helpers are gone.
 - Extend the entry shape (`{ node, handle, data, kind }`) with `gated`,
   `mounted`, `observer`. `gateActivate` must be idempotent — `setActiveShellView`
   is called redundantly (e.g. `revealStagedView` fires it twice via rAF).
 
-## Per-renderer conversion
+## Per-renderer Shape
 
 ### `chart.js`
-- **Delete:** `renderWhenReady`, `hasMeasurableTarget`, `measureAttempts`,
-  `pendingFrame`, `clearPendingFrame`, the `afterVisible`/`afterHidden` handle.
 - **`requires`:** `{ width: true, height: wrapClass === 'fill' }`.
 - **`mount()`:** if not yet embedded, `vegaEmbed(...)` (node is measurable — no
   loop); else `resizeView()`.
@@ -138,9 +140,6 @@ Touch points:
 - **`destroy()`:** `disposed = true; if (view) view.finalize()`.
 
 ### `map.js`
-- **Delete:** `mapInitPending` and the `isConnected` guard inside `initMap` (the
-  gate guarantees connected + measurable); the double-rAF `syncView` in the old
-  `afterVisible`.
 - **Keep:** `mapInitToken` — still needed to discard a stale async style `fetch`
   across an unmount/mount cycle.
 - **`requires`:** `{ width: true, height: true }`.
@@ -151,9 +150,6 @@ Touch points:
 - **`destroy()`:** `destroyMap(); container.innerHTML = ''`.
 
 ### `graph.js`
-- **Delete:** `initToken`, `initPending`, the `requestAnimationFrame` wrapper and
-  `isConnected` guard in `initGraph` — build Cytoscape synchronously in `mount()`
-  since the gate guarantees a measurable container.
 - **`requires`:** `{ width: true, height: true }`.
 - **`mount()`:** build Cytoscape; `fitGraph` on `layoutstop`.
 - **`resize()`:** `cy.resize()` only — no re-fit.
@@ -167,7 +163,7 @@ Touch points:
   only the post-activation path changes.
 - Cache weights, LRU eviction, `prewarmDataView`, scroll memory.
 
-## Migration order
+## Implemented Migration
 
 1. Add `measurable` + `gateActivate`/`gateDeactivate` and the entry-state fields
    in `pane.js`; rewire `setActiveShellView`, `hideViewNode`, `stageViewNode`,
@@ -175,10 +171,8 @@ Touch points:
 2. Convert `chart.js` (removes the 20-frame cap; smallest blast radius).
 3. Convert `map.js`.
 4. Convert `graph.js`.
-5. Grep the tree for any remaining `afterVisible`/`afterHidden` references.
-
-Land as one change (uniformity is the point), but stage the commits per file so
-each renderer conversion is separately reviewable.
+5. Grep the app-owned UI code for any remaining `afterVisible`/`afterHidden`
+   references.
 
 ## Verification
 

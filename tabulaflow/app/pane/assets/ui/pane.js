@@ -254,6 +254,7 @@ function cacheTouch(key) {
     var evict = lru.shift();
     var entry = viewCache[evict];
     if (!entry) continue;
+    gateDeactivate(entry);
     if (entry.handle && entry.handle.destroy) entry.handle.destroy();
     if (entry.node && entry.node.parentNode) entry.node.parentNode.removeChild(entry.node);
     delete viewCache[evict];
@@ -290,14 +291,66 @@ function renderKind(node, kind, data) {
   return { destroy: function () {} };
 }
 
-function afterVisible(entry) {
-  if (!entry || !entry.handle || !entry.handle.afterVisible) return;
-  requestAnimationFrame(function () { entry.handle.afterVisible(); });
+function measurable(node, requires) {
+  if (!node || !node.isConnected) return false;
+  var rect = node.getBoundingClientRect();
+  if (requires && requires.width && !(rect.width > 0)) return false;
+  if (requires && requires.height && !(rect.height > 0)) return false;
+  return true;
 }
 
-function afterHidden(entry) {
-  if (!entry || !entry.handle || !entry.handle.afterHidden) return;
-  entry.handle.afterHidden();
+function cancelGateFrame(entry) {
+  if (entry && entry.gateFrame != null) {
+    window.cancelAnimationFrame(entry.gateFrame);
+    entry.gateFrame = null;
+  }
+}
+
+function runGate(entry) {
+  if (!entry || !entry.gated || !entry.handle || !entry.handle.mount) return;
+  var handle = entry.handle;
+  var requires = handle.requires || {};
+  if (!entry.mounted) {
+    if (!measurable(entry.node, requires)) {
+      if (!entry.observer) scheduleGateCheck(entry);
+      return;
+    }
+    entry.mounted = true;
+    handle.mount();
+    return;
+  }
+  if (handle.resize) handle.resize();
+}
+
+function scheduleGateCheck(entry) {
+  cancelGateFrame(entry);
+  if (!entry || !entry.gated) return;
+  entry.gateFrame = window.requestAnimationFrame(function () {
+    entry.gateFrame = null;
+    runGate(entry);
+  });
+}
+
+function gateActivate(entry) {
+  if (!entry || !entry.handle || !entry.handle.mount || entry.gated) return;
+  entry.gated = true;
+  if (window.ResizeObserver) {
+    entry.observer = new ResizeObserver(function () { runGate(entry); });
+    entry.observer.observe(entry.node);
+  }
+  scheduleGateCheck(entry);
+}
+
+function gateDeactivate(entry) {
+  if (!entry) return;
+  cancelGateFrame(entry);
+  if (entry.observer) {
+    entry.observer.disconnect();
+    entry.observer = null;
+  }
+  if (entry.mounted && entry.handle && entry.handle.unmount) entry.handle.unmount();
+  entry.mounted = false;
+  entry.gated = false;
 }
 
 function setActiveShellView(shell, activeNode) {
@@ -308,8 +361,8 @@ function setActiveShellView(shell, activeNode) {
     node.classList.remove('view-pending');
     node.toggleAttribute('inert', !active);
     node.setAttribute('aria-hidden', active ? 'false' : 'true');
-    if (active) afterVisible(node._tfViewEntry);
-    else afterHidden(node._tfViewEntry);
+    if (active) gateActivate(node._tfViewEntry);
+    else gateDeactivate(node._tfViewEntry);
   });
 }
 
@@ -319,7 +372,7 @@ function hideViewNode(node) {
   node.classList.add('view-hidden');
   node.setAttribute('inert', '');
   node.setAttribute('aria-hidden', 'true');
-  afterHidden(node._tfViewEntry);
+  gateDeactivate(node._tfViewEntry);
 }
 
 function stageViewNode(node) {
@@ -328,7 +381,7 @@ function stageViewNode(node) {
   node.classList.add('view-pending');
   node.setAttribute('inert', '');
   node.setAttribute('aria-hidden', 'true');
-  afterHidden(node._tfViewEntry);
+  gateDeactivate(node._tfViewEntry);
 }
 
 function blurHiddenFocus(node) {
@@ -368,6 +421,7 @@ function isActiveShellView(shell, key) {
 }
 
 function renderLoadedView(entry, kind, data, meta) {
+  gateDeactivate(entry);
   entry.data = data;
   entry.node.textContent = '';
   entry.handle = renderKind(entry.node, kind, data);
@@ -441,7 +495,7 @@ function mountView(card, kind, shell, meta) {
     cacheTouch(key);
     if (entry.data && !entry.handle) {
       renderLoadedView(entry, kind, entry.data, meta);
-      afterVisible(entry);
+      gateActivate(entry);
     }
     else if (entry.data && kind === 'data' && entry.data.table) meta.textContent = entry.data.table.meta || '';
     return;

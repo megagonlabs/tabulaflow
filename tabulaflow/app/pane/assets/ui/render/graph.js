@@ -414,8 +414,6 @@ export function renderGraph(container, cardData) {
 
   var cy = null;
   var livePhysics = null;
-  var initPending = false;
-  var initToken = 0;
   var lockedDetail = null;
 
   function hideDetail() {
@@ -442,8 +440,6 @@ export function renderGraph(container, cardData) {
   }
 
   function destroyGraph() {
-    initToken += 1;
-    initPending = false;
     lockedDetail = null;
     if (cy) {
       if (livePhysics) {
@@ -460,67 +456,55 @@ export function renderGraph(container, cardData) {
   }
 
   function initGraph() {
-    if (cy || initPending) return;
-    initPending = true;
-    var token = ++initToken;
-    requestAnimationFrame(function () {
-      initPending = false;
-      if (token !== initToken || cy || !container.isConnected) return;
-      cy = cytoscape({
-        container: graphNode,
-        elements: graphInitElements(elements, graphData.layout),
-        style: graphStyles(),
-        layout: graphLayoutOptions(graphData.layout, graphData),
-        boxSelectionEnabled: false,
-        hideEdgesOnViewport: false,
-        textureOnViewport: false,
-        wheelSensitivity: 0.18,
-        minZoom: 0.08,
-        maxZoom: 2.25
-      });
-      container._tfCy = cy;
-      cy.on('layoutstop', function () {
-        fitGraph(cy, graphNode);
-        startLivePhysics();
-      });
-      cy.ready(function () {
-        requestAnimationFrame(function () {
-          startLivePhysics();
-        });
-      });
-      cy.on('mouseover', 'node, edge', function (event) {
-        graphNode.style.cursor = 'pointer';
-        showDetail(event.target, false);
-      });
-      cy.on('mouseout', 'node, edge', function () {
-        graphNode.style.cursor = '';
-        hideDetail();
-      });
-      cy.on('tap', 'node, edge', function (event) {
+    if (cy) return;
+    cy = cytoscape({
+      container: graphNode,
+      elements: graphInitElements(elements, graphData.layout),
+      style: graphStyles(),
+      layout: graphLayoutOptions(graphData.layout, graphData),
+      boxSelectionEnabled: false,
+      hideEdgesOnViewport: false,
+      textureOnViewport: false,
+      wheelSensitivity: 0.18,
+      minZoom: 0.08,
+      maxZoom: 2.25
+    });
+    container._tfCy = cy;
+    cy.on('layoutstop', function () {
+      fitGraph(cy, graphNode);
+      startLivePhysics();
+    });
+    cy.ready(function () {
+      startLivePhysics();
+    });
+    cy.on('mouseover', 'node, edge', function (event) {
+      graphNode.style.cursor = 'pointer';
+      showDetail(event.target, false);
+    });
+    cy.on('mouseout', 'node, edge', function () {
+      graphNode.style.cursor = '';
+      hideDetail();
+    });
+    cy.on('tap', 'node, edge', function (event) {
+      lockedDetail = null;
+      showDetail(event.target, true);
+    });
+    cy.on('tap', function (event) {
+      if (event.target === cy) {
+        cy.elements(':selected').unselect();
         lockedDetail = null;
-        showDetail(event.target, true);
-      });
-      cy.on('tap', function (event) {
-        if (event.target === cy) {
-          cy.elements(':selected').unselect();
-          lockedDetail = null;
-          hideDetail();
-        }
-      });
+        hideDetail();
+      }
     });
   }
 
   return {
-    afterVisible: function () {
-      initGraph();
-      requestAnimationFrame(function () {
-        if (cy) {
-          fitGraph(cy, graphNode);
-          startLivePhysics();
-        }
-      });
+    requires: { width: true, height: true },
+    mount: initGraph,
+    resize: function () {
+      if (cy) cy.resize();
     },
-    afterHidden: destroyGraph,
+    unmount: destroyGraph,
     destroy: function () {
       destroyGraph();
       container.innerHTML = '';
