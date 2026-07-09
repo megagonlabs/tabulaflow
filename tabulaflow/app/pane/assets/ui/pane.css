@@ -320,6 +320,7 @@ body { margin: 0; background: var(--bg); color: var(--text); display: flex; flex
 .vega-bindings select:focus,
 .vega-bindings input:focus { outline: none; border-color: var(--accent); }
 #vg-tooltip-element { border-radius: 6px; }
+#vg-tooltip-element.dark-theme { border-color: var(--popover-border); }
 
 /* Direct map rendering. */
 .tf-map-view { background: var(--card); }
