@@ -60,7 +60,6 @@ class _EdgeSource(_SourceModel):
 class _SubgraphSource(_StrictModel):
     record_id: str
     caption: str | None = None
-    group: str | None = None
 
 
 class _GraphSpec(_StrictModel):
@@ -229,12 +228,8 @@ def _neo4j_node_label(node: object, caption: str | None) -> str:
     return _neo4j_node_id(node)
 
 
-def _neo4j_node_group(node: object, group: str | None) -> str:
+def _neo4j_node_group(node: object) -> str:
     labels = sorted(str(label) for label in getattr(node, "labels", []) or [])
-    if group and group != "labels" and hasattr(node, "get"):
-        value = node.get(group)
-        if value is not None:
-            return str(value)
     return ":".join(labels) if labels else "node"
 
 
@@ -289,7 +284,7 @@ def _extract_subgraph_source(
         data: dict[str, Any] = {
             "id": node_id,
             "label": _neo4j_node_label(node, source.caption),
-            "group": _neo4j_node_group(node, source.group),
+            "group": _neo4j_node_group(node),
         }
         if hasattr(node, "items"):
             for key, value in node.items():
@@ -545,7 +540,7 @@ class RenderGraphTool:
           Optional ``directed`` defaults to ``true``. Optional ``tooltip`` is a
           field name, list of field names, or ``true``.
         - Subgraph source:
-          ``{"record_id":"Q3","caption":"title","group":"labels"}``.
+          ``{"record_id":"Q3","caption":"title"}``.
 
         Minimal examples:
         ``{"edges":[{"record_id":"Q1","source":"src","target":"dst","label":"rel"}]}``

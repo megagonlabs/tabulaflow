@@ -170,11 +170,11 @@ Cypher auto-extract (Phase 3 — near-spec-free; one record yields both nodes an
 edges from its native objects):
 
 ```json
-{ "subgraph": [{ "record_id": "Q1", "caption": "title", "group": "labels" }] }
+{ "subgraph": [{ "record_id": "Q1", "caption": "title" }] }
 ```
 
-`caption` (default: `name`/`title`/first string prop) and `group` (default:
-color by node label) are the only optional overrides.
+`caption` (default: `name`/`title`/first string prop) is the only optional
+override. Node grouping/coloring comes from Neo4j labels.
 
 ---
 

@@ -21,7 +21,7 @@ This returns one row with two columns:
 Then attempt to render it with:
 
 ```json
-{"title":"Schema visualization","subgraph":[{"record_id":"Q17","caption":"title","group":"labels"}]}
+{"title":"Schema visualization","subgraph":[{"record_id":"Q17","caption":"title"}]}
 ```
 
 Observed error:

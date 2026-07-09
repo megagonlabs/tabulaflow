@@ -100,7 +100,7 @@ class TestNormalizeGraphSpec:
         df = pd.DataFrame({"nodes": [[alice, matrix]], "relationships": [[acted_in]]})
 
         normalized = _norm(
-            {"subgraph": [{"record_id": "Q1", "caption": "name", "group": "labels"}]},
+            {"subgraph": [{"record_id": "Q1", "caption": "name"}]},
             Q1=df,
         )
 
@@ -157,6 +157,13 @@ class TestNormalizeGraphSpec:
                 "role": "Trinity",
             }
         ]
+
+    def test_subgraph_rejects_group_override(self) -> None:
+        alice, matrix, acted_in, _ = _neo4j_objects()
+        df = pd.DataFrame({"nodes": [[alice, matrix]], "relationships": [[acted_in]]})
+
+        with pytest.raises(ValueError, match="group"):
+            _norm({"subgraph": [{"record_id": "Q1", "group": "labels"}]}, Q1=df)
 
 
 class TestRenderGraphTool:
