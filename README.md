@@ -379,7 +379,9 @@ July 8
   - [x] Fix PropertyGraphSchema representation
   - [x] Fix render_graph for generic Cypher queries like db.schema.visualization()
   - [x] Physics simulation for graphs
-- [x] Fix chart not shown bug
+- Fix bugs
+  - [x] Fix chart not shown bug
+  - [x] Fix map viewport fitting  
 
 - [ ] Graph - node/edge selection style
 - [ ] docs/output_pane_lifecycle_plan.md
