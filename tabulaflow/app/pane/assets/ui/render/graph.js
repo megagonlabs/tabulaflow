@@ -6,11 +6,11 @@ const cytoscape = window.cytoscape;
 const GRAPH_FIT_PADDING = 64;
 const GRAPH_MAX_AUTO_ZOOM = 1.25;
 const GRAPH_DEFAULT_NODE_BORDER = '#253447';
-const GRAPH_LIVE_PHYSICS_MAX_NODES = 260;
-const GRAPH_LIVE_PHYSICS_MAX_EDGES = 700;
+const GRAPH_LIVE_PHYSICS_MAX_NODES = 320;
+const GRAPH_LIVE_PHYSICS_MAX_EDGES = 900;
 const GRAPH_LIVE_PHYSICS_MIN_ALPHA = 0.012;
-const GRAPH_COLA_PHYSICS_MAX_NODES = 260;
-const GRAPH_COLA_PHYSICS_MAX_EDGES = 700;
+const GRAPH_COLA_PHYSICS_MAX_NODES = 320;
+const GRAPH_COLA_PHYSICS_MAX_EDGES = 900;
 
 function normalizeHexColor(color) {
   if (typeof color !== 'string') return null;

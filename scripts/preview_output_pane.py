@@ -746,6 +746,29 @@ def _physics_large_data() -> tuple[pd.DataFrame, pd.DataFrame]:
     return nodes, pd.DataFrame(edges)
 
 
+def _physics_xlarge_data() -> tuple[pd.DataFrame, pd.DataFrame]:
+    count = 240
+    nodes = pd.DataFrame(
+        {
+            "id": [f"x{i}" for i in range(count)],
+            "label": [f"X{i}" for i in range(count)],
+            "group": [f"Unit {i % 12 + 1}" for i in range(count)],
+        }
+    )
+    edges = []
+    for i in range(count):
+        edges.append({"src": f"x{i}", "dst": f"x{(i + 1) % count}", "rel": "ring"})
+        if i % 2 == 0:
+            edges.append({"src": f"x{i}", "dst": f"x{(i + 13) % count}", "rel": "bridge"})
+        if i % 3 == 0:
+            edges.append({"src": f"x{i}", "dst": f"x{(i + 37) % count}", "rel": "long_link"})
+        if i % 5 == 0:
+            edges.append({"src": f"x{i}", "dst": f"x{(i + 83) % count}", "rel": "cross_cluster"})
+        if i % 30 == 0:
+            edges.append({"src": f"x{i}", "dst": f"x{(i + 121) % count}", "rel": "anchor"})
+    return nodes, pd.DataFrame(edges)
+
+
 def _graph_physics_comparison_cards(pane_dir: Path) -> list[PaneCard]:
     cards: list[PaneCard] = []
     for shape, data_fn in (
@@ -755,6 +778,7 @@ def _graph_physics_comparison_cards(pane_dir: Path) -> list[PaneCard]:
         ("dense", _physics_dense_data),
         ("medium", _physics_medium_data),
         ("large", _physics_large_data),
+        ("xlarge", _physics_xlarge_data),
     ):
         nodes, edges = data_fn()
         cards.append(_physics_graph_card(pane_dir, shape=shape, physics="custom", nodes=nodes, edges=edges))
@@ -1072,7 +1096,7 @@ def _populate_pane(
             user="Compare custom live physics against Cola on varied graph shapes.",
             assistant=(
                 "This preview-only turn pairs the custom live-physics prototype with Cytoscape-Cola "
-                "on the same social, chain, disconnected, dense, medium, and large graph fixtures."
+                "on the same social, chain, disconnected, dense, medium, large, and extra-large graph fixtures."
             ),
             cards=_graph_physics_comparison_cards(pane_dir),
         )
