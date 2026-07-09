@@ -380,8 +380,6 @@ July 8
   - [x] Fix render_graph for generic Cypher queries like db.schema.visualization()
   - [x] Physics simulation for graphs
 
-- [ ]<arg name="vegalite_spec">{"mark":"bar","encoding":{"x":{"field":"product","type":"nominal","sort":"-y","title":"Product"},"y":{"field":"avg_rating","type":"quantitative","title":"Average rating"},"tooltip":[{"field":"product","type":"nominal"},{"field":"avg_rating","type":"quantitative"},{"field":"review_count","type":"quantitative"}]}}</arg>
-
 - [ ] Remote server improvements
 
 - [ ] code diff rendering
