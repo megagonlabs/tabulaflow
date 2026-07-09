@@ -340,9 +340,12 @@ function graphStyles() {
     {
       selector: 'edge.tf-selected',
       style: {
-        'line-color': cssVar('--accent', '#3eb489'),
+        'line-color': '#9aa4b2',
         'line-opacity': 1,
-        'target-arrow-color': cssVar('--accent', '#3eb489'),
+        'overlay-color': '#f8fafc',
+        'overlay-opacity': 0.18,
+        'overlay-padding': 5,
+        'target-arrow-color': '#9aa4b2',
         'width': 3
       }
     }
