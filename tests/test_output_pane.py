@@ -1587,7 +1587,7 @@ def test_pane_map_view_is_maplibre_based() -> None:
         ".tf-map-view .maplibregl-popup.tf-map-detail-tooltip .maplibregl-popup-content { pointer-events: auto; }"
         in _PANE_HTML
     )
-    assert "padding: 9px 14px 9px 12px; background: #fff; border: 0; border-radius: 12px;" in _PANE_HTML
+    assert "padding: 8px; background: #fff; border: 0; border-radius: 12px;" in _PANE_HTML
     assert ".tf-map-view .maplibregl-popup.tf-map-detail-popup .maplibregl-popup-tip { display: none; }" in _PANE_HTML
     assert "max-width: min(420px, 72vw); color: #111827;" in _PANE_HTML
     assert "overflow-wrap: anywhere;" in _PANE_HTML
