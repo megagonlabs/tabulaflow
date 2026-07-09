@@ -497,6 +497,19 @@ def test_graph_tooltips_have_separate_hover_and_pinned_state() -> None:
     assert "overflow-wrap: anywhere; pointer-events: auto;" in _PANE_HTML
 
 
+def test_graph_initial_auto_fit_stops_after_user_viewport_interaction() -> None:
+    graph_js = _pane_asset_text("render/graph.js")
+    assert "function createLivePhysics(cy)" in graph_js
+    assert "onSettle" not in graph_js
+    assert "livePhysics = createLivePhysics(cy);" in graph_js
+    assert "var autoFitEnabled = true;" in graph_js
+    assert "function markUserViewportInteraction()" in graph_js
+    assert "cy.on('grab', 'node', markUserViewportInteraction);" in graph_js
+    assert "graphNode.addEventListener('wheel', markUserViewportInteraction" in graph_js
+    assert "clearAutoFitTimer();" in graph_js
+    assert "scheduleAutoFit();" in graph_js
+
+
 def test_map_label_does_not_create_implicit_tooltip_body() -> None:
     map_js = _pane_asset_text("render/map.js")
     assert "function detailHtml(row, tooltip, labels, fallback)" in map_js

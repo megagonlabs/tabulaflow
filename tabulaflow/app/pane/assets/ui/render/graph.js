@@ -443,6 +443,8 @@ export function renderGraph(container, cardData) {
   var hoverOverElement = false;
   var hoverOverDetail = false;
   var viewportPan = null;
+  var autoFitEnabled = true;
+  var autoFitTimer = null;
 
   function clearHoverCloseTimer() {
     if (!hoverCloseTimer) return;
@@ -475,6 +477,29 @@ export function renderGraph(container, cardData) {
   function startLivePhysics() {
     if (!cy || livePhysics) return;
     livePhysics = createLivePhysics(cy);
+  }
+
+  function clearAutoFitTimer() {
+    if (!autoFitTimer) return;
+    clearTimeout(autoFitTimer);
+    autoFitTimer = null;
+  }
+
+  function markUserViewportInteraction() {
+    autoFitEnabled = false;
+    clearAutoFitTimer();
+  }
+
+  function runAutoFit() {
+    autoFitTimer = null;
+    if (!autoFitEnabled || !cy) return;
+    fitGraph(cy, graphNode);
+  }
+
+  function scheduleAutoFit() {
+    if (!autoFitEnabled) return;
+    clearAutoFitTimer();
+    autoFitTimer = setTimeout(runAutoFit, 0);
   }
 
   function clearGraphSelection() {
@@ -536,6 +561,7 @@ export function renderGraph(container, cardData) {
   function startViewportPan(event) {
     var point = eventPoint(event);
     if (!point) return;
+    markUserViewportInteraction();
     viewportPan = point;
     graphNode.style.cursor = 'grabbing';
     window.addEventListener('mousemove', moveViewportPan);
@@ -547,6 +573,7 @@ export function renderGraph(container, cardData) {
 
   function destroyGraph() {
     hideDetail(true);
+    clearAutoFitTimer();
     stopViewportPan();
     if (cy) {
       if (livePhysics) {
@@ -578,12 +605,14 @@ export function renderGraph(container, cardData) {
     });
     container._tfCy = cy;
     cy.on('layoutstop', function () {
-      fitGraph(cy, graphNode);
+      scheduleAutoFit();
       startLivePhysics();
     });
     cy.ready(function () {
+      scheduleAutoFit();
       startLivePhysics();
     });
+    cy.on('grab', 'node', markUserViewportInteraction);
     cy.on('mouseover', 'node, edge', function (event) {
       hoverOverElement = true;
       clearHoverCloseTimer();
@@ -617,12 +646,18 @@ export function renderGraph(container, cardData) {
     hoverOverDetail = false;
     scheduleHoverDetailClose();
   });
+  graphNode.addEventListener('wheel', markUserViewportInteraction, { passive: true });
+  graphNode.addEventListener('touchstart', function (event) {
+    if (event.touches && event.touches.length > 1) markUserViewportInteraction();
+  }, { passive: true });
 
   return {
     requires: { width: true, height: true },
     mount: initGraph,
     resize: function () {
-      if (cy) cy.resize();
+      if (!cy) return;
+      cy.resize();
+      scheduleAutoFit();
     },
     unmount: destroyGraph,
     destroy: function () {
