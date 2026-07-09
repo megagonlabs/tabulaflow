@@ -855,7 +855,7 @@ def _physics_xlarge_data() -> tuple[pd.DataFrame, pd.DataFrame]:
     return nodes, pd.DataFrame(edges)
 
 
-def _graph_physics_comparison_cards(pane_dir: Path) -> list[PaneCard]:
+def _graph_live_physics_stress_cards(pane_dir: Path) -> list[PaneCard]:
     cards: list[PaneCard] = []
     for shape, data_fn in (
         ("social", _physics_social_data),
@@ -868,7 +868,6 @@ def _graph_physics_comparison_cards(pane_dir: Path) -> list[PaneCard]:
     ):
         nodes, edges = data_fn()
         cards.append(_physics_graph_card(pane_dir, shape=shape, physics="custom", nodes=nodes, edges=edges))
-        cards.append(_physics_graph_card(pane_dir, shape=shape, physics="cola", nodes=nodes, edges=edges))
     return cards
 
 
@@ -1178,13 +1177,13 @@ def _populate_pane(
         _push_turn(
             pane,
             pane_dir,
-            title="Graph physics comparison",
-            user="Compare custom live physics against Cola on varied graph shapes.",
+            title="Graph live physics stress test",
+            user="Show custom live physics on varied graph shapes.",
             assistant=(
-                "This preview-only turn pairs the custom live-physics prototype with Cytoscape-Cola "
-                "on the same social, chain, disconnected, dense, medium, large, and 1,000-node extra-large graph fixtures."
+                "This preview-only turn exercises the custom live-physics prototype on social, chain, "
+                "disconnected, dense, medium, large, and 1,000-node extra-large graph fixtures."
             ),
-            cards=_graph_physics_comparison_cards(pane_dir),
+            cards=_graph_live_physics_stress_cards(pane_dir),
         )
         _push_turn(
             pane,
