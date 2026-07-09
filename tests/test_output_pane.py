@@ -485,6 +485,18 @@ def test_graph_tooltips_link_urls() -> None:
     assert "String(tooltip[key]) === String(label)" not in graph_js
 
 
+def test_graph_tooltips_have_separate_hover_and_pinned_state() -> None:
+    graph_js = _pane_asset_text("render/graph.js")
+    assert "var detailMode = null;" in graph_js
+    assert "if (detailMode === 'pinned' && mode !== 'pinned') return;" in graph_js
+    assert "function scheduleHoverDetailClose()" in graph_js
+    assert "}, 60);" in graph_js
+    assert "detailNode.addEventListener('mouseenter'" in graph_js
+    assert "detailNode.addEventListener('mouseleave'" in graph_js
+    assert ".tf-graph-detail {\n" in _PANE_HTML
+    assert "overflow-wrap: anywhere; pointer-events: auto;" in _PANE_HTML
+
+
 def test_map_label_does_not_create_implicit_tooltip_body() -> None:
     map_js = _pane_asset_text("render/map.js")
     assert "function detailHtml(row, tooltip, labels, fallback)" in map_js

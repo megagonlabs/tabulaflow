@@ -438,13 +438,38 @@ export function renderGraph(container, cardData) {
 
   var cy = null;
   var livePhysics = null;
-  var lockedDetail = null;
+  var detailMode = null;
+  var hoverCloseTimer = null;
+  var hoverOverElement = false;
+  var hoverOverDetail = false;
   var viewportPan = null;
 
-  function hideDetail() {
-    if (lockedDetail) return;
+  function clearHoverCloseTimer() {
+    if (!hoverCloseTimer) return;
+    clearTimeout(hoverCloseTimer);
+    hoverCloseTimer = null;
+  }
+
+  function hideDetail(force) {
+    if (!force && detailMode === 'pinned') return;
+    clearHoverCloseTimer();
+    detailMode = null;
+    hoverOverElement = false;
+    hoverOverDetail = false;
     detailNode.classList.remove('show');
     detailNode.innerHTML = '';
+  }
+
+  function scheduleHoverDetailClose() {
+    hoverOverElement = false;
+    if (detailMode !== 'hover' || hoverOverDetail) return;
+    clearHoverCloseTimer();
+    hoverCloseTimer = setTimeout(function () {
+      hoverCloseTimer = null;
+      if (detailMode === 'hover' && !hoverOverElement && !hoverOverDetail) {
+        hideDetail(true);
+      }
+    }, 60);
   }
 
   function startLivePhysics() {
@@ -461,11 +486,13 @@ export function renderGraph(container, cardData) {
     if (ele && ele.addClass) ele.addClass('tf-selected');
   }
 
-  function showDetail(ele, lock) {
+  function showDetail(ele, mode) {
     if (!ele || !stageNode) return;
+    if (detailMode === 'pinned' && mode !== 'pinned') return;
     var html = graphDetailHtml(ele);
     if (!html) return;
-    if (lock) lockedDetail = ele.id();
+    clearHoverCloseTimer();
+    detailMode = mode;
     var pos = graphDetailPosition(ele);
     detailNode.innerHTML = html;
     detailNode.style.left = Math.max(10, Math.min(stageNode.clientWidth - 260, pos.x + 14)) + 'px';
@@ -519,7 +546,7 @@ export function renderGraph(container, cardData) {
   }
 
   function destroyGraph() {
-    lockedDetail = null;
+    hideDetail(true);
     stopViewportPan();
     if (cy) {
       if (livePhysics) {
@@ -530,8 +557,6 @@ export function renderGraph(container, cardData) {
       cy = null;
     }
     container._tfCy = null;
-    detailNode.classList.remove('show');
-    detailNode.innerHTML = '';
     graphNode.innerHTML = '';
   }
 
@@ -560,29 +585,38 @@ export function renderGraph(container, cardData) {
       startLivePhysics();
     });
     cy.on('mouseover', 'node, edge', function (event) {
+      hoverOverElement = true;
+      clearHoverCloseTimer();
       graphNode.style.cursor = 'pointer';
-      showDetail(event.target, false);
+      showDetail(event.target, 'hover');
     });
     cy.on('mouseout', 'node, edge', function () {
       graphNode.style.cursor = '';
-      hideDetail();
+      scheduleHoverDetailClose();
     });
     cy.on('vmousedown', function (event) {
       if (event.target === cy) startViewportPan(event);
     });
     cy.on('tap', 'node, edge', function (event) {
       selectGraphElement(event.target);
-      lockedDetail = null;
-      showDetail(event.target, true);
+      showDetail(event.target, 'pinned');
     });
     cy.on('tap', function (event) {
       if (event.target === cy) {
         clearGraphSelection();
-        lockedDetail = null;
-        hideDetail();
+        hideDetail(true);
       }
     });
   }
+
+  detailNode.addEventListener('mouseenter', function () {
+    hoverOverDetail = true;
+    clearHoverCloseTimer();
+  });
+  detailNode.addEventListener('mouseleave', function () {
+    hoverOverDetail = false;
+    scheduleHoverDetailClose();
+  });
 
   return {
     requires: { width: true, height: true },
