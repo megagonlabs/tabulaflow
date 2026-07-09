@@ -114,7 +114,6 @@ function graphLayoutOptions(layout, graphData) {
 
 function livePhysicsMode(graphData) {
   var meta = graphData && graphData.meta ? graphData.meta : {};
-  if (graphData.layout !== 'force') return null;
   if (meta.physics === 'live' || meta.physics === 'custom') return 'custom';
   return null;
 }

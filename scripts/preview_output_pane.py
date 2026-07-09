@@ -554,7 +554,7 @@ def _graph_network_card(pane_dir: Path) -> PaneCard:
             {"src": "faye", "dst": "alice", "rel": "syncs", "weight": 1},
         ]
     )
-    return _graph_card(
+    card = _graph_card(
         graph_id="GRAPHDEBUG_NETWORK",
         label="force_layout",
         pane_dir=pane_dir,
@@ -582,6 +582,7 @@ def _graph_network_card(pane_dir: Path) -> PaneCard:
             ],
         },
     )
+    return _with_graph_meta(card, pane_dir, physics="custom")
 
 
 def _physics_graph_card(
@@ -803,7 +804,7 @@ def _graph_lineage_card(pane_dir: Path) -> PaneCard:
             {"from_id": "dim_accounts", "to_id": "mart_growth", "rel": "joins"},
         ]
     )
-    return _graph_card(
+    card = _graph_card(
         graph_id="GRAPHDEBUG_LINEAGE",
         label="layered_layout",
         pane_dir=pane_dir,
@@ -831,6 +832,7 @@ def _graph_lineage_card(pane_dir: Path) -> PaneCard:
             ],
         },
     )
+    return _with_graph_meta(card, pane_dir, physics="custom")
 
 
 def _graph_tree_card(pane_dir: Path) -> PaneCard:
@@ -859,7 +861,7 @@ def _graph_tree_card(pane_dir: Path) -> PaneCard:
             {"src": "data", "dst": "analytics", "rel": "leads"},
         ]
     )
-    return _graph_card(
+    card = _graph_card(
         graph_id="GRAPHDEBUG_TREE",
         label="tree_layout",
         pane_dir=pane_dir,
@@ -887,6 +889,7 @@ def _graph_tree_card(pane_dir: Path) -> PaneCard:
             ],
         },
     )
+    return _with_graph_meta(card, pane_dir, physics="custom")
 
 
 def _wav_bytes(freq_hz: float, seconds: float = 0.4, rate: int = 8000) -> bytes:
@@ -1077,10 +1080,10 @@ def _populate_pane(
             pane,
             pane_dir,
             title="Graph layout comparison",
-            user="Show one graph for each graph layout mode.",
+            user="Show one live-physics graph for each graph layout mode.",
             assistant=(
-                "This turn contains one graph card for each supported layout mode: force, tree, and layered. "
-                "Use the record tabs to switch layouts while inspecting the same graph renderer styling."
+                "This turn contains one live-physics graph card for each supported layout mode: force, tree, and "
+                "layered. Use the record tabs to switch layouts while inspecting the same graph renderer styling."
             ),
             cards=[_graph_network_card(pane_dir), _graph_tree_card(pane_dir), _graph_lineage_card(pane_dir)],
         )
