@@ -235,7 +235,7 @@ class TestRenderMapTool:
             "layers": [{"type": "points", "record_id": "Q1", "lat": "lat", "lng": "lng", "label": "name"}],
         }
         msg = await RenderMapTool(history=history)(map_spec=json.dumps(spec))
-        assert "Cities MAP1 created from Q1" in msg
+        assert "Map MAP1 created from Q1" in msg
         assert history.get_map("MAP1").map_spec == {
             "title": "Cities",
             "layers": [{"type": "points", "source": "Q1", "lat": "lat", "lng": "lng", "label": "name"}],
@@ -251,7 +251,7 @@ class TestRenderMapTool:
         history = await _history_with(df)
         spec = {"layers": [{"type": "geojson", "record_id": "Q1", "geojson": "geom", "label": "name"}]}
         msg = await RenderMapTool(history=history)(map_spec=json.dumps(spec))
-        assert "GeoJSON map MAP1 created" in msg
+        assert "Map MAP1 created" in msg
         assert history.get_map("MAP1").map_spec == {
             "layers": [{"type": "geojson", "source": "Q1", "geojson": "geom", "label": "name"}]
         }

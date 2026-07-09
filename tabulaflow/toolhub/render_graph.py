@@ -491,15 +491,7 @@ def validate_graph_size(size: GraphSize) -> None:
 
 def graph_type_label(spec: Mapping[str, object]) -> str:
     """Human-readable graph label for UI cards and tool messages."""
-    title = spec.get("title")
-    if isinstance(title, str) and title.strip():
-        return title.strip()
-    layout = spec.get("layout")
-    if layout == "layered":
-        return "Layered graph"
-    if layout == "tree":
-        return "Tree graph"
-    return "Graph"
+    return "Network graph"
 
 
 class RenderGraphTool:

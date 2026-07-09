@@ -174,7 +174,7 @@ class TestRenderGraphTool:
             "edges": [{"record_id": "Q1", "source": "src", "target": "dst", "label": "rel"}],
         }
         msg = await RenderGraphTool(history=history)(graph_spec=json.dumps(spec))
-        assert "Lineage GRAPH1 created from Q1" in msg
+        assert "Network graph GRAPH1 created from Q1" in msg
         assert "3 nodes, 2 edges" in msg
         assert history.get_graph("GRAPH1").graph_spec["edges"][0]["source"] == "src"
 

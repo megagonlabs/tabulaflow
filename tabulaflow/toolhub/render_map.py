@@ -389,18 +389,6 @@ def normalize_map_spec(spec: Mapping[str, object], sources: Mapping[str, pd.Data
 
 def map_type_label(spec: Mapping[str, object]) -> str:
     """Human-readable map label for UI cards and tool messages."""
-    title = spec.get("title")
-    if isinstance(title, str) and title.strip():
-        return title.strip()
-    layers = spec.get("layers")
-    if isinstance(layers, Sequence) and not isinstance(layers, (str, bytes, bytearray)):
-        types = [layer.get("type") for layer in layers if isinstance(layer, Mapping)]
-        if types == ["points"]:
-            return "Point map"
-        if types == ["geojson"]:
-            return "GeoJSON map"
-        if types:
-            return "Layered map"
     return "Map"
 
 
