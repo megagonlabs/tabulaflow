@@ -319,6 +319,7 @@ body { margin: 0; background: var(--bg); color: var(--text); display: flex; flex
 }
 .vega-bindings select:focus,
 .vega-bindings input:focus { outline: none; border-color: var(--accent); }
+#vg-tooltip-element { border-radius: 6px; }
 
 /* Direct map rendering. */
 .tf-map-view { background: var(--card); }
@@ -394,7 +395,7 @@ body { margin: 0; background: var(--bg); color: var(--text); display: flex; flex
 .tf-map-view .maplibregl-popup.tf-map-detail-tooltip .maplibregl-popup-content { pointer-events: auto; }
 .tf-map-view .maplibregl-popup.tf-map-detail-tooltip .maplibregl-popup-content,
 .tf-map-view .maplibregl-popup.tf-map-detail-popup .maplibregl-popup-content {
-    padding: 8px; background: #fff; border: 0; border-radius: 12px; color: #333;
+    padding: 8px; background: #fff; border: 0; border-radius: 6px; color: #333;
     min-width: 220px; max-width: min(420px, 72vw); box-shadow: 0 3px 14px rgba(0, 0, 0, 0.34);
 }
 .tf-map-view .maplibregl-popup.tf-map-detail-tooltip .maplibregl-popup-tip,
@@ -422,7 +423,7 @@ body { margin: 0; background: var(--bg); color: var(--text); display: flex; flex
 .tf-graph-empty.show { display: grid; }
 .tf-graph-detail {
     position: absolute; display: none; z-index: 20; min-width: 220px; max-width: min(420px, 72vw);
-    padding: 8px; border-radius: 8px;
+    padding: 8px; border-radius: 6px;
     background: var(--popover-bg); color: var(--text);
     border: 1px solid var(--popover-border);
     box-shadow: 0 8px 28px rgba(0, 0, 0, 0.42);
