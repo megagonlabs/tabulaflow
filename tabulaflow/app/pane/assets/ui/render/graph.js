@@ -263,6 +263,13 @@ function createLivePhysics(cy) {
 function graphStyles() {
   return [
     {
+      selector: 'core',
+      style: {
+        'active-bg-opacity': 0,
+        'selection-box-opacity': 0
+      }
+    },
+    {
       selector: 'node',
       style: {
         'background-color': 'data(color)',
@@ -323,8 +330,11 @@ function graphStyles() {
     {
       selector: 'node:selected',
       style: {
-        'border-color': '#ffffff',
-        'border-width': 4
+        'border-color': 'data(borderColor)',
+        'border-width': 3,
+        'underlay-color': '#f8fafc',
+        'underlay-opacity': 0.18,
+        'underlay-padding': 4
       }
     },
     {
@@ -461,6 +471,7 @@ export function renderGraph(container, cardData) {
         elements: graphInitElements(elements, graphData.layout),
         style: graphStyles(),
         layout: graphLayoutOptions(graphData.layout, graphData),
+        boxSelectionEnabled: false,
         hideEdgesOnViewport: false,
         textureOnViewport: false,
         wheelSensitivity: 0.18,
@@ -491,6 +502,7 @@ export function renderGraph(container, cardData) {
       });
       cy.on('tap', function (event) {
         if (event.target === cy) {
+          cy.elements(':selected').unselect();
           lockedDetail = null;
           hideDetail();
         }
