@@ -54,26 +54,79 @@ export function renderChart(container, cardData) {
   var chartData = cardData.chart || {};
   var rows = (cardData.dataset && cardData.dataset.rows) || [];
   var spec = clone(chartData.spec || {});
+  var wrapClass = chartData.wrapClass || 'content';
   spec.config = deepMerge(vegaDarkConfig(), spec.config || {});
   spec.data = { values: rows };
   container.className = 'tf-view tf-chart-view';
   container.innerHTML = '<div class="tf-vis-stage"><div class="tf-vis-wrap '
-    + escapeAttr(chartData.wrapClass || 'content') + '"><div class="tf-vis"></div></div></div>';
+    + escapeAttr(wrapClass) + '"><div class="tf-vis"></div></div></div>';
   var view = null;
   var disposed = false;
-  vegaEmbed(container.querySelector('.tf-vis'), spec, {
-    renderer: chartData.renderer || 'svg',
-    tooltip: { theme: 'dark' },
-    actions: { export: true, source: false, compiled: false, editor: false }
-  }).then(function (result) {
-    view = result.view;
-    if (disposed && view) view.finalize();
-  }).catch(function (err) {
+  var renderStarted = false;
+  var pendingFrame = null;
+  var measureAttempts = 0;
+
+  function clearPendingFrame() {
+    if (pendingFrame != null) window.cancelAnimationFrame(pendingFrame);
+    pendingFrame = null;
+  }
+
+  function showError(err) {
+    if (disposed) return;
     var pre = document.createElement('pre');
     pre.className = 'vis-error';
     pre.textContent = 'Chart error: ' + String(err);
     container.innerHTML = '';
     container.appendChild(pre);
-  });
-  return { destroy: function () { disposed = true; if (view) view.finalize(); } };
+  }
+
+  function hasMeasurableTarget(target) {
+    if (!target || !container.isConnected) return false;
+    var rect = target.getBoundingClientRect();
+    if (wrapClass === 'fill') return rect.width > 0 && rect.height > 0;
+    return rect.width > 0;
+  }
+
+  function renderWhenReady() {
+    clearPendingFrame();
+    if (disposed || renderStarted) return;
+    var target = container.querySelector('.tf-vis');
+    if (!hasMeasurableTarget(target)) {
+      measureAttempts += 1;
+      if (measureAttempts <= 20) pendingFrame = window.requestAnimationFrame(renderWhenReady);
+      return;
+    }
+    renderStarted = true;
+    vegaEmbed(target, spec, {
+      renderer: chartData.renderer || 'svg',
+      tooltip: { theme: 'dark' },
+      actions: { export: true, source: false, compiled: false, editor: false }
+    }).then(function (result) {
+      view = result.view;
+      if (disposed && view) view.finalize();
+    }).catch(showError);
+  }
+
+  function resizeView() {
+    if (!view || !view.resize || disposed) return;
+    view.resize().runAsync().catch(function () {});
+  }
+
+  return {
+    afterVisible: function () {
+      clearPendingFrame();
+      if (renderStarted) {
+        pendingFrame = window.requestAnimationFrame(resizeView);
+        return;
+      }
+      measureAttempts = 0;
+      pendingFrame = window.requestAnimationFrame(renderWhenReady);
+    },
+    afterHidden: clearPendingFrame,
+    destroy: function () {
+      disposed = true;
+      clearPendingFrame();
+      if (view) view.finalize();
+    }
+  };
 }

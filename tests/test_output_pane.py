@@ -490,8 +490,12 @@ def test_pane_chart_shell_matches_vega_background() -> None:
 
 
 def test_pane_chart_theme_is_client_side() -> None:
+    chart_js = _pane_asset_text("render/chart.js")
     assert "--chart-grid: #3a4352;" in _PANE_HTML
     assert "--chart-category-0: #3EB489;" in _PANE_HTML
+    assert "afterVisible: function ()" in chart_js
+    assert "function renderWhenReady()" in chart_js
+    assert "vegaEmbed(target, spec" in chart_js
 
 
 def test_pane_map_view_is_maplibre_based() -> None:
