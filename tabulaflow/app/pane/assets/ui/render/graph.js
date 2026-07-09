@@ -344,7 +344,7 @@ function graphStyles() {
         'line-opacity': 1,
         'overlay-color': '#f8fafc',
         'overlay-opacity': 0.18,
-        'overlay-padding': 5,
+        'overlay-padding': 8,
         'target-arrow-color': '#9aa4b2',
         'width': 3
       }
