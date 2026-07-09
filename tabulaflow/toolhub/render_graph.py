@@ -15,8 +15,8 @@ from pydantic_ai import Tool
 from tabulaflow.toolhub.query_history import QueryHistory
 from tabulaflow.toolhub.render_map import resolve_column
 
-GRAPH_MAX_NODES = 500
-GRAPH_MAX_EDGES = 1_500
+GRAPH_MAX_NODES = 300
+GRAPH_MAX_EDGES = 700
 
 
 class GraphSpecError(ValueError):

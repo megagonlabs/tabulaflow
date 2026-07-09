@@ -6,8 +6,6 @@ const cytoscape = window.cytoscape;
 const GRAPH_FIT_PADDING = 64;
 const GRAPH_MAX_AUTO_ZOOM = 1.25;
 const GRAPH_DEFAULT_NODE_BORDER = '#253447';
-const GRAPH_LIVE_PHYSICS_MAX_NODES = 300;
-const GRAPH_LIVE_PHYSICS_MAX_EDGES = 700;
 const GRAPH_LIVE_PHYSICS_MIN_ALPHA = 0.012;
 
 function normalizeHexColor(color) {
@@ -115,9 +113,6 @@ function graphLayoutOptions(layout, graphData) {
 function createLivePhysics(cy) {
   var nodes = cy.nodes().toArray();
   var edges = cy.edges().toArray();
-  if (nodes.length > GRAPH_LIVE_PHYSICS_MAX_NODES || edges.length > GRAPH_LIVE_PHYSICS_MAX_EDGES) {
-    return { destroy: function () {} };
-  }
 
   var velocities = new Map();
   var frame = null;
