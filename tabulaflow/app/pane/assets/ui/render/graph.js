@@ -389,6 +389,13 @@ function graphDetailHtml(ele) {
   return html;
 }
 
+function graphDetailPosition(ele) {
+  if (!ele) return { x: 0, y: 0 };
+  if (ele.isEdge && ele.isEdge() && ele.renderedMidpoint) return ele.renderedMidpoint();
+  if (ele.renderedPosition) return ele.renderedPosition();
+  return { x: 0, y: 0 };
+}
+
 export function renderGraph(container, cardData) {
   var graphData = cardData.graph || {};
   var elements = graphElements(graphData);
@@ -443,7 +450,7 @@ export function renderGraph(container, cardData) {
     var html = graphDetailHtml(ele);
     if (!html) return;
     if (lock) lockedDetail = ele.id();
-    var pos = ele.renderedPosition ? ele.renderedPosition() : { x: 0, y: 0 };
+    var pos = graphDetailPosition(ele);
     detailNode.innerHTML = html;
     detailNode.style.left = Math.max(10, Math.min(stageNode.clientWidth - 260, pos.x + 14)) + 'px';
     detailNode.style.top = Math.max(10, Math.min(stageNode.clientHeight - 120, pos.y + 14)) + 'px';
