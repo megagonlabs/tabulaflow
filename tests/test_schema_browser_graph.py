@@ -89,6 +89,10 @@ def _tree_nodes(tree: Tree[object]) -> list[Any]:
     return nodes
 
 
+def _tree_node_by_label(tree: Tree[object], label: str) -> Any:
+    return next(node for node in _tree_nodes(tree) if getattr(node.label, "plain", str(node.label)) == label)
+
+
 async def test_schema_browser_renders_property_graph_schema() -> None:
     registry = DBRegistry()
     registry.register("neo", FakeGraphConnector())  # type: ignore[arg-type]
@@ -107,6 +111,7 @@ async def test_schema_browser_renders_property_graph_schema() -> None:
     assert "ACTED_IN" in labels
     assert "ACTED_IN  Person -> Movie" not in labels
     assert "roles  LIST OF STRING" in labels
+    assert not _tree_node_by_label(tree, "neo  cypher").is_expanded
 
     title_node = next(
         node

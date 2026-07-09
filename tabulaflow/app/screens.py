@@ -1349,7 +1349,7 @@ class SchemaBrowserScreen(Screen[None]):
                     f"{len(schema.relationships):,} {rel_types_label}"
                 ),
             ),
-            expand=self._expand_for((alias, None, None, None), True),
+            expand=self._expand_for((alias, None, None, None), False),
         )
 
         nodes = db_node.add(
