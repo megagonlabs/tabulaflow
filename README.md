@@ -384,6 +384,7 @@ July 8
 - [ ] Graph - node/edge selection style
 - [ ] docs/output_pane_lifecycle_plan.md
 - [ ] Tab change fail in TUI using left/right arrow
+- [ ] Make hover tooltip font size consistent across artifacts
 
 - [ ] Remote server improvements
 
