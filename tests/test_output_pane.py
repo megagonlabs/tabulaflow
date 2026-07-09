@@ -476,6 +476,14 @@ def test_pane_renderer_modules_are_packaged() -> None:
         assert pane_assets.joinpath("render").joinpath(rel).is_file()
 
 
+def test_graph_tooltips_link_urls_and_skip_duplicate_title_fields() -> None:
+    graph_js = _pane_asset_text("render/graph.js")
+    assert "asUrls, clone, cssVar, displayValue, escapeHtml, tooltipLink" in graph_js
+    assert "function graphDetailValueHtml(value)" in graph_js
+    assert "tooltipLink(urls[0])" in graph_js
+    assert "if ((key === 'label' || key === 'id') && String(tooltip[key]) === String(label)) return;" in graph_js
+
+
 def test_pane_table_layout_css_is_loaded() -> None:
     assert ".turnview.manual-preview { height: calc(100vh - 82px); min-height: 460px;" in _PANE_HTML
     assert "20260630-table-sizing" not in _PANE_HTML

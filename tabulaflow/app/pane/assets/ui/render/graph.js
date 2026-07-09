@@ -1,6 +1,6 @@
 // @ts-check
 
-import { clone, cssVar, displayValue, escapeHtml } from './shared.js';
+import { asUrls, clone, cssVar, displayValue, escapeHtml, tooltipLink } from './shared.js';
 
 const cytoscape = window.cytoscape;
 const GRAPH_FIT_PADDING = 64;
@@ -368,6 +368,19 @@ function fitGraph(cy, graphNode) {
   }
 }
 
+function graphDetailValueHtml(value) {
+  var text = displayValue(value);
+  var urls = typeof value === 'string' ? asUrls(text) : null;
+  if (urls) {
+    if (text.trim().charAt(0) === '[') {
+      return '[' + urls.map(function (url) { return '"' + tooltipLink(url) + '"'; }).join(', ') + ']';
+    }
+    if (urls.length === 1) return tooltipLink(urls[0]);
+    return urls.map(function (url) { return tooltipLink(url); }).join(' ');
+  }
+  return escapeHtml(text);
+}
+
 function graphDetailHtml(ele) {
   if (!ele || !ele.data) return '';
   var data = ele.data();
@@ -378,8 +391,9 @@ function graphDetailHtml(ele) {
   if (tooltip && typeof tooltip === 'object') {
     html += '<table><tbody>';
     Object.keys(tooltip).forEach(function (key) {
+      if ((key === 'label' || key === 'id') && String(tooltip[key]) === String(label)) return;
       var value = tooltip[key];
-      html += '<tr><th>' + escapeHtml(key) + '</th><td>' + escapeHtml(displayValue(value)) + '</td></tr>';
+      html += '<tr><th>' + escapeHtml(key) + '</th><td>' + graphDetailValueHtml(value) + '</td></tr>';
     });
     html += '</tbody></table>';
   } else if (ele.isEdge && ele.isEdge()) {

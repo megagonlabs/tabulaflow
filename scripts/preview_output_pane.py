@@ -525,22 +525,22 @@ def _map_overlay_card(pane_dir: Path) -> PaneCard:
 def _graph_network_card(pane_dir: Path) -> PaneCard:
     nodes = pd.DataFrame(
         [
-            {"id": "alice", "name": "Alice", "team": "Research", "score": 94},
-            {"id": "bob", "name": "Bob", "team": "Research", "score": 78},
-            {"id": "carol", "name": "Carol", "team": "Product", "score": 88},
-            {"id": "dina", "name": "Dina", "team": "Design", "score": 70},
-            {"id": "eli", "name": "Eli", "team": "Data", "score": 82},
-            {"id": "faye", "name": "Faye", "team": "Data", "score": 66},
+            {"id": "alice", "name": "Alice", "team": "Research", "score": 94, "profile": "https://example.com/people/alice"},
+            {"id": "bob", "name": "Bob", "team": "Research", "score": 78, "profile": "https://example.com/people/bob"},
+            {"id": "carol", "name": "Carol", "team": "Product", "score": 88, "profile": "https://example.com/people/carol"},
+            {"id": "dina", "name": "Dina", "team": "Design", "score": 70, "profile": "https://example.com/people/dina"},
+            {"id": "eli", "name": "Eli", "team": "Data", "score": 82, "profile": "https://example.com/people/eli"},
+            {"id": "faye", "name": "Faye", "team": "Data", "score": 66, "profile": "https://example.com/people/faye"},
         ]
     )
     edges = pd.DataFrame(
         [
-            {"src": "alice", "dst": "bob", "rel": "coauthors", "weight": 5},
-            {"src": "alice", "dst": "carol", "rel": "advises", "weight": 3},
-            {"src": "bob", "dst": "dina", "rel": "reviews", "weight": 2},
-            {"src": "carol", "dst": "eli", "rel": "partners", "weight": 4},
-            {"src": "eli", "dst": "faye", "rel": "mentors", "weight": 2},
-            {"src": "faye", "dst": "alice", "rel": "syncs", "weight": 1},
+            {"src": "alice", "dst": "bob", "rel": "coauthors", "weight": 5, "doc": "https://example.com/relations/coauthors"},
+            {"src": "alice", "dst": "carol", "rel": "advises", "weight": 3, "doc": "https://example.com/relations/advises"},
+            {"src": "bob", "dst": "dina", "rel": "reviews", "weight": 2, "doc": "https://example.com/relations/reviews"},
+            {"src": "carol", "dst": "eli", "rel": "partners", "weight": 4, "doc": "https://example.com/relations/partners"},
+            {"src": "eli", "dst": "faye", "rel": "mentors", "weight": 2, "doc": "https://example.com/relations/mentors"},
+            {"src": "faye", "dst": "alice", "rel": "syncs", "weight": 1, "doc": "https://example.com/relations/syncs"},
         ]
     )
     return _graph_card(
@@ -557,7 +557,7 @@ def _graph_network_card(pane_dir: Path) -> PaneCard:
                     "id": "id",
                     "label": "name",
                     "group": "team",
-                    "tooltip": ["name", "team", "score"],
+                    "tooltip": ["name", "team", "score", "profile"],
                 }
             ],
             "edges": [
@@ -566,7 +566,7 @@ def _graph_network_card(pane_dir: Path) -> PaneCard:
                     "source": "src",
                     "target": "dst",
                     "label": "rel",
-                    "tooltip": ["rel", "weight"],
+                    "tooltip": ["rel", "weight", "doc"],
                 }
             ],
         },
