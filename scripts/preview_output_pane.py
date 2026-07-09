@@ -584,21 +584,60 @@ def _graph_network_card(pane_dir: Path) -> PaneCard:
     )
 
 
-def _graph_live_physics_card(pane_dir: Path) -> PaneCard:
+def _physics_graph_card(
+    pane_dir: Path,
+    *,
+    shape: str,
+    physics: str,
+    nodes: pd.DataFrame,
+    edges: pd.DataFrame,
+) -> PaneCard:
+    card = _graph_card(
+        graph_id=f"GRAPHDEBUG_{shape.upper()}_{physics.upper()}",
+        label=f"{physics}_{shape}",
+        pane_dir=pane_dir,
+        sources={f"Q_{shape.upper()}_NODES": nodes, f"Q_{shape.upper()}_EDGES": edges},
+        graph_spec={
+            "title": f"{shape.replace('_', ' ').title()} ({physics})",
+            "layout": "force",
+            "nodes": [
+                {
+                    "record_id": f"Q_{shape.upper()}_NODES",
+                    "id": "id",
+                    "label": "label",
+                    "group": "group",
+                    "tooltip": ["label", "group"],
+                }
+            ],
+            "edges": [
+                {
+                    "record_id": f"Q_{shape.upper()}_EDGES",
+                    "source": "src",
+                    "target": "dst",
+                    "label": "rel",
+                    "tooltip": ["rel"],
+                }
+            ],
+        },
+    )
+    return _with_graph_meta(card, pane_dir, physics=physics)
+
+
+def _physics_social_data() -> tuple[pd.DataFrame, pd.DataFrame]:
     nodes = pd.DataFrame(
         [
-            {"id": "alice", "name": "Alice", "team": "Research"},
-            {"id": "bob", "name": "Bob", "team": "Research"},
-            {"id": "dina", "name": "Dina", "team": "Design"},
-            {"id": "eli", "name": "Eli", "team": "Data"},
-            {"id": "faye", "name": "Faye", "team": "Data"},
-            {"id": "grace", "name": "Grace", "team": "Product"},
-            {"id": "hugo", "name": "Hugo", "team": "Product"},
-            {"id": "ivy", "name": "Ivy", "team": "Research"},
-            {"id": "jules", "name": "Jules", "team": "Design"},
-            {"id": "kai", "name": "Kai", "team": "Data"},
-            {"id": "lena", "name": "Lena", "team": "Product"},
-            {"id": "mira", "name": "Mira", "team": "Research"},
+            {"id": "alice", "label": "Alice", "group": "Research"},
+            {"id": "bob", "label": "Bob", "group": "Research"},
+            {"id": "dina", "label": "Dina", "group": "Design"},
+            {"id": "eli", "label": "Eli", "group": "Data"},
+            {"id": "faye", "label": "Faye", "group": "Data"},
+            {"id": "grace", "label": "Grace", "group": "Product"},
+            {"id": "hugo", "label": "Hugo", "group": "Product"},
+            {"id": "ivy", "label": "Ivy", "group": "Research"},
+            {"id": "jules", "label": "Jules", "group": "Design"},
+            {"id": "kai", "label": "Kai", "group": "Data"},
+            {"id": "lena", "label": "Lena", "group": "Product"},
+            {"id": "mira", "label": "Mira", "group": "Research"},
         ]
     )
     edges = pd.DataFrame(
@@ -621,35 +660,84 @@ def _graph_live_physics_card(pane_dir: Path) -> PaneCard:
             {"src": "mira", "dst": "dina", "rel": "validates"},
         ]
     )
-    card = _graph_card(
-        graph_id="GRAPHDEBUG_LIVE_PHYSICS",
-        label="force_live_physics",
-        pane_dir=pane_dir,
-        sources={"Q_LIVE_GRAPH_NODES": nodes, "Q_LIVE_GRAPH_EDGES": edges},
-        graph_spec={
-            "title": "Live physics network",
-            "layout": "force",
-            "nodes": [
-                {
-                    "record_id": "Q_LIVE_GRAPH_NODES",
-                    "id": "id",
-                    "label": "name",
-                    "group": "team",
-                    "tooltip": ["name", "team"],
-                }
-            ],
-            "edges": [
-                {
-                    "record_id": "Q_LIVE_GRAPH_EDGES",
-                    "source": "src",
-                    "target": "dst",
-                    "label": "rel",
-                    "tooltip": ["rel"],
-                }
-            ],
-        },
+    return nodes, edges
+
+
+def _physics_chain_data() -> tuple[pd.DataFrame, pd.DataFrame]:
+    nodes = pd.DataFrame(
+        {"id": [f"n{i}" for i in range(12)], "label": [f"N{i}" for i in range(12)], "group": ["Chain"] * 12}
     )
-    return _with_graph_meta(card, pane_dir, physics="live")
+    edges = pd.DataFrame(
+        [{"src": f"n{i}", "dst": f"n{i + 1}", "rel": "next"} for i in range(11)]
+        + [{"src": "n0", "dst": "n6", "rel": "shortcut"}, {"src": "n4", "dst": "n11", "rel": "shortcut"}]
+    )
+    return nodes, edges
+
+
+def _physics_disconnected_data() -> tuple[pd.DataFrame, pd.DataFrame]:
+    groups = ["Cluster A"] * 7 + ["Cluster B"] * 7
+    nodes = pd.DataFrame(
+        {
+            "id": [f"a{i}" for i in range(7)] + [f"b{i}" for i in range(7)],
+            "label": [f"A{i}" for i in range(7)] + [f"B{i}" for i in range(7)],
+            "group": groups,
+        }
+    )
+    edges = pd.DataFrame(
+        [{"src": "a0", "dst": f"a{i}", "rel": "links"} for i in range(1, 7)]
+        + [{"src": "b0", "dst": f"b{i}", "rel": "links"} for i in range(1, 7)]
+        + [{"src": "a2", "dst": "a5", "rel": "peer"}, {"src": "b2", "dst": "b5", "rel": "peer"}]
+    )
+    return nodes, edges
+
+
+def _physics_dense_data() -> tuple[pd.DataFrame, pd.DataFrame]:
+    nodes = pd.DataFrame(
+        {
+            "id": [f"d{i}" for i in range(14)],
+            "label": [f"D{i}" for i in range(14)],
+            "group": [f"Group {i % 3 + 1}" for i in range(14)],
+        }
+    )
+    edges = []
+    for i in range(14):
+        edges.append({"src": f"d{i}", "dst": f"d{(i + 1) % 14}", "rel": "ring"})
+        edges.append({"src": f"d{i}", "dst": f"d{(i + 4) % 14}", "rel": "chord"})
+    return nodes, pd.DataFrame(edges)
+
+
+def _physics_medium_data() -> tuple[pd.DataFrame, pd.DataFrame]:
+    count = 54
+    nodes = pd.DataFrame(
+        {
+            "id": [f"m{i}" for i in range(count)],
+            "label": [f"M{i}" for i in range(count)],
+            "group": [f"Team {i % 6 + 1}" for i in range(count)],
+        }
+    )
+    edges = []
+    for i in range(count):
+        edges.append({"src": f"m{i}", "dst": f"m{(i + 1) % count}", "rel": "ring"})
+        if i % 2 == 0:
+            edges.append({"src": f"m{i}", "dst": f"m{(i + 7) % count}", "rel": "bridge"})
+        if i % 5 == 0:
+            edges.append({"src": f"m{i}", "dst": f"m{(i + 17) % count}", "rel": "long_link"})
+    return nodes, pd.DataFrame(edges)
+
+
+def _graph_physics_comparison_cards(pane_dir: Path) -> list[PaneCard]:
+    cards: list[PaneCard] = []
+    for shape, data_fn in (
+        ("social", _physics_social_data),
+        ("chain", _physics_chain_data),
+        ("disconnected", _physics_disconnected_data),
+        ("dense", _physics_dense_data),
+        ("medium", _physics_medium_data),
+    ):
+        nodes, edges = data_fn()
+        cards.append(_physics_graph_card(pane_dir, shape=shape, physics="custom", nodes=nodes, edges=edges))
+        cards.append(_physics_graph_card(pane_dir, shape=shape, physics="cola", nodes=nodes, edges=edges))
+    return cards
 
 
 def _graph_lineage_card(pane_dir: Path) -> PaneCard:
@@ -958,13 +1046,13 @@ def _populate_pane(
         _push_turn(
             pane,
             pane_dir,
-            title="Graph live physics experiment",
-            user="Let me try a graph where dragging one node moves the others.",
+            title="Graph physics comparison",
+            user="Compare custom live physics against Cola on varied graph shapes.",
             assistant=(
-                "This preview-only graph keeps a live force simulation running while you drag nodes, "
-                "so connected and nearby nodes react instead of staying fixed."
+                "This preview-only turn pairs the custom live-physics prototype with Cytoscape-Cola "
+                "on the same social, chain, disconnected, dense, and medium graph fixtures."
             ),
-            cards=[_graph_live_physics_card(pane_dir)],
+            cards=_graph_physics_comparison_cards(pane_dir),
         )
         _push_turn(
             pane,

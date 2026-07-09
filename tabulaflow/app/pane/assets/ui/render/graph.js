@@ -9,6 +9,8 @@ const GRAPH_DEFAULT_NODE_BORDER = '#253447';
 const GRAPH_LIVE_PHYSICS_MAX_NODES = 180;
 const GRAPH_LIVE_PHYSICS_MAX_EDGES = 450;
 const GRAPH_LIVE_PHYSICS_MIN_ALPHA = 0.012;
+const GRAPH_COLA_PHYSICS_MAX_NODES = 180;
+const GRAPH_COLA_PHYSICS_MAX_EDGES = 450;
 
 function normalizeHexColor(color) {
   if (typeof color !== 'string') return null;
@@ -108,9 +110,12 @@ function graphLayoutOptions(layout) {
   };
 }
 
-function usesLivePhysics(graphData) {
+function livePhysicsMode(graphData) {
   var meta = graphData && graphData.meta ? graphData.meta : {};
-  return graphData.layout === 'force' && meta.physics === 'live';
+  if (graphData.layout !== 'force') return null;
+  if (meta.physics === 'live' || meta.physics === 'custom') return 'custom';
+  if (meta.physics === 'cola') return 'cola';
+  return null;
 }
 
 function createLivePhysics(cy) {
@@ -262,6 +267,43 @@ function createLivePhysics(cy) {
         cancelAnimationFrame(frame);
         frame = null;
       }
+    }
+  };
+}
+
+function createColaLivePhysics(cy) {
+  if (!cy || !cy.layout) return null;
+  var nodes = cy.nodes();
+  var edges = cy.edges();
+  if (nodes.length > GRAPH_COLA_PHYSICS_MAX_NODES || edges.length > GRAPH_COLA_PHYSICS_MAX_EDGES) {
+    return { destroy: function () {} };
+  }
+
+  var layout;
+  try {
+    layout = cy.layout({
+      name: 'cola',
+      animate: true,
+      refresh: 1,
+      infinite: true,
+      fit: false,
+      randomize: false,
+      avoidOverlap: true,
+      handleDisconnected: true,
+      centerGraph: false,
+      nodeDimensionsIncludeLabels: false,
+      nodeSpacing: function () { return 14; },
+      edgeLength: idealForceEdgeLength,
+      convergenceThreshold: 0.01
+    });
+  } catch (error) {
+    return null;
+  }
+
+  layout.run();
+  return {
+    destroy: function () {
+      if (layout && layout.stop) layout.stop();
     }
   };
 }
@@ -421,8 +463,13 @@ export function renderGraph(container, cardData) {
   }
 
   function startLivePhysics() {
-    if (!cy || livePhysics || !usesLivePhysics(graphData)) return;
-    livePhysics = createLivePhysics(cy);
+    if (!cy || livePhysics) return;
+    var mode = livePhysicsMode(graphData);
+    if (mode === 'custom') {
+      livePhysics = createLivePhysics(cy);
+    } else if (mode === 'cola') {
+      livePhysics = createColaLivePhysics(cy);
+    }
   }
 
   function showDetail(ele, lock) {
