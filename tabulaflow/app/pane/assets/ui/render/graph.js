@@ -328,7 +328,7 @@ function graphStyles() {
       }
     },
     {
-      selector: 'node:selected',
+      selector: 'node.tf-selected',
       style: {
         'border-color': 'data(borderColor)',
         'border-width': 3,
@@ -338,11 +338,12 @@ function graphStyles() {
       }
     },
     {
-      selector: 'edge:selected',
+      selector: 'edge.tf-selected',
       style: {
         'line-color': cssVar('--accent', '#3eb489'),
+        'line-opacity': 1,
         'target-arrow-color': cssVar('--accent', '#3eb489'),
-        'width': 2.4
+        'width': 3
       }
     }
   ];
@@ -415,6 +416,7 @@ export function renderGraph(container, cardData) {
   var cy = null;
   var livePhysics = null;
   var lockedDetail = null;
+  var viewportPan = null;
 
   function hideDetail() {
     if (lockedDetail) return;
@@ -425,6 +427,15 @@ export function renderGraph(container, cardData) {
   function startLivePhysics() {
     if (!cy || livePhysics) return;
     livePhysics = createLivePhysics(cy);
+  }
+
+  function clearGraphSelection() {
+    if (cy) cy.elements('.tf-selected').removeClass('tf-selected');
+  }
+
+  function selectGraphElement(ele) {
+    clearGraphSelection();
+    if (ele && ele.addClass) ele.addClass('tf-selected');
   }
 
   function showDetail(ele, lock) {
@@ -439,8 +450,54 @@ export function renderGraph(container, cardData) {
     detailNode.classList.add('show');
   }
 
+  function eventPoint(event) {
+    if (!event) return null;
+    var source = event.originalEvent || event;
+    var touch = source.touches && source.touches.length ? source.touches[0] : null;
+    if (!touch && source.changedTouches && source.changedTouches.length) {
+      touch = source.changedTouches[0];
+    }
+    if (touch) return { x: touch.clientX, y: touch.clientY };
+    if (typeof source.clientX === 'number' && typeof source.clientY === 'number') {
+      return { x: source.clientX, y: source.clientY };
+    }
+    return null;
+  }
+
+  function stopViewportPan() {
+    viewportPan = null;
+    graphNode.style.cursor = '';
+    window.removeEventListener('mousemove', moveViewportPan);
+    window.removeEventListener('mouseup', stopViewportPan);
+    window.removeEventListener('touchmove', moveViewportPan);
+    window.removeEventListener('touchend', stopViewportPan);
+    window.removeEventListener('touchcancel', stopViewportPan);
+  }
+
+  function moveViewportPan(event) {
+    if (!cy || !viewportPan) return;
+    var point = eventPoint(event);
+    if (!point) return;
+    event.preventDefault();
+    cy.panBy({ x: point.x - viewportPan.x, y: point.y - viewportPan.y });
+    viewportPan = point;
+  }
+
+  function startViewportPan(event) {
+    var point = eventPoint(event);
+    if (!point) return;
+    viewportPan = point;
+    graphNode.style.cursor = 'grabbing';
+    window.addEventListener('mousemove', moveViewportPan);
+    window.addEventListener('mouseup', stopViewportPan);
+    window.addEventListener('touchmove', moveViewportPan, { passive: false });
+    window.addEventListener('touchend', stopViewportPan);
+    window.addEventListener('touchcancel', stopViewportPan);
+  }
+
   function destroyGraph() {
     lockedDetail = null;
+    stopViewportPan();
     if (cy) {
       if (livePhysics) {
         livePhysics.destroy();
@@ -462,9 +519,11 @@ export function renderGraph(container, cardData) {
       elements: graphInitElements(elements, graphData.layout),
       style: graphStyles(),
       layout: graphLayoutOptions(graphData.layout, graphData),
+      autounselectify: true,
       boxSelectionEnabled: false,
       hideEdgesOnViewport: false,
       textureOnViewport: false,
+      userPanningEnabled: false,
       wheelSensitivity: 0.18,
       minZoom: 0.08,
       maxZoom: 2.25
@@ -485,13 +544,17 @@ export function renderGraph(container, cardData) {
       graphNode.style.cursor = '';
       hideDetail();
     });
+    cy.on('vmousedown', function (event) {
+      if (event.target === cy) startViewportPan(event);
+    });
     cy.on('tap', 'node, edge', function (event) {
+      selectGraphElement(event.target);
       lockedDetail = null;
       showDetail(event.target, true);
     });
     cy.on('tap', function (event) {
       if (event.target === cy) {
-        cy.elements(':selected').unselect();
+        clearGraphSelection();
         lockedDetail = null;
         hideDetail();
       }
