@@ -725,6 +725,27 @@ def _physics_medium_data() -> tuple[pd.DataFrame, pd.DataFrame]:
     return nodes, pd.DataFrame(edges)
 
 
+def _physics_large_data() -> tuple[pd.DataFrame, pd.DataFrame]:
+    count = 180
+    nodes = pd.DataFrame(
+        {
+            "id": [f"l{i}" for i in range(count)],
+            "label": [f"L{i}" for i in range(count)],
+            "group": [f"Squad {i % 9 + 1}" for i in range(count)],
+        }
+    )
+    edges = []
+    for i in range(count):
+        edges.append({"src": f"l{i}", "dst": f"l{(i + 1) % count}", "rel": "ring"})
+        if i % 2 == 0:
+            edges.append({"src": f"l{i}", "dst": f"l{(i + 11) % count}", "rel": "bridge"})
+        if i % 3 == 0:
+            edges.append({"src": f"l{i}", "dst": f"l{(i + 29) % count}", "rel": "long_link"})
+        if i % 9 == 0:
+            edges.append({"src": f"l{i}", "dst": f"l{(i + 61) % count}", "rel": "cross_cluster"})
+    return nodes, pd.DataFrame(edges)
+
+
 def _graph_physics_comparison_cards(pane_dir: Path) -> list[PaneCard]:
     cards: list[PaneCard] = []
     for shape, data_fn in (
@@ -733,6 +754,7 @@ def _graph_physics_comparison_cards(pane_dir: Path) -> list[PaneCard]:
         ("disconnected", _physics_disconnected_data),
         ("dense", _physics_dense_data),
         ("medium", _physics_medium_data),
+        ("large", _physics_large_data),
     ):
         nodes, edges = data_fn()
         cards.append(_physics_graph_card(pane_dir, shape=shape, physics="custom", nodes=nodes, edges=edges))
@@ -1050,7 +1072,7 @@ def _populate_pane(
             user="Compare custom live physics against Cola on varied graph shapes.",
             assistant=(
                 "This preview-only turn pairs the custom live-physics prototype with Cytoscape-Cola "
-                "on the same social, chain, disconnected, dense, and medium graph fixtures."
+                "on the same social, chain, disconnected, dense, medium, and large graph fixtures."
             ),
             cards=_graph_physics_comparison_cards(pane_dir),
         )

@@ -6,11 +6,11 @@ const cytoscape = window.cytoscape;
 const GRAPH_FIT_PADDING = 64;
 const GRAPH_MAX_AUTO_ZOOM = 1.25;
 const GRAPH_DEFAULT_NODE_BORDER = '#253447';
-const GRAPH_LIVE_PHYSICS_MAX_NODES = 180;
-const GRAPH_LIVE_PHYSICS_MAX_EDGES = 450;
+const GRAPH_LIVE_PHYSICS_MAX_NODES = 260;
+const GRAPH_LIVE_PHYSICS_MAX_EDGES = 700;
 const GRAPH_LIVE_PHYSICS_MIN_ALPHA = 0.012;
-const GRAPH_COLA_PHYSICS_MAX_NODES = 180;
-const GRAPH_COLA_PHYSICS_MAX_EDGES = 450;
+const GRAPH_COLA_PHYSICS_MAX_NODES = 260;
+const GRAPH_COLA_PHYSICS_MAX_EDGES = 700;
 
 function normalizeHexColor(color) {
   if (typeof color !== 'string') return null;
@@ -86,6 +86,11 @@ function graphInitElements(elements, layout) {
 function idealForceEdgeLength(edge) {
   var label = edge && edge.data ? String(edge.data('label') || '') : '';
   return Math.max(64, Math.min(116, 54 + label.length * 5));
+}
+
+function idealColaEdgeLength(edge) {
+  var label = edge && edge.data ? String(edge.data('label') || '') : '';
+  return Math.max(90, Math.min(150, 70 + label.length * 5));
 }
 
 function graphLayoutOptions(layout) {
@@ -288,12 +293,12 @@ function createColaLivePhysics(cy) {
       infinite: true,
       fit: false,
       randomize: false,
-      avoidOverlap: true,
+      avoidOverlap: false,
       handleDisconnected: true,
       centerGraph: false,
       nodeDimensionsIncludeLabels: false,
-      nodeSpacing: function () { return 14; },
-      edgeLength: idealForceEdgeLength,
+      nodeSpacing: function () { return 6; },
+      edgeLength: idealColaEdgeLength,
       convergenceThreshold: 0.01
     });
   } catch (error) {
