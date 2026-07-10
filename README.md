@@ -398,7 +398,13 @@ July 9
   - [x] Fix life cycle model - do not destroy when hidden, only when evicted
 - [x] Fix chat agent not aware of non-empty registry
 
+July 10
+- [ ] Setting!
+
+- [ ] Include Cypher
+- [ ] View menu location?
 - [ ] Remote server improvements
+- [ ] OpenAI/claude oauth
 - [ ] code diff rendering
 - [ ] Improve output pane UI - new turn loading, session ID, ...
 - [ ] web_fetch tool for static html
