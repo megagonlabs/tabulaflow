@@ -427,6 +427,9 @@ function fitGraph(cy, graphNode) {
 }
 
 function graphDetailValueHtml(value) {
+  if (value && typeof value === 'object') {
+    return escapeHtml(JSON.stringify(value));
+  }
   var text = displayValue(value);
   var urls = typeof value === 'string' ? asUrls(text) : null;
   if (urls) {

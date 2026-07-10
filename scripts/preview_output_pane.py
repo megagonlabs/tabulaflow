@@ -585,6 +585,109 @@ def _graph_network_card(pane_dir: Path) -> PaneCard:
     )
 
 
+def _graph_properties_card(pane_dir: Path) -> PaneCard:
+    long_text = (
+        "This is an intentionally very long property value used to stress graph detail rendering. "
+        "It should wrap inside the tooltip without breaking layout, hiding links, or pushing the popup "
+        "outside the visible graph viewport."
+    )
+    node_stress_props = {
+        f"node_property_{i:02d}": (
+            f"{long_text} Field {i}." if i % 5 == 0 else {"rank": i, "flags": [f"flag_{i}", f"flag_{i + 1}"]}
+        )
+        for i in range(1, 31)
+    }
+    edge_stress_props = {
+        f"relationship_property_{i:02d}": (
+            [f"evidence_{i}", f"evidence_{i + 1}", f"{long_text} Edge field {i}."] if i % 6 == 0 else i / 10
+        )
+        for i in range(1, 31)
+    }
+    nodes = [
+        {
+            "id": "person",
+            "label": "Person With Rich Properties",
+            "group": "Person",
+            "age": 36,
+            "active": True,
+            "aliases": ["Al", "A. Rivera", "Research Lead"],
+            "profile": {
+                "city": "Oakland",
+                "skills": ["graphs", "cypher", "evaluation"],
+                "links": {"homepage": "https://example.com/alice", "docs": "https://example.com/docs/alice"},
+            },
+            "joined": "2021-04-18",
+            "notes": "Long node note intended to verify that detailed graph tooltips can carry larger property values.",
+            **node_stress_props,
+        },
+        {
+            "id": "paper",
+            "label": "Paper",
+            "group": "Artifact",
+            "year": 2025,
+            "keywords": ["graph rendering", "tooltips", "inspection"],
+            "metrics": {"citations": 42, "downloads": 1380, "featured": False},
+            "url": "https://example.com/papers/graph-tooltips",
+        },
+        {
+            "id": "team",
+            "label": "Team",
+            "group": "Org",
+            "members": 8,
+            "regions": ["US", "EU", "APAC"],
+            "metadata": {"budget": "research", "priority": 2},
+        },
+    ]
+    edges = [
+        {
+            "src": "person",
+            "dst": "paper",
+            "rel": "AUTHORED",
+            "weight": 0.92,
+            "roles": ["lead author", "reviewer"],
+            "period": {"start": "2024-10-01", "end": "2025-02-14"},
+            "evidence": "https://example.com/evidence/authored",
+            **edge_stress_props,
+        },
+        {
+            "src": "person",
+            "dst": "team",
+            "rel": "MEMBER_OF",
+            "since": "2020-06-01",
+            "allocation": {"research": 0.7, "support": 0.3},
+            "flags": ["primary", "remote"],
+        },
+        {
+            "src": "team",
+            "dst": "paper",
+            "rel": "SPONSORS",
+            "approved": True,
+            "reviewers": ["Dana", "Eli", "Morgan"],
+            "metadata": {"cycle": "Q2", "risk": "low"},
+        },
+    ]
+    return _graph_card(
+        graph_id="GRAPHDEBUG_PROPERTIES",
+        label="rich_properties",
+        pane_dir=pane_dir,
+        sources={},
+        graph_spec={
+            "title": "Rich property graph",
+            "layout": "force",
+            "nodes": [{"data": nodes, "id": "id", "label": "label", "group": "group", "tooltip": True}],
+            "edges": [
+                {
+                    "data": edges,
+                    "source": "src",
+                    "target": "dst",
+                    "label": "rel",
+                    "tooltip": True,
+                }
+            ],
+        },
+    )
+
+
 def _physics_graph_card(
     pane_dir: Path,
     *,
@@ -1085,7 +1188,12 @@ def _populate_pane(
                 "This turn contains one live-physics graph card for each supported layout mode: force, tree, and "
                 "layered. Use the record tabs to switch layouts while inspecting the same graph renderer styling."
             ),
-            cards=[_graph_network_card(pane_dir), _graph_tree_card(pane_dir), _graph_lineage_card(pane_dir)],
+            cards=[
+                _graph_network_card(pane_dir),
+                _graph_tree_card(pane_dir),
+                _graph_lineage_card(pane_dir),
+                _graph_properties_card(pane_dir),
+            ],
         )
         _push_turn(
             pane,

@@ -204,6 +204,18 @@ def _safe_scalar(value: object) -> bool:
     return value is None or isinstance(value, str | int | float | bool)
 
 
+def _graph_property_value(value: object, *, depth: int = 0) -> object:
+    if _safe_scalar(value):
+        return value
+    if depth >= 4:
+        return str(value)
+    if isinstance(value, Mapping):
+        return {str(key): _graph_property_value(item, depth=depth + 1) for key, item in value.items()}
+    if isinstance(value, Sequence) and not isinstance(value, str | bytes | bytearray):
+        return [_graph_property_value(item, depth=depth + 1) for item in value]
+    return str(value)
+
+
 def _neo4j_node_id(node: object) -> str:
     element_id = getattr(node, "element_id", None)
     if element_id is not None:
@@ -288,8 +300,8 @@ def _extract_subgraph_source(
         }
         if hasattr(node, "items"):
             for key, value in node.items():
-                if _safe_scalar(value) and key not in data:
-                    data[str(key)] = value
+                if key not in data:
+                    data[str(key)] = _graph_property_value(value)
         nodes[node_id] = data
         return node_id
 
@@ -313,8 +325,8 @@ def _extract_subgraph_source(
         }
         if hasattr(rel, "items"):
             for key, value in rel.items():
-                if _safe_scalar(value) and key not in data:
-                    data[str(key)] = value
+                if key not in data:
+                    data[str(key)] = _graph_property_value(value)
         edges[edge_id] = data
 
     def walk(value: object) -> None:
@@ -534,7 +546,8 @@ class RenderGraphTool:
           field name, list of field names, or ``true``. Explicit tooltip lists
           define body fields; edge titles use ``label`` when present.
         - Subgraph source:
-          ``{"record_id":"Q3","caption":"title"}``.
+          ``{"record_id":"Q3","caption":"title"}``. Node and relationship
+          properties are copied into tooltip fields.
 
         Minimal examples:
         ``{"edges":[{"record_id":"Q1","source":"src","target":"dst","label":"rel"}]}``

@@ -35,6 +35,18 @@ def _field_name(value: object, field_by_column: Mapping[str, str]) -> str | None
     return field_by_column.get(name, name)
 
 
+def _tooltip_value(value: object, *, depth: int = 0) -> object:
+    if value is None or isinstance(value, str | int | float | bool):
+        return value
+    if depth >= 4:
+        return str(value)
+    if isinstance(value, Mapping):
+        return {str(key): _tooltip_value(item, depth=depth + 1) for key, item in value.items()}
+    if isinstance(value, Sequence) and not isinstance(value, (str, bytes, bytearray)):
+        return [_tooltip_value(item, depth=depth + 1) for item in value]
+    return str(value)
+
+
 def _rows_for(
     source: Mapping[str, object], sources: Mapping[str, Mapping[str, object]]
 ) -> tuple[list[dict[str, object]], Mapping[str, str]]:
@@ -77,8 +89,7 @@ def _tooltip(
         if field not in row:
             continue
         value = row[field]
-        if value is None or isinstance(value, str | int | float | bool):
-            out[reverse.get(field, field)] = value
+        out[reverse.get(field, field)] = _tooltip_value(value)
     return out or None
 
 

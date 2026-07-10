@@ -14,6 +14,7 @@ from types import SimpleNamespace
 import pandas as pd
 import pytest
 
+from tabulaflow.app.pane.graphs import build_graph_data
 from tabulaflow.app.pane.cards import build_query_data, render_map_data, render_record_data
 from tabulaflow.app.pane.tables import TABLE_RENDER_MAX_ROWS
 from tabulaflow.app.pane import CARD_ID_PREFIX, OutputPane, OutputPanePortError, _PANE_HTML
@@ -481,8 +482,50 @@ def test_graph_tooltips_link_urls() -> None:
     graph_js = _pane_asset_text("render/graph.js")
     assert "asUrls, clone, cssVar, displayValue, escapeHtml, tooltipLink" in graph_js
     assert "function graphDetailValueHtml(value)" in graph_js
+    assert "return escapeHtml(JSON.stringify(value));" in graph_js
     assert "tooltipLink(urls[0])" in graph_js
     assert "String(tooltip[key]) === String(label)" not in graph_js
+
+
+def test_graph_tooltips_preserve_nested_values() -> None:
+    payload = build_graph_data(
+        {
+            "nodes": [
+                {
+                    "data": [{"id": "a", "label": "Alice", "tags": ["lead"], "profile": {"city": "Oakland"}}],
+                    "id": "id",
+                    "label": "label",
+                    "tooltip": True,
+                }
+            ],
+            "edges": [
+                {
+                    "data": [
+                        {
+                            "src": "a",
+                            "dst": "b",
+                            "rel": "knows",
+                            "roles": ["mentor", "reviewer"],
+                            "metadata": {"since": 2024},
+                        }
+                    ],
+                    "source": "src",
+                    "target": "dst",
+                    "label": "rel",
+                    "tooltip": True,
+                }
+            ],
+        },
+        {},
+    )
+    assert payload is not None
+    nodes = payload["graph"]["elements"]["nodes"]
+    edges = payload["graph"]["elements"]["edges"]
+    alice = next(node["data"] for node in nodes if node["data"]["id"] == "a")
+    assert alice["tooltip"]["tags"] == ["lead"]
+    assert alice["tooltip"]["profile"] == {"city": "Oakland"}
+    assert edges[0]["data"]["tooltip"]["roles"] == ["mentor", "reviewer"]
+    assert edges[0]["data"]["tooltip"]["metadata"] == {"since": 2024}
 
 
 def test_graph_node_labels_use_capped_display_label() -> None:

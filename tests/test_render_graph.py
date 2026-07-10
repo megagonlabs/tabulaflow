@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import Mapping
+from datetime import date
 from typing import Any
 
 import pandas as pd
@@ -28,10 +29,27 @@ def _norm(spec: Mapping[str, object], **sources: pd.DataFrame) -> dict[str, Any]
 
 def _neo4j_objects() -> tuple[Node, Node, Relationship, Path]:
     graph = Graph()
-    alice = Node(graph, "alice-id", 1, ["Person"], {"name": "Alice", "age": 36})
+    alice = Node(
+        graph,
+        "alice-id",
+        1,
+        ["Person"],
+        {
+            "name": "Alice",
+            "age": 36,
+            "tags": ["lead", "founder"],
+            "profile": {"city": "Oakland", "active": True},
+            "born": date(1988, 3, 4),
+        },
+    )
     matrix = Node(graph, "matrix-id", 2, ["Movie"], {"title": "The Matrix", "released": 1999})
     rel_cls = graph.relationship_type("ACTED_IN")
-    acted_in = rel_cls(graph, "acted-in-id", 3, {"role": "Trinity"})
+    acted_in = rel_cls(
+        graph,
+        "acted-in-id",
+        3,
+        {"role": "Trinity", "scenes": ["lobby", "rooftop"], "metadata": {"billing": 2}},
+    )
     acted_in._start_node = alice
     acted_in._end_node = matrix
     return alice, matrix, acted_in, Path(alice, acted_in)
@@ -107,7 +125,16 @@ class TestNormalizeGraphSpec:
         assert normalized["nodes"] == [
             {
                 "data": [
-                    {"id": "alice-id", "label": "Alice", "group": "Person", "name": "Alice", "age": 36},
+                    {
+                        "id": "alice-id",
+                        "label": "Alice",
+                        "group": "Person",
+                        "name": "Alice",
+                        "age": 36,
+                        "tags": ["lead", "founder"],
+                        "profile": {"city": "Oakland", "active": True},
+                        "born": "1988-03-04",
+                    },
                     {
                         "id": "matrix-id",
                         "label": "The Matrix",
@@ -131,6 +158,8 @@ class TestNormalizeGraphSpec:
                         "target": "matrix-id",
                         "label": "ACTED_IN",
                         "role": "Trinity",
+                        "scenes": ["lobby", "rooftop"],
+                        "metadata": {"billing": 2},
                     }
                 ],
                 "source": "source",
@@ -155,6 +184,8 @@ class TestNormalizeGraphSpec:
                 "target": "matrix-id",
                 "label": "ACTED_IN",
                 "role": "Trinity",
+                "scenes": ["lobby", "rooftop"],
+                "metadata": {"billing": 2},
             }
         ]
 
