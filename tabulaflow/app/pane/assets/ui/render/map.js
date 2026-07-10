@@ -945,7 +945,6 @@ export function renderMap(container, cardData) {
     resize: function () {
       if (map) map.resize();
     },
-    unmount: destroyMap,
     destroy: function () {
       destroyMap();
       container.innerHTML = '';

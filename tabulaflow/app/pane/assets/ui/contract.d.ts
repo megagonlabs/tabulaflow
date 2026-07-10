@@ -79,7 +79,6 @@ export interface ViewHandle {
   requires?: { width?: boolean; height?: boolean };
   mount?: () => void;
   resize?: () => void;
-  unmount?: () => void;
   destroy?: () => void;
 }
 

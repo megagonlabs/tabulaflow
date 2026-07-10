@@ -348,9 +348,14 @@ function gateDeactivate(entry) {
     entry.observer.disconnect();
     entry.observer = null;
   }
-  if (entry.mounted && entry.handle && entry.handle.unmount) entry.handle.unmount();
-  entry.mounted = false;
   entry.gated = false;
+}
+
+function deactivateViewTree(root) {
+  if (!root) return;
+  root.querySelectorAll('.tf-view').forEach(function (node) {
+    gateDeactivate(node._tfViewEntry);
+  });
 }
 
 function setActiveShellView(shell, activeNode) {
@@ -670,6 +675,7 @@ function selectTurn(i) {
   var items = document.querySelectorAll('#turns .turnitem');
   for (var k = 0; k < items.length; k++) items[k].classList.toggle('active', k === i);
   var inner = document.getElementById('content-inner');
+  deactivateViewTree(inner);
   inner.replaceChildren();
   inner.classList.toggle('manual-preview-content', isManualPreview(turns[i]));
   inner.appendChild(renderTurn(turns[i], i));

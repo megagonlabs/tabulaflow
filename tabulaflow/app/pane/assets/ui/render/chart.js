@@ -99,7 +99,6 @@ export function renderChart(container, cardData) {
       else mountView();
     },
     resize: resizeView,
-    unmount: function () {},
     destroy: function () {
       disposed = true;
       if (view) view.finalize();

@@ -597,7 +597,6 @@ export function renderGraph(container, cardData) {
 
   function initGraph() {
     if (cy) return;
-    autoFitEnabled = true;
     cy = cytoscape({
       container: graphNode,
       elements: graphInitElements(elements, graphData.layout),
@@ -654,7 +653,6 @@ export function renderGraph(container, cardData) {
       cy.resize();
       scheduleAutoFit();
     },
-    unmount: destroyGraph,
     destroy: function () {
       destroyGraph();
       container.innerHTML = '';

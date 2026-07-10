@@ -591,13 +591,21 @@ def test_graph_initial_auto_fit_stops_after_user_viewport_interaction() -> None:
     assert "scheduleAutoFit();" in graph_js
 
 
-def test_graph_remount_restarts_initial_auto_fit() -> None:
+def test_cached_views_are_destroyed_only_on_eviction() -> None:
+    pane_js = _pane_asset_text("pane.js")
+    contract = _pane_asset_text("contract.d.ts")
     graph_js = _pane_asset_text("render/graph.js")
-    assert "function initGraph() {\n    if (cy) return;\n    autoFitEnabled = true;" in graph_js
-    assert "cy.on('layoutstop', function () {\n      scheduleAutoFit();" in graph_js
-    assert "cy.ready(function () {\n      scheduleAutoFit();" in graph_js
-    assert "viewportState" not in graph_js
-    assert "restoreViewportState" not in graph_js
+    map_js = _pane_asset_text("render/map.js")
+    chart_js = _pane_asset_text("render/chart.js")
+    assert "if (entry.handle && entry.handle.destroy) entry.handle.destroy();" in pane_js
+    assert "unmount" not in contract
+    assert "handle.unmount" not in pane_js
+    assert "entry.mounted = false;" not in pane_js
+    assert "function deactivateViewTree(root)" in pane_js
+    assert "deactivateViewTree(inner);\n  inner.replaceChildren();" in pane_js
+    assert "unmount:" not in graph_js
+    assert "unmount:" not in map_js
+    assert "unmount:" not in chart_js
 
 
 def test_graph_physics_kicks_only_after_node_drag() -> None:
