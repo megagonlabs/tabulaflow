@@ -389,8 +389,7 @@ function graphStyles() {
     {
       selector: 'node.tf-selected',
       style: {
-        'border-color': 'data(borderColor)',
-        'border-width': 3,
+        'border-width': 0,
         'underlay-color': '#f8fafc',
         'underlay-opacity': 0.18,
         'underlay-padding': 4

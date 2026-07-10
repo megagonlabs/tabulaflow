@@ -504,6 +504,8 @@ def test_graph_nodes_have_no_default_outline() -> None:
     assert "'border-opacity': 0" in graph_js
     assert "'border-width': 0" in graph_js
     assert "selector: 'node.tf-selected'" in graph_js
+    assert "'underlay-color': '#f8fafc'" in graph_js
+    assert "'underlay-padding': 4" in graph_js
 
 
 def test_graph_details_are_click_only() -> None:
