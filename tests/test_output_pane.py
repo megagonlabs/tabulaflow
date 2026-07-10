@@ -569,7 +569,10 @@ def test_graph_details_are_click_only() -> None:
     assert "detailNode.addEventListener('mouseenter'" not in graph_js
     assert "cy.on('mouseover', 'node, edge', function ()" in graph_js
     assert ".tf-graph-detail {\n" in _PANE_HTML
-    assert "overflow-wrap: anywhere; pointer-events: auto;" in _PANE_HTML
+    assert "max-height: min(360px, calc(100% - 20px));" in _PANE_HTML
+    assert "overflow: auto; overflow-wrap: anywhere; pointer-events: auto;" in _PANE_HTML
+    assert "const GRAPH_DETAIL_MAX_HEIGHT = 360;" in graph_js
+    assert "detailNode.style.maxHeight = Math.min(GRAPH_DETAIL_MAX_HEIGHT, availableHeight) + 'px';" in graph_js
 
 
 def test_graph_initial_auto_fit_stops_after_user_viewport_interaction() -> None:

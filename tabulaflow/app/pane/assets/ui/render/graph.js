@@ -12,6 +12,8 @@ const GRAPH_NODE_LABEL_MAX_LINES = 2;
 const GRAPH_NODE_LABEL_FONT_SIZE = 10.25;
 const GRAPH_NODE_LABEL_SMALL_FONT_SIZE = 9;
 const GRAPH_DETAIL_MAX_CHARS = 280;
+const GRAPH_DETAIL_MAX_HEIGHT = 360;
+const GRAPH_DETAIL_MIN_HEIGHT = 120;
 
 function normalizeHexColor(color) {
   if (typeof color !== 'string') return null;
@@ -568,9 +570,13 @@ export function renderGraph(container, cardData) {
     if (!html) return;
     detailMode = mode;
     var pos = graphDetailPosition(ele);
+    var left = Math.max(10, Math.min(stageNode.clientWidth - 260, pos.x + 14));
+    var top = Math.max(10, Math.min(stageNode.clientHeight - GRAPH_DETAIL_MIN_HEIGHT - 10, pos.y + 14));
+    var availableHeight = Math.max(GRAPH_DETAIL_MIN_HEIGHT, stageNode.clientHeight - top - 10);
     detailNode.innerHTML = html;
-    detailNode.style.left = Math.max(10, Math.min(stageNode.clientWidth - 260, pos.x + 14)) + 'px';
-    detailNode.style.top = Math.max(10, Math.min(stageNode.clientHeight - 120, pos.y + 14)) + 'px';
+    detailNode.style.left = left + 'px';
+    detailNode.style.top = top + 'px';
+    detailNode.style.maxHeight = Math.min(GRAPH_DETAIL_MAX_HEIGHT, availableHeight) + 'px';
     detailNode.classList.add('show');
   }
 
