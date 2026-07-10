@@ -5,8 +5,6 @@ import { asUrls, clone, cssVar, displayValue, escapeHtml, tooltipLink } from './
 const cytoscape = window.cytoscape;
 const GRAPH_FIT_PADDING = 64;
 const GRAPH_MAX_AUTO_ZOOM = 1.25;
-const GRAPH_MIN_ZOOM = 0.08;
-const GRAPH_MAX_ZOOM = 2.25;
 const GRAPH_DEFAULT_NODE_BORDER = '#253447';
 const GRAPH_LIVE_PHYSICS_MIN_ALPHA = 0.012;
 
@@ -444,7 +442,6 @@ export function renderGraph(container, cardData) {
   var hoverCloseTimer = null;
   var hoverOverElement = false;
   var hoverOverDetail = false;
-  var viewportPan = null;
   var autoFitEnabled = true;
   var autoFitTimer = null;
 
@@ -527,71 +524,9 @@ export function renderGraph(container, cardData) {
     detailNode.classList.add('show');
   }
 
-  function eventPoint(event) {
-    if (!event) return null;
-    var source = event.originalEvent || event;
-    var touch = source.touches && source.touches.length ? source.touches[0] : null;
-    if (!touch && source.changedTouches && source.changedTouches.length) {
-      touch = source.changedTouches[0];
-    }
-    if (touch) return { x: touch.clientX, y: touch.clientY };
-    if (typeof source.clientX === 'number' && typeof source.clientY === 'number') {
-      return { x: source.clientX, y: source.clientY };
-    }
-    return null;
-  }
-
-  function stopViewportPan() {
-    viewportPan = null;
-    graphNode.style.cursor = '';
-    window.removeEventListener('mousemove', moveViewportPan);
-    window.removeEventListener('mouseup', stopViewportPan);
-    window.removeEventListener('touchmove', moveViewportPan);
-    window.removeEventListener('touchend', stopViewportPan);
-    window.removeEventListener('touchcancel', stopViewportPan);
-  }
-
-  function moveViewportPan(event) {
-    if (!cy || !viewportPan) return;
-    var point = eventPoint(event);
-    if (!point) return;
-    event.preventDefault();
-    cy.panBy({ x: point.x - viewportPan.x, y: point.y - viewportPan.y });
-    viewportPan = point;
-  }
-
-  function startViewportPan(event) {
-    var point = eventPoint(event);
-    if (!point) return;
-    markUserViewportInteraction();
-    viewportPan = point;
-    graphNode.style.cursor = 'grabbing';
-    window.addEventListener('mousemove', moveViewportPan);
-    window.addEventListener('mouseup', stopViewportPan);
-    window.addEventListener('touchmove', moveViewportPan, { passive: false });
-    window.addEventListener('touchend', stopViewportPan);
-    window.addEventListener('touchcancel', stopViewportPan);
-  }
-
-  function zoomViewport(event) {
-    if (!cy) return;
-    event.preventDefault();
-    event.stopPropagation();
-    markUserViewportInteraction();
-    var rect = graphNode.getBoundingClientRect();
-    var renderedPosition = {
-      x: event.clientX - rect.left,
-      y: event.clientY - rect.top
-    };
-    var factor = Math.exp(-event.deltaY * 0.0015);
-    var level = Math.max(GRAPH_MIN_ZOOM, Math.min(GRAPH_MAX_ZOOM, cy.zoom() * factor));
-    cy.zoom({ level: level, renderedPosition: renderedPosition });
-  }
-
   function destroyGraph() {
     hideDetail(true);
     clearAutoFitTimer();
-    stopViewportPan();
     if (cy) {
       if (livePhysics) {
         livePhysics.destroy();
@@ -615,11 +550,11 @@ export function renderGraph(container, cardData) {
       boxSelectionEnabled: false,
       hideEdgesOnViewport: false,
       textureOnViewport: false,
-      userPanningEnabled: false,
+      userPanningEnabled: true,
       userZoomingEnabled: true,
       wheelSensitivity: 0.18,
-      minZoom: GRAPH_MIN_ZOOM,
-      maxZoom: GRAPH_MAX_ZOOM
+      minZoom: 0.08,
+      maxZoom: 2.25
     });
     container._tfCy = cy;
     cy.on('layoutstop', function () {
@@ -641,9 +576,6 @@ export function renderGraph(container, cardData) {
       graphNode.style.cursor = '';
       scheduleHoverDetailClose();
     });
-    cy.on('vmousedown', function (event) {
-      if (event.target === cy) startViewportPan(event);
-    });
     cy.on('tap', 'node, edge', function (event) {
       selectGraphElement(event.target);
       showDetail(event.target, 'pinned');
@@ -664,7 +596,7 @@ export function renderGraph(container, cardData) {
     hoverOverDetail = false;
     scheduleHoverDetailClose();
   });
-  graphNode.addEventListener('wheel', zoomViewport, { passive: false });
+  graphNode.addEventListener('wheel', markUserViewportInteraction, { passive: true });
   graphNode.addEventListener('touchstart', function (event) {
     if (event.touches && event.touches.length > 1) markUserViewportInteraction();
   }, { passive: true });

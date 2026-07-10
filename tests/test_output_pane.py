@@ -505,11 +505,9 @@ def test_graph_initial_auto_fit_stops_after_user_viewport_interaction() -> None:
     assert "var autoFitEnabled = true;" in graph_js
     assert "function markUserViewportInteraction()" in graph_js
     assert "cy.on('grab', 'node', markUserViewportInteraction);" in graph_js
-    assert "function zoomViewport(event)" in graph_js
-    assert "event.preventDefault();" in graph_js
-    assert "cy.zoom({ level: level, renderedPosition: renderedPosition });" in graph_js
-    assert "graphNode.addEventListener('wheel', zoomViewport, { passive: false });" in graph_js
-    assert "userPanningEnabled: false" in graph_js
+    assert "function zoomViewport(event)" not in graph_js
+    assert "graphNode.addEventListener('wheel', markUserViewportInteraction, { passive: true });" in graph_js
+    assert "userPanningEnabled: true" in graph_js
     assert "userZoomingEnabled: true" in graph_js
     assert "clearAutoFitTimer();" in graph_js
     assert "scheduleAutoFit();" in graph_js
