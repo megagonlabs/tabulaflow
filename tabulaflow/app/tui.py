@@ -129,7 +129,6 @@ class TabulaflowApp(App[None]):
         self,
         *,
         model: str,
-        agent: str,
         reasoning_effort: str,
         output_pane_host: str = "127.0.0.1",
         output_pane_port: int | None = None,
@@ -139,7 +138,6 @@ class TabulaflowApp(App[None]):
 
         super().__init__()
         self._model = model
-        self._agent = agent
         self._reasoning_effort = reasoning_effort
         self._output_pane_host = output_pane_host
         self._output_pane_port = output_pane_port
@@ -716,7 +714,6 @@ class TabulaflowApp(App[None]):
                 None,
                 SessionState,
                 self._model,
-                self._agent,
                 self._session_id,
                 self._runtime_paths.trajectories_dir,
                 self._runtime_paths.data_dir,
@@ -970,7 +967,6 @@ class TabulaflowApp(App[None]):
 
 async def run_tui(
     model: str,
-    agent: str,
     reasoning_effort: str,
     *,
     output_pane_host: str = "127.0.0.1",
@@ -980,7 +976,6 @@ async def run_tui(
     """Launch the Textual TUI app."""
     app = TabulaflowApp(
         model=model,
-        agent=agent,
         reasoning_effort=reasoning_effort,
         output_pane_host=output_pane_host,
         output_pane_port=output_pane_port,

@@ -12,23 +12,18 @@ app = typer.Typer(
 
 @app.command()
 def chat(
-    model: str = typer.Option(
-        "openai-responses:gpt-5.4",
+    model: str | None = typer.Option(
+        None,
         "--model",
         "-m",
-        help="LLM identifier (e.g. openai-responses:gpt-5.4).",
+        help="LLM identifier (e.g. openai-responses:gpt-5.4). Overrides the saved default for this launch.",
     ),
-    agent: str = typer.Option(
-        "tabulaflow_agent",
-        "--agent",
-        "-a",
-        help="Agent name from the tabulaflow agent registry.",
-    ),
-    reasoning_effort: str = typer.Option(
-        "medium",
+    reasoning_effort: str | None = typer.Option(
+        None,
         "--reasoning-effort",
         "-r",
-        help="Reasoning effort for OpenAI models: minimal | low | medium | high.",
+        help="Reasoning effort for OpenAI models: minimal | low | medium | high. "
+        "Overrides the saved default for this launch.",
     ),
     output_pane_port: int | None = typer.Option(
         None,
@@ -48,8 +43,25 @@ def chat(
 ) -> None:
     """Start an interactive database chat session (SQL or Neo4j Cypher)."""
     import asyncio
+    from typing import get_args
+
+    from pydantic import ValidationError
 
     import tabulaflow
+    from tabulaflow.app.config import ReasoningEffort, load_app_config
+
+    app_config = load_app_config()
+    if model is not None:
+        app_config.model = model
+    if reasoning_effort is not None:
+        try:
+            # CLI input is an arbitrary string; pydantic validates the literal on assignment.
+            app_config.reasoning_effort = reasoning_effort  # type: ignore[assignment]
+        except ValidationError:
+            raise typer.BadParameter(
+                f"{reasoning_effort!r} is not one of: {', '.join(get_args(ReasoningEffort))}",
+                param_hint="--reasoning-effort",
+            ) from None
 
     tabulaflow.configure(
         column_stats_mode="always_skip",
@@ -62,9 +74,8 @@ def chat(
 
     asyncio.run(
         run_tui(
-            model=model,
-            agent=agent,
-            reasoning_effort=reasoning_effort,
+            model=app_config.model,
+            reasoning_effort=app_config.reasoning_effort,
             output_pane_host=output_pane_host,
             output_pane_port=output_pane_port,
             output_pane_public_url=output_pane_public_url,

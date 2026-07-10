@@ -41,7 +41,6 @@ class SessionState:
     def __init__(
         self,
         model: str,
-        agent: str,
         session_id: str,
         trajectories_dir: Path,
         data_dir: Path,
@@ -53,7 +52,6 @@ class SessionState:
         from tabulaflow.chat import ChatAgent
         from tabulaflow.core.db_connector.db_registry import DBRegistry
 
-        self.agent_name = agent
         self.session_id = session_id
         self.data_dir = data_dir
         # The directory the app was launched from (where the user's source data

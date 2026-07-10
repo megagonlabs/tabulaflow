@@ -11,7 +11,7 @@ from urllib.parse import urlparse, urlunparse
 from rich.console import RenderableType
 from rich.text import Text
 
-from tabulaflow.app.theme import ACCENT, ERROR
+from tabulaflow.app.theme import ERROR
 from tabulaflow.app.session import WORKSPACE_ALIAS, SessionState
 from tabulaflow.core.db_connector import DB_FILE_SCHEMES, connect_url, connector_info, normalize_url, url_needs_password
 
@@ -362,20 +362,12 @@ async def _cmd_disconnect(args: list[str], session: SessionState) -> CommandResu
         return CommandResult(output=Text.from_markup(f"[{ERROR}]No connection named:[/] {alias}"))
 
 
-async def _cmd_model(args: list[str], session: SessionState) -> CommandResult:
-    if not args:
-        return CommandResult(output=Text.from_markup(f"[dim]Current model:[/dim] {session.model}"))
-    session.set_model(args[0])
-    return CommandResult(output=Text.from_markup(f"[{ACCENT}]✓[/{ACCENT}] Model set to [bold]{session.model}[/bold]"))
-
-
 _COMMAND_HELP: dict[str, tuple[object, str]] = {
     "/help": (_cmd_help, "Show this help message"),
     "/exit": (_cmd_exit, "Exit the chat"),
     "/clear": (_cmd_clear, "Clear the screen"),
     "/connect": (_cmd_connect, "Connect to a database: /connect <url> \\[alias]"),
     "/disconnect": (_cmd_disconnect, "Disconnect: /disconnect \\[alias]"),
-    "/model": (_cmd_model, "Switch LLM: /model <identifier>"),
 }
 
 COMMANDS: dict[str, object] = {cmd: handler for cmd, (handler, _) in _COMMAND_HELP.items()}
