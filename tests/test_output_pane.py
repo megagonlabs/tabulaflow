@@ -608,6 +608,15 @@ def test_cached_views_are_destroyed_only_on_eviction() -> None:
     assert "unmount:" not in chart_js
 
 
+def test_heavy_view_cache_weights_are_tuned_for_retained_renderers() -> None:
+    pane_js = _pane_asset_text("pane.js")
+    assert "var CACHE_WEIGHT_LIMIT = 24;" in pane_js
+    assert "function graphCacheWeight(entry)" in pane_js
+    assert "return nodes > 50 || edges > 150 ? 6 : 3;" in pane_js
+    assert "if (entry.kind === 'map') return 6;" in pane_js
+    assert "if (entry.kind === 'graph') return graphCacheWeight(entry);" in pane_js
+
+
 def test_graph_physics_kicks_only_after_node_drag() -> None:
     graph_js = _pane_asset_text("render/graph.js")
     assert "var draggedNodes = new Set();" in graph_js

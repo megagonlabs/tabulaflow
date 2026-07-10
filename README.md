@@ -393,6 +393,8 @@ July 9
 - [x] Fix node label overflow
 - [x] Disable hover tooltip for graph
 - [x] Improve node style
+- [x] Show all properties in tooltip
+- [x] Fix life cycle model - do not destroy when hidden, only when evicted
 
 - [ ] Check bug: passing a self constructed registry to chat agent?
 

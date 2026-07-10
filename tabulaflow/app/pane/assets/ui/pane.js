@@ -233,10 +233,18 @@ function scheduleIdle(fn) {
   return window.setTimeout(fn, 80);
 }
 
+function graphCacheWeight(entry) {
+  var graph = entry && entry.data && entry.data.graph;
+  var elements = graph && graph.elements;
+  var nodes = elements && Array.isArray(elements.nodes) ? elements.nodes.length : 0;
+  var edges = elements && Array.isArray(elements.edges) ? elements.edges.length : 0;
+  return nodes > 50 || edges > 150 ? 6 : 3;
+}
+
 function cacheEntryWeight(entry) {
   if (!entry) return 0;
-  if (entry.kind === 'map') return 3;
-  if (entry.kind === 'graph') return 3;
+  if (entry.kind === 'map') return 6;
+  if (entry.kind === 'graph') return graphCacheWeight(entry);
   return 1;
 }
 
