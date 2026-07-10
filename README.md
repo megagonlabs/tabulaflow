@@ -389,9 +389,8 @@ July 9
 - [x] Graph - node/edge selection style
 - [x] Fix tab change fail in TUI using left/right arrow
 - [x] Make tooltip style and behavior consistent across chart/map/graph
-
-- [ ] Fix zoom not working
-- [ ] Fix node label overflow
+- [x] Fix zoom not working
+- [x] Fix node label overflow
 - [ ] Disable hover tooltip for graph
 - [ ] Improve node style
 
