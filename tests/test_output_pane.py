@@ -588,6 +588,15 @@ def test_graph_initial_auto_fit_stops_after_user_viewport_interaction() -> None:
     assert "scheduleAutoFit();" in graph_js
 
 
+def test_graph_remount_restarts_initial_auto_fit() -> None:
+    graph_js = _pane_asset_text("render/graph.js")
+    assert "function initGraph() {\n    if (cy) return;\n    autoFitEnabled = true;" in graph_js
+    assert "cy.on('layoutstop', function () {\n      scheduleAutoFit();" in graph_js
+    assert "cy.ready(function () {\n      scheduleAutoFit();" in graph_js
+    assert "viewportState" not in graph_js
+    assert "restoreViewportState" not in graph_js
+
+
 def test_graph_physics_kicks_only_after_node_drag() -> None:
     graph_js = _pane_asset_text("render/graph.js")
     assert "var draggedNodes = new Set();" in graph_js
