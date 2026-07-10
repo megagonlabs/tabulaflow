@@ -525,9 +525,21 @@ def _map_overlay_card(pane_dir: Path) -> PaneCard:
 def _graph_network_card(pane_dir: Path) -> PaneCard:
     nodes = pd.DataFrame(
         [
-            {"id": "alice", "name": "Alice", "team": "Research", "score": 94, "profile": "https://example.com/people/alice"},
+            {
+                "id": "alice",
+                "name": "Alice Research Program Coordinator",
+                "team": "Research",
+                "score": 94,
+                "profile": "https://example.com/people/alice",
+            },
             {"id": "bob", "name": "Bob", "team": "Research", "score": 78, "profile": "https://example.com/people/bob"},
-            {"id": "carol", "name": "Carol", "team": "Product", "score": 88, "profile": "https://example.com/people/carol"},
+            {
+                "id": "carol",
+                "name": "Carol Enterprise Product Strategy Lead",
+                "team": "Product",
+                "score": 88,
+                "profile": "https://example.com/people/carol",
+            },
             {"id": "dina", "name": "Dina", "team": "Design", "score": 70, "profile": "https://example.com/people/dina"},
             {"id": "eli", "name": "Eli", "team": "Data", "score": 82, "profile": "https://example.com/people/eli"},
             {"id": "faye", "name": "Faye", "team": "Data", "score": 66, "profile": "https://example.com/people/faye"},
@@ -614,7 +626,7 @@ def _physics_social_data() -> tuple[pd.DataFrame, pd.DataFrame]:
     nodes = pd.DataFrame(
         [
             {"id": "alice", "label": "Alice", "group": "Research"},
-            {"id": "bob", "label": "Bob", "group": "Research"},
+            {"id": "bob", "label": "Bob Research Operations Liaison", "group": "Research"},
             {"id": "dina", "label": "Dina", "group": "Design"},
             {"id": "eli", "label": "Eli", "group": "Data"},
             {"id": "faye", "label": "Faye", "group": "Data"},
@@ -652,7 +664,13 @@ def _physics_social_data() -> tuple[pd.DataFrame, pd.DataFrame]:
 
 def _physics_chain_data() -> tuple[pd.DataFrame, pd.DataFrame]:
     nodes = pd.DataFrame(
-        {"id": [f"n{i}" for i in range(12)], "label": [f"N{i}" for i in range(12)], "group": ["Chain"] * 12}
+        {
+            "id": [f"n{i}" for i in range(12)],
+            "label": [
+                "Node Six With A Very Long Process Stage Label" if i == 6 else f"N{i}" for i in range(12)
+            ],
+            "group": ["Chain"] * 12,
+        }
     )
     edges = pd.DataFrame(
         [{"src": f"n{i}", "dst": f"n{i + 1}", "rel": "next"} for i in range(11)]
@@ -774,10 +792,10 @@ def _graph_lineage_card(pane_dir: Path) -> PaneCard:
             {"id": "raw_events", "label": "Raw Events", "layer": "Raw"},
             {"id": "raw_accounts", "label": "Raw Accounts", "layer": "Raw"},
             {"id": "stg_events", "label": "Stg Events", "layer": "Stage"},
-            {"id": "stg_accounts", "label": "Stg Accounts", "layer": "Stage"},
+            {"id": "stg_accounts", "label": "Staging Accounts With Long Descriptive Model Name", "layer": "Stage"},
             {"id": "fct_sessions", "label": "Sessions", "layer": "Fact"},
             {"id": "dim_accounts", "label": "Accounts", "layer": "Dimension"},
-            {"id": "mart_growth", "label": "Growth Mart", "layer": "Mart"},
+            {"id": "mart_growth", "label": "Executive Growth Analytics Mart", "layer": "Mart"},
         ]
     )
     edges = pd.DataFrame(
@@ -824,12 +842,12 @@ def _graph_tree_card(pane_dir: Path) -> PaneCard:
         [
             {"id": "hq", "label": "HQ", "group": "Org"},
             {"id": "sales", "label": "Sales", "group": "Dept"},
-            {"id": "product", "label": "Product", "group": "Dept"},
+            {"id": "product", "label": "Product Experience And Platform Department", "group": "Dept"},
             {"id": "data", "label": "Data", "group": "Dept"},
             {"id": "east", "label": "East", "group": "Team"},
             {"id": "west", "label": "West", "group": "Team"},
             {"id": "growth", "label": "Growth", "group": "Team"},
-            {"id": "platform", "label": "Platform", "group": "Team"},
+            {"id": "platform", "label": "Platform Reliability Enablement Team", "group": "Team"},
             {"id": "analytics", "label": "Analytics", "group": "Team"},
         ]
     )

@@ -485,6 +485,17 @@ def test_graph_tooltips_link_urls() -> None:
     assert "String(tooltip[key]) === String(label)" not in graph_js
 
 
+def test_graph_node_labels_use_capped_display_label() -> None:
+    graph_js = _pane_asset_text("render/graph.js")
+    assert "function graphNodeDisplayLabel(value)" in graph_js
+    assert "const GRAPH_NODE_LABEL_LINE_CHARS = 8;" in graph_js
+    assert "const GRAPH_NODE_LABEL_MAX_LINES = 2;" in graph_js
+    assert "function ellipsizeGraphLabel(text, maxChars)" in graph_js
+    assert "displayLabel: graphNodeDisplayLabel(data.label || data.id)" in graph_js
+    assert "'label': 'data(displayLabel)'" in graph_js
+    assert "var label = data.label || data.id || '';" in graph_js
+
+
 def test_graph_tooltips_have_separate_hover_and_pinned_state() -> None:
     graph_js = _pane_asset_text("render/graph.js")
     assert "var detailMode = null;" in graph_js

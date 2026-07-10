@@ -7,6 +7,8 @@ const GRAPH_FIT_PADDING = 64;
 const GRAPH_MAX_AUTO_ZOOM = 1.25;
 const GRAPH_DEFAULT_NODE_BORDER = '#253447';
 const GRAPH_LIVE_PHYSICS_MIN_ALPHA = 0.012;
+const GRAPH_NODE_LABEL_LINE_CHARS = 8;
+const GRAPH_NODE_LABEL_MAX_LINES = 2;
 
 function normalizeHexColor(color) {
   if (typeof color !== 'string') return null;
@@ -30,12 +32,61 @@ function nodeBorderColor(color) {
   return '#' + out.join('');
 }
 
+function truncateGraphLabel(text, maxChars) {
+  if (text.length <= maxChars) return text;
+  return text.slice(0, Math.max(0, maxChars - 3)).trimEnd() + '...';
+}
+
+function ellipsizeGraphLabel(text, maxChars) {
+  if (text.endsWith('...')) return text;
+  var limit = Math.max(1, maxChars - 3);
+  var value = text.length <= limit ? text : text.slice(0, limit).trimEnd();
+  return value + '...';
+}
+
+function graphNodeDisplayLabel(value) {
+  var text = String(value || '').replace(/\s+/g, ' ').trim();
+  if (!text) return '';
+  if (text.length <= GRAPH_NODE_LABEL_LINE_CHARS) return text;
+
+  var words = text.split(' ');
+  var lines = [];
+  var line = '';
+  var truncated = false;
+  for (var i = 0; i < words.length; i += 1) {
+    var word = words[i];
+    if (word.length > GRAPH_NODE_LABEL_LINE_CHARS) {
+      word = truncateGraphLabel(word, GRAPH_NODE_LABEL_LINE_CHARS);
+      truncated = true;
+    }
+    var next = line ? line + ' ' + word : word;
+    if (next.length <= GRAPH_NODE_LABEL_LINE_CHARS) {
+      line = next;
+      continue;
+    }
+    if (line) lines.push(line);
+    line = word;
+    if (lines.length === GRAPH_NODE_LABEL_MAX_LINES) {
+      truncated = true;
+      break;
+    }
+  }
+  if (line && lines.length < GRAPH_NODE_LABEL_MAX_LINES) lines.push(line);
+  if (i < words.length) truncated = true;
+  if (truncated && lines.length) {
+    var last = lines.length - 1;
+    lines[last] = ellipsizeGraphLabel(lines[last], GRAPH_NODE_LABEL_LINE_CHARS);
+  }
+  return lines.join('\n');
+}
+
 function graphNodeElements(nodes) {
   return nodes.map(function (node) {
     var data = node && node.data ? node.data : {};
     return Object.assign({}, node, {
       data: Object.assign({}, data, {
-        borderColor: data.borderColor || nodeBorderColor(data.color)
+        borderColor: data.borderColor || nodeBorderColor(data.color),
+        displayLabel: graphNodeDisplayLabel(data.label || data.id)
       })
     });
   });
@@ -280,7 +331,7 @@ function graphStyles() {
         'font-size': 10.25,
         'font-weight': 650,
         'height': 48,
-        'label': 'data(label)',
+        'label': 'data(displayLabel)',
         'min-zoomed-font-size': 7.5,
         'overlay-opacity': 0,
         'text-halign': 'center',
