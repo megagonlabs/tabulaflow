@@ -1,6 +1,6 @@
 // @ts-check
 
-import { asUrls, clone, cssVar, displayValue, escapeHtml, tooltipLink } from './shared.js';
+import { asUrls, clone, cssVar, displayValue, escapeAttr, escapeHtml, tooltipLink } from './shared.js';
 
 const cytoscape = window.cytoscape;
 const GRAPH_FIT_PADDING = 64;
@@ -11,6 +11,7 @@ const GRAPH_NODE_LABEL_LINE_CHARS = 8;
 const GRAPH_NODE_LABEL_MAX_LINES = 2;
 const GRAPH_NODE_LABEL_FONT_SIZE = 10.25;
 const GRAPH_NODE_LABEL_SMALL_FONT_SIZE = 9;
+const GRAPH_DETAIL_MAX_CHARS = 280;
 
 function normalizeHexColor(color) {
   if (typeof color !== 'string') return null;
@@ -426,9 +427,23 @@ function fitGraph(cy, graphNode) {
   }
 }
 
+function truncateDetailText(text, maxChars) {
+  if (text.length <= maxChars) return { text: text, truncated: false };
+  return {
+    text: text.slice(0, Math.max(0, maxChars - 3)).trimEnd() + '...',
+    truncated: true
+  };
+}
+
+function graphDetailTextHtml(text, maxChars) {
+  var truncated = truncateDetailText(text, maxChars);
+  var title = truncated.truncated ? ' title="' + escapeAttr(text) + '"' : '';
+  return '<span' + title + '>' + escapeHtml(truncated.text) + '</span>';
+}
+
 function graphDetailValueHtml(value) {
   if (value && typeof value === 'object') {
-    return escapeHtml(JSON.stringify(value));
+    return graphDetailTextHtml(JSON.stringify(value), GRAPH_DETAIL_MAX_CHARS);
   }
   var text = displayValue(value);
   var urls = typeof value === 'string' ? asUrls(text) : null;
@@ -439,7 +454,7 @@ function graphDetailValueHtml(value) {
     if (urls.length === 1) return tooltipLink(urls[0]);
     return urls.map(function (url) { return tooltipLink(url); }).join(' ');
   }
-  return escapeHtml(text);
+  return graphDetailTextHtml(text, GRAPH_DETAIL_MAX_CHARS);
 }
 
 function graphDetailHtml(ele) {

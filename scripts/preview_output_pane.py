@@ -588,9 +588,41 @@ def _graph_network_card(pane_dir: Path) -> PaneCard:
 def _graph_properties_card(pane_dir: Path) -> PaneCard:
     long_text = (
         "This is an intentionally very long property value used to stress graph detail rendering. "
-        "It should wrap inside the tooltip without breaking layout, hiding links, or pushing the popup "
-        "outside the visible graph viewport."
+        "It should truncate inside the tooltip without breaking layout, hiding links, or pushing the "
+        "popup outside the visible graph viewport. The full value remains in the graph payload and in "
+        "the browser title attribute for inspection. "
+        "This repeated clause makes the value exceed the graph detail truncation threshold by a wide "
+        "margin so the ellipsis should be visible in the rich property graph preview."
     )
+    neo4j_property_examples = {
+        "string_value": "Neo4j property string",
+        "long_string_value": long_text,
+        "integer_value": 9_223_372_036_854_775_807,
+        "negative_integer_value": -42,
+        "float_value": 3.141592653589793,
+        "boolean_value": True,
+        "date_value": "2026-07-09",
+        "local_time_value": "14:35:20.123",
+        "time_value": "14:35:20.123-07:00",
+        "local_datetime_value": "2026-07-09T14:35:20.123",
+        "datetime_value": "2026-07-09T14:35:20.123-07:00[America/Los_Angeles]",
+        "duration_value": "P1Y2M3DT4H5M6.789S",
+        "point_cartesian_2d": "point({x: 12.5, y: -3.75})",
+        "point_cartesian_3d": "point({x: 12.5, y: -3.75, z: 8.0})",
+        "point_wgs84_2d": "point({longitude: -122.4194, latitude: 37.7749})",
+        "point_wgs84_3d": "point({longitude: -122.4194, latitude: 37.7749, height: 15.2})",
+        "byte_array_hex_preview": "0x6e656f346a2d6279746573",
+        "string_list": ["graph", "tooltip", "property"],
+        "integer_list": [1, 2, 3, 5, 8, 13],
+        "float_list": [0.1, 0.25, 0.5, 0.75],
+        "boolean_list": [True, False, True],
+        "temporal_list": ["2026-07-09", "2026-07-10", "2026-07-11"],
+        "point_list": [
+            "point({longitude: -122.4194, latitude: 37.7749})",
+            "point({longitude: -73.9857, latitude: 40.7484})",
+        ],
+        "null_renderer_stress": None,
+    }
     node_stress_props = {
         f"node_property_{i:02d}": (
             f"{long_text} Field {i}." if i % 5 == 0 else {"rank": i, "flags": [f"flag_{i}", f"flag_{i + 1}"]}
@@ -618,6 +650,7 @@ def _graph_properties_card(pane_dir: Path) -> PaneCard:
             },
             "joined": "2021-04-18",
             "notes": "Long node note intended to verify that detailed graph tooltips can carry larger property values.",
+            **neo4j_property_examples,
             **node_stress_props,
         },
         {

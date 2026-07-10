@@ -480,11 +480,20 @@ def test_pane_renderer_modules_are_packaged() -> None:
 
 def test_graph_tooltips_link_urls() -> None:
     graph_js = _pane_asset_text("render/graph.js")
-    assert "asUrls, clone, cssVar, displayValue, escapeHtml, tooltipLink" in graph_js
+    assert "asUrls, clone, cssVar, displayValue, escapeAttr, escapeHtml, tooltipLink" in graph_js
     assert "function graphDetailValueHtml(value)" in graph_js
-    assert "return escapeHtml(JSON.stringify(value));" in graph_js
+    assert "return graphDetailTextHtml(JSON.stringify(value), GRAPH_DETAIL_MAX_CHARS);" in graph_js
     assert "tooltipLink(urls[0])" in graph_js
     assert "String(tooltip[key]) === String(label)" not in graph_js
+
+
+def test_graph_tooltips_truncate_long_values() -> None:
+    graph_js = _pane_asset_text("render/graph.js")
+    assert "const GRAPH_DETAIL_MAX_CHARS = 280;" in graph_js
+    assert "function truncateDetailText(text, maxChars)" in graph_js
+    assert "function graphDetailTextHtml(text, maxChars)" in graph_js
+    assert "title=\"' + escapeAttr(text) + '\"" in graph_js
+    assert "return graphDetailTextHtml(text, GRAPH_DETAIL_MAX_CHARS);" in graph_js
 
 
 def test_graph_tooltips_preserve_nested_values() -> None:
