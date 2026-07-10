@@ -5,6 +5,8 @@ import { asUrls, clone, cssVar, displayValue, escapeHtml, tooltipLink } from './
 const cytoscape = window.cytoscape;
 const GRAPH_FIT_PADDING = 64;
 const GRAPH_MAX_AUTO_ZOOM = 1.25;
+const GRAPH_MIN_ZOOM = 0.08;
+const GRAPH_MAX_ZOOM = 2.25;
 const GRAPH_DEFAULT_NODE_BORDER = '#253447';
 const GRAPH_LIVE_PHYSICS_MIN_ALPHA = 0.012;
 
@@ -571,6 +573,21 @@ export function renderGraph(container, cardData) {
     window.addEventListener('touchcancel', stopViewportPan);
   }
 
+  function zoomViewport(event) {
+    if (!cy) return;
+    event.preventDefault();
+    event.stopPropagation();
+    markUserViewportInteraction();
+    var rect = graphNode.getBoundingClientRect();
+    var renderedPosition = {
+      x: event.clientX - rect.left,
+      y: event.clientY - rect.top
+    };
+    var factor = Math.exp(-event.deltaY * 0.0015);
+    var level = Math.max(GRAPH_MIN_ZOOM, Math.min(GRAPH_MAX_ZOOM, cy.zoom() * factor));
+    cy.zoom({ level: level, renderedPosition: renderedPosition });
+  }
+
   function destroyGraph() {
     hideDetail(true);
     clearAutoFitTimer();
@@ -599,9 +616,10 @@ export function renderGraph(container, cardData) {
       hideEdgesOnViewport: false,
       textureOnViewport: false,
       userPanningEnabled: false,
+      userZoomingEnabled: true,
       wheelSensitivity: 0.18,
-      minZoom: 0.08,
-      maxZoom: 2.25
+      minZoom: GRAPH_MIN_ZOOM,
+      maxZoom: GRAPH_MAX_ZOOM
     });
     container._tfCy = cy;
     cy.on('layoutstop', function () {
@@ -646,7 +664,7 @@ export function renderGraph(container, cardData) {
     hoverOverDetail = false;
     scheduleHoverDetailClose();
   });
-  graphNode.addEventListener('wheel', markUserViewportInteraction, { passive: true });
+  graphNode.addEventListener('wheel', zoomViewport, { passive: false });
   graphNode.addEventListener('touchstart', function (event) {
     if (event.touches && event.touches.length > 1) markUserViewportInteraction();
   }, { passive: true });
