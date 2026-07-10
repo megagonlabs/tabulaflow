@@ -2,8 +2,8 @@ from tabulaflow.core.db_connector.base import (
     BasePropertyGraphDBConnector,
     BaseSQLDBConnector,
     NL2QDBConnector,
-    connector_info,
 )
+from tabulaflow.core.db_connector.utils import connector_info
 from tabulaflow.core.db_connector.db_registry import DBRegistry
 from tabulaflow.core.db_connector.url import (
     DB_FILE_SCHEMES,
