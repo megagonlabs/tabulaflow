@@ -1,4 +1,9 @@
-from tabulaflow.core.db_connector.base import BasePropertyGraphDBConnector, BaseSQLDBConnector, NL2QDBConnector
+from tabulaflow.core.db_connector.base import (
+    BasePropertyGraphDBConnector,
+    BaseSQLDBConnector,
+    NL2QDBConnector,
+    connector_info,
+)
 from tabulaflow.core.db_connector.db_registry import DBRegistry
 from tabulaflow.core.db_connector.url import (
     DB_FILE_SCHEMES,
@@ -18,6 +23,7 @@ __all__ = [
     "Neo4jConnector",
     "SQLConnector",
     "connect_url",
+    "connector_info",
     "normalize_url",
     "url_needs_password",
 ]

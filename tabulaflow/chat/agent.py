@@ -26,6 +26,7 @@ from tabulaflow.toolhub.web_browser import (
     SNAPSHOT_SNIPPET_THRESHOLD_CHARS,
     snapshot_snippet,
 )
+from tabulaflow.core.db_connector import connector_info
 from tabulaflow.core.llm import make_agent
 from tabulaflow.chat.result import ChatResult, ChatResultGraph, ChatResultMap, ChatResultRecord
 from tabulaflow.chat.events import (
@@ -344,6 +345,7 @@ class ChatAgent:
             self._message_store.attach_connector(self.workspace)
             self._tools.add_canonical_name.attach_connector(self.workspace)
         self._system_prompt = self._compose_system_prompt()
+        self._note_initial_registry()
         self._build_agent()
 
     def _compose_system_prompt(self) -> str:
@@ -511,6 +513,22 @@ class ChatAgent:
         from pydantic_ai.messages import ModelRequest, UserPromptPart
 
         self._message_history.append(ModelRequest(parts=[UserPromptPart(content=f"[system: {description}]")]))
+
+    def _note_initial_registry(self) -> None:
+        aliases = self.registry.list_aliases()
+        if not aliases:
+            return
+
+        entries = []
+        for alias in aliases:
+            try:
+                connector = self.registry.get(alias)
+            except ValueError:
+                continue
+            entries.append(f"`{alias}` ({connector_info(connector)})")
+
+        if entries:
+            self.note_event("the following data sources are already registered: " + ", ".join(entries) + ".")
 
     async def aclose(self) -> None:
         """Release session-scoped resources — currently the persistent shell session."""

@@ -13,7 +13,7 @@ from rich.text import Text
 
 from tabulaflow.app.theme import ACCENT, ERROR
 from tabulaflow.app.session import WORKSPACE_ALIAS, SessionState
-from tabulaflow.core.db_connector import DB_FILE_SCHEMES, connect_url, normalize_url, url_needs_password
+from tabulaflow.core.db_connector import DB_FILE_SCHEMES, connect_url, connector_info, normalize_url, url_needs_password
 
 if TYPE_CHECKING:
     from tabulaflow.core.db_connector.base import NL2QDBConnector
@@ -47,28 +47,10 @@ class CommandResult:
 # ---------------------------------------------------------------------------
 
 
-def database_info(connector: NL2QDBConnector) -> str:
-    """Concise human-readable summary of a connector — for the connect confirmation
-    message and the agent event note."""
-    from tabulaflow.core.db_connector import Neo4jConnector
-
-    if isinstance(connector, Neo4jConnector):
-        n_labels = len(connector.schema.nodes)
-        n_patterns = sum(len(rel.endpoints) for rel in connector.schema.relationships)
-        return f"cypher, {n_labels} label{'s' if n_labels != 1 else ''}, {n_patterns} rel pattern{'s' if n_patterns != 1 else ''}"
-
-    from tabulaflow.core.types import SQLSchema
-
-    schema = connector.schema
-    n_tables = len(schema.tables) if isinstance(schema, SQLSchema) else 0
-    dialect = connector.language or "unknown"
-    return f"{dialect}, {n_tables} tables"
-
-
 def _announce_connect(session: SessionState, alias: str, connector: NL2QDBConnector) -> str:
     """Tell the agent the user just connected ``alias`` (so it gains temporal
     awareness of the new source) and return the connector's display summary."""
-    info = database_info(connector)
+    info = connector_info(connector)
     session.chat_agent.note_event(f"the user just connected a new data source `{alias}` ({info}).")
     return info
 

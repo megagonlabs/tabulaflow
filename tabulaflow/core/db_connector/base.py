@@ -64,3 +64,27 @@ class BasePropertyGraphDBConnector(Protocol):
 
 
 NL2QDBConnector: TypeAlias = Union[BaseSQLDBConnector, BasePropertyGraphDBConnector]
+
+
+def connector_info(connector: NL2QDBConnector) -> str:
+    """Return a concise human-readable connector summary.
+
+    Args:
+        connector: Database connector to summarize.
+
+    Returns:
+        A short summary suitable for connection confirmations and agent events.
+    """
+    if connector.connector_type == "property_graph":
+        n_labels = len(connector.schema.nodes)
+        n_relationships = len(connector.schema.relationships)
+        language = connector.language or "graph"
+        return (
+            f"{connector.backend}, {language}, {n_labels} label{'s' if n_labels != 1 else ''}, "
+            f"{n_relationships} relationship type{'s' if n_relationships != 1 else ''}"
+        )
+
+    schema = connector.schema
+    n_tables = len(schema.tables)
+    dialect = connector.language or schema.dialect or "unknown"
+    return f"{dialect}, {n_tables} table{'s' if n_tables != 1 else ''}"
