@@ -499,14 +499,14 @@ def test_graph_node_labels_use_capped_display_label() -> None:
     assert "var label = data.label || data.id || '';" in graph_js
 
 
-def test_graph_tooltips_have_separate_hover_and_pinned_state() -> None:
+def test_graph_details_are_click_only() -> None:
     graph_js = _pane_asset_text("render/graph.js")
     assert "var detailMode = null;" in graph_js
-    assert "if (detailMode === 'pinned' && mode !== 'pinned') return;" in graph_js
-    assert "function scheduleHoverDetailClose()" in graph_js
-    assert "}, 60);" in graph_js
-    assert "detailNode.addEventListener('mouseenter'" in graph_js
-    assert "detailNode.addEventListener('mouseleave'" in graph_js
+    assert "showDetail(event.target, 'pinned');" in graph_js
+    assert "showDetail(event.target, 'hover');" not in graph_js
+    assert "function scheduleHoverDetailClose()" not in graph_js
+    assert "detailNode.addEventListener('mouseenter'" not in graph_js
+    assert "cy.on('mouseover', 'node, edge', function ()" in graph_js
     assert ".tf-graph-detail {\n" in _PANE_HTML
     assert "overflow-wrap: anywhere; pointer-events: auto;" in _PANE_HTML
 

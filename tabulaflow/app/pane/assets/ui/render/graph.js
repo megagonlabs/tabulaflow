@@ -495,38 +495,14 @@ export function renderGraph(container, cardData) {
   var cy = null;
   var livePhysics = null;
   var detailMode = null;
-  var hoverCloseTimer = null;
-  var hoverOverElement = false;
-  var hoverOverDetail = false;
   var autoFitEnabled = true;
   var autoFitTimer = null;
 
-  function clearHoverCloseTimer() {
-    if (!hoverCloseTimer) return;
-    clearTimeout(hoverCloseTimer);
-    hoverCloseTimer = null;
-  }
-
   function hideDetail(force) {
     if (!force && detailMode === 'pinned') return;
-    clearHoverCloseTimer();
     detailMode = null;
-    hoverOverElement = false;
-    hoverOverDetail = false;
     detailNode.classList.remove('show');
     detailNode.innerHTML = '';
-  }
-
-  function scheduleHoverDetailClose() {
-    hoverOverElement = false;
-    if (detailMode !== 'hover' || hoverOverDetail) return;
-    clearHoverCloseTimer();
-    hoverCloseTimer = setTimeout(function () {
-      hoverCloseTimer = null;
-      if (detailMode === 'hover' && !hoverOverElement && !hoverOverDetail) {
-        hideDetail(true);
-      }
-    }, 60);
   }
 
   function startLivePhysics() {
@@ -568,10 +544,8 @@ export function renderGraph(container, cardData) {
 
   function showDetail(ele, mode) {
     if (!ele || !stageNode) return;
-    if (detailMode === 'pinned' && mode !== 'pinned') return;
     var html = graphDetailHtml(ele);
     if (!html) return;
-    clearHoverCloseTimer();
     detailMode = mode;
     var pos = graphDetailPosition(ele);
     detailNode.innerHTML = html;
@@ -622,15 +596,11 @@ export function renderGraph(container, cardData) {
       startLivePhysics();
     });
     cy.on('grab', 'node', markUserViewportInteraction);
-    cy.on('mouseover', 'node, edge', function (event) {
-      hoverOverElement = true;
-      clearHoverCloseTimer();
+    cy.on('mouseover', 'node, edge', function () {
       graphNode.style.cursor = 'pointer';
-      showDetail(event.target, 'hover');
     });
     cy.on('mouseout', 'node, edge', function () {
       graphNode.style.cursor = '';
-      scheduleHoverDetailClose();
     });
     cy.on('tap', 'node, edge', function (event) {
       selectGraphElement(event.target);
@@ -644,14 +614,6 @@ export function renderGraph(container, cardData) {
     });
   }
 
-  detailNode.addEventListener('mouseenter', function () {
-    hoverOverDetail = true;
-    clearHoverCloseTimer();
-  });
-  detailNode.addEventListener('mouseleave', function () {
-    hoverOverDetail = false;
-    scheduleHoverDetailClose();
-  });
   graphNode.addEventListener('wheel', markUserViewportInteraction, { passive: true });
   graphNode.addEventListener('touchstart', function (event) {
     if (event.touches && event.touches.length > 1) markUserViewportInteraction();
