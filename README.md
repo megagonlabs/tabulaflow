@@ -384,17 +384,18 @@ July 8
   - [x] Fix map viewport fitting  
 
 July 9
-- [x] Refactor - docs/output_pane_lifecycle_plan.md
-- [x] Fix edge selection panning bug
-- [x] Graph - node/edge selection style
-- [x] Fix tab change fail in TUI using left/right arrow
-- [x] Make tooltip style and behavior consistent across chart/map/graph
-- [x] Fix zoom not working
-- [x] Fix node label overflow
-- [x] Disable hover tooltip for graph
-- [x] Improve node style
-- [x] Show all properties in tooltip
-- [x] Fix life cycle model - do not destroy when hidden, only when evicted
+- Graph rendering
+  - [x] Refactor - docs/output_pane_lifecycle_plan.md
+  - [x] Fix edge selection panning bug
+  - [x] Graph - node/edge selection style
+  - [x] Fix tab change fail in TUI using left/right arrow
+  - [x] Make tooltip style and behavior consistent across chart/map/graph
+  - [x] Fix zoom not working
+  - [x] Fix node label overflow
+  - [x] Disable hover tooltip for graph
+  - [x] Improve node style
+  - [x] Show all properties in tooltip
+  - [x] Fix life cycle model - do not destroy when hidden, only when evicted
 
 - [ ] Check bug: passing a self constructed registry to chat agent?
 
