@@ -490,9 +490,12 @@ def test_graph_node_labels_use_capped_display_label() -> None:
     assert "function graphNodeDisplayLabel(value)" in graph_js
     assert "const GRAPH_NODE_LABEL_LINE_CHARS = 8;" in graph_js
     assert "const GRAPH_NODE_LABEL_MAX_LINES = 2;" in graph_js
+    assert "const GRAPH_NODE_LABEL_FONT_SIZE = 10.25;" in graph_js
+    assert "const GRAPH_NODE_LABEL_SMALL_FONT_SIZE = 9;" in graph_js
     assert "function ellipsizeGraphLabel(text, maxChars)" in graph_js
-    assert "displayLabel: graphNodeDisplayLabel(data.label || data.id)" in graph_js
+    assert "var displayLabel = graphNodeDisplayLabel(data.label || data.id);" in graph_js
     assert "'label': 'data(displayLabel)'" in graph_js
+    assert "'font-size': 'data(labelFontSize)'" in graph_js
     assert "var label = data.label || data.id || '';" in graph_js
 
 

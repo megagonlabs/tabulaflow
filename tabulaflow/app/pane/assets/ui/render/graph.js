@@ -9,6 +9,8 @@ const GRAPH_DEFAULT_NODE_BORDER = '#253447';
 const GRAPH_LIVE_PHYSICS_MIN_ALPHA = 0.012;
 const GRAPH_NODE_LABEL_LINE_CHARS = 8;
 const GRAPH_NODE_LABEL_MAX_LINES = 2;
+const GRAPH_NODE_LABEL_FONT_SIZE = 10.25;
+const GRAPH_NODE_LABEL_SMALL_FONT_SIZE = 9;
 
 function normalizeHexColor(color) {
   if (typeof color !== 'string') return null;
@@ -83,10 +85,13 @@ function graphNodeDisplayLabel(value) {
 function graphNodeElements(nodes) {
   return nodes.map(function (node) {
     var data = node && node.data ? node.data : {};
+    var displayLabel = graphNodeDisplayLabel(data.label || data.id);
     return Object.assign({}, node, {
       data: Object.assign({}, data, {
         borderColor: data.borderColor || nodeBorderColor(data.color),
-        displayLabel: graphNodeDisplayLabel(data.label || data.id)
+        displayLabel: displayLabel,
+        labelFontSize: displayLabel.indexOf('\n') >= 0 || displayLabel.indexOf('...') >= 0
+          ? GRAPH_NODE_LABEL_SMALL_FONT_SIZE : GRAPH_NODE_LABEL_FONT_SIZE
       })
     });
   });
@@ -328,7 +333,7 @@ function graphStyles() {
         'border-opacity': 1,
         'border-width': 2,
         'color': '#f8fafc',
-        'font-size': 10.25,
+        'font-size': 'data(labelFontSize)',
         'font-weight': 650,
         'height': 48,
         'label': 'data(displayLabel)',
