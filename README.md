@@ -391,7 +391,7 @@ July 9
 - [x] Make tooltip style and behavior consistent across chart/map/graph
 - [x] Fix zoom not working
 - [x] Fix node label overflow
-- [ ] Disable hover tooltip for graph
+- [x] Disable hover tooltip for graph
 - [ ] Improve node style
 
 - [ ] Check bug: passing a self constructed registry to chat agent?
