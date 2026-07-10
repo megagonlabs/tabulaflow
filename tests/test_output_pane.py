@@ -534,6 +534,15 @@ def test_graph_initial_auto_fit_stops_after_user_viewport_interaction() -> None:
     assert "scheduleAutoFit();" in graph_js
 
 
+def test_graph_physics_kicks_only_after_node_drag() -> None:
+    graph_js = _pane_asset_text("render/graph.js")
+    assert "var draggedNodes = new Set();" in graph_js
+    assert "draggedNodes.delete(event.target.id());" in graph_js
+    assert "draggedNodes.add(event.target.id());" in graph_js
+    assert "if (!draggedNodes.delete(event.target.id())) return;" in graph_js
+    assert "cy.on('grab', 'node', function (event) {\n    draggedNodes.delete(event.target.id());" in graph_js
+
+
 def test_map_label_does_not_create_implicit_tooltip_body() -> None:
     map_js = _pane_asset_text("render/map.js")
     assert "function detailHtml(row, tooltip, labels, fallback)" in map_js

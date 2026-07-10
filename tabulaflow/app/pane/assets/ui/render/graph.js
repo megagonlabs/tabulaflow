@@ -171,6 +171,7 @@ function createLivePhysics(cy) {
   var edges = cy.edges().toArray();
 
   var velocities = new Map();
+  var draggedNodes = new Set();
   var frame = null;
   var destroyed = false;
   var alpha = 0;
@@ -293,14 +294,16 @@ function createLivePhysics(cy) {
   }
 
   cy.on('grab', 'node', function (event) {
+    draggedNodes.delete(event.target.id());
     velocity(event.target).x = 0;
     velocity(event.target).y = 0;
+  });
+  cy.on('drag', 'node', function (event) {
+    draggedNodes.add(event.target.id());
     kick(0.9);
   });
-  cy.on('drag', 'node', function () {
-    kick(0.9);
-  });
-  cy.on('free', 'node', function () {
+  cy.on('free', 'node', function (event) {
+    if (!draggedNodes.delete(event.target.id())) return;
     kick(0.55);
   });
   kick(0.55);
