@@ -392,7 +392,7 @@ July 9
 - [x] Fix zoom not working
 - [x] Fix node label overflow
 - [x] Disable hover tooltip for graph
-- [ ] Improve node style
+- [x] Improve node style
 
 - [ ] Check bug: passing a self constructed registry to chat agent?
 
