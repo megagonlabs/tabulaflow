@@ -396,14 +396,11 @@ July 9
   - [x] Improve node style
   - [x] Show all properties in tooltip
   - [x] Fix life cycle model - do not destroy when hidden, only when evicted
-
-- [ ] Check bug: passing a self constructed registry to chat agent?
+- [x] Fix chat agent not aware of non-empty registry
 
 - [ ] Remote server improvements
-
 - [ ] code diff rendering
 
-- [ ] Remote server support
 - [ ] web_fetch tool for static html
 - [ ] Tune prompt for non-data tasks
 - [ ] Chrome browser
