@@ -330,8 +330,8 @@ function graphStyles() {
       style: {
         'background-color': 'data(color)',
         'border-color': 'data(borderColor)',
-        'border-opacity': 1,
-        'border-width': 2,
+        'border-opacity': 0,
+        'border-width': 0,
         'color': '#f8fafc',
         'font-size': 'data(labelFontSize)',
         'font-weight': 650,

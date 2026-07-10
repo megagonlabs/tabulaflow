@@ -499,6 +499,13 @@ def test_graph_node_labels_use_capped_display_label() -> None:
     assert "var label = data.label || data.id || '';" in graph_js
 
 
+def test_graph_nodes_have_no_default_outline() -> None:
+    graph_js = _pane_asset_text("render/graph.js")
+    assert "'border-opacity': 0" in graph_js
+    assert "'border-width': 0" in graph_js
+    assert "selector: 'node.tf-selected'" in graph_js
+
+
 def test_graph_details_are_click_only() -> None:
     graph_js = _pane_asset_text("render/graph.js")
     assert "var detailMode = null;" in graph_js
