@@ -400,8 +400,9 @@ July 9
 
 - [ ] Remote server improvements
 - [ ] code diff rendering
-
+- [ ] Improve output pane UI - new turn loading, session ID, ...
 - [ ] web_fetch tool for static html
+
 - [ ] Tune prompt for non-data tasks
 - [ ] Chrome browser
 
