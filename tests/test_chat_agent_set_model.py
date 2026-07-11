@@ -15,3 +15,14 @@ def test_set_model_failure_is_transactional(monkeypatch: pytest.MonkeyPatch) -> 
     # The failed switch left everything intact.
     assert agent.model == "test"
     assert agent._pydantic_ai_agent is runtime_agent
+
+
+def test_api_key_read_from_live_client(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("OPENAI_API_KEY", "sk-test123456789ab4x")
+    agent = ChatAgent(registry=DBRegistry(), model="openai-responses:gpt-5", reasoning_effort="medium")
+    assert agent.api_key == "sk-test123456789ab4x"
+
+
+def test_api_key_none_for_keyless_model() -> None:
+    agent = ChatAgent(registry=DBRegistry(), model="test", reasoning_effort="medium")
+    assert agent.api_key is None

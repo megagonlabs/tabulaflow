@@ -24,6 +24,7 @@ class _StubSession:
     def __init__(self, model: str = "openai-responses:gpt-5.4", reasoning_effort: str = "medium") -> None:
         self.model = model
         self.reasoning_effort = reasoning_effort
+        self.api_key: str | None = None
 
     def set_model(self, model: str) -> None:
         self.model = model
@@ -138,6 +139,29 @@ async def test_cycle_reasoning(updates: list[dict[str, Any]]) -> None:
         assert session.model == "openai-responses:gpt-5.4"
 
 
+async def test_provider_and_api_key_suffixes() -> None:
+    session = _StubSession()
+    session.api_key = "sk-test123456789ab4x"
+    screen = ConfigScreen(session, on_change=lambda: None)  # type: ignore[arg-type]
+    async with _App(screen).run_test() as pilot:
+        await pilot.pause()
+        # Provider (not the full id) on every catalog row.
+        assert "· openai-responses" in screen._render_row(0).plain
+        assert "openai-responses:gpt-5.4" not in screen._render_row(0).plain
+        assert "· anthropic" in screen._render_row(2).plain
+        # Masked key on the active row only.
+        assert "API key sk-***ab4x" in screen._render_row(0).plain
+        assert "API key" not in screen._render_row(1).plain
+
+
+async def test_api_key_suffix_omitted_when_unavailable() -> None:
+    session = _StubSession()  # api_key None (e.g. ADC or unrecognized client)
+    screen = ConfigScreen(session, on_change=lambda: None)  # type: ignore[arg-type]
+    async with _App(screen).run_test() as pilot:
+        await pilot.pause()
+        assert "API key" not in screen._render_row(0).plain
+
+
 async def test_select_failure_shows_inline_error(updates: list[dict[str, Any]]) -> None:
     class _FailingSession(_StubSession):
         def set_model(self, model: str) -> None:
@@ -170,3 +194,5 @@ async def test_unlisted_model_prepended_with_fallback() -> None:
         assert screen._options[0].model == "together:custom/model"
         assert screen._options[0].efforts == ()
         assert len(screen._rows) == 4
+        # Label is already the full id — no provider suffix repeated after it.
+        assert "· together" not in screen._render_row(0).plain

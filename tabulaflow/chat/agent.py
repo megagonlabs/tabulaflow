@@ -480,6 +480,24 @@ class ChatAgent:
         """The live query history — results the agent's answers reference."""
         return self._query_history
 
+    @property
+    def api_key(self) -> str | None:
+        """API key of the live model's provider client, for status display.
+
+        Best-effort: read off the constructed client (the credential actually in
+        use), never guessed from env vars. ``None`` when the provider has no key
+        (e.g. vertex ADC) or the client shape is unrecognized.
+        """
+        from pydantic_ai.models.wrapper import WrapperModel
+
+        if self._pydantic_ai_agent is None:
+            return None
+        model: object = self._pydantic_ai_agent.model
+        while isinstance(model, WrapperModel):
+            model = model.wrapped
+        key = getattr(getattr(model, "client", None), "api_key", None)
+        return key if isinstance(key, str) and key else None
+
     def set_model(self, model: str) -> None:
         """Update the model and rebuild the bound runtime agent. Use this rather
         than assigning ``self.model`` directly — a bare assignment skips the rebuild.

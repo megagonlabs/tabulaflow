@@ -120,6 +120,10 @@ class SessionState:
         self.chat_agent.set_model(model)
 
     @property
+    def api_key(self) -> str | None:
+        return self.chat_agent.api_key
+
+    @property
     def reasoning_effort(self) -> str:
         return self.chat_agent.reasoning_effort
 

@@ -1731,8 +1731,6 @@ class SchemaBrowserScreen(Screen[None]):
 # Config screen
 # ---------------------------------------------------------------------------
 
-_CONFIG_LABEL_WIDTH = 20
-
 
 def _fallback_model_option(model: str) -> ModelOption:
     """Capability guess for a model outside the catalog (e.g. set via ``--model``)."""
@@ -1828,9 +1826,14 @@ class ConfigScreen(Screen[None]):
         t = Text()
         t.append("❯ " if selected else "  ", style=ACCENT_BOLD)
         t.append("● " if active else "  ", style=ACCENT)
-        t.append(option.label.ljust(_CONFIG_LABEL_WIDTH), style="bold" if selected else "")
-        if option.model != option.label:
-            t.append(option.model, style="dim")
+        t.append(option.label, style="bold" if selected else "")
+        provider = option.model.partition(":")[0] if ":" in option.model else ""
+        if provider and option.model != option.label:
+            t.append(f" · {provider}", style="dim")
+        if active:
+            key = self._session.api_key
+            if key is not None and len(key) >= 12:
+                t.append(f" · API key {key[:3]}***{key[-4:]}", style="dim")
         if active and option.efforts:
             t.append("\n")
             t.append_text(self._render_effort_line(i))
