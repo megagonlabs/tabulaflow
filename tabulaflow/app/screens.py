@@ -1831,7 +1831,7 @@ class ConfigScreen(Screen[None]):
         t.append("❯ " if selected else "  ", style=ACCENT_BOLD)
         t.append("● " if active else "  ", style=ACCENT)
         if active:
-            label_style = ACCENT_BOLD if selected else ACCENT
+            label_style = ACCENT_BOLD
         else:
             label_style = "bold" if selected else ""
         t.append(option.label, style=label_style)
