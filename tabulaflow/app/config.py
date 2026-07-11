@@ -12,6 +12,9 @@ code unless the user explicitly overrides them. Example catalog override::
     {
       "custom_model_options": [
         {"model": "together:my-org/my-model", "label": "My Model"}
+      ],
+      "custom_subagent_model_options": [
+        {"model": "together:my-org/my-fast-model", "label": "My Fast Model"}
       ]
     }
 """
@@ -57,25 +60,40 @@ DEFAULT_MODEL_OPTIONS: tuple[ModelOption, ...] = (
     ModelOption(model="google-vertex:gemini-3.1-pro-preview", label="Gemini 3.1 Pro"),
 )
 
+DEFAULT_SUBAGENT_MODEL_OPTIONS: tuple[ModelOption, ...] = (
+    ModelOption(model="openai-responses:gpt-5.4-mini", label="GPT-5.4 Mini", recommended_effort="medium"),
+    ModelOption(model="anthropic:claude-sonnet-4-5-20250929", label="Claude Sonnet 4.5", recommended_effort="medium"),
+)
+
 
 class AppConfig(BaseModel):
     """The user's durable preferences for the interactive app."""
 
-    # ``protected_namespaces`` freed up for the ``custom_model_options`` field name.
+    # ``protected_namespaces`` freed up for the ``custom_*_model_options`` field names.
     model_config = ConfigDict(validate_assignment=True, protected_namespaces=())
 
     model: str = "openai-responses:gpt-5.5"
     reasoning_effort: ReasoningEffort = "medium"
+    subagent_model: str = "openai-responses:gpt-5.4-mini"
+    subagent_reasoning_effort: ReasoningEffort = "medium"
     # Appended to the built-in defaults rather than replacing them, so catalog
     # updates in future versions still reach users with custom entries. A custom
     # entry whose ``model`` matches a default overrides that default in place.
     custom_model_options: list[ModelOption] = Field(default_factory=list)
+    custom_subagent_model_options: list[ModelOption] = Field(default_factory=list)
 
     @property
     def model_options(self) -> list[ModelOption]:
-        """The catalog: built-in defaults with custom entries merged in."""
+        """Main-agent catalog: built-in defaults with custom entries merged in."""
         by_id = {option.model: option for option in self.custom_model_options}
         merged = [by_id.pop(option.model, option) for option in DEFAULT_MODEL_OPTIONS]
+        return merged + list(by_id.values())
+
+    @property
+    def subagent_model_options(self) -> list[ModelOption]:
+        """Subagent catalog: built-in defaults with custom entries merged in."""
+        by_id = {option.model: option for option in self.custom_subagent_model_options}
+        merged = [by_id.pop(option.model, option) for option in DEFAULT_SUBAGENT_MODEL_OPTIONS]
         return merged + list(by_id.values())
 
 
@@ -98,7 +116,7 @@ def load_app_config(path: str = APP_CONFIG_PATH) -> AppConfig:
 def save_app_config(config: AppConfig, path: str = APP_CONFIG_PATH) -> None:
     """Atomically persist ``config``'s deliberately-set fields to ``path``.
 
-    ``exclude_unset`` keeps built-in defaults (notably the model catalog) out
+    ``exclude_unset`` keeps built-in defaults (notably the model catalogs) out
     of the file, so they stay live across app updates.
     """
     os.makedirs(os.path.dirname(path), exist_ok=True)

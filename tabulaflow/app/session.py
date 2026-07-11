@@ -48,6 +48,8 @@ class SessionState:
         reasoning_effort: str,
         project_dir: Path | None = None,
         scratch_dir: Path | None = None,
+        subagent_model: str = "openai-responses:gpt-5.4-mini",
+        subagent_reasoning_effort: str = "medium",
     ) -> None:
         from tabulaflow.chat import ChatAgent
         from tabulaflow.core.db_connector.db_registry import DBRegistry
@@ -69,6 +71,8 @@ class SessionState:
             reasoning_effort=reasoning_effort,
             workspace=workspace,
             trajectory_log_dir=trajectories_dir,
+            subagent_model=subagent_model,
+            subagent_reasoning_effort=subagent_reasoning_effort,
             project_dir=project_dir,
             scratch_dir=scratch_dir,
             data_dir=data_dir,
@@ -133,3 +137,25 @@ class SessionState:
 
     def set_reasoning_effort(self, reasoning_effort: str) -> None:
         self.chat_agent.set_reasoning_effort(reasoning_effort)
+
+    @property
+    def subagent_model(self) -> str:
+        return self.chat_agent.subagent_model
+
+    def set_subagent_model(self, model: str) -> None:
+        self.chat_agent.set_subagent_model(model)
+
+    @property
+    def subagent_api_key(self) -> str | None:
+        return self.chat_agent.subagent_api_key
+
+    @property
+    def subagent_supported_efforts(self) -> tuple[str, ...]:
+        return self.chat_agent.subagent_supported_efforts
+
+    @property
+    def subagent_reasoning_effort(self) -> str:
+        return self.chat_agent.subagent_reasoning_effort
+
+    def set_subagent_reasoning_effort(self, reasoning_effort: str) -> None:
+        self.chat_agent.set_subagent_reasoning_effort(reasoning_effort)

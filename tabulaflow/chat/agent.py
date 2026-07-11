@@ -249,17 +249,8 @@ _SESSION_PATHS_BLOCK = """
 </session_paths>"""
 
 
-# Fixed reasoning effort for the subagent-backed fan-out / extraction tools — an
-# internal detail of the chat lib, independent of the (app-configured) interactive
-# agent's ``reasoning_effort``.
-_SUBAGENT_REASONING_EFFORT: Final = "medium"
-
-# Reasoning config shared by the subagent-backed tools (the fan-out / extraction
-# tools). ``run_subagent_for_each_row`` additionally requests reasoning summaries.
-_SUBAGENT_MODEL_SETTINGS = OpenAIResponsesModelSettings(
-    openai_service_tier="priority",
-    openai_reasoning_effort=_SUBAGENT_REASONING_EFFORT,
-)
+DEFAULT_SUBAGENT_MODEL: Final = "openai-responses:gpt-5.4-mini"
+DEFAULT_SUBAGENT_REASONING_EFFORT: Final = "medium"
 
 
 # ---------------------------------------------------------------------------
@@ -302,9 +293,13 @@ class ChatAgent:
     # (OpenAI reasoning_effort, Anthropic thinking budgets / native effort, Gemini
     # thinking_level). Required — the app owns the default (its
     # ``--reasoning-effort`` option), as it does for ``model``. Mutable at runtime via
-    # ``set_reasoning_effort`` (peer of ``model``/``set_model``); the subagent fan-out
-    # tools keep their own fixed effort (``_SUBAGENT_REASONING_EFFORT``).
+    # ``set_reasoning_effort`` (peer of ``model``/``set_model``).
     reasoning_effort: str
+    # Model profile for internal fan-out / extraction subagents. This is separate
+    # from the interactive agent: the root conversation may want a large model while
+    # hundreds of parallel row/document workers run on a cheaper one.
+    subagent_model: str = DEFAULT_SUBAGENT_MODEL
+    subagent_reasoning_effort: str = DEFAULT_SUBAGENT_REASONING_EFFORT
     # Host-supplied instructions appended to the baseline prompt — a persona, domain
     # guidance, or frontend-specific phrasing (e.g. slash-command vocabulary). ``None``
     # (default) uses the baseline alone. Composed between the static prefix and the
@@ -335,6 +330,7 @@ class ChatAgent:
     _message_history: list[ModelMessage] = field(init=False, default_factory=list)
     _system_prompt: str = field(init=False, default=SYSTEM_PROMPT)
     _pydantic_ai_agent: Agent[None, str] | None = field(init=False, default=None)
+    _subagent_probe_agent: Agent[None, str] | None = field(init=False, default=None)
     _query_history: QueryHistory = field(init=False)
     _message_store: MessageStore = field(init=False)
     _main_scope: ScopedMessageStore = field(init=False)
@@ -402,17 +398,15 @@ class ChatAgent:
                 self.workspace,
                 registry=self.registry,
                 message_store=self._message_store,
-                model_settings=OpenAIResponsesModelSettings(
-                    openai_service_tier="priority",
-                    openai_reasoning_effort=_SUBAGENT_REASONING_EFFORT,
-                    openai_reasoning_summary="detailed",
-                ),
+                subagent_llm=self.subagent_model,
+                model_settings=self._subagent_model_settings(reasoning_summary=True),
                 store_metadata=True,
                 trajectory_log_dir=subagent_dir,
             )
             extract_rows_from_documents = ExtractRowsFromDocumentsTool(
                 self.workspace,
-                model_settings=_SUBAGENT_MODEL_SETTINGS,
+                subagent_llm=self.subagent_model,
+                model_settings=self._subagent_model_settings(),
                 trajectory_log_dir=subagent_dir,
             )
 
@@ -430,7 +424,8 @@ class ChatAgent:
             run_subagent_for_each_row=run_subagent_for_each_row,
             extract_rows_from_documents=extract_rows_from_documents,
             add_canonical_name=AddCanonicalNameTool(
-                model_settings=_SUBAGENT_MODEL_SETTINGS,
+                subagent_llm=self.subagent_model,
+                model_settings=self._subagent_model_settings(),
                 trajectory_log_dir=subagent_dir,
             ),
             render_chart=RenderChartTool(history=self._query_history),
@@ -488,16 +483,31 @@ class ChatAgent:
         """The live query history — results the agent's answers reference."""
         return self._query_history
 
-    def _unwrapped_model(self) -> Any | None:
-        """The live provider model beneath tabulaflow's wrappers, or None."""
+    @staticmethod
+    def _unwrap_model(model: object) -> object:
+        """Return the provider model beneath tabulaflow/pydantic-ai wrappers."""
         from pydantic_ai.models.wrapper import WrapperModel
 
-        if self._pydantic_ai_agent is None:
-            return None
-        model: object = self._pydantic_ai_agent.model
         while isinstance(model, WrapperModel):
             model = model.wrapped
         return model
+
+    def _unwrapped_model(self) -> Any | None:
+        """The live provider model beneath tabulaflow's wrappers, or None."""
+        if self._pydantic_ai_agent is None:
+            return None
+        return self._unwrap_model(self._pydantic_ai_agent.model)
+
+    def _subagent_unwrapped_model(self, *, raise_errors: bool = False) -> Any | None:
+        """Provider model for the configured subagent model, built lazily for display."""
+        try:
+            if self._subagent_probe_agent is None:
+                self._subagent_probe_agent = make_agent(self.subagent_model)
+            return self._unwrap_model(self._subagent_probe_agent.model)
+        except Exception:
+            if raise_errors:
+                raise
+            return None
 
     @property
     def api_key(self) -> str | None:
@@ -519,6 +529,21 @@ class ChatAgent:
         hand-maintained capability table. Empty when the model doesn't think.
         """
         model = self._unwrapped_model()
+        profile = getattr(model, "profile", None)
+        if profile is None or not (profile.supports_thinking or profile.thinking_always_enabled):
+            return ()
+        return ("low", "medium", "high", "xhigh")
+
+    @property
+    def subagent_api_key(self) -> str | None:
+        """API key of the configured subagent model's provider client, for display."""
+        key = getattr(getattr(self._subagent_unwrapped_model(), "client", None), "api_key", None)
+        return key if isinstance(key, str) and key else None
+
+    @property
+    def subagent_supported_efforts(self) -> tuple[str, ...]:
+        """Reasoning-effort levels meaningful for the configured subagent model."""
+        model = self._subagent_unwrapped_model()
         profile = getattr(model, "profile", None)
         if profile is None or not (profile.supports_thinking or profile.thinking_always_enabled):
             return ()
@@ -548,6 +573,43 @@ class ChatAgent:
                     settings["max_tokens"] = budget + 8192
         return settings
 
+    def _subagent_model_settings(self, *, reasoning_summary: bool = False) -> ModelSettings:
+        """Model settings for subagent-backed tools.
+
+        Use provider-neutral thinking settings by default. OpenAI Responses gets
+        the app's priority tier and optional reasoning summaries; those keys are
+        provider-specific, so do not send them to arbitrary models.
+        """
+        if self.subagent_model.startswith("openai-responses:"):
+            if reasoning_summary:
+                return cast(
+                    ModelSettings,
+                    OpenAIResponsesModelSettings(
+                        openai_service_tier="priority",
+                        openai_reasoning_effort=cast(Any, self.subagent_reasoning_effort),
+                        openai_reasoning_summary="detailed",
+                    ),
+                )
+            return cast(
+                ModelSettings,
+                OpenAIResponsesModelSettings(
+                    openai_service_tier="priority",
+                    openai_reasoning_effort=cast(Any, self.subagent_reasoning_effort),
+                ),
+            )
+        return ModelSettings(thinking=cast(Any, self.subagent_reasoning_effort))
+
+    def _apply_subagent_profile(self) -> None:
+        """Update existing subagent-backed tool instances with the current profile."""
+        if self._tools.run_subagent_for_each_row is not None:
+            self._tools.run_subagent_for_each_row.subagent_llm = self.subagent_model
+            self._tools.run_subagent_for_each_row.model_settings = self._subagent_model_settings(reasoning_summary=True)
+        if self._tools.extract_rows_from_documents is not None:
+            self._tools.extract_rows_from_documents.subagent_llm = self.subagent_model
+            self._tools.extract_rows_from_documents.model_settings = self._subagent_model_settings()
+        self._tools.add_canonical_name.subagent_llm = self.subagent_model
+        self._tools.add_canonical_name.model_settings = self._subagent_model_settings()
+
     def set_model(self, model: str) -> None:
         """Update the model and rebuild the bound runtime agent. Use this rather
         than assigning ``self.model`` directly — a bare assignment skips the rebuild.
@@ -570,9 +632,29 @@ class ChatAgent:
     def set_reasoning_effort(self, reasoning_effort: str) -> None:
         """Update the interactive agent's reasoning effort. Applied per request in
         ``run_stream`` — unlike ``model``, it is not baked into the runtime agent, so
-        no rebuild is needed. (Affects the main agent only; subagent tools stay on
-        ``_SUBAGENT_REASONING_EFFORT``.)"""
+        no rebuild is needed. Affects the main agent only."""
         self.reasoning_effort = reasoning_effort
+
+    def set_subagent_model(self, model: str) -> None:
+        """Update the LLM used by subagent-backed tools."""
+        if self.subagent_model == model:
+            return
+        previous = self.subagent_model
+        previous_probe = self._subagent_probe_agent
+        self.subagent_model = model
+        self._subagent_probe_agent = None
+        try:
+            self._subagent_unwrapped_model(raise_errors=True)
+            self._apply_subagent_profile()
+        except Exception:
+            self.subagent_model = previous
+            self._subagent_probe_agent = previous_probe
+            raise
+
+    def set_subagent_reasoning_effort(self, reasoning_effort: str) -> None:
+        """Update the reasoning effort used by subagent-backed tools."""
+        self.subagent_reasoning_effort = reasoning_effort
+        self._apply_subagent_profile()
 
     def note_event(self, description: str) -> None:
         """Make the agent aware of a host/app event (typically a user action — e.g.

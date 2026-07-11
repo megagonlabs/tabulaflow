@@ -24,6 +24,16 @@ def chat(
         "-r",
         help="Reasoning effort: low | medium | high | xhigh. Overrides the saved default for this launch.",
     ),
+    subagent_model: str | None = typer.Option(
+        None,
+        "--subagent-model",
+        help="LLM identifier for internal fan-out/extraction subagents. Overrides the saved default for this launch.",
+    ),
+    subagent_reasoning_effort: str | None = typer.Option(
+        None,
+        "--subagent-reasoning-effort",
+        help="Subagent reasoning effort: low | medium | high | xhigh. Overrides the saved default for this launch.",
+    ),
     output_pane_port: int | None = typer.Option(
         None,
         "--output-pane-port",
@@ -52,6 +62,8 @@ def chat(
     app_config = load_app_config()
     if model is not None:
         app_config.model = model
+    if subagent_model is not None:
+        app_config.subagent_model = subagent_model
     if reasoning_effort is not None:
         try:
             # CLI input is an arbitrary string; pydantic validates the literal on assignment.
@@ -60,6 +72,14 @@ def chat(
             raise typer.BadParameter(
                 f"{reasoning_effort!r} is not one of: {', '.join(get_args(ReasoningEffort))}",
                 param_hint="--reasoning-effort",
+            ) from None
+    if subagent_reasoning_effort is not None:
+        try:
+            app_config.subagent_reasoning_effort = subagent_reasoning_effort  # type: ignore[assignment]
+        except ValidationError:
+            raise typer.BadParameter(
+                f"{subagent_reasoning_effort!r} is not one of: {', '.join(get_args(ReasoningEffort))}",
+                param_hint="--subagent-reasoning-effort",
             ) from None
 
     tabulaflow.configure(
@@ -75,6 +95,8 @@ def chat(
         run_tui(
             model=app_config.model,
             reasoning_effort=app_config.reasoning_effort,
+            subagent_model=app_config.subagent_model,
+            subagent_reasoning_effort=app_config.subagent_reasoning_effort,
             output_pane_host=output_pane_host,
             output_pane_port=output_pane_port,
             output_pane_public_url=output_pane_public_url,

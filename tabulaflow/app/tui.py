@@ -130,6 +130,8 @@ class TabulaflowApp(App[None]):
         *,
         model: str,
         reasoning_effort: str,
+        subagent_model: str = "openai-responses:gpt-5.4-mini",
+        subagent_reasoning_effort: str = "medium",
         output_pane_host: str = "127.0.0.1",
         output_pane_port: int | None = None,
         output_pane_public_url: str | None = None,
@@ -139,6 +141,8 @@ class TabulaflowApp(App[None]):
         super().__init__()
         self._model = model
         self._reasoning_effort = reasoning_effort
+        self._subagent_model = subagent_model
+        self._subagent_reasoning_effort = subagent_reasoning_effort
         self._output_pane_host = output_pane_host
         self._output_pane_port = output_pane_port
         self._output_pane_public_url = output_pane_public_url
@@ -721,6 +725,8 @@ class TabulaflowApp(App[None]):
                 self._reasoning_effort,
                 self._project_dir,
                 self._runtime_paths.scratch_dir,
+                self._subagent_model,
+                self._subagent_reasoning_effort,
             )
             await self._maybe_autoconnect_sample(session)
             self._enable_explorer_button()
@@ -974,6 +980,8 @@ class TabulaflowApp(App[None]):
 async def run_tui(
     model: str,
     reasoning_effort: str,
+    subagent_model: str = "openai-responses:gpt-5.4-mini",
+    subagent_reasoning_effort: str = "medium",
     *,
     output_pane_host: str = "127.0.0.1",
     output_pane_port: int | None = None,
@@ -983,6 +991,8 @@ async def run_tui(
     app = TabulaflowApp(
         model=model,
         reasoning_effort=reasoning_effort,
+        subagent_model=subagent_model,
+        subagent_reasoning_effort=subagent_reasoning_effort,
         output_pane_host=output_pane_host,
         output_pane_port=output_pane_port,
         output_pane_public_url=output_pane_public_url,

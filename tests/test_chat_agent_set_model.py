@@ -1,7 +1,11 @@
 from __future__ import annotations
 
+from pathlib import Path
+from typing import Any, cast
+
 import pytest
 
+from tabulaflow.app.session import create_workspace_connector
 from tabulaflow.chat import ChatAgent
 from tabulaflow.core.db_connector.db_registry import DBRegistry
 
@@ -39,6 +43,18 @@ def test_supported_efforts_empty_for_non_thinking_model() -> None:
     assert agent.supported_efforts == ()
 
 
+def test_subagent_api_key_and_supported_efforts(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("OPENAI_API_KEY", "sk-sub123456789cd9y")
+    agent = ChatAgent(
+        registry=DBRegistry(),
+        model="test",
+        reasoning_effort="medium",
+        subagent_model="openai-responses:gpt-5.4-mini",
+    )
+    assert agent.subagent_api_key == "sk-sub123456789cd9y"
+    assert agent.subagent_supported_efforts == ("low", "medium", "high", "xhigh")
+
+
 def test_thinking_settings_openai(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("OPENAI_API_KEY", "sk-test123456789ab4x")
     agent = ChatAgent(registry=DBRegistry(), model="openai-responses:gpt-5", reasoning_effort="high")
@@ -61,3 +77,35 @@ def test_thinking_settings_adaptive_claude_no_max_tokens(monkeypatch: pytest.Mon
     agent = ChatAgent(registry=DBRegistry(), model="anthropic:claude-opus-4-8", reasoning_effort="high")
     # Adaptive-thinking models never use budgets — no max_tokens override.
     assert agent._thinking_settings() == {"thinking": "high"}
+
+
+async def test_subagent_profile_wires_tools(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("OPENAI_API_KEY", "sk-test123456789ab4x")
+    workspace = await create_workspace_connector(tmp_path / "workspace.duckdb")
+    try:
+        agent = ChatAgent(
+            registry=DBRegistry(),
+            model="test",
+            reasoning_effort="medium",
+            workspace=workspace,
+            subagent_model="anthropic:claude-opus-4-8",
+            subagent_reasoning_effort="low",
+        )
+        assert agent._tools.run_subagent_for_each_row is not None
+        assert agent._tools.extract_rows_from_documents is not None
+        assert agent._tools.run_subagent_for_each_row.subagent_llm == "anthropic:claude-opus-4-8"
+        assert agent._tools.extract_rows_from_documents.subagent_llm == "anthropic:claude-opus-4-8"
+        assert agent._tools.add_canonical_name.subagent_llm == "anthropic:claude-opus-4-8"
+        assert agent._tools.run_subagent_for_each_row.model_settings == {"thinking": "low"}
+
+        agent.set_subagent_model("openai-responses:gpt-5.4-mini")
+        agent.set_subagent_reasoning_effort("high")
+        assert agent._tools.run_subagent_for_each_row.subagent_llm == "openai-responses:gpt-5.4-mini"
+        assert agent._tools.extract_rows_from_documents.subagent_llm == "openai-responses:gpt-5.4-mini"
+        assert agent._tools.add_canonical_name.subagent_llm == "openai-responses:gpt-5.4-mini"
+        settings = cast(dict[str, Any], agent._tools.run_subagent_for_each_row.model_settings)
+        assert settings is not None
+        assert settings["openai_reasoning_effort"] == "high"
+        assert settings["openai_reasoning_summary"] == "detailed"
+    finally:
+        await workspace.disconnect_async()
