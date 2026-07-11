@@ -138,6 +138,30 @@ async def test_cycle_reasoning(updates: list[dict[str, Any]]) -> None:
         assert session.model == "openai-responses:gpt-5.4"
 
 
+async def test_select_failure_shows_inline_error(updates: list[dict[str, Any]]) -> None:
+    class _FailingSession(_StubSession):
+        def set_model(self, model: str) -> None:
+            if model.startswith("anthropic:"):
+                raise RuntimeError("ANTHROPIC_API_KEY environment variable not set")
+            self.model = model
+
+    session = _FailingSession()
+    screen = ConfigScreen(session, on_change=lambda: None)  # type: ignore[arg-type]
+    async with _App(screen).run_test() as pilot:
+        await pilot.pause()
+        await pilot.press("down", "down", "down", "enter")  # attempt Claude
+        assert session.model == "openai-responses:gpt-5.4"  # previous model kept
+        assert not updates  # nothing persisted
+        assert "ANTHROPIC_API_KEY" in screen._render_row(2).plain
+        assert "●" in screen._render_row(0).plain  # active marker unmoved
+        # Error survives browsing but clears on the next select.
+        await pilot.press("up")
+        assert "ANTHROPIC_API_KEY" in screen._render_row(2).plain
+        await pilot.press("enter")  # select test:limited — succeeds
+        assert session.model == "test:limited"
+        assert "ANTHROPIC_API_KEY" not in screen._render_row(2).plain
+
+
 async def test_unlisted_model_prepended_with_fallback() -> None:
     session = _StubSession(model="together:custom/model")
     screen = ConfigScreen(session, on_change=lambda: None)  # type: ignore[arg-type]

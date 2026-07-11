@@ -1793,6 +1793,9 @@ class ConfigScreen(Screen[None]):
         # Cursor is a slot, not an index, so it survives the effort row moving
         # to a newly selected model.
         self._cursor: tuple[str, int] = ("model", active)
+        # Set when applying a model fails (e.g. missing provider credentials):
+        # (option index, provider error). Rendered inline under the attempted row.
+        self._select_error: tuple[int, str] | None = None
         self._rows = [Static(classes="config-row") for _ in options]
 
     def compose(self) -> ComposeResult:
@@ -1831,6 +1834,9 @@ class ConfigScreen(Screen[None]):
         if active and option.efforts:
             t.append("\n")
             t.append_text(self._render_effort_line(i))
+        if self._select_error is not None and self._select_error[0] == i:
+            t.append("\n")
+            t.append(f"      {self._select_error[1]}", style=ERROR)
         return t
 
     def _render_effort_line(self, i: int) -> Text:
@@ -1878,7 +1884,15 @@ class ConfigScreen(Screen[None]):
         if kind != "model":
             return
         option = self._options[i]
-        self._session.set_model(option.model)
+        self._select_error = None
+        try:
+            self._session.set_model(option.model)
+        except Exception as e:
+            # ``set_model`` is transactional — the previous model is still
+            # active. Report why this one couldn't be applied; nothing persists.
+            self._select_error = (i, str(e))
+            self._refresh()
+            return
         # Keep the effort if the new model supports it, else snap to the model's
         # default. With no efforts at all, retain the stored preference — it
         # resurfaces when the user switches back to a model that supports it.

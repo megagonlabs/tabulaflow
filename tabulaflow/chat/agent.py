@@ -482,11 +482,22 @@ class ChatAgent:
 
     def set_model(self, model: str) -> None:
         """Update the model and rebuild the bound runtime agent. Use this rather
-        than assigning ``self.model`` directly — a bare assignment skips the rebuild."""
+        than assigning ``self.model`` directly — a bare assignment skips the rebuild.
+
+        Transactional: if the rebuild fails (e.g. missing provider credentials),
+        the previous model stays active and the exception propagates.
+        """
         if self.model == model:
             return
+        previous = self.model
         self.model = model
-        self._build_agent()
+        try:
+            self._build_agent()
+        except Exception:
+            # ``_build_agent`` raised before replacing the runtime agent, so the
+            # old agent is intact — restoring ``model`` makes the failure atomic.
+            self.model = previous
+            raise
 
     def set_reasoning_effort(self, reasoning_effort: str) -> None:
         """Update the interactive agent's reasoning effort. Applied per request in
