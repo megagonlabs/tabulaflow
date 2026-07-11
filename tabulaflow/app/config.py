@@ -10,8 +10,7 @@ built-in defaults — notably the model catalog — stay live and evolve with th
 code unless the user explicitly overrides them. Example catalog override::
 
     {
-      "model_options": [
-        {"model": "openai-responses:gpt-5.5", "label": "GPT-5.5", "recommended_effort": "medium"},
+      "custom_model_options": [
         {"model": "together:my-org/my-model", "label": "My Model"}
       ]
     }
@@ -62,13 +61,22 @@ DEFAULT_MODEL_OPTIONS: tuple[ModelOption, ...] = (
 class AppConfig(BaseModel):
     """The user's durable preferences for the interactive app."""
 
-    # ``protected_namespaces`` freed up for the ``model_options`` field name.
+    # ``protected_namespaces`` freed up for the ``custom_model_options`` field name.
     model_config = ConfigDict(validate_assignment=True, protected_namespaces=())
 
     model: str = "openai-responses:gpt-5.5"
     reasoning_effort: ReasoningEffort = "medium"
-    # Full replacement when present in the file: the user owns the whole catalog.
-    model_options: list[ModelOption] = Field(default_factory=lambda: list(DEFAULT_MODEL_OPTIONS))
+    # Appended to the built-in defaults rather than replacing them, so catalog
+    # updates in future versions still reach users with custom entries. A custom
+    # entry whose ``model`` matches a default overrides that default in place.
+    custom_model_options: list[ModelOption] = Field(default_factory=list)
+
+    @property
+    def model_options(self) -> list[ModelOption]:
+        """The catalog: built-in defaults with custom entries merged in."""
+        by_id = {option.model: option for option in self.custom_model_options}
+        merged = [by_id.pop(option.model, option) for option in DEFAULT_MODEL_OPTIONS]
+        return merged + list(by_id.values())
 
 
 def load_app_config(path: str = APP_CONFIG_PATH) -> AppConfig:
@@ -104,7 +112,7 @@ def save_app_config(config: AppConfig, path: str = APP_CONFIG_PATH) -> None:
 def update_app_config(path: str = APP_CONFIG_PATH, **prefs: Any) -> None:
     """Load-modify-save ``prefs`` onto the persisted config.
 
-    Re-reads the file so hand edits (e.g. a custom ``model_options`` catalog)
+    Re-reads the file so hand edits (e.g. ``custom_model_options`` entries)
     survive; only the supplied fields are overwritten.
     """
     config = load_app_config(path)

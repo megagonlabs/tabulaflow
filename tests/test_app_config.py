@@ -64,19 +64,28 @@ def test_defaults_not_written_to_file(tmp_path: Path) -> None:
     assert json.loads(path.read_text()) == {"model": "openai-responses:gpt-5.4-mini"}
 
 
-def test_custom_model_options_roundtrip(tmp_path: Path) -> None:
+def test_custom_model_options_appended_to_defaults(tmp_path: Path) -> None:
     path = str(tmp_path / "app_config.json")
-    options = [ModelOption(model="together:my/model", label="Mine", recommended_effort="low")]
-    save_app_config(AppConfig(model_options=options), path)
-    assert load_app_config(path).model_options == options
+    custom = ModelOption(model="together:my/model", label="Mine", recommended_effort="low")
+    save_app_config(AppConfig(custom_model_options=[custom]), path)
+    catalog = load_app_config(path).model_options
+    # Defaults stay live from code; the custom entry rides along at the end.
+    assert catalog == [*DEFAULT_MODEL_OPTIONS, custom]
+
+
+def test_custom_entry_overrides_matching_default_in_place(tmp_path: Path) -> None:
+    override = ModelOption(model=DEFAULT_MODEL_OPTIONS[0].model, label="My GPT", recommended_effort="high")
+    catalog = AppConfig(custom_model_options=[override]).model_options
+    assert catalog[0] == override
+    assert len(catalog) == len(DEFAULT_MODEL_OPTIONS)
 
 
 def test_update_preserves_custom_options(tmp_path: Path) -> None:
     path = str(tmp_path / "app_config.json")
-    options = [ModelOption(model="together:my/model", label="Mine")]
-    save_app_config(AppConfig(model_options=options), path)
+    custom = [ModelOption(model="together:my/model", label="Mine")]
+    save_app_config(AppConfig(custom_model_options=custom), path)
     update_app_config(path, model="together:my/model", reasoning_effort="low")
     config = load_app_config(path)
     assert config.model == "together:my/model"
     assert config.reasoning_effort == "low"
-    assert config.model_options == options
+    assert config.custom_model_options == custom

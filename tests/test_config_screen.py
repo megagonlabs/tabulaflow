@@ -1,11 +1,12 @@
 from __future__ import annotations
 
+from types import SimpleNamespace
 from typing import Any
 
 import pytest
 from textual.app import App
 
-from tabulaflow.app.config import AppConfig, ModelOption
+from tabulaflow.app.config import ModelOption
 from tabulaflow.app.screens import ConfigScreen
 
 _CATALOG = [
@@ -48,7 +49,9 @@ class _App(App[None]):
 
 @pytest.fixture(autouse=True)
 def _patch_config_io(monkeypatch: pytest.MonkeyPatch) -> list[dict[str, Any]]:
-    monkeypatch.setattr("tabulaflow.app.screens.load_app_config", lambda: AppConfig(model_options=list(_CATALOG)))
+    # The screen reads only ``.model_options`` off the loaded config; hand it a
+    # fixed catalog directly (the real field is custom_model_options + merge).
+    monkeypatch.setattr("tabulaflow.app.screens.load_app_config", lambda: SimpleNamespace(model_options=list(_CATALOG)))
     updates: list[dict[str, Any]] = []
     monkeypatch.setattr("tabulaflow.app.screens.update_app_config", lambda **prefs: updates.append(prefs))
     return updates
