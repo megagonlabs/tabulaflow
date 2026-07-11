@@ -399,9 +399,14 @@ July 9
 - [x] Fix chat agent not aware of non-empty registry
 
 July 10
-- [ ] Setting!
-- [ ] Inline code block (``) highlighting
+- [x] app/config.py
 
+- [ ] Claude text response
+- [ ] Gemini levels - no xhigh
+- [ ] Hint bar
+- [ ] Other config options
+
+- [ ] Inline code block (``) highlighting
 - [ ] Include Cypher
 - [ ] View menu location?
 - [ ] Remote server improvements
