@@ -1902,6 +1902,10 @@ class ConfigScreen(Screen[None]):
         if option.efforts and self._session.reasoning_effort not in option.efforts:
             assert option.default_effort is not None  # guaranteed by ModelOption validation
             self._session.set_reasoning_effort(option.default_effort)
+        # Land on the chips that just appeared under the selection, so ←→ tunes
+        # the effort without an intervening ↓.
+        if option.efforts:
+            self._cursor = ("effort", i)
         self._persist()
 
     def action_cycle(self, delta: int) -> None:

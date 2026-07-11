@@ -82,9 +82,13 @@ async def test_enter_selects_model_and_persists(updates: list[dict[str, Any]]) -
         assert session.model == "test:limited"
         assert updates[-1]["model"] == "test:limited"
         assert refreshed
-        # Effort chips moved under the newly active model.
+        # Effort chips moved under the newly active model, and the cursor
+        # advanced onto them so ←→ tunes the effort immediately.
         assert "medium" not in screen._render_row(0).plain
         assert "medium" in screen._render_row(1).plain
+        assert screen._cursor == ("effort", 1)
+        await pilot.press("left")
+        assert session.reasoning_effort == "low"
 
 
 async def test_effort_kept_when_supported(updates: list[dict[str, Any]]) -> None:
