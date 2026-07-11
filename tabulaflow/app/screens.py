@@ -1744,10 +1744,11 @@ def _fallback_model_option(model: str) -> ModelOption:
 class ConfigScreen(Screen[None]):
     """Full-screen editor for session preferences (model, reasoning effort).
 
-    Renders the whole model catalog: up/down moves the cursor, enter applies
-    the model under it, left/right cycles the reasoning effort. Changes apply
-    to the live session immediately and persist to
-    ``~/.tabulaflow/app_config.json`` as the default for new sessions.
+    Renders the whole model catalog with the reasoning-effort chips nested
+    under the active model: up/down moves the cursor, enter applies the model
+    under it, left/right cycles the effort. Changes apply to the live session
+    immediately and persist to ``~/.tabulaflow/app_config.json`` as the
+    default for new sessions.
     """
 
     DEFAULT_CSS = """
@@ -1760,7 +1761,7 @@ class ConfigScreen(Screen[None]):
     }
 
     ConfigScreen .config-row {
-        height: 1;
+        height: auto;
     }
 
     ConfigScreen #config-hint {
@@ -1788,9 +1789,11 @@ class ConfigScreen(Screen[None]):
         if all(o.model != session.model for o in options):
             options.insert(0, _fallback_model_option(session.model))
         self._options = options
-        self._cursor = next(i for i, o in enumerate(options) if o.model == session.model)
-        self._model_rows = [Static(classes="config-row") for _ in options]
-        self._reasoning_row = Static(classes="config-row")
+        active = next(i for i, o in enumerate(options) if o.model == session.model)
+        # Cursor is a slot, not an index, so it survives the effort row moving
+        # to a newly selected model.
+        self._cursor: tuple[str, int] = ("model", active)
+        self._rows = [Static(classes="config-row") for _ in options]
 
     def compose(self) -> ComposeResult:
         from textual.containers import Vertical
@@ -1799,52 +1802,46 @@ class ConfigScreen(Screen[None]):
             yield Static(Text("Config", style=ACCENT_BOLD))
             yield Static("")
             yield Static(Text("Model", style="bold"))
-            yield from self._model_rows
-            yield Static("")
-            yield Static(Text("Reasoning", style="bold"))
-            yield self._reasoning_row
+            yield from self._rows
         yield Static(self._hint_text(), id="config-hint")
 
     def on_mount(self) -> None:
         self._refresh()
 
-    def _current_option(self) -> ModelOption:
-        return next(o for o in self._options if o.model == self._session.model)
+    def _slots(self) -> list[tuple[str, int]]:
+        """Cursor-reachable rows: every model, plus the effort row nested under
+        the active model when it supports reasoning efforts."""
+        slots: list[tuple[str, int]] = []
+        for i, option in enumerate(self._options):
+            slots.append(("model", i))
+            if option.model == self._session.model and option.efforts:
+                slots.append(("effort", i))
+        return slots
 
-    def _num_cursor_rows(self) -> int:
-        # The reasoning row (index ``len(self._options)``) is reachable only
-        # when the active model supports reasoning efforts.
-        return len(self._options) + (1 if self._current_option().efforts else 0)
-
-    def _render_model_row(self, i: int) -> Text:
+    def _render_row(self, i: int) -> Text:
         option = self._options[i]
-        selected = self._cursor == i
-        current = option.model == self._session.model
+        active = option.model == self._session.model
+        selected = self._cursor == ("model", i)
         t = Text()
         t.append("❯ " if selected else "  ", style=ACCENT_BOLD)
-        t.append("● " if current else "  ", style=ACCENT)
+        t.append("● " if active else "  ", style=ACCENT)
         t.append(option.label.ljust(_CONFIG_LABEL_WIDTH), style="bold" if selected else "")
         if option.model != option.label:
             t.append(option.model, style="dim")
+        if active and option.efforts:
+            t.append("\n")
+            t.append_text(self._render_effort_line(i))
         return t
 
-    def _render_reasoning_row(self) -> Text:
-        option = self._current_option()
-        selected = self._cursor == len(self._options)
+    def _render_effort_line(self, i: int) -> Text:
+        option = self._options[i]
+        selected = self._cursor == ("effort", i)
         t = Text()
         t.append("❯ " if selected else "  ", style=ACCENT_BOLD)
-        t.append("  ")
-        if not option.efforts:
-            t.append("not supported for this model", style="dim")
-            return t
+        t.append("    ")
         for effort in option.efforts:
-            if effort != self._session.reasoning_effort:
-                style = "dim"
-            elif selected:
-                style = f"bold black on {ACCENT}"
-            else:
-                style = ACCENT_BOLD
-            t.append(f" {effort} ", style=style)
+            current = effort == self._session.reasoning_effort
+            t.append(f" {effort} ", style=ACCENT_BOLD if current else "dim")
             t.append(" ")
         return t
 
@@ -1862,9 +1859,8 @@ class ConfigScreen(Screen[None]):
         return hint
 
     def _refresh(self) -> None:
-        for i, row in enumerate(self._model_rows):
-            row.update(self._render_model_row(i))
-        self._reasoning_row.update(self._render_reasoning_row())
+        for i, row in enumerate(self._rows):
+            row.update(self._render_row(i))
 
     def _persist(self) -> None:
         update_app_config(model=self._session.model, reasoning_effort=self._session.reasoning_effort)
@@ -1872,13 +1868,16 @@ class ConfigScreen(Screen[None]):
         self._refresh()
 
     def action_cursor_move(self, delta: int) -> None:
-        self._cursor = max(0, min(self._num_cursor_rows() - 1, self._cursor + delta))
+        slots = self._slots()
+        i = slots.index(self._cursor)
+        self._cursor = slots[max(0, min(len(slots) - 1, i + delta))]
         self._refresh()
 
     def action_select(self) -> None:
-        if self._cursor >= len(self._options):
+        kind, i = self._cursor
+        if kind != "model":
             return
-        option = self._options[self._cursor]
+        option = self._options[i]
         self._session.set_model(option.model)
         # Keep the effort if the new model supports it, else snap to the model's
         # default. With no efforts at all, retain the stored preference — it
@@ -1889,13 +1888,14 @@ class ConfigScreen(Screen[None]):
         self._persist()
 
     def action_cycle(self, delta: int) -> None:
-        if self._cursor != len(self._options):
+        kind, i = self._cursor
+        if kind != "effort":
             return
-        option = self._current_option()
+        option = self._options[i]
         current = self._session.reasoning_effort
         if current in option.efforts:
-            i = (option.efforts.index(current) + delta) % len(option.efforts)
-            self._session.set_reasoning_effort(option.efforts[i])
+            j = (option.efforts.index(current) + delta) % len(option.efforts)
+            self._session.set_reasoning_effort(option.efforts[j])
         else:
             assert option.default_effort is not None  # guaranteed by ModelOption validation
             self._session.set_reasoning_effort(option.default_effort)
