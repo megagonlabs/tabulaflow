@@ -1830,7 +1830,11 @@ class ConfigScreen(Screen[None]):
         t = Text()
         t.append("❯ " if selected else "  ", style=ACCENT_BOLD)
         t.append("● " if active else "  ", style=ACCENT)
-        t.append(option.label, style="bold" if selected else "")
+        if active:
+            label_style = ACCENT_BOLD if selected else ACCENT
+        else:
+            label_style = "bold" if selected else ""
+        t.append(option.label, style=label_style)
         provider = option.model.partition(":")[0] if ":" in option.model else ""
         if provider and option.model != option.label:
             t.append(f" · {provider}", style="dim")
