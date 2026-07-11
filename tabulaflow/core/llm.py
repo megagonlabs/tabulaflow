@@ -291,13 +291,18 @@ def make_agent(
     ``deps_type``) flows through ``**kwargs``.
     """
     ensure_global_setup()
+    if history_processors is not None:
+        # pydantic-ai ≥1.107 deprecates Agent(history_processors=...) in favor of
+        # ProcessHistory capabilities; adapt here so callers keep the stable kwarg.
+        from pydantic_ai.capabilities import ProcessHistory
+
+        kwargs["capabilities"] = [*kwargs.get("capabilities", ()), *(ProcessHistory(p) for p in history_processors)]
     return _Agent(
         _make_model(model),
         output_type=output_type,
         instructions=instructions,
         tools=tools,
         model_settings=model_settings,
-        history_processors=history_processors,
         retries=retries,
         **kwargs,
     )
