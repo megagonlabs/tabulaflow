@@ -400,6 +400,7 @@ July 9
 
 July 10
 - [ ] Setting!
+- [ ] Inline code block (``) highlighting
 
 - [ ] Include Cypher
 - [ ] View menu location?
@@ -408,6 +409,7 @@ July 10
 - [ ] code diff rendering
 - [ ] Improve output pane UI - new turn loading, session ID, ...
 - [ ] web_fetch tool for static html
+- [ ] Bump pydantic-ai to 2.0 and type llm.py
 
 - [ ] Tune prompt for non-data tasks
 - [ ] Chrome browser
