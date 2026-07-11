@@ -1830,8 +1830,9 @@ class ConfigScreen(Screen[None]):
         t = Text()
         t.append("❯ " if selected else "  ", style=ACCENT_BOLD)
         t.append("● " if active else "  ", style=ACCENT)
+        # Mint iff active, bold iff under the cursor — two independent channels.
         if active:
-            label_style = ACCENT_BOLD
+            label_style = ACCENT_BOLD if selected else ACCENT
         else:
             label_style = "bold" if selected else ""
         t.append(option.label, style=label_style)
@@ -1860,7 +1861,7 @@ class ConfigScreen(Screen[None]):
         for effort in option.efforts:
             current = effort == self._session.reasoning_effort
             label = f" {effort} (default) " if effort == option.default_effort else f" {effort} "
-            t.append(label, style=ACCENT_BOLD if current else "dim")
+            t.append(label, style=(ACCENT_BOLD if selected else ACCENT) if current else "dim")
             t.append(" ")
         return t
 
