@@ -1848,9 +1848,11 @@ class ConfigScreen(Screen[None]):
         t = Text()
         t.append("❯ " if selected else "  ", style=ACCENT_BOLD)
         t.append("    ")
+        t.append("effort: ", style="dim")
         for effort in option.efforts:
             current = effort == self._session.reasoning_effort
-            t.append(f" {effort} ", style=ACCENT_BOLD if current else "dim")
+            label = f" {effort} (default) " if effort == option.default_effort else f" {effort} "
+            t.append(label, style=ACCENT_BOLD if current else "dim")
             t.append(" ")
         return t
 
@@ -1861,7 +1863,7 @@ class ConfigScreen(Screen[None]):
         hint.append("↵", style=KEY_HINT)
         hint.append(" Select model    ", style="dim")
         hint.append("←→", style=KEY_HINT)
-        hint.append(" Change reasoning    ", style="dim")
+        hint.append(" Change effort    ", style="dim")
         hint.append("Esc", style=KEY_HINT)
         hint.append(" Back    ", style="dim")
         hint.append("Changes apply now and save as your default", style="dim")

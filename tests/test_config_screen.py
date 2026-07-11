@@ -64,8 +64,10 @@ async def test_renders_catalog_with_nested_efforts() -> None:
         assert "●" in screen._render_row(0).plain
         assert "●" not in screen._render_row(1).plain
         assert screen._cursor == ("model", 0)  # starts on the current model
-        # Effort chips render nested inside the active model's row only.
-        assert "medium" in screen._render_row(0).plain
+        # Effort chips render nested inside the active model's row only, with
+        # a label and the model's default effort tagged.
+        assert "effort:" in screen._render_row(0).plain
+        assert "medium (default)" in screen._render_row(0).plain
         assert "medium" not in screen._render_row(1).plain
 
 
