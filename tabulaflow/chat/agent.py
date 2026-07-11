@@ -100,17 +100,20 @@ CRITICAL: The user should feel as if they are directly interacting with their or
 <presenting_results>
 - Present data tables or tabular results using the format below when applicable for better readability.
   - You can only reference `run_query` results. To present data that isn't one yet (e.g. values you computed, or browser/subagent output), write it into `workspace` and `SELECT` it first.
-- Format every answer as: optional result references, then exactly one `---` line, then your plain-language answer. Always include the `---`, even with no references.
-    - There is exactly ONE `---`, do NOT add a trailing `---` after the answer.
-    - Before the `---`, include only result references or nothing.
-    - Only text AFTER the `---` reaches the user.
+- Start every answer with an `<artifacts>` block, then write your plain-language answer after `</artifacts>`.
+    - Inside `<artifacts>`, include only result references, one per line, or leave it empty.
+    - Do not write anything before `<artifacts>`.
+    - Do not write prose, narration, greetings, explanations, or summaries inside `<artifacts>`.
+    - Only text AFTER `</artifacts>` reaches the user.
     - Reference a result as `[[artifact:Q<id>:<label>]]` (e.g. `[[artifact:Q3:num_players]]`), a map as `[[artifact:MAP<id>:<label>]]` (e.g. `[[artifact:MAP1:store locations]]`), or a graph as `[[artifact:GRAPH<id>:<label>]]` (e.g. `[[artifact:GRAPH1:lineage]]`); every reference needs a short label describing it (e.g. `players`, `revenue_by_month`), or `result` if unsure — never the id itself.
     - Example (with a table):
+      <artifacts>
       [[artifact:Q3:num_players]]
-      ---
+      </artifacts>
       There are 42 players.
     - Example (no table):
-      ---
+      <artifacts>
+      </artifacts>
       The connection succeeded.
 - Do not reference every query you ran. Select only the most relevant results with minimal overlap.
 - For count questions, if you are already showing the full entity list as one table, do not present a separate single-value count table.
@@ -889,7 +892,8 @@ def _patch_incomplete_messages(
     return out
 
 
-_SEPARATOR = "---"
+_ARTIFACTS_OPEN = "<artifacts>"
+_ARTIFACTS_CLOSE = "</artifacts>"
 
 
 def _parse_refs(text: str) -> list[tuple[str, str | None]]:
@@ -898,23 +902,17 @@ def _parse_refs(text: str) -> list[tuple[str, str | None]]:
     return [(m.group(1), (m.group(2) or "").strip() or None) for m in _ARTIFACT_REF_RE.finditer(text)]
 
 
-def _is_citation_block(prefix: str) -> bool:
-    """True if ``prefix`` (the text before the first ``---``) is a citation block:
-    only ``[[artifact:...]]`` markers and whitespace, possibly empty. This is what
-    makes the ``---`` a refs/answer separator rather than content in a plain answer
-    that happens to contain a ``---``."""
-    return _ARTIFACT_REF_RE.sub("", prefix).strip() == ""
-
-
 def _extract_result_refs(answer_text: str) -> tuple[str, list[tuple[str, str | None]]]:
-    # The prompt defines the first ``---`` as the boundary between intermediate
-    # narration / result refs and the user-visible answer. Some providers can put
-    # prose before that separator; hide it while still extracting any refs there.
-    if _SEPARATOR in answer_text:
-        prefix, display_text = answer_text.split(_SEPARATOR, 1)
-        return display_text.strip(), _parse_refs(prefix)
-    # No citation block: the whole output is user-facing. Still strip any inline
-    # ``[[artifact:...]]`` markers the agent may have left in the prose.
+    close_start = answer_text.find(_ARTIFACTS_CLOSE)
+    open_start = answer_text.find(_ARTIFACTS_OPEN)
+    if open_start != -1 and close_start > open_start:
+        block_start = open_start + len(_ARTIFACTS_OPEN)
+        block = answer_text[block_start:close_start]
+        display_text = answer_text[close_start + len(_ARTIFACTS_CLOSE) :]
+        return display_text.strip(), _parse_refs(block)
+
+    # No recognized artifact block: the whole output is user-facing. Still strip
+    # any inline ``[[artifact:...]]`` markers the agent may have left in the prose.
     refs = _parse_refs(answer_text)
     if refs:
         answer_text = _ARTIFACT_REF_RE.sub("", answer_text)
@@ -923,19 +921,16 @@ def _extract_result_refs(answer_text: str) -> tuple[str, list[tuple[str, str | N
 
 class _TextStreamRouter:
     """Routes a streamed text run into the final answer vs. mid-turn narration, and
-    strips the citation-refs block from the answer.
+    strips the artifact refs block from the answer.
 
-    A run that opens with a citation block — zero or more ``[[artifact:...]]`` lines
-    terminated by ``---`` (the final answer's format; the refs may be empty) — is the
-    **answer**: held back until the ``---``, then the text after it streams. Any other
-    run is **narration** and streams live. After the first chunk that yields text,
+    A run that opens with an ``<artifacts>...</artifacts>`` block is the **answer**:
+    held back until the closing tag, then the text after it streams. Any other run is
+    **narration** and streams live. After the first chunk that yields text,
     :attr:`is_answer` says which it is. Reset via :meth:`reset` per text part.
 
-    Kept here (not the frontend) so the ``---``/refs convention — owned by this
+    Kept here (not the frontend) so the artifact-block convention — owned by this
     agent's prompt — never crosses the layer boundary.
     """
-
-    _MARKER = "[[artifact:"
 
     def __init__(self) -> None:
         self.reset()
@@ -951,27 +946,21 @@ class _TextStreamRouter:
         self._raw += chunk
         if self._open:
             return chunk
-        # A citation block (refs and/or empty) ends at the first ``---``: that's the
-        # answer — hide the block, stream the rest. A ``---`` preceded by prose isn't
-        # a citation block, so the run is narration streamed whole.
-        if _SEPARATOR in self._raw:
-            prefix, answer = self._raw.split(_SEPARATOR, 1)
-            if _is_citation_block(prefix):
-                answer = answer.lstrip("\n")
-                if not answer:
-                    return ""  # separator seen but the answer hasn't started — wait
-                self._open = True
-                self.is_answer = True
-                return answer
+
+        close_start = self._raw.find(_ARTIFACTS_CLOSE)
+        open_start = self._raw.find(_ARTIFACTS_OPEN)
+        if open_start != -1 and close_start > open_start:
+            answer = self._raw[close_start + len(_ARTIFACTS_CLOSE) :].lstrip("\n")
+            if not answer:
+                return ""  # artifact block complete but answer hasn't started yet
             self._open = True
-            self.is_answer = False
-            return self._raw  # ``---`` after prose: narration streamed whole
-        # No separator yet: keep waiting while the lead could still be a citation
-        # block — its tail (after complete refs) is empty, a partial ref marker (a
-        # prefix of one, or one being built), or a partial ``---``. Else it's narration.
-        tail = _ARTIFACT_REF_RE.sub("", self._raw).lstrip()
-        building_ref = tail.startswith(self._MARKER) or self._MARKER.startswith(tail)
-        if tail and not building_ref and not _SEPARATOR.startswith(tail):
+            self.is_answer = True
+            return answer
+
+        stripped = self._raw.lstrip()
+        if _ARTIFACTS_OPEN.startswith(stripped):
+            return ""
+        if stripped and not stripped.startswith(_ARTIFACTS_OPEN):
             self._open = True
             self.is_answer = False
             return self._raw  # narration (or an answer the model failed to delimit)
