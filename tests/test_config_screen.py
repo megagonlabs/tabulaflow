@@ -88,23 +88,33 @@ async def test_enter_selects_model_and_persists(updates: list[dict[str, Any]]) -
         assert session.model == "anthropic:claude-opus-4-8"
         assert updates[-1]["model"] == "anthropic:claude-opus-4-8"
         assert refreshed
-        # Chips moved under the newly active model; cursor advanced onto them
-        # so ←→ tunes the effort immediately; recommendation tag follows.
+        # Effort snapped to the new model's recommendation, chips moved under
+        # it, and the cursor advanced onto them so ←→ tunes immediately.
+        assert session.reasoning_effort == "high"
+        assert updates[-1]["reasoning_effort"] == "high"
         assert "high (recommended)" in screen._render_row(1).plain
         assert "medium" not in screen._render_row(0).plain
         assert screen._cursor == ("effort", 1)
         await pilot.press("left")
-        assert session.reasoning_effort == "low"
+        assert session.reasoning_effort == "medium"
 
 
-async def test_effort_preserved_across_model_switch(updates: list[dict[str, Any]]) -> None:
+async def test_effort_snaps_to_recommendation_on_switch(updates: list[dict[str, Any]]) -> None:
     session = _StubSession(reasoning_effort="xhigh")
     screen = ConfigScreen(session, on_change=lambda: None)  # type: ignore[arg-type]
     async with _App(screen).run_test() as pilot:
         await pilot.pause()
         await pilot.press("down", "down", "enter")  # switch to Claude
-        # Global preference: never clamped or snapped — providers saturate.
-        assert session.reasoning_effort == "xhigh"
+        assert session.reasoning_effort == "high"  # Claude's recommendation
+
+
+async def test_reselecting_active_model_keeps_effort(updates: list[dict[str, Any]]) -> None:
+    session = _StubSession(reasoning_effort="xhigh")  # deliberate, above GPT's recommendation
+    screen = ConfigScreen(session, on_change=lambda: None)  # type: ignore[arg-type]
+    async with _App(screen).run_test() as pilot:
+        await pilot.pause()
+        await pilot.press("enter")  # re-select the already-active model
+        assert session.reasoning_effort == "xhigh"  # not reset to "medium"
 
 
 async def test_no_chips_for_non_thinking_model(updates: list[dict[str, Any]]) -> None:

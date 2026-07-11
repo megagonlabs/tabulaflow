@@ -46,8 +46,9 @@ class ModelOption(BaseModel):
     """Compact display name, e.g. ``GPT-5.5``."""
     recommended_effort: ReasoningEffort | None = None
     """Vendor-tool default effort for this model (e.g. Codex ships GPT at
-    ``medium``, Claude Code ships Claude at ``high``); ``None`` = no sourced
-    recommendation. Display-only — never applied automatically."""
+    ``medium``, Claude Code ships Claude at ``high``). Applied when the model
+    is selected in the config screen; ``None`` = no sourced recommendation,
+    the current effort carries over."""
 
 
 DEFAULT_MODEL_OPTIONS: tuple[ModelOption, ...] = (

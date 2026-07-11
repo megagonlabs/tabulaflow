@@ -1890,6 +1890,7 @@ class ConfigScreen(Screen[None]):
         if kind != "model":
             return
         option = self._options[i]
+        changed = option.model != self._session.model
         self._select_error = None
         try:
             self._session.set_model(option.model)
@@ -1899,10 +1900,14 @@ class ConfigScreen(Screen[None]):
             self._select_error = (i, str(e))
             self._refresh()
             return
-        # The effort is a global preference on a uniform scale — levels a
-        # provider lacks saturate to its nearest supported value, so no
-        # clamping on model switch. Land on the chips that just appeared under
-        # the selection, so ←→ tunes the effort without an intervening ↓.
+        # Switching models resets the effort to the new model's vendor
+        # recommendation (each model has its own tuned level); with no
+        # recommendation the current effort carries over. Re-selecting the
+        # active model never resets a deliberate choice.
+        if changed and option.recommended_effort is not None:
+            self._session.set_reasoning_effort(option.recommended_effort)
+        # Land on the chips that just appeared under the selection, so ←→
+        # tunes the effort without an intervening ↓.
         if self._session.supported_efforts:
             self._cursor = ("effort", i)
         self._persist()
