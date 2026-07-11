@@ -1798,7 +1798,7 @@ def test_view_card_in_pane_marks_turn_as_manual(tmp_path: Path) -> None:
         def push(self, turn: PaneTurn) -> None:
             pushed.append(turn)
 
-    app = TabulaflowApp(model="openai-responses:gpt-5", agent="sql_agent", reasoning_effort="medium")
+    app = TabulaflowApp(model="openai-responses:gpt-5", reasoning_effort="medium")
     app._pane = FakePane()  # type: ignore[assignment]  # noqa: SLF001
 
     card: PaneCard = {"id": "rec_orders", "label": None, "views": ["data"]}

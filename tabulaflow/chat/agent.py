@@ -489,14 +489,11 @@ class ChatAgent:
         self._build_agent()
 
     def set_reasoning_effort(self, reasoning_effort: str) -> None:
-        """Update the interactive agent's reasoning effort and rebuild the bound
-        runtime agent. Use this rather than assigning ``self.reasoning_effort``
-        directly — a bare assignment skips the rebuild. (Affects the main agent only;
-        subagent tools stay on ``_SUBAGENT_REASONING_EFFORT``.)"""
-        if self.reasoning_effort == reasoning_effort:
-            return
+        """Update the interactive agent's reasoning effort. Applied per request in
+        ``run_stream`` — unlike ``model``, it is not baked into the runtime agent, so
+        no rebuild is needed. (Affects the main agent only; subagent tools stay on
+        ``_SUBAGENT_REASONING_EFFORT``.)"""
         self.reasoning_effort = reasoning_effort
-        self._build_agent()
 
     def note_event(self, description: str) -> None:
         """Make the agent aware of a host/app event (typically a user action — e.g.
@@ -582,9 +579,11 @@ class ChatAgent:
                 ),
             ],
             instructions=self._system_prompt,
+            # ``openai_reasoning_effort`` is deliberately absent: effort is passed
+            # per request in ``run_stream`` so ``set_reasoning_effort`` needs no
+            # agent rebuild.
             model_settings={
                 "openai_service_tier": "priority",
-                "openai_reasoning_effort": self.reasoning_effort,
                 "openai_reasoning_summary": "detailed",
             },
         )
@@ -681,6 +680,12 @@ class ChatAgent:
                 async with self._pydantic_ai_agent.iter(
                     question,
                     message_history=self._message_history or None,
+                    # Merged over the agent's construction-time settings (per-key,
+                    # run level wins). Passed here rather than baked into the agent
+                    # so ``set_reasoning_effort`` never triggers a rebuild.
+                    model_settings=OpenAIResponsesModelSettings(
+                        openai_reasoning_effort=self.reasoning_effort,  # type: ignore[typeddict-item]
+                    ),
                 ) as agent_run:
                     try:
                         async for node in agent_run:
