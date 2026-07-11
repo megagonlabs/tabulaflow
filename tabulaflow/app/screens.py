@@ -16,7 +16,7 @@ from textual.binding import Binding
 from textual.screen import Screen
 from textual.widgets import DataTable, Static, TextArea
 
-from tabulaflow.app.config import ModelOption, ReasoningEffort, load_app_config, update_app_config
+from tabulaflow.app.config import APP_CONFIG_PATH, ModelOption, ReasoningEffort, load_app_config, update_app_config
 from tabulaflow.app.theme import ACCENT, ACCENT_BOLD, DRACULA_TRANSPARENT, ERROR, FK_MARKER, KEY_HINT, PK_MARKER
 
 
@@ -1799,8 +1799,12 @@ class ConfigScreen(Screen[None]):
     def compose(self) -> ComposeResult:
         from textual.containers import Vertical
 
+        config_path = APP_CONFIG_PATH.replace(str(Path.home()), "~", 1)
+        title = Text()
+        title.append("Config", style=ACCENT_BOLD)
+        title.append(f" · auto-saved to {config_path}", style="dim")
         with Vertical(id="config-body"):
-            yield Static(Text("Config", style=ACCENT_BOLD))
+            yield Static(title)
             yield Static("")
             yield Static(Text("Model", style="bold"))
             yield from self._rows
@@ -1865,8 +1869,7 @@ class ConfigScreen(Screen[None]):
         hint.append("←→", style=KEY_HINT)
         hint.append(" Change effort    ", style="dim")
         hint.append("Esc", style=KEY_HINT)
-        hint.append(" Back    ", style="dim")
-        hint.append("Changes apply now and save as your default", style="dim")
+        hint.append(" Back", style="dim")
         return hint
 
     def _refresh(self) -> None:
