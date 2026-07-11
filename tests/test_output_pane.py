@@ -10,6 +10,7 @@ from collections.abc import Iterator
 from importlib.resources import files
 from pathlib import Path
 from types import SimpleNamespace
+from typing import Any, cast
 
 import pandas as pd
 import pytest
@@ -528,8 +529,9 @@ def test_graph_tooltips_preserve_nested_values() -> None:
         {},
     )
     assert payload is not None
-    nodes = payload["graph"]["elements"]["nodes"]
-    edges = payload["graph"]["elements"]["edges"]
+    # Element dicts hold ``object`` values; the test asserts on their nested shape.
+    nodes = cast("list[dict[str, Any]]", payload["graph"]["elements"]["nodes"])
+    edges = cast("list[dict[str, Any]]", payload["graph"]["elements"]["edges"])
     alice = next(node["data"] for node in nodes if node["data"]["id"] == "a")
     assert alice["tooltip"]["tags"] == ["lead"]
     assert alice["tooltip"]["profile"] == {"city": "Oakland"}
