@@ -16,14 +16,13 @@ def chat(
         None,
         "--model",
         "-m",
-        help="LLM identifier (e.g. openai-responses:gpt-5.4). Overrides the saved default for this launch.",
+        help="LLM identifier (e.g. openai-responses:gpt-5.5). Overrides the saved default for this launch.",
     ),
     reasoning_effort: str | None = typer.Option(
         None,
         "--reasoning-effort",
         "-r",
-        help="Reasoning effort for OpenAI models: minimal | low | medium | high. "
-        "Overrides the saved default for this launch.",
+        help="Reasoning effort: low | medium | high | xhigh. Overrides the saved default for this launch.",
     ),
     output_pane_port: int | None = typer.Option(
         None,

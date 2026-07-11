@@ -124,6 +124,10 @@ class SessionState:
         return self.chat_agent.api_key
 
     @property
+    def supported_efforts(self) -> tuple[str, ...]:
+        return self.chat_agent.supported_efforts
+
+    @property
     def reasoning_effort(self) -> str:
         return self.chat_agent.reasoning_effort
 

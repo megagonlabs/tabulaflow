@@ -10,9 +10,10 @@ from pathlib import Path
 import re
 from contextlib import suppress
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, Final
+from typing import TYPE_CHECKING, Any, Final, cast
 
 from pydantic_ai.models.openai import OpenAIResponsesModelSettings
+from pydantic_ai.settings import ModelSettings
 
 from tabulaflow.toolhub.message_store import (
     MESSAGE_THRESHOLD_CHARS,
@@ -291,8 +292,10 @@ class ChatAgent:
 
     registry: DBRegistry
     model: str
-    # Reasoning effort for the interactive agent (OpenAI models only):
-    # minimal | low | medium | high. Required — the app owns the default (its
+    # Reasoning effort for the interactive agent — a unified thinking level
+    # (low | medium | high | xhigh) translated per provider by pydantic-ai
+    # (OpenAI reasoning_effort, Anthropic thinking budgets / native effort, Gemini
+    # thinking_level). Required — the app owns the default (its
     # ``--reasoning-effort`` option), as it does for ``model``. Mutable at runtime via
     # ``set_reasoning_effort`` (peer of ``model``/``set_model``); the subagent fan-out
     # tools keep their own fixed effort (``_SUBAGENT_REASONING_EFFORT``).
@@ -480,6 +483,17 @@ class ChatAgent:
         """The live query history — results the agent's answers reference."""
         return self._query_history
 
+    def _unwrapped_model(self) -> Any | None:
+        """The live provider model beneath tabulaflow's wrappers, or None."""
+        from pydantic_ai.models.wrapper import WrapperModel
+
+        if self._pydantic_ai_agent is None:
+            return None
+        model: object = self._pydantic_ai_agent.model
+        while isinstance(model, WrapperModel):
+            model = model.wrapped
+        return model
+
     @property
     def api_key(self) -> str | None:
         """API key of the live model's provider client, for status display.
@@ -488,15 +502,46 @@ class ChatAgent:
         use), never guessed from env vars. ``None`` when the provider has no key
         (e.g. vertex ADC) or the client shape is unrecognized.
         """
-        from pydantic_ai.models.wrapper import WrapperModel
-
-        if self._pydantic_ai_agent is None:
-            return None
-        model: object = self._pydantic_ai_agent.model
-        while isinstance(model, WrapperModel):
-            model = model.wrapped
-        key = getattr(getattr(model, "client", None), "api_key", None)
+        key = getattr(getattr(self._unwrapped_model(), "client", None), "api_key", None)
         return key if isinstance(key, str) and key else None
+
+    @property
+    def supported_efforts(self) -> tuple[str, ...]:
+        """Reasoning-effort levels meaningful for the live model.
+
+        Read from the model's pydantic-ai profile — the same source the request
+        translation uses — so the answer tracks library updates instead of a
+        hand-maintained capability table. Empty when the model doesn't think.
+        """
+        model = self._unwrapped_model()
+        profile = getattr(model, "profile", None)
+        if profile is None or not (profile.supports_thinking or profile.thinking_always_enabled):
+            return ()
+        return ("low", "medium", "high", "xhigh")
+
+    def _thinking_settings(self) -> ModelSettings:
+        """Per-request reasoning settings: the unified ``thinking`` level, which
+        pydantic-ai translates per provider (models that don't think strip it).
+
+        Budget-era Anthropic models (pre native-effort, e.g. sonnet-4-5) turn the
+        level into ``budget_tokens``, which the API requires ``max_tokens`` to
+        exceed — the default 4096 would reject medium and above, so raise it to
+        the budget plus answer headroom.
+        """
+        settings = ModelSettings(thinking=cast(Any, self.reasoning_effort))
+        model = self._unwrapped_model()
+        try:
+            from pydantic_ai.models.anthropic import AnthropicModel
+            from pydantic_ai.profiles.anthropic import ANTHROPIC_THINKING_BUDGET_MAP, AnthropicModelProfile
+        except ImportError:  # anthropic extra not installed
+            return settings
+        if isinstance(model, AnthropicModel):
+            profile = AnthropicModelProfile.from_profile(model.profile)
+            if not profile.anthropic_supports_adaptive_thinking:
+                budget = ANTHROPIC_THINKING_BUDGET_MAP.get(cast(Any, self.reasoning_effort))
+                if budget is not None:
+                    settings["max_tokens"] = budget + 8192
+        return settings
 
     def set_model(self, model: str) -> None:
         """Update the model and rebuild the bound runtime agent. Use this rather
@@ -712,9 +757,7 @@ class ChatAgent:
                     # Merged over the agent's construction-time settings (per-key,
                     # run level wins). Passed here rather than baked into the agent
                     # so ``set_reasoning_effort`` never triggers a rebuild.
-                    model_settings=OpenAIResponsesModelSettings(
-                        openai_reasoning_effort=self.reasoning_effort,  # type: ignore[typeddict-item]
-                    ),
+                    model_settings=self._thinking_settings(),
                 ) as agent_run:
                     try:
                         async for node in agent_run:
@@ -730,13 +773,13 @@ class ChatAgent:
                                         event, emit, self._query_history, self._tools.get_table_schema, text_router
                                     )
                                     await asyncio.sleep(0)
-                            emit(UsageUpdated(usage=Usage.from_pydantic_ai_usage(agent_run.usage(), self.model)))
+                            emit(UsageUpdated(usage=Usage.from_pydantic_ai_usage(agent_run.usage, self.model)))
                         completed_normally = True
                     except asyncio.CancelledError:
                         interrupted = True
                         raise
                     finally:
-                        final_usage = Usage.from_pydantic_ai_usage(agent_run.usage(), self.model)
+                        final_usage = Usage.from_pydantic_ai_usage(agent_run.usage, self.model)
                         partial_messages = list(agent_run.all_messages())
                         # Any abnormal exit — user interrupt or an error (LLM API
                         # failure, a tool raising) — can leave the trailing

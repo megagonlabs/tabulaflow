@@ -8,7 +8,7 @@ from __future__ import annotations
 import json
 import re
 from pathlib import Path
-from typing import TYPE_CHECKING, get_args
+from typing import TYPE_CHECKING
 
 from rich.text import Text
 from textual.app import ComposeResult
@@ -16,7 +16,7 @@ from textual.binding import Binding
 from textual.screen import Screen
 from textual.widgets import DataTable, Static, TextArea
 
-from tabulaflow.app.config import APP_CONFIG_PATH, ModelOption, ReasoningEffort, load_app_config, update_app_config
+from tabulaflow.app.config import APP_CONFIG_PATH, ModelOption, load_app_config, update_app_config
 from tabulaflow.app.theme import ACCENT, ACCENT_BOLD, DRACULA_TRANSPARENT, ERROR, FK_MARKER, KEY_HINT, PK_MARKER
 
 
@@ -1732,13 +1732,6 @@ class SchemaBrowserScreen(Screen[None]):
 # ---------------------------------------------------------------------------
 
 
-def _fallback_model_option(model: str) -> ModelOption:
-    """Capability guess for a model outside the catalog (e.g. set via ``--model``)."""
-    if model.partition(":")[0] in ("openai-responses", "openai"):
-        return ModelOption(model=model, label=model, efforts=get_args(ReasoningEffort), default_effort="medium")
-    return ModelOption(model=model, label=model)
-
-
 class ConfigScreen(Screen[None]):
     """Full-screen editor for session preferences (model, reasoning effort).
 
@@ -1785,7 +1778,7 @@ class ConfigScreen(Screen[None]):
         self._on_change = on_change
         options = list(load_app_config().model_options)
         if all(o.model != session.model for o in options):
-            options.insert(0, _fallback_model_option(session.model))
+            options.insert(0, ModelOption(model=session.model, label=session.model))
         self._options = options
         active = next(i for i, o in enumerate(options) if o.model == session.model)
         # Cursor is a slot, not an index, so it survives the effort row moving
@@ -1819,7 +1812,7 @@ class ConfigScreen(Screen[None]):
         slots: list[tuple[str, int]] = []
         for i, option in enumerate(self._options):
             slots.append(("model", i))
-            if option.model == self._session.model and option.efforts:
+            if option.model == self._session.model and self._session.supported_efforts:
                 slots.append(("effort", i))
         return slots
 
@@ -1843,7 +1836,7 @@ class ConfigScreen(Screen[None]):
             key = self._session.api_key
             if key is not None and len(key) >= 12:
                 t.append(f" · API key {key[:3]}***{key[-4:]}", style="dim")
-        if active and option.efforts:
+        if active and self._session.supported_efforts:
             t.append("\n")
             t.append_text(self._render_effort_line(i))
         if self._select_error is not None and self._select_error[0] == i:
@@ -1858,9 +1851,9 @@ class ConfigScreen(Screen[None]):
         t.append("❯ " if selected else "  ", style=ACCENT_BOLD)
         t.append("    ")
         t.append("effort: ", style="dim")
-        for effort in option.efforts:
+        for effort in self._session.supported_efforts:
             current = effort == self._session.reasoning_effort
-            label = f" {effort} (default) " if effort == option.default_effort else f" {effort} "
+            label = f" {effort} (recommended) " if effort == option.recommended_effort else f" {effort} "
             t.append(label, style=(ACCENT_BOLD if selected else ACCENT) if current else "dim")
             t.append(" ")
         return t
@@ -1906,30 +1899,22 @@ class ConfigScreen(Screen[None]):
             self._select_error = (i, str(e))
             self._refresh()
             return
-        # Keep the effort if the new model supports it, else snap to the model's
-        # default. With no efforts at all, retain the stored preference — it
-        # resurfaces when the user switches back to a model that supports it.
-        if option.efforts and self._session.reasoning_effort not in option.efforts:
-            assert option.default_effort is not None  # guaranteed by ModelOption validation
-            self._session.set_reasoning_effort(option.default_effort)
-        # Land on the chips that just appeared under the selection, so ←→ tunes
-        # the effort without an intervening ↓.
-        if option.efforts:
+        # The effort is a global preference on a uniform scale — levels a
+        # provider lacks saturate to its nearest supported value, so no
+        # clamping on model switch. Land on the chips that just appeared under
+        # the selection, so ←→ tunes the effort without an intervening ↓.
+        if self._session.supported_efforts:
             self._cursor = ("effort", i)
         self._persist()
 
     def action_cycle(self, delta: int) -> None:
-        kind, i = self._cursor
+        kind, _ = self._cursor
         if kind != "effort":
             return
-        option = self._options[i]
+        efforts = self._session.supported_efforts
         current = self._session.reasoning_effort
-        if current in option.efforts:
-            j = (option.efforts.index(current) + delta) % len(option.efforts)
-            self._session.set_reasoning_effort(option.efforts[j])
-        else:
-            assert option.default_effort is not None  # guaranteed by ModelOption validation
-            self._session.set_reasoning_effort(option.default_effort)
+        j = (efforts.index(current) + delta) % len(efforts) if current in efforts else 0
+        self._session.set_reasoning_effort(efforts[j])
         self._persist()
 
     def action_close(self) -> None:

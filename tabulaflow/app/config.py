@@ -11,8 +11,7 @@ code unless the user explicitly overrides them. Example catalog override::
 
     {
       "model_options": [
-        {"model": "openai-responses:gpt-5.4", "label": "GPT-5.4",
-         "efforts": ["minimal", "low", "medium", "high"], "default_effort": "medium"},
+        {"model": "openai-responses:gpt-5.5", "label": "GPT-5.5", "recommended_effort": "medium"},
         {"model": "together:my-org/my-model", "label": "My Model"}
       ]
     }
@@ -22,45 +21,40 @@ from __future__ import annotations
 
 import json
 import os
-from typing import Any, Literal, Self
+from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator
+from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 APP_CONFIG_PATH = os.path.join(os.path.expanduser("~"), ".tabulaflow", "app_config.json")
 
-ReasoningEffort = Literal["minimal", "low", "medium", "high"]
-
-_ALL_EFFORTS: tuple[ReasoningEffort, ...] = ("minimal", "low", "medium", "high")
+ReasoningEffort = Literal["low", "medium", "high", "xhigh"]
+"""Unified thinking level, translated per provider by pydantic-ai (budget tokens
+for older Claude, native effort for newer, ``thinking_level`` for Gemini 3+).
+Levels a provider lacks saturate to its nearest supported value."""
 
 
 class ModelOption(BaseModel):
-    """A model offered by the config panel, with its reasoning-effort capabilities."""
+    """A model offered by the config panel — pure display data.
+
+    Thinking capabilities are read from the live model's pydantic-ai profile,
+    not declared here.
+    """
 
     model: str
-    """pydantic-ai model identifier, e.g. ``openai-responses:gpt-5.4``."""
+    """pydantic-ai model identifier, e.g. ``openai-responses:gpt-5.5``."""
     label: str
-    """Compact display name, e.g. ``GPT-5.4``."""
-    efforts: tuple[ReasoningEffort, ...] = ()
-    """Supported reasoning efforts, ordered low to high; empty = not applicable."""
-    default_effort: ReasoningEffort | None = None
-    """Effort to fall back to when the current one is unsupported by this model."""
-
-    @model_validator(mode="after")
-    def _validate_default_effort(self) -> Self:
-        if self.efforts:
-            if self.default_effort not in self.efforts:
-                raise ValueError(f"default_effort {self.default_effort!r} must be one of efforts {self.efforts}")
-        elif self.default_effort is not None:
-            raise ValueError("default_effort requires a non-empty efforts list")
-        return self
+    """Compact display name, e.g. ``GPT-5.5``."""
+    recommended_effort: ReasoningEffort | None = None
+    """Vendor-tool default effort for this model (e.g. Codex ships GPT at
+    ``medium``, Claude Code ships Claude at ``high``); ``None`` = no sourced
+    recommendation. Display-only — never applied automatically."""
 
 
 DEFAULT_MODEL_OPTIONS: tuple[ModelOption, ...] = (
-    ModelOption(model="openai-responses:gpt-5.4", label="GPT-5.4", efforts=_ALL_EFFORTS, default_effort="medium"),
-    ModelOption(model="openai-responses:gpt-5", label="GPT-5", efforts=_ALL_EFFORTS, default_effort="medium"),
-    ModelOption(model="openai-responses:gpt-5-mini", label="GPT-5 Mini", efforts=_ALL_EFFORTS, default_effort="medium"),
-    ModelOption(model="anthropic:claude-sonnet-4-5-20250929", label="Claude Sonnet 4.5"),
-    ModelOption(model="google-vertex:gemini-2.5-flash", label="Gemini 2.5 Flash"),
+    ModelOption(model="openai-responses:gpt-5.5", label="GPT-5.5", recommended_effort="medium"),
+    ModelOption(model="openai-responses:gpt-5.4-mini", label="GPT-5.4 Mini", recommended_effort="medium"),
+    ModelOption(model="anthropic:claude-opus-4-8", label="Claude Opus 4.8", recommended_effort="high"),
+    ModelOption(model="google-vertex:gemini-3.1-pro-preview", label="Gemini 3.1 Pro"),
 )
 
 
@@ -70,7 +64,7 @@ class AppConfig(BaseModel):
     # ``protected_namespaces`` freed up for the ``model_options`` field name.
     model_config = ConfigDict(validate_assignment=True, protected_namespaces=())
 
-    model: str = "openai-responses:gpt-5.4"
+    model: str = "openai-responses:gpt-5.5"
     reasoning_effort: ReasoningEffort = "medium"
     # Full replacement when present in the file: the user owns the whole catalog.
     model_options: list[ModelOption] = Field(default_factory=lambda: list(DEFAULT_MODEL_OPTIONS))

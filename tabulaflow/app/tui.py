@@ -45,10 +45,10 @@ class BottomSeparator(Static):
 
 
 def _compact_model_label(model: str, reasoning_effort: str | None = None) -> str:
-    """Return a compact model status label, e.g. ``GPT 5.4 medium``."""
-    provider, sep, name = model.partition(":")
+    """Return a compact model status label, e.g. ``GPT 5.5 medium``."""
+    _, sep, name = model.partition(":")
     if not sep:
-        provider, name = "", provider
+        name = model
     parts = []
     for tok in name.split("-"):
         if tok.lower() == "gpt":
@@ -57,7 +57,7 @@ def _compact_model_label(model: str, reasoning_effort: str | None = None) -> str
             parts.append(tok.capitalize())
         else:
             parts.append(tok)
-    if reasoning_effort and provider in ("openai-responses", "openai"):
+    if reasoning_effort:
         parts.append(reasoning_effort)
     return " ".join(parts)
 

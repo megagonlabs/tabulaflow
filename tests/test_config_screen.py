@@ -9,22 +9,26 @@ from tabulaflow.app.config import AppConfig, ModelOption
 from tabulaflow.app.screens import ConfigScreen
 
 _CATALOG = [
-    ModelOption(
-        model="openai-responses:gpt-5.4",
-        label="GPT-5.4",
-        efforts=("minimal", "low", "medium", "high"),
-        default_effort="medium",
-    ),
-    ModelOption(model="test:limited", label="Limited", efforts=("low", "medium"), default_effort="medium"),
-    ModelOption(model="anthropic:claude-sonnet-4-5-20250929", label="Claude Sonnet 4.5"),
+    ModelOption(model="openai-responses:gpt-5.5", label="GPT-5.5", recommended_effort="medium"),
+    ModelOption(model="anthropic:claude-opus-4-8", label="Claude Opus 4.8", recommended_effort="high"),
+    ModelOption(model="test:no-thinking", label="No Thinking"),
 ]
+
+_EFFORTS = ("low", "medium", "high", "xhigh")
 
 
 class _StubSession:
-    def __init__(self, model: str = "openai-responses:gpt-5.4", reasoning_effort: str = "medium") -> None:
+    """Session stub: thinking support keyed by the active model, like the real
+    profile-derived property."""
+
+    def __init__(self, model: str = "openai-responses:gpt-5.5", reasoning_effort: str = "medium") -> None:
         self.model = model
         self.reasoning_effort = reasoning_effort
         self.api_key: str | None = None
+
+    @property
+    def supported_efforts(self) -> tuple[str, ...]:
+        return () if self.model.startswith("test:") else _EFFORTS
 
     def set_model(self, model: str) -> None:
         self.model = model
@@ -65,9 +69,9 @@ async def test_renders_catalog_with_nested_efforts() -> None:
         assert "●" not in screen._render_row(1).plain
         assert screen._cursor == ("model", 0)  # starts on the current model
         # Effort chips render nested inside the active model's row only, with
-        # a label and the model's default effort tagged.
-        assert "effort:" in screen._render_row(0).plain
-        assert "medium (default)" in screen._render_row(0).plain
+        # the sourced vendor recommendation tagged.
+        assert "medium (recommended)" in screen._render_row(0).plain
+        assert "xhigh" in screen._render_row(0).plain
         assert "medium" not in screen._render_row(1).plain
 
 
@@ -78,50 +82,42 @@ async def test_enter_selects_model_and_persists(updates: list[dict[str, Any]]) -
     async with _App(screen).run_test() as pilot:
         await pilot.pause()
         await pilot.press("down", "down")  # over the effort row, onto model 1
-        assert session.model == "openai-responses:gpt-5.4"  # browsing does not apply
+        assert session.model == "openai-responses:gpt-5.5"  # browsing does not apply
         assert screen._cursor == ("model", 1)
         await pilot.press("enter")
-        assert session.model == "test:limited"
-        assert updates[-1]["model"] == "test:limited"
+        assert session.model == "anthropic:claude-opus-4-8"
+        assert updates[-1]["model"] == "anthropic:claude-opus-4-8"
         assert refreshed
-        # Effort chips moved under the newly active model, and the cursor
-        # advanced onto them so ←→ tunes the effort immediately.
+        # Chips moved under the newly active model; cursor advanced onto them
+        # so ←→ tunes the effort immediately; recommendation tag follows.
+        assert "high (recommended)" in screen._render_row(1).plain
         assert "medium" not in screen._render_row(0).plain
-        assert "medium" in screen._render_row(1).plain
         assert screen._cursor == ("effort", 1)
         await pilot.press("left")
         assert session.reasoning_effort == "low"
 
 
-async def test_effort_kept_when_supported(updates: list[dict[str, Any]]) -> None:
-    session = _StubSession(reasoning_effort="low")
+async def test_effort_preserved_across_model_switch(updates: list[dict[str, Any]]) -> None:
+    session = _StubSession(reasoning_effort="xhigh")
     screen = ConfigScreen(session, on_change=lambda: None)  # type: ignore[arg-type]
     async with _App(screen).run_test() as pilot:
         await pilot.pause()
-        await pilot.press("down", "down", "enter")  # "low" is valid for test:limited
-        assert session.reasoning_effort == "low"
+        await pilot.press("down", "down", "enter")  # switch to Claude
+        # Global preference: never clamped or snapped — providers saturate.
+        assert session.reasoning_effort == "xhigh"
 
 
-async def test_effort_snaps_to_default_when_unsupported(updates: list[dict[str, Any]]) -> None:
+async def test_no_chips_for_non_thinking_model(updates: list[dict[str, Any]]) -> None:
     session = _StubSession(reasoning_effort="high")
     screen = ConfigScreen(session, on_change=lambda: None)  # type: ignore[arg-type]
     async with _App(screen).run_test() as pilot:
         await pilot.pause()
-        await pilot.press("down", "down", "enter")  # "high" invalid for test:limited
-        assert session.reasoning_effort == "medium"
-        assert updates[-1] == {"model": "test:limited", "reasoning_effort": "medium"}
-
-
-async def test_effort_retained_when_not_applicable(updates: list[dict[str, Any]]) -> None:
-    session = _StubSession(reasoning_effort="high")
-    screen = ConfigScreen(session, on_change=lambda: None)  # type: ignore[arg-type]
-    async with _App(screen).run_test() as pilot:
-        await pilot.pause()
-        await pilot.press("down", "down", "down", "enter")  # Claude: no efforts
+        await pilot.press("down", "down", "down", "enter")  # test:no-thinking
         assert session.reasoning_effort == "high"  # preference retained
-        # No effort chips anywhere: the row simply isn't there.
-        assert all("high" not in screen._render_row(i).plain for i in range(3))
-        # Cursor stops at the last model row.
+        assert all("effort:" not in screen._render_row(i).plain for i in range(3))
+        # Effort row unreachable: cursor stays on the model row after select
+        # and stops at the last model row.
+        assert screen._cursor == ("model", 2)
         await pilot.press("down", "down")
         assert screen._cursor == ("model", 2)
 
@@ -133,16 +129,16 @@ async def test_cycle_reasoning(updates: list[dict[str, Any]]) -> None:
         await pilot.pause()
         await pilot.press("down")  # onto the effort row nested under the active model
         assert screen._cursor == ("effort", 0)
-        await pilot.press("right")
-        assert session.reasoning_effort == "high"
+        await pilot.press("right", "right")
+        assert session.reasoning_effort == "xhigh"
         await pilot.press("right")  # wraps around
-        assert session.reasoning_effort == "minimal"
+        assert session.reasoning_effort == "low"
         # Left/right on a model row does nothing.
         await pilot.press("up", "left")
-        assert session.reasoning_effort == "minimal"
+        assert session.reasoning_effort == "low"
         # Enter on the effort row does nothing.
         await pilot.press("down", "enter")
-        assert session.model == "openai-responses:gpt-5.4"
+        assert session.model == "openai-responses:gpt-5.5"
 
 
 async def test_provider_and_api_key_suffixes() -> None:
@@ -153,8 +149,8 @@ async def test_provider_and_api_key_suffixes() -> None:
         await pilot.pause()
         # Provider (not the full id) on every catalog row.
         assert "· openai-responses" in screen._render_row(0).plain
-        assert "openai-responses:gpt-5.4" not in screen._render_row(0).plain
-        assert "· anthropic" in screen._render_row(2).plain
+        assert "openai-responses:gpt-5.5" not in screen._render_row(0).plain
+        assert "· anthropic" in screen._render_row(1).plain
         # Masked key on the active row only.
         assert "API key sk-***ab4x" in screen._render_row(0).plain
         assert "API key" not in screen._render_row(1).plain
@@ -179,26 +175,25 @@ async def test_select_failure_shows_inline_error(updates: list[dict[str, Any]]) 
     screen = ConfigScreen(session, on_change=lambda: None)  # type: ignore[arg-type]
     async with _App(screen).run_test() as pilot:
         await pilot.pause()
-        await pilot.press("down", "down", "down", "enter")  # attempt Claude
-        assert session.model == "openai-responses:gpt-5.4"  # previous model kept
+        await pilot.press("down", "down", "enter")  # attempt Claude
+        assert session.model == "openai-responses:gpt-5.5"  # previous model kept
         assert not updates  # nothing persisted
-        assert "ANTHROPIC_API_KEY" in screen._render_row(2).plain
+        assert "ANTHROPIC_API_KEY" in screen._render_row(1).plain
         assert "●" in screen._render_row(0).plain  # active marker unmoved
         # Error survives browsing but clears on the next select.
-        await pilot.press("up")
-        assert "ANTHROPIC_API_KEY" in screen._render_row(2).plain
-        await pilot.press("enter")  # select test:limited — succeeds
-        assert session.model == "test:limited"
-        assert "ANTHROPIC_API_KEY" not in screen._render_row(2).plain
+        await pilot.press("down")
+        assert "ANTHROPIC_API_KEY" in screen._render_row(1).plain
+        await pilot.press("enter")  # select test:no-thinking — succeeds
+        assert session.model == "test:no-thinking"
+        assert "ANTHROPIC_API_KEY" not in screen._render_row(1).plain
 
 
-async def test_unlisted_model_prepended_with_fallback() -> None:
+async def test_unlisted_model_prepended() -> None:
     session = _StubSession(model="together:custom/model")
     screen = ConfigScreen(session, on_change=lambda: None)  # type: ignore[arg-type]
     async with _App(screen).run_test() as pilot:
         await pilot.pause()
         assert screen._options[0].model == "together:custom/model"
-        assert screen._options[0].efforts == ()
         assert len(screen._rows) == 4
         # Label is already the full id — no provider suffix repeated after it.
         assert "· together" not in screen._render_row(0).plain

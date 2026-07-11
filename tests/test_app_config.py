@@ -23,7 +23,7 @@ def test_load_missing_file_returns_defaults(tmp_path: Path) -> None:
 
 def test_save_load_roundtrip(tmp_path: Path) -> None:
     path = str(tmp_path / "app_config.json")
-    config = AppConfig(model="anthropic:claude-sonnet-4-5-20250929", reasoning_effort="high")
+    config = AppConfig(model="anthropic:claude-opus-4-8", reasoning_effort="high")
     save_app_config(config, path)
     assert load_app_config(path) == config
 
@@ -43,7 +43,7 @@ def test_load_malformed_json_raises(tmp_path: Path) -> None:
 
 def test_load_invalid_effort_raises(tmp_path: Path) -> None:
     path = tmp_path / "app_config.json"
-    path.write_text(json.dumps({"reasoning_effort": "ultra"}))
+    path.write_text(json.dumps({"reasoning_effort": "minimal"}))
     with pytest.raises(ValueError, match=str(path)):
         load_app_config(str(path))
 
@@ -54,28 +54,19 @@ def test_assignment_validates() -> None:
         config.reasoning_effort = "ultra"  # type: ignore[assignment]
 
 
-def test_model_option_default_effort_must_be_supported() -> None:
-    with pytest.raises(ValueError, match="must be one of efforts"):
-        ModelOption(model="m", label="M", efforts=("low", "medium"), default_effort="high")
-    with pytest.raises(ValueError, match="must be one of efforts"):
-        ModelOption(model="m", label="M", efforts=("low", "medium"))
-    with pytest.raises(ValueError, match="non-empty efforts"):
-        ModelOption(model="m", label="M", default_effort="medium")
-
-
 def test_defaults_not_written_to_file(tmp_path: Path) -> None:
     path = tmp_path / "app_config.json"
     config = AppConfig()
-    config.model = "openai-responses:gpt-5-mini"
+    config.model = "openai-responses:gpt-5.4-mini"
     save_app_config(config, str(path))
     # Only the deliberately-set field lands in the file — the catalog (and any
     # other default) stays live in code.
-    assert json.loads(path.read_text()) == {"model": "openai-responses:gpt-5-mini"}
+    assert json.loads(path.read_text()) == {"model": "openai-responses:gpt-5.4-mini"}
 
 
 def test_custom_model_options_roundtrip(tmp_path: Path) -> None:
     path = str(tmp_path / "app_config.json")
-    options = [ModelOption(model="together:my/model", label="Mine", efforts=("low",), default_effort="low")]
+    options = [ModelOption(model="together:my/model", label="Mine", recommended_effort="low")]
     save_app_config(AppConfig(model_options=options), path)
     assert load_app_config(path).model_options == options
 

@@ -61,7 +61,7 @@ def test_chat_agent_notes_pre_registered_sources(monkeypatch: pytest.MonkeyPatch
     registry.register("sales", cast(Any, FakeSQLConnector()))
     registry.register("graph", cast(Any, FakeGraphConnector()))
 
-    agent = ChatAgent(registry=registry, model="test:model", reasoning_effort="minimal")
+    agent = ChatAgent(registry=registry, model="test:model", reasoning_effort="low")
 
     assert len(agent._message_history) == 1
     message = agent._message_history[0]
