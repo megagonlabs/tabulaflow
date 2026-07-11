@@ -404,8 +404,9 @@ July 10
 - [ ] Claude text response
 - [ ] Gemini levels - no xhigh
 - [ ] Hint bar
-- [ ] Other config options
+- [ ] Other config options - concurrency
 - [ ] Reasoning level setting through the repo
+- [ ] "Initializing..." when building agent
 
 - [ ] Inline code block (``) highlighting
 - [ ] Include Cypher
