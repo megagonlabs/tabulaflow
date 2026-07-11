@@ -905,12 +905,12 @@ def _is_citation_block(prefix: str) -> bool:
 
 
 def _extract_result_refs(answer_text: str) -> tuple[str, list[tuple[str, str | None]]]:
-    # A leading ``---`` is the refs/answer separator only when the text before it is
-    # a citation block (refs lines and/or empty) — otherwise the ``---`` is content.
+    # The prompt defines the first ``---`` as the boundary between intermediate
+    # narration / result refs and the user-visible answer. Some providers can put
+    # prose before that separator; hide it while still extracting any refs there.
     if _SEPARATOR in answer_text:
         prefix, display_text = answer_text.split(_SEPARATOR, 1)
-        if _is_citation_block(prefix):
-            return display_text.strip(), _parse_refs(prefix)
+        return display_text.strip(), _parse_refs(prefix)
     # No citation block: the whole output is user-facing. Still strip any inline
     # ``[[artifact:...]]`` markers the agent may have left in the prose.
     refs = _parse_refs(answer_text)
