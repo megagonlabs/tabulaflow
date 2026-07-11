@@ -219,7 +219,8 @@ class TestRenderMapTool:
     def test_tool_description_mentions_url_tooltip_links(self) -> None:
         doc = RenderMapTool.__call__.__doc__
         assert doc is not None
-        assert "URLs render as links" in doc
+        # Whitespace-normalized: the phrase may wrap across docstring lines.
+        assert "URLs render as links" in " ".join(doc.split())
 
     async def test_column_layer_missing_record_id_errors(self) -> None:
         history = await _history_with(pd.DataFrame({"lat": [37.7], "lng": [-122.4]}))
