@@ -880,6 +880,12 @@ class TabulaflowApp(App[None]):
             chat_log.mount(BannerWidget(model=session.model, reasoning_effort=session.reasoning_effort))
             return
 
+        if result.should_open_config:
+            from tabulaflow.app.screens import ConfigScreen
+
+            self.push_screen(ConfigScreen(session, on_change=self._refresh_bottom_status))
+            return
+
         if result.output is not None:
             msg = SystemMessage(result.output)
             chat_log.mount(msg)

@@ -34,11 +34,13 @@ class CommandResult:
         output: RenderableType | None = None,
         should_quit: bool = False,
         should_clear: bool = False,
+        should_open_config: bool = False,
         password_prompt: str | None = None,
     ) -> None:
         self.output = output
         self.should_quit = should_quit
         self.should_clear = should_clear
+        self.should_open_config = should_open_config
         self.password_prompt = password_prompt
 
 
@@ -362,10 +364,15 @@ async def _cmd_disconnect(args: list[str], session: SessionState) -> CommandResu
         return CommandResult(output=Text.from_markup(f"[{ERROR}]No connection named:[/] {alias}"))
 
 
+async def _cmd_config(args: list[str], session: SessionState) -> CommandResult:
+    return CommandResult(should_open_config=True)
+
+
 _COMMAND_HELP: dict[str, tuple[object, str]] = {
     "/help": (_cmd_help, "Show this help message"),
     "/exit": (_cmd_exit, "Exit the chat"),
     "/clear": (_cmd_clear, "Clear the screen"),
+    "/config": (_cmd_config, "Open the config panel"),
     "/connect": (_cmd_connect, "Connect to a database: /connect <url> \\[alias]"),
     "/disconnect": (_cmd_disconnect, "Disconnect: /disconnect \\[alias]"),
 }

@@ -53,7 +53,7 @@ if TYPE_CHECKING:
 # Autocomplete suggester
 # ---------------------------------------------------------------------------
 
-_SLASH_COMMANDS = sorted(["/help", "/exit", "/clear", "/connect", "/disconnect"])
+_SLASH_COMMANDS = sorted(["/help", "/exit", "/clear", "/config", "/connect", "/disconnect"])
 
 _CONNECTABLE_EXTENSIONS = frozenset(
     {".csv", ".tsv", ".xlsx", ".xls", ".parquet", ".json", ".jsonl", ".ndjson", ".sqlite", ".sqlite3", ".db", ".duckdb"}

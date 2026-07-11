@@ -8,7 +8,7 @@ from __future__ import annotations
 import json
 import re
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, get_args
 
 from rich.text import Text
 from textual.app import ComposeResult
@@ -16,7 +16,8 @@ from textual.binding import Binding
 from textual.screen import Screen
 from textual.widgets import DataTable, Static, TextArea
 
-from tabulaflow.app.theme import ACCENT, DRACULA_TRANSPARENT, ERROR, FK_MARKER, KEY_HINT, PK_MARKER
+from tabulaflow.app.config import ModelOption, ReasoningEffort, load_app_config, update_app_config
+from tabulaflow.app.theme import ACCENT, ACCENT_BOLD, DRACULA_TRANSPARENT, ERROR, FK_MARKER, KEY_HINT, PK_MARKER
 
 
 if TYPE_CHECKING:
@@ -24,6 +25,8 @@ if TYPE_CHECKING:
     from typing import Any
 
     import pandas as pd
+
+    from tabulaflow.app.session import SessionState
 
 
 def _normalize_json_like(value: object) -> object:
@@ -1722,3 +1725,181 @@ class SchemaBrowserScreen(Screen[None]):
         hint.append("R", style=KEY_HINT)
         hint.append(" Refresh", style=hint_fg)
         self._hint.update(hint)
+
+
+# ---------------------------------------------------------------------------
+# Config screen
+# ---------------------------------------------------------------------------
+
+_CONFIG_LABEL_WIDTH = 20
+
+
+def _fallback_model_option(model: str) -> ModelOption:
+    """Capability guess for a model outside the catalog (e.g. set via ``--model``)."""
+    if model.partition(":")[0] in ("openai-responses", "openai"):
+        return ModelOption(model=model, label=model, efforts=get_args(ReasoningEffort), default_effort="medium")
+    return ModelOption(model=model, label=model)
+
+
+class ConfigScreen(Screen[None]):
+    """Full-screen editor for session preferences (model, reasoning effort).
+
+    Renders the whole model catalog: up/down moves the cursor, enter applies
+    the model under it, left/right cycles the reasoning effort. Changes apply
+    to the live session immediately and persist to
+    ``~/.tabulaflow/app_config.json`` as the default for new sessions.
+    """
+
+    DEFAULT_CSS = """
+    ConfigScreen {
+        background: $background;
+    }
+
+    ConfigScreen #config-body {
+        padding: 1 2;
+    }
+
+    ConfigScreen .config-row {
+        height: 1;
+    }
+
+    ConfigScreen #config-hint {
+        dock: bottom;
+        padding: 0 1;
+        color: #f5f5f5;
+        background: #2a2a2a;
+    }
+    """
+
+    BINDINGS = [
+        Binding("escape", "close", "Back", show=True),
+        Binding("up", "cursor_move(-1)", "Move", show=False),
+        Binding("down", "cursor_move(1)", "Move", show=False),
+        Binding("left", "cycle(-1)", "Change", show=False),
+        Binding("right", "cycle(1)", "Change", show=False),
+        Binding("enter", "select", "Select", show=False),
+    ]
+
+    def __init__(self, session: SessionState, on_change: Callable[[], None]) -> None:
+        super().__init__()
+        self._session = session
+        self._on_change = on_change
+        options = list(load_app_config().model_options)
+        if all(o.model != session.model for o in options):
+            options.insert(0, _fallback_model_option(session.model))
+        self._options = options
+        self._cursor = next(i for i, o in enumerate(options) if o.model == session.model)
+        self._model_rows = [Static(classes="config-row") for _ in options]
+        self._reasoning_row = Static(classes="config-row")
+
+    def compose(self) -> ComposeResult:
+        from textual.containers import Vertical
+
+        with Vertical(id="config-body"):
+            yield Static(Text("Config", style=ACCENT_BOLD))
+            yield Static("")
+            yield Static(Text("Model", style="bold"))
+            yield from self._model_rows
+            yield Static("")
+            yield Static(Text("Reasoning", style="bold"))
+            yield self._reasoning_row
+        yield Static(self._hint_text(), id="config-hint")
+
+    def on_mount(self) -> None:
+        self._refresh()
+
+    def _current_option(self) -> ModelOption:
+        return next(o for o in self._options if o.model == self._session.model)
+
+    def _num_cursor_rows(self) -> int:
+        # The reasoning row (index ``len(self._options)``) is reachable only
+        # when the active model supports reasoning efforts.
+        return len(self._options) + (1 if self._current_option().efforts else 0)
+
+    def _render_model_row(self, i: int) -> Text:
+        option = self._options[i]
+        selected = self._cursor == i
+        current = option.model == self._session.model
+        t = Text()
+        t.append("❯ " if selected else "  ", style=ACCENT_BOLD)
+        t.append("● " if current else "  ", style=ACCENT)
+        t.append(option.label.ljust(_CONFIG_LABEL_WIDTH), style="bold" if selected else "")
+        if option.model != option.label:
+            t.append(option.model, style="dim")
+        return t
+
+    def _render_reasoning_row(self) -> Text:
+        option = self._current_option()
+        selected = self._cursor == len(self._options)
+        t = Text()
+        t.append("❯ " if selected else "  ", style=ACCENT_BOLD)
+        t.append("  ")
+        if not option.efforts:
+            t.append("not supported for this model", style="dim")
+            return t
+        for effort in option.efforts:
+            if effort != self._session.reasoning_effort:
+                style = "dim"
+            elif selected:
+                style = f"bold black on {ACCENT}"
+            else:
+                style = ACCENT_BOLD
+            t.append(f" {effort} ", style=style)
+            t.append(" ")
+        return t
+
+    def _hint_text(self) -> Text:
+        hint = Text()
+        hint.append("↑↓", style=KEY_HINT)
+        hint.append(" Move    ", style="dim")
+        hint.append("↵", style=KEY_HINT)
+        hint.append(" Select model    ", style="dim")
+        hint.append("←→", style=KEY_HINT)
+        hint.append(" Change reasoning    ", style="dim")
+        hint.append("Esc", style=KEY_HINT)
+        hint.append(" Back    ", style="dim")
+        hint.append("Changes apply now and save as your default", style="dim")
+        return hint
+
+    def _refresh(self) -> None:
+        for i, row in enumerate(self._model_rows):
+            row.update(self._render_model_row(i))
+        self._reasoning_row.update(self._render_reasoning_row())
+
+    def _persist(self) -> None:
+        update_app_config(model=self._session.model, reasoning_effort=self._session.reasoning_effort)
+        self._on_change()
+        self._refresh()
+
+    def action_cursor_move(self, delta: int) -> None:
+        self._cursor = max(0, min(self._num_cursor_rows() - 1, self._cursor + delta))
+        self._refresh()
+
+    def action_select(self) -> None:
+        if self._cursor >= len(self._options):
+            return
+        option = self._options[self._cursor]
+        self._session.set_model(option.model)
+        # Keep the effort if the new model supports it, else snap to the model's
+        # default. With no efforts at all, retain the stored preference — it
+        # resurfaces when the user switches back to a model that supports it.
+        if option.efforts and self._session.reasoning_effort not in option.efforts:
+            assert option.default_effort is not None  # guaranteed by ModelOption validation
+            self._session.set_reasoning_effort(option.default_effort)
+        self._persist()
+
+    def action_cycle(self, delta: int) -> None:
+        if self._cursor != len(self._options):
+            return
+        option = self._current_option()
+        current = self._session.reasoning_effort
+        if current in option.efforts:
+            i = (option.efforts.index(current) + delta) % len(option.efforts)
+            self._session.set_reasoning_effort(option.efforts[i])
+        else:
+            assert option.default_effort is not None  # guaranteed by ModelOption validation
+            self._session.set_reasoning_effort(option.default_effort)
+        self._persist()
+
+    def action_close(self) -> None:
+        self.app.pop_screen()
