@@ -405,6 +405,7 @@ July 10
 - [ ] Gemini levels - no xhigh
 - [ ] Hint bar
 - [ ] Other config options
+- [ ] Reasoning level setting through the repo
 
 - [ ] Inline code block (``) highlighting
 - [ ] Include Cypher
