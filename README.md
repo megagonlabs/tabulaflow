@@ -401,7 +401,8 @@ July 9
 July 10
 - [x] app/config.py
 
-- [ ] Claude text response
+July 11
+- [x] Fix response format - change "---" to "<artifacts>...</artifacts>"
 - [ ] Gemini levels - no xhigh
 - [ ] Hint bar
 - [ ] Other config options - concurrency
