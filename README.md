@@ -399,17 +399,19 @@ July 9
 - [x] Fix chat agent not aware of non-empty registry
 
 July 10
-- [x] app/config.py
+- [x] app/config.py and config panel
 
 July 11
-- [x] Fix response format - change "---" to "<artifacts>...</artifacts>"
-- [x] Subagent model config
-- [x] Generalize provider-specific configuration
-- [x] Fix LLM configuration inconsistencies
+- Config panel
+  - [x] Fix response format - change "---" to "<artifacts>...</artifacts>"
+  - [x] Subagent model config
+  - [x] Generalize provider-specific configuration
+  - [x] Fix LLM configuration inconsistencies
+  - [x] Hint bar
+  - [x] New config UI based on LLM presets
+
 - [ ] Gemini levels - no xhigh
-- [ ] Hint bar
 - [ ] Other config options - concurrency
-- [ ] Reasoning level setting through the repo
 - [ ] "Initializing..." when building agent
 - [ ] UserError: Anthropic does not support thinking and output tools at the same time. Use `output_type=NativeOutput(...)` instead.
 
