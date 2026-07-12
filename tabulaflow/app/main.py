@@ -54,29 +54,32 @@ def chat(
     import asyncio
     from typing import get_args
 
-    from pydantic import ValidationError
-
     import tabulaflow
-    from tabulaflow.app.config import ReasoningEffort, load_app_config
+    from tabulaflow.app.config import LLMRoleConfig, ReasoningEffort, load_app_config
 
     app_config = load_app_config()
+    preset = app_config.active_preset
+    main = preset.main
+    subagent = preset.subagent
     if model is not None:
-        app_config.model = model
+        main = main.model_copy(update={"model": model})
     if subagent_model is not None:
-        app_config.subagent_model = subagent_model
+        subagent = subagent.model_copy(update={"model": subagent_model})
     if reasoning_effort is not None:
         try:
-            # CLI input is an arbitrary string; pydantic validates the literal on assignment.
-            app_config.reasoning_effort = reasoning_effort  # type: ignore[assignment]
-        except ValidationError:
+            # CLI input is an arbitrary string; pydantic validates the literal.
+            main = LLMRoleConfig.model_validate({**main.model_dump(), "reasoning_effort": reasoning_effort})
+        except ValueError:
             raise typer.BadParameter(
                 f"{reasoning_effort!r} is not one of: {', '.join(get_args(ReasoningEffort))}",
                 param_hint="--reasoning-effort",
             ) from None
     if subagent_reasoning_effort is not None:
         try:
-            app_config.subagent_reasoning_effort = subagent_reasoning_effort  # type: ignore[assignment]
-        except ValidationError:
+            subagent = LLMRoleConfig.model_validate(
+                {**subagent.model_dump(), "reasoning_effort": subagent_reasoning_effort}
+            )
+        except ValueError:
             raise typer.BadParameter(
                 f"{subagent_reasoning_effort!r} is not one of: {', '.join(get_args(ReasoningEffort))}",
                 param_hint="--subagent-reasoning-effort",
@@ -93,10 +96,10 @@ def chat(
 
     asyncio.run(
         run_tui(
-            model=app_config.model,
-            reasoning_effort=app_config.reasoning_effort,
-            subagent_model=app_config.subagent_model,
-            subagent_reasoning_effort=app_config.subagent_reasoning_effort,
+            model=main.model,
+            reasoning_effort=main.reasoning_effort,
+            subagent_model=subagent.model,
+            subagent_reasoning_effort=subagent.reasoning_effort,
             output_pane_host=output_pane_host,
             output_pane_port=output_pane_port,
             output_pane_public_url=output_pane_public_url,

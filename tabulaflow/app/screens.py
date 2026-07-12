@@ -7,9 +7,8 @@ from __future__ import annotations
 
 import json
 import re
-from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING, Protocol
+from typing import TYPE_CHECKING
 
 from rich.text import Text
 from textual.app import ComposeResult
@@ -17,7 +16,7 @@ from textual.binding import Binding
 from textual.screen import Screen
 from textual.widgets import DataTable, Static, TextArea
 
-from tabulaflow.app.config import APP_CONFIG_PATH, ModelOption, load_app_config, update_app_config
+from tabulaflow.app.config import APP_CONFIG_PATH, LLMRoleConfig, LLMPreset, load_app_config, update_app_config
 from tabulaflow.app.theme import ACCENT, ACCENT_BOLD, DRACULA_TRANSPARENT, ERROR, FK_MARKER, KEY_HINT, PK_MARKER
 
 
@@ -1733,87 +1732,52 @@ class SchemaBrowserScreen(Screen[None]):
 # ---------------------------------------------------------------------------
 
 
-class _SetProfile(Protocol):
-    def __call__(self, *, model: str, reasoning_effort: str) -> None: ...
+_CURRENT_CUSTOM_PRESET_ID = "__current_custom__"
 
 
-@dataclass(frozen=True)
-class _ConfigPreset:
-    label: str
-    model: ModelOption
-    subagent_model: ModelOption
+def _compact_model_name(model: str) -> str:
+    _, sep, name = model.partition(":")
+    if not sep:
+        name = model
+    name = name.rsplit("/", 1)[-1]
+    tokens = name.replace("_", "-").split("-")
+    if len(tokens) > 1 and tokens[-1].isdigit() and len(tokens[-1]) == 8:
+        tokens = tokens[:-1]
+    if len(tokens) >= 2 and tokens[-1].isdigit() and tokens[-2].isdigit():
+        tokens = [*tokens[:-2], f"{tokens[-2]}.{tokens[-1]}"]
+    parts: list[str] = []
+    for tok in tokens:
+        if tok.lower() == "gpt":
+            parts.append(tok.upper())
+        elif tok[:1].isalpha():
+            parts.append(tok.capitalize())
+        else:
+            parts.append(tok)
+    return " ".join(parts)
 
 
-@dataclass(frozen=True)
-class _ConfigModelSection:
-    kind: str
-    effort_kind: str
-    title: str
-    options: list[ModelOption]
-    rows: list[Static]
-    current_model: Callable[[], str]
-    api_key: Callable[[], str | None]
-    supported_efforts: Callable[[], tuple[str, ...]]
-    current_effort: Callable[[], str]
-    set_profile: _SetProfile
+def _preset_matches_session(preset: LLMPreset, session: SessionState) -> bool:
+    return (
+        preset.main.model == session.model
+        and preset.main.reasoning_effort == session.reasoning_effort
+        and preset.subagent.model == session.subagent_model
+        and preset.subagent.reasoning_effort == session.subagent_reasoning_effort
+    )
 
 
-def _model_provider(model: str) -> str:
-    return model.partition(":")[0] if ":" in model else "custom"
-
-
-def _provider_label(provider: str) -> str:
-    labels = {
-        "anthropic": "Anthropic",
-        "fireworks": "Fireworks",
-        "google-vertex": "Google Vertex",
-        "openai": "OpenAI",
-        "openai-responses": "OpenAI",
-        "test": "Test",
-        "together": "Together",
-    }
-    return labels.get(provider, provider.replace("-", " ").title())
-
-
-def _group_options_by_provider(options: list[ModelOption]) -> list[ModelOption]:
-    providers: dict[str, list[ModelOption]] = {}
-    for option in options:
-        providers.setdefault(_model_provider(option.model), []).append(option)
-    return [option for provider_options in providers.values() for option in provider_options]
-
-
-def _provider_presets(options: list[ModelOption], subagent_options: list[ModelOption]) -> list[_ConfigPreset]:
-    main_by_provider: dict[str, ModelOption] = {}
-    subagent_by_provider: dict[str, ModelOption] = {}
-    for option in options:
-        main_by_provider.setdefault(_model_provider(option.model), option)
-    for option in subagent_options:
-        subagent_by_provider.setdefault(_model_provider(option.model), option)
-
-    presets: list[_ConfigPreset] = []
-    for provider, option in main_by_provider.items():
-        subagent_option = subagent_by_provider.get(provider)
-        if subagent_option is None:
-            continue
-        presets.append(
-            _ConfigPreset(
-                label=_provider_label(provider),
-                model=option,
-                subagent_model=subagent_option,
-            )
-        )
-    return presets
+def _current_session_preset(session: SessionState) -> LLMPreset:
+    return LLMPreset(
+        id=_CURRENT_CUSTOM_PRESET_ID,
+        label="Current custom",
+        main=LLMRoleConfig.model_validate({"model": session.model, "reasoning_effort": session.reasoning_effort}),
+        subagent=LLMRoleConfig.model_validate(
+            {"model": session.subagent_model, "reasoning_effort": session.subagent_reasoning_effort}
+        ),
+    )
 
 
 class ConfigScreen(Screen[None]):
-    """Full-screen editor for session preferences (main/subagent models, reasoning effort).
-
-    Renders provider presets plus separate main/subagent model sections. Each
-    model catalog is grouped by provider, and reasoning-effort chips stay
-    nested under the active model for that role. Changes apply to the live
-    session immediately and persist to ``~/.tabulaflow/app_config.json`` as the
-    default for new sessions.
-    """
+    """Full-screen editor for the active LLM preset."""
 
     DEFAULT_CSS = """
     ConfigScreen {
@@ -1840,8 +1804,6 @@ class ConfigScreen(Screen[None]):
         Binding("escape", "close", "Back", show=True),
         Binding("up", "cursor_move(-1)", "Move", show=False),
         Binding("down", "cursor_move(1)", "Move", show=False),
-        Binding("left", "cycle(-1)", "Change", show=False),
-        Binding("right", "cycle(1)", "Change", show=False),
         Binding("enter", "select", "Select", show=False),
     ]
 
@@ -1850,54 +1812,15 @@ class ConfigScreen(Screen[None]):
         self._session = session
         self._on_change = on_change
         app_config = load_app_config()
-        options = list(app_config.model_options)
-        if all(o.model != session.model for o in options):
-            options.insert(0, ModelOption(model=session.model, label=session.model))
-        options = _group_options_by_provider(options)
-        self._options = options
-        subagent_options = list(app_config.subagent_model_options)
-        if all(o.model != session.subagent_model for o in subagent_options):
-            subagent_options.insert(0, ModelOption(model=session.subagent_model, label=session.subagent_model))
-        subagent_options = _group_options_by_provider(subagent_options)
-        self._subagent_options = subagent_options
-        self._presets = _provider_presets(options, subagent_options)
+        self._presets = list(app_config.llm_presets)
+        if all(not _preset_matches_session(preset, session) for preset in self._presets):
+            self._presets.insert(0, _current_session_preset(session))
         self._preset_rows = [Static(classes="config-row") for _ in self._presets]
-        active = next(i for i, o in enumerate(options) if o.model == session.model)
-        # Cursor is a slot, not an index, so it survives the effort row moving
-        # to a newly selected model.
-        self._cursor: tuple[str, int] = ("model", active)
+        active = next(i for i, preset in enumerate(self._presets) if _preset_matches_session(preset, session))
+        self._cursor = active
         # Set when applying a model fails (e.g. missing provider credentials):
-        # (slot kind, option index, provider error). Rendered inline under the
-        # attempted row.
-        self._select_error: tuple[str, int, str] | None = None
-        self._rows = [Static(classes="config-row") for _ in options]
-        self._subagent_rows = [Static(classes="config-row") for _ in subagent_options]
-        self._sections = (
-            _ConfigModelSection(
-                kind="model",
-                effort_kind="effort",
-                title="Main LLM",
-                options=self._options,
-                rows=self._rows,
-                current_model=lambda: self._session.model,
-                api_key=lambda: self._session.api_key,
-                supported_efforts=lambda: self._session.supported_efforts,
-                current_effort=lambda: self._session.reasoning_effort,
-                set_profile=self._session.set_main_profile,
-            ),
-            _ConfigModelSection(
-                kind="subagent_model",
-                effort_kind="subagent_effort",
-                title="Subagent",
-                options=self._subagent_options,
-                rows=self._subagent_rows,
-                current_model=lambda: self._session.subagent_model,
-                api_key=lambda: self._session.subagent_api_key,
-                supported_efforts=lambda: self._session.subagent_supported_efforts,
-                current_effort=lambda: self._session.subagent_reasoning_effort,
-                set_profile=self._session.set_subagent_profile,
-            ),
-        )
+        # (option index, provider error). Rendered inline under the attempted row.
+        self._select_error: tuple[int, str] | None = None
 
     def compose(self) -> ComposeResult:
         from textual.containers import Vertical
@@ -1910,42 +1833,21 @@ class ConfigScreen(Screen[None]):
             yield Static(title)
             yield Static("")
             if self._preset_rows:
-                yield Static(Text("Presets", style="bold"))
+                yield Static(Text("LLM Presets", style="bold"))
                 yield from self._preset_rows
-                yield Static("")
-            for n, section in enumerate(self._sections):
-                if n:
-                    yield Static("")
-                yield Static(Text(section.title, style="bold"))
-                yield from section.rows
         yield Static(self._hint_text(), id="config-hint")
 
     def on_mount(self) -> None:
         self._refresh()
 
     def _slots(self) -> list[tuple[str, int]]:
-        """Cursor-reachable rows: every model, plus the effort row nested under
-        the active model when it supports reasoning efforts."""
-        slots: list[tuple[str, int]] = [("preset", i) for i in range(len(self._presets))]
-        for section in self._sections:
-            for i, option in enumerate(section.options):
-                slots.append((section.kind, i))
-                if option.model == section.current_model() and section.supported_efforts():
-                    slots.append((section.effort_kind, i))
-        return slots
-
-    def _render_row(self, i: int) -> Text:
-        return self._render_model_row(self._sections[0], i)
-
-    def _render_subagent_row(self, i: int) -> Text:
-        return self._render_model_row(self._sections[1], i)
+        """Cursor-reachable preset rows."""
+        return [("preset", i) for i in range(len(self._presets))]
 
     def _render_preset_row(self, i: int) -> Text:
         preset = self._presets[i]
-        selected = self._cursor == ("preset", i)
-        active = (
-            self._session.model == preset.model.model and self._session.subagent_model == preset.subagent_model.model
-        )
+        selected = self._cursor == i
+        active = _preset_matches_session(preset, self._session)
         t = Text()
         t.append("❯ " if selected else "  ", style=ACCENT_BOLD)
         t.append("● " if active else "  ", style=ACCENT)
@@ -1954,56 +1856,17 @@ class ConfigScreen(Screen[None]):
         else:
             label_style = "bold" if selected else ""
         t.append(preset.label, style=label_style)
-        t.append(f" · main {preset.model.label}", style="dim")
-        t.append(f" · subagent {preset.subagent_model.label}", style="dim")
-        if self._select_error is not None and self._select_error[0] == "preset" and self._select_error[1] == i:
+        t.append(
+            f" · {_compact_model_name(preset.main.model)} {preset.main.reasoning_effort}",
+            style="dim",
+        )
+        t.append(
+            f" · {_compact_model_name(preset.subagent.model)} {preset.subagent.reasoning_effort}",
+            style="dim",
+        )
+        if self._select_error is not None and self._select_error[0] == i:
             t.append("\n")
-            t.append(f"      {self._select_error[2]}", style=ERROR)
-        return t
-
-    def _render_model_row(self, section: _ConfigModelSection, i: int) -> Text:
-        option = section.options[i]
-        active = option.model == section.current_model()
-        selected = self._cursor == (section.kind, i)
-        t = Text()
-        provider = _model_provider(option.model)
-        if i == 0 or _model_provider(section.options[i - 1].model) != provider:
-            t.append(_provider_label(provider), style="dim")
-            t.append("\n")
-        t.append("❯ " if selected else "  ", style=ACCENT_BOLD)
-        t.append("● " if active else "  ", style=ACCENT)
-        # Mint iff active, bold iff under the cursor — two independent channels.
-        if active:
-            label_style = ACCENT_BOLD if selected else ACCENT
-        else:
-            label_style = "bold" if selected else ""
-        t.append(option.label, style=label_style)
-        if option.model != option.label:
-            t.append(f" · {_provider_label(provider)}", style="dim")
-        if active:
-            key = section.api_key()
-            if key is not None and len(key) >= 12:
-                t.append(f" · API key {key[:3]}***{key[-4:]}", style="dim")
-        if active and section.supported_efforts():
-            t.append("\n")
-            t.append_text(self._render_effort_line(section, i))
-        if self._select_error is not None and self._select_error[0] == section.kind and self._select_error[1] == i:
-            t.append("\n")
-            t.append(f"      {self._select_error[2]}", style=ERROR)
-        return t
-
-    def _render_effort_line(self, section: _ConfigModelSection, i: int) -> Text:
-        option = section.options[i]
-        selected = self._cursor == (section.effort_kind, i)
-        t = Text()
-        t.append("❯ " if selected else "  ", style=ACCENT_BOLD)
-        t.append("    ")
-        t.append("effort: ", style="dim")
-        for effort in section.supported_efforts():
-            current = effort == section.current_effort()
-            label = f" {effort} (recommended) " if effort == option.recommended_effort else f" {effort} "
-            t.append(label, style=(ACCENT_BOLD if selected else ACCENT) if current else "dim")
-            t.append(" ")
+            t.append(f"      {self._select_error[1]}", style=ERROR)
         return t
 
     def _hint_text(self) -> Text:
@@ -2015,53 +1878,13 @@ class ConfigScreen(Screen[None]):
     def _refresh(self) -> None:
         for i, row in enumerate(self._preset_rows):
             row.update(self._render_preset_row(i))
-        for section in self._sections:
-            for i, row in enumerate(section.rows):
-                row.update(self._render_model_row(section, i))
-
-    def _persist(self) -> None:
-        update_app_config(
-            model=self._session.model,
-            reasoning_effort=self._session.reasoning_effort,
-            subagent_model=self._session.subagent_model,
-            subagent_reasoning_effort=self._session.subagent_reasoning_effort,
-        )
-        self._on_change()
-        self._refresh()
 
     def action_cursor_move(self, delta: int) -> None:
-        slots = self._slots()
-        i = slots.index(self._cursor)
-        self._cursor = slots[max(0, min(len(slots) - 1, i + delta))]
+        self._cursor = max(0, min(len(self._presets) - 1, self._cursor + delta))
         self._refresh()
 
     def action_select(self) -> None:
-        kind, i = self._cursor
-        if kind == "preset":
-            self._select_preset(i)
-            return
-        section = self._section_for_kind(kind)
-        if section is None or kind != section.kind:
-            return
-        option = section.options[i]
-        changed = option.model != section.current_model()
-        reasoning_effort = (
-            option.recommended_effort if changed and option.recommended_effort is not None else section.current_effort()
-        )
-        self._select_error = None
-        try:
-            section.set_profile(model=option.model, reasoning_effort=reasoning_effort)
-        except Exception as e:
-            # ``set_profile`` is transactional — the previous profile is still
-            # active. Report why this one couldn't be applied; nothing persists.
-            self._select_error = (kind, i, str(e))
-            self._refresh()
-            return
-        # Land on the chips that just appeared under the selection, so ←→
-        # tunes the effort without an intervening ↓.
-        if section.supported_efforts():
-            self._cursor = (section.effort_kind, i)
-        self._persist()
+        self._select_preset(self._cursor)
 
     def _select_preset(self, i: int) -> None:
         preset = self._presets[i]
@@ -2069,39 +1892,26 @@ class ConfigScreen(Screen[None]):
         old_reasoning_effort = self._session.reasoning_effort
         old_subagent_model = self._session.subagent_model
         old_subagent_reasoning_effort = self._session.subagent_reasoning_effort
-        main_effort = preset.model.recommended_effort or self._session.reasoning_effort
-        subagent_effort = preset.subagent_model.recommended_effort or self._session.subagent_reasoning_effort
         self._select_error = None
         try:
-            self._session.set_main_profile(model=preset.model.model, reasoning_effort=main_effort)
-            self._session.set_subagent_profile(model=preset.subagent_model.model, reasoning_effort=subagent_effort)
+            self._session.set_main_profile(model=preset.main.model, reasoning_effort=preset.main.reasoning_effort)
+            self._session.set_subagent_profile(
+                model=preset.subagent.model,
+                reasoning_effort=preset.subagent.reasoning_effort,
+            )
         except Exception as e:
             self._session.set_main_profile(model=old_model, reasoning_effort=old_reasoning_effort)
             self._session.set_subagent_profile(
                 model=old_subagent_model,
                 reasoning_effort=old_subagent_reasoning_effort,
             )
-            self._select_error = ("preset", i, str(e))
+            self._select_error = (i, str(e))
             self._refresh()
             return
-        self._persist()
-
-    def action_cycle(self, delta: int) -> None:
-        kind, _ = self._cursor
-        section = self._section_for_kind(kind)
-        if section is None or kind != section.effort_kind:
-            return
-        efforts = section.supported_efforts()
-        current = section.current_effort()
-        j = (efforts.index(current) + delta) % len(efforts) if current in efforts else 0
-        section.set_profile(model=section.current_model(), reasoning_effort=efforts[j])
-        self._persist()
-
-    def _section_for_kind(self, kind: str) -> _ConfigModelSection | None:
-        for section in self._sections:
-            if kind in {section.kind, section.effort_kind}:
-                return section
-        return None
+        if preset.id != _CURRENT_CUSTOM_PRESET_ID:
+            update_app_config(active_llm_preset=preset.id)
+        self._on_change()
+        self._refresh()
 
     def action_close(self) -> None:
         self.app.pop_screen()
