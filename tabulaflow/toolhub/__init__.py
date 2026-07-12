@@ -1,4 +1,4 @@
-from tabulaflow.toolhub.base import BaseTool
+from tabulaflow.toolhub.base import BaseTool, LLMProfileTool
 from tabulaflow.toolhub.get_column_json_schema import GetColumnJsonSchemaTool
 from tabulaflow.toolhub.get_table_schema import GetTableSchemaTool
 from tabulaflow.toolhub.add_canonical_name import AddCanonicalNameTool
@@ -28,6 +28,7 @@ from tabulaflow.toolhub.web_browser import (
 
 __all__ = [
     "BaseTool",
+    "LLMProfileTool",
     "GetColumnJsonSchemaTool",
     "GetTableSchemaTool",
     "AddCanonicalNameTool",

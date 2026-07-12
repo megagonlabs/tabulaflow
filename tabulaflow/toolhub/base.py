@@ -2,6 +2,7 @@ from typing import Any, ClassVar, Protocol, TypeAlias
 
 from pydantic import BaseModel
 from pydantic_ai import Tool, ToolOutput
+from pydantic_ai.settings import ModelSettings
 
 
 BaseToolMetrics: TypeAlias = BaseModel
@@ -21,3 +22,9 @@ class BaseTool(Protocol):
     def as_pydantic_ai_tool(self) -> Tool | ToolOutput[Any]: ...
 
     def metrics(self) -> BaseToolMetrics: ...
+
+
+class LLMProfileTool(Protocol):
+    """Tool whose internal LLM follows a host-selected helper profile."""
+
+    def set_llm_profile(self, *, llm: str, model_settings: ModelSettings | None) -> None: ...

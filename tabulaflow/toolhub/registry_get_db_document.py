@@ -4,6 +4,7 @@ from typing import Any, Callable, ClassVar
 
 from pydantic import BaseModel
 from pydantic_ai import Tool
+from pydantic_ai.settings import ModelSettings
 
 from tabulaflow.core.db_connector.base import NL2QDBConnector
 from tabulaflow.core.db_connector.db_registry import DBRegistry
@@ -41,7 +42,7 @@ class RegistryGetDBDocumentTool:
         summary_max_words: int = 2000,
         min_items_for_summary: int = 10,
         enable_refresh: bool = False,
-        model_settings: dict[str, object] | None = None,
+        model_settings: ModelSettings | None = None,
     ) -> None:
         """Initialize the tool.
 
@@ -69,6 +70,13 @@ class RegistryGetDBDocumentTool:
         self._compressor = SchemaCompressor()
         self._metrics = RegistryGetDBDocumentToolMetrics()
         self._document_cache: dict[str, tuple[NL2QDBConnector, str]] = {}
+
+    def set_llm_profile(self, *, llm: str, model_settings: ModelSettings | None) -> None:
+        """Update the LLM profile used by generated database summaries."""
+        if self.db_summarizer_llm != llm or self.model_settings != model_settings:
+            self.db_summarizer_llm = llm
+            self.model_settings = model_settings
+            self._document_cache.clear()
 
     def _schema_item_count(self, db_alias: str) -> int:
         connector = self.registry.get(db_alias)

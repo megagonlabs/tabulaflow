@@ -238,6 +238,11 @@ class AddCanonicalNameTool:
         """Bind the workspace connector after construction (mirrors QueryHistory)."""
         self._db_connector = connector
 
+    def set_llm_profile(self, *, llm: str, model_settings: ModelSettings | None) -> None:
+        """Update the LLM profile used by canonicalization subagents."""
+        self.subagent_llm = llm
+        self.model_settings = model_settings
+
     async def __call__(
         self,
         ctx: RunContext[Any],

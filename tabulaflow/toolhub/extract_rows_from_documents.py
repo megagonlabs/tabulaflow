@@ -84,6 +84,11 @@ class ExtractRowsFromDocumentsTool:
         # of entities extracted so far; tool_call_id routes progress to the right step.
         self.on_rows_extracted: Callable[[int, str | None], None] | None = None
 
+    def set_llm_profile(self, *, llm: str, model_settings: ModelSettings | None) -> None:
+        """Update the LLM profile used by per-chunk extraction subagents."""
+        self.subagent_llm = llm
+        self.model_settings = model_settings
+
     async def __call__(
         self,
         ctx: RunContext[Any],

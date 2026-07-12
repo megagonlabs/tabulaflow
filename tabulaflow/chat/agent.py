@@ -61,6 +61,7 @@ if TYPE_CHECKING:
         ExtractRowsFromDocumentsTool,
         FileEditorTool,
         GraphArtifact,
+        LLMProfileTool,
         MapArtifact,
         QueryHistory,
         QueryRecord,
@@ -414,7 +415,8 @@ class ChatAgent:
             get_db_document=RegistryGetDBDocumentTool(
                 self.registry,
                 db_summarizer_cls=DBSummarizer,
-                model_settings={"openai_service_tier": "priority"},
+                db_summarizer_llm=self.subagent_model,
+                model_settings=self._subagent_model_settings(),
                 enable_refresh=True,
             ),
             get_column_json_schema=RegistryGetColumnJsonSchemaTool(self.registry),
@@ -580,16 +582,20 @@ class ChatAgent:
         """
         return reasoning_model_settings(self.subagent_reasoning_effort, model=self.subagent_model)
 
+    def _subagent_profile_tools(self) -> tuple[LLMProfileTool, ...]:
+        """Tools whose internal helper LLM follows the app subagent profile."""
+        tools: list[LLMProfileTool] = [self._tools.get_db_document, self._tools.add_canonical_name]
+        if self._tools.run_subagent_for_each_row is not None:
+            tools.append(self._tools.run_subagent_for_each_row)
+        if self._tools.extract_rows_from_documents is not None:
+            tools.append(self._tools.extract_rows_from_documents)
+        return tuple(tools)
+
     def _apply_subagent_profile(self) -> None:
         """Update existing subagent-backed tool instances with the current profile."""
-        if self._tools.run_subagent_for_each_row is not None:
-            self._tools.run_subagent_for_each_row.subagent_llm = self.subagent_model
-            self._tools.run_subagent_for_each_row.model_settings = self._subagent_model_settings()
-        if self._tools.extract_rows_from_documents is not None:
-            self._tools.extract_rows_from_documents.subagent_llm = self.subagent_model
-            self._tools.extract_rows_from_documents.model_settings = self._subagent_model_settings()
-        self._tools.add_canonical_name.subagent_llm = self.subagent_model
-        self._tools.add_canonical_name.model_settings = self._subagent_model_settings()
+        model_settings = self._subagent_model_settings()
+        for tool in self._subagent_profile_tools():
+            tool.set_llm_profile(llm=self.subagent_model, model_settings=model_settings)
 
     def set_model(self, model: str) -> None:
         """Update the model and rebuild the bound runtime agent. Use this rather
