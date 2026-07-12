@@ -115,7 +115,8 @@ async def test_active_preset_shows_api_keys() -> None:
     screen = ConfigScreen(session, on_change=lambda: None)  # type: ignore[arg-type]
     async with _App(screen).run_test() as pilot:
         await pilot.pause()
-        assert " · [API key ***E0QA]" in screen._render_preset_row(0).plain
+        assert " [API key ***E0QA]" in screen._render_preset_row(0).plain
+        assert " · [API key" not in screen._render_preset_row(0).plain
         assert "\n      [API key" not in screen._render_preset_row(0).plain
         assert screen._render_preset_row(0).plain.count("[API key ***E0QA]") == 1
         assert "API key" not in screen._render_preset_row(1).plain
@@ -133,7 +134,8 @@ async def test_active_mixed_preset_shows_distinct_api_keys() -> None:
     screen = ConfigScreen(session, on_change=lambda: None)  # type: ignore[arg-type]
     async with _App(screen).run_test() as pilot:
         await pilot.pause()
-        assert " · [API key ***0000] [API key ***1111]" in screen._render_preset_row(0).plain
+        assert " [API key ***0000] [API key ***1111]" in screen._render_preset_row(0).plain
+        assert " · [API key" not in screen._render_preset_row(0).plain
         await pilot.press("down")
         assert "API key" in screen._render_preset_row(0).plain
         assert "API key" not in screen._render_preset_row(1).plain

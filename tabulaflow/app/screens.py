@@ -1875,7 +1875,7 @@ class ConfigScreen(Screen[None]):
         if active:
             api_key_text = self._api_key_text()
             if api_key_text is not None:
-                inline_text = f" · {api_key_text}"
+                inline_text = f" {api_key_text}"
                 if available_width is not None and t.cell_len + len(inline_text) > available_width:
                     t.append("\n")
                     t.append(f"      {api_key_text}", style="dim")
