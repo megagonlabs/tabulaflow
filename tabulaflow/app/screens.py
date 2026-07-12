@@ -1906,8 +1906,8 @@ class ConfigScreen(Screen[None]):
             seen_keys.add(key)
             masked = _masked_api_key(key)
             if masked is not None:
-                api_key_labels.append(f"API key {masked}")
-        return " · ".join(api_key_labels) or None
+                api_key_labels.append(f"[API key {masked}]")
+        return " ".join(api_key_labels) or None
 
     def action_cursor_move(self, delta: int) -> None:
         self._cursor = max(0, min(len(self._presets) - 1, self._cursor + delta))
