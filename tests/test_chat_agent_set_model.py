@@ -10,14 +10,15 @@ from tabulaflow.chat import ChatAgent
 from tabulaflow.core.db_connector.db_registry import DBRegistry
 
 
-def test_set_model_failure_is_transactional(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_set_main_profile_failure_is_transactional(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
     agent = ChatAgent(registry=DBRegistry(), model="test", reasoning_effort="medium")
     runtime_agent = agent._pydantic_ai_agent
     with pytest.raises(Exception, match="ANTHROPIC_API_KEY"):
-        agent.set_model("anthropic:claude-sonnet-4-5-20250929")
+        agent.set_main_profile(model="anthropic:claude-sonnet-4-5-20250929", reasoning_effort="high")
     # The failed switch left everything intact.
     assert agent.model == "test"
+    assert agent.reasoning_effort == "medium"
     assert agent._pydantic_ai_agent is runtime_agent
 
 
@@ -103,9 +104,8 @@ async def test_subagent_profile_wires_tools(tmp_path: Path, monkeypatch: pytest.
         assert agent._tools.run_subagent_for_each_row.model_settings == {"thinking": "low"}
         assert agent._tools.get_db_document.model_settings == {"thinking": "low"}
 
-        agent.set_subagent_model("openai-responses:gpt-5.4-mini")
         agent._tools.get_db_document._document_cache["cached"] = cast(Any, (workspace, "old summary"))
-        agent.set_subagent_reasoning_effort("high")
+        agent.set_subagent_profile(model="openai-responses:gpt-5.4-mini", reasoning_effort="high")
         assert agent._tools.get_db_document._document_cache == {}
         assert agent._tools.run_subagent_for_each_row.subagent_llm == "openai-responses:gpt-5.4-mini"
         assert agent._tools.extract_rows_from_documents.subagent_llm == "openai-responses:gpt-5.4-mini"

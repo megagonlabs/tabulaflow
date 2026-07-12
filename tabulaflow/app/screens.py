@@ -9,7 +9,7 @@ import json
 import re
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Protocol
 
 from rich.text import Text
 from textual.app import ComposeResult
@@ -1733,6 +1733,10 @@ class SchemaBrowserScreen(Screen[None]):
 # ---------------------------------------------------------------------------
 
 
+class _SetProfile(Protocol):
+    def __call__(self, *, model: str, reasoning_effort: str) -> None: ...
+
+
 @dataclass(frozen=True)
 class _ConfigModelSection:
     kind: str
@@ -1741,11 +1745,10 @@ class _ConfigModelSection:
     options: list[ModelOption]
     rows: list[Static]
     current_model: Callable[[], str]
-    set_model: Callable[[str], None]
     api_key: Callable[[], str | None]
     supported_efforts: Callable[[], tuple[str, ...]]
     current_effort: Callable[[], str]
-    set_effort: Callable[[str], None]
+    set_profile: _SetProfile
 
 
 class ConfigScreen(Screen[None]):
@@ -1820,11 +1823,10 @@ class ConfigScreen(Screen[None]):
                 options=self._options,
                 rows=self._rows,
                 current_model=lambda: self._session.model,
-                set_model=self._session.set_model,
                 api_key=lambda: self._session.api_key,
                 supported_efforts=lambda: self._session.supported_efforts,
                 current_effort=lambda: self._session.reasoning_effort,
-                set_effort=self._session.set_reasoning_effort,
+                set_profile=self._session.set_main_profile,
             ),
             _ConfigModelSection(
                 kind="subagent_model",
@@ -1833,11 +1835,10 @@ class ConfigScreen(Screen[None]):
                 options=self._subagent_options,
                 rows=self._subagent_rows,
                 current_model=lambda: self._session.subagent_model,
-                set_model=self._session.set_subagent_model,
                 api_key=lambda: self._session.subagent_api_key,
                 supported_efforts=lambda: self._session.subagent_supported_efforts,
                 current_effort=lambda: self._session.subagent_reasoning_effort,
-                set_effort=self._session.set_subagent_reasoning_effort,
+                set_profile=self._session.set_subagent_profile,
             ),
         )
 
@@ -1960,21 +1961,18 @@ class ConfigScreen(Screen[None]):
             return
         option = section.options[i]
         changed = option.model != section.current_model()
+        reasoning_effort = (
+            option.recommended_effort if changed and option.recommended_effort is not None else section.current_effort()
+        )
         self._select_error = None
         try:
-            section.set_model(option.model)
+            section.set_profile(model=option.model, reasoning_effort=reasoning_effort)
         except Exception as e:
-            # ``set_model`` is transactional — the previous model is still
+            # ``set_profile`` is transactional — the previous profile is still
             # active. Report why this one couldn't be applied; nothing persists.
             self._select_error = (kind, i, str(e))
             self._refresh()
             return
-        # Switching models resets the effort to the new model's vendor
-        # recommendation (each model has its own tuned level); with no
-        # recommendation the current effort carries over. Re-selecting the
-        # active model never resets a deliberate choice.
-        if changed and option.recommended_effort is not None:
-            section.set_effort(option.recommended_effort)
         # Land on the chips that just appeared under the selection, so ←→
         # tunes the effort without an intervening ↓.
         if section.supported_efforts():
@@ -1989,7 +1987,7 @@ class ConfigScreen(Screen[None]):
         efforts = section.supported_efforts()
         current = section.current_effort()
         j = (efforts.index(current) + delta) % len(efforts) if current in efforts else 0
-        section.set_effort(efforts[j])
+        section.set_profile(model=section.current_model(), reasoning_effort=efforts[j])
         self._persist()
 
     def _section_for_kind(self, kind: str) -> _ConfigModelSection | None:

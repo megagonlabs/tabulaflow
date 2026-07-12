@@ -594,48 +594,56 @@ class ChatAgent:
         for tool in self._subagent_profile_tools():
             tool.set_llm_profile(llm=self.subagent_model, model_settings=model_settings)
 
-    def set_model(self, model: str) -> None:
-        """Update the model and rebuild the bound runtime agent. Use this rather
-        than assigning ``self.model`` directly — a bare assignment skips the rebuild.
+    def set_main_profile(self, *, model: str, reasoning_effort: str) -> None:
+        """Update the interactive agent's LLM profile.
 
-        Transactional: if the rebuild fails (e.g. missing provider credentials),
-        the previous model stays active and the exception propagates.
+        Model changes rebuild the bound runtime agent; effort-only changes are
+        applied per request and need no rebuild. Transactional for model changes:
+        if the rebuild fails, the previous profile stays active.
         """
         if self.model == model:
+            self.reasoning_effort = reasoning_effort
             return
-        previous = self.model
+        previous_model = self.model
+        previous_effort = self.reasoning_effort
         self.model = model
+        self.reasoning_effort = reasoning_effort
         try:
             self._build_agent()
         except Exception:
             # ``_build_agent`` raised before replacing the runtime agent, so the
             # old agent is intact — restoring ``model`` makes the failure atomic.
-            self.model = previous
+            self.model = previous_model
+            self.reasoning_effort = previous_effort
             raise
 
-    def set_reasoning_effort(self, reasoning_effort: str) -> None:
-        """Update the interactive agent's reasoning effort. Applied per request in
-        ``run_stream`` — unlike ``model``, it is not baked into the runtime agent, so
-        no rebuild is needed. Affects the main agent only."""
-        self.reasoning_effort = reasoning_effort
+    def set_subagent_profile(self, *, model: str, reasoning_effort: str) -> None:
+        """Update the LLM profile used by subagent-backed tools.
 
-    def set_subagent_model(self, model: str) -> None:
-        """Update the LLM used by subagent-backed tools."""
+        Transactional: if model probing or tool profile application fails, the
+        previous subagent profile is restored.
+        """
+        previous_model = self.subagent_model
+        previous_effort = self.subagent_reasoning_effort
         if self.subagent_model == model:
+            self.subagent_reasoning_effort = reasoning_effort
+            try:
+                self._apply_subagent_profile()
+            except Exception:
+                self.subagent_reasoning_effort = previous_effort
+                self._apply_subagent_profile()
+                raise
             return
-        previous = self.subagent_model
         self.subagent_model = model
+        self.subagent_reasoning_effort = reasoning_effort
         try:
             self._subagent_probe_model(raise_errors=True)
             self._apply_subagent_profile()
         except Exception:
-            self.subagent_model = previous
+            self.subagent_model = previous_model
+            self.subagent_reasoning_effort = previous_effort
+            self._apply_subagent_profile()
             raise
-
-    def set_subagent_reasoning_effort(self, reasoning_effort: str) -> None:
-        """Update the reasoning effort used by subagent-backed tools."""
-        self.subagent_reasoning_effort = reasoning_effort
-        self._apply_subagent_profile()
 
     def note_event(self, description: str) -> None:
         """Make the agent aware of a host/app event (typically a user action — e.g.

@@ -120,8 +120,8 @@ class SessionState:
     def model(self) -> str:
         return self.chat_agent.model
 
-    def set_model(self, model: str) -> None:
-        self.chat_agent.set_model(model)
+    def set_main_profile(self, *, model: str, reasoning_effort: str) -> None:
+        self.chat_agent.set_main_profile(model=model, reasoning_effort=reasoning_effort)
 
     @property
     def api_key(self) -> str | None:
@@ -135,15 +135,12 @@ class SessionState:
     def reasoning_effort(self) -> str:
         return self.chat_agent.reasoning_effort
 
-    def set_reasoning_effort(self, reasoning_effort: str) -> None:
-        self.chat_agent.set_reasoning_effort(reasoning_effort)
-
     @property
     def subagent_model(self) -> str:
         return self.chat_agent.subagent_model
 
-    def set_subagent_model(self, model: str) -> None:
-        self.chat_agent.set_subagent_model(model)
+    def set_subagent_profile(self, *, model: str, reasoning_effort: str) -> None:
+        self.chat_agent.set_subagent_profile(model=model, reasoning_effort=reasoning_effort)
 
     @property
     def subagent_api_key(self) -> str | None:
@@ -156,6 +153,3 @@ class SessionState:
     @property
     def subagent_reasoning_effort(self) -> str:
         return self.chat_agent.subagent_reasoning_effort
-
-    def set_subagent_reasoning_effort(self, reasoning_effort: str) -> None:
-        self.chat_agent.set_subagent_reasoning_effort(reasoning_effort)

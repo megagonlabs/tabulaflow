@@ -49,16 +49,12 @@ class _StubSession:
     def subagent_supported_efforts(self) -> tuple[str, ...]:
         return () if self.subagent_model.startswith("test:") else _EFFORTS
 
-    def set_model(self, model: str) -> None:
+    def set_main_profile(self, *, model: str, reasoning_effort: str) -> None:
         self.model = model
-
-    def set_reasoning_effort(self, reasoning_effort: str) -> None:
         self.reasoning_effort = reasoning_effort
 
-    def set_subagent_model(self, model: str) -> None:
+    def set_subagent_profile(self, *, model: str, reasoning_effort: str) -> None:
         self.subagent_model = model
-
-    def set_subagent_reasoning_effort(self, reasoning_effort: str) -> None:
         self.subagent_reasoning_effort = reasoning_effort
 
 
@@ -219,10 +215,10 @@ async def test_api_key_suffix_omitted_when_unavailable() -> None:
 
 async def test_select_failure_shows_inline_error(updates: list[dict[str, Any]]) -> None:
     class _FailingSession(_StubSession):
-        def set_model(self, model: str) -> None:
+        def set_main_profile(self, *, model: str, reasoning_effort: str) -> None:
             if model.startswith("anthropic:"):
                 raise RuntimeError("ANTHROPIC_API_KEY environment variable not set")
-            self.model = model
+            super().set_main_profile(model=model, reasoning_effort=reasoning_effort)
 
     session = _FailingSession()
     screen = ConfigScreen(session, on_change=lambda: None)  # type: ignore[arg-type]
