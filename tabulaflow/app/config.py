@@ -88,6 +88,18 @@ _DEFAULT_LLM_PRESETS_DATA = (
             "reasoning_effort": "medium",
         },
     },
+    {
+        "id": "planning-hybrid",
+        "label": "Planning hybrid",
+        "main": {
+            "model": "anthropic:claude-opus-4-8",
+            "reasoning_effort": "high",
+        },
+        "subagent": {
+            "model": "openai-responses:gpt-5.4-mini",
+            "reasoning_effort": "medium",
+        },
+    },
 )
 DEFAULT_LLM_PRESETS: tuple[LLMPreset, ...] = tuple(
     LLMPreset.model_validate(preset) for preset in _DEFAULT_LLM_PRESETS_DATA

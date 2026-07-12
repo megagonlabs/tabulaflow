@@ -30,6 +30,12 @@ def test_load_missing_file_returns_defaults(tmp_path: Path) -> None:
     assert config == AppConfig()
     assert config.llm_presets == list(DEFAULT_LLM_PRESETS)
     assert config.active_preset == DEFAULT_LLM_PRESETS[0]
+    planning_hybrid = next(preset for preset in DEFAULT_LLM_PRESETS if preset.id == "planning-hybrid")
+    assert planning_hybrid.label == "Planning hybrid"
+    assert planning_hybrid.main.model == "anthropic:claude-opus-4-8"
+    assert planning_hybrid.main.reasoning_effort == "high"
+    assert planning_hybrid.subagent.model == "openai-responses:gpt-5.4-mini"
+    assert planning_hybrid.subagent.reasoning_effort == "medium"
 
 
 def test_save_load_roundtrip(tmp_path: Path) -> None:

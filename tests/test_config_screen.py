@@ -22,6 +22,12 @@ _PRESETS = [
         main=LLMRoleConfig(model="anthropic:claude-opus-4-8", reasoning_effort="high"),
         subagent=LLMRoleConfig(model="anthropic:claude-sonnet-4-5-20250929", reasoning_effort="high"),
     ),
+    LLMPreset(
+        id="planning-hybrid",
+        label="Planning hybrid",
+        main=LLMRoleConfig(model="anthropic:claude-opus-4-8", reasoning_effort="high"),
+        subagent=LLMRoleConfig(model="openai-responses:gpt-5.4-mini", reasoning_effort="medium"),
+    ),
 ]
 
 
@@ -79,7 +85,7 @@ async def test_renders_presets() -> None:
     screen = ConfigScreen(session, on_change=lambda: None)  # type: ignore[arg-type]
     async with _App(screen).run_test() as pilot:
         await pilot.pause()
-        assert len(screen._preset_rows) == 2
+        assert len(screen._preset_rows) == 3
         assert screen._cursor == 0
         assert "●" in screen._render_preset_row(0).plain
         assert "OpenAI balanced" in screen._render_preset_row(0).plain
@@ -89,6 +95,9 @@ async def test_renders_presets() -> None:
         assert "Sonnet 4.5 high" in screen._render_preset_row(1).plain
         assert "Claude" not in screen._render_preset_row(1).plain
         assert "20250929" not in screen._render_preset_row(1).plain
+        assert "Planning hybrid" in screen._render_preset_row(2).plain
+        assert "Opus 4.8 high" in screen._render_preset_row(2).plain
+        assert "GPT 5.4 Mini medium" in screen._render_preset_row(2).plain
         assert "●" not in screen._render_preset_row(1).plain
 
 
@@ -106,6 +115,19 @@ async def test_enter_selects_preset_and_persists(updates: list[dict[str, Any]]) 
         assert updates == [{"active_llm_preset": "anthropic-balanced"}]
         assert refreshed
         assert "●" in screen._render_preset_row(1).plain
+
+
+async def test_enter_selects_planning_hybrid(updates: list[dict[str, Any]]) -> None:
+    session = _StubSession()
+    screen = ConfigScreen(session, on_change=lambda: None)  # type: ignore[arg-type]
+    async with _App(screen).run_test() as pilot:
+        await pilot.pause()
+        await pilot.press("down", "down", "enter")
+        assert session.model == "anthropic:claude-opus-4-8"
+        assert session.reasoning_effort == "high"
+        assert session.subagent_model == "openai-responses:gpt-5.4-mini"
+        assert session.subagent_reasoning_effort == "medium"
+        assert updates == [{"active_llm_preset": "planning-hybrid"}]
 
 
 async def test_active_preset_shows_api_keys() -> None:
@@ -172,7 +194,7 @@ async def test_current_custom_row_for_unmatched_runtime_profile(updates: list[di
     screen = ConfigScreen(session, on_change=lambda: refreshed.append(True))  # type: ignore[arg-type]
     async with _App(screen).run_test() as pilot:
         await pilot.pause()
-        assert len(screen._preset_rows) == 3
+        assert len(screen._preset_rows) == 4
         assert screen._cursor == 0
         assert "● Current custom" in screen._render_preset_row(0).plain
         await pilot.press("enter")
