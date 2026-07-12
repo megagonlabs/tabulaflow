@@ -105,7 +105,7 @@ async def test_subagent_profile_wires_tools(tmp_path: Path, monkeypatch: pytest.
         assert agent._tools.add_canonical_name.subagent_llm == "openai-responses:gpt-5.4-mini"
         settings = cast(dict[str, Any], agent._tools.run_subagent_for_each_row.model_settings)
         assert settings is not None
-        assert settings["openai_reasoning_effort"] == "high"
+        assert settings["thinking"] == "high"
         assert settings["openai_reasoning_summary"] == "detailed"
     finally:
         await workspace.disconnect_async()

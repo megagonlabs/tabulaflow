@@ -9,7 +9,7 @@ from tabulaflow.core.formatters.sql_ddl import SQLDDLSchemaFormatter
 from tabulaflow.modulehub.base import CachedPreprocessorMixin, CacheableResult, preprocessor_registry
 from tabulaflow.core.schema_compressor import SchemaCompressor
 from tabulaflow.core.types import Usage
-from tabulaflow.core.llm import make_agent
+from tabulaflow.core.llm import make_agent, reasoning_model_settings
 
 SUMMARIZATION_PROMPT = """
 You are an AI database expert tasked with producing a summary for a database.
@@ -58,7 +58,7 @@ class DBSummarizer(CachedPreprocessorMixin[DBSummary]):
         self,
         llm: str = "openai-responses:gpt-5.4",
         compress_schema: bool = True,
-        openai_reasoning_effort: Literal["none", "minimal", "low", "medium", "high", "xhigh"] | None = "high",
+        reasoning_effort: Literal["none", "minimal", "low", "medium", "high", "xhigh"] | None = "high",
         max_summary_words: int = 4000,
         model_settings: dict[str, object] | None = None,
     ) -> None:
@@ -66,7 +66,7 @@ class DBSummarizer(CachedPreprocessorMixin[DBSummary]):
         self.compressor = SchemaCompressor() if compress_schema else None
         self.sql_formatter = SQLDDLSchemaFormatter(max_total_columns=200)
         self.graph_formatter = CypherSchemaFormatter()
-        self.openai_reasoning_effort = openai_reasoning_effort
+        self.reasoning_effort = reasoning_effort
         self.max_summary_words = max_summary_words
         self.extra_model_settings = model_settings
         self._usage = Usage.create(llm=llm)
@@ -101,9 +101,9 @@ class DBSummarizer(CachedPreprocessorMixin[DBSummary]):
 
         run_query_tool = RunQueryTool(db_connector)
 
-        model_settings: dict[str, Any] = dict(self.extra_model_settings or {})
-        if self.openai_reasoning_effort is not None:
-            model_settings["openai_reasoning_effort"] = self.openai_reasoning_effort
+        model_settings: dict[str, Any] = dict(reasoning_model_settings(self.reasoning_effort))
+        model_settings.update(self.extra_model_settings or {})
+        if self.reasoning_effort is not None and self.llm.startswith("openai-responses:"):
             model_settings["openai_reasoning_summary"] = "detailed"
 
         agent = make_agent(

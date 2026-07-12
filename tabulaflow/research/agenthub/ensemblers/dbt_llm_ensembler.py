@@ -16,6 +16,7 @@ from tabulaflow.research.agenthub.utils import instrument
 from tabulaflow.core.db_connector import BaseSQLDBConnector
 from tabulaflow.core.formatters.sql_ddl import SQLDDLSchemaFormatter
 from tabulaflow.modulehub import DBSummarizer
+from tabulaflow.core.llm import reasoning_model_settings
 from tabulaflow.core.types import Usage, Trajectory
 from tabulaflow.research.types import DbtTask, DbtTaskOutput
 from tabulaflow.core.llm import make_agent
@@ -76,16 +77,14 @@ class DbtLLMEnsemblerConfig(BaseModel):
     skip_failed_runs: bool = True
     deduplicate_results: bool = True
     temperature: float | None = None
-    openai_reasoning_effort: str | None = None
+    reasoning_effort: str | None = None
     openai_service_tier: str | None = None
 
     def to_model_settings(self) -> dict[str, Any]:
         res: dict[str, Any] = {}
         if self.temperature is not None:
             res["temperature"] = self.temperature
-        if self.openai_reasoning_effort is not None:
-            res["openai_reasoning_effort"] = self.openai_reasoning_effort
-            res["openai_reasoning_summary"] = "detailed"
+        res.update(reasoning_model_settings(self.reasoning_effort))
         if self.openai_service_tier is not None:
             res["openai_service_tier"] = self.openai_service_tier
         return res

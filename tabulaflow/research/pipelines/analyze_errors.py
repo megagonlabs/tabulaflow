@@ -8,7 +8,7 @@ from typing import Any, Literal
 from pydantic import BaseModel, Field
 import jinja2
 import tabulaflow
-from tabulaflow.core.llm import make_agent
+from tabulaflow.core.llm import make_agent, reasoning_model_settings
 from tabulaflow.core.types import Usage
 from tabulaflow.research.types import NL2QRunResult, NL2QTaskOutput
 from tabulaflow.research.pipelines.utils import bool_flag
@@ -199,10 +199,7 @@ class LLMErrorClassifier:
         agent = make_agent(
             self.llm,
             output_type=output_type,
-            model_settings={
-                "openai_reasoning_effort": "medium",
-                "openai_reasoning_summary": "detailed",
-            },
+            model_settings=reasoning_model_settings("medium"),
         )
         result = await agent.run(prompt)
         self._usage += Usage.from_pydantic_ai_usage(result.usage(), self.llm)

@@ -12,7 +12,6 @@ from contextlib import suppress
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Final, cast
 
-from pydantic_ai.models.openai import OpenAIResponsesModelSettings
 from pydantic_ai.settings import ModelSettings
 
 from tabulaflow.toolhub.message_store import (
@@ -28,7 +27,7 @@ from tabulaflow.toolhub.web_browser import (
     snapshot_snippet,
 )
 from tabulaflow.core.db_connector import connector_info
-from tabulaflow.core.llm import make_agent
+from tabulaflow.core.llm import make_agent, reasoning_model_settings
 from tabulaflow.chat.result import ChatResult, ChatResultGraph, ChatResultMap, ChatResultRecord
 from tabulaflow.chat.events import (
     ChatEvent,
@@ -558,7 +557,7 @@ class ChatAgent:
         exceed — the default 4096 would reject medium and above, so raise it to
         the budget plus answer headroom.
         """
-        settings = ModelSettings(thinking=cast(Any, self.reasoning_effort))
+        settings = reasoning_model_settings(self.reasoning_effort)
         model = self._unwrapped_model()
         try:
             from pydantic_ai.models.anthropic import AnthropicModel
@@ -580,24 +579,10 @@ class ChatAgent:
         the app's priority tier and optional reasoning summaries; those keys are
         provider-specific, so do not send them to arbitrary models.
         """
-        if self.subagent_model.startswith("openai-responses:"):
-            if reasoning_summary:
-                return cast(
-                    ModelSettings,
-                    OpenAIResponsesModelSettings(
-                        openai_service_tier="priority",
-                        openai_reasoning_effort=cast(Any, self.subagent_reasoning_effort),
-                        openai_reasoning_summary="detailed",
-                    ),
-                )
-            return cast(
-                ModelSettings,
-                OpenAIResponsesModelSettings(
-                    openai_service_tier="priority",
-                    openai_reasoning_effort=cast(Any, self.subagent_reasoning_effort),
-                ),
-            )
-        return ModelSettings(thinking=cast(Any, self.subagent_reasoning_effort))
+        settings = reasoning_model_settings(self.subagent_reasoning_effort)
+        if reasoning_summary and self.subagent_model.startswith("openai-responses:"):
+            settings = cast(ModelSettings, {**settings, "openai_reasoning_summary": "detailed"})
+        return settings
 
     def _apply_subagent_profile(self) -> None:
         """Update existing subagent-backed tool instances with the current profile."""
@@ -740,9 +725,8 @@ class ChatAgent:
                 ),
             ],
             instructions=self._system_prompt,
-            # ``openai_reasoning_effort`` is deliberately absent: effort is passed
-            # per request in ``run_stream`` so ``set_reasoning_effort`` needs no
-            # agent rebuild.
+            # Thinking is deliberately absent: effort is passed per request in
+            # ``run_stream`` so ``set_reasoning_effort`` needs no agent rebuild.
             model_settings={
                 "openai_service_tier": "priority",
                 "openai_reasoning_summary": "detailed",

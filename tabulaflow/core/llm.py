@@ -17,7 +17,7 @@ import json
 import re
 from collections.abc import Sequence
 from contextlib import AsyncExitStack, asynccontextmanager
-from typing import Any, AsyncIterator, TypeVar, overload
+from typing import Any, AsyncIterator, TypeVar, cast, overload
 
 from aiolimiter import AsyncLimiter
 from pydantic_ai import Agent, ToolOutput, UsageLimits
@@ -31,6 +31,18 @@ from tabulaflow.core.config import tabulaflow_config
 # Multi-step agents must not hit pydantic-ai's default 50-request cap. Pass this
 # to ``agent.run(..., usage_limits=DEFAULT_USAGE_LIMITS)``.
 DEFAULT_USAGE_LIMITS = UsageLimits(request_limit=None)
+
+
+def reasoning_model_settings(reasoning_effort: str | bool | None) -> ModelSettings:
+    """Return cross-provider reasoning settings.
+
+    ``pydantic-ai`` uses ``thinking`` as the provider-neutral reasoning knob.
+    The legacy OpenAI-specific value ``"none"`` maps to ``False``.
+    """
+    if reasoning_effort is None:
+        return ModelSettings()
+    thinking: object = False if reasoning_effort == "none" else reasoning_effort
+    return ModelSettings(thinking=cast(Any, thinking))
 
 
 # ---------------------------------------------------------------------------

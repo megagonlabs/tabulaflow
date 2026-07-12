@@ -10,6 +10,7 @@ from tabulaflow.core.types import Usage, Trajectory, SQLSchema
 from tabulaflow.research.types import NL2QTask
 from tabulaflow.core.config import tabulaflow_config
 from tabulaflow.core.db_connector import NL2QDBConnector
+from tabulaflow.core.llm import reasoning_model_settings
 from tabulaflow.toolhub import BaseTool
 from tabulaflow.core.formatters.base import BaseSQLSchemaFormatter
 
@@ -81,7 +82,7 @@ class BasicAgentConfig(BaseModel):
     max_steps: int = 50
     formatter_max_total_columns: int | None = 5000
     use_column_description: bool = True
-    openai_reasoning_effort: Literal["none", "minimal", "low", "medium", "high", "xhigh"] | None = None
+    reasoning_effort: Literal["none", "minimal", "low", "medium", "high", "xhigh"] | None = None
     openai_service_tier: Literal["auto", "default", "flex", "priority"] | None = None
 
     def to_formatter_kwargs(self) -> dict[str, Any]:
@@ -94,9 +95,7 @@ class BasicAgentConfig(BaseModel):
         res: dict[str, Any] = {}
         if self.temperature is not None:
             res["temperature"] = self.temperature
-        if self.openai_reasoning_effort is not None:
-            res["openai_reasoning_effort"] = self.openai_reasoning_effort
-            res["openai_reasoning_summary"] = "detailed"
+        res.update(reasoning_model_settings(self.reasoning_effort))
         if self.openai_service_tier is not None:
             res["openai_service_tier"] = self.openai_service_tier
         return res

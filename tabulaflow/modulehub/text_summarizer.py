@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from tabulaflow.core.llm import make_agent
+from tabulaflow.core.llm import make_agent, reasoning_model_settings
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +30,7 @@ class TextSummarizer:
     async def summarize(self, text: str) -> str:
         """Return a summarized version of the input text."""
 
-        settings: dict[str, object] = {"openai_reasoning_effort": "low"}
+        settings: dict[str, object] = dict(reasoning_model_settings("low"))
         if self.model_settings:
             settings.update(self.model_settings)
         agent = make_agent(
