@@ -404,7 +404,7 @@ July 10
 July 11
 - [x] Fix response format - change "---" to "<artifacts>...</artifacts>"
 - [x] Subagent model config
-- [ ] Fix provider-specific configuration
+- [x] Generalize provider-specific configuration
 - [ ] Gemini levels - no xhigh
 - [ ] Hint bar
 - [ ] Other config options - concurrency

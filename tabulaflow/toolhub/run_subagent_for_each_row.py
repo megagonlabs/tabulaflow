@@ -155,7 +155,7 @@ class RunSubagentForEachRowTool:
                 Without a store, browser returns are neither mirrored nor tagged.
             subagent_llm: LLM identifier or model object used by per-row subagent runs.
             model_settings: Optional pydantic-ai model settings passed to
-                each subagent run (e.g. ``openai_service_tier``).
+                each subagent run.
             max_concurrency: Maximum number of row subagents to run
                 concurrently.
             store_metadata: If True, write ``_subagent_exception`` and

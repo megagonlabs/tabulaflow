@@ -15,7 +15,7 @@ from tabulaflow.research.pipelines.populate_exec_results import populate_task_as
 from tabulaflow.modulehub import DBSummarizer
 from tabulaflow.core.types import Usage, Trajectory
 from tabulaflow.research.types import SimpleNL2QTask, SimpleNL2QTaskOutput
-from tabulaflow.core.llm import make_agent, reasoning_model_settings
+from tabulaflow.core.llm import make_agent, make_model_settings
 
 
 logger = logging.getLogger(__name__)
@@ -83,15 +83,19 @@ class LLMEnsemblerConfig(BaseModel):
     deduplicate_results: bool = True
     temperature: float | None = None
     reasoning_effort: str | None = None
-    openai_service_tier: str | None = None
+    service_tier: str | None = None
 
     def to_model_settings(self) -> dict[str, Any]:
         res: dict[str, Any] = {}
         if self.temperature is not None:
             res["temperature"] = self.temperature
-        res.update(reasoning_model_settings(self.reasoning_effort, model=self.llm))
-        if self.openai_service_tier is not None:
-            res["openai_service_tier"] = self.openai_service_tier
+        res.update(
+            make_model_settings(
+                model=self.llm,
+                reasoning_effort=self.reasoning_effort,
+                service_tier=self.service_tier,
+            )
+        )
         return res
 
 

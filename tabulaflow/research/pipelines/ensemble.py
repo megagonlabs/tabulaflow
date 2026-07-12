@@ -135,6 +135,8 @@ def _build_llm_kwargs(args: argparse.Namespace) -> dict[str, Any]:
         kwargs["temperature"] = args.temperature
     if args.reasoning_effort is not None:
         kwargs["reasoning_effort"] = args.reasoning_effort
+    if args.service_tier is not None:
+        kwargs["service_tier"] = args.service_tier
     if args.deduplicate_results is not None:
         kwargs["deduplicate_results"] = args.deduplicate_results
     return kwargs
@@ -168,6 +170,7 @@ async def main_async() -> None:
     parser.add_argument("--llm", type=str, default=None, help="LLM model identifier (for llm/agent ensembler).")
     parser.add_argument("--temperature", type=float, default=None, help="Temperature for llm/agent ensembler.")
     parser.add_argument("--reasoning_effort", default=None, help="Reasoning effort for llm/agent ensembler.")
+    parser.add_argument("--service_tier", default=None, help="Provider-neutral service tier for llm/agent ensembler.")
     parser.add_argument(
         "--deduplicate_results",
         type=bool_flag,

@@ -27,7 +27,7 @@ from tabulaflow.toolhub.web_browser import (
     snapshot_snippet,
 )
 from tabulaflow.core.db_connector import connector_info
-from tabulaflow.core.llm import make_agent, reasoning_model_settings
+from tabulaflow.core.llm import make_agent, make_model_settings
 from tabulaflow.chat.result import ChatResult, ChatResultGraph, ChatResultMap, ChatResultRecord
 from tabulaflow.chat.events import (
     ChatEvent,
@@ -556,7 +556,7 @@ class ChatAgent:
         exceed — the default 4096 would reject medium and above, so raise it to
         the budget plus answer headroom.
         """
-        settings = reasoning_model_settings(self.reasoning_effort, model=self.model)
+        settings = make_model_settings(model=self.model, reasoning_effort=self.reasoning_effort)
         model = self._unwrapped_model()
         try:
             from pydantic_ai.models.anthropic import AnthropicModel
@@ -577,7 +577,7 @@ class ChatAgent:
         Use provider-neutral thinking settings by default. OpenAI Responses gets
         detailed reasoning summaries through the shared reasoning settings helper.
         """
-        return reasoning_model_settings(self.subagent_reasoning_effort, model=self.subagent_model)
+        return make_model_settings(model=self.subagent_model, reasoning_effort=self.subagent_reasoning_effort)
 
     def _subagent_profile_tools(self) -> tuple[LLMProfileTool, ...]:
         """Tools whose internal helper LLM follows the app subagent profile."""
@@ -730,10 +730,8 @@ class ChatAgent:
             ],
             instructions=self._system_prompt,
             # Thinking is deliberately absent: effort is passed per request in
-            # ``run_stream`` so ``set_reasoning_effort`` needs no agent rebuild.
-            model_settings={
-                "openai_service_tier": "priority",
-            },
+            # ``run_stream`` so effort changes need no agent rebuild.
+            model_settings=make_model_settings(model=self.model, service_tier="priority"),
         )
 
     async def run_stream(self, question: str) -> AsyncIterator[ChatEvent]:

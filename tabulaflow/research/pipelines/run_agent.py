@@ -248,6 +248,8 @@ def parse_agent_config(agent_cls: type[NL2QAgent], args: argparse.Namespace) -> 
         kwargs["user_patience"] = args.user_patience
     if args.reasoning_effort is not None:
         kwargs["reasoning_effort"] = args.reasoning_effort
+    if args.service_tier is not None:
+        kwargs["service_tier"] = args.service_tier
     return agent_cls.config_cls(**kwargs)
 
 
@@ -259,6 +261,7 @@ async def main_async() -> None:
     parser.add_argument("--temperature", default=None, type=float)
     parser.add_argument("--max_steps", default=None, type=int)
     parser.add_argument("--reasoning_effort", default=None)
+    parser.add_argument("--service_tier", default=None)
     parser.add_argument("--use_column_description", type=bool_flag, nargs="?", const=True, default=None)
     parser.add_argument("-n", "--num_majority_voting_candidates", default=None, type=int)
 

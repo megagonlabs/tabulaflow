@@ -56,7 +56,7 @@ class RegistryGetDBDocumentTool:
                 lower, returns a direct formatted schema document.
             enable_refresh: If True, expose `refresh` to the LLM tool signature.
             model_settings: Optional pydantic-ai model settings passed to
-                summarizer agents (e.g. ``openai_service_tier``).
+                summarizer agents.
         """
         self.registry = registry
         self._db_summarizer_cls = db_summarizer_cls

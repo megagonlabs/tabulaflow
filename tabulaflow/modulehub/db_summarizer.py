@@ -9,7 +9,7 @@ from tabulaflow.core.formatters.sql_ddl import SQLDDLSchemaFormatter
 from tabulaflow.modulehub.base import CachedPreprocessorMixin, CacheableResult, preprocessor_registry
 from tabulaflow.core.schema_compressor import SchemaCompressor
 from tabulaflow.core.types import Usage
-from tabulaflow.core.llm import make_agent, reasoning_model_settings
+from tabulaflow.core.llm import make_agent, make_model_settings
 
 SUMMARIZATION_PROMPT = """
 You are an AI database expert tasked with producing a summary for a database.
@@ -101,7 +101,9 @@ class DBSummarizer(CachedPreprocessorMixin[DBSummary]):
 
         run_query_tool = RunQueryTool(db_connector)
 
-        model_settings: dict[str, Any] = dict(reasoning_model_settings(self.reasoning_effort, model=self.llm))
+        model_settings: dict[str, Any] = dict(
+            make_model_settings(model=self.llm, reasoning_effort=self.reasoning_effort)
+        )
         model_settings.update(self.extra_model_settings or {})
 
         agent = make_agent(

@@ -33,8 +33,24 @@ from tabulaflow.core.config import tabulaflow_config
 DEFAULT_USAGE_LIMITS = UsageLimits(request_limit=None)
 
 
-def reasoning_model_settings(reasoning_effort: str | bool | None, *, model: str) -> ModelSettings:
-    """Return cross-provider reasoning settings.
+def make_model_settings(
+    *,
+    model: str,
+    reasoning_effort: str | bool | None = None,
+    service_tier: str | None = None,
+) -> ModelSettings:
+    """Build pydantic-ai model settings from provider-neutral LLM config."""
+    return cast(
+        ModelSettings,
+        {
+            **_reasoning_model_settings(reasoning_effort, model=model),
+            **_service_tier_model_settings(service_tier, model=model),
+        },
+    )
+
+
+def _reasoning_model_settings(reasoning_effort: str | bool | None, *, model: str) -> ModelSettings:
+    """Return provider-specific reasoning settings.
 
     ``pydantic-ai`` uses ``thinking`` as the provider-neutral reasoning knob.
     The legacy OpenAI-specific value ``"none"`` maps to ``False``. OpenAI
@@ -48,6 +64,13 @@ def reasoning_model_settings(reasoning_effort: str | bool | None, *, model: str)
     if thinking is not False and model.startswith("openai-responses:"):
         settings = cast(ModelSettings, {**settings, "openai_reasoning_summary": "detailed"})
     return settings
+
+
+def _service_tier_model_settings(service_tier: str | None, *, model: str) -> ModelSettings:
+    """Return provider-specific model settings for a provider-neutral service tier."""
+    if service_tier is None or not model.startswith("openai"):
+        return ModelSettings()
+    return cast(ModelSettings, {"openai_service_tier": service_tier})
 
 
 # ---------------------------------------------------------------------------

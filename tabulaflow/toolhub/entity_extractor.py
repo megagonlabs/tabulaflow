@@ -104,7 +104,7 @@ class EntityExtractor:
                 all-string behavior). Keys not in ``output_columns`` are ignored.
             llm: LLM identifier or model object used by per-chunk extraction subagents.
             model_settings: Optional pydantic-ai model settings passed to each
-                subagent run (e.g. ``openai_service_tier``).
+                subagent run.
             max_concurrency: Maximum number of chunk subagents to run concurrently
                 across all ``extract`` calls on this instance.
             chunk_target: Soft per-chunk size the splitter packs toward — tunes density
