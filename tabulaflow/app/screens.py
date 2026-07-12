@@ -1745,6 +1745,8 @@ def _compact_model_name(model: str) -> str:
         tokens = tokens[:-1]
     if len(tokens) >= 2 and tokens[-1].isdigit() and tokens[-2].isdigit():
         tokens = [*tokens[:-2], f"{tokens[-2]}.{tokens[-1]}"]
+    if tokens and tokens[0].lower() == "claude":
+        tokens = tokens[1:]
     parts: list[str] = []
     for tok in tokens:
         if tok.lower() == "gpt":
@@ -1754,6 +1756,12 @@ def _compact_model_name(model: str) -> str:
         else:
             parts.append(tok)
     return " ".join(parts)
+
+
+def _masked_api_key(key: str) -> str | None:
+    if len(key) < 12:
+        return None
+    return f"***{key[-4:]}"
 
 
 def _preset_matches_session(preset: LLMPreset, session: SessionState) -> bool:
@@ -1844,7 +1852,7 @@ class ConfigScreen(Screen[None]):
         """Cursor-reachable preset rows."""
         return [("preset", i) for i in range(len(self._presets))]
 
-    def _render_preset_row(self, i: int) -> Text:
+    def _render_preset_row(self, i: int, *, available_width: int | None = None) -> Text:
         preset = self._presets[i]
         selected = self._cursor == i
         active = _preset_matches_session(preset, self._session)
@@ -1864,6 +1872,15 @@ class ConfigScreen(Screen[None]):
             f" · {_compact_model_name(preset.subagent.model)} {preset.subagent.reasoning_effort}",
             style="dim",
         )
+        if active:
+            api_key_text = self._api_key_text()
+            if api_key_text is not None:
+                inline_text = f" · {api_key_text}"
+                if available_width is not None and t.cell_len + len(inline_text) > available_width:
+                    t.append("\n")
+                    t.append(f"      {api_key_text}", style="dim")
+                else:
+                    t.append(inline_text, style="dim")
         if self._select_error is not None and self._select_error[0] == i:
             t.append("\n")
             t.append(f"      {self._select_error[1]}", style=ERROR)
@@ -1877,7 +1894,20 @@ class ConfigScreen(Screen[None]):
 
     def _refresh(self) -> None:
         for i, row in enumerate(self._preset_rows):
-            row.update(self._render_preset_row(i))
+            available_width = row.size.width or self.size.width or None
+            row.update(self._render_preset_row(i, available_width=available_width))
+
+    def _api_key_text(self) -> str | None:
+        api_key_labels: list[str] = []
+        seen_keys: set[str] = set()
+        for key in (self._session.api_key, self._session.subagent_api_key):
+            if key is None or key in seen_keys:
+                continue
+            seen_keys.add(key)
+            masked = _masked_api_key(key)
+            if masked is not None:
+                api_key_labels.append(f"API key {masked}")
+        return " · ".join(api_key_labels) or None
 
     def action_cursor_move(self, delta: int) -> None:
         self._cursor = max(0, min(len(self._presets) - 1, self._cursor + delta))
