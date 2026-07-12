@@ -101,10 +101,8 @@ class DBSummarizer(CachedPreprocessorMixin[DBSummary]):
 
         run_query_tool = RunQueryTool(db_connector)
 
-        model_settings: dict[str, Any] = dict(reasoning_model_settings(self.reasoning_effort))
+        model_settings: dict[str, Any] = dict(reasoning_model_settings(self.reasoning_effort, model=self.llm))
         model_settings.update(self.extra_model_settings or {})
-        if self.reasoning_effort is not None and self.llm.startswith("openai-responses:"):
-            model_settings["openai_reasoning_summary"] = "detailed"
 
         agent = make_agent(
             self.llm,

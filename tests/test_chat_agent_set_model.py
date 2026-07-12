@@ -58,8 +58,11 @@ def test_subagent_api_key_and_supported_efforts(monkeypatch: pytest.MonkeyPatch)
 def test_thinking_settings_openai(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("OPENAI_API_KEY", "sk-test123456789ab4x")
     agent = ChatAgent(registry=DBRegistry(), model="openai-responses:gpt-5", reasoning_effort="high")
-    # Unified level only — no max_tokens override for non-Anthropic models.
-    assert agent._thinking_settings() == {"thinking": "high"}
+    # Unified level plus OpenAI's reasoning summary; no max_tokens override for non-Anthropic models.
+    assert agent._thinking_settings() == {
+        "thinking": "high",
+        "openai_reasoning_summary": "detailed",
+    }
 
 
 def test_thinking_settings_budget_era_claude_raises_max_tokens(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -105,6 +108,12 @@ async def test_subagent_profile_wires_tools(tmp_path: Path, monkeypatch: pytest.
         assert agent._tools.add_canonical_name.subagent_llm == "openai-responses:gpt-5.4-mini"
         settings = cast(dict[str, Any], agent._tools.run_subagent_for_each_row.model_settings)
         assert settings is not None
+        assert settings["thinking"] == "high"
+        assert settings["openai_reasoning_summary"] == "detailed"
+        settings = cast(dict[str, Any], agent._tools.extract_rows_from_documents.model_settings)
+        assert settings["thinking"] == "high"
+        assert settings["openai_reasoning_summary"] == "detailed"
+        settings = cast(dict[str, Any], agent._tools.add_canonical_name.model_settings)
         assert settings["thinking"] == "high"
         assert settings["openai_reasoning_summary"] == "detailed"
     finally:

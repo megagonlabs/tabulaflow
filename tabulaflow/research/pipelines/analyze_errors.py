@@ -199,7 +199,7 @@ class LLMErrorClassifier:
         agent = make_agent(
             self.llm,
             output_type=output_type,
-            model_settings=reasoning_model_settings("medium"),
+            model_settings=reasoning_model_settings("medium", model=self.llm),
         )
         result = await agent.run(prompt)
         self._usage += Usage.from_pydantic_ai_usage(result.usage(), self.llm)

@@ -30,7 +30,7 @@ class TextSummarizer:
     async def summarize(self, text: str) -> str:
         """Return a summarized version of the input text."""
 
-        settings: dict[str, object] = dict(reasoning_model_settings("low"))
+        settings: dict[str, object] = dict(reasoning_model_settings("low", model=self.llm))
         if self.model_settings:
             settings.update(self.model_settings)
         agent = make_agent(

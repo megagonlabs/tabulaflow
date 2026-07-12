@@ -398,7 +398,7 @@ class ChatAgent:
                 registry=self.registry,
                 message_store=self._message_store,
                 subagent_llm=self.subagent_model,
-                model_settings=self._subagent_model_settings(reasoning_summary=True),
+                model_settings=self._subagent_model_settings(),
                 store_metadata=True,
                 trajectory_log_dir=subagent_dir,
             )
@@ -557,7 +557,7 @@ class ChatAgent:
         exceed — the default 4096 would reject medium and above, so raise it to
         the budget plus answer headroom.
         """
-        settings = reasoning_model_settings(self.reasoning_effort)
+        settings = reasoning_model_settings(self.reasoning_effort, model=self.model)
         model = self._unwrapped_model()
         try:
             from pydantic_ai.models.anthropic import AnthropicModel
@@ -572,23 +572,19 @@ class ChatAgent:
                     settings["max_tokens"] = budget + 8192
         return settings
 
-    def _subagent_model_settings(self, *, reasoning_summary: bool = False) -> ModelSettings:
+    def _subagent_model_settings(self) -> ModelSettings:
         """Model settings for subagent-backed tools.
 
         Use provider-neutral thinking settings by default. OpenAI Responses gets
-        the app's priority tier and optional reasoning summaries; those keys are
-        provider-specific, so do not send them to arbitrary models.
+        detailed reasoning summaries through the shared reasoning settings helper.
         """
-        settings = reasoning_model_settings(self.subagent_reasoning_effort)
-        if reasoning_summary and self.subagent_model.startswith("openai-responses:"):
-            settings = cast(ModelSettings, {**settings, "openai_reasoning_summary": "detailed"})
-        return settings
+        return reasoning_model_settings(self.subagent_reasoning_effort, model=self.subagent_model)
 
     def _apply_subagent_profile(self) -> None:
         """Update existing subagent-backed tool instances with the current profile."""
         if self._tools.run_subagent_for_each_row is not None:
             self._tools.run_subagent_for_each_row.subagent_llm = self.subagent_model
-            self._tools.run_subagent_for_each_row.model_settings = self._subagent_model_settings(reasoning_summary=True)
+            self._tools.run_subagent_for_each_row.model_settings = self._subagent_model_settings()
         if self._tools.extract_rows_from_documents is not None:
             self._tools.extract_rows_from_documents.subagent_llm = self.subagent_model
             self._tools.extract_rows_from_documents.model_settings = self._subagent_model_settings()
@@ -729,7 +725,6 @@ class ChatAgent:
             # ``run_stream`` so ``set_reasoning_effort`` needs no agent rebuild.
             model_settings={
                 "openai_service_tier": "priority",
-                "openai_reasoning_summary": "detailed",
             },
         )
 

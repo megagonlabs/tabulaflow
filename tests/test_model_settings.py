@@ -7,19 +7,36 @@ from tabulaflow.research.agenthub.utils import BasicAgentConfig
 
 
 def test_reasoning_model_settings_maps_legacy_none_to_false() -> None:
-    assert reasoning_model_settings("none") == {"thinking": False}
-    assert reasoning_model_settings("high") == {"thinking": "high"}
-    assert reasoning_model_settings(None) == {}
+    assert reasoning_model_settings("none", model="anthropic:claude-sonnet-4-5-20250929") == {"thinking": False}
+    assert reasoning_model_settings("high", model="anthropic:claude-sonnet-4-5-20250929") == {"thinking": "high"}
+    assert reasoning_model_settings(None, model="openai-responses:gpt-5") == {}
+
+
+def test_reasoning_model_settings_adds_openai_summary_when_thinking() -> None:
+    assert reasoning_model_settings("high", model="openai-responses:gpt-5") == {
+        "thinking": "high",
+        "openai_reasoning_summary": "detailed",
+    }
+
+
+def test_reasoning_model_settings_skips_summary_when_thinking_disabled() -> None:
+    assert reasoning_model_settings("none", model="openai-responses:gpt-5") == {"thinking": False}
+
+
+def test_reasoning_model_settings_skips_summary_for_other_providers() -> None:
+    assert reasoning_model_settings("high", model="anthropic:claude-sonnet-4-5-20250929") == {"thinking": "high"}
 
 
 def test_basic_agent_config_uses_cross_provider_thinking() -> None:
     settings = BasicAgentConfig(reasoning_effort="high").to_model_settings()
     assert settings["thinking"] == "high"
+    assert settings["openai_reasoning_summary"] == "detailed"
 
 
 def test_basic_agent_config_maps_none_to_false() -> None:
     settings = BasicAgentConfig(reasoning_effort="none").to_model_settings()
     assert settings["thinking"] is False
+    assert "openai_reasoning_summary" not in settings
 
 
 def test_ensembler_configs_use_cross_provider_thinking() -> None:
@@ -27,4 +44,6 @@ def test_ensembler_configs_use_cross_provider_thinking() -> None:
     dbt_settings = DbtLLMEnsemblerConfig(result_dirs=["a"], reasoning_effort="low").to_model_settings()
 
     assert llm_settings["thinking"] == "medium"
+    assert llm_settings["openai_reasoning_summary"] == "detailed"
     assert dbt_settings["thinking"] == "low"
+    assert dbt_settings["openai_reasoning_summary"] == "detailed"

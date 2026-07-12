@@ -95,7 +95,7 @@ class BasicAgentConfig(BaseModel):
         res: dict[str, Any] = {}
         if self.temperature is not None:
             res["temperature"] = self.temperature
-        res.update(reasoning_model_settings(self.reasoning_effort))
+        res.update(reasoning_model_settings(self.reasoning_effort, model=self.llm))
         if self.openai_service_tier is not None:
             res["openai_service_tier"] = self.openai_service_tier
         return res

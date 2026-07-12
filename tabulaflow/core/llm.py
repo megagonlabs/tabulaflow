@@ -33,16 +33,21 @@ from tabulaflow.core.config import tabulaflow_config
 DEFAULT_USAGE_LIMITS = UsageLimits(request_limit=None)
 
 
-def reasoning_model_settings(reasoning_effort: str | bool | None) -> ModelSettings:
+def reasoning_model_settings(reasoning_effort: str | bool | None, *, model: str) -> ModelSettings:
     """Return cross-provider reasoning settings.
 
     ``pydantic-ai`` uses ``thinking`` as the provider-neutral reasoning knob.
-    The legacy OpenAI-specific value ``"none"`` maps to ``False``.
+    The legacy OpenAI-specific value ``"none"`` maps to ``False``. OpenAI
+    Responses models get detailed reasoning summaries whenever thinking is
+    enabled.
     """
     if reasoning_effort is None:
         return ModelSettings()
     thinking: object = False if reasoning_effort == "none" else reasoning_effort
-    return ModelSettings(thinking=cast(Any, thinking))
+    settings = ModelSettings(thinking=cast(Any, thinking))
+    if thinking is not False and model.startswith("openai-responses:"):
+        settings = cast(ModelSettings, {**settings, "openai_reasoning_summary": "detailed"})
+    return settings
 
 
 # ---------------------------------------------------------------------------
