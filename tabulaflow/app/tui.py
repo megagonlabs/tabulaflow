@@ -714,19 +714,23 @@ class TabulaflowApp(App[None]):
             await loop.run_in_executor(None, _warm_session_imports)
             self._runtime_paths.scratch_dir.mkdir(parents=True, exist_ok=True)
             workspace = await create_workspace_connector(self._runtime_paths.workspace_db_path)
+            from functools import partial
+
             session = await loop.run_in_executor(
                 None,
-                SessionState,
-                self._model,
-                self._session_id,
-                self._runtime_paths.trajectories_dir,
-                self._runtime_paths.data_dir,
-                workspace,
-                self._reasoning_effort,
-                self._project_dir,
-                self._runtime_paths.scratch_dir,
-                self._subagent_model,
-                self._subagent_reasoning_effort,
+                partial(
+                    SessionState,
+                    model=self._model,
+                    session_id=self._session_id,
+                    trajectories_dir=self._runtime_paths.trajectories_dir,
+                    data_dir=self._runtime_paths.data_dir,
+                    workspace=workspace,
+                    reasoning_effort=self._reasoning_effort,
+                    project_dir=self._project_dir,
+                    scratch_dir=self._runtime_paths.scratch_dir,
+                    subagent_model=self._subagent_model,
+                    subagent_reasoning_effort=self._subagent_reasoning_effort,
+                ),
             )
             await self._maybe_autoconnect_sample(session)
             self._enable_explorer_button()
