@@ -592,7 +592,7 @@ class ChatAgent:
         """Update existing subagent-backed tool instances with the current profile."""
         model_settings = self._subagent_model_settings()
         for tool in self._subagent_profile_tools():
-            tool.set_llm_profile(llm=self.subagent_model, model_settings=model_settings)
+            tool.apply_llm_profile(llm=self.subagent_model, model_settings=model_settings)
 
     def set_main_profile(self, *, model: str, reasoning_effort: str) -> None:
         """Update the interactive agent's LLM profile.

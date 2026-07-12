@@ -184,8 +184,8 @@ class RunSubagentForEachRowTool:
         # routes progress to the right step when fan-out tools run concurrently.
         self.on_row_complete: Callable[[int, int, str | None], None] | None = None
 
-    def set_llm_profile(self, *, llm: str, model_settings: ModelSettings | None) -> None:
-        """Update the LLM profile used by per-row subagents."""
+    def apply_llm_profile(self, *, llm: str, model_settings: ModelSettings | None) -> None:
+        """Apply the LLM profile used by per-row subagents."""
         self.subagent_llm = llm
         self.model_settings = model_settings
 

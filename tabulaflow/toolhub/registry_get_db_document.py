@@ -71,8 +71,8 @@ class RegistryGetDBDocumentTool:
         self._metrics = RegistryGetDBDocumentToolMetrics()
         self._document_cache: dict[str, tuple[NL2QDBConnector, str]] = {}
 
-    def set_llm_profile(self, *, llm: str, model_settings: ModelSettings | None) -> None:
-        """Update the LLM profile used by generated database summaries."""
+    def apply_llm_profile(self, *, llm: str, model_settings: ModelSettings | None) -> None:
+        """Apply the LLM profile used by generated database summaries."""
         if self.db_summarizer_llm != llm or self.model_settings != model_settings:
             self.db_summarizer_llm = llm
             self.model_settings = model_settings

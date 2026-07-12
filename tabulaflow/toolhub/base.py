@@ -25,6 +25,6 @@ class BaseTool(Protocol):
 
 
 class LLMProfileTool(Protocol):
-    """Tool whose internal LLM follows a host-selected helper profile."""
+    """Tool with an internal LLM profile supplied by its host."""
 
-    def set_llm_profile(self, *, llm: str, model_settings: ModelSettings | None) -> None: ...
+    def apply_llm_profile(self, *, llm: str, model_settings: ModelSettings | None) -> None: ...
