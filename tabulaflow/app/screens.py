@@ -1738,6 +1738,13 @@ class _SetProfile(Protocol):
 
 
 @dataclass(frozen=True)
+class _ConfigPreset:
+    label: str
+    model: ModelOption
+    subagent_model: ModelOption
+
+
+@dataclass(frozen=True)
 class _ConfigModelSection:
     kind: str
     effort_kind: str
@@ -1751,15 +1758,61 @@ class _ConfigModelSection:
     set_profile: _SetProfile
 
 
+def _model_provider(model: str) -> str:
+    return model.partition(":")[0] if ":" in model else "custom"
+
+
+def _provider_label(provider: str) -> str:
+    labels = {
+        "anthropic": "Anthropic",
+        "fireworks": "Fireworks",
+        "google-vertex": "Google Vertex",
+        "openai": "OpenAI",
+        "openai-responses": "OpenAI",
+        "test": "Test",
+        "together": "Together",
+    }
+    return labels.get(provider, provider.replace("-", " ").title())
+
+
+def _group_options_by_provider(options: list[ModelOption]) -> list[ModelOption]:
+    providers: dict[str, list[ModelOption]] = {}
+    for option in options:
+        providers.setdefault(_model_provider(option.model), []).append(option)
+    return [option for provider_options in providers.values() for option in provider_options]
+
+
+def _provider_presets(options: list[ModelOption], subagent_options: list[ModelOption]) -> list[_ConfigPreset]:
+    main_by_provider: dict[str, ModelOption] = {}
+    subagent_by_provider: dict[str, ModelOption] = {}
+    for option in options:
+        main_by_provider.setdefault(_model_provider(option.model), option)
+    for option in subagent_options:
+        subagent_by_provider.setdefault(_model_provider(option.model), option)
+
+    presets: list[_ConfigPreset] = []
+    for provider, option in main_by_provider.items():
+        subagent_option = subagent_by_provider.get(provider)
+        if subagent_option is None:
+            continue
+        presets.append(
+            _ConfigPreset(
+                label=_provider_label(provider),
+                model=option,
+                subagent_model=subagent_option,
+            )
+        )
+    return presets
+
+
 class ConfigScreen(Screen[None]):
     """Full-screen editor for session preferences (main/subagent models, reasoning effort).
 
-    Renders the whole model catalog with the reasoning-effort chips nested
-    under the active main model, then a separate subagent model section:
-    up/down moves the cursor, enter applies the model under it, left/right
-    cycles the main-agent effort. Changes apply to the live session immediately
-    and persist to ``~/.tabulaflow/app_config.json`` as the default for new
-    sessions.
+    Renders provider presets plus separate main/subagent model sections. Each
+    model catalog is grouped by provider, and reasoning-effort chips stay
+    nested under the active model for that role. Changes apply to the live
+    session immediately and persist to ``~/.tabulaflow/app_config.json`` as the
+    default for new sessions.
     """
 
     DEFAULT_CSS = """
@@ -1800,11 +1853,15 @@ class ConfigScreen(Screen[None]):
         options = list(app_config.model_options)
         if all(o.model != session.model for o in options):
             options.insert(0, ModelOption(model=session.model, label=session.model))
+        options = _group_options_by_provider(options)
         self._options = options
         subagent_options = list(app_config.subagent_model_options)
         if all(o.model != session.subagent_model for o in subagent_options):
             subagent_options.insert(0, ModelOption(model=session.subagent_model, label=session.subagent_model))
+        subagent_options = _group_options_by_provider(subagent_options)
         self._subagent_options = subagent_options
+        self._presets = _provider_presets(options, subagent_options)
+        self._preset_rows = [Static(classes="config-row") for _ in self._presets]
         active = next(i for i, o in enumerate(options) if o.model == session.model)
         # Cursor is a slot, not an index, so it survives the effort row moving
         # to a newly selected model.
@@ -1819,7 +1876,7 @@ class ConfigScreen(Screen[None]):
             _ConfigModelSection(
                 kind="model",
                 effort_kind="effort",
-                title="Model",
+                title="Main LLM",
                 options=self._options,
                 rows=self._rows,
                 current_model=lambda: self._session.model,
@@ -1831,7 +1888,7 @@ class ConfigScreen(Screen[None]):
             _ConfigModelSection(
                 kind="subagent_model",
                 effort_kind="subagent_effort",
-                title="Subagent Model",
+                title="Subagent",
                 options=self._subagent_options,
                 rows=self._subagent_rows,
                 current_model=lambda: self._session.subagent_model,
@@ -1852,6 +1909,10 @@ class ConfigScreen(Screen[None]):
         with Vertical(id="config-body"):
             yield Static(title)
             yield Static("")
+            if self._preset_rows:
+                yield Static(Text("Presets", style="bold"))
+                yield from self._preset_rows
+                yield Static("")
             for n, section in enumerate(self._sections):
                 if n:
                     yield Static("")
@@ -1865,7 +1926,7 @@ class ConfigScreen(Screen[None]):
     def _slots(self) -> list[tuple[str, int]]:
         """Cursor-reachable rows: every model, plus the effort row nested under
         the active model when it supports reasoning efforts."""
-        slots: list[tuple[str, int]] = []
+        slots: list[tuple[str, int]] = [("preset", i) for i in range(len(self._presets))]
         for section in self._sections:
             for i, option in enumerate(section.options):
                 slots.append((section.kind, i))
@@ -1879,11 +1940,36 @@ class ConfigScreen(Screen[None]):
     def _render_subagent_row(self, i: int) -> Text:
         return self._render_model_row(self._sections[1], i)
 
+    def _render_preset_row(self, i: int) -> Text:
+        preset = self._presets[i]
+        selected = self._cursor == ("preset", i)
+        active = (
+            self._session.model == preset.model.model and self._session.subagent_model == preset.subagent_model.model
+        )
+        t = Text()
+        t.append("❯ " if selected else "  ", style=ACCENT_BOLD)
+        t.append("● " if active else "  ", style=ACCENT)
+        if active:
+            label_style = ACCENT_BOLD if selected else ACCENT
+        else:
+            label_style = "bold" if selected else ""
+        t.append(preset.label, style=label_style)
+        t.append(f" · main {preset.model.label}", style="dim")
+        t.append(f" · subagent {preset.subagent_model.label}", style="dim")
+        if self._select_error is not None and self._select_error[0] == "preset" and self._select_error[1] == i:
+            t.append("\n")
+            t.append(f"      {self._select_error[2]}", style=ERROR)
+        return t
+
     def _render_model_row(self, section: _ConfigModelSection, i: int) -> Text:
         option = section.options[i]
         active = option.model == section.current_model()
         selected = self._cursor == (section.kind, i)
         t = Text()
+        provider = _model_provider(option.model)
+        if i == 0 or _model_provider(section.options[i - 1].model) != provider:
+            t.append(_provider_label(provider), style="dim")
+            t.append("\n")
         t.append("❯ " if selected else "  ", style=ACCENT_BOLD)
         t.append("● " if active else "  ", style=ACCENT)
         # Mint iff active, bold iff under the cursor — two independent channels.
@@ -1892,9 +1978,8 @@ class ConfigScreen(Screen[None]):
         else:
             label_style = "bold" if selected else ""
         t.append(option.label, style=label_style)
-        provider = option.model.partition(":")[0] if ":" in option.model else ""
-        if provider and option.model != option.label:
-            t.append(f" · {provider}", style="dim")
+        if option.model != option.label:
+            t.append(f" · {_provider_label(provider)}", style="dim")
         if active:
             key = section.api_key()
             if key is not None and len(key) >= 12:
@@ -1928,6 +2013,8 @@ class ConfigScreen(Screen[None]):
         return hint
 
     def _refresh(self) -> None:
+        for i, row in enumerate(self._preset_rows):
+            row.update(self._render_preset_row(i))
         for section in self._sections:
             for i, row in enumerate(section.rows):
                 row.update(self._render_model_row(section, i))
@@ -1950,6 +2037,9 @@ class ConfigScreen(Screen[None]):
 
     def action_select(self) -> None:
         kind, i = self._cursor
+        if kind == "preset":
+            self._select_preset(i)
+            return
         section = self._section_for_kind(kind)
         if section is None or kind != section.kind:
             return
@@ -1971,6 +2061,29 @@ class ConfigScreen(Screen[None]):
         # tunes the effort without an intervening ↓.
         if section.supported_efforts():
             self._cursor = (section.effort_kind, i)
+        self._persist()
+
+    def _select_preset(self, i: int) -> None:
+        preset = self._presets[i]
+        old_model = self._session.model
+        old_reasoning_effort = self._session.reasoning_effort
+        old_subagent_model = self._session.subagent_model
+        old_subagent_reasoning_effort = self._session.subagent_reasoning_effort
+        main_effort = preset.model.recommended_effort or self._session.reasoning_effort
+        subagent_effort = preset.subagent_model.recommended_effort or self._session.subagent_reasoning_effort
+        self._select_error = None
+        try:
+            self._session.set_main_profile(model=preset.model.model, reasoning_effort=main_effort)
+            self._session.set_subagent_profile(model=preset.subagent_model.model, reasoning_effort=subagent_effort)
+        except Exception as e:
+            self._session.set_main_profile(model=old_model, reasoning_effort=old_reasoning_effort)
+            self._session.set_subagent_profile(
+                model=old_subagent_model,
+                reasoning_effort=old_subagent_reasoning_effort,
+            )
+            self._select_error = ("preset", i, str(e))
+            self._refresh()
+            return
         self._persist()
 
     def action_cycle(self, delta: int) -> None:

@@ -93,6 +93,9 @@ async def test_renders_catalog_with_nested_efforts() -> None:
     screen = ConfigScreen(session, on_change=lambda: None)  # type: ignore[arg-type]
     async with _App(screen).run_test() as pilot:
         await pilot.pause()
+        assert len(screen._preset_rows) == 2
+        assert "OpenAI" in screen._render_preset_row(0).plain
+        assert "Anthropic" in screen._render_preset_row(1).plain
         assert len(screen._rows) == 3
         assert len(screen._subagent_rows) == 2
         assert "●" in screen._render_row(0).plain
@@ -192,10 +195,12 @@ async def test_provider_and_api_key_suffixes() -> None:
     screen = ConfigScreen(session, on_change=lambda: None)  # type: ignore[arg-type]
     async with _App(screen).run_test() as pilot:
         await pilot.pause()
-        # Provider (not the full id) on every catalog row.
-        assert "· openai-responses" in screen._render_row(0).plain
+        # Provider label (not the full id) on every catalog row.
+        assert "OpenAI\n" in screen._render_row(0).plain
+        assert "· OpenAI" in screen._render_row(0).plain
         assert "openai-responses:gpt-5.5" not in screen._render_row(0).plain
-        assert "· anthropic" in screen._render_row(1).plain
+        assert "Anthropic\n" in screen._render_row(1).plain
+        assert "· Anthropic" in screen._render_row(1).plain
         # Masked key on the active row only.
         assert "API key sk-***ab4x" in screen._render_row(0).plain
         assert "API key" not in screen._render_row(1).plain
@@ -257,6 +262,23 @@ async def test_enter_selects_subagent_model_and_persists(updates: list[dict[str,
         assert screen._cursor == ("subagent_effort", 1)
         await pilot.press("left")
         assert session.subagent_reasoning_effort == "medium"
+
+
+async def test_enter_selects_provider_preset_and_persists(updates: list[dict[str, Any]]) -> None:
+    session = _StubSession()
+    refreshed: list[bool] = []
+    screen = ConfigScreen(session, on_change=lambda: refreshed.append(True))  # type: ignore[arg-type]
+    async with _App(screen).run_test() as pilot:
+        await pilot.pause()
+        await pilot.press("up", "enter")  # from main model to Anthropic preset
+        assert session.model == "anthropic:claude-opus-4-8"
+        assert session.reasoning_effort == "high"
+        assert session.subagent_model == "anthropic:claude-sonnet-4-5-20250929"
+        assert session.subagent_reasoning_effort == "high"
+        assert updates[-1]["model"] == "anthropic:claude-opus-4-8"
+        assert updates[-1]["subagent_model"] == "anthropic:claude-sonnet-4-5-20250929"
+        assert refreshed
+        assert "●" in screen._render_preset_row(1).plain
 
 
 async def test_unlisted_model_prepended() -> None:
