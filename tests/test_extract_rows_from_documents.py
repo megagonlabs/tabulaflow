@@ -12,6 +12,7 @@ from types import SimpleNamespace
 
 import duckdb
 import pytest
+from pydantic_ai.settings import ModelSettings
 
 import tabulaflow.toolhub.extract_rows_from_documents as mod
 from tabulaflow.core.db_connector.sql_conn import SQLConnector
@@ -63,6 +64,18 @@ def test_entity_extractor_builds_typed_model() -> None:
     # date/datetime serialize as ISO strings carrying a format hint for the LLM.
     assert json_types("day") == {"string", "null"} and "date" in json_formats("day")
     assert json_types("at") == {"string", "null"} and "date-time" in json_formats("at")
+
+
+def test_entity_extractor_rebuilds_agent_when_profile_changes() -> None:
+    settings = ModelSettings(temperature=0)
+    ex = EntityExtractor(["name"])
+    original_agent = ex._agent
+
+    ex.apply_llm_profile(llm="openai-responses:gpt-5", model_settings=settings)
+
+    assert ex.llm == "openai-responses:gpt-5"
+    assert ex.model_settings is settings
+    assert ex._agent is not original_agent
 
 
 def test_typed_model_coerces_and_nulls() -> None:

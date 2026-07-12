@@ -132,6 +132,8 @@ class EntityExtractor:
 
         self.output_columns = output_columns
         self.column_types = column_types or {}
+        self.llm = llm
+        self.model_settings = model_settings
         self.chunk_target = chunk_target
         self.chunk_max = chunk_max
         self.trajectory_log_dir = trajectory_log_dir
@@ -148,10 +150,22 @@ class EntityExtractor:
             "ExtractionResult",
             entities=(list[entity_model], ...),  # type: ignore[valid-type]
         )
-        self._agent = make_agent(
-            llm, output_type=self._result_model, model_settings=model_settings, instructions=_EXTRACTION_SYSTEM_PROMPT
-        )
+        self._agent = self._build_agent()
         self._semaphore = asyncio.Semaphore(max_concurrency)
+
+    def apply_llm_profile(self, *, llm: str | Model, model_settings: ModelSettings | None) -> None:
+        """Apply the LLM profile used by per-chunk extraction subagents."""
+        self.llm = llm
+        self.model_settings = model_settings
+        self._agent = self._build_agent()
+
+    def _build_agent(self) -> Any:
+        return make_agent(
+            self.llm,
+            output_type=self._result_model,
+            model_settings=self.model_settings,
+            instructions=_EXTRACTION_SYSTEM_PROMPT,
+        )
 
     async def extract(
         self,

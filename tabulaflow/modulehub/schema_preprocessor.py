@@ -1,4 +1,5 @@
 from typing import ClassVar, Literal
+from pydantic_ai.settings import ModelSettings
 from tabulaflow.core.types import SQLSchema, Usage
 from tabulaflow.core.db_connector import BaseSQLDBConnector
 from tabulaflow.modulehub.column_profiler import ColumnProfiler
@@ -21,14 +22,24 @@ class SchemaPreprocessor(CachedPreprocessorMixin[SQLSchema]):
         self,
         column_profiler_llm: str | None = None,
         foreign_key_predictor_llm: str | None = None,
+        column_profiler_model_settings: ModelSettings | None = None,
+        foreign_key_predictor_model_settings: ModelSettings | None = None,
         compress_schema: bool = True,
     ):
         self.column_profiler_llm = column_profiler_llm
         self.foreign_key_predictor_llm = foreign_key_predictor_llm
+        self.column_profiler_model_settings = column_profiler_model_settings
+        self.foreign_key_predictor_model_settings = foreign_key_predictor_model_settings
         self.compressor = SchemaCompressor() if compress_schema else None
-        self.column_profiler = ColumnProfiler(column_profiler_llm) if column_profiler_llm is not None else None
+        self.column_profiler = (
+            ColumnProfiler(column_profiler_llm, model_settings=column_profiler_model_settings)
+            if column_profiler_llm is not None
+            else None
+        )
         self.foreign_key_predictor = (
-            ForeignKeyPredictor(foreign_key_predictor_llm) if foreign_key_predictor_llm is not None else None
+            ForeignKeyPredictor(foreign_key_predictor_llm, model_settings=foreign_key_predictor_model_settings)
+            if foreign_key_predictor_llm is not None
+            else None
         )
         self._usage = Usage.create()
 

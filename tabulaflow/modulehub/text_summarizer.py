@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from pydantic_ai.settings import ModelSettings
 from tabulaflow.core.llm import make_agent, make_model_settings
 
 logger = logging.getLogger(__name__)
@@ -21,7 +22,7 @@ class TextSummarizer:
         self,
         llm: str = "openai-responses:gpt-5-mini",
         max_words: int = 500,
-        model_settings: dict[str, object] | None = None,
+        model_settings: ModelSettings | None = None,
     ) -> None:
         self.llm = llm
         self.max_words = max_words

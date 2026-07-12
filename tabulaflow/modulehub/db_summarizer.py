@@ -1,5 +1,6 @@
 import jinja2
 from pydantic import BaseModel
+from pydantic_ai.settings import ModelSettings
 
 from typing import Any, ClassVar, Literal
 
@@ -60,7 +61,7 @@ class DBSummarizer(CachedPreprocessorMixin[DBSummary]):
         compress_schema: bool = True,
         reasoning_effort: Literal["none", "minimal", "low", "medium", "high", "xhigh"] | None = "high",
         max_summary_words: int = 4000,
-        model_settings: dict[str, object] | None = None,
+        model_settings: ModelSettings | None = None,
     ) -> None:
         self.llm = llm
         self.compressor = SchemaCompressor() if compress_schema else None

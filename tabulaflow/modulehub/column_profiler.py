@@ -3,6 +3,7 @@ import copy
 import json
 import jinja2
 from pydantic import BaseModel
+from pydantic_ai.settings import ModelSettings
 from tabulaflow.core.types import SQLSchema, ColumnRef, Usage
 from tabulaflow.core.db_connector import BaseSQLDBConnector
 from tabulaflow.core.formatters.sql_ddl import SQLDDLSchemaFormatter
@@ -50,8 +51,9 @@ class LLMOutput(BaseModel):
 
 
 class ColumnProfiler:
-    def __init__(self, llm: str = "openai-responses:gpt-5-mini"):
+    def __init__(self, llm: str = "openai-responses:gpt-5-mini", model_settings: ModelSettings | None = None):
         self.llm = llm
+        self.model_settings = model_settings
         self.formatter = SQLDDLSchemaFormatter(max_total_columns=200)
         self._usage = Usage.create(llm=llm)
 
@@ -65,7 +67,12 @@ class ColumnProfiler:
             schema=self.formatter.format(schema, add_description=True)
         )
         # run_query_tool = RunQueryNoParamsTool(db_connector)
-        agent = make_agent(self.llm, output_type=LLMOutput, instructions=system_prompt)
+        agent = make_agent(
+            self.llm,
+            output_type=LLMOutput,
+            instructions=system_prompt,
+            model_settings=self.model_settings,
+        )
         user_prompt = format_user_prompt(column_ref)
         result = await agent.run(user_prompt)
         self._usage += Usage.from_pydantic_ai_usage(result.usage(), self.llm)

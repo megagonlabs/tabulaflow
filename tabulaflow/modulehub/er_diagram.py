@@ -1,6 +1,7 @@
 from typing import ClassVar, Literal
 
 import jinja2
+from pydantic_ai.settings import ModelSettings
 
 from tabulaflow.core.db_connector import BaseSQLDBConnector
 from tabulaflow.core.er_diagram import ERDiagram
@@ -67,8 +68,14 @@ class ERDiagramSynthesizer(CachedPreprocessorMixin[ERDiagram]):
     input_type: ClassVar[Literal["db_connector"]] = "db_connector"
     output_type: ClassVar[type[CacheableResult]] = ERDiagram
 
-    def __init__(self, llm: str = "openai-responses:gpt-5", compress_schema: bool = True):
+    def __init__(
+        self,
+        llm: str = "openai-responses:gpt-5",
+        compress_schema: bool = True,
+        model_settings: ModelSettings | None = None,
+    ):
         self.llm = llm
+        self.model_settings = model_settings
         self.compressor = SchemaCompressor() if compress_schema else None
         self.formatter = SQLDDLSchemaFormatter()
         self._usage = Usage.create(llm=llm)
@@ -84,7 +91,11 @@ class ERDiagramSynthesizer(CachedPreprocessorMixin[ERDiagram]):
         system_prompt = jinja2.Template(ER_DIAGRAM_SYNTHESIS_PROMPT).render()
         run_query_tool = RunQueryTool(db_connector)
         agent = make_agent(
-            self.llm, output_type=ERDiagram, instructions=system_prompt, tools=[run_query_tool.as_pydantic_ai_tool()]
+            self.llm,
+            output_type=ERDiagram,
+            instructions=system_prompt,
+            tools=[run_query_tool.as_pydantic_ai_tool()],
+            model_settings=self.model_settings,
         )
         user_prompt = format_user_prompt(schema, self.formatter)
         result = await agent.run(user_prompt)

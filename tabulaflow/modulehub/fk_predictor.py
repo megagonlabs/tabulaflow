@@ -3,6 +3,7 @@ import copy
 import json
 import jinja2
 from pydantic import BaseModel
+from pydantic_ai.settings import ModelSettings
 from tabulaflow.core.types import SQLSchema, Usage, ForeignKeySchema, TableRef
 from tabulaflow.core.db_connector import BaseSQLDBConnector
 from tabulaflow.toolhub.run_query import RunQueryTool
@@ -48,8 +49,9 @@ class LLMOutput(BaseModel):
 
 
 class ForeignKeyPredictor:
-    def __init__(self, llm: str = "openai-responses:gpt-5-mini"):
+    def __init__(self, llm: str = "openai-responses:gpt-5-mini", model_settings: ModelSettings | None = None):
         self.llm = llm
+        self.model_settings = model_settings
         self.formatter = SQLDDLSchemaFormatter(max_total_columns=200)
         self._usage = Usage.create(llm=llm)
 
@@ -64,7 +66,11 @@ class ForeignKeyPredictor:
         )
         run_query_tool = RunQueryTool(db_connector)
         agent = make_agent(
-            self.llm, output_type=LLMOutput, instructions=system_prompt, tools=[run_query_tool.as_pydantic_ai_tool()]
+            self.llm,
+            output_type=LLMOutput,
+            instructions=system_prompt,
+            tools=[run_query_tool.as_pydantic_ai_tool()],
+            model_settings=self.model_settings,
         )
         user_prompt = format_user_prompt(table_ref)
         result = await agent.run(user_prompt)
