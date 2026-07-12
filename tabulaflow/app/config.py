@@ -74,6 +74,17 @@ _DEFAULT_LLM_PRESETS_DATA = (
         },
     },
     {
+        "label": "OpenAI budget",
+        "main": {
+            "model": "openai-responses:gpt-5.4-mini",
+            "reasoning_effort": "medium",
+        },
+        "subagent": {
+            "model": "openai-responses:gpt-5-mini",
+            "reasoning_effort": "medium",
+        },
+    },
+    {
         "label": "Anthropic balanced",
         "main": {
             "model": "anthropic:claude-opus-4-8",

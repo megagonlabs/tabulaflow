@@ -16,6 +16,11 @@ _PRESETS = [
         subagent=LLMRoleConfig(model="openai-responses:gpt-5.4-mini", reasoning_effort="medium"),
     ),
     LLMPreset(
+        label="OpenAI budget",
+        main=LLMRoleConfig(model="openai-responses:gpt-5.4-mini", reasoning_effort="medium"),
+        subagent=LLMRoleConfig(model="openai-responses:gpt-5-mini", reasoning_effort="medium"),
+    ),
+    LLMPreset(
         label="Anthropic balanced",
         main=LLMRoleConfig(model="anthropic:claude-opus-4-8", reasoning_effort="high"),
         subagent=LLMRoleConfig(model="anthropic:claude-sonnet-4-5-20250929", reasoning_effort="high"),
@@ -82,36 +87,52 @@ async def test_renders_presets() -> None:
     screen = ConfigScreen(session, on_change=lambda: None)  # type: ignore[arg-type]
     async with _App(screen).run_test() as pilot:
         await pilot.pause()
-        assert len(screen._preset_rows) == 3
+        assert len(screen._preset_rows) == 4
         assert screen._cursor == 0
         assert "●" in screen._render_preset_row(0).plain
         assert "OpenAI balanced" in screen._render_preset_row(0).plain
         assert "GPT 5.5 medium" in screen._render_preset_row(0).plain
         assert "GPT 5.4 Mini medium" in screen._render_preset_row(0).plain
-        assert "Opus 4.8 high" in screen._render_preset_row(1).plain
-        assert "Sonnet 4.5 high" in screen._render_preset_row(1).plain
-        assert "Claude" not in screen._render_preset_row(1).plain
-        assert "20250929" not in screen._render_preset_row(1).plain
-        assert "Planning hybrid" in screen._render_preset_row(2).plain
+        assert "OpenAI budget" in screen._render_preset_row(1).plain
+        assert "GPT 5.4 Mini medium" in screen._render_preset_row(1).plain
+        assert "GPT 5 Mini medium" in screen._render_preset_row(1).plain
         assert "Opus 4.8 high" in screen._render_preset_row(2).plain
-        assert "GPT 5.4 Mini medium" in screen._render_preset_row(2).plain
+        assert "Sonnet 4.5 high" in screen._render_preset_row(2).plain
+        assert "Claude" not in screen._render_preset_row(2).plain
+        assert "20250929" not in screen._render_preset_row(2).plain
+        assert "Planning hybrid" in screen._render_preset_row(3).plain
+        assert "Opus 4.8 high" in screen._render_preset_row(3).plain
+        assert "GPT 5.4 Mini medium" in screen._render_preset_row(3).plain
         assert "●" not in screen._render_preset_row(1).plain
 
 
-async def test_enter_selects_preset_and_persists(updates: list[dict[str, Any]]) -> None:
+async def test_enter_selects_openai_budget(updates: list[dict[str, Any]]) -> None:
+    session = _StubSession()
+    screen = ConfigScreen(session, on_change=lambda: None)  # type: ignore[arg-type]
+    async with _App(screen).run_test() as pilot:
+        await pilot.pause()
+        await pilot.press("down", "enter")
+        assert session.model == "openai-responses:gpt-5.4-mini"
+        assert session.reasoning_effort == "medium"
+        assert session.subagent_model == "openai-responses:gpt-5-mini"
+        assert session.subagent_reasoning_effort == "medium"
+        assert updates == [{"active_llm_preset": "OpenAI budget"}]
+
+
+async def test_enter_selects_anthropic_preset_and_persists(updates: list[dict[str, Any]]) -> None:
     session = _StubSession()
     refreshed: list[bool] = []
     screen = ConfigScreen(session, on_change=lambda: refreshed.append(True))  # type: ignore[arg-type]
     async with _App(screen).run_test() as pilot:
         await pilot.pause()
-        await pilot.press("down", "enter")
+        await pilot.press("down", "down", "enter")
         assert session.model == "anthropic:claude-opus-4-8"
         assert session.reasoning_effort == "high"
         assert session.subagent_model == "anthropic:claude-sonnet-4-5-20250929"
         assert session.subagent_reasoning_effort == "high"
         assert updates == [{"active_llm_preset": "Anthropic balanced"}]
         assert refreshed
-        assert "●" in screen._render_preset_row(1).plain
+        assert "●" in screen._render_preset_row(2).plain
 
 
 async def test_enter_selects_planning_hybrid(updates: list[dict[str, Any]]) -> None:
@@ -119,7 +140,7 @@ async def test_enter_selects_planning_hybrid(updates: list[dict[str, Any]]) -> N
     screen = ConfigScreen(session, on_change=lambda: None)  # type: ignore[arg-type]
     async with _App(screen).run_test() as pilot:
         await pilot.pause()
-        await pilot.press("down", "down", "enter")
+        await pilot.press("down", "down", "down", "enter")
         assert session.model == "anthropic:claude-opus-4-8"
         assert session.reasoning_effort == "high"
         assert session.subagent_model == "openai-responses:gpt-5.4-mini"
@@ -191,7 +212,7 @@ async def test_current_custom_row_for_unmatched_runtime_profile(updates: list[di
     screen = ConfigScreen(session, on_change=lambda: refreshed.append(True))  # type: ignore[arg-type]
     async with _App(screen).run_test() as pilot:
         await pilot.pause()
-        assert len(screen._preset_rows) == 4
+        assert len(screen._preset_rows) == 5
         assert screen._cursor == 0
         assert "● Current custom" in screen._render_preset_row(0).plain
         await pilot.press("enter")
@@ -213,10 +234,10 @@ async def test_select_failure_shows_inline_error(updates: list[dict[str, Any]]) 
     screen = ConfigScreen(session, on_change=lambda: None)  # type: ignore[arg-type]
     async with _App(screen).run_test() as pilot:
         await pilot.pause()
-        await pilot.press("down", "enter")
+        await pilot.press("down", "down", "enter")
         assert session.model == "openai-responses:gpt-5.5"
         assert updates == []
-        assert "ANTHROPIC_API_KEY" in screen._render_preset_row(1).plain
+        assert "ANTHROPIC_API_KEY" in screen._render_preset_row(2).plain
         assert "●" in screen._render_preset_row(0).plain
         await pilot.press("up", "enter")
-        assert "ANTHROPIC_API_KEY" not in screen._render_preset_row(1).plain
+        assert "ANTHROPIC_API_KEY" not in screen._render_preset_row(2).plain

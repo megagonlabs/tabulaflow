@@ -29,6 +29,11 @@ def test_load_missing_file_returns_defaults(tmp_path: Path) -> None:
     assert config == AppConfig()
     assert config.llm_presets == list(DEFAULT_LLM_PRESETS)
     assert config.active_preset == DEFAULT_LLM_PRESETS[0]
+    openai_budget = next(preset for preset in DEFAULT_LLM_PRESETS if preset.label == "OpenAI budget")
+    assert openai_budget.main.model == "openai-responses:gpt-5.4-mini"
+    assert openai_budget.main.reasoning_effort == "medium"
+    assert openai_budget.subagent.model == "openai-responses:gpt-5-mini"
+    assert openai_budget.subagent.reasoning_effort == "medium"
     planning_hybrid = next(preset for preset in DEFAULT_LLM_PRESETS if preset.label == "Planning hybrid")
     assert planning_hybrid.main.model == "anthropic:claude-opus-4-8"
     assert planning_hybrid.main.reasoning_effort == "high"
