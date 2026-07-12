@@ -1732,7 +1732,7 @@ class SchemaBrowserScreen(Screen[None]):
 # ---------------------------------------------------------------------------
 
 
-_CURRENT_CUSTOM_PRESET_ID = "__current_custom__"
+_CURRENT_CUSTOM_PRESET_LABEL = "Current custom"
 
 
 def _compact_model_name(model: str) -> str:
@@ -1775,8 +1775,7 @@ def _preset_matches_session(preset: LLMPreset, session: SessionState) -> bool:
 
 def _current_session_preset(session: SessionState) -> LLMPreset:
     return LLMPreset(
-        id=_CURRENT_CUSTOM_PRESET_ID,
-        label="Current custom",
+        label=_CURRENT_CUSTOM_PRESET_LABEL,
         main=LLMRoleConfig.model_validate({"model": session.model, "reasoning_effort": session.reasoning_effort}),
         subagent=LLMRoleConfig.model_validate(
             {"model": session.subagent_model, "reasoning_effort": session.subagent_reasoning_effort}
@@ -1938,8 +1937,8 @@ class ConfigScreen(Screen[None]):
             self._select_error = (i, str(e))
             self._refresh()
             return
-        if preset.id != _CURRENT_CUSTOM_PRESET_ID:
-            update_app_config(active_llm_preset=preset.id)
+        if preset.label != _CURRENT_CUSTOM_PRESET_LABEL:
+            update_app_config(active_llm_preset=preset.label)
         self._on_change()
         self._refresh()
 

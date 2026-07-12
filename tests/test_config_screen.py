@@ -11,19 +11,16 @@ from tabulaflow.app.screens import ConfigScreen
 
 _PRESETS = [
     LLMPreset(
-        id="openai-balanced",
         label="OpenAI balanced",
         main=LLMRoleConfig(model="openai-responses:gpt-5.5", reasoning_effort="medium"),
         subagent=LLMRoleConfig(model="openai-responses:gpt-5.4-mini", reasoning_effort="medium"),
     ),
     LLMPreset(
-        id="anthropic-balanced",
         label="Anthropic balanced",
         main=LLMRoleConfig(model="anthropic:claude-opus-4-8", reasoning_effort="high"),
         subagent=LLMRoleConfig(model="anthropic:claude-sonnet-4-5-20250929", reasoning_effort="high"),
     ),
     LLMPreset(
-        id="planning-hybrid",
         label="Planning hybrid",
         main=LLMRoleConfig(model="anthropic:claude-opus-4-8", reasoning_effort="high"),
         subagent=LLMRoleConfig(model="openai-responses:gpt-5.4-mini", reasoning_effort="medium"),
@@ -112,7 +109,7 @@ async def test_enter_selects_preset_and_persists(updates: list[dict[str, Any]]) 
         assert session.reasoning_effort == "high"
         assert session.subagent_model == "anthropic:claude-sonnet-4-5-20250929"
         assert session.subagent_reasoning_effort == "high"
-        assert updates == [{"active_llm_preset": "anthropic-balanced"}]
+        assert updates == [{"active_llm_preset": "Anthropic balanced"}]
         assert refreshed
         assert "●" in screen._render_preset_row(1).plain
 
@@ -127,7 +124,7 @@ async def test_enter_selects_planning_hybrid(updates: list[dict[str, Any]]) -> N
         assert session.reasoning_effort == "high"
         assert session.subagent_model == "openai-responses:gpt-5.4-mini"
         assert session.subagent_reasoning_effort == "medium"
-        assert updates == [{"active_llm_preset": "planning-hybrid"}]
+        assert updates == [{"active_llm_preset": "Planning hybrid"}]
 
 
 async def test_active_preset_shows_api_keys() -> None:
@@ -201,7 +198,7 @@ async def test_current_custom_row_for_unmatched_runtime_profile(updates: list[di
         assert updates == []
         assert refreshed
         await pilot.press("down", "enter")
-        assert updates == [{"active_llm_preset": "openai-balanced"}]
+        assert updates == [{"active_llm_preset": "OpenAI balanced"}]
         assert session.reasoning_effort == "medium"
 
 

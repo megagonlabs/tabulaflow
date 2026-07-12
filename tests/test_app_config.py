@@ -16,10 +16,9 @@ from tabulaflow.app.config import (
 )
 
 
-def _custom_preset(preset_id: str = "my-stack") -> LLMPreset:
+def _custom_preset(label: str = "My stack") -> LLMPreset:
     return LLMPreset(
-        id=preset_id,
-        label="My stack",
+        label=label,
         main=LLMRoleConfig(model="together:my/model", reasoning_effort="low"),
         subagent=LLMRoleConfig(model="together:my/fast-model", reasoning_effort="medium"),
     )
@@ -30,8 +29,7 @@ def test_load_missing_file_returns_defaults(tmp_path: Path) -> None:
     assert config == AppConfig()
     assert config.llm_presets == list(DEFAULT_LLM_PRESETS)
     assert config.active_preset == DEFAULT_LLM_PRESETS[0]
-    planning_hybrid = next(preset for preset in DEFAULT_LLM_PRESETS if preset.id == "planning-hybrid")
-    assert planning_hybrid.label == "Planning hybrid"
+    planning_hybrid = next(preset for preset in DEFAULT_LLM_PRESETS if preset.label == "Planning hybrid")
     assert planning_hybrid.main.model == "anthropic:claude-opus-4-8"
     assert planning_hybrid.main.reasoning_effort == "high"
     assert planning_hybrid.subagent.model == "openai-responses:gpt-5.4-mini"
@@ -41,7 +39,7 @@ def test_load_missing_file_returns_defaults(tmp_path: Path) -> None:
 def test_save_load_roundtrip(tmp_path: Path) -> None:
     path = str(tmp_path / "app_config.json")
     custom = _custom_preset()
-    config = AppConfig(active_llm_preset=custom.id, custom_llm_presets=[custom])
+    config = AppConfig(active_llm_preset=custom.label, custom_llm_presets=[custom])
     save_app_config(config, path)
     assert load_app_config(path) == config
 
@@ -66,7 +64,6 @@ def test_load_invalid_effort_raises(tmp_path: Path) -> None:
             {
                 "custom_llm_presets": [
                     {
-                        "id": "bad",
                         "label": "Bad",
                         "main": {"model": "test:main", "reasoning_effort": "minimal"},
                         "subagent": {"model": "test:subagent", "reasoning_effort": "medium"},
@@ -95,9 +92,9 @@ def test_assignment_validates() -> None:
 def test_defaults_not_written_to_file(tmp_path: Path) -> None:
     path = tmp_path / "app_config.json"
     config = AppConfig()
-    config.active_llm_preset = "anthropic-balanced"
+    config.active_llm_preset = "Anthropic balanced"
     save_app_config(config, str(path))
-    assert json.loads(path.read_text()) == {"active_llm_preset": "anthropic-balanced"}
+    assert json.loads(path.read_text()) == {"active_llm_preset": "Anthropic balanced"}
 
 
 def test_custom_presets_appended_to_defaults(tmp_path: Path) -> None:
@@ -109,8 +106,7 @@ def test_custom_presets_appended_to_defaults(tmp_path: Path) -> None:
 
 def test_custom_preset_overrides_matching_default_in_place() -> None:
     override = LLMPreset(
-        id=DEFAULT_LLM_PRESETS[0].id,
-        label="My OpenAI",
+        label=DEFAULT_LLM_PRESETS[0].label,
         main=LLMRoleConfig(model="openai-responses:gpt-5.5", reasoning_effort="high"),
         subagent=LLMRoleConfig(model="openai-responses:gpt-5.4-mini", reasoning_effort="low"),
     )
@@ -123,7 +119,7 @@ def test_update_preserves_custom_presets(tmp_path: Path) -> None:
     path = str(tmp_path / "app_config.json")
     custom = _custom_preset()
     save_app_config(AppConfig(custom_llm_presets=[custom]), path)
-    update_app_config(path, active_llm_preset="anthropic-balanced")
+    update_app_config(path, active_llm_preset="Anthropic balanced")
     config = load_app_config(path)
-    assert config.active_llm_preset == "anthropic-balanced"
+    assert config.active_llm_preset == "Anthropic balanced"
     assert config.custom_llm_presets == [custom]

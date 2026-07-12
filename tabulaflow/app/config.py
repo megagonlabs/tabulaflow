@@ -9,10 +9,9 @@ persisted here.
 Example custom preset::
 
     {
-      "active_llm_preset": "my-research-stack",
+      "active_llm_preset": "My research stack",
       "custom_llm_presets": [
         {
-          "id": "my-research-stack",
           "label": "My research stack",
           "main": {
             "model": "openai-responses:gpt-5.5",
@@ -57,7 +56,6 @@ class LLMPreset(BaseModel):
 
     model_config = ConfigDict(validate_assignment=True, protected_namespaces=())
 
-    id: str
     label: str
     main: LLMRoleConfig
     subagent: LLMRoleConfig
@@ -65,7 +63,6 @@ class LLMPreset(BaseModel):
 
 _DEFAULT_LLM_PRESETS_DATA = (
     {
-        "id": "openai-balanced",
         "label": "OpenAI balanced",
         "main": {
             "model": "openai-responses:gpt-5.5",
@@ -77,7 +74,6 @@ _DEFAULT_LLM_PRESETS_DATA = (
         },
     },
     {
-        "id": "anthropic-balanced",
         "label": "Anthropic balanced",
         "main": {
             "model": "anthropic:claude-opus-4-8",
@@ -89,7 +85,6 @@ _DEFAULT_LLM_PRESETS_DATA = (
         },
     },
     {
-        "id": "planning-hybrid",
         "label": "Planning hybrid",
         "main": {
             "model": "anthropic:claude-opus-4-8",
@@ -111,25 +106,25 @@ class AppConfig(BaseModel):
 
     model_config = ConfigDict(validate_assignment=True, protected_namespaces=())
 
-    active_llm_preset: str = "openai-balanced"
+    active_llm_preset: str = "OpenAI balanced"
     custom_llm_presets: list[LLMPreset] = Field(default_factory=list)
 
     @property
     def llm_presets(self) -> list[LLMPreset]:
-        """Built-in presets with custom entries merged by id.
+        """Built-in presets with custom entries merged by label.
 
-        A custom preset whose ``id`` matches a built-in replaces that built-in
-        in place. New custom ids are appended after the defaults.
+        A custom preset whose ``label`` matches a built-in replaces that
+        built-in in place. New custom labels are appended after the defaults.
         """
-        by_id = {preset.id: preset for preset in self.custom_llm_presets}
-        merged = [by_id.pop(preset.id, preset) for preset in DEFAULT_LLM_PRESETS]
-        return merged + list(by_id.values())
+        by_label = {preset.label: preset for preset in self.custom_llm_presets}
+        merged = [by_label.pop(preset.label, preset) for preset in DEFAULT_LLM_PRESETS]
+        return merged + list(by_label.values())
 
     @property
     def active_preset(self) -> LLMPreset:
         """Return the selected preset."""
         for preset in self.llm_presets:
-            if preset.id == self.active_llm_preset:
+            if preset.label == self.active_llm_preset:
                 return preset
         raise ValueError(f"Unknown LLM preset: {self.active_llm_preset}")
 
