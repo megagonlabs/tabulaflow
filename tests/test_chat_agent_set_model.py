@@ -66,6 +66,20 @@ def test_thinking_settings_openai(monkeypatch: pytest.MonkeyPatch) -> None:
     }
 
 
+def test_service_tier_can_be_disabled_for_openai(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("OPENAI_API_KEY", "sk-test123456789ab4x")
+    agent = ChatAgent(
+        registry=DBRegistry(),
+        model="openai-responses:gpt-5",
+        reasoning_effort="medium",
+        service_tier=None,
+        subagent_model="openai-responses:gpt-5.4-mini",
+    )
+    assert agent._pydantic_ai_agent is not None
+    assert agent._pydantic_ai_agent.model_settings == {}
+    assert "openai_service_tier" not in agent._subagent_model_settings()
+
+
 def test_thinking_settings_budget_era_claude_raises_max_tokens(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-fake")
     agent = ChatAgent(registry=DBRegistry(), model="anthropic:claude-sonnet-4-5-20250929", reasoning_effort="high")
@@ -115,14 +129,18 @@ async def test_subagent_profile_wires_tools(tmp_path: Path, monkeypatch: pytest.
         assert settings is not None
         assert settings["thinking"] == "high"
         assert settings["openai_reasoning_summary"] == "detailed"
+        assert settings["openai_service_tier"] == "priority"
         settings = cast(dict[str, Any], agent._tools.extract_rows_from_documents.model_settings)
         assert settings["thinking"] == "high"
         assert settings["openai_reasoning_summary"] == "detailed"
+        assert settings["openai_service_tier"] == "priority"
         settings = cast(dict[str, Any], agent._tools.add_canonical_name.model_settings)
         assert settings["thinking"] == "high"
         assert settings["openai_reasoning_summary"] == "detailed"
+        assert settings["openai_service_tier"] == "priority"
         settings = cast(dict[str, Any], agent._tools.get_db_document.model_settings)
         assert settings["thinking"] == "high"
         assert settings["openai_reasoning_summary"] == "detailed"
+        assert settings["openai_service_tier"] == "priority"
     finally:
         await workspace.disconnect_async()

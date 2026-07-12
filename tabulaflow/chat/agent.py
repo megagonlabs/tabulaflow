@@ -295,6 +295,9 @@ class ChatAgent:
     # ``--reasoning-effort`` option), as it does for ``model``. Mutable at runtime via
     # ``set_reasoning_effort`` (peer of ``model``/``set_model``).
     reasoning_effort: str
+    # Session-wide service tier for providers that expose one. Applied to both the
+    # root agent and helper LLM calls; ignored by providers without service tiers.
+    service_tier: str | None = "priority"
     # Model profile for internal fan-out / extraction subagents. This is separate
     # from the interactive agent: the root conversation may want a large model while
     # hundreds of parallel row/document workers run on a cheaper one.
@@ -577,7 +580,11 @@ class ChatAgent:
         Use provider-neutral thinking settings by default. OpenAI Responses gets
         detailed reasoning summaries through the shared reasoning settings helper.
         """
-        return make_model_settings(model=self.subagent_model, reasoning_effort=self.subagent_reasoning_effort)
+        return make_model_settings(
+            model=self.subagent_model,
+            reasoning_effort=self.subagent_reasoning_effort,
+            service_tier=self.service_tier,
+        )
 
     def _subagent_profile_tools(self) -> tuple[LLMProfileTool, ...]:
         """Tools whose internal helper LLM follows the app subagent profile."""
@@ -731,7 +738,7 @@ class ChatAgent:
             instructions=self._system_prompt,
             # Thinking is deliberately absent: effort is passed per request in
             # ``run_stream`` so effort changes need no agent rebuild.
-            model_settings=make_model_settings(model=self.model, service_tier="priority"),
+            model_settings=make_model_settings(model=self.model, service_tier=self.service_tier),
         )
 
     async def run_stream(self, question: str) -> AsyncIterator[ChatEvent]:
