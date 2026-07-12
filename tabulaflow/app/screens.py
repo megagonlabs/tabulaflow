@@ -1923,12 +1923,6 @@ class ConfigScreen(Screen[None]):
 
     def _hint_text(self) -> Text:
         hint = Text()
-        hint.append("↑↓", style=KEY_HINT)
-        hint.append(" Move    ", style="dim")
-        hint.append("↵", style=KEY_HINT)
-        hint.append(" Select model    ", style="dim")
-        hint.append("←→", style=KEY_HINT)
-        hint.append(" Change effort    ", style="dim")
         hint.append("Esc", style=KEY_HINT)
         hint.append(" Back", style="dim")
         return hint
