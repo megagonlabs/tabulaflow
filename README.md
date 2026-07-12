@@ -410,10 +410,12 @@ July 11
   - [x] Hint bar
   - [x] New config UI based on LLM presets
 
-- [ ] Gemini levels - no xhigh
 - [ ] Other config options - concurrency
+- [ ] Gemini levels - no xhigh
 - [ ] "Initializing..." when building agent
+- [ ] Fireworks preset
 - [ ] UserError: Anthropic does not support thinking and output tools at the same time. Use `output_type=NativeOutput(...)` instead.
+
 
 - [ ] Inline code block (``) highlighting
 - [ ] Include Cypher
