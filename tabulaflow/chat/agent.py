@@ -330,7 +330,6 @@ class ChatAgent:
     _message_history: list[ModelMessage] = field(init=False, default_factory=list)
     _system_prompt: str = field(init=False, default=SYSTEM_PROMPT)
     _pydantic_ai_agent: Agent[None, str] | None = field(init=False, default=None)
-    _subagent_probe_agent: Agent[None, str] | None = field(init=False, default=None)
     _query_history: QueryHistory = field(init=False)
     _message_store: MessageStore = field(init=False)
     _main_scope: ScopedMessageStore = field(init=False)
@@ -499,12 +498,10 @@ class ChatAgent:
             return None
         return self._unwrap_model(self._pydantic_ai_agent.model)
 
-    def _subagent_unwrapped_model(self, *, raise_errors: bool = False) -> Any | None:
-        """Provider model for the configured subagent model, built lazily for display."""
+    def _subagent_probe_model(self, *, raise_errors: bool = False) -> Any | None:
+        """Provider model for the configured subagent profile, built lazily for introspection."""
         try:
-            if self._subagent_probe_agent is None:
-                self._subagent_probe_agent = make_agent(self.subagent_model)
-            return self._unwrap_model(self._subagent_probe_agent.model)
+            return self._unwrap_model(make_agent(self.subagent_model).model)
         except Exception:
             if raise_errors:
                 raise
@@ -538,13 +535,13 @@ class ChatAgent:
     @property
     def subagent_api_key(self) -> str | None:
         """API key of the configured subagent model's provider client, for display."""
-        key = getattr(getattr(self._subagent_unwrapped_model(), "client", None), "api_key", None)
+        key = getattr(getattr(self._subagent_probe_model(), "client", None), "api_key", None)
         return key if isinstance(key, str) and key else None
 
     @property
     def subagent_supported_efforts(self) -> tuple[str, ...]:
         """Reasoning-effort levels meaningful for the configured subagent model."""
-        model = self._subagent_unwrapped_model()
+        model = self._subagent_probe_model()
         profile = getattr(model, "profile", None)
         if profile is None or not (profile.supports_thinking or profile.thinking_always_enabled):
             return ()
@@ -627,15 +624,12 @@ class ChatAgent:
         if self.subagent_model == model:
             return
         previous = self.subagent_model
-        previous_probe = self._subagent_probe_agent
         self.subagent_model = model
-        self._subagent_probe_agent = None
         try:
-            self._subagent_unwrapped_model(raise_errors=True)
+            self._subagent_probe_model(raise_errors=True)
             self._apply_subagent_profile()
         except Exception:
             self.subagent_model = previous
-            self._subagent_probe_agent = previous_probe
             raise
 
     def set_subagent_reasoning_effort(self, reasoning_effort: str) -> None:
