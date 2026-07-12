@@ -405,6 +405,7 @@ July 11
 - [x] Fix response format - change "---" to "<artifacts>...</artifacts>"
 - [x] Subagent model config
 - [x] Generalize provider-specific configuration
+- [x] Fix LLM configuration inconsistencies
 - [ ] Gemini levels - no xhigh
 - [ ] Hint bar
 - [ ] Other config options - concurrency
