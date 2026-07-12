@@ -403,11 +403,14 @@ July 10
 
 July 11
 - [x] Fix response format - change "---" to "<artifacts>...</artifacts>"
+- [x] Subagent model config
+- [ ] Fix provider-specific configuration
 - [ ] Gemini levels - no xhigh
 - [ ] Hint bar
 - [ ] Other config options - concurrency
 - [ ] Reasoning level setting through the repo
 - [ ] "Initializing..." when building agent
+- [ ] UserError: Anthropic does not support thinking and output tools at the same time. Use `output_type=NativeOutput(...)` instead.
 
 - [ ] Inline code block (``) highlighting
 - [ ] Include Cypher
