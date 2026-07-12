@@ -81,11 +81,18 @@ def test_load_invalid_effort_raises(tmp_path: Path) -> None:
         load_app_config(str(path))
 
 
-def test_load_unknown_active_preset_raises(tmp_path: Path) -> None:
+def test_load_unknown_active_preset_falls_back_to_default(tmp_path: Path) -> None:
     path = tmp_path / "app_config.json"
     path.write_text(json.dumps({"active_llm_preset": "missing"}))
-    with pytest.raises(ValueError, match=str(path)):
-        load_app_config(str(path))
+    config = load_app_config(str(path))
+    assert config.active_llm_preset == DEFAULT_LLM_PRESETS[0].label
+    assert config.active_preset == DEFAULT_LLM_PRESETS[0]
+
+
+def test_unknown_active_preset_assignment_falls_back_to_default() -> None:
+    config = AppConfig(active_llm_preset="Anthropic balanced")
+    config.active_llm_preset = "missing"
+    assert config.active_llm_preset == DEFAULT_LLM_PRESETS[0].label
 
 
 def test_assignment_validates() -> None:

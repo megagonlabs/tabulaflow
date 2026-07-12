@@ -140,8 +140,10 @@ class AppConfig(BaseModel):
         raise ValueError(f"Unknown LLM preset: {self.active_llm_preset}")
 
     @model_validator(mode="after")
-    def _validate_active_preset(self) -> AppConfig:
-        self.active_preset
+    def _normalize_active_preset(self) -> AppConfig:
+        labels = {preset.label for preset in self.llm_presets}
+        if self.active_llm_preset not in labels:
+            object.__setattr__(self, "active_llm_preset", DEFAULT_LLM_PRESETS[0].label)
         return self
 
 
