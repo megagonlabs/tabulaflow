@@ -215,6 +215,16 @@ def _build_base(llm: str) -> Model:
     return infer_model(llm)
 
 
+def validate_model_identifier(llm: str) -> None:
+    """Validate an LLM identifier and local provider configuration.
+
+    This uses the same provider resolution path as :func:`make_agent`, so CLI/UI
+    validation fails for the same malformed identifiers and missing credentials
+    that would otherwise fail during agent construction.
+    """
+    _build_base(llm)
+
+
 # Resolved base models, cached per event loop (like the throttle caches above). A
 # base model owns its provider's ``httpx.AsyncClient`` (connection pool), so reusing
 # it means every agent for the same model shares one client instead of leaking a
