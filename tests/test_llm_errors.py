@@ -35,7 +35,7 @@ def test_format_llm_unavailable_message_omits_raw_provider_detail() -> None:
     )
     message = format_llm_unavailable_message(raw)
 
-    assert message == "Select a configured preset in /config."
+    assert message == "Select a configured preset in /config. /connect and data browsing still work."
     assert "Anthropic" not in message
     assert "ANTHROPIC_API_KEY" not in message
     assert "AnthropicProvider" not in message

@@ -43,7 +43,7 @@ def format_llm_error(error: str | None) -> str:
 
 def format_llm_unavailable_message(error: str | None) -> str:
     """Return the full chat-surface message for unavailable LLM actions."""
-    return "Select a configured preset in /config."
+    return "Select a configured preset in /config. /connect and data browsing still work."
 
 
 @dataclass(frozen=True)
