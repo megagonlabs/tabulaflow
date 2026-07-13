@@ -4,7 +4,7 @@ from typing import get_args
 
 import typer
 
-from tabulaflow.app.config import LLMRoleConfig, ReasoningEffort
+from tabulaflow.app.config import DEFAULT_LLM_PRESETS, LLMRoleConfig, ReasoningEffort
 
 app = typer.Typer(
     name="tabulaflow",
@@ -42,10 +42,17 @@ def _resolve_llm_roles(
     reasoning_effort: str | None,
     subagent_model: str | None,
     subagent_reasoning_effort: str | None,
-) -> tuple[LLMRoleConfig, LLMRoleConfig]:
+) -> tuple[LLMRoleConfig | None, LLMRoleConfig | None]:
     from tabulaflow.app.config import load_app_config
 
+    has_cli_overrides = any(
+        value is not None for value in (model, reasoning_effort, subagent_model, subagent_reasoning_effort)
+    )
     preset = load_app_config().active_preset
+    if preset is None:
+        if not has_cli_overrides:
+            return None, None
+        preset = DEFAULT_LLM_PRESETS[0]
     return (
         _with_role_overrides(
             preset.main,
@@ -125,10 +132,10 @@ def chat(
 
     asyncio.run(
         run_tui(
-            model=main.model,
-            reasoning_effort=main.reasoning_effort,
-            subagent_model=subagent.model,
-            subagent_reasoning_effort=subagent.reasoning_effort,
+            model=main.model if main is not None else None,
+            reasoning_effort=main.reasoning_effort if main is not None else None,
+            subagent_model=subagent.model if subagent is not None else None,
+            subagent_reasoning_effort=subagent.reasoning_effort if subagent is not None else None,
             output_pane_host=output_pane_host,
             output_pane_port=output_pane_port,
             output_pane_public_url=output_pane_public_url,

@@ -28,7 +28,8 @@ def test_load_missing_file_returns_defaults(tmp_path: Path) -> None:
     config = load_app_config(str(tmp_path / "app_config.json"))
     assert config == AppConfig()
     assert config.llm_presets == list(DEFAULT_LLM_PRESETS)
-    assert config.active_preset == DEFAULT_LLM_PRESETS[0]
+    assert config.active_llm_preset is None
+    assert config.active_preset is None
     openai_budget = next(preset for preset in DEFAULT_LLM_PRESETS if preset.label == "OpenAI budget")
     assert openai_budget.main.model == "openai-responses:gpt-5.4-mini"
     assert openai_budget.main.reasoning_effort == "medium"
@@ -81,18 +82,19 @@ def test_load_invalid_effort_raises(tmp_path: Path) -> None:
         load_app_config(str(path))
 
 
-def test_load_unknown_active_preset_falls_back_to_default(tmp_path: Path) -> None:
+def test_load_unknown_active_preset_has_no_resolved_preset(tmp_path: Path) -> None:
     path = tmp_path / "app_config.json"
     path.write_text(json.dumps({"active_llm_preset": "missing"}))
     config = load_app_config(str(path))
-    assert config.active_llm_preset == DEFAULT_LLM_PRESETS[0].label
-    assert config.active_preset == DEFAULT_LLM_PRESETS[0]
+    assert config.active_llm_preset == "missing"
+    assert config.active_preset is None
 
 
-def test_unknown_active_preset_assignment_falls_back_to_default() -> None:
+def test_unknown_active_preset_assignment_has_no_resolved_preset() -> None:
     config = AppConfig(active_llm_preset="Anthropic balanced")
     config.active_llm_preset = "missing"
-    assert config.active_llm_preset == DEFAULT_LLM_PRESETS[0].label
+    assert config.active_llm_preset == "missing"
+    assert config.active_preset is None
 
 
 def test_assignment_validates() -> None:

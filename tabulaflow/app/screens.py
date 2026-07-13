@@ -1747,10 +1747,14 @@ def _preset_matches_session(preset: LLMPreset, session: SessionState) -> bool:
 
 
 def _preset_profile_matches_session(preset: LLMPreset, session: SessionState) -> bool:
+    if session.llm_profile is None:
+        return False
     return ActiveLLMProfile(main=preset.main, subagent=preset.subagent) == session.llm_profile
 
 
 def _current_session_preset(session: SessionState) -> LLMPreset:
+    if session.llm_profile is None:
+        raise RuntimeError("No LLM profile is selected.")
     return LLMPreset(
         label=_CURRENT_CUSTOM_PRESET_LABEL,
         main=session.llm_profile.main,

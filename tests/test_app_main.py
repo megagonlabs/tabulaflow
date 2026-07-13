@@ -32,6 +32,40 @@ def test_resolve_llm_roles_uses_saved_preset(monkeypatch: pytest.MonkeyPatch) ->
     assert subagent == LLMRoleConfig(model="test", reasoning_effort="low")
 
 
+def test_resolve_llm_roles_returns_none_without_active_preset(monkeypatch: pytest.MonkeyPatch) -> None:
+    import tabulaflow.app.config as app_config
+
+    monkeypatch.setattr(app_config, "load_app_config", lambda: AppConfig())
+
+    main, subagent = _resolve_llm_roles(
+        model=None,
+        reasoning_effort=None,
+        subagent_model=None,
+        subagent_reasoning_effort=None,
+    )
+
+    assert main is None
+    assert subagent is None
+
+
+def test_resolve_llm_roles_uses_default_base_for_cli_overrides_without_active_preset(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import tabulaflow.app.config as app_config
+
+    monkeypatch.setattr(app_config, "load_app_config", lambda: AppConfig())
+
+    main, subagent = _resolve_llm_roles(
+        model="test",
+        reasoning_effort="high",
+        subagent_model=None,
+        subagent_reasoning_effort=None,
+    )
+
+    assert main == LLMRoleConfig(model="test", reasoning_effort="high")
+    assert subagent == LLMRoleConfig(model="openai-responses:gpt-5.4-mini", reasoning_effort="medium")
+
+
 def test_resolve_llm_roles_applies_cli_overrides(monkeypatch: pytest.MonkeyPatch) -> None:
     import tabulaflow.app.config as app_config
 

@@ -147,6 +147,26 @@ def test_session_starts_when_llm_unavailable(tmp_path: Path, monkeypatch: pytest
     session.note_event("ignored without an LLM")
 
 
+def test_session_starts_without_llm_profile(tmp_path: Path) -> None:
+    session = SessionState(
+        model=None,
+        reasoning_effort=None,
+        subagent_model=None,
+        subagent_reasoning_effort=None,
+        session_id="test-session",
+        trajectories_dir=tmp_path / "trajectories",
+        data_dir=tmp_path / "data",
+        workspace=None,
+    )
+
+    assert session.llm_profile is None
+    assert session.chat_agent is None
+    assert not session.llm_available
+    assert session.llm_error is None
+    with pytest.raises(RuntimeError, match="No LLM profile"):
+        _ = session.model
+
+
 def test_unavailable_session_can_switch_to_valid_llm(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
     session = SessionState(

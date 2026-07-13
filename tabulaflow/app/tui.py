@@ -110,10 +110,10 @@ class TabulaflowApp(App[None]):
     def __init__(
         self,
         *,
-        model: str,
-        reasoning_effort: str,
-        subagent_model: str = "openai-responses:gpt-5.4-mini",
-        subagent_reasoning_effort: str = "medium",
+        model: str | None,
+        reasoning_effort: str | None,
+        subagent_model: str | None = None,
+        subagent_reasoning_effort: str | None = None,
         output_pane_host: str = "127.0.0.1",
         output_pane_port: int | None = None,
         output_pane_public_url: str | None = None,
@@ -974,10 +974,10 @@ class TabulaflowApp(App[None]):
 
 
 async def run_tui(
-    model: str,
-    reasoning_effort: str,
-    subagent_model: str = "openai-responses:gpt-5.4-mini",
-    subagent_reasoning_effort: str = "medium",
+    model: str | None,
+    reasoning_effort: str | None,
+    subagent_model: str | None = None,
+    subagent_reasoning_effort: str | None = None,
     *,
     output_pane_host: str = "127.0.0.1",
     output_pane_port: int | None = None,

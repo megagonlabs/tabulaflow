@@ -127,27 +127,31 @@ class SessionState:
 
     def __init__(
         self,
-        model: str,
+        model: str | None,
         session_id: str,
         trajectories_dir: Path,
         data_dir: Path,
         workspace: SQLConnector | None,
-        reasoning_effort: str,
+        reasoning_effort: str | None,
         service_tier: str | None = "priority",
         project_dir: Path | None = None,
         scratch_dir: Path | None = None,
-        subagent_model: str = "openai-responses:gpt-5.4-mini",
-        subagent_reasoning_effort: str = "medium",
+        subagent_model: str | None = None,
+        subagent_reasoning_effort: str | None = None,
     ) -> None:
         from tabulaflow.core.db_connector.db_registry import DBRegistry
 
         self.session_id = session_id
         self.data_dir = data_dir
-        self.llm_profile = ActiveLLMProfile.from_values(
-            model=model,
-            reasoning_effort=reasoning_effort,
-            subagent_model=subagent_model,
-            subagent_reasoning_effort=subagent_reasoning_effort,
+        self.llm_profile = (
+            ActiveLLMProfile.from_values(
+                model=model,
+                reasoning_effort=reasoning_effort or "medium",
+                subagent_model=subagent_model or "openai-responses:gpt-5.4-mini",
+                subagent_reasoning_effort=subagent_reasoning_effort or "medium",
+            )
+            if model is not None
+            else None
         )
         self._service_tier = service_tier
         self._trajectory_log_dir = trajectories_dir
@@ -198,6 +202,10 @@ class SessionState:
         )
 
     def _rebuild_chat_agent(self) -> None:
+        if self.llm_profile is None:
+            self.chat_agent = None
+            self.llm_error = None
+            return
         try:
             self.chat_agent = self._build_chat_agent(profile=self.llm_profile)
         except Exception as e:
@@ -245,7 +253,7 @@ class SessionState:
 
     @property
     def model(self) -> str:
-        return self.llm_profile.main.model
+        return self._require_llm_profile().main.model
 
     @property
     def api_key(self) -> str | None:
@@ -257,11 +265,11 @@ class SessionState:
 
     @property
     def reasoning_effort(self) -> str:
-        return self.llm_profile.main.reasoning_effort
+        return self._require_llm_profile().main.reasoning_effort
 
     @property
     def subagent_model(self) -> str:
-        return self.llm_profile.subagent.model
+        return self._require_llm_profile().subagent.model
 
     def set_llm_profile(self, profile: ActiveLLMProfile) -> None:
         """Atomically switch the selected LLM profile, raising if it cannot run."""
@@ -270,6 +278,8 @@ class SessionState:
         old_error = self.llm_error
 
         if self.chat_agent is not None:
+            if old_profile is None:
+                raise RuntimeError("Invariant violation: chat agent exists without an LLM profile.")
             try:
                 self.chat_agent.set_main_profile(
                     model=profile.main.model,
@@ -314,7 +324,12 @@ class SessionState:
 
     @property
     def subagent_reasoning_effort(self) -> str:
-        return self.llm_profile.subagent.reasoning_effort
+        return self._require_llm_profile().subagent.reasoning_effort
+
+    def _require_llm_profile(self) -> ActiveLLMProfile:
+        if self.llm_profile is None:
+            raise RuntimeError("No LLM profile is selected.")
+        return self.llm_profile
 
     async def close(self) -> None:
         """Release session-owned runtime resources."""

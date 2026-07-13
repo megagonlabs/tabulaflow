@@ -390,7 +390,7 @@ class BannerWidget(Widget):
     }
     """
 
-    def __init__(self, *, model: str, reasoning_effort: str) -> None:
+    def __init__(self, *, model: str | None, reasoning_effort: str | None) -> None:
         super().__init__()
         self._model = model
         self._reasoning_effort = reasoning_effort

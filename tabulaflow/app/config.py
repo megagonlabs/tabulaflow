@@ -2,11 +2,11 @@
 
 Distinct from the process-level library config in ``tabulaflow.core.config``:
 this holds durable preferences for the interactive app only, persisted at
-``~/.tabulaflow/app_config.json``. The config stores a selected LLM preset plus
-optional user-defined presets. CLI flags are runtime overrides and are not
-persisted here.
+``~/.tabulaflow/app_config.json``. The config stores an optional selected LLM
+preset plus optional user-defined presets. CLI flags are runtime overrides and
+are not persisted here.
 
-Example custom preset::
+Example config with an explicitly selected custom preset::
 
     {
       "active_llm_preset": "My research stack",
@@ -32,7 +32,7 @@ import json
 import os
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator
+from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 APP_CONFIG_PATH = os.path.join(os.path.expanduser("~"), ".tabulaflow", "app_config.json")
 
@@ -117,7 +117,7 @@ class AppConfig(BaseModel):
 
     model_config = ConfigDict(validate_assignment=True, protected_namespaces=())
 
-    active_llm_preset: str = "OpenAI balanced"
+    active_llm_preset: str | None = None
     custom_llm_presets: list[LLMPreset] = Field(default_factory=list)
 
     @property
@@ -132,19 +132,14 @@ class AppConfig(BaseModel):
         return merged + list(by_label.values())
 
     @property
-    def active_preset(self) -> LLMPreset:
-        """Return the selected preset."""
+    def active_preset(self) -> LLMPreset | None:
+        """Return the selected preset, or None when no valid preset is selected."""
+        if self.active_llm_preset is None:
+            return None
         for preset in self.llm_presets:
             if preset.label == self.active_llm_preset:
                 return preset
-        raise ValueError(f"Unknown LLM preset: {self.active_llm_preset}")
-
-    @model_validator(mode="after")
-    def _normalize_active_preset(self) -> AppConfig:
-        labels = {preset.label for preset in self.llm_presets}
-        if self.active_llm_preset not in labels:
-            object.__setattr__(self, "active_llm_preset", DEFAULT_LLM_PRESETS[0].label)
-        return self
+        return None
 
 
 def load_app_config(path: str = APP_CONFIG_PATH) -> AppConfig:

@@ -216,7 +216,7 @@ def build_wordmark(surface: str | None = None) -> RenderableType:
     return Group(*_wordmark(surface or COLOR_PAGE, app_version))
 
 
-def build_banner_text(*, model: str, reasoning_effort: str | None = None) -> Text:
+def build_banner_text(*, model: str | None, reasoning_effort: str | None = None) -> Text:
     """Build the banner's text block — tagline and starter examples.
 
     Returned as a single ``Text`` (rows joined with newlines) rather than a
