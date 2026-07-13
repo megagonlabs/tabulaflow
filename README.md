@@ -410,6 +410,12 @@ July 11
   - [x] Hint bar
   - [x] New config UI based on LLM presets
 
+July 12
+- [x] Improve LLM configuration
+
+- [ ] Active agent construction and show masked API key in chat panel
+- [ ] Improve config panel layout - title, present alignment
+
 - [ ] Other config options - concurrency
 - [ ] Gemini levels - no xhigh
 - [ ] "Initializing..." when building agent
