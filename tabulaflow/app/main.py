@@ -1,10 +1,8 @@
 """Entry point for the tabulaflow CLI."""
 
-from typing import get_args
-
 import typer
 
-from tabulaflow.app.config import DEFAULT_LLM_PRESETS, LLMRoleConfig, ReasoningEffort
+from tabulaflow.app.config import LLMPreset
 
 app = typer.Typer(
     name="tabulaflow",
@@ -14,84 +12,22 @@ app = typer.Typer(
 )
 
 
-def _with_role_overrides(
-    role: LLMRoleConfig,
-    *,
-    model: str | None,
-    reasoning_effort: str | None,
-    reasoning_effort_param_hint: str,
-) -> LLMRoleConfig:
-    data = role.model_dump()
-    if model is not None:
-        data["model"] = model
-    if reasoning_effort is not None:
-        data["reasoning_effort"] = reasoning_effort
+def _resolve_startup_llm_preset(*, llm_preset: str | None) -> LLMPreset | None:
+    from tabulaflow.app.config import load_app_config, resolve_startup_llm_preset
+
     try:
-        resolved = LLMRoleConfig.model_validate(data)
-    except ValueError:
-        raise typer.BadParameter(
-            f"{reasoning_effort!r} is not one of: {', '.join(get_args(ReasoningEffort))}",
-            param_hint=reasoning_effort_param_hint,
-        ) from None
-    return resolved
-
-
-def _resolve_llm_roles(
-    *,
-    model: str | None,
-    reasoning_effort: str | None,
-    subagent_model: str | None,
-    subagent_reasoning_effort: str | None,
-) -> tuple[LLMRoleConfig | None, LLMRoleConfig | None]:
-    from tabulaflow.app.config import load_app_config
-
-    has_cli_overrides = any(
-        value is not None for value in (model, reasoning_effort, subagent_model, subagent_reasoning_effort)
-    )
-    preset = load_app_config().active_preset
-    if preset is None:
-        if not has_cli_overrides:
-            return None, None
-        preset = DEFAULT_LLM_PRESETS[0]
-    return (
-        _with_role_overrides(
-            preset.main,
-            model=model,
-            reasoning_effort=reasoning_effort,
-            reasoning_effort_param_hint="--reasoning-effort",
-        ),
-        _with_role_overrides(
-            preset.subagent,
-            model=subagent_model,
-            reasoning_effort=subagent_reasoning_effort,
-            reasoning_effort_param_hint="--subagent-reasoning-effort",
-        ),
-    )
+        return resolve_startup_llm_preset(load_app_config(), cli_preset=llm_preset)
+    except ValueError as e:
+        raise typer.BadParameter(str(e), param_hint="--llm-preset") from None
 
 
 @app.command()
 def chat(
-    model: str | None = typer.Option(
+    llm_preset: str | None = typer.Option(
         None,
-        "--model",
-        "-m",
-        help="LLM identifier (e.g. openai-responses:gpt-5.5). Overrides the saved default for this launch.",
-    ),
-    reasoning_effort: str | None = typer.Option(
-        None,
-        "--reasoning-effort",
-        "-r",
-        help="Reasoning effort: low | medium | high | xhigh. Overrides the saved default for this launch.",
-    ),
-    subagent_model: str | None = typer.Option(
-        None,
-        "--subagent-model",
-        help="LLM identifier for internal fan-out/extraction subagents. Overrides the saved default for this launch.",
-    ),
-    subagent_reasoning_effort: str | None = typer.Option(
-        None,
-        "--subagent-reasoning-effort",
-        help="Subagent reasoning effort: low | medium | high | xhigh. Overrides the saved default for this launch.",
+        "--llm-preset",
+        "-p",
+        help="LLM preset label to use for this launch. Overrides the saved active preset without persisting.",
     ),
     output_pane_port: int | None = typer.Option(
         None,
@@ -114,12 +50,7 @@ def chat(
 
     import tabulaflow
 
-    main, subagent = _resolve_llm_roles(
-        model=model,
-        reasoning_effort=reasoning_effort,
-        subagent_model=subagent_model,
-        subagent_reasoning_effort=subagent_reasoning_effort,
-    )
+    startup_llm_preset = _resolve_startup_llm_preset(llm_preset=llm_preset)
 
     tabulaflow.configure(
         column_stats_mode="always_skip",
@@ -132,10 +63,7 @@ def chat(
 
     asyncio.run(
         run_tui(
-            model=main.model if main is not None else None,
-            reasoning_effort=main.reasoning_effort if main is not None else None,
-            subagent_model=subagent.model if subagent is not None else None,
-            subagent_reasoning_effort=subagent.reasoning_effort if subagent is not None else None,
+            llm_preset=startup_llm_preset,
             output_pane_host=output_pane_host,
             output_pane_port=output_pane_port,
             output_pane_public_url=output_pane_public_url,

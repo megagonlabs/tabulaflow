@@ -3,12 +3,11 @@
 from __future__ import annotations
 
 from contextlib import suppress
-from dataclasses import dataclass
 import os
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from tabulaflow.app.config import LLMRoleConfig
+from tabulaflow.app.config import LLMPreset
 
 if TYPE_CHECKING:
     from tabulaflow.chat import ChatAgent
@@ -76,31 +75,6 @@ def compact_model_label(model: str, reasoning_effort: str | None = None) -> str:
     return f"{label} {reasoning_effort}" if reasoning_effort else label
 
 
-@dataclass(frozen=True)
-class ActiveLLMProfile:
-    """Selected main/subagent LLM profile for the app session."""
-
-    main: LLMRoleConfig
-    subagent: LLMRoleConfig
-
-    @classmethod
-    def from_values(
-        cls,
-        *,
-        model: str,
-        reasoning_effort: str,
-        subagent_model: str,
-        subagent_reasoning_effort: str,
-    ) -> ActiveLLMProfile:
-        """Build a profile from CLI/session constructor values."""
-        return cls(
-            main=LLMRoleConfig.model_validate({"model": model, "reasoning_effort": reasoning_effort}),
-            subagent=LLMRoleConfig.model_validate(
-                {"model": subagent_model, "reasoning_effort": subagent_reasoning_effort}
-            ),
-        )
-
-
 async def create_workspace_connector(workspace_db_path: Path) -> SQLConnector:
     """Create the per-session workspace DuckDB connector at ``workspace_db_path``.
 
@@ -127,32 +101,20 @@ class SessionState:
 
     def __init__(
         self,
-        model: str | None,
+        llm_preset: LLMPreset | None,
         session_id: str,
         trajectories_dir: Path,
         data_dir: Path,
         workspace: SQLConnector | None,
-        reasoning_effort: str | None,
         service_tier: str | None = "priority",
         project_dir: Path | None = None,
         scratch_dir: Path | None = None,
-        subagent_model: str | None = None,
-        subagent_reasoning_effort: str | None = None,
     ) -> None:
         from tabulaflow.core.db_connector.db_registry import DBRegistry
 
         self.session_id = session_id
         self.data_dir = data_dir
-        self.llm_profile = (
-            ActiveLLMProfile.from_values(
-                model=model,
-                reasoning_effort=reasoning_effort or "medium",
-                subagent_model=subagent_model or "openai-responses:gpt-5.4-mini",
-                subagent_reasoning_effort=subagent_reasoning_effort or "medium",
-            )
-            if model is not None
-            else None
-        )
+        self.llm_preset = llm_preset
         self._service_tier = service_tier
         self._trajectory_log_dir = trajectories_dir
         self._workspace = workspace
@@ -177,37 +139,37 @@ class SessionState:
 
     @property
     def llm_available(self) -> bool:
-        """Whether the selected LLM profile has a live chat agent."""
+        """Whether the selected LLM preset has a live chat agent."""
         return self.chat_agent is not None
 
     def _build_chat_agent(
         self,
         *,
-        profile: ActiveLLMProfile,
+        preset: LLMPreset,
     ) -> ChatAgent:
         from tabulaflow.chat import ChatAgent
 
         return ChatAgent(
             registry=self.registry,
-            model=profile.main.model,
-            reasoning_effort=profile.main.reasoning_effort,
+            model=preset.main.model,
+            reasoning_effort=preset.main.reasoning_effort,
             service_tier=self._service_tier,
             workspace=self._workspace,
             trajectory_log_dir=self._trajectory_log_dir,
-            subagent_model=profile.subagent.model,
-            subagent_reasoning_effort=profile.subagent.reasoning_effort,
+            subagent_model=preset.subagent.model,
+            subagent_reasoning_effort=preset.subagent.reasoning_effort,
             project_dir=self.project_dir,
             scratch_dir=self.scratch_dir,
             data_dir=self.data_dir,
         )
 
     def _rebuild_chat_agent(self) -> None:
-        if self.llm_profile is None:
+        if self.llm_preset is None:
             self.chat_agent = None
             self.llm_error = None
             return
         try:
-            self.chat_agent = self._build_chat_agent(profile=self.llm_profile)
+            self.chat_agent = self._build_chat_agent(preset=self.llm_preset)
         except Exception as e:
             self.chat_agent = None
             self.llm_error = str(e)
@@ -253,7 +215,7 @@ class SessionState:
 
     @property
     def model(self) -> str:
-        return self._require_llm_profile().main.model
+        return self._require_llm_preset().main.model
 
     @property
     def api_key(self) -> str | None:
@@ -265,52 +227,52 @@ class SessionState:
 
     @property
     def reasoning_effort(self) -> str:
-        return self._require_llm_profile().main.reasoning_effort
+        return self._require_llm_preset().main.reasoning_effort
 
     @property
     def subagent_model(self) -> str:
-        return self._require_llm_profile().subagent.model
+        return self._require_llm_preset().subagent.model
 
-    def set_llm_profile(self, profile: ActiveLLMProfile) -> None:
-        """Atomically switch the selected LLM profile, raising if it cannot run."""
-        old_profile = self.llm_profile
+    def set_llm_preset(self, preset: LLMPreset) -> None:
+        """Atomically switch the selected LLM preset, raising if it cannot run."""
+        old_preset = self.llm_preset
         old_agent = self.chat_agent
         old_error = self.llm_error
 
         if self.chat_agent is not None:
-            if old_profile is None:
-                raise RuntimeError("Invariant violation: chat agent exists without an LLM profile.")
+            if old_preset is None:
+                raise RuntimeError("Invariant violation: chat agent exists without an LLM preset.")
             try:
                 self.chat_agent.set_main_profile(
-                    model=profile.main.model,
-                    reasoning_effort=profile.main.reasoning_effort,
+                    model=preset.main.model,
+                    reasoning_effort=preset.main.reasoning_effort,
                 )
                 self.chat_agent.set_subagent_profile(
-                    model=profile.subagent.model,
-                    reasoning_effort=profile.subagent.reasoning_effort,
+                    model=preset.subagent.model,
+                    reasoning_effort=preset.subagent.reasoning_effort,
                 )
             except Exception:
                 with suppress(Exception):
                     self.chat_agent.set_main_profile(
-                        model=old_profile.main.model,
-                        reasoning_effort=old_profile.main.reasoning_effort,
+                        model=old_preset.main.model,
+                        reasoning_effort=old_preset.main.reasoning_effort,
                     )
                 with suppress(Exception):
                     self.chat_agent.set_subagent_profile(
-                        model=old_profile.subagent.model,
-                        reasoning_effort=old_profile.subagent.reasoning_effort,
+                        model=old_preset.subagent.model,
+                        reasoning_effort=old_preset.subagent.reasoning_effort,
                     )
-                self.llm_profile = old_profile
+                self.llm_preset = old_preset
                 self.chat_agent = old_agent
                 self.llm_error = old_error
                 raise
             else:
-                self.llm_profile = profile
+                self.llm_preset = preset
                 self.llm_error = None
             return
 
-        new_agent = self._build_chat_agent(profile=profile)
-        self.llm_profile = profile
+        new_agent = self._build_chat_agent(preset=preset)
+        self.llm_preset = preset
         self.chat_agent = new_agent
         self.llm_error = None
 
@@ -324,12 +286,12 @@ class SessionState:
 
     @property
     def subagent_reasoning_effort(self) -> str:
-        return self._require_llm_profile().subagent.reasoning_effort
+        return self._require_llm_preset().subagent.reasoning_effort
 
-    def _require_llm_profile(self) -> ActiveLLMProfile:
-        if self.llm_profile is None:
-            raise RuntimeError("No LLM profile is selected.")
-        return self.llm_profile
+    def _require_llm_preset(self) -> LLMPreset:
+        if self.llm_preset is None:
+            raise RuntimeError("No LLM preset is selected.")
+        return self.llm_preset
 
     async def close(self) -> None:
         """Release session-owned runtime resources."""

@@ -6,9 +6,8 @@ from typing import Any
 import pytest
 from textual.app import App
 
-from tabulaflow.app.config import LLMRoleConfig, LLMPreset
+from tabulaflow.app.config import LLMRoleConfig, LLMPreset, ReasoningEffort
 from tabulaflow.app.screens import ConfigScreen
-from tabulaflow.app.session import ActiveLLMProfile
 
 _PRESETS = [
     LLMPreset(
@@ -38,31 +37,30 @@ class _StubSession:
     def __init__(
         self,
         model: str = "openai-responses:gpt-5.5",
-        reasoning_effort: str = "medium",
+        reasoning_effort: ReasoningEffort = "medium",
         subagent_model: str = "openai-responses:gpt-5.4-mini",
-        subagent_reasoning_effort: str = "medium",
+        subagent_reasoning_effort: ReasoningEffort = "medium",
     ) -> None:
         self.model = model
         self.reasoning_effort = reasoning_effort
         self.subagent_model = subagent_model
         self.subagent_reasoning_effort = subagent_reasoning_effort
-        self.llm_profile = ActiveLLMProfile.from_values(
-            model=model,
-            reasoning_effort=reasoning_effort,
-            subagent_model=subagent_model,
-            subagent_reasoning_effort=subagent_reasoning_effort,
+        self.llm_preset = LLMPreset(
+            label="Test",
+            main=LLMRoleConfig(model=model, reasoning_effort=reasoning_effort),
+            subagent=LLMRoleConfig(model=subagent_model, reasoning_effort=subagent_reasoning_effort),
         )
         self.api_key: str | None = None
         self.subagent_api_key: str | None = None
         self.llm_available = True
         self.llm_error: str | None = None
 
-    def set_llm_profile(self, profile: ActiveLLMProfile) -> None:
-        self.model = profile.main.model
-        self.reasoning_effort = profile.main.reasoning_effort
-        self.subagent_model = profile.subagent.model
-        self.subagent_reasoning_effort = profile.subagent.reasoning_effort
-        self.llm_profile = profile
+    def set_llm_preset(self, preset: LLMPreset) -> None:
+        self.model = preset.main.model
+        self.reasoning_effort = preset.main.reasoning_effort
+        self.subagent_model = preset.subagent.model
+        self.subagent_reasoning_effort = preset.subagent.reasoning_effort
+        self.llm_preset = preset
 
 
 class _App(App[None]):
@@ -258,13 +256,13 @@ async def test_current_custom_row_for_unmatched_runtime_profile(updates: list[di
 
 async def test_select_failure_shows_inline_error(updates: list[dict[str, Any]]) -> None:
     class _FailingSession(_StubSession):
-        def set_llm_profile(self, profile: ActiveLLMProfile) -> None:
-            if profile.main.model.startswith("anthropic:"):
+        def set_llm_preset(self, preset: LLMPreset) -> None:
+            if preset.main.model.startswith("anthropic:"):
                 raise RuntimeError(
                     "Set the `ANTHROPIC_API_KEY` environment variable or pass it via "
                     "`AnthropicProvider(api_key=...)` to use the Anthropic provider."
                 )
-            super().set_llm_profile(profile)
+            super().set_llm_preset(preset)
 
     session = _FailingSession()
     screen = ConfigScreen(session, on_change=lambda: None)  # type: ignore[arg-type]

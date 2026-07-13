@@ -17,7 +17,7 @@ from textual.screen import Screen
 from textual.widgets import DataTable, Static, TextArea
 
 from tabulaflow.app.config import APP_CONFIG_PATH, LLMPreset, load_app_config, update_app_config
-from tabulaflow.app.session import ActiveLLMProfile, compact_model_name, format_llm_error
+from tabulaflow.app.session import compact_model_name, format_llm_error
 from tabulaflow.app.theme import ACCENT, ACCENT_BOLD, DRACULA_TRANSPARENT, ERROR, FK_MARKER, KEY_HINT, PK_MARKER
 
 
@@ -1743,22 +1743,22 @@ def _masked_api_key(key: str) -> str | None:
 
 
 def _preset_matches_session(preset: LLMPreset, session: SessionState) -> bool:
-    return session.llm_available and _preset_profile_matches_session(preset, session)
+    return session.llm_available and _preset_roles_match_session(preset, session)
 
 
-def _preset_profile_matches_session(preset: LLMPreset, session: SessionState) -> bool:
-    if session.llm_profile is None:
+def _preset_roles_match_session(preset: LLMPreset, session: SessionState) -> bool:
+    if session.llm_preset is None:
         return False
-    return ActiveLLMProfile(main=preset.main, subagent=preset.subagent) == session.llm_profile
+    return preset.main == session.llm_preset.main and preset.subagent == session.llm_preset.subagent
 
 
 def _current_session_preset(session: SessionState) -> LLMPreset:
-    if session.llm_profile is None:
-        raise RuntimeError("No LLM profile is selected.")
+    if session.llm_preset is None:
+        raise RuntimeError("No LLM preset is selected.")
     return LLMPreset(
         label=_CURRENT_CUSTOM_PRESET_LABEL,
-        main=session.llm_profile.main,
-        subagent=session.llm_profile.subagent,
+        main=session.llm_preset.main,
+        subagent=session.llm_preset.subagent,
     )
 
 
@@ -1803,7 +1803,7 @@ class ConfigScreen(Screen[None]):
             self._presets.insert(0, _current_session_preset(session))
         self._preset_rows = [Static(classes="config-row") for _ in self._presets]
         self._cursor = next(
-            (i for i, preset in enumerate(self._presets) if _preset_profile_matches_session(preset, session)),
+            (i for i, preset in enumerate(self._presets) if _preset_roles_match_session(preset, session)),
             0,
         )
         # Set when applying a model fails (e.g. missing provider credentials):
@@ -1900,9 +1900,7 @@ class ConfigScreen(Screen[None]):
         preset = self._presets[i]
         self._select_error = None
         try:
-            self._session.set_llm_profile(
-                ActiveLLMProfile(main=preset.main, subagent=preset.subagent),
-            )
+            self._session.set_llm_preset(preset)
         except Exception as e:
             self._select_error = (i, str(e))
             self._refresh()

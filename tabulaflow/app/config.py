@@ -131,15 +131,41 @@ class AppConfig(BaseModel):
         merged = [by_label.pop(preset.label, preset) for preset in DEFAULT_LLM_PRESETS]
         return merged + list(by_label.values())
 
+    def preset_by_label(self, label: str) -> LLMPreset | None:
+        """Return the preset named ``label``, or None if it is absent."""
+        for preset in self.llm_presets:
+            if preset.label == label:
+                return preset
+        return None
+
     @property
     def active_preset(self) -> LLMPreset | None:
         """Return the selected preset, or None when no valid preset is selected."""
         if self.active_llm_preset is None:
             return None
-        for preset in self.llm_presets:
-            if preset.label == self.active_llm_preset:
-                return preset
-        return None
+        return self.preset_by_label(self.active_llm_preset)
+
+
+def resolve_startup_llm_preset(config: AppConfig, *, cli_preset: str | None = None) -> LLMPreset | None:
+    """Resolve the startup LLM preset from CLI intent and persisted config.
+
+    Args:
+        config: Loaded app config.
+        cli_preset: Optional preset label supplied for this launch only.
+
+    Returns:
+        The resolved preset, or ``None`` when startup should use browsing-only mode.
+
+    Raises:
+        ValueError: If ``cli_preset`` names no known preset.
+    """
+    if cli_preset is not None:
+        preset = config.preset_by_label(cli_preset)
+        if preset is None:
+            raise ValueError(f"Unknown LLM preset: {cli_preset}")
+        return preset
+
+    return config.active_preset
 
 
 def load_app_config(path: str = APP_CONFIG_PATH) -> AppConfig:

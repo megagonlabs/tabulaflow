@@ -15,10 +15,15 @@ from textual.containers import Horizontal, Vertical, VerticalScroll
 from textual.widgets import Button, Input, Static
 
 from tabulaflow.app.commands import COMMAND_PREFIX, handle_command
+from tabulaflow.app.config import LLMPreset
 from tabulaflow.app.debug import debug_enabled, mount_debug_widgets
 from tabulaflow.app.pane import PaneCard, manual_card_turn, turn_payload
 from tabulaflow.app.runtime_paths import RuntimePaths, ensure_pane_dir, generate_session_id
-from tabulaflow.app.session import SessionState, compact_model_label, format_llm_unavailable_message
+from tabulaflow.app.session import (
+    SessionState,
+    compact_model_label,
+    format_llm_unavailable_message,
+)
 from tabulaflow.app.theme import ERROR, FOCUS_SURFACE, KEY_HINT
 from tabulaflow.app.widgets import (
     AgentProgressWidget,
@@ -110,10 +115,7 @@ class TabulaflowApp(App[None]):
     def __init__(
         self,
         *,
-        model: str | None,
-        reasoning_effort: str | None,
-        subagent_model: str | None = None,
-        subagent_reasoning_effort: str | None = None,
+        llm_preset: LLMPreset | None,
         output_pane_host: str = "127.0.0.1",
         output_pane_port: int | None = None,
         output_pane_public_url: str | None = None,
@@ -121,10 +123,7 @@ class TabulaflowApp(App[None]):
         import asyncio
 
         super().__init__()
-        self._model = model
-        self._reasoning_effort = reasoning_effort
-        self._subagent_model = subagent_model
-        self._subagent_reasoning_effort = subagent_reasoning_effort
+        self._startup_llm_preset = llm_preset
         self._output_pane_host = output_pane_host
         self._output_pane_port = output_pane_port
         self._output_pane_public_url = output_pane_public_url
@@ -184,7 +183,7 @@ class TabulaflowApp(App[None]):
     def on_mount(self) -> None:
         self._setup_logging()
         chat_log = self.query_one("#chat-log", VerticalScroll)
-        chat_log.mount(BannerWidget(model=self._model, reasoning_effort=self._reasoning_effort))
+        chat_log.mount(self._banner_for_preset(self._startup_llm_preset))
         if debug_enabled():
             mount_debug_widgets(self, chat_log)
         self.query_one("#input-bar", Input).focus()
@@ -523,10 +522,15 @@ class TabulaflowApp(App[None]):
         except Exception:
             return
         url = self._pane.url if self._pane is not None else None
-        if self._session is None or not self._session.llm_available:
-            model_label = "LLM off"
-        else:
+        if self._session is not None and self._session.llm_available:
             model_label = compact_model_label(self._session.model, self._session.reasoning_effort)
+        elif self._session is None and self._startup_llm_preset is not None:
+            model_label = compact_model_label(
+                self._startup_llm_preset.main.model,
+                self._startup_llm_preset.main.reasoning_effort,
+            )
+        else:
+            model_label = "LLM off"
         model_status.update(Text(f"{model_label} · {_compact_project_dir(self._project_dir)}", style="dim"))
         url_status.update(Text(f"View output in browser: {url}" if url else "", style="dim"))
 
@@ -699,16 +703,13 @@ class TabulaflowApp(App[None]):
                 None,
                 partial(
                     SessionState,
-                    model=self._model,
+                    llm_preset=self._startup_llm_preset,
                     session_id=self._session_id,
                     trajectories_dir=self._runtime_paths.trajectories_dir,
                     data_dir=self._runtime_paths.data_dir,
                     workspace=workspace,
-                    reasoning_effort=self._reasoning_effort,
                     project_dir=self._project_dir,
                     scratch_dir=self._runtime_paths.scratch_dir,
-                    subagent_model=self._subagent_model,
-                    subagent_reasoning_effort=self._subagent_reasoning_effort,
                 ),
             )
             await self._maybe_autoconnect_sample(session)
@@ -877,7 +878,7 @@ class TabulaflowApp(App[None]):
 
         if result.should_clear:
             chat_log.remove_children()
-            chat_log.mount(BannerWidget(model=session.model, reasoning_effort=session.reasoning_effort))
+            chat_log.mount(self._banner_for_preset(session.llm_preset))
             return
 
         if result.should_open_config:
@@ -972,12 +973,16 @@ class TabulaflowApp(App[None]):
         # Defer scroll until after layout reflow so the final content height is known.
         self.call_after_refresh(chat_log.scroll_end, animate=False)
 
+    @staticmethod
+    def _banner_for_preset(preset: LLMPreset | None) -> BannerWidget:
+        return BannerWidget(
+            model=preset.main.model if preset is not None else None,
+            reasoning_effort=preset.main.reasoning_effort if preset is not None else None,
+        )
+
 
 async def run_tui(
-    model: str | None,
-    reasoning_effort: str | None,
-    subagent_model: str | None = None,
-    subagent_reasoning_effort: str | None = None,
+    llm_preset: LLMPreset | None,
     *,
     output_pane_host: str = "127.0.0.1",
     output_pane_port: int | None = None,
@@ -985,10 +990,7 @@ async def run_tui(
 ) -> None:
     """Launch the Textual TUI app."""
     app = TabulaflowApp(
-        model=model,
-        reasoning_effort=reasoning_effort,
-        subagent_model=subagent_model,
-        subagent_reasoning_effort=subagent_reasoning_effort,
+        llm_preset=llm_preset,
         output_pane_host=output_pane_host,
         output_pane_port=output_pane_port,
         output_pane_public_url=output_pane_public_url,

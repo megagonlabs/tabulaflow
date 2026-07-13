@@ -7,8 +7,9 @@ import pytest
 
 from tabulaflow.app import session as session_module
 from tabulaflow.app import tui
+from tabulaflow.app.config import LLMRoleConfig, LLMPreset, ReasoningEffort
 from tabulaflow.app.runtime_paths import RuntimePaths
-from tabulaflow.app.session import ActiveLLMProfile, SessionState
+from tabulaflow.app.session import SessionState
 from tabulaflow.app.tui import TabulaflowApp
 
 
@@ -20,6 +21,21 @@ class _StatusCapture:
         self.value = str(value)
 
 
+def _preset(
+    *,
+    label: str = "Test",
+    model: str = "test",
+    reasoning_effort: ReasoningEffort = "low",
+    subagent_model: str = "test",
+    subagent_reasoning_effort: ReasoningEffort = "medium",
+) -> LLMPreset:
+    return LLMPreset(
+        label=label,
+        main=LLMRoleConfig(model=model, reasoning_effort=reasoning_effort),
+        subagent=LLMRoleConfig(model=subagent_model, reasoning_effort=subagent_reasoning_effort),
+    )
+
+
 @pytest.mark.asyncio
 async def test_ensure_session_passes_session_paths_by_keyword(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     project_dir = tmp_path / "project"
@@ -29,11 +45,9 @@ async def test_ensure_session_passes_session_paths_by_keyword(tmp_path: Path, mo
     monkeypatch.setenv("HOME", str(home_dir))
     monkeypatch.chdir(project_dir)
 
+    preset = _preset(model="test:model", subagent_model="test:subagent")
     app = TabulaflowApp(
-        model="test:model",
-        reasoning_effort="low",
-        subagent_model="test:subagent",
-        subagent_reasoning_effort="medium",
+        llm_preset=preset,
     )
     runtime_paths = RuntimePaths.for_session("test-session")
     app._runtime_paths = runtime_paths
@@ -65,27 +79,26 @@ async def test_ensure_session_passes_session_paths_by_keyword(tmp_path: Path, mo
     assert captured["workspace_db_path"] == runtime_paths.workspace_db_path
     assert captured["autoconnect_session"] is session
     assert captured["session_kwargs"] == {
-        "model": "test:model",
+        "llm_preset": preset,
         "session_id": app._session_id,
         "trajectories_dir": runtime_paths.trajectories_dir,
         "data_dir": runtime_paths.data_dir,
         "workspace": workspace,
-        "reasoning_effort": "low",
         "project_dir": project_dir,
         "scratch_dir": runtime_paths.scratch_dir,
-        "subagent_model": "test:subagent",
-        "subagent_reasoning_effort": "medium",
     }
 
 
 def test_bottom_status_shows_no_llm_for_unavailable_session(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    app = TabulaflowApp(model="anthropic:claude-opus-4-8", reasoning_effort="high")
-    app._project_dir = tmp_path
-    session = SessionState(
+    preset = _preset(
         model="anthropic:claude-opus-4-8",
         reasoning_effort="high",
         subagent_model="anthropic:claude-sonnet-4-5-20250929",
-        subagent_reasoning_effort="medium",
+    )
+    app = TabulaflowApp(llm_preset=preset)
+    app._project_dir = tmp_path
+    session = SessionState(
+        llm_preset=preset,
         session_id="test-session",
         trajectories_dir=tmp_path / "trajectories",
         data_dir=tmp_path / "data",
@@ -106,10 +119,34 @@ def test_bottom_status_shows_no_llm_for_unavailable_session(tmp_path: Path, monk
     assert model_status.value.startswith("LLM off · ")
 
 
-def test_bottom_status_shows_no_llm_before_session_is_ready(
+def test_bottom_status_shows_startup_model_before_session_is_ready(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    app = TabulaflowApp(model="anthropic:claude-opus-4-8", reasoning_effort="high")
+    app = TabulaflowApp(
+        llm_preset=_preset(
+            model="anthropic:claude-opus-4-8",
+            reasoning_effort="high",
+            subagent_model="anthropic:claude-sonnet-4-5-20250929",
+        )
+    )
+    app._project_dir = tmp_path
+    model_status = _StatusCapture()
+    url_status = _StatusCapture()
+
+    def fake_query_one(selector: str, _type: object) -> _StatusCapture:
+        return model_status if selector == "#bottom-status-model" else url_status
+
+    monkeypatch.setattr(app, "query_one", fake_query_one)
+
+    app._refresh_bottom_status()
+
+    assert model_status.value.startswith("Opus 4.8 high · ")
+
+
+def test_bottom_status_shows_llm_off_before_session_when_no_profile(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    app = TabulaflowApp(llm_preset=None)
     app._project_dir = tmp_path
     model_status = _StatusCapture()
     url_status = _StatusCapture()
@@ -128,10 +165,12 @@ def test_session_starts_when_llm_unavailable(tmp_path: Path, monkeypatch: pytest
     monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
 
     session = SessionState(
-        model="anthropic:claude-sonnet-4-5-20250929",
-        reasoning_effort="medium",
-        subagent_model="anthropic:claude-haiku-4-5-20251001",
-        subagent_reasoning_effort="medium",
+        llm_preset=_preset(
+            model="anthropic:claude-sonnet-4-5-20250929",
+            reasoning_effort="medium",
+            subagent_model="anthropic:claude-haiku-4-5-20251001",
+            subagent_reasoning_effort="medium",
+        ),
         session_id="test-session",
         trajectories_dir=tmp_path / "trajectories",
         data_dir=tmp_path / "data",
@@ -147,47 +186,39 @@ def test_session_starts_when_llm_unavailable(tmp_path: Path, monkeypatch: pytest
     session.note_event("ignored without an LLM")
 
 
-def test_session_starts_without_llm_profile(tmp_path: Path) -> None:
+def test_session_starts_without_llm_preset(tmp_path: Path) -> None:
     session = SessionState(
-        model=None,
-        reasoning_effort=None,
-        subagent_model=None,
-        subagent_reasoning_effort=None,
+        llm_preset=None,
         session_id="test-session",
         trajectories_dir=tmp_path / "trajectories",
         data_dir=tmp_path / "data",
         workspace=None,
     )
 
-    assert session.llm_profile is None
+    assert session.llm_preset is None
     assert session.chat_agent is None
     assert not session.llm_available
     assert session.llm_error is None
-    with pytest.raises(RuntimeError, match="No LLM profile"):
+    with pytest.raises(RuntimeError, match="No LLM preset"):
         _ = session.model
 
 
 def test_unavailable_session_can_switch_to_valid_llm(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
     session = SessionState(
-        model="anthropic:claude-sonnet-4-5-20250929",
-        reasoning_effort="medium",
-        subagent_model="anthropic:claude-haiku-4-5-20251001",
-        subagent_reasoning_effort="medium",
+        llm_preset=_preset(
+            model="anthropic:claude-sonnet-4-5-20250929",
+            reasoning_effort="medium",
+            subagent_model="anthropic:claude-haiku-4-5-20251001",
+            subagent_reasoning_effort="medium",
+        ),
         session_id="test-session",
         trajectories_dir=tmp_path / "trajectories",
         data_dir=tmp_path / "data",
         workspace=None,
     )
 
-    session.set_llm_profile(
-        ActiveLLMProfile.from_values(
-            model="test",
-            reasoning_effort="low",
-            subagent_model="test",
-            subagent_reasoning_effort="medium",
-        )
-    )
+    session.set_llm_preset(_preset())
 
     assert session.llm_available
     assert session.llm_error is None
@@ -201,10 +232,7 @@ def test_unavailable_session_can_switch_to_valid_llm(tmp_path: Path, monkeypatch
 def test_invalid_profile_switch_is_atomic(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
     session = SessionState(
-        model="test",
-        reasoning_effort="low",
-        subagent_model="test",
-        subagent_reasoning_effort="medium",
+        llm_preset=_preset(),
         session_id="test-session",
         trajectories_dir=tmp_path / "trajectories",
         data_dir=tmp_path / "data",
@@ -213,8 +241,8 @@ def test_invalid_profile_switch_is_atomic(tmp_path: Path, monkeypatch: pytest.Mo
     old_agent = session.chat_agent
 
     with pytest.raises(Exception, match="ANTHROPIC_API_KEY"):
-        session.set_llm_profile(
-            ActiveLLMProfile.from_values(
+        session.set_llm_preset(
+            _preset(
                 model="anthropic:claude-sonnet-4-5-20250929",
                 reasoning_effort="medium",
                 subagent_model="anthropic:claude-haiku-4-5-20251001",

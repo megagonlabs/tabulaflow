@@ -4,7 +4,7 @@ import pytest
 import typer
 
 from tabulaflow.app.config import AppConfig, LLMRoleConfig, LLMPreset
-from tabulaflow.app.main import _resolve_llm_roles
+from tabulaflow.app.main import _resolve_startup_llm_preset
 
 
 def _test_config() -> AppConfig:
@@ -16,103 +16,68 @@ def _test_config() -> AppConfig:
     return AppConfig(active_llm_preset=preset.label, custom_llm_presets=[preset])
 
 
-def test_resolve_llm_roles_uses_saved_preset(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_resolve_startup_llm_preset_uses_saved_preset(monkeypatch: pytest.MonkeyPatch) -> None:
     import tabulaflow.app.config as app_config
 
     monkeypatch.setattr(app_config, "load_app_config", _test_config)
 
-    main, subagent = _resolve_llm_roles(
-        model=None,
-        reasoning_effort=None,
-        subagent_model=None,
-        subagent_reasoning_effort=None,
-    )
+    preset = _resolve_startup_llm_preset(llm_preset=None)
 
-    assert main == LLMRoleConfig(model="test", reasoning_effort="medium")
-    assert subagent == LLMRoleConfig(model="test", reasoning_effort="low")
+    assert preset is not None
+    assert preset.label == "Test"
+    assert preset.main == LLMRoleConfig(model="test", reasoning_effort="medium")
+    assert preset.subagent == LLMRoleConfig(model="test", reasoning_effort="low")
 
 
-def test_resolve_llm_roles_returns_none_without_active_preset(monkeypatch: pytest.MonkeyPatch) -> None:
-    import tabulaflow.app.config as app_config
-
-    monkeypatch.setattr(app_config, "load_app_config", lambda: AppConfig())
-
-    main, subagent = _resolve_llm_roles(
-        model=None,
-        reasoning_effort=None,
-        subagent_model=None,
-        subagent_reasoning_effort=None,
-    )
-
-    assert main is None
-    assert subagent is None
-
-
-def test_resolve_llm_roles_uses_default_base_for_cli_overrides_without_active_preset(
+def test_resolve_startup_llm_preset_returns_none_without_active_preset(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     import tabulaflow.app.config as app_config
 
     monkeypatch.setattr(app_config, "load_app_config", lambda: AppConfig())
 
-    main, subagent = _resolve_llm_roles(
-        model="test",
-        reasoning_effort="high",
-        subagent_model=None,
-        subagent_reasoning_effort=None,
+    preset = _resolve_startup_llm_preset(llm_preset=None)
+
+    assert preset is None
+
+
+def test_resolve_startup_llm_preset_cli_preset_overrides_saved_preset(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import tabulaflow.app.config as app_config
+
+    cli_preset = LLMPreset(
+        label="CLI",
+        main=LLMRoleConfig(model="cli-main", reasoning_effort="high"),
+        subagent=LLMRoleConfig(model="cli-subagent", reasoning_effort="medium"),
     )
 
-    assert main == LLMRoleConfig(model="test", reasoning_effort="high")
-    assert subagent == LLMRoleConfig(model="openai-responses:gpt-5.4-mini", reasoning_effort="medium")
+    def config() -> AppConfig:
+        saved = _test_config()
+        saved.custom_llm_presets.append(cli_preset)
+        return saved
+
+    monkeypatch.setattr(app_config, "load_app_config", config)
+
+    preset = _resolve_startup_llm_preset(llm_preset="CLI")
+
+    assert preset == cli_preset
 
 
-def test_resolve_llm_roles_applies_cli_overrides(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_resolve_startup_llm_preset_rejects_unknown_cli_preset(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     import tabulaflow.app.config as app_config
 
     monkeypatch.setattr(app_config, "load_app_config", _test_config)
 
-    main, subagent = _resolve_llm_roles(
-        model="test",
-        reasoning_effort="high",
-        subagent_model="test",
-        subagent_reasoning_effort="medium",
-    )
-
-    assert main == LLMRoleConfig(model="test", reasoning_effort="high")
-    assert subagent == LLMRoleConfig(model="test", reasoning_effort="medium")
+    with pytest.raises(typer.BadParameter, match="Unknown LLM preset: Missing"):
+        _resolve_startup_llm_preset(llm_preset="Missing")
 
 
-def test_resolve_llm_roles_rejects_invalid_cli_effort(monkeypatch: pytest.MonkeyPatch) -> None:
-    import tabulaflow.app.config as app_config
-
-    monkeypatch.setattr(app_config, "load_app_config", _test_config)
-
-    with pytest.raises(typer.BadParameter, match="'ultra' is not one of"):
-        _resolve_llm_roles(
-            model=None,
-            reasoning_effort="ultra",
-            subagent_model=None,
-            subagent_reasoning_effort=None,
-        )
-
-
-def test_resolve_llm_roles_allows_unavailable_cli_model(monkeypatch: pytest.MonkeyPatch) -> None:
-    import tabulaflow.app.config as app_config
-
-    monkeypatch.setattr(app_config, "load_app_config", _test_config)
-
-    main, subagent = _resolve_llm_roles(
-        model="nope:model",
-        reasoning_effort=None,
-        subagent_model=None,
-        subagent_reasoning_effort=None,
-    )
-
-    assert main == LLMRoleConfig(model="nope:model", reasoning_effort="medium")
-    assert subagent == LLMRoleConfig(model="test", reasoning_effort="low")
-
-
-def test_resolve_llm_roles_allows_unavailable_saved_model(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_resolve_startup_llm_preset_allows_unavailable_saved_model(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     import tabulaflow.app.config as app_config
 
     preset = LLMPreset(
@@ -126,12 +91,8 @@ def test_resolve_llm_roles_allows_unavailable_saved_model(monkeypatch: pytest.Mo
         lambda: AppConfig(active_llm_preset=preset.label, custom_llm_presets=[preset]),
     )
 
-    main, subagent = _resolve_llm_roles(
-        model=None,
-        reasoning_effort=None,
-        subagent_model=None,
-        subagent_reasoning_effort=None,
-    )
+    resolved = _resolve_startup_llm_preset(llm_preset=None)
 
-    assert main == LLMRoleConfig(model="nope:model", reasoning_effort="medium")
-    assert subagent == LLMRoleConfig(model="test", reasoning_effort="medium")
+    assert resolved is not None
+    assert resolved.main == LLMRoleConfig(model="nope:model", reasoning_effort="medium")
+    assert resolved.subagent == LLMRoleConfig(model="test", reasoning_effort="medium")

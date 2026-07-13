@@ -291,8 +291,8 @@ class ChatAgent:
     # Reasoning effort for the interactive agent — a unified thinking level
     # (low | medium | high | xhigh) translated per provider by pydantic-ai
     # (OpenAI reasoning_effort, Anthropic thinking budgets / native effort, Gemini
-    # thinking_level). Required — the app owns the default (its
-    # ``--reasoning-effort`` option), as it does for ``model``. Mutable at runtime via
+    # thinking_level). Required — callers pass a fully resolved app/research
+    # profile rather than relying on ChatAgent defaults. Mutable at runtime via
     # ``set_reasoning_effort`` (peer of ``model``/``set_model``).
     reasoning_effort: str
     # Session-wide service tier for providers that expose one. Applied to both the
