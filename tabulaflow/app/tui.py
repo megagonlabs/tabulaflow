@@ -24,7 +24,7 @@ from tabulaflow.app.session import (
     SessionState,
     compact_model_label,
 )
-from tabulaflow.app.theme import ERROR, FOCUS_SURFACE, KEY_HINT
+from tabulaflow.app.theme import ACCENT, ERROR, FOCUS_SURFACE, KEY_HINT
 from tabulaflow.app.widgets import (
     AgentProgressWidget,
     AgentResultWidget,
@@ -55,6 +55,18 @@ def _compact_project_dir(path: Path) -> str:
         return f"~/{path.resolve().relative_to(Path.home()).as_posix()}"
     except ValueError:
         return path.resolve().as_posix()
+
+
+def _masked_api_keys(keys: tuple[str | None, ...]) -> tuple[str, ...]:
+    """Return distinct masked API-key labels suitable for status messages."""
+    masked: list[str] = []
+    seen: set[str] = set()
+    for key in keys:
+        if key is None or key in seen or len(key) < 12:
+            continue
+        seen.add(key)
+        masked.append(f"***{key[-4:]}")
+    return tuple(masked)
 
 
 def _warm_session_imports() -> None:
@@ -140,6 +152,9 @@ class TabulaflowApp(App[None]):
         self._session: SessionState | None = None
         self._pane: OutputPane | None = None
         self._session_lock = asyncio.Lock()
+        self._llm_activation_lock = asyncio.Lock()
+        self._llm_activation_request_id = 0
+        self._llm_init_spinner: SpinnerWidget | None = None
         self._busy = False
         self._current_worker: object | None = None
         self._last_idle_interrupt_ts: float = 0.0
@@ -190,7 +205,10 @@ class TabulaflowApp(App[None]):
         chat_log.scroll_end(animate=False)
         self._refresh_esc_hint()
         self._ensure_pane()
-        self.run_worker(self._ensure_session())
+        if self._startup_llm_preset is None:
+            self.run_worker(self._ensure_session())
+        else:
+            self._request_llm_activation(self._startup_llm_preset)
 
     def _refresh_esc_hint(self) -> None:
         """Update the docked ``Esc`` hint label to match current state.
@@ -535,6 +553,97 @@ class TabulaflowApp(App[None]):
         model_status.update(Text(f"{model_label} · {_compact_project_dir(self._project_dir)}", style="dim"))
         url_status.update(Text(f"View output in browser: {url}" if url else "", style="dim"))
 
+    def _request_llm_activation(self, preset: LLMPreset) -> None:
+        """Start latest-wins background activation for the selected preset."""
+        self._llm_activation_request_id += 1
+        request_id = self._llm_activation_request_id
+        self.query_one("#input-bar", Input).disabled = True
+        self.run_worker(
+            self._activate_llm_preset(request_id, preset),
+            exclusive=False,
+            group="llm-activation",
+        )
+
+    def _on_llm_preset_selected(self, preset: LLMPreset) -> None:
+        self._refresh_bottom_status()
+        self._request_llm_activation(preset)
+
+    async def _activate_llm_preset(self, request_id: int, preset: LLMPreset) -> None:
+        """Activate ``preset`` if it remains the latest user selection."""
+        import asyncio
+
+        if request_id != self._llm_activation_request_id:
+            return
+        await self._show_llm_init_spinner(preset)
+        try:
+            session = await self._ensure_session()
+            async with self._llm_activation_lock:
+                if request_id != self._llm_activation_request_id:
+                    return
+                keys = await asyncio.to_thread(self._initialize_llm_runtime, session, preset)
+        except Exception:
+            logger.debug("LLM preset initialization failed", exc_info=True)
+            if request_id == self._llm_activation_request_id:
+                await self._finish_llm_activation(request_id, preset, keys=None)
+            return
+        if request_id == self._llm_activation_request_id:
+            await self._finish_llm_activation(request_id, preset, keys=keys)
+
+    @staticmethod
+    def _initialize_llm_runtime(
+        session: SessionState,
+        preset: LLMPreset,
+    ) -> tuple[str | None, str | None]:
+        return session.activate_llm_preset(preset)
+
+    async def _show_llm_init_spinner(self, preset: LLMPreset) -> None:
+        label = f"Initializing {compact_model_label(preset.main.model, preset.main.reasoning_effort)}..."
+        if self._llm_init_spinner is not None:
+            self._llm_init_spinner.update_label(label)
+            return
+        spinner = SpinnerWidget(label)
+        self._llm_init_spinner = spinner
+        chat_log = self.query_one("#chat-log", VerticalScroll)
+        await chat_log.mount(spinner)
+        chat_log.scroll_end(animate=False)
+
+    async def _finish_llm_activation(
+        self,
+        request_id: int,
+        preset: LLMPreset,
+        *,
+        keys: tuple[str | None, str | None] | None,
+    ) -> None:
+        if request_id != self._llm_activation_request_id:
+            return
+        chat_log = self.query_one("#chat-log", VerticalScroll)
+        spinner = self._llm_init_spinner
+        self._llm_init_spinner = None
+        if spinner is not None:
+            await spinner.remove()
+        if request_id != self._llm_activation_request_id:
+            return
+
+        model_label = compact_model_label(preset.main.model, preset.main.reasoning_effort)
+        if keys is None:
+            message = Text.from_markup(f"[{ERROR}]LLM unavailable:[/] ")
+            message.append(f"Could not initialize {model_label}. {LLM_UNAVAILABLE_MESSAGE}")
+        else:
+            message = Text("LLM ready: ", style=ACCENT)
+            message.append(model_label)
+            for key in _masked_api_keys(keys):
+                message.append(f" [API key {key}]", style="dim")
+        status_message = SystemMessage(message)
+        await chat_log.mount(status_message)
+        if request_id != self._llm_activation_request_id:
+            await status_message.remove()
+            return
+        chat_log.scroll_end(animate=False)
+        input_bar = self.query_one("#input-bar", Input)
+        input_bar.disabled = False
+        if len(self.screen_stack) == 1:
+            input_bar.focus()
+
     async def _push_turn_to_pane(
         self,
         result: "ChatResult",
@@ -782,7 +891,7 @@ class TabulaflowApp(App[None]):
             chat_log.scroll_end(animate=False)
             return
 
-        if session.llm_preset is None:
+        if session.active_chat_agent is None:
             await chat_log.mount(UserMessage(text))
             error_text = Text.from_markup(f"[{ERROR}]LLM unavailable:[/] ")
             error_text.append(LLM_UNAVAILABLE_MESSAGE)
@@ -884,7 +993,7 @@ class TabulaflowApp(App[None]):
         if result.should_open_config:
             from tabulaflow.app.screens import ConfigScreen
 
-            self.push_screen(ConfigScreen(session, on_change=self._refresh_bottom_status))
+            self.push_screen(ConfigScreen(session, on_change=self._on_llm_preset_selected))
             return
 
         if result.output is not None:
@@ -904,9 +1013,8 @@ class TabulaflowApp(App[None]):
 
         from tabulaflow.chat import Finished
 
-        try:
-            chat_agent = session.ensure_chat_agent()
-        except Exception:
+        chat_agent = session.active_chat_agent
+        if chat_agent is None:
             error_text = Text.from_markup(f"[{ERROR}]LLM unavailable:[/] ")
             error_text.append(LLM_UNAVAILABLE_MESSAGE)
             msg = SystemMessage(error_text)

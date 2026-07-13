@@ -10,12 +10,12 @@ from tabulaflow.chat import ChatAgent
 from tabulaflow.core.db_connector.db_registry import DBRegistry
 
 
-def test_set_llm_profile_failure_is_transactional(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_activate_llm_profile_failure_is_transactional(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
     agent = ChatAgent(registry=DBRegistry(), model="test", reasoning_effort="medium")
     runtime_agent = agent._pydantic_ai_agent
     with pytest.raises(Exception, match="ANTHROPIC_API_KEY"):
-        agent.set_llm_profile(
+        agent.activate_llm_profile(
             model="anthropic:claude-sonnet-4-5-20250929",
             reasoning_effort="high",
             subagent_model=agent.subagent_model,
@@ -40,7 +40,7 @@ def test_subagent_failure_does_not_partially_switch_main_profile(monkeypatch: py
     runtime_agent = agent._pydantic_ai_agent
 
     with pytest.raises(Exception, match="ANTHROPIC_API_KEY"):
-        agent.set_llm_profile(
+        agent.activate_llm_profile(
             model="openai-responses:gpt-5.4-mini",
             reasoning_effort="high",
             subagent_model="anthropic:claude-sonnet-4-5-20250929",
@@ -54,7 +54,7 @@ def test_subagent_failure_does_not_partially_switch_main_profile(monkeypatch: py
     assert agent._pydantic_ai_agent is runtime_agent
 
 
-def test_set_llm_profile_preserves_conversation_state(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_activate_llm_profile_preserves_conversation_state(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("OPENAI_API_KEY", "sk-test123456789ab4x")
     agent = ChatAgent(
         registry=DBRegistry(),
@@ -69,7 +69,7 @@ def test_set_llm_profile_preserves_conversation_state(monkeypatch: pytest.Monkey
     tools = agent._tools
     runtime_agent = agent._pydantic_ai_agent
 
-    agent.set_llm_profile(
+    keys = agent.activate_llm_profile(
         model="openai-responses:gpt-5.4-mini",
         reasoning_effort="high",
         subagent_model="openai-responses:gpt-5-mini",
@@ -83,20 +83,26 @@ def test_set_llm_profile_preserves_conversation_state(monkeypatch: pytest.Monkey
     assert agent.model == "openai-responses:gpt-5.4-mini"
     assert agent.reasoning_effort == "high"
     assert agent.subagent_reasoning_effort == "medium"
+    assert keys == ("sk-test123456789ab4x", "sk-test123456789ab4x")
 
 
 def test_api_key_read_from_live_client(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("OPENAI_API_KEY", "sk-test123456789ab4x")
     agent = ChatAgent(registry=DBRegistry(), model="openai-responses:gpt-5", reasoning_effort="medium")
-    assert agent.api_key == "sk-test123456789ab4x"
+    assert agent.resolve_api_keys() == ("sk-test123456789ab4x", "sk-test123456789ab4x")
 
 
 def test_api_key_none_for_keyless_model() -> None:
-    agent = ChatAgent(registry=DBRegistry(), model="test", reasoning_effort="medium")
-    assert agent.api_key is None
+    agent = ChatAgent(
+        registry=DBRegistry(),
+        model="test",
+        reasoning_effort="medium",
+        subagent_model="test",
+    )
+    assert agent.resolve_api_keys() == (None, None)
 
 
-def test_subagent_api_key(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_resolve_subagent_api_key(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("OPENAI_API_KEY", "sk-sub123456789cd9y")
     agent = ChatAgent(
         registry=DBRegistry(),
@@ -104,7 +110,7 @@ def test_subagent_api_key(monkeypatch: pytest.MonkeyPatch) -> None:
         reasoning_effort="medium",
         subagent_model="openai-responses:gpt-5.4-mini",
     )
-    assert agent.subagent_api_key == "sk-sub123456789cd9y"
+    assert agent.resolve_api_keys() == (None, "sk-sub123456789cd9y")
 
 
 def test_thinking_settings_openai(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -170,7 +176,7 @@ async def test_subagent_profile_wires_tools(tmp_path: Path, monkeypatch: pytest.
         assert agent._tools.get_db_document.model_settings == {"thinking": "low"}
 
         agent._tools.get_db_document._document_cache["cached"] = cast(Any, (workspace, "old summary"))
-        agent.set_llm_profile(
+        agent.activate_llm_profile(
             model=agent.model,
             reasoning_effort=agent.reasoning_effort,
             subagent_model="openai-responses:gpt-5.4-mini",

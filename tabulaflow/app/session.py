@@ -97,7 +97,7 @@ class SessionState:
         self.registry: DBRegistry = DBRegistry()
         if workspace is not None:
             self.registry.register(WORKSPACE_ALIAS, workspace)
-        self.chat_agent: ChatAgent | None = None
+        self._chat_agent: ChatAgent | None = None
         # Maps a "what's this connection's source" key (frozenset of file
         # paths, normalized URL, etc.) to the alias under which it is
         # registered.  Used by ``/connect`` to detect duplicate sources
@@ -105,16 +105,16 @@ class SessionState:
         self._sources: dict[object, str] = {}
 
     @property
-    def llm_available(self) -> bool:
-        """Whether the selected preset is active on the live chat agent."""
-        return self._chat_agent_matches_selected_preset()
+    def active_chat_agent(self) -> ChatAgent | None:
+        """Chat agent active for the selected preset, if initialized."""
+        if self.llm_preset is None or not self._chat_agent_matches_preset(self.llm_preset):
+            return None
+        return self._chat_agent
 
-    def _chat_agent_matches_selected_preset(self) -> bool:
-        agent = self.chat_agent
-        preset = self.llm_preset
+    def _chat_agent_matches_preset(self, preset: LLMPreset) -> bool:
+        agent = self._chat_agent
         return (
             agent is not None
-            and preset is not None
             and agent.model == preset.main.model
             and agent.reasoning_effort == preset.main.reasoning_effort
             and agent.subagent_model == preset.subagent.model
@@ -142,25 +142,31 @@ class SessionState:
             data_dir=self.data_dir,
         )
 
-    def ensure_chat_agent(self) -> ChatAgent:
-        """Return an agent using the selected preset, applying it lazily if needed."""
-        if self.llm_preset is None:
-            raise RuntimeError("No LLM preset is selected.")
-        if self.chat_agent is None:
-            self.chat_agent = self._build_chat_agent(preset=self.llm_preset)
-        elif not self._chat_agent_matches_selected_preset():
-            self.chat_agent.set_llm_profile(
-                model=self.llm_preset.main.model,
-                reasoning_effort=self.llm_preset.main.reasoning_effort,
-                subagent_model=self.llm_preset.subagent.model,
-                subagent_reasoning_effort=self.llm_preset.subagent.reasoning_effort,
+    def activate_llm_preset(self, preset: LLMPreset) -> tuple[str | None, str | None]:
+        """Construct or update the chat agent for ``preset`` and return its API keys.
+
+        The caller owns selection state. Passing the preset explicitly keeps a
+        superseded background activation from reading a newer selection midway
+        through initialization.
+        """
+        if self._chat_agent is None:
+            agent = self._build_chat_agent(preset=preset)
+            keys = agent.resolve_api_keys()
+            self._chat_agent = agent
+            return keys
+        elif not self._chat_agent_matches_preset(preset):
+            return self._chat_agent.activate_llm_profile(
+                model=preset.main.model,
+                reasoning_effort=preset.main.reasoning_effort,
+                subagent_model=preset.subagent.model,
+                subagent_reasoning_effort=preset.subagent.reasoning_effort,
             )
-        return self.chat_agent
+        return self._chat_agent.resolve_api_keys()
 
     def note_event(self, description: str) -> None:
         """Append an app event to the chat agent when LLM support is available."""
-        if self.chat_agent is not None:
-            self.chat_agent.note_event(description)
+        if self._chat_agent is not None:
+            self._chat_agent.note_event(description)
 
     def find_alias_by_source(self, key: object) -> str | None:
         """Return the alias registered for ``key``, or None."""
@@ -194,10 +200,6 @@ class SessionState:
                 "connected their own data; disregard it from here on."
             )
 
-    @property
-    def api_key(self) -> str | None:
-        return self.chat_agent.api_key if self.llm_available and self.chat_agent is not None else None
-
     def set_llm_preset(self, preset: LLMPreset) -> None:
         """Select an LLM preset without constructing provider clients."""
         if (
@@ -208,12 +210,8 @@ class SessionState:
             return
         self.llm_preset = preset
 
-    @property
-    def subagent_api_key(self) -> str | None:
-        return self.chat_agent.subagent_api_key if self.llm_available and self.chat_agent is not None else None
-
     async def close(self) -> None:
         """Release session-owned runtime resources."""
-        if self.chat_agent is not None:
-            await self.chat_agent.aclose()
+        if self._chat_agent is not None:
+            await self._chat_agent.aclose()
         await self.registry.disconnect_all_async()

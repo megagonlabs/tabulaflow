@@ -46,8 +46,6 @@ class _StubSession:
             main=LLMRoleConfig(model=model, reasoning_effort=reasoning_effort),
             subagent=LLMRoleConfig(model=subagent_model, reasoning_effort=subagent_reasoning_effort),
         )
-        self.api_key: str | None = None
-        self.subagent_api_key: str | None = None
 
     def set_llm_preset(self, preset: LLMPreset) -> None:
         self.llm_preset = preset
@@ -80,7 +78,7 @@ def updates(_patch_config_io: list[dict[str, Any]]) -> list[dict[str, Any]]:
 
 async def test_renders_presets() -> None:
     session = _StubSession()
-    screen = ConfigScreen(session, on_change=lambda: None)  # type: ignore[arg-type]
+    screen = ConfigScreen(session, on_change=lambda _preset: None)  # type: ignore[arg-type]
     async with _App(screen).run_test() as pilot:
         await pilot.pause()
         assert len(screen._preset_rows) == 4
@@ -100,92 +98,42 @@ async def test_renders_presets() -> None:
         assert "Opus 4.8 high" in screen._render_preset_row(3).plain
         assert "GPT 5.4 Mini medium" in screen._render_preset_row(3).plain
         assert "●" not in screen._render_preset_row(1).plain
+        assert all("API key" not in screen._render_preset_row(i).plain for i in range(4))
 
 
 async def test_enter_selects_openai_budget(updates: list[dict[str, Any]]) -> None:
     session = _StubSession()
-    screen = ConfigScreen(session, on_change=lambda: None)  # type: ignore[arg-type]
+    selected: list[LLMPreset] = []
+    screen = ConfigScreen(session, on_change=selected.append)  # type: ignore[arg-type]
     async with _App(screen).run_test() as pilot:
         await pilot.pause()
         await pilot.press("down", "enter")
         assert session.llm_preset == _PRESETS[1]
+        assert selected == [_PRESETS[1]]
         assert updates == [{"active_llm_preset": "OpenAI budget"}]
 
 
 async def test_enter_selects_anthropic_preset_and_persists(updates: list[dict[str, Any]]) -> None:
     session = _StubSession()
-    refreshed: list[bool] = []
-    screen = ConfigScreen(session, on_change=lambda: refreshed.append(True))  # type: ignore[arg-type]
+    selected: list[LLMPreset] = []
+    screen = ConfigScreen(session, on_change=selected.append)  # type: ignore[arg-type]
     async with _App(screen).run_test() as pilot:
         await pilot.pause()
         await pilot.press("down", "down", "enter")
         assert session.llm_preset == _PRESETS[2]
         assert updates == [{"active_llm_preset": "Anthropic balanced"}]
-        assert refreshed
+        assert selected == [_PRESETS[2]]
         assert "●" in screen._render_preset_row(2).plain
 
 
 async def test_enter_selects_planning_hybrid(updates: list[dict[str, Any]]) -> None:
     session = _StubSession()
-    screen = ConfigScreen(session, on_change=lambda: None)  # type: ignore[arg-type]
+    screen = ConfigScreen(session, on_change=lambda _preset: None)  # type: ignore[arg-type]
     async with _App(screen).run_test() as pilot:
         await pilot.pause()
         await pilot.press("down", "down", "down", "enter")
         assert session.llm_preset == _PRESETS[3]
         assert updates == [{"active_llm_preset": "Planning hybrid"}]
-
-
-async def test_active_preset_shows_api_keys() -> None:
-    session = _StubSession()
-    session.api_key = "sk-main123456789E0QA"
-    session.subagent_api_key = session.api_key
-    screen = ConfigScreen(session, on_change=lambda: None)  # type: ignore[arg-type]
-    async with _App(screen).run_test() as pilot:
-        await pilot.pause()
-        assert " [API key ***E0QA]" in screen._render_preset_row(0).plain
-        assert " · [API key" not in screen._render_preset_row(0).plain
-        assert "\n      [API key" not in screen._render_preset_row(0).plain
-        assert screen._render_preset_row(0).plain.count("[API key ***E0QA]") == 1
-        assert "API key" not in screen._render_preset_row(1).plain
-
-
-async def test_active_mixed_preset_shows_distinct_api_keys() -> None:
-    session = _StubSession(
-        model="openai-responses:gpt-5.5",
-        reasoning_effort="high",
-        subagent_model="anthropic:claude-sonnet-4-5-20250929",
-        subagent_reasoning_effort="medium",
-    )
-    session.api_key = "sk-main1234567890000"
-    session.subagent_api_key = "sk-sub1234567891111"
-    screen = ConfigScreen(session, on_change=lambda: None)  # type: ignore[arg-type]
-    async with _App(screen).run_test() as pilot:
-        await pilot.pause()
-        assert " [API key ***0000] [API key ***1111]" in screen._render_preset_row(0).plain
-        assert " · [API key" not in screen._render_preset_row(0).plain
-        await pilot.press("down")
-        assert "API key" in screen._render_preset_row(0).plain
-        assert "API key" not in screen._render_preset_row(1).plain
-
-
-async def test_active_preset_wraps_api_keys_with_indent() -> None:
-    session = _StubSession()
-    session.api_key = "sk-main123456789E0QA"
-    screen = ConfigScreen(session, on_change=lambda: None)  # type: ignore[arg-type]
-    async with _App(screen).run_test() as pilot:
-        await pilot.pause()
-        assert "\n      [API key ***E0QA]" in screen._render_preset_row(0, available_width=48).plain
-
-
-async def test_short_api_key_omitted() -> None:
-    session = _StubSession()
-    session.api_key = "short"
-    session.subagent_api_key = "sk-sub1234567891111"
-    screen = ConfigScreen(session, on_change=lambda: None)  # type: ignore[arg-type]
-    async with _App(screen).run_test() as pilot:
-        await pilot.pause()
-        assert "short" not in screen._render_preset_row(0).plain
-        assert "[API key ***1111]" in screen._render_preset_row(0).plain
 
 
 async def test_unverified_selected_preset_has_active_dot_without_error() -> None:
@@ -195,7 +143,7 @@ async def test_unverified_selected_preset_has_active_dot_without_error() -> None
         subagent_model="anthropic:claude-sonnet-4-5-20250929",
         subagent_reasoning_effort="high",
     )
-    screen = ConfigScreen(session, on_change=lambda: None)  # type: ignore[arg-type]
+    screen = ConfigScreen(session, on_change=lambda _preset: None)  # type: ignore[arg-type]
     async with _App(screen).run_test() as pilot:
         await pilot.pause()
         assert len(screen._preset_rows) == 4
@@ -215,8 +163,8 @@ async def test_current_custom_row_for_unmatched_runtime_profile(updates: list[di
         subagent_model="anthropic:claude-sonnet-4-5-20250929",
         subagent_reasoning_effort="medium",
     )
-    refreshed: list[bool] = []
-    screen = ConfigScreen(session, on_change=lambda: refreshed.append(True))  # type: ignore[arg-type]
+    selected: list[LLMPreset] = []
+    screen = ConfigScreen(session, on_change=selected.append)  # type: ignore[arg-type]
     async with _App(screen).run_test() as pilot:
         await pilot.pause()
         assert len(screen._preset_rows) == 5
@@ -224,7 +172,7 @@ async def test_current_custom_row_for_unmatched_runtime_profile(updates: list[di
         assert "● Current custom" in screen._render_preset_row(0).plain
         await pilot.press("enter")
         assert updates == []
-        assert refreshed
+        assert selected == [session.llm_preset]
         await pilot.press("down", "enter")
         assert updates == [{"active_llm_preset": "OpenAI balanced"}]
         assert session.llm_preset == _PRESETS[0]
@@ -232,7 +180,7 @@ async def test_current_custom_row_for_unmatched_runtime_profile(updates: list[di
 
 async def test_select_preset_does_not_show_provider_error(updates: list[dict[str, Any]]) -> None:
     session = _StubSession()
-    screen = ConfigScreen(session, on_change=lambda: None)  # type: ignore[arg-type]
+    screen = ConfigScreen(session, on_change=lambda _preset: None)  # type: ignore[arg-type]
     async with _App(screen).run_test() as pilot:
         await pilot.pause()
         await pilot.press("down", "down", "enter")

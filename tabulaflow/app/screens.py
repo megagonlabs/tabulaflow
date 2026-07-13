@@ -1736,12 +1736,6 @@ class SchemaBrowserScreen(Screen[None]):
 _CURRENT_CUSTOM_PRESET_LABEL = "Current custom"
 
 
-def _masked_api_key(key: str) -> str | None:
-    if len(key) < 12:
-        return None
-    return f"***{key[-4:]}"
-
-
 def _preset_matches_session(preset: LLMPreset, session: SessionState) -> bool:
     return _preset_roles_match_session(preset, session)
 
@@ -1793,7 +1787,7 @@ class ConfigScreen(Screen[None]):
         Binding("enter", "select", "Select", show=False),
     ]
 
-    def __init__(self, session: SessionState, on_change: Callable[[], None]) -> None:
+    def __init__(self, session: SessionState, on_change: Callable[[LLMPreset], None]) -> None:
         super().__init__()
         self._session = session
         self._on_change = on_change
@@ -1831,7 +1825,7 @@ class ConfigScreen(Screen[None]):
         """Cursor-reachable preset rows."""
         return [("preset", i) for i in range(len(self._presets))]
 
-    def _render_preset_row(self, i: int, *, available_width: int | None = None) -> Text:
+    def _render_preset_row(self, i: int) -> Text:
         preset = self._presets[i]
         selected = self._cursor == i
         active = _preset_matches_session(preset, self._session)
@@ -1851,15 +1845,6 @@ class ConfigScreen(Screen[None]):
             f" · {compact_model_name(preset.subagent.model)} {preset.subagent.reasoning_effort}",
             style="dim",
         )
-        if active:
-            api_key_text = self._api_key_text()
-            if api_key_text is not None:
-                inline_text = f" {api_key_text}"
-                if available_width is not None and t.cell_len + len(inline_text) > available_width:
-                    t.append("\n")
-                    t.append(f"      {api_key_text}", style="dim")
-                else:
-                    t.append(inline_text, style="dim")
         return t
 
     def _hint_text(self) -> Text:
@@ -1870,20 +1855,7 @@ class ConfigScreen(Screen[None]):
 
     def _refresh(self) -> None:
         for i, row in enumerate(self._preset_rows):
-            available_width = row.size.width or self.size.width or None
-            row.update(self._render_preset_row(i, available_width=available_width))
-
-    def _api_key_text(self) -> str | None:
-        api_key_labels: list[str] = []
-        seen_keys: set[str] = set()
-        for key in (self._session.api_key, self._session.subagent_api_key):
-            if key is None or key in seen_keys:
-                continue
-            seen_keys.add(key)
-            masked = _masked_api_key(key)
-            if masked is not None:
-                api_key_labels.append(f"[API key {masked}]")
-        return " ".join(api_key_labels) or None
+            row.update(self._render_preset_row(i))
 
     def action_cursor_move(self, delta: int) -> None:
         self._cursor = max(0, min(len(self._presets) - 1, self._cursor + delta))
@@ -1897,7 +1869,7 @@ class ConfigScreen(Screen[None]):
         self._session.set_llm_preset(preset)
         if preset.label != _CURRENT_CUSTOM_PRESET_LABEL:
             update_app_config(active_llm_preset=preset.label)
-        self._on_change()
+        self._on_change(preset)
         self._refresh()
 
     def action_close(self) -> None:

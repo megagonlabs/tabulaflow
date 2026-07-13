@@ -293,7 +293,7 @@ class ChatAgent:
     # (OpenAI reasoning_effort, Anthropic thinking budgets / native effort, Gemini
     # thinking_level). Required — callers pass a fully resolved app/research
     # profile rather than relying on ChatAgent defaults. Mutable at runtime via
-    # ``set_llm_profile``.
+    # ``activate_llm_profile``.
     reasoning_effort: str
     # Session-wide service tier for providers that expose one. Applied to both the
     # root agent and helper LLM calls; ignored by providers without service tiers.
@@ -501,29 +501,27 @@ class ChatAgent:
             return None
         return self._unwrap_model(self._pydantic_ai_agent.model)
 
-    def _subagent_probe_model(self) -> Any | None:
-        """Provider model for the configured subagent profile, built lazily for introspection."""
-        try:
-            return self._unwrap_model(make_agent(self.subagent_model).model)
-        except Exception:
-            return None
+    def _subagent_provider_model(self, model: str) -> object:
+        """Construct ``model`` as a subagent provider model for introspection."""
+        return self._unwrap_model(make_agent(model).model)
 
-    @property
-    def api_key(self) -> str | None:
-        """API key of the live model's provider client, for status display.
+    @staticmethod
+    def _api_key_from_model(model: object | None) -> str | None:
+        key = getattr(getattr(model, "client", None), "api_key", None)
+        return key if isinstance(key, str) and key else None
 
-        Best-effort: read off the constructed client (the credential actually in
-        use), never guessed from env vars. ``None`` when the provider has no key
-        (e.g. vertex ADC) or the client shape is unrecognized.
+    def resolve_api_keys(self) -> tuple[str | None, str | None]:
+        """Resolve API keys for the configured main and subagent providers.
+
+        The main key comes from the live client. The subagent provider is
+        constructed locally because subagents have no persistent client.
+        Provider construction errors propagate so callers can treat the whole
+        profile as one readiness boundary. No network request is made.
         """
-        key = getattr(getattr(self._unwrapped_model(), "client", None), "api_key", None)
-        return key if isinstance(key, str) and key else None
-
-    @property
-    def subagent_api_key(self) -> str | None:
-        """API key of the configured subagent model's provider client, for display."""
-        key = getattr(getattr(self._subagent_probe_model(), "client", None), "api_key", None)
-        return key if isinstance(key, str) and key else None
+        return (
+            self._api_key_from_model(self._unwrapped_model()),
+            self._api_key_from_model(self._subagent_provider_model(self.subagent_model)),
+        )
 
     def _thinking_settings(self) -> ModelSettings:
         """Per-request reasoning settings: the unified ``thinking`` level, which
@@ -581,36 +579,40 @@ class ChatAgent:
         for tool in self._subagent_profile_tools():
             tool.apply_llm_profile(llm=model, model_settings=model_settings)
 
-    def set_llm_profile(
+    def activate_llm_profile(
         self,
         *,
         model: str,
         reasoning_effort: str,
         subagent_model: str,
         subagent_reasoning_effort: str,
-    ) -> None:
-        """Atomically replace the main and subagent LLM profiles.
+    ) -> tuple[str | None, str | None]:
+        """Atomically activate main and subagent LLM profiles.
 
         Conversation, query, tool, and message-store state remain attached to
         this ``ChatAgent``. Provider runtimes are prepared before the live
         profile is changed, so a construction failure leaves the old profile
-        usable.
+        usable. Returns the API keys resolved during preparation.
         """
         if self._running:
             raise RuntimeError("cannot change the LLM profile during an active turn")
-        if (
+        unchanged = (
             self.model == model
             and self.reasoning_effort == reasoning_effort
             and self.subagent_model == subagent_model
             and self.subagent_reasoning_effort == subagent_reasoning_effort
-        ):
-            return
+        )
 
         runtime_agent = self._pydantic_ai_agent
         if self.model != model:
             runtime_agent = self._make_agent(model)
-        if self.subagent_model != subagent_model:
-            self._unwrap_model(make_agent(subagent_model).model)
+        subagent_provider_model = self._subagent_provider_model(subagent_model)
+        keys = (
+            self._api_key_from_model(self._unwrap_model(runtime_agent.model) if runtime_agent is not None else None),
+            self._api_key_from_model(subagent_provider_model),
+        )
+        if unchanged:
+            return keys
 
         previous_subagent_model = self.subagent_model
         previous_subagent_effort = self.subagent_reasoning_effort
@@ -630,6 +632,7 @@ class ChatAgent:
         self.subagent_model = subagent_model
         self.subagent_reasoning_effort = subagent_reasoning_effort
         self._pydantic_ai_agent = runtime_agent
+        return keys
 
     def note_event(self, description: str) -> None:
         """Make the agent aware of a host/app event (typically a user action — e.g.
