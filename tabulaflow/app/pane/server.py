@@ -33,6 +33,7 @@ DEFAULT_OUTPUT_PANE_PORT_START = 61111
 DEFAULT_OUTPUT_PANE_PORT_END = 61130
 DEFAULT_OUTPUT_PANE_PORTS = tuple(range(DEFAULT_OUTPUT_PANE_PORT_START, DEFAULT_OUTPUT_PANE_PORT_END + 1))
 DEFAULT_OUTPUT_PANE_HOST = "127.0.0.1"
+_OUTPUT_PANE_TOKEN_BYTES = 6
 
 _GITHUB_SVG = (
     '<svg viewBox="0 0 16 16" aria-hidden="true">'
@@ -320,7 +321,7 @@ class OutputPane:
             if public_parts.query or public_parts.fragment:
                 raise ValueError("Output pane public URL cannot include query parameters or a fragment.")
             self._public_path_parts = tuple(unquote(part) for part in public_parts.path.split("/") if part)
-        self._token = token or secrets.token_urlsafe(12)
+        self._token = token or secrets.token_urlsafe(_OUTPUT_PANE_TOKEN_BYTES)
         if not self._token:
             raise ValueError("Output pane token cannot be empty.")
         self._port_config = port

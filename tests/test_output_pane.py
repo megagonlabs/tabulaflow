@@ -123,6 +123,12 @@ def test_output_pane_uses_first_available_port_in_range(tmp_path: Path) -> None:
             pane.stop()
 
 
+def test_output_pane_default_token_is_48_bits(tmp_path: Path) -> None:
+    pane = OutputPane(tmp_path)
+
+    assert len(pane.token) == 8
+
+
 def test_output_pane_explicit_port_is_strict(tmp_path: Path) -> None:
     with _bound_loopback_port() as occupied_port:
         pane = OutputPane(tmp_path, port=occupied_port)
