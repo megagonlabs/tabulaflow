@@ -323,6 +323,39 @@ def test_switching_preset_preserves_live_chat_agent_state(tmp_path: Path, monkey
 
 
 @pytest.mark.asyncio
+async def test_startup_llm_activation_reports_session_then_agent_progress(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    preset = _preset(model="test:model")
+    app = TabulaflowApp(llm_preset=preset)
+    labels: list[str] = []
+
+    async def fake_show(label: str) -> None:
+        labels.append(label)
+
+    async def fake_ensure_session() -> object:
+        return object()
+
+    async def fake_finish(
+        _request_id: int,
+        _preset: LLMPreset,
+        *,
+        keys: tuple[str | None, str | None] | None,
+    ) -> None:
+        assert keys == (None, None)
+
+    monkeypatch.setattr(app, "_show_initialization_spinner", fake_show)
+    monkeypatch.setattr(app, "_ensure_session", fake_ensure_session)
+    monkeypatch.setattr(app, "_initialize_llm_runtime", lambda _session, _preset: (None, None))
+    monkeypatch.setattr(app, "_finish_llm_activation", fake_finish)
+
+    app._llm_activation_request_id = 1
+    await app._activate_llm_preset(1, preset)
+
+    assert labels == ["Initializing session...", "Initializing agent..."]
+
+
+@pytest.mark.asyncio
 async def test_llm_activation_only_publishes_latest_selection(monkeypatch: pytest.MonkeyPatch) -> None:
     first = _preset(label="First", model="test:first")
     latest = _preset(label="Latest", model="test:latest")
@@ -332,7 +365,7 @@ async def test_llm_activation_only_publishes_latest_selection(monkeypatch: pytes
     initialized: list[LLMPreset] = []
     finished: list[tuple[LLMPreset, tuple[str | None, str | None] | None]] = []
 
-    async def fake_show(_preset: LLMPreset) -> None:
+    async def fake_show(_label: str) -> None:
         return None
 
     async def fake_ensure_session() -> object:
@@ -353,7 +386,7 @@ async def test_llm_activation_only_publishes_latest_selection(monkeypatch: pytes
     ) -> None:
         finished.append((preset, keys))
 
-    monkeypatch.setattr(app, "_show_llm_init_spinner", fake_show)
+    monkeypatch.setattr(app, "_show_initialization_spinner", fake_show)
     monkeypatch.setattr(app, "_ensure_session", fake_ensure_session)
     monkeypatch.setattr(app, "_initialize_llm_runtime", fake_initialize)
     monkeypatch.setattr(app, "_finish_llm_activation", fake_finish)
@@ -405,7 +438,7 @@ async def test_startup_activation_reports_masked_api_key_in_chat_log(
         for _ in range(3):
             await pilot.pause()
         messages = [str(message.render()) for message in app.query(SystemMessage)]
-        assert messages == ["LLM ready: GPT 5 medium [API key ***E0QA]"]
+        assert messages == ["✓ Agent ready: GPT 5 medium [API key ***E0QA]"]
         assert not app.query_one("#input-bar", Input).disabled
 
 

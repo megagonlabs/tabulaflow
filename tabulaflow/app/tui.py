@@ -24,7 +24,7 @@ from tabulaflow.app.session import (
     SessionState,
     compact_model_label,
 )
-from tabulaflow.app.theme import ACCENT, ERROR, FOCUS_SURFACE, KEY_HINT
+from tabulaflow.app.theme import ERROR, FOCUS_SURFACE, KEY_HINT
 from tabulaflow.app.widgets import (
     AgentProgressWidget,
     AgentResultWidget,
@@ -154,7 +154,7 @@ class TabulaflowApp(App[None]):
         self._session_lock = asyncio.Lock()
         self._llm_activation_lock = asyncio.Lock()
         self._llm_activation_request_id = 0
-        self._llm_init_spinner: SpinnerWidget | None = None
+        self._initialization_spinner: SpinnerWidget | None = None
         self._busy = False
         self._current_worker: object | None = None
         self._last_idle_interrupt_ts: float = 0.0
@@ -206,9 +206,19 @@ class TabulaflowApp(App[None]):
         self._refresh_esc_hint()
         self._ensure_pane()
         if self._startup_llm_preset is None:
-            self.run_worker(self._ensure_session())
+            self.run_worker(self._initialize_startup_session())
         else:
             self._request_llm_activation(self._startup_llm_preset)
+
+    async def _initialize_startup_session(self) -> None:
+        """Build a session when the app starts without an LLM preset."""
+        request_id = self._llm_activation_request_id
+        await self._show_initialization_spinner("Initializing session...")
+        try:
+            await self._ensure_session()
+        finally:
+            if request_id == self._llm_activation_request_id:
+                await self._remove_initialization_spinner()
 
     def _refresh_esc_hint(self) -> None:
         """Update the docked ``Esc`` hint label to match current state.
@@ -574,9 +584,13 @@ class TabulaflowApp(App[None]):
 
         if request_id != self._llm_activation_request_id:
             return
-        await self._show_llm_init_spinner(preset)
+        if self._session is None:
+            await self._show_initialization_spinner("Initializing session...")
         try:
             session = await self._ensure_session()
+            if request_id != self._llm_activation_request_id:
+                return
+            await self._show_initialization_spinner("Initializing agent...")
             async with self._llm_activation_lock:
                 if request_id != self._llm_activation_request_id:
                     return
@@ -596,16 +610,21 @@ class TabulaflowApp(App[None]):
     ) -> tuple[str | None, str | None]:
         return session.activate_llm_preset(preset)
 
-    async def _show_llm_init_spinner(self, preset: LLMPreset) -> None:
-        label = f"Initializing {compact_model_label(preset.main.model, preset.main.reasoning_effort)}..."
-        if self._llm_init_spinner is not None:
-            self._llm_init_spinner.update_label(label)
+    async def _show_initialization_spinner(self, label: str) -> None:
+        if self._initialization_spinner is not None:
+            self._initialization_spinner.update_label(label)
             return
         spinner = SpinnerWidget(label)
-        self._llm_init_spinner = spinner
+        self._initialization_spinner = spinner
         chat_log = self.query_one("#chat-log", VerticalScroll)
         await chat_log.mount(spinner)
         chat_log.scroll_end(animate=False)
+
+    async def _remove_initialization_spinner(self) -> None:
+        spinner = self._initialization_spinner
+        self._initialization_spinner = None
+        if spinner is not None:
+            await spinner.remove()
 
     async def _finish_llm_activation(
         self,
@@ -617,10 +636,7 @@ class TabulaflowApp(App[None]):
         if request_id != self._llm_activation_request_id:
             return
         chat_log = self.query_one("#chat-log", VerticalScroll)
-        spinner = self._llm_init_spinner
-        self._llm_init_spinner = None
-        if spinner is not None:
-            await spinner.remove()
+        await self._remove_initialization_spinner()
         if request_id != self._llm_activation_request_id:
             return
 
@@ -629,8 +645,7 @@ class TabulaflowApp(App[None]):
             message = Text.from_markup(f"[{ERROR}]LLM unavailable:[/] ")
             message.append(f"Could not initialize {model_label}. {LLM_UNAVAILABLE_MESSAGE}")
         else:
-            message = Text("LLM ready: ", style=ACCENT)
-            message.append(model_label)
+            message = Text(f"✓ Agent ready: {model_label}", style="dim")
             for key in _masked_api_keys(keys):
                 message.append(f" [API key {key}]", style="dim")
         status_message = SystemMessage(message)
