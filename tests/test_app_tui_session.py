@@ -12,6 +12,14 @@ from tabulaflow.app.session import ActiveLLMProfile, SessionState
 from tabulaflow.app.tui import TabulaflowApp
 
 
+class _StatusCapture:
+    def __init__(self) -> None:
+        self.value = ""
+
+    def update(self, value: object) -> None:
+        self.value = str(value)
+
+
 @pytest.mark.asyncio
 async def test_ensure_session_passes_session_paths_by_keyword(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     project_dir = tmp_path / "project"
@@ -68,6 +76,50 @@ async def test_ensure_session_passes_session_paths_by_keyword(tmp_path: Path, mo
         "subagent_model": "test:subagent",
         "subagent_reasoning_effort": "medium",
     }
+
+
+def test_bottom_status_shows_no_llm_for_unavailable_session(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    app = TabulaflowApp(model="anthropic:claude-opus-4-8", reasoning_effort="high")
+    app._project_dir = tmp_path
+    session = SessionState(
+        model="anthropic:claude-opus-4-8",
+        reasoning_effort="high",
+        subagent_model="anthropic:claude-sonnet-4-5-20250929",
+        subagent_reasoning_effort="medium",
+        session_id="test-session",
+        trajectories_dir=tmp_path / "trajectories",
+        data_dir=tmp_path / "data",
+        workspace=None,
+    )
+    session.chat_agent = None
+    app._session = session
+    model_status = _StatusCapture()
+    url_status = _StatusCapture()
+
+    def fake_query_one(selector: str, _type: object) -> _StatusCapture:
+        return model_status if selector == "#bottom-status-model" else url_status
+
+    monkeypatch.setattr(app, "query_one", fake_query_one)
+
+    app._refresh_bottom_status()
+
+    assert model_status.value.startswith("No LLM · ")
+
+
+def test_bottom_status_uses_compact_model_label(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    app = TabulaflowApp(model="anthropic:claude-opus-4-8", reasoning_effort="high")
+    app._project_dir = tmp_path
+    model_status = _StatusCapture()
+    url_status = _StatusCapture()
+
+    def fake_query_one(selector: str, _type: object) -> _StatusCapture:
+        return model_status if selector == "#bottom-status-model" else url_status
+
+    monkeypatch.setattr(app, "query_one", fake_query_one)
+
+    app._refresh_bottom_status()
+
+    assert model_status.value.startswith("Opus 4.8 high · ")
 
 
 def test_session_starts_when_llm_unavailable(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

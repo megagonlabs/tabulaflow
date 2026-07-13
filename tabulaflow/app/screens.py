@@ -17,7 +17,7 @@ from textual.screen import Screen
 from textual.widgets import DataTable, Static, TextArea
 
 from tabulaflow.app.config import APP_CONFIG_PATH, LLMPreset, load_app_config, update_app_config
-from tabulaflow.app.session import ActiveLLMProfile, format_llm_error
+from tabulaflow.app.session import ActiveLLMProfile, compact_model_name, format_llm_error
 from tabulaflow.app.theme import ACCENT, ACCENT_BOLD, DRACULA_TRANSPARENT, ERROR, FK_MARKER, KEY_HINT, PK_MARKER
 
 
@@ -1736,29 +1736,6 @@ class SchemaBrowserScreen(Screen[None]):
 _CURRENT_CUSTOM_PRESET_LABEL = "Current custom"
 
 
-def _compact_model_name(model: str) -> str:
-    _, sep, name = model.partition(":")
-    if not sep:
-        name = model
-    name = name.rsplit("/", 1)[-1]
-    tokens = name.replace("_", "-").split("-")
-    if len(tokens) > 1 and tokens[-1].isdigit() and len(tokens[-1]) == 8:
-        tokens = tokens[:-1]
-    if len(tokens) >= 2 and tokens[-1].isdigit() and tokens[-2].isdigit():
-        tokens = [*tokens[:-2], f"{tokens[-2]}.{tokens[-1]}"]
-    if tokens and tokens[0].lower() == "claude":
-        tokens = tokens[1:]
-    parts: list[str] = []
-    for tok in tokens:
-        if tok.lower() == "gpt":
-            parts.append(tok.upper())
-        elif tok[:1].isalpha():
-            parts.append(tok.capitalize())
-        else:
-            parts.append(tok)
-    return " ".join(parts)
-
-
 def _masked_api_key(key: str) -> str | None:
     if len(key) < 12:
         return None
@@ -1864,11 +1841,11 @@ class ConfigScreen(Screen[None]):
             label_style = "bold" if selected else ""
         t.append(preset.label, style=label_style)
         t.append(
-            f" · {_compact_model_name(preset.main.model)} {preset.main.reasoning_effort}",
+            f" · {compact_model_name(preset.main.model)} {preset.main.reasoning_effort}",
             style="dim",
         )
         t.append(
-            f" · {_compact_model_name(preset.subagent.model)} {preset.subagent.reasoning_effort}",
+            f" · {compact_model_name(preset.subagent.model)} {preset.subagent.reasoning_effort}",
             style="dim",
         )
         if active:

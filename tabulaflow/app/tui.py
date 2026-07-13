@@ -18,7 +18,7 @@ from tabulaflow.app.commands import COMMAND_PREFIX, handle_command
 from tabulaflow.app.debug import debug_enabled, mount_debug_widgets
 from tabulaflow.app.pane import PaneCard, manual_card_turn, turn_payload
 from tabulaflow.app.runtime_paths import RuntimePaths, ensure_pane_dir, generate_session_id
-from tabulaflow.app.session import SessionState, format_llm_unavailable_message
+from tabulaflow.app.session import SessionState, compact_model_label, format_llm_unavailable_message
 from tabulaflow.app.theme import ERROR, FOCUS_SURFACE, KEY_HINT
 from tabulaflow.app.widgets import (
     AgentProgressWidget,
@@ -42,24 +42,6 @@ class BottomSeparator(Static):
 
     def render(self) -> Text:
         return Text("━" * max(1, self.size.width), style="#333333", overflow="crop", no_wrap=True)
-
-
-def _compact_model_label(model: str, reasoning_effort: str | None = None) -> str:
-    """Return a compact model status label, e.g. ``GPT 5.5 medium``."""
-    _, sep, name = model.partition(":")
-    if not sep:
-        name = model
-    parts = []
-    for tok in name.split("-"):
-        if tok.lower() == "gpt":
-            parts.append(tok.upper())
-        elif tok[:1].isalpha():
-            parts.append(tok.capitalize())
-        else:
-            parts.append(tok)
-    if reasoning_effort:
-        parts.append(reasoning_effort)
-    return " ".join(parts)
 
 
 def _compact_project_dir(path: Path) -> str:
@@ -541,11 +523,12 @@ class TabulaflowApp(App[None]):
         except Exception:
             return
         url = self._pane.url if self._pane is not None else None
-        model = self._session.model if self._session is not None else self._model
-        reasoning_effort = self._session.reasoning_effort if self._session is not None else self._reasoning_effort
-        model_label = _compact_model_label(model, reasoning_effort)
         if self._session is not None and not self._session.llm_available:
-            model_label = f"{model_label} · LLM unavailable"
+            model_label = "No LLM"
+        else:
+            model = self._session.model if self._session is not None else self._model
+            reasoning_effort = self._session.reasoning_effort if self._session is not None else self._reasoning_effort
+            model_label = compact_model_label(model, reasoning_effort)
         model_status.update(Text(f"{model_label} · {_compact_project_dir(self._project_dir)}", style="dim"))
         url_status.update(Text(f"View output in browser: {url}" if url else "", style="dim"))
 
