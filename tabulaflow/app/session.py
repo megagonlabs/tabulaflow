@@ -17,30 +17,7 @@ if TYPE_CHECKING:
 WORKSPACE_ALIAS = "workspace"
 
 
-_API_KEY_PROVIDERS = {
-    "ANTHROPIC_API_KEY": "Anthropic",
-    "FIREWORKS_API_KEY": "Fireworks",
-    "GOOGLE_API_KEY": "Google",
-    "OPENAI_API_KEY": "OpenAI",
-    "TOGETHER_API_KEY": "Together",
-}
-
-
-def format_llm_error(error: str | None) -> str:
-    """Return a short, actionable message for an LLM setup failure."""
-    if not error:
-        return "LLM provider is not configured correctly."
-    for env_var, provider in _API_KEY_PROVIDERS.items():
-        if env_var in error:
-            return f"{provider} API key is not configured. Set {env_var}."
-    if "Unknown provider:" in error:
-        return "Unknown LLM provider in the selected preset."
-    if "Unknown model:" in error:
-        return "Unknown LLM model in the selected preset."
-    return "LLM provider is not configured correctly. Check the selected preset."
-
-
-def format_llm_unavailable_message(error: str | None) -> str:
+def format_llm_unavailable_message(_error: str | None) -> str:
     """Return the full chat-surface message for unavailable LLM actions."""
     return "Select a configured preset in /config. /connect and data browsing still work."
 
@@ -128,8 +105,8 @@ class SessionState:
         if workspace is not None:
             self.registry.register(WORKSPACE_ALIAS, workspace)
         self.chat_agent: ChatAgent | None = None
+        self._retired_chat_agents: list[ChatAgent] = []
         self.llm_error: str | None = None
-        self._rebuild_chat_agent()
         self.last_result: object | None = None
         # Maps a "what's this connection's source" key (frozenset of file
         # paths, normalized URL, etc.) to the alias under which it is
@@ -139,7 +116,7 @@ class SessionState:
 
     @property
     def llm_available(self) -> bool:
-        """Whether the selected LLM preset has a live chat agent."""
+        """Whether the selected LLM preset has a constructed live chat agent."""
         return self.chat_agent is not None
 
     def _build_chat_agent(
@@ -163,18 +140,21 @@ class SessionState:
             data_dir=self.data_dir,
         )
 
-    def _rebuild_chat_agent(self) -> None:
+    def ensure_chat_agent(self) -> ChatAgent:
+        """Return the live chat agent, building it lazily for the selected preset."""
+        if self.chat_agent is not None:
+            return self.chat_agent
         if self.llm_preset is None:
-            self.chat_agent = None
-            self.llm_error = None
-            return
+            raise RuntimeError("No LLM preset is selected.")
         try:
             self.chat_agent = self._build_chat_agent(preset=self.llm_preset)
         except Exception as e:
             self.chat_agent = None
             self.llm_error = str(e)
+            raise
         else:
             self.llm_error = None
+            return self.chat_agent
 
     def note_event(self, description: str) -> None:
         """Append an app event to the chat agent when LLM support is available."""
@@ -234,46 +214,18 @@ class SessionState:
         return self._require_llm_preset().subagent.model
 
     def set_llm_preset(self, preset: LLMPreset) -> None:
-        """Atomically switch the selected LLM preset, raising if it cannot run."""
-        old_preset = self.llm_preset
-        old_agent = self.chat_agent
-        old_error = self.llm_error
-
-        if self.chat_agent is not None:
-            if old_preset is None:
-                raise RuntimeError("Invariant violation: chat agent exists without an LLM preset.")
-            try:
-                self.chat_agent.set_main_profile(
-                    model=preset.main.model,
-                    reasoning_effort=preset.main.reasoning_effort,
-                )
-                self.chat_agent.set_subagent_profile(
-                    model=preset.subagent.model,
-                    reasoning_effort=preset.subagent.reasoning_effort,
-                )
-            except Exception:
-                with suppress(Exception):
-                    self.chat_agent.set_main_profile(
-                        model=old_preset.main.model,
-                        reasoning_effort=old_preset.main.reasoning_effort,
-                    )
-                with suppress(Exception):
-                    self.chat_agent.set_subagent_profile(
-                        model=old_preset.subagent.model,
-                        reasoning_effort=old_preset.subagent.reasoning_effort,
-                    )
-                self.llm_preset = old_preset
-                self.chat_agent = old_agent
-                self.llm_error = old_error
-                raise
-            else:
-                self.llm_preset = preset
-                self.llm_error = None
+        """Select an LLM preset without constructing provider clients."""
+        if (
+            self.llm_preset is not None
+            and preset.main == self.llm_preset.main
+            and preset.subagent == self.llm_preset.subagent
+        ):
+            self.llm_error = None
             return
-
-        new_agent = self._build_chat_agent(preset=preset)
+        if self.chat_agent is not None:
+            self._retired_chat_agents.append(self.chat_agent)
         self.llm_preset = preset
-        self.chat_agent = new_agent
+        self.chat_agent = None
         self.llm_error = None
 
     @property
@@ -297,4 +249,7 @@ class SessionState:
         """Release session-owned runtime resources."""
         if self.chat_agent is not None:
             await self.chat_agent.aclose()
+        for agent in self._retired_chat_agents:
+            with suppress(Exception):
+                await agent.aclose()
         await self.registry.disconnect_all_async()

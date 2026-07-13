@@ -207,7 +207,7 @@ async def test_short_api_key_omitted() -> None:
         assert "[API key ***1111]" in screen._render_preset_row(0).plain
 
 
-async def test_unavailable_preset_has_no_active_dot_or_startup_error() -> None:
+async def test_unverified_selected_preset_has_active_dot_without_error() -> None:
     session = _StubSession(
         model="anthropic:claude-opus-4-8",
         reasoning_effort="high",
@@ -225,7 +225,7 @@ async def test_unavailable_preset_has_no_active_dot_or_startup_error() -> None:
         assert len(screen._preset_rows) == 4
         assert screen._cursor == 2
         row = screen._render_preset_row(2).plain
-        assert "●" not in row
+        assert "●" in row
         assert "LLM unavailable" not in row
         assert "Anthropic API key is not configured" not in row
         assert "ANTHROPIC_API_KEY" not in row
@@ -254,26 +254,16 @@ async def test_current_custom_row_for_unmatched_runtime_profile(updates: list[di
         assert session.reasoning_effort == "medium"
 
 
-async def test_select_failure_shows_inline_error(updates: list[dict[str, Any]]) -> None:
-    class _FailingSession(_StubSession):
-        def set_llm_preset(self, preset: LLMPreset) -> None:
-            if preset.main.model.startswith("anthropic:"):
-                raise RuntimeError(
-                    "Set the `ANTHROPIC_API_KEY` environment variable or pass it via "
-                    "`AnthropicProvider(api_key=...)` to use the Anthropic provider."
-                )
-            super().set_llm_preset(preset)
-
-    session = _FailingSession()
+async def test_select_preset_does_not_show_provider_error(updates: list[dict[str, Any]]) -> None:
+    session = _StubSession()
     screen = ConfigScreen(session, on_change=lambda: None)  # type: ignore[arg-type]
     async with _App(screen).run_test() as pilot:
         await pilot.pause()
         await pilot.press("down", "down", "enter")
-        assert session.model == "openai-responses:gpt-5.5"
-        assert updates == []
-        assert "Anthropic API key is not configured" in screen._render_preset_row(2).plain
-        assert "ANTHROPIC_API_KEY" in screen._render_preset_row(2).plain
-        assert "AnthropicProvider" not in screen._render_preset_row(2).plain
-        assert "●" in screen._render_preset_row(0).plain
-        await pilot.press("up", "enter")
+        assert session.model == "anthropic:claude-opus-4-8"
+        assert updates == [{"active_llm_preset": "Anthropic balanced"}]
+        assert "Anthropic API key is not configured" not in screen._render_preset_row(2).plain
         assert "ANTHROPIC_API_KEY" not in screen._render_preset_row(2).plain
+        assert "AnthropicProvider" not in screen._render_preset_row(2).plain
+        assert "●" in screen._render_preset_row(2).plain
+        assert "●" not in screen._render_preset_row(0).plain

@@ -11,6 +11,7 @@ from tabulaflow.app.config import (
     LLMRoleConfig,
     LLMPreset,
     load_app_config,
+    resolve_startup_llm_preset,
     save_app_config,
     update_app_config,
 )
@@ -95,6 +96,20 @@ def test_unknown_active_preset_assignment_has_no_resolved_preset() -> None:
     config.active_llm_preset = "missing"
     assert config.active_llm_preset == "missing"
     assert config.active_preset is None
+
+
+def test_unverified_active_preset_resolves_without_api_key(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    config = AppConfig(active_llm_preset="Anthropic balanced")
+    assert resolve_startup_llm_preset(config) == config.active_preset
+
+
+def test_unverified_cli_preset_resolves_without_api_key(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    config = AppConfig()
+    assert resolve_startup_llm_preset(config, cli_preset="Anthropic balanced") == config.preset_by_label(
+        "Anthropic balanced"
+    )
 
 
 def test_assignment_validates() -> None:

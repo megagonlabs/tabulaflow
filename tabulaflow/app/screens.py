@@ -17,7 +17,7 @@ from textual.screen import Screen
 from textual.widgets import DataTable, Static, TextArea
 
 from tabulaflow.app.config import APP_CONFIG_PATH, LLMPreset, load_app_config, update_app_config
-from tabulaflow.app.session import compact_model_name, format_llm_error
+from tabulaflow.app.session import compact_model_name
 from tabulaflow.app.theme import ACCENT, ACCENT_BOLD, DRACULA_TRANSPARENT, ERROR, FK_MARKER, KEY_HINT, PK_MARKER
 
 
@@ -1743,7 +1743,7 @@ def _masked_api_key(key: str) -> str | None:
 
 
 def _preset_matches_session(preset: LLMPreset, session: SessionState) -> bool:
-    return session.llm_available and _preset_roles_match_session(preset, session)
+    return _preset_roles_match_session(preset, session)
 
 
 def _preset_roles_match_session(preset: LLMPreset, session: SessionState) -> bool:
@@ -1799,16 +1799,15 @@ class ConfigScreen(Screen[None]):
         self._on_change = on_change
         app_config = load_app_config()
         self._presets = list(app_config.llm_presets)
-        if session.llm_available and all(not _preset_matches_session(preset, session) for preset in self._presets):
+        if session.llm_preset is not None and all(
+            not _preset_matches_session(preset, session) for preset in self._presets
+        ):
             self._presets.insert(0, _current_session_preset(session))
         self._preset_rows = [Static(classes="config-row") for _ in self._presets]
         self._cursor = next(
             (i for i, preset in enumerate(self._presets) if _preset_roles_match_session(preset, session)),
             0,
         )
-        # Set when applying a model fails (e.g. missing provider credentials):
-        # (option index, provider error). Rendered inline under the attempted row.
-        self._select_error: tuple[int, str] | None = None
 
     def compose(self) -> ComposeResult:
         from textual.containers import Vertical
@@ -1861,9 +1860,6 @@ class ConfigScreen(Screen[None]):
                     t.append(f"      {api_key_text}", style="dim")
                 else:
                     t.append(inline_text, style="dim")
-        if self._select_error is not None and self._select_error[0] == i:
-            t.append("\n")
-            t.append(f"      {format_llm_error(self._select_error[1])}", style=ERROR)
         return t
 
     def _hint_text(self) -> Text:
@@ -1898,13 +1894,7 @@ class ConfigScreen(Screen[None]):
 
     def _select_preset(self, i: int) -> None:
         preset = self._presets[i]
-        self._select_error = None
-        try:
-            self._session.set_llm_preset(preset)
-        except Exception as e:
-            self._select_error = (i, str(e))
-            self._refresh()
-            return
+        self._session.set_llm_preset(preset)
         if preset.label != _CURRENT_CUSTOM_PRESET_LABEL:
             update_app_config(active_llm_preset=preset.label)
         self._on_change()

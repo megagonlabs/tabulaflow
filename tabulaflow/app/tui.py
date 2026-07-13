@@ -522,7 +522,7 @@ class TabulaflowApp(App[None]):
         except Exception:
             return
         url = self._pane.url if self._pane is not None else None
-        if self._session is not None and self._session.llm_available:
+        if self._session is not None and self._session.llm_preset is not None:
             model_label = compact_model_label(self._session.model, self._session.reasoning_effort)
         elif self._session is None and self._startup_llm_preset is not None:
             model_label = compact_model_label(
@@ -782,7 +782,7 @@ class TabulaflowApp(App[None]):
             chat_log.scroll_end(animate=False)
             return
 
-        if not session.llm_available:
+        if session.llm_preset is None:
             await chat_log.mount(UserMessage(text))
             error_text = Text.from_markup(f"[{ERROR}]LLM unavailable:[/] ")
             error_text.append(format_llm_unavailable_message(session.llm_error))
@@ -904,8 +904,18 @@ class TabulaflowApp(App[None]):
 
         from tabulaflow.chat import Finished
 
-        assert session.chat_agent is not None
-        chat_agent = session.chat_agent
+        try:
+            chat_agent = session.ensure_chat_agent()
+        except Exception:
+            error_text = Text.from_markup(f"[{ERROR}]LLM unavailable:[/] ")
+            error_text.append(format_llm_unavailable_message(session.llm_error))
+            msg = SystemMessage(error_text)
+            await chat_log.mount(msg)
+            chat_log.scroll_end(animate=False)
+            self._busy = False
+            self._current_worker = None
+            self._refresh_bottom_status()
+            return
         progress = AgentProgressWidget()
         await chat_log.mount(progress)
         chat_log.scroll_end(animate=False)

@@ -75,24 +75,25 @@ def test_resolve_startup_llm_preset_rejects_unknown_cli_preset(
         _resolve_startup_llm_preset(llm_preset="Missing")
 
 
-def test_resolve_startup_llm_preset_allows_unavailable_saved_model(
+def test_resolve_startup_llm_preset_returns_none_for_missing_saved_preset(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     import tabulaflow.app.config as app_config
 
-    preset = LLMPreset(
-        label="Broken",
-        main=LLMRoleConfig(model="nope:model", reasoning_effort="medium"),
-        subagent=LLMRoleConfig(model="test", reasoning_effort="medium"),
-    )
-    monkeypatch.setattr(
-        app_config,
-        "load_app_config",
-        lambda: AppConfig(active_llm_preset=preset.label, custom_llm_presets=[preset]),
-    )
+    monkeypatch.setattr(app_config, "load_app_config", lambda: AppConfig(active_llm_preset="Missing"))
 
     resolved = _resolve_startup_llm_preset(llm_preset=None)
 
-    assert resolved is not None
-    assert resolved.main == LLMRoleConfig(model="nope:model", reasoning_effort="medium")
-    assert resolved.subagent == LLMRoleConfig(model="test", reasoning_effort="medium")
+    assert resolved is None
+
+
+def test_resolve_startup_llm_preset_returns_unverified_saved_preset(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import tabulaflow.app.config as app_config
+
+    monkeypatch.setattr(app_config, "load_app_config", _test_config)
+
+    resolved = _resolve_startup_llm_preset(llm_preset=None)
+
+    assert resolved == _test_config().active_preset

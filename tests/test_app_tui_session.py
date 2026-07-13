@@ -89,7 +89,9 @@ async def test_ensure_session_passes_session_paths_by_keyword(tmp_path: Path, mo
     }
 
 
-def test_bottom_status_shows_no_llm_for_unavailable_session(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_bottom_status_shows_selected_model_before_agent_is_ready(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     preset = _preset(
         model="anthropic:claude-opus-4-8",
         reasoning_effort="high",
@@ -116,7 +118,7 @@ def test_bottom_status_shows_no_llm_for_unavailable_session(tmp_path: Path, monk
 
     app._refresh_bottom_status()
 
-    assert model_status.value.startswith("LLM off · ")
+    assert model_status.value.startswith("Opus 4.8 high · ")
 
 
 def test_bottom_status_shows_startup_model_before_session_is_ready(
@@ -161,7 +163,7 @@ def test_bottom_status_shows_llm_off_before_session_when_no_profile(
     assert model_status.value.startswith("LLM off · ")
 
 
-def test_session_starts_when_llm_unavailable(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_session_starts_with_unverified_llm_preset(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
 
     session = SessionState(
@@ -179,11 +181,16 @@ def test_session_starts_when_llm_unavailable(tmp_path: Path, monkeypatch: pytest
 
     assert session.chat_agent is None
     assert not session.llm_available
-    assert session.llm_error is not None
-    assert "ANTHROPIC_API_KEY" in session.llm_error
+    assert session.llm_error is None
     assert session.model == "anthropic:claude-sonnet-4-5-20250929"
     assert session.registry.list_aliases() == []
     session.note_event("ignored without an LLM")
+
+    with pytest.raises(Exception, match="ANTHROPIC_API_KEY"):
+        session.ensure_chat_agent()
+    assert session.chat_agent is None
+    assert session.llm_error is not None
+    assert "ANTHROPIC_API_KEY" in session.llm_error
 
 
 def test_session_starts_without_llm_preset(tmp_path: Path) -> None:
@@ -203,7 +210,9 @@ def test_session_starts_without_llm_preset(tmp_path: Path) -> None:
         _ = session.model
 
 
-def test_unavailable_session_can_switch_to_valid_llm(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_unverified_session_can_select_and_then_build_valid_llm(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
     session = SessionState(
         llm_preset=_preset(
@@ -220,16 +229,23 @@ def test_unavailable_session_can_switch_to_valid_llm(tmp_path: Path, monkeypatch
 
     session.set_llm_preset(_preset())
 
-    assert session.llm_available
+    assert not session.llm_available
     assert session.llm_error is None
-    assert session.chat_agent is not None
+    assert session.chat_agent is None
     assert session.model == "test"
     assert session.reasoning_effort == "low"
     assert session.subagent_model == "test"
     assert session.subagent_reasoning_effort == "medium"
 
+    session.ensure_chat_agent()
+    assert session.llm_available
+    assert session.llm_error is None
+    assert session.chat_agent is not None
 
-def test_invalid_profile_switch_is_atomic(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+
+def test_selecting_unusable_preset_defers_error_until_agent_build(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
     session = SessionState(
         llm_preset=_preset(),
@@ -238,22 +254,26 @@ def test_invalid_profile_switch_is_atomic(tmp_path: Path, monkeypatch: pytest.Mo
         data_dir=tmp_path / "data",
         workspace=None,
     )
-    old_agent = session.chat_agent
+    session.ensure_chat_agent()
+
+    session.set_llm_preset(
+        _preset(
+            model="anthropic:claude-sonnet-4-5-20250929",
+            reasoning_effort="medium",
+            subagent_model="anthropic:claude-haiku-4-5-20251001",
+            subagent_reasoning_effort="medium",
+        )
+    )
+
+    assert session.llm_error is None
+    assert session.chat_agent is None
+    assert not session.llm_available
+    assert session.model == "anthropic:claude-sonnet-4-5-20250929"
+    assert session.reasoning_effort == "medium"
+    assert session.subagent_model == "anthropic:claude-haiku-4-5-20251001"
+    assert session.subagent_reasoning_effort == "medium"
 
     with pytest.raises(Exception, match="ANTHROPIC_API_KEY"):
-        session.set_llm_preset(
-            _preset(
-                model="anthropic:claude-sonnet-4-5-20250929",
-                reasoning_effort="medium",
-                subagent_model="anthropic:claude-haiku-4-5-20251001",
-                subagent_reasoning_effort="medium",
-            )
-        )
-
-    assert session.chat_agent is old_agent
-    assert session.llm_available
-    assert session.llm_error is None
-    assert session.model == "test"
-    assert session.reasoning_effort == "low"
-    assert session.subagent_model == "test"
-    assert session.subagent_reasoning_effort == "medium"
+        session.ensure_chat_agent()
+    assert session.chat_agent is None
+    assert session.llm_error is not None
