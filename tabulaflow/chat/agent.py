@@ -10,7 +10,7 @@ from pathlib import Path
 import re
 from contextlib import suppress
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, Final, cast
+from typing import TYPE_CHECKING, Any, Final
 
 from pydantic_ai.settings import ModelSettings
 
@@ -524,28 +524,8 @@ class ChatAgent:
         )
 
     def _thinking_settings(self) -> ModelSettings:
-        """Per-request reasoning settings: the unified ``thinking`` level, which
-        pydantic-ai translates per provider (models that don't think strip it).
-
-        Budget-era Anthropic models (pre native-effort, e.g. sonnet-4-5) turn the
-        level into ``budget_tokens``, which the API requires ``max_tokens`` to
-        exceed — the default 4096 would reject medium and above, so raise it to
-        the budget plus answer headroom.
-        """
-        settings = make_model_settings(model=self.model, reasoning_effort=self.reasoning_effort)
-        model = self._unwrapped_model()
-        try:
-            from pydantic_ai.models.anthropic import AnthropicModel
-            from pydantic_ai.profiles.anthropic import ANTHROPIC_THINKING_BUDGET_MAP, AnthropicModelProfile
-        except ImportError:  # anthropic extra not installed
-            return settings
-        if isinstance(model, AnthropicModel):
-            profile = AnthropicModelProfile.from_profile(model.profile)
-            if not profile.anthropic_supports_adaptive_thinking:
-                budget = ANTHROPIC_THINKING_BUDGET_MAP.get(cast(Any, self.reasoning_effort))
-                if budget is not None:
-                    settings["max_tokens"] = budget + 8192
-        return settings
+        """Return the shared provider-specific settings for the interactive model."""
+        return make_model_settings(model=self.model, reasoning_effort=self.reasoning_effort)
 
     def _subagent_model_settings(
         self,

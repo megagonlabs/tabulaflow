@@ -154,6 +154,17 @@ def test_thinking_settings_adaptive_claude_no_max_tokens(monkeypatch: pytest.Mon
     assert agent._thinking_settings() == {"thinking": "high"}
 
 
+def test_subagent_settings_budget_era_claude_raise_max_tokens() -> None:
+    agent = ChatAgent(
+        registry=DBRegistry(),
+        model="test",
+        reasoning_effort="low",
+        subagent_model="anthropic:claude-sonnet-4-5-20250929",
+        subagent_reasoning_effort="high",
+    )
+    assert agent._subagent_model_settings() == {"thinking": "high", "max_tokens": 24576}
+
+
 async def test_subagent_profile_wires_tools(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("OPENAI_API_KEY", "sk-test123456789ab4x")
     workspace = await create_workspace_connector(tmp_path / "workspace.duckdb")

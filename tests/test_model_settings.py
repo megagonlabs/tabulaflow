@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import pytest
+
 from tabulaflow.core.llm import make_model_settings
 from tabulaflow.research.agenthub.ensemblers.dbt_llm_ensembler import DbtLLMEnsemblerConfig
 from tabulaflow.research.agenthub.ensemblers.llm_ensembler import LLMEnsemblerConfig
@@ -11,7 +13,8 @@ def test_make_model_settings_maps_legacy_none_to_false() -> None:
         "thinking": False
     }
     assert make_model_settings(model="anthropic:claude-sonnet-4-5-20250929", reasoning_effort="high") == {
-        "thinking": "high"
+        "thinking": "high",
+        "max_tokens": 24576,
     }
     assert make_model_settings(model="openai-responses:gpt-5") == {}
 
@@ -29,8 +32,34 @@ def test_make_model_settings_skips_summary_when_thinking_disabled() -> None:
 
 def test_make_model_settings_skips_summary_for_other_providers() -> None:
     assert make_model_settings(model="anthropic:claude-sonnet-4-5-20250929", reasoning_effort="high") == {
-        "thinking": "high"
+        "thinking": "high",
+        "max_tokens": 24576,
     }
+
+
+@pytest.mark.parametrize(
+    ("effort", "budget"),
+    [("minimal", 1024), ("low", 2048), ("medium", 10000), ("high", 16384), ("xhigh", 32768)],
+)
+def test_budget_thinking_claude_reserves_answer_tokens(effort: str, budget: int) -> None:
+    settings = make_model_settings(
+        model="anthropic:claude-sonnet-4-5-20250929",
+        reasoning_effort=effort,
+    )
+    assert settings == {"thinking": effort, "max_tokens": budget + 8192}
+
+
+def test_budget_thinking_claude_on_vertex_reserves_answer_tokens() -> None:
+    settings = make_model_settings(
+        model="google-vertex:claude-sonnet-4-5@20250929",
+        reasoning_effort="medium",
+    )
+    assert settings == {"thinking": "medium", "max_tokens": 18192}
+
+
+def test_adaptive_thinking_claude_does_not_set_max_tokens() -> None:
+    settings = make_model_settings(model="anthropic:claude-opus-4-8", reasoning_effort="high")
+    assert settings == {"thinking": "high"}
 
 
 def test_make_model_settings_translates_service_tier_for_openai() -> None:

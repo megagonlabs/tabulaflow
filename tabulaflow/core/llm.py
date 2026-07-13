@@ -24,6 +24,11 @@ from pydantic_ai import Agent, ToolOutput, UsageLimits
 from pydantic_ai.messages import ModelMessage, ModelResponse, ToolCallPart
 from pydantic_ai.models import Model, ModelRequestParameters, infer_model
 from pydantic_ai.models.wrapper import WrapperModel
+from pydantic_ai.profiles.anthropic import (
+    ANTHROPIC_THINKING_BUDGET_MAP,
+    AnthropicModelProfile,
+    anthropic_model_profile,
+)
 from pydantic_ai.settings import ModelSettings
 
 from tabulaflow.core.config import tabulaflow_config
@@ -31,6 +36,8 @@ from tabulaflow.core.config import tabulaflow_config
 # Multi-step agents must not hit pydantic-ai's default 50-request cap. Pass this
 # to ``agent.run(..., usage_limits=DEFAULT_USAGE_LIMITS)``.
 DEFAULT_USAGE_LIMITS = UsageLimits(request_limit=None)
+
+_ANTHROPIC_ANSWER_TOKEN_HEADROOM = 8192
 
 
 def make_model_settings(
@@ -44,6 +51,7 @@ def make_model_settings(
         ModelSettings,
         {
             **_reasoning_model_settings(reasoning_effort, model=model),
+            **_anthropic_token_settings(reasoning_effort, model=model),
             **_service_tier_model_settings(service_tier, model=model),
         },
     )
@@ -64,6 +72,24 @@ def _reasoning_model_settings(reasoning_effort: str | bool | None, *, model: str
     if thinking is not False and model.startswith("openai-responses:"):
         settings = cast(ModelSettings, {**settings, "openai_reasoning_summary": "detailed"})
     return settings
+
+
+def _anthropic_token_settings(reasoning_effort: str | bool | None, *, model: str) -> ModelSettings:
+    """Give budget-thinking Claude models enough output tokens for thinking and an answer."""
+    if reasoning_effort is None or reasoning_effort is False or reasoning_effort == "none":
+        return ModelSettings()
+    if model.startswith("anthropic:") or model.startswith("google-vertex:claude"):
+        model_name = model.split(":", 1)[1]
+    else:
+        return ModelSettings()
+
+    profile = AnthropicModelProfile.from_profile(anthropic_model_profile(model_name))
+    if profile.anthropic_supports_adaptive_thinking:
+        return ModelSettings()
+    budget = ANTHROPIC_THINKING_BUDGET_MAP.get(cast(Any, reasoning_effort))
+    if budget is None:
+        return ModelSettings()
+    return ModelSettings(max_tokens=budget + _ANTHROPIC_ANSWER_TOKEN_HEADROOM)
 
 
 def _service_tier_model_settings(service_tier: str | None, *, model: str) -> ModelSettings:
