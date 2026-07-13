@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from contextlib import suppress
 import os
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -105,7 +104,6 @@ class SessionState:
         if workspace is not None:
             self.registry.register(WORKSPACE_ALIAS, workspace)
         self.chat_agent: ChatAgent | None = None
-        self._retired_chat_agents: list[ChatAgent] = []
         self.llm_error: str | None = None
         self.last_result: object | None = None
         # Maps a "what's this connection's source" key (frozenset of file
@@ -116,8 +114,20 @@ class SessionState:
 
     @property
     def llm_available(self) -> bool:
-        """Whether the selected LLM preset has a constructed live chat agent."""
-        return self.chat_agent is not None
+        """Whether the selected preset is active on the live chat agent."""
+        return self._chat_agent_matches_selected_preset()
+
+    def _chat_agent_matches_selected_preset(self) -> bool:
+        agent = self.chat_agent
+        preset = self.llm_preset
+        return (
+            agent is not None
+            and preset is not None
+            and agent.model == preset.main.model
+            and agent.reasoning_effort == preset.main.reasoning_effort
+            and agent.subagent_model == preset.subagent.model
+            and agent.subagent_reasoning_effort == preset.subagent.reasoning_effort
+        )
 
     def _build_chat_agent(
         self,
@@ -141,15 +151,20 @@ class SessionState:
         )
 
     def ensure_chat_agent(self) -> ChatAgent:
-        """Return the live chat agent, building it lazily for the selected preset."""
-        if self.chat_agent is not None:
-            return self.chat_agent
+        """Return an agent using the selected preset, applying it lazily if needed."""
         if self.llm_preset is None:
             raise RuntimeError("No LLM preset is selected.")
         try:
-            self.chat_agent = self._build_chat_agent(preset=self.llm_preset)
+            if self.chat_agent is None:
+                self.chat_agent = self._build_chat_agent(preset=self.llm_preset)
+            elif not self._chat_agent_matches_selected_preset():
+                self.chat_agent.set_llm_profile(
+                    model=self.llm_preset.main.model,
+                    reasoning_effort=self.llm_preset.main.reasoning_effort,
+                    subagent_model=self.llm_preset.subagent.model,
+                    subagent_reasoning_effort=self.llm_preset.subagent.reasoning_effort,
+                )
         except Exception as e:
-            self.chat_agent = None
             self.llm_error = str(e)
             raise
         else:
@@ -199,11 +214,11 @@ class SessionState:
 
     @property
     def api_key(self) -> str | None:
-        return self.chat_agent.api_key if self.chat_agent is not None else None
+        return self.chat_agent.api_key if self.llm_available and self.chat_agent is not None else None
 
     @property
     def supported_efforts(self) -> tuple[str, ...]:
-        return self.chat_agent.supported_efforts if self.chat_agent is not None else ()
+        return self.chat_agent.supported_efforts if self.llm_available and self.chat_agent is not None else ()
 
     @property
     def reasoning_effort(self) -> str:
@@ -222,19 +237,16 @@ class SessionState:
         ):
             self.llm_error = None
             return
-        if self.chat_agent is not None:
-            self._retired_chat_agents.append(self.chat_agent)
         self.llm_preset = preset
-        self.chat_agent = None
         self.llm_error = None
 
     @property
     def subagent_api_key(self) -> str | None:
-        return self.chat_agent.subagent_api_key if self.chat_agent is not None else None
+        return self.chat_agent.subagent_api_key if self.llm_available and self.chat_agent is not None else None
 
     @property
     def subagent_supported_efforts(self) -> tuple[str, ...]:
-        return self.chat_agent.subagent_supported_efforts if self.chat_agent is not None else ()
+        return self.chat_agent.subagent_supported_efforts if self.llm_available and self.chat_agent is not None else ()
 
     @property
     def subagent_reasoning_effort(self) -> str:
@@ -249,7 +261,4 @@ class SessionState:
         """Release session-owned runtime resources."""
         if self.chat_agent is not None:
             await self.chat_agent.aclose()
-        for agent in self._retired_chat_agents:
-            with suppress(Exception):
-                await agent.aclose()
         await self.registry.disconnect_all_async()

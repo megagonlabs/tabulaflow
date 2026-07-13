@@ -10,16 +10,79 @@ from tabulaflow.chat import ChatAgent
 from tabulaflow.core.db_connector.db_registry import DBRegistry
 
 
-def test_set_main_profile_failure_is_transactional(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_set_llm_profile_failure_is_transactional(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
     agent = ChatAgent(registry=DBRegistry(), model="test", reasoning_effort="medium")
     runtime_agent = agent._pydantic_ai_agent
     with pytest.raises(Exception, match="ANTHROPIC_API_KEY"):
-        agent.set_main_profile(model="anthropic:claude-sonnet-4-5-20250929", reasoning_effort="high")
+        agent.set_llm_profile(
+            model="anthropic:claude-sonnet-4-5-20250929",
+            reasoning_effort="high",
+            subagent_model=agent.subagent_model,
+            subagent_reasoning_effort=agent.subagent_reasoning_effort,
+        )
     # The failed switch left everything intact.
     assert agent.model == "test"
     assert agent.reasoning_effort == "medium"
     assert agent._pydantic_ai_agent is runtime_agent
+
+
+def test_subagent_failure_does_not_partially_switch_main_profile(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("OPENAI_API_KEY", "sk-test123456789ab4x")
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    agent = ChatAgent(
+        registry=DBRegistry(),
+        model="openai-responses:gpt-5",
+        reasoning_effort="medium",
+        subagent_model="openai-responses:gpt-5-mini",
+        subagent_reasoning_effort="low",
+    )
+    runtime_agent = agent._pydantic_ai_agent
+
+    with pytest.raises(Exception, match="ANTHROPIC_API_KEY"):
+        agent.set_llm_profile(
+            model="openai-responses:gpt-5.4-mini",
+            reasoning_effort="high",
+            subagent_model="anthropic:claude-sonnet-4-5-20250929",
+            subagent_reasoning_effort="medium",
+        )
+
+    assert agent.model == "openai-responses:gpt-5"
+    assert agent.reasoning_effort == "medium"
+    assert agent.subagent_model == "openai-responses:gpt-5-mini"
+    assert agent.subagent_reasoning_effort == "low"
+    assert agent._pydantic_ai_agent is runtime_agent
+
+
+def test_set_llm_profile_preserves_conversation_state(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("OPENAI_API_KEY", "sk-test123456789ab4x")
+    agent = ChatAgent(
+        registry=DBRegistry(),
+        model="openai-responses:gpt-5",
+        reasoning_effort="medium",
+        subagent_model="openai-responses:gpt-5-mini",
+        subagent_reasoning_effort="low",
+    )
+    agent.note_event("remember this")
+    message_history = agent._message_history
+    query_history = agent.query_history
+    tools = agent._tools
+    runtime_agent = agent._pydantic_ai_agent
+
+    agent.set_llm_profile(
+        model="openai-responses:gpt-5.4-mini",
+        reasoning_effort="high",
+        subagent_model="openai-responses:gpt-5-mini",
+        subagent_reasoning_effort="medium",
+    )
+
+    assert agent._message_history is message_history
+    assert agent.query_history is query_history
+    assert agent._tools is tools
+    assert agent._pydantic_ai_agent is not runtime_agent
+    assert agent.model == "openai-responses:gpt-5.4-mini"
+    assert agent.reasoning_effort == "high"
+    assert agent.subagent_reasoning_effort == "medium"
 
 
 def test_api_key_read_from_live_client(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -119,7 +182,12 @@ async def test_subagent_profile_wires_tools(tmp_path: Path, monkeypatch: pytest.
         assert agent._tools.get_db_document.model_settings == {"thinking": "low"}
 
         agent._tools.get_db_document._document_cache["cached"] = cast(Any, (workspace, "old summary"))
-        agent.set_subagent_profile(model="openai-responses:gpt-5.4-mini", reasoning_effort="high")
+        agent.set_llm_profile(
+            model=agent.model,
+            reasoning_effort=agent.reasoning_effort,
+            subagent_model="openai-responses:gpt-5.4-mini",
+            subagent_reasoning_effort="high",
+        )
         assert agent._tools.get_db_document._document_cache == {}
         assert agent._tools.run_subagent_for_each_row.subagent_llm == "openai-responses:gpt-5.4-mini"
         assert agent._tools.extract_rows_from_documents.subagent_llm == "openai-responses:gpt-5.4-mini"

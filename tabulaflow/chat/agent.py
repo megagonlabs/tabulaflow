@@ -293,7 +293,7 @@ class ChatAgent:
     # (OpenAI reasoning_effort, Anthropic thinking budgets / native effort, Gemini
     # thinking_level). Required — callers pass a fully resolved app/research
     # profile rather than relying on ChatAgent defaults. Mutable at runtime via
-    # ``set_reasoning_effort`` (peer of ``model``/``set_model``).
+    # ``set_llm_profile``.
     reasoning_effort: str
     # Session-wide service tier for providers that expose one. Applied to both the
     # root agent and helper LLM calls; ignored by providers without service tiers.
@@ -501,13 +501,11 @@ class ChatAgent:
             return None
         return self._unwrap_model(self._pydantic_ai_agent.model)
 
-    def _subagent_probe_model(self, *, raise_errors: bool = False) -> Any | None:
+    def _subagent_probe_model(self) -> Any | None:
         """Provider model for the configured subagent profile, built lazily for introspection."""
         try:
             return self._unwrap_model(make_agent(self.subagent_model).model)
         except Exception:
-            if raise_errors:
-                raise
             return None
 
     @property
@@ -574,15 +572,20 @@ class ChatAgent:
                     settings["max_tokens"] = budget + 8192
         return settings
 
-    def _subagent_model_settings(self) -> ModelSettings:
+    def _subagent_model_settings(
+        self,
+        *,
+        model: str | None = None,
+        reasoning_effort: str | None = None,
+    ) -> ModelSettings:
         """Model settings for subagent-backed tools.
 
         Use provider-neutral thinking settings by default. OpenAI Responses gets
         detailed reasoning summaries through the shared reasoning settings helper.
         """
         return make_model_settings(
-            model=self.subagent_model,
-            reasoning_effort=self.subagent_reasoning_effort,
+            model=model or self.subagent_model,
+            reasoning_effort=reasoning_effort or self.subagent_reasoning_effort,
             service_tier=self.service_tier,
         )
 
@@ -595,62 +598,61 @@ class ChatAgent:
             tools.append(self._tools.extract_rows_from_documents)
         return tuple(tools)
 
-    def _apply_subagent_profile(self) -> None:
-        """Update existing subagent-backed tool instances with the current profile."""
-        model_settings = self._subagent_model_settings()
+    def _apply_subagent_profile(self, *, model: str, reasoning_effort: str) -> None:
+        """Update existing subagent-backed tool instances with the supplied profile."""
+        model_settings = self._subagent_model_settings(model=model, reasoning_effort=reasoning_effort)
         for tool in self._subagent_profile_tools():
-            tool.apply_llm_profile(llm=self.subagent_model, model_settings=model_settings)
+            tool.apply_llm_profile(llm=model, model_settings=model_settings)
 
-    def set_main_profile(self, *, model: str, reasoning_effort: str) -> None:
-        """Update the interactive agent's LLM profile.
+    def set_llm_profile(
+        self,
+        *,
+        model: str,
+        reasoning_effort: str,
+        subagent_model: str,
+        subagent_reasoning_effort: str,
+    ) -> None:
+        """Atomically replace the main and subagent LLM profiles.
 
-        Model changes rebuild the bound runtime agent; effort-only changes are
-        applied per request and need no rebuild. Transactional for model changes:
-        if the rebuild fails, the previous profile stays active.
+        Conversation, query, tool, and message-store state remain attached to
+        this ``ChatAgent``. Provider runtimes are prepared before the live
+        profile is changed, so a construction failure leaves the old profile
+        usable.
         """
-        if self.model == model:
-            self.reasoning_effort = reasoning_effort
+        if self._running:
+            raise RuntimeError("cannot change the LLM profile during an active turn")
+        if (
+            self.model == model
+            and self.reasoning_effort == reasoning_effort
+            and self.subagent_model == subagent_model
+            and self.subagent_reasoning_effort == subagent_reasoning_effort
+        ):
             return
-        previous_model = self.model
-        previous_effort = self.reasoning_effort
+
+        runtime_agent = self._pydantic_ai_agent
+        if self.model != model:
+            runtime_agent = self._make_agent(model)
+        if self.subagent_model != subagent_model:
+            self._unwrap_model(make_agent(subagent_model).model)
+
+        previous_subagent_model = self.subagent_model
+        previous_subagent_effort = self.subagent_reasoning_effort
+        try:
+            self._apply_subagent_profile(
+                model=subagent_model,
+                reasoning_effort=subagent_reasoning_effort,
+            )
+        except Exception:
+            self._apply_subagent_profile(
+                model=previous_subagent_model,
+                reasoning_effort=previous_subagent_effort,
+            )
+            raise
         self.model = model
         self.reasoning_effort = reasoning_effort
-        try:
-            self._build_agent()
-        except Exception:
-            # ``_build_agent`` raised before replacing the runtime agent, so the
-            # old agent is intact — restoring ``model`` makes the failure atomic.
-            self.model = previous_model
-            self.reasoning_effort = previous_effort
-            raise
-
-    def set_subagent_profile(self, *, model: str, reasoning_effort: str) -> None:
-        """Update the LLM profile used by subagent-backed tools.
-
-        Transactional: if model probing or tool profile application fails, the
-        previous subagent profile is restored.
-        """
-        previous_model = self.subagent_model
-        previous_effort = self.subagent_reasoning_effort
-        if self.subagent_model == model:
-            self.subagent_reasoning_effort = reasoning_effort
-            try:
-                self._apply_subagent_profile()
-            except Exception:
-                self.subagent_reasoning_effort = previous_effort
-                self._apply_subagent_profile()
-                raise
-            return
-        self.subagent_model = model
-        self.subagent_reasoning_effort = reasoning_effort
-        try:
-            self._subagent_probe_model(raise_errors=True)
-            self._apply_subagent_profile()
-        except Exception:
-            self.subagent_model = previous_model
-            self.subagent_reasoning_effort = previous_effort
-            self._apply_subagent_profile()
-            raise
+        self.subagent_model = subagent_model
+        self.subagent_reasoning_effort = subagent_reasoning_effort
+        self._pydantic_ai_agent = runtime_agent
 
     def note_event(self, description: str) -> None:
         """Make the agent aware of a host/app event (typically a user action — e.g.
@@ -690,6 +692,10 @@ class ChatAgent:
             await self._tools.bash.close()
 
     def _build_agent(self) -> None:
+        self._pydantic_ai_agent = self._make_agent(self.model)
+
+    def _make_agent(self, model: str) -> Agent[None, str]:
+        """Construct the model-specific runtime around the session's live tools."""
         from tabulaflow.toolhub.run_subagent_for_each_row import ReleaseBrowserBeforeFanout
 
         fanout_tools = [
@@ -706,8 +712,8 @@ class ChatAgent:
             )
             if tool is not None
         ]
-        self._pydantic_ai_agent = make_agent(
-            self.model,
+        return make_agent(
+            model,
             tools=[
                 self._tools.run_query.as_pydantic_ai_tool(),
                 self._tools.get_db_document.as_pydantic_ai_tool(),
@@ -738,7 +744,7 @@ class ChatAgent:
             instructions=self._system_prompt,
             # Thinking is deliberately absent: effort is passed per request in
             # ``run_stream`` so effort changes need no agent rebuild.
-            model_settings=make_model_settings(model=self.model, service_tier=self.service_tier),
+            model_settings=make_model_settings(model=model, service_tier=self.service_tier),
         )
 
     async def run_stream(self, question: str) -> AsyncIterator[ChatEvent]:
@@ -835,7 +841,7 @@ class ChatAgent:
                     message_history=self._message_history or None,
                     # Merged over the agent's construction-time settings (per-key,
                     # run level wins). Passed here rather than baked into the agent
-                    # so ``set_reasoning_effort`` never triggers a rebuild.
+                    # so effort-only profile changes never trigger a rebuild.
                     model_settings=self._thinking_settings(),
                 ) as agent_run:
                     try:

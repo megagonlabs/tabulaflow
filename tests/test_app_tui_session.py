@@ -254,7 +254,8 @@ def test_selecting_unusable_preset_defers_error_until_agent_build(
         data_dir=tmp_path / "data",
         workspace=None,
     )
-    session.ensure_chat_agent()
+    old_agent = session.ensure_chat_agent()
+    old_model = old_agent.model
 
     session.set_llm_preset(
         _preset(
@@ -266,7 +267,7 @@ def test_selecting_unusable_preset_defers_error_until_agent_build(
     )
 
     assert session.llm_error is None
-    assert session.chat_agent is None
+    assert session.chat_agent is old_agent
     assert not session.llm_available
     assert session.model == "anthropic:claude-sonnet-4-5-20250929"
     assert session.reasoning_effort == "medium"
@@ -275,5 +276,44 @@ def test_selecting_unusable_preset_defers_error_until_agent_build(
 
     with pytest.raises(Exception, match="ANTHROPIC_API_KEY"):
         session.ensure_chat_agent()
-    assert session.chat_agent is None
+    assert session.chat_agent is old_agent
+    assert old_agent.model == old_model
     assert session.llm_error is not None
+
+
+def test_switching_preset_preserves_live_chat_agent_state(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("OPENAI_API_KEY", "sk-test123456789ab4x")
+    session = SessionState(
+        llm_preset=_preset(
+            model="openai-responses:gpt-5",
+            reasoning_effort="medium",
+            subagent_model="openai-responses:gpt-5-mini",
+            subagent_reasoning_effort="low",
+        ),
+        session_id="test-session",
+        trajectories_dir=tmp_path / "trajectories",
+        data_dir=tmp_path / "data",
+        workspace=None,
+    )
+    agent = session.ensure_chat_agent()
+    agent.note_event("remember this")
+    message_history = agent._message_history
+    query_history = agent.query_history
+
+    session.set_llm_preset(
+        _preset(
+            model="openai-responses:gpt-5.4-mini",
+            reasoning_effort="high",
+            subagent_model="openai-responses:gpt-5-mini",
+            subagent_reasoning_effort="medium",
+        )
+    )
+
+    assert session.chat_agent is agent
+    assert not session.llm_available
+    assert session.api_key is None
+    assert session.ensure_chat_agent() is agent
+    assert session.llm_available
+    assert session.api_key == "sk-test123456789ab4x"
+    assert agent._message_history is message_history
+    assert agent.query_history is query_history
