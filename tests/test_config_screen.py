@@ -41,10 +41,6 @@ class _StubSession:
         subagent_model: str = "openai-responses:gpt-5.4-mini",
         subagent_reasoning_effort: ReasoningEffort = "medium",
     ) -> None:
-        self.model = model
-        self.reasoning_effort = reasoning_effort
-        self.subagent_model = subagent_model
-        self.subagent_reasoning_effort = subagent_reasoning_effort
         self.llm_preset = LLMPreset(
             label="Test",
             main=LLMRoleConfig(model=model, reasoning_effort=reasoning_effort),
@@ -52,14 +48,8 @@ class _StubSession:
         )
         self.api_key: str | None = None
         self.subagent_api_key: str | None = None
-        self.llm_available = True
-        self.llm_error: str | None = None
 
     def set_llm_preset(self, preset: LLMPreset) -> None:
-        self.model = preset.main.model
-        self.reasoning_effort = preset.main.reasoning_effort
-        self.subagent_model = preset.subagent.model
-        self.subagent_reasoning_effort = preset.subagent.reasoning_effort
         self.llm_preset = preset
 
 
@@ -118,10 +108,7 @@ async def test_enter_selects_openai_budget(updates: list[dict[str, Any]]) -> Non
     async with _App(screen).run_test() as pilot:
         await pilot.pause()
         await pilot.press("down", "enter")
-        assert session.model == "openai-responses:gpt-5.4-mini"
-        assert session.reasoning_effort == "medium"
-        assert session.subagent_model == "openai-responses:gpt-5-mini"
-        assert session.subagent_reasoning_effort == "medium"
+        assert session.llm_preset == _PRESETS[1]
         assert updates == [{"active_llm_preset": "OpenAI budget"}]
 
 
@@ -132,10 +119,7 @@ async def test_enter_selects_anthropic_preset_and_persists(updates: list[dict[st
     async with _App(screen).run_test() as pilot:
         await pilot.pause()
         await pilot.press("down", "down", "enter")
-        assert session.model == "anthropic:claude-opus-4-8"
-        assert session.reasoning_effort == "high"
-        assert session.subagent_model == "anthropic:claude-sonnet-4-5-20250929"
-        assert session.subagent_reasoning_effort == "high"
+        assert session.llm_preset == _PRESETS[2]
         assert updates == [{"active_llm_preset": "Anthropic balanced"}]
         assert refreshed
         assert "●" in screen._render_preset_row(2).plain
@@ -147,10 +131,7 @@ async def test_enter_selects_planning_hybrid(updates: list[dict[str, Any]]) -> N
     async with _App(screen).run_test() as pilot:
         await pilot.pause()
         await pilot.press("down", "down", "down", "enter")
-        assert session.model == "anthropic:claude-opus-4-8"
-        assert session.reasoning_effort == "high"
-        assert session.subagent_model == "openai-responses:gpt-5.4-mini"
-        assert session.subagent_reasoning_effort == "medium"
+        assert session.llm_preset == _PRESETS[3]
         assert updates == [{"active_llm_preset": "Planning hybrid"}]
 
 
@@ -214,11 +195,6 @@ async def test_unverified_selected_preset_has_active_dot_without_error() -> None
         subagent_model="anthropic:claude-sonnet-4-5-20250929",
         subagent_reasoning_effort="high",
     )
-    session.llm_available = False
-    session.llm_error = (
-        "Set the `ANTHROPIC_API_KEY` environment variable or pass it via "
-        "`AnthropicProvider(api_key=...)` to use the Anthropic provider."
-    )
     screen = ConfigScreen(session, on_change=lambda: None)  # type: ignore[arg-type]
     async with _App(screen).run_test() as pilot:
         await pilot.pause()
@@ -251,7 +227,7 @@ async def test_current_custom_row_for_unmatched_runtime_profile(updates: list[di
         assert refreshed
         await pilot.press("down", "enter")
         assert updates == [{"active_llm_preset": "OpenAI balanced"}]
-        assert session.reasoning_effort == "medium"
+        assert session.llm_preset == _PRESETS[0]
 
 
 async def test_select_preset_does_not_show_provider_error(updates: list[dict[str, Any]]) -> None:
@@ -260,7 +236,7 @@ async def test_select_preset_does_not_show_provider_error(updates: list[dict[str
     async with _App(screen).run_test() as pilot:
         await pilot.pause()
         await pilot.press("down", "down", "enter")
-        assert session.model == "anthropic:claude-opus-4-8"
+        assert session.llm_preset == _PRESETS[2]
         assert updates == [{"active_llm_preset": "Anthropic balanced"}]
         assert "Anthropic API key is not configured" not in screen._render_preset_row(2).plain
         assert "ANTHROPIC_API_KEY" not in screen._render_preset_row(2).plain

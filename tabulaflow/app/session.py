@@ -14,11 +14,7 @@ if TYPE_CHECKING:
     from tabulaflow.core.db_connector.sql_conn import SQLConnector
 
 WORKSPACE_ALIAS = "workspace"
-
-
-def format_llm_unavailable_message(_error: str | None) -> str:
-    """Return the full chat-surface message for unavailable LLM actions."""
-    return "Select a configured preset in /config. /connect and data browsing still work."
+LLM_UNAVAILABLE_MESSAGE = "Select a configured preset in /config. /connect and data browsing still work."
 
 
 def compact_model_name(model: str) -> str:
@@ -78,7 +74,6 @@ class SessionState:
     def __init__(
         self,
         llm_preset: LLMPreset | None,
-        session_id: str,
         trajectories_dir: Path,
         data_dir: Path,
         workspace: SQLConnector | None,
@@ -88,7 +83,6 @@ class SessionState:
     ) -> None:
         from tabulaflow.core.db_connector.db_registry import DBRegistry
 
-        self.session_id = session_id
         self.data_dir = data_dir
         self.llm_preset = llm_preset
         self._service_tier = service_tier
@@ -104,8 +98,6 @@ class SessionState:
         if workspace is not None:
             self.registry.register(WORKSPACE_ALIAS, workspace)
         self.chat_agent: ChatAgent | None = None
-        self.llm_error: str | None = None
-        self.last_result: object | None = None
         # Maps a "what's this connection's source" key (frozenset of file
         # paths, normalized URL, etc.) to the alias under which it is
         # registered.  Used by ``/connect`` to detect duplicate sources
@@ -154,22 +146,16 @@ class SessionState:
         """Return an agent using the selected preset, applying it lazily if needed."""
         if self.llm_preset is None:
             raise RuntimeError("No LLM preset is selected.")
-        try:
-            if self.chat_agent is None:
-                self.chat_agent = self._build_chat_agent(preset=self.llm_preset)
-            elif not self._chat_agent_matches_selected_preset():
-                self.chat_agent.set_llm_profile(
-                    model=self.llm_preset.main.model,
-                    reasoning_effort=self.llm_preset.main.reasoning_effort,
-                    subagent_model=self.llm_preset.subagent.model,
-                    subagent_reasoning_effort=self.llm_preset.subagent.reasoning_effort,
-                )
-        except Exception as e:
-            self.llm_error = str(e)
-            raise
-        else:
-            self.llm_error = None
-            return self.chat_agent
+        if self.chat_agent is None:
+            self.chat_agent = self._build_chat_agent(preset=self.llm_preset)
+        elif not self._chat_agent_matches_selected_preset():
+            self.chat_agent.set_llm_profile(
+                model=self.llm_preset.main.model,
+                reasoning_effort=self.llm_preset.main.reasoning_effort,
+                subagent_model=self.llm_preset.subagent.model,
+                subagent_reasoning_effort=self.llm_preset.subagent.reasoning_effort,
+            )
+        return self.chat_agent
 
     def note_event(self, description: str) -> None:
         """Append an app event to the chat agent when LLM support is available."""
@@ -209,24 +195,8 @@ class SessionState:
             )
 
     @property
-    def model(self) -> str:
-        return self._require_llm_preset().main.model
-
-    @property
     def api_key(self) -> str | None:
         return self.chat_agent.api_key if self.llm_available and self.chat_agent is not None else None
-
-    @property
-    def supported_efforts(self) -> tuple[str, ...]:
-        return self.chat_agent.supported_efforts if self.llm_available and self.chat_agent is not None else ()
-
-    @property
-    def reasoning_effort(self) -> str:
-        return self._require_llm_preset().main.reasoning_effort
-
-    @property
-    def subagent_model(self) -> str:
-        return self._require_llm_preset().subagent.model
 
     def set_llm_preset(self, preset: LLMPreset) -> None:
         """Select an LLM preset without constructing provider clients."""
@@ -235,27 +205,12 @@ class SessionState:
             and preset.main == self.llm_preset.main
             and preset.subagent == self.llm_preset.subagent
         ):
-            self.llm_error = None
             return
         self.llm_preset = preset
-        self.llm_error = None
 
     @property
     def subagent_api_key(self) -> str | None:
         return self.chat_agent.subagent_api_key if self.llm_available and self.chat_agent is not None else None
-
-    @property
-    def subagent_supported_efforts(self) -> tuple[str, ...]:
-        return self.chat_agent.subagent_supported_efforts if self.llm_available and self.chat_agent is not None else ()
-
-    @property
-    def subagent_reasoning_effort(self) -> str:
-        return self._require_llm_preset().subagent.reasoning_effort
-
-    def _require_llm_preset(self) -> LLMPreset:
-        if self.llm_preset is None:
-            raise RuntimeError("No LLM preset is selected.")
-        return self.llm_preset
 
     async def close(self) -> None:
         """Release session-owned runtime resources."""

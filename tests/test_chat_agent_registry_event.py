@@ -52,10 +52,10 @@ class FakeGraphConnector:
 
 
 def test_chat_agent_notes_pre_registered_sources(monkeypatch: pytest.MonkeyPatch) -> None:
-    def skip_agent_build(self: ChatAgent) -> None:
-        self._pydantic_ai_agent = None
+    def skip_agent_build(self: ChatAgent, model: str) -> None:
+        return None
 
-    monkeypatch.setattr(ChatAgent, "_build_agent", skip_agent_build)
+    monkeypatch.setattr(ChatAgent, "_make_agent", skip_agent_build)
 
     registry = DBRegistry()
     registry.register("sales", cast(Any, FakeSQLConnector()))

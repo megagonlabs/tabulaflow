@@ -1,19 +1,13 @@
 from __future__ import annotations
 
-from tabulaflow.app.session import compact_model_label, format_llm_unavailable_message
+from tabulaflow.app.session import LLM_UNAVAILABLE_MESSAGE, compact_model_label
 
 
-def test_format_llm_unavailable_message_omits_raw_provider_detail() -> None:
-    raw = (
-        "Set the `ANTHROPIC_API_KEY` environment variable or pass it via "
-        "`AnthropicProvider(api_key=...)` to use the Anthropic provider."
-    )
-    message = format_llm_unavailable_message(raw)
-
-    assert message == "Select a configured preset in /config. /connect and data browsing still work."
-    assert "Anthropic" not in message
-    assert "ANTHROPIC_API_KEY" not in message
-    assert "AnthropicProvider" not in message
+def test_llm_unavailable_message_is_provider_neutral() -> None:
+    assert LLM_UNAVAILABLE_MESSAGE == ("Select a configured preset in /config. /connect and data browsing still work.")
+    assert "Anthropic" not in LLM_UNAVAILABLE_MESSAGE
+    assert "ANTHROPIC_API_KEY" not in LLM_UNAVAILABLE_MESSAGE
+    assert "AnthropicProvider" not in LLM_UNAVAILABLE_MESSAGE
 
 
 def test_compact_model_label_matches_config_panel_labels() -> None:

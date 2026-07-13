@@ -20,9 +20,9 @@ from tabulaflow.app.debug import debug_enabled, mount_debug_widgets
 from tabulaflow.app.pane import PaneCard, manual_card_turn, turn_payload
 from tabulaflow.app.runtime_paths import RuntimePaths, ensure_pane_dir, generate_session_id
 from tabulaflow.app.session import (
+    LLM_UNAVAILABLE_MESSAGE,
     SessionState,
     compact_model_label,
-    format_llm_unavailable_message,
 )
 from tabulaflow.app.theme import ERROR, FOCUS_SURFACE, KEY_HINT
 from tabulaflow.app.widgets import (
@@ -523,7 +523,8 @@ class TabulaflowApp(App[None]):
             return
         url = self._pane.url if self._pane is not None else None
         if self._session is not None and self._session.llm_preset is not None:
-            model_label = compact_model_label(self._session.model, self._session.reasoning_effort)
+            profile = self._session.llm_preset.main
+            model_label = compact_model_label(profile.model, profile.reasoning_effort)
         elif self._session is None and self._startup_llm_preset is not None:
             model_label = compact_model_label(
                 self._startup_llm_preset.main.model,
@@ -704,7 +705,6 @@ class TabulaflowApp(App[None]):
                 partial(
                     SessionState,
                     llm_preset=self._startup_llm_preset,
-                    session_id=self._session_id,
                     trajectories_dir=self._runtime_paths.trajectories_dir,
                     data_dir=self._runtime_paths.data_dir,
                     workspace=workspace,
@@ -785,7 +785,7 @@ class TabulaflowApp(App[None]):
         if session.llm_preset is None:
             await chat_log.mount(UserMessage(text))
             error_text = Text.from_markup(f"[{ERROR}]LLM unavailable:[/] ")
-            error_text.append(format_llm_unavailable_message(session.llm_error))
+            error_text.append(LLM_UNAVAILABLE_MESSAGE)
             msg = SystemMessage(error_text)
             await chat_log.mount(msg)
             chat_log.scroll_end(animate=False)
@@ -908,7 +908,7 @@ class TabulaflowApp(App[None]):
             chat_agent = session.ensure_chat_agent()
         except Exception:
             error_text = Text.from_markup(f"[{ERROR}]LLM unavailable:[/] ")
-            error_text.append(format_llm_unavailable_message(session.llm_error))
+            error_text.append(LLM_UNAVAILABLE_MESSAGE)
             msg = SystemMessage(error_text)
             await chat_log.mount(msg)
             chat_log.scroll_end(animate=False)
@@ -953,7 +953,6 @@ class TabulaflowApp(App[None]):
         if result is None:
             return  # normal completion always yields a terminal Finished
 
-        session.last_result = result
         # Push to the browser pane BEFORE building the widget: AgentResultWidget
         # -> build_card_views() nulls each record.df after rendering to Rich.
         await self._push_turn_to_pane(

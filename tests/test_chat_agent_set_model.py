@@ -96,18 +96,7 @@ def test_api_key_none_for_keyless_model() -> None:
     assert agent.api_key is None
 
 
-def test_supported_efforts_from_profile(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv("OPENAI_API_KEY", "sk-test123456789ab4x")
-    agent = ChatAgent(registry=DBRegistry(), model="openai-responses:gpt-5", reasoning_effort="medium")
-    assert agent.supported_efforts == ("low", "medium", "high", "xhigh")
-
-
-def test_supported_efforts_empty_for_non_thinking_model() -> None:
-    agent = ChatAgent(registry=DBRegistry(), model="test", reasoning_effort="medium")
-    assert agent.supported_efforts == ()
-
-
-def test_subagent_api_key_and_supported_efforts(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_subagent_api_key(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("OPENAI_API_KEY", "sk-sub123456789cd9y")
     agent = ChatAgent(
         registry=DBRegistry(),
@@ -116,7 +105,6 @@ def test_subagent_api_key_and_supported_efforts(monkeypatch: pytest.MonkeyPatch)
         subagent_model="openai-responses:gpt-5.4-mini",
     )
     assert agent.subagent_api_key == "sk-sub123456789cd9y"
-    assert agent.subagent_supported_efforts == ("low", "medium", "high", "xhigh")
 
 
 def test_thinking_settings_openai(monkeypatch: pytest.MonkeyPatch) -> None:

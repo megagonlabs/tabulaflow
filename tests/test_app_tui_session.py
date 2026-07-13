@@ -80,7 +80,6 @@ async def test_ensure_session_passes_session_paths_by_keyword(tmp_path: Path, mo
     assert captured["autoconnect_session"] is session
     assert captured["session_kwargs"] == {
         "llm_preset": preset,
-        "session_id": app._session_id,
         "trajectories_dir": runtime_paths.trajectories_dir,
         "data_dir": runtime_paths.data_dir,
         "workspace": workspace,
@@ -101,7 +100,6 @@ def test_bottom_status_shows_selected_model_before_agent_is_ready(
     app._project_dir = tmp_path
     session = SessionState(
         llm_preset=preset,
-        session_id="test-session",
         trajectories_dir=tmp_path / "trajectories",
         data_dir=tmp_path / "data",
         workspace=None,
@@ -173,7 +171,6 @@ def test_session_starts_with_unverified_llm_preset(tmp_path: Path, monkeypatch: 
             subagent_model="anthropic:claude-haiku-4-5-20251001",
             subagent_reasoning_effort="medium",
         ),
-        session_id="test-session",
         trajectories_dir=tmp_path / "trajectories",
         data_dir=tmp_path / "data",
         workspace=None,
@@ -181,22 +178,19 @@ def test_session_starts_with_unverified_llm_preset(tmp_path: Path, monkeypatch: 
 
     assert session.chat_agent is None
     assert not session.llm_available
-    assert session.llm_error is None
-    assert session.model == "anthropic:claude-sonnet-4-5-20250929"
+    assert session.llm_preset is not None
+    assert session.llm_preset.main.model == "anthropic:claude-sonnet-4-5-20250929"
     assert session.registry.list_aliases() == []
     session.note_event("ignored without an LLM")
 
     with pytest.raises(Exception, match="ANTHROPIC_API_KEY"):
         session.ensure_chat_agent()
     assert session.chat_agent is None
-    assert session.llm_error is not None
-    assert "ANTHROPIC_API_KEY" in session.llm_error
 
 
 def test_session_starts_without_llm_preset(tmp_path: Path) -> None:
     session = SessionState(
         llm_preset=None,
-        session_id="test-session",
         trajectories_dir=tmp_path / "trajectories",
         data_dir=tmp_path / "data",
         workspace=None,
@@ -205,9 +199,8 @@ def test_session_starts_without_llm_preset(tmp_path: Path) -> None:
     assert session.llm_preset is None
     assert session.chat_agent is None
     assert not session.llm_available
-    assert session.llm_error is None
     with pytest.raises(RuntimeError, match="No LLM preset"):
-        _ = session.model
+        session.ensure_chat_agent()
 
 
 def test_unverified_session_can_select_and_then_build_valid_llm(
@@ -221,7 +214,6 @@ def test_unverified_session_can_select_and_then_build_valid_llm(
             subagent_model="anthropic:claude-haiku-4-5-20251001",
             subagent_reasoning_effort="medium",
         ),
-        session_id="test-session",
         trajectories_dir=tmp_path / "trajectories",
         data_dir=tmp_path / "data",
         workspace=None,
@@ -230,16 +222,11 @@ def test_unverified_session_can_select_and_then_build_valid_llm(
     session.set_llm_preset(_preset())
 
     assert not session.llm_available
-    assert session.llm_error is None
     assert session.chat_agent is None
-    assert session.model == "test"
-    assert session.reasoning_effort == "low"
-    assert session.subagent_model == "test"
-    assert session.subagent_reasoning_effort == "medium"
+    assert session.llm_preset == _preset()
 
     session.ensure_chat_agent()
     assert session.llm_available
-    assert session.llm_error is None
     assert session.chat_agent is not None
 
 
@@ -249,7 +236,6 @@ def test_selecting_unusable_preset_defers_error_until_agent_build(
     monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
     session = SessionState(
         llm_preset=_preset(),
-        session_id="test-session",
         trajectories_dir=tmp_path / "trajectories",
         data_dir=tmp_path / "data",
         workspace=None,
@@ -257,28 +243,22 @@ def test_selecting_unusable_preset_defers_error_until_agent_build(
     old_agent = session.ensure_chat_agent()
     old_model = old_agent.model
 
-    session.set_llm_preset(
-        _preset(
-            model="anthropic:claude-sonnet-4-5-20250929",
-            reasoning_effort="medium",
-            subagent_model="anthropic:claude-haiku-4-5-20251001",
-            subagent_reasoning_effort="medium",
-        )
+    selected_preset = _preset(
+        model="anthropic:claude-sonnet-4-5-20250929",
+        reasoning_effort="medium",
+        subagent_model="anthropic:claude-haiku-4-5-20251001",
+        subagent_reasoning_effort="medium",
     )
+    session.set_llm_preset(selected_preset)
 
-    assert session.llm_error is None
     assert session.chat_agent is old_agent
     assert not session.llm_available
-    assert session.model == "anthropic:claude-sonnet-4-5-20250929"
-    assert session.reasoning_effort == "medium"
-    assert session.subagent_model == "anthropic:claude-haiku-4-5-20251001"
-    assert session.subagent_reasoning_effort == "medium"
+    assert session.llm_preset == selected_preset
 
     with pytest.raises(Exception, match="ANTHROPIC_API_KEY"):
         session.ensure_chat_agent()
     assert session.chat_agent is old_agent
     assert old_agent.model == old_model
-    assert session.llm_error is not None
 
 
 def test_switching_preset_preserves_live_chat_agent_state(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -290,7 +270,6 @@ def test_switching_preset_preserves_live_chat_agent_state(tmp_path: Path, monkey
             subagent_model="openai-responses:gpt-5-mini",
             subagent_reasoning_effort="low",
         ),
-        session_id="test-session",
         trajectories_dir=tmp_path / "trajectories",
         data_dir=tmp_path / "data",
         workspace=None,

@@ -352,7 +352,7 @@ class ChatAgent:
             self._tools.add_canonical_name.attach_connector(self.workspace)
         self._system_prompt = self._compose_system_prompt()
         self._note_initial_registry()
-        self._build_agent()
+        self._pydantic_ai_agent = self._make_agent(self.model)
 
     def _compose_system_prompt(self) -> str:
         """Assemble the agent's instructions: the baseline ``SYSTEM_PROMPT``, then any
@@ -520,33 +520,10 @@ class ChatAgent:
         return key if isinstance(key, str) and key else None
 
     @property
-    def supported_efforts(self) -> tuple[str, ...]:
-        """Reasoning-effort levels meaningful for the live model.
-
-        Read from the model's pydantic-ai profile — the same source the request
-        translation uses — so the answer tracks library updates instead of a
-        hand-maintained capability table. Empty when the model doesn't think.
-        """
-        model = self._unwrapped_model()
-        profile = getattr(model, "profile", None)
-        if profile is None or not (profile.supports_thinking or profile.thinking_always_enabled):
-            return ()
-        return ("low", "medium", "high", "xhigh")
-
-    @property
     def subagent_api_key(self) -> str | None:
         """API key of the configured subagent model's provider client, for display."""
         key = getattr(getattr(self._subagent_probe_model(), "client", None), "api_key", None)
         return key if isinstance(key, str) and key else None
-
-    @property
-    def subagent_supported_efforts(self) -> tuple[str, ...]:
-        """Reasoning-effort levels meaningful for the configured subagent model."""
-        model = self._subagent_probe_model()
-        profile = getattr(model, "profile", None)
-        if profile is None or not (profile.supports_thinking or profile.thinking_always_enabled):
-            return ()
-        return ("low", "medium", "high", "xhigh")
 
     def _thinking_settings(self) -> ModelSettings:
         """Per-request reasoning settings: the unified ``thinking`` level, which
@@ -690,9 +667,6 @@ class ChatAgent:
         """Release session-scoped resources — currently the persistent shell session."""
         if self._tools.bash is not None:
             await self._tools.bash.close()
-
-    def _build_agent(self) -> None:
-        self._pydantic_ai_agent = self._make_agent(self.model)
 
     def _make_agent(self, model: str) -> Agent[None, str]:
         """Construct the model-specific runtime around the session's live tools."""
