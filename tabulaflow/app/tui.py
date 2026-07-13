@@ -18,7 +18,7 @@ from tabulaflow.app.commands import COMMAND_PREFIX, handle_command
 from tabulaflow.app.debug import debug_enabled, mount_debug_widgets
 from tabulaflow.app.pane import PaneCard, manual_card_turn, turn_payload
 from tabulaflow.app.runtime_paths import RuntimePaths, ensure_pane_dir, generate_session_id
-from tabulaflow.app.session import SessionState
+from tabulaflow.app.session import SessionState, format_llm_unavailable_message
 from tabulaflow.app.theme import ERROR, FOCUS_SURFACE, KEY_HINT
 from tabulaflow.app.widgets import (
     AgentProgressWidget,
@@ -802,9 +802,8 @@ class TabulaflowApp(App[None]):
 
         if not session.llm_available:
             await chat_log.mount(UserMessage(text))
-            error_text = Text.from_markup(f"[{ERROR}]LLM unavailable:[/] Select a valid preset in /config.")
-            if session.llm_error:
-                error_text.append(f" {session.llm_error}")
+            error_text = Text.from_markup(f"[{ERROR}]LLM unavailable:[/] ")
+            error_text.append(format_llm_unavailable_message(session.llm_error))
             msg = SystemMessage(error_text)
             await chat_log.mount(msg)
             chat_log.scroll_end(animate=False)

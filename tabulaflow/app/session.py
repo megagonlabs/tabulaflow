@@ -18,6 +18,34 @@ if TYPE_CHECKING:
 WORKSPACE_ALIAS = "workspace"
 
 
+_API_KEY_PROVIDERS = {
+    "ANTHROPIC_API_KEY": "Anthropic",
+    "FIREWORKS_API_KEY": "Fireworks",
+    "GOOGLE_API_KEY": "Google",
+    "OPENAI_API_KEY": "OpenAI",
+    "TOGETHER_API_KEY": "Together",
+}
+
+
+def format_llm_error(error: str | None) -> str:
+    """Return a short, actionable message for an LLM setup failure."""
+    if not error:
+        return "LLM provider is not configured correctly."
+    for env_var, provider in _API_KEY_PROVIDERS.items():
+        if env_var in error:
+            return f"{provider} API key is not configured. Set {env_var}."
+    if "Unknown provider:" in error:
+        return "Unknown LLM provider in the selected preset."
+    if "Unknown model:" in error:
+        return "Unknown LLM model in the selected preset."
+    return "LLM provider is not configured correctly. Check the selected preset."
+
+
+def format_llm_unavailable_message(error: str | None) -> str:
+    """Return the full chat-surface message for unavailable LLM actions."""
+    return "Select a configured preset in /config."
+
+
 @dataclass(frozen=True)
 class ActiveLLMProfile:
     """Selected main/subagent LLM profile for the app session."""

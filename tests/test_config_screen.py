@@ -209,16 +209,29 @@ async def test_short_api_key_omitted() -> None:
         assert "[API key ***1111]" in screen._render_preset_row(0).plain
 
 
-async def test_active_unavailable_preset_shows_error() -> None:
-    session = _StubSession()
+async def test_unavailable_preset_has_no_active_dot_or_startup_error() -> None:
+    session = _StubSession(
+        model="anthropic:claude-opus-4-8",
+        reasoning_effort="high",
+        subagent_model="anthropic:claude-sonnet-4-5-20250929",
+        subagent_reasoning_effort="high",
+    )
     session.llm_available = False
-    session.llm_error = "ANTHROPIC_API_KEY environment variable not set"
+    session.llm_error = (
+        "Set the `ANTHROPIC_API_KEY` environment variable or pass it via "
+        "`AnthropicProvider(api_key=...)` to use the Anthropic provider."
+    )
     screen = ConfigScreen(session, on_change=lambda: None)  # type: ignore[arg-type]
     async with _App(screen).run_test() as pilot:
         await pilot.pause()
-        row = screen._render_preset_row(0).plain
-        assert "LLM unavailable" in row
-        assert "ANTHROPIC_API_KEY" in row
+        assert len(screen._preset_rows) == 4
+        assert screen._cursor == 2
+        row = screen._render_preset_row(2).plain
+        assert "●" not in row
+        assert "LLM unavailable" not in row
+        assert "Anthropic API key is not configured" not in row
+        assert "ANTHROPIC_API_KEY" not in row
+        assert "AnthropicProvider" not in row
 
 
 async def test_current_custom_row_for_unmatched_runtime_profile(updates: list[dict[str, Any]]) -> None:
@@ -247,7 +260,10 @@ async def test_select_failure_shows_inline_error(updates: list[dict[str, Any]]) 
     class _FailingSession(_StubSession):
         def set_llm_profile(self, profile: ActiveLLMProfile) -> None:
             if profile.main.model.startswith("anthropic:"):
-                raise RuntimeError("ANTHROPIC_API_KEY environment variable not set")
+                raise RuntimeError(
+                    "Set the `ANTHROPIC_API_KEY` environment variable or pass it via "
+                    "`AnthropicProvider(api_key=...)` to use the Anthropic provider."
+                )
             super().set_llm_profile(profile)
 
     session = _FailingSession()
@@ -257,7 +273,9 @@ async def test_select_failure_shows_inline_error(updates: list[dict[str, Any]]) 
         await pilot.press("down", "down", "enter")
         assert session.model == "openai-responses:gpt-5.5"
         assert updates == []
+        assert "Anthropic API key is not configured" in screen._render_preset_row(2).plain
         assert "ANTHROPIC_API_KEY" in screen._render_preset_row(2).plain
+        assert "AnthropicProvider" not in screen._render_preset_row(2).plain
         assert "●" in screen._render_preset_row(0).plain
         await pilot.press("up", "enter")
         assert "ANTHROPIC_API_KEY" not in screen._render_preset_row(2).plain
