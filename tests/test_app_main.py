@@ -62,21 +62,23 @@ def test_resolve_llm_roles_rejects_invalid_cli_effort(monkeypatch: pytest.Monkey
         )
 
 
-def test_resolve_llm_roles_rejects_invalid_cli_model(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_resolve_llm_roles_allows_unavailable_cli_model(monkeypatch: pytest.MonkeyPatch) -> None:
     import tabulaflow.app.config as app_config
 
     monkeypatch.setattr(app_config, "load_app_config", _test_config)
 
-    with pytest.raises(typer.BadParameter, match="'nope:model' is not a usable LLM model"):
-        _resolve_llm_roles(
-            model="nope:model",
-            reasoning_effort=None,
-            subagent_model=None,
-            subagent_reasoning_effort=None,
-        )
+    main, subagent = _resolve_llm_roles(
+        model="nope:model",
+        reasoning_effort=None,
+        subagent_model=None,
+        subagent_reasoning_effort=None,
+    )
+
+    assert main == LLMRoleConfig(model="nope:model", reasoning_effort="medium")
+    assert subagent == LLMRoleConfig(model="test", reasoning_effort="low")
 
 
-def test_resolve_llm_roles_rejects_invalid_saved_model(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_resolve_llm_roles_allows_unavailable_saved_model(monkeypatch: pytest.MonkeyPatch) -> None:
     import tabulaflow.app.config as app_config
 
     preset = LLMPreset(
@@ -90,10 +92,12 @@ def test_resolve_llm_roles_rejects_invalid_saved_model(monkeypatch: pytest.Monke
         lambda: AppConfig(active_llm_preset=preset.label, custom_llm_presets=[preset]),
     )
 
-    with pytest.raises(typer.BadParameter, match="'nope:model' is not a usable LLM model"):
-        _resolve_llm_roles(
-            model=None,
-            reasoning_effort=None,
-            subagent_model=None,
-            subagent_reasoning_effort=None,
-        )
+    main, subagent = _resolve_llm_roles(
+        model=None,
+        reasoning_effort=None,
+        subagent_model=None,
+        subagent_reasoning_effort=None,
+    )
+
+    assert main == LLMRoleConfig(model="nope:model", reasoning_effort="medium")
+    assert subagent == LLMRoleConfig(model="test", reasoning_effort="medium")

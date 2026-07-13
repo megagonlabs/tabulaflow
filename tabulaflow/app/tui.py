@@ -497,13 +497,9 @@ class TabulaflowApp(App[None]):
     async def _shutdown_then_exit(self) -> None:
         assert self._session is not None
         try:
-            await self._session.chat_agent.aclose()
+            await self._session.close()
         except Exception:
-            logger.debug("chat_agent.aclose failed during exit", exc_info=True)
-        try:
-            await self._session.registry.disconnect_all_async()
-        except Exception:
-            logger.debug("disconnect_all_async failed during exit", exc_info=True)
+            logger.debug("session close failed during exit", exc_info=True)
         finally:
             self._cleanup_runtime_paths()
             self.exit()
@@ -548,6 +544,8 @@ class TabulaflowApp(App[None]):
         model = self._session.model if self._session is not None else self._model
         reasoning_effort = self._session.reasoning_effort if self._session is not None else self._reasoning_effort
         model_label = _compact_model_label(model, reasoning_effort)
+        if self._session is not None and not self._session.llm_available:
+            model_label = f"{model_label} · LLM unavailable"
         model_status.update(Text(f"{model_label} · {_compact_project_dir(self._project_dir)}", style="dim"))
         url_status.update(Text(f"View output in browser: {url}" if url else "", style="dim"))
 
@@ -738,6 +736,7 @@ class TabulaflowApp(App[None]):
             # explorer enabled). The early-return guards above key off ``self._session``,
             # so setting it sooner would let an early question proceed mid-setup.
             self._session = session
+            self._refresh_bottom_status()
             return self._session
 
     @staticmethod
@@ -799,6 +798,17 @@ class TabulaflowApp(App[None]):
             msg = SystemMessage(Text.from_markup(f"[{ERROR}]No database connected.[/] Use /connect first."))
             await chat_log.mount(msg)
             chat_log.scroll_end(animate=False)
+            return
+
+        if not session.llm_available:
+            await chat_log.mount(UserMessage(text))
+            error_text = Text.from_markup(f"[{ERROR}]LLM unavailable:[/] Select a valid preset in /config.")
+            if session.llm_error:
+                error_text.append(f" {session.llm_error}")
+            msg = SystemMessage(error_text)
+            await chat_log.mount(msg)
+            chat_log.scroll_end(animate=False)
+            self._refresh_bottom_status()
             return
 
         user_msg = UserMessage(text)
@@ -913,20 +923,22 @@ class TabulaflowApp(App[None]):
 
         from tabulaflow.chat import Finished
 
+        assert session.chat_agent is not None
+        chat_agent = session.chat_agent
         progress = AgentProgressWidget()
         await chat_log.mount(progress)
         chat_log.scroll_end(animate=False)
 
         result: ChatResult | None = None
         try:
-            async for event in session.chat_agent.run_stream(question):
+            async for event in chat_agent.run_stream(question):
                 progress.apply(event)
                 if isinstance(event, Finished):
                     result = event.result
         except asyncio.CancelledError:
             # Freeze the partial progress widget; ChatAgent's message history and
             # last_usage already reflect the interrupted run.
-            progress.mark_interrupted(session.chat_agent.last_usage)
+            progress.mark_interrupted(chat_agent.last_usage)
             await chat_log.mount(SystemMessage("[dim]Interrupted[/dim]"))
             chat_log.scroll_end(animate=False)
             self._restore_input_text(display_text if display_text is not None else question)
@@ -963,7 +975,7 @@ class TabulaflowApp(App[None]):
             result_widget = AgentResultWidget(
                 result,
                 width=self.size.width - 11,
-                query_history=session.chat_agent.query_history,
+                query_history=chat_agent.query_history,
             )
             await chat_log.mount(result_widget)
             self._refresh_esc_hint()

@@ -8,6 +8,7 @@ import pytest
 from tabulaflow.app import session as session_module
 from tabulaflow.app import tui
 from tabulaflow.app.runtime_paths import RuntimePaths
+from tabulaflow.app.session import ActiveLLMProfile, SessionState
 from tabulaflow.app.tui import TabulaflowApp
 
 
@@ -67,3 +68,90 @@ async def test_ensure_session_passes_session_paths_by_keyword(tmp_path: Path, mo
         "subagent_model": "test:subagent",
         "subagent_reasoning_effort": "medium",
     }
+
+
+def test_session_starts_when_llm_unavailable(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+
+    session = SessionState(
+        model="anthropic:claude-sonnet-4-5-20250929",
+        reasoning_effort="medium",
+        subagent_model="anthropic:claude-haiku-4-5-20251001",
+        subagent_reasoning_effort="medium",
+        session_id="test-session",
+        trajectories_dir=tmp_path / "trajectories",
+        data_dir=tmp_path / "data",
+        workspace=None,
+    )
+
+    assert session.chat_agent is None
+    assert not session.llm_available
+    assert session.llm_error is not None
+    assert "ANTHROPIC_API_KEY" in session.llm_error
+    assert session.model == "anthropic:claude-sonnet-4-5-20250929"
+    assert session.registry.list_aliases() == []
+    session.note_event("ignored without an LLM")
+
+
+def test_unavailable_session_can_switch_to_valid_llm(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    session = SessionState(
+        model="anthropic:claude-sonnet-4-5-20250929",
+        reasoning_effort="medium",
+        subagent_model="anthropic:claude-haiku-4-5-20251001",
+        subagent_reasoning_effort="medium",
+        session_id="test-session",
+        trajectories_dir=tmp_path / "trajectories",
+        data_dir=tmp_path / "data",
+        workspace=None,
+    )
+
+    session.set_llm_profile(
+        ActiveLLMProfile.from_values(
+            model="test",
+            reasoning_effort="low",
+            subagent_model="test",
+            subagent_reasoning_effort="medium",
+        )
+    )
+
+    assert session.llm_available
+    assert session.llm_error is None
+    assert session.chat_agent is not None
+    assert session.model == "test"
+    assert session.reasoning_effort == "low"
+    assert session.subagent_model == "test"
+    assert session.subagent_reasoning_effort == "medium"
+
+
+def test_invalid_profile_switch_is_atomic(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    session = SessionState(
+        model="test",
+        reasoning_effort="low",
+        subagent_model="test",
+        subagent_reasoning_effort="medium",
+        session_id="test-session",
+        trajectories_dir=tmp_path / "trajectories",
+        data_dir=tmp_path / "data",
+        workspace=None,
+    )
+    old_agent = session.chat_agent
+
+    with pytest.raises(Exception, match="ANTHROPIC_API_KEY"):
+        session.set_llm_profile(
+            ActiveLLMProfile.from_values(
+                model="anthropic:claude-sonnet-4-5-20250929",
+                reasoning_effort="medium",
+                subagent_model="anthropic:claude-haiku-4-5-20251001",
+                subagent_reasoning_effort="medium",
+            )
+        )
+
+    assert session.chat_agent is old_agent
+    assert session.llm_available
+    assert session.llm_error is None
+    assert session.model == "test"
+    assert session.reasoning_effort == "low"
+    assert session.subagent_model == "test"
+    assert session.subagent_reasoning_effort == "medium"

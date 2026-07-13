@@ -16,7 +16,8 @@ from textual.binding import Binding
 from textual.screen import Screen
 from textual.widgets import DataTable, Static, TextArea
 
-from tabulaflow.app.config import APP_CONFIG_PATH, LLMRoleConfig, LLMPreset, load_app_config, update_app_config
+from tabulaflow.app.config import APP_CONFIG_PATH, LLMPreset, load_app_config, update_app_config
+from tabulaflow.app.session import ActiveLLMProfile
 from tabulaflow.app.theme import ACCENT, ACCENT_BOLD, DRACULA_TRANSPARENT, ERROR, FK_MARKER, KEY_HINT, PK_MARKER
 
 
@@ -1765,21 +1766,14 @@ def _masked_api_key(key: str) -> str | None:
 
 
 def _preset_matches_session(preset: LLMPreset, session: SessionState) -> bool:
-    return (
-        preset.main.model == session.model
-        and preset.main.reasoning_effort == session.reasoning_effort
-        and preset.subagent.model == session.subagent_model
-        and preset.subagent.reasoning_effort == session.subagent_reasoning_effort
-    )
+    return ActiveLLMProfile(main=preset.main, subagent=preset.subagent) == session.llm_profile
 
 
 def _current_session_preset(session: SessionState) -> LLMPreset:
     return LLMPreset(
         label=_CURRENT_CUSTOM_PRESET_LABEL,
-        main=LLMRoleConfig.model_validate({"model": session.model, "reasoning_effort": session.reasoning_effort}),
-        subagent=LLMRoleConfig.model_validate(
-            {"model": session.subagent_model, "reasoning_effort": session.subagent_reasoning_effort}
-        ),
+        main=session.llm_profile.main,
+        subagent=session.llm_profile.subagent,
     )
 
 
@@ -1880,6 +1874,9 @@ class ConfigScreen(Screen[None]):
                     t.append(f"      {api_key_text}", style="dim")
                 else:
                     t.append(inline_text, style="dim")
+            if not self._session.llm_available and self._session.llm_error:
+                t.append("\n")
+                t.append(f"      LLM unavailable: {self._session.llm_error}", style=ERROR)
         if self._select_error is not None and self._select_error[0] == i:
             t.append("\n")
             t.append(f"      {self._select_error[1]}", style=ERROR)
@@ -1917,23 +1914,12 @@ class ConfigScreen(Screen[None]):
 
     def _select_preset(self, i: int) -> None:
         preset = self._presets[i]
-        old_model = self._session.model
-        old_reasoning_effort = self._session.reasoning_effort
-        old_subagent_model = self._session.subagent_model
-        old_subagent_reasoning_effort = self._session.subagent_reasoning_effort
         self._select_error = None
         try:
-            self._session.set_main_profile(model=preset.main.model, reasoning_effort=preset.main.reasoning_effort)
-            self._session.set_subagent_profile(
-                model=preset.subagent.model,
-                reasoning_effort=preset.subagent.reasoning_effort,
+            self._session.set_llm_profile(
+                ActiveLLMProfile(main=preset.main, subagent=preset.subagent),
             )
         except Exception as e:
-            self._session.set_main_profile(model=old_model, reasoning_effort=old_reasoning_effort)
-            self._session.set_subagent_profile(
-                model=old_subagent_model,
-                reasoning_effort=old_subagent_reasoning_effort,
-            )
             self._select_error = (i, str(e))
             self._refresh()
             return

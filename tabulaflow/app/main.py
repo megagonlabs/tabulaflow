@@ -14,26 +14,12 @@ app = typer.Typer(
 )
 
 
-def _validate_model(model: str, *, param_hint: str) -> None:
-    from tabulaflow.core.llm import validate_model_identifier
-
-    try:
-        validate_model_identifier(model)
-    except Exception as exc:
-        raise typer.BadParameter(
-            f"{model!r} is not a usable LLM model: {exc}",
-            param_hint=param_hint,
-        ) from None
-
-
 def _with_role_overrides(
     role: LLMRoleConfig,
     *,
     model: str | None,
-    model_param_hint: str,
     reasoning_effort: str | None,
     reasoning_effort_param_hint: str,
-    saved_param_hint: str,
 ) -> LLMRoleConfig:
     data = role.model_dump()
     if model is not None:
@@ -47,7 +33,6 @@ def _with_role_overrides(
             f"{reasoning_effort!r} is not one of: {', '.join(get_args(ReasoningEffort))}",
             param_hint=reasoning_effort_param_hint,
         ) from None
-    _validate_model(resolved.model, param_hint=model_param_hint if model is not None else saved_param_hint)
     return resolved
 
 
@@ -65,18 +50,14 @@ def _resolve_llm_roles(
         _with_role_overrides(
             preset.main,
             model=model,
-            model_param_hint="--model",
             reasoning_effort=reasoning_effort,
             reasoning_effort_param_hint="--reasoning-effort",
-            saved_param_hint="active LLM preset main model",
         ),
         _with_role_overrides(
             preset.subagent,
             model=subagent_model,
-            model_param_hint="--subagent-model",
             reasoning_effort=subagent_reasoning_effort,
             reasoning_effort_param_hint="--subagent-reasoning-effort",
-            saved_param_hint="active LLM preset subagent model",
         ),
     )
 

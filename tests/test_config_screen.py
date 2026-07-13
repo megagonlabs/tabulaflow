@@ -8,6 +8,7 @@ from textual.app import App
 
 from tabulaflow.app.config import LLMRoleConfig, LLMPreset
 from tabulaflow.app.screens import ConfigScreen
+from tabulaflow.app.session import ActiveLLMProfile
 
 _PRESETS = [
     LLMPreset(
@@ -45,16 +46,23 @@ class _StubSession:
         self.reasoning_effort = reasoning_effort
         self.subagent_model = subagent_model
         self.subagent_reasoning_effort = subagent_reasoning_effort
+        self.llm_profile = ActiveLLMProfile.from_values(
+            model=model,
+            reasoning_effort=reasoning_effort,
+            subagent_model=subagent_model,
+            subagent_reasoning_effort=subagent_reasoning_effort,
+        )
         self.api_key: str | None = None
         self.subagent_api_key: str | None = None
+        self.llm_available = True
+        self.llm_error: str | None = None
 
-    def set_main_profile(self, *, model: str, reasoning_effort: str) -> None:
-        self.model = model
-        self.reasoning_effort = reasoning_effort
-
-    def set_subagent_profile(self, *, model: str, reasoning_effort: str) -> None:
-        self.subagent_model = model
-        self.subagent_reasoning_effort = reasoning_effort
+    def set_llm_profile(self, profile: ActiveLLMProfile) -> None:
+        self.model = profile.main.model
+        self.reasoning_effort = profile.main.reasoning_effort
+        self.subagent_model = profile.subagent.model
+        self.subagent_reasoning_effort = profile.subagent.reasoning_effort
+        self.llm_profile = profile
 
 
 class _App(App[None]):
@@ -201,6 +209,18 @@ async def test_short_api_key_omitted() -> None:
         assert "[API key ***1111]" in screen._render_preset_row(0).plain
 
 
+async def test_active_unavailable_preset_shows_error() -> None:
+    session = _StubSession()
+    session.llm_available = False
+    session.llm_error = "ANTHROPIC_API_KEY environment variable not set"
+    screen = ConfigScreen(session, on_change=lambda: None)  # type: ignore[arg-type]
+    async with _App(screen).run_test() as pilot:
+        await pilot.pause()
+        row = screen._render_preset_row(0).plain
+        assert "LLM unavailable" in row
+        assert "ANTHROPIC_API_KEY" in row
+
+
 async def test_current_custom_row_for_unmatched_runtime_profile(updates: list[dict[str, Any]]) -> None:
     session = _StubSession(
         model="openai-responses:gpt-5.5",
@@ -225,10 +245,10 @@ async def test_current_custom_row_for_unmatched_runtime_profile(updates: list[di
 
 async def test_select_failure_shows_inline_error(updates: list[dict[str, Any]]) -> None:
     class _FailingSession(_StubSession):
-        def set_main_profile(self, *, model: str, reasoning_effort: str) -> None:
-            if model.startswith("anthropic:"):
+        def set_llm_profile(self, profile: ActiveLLMProfile) -> None:
+            if profile.main.model.startswith("anthropic:"):
                 raise RuntimeError("ANTHROPIC_API_KEY environment variable not set")
-            super().set_main_profile(model=model, reasoning_effort=reasoning_effort)
+            super().set_llm_profile(profile)
 
     session = _FailingSession()
     screen = ConfigScreen(session, on_change=lambda: None)  # type: ignore[arg-type]

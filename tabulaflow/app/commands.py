@@ -53,7 +53,7 @@ def _announce_connect(session: SessionState, alias: str, connector: NL2QDBConnec
     """Tell the agent the user just connected ``alias`` (so it gains temporal
     awareness of the new source) and return the connector's display summary."""
     info = connector_info(connector)
-    session.chat_agent.note_event(f"the user just connected a new data source `{alias}` ({info}).")
+    session.note_event(f"the user just connected a new data source `{alias}` ({info}).")
     return info
 
 
@@ -358,7 +358,7 @@ async def _cmd_disconnect(args: list[str], session: SessionState) -> CommandResu
 
     if await session.registry.unregister_async(alias):
         session.unregister_alias_sources(alias)
-        session.chat_agent.note_event(f"the user disconnected the data source `{alias}`; it is no longer available.")
+        session.note_event(f"the user disconnected the data source `{alias}`; it is no longer available.")
         return CommandResult(output=Text(f"✓ Disconnected from {alias}", style="dim"))
     else:
         return CommandResult(output=Text.from_markup(f"[{ERROR}]No connection named:[/] {alias}"))
