@@ -156,4 +156,4 @@ Dark-app feel, mint accent, modern data-app references (Linear, Stripe, GitHub).
 - For large changes with multiple design decisions or multiple alternative implementations, discuss with me first.
 - Be honest when what I say has flaws or does not make sense.
 - When writing agent-facing tool description, just describe the tool's functionality and use cases, don't lecture the agent on how or when to use it or mention verbosely commonsense knowledge.
-- The repo has not been published yet, so always do a clean break and optimize for cleanliness over compatibility.
+- The repo has not been published yet, so always do a clean break and remove unused code, refactor to better architecture if necessary. Optimize for long-term cleanliness over compatibility.
