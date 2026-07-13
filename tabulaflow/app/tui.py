@@ -523,12 +523,10 @@ class TabulaflowApp(App[None]):
         except Exception:
             return
         url = self._pane.url if self._pane is not None else None
-        if self._session is not None and not self._session.llm_available:
-            model_label = "No LLM"
+        if self._session is None or not self._session.llm_available:
+            model_label = "LLM off"
         else:
-            model = self._session.model if self._session is not None else self._model
-            reasoning_effort = self._session.reasoning_effort if self._session is not None else self._reasoning_effort
-            model_label = compact_model_label(model, reasoning_effort)
+            model_label = compact_model_label(self._session.model, self._session.reasoning_effort)
         model_status.update(Text(f"{model_label} · {_compact_project_dir(self._project_dir)}", style="dim"))
         url_status.update(Text(f"View output in browser: {url}" if url else "", style="dim"))
 

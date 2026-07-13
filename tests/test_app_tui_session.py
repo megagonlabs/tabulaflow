@@ -103,10 +103,12 @@ def test_bottom_status_shows_no_llm_for_unavailable_session(tmp_path: Path, monk
 
     app._refresh_bottom_status()
 
-    assert model_status.value.startswith("No LLM · ")
+    assert model_status.value.startswith("LLM off · ")
 
 
-def test_bottom_status_uses_compact_model_label(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_bottom_status_shows_no_llm_before_session_is_ready(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     app = TabulaflowApp(model="anthropic:claude-opus-4-8", reasoning_effort="high")
     app._project_dir = tmp_path
     model_status = _StatusCapture()
@@ -119,7 +121,7 @@ def test_bottom_status_uses_compact_model_label(tmp_path: Path, monkeypatch: pyt
 
     app._refresh_bottom_status()
 
-    assert model_status.value.startswith("Opus 4.8 high · ")
+    assert model_status.value.startswith("LLM off · ")
 
 
 def test_session_starts_when_llm_unavailable(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
