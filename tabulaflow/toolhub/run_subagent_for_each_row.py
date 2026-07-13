@@ -14,7 +14,7 @@ import jinja2
 import jinja2.meta
 import sqlalchemy
 from pydantic import BaseModel, Field, create_model
-from pydantic_ai import RunContext, Tool, ToolOutput
+from pydantic_ai import NativeOutput, PromptedOutput, RunContext, Tool, ToolOutput
 from pydantic_ai.capabilities.abstract import AbstractCapability
 from pydantic_ai.models import Model
 from pydantic_ai.settings import ModelSettings
@@ -73,6 +73,42 @@ class AbortTask(BaseModel):
     message: str = Field(
         description="Reason the task cannot be completed. Be specific about the reason and what you need in order to complete the task."
     )
+
+
+def _terminal_output_type(llm: str | Model, answer_model: type[BaseModel]) -> object:
+    """Build the provider-compatible success/abort output contract."""
+    if isinstance(llm, str):
+        is_anthropic = llm.startswith("anthropic:") or llm.startswith("google-vertex:claude")
+        supports_native = False
+        if is_anthropic:
+            from pydantic_ai.profiles.anthropic import anthropic_model_profile
+
+            profile = anthropic_model_profile(llm.split(":", 1)[1])
+            supports_native = bool(profile and profile.supports_json_schema_output)
+    else:
+        is_anthropic = llm.system == "anthropic"
+        supports_native = llm.profile.supports_json_schema_output
+
+    outputs: list[Any] = [answer_model, AbortTask]
+    if is_anthropic:
+        output_cls: Any = NativeOutput if supports_native else PromptedOutput
+        return output_cls(
+            outputs,
+            name="task_result",
+            description="Return Answer on success or AbortTask when the task cannot be completed.",
+        )
+    return [
+        ToolOutput(
+            answer_model,
+            name="submit_answer",
+            description="Submit your answer for this task. Calling this tool ends the task successfully.",
+        ),
+        ToolOutput(
+            AbortTask,
+            name="abort_task",
+            description="Abort the task with a human-readable reason. Calling this tool ends the task.",
+        ),
+    ]
 
 
 def _key_where_clause(key_columns: list[str], key_payload: dict[str, object]) -> sqlalchemy.ColumnElement[bool]:
@@ -632,18 +668,7 @@ class RunSubagentForEachRowTool:
                 self.subagent_llm,
                 tools=tools,
                 capabilities=capabilities or None,
-                output_type=[
-                    ToolOutput(
-                        answer_model,
-                        name="submit_answer",
-                        description=("Submit your answer for this task. Calling this tool ends the task successfully."),
-                    ),
-                    ToolOutput(
-                        AbortTask,
-                        name="abort_task",
-                        description=("Abort the task with a human-readable reason. Calling this tool ends the task."),
-                    ),
-                ],
+                output_type=_terminal_output_type(self.subagent_llm, answer_model),
                 model_settings=self.model_settings,
             )
             key_payload = {col: row.get(col) for col in key_columns}

@@ -8,13 +8,14 @@ behavior.
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from types import SimpleNamespace
 from collections.abc import Callable
 from typing import Any, AsyncGenerator
 
 import pytest
-from pydantic_ai.messages import ModelMessage, ModelResponse, ToolCallPart
+from pydantic_ai.messages import ModelMessage, ModelResponse, TextPart, ToolCallPart
 from pydantic_ai.models.function import AgentInfo, FunctionModel
 
 from tabulaflow.core.db_connector.sql_conn import SQLConnector
@@ -34,6 +35,24 @@ def _emit_const(value: object) -> Callable[[list[ModelMessage], AgentInfo], Mode
 
 def _ctx() -> Any:
     return SimpleNamespace(tool_call_id="test-call")
+
+
+class _AnthropicFunctionModel(FunctionModel):
+    """Function model that exercises the Anthropic output-selection path."""
+
+    @property
+    def system(self) -> str:
+        return "anthropic"
+
+
+def _emit_native(kind: str, data: dict[str, object]) -> Callable[[list[ModelMessage], AgentInfo], ModelResponse]:
+    def fn(messages: list[ModelMessage], info: AgentInfo) -> ModelResponse:
+        assert info.output_tools == []
+        assert info.model_request_parameters.output_mode == "native"
+        payload = {"result": {"kind": kind, "data": data}}
+        return ModelResponse(parts=[TextPart(content=json.dumps(payload))])
+
+    return fn
 
 
 async def _rows(conn: SQLConnector, query: str) -> list[dict[str, Any]]:
@@ -125,6 +144,52 @@ class TestHappyPath:
         assert row["dt"] == datetime.date(2024, 3, 15)
         assert row["ts"] == datetime.datetime(2024, 3, 15, 10, 30, 0)
         assert row["nul"] is None
+
+    @pytest.mark.asyncio
+    async def test_anthropic_uses_native_output_with_thinking(self, conn: SQLConnector) -> None:
+        await conn.run_query_async("CREATE TABLE t(id INTEGER, label VARCHAR)")
+        await conn.run_query_async("INSERT INTO t VALUES (1,NULL)")
+        model = _AnthropicFunctionModel(_emit_native("Answer", {"label": "DONE"}))
+        tool = RunSubagentForEachRowTool(conn, subagent_llm=model, model_settings={"thinking": "high"})
+
+        summary = await tool.__call__(
+            _ctx(),
+            None,
+            "t",
+            task_query="SELECT * FROM t",
+            task_instruction="x",
+            key_columns=["id"],
+            output_columns=["label"],
+        )
+
+        assert "succeeded for 1 rows, failed for 0 rows" in summary
+        assert await _rows(conn, "SELECT label FROM t") == [{"label": "DONE"}]
+
+    @pytest.mark.asyncio
+    async def test_anthropic_native_abort_is_recorded(self, conn: SQLConnector) -> None:
+        await conn.run_query_async("CREATE TABLE t(id INTEGER, label VARCHAR)")
+        await conn.run_query_async("INSERT INTO t VALUES (1,NULL)")
+        model = _AnthropicFunctionModel(_emit_native("AbortTask", {"message": "missing source"}))
+        tool = RunSubagentForEachRowTool(
+            conn,
+            subagent_llm=model,
+            model_settings={"thinking": "high"},
+            store_metadata=True,
+        )
+
+        summary = await tool.__call__(
+            _ctx(),
+            None,
+            "t",
+            task_query="SELECT * FROM t",
+            task_instruction="x",
+            key_columns=["id"],
+            output_columns=["label"],
+        )
+
+        assert "succeeded for 0 rows, failed for 1 rows" in summary
+        rows = await _rows(conn, "SELECT label, _subagent_exception FROM t")
+        assert rows == [{"label": None, "_subagent_exception": "AbortTask: missing source"}]
 
 
 class TestWriteBackErrorSurfaced:
