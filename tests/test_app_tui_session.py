@@ -14,7 +14,7 @@ from tabulaflow.app.config import LLMRoleConfig, LLMPreset, ReasoningEffort
 from tabulaflow.app.runtime_paths import RuntimePaths
 from tabulaflow.app.session import SessionState
 from tabulaflow.app.tui import TabulaflowApp
-from tabulaflow.app.widgets import SystemMessage
+from tabulaflow.app.widgets import SpinnerWidget, SystemMessage
 
 if TYPE_CHECKING:
     from tabulaflow.chat import ChatAgent
@@ -543,8 +543,12 @@ async def test_selecting_data_browsing_cancels_activation_and_reports_available_
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     app = TabulaflowApp(llm_preset=None)
+    session_started = asyncio.Event()
+    release_session = asyncio.Event()
 
     async def fake_ensure_session() -> object:
+        session_started.set()
+        await release_session.wait()
         return object()
 
     monkeypatch.setattr(app, "_setup_logging", lambda: None)
@@ -552,8 +556,18 @@ async def test_selecting_data_browsing_cancels_activation_and_reports_available_
     monkeypatch.setattr(app, "_ensure_session", fake_ensure_session)
 
     async with app.run_test() as pilot:
+        await asyncio.wait_for(session_started.wait(), timeout=2)
+        await pilot.pause()
+        assert app.query_one(SpinnerWidget)._label == "Initializing session..."
+
+        release_session.set()
         for _ in range(3):
             await pilot.pause()
+        assert len(app.query(SpinnerWidget)) == 0
+        messages = [str(message.render()) for message in app.query(SystemMessage)]
+        assert messages == [
+            "✓ Data browsing mode. Connect a data source with /connect and inspect it in the data explorer."
+        ]
         request_id = app._llm_activation_request_id
         app._llm_activation_error = "old failure"
         app.query_one("#input-bar", Input).disabled = True
@@ -567,7 +581,8 @@ async def test_selecting_data_browsing_cancels_activation_and_reports_available_
         assert not app.query_one("#input-bar", Input).disabled
         messages = [str(message.render()) for message in app.query(SystemMessage)]
         assert messages == [
-            "✓ Data browsing mode. Connect a data source with /connect and inspect it in the data explorer."
+            "✓ Data browsing mode. Connect a data source with /connect and inspect it in the data explorer.",
+            "✓ Data browsing mode. Connect a data source with /connect and inspect it in the data explorer.",
         ]
 
 

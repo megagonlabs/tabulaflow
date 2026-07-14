@@ -287,7 +287,7 @@ class TabulaflowApp(App[None]):
                 await self._report_session_initialization_failure(request_id, error)
             return
         if request_id == self._llm_activation_request_id:
-            await self._remove_initialization_spinner()
+            await self._show_data_browsing_status(request_id)
 
     def _refresh_esc_hint(self) -> None:
         """Update the docked ``Esc`` hint label to match current state.
