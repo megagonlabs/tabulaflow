@@ -40,10 +40,6 @@ class RuntimePaths:
                 session_dir.mkdir(mode=0o700)
             except FileExistsError:
                 continue
-            try:
-                session_dir.chmod(0o700)
-            except OSError:
-                pass
             return paths
 
     @classmethod
