@@ -24,7 +24,7 @@ from tabulaflow.app.config import (
 )
 from tabulaflow.app.debug import debug_enabled, mount_debug_widgets
 from tabulaflow.app.pane import PaneCard, manual_card_turn, turn_payload
-from tabulaflow.app.runtime_paths import RuntimePaths, ensure_pane_dir, generate_session_id
+from tabulaflow.app.runtime_paths import RuntimePaths, ensure_pane_dir
 from tabulaflow.app.session import (
     LLM_UNAVAILABLE_MESSAGE,
     SessionState,
@@ -214,8 +214,7 @@ class TabulaflowApp(App[None]):
         self._output_pane_host = output_pane_host
         self._output_pane_port = output_pane_port
         self._output_pane_public_url = output_pane_public_url
-        self._session_id = generate_session_id()
-        self._runtime_paths = RuntimePaths.for_session(self._session_id)
+        self._runtime_paths = RuntimePaths.create()
         # The directory the app was launched from — the user's project, where source
         # data lives and what relative paths resolve against. Captured once at startup.
         # INVARIANT: the process must never chdir. The shell tool uses this captured

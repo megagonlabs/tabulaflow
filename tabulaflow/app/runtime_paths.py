@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import UTC, datetime
-import os
 from pathlib import Path
 import secrets
 
@@ -12,9 +11,8 @@ import secrets
 def generate_session_id() -> str:
     """Create a collision-resistant session identifier."""
     timestamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
-    pid = os.getpid()
-    suffix = secrets.token_hex(3)
-    return f"{timestamp}-{pid}-{suffix}"
+    suffix = secrets.token_hex(2)
+    return f"{timestamp}-{suffix}"
 
 
 @dataclass(frozen=True)
@@ -29,6 +27,24 @@ class RuntimePaths:
     history_path: Path
     cli_log_path: Path
     pane_dir: Path
+
+    @classmethod
+    def create(cls) -> RuntimePaths:
+        """Atomically reserve runtime paths for a new session."""
+        sessions_dir = Path.home() / ".tabulaflow" / "sessions"
+        sessions_dir.mkdir(parents=True, exist_ok=True)
+        while True:
+            paths = cls.for_session(generate_session_id())
+            session_dir = paths.pane_dir.parent
+            try:
+                session_dir.mkdir(mode=0o700)
+            except FileExistsError:
+                continue
+            try:
+                session_dir.chmod(0o700)
+            except OSError:
+                pass
+            return paths
 
     @classmethod
     def for_session(cls, session_id: str) -> RuntimePaths:

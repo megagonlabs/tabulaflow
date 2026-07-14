@@ -2,10 +2,29 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
+import re
 
 import pytest
 
-from tabulaflow.app.runtime_paths import RuntimePaths, ensure_pane_dir
+from tabulaflow.app import runtime_paths
+from tabulaflow.app.runtime_paths import RuntimePaths, ensure_pane_dir, generate_session_id
+
+
+def test_generate_session_id_is_compact_readable_utc_timestamp() -> None:
+    assert re.fullmatch(r"\d{8}T\d{6}Z-[0-9a-f]{4}", generate_session_id())
+
+
+def test_create_runtime_paths_retries_id_collision(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("HOME", str(tmp_path))
+    ids = iter(("20260714T200029Z-85fe", "20260714T200029Z-a104"))
+    monkeypatch.setattr(runtime_paths, "generate_session_id", lambda: next(ids))
+    existing = RuntimePaths.for_session("20260714T200029Z-85fe").pane_dir.parent
+    existing.mkdir(parents=True)
+
+    paths = RuntimePaths.create()
+
+    assert paths.pane_dir.parent.name == "20260714T200029Z-a104"
+    assert paths.pane_dir.parent.is_dir()
 
 
 def test_pane_dir_is_durable_under_session() -> None:
