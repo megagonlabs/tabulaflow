@@ -1843,7 +1843,7 @@ class ConfigScreen(Screen[ResolvedLLMSelection | None]):
         config_path = APP_CONFIG_PATH.replace(str(Path.home()), "~", 1)
         title = Text()
         title.append("Config", style=ACCENT_BOLD)
-        title.append(f" · {config_path}", style="dim")
+        title.append(f" · saved to {config_path}", style="dim")
         llm_title = Text("LLM", style="bold")
         llm_title.append(" (main → subagent)", style="dim")
         with Vertical(id="config-body"):
