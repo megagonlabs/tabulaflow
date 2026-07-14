@@ -218,6 +218,7 @@ class TabulaflowApp(App[None]):
         self._session_lock = asyncio.Lock()
         self._llm_activation_lock = asyncio.Lock()
         self._llm_activation_request_id = 0
+        self._llm_activation_pending = False
         self._llm_activation_error: str | None = None
         self._initialization_spinner: SpinnerWidget | None = None
         self._busy = False
@@ -618,9 +619,9 @@ class TabulaflowApp(App[None]):
     def _request_llm_option(self, preset: LLMPreset | None) -> None:
         """Start latest-wins background activation for an LLM option."""
         self._llm_activation_request_id += 1
+        self._llm_activation_pending = preset is not None
         self._llm_activation_error = None
         request_id = self._llm_activation_request_id
-        self.query_one("#input-bar", Input).disabled = preset is not None
         self.run_worker(
             self._activate_llm_option(request_id, preset),
             exclusive=False,
@@ -715,7 +716,7 @@ class TabulaflowApp(App[None]):
         detail = _sanitize_exception_message(error)
         message.append(f"{type(error).__name__}: {detail}" if detail else f"{type(error).__name__}.")
         if await self._publish_initialization_status(request_id, message):
-            self.query_one("#input-bar", Input).disabled = False
+            self._llm_activation_pending = False
 
     async def _finish_llm_activation(
         self,
@@ -735,8 +736,8 @@ class TabulaflowApp(App[None]):
             message = _llm_preset_success_message(preset, result)
         if not await self._publish_initialization_status(request_id, message):
             return
+        self._llm_activation_pending = False
         input_bar = self.query_one("#input-bar", Input)
-        input_bar.disabled = False
         if len(self.screen_stack) == 1:
             input_bar.focus()
 
@@ -970,12 +971,19 @@ class TabulaflowApp(App[None]):
 
         inp = event.input
         text = inp.expand_paste_tokens(display_text) if isinstance(inp, HistoryInput) else display_text
+        is_command = text.startswith(COMMAND_PREFIX)
 
+        if self._llm_activation_pending and not is_command:
+            inp.focus()
+            return
+
+        if isinstance(inp, HistoryInput):
+            inp.record_submission(display_text)
         event.input.clear()
 
         chat_log = self.query_one("#chat-log", VerticalScroll)
 
-        if text.startswith(COMMAND_PREFIX):
+        if is_command:
             self._busy = True
             user_msg = UserMessage(text)
             await chat_log.mount(user_msg)
@@ -1094,13 +1102,19 @@ class TabulaflowApp(App[None]):
         if result.should_open_config:
             from tabulaflow.app.screens import ConfigScreen
 
-            self.push_screen(ConfigScreen(session, on_change=self._on_llm_option_selected))
+            self.push_screen(
+                ConfigScreen(session, on_change=self._on_llm_option_selected),
+                self._on_config_closed,
+            )
             return
 
         if result.output is not None:
             msg = SystemMessage(result.output)
             chat_log.mount(msg)
             chat_log.scroll_end(animate=False)
+
+    def _on_config_closed(self, _result: None) -> None:
+        self.call_after_refresh(self.query_one("#input-bar", Input).focus)
 
     async def _run_agent(
         self,

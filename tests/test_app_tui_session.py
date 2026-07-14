@@ -6,15 +6,16 @@ import threading
 from typing import TYPE_CHECKING, Any
 
 import pytest
-from textual.widgets import Input
+from textual.widgets import Button, Input
 
 from tabulaflow.app import session as session_module
 from tabulaflow.app import tui
+from tabulaflow.app.commands import CommandResult
 from tabulaflow.app.config import LLMRoleConfig, LLMPreset, ReasoningEffort
 from tabulaflow.app.runtime_paths import RuntimePaths
 from tabulaflow.app.session import SessionState
 from tabulaflow.app.tui import TabulaflowApp
-from tabulaflow.app.widgets import SpinnerWidget, SystemMessage
+from tabulaflow.app.widgets import HistoryInput, SpinnerWidget, SystemMessage, UserMessage
 
 if TYPE_CHECKING:
     from tabulaflow.chat import ChatAgent
@@ -568,13 +569,14 @@ async def test_selecting_llm_off_cancels_activation_and_reports_available_tools(
         assert messages == ["✓ LLM off. Connect a data source with /connect and inspect it in the data explorer."]
         request_id = app._llm_activation_request_id
         app._llm_activation_error = "old failure"
-        app.query_one("#input-bar", Input).disabled = True
+        app._llm_activation_pending = True
 
         app._on_llm_option_selected(None)
         for _ in range(2):
             await pilot.pause()
 
         assert app._llm_activation_request_id == request_id + 1
+        assert not app._llm_activation_pending
         assert app._llm_activation_error is None
         assert not app.query_one("#input-bar", Input).disabled
         messages = [str(message.render()) for message in app.query(SystemMessage)]
@@ -613,6 +615,7 @@ async def test_startup_activation_reports_masked_api_key_in_chat_log(
             await pilot.pause()
         messages = [str(message.render()) for message in app.query(SystemMessage)]
         assert messages == ["✓ LLM preset: GPT 5 medium → GPT 5 Mini medium [API key sk-***E0QA]"]
+        assert not app._llm_activation_pending
         assert not app.query_one("#input-bar", Input).disabled
 
 
@@ -646,4 +649,75 @@ async def test_failed_startup_activation_reports_error_and_unblocks_input(
             "Initialization failed: RuntimeError: missing credential. "
             "Choose another preset in /config. /connect and browsing remain available."
         )
+        assert not app._llm_activation_pending
         assert not app.query_one("#input-bar", Input).disabled
+
+
+@pytest.mark.asyncio
+async def test_pending_llm_activation_preserves_questions_but_allows_commands(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    app = TabulaflowApp(llm_preset=None)
+    session = object()
+    commands: list[tuple[str, object]] = []
+
+    async def fake_ensure_session() -> object:
+        return session
+
+    async def fake_handle_command(text: str, current_session: object) -> CommandResult:
+        commands.append((text, current_session))
+        return CommandResult()
+
+    monkeypatch.setattr(app, "_setup_logging", lambda: None)
+    monkeypatch.setattr(app, "_ensure_pane", lambda: None)
+    monkeypatch.setattr(app, "_ensure_session", fake_ensure_session)
+    monkeypatch.setattr(tui, "handle_command", fake_handle_command)
+
+    async with app.run_test() as pilot:
+        for _ in range(3):
+            await pilot.pause()
+        input_bar = app.query_one("#input-bar", HistoryInput)
+        app._llm_activation_pending = True
+
+        input_bar.value = "show recent orders"
+        await pilot.press("enter")
+        await pilot.pause()
+
+        assert input_bar.value == "show recent orders"
+        assert "show recent orders" not in input_bar._history
+        assert len(app.query(UserMessage)) == 0
+
+        input_bar.value = "/help"
+        await pilot.press("enter")
+        for _ in range(2):
+            await pilot.pause()
+
+        assert input_bar.value == ""
+        assert input_bar._history[-1] == "/help"
+        assert commands == [("/help", session)]
+
+
+@pytest.mark.asyncio
+async def test_closing_config_restores_input_focus(monkeypatch: pytest.MonkeyPatch) -> None:
+    app = TabulaflowApp(llm_preset=None)
+
+    async def fake_ensure_session() -> object:
+        return object()
+
+    monkeypatch.setattr(app, "_setup_logging", lambda: None)
+    monkeypatch.setattr(app, "_ensure_pane", lambda: None)
+    monkeypatch.setattr(app, "_ensure_session", fake_ensure_session)
+
+    async with app.run_test() as pilot:
+        for _ in range(3):
+            await pilot.pause()
+        explorer_button = app.query_one("#open-explorer-btn", Button)
+        explorer_button.disabled = False
+        explorer_button.focus()
+        await pilot.pause()
+        assert explorer_button.has_focus
+
+        app._on_config_closed(None)
+        await pilot.pause()
+
+        assert app.query_one("#input-bar", Input).has_focus

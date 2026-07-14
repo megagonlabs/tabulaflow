@@ -1918,4 +1918,4 @@ class ConfigScreen(Screen[None]):
         self._refresh()
 
     def action_close(self) -> None:
-        self.app.pop_screen()
+        self.dismiss()

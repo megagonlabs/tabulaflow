@@ -260,13 +260,8 @@ class HistoryInput(Input):
                 pasted[str(rec["id"])] = rec
         return {"display": placeholder_text, "pastedContents": pasted}
 
-    def on_input_submitted(self, event: Input.Submitted) -> None:
-        """Append the submitted text (placeholder form) to history. The
-        save step bundles each entry with its referenced paste contents."""
-        self._add_to_history(event.value)
-
-    def _add_to_history(self, text: str) -> None:
-        """Append a command to history and persist."""
+    def record_submission(self, text: str) -> None:
+        """Append an accepted submission to history and persist it."""
         stripped = text.strip()
         if not stripped:
             return
