@@ -340,9 +340,9 @@ async def test_startup_llm_activation_reports_session_then_agent_progress(
         _request_id: int,
         _preset: LLMPreset,
         *,
-        keys: tuple[str | None, str | None] | None,
+        result: tuple[str | None, str | None] | Exception,
     ) -> None:
-        assert keys == (None, None)
+        assert result == (None, None)
 
     monkeypatch.setattr(app, "_show_initialization_spinner", fake_show)
     monkeypatch.setattr(app, "_ensure_session", fake_ensure_session)
@@ -363,7 +363,7 @@ async def test_llm_activation_only_publishes_latest_selection(monkeypatch: pytes
     started = threading.Event()
     release = threading.Event()
     initialized: list[LLMPreset] = []
-    finished: list[tuple[LLMPreset, tuple[str | None, str | None] | None]] = []
+    finished: list[tuple[LLMPreset, tuple[str | None, str | None] | Exception]] = []
 
     async def fake_show(_label: str) -> None:
         return None
@@ -382,9 +382,9 @@ async def test_llm_activation_only_publishes_latest_selection(monkeypatch: pytes
         _request_id: int,
         preset: LLMPreset,
         *,
-        keys: tuple[str | None, str | None] | None,
+        result: tuple[str | None, str | None] | Exception,
     ) -> None:
-        finished.append((preset, keys))
+        finished.append((preset, result))
 
     monkeypatch.setattr(app, "_show_initialization_spinner", fake_show)
     monkeypatch.setattr(app, "_ensure_session", fake_ensure_session)
@@ -428,6 +428,78 @@ def test_llm_preset_success_message_places_api_keys_by_role() -> None:
 
     assert tui._masked_api_key("fw-api123456789WXYZ") == "fw-***WXYZ"
     assert tui._masked_api_key("short") is None
+
+
+def test_llm_activation_error_normalization_is_actionable_and_bounded(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from pydantic_ai.exceptions import UserError
+
+    preset = _preset(
+        model="anthropic:claude-opus-4-8",
+        subagent_model="openai-responses:gpt-5-mini",
+    )
+
+    assert (
+        tui._normalize_llm_activation_error(
+            UserError("Set the ANTHROPIC_API_KEY environment variable via AnthropicProvider."),
+            preset,
+        )
+        == "Anthropic API key is not configured. Set ANTHROPIC_API_KEY."
+    )
+    assert tui._normalize_llm_activation_error(UserError("Unknown model: invalid"), preset) == (
+        "Unknown model: invalid."
+    )
+    assert tui._normalize_llm_activation_error(ValueError("Unknown provider: invalid"), preset) == (
+        "Unknown provider: invalid."
+    )
+    assert tui._normalize_llm_activation_error(KeyError("GOOGLE_CLOUD_PROJECT"), preset) == (
+        "Missing required setting GOOGLE_CLOUD_PROJECT."
+    )
+
+    api_key = "secret-api-key-1234"
+    monkeypatch.setenv("VENDOR_API_KEY", api_key)
+    normalized = tui._normalize_llm_activation_error(
+        RuntimeError(f"first line\nsecond line leaked {api_key}"),
+        preset,
+    )
+    assert normalized == "Initialization failed: RuntimeError: first line second line leaked sec***1234."
+    assert api_key not in normalized
+
+    bounded = tui._normalize_llm_activation_error(RuntimeError("x" * 500), preset)
+    assert bounded.endswith("…")
+    assert len(bounded) < 350
+
+
+@pytest.mark.asyncio
+async def test_session_failure_does_not_enter_llm_error_path(monkeypatch: pytest.MonkeyPatch) -> None:
+    preset = _preset()
+    app = TabulaflowApp(llm_preset=preset)
+    error = OSError("workspace unavailable")
+    reported: list[Exception] = []
+
+    async def fake_show(_label: str) -> None:
+        return None
+
+    async def fake_ensure_session() -> object:
+        raise error
+
+    async def fake_report(_request_id: int, caught: Exception) -> None:
+        reported.append(caught)
+
+    async def unexpected_finish(*_args: object, **_kwargs: object) -> None:
+        raise AssertionError("LLM activation should not finish after a session failure")
+
+    monkeypatch.setattr(app, "_show_initialization_spinner", fake_show)
+    monkeypatch.setattr(app, "_ensure_session", fake_ensure_session)
+    monkeypatch.setattr(app, "_report_session_initialization_failure", fake_report)
+    monkeypatch.setattr(app, "_finish_llm_activation", unexpected_finish)
+
+    app._llm_activation_request_id = 1
+    await app._activate_llm_preset(1, preset)
+
+    assert reported == [error]
+    assert app._llm_activation_error is None
 
 
 @pytest.mark.asyncio
@@ -485,7 +557,11 @@ async def test_failed_startup_activation_reports_error_and_unblocks_input(
             await pilot.pause()
         messages = [str(message.render()) for message in app.query(SystemMessage)]
         assert messages == [
-            "LLM unavailable: Could not initialize Opus 4.8 high. "
-            "Select a configured preset in /config. /connect and data browsing still work."
+            "LLM unavailable: Initialization failed: RuntimeError: missing credential. "
+            "Select another preset in /config. /connect and data browsing still work."
         ]
+        assert app._llm_unavailable_message() == (
+            "Initialization failed: RuntimeError: missing credential. "
+            "Select another preset in /config. /connect and data browsing still work."
+        )
         assert not app.query_one("#input-bar", Input).disabled

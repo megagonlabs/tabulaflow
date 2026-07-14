@@ -41,6 +41,17 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
+_PROVIDER_API_KEYS = {
+    "anthropic": ("Anthropic", "ANTHROPIC_API_KEY"),
+    "fireworks": ("Fireworks", "FIREWORKS_API_KEY"),
+    "openai": ("OpenAI", "OPENAI_API_KEY"),
+    "openai-chat": ("OpenAI", "OPENAI_API_KEY"),
+    "openai-responses": ("OpenAI", "OPENAI_API_KEY"),
+    "together": ("Together", "TOGETHER_API_KEY"),
+}
+_REQUIRED_LLM_SETTINGS = frozenset({"GOOGLE_CLOUD_LOCATION", "GOOGLE_CLOUD_PROJECT"})
+_MAX_ERROR_MESSAGE_LENGTH = 300
+
 
 class BottomSeparator(Static):
     """One-row separator that fills its current width without layout side effects."""
@@ -62,6 +73,40 @@ def _masked_api_key(key: str | None) -> str | None:
     if key is None or len(key) < 12:
         return None
     return f"{key[:3]}***{key[-4:]}"
+
+
+def _sanitize_exception_message(error: Exception) -> str:
+    """Return a display-ready error sentence with environment API keys masked."""
+    message = " ".join(str(error).split())
+    for name, value in os.environ.items():
+        if name.endswith("_API_KEY") and len(value) >= 12:
+            message = message.replace(value, _masked_api_key(value) or "***")
+    if len(message) > _MAX_ERROR_MESSAGE_LENGTH:
+        return f"{message[: _MAX_ERROR_MESSAGE_LENGTH - 1].rstrip()}…"
+    if message and not message.endswith((".", "!", "?", "…")):
+        return f"{message}."
+    return message
+
+
+def _normalize_llm_activation_error(error: Exception, preset: LLMPreset) -> str:
+    """Return an actionable one-line explanation for an LLM activation error."""
+    message = _sanitize_exception_message(error)
+    for role in (preset.main, preset.subagent):
+        provider = role.model.partition(":")[0]
+        if details := _PROVIDER_API_KEYS.get(provider):
+            provider_name, setting = details
+            if setting in message:
+                return f"{provider_name} API key is not configured. Set {setting}."
+
+    if isinstance(error, KeyError) and len(error.args) == 1 and error.args[0] in _REQUIRED_LLM_SETTINGS:
+        return f"Missing required setting {error.args[0]}."
+
+    from pydantic_ai.exceptions import UserError
+
+    if isinstance(error, UserError) or message.startswith(("Unknown model:", "Unknown provider:")):
+        return message or f"{type(error).__name__}."
+    detail = f"{type(error).__name__}: {message}" if message else f"{type(error).__name__}."
+    return f"Initialization failed: {detail}"
 
 
 def _llm_preset_success_message(
@@ -172,6 +217,7 @@ class TabulaflowApp(App[None]):
         self._session_lock = asyncio.Lock()
         self._llm_activation_lock = asyncio.Lock()
         self._llm_activation_request_id = 0
+        self._llm_activation_error: str | None = None
         self._initialization_spinner: SpinnerWidget | None = None
         self._busy = False
         self._current_worker: object | None = None
@@ -234,9 +280,13 @@ class TabulaflowApp(App[None]):
         await self._show_initialization_spinner("Initializing session...")
         try:
             await self._ensure_session()
-        finally:
+        except Exception as error:
+            logger.debug("Session initialization failed", exc_info=True)
             if request_id == self._llm_activation_request_id:
-                await self._remove_initialization_spinner()
+                await self._report_session_initialization_failure(request_id, error)
+            return
+        if request_id == self._llm_activation_request_id:
+            await self._remove_initialization_spinner()
 
     def _refresh_esc_hint(self) -> None:
         """Update the docked ``Esc`` hint label to match current state.
@@ -584,6 +634,7 @@ class TabulaflowApp(App[None]):
     def _request_llm_activation(self, preset: LLMPreset) -> None:
         """Start latest-wins background activation for the selected preset."""
         self._llm_activation_request_id += 1
+        self._llm_activation_error = None
         request_id = self._llm_activation_request_id
         self.query_one("#input-bar", Input).disabled = True
         self.run_worker(
@@ -606,20 +657,26 @@ class TabulaflowApp(App[None]):
             await self._show_initialization_spinner("Initializing session...")
         try:
             session = await self._ensure_session()
-            if request_id != self._llm_activation_request_id:
-                return
-            await self._show_initialization_spinner("Initializing agent...")
+        except Exception as error:
+            logger.debug("Session initialization failed", exc_info=True)
+            if request_id == self._llm_activation_request_id:
+                await self._report_session_initialization_failure(request_id, error)
+            return
+        if request_id != self._llm_activation_request_id:
+            return
+        await self._show_initialization_spinner("Initializing agent...")
+        try:
             async with self._llm_activation_lock:
                 if request_id != self._llm_activation_request_id:
                     return
                 keys = await asyncio.to_thread(self._initialize_llm_runtime, session, preset)
-        except Exception:
+        except Exception as error:
             logger.debug("LLM preset initialization failed", exc_info=True)
             if request_id == self._llm_activation_request_id:
-                await self._finish_llm_activation(request_id, preset, keys=None)
+                await self._finish_llm_activation(request_id, preset, result=error)
             return
         if request_id == self._llm_activation_request_id:
-            await self._finish_llm_activation(request_id, preset, keys=keys)
+            await self._finish_llm_activation(request_id, preset, result=keys)
 
     @staticmethod
     def _initialize_llm_runtime(
@@ -644,12 +701,30 @@ class TabulaflowApp(App[None]):
         if spinner is not None:
             await spinner.remove()
 
+    async def _report_session_initialization_failure(self, request_id: int, error: Exception) -> None:
+        if request_id != self._llm_activation_request_id:
+            return
+        await self._remove_initialization_spinner()
+        if request_id != self._llm_activation_request_id:
+            return
+        message = Text.from_markup(f"[{ERROR}]Session initialization failed:[/] ")
+        detail = _sanitize_exception_message(error)
+        message.append(f"{type(error).__name__}: {detail}" if detail else f"{type(error).__name__}.")
+        chat_log = self.query_one("#chat-log", VerticalScroll)
+        status_message = SystemMessage(message)
+        await chat_log.mount(status_message)
+        if request_id != self._llm_activation_request_id:
+            await status_message.remove()
+            return
+        chat_log.scroll_end(animate=False)
+        self.query_one("#input-bar", Input).disabled = False
+
     async def _finish_llm_activation(
         self,
         request_id: int,
         preset: LLMPreset,
         *,
-        keys: tuple[str | None, str | None] | None,
+        result: tuple[str | None, str | None] | Exception,
     ) -> None:
         if request_id != self._llm_activation_request_id:
             return
@@ -658,12 +733,13 @@ class TabulaflowApp(App[None]):
         if request_id != self._llm_activation_request_id:
             return
 
-        model_label = compact_model_label(preset.main.model, preset.main.reasoning_effort)
-        if keys is None:
+        if isinstance(result, Exception):
+            self._llm_activation_error = _normalize_llm_activation_error(result, preset)
             message = Text.from_markup(f"[{ERROR}]LLM unavailable:[/] ")
-            message.append(f"Could not initialize {model_label}. {LLM_UNAVAILABLE_MESSAGE}")
+            message.append(self._llm_unavailable_message())
         else:
-            message = _llm_preset_success_message(preset, keys)
+            self._llm_activation_error = None
+            message = _llm_preset_success_message(preset, result)
         status_message = SystemMessage(message)
         await chat_log.mount(status_message)
         if request_id != self._llm_activation_request_id:
@@ -674,6 +750,11 @@ class TabulaflowApp(App[None]):
         input_bar.disabled = False
         if len(self.screen_stack) == 1:
             input_bar.focus()
+
+    def _llm_unavailable_message(self) -> str:
+        if self._llm_activation_error is None:
+            return LLM_UNAVAILABLE_MESSAGE
+        return f"{self._llm_activation_error} Select another preset in /config. /connect and data browsing still work."
 
     async def _push_turn_to_pane(
         self,
@@ -925,7 +1006,7 @@ class TabulaflowApp(App[None]):
         if session.active_chat_agent is None:
             await chat_log.mount(UserMessage(text))
             error_text = Text.from_markup(f"[{ERROR}]LLM unavailable:[/] ")
-            error_text.append(LLM_UNAVAILABLE_MESSAGE)
+            error_text.append(self._llm_unavailable_message())
             msg = SystemMessage(error_text)
             await chat_log.mount(msg)
             chat_log.scroll_end(animate=False)
@@ -1047,7 +1128,7 @@ class TabulaflowApp(App[None]):
         chat_agent = session.active_chat_agent
         if chat_agent is None:
             error_text = Text.from_markup(f"[{ERROR}]LLM unavailable:[/] ")
-            error_text.append(LLM_UNAVAILABLE_MESSAGE)
+            error_text.append(self._llm_unavailable_message())
             msg = SystemMessage(error_text)
             await chat_log.mount(msg)
             chat_log.scroll_end(animate=False)
