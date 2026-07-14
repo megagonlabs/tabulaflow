@@ -42,12 +42,12 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 _PROVIDER_API_KEYS = {
-    "anthropic": ("Anthropic", "ANTHROPIC_API_KEY"),
-    "fireworks": ("Fireworks", "FIREWORKS_API_KEY"),
-    "openai": ("OpenAI", "OPENAI_API_KEY"),
-    "openai-chat": ("OpenAI", "OPENAI_API_KEY"),
-    "openai-responses": ("OpenAI", "OPENAI_API_KEY"),
-    "together": ("Together", "TOGETHER_API_KEY"),
+    "anthropic": "ANTHROPIC_API_KEY",
+    "fireworks": "FIREWORKS_API_KEY",
+    "openai": "OPENAI_API_KEY",
+    "openai-chat": "OPENAI_API_KEY",
+    "openai-responses": "OPENAI_API_KEY",
+    "together": "TOGETHER_API_KEY",
 }
 _REQUIRED_LLM_SETTINGS = frozenset({"GOOGLE_CLOUD_LOCATION", "GOOGLE_CLOUD_PROJECT"})
 _MAX_ERROR_MESSAGE_LENGTH = 300
@@ -93,20 +93,21 @@ def _normalize_llm_activation_error(error: Exception, preset: LLMPreset) -> str:
     message = _sanitize_exception_message(error)
     for role in (preset.main, preset.subagent):
         provider = role.model.partition(":")[0]
-        if details := _PROVIDER_API_KEYS.get(provider):
-            provider_name, setting = details
+        if setting := _PROVIDER_API_KEYS.get(provider):
             if setting in message:
-                return f"{provider_name} API key is not configured. Set {setting}."
+                return f"{setting} is not set. Set it and restart the app, or choose another preset in /config."
 
     if isinstance(error, KeyError) and len(error.args) == 1 and error.args[0] in _REQUIRED_LLM_SETTINGS:
-        return f"Missing required setting {error.args[0]}."
+        setting = error.args[0]
+        return f"{setting} is not set. Set it and restart the app, or choose another preset in /config."
 
     from pydantic_ai.exceptions import UserError
 
     if isinstance(error, UserError) or message.startswith(("Unknown model:", "Unknown provider:")):
-        return message or f"{type(error).__name__}."
+        detail = message or f"{type(error).__name__}."
+        return f"{detail} Update app_config.json or choose another preset in /config."
     detail = f"{type(error).__name__}: {message}" if message else f"{type(error).__name__}."
-    return f"Initialization failed: {detail}"
+    return f"Initialization failed: {detail} Choose another preset in /config."
 
 
 def _llm_preset_success_message(
@@ -754,7 +755,7 @@ class TabulaflowApp(App[None]):
     def _llm_unavailable_message(self) -> str:
         if self._llm_activation_error is None:
             return LLM_UNAVAILABLE_MESSAGE
-        return f"{self._llm_activation_error} Select another preset in /config. /connect and data browsing still work."
+        return f"{self._llm_activation_error} /connect and browsing remain available."
 
     async def _push_turn_to_pane(
         self,

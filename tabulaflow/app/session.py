@@ -14,7 +14,7 @@ if TYPE_CHECKING:
     from tabulaflow.core.db_connector.sql_conn import SQLConnector
 
 WORKSPACE_ALIAS = "workspace"
-LLM_UNAVAILABLE_MESSAGE = "Select a configured preset in /config. /connect and data browsing still work."
+LLM_UNAVAILABLE_MESSAGE = "Select a preset in /config. /connect and browsing remain available."
 
 
 def compact_model_name(model: str) -> str:

@@ -445,16 +445,31 @@ def test_llm_activation_error_normalization_is_actionable_and_bounded(
             UserError("Set the ANTHROPIC_API_KEY environment variable via AnthropicProvider."),
             preset,
         )
-        == "Anthropic API key is not configured. Set ANTHROPIC_API_KEY."
+        == "ANTHROPIC_API_KEY is not set. Set it and restart the app, or choose another preset in /config."
+    )
+    openai_preset = _preset(
+        model="openai-responses:gpt-5",
+        subagent_model="openai-responses:gpt-5-mini",
+    )
+    openai_error = RuntimeError("Set the OPENAI_API_KEY environment variable.")
+    openai_message = tui._normalize_llm_activation_error(openai_error, openai_preset)
+    assert openai_message == (
+        "OPENAI_API_KEY is not set. Set it and restart the app, or choose another preset in /config."
+    )
+    app = TabulaflowApp(llm_preset=openai_preset)
+    app._llm_activation_error = openai_message
+    assert app._llm_unavailable_message() == (
+        "OPENAI_API_KEY is not set. Set it and restart the app, or choose another preset in /config. "
+        "/connect and browsing remain available."
     )
     assert tui._normalize_llm_activation_error(UserError("Unknown model: invalid"), preset) == (
-        "Unknown model: invalid."
+        "Unknown model: invalid. Update app_config.json or choose another preset in /config."
     )
     assert tui._normalize_llm_activation_error(ValueError("Unknown provider: invalid"), preset) == (
-        "Unknown provider: invalid."
+        "Unknown provider: invalid. Update app_config.json or choose another preset in /config."
     )
     assert tui._normalize_llm_activation_error(KeyError("GOOGLE_CLOUD_PROJECT"), preset) == (
-        "Missing required setting GOOGLE_CLOUD_PROJECT."
+        "GOOGLE_CLOUD_PROJECT is not set. Set it and restart the app, or choose another preset in /config."
     )
 
     api_key = "secret-api-key-1234"
@@ -463,12 +478,15 @@ def test_llm_activation_error_normalization_is_actionable_and_bounded(
         RuntimeError(f"first line\nsecond line leaked {api_key}"),
         preset,
     )
-    assert normalized == "Initialization failed: RuntimeError: first line second line leaked sec***1234."
+    assert normalized == (
+        "Initialization failed: RuntimeError: first line second line leaked sec***1234. "
+        "Choose another preset in /config."
+    )
     assert api_key not in normalized
 
     bounded = tui._normalize_llm_activation_error(RuntimeError("x" * 500), preset)
-    assert bounded.endswith("…")
-    assert len(bounded) < 350
+    assert "… Choose another preset in /config." in bounded
+    assert len(bounded) < 400
 
 
 @pytest.mark.asyncio
@@ -558,10 +576,10 @@ async def test_failed_startup_activation_reports_error_and_unblocks_input(
         messages = [str(message.render()) for message in app.query(SystemMessage)]
         assert messages == [
             "LLM unavailable: Initialization failed: RuntimeError: missing credential. "
-            "Select another preset in /config. /connect and data browsing still work."
+            "Choose another preset in /config. /connect and browsing remain available."
         ]
         assert app._llm_unavailable_message() == (
             "Initialization failed: RuntimeError: missing credential. "
-            "Select another preset in /config. /connect and data browsing still work."
+            "Choose another preset in /config. /connect and browsing remain available."
         )
         assert not app.query_one("#input-bar", Input).disabled
