@@ -57,7 +57,8 @@ _BANNER = (
 def _load_pane_html() -> str:
     from importlib.resources import files
 
-    base = files("tabulaflow.app.pane.assets.ui")
+    assets = files("tabulaflow.app.pane.assets")
+    base = assets.joinpath("ui")
     html = base.joinpath("index.html").read_text(encoding="utf-8")
     css = base.joinpath("pane.css").read_text(encoding="utf-8")
     module_hash = hashlib.sha256()
@@ -69,8 +70,10 @@ def _load_pane_html() -> str:
         "render/map.js",
         "render/graph.js",
         "render/query.js",
+        "render/markdown.js",
     ):
         module_hash.update(base.joinpath(rel).read_bytes())
+    module_hash.update(assets.joinpath("vendor").joinpath("markdown-it").joinpath("markdown-it.min.js").read_bytes())
     pane_version = module_hash.hexdigest()[:12]
     return html.replace("__PANE_CSS__", css).replace("__PANE_VERSION__", pane_version).replace("__BANNER__", _BANNER)
 

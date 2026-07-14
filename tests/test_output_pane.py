@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import contextlib
 import json
+import shutil
 import socket
+import subprocess
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -471,6 +473,7 @@ def test_manual_table_send_includes_data_view_meta(tmp_path: Path) -> None:
 
 
 def test_pane_loads_shell_as_native_module() -> None:
+    assert '<script src="/assets/vendor/markdown-it/markdown-it.min.js?v=' in _PANE_HTML
     assert '<script type="module" src="/assets/ui/pane.js?v=' in _PANE_HTML
     assert "/assets/ui/pane-render.js" not in _PANE_HTML
     assert "__PANE_VERSION__" not in _PANE_HTML
@@ -480,10 +483,77 @@ def test_pane_loads_shell_as_native_module() -> None:
 
 def test_pane_renderer_modules_are_packaged() -> None:
     pane_assets = files("tabulaflow.app.pane.assets.ui")
+    vendor_assets = files("tabulaflow.app.pane.assets.vendor")
     assert pane_assets.joinpath("contract.d.ts").is_file()
     assert pane_assets.joinpath("pane.js").is_file()
-    for rel in ("shared.js", "table.js", "chart.js", "map.js", "graph.js", "query.js"):
+    for rel in ("shared.js", "table.js", "chart.js", "map.js", "graph.js", "query.js", "markdown.js"):
         assert pane_assets.joinpath("render").joinpath(rel).is_file()
+    markdown_it_assets = vendor_assets.joinpath("markdown-it")
+    assert markdown_it_assets.joinpath("markdown-it.min.js").is_file()
+    assert markdown_it_assets.joinpath("LICENSE.txt").is_file()
+
+
+def test_pane_markdown_renderer_formats_safe_markdown() -> None:
+    node = shutil.which("node")
+    if node is None:
+        pytest.skip("node is required to execute the browser markdown renderer")
+
+    assets = files("tabulaflow.app.pane.assets")
+    vendor_path = str(assets.joinpath("vendor").joinpath("markdown-it").joinpath("markdown-it.min.js"))
+    renderer_path = str(assets.joinpath("ui").joinpath("render").joinpath("markdown.js"))
+    markdown = """# Heading
+
+**bold** and https://example.com
+
+| A | B |
+|---|---|
+| 1 | 2 |
+
+<script>alert(1)</script>
+
+![alt](https://example.com/image.png)
+
+[unsafe](javascript:alert(1))
+"""
+    script = f"""
+import fs from 'node:fs';
+import vm from 'node:vm';
+const sandbox = {{}};
+vm.createContext(sandbox);
+vm.runInContext(fs.readFileSync({json.dumps(vendor_path)}, 'utf8'), sandbox);
+globalThis.window = {{ markdownit: sandbox.markdownit }};
+const source = fs.readFileSync({json.dumps(renderer_path)}, 'utf8');
+const moduleUrl = 'data:text/javascript;base64,' + Buffer.from(source).toString('base64');
+const {{ renderMarkdown }} = await import(moduleUrl);
+const classes = [];
+const attrs = {{}};
+const link = {{ setAttribute: (name, value) => {{ attrs[name] = value; }} }};
+const target = {{
+  classList: {{ add: (value) => {{ classes.push(value); }} }},
+  innerHTML: '',
+  textContent: '',
+  querySelectorAll: () => [link],
+}};
+renderMarkdown(target, {json.dumps(markdown)});
+process.stdout.write(JSON.stringify({{ classes, attrs, html: target.innerHTML }}));
+"""
+    result = subprocess.run(
+        [node, "--input-type=module"],
+        input=script,
+        text=True,
+        capture_output=True,
+        check=True,
+    )
+    rendered = json.loads(result.stdout)
+
+    assert rendered["classes"] == ["md"]
+    assert rendered["attrs"] == {"target": "_blank", "rel": "noopener noreferrer"}
+    assert "<h1>Heading</h1>" in rendered["html"]
+    assert "<strong>bold</strong>" in rendered["html"]
+    assert "<table>" in rendered["html"]
+    assert "&lt;script&gt;alert(1)&lt;/script&gt;" in rendered["html"]
+    assert "<img" not in rendered["html"]
+    assert 'href="javascript:' not in rendered["html"]
 
 
 def test_graph_tooltips_link_urls() -> None:
@@ -2016,11 +2086,17 @@ def test_pane_serves_bundled_assets_cached(tmp_path: Path) -> None:
             "render/map.js",
             "render/graph.js",
             "render/query.js",
+            "render/markdown.js",
         ):
             with urllib.request.urlopen(f"{origin}assets/ui/{rel}", timeout=2) as resp:
                 assert resp.headers.get("Cache-Control") == "no-cache"
                 assert resp.headers.get("Content-Type") == "text/javascript; charset=utf-8"
                 assert resp.read()
+
+        with urllib.request.urlopen(f"{origin}assets/vendor/markdown-it/markdown-it.min.js", timeout=2) as resp:
+            assert resp.headers.get("Cache-Control") == "max-age=31536000, immutable"
+            assert resp.headers.get("Content-Type") == "text/javascript; charset=utf-8"
+            assert b"markdown-it 14.3.0" in resp.read(100)
 
         try:
             urllib.request.urlopen(f"{origin}assets/ui/pane-render.js", timeout=2)

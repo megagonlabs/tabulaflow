@@ -96,6 +96,7 @@ export interface ViewCacheEntry {
 declare global {
   interface Window {
     Tabulator?: any;
+    markdownit?: any;
     maplibregl?: any;
     vegaEmbed?: any;
     cytoscape?: any;

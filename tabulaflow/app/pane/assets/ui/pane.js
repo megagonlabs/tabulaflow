@@ -5,6 +5,7 @@ import { renderChart } from './render/chart.js';
 import { renderMap } from './render/map.js';
 import { renderGraph } from './render/graph.js';
 import { renderQuery } from './render/query.js';
+import { renderMarkdown } from './render/markdown.js';
 
 function el(tag, cls) {
   var e = document.createElement(tag);
@@ -54,7 +55,8 @@ function buildMessage(role, text) {
   var label = el('div', 'message-label');
   var body = el('div', 'message-body');
   label.textContent = role === 'user' ? 'user' : 'tabulaflow';
-  body.textContent = text;
+  if (role === 'assistant') renderMarkdown(body, text);
+  else body.textContent = text;
   msg.appendChild(label);
   msg.appendChild(body);
   return msg;
