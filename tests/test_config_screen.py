@@ -87,7 +87,9 @@ async def test_renders_presets() -> None:
         await pilot.pause()
         assert len(screen._option_rows) == 5
         assert screen._cursor == 1
-        assert "Data browsing" in _row_plain(screen, 0)
+        assert "Off" in _row_plain(screen, 0)
+        assert "Connect and browse data" in _row_plain(screen, 0)
+        assert _row_plain(screen, 0).index("Connect and browse data") == 26
         assert "●" not in _row_plain(screen, 0)
         assert "●" in _row_plain(screen, 1)
         assert "OpenAI balanced" in _row_plain(screen, 1)
@@ -145,7 +147,7 @@ async def test_enter_selects_openai_budget(updates: list[dict[str, Any]]) -> Non
         assert updates == [{"active_llm_preset": "OpenAI budget"}]
 
 
-async def test_enter_selects_data_browsing_and_persists_null(updates: list[dict[str, Any]]) -> None:
+async def test_enter_turns_llm_off_and_persists_null(updates: list[dict[str, Any]]) -> None:
     session = _StubSession()
     selected: list[LLMPreset | None] = []
     screen = ConfigScreen(session, on_change=selected.append)  # type: ignore[arg-type]
@@ -159,7 +161,7 @@ async def test_enter_selects_data_browsing_and_persists_null(updates: list[dict[
         assert "●" not in _row_plain(screen, 1)
 
 
-async def test_data_browsing_is_active_for_session_without_preset() -> None:
+async def test_llm_off_is_active_for_session_without_preset() -> None:
     session = _StubSession()
     session.llm_preset = None
     screen = ConfigScreen(session, on_change=lambda _preset: None)  # type: ignore[arg-type]
@@ -167,7 +169,8 @@ async def test_data_browsing_is_active_for_session_without_preset() -> None:
     async with _App(screen).run_test() as pilot:
         await pilot.pause()
         assert screen._cursor == 0
-        assert "● Data browsing" in _row_plain(screen, 0)
+        assert "● Off" in _row_plain(screen, 0)
+        assert "Connect and browse data" in _row_plain(screen, 0)
 
 
 async def test_enter_selects_anthropic_preset_and_persists(updates: list[dict[str, Any]]) -> None:

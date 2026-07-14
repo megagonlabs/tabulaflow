@@ -154,7 +154,7 @@ def test_update_preserves_custom_presets(tmp_path: Path) -> None:
     assert config.custom_llm_presets == [custom]
 
 
-def test_update_persists_data_browsing_as_null(tmp_path: Path) -> None:
+def test_update_persists_llm_off_as_null(tmp_path: Path) -> None:
     path = str(tmp_path / "app_config.json")
     save_app_config(AppConfig(active_llm_preset="Anthropic balanced"), path)
 
@@ -162,3 +162,9 @@ def test_update_persists_data_browsing_as_null(tmp_path: Path) -> None:
 
     assert load_app_config(path).active_llm_preset is None
     assert json.loads(Path(path).read_text())["active_llm_preset"] is None
+
+
+@pytest.mark.parametrize("label", ["Off", "off", "OFF", " Off "])
+def test_llm_off_label_is_reserved(label: str) -> None:
+    with pytest.raises(ValueError, match="reserved"):
+        _custom_preset(label)

@@ -32,9 +32,10 @@ import json
 import os
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, ValidationError
+from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
 
 APP_CONFIG_PATH = os.path.join(os.path.expanduser("~"), ".tabulaflow", "app_config.json")
+LLM_OFF_LABEL = "Off"
 
 ReasoningEffort = Literal["low", "medium", "high", "xhigh"]
 """Unified thinking level, translated per provider by pydantic-ai (budget tokens
@@ -59,6 +60,14 @@ class LLMPreset(BaseModel):
     label: str
     main: LLMRoleConfig
     subagent: LLMRoleConfig
+
+    @field_validator("label")
+    @classmethod
+    def label_is_not_reserved(cls, label: str) -> str:
+        """Reject the UI-only LLM off label as a preset name."""
+        if label.strip().casefold() == LLM_OFF_LABEL.casefold():
+            raise ValueError(f"{LLM_OFF_LABEL!r} is reserved for disabling the LLM")
+        return label
 
 
 _DEFAULT_LLM_PRESETS_DATA = (
@@ -154,7 +163,7 @@ def resolve_startup_llm_preset(config: AppConfig, *, cli_preset: str | None = No
         cli_preset: Optional preset label supplied for this launch only.
 
     Returns:
-        The resolved preset, or ``None`` when startup should use data browsing mode.
+        The resolved preset, or ``None`` when the LLM should be off.
 
     Raises:
         ValueError: If ``cli_preset`` names no known preset.

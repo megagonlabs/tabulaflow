@@ -611,7 +611,7 @@ class TabulaflowApp(App[None]):
                 self._startup_llm_preset.main.reasoning_effort,
             )
         else:
-            model_label = "Data browsing"
+            model_label = "LLM off"
         model_status.update(Text(f"{model_label} · {_compact_project_dir(self._project_dir)}", style="dim"))
         url_status.update(Text(f"View output in browser: {url}" if url else "", style="dim"))
 
@@ -632,7 +632,7 @@ class TabulaflowApp(App[None]):
         self._request_llm_option(preset)
 
     async def _activate_llm_option(self, request_id: int, preset: LLMPreset | None) -> None:
-        """Activate ``preset`` or data browsing if it remains selected."""
+        """Activate ``preset`` or LLM off if it remains selected."""
         import asyncio
 
         if request_id != self._llm_activation_request_id:
@@ -652,7 +652,7 @@ class TabulaflowApp(App[None]):
             await self._publish_initialization_status(
                 request_id,
                 Text(
-                    "✓ Data browsing mode. Connect a data source with /connect and inspect it in the data explorer.",
+                    "✓ LLM off. Connect a data source with /connect and inspect it in the data explorer.",
                     style="dim",
                 ),
             )

@@ -157,7 +157,7 @@ def test_bottom_status_shows_startup_model_before_session_is_ready(
     assert model_status.value.startswith("Opus 4.8 high · ")
 
 
-def test_bottom_status_shows_data_browsing_before_session_when_no_profile(
+def test_bottom_status_shows_llm_off_before_session_when_no_profile(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     app = TabulaflowApp(llm_preset=None)
@@ -172,7 +172,7 @@ def test_bottom_status_shows_data_browsing_before_session_when_no_profile(
 
     app._refresh_bottom_status()
 
-    assert model_status.value.startswith("Data browsing · ")
+    assert model_status.value.startswith("LLM off · ")
 
 
 def test_session_starts_with_unverified_llm_preset(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -230,7 +230,7 @@ def test_session_starts_without_llm_preset(tmp_path: Path) -> None:
     assert session.active_chat_agent is None
 
 
-def test_data_browsing_keeps_initialized_agent_dormant(tmp_path: Path) -> None:
+def test_llm_off_keeps_initialized_agent_dormant(tmp_path: Path) -> None:
     preset = _preset()
     session = SessionState(
         llm_preset=preset,
@@ -539,7 +539,7 @@ async def test_session_failure_does_not_enter_llm_error_path(monkeypatch: pytest
 
 
 @pytest.mark.asyncio
-async def test_selecting_data_browsing_cancels_activation_and_reports_available_tools(
+async def test_selecting_llm_off_cancels_activation_and_reports_available_tools(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     app = TabulaflowApp(llm_preset=None)
@@ -565,9 +565,7 @@ async def test_selecting_data_browsing_cancels_activation_and_reports_available_
             await pilot.pause()
         assert len(app.query(SpinnerWidget)) == 0
         messages = [str(message.render()) for message in app.query(SystemMessage)]
-        assert messages == [
-            "✓ Data browsing mode. Connect a data source with /connect and inspect it in the data explorer."
-        ]
+        assert messages == ["✓ LLM off. Connect a data source with /connect and inspect it in the data explorer."]
         request_id = app._llm_activation_request_id
         app._llm_activation_error = "old failure"
         app.query_one("#input-bar", Input).disabled = True
@@ -581,8 +579,8 @@ async def test_selecting_data_browsing_cancels_activation_and_reports_available_
         assert not app.query_one("#input-bar", Input).disabled
         messages = [str(message.render()) for message in app.query(SystemMessage)]
         assert messages == [
-            "✓ Data browsing mode. Connect a data source with /connect and inspect it in the data explorer.",
-            "✓ Data browsing mode. Connect a data source with /connect and inspect it in the data explorer.",
+            "✓ LLM off. Connect a data source with /connect and inspect it in the data explorer.",
+            "✓ LLM off. Connect a data source with /connect and inspect it in the data explorer.",
         ]
 
 

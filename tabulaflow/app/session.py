@@ -201,7 +201,7 @@ class SessionState:
             )
 
     def set_llm_preset(self, preset: LLMPreset | None) -> None:
-        """Select an LLM preset, or data browsing, without changing runtime clients."""
+        """Select an LLM preset, or turn it off, without changing runtime clients."""
         if preset is None:
             self.llm_preset = None
             return

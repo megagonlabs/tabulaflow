@@ -17,7 +17,7 @@ from textual.containers import Horizontal, Vertical
 from textual.screen import Screen
 from textual.widgets import DataTable, Static, TextArea
 
-from tabulaflow.app.config import APP_CONFIG_PATH, LLMPreset, load_app_config, update_app_config
+from tabulaflow.app.config import APP_CONFIG_PATH, LLM_OFF_LABEL, LLMPreset, load_app_config, update_app_config
 from tabulaflow.app.session import compact_model_label
 from tabulaflow.app.theme import ACCENT, ACCENT_BOLD, DRACULA_TRANSPARENT, ERROR, FK_MARKER, KEY_HINT, PK_MARKER
 
@@ -1875,11 +1875,11 @@ class ConfigScreen(Screen[None]):
             label_style = ACCENT_BOLD if selected else ACCENT
         else:
             label_style = "bold" if selected else ""
-        label = Text("Data browsing" if preset is None else preset.label, style=label_style)
+        label = Text(LLM_OFF_LABEL if preset is None else preset.label, style=label_style)
         label.truncate(_LLM_OPTION_LABEL_WIDTH, overflow="ellipsis", pad=True)
         label.append("  ")
         if preset is None:
-            models = Text()
+            models = Text("Connect and browse data", style="dim")
         else:
             models = Text(
                 f"{compact_model_label(preset.main.model, preset.main.reasoning_effort)}"
