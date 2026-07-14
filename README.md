@@ -419,10 +419,12 @@ July 13
 - [x] Fix structured output for Claude - UserError: Anthropic does not support thinking and output tools at the same time. Use `output_type=NativeOutput(...)` instead.
 
 - [x] Default LLM preset for first-time user
+
+
+
 - [ ] Other config options - concurrency
 - [ ] Gemini levels - no xhigh
 - [ ] Fireworks preset
-
 - [ ] Kushan: better error message for /connect failure
 
 - [ ] Inline code block (``) highlighting
