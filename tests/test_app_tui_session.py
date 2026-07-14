@@ -157,7 +157,7 @@ def test_bottom_status_shows_startup_model_before_session_is_ready(
     assert model_status.value.startswith("Opus 4.8 high · ")
 
 
-def test_bottom_status_shows_llm_off_before_session_when_no_profile(
+def test_bottom_status_shows_data_browsing_before_session_when_no_profile(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     app = TabulaflowApp(llm_preset=None)
@@ -172,7 +172,7 @@ def test_bottom_status_shows_llm_off_before_session_when_no_profile(
 
     app._refresh_bottom_status()
 
-    assert model_status.value.startswith("LLM off · ")
+    assert model_status.value.startswith("Data browsing · ")
 
 
 def test_session_starts_with_unverified_llm_preset(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -228,6 +228,24 @@ def test_session_starts_without_llm_preset(tmp_path: Path) -> None:
 
     assert session.llm_preset is None
     assert session.active_chat_agent is None
+
+
+def test_data_browsing_keeps_initialized_agent_dormant(tmp_path: Path) -> None:
+    preset = _preset()
+    session = SessionState(
+        llm_preset=preset,
+        trajectories_dir=tmp_path / "trajectories",
+        data_dir=tmp_path / "data",
+        workspace=None,
+    )
+    agent = _activate_selected(session)
+
+    session.set_llm_preset(None)
+
+    assert session.llm_preset is None
+    assert session.active_chat_agent is None
+    session.set_llm_preset(preset)
+    assert session.active_chat_agent is agent
 
 
 def test_unverified_session_can_select_and_then_build_valid_llm(
@@ -518,6 +536,39 @@ async def test_session_failure_does_not_enter_llm_error_path(monkeypatch: pytest
 
     assert reported == [error]
     assert app._llm_activation_error is None
+
+
+@pytest.mark.asyncio
+async def test_selecting_data_browsing_cancels_activation_and_reports_available_tools(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    app = TabulaflowApp(llm_preset=None)
+
+    async def fake_ensure_session() -> object:
+        return object()
+
+    monkeypatch.setattr(app, "_setup_logging", lambda: None)
+    monkeypatch.setattr(app, "_ensure_pane", lambda: None)
+    monkeypatch.setattr(app, "_ensure_session", fake_ensure_session)
+
+    async with app.run_test() as pilot:
+        for _ in range(3):
+            await pilot.pause()
+        request_id = app._llm_activation_request_id
+        app._llm_activation_error = "old failure"
+        app.query_one("#input-bar", Input).disabled = True
+
+        app._on_llm_option_selected(None)
+        for _ in range(2):
+            await pilot.pause()
+
+        assert app._llm_activation_request_id == request_id + 1
+        assert app._llm_activation_error is None
+        assert not app.query_one("#input-bar", Input).disabled
+        messages = [str(message.render()) for message in app.query(SystemMessage)]
+        assert messages == [
+            "✓ Data browsing mode. Connect a data source with /connect and inspect it in the data explorer."
+        ]
 
 
 @pytest.mark.asyncio

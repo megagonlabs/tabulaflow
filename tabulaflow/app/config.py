@@ -154,7 +154,7 @@ def resolve_startup_llm_preset(config: AppConfig, *, cli_preset: str | None = No
         cli_preset: Optional preset label supplied for this launch only.
 
     Returns:
-        The resolved preset, or ``None`` when startup should use browsing-only mode.
+        The resolved preset, or ``None`` when startup should use data browsing mode.
 
     Raises:
         ValueError: If ``cli_preset`` names no known preset.

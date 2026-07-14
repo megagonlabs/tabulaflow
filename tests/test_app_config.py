@@ -152,3 +152,13 @@ def test_update_preserves_custom_presets(tmp_path: Path) -> None:
     config = load_app_config(path)
     assert config.active_llm_preset == "Anthropic balanced"
     assert config.custom_llm_presets == [custom]
+
+
+def test_update_persists_data_browsing_as_null(tmp_path: Path) -> None:
+    path = str(tmp_path / "app_config.json")
+    save_app_config(AppConfig(active_llm_preset="Anthropic balanced"), path)
+
+    update_app_config(path, active_llm_preset=None)
+
+    assert load_app_config(path).active_llm_preset is None
+    assert json.loads(Path(path).read_text())["active_llm_preset"] is None

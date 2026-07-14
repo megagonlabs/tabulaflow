@@ -1735,7 +1735,7 @@ class SchemaBrowserScreen(Screen[None]):
 
 
 _CURRENT_CUSTOM_PRESET_LABEL = "Current custom"
-_PRESET_LABEL_WIDTH = 20
+_LLM_OPTION_LABEL_WIDTH = 20
 
 
 def _preset_matches_session(preset: LLMPreset, session: SessionState) -> bool:
@@ -1758,8 +1758,8 @@ def _current_session_preset(session: SessionState) -> LLMPreset:
     )
 
 
-class _ConfigPresetRow(Horizontal):
-    """Preset row whose model column retains its indent when wrapped."""
+class _ConfigLLMRow(Horizontal):
+    """LLM option row whose model column retains its indent when wrapped."""
 
     def __init__(self) -> None:
         super().__init__(classes="config-row")
@@ -1779,7 +1779,7 @@ class _ConfigPresetRow(Horizontal):
 
 
 class ConfigScreen(Screen[None]):
-    """Full-screen editor for the active LLM preset."""
+    """Full-screen editor for the active LLM mode."""
 
     DEFAULT_CSS = """
     ConfigScreen {
@@ -1826,21 +1826,27 @@ class ConfigScreen(Screen[None]):
         Binding("enter", "select", "Select", show=False),
     ]
 
-    def __init__(self, session: SessionState, on_change: Callable[[LLMPreset], None]) -> None:
+    def __init__(self, session: SessionState, on_change: Callable[[LLMPreset | None], None]) -> None:
         super().__init__()
         self._session = session
         self._on_change = on_change
         app_config = load_app_config()
-        self._presets = list(app_config.llm_presets)
-        if session.llm_preset is not None and all(
-            not _preset_matches_session(preset, session) for preset in self._presets
-        ):
-            self._presets.insert(0, _current_session_preset(session))
-        self._preset_rows = [_ConfigPresetRow() for _ in self._presets]
-        self._cursor = next(
-            (i for i, preset in enumerate(self._presets) if _preset_roles_match_session(preset, session)),
-            0,
-        )
+        presets = list(app_config.llm_presets)
+        if session.llm_preset is not None and all(not _preset_matches_session(preset, session) for preset in presets):
+            presets.insert(0, _current_session_preset(session))
+        self._options: list[LLMPreset | None] = [None, *presets]
+        self._option_rows = [_ConfigLLMRow() for _ in self._options]
+        if session.llm_preset is None:
+            self._cursor = 0
+        else:
+            self._cursor = next(
+                (
+                    i
+                    for i, preset in enumerate(self._options)
+                    if preset is not None and _preset_roles_match_session(preset, session)
+                ),
+                0,
+            )
 
     def compose(self) -> ComposeResult:
         config_path = APP_CONFIG_PATH.replace(str(Path.home()), "~", 1)
@@ -1850,22 +1856,18 @@ class ConfigScreen(Screen[None]):
         with Vertical(id="config-body"):
             yield Static(title)
             yield Static("")
-            if self._preset_rows:
-                yield Static(Text("LLM Presets", style="bold"))
-                yield from self._preset_rows
+            if self._option_rows:
+                yield Static(Text("LLM", style="bold"))
+                yield from self._option_rows
         yield Static(self._hint_text(), id="config-hint")
 
     def on_mount(self) -> None:
         self._refresh()
 
-    def _slots(self) -> list[tuple[str, int]]:
-        """Cursor-reachable preset rows."""
-        return [("preset", i) for i in range(len(self._presets))]
-
-    def _preset_row_parts(self, i: int) -> tuple[Text, Text, Text]:
-        preset = self._presets[i]
+    def _option_row_parts(self, i: int) -> tuple[Text, Text, Text]:
+        preset = self._options[i]
         selected = self._cursor == i
-        active = _preset_matches_session(preset, self._session)
+        active = self._session.llm_preset is None if preset is None else _preset_matches_session(preset, self._session)
         markers = Text()
         markers.append("❯ " if selected else "  ", style=ACCENT_BOLD)
         markers.append("● " if active else "  ", style=ACCENT)
@@ -1873,14 +1875,17 @@ class ConfigScreen(Screen[None]):
             label_style = ACCENT_BOLD if selected else ACCENT
         else:
             label_style = "bold" if selected else ""
-        label = Text(preset.label, style=label_style)
-        label.truncate(_PRESET_LABEL_WIDTH, overflow="ellipsis", pad=True)
+        label = Text("Data browsing" if preset is None else preset.label, style=label_style)
+        label.truncate(_LLM_OPTION_LABEL_WIDTH, overflow="ellipsis", pad=True)
         label.append("  ")
-        models = Text(
-            f"{compact_model_label(preset.main.model, preset.main.reasoning_effort)}"
-            f" → {compact_model_label(preset.subagent.model, preset.subagent.reasoning_effort)}",
-            style="dim",
-        )
+        if preset is None:
+            models = Text()
+        else:
+            models = Text(
+                f"{compact_model_label(preset.main.model, preset.main.reasoning_effort)}"
+                f" → {compact_model_label(preset.subagent.model, preset.subagent.reasoning_effort)}",
+                style="dim",
+            )
         return markers, label, models
 
     def _hint_text(self) -> Text:
@@ -1890,20 +1895,22 @@ class ConfigScreen(Screen[None]):
         return hint
 
     def _refresh(self) -> None:
-        for i, row in enumerate(self._preset_rows):
-            row.update_content(*self._preset_row_parts(i))
+        for i, row in enumerate(self._option_rows):
+            row.update_content(*self._option_row_parts(i))
 
     def action_cursor_move(self, delta: int) -> None:
-        self._cursor = max(0, min(len(self._presets) - 1, self._cursor + delta))
+        self._cursor = max(0, min(len(self._options) - 1, self._cursor + delta))
         self._refresh()
 
     def action_select(self) -> None:
-        self._select_preset(self._cursor)
+        self._select_option(self._cursor)
 
-    def _select_preset(self, i: int) -> None:
-        preset = self._presets[i]
+    def _select_option(self, i: int) -> None:
+        preset = self._options[i]
         self._session.set_llm_preset(preset)
-        if preset.label != _CURRENT_CUSTOM_PRESET_LABEL:
+        if preset is None:
+            update_app_config(active_llm_preset=None)
+        elif preset.label != _CURRENT_CUSTOM_PRESET_LABEL:
             update_app_config(active_llm_preset=preset.label)
         self._on_change(preset)
         self._refresh()

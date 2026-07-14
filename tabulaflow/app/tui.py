@@ -628,7 +628,7 @@ class TabulaflowApp(App[None]):
                 self._startup_llm_preset.main.reasoning_effort,
             )
         else:
-            model_label = "LLM off"
+            model_label = "Data browsing"
         model_status.update(Text(f"{model_label} · {_compact_project_dir(self._project_dir)}", style="dim"))
         url_status.update(Text(f"View output in browser: {url}" if url else "", style="dim"))
 
@@ -644,9 +644,43 @@ class TabulaflowApp(App[None]):
             group="llm-activation",
         )
 
-    def _on_llm_preset_selected(self, preset: LLMPreset) -> None:
+    def _on_llm_option_selected(self, preset: LLMPreset | None) -> None:
         self._refresh_bottom_status()
-        self._request_llm_activation(preset)
+        if preset is None:
+            self._enter_data_browsing_mode()
+        else:
+            self._request_llm_activation(preset)
+
+    def _enter_data_browsing_mode(self) -> None:
+        """Cancel pending activation and publish data browsing mode."""
+        self._llm_activation_request_id += 1
+        self._llm_activation_error = None
+        request_id = self._llm_activation_request_id
+        self.query_one("#input-bar", Input).disabled = False
+        self.run_worker(
+            self._show_data_browsing_status(request_id),
+            exclusive=False,
+            group="llm-activation",
+        )
+
+    async def _show_data_browsing_status(self, request_id: int) -> None:
+        if request_id != self._llm_activation_request_id:
+            return
+        await self._remove_initialization_spinner()
+        if request_id != self._llm_activation_request_id:
+            return
+        message = SystemMessage(
+            Text(
+                "✓ Data browsing mode. Connect a data source with /connect and inspect it in the data explorer.",
+                style="dim",
+            )
+        )
+        chat_log = self.query_one("#chat-log", VerticalScroll)
+        await chat_log.mount(message)
+        if request_id != self._llm_activation_request_id:
+            await message.remove()
+            return
+        chat_log.scroll_end(animate=False)
 
     async def _activate_llm_preset(self, request_id: int, preset: LLMPreset) -> None:
         """Activate ``preset`` if it remains the latest user selection."""
@@ -1106,7 +1140,7 @@ class TabulaflowApp(App[None]):
         if result.should_open_config:
             from tabulaflow.app.screens import ConfigScreen
 
-            self.push_screen(ConfigScreen(session, on_change=self._on_llm_preset_selected))
+            self.push_screen(ConfigScreen(session, on_change=self._on_llm_option_selected))
             return
 
         if result.output is not None:

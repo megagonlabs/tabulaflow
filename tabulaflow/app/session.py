@@ -200,8 +200,11 @@ class SessionState:
                 "connected their own data; disregard it from here on."
             )
 
-    def set_llm_preset(self, preset: LLMPreset) -> None:
-        """Select an LLM preset without constructing provider clients."""
+    def set_llm_preset(self, preset: LLMPreset | None) -> None:
+        """Select an LLM preset, or data browsing, without changing runtime clients."""
+        if preset is None:
+            self.llm_preset = None
+            return
         if (
             self.llm_preset is not None
             and preset.main == self.llm_preset.main
