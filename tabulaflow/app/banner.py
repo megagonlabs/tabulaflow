@@ -1,4 +1,4 @@
-"""Welcome banner: a seam-free block ``tabulaflow`` wordmark, tagline, and info line.
+"""Welcome banner: a seam-free block ``tabulaflow`` wordmark and starter questions.
 
 The wordmark is the half-block "pagga" art, but rendered so it stays seamless in
 macOS Terminal.app — whose renderer leaves a hairline between vertically-stacked
@@ -24,6 +24,7 @@ from typing import TYPE_CHECKING
 from rich.console import Group
 from rich.text import Text
 
+from tabulaflow import __version__
 from tabulaflow.app.theme import ACCENT, GITHUB_URL
 
 if TYPE_CHECKING:
@@ -42,8 +43,6 @@ COLOR_SHADE: Color = "#283629"
 # ``textual-dark`` background; ``build_banner(surface=...)`` overrides it with the
 # widget's own effective background so the carves match the chat log exactly.
 COLOR_PAGE: Color = "#121212"
-
-_TAGLINE = "AI for everything tabular"
 
 # Hard-wrap example lines at this column so wrapping is identical on every terminal
 # width (rather than reflowing at the terminal edge).
@@ -145,12 +144,8 @@ def _cell(top: Color | None, bottom: Color | None, surface: Color) -> tuple[str,
     return "▀", f"{surface} on {bottom}"  # empty top, color bottom
 
 
-def _wordmark(surface: Color, version: str | None = None) -> list[Text]:
-    """Render 'tabulaflow' as three seam-free ``Text`` rows over ``surface``.
-
-    When ``version`` is given it is appended to the bottom row as a dim
-    ``v<version>`` badge, baseline-aligned to the foot of the wordmark.
-    """
+def _wordmark(surface: Color) -> list[Text]:
+    """Render 'tabulaflow' as three seam-free ``Text`` rows over ``surface``."""
     width = max(len(line) for line in _LOGO_LINES)
     # Decode the art into a 6-row sub-pixel bitmap (None = transparent page).
     bitmap: list[list[Color | None]] = []
@@ -172,9 +167,6 @@ def _wordmark(surface: Color, version: str | None = None) -> list[Text]:
             glyph, style = _cell(top_px, bottom_px, surface)
             row.append(glyph, style=style)
         rows.append(row)
-    if version:
-        # Baseline badge: extend the bottom row past the carved bitmap.
-        rows[-1].append(f"  v{version}", style="dim")
     return rows
 
 
@@ -197,7 +189,7 @@ def _examples() -> list[Text]:
 
 
 def build_wordmark(surface: str | None = None) -> RenderableType:
-    """Build the 'tabulaflow' wordmark art (with version badge) as a Rich renderable.
+    """Build the 'tabulaflow' wordmark art as a Rich renderable.
 
     Split from the banner's text block so the art renders in its own widget — the
     half-block art has no meaningful text to select, while the text block does.
@@ -206,18 +198,11 @@ def build_wordmark(surface: str | None = None) -> RenderableType:
     with so they read as transparent — pass the live theme's ``$surface``. Falls
     back to ``COLOR_PAGE`` when not given.
     """
-    from importlib.metadata import PackageNotFoundError, version as _pkg_version
-
-    try:
-        app_version: str | None = _pkg_version("tabulaflow")
-    except PackageNotFoundError:
-        app_version = None
-
-    return Group(*_wordmark(surface or COLOR_PAGE, app_version))
+    return Group(*_wordmark(surface or COLOR_PAGE))
 
 
 def build_banner_text(*, model: str | None, reasoning_effort: str | None = None) -> Text:
-    """Build the banner's text block — tagline and starter examples.
+    """Build the banner's text block — version, project URL, and starter examples.
 
     Returned as a single ``Text`` (rows joined with newlines) rather than a
     ``Group`` so the widget rendering it is selectable: Textual only extracts
@@ -226,15 +211,10 @@ def build_banner_text(*, model: str | None, reasoning_effort: str | None = None)
     ``model`` and ``reasoning_effort`` are accepted so callers don't need a
     separate code path when the bottom status owns the model display.
     """
-    # Tagline on the left, then a 4-col gap, then the GitHub URL on the same line.
-    # Styles are per-span (not a base style) so the URL stays plain dim grey rather
-    # than inheriting the tagline's mint color. The scheme is dropped from the
-    # displayed text (modern app convention). Rendered as plain text, NOT an OSC-8
+    # The scheme is dropped from the displayed URL (modern app convention).
+    # Rendered as plain text, NOT an OSC-8
     # hyperlink — a real link makes terminals draw a dashed underline affordance
     # that can't be styled away, so we trade clickability for the clean label.
     url_label = GITHUB_URL.split("://", 1)[-1]
-    tagline = Text()
-    tagline.append(_TAGLINE, style=f"bold italic {COLOR_TABULA}")
-    tagline.append(" · ", style="dim")
-    tagline.append(url_label, style="dim")
-    return Text("\n").join([tagline, Text(), *_examples()])
+    info = Text(f"v{__version__} · {url_label}", style="dim")
+    return Text("\n").join([info, Text(), *_examples()])
