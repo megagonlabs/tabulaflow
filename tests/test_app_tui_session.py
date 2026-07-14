@@ -415,15 +415,18 @@ def test_llm_preset_success_message_places_api_keys_by_role() -> None:
         preset,
         ("sk-shared123456789ABCD", "sk-shared123456789ABCD"),
     )
-    assert shared.plain == "✓ LLM preset: Opus 4.8 high → GPT 5.4 Mini medium [API key ***ABCD]"
+    assert shared.plain == "✓ LLM preset: Opus 4.8 high → GPT 5.4 Mini medium [API key sk-***ABCD]"
     assert str(shared.style) == "dim"
 
     distinct = tui._llm_preset_success_message(
         preset,
         ("sk-main123456789AAAA", "sk-subagent123456BBBB"),
     )
-    assert distinct.plain == ("✓ LLM preset: Opus 4.8 high [API key ***AAAA] → GPT 5.4 Mini medium [API key ***BBBB]")
+    assert distinct.plain == (
+        "✓ LLM preset: Opus 4.8 high [API key sk-***AAAA] → GPT 5.4 Mini medium [API key sk-***BBBB]"
+    )
 
+    assert tui._masked_api_key("fw-api123456789WXYZ") == "fw-***WXYZ"
     assert tui._masked_api_key("short") is None
 
 
@@ -455,7 +458,7 @@ async def test_startup_activation_reports_masked_api_key_in_chat_log(
         for _ in range(3):
             await pilot.pause()
         messages = [str(message.render()) for message in app.query(SystemMessage)]
-        assert messages == ["✓ LLM preset: GPT 5 medium → GPT 5 Mini medium [API key ***E0QA]"]
+        assert messages == ["✓ LLM preset: GPT 5 medium → GPT 5 Mini medium [API key sk-***E0QA]"]
         assert not app.query_one("#input-bar", Input).disabled
 
 

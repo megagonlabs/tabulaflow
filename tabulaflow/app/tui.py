@@ -61,7 +61,7 @@ def _masked_api_key(key: str | None) -> str | None:
     """Return a masked API key suitable for display."""
     if key is None or len(key) < 12:
         return None
-    return f"***{key[-4:]}"
+    return f"{key[:3]}***{key[-4:]}"
 
 
 def _llm_preset_success_message(
