@@ -270,24 +270,7 @@ class TabulaflowApp(App[None]):
         chat_log.scroll_end(animate=False)
         self._refresh_esc_hint()
         self._ensure_pane()
-        if self._startup_llm_preset is None:
-            self.run_worker(self._initialize_startup_session())
-        else:
-            self._request_llm_activation(self._startup_llm_preset)
-
-    async def _initialize_startup_session(self) -> None:
-        """Build a session when the app starts without an LLM preset."""
-        request_id = self._llm_activation_request_id
-        await self._show_initialization_spinner("Initializing session...")
-        try:
-            await self._ensure_session()
-        except Exception as error:
-            logger.debug("Session initialization failed", exc_info=True)
-            if request_id == self._llm_activation_request_id:
-                await self._report_session_initialization_failure(request_id, error)
-            return
-        if request_id == self._llm_activation_request_id:
-            await self._show_data_browsing_status(request_id)
+        self._request_llm_option(self._startup_llm_preset)
 
     def _refresh_esc_hint(self) -> None:
         """Update the docked ``Esc`` hint label to match current state.
@@ -632,58 +615,24 @@ class TabulaflowApp(App[None]):
         model_status.update(Text(f"{model_label} · {_compact_project_dir(self._project_dir)}", style="dim"))
         url_status.update(Text(f"View output in browser: {url}" if url else "", style="dim"))
 
-    def _request_llm_activation(self, preset: LLMPreset) -> None:
-        """Start latest-wins background activation for the selected preset."""
+    def _request_llm_option(self, preset: LLMPreset | None) -> None:
+        """Start latest-wins background activation for an LLM option."""
         self._llm_activation_request_id += 1
         self._llm_activation_error = None
         request_id = self._llm_activation_request_id
-        self.query_one("#input-bar", Input).disabled = True
+        self.query_one("#input-bar", Input).disabled = preset is not None
         self.run_worker(
-            self._activate_llm_preset(request_id, preset),
+            self._activate_llm_option(request_id, preset),
             exclusive=False,
             group="llm-activation",
         )
 
     def _on_llm_option_selected(self, preset: LLMPreset | None) -> None:
         self._refresh_bottom_status()
-        if preset is None:
-            self._enter_data_browsing_mode()
-        else:
-            self._request_llm_activation(preset)
+        self._request_llm_option(preset)
 
-    def _enter_data_browsing_mode(self) -> None:
-        """Cancel pending activation and publish data browsing mode."""
-        self._llm_activation_request_id += 1
-        self._llm_activation_error = None
-        request_id = self._llm_activation_request_id
-        self.query_one("#input-bar", Input).disabled = False
-        self.run_worker(
-            self._show_data_browsing_status(request_id),
-            exclusive=False,
-            group="llm-activation",
-        )
-
-    async def _show_data_browsing_status(self, request_id: int) -> None:
-        if request_id != self._llm_activation_request_id:
-            return
-        await self._remove_initialization_spinner()
-        if request_id != self._llm_activation_request_id:
-            return
-        message = SystemMessage(
-            Text(
-                "✓ Data browsing mode. Connect a data source with /connect and inspect it in the data explorer.",
-                style="dim",
-            )
-        )
-        chat_log = self.query_one("#chat-log", VerticalScroll)
-        await chat_log.mount(message)
-        if request_id != self._llm_activation_request_id:
-            await message.remove()
-            return
-        chat_log.scroll_end(animate=False)
-
-    async def _activate_llm_preset(self, request_id: int, preset: LLMPreset) -> None:
-        """Activate ``preset`` if it remains the latest user selection."""
+    async def _activate_llm_option(self, request_id: int, preset: LLMPreset | None) -> None:
+        """Activate ``preset`` or data browsing if it remains selected."""
         import asyncio
 
         if request_id != self._llm_activation_request_id:
@@ -698,6 +647,15 @@ class TabulaflowApp(App[None]):
                 await self._report_session_initialization_failure(request_id, error)
             return
         if request_id != self._llm_activation_request_id:
+            return
+        if preset is None:
+            await self._publish_initialization_status(
+                request_id,
+                Text(
+                    "✓ Data browsing mode. Connect a data source with /connect and inspect it in the data explorer.",
+                    style="dim",
+                ),
+            )
             return
         await self._show_initialization_spinner("Initializing agent...")
         try:
@@ -736,23 +694,28 @@ class TabulaflowApp(App[None]):
         if spinner is not None:
             await spinner.remove()
 
-    async def _report_session_initialization_failure(self, request_id: int, error: Exception) -> None:
+    async def _publish_initialization_status(self, request_id: int, message: Text) -> bool:
+        """Replace the spinner with ``message`` if this request is still current."""
         if request_id != self._llm_activation_request_id:
-            return
+            return False
         await self._remove_initialization_spinner()
         if request_id != self._llm_activation_request_id:
-            return
-        message = Text.from_markup(f"[{ERROR}]Session initialization failed:[/] ")
-        detail = _sanitize_exception_message(error)
-        message.append(f"{type(error).__name__}: {detail}" if detail else f"{type(error).__name__}.")
-        chat_log = self.query_one("#chat-log", VerticalScroll)
+            return False
         status_message = SystemMessage(message)
+        chat_log = self.query_one("#chat-log", VerticalScroll)
         await chat_log.mount(status_message)
         if request_id != self._llm_activation_request_id:
             await status_message.remove()
-            return
+            return False
         chat_log.scroll_end(animate=False)
-        self.query_one("#input-bar", Input).disabled = False
+        return True
+
+    async def _report_session_initialization_failure(self, request_id: int, error: Exception) -> None:
+        message = Text.from_markup(f"[{ERROR}]Session initialization failed:[/] ")
+        detail = _sanitize_exception_message(error)
+        message.append(f"{type(error).__name__}: {detail}" if detail else f"{type(error).__name__}.")
+        if await self._publish_initialization_status(request_id, message):
+            self.query_one("#input-bar", Input).disabled = False
 
     async def _finish_llm_activation(
         self,
@@ -763,11 +726,6 @@ class TabulaflowApp(App[None]):
     ) -> None:
         if request_id != self._llm_activation_request_id:
             return
-        chat_log = self.query_one("#chat-log", VerticalScroll)
-        await self._remove_initialization_spinner()
-        if request_id != self._llm_activation_request_id:
-            return
-
         if isinstance(result, Exception):
             self._llm_activation_error = _normalize_llm_activation_error(result, preset)
             message = Text.from_markup(f"[{ERROR}]LLM unavailable:[/] ")
@@ -775,12 +733,8 @@ class TabulaflowApp(App[None]):
         else:
             self._llm_activation_error = None
             message = _llm_preset_success_message(preset, result)
-        status_message = SystemMessage(message)
-        await chat_log.mount(status_message)
-        if request_id != self._llm_activation_request_id:
-            await status_message.remove()
+        if not await self._publish_initialization_status(request_id, message):
             return
-        chat_log.scroll_end(animate=False)
         input_bar = self.query_one("#input-bar", Input)
         input_bar.disabled = False
         if len(self.screen_stack) == 1:

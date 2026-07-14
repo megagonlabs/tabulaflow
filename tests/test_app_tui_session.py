@@ -368,7 +368,7 @@ async def test_startup_llm_activation_reports_session_then_agent_progress(
     monkeypatch.setattr(app, "_finish_llm_activation", fake_finish)
 
     app._llm_activation_request_id = 1
-    await app._activate_llm_preset(1, preset)
+    await app._activate_llm_option(1, preset)
 
     assert labels == ["Initializing session...", "Initializing agent..."]
 
@@ -410,10 +410,10 @@ async def test_llm_activation_only_publishes_latest_selection(monkeypatch: pytes
     monkeypatch.setattr(app, "_finish_llm_activation", fake_finish)
 
     app._llm_activation_request_id = 1
-    first_task = asyncio.create_task(app._activate_llm_preset(1, first))
+    first_task = asyncio.create_task(app._activate_llm_option(1, first))
     assert await asyncio.to_thread(started.wait, 2)
     app._llm_activation_request_id = 2
-    latest_task = asyncio.create_task(app._activate_llm_preset(2, latest))
+    latest_task = asyncio.create_task(app._activate_llm_option(2, latest))
     release.set()
     await asyncio.gather(first_task, latest_task)
 
@@ -532,7 +532,7 @@ async def test_session_failure_does_not_enter_llm_error_path(monkeypatch: pytest
     monkeypatch.setattr(app, "_finish_llm_activation", unexpected_finish)
 
     app._llm_activation_request_id = 1
-    await app._activate_llm_preset(1, preset)
+    await app._activate_llm_option(1, preset)
 
     assert reported == [error]
     assert app._llm_activation_error is None
