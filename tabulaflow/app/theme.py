@@ -66,6 +66,7 @@ KEY_HINT = f"bold {KEY_HINT_COLOR}"
 # text by weight.
 KEY_HINT_DIM = "bold dim"
 
+
 def _make_transparent_dracula() -> TextAreaTheme:
     """Dracula TextArea theme with backgrounds removed so CSS $surface shows through."""
     builtin = TextAreaTheme.get_builtin_theme("dracula")

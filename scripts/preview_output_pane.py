@@ -547,11 +547,41 @@ def _graph_network_card(pane_dir: Path) -> PaneCard:
     )
     edges = pd.DataFrame(
         [
-            {"src": "alice", "dst": "bob", "rel": "coauthors", "weight": 5, "doc": "https://example.com/relations/coauthors"},
-            {"src": "alice", "dst": "carol", "rel": "advises", "weight": 3, "doc": "https://example.com/relations/advises"},
-            {"src": "bob", "dst": "dina", "rel": "reviews", "weight": 2, "doc": "https://example.com/relations/reviews"},
-            {"src": "carol", "dst": "eli", "rel": "partners", "weight": 4, "doc": "https://example.com/relations/partners"},
-            {"src": "eli", "dst": "faye", "rel": "mentors", "weight": 2, "doc": "https://example.com/relations/mentors"},
+            {
+                "src": "alice",
+                "dst": "bob",
+                "rel": "coauthors",
+                "weight": 5,
+                "doc": "https://example.com/relations/coauthors",
+            },
+            {
+                "src": "alice",
+                "dst": "carol",
+                "rel": "advises",
+                "weight": 3,
+                "doc": "https://example.com/relations/advises",
+            },
+            {
+                "src": "bob",
+                "dst": "dina",
+                "rel": "reviews",
+                "weight": 2,
+                "doc": "https://example.com/relations/reviews",
+            },
+            {
+                "src": "carol",
+                "dst": "eli",
+                "rel": "partners",
+                "weight": 4,
+                "doc": "https://example.com/relations/partners",
+            },
+            {
+                "src": "eli",
+                "dst": "faye",
+                "rel": "mentors",
+                "weight": 2,
+                "doc": "https://example.com/relations/mentors",
+            },
             {"src": "faye", "dst": "alice", "rel": "syncs", "weight": 1, "doc": "https://example.com/relations/syncs"},
         ]
     )
@@ -802,9 +832,7 @@ def _physics_chain_data() -> tuple[pd.DataFrame, pd.DataFrame]:
     nodes = pd.DataFrame(
         {
             "id": [f"n{i}" for i in range(12)],
-            "label": [
-                "Node Six With A Very Long Process Stage Label" if i == 6 else f"N{i}" for i in range(12)
-            ],
+            "label": ["Node Six With A Very Long Process Stage Label" if i == 6 else f"N{i}" for i in range(12)],
             "group": ["Chain"] * 12,
         }
     )

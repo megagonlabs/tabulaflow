@@ -82,4 +82,3 @@ def try_decode_base64(s: str) -> bytes | None:
         return base64.b64decode(payload, validate=False)
     except (binascii.Error, ValueError):
         return None
-

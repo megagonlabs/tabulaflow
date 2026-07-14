@@ -16,6 +16,7 @@ if TYPE_CHECKING:
 # crisp-vs-fast tradeoff within that range.
 _SVG_ROW_LIMIT = 5_000
 
+
 def _normalize_field_refs(node: object, colmap: dict[str, str]) -> None:
     """Rewrite ``field`` references to the DataFrame's column-name casing, in place.
 

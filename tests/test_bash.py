@@ -114,7 +114,9 @@ class TestRobustness:
         stop at the first). Multi-line commands run as one sourced script."""
         tool = ExecuteBashTool(no_change_timeout=6, max_output_chars=50000)
         try:
-            cmd = "echo FIRST_OUT\nprintf 'mid\\n'\necho SECOND_OUT\nfind . -maxdepth 1 -type d | head -3\necho THIRD_OUT"
+            cmd = (
+                "echo FIRST_OUT\nprintf 'mid\\n'\necho SECOND_OUT\nfind . -maxdepth 1 -type d | head -3\necho THIRD_OUT"
+            )
             result = await tool(cmd, timeout=15)
             assert "FIRST_OUT" in result
             assert "SECOND_OUT" in result
