@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 import os
 from pathlib import Path
-from typing import TYPE_CHECKING, Awaitable
+from typing import TYPE_CHECKING
 
 from rich.text import Text
 from textual import events
@@ -38,7 +38,7 @@ from tabulaflow.app.widgets import (
 
 if TYPE_CHECKING:
     from tabulaflow.app.pane import OutputPane
-    from tabulaflow.chat import ChatResult
+    from tabulaflow.chat import ChatAgent, ChatResult
 
 logger = logging.getLogger(__name__)
 
@@ -972,56 +972,56 @@ class TabulaflowApp(App[None]):
             return
 
         text = inp.expand_paste_tokens(display_text) if isinstance(inp, HistoryInput) else display_text
-        is_command = text.startswith(COMMAND_PREFIX)
 
         if isinstance(inp, HistoryInput):
             inp.record_submission(display_text)
         event.input.clear()
 
-        chat_log = self.query_one("#chat-log", VerticalScroll)
-
-        if is_command:
-            user_msg = UserMessage(text)
-            await chat_log.mount(user_msg)
-            chat_log.scroll_end(animate=False)
-            self._submission_worker = self.run_worker(
-                self._run_submission(self._handle_slash_command(text, chat_log, user_msg, display_text))
-            )
-            return
-
-        session = await self._ensure_session()
-
-        if not session.registry.list_aliases():
-            await chat_log.mount(UserMessage(text))
-            msg = SystemMessage(Text.from_markup(f"[{ERROR}]No database connected.[/] Use /connect first."))
-            await chat_log.mount(msg)
-            chat_log.scroll_end(animate=False)
-            return
-
-        if session.active_chat_agent is None:
-            await chat_log.mount(UserMessage(text))
-            error_text = Text.from_markup(f"[{ERROR}]LLM unavailable:[/] ")
-            error_text.append(self._llm_unavailable_message())
-            msg = SystemMessage(error_text)
-            await chat_log.mount(msg)
-            chat_log.scroll_end(animate=False)
-            self._refresh_bottom_status()
-            return
-
-        user_msg = UserMessage(text)
-        await chat_log.mount(user_msg)
-        chat_log.scroll_end(animate=False)
-
         self._submission_worker = self.run_worker(
-            self._run_submission(self._run_agent(text, session, chat_log, user_msg, display_text)),
+            self._run_submission(text, display_text),
             exclusive=True,
-            group="agent",
+            group="submission",
         )
 
-    async def _run_submission(self, operation: Awaitable[None]) -> None:
-        """Run an accepted submission and release its input gate afterward."""
+    async def _run_submission(self, text: str, display_text: str) -> None:
+        """Process one accepted input as the active submission."""
+        import asyncio
+
+        chat_log = self.query_one("#chat-log", VerticalScroll)
+        user_msg = UserMessage(text)
+        is_command = text.startswith(COMMAND_PREFIX)
         try:
-            await operation
+            await chat_log.mount(user_msg)
+            chat_log.scroll_end(animate=False)
+
+            if is_command:
+                await self._handle_slash_command(text, chat_log)
+                return
+
+            session = await self._ensure_session()
+            if not session.registry.list_aliases():
+                msg = SystemMessage(Text.from_markup(f"[{ERROR}]No database connected.[/] Use /connect first."))
+                await chat_log.mount(msg)
+                chat_log.scroll_end(animate=False)
+                return
+
+            chat_agent = session.active_chat_agent
+            if chat_agent is None:
+                error_text = Text.from_markup(f"[{ERROR}]LLM unavailable:[/] ")
+                error_text.append(self._llm_unavailable_message())
+                await chat_log.mount(SystemMessage(error_text))
+                chat_log.scroll_end(animate=False)
+                self._refresh_bottom_status()
+                return
+
+            await self._run_agent(text, chat_agent, chat_log, display_text)
+        except asyncio.CancelledError:
+            if is_command and user_msg.is_mounted:
+                await user_msg.remove()
+            await chat_log.mount(SystemMessage("[dim]Interrupted[/dim]"))
+            chat_log.scroll_end(animate=False)
+            self._restore_input_text(display_text)
+            raise
         finally:
             self._submission_worker = None
 
@@ -1034,8 +1034,6 @@ class TabulaflowApp(App[None]):
         self,
         text: str,
         chat_log: VerticalScroll,
-        user_msg: UserMessage,
-        display_text: str | None = None,
     ) -> None:
         parts = text.split()
         cmd = parts[0].lower() if parts else ""
@@ -1057,17 +1055,9 @@ class TabulaflowApp(App[None]):
                 if spinner._label != refined:
                     spinner.update_label(refined)
 
-        import asyncio
-
         try:
             session = await self._ensure_session()
             result = await handle_command(text, session)
-        except asyncio.CancelledError:
-            await user_msg.remove()
-            await chat_log.mount(SystemMessage("\n[dim]Interrupted[/dim]"))
-            chat_log.scroll_end(animate=False)
-            self._restore_input_text(display_text if display_text is not None else text)
-            raise
         finally:
             if spinner is not None:
                 await spinner.remove()
@@ -1123,24 +1113,14 @@ class TabulaflowApp(App[None]):
     async def _run_agent(
         self,
         question: str,
-        session: SessionState,
+        chat_agent: ChatAgent,
         chat_log: VerticalScroll,
-        user_msg: UserMessage,
-        display_text: str | None = None,
+        display_text: str,
     ) -> None:
         import asyncio
 
         from tabulaflow.chat import Finished
 
-        chat_agent = session.active_chat_agent
-        if chat_agent is None:
-            error_text = Text.from_markup(f"[{ERROR}]LLM unavailable:[/] ")
-            error_text.append(self._llm_unavailable_message())
-            msg = SystemMessage(error_text)
-            await chat_log.mount(msg)
-            chat_log.scroll_end(animate=False)
-            self._refresh_bottom_status()
-            return
         progress = AgentProgressWidget()
         await chat_log.mount(progress)
         chat_log.scroll_end(animate=False)
@@ -1155,9 +1135,6 @@ class TabulaflowApp(App[None]):
             # Freeze the partial progress widget; ChatAgent's message history and
             # last_usage already reflect the interrupted run.
             progress.mark_interrupted(chat_agent.last_usage)
-            await chat_log.mount(SystemMessage("[dim]Interrupted[/dim]"))
-            chat_log.scroll_end(animate=False)
-            self._restore_input_text(display_text if display_text is not None else question)
             raise
         except Exception as e:
             # Freeze the partial progress widget (mirrors the interrupt path) so the
@@ -1178,8 +1155,8 @@ class TabulaflowApp(App[None]):
         # -> build_card_views() nulls each record.df after rendering to Rich.
         await self._push_turn_to_pane(
             result,
-            title=display_text or question,
-            user_text=display_text or question,
+            title=display_text,
+            user_text=display_text,
         )
         if result.artifacts:
             # chat-log padding (2) + scrollbar (2) + widget margin (5) + widget padding (2) = 11

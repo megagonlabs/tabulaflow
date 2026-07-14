@@ -733,6 +733,52 @@ async def test_submission_worker_blocks_input_until_completion(monkeypatch: pyte
 
 
 @pytest.mark.asyncio
+async def test_submission_worker_covers_and_can_cancel_session_preflight(monkeypatch: pytest.MonkeyPatch) -> None:
+    app = TabulaflowApp(llm_preset=None)
+    preflight_started = asyncio.Event()
+    release_preflight = asyncio.Event()
+
+    async def initial_session() -> object:
+        return object()
+
+    monkeypatch.setattr(app, "_setup_logging", lambda: None)
+    monkeypatch.setattr(app, "_ensure_pane", lambda: None)
+    monkeypatch.setattr(app, "_ensure_session", initial_session)
+
+    async with app.run_test() as pilot:
+        for _ in range(3):
+            await pilot.pause()
+
+        async def blocking_session() -> object:
+            preflight_started.set()
+            await release_preflight.wait()
+            return object()
+
+        monkeypatch.setattr(app, "_ensure_session", blocking_session)
+        input_bar = app.query_one("#input-bar", HistoryInput)
+        input_bar.value = "show recent orders"
+        await pilot.press("enter")
+        await asyncio.wait_for(preflight_started.wait(), timeout=2)
+
+        assert app._submission_worker is not None
+        input_bar.value = "next question"
+        await pilot.press("enter")
+        await pilot.pause()
+        assert input_bar.value == "next question"
+        assert len(app.query(UserMessage)) == 1
+
+        input_bar.clear()
+        await pilot.press("ctrl+c")
+        for _ in range(2):
+            await pilot.pause()
+
+        assert app._submission_worker is None
+        assert input_bar.value == "show recent orders"
+        messages = [str(message.render()) for message in app.query(SystemMessage)]
+        assert messages[-1] == "Interrupted"
+
+
+@pytest.mark.asyncio
 async def test_closing_config_restores_input_focus(monkeypatch: pytest.MonkeyPatch) -> None:
     app = TabulaflowApp(llm_preset=None)
 
