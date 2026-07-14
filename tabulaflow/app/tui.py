@@ -16,7 +16,12 @@ from textual.worker import Worker
 from textual.widgets import Button, Input, Static
 
 from tabulaflow.app.commands import COMMAND_PREFIX, handle_command
-from tabulaflow.app.config import LLMPreset, update_app_config
+from tabulaflow.app.config import (
+    PROVIDER_API_KEY_ENV,
+    LLMPreset,
+    ResolvedLLMSelection,
+    update_app_config,
+)
 from tabulaflow.app.debug import debug_enabled, mount_debug_widgets
 from tabulaflow.app.pane import PaneCard, manual_card_turn, turn_payload
 from tabulaflow.app.runtime_paths import RuntimePaths, ensure_pane_dir, generate_session_id
@@ -38,19 +43,10 @@ from tabulaflow.app.widgets import (
 
 if TYPE_CHECKING:
     from tabulaflow.app.pane import OutputPane
-    from tabulaflow.app.screens import LLMSelection
     from tabulaflow.chat import ChatAgent, ChatResult
 
 logger = logging.getLogger(__name__)
 
-_PROVIDER_API_KEYS = {
-    "anthropic": "ANTHROPIC_API_KEY",
-    "fireworks": "FIREWORKS_API_KEY",
-    "openai": "OPENAI_API_KEY",
-    "openai-chat": "OPENAI_API_KEY",
-    "openai-responses": "OPENAI_API_KEY",
-    "together": "TOGETHER_API_KEY",
-}
 _REQUIRED_LLM_SETTINGS = frozenset({"GOOGLE_CLOUD_LOCATION", "GOOGLE_CLOUD_PROJECT"})
 _MAX_ERROR_MESSAGE_LENGTH = 300
 
@@ -95,7 +91,7 @@ def _normalize_llm_activation_error(error: Exception, preset: LLMPreset) -> str:
     message = _sanitize_exception_message(error)
     for role in (preset.main, preset.subagent):
         provider = role.model.partition(":")[0]
-        if setting := _PROVIDER_API_KEYS.get(provider):
+        if setting := PROVIDER_API_KEY_ENV.get(provider):
             if setting in message:
                 return f"{setting} is not set. Set it and restart the app, or choose another preset in /config."
 
@@ -115,6 +111,8 @@ def _normalize_llm_activation_error(error: Exception, preset: LLMPreset) -> str:
 def _llm_preset_success_message(
     preset: LLMPreset,
     keys: tuple[str | None, str | None],
+    *,
+    detected_api_key_env: str | None = None,
 ) -> Text:
     """Build the status message for an activated LLM preset."""
     main_key, subagent_key = keys
@@ -122,7 +120,18 @@ def _llm_preset_success_message(
     subagent_mask = _masked_api_key(subagent_key)
     shared_key = main_key is not None and main_key == subagent_key
 
-    message = Text("✓ LLM preset: ", style="dim")
+    if detected_api_key_env is not None:
+        detected_key = main_key or subagent_key
+        detected_mask = _masked_api_key(detected_key)
+        detected = f"{detected_api_key_env} detected"
+        if detected_mask is not None:
+            detected += f" ({detected_mask})"
+        return Text(
+            f"✓ {detected} · using {preset.label}. Change the preset in /config.",
+            style="dim",
+        )
+
+    message = Text(f"✓ LLM preset: {preset.label} · ", style="dim")
     message.append(compact_model_label(preset.main.model, preset.main.reasoning_effort))
     if main_mask is not None and not shared_key:
         message.append(f" [API key {main_mask}]")
@@ -193,7 +202,7 @@ class TabulaflowApp(App[None]):
     def __init__(
         self,
         *,
-        llm_preset: LLMPreset | None,
+        llm_selection: ResolvedLLMSelection,
         output_pane_host: str = "127.0.0.1",
         output_pane_port: int | None = None,
         output_pane_public_url: str | None = None,
@@ -201,7 +210,7 @@ class TabulaflowApp(App[None]):
         import asyncio
 
         super().__init__()
-        self._startup_llm_preset = llm_preset
+        self._llm_selection = llm_selection
         self._output_pane_host = output_pane_host
         self._output_pane_port = output_pane_port
         self._output_pane_public_url = output_pane_public_url
@@ -263,14 +272,14 @@ class TabulaflowApp(App[None]):
     def on_mount(self) -> None:
         self._setup_logging()
         chat_log = self.query_one("#chat-log", VerticalScroll)
-        chat_log.mount(self._banner_for_preset(self._startup_llm_preset))
+        chat_log.mount(self._banner_for_preset(self._llm_selection.preset))
         if debug_enabled():
             mount_debug_widgets(self, chat_log)
         self.query_one("#input-bar", Input).focus()
         chat_log.scroll_end(animate=False)
         self._refresh_esc_hint()
         self._ensure_pane()
-        self._start_llm_activation(self._startup_llm_preset)
+        self._start_llm_activation(self._llm_selection)
 
     def _refresh_esc_hint(self) -> None:
         """Update the docked ``Esc`` hint label to match current state.
@@ -605,30 +614,31 @@ class TabulaflowApp(App[None]):
         if self._session is not None and self._session.llm_preset is not None:
             profile = self._session.llm_preset.main
             model_label = compact_model_label(profile.model, profile.reasoning_effort)
-        elif self._session is None and self._startup_llm_preset is not None:
+        elif self._session is None and self._llm_selection.preset is not None:
             model_label = compact_model_label(
-                self._startup_llm_preset.main.model,
-                self._startup_llm_preset.main.reasoning_effort,
+                self._llm_selection.preset.main.model,
+                self._llm_selection.preset.main.reasoning_effort,
             )
         else:
             model_label = "LLM off"
         model_status.update(Text(f"{model_label} · {_compact_project_dir(self._project_dir)}", style="dim"))
         url_status.update(Text(f"View output in browser: {url}" if url else "", style="dim"))
 
-    def _start_llm_activation(self, preset: LLMPreset | None) -> None:
+    def _start_llm_activation(self, selection: ResolvedLLMSelection) -> None:
         """Initialize the confirmed LLM option in the background."""
-        self._llm_activation_in_progress = preset is not None
+        self._llm_activation_in_progress = selection.preset is not None
         self._llm_activation_error = None
         self.run_worker(
-            self._activate_llm_option(preset),
+            self._activate_llm_option(selection),
             exclusive=True,
             group="llm-activation",
         )
 
-    async def _activate_llm_option(self, preset: LLMPreset | None) -> None:
+    async def _activate_llm_option(self, selection: ResolvedLLMSelection) -> None:
         """Activate a confirmed preset or LLM off."""
         import asyncio
 
+        preset = selection.preset
         if self._session is None:
             await self._show_initialization_spinner("Initializing session...")
         try:
@@ -638,11 +648,12 @@ class TabulaflowApp(App[None]):
             await self._report_session_initialization_failure(error)
             return
         if preset is None:
+            if selection.selection is None:
+                status = "✓ LLM off · no supported API key detected. Choose a preset in /config."
+            else:
+                status = "✓ LLM off · /connect and the data explorer remain available."
             await self._publish_initialization_status(
-                Text(
-                    "✓ LLM off. Connect a data source with /connect and inspect it in the data explorer.",
-                    style="dim",
-                ),
+                Text(status, style="dim"),
             )
             return
         await self._show_initialization_spinner("Initializing agent...")
@@ -650,9 +661,9 @@ class TabulaflowApp(App[None]):
             keys = await asyncio.to_thread(self._initialize_llm_runtime, session, preset)
         except Exception as error:
             logger.debug("LLM preset initialization failed", exc_info=True)
-            await self._finish_llm_activation(preset, result=error)
+            await self._finish_llm_activation(selection, result=error)
             return
-        await self._finish_llm_activation(preset, result=keys)
+        await self._finish_llm_activation(selection, result=keys)
 
     @staticmethod
     def _initialize_llm_runtime(
@@ -693,17 +704,24 @@ class TabulaflowApp(App[None]):
 
     async def _finish_llm_activation(
         self,
-        preset: LLMPreset,
+        selection: ResolvedLLMSelection,
         *,
         result: tuple[str | None, str | None] | Exception,
     ) -> None:
+        preset = selection.preset
+        if preset is None:
+            raise RuntimeError("Cannot finish activation without an LLM preset.")
         if isinstance(result, Exception):
             self._llm_activation_error = _normalize_llm_activation_error(result, preset)
             message = Text.from_markup(f"[{ERROR}]LLM unavailable:[/] ")
             message.append(self._llm_unavailable_message())
         else:
             self._llm_activation_error = None
-            message = _llm_preset_success_message(preset, result)
+            message = _llm_preset_success_message(
+                preset,
+                result,
+                detected_api_key_env=selection.detected_api_key_env,
+            )
         await self._publish_initialization_status(message)
         self._llm_activation_in_progress = False
         input_bar = self.query_one("#input-bar", Input)
@@ -884,7 +902,7 @@ class TabulaflowApp(App[None]):
                 None,
                 partial(
                     SessionState,
-                    llm_preset=self._startup_llm_preset,
+                    llm_preset=self._llm_selection.preset,
                     trajectories_dir=self._runtime_paths.trajectories_dir,
                     data_dir=self._runtime_paths.data_dir,
                     workspace=workspace,
@@ -1066,7 +1084,7 @@ class TabulaflowApp(App[None]):
             from tabulaflow.app.screens import ConfigScreen
 
             self.push_screen(
-                ConfigScreen(session.llm_preset),
+                ConfigScreen(self._llm_selection),
                 self._on_config_closed,
             )
             return
@@ -1076,7 +1094,7 @@ class TabulaflowApp(App[None]):
             chat_log.mount(msg)
             chat_log.scroll_end(animate=False)
 
-    def _on_config_closed(self, selection: LLMSelection | None) -> None:
+    def _on_config_closed(self, selection: ResolvedLLMSelection | None) -> None:
         self.call_after_refresh(self.query_one("#input-bar", Input).focus)
         if selection is None:
             return
@@ -1086,9 +1104,10 @@ class TabulaflowApp(App[None]):
             raise RuntimeError("Config closed before the session was initialized.")
         preset = selection.preset
         session.llm_preset = preset
-        update_app_config(active_llm_preset=None if preset is None else preset.label)
+        self._llm_selection = selection
+        update_app_config(llm_preset=selection.selection)
         self._refresh_bottom_status()
-        self._start_llm_activation(preset)
+        self._start_llm_activation(selection)
 
     async def _run_agent(
         self,
@@ -1169,7 +1188,7 @@ class TabulaflowApp(App[None]):
 
 
 async def run_tui(
-    llm_preset: LLMPreset | None,
+    llm_selection: ResolvedLLMSelection,
     *,
     output_pane_host: str = "127.0.0.1",
     output_pane_port: int | None = None,
@@ -1177,7 +1196,7 @@ async def run_tui(
 ) -> None:
     """Launch the Textual TUI app."""
     app = TabulaflowApp(
-        llm_preset=llm_preset,
+        llm_selection=llm_selection,
         output_pane_host=output_pane_host,
         output_pane_port=output_pane_port,
         output_pane_public_url=output_pane_public_url,

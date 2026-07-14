@@ -15,6 +15,7 @@ from typing import Any, cast
 import pandas as pd
 import pytest
 
+from tabulaflow.app.config import LLM_OFF, ResolvedLLMSelection
 from tabulaflow.app.pane.graphs import build_graph_data
 from tabulaflow.app.pane.cards import build_query_data, render_map_data, render_record_data
 from tabulaflow.app.pane.tables import TABLE_RENDER_MAX_ROWS
@@ -1806,7 +1807,7 @@ def test_view_card_in_pane_marks_turn_as_manual(tmp_path: Path) -> None:
         def push(self, turn: PaneTurn) -> None:
             pushed.append(turn)
 
-    app = TabulaflowApp(llm_preset=None)
+    app = TabulaflowApp(llm_selection=ResolvedLLMSelection(LLM_OFF, None))
     app._pane = FakePane()  # type: ignore[assignment]  # noqa: SLF001
 
     card: PaneCard = {"id": "rec_orders", "label": None, "views": ["data"]}

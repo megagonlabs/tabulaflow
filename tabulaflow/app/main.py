@@ -2,7 +2,7 @@
 
 import typer
 
-from tabulaflow.app.config import LLMPreset
+from tabulaflow.app.config import ResolvedLLMSelection
 
 app = typer.Typer(
     name="tabulaflow",
@@ -12,11 +12,11 @@ app = typer.Typer(
 )
 
 
-def _resolve_startup_llm_preset(*, llm_preset: str | None) -> LLMPreset | None:
-    from tabulaflow.app.config import load_app_config, resolve_startup_llm_preset
+def _resolve_startup_llm_selection(*, llm_preset: str | None) -> ResolvedLLMSelection:
+    from tabulaflow.app.config import load_app_config, resolve_llm_selection
 
     try:
-        return resolve_startup_llm_preset(load_app_config(), cli_preset=llm_preset)
+        return resolve_llm_selection(load_app_config(), override=llm_preset)
     except ValueError as e:
         raise typer.BadParameter(str(e), param_hint="--llm-preset") from None
 
@@ -27,7 +27,7 @@ def chat(
         None,
         "--llm-preset",
         "-p",
-        help="LLM preset label to use for this launch. Overrides the saved active preset without persisting.",
+        help="LLM preset label or 'off' for this launch. Overrides the saved selection without persisting.",
     ),
     output_pane_port: int | None = typer.Option(
         None,
@@ -50,7 +50,7 @@ def chat(
 
     import tabulaflow
 
-    startup_llm_preset = _resolve_startup_llm_preset(llm_preset=llm_preset)
+    startup_llm = _resolve_startup_llm_selection(llm_preset=llm_preset)
 
     tabulaflow.configure(
         column_stats_mode="always_skip",
@@ -63,7 +63,7 @@ def chat(
 
     asyncio.run(
         run_tui(
-            llm_preset=startup_llm_preset,
+            llm_selection=startup_llm,
             output_pane_host=output_pane_host,
             output_pane_port=output_pane_port,
             output_pane_public_url=output_pane_public_url,

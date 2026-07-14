@@ -13,11 +13,12 @@ make sync
 
 
 ```bash
-export OPENAI_API_KEY=...  # not needed if you are only browsing data
+export OPENAI_API_KEY=...  # automatically selects the OpenAI balanced preset
 uv run tabulaflow
 ```
 
 Use `/connect` to connect to a data source (Huggingface datasets, local csv/excel files, SQL databases, etc.), then either run `/browse` to manually browse the data or say "Analyze" to have LLM analyze the data.
+Without a supported API key, the app starts with the LLM off; choose `Off` or a named preset in `/config`.
 
 ## Utility Commands (for developers)
 
@@ -417,7 +418,7 @@ July 13
 - [x] Improve LLM configuration
 - [x] Fix structured output for Claude - UserError: Anthropic does not support thinking and output tools at the same time. Use `output_type=NativeOutput(...)` instead.
 
-- [ ] Default LLM preset for first-time user
+- [x] Default LLM preset for first-time user
 - [ ] Other config options - concurrency
 - [ ] Gemini levels - no xhigh
 - [ ] Fireworks preset

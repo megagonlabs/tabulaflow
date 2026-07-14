@@ -2,14 +2,14 @@
 
 Distinct from the process-level library config in ``tabulaflow.core.config``:
 this holds durable preferences for the interactive app only, persisted at
-``~/.tabulaflow/app_config.json``. The config stores an optional selected LLM
-preset plus optional user-defined presets. CLI flags are runtime overrides and
-are not persisted here.
+``~/.tabulaflow/app_config.json``. The config stores an LLM preset selection
+plus optional user-defined presets. CLI flags are runtime overrides and are not
+persisted here.
 
 Example config with an explicitly selected custom preset::
 
     {
-      "active_llm_preset": "My research stack",
+      "llm_preset": "My research stack",
       "custom_llm_presets": [
         {
           "label": "My research stack",
@@ -30,12 +30,26 @@ from __future__ import annotations
 
 import json
 import os
+from dataclasses import dataclass
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
+from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator, model_validator
 
 APP_CONFIG_PATH = os.path.join(os.path.expanduser("~"), ".tabulaflow", "app_config.json")
+LLM_OFF = "off"
 LLM_OFF_LABEL = "Off"
+PROVIDER_API_KEY_ENV = {
+    "anthropic": "ANTHROPIC_API_KEY",
+    "fireworks": "FIREWORKS_API_KEY",
+    "openai": "OPENAI_API_KEY",
+    "openai-chat": "OPENAI_API_KEY",
+    "openai-responses": "OPENAI_API_KEY",
+    "together": "TOGETHER_API_KEY",
+}
+_INFERRED_PRESET_BY_API_KEY = (
+    (PROVIDER_API_KEY_ENV["openai"], "OpenAI balanced"),
+    (PROVIDER_API_KEY_ENV["anthropic"], "Anthropic balanced"),
+)
 
 ReasoningEffort = Literal["low", "medium", "high", "xhigh"]
 """Unified thinking level, translated per provider by pydantic-ai (budget tokens
@@ -64,9 +78,12 @@ class LLMPreset(BaseModel):
     @field_validator("label")
     @classmethod
     def label_is_not_reserved(cls, label: str) -> str:
-        """Reject the UI-only LLM off label as a preset name."""
-        if label.strip().casefold() == LLM_OFF_LABEL.casefold():
-            raise ValueError(f"{LLM_OFF_LABEL!r} is reserved for disabling the LLM")
+        """Reject the label reserved for disabling the LLM."""
+        label = label.strip()
+        if not label:
+            raise ValueError("LLM preset labels cannot be empty")
+        if label.casefold() == LLM_OFF:
+            raise ValueError(f"{label!r} is reserved for LLM preset selection")
         return label
 
 
@@ -122,12 +139,36 @@ DEFAULT_LLM_PRESETS: tuple[LLMPreset, ...] = tuple(
 
 
 class AppConfig(BaseModel):
-    """The user's durable preferences for the interactive app."""
+    """The user's durable preferences for the interactive app.
 
-    model_config = ConfigDict(validate_assignment=True, protected_namespaces=())
+    ``llm_preset=None`` means the user has no explicit preference, so startup
+    infers a preset from available credentials. ``off`` and preset labels are
+    explicit, persistent choices.
+    """
 
-    active_llm_preset: str | None = None
+    model_config = ConfigDict(validate_assignment=True, protected_namespaces=(), extra="forbid")
+
+    llm_preset: str | None = None
     custom_llm_presets: list[LLMPreset] = Field(default_factory=list)
+
+    @field_validator("llm_preset")
+    @classmethod
+    def normalize_llm_preset(cls, selection: str | None) -> str | None:
+        """Normalize explicit Off while preserving preset label casing."""
+        if selection is None:
+            return None
+        selection = selection.strip()
+        if not selection:
+            raise ValueError("LLM preset selection cannot be empty")
+        return LLM_OFF if selection.casefold() == LLM_OFF else selection
+
+    @model_validator(mode="after")
+    def selected_preset_exists(self) -> AppConfig:
+        """Reject named selections that do not exist in the preset catalog."""
+        selection = self.llm_preset
+        if selection is not None and selection != LLM_OFF and self.preset_by_label(selection) is None:
+            raise ValueError(f"Unknown LLM preset: {selection}")
+        return self
 
     @property
     def llm_presets(self) -> list[LLMPreset]:
@@ -147,34 +188,71 @@ class AppConfig(BaseModel):
                 return preset
         return None
 
-    @property
-    def active_preset(self) -> LLMPreset | None:
-        """Return the selected preset, or None when no valid preset is selected."""
-        if self.active_llm_preset is None:
-            return None
-        return self.preset_by_label(self.active_llm_preset)
+
+@dataclass(frozen=True)
+class ResolvedLLMSelection:
+    """User LLM intent paired atomically with its effective runtime preset."""
+
+    selection: str | None
+    preset: LLMPreset | None
+    # Environment-variable name that caused inference (for example,
+    # OPENAI_API_KEY), never the secret value. None for explicit selections.
+    detected_api_key_env: str | None = None
+
+    def __post_init__(self) -> None:
+        """Reject combinations that cannot result from selection resolution."""
+        if self.selection is not None and not self.selection.strip():
+            raise ValueError("LLM selection cannot be empty")
+        if self.selection == LLM_OFF and self.preset is not None:
+            raise ValueError("LLM off cannot resolve to a preset")
+        if self.selection not in {None, LLM_OFF} and self.preset is None:
+            raise ValueError("A named LLM selection must resolve to a preset")
+        if self.selection not in {None, LLM_OFF} and self.preset is not None and self.selection != self.preset.label:
+            raise ValueError("A named LLM selection must match its preset label")
+        if self.detected_api_key_env is not None and (self.selection is not None or self.preset is None):
+            raise ValueError("Detected credentials are only valid for an inferred preset")
 
 
-def resolve_startup_llm_preset(config: AppConfig, *, cli_preset: str | None = None) -> LLMPreset | None:
-    """Resolve the startup LLM preset from CLI intent and persisted config.
+def _normalize_llm_selection(selection: str) -> str:
+    selection = selection.strip()
+    return LLM_OFF if selection.casefold() == LLM_OFF else selection
+
+
+def resolve_llm_selection(config: AppConfig, *, override: str | None = None) -> ResolvedLLMSelection:
+    """Resolve persisted or launch-specific LLM intent into a runtime preset.
 
     Args:
         config: Loaded app config.
-        cli_preset: Optional preset label supplied for this launch only.
+        override: Optional ``off`` or preset label for this launch.
 
     Returns:
-        The resolved preset, or ``None`` when the LLM should be off.
+        The selection and its effective preset. A ``None`` selection means the
+        user has no explicit preference, so credentials determine the preset.
+        The preset is ``None`` when no supported credentials are available or
+        when the selection is ``off``.
 
     Raises:
-        ValueError: If ``cli_preset`` names no known preset.
+        ValueError: If the selection is empty or names no known preset.
     """
-    if cli_preset is not None:
-        preset = config.preset_by_label(cli_preset)
-        if preset is None:
-            raise ValueError(f"Unknown LLM preset: {cli_preset}")
-        return preset
+    selection = config.llm_preset if override is None else _normalize_llm_selection(override)
+    if selection == "":
+        raise ValueError("LLM preset selection cannot be empty")
+    if selection == LLM_OFF:
+        return ResolvedLLMSelection(selection=selection, preset=None)
+    if selection is None:
+        for variable, label in _INFERRED_PRESET_BY_API_KEY:
+            if os.getenv(variable, "").strip():
+                return ResolvedLLMSelection(
+                    selection=None,
+                    preset=config.preset_by_label(label),
+                    detected_api_key_env=variable,
+                )
+        return ResolvedLLMSelection(selection=selection, preset=None)
 
-    return config.active_preset
+    preset = config.preset_by_label(selection)
+    if preset is None:
+        raise ValueError(f"Unknown LLM preset: {selection}")
+    return ResolvedLLMSelection(selection=selection, preset=preset)
 
 
 def load_app_config(path: str = APP_CONFIG_PATH) -> AppConfig:

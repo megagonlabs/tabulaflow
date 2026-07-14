@@ -7,7 +7,6 @@ from __future__ import annotations
 
 import json
 import re
-from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -18,7 +17,13 @@ from textual.containers import Horizontal, Vertical
 from textual.screen import Screen
 from textual.widgets import DataTable, Static, TextArea
 
-from tabulaflow.app.config import APP_CONFIG_PATH, LLM_OFF_LABEL, LLMPreset, load_app_config
+from tabulaflow.app.config import (
+    APP_CONFIG_PATH,
+    LLM_OFF,
+    LLM_OFF_LABEL,
+    ResolvedLLMSelection,
+    load_app_config,
+)
 from tabulaflow.app.session import compact_model_label
 from tabulaflow.app.theme import ACCENT, ACCENT_BOLD, DRACULA_TRANSPARENT, ERROR, FK_MARKER, KEY_HINT, PK_MARKER
 
@@ -1737,17 +1742,6 @@ _CURRENT_CUSTOM_PRESET_LABEL = "Current custom"
 _LLM_OPTION_LABEL_WIDTH = 20
 
 
-@dataclass(frozen=True)
-class LLMSelection:
-    """Confirmed LLM option returned by the config screen."""
-
-    preset: LLMPreset | None
-
-
-def _current_custom_preset(preset: LLMPreset) -> LLMPreset:
-    return preset.model_copy(update={"label": _CURRENT_CUSTOM_PRESET_LABEL})
-
-
 class _ConfigLLMRow(Horizontal):
     """LLM option row whose model column retains its indent when wrapped."""
 
@@ -1768,7 +1762,7 @@ class _ConfigLLMRow(Horizontal):
         self._models.update(models)
 
 
-class ConfigScreen(Screen[LLMSelection | None]):
+class ConfigScreen(Screen[ResolvedLLMSelection | None]):
     """Full-screen editor for the active LLM mode."""
 
     DEFAULT_CSS = """
@@ -1816,23 +1810,34 @@ class ConfigScreen(Screen[LLMSelection | None]):
         Binding("enter", "select", "Select", show=False),
     ]
 
-    def __init__(self, current_preset: LLMPreset | None) -> None:
+    def __init__(self, current: ResolvedLLMSelection) -> None:
         super().__init__()
         app_config = load_app_config()
         presets = list(app_config.llm_presets)
-        if current_preset is not None and current_preset not in presets:
-            presets.insert(0, _current_custom_preset(current_preset))
-        self._options: list[LLMPreset | None] = [None, *presets]
-        self._option_rows = [_ConfigLLMRow() for _ in self._options]
-        if current_preset is None:
-            self._active_index = 0
-        else:
-            self._active_index = next(
-                (i for i, preset in enumerate(self._options) if preset == current_preset),
-                1,
+        preset_options = [ResolvedLLMSelection(preset.label, preset) for preset in presets]
+        current_custom_preset = current.preset if current.preset is not None and current.preset not in presets else None
+        self._current_custom_preset = current_custom_preset
+        if current_custom_preset is not None:
+            preset_options.insert(
+                0,
+                ResolvedLLMSelection(
+                    current.selection or current_custom_preset.label,
+                    current_custom_preset,
+                ),
             )
+        self._options = [
+            ResolvedLLMSelection(LLM_OFF, None),
+            *preset_options,
+        ]
+        self._option_rows = [_ConfigLLMRow() for _ in self._options]
+        self._active_index = next(
+            (i for i, option in enumerate(self._options) if option.preset == current.preset),
+            0,
+        )
         self._selected_index = self._active_index
         self._cursor = self._active_index
+        self._current = current
+        self._selection_confirmed = False
 
     def compose(self) -> ComposeResult:
         config_path = APP_CONFIG_PATH.replace(str(Path.home()), "~", 1)
@@ -1853,7 +1858,8 @@ class ConfigScreen(Screen[LLMSelection | None]):
         self._refresh()
 
     def _option_row_parts(self, i: int) -> tuple[Text, Text, Text]:
-        preset = self._options[i]
+        option = self._options[i]
+        preset = option.preset
         selected = self._cursor == i
         active = self._selected_index == i
         markers = Text()
@@ -1863,12 +1869,19 @@ class ConfigScreen(Screen[LLMSelection | None]):
             label_style = ACCENT_BOLD if selected else ACCENT
         else:
             label_style = "bold" if selected else ""
-        label = Text(LLM_OFF_LABEL if preset is None else preset.label, style=label_style)
+        if preset is None:
+            option_label = LLM_OFF_LABEL
+        elif preset == self._current_custom_preset:
+            option_label = _CURRENT_CUSTOM_PRESET_LABEL
+        else:
+            option_label = preset.label
+        label = Text(option_label, style=label_style)
         label.truncate(_LLM_OPTION_LABEL_WIDTH, overflow="ellipsis", pad=True)
         label.append("  ")
-        if preset is None:
+        if option.selection == LLM_OFF:
             models = Text("Connect and browse data", style="dim")
         else:
+            assert preset is not None
             models = Text(
                 f"{compact_model_label(preset.main.model, preset.main.reasoning_effort)}"
                 f" → {compact_model_label(preset.subagent.model, preset.subagent.reasoning_effort)}",
@@ -1895,10 +1908,15 @@ class ConfigScreen(Screen[LLMSelection | None]):
 
     def _select_option(self, i: int) -> None:
         self._selected_index = i
+        self._selection_confirmed = True
         self._refresh()
 
     def action_close(self) -> None:
-        if self._selected_index == self._active_index:
+        if not self._selection_confirmed:
             self.dismiss(None)
             return
-        self.dismiss(LLMSelection(self._options[self._selected_index]))
+        selection = self._options[self._selected_index]
+        if self._current.selection is not None and selection.selection == self._current.selection:
+            self.dismiss(None)
+            return
+        self.dismiss(selection)

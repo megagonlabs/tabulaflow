@@ -11,9 +11,8 @@ from textual.widgets import Button, Input
 from tabulaflow.app import session as session_module
 from tabulaflow.app import tui
 from tabulaflow.app.commands import CommandResult
-from tabulaflow.app.config import LLMRoleConfig, LLMPreset, ReasoningEffort
+from tabulaflow.app.config import LLM_OFF, LLMRoleConfig, LLMPreset, ReasoningEffort, ResolvedLLMSelection
 from tabulaflow.app.runtime_paths import RuntimePaths
-from tabulaflow.app.screens import LLMSelection
 from tabulaflow.app.session import SessionState
 from tabulaflow.app.tui import TabulaflowApp
 from tabulaflow.app.widgets import HistoryInput, SpinnerWidget, SystemMessage, UserMessage
@@ -45,6 +44,20 @@ def _preset(
     )
 
 
+def _selection(
+    preset: LLMPreset | None,
+    *,
+    inferred: bool = False,
+    detected_api_key_env: str | None = None,
+) -> ResolvedLLMSelection:
+    selection = None if inferred else (preset.label if preset is not None else LLM_OFF)
+    return ResolvedLLMSelection(selection, preset, detected_api_key_env)
+
+
+def _app(preset: LLMPreset | None) -> TabulaflowApp:
+    return TabulaflowApp(llm_selection=_selection(preset))
+
+
 def _activate_selected(session: SessionState) -> ChatAgent:
     assert session.llm_preset is not None
     session.activate_llm_preset(session.llm_preset)
@@ -63,9 +76,7 @@ async def test_ensure_session_passes_session_paths_by_keyword(tmp_path: Path, mo
     monkeypatch.chdir(project_dir)
 
     preset = _preset(model="test:model", subagent_model="test:subagent")
-    app = TabulaflowApp(
-        llm_preset=preset,
-    )
+    app = _app(preset)
     runtime_paths = RuntimePaths.for_session("test-session")
     app._runtime_paths = runtime_paths
 
@@ -113,7 +124,7 @@ def test_bottom_status_shows_selected_model_before_agent_is_ready(
         reasoning_effort="high",
         subagent_model="anthropic:claude-sonnet-4-5-20250929",
     )
-    app = TabulaflowApp(llm_preset=preset)
+    app = _app(preset)
     app._project_dir = tmp_path
     session = SessionState(
         llm_preset=preset,
@@ -138,8 +149,8 @@ def test_bottom_status_shows_selected_model_before_agent_is_ready(
 def test_bottom_status_shows_startup_model_before_session_is_ready(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    app = TabulaflowApp(
-        llm_preset=_preset(
+    app = _app(
+        _preset(
             model="anthropic:claude-opus-4-8",
             reasoning_effort="high",
             subagent_model="anthropic:claude-sonnet-4-5-20250929",
@@ -162,7 +173,7 @@ def test_bottom_status_shows_startup_model_before_session_is_ready(
 def test_bottom_status_shows_llm_off_before_session_when_no_profile(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    app = TabulaflowApp(llm_preset=None)
+    app = _app(None)
     app._project_dir = tmp_path
     model_status = _StatusCapture()
     url_status = _StatusCapture()
@@ -345,7 +356,7 @@ async def test_startup_llm_activation_reports_session_then_agent_progress(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     preset = _preset(model="test:model")
-    app = TabulaflowApp(llm_preset=preset)
+    app = _app(preset)
     labels: list[str] = []
 
     async def fake_show(label: str) -> None:
@@ -355,7 +366,7 @@ async def test_startup_llm_activation_reports_session_then_agent_progress(
         return object()
 
     async def fake_finish(
-        _preset: LLMPreset,
+        _selection: ResolvedLLMSelection,
         *,
         result: tuple[str | None, str | None] | Exception,
     ) -> None:
@@ -366,7 +377,7 @@ async def test_startup_llm_activation_reports_session_then_agent_progress(
     monkeypatch.setattr(app, "_initialize_llm_runtime", lambda _session, _preset: (None, None))
     monkeypatch.setattr(app, "_finish_llm_activation", fake_finish)
 
-    await app._activate_llm_option(preset)
+    await app._activate_llm_option(_selection(preset))
 
     assert labels == ["Initializing session...", "Initializing agent..."]
 
@@ -383,7 +394,7 @@ def test_llm_preset_success_message_places_api_keys_by_role() -> None:
         preset,
         ("sk-shared123456789ABCD", "sk-shared123456789ABCD"),
     )
-    assert shared.plain == "✓ LLM preset: Opus 4.8 high → GPT 5.4 Mini medium [API key sk-***ABCD]"
+    assert shared.plain == "✓ LLM preset: Test · Opus 4.8 high → GPT 5.4 Mini medium [API key sk-***ABCD]"
     assert str(shared.style) == "dim"
 
     distinct = tui._llm_preset_success_message(
@@ -391,8 +402,21 @@ def test_llm_preset_success_message_places_api_keys_by_role() -> None:
         ("sk-main123456789AAAA", "sk-subagent123456BBBB"),
     )
     assert distinct.plain == (
-        "✓ LLM preset: Opus 4.8 high [API key sk-***AAAA] → GPT 5.4 Mini medium [API key sk-***BBBB]"
+        "✓ LLM preset: Test · Opus 4.8 high [API key sk-***AAAA] → GPT 5.4 Mini medium [API key sk-***BBBB]"
     )
+
+    inferred = tui._llm_preset_success_message(
+        preset,
+        ("sk-shared123456789ABCD", "sk-shared123456789ABCD"),
+        detected_api_key_env="ANTHROPIC_API_KEY",
+    )
+    assert inferred.plain == ("✓ ANTHROPIC_API_KEY detected (sk-***ABCD) · using Test. Change the preset in /config.")
+    short_key = tui._llm_preset_success_message(
+        preset,
+        ("short", "short"),
+        detected_api_key_env="ANTHROPIC_API_KEY",
+    )
+    assert short_key.plain == "✓ ANTHROPIC_API_KEY detected · using Test. Change the preset in /config."
 
     assert tui._masked_api_key("fw-api123456789WXYZ") == "fw-***WXYZ"
     assert tui._masked_api_key("short") is None
@@ -424,7 +448,7 @@ def test_llm_activation_error_normalization_is_actionable_and_bounded(
     assert openai_message == (
         "OPENAI_API_KEY is not set. Set it and restart the app, or choose another preset in /config."
     )
-    app = TabulaflowApp(llm_preset=openai_preset)
+    app = _app(openai_preset)
     app._llm_activation_error = openai_message
     assert app._llm_unavailable_message() == (
         "OPENAI_API_KEY is not set. Set it and restart the app, or choose another preset in /config. "
@@ -460,7 +484,7 @@ def test_llm_activation_error_normalization_is_actionable_and_bounded(
 @pytest.mark.asyncio
 async def test_session_failure_does_not_enter_llm_error_path(monkeypatch: pytest.MonkeyPatch) -> None:
     preset = _preset()
-    app = TabulaflowApp(llm_preset=preset)
+    app = _app(preset)
     error = OSError("workspace unavailable")
     reported: list[Exception] = []
 
@@ -481,7 +505,7 @@ async def test_session_failure_does_not_enter_llm_error_path(monkeypatch: pytest
     monkeypatch.setattr(app, "_report_session_initialization_failure", fake_report)
     monkeypatch.setattr(app, "_finish_llm_activation", unexpected_finish)
 
-    await app._activate_llm_option(preset)
+    await app._activate_llm_option(_selection(preset))
 
     assert reported == [error]
     assert app._llm_activation_error is None
@@ -491,7 +515,7 @@ async def test_session_failure_does_not_enter_llm_error_path(monkeypatch: pytest
 async def test_starting_llm_off_reports_available_tools(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    app = TabulaflowApp(llm_preset=None)
+    app = _app(None)
     session_started = asyncio.Event()
     release_session = asyncio.Event()
 
@@ -514,11 +538,11 @@ async def test_starting_llm_off_reports_available_tools(
             await pilot.pause()
         assert len(app.query(SpinnerWidget)) == 0
         messages = [str(message.render()) for message in app.query(SystemMessage)]
-        assert messages == ["✓ LLM off. Connect a data source with /connect and inspect it in the data explorer."]
+        assert messages == ["✓ LLM off · /connect and the data explorer remain available."]
         app._llm_activation_error = "old failure"
         app._llm_activation_in_progress = True
 
-        app._start_llm_activation(None)
+        app._start_llm_activation(_selection(None))
         for _ in range(2):
             await pilot.pause()
 
@@ -527,13 +551,34 @@ async def test_starting_llm_off_reports_available_tools(
         assert not app.query_one("#input-bar", Input).disabled
         messages = [str(message.render()) for message in app.query(SystemMessage)]
         assert messages == [
-            "✓ LLM off. Connect a data source with /connect and inspect it in the data explorer.",
-            "✓ LLM off. Connect a data source with /connect and inspect it in the data explorer.",
+            "✓ LLM off · /connect and the data explorer remain available.",
+            "✓ LLM off · /connect and the data explorer remain available.",
         ]
 
 
 @pytest.mark.asyncio
-async def test_startup_activation_reports_masked_api_key_in_chat_log(
+async def test_unconfigured_without_detected_key_explains_why_llm_is_off(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    app = TabulaflowApp(llm_selection=_selection(None, inferred=True))
+
+    async def fake_ensure_session() -> object:
+        return object()
+
+    monkeypatch.setattr(app, "_setup_logging", lambda: None)
+    monkeypatch.setattr(app, "_ensure_pane", lambda: None)
+    monkeypatch.setattr(app, "_ensure_session", fake_ensure_session)
+
+    async with app.run_test() as pilot:
+        for _ in range(3):
+            await pilot.pause()
+
+        messages = [str(message.render()) for message in app.query(SystemMessage)]
+        assert messages == ["✓ LLM off · no supported API key detected. Choose a preset in /config."]
+
+
+@pytest.mark.asyncio
+async def test_inferred_startup_reports_masked_api_key_in_chat_log(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     preset = _preset(
@@ -542,7 +587,7 @@ async def test_startup_activation_reports_masked_api_key_in_chat_log(
         subagent_model="openai-responses:gpt-5-mini",
         subagent_reasoning_effort="medium",
     )
-    app = TabulaflowApp(llm_preset=preset)
+    app = TabulaflowApp(llm_selection=_selection(preset, inferred=True, detected_api_key_env="OPENAI_API_KEY"))
 
     class FakeSession:
         def activate_llm_preset(self, selected: LLMPreset) -> tuple[str | None, str | None]:
@@ -560,7 +605,7 @@ async def test_startup_activation_reports_masked_api_key_in_chat_log(
         for _ in range(3):
             await pilot.pause()
         messages = [str(message.render()) for message in app.query(SystemMessage)]
-        assert messages == ["✓ LLM preset: GPT 5 medium → GPT 5 Mini medium [API key sk-***E0QA]"]
+        assert messages == ["✓ OPENAI_API_KEY detected (sk-***E0QA) · using Test. Change the preset in /config."]
         assert not app._llm_activation_in_progress
         assert not app.query_one("#input-bar", Input).disabled
 
@@ -570,7 +615,7 @@ async def test_failed_startup_activation_reports_error_and_unblocks_input(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     preset = _preset(model="anthropic:claude-opus-4-8", reasoning_effort="high")
-    app = TabulaflowApp(llm_preset=preset)
+    app = _app(preset)
 
     class FakeSession:
         def activate_llm_preset(self, _selected: LLMPreset) -> tuple[str | None, str | None]:
@@ -603,7 +648,7 @@ async def test_failed_startup_activation_reports_error_and_unblocks_input(
 async def test_llm_activation_preserves_blocked_submissions(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    app = TabulaflowApp(llm_preset=None)
+    app = _app(None)
 
     async def fake_ensure_session() -> object:
         return object()
@@ -638,7 +683,7 @@ async def test_llm_activation_preserves_blocked_submissions(
 
 @pytest.mark.asyncio
 async def test_submission_worker_blocks_input_until_completion(monkeypatch: pytest.MonkeyPatch) -> None:
-    app = TabulaflowApp(llm_preset=None)
+    app = _app(None)
     command_started = asyncio.Event()
     release_command = asyncio.Event()
 
@@ -680,7 +725,7 @@ async def test_submission_worker_blocks_input_until_completion(monkeypatch: pyte
 
 @pytest.mark.asyncio
 async def test_submission_worker_covers_and_can_cancel_session_preflight(monkeypatch: pytest.MonkeyPatch) -> None:
-    app = TabulaflowApp(llm_preset=None)
+    app = _app(None)
     preflight_started = asyncio.Event()
     release_preflight = asyncio.Event()
 
@@ -726,10 +771,10 @@ async def test_submission_worker_covers_and_can_cancel_session_preflight(monkeyp
 
 @pytest.mark.asyncio
 async def test_config_selection_persists_and_starts_one_activation(monkeypatch: pytest.MonkeyPatch) -> None:
-    app = TabulaflowApp(llm_preset=None)
+    app = _app(None)
     session = SimpleNamespace(llm_preset=None)
     updates: list[dict[str, object]] = []
-    activations: list[LLMPreset | None] = []
+    activations: list[ResolvedLLMSelection] = []
 
     async def fake_ensure_session() -> object:
         app._session = session  # type: ignore[assignment]
@@ -746,17 +791,18 @@ async def test_config_selection_persists_and_starts_one_activation(monkeypatch: 
         monkeypatch.setattr(app, "_start_llm_activation", activations.append)
         preset = _preset(label="Selected")
 
-        app._on_config_closed(LLMSelection(preset))
+        selection = ResolvedLLMSelection("Selected", preset)
+        app._on_config_closed(selection)
         await pilot.pause()
 
         assert session.llm_preset == preset
-        assert updates == [{"active_llm_preset": "Selected"}]
-        assert activations == [preset]
+        assert updates == [{"llm_preset": "Selected"}]
+        assert activations == [selection]
 
 
 @pytest.mark.asyncio
 async def test_closing_config_restores_input_focus(monkeypatch: pytest.MonkeyPatch) -> None:
-    app = TabulaflowApp(llm_preset=None)
+    app = _app(None)
 
     async def fake_ensure_session() -> object:
         return object()
