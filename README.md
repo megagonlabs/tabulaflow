@@ -413,14 +413,15 @@ July 11
 July 12
 - [x] Improve LLM configuration
 
-- [ ] Active agent construction and show masked API key in chat panel
-- [ ] Improve config panel layout - title, present alignment
+July 13
+- [x] Improve LLM configuration
+- [x] Fix structured output for Claude - UserError: Anthropic does not support thinking and output tools at the same time. Use `output_type=NativeOutput(...)` instead.
 
+- [ ] Default LLM preset for first-time user
 - [ ] Other config options - concurrency
 - [ ] Gemini levels - no xhigh
-- [ ] "Initializing..." when building agent
 - [ ] Fireworks preset
-- [ ] UserError: Anthropic does not support thinking and output tools at the same time. Use `output_type=NativeOutput(...)` instead.
+
 - [ ] Kushan: better error message for /connect failure
 
 - [ ] Inline code block (``) highlighting
