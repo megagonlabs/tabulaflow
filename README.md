@@ -422,6 +422,10 @@ July 13
 
 
 
+- [ ] IMPORTANT: decouple data and rendered format (show unit "cm" while still enabling sorting by value)
+- [ ] Subagent reuse
+
+
 - [ ] Other config options - concurrency
 - [ ] Gemini levels - no xhigh
 - [ ] Fireworks preset
@@ -440,7 +444,6 @@ July 13
 - [ ] Tune prompt for non-data tasks
 - [ ] Chrome browser
 
-- [ ] IMPORTANT: decouple data and rendered format (show unit "cm" while still enabling sorting by value)
 - [ ] sample_data disconnect policy
 - [ ] Banner - /connect pre-built data sources as most important use case
 - [ ] Include multimodal data in sample_data
