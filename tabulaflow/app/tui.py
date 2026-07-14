@@ -5,13 +5,14 @@ from __future__ import annotations
 import logging
 import os
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Awaitable
 
 from rich.text import Text
 from textual import events
 from textual.app import App, ComposeResult
 from textual.binding import Binding
 from textual.containers import Horizontal, Vertical, VerticalScroll
+from textual.worker import Worker
 from textual.widgets import Button, Input, Static
 
 from tabulaflow.app.commands import COMMAND_PREFIX, handle_command
@@ -218,11 +219,10 @@ class TabulaflowApp(App[None]):
         self._session_lock = asyncio.Lock()
         self._llm_activation_lock = asyncio.Lock()
         self._llm_activation_request_id = 0
-        self._llm_activation_pending = False
+        self._llm_activation_in_progress = False
         self._llm_activation_error: str | None = None
         self._initialization_spinner: SpinnerWidget | None = None
-        self._busy = False
-        self._current_worker: object | None = None
+        self._submission_worker: Worker[None] | None = None
         self._last_idle_interrupt_ts: float = 0.0
         self._saved_input_placeholder: str | None = None
         self._last_quit_hint_key: str = "Ctrl+C"
@@ -477,13 +477,13 @@ class TabulaflowApp(App[None]):
 
     def action_interrupt_or_quit(self) -> None:
         """Ctrl+C:
-        - If a turn is running: cancel it.
+        - If a submission is running: cancel it.
         - Else if the input has text: clear it.
         - Else (input empty): show the quit hint; a second press within the
           window quits.
         """
-        if self._busy and self._current_worker is not None:
-            self._current_worker.cancel()  # type: ignore[attr-defined]
+        if self._submission_worker is not None:
+            self._submission_worker.cancel()
             self._last_idle_interrupt_ts = 0.0
             return
 
@@ -501,10 +501,10 @@ class TabulaflowApp(App[None]):
 
     def action_quit_only(self) -> None:
         """Ctrl+D:
-        - Never interrupts a running turn.
+        - Never interrupts a running submission.
         - Else mirrors idle quit behavior (double press within the window).
         """
-        if self._busy:
+        if self._submission_worker is not None:
             return
 
         inp = self.query_one("#input-bar", Input)
@@ -619,7 +619,7 @@ class TabulaflowApp(App[None]):
     def _request_llm_option(self, preset: LLMPreset | None) -> None:
         """Start latest-wins background activation for an LLM option."""
         self._llm_activation_request_id += 1
-        self._llm_activation_pending = preset is not None
+        self._llm_activation_in_progress = preset is not None
         self._llm_activation_error = None
         request_id = self._llm_activation_request_id
         self.run_worker(
@@ -716,7 +716,7 @@ class TabulaflowApp(App[None]):
         detail = _sanitize_exception_message(error)
         message.append(f"{type(error).__name__}: {detail}" if detail else f"{type(error).__name__}.")
         if await self._publish_initialization_status(request_id, message):
-            self._llm_activation_pending = False
+            self._llm_activation_in_progress = False
 
     async def _finish_llm_activation(
         self,
@@ -736,7 +736,7 @@ class TabulaflowApp(App[None]):
             message = _llm_preset_success_message(preset, result)
         if not await self._publish_initialization_status(request_id, message):
             return
-        self._llm_activation_pending = False
+        self._llm_activation_in_progress = False
         input_bar = self.query_one("#input-bar", Input)
         if len(self.screen_stack) == 1:
             input_bar.focus()
@@ -966,16 +966,13 @@ class TabulaflowApp(App[None]):
         if not display_text:
             return
 
-        if self._busy:
-            return
-
         inp = event.input
-        text = inp.expand_paste_tokens(display_text) if isinstance(inp, HistoryInput) else display_text
-        is_command = text.startswith(COMMAND_PREFIX)
-
-        if self._llm_activation_pending and not is_command:
+        if self._submission_worker is not None or self._llm_activation_in_progress:
             inp.focus()
             return
+
+        text = inp.expand_paste_tokens(display_text) if isinstance(inp, HistoryInput) else display_text
+        is_command = text.startswith(COMMAND_PREFIX)
 
         if isinstance(inp, HistoryInput):
             inp.record_submission(display_text)
@@ -984,11 +981,12 @@ class TabulaflowApp(App[None]):
         chat_log = self.query_one("#chat-log", VerticalScroll)
 
         if is_command:
-            self._busy = True
             user_msg = UserMessage(text)
             await chat_log.mount(user_msg)
             chat_log.scroll_end(animate=False)
-            self._current_worker = self.run_worker(self._handle_slash_command(text, chat_log, user_msg, display_text))
+            self._submission_worker = self.run_worker(
+                self._run_submission(self._handle_slash_command(text, chat_log, user_msg, display_text))
+            )
             return
 
         session = await self._ensure_session()
@@ -1014,10 +1012,18 @@ class TabulaflowApp(App[None]):
         await chat_log.mount(user_msg)
         chat_log.scroll_end(animate=False)
 
-        self._busy = True
-        self._current_worker = self.run_worker(
-            self._run_agent(text, session, chat_log, user_msg, display_text), exclusive=True, group="agent"
+        self._submission_worker = self.run_worker(
+            self._run_submission(self._run_agent(text, session, chat_log, user_msg, display_text)),
+            exclusive=True,
+            group="agent",
         )
+
+    async def _run_submission(self, operation: Awaitable[None]) -> None:
+        """Run an accepted submission and release its input gate afterward."""
+        try:
+            await operation
+        finally:
+            self._submission_worker = None
 
     @staticmethod
     async def _connect_spinner_label(parts: list[str]) -> str:
@@ -1063,8 +1069,6 @@ class TabulaflowApp(App[None]):
             self._restore_input_text(display_text if display_text is not None else text)
             raise
         finally:
-            self._busy = False
-            self._current_worker = None
             if spinner is not None:
                 await spinner.remove()
 
@@ -1135,8 +1139,6 @@ class TabulaflowApp(App[None]):
             msg = SystemMessage(error_text)
             await chat_log.mount(msg)
             chat_log.scroll_end(animate=False)
-            self._busy = False
-            self._current_worker = None
             self._refresh_bottom_status()
             return
         progress = AgentProgressWidget()
@@ -1169,10 +1171,6 @@ class TabulaflowApp(App[None]):
             await chat_log.mount(msg)
             chat_log.scroll_end(animate=False)
             return
-        finally:
-            self._busy = False
-            self._current_worker = None
-
         if result is None:
             return  # normal completion always yields a terminal Finished
 

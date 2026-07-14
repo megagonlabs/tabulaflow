@@ -569,14 +569,14 @@ async def test_selecting_llm_off_cancels_activation_and_reports_available_tools(
         assert messages == ["✓ LLM off. Connect a data source with /connect and inspect it in the data explorer."]
         request_id = app._llm_activation_request_id
         app._llm_activation_error = "old failure"
-        app._llm_activation_pending = True
+        app._llm_activation_in_progress = True
 
         app._on_llm_option_selected(None)
         for _ in range(2):
             await pilot.pause()
 
         assert app._llm_activation_request_id == request_id + 1
-        assert not app._llm_activation_pending
+        assert not app._llm_activation_in_progress
         assert app._llm_activation_error is None
         assert not app.query_one("#input-bar", Input).disabled
         messages = [str(message.render()) for message in app.query(SystemMessage)]
@@ -615,7 +615,7 @@ async def test_startup_activation_reports_masked_api_key_in_chat_log(
             await pilot.pause()
         messages = [str(message.render()) for message in app.query(SystemMessage)]
         assert messages == ["✓ LLM preset: GPT 5 medium → GPT 5 Mini medium [API key sk-***E0QA]"]
-        assert not app._llm_activation_pending
+        assert not app._llm_activation_in_progress
         assert not app.query_one("#input-bar", Input).disabled
 
 
@@ -649,23 +649,59 @@ async def test_failed_startup_activation_reports_error_and_unblocks_input(
             "Initialization failed: RuntimeError: missing credential. "
             "Choose another preset in /config. /connect and browsing remain available."
         )
-        assert not app._llm_activation_pending
+        assert not app._llm_activation_in_progress
         assert not app.query_one("#input-bar", Input).disabled
 
 
 @pytest.mark.asyncio
-async def test_pending_llm_activation_preserves_questions_but_allows_commands(
+async def test_llm_activation_preserves_blocked_submissions(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     app = TabulaflowApp(llm_preset=None)
-    session = object()
-    commands: list[tuple[str, object]] = []
 
     async def fake_ensure_session() -> object:
-        return session
+        return object()
 
-    async def fake_handle_command(text: str, current_session: object) -> CommandResult:
-        commands.append((text, current_session))
+    monkeypatch.setattr(app, "_setup_logging", lambda: None)
+    monkeypatch.setattr(app, "_ensure_pane", lambda: None)
+    monkeypatch.setattr(app, "_ensure_session", fake_ensure_session)
+
+    async with app.run_test() as pilot:
+        for _ in range(3):
+            await pilot.pause()
+        input_bar = app.query_one("#input-bar", HistoryInput)
+        initial_history = list(input_bar._history)
+        app._llm_activation_in_progress = True
+
+        input_bar.value = "show recent orders"
+        await pilot.press("enter")
+        await pilot.pause()
+
+        assert input_bar.value == "show recent orders"
+        assert input_bar._history == initial_history
+        assert len(app.query(UserMessage)) == 0
+
+        input_bar.value = "/help"
+        await pilot.press("enter")
+        await pilot.pause()
+
+        assert input_bar.value == "/help"
+        assert input_bar._history == initial_history
+        assert len(app.query(UserMessage)) == 0
+
+
+@pytest.mark.asyncio
+async def test_submission_worker_blocks_input_until_completion(monkeypatch: pytest.MonkeyPatch) -> None:
+    app = TabulaflowApp(llm_preset=None)
+    command_started = asyncio.Event()
+    release_command = asyncio.Event()
+
+    async def fake_ensure_session() -> object:
+        return object()
+
+    async def fake_handle_command(_text: str, _session: object) -> CommandResult:
+        command_started.set()
+        await release_command.wait()
         return CommandResult()
 
     monkeypatch.setattr(app, "_setup_logging", lambda: None)
@@ -677,24 +713,23 @@ async def test_pending_llm_activation_preserves_questions_but_allows_commands(
         for _ in range(3):
             await pilot.pause()
         input_bar = app.query_one("#input-bar", HistoryInput)
-        app._llm_activation_pending = True
+        input_bar.value = "/help"
+        await pilot.press("enter")
+        await asyncio.wait_for(command_started.wait(), timeout=2)
 
-        input_bar.value = "show recent orders"
+        assert app._submission_worker is not None
+        input_bar.value = "next question"
         await pilot.press("enter")
         await pilot.pause()
 
-        assert input_bar.value == "show recent orders"
-        assert "show recent orders" not in input_bar._history
-        assert len(app.query(UserMessage)) == 0
+        assert input_bar.value == "next question"
+        assert len(app.query(UserMessage)) == 1
 
-        input_bar.value = "/help"
-        await pilot.press("enter")
+        release_command.set()
         for _ in range(2):
             await pilot.pause()
 
-        assert input_bar.value == ""
-        assert input_bar._history[-1] == "/help"
-        assert commands == [("/help", session)]
+        assert app._submission_worker is None
 
 
 @pytest.mark.asyncio
