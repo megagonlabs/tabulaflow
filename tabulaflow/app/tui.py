@@ -57,16 +57,34 @@ def _compact_project_dir(path: Path) -> str:
         return path.resolve().as_posix()
 
 
-def _masked_api_keys(keys: tuple[str | None, ...]) -> tuple[str, ...]:
-    """Return distinct masked API-key labels suitable for status messages."""
-    masked: list[str] = []
-    seen: set[str] = set()
-    for key in keys:
-        if key is None or key in seen or len(key) < 12:
-            continue
-        seen.add(key)
-        masked.append(f"***{key[-4:]}")
-    return tuple(masked)
+def _masked_api_key(key: str | None) -> str | None:
+    """Return a masked API key suitable for display."""
+    if key is None or len(key) < 12:
+        return None
+    return f"***{key[-4:]}"
+
+
+def _llm_preset_success_message(
+    preset: LLMPreset,
+    keys: tuple[str | None, str | None],
+) -> Text:
+    """Build the status message for an activated LLM preset."""
+    main_key, subagent_key = keys
+    main_mask = _masked_api_key(main_key)
+    subagent_mask = _masked_api_key(subagent_key)
+    shared_key = main_key is not None and main_key == subagent_key
+
+    message = Text("✓ LLM preset: ", style="dim")
+    message.append(compact_model_label(preset.main.model, preset.main.reasoning_effort))
+    if main_mask is not None and not shared_key:
+        message.append(f" [API key {main_mask}]")
+    message.append(" → ")
+    message.append(compact_model_label(preset.subagent.model, preset.subagent.reasoning_effort))
+    if subagent_mask is not None and not shared_key:
+        message.append(f" [API key {subagent_mask}]")
+    if shared_key and main_mask is not None:
+        message.append(f" [API key {main_mask}]")
+    return message
 
 
 def _warm_session_imports() -> None:
@@ -645,9 +663,7 @@ class TabulaflowApp(App[None]):
             message = Text.from_markup(f"[{ERROR}]LLM unavailable:[/] ")
             message.append(f"Could not initialize {model_label}. {LLM_UNAVAILABLE_MESSAGE}")
         else:
-            message = Text(f"✓ Agent ready: {model_label}", style="dim")
-            for key in _masked_api_keys(keys):
-                message.append(f" [API key {key}]", style="dim")
+            message = _llm_preset_success_message(preset, keys)
         status_message = SystemMessage(message)
         await chat_log.mount(status_message)
         if request_id != self._llm_activation_request_id:

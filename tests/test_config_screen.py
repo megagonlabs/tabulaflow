@@ -76,6 +76,10 @@ def updates(_patch_config_io: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return _patch_config_io
 
 
+def _row_plain(screen: ConfigScreen, i: int) -> str:
+    return "".join(part.plain for part in screen._preset_row_parts(i))
+
+
 async def test_renders_presets() -> None:
     session = _StubSession()
     screen = ConfigScreen(session, on_change=lambda _preset: None)  # type: ignore[arg-type]
@@ -83,22 +87,48 @@ async def test_renders_presets() -> None:
         await pilot.pause()
         assert len(screen._preset_rows) == 4
         assert screen._cursor == 0
-        assert "●" in screen._render_preset_row(0).plain
-        assert "OpenAI balanced" in screen._render_preset_row(0).plain
-        assert "GPT 5.5 medium" in screen._render_preset_row(0).plain
-        assert "GPT 5.4 Mini medium" in screen._render_preset_row(0).plain
-        assert "OpenAI budget" in screen._render_preset_row(1).plain
-        assert "GPT 5.4 Mini medium" in screen._render_preset_row(1).plain
-        assert "GPT 5 Mini medium" in screen._render_preset_row(1).plain
-        assert "Opus 4.8 high" in screen._render_preset_row(2).plain
-        assert "Sonnet 4.5 high" in screen._render_preset_row(2).plain
-        assert "Claude" not in screen._render_preset_row(2).plain
-        assert "20250929" not in screen._render_preset_row(2).plain
-        assert "Planning hybrid" in screen._render_preset_row(3).plain
-        assert "Opus 4.8 high" in screen._render_preset_row(3).plain
-        assert "GPT 5.4 Mini medium" in screen._render_preset_row(3).plain
-        assert "●" not in screen._render_preset_row(1).plain
-        assert all("API key" not in screen._render_preset_row(i).plain for i in range(4))
+        assert "●" in _row_plain(screen, 0)
+        assert "OpenAI balanced" in _row_plain(screen, 0)
+        assert "GPT 5.5 medium" in _row_plain(screen, 0)
+        assert "GPT 5.4 Mini medium" in _row_plain(screen, 0)
+        assert "OpenAI budget" in _row_plain(screen, 1)
+        assert "GPT 5.4 Mini medium" in _row_plain(screen, 1)
+        assert "GPT 5 Mini medium" in _row_plain(screen, 1)
+        assert "Opus 4.8 high" in _row_plain(screen, 2)
+        assert "Sonnet 4.5 high" in _row_plain(screen, 2)
+        assert "Claude" not in _row_plain(screen, 2)
+        assert "20250929" not in _row_plain(screen, 2)
+        assert "Planning hybrid" in _row_plain(screen, 3)
+        assert "Opus 4.8 high" in _row_plain(screen, 3)
+        assert "GPT 5.4 Mini medium" in _row_plain(screen, 3)
+        assert "●" not in _row_plain(screen, 1)
+        assert all("API key" not in _row_plain(screen, i) for i in range(4))
+        rows = [_row_plain(screen, i) for i in range(4)]
+        assert all(" · " not in row for row in rows)
+        assert all(" → " in row for row in rows)
+        assert {row.index(screen._preset_row_parts(i)[2].plain) for i, row in enumerate(rows)} == {26}
+
+
+async def test_preset_label_truncates_by_display_width_and_models_wrap_in_their_column(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    long_label_preset = _PRESETS[0].model_copy(update={"label": "分析プリセットの長い名前"})
+    monkeypatch.setattr(
+        "tabulaflow.app.screens.load_app_config",
+        lambda: SimpleNamespace(llm_presets=[long_label_preset]),
+    )
+    session = _StubSession()
+    screen = ConfigScreen(session, on_change=lambda _preset: None)  # type: ignore[arg-type]
+
+    async with _App(screen).run_test(size=(42, 24)) as pilot:
+        await pilot.pause()
+        _, label, _ = screen._preset_row_parts(0)
+        row = screen._preset_rows[0]
+
+        assert label.cell_len == 22
+        assert label.plain.endswith("…  ")
+        assert row._models.region.x == row.region.x + 26
+        assert row.size.height > 1
 
 
 async def test_enter_selects_openai_budget(updates: list[dict[str, Any]]) -> None:
@@ -123,7 +153,7 @@ async def test_enter_selects_anthropic_preset_and_persists(updates: list[dict[st
         assert session.llm_preset == _PRESETS[2]
         assert updates == [{"active_llm_preset": "Anthropic balanced"}]
         assert selected == [_PRESETS[2]]
-        assert "●" in screen._render_preset_row(2).plain
+        assert "●" in _row_plain(screen, 2)
 
 
 async def test_enter_selects_planning_hybrid(updates: list[dict[str, Any]]) -> None:
@@ -148,7 +178,7 @@ async def test_unverified_selected_preset_has_active_dot_without_error() -> None
         await pilot.pause()
         assert len(screen._preset_rows) == 4
         assert screen._cursor == 2
-        row = screen._render_preset_row(2).plain
+        row = _row_plain(screen, 2)
         assert "●" in row
         assert "LLM unavailable" not in row
         assert "Anthropic API key is not configured" not in row
@@ -169,7 +199,7 @@ async def test_current_custom_row_for_unmatched_runtime_profile(updates: list[di
         await pilot.pause()
         assert len(screen._preset_rows) == 5
         assert screen._cursor == 0
-        assert "● Current custom" in screen._render_preset_row(0).plain
+        assert "● Current custom" in _row_plain(screen, 0)
         await pilot.press("enter")
         assert updates == []
         assert selected == [session.llm_preset]
@@ -186,8 +216,8 @@ async def test_select_preset_does_not_show_provider_error(updates: list[dict[str
         await pilot.press("down", "down", "enter")
         assert session.llm_preset == _PRESETS[2]
         assert updates == [{"active_llm_preset": "Anthropic balanced"}]
-        assert "Anthropic API key is not configured" not in screen._render_preset_row(2).plain
-        assert "ANTHROPIC_API_KEY" not in screen._render_preset_row(2).plain
-        assert "AnthropicProvider" not in screen._render_preset_row(2).plain
-        assert "●" in screen._render_preset_row(2).plain
-        assert "●" not in screen._render_preset_row(0).plain
+        assert "Anthropic API key is not configured" not in _row_plain(screen, 2)
+        assert "ANTHROPIC_API_KEY" not in _row_plain(screen, 2)
+        assert "AnthropicProvider" not in _row_plain(screen, 2)
+        assert "●" in _row_plain(screen, 2)
+        assert "●" not in _row_plain(screen, 0)

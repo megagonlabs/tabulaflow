@@ -13,11 +13,12 @@ from typing import TYPE_CHECKING
 from rich.text import Text
 from textual.app import ComposeResult
 from textual.binding import Binding
+from textual.containers import Horizontal, Vertical
 from textual.screen import Screen
 from textual.widgets import DataTable, Static, TextArea
 
 from tabulaflow.app.config import APP_CONFIG_PATH, LLMPreset, load_app_config, update_app_config
-from tabulaflow.app.session import compact_model_name
+from tabulaflow.app.session import compact_model_label
 from tabulaflow.app.theme import ACCENT, ACCENT_BOLD, DRACULA_TRANSPARENT, ERROR, FK_MARKER, KEY_HINT, PK_MARKER
 
 
@@ -1734,6 +1735,7 @@ class SchemaBrowserScreen(Screen[None]):
 
 
 _CURRENT_CUSTOM_PRESET_LABEL = "Current custom"
+_PRESET_LABEL_WIDTH = 20
 
 
 def _preset_matches_session(preset: LLMPreset, session: SessionState) -> bool:
@@ -1756,6 +1758,26 @@ def _current_session_preset(session: SessionState) -> LLMPreset:
     )
 
 
+class _ConfigPresetRow(Horizontal):
+    """Preset row whose model column retains its indent when wrapped."""
+
+    def __init__(self) -> None:
+        super().__init__(classes="config-row")
+        self._markers = Static(classes="config-row-markers")
+        self._label = Static(classes="config-row-label")
+        self._models = Static(classes="config-row-models")
+
+    def compose(self) -> ComposeResult:
+        yield self._markers
+        yield self._label
+        yield self._models
+
+    def update_content(self, markers: Text, label: Text, models: Text) -> None:
+        self._markers.update(markers)
+        self._label.update(label)
+        self._models.update(models)
+
+
 class ConfigScreen(Screen[None]):
     """Full-screen editor for the active LLM preset."""
 
@@ -1769,6 +1791,23 @@ class ConfigScreen(Screen[None]):
     }
 
     ConfigScreen .config-row {
+        layout: horizontal;
+        height: auto;
+    }
+
+    ConfigScreen .config-row-markers {
+        width: 4;
+        height: auto;
+    }
+
+    ConfigScreen .config-row-label {
+        width: 22;
+        height: auto;
+        text-wrap: nowrap;
+    }
+
+    ConfigScreen .config-row-models {
+        width: 1fr;
         height: auto;
     }
 
@@ -1797,15 +1836,13 @@ class ConfigScreen(Screen[None]):
             not _preset_matches_session(preset, session) for preset in self._presets
         ):
             self._presets.insert(0, _current_session_preset(session))
-        self._preset_rows = [Static(classes="config-row") for _ in self._presets]
+        self._preset_rows = [_ConfigPresetRow() for _ in self._presets]
         self._cursor = next(
             (i for i, preset in enumerate(self._presets) if _preset_roles_match_session(preset, session)),
             0,
         )
 
     def compose(self) -> ComposeResult:
-        from textual.containers import Vertical
-
         config_path = APP_CONFIG_PATH.replace(str(Path.home()), "~", 1)
         title = Text()
         title.append("Config", style=ACCENT_BOLD)
@@ -1825,27 +1862,26 @@ class ConfigScreen(Screen[None]):
         """Cursor-reachable preset rows."""
         return [("preset", i) for i in range(len(self._presets))]
 
-    def _render_preset_row(self, i: int) -> Text:
+    def _preset_row_parts(self, i: int) -> tuple[Text, Text, Text]:
         preset = self._presets[i]
         selected = self._cursor == i
         active = _preset_matches_session(preset, self._session)
-        t = Text()
-        t.append("❯ " if selected else "  ", style=ACCENT_BOLD)
-        t.append("● " if active else "  ", style=ACCENT)
+        markers = Text()
+        markers.append("❯ " if selected else "  ", style=ACCENT_BOLD)
+        markers.append("● " if active else "  ", style=ACCENT)
         if active:
             label_style = ACCENT_BOLD if selected else ACCENT
         else:
             label_style = "bold" if selected else ""
-        t.append(preset.label, style=label_style)
-        t.append(
-            f" · {compact_model_name(preset.main.model)} {preset.main.reasoning_effort}",
+        label = Text(preset.label, style=label_style)
+        label.truncate(_PRESET_LABEL_WIDTH, overflow="ellipsis", pad=True)
+        label.append("  ")
+        models = Text(
+            f"{compact_model_label(preset.main.model, preset.main.reasoning_effort)}"
+            f" → {compact_model_label(preset.subagent.model, preset.subagent.reasoning_effort)}",
             style="dim",
         )
-        t.append(
-            f" · {compact_model_name(preset.subagent.model)} {preset.subagent.reasoning_effort}",
-            style="dim",
-        )
-        return t
+        return markers, label, models
 
     def _hint_text(self) -> Text:
         hint = Text()
@@ -1855,7 +1891,7 @@ class ConfigScreen(Screen[None]):
 
     def _refresh(self) -> None:
         for i, row in enumerate(self._preset_rows):
-            row.update(self._render_preset_row(i))
+            row.update_content(*self._preset_row_parts(i))
 
     def action_cursor_move(self, delta: int) -> None:
         self._cursor = max(0, min(len(self._presets) - 1, self._cursor + delta))

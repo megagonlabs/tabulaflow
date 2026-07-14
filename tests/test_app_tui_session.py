@@ -403,23 +403,40 @@ async def test_llm_activation_only_publishes_latest_selection(monkeypatch: pytes
     assert finished == [(latest, ("sk-test123456789Latest", None))]
 
 
-def test_masked_api_keys_are_distinct_and_hide_short_values() -> None:
-    assert tui._masked_api_keys(
-        (
-            "sk-main1234567890000",
-            "sk-main1234567890000",
-            "short",
-            "sk-sub1234567891111",
-            None,
-        )
-    ) == ("***0000", "***1111")
+def test_llm_preset_success_message_places_api_keys_by_role() -> None:
+    preset = _preset(
+        model="anthropic:claude-opus-4-8",
+        reasoning_effort="high",
+        subagent_model="openai-responses:gpt-5.4-mini",
+        subagent_reasoning_effort="medium",
+    )
+
+    shared = tui._llm_preset_success_message(
+        preset,
+        ("sk-shared123456789ABCD", "sk-shared123456789ABCD"),
+    )
+    assert shared.plain == "✓ LLM preset: Opus 4.8 high → GPT 5.4 Mini medium [API key ***ABCD]"
+    assert str(shared.style) == "dim"
+
+    distinct = tui._llm_preset_success_message(
+        preset,
+        ("sk-main123456789AAAA", "sk-subagent123456BBBB"),
+    )
+    assert distinct.plain == ("✓ LLM preset: Opus 4.8 high [API key ***AAAA] → GPT 5.4 Mini medium [API key ***BBBB]")
+
+    assert tui._masked_api_key("short") is None
 
 
 @pytest.mark.asyncio
 async def test_startup_activation_reports_masked_api_key_in_chat_log(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    preset = _preset(model="openai-responses:gpt-5", reasoning_effort="medium")
+    preset = _preset(
+        model="openai-responses:gpt-5",
+        reasoning_effort="medium",
+        subagent_model="openai-responses:gpt-5-mini",
+        subagent_reasoning_effort="medium",
+    )
     app = TabulaflowApp(llm_preset=preset)
 
     class FakeSession:
@@ -438,7 +455,7 @@ async def test_startup_activation_reports_masked_api_key_in_chat_log(
         for _ in range(3):
             await pilot.pause()
         messages = [str(message.render()) for message in app.query(SystemMessage)]
-        assert messages == ["✓ Agent ready: GPT 5 medium [API key ***E0QA]"]
+        assert messages == ["✓ LLM preset: GPT 5 medium → GPT 5 Mini medium [API key ***E0QA]"]
         assert not app.query_one("#input-bar", Input).disabled
 
 
