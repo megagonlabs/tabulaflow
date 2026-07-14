@@ -5,6 +5,7 @@ from typing import Any
 
 import pytest
 from textual.app import App
+from textual.widgets import Static
 
 from tabulaflow.app.config import LLMRoleConfig, LLMPreset, ReasoningEffort
 from tabulaflow.app.screens import ConfigScreen
@@ -87,6 +88,7 @@ async def test_renders_presets() -> None:
         await pilot.pause()
         assert len(screen._option_rows) == 5
         assert screen._cursor == 1
+        assert "LLM (main → subagent)" in {str(widget.render()) for widget in screen.query(Static)}
         assert "Off" in _row_plain(screen, 0)
         assert "Connect and browse data" in _row_plain(screen, 0)
         assert _row_plain(screen, 0).index("Connect and browse data") == 26

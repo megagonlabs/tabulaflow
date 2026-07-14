@@ -1853,11 +1853,13 @@ class ConfigScreen(Screen[None]):
         title = Text()
         title.append("Config", style=ACCENT_BOLD)
         title.append(f" · auto-saved to {config_path}", style="dim")
+        llm_title = Text("LLM", style="bold")
+        llm_title.append(" (main → subagent)", style="dim")
         with Vertical(id="config-body"):
             yield Static(title)
             yield Static("")
             if self._option_rows:
-                yield Static(Text("LLM", style="bold"))
+                yield Static(llm_title)
                 yield from self._option_rows
         yield Static(self._hint_text(), id="config-hint")
 
