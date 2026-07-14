@@ -421,7 +421,7 @@ July 12
 - [ ] "Initializing..." when building agent
 - [ ] Fireworks preset
 - [ ] UserError: Anthropic does not support thinking and output tools at the same time. Use `output_type=NativeOutput(...)` instead.
-
+- [ ] Kushan: better error message for /connect failure
 
 - [ ] Inline code block (``) highlighting
 - [ ] Include Cypher
