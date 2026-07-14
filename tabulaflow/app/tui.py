@@ -16,7 +16,7 @@ from textual.worker import Worker
 from textual.widgets import Button, Input, Static
 
 from tabulaflow.app.commands import COMMAND_PREFIX, handle_command
-from tabulaflow.app.config import LLMPreset
+from tabulaflow.app.config import LLMPreset, update_app_config
 from tabulaflow.app.debug import debug_enabled, mount_debug_widgets
 from tabulaflow.app.pane import PaneCard, manual_card_turn, turn_payload
 from tabulaflow.app.runtime_paths import RuntimePaths, ensure_pane_dir, generate_session_id
@@ -38,6 +38,7 @@ from tabulaflow.app.widgets import (
 
 if TYPE_CHECKING:
     from tabulaflow.app.pane import OutputPane
+    from tabulaflow.app.screens import LLMSelection
     from tabulaflow.chat import ChatAgent, ChatResult
 
 logger = logging.getLogger(__name__)
@@ -217,8 +218,6 @@ class TabulaflowApp(App[None]):
         self._session: SessionState | None = None
         self._pane: OutputPane | None = None
         self._session_lock = asyncio.Lock()
-        self._llm_activation_lock = asyncio.Lock()
-        self._llm_activation_request_id = 0
         self._llm_activation_in_progress = False
         self._llm_activation_error: str | None = None
         self._initialization_spinner: SpinnerWidget | None = None
@@ -271,7 +270,7 @@ class TabulaflowApp(App[None]):
         chat_log.scroll_end(animate=False)
         self._refresh_esc_hint()
         self._ensure_pane()
-        self._request_llm_option(self._startup_llm_preset)
+        self._start_llm_activation(self._startup_llm_preset)
 
     def _refresh_esc_hint(self) -> None:
         """Update the docked ``Esc`` hint label to match current state.
@@ -616,42 +615,30 @@ class TabulaflowApp(App[None]):
         model_status.update(Text(f"{model_label} · {_compact_project_dir(self._project_dir)}", style="dim"))
         url_status.update(Text(f"View output in browser: {url}" if url else "", style="dim"))
 
-    def _request_llm_option(self, preset: LLMPreset | None) -> None:
-        """Start latest-wins background activation for an LLM option."""
-        self._llm_activation_request_id += 1
+    def _start_llm_activation(self, preset: LLMPreset | None) -> None:
+        """Initialize the confirmed LLM option in the background."""
         self._llm_activation_in_progress = preset is not None
         self._llm_activation_error = None
-        request_id = self._llm_activation_request_id
         self.run_worker(
-            self._activate_llm_option(request_id, preset),
-            exclusive=False,
+            self._activate_llm_option(preset),
+            exclusive=True,
             group="llm-activation",
         )
 
-    def _on_llm_option_selected(self, preset: LLMPreset | None) -> None:
-        self._refresh_bottom_status()
-        self._request_llm_option(preset)
-
-    async def _activate_llm_option(self, request_id: int, preset: LLMPreset | None) -> None:
-        """Activate ``preset`` or LLM off if it remains selected."""
+    async def _activate_llm_option(self, preset: LLMPreset | None) -> None:
+        """Activate a confirmed preset or LLM off."""
         import asyncio
 
-        if request_id != self._llm_activation_request_id:
-            return
         if self._session is None:
             await self._show_initialization_spinner("Initializing session...")
         try:
             session = await self._ensure_session()
         except Exception as error:
             logger.debug("Session initialization failed", exc_info=True)
-            if request_id == self._llm_activation_request_id:
-                await self._report_session_initialization_failure(request_id, error)
-            return
-        if request_id != self._llm_activation_request_id:
+            await self._report_session_initialization_failure(error)
             return
         if preset is None:
             await self._publish_initialization_status(
-                request_id,
                 Text(
                     "✓ LLM off. Connect a data source with /connect and inspect it in the data explorer.",
                     style="dim",
@@ -660,17 +647,12 @@ class TabulaflowApp(App[None]):
             return
         await self._show_initialization_spinner("Initializing agent...")
         try:
-            async with self._llm_activation_lock:
-                if request_id != self._llm_activation_request_id:
-                    return
-                keys = await asyncio.to_thread(self._initialize_llm_runtime, session, preset)
+            keys = await asyncio.to_thread(self._initialize_llm_runtime, session, preset)
         except Exception as error:
             logger.debug("LLM preset initialization failed", exc_info=True)
-            if request_id == self._llm_activation_request_id:
-                await self._finish_llm_activation(request_id, preset, result=error)
+            await self._finish_llm_activation(preset, result=error)
             return
-        if request_id == self._llm_activation_request_id:
-            await self._finish_llm_activation(request_id, preset, result=keys)
+        await self._finish_llm_activation(preset, result=keys)
 
     @staticmethod
     def _initialize_llm_runtime(
@@ -695,38 +677,26 @@ class TabulaflowApp(App[None]):
         if spinner is not None:
             await spinner.remove()
 
-    async def _publish_initialization_status(self, request_id: int, message: Text) -> bool:
-        """Replace the spinner with ``message`` if this request is still current."""
-        if request_id != self._llm_activation_request_id:
-            return False
+    async def _publish_initialization_status(self, message: Text) -> None:
+        """Replace the initialization spinner with ``message``."""
         await self._remove_initialization_spinner()
-        if request_id != self._llm_activation_request_id:
-            return False
-        status_message = SystemMessage(message)
         chat_log = self.query_one("#chat-log", VerticalScroll)
-        await chat_log.mount(status_message)
-        if request_id != self._llm_activation_request_id:
-            await status_message.remove()
-            return False
+        await chat_log.mount(SystemMessage(message))
         chat_log.scroll_end(animate=False)
-        return True
 
-    async def _report_session_initialization_failure(self, request_id: int, error: Exception) -> None:
+    async def _report_session_initialization_failure(self, error: Exception) -> None:
         message = Text.from_markup(f"[{ERROR}]Session initialization failed:[/] ")
         detail = _sanitize_exception_message(error)
         message.append(f"{type(error).__name__}: {detail}" if detail else f"{type(error).__name__}.")
-        if await self._publish_initialization_status(request_id, message):
-            self._llm_activation_in_progress = False
+        await self._publish_initialization_status(message)
+        self._llm_activation_in_progress = False
 
     async def _finish_llm_activation(
         self,
-        request_id: int,
         preset: LLMPreset,
         *,
         result: tuple[str | None, str | None] | Exception,
     ) -> None:
-        if request_id != self._llm_activation_request_id:
-            return
         if isinstance(result, Exception):
             self._llm_activation_error = _normalize_llm_activation_error(result, preset)
             message = Text.from_markup(f"[{ERROR}]LLM unavailable:[/] ")
@@ -734,8 +704,7 @@ class TabulaflowApp(App[None]):
         else:
             self._llm_activation_error = None
             message = _llm_preset_success_message(preset, result)
-        if not await self._publish_initialization_status(request_id, message):
-            return
+        await self._publish_initialization_status(message)
         self._llm_activation_in_progress = False
         input_bar = self.query_one("#input-bar", Input)
         if len(self.screen_stack) == 1:
@@ -1097,7 +1066,7 @@ class TabulaflowApp(App[None]):
             from tabulaflow.app.screens import ConfigScreen
 
             self.push_screen(
-                ConfigScreen(session, on_change=self._on_llm_option_selected),
+                ConfigScreen(session.llm_preset),
                 self._on_config_closed,
             )
             return
@@ -1107,8 +1076,19 @@ class TabulaflowApp(App[None]):
             chat_log.mount(msg)
             chat_log.scroll_end(animate=False)
 
-    def _on_config_closed(self, _result: None) -> None:
+    def _on_config_closed(self, selection: LLMSelection | None) -> None:
         self.call_after_refresh(self.query_one("#input-bar", Input).focus)
+        if selection is None:
+            return
+
+        session = self._session
+        if session is None:
+            raise RuntimeError("Config closed before the session was initialized.")
+        preset = selection.preset
+        session.llm_preset = preset
+        update_app_config(active_llm_preset=None if preset is None else preset.label)
+        self._refresh_bottom_status()
+        self._start_llm_activation(preset)
 
     async def _run_agent(
         self,

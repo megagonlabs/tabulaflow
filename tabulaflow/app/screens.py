@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import json
 import re
+from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -17,7 +18,7 @@ from textual.containers import Horizontal, Vertical
 from textual.screen import Screen
 from textual.widgets import DataTable, Static, TextArea
 
-from tabulaflow.app.config import APP_CONFIG_PATH, LLM_OFF_LABEL, LLMPreset, load_app_config, update_app_config
+from tabulaflow.app.config import APP_CONFIG_PATH, LLM_OFF_LABEL, LLMPreset, load_app_config
 from tabulaflow.app.session import compact_model_label
 from tabulaflow.app.theme import ACCENT, ACCENT_BOLD, DRACULA_TRANSPARENT, ERROR, FK_MARKER, KEY_HINT, PK_MARKER
 
@@ -27,8 +28,6 @@ if TYPE_CHECKING:
     from typing import Any
 
     import pandas as pd
-
-    from tabulaflow.app.session import SessionState
 
 
 def _normalize_json_like(value: object) -> object:
@@ -1738,24 +1737,15 @@ _CURRENT_CUSTOM_PRESET_LABEL = "Current custom"
 _LLM_OPTION_LABEL_WIDTH = 20
 
 
-def _preset_matches_session(preset: LLMPreset, session: SessionState) -> bool:
-    return _preset_roles_match_session(preset, session)
+@dataclass(frozen=True)
+class LLMSelection:
+    """Confirmed LLM option returned by the config screen."""
+
+    preset: LLMPreset | None
 
 
-def _preset_roles_match_session(preset: LLMPreset, session: SessionState) -> bool:
-    if session.llm_preset is None:
-        return False
-    return preset.main == session.llm_preset.main and preset.subagent == session.llm_preset.subagent
-
-
-def _current_session_preset(session: SessionState) -> LLMPreset:
-    if session.llm_preset is None:
-        raise RuntimeError("No LLM preset is selected.")
-    return LLMPreset(
-        label=_CURRENT_CUSTOM_PRESET_LABEL,
-        main=session.llm_preset.main,
-        subagent=session.llm_preset.subagent,
-    )
+def _current_custom_preset(preset: LLMPreset) -> LLMPreset:
+    return preset.model_copy(update={"label": _CURRENT_CUSTOM_PRESET_LABEL})
 
 
 class _ConfigLLMRow(Horizontal):
@@ -1778,7 +1768,7 @@ class _ConfigLLMRow(Horizontal):
         self._models.update(models)
 
 
-class ConfigScreen(Screen[None]):
+class ConfigScreen(Screen[LLMSelection | None]):
     """Full-screen editor for the active LLM mode."""
 
     DEFAULT_CSS = """
@@ -1826,33 +1816,29 @@ class ConfigScreen(Screen[None]):
         Binding("enter", "select", "Select", show=False),
     ]
 
-    def __init__(self, session: SessionState, on_change: Callable[[LLMPreset | None], None]) -> None:
+    def __init__(self, current_preset: LLMPreset | None) -> None:
         super().__init__()
-        self._session = session
-        self._on_change = on_change
         app_config = load_app_config()
         presets = list(app_config.llm_presets)
-        if session.llm_preset is not None and all(not _preset_matches_session(preset, session) for preset in presets):
-            presets.insert(0, _current_session_preset(session))
+        if current_preset is not None and current_preset not in presets:
+            presets.insert(0, _current_custom_preset(current_preset))
         self._options: list[LLMPreset | None] = [None, *presets]
         self._option_rows = [_ConfigLLMRow() for _ in self._options]
-        if session.llm_preset is None:
-            self._cursor = 0
+        if current_preset is None:
+            self._active_index = 0
         else:
-            self._cursor = next(
-                (
-                    i
-                    for i, preset in enumerate(self._options)
-                    if preset is not None and _preset_roles_match_session(preset, session)
-                ),
-                0,
+            self._active_index = next(
+                (i for i, preset in enumerate(self._options) if preset == current_preset),
+                1,
             )
+        self._selected_index = self._active_index
+        self._cursor = self._active_index
 
     def compose(self) -> ComposeResult:
         config_path = APP_CONFIG_PATH.replace(str(Path.home()), "~", 1)
         title = Text()
         title.append("Config", style=ACCENT_BOLD)
-        title.append(f" · auto-saved to {config_path}", style="dim")
+        title.append(f" · {config_path}", style="dim")
         llm_title = Text("LLM", style="bold")
         llm_title.append(" (main → subagent)", style="dim")
         with Vertical(id="config-body"):
@@ -1869,7 +1855,7 @@ class ConfigScreen(Screen[None]):
     def _option_row_parts(self, i: int) -> tuple[Text, Text, Text]:
         preset = self._options[i]
         selected = self._cursor == i
-        active = self._session.llm_preset is None if preset is None else _preset_matches_session(preset, self._session)
+        active = self._selected_index == i
         markers = Text()
         markers.append("❯ " if selected else "  ", style=ACCENT_BOLD)
         markers.append("● " if active else "  ", style=ACCENT)
@@ -1908,14 +1894,11 @@ class ConfigScreen(Screen[None]):
         self._select_option(self._cursor)
 
     def _select_option(self, i: int) -> None:
-        preset = self._options[i]
-        self._session.set_llm_preset(preset)
-        if preset is None:
-            update_app_config(active_llm_preset=None)
-        elif preset.label != _CURRENT_CUSTOM_PRESET_LABEL:
-            update_app_config(active_llm_preset=preset.label)
-        self._on_change(preset)
+        self._selected_index = i
         self._refresh()
 
     def action_close(self) -> None:
-        self.dismiss()
+        if self._selected_index == self._active_index:
+            self.dismiss(None)
+            return
+        self.dismiss(LLMSelection(self._options[self._selected_index]))

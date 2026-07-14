@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 from pathlib import Path
-import threading
+from types import SimpleNamespace
 from typing import TYPE_CHECKING, Any
 
 import pytest
@@ -13,6 +13,7 @@ from tabulaflow.app import tui
 from tabulaflow.app.commands import CommandResult
 from tabulaflow.app.config import LLMRoleConfig, LLMPreset, ReasoningEffort
 from tabulaflow.app.runtime_paths import RuntimePaths
+from tabulaflow.app.screens import LLMSelection
 from tabulaflow.app.session import SessionState
 from tabulaflow.app.tui import TabulaflowApp
 from tabulaflow.app.widgets import HistoryInput, SpinnerWidget, SystemMessage, UserMessage
@@ -241,11 +242,11 @@ def test_llm_off_keeps_initialized_agent_dormant(tmp_path: Path) -> None:
     )
     agent = _activate_selected(session)
 
-    session.set_llm_preset(None)
+    session.llm_preset = None
 
     assert session.llm_preset is None
     assert session.active_chat_agent is None
-    session.set_llm_preset(preset)
+    session.llm_preset = preset
     assert session.active_chat_agent is agent
 
 
@@ -265,7 +266,7 @@ def test_unverified_session_can_select_and_then_build_valid_llm(
         workspace=None,
     )
 
-    session.set_llm_preset(_preset())
+    session.llm_preset = _preset()
 
     assert session.active_chat_agent is None
     assert session.llm_preset == _preset()
@@ -293,7 +294,7 @@ def test_selecting_unusable_preset_defers_error_until_agent_build(
         subagent_model="anthropic:claude-haiku-4-5-20251001",
         subagent_reasoning_effort="medium",
     )
-    session.set_llm_preset(selected_preset)
+    session.llm_preset = selected_preset
 
     assert session.active_chat_agent is None
     assert session.llm_preset == selected_preset
@@ -302,7 +303,7 @@ def test_selecting_unusable_preset_defers_error_until_agent_build(
         _activate_selected(session)
     assert session.active_chat_agent is None
     assert old_agent.model == old_model
-    session.set_llm_preset(_preset())
+    session.llm_preset = _preset()
     assert session.active_chat_agent is old_agent
 
 
@@ -324,13 +325,11 @@ def test_switching_preset_preserves_live_chat_agent_state(tmp_path: Path, monkey
     message_history = agent._message_history
     query_history = agent.query_history
 
-    session.set_llm_preset(
-        _preset(
-            model="openai-responses:gpt-5.4-mini",
-            reasoning_effort="high",
-            subagent_model="openai-responses:gpt-5-mini",
-            subagent_reasoning_effort="medium",
-        )
+    session.llm_preset = _preset(
+        model="openai-responses:gpt-5.4-mini",
+        reasoning_effort="high",
+        subagent_model="openai-responses:gpt-5-mini",
+        subagent_reasoning_effort="medium",
     )
 
     assert session.active_chat_agent is None
@@ -356,7 +355,6 @@ async def test_startup_llm_activation_reports_session_then_agent_progress(
         return object()
 
     async def fake_finish(
-        _request_id: int,
         _preset: LLMPreset,
         *,
         result: tuple[str | None, str | None] | Exception,
@@ -368,58 +366,9 @@ async def test_startup_llm_activation_reports_session_then_agent_progress(
     monkeypatch.setattr(app, "_initialize_llm_runtime", lambda _session, _preset: (None, None))
     monkeypatch.setattr(app, "_finish_llm_activation", fake_finish)
 
-    app._llm_activation_request_id = 1
-    await app._activate_llm_option(1, preset)
+    await app._activate_llm_option(preset)
 
     assert labels == ["Initializing session...", "Initializing agent..."]
-
-
-@pytest.mark.asyncio
-async def test_llm_activation_only_publishes_latest_selection(monkeypatch: pytest.MonkeyPatch) -> None:
-    first = _preset(label="First", model="test:first")
-    latest = _preset(label="Latest", model="test:latest")
-    app = TabulaflowApp(llm_preset=first)
-    started = threading.Event()
-    release = threading.Event()
-    initialized: list[LLMPreset] = []
-    finished: list[tuple[LLMPreset, tuple[str | None, str | None] | Exception]] = []
-
-    async def fake_show(_label: str) -> None:
-        return None
-
-    async def fake_ensure_session() -> object:
-        return object()
-
-    def fake_initialize(_session: object, preset: LLMPreset) -> tuple[str | None, str | None]:
-        initialized.append(preset)
-        if preset == first:
-            started.set()
-            assert release.wait(timeout=2)
-        return f"sk-test123456789{preset.label}", None
-
-    async def fake_finish(
-        _request_id: int,
-        preset: LLMPreset,
-        *,
-        result: tuple[str | None, str | None] | Exception,
-    ) -> None:
-        finished.append((preset, result))
-
-    monkeypatch.setattr(app, "_show_initialization_spinner", fake_show)
-    monkeypatch.setattr(app, "_ensure_session", fake_ensure_session)
-    monkeypatch.setattr(app, "_initialize_llm_runtime", fake_initialize)
-    monkeypatch.setattr(app, "_finish_llm_activation", fake_finish)
-
-    app._llm_activation_request_id = 1
-    first_task = asyncio.create_task(app._activate_llm_option(1, first))
-    assert await asyncio.to_thread(started.wait, 2)
-    app._llm_activation_request_id = 2
-    latest_task = asyncio.create_task(app._activate_llm_option(2, latest))
-    release.set()
-    await asyncio.gather(first_task, latest_task)
-
-    assert initialized == [first, latest]
-    assert finished == [(latest, ("sk-test123456789Latest", None))]
 
 
 def test_llm_preset_success_message_places_api_keys_by_role() -> None:
@@ -521,7 +470,7 @@ async def test_session_failure_does_not_enter_llm_error_path(monkeypatch: pytest
     async def fake_ensure_session() -> object:
         raise error
 
-    async def fake_report(_request_id: int, caught: Exception) -> None:
+    async def fake_report(caught: Exception) -> None:
         reported.append(caught)
 
     async def unexpected_finish(*_args: object, **_kwargs: object) -> None:
@@ -532,15 +481,14 @@ async def test_session_failure_does_not_enter_llm_error_path(monkeypatch: pytest
     monkeypatch.setattr(app, "_report_session_initialization_failure", fake_report)
     monkeypatch.setattr(app, "_finish_llm_activation", unexpected_finish)
 
-    app._llm_activation_request_id = 1
-    await app._activate_llm_option(1, preset)
+    await app._activate_llm_option(preset)
 
     assert reported == [error]
     assert app._llm_activation_error is None
 
 
 @pytest.mark.asyncio
-async def test_selecting_llm_off_cancels_activation_and_reports_available_tools(
+async def test_starting_llm_off_reports_available_tools(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     app = TabulaflowApp(llm_preset=None)
@@ -567,15 +515,13 @@ async def test_selecting_llm_off_cancels_activation_and_reports_available_tools(
         assert len(app.query(SpinnerWidget)) == 0
         messages = [str(message.render()) for message in app.query(SystemMessage)]
         assert messages == ["✓ LLM off. Connect a data source with /connect and inspect it in the data explorer."]
-        request_id = app._llm_activation_request_id
         app._llm_activation_error = "old failure"
         app._llm_activation_in_progress = True
 
-        app._on_llm_option_selected(None)
+        app._start_llm_activation(None)
         for _ in range(2):
             await pilot.pause()
 
-        assert app._llm_activation_request_id == request_id + 1
         assert not app._llm_activation_in_progress
         assert app._llm_activation_error is None
         assert not app.query_one("#input-bar", Input).disabled
@@ -776,6 +722,36 @@ async def test_submission_worker_covers_and_can_cancel_session_preflight(monkeyp
         assert input_bar.value == "show recent orders"
         messages = [str(message.render()) for message in app.query(SystemMessage)]
         assert messages[-1] == "Interrupted"
+
+
+@pytest.mark.asyncio
+async def test_config_selection_persists_and_starts_one_activation(monkeypatch: pytest.MonkeyPatch) -> None:
+    app = TabulaflowApp(llm_preset=None)
+    session = SimpleNamespace(llm_preset=None)
+    updates: list[dict[str, object]] = []
+    activations: list[LLMPreset | None] = []
+
+    async def fake_ensure_session() -> object:
+        app._session = session  # type: ignore[assignment]
+        return session
+
+    monkeypatch.setattr(app, "_setup_logging", lambda: None)
+    monkeypatch.setattr(app, "_ensure_pane", lambda: None)
+    monkeypatch.setattr(app, "_ensure_session", fake_ensure_session)
+    monkeypatch.setattr(tui, "update_app_config", lambda **prefs: updates.append(prefs))
+
+    async with app.run_test() as pilot:
+        for _ in range(3):
+            await pilot.pause()
+        monkeypatch.setattr(app, "_start_llm_activation", activations.append)
+        preset = _preset(label="Selected")
+
+        app._on_config_closed(LLMSelection(preset))
+        await pilot.pause()
+
+        assert session.llm_preset == preset
+        assert updates == [{"active_llm_preset": "Selected"}]
+        assert activations == [preset]
 
 
 @pytest.mark.asyncio

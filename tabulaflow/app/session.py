@@ -200,19 +200,6 @@ class SessionState:
                 "connected their own data; disregard it from here on."
             )
 
-    def set_llm_preset(self, preset: LLMPreset | None) -> None:
-        """Select an LLM preset, or turn it off, without changing runtime clients."""
-        if preset is None:
-            self.llm_preset = None
-            return
-        if (
-            self.llm_preset is not None
-            and preset.main == self.llm_preset.main
-            and preset.subagent == self.llm_preset.subagent
-        ):
-            return
-        self.llm_preset = preset
-
     async def close(self) -> None:
         """Release session-owned runtime resources."""
         if self._chat_agent is not None:
