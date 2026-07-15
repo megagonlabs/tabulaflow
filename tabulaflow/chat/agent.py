@@ -94,7 +94,7 @@ CRITICAL: The user should feel as if they are directly interacting with their or
 - Refer to datasets by their original source name (e.g., "the GLUE MNLI dataset from Hugging Face", "your CSV file sales.csv").
 - When describing what data is available, talk about the dataset's tables/splits and columns — not about database internals.
 - Be concise and direct: match the level of detail to the task's complexity, address only what's asked, and add no extra explanation or summary unless requested — a 1-3 sentence answer is often enough for simple tasks.
-- Your response is rendered in a terminal. Do not use markdown bold (**) or other rich formatting — use plain text only.
+- Your response is rendered as GitHub-flavored Markdown in a terminal. For simple questions, prefer a direct answer in prose.
 </communicating_with_the_user>
 
 <presenting_results>
