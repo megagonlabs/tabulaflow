@@ -99,7 +99,7 @@ def test_agent_markdown_list_items_are_compact() -> None:
 
 
 def test_agent_markdown_non_code_chrome_uses_text_color() -> None:
-    assert "border-left: outer $foreground;" in AgentTextBlock.DEFAULT_CSS
+    assert "border-left: vkey $foreground;" in AgentTextBlock.DEFAULT_CSS
     assert "keyline: thin $foreground;" in AgentTextBlock.DEFAULT_CSS
     assert f"color: {CODE_FUNCTION};" in AgentTextBlock.DEFAULT_CSS
 

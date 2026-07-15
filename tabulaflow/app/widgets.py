@@ -770,7 +770,7 @@ class AgentTextBlock(Markdown):
 
     AgentTextBlock MarkdownBlockQuote {{
         background: transparent;
-        border-left: outer $foreground;
+        border-left: vkey $foreground;
         margin: 1 0;
         padding: 0 1;
     }}
