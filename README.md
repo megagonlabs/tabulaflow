@@ -424,10 +424,14 @@ July 14
   - [x] Fix flickering on card switch
   - [x] Fix "lodaing..." card height mismatch
   - [x] Card height animation
+  - [x] View transition for turn switch
 - [x] Upgrade textual to fix text selection crash
 - [x] Markdown rendering in TUI and output pane
 - [x] Code highlighting theme
 
+- [ ] Strightthrough rendering
+- [ ] Quote block rendering
+- [ ] Rewrite prompt, include prompt for coding tasks!
 - [ ] Markdown syntax instructions in system prompt
 - [ ] Inline artifact citation
 - [ ] IMPORTANT: decouple data and rendered format (show unit "cm" while still enabling sorting by value)
