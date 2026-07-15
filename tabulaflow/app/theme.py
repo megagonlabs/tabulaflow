@@ -85,6 +85,40 @@ CODE_STRING = "#7EC193"
 CODE_NUMBER = "#C792EA"
 CODE_TYPE = "#FFC473"
 
+SQL_QUERY_LEXER_ALIASES = frozenset(
+    {
+        "bigquery",
+        "duckdb",
+        "mariadb",
+        "mssql",
+        "mysql",
+        "oracle",
+        "plpgsql",
+        "postgres",
+        "postgresql",
+        "psql",
+        "redshift",
+        "snowflake",
+        "sql",
+        "sql-server",
+        "sqlite",
+        "sqlite3",
+        "t-sql",
+        "tsql",
+    }
+)
+
+
+def normalize_query_lexer(lexer: str | None) -> str:
+    """Normalize query lexer names used by app rendering paths."""
+    normalized = (lexer or "sql").strip().lower()
+    if not normalized:
+        return "sql"
+    if normalized in SQL_QUERY_LEXER_ALIASES:
+        return "sql"
+    return normalized
+
+
 _TEXTUAL_SQL_HIGHLIGHT_QUERY = (
     files("textual").joinpath("tree-sitter", "highlights", "sql.scm").read_text(encoding="utf-8")
 )

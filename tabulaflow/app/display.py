@@ -25,6 +25,7 @@ from tabulaflow.app.theme import (
     ERROR,
     KEY_HINT,
     TABULAFLOW_RICH_SYNTAX_THEME,
+    normalize_query_lexer,
 )
 
 TABULAFLOW_THEME = Theme(
@@ -67,7 +68,7 @@ def build_query(
         display_query = stripped
     syntax = Syntax(
         display_query,
-        lexer,
+        normalize_query_lexer(lexer),
         theme=TABULAFLOW_RICH_SYNTAX_THEME,
         padding=(1, 2),
         line_numbers=line_numbers,

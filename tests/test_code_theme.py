@@ -18,6 +18,7 @@ from tabulaflow.app.theme import (
     TabulaflowCodeHighlightTheme,
     TabulaflowPygmentsStyle,
     configure_code_text_area,
+    normalize_query_lexer,
 )
 
 
@@ -58,6 +59,16 @@ def test_code_text_area_theme_uses_shared_palette_without_bold_syntax_styles() -
     assert _hex(styles["comment"].color) == CODE_COMMENT
     assert _hex(styles["inline_code"].color) == CODE_FUNCTION
     assert all(style.bold is not True for style in styles.values())
+
+
+def test_query_lexer_normalization_preserves_non_sql_lexers() -> None:
+    assert normalize_query_lexer(None) == "sql"
+    assert normalize_query_lexer("") == "sql"
+    assert normalize_query_lexer(" Snowflake ") == "sql"
+    assert normalize_query_lexer("postgresql") == "sql"
+    assert normalize_query_lexer("sqlite3") == "sql"
+    assert normalize_query_lexer("cypher") == "cypher"
+    assert normalize_query_lexer("python") == "python"
 
 
 async def test_code_text_area_sql_numbers_are_not_captured_as_strings() -> None:

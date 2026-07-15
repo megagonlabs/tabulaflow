@@ -33,6 +33,7 @@ from tabulaflow.app.theme import (
     KEY_HINT,
     PK_MARKER,
     configure_code_text_area,
+    normalize_query_lexer,
 )
 
 
@@ -863,7 +864,7 @@ class QueryBrowserScreen(Screen[None]):
         super().__init__()
         self._title = title
         self._query = query
-        self._lexer = lexer
+        self._lexer = normalize_query_lexer(lexer)
 
     def compose(self) -> ComposeResult:
         lang = self._lexer if self._lexer in self._SUPPORTED_LANGUAGES else None

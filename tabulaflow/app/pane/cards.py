@@ -17,7 +17,7 @@ from tabulaflow.app.pane.charts import build_chart_data
 from tabulaflow.app.pane.graphs import build_graph_data
 from tabulaflow.app.pane.maps import build_map_data
 from tabulaflow.app.pane.tables import PANE_TABLE_MAX_HEIGHT, _build_table_data
-from tabulaflow.app.theme import TabulaflowPygmentsStyle
+from tabulaflow.app.theme import TabulaflowPygmentsStyle, normalize_query_lexer
 
 if TYPE_CHECKING:
     import pandas as pd
@@ -47,13 +47,15 @@ class GraphArtifactLike(Protocol):
 
 def build_query_data(sql: str, *, lexer: str = "sql") -> QueryCardData:
     """Build a structured query payload for the browser pane."""
+    resolved_lexer = normalize_query_lexer(lexer)
     try:
-        lex = get_lexer_by_name(lexer or "sql")
+        lex = get_lexer_by_name(resolved_lexer)
     except ClassNotFound:
+        resolved_lexer = "sql"
         lex = get_lexer_by_name("sql")
     highlighted = highlight(sql, lex, HtmlFormatter(style=TabulaflowPygmentsStyle, noclasses=True))
-    language = lex.name or (lexer or "sql").upper()
-    return {"query": {"sql": sql, "lexer": lexer or "sql", "language": language, "html": highlighted}}
+    language = lex.name or resolved_lexer.upper()
+    return {"query": {"sql": sql, "lexer": resolved_lexer, "language": language, "html": highlighted}}
 
 
 def render_record_data(record: ResultRecordLike, pane_dir: Path) -> PaneCard | None:

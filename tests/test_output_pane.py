@@ -2014,9 +2014,22 @@ def test_query_payload_contains_language_and_shared_theme_highlight() -> None:
 
     query = payload["query"]
     assert isinstance(query, dict)
+    assert query["lexer"] == "python"
     assert query["language"] == "Python"
     assert "#FFC473" in str(query["html"])  # Builtin/type color.
     assert "#7EC193" in str(query["html"])  # String color.
+
+
+def test_query_payload_normalizes_sql_dialects_and_reports_fallback_lexer() -> None:
+    snowflake = build_query_data("select 1", lexer="snowflake")["query"]
+    unknown = build_query_data("select 1", lexer="not-a-real-lexer")["query"]
+    cypher = build_query_data("MATCH (n) RETURN n", lexer="cypher")["query"]
+
+    assert snowflake["lexer"] == "sql"
+    assert snowflake["language"] == "SQL"
+    assert unknown["lexer"] == "sql"
+    assert unknown["language"] == "SQL"
+    assert cypher["lexer"] == "cypher"
 
 
 def test_record_card_writes_structured_data_instead_of_html(tmp_path: Path) -> None:
