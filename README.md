@@ -418,12 +418,21 @@ July 13
 - [x] Improve LLM configuration
 - [x] Fix structured output for Claude - UserError: Anthropic does not support thinking and output tools at the same time. Use `output_type=NativeOutput(...)` instead.
 
-- [x] Default LLM preset for first-time user
+July 14
+- [x] API key detection for first time startup
+- Output pane
+  - [x] Fix flickering on card switch
+  - [x] Fix "lodaing..." card height mismatch
+  - [x] Card height animation
+- [x] Upgrade textual to fix text selection crash
+- [x] Markdown rendering in TUI and output pane
+- [x] Code highlighting theme
 
-
-
+- [ ] Markdown syntax instructions in system prompt
+- [ ] Inline artifact citation
 - [ ] IMPORTANT: decouple data and rendered format (show unit "cm" while still enabling sorting by value)
 - [ ] Subagent reuse
+- [ ] code diff rendering
 
 
 - [ ] Other config options - concurrency
@@ -436,7 +445,7 @@ July 13
 - [ ] View menu location?
 - [ ] Remote server improvements
 - [ ] OpenAI/claude oauth
-- [ ] code diff rendering
+
 - [ ] Improve output pane UI - new turn loading, session ID, ...
 - [ ] web_fetch tool for static html
 - [ ] Bump pydantic-ai to 2.0 and type llm.py
