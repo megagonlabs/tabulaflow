@@ -2,12 +2,18 @@
 
 from __future__ import annotations
 
+from importlib.resources import files
+from typing import TYPE_CHECKING
+
 from pygments.style import Style as PygmentsStyle
 from pygments.token import Token
 from rich.style import Style
 from rich.syntax import PygmentsSyntaxTheme
 from textual.highlight import HighlightTheme
 from textual.widgets.text_area import TextAreaTheme
+
+if TYPE_CHECKING:
+    from textual.widgets import TextArea
 
 ACCENT = "#3EB489"  # mint
 ACCENT_BOLD = f"bold {ACCENT}"
@@ -78,6 +84,20 @@ CODE_FUNCTION = "#78DCE8"
 CODE_STRING = "#7EC193"
 CODE_NUMBER = "#C792EA"
 CODE_TYPE = "#FFC473"
+
+_TEXTUAL_SQL_HIGHLIGHT_QUERY = (
+    files("textual").joinpath("tree-sitter", "highlights", "sql.scm").read_text(encoding="utf-8")
+)
+TABULAFLOW_SQL_HIGHLIGHT_QUERY = _TEXTUAL_SQL_HIGHLIGHT_QUERY.replace(
+    "\n(literal) @string\n",
+    "\n((literal) @string\n  (#match? @string \"^'.*'$\"))\n",
+).replace(
+    '"^[-+]?%d+$"',
+    '"^[-+]?[0-9]+$"',
+).replace(
+    '"^[-+]?%d*\\.%d*$"',
+    '"^[-+]?[0-9]*\\.[0-9]+$"',
+)
 
 
 class TabulaflowCodeHighlightTheme(HighlightTheme):
@@ -213,3 +233,10 @@ def _make_code_text_area_theme() -> TextAreaTheme:
 
 
 TABULAFLOW_CODE_TEXT_AREA_THEME = _make_code_text_area_theme()
+
+
+def configure_code_text_area(text_area: "TextArea") -> None:
+    """Apply TabulaFlow code highlighting to a TextArea."""
+    text_area.register_theme(TABULAFLOW_CODE_TEXT_AREA_THEME)
+    text_area.update_highlight_query("sql", TABULAFLOW_SQL_HIGHLIGHT_QUERY)
+    text_area.theme = "tabulaflow-code"

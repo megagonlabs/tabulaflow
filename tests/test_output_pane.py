@@ -2009,13 +2009,14 @@ def test_view_card_in_pane_marks_turn_as_manual(tmp_path: Path) -> None:
     ]
 
 
-def test_query_payload_contains_language_and_dracula_highlight() -> None:
+def test_query_payload_contains_language_and_shared_theme_highlight() -> None:
     payload = build_query_data('print("Hello, world!")', lexer="python")
 
     query = payload["query"]
     assert isinstance(query, dict)
     assert query["language"] == "Python"
-    assert "#8BE9FD" in str(query["html"])  # Dracula builtin/token color.
+    assert "#FFC473" in str(query["html"])  # Builtin/type color.
+    assert "#7EC193" in str(query["html"])  # String color.
 
 
 def test_record_card_writes_structured_data_instead_of_html(tmp_path: Path) -> None:

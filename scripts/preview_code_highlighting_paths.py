@@ -22,7 +22,7 @@ from textual.widgets import Label, Static, TextArea
 
 from tabulaflow.app.display import build_query
 from tabulaflow.app.pane.cards import build_query_data
-from tabulaflow.app.theme import FOCUS_SURFACE, KEY_HINT, TABULAFLOW_CODE_TEXT_AREA_THEME
+from tabulaflow.app.theme import FOCUS_SURFACE, KEY_HINT, configure_code_text_area
 from tabulaflow.app.widgets import AgentTextBlock
 
 
@@ -335,7 +335,7 @@ p {{
 <body>
 <main>
 <h1>Browser pane query rendering</h1>
-<p>This fixture still uses the current browser-pane query path: Pygments + HtmlFormatter(style="dracula", noclasses=True).</p>
+<p>This fixture uses the current browser-pane query path: Pygments + HtmlFormatter(style=TabulaflowPygmentsStyle, noclasses=True).</p>
 {cards}
 </main>
 </body>
@@ -449,7 +449,7 @@ class CodeHighlightingPathsPreview(App[None]):
                     yield AgentTextBlock(f"```{sample['lexer']}\n{sample['code']}\n```")
 
                     yield _heading("2. TUI cell/query browser")
-                    yield _description("TextArea → TABULAFLOW_CODE_TEXT_AREA_THEME")
+                    yield _description("TextArea → configure_code_text_area()")
                     yield TextArea(
                         sample["code"],
                         language=sample["text_area_language"],
@@ -464,12 +464,11 @@ class CodeHighlightingPathsPreview(App[None]):
                     yield Static(_rich_preview(sample), classes="rich-preview")
 
                     yield _heading("4. Browser output pane query card")
-                    yield _description('build_query_data() → Pygments HtmlFormatter(style="dracula"). See generated HTML file.')
+                    yield _description("build_query_data() → Pygments HtmlFormatter(style=TabulaflowPygmentsStyle). See generated HTML file.")
 
     def on_mount(self) -> None:
         for text_area in self.query(TextArea):
-            text_area.register_theme(TABULAFLOW_CODE_TEXT_AREA_THEME)
-            text_area.theme = "tabulaflow-code"
+            configure_code_text_area(text_area)
 
 
 def main() -> None:

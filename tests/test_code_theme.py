@@ -3,6 +3,8 @@ from __future__ import annotations
 from pygments.token import Token
 from rich.color import Color
 from rich.syntax import PygmentsSyntaxTheme
+from textual.app import App, ComposeResult
+from textual.widgets import TextArea
 
 from tabulaflow.app.theme import (
     CODE_COMMENT,
@@ -15,6 +17,7 @@ from tabulaflow.app.theme import (
     TABULAFLOW_CODE_TEXT_AREA_THEME,
     TabulaflowCodeHighlightTheme,
     TabulaflowPygmentsStyle,
+    configure_code_text_area,
 )
 
 
@@ -54,3 +57,30 @@ def test_code_text_area_theme_uses_shared_palette_without_bold_syntax_styles() -
     assert _hex(styles["type"].color) == CODE_TYPE
     assert _hex(styles["comment"].color) == CODE_COMMENT
     assert all(style.bold is not True for style in styles.values())
+
+
+async def test_code_text_area_sql_numbers_are_not_captured_as_strings() -> None:
+    sql = "SELECT CASE WHEN verified_purchase = 1 THEN 'yes' ELSE 0 END AS flag, 3.14 AS score"
+
+    class _SqlTextAreaApp(App[None]):
+        def compose(self) -> ComposeResult:
+            yield TextArea(sql, language="sql")
+
+        def on_mount(self) -> None:
+            configure_code_text_area(self.query_one(TextArea))
+
+    app = _SqlTextAreaApp()
+    async with app.run_test(size=(100, 20)) as pilot:
+        await pilot.pause()
+        text_area = app.query_one(TextArea)
+        text_area._build_highlight_map()  # noqa: SLF001
+        highlights = {
+            sql[start : end if end else len(sql)]: highlight_name
+            for spans in text_area._highlights.values()  # noqa: SLF001
+            for start, end, highlight_name in spans
+        }
+
+    assert highlights["1"] == "number"
+    assert highlights["0"] == "number"
+    assert highlights["3.14"] == "float"
+    assert highlights["'yes'"] == "string"

@@ -17,6 +17,7 @@ from tabulaflow.app.pane.charts import build_chart_data
 from tabulaflow.app.pane.graphs import build_graph_data
 from tabulaflow.app.pane.maps import build_map_data
 from tabulaflow.app.pane.tables import PANE_TABLE_MAX_HEIGHT, _build_table_data
+from tabulaflow.app.theme import TabulaflowPygmentsStyle
 
 if TYPE_CHECKING:
     import pandas as pd
@@ -50,7 +51,7 @@ def build_query_data(sql: str, *, lexer: str = "sql") -> QueryCardData:
         lex = get_lexer_by_name(lexer or "sql")
     except ClassNotFound:
         lex = get_lexer_by_name("sql")
-    highlighted = highlight(sql, lex, HtmlFormatter(style="dracula", noclasses=True))
+    highlighted = highlight(sql, lex, HtmlFormatter(style=TabulaflowPygmentsStyle, noclasses=True))
     language = lex.name or (lexer or "sql").upper()
     return {"query": {"sql": sql, "lexer": lexer or "sql", "language": language, "html": highlighted}}
 

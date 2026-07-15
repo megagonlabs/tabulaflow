@@ -32,7 +32,7 @@ from tabulaflow.app.theme import (
     FK_MARKER,
     KEY_HINT,
     PK_MARKER,
-    TABULAFLOW_CODE_TEXT_AREA_THEME,
+    configure_code_text_area,
 )
 
 
@@ -771,8 +771,7 @@ class CellBrowserScreen(Screen[None]):
 
     def on_mount(self) -> None:
         text_area = self.query_one(TextArea)
-        text_area.register_theme(TABULAFLOW_CODE_TEXT_AREA_THEME)
-        text_area.theme = "tabulaflow-code"
+        configure_code_text_area(text_area)
         self._refresh_status()
 
         hint = Text()
@@ -880,8 +879,7 @@ class QueryBrowserScreen(Screen[None]):
 
     def on_mount(self) -> None:
         text_area = self.query_one(TextArea)
-        text_area.register_theme(TABULAFLOW_CODE_TEXT_AREA_THEME)
-        text_area.theme = "tabulaflow-code"
+        configure_code_text_area(text_area)
 
         hint_text = Text()
         hint_text.append("Esc", style=KEY_HINT)
