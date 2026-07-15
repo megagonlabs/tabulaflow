@@ -34,6 +34,232 @@ from tabulaflow.app.pane import server as pane_server
 from tabulaflow.toolhub.render_graph import normalize_graph_spec
 from tabulaflow.toolhub.render_map import normalize_map_spec
 
+_MARKDOWN_SHOWCASE = r"""# Heading 1
+
+## Heading 2
+
+### Heading 3
+
+#### Heading 4
+
+##### Heading 5
+
+###### Heading 6
+
+Paragraph text is written as plain text with a blank line between paragraphs.
+
+This is a second paragraph.
+
+Line break using two trailing spaces at the end of a line{TWO_SPACES}
+This line appears directly below the previous one.
+
+Alternative line break using an HTML break tag:<br>
+This line appears below it.
+
+Emphasis:
+
+*Italic text*
+
+_Italic text_
+
+**Bold text**
+
+__Bold text__
+
+***Bold and italic text***
+
+___Bold and italic text___
+
+~~Strikethrough text~~
+
+Subscript using HTML: H<sub>2</sub>O
+
+Superscript using HTML: x<sup>2</sup>
+
+Blockquotes:
+
+> This is a blockquote.
+
+> This is a blockquote with multiple paragraphs.
+>
+> This is the second paragraph inside the blockquote.
+
+> Nested blockquote:
+>
+> > This is a nested blockquote.
+> >
+> > > This is a deeply nested blockquote.
+
+Unordered lists:
+
+- Item one
+- Item two
+- Item three
+
+* Item one
+* Item two
+* Item three
+
++ Item one
++ Item two
++ Item three
+
+Nested unordered list:
+
+- Parent item
+  - Child item
+    - Grandchild item
+
+Ordered lists:
+
+1. First item
+2. Second item
+3. Third item
+
+Ordered list with repeated numbers:
+
+1. First item
+1. Second item
+1. Third item
+
+Nested ordered list:
+
+1. Parent item
+   1. Child item
+      1. Grandchild item
+
+Mixed list:
+
+1. Ordered item
+   - Unordered nested item
+   - Another unordered nested item
+2. Another ordered item
+
+Task list:
+
+- [x] Completed task
+- [ ] Incomplete task
+- [X] Also completed task
+
+Links:
+
+[Inline link](https://example.com)
+
+[Inline link with title](https://example.com "Example title")
+
+Reference-style link:
+
+[Example][example-ref]
+
+[example-ref]: https://example.com "Example title"
+
+Collapsed reference-style link:
+
+[Example][]
+
+[Example]: https://example.com
+
+Shortcut reference-style link:
+
+[GitHub]
+
+[GitHub]: https://github.com
+
+Autolinks:
+
+<https://example.com>
+
+<name@example.com>
+
+Images:
+
+![Alt text](https://example.com/image.png)
+
+Image with title:
+
+![Alt text](https://example.com/image.png "Image title")
+
+Reference-style image:
+
+![Alt text][image-ref]
+
+[image-ref]: https://example.com/image.png "Image title"
+
+Image used as a link:
+
+[![Alt text](https://example.com/image.png)](https://example.com)
+
+Inline code:
+
+Use `code` inside a sentence.
+
+Code span containing backticks:
+
+``Use `code` here``
+
+Indented code block:
+
+    function hello() {
+      console.log("Hello");
+    }
+
+Fenced code block:
+
+```text
+Plain text code block
+```
+
+Fenced code block with language:
+
+```python
+def hello():
+    print("Hello")
+```
+
+Fenced code block using tildes:
+
+~~~javascript
+console.log("Hello");
+~~~
+
+Horizontal rules:
+
+---
+
+***
+
+___
+
+Tables:
+
+| Name | Age | City | Country | Department | Role | Employment status | Start date | Manager | Annual revenue | Quarterly target | Completion | Last active | Notes |
+|:---|---:|:---:|:---|:---|:---|:---:|:---:|:---|---:|---:|---:|:---:|:---|
+| Alice Martin | 30 | Paris | France | Enterprise Analytics | Senior Data Analyst | Active | 2021-03-15 | Morgan Chen | $2,450,000 | $720,000 | 94% | 2026-07-13 | Leading the international retention analysis initiative |
+| Bob Tanaka | 25 | Tokyo | Japan | Customer Operations | Solutions Consultant | Active | 2023-09-04 | Priya Kapoor | $1,980,000 | $610,000 | 87% | 2026-07-14 | Coordinating the APAC enterprise migration program |
+| Carmen Ruiz | 42 | Madrid | Spain | Strategic Partnerships | Regional Director | On leave | 2018-11-19 | Elena Petrova | $3,870,000 | $1,100,000 | 91% | 2026-06-28 | Expanding partner coverage across southern Europe |
+
+Table alignment:
+
+| Left aligned | Center aligned | Right aligned |
+|:---|:---:|---:|
+| Text | Text | Text |
+| More | More | More |
+
+Escaping characters:
+
+\*This is not italic\*
+
+\# This is not a heading
+
+\[This is not a link\]
+
+\`This is not code\`
+
+Escapable characters include:
+
+\ backslash
+""".replace("{TWO_SPACES}", "  ")
+
 
 def _record(
     *,
@@ -1325,6 +1551,16 @@ def _populate_pane(
                     cards=[card],
                 )
             )
+
+    if chart_cards:
+        pane.push(
+            turn_payload(
+                title="Markdown syntax showcase",
+                user="Show the Markdown rendering fixture with representative result artifacts.",
+                assistant=_MARKDOWN_SHOWCASE,
+                cards=chart_cards[:2],
+            )
+        )
 
 
 def main() -> None:
