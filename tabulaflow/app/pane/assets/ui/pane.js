@@ -417,7 +417,7 @@ function shellLoadingState(shell) {
 
 function stageShellEntry(shell, entry) {
   var height = shell.getBoundingClientRect().height;
-  if (!shell.classList.contains('view-loading')) shell.style.height = Math.max(220, height) + 'px';
+  if (!shell.classList.contains('view-loading')) shell.style.height = height > 0 ? height + 'px' : '';
   Array.prototype.forEach.call(shell.children, function (node) {
     if (!node.classList.contains('tf-view')) return;
     hideViewNode(node);

@@ -762,6 +762,17 @@ def test_live_view_survives_rapid_browser_replay_and_switches_atomically(tmp_pat
                 }
                 page.wait_for_selector(".view-shell .view-active.tf-table-view")
                 assert page.locator(".view-shell").get_attribute("aria-busy") is None
+                cold_heights = page.evaluate(
+                    """() => {
+                      const shell = document.querySelector('.view-shell');
+                      shell.style.height = '';
+                      return Object.fromEntries(['data', 'chart', 'map', 'graph'].map(kind => {
+                        shell.className = `view-shell view-${kind} view-loading`;
+                        return [kind, shell.getBoundingClientRect().height];
+                      }));
+                    }"""
+                )
+                assert cold_heights == {"data": 220, "chart": 520, "map": 560, "graph": 620}
             finally:
                 browser.close()
     finally:
@@ -1882,7 +1893,7 @@ def test_pane_map_view_is_maplibre_based() -> None:
     assert "/assets/leaflet" not in map_js
     assert "L.marker" not in map_js
     assert "function formatNumber(value)" in shared_js
-    assert ".tf-map-stage { position: relative; height: min(560px, 68vh); min-height: 420px;" in _PANE_HTML
+    assert ".tf-map-stage { position: relative; height: var(--map-frame-height);" in _PANE_HTML
     assert ".tf-map-view .maplibregl-map { background: var(--card);" in _PANE_HTML
     assert ".tf-map-legend {\n    position: absolute; top: 12px; right: 12px; z-index: 5;" in _PANE_HTML
     assert "background: rgba(255, 255, 255, 0.62); color: #111827;" in _PANE_HTML
