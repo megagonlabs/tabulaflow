@@ -73,3 +73,8 @@ def test_agent_markdown_inline_code_uses_flow_color_without_background() -> None
     assert f"color: {COLOR_FLOW};" in AgentTextBlock.DEFAULT_CSS
     assert "AgentTextBlock MarkdownBlock:dark > .code_inline" in AgentTextBlock.DEFAULT_CSS
     assert "background: transparent;" in AgentTextBlock.DEFAULT_CSS
+
+
+def test_agent_markdown_list_items_are_compact() -> None:
+    assert "AgentTextBlock MarkdownBulletList Horizontal > Vertical > MarkdownParagraph" in AgentTextBlock.DEFAULT_CSS
+    assert "AgentTextBlock MarkdownOrderedList Horizontal > Vertical > MarkdownParagraph" in AgentTextBlock.DEFAULT_CSS

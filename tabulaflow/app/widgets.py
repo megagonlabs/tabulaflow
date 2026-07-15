@@ -744,6 +744,11 @@ class AgentTextBlock(Markdown):
         margin: 0 0 1 0;
     }}
 
+    AgentTextBlock MarkdownBulletList Horizontal > Vertical > MarkdownParagraph,
+    AgentTextBlock MarkdownOrderedList Horizontal > Vertical > MarkdownParagraph {{
+        margin: 0;
+    }}
+
     AgentTextBlock MarkdownBlockQuote {{
         background: transparent;
         border-left: outer {ACCENT_DIM};
