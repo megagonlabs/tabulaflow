@@ -74,6 +74,28 @@ print("hi")
         assert len(block.query("MarkdownFence")) == 1
 
 
+async def test_agent_markdown_links_show_visible_destinations() -> None:
+    markdown = (
+        "See [docs](https://example.com/docs), <https://example.com/raw>, "
+        "<user@example.com>, [https://example.com/same](https://example.com/same), "
+        "and [email support](mailto:user@example.com)."
+    )
+    app = _AgentMarkdownApp()
+
+    async with app.run_test(size=(120, 20)) as pilot:
+        await app.progress.apply(Finished(result=ChatResult(text=markdown)))
+        await pilot.pause()
+
+        block = app.progress._text_block
+        assert isinstance(block, AgentTextBlock)
+        paragraph = block.query_one("MarkdownParagraph")
+        assert paragraph._content.plain == (
+            "See docs (https://example.com/docs), https://example.com/raw, "
+            "user@example.com, https://example.com/same, "
+            "and email support (mailto:user@example.com)."
+        )
+
+
 def test_agent_markdown_parser_supports_tables_without_raw_html_or_fuzzy_linkify() -> None:
     parser = _make_agent_markdown_parser()
 

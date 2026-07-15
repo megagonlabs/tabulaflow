@@ -9,6 +9,8 @@ from collections.abc import Mapping
 from typing import TYPE_CHECKING, Protocol, TypedDict
 
 from markdown_it import MarkdownIt
+from markdown_it.rules_core import StateCore
+from markdown_it.token import Token
 from pathlib import Path
 from rich.console import Group
 from rich.spinner import Spinner
@@ -708,12 +710,73 @@ def _styled_label(name: str, label: str) -> Text:
     return text
 
 
+def _visible_text_for_link_child(token: Token) -> str:
+    """Plain text contribution of a token inside a markdown link label."""
+    if token.type == "text":
+        return re.sub(r"\s+", " ", token.content)
+    if token.type == "code_inline":
+        return token.content
+    if token.type == "hardbreak":
+        return "\n"
+    if token.type == "softbreak":
+        return " "
+    if token.children is None:
+        return ""
+    return "".join(_visible_text_for_link_child(child) for child in token.children)
+
+
+def _append_visible_link_destinations(markdown: MarkdownIt) -> None:
+    """Append visible destinations to explicit markdown links.
+
+    Textual already handles markdown link click metadata, but terminal users also
+    need copyable visible URLs. Rather than overriding Textual's inline renderer,
+    tweak the parsed token stream so the default renderer sees ``label (url)``.
+    Autolinks and links whose label is already the URL are left unchanged.
+    """
+
+    def add_visible_destinations(state: StateCore) -> None:
+        for token in state.tokens:
+            if token.type != "inline" or token.children is None:
+                continue
+
+            children: list[Token] = []
+            link_stack: list[tuple[str, bool, list[str]]] = []
+            for child in token.children:
+                if child.type == "link_open":
+                    href = str(child.attrs.get("href", ""))
+                    is_autolink = child.markup == "autolink" or child.info == "auto"
+                    link_stack.append((href, is_autolink, []))
+                    children.append(child)
+                    continue
+
+                if child.type == "link_close":
+                    if link_stack:
+                        href, is_autolink, label_parts = link_stack.pop()
+                        label = "".join(label_parts)
+                        if href and not is_autolink and label != href:
+                            visible_destination = Token("text", "", 0)
+                            visible_destination.content = f" ({href})"
+                            children.append(visible_destination)
+                    children.append(child)
+                    continue
+
+                if link_stack:
+                    link_stack[-1][2].append(_visible_text_for_link_child(child))
+                children.append(child)
+
+            token.children = children
+
+    markdown.core.ruler.after("inline", "append_visible_link_destinations", add_visible_destinations)
+
+
 def _make_agent_markdown_parser() -> MarkdownIt:
     # Keep GFM-style strikethrough delimiters visible in the terminal instead of
     # emitting a Rich/Textual ``strike`` style. Terminal support for strikethrough
     # is inconsistent, so rendering ``~~text~~`` literally is more predictable in
     # the TUI.
-    return MarkdownIt("commonmark", {"html": False}).enable(["table"]).disable("hr")
+    markdown = MarkdownIt("commonmark", {"html": False}).enable(["table"]).disable("hr")
+    _append_visible_link_destinations(markdown)
+    return markdown
 
 
 class AgentMarkdownFence(MarkdownFence):

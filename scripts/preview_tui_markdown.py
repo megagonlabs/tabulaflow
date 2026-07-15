@@ -81,7 +81,15 @@ long_result = {"customer_id": 12345, "customer_name": "Example Customer With A V
 
 Raw HTML is escaped: <br>
 
-Explicit autolink works: <https://example.com>
+Link display cases:
+
+- Explicit label: [docs](https://example.com/docs)
+- URL autolink: <https://example.com/raw>
+- Email autolink: <user@example.com>
+- Label already equals destination: [https://example.com/same](https://example.com/same)
+- Explicit mailto label: [email support](mailto:user@example.com)
+- Inline code label: [`docs`](https://example.com/docs)
+- Emphasized label: [**docs**](https://example.com/docs)
 
 Bare URL should stay plain: https://example.com
 """
