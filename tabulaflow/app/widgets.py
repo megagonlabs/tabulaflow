@@ -725,48 +725,49 @@ def _visible_text_for_link_child(token: Token) -> str:
     return "".join(_visible_text_for_link_child(child) for child in token.children)
 
 
-def _append_visible_link_destinations(markdown: MarkdownIt) -> None:
-    """Append visible destinations to explicit markdown links.
+def _render_links_as_plain_text(markdown: MarkdownIt) -> None:
+    """Render markdown links as visible plain text.
 
-    Textual already handles markdown link click metadata, but terminal users also
-    need copyable visible URLs. Rather than overriding Textual's inline renderer,
-    tweak the parsed token stream so the default renderer sees ``label (url)``.
-    Autolinks and links whose label is already the URL are left unchanged.
+    Textual attaches click metadata to markdown links, but terminal link support
+    is inconsistent. Keep links copyable and terminal-detectable by removing the
+    link tokens and rendering explicit links as ``label (url)``. Autolinks and
+    links whose label is already the URL render as just their visible label.
     """
 
-    def add_visible_destinations(state: StateCore) -> None:
+    def replace_links(state: StateCore) -> None:
         for token in state.tokens:
             if token.type != "inline" or token.children is None:
                 continue
 
             children: list[Token] = []
-            link_stack: list[tuple[str, bool, list[str]]] = []
+            in_link = False
+            href = ""
+            is_autolink = False
+            label_parts: list[str] = []
             for child in token.children:
                 if child.type == "link_open":
                     href = str(child.attrs.get("href", ""))
                     is_autolink = child.markup == "autolink" or child.info == "auto"
-                    link_stack.append((href, is_autolink, []))
-                    children.append(child)
+                    label_parts = []
+                    in_link = True
                     continue
 
-                if child.type == "link_close":
-                    if link_stack:
-                        href, is_autolink, label_parts = link_stack.pop()
-                        label = "".join(label_parts)
-                        if href and not is_autolink and label != href:
-                            visible_destination = Token("text", "", 0)
-                            visible_destination.content = f" ({href})"
-                            children.append(visible_destination)
-                    children.append(child)
+                if child.type == "link_close" and in_link:
+                    label = "".join(label_parts)
+                    if href and not is_autolink and label != href:
+                        visible_destination = Token("text", "", 0)
+                        visible_destination.content = f" ({href})"
+                        children.append(visible_destination)
+                    in_link = False
                     continue
 
-                if link_stack:
-                    link_stack[-1][2].append(_visible_text_for_link_child(child))
+                if in_link:
+                    label_parts.append(_visible_text_for_link_child(child))
                 children.append(child)
 
             token.children = children
 
-    markdown.core.ruler.after("inline", "append_visible_link_destinations", add_visible_destinations)
+    markdown.core.ruler.after("inline", "render_links_as_plain_text", replace_links)
 
 
 def _make_agent_markdown_parser() -> MarkdownIt:
@@ -775,7 +776,7 @@ def _make_agent_markdown_parser() -> MarkdownIt:
     # is inconsistent, so rendering ``~~text~~`` literally is more predictable in
     # the TUI.
     markdown = MarkdownIt("commonmark", {"html": False}).enable(["table"]).disable("hr")
-    _append_visible_link_destinations(markdown)
+    _render_links_as_plain_text(markdown)
     return markdown
 
 

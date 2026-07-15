@@ -78,7 +78,8 @@ async def test_agent_markdown_links_show_visible_destinations() -> None:
     markdown = (
         "See [docs](https://example.com/docs), <https://example.com/raw>, "
         "<user@example.com>, [https://example.com/same](https://example.com/same), "
-        "and [email support](mailto:user@example.com)."
+        "[email support](mailto:user@example.com), [`docs`](https://example.com/docs), "
+        "and [**docs**](https://example.com/docs)."
     )
     app = _AgentMarkdownApp()
 
@@ -92,8 +93,10 @@ async def test_agent_markdown_links_show_visible_destinations() -> None:
         assert paragraph._content.plain == (
             "See docs (https://example.com/docs), https://example.com/raw, "
             "user@example.com, https://example.com/same, "
-            "and email support (mailto:user@example.com)."
+            "email support (mailto:user@example.com), docs (https://example.com/docs), "
+            "and docs (https://example.com/docs)."
         )
+        assert all("@click" not in str(span.style) for span in paragraph._content._spans)
 
 
 def test_agent_markdown_parser_supports_tables_without_raw_html_or_fuzzy_linkify() -> None:
@@ -106,7 +109,8 @@ def test_agent_markdown_parser_supports_tables_without_raw_html_or_fuzzy_linkify
     assert "<hr" not in parser.render("---")
     assert "&lt;br&gt;" in parser.render("<br>")
     assert "<a href=" not in parser.render("https://example.com")
-    assert '<a href="https://example.com">' in parser.render("<https://example.com>")
+    assert "<a href=" not in parser.render("<https://example.com>")
+    assert "<p>docs (https://example.com/docs)</p>" in parser.render("[docs](https://example.com/docs)")
 
 
 def test_agent_markdown_inline_code_uses_function_color_without_background() -> None:
