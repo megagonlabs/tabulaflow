@@ -15,6 +15,9 @@
     --scrollbar-thumb-hover: #4a5260;
     --panel: #1f2532;
     --rail-bg: #131720;
+    --query-bg: #151922;
+    --query-border: #242b36;
+    --query-hover: #202633;
     --chart-grid: #3a4352;
     --chart-category-0: #3EB489;
     --chart-category-1: #5ac8fa;
@@ -507,19 +510,19 @@ body { margin: 0; background: var(--bg); color: var(--text); display: flex; flex
 .tf-graph-popup th { color: var(--text-muted); font-weight: 600; white-space: nowrap; }
 
 /* Direct query rendering. */
-.query-card { background: #1e1e1e; color: var(--text); }
+.query-card { background: var(--query-bg); color: var(--text); }
 .query-bar { height: 42px; display: flex; align-items: center; justify-content: space-between;
-             padding: 0 14px 0 18px; box-sizing: border-box; border-bottom: 1px solid #303030;
+             padding: 0 14px 0 18px; box-sizing: border-box; border-bottom: 1px solid var(--query-border);
              color: #f5f5f5; font: 600 13px/1.2 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
 .query-copy { display: inline-flex; align-items: center; justify-content: center; height: 30px; width: 30px;
               border: 0; border-radius: 6px; background: transparent; color: #f5f5f5; cursor: pointer; }
-.query-copy:hover { background: #242424; }
+.query-copy:hover { background: var(--query-hover); }
 .query-copy:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .copy-icon { position: relative; width: 16px; height: 16px; flex: 0 0 auto; }
 .copy-icon::before, .copy-icon::after { content: ""; position: absolute; width: 10px; height: 12px;
                                         border: 2px solid currentColor; border-radius: 4px; box-sizing: border-box; }
 .copy-icon::before { left: 1px; top: 4px; opacity: 0.72; }
-.copy-icon::after { left: 5px; top: 0; background: #1e1e1e; }
-.tf-query-view .highlight { margin: 0; background: #1e1e1e !important; }
+.copy-icon::after { left: 5px; top: 0; background: var(--query-bg); }
+.tf-query-view .highlight { margin: 0; background: var(--query-bg) !important; }
 .tf-query-view .highlight pre { margin: 0; padding: 18px 20px 20px; white-space: pre-wrap; word-break: break-word;
-                                background: #1e1e1e !important; font: 13px/1.6 ui-monospace, SFMono-Regular, Menlo, monospace; }
+                                background: var(--query-bg) !important; font: 13px/1.6 ui-monospace, SFMono-Regular, Menlo, monospace; }

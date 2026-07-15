@@ -239,6 +239,9 @@ def write_browser_fixture(path: Path = OUTPUT_HTML) -> Path:
   --text: #e4e4e7;
   --text-muted: #6a737d;
   --accent: #3eb489;
+  --query-bg: #151922;
+  --query-border: #242b36;
+  --query-hover: #202633;
 }}
 body {{
   margin: 0;
@@ -265,7 +268,7 @@ p {{
   color: var(--text-muted);
 }}
 .query-card {{
-  background: #1e1e1e;
+  background: var(--query-bg);
   color: var(--text);
   border-radius: 10px;
   overflow: hidden;
@@ -277,7 +280,7 @@ p {{
   justify-content: space-between;
   padding: 0 14px 0 18px;
   box-sizing: border-box;
-  border-bottom: 1px solid #303030;
+  border-bottom: 1px solid var(--query-border);
   color: #f5f5f5;
   font: 600 13px/1.2 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }}
@@ -291,6 +294,9 @@ p {{
   border-radius: 6px;
   background: transparent;
   color: #f5f5f5;
+}}
+.query-copy:hover {{
+  background: var(--query-hover);
 }}
 .copy-icon {{
   position: relative;
@@ -316,18 +322,18 @@ p {{
 .copy-icon::after {{
   left: 5px;
   top: 0;
-  background: #1e1e1e;
+  background: var(--query-bg);
 }}
 .tf-query-view .highlight {{
   margin: 0;
-  background: #1e1e1e !important;
+  background: var(--query-bg) !important;
 }}
 .tf-query-view .highlight pre {{
   margin: 0;
   padding: 18px 20px 20px;
   white-space: pre-wrap;
   word-break: break-word;
-  background: #1e1e1e !important;
+  background: var(--query-bg) !important;
   font: 13px/1.6 ui-monospace, SFMono-Regular, Menlo, monospace;
 }}
 </style>
