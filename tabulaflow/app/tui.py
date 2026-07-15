@@ -1126,18 +1126,18 @@ class TabulaflowApp(App[None]):
         result: ChatResult | None = None
         try:
             async for event in chat_agent.run_stream(question):
-                progress.apply(event)
+                await progress.apply(event)
                 if isinstance(event, Finished):
                     result = event.result
         except asyncio.CancelledError:
             # Freeze the partial progress widget; ChatAgent's message history and
             # last_usage already reflect the interrupted run.
-            progress.mark_interrupted(chat_agent.last_usage)
+            await progress.mark_interrupted(chat_agent.last_usage)
             raise
         except Exception as e:
             # Freeze the partial progress widget (mirrors the interrupt path) so the
             # tool steps run so far stay visible, then mount the error below it.
-            progress.mark_failed()
+            await progress.mark_failed()
             # Build the detail as plain text (not interpolated into markup) so a
             # ``[...]`` in the exception message can't be parsed as a markup tag.
             error_text = Text.from_markup(f"[{ERROR}]Agent error:[/] ")

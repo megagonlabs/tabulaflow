@@ -1,0 +1,102 @@
+"""Preview TUI Markdown answer rendering.
+
+    uv run scripts/preview_tui_markdown.py
+
+Temporary visual fixture for checking ``AgentTextBlock`` styling without running
+a real agent turn.
+"""
+
+from __future__ import annotations
+
+from pathlib import Path
+
+from textual.app import App, ComposeResult
+from textual.containers import VerticalScroll
+
+from tabulaflow.app.theme import FOCUS_SURFACE
+from tabulaflow.app.widgets import AgentProgressWidget
+from tabulaflow.chat import AnswerDelta, Finished
+from tabulaflow.chat.result import ChatResult
+
+
+MARKDOWN = """# Heading 1
+
+## Heading 2
+
+### Heading 3
+
+#### Muted Heading 4
+
+Paragraph text is written as plain text with a blank line between paragraphs.
+
+This paragraph includes **bold text**, *italic text*, `inline code`, and ~~struck text~~.
+
+---
+
+Unordered list rendered with hyphen bullets:
+
+- Item from dash source
+* Item from star source
++ Item from plus source
+
+Nested list:
+
+- Parent item
+  - Child item
+    - Grandchild item
+
+Ordered list:
+
+1. First item
+2. Second item
+3. Third item
+
+> Blockquote with a neutral left border.
+>
+> Second quoted paragraph.
+
+---
+
+Small table:
+
+| Name | Age | City |
+|---|---:|:---:|
+| Alice | 30 | Paris |
+| Bob | 25 | Tokyo |
+
+Fenced code:
+
+```python
+def hello(name: str) -> None:
+    print(f"Hello, {name}")
+```
+
+Raw HTML is escaped: <br>
+
+Explicit autolink works: <https://example.com>
+
+Bare URL should stay plain: https://example.com
+"""
+
+
+class TuiMarkdownPreview(App[None]):
+    CSS_PATH = Path(__file__).resolve().parents[1] / "tabulaflow" / "app" / "tui.tcss"
+
+    def get_css_variables(self) -> dict[str, str]:
+        variables = super().get_css_variables()
+        variables["focus-surface"] = FOCUS_SURFACE
+        return variables
+
+    def compose(self) -> ComposeResult:
+        yield VerticalScroll(AgentProgressWidget(), id="chat-log")
+
+    async def on_mount(self) -> None:
+        progress = self.query_one(AgentProgressWidget)
+        midpoint = len(MARKDOWN) // 2
+        await progress.apply(AnswerDelta(content=MARKDOWN[:midpoint]))
+        await progress.apply(AnswerDelta(content=MARKDOWN[midpoint:]))
+        await progress.apply(Finished(result=ChatResult(text=MARKDOWN)))
+
+
+if __name__ == "__main__":
+    TuiMarkdownPreview().run()

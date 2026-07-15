@@ -96,7 +96,7 @@ always *visible text*, never silently dropped content.
 |---|---|---|
 | Headings, emphasis, lists, blockquote, inline code | rendered | rendered |
 | Fenced code blocks | rendered, unhighlighted (hook later) | rendered, syntax-highlighted (Textual fence uses `Syntax` — free) |
-| GFM tables | rendered (thin-ruled prose table, not Tabulator) | **disabled** — pipe source shows as literal text |
+| GFM tables | rendered (thin-ruled prose table, not Tabulator) | rendered with Textual's native table block |
 | Strikethrough | rendered | rendered |
 | Raw HTML | escaped → visible as text (`html: false`) | visible as text (`html=False`) |
 | Linkify bare URLs | on | off |
@@ -106,13 +106,12 @@ Parser configs (the entire per-surface enforcement):
 
 - **Pane:** `markdownit({ html: false, linkify: true })` — JS default preset;
   tables/strikethrough already on.
-- **TUI:** `MarkdownIt("commonmark", {"html": False}).enable("strikethrough")`
-  — no `table` rule.
+- **TUI:** `MarkdownIt("commonmark", {"html": False}).enable(["table", "strikethrough"])`
+  — explicit autolinks work; bare-URL fuzzy linkify stays off.
 
-Because the TUI shows pipe tables literally, answer-style guidance in the chat
-system prompt should keep discouraging inline prose tables — tabular data
-belongs in cited records (Data cards). Small prompt nudge if not already
-covered.
+Because wide terminal tables still compress and elide, answer-style guidance in
+the chat system prompt should keep discouraging large inline prose tables —
+tabular data belongs in cited records (Data cards). Small prose tables are fine.
 
 ## 5. Pane implementation
 

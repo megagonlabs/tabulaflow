@@ -6,12 +6,13 @@ import difflib
 import json
 import re
 from collections.abc import Mapping
-from typing import TYPE_CHECKING, TypedDict
+from typing import TYPE_CHECKING, Protocol, TypedDict
 
+from markdown_it import MarkdownIt
+from pathlib import Path
 from rich.console import Group
 from rich.spinner import Spinner
 from rich.text import Text
-from pathlib import Path
 
 from textual import events
 from textual.binding import Binding
@@ -20,8 +21,9 @@ from textual.suggester import Suggester
 from textual.timer import Timer
 from textual.app import ComposeResult
 from textual.widget import Widget
-from textual.widgets import Input, Static
+from textual.widgets import Input, Markdown, Static
 
+from tabulaflow.app.banner import COLOR_FLOW
 from tabulaflow.app.display import DATA_PREVIEW_MAX_ROWS
 from tabulaflow.app.theme import ACCENT, ACCENT_DIM, DIFF_ADDED, DIFF_REMOVED, KEY_HINT, KEY_HINT_DIM, MESSAGE_SURFACE
 from tabulaflow.app.screens import ChartBrowserScreen, DataBrowserScreen, QueryBrowserScreen
@@ -47,6 +49,12 @@ if TYPE_CHECKING:
     from tabulaflow.chat import ChatResult
     from tabulaflow.app.display import CardGroup, ViewItem
     from tabulaflow.core.types import Usage
+
+
+class _MarkdownStream(Protocol):
+    async def write(self, markdown_fragment: str) -> None: ...
+
+    async def stop(self) -> None: ...
 
 
 # ---------------------------------------------------------------------------
@@ -688,23 +696,122 @@ def _styled_label(name: str, label: str) -> Text:
     return text
 
 
-class AgentTextBlock(Static):
+def _make_agent_markdown_parser() -> MarkdownIt:
+    return MarkdownIt("commonmark", {"html": False}).enable(["table", "strikethrough"])
+
+
+class AgentTextBlock(Markdown):
     """The agent's natural-language answer, streamed into its own widget.
 
-    Rendered as a plain ``Text`` — not inside the progress widget's render group —
-    so it is selectable (Textual only extracts selection text from
-    ``Text``/``Content`` renders). ``AgentProgressWidget`` mounts one as a sibling
-    for the final answer; mid-turn narration arrives as a separate ``NarrationDelta``
-    the app doesn't handle, so it never reaches here.
+    ``AgentProgressWidget`` mounts one as a sibling for the final answer;
+    mid-turn narration arrives as a separate ``NarrationDelta`` the app doesn't
+    handle, so it never reaches here.
     """
 
-    DEFAULT_CSS = """
-    AgentTextBlock {
+    BULLETS = ["- "]
+
+    DEFAULT_CSS = f"""
+    AgentTextBlock {{
         padding: 0 1;
         margin: 1 0 0 0;
         height: auto;
-    }
+    }}
+
+    AgentTextBlock MarkdownHeader {{
+        color: $text;
+        margin: 1 0 1 0;
+    }}
+
+    AgentTextBlock MarkdownH1,
+    AgentTextBlock MarkdownH2,
+    AgentTextBlock MarkdownH3,
+    AgentTextBlock MarkdownH4,
+    AgentTextBlock MarkdownH5,
+    AgentTextBlock MarkdownH6 {{
+        background: transparent;
+        color: $text;
+        content-align: left middle;
+        text-style: bold;
+    }}
+
+    AgentTextBlock MarkdownH4,
+    AgentTextBlock MarkdownH5,
+    AgentTextBlock MarkdownH6 {{
+        color: {ACCENT_DIM};
+    }}
+
+    AgentTextBlock MarkdownParagraph {{
+        margin: 0 0 1 0;
+    }}
+
+    AgentTextBlock MarkdownBlockQuote {{
+        background: transparent;
+        border-left: outer {ACCENT_DIM};
+        margin: 1 0;
+        padding: 0 1;
+    }}
+
+    AgentTextBlock MarkdownHorizontalRule {{
+        border-bottom: solid $foreground 20%;
+        height: 1;
+        padding-top: 1;
+        margin-bottom: 1;
+    }}
+
+    AgentTextBlock MarkdownFence {{
+        background: $surface;
+        color: $text;
+        margin: 1 0;
+        padding: 0;
+        scrollbar-size-horizontal: 1;
+    }}
+
+    AgentTextBlock MarkdownFence > Label {{
+        padding: 1 2;
+    }}
+
+    AgentTextBlock MarkdownBlock > .code_inline,
+    AgentTextBlock MarkdownBlock:dark > .code_inline,
+    AgentTextBlock MarkdownBlock:light > .code_inline {{
+        background: transparent;
+        color: {COLOR_FLOW};
+        text-style: none;
+    }}
+
+    AgentTextBlock MarkdownBullet,
+    AgentTextBlock MarkdownTableContent > .header {{
+        color: $text;
+    }}
+
+    AgentTextBlock MarkdownTableContent {{
+        keyline: thin $foreground 20%;
+    }}
+
+    AgentTextBlock MarkdownTableContent > .cell,
+    AgentTextBlock MarkdownTableContent > .header {{
+        padding: 0 1;
+    }}
     """
+
+    def __init__(self, markdown: str | None = None) -> None:
+        super().__init__(markdown, parser_factory=_make_agent_markdown_parser)
+        self._stream: _MarkdownStream | None = None
+
+    async def write_delta(self, delta: str) -> None:
+        if self._stream is None:
+            self._stream = Markdown.get_stream(self)
+        await self._stream.write(delta)
+
+    async def replace_markdown(self, markdown: str) -> None:
+        await self.stop_stream()
+        await self.update(markdown)
+
+    async def stop_stream(self) -> None:
+        if self._stream is None:
+            return
+        stream = self._stream
+        self._stream = None
+        await stream.stop()
 
 
 class AgentProgressWidget(Widget):
@@ -783,7 +890,7 @@ class AgentProgressWidget(Widget):
 
     # Event-stream consumption
 
-    def apply(self, event: ChatEvent) -> None:
+    async def apply(self, event: ChatEvent) -> None:
         """Dispatch one ``ChatEvent`` from ``ChatAgent.run_stream`` to the renderer.
 
         ``ThinkingDelta`` (model reasoning) is intentionally not rendered — the TUI
@@ -798,18 +905,24 @@ class AgentProgressWidget(Widget):
         elif isinstance(event, ToolProgress):
             self._on_tool_progress(event.completed, event.total, event.stage, event.unit, event.tool_call_id)
         elif isinstance(event, AnswerDelta):
-            self._on_answer_delta(event.content)
+            await self._on_answer_delta(event.content)
         elif isinstance(event, UsageUpdated):
             self._on_usage(event.usage)
         elif isinstance(event, Finished):
-            self._on_finished(event.result)
+            await self._on_finished(event.result)
 
-    def _on_finished(self, result: ChatResult) -> None:
+    async def _on_finished(self, result: ChatResult) -> None:
         # Reconcile the live-streamed prose with the authoritative final text
         # (the terminal Finished event carries the full ChatResult), then freeze.
-        if result.text:
+        if self._text_block is not None:
+            if result.text and result.text != self._streaming_text:
+                self._streaming_text = result.text
+                await self._text_block.replace_markdown(result.text)
+            else:
+                await self._text_block.stop_stream()
+        elif result.text:
             self._streaming_text = result.text
-            self._set_text(result.text)
+            await self._set_text(result.text)
         if result.usage is not None:
             self._usage = result.usage
         self._status_text = None
@@ -819,24 +932,26 @@ class AgentProgressWidget(Widget):
             self._timer = None
         self._refresh(layout=True)
 
-    def mark_interrupted(self, usage: Usage | None = None) -> None:
+    async def mark_interrupted(self, usage: Usage | None = None) -> None:
         """Freeze the widget after a cancelled run (the consumer calls this on
         ``CancelledError``; no terminal ``Finished`` arrives for an interrupt)."""
         if usage is not None:
             self._usage = usage
         self._interrupted = True
-        self._freeze_partial()
+        await self._freeze_partial()
 
-    def mark_failed(self) -> None:
+    async def mark_failed(self) -> None:
         """Freeze the widget after an errored agent turn, preserving the tool steps
         rendered so far (the consumer calls this on a non-cancellation exception; no
         terminal ``Finished`` arrives). Mirrors ``mark_interrupted``."""
-        self._freeze_partial()
+        await self._freeze_partial()
 
-    def _freeze_partial(self) -> None:
+    async def _freeze_partial(self) -> None:
         """Freeze a partial run (interrupt or error): stop the timer, drop the live
         status spinner, and — when nothing was rendered — collapse out of the layout
         so the trailing status line sits flush against the user prompt."""
+        if self._text_block is not None:
+            await self._text_block.stop_stream()
         self._status_text = None
         self._frozen = True
         if self._timer is not None:
@@ -922,23 +1037,33 @@ class AgentProgressWidget(Widget):
         self._status_text = "Thinking..."
         self._refresh(layout=True, scroll=True)
 
-    def _on_answer_delta(self, delta: str) -> None:
+    async def _on_answer_delta(self, delta: str) -> None:
         # Only the final answer arrives as ``AnswerDelta`` (refs already stripped by
         # the chat layer); mid-turn ``NarrationDelta`` is not handled, so it's dropped.
         self._streaming_text += delta
         self._status_text = None
-        self._set_text(self._streaming_text)
+        await self._append_text(delta)
         self._refresh(layout=True, scroll=True)
 
-    def _set_text(self, text: str) -> None:
-        """Render ``text`` in the answer block, mounting it as a selectable sibling
+    async def _append_text(self, delta: str) -> None:
+        """Append ``delta`` to the answer block, mounting it as a sibling
         after the progress widget on first use."""
-        if self._text_block is None:
-            self._text_block = AgentTextBlock(Text(text))
-            if isinstance(self.parent, Widget):
-                self.parent.mount(self._text_block, after=self)
-        else:
-            self._text_block.update(Text(text))
+        block = await self._ensure_text_block()
+        await block.write_delta(delta)
+
+    async def _set_text(self, text: str) -> None:
+        """Render ``text`` in the answer block, mounting it as a sibling
+        after the progress widget on first use."""
+        block = await self._ensure_text_block()
+        await block.replace_markdown(text)
+
+    async def _ensure_text_block(self) -> AgentTextBlock:
+        if self._text_block is not None:
+            return self._text_block
+        self._text_block = AgentTextBlock()
+        if isinstance(self.parent, Widget):
+            await self.parent.mount(self._text_block, after=self)
+        return self._text_block
 
     def _on_usage(self, usage: Usage) -> None:
         self._usage = usage
