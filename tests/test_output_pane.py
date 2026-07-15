@@ -738,6 +738,17 @@ def test_live_view_survives_rapid_browser_replay_and_switches_atomically(tmp_pat
                     "document.querySelector('.turnitem.active .turntitle')?.textContent === 'final reused card'"
                 )
                 page.wait_for_selector(".view-shell .view-active.tf-chart-view svg")
+                page.evaluate(
+                    """() => {
+                      const on = window.Tabulator.prototype.on;
+                      window.Tabulator.prototype.on = function (event, callback) {
+                        if (event !== 'tableBuilt') return on.apply(this, arguments);
+                        return on.call(this, event, function () {
+                          setTimeout(callback, 200);
+                        });
+                      };
+                    }"""
+                )
                 transition = page.evaluate(
                     """() => {
                       const shell = document.querySelector('.view-shell');
@@ -757,9 +768,21 @@ def test_live_view_survives_rapid_browser_replay_and_switches_atomically(tmp_pat
                     "before": 520,
                     "after": 520,
                     "busy": "true",
-                    "loading": "Loading data…",
-                    "active": False,
+                    "loading": "",
+                    "active": True,
                 }
+                page.wait_for_timeout(150)
+                delayed_loading = page.eval_on_selector(
+                    ".view-shell",
+                    """shell => {
+                      const loading = shell.querySelector('.view-loading-state');
+                      return {
+                        height: shell.getBoundingClientRect().height,
+                        text: loading.hidden ? '' : loading.textContent
+                      };
+                    }""",
+                )
+                assert delayed_loading == {"height": 520, "text": "Loading data…"}
                 page.wait_for_selector(".view-shell .view-active.tf-table-view")
                 assert page.locator(".view-shell").get_attribute("aria-busy") is None
                 cold_heights = page.evaluate(
