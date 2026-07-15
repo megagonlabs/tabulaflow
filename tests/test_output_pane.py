@@ -730,6 +730,17 @@ def test_live_view_survives_rapid_browser_replay_and_switches_atomically(tmp_pat
             try:
                 page = browser.new_page(viewport={"width": 1200, "height": 900})
                 page.goto(pane.url, wait_until="domcontentloaded")
+                page.evaluate(
+                    """() => {
+                      const start = document.startViewTransition.bind(document);
+                      window.__turnTransitionCalls = 0;
+                      document.startViewTransition = function (callback) {
+                        window.__turnTransitionCalls += 1;
+                        window.__lastTurnTransition = start(callback);
+                        return window.__lastTurnTransition;
+                      };
+                    }"""
+                )
                 for index, card in enumerate(cards):
                     pane.push(turn_payload(title=f"replay {index}", cards=[card]))
                 pane.push(turn_payload(title="final reused card", cards=[cards[0]]))
@@ -738,6 +749,7 @@ def test_live_view_survives_rapid_browser_replay_and_switches_atomically(tmp_pat
                     "document.querySelector('.turnitem.active .turntitle')?.textContent === 'final reused card'"
                 )
                 page.wait_for_selector(".view-shell .view-active.tf-chart-view svg")
+                assert page.evaluate("window.__turnTransitionCalls") == 0
                 page.evaluate(
                     """() => {
                       const on = window.Tabulator.prototype.on;
@@ -808,6 +820,15 @@ def test_live_view_survives_rapid_browser_replay_and_switches_atomically(tmp_pat
                     }"""
                 )
                 assert cold_heights == {"data": 220, "chart": 520, "map": 560, "graph": 620}
+                page.locator(".turnitem").nth(1).click()
+                page.wait_for_function(
+                    "document.querySelector('.turnitem.active .turntitle')?.textContent === 'replay 1'"
+                )
+                page.evaluate("window.__lastTurnTransition.ready")
+                page.evaluate("window.__lastTurnTransition.finished")
+                assert page.evaluate("window.__turnTransitionCalls") == 1
+                page.locator(".turnitem").nth(1).click()
+                assert page.evaluate("window.__turnTransitionCalls") == 1
             finally:
                 browser.close()
     finally:

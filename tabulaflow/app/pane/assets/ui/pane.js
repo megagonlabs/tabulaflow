@@ -167,6 +167,8 @@ var CACHE_WEIGHT_LIMIT = 24;
 var LOADING_DELAY_MS = 120;
 var HEIGHT_ANIMATION_MS = 160;
 var suppressScrollMemory = false;
+var scrollRestoreVersion = 0;
+var activeTurnTransition = null;
 
 function turnStateKey(turn, index) {
   return String(turn.id == null ? index : turn.id);
@@ -203,16 +205,47 @@ function rememberTurnScroll(state) {
 }
 
 function restoreTurnScroll(state) {
+  var version = ++scrollRestoreVersion;
   var scroller = contentScroller();
-  if (!state || !scroller) return;
+  if (!state || !scroller) {
+    suppressScrollMemory = false;
+    return Promise.resolve();
+  }
   var scrollTop = state.scrollTop || 0;
   suppressScrollMemory = true;
-  requestAnimationFrame(function () {
-    scroller.scrollTop = scrollTop;
+  return new Promise(function (resolve) {
     requestAnimationFrame(function () {
+      if (version !== scrollRestoreVersion) {
+        resolve();
+        return;
+      }
       scroller.scrollTop = scrollTop;
-      requestAnimationFrame(function () { suppressScrollMemory = false; });
+      requestAnimationFrame(function () {
+        if (version !== scrollRestoreVersion) {
+          resolve();
+          return;
+        }
+        scroller.scrollTop = scrollTop;
+        requestAnimationFrame(function () {
+          if (version === scrollRestoreVersion) suppressScrollMemory = false;
+          resolve();
+        });
+      });
     });
+  });
+}
+
+function restoreTurnScrollImmediately(state) {
+  var version = ++scrollRestoreVersion;
+  var scroller = contentScroller();
+  if (!state || !scroller) {
+    suppressScrollMemory = false;
+    return;
+  }
+  suppressScrollMemory = true;
+  scroller.scrollTop = state.scrollTop || 0;
+  queueMicrotask(function () {
+    if (version === scrollRestoreVersion) suppressScrollMemory = false;
   });
 }
 
@@ -780,8 +813,7 @@ function renderTurn(turn, index) {
   return view;
 }
 
-function selectTurn(i) {
-  if (i < 0 || i >= turns.length) return;
+function updateSelectedTurn(i) {
   activeTurn = i;
   var items = document.querySelectorAll('#turns .turnitem');
   for (var k = 0; k < items.length; k++) items[k].classList.toggle('active', k === i);
@@ -791,7 +823,26 @@ function selectTurn(i) {
   inner.classList.toggle('manual-preview-content', isManualPreview(turns[i]));
   inner.appendChild(renderTurn(turns[i], i));
   if (!isManualPreview(turns[i])) inner.appendChild(el('div', 'scroll-pad'));
-  restoreTurnScroll(getTurnState(turns[i], i));
+  restoreTurnScrollImmediately(getTurnState(turns[i], i));
+}
+
+function selectTurn(i, animate) {
+  if (i < 0 || i >= turns.length || i === activeTurn) return;
+  var update = function () { return updateSelectedTurn(i); };
+  var reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (!animate || !document.startViewTransition || reducedMotion) {
+    if (activeTurnTransition) activeTurnTransition.skipTransition();
+    activeTurnTransition = null;
+    update();
+    return;
+  }
+  if (activeTurnTransition) activeTurnTransition.skipTransition();
+  var transition = document.startViewTransition(update);
+  activeTurnTransition = transition;
+  var clearTransition = function () {
+    if (activeTurnTransition === transition) activeTurnTransition = null;
+  };
+  transition.finished.then(clearTransition, clearTransition);
 }
 
 function appendTurn(turn) {
@@ -802,9 +853,9 @@ function appendTurn(turn) {
   if (sidebarEmpty) sidebarEmpty.remove();
   var idx = turns.length - 1;
   var it = buildTurnItem(turn, idx);
-  it.onclick = function () { selectTurn(idx); };
+  it.onclick = function () { selectTurn(idx, true); };
   sidebar.appendChild(it);
-  if (wasOnLatest) selectTurn(idx);
+  if (wasOnLatest) selectTurn(idx, false);
 }
 
 function startEvents() {
