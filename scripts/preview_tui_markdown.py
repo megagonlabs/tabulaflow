@@ -61,12 +61,16 @@ Ordered list:
 
 ---
 
-Small table:
+Markdown table with inline syntax:
 
-| Name | Age | City |
-|---|---:|:---:|
-| Alice | 30 | Paris |
-| Bob | 25 | Tokyo |
+| Case | Rendered Cell | Notes |
+|---|---|---:|
+| Inline styles | **bold** text, *italic* text, and `code_value` | 3 styles |
+| Link | [docs](https://example.com/docs) | plain URL text |
+| Autolink | <https://example.com/raw> | visible target |
+| Image | ![diagram](https://example.com/diagram.png) | plain image text |
+| Mixed | `customer_id` from [schema](https://example.com/schema) is **required** | combined |
+| Long text | This cell has a deliberately long sentence to check wrapping, truncation, and the absence of hover tooltips in markdown table cells. | 1 |
 
 Fenced code:
 
