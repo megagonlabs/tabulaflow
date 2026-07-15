@@ -718,7 +718,7 @@ class AgentTextBlock(Markdown):
     }}
 
     AgentTextBlock MarkdownHeader {{
-        color: $text;
+        color: $foreground;
         margin: 1 0 1 0;
     }}
 
@@ -729,15 +729,9 @@ class AgentTextBlock(Markdown):
     AgentTextBlock MarkdownH5,
     AgentTextBlock MarkdownH6 {{
         background: transparent;
-        color: $text;
+        color: $foreground;
         content-align: left middle;
         text-style: bold;
-    }}
-
-    AgentTextBlock MarkdownH4,
-    AgentTextBlock MarkdownH5,
-    AgentTextBlock MarkdownH6 {{
-        color: {ACCENT_DIM};
     }}
 
     AgentTextBlock MarkdownParagraph {{
@@ -751,7 +745,7 @@ class AgentTextBlock(Markdown):
 
     AgentTextBlock MarkdownBlockQuote {{
         background: transparent;
-        border-left: outer {ACCENT_DIM};
+        border-left: outer $foreground;
         margin: 1 0;
         padding: 0 1;
     }}
@@ -778,11 +772,11 @@ class AgentTextBlock(Markdown):
 
     AgentTextBlock MarkdownBullet,
     AgentTextBlock MarkdownTableContent > .header {{
-        color: $text;
+        color: $foreground;
     }}
 
     AgentTextBlock MarkdownTableContent {{
-        keyline: thin $foreground 20%;
+        keyline: thin $foreground;
     }}
 
     AgentTextBlock MarkdownTableContent > .cell,

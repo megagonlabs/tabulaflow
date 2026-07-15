@@ -80,3 +80,9 @@ def test_agent_markdown_inline_code_uses_flow_color_without_background() -> None
 def test_agent_markdown_list_items_are_compact() -> None:
     assert "AgentTextBlock MarkdownBulletList Horizontal > Vertical > MarkdownParagraph" in AgentTextBlock.DEFAULT_CSS
     assert "AgentTextBlock MarkdownOrderedList Horizontal > Vertical > MarkdownParagraph" in AgentTextBlock.DEFAULT_CSS
+
+
+def test_agent_markdown_non_code_chrome_uses_text_color() -> None:
+    assert "border-left: outer $foreground;" in AgentTextBlock.DEFAULT_CSS
+    assert "keyline: thin $foreground;" in AgentTextBlock.DEFAULT_CSS
+    assert f"color: {COLOR_FLOW};" in AgentTextBlock.DEFAULT_CSS
