@@ -25,7 +25,15 @@ from tabulaflow.app.config import (
     load_app_config,
 )
 from tabulaflow.app.session import compact_model_label
-from tabulaflow.app.theme import ACCENT, ACCENT_BOLD, DRACULA_TRANSPARENT, ERROR, FK_MARKER, KEY_HINT, PK_MARKER
+from tabulaflow.app.theme import (
+    ACCENT,
+    ACCENT_BOLD,
+    ERROR,
+    FK_MARKER,
+    KEY_HINT,
+    PK_MARKER,
+    TABULAFLOW_CODE_TEXT_AREA_THEME,
+)
 
 
 if TYPE_CHECKING:
@@ -763,8 +771,8 @@ class CellBrowserScreen(Screen[None]):
 
     def on_mount(self) -> None:
         text_area = self.query_one(TextArea)
-        text_area.register_theme(DRACULA_TRANSPARENT)
-        text_area.theme = "dracula-transparent"
+        text_area.register_theme(TABULAFLOW_CODE_TEXT_AREA_THEME)
+        text_area.theme = "tabulaflow-code"
         self._refresh_status()
 
         hint = Text()
@@ -872,8 +880,8 @@ class QueryBrowserScreen(Screen[None]):
 
     def on_mount(self) -> None:
         text_area = self.query_one(TextArea)
-        text_area.register_theme(DRACULA_TRANSPARENT)
-        text_area.theme = "dracula-transparent"
+        text_area.register_theme(TABULAFLOW_CODE_TEXT_AREA_THEME)
+        text_area.theme = "tabulaflow-code"
 
         hint_text = Text()
         hint_text.append("Esc", style=KEY_HINT)

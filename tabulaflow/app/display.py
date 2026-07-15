@@ -17,7 +17,15 @@ from rich.table import Table
 from rich.text import Text
 from rich.theme import Theme
 
-from tabulaflow.app.theme import ACCENT, ACCENT_BOLD, ACCENT_DIM, ACCENT_RGB, ERROR, KEY_HINT
+from tabulaflow.app.theme import (
+    ACCENT,
+    ACCENT_BOLD,
+    ACCENT_DIM,
+    ACCENT_RGB,
+    ERROR,
+    KEY_HINT,
+    TABULAFLOW_RICH_SYNTAX_THEME,
+)
 
 TABULAFLOW_THEME = Theme(
     {
@@ -60,7 +68,7 @@ def build_query(
     syntax = Syntax(
         display_query,
         lexer,
-        theme="dracula",
+        theme=TABULAFLOW_RICH_SYNTAX_THEME,
         padding=(1, 2),
         line_numbers=line_numbers,
         background_color="default",

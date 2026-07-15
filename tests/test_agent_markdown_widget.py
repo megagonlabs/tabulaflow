@@ -1,10 +1,26 @@
 from __future__ import annotations
 
+from pygments import lex
+from pygments.lexers import get_lexer_by_name
+from pygments.token import Token
 from textual.app import App, ComposeResult
 from textual.containers import VerticalScroll
 
 from tabulaflow.app.banner import COLOR_FLOW
-from tabulaflow.app.widgets import AgentProgressWidget, AgentTextBlock, _make_agent_markdown_parser
+from tabulaflow.app.theme import (
+    CODE_FUNCTION,
+    CODE_KEYWORD,
+    CODE_NUMBER,
+    CODE_STRING,
+    CODE_TEXT,
+    TabulaflowCodeHighlightTheme,
+)
+from tabulaflow.app.widgets import (
+    AgentMarkdownFence,
+    AgentProgressWidget,
+    AgentTextBlock,
+    _make_agent_markdown_parser,
+)
 from tabulaflow.chat import AnswerDelta, Finished
 from tabulaflow.chat.result import ChatResult
 
@@ -90,7 +106,120 @@ def test_agent_markdown_non_code_chrome_uses_text_color() -> None:
 
 def test_agent_markdown_fenced_code_is_flat() -> None:
     assert "AgentTextBlock MarkdownFence {\n        background: transparent;" in AgentTextBlock.DEFAULT_CSS
+    assert "margin: 0 0 1 0;" in AgentTextBlock.DEFAULT_CSS
     assert "AgentTextBlock MarkdownFence > Label {\n        padding: 0;" in AgentTextBlock.DEFAULT_CSS
     assert "overflow: hidden hidden;" in AgentTextBlock.DEFAULT_CSS
     assert "scrollbar-size-horizontal: 0;" in AgentTextBlock.DEFAULT_CSS
     assert "text-wrap: wrap;" in AgentTextBlock.DEFAULT_CSS
+
+
+def test_agent_markdown_fenced_code_does_not_underline_functions() -> None:
+    assert AgentTextBlock.BLOCKS["fence"] is AgentMarkdownFence
+    content = AgentMarkdownFence.highlight("def hello(name: str) -> None:\n    pass", "python")
+    function_styles = [
+        str(span.style)
+        for span in content._spans
+        if content.plain[span.start : span.end] == "hello"
+    ]
+    assert function_styles
+    assert all("underline" not in style for style in function_styles)
+    assert all(style == CODE_FUNCTION for style in function_styles)
+
+
+def test_agent_markdown_fenced_code_identifiers_use_foreground() -> None:
+    content = AgentMarkdownFence.highlight("customer_id = customer['id']", "python")
+    identifier_styles = [
+        str(span.style)
+        for span in content._spans
+        if content.plain[span.start : span.end] == "customer_id"
+    ]
+    assert identifier_styles
+    assert all(style == CODE_TEXT for style in identifier_styles)
+
+
+def test_agent_markdown_fenced_code_keywords_use_text_primary() -> None:
+    content = AgentMarkdownFence.highlight(
+        "from pathlib import Path\nif active and score in scores:\n    return score",
+        "python",
+    )
+    keyword_styles = [
+        str(span.style)
+        for span in content._spans
+        if content.plain[span.start : span.end] in {"from", "import", "if", "and", "in", "return"}
+    ]
+    assert keyword_styles
+    assert all(style == CODE_KEYWORD for style in keyword_styles)
+
+
+def test_agent_markdown_fenced_code_numbers_use_distinct_violet() -> None:
+    content = AgentMarkdownFence.highlight("score = 0.82 + 3", "python")
+    number_styles = [
+        str(span.style)
+        for span in content._spans
+        if content.plain[span.start : span.end] in {"0.82", "3"}
+    ]
+    assert number_styles
+    assert all(style == CODE_NUMBER for style in number_styles)
+
+
+def test_agent_markdown_fenced_code_error_tokens_use_foreground() -> None:
+    content = AgentMarkdownFence.highlight("invalid_token_preview = $not_python", "python")
+    error_styles = [
+        str(span.style)
+        for span in content._spans
+        if content.plain[span.start : span.end] == "$"
+    ]
+    assert error_styles
+    assert all(style == CODE_TEXT for style in error_styles)
+
+
+def test_agent_markdown_fenced_code_strings_use_double_string_green() -> None:
+    content = AgentMarkdownFence.highlight(
+        '"""doc"""\nactive = True\nvalue = "double" + b"bytes" + f"{active=}"',
+        "python",
+    )
+    styles_by_text = {
+        content.plain[span.start : span.end]: str(span.style)
+        for span in content._spans
+    }
+    assert styles_by_text['"""doc"""'] == f"italic {CODE_STRING}"
+    assert styles_by_text["True"] == CODE_STRING
+    assert styles_by_text["double"] == CODE_STRING
+    assert styles_by_text["b"] == CODE_STRING
+    assert styles_by_text["bytes"] == CODE_STRING
+    assert styles_by_text["f"] == CODE_STRING
+
+
+def test_agent_markdown_fenced_code_uses_no_bold_token_styles() -> None:
+    samples = [
+        (
+            "python",
+            """
+from pathlib import Path
+
+@decorator
+class Example:
+    def method(self) -> None:
+        score = 0.82 + 3
+        return True
+""",
+        ),
+        (
+            "sql",
+            """
+SELECT COUNT(*) AS total
+FROM analytics.table
+WHERE amount > 1 AND status = 'ok';
+""",
+        ),
+    ]
+    for lexer, code in samples:
+        for token, value in lex(code, get_lexer_by_name(lexer)):
+            if not value.strip():
+                continue
+            cur = token
+            while cur is not Token:
+                if cur in TabulaflowCodeHighlightTheme.STYLES:
+                    assert "bold" not in TabulaflowCodeHighlightTheme.STYLES[cur].split()
+                    break
+                cur = cur.parent

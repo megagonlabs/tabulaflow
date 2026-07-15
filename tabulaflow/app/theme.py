@@ -2,7 +2,11 @@
 
 from __future__ import annotations
 
+from pygments.style import Style as PygmentsStyle
+from pygments.token import Token
 from rich.style import Style
+from rich.syntax import PygmentsSyntaxTheme
+from textual.highlight import HighlightTheme
 from textual.widgets.text_area import TextAreaTheme
 
 ACCENT = "#3EB489"  # mint
@@ -67,13 +71,86 @@ KEY_HINT = f"bold {KEY_HINT_COLOR}"
 KEY_HINT_DIM = "bold dim"
 
 
-def _make_transparent_dracula() -> TextAreaTheme:
-    """Dracula TextArea theme with backgrounds removed so CSS $surface shows through."""
+CODE_TEXT = "#E0E0E0"
+CODE_COMMENT = "#8A8A8A"
+CODE_KEYWORD = "#57A5E2"
+CODE_FUNCTION = "#78DCE8"
+CODE_STRING = "#8AD4A1"
+CODE_NUMBER = "#C792EA"
+CODE_TYPE = "#FFC473"
+
+
+class TabulaflowCodeHighlightTheme(HighlightTheme):
+    """Textual MarkdownFence syntax theme."""
+
+    STYLES = {
+        Token.Comment: CODE_COMMENT,
+        Token.Error: CODE_TEXT,
+        Token.Keyword: CODE_KEYWORD,
+        Token.Keyword.Constant: CODE_STRING,
+        Token.Keyword.Namespace: CODE_KEYWORD,
+        Token.Literal.Number: CODE_NUMBER,
+        Token.Literal.String: CODE_STRING,
+        Token.Literal.String.Doc: f"italic {CODE_STRING}",
+        Token.Literal.String.Double: CODE_STRING,
+        Token.Name: CODE_TEXT,
+        Token.Name.Builtin: CODE_TYPE,
+        Token.Name.Builtin.Pseudo: CODE_TEXT,
+        Token.Name.Class: CODE_TYPE,
+        Token.Name.Decorator: CODE_KEYWORD,
+        Token.Name.Exception: CODE_TEXT,
+        Token.Name.Function: CODE_FUNCTION,
+        Token.Name.Function.Magic: CODE_FUNCTION,
+        Token.Name.Namespace: CODE_TEXT,
+        Token.Name.Variable: CODE_TEXT,
+        Token.Operator: CODE_TEXT,
+        Token.Operator.Word: CODE_KEYWORD,
+        Token.Punctuation: CODE_TEXT,
+        Token.Whitespace: "",
+    }
+
+
+class TabulaflowPygmentsStyle(PygmentsStyle):  # type: ignore[misc]
+    """Pygments syntax theme for Rich previews."""
+
+    background_color = None
+    styles = {
+        Token.Comment: CODE_COMMENT,
+        Token.Error: CODE_TEXT,
+        Token.Keyword: CODE_KEYWORD,
+        Token.Keyword.Constant: CODE_STRING,
+        Token.Keyword.Namespace: CODE_KEYWORD,
+        Token.Literal.Number: CODE_NUMBER,
+        Token.Literal.String: CODE_STRING,
+        Token.Literal.String.Doc: f"italic {CODE_STRING}",
+        Token.Literal.String.Double: CODE_STRING,
+        Token.Name: CODE_TEXT,
+        Token.Name.Builtin: CODE_TYPE,
+        Token.Name.Builtin.Pseudo: CODE_TEXT,
+        Token.Name.Class: CODE_TYPE,
+        Token.Name.Decorator: CODE_KEYWORD,
+        Token.Name.Exception: CODE_TEXT,
+        Token.Name.Function: CODE_FUNCTION,
+        Token.Name.Function.Magic: CODE_FUNCTION,
+        Token.Name.Namespace: CODE_TEXT,
+        Token.Name.Variable: CODE_TEXT,
+        Token.Operator: CODE_TEXT,
+        Token.Operator.Word: CODE_KEYWORD,
+        Token.Punctuation: CODE_TEXT,
+        Token.Whitespace: "",
+    }
+
+
+TABULAFLOW_RICH_SYNTAX_THEME = PygmentsSyntaxTheme(TabulaflowPygmentsStyle)
+
+
+def _make_code_text_area_theme() -> TextAreaTheme:
+    """TextArea theme using the shared TabulaFlow code palette."""
     builtin = TextAreaTheme.get_builtin_theme("dracula")
     assert builtin is not None, "dracula is a built-in theme"
     return TextAreaTheme(
-        name="dracula-transparent",
-        base_style=Style(color=builtin.base_style.color if builtin.base_style else None),
+        name="tabulaflow-code",
+        base_style=Style(color=CODE_TEXT),
         gutter_style=Style(color="#666666"),
         cursor_style=builtin.cursor_style,
         cursor_line_style=None,
@@ -83,8 +160,56 @@ def _make_transparent_dracula() -> TextAreaTheme:
         ),
         bracket_matching_style=builtin.bracket_matching_style,
         selection_style=builtin.selection_style,
-        syntax_styles=dict(builtin.syntax_styles),
+        syntax_styles={
+            "string": Style(color=CODE_STRING),
+            "string.documentation": Style(color=CODE_STRING, italic=True),
+            "comment": Style(color=CODE_COMMENT),
+            "heading.marker": Style(color=CODE_COMMENT),
+            "keyword": Style(color=CODE_KEYWORD),
+            "repeat": Style(color=CODE_KEYWORD),
+            "exception": Style(color=CODE_KEYWORD),
+            "include": Style(color=CODE_KEYWORD),
+            "keyword.function": Style(color=CODE_KEYWORD),
+            "keyword.return": Style(color=CODE_KEYWORD),
+            "keyword.operator": Style(color=CODE_KEYWORD),
+            "conditional": Style(color=CODE_KEYWORD),
+            "number": Style(color=CODE_NUMBER),
+            "float": Style(color=CODE_NUMBER),
+            "class": Style(color=CODE_TYPE),
+            "type": Style(color=CODE_TYPE),
+            "type.class": Style(color=CODE_TYPE),
+            "type.builtin": Style(color=CODE_TYPE),
+            "variable.builtin": Style(color=CODE_TEXT),
+            "function": Style(color=CODE_FUNCTION),
+            "function.call": Style(color=CODE_FUNCTION),
+            "method": Style(color=CODE_FUNCTION),
+            "method.call": Style(color=CODE_FUNCTION),
+            "boolean": Style(color=CODE_STRING),
+            "constant.builtin": Style(color=CODE_STRING),
+            "json.null": Style(color=CODE_STRING),
+            "regex.punctuation.bracket": Style(color=CODE_TEXT),
+            "regex.operator": Style(color=CODE_TEXT),
+            "html.end_tag_error": Style(color=CODE_TEXT),
+            "tag": Style(color=CODE_KEYWORD),
+            "yaml.field": Style(color=CODE_TEXT),
+            "json.label": Style(color=CODE_TEXT),
+            "toml.type": Style(color=CODE_TYPE),
+            "toml.datetime": Style(color=CODE_NUMBER),
+            "css.property": Style(color=CODE_TEXT),
+            "heading": Style(color=CODE_TEXT),
+            "bold": Style(color=CODE_TEXT),
+            "italic": Style(color=CODE_TEXT),
+            "strikethrough": Style(color=CODE_TEXT),
+            "link.label": Style(color=CODE_TEXT),
+            "link.uri": Style(color=CODE_TEXT),
+            "list.marker": Style(color=CODE_TEXT),
+            "inline_code": Style(color=CODE_STRING),
+            "punctuation.bracket": Style(color=CODE_TEXT),
+            "punctuation.delimiter": Style(color=CODE_TEXT),
+            "punctuation.special": Style(color=CODE_TEXT),
+            "operator": Style(color=CODE_TEXT),
+        },
     )
 
 
-DRACULA_TRANSPARENT = _make_transparent_dracula()
+TABULAFLOW_CODE_TEXT_AREA_THEME = _make_code_text_area_theme()

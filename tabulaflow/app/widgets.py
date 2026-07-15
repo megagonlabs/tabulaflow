@@ -16,16 +16,28 @@ from rich.text import Text
 
 from textual import events
 from textual.binding import Binding
+from textual.content import Content
+from textual.highlight import highlight
 from textual.reactive import reactive
 from textual.suggester import Suggester
 from textual.timer import Timer
 from textual.app import ComposeResult
 from textual.widget import Widget
 from textual.widgets import Input, Markdown, Static
+from textual.widgets._markdown import MarkdownFence
 
 from tabulaflow.app.banner import COLOR_FLOW
 from tabulaflow.app.display import DATA_PREVIEW_MAX_ROWS
-from tabulaflow.app.theme import ACCENT, ACCENT_DIM, DIFF_ADDED, DIFF_REMOVED, KEY_HINT, KEY_HINT_DIM, MESSAGE_SURFACE
+from tabulaflow.app.theme import (
+    ACCENT,
+    ACCENT_DIM,
+    DIFF_ADDED,
+    DIFF_REMOVED,
+    KEY_HINT,
+    KEY_HINT_DIM,
+    MESSAGE_SURFACE,
+    TabulaflowCodeHighlightTheme,
+)
 from tabulaflow.app.screens import ChartBrowserScreen, DataBrowserScreen, QueryBrowserScreen
 from tabulaflow.chat import (
     AnswerDelta,
@@ -700,6 +712,14 @@ def _make_agent_markdown_parser() -> MarkdownIt:
     return MarkdownIt("commonmark", {"html": False}).enable(["table", "strikethrough"]).disable("hr")
 
 
+class AgentMarkdownFence(MarkdownFence):
+    @classmethod
+    def highlight(cls, code: str, language: str, ansi: bool = False, dark: bool = False) -> Content:
+        if ansi:
+            return super().highlight(code, language, ansi=ansi, dark=dark)
+        return highlight(code, language=language or None, theme=TabulaflowCodeHighlightTheme)
+
+
 class AgentTextBlock(Markdown):
     """The agent's natural-language answer, streamed into its own widget.
 
@@ -709,6 +729,7 @@ class AgentTextBlock(Markdown):
     """
 
     BULLETS = ["- "]
+    BLOCKS = {**Markdown.BLOCKS, "fence": AgentMarkdownFence, "code_block": AgentMarkdownFence}
 
     DEFAULT_CSS = f"""
     AgentTextBlock {{
@@ -753,7 +774,7 @@ class AgentTextBlock(Markdown):
     AgentTextBlock MarkdownFence {{
         background: transparent;
         color: $foreground;
-        margin: 0;
+        margin: 0 0 1 0;
         overflow: hidden hidden;
         padding: 0;
         scrollbar-size-horizontal: 0;
