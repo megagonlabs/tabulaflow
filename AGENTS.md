@@ -158,3 +158,4 @@ Dark-app feel, mint accent, modern data-app references (Linear, Stripe, GitHub).
 - When writing agent-facing tool description, just describe the tool's functionality and use cases, don't lecture the agent on how or when to use it or mention verbosely commonsense knowledge.
 - The repo has not been published yet, so always do a clean break and remove unused code, refactor to better architecture if necessary. Optimize for long-term cleanliness over compatibility.
 - When the current architecture or abstraction is not optimal for the new feature, stop and discuss with me first on a refactoring plan. You can suggest removal of current features if that can lead to a cleaner architecture.
+- Do not commit code unless I explicitly ask you to.
