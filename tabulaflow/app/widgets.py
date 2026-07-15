@@ -751,15 +751,18 @@ class AgentTextBlock(Markdown):
     }}
 
     AgentTextBlock MarkdownFence {{
-        background: $surface;
-        color: $text;
-        margin: 1 0;
+        background: transparent;
+        color: $foreground;
+        margin: 0;
+        overflow: hidden hidden;
         padding: 0;
-        scrollbar-size-horizontal: 1;
+        scrollbar-size-horizontal: 0;
     }}
 
     AgentTextBlock MarkdownFence > Label {{
-        padding: 1 2;
+        padding: 0;
+        text-wrap: wrap;
+        width: 1fr;
     }}
 
     AgentTextBlock MarkdownBlock > .code_inline,

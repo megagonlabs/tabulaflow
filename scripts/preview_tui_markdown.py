@@ -39,6 +39,10 @@ Unordered list rendered with hyphen bullets:
 * Item from star source
 + Item from plus source
 
+- Item from dash source
+- Item from star source
+- Item from plus source
+
 Nested list:
 
 - Parent item
@@ -67,8 +71,12 @@ Small table:
 Fenced code:
 
 ```python
-def hello(name: str) -> None:
+def hello(name: str, customer_id: int, customer_name: str, region: str, lifetime_value: float, first_order_date: str, most_recent_order_date: str, preferred_channel: str, account_owner: str, renewal_probability: float) -> None:
     print(f"Hello, {name}")
+
+long_sql = "SELECT customer_id, customer_name, region, lifetime_value, first_order_date, most_recent_order_date, preferred_channel, account_owner, renewal_probability, notes FROM analytics.customer_health_rollup WHERE region IN ('North America', 'Europe', 'Asia Pacific') ORDER BY lifetime_value DESC"
+
+long_result = {"customer_id": 12345, "customer_name": "Example Customer With A Very Long Name", "recommended_action": "Schedule a renewal review, verify expansion opportunity, and compare support ticket trends before the next quarterly business review."}
 ```
 
 Raw HTML is escaped: <br>
