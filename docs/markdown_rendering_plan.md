@@ -7,7 +7,7 @@ its native renderer; they share the markdown *source* and its upstream
 semantics, **not rendering code**. The pane change is JS-only; the TUI change
 swaps the answer block's plain-text render for a markdown widget.
 
-> **Status:** pane side implemented (`f6759805`); TUI side proposed.
+> **Status:** proposed.
 
 ---
 
@@ -99,7 +99,6 @@ always *visible text*, never silently dropped content.
 | GFM tables | rendered (thin-ruled prose table, not Tabulator) | **disabled** — pipe source shows as literal text |
 | Strikethrough | rendered | rendered |
 | Raw HTML | escaped → visible as text (`html: false`) | visible as text (`html=False`) |
-| Images | **disabled** (`.disable('image')`) — no remote fetches from the token-scoped page | not applicable (terminal) |
 | Linkify bare URLs | on | off |
 | Typographer | off | off |
 
@@ -127,13 +126,11 @@ covered.
    the default preset; `marked` passes raw HTML through and would need a
    second sanitizer lib.
 2. **`assets/ui/render/markdown.js`** — export `renderMarkdown(node, text)`:
-   one module-scope `markdownit({ html: false, linkify: true }).disable('image')`,
-   set `node.innerHTML = md.render(text)`, then rewrite `a[href]` with
-   `target="_blank" rel="noopener noreferrer"` (the pane is a token-scoped
-   local page — never leak it as a referrer; images are disabled so the page
-   makes no remote fetches). Falls back to `textContent` if the vendor lib
-   didn't load. No `ViewHandle` — the transcript is outside the card view
-   lifecycle (`renderKind`/`viewCache`).
+   one module-scope `markdownit({ html: false, linkify: true })`, set
+   `node.innerHTML = md.render(text)`, then rewrite `a[href]` with
+   `target="_blank" rel="noopener"` (the pane is a token-scoped local page —
+   never leak it as a referrer). No `ViewHandle` — the transcript is outside
+   the card view lifecycle (`renderKind`/`viewCache`).
 3. **`pane.js`** — in `buildMessage`, assistant role only: add class `md` and
    call `renderMarkdown(body, text)`. User messages stay `textContent` (user
    input is not markdown; asymmetry matches chat-app convention). Turn titles
