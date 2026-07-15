@@ -5176,7 +5176,7 @@ requires-dist = [
     { name = "sqlglot", specifier = ">=28.6.0" },
     { name = "sqlparse", specifier = ">=0.5.3" },
     { name = "tabulate", specifier = ">=0.9.0" },
-    { name = "textual", extras = ["syntax"], specifier = ">=3.0.0" },
+    { name = "textual", extras = ["syntax"], specifier = ">=8.2.8" },
     { name = "tqdm", specifier = ">=4.67.1" },
     { name = "typer", specifier = ">=0.15.0" },
     { name = "webbrowser-open", specifier = ">=0.3.0" },
@@ -5246,7 +5246,7 @@ wheels = [
 
 [[package]]
 name = "textual"
-version = "8.2.2"
+version = "8.2.8"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "markdown-it-py", extra = ["linkify"] },
@@ -5256,9 +5256,9 @@ dependencies = [
     { name = "rich" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/69/b0/a9aedf13af1bfb1bf01cbc645ea5d5a4151b5d77ac1748b85c4f0d777d7d/textual-8.2.2.tar.gz", hash = "sha256:94e85267650cf679ac16ade5ac929055e836dc00798a0e6e3925926a5beee303", size = 1848623, upload_time = "2026-04-03T13:19:06.057Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/00/21/39a76b01bd5eea82a04baaca7580e105d8c59450df03998345bb2cfb307b/textual-8.2.8.tar.gz", hash = "sha256:3f106a9fbc73e39dd266c9712432087de78a6d644084c7c241d6a25c3169115b", size = 1860502, upload_time = "2026-06-30T06:51:24.495Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/a7/18/4d59eb3f2241db6d346a90f2452fc47a19d61090a38b9cf331afe23e8431/textual-8.2.2-py3-none-any.whl", hash = "sha256:35a8f439875dc6e5b4dc7ee72dc9698a40bd13091c2de5bd5b2d4318522af8df", size = 724078, upload_time = "2026-04-03T13:19:08.115Z" },
+    { url = "https://files.pythonhosted.org/packages/fb/be/35261223d9416a0751cdff1c7b4a6f881387218a12d439fe22fefebc8c04/textual-8.2.8-py3-none-any.whl", hash = "sha256:267375fd402dc8d981457212efa71f0e3365fd17bba144ba9bb3ed7563cb374a", size = 731418, upload_time = "2026-06-30T06:51:26.364Z" },
 ]
 
 [package.optional-dependencies]
