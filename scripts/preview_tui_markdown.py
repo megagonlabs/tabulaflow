@@ -91,6 +91,12 @@ Link display cases:
 - Inline code label: [`docs`](https://example.com/docs)
 - Emphasized label: [**docs**](https://example.com/docs)
 
+Image display cases:
+
+- Image with alt text: ![diagram](https://example.com/diagram.png)
+- Image without alt text: ![](https://example.com/no-alt.png)
+- Alt already equals destination: ![https://example.com/same.png](https://example.com/same.png)
+
 Bare URL should stay plain: https://example.com
 """
 

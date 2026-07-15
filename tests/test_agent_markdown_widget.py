@@ -50,7 +50,7 @@ This has **bold** and `code`.
 
 | Name | Value |
 |---|---:|
-| A | 1 |
+| A | [docs](https://example.com/docs) |
 
 ```python
 print("hi")
@@ -71,6 +71,10 @@ print("hi")
         assert [getattr(bullet, "symbol") for bullet in block.query("MarkdownBullet")] == ["- ", "- "]
         assert len(block.query("MarkdownHorizontalRule")) == 0
         assert len(block.query("MarkdownTable")) == 1
+        table_cells = list(block.query("MarkdownTableCellContents"))
+        assert table_cells
+        assert all(cell.tooltip is None for cell in table_cells)
+        assert all("@click" not in str(span.style) for cell in table_cells for span in cell.content._spans)
         assert len(block.query("MarkdownFence")) == 1
 
 
@@ -79,7 +83,7 @@ async def test_agent_markdown_links_show_visible_destinations() -> None:
         "See [docs](https://example.com/docs), <https://example.com/raw>, "
         "<user@example.com>, [https://example.com/same](https://example.com/same), "
         "[email support](mailto:user@example.com), [`docs`](https://example.com/docs), "
-        "and [**docs**](https://example.com/docs)."
+        "[**docs**](https://example.com/docs), and ![diagram](https://example.com/diagram.png)."
     )
     app = _AgentMarkdownApp()
 
@@ -94,7 +98,7 @@ async def test_agent_markdown_links_show_visible_destinations() -> None:
             "See docs (https://example.com/docs), https://example.com/raw, "
             "user@example.com, https://example.com/same, "
             "email support (mailto:user@example.com), docs (https://example.com/docs), "
-            "and docs (https://example.com/docs)."
+            "docs (https://example.com/docs), and diagram (https://example.com/diagram.png)."
         )
         assert all("@click" not in str(span.style) for span in paragraph._content._spans)
 
@@ -111,6 +115,10 @@ def test_agent_markdown_parser_supports_tables_without_raw_html_or_fuzzy_linkify
     assert "<a href=" not in parser.render("https://example.com")
     assert "<a href=" not in parser.render("<https://example.com>")
     assert "<p>docs (https://example.com/docs)</p>" in parser.render("[docs](https://example.com/docs)")
+    assert "<img" not in parser.render("![diagram](https://example.com/diagram.png)")
+    assert "<p>diagram (https://example.com/diagram.png)</p>" in parser.render(
+        "![diagram](https://example.com/diagram.png)"
+    )
 
 
 def test_agent_markdown_inline_code_uses_function_color_without_background() -> None:

@@ -26,7 +26,7 @@ from textual.timer import Timer
 from textual.app import ComposeResult
 from textual.widget import Widget
 from textual.widgets import Input, Markdown, Static
-from textual.widgets._markdown import MarkdownFence
+from textual.widgets._markdown import MarkdownFence, MarkdownTable, MarkdownTableContent
 
 from tabulaflow.app.display import DATA_PREVIEW_MAX_ROWS
 from tabulaflow.app.theme import (
@@ -710,8 +710,8 @@ def _styled_label(name: str, label: str) -> Text:
     return text
 
 
-def _visible_text_for_link_child(token: Token) -> str:
-    """Plain text contribution of a token inside a markdown link label."""
+def _visible_text_for_inline_token(token: Token) -> str:
+    """Plain text contribution of a markdown inline token."""
     if token.type == "text":
         return re.sub(r"\s+", " ", token.content)
     if token.type == "code_inline":
@@ -722,19 +722,20 @@ def _visible_text_for_link_child(token: Token) -> str:
         return " "
     if token.children is None:
         return ""
-    return "".join(_visible_text_for_link_child(child) for child in token.children)
+    return "".join(_visible_text_for_inline_token(child) for child in token.children)
 
 
-def _render_links_as_plain_text(markdown: MarkdownIt) -> None:
-    """Render markdown links as visible plain text.
+def _render_interactive_markdown_as_plain_text(markdown: MarkdownIt) -> None:
+    """Render interactive markdown inline tokens as visible plain text.
 
-    Textual attaches click metadata to markdown links, but terminal link support
-    is inconsistent. Keep links copyable and terminal-detectable by removing the
-    link tokens and rendering explicit links as ``label (url)``. Autolinks and
-    links whose label is already the URL render as just their visible label.
+    Textual attaches click metadata to markdown links and images, but terminal
+    link support is inconsistent. Keep destinations copyable and terminal-
+    detectable by removing interactive tokens and rendering explicit
+    destinations as ``label (url)``. Autolinks and labels that already equal the
+    destination render as just their visible label.
     """
 
-    def replace_links(state: StateCore) -> None:
+    def replace_interactive_tokens(state: StateCore) -> None:
         for token in state.tokens:
             if token.type != "inline" or token.children is None:
                 continue
@@ -752,6 +753,18 @@ def _render_links_as_plain_text(markdown: MarkdownIt) -> None:
                     in_link = True
                     continue
 
+                if child.type == "image":
+                    label = _visible_text_for_inline_token(child)
+                    src = str(child.attrs.get("src", ""))
+                    image_text = Token("text", "", 0)
+                    image_text.content = label
+                    if src and label != src:
+                        image_text.content = f"{label} ({src})" if label else src
+                    if in_link:
+                        label_parts.append(image_text.content)
+                    children.append(image_text)
+                    continue
+
                 if child.type == "link_close" and in_link:
                     label = "".join(label_parts)
                     if href and not is_autolink and label != href:
@@ -762,12 +775,16 @@ def _render_links_as_plain_text(markdown: MarkdownIt) -> None:
                     continue
 
                 if in_link:
-                    label_parts.append(_visible_text_for_link_child(child))
+                    label_parts.append(_visible_text_for_inline_token(child))
                 children.append(child)
 
             token.children = children
 
-    markdown.core.ruler.after("inline", "render_links_as_plain_text", replace_links)
+    markdown.core.ruler.after(
+        "inline",
+        "render_interactive_markdown_as_plain_text",
+        replace_interactive_tokens,
+    )
 
 
 def _make_agent_markdown_parser() -> MarkdownIt:
@@ -776,7 +793,7 @@ def _make_agent_markdown_parser() -> MarkdownIt:
     # is inconsistent, so rendering ``~~text~~`` literally is more predictable in
     # the TUI.
     markdown = MarkdownIt("commonmark", {"html": False}).enable(["table"]).disable("hr")
-    _render_links_as_plain_text(markdown)
+    _render_interactive_markdown_as_plain_text(markdown)
     return markdown
 
 
@@ -788,6 +805,34 @@ class AgentMarkdownFence(MarkdownFence):
         return highlight(code, language=language or None, theme=TabulaflowCodeHighlightTheme)
 
 
+class AgentMarkdownTableContent(MarkdownTableContent):
+    """Markdown table content without per-cell hover tooltips."""
+
+    def _clear_cell_tooltips(self) -> None:
+        for cell in self.query(".cell, .header"):
+            cell.tooltip = None
+
+    def on_mount(self) -> None:
+        super().on_mount()
+        self._clear_cell_tooltips()
+
+    def _update_content(self, headers: list[Content], rows: list[list[Content]]) -> None:
+        super()._update_content(headers, rows)
+        self._clear_cell_tooltips()
+
+    async def _update_rows(self, updated_rows: list[list[Content]]) -> None:
+        await super()._update_rows(updated_rows)
+        self._clear_cell_tooltips()
+
+
+class AgentMarkdownTable(MarkdownTable):
+    def compose(self) -> ComposeResult:
+        headers, rows = self._get_headers_and_rows()
+        self._headers = headers
+        self._rows = rows
+        yield AgentMarkdownTableContent(headers, rows)
+
+
 class AgentTextBlock(Markdown):
     """The agent's natural-language answer, streamed into its own widget.
 
@@ -797,7 +842,12 @@ class AgentTextBlock(Markdown):
     """
 
     BULLETS = ["- "]
-    BLOCKS = {**Markdown.BLOCKS, "fence": AgentMarkdownFence, "code_block": AgentMarkdownFence}
+    BLOCKS = {
+        **Markdown.BLOCKS,
+        "fence": AgentMarkdownFence,
+        "code_block": AgentMarkdownFence,
+        "table_open": AgentMarkdownTable,
+    }
 
     DEFAULT_CSS = f"""
     AgentTextBlock {{
@@ -878,7 +928,7 @@ class AgentTextBlock(Markdown):
     """
 
     def __init__(self, markdown: str | None = None) -> None:
-        super().__init__(markdown, parser_factory=_make_agent_markdown_parser)
+        super().__init__(markdown, parser_factory=_make_agent_markdown_parser, open_links=False)
         self._stream: _MarkdownStream | None = None
 
     async def write_delta(self, delta: str) -> None:
