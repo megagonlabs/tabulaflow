@@ -429,8 +429,8 @@ July 14
 - [x] Markdown rendering in TUI and output pane
 - [x] Code highlighting theme
 
-- [ ] Strightthrough rendering
-- [ ] Quote block rendering
+July 15
+- [x] Improve markdown rendering
 - [ ] Rewrite prompt, include prompt for coding tasks!
 - [ ] Markdown syntax instructions in system prompt
 - [ ] Inline artifact citation
@@ -444,7 +444,10 @@ July 14
 - [ ] Fireworks preset
 - [ ] Kushan: better error message for /connect failure
 
-- [ ] Inline code block (``) highlighting
+- [ ] Coding
+  - [ ] Prompt
+  - [ ] apply_patch tool
+  - [ ] Progress display - include line number for reading one files multiple times
 - [ ] Include Cypher
 - [ ] View menu location?
 - [ ] Remote server improvements
