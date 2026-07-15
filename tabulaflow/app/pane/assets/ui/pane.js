@@ -165,6 +165,7 @@ var navState = {};
 var lru = [];
 var CACHE_WEIGHT_LIMIT = 24;
 var LOADING_DELAY_MS = 120;
+var HEIGHT_ANIMATION_MS = 160;
 var suppressScrollMemory = false;
 
 function turnStateKey(turn, index) {
@@ -380,6 +381,7 @@ function deactivateViewTree(root) {
   if (!root) return;
   root.querySelectorAll('.view-shell').forEach(function (shell) {
     cancelShellLoading(shell);
+    cancelShellHeightAnimation(shell, false);
     shell._tfPendingEntry = null;
   });
   root.querySelectorAll('.tf-view').forEach(function (node) {
@@ -426,6 +428,37 @@ function cancelShellLoading(shell) {
   shell._tfLoadingTimer = null;
 }
 
+function cancelShellHeightAnimation(shell, preserveHeight) {
+  var animation = shell._tfHeightAnimation;
+  if (!animation) return;
+  var height = shell.getBoundingClientRect().height;
+  shell._tfHeightAnimation = null;
+  animation.cancel();
+  shell.style.height = preserveHeight ? height + 'px' : '';
+}
+
+function animateShellHeight(shell, fromHeight, toHeight) {
+  if (
+    Math.abs(fromHeight - toHeight) < 1
+    || !shell.animate
+    || window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  ) {
+    shell.style.height = '';
+    return;
+  }
+  shell.style.height = toHeight + 'px';
+  var animation = shell.animate(
+    [{ height: fromHeight + 'px' }, { height: toHeight + 'px' }],
+    { duration: HEIGHT_ANIMATION_MS, easing: 'cubic-bezier(0.2, 0, 0, 1)' }
+  );
+  shell._tfHeightAnimation = animation;
+  animation.finished.then(function () {
+    if (shell._tfHeightAnimation !== animation) return;
+    shell._tfHeightAnimation = null;
+    shell.style.height = '';
+  }).catch(function () {});
+}
+
 function revealShellLoading(shell, entry) {
   if (entry.ownerShell !== shell || viewCache[shell.dataset.activeViewKey] !== entry) return;
   Array.prototype.forEach.call(shell.children, function (node) {
@@ -442,6 +475,7 @@ function revealShellLoading(shell, entry) {
 }
 
 function stageShellEntry(shell, entry) {
+  cancelShellHeightAnimation(shell, true);
   var samePendingEntry = shell._tfPendingEntry === entry;
   if (!samePendingEntry) cancelShellLoading(shell);
   shell._tfPendingEntry = entry;
@@ -474,14 +508,17 @@ function stageShellEntry(shell, entry) {
 
 function commitShellView(shell, entry) {
   cancelShellLoading(shell);
+  cancelShellHeightAnimation(shell, true);
   shell._tfPendingEntry = null;
   if (entry.node.parentNode !== shell) shell.appendChild(entry.node);
+  var fromHeight = shell.getBoundingClientRect().height;
+  var toHeight = entry.node.getBoundingClientRect().height;
   setActiveShellView(shell, entry.node);
   shellLoadingState(shell).hidden = true;
   shell.className = 'view-shell view-' + entry.kind;
-  shell.style.height = '';
   shell.removeAttribute('aria-busy');
   shell._tfMeta.textContent = entry.metaText || '';
+  animateShellHeight(shell, fromHeight, toHeight);
 }
 
 function hideViewNode(node) {

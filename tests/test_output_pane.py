@@ -785,6 +785,18 @@ def test_live_view_survives_rapid_browser_replay_and_switches_atomically(tmp_pat
                 assert delayed_loading == {"height": 520, "text": "Loading data…"}
                 page.wait_for_selector(".view-shell .view-active.tf-table-view")
                 assert page.locator(".view-shell").get_attribute("aria-busy") is None
+                height_animation = page.eval_on_selector(
+                    ".view-shell",
+                    """shell => {
+                      const animation = shell.getAnimations()[0];
+                      return {
+                        duration: animation.effect.getTiming().duration,
+                        heights: animation.effect.getKeyframes().map(frame => frame.height)
+                      };
+                    }""",
+                )
+                assert height_animation == {"duration": 160, "heights": ["520px", "113px"]}
+                page.wait_for_function("document.querySelector('.view-shell').getAnimations().length === 0")
                 cold_heights = page.evaluate(
                     """() => {
                       const shell = document.querySelector('.view-shell');
