@@ -223,7 +223,7 @@ def _make_code_text_area_theme() -> TextAreaTheme:
             "link.label": Style(color=CODE_TEXT),
             "link.uri": Style(color=CODE_TEXT),
             "list.marker": Style(color=CODE_TEXT),
-            "inline_code": Style(color=CODE_STRING),
+            "inline_code": Style(color=CODE_FUNCTION),
             "punctuation.bracket": Style(color=CODE_TEXT),
             "punctuation.delimiter": Style(color=CODE_TEXT),
             "punctuation.special": Style(color=CODE_TEXT),

@@ -56,6 +56,7 @@ def test_code_text_area_theme_uses_shared_palette_without_bold_syntax_styles() -
     assert _hex(styles["number"].color) == CODE_NUMBER
     assert _hex(styles["type"].color) == CODE_TYPE
     assert _hex(styles["comment"].color) == CODE_COMMENT
+    assert _hex(styles["inline_code"].color) == CODE_FUNCTION
     assert all(style.bold is not True for style in styles.values())
 
 

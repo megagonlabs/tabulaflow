@@ -6,7 +6,6 @@ from pygments.token import Token
 from textual.app import App, ComposeResult
 from textual.containers import VerticalScroll
 
-from tabulaflow.app.banner import COLOR_FLOW
 from tabulaflow.app.theme import (
     CODE_FUNCTION,
     CODE_KEYWORD,
@@ -87,8 +86,8 @@ def test_agent_markdown_parser_supports_tables_without_raw_html_or_fuzzy_linkify
     assert '<a href="https://example.com">' in parser.render("<https://example.com>")
 
 
-def test_agent_markdown_inline_code_uses_flow_color_without_background() -> None:
-    assert f"color: {COLOR_FLOW};" in AgentTextBlock.DEFAULT_CSS
+def test_agent_markdown_inline_code_uses_function_color_without_background() -> None:
+    assert f"color: {CODE_FUNCTION};" in AgentTextBlock.DEFAULT_CSS
     assert "AgentTextBlock MarkdownBlock:dark > .code_inline" in AgentTextBlock.DEFAULT_CSS
     assert "background: transparent;" in AgentTextBlock.DEFAULT_CSS
 
@@ -101,7 +100,7 @@ def test_agent_markdown_list_items_are_compact() -> None:
 def test_agent_markdown_non_code_chrome_uses_text_color() -> None:
     assert "border-left: outer $foreground;" in AgentTextBlock.DEFAULT_CSS
     assert "keyline: thin $foreground;" in AgentTextBlock.DEFAULT_CSS
-    assert f"color: {COLOR_FLOW};" in AgentTextBlock.DEFAULT_CSS
+    assert f"color: {CODE_FUNCTION};" in AgentTextBlock.DEFAULT_CSS
 
 
 def test_agent_markdown_fenced_code_is_flat() -> None:

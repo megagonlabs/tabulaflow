@@ -26,11 +26,11 @@ from textual.widget import Widget
 from textual.widgets import Input, Markdown, Static
 from textual.widgets._markdown import MarkdownFence
 
-from tabulaflow.app.banner import COLOR_FLOW
 from tabulaflow.app.display import DATA_PREVIEW_MAX_ROWS
 from tabulaflow.app.theme import (
     ACCENT,
     ACCENT_DIM,
+    CODE_FUNCTION,
     DIFF_ADDED,
     DIFF_REMOVED,
     KEY_HINT,
@@ -790,7 +790,7 @@ class AgentTextBlock(Markdown):
     AgentTextBlock MarkdownBlock:dark > .code_inline,
     AgentTextBlock MarkdownBlock:light > .code_inline {{
         background: transparent;
-        color: {COLOR_FLOW};
+        color: {CODE_FUNCTION};
         text-style: none;
     }}
 
