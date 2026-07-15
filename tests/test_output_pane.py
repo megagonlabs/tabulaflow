@@ -687,29 +687,6 @@ def test_cached_views_are_destroyed_only_on_eviction() -> None:
     assert "unmount:" not in chart_js
 
 
-def test_view_switch_waits_for_renderer_before_atomic_commit() -> None:
-    pane_js = _pane_asset_text("pane.js")
-    pane_css = _pane_asset_text("pane.css")
-    assert "function prepareShellView(shell, key, entry, meta)" in pane_js
-    assert "function showShellLoading(shell, kind, meta, pendingEntry)" in pane_js
-    assert "shell.style.height = Math.max(220, height) + 'px';" in pane_js
-    assert "shell.setAttribute('aria-busy', 'true');" in pane_js
-    assert "if (shell.classList.contains('view-loading')) return;" in pane_js
-    assert "showShellLoading(shell, entry.kind, meta, entry);\n  stageView(shell, entry.node);" in pane_js
-    assert "entry.readyPromise.then(function ()" in pane_js
-    assert "commitShellView(shell, entry, meta);" in pane_js
-    assert "shell.style.height = '';" in pane_js
-    assert ".view-shell > .tf-view.view-pending {\n    position: absolute;" in pane_css
-    assert ".view-loading-state {\n    position: absolute;" in pane_css
-
-
-def test_async_pane_renderers_expose_readiness() -> None:
-    assert "table.on('tableBuilt', resolve)" in _pane_asset_text("render/table.js")
-    assert "ready: ready" in _pane_asset_text("render/chart.js")
-    assert "requestAnimationFrame(resolveReady);" in _pane_asset_text("render/graph.js")
-    assert "requestAnimationFrame(resolveReady);" in _pane_asset_text("render/map.js")
-
-
 def test_heavy_view_cache_weights_are_tuned_for_retained_renderers() -> None:
     pane_js = _pane_asset_text("pane.js")
     assert "var CACHE_WEIGHT_LIMIT = 24;" in pane_js
@@ -719,23 +696,76 @@ def test_heavy_view_cache_weights_are_tuned_for_retained_renderers() -> None:
     assert "if (entry.kind === 'graph') return graphCacheWeight(entry);" in pane_js
 
 
-def test_live_pane_views_are_pinned_outside_the_evictable_cache() -> None:
-    pane_js = _pane_asset_text("pane.js")
-    assert "if (entry && !entry.pinned) total += cacheEntryWeight(entry);" in pane_js
-    assert "return entry && !entry.pinned;" in pane_js
-    assert "function pinEntry(entry, shell, meta)" in pane_js
-    assert "function releaseEntry(entry)" in pane_js
-    assert "pinEntry(entry, shell, meta);\n    cacheTouch(key);" in pane_js
-    assert "releaseEntry(node._tfViewEntry);" in pane_js
+def test_live_view_survives_rapid_browser_replay_and_switches_atomically(tmp_path: Path) -> None:
+    from playwright.sync_api import Error as PlaywrightError
+    from playwright.sync_api import sync_playwright
 
+    df = pd.DataFrame({"cat": ["a", "b"], "n": [3, 5]})
+    spec = {"mark": "bar", "encoding": {"x": {"field": "cat"}, "y": {"field": "n"}}}
+    cards = []
+    for index in range(27):
+        card = render_record_data(
+            SimpleNamespace(
+                df=df,
+                chart_spec=spec,
+                query=None,
+                label=f"chart_{index}",
+                record_id=f"browser-{index}",
+                query_lexer="sql",
+            ),
+            tmp_path,
+        )
+        assert card is not None
+        cards.append(card)
 
-def test_inflight_view_load_follows_current_live_owner() -> None:
-    pane_js = _pane_asset_text("pane.js")
-    assert "entry.dataPromise = fetchCardData(card);" in pane_js
-    assert "if (viewCache[key] !== entry) return;" in pane_js
-    assert "var ownerShell = entry.ownerShell;" in pane_js
-    assert "if (entry.pinned && ownerShell && isActiveShellView(ownerShell, key))" in pane_js
-    assert "prepareShellView(ownerShell, key, entry, ownerMeta);" in pane_js
+    pane = OutputPane(tmp_path)
+    pane.start()
+    try:
+        assert pane.url is not None
+        with sync_playwright() as playwright:
+            try:
+                browser = playwright.chromium.launch(headless=True)
+            except PlaywrightError as exc:
+                pytest.skip(f"Playwright Chromium is unavailable: {exc}")
+            try:
+                page = browser.new_page(viewport={"width": 1200, "height": 900})
+                page.goto(pane.url, wait_until="domcontentloaded")
+                for index, card in enumerate(cards):
+                    pane.push(turn_payload(title=f"replay {index}", cards=[card]))
+                pane.push(turn_payload(title="final reused card", cards=[cards[0]]))
+
+                page.wait_for_function(
+                    "document.querySelector('.turnitem.active .turntitle')?.textContent === 'final reused card'"
+                )
+                page.wait_for_selector(".view-shell .view-active.tf-chart-view svg")
+                transition = page.evaluate(
+                    """() => {
+                      const shell = document.querySelector('.view-shell');
+                      const before = shell.getBoundingClientRect().height;
+                      [...document.querySelectorAll('.seg-opt')].find(x => x.dataset.kind === 'data').click();
+                      const loading = shell.querySelector('.view-loading-state');
+                      return {
+                        before,
+                        after: shell.getBoundingClientRect().height,
+                        busy: shell.getAttribute('aria-busy'),
+                        loading: loading && !loading.hidden ? loading.textContent : '',
+                        active: Boolean(shell.querySelector('.view-active'))
+                      };
+                    }"""
+                )
+                assert transition == {
+                    "before": 520,
+                    "after": 520,
+                    "busy": "true",
+                    "loading": "Loading data…",
+                    "active": False,
+                }
+                page.wait_for_selector(".view-shell .view-active.tf-table-view")
+                assert page.locator(".view-shell").get_attribute("aria-busy") is None
+            finally:
+                browser.close()
+    finally:
+        pane.stop()
 
 
 def test_graph_physics_kicks_only_after_node_drag() -> None:

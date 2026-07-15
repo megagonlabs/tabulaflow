@@ -228,13 +228,6 @@ function watchContentScroll() {
   scroller.addEventListener('scroll', rememberActiveContentScroll, { passive: true });
 }
 
-function scheduleIdle(fn) {
-  if (window.requestIdleCallback) {
-    return window.requestIdleCallback(fn, { timeout: 800 });
-  }
-  return window.setTimeout(fn, 80);
-}
-
 function graphCacheWeight(entry) {
   var graph = entry && entry.data && entry.data.graph;
   var elements = graph && graph.elements;
@@ -254,7 +247,7 @@ function cacheWeight() {
   var total = 0;
   for (var i = 0; i < lru.length; i++) {
     var entry = viewCache[lru[i]];
-    if (entry && !entry.pinned) total += cacheEntryWeight(entry);
+    if (entry && !entry.ownerShell) total += cacheEntryWeight(entry);
   }
   return total;
 }
@@ -263,7 +256,7 @@ function trimCache() {
   while (cacheWeight() > CACHE_WEIGHT_LIMIT) {
     var index = lru.findIndex(function (key) {
       var entry = viewCache[key];
-      return entry && !entry.pinned;
+      return entry && !entry.ownerShell;
     });
     if (index === -1) return;
     var evict = lru.splice(index, 1)[0];
@@ -373,17 +366,13 @@ function gateDeactivate(entry) {
   entry.gated = false;
 }
 
-function pinEntry(entry, shell, meta) {
-  entry.pinned = true;
+function claimEntry(entry, shell) {
   entry.ownerShell = shell;
-  entry.ownerMeta = meta;
 }
 
 function releaseEntry(entry) {
   if (!entry) return;
-  entry.pinned = false;
   entry.ownerShell = null;
-  entry.ownerMeta = null;
 }
 
 function deactivateViewTree(root) {
@@ -405,7 +394,7 @@ function setActiveShellView(shell, activeNode) {
     node.toggleAttribute('inert', !active);
     node.setAttribute('aria-hidden', active ? 'false' : 'true');
     if (active) {
-      pinEntry(node._tfViewEntry, shell, shell._tfMeta);
+      claimEntry(node._tfViewEntry, shell);
       gateActivate(node._tfViewEntry);
     } else {
       gateDeactivate(node._tfViewEntry);
@@ -426,33 +415,35 @@ function shellLoadingState(shell) {
   return state;
 }
 
-function showShellLoading(shell, kind, meta, pendingEntry) {
+function stageShellEntry(shell, entry) {
   var height = shell.getBoundingClientRect().height;
   if (!shell.classList.contains('view-loading')) shell.style.height = Math.max(220, height) + 'px';
   Array.prototype.forEach.call(shell.children, function (node) {
     if (!node.classList.contains('tf-view')) return;
     hideViewNode(node);
-    if (node._tfViewEntry !== pendingEntry) releaseEntry(node._tfViewEntry);
+    if (node._tfViewEntry !== entry) releaseEntry(node._tfViewEntry);
   });
-  pinEntry(pendingEntry, shell, meta);
+  if (entry.node.parentNode !== shell) shell.appendChild(entry.node);
+  stageViewNode(entry.node);
+  claimEntry(entry, shell);
+  gateActivate(entry);
   trimCache();
   var state = shellLoadingState(shell);
-  state.textContent = 'Loading ' + kind + '\u2026';
+  state.textContent = 'Loading ' + entry.kind + '\u2026';
   state.hidden = false;
-  shell.className = 'view-shell view-' + kind + ' view-loading';
+  shell.className = 'view-shell view-' + entry.kind + ' view-loading';
   shell.setAttribute('aria-busy', 'true');
-  meta.textContent = '';
+  shell._tfMeta.textContent = '';
 }
 
-function commitShellView(shell, entry, meta) {
+function commitShellView(shell, entry) {
   if (entry.node.parentNode !== shell) shell.appendChild(entry.node);
-  shell._tfMeta = meta;
   setActiveShellView(shell, entry.node);
   shellLoadingState(shell).hidden = true;
   shell.className = 'view-shell view-' + entry.kind;
   shell.style.height = '';
   shell.removeAttribute('aria-busy');
-  meta.textContent = entry.metaText || '';
+  shell._tfMeta.textContent = entry.metaText || '';
 }
 
 function hideViewNode(node) {
@@ -473,102 +464,68 @@ function stageViewNode(node) {
   gateDeactivate(node._tfViewEntry);
 }
 
-function blurHiddenFocus(node) {
-  var active = document.activeElement;
-  if (active && node.contains(active) && active.blur) active.blur();
-}
-
-function syncActiveShellView(shell) {
-  if (shell.classList.contains('view-loading')) return;
-  var entry = viewCache[shell.dataset.activeViewKey];
-  if (entry && entry.node.parentNode === shell) {
-    setActiveShellView(shell, entry.node);
-    return;
-  }
-  var activeNode = shell.querySelector('.tf-view.view-active');
-  if (activeNode) setActiveShellView(shell, activeNode);
-}
-
-function stageView(shell, node) {
-  if (node.parentNode !== shell) shell.appendChild(node);
-  stageViewNode(node);
-}
-
 function isActiveShellView(shell, key) {
   return shell.dataset.activeViewKey === key;
 }
 
-function renderLoadedView(entry, kind, data) {
+function createViewEntry(kind, data) {
+  var node = el('div', 'tf-view');
+  var entry = {
+    node: node,
+    kind: kind,
+    status: data == null ? 'fetching' : 'loaded',
+    data: data,
+    handle: null,
+    readyPromise: null,
+    metaText: '',
+    ownerShell: null
+  };
+  node._tfViewEntry = entry;
+  return entry;
+}
+
+function renderLoadedView(entry) {
   gateDeactivate(entry);
-  entry.data = data;
   entry.node.textContent = '';
-  entry.handle = renderKind(entry.node, kind, data);
+  entry.handle = renderKind(entry.node, entry.kind, entry.data);
   entry.node._tfViewEntry = entry;
-  entry.metaText = kind === 'data' && data.table ? data.table.meta || '' : '';
+  entry.metaText = entry.kind === 'data' && entry.data.table ? entry.data.table.meta || '' : '';
+  entry.status = 'rendering';
 }
 
-function renderHiddenDataView(entry, data) {
-  hideViewNode(entry.node);
-  renderLoadedView(entry, 'data', data);
-  hideViewNode(entry.node);
-  blurHiddenFocus(entry.node);
+function failViewEntry(entry, error) {
+  entry.node.className = 'tf-view error';
+  entry.node.textContent = 'Failed to load view: ' + String(error);
+  entry.status = 'error';
 }
 
-function prepareShellView(shell, key, entry, meta) {
-  if (entry.node.parentNode !== shell) shell.appendChild(entry.node);
-  showShellLoading(shell, entry.kind, meta, entry);
-  stageView(shell, entry.node);
-  gateActivate(entry);
-
+function prepareShellView(shell, key, entry) {
+  stageShellEntry(shell, entry);
   if (!entry.readyPromise) {
     var rendererReady = entry.handle && entry.handle.ready;
     if (!rendererReady) {
-      entry.ready = true;
-      if (isActiveShellView(shell, key)) commitShellView(shell, entry, meta);
+      entry.status = 'ready';
+      if (isActiveShellView(shell, key)) commitShellView(shell, entry);
       return;
     }
-    entry.readyPromise = Promise.resolve(rendererReady).catch(function () {}).then(function () {
-      entry.ready = true;
-    });
+    entry.readyPromise = Promise.resolve(rendererReady).then(
+      function () { entry.status = 'ready'; },
+      function (error) { failViewEntry(entry, error); }
+    );
   }
   entry.readyPromise.then(function () {
     if (viewCache[key] !== entry || !isActiveShellView(shell, key) || entry.node.parentNode !== shell) return;
     requestAnimationFrame(function () {
       if (viewCache[key] === entry && isActiveShellView(shell, key) && entry.node.parentNode === shell) {
-        commitShellView(shell, entry, meta);
+        commitShellView(shell, entry);
       }
     });
   });
 }
 
-function prewarmDataView(card, views, activeKind, shell) {
-  if (activeKind === 'data' || views.indexOf('data') === -1) return;
-  var key = card.id + ':data';
-  scheduleIdle(function () {
-    if (!shell.isConnected) return;
-    var entry = viewCache[key];
-    if (entry) {
-      if (entry.node.parentNode !== shell) shell.appendChild(entry.node);
-      hideViewNode(entry.node);
-      if (entry.data && !entry.handle) renderHiddenDataView(entry, entry.data);
-      cacheTouch(key);
-      syncActiveShellView(shell);
-      return;
-    }
-    fetchCardData(card).then(function (data) {
-      if (!shell.isConnected || viewCache[key]) return;
-      var node = el('div', 'tf-view view-hidden');
-      var entry = {
-        node: node, handle: null, data: data, dataPromise: null, kind: 'data', metaText: '',
-        ready: false, readyPromise: null, pinned: false, ownerShell: null, ownerMeta: null
-      };
-      viewCache[key] = entry;
-      cacheTouch(key);
-      shell.appendChild(node);
-      renderHiddenDataView(entry, data);
-      syncActiveShellView(shell);
-    });
-  });
+function currentOwner(entry, key) {
+  var shell = entry.ownerShell;
+  return shell && isActiveShellView(shell, key) ? shell : null;
 }
 
 function mountView(card, kind, shell, meta) {
@@ -577,61 +534,48 @@ function mountView(card, kind, shell, meta) {
   shell.dataset.activeViewKey = key;
   shell._tfMeta = meta;
   if (entry) {
-    pinEntry(entry, shell, meta);
+    claimEntry(entry, shell);
     cacheTouch(key);
-    if (entry.error) {
-      commitShellView(shell, entry, meta);
+    if (entry.status === 'ready' || entry.status === 'error') {
+      commitShellView(shell, entry);
       return;
     }
-    if (!entry.data) {
-      showShellLoading(shell, kind, meta, entry);
-      stageView(shell, entry.node);
+    if (entry.status === 'fetching') {
+      stageShellEntry(shell, entry);
       return;
     }
-    if (entry.data && !entry.handle) {
-      renderLoadedView(entry, kind, entry.data);
-    }
-    if (entry.ready) commitShellView(shell, entry, meta);
-    else prepareShellView(shell, key, entry, meta);
+    if (entry.status === 'loaded') renderLoadedView(entry);
+    prepareShellView(shell, key, entry);
     return;
   }
-  var node = el('div', 'tf-view');
-  entry = {
-    node: node, handle: null, data: null, dataPromise: null, kind: kind, metaText: '',
-    ready: false, readyPromise: null, pinned: true, ownerShell: shell, ownerMeta: meta
-  };
-  node._tfViewEntry = entry;
+  entry = createViewEntry(kind, null);
+  claimEntry(entry, shell);
   viewCache[key] = entry;
   cacheTouch(key);
-  showShellLoading(shell, kind, meta, entry);
-  stageView(shell, node);
+  stageShellEntry(shell, entry);
   var cachedData = getCachedCardData(card);
   if (cachedData) {
     entry.data = cachedData;
-    renderLoadedView(entry, kind, cachedData);
-    prepareShellView(shell, key, entry, meta);
+    entry.status = 'loaded';
+    renderLoadedView(entry);
+    prepareShellView(shell, key, entry);
     return;
   }
-  entry.dataPromise = fetchCardData(card);
-  entry.dataPromise.then(function (data) {
+  fetchCardData(card).then(function (data) {
     if (viewCache[key] !== entry) return;
     entry.data = data;
-    var ownerShell = entry.ownerShell;
-    var ownerMeta = entry.ownerMeta;
-    if (entry.pinned && ownerShell && isActiveShellView(ownerShell, key)) {
-      renderLoadedView(entry, kind, data);
-      prepareShellView(ownerShell, key, entry, ownerMeta);
+    entry.status = 'loaded';
+    var ownerShell = currentOwner(entry, key);
+    if (ownerShell) {
+      renderLoadedView(entry);
+      prepareShellView(ownerShell, key, entry);
     }
   }).catch(function (err) {
     if (viewCache[key] !== entry) return;
-    node.className = 'tf-view error';
-    node.textContent = 'Failed to load view: ' + String(err);
-    entry.error = true;
-    entry.ready = true;
-    var ownerShell = entry.ownerShell;
-    var ownerMeta = entry.ownerMeta;
-    if (entry.pinned && ownerShell && isActiveShellView(ownerShell, key)) commitShellView(ownerShell, entry, ownerMeta);
-    else hideViewNode(node);
+    failViewEntry(entry, err);
+    var ownerShell = currentOwner(entry, key);
+    if (ownerShell) commitShellView(ownerShell, entry);
+    else hideViewNode(entry.node);
   });
 }
 
@@ -657,7 +601,6 @@ function buildCard(card, opts) {
       }
     }
     mountView(card, kind, shell, meta);
-    prewarmDataView(card, views, kind, shell);
     if (!initial && state) restoreTurnScroll(state);
   }
 
@@ -697,7 +640,6 @@ function buildMultiCard(cards, state) {
 
   function showView(kind, opt, initial) {
     var card = currentCard();
-    var views = card.views || [];
     rememberViewKind(state, card, activeCard, kind);
     if (switcher) {
       switcher.opts.forEach(function (x) { x.classList.remove('active'); });
@@ -707,7 +649,6 @@ function buildMultiCard(cards, state) {
       }
     }
     mountView(card, kind, shell, meta);
-    prewarmDataView(card, views, kind, shell);
     if (!initial) restoreTurnScroll(state);
   }
 
