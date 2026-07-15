@@ -78,7 +78,8 @@ def test_agent_markdown_parser_supports_tables_without_raw_html_or_fuzzy_linkify
     parser = _make_agent_markdown_parser()
 
     assert "<table>" in parser.render("| A | B |\n|---|---|\n| x | y |\n")
-    assert "<s>x</s>" in parser.render("~~x~~")
+    assert "<p>~~x~~</p>" in parser.render("~~x~~")
+    assert "<s>" not in parser.render("~~x~~")
     assert "<p>---</p>" in parser.render("---")
     assert "<hr" not in parser.render("---")
     assert "&lt;br&gt;" in parser.render("<br>")

@@ -709,7 +709,11 @@ def _styled_label(name: str, label: str) -> Text:
 
 
 def _make_agent_markdown_parser() -> MarkdownIt:
-    return MarkdownIt("commonmark", {"html": False}).enable(["table", "strikethrough"]).disable("hr")
+    # Keep GFM-style strikethrough delimiters visible in the terminal instead of
+    # emitting a Rich/Textual ``strike`` style. Terminal support for strikethrough
+    # is inconsistent, so rendering ``~~text~~`` literally is more predictable in
+    # the TUI.
+    return MarkdownIt("commonmark", {"html": False}).enable(["table"]).disable("hr")
 
 
 class AgentMarkdownFence(MarkdownFence):
