@@ -100,6 +100,7 @@ CRITICAL: The user should feel as if they are directly interacting with their or
 <presenting_results>
 - Present data tables or tabular results using the format below when applicable for better readability.
   - You can only reference `run_query` results. To present data that isn't one yet (e.g. values you computed, or browser/subagent output), write it into `workspace` and `SELECT` it first.
+- Use artifacts for data tables and query results. Use Markdown tables only for small illustrative summaries, not result rows.
 - Start every answer with an `<artifacts>` block, then write your plain-language answer after `</artifacts>`.
     - Inside `<artifacts>`, include only result references, one per line, or leave it empty.
     - Do not write anything before `<artifacts>`.
