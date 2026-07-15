@@ -697,7 +697,7 @@ def _styled_label(name: str, label: str) -> Text:
 
 
 def _make_agent_markdown_parser() -> MarkdownIt:
-    return MarkdownIt("commonmark", {"html": False}).enable(["table", "strikethrough"])
+    return MarkdownIt("commonmark", {"html": False}).enable(["table", "strikethrough"]).disable("hr")
 
 
 class AgentTextBlock(Markdown):
@@ -754,13 +754,6 @@ class AgentTextBlock(Markdown):
         border-left: outer {ACCENT_DIM};
         margin: 1 0;
         padding: 0 1;
-    }}
-
-    AgentTextBlock MarkdownHorizontalRule {{
-        border-bottom: solid $foreground 20%;
-        height: 1;
-        padding-top: 1;
-        margin-bottom: 1;
     }}
 
     AgentTextBlock MarkdownFence {{

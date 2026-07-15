@@ -54,7 +54,7 @@ print("hi")
         assert len(block.query("MarkdownH1")) == 1
         assert len(block.query("MarkdownBulletList")) == 1
         assert [getattr(bullet, "symbol") for bullet in block.query("MarkdownBullet")] == ["- ", "- "]
-        assert len(block.query("MarkdownHorizontalRule")) == 1
+        assert len(block.query("MarkdownHorizontalRule")) == 0
         assert len(block.query("MarkdownTable")) == 1
         assert len(block.query("MarkdownFence")) == 1
 
@@ -64,6 +64,8 @@ def test_agent_markdown_parser_supports_tables_without_raw_html_or_fuzzy_linkify
 
     assert "<table>" in parser.render("| A | B |\n|---|---|\n| x | y |\n")
     assert "<s>x</s>" in parser.render("~~x~~")
+    assert "<p>---</p>" in parser.render("---")
+    assert "<hr" not in parser.render("---")
     assert "&lt;br&gt;" in parser.render("<br>")
     assert "<a href=" not in parser.render("https://example.com")
     assert '<a href="https://example.com">' in parser.render("<https://example.com>")

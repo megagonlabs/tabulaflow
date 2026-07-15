@@ -106,8 +106,9 @@ Parser configs (the entire per-surface enforcement):
 
 - **Pane:** `markdownit({ html: false, linkify: true })` — JS default preset;
   tables/strikethrough already on.
-- **TUI:** `MarkdownIt("commonmark", {"html": False}).enable(["table", "strikethrough"])`
-  — explicit autolinks work; bare-URL fuzzy linkify stays off.
+- **TUI:** `MarkdownIt("commonmark", {"html": False}).enable(["table", "strikethrough"]).disable("hr")`
+  — explicit autolinks work; bare-URL fuzzy linkify stays off; horizontal-rule
+  markers display literally as `---` / `***` / `___`.
 
 Because wide terminal tables still compress and elide, answer-style guidance in
 the chat system prompt should keep discouraging large inline prose tables —
@@ -150,9 +151,9 @@ tabular data belongs in cited records (Data cards). Small prose tables are fine.
 
 1. **Replace the answer block's render with Textual's `Markdown` widget**
    (textual 8.2.2), constructed with
-   `parser_factory=lambda: MarkdownIt("commonmark", {"html": False}).enable("strikethrough")`
-   — `parser_factory` is a first-class knob and *is* the "disable tables"
-   implementation. Keep the mount-as-sibling structure
+   `parser_factory=lambda: MarkdownIt("commonmark", {"html": False}).enable(["table", "strikethrough"]).disable("hr")`
+   — `parser_factory` is a first-class knob for the TUI dialect. Keep the
+   mount-as-sibling structure
    (`AgentProgressWidget._set_text` mounts the block after itself); the block
    becomes (or wraps) the `Markdown` widget instead of a `Static(Text)`.
 2. **Streaming.** Use the widget's streaming API (`Markdown.get_stream()` /
