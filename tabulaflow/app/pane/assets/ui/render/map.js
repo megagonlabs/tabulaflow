@@ -757,6 +757,8 @@ export function renderMap(container, cardData) {
   var map = null;
   var mapLoaded = false;
   var mapInitToken = 0;
+  var resolveReady;
+  var ready = new Promise(function (resolve) { resolveReady = resolve; });
   var markers = [];
   var dataBounds = null;
   var popupState = {
@@ -929,6 +931,7 @@ export function renderMap(container, cardData) {
         mapLoaded = true;
         addDataLayers();
         syncView();
+        requestAnimationFrame(resolveReady);
       });
       map.on('error', function (event) {
         if (event && event.error) showEmpty('Map error: ' + String(event.error.message || event.error));
@@ -936,10 +939,12 @@ export function renderMap(container, cardData) {
     }).catch(function (error) {
       if (initToken !== mapInitToken) return;
       showEmpty('Map error: ' + String(error && error.message ? error.message : error));
+      resolveReady();
     });
   }
 
   return {
+    ready: ready,
     requires: { width: true, height: true },
     mount: initMap,
     resize: function () {
@@ -947,6 +952,7 @@ export function renderMap(container, cardData) {
     },
     destroy: function () {
       destroyMap();
+      resolveReady();
       container.innerHTML = '';
     }
   };

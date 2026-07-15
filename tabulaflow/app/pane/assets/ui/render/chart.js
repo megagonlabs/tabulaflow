@@ -64,6 +64,8 @@ export function renderChart(container, cardData) {
   var view = null;
   var disposed = false;
   var renderStarted = false;
+  var resolveReady;
+  var ready = new Promise(function (resolve) { resolveReady = resolve; });
 
   function showError(err) {
     if (disposed) return;
@@ -72,6 +74,7 @@ export function renderChart(container, cardData) {
     pre.textContent = 'Chart error: ' + String(err);
     container.innerHTML = '';
     container.appendChild(pre);
+    resolveReady();
   }
 
   function mountView() {
@@ -83,6 +86,7 @@ export function renderChart(container, cardData) {
       actions: { export: true, source: false, compiled: false, editor: false }
     }).then(function (result) {
       view = result.view;
+      resolveReady();
       if (disposed && view) view.finalize();
     }).catch(showError);
   }
@@ -93,6 +97,7 @@ export function renderChart(container, cardData) {
   }
 
   return {
+    ready: ready,
     requires: { width: true, height: wrapClass === 'fill' },
     mount: function () {
       if (renderStarted) resizeView();
@@ -101,6 +106,7 @@ export function renderChart(container, cardData) {
     resize: resizeView,
     destroy: function () {
       disposed = true;
+      resolveReady();
       if (view) view.finalize();
     }
   };

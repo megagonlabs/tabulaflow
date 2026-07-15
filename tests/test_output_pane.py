@@ -687,6 +687,29 @@ def test_cached_views_are_destroyed_only_on_eviction() -> None:
     assert "unmount:" not in chart_js
 
 
+def test_view_switch_waits_for_renderer_before_atomic_commit() -> None:
+    pane_js = _pane_asset_text("pane.js")
+    pane_css = _pane_asset_text("pane.css")
+    assert "function prepareShellView(shell, key, entry, meta)" in pane_js
+    assert "function showShellLoading(shell, kind, meta, pendingEntry)" in pane_js
+    assert "shell.style.height = Math.max(220, height) + 'px';" in pane_js
+    assert "shell.setAttribute('aria-busy', 'true');" in pane_js
+    assert "if (shell.classList.contains('view-loading')) return;" in pane_js
+    assert "showShellLoading(shell, entry.kind, meta, entry);\n  stageView(shell, entry.node);" in pane_js
+    assert "entry.readyPromise.then(function ()" in pane_js
+    assert "commitShellView(shell, entry, meta);" in pane_js
+    assert "shell.style.height = '';" in pane_js
+    assert ".view-shell > .tf-view.view-pending {\n    position: absolute;" in pane_css
+    assert ".view-loading-state {\n    position: absolute;" in pane_css
+
+
+def test_async_pane_renderers_expose_readiness() -> None:
+    assert "table.on('tableBuilt', resolve)" in _pane_asset_text("render/table.js")
+    assert "ready: ready" in _pane_asset_text("render/chart.js")
+    assert "requestAnimationFrame(resolveReady);" in _pane_asset_text("render/graph.js")
+    assert "requestAnimationFrame(resolveReady);" in _pane_asset_text("render/map.js")
+
+
 def test_heavy_view_cache_weights_are_tuned_for_retained_renderers() -> None:
     pane_js = _pane_asset_text("pane.js")
     assert "var CACHE_WEIGHT_LIMIT = 24;" in pane_js
@@ -694,6 +717,25 @@ def test_heavy_view_cache_weights_are_tuned_for_retained_renderers() -> None:
     assert "return nodes > 50 || edges > 150 ? 6 : 3;" in pane_js
     assert "if (entry.kind === 'map') return 6;" in pane_js
     assert "if (entry.kind === 'graph') return graphCacheWeight(entry);" in pane_js
+
+
+def test_live_pane_views_are_pinned_outside_the_evictable_cache() -> None:
+    pane_js = _pane_asset_text("pane.js")
+    assert "if (entry && !entry.pinned) total += cacheEntryWeight(entry);" in pane_js
+    assert "return entry && !entry.pinned;" in pane_js
+    assert "function pinEntry(entry, shell, meta)" in pane_js
+    assert "function releaseEntry(entry)" in pane_js
+    assert "pinEntry(entry, shell, meta);\n    cacheTouch(key);" in pane_js
+    assert "releaseEntry(node._tfViewEntry);" in pane_js
+
+
+def test_inflight_view_load_follows_current_live_owner() -> None:
+    pane_js = _pane_asset_text("pane.js")
+    assert "entry.dataPromise = fetchCardData(card);" in pane_js
+    assert "if (viewCache[key] !== entry) return;" in pane_js
+    assert "var ownerShell = entry.ownerShell;" in pane_js
+    assert "if (entry.pinned && ownerShell && isActiveShellView(ownerShell, key))" in pane_js
+    assert "prepareShellView(ownerShell, key, entry, ownerMeta);" in pane_js
 
 
 def test_graph_physics_kicks_only_after_node_drag() -> None:

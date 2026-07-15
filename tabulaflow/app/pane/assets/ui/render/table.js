@@ -195,6 +195,7 @@ export function renderTable(container, cardData) {
   var shouldConstrainHeight = panelHeight > 0 || rows.length > 100 || (fixedMax != null && estimatedTableHeight > viewportCap);
   if (shouldConstrainHeight) opts.height = viewportCap;
   var table = new Tabulator(container.querySelector('.tf-table'), opts);
+  var ready = new Promise(function (resolve) { table.on('tableBuilt', resolve); });
   function fitFixedPanelHeight() {
     if (!panelShell || !table.setHeight) return;
     var height = Math.floor(panelShell.getBoundingClientRect().height);
@@ -209,5 +210,5 @@ export function renderTable(container, cardData) {
   if (tableData.hasMedia) {
     window.setTimeout(function () { table.redraw(true); }, 0);
   }
-  return { destroy: function () { table.destroy(); closeModal(); } };
+  return { ready: ready, destroy: function () { table.destroy(); closeModal(); } };
 }

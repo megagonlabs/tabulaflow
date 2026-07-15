@@ -252,16 +252,21 @@ function cacheEntryWeight(entry) {
 
 function cacheWeight() {
   var total = 0;
-  for (var i = 0; i < lru.length; i++) total += cacheEntryWeight(viewCache[lru[i]]);
+  for (var i = 0; i < lru.length; i++) {
+    var entry = viewCache[lru[i]];
+    if (entry && !entry.pinned) total += cacheEntryWeight(entry);
+  }
   return total;
 }
 
-function cacheTouch(key) {
-  var idx = lru.indexOf(key);
-  if (idx !== -1) lru.splice(idx, 1);
-  lru.push(key);
+function trimCache() {
   while (cacheWeight() > CACHE_WEIGHT_LIMIT) {
-    var evict = lru.shift();
+    var index = lru.findIndex(function (key) {
+      var entry = viewCache[key];
+      return entry && !entry.pinned;
+    });
+    if (index === -1) return;
+    var evict = lru.splice(index, 1)[0];
     var entry = viewCache[evict];
     if (!entry) continue;
     gateDeactivate(entry);
@@ -269,6 +274,13 @@ function cacheTouch(key) {
     if (entry.node && entry.node.parentNode) entry.node.parentNode.removeChild(entry.node);
     delete viewCache[evict];
   }
+}
+
+function cacheTouch(key) {
+  var idx = lru.indexOf(key);
+  if (idx !== -1) lru.splice(idx, 1);
+  lru.push(key);
+  trimCache();
 }
 
 function fetchCardData(card) {
@@ -361,24 +373,86 @@ function gateDeactivate(entry) {
   entry.gated = false;
 }
 
+function pinEntry(entry, shell, meta) {
+  entry.pinned = true;
+  entry.ownerShell = shell;
+  entry.ownerMeta = meta;
+}
+
+function releaseEntry(entry) {
+  if (!entry) return;
+  entry.pinned = false;
+  entry.ownerShell = null;
+  entry.ownerMeta = null;
+}
+
 function deactivateViewTree(root) {
   if (!root) return;
   root.querySelectorAll('.tf-view').forEach(function (node) {
     gateDeactivate(node._tfViewEntry);
+    releaseEntry(node._tfViewEntry);
   });
+  trimCache();
 }
 
 function setActiveShellView(shell, activeNode) {
   Array.prototype.forEach.call(shell.children, function (node) {
+    if (!node.classList.contains('tf-view')) return;
     var active = node === activeNode;
     node.classList.toggle('view-active', active);
     node.classList.toggle('view-hidden', !active);
     node.classList.remove('view-pending');
     node.toggleAttribute('inert', !active);
     node.setAttribute('aria-hidden', active ? 'false' : 'true');
-    if (active) gateActivate(node._tfViewEntry);
-    else gateDeactivate(node._tfViewEntry);
+    if (active) {
+      pinEntry(node._tfViewEntry, shell, shell._tfMeta);
+      gateActivate(node._tfViewEntry);
+    } else {
+      gateDeactivate(node._tfViewEntry);
+      releaseEntry(node._tfViewEntry);
+    }
   });
+  trimCache();
+}
+
+function shellLoadingState(shell) {
+  var state = shell.querySelector('.view-loading-state');
+  if (state) return state;
+  state = el('div', 'view-loading-state');
+  state.setAttribute('role', 'status');
+  state.setAttribute('aria-live', 'polite');
+  state.hidden = true;
+  shell.appendChild(state);
+  return state;
+}
+
+function showShellLoading(shell, kind, meta, pendingEntry) {
+  var height = shell.getBoundingClientRect().height;
+  if (!shell.classList.contains('view-loading')) shell.style.height = Math.max(220, height) + 'px';
+  Array.prototype.forEach.call(shell.children, function (node) {
+    if (!node.classList.contains('tf-view')) return;
+    hideViewNode(node);
+    if (node._tfViewEntry !== pendingEntry) releaseEntry(node._tfViewEntry);
+  });
+  pinEntry(pendingEntry, shell, meta);
+  trimCache();
+  var state = shellLoadingState(shell);
+  state.textContent = 'Loading ' + kind + '\u2026';
+  state.hidden = false;
+  shell.className = 'view-shell view-' + kind + ' view-loading';
+  shell.setAttribute('aria-busy', 'true');
+  meta.textContent = '';
+}
+
+function commitShellView(shell, entry, meta) {
+  if (entry.node.parentNode !== shell) shell.appendChild(entry.node);
+  shell._tfMeta = meta;
+  setActiveShellView(shell, entry.node);
+  shellLoadingState(shell).hidden = true;
+  shell.className = 'view-shell view-' + entry.kind;
+  shell.style.height = '';
+  shell.removeAttribute('aria-busy');
+  meta.textContent = entry.metaText || '';
 }
 
 function hideViewNode(node) {
@@ -405,6 +479,7 @@ function blurHiddenFocus(node) {
 }
 
 function syncActiveShellView(shell) {
+  if (shell.classList.contains('view-loading')) return;
   var entry = viewCache[shell.dataset.activeViewKey];
   if (entry && entry.node.parentNode === shell) {
     setActiveShellView(shell, entry.node);
@@ -414,58 +489,56 @@ function syncActiveShellView(shell) {
   if (activeNode) setActiveShellView(shell, activeNode);
 }
 
-function attachView(shell, node) {
-  if (node.parentNode !== shell) shell.appendChild(node);
-  setActiveShellView(shell, node);
-}
-
-function stageShellView(shell, pendingNode) {
-  Array.prototype.forEach.call(shell.children, function (node) {
-    if (node === pendingNode) stageViewNode(node);
-    else hideViewNode(node);
-  });
-}
-
 function stageView(shell, node) {
   if (node.parentNode !== shell) shell.appendChild(node);
-  stageShellView(shell, node);
+  stageViewNode(node);
 }
 
 function isActiveShellView(shell, key) {
   return shell.dataset.activeViewKey === key;
 }
 
-function renderLoadedView(entry, kind, data, meta) {
+function renderLoadedView(entry, kind, data) {
   gateDeactivate(entry);
   entry.data = data;
   entry.node.textContent = '';
   entry.handle = renderKind(entry.node, kind, data);
   entry.node._tfViewEntry = entry;
-  if (kind === 'data' && data.table) meta.textContent = data.table.meta || '';
+  entry.metaText = kind === 'data' && data.table ? data.table.meta || '' : '';
 }
 
 function renderHiddenDataView(entry, data) {
   hideViewNode(entry.node);
-  renderLoadedView(entry, 'data', data, { textContent: '' });
+  renderLoadedView(entry, 'data', data);
   hideViewNode(entry.node);
   blurHiddenFocus(entry.node);
 }
 
-function revealStagedView(shell, key, node) {
-  requestAnimationFrame(function () {
+function prepareShellView(shell, key, entry, meta) {
+  if (entry.node.parentNode !== shell) shell.appendChild(entry.node);
+  showShellLoading(shell, entry.kind, meta, entry);
+  stageView(shell, entry.node);
+  gateActivate(entry);
+
+  if (!entry.readyPromise) {
+    var rendererReady = entry.handle && entry.handle.ready;
+    if (!rendererReady) {
+      entry.ready = true;
+      if (isActiveShellView(shell, key)) commitShellView(shell, entry, meta);
+      return;
+    }
+    entry.readyPromise = Promise.resolve(rendererReady).catch(function () {}).then(function () {
+      entry.ready = true;
+    });
+  }
+  entry.readyPromise.then(function () {
+    if (viewCache[key] !== entry || !isActiveShellView(shell, key) || entry.node.parentNode !== shell) return;
     requestAnimationFrame(function () {
-      if (isActiveShellView(shell, key) && node.parentNode === shell) setActiveShellView(shell, node);
+      if (viewCache[key] === entry && isActiveShellView(shell, key) && entry.node.parentNode === shell) {
+        commitShellView(shell, entry, meta);
+      }
     });
   });
-}
-
-function stageDataView(entry, shell, key, meta) {
-  stageView(shell, entry.node);
-  cacheTouch(key);
-  if (entry.data && !entry.handle) renderLoadedView(entry, 'data', entry.data, meta);
-  else if (entry.data && entry.data.table) meta.textContent = entry.data.table.meta || '';
-  stageShellView(shell, entry.node);
-  revealStagedView(shell, key, entry.node);
 }
 
 function prewarmDataView(card, views, activeKind, shell) {
@@ -485,7 +558,10 @@ function prewarmDataView(card, views, activeKind, shell) {
     fetchCardData(card).then(function (data) {
       if (!shell.isConnected || viewCache[key]) return;
       var node = el('div', 'tf-view view-hidden');
-      var entry = { node: node, handle: null, data: data, kind: 'data' };
+      var entry = {
+        node: node, handle: null, data: data, dataPromise: null, kind: 'data', metaText: '',
+        ready: false, readyPromise: null, pinned: false, ownerShell: null, ownerMeta: null
+      };
       viewCache[key] = entry;
       cacheTouch(key);
       shell.appendChild(node);
@@ -498,55 +574,64 @@ function prewarmDataView(card, views, activeKind, shell) {
 function mountView(card, kind, shell, meta) {
   var key = card.id + ':' + kind;
   var entry = viewCache[key];
-  shell.className = 'view-shell view-' + kind;
   shell.dataset.activeViewKey = key;
-  meta.textContent = '';
+  shell._tfMeta = meta;
   if (entry) {
-    if (kind === 'data') {
-      stageDataView(entry, shell, key, meta);
+    pinEntry(entry, shell, meta);
+    cacheTouch(key);
+    if (entry.error) {
+      commitShellView(shell, entry, meta);
       return;
     }
-    attachView(shell, entry.node);
-    cacheTouch(key);
-    if (entry.data && !entry.handle) {
-      renderLoadedView(entry, kind, entry.data, meta);
-      gateActivate(entry);
+    if (!entry.data) {
+      showShellLoading(shell, kind, meta, entry);
+      stageView(shell, entry.node);
+      return;
     }
-    else if (entry.data && kind === 'data' && entry.data.table) meta.textContent = entry.data.table.meta || '';
+    if (entry.data && !entry.handle) {
+      renderLoadedView(entry, kind, entry.data);
+    }
+    if (entry.ready) commitShellView(shell, entry, meta);
+    else prepareShellView(shell, key, entry, meta);
     return;
   }
-  var node = el('div', 'tf-view loading');
-  node.textContent = 'Loading...';
-  entry = { node: node, handle: null, data: null, kind: kind };
+  var node = el('div', 'tf-view');
+  entry = {
+    node: node, handle: null, data: null, dataPromise: null, kind: kind, metaText: '',
+    ready: false, readyPromise: null, pinned: true, ownerShell: shell, ownerMeta: meta
+  };
   node._tfViewEntry = entry;
   viewCache[key] = entry;
   cacheTouch(key);
-  attachView(shell, node);
+  showShellLoading(shell, kind, meta, entry);
+  stageView(shell, node);
   var cachedData = getCachedCardData(card);
   if (cachedData) {
-    if (kind === 'data') {
-      entry.data = cachedData;
-      stageDataView(entry, shell, key, meta);
-    } else {
-      renderLoadedView(entry, kind, cachedData, meta);
-      setActiveShellView(shell, node);
-    }
+    entry.data = cachedData;
+    renderLoadedView(entry, kind, cachedData);
+    prepareShellView(shell, key, entry, meta);
     return;
   }
-  fetchCardData(card).then(function (data) {
+  entry.dataPromise = fetchCardData(card);
+  entry.dataPromise.then(function (data) {
+    if (viewCache[key] !== entry) return;
     entry.data = data;
-    if (isActiveShellView(shell, key)) {
-      if (kind === 'data') {
-        stageDataView(entry, shell, key, meta);
-      } else {
-        renderLoadedView(entry, kind, data, meta);
-        setActiveShellView(shell, node);
-      }
+    var ownerShell = entry.ownerShell;
+    var ownerMeta = entry.ownerMeta;
+    if (entry.pinned && ownerShell && isActiveShellView(ownerShell, key)) {
+      renderLoadedView(entry, kind, data);
+      prepareShellView(ownerShell, key, entry, ownerMeta);
     }
   }).catch(function (err) {
+    if (viewCache[key] !== entry) return;
     node.className = 'tf-view error';
     node.textContent = 'Failed to load view: ' + String(err);
-    if (isActiveShellView(shell, key)) setActiveShellView(shell, node);
+    entry.error = true;
+    entry.ready = true;
+    var ownerShell = entry.ownerShell;
+    var ownerMeta = entry.ownerMeta;
+    if (entry.pinned && ownerShell && isActiveShellView(ownerShell, key)) commitShellView(ownerShell, entry, ownerMeta);
+    else hideViewNode(node);
   });
 }
 

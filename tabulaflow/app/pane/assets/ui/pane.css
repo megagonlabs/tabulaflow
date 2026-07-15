@@ -205,8 +205,29 @@ body { margin: 0; background: var(--bg); color: var(--text); display: flex; flex
     opacity: 0;
     pointer-events: none;
 }
-.view-shell > .tf-view.view-pending { position: relative; opacity: 0; pointer-events: none; }
+.view-shell > .tf-view.view-pending {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    opacity: 0;
+    pointer-events: none;
+}
 .view-shell > .tf-view.view-active { position: relative; opacity: 1; }
+.view-loading-state {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    display: grid;
+    place-items: center;
+    background: var(--panel);
+    color: var(--text-dim);
+    font: 13px/1.4 ui-monospace, monospace;
+}
+.view-loading-state[hidden] { display: none; }
+.view-shell.view-chart .view-loading-state,
+.view-shell.view-map .view-loading-state,
+.view-shell.view-graph .view-loading-state { background: var(--card); }
 .manual-preview .view-shell,
 .manual-preview .viewmeta { width: min(1280px, 100%); }
 .manual-preview .view-shell { flex: 1 1 auto; min-height: 360px; overflow: hidden; }

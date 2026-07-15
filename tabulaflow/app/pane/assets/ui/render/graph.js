@@ -519,6 +519,8 @@ export function renderGraph(container, cardData) {
   var detailMode = null;
   var autoFitEnabled = true;
   var autoFitTimer = null;
+  var resolveReady;
+  var ready = new Promise(function (resolve) { resolveReady = resolve; });
 
   function hideDetail(force) {
     if (!force && detailMode === 'pinned') return;
@@ -620,6 +622,7 @@ export function renderGraph(container, cardData) {
     cy.ready(function () {
       scheduleAutoFit();
       startLivePhysics();
+      requestAnimationFrame(resolveReady);
     });
     cy.on('grab', 'node', markUserViewportInteraction);
     cy.on('mouseover', 'node, edge', function () {
@@ -646,6 +649,7 @@ export function renderGraph(container, cardData) {
   }, { passive: true });
 
   return {
+    ready: ready,
     requires: { width: true, height: true },
     mount: initGraph,
     resize: function () {
@@ -655,6 +659,7 @@ export function renderGraph(container, cardData) {
     },
     destroy: function () {
       destroyGraph();
+      resolveReady();
       container.innerHTML = '';
     }
   };
