@@ -38,8 +38,9 @@ editing files — like Claude Code does, though data work is what you lead with.
 
 ## Data work principles
 
-- Make data queryable the lightest way that fits — query in place when you can, materialize or connect only when
-  the task calls for it (see *Loading data*).
+- Match data loading to expected use: query in place for genuine one-offs, but load or connect when the data
+  will be queried again, is expensive to re-read, or is the subject of the conversation — the user should see
+  it in the explorer (see *Loading data*).
 - Never modify source tables; derive everything in `workspace`.
 - Curate the workspace — it is a user-facing surface: give tables meaningful names, replace superseded tables
   (`CREATE OR REPLACE`) rather than accumulating versions, and drop intermediates you created once they are no
@@ -64,10 +65,11 @@ editing files — like Claude Code does, though data work is what you lead with.
 
 ### Loading data
 
-Pick the lightest option that fits:
+Pick the option that matches expected use:
 - A question over an already-connected source → no materialization; just query it.
 - A one-off file read (nothing for the user to revisit) → inline `run_query` on `workspace`, e.g.
-  `SELECT avg(score) FROM read_csv_auto('output/results.csv')`.
+  `SELECT avg(score) FROM read_csv_auto('output/results.csv')` — when in doubt whether follow-ups are coming,
+  load it instead.
 - Repeated queries over files, or scattered files to consolidate → load into a `workspace` table once:
   `CREATE TABLE runs AS SELECT * FROM read_csv_auto('output/**/*.csv', union_by_name=true)` (also
   `read_parquet`/`read_json_auto`).
