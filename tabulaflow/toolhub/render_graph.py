@@ -82,10 +82,12 @@ class _GraphSpec(_StrictModel):
 
 @dataclass(frozen=True)
 class GraphSize:
-    """Final materialized graph size."""
+    """Final materialized graph size and node typing counts."""
 
     nodes: int
     edges: int
+    groups: int
+    ungrouped_nodes: int
 
 
 def _validation_message(error: ValidationError) -> str:
@@ -471,17 +473,25 @@ def _node_id(value: object) -> str | None:
 
 
 def graph_size(graph_spec: Mapping[str, object], sources: Mapping[str, pd.DataFrame]) -> GraphSize:
-    """Compute final unique node and valid edge counts for a normalized graph spec."""
-    node_ids: set[str] = set()
+    """Compute unique node, valid edge, and node-type counts for a normalized graph spec.
+
+    Mirrors the renderer's first-source-wins node dedup: the source that first
+    introduces a node id also fixes whether it is grouped.
+    """
+    group_by_id: dict[str, str | None] = {}
     raw_nodes = graph_spec.get("nodes")
     for raw_source in raw_nodes if isinstance(raw_nodes, list) else []:
         if not isinstance(raw_source, Mapping):
             continue
         id_field = raw_source.get("id")
+        group_field = raw_source.get("group")
+        constant_group = group_field.get("value") if isinstance(group_field, Mapping) else None
         for row in _source_rows(raw_source, sources):
             node_id = _node_id(_row_value(row, id_field))
-            if node_id is not None:
-                node_ids.add(node_id)
+            if node_id is None or node_id in group_by_id:
+                continue
+            group = constant_group if constant_group is not None else _row_value(row, group_field)
+            group_by_id[node_id] = str(group) if group is not None else None
 
     edge_count = 0
     raw_edges = graph_spec.get("edges")
@@ -495,10 +505,13 @@ def graph_size(graph_spec: Mapping[str, object], sources: Mapping[str, pd.DataFr
             target_id = _node_id(_row_value(row, target_field))
             if source_id is None or target_id is None:
                 continue
-            node_ids.add(source_id)
-            node_ids.add(target_id)
+            group_by_id.setdefault(source_id, None)
+            group_by_id.setdefault(target_id, None)
             edge_count += 1
-    return GraphSize(nodes=len(node_ids), edges=edge_count)
+
+    groups = {group for group in group_by_id.values() if group is not None}
+    ungrouped = sum(1 for group in group_by_id.values() if group is None)
+    return GraphSize(nodes=len(group_by_id), edges=edge_count, groups=len(groups), ungrouped_nodes=ungrouped)
 
 
 def validate_graph_size(size: GraphSize) -> None:
@@ -536,7 +549,8 @@ class RenderGraphTool:
         The spec is a JSON string containing an object with ``edges`` and
         optional ``nodes``. Each column source names the query result it reads
         from via ``record_id``. Nodes may be supplied in one result while edges
-        come from another; if ``nodes`` is omitted, endpoint ids become nodes.
+        come from another; if ``nodes`` is omitted, endpoint ids become untyped
+        nodes (single color, id as label).
 
         Full public grammar:
         - Top level:
@@ -627,7 +641,16 @@ class RenderGraphTool:
         graph_id = self._history.add_graph(normalized)
         label = graph_type_label(normalized)
         from_text = f" from {', '.join(record_ids)}" if record_ids else ""
-        return f"{label} {graph_id} created{from_text} — {size.nodes:,} nodes, {size.edges:,} edges"
+        if size.groups == 0:
+            counts = (
+                f"{size.nodes:,} nodes, {size.edges:,} edges "
+                "(all nodes one color; set group on node sources to color by type)"
+            )
+        else:
+            types_text = f"{size.groups:,} type" + ("" if size.groups == 1 else "s")
+            untyped_text = f" ({size.ungrouped_nodes:,} untyped)" if size.ungrouped_nodes else ""
+            counts = f"{size.nodes:,} nodes in {types_text}{untyped_text}, {size.edges:,} edges"
+        return f"{label} {graph_id} created{from_text} — {counts}"
 
     def as_pydantic_ai_tool(self) -> Tool:
         return Tool(self.__call__, name=self.name)

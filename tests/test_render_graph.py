@@ -144,6 +144,28 @@ class TestNormalizeGraphSpec:
         assert graph_size(normalized, {"Q1": df}).nodes == 3
         assert graph_size(normalized, {"Q1": df}).edges == 2
 
+    def test_graph_size_counts_groups_first_source_wins(self) -> None:
+        nodes1 = pd.DataFrame({"id": ["a"], "kind": ["x"]})
+        nodes2 = pd.DataFrame({"id": ["a", "b"]})
+        edges = pd.DataFrame({"src": ["a"], "dst": ["c"]})
+        normalized = _norm(
+            {
+                "nodes": [
+                    {"record_id": "Q1", "id": "id", "group": "kind"},
+                    {"record_id": "Q2", "id": "id", "group": {"value": "y"}},
+                ],
+                "edges": [{"record_id": "Q3", "source": "src", "target": "dst"}],
+            },
+            Q1=nodes1,
+            Q2=nodes2,
+            Q3=edges,
+        )
+        size = graph_size(normalized, {"Q1": nodes1, "Q2": nodes2, "Q3": edges})
+        assert size.nodes == 3
+        assert size.edges == 1
+        assert size.groups == 2  # a keeps 'x' from its first source; b gets the constant 'y'
+        assert size.ungrouped_nodes == 1  # endpoint c
+
     def test_subgraph_extracts_dynamic_relationship_subclasses(self) -> None:
         alice, matrix, acted_in, _ = _neo4j_objects()
         df = pd.DataFrame({"nodes": [[alice, matrix]], "relationships": [[acted_in]]})
@@ -237,8 +259,23 @@ class TestRenderGraphTool:
         }
         msg = await RenderGraphTool(history=history)(graph_spec=json.dumps(spec))
         assert "Network graph GRAPH1 created from Q1" in msg
-        assert "3 nodes, 2 edges" in msg
+        assert "3 nodes, 2 edges (all nodes one color; set group on node sources to color by type)" in msg
         assert history.get_graph("GRAPH1").graph_spec["edges"][0]["source"] == "src"
+
+    async def test_graph_created_reports_node_types(self) -> None:
+        history = await _history_with(
+            pd.DataFrame({"account": ["a", "b"], "merchant": ["m1", "m2"], "rel": ["paid", "paid"]})
+        )
+        spec = {
+            "nodes": [
+                {"record_id": "Q1", "id": "account", "group": {"value": "Account"}},
+                {"record_id": "Q1", "id": "merchant", "group": {"value": "Merchant"}},
+            ],
+            "edges": [{"record_id": "Q1", "source": "account", "target": "merchant", "label": "rel"}],
+        }
+        msg = await RenderGraphTool(history=history)(graph_spec=json.dumps(spec))
+        assert "4 nodes in 2 types, 2 edges" in msg
+        assert "one color" not in msg
 
     async def test_final_node_cap_uses_unique_endpoint_nodes(self) -> None:
         df = pd.DataFrame(
