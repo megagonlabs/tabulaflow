@@ -69,6 +69,7 @@ include = ["tabulaflow*"]
 
 [tool.setuptools.package-data]
 tabulaflow = [
+    "chat/*.md",
     "app/assets/debug/*",
     "app/assets/samples/*",
     "app/pane/assets/ui/*",
