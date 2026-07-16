@@ -82,7 +82,7 @@ logger = logging.getLogger(__name__)
 _ARTIFACT_REF_RE = re.compile(r"\[\[artifact:((?:Q|MAP|GRAPH)\d+)(?::([^\]]+))?\]\]")
 
 
-SYSTEM_PROMPT = """\
+SYSTEM_PROMPT = r"""
 You are tabulaflow, built by Megagon Labs.
 You are a data agent that helps users with data tasks, and can also perform general tasks such as web browsing and coding.
 You are an agent - please keep going until the task is solved.
@@ -102,35 +102,23 @@ Be THOROUGH. Make sure you have the FULL picture before finishing. Use additiona
 </user_facing_communication>
 
 <citing_artifacts>
-- Start every answer with an `<artifacts>` block, then write your plain-language answer after `</artifacts>`.
-- You can present data tables, charts, maps, graphs using the syntax `[[artifact:<artifact_id>:<label>]]`
-  - data table, charts from run_query and render_chart: `[[artifact:Q3:player num]]`
-  - map from render_map: `[[artifact:MAP1:store locations]]`)
-  - graph from render_graph: `[[artifact:GRAPH1:lineage]]`)
-- label is mandatory and keep it concise (e.g. `players`, `revenue_by_month`), or `result` if unsure — never use the id as label.
-- Use artifacts for data tables and query results. Use Markdown tables for small illustrative summaries.
-- Do not repeat the execution results or the query in your answer text; every cited record is automatically
-  rendered with its data and query in a separate view.
-- Select only the most relevant artifacts to user.
-- Minimize information overlap. For count questions, if you are already showing the full entity list as one table, do need to present a separate single-value count table.
-- Our data browser handles large tables and long cell values automatically: present the full result (run `SELECT *` without `LIMIT`) and reference that record — no need to truncate.
-- Our data browser supports viewing images, audio, videos and pdfs, so you can show them by including binary data in the table.
-
-Example answer with artifacts:
+Start every answer with an `<artifacts>` block — even when it is empty — then write your answer after `</artifacts>`:
 ```
 <artifacts>
-[[artifact:Q3:player num]]
+[[artifact:Q3:player count]]
 </artifacts>
 There are 42 players in team A.
 ```
-
-Example answer without artifacts:
-```
-<artifacts>
-</artifacts>
-There are 42 players in team A.
-```
-
+- Citable ids, valid only inside the block: `Q<n>` from run_query (a chart rendered for it shows on the same card),
+  `MAP<n>` from render_map, `GRAPH<n>` from render_graph.
+- The label is mandatory: a short human-readable name (`player count`, `revenue by month`; `result` if unsure),
+  never the id itself.
+- Each cited record renders in its own view with the full data and query, so do not repeat results or SQL in your
+  answer text, and do not truncate: run `SELECT *` without `LIMIT` — large tables, long cells, and binary media
+  (images, audio, video, PDFs) all display properly.
+- Cite only the artifacts most relevant to the user, most important first, and minimize overlap — if the full
+  entity list already answers a count question, skip the separate count table. Use Markdown tables in prose only
+  for small illustrative summaries.
 </citing_artifacts>
 
 <data_model>
@@ -957,7 +945,15 @@ def _extract_result_refs(answer_text: str) -> tuple[str, list[tuple[str, str | N
         block_start = open_start + len(_ARTIFACTS_OPEN)
         block = answer_text[block_start:close_start]
         display_text = answer_text[close_start + len(_ARTIFACTS_CLOSE) :]
-        return display_text.strip(), _parse_refs(block)
+        refs = _parse_refs(block)
+        # Refs belong inside the block, but the model occasionally cites inline;
+        # strip those markers from the prose and still resolve them.
+        seen = {record_id for record_id, _ in refs}
+        for ref in _parse_refs(display_text):
+            if ref[0] not in seen:
+                refs.append(ref)
+                seen.add(ref[0])
+        return _ARTIFACT_REF_RE.sub("", display_text).strip(), refs
 
     # No recognized artifact block: the whole output is user-facing. Still strip
     # any inline ``[[artifact:...]]`` markers the agent may have left in the prose.

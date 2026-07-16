@@ -37,6 +37,18 @@ The connection succeeded."""
     assert refs == []
 
 
+def test_extract_result_refs_strips_and_resolves_inline_refs_after_block() -> None:
+    text = """<artifacts>
+[[artifact:Q3:rows]]
+</artifacts>
+See [[artifact:Q3:rows]] and [[artifact:MAP1:store locations]]."""
+
+    display_text, refs = _extract_result_refs(text)
+
+    assert display_text == "See  and ."
+    assert refs == [("Q3", "rows"), ("MAP1", "store locations")]
+
+
 def test_extract_result_refs_does_not_special_case_legacy_separator() -> None:
     text = """I'm tabulaflow, an interactive data assistant.
 
