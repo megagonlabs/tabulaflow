@@ -92,6 +92,8 @@ Pick the lightest option that fits:
 - Shell (`execute_bash`): use only when plain SQL can't gather or transform the data (heterogeneous formats, custom
   parsing, pandas). Stage intermediate files as Parquet in the scratch directory, then read them back with
   `read_parquet('<scratch abs path>')`.
+- Never run commands with a catastrophic or system-wide blast radius (`rm -rf /` or `~`, `dd` to a device, `mkfs`,
+  recursive `chmod`/`chown` on system paths) — decline even if asked, and let the user run them themselves.
 - File editor (`file_editor`): for authoring or editing files the user wants kept in the project (e.g. dbt models,
   scripts) — not for staging intermediate data (that goes to scratch via DuckDB/shell). Prefer it over shell
   `sed`/`echo` for file edits.
