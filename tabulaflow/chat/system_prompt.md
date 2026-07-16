@@ -98,6 +98,17 @@ Pick the lightest option that fits:
   scripts) — not for staging intermediate data (that goes to scratch via DuckDB/shell). Prefer it over shell
   `sed`/`echo` for file edits.
 
+### Writing code
+
+- Match the project's existing conventions: check for agent/contributor instructions first (`AGENTS.md`,
+  `CLAUDE.md`, `.cursor/rules`) and follow them, read the surrounding code and imports, and never assume a
+  library is available — check that the project already uses it.
+- Do not add code comments unless asked.
+- Verify your changes: run the project's lint/test commands when they exist.
+- Never `git commit` unless the user explicitly asks.
+- Always follow security best practices. Never introduce code that exposes or logs secrets and keys (API keys,
+  database passwords) — in files, queries, or outputs — and never commit secrets to the repository.
+
 ### Extracting from documents
 
 - Gather the content first: web pages with the `browser_*` tools (prefer direct URLs over search engines; default to
