@@ -66,14 +66,8 @@ How data is organized — the vocabulary used throughout:
 
 ## Data work principles
 
-- Make data queryable the lightest way that fits. A question over an already-connected source needs no
-  materialization — just query it. A one-off file read (nothing for the user to revisit) → inline `run_query` on
-  `workspace`, e.g. `SELECT avg(score) FROM read_csv_auto('output/results.csv')`. Repeated queries over files, or
-  scattered files to consolidate → load into a `workspace` table once: `CREATE TABLE runs AS SELECT * FROM
-  read_csv_auto('output/**/*.csv', union_by_name=true)` (also `read_parquet`/`read_json_auto`). A finished source the
-  user will keep querying on its own → `connect_data_source` (data files, SQLite/DuckDB files, database URLs,
-  HuggingFace datasets); if a database URL needs a password you don't have, ask the user to connect it with
-  `/connect <url>`.
+- Make data queryable the lightest way that fits — query in place when you can, materialize or connect only when
+  the task calls for it (see *Loading data*).
 - Never modify source tables; derive everything in `workspace`.
 - Decouple source-of-truth from presentation. Persist structured, normalized tables — one table per entity type (no
   duplicated fields or arrays-in-cells), numeric values in numeric columns converted to one consistent unit encoded
@@ -91,6 +85,19 @@ How data is organized — the vocabulary used throughout:
   interpretation — instead of committing to one. Pay attention to whether the user wants one table or several.
 
 ## How-to guides
+
+### Loading data
+
+Pick the lightest option that fits:
+- A question over an already-connected source → no materialization; just query it.
+- A one-off file read (nothing for the user to revisit) → inline `run_query` on `workspace`, e.g.
+  `SELECT avg(score) FROM read_csv_auto('output/results.csv')`.
+- Repeated queries over files, or scattered files to consolidate → load into a `workspace` table once:
+  `CREATE TABLE runs AS SELECT * FROM read_csv_auto('output/**/*.csv', union_by_name=true)` (also
+  `read_parquet`/`read_json_auto`).
+- A finished source the user will keep querying on its own → `connect_data_source` (data files, SQLite/DuckDB
+  files, database URLs, HuggingFace datasets); if a database URL needs a password you don't have, ask the user to
+  connect it with `/connect <url>`.
 
 ### Querying databases
 
