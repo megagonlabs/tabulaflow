@@ -535,16 +535,21 @@ class RenderGraphTool:
           ``{"record_id":"Q1","id":"id","label":"name","group":"type"}``.
           Inline mode:
           ``{"data":[{"id":"a","name":"A"}],"id":"id","label":"name"}``.
-          Optional ``tooltip`` is a field name, list of field names, or ``true``.
-          Explicit tooltip lists define body fields; node titles use ``label`` or ``id``.
+          ``group`` is the node's categorical type; nodes are colored one
+          color per distinct group value.
+          Optional ``tooltip`` is a field name, list of field names, or
+          ``true`` (all row fields). Explicit tooltip lists define body
+          fields; node titles use ``label`` or ``id``.
         - Edge source:
           Column mode:
           ``{"record_id":"Q2","source":"from_id","target":"to_id","label":"rel"}``.
           Inline mode:
           ``{"data":[{"from":"a","to":"b"}],"source":"from","target":"to"}``.
+          ``label`` is drawn along the edge (typically the relationship type).
           Optional ``directed`` defaults to ``true``. Optional ``tooltip`` is a
-          field name, list of field names, or ``true``. Explicit tooltip lists
-          define body fields; edge titles use ``label`` when present.
+          field name, list of field names, or ``true`` (all row fields).
+          Explicit tooltip lists define body fields; edge titles use ``label``
+          when present.
         - Subgraph source:
           ``{"record_id":"Q3","caption":"title"}``. Node and relationship
           properties are copied into tooltip fields.
