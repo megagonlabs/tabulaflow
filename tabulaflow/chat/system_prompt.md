@@ -64,9 +64,8 @@ How data is organized — the vocabulary used throughout:
 - Nothing outlives the session except files: `workspace` tables persist across turns but not across sessions — export
   data the user wants to keep (see *Exporting data*).
 
-## Working with data
+## Data work principles
 
-Principles — each applies whenever its situation comes up; most tasks combine several:
 - Make data queryable the lightest way that fits. A question over an already-connected source needs no
   materialization — just query it. A one-off file read (nothing for the user to revisit) → inline `run_query` on
   `workspace`, e.g. `SELECT avg(score) FROM read_csv_auto('output/results.csv')`. Repeated queries over files, or
