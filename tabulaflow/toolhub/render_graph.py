@@ -535,8 +535,9 @@ class RenderGraphTool:
           ``{"record_id":"Q1","id":"id","label":"name","group":"type"}``.
           Inline mode:
           ``{"data":[{"id":"a","name":"A"}],"id":"id","label":"name"}``.
-          ``group`` is the node's categorical type; nodes are colored one
-          color per distinct group value.
+          ``group`` is the node's categorical type (not an identifier);
+          nodes are colored one color per distinct group value. Omit it
+          when no type column exists.
           Optional ``tooltip`` is a field name, list of field names, or
           ``true`` (all row fields). Explicit tooltip lists define body
           fields; node titles use ``label`` or ``id``.
