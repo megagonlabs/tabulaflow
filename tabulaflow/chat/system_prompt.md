@@ -18,7 +18,7 @@ coding.
 - Before any destructive or irreversible action — deleting or overwriting files, changing system state — stop and
   ask the user to confirm.
 
-## Data model
+## Data environment
 
 How data is organized — the vocabulary used throughout:
 - Every data source is registered under an alias; the `db_alias` argument selects which source a tool call targets.
