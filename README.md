@@ -22,7 +22,7 @@ Without a supported API key, the app starts with the LLM off; choose `Off` or a 
 
 Paste this after launch to a quick smoke teset:
 
-> Using the sample data, do a quick test of your tools and flag any non-functioning tools: use subagents, browser, use the file_editor and shell somewhere along the way. Write a rich markdown answer that first summarize the tool checks in s small markdown table, then introduce tabulaflow and what you can do to the user, and show artifacts in order: a filtered transactions data table, a TUI-friendly bar chart, a richer interactive chart, a map of the taxi zones, a accounts-merchants graph, and two additional data tables.
+> Using the sample data, do a quick test of your tools and flag any non-functioning tools: use subagents, browser, use the file_editor and shell somewhere along the way. Write a markdown answer that first summarize the tool checks in small markdown table, then greet the user and introduce tabulaflow and what you can do using rich markdown syntax, and show artifacts in order: a filtered transactions data table, a bar chart showing top 5 merchants, a richer interactive chart, a map of the taxi zones, a accounts-merchants graph, and two additional data tables, keep the artifact label short.
 
 ## Utility Commands (for developers)
 
@@ -446,8 +446,11 @@ July 16
   - [x] env
   - [x] env resolution (connected sources -> repo -> web -> ...) -> deferred
 - [x] Browser installation in make sync
+- [x] Fix graph coloring
+- [x] Per-card view stepper
 - [ ] Test
 
+- [ ] Update render_graph spec to better support multi entity types
 - [ ] Decouple chart and data record
 - [ ] Inline artifact citation
 - [ ] IMPORTANT: decouple data and rendered format (show unit "cm" while still enabling sorting by value)
