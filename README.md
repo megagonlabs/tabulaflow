@@ -450,6 +450,7 @@ July 16
 - [ ] code diff rendering
 
 
+- [ ] Session ID - remove date?
 - [ ] Other config options - concurrency
 - [ ] Gemini levels - no xhigh
 - [ ] Fireworks preset
