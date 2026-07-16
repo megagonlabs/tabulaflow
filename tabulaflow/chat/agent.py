@@ -4,11 +4,13 @@ from __future__ import annotations
 
 import asyncio
 from collections.abc import AsyncIterator, Callable, Iterable
+from datetime import date
 from importlib.resources import files
 import json
 import logging
 from pathlib import Path
 import re
+import sys
 from contextlib import suppress
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Final
@@ -86,17 +88,6 @@ _ARTIFACT_REF_RE = re.compile(r"\[\[artifact:((?:Q|MAP|GRAPH)\d+)(?::([^\]]+))?\
 SYSTEM_PROMPT = files("tabulaflow.chat").joinpath("system_prompt.md").read_text(encoding="utf-8").strip()
 
 
-# Appended to the (static) system prompt per session when the host provides the project
-# and scratch dirs, so the agent has their absolute paths without spending a shell call to
-# discover them. Kept at the tail so the large static prefix still prompt-caches.
-_SESSION_PATHS_BLOCK = """
-
-## Session paths
-
-- Project directory — the shell's working dir; relative paths in the shell and in `run_query` resolve here: {project_dir}
-- Scratch directory — for intermediate files; use this absolute path when referencing scratch files in SQL (also available as `$SCRATCH` in the shell): {scratch_dir}"""
-
-
 DEFAULT_SUBAGENT_MODEL: Final = "openai-responses:gpt-5.4-mini"
 DEFAULT_SUBAGENT_REASONING_EFFORT: Final = "medium"
 
@@ -154,7 +145,7 @@ class ChatAgent:
     # Host-supplied instructions appended to the baseline prompt — a persona, domain
     # guidance, or frontend-specific phrasing (e.g. slash-command vocabulary). ``None``
     # (default) uses the baseline alone. Composed between the static prefix and the
-    # session-paths tail (see ``_compose_system_prompt``), so the large prefix still
+    # session tail (see ``_compose_system_prompt``), so the large prefix still
     # prompt-caches; keep it stable across a session's turns. A full prompt replacement
     # is intentionally not offered: the baseline ``SYSTEM_PROMPT`` is half of a contract
     # with this module's tools and citation parser, so callers extend rather than swap it.
@@ -204,16 +195,18 @@ class ChatAgent:
 
     def _compose_system_prompt(self) -> str:
         """Assemble the agent's instructions: the baseline ``SYSTEM_PROMPT``, then any
-        host ``extra_instructions``, then the session-paths tail (when the project and
-        scratch dirs are known). The ordering keeps the large static prefix first so it
-        prompt-caches, and the per-session paths last."""
+        host ``extra_instructions``, then the ``## Session`` tail. The ordering keeps
+        the large static prefix first so it prompt-caches, and the session facts last."""
         parts = [SYSTEM_PROMPT]
         if self.extra_instructions:
             parts.append(self.extra_instructions.strip())
+        session_lines = []
         if self.project_dir is not None and self.scratch_dir is not None:
-            parts.append(
-                _SESSION_PATHS_BLOCK.format(project_dir=self.project_dir, scratch_dir=self.scratch_dir).strip()
-            )
+            session_lines.append(f"- Project directory: {self.project_dir}")
+            session_lines.append(f"- Scratch directory: {self.scratch_dir}")
+        session_lines.append(f"- Platform: {sys.platform}")
+        session_lines.append(f"- Today's date: {date.today().isoformat()}")
+        parts.append("## Session\n\n" + "\n".join(session_lines))
         return "\n\n".join(parts)
 
     def _build_tools(self, subagent_dir: Path | None) -> _Toolset:

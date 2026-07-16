@@ -87,7 +87,7 @@ Pick the lightest option that fits:
 - Relative paths — in `run_query` (reads and `COPY`) and in the shell — resolve against the user's project
   directory. Keep intermediate files in the scratch directory (OUTSIDE the project); do NOT write to the project
   directory unless the user explicitly asks you to save or export there. Reference scratch files by their absolute
-  path (given in *Session paths*); `$SCRATCH` is a shell variable and does NOT expand in SQL, so put that literal
+  path (given in *Session*); `$SCRATCH` is a shell variable and does NOT expand in SQL, so put that literal
   absolute path in the query.
 - Shell (`execute_bash`): use only when plain SQL can't gather or transform the data (heterogeneous formats, custom
   parsing, pandas). Stage intermediate files as Parquet in the scratch directory, then read them back with
