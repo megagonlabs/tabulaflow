@@ -1228,6 +1228,8 @@ class AgentResultWidget(Widget):
 
     Top bar: records (shown when there is more than one record).
     Bottom bar: view kinds (Chart / Data / Query) for the selected record.
+    Each record keeps its own selected view; stepping the view on one
+    record never affects what another record shows.
     """
 
     DEFAULT_CSS = """
@@ -1267,7 +1269,6 @@ class AgentResultWidget(Widget):
     """
 
     current_card: reactive[int] = reactive(0, init=False)
-    current_view: reactive[int] = reactive(0, init=False)
 
     def __init__(
         self,
@@ -1280,6 +1281,8 @@ class AgentResultWidget(Widget):
         from tabulaflow.toolhub.query_history import QueryHistory
 
         self._cards = build_card_views(result, width)
+        # Selected view index per card; every card has at least one view.
+        self._view_indices: list[int] = [0] * len(self._cards)
         self._query_history: QueryHistory | None = query_history if isinstance(query_history, QueryHistory) else None
         self._content = Static(id="result-content")
         self._mounted = False
@@ -1328,17 +1331,6 @@ class AgentResultWidget(Widget):
             self._update_bottom_hint()
 
     def watch_current_card(self) -> None:
-        if not self._mounted:
-            return
-        # Clamp current_view to the new record's view count; setting it will
-        # trigger watch_current_view which calls _refresh_all.
-        rec = self._current_record_or_none()
-        if rec is not None and self.current_view >= len(rec.views):
-            self.current_view = max(0, len(rec.views) - 1)
-            return
-        self._refresh_all()
-
-    def watch_current_view(self) -> None:
         if not self._mounted:
             return
         self._refresh_all()
@@ -1401,8 +1393,7 @@ class AgentResultWidget(Widget):
         rec = self._current_record_or_none()
         if rec is None or not rec.views:
             return None
-        idx = min(self.current_view, len(rec.views) - 1)
-        return rec.views[idx]
+        return rec.views[self._view_indices[min(self.current_card, len(self._cards) - 1)]]
 
     def _update_card_bar(self) -> None:
         """Render record pills left-anchored, wrapping across multiple lines.
@@ -1497,7 +1488,9 @@ class AgentResultWidget(Widget):
         label_style = Style(bold=True, color=self._focus_accent)
         dim_sep_style = Style(dim=True)
 
-        cur_kind = rec.views[min(self.current_view, len(rec.views) - 1)].kind
+        cur_view = self._current_view_or_none()
+        assert cur_view is not None
+        cur_kind = cur_view.kind
         max_kind_width = max(len(k) for k in (VIEW_KIND_CHART, VIEW_KIND_DATA, VIEW_KIND_QUERY))
         pad = max_kind_width - len(cur_kind)
 
@@ -1622,8 +1615,7 @@ class AgentResultWidget(Widget):
         if self._card_bar_widget is not None and event.widget is self._card_bar_widget:
             for rec_idx, col_start, col_end, row in self._record_hit_areas:
                 if row == event.y and col_start <= event.x < col_end:
-                    if rec_idx != self.current_card:
-                        self._switch_card(rec_idx)
+                    self.current_card = rec_idx
                     return
             return
 
@@ -1681,39 +1673,25 @@ class AgentResultWidget(Widget):
         measurement = self.app.console.measure(view.renderable, options=options)
         return int(measurement.maximum)
 
-    def _switch_card(self, new_idx: int) -> None:
-        """Change the active record, preserving the current view kind if possible."""
-        if not self._cards or new_idx == self.current_card:
-            return
-        current_view = self._current_view_or_none()
-        target_kind = current_view.kind if current_view is not None else None
-        new_rec = self._cards[new_idx]
-        new_view_idx = 0
-        if target_kind is not None:
-            for i, v in enumerate(new_rec.views):
-                if v.kind == target_kind:
-                    new_view_idx = i
-                    break
-        self.current_card = new_idx
-        self.current_view = new_view_idx
+    def _step_view(self, delta: int) -> None:
+        rec = self._current_record_or_none()
+        if rec is not None and len(rec.views) > 1:
+            self._view_indices[self.current_card] = (self._view_indices[self.current_card] + delta) % len(rec.views)
+            self._refresh_all()
 
     def action_next_view(self) -> None:
-        rec = self._current_record_or_none()
-        if rec is not None and len(rec.views) > 1:
-            self.current_view = (self.current_view + 1) % len(rec.views)
+        self._step_view(1)
 
     def action_prev_view(self) -> None:
-        rec = self._current_record_or_none()
-        if rec is not None and len(rec.views) > 1:
-            self.current_view = (self.current_view - 1) % len(rec.views)
+        self._step_view(-1)
 
     def action_next_record(self) -> None:
         if len(self._cards) > 1:
-            self._switch_card((self.current_card + 1) % len(self._cards))
+            self.current_card = (self.current_card + 1) % len(self._cards)
 
     def action_prev_record(self) -> None:
         if len(self._cards) > 1:
-            self._switch_card((self.current_card - 1) % len(self._cards))
+            self.current_card = (self.current_card - 1) % len(self._cards)
 
     can_focus = True
 

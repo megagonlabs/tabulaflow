@@ -4,6 +4,7 @@ import pandas as pd
 from textual.app import App, ComposeResult
 from textual.containers import VerticalScroll
 
+from tabulaflow.app.display import VIEW_KIND_DATA, VIEW_KIND_QUERY
 from tabulaflow.app.widgets import AgentResultWidget
 from tabulaflow.chat.result import ChatResult, ChatResultRecord
 
@@ -64,3 +65,31 @@ async def test_record_switch_refreshes_displayed_content() -> None:
 
         assert widget.current_card == 0
         assert widget._content.content is not second_content
+
+
+def _current_kind(widget: AgentResultWidget) -> str:
+    view = widget._current_view_or_none()
+    assert view is not None
+    return view.kind
+
+
+async def test_view_selection_is_per_record() -> None:
+    app = _ResultWidgetApp()
+
+    async with app.run_test(size=(100, 30)) as pilot:
+        widget = app.result_widget
+        await pilot.pause()
+
+        await pilot.press("right_square_bracket")
+        await pilot.pause()
+        assert _current_kind(widget) == VIEW_KIND_QUERY
+
+        await pilot.press("right")
+        await pilot.pause()
+        assert widget.current_card == 1
+        assert _current_kind(widget) == VIEW_KIND_DATA
+
+        await pilot.press("left")
+        await pilot.pause()
+        assert widget.current_card == 0
+        assert _current_kind(widget) == VIEW_KIND_QUERY
