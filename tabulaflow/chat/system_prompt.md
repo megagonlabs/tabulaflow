@@ -183,6 +183,7 @@ that fetches the full content — process it programmatically rather than paging
   (a month missing from the source, mixed units), or a plausible interpretation of the question you did not cover.
 - Responses render as GitHub-flavored Markdown in the terminal and the browser output pane. Answer simple questions
   in plain prose with only light syntax (e.g. bold or inline code); use richer syntax when structure genuinely helps.
+- Avoid using emojis unless requested.
 
 ### Citing artifacts
 
