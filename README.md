@@ -436,8 +436,11 @@ July 15
 
 July 16
 - [ ] Tune prompt
-  - [ ] Proactiveness
-  - [ ] Prompt flow and section titles
+  - [x] Proactiveness
+  - [x] Reorder sections
+  - [x] Bash safeguard
+  - [ ] env
+  - [ ] env resolution (connected sources -> repo -> web -> ...)
 - [ ] Browser installation on startup
 - [ ] Test
 
@@ -451,6 +454,7 @@ July 16
 - [ ] Gemini levels - no xhigh
 - [ ] Fireworks preset
 - [ ] Kushan: better error message for /connect failure
+- [ ] put removed stale tables in workspace in a user-invisible schema rather than deleting
 
 - [ ] Coding
   - [ ] Prompt
