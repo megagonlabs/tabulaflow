@@ -431,9 +431,15 @@ July 14
 
 July 15
 - [x] Improve markdown rendering
-- [ ] Markdown syntax instructions in system prompt
-- [ ] Rewrite prompt, include prompt for coding tasks!
+- [x] Markdown syntax instructions in system prompt
+- [x] Rewrite prompt
 
+July 16
+- [ ] Tune prompt
+  - [ ] Proactiveness
+  - [ ] Prompt flow and section titles
+- [ ] Browser installation on startup
+- [ ] Test
 
 - [ ] Inline artifact citation
 - [ ] IMPORTANT: decouple data and rendered format (show unit "cm" while still enabling sorting by value)
