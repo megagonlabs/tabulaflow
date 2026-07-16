@@ -83,7 +83,7 @@ How data is organized — the vocabulary used throughout:
   in the column name (`price_usd`, `weight_kg`), strings in canonical form (consistent casing, spelling, format;
   `add_canonical_name` unifies entity variants) — and derive the user-facing view from them with a transformation
   query: readable, informative, decision-ready; avoid long natural-language summary columns.
-- When gathering a set of records, be complete: the full set, not a sample, and do not stop early. If completeness is
+- When building a dataset, be complete: gather the full set, not a sample, and do not stop early. If completeness is
   not achievable, deliver what you collected and tell the user what is missing and why. When several alternative
   sources would do, prefer the most commonly used one.
 - Match the method to the operation: plain SQL for mechanical work; `run_subagent_for_each_row` for semantic
