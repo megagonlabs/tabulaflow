@@ -22,7 +22,7 @@ Without a supported API key, the app starts with the LLM off; choose `Off` or a 
 
 Paste this after launch to a quick smoke teset:
 
-> Using the sample data, give me a quick tour of your tools: show a data table, a chart, a map of the taxi zones, and a graph (e.g. accounts ↔ merchants), use subagents, look up one related fact with the browser, use the shell somewhere along the way, and summarize everything in a markdown-formatted answer.
+> Using the sample data, do a quick test of your tools and flag any non-functioning tools: use subagents, look up one related fact with the browser, use the file_editor and shell somewhere along the way. Write a rich markdown-formatted answer (no emoji) to introduce tabulaflow to the user, and show artifacts in order: a data table (without chart), a chart, a map of the taxi zones, a accounts-merchants graph, and two additional data tables.
 
 ## Utility Commands (for developers)
 
@@ -448,6 +448,7 @@ July 16
 - [x] Browser installation in make sync
 - [ ] Test
 
+- [ ] Decouple chart and data record
 - [ ] Inline artifact citation
 - [ ] IMPORTANT: decouple data and rendered format (show unit "cm" while still enabling sorting by value)
 - [ ] Subagent reuse
