@@ -13,16 +13,26 @@ make sync
 
 
 ```bash
-export OPENAI_API_KEY=...  # automatically selects the OpenAI balanced preset
+export OPENAI_API_KEY=sk-...
 uv run tabulaflow
 ```
 
-Use `/connect` to connect to a data source (Huggingface datasets, local csv/excel files, SQL databases, etc.), then either run `/browse` to manually browse the data or say "Analyze" to have LLM analyze the data.
-Without a supported API key, the app starts with the LLM off; choose `Off` or a named preset in `/config`.
 
 Paste this after launch to a quick smoke teset:
 
 > Using the sample data, do a quick test of your tools and flag any non-functioning tools: use subagents, browser, use the file_editor and shell somewhere along the way. Write a markdown answer that first summarize the tool checks in small markdown table, then greet the user and introduce tabulaflow and what you can do using rich markdown syntax, and show artifacts in order: a filtered transactions data table, a bar chart showing top 5 merchants, a richer interactive chart, a map of the taxi zones, a accounts-merchants graph, and two additional data tables, keep the artifact label short.
+
+---
+---
+---
+# ====== BELOW IS OUTDATED ======
+---
+---
+---
+
+Use `/connect` to connect to a data source (Huggingface datasets, local csv/excel files, SQL databases, etc.), then either manually browse the data in the data explorer or say "Analyze" to have LLM analyze the data.
+Without a supported API key, the app starts with the LLM off; choose `Off` or a named preset in `/config`.
+
 
 ## Utility Commands (for developers)
 
