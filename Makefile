@@ -480,8 +480,7 @@ sqlite:
 
 .PHONY: last-trajectory
 last-trajectory:
-	@dir=$$(ls -td ~/.tabulaflow/sessions/*/trajectories 2>/dev/null | head -n 1); \
-	[ -n "$$dir" ] && find "$$dir" -type f -exec stat -f '%m %N' {} + | sort -rn | cut -d' ' -f2-
+	@uv run scripts/print_last_trajectory.py
 
 .PHONY: list-trajectories
 list-trajectories:
