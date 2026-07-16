@@ -616,6 +616,34 @@ def test_graph_tooltips_preserve_nested_values() -> None:
     assert edges[0]["data"]["tooltip"]["metadata"] == {"since": 2024}
 
 
+def test_graph_constant_group_colors_and_edge_label() -> None:
+    payload = build_graph_data(
+        {
+            "nodes": [
+                {"data": [{"id": "a"}], "id": "id", "group": {"value": "Customer"}},
+                {"data": [{"id": "p"}], "id": "id", "group": {"value": "Product"}},
+            ],
+            "edges": [
+                {
+                    "data": [{"src": "a", "dst": "p"}],
+                    "source": "src",
+                    "target": "dst",
+                    "label": {"value": "PURCHASED"},
+                }
+            ],
+        },
+        {},
+    )
+    assert payload is not None
+    nodes = cast("list[dict[str, Any]]", payload["graph"]["elements"]["nodes"])
+    edges = cast("list[dict[str, Any]]", payload["graph"]["elements"]["edges"])
+    by_id = {node["data"]["id"]: node["data"] for node in nodes}
+    assert by_id["a"]["group"] == "Customer"
+    assert by_id["p"]["group"] == "Product"
+    assert by_id["a"]["color"] != by_id["p"]["color"]
+    assert edges[0]["data"]["label"] == "PURCHASED"
+
+
 def test_graph_node_labels_use_capped_display_label() -> None:
     graph_js = _pane_asset_text("render/graph.js")
     assert "function graphNodeDisplayLabel(value)" in graph_js

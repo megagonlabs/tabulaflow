@@ -27,6 +27,10 @@ class _StrictModel(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
 
+class _ValueRef(_StrictModel):
+    value: str
+
+
 class _SourceModel(_StrictModel):
     record_id: str | None = None
     data: list[dict[str, Any]] | None = None
@@ -45,14 +49,14 @@ class _SourceModel(_StrictModel):
 class _NodeSource(_SourceModel):
     id: str
     label: str | None = None
-    group: str | None = None
+    group: str | _ValueRef | None = None
     tooltip: str | list[str] | Literal[True] | None = None
 
 
 class _EdgeSource(_SourceModel):
     source: str
     target: str
-    label: str | None = None
+    label: str | _ValueRef | None = None
     directed: bool = True
     tooltip: str | list[str] | Literal[True] | None = None
 
@@ -128,6 +132,16 @@ def _optional_field(resolve_field: Callable[..., str], value: str | None, *, pat
     return resolve_field(value, path=path)
 
 
+def _field_or_value(
+    resolve_field: Callable[..., str], value: str | _ValueRef | None, *, path: str
+) -> str | dict[str, str] | None:
+    if isinstance(value, _ValueRef):
+        if not value.value:
+            raise GraphSpecError(f"{path}.value must be a non-empty string")
+        return {"value": value.value}
+    return _optional_field(resolve_field, value, path=path)
+
+
 def _tooltip(
     resolve_field: Callable[..., str], value: str | list[str] | Literal[True] | None, *, path: str
 ) -> str | list[str] | bool | None:
@@ -156,10 +170,12 @@ def _normalize_node_source(df: pd.DataFrame | None, source: _NodeSource, index: 
 
         out = {"record_id": source.record_id, "id": resolve_field(source.id, path=f"nodes[{index}].id")}
 
-    for key in ("label", "group"):
-        field = _optional_field(resolve_field, getattr(source, key), path=f"nodes[{index}].{key}")
-        if field is not None:
-            out[key] = field
+    label = _optional_field(resolve_field, source.label, path=f"nodes[{index}].label")
+    if label is not None:
+        out["label"] = label
+    group = _field_or_value(resolve_field, source.group, path=f"nodes[{index}].group")
+    if group is not None:
+        out["group"] = group
     tooltip = _tooltip(resolve_field, source.tooltip, path=f"nodes[{index}].tooltip")
     if tooltip is not None:
         out["tooltip"] = tooltip
@@ -190,7 +206,7 @@ def _normalize_edge_source(df: pd.DataFrame | None, source: _EdgeSource, index: 
             "target": resolve_field(source.target, path=f"edges[{index}].target"),
         }
 
-    label = _optional_field(resolve_field, source.label, path=f"edges[{index}].label")
+    label = _field_or_value(resolve_field, source.label, path=f"edges[{index}].label")
     if label is not None:
         out["label"] = label
     out["directed"] = source.directed
@@ -535,9 +551,14 @@ class RenderGraphTool:
           ``{"record_id":"Q1","id":"id","label":"name","group":"type"}``.
           Inline mode:
           ``{"data":[{"id":"a","name":"A"}],"id":"id","label":"name"}``.
+          Node ``id`` values are global across all sources: equal ids are
+          the same node (the first source wins) and edge endpoints match
+          on them, so id spaces that overlap across types must be
+          disambiguated (e.g. prefixed) in the query.
           ``group`` is the node's categorical type (not an identifier);
-          nodes are colored one color per distinct group value. Omit it
-          when no type column exists.
+          nodes are colored one color per distinct group value. It is a
+          column name, or ``{"value":"Customer"}`` when all nodes from
+          the source share one type; omit it for untyped nodes.
           Optional ``tooltip`` is a field name, list of field names, or
           ``true`` (all row fields). Explicit tooltip lists define body
           fields; node titles use ``label`` or ``id``.
@@ -546,7 +567,9 @@ class RenderGraphTool:
           ``{"record_id":"Q2","source":"from_id","target":"to_id","label":"rel"}``.
           Inline mode:
           ``{"data":[{"from":"a","to":"b"}],"source":"from","target":"to"}``.
-          ``label`` is drawn along the edge (typically the relationship type).
+          ``label`` is drawn along the edge (typically the relationship
+          type): a column name, or ``{"value":"PURCHASED"}`` when all
+          edges from the source share one type.
           Optional ``directed`` defaults to ``true``. Optional ``tooltip`` is a
           field name, list of field names, or ``true`` (all row fields).
           Explicit tooltip lists define body fields; edge titles use ``label``
@@ -559,6 +582,7 @@ class RenderGraphTool:
         ``{"edges":[{"record_id":"Q1","source":"src","target":"dst","label":"rel"}]}``
         ``{"layout":"layered","nodes":[{"record_id":"Q1","id":"id","label":"name"}],"edges":[{"record_id":"Q2","source":"from_id","target":"to_id"}]}``
         ``{"nodes":[{"data":[{"id":"a"},{"id":"b"}],"id":"id"}],"edges":[{"data":[{"from":"a","to":"b"}],"source":"from","target":"to"}]}``
+        ``{"nodes":[{"record_id":"Q1","id":"customer","group":{"value":"Customer"}},{"record_id":"Q1","id":"product","group":{"value":"Product"}}],"edges":[{"record_id":"Q1","source":"customer","target":"product","label":{"value":"PURCHASED"}}]}``
 
         Returns the new graph id (``GRAPH1``, ``GRAPH2``, …) to cite in the answer.
 

@@ -90,6 +90,37 @@ class TestNormalizeGraphSpec:
             "edges": [{"data": [{"from": "a", "to": "b"}], "source": "from", "target": "to", "directed": True}],
         }
 
+    def test_group_and_label_accept_constant_values(self) -> None:
+        df = pd.DataFrame({"customer": ["a"], "product": ["p"]})
+        spec = {
+            "nodes": [
+                {"record_id": "Q1", "id": "customer", "group": {"value": "Customer"}},
+                {"record_id": "Q1", "id": "product", "group": {"value": "Product"}},
+            ],
+            "edges": [{"record_id": "Q1", "source": "customer", "target": "product", "label": {"value": "PURCHASED"}}],
+        }
+        assert _norm(spec, Q1=df) == {
+            "layout": "force",
+            "nodes": [
+                {"record_id": "Q1", "id": "customer", "group": {"value": "Customer"}},
+                {"record_id": "Q1", "id": "product", "group": {"value": "Product"}},
+            ],
+            "edges": [
+                {
+                    "record_id": "Q1",
+                    "source": "customer",
+                    "target": "product",
+                    "label": {"value": "PURCHASED"},
+                    "directed": True,
+                }
+            ],
+        }
+
+    def test_constant_value_must_be_non_empty(self) -> None:
+        df = pd.DataFrame({"src": ["a"], "dst": ["b"]})
+        with pytest.raises(ValueError, match="non-empty"):
+            _norm({"edges": [{"record_id": "Q1", "source": "src", "target": "dst", "label": {"value": ""}}]}, Q1=df)
+
     def test_requires_edge_source(self) -> None:
         with pytest.raises(ValueError, match="edge-bearing"):
             _norm({"nodes": [{"data": [{"id": "a"}], "id": "id"}]})

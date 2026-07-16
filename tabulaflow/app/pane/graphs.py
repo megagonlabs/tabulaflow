@@ -29,10 +29,15 @@ def _as_str(value: object) -> str | None:
 
 
 def _field_name(value: object, field_by_column: Mapping[str, str]) -> str | None:
-    name = _as_str(value)
-    if name is None:
+    if not isinstance(value, str) or not value:
         return None
-    return field_by_column.get(name, name)
+    return field_by_column.get(value, value)
+
+
+def _constant_value(value: object) -> str | None:
+    if isinstance(value, Mapping):
+        return _as_str(value.get("value"))
+    return None
 
 
 def _tooltip_value(value: object, *, depth: int = 0) -> object:
@@ -128,6 +133,7 @@ def build_graph_data(
                 continue
             label_field = _field_name(raw_source.get("label"), field_by_column)
             group_field = _field_name(raw_source.get("group"), field_by_column)
+            group_value = _constant_value(raw_source.get("group"))
             for row in rows:
                 node_id = _as_str(row.get(id_field))
                 if node_id is None or node_id in nodes_by_id:
@@ -136,7 +142,9 @@ def build_graph_data(
                     "id": node_id,
                     "label": _as_str(row.get(label_field)) if label_field else node_id,
                 }
-                if group_field and row.get(group_field) is not None:
+                if group_value is not None:
+                    node["group"] = group_value
+                elif group_field and row.get(group_field) is not None:
                     node["group"] = str(row[group_field])
                 tooltip = _tooltip(row, raw_source.get("tooltip"), field_by_column)
                 if tooltip is not None:
@@ -156,6 +164,7 @@ def build_graph_data(
             if source_field is None or target_field is None:
                 continue
             label_field = _field_name(raw_source.get("label"), field_by_column)
+            label_value = _constant_value(raw_source.get("label"))
             directed = bool(raw_source.get("directed", True))
             for row in rows:
                 source_id = _as_str(row.get(source_field))
@@ -172,7 +181,9 @@ def build_graph_data(
                 }
                 if directed:
                     edge["directed"] = True
-                if label_field and row.get(label_field) is not None:
+                if label_value is not None:
+                    edge["label"] = label_value
+                elif label_field and row.get(label_field) is not None:
                     edge["label"] = str(row[label_field])
                 tooltip = _tooltip(row, raw_source.get("tooltip"), field_by_column)
                 if tooltip is not None:
