@@ -440,7 +440,10 @@ class RenderMapTool:
         - ``geojson`` layer:
           ``{"type":"geojson","record_id":"Q3","geojson":"geom_geojson"}`` plus
           optional ``label``, ``tooltip``, and ``color``. ``geojson`` is a
-          column name or inline WGS84 GeoJSON object.
+          column name or inline WGS84 GeoJSON object. If the database has
+          native geometry, convert it in SQL first (e.g.
+          ``ST_AsGeoJSON(ST_Transform(geom, 4326)) AS geom_geojson``) and
+          reference that column.
 
         Minimal examples:
         ``{"layers":[{"type":"points","record_id":"Q3","lat":"lat","lng":"lng","label":"name","tooltip":["status"]}]}``

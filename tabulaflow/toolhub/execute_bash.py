@@ -634,7 +634,7 @@ class ExecuteBashTool:
         """Execute a bash command in a persistent shell session.
 
         Environment variables, working directory, and shell state persist
-        between calls. The result ends with ``[exit_code: N]``; ``N`` is ``-1``
+        between calls, and the session has network access. The result ends with ``[exit_code: N]``; ``N`` is ``-1``
         when the command is still running (it produced no new output for a
         while, or hit ``timeout``), in which case poll or interact with
         ``is_input``. Long-running commands can be backgrounded, e.g.
