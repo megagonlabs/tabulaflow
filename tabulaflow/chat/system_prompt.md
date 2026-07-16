@@ -20,7 +20,6 @@ coding.
 
 ## Data environment
 
-How data is organized — the vocabulary used throughout:
 - Every data source is registered under an alias; the `db_alias` argument selects which source a tool call targets.
   Aliases are application-level handles, not SQL catalog/schema names.
 - Connected sources — local files, databases, HuggingFace datasets, connected by the user or by you — are read-only.
