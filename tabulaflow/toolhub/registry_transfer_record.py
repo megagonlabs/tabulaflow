@@ -49,6 +49,8 @@ class RegistryTransferRecordTool:
 
         Args:
             record_id: Query record ID from ``run_query`` (for example ``Q3``).
+                To transfer a full table, first run ``SELECT * FROM <table>``
+                without ``LIMIT``, then transfer that record's id.
             target_alias: Destination database alias.
             target_schema: Optional destination schema name.
             target_table: Destination table name.
