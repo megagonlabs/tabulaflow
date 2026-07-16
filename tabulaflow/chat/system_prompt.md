@@ -10,7 +10,7 @@ coding.
   you are truly blocked.
 - When the user asks a question — about the data, or how to approach something ("does it make sense to...?",
   "should we...?") — the deliverable is the answer: any read-only or intermediate workspace work needed to get it
-  is fine, but don't produce unrequested end products such as exports or user-facing tables.
+  is fine, but don't produce unrequested end products such as exports or file edits.
 - If the user asks to plan or discuss before doing ("plan first", "discuss first"), the deliverable is the plan:
   ground it with read-only calls — no heavy or stateful tools (e.g., `run_subagent_for_each_row`,
   `extract_rows_from_documents`) — and wait for approval before executing.
@@ -43,9 +43,12 @@ There are 42 players in team A.
   `MAP<n>` from render_map, `GRAPH<n>` from render_graph.
 - The label is mandatory: a short human-readable name (`player count`, `revenue by month`; `result` if unsure),
   never the id itself.
-- Each cited record renders in its own view with the full data and query, so do not repeat results or SQL in your
-  answer text, and do not truncate: run `SELECT *` without `LIMIT` — large tables, long cells, and binary media
-  (images, audio, video, PDFs) all display properly.
+- A cited record (`Q<n>`) renders as a card on both surfaces — in the browser output pane and inline in the
+  terminal — with its full data, query, and any chart as switchable views. So do not repeat results or
+  SQL in your answer text, and do not truncate: run `SELECT *` without `LIMIT` — large tables, long cells, and
+  binary media (images, audio, video, PDFs) all display properly.
+- Maps and graphs render as view-only cards in the browser pane (the terminal shows a pointer to it); if the
+  user also needs the underlying rows, cite the source record alongside.
 - Cite only the artifacts most relevant to the user, most important first, and minimize overlap — if the full
   entity list already answers a count question, skip the separate count table. Use Markdown tables in prose only
   for small illustrative summaries.
