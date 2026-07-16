@@ -431,8 +431,10 @@ July 14
 
 July 15
 - [x] Improve markdown rendering
-- [ ] Rewrite prompt, include prompt for coding tasks!
 - [ ] Markdown syntax instructions in system prompt
+- [ ] Rewrite prompt, include prompt for coding tasks!
+
+
 - [ ] Inline artifact citation
 - [ ] IMPORTANT: decouple data and rendered format (show unit "cm" while still enabling sorting by value)
 - [ ] Subagent reuse
@@ -457,9 +459,12 @@ July 15
   - [ ] Do not auto-scroll when browsing old turns
   - [ ] Onboarding - browser install
 
+- [ ] Image rendering in output pane
 - [ ] Improve output pane UI - new turn loading, session ID, ...
 - [ ] web_fetch tool for static html
 - [ ] Bump pydantic-ai to 2.0 and type llm.py
+
+- [ ] Context compaction
 
 - [ ] Tune prompt for non-data tasks
 - [ ] Chrome browser
