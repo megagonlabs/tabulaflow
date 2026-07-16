@@ -32,7 +32,11 @@ def _graph(graph_id: str, label: str) -> ChatResultGraph:
     return ChatResultGraph(
         graph_id=graph_id,
         label=label,
-        graph_spec={"layout": "force", "nodes": [], "edges": [{"record_id": "Q1", "source": "src", "target": "dst"}]},
+        graph_spec={
+            "layout": "force",
+            "nodes": [{"record_id": "Q1", "id": "src"}, {"record_id": "Q1", "id": "dst"}],
+            "edges": [{"record_id": "Q1", "source": "src", "target": "dst"}],
+        },
         sources={"Q1": pd.DataFrame({"src": ["a"], "dst": ["b"]})},
     )
 

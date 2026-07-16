@@ -152,7 +152,6 @@ def build_graph_data(
                 nodes_by_id[node_id] = node
 
     edges: list[dict[str, object]] = []
-    unmatched_nodes = 0
     raw_edge_sources = graph_spec.get("edges", [])
     if isinstance(raw_edge_sources, Sequence) and not isinstance(raw_edge_sources, (str, bytes, bytearray)):
         for raw_source in raw_edge_sources:
@@ -171,10 +170,8 @@ def build_graph_data(
                 target_id = _as_str(row.get(target_field))
                 if source_id is None or target_id is None:
                     continue
-                for node_id in (source_id, target_id):
-                    if node_id not in nodes_by_id:
-                        nodes_by_id[node_id] = {"id": node_id, "label": node_id}
-                        unmatched_nodes += 1
+                if source_id not in nodes_by_id or target_id not in nodes_by_id:
+                    continue
                 edge: dict[str, object] = {
                     "source": source_id,
                     "target": target_id,
@@ -222,7 +219,6 @@ def build_graph_data(
                     "nodes": [{"data": node} for node in node_payloads],
                     "edges": [{"data": edge} for edge in edge_payloads],
                 },
-                "meta": {"unmatchedNodes": unmatched_nodes},
             }
         },
     )

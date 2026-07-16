@@ -143,11 +143,7 @@ function idealForceEdgeLength(edge) {
   return Math.max(84, Math.min(150, 74 + label.length * 6));
 }
 
-function graphLayoutOptions(layout, graphData) {
-  var meta = graphData && graphData.meta ? graphData.meta : {};
-  if (meta.initialLayout === 'preset') {
-    return { name: 'preset', fit: false, animate: false };
-  }
+function graphLayoutOptions(layout) {
   if (layout === 'layered') {
     return { name: 'dagre', rankDir: 'TB', nodeSep: 50, rankSep: 62, edgeSep: 14, fit: false, animate: false };
   }
@@ -603,7 +599,7 @@ export function renderGraph(container, cardData) {
       container: graphNode,
       elements: graphInitElements(elements, graphData.layout),
       style: graphStyles(),
-      layout: graphLayoutOptions(graphData.layout, graphData),
+      layout: graphLayoutOptions(graphData.layout),
       autounselectify: true,
       boxSelectionEnabled: false,
       hideEdgesOnViewport: false,

@@ -74,9 +74,11 @@ class _GraphSpec(_StrictModel):
     subgraph: list[_SubgraphSource] = []
 
     @model_validator(mode="after")
-    def _require_edges(self) -> _GraphSpec:
+    def _require_sources(self) -> _GraphSpec:
         if not self.edges and not self.subgraph:
             raise ValueError("graph_spec must include at least one edge-bearing source")
+        if self.edges and not self.nodes and not self.subgraph:
+            raise ValueError("edges require node sources: declare one per endpoint column with id, label, and group")
         return self
 
 
@@ -476,7 +478,8 @@ def graph_size(graph_spec: Mapping[str, object], sources: Mapping[str, pd.DataFr
     """Compute unique node, valid edge, and node-type counts for a normalized graph spec.
 
     Mirrors the renderer's first-source-wins node dedup: the source that first
-    introduces a node id also fixes whether it is grouped.
+    introduces a node id also fixes whether it is grouped. Raises
+    ``GraphSpecError`` when an edge endpoint matches no declared node id.
     """
     group_by_id: dict[str, str | None] = {}
     raw_nodes = graph_spec.get("nodes")
@@ -494,6 +497,7 @@ def graph_size(graph_spec: Mapping[str, object], sources: Mapping[str, pd.DataFr
             group_by_id[node_id] = str(group) if group is not None else None
 
     edge_count = 0
+    unmatched: set[str] = set()
     raw_edges = graph_spec.get("edges")
     for raw_source in raw_edges if isinstance(raw_edges, list) else []:
         if not isinstance(raw_source, Mapping):
@@ -505,9 +509,17 @@ def graph_size(graph_spec: Mapping[str, object], sources: Mapping[str, pd.DataFr
             target_id = _node_id(_row_value(row, target_field))
             if source_id is None or target_id is None:
                 continue
-            group_by_id.setdefault(source_id, None)
-            group_by_id.setdefault(target_id, None)
+            for node_id in (source_id, target_id):
+                if node_id not in group_by_id:
+                    unmatched.add(node_id)
             edge_count += 1
+
+    if unmatched:
+        sample = ", ".join(repr(node_id) for node_id in sorted(unmatched)[:5])
+        raise GraphSpecError(
+            f"{len(unmatched)} edge endpoint id(s) match no node source id (e.g. {sample}); "
+            "declare a node source covering every endpoint column"
+        )
 
     groups = {group for group in group_by_id.values() if group is not None}
     ungrouped = sum(1 for group in group_by_id.values() if group is None)
@@ -546,17 +558,16 @@ class RenderGraphTool:
     async def __call__(self, *, graph_spec: str) -> str:
         """Create a graph from one or more query results.
 
-        The spec is a JSON string containing an object with ``edges`` and
-        optional ``nodes``. Each column source names the query result it reads
-        from via ``record_id``. Nodes may be supplied in one result while edges
-        come from another; if ``nodes`` is omitted, endpoint ids become untyped
-        nodes (single color, id as label).
+        The spec is a JSON string containing an object with ``nodes`` and
+        ``edges``. Each column source names the query result it reads from via
+        ``record_id``. Nodes may be supplied in one result while edges come
+        from another; every edge endpoint id must match a declared node id.
 
         Full public grammar:
         - Top level:
           ``title``: optional string.
           ``layout``: optional ``force``, ``layered``, or ``tree``.
-          ``nodes``: optional list of node sources.
+          ``nodes``: list of node sources; required with ``edges``.
           ``edges``: required list of edge sources unless ``subgraph`` is used.
           ``subgraph``: optional list of Neo4j result sources containing native
           nodes, relationships, or paths.
@@ -566,8 +577,8 @@ class RenderGraphTool:
           Inline mode:
           ``{"data":[{"id":"a","name":"A"}],"id":"id","label":"name"}``.
           Node ``id`` values are global across all sources: equal ids are
-          the same node (the first source wins) and edge endpoints match
-          on them, so id spaces that overlap across types must be
+          the same node (the first source wins) and every edge endpoint
+          must match one, so id spaces that overlap across types must be
           disambiguated (e.g. prefixed) in the query.
           ``group`` is the node's categorical type (not an identifier);
           nodes are colored one color per distinct group value. It is a
@@ -593,7 +604,7 @@ class RenderGraphTool:
           properties are copied into tooltip fields.
 
         Minimal examples:
-        ``{"edges":[{"record_id":"Q1","source":"src","target":"dst","label":"rel"}]}``
+        ``{"nodes":[{"record_id":"Q1","id":"src"},{"record_id":"Q1","id":"dst"}],"edges":[{"record_id":"Q1","source":"src","target":"dst","label":"rel"}]}``
         ``{"layout":"layered","nodes":[{"record_id":"Q1","id":"id","label":"name"}],"edges":[{"record_id":"Q2","source":"from_id","target":"to_id"}]}``
         ``{"nodes":[{"data":[{"id":"a"},{"id":"b"}],"id":"id"}],"edges":[{"data":[{"from":"a","to":"b"}],"source":"from","target":"to"}]}``
         ``{"nodes":[{"record_id":"Q1","id":"customer","group":{"value":"Customer"}},{"record_id":"Q1","id":"product","group":{"value":"Product"}}],"edges":[{"record_id":"Q1","source":"customer","target":"product","label":{"value":"PURCHASED"}}]}``

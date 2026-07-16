@@ -579,7 +579,10 @@ def test_graph_tooltips_preserve_nested_values() -> None:
         {
             "nodes": [
                 {
-                    "data": [{"id": "a", "label": "Alice", "tags": ["lead"], "profile": {"city": "Oakland"}}],
+                    "data": [
+                        {"id": "a", "label": "Alice", "tags": ["lead"], "profile": {"city": "Oakland"}},
+                        {"id": "b", "label": "Bob"},
+                    ],
                     "id": "id",
                     "label": "label",
                     "tooltip": True,

@@ -58,10 +58,13 @@ def _neo4j_objects() -> tuple[Node, Node, Relationship, Path]:
 class TestNormalizeGraphSpec:
     def test_edge_source_resolves_fields_case_insensitively(self) -> None:
         df = pd.DataFrame({"Src": ["a"], "Dst": ["b"], "Rel": ["knows"]})
-        spec = {"edges": [{"record_id": "Q1", "source": "src", "target": "dst", "label": "rel"}]}
+        spec = {
+            "nodes": [{"record_id": "Q1", "id": "src"}, {"record_id": "Q1", "id": "dst"}],
+            "edges": [{"record_id": "Q1", "source": "src", "target": "dst", "label": "rel"}],
+        }
         assert _norm(spec, Q1=df) == {
             "layout": "force",
-            "nodes": [],
+            "nodes": [{"record_id": "Q1", "id": "Src"}, {"record_id": "Q1", "id": "Dst"}],
             "edges": [{"record_id": "Q1", "source": "Src", "target": "Dst", "label": "Rel", "directed": True}],
         }
 
@@ -119,7 +122,13 @@ class TestNormalizeGraphSpec:
     def test_constant_value_must_be_non_empty(self) -> None:
         df = pd.DataFrame({"src": ["a"], "dst": ["b"]})
         with pytest.raises(ValueError, match="non-empty"):
-            _norm({"edges": [{"record_id": "Q1", "source": "src", "target": "dst", "label": {"value": ""}}]}, Q1=df)
+            _norm(
+                {
+                    "nodes": [{"record_id": "Q1", "id": "src"}, {"record_id": "Q1", "id": "dst"}],
+                    "edges": [{"record_id": "Q1", "source": "src", "target": "dst", "label": {"value": ""}}],
+                },
+                Q1=df,
+            )
 
     def test_requires_edge_source(self) -> None:
         with pytest.raises(ValueError, match="edge-bearing"):
@@ -136,13 +145,30 @@ class TestNormalizeGraphSpec:
     def test_field_not_found_lists_columns(self) -> None:
         df = pd.DataFrame({"src": ["a"], "dst": ["b"]})
         with pytest.raises(ValueError, match="Available columns"):
-            _norm({"edges": [{"record_id": "Q1", "source": "src", "target": "missing"}]}, Q1=df)
+            _norm(
+                {
+                    "nodes": [{"record_id": "Q1", "id": "src"}],
+                    "edges": [{"record_id": "Q1", "source": "src", "target": "missing"}],
+                },
+                Q1=df,
+            )
 
-    def test_graph_size_counts_implicit_endpoint_nodes(self) -> None:
+    def test_edges_without_node_sources_rejected(self) -> None:
+        df = pd.DataFrame({"src": ["a"], "dst": ["b"]})
+        with pytest.raises(ValueError, match="node source"):
+            _norm({"edges": [{"record_id": "Q1", "source": "src", "target": "dst"}]}, Q1=df)
+
+    def test_unmatched_edge_endpoints_rejected(self) -> None:
         df = pd.DataFrame({"src": ["a", "b"], "dst": ["b", "c"]})
-        normalized = _norm({"edges": [{"record_id": "Q1", "source": "src", "target": "dst"}]}, Q1=df)
-        assert graph_size(normalized, {"Q1": df}).nodes == 3
-        assert graph_size(normalized, {"Q1": df}).edges == 2
+        normalized = _norm(
+            {
+                "nodes": [{"record_id": "Q1", "id": "src"}],
+                "edges": [{"record_id": "Q1", "source": "src", "target": "dst"}],
+            },
+            Q1=df,
+        )
+        with pytest.raises(ValueError, match="match no node source id.*'c'"):
+            graph_size(normalized, {"Q1": df})
 
     def test_graph_size_counts_groups_first_source_wins(self) -> None:
         nodes1 = pd.DataFrame({"id": ["a"], "kind": ["x"]})
@@ -153,6 +179,7 @@ class TestNormalizeGraphSpec:
                 "nodes": [
                     {"record_id": "Q1", "id": "id", "group": "kind"},
                     {"record_id": "Q2", "id": "id", "group": {"value": "y"}},
+                    {"record_id": "Q3", "id": "dst"},
                 ],
                 "edges": [{"record_id": "Q3", "source": "src", "target": "dst"}],
             },
@@ -164,7 +191,7 @@ class TestNormalizeGraphSpec:
         assert size.nodes == 3
         assert size.edges == 1
         assert size.groups == 2  # a keeps 'x' from its first source; b gets the constant 'y'
-        assert size.ungrouped_nodes == 1  # endpoint c
+        assert size.ungrouped_nodes == 1  # c is declared without a group
 
     def test_subgraph_extracts_dynamic_relationship_subclasses(self) -> None:
         alice, matrix, acted_in, _ = _neo4j_objects()
@@ -255,6 +282,7 @@ class TestRenderGraphTool:
         history = await _history_with(pd.DataFrame({"src": ["a", "b"], "dst": ["b", "c"], "rel": ["x", "y"]}))
         spec = {
             "title": "Lineage",
+            "nodes": [{"record_id": "Q1", "id": "src"}, {"record_id": "Q1", "id": "dst"}],
             "edges": [{"record_id": "Q1", "source": "src", "target": "dst", "label": "rel"}],
         }
         msg = await RenderGraphTool(history=history)(graph_spec=json.dumps(spec))
@@ -277,7 +305,7 @@ class TestRenderGraphTool:
         assert "4 nodes in 2 types, 2 edges" in msg
         assert "one color" not in msg
 
-    async def test_final_node_cap_uses_unique_endpoint_nodes(self) -> None:
+    async def test_final_node_cap_uses_unique_node_ids(self) -> None:
         df = pd.DataFrame(
             {
                 "src": [f"s{i}" for i in range(GRAPH_MAX_NODES + 1)],
@@ -285,7 +313,10 @@ class TestRenderGraphTool:
             }
         )
         history = await _history_with(df)
-        spec = {"edges": [{"record_id": "Q1", "source": "src", "target": "dst"}]}
+        spec = {
+            "nodes": [{"record_id": "Q1", "id": "src"}, {"record_id": "Q1", "id": "dst"}],
+            "edges": [{"record_id": "Q1", "source": "src", "target": "dst"}],
+        }
         msg = await RenderGraphTool(history=history)(graph_spec=json.dumps(spec))
         assert "too large" in msg
         assert "nodes" in msg

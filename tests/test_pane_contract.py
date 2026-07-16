@@ -129,7 +129,7 @@ def test_graph_card_payload_matches_contract(tmp_path: Path) -> None:
             label="lineage",
             graph_spec={
                 "layout": "layered",
-                "nodes": [],
+                "nodes": [{"record_id": "Q1", "id": "src"}, {"record_id": "Q1", "id": "dst"}],
                 "edges": [{"record_id": "Q1", "source": "src", "target": "dst", "label": "rel"}],
             },
             sources={"Q1": df},
@@ -150,7 +150,7 @@ def test_graph_card_omits_directed_flag_for_undirected_edges(tmp_path: Path) -> 
             label="network",
             graph_spec={
                 "layout": "force",
-                "nodes": [],
+                "nodes": [{"record_id": "Q1", "id": "src"}, {"record_id": "Q1", "id": "dst"}],
                 "edges": [{"record_id": "Q1", "source": "src", "target": "dst", "directed": False}],
             },
             sources={"Q1": df},
