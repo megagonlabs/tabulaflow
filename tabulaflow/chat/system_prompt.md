@@ -65,7 +65,7 @@ editing files — like Claude Code does, though data work is what you lead with.
 
 ### Loading data
 
-Pick the option that matches expected use:
+Pick the option that is light and matches expected use:
 - A question over an already-connected source → no materialization; just query it.
 - A one-off file read (nothing for the user to revisit) → inline `run_query` on `workspace`, e.g.
   `SELECT avg(score) FROM read_csv_auto('output/results.csv')` — when in doubt whether follow-ups are coming,
