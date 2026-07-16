@@ -525,6 +525,26 @@ async def load_hf_dataset(
         duckdb_init_sql=["LOAD httpfs"],
         description=description,
     )
+
+    # Splits over MATERIALIZE_THRESHOLD_BYTES load as a lazy view plus a
+    # materialized `<split>_sample` table; annotate both so every schema
+    # rendering steers queries to the sample. The loader owns this DuckDB
+    # file, so its only views are these lazy splits. Applied in memory on
+    # every load (not persisted) so it also covers schema caches created
+    # before this annotation existed.
+    tables_by_name = {t.name: t for t in connector.schema.tables}
+    for table in connector.schema.tables:
+        if not table.is_view:
+            continue
+        sample = tables_by_name.get(f"{table.name}_sample")
+        if sample is not None:
+            table.description = (
+                "Lazy view over the full remote dataset; prefer the materialized sample "
+                f"table `{sample.name}` unless the full data is explicitly needed."
+            )
+            sample.description = f"Materialized sample of `{table.name}`."
+        else:
+            table.description = "Lazy view over the full remote dataset."
     return connector
 
 
