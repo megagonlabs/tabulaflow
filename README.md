@@ -448,7 +448,7 @@ July 16
 - [x] Browser installation in make sync
 - [x] Fix graph coloring
 - [x] Per-card view stepper
-- [ ] Test
+- [x] Smoke test for first-time user
 
 - [ ] Update render_graph spec to better support multi entity types
 - [ ] Decouple chart and data record
@@ -457,7 +457,9 @@ July 16
 - [ ] Subagent reuse
 - [ ] code diff rendering
 
+- [ ] Remove file editor sandbox
 - [ ] Bug: shell messed up after exiting
+- [ ] Claude subagent finish slow stuck at 28/30
 
 - [ ] Session ID - remove date?
 - [ ] Other config options - concurrency
