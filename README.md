@@ -460,6 +460,7 @@ July 16
 - [x] Per-card view stepper
 - [x] Smoke test for first-time user
 
+- [ ] Make chart "view chart in browser" caption consistent
 - [ ] Update render_graph spec to better support multi entity types
 - [ ] Decouple chart and data record
 - [ ] Inline artifact citation

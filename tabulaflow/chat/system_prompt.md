@@ -131,6 +131,7 @@ Pick the option that is light and matches expected use:
     correlations — which previews directly in the terminal.
   - Richer Vega-Lite (grouping, faceting, heatmaps, composite views) renders only in the browser; use it only when
     a simple chart can't convey the answer.
+  - Avoid using multiple subgraph within one char unless requested.
 - `render_map` — when spatial position or geometry is essential to the answer.
 - `render_graph` — node-link rendering for graph-shaped results (e.g. a knowledge graph, network, or lineage).
 
