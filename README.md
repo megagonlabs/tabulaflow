@@ -453,6 +453,10 @@ July 15
 - [ ] Remote server improvements
 - [ ] OpenAI/claude oauth
 
+- [ ] TUI
+  - [ ] Do not auto-scroll when browsing old turns
+  - [ ] Onboarding - browser install
+
 - [ ] Improve output pane UI - new turn loading, session ID, ...
 - [ ] web_fetch tool for static html
 - [ ] Bump pydantic-ai to 2.0 and type llm.py
