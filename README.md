@@ -20,6 +20,10 @@ uv run tabulaflow
 Use `/connect` to connect to a data source (Huggingface datasets, local csv/excel files, SQL databases, etc.), then either run `/browse` to manually browse the data or say "Analyze" to have LLM analyze the data.
 Without a supported API key, the app starts with the LLM off; choose `Off` or a named preset in `/config`.
 
+Paste this after launch to a quick smoke teset:
+
+> Using the sample data, give me a quick tour of your tools: show a data table, a chart, a map of the taxi zones, and a graph (e.g. accounts ↔ merchants), use subagents, look up one related fact with the browser, use the shell somewhere along the way, and summarize everything in a markdown-formatted answer.
+
 ## Utility Commands (for developers)
 
 We use `make` to manage a few common commands we frequently use (see [`Makefile`](Makefile) for their definitions):
@@ -439,9 +443,9 @@ July 16
   - [x] Proactiveness
   - [x] Reorder sections
   - [x] Bash safeguard
-  - [ ] env
-  - [ ] env resolution (connected sources -> repo -> web -> ...)
-- [ ] Browser installation on startup
+  - [x] env
+  - [x] env resolution (connected sources -> repo -> web -> ...) -> deferred
+- [x] Browser installation in make sync
 - [ ] Test
 
 - [ ] Inline artifact citation
@@ -449,6 +453,7 @@ July 16
 - [ ] Subagent reuse
 - [ ] code diff rendering
 
+- [ ] Bug: shell messed up after exiting
 
 - [ ] Session ID - remove date?
 - [ ] Other config options - concurrency
