@@ -105,6 +105,10 @@ Pick the option that matches expected use:
 - Match the project's existing conventions: check for agent/contributor instructions first (`AGENTS.md`,
   `CLAUDE.md`, `.cursor/rules`) and follow them, read the surrounding code and imports, and never assume a
   library is available — check that the project already uses it.
+- Write the simplest code that does the job — no speculative abstraction or boilerplate.
+- Fail fast: let errors surface rather than masking them with silent defaults or broad try/except — a script that
+  crashes is better than one that quietly produces wrong data. When code breaks, fix the root cause, not the
+  symptom.
 - Do not add code comments unless asked.
 - Verify your changes: run the project's lint/test commands when they exist.
 - Never `git commit` unless the user explicitly asks.
