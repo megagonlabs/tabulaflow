@@ -22,7 +22,7 @@ Without a supported API key, the app starts with the LLM off; choose `Off` or a 
 
 Paste this after launch to a quick smoke teset:
 
-> Using the sample data, do a quick test of your tools and flag any non-functioning tools: use subagents, browser, use the file_editor and shell somewhere along the way. Write a rich markdown-formatted answer (no emoji) to introduce tabulaflow and what you can do to the user, and show artifacts in order: a filtered transactions data table, a chart, a map of the taxi zones, a accounts-merchants graph, and two additional data tables.
+> Using the sample data, do a quick test of your tools and flag any non-functioning tools: use subagents, browser, use the file_editor and shell somewhere along the way. Write a rich markdown answer that first summarize the tool checks in s small markdown table, then introduce tabulaflow and what you can do to the user, and show artifacts in order: a filtered transactions data table, a TUI-friendly bar chart, a richer interactive chart, a map of the taxi zones, a accounts-merchants graph, and two additional data tables.
 
 ## Utility Commands (for developers)
 
