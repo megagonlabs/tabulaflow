@@ -49,6 +49,33 @@ logger = logging.getLogger(__name__)
 
 _REQUIRED_LLM_SETTINGS = frozenset({"GOOGLE_CLOUD_LOCATION", "GOOGLE_CLOUD_PROJECT"})
 _MAX_ERROR_MESSAGE_LENGTH = 300
+_TERMINAL_MODE_RESTORE_SEQUENCE = (
+    "\x1b[?2004l"  # bracketed paste off
+    "\x1b[?7h"  # line wrap on
+    "\x1b[?1000l"  # mouse modes off
+    "\x1b[?1002l"
+    "\x1b[?1003l"
+    "\x1b[?1015l"
+    "\x1b[?1006l"
+    "\x1b[<u"  # kitty keyboard protocol off
+    "\x1b[?1049l"  # alt screen off
+    "\x1b[?25h"  # cursor visible
+    "\x1b[?1004l"  # focus reporting off
+)
+
+
+def _restore_terminal_modes() -> None:
+    """Best-effort fallback for terminal private modes enabled by Textual."""
+    import sys
+
+    stream = sys.__stdout__
+    if stream is None or not stream.isatty():
+        return
+    try:
+        stream.write(_TERMINAL_MODE_RESTORE_SEQUENCE)
+        stream.flush()
+    except Exception:
+        pass
 
 
 class BottomSeparator(Static):
@@ -1200,4 +1227,7 @@ async def run_tui(
         output_pane_port=output_pane_port,
         output_pane_public_url=output_pane_public_url,
     )
-    await app.run_async()
+    try:
+        await app.run_async(mouse=True)
+    finally:
+        _restore_terminal_modes()

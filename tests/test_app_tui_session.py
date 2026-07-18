@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import sys
 from pathlib import Path
 from types import SimpleNamespace
 from typing import TYPE_CHECKING, Any
@@ -824,3 +825,67 @@ async def test_closing_config_restores_input_focus(monkeypatch: pytest.MonkeyPat
         await pilot.pause()
 
         assert app.query_one("#input-bar", Input).has_focus
+
+
+class _FakeStdout:
+    def __init__(self, *, tty: bool = True) -> None:
+        self.tty = tty
+        self.value = ""
+        self.flushed = False
+
+    def isatty(self) -> bool:
+        return self.tty
+
+    def write(self, value: str) -> int:
+        self.value += value
+        return len(value)
+
+    def flush(self) -> None:
+        self.flushed = True
+
+
+class _FakeRunTuiApp:
+    error: Exception | None = None
+    run_mouse: bool | None = None
+
+    def __init__(self, **_kwargs: object) -> None:
+        pass
+
+    async def run_async(self, *, mouse: bool = True) -> None:
+        type(self).run_mouse = mouse
+        if type(self).error is not None:
+            raise type(self).error
+
+
+@pytest.mark.asyncio
+async def test_run_tui_restores_terminal_modes_after_normal_exit(monkeypatch: pytest.MonkeyPatch) -> None:
+    stdout = _FakeStdout()
+    _FakeRunTuiApp.error = None
+    _FakeRunTuiApp.run_mouse = None
+
+    monkeypatch.setattr(sys, "__stdout__", stdout)
+    monkeypatch.setattr(tui, "TabulaflowApp", _FakeRunTuiApp)
+
+    await tui.run_tui(_selection(None))
+
+    assert _FakeRunTuiApp.run_mouse is True
+    assert stdout.value == tui._TERMINAL_MODE_RESTORE_SEQUENCE
+    assert stdout.flushed is True
+
+
+@pytest.mark.asyncio
+async def test_run_tui_restores_terminal_modes_after_exception(monkeypatch: pytest.MonkeyPatch) -> None:
+    stdout = _FakeStdout()
+    error = RuntimeError("boom")
+    _FakeRunTuiApp.error = error
+    _FakeRunTuiApp.run_mouse = None
+
+    monkeypatch.setattr(sys, "__stdout__", stdout)
+    monkeypatch.setattr(tui, "TabulaflowApp", _FakeRunTuiApp)
+
+    with pytest.raises(RuntimeError, match="boom"):
+        await tui.run_tui(_selection(None))
+
+    assert _FakeRunTuiApp.run_mouse is True
+    assert stdout.value == tui._TERMINAL_MODE_RESTORE_SEQUENCE
+    assert stdout.flushed is True
