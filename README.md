@@ -468,12 +468,15 @@ July 17
 - [x] Fix multi-layer chart coloring
 - [x] Fix Claude subagent stucked - subagent timeout at 120s
 
+- [ ] Session ID - remove date?
+- [ ] Show session ID in TUI and output pan
+
 - [ ] Inline artifact citation
 - [ ] IMPORTANT: decouple data and rendered format (show unit "cm" while still enabling sorting by value)
 - [ ] Subagent reuse
 - [ ] code diff rendering
 - [ ] Debug /Users/yanlinf/.tabulaflow/sessions/20260716T222109Z-be2c/trajectories/trajectory.md
-- [ ] Session ID - remove date?
+
 - [ ] Other config options - concurrency
 - [ ] Gemini levels - no xhigh
 - [ ] Fireworks preset
