@@ -1,4 +1,4 @@
-"""Tool that attaches a Vega-Lite chart spec to a query result.
+"""Tool that renders a Vega-Lite chart from a query result as a chart artifact.
 
 Simple x/y specs also get a plotext terminal preview here; the full chart
 renders in the browser output pane.
@@ -413,6 +413,11 @@ class RenderChartTool:
 
         A dark theme is applied by the viewer, so leave colors unset unless the
         user asked for specific ones.
+
+        In a layered spec where any layer is colored by a field, every layer
+        must declare a color: ``{"datum": "<series name>"}`` gives an overlay
+        (e.g. a total line) its own legend entry and palette color;
+        ``{"value": "<css color>"}`` sets a fixed color.
 
         Example spec:
             {"mark": "bar", "encoding": {"x": {"field": "status", "type": "nominal"}, "y": {"field": "count", "type": "quantitative"}}, "title": "Schools by Status"}
