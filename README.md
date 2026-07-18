@@ -461,10 +461,10 @@ July 16
 - [x] Smoke test for first-time user
 
 July 17
-- [ ] Bug: shell messed up after exiting
-- [ ] Remove file editor sandbox
-- [ ] Make chart "view chart in browser" caption consistent
-- [ ] Update render_graph spec to better support multi entity types
+- [x] Fix shell messed up after exiting
+- [x] Remove file editor sandbox
+- [x] Make chart "view chart in browser" caption consistent
+
 - [ ] Decouple chart and data record
 - [ ] Inline artifact citation
 - [ ] IMPORTANT: decouple data and rendered format (show unit "cm" while still enabling sorting by value)
