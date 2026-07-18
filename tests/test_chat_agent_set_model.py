@@ -7,7 +7,7 @@ import pytest
 
 from tabulaflow.app.session import create_workspace_connector
 from tabulaflow.chat import ChatAgent
-from tabulaflow.chat.agent import SUBAGENT_REQUEST_TIMEOUT
+from tabulaflow.chat.agent import MAIN_REQUEST_TIMEOUT, SUBAGENT_REQUEST_TIMEOUT
 from tabulaflow.core.db_connector.db_registry import DBRegistry
 
 
@@ -143,6 +143,7 @@ def test_thinking_settings_openai(monkeypatch: pytest.MonkeyPatch) -> None:
     assert agent._thinking_settings() == {
         "thinking": "high",
         "openai_reasoning_summary": "detailed",
+        "timeout": MAIN_REQUEST_TIMEOUT,
     }
 
 
@@ -174,7 +175,7 @@ def test_thinking_settings_adaptive_claude_no_max_tokens(monkeypatch: pytest.Mon
     monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-fake")
     agent = ChatAgent(registry=DBRegistry(), model="anthropic:claude-opus-4-8", reasoning_effort="high")
     # Adaptive-thinking models never use budgets — no max_tokens override.
-    assert agent._thinking_settings() == {"thinking": "high"}
+    assert agent._thinking_settings() == {"thinking": "high", "timeout": MAIN_REQUEST_TIMEOUT}
 
 
 def test_subagent_settings_budget_era_claude_raise_max_tokens() -> None:

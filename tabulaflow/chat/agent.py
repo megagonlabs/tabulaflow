@@ -96,6 +96,12 @@ DEFAULT_SUBAGENT_REASONING_EFFORT: Final = "medium"
 # request completes in seconds. The provider SDK retries timed-out requests
 # automatically, so this cap turns a stalled row into a quick re-roll.
 SUBAGENT_REQUEST_TIMEOUT: Final = 120.0
+# The interactive agent streams, so its read timeout bounds the *silence
+# between chunks* (pings/deltas flow every few seconds when healthy), not turn
+# duration. Higher than the subagent cap because a mid-stream trip is not
+# retried by the SDK — it fails the turn — and the worst legitimate silence
+# (cold prefill of a very long history) can exceed a minute.
+MAIN_REQUEST_TIMEOUT: Final = 180.0
 
 
 # ---------------------------------------------------------------------------
@@ -376,7 +382,11 @@ class ChatAgent:
 
     def _thinking_settings(self) -> ModelSettings:
         """Return the shared provider-specific settings for the interactive model."""
-        return make_model_settings(model=self.model, reasoning_effort=self.reasoning_effort)
+        return make_model_settings(
+            model=self.model,
+            reasoning_effort=self.reasoning_effort,
+            timeout=MAIN_REQUEST_TIMEOUT,
+        )
 
     def _subagent_model_settings(
         self,
