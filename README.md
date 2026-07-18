@@ -464,17 +464,15 @@ July 17
 - [x] Fix shell messed up after exiting
 - [x] Remove file editor sandbox
 - [x] Make chart "view chart in browser" caption consistent
-- [ ] Decouple chart and data record
+- [x] Decouple chart and data record
+- [x] Fix multi-layer chart coloring
+- [x] Fix Claude subagent stucked - subagent timeout at 120s
 
 - [ ] Inline artifact citation
 - [ ] IMPORTANT: decouple data and rendered format (show unit "cm" while still enabling sorting by value)
 - [ ] Subagent reuse
 - [ ] code diff rendering
-
 - [ ] Debug /Users/yanlinf/.tabulaflow/sessions/20260716T222109Z-be2c/trajectories/trajectory.md
-
-- [ ] Claude subagent finish slow stuck at 28/30
-
 - [ ] Session ID - remove date?
 - [ ] Other config options - concurrency
 - [ ] Gemini levels - no xhigh
