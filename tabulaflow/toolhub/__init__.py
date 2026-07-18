@@ -6,7 +6,7 @@ from tabulaflow.toolhub.connect_data_source import ConnectDataSourceTool
 from tabulaflow.toolhub.entity_extractor import EntityExtractor
 from tabulaflow.toolhub.execute_bash import BashToolMetrics, ExecuteBashTool
 from tabulaflow.toolhub.extract_rows_from_documents import ExtractRowsFromDocumentsTool
-from tabulaflow.toolhub.file_editor import FileEditorTool, FileEditorToolMetrics
+from tabulaflow.toolhub.file_editor import FileEditorRoot, FileEditorTool, FileEditorToolMetrics
 from tabulaflow.toolhub.render_chart import RenderChartTool
 from tabulaflow.toolhub.render_graph import RenderGraphTool
 from tabulaflow.toolhub.render_map import RenderMapTool
@@ -37,6 +37,7 @@ __all__ = [
     "EntityExtractor",
     "ExecuteBashTool",
     "ExtractRowsFromDocumentsTool",
+    "FileEditorRoot",
     "FileEditorTool",
     "FileEditorToolMetrics",
     "GraphArtifact",

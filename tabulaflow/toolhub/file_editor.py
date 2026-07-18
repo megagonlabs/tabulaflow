@@ -1,17 +1,20 @@
 """File editor tool.
 
-Provides ``view``, ``write_file``, and ``str_replace`` commands scoped to a
-working directory.  Paths are always relative to the working directory and
-validated to prevent directory traversal.
+Provides ``view``, ``write_file``, and ``str_replace`` commands scoped to
+configured filesystem roots.  Relative paths resolve against the working
+directory; absolute paths are allowed only when permitted by the configured
+roots, or when the tool is explicitly unrestricted.
 
 Adapted from the Anthropic/OpenHands ``str_replace_editor`` pattern.
 """
 
 import asyncio
+from collections.abc import Sequence
+from dataclasses import dataclass
 import os
 import re
 from pathlib import Path
-from typing import ClassVar, Literal
+from typing import ClassVar, Final, Literal
 
 from pydantic import BaseModel
 from pydantic_ai import Tool
@@ -30,6 +33,35 @@ MAX_RESPONSE_CHARS = 40000
 MAX_DIR_ENTRIES = 200
 
 
+@dataclass(frozen=True)
+class FileEditorRoot:
+    """A filesystem root that the file editor may access.
+
+    Args:
+        name: Human-readable root label used in error messages.
+        path: Root directory path.
+        writable: Whether mutating commands may write under this root.
+    """
+
+    name: str
+    path: str | Path
+    writable: bool = True
+
+
+@dataclass(frozen=True)
+class _ResolvedFileEditorRoot:
+    name: str
+    path: Path
+    writable: bool
+
+
+class _DefaultAllowedRoots:
+    pass
+
+
+_DEFAULT_ALLOWED_ROOTS: Final = _DefaultAllowedRoots()
+
+
 class FileEditorToolMetrics(BaseModel):
     num_view: int = 0
     num_write_file: int = 0
@@ -40,31 +72,77 @@ class FileEditorToolMetrics(BaseModel):
 class FileEditorTool:
     """File editor with ``view``, ``write_file``, and ``str_replace`` commands.
 
-    All *path* arguments are relative to ``working_dir``.  Absolute paths and
-    paths that escape the working directory (e.g. ``../../etc/passwd``) are
-    rejected.
+    By default, access is scoped to ``working_dir``.  Pass explicit
+    ``allowed_roots`` to grant access to additional directories, or pass
+    ``allowed_roots=None`` for unrestricted filesystem access.  Relative paths
+    always resolve against ``working_dir``.
     """
 
     name: ClassVar = "file_editor"
 
-    def __init__(self, working_dir: str, message_store: ScopedMessageStore | None = None) -> None:
+    def __init__(
+        self,
+        working_dir: str,
+        message_store: ScopedMessageStore | None = None,
+        allowed_roots: Sequence[FileEditorRoot] | None | _DefaultAllowedRoots = _DEFAULT_ALLOWED_ROOTS,
+    ) -> None:
         self._working_dir = Path(working_dir).resolve()
         if not self._working_dir.is_dir():
             raise ValueError(f"working_dir is not a directory: {working_dir}")
+        self._unrestricted = allowed_roots is None
+        if isinstance(allowed_roots, _DefaultAllowedRoots):
+            allowed_roots = [FileEditorRoot("working_dir", self._working_dir)]
+        self._allowed_roots = () if allowed_roots is None else self._resolve_roots(allowed_roots)
         # When present, a viewed PDF's extracted text is mirrored to the message store
         # so the agent can run extraction tools on its message_id (PDFs only — other
         # returns are not mirrored).
         self._message_store = message_store
         self._metrics = FileEditorToolMetrics()
 
-    def _resolve(self, path: str) -> Path:
-        """Resolve a relative path against working_dir and validate it."""
+    @staticmethod
+    def _resolve_roots(roots: Sequence[FileEditorRoot]) -> tuple[_ResolvedFileEditorRoot, ...]:
+        resolved_roots: list[_ResolvedFileEditorRoot] = []
+        for root in roots:
+            name = root.name.strip()
+            if not name:
+                raise ValueError("allowed root name must be non-empty")
+            resolved = Path(root.path).resolve()
+            if not resolved.is_dir():
+                raise ValueError(f"allowed root is not a directory: {root.path}")
+            resolved_roots.append(_ResolvedFileEditorRoot(name, resolved, root.writable))
+        if not resolved_roots:
+            raise ValueError("allowed_roots must contain at least one root, or be None for unrestricted access")
+        return tuple(resolved_roots)
+
+    @staticmethod
+    def _is_relative_to(path: Path, root: Path) -> bool:
+        try:
+            path.relative_to(root)
+        except ValueError:
+            return False
+        return True
+
+    def _root_for(self, resolved: Path) -> _ResolvedFileEditorRoot | None:
+        for root in self._allowed_roots:
+            if self._is_relative_to(resolved, root.path):
+                return root
+        return None
+
+    def _format_allowed_roots(self) -> str:
+        return ", ".join(f"{root.name}={root.path}" for root in self._allowed_roots)
+
+    def _resolve(self, path: str, *, for_write: bool = False) -> Path:
+        """Resolve a path against working_dir and validate access policy."""
         p = Path(path)
-        if p.is_absolute():
-            raise ValueError(f"Path must be relative to the working directory, got absolute path: {path}")
-        resolved = (self._working_dir / p).resolve()
-        if not str(resolved).startswith(str(self._working_dir)):
-            raise ValueError(f"Path escapes the working directory: {path}")
+        resolved = p.resolve() if p.is_absolute() else (self._working_dir / p).resolve()
+        if self._unrestricted:
+            return resolved
+
+        root = self._root_for(resolved)
+        if root is None:
+            raise ValueError(f"Path is outside the allowed roots ({self._format_allowed_roots()}): {path}")
+        if for_write and not root.writable:
+            raise ValueError(f"Path is under read-only root '{root.name}': {path}")
         return resolved
 
     @staticmethod
@@ -315,7 +393,9 @@ class FileEditorTool:
           ``replace_all`` is set. It must be the file's raw text — do NOT include the
           line-number prefixes shown by ``view``.
 
-        All paths are relative to the project directory.
+        In restricted mode, paths must resolve under one of the configured
+        filesystem roots.  In unrestricted mode, absolute paths are allowed.
+        Relative paths always resolve against the working directory.
 
         Args:
             command: One of ``"view"``, ``"write_file"``, ``"str_replace"``.
@@ -330,7 +410,7 @@ class FileEditorTool:
                 directories, an entry range for pagination. Not used for PDFs.
         """
         try:
-            resolved = self._resolve(path)
+            resolved = self._resolve(path, for_write=command in ("write_file", "str_replace"))
         except ValueError as e:
             return self._error(str(e))
 

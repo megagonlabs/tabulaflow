@@ -96,9 +96,7 @@ Pick the option that is light and matches expected use:
   `read_parquet('<scratch abs path>')`.
 - Never run commands with a catastrophic or system-wide blast radius (`rm -rf /` or `~`, `dd` to a device, `mkfs`,
   recursive `chmod`/`chown` on system paths) — decline even if asked, and let the user run them themselves.
-- File editor (`file_editor`): for authoring or editing files the user wants kept in the project (e.g. dbt models,
-  scripts) — not for staging intermediate data (that goes to scratch via DuckDB/shell). Prefer it over shell
-  `sed`/`echo` for file edits.
+- File editor (`file_editor`): for viewing or editing text files. Prefer it over shell `sed`/`echo` for file edits.
 
 ### Writing code
 

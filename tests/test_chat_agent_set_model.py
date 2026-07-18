@@ -102,6 +102,30 @@ def test_api_key_none_for_keyless_model() -> None:
     assert agent.resolve_api_keys() == (None, None)
 
 
+async def test_chat_agent_file_editor_is_unrestricted(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    project = tmp_path / "project"
+    outside = tmp_path / "outside"
+    project.mkdir()
+    outside.mkdir()
+    target = outside / "note.txt"
+    target.write_text("outside content")
+    monkeypatch.chdir(project)
+
+    agent = ChatAgent(
+        registry=DBRegistry(),
+        model="test",
+        reasoning_effort="medium",
+        project_dir=project,
+        scratch_dir=tmp_path / "scratch",
+    )
+
+    assert agent._tools.file_editor is not None
+    out = await agent._tools.file_editor("view", str(target))
+    assert "outside content" in out
+
+
 def test_resolve_subagent_api_key(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("OPENAI_API_KEY", "sk-sub123456789cd9y")
     agent = ChatAgent(

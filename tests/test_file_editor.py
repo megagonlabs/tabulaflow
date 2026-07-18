@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from tabulaflow.toolhub.file_editor import FileEditorTool
+from tabulaflow.toolhub.file_editor import FileEditorRoot, FileEditorTool
 
 
 @pytest.fixture
@@ -144,12 +144,91 @@ class TestPathSafety:
 
     async def test_traversal_escape_rejected(self, editor: FileEditorTool) -> None:
         out = await editor("view", "../../etc/passwd")
-        assert "(error" in out and "escapes" in out
+        assert "(error" in out and "outside the allowed roots" in out
 
     async def test_write_outside_rejected(self, editor: FileEditorTool, tmp_path: Path) -> None:
         out = await editor("write_file", "../escape.txt", file_text="x")
         assert "(error" in out
         assert not (tmp_path.parent / "escape.txt").exists()
+
+    async def test_sibling_prefix_escape_rejected(self, tmp_path: Path) -> None:
+        project = tmp_path / "project"
+        project.mkdir()
+        sibling = tmp_path / "project_secret"
+        sibling.mkdir()
+        (sibling / "secret.txt").write_text("secret")
+
+        tool = FileEditorTool(str(project))
+        out = await tool("view", "../project_secret/secret.txt")
+
+        assert "(error" in out and "outside the allowed roots" in out
+
+
+class TestAllowedRoots:
+    async def test_additional_root_can_be_viewed_and_written(self, tmp_path: Path) -> None:
+        project = tmp_path / "project"
+        scratch = tmp_path / "scratch"
+        project.mkdir()
+        scratch.mkdir()
+        (scratch / "existing.txt").write_text("old")
+        tool = FileEditorTool(
+            str(project),
+            allowed_roots=[
+                FileEditorRoot("project", project),
+                FileEditorRoot("scratch", scratch),
+            ],
+        )
+
+        view = await tool("view", "../scratch/existing.txt")
+        write = await tool("write_file", "../scratch/new.txt", file_text="new")
+
+        assert "old" in view
+        assert "(error" not in write
+        assert (scratch / "new.txt").read_text() == "new"
+
+    async def test_read_only_root_rejects_write(self, tmp_path: Path) -> None:
+        project = tmp_path / "project"
+        data = tmp_path / "data"
+        project.mkdir()
+        data.mkdir()
+        (data / "source.csv").write_text("x\n")
+        tool = FileEditorTool(
+            str(project),
+            allowed_roots=[
+                FileEditorRoot("project", project),
+                FileEditorRoot("data", data, writable=False),
+            ],
+        )
+
+        view = await tool("view", "../data/source.csv")
+        write = await tool("write_file", "../data/source.csv", file_text="y\n")
+
+        assert "x" in view
+        assert "(error" in write and "read-only root 'data'" in write
+        assert (data / "source.csv").read_text() == "x\n"
+
+    async def test_unrestricted_allows_absolute_path(self, tmp_path: Path) -> None:
+        project = tmp_path / "project"
+        outside = tmp_path / "outside"
+        project.mkdir()
+        outside.mkdir()
+        target = outside / "f.txt"
+        target.write_text("outside")
+        tool = FileEditorTool(str(project), allowed_roots=None)
+
+        out = await tool("view", str(target))
+
+        assert "outside" in out
+
+    async def test_unrestricted_relative_paths_still_use_working_dir(self, tmp_path: Path) -> None:
+        project = tmp_path / "project"
+        project.mkdir()
+        (project / "relative.txt").write_text("relative")
+        tool = FileEditorTool(str(project), allowed_roots=None)
+
+        out = await tool("view", "relative.txt")
+
+        assert "relative" in out
 
 
 class TestPdf:

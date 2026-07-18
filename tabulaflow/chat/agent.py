@@ -281,7 +281,11 @@ class ChatAgent:
             ),
             bash=self._build_bash_tool(),
             file_editor=(
-                FileEditorTool(str(self.project_dir), message_store=self._main_scope)
+                FileEditorTool(
+                    str(self.project_dir),
+                    message_store=self._main_scope,
+                    allowed_roots=None,
+                )
                 if self.project_dir is not None
                 else None
             ),
