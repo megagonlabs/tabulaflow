@@ -465,6 +465,7 @@ July 17
 - [x] Remove file editor sandbox
 - [x] Make chart "view chart in browser" caption consistent
 - [x] Decouple chart and data record
+- [x] Avoid auto-disconnect sample_data
 - [x] Fix multi-layer chart coloring
 - [x] Fix Claude subagent stucked - subagent timeout at 120s
 
@@ -482,6 +483,7 @@ July 17
 - [ ] Fireworks preset
 - [ ] Kushan: better error message for /connect failure
 - [ ] put removed stale tables in workspace in a user-invisible schema rather than deleting
+- [ ] Schema browser for very large db (1000+ tables/columns)
 
 - [ ] Coding
   - [ ] Prompt
