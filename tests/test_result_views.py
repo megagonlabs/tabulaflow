@@ -3,8 +3,16 @@
 from __future__ import annotations
 
 import pandas as pd
+from rich.console import Console
 
-from tabulaflow.app.display import VIEW_KIND_DATA, VIEW_KIND_GRAPH, VIEW_KIND_MAP, VIEW_KIND_QUERY, build_card_views
+from tabulaflow.app.display import (
+    VIEW_KIND_CHART,
+    VIEW_KIND_DATA,
+    VIEW_KIND_GRAPH,
+    VIEW_KIND_MAP,
+    VIEW_KIND_QUERY,
+    build_card_views,
+)
 from tabulaflow.chat.result import ChatResult, ChatResultGraph, ChatResultMap, ChatResultRecord
 
 
@@ -15,6 +23,24 @@ def _record(record_id: str, label: str) -> ChatResultRecord:
         query="SELECT 1",
         df=pd.DataFrame({"a": [1, 2]}),
         chart_spec=None,
+        query_lexer="sql",
+    )
+
+
+def _browser_only_chart_record(record_id: str, label: str) -> ChatResultRecord:
+    return ChatResultRecord(
+        record_id=record_id,
+        label=label,
+        query=None,
+        df=pd.DataFrame({"region": ["north", "south"], "revenue": [10, 20]}),
+        chart_spec={
+            "mark": "bar",
+            "encoding": {
+                "x": {"field": "region"},
+                "y": {"field": "revenue"},
+                "color": {"field": "region"},
+            },
+        },
         query_lexer="sql",
     )
 
@@ -61,6 +87,20 @@ def test_artifacts_render_in_citation_order() -> None:
     assert [v.kind for v in groups[2].views] == [VIEW_KIND_GRAPH]
     assert VIEW_KIND_DATA in [v.kind for v in groups[0].views]
     assert VIEW_KIND_QUERY in [v.kind for v in groups[0].views]
+
+
+def test_browser_only_chart_placeholder_uses_artifact_caption() -> None:
+    result = ChatResult(text="x", artifacts=[_browser_only_chart_record("Q1", "chart")])
+    groups = build_card_views(result)
+    chart_view = groups[0].views[0]
+    assert chart_view.kind == VIEW_KIND_CHART
+
+    console = Console(width=80, record=True)
+    console.print(chart_view.renderable)
+    rendered = console.export_text()
+
+    assert "Open the browser pane to view this chart." in rendered
+    assert "Open this one in your browser" not in rendered
 
 
 def test_map_artifact_sources_released_after_render() -> None:

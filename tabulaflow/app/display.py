@@ -237,14 +237,7 @@ def _build_chart_card(spec: dict[str, object], *, height: int | None) -> Rendera
     if title:
         lines.append(Text(type_label, style="dim", justify="center"))
     lines.append(Text(""))
-    lines.append(
-        Text(
-            "The terminal preview only supports simple bar, line, and scatter charts. "
-            "Open this one in your browser to view it in full.",
-            style="dim",
-            justify="center",
-        )
-    )
+    lines.append(Text("Open the browser pane to view this chart.", style="dim", justify="center"))
     group = Group(*lines)
     body = Align.center(group, vertical="middle") if height is not None else group
     return Panel(body, height=height, box=box.ROUNDED, border_style=ACCENT_DIM, padding=(1, 2))
