@@ -464,8 +464,8 @@ July 17
 - [x] Fix shell messed up after exiting
 - [x] Remove file editor sandbox
 - [x] Make chart "view chart in browser" caption consistent
-
 - [ ] Decouple chart and data record
+
 - [ ] Inline artifact citation
 - [ ] IMPORTANT: decouple data and rendered format (show unit "cm" while still enabling sorting by value)
 - [ ] Subagent reuse

@@ -153,14 +153,21 @@ class TestWithConnector:
         pd.testing.assert_frame_equal(df_loaded, df_original, check_dtype=False)
 
     @pytest.mark.asyncio
-    async def test_attach_chart_does_not_hydrate(self, workspace: SQLConnector) -> None:
+    async def test_add_chart_does_not_hydrate(self, workspace: SQLConnector) -> None:
         h = QueryHistory(max_in_memory=1, spill_connector=workspace)
         await h.add("db", "sql", _make_pred_query())
         await h.add("db", "sql", _make_pred_query())
         assert "Q1" in h._spilled
-        h.attach_chart("Q1", {"mark": "bar"})
+        chart_id = h.add_chart("Q1", {"mark": "bar"})
         assert "Q1" in h._spilled
-        assert h._records["Q1"].vegalite_spec == {"mark": "bar"}
+        assert chart_id == "CHART1"
+        chart = h.get_chart("CHART1")
+        assert chart.record_id == "Q1"
+        assert chart.chart_spec == {"mark": "bar"}
+        with pytest.raises(KeyError):
+            h.add_chart("Q9", {"mark": "bar"})
+        with pytest.raises(KeyError):
+            h.get_chart("CHART9")
 
     @pytest.mark.asyncio
     async def test_add_map_stores_standalone_artifact(self, workspace: SQLConnector) -> None:

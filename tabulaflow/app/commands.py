@@ -220,7 +220,7 @@ async def _cmd_connect(args: list[str], session: SessionState) -> CommandResult:
         except Exception as e:
             return CommandResult(output=Text.from_markup(f"[{ERROR}]Failed to load files:[/] {e}"))
 
-        await session.register_db(alias, connector, source_key)
+        session.register_db(alias, connector, source_key)
         info = _announce_connect(session, alias, connector)
         return CommandResult(output=Text(f"✓ Loaded {file_label} as {alias} ({info})", style="dim"))
 
@@ -311,7 +311,7 @@ async def _connect_hf_dataset(args: list[str], session: SessionState) -> Command
     except Exception as e:
         return CommandResult(output=Text.from_markup(f"[{ERROR}]Failed to load HF dataset:[/] {e}"))
 
-    await session.register_db(alias, connector, source_key)
+    session.register_db(alias, connector, source_key)
     info = _announce_connect(session, alias, connector)
     return CommandResult(output=Text(f"✓ Loaded {dataset_id} as {alias} ({info})", style="dim"))
 
@@ -333,7 +333,7 @@ async def _execute_connect(url: str, alias: str, session: SessionState) -> Comma
     except Exception as e:
         return CommandResult(output=Text.from_markup(f"[{ERROR}]Connection failed:[/] {e}"))
 
-    await session.register_db(alias, connector, ("url", url))
+    session.register_db(alias, connector, ("url", url))
     info = _announce_connect(session, alias, connector)
     return CommandResult(output=Text(f"✓ Connected to {alias} ({info})", style="dim"))
 

@@ -80,7 +80,7 @@ async def autoconnect_sample(session: SessionState) -> bool:
     session.register_source(("sample", _FILENAME), SAMPLE_ALIAS)
     session.note_event(
         f"sample data is connected as `{SAMPLE_ALIAS}` so the welcome examples are runnable "
-        f"(tables: {', '.join(SAMPLE_TABLES)}). It includes bundled demo data and public sample data, "
-        "and will be removed automatically as soon as the user connects a data source of their own."
+        f"(tables: {', '.join(SAMPLE_TABLES)}). It includes bundled demo data and public sample data; "
+        "it never contains the user's own data."
     )
     return True

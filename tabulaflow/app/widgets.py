@@ -1753,12 +1753,12 @@ class AgentResultWidget(Widget):
         title = f"{view.kind} ({rec.label})"
 
         if view.kind == VIEW_KIND_CHART and view.chart_spec is not None:
-            df = await self._fetch_df(rec.artifact_id)
+            df = await self._fetch_df(rec.source_record_id)
             if df is not None:
                 self.app.push_screen(ChartBrowserScreen(title=title, df=df, vegalite_spec=view.chart_spec))
             return
         if view.kind == VIEW_KIND_DATA:
-            df = await self._fetch_df(rec.artifact_id)
+            df = await self._fetch_df(rec.source_record_id)
             if df is not None:
                 self.app.push_screen(DataBrowserScreen(title=title, df=df))
             return
@@ -1766,9 +1766,9 @@ class AgentResultWidget(Widget):
             query, lexer = view.query
             self.app.push_screen(QueryBrowserScreen(title=title, query=query, lexer=lexer))
 
-    async def _fetch_df(self, record_id: str) -> pd.DataFrame | None:
+    async def _fetch_df(self, record_id: str | None) -> pd.DataFrame | None:
         """Fetch a DataFrame from QueryHistory, hydrating from DuckDB if needed."""
-        if self._query_history is None:
+        if self._query_history is None or record_id is None:
             return None
         try:
             record = await self._query_history.get(record_id)

@@ -176,52 +176,68 @@ class TestRenderChartTool:
         msg = await RenderChartTool(history=history)(record_id="", vegalite_spec=json.dumps(spec))
         assert "record_id must be a non-empty string" in msg
 
-    async def test_simple_bar_attaches(self) -> None:
+    async def test_simple_bar_creates_chart(self) -> None:
         history = await _history_with(pd.DataFrame({"a": ["x", "y"], "b": [1, 2]}))
         spec = {"mark": "bar", "encoding": {"x": {"field": "a"}, "y": {"field": "b"}}}
         msg = await RenderChartTool(history=history)(record_id="Q1", vegalite_spec=json.dumps(spec))
-        assert "Bar chart attached" in msg
-        assert (await history.last()).vegalite_spec == spec
+        assert "Bar chart CHART1 created from Q1" in msg
+        chart = history.get_chart("CHART1")
+        assert chart.record_id == "Q1"
+        assert chart.chart_spec == spec
 
-    async def test_rich_spec_attaches(self) -> None:
+    async def test_rich_spec_creates_chart(self) -> None:
         history = await _history_with(pd.DataFrame({"a": ["x", "y"], "b": [1, 2], "c": ["g", "h"]}))
         spec = {"mark": "arc", "encoding": {"theta": {"field": "b"}, "color": {"field": "c"}}}
         msg = await RenderChartTool(history=history)(record_id="Q1", vegalite_spec=json.dumps(spec))
-        assert "attached" in msg
-        assert (await history.last()).vegalite_spec == spec
+        assert "CHART1 created" in msg
+        assert history.get_chart("CHART1").chart_spec == spec
 
-    async def test_oversized_result_refused_without_attaching(self) -> None:
+    async def test_second_chart_gets_next_id(self) -> None:
+        # two charts of the same record coexist — creating one never overwrites another
+        history = await _history_with(pd.DataFrame({"a": ["x", "y"], "b": [1, 2]}))
+        bar = {"mark": "bar", "encoding": {"x": {"field": "a"}, "y": {"field": "b"}}}
+        line = {"mark": "line", "encoding": {"x": {"field": "a"}, "y": {"field": "b"}}}
+        await RenderChartTool(history=history)(record_id="Q1", vegalite_spec=json.dumps(bar))
+        msg = await RenderChartTool(history=history)(record_id="Q1", vegalite_spec=json.dumps(line))
+        assert "CHART2 created" in msg
+        assert history.get_chart("CHART1").chart_spec == bar
+        assert history.get_chart("CHART2").chart_spec == line
+
+    async def test_oversized_result_refused_without_creating(self) -> None:
         history = await _history_with(pd.DataFrame({"a": range(20_001), "b": range(20_001)}))
         spec = {"mark": "bar", "encoding": {"x": {"field": "a"}, "y": {"field": "b"}}}
         msg = await RenderChartTool(history=history)(record_id="Q1", vegalite_spec=json.dumps(spec))
         assert "too large" in msg
-        assert (await history.last()).vegalite_spec is None
+        with pytest.raises(KeyError):
+            history.get_chart("CHART1")
 
-    async def test_unknown_column_errors_without_attaching(self) -> None:
-        # an invalid field reference (typo) is blocked, not attached
+    async def test_unknown_column_errors_without_creating(self) -> None:
+        # an invalid field reference (typo) is blocked, not stored
         history = await _history_with(pd.DataFrame({"a": ["x"], "b": [1]}))
         spec = {"mark": "bar", "encoding": {"x": {"field": "nope"}, "y": {"field": "b"}}}
         msg = await RenderChartTool(history=history)(record_id="Q1", vegalite_spec=json.dumps(spec))
         assert "not found" in msg and "nope" in msg
-        assert (await history.last()).vegalite_spec is None
+        with pytest.raises(KeyError):
+            history.get_chart("CHART1")
 
-    async def test_rich_spec_bad_field_errors_without_attaching(self) -> None:
+    async def test_rich_spec_bad_field_errors_without_creating(self) -> None:
         # browser-only specs are validated too: a bad color field is blocked
         history = await _history_with(pd.DataFrame({"a": ["x"], "b": [1], "c": ["g"]}))
         spec = {"mark": "arc", "encoding": {"theta": {"field": "b"}, "color": {"field": "nope"}}}
         msg = await RenderChartTool(history=history)(record_id="Q1", vegalite_spec=json.dumps(spec))
         assert "not found" in msg
-        assert (await history.last()).vegalite_spec is None
+        with pytest.raises(KeyError):
+            history.get_chart("CHART1")
 
-    async def test_nested_field_attaches(self) -> None:
+    async def test_nested_field_creates_chart(self) -> None:
         # a nested-struct reference (meta.country) resolves via its root column 'meta'
         history = await _history_with(pd.DataFrame({"meta": [{"country": "US"}], "b": [1]}))
         spec = {"mark": "bar", "encoding": {"x": {"field": "meta.country"}, "y": {"field": "b"}}}
         msg = await RenderChartTool(history=history)(record_id="Q1", vegalite_spec=json.dumps(spec))
         assert "not found" not in msg
-        assert (await history.last()).vegalite_spec == spec
+        assert history.get_chart("CHART1").chart_spec == spec
 
-    async def test_transform_derived_field_attaches(self) -> None:
+    async def test_transform_derived_field_creates_chart(self) -> None:
         # 'derived' is created by the transform, not a source column — must not block
         history = await _history_with(pd.DataFrame({"a": ["x"], "b": [1]}))
         spec = {
@@ -231,7 +247,7 @@ class TestRenderChartTool:
         }
         msg = await RenderChartTool(history=history)(record_id="Q1", vegalite_spec=json.dumps(spec))
         assert "not found" not in msg
-        assert (await history.last()).vegalite_spec == spec
+        assert history.get_chart("CHART1").chart_spec == spec
 
 
 class TestRenderPlotextDataTypes:

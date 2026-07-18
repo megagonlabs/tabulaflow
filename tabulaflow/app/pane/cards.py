@@ -24,6 +24,9 @@ if TYPE_CHECKING:
 
 
 class ResultRecordLike(Protocol):
+    """The tabbed-card payload: a query record (``chart_spec`` None) or a chart
+    artifact carrying its source record's data and query."""
+
     df: "pd.DataFrame | None"
     chart_spec: dict[str, object] | None
     query: str | None
@@ -59,10 +62,10 @@ def build_query_data(sql: str, *, lexer: str = "sql") -> QueryCardData:
 
 
 def render_record_data(record: ResultRecordLike, pane_dir: Path) -> PaneCard | None:
-    """Render a record's chart/data/query payload to JSON; return a pane manifest.
+    """Render a record or chart artifact's payload to JSON; return a pane manifest.
 
     The descriptor is ordered chart -> data -> query, including only the views
-    the record has, or ``None`` when the record has nothing displayable.
+    the artifact has, or ``None`` when it has nothing displayable.
     """
     views: list[ViewKind] = []
     card_id = f"{CARD_ID_PREFIX}{secrets.token_hex(6)}"

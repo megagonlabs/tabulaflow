@@ -334,22 +334,25 @@ class ViewItem:
 
 @dataclass
 class CardGroup:
-    """Display-ready views for one record, ordered Chart -> Data -> Query."""
+    """Display-ready views for one artifact, ordered Chart -> Data -> Query."""
 
     label: str
     artifact_id: str
+    # The query record backing the Data/Chart views (the artifact itself for a
+    # record, the chart's source for a chart); ``None`` for maps and graphs.
+    source_record_id: str | None = None
     views: list[ViewItem] = field(default_factory=list)
 
 
 def build_card_views(result: object, width: int = 80) -> list[CardGroup]:
     """Build per-artifact view groups from a ChatResult, in citation order.
 
-    Query-result artifacts yield Chart -> Data -> Query views (absent kinds
-    omitted); map artifacts yield a single Map view — a browser-pane placeholder,
-    since maps don't render in the terminal. Query artifacts with no views are
-    dropped.
+    Record artifacts yield Data -> Query views and chart artifacts Chart ->
+    Data -> Query views (absent kinds omitted); map and graph artifacts yield a
+    single browser-pane placeholder view, since they don't render in the
+    terminal. Artifacts with no views are dropped.
     """
-    from tabulaflow.chat import ChatResult, ChatResultGraph, ChatResultMap
+    from tabulaflow.chat import ChatResult, ChatResultChart, ChatResultGraph, ChatResultMap
 
     assert isinstance(result, ChatResult)
 
@@ -380,13 +383,15 @@ def build_card_views(result: object, width: int = 80) -> list[CardGroup]:
             continue
 
         record = artifact
+        chart_spec = record.chart_spec if isinstance(record, ChatResultChart) else None
+        artifact_id = record.chart_id if isinstance(record, ChatResultChart) else record.record_id
         views: list[ViewItem] = []
-        if record.chart_spec is not None and record.df is not None:
+        if chart_spec is not None and record.df is not None:
             views.append(
                 ViewItem(
                     kind=VIEW_KIND_CHART,
-                    renderable=build_chart(record.df, record.chart_spec, width),
-                    chart_spec=record.chart_spec,
+                    renderable=build_chart(record.df, chart_spec, width),
+                    chart_spec=chart_spec,
                 )
             )
         if record.df is not None and not record.df.empty:
@@ -409,7 +414,9 @@ def build_card_views(result: object, width: int = 80) -> list[CardGroup]:
             )
 
         if views:
-            groups.append(CardGroup(label=label, artifact_id=record.record_id, views=views))
+            groups.append(
+                CardGroup(label=label, artifact_id=artifact_id, source_record_id=record.record_id, views=views)
+            )
 
     # Release DataFrame references — previews have been rendered to Rich renderables.
     for artifact in result.artifacts:

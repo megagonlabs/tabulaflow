@@ -13,7 +13,7 @@ from tabulaflow.app.display import (
     VIEW_KIND_QUERY,
     build_card_views,
 )
-from tabulaflow.chat.result import ChatResult, ChatResultGraph, ChatResultMap, ChatResultRecord
+from tabulaflow.chat.result import ChatResult, ChatResultChart, ChatResultGraph, ChatResultMap, ChatResultRecord
 
 
 def _record(record_id: str, label: str) -> ChatResultRecord:
@@ -22,17 +22,15 @@ def _record(record_id: str, label: str) -> ChatResultRecord:
         label=label,
         query="SELECT 1",
         df=pd.DataFrame({"a": [1, 2]}),
-        chart_spec=None,
         query_lexer="sql",
     )
 
 
-def _browser_only_chart_record(record_id: str, label: str) -> ChatResultRecord:
-    return ChatResultRecord(
-        record_id=record_id,
+def _browser_only_chart(chart_id: str, label: str) -> ChatResultChart:
+    return ChatResultChart(
+        chart_id=chart_id,
+        record_id="Q1",
         label=label,
-        query=None,
-        df=pd.DataFrame({"region": ["north", "south"], "revenue": [10, 20]}),
         chart_spec={
             "mark": "bar",
             "encoding": {
@@ -41,6 +39,8 @@ def _browser_only_chart_record(record_id: str, label: str) -> ChatResultRecord:
                 "color": {"field": "region"},
             },
         },
+        query=None,
+        df=pd.DataFrame({"region": ["north", "south"], "revenue": [10, 20]}),
         query_lexer="sql",
     )
 
@@ -89,8 +89,23 @@ def test_artifacts_render_in_citation_order() -> None:
     assert VIEW_KIND_QUERY in [v.kind for v in groups[0].views]
 
 
+def test_chart_artifact_yields_chart_data_views_with_source_record() -> None:
+    result = ChatResult(text="x", artifacts=[_browser_only_chart("CHART1", "chart")])
+    groups = build_card_views(result)
+    assert groups[0].artifact_id == "CHART1"
+    assert groups[0].source_record_id == "Q1"
+    assert [v.kind for v in groups[0].views] == [VIEW_KIND_CHART, VIEW_KIND_DATA]
+
+
+def test_record_artifact_has_no_chart_view() -> None:
+    result = ChatResult(text="x", artifacts=[_record("Q1", "table1")])
+    groups = build_card_views(result)
+    assert groups[0].source_record_id == "Q1"
+    assert [v.kind for v in groups[0].views] == [VIEW_KIND_DATA, VIEW_KIND_QUERY]
+
+
 def test_browser_only_chart_placeholder_uses_artifact_caption() -> None:
-    result = ChatResult(text="x", artifacts=[_browser_only_chart_record("Q1", "chart")])
+    result = ChatResult(text="x", artifacts=[_browser_only_chart("CHART1", "chart")])
     groups = build_card_views(result)
     chart_view = groups[0].views[0]
     assert chart_view.kind == VIEW_KIND_CHART

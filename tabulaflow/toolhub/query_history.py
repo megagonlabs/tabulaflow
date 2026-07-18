@@ -27,7 +27,19 @@ class QueryRecord:
     connector_type: Literal["sql", "property_graph"]
     db_alias: str
     pred_query: PredQuery
-    vegalite_spec: dict[str, Any] | None = None
+
+
+@dataclass
+class ChartArtifact:
+    """A chart drawn from a single query result.
+
+    A standalone artifact whose Vega-Lite ``chart_spec`` renders the DataFrame
+    of the ``record_id`` it was created from — see ``toolhub.render_chart``.
+    """
+
+    chart_id: str
+    record_id: str
+    chart_spec: dict[str, Any]
 
 
 @dataclass
@@ -72,9 +84,11 @@ class QueryHistory:
         if max_in_memory < 1:
             raise ValueError("max_in_memory must be >= 1")
         self._records: dict[str, QueryRecord] = {}
+        self._charts: dict[str, ChartArtifact] = {}
         self._maps: dict[str, MapArtifact] = {}
         self._graphs: dict[str, GraphArtifact] = {}
         self._next_query_id = 1
+        self._next_chart_id = 1
         self._next_map_id = 1
         self._next_graph_id = 1
         self._max_in_memory = max_in_memory
@@ -116,13 +130,21 @@ class QueryHistory:
             raise ValueError("No query has been executed")
         return await self.get(f"Q{self._next_query_id - 1}")
 
-    def attach_chart(self, record_id: str, vegalite_spec: dict[str, Any]) -> None:
-        """Attach a Vega-Lite spec to an existing query record."""
+    def add_chart(self, record_id: str, chart_spec: dict[str, Any]) -> str:
+        """Store a chart artifact for an existing query record and return its opaque ``CHART*`` id."""
+        if record_id not in self._records:
+            raise KeyError(f"No query with id {record_id}")
+        chart_id = f"CHART{self._next_chart_id}"
+        self._charts[chart_id] = ChartArtifact(chart_id=chart_id, record_id=record_id, chart_spec=chart_spec)
+        self._next_chart_id += 1
+        return chart_id
+
+    def get_chart(self, chart_id: str) -> ChartArtifact:
+        """Return a previously stored chart artifact."""
         try:
-            record = self._records[record_id]
+            return self._charts[chart_id]
         except KeyError:
-            raise KeyError(f"No query with id {record_id}") from None
-        record.vegalite_spec = vegalite_spec
+            raise KeyError(f"No chart with id {chart_id}") from None
 
     def add_map(self, map_spec: dict[str, Any]) -> str:
         """Store a standalone map artifact and return its opaque ``MAP*`` id."""

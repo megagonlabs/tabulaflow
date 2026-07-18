@@ -31,7 +31,7 @@ from tabulaflow.toolhub.web_browser import (
 )
 from tabulaflow.core.db_connector import connector_info
 from tabulaflow.core.llm import make_agent, make_model_settings
-from tabulaflow.chat.result import ChatResult, ChatResultGraph, ChatResultMap, ChatResultRecord
+from tabulaflow.chat.result import ChatResult, ChatResultChart, ChatResultGraph, ChatResultMap, ChatResultRecord
 from tabulaflow.chat.events import (
     ChatEvent,
     ColumnsReturned,
@@ -59,6 +59,7 @@ if TYPE_CHECKING:
     from tabulaflow.core.types import Usage
     from tabulaflow.toolhub import (
         AddCanonicalNameTool,
+        ChartArtifact,
         ConnectDataSourceTool,
         ExecuteBashTool,
         ExtractRowsFromDocumentsTool,
@@ -82,7 +83,7 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-_ARTIFACT_REF_RE = re.compile(r"\[\[artifact:((?:Q|MAP|GRAPH)\d+)(?::([^\]]+))?\]\]")
+_ARTIFACT_REF_RE = re.compile(r"\[\[artifact:((?:Q|CHART|MAP|GRAPH)\d+)(?::([^\]]+))?\]\]")
 
 
 SYSTEM_PROMPT = files("tabulaflow.chat").joinpath("system_prompt.md").read_text(encoding="utf-8").strip()
@@ -860,11 +861,17 @@ class _TextStreamRouter:
 async def _artifacts_from_refs(
     refs: Iterable[tuple[str, str | None]],
     query_history: QueryHistory,
-) -> list[ChatResultRecord | ChatResultMap | ChatResultGraph]:
+) -> list[ChatResultRecord | ChatResultChart | ChatResultMap | ChatResultGraph]:
     """Resolve citation refs into display artifacts, preserving citation order."""
-    artifacts: list[ChatResultRecord | ChatResultMap | ChatResultGraph] = []
+    artifacts: list[ChatResultRecord | ChatResultChart | ChatResultMap | ChatResultGraph] = []
     for ref_id, label in refs:
-        if ref_id.startswith("MAP"):
+        if ref_id.startswith("CHART"):
+            try:
+                chart_artifact = query_history.get_chart(ref_id)
+            except (KeyError, ValueError):
+                continue
+            artifacts.append(await _chat_result_chart_from_artifact(chart_artifact, label, query_history))
+        elif ref_id.startswith("MAP"):
             try:
                 map_artifact = query_history.get_map(ref_id)
             except (KeyError, ValueError):
@@ -883,6 +890,35 @@ async def _artifacts_from_refs(
                 continue
             artifacts.append(_chat_result_record_from_query_record(query_record, label))
     return artifacts
+
+
+async def _chat_result_chart_from_artifact(
+    chart_artifact: ChartArtifact,
+    label: str | None,
+    query_history: QueryHistory,
+) -> ChatResultChart:
+    """Resolve a stored chart artifact's source record into a display record."""
+    query: str | None = None
+    df: pd.DataFrame | None = None
+    query_lexer = "sql"
+    try:
+        record = await query_history.get(chart_artifact.record_id)
+    except (KeyError, ValueError):
+        record = None
+    if record is not None:
+        query = record.pred_query.query
+        if record.pred_query.exec_result is not None:
+            df = record.pred_query.exec_result.df
+        query_lexer = "cypher" if record.connector_type == "property_graph" else "sql"
+    return ChatResultChart(
+        chart_id=chart_artifact.chart_id,
+        label=label,
+        chart_spec=chart_artifact.chart_spec,
+        record_id=chart_artifact.record_id,
+        query=query,
+        df=df,
+        query_lexer=query_lexer,
+    )
 
 
 async def _chat_result_map_from_artifact(
@@ -946,7 +982,6 @@ def _chat_result_record_from_query_record(
         label=label,
         query=pred.query,
         df=pred.exec_result.df if pred.exec_result else None,
-        chart_spec=query_record.vegalite_spec,
         query_lexer="cypher" if query_record.connector_type == "property_graph" else "sql",
     )
 

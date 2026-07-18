@@ -26,7 +26,35 @@ class ChatResultRecord(BaseModel):
     label: str | None
     query: str | None
     df: pd.DataFrame | None
-    chart_spec: dict[str, Any] | None
+    query_lexer: str = "sql"
+
+    @field_serializer("df", when_used="always")
+    def _serialize_df(self, df: pd.DataFrame | None) -> dict[str, Any] | None:
+        return _serialize_dataframe(df)
+
+    @field_validator("df", mode="before")
+    @classmethod
+    def _deserialize_df(cls, v: dict[str, Any] | pd.DataFrame | None) -> pd.DataFrame | None:
+        return _deserialize_dataframe(v)
+
+
+class ChatResultChart(BaseModel):
+    """Display-ready data for one cited chart artifact.
+
+    A standalone chart drawn from a single query result. Carries the source
+    record's rows and query alongside the ``chart_spec`` so the card offers
+    chart, data, and query views.
+    """
+
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
+    kind: Literal["chart"] = "chart"
+    chart_id: str
+    label: str | None
+    chart_spec: dict[str, Any]
+    record_id: str
+    query: str | None
+    df: pd.DataFrame | None
     query_lexer: str = "sql"
 
     @field_serializer("df", when_used="always")
@@ -96,9 +124,12 @@ class ChatResultGraph(BaseModel):
         return out
 
 
-# A cited artifact is either a query result (record) or a standalone map,
-# discriminated by ``kind``; ``ChatResult.artifacts`` holds them in citation order.
-ChatResultArtifact = Annotated[ChatResultRecord | ChatResultMap | ChatResultGraph, Field(discriminator="kind")]
+# A cited artifact is either a query result (record) or a standalone chart, map,
+# or graph, discriminated by ``kind``; ``ChatResult.artifacts`` holds them in
+# citation order.
+ChatResultArtifact = Annotated[
+    ChatResultRecord | ChatResultChart | ChatResultMap | ChatResultGraph, Field(discriminator="kind")
+]
 
 
 class ChatResult(BaseModel):

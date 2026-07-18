@@ -180,25 +180,10 @@ class SessionState:
         """Remove every source entry pointing at ``alias``."""
         self._sources = {k: v for k, v in self._sources.items() if v != alias}
 
-    async def register_db(self, alias: str, connector: NL2QDBConnector, source_key: object) -> None:
-        """Register a user-connected database, then drop the auto-loaded sample placeholder.
-
-        The bundled ``sample_data`` DB auto-connects for first-run convenience; once the
-        user connects real data it's removed so it can't be confused with (or queried in
-        place of) the user's own data.
-        """
-        from tabulaflow.app.sample_data import SAMPLE_ALIAS
-
+    def register_db(self, alias: str, connector: NL2QDBConnector, source_key: object) -> None:
+        """Register a user-connected database."""
         self.registry.register(alias, connector)
         self.register_source(source_key, alias)
-
-        if alias != SAMPLE_ALIAS and self.registry.has(SAMPLE_ALIAS):
-            await self.registry.unregister_async(SAMPLE_ALIAS)
-            self.unregister_alias_sources(SAMPLE_ALIAS)
-            self.note_event(
-                f"the bundled sample data `{SAMPLE_ALIAS}` has been removed now that the user "
-                "connected their own data; disregard it from here on."
-            )
 
     async def close(self) -> None:
         """Release session-owned runtime resources."""

@@ -809,12 +809,14 @@ class TabulaflowApp(App[None]):
                     )
                 )
             else:
+                # Records and charts share the tabbed-card render path; a chart
+                # artifact adds the chart view on top of its source's data/query.
                 artifact_snapshots.append(
                     (
                         "record",
                         SimpleNamespace(
                             df=artifact.df,
-                            chart_spec=artifact.chart_spec,
+                            chart_spec=artifact.chart_spec if artifact.kind == "chart" else None,
                             query=artifact.query,
                             label=artifact.label,
                             query_lexer=artifact.query_lexer,

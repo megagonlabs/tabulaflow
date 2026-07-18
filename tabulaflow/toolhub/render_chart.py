@@ -388,11 +388,11 @@ def render_plotext(
 
 
 class RenderChartTool:
-    """Attach a Vega-Lite chart spec to a stored query result.
+    """Create a standalone chart artifact from a stored query result.
 
-    Validates the spec against the result DataFrame and stores it on the
-    record. Simple x/y specs also get a terminal (plotext) preview; richer
-    specs render in the browser via the full Vega runtime.
+    Validates the spec against the result DataFrame and stores it as a citable
+    ``ChartArtifact``. Simple x/y specs also get a terminal (plotext) preview;
+    richer specs render in the browser via the full Vega runtime.
     """
 
     name: ClassVar = "render_chart"
@@ -401,7 +401,7 @@ class RenderChartTool:
         self._history = history or QueryHistory()
 
     async def __call__(self, record_id: str, *, vegalite_spec: str) -> str:
-        """Attach a Vega-Lite chart specification to a query result.
+        """Create a Vega-Lite chart from a query result.
 
         Accepts any Vega-Lite spec — single or multi-view: bar, line, point,
         area, arc/pie, heatmap, stacked/grouped bars via a color encoding,
@@ -416,6 +416,8 @@ class RenderChartTool:
 
         Example spec:
             {"mark": "bar", "encoding": {"x": {"field": "status", "type": "nominal"}, "y": {"field": "count", "type": "quantitative"}}, "title": "Schools by Status"}
+
+        Returns the new chart id (``CHART1``, ``CHART2``, …) to cite in the answer.
 
         Args:
             record_id: Query-history record ID (e.g. ``"Q3"``).
@@ -465,8 +467,8 @@ class RenderChartTool:
                 return f"(error: field(s) not found: {missing}. Available columns: {list(df.columns)})"
 
         label = chart_type_label(spec)
-        self._history.attach_chart(record.record_id, spec)
-        return f"{label} attached to {record.record_id} — {len(df):,} rows"
+        chart_id = self._history.add_chart(record.record_id, spec)
+        return f"{label} {chart_id} created from {record.record_id} — {len(df):,} rows"
 
     def as_pydantic_ai_tool(self) -> Tool:
         return Tool(self.__call__, name=self.name)

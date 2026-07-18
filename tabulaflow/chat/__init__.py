@@ -23,7 +23,14 @@ from tabulaflow.chat.events import (
     ToolStarted,
     UsageUpdated,
 )
-from tabulaflow.chat.result import ChatResult, ChatResultGraph, ChatResultMap, ChatResultRecord
+from tabulaflow.chat.result import (
+    ChatResult,
+    ChatResultArtifact,
+    ChatResultChart,
+    ChatResultGraph,
+    ChatResultMap,
+    ChatResultRecord,
+)
 
 if TYPE_CHECKING:
     from tabulaflow.chat.agent import SYSTEM_PROMPT, ChatAgent
@@ -47,6 +54,8 @@ __all__ = [
     "ChatAgent",
     "SYSTEM_PROMPT",
     "ChatResult",
+    "ChatResultArtifact",
+    "ChatResultChart",
     "ChatResultGraph",
     "ChatResultRecord",
     "ChatResultMap",

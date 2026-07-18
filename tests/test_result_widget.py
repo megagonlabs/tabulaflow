@@ -15,7 +15,6 @@ def _record(record_id: str, label: str) -> ChatResultRecord:
         label=label,
         query=f"SELECT '{label}' AS label",
         df=pd.DataFrame({"label": [label], "value": [1]}),
-        chart_spec=None,
         query_lexer="sql",
     )
 
