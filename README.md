@@ -449,7 +449,7 @@ July 15
 - [x] Rewrite prompt
 
 July 16
-- [ ] Tune prompt
+- [x] Tune prompt
   - [x] Proactiveness
   - [x] Reorder sections
   - [x] Bash safeguard
@@ -460,6 +460,9 @@ July 16
 - [x] Per-card view stepper
 - [x] Smoke test for first-time user
 
+July 17
+- [ ] Bug: shell messed up after exiting
+- [ ] Remove file editor sandbox
 - [ ] Make chart "view chart in browser" caption consistent
 - [ ] Update render_graph spec to better support multi entity types
 - [ ] Decouple chart and data record
@@ -468,8 +471,8 @@ July 16
 - [ ] Subagent reuse
 - [ ] code diff rendering
 
-- [ ] Remove file editor sandbox
-- [ ] Bug: shell messed up after exiting
+- [ ] Debug /Users/yanlinf/.tabulaflow/sessions/20260716T222109Z-be2c/trajectories/trajectory.md
+
 - [ ] Claude subagent finish slow stuck at 28/30
 
 - [ ] Session ID - remove date?
