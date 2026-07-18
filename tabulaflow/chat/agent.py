@@ -91,6 +91,11 @@ SYSTEM_PROMPT = files("tabulaflow.chat").joinpath("system_prompt.md").read_text(
 
 DEFAULT_SUBAGENT_MODEL: Final = "openai-responses:gpt-5.4-mini"
 DEFAULT_SUBAGENT_REASONING_EFFORT: Final = "medium"
+# Non-streaming subagent requests occasionally stall server-side for many
+# minutes (a fan-out visibly stuck at "28/30" rows), while a re-sent identical
+# request completes in seconds. The provider SDK retries timed-out requests
+# automatically, so this cap turns a stalled row into a quick re-roll.
+SUBAGENT_REQUEST_TIMEOUT: Final = 120.0
 
 
 # ---------------------------------------------------------------------------
@@ -388,6 +393,7 @@ class ChatAgent:
             model=model or self.subagent_model,
             reasoning_effort=reasoning_effort or self.subagent_reasoning_effort,
             service_tier=self.service_tier,
+            timeout=SUBAGENT_REQUEST_TIMEOUT,
         )
 
     def _subagent_profile_tools(self) -> tuple[LLMProfileTool, ...]:

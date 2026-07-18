@@ -45,14 +45,25 @@ def make_model_settings(
     model: str,
     reasoning_effort: str | bool | None = None,
     service_tier: str | None = None,
+    timeout: float | None = None,
 ) -> ModelSettings:
-    """Build pydantic-ai model settings from provider-neutral LLM config."""
+    """Build pydantic-ai model settings from provider-neutral LLM config.
+
+    Args:
+        model: Provider-qualified model identifier (e.g. ``anthropic:claude-...``).
+        reasoning_effort: Unified thinking level, translated per provider.
+        service_tier: Provider service tier, for providers that expose one.
+        timeout: Per-request timeout in seconds. On timeout the provider SDK
+            retries the request automatically, so this doubles as a hang
+            watchdog for non-streaming calls.
+    """
     return cast(
         ModelSettings,
         {
             **_reasoning_model_settings(reasoning_effort, model=model),
             **_anthropic_token_settings(reasoning_effort, model=model),
             **_service_tier_model_settings(service_tier, model=model),
+            **({} if timeout is None else {"timeout": timeout}),
         },
     )
 

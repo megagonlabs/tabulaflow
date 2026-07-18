@@ -7,6 +7,7 @@ import pytest
 
 from tabulaflow.app.session import create_workspace_connector
 from tabulaflow.chat import ChatAgent
+from tabulaflow.chat.agent import SUBAGENT_REQUEST_TIMEOUT
 from tabulaflow.core.db_connector.db_registry import DBRegistry
 
 
@@ -102,9 +103,7 @@ def test_api_key_none_for_keyless_model() -> None:
     assert agent.resolve_api_keys() == (None, None)
 
 
-async def test_chat_agent_file_editor_is_unrestricted(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+async def test_chat_agent_file_editor_is_unrestricted(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     project = tmp_path / "project"
     outside = tmp_path / "outside"
     project.mkdir()
@@ -186,7 +185,11 @@ def test_subagent_settings_budget_era_claude_raise_max_tokens() -> None:
         subagent_model="anthropic:claude-sonnet-4-5-20250929",
         subagent_reasoning_effort="high",
     )
-    assert agent._subagent_model_settings() == {"thinking": "high", "max_tokens": 24576}
+    assert agent._subagent_model_settings() == {
+        "thinking": "high",
+        "max_tokens": 24576,
+        "timeout": SUBAGENT_REQUEST_TIMEOUT,
+    }
 
 
 async def test_subagent_profile_wires_tools(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -207,8 +210,9 @@ async def test_subagent_profile_wires_tools(tmp_path: Path, monkeypatch: pytest.
         assert agent._tools.extract_rows_from_documents.subagent_llm == "anthropic:claude-opus-4-8"
         assert agent._tools.add_canonical_name.subagent_llm == "anthropic:claude-opus-4-8"
         assert agent._tools.get_db_document.db_summarizer_llm == "anthropic:claude-opus-4-8"
-        assert agent._tools.run_subagent_for_each_row.model_settings == {"thinking": "low"}
-        assert agent._tools.get_db_document.model_settings == {"thinking": "low"}
+        subagent_settings = {"thinking": "low", "timeout": SUBAGENT_REQUEST_TIMEOUT}
+        assert agent._tools.run_subagent_for_each_row.model_settings == subagent_settings
+        assert agent._tools.get_db_document.model_settings == subagent_settings
 
         agent._tools.get_db_document._document_cache["cached"] = cast(Any, (workspace, "old summary"))
         agent.activate_llm_profile(
