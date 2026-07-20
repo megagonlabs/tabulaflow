@@ -473,6 +473,7 @@ July 17
 - [ ] Show session ID in TUI and output pan
 
 - [ ] Inline artifact citation
+- [ ] Inline code block colors to blue in output pane
 - [ ] IMPORTANT: decouple data and rendered format (show unit "cm" while still enabling sorting by value)
 - [ ] Subagent reuse
 - [ ] code diff rendering
@@ -573,6 +574,7 @@ July 17
   - [ ] Claude code - tool description in system prompt or tool schema?
   - [ ] OpenClaw
 
+- [ ] v2: streaming data support (e.g. auto-updating artifacts like chart for stock price data)
 
 ---
 
