@@ -102,6 +102,10 @@ body { margin: 0; background: var(--bg); color: var(--text); display: flex; flex
             overflow: hidden; text-overflow: ellipsis; }
 .turnmeta-icons { display: flex; align-items: center; gap: 8px; overflow: hidden; }
 .turnmeta-item { display: inline-flex; align-items: center; gap: 3px; min-width: 0; color: var(--text-dim); }
+.turnmeta-item + .turnmeta-item::before {
+    content: ""; width: 2px; height: 2px; margin: 0 3px 0 1px; border-radius: 999px;
+    background: currentColor; opacity: 0.55;
+}
 .turnmeta-item svg {
     width: 13px; height: 13px; flex: 0 0 auto; fill: none; stroke: currentColor; stroke-width: 1.8;
     stroke-linecap: round; stroke-linejoin: round;

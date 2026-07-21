@@ -942,6 +942,7 @@ def test_pane_sidebar_meta_uses_artifact_icons() -> None:
     assert "meta.classList.add('turnmeta-icons');" in pane_js
     assert "badge.appendChild(buildMetaIcon(item.kind));" in pane_js
     assert "if (item.count > 1) {" in pane_js
+    assert ".turnmeta-item + .turnmeta-item::before" in _PANE_HTML
 
 
 def test_pane_map_view_is_maplibre_based() -> None:
