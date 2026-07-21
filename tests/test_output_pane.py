@@ -875,25 +875,22 @@ def test_live_view_survives_rapid_browser_replay_and_switches_atomically(tmp_pat
                       };
                     }""",
                 )
-                assert delayed_loading == {"height": 520, "text": "Loading data…"}
+                assert delayed_loading == {"height": 220, "text": "Loading data…"}
                 page.wait_for_selector(".view-shell .view-active.tf-table-view")
                 assert page.locator(".view-shell").get_attribute("aria-busy") is None
-                height_animation = page.eval_on_selector(
+                committed = page.eval_on_selector(
                     ".view-shell",
                     """shell => {
-                      const animation = shell.getAnimations()[0];
                       return {
-                        duration: animation.effect.getTiming().duration,
-                        heights: animation.effect.getKeyframes().map(frame => frame.height)
+                        height: Math.round(shell.getBoundingClientRect().height),
+                        animations: shell.getAnimations().length
                       };
                     }""",
                 )
-                assert height_animation == {"duration": 160, "heights": ["520px", "113px"]}
-                page.wait_for_function("document.querySelector('.view-shell').getAnimations().length === 0")
+                assert committed == {"height": 113, "animations": 0}
                 cold_heights = page.evaluate(
                     """() => {
                       const shell = document.querySelector('.view-shell');
-                      shell.style.height = '';
                       return Object.fromEntries(['data', 'chart', 'map', 'graph'].map(kind => {
                         shell.className = `view-shell view-${kind} view-loading`;
                         return [kind, shell.getBoundingClientRect().height];
