@@ -942,7 +942,13 @@ def test_pane_sidebar_meta_uses_artifact_icons() -> None:
     assert "meta.classList.add('turnmeta-icons');" in pane_js
     assert "badge.appendChild(buildMetaIcon(item.kind));" in pane_js
     assert "if (item.count > 1) {" in pane_js
+    assert "items: [{ kind: 'table', count: 1, label: 'table preview' }]" in pane_js
+    assert "var MANUAL_TURN_ICON = [" in pane_js
+    assert "var agentTurnCount = 0;" in pane_js
+    assert "idx.classList.add('manual-turnindex');" in pane_js
+    assert "var displayIndex = isManualPreview(turn) ? null : ++agentTurnCount;" in pane_js
     assert ".turnmeta-item + .turnmeta-item::before" in _PANE_HTML
+    assert ".manual-turnindex svg" in _PANE_HTML
 
 
 def test_pane_map_view_is_maplibre_based() -> None:

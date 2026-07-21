@@ -95,6 +95,11 @@ body { margin: 0; background: var(--bg); color: var(--text); display: flex; flex
 .turnitem:hover { background: rgba(255, 255, 255, 0.025); }
 .turnitem.active { border-left-color: var(--accent); background: #1a1f2a; }
 .turnindex { color: var(--text-dim); font: 600 12px/1.2 ui-monospace, monospace; text-align: right; }
+.manual-turnindex { display: flex; justify-content: flex-end; }
+.manual-turnindex svg {
+    width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.8;
+    stroke-linecap: round; stroke-linejoin: round;
+}
 .turntext { min-width: 0; display: grid; gap: 5px; }
 .turntitle { color: var(--text-muted); font: 500 13px/1.25 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; white-space: nowrap;
              overflow: hidden; text-overflow: ellipsis; }

@@ -107,6 +107,11 @@ var META_ICONS = {
   ]
 };
 
+var MANUAL_TURN_ICON = [
+  ['circle', { cx: '12', cy: '8', r: '3' }],
+  ['path', { d: 'M6 19c.7-3.2 2.8-5 6-5s5.3 1.8 6 5' }]
+];
+
 function artifactCounts(turn) {
   var counts = { map: 0, graph: 0, chart: 0, table: 0 };
   (turn.cards || []).forEach(function (card) {
@@ -126,7 +131,7 @@ function artifactLabel(kind, count) {
 function turnMeta(turn) {
   var counts = artifactCounts(turn);
   if (turn.source === 'manual' && counts.table === 1 && counts.chart === 0 && counts.map === 0 && counts.graph === 0) {
-    return { text: 'table preview', items: [], label: 'table preview' };
+    return { text: '', items: [{ kind: 'table', count: 1, label: 'table preview' }], label: 'table preview' };
   }
   var items = [];
   ['map', 'graph', 'chart', 'table'].forEach(function (kind) {
@@ -140,6 +145,18 @@ function buildMetaIcon(kind) {
   svg.setAttribute('viewBox', '0 0 24 24');
   svg.setAttribute('aria-hidden', 'true');
   (META_ICONS[kind] || []).forEach(function (spec) {
+    var node = document.createElementNS('http://www.w3.org/2000/svg', spec[0]);
+    Object.keys(spec[1]).forEach(function (key) { node.setAttribute(key, spec[1][key]); });
+    svg.appendChild(node);
+  });
+  return svg;
+}
+
+function buildManualTurnIcon() {
+  var svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.setAttribute('viewBox', '0 0 24 24');
+  svg.setAttribute('aria-hidden', 'true');
+  MANUAL_TURN_ICON.forEach(function (spec) {
     var node = document.createElementNS('http://www.w3.org/2000/svg', spec[0]);
     Object.keys(spec[1]).forEach(function (key) { node.setAttribute(key, spec[1][key]); });
     svg.appendChild(node);
@@ -169,13 +186,20 @@ function buildTurnMeta(metaData) {
   return meta;
 }
 
-function buildTurnItem(turn, index) {
+function buildTurnItem(turn, index, displayIndex) {
   var it = el('div', 'turnitem');
   var idx = el('div', 'turnindex');
   var text = el('div', 'turntext');
   var title = el('div', 'turntitle');
   title.textContent = turn.title || ('Turn ' + (index + 1));
-  idx.textContent = String(index + 1).padStart(2, '0');
+  if (isManualPreview(turn)) {
+    idx.classList.add('manual-turnindex');
+    idx.title = 'Manual preview · row ' + String(index + 1).padStart(2, '0');
+    idx.setAttribute('aria-label', idx.title);
+    idx.appendChild(buildManualTurnIcon());
+  } else {
+    idx.textContent = String(displayIndex).padStart(2, '0');
+  }
   var metaData = turnMeta(turn);
   it.title = metaData.label ? title.textContent + ' · ' + metaData.label : title.textContent;
   text.appendChild(title);
@@ -239,6 +263,7 @@ var HEIGHT_ANIMATION_MS = 160;
 var suppressScrollMemory = false;
 var scrollRestoreVersion = 0;
 var activeTurnTransition = null;
+var agentTurnCount = 0;
 
 function turnStateKey(turn, index) {
   return String(turn.id == null ? index : turn.id);
@@ -922,7 +947,8 @@ function appendTurn(turn) {
   var sidebarEmpty = sidebar.querySelector('.turns-empty');
   if (sidebarEmpty) sidebarEmpty.remove();
   var idx = turns.length - 1;
-  var it = buildTurnItem(turn, idx);
+  var displayIndex = isManualPreview(turn) ? null : ++agentTurnCount;
+  var it = buildTurnItem(turn, idx, displayIndex);
   it.onclick = function () { selectTurn(idx, true); };
   sidebar.appendChild(it);
   if (wasOnLatest) selectTurn(idx, false);
