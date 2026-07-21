@@ -469,11 +469,12 @@ July 17
 - [x] Fix multi-layer chart coloring
 - [x] Fix Claude subagent stucked - subagent timeout at 120s
 
-- [ ] Session ID - remove date?
-- [ ] Show session ID in TUI and output pane
+July 20
+- [x] Remove date from session IDs, show session IDs in output pane
+- [x] Improve browser pane - artifact icon and user icon
+- [ ] Inline code block colors to blue in output pane
 
 - [ ] Inline artifact citation
-- [ ] Inline code block colors to blue in output pane
 - [ ] IMPORTANT: decouple data and rendered format (show unit "cm" while still enabling sorting by value)
 - [ ] Subagent reuse
 - [ ] code diff rendering
