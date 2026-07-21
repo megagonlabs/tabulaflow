@@ -13,10 +13,12 @@ from __future__ import annotations
 
 import functools
 import hashlib
+import html
 import http.server
 import json
 import logging
 import posixpath
+import re
 import secrets
 import threading
 from collections.abc import Callable, Sequence
@@ -25,6 +27,7 @@ from typing import cast
 from urllib.parse import unquote, urlsplit, urlunsplit
 
 from tabulaflow.app.pane.types import CARD_ID_PREFIX, PaneTurn
+from tabulaflow.app.runtime_paths import generate_session_id
 from tabulaflow.app.theme import GITHUB_SLUG, GITHUB_URL
 
 logger = logging.getLogger(__name__)
@@ -34,6 +37,8 @@ DEFAULT_OUTPUT_PANE_PORT_END = 61130
 DEFAULT_OUTPUT_PANE_PORTS = tuple(range(DEFAULT_OUTPUT_PANE_PORT_START, DEFAULT_OUTPUT_PANE_PORT_END + 1))
 DEFAULT_OUTPUT_PANE_HOST = "127.0.0.1"
 _OUTPUT_PANE_TOKEN_BYTES = 6
+_SESSION_ID_PLACEHOLDER = "__SESSION_ID__"
+_SESSION_ID_RE = re.compile(r"[0-9a-z]{6}")
 
 _GITHUB_SVG = (
     '<svg viewBox="0 0 16 16" aria-hidden="true">'
@@ -48,7 +53,10 @@ _GITHUB_SVG = (
 
 _BANNER = (
     '<header id="banner"><div id="banner-inner">'
+    '<div id="brand-group">'
     '<span id="logo">tabulaflow</span>'
+    f'<span id="session-id" title="Session id">session <code>{_SESSION_ID_PLACEHOLDER}</code></span>'
+    "</div>"
     f'<a id="repo" href="{GITHUB_URL}" target="_blank" rel="noopener">{_GITHUB_SVG}{GITHUB_SLUG}</a>'
     "</div></header>"
 )
@@ -96,6 +104,13 @@ _INVALID_PANE_URL_HTML = (
 )
 
 
+def _derive_session_id(pane_dir: Path) -> str:
+    """Return the runtime session id represented by a pane artifact directory."""
+    if pane_dir.name == "pane" and _SESSION_ID_RE.fullmatch(pane_dir.parent.name):
+        return pane_dir.parent.name
+    return generate_session_id()
+
+
 class _PaneServer(http.server.ThreadingHTTPServer):
     """``ThreadingHTTPServer`` carrying a back-reference to its ``OutputPane``."""
 
@@ -134,7 +149,8 @@ class _Handler(http.server.SimpleHTTPRequestHandler):
         self.send_error(404)
 
     def _send_pane_html(self) -> None:
-        body = _PANE_HTML.encode("utf-8")
+        assert isinstance(self.server, _PaneServer)
+        body = self.server.pane._pane_html().encode("utf-8")  # noqa: SLF001
         self.send_response(200)
         self.send_header("Content-Type", "text/html; charset=utf-8")
         self.send_header("Content-Length", str(len(body)))
@@ -307,9 +323,11 @@ class OutputPane:
         port_range: Sequence[int] = DEFAULT_OUTPUT_PANE_PORTS,
         public_url: str | None = None,
         token: str | None = None,
+        session_id: str | None = None,
     ) -> None:
         self._pane_dir = pane_dir
         self._manifest_path = pane_dir / "turns.jsonl"
+        self._session_id = (session_id or _derive_session_id(pane_dir)).strip() or "unknown"
         self._host = host.strip()
         if not self._host:
             raise ValueError("Output pane host cannot be empty.")
@@ -387,6 +405,14 @@ class OutputPane:
     @property
     def token(self) -> str:
         return self._token
+
+    @property
+    def session_id(self) -> str:
+        return self._session_id
+
+    def _pane_html(self) -> str:
+        session_id = html.escape(self._session_id, quote=True)
+        return _PANE_HTML.replace(_SESSION_ID_PLACEHOLDER, session_id)
 
     def _tokenized_url(self, base_url: str) -> str:
         """Append the session token as the final path segment of ``base_url``."""

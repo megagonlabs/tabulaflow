@@ -31,6 +31,7 @@ from tabulaflow.app.debug import debug_chart_fixtures
 from tabulaflow.app.pane import PaneCard, PaneSource, card_payload, turn_payload
 from tabulaflow.app.pane.cards import render_graph_data, render_map_data, render_record_data
 from tabulaflow.app.pane import server as pane_server
+from tabulaflow.app.runtime_paths import generate_session_id
 from tabulaflow.toolhub.render_graph import normalize_graph_spec
 from tabulaflow.toolhub.render_map import normalize_map_spec
 
@@ -1326,7 +1327,7 @@ def _media_table_record() -> SimpleNamespace:
 
 
 def _serve_fixed_port(host: str, port: int, pane_dir: Path) -> pane_mod.OutputPane:
-    pane = pane_mod.OutputPane(pane_dir, host=host, port=port)
+    pane = pane_mod.OutputPane(pane_dir, host=host, port=port, session_id=generate_session_id())
     handler = functools.partial(_PreviewHandler, directory=str(pane_dir))
     server = pane_server._PaneServer((host, port), handler, pane)  # noqa: SLF001
     pane._server = server  # noqa: SLF001

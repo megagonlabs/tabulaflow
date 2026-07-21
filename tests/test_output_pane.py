@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import contextlib
 import json
+import re
 import shutil
 import socket
 import subprocess
@@ -130,6 +131,29 @@ def test_output_pane_default_token_is_48_bits(tmp_path: Path) -> None:
     pane = OutputPane(tmp_path)
 
     assert len(pane.token) == 8
+
+
+def test_output_pane_fallback_session_id_uses_cli_format(tmp_path: Path) -> None:
+    pane = OutputPane(tmp_path)
+
+    assert re.fullmatch(r"[0-9a-z]{6}", pane.session_id)
+
+
+def test_output_pane_page_displays_runtime_session_id(tmp_path: Path) -> None:
+    pane = OutputPane(tmp_path / "sessions" / "k3x9qe" / "pane")
+    assert pane.session_id == "k3x9qe"
+
+    pane.start()
+    try:
+        assert pane.url is not None
+        with urllib.request.urlopen(pane.url, timeout=2) as response:
+            body = response.read().decode("utf-8")
+
+        assert '<span id="session-id" title="Session id">session <code>k3x9qe</code></span>' in body
+        assert pane.token not in body
+        assert "__SESSION_ID__" not in body
+    finally:
+        pane.stop()
 
 
 def test_output_pane_explicit_port_is_strict(tmp_path: Path) -> None:
