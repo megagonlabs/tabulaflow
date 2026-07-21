@@ -101,11 +101,9 @@ var META_ICONS = {
     ['path', { d: 'M16 16v-7' }]
   ],
   table: [
-    ['path', { d: 'M4 5h16v14H4z' }],
-    ['path', { d: 'M4 10h16' }],
-    ['path', { d: 'M4 15h16' }],
-    ['path', { d: 'M9 5v14' }],
-    ['path', { d: 'M15 5v14' }]
+    ['path', { d: 'M5 5h14v14H5z' }],
+    ['path', { d: 'M5 10h14' }],
+    ['path', { d: 'M10 5v14' }]
   ]
 };
 
