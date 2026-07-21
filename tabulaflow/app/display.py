@@ -22,6 +22,7 @@ from tabulaflow.app.theme import (
     ACCENT_BOLD,
     ACCENT_DIM,
     ACCENT_RGB,
+    CODE_TEXT,
     ERROR,
     KEY_HINT,
     TABULAFLOW_RICH_SYNTAX_THEME,
@@ -32,8 +33,8 @@ TABULAFLOW_THEME = Theme(
     {
         "markdown.item.bullet": Style(bold=True),
         "markdown.item.number": Style(bold=True),
-        "markdown.code": Style(bold=True, color="white", bgcolor="grey11"),
-        "markdown.code_block": Style(color="white", bgcolor="grey11"),
+        "markdown.code": Style(bold=True, color=CODE_TEXT, bgcolor="grey11"),
+        "markdown.code_block": Style(color=CODE_TEXT, bgcolor="grey11"),
         "markdown.block_quote": Style(color=ACCENT),
         "markdown.list": Style(color=ACCENT),
     }
