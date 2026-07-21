@@ -938,12 +938,14 @@ def test_pane_table_layout_css_is_loaded() -> None:
     assert "20260630-table-sizing" not in _PANE_HTML
 
 
-def test_pane_chart_shell_matches_vega_background() -> None:
-    assert (
-        ".view-shell.view-chart,\n.view-shell.view-map,\n.view-shell.view-graph { background: var(--card); }"
-        in _PANE_HTML
-    )
-    assert ".tf-chart-view,\n.tf-vis-stage { background: var(--card); }" in _PANE_HTML
+def test_pane_view_shell_is_layout_only() -> None:
+    assert ".view-shell { position: relative; width: min(800px, 100%); margin: 0 auto;" in _PANE_HTML
+    assert "background: transparent; border-radius: 0; overflow: visible; box-shadow: none;" in _PANE_HTML
+    assert ".view-shell::after { content: none; }" in _PANE_HTML
+    assert ".tf-table-view,\n.tf-chart-view,\n.tf-map-view,\n.tf-graph-view {" in _PANE_HTML
+    assert "--artifact-outline: inset 0 0 0 1px rgba(255, 255, 255, 0.03);" in _PANE_HTML
+    assert ".tf-chart-view { --artifact-bg: var(--card); }" in _PANE_HTML
+    assert ".tf-vis-stage { background: var(--card); }" in _PANE_HTML
 
 
 def test_pane_chart_theme_is_client_side() -> None:
