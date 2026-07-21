@@ -3,16 +3,17 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import UTC, datetime
 from pathlib import Path
 import secrets
+import string
+
+_SESSION_ID_ALPHABET = string.digits + string.ascii_lowercase
+_SESSION_ID_LENGTH = 6
 
 
 def generate_session_id() -> str:
     """Create a collision-resistant session identifier."""
-    timestamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
-    suffix = secrets.token_hex(2)
-    return f"{timestamp}-{suffix}"
+    return "".join(secrets.choice(_SESSION_ID_ALPHABET) for _ in range(_SESSION_ID_LENGTH))
 
 
 @dataclass(frozen=True)
