@@ -138,8 +138,10 @@ class TabulaflowCodeHighlightTheme(HighlightTheme):
     """Textual MarkdownFence syntax theme."""
 
     STYLES = {
+        Token.Text: CODE_TEXT,
         Token.Comment: CODE_COMMENT,
         Token.Error: CODE_TEXT,
+        Token.Generic: CODE_TEXT,
         Token.Keyword: CODE_KEYWORD,
         Token.Keyword.Constant: CODE_STRING,
         Token.Keyword.Namespace: CODE_KEYWORD,
@@ -160,6 +162,7 @@ class TabulaflowCodeHighlightTheme(HighlightTheme):
         Token.Operator: CODE_TEXT,
         Token.Operator.Word: CODE_KEYWORD,
         Token.Punctuation: CODE_TEXT,
+        Token.Literal.Scalar.Plain: CODE_TEXT,
         Token.Whitespace: "",
     }
 
@@ -169,8 +172,10 @@ class TabulaflowPygmentsStyle(PygmentsStyle):  # type: ignore[misc]
 
     background_color = None
     styles = {
+        Token.Text: CODE_TEXT,
         Token.Comment: CODE_COMMENT,
         Token.Error: CODE_TEXT,
+        Token.Generic: CODE_TEXT,
         Token.Keyword: CODE_KEYWORD,
         Token.Keyword.Constant: CODE_STRING,
         Token.Keyword.Namespace: CODE_KEYWORD,
@@ -191,6 +196,7 @@ class TabulaflowPygmentsStyle(PygmentsStyle):  # type: ignore[misc]
         Token.Operator: CODE_TEXT,
         Token.Operator.Word: CODE_KEYWORD,
         Token.Punctuation: CODE_TEXT,
+        Token.Literal.Scalar.Plain: CODE_TEXT,
         Token.Whitespace: "",
     }
 

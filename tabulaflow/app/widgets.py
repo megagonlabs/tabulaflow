@@ -33,6 +33,7 @@ from tabulaflow.app.theme import (
     ACCENT,
     ACCENT_DIM,
     CODE_FUNCTION,
+    CODE_TEXT,
     DIFF_ADDED,
     DIFF_REMOVED,
     KEY_HINT,
@@ -802,7 +803,11 @@ class AgentMarkdownFence(MarkdownFence):
     def highlight(cls, code: str, language: str, ansi: bool = False, dark: bool = False) -> Content:
         if ansi:
             return super().highlight(code, language, ansi=ansi, dark=dark)
-        return highlight(code, language=language or None, theme=TabulaflowCodeHighlightTheme)
+        content = highlight(code, language=language or None, theme=TabulaflowCodeHighlightTheme)
+        for index, span in enumerate(content.spans):
+            if str(span.style) == "$text":
+                content.spans[index] = span._replace(style=CODE_TEXT)
+        return content
 
 
 class AgentMarkdownTableContent(MarkdownTableContent):
@@ -891,7 +896,7 @@ class AgentTextBlock(Markdown):
 
     AgentTextBlock MarkdownFence {{
         background: transparent;
-        color: $foreground;
+        color: {CODE_TEXT};
         margin: 0 0 1 0;
         overflow: hidden hidden;
         padding: 0;

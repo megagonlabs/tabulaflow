@@ -33,9 +33,12 @@ def test_code_theme_pygments_and_markdown_fence_tokens_share_palette() -> None:
 
     pairs = [
         (Token.Comment, CODE_COMMENT),
+        (Token.Text, CODE_TEXT),
         (Token.Error, CODE_TEXT),
+        (Token.Generic, CODE_TEXT),
         (Token.Keyword, CODE_KEYWORD),
         (Token.Keyword.Constant, CODE_STRING),
+        (Token.Literal.Scalar.Plain, CODE_TEXT),
         (Token.Name.Function, CODE_FUNCTION),
         (Token.Name.Builtin, CODE_TYPE),
         (Token.Literal.Number, CODE_NUMBER),

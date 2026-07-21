@@ -140,6 +140,7 @@ def test_agent_markdown_non_code_chrome_uses_text_color() -> None:
 
 def test_agent_markdown_fenced_code_is_flat() -> None:
     assert "AgentTextBlock MarkdownFence {\n        background: transparent;" in AgentTextBlock.DEFAULT_CSS
+    assert f"color: {CODE_TEXT};" in AgentTextBlock.DEFAULT_CSS
     assert "margin: 0 0 1 0;" in AgentTextBlock.DEFAULT_CSS
     assert "AgentTextBlock MarkdownFence > Label {\n        padding: 0;" in AgentTextBlock.DEFAULT_CSS
     assert "overflow: hidden hidden;" in AgentTextBlock.DEFAULT_CSS
@@ -205,6 +206,24 @@ def test_agent_markdown_fenced_code_error_tokens_use_foreground() -> None:
     ]
     assert error_styles
     assert all(style == CODE_TEXT for style in error_styles)
+
+
+def test_agent_markdown_fenced_code_unclassified_tokens_use_code_text() -> None:
+    samples = [
+        ("text", "plain prose in a code fence"),
+        ("markdown", "# Heading\n\n**bold** [link](https://example.com)"),
+        ("yaml", "name: Alice\nactive: true\ncount: 3"),
+    ]
+    for language, code in samples:
+        content = AgentMarkdownFence.highlight(code, language)
+        visible_styles = [
+            str(span.style)
+            for span in content._spans
+            if content.plain[span.start : span.end].strip()
+        ]
+        assert visible_styles
+        assert "$text" not in visible_styles
+        assert CODE_TEXT in visible_styles
 
 
 def test_agent_markdown_fenced_code_strings_use_double_string_green() -> None:
