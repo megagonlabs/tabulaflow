@@ -1486,6 +1486,23 @@ def _populate_pane(
         _push_turn(
             pane,
             pane_dir,
+            title="Mixed artifact counts",
+            user="Show a turn containing every artifact type with mixed single and repeated counts.",
+            assistant=(
+                "This preview turn combines two map cards, one graph card, two chart cards, and one table card "
+                "so the sidebar can show both icon-only single artifacts and icon-plus-count repeated artifacts."
+            ),
+            cards=[
+                _map_showcase_card(pane_dir),
+                _map_overlay_card(pane_dir),
+                _graph_network_card(pane_dir),
+                *chart_cards[:2],
+            ],
+            records=[_large_agent_table_record()],
+        )
+        _push_turn(
+            pane,
+            pane_dir,
             title="Graph live physics stress test",
             user="Show custom live physics on varied graph shapes.",
             assistant=(

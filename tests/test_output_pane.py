@@ -933,6 +933,17 @@ def test_pane_chart_theme_is_client_side() -> None:
     assert "vegaEmbed(target, spec" in chart_js
 
 
+def test_pane_sidebar_meta_uses_artifact_icons() -> None:
+    pane_js = _pane_asset_text("pane.js")
+
+    assert "var META_ICONS = {" in pane_js
+    assert "function artifactCounts(turn)" in pane_js
+    assert "function buildTurnMeta(metaData)" in pane_js
+    assert "meta.classList.add('turnmeta-icons');" in pane_js
+    assert "badge.appendChild(buildMetaIcon(item.kind));" in pane_js
+    assert "if (item.count > 1) {" in pane_js
+
+
 def test_pane_map_view_is_maplibre_based() -> None:
     maplibre_assets = files("tabulaflow.app.pane.assets").joinpath("vendor").joinpath("maplibre")
     style = json.loads(maplibre_assets.joinpath("shortbread-light.json").read_text(encoding="utf-8"))

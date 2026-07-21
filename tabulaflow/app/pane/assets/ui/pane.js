@@ -79,7 +79,37 @@ function buildManualArtifactTitle(turn) {
   return title;
 }
 
-function turnMeta(turn) {
+var META_ICONS = {
+  map: [
+    ['path', { d: 'M9 18l-6 3V6l6-3 6 3 6-3v15l-6 3-6-3z' }],
+    ['path', { d: 'M9 3v15' }],
+    ['path', { d: 'M15 6v15' }]
+  ],
+  graph: [
+    ['circle', { cx: '6', cy: '7', r: '2' }],
+    ['circle', { cx: '18', cy: '7', r: '2' }],
+    ['circle', { cx: '12', cy: '18', r: '2' }],
+    ['path', { d: 'M8 8l3 7' }],
+    ['path', { d: 'M16 8l-3 7' }],
+    ['path', { d: 'M8 7h8' }]
+  ],
+  chart: [
+    ['path', { d: 'M4 19V5' }],
+    ['path', { d: 'M4 19h16' }],
+    ['path', { d: 'M8 16v-4' }],
+    ['path', { d: 'M12 16V8' }],
+    ['path', { d: 'M16 16v-7' }]
+  ],
+  table: [
+    ['path', { d: 'M4 5h16v14H4z' }],
+    ['path', { d: 'M4 10h16' }],
+    ['path', { d: 'M4 15h16' }],
+    ['path', { d: 'M9 5v14' }],
+    ['path', { d: 'M15 5v14' }]
+  ]
+};
+
+function artifactCounts(turn) {
   var counts = { map: 0, graph: 0, chart: 0, table: 0 };
   (turn.cards || []).forEach(function (card) {
     var kinds = card.views || [];
@@ -88,13 +118,57 @@ function turnMeta(turn) {
     else if (kinds.indexOf('chart') !== -1) counts.chart += 1;
     else if (kinds.indexOf('data') !== -1) counts.table += 1;
   });
-  if (turn.source === 'manual' && counts.table === 1 && counts.chart === 0 && counts.map === 0 && counts.graph === 0) return 'table preview';
-  var parts = [];
-  if (counts.map) parts.push(counts.map + (counts.map === 1 ? ' map' : ' maps'));
-  if (counts.graph) parts.push(counts.graph + (counts.graph === 1 ? ' graph' : ' graphs'));
-  if (counts.chart) parts.push(counts.chart + (counts.chart === 1 ? ' chart' : ' charts'));
-  if (counts.table) parts.push(counts.table + (counts.table === 1 ? ' table' : ' tables'));
-  return parts.join(' · ');
+  return counts;
+}
+
+function artifactLabel(kind, count) {
+  return count + ' ' + (count === 1 ? kind : kind + 's');
+}
+
+function turnMeta(turn) {
+  var counts = artifactCounts(turn);
+  if (turn.source === 'manual' && counts.table === 1 && counts.chart === 0 && counts.map === 0 && counts.graph === 0) {
+    return { text: 'table preview', items: [], label: 'table preview' };
+  }
+  var items = [];
+  ['map', 'graph', 'chart', 'table'].forEach(function (kind) {
+    if (counts[kind]) items.push({ kind: kind, count: counts[kind], label: artifactLabel(kind, counts[kind]) });
+  });
+  return { text: '', items: items, label: items.map(function (item) { return item.label; }).join(' · ') };
+}
+
+function buildMetaIcon(kind) {
+  var svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.setAttribute('viewBox', '0 0 24 24');
+  svg.setAttribute('aria-hidden', 'true');
+  (META_ICONS[kind] || []).forEach(function (spec) {
+    var node = document.createElementNS('http://www.w3.org/2000/svg', spec[0]);
+    Object.keys(spec[1]).forEach(function (key) { node.setAttribute(key, spec[1][key]); });
+    svg.appendChild(node);
+  });
+  return svg;
+}
+
+function buildTurnMeta(metaData) {
+  var meta = el('div', 'turnmeta');
+  if (metaData.text) {
+    meta.textContent = metaData.text;
+    return meta;
+  }
+  meta.classList.add('turnmeta-icons');
+  meta.setAttribute('aria-label', metaData.label);
+  metaData.items.forEach(function (item) {
+    var badge = el('span', 'turnmeta-item');
+    badge.title = item.label;
+    badge.appendChild(buildMetaIcon(item.kind));
+    if (item.count > 1) {
+      var count = el('span', 'turnmeta-count');
+      count.textContent = String(item.count);
+      badge.appendChild(count);
+    }
+    meta.appendChild(badge);
+  });
+  return meta;
 }
 
 function buildTurnItem(turn, index) {
@@ -102,14 +176,12 @@ function buildTurnItem(turn, index) {
   var idx = el('div', 'turnindex');
   var text = el('div', 'turntext');
   var title = el('div', 'turntitle');
-  var meta = el('div', 'turnmeta');
   title.textContent = turn.title || ('Turn ' + (index + 1));
   idx.textContent = String(index + 1).padStart(2, '0');
-  var metaText = turnMeta(turn);
-  if (metaText) meta.textContent = metaText;
-  it.title = metaText ? title.textContent + ' · ' + metaText : title.textContent;
+  var metaData = turnMeta(turn);
+  it.title = metaData.label ? title.textContent + ' · ' + metaData.label : title.textContent;
   text.appendChild(title);
-  if (metaText) text.appendChild(meta);
+  if (metaData.label) text.appendChild(buildTurnMeta(metaData));
   it.appendChild(idx);
   it.appendChild(text);
   return it;
