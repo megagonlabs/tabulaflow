@@ -21,7 +21,7 @@ from textual.containers import Vertical, VerticalScroll
 from textual.widgets import Label, Static, TextArea
 
 from tabulaflow.app.display import build_query
-from tabulaflow.app.pane.cards import build_query_data
+from tabulaflow.app.pane.cards import PANE_CODE_TEXT, build_query_data
 from tabulaflow.app.theme import (
     CODE_TEXT,
     FOCUS_SURFACE,
@@ -346,7 +346,7 @@ p {{
 <body>
 <main>
 <h1>Browser pane query rendering</h1>
-<p>This fixture uses the current browser-pane query path: Pygments + HtmlFormatter(style=TabulaflowPygmentsStyle, noclasses=True). Neutral code text: {CODE_TEXT}.</p>
+<p>This fixture uses the current browser-pane query path: Pygments + HtmlFormatter(style=PanePygmentsStyle, noclasses=True). Browser neutral code text: {PANE_CODE_TEXT}. TUI neutral code text: {CODE_TEXT}.</p>
 {cards}
 </main>
 </body>
@@ -447,7 +447,8 @@ class CodeHighlightingPathsPreview(App[None]):
     def compose(self) -> ComposeResult:
         with VerticalScroll(id="preview-root"):
             yield Static(
-                f"Code highlighting comparison with neutral code text {CODE_TEXT}. "
+                f"Code highlighting comparison with TUI neutral code text {CODE_TEXT} "
+                f"and browser-pane neutral code text {PANE_CODE_TEXT}. "
                 "Open the generated HTML file separately for the browser-pane path.",
                 classes="intro",
             )

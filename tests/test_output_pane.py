@@ -20,8 +20,9 @@ import pytest
 
 from tabulaflow.app.config import LLM_OFF, ResolvedLLMSelection
 from tabulaflow.app.pane.graphs import build_graph_data
-from tabulaflow.app.pane.cards import build_query_data, render_map_data, render_record_data
+from tabulaflow.app.pane.cards import PANE_CODE_TEXT, build_query_data, render_map_data, render_record_data
 from tabulaflow.app.pane.tables import TABLE_RENDER_MAX_ROWS
+from tabulaflow.app.theme import CODE_TEXT
 from tabulaflow.app.pane import CARD_ID_PREFIX, OutputPane, OutputPanePortError, _PANE_HTML
 from tabulaflow.app.pane import PaneCard, PaneTurn, turn_payload
 from tabulaflow.app.screens import send_table_to_output_pane
@@ -2103,13 +2104,15 @@ def test_view_card_in_pane_marks_turn_as_manual(tmp_path: Path) -> None:
     ]
 
 
-def test_query_payload_contains_language_and_shared_theme_highlight() -> None:
+def test_query_payload_contains_language_and_pane_theme_highlight() -> None:
     payload = build_query_data('print("Hello, world!")', lexer="python")
 
     query = payload["query"]
     assert isinstance(query, dict)
     assert query["lexer"] == "python"
     assert query["language"] == "Python"
+    assert PANE_CODE_TEXT in str(query["html"])  # Browser-pane neutral code color.
+    assert CODE_TEXT not in str(query["html"])  # TUI neutral code color stays TUI-only.
     assert "#FFC473" in str(query["html"])  # Builtin/type color.
     assert "#7EC193" in str(query["html"])  # String color.
 

@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING, Protocol
 from pygments import highlight
 from pygments.formatters import HtmlFormatter
 from pygments.lexers import get_lexer_by_name
+from pygments.style import Style as PygmentsStyle
 from pygments.util import ClassNotFound
 
 from tabulaflow.app.pane.types import CARD_ID_PREFIX, PaneCard, QueryCardData, ViewKind, card_payload
@@ -17,10 +18,22 @@ from tabulaflow.app.pane.charts import build_chart_data
 from tabulaflow.app.pane.graphs import build_graph_data
 from tabulaflow.app.pane.maps import build_map_data
 from tabulaflow.app.pane.tables import PANE_TABLE_MAX_HEIGHT, _build_table_data
-from tabulaflow.app.theme import TabulaflowPygmentsStyle, normalize_query_lexer
+from tabulaflow.app.theme import CODE_TEXT, TabulaflowPygmentsStyle, normalize_query_lexer
 
 if TYPE_CHECKING:
     import pandas as pd
+
+PANE_CODE_TEXT = "#E0E0E0"
+
+
+class PanePygmentsStyle(PygmentsStyle):  # type: ignore[misc]
+    """Pygments style for browser-pane query cards."""
+
+    background_color = TabulaflowPygmentsStyle.background_color
+    styles = {
+        token: PANE_CODE_TEXT if style == CODE_TEXT else style
+        for token, style in TabulaflowPygmentsStyle.styles.items()
+    }
 
 
 class ResultRecordLike(Protocol):
@@ -56,7 +69,7 @@ def build_query_data(sql: str, *, lexer: str = "sql") -> QueryCardData:
     except ClassNotFound:
         resolved_lexer = "sql"
         lex = get_lexer_by_name("sql")
-    highlighted = highlight(sql, lex, HtmlFormatter(style=TabulaflowPygmentsStyle, noclasses=True))
+    highlighted = highlight(sql, lex, HtmlFormatter(style=PanePygmentsStyle, noclasses=True))
     language = lex.name or resolved_lexer.upper()
     return {"query": {"sql": sql, "lexer": resolved_lexer, "language": language, "html": highlighted}}
 
