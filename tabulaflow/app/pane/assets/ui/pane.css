@@ -97,7 +97,7 @@ body { margin: 0; background: var(--bg); color: var(--text); display: flex; flex
 .turnindex { color: var(--text-dim); font: 600 12px/1.2 ui-monospace, monospace; text-align: right; }
 .manual-turnindex { display: flex; justify-content: flex-end; }
 .manual-turnindex svg {
-    width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.8;
+    width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2.8;
     stroke-linecap: round; stroke-linejoin: round;
 }
 .turntext { min-width: 0; display: grid; gap: 5px; }
