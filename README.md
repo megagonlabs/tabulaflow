@@ -470,7 +470,7 @@ July 17
 - [x] Fix Claude subagent stucked - subagent timeout at 120s
 
 - [ ] Session ID - remove date?
-- [ ] Show session ID in TUI and output pan
+- [ ] Show session ID in TUI and output pane
 
 - [ ] Inline artifact citation
 - [ ] Inline code block colors to blue in output pane
