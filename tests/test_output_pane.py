@@ -511,21 +511,27 @@ def test_pane_renderer_modules_are_packaged() -> None:
     vendor_assets = files("tabulaflow.app.pane.assets.vendor")
     assert pane_assets.joinpath("contract.d.ts").is_file()
     assert pane_assets.joinpath("pane.js").is_file()
-    for rel in ("shared.js", "table.js", "chart.js", "map.js", "graph.js", "query.js", "markdown.js"):
+    for rel in ("shared.js", "table.js", "chart.js", "map.js", "graph.js", "code.js", "query.js", "markdown.js"):
         assert pane_assets.joinpath("render").joinpath(rel).is_file()
     markdown_it_assets = vendor_assets.joinpath("markdown-it")
     assert markdown_it_assets.joinpath("markdown-it.min.js").is_file()
     assert markdown_it_assets.joinpath("LICENSE.txt").is_file()
 
 
-def test_pane_markdown_renderer_formats_safe_markdown() -> None:
+def test_pane_markdown_renderer_formats_safe_markdown(tmp_path: Path) -> None:
     node = shutil.which("node")
     if node is None:
         pytest.skip("node is required to execute the browser markdown renderer")
 
     assets = files("tabulaflow.app.pane.assets")
     vendor_path = str(assets.joinpath("vendor").joinpath("markdown-it").joinpath("markdown-it.min.js"))
-    renderer_path = str(assets.joinpath("ui").joinpath("render").joinpath("markdown.js"))
+    renderer_assets = assets.joinpath("ui").joinpath("render")
+    module_dir = tmp_path / "modules"
+    module_dir.mkdir()
+    for rel in ("shared.js", "code.js", "markdown.js"):
+        module_dir.joinpath(rel).write_text(renderer_assets.joinpath(rel).read_text(encoding="utf-8"), encoding="utf-8")
+    module_dir.joinpath("package.json").write_text('{"type":"module"}', encoding="utf-8")
+    renderer_path = str(module_dir / "markdown.js")
     markdown = """# Heading
 
 **bold** and https://example.com
@@ -543,12 +549,12 @@ def test_pane_markdown_renderer_formats_safe_markdown() -> None:
     script = f"""
 import fs from 'node:fs';
 import vm from 'node:vm';
+import {{ pathToFileURL }} from 'node:url';
 const sandbox = {{}};
 vm.createContext(sandbox);
 vm.runInContext(fs.readFileSync({json.dumps(vendor_path)}, 'utf8'), sandbox);
 globalThis.window = {{ markdownit: sandbox.markdownit }};
-const source = fs.readFileSync({json.dumps(renderer_path)}, 'utf8');
-const moduleUrl = 'data:text/javascript;base64,' + Buffer.from(source).toString('base64');
+const moduleUrl = pathToFileURL({json.dumps(renderer_path)}).href;
 const {{ renderMarkdown }} = await import(moduleUrl);
 const classes = [];
 const attrs = {{}};
@@ -557,7 +563,7 @@ const target = {{
   classList: {{ add: (value) => {{ classes.push(value); }} }},
   innerHTML: '',
   textContent: '',
-  querySelectorAll: () => [link],
+  querySelectorAll: (selector) => selector === 'a[href]' ? [link] : [],
 }};
 renderMarkdown(target, {json.dumps(markdown)});
 process.stdout.write(JSON.stringify({{ classes, attrs, html: target.innerHTML }}));
@@ -579,6 +585,25 @@ process.stdout.write(JSON.stringify({{ classes, attrs, html: target.innerHTML }}
     assert "&lt;script&gt;alert(1)&lt;/script&gt;" in rendered["html"]
     assert "<img" not in rendered["html"]
     assert 'href="javascript:' not in rendered["html"]
+
+
+def test_output_pane_push_highlights_assistant_markdown_code_blocks(tmp_path: Path) -> None:
+    pane = OutputPane(tmp_path)
+    pane.push(
+        turn_payload(
+            title="code",
+            cards=[],
+            assistant="Before\n\n```python\nprint('hi')\n```\n\n```\nplain\n```",
+        )
+    )
+
+    turn = pane._results[0]  # noqa: SLF001
+    blocks = turn["assistantCodeBlocks"]
+    assert blocks[0]["code"] == "print('hi')\n"
+    assert [block["lexer"] for block in blocks] == ["python", "text"]
+    assert blocks[0]["language"] == "Python"
+    assert "print" in blocks[0]["html"]
+    assert "#E0E0E0" in blocks[0]["html"]
 
 
 def test_graph_tooltips_link_urls() -> None:
@@ -2109,6 +2134,7 @@ def test_query_payload_contains_language_and_pane_theme_highlight() -> None:
 
     query = payload["query"]
     assert isinstance(query, dict)
+    assert query["code"] == 'print("Hello, world!")'
     assert query["lexer"] == "python"
     assert query["language"] == "Python"
     assert PANE_CODE_TEXT in str(query["html"])  # Browser-pane neutral code color.

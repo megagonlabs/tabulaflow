@@ -14,6 +14,7 @@ export interface PaneTurn {
   cards: PaneCard[];
   user?: string;
   assistant?: string;
+  assistantCodeBlocks?: CodeData[];
   source?: PaneSource;
 }
 
@@ -46,8 +47,8 @@ export interface ChartData {
   wrapClass: string;
 }
 
-export interface QueryData {
-  sql: string;
+export interface CodeData {
+  code: string;
   lexer: string;
   language: string;
   html: string;
@@ -69,7 +70,7 @@ export interface CardData {
   table?: TableData;
   dataset?: DatasetData;
   chart?: ChartData;
-  query?: QueryData;
+  query?: CodeData;
   map?: MapData;
   graph?: GraphData;
   datasets?: Record<string, DatasetData>;

@@ -26,7 +26,10 @@ from pathlib import Path
 from typing import cast
 from urllib.parse import unquote, urlsplit, urlunsplit
 
-from tabulaflow.app.pane.types import CARD_ID_PREFIX, PaneTurn
+from markdown_it import MarkdownIt
+
+from tabulaflow.app.pane.cards import build_code_data
+from tabulaflow.app.pane.types import CARD_ID_PREFIX, CodeData, PaneTurn
 from tabulaflow.app.runtime_paths import generate_session_id
 from tabulaflow.app.theme import GITHUB_SLUG, GITHUB_URL
 
@@ -39,6 +42,7 @@ DEFAULT_OUTPUT_PANE_HOST = "127.0.0.1"
 _OUTPUT_PANE_TOKEN_BYTES = 6
 _SESSION_ID_PLACEHOLDER = "__SESSION_ID__"
 _SESSION_ID_RE = re.compile(r"[0-9a-z]{6}")
+_MARKDOWN_CODE_PARSER = MarkdownIt("commonmark", {"html": False}).enable(["table"])
 
 _GITHUB_SVG = (
     '<svg viewBox="0 0 16 16" aria-hidden="true">'
@@ -77,6 +81,7 @@ def _load_pane_html() -> str:
         "render/chart.js",
         "render/map.js",
         "render/graph.js",
+        "render/code.js",
         "render/query.js",
         "render/markdown.js",
     ):
@@ -109,6 +114,17 @@ def _derive_session_id(pane_dir: Path) -> str:
     if pane_dir.name == "pane" and _SESSION_ID_RE.fullmatch(pane_dir.parent.name):
         return pane_dir.parent.name
     return generate_session_id()
+
+
+def _markdown_code_blocks(markdown: str) -> list[CodeData]:
+    """Return highlighted code-block payloads in markdown render order."""
+    blocks: list[CodeData] = []
+    for token in _MARKDOWN_CODE_PARSER.parse(markdown):
+        if token.type not in ("fence", "code_block"):
+            continue
+        lexer = (token.info or "text").strip().split(maxsplit=1)[0] or "text"
+        blocks.append(build_code_data(token.content, lexer=lexer, fallback_lexer="text"))
+    return blocks
 
 
 class _PaneServer(http.server.ThreadingHTTPServer):
@@ -442,6 +458,11 @@ class OutputPane:
         with self._cond:
             self._load_manifest_locked()
             assigned = cast(PaneTurn, dict(turn))
+            assistant = assigned.get("assistant")
+            if isinstance(assistant, str) and assistant.strip() and "assistantCodeBlocks" not in assigned:
+                code_blocks = _markdown_code_blocks(assistant)
+                if code_blocks:
+                    assigned["assistantCodeBlocks"] = code_blocks
             assigned["id"] = self._next_id
             self._next_id += 1
             self._results.append(assigned)

@@ -13,7 +13,7 @@ from pygments.lexers import get_lexer_by_name
 from pygments.style import Style as PygmentsStyle
 from pygments.util import ClassNotFound
 
-from tabulaflow.app.pane.types import CARD_ID_PREFIX, PaneCard, QueryCardData, ViewKind, card_payload
+from tabulaflow.app.pane.types import CARD_ID_PREFIX, CodeData, PaneCard, QueryCardData, ViewKind, card_payload
 from tabulaflow.app.pane.charts import build_chart_data
 from tabulaflow.app.pane.graphs import build_graph_data
 from tabulaflow.app.pane.maps import build_map_data
@@ -34,6 +34,19 @@ class PanePygmentsStyle(PygmentsStyle):  # type: ignore[misc]
         token: PANE_CODE_TEXT if style == CODE_TEXT else style
         for token, style in TabulaflowPygmentsStyle.styles.items()
     }
+
+
+def build_code_data(code: str, *, lexer: str = "text", fallback_lexer: str = "text") -> CodeData:
+    """Build a highlighted browser-pane code payload."""
+    resolved_lexer = normalize_query_lexer(lexer)
+    try:
+        lex = get_lexer_by_name(resolved_lexer)
+    except ClassNotFound:
+        resolved_lexer = fallback_lexer
+        lex = get_lexer_by_name(fallback_lexer)
+    highlighted = highlight(code, lex, HtmlFormatter(style=PanePygmentsStyle, noclasses=True))
+    language = lex.name or resolved_lexer.upper()
+    return {"code": code, "lexer": resolved_lexer, "language": language, "html": highlighted}
 
 
 class ResultRecordLike(Protocol):
@@ -63,15 +76,7 @@ class GraphArtifactLike(Protocol):
 
 def build_query_data(sql: str, *, lexer: str = "sql") -> QueryCardData:
     """Build a structured query payload for the browser pane."""
-    resolved_lexer = normalize_query_lexer(lexer)
-    try:
-        lex = get_lexer_by_name(resolved_lexer)
-    except ClassNotFound:
-        resolved_lexer = "sql"
-        lex = get_lexer_by_name("sql")
-    highlighted = highlight(sql, lex, HtmlFormatter(style=PanePygmentsStyle, noclasses=True))
-    language = lex.name or resolved_lexer.upper()
-    return {"query": {"sql": sql, "lexer": resolved_lexer, "language": language, "html": highlighted}}
+    return {"query": build_code_data(sql, lexer=lexer, fallback_lexer="sql")}
 
 
 def render_record_data(record: ResultRecordLike, pane_dir: Path) -> PaneCard | None:

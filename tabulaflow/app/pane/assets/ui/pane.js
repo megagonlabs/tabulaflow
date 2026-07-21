@@ -50,12 +50,12 @@ window.addEventListener('resize', function () {
   });
 });
 
-function buildMessage(role, text) {
+function buildMessage(role, text, codeBlocks) {
   var msg = el('div', 'message ' + role);
   var label = el('div', 'message-label');
   var body = el('div', 'message-body');
   label.textContent = role === 'user' ? 'user' : 'tabulaflow';
-  if (role === 'assistant') renderMarkdown(body, text);
+  if (role === 'assistant') renderMarkdown(body, text, codeBlocks);
   else body.textContent = text;
   msg.appendChild(label);
   msg.appendChild(body);
@@ -65,7 +65,7 @@ function buildMessage(role, text) {
 function buildTranscript(turn) {
   var wrap = el('section', 'transcript');
   if (hasText(turn.user)) wrap.appendChild(buildMessage('user', turn.user));
-  if (hasText(turn.assistant)) wrap.appendChild(buildMessage('assistant', turn.assistant));
+  if (hasText(turn.assistant)) wrap.appendChild(buildMessage('assistant', turn.assistant, turn.assistantCodeBlocks || []));
   return wrap.children.length ? wrap : null;
 }
 

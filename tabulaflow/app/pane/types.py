@@ -23,6 +23,7 @@ class PaneTurn(TypedDict, total=False):
     cards: Required[list[PaneCard]]
     user: str
     assistant: str
+    assistantCodeBlocks: list["CodeData"]
     source: PaneSource
 
 
@@ -55,8 +56,8 @@ class ChartData(TypedDict):
     wrapClass: str
 
 
-class QueryData(TypedDict):
-    sql: str
+class CodeData(TypedDict):
+    code: str
     lexer: str
     language: str
     html: str
@@ -83,7 +84,7 @@ class ChartCardData(TypedDict):
 
 
 class QueryCardData(TypedDict):
-    query: QueryData
+    query: CodeData
 
 
 class MapCardData(TypedDict):
@@ -99,7 +100,7 @@ class CardData(TypedDict, total=False):
     table: TableData
     dataset: DatasetData
     chart: ChartData
-    query: QueryData
+    query: CodeData
     map: MapData
     graph: GraphData
     datasets: dict[str, DatasetData]

@@ -51,7 +51,7 @@ def _assert_card_payload(card: PaneCard, data: CardData) -> None:
 
     if "query" in card["views"]:
         query = data["query"]
-        assert isinstance(query["sql"], str)
+        assert isinstance(query["code"], str)
         assert isinstance(query["lexer"], str)
         assert isinstance(query["language"], str)
         assert isinstance(query["html"], str)
