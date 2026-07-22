@@ -470,9 +470,17 @@ July 17
 - [x] Fix Claude subagent stucked - subagent timeout at 120s
 
 July 20
-- [x] Remove date from session IDs, show session IDs in output pane
-- [x] Improve browser pane - artifact icon and user icon
-- [ ] Inline code block colors to blue in output pane
+- Improve browser pane
+  - [x] Remove date from session IDs, show session IDs in output pane
+  - [x] Artifact icon and user icon
+
+July 21
+- Improve browser pane
+  - [x] Improve code highlighting
+  - [x] Copy button feedback
+  - [x] Focus rings
+  - [x] Latex rendering
+  - [x] Image rendering
 
 - [ ] Inline artifact citation
 - [ ] IMPORTANT: decouple data and rendered format (show unit "cm" while still enabling sorting by value)
