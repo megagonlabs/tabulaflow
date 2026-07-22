@@ -19,6 +19,7 @@
     --query-bg: #151922;
     --query-border: #242b36;
     --query-hover: #202633;
+    --focus-ring: rgba(154, 164, 178, 0.62);
     --chart-grid: #3a4352;
     --chart-category-0: #3EB489;
     --chart-category-1: #5ac8fa;
@@ -54,6 +55,10 @@ html, body { height: 100%; }
 body { margin: 0; background: var(--bg); color: var(--text); display: flex; flex-direction: column;
        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
 * { scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track); scrollbar-width: thin; }
+:where(:focus-visible) {
+    outline: 2px solid var(--focus-ring);
+    outline-offset: 2px;
+}
 ::-webkit-scrollbar { width: 10px; height: 10px; }
 ::-webkit-scrollbar-track { background: var(--scrollbar-track); }
 ::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 5px; border: 2px solid var(--scrollbar-track); }
@@ -348,7 +353,6 @@ body { margin: 0; background: var(--bg); color: var(--text); display: flex; flex
 .file-link .file-size { color: var(--text-dim); font-size: 12px; }
 .cell-link { color: var(--accent); text-decoration: none; }
 .cell-link:hover { text-decoration: underline; }
-.cell-link:focus { outline: none; }
 .tf-table-view img { max-height: 96px; max-width: 200px; display: block; }
 .tf-table-view audio { max-width: 240px; display: block; filter: invert(0.92) hue-rotate(180deg); }
 .tf-table-view video { width: 240px; height: 160px; object-fit: contain; background: #000; display: block; }
@@ -455,8 +459,8 @@ body { margin: 0; background: var(--bg); color: var(--text); display: flex; flex
 .vega-embed summary:hover { opacity: 1 !important; color: var(--accent) !important; }
 .vega-embed .vega-actions { background: var(--popover-bg) !important; border-color: var(--popover-border) !important; }
 .vega-embed .vega-actions a { color: var(--text) !important; }
-.vega-embed .vega-actions a:hover,
-.vega-embed .vega-actions a:focus { background: var(--hover) !important; color: var(--accent) !important; }
+.vega-embed .vega-actions a:hover { background: var(--hover) !important; color: var(--accent) !important; }
+.vega-embed .vega-actions a:focus { background: var(--hover) !important; color: var(--text) !important; }
 .vega-embed .vega-actions::before { border-bottom-color: var(--popover-border) !important; }
 .vega-embed .vega-actions::after { border-bottom-color: var(--popover-bg) !important; }
 .vega-bindings { accent-color: var(--accent); color: var(--text); font-size: 13px; margin-top: 14px; }
@@ -469,7 +473,7 @@ body { margin: 0; background: var(--bg); color: var(--text); display: flex; flex
     border-radius: 4px; padding: 2px 6px;
 }
 .vega-bindings select:focus,
-.vega-bindings input:focus { outline: none; border-color: var(--accent); }
+.vega-bindings input:focus { border-color: var(--focus-ring); }
 #vg-tooltip-element { border-radius: 6px; }
 #vg-tooltip-element.dark-theme { border-color: var(--popover-border); }
 
@@ -601,7 +605,6 @@ body { margin: 0; background: var(--bg); color: var(--text); display: flex; flex
               border: 0; border-radius: 6px; background: transparent; color: #f5f5f5; cursor: pointer;
               transition: color 0.14s ease, background 0.14s ease; }
 .query-copy:hover { background: var(--query-hover); }
-.query-copy:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .query-copy.copied { color: var(--text); background: rgba(255, 255, 255, 0.08); }
 .query-copy.copy-failed { color: var(--text-muted); background: rgba(255, 255, 255, 0.06); }
 .copy-icon { position: relative; width: 16px; height: 16px; flex: 0 0 auto; }
