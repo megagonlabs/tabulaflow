@@ -24,13 +24,20 @@ function copyLabels(options) {
 
 function wireCopy(button, code, labels) {
   if (!button) return;
+  var resetTimer = null;
   button.addEventListener('click', function () {
     function done(ok) {
+      if (resetTimer !== null) window.clearTimeout(resetTimer);
+      button.classList.toggle('copied', ok);
+      button.classList.toggle('copy-failed', !ok);
       button.setAttribute('aria-label', ok ? labels.copied : 'Copy failed');
       button.title = ok ? 'Copied' : 'Copy failed';
-      window.setTimeout(function () {
+      resetTimer = window.setTimeout(function () {
+        button.classList.remove('copied');
+        button.classList.remove('copy-failed');
         button.setAttribute('aria-label', labels.copy);
         button.title = labels.copy;
+        resetTimer = null;
       }, 1200);
     }
     if (navigator.clipboard && navigator.clipboard.writeText) {

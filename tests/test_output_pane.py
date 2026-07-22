@@ -587,6 +587,68 @@ process.stdout.write(JSON.stringify({{ classes, attrs, html: target.innerHTML }}
     assert 'href="javascript:' not in rendered["html"]
 
 
+def test_pane_code_copy_button_shows_copied_feedback(tmp_path: Path) -> None:
+    node = shutil.which("node")
+    if node is None:
+        pytest.skip("node is required to execute the browser code renderer")
+
+    assets = files("tabulaflow.app.pane.assets").joinpath("ui").joinpath("render")
+    module_dir = tmp_path / "modules"
+    module_dir.mkdir()
+    for rel in ("shared.js", "code.js"):
+        module_dir.joinpath(rel).write_text(assets.joinpath(rel).read_text(encoding="utf-8"), encoding="utf-8")
+    module_dir.joinpath("package.json").write_text('{"type":"module"}', encoding="utf-8")
+    renderer_path = str(module_dir / "code.js")
+    script = f"""
+import {{ pathToFileURL }} from 'node:url';
+const moduleUrl = pathToFileURL({json.dumps(renderer_path)}).href;
+const timers = [];
+globalThis.window = {{ setTimeout: (callback, ms) => {{ timers.push({{ callback, ms }}); return timers.length; }},
+                       clearTimeout: () => {{}} }};
+Object.defineProperty(globalThis, 'navigator', {{
+  value: {{ clipboard: {{ writeText: (text) => Promise.resolve(text) }} }},
+  configurable: true,
+}});
+const buttonClasses = new Set();
+const button = {{
+  classList: {{
+    toggle: (name, on) => on ? buttonClasses.add(name) : buttonClasses.delete(name),
+    remove: (...names) => names.forEach((name) => buttonClasses.delete(name)),
+  }},
+  attrs: {{}},
+  title: '',
+  setAttribute: function (name, value) {{ this.attrs[name] = value; }},
+  addEventListener: function (event, callback) {{ this.click = callback; }},
+}};
+const container = {{
+  _html: '',
+  set innerHTML(value) {{ this._html = value; }},
+  get innerHTML() {{ return this._html; }},
+  querySelector: (selector) => selector === '[data-copy-code]' ? button : null,
+}};
+const {{ renderCodeCard }} = await import(moduleUrl);
+renderCodeCard(container, {{ code: 'select 1', lexer: 'sql', language: 'SQL', html: '<div class="highlight"><pre>select 1</pre></div>' }},
+  {{ copyLabel: 'Copy query', copiedLabel: 'Copied query' }});
+await button.click();
+const copied = {{ classes: [...buttonClasses].sort(), label: button.attrs['aria-label'], title: button.title, timerMs: timers[0].ms }};
+timers[0].callback();
+const reset = {{ classes: [...buttonClasses].sort(), label: button.attrs['aria-label'], title: button.title }};
+process.stdout.write(JSON.stringify({{ html: container.innerHTML, copied, reset }}));
+"""
+    result = subprocess.run(
+        [node, "--input-type=module"],
+        input=script,
+        text=True,
+        capture_output=True,
+        check=True,
+    )
+    rendered = json.loads(result.stdout)
+
+    assert 'data-copy-code aria-label="Copy query" title="Copy query"' in rendered["html"]
+    assert rendered["copied"] == {"classes": ["copied"], "label": "Copied query", "title": "Copied", "timerMs": 1200}
+    assert rendered["reset"] == {"classes": [], "label": "Copy query", "title": "Copy query"}
+
+
 def test_output_pane_push_highlights_assistant_markdown_code_blocks(tmp_path: Path) -> None:
     pane = OutputPane(tmp_path)
     pane.push(
