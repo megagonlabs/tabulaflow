@@ -207,7 +207,7 @@ body { margin: 0; background: var(--bg); color: var(--text); display: flex; flex
 .message-body.md th { color: var(--accent); font-weight: 650; border-bottom-color: rgba(62, 180, 137, 0.5); }
 .message-body.md tbody tr:nth-child(even) { background: rgba(35, 43, 56, 0.55); }
 .message-body.md hr { height: 1px; margin: 1.2em 0; border: 0; background: var(--border); }
-.message-body.md eq,
+.message-body.md eq { display: inline; }
 .message-body.md eqn { max-width: 100%; overflow-x: auto; overflow-y: hidden; }
 .message-body.md .katex-display { max-width: 100%; margin: 0.8em 0; overflow-x: auto; overflow-y: hidden; }
 .message-body.md section.eqno { max-width: 100%; gap: 12px; }
