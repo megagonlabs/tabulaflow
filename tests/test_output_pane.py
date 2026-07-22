@@ -499,6 +499,10 @@ def test_manual_table_send_includes_data_view_meta(tmp_path: Path) -> None:
 
 def test_pane_loads_shell_as_native_module() -> None:
     assert '<script src="/assets/vendor/markdown-it/markdown-it.min.js?v=' in _PANE_HTML
+    assert '<link rel="stylesheet" href="/assets/vendor/katex/katex.min.css?v=' in _PANE_HTML
+    assert '<link rel="stylesheet" href="/assets/vendor/markdown-it-texmath/texmath.css?v=' in _PANE_HTML
+    assert '<script src="/assets/vendor/katex/katex.min.js?v=' in _PANE_HTML
+    assert '<script src="/assets/vendor/markdown-it-texmath/texmath.js?v=' in _PANE_HTML
     assert '<script type="module" src="/assets/ui/pane.js?v=' in _PANE_HTML
     assert "/assets/ui/pane-render.js" not in _PANE_HTML
     assert "__PANE_VERSION__" not in _PANE_HTML
@@ -516,6 +520,15 @@ def test_pane_renderer_modules_are_packaged() -> None:
     markdown_it_assets = vendor_assets.joinpath("markdown-it")
     assert markdown_it_assets.joinpath("markdown-it.min.js").is_file()
     assert markdown_it_assets.joinpath("LICENSE.txt").is_file()
+    katex_assets = vendor_assets.joinpath("katex")
+    assert katex_assets.joinpath("katex.min.css").is_file()
+    assert katex_assets.joinpath("katex.min.js").is_file()
+    assert katex_assets.joinpath("LICENSE.txt").is_file()
+    assert katex_assets.joinpath("fonts").joinpath("KaTeX_Main-Regular.woff2").is_file()
+    texmath_assets = vendor_assets.joinpath("markdown-it-texmath")
+    assert texmath_assets.joinpath("texmath.css").is_file()
+    assert texmath_assets.joinpath("texmath.js").is_file()
+    assert texmath_assets.joinpath("LICENSE.txt").is_file()
 
 
 def test_pane_markdown_renderer_formats_safe_markdown(tmp_path: Path) -> None:
@@ -585,6 +598,72 @@ process.stdout.write(JSON.stringify({{ classes, attrs, html: target.innerHTML }}
     assert "&lt;script&gt;alert(1)&lt;/script&gt;" in rendered["html"]
     assert "<img" not in rendered["html"]
     assert 'href="javascript:' not in rendered["html"]
+
+
+def test_pane_markdown_renderer_formats_latex_math(tmp_path: Path) -> None:
+    node = shutil.which("node")
+    if node is None:
+        pytest.skip("node is required to execute the browser markdown renderer")
+
+    assets = files("tabulaflow.app.pane.assets")
+    markdown_it_path = str(assets.joinpath("vendor").joinpath("markdown-it").joinpath("markdown-it.min.js"))
+    katex_path = str(assets.joinpath("vendor").joinpath("katex").joinpath("katex.min.js"))
+    texmath_path = str(assets.joinpath("vendor").joinpath("markdown-it-texmath").joinpath("texmath.js"))
+    renderer_assets = assets.joinpath("ui").joinpath("render")
+    module_dir = tmp_path / "modules"
+    module_dir.mkdir()
+    for rel in ("shared.js", "code.js", "markdown.js"):
+        module_dir.joinpath(rel).write_text(renderer_assets.joinpath(rel).read_text(encoding="utf-8"), encoding="utf-8")
+    module_dir.joinpath("package.json").write_text('{"type":"module"}', encoding="utf-8")
+    renderer_path = str(module_dir / "markdown.js")
+    markdown = r"""Inline \(x^2 + y^2\).
+
+\[
+\frac{a}{b}
+\]
+
+Price stays literal: $100 and $200.
+"""
+    script = f"""
+import fs from 'node:fs';
+import vm from 'node:vm';
+import {{ pathToFileURL }} from 'node:url';
+const sandbox = {{}};
+vm.createContext(sandbox);
+vm.runInContext(fs.readFileSync({json.dumps(markdown_it_path)}, 'utf8'), sandbox);
+vm.runInContext(fs.readFileSync({json.dumps(katex_path)}, 'utf8'), sandbox);
+vm.runInContext(fs.readFileSync({json.dumps(texmath_path)}, 'utf8'), sandbox);
+globalThis.window = {{
+  markdownit: sandbox.markdownit,
+  katex: sandbox.katex,
+  texmath: sandbox.texmath
+}};
+const moduleUrl = pathToFileURL({json.dumps(renderer_path)}).href;
+const {{ renderMarkdown }} = await import(moduleUrl);
+const classes = [];
+const target = {{
+  classList: {{ add: (value) => {{ classes.push(value); }} }},
+  innerHTML: '',
+  textContent: '',
+  querySelectorAll: () => [],
+}};
+renderMarkdown(target, {json.dumps(markdown)});
+process.stdout.write(JSON.stringify({{ classes, html: target.innerHTML }}));
+"""
+    result = subprocess.run(
+        [node, "--input-type=module"],
+        input=script,
+        text=True,
+        capture_output=True,
+        check=True,
+    )
+    rendered = json.loads(result.stdout)
+
+    assert rendered["classes"] == ["md"]
+    assert '<span class="katex">' in rendered["html"]
+    assert '<eq><span class="katex">' in rendered["html"]
+    assert '<eqn><span class="katex-display">' in rendered["html"]
+    assert "Price stays literal: $100 and $200." in rendered["html"]
 
 
 def test_pane_code_copy_button_shows_copied_feedback(tmp_path: Path) -> None:
@@ -2417,6 +2496,31 @@ def test_pane_serves_bundled_assets_cached(tmp_path: Path) -> None:
             assert resp.headers.get("Cache-Control") == "max-age=31536000, immutable"
             assert resp.headers.get("Content-Type") == "text/javascript; charset=utf-8"
             assert b"markdown-it 14.3.0" in resp.read(100)
+
+        with urllib.request.urlopen(f"{origin}assets/vendor/katex/katex.min.css", timeout=2) as resp:
+            assert resp.headers.get("Cache-Control") == "max-age=31536000, immutable"
+            assert resp.headers.get("Content-Type") == "text/css; charset=utf-8"
+            assert b"KaTeX_Main" in resp.read()
+
+        with urllib.request.urlopen(f"{origin}assets/vendor/katex/katex.min.js", timeout=2) as resp:
+            assert resp.headers.get("Cache-Control") == "max-age=31536000, immutable"
+            assert resp.headers.get("Content-Type") == "text/javascript; charset=utf-8"
+            assert b"katex" in resp.read(200)
+
+        with urllib.request.urlopen(f"{origin}assets/vendor/katex/fonts/KaTeX_Main-Regular.woff2", timeout=2) as resp:
+            assert resp.headers.get("Cache-Control") == "max-age=31536000, immutable"
+            assert resp.headers.get("Content-Type") == "font/woff2"
+            assert resp.read(4) == b"wOF2"
+
+        with urllib.request.urlopen(f"{origin}assets/vendor/markdown-it-texmath/texmath.css", timeout=2) as resp:
+            assert resp.headers.get("Cache-Control") == "max-age=31536000, immutable"
+            assert resp.headers.get("Content-Type") == "text/css; charset=utf-8"
+            assert b".katex" in resp.read()
+
+        with urllib.request.urlopen(f"{origin}assets/vendor/markdown-it-texmath/texmath.js", timeout=2) as resp:
+            assert resp.headers.get("Cache-Control") == "max-age=31536000, immutable"
+            assert resp.headers.get("Content-Type") == "text/javascript; charset=utf-8"
+            assert b"function texmath" in resp.read(1000)
 
         try:
             urllib.request.urlopen(f"{origin}assets/ui/pane-render.js", timeout=2)

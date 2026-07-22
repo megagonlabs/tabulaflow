@@ -1392,6 +1392,17 @@ def _populate_pane(
                         "like a document rather than a chat bubble."
                     ),
                     (
+                        "Markdown prose can include rendered math, such as inline \\(R^2 = 1 - "
+                        "\\frac{\\sum_i (y_i - \\hat{y}_i)^2}{\\sum_i (y_i - \\bar{y})^2}\\), "
+                        "without changing the surrounding paragraph rhythm."
+                    ),
+                    (
+                        "A display equation should stay inside the reading column and scroll horizontally "
+                        "if needed:\n\n\\[\n"
+                        "\\operatorname{softmax}(z_i) = \\frac{e^{z_i}}{\\sum_{j=1}^{K} e^{z_j}}\n"
+                        "\\]"
+                    ),
+                    (
                         "When cited records are present, each result gets the same inspection model: "
                         "record selection first, then the Chart, Data, and Query views. This keeps the "
                         "mental model predictable even when one turn contains many records."

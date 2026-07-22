@@ -86,7 +86,14 @@ def _load_pane_html() -> str:
         "render/markdown.js",
     ):
         module_hash.update(base.joinpath(rel).read_bytes())
-    module_hash.update(assets.joinpath("vendor").joinpath("markdown-it").joinpath("markdown-it.min.js").read_bytes())
+    for rel in (
+        "markdown-it/markdown-it.min.js",
+        "katex/katex.min.css",
+        "katex/katex.min.js",
+        "markdown-it-texmath/texmath.css",
+        "markdown-it-texmath/texmath.js",
+    ):
+        module_hash.update(assets.joinpath("vendor").joinpath(*rel.split("/")).read_bytes())
     pane_version = module_hash.hexdigest()[:12]
     return html.replace("__PANE_CSS__", css).replace("__PANE_VERSION__", pane_version).replace("__BANNER__", _BANNER)
 
@@ -245,6 +252,12 @@ class _Handler(http.server.SimpleHTTPRequestHandler):
             ctype = "text/css; charset=utf-8"
         elif clean.endswith(".json") or clean.endswith(".geojson"):
             ctype = "application/json; charset=utf-8"
+        elif clean.endswith(".woff2"):
+            ctype = "font/woff2"
+        elif clean.endswith(".woff"):
+            ctype = "font/woff"
+        elif clean.endswith(".ttf"):
+            ctype = "font/ttf"
         elif clean.endswith(".png"):
             ctype = "image/png"
         else:

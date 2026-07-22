@@ -2,9 +2,20 @@
 
 import { renderCodeCard } from './code.js';
 
-var markdownRenderer = typeof window.markdownit === 'function'
-  ? window.markdownit({ html: false, linkify: true, typographer: false }).disable('image')
-  : null;
+function buildMarkdownRenderer() {
+  if (typeof window.markdownit !== 'function') return null;
+  var renderer = window.markdownit({ html: false, linkify: true, typographer: false }).disable('image');
+  if (typeof window.texmath === 'function' && window.katex && typeof window.katex.renderToString === 'function') {
+    renderer.use(window.texmath, {
+      engine: window.katex,
+      delimiters: 'brackets',
+      katexOptions: { throwOnError: false, strict: 'ignore', trust: false }
+    });
+  }
+  return renderer;
+}
+
+var markdownRenderer = buildMarkdownRenderer();
 
 /** @param {HTMLElement} node @param {string} text @param {import('../contract').CodeData[]=} codeBlocks */
 export function renderMarkdown(node, text, codeBlocks) {
