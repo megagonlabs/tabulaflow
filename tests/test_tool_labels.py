@@ -35,6 +35,20 @@ class TestFileEditorLabel:
     def test_view(self) -> None:
         assert summarize_tool_args("file_editor", {"command": "view", "path": "."}) == "View ."
 
+    def test_view_range_includes_line_span(self) -> None:
+        label = summarize_tool_args(
+            "file_editor", {"command": "view", "path": "tabulaflow/app/widgets.py", "view_range": [541, 554]}
+        )
+        assert label == "View tabulaflow/app/widgets.py:541-554"
+
+    def test_view_single_line_range_uses_single_line_number(self) -> None:
+        label = summarize_tool_args("file_editor", {"command": "view", "path": "x.py", "view_range": [12, 12]})
+        assert label == "View x.py:12"
+
+    def test_view_invalid_range_omits_line_span(self) -> None:
+        label = summarize_tool_args("file_editor", {"command": "view", "path": "x.py", "view_range": [12, -1]})
+        assert label == "View x.py"
+
 
 class TestVerbLedLabels:
     def test_query(self) -> None:

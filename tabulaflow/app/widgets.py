@@ -538,6 +538,21 @@ def _line_diffstat(old: str, new: str) -> tuple[int, int]:
     return added, removed
 
 
+def _format_file_view_range(view_range: object) -> str:
+    """Return a ``:start-end`` suffix for file view labels, or empty if unknown."""
+    if not isinstance(view_range, list | tuple) or len(view_range) != 2:
+        return ""
+
+    start, end = view_range
+    if type(start) is not int or type(end) is not int or start < 1:
+        return ""
+    if end < start:
+        return ""
+    if end == start:
+        return f":{start}"
+    return f":{start}-{end}"
+
+
 def _summarize_file_editor(args: Mapping[str, object]) -> str:
     """A verb-led label for the file editor: ``Edit foo.sql +5 -2`` (git diffstat)."""
     command = str(args.get("command", ""))
@@ -550,7 +565,7 @@ def _summarize_file_editor(args: Mapping[str, object]) -> str:
         added = text.count("\n") + (1 if text and not text.endswith("\n") else 0)
         return f"Write {path} +{added}"
     if command == "view":
-        return f"View {path}"
+        return f"View {path}{_format_file_view_range(args.get('view_range'))}"
     return f"{command} {path}".strip()
 
 

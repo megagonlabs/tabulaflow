@@ -66,6 +66,11 @@ class TestView:
         assert "(error" not in out
         assert "L2" in out and "L3" in out and "L1" not in out
 
+    async def test_view_range_negative_end_errors(self, editor: FileEditorTool, tmp_path: Path) -> None:
+        (tmp_path / "a.txt").write_text("L1\nL2\nL3\n")
+        out = await editor("view", "a.txt", view_range=[2, -1])
+        assert "(error" in out and "end (-1) must be >= start (2)" in out
+
     async def test_view_missing(self, editor: FileEditorTool) -> None:
         out = await editor("view", "nope.txt")
         assert "(error" in out and "does not exist" in out

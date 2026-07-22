@@ -187,7 +187,7 @@ class FileEditorTool:
             return self._error(f"start must be >= 1, got {start}.")
         if start > total:
             return self._error(f"start ({start}) is past the end (only {total} available).")
-        if end == -1 or end > total:
+        if end > total:
             end = total  # clamp an over-long end to what's available
         if end < start:
             return self._error(f"end ({end}) must be >= start ({start}).")
@@ -405,9 +405,9 @@ class FileEditorTool:
             new_str: Replacement string for ``str_replace``.
             replace_all: For ``str_replace``, replace every occurrence instead of
                 requiring ``old_str`` to be unique.
-            view_range: Optional ``[start, end]`` for ``view`` (1-indexed,
-                end=-1 means last). For files, selects a line range; for
-                directories, an entry range for pagination. Not used for PDFs.
+            view_range: Optional ``[start, end]`` for ``view`` (1-indexed).
+                For files, selects a line range; for directories, an entry
+                range for pagination. Not used for PDFs.
         """
         try:
             resolved = self._resolve(path, for_write=command in ("write_file", "str_replace"))
