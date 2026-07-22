@@ -19,7 +19,7 @@
     --query-bg: #151922;
     --query-border: #242b36;
     --query-hover: #202633;
-    --focus-ring: rgba(154, 164, 178, 0.62);
+    --focus-ring: rgba(96, 165, 250, 0.72);
     --chart-grid: #3a4352;
     --chart-category-0: #3EB489;
     --chart-category-1: #5ac8fa;
@@ -565,6 +565,14 @@ body { margin: 0; background: var(--bg); color: var(--text); display: flex; flex
     background: rgba(255, 255, 255, 0.9); color: #111827;
 }
 .tf-map-view .maplibregl-ctrl-attrib a { color: #111827; }
+.tf-map-view .maplibregl-ctrl-attrib-button:focus,
+.tf-map-view .maplibregl-ctrl-group button:focus { box-shadow: none; }
+.tf-map-view .maplibregl-ctrl-attrib-button:focus-visible,
+.tf-map-view .maplibregl-ctrl-group button:focus-visible {
+    outline: 2px solid var(--focus-ring);
+    outline-offset: 2px;
+    box-shadow: none;
+}
 
 /* Direct graph rendering. */
 .tf-graph-view { --artifact-bg: #19212c; }
