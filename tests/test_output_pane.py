@@ -2130,6 +2130,7 @@ def test_pane_map_view_is_maplibre_based() -> None:
     assert "overflow-wrap: anywhere;" in _PANE_HTML
     assert "min-width: 220px; max-width: min(420px, 72vw);" in _PANE_HTML
     assert ":where(:focus-visible) {\n    outline: 2px solid var(--focus-ring);" in _PANE_HTML
+    assert "outline-offset: 2px;\n    border-radius: 4px;" in _PANE_HTML
     assert ".cell-link:focus { outline: none; }" not in _PANE_HTML
     assert ".tf-map-view .maplibregl-canvas:focus { outline: none; }" in _PANE_HTML
     assert ".tf-map-view .maplibregl-ctrl-group button:focus { box-shadow: none; }" in _PANE_HTML
