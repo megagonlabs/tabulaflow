@@ -186,6 +186,17 @@ body { margin: 0; background: var(--bg); color: var(--text); display: flex; flex
 .message-body.md a { color: var(--accent); text-decoration-color: rgba(62, 180, 137, 0.55);
                        text-underline-offset: 2px; }
 .message-body.md a:hover { text-decoration-color: var(--accent); }
+.message-body.md .md-image-ref { display: inline-flex; max-width: 100%; align-items: baseline; gap: 6px;
+                                  color: var(--accent); text-decoration: none;
+                                  margin-inline: 3px; border-bottom: 0; vertical-align: -0.12em; }
+.message-body.md .md-image-ref:hover { text-decoration: none; }
+.message-body.md .md-image-ref-nested { color: inherit; }
+.message-body.md .md-image-ref-static { color: var(--text-muted); }
+.message-body.md .md-image-icon { display: inline-flex; flex: 0 0 auto; width: 15px; height: 15px;
+                                  transform: translateY(2px); }
+.message-body.md .md-image-icon svg { width: 15px; height: 15px; }
+.message-body.md .md-image-label { min-width: 0; max-width: 100%; color: inherit; font-weight: 550;
+                                   overflow-wrap: anywhere; }
 .message-body.md strong { color: #f4f4f5; }
 .message-body.md ul,
 .message-body.md ol { margin: 0.65em 0; padding-left: 1.55em; }

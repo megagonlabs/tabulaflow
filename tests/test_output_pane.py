@@ -557,6 +557,18 @@ def test_pane_markdown_renderer_formats_safe_markdown(tmp_path: Path) -> None:
 
 ![alt](https://example.com/image.png)
 
+![](https://example.com/path/to/fallback-image.png)
+
+[![linked alt](https://example.com/linked.png)](https://example.com/page)
+
+![collapsed][]
+
+[collapsed]: https://example.com/collapsed.png
+
+![shortcut]
+
+[shortcut]: https://example.com/shortcut.png
+
 [unsafe](javascript:alert(1))
 """
     script = f"""
@@ -596,6 +608,24 @@ process.stdout.write(JSON.stringify({{ classes, attrs, html: target.innerHTML }}
     assert "<strong>bold</strong>" in rendered["html"]
     assert "<table>" in rendered["html"]
     assert "&lt;script&gt;alert(1)&lt;/script&gt;" in rendered["html"]
+    assert (
+        '<a class="md-image-ref" href="https://example.com/image.png" '
+        'title="https://example.com/image.png" aria-label="Open image: alt">'
+    ) in rendered["html"]
+    assert '<span class="md-image-icon">' in rendered["html"]
+    assert '<span class="md-image-label">alt</span>' in rendered["html"]
+    assert '<span class="md-image-label">example.com/path/to/fallback-image.png</span>' in rendered["html"]
+    assert '<span class="md-image-label">collapsed</span>' in rendered["html"]
+    assert '<span class="md-image-label">shortcut</span>' in rendered["html"]
+    assert 'href="https://example.com/collapsed.png"' in rendered["html"]
+    assert 'href="https://example.com/shortcut.png"' in rendered["html"]
+    assert "md-image-src" not in rendered["html"]
+    assert (
+        '<a href="https://example.com/page"><span class="md-image-ref md-image-ref-nested" '
+        'title="https://example.com/linked.png">'
+    ) in rendered["html"]
+    assert 'href="https://example.com/linked.png"' not in rendered["html"]
+    assert "!<a" not in rendered["html"]
     assert "<img" not in rendered["html"]
     assert 'href="javascript:' not in rendered["html"]
 

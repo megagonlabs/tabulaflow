@@ -174,21 +174,45 @@ Autolinks:
 
 Images:
 
-![Alt text](https://example.com/image.png)
+- `![Alt text](https://example.com/image.png)` -> ![Alt text](https://example.com/image.png)
 
 Image with title:
 
-![Alt text](https://example.com/image.png "Image title")
+- `![Alt text](https://example.com/image.png "Image title")` -> ![Alt text](https://example.com/image.png "Image title")
+
+Image without alt text:
+
+- `![](https://example.com/path/to/fallback-image.png)` -> ![](https://example.com/path/to/fallback-image.png)
+
+Adjacent images:
+
+- `![Mountain landscape](https://example.com/mountain.png) ![Forest](https://example.com/forest.png) ![City](https://example.com/city.png) ![Ocean](https://example.com/ocean.png)` -> ![Mountain landscape](https://example.com/mountain.png) ![Forest](https://example.com/forest.png) ![City](https://example.com/city.png) ![Ocean](https://example.com/ocean.png)
+
+Images with punctuation in prose:
+
+The selected view is ![Mountain landscape](https://example.com/mountain.png), followed by ![Forest](https://example.com/forest.png). Compare (![City](https://example.com/city.png)) and "![Ocean](https://example.com/ocean.png)" inside punctuation.
 
 Reference-style image:
 
-![Alt text][image-ref]
+- `![Alt text][image-ref]` -> ![Alt text][image-ref]
 
 [image-ref]: https://example.com/image.png "Image title"
 
+Collapsed reference-style image:
+
+- `![Collapsed image][]` -> ![Collapsed image][]
+
+[Collapsed image]: https://example.com/collapsed-image.png "Collapsed image title"
+
+Shortcut reference-style image:
+
+- `![Shortcut image]` -> ![Shortcut image]
+
+[Shortcut image]: https://example.com/shortcut-image.png "Shortcut image title"
+
 Image used as a link:
 
-[![Alt text](https://example.com/image.png)](https://example.com)
+- `[![Alt text](https://example.com/image.png)](https://example.com)` -> [![Alt text](https://example.com/image.png)](https://example.com)
 
 Inline code:
 
