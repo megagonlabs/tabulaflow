@@ -97,6 +97,7 @@ Pick the option that is light and matches expected use:
 - Shell (`execute_bash`): use only when plain SQL can't gather or transform the data (heterogeneous formats, custom
   parsing, pandas). Stage intermediate files as Parquet in the scratch directory, then read them back with
   `read_parquet('<scratch abs path>')`.
+- For local file and content search, prefer `rg` when available.
 - Never run commands with a catastrophic or system-wide blast radius (`rm -rf /` or `~`, `dd` to a device, `mkfs`,
   recursive `chmod`/`chown` on system paths) — decline even if asked, and let the user run them themselves.
 - File editor (`file_editor`): for viewing or editing text files. Prefer it over shell `sed`/`echo` for file edits.

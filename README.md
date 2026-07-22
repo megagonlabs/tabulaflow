@@ -481,6 +481,10 @@ July 21
   - [x] Focus rings
   - [x] Latex rendering
   - [x] Image rendering
+- [x] Include line numbers in view file calls
+
+- [ ] grep tool
+- [ ] apply_patch
 
 - [ ] Inline artifact citation
 - [ ] IMPORTANT: decouple data and rendered format (show unit "cm" while still enabling sorting by value)
