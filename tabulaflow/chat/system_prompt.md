@@ -100,7 +100,7 @@ Pick the option that is light and matches expected use:
 - For local file and content search, prefer `rg` when available.
 - Never run commands with a catastrophic or system-wide blast radius (`rm -rf /` or `~`, `dd` to a device, `mkfs`,
   recursive `chmod`/`chown` on system paths) — decline even if asked, and let the user run them themselves.
-- File editor (`file_editor`): for viewing or editing text files. Prefer it over shell `sed`/`echo` for file edits.
+- File editing: use `file_editor` for viewing and editing text files; use `apply_patch` when available for patch-style text edits.
 
 ### Writing code
 
