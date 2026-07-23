@@ -220,17 +220,14 @@ def _pane_query_html(sample: CodeSample) -> str:
         '<span class="copy-icon" aria-hidden="true"></span>'
         "</button>"
         "</div>"
-        f'{query["html"]}'
+        f"{query['html']}"
         "</section>"
         "</section>"
     )
 
 
 def write_browser_fixture(path: Path = OUTPUT_HTML) -> Path:
-    cards = "\n".join(
-        f"<h2>{escape(sample['title'])}</h2>\n{_pane_query_html(sample)}"
-        for sample in SAMPLES
-    )
+    cards = "\n".join(f"<h2>{escape(sample['title'])}</h2>\n{_pane_query_html(sample)}" for sample in SAMPLES)
     path.write_text(
         f"""<!doctype html>
 <html lang="en">
@@ -477,7 +474,9 @@ class CodeHighlightingPathsPreview(App[None]):
                     yield Static(_rich_preview(sample), classes="rich-preview")
 
                     yield _heading("4. Browser output pane query card")
-                    yield _description("build_query_data() → Pygments HtmlFormatter(style=TabulaflowPygmentsStyle). See generated HTML file.")
+                    yield _description(
+                        "build_query_data() → Pygments HtmlFormatter(style=TabulaflowPygmentsStyle). See generated HTML file."
+                    )
 
     def on_mount(self) -> None:
         for text_area in self.query(TextArea):

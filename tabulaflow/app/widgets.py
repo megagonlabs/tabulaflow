@@ -19,7 +19,7 @@ from rich.text import Text
 
 from textual import events
 from textual.binding import Binding
-from textual.content import Content
+from textual.content import Content, Span
 from textual.highlight import highlight
 from textual.reactive import reactive
 from textual.suggester import Suggester
@@ -952,10 +952,10 @@ class AgentMarkdownFence(MarkdownFence):
         if ansi:
             return super().highlight(code, language, ansi=ansi, dark=dark)
         content = highlight(code, language=language or None, theme=TabulaflowCodeHighlightTheme)
-        for index, span in enumerate(content.spans):
-            if str(span.style) == "$text":
-                content.spans[index] = span._replace(style=CODE_TEXT)
-        return content
+        spans = [
+            Span(span.start, span.end, CODE_TEXT) if str(span.style) == "$text" else span for span in content.spans
+        ]
+        return Content(content.plain, spans, content.cell_length, strip_control_codes=False)
 
 
 class AgentMarkdownTableContent(MarkdownTableContent):

@@ -122,15 +122,19 @@ def normalize_query_lexer(lexer: str | None) -> str:
 _TEXTUAL_SQL_HIGHLIGHT_QUERY = (
     files("textual").joinpath("tree-sitter", "highlights", "sql.scm").read_text(encoding="utf-8")
 )
-TABULAFLOW_SQL_HIGHLIGHT_QUERY = _TEXTUAL_SQL_HIGHLIGHT_QUERY.replace(
-    "\n(literal) @string\n",
-    "\n((literal) @string\n  (#match? @string \"^'.*'$\"))\n",
-).replace(
-    '"^[-+]?%d+$"',
-    '"^[-+]?[0-9]+$"',
-).replace(
-    '"^[-+]?%d*\\.%d*$"',
-    '"^[-+]?[0-9]*\\.[0-9]+$"',
+TABULAFLOW_SQL_HIGHLIGHT_QUERY = (
+    _TEXTUAL_SQL_HIGHLIGHT_QUERY.replace(
+        "\n(literal) @string\n",
+        "\n((literal) @string\n  (#match? @string \"^'.*'$\"))\n",
+    )
+    .replace(
+        '"^[-+]?%d+$"',
+        '"^[-+]?[0-9]+$"',
+    )
+    .replace(
+        '"^[-+]?%d*\\.%d*$"',
+        '"^[-+]?[0-9]*\\.[0-9]+$"',
+    )
 )
 
 

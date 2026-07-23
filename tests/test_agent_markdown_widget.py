@@ -5,6 +5,8 @@ from pygments.lexers import get_lexer_by_name
 from pygments.token import Token
 from textual.app import App, ComposeResult
 from textual.containers import VerticalScroll
+from textual.content import Content
+from textual.widgets._markdown import MarkdownParagraph, MarkdownTableCellContents
 
 from tabulaflow.app.theme import (
     CODE_FUNCTION,
@@ -71,10 +73,13 @@ print("hi")
         assert [getattr(bullet, "symbol") for bullet in block.query("MarkdownBullet")] == ["- ", "- "]
         assert len(block.query("MarkdownHorizontalRule")) == 0
         assert len(block.query("MarkdownTable")) == 1
-        table_cells = list(block.query("MarkdownTableCellContents"))
+        table_cells = list(block.query(MarkdownTableCellContents))
         assert table_cells
         assert all(cell.tooltip is None for cell in table_cells)
-        assert all("@click" not in str(span.style) for cell in table_cells for span in cell.content._spans)
+        for cell in table_cells:
+            content = cell.content
+            assert isinstance(content, Content)
+            assert all("@click" not in str(span.style) for span in content._spans)
         assert len(block.query("MarkdownFence")) == 1
 
 
@@ -93,7 +98,7 @@ async def test_agent_markdown_links_show_visible_destinations() -> None:
 
         block = app.progress._text_block
         assert isinstance(block, AgentTextBlock)
-        paragraph = block.query_one("MarkdownParagraph")
+        paragraph = block.query_one(MarkdownParagraph)
         assert paragraph._content.plain == (
             "See docs (https://example.com/docs), https://example.com/raw, "
             "user@example.com, https://example.com/same, "
@@ -151,11 +156,7 @@ def test_agent_markdown_fenced_code_is_flat() -> None:
 def test_agent_markdown_fenced_code_does_not_underline_functions() -> None:
     assert AgentTextBlock.BLOCKS["fence"] is AgentMarkdownFence
     content = AgentMarkdownFence.highlight("def hello(name: str) -> None:\n    pass", "python")
-    function_styles = [
-        str(span.style)
-        for span in content._spans
-        if content.plain[span.start : span.end] == "hello"
-    ]
+    function_styles = [str(span.style) for span in content._spans if content.plain[span.start : span.end] == "hello"]
     assert function_styles
     assert all("underline" not in style for style in function_styles)
     assert all(style == CODE_FUNCTION for style in function_styles)
@@ -164,9 +165,7 @@ def test_agent_markdown_fenced_code_does_not_underline_functions() -> None:
 def test_agent_markdown_fenced_code_identifiers_use_foreground() -> None:
     content = AgentMarkdownFence.highlight("customer_id = customer['id']", "python")
     identifier_styles = [
-        str(span.style)
-        for span in content._spans
-        if content.plain[span.start : span.end] == "customer_id"
+        str(span.style) for span in content._spans if content.plain[span.start : span.end] == "customer_id"
     ]
     assert identifier_styles
     assert all(style == CODE_TEXT for style in identifier_styles)
@@ -189,9 +188,7 @@ def test_agent_markdown_fenced_code_keywords_use_text_primary() -> None:
 def test_agent_markdown_fenced_code_numbers_use_distinct_violet() -> None:
     content = AgentMarkdownFence.highlight("score = 0.82 + 3", "python")
     number_styles = [
-        str(span.style)
-        for span in content._spans
-        if content.plain[span.start : span.end] in {"0.82", "3"}
+        str(span.style) for span in content._spans if content.plain[span.start : span.end] in {"0.82", "3"}
     ]
     assert number_styles
     assert all(style == CODE_NUMBER for style in number_styles)
@@ -199,11 +196,7 @@ def test_agent_markdown_fenced_code_numbers_use_distinct_violet() -> None:
 
 def test_agent_markdown_fenced_code_error_tokens_use_foreground() -> None:
     content = AgentMarkdownFence.highlight("invalid_token_preview = $not_python", "python")
-    error_styles = [
-        str(span.style)
-        for span in content._spans
-        if content.plain[span.start : span.end] == "$"
-    ]
+    error_styles = [str(span.style) for span in content._spans if content.plain[span.start : span.end] == "$"]
     assert error_styles
     assert all(style == CODE_TEXT for style in error_styles)
 
@@ -216,11 +209,7 @@ def test_agent_markdown_fenced_code_unclassified_tokens_use_code_text() -> None:
     ]
     for language, code in samples:
         content = AgentMarkdownFence.highlight(code, language)
-        visible_styles = [
-            str(span.style)
-            for span in content._spans
-            if content.plain[span.start : span.end].strip()
-        ]
+        visible_styles = [str(span.style) for span in content._spans if content.plain[span.start : span.end].strip()]
         assert visible_styles
         assert "$text" not in visible_styles
         assert CODE_TEXT in visible_styles
@@ -231,10 +220,7 @@ def test_agent_markdown_fenced_code_strings_use_double_string_green() -> None:
         '"""doc"""\nactive = True\nvalue = "double" + b"bytes" + f"{active=}"',
         "python",
     )
-    styles_by_text = {
-        content.plain[span.start : span.end]: str(span.style)
-        for span in content._spans
-    }
+    styles_by_text = {content.plain[span.start : span.end]: str(span.style) for span in content._spans}
     assert styles_by_text['"""doc"""'] == f"italic {CODE_STRING}"
     assert styles_by_text["True"] == CODE_STRING
     assert styles_by_text["double"] == CODE_STRING

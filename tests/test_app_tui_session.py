@@ -845,7 +845,7 @@ class _FakeStdout:
 
 
 class _FakeRunTuiApp:
-    error: Exception | None = None
+    error: BaseException | None = None
     run_mouse: bool | None = None
 
     def __init__(self, **_kwargs: object) -> None:
@@ -853,8 +853,9 @@ class _FakeRunTuiApp:
 
     async def run_async(self, *, mouse: bool = True) -> None:
         type(self).run_mouse = mouse
-        if type(self).error is not None:
-            raise type(self).error
+        error = type(self).error
+        if error is not None:
+            raise error
 
 
 @pytest.mark.asyncio
