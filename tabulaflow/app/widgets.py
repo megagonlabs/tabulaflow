@@ -509,19 +509,47 @@ def _fmt_arg_value(value: object, limit: int = 40) -> str:
     return text[: limit - 1] + "…" if len(text) > limit else text
 
 
+def _truncate_middle(text: str, limit: int) -> str:
+    if len(text) <= limit:
+        return text
+    if limit <= 1:
+        return "…"[:limit]
+    head = max(1, (limit - 1) // 2)
+    tail = limit - 1 - head
+    return f"{text[:head]}…{text[-tail:]}" if tail else f"{text[:head]}…"
+
+
 def _fmt_path_value(value: object, limit: int = 40) -> str:
     text = " ".join(str(value).split())
-    try:
-        path = Path(text)
-        home = Path.home()
-        if path.is_absolute():
-            if path == home:
-                text = "~"
-            else:
+    path = Path(text)
+    home = Path.home()
+    if path.is_absolute():
+        if path == home:
+            text = "~"
+        else:
+            try:
                 text = f"~/{path.relative_to(home)}"
-    except ValueError:
-        pass
-    return _fmt_arg_value(text, limit)
+            except ValueError:
+                pass
+    if len(text) <= limit:
+        return text
+
+    path = Path(text)
+    filename = path.name
+    if not filename:
+        return _fmt_arg_value(text, limit)
+
+    compact = f"{path.parent}/…/{filename}"
+    if len(compact) <= limit:
+        return compact
+
+    suffix = f"…/{filename}"
+    if len(suffix) <= limit:
+        prefix_limit = limit - len(suffix)
+        return f"{text[:prefix_limit]}{suffix}"
+
+    filename_limit = max(0, limit - len("…/"))
+    return f"…/{_truncate_middle(filename, filename_limit)}"
 
 
 def _looks_like_local_path(value: object) -> bool:

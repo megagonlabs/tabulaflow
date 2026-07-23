@@ -44,6 +44,14 @@ class TestFileEditorLabel:
         )
         assert label == "Edit ~/projects/mintq/models/x.sql +1"
 
+    def test_long_absolute_home_path_preserves_filename(self) -> None:
+        path = Path.home() / ".tabulaflow" / "sessions" / "vtyp8l" / "scratch" / "result_patch.sql"
+        label = summarize_tool_args(
+            "file_editor",
+            {"command": "str_replace", "path": str(path), "old_str": "a", "new_str": "a\nb"},
+        )
+        assert label == "Edit ~/.tabulaflow/sessions/vtyp8l/…/result_patch.sql +1"
+
     def test_str_replace_added_only_omits_zero_removed(self) -> None:
         label = summarize_tool_args(
             "file_editor",
@@ -212,6 +220,38 @@ class TestApplyPatchLabel:
             },
         )
         assert label == "Patch ~/project/old.txt -> ~/project/new.txt +1 -1"
+
+    def test_long_absolute_home_path_preserves_filename(self) -> None:
+        path = Path.home() / ".tabulaflow" / "sessions" / "vtyp8l" / "scratch" / "result_patch.sql"
+        label = summarize_tool_args(
+            "apply_patch",
+            {
+                "patch": f"""*** Begin Patch
+*** Update File: {path}
+@@
+-old
++new
+*** End Patch"""
+            },
+        )
+        assert label == "Patch ~/.tabulaflow/sess…/result_patch.sql +1 -1"
+
+    def test_long_filename_is_middle_truncated(self) -> None:
+        path = (
+            Path.home() / ".tabulaflow" / "sessions" / "vtyp8l" / "scratch" / "very_long_generated_query_filename.sql"
+        )
+        label = summarize_tool_args(
+            "apply_patch",
+            {
+                "patch": f"""*** Begin Patch
+*** Update File: {path}
+@@
+-old
++new
+*** End Patch"""
+            },
+        )
+        assert label == "Patch …/very_long_genera…uery_filename.sql +1 -1"
 
     def test_missing_patch_fallback(self) -> None:
         assert summarize_tool_args("apply_patch", {}) == "Patch"
