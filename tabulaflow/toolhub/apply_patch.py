@@ -6,6 +6,39 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from enum import Enum
 
+_UNICODE_NORMALIZATION = str.maketrans(
+    {
+        "\u2010": "-",
+        "\u2011": "-",
+        "\u2012": "-",
+        "\u2013": "-",
+        "\u2014": "-",
+        "\u2015": "-",
+        "\u2212": "-",
+        "\u2018": "'",
+        "\u2019": "'",
+        "\u201a": "'",
+        "\u201b": "'",
+        "\u201c": '"',
+        "\u201d": '"',
+        "\u201e": '"',
+        "\u201f": '"',
+        "\u00a0": " ",
+        "\u2002": " ",
+        "\u2003": " ",
+        "\u2004": " ",
+        "\u2005": " ",
+        "\u2006": " ",
+        "\u2007": " ",
+        "\u2008": " ",
+        "\u2009": " ",
+        "\u200a": " ",
+        "\u202f": " ",
+        "\u205f": " ",
+        "\u3000": " ",
+    }
+)
+
 
 class DiffError(ValueError):
     """Raised for invalid or malformed patch text."""
@@ -209,30 +242,48 @@ def assemble_changes(orig: dict[str, str | None], dest: dict[str, str | None]) -
     return commit
 
 
-def find_context_core(lines: list[str], context: list[str], start: int) -> tuple[int, int]:
+def _normalize_unicode_context(line: str) -> str:
+    return line.strip().translate(_UNICODE_NORMALIZATION)
+
+
+def find_context_core(lines: list[str], context: list[str], start: int, *, stop: int | None = None) -> tuple[int, int]:
     if not context:
         return start, 0
-    start = max(start, 0)
+    if len(context) > len(lines):
+        return -1, 0
 
-    for i in range(start, len(lines)):
+    start = max(start, 0)
+    last_start = len(lines) - len(context)
+    if stop is None:
+        stop = last_start + 1
+    stop = min(stop, last_start + 1)
+    if start >= stop:
+        return -1, 0
+
+    for i in range(start, stop):
         if lines[i : i + len(context)] == context:
             return i, 0
-    for i in range(start, len(lines)):
+    for i in range(start, stop):
         if [s.rstrip() for s in lines[i : i + len(context)]] == [s.rstrip() for s in context]:
             return i, 1
-    for i in range(start, len(lines)):
+    for i in range(start, stop):
         if [s.strip() for s in lines[i : i + len(context)]] == [s.strip() for s in context]:
             return i, 100
+    for i in range(start, stop):
+        if [_normalize_unicode_context(s) for s in lines[i : i + len(context)]] == [
+            _normalize_unicode_context(s) for s in context
+        ]:
+            return i, 1000
     return -1, 0
 
 
 def find_context(lines: list[str], context: list[str], start: int, eof: bool) -> tuple[int, int]:
     if eof:
-        new_index, fuzz = find_context_core(lines, context, len(lines) - len(context))
-        if new_index != -1:
-            return new_index, fuzz
-        new_index, fuzz = find_context_core(lines, context, start)
-        return new_index, fuzz + 10000
+        content_len = len(lines)
+        if lines and lines[-1] == "" and (not context or context[-1] != ""):
+            content_len -= 1
+        eof_start = content_len - len(context)
+        return find_context_core(lines, context, eof_start, stop=eof_start + 1)
     return find_context_core(lines, context, start)
 
 
@@ -361,9 +412,13 @@ def patch_to_commit(patch: Patch, orig: dict[str, str]) -> Commit:
         if action.type == ActionType.DELETE:
             commit.changes[path] = FileChange(type=ActionType.DELETE, old_content=orig[path])
         elif action.type == ActionType.ADD:
-            commit.changes[path] = FileChange(type=ActionType.ADD, new_content=action.new_file)
+            if action.new_file is None:
+                raise DiffError(f"Add File Error: Missing new content: {path}")
+            commit.changes[path] = FileChange(
+                type=ActionType.ADD, new_content=normalize_trailing_newline(action.new_file)
+            )
         elif action.type == ActionType.UPDATE:
-            new_content = _get_updated_file(text=orig[path], action=action, path=path)
+            new_content = normalize_trailing_newline(_get_updated_file(text=orig[path], action=action, path=path))
             commit.changes[path] = FileChange(
                 type=ActionType.UPDATE,
                 old_content=orig[path],
@@ -371,6 +426,10 @@ def patch_to_commit(patch: Patch, orig: dict[str, str]) -> Commit:
                 move_path=action.move_path,
             )
     return commit
+
+
+def normalize_trailing_newline(text: str) -> str:
+    return text.rstrip("\n") + "\n"
 
 
 def load_files(paths: list[str], open_fn: Callable[[str], str]) -> dict[str, str]:
@@ -381,6 +440,14 @@ def load_files(paths: list[str], open_fn: Callable[[str], str]) -> dict[str, str
         except FileNotFoundError as exc:
             raise DiffError(f"Missing File: {path}") from exc
     return orig
+
+
+def validate_add_paths(patch: Patch, exists_fn: Callable[[str], bool] | None) -> None:
+    if exists_fn is None:
+        return
+    for path, action in patch.actions.items():
+        if action.type == ActionType.ADD and exists_fn(path):
+            raise DiffError(f"Add File Error: File already exists: {path}")
 
 
 def apply_commit(
@@ -410,11 +477,13 @@ def process_patch(
     open_fn: Callable[[str], str],
     write_fn: Callable[[str, str], None],
     remove_fn: Callable[[str], None],
+    exists_fn: Callable[[str], bool] | None = None,
 ) -> tuple[str, int, Commit]:
     """Process a patch string and apply it with injected I/O callables."""
     paths = identify_files_needed(text)
     orig = load_files(paths, open_fn)
     patch, fuzz = text_to_patch(text, orig)
+    validate_add_paths(patch, exists_fn)
     commit = patch_to_commit(patch, orig)
     apply_commit(commit, write_fn, remove_fn)
     return "Done!", fuzz, commit
