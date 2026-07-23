@@ -112,7 +112,7 @@ class TestApplyPatchLabel:
 *** End Patch"""
             },
         )
-        assert label == "Patch README.md +1 -1"
+        assert label == "Edit README.md +1 -1"
 
     def test_add_file_diffstat(self) -> None:
         label = summarize_tool_args(
@@ -125,7 +125,7 @@ class TestApplyPatchLabel:
 *** End Patch"""
             },
         )
-        assert label == "Patch new.txt +2"
+        assert label == "Edit new.txt +2"
 
     def test_delete_file_label(self) -> None:
         label = summarize_tool_args(
@@ -136,7 +136,7 @@ class TestApplyPatchLabel:
 *** End Patch"""
             },
         )
-        assert label == "Patch old.txt"
+        assert label == "Edit old.txt"
 
     def test_update_without_line_changes_omits_diffstat(self) -> None:
         label = summarize_tool_args(
@@ -149,9 +149,9 @@ class TestApplyPatchLabel:
 *** End Patch"""
             },
         )
-        assert label == "Patch README.md"
+        assert label == "Edit README.md"
 
-    def test_two_file_diffstats(self) -> None:
+    def test_two_file_diffstats_are_aggregated(self) -> None:
         label = summarize_tool_args(
             "apply_patch",
             {
@@ -167,7 +167,7 @@ class TestApplyPatchLabel:
 *** End Patch"""
             },
         )
-        assert label == "Patch README.md +1 -1, src/config.txt +1 -1"
+        assert label == "Edit 2 files +2 -2"
 
     def test_three_or_more_files_aggregate(self) -> None:
         label = summarize_tool_args(
@@ -187,7 +187,7 @@ class TestApplyPatchLabel:
 *** End Patch"""
             },
         )
-        assert label == "Patch 3 files +3 -2"
+        assert label == "Edit 3 files +3 -2"
 
     def test_move_label(self) -> None:
         label = summarize_tool_args(
@@ -202,7 +202,7 @@ class TestApplyPatchLabel:
 *** End Patch"""
             },
         )
-        assert label == "Patch old.txt -> new.txt +1 -1"
+        assert label == "Edit old.txt -> new.txt +1 -1"
 
     def test_absolute_home_paths_are_shortened(self) -> None:
         old_path = Path.home() / "project" / "old.txt"
@@ -219,7 +219,7 @@ class TestApplyPatchLabel:
 *** End Patch"""
             },
         )
-        assert label == "Patch ~/project/old.txt -> ~/project/new.txt +1 -1"
+        assert label == "Edit ~/project/old.txt -> ~/project/new.txt +1 -1"
 
     def test_long_absolute_home_path_preserves_filename(self) -> None:
         path = Path.home() / ".tabulaflow" / "sessions" / "vtyp8l" / "scratch" / "result_patch.sql"
@@ -234,7 +234,7 @@ class TestApplyPatchLabel:
 *** End Patch"""
             },
         )
-        assert label == "Patch ~/.tabulaflow/sess…/result_patch.sql +1 -1"
+        assert label == "Edit ~/.tabulaflow/sess…/result_patch.sql +1 -1"
 
     def test_long_filename_is_middle_truncated(self) -> None:
         path = (
@@ -251,11 +251,11 @@ class TestApplyPatchLabel:
 *** End Patch"""
             },
         )
-        assert label == "Patch …/very_long_genera…uery_filename.sql +1 -1"
+        assert label == "Edit …/very_long_genera…uery_filename.sql +1 -1"
 
     def test_missing_patch_fallback(self) -> None:
-        assert summarize_tool_args("apply_patch", {}) == "Patch"
-        assert summarize_tool_args("apply_patch", {"patch": "not a patch"}) == "Patch"
+        assert summarize_tool_args("apply_patch", {}) == "Edit"
+        assert summarize_tool_args("apply_patch", {"patch": "not a patch"}) == "Edit"
 
 
 class TestVerbLedLabels:
@@ -320,27 +320,27 @@ class TestStyledLabel:
         assert styled["-1"] == DIFF_REMOVED  # removed: red
 
     def test_apply_patch_diffstat_colored(self) -> None:
-        text = _styled_label("apply_patch", "Patch x.sql +2 -1")
+        text = _styled_label("apply_patch", "Edit x.sql +2 -1")
         styled = {text.plain[s.start : s.end]: s.style for s in text.spans}
-        assert styled["Patch"] == "bold dim"
+        assert styled["Edit"] == "bold dim"
         assert styled["+2"] == DIFF_ADDED
         assert styled["-1"] == DIFF_REMOVED
 
     def test_diffstat_can_remain_uncolored(self) -> None:
-        text = _styled_label("apply_patch", "Patch x.sql +2 -1", color_diffstat=False)
-        assert text.plain == "Patch x.sql +2 -1"
+        text = _styled_label("apply_patch", "Edit x.sql +2 -1", color_diffstat=False)
+        assert text.plain == "Edit x.sql +2 -1"
         assert all(span.style in {"bold dim", "dim"} for span in text.spans)
 
     def test_failed_patch_diffstat_remains_uncolored(self) -> None:
         widget = AgentProgressWidget()
-        widget._on_tool_start("call_1", "apply_patch", "Patch x.sql +2 -1")
+        widget._on_tool_start("call_1", "apply_patch", "Edit x.sql +2 -1")
         widget._on_tool_end("call_1", "apply_patch", "error")
 
         status, _tool_call_id, name, label = widget._steps[-1]
         text = _styled_label(name, label, color_diffstat=status == "done")
 
         assert status == "failed"
-        assert text.plain == "Patch x.sql +2 -1 → error"
+        assert text.plain == "Edit x.sql +2 -1 → error"
         assert all(span.style in {"bold dim", "dim"} for span in text.spans)
 
     def test_non_editor_label_bolds_verb_but_stays_dim(self) -> None:

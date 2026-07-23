@@ -642,7 +642,7 @@ class _PatchFileSummary:
 def _summarize_apply_patch(args: Mapping[str, object]) -> str:
     patch = args.get("patch")
     if not isinstance(patch, str) or not patch:
-        return "Patch"
+        return "Edit"
 
     files: list[_PatchFileSummary] = []
     current: _PatchFileSummary | None = None
@@ -682,12 +682,12 @@ def _summarize_apply_patch(args: Mapping[str, object]) -> str:
             current.removed += 1
 
     if not files:
-        return "Patch"
+        return "Edit"
 
     total_added = sum(file.added for file in files)
     total_removed = sum(file.removed for file in files)
-    if len(files) >= 3:
-        return f"Patch {len(files)} files{_format_diffstat(total_added, total_removed)}"
+    if len(files) >= 2:
+        return f"Edit {len(files)} files{_format_diffstat(total_added, total_removed)}"
 
     parts = []
     for file in files:
@@ -695,7 +695,7 @@ def _summarize_apply_patch(args: Mapping[str, object]) -> str:
         move = file.move
         target = f"{path} -> {_fmt_path_value(move, 36)}" if move else path
         parts.append(f"{target}{_format_diffstat(file.added, file.removed)}")
-    return "Patch " + ", ".join(parts)
+    return "Edit " + ", ".join(parts)
 
 
 def summarize_tool_args(name: str, args: Mapping[str, object]) -> str:
