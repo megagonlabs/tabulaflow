@@ -1,7 +1,13 @@
 """Tests for the TUI tool-step label rendering (verb-led labels + diffstat)."""
 
 from tabulaflow.app.theme import DIFF_ADDED, DIFF_REMOVED
-from tabulaflow.app.widgets import _line_diffstat, _styled_label, summarize_outcome, summarize_tool_args
+from tabulaflow.app.widgets import (
+    AgentProgressWidget,
+    _line_diffstat,
+    _styled_label,
+    summarize_outcome,
+    summarize_tool_args,
+)
 from tabulaflow.chat.events import Completed, Failed, RowsReturned
 
 
@@ -206,6 +212,23 @@ class TestStyledLabel:
         assert styled["Patch"] == "bold dim"
         assert styled["+2"] == DIFF_ADDED
         assert styled["-1"] == DIFF_REMOVED
+
+    def test_diffstat_can_remain_uncolored(self) -> None:
+        text = _styled_label("apply_patch", "Patch x.sql +2 -1", color_diffstat=False)
+        assert text.plain == "Patch x.sql +2 -1"
+        assert all(span.style in {"bold dim", "dim"} for span in text.spans)
+
+    def test_failed_patch_diffstat_remains_uncolored(self) -> None:
+        widget = AgentProgressWidget()
+        widget._on_tool_start("call_1", "apply_patch", "Patch x.sql +2 -1")
+        widget._on_tool_end("call_1", "apply_patch", "error")
+
+        status, _tool_call_id, name, label = widget._steps[-1]
+        text = _styled_label(name, label, color_diffstat=status == "done")
+
+        assert status == "failed"
+        assert text.plain == "Patch x.sql +2 -1 → error"
+        assert all(span.style in {"bold dim", "dim"} for span in text.spans)
 
     def test_non_editor_label_bolds_verb_but_stays_dim(self) -> None:
         text = _styled_label("run_query", "SELECT a - 1, b + 2")

@@ -43,6 +43,7 @@ from tabulaflow.core.types import Usage
 #   render_chart               -> Completed
 #   transfer_record            -> Completed
 #   run_subagent_for_each_row  -> Completed
+#   apply_patch                -> Completed
 # Any tool not listed (or with no count to report) -> Completed. Adding a tool
 # that returns rows/columns just reuses RowsReturned/ColumnsReturned — the union
 # is keyed by outcome shape, so it stays closed as tools grow.

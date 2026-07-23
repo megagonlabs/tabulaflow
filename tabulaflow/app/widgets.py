@@ -775,7 +775,7 @@ def summarize_outcome(outcome: ToolOutcome) -> str:
     return ""  # Completed — no suffix
 
 
-def _styled_label(name: str, label: str) -> Text:
+def _styled_label(name: str, label: str, *, color_diffstat: bool = True) -> Text:
     """Render a step label with a bold-dim verb and dim details.
 
     File-editor git diffstat tokens keep their add/remove colors. That coloring is
@@ -792,7 +792,7 @@ def _styled_label(name: str, label: str) -> Text:
     text.append(label[:verb_end], style="bold dim")
     pos = 0
     rest = label[verb_end:]
-    if name not in {"file_editor", "apply_patch"} or not _DIFFSTAT_TOKEN_RE.search(rest):
+    if not color_diffstat or name not in {"file_editor", "apply_patch"} or not _DIFFSTAT_TOKEN_RE.search(rest):
         text.append(rest, style="dim")
         return text
 
@@ -1097,19 +1097,19 @@ class AgentProgressWidget(Widget):
                 if self._frozen:
                     line = Text()
                     line.append("⊘ ", style="dim")
-                    line.append_text(_styled_label(_name, label))
+                    line.append_text(_styled_label(_name, label, color_diffstat=False))
                     parts.append(line)
                 else:
                     spinner = self._tool_spinners.get(tool_call_id)
                     if spinner is None:
                         spinner = Spinner("dots", style="dim")
                         self._tool_spinners[tool_call_id] = spinner
-                    spinner.text = _styled_label(_name, label)
+                    spinner.text = _styled_label(_name, label, color_diffstat=False)
                     parts.append(spinner)
             else:
                 line = Text()
                 line.append("→ ", style="dim")
-                line.append_text(_styled_label(_name, label))
+                line.append_text(_styled_label(_name, label, color_diffstat=status == "done"))
                 parts.append(line)
 
         if self._status_text and not has_running:
@@ -1248,8 +1248,12 @@ class AgentProgressWidget(Widget):
             step = self._steps[i]
             if step[0] == "running" and step[1] == tool_call_id:
                 label = step[3]
+                status = "failed" if result_summary == "error" else "done"
                 progress = self._tool_progress.get(tool_call_id)
-                if progress is not None:
+                if result_summary == "error":
+                    base_label = label.split(" → ")[0]
+                    self._steps[i] = (status, step[1], step[2], f"{base_label} → {result_summary}")
+                elif progress is not None:
                     base_label = label.split(" → ")[0]
                     completed, total, last_stage, unit = progress
                     # Open-ended count: the final tick already holds the total, so
@@ -1258,12 +1262,12 @@ class AgentProgressWidget(Widget):
                         suffix = self._format_progress(completed, None, last_stage, unit)
                     else:
                         suffix = self._format_progress(total, total, last_stage, unit)
-                    self._steps[i] = ("done", step[1], step[2], f"{base_label} → {suffix}")
+                    self._steps[i] = (status, step[1], step[2], f"{base_label} → {suffix}")
                 else:
                     # Append the outcome only when it carries information (rows /
                     # columns / error); a plain completion gets no suffix.
                     new_label = f"{label} → {result_summary}" if result_summary else label
-                    self._steps[i] = ("done", step[1], step[2], new_label)
+                    self._steps[i] = (status, step[1], step[2], new_label)
                 break
         self._tool_spinners.pop(tool_call_id, None)
         self._tool_progress.pop(tool_call_id, None)

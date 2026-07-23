@@ -693,7 +693,11 @@ class ChatAgent:
                                     ):
                                         completed_results[event.tool_call_id] = event.result
                                     await _emit_stream_event(
-                                        event, emit, self._query_history, self._tools.get_table_schema, text_router
+                                        event,
+                                        emit,
+                                        self._query_history,
+                                        self._tools.get_table_schema,
+                                        text_router,
                                     )
                                     await asyncio.sleep(0)
                             emit(UsageUpdated(usage=Usage.from_pydantic_ai_usage(agent_run.usage, self.model)))
@@ -1052,6 +1056,7 @@ async def _emit_stream_event(
         TextPartDelta,
         ThinkingPart,
         ThinkingPartDelta,
+        ToolReturnPart,
     )
 
     if isinstance(event, FunctionToolCallEvent):
@@ -1061,7 +1066,8 @@ async def _emit_stream_event(
 
     elif isinstance(event, FunctionToolResultEvent):
         tool_name = event.result.tool_name or ""
-        outcome = await _build_outcome(tool_name, query_history, get_table_schema_tool)
+        result_part = event.result if isinstance(event.result, ToolReturnPart) else None
+        outcome = await _build_outcome(tool_name, query_history, get_table_schema_tool, result_part)
         emit(ToolFinished(tool_call_id=event.tool_call_id, name=tool_name, outcome=outcome))
 
     elif isinstance(event, PartStartEvent):
@@ -1098,6 +1104,7 @@ async def _build_outcome(
     tool_name: str,
     query_history: QueryHistory,
     get_table_schema_tool: RegistryGetTableSchemaTool | None,
+    result_part: ToolReturnPart | None = None,
 ) -> ToolOutcome:
     """Derive the structured tool outcome from the agent's recorded state. Only
     ``run_query`` (rows / error) and ``get_table_schema`` (columns) report a count;
@@ -1116,4 +1123,7 @@ async def _build_outcome(
         n = get_table_schema_tool.last_columns_returned
         if n is not None:
             return ColumnsReturned(count=n)
+    content = result_part.content if result_part is not None else None
+    if isinstance(content, str) and content.startswith("(error:"):
+        return Failed()
     return Completed()
