@@ -489,10 +489,11 @@ July 22
 - [x] apply_patch
 - [x] Refactor toolhub
 - [x] Notify model identity
-- [ ] Refactor chat/agent.py
-- [ ] code diff rendering
-- [ ] notify agent on llm preset changed? test behaviour of editing tool use
+- [x] Refactor chat/agent.py
+- [x] Fix tool outcome display racing
 
+- [ ] Include Cypher
+- [ ] code diff rendering
 - [ ] Inline artifact citation
 - [ ] IMPORTANT: decouple data and rendered format (show unit "cm" while still enabling sorting by value)
 - [ ] Subagent reuse
@@ -505,13 +506,7 @@ July 22
 - [ ] put removed stale tables in workspace in a user-invisible schema rather than deleting
 - [ ] Schema browser for very large db (1000+ tables/columns)
 
-- [ ] Coding
-  - [ ] Prompt
-  - [ ] apply_patch tool
-  - [ ] Progress display - include line number for reading one files multiple times
-- [ ] Include Cypher
 - [ ] View menu location?
-- [ ] Remote server improvements
 
 
 - [ ] TUI
