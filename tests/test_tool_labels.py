@@ -1,5 +1,7 @@
 """Tests for the TUI tool-step label rendering (verb-led labels + diffstat)."""
 
+from pathlib import Path
+
 from tabulaflow.app.theme import DIFF_ADDED, DIFF_REMOVED
 from tabulaflow.app.widgets import (
     AgentProgressWidget,
@@ -33,6 +35,14 @@ class TestFileEditorLabel:
             {"command": "str_replace", "path": "models/x.sql", "old_str": "a\nb", "new_str": "a\nB\nc"},
         )
         assert label == "Edit models/x.sql +2 -1"
+
+    def test_absolute_home_path_is_shortened(self) -> None:
+        path = Path.home() / "projects" / "mintq" / "models" / "x.sql"
+        label = summarize_tool_args(
+            "file_editor",
+            {"command": "str_replace", "path": str(path), "old_str": "a", "new_str": "a\nb"},
+        )
+        assert label == "Edit ~/projects/mintq/models/x.sql +1"
 
     def test_str_replace_added_only_omits_zero_removed(self) -> None:
         label = summarize_tool_args(
@@ -186,6 +196,23 @@ class TestApplyPatchLabel:
         )
         assert label == "Patch old.txt -> new.txt +1 -1"
 
+    def test_absolute_home_paths_are_shortened(self) -> None:
+        old_path = Path.home() / "project" / "old.txt"
+        new_path = Path.home() / "project" / "new.txt"
+        label = summarize_tool_args(
+            "apply_patch",
+            {
+                "patch": f"""*** Begin Patch
+*** Update File: {old_path}
+*** Move to: {new_path}
+@@
+-old
++new
+*** End Patch"""
+            },
+        )
+        assert label == "Patch ~/project/old.txt -> ~/project/new.txt +1 -1"
+
     def test_missing_patch_fallback(self) -> None:
         assert summarize_tool_args("apply_patch", {}) == "Patch"
         assert summarize_tool_args("apply_patch", {"patch": "not a patch"}) == "Patch"
@@ -214,6 +241,14 @@ class TestVerbLedLabels:
 
     def test_browser_navigate(self) -> None:
         assert summarize_tool_args("browser_navigate", {"url": "stripe.com"}) == "Navigate stripe.com"
+
+    def test_connect_data_source_shortens_local_path(self) -> None:
+        path = Path.home() / "data" / "source.csv"
+        assert summarize_tool_args("connect_data_source", {"source": str(path)}) == "Connect ~/data/source.csv"
+
+    def test_connect_data_source_leaves_url_unchanged(self) -> None:
+        url = "https://example.com/data.csv"
+        assert summarize_tool_args("connect_data_source", {"source": url}) == f"Connect {url}"
 
     def test_execute_bash(self) -> None:
         assert summarize_tool_args("execute_bash", {"command": "pytest tests/"}) == "Run pytest tests/"

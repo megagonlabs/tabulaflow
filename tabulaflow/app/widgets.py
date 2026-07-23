@@ -509,6 +509,30 @@ def _fmt_arg_value(value: object, limit: int = 40) -> str:
     return text[: limit - 1] + "…" if len(text) > limit else text
 
 
+def _fmt_path_value(value: object, limit: int = 40) -> str:
+    text = " ".join(str(value).split())
+    try:
+        path = Path(text)
+        home = Path.home()
+        if path.is_absolute():
+            if path == home:
+                text = "~"
+            else:
+                text = f"~/{path.relative_to(home)}"
+    except ValueError:
+        pass
+    return _fmt_arg_value(text, limit)
+
+
+def _looks_like_local_path(value: object) -> bool:
+    text = str(value).strip()
+    if not text:
+        return False
+    if "://" in text:
+        return False
+    return text.startswith(("/", "~/", "./", "../")) or Path(text).suffix != ""
+
+
 def _summarize_generic_args(args: Mapping[str, object]) -> str:
     """Render arbitrary tool args as a clean label instead of a raw dict repr.
 
@@ -566,7 +590,7 @@ def _format_file_view_range(view_range: object) -> str:
 def _summarize_file_editor(args: Mapping[str, object]) -> str:
     """A verb-led label for the file editor: ``Edit foo.sql +5 -2`` (git diffstat)."""
     command = str(args.get("command", ""))
-    path = _fmt_arg_value(args.get("path", "."), 48)
+    path = _fmt_path_value(args.get("path", "."), 48)
     if command == "str_replace":
         added, removed = _line_diffstat(str(args.get("old_str", "")), str(args.get("new_str", "")))
         return f"Edit {path}{_format_diffstat(added, removed)}"
@@ -639,9 +663,9 @@ def _summarize_apply_patch(args: Mapping[str, object]) -> str:
 
     parts = []
     for file in files:
-        path = _fmt_arg_value(file.path, 36)
+        path = _fmt_path_value(file.path, 36)
         move = file.move
-        target = f"{path} -> {_fmt_arg_value(move, 36)}" if move else path
+        target = f"{path} -> {_fmt_path_value(move, 36)}" if move else path
         parts.append(f"{target}{_format_diffstat(file.added, file.removed)}")
     return "Patch " + ", ".join(parts)
 
@@ -752,7 +776,9 @@ def summarize_tool_args(name: str, args: Mapping[str, object]) -> str:
         target = _fmt_arg_value(cond) if cond else f"{args.get('seconds', '')}s"
         return f"Wait {target}".rstrip()
     if name == "connect_data_source":
-        return f"Connect {_fmt_arg_value(args.get('source', ''), 60)}".rstrip()
+        source = args.get("source", "")
+        label = _fmt_path_value(source, 60) if _looks_like_local_path(source) else _fmt_arg_value(source, 60)
+        return f"Connect {label}".rstrip()
     if name == "execute_bash":
         return f"Run {_fmt_arg_value(args.get('command', ''), 60)}".rstrip()
     if name == "file_editor":
