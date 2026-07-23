@@ -10,15 +10,22 @@ Adapted from the Anthropic/OpenHands ``str_replace_editor`` pattern.
 
 import asyncio
 from collections.abc import Sequence
-from dataclasses import dataclass
 import os
 import re
 from pathlib import Path
-from typing import ClassVar, Final, Literal
+from typing import ClassVar, Literal
 
 from pydantic import BaseModel
 from pydantic_ai import Tool
 
+from tabulaflow.toolhub.fs_roots import (
+    _DEFAULT_ALLOWED_ROOTS,
+    _DefaultAllowedRoots,
+    _ResolvedFileEditorRoot,
+    _resolve,
+    _resolve_roots,
+    FileEditorRoot as FileEditorRoot,
+)
 from tabulaflow.toolhub.message_store import (
     MESSAGE_THRESHOLD_CHARS,
     ScopedMessageStore,
@@ -31,35 +38,6 @@ SNIPPET_CONTEXT_LINES = 4
 MAX_RESPONSE_LINES = 200
 MAX_RESPONSE_CHARS = 40000
 MAX_DIR_ENTRIES = 200
-
-
-@dataclass(frozen=True)
-class FileEditorRoot:
-    """A filesystem root that the file editor may access.
-
-    Args:
-        name: Human-readable root label used in error messages.
-        path: Root directory path.
-        writable: Whether mutating commands may write under this root.
-    """
-
-    name: str
-    path: str | Path
-    writable: bool = True
-
-
-@dataclass(frozen=True)
-class _ResolvedFileEditorRoot:
-    name: str
-    path: Path
-    writable: bool
-
-
-class _DefaultAllowedRoots:
-    pass
-
-
-_DEFAULT_ALLOWED_ROOTS: Final = _DefaultAllowedRoots()
 
 
 class FileEditorToolMetrics(BaseModel):
@@ -92,58 +70,24 @@ class FileEditorTool:
         self._unrestricted = allowed_roots is None
         if isinstance(allowed_roots, _DefaultAllowedRoots):
             allowed_roots = [FileEditorRoot("working_dir", self._working_dir)]
-        self._allowed_roots = () if allowed_roots is None else self._resolve_roots(allowed_roots)
+        self._allowed_roots: tuple[_ResolvedFileEditorRoot, ...] = (
+            () if allowed_roots is None else _resolve_roots(allowed_roots)
+        )
         # When present, a viewed PDF's extracted text is mirrored to the message store
         # so the agent can run extraction tools on its message_id (PDFs only — other
         # returns are not mirrored).
         self._message_store = message_store
         self._metrics = FileEditorToolMetrics()
 
-    @staticmethod
-    def _resolve_roots(roots: Sequence[FileEditorRoot]) -> tuple[_ResolvedFileEditorRoot, ...]:
-        resolved_roots: list[_ResolvedFileEditorRoot] = []
-        for root in roots:
-            name = root.name.strip()
-            if not name:
-                raise ValueError("allowed root name must be non-empty")
-            resolved = Path(root.path).resolve()
-            if not resolved.is_dir():
-                raise ValueError(f"allowed root is not a directory: {root.path}")
-            resolved_roots.append(_ResolvedFileEditorRoot(name, resolved, root.writable))
-        if not resolved_roots:
-            raise ValueError("allowed_roots must contain at least one root, or be None for unrestricted access")
-        return tuple(resolved_roots)
-
-    @staticmethod
-    def _is_relative_to(path: Path, root: Path) -> bool:
-        try:
-            path.relative_to(root)
-        except ValueError:
-            return False
-        return True
-
-    def _root_for(self, resolved: Path) -> _ResolvedFileEditorRoot | None:
-        for root in self._allowed_roots:
-            if self._is_relative_to(resolved, root.path):
-                return root
-        return None
-
-    def _format_allowed_roots(self) -> str:
-        return ", ".join(f"{root.name}={root.path}" for root in self._allowed_roots)
-
     def _resolve(self, path: str, *, for_write: bool = False) -> Path:
         """Resolve a path against working_dir and validate access policy."""
-        p = Path(path)
-        resolved = p.resolve() if p.is_absolute() else (self._working_dir / p).resolve()
-        if self._unrestricted:
-            return resolved
-
-        root = self._root_for(resolved)
-        if root is None:
-            raise ValueError(f"Path is outside the allowed roots ({self._format_allowed_roots()}): {path}")
-        if for_write and not root.writable:
-            raise ValueError(f"Path is under read-only root '{root.name}': {path}")
-        return resolved
+        return _resolve(
+            path,
+            working_dir=self._working_dir,
+            allowed_roots=self._allowed_roots,
+            unrestricted=self._unrestricted,
+            for_write=for_write,
+        )
 
     @staticmethod
     def _truncate_line(line: str, max_chars: int) -> str:

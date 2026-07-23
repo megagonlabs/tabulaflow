@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 
-from tabulaflow.toolhub.apply_patch import ActionType, Commit, DiffError, process_patch
+from tabulaflow.toolhub.apply_patch import ActionType, ApplyPatchTool, Commit, DiffError, process_patch
 
 
 class FakeIO:
@@ -429,3 +431,205 @@ def test_context_not_found_raises_diff_error() -> None:
             io.write,
             io.remove,
         )
+
+
+class TestApplyPatchTool:
+    async def test_tool_round_trip_and_result_format(self, tmp_path: Path) -> None:
+        (tmp_path / "existing.txt").write_text("old\n")
+        (tmp_path / "delete.txt").write_text("stale\n")
+        tool = ApplyPatchTool(str(tmp_path))
+
+        out = await tool(
+            """*** Begin Patch
+*** Update File: existing.txt
+@@
+-old
++new
+*** Add File: added.txt
++added
+*** Delete File: delete.txt
+*** End Patch
+"""
+        )
+
+        assert out.splitlines() == ["M existing.txt", "A added.txt", "D delete.txt"]
+        assert (tmp_path / "existing.txt").read_text() == "new\n"
+        assert (tmp_path / "added.txt").read_text() == "added\n"
+        assert not (tmp_path / "delete.txt").exists()
+
+    async def test_tool_reports_fuzzy_match(self, tmp_path: Path) -> None:
+        (tmp_path / "a.txt").write_text("alpha   \nold\n")
+        tool = ApplyPatchTool(str(tmp_path))
+
+        out = await tool(
+            """*** Begin Patch
+*** Update File: a.txt
+@@
+ alpha
+-old
++new
+*** End Patch
+"""
+        )
+
+        assert "M a.txt" in out
+        assert "(fuzzy-matched, fuzz=" in out
+        assert (tmp_path / "a.txt").read_text() == "alpha   \nnew\n"
+
+    async def test_tool_rejects_relative_path_escape(self, tmp_path: Path) -> None:
+        project = tmp_path / "project"
+        project.mkdir()
+        outside = tmp_path / "outside.txt"
+        outside.write_text("outside\n")
+        tool = ApplyPatchTool(str(project))
+
+        out = await tool(
+            """*** Begin Patch
+*** Update File: ../outside.txt
+@@
+-outside
++edited
+*** End Patch
+"""
+        )
+
+        assert "(error:" in out and "outside the allowed roots" in out
+        assert outside.read_text() == "outside\n"
+
+    async def test_tool_rejects_absolute_path_outside_root(self, tmp_path: Path) -> None:
+        project = tmp_path / "project"
+        project.mkdir()
+        outside = tmp_path / "outside.txt"
+        outside.write_text("outside\n")
+        tool = ApplyPatchTool(str(project))
+
+        out = await tool(
+            f"""*** Begin Patch
+*** Update File: {outside}
+@@
+-outside
++edited
+*** End Patch
+"""
+        )
+
+        assert "(error:" in out and "outside the allowed roots" in out
+        assert outside.read_text() == "outside\n"
+
+    async def test_tool_unrestricted_allows_absolute_path(self, tmp_path: Path) -> None:
+        project = tmp_path / "project"
+        project.mkdir()
+        outside = tmp_path / "outside.txt"
+        outside.write_text("outside\n")
+        tool = ApplyPatchTool(str(project), allowed_roots=None)
+
+        out = await tool(
+            f"""*** Begin Patch
+*** Update File: {outside}
+@@
+-outside
++edited
+*** End Patch
+"""
+        )
+
+        assert out == f"M {outside}"
+        assert outside.read_text() == "edited\n"
+
+    async def test_tool_semantic_error_is_atomic(self, tmp_path: Path) -> None:
+        (tmp_path / "first.txt").write_text("one\n")
+        (tmp_path / "second.txt").write_text("actual\n")
+        tool = ApplyPatchTool(str(tmp_path))
+
+        out = await tool(
+            """*** Begin Patch
+*** Update File: first.txt
+@@
+-one
++two
+*** Update File: second.txt
+@@
+-missing
++new
+*** End Patch
+"""
+        )
+
+        assert "(error:" in out and "Invalid Context" in out
+        assert (tmp_path / "first.txt").read_text() == "one\n"
+        assert (tmp_path / "second.txt").read_text() == "actual\n"
+
+    async def test_tool_metrics_counts_calls_and_errors(self, tmp_path: Path) -> None:
+        (tmp_path / "a.txt").write_text("old\n")
+        tool = ApplyPatchTool(str(tmp_path))
+
+        ok = await tool(
+            """*** Begin Patch
+*** Update File: a.txt
+@@
+-old
++new
+*** End Patch
+"""
+        )
+        err = await tool("not a patch")
+
+        metrics = tool.metrics()
+        assert ok == "M a.txt"
+        assert "(error:" in err
+        assert metrics.num_apply_patch == 2
+        assert metrics.error_count == 1
+
+    async def test_tool_creates_missing_parent_dirs_for_add_and_move(self, tmp_path: Path) -> None:
+        (tmp_path / "old.txt").write_text("old\n")
+        tool = ApplyPatchTool(str(tmp_path))
+
+        out = await tool(
+            """*** Begin Patch
+*** Add File: nested/add/new.txt
++new file
+*** Update File: old.txt
+*** Move to: nested/move/moved.txt
+@@
+-old
++moved
+*** End Patch
+"""
+        )
+
+        assert out.splitlines() == ["A nested/add/new.txt", "M old.txt -> nested/move/moved.txt"]
+        assert (tmp_path / "nested" / "add" / "new.txt").read_text() == "new file\n"
+        assert (tmp_path / "nested" / "move" / "moved.txt").read_text() == "moved\n"
+        assert not (tmp_path / "old.txt").exists()
+
+    async def test_tool_add_over_existing_returns_error(self, tmp_path: Path) -> None:
+        (tmp_path / "a.txt").write_text("old\n")
+        tool = ApplyPatchTool(str(tmp_path))
+
+        out = await tool(
+            """*** Begin Patch
+*** Add File: a.txt
++new
+*** End Patch
+"""
+        )
+
+        assert "(error:" in out and "File already exists: a.txt" in out
+        assert (tmp_path / "a.txt").read_text() == "old\n"
+
+    async def test_tool_rejects_pdf_paths(self, tmp_path: Path) -> None:
+        (tmp_path / "doc.pdf").write_text("old\n")
+        tool = ApplyPatchTool(str(tmp_path))
+
+        out = await tool(
+            """*** Begin Patch
+*** Update File: doc.pdf
+@@
+-old
++new
+*** End Patch
+"""
+        )
+
+        assert "(error:" in out and "PDF" in out
+        assert (tmp_path / "doc.pdf").read_text() == "old\n"
