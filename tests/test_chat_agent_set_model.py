@@ -123,6 +123,56 @@ async def test_chat_agent_file_editor_is_unrestricted(tmp_path: Path, monkeypatc
     assert agent._tools.file_editor is not None
     out = await agent._tools.file_editor("view", str(target))
     assert "outside content" in out
+    assert agent._tools.apply_patch is not None
+    patch_out = await agent._tools.apply_patch(
+        f"""*** Begin Patch
+*** Update File: {target}
+@@
+-outside content
++edited outside
+*** End Patch
+"""
+    )
+    assert patch_out == f"M {target}"
+    assert target.read_text() == "edited outside\n"
+
+
+def test_chat_agent_file_editing_tools_follow_project_dir(tmp_path: Path) -> None:
+    project = tmp_path / "project"
+    project.mkdir()
+
+    without_project = ChatAgent(registry=DBRegistry(), model="test", reasoning_effort="medium")
+    with_project = ChatAgent(
+        registry=DBRegistry(),
+        model="test",
+        reasoning_effort="medium",
+        project_dir=project,
+    )
+
+    assert without_project._tools.file_editor is None
+    assert without_project._tools.apply_patch is None
+    assert with_project._tools.file_editor is not None
+    assert with_project._tools.apply_patch is not None
+
+
+def test_chat_agent_tool_list_includes_apply_patch_when_host_tools_available(tmp_path: Path) -> None:
+    project = tmp_path / "project"
+    project.mkdir()
+
+    without_project = ChatAgent(registry=DBRegistry(), model="test", reasoning_effort="medium")
+    with_project = ChatAgent(
+        registry=DBRegistry(),
+        model="test",
+        reasoning_effort="medium",
+        project_dir=project,
+    )
+
+    without_tools = cast(Any, without_project._pydantic_ai_agent)._function_toolset.tools
+    with_tools = cast(Any, with_project._pydantic_ai_agent)._function_toolset.tools
+    assert "file_editor" not in without_tools
+    assert "apply_patch" not in without_tools
+    assert "file_editor" in with_tools
+    assert "apply_patch" in with_tools
 
 
 def test_resolve_subagent_api_key(monkeypatch: pytest.MonkeyPatch) -> None:

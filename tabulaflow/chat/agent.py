@@ -59,6 +59,7 @@ if TYPE_CHECKING:
     from tabulaflow.core.types import Usage
     from tabulaflow.toolhub import (
         AddCanonicalNameTool,
+        ApplyPatchTool,
         ChartArtifact,
         ConnectDataSourceTool,
         ExecuteBashTool,
@@ -131,6 +132,7 @@ class _Toolset:
     connect_data_source: ConnectDataSourceTool | None
     bash: ExecuteBashTool | None
     file_editor: FileEditorTool | None
+    apply_patch: ApplyPatchTool | None
 
 
 @dataclass
@@ -213,8 +215,9 @@ class ChatAgent:
         if self.extra_instructions:
             parts.append(self.extra_instructions.strip())
         session_lines = []
-        if self.project_dir is not None and self.scratch_dir is not None:
+        if self.project_dir is not None:
             session_lines.append(f"- Project directory: {self.project_dir}")
+        if self.scratch_dir is not None:
             session_lines.append(f"- Scratch directory: {self.scratch_dir}")
         session_lines.append(f"- Platform: {sys.platform}")
         session_lines.append(f"- Today's date: {date.today().isoformat()}")
@@ -228,6 +231,7 @@ class ChatAgent:
         from tabulaflow.modulehub.db_summarizer import DBSummarizer
         from tabulaflow.toolhub import (
             AddCanonicalNameTool,
+            ApplyPatchTool,
             ConnectDataSourceTool,
             ExtractRowsFromDocumentsTool,
             FileEditorTool,
@@ -296,6 +300,14 @@ class ChatAgent:
                 FileEditorTool(
                     str(self.project_dir),
                     message_store=self._main_scope,
+                    allowed_roots=None,
+                )
+                if self.project_dir is not None
+                else None
+            ),
+            apply_patch=(
+                ApplyPatchTool(
+                    str(self.project_dir),
                     allowed_roots=None,
                 )
                 if self.project_dir is not None
@@ -528,6 +540,7 @@ class ChatAgent:
                 self._tools.connect_data_source,
                 self._tools.bash,
                 self._tools.file_editor,
+                self._tools.apply_patch,
             )
             if tool is not None
         ]
