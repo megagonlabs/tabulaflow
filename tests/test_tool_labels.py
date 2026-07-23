@@ -34,9 +34,34 @@ class TestFileEditorLabel:
         )
         assert label == "Edit models/x.sql +2 -1"
 
+    def test_str_replace_added_only_omits_zero_removed(self) -> None:
+        label = summarize_tool_args(
+            "file_editor",
+            {"command": "str_replace", "path": "models/x.sql", "old_str": "a", "new_str": "a\nb"},
+        )
+        assert label == "Edit models/x.sql +1"
+
+    def test_str_replace_removed_only_omits_zero_added(self) -> None:
+        label = summarize_tool_args(
+            "file_editor",
+            {"command": "str_replace", "path": "models/x.sql", "old_str": "a\nb", "new_str": "a"},
+        )
+        assert label == "Edit models/x.sql -1"
+
+    def test_str_replace_no_change_omits_diffstat(self) -> None:
+        label = summarize_tool_args(
+            "file_editor",
+            {"command": "str_replace", "path": "models/x.sql", "old_str": "a", "new_str": "a"},
+        )
+        assert label == "Edit models/x.sql"
+
     def test_write_file_added_only(self) -> None:
         label = summarize_tool_args("file_editor", {"command": "write_file", "path": "s.py", "file_text": "l1\nl2\nl3"})
         assert label == "Write s.py +3"
+
+    def test_write_file_empty_omits_zero_added(self) -> None:
+        label = summarize_tool_args("file_editor", {"command": "write_file", "path": "s.py", "file_text": ""})
+        assert label == "Write s.py"
 
     def test_view(self) -> None:
         assert summarize_tool_args("file_editor", {"command": "view", "path": "."}) == "View ."
@@ -94,6 +119,19 @@ class TestApplyPatchLabel:
             },
         )
         assert label == "Patch old.txt"
+
+    def test_update_without_line_changes_omits_diffstat(self) -> None:
+        label = summarize_tool_args(
+            "apply_patch",
+            {
+                "patch": """*** Begin Patch
+*** Update File: README.md
+@@
+ unchanged
+*** End Patch"""
+            },
+        )
+        assert label == "Patch README.md"
 
     def test_two_file_diffstats(self) -> None:
         label = summarize_tool_args(

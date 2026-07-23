@@ -539,6 +539,15 @@ def _line_diffstat(old: str, new: str) -> tuple[int, int]:
     return added, removed
 
 
+def _format_diffstat(added: int, removed: int) -> str:
+    parts = []
+    if added:
+        parts.append(f"+{added}")
+    if removed:
+        parts.append(f"-{removed}")
+    return (" " + " ".join(parts)) if parts else ""
+
+
 def _format_file_view_range(view_range: object) -> str:
     """Return a ``:start-end`` suffix for file view labels, or empty if unknown."""
     if not isinstance(view_range, list | tuple) or len(view_range) != 2:
@@ -560,23 +569,14 @@ def _summarize_file_editor(args: Mapping[str, object]) -> str:
     path = _fmt_arg_value(args.get("path", "."), 48)
     if command == "str_replace":
         added, removed = _line_diffstat(str(args.get("old_str", "")), str(args.get("new_str", "")))
-        return f"Edit {path} +{added} -{removed}"
+        return f"Edit {path}{_format_diffstat(added, removed)}"
     if command == "write_file":
         text = str(args.get("file_text", ""))
         added = text.count("\n") + (1 if text and not text.endswith("\n") else 0)
-        return f"Write {path} +{added}"
+        return f"Write {path}{_format_diffstat(added, 0)}"
     if command == "view":
         return f"View {path}{_format_file_view_range(args.get('view_range'))}"
     return f"{command} {path}".strip()
-
-
-def _format_patch_diffstat(added: int, removed: int) -> str:
-    parts = []
-    if added:
-        parts.append(f"+{added}")
-    if removed:
-        parts.append(f"-{removed}")
-    return (" " + " ".join(parts)) if parts else ""
 
 
 @dataclass
@@ -635,14 +635,14 @@ def _summarize_apply_patch(args: Mapping[str, object]) -> str:
     total_added = sum(file.added for file in files)
     total_removed = sum(file.removed for file in files)
     if len(files) >= 3:
-        return f"Patch {len(files)} files{_format_patch_diffstat(total_added, total_removed)}"
+        return f"Patch {len(files)} files{_format_diffstat(total_added, total_removed)}"
 
     parts = []
     for file in files:
         path = _fmt_arg_value(file.path, 36)
         move = file.move
         target = f"{path} -> {_fmt_arg_value(move, 36)}" if move else path
-        parts.append(f"{target}{_format_patch_diffstat(file.added, file.removed)}")
+        parts.append(f"{target}{_format_diffstat(file.added, file.removed)}")
     return "Patch " + ", ".join(parts)
 
 
