@@ -518,9 +518,11 @@ class ChatAgent:
     def _note_model_change(self, previous: str, current: str) -> None:
         """Record a main-model switch in the conversation so the incoming model
         doesn't blindly imitate the tool-use patterns in history when its own
-        toolset differs. The note states facts only (the switch and any tool
-        availability delta); tool preferences live in the tool descriptions,
-        which ship exactly when the tool does."""
+        toolset differs. The edit-tool preference rides on the "now available"
+        delta because the static tool description alone is weak against
+        in-context precedent; a later switch note supersedes it, so it never
+        dangles. No symmetric phrase on removal — file_editor is then the only
+        edit tool, leaving nothing to prefer."""
         description = (
             "the model powering this conversation changed from "
             f"{model_display_name(previous)} to {model_display_name(current)}"
@@ -529,7 +531,7 @@ class ChatAgent:
             had = _model_supports_apply_patch(previous)
             has = _model_supports_apply_patch(current)
             if has and not had:
-                description += "; the apply_patch tool is now available"
+                description += "; the apply_patch tool is now available; prefer it for file edits"
             elif had and not has:
                 description += "; the apply_patch tool is no longer available"
         self.note_event(description + ".")

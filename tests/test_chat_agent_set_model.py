@@ -265,7 +265,7 @@ def test_activate_llm_profile_notes_model_change(tmp_path: Path, monkeypatch: py
     )
     assert _last_note(agent) == (
         "[system: the model powering this conversation changed from Test to GPT 5; "
-        "the apply_patch tool is now available.]"
+        "the apply_patch tool is now available; prefer it for file edits.]"
     )
 
     agent.activate_llm_profile(
