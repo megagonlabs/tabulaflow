@@ -146,7 +146,7 @@ def test_agent_markdown_non_code_chrome_uses_text_color() -> None:
 def test_agent_markdown_fenced_code_is_flat() -> None:
     assert "AgentTextBlock MarkdownFence {\n        background: transparent;" in AgentTextBlock.DEFAULT_CSS
     assert f"color: {CODE_TEXT};" in AgentTextBlock.DEFAULT_CSS
-    assert "margin: 0 0 1 0;" in AgentTextBlock.DEFAULT_CSS
+    assert "margin: 0 0 1 2;" in AgentTextBlock.DEFAULT_CSS
     assert "AgentTextBlock MarkdownFence > Label {\n        padding: 0;" in AgentTextBlock.DEFAULT_CSS
     assert "overflow: hidden hidden;" in AgentTextBlock.DEFAULT_CSS
     assert "scrollbar-size-horizontal: 0;" in AgentTextBlock.DEFAULT_CSS

@@ -1045,7 +1045,7 @@ class AgentTextBlock(Markdown):
     AgentTextBlock MarkdownFence {{
         background: transparent;
         color: {CODE_TEXT};
-        margin: 0 0 1 0;
+        margin: 0 0 1 2;
         overflow: hidden hidden;
         padding: 0;
         scrollbar-size-horizontal: 0;
