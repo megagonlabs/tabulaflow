@@ -17,7 +17,7 @@ problem:
    `run_subagent_for_each_row`.
 2. **Deterministic engines/helpers (7 files, ~2,100 lines) — the clutter**:
    `aria_to_markdown.py` (1,312 lines, used only by `web_browser`),
-   `markdown_splitter.py` (439), `pdf_extract.py`, `fs_roots.py`, `shell_guard.py`,
+   `markdown_splitter.py` (439), `pdf_extract.py`, `file_access.py`, `shell_guard.py`,
    `column_types.py`, `utils.py`.
 3. **Shared session state (2 files, correctly top-level)** — `query_history.py` and
    `message_store.py`. Not utils: runtime state objects that tools write into and
@@ -64,7 +64,7 @@ toolhub/
     ├── markdown_splitter.py
     ├── patch_engine.py      # extracted from apply_patch.py (see Phase 2)
     ├── pdf_extract.py
-    ├── fs_roots.py
+    ├── file_access.py
     ├── shell_guard.py
     ├── column_types.py
     └── sql.py               # renamed from utils.py (see Phase 2)
@@ -77,7 +77,7 @@ Stop at the end of each phase for user inspection before starting the next.
 ### Phase 1 — mechanical move
 
 - Create `toolhub/engines/` and `git mv` the six existing engine files into it
-  (`aria_to_markdown`, `markdown_splitter`, `pdf_extract`, `fs_roots`, `shell_guard`,
+  (`aria_to_markdown`, `markdown_splitter`, `pdf_extract`, `file_access`, `shell_guard`,
   `column_types`).
 - Update all import sites. Known deep importers outside toolhub itself:
   - `tabulaflow/chat/agent.py` — `shell_guard.dangerous_command_reason`
@@ -98,6 +98,6 @@ Stop at the end of each phase for user inspection before starting the next.
   engine for OpenAI V4A apply_patch patches" but it mixes the ~450-line pure engine
   (`Parser`, `Patch`, `Chunk`, `PatchAction`, `Commit`, `DiffError`, apply logic)
   with `ApplyPatchTool`. Engine → `engines/patch_engine.py`; the tool stays in
-  `apply_patch.py` — the same pattern `file_editor`/`fs_roots` already follows.
+  `apply_patch.py` — the same pattern `file_editor`/`file_access` already follows.
   Update `tests/test_apply_patch.py` imports accordingly.
 - Verify: same commands as Phase 1.

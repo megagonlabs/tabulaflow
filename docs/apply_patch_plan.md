@@ -149,8 +149,8 @@ conventions in `tabulaflow/toolhub/file_editor.py` (class with `name: ClassVar =
   constructor policy: default to `working_dir`-scoped access, but allow
   `allowed_roots=None` for unrestricted host-file access. Reuse by extracting the
   root resolution helpers (`FileEditorRoot`, `_ResolvedFileEditorRoot`, `_resolve`,
-  `_root_for`) from `file_editor.py` into `tabulaflow/toolhub/fs_roots.py`, and
-  update `FileEditorTool` to use the extracted module in the same change. Keep the
+  `_root_for`) from `file_editor.py` into `tabulaflow/toolhub/engines/file_access.py`,
+  and update `FileEditorTool` to use the extracted module in the same change. Keep the
   public re-export in `toolhub/__init__.py` working. Do not touch
   `tabulaflow/research/tools/__init__.py`.
 - **Parent directories**: `*** Add File` and `*** Move to` writes create missing
@@ -168,10 +168,10 @@ conventions in `tabulaflow/toolhub/file_editor.py` (class with `name: ClassVar =
 dir; path escape rejected (`../outside.txt`, absolute path outside root); atomicity
 (a two-file patch whose second file fails leaves the first untouched); result
 formatting; metrics counts; missing parent directories are created for adds/moves;
-existing `tests/test_file_editor.py` still passes after the `fs_roots.py`
+existing `tests/test_file_editor.py` still passes after the `file_access.py`
 extraction.
 
-**Checkpoint**: user reviews tool API, the `fs_roots` extraction diff, and result
+**Checkpoint**: user reviews tool API, the `file_access` extraction diff, and result
 formatting. `make test` should pass.
 
 ## Phase 3 — wire into `ChatAgent`

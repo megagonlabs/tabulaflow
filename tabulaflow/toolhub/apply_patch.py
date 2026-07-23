@@ -9,7 +9,7 @@ from typing import ClassVar
 from pydantic import BaseModel
 from pydantic_ai import Tool
 
-from tabulaflow.toolhub.engines.fs_roots import (
+from tabulaflow.toolhub.engines.file_access import (
     _DEFAULT_ALLOWED_ROOTS,
     _DefaultAllowedRoots,
     _ResolvedFileEditorRoot,
