@@ -69,7 +69,7 @@ class RegistryTransferRecordTool:
             connector = self.registry.get(target_alias)
         except ValueError:
             available = ", ".join(self.registry.list_aliases()) or "(none)"
-            return f"(unknown target_alias: {target_alias!r}; available: {available})"
+            return f"(error: unknown target_alias: {target_alias!r}; available: {available})"
 
         if connector.connector_type != "sql":
             return (

@@ -47,9 +47,9 @@ class ConnectDataSourceTool:
         from tabulaflow.datasources import is_hf_dataset_url, load_files, load_hf_dataset
 
         if not _VALID_NAME.fullmatch(alias):
-            return f"(invalid alias {alias!r}: use only letters, digits, and underscores)"
+            return f"(error: invalid alias {alias!r}: use only letters, digits, and underscores)"
         if self._registry.has(alias):
-            return f"(alias {alias!r} is already in use; choose a different one)"
+            return f"(error: alias {alias!r} is already in use; choose a different one)"
 
         is_hf = is_hf_dataset_url(source)
         is_url = not is_hf and "://" in source
@@ -57,9 +57,9 @@ class ConnectDataSourceTool:
         ext = os.path.splitext(path)[1].lower()
 
         if not is_hf and not is_url and not os.path.isfile(path):
-            return f"(no such file: {source!r}; pass a local file path or a HuggingFace dataset URL)"
+            return f"(error: no such file: {source!r}; pass a local file path or a HuggingFace dataset URL)"
         if is_url and url_needs_password(source):
-            return f"(this source needs a password; ask the user to connect it with: /connect {source})"
+            return f"(error: this source needs a password; ask the user to connect it with: /connect {source})"
 
         try:
             if is_hf:
@@ -78,7 +78,7 @@ class ConnectDataSourceTool:
                 )
         except Exception as e:
             hint = f" If it needs credentials, ask the user to connect it with /connect {source}" if is_url else ""
-            return f"(failed to connect {source!r}: {type(e).__name__}: {e}.{hint})"
+            return f"(error: failed to connect {source!r}: {type(e).__name__}: {e}.{hint})"
 
         self._registry.register(alias, connector)
         lang = connector.language or "SQL"

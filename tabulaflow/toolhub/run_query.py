@@ -224,13 +224,13 @@ class RunQueryTool:
         if exec_result.error is not None:
             if exec_result.error.exc_type == "ReadOnlyViolationError":
                 self._metrics.error_read_only_violation += 1
-                return f"(query failed: {exec_result.error.message})"
+                return f"(error: query failed: {exec_result.error.message})"
             elif exec_result.error.exc_type == "TimeoutError":
                 self._metrics.error_timeout += 1
-                return "(query timed out)"
+                return "(error: query timed out)"
             else:
                 self._metrics.error_query_failed += 1
-                return f"(query failed: {format_sqlalchemy_error_msg(exec_result.error.message)})"
+                return f"(error: query failed: {format_sqlalchemy_error_msg(exec_result.error.message)})"
 
         # Successful execution — surface the connector-measured latency as a trailing
         # line (omitted when the connector recorded none, e.g. older cached results).

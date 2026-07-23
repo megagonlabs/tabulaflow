@@ -134,7 +134,7 @@ class RegistryGetTableSchemaTool:
         except ValueError:
             available = ", ".join(self.registry.list_aliases()) or "(none)"
             return ToolReturn(
-                return_value=f"(unknown db_alias: {db_alias!r}; available: {available})",
+                return_value=f"(error: unknown db_alias: {db_alias!r}; available: {available})",
                 metadata=ToolCallOutcome(error=True),
             )
         except TypeError as e:

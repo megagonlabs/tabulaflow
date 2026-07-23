@@ -155,7 +155,7 @@ class RegistryGetDBDocumentTool:
         except ValueError:
             self._metrics.error_unknown_alias += 1
             available = ", ".join(self.registry.list_aliases()) or "(none)"
-            return f"(unknown db_alias: {db_alias!r}; available: {available})"
+            return f"(error: unknown db_alias: {db_alias!r}; available: {available})"
 
         if refresh:
             await connector.refresh_schema_async()

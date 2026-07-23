@@ -223,7 +223,7 @@ class GetColumnJsonSchemaTool:
 
         if table is None:
             self._metrics.error_table_not_found += 1
-            return f"(table {table_name} in schema {schema_name} not found)"
+            return f"(error: table {table_name} in schema {schema_name} not found)"
 
         column = None
         for c in table.columns:
@@ -233,17 +233,17 @@ class GetColumnJsonSchemaTool:
 
         if column is None:
             self._metrics.error_column_not_found += 1
-            return f"(column {column_name} not found in table {table_name} in schema {schema_name})"
+            return f"(error: column {column_name} not found in table {table_name} in schema {schema_name})"
 
         if not column.json_schema:
             self._metrics.error_no_json_schema += 1
-            return f"(column {column_name} in table {table_name} in schema {schema_name} has no JSON schema)"
+            return f"(error: column {column_name} in table {table_name} in schema {schema_name} has no JSON schema)"
 
         if path:
             target_schema = _resolve_json_schema_path(column.json_schema, path)
             if target_schema is None:
                 self._metrics.error_path_not_found += 1
-                return f"(path '{path}' not found in JSON schema of column {column_name})"
+                return f"(error: path '{path}' not found in JSON schema of column {column_name})"
             result = format_json_schema(target_schema, max_depth=None, max_fields=None)
             if self.include_examples and column.examples:
                 sub_examples = _extract_examples_at_path(_parse_json_examples(column.examples), path)

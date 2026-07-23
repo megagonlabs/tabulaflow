@@ -185,7 +185,7 @@ class GetTableSchemaTool:
                     return f"(error: {e})", None
         if table is None:
             self._metrics.error_table_not_found += 1
-            return f"(table {table_name} in schema {schema_name} not found)", None
+            return f"(error: table {table_name} in schema {schema_name} not found)", None
 
         total_columns = len(table.columns)
 
@@ -194,7 +194,7 @@ class GetTableSchemaTool:
                 re.compile(column_regex_filter)
             except re.error as e:
                 self._metrics.error_invalid_column_regex_filter += 1
-                return f"(invalid column_regex_filter regex: {e})", None
+                return f"(error: invalid column_regex_filter regex: {e})", None
 
         selected_columns = self._filter_columns(
             table.columns,
@@ -206,7 +206,7 @@ class GetTableSchemaTool:
         if self.max_columns is not None and len(selected_columns) > self.max_columns:
             self._metrics.max_columns_exceeded += 1
             return (
-                f"({len(selected_columns)} columns exceed the limit of"
+                f"(error: {len(selected_columns)} columns exceed the limit of"
                 f" {self.max_columns}. Use column_offset/column_limit or column_regex_filter to narrow down.)"
             ), None
 

@@ -100,7 +100,7 @@ class RegistryGetSchemaTool:
         except ValueError:
             self._metrics.error_unknown_alias += 1
             available = ", ".join(self.registry.list_aliases()) or "(none)"
-            return f"(unknown db_alias: {db_alias!r}; available: {available})"
+            return f"(error: unknown db_alias: {db_alias!r}; available: {available})"
 
         if connector.connector_type == "sql":
             if refresh:
@@ -115,7 +115,7 @@ class RegistryGetSchemaTool:
                 await connector.refresh_schema_async()
             result = self._graph_formatter.format(connector.schema)
         else:
-            return f"(unsupported connector type: {connector.connector_type!r})"
+            return f"(error: unsupported connector type: {connector.connector_type!r})"
 
         return self._truncate(result)
 

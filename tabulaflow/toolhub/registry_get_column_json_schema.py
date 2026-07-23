@@ -84,7 +84,7 @@ class RegistryGetColumnJsonSchemaTool:
             tool = self._get_tool(db_alias)
         except ValueError:
             available = ", ".join(self.registry.list_aliases()) or "(none)"
-            return f"(unknown db_alias: {db_alias!r}; available: {available})"
+            return f"(error: unknown db_alias: {db_alias!r}; available: {available})"
         except TypeError as e:
             return f"(error: {e})"
         return await tool(schema_name, table_name, column_name, path)
