@@ -483,13 +483,19 @@ July 21
   - [x] Image rendering
 - [x] Include line numbers in view file calls
 
-- [ ] grep tool
-- [ ] apply_patch
+July 22
+- [x] grep tool -> deferred
+- [x] OpenAI/claude subscription plan -> not possible
+- [x] apply_patch
+- [x] Refactor toolhub
+- [x] Notify model identity
+- [ ] Refactor chat/agent.py
+- [ ] code diff rendering
+- [ ] notify agent on llm preset changed? test behaviour of editing tool use
 
 - [ ] Inline artifact citation
 - [ ] IMPORTANT: decouple data and rendered format (show unit "cm" while still enabling sorting by value)
 - [ ] Subagent reuse
-- [ ] code diff rendering
 - [ ] Debug /Users/yanlinf/.tabulaflow/sessions/20260716T222109Z-be2c/trajectories/trajectory.md
 
 - [ ] Other config options - concurrency
@@ -506,7 +512,7 @@ July 21
 - [ ] Include Cypher
 - [ ] View menu location?
 - [ ] Remote server improvements
-- [ ] OpenAI/claude oauth
+
 
 - [ ] TUI
   - [ ] Do not auto-scroll when browsing old turns
