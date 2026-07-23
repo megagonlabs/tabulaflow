@@ -1134,7 +1134,10 @@ def test_pane_sidebar_meta_uses_artifact_icons() -> None:
 
     assert "var META_ICONS = {" in pane_js
     assert "function artifactCounts(turn)" in pane_js
+    assert "return { counts: counts, order: order };" in pane_js
     assert "function buildTurnMeta(metaData)" in pane_js
+    assert "summary.order.forEach(function (kind)" in pane_js
+    assert "['map', 'graph', 'chart', 'table'].forEach" not in pane_js
     assert "meta.classList.add('turnmeta-icons');" in pane_js
     assert "badge.appendChild(buildMetaIcon(item.kind));" in pane_js
     assert "if (item.count > 1) {" in pane_js

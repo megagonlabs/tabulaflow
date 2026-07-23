@@ -114,14 +114,19 @@ var MANUAL_TURN_ICON = [
 
 function artifactCounts(turn) {
   var counts = { map: 0, graph: 0, chart: 0, table: 0 };
+  var order = [];
   (turn.cards || []).forEach(function (card) {
     var kinds = card.views || [];
-    if (kinds.indexOf('map') !== -1) counts.map += 1;
-    else if (kinds.indexOf('graph') !== -1) counts.graph += 1;
-    else if (kinds.indexOf('chart') !== -1) counts.chart += 1;
-    else if (kinds.indexOf('data') !== -1) counts.table += 1;
+    var kind = null;
+    if (kinds.indexOf('map') !== -1) kind = 'map';
+    else if (kinds.indexOf('graph') !== -1) kind = 'graph';
+    else if (kinds.indexOf('chart') !== -1) kind = 'chart';
+    else if (kinds.indexOf('data') !== -1) kind = 'table';
+    if (!kind) return;
+    if (counts[kind] === 0) order.push(kind);
+    counts[kind] += 1;
   });
-  return counts;
+  return { counts: counts, order: order };
 }
 
 function artifactLabel(kind, count) {
@@ -129,12 +134,13 @@ function artifactLabel(kind, count) {
 }
 
 function turnMeta(turn) {
-  var counts = artifactCounts(turn);
+  var summary = artifactCounts(turn);
+  var counts = summary.counts;
   if (turn.source === 'manual' && counts.table === 1 && counts.chart === 0 && counts.map === 0 && counts.graph === 0) {
     return { text: '', items: [{ kind: 'table', count: 1, label: 'table preview' }], label: 'table preview' };
   }
   var items = [];
-  ['map', 'graph', 'chart', 'table'].forEach(function (kind) {
+  summary.order.forEach(function (kind) {
     if (counts[kind]) items.push({ kind: kind, count: counts[kind], label: artifactLabel(kind, counts[kind]) });
   });
   return { text: '', items: items, label: items.map(function (item) { return item.label; }).join(' · ') };
