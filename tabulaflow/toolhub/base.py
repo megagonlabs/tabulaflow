@@ -1,5 +1,6 @@
-from collections.abc import Iterable
-from typing import Any, ClassVar, Protocol, TypeAlias, TypeVar
+from collections.abc import Callable, Iterable
+from dataclasses import dataclass
+from typing import Any, ClassVar, Protocol, TypeAlias, TypeVar, runtime_checkable
 
 from pydantic import BaseModel
 from pydantic_ai import Tool, ToolOutput
@@ -43,7 +44,35 @@ class BaseTool(Protocol):
     def metrics(self) -> BaseToolMetrics: ...
 
 
+@runtime_checkable
 class LLMProfileTool(Protocol):
     """Tool with an internal LLM profile supplied by its host."""
 
     def apply_llm_profile(self, *, llm: str, model_settings: ModelSettings | None) -> None: ...
+
+
+@dataclass(frozen=True)
+class ToolProgressUpdate:
+    """A progress tick from a long-running tool.
+
+    Attributes:
+        completed: Units of work finished so far.
+        total: Denominator, or ``None`` for an open-ended running count.
+        unit: Optional noun for the count (e.g. ``"rows"``).
+        stage: Optional named phase within the tool (e.g. ``"canonicalize"``).
+        tool_call_id: Routes the tick to the right step when several tool calls
+            run concurrently.
+    """
+
+    completed: int
+    total: int | None = None
+    unit: str | None = None
+    stage: str | None = None
+    tool_call_id: str | None = None
+
+
+@runtime_checkable
+class ProgressReportingTool(Protocol):
+    """Tool that reports progress ticks through its ``on_progress`` slot."""
+
+    on_progress: Callable[[ToolProgressUpdate], None] | None

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import asyncio
-from collections.abc import AsyncIterator, Callable, Iterable
+from collections.abc import AsyncIterator, Callable, Iterable, Iterator
 from datetime import date
 from importlib.resources import files
 import json
@@ -12,7 +12,7 @@ from pathlib import Path
 import re
 import sys
 from contextlib import suppress
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, fields
 from typing import TYPE_CHECKING, Any, Final
 
 from pydantic_ai.settings import ModelSettings
@@ -66,7 +66,6 @@ if TYPE_CHECKING:
         ExtractRowsFromDocumentsTool,
         FileEditorTool,
         GraphArtifact,
-        LLMProfileTool,
         MapArtifact,
         QueryHistory,
         QueryRecord,
@@ -79,6 +78,7 @@ if TYPE_CHECKING:
         RenderGraphTool,
         RenderMapTool,
         RunSubagentForEachRowTool,
+        ToolProgressUpdate,
         WebBrowserTool,
     )
 
@@ -117,27 +117,38 @@ def _model_supports_apply_patch(model: str) -> bool:
 
 @dataclass
 class _Toolset:
-    """Typed bundle of agent tools (internal to ``ChatAgent``)."""
+    """Typed bundle of agent tools (internal to ``ChatAgent``).
+
+    Field order is the registration order exposed to the model — ``_make_agent``
+    iterates it. A ``None`` field means the tool is absent for the session."""
 
     run_query: RegistryRunQueryTool
     get_db_document: RegistryGetDBDocumentTool
-    get_column_json_schema: RegistryGetColumnJsonSchemaTool
     get_table_schema: RegistryGetTableSchemaTool
+    get_column_json_schema: RegistryGetColumnJsonSchemaTool
     transfer_record: RegistryTransferRecordTool
     # The fan-out tools are bound to the session workspace (the only DB they may
     # read from and write to); ``None`` when the agent runs without a workspace.
     run_subagent_for_each_row: RunSubagentForEachRowTool | None
     extract_rows_from_documents: ExtractRowsFromDocumentsTool | None
+    # Host-facing tools; ``None`` when the app didn't supply the dirs they need.
+    connect_data_source: ConnectDataSourceTool | None
+    bash: ExecuteBashTool | None
+    file_editor: FileEditorTool | None
+    # Additionally gated per-model at agent build time (``_make_agent``).
+    apply_patch: ApplyPatchTool | None
     add_canonical_name: AddCanonicalNameTool
     render_chart: RenderChartTool
     render_graph: RenderGraphTool
     render_map: RenderMapTool
     web_browser: WebBrowserTool
-    # Host-facing tools; ``None`` when the app didn't supply the dirs they need.
-    connect_data_source: ConnectDataSourceTool | None
-    bash: ExecuteBashTool | None
-    file_editor: FileEditorTool | None
-    apply_patch: ApplyPatchTool | None
+
+    def __iter__(self) -> Iterator[Any]:
+        """The present tools, in registration order."""
+        for f in fields(self):
+            tool = getattr(self, f.name)
+            if tool is not None:
+                yield tool
 
 
 @dataclass
@@ -196,15 +207,21 @@ class ChatAgent:
     _main_scope: ScopedMessageStore = field(init=False)
     _tools: _Toolset = field(init=False)
     _running: bool = field(init=False, default=False)
+    # The active turn's event sink; ``None`` between turns (progress ticks are
+    # dropped). Set/cleared by ``run_stream`` alongside ``_running``.
+    _active_emit: Callable[[ChatEvent], None] | None = field(init=False, default=None)
 
     def __post_init__(self) -> None:
-        from tabulaflow.toolhub import QueryHistory
+        from tabulaflow.toolhub import ProgressReportingTool, QueryHistory
 
         self._query_history = QueryHistory(spill_connector=self.workspace)
         self._message_store = MessageStore()
         self._main_scope = self._message_store.scoped("main")
         subagent_dir = self.trajectory_log_dir / "subagents" if self.trajectory_log_dir is not None else None
         self._tools = self._build_tools(subagent_dir)
+        for tool in self._tools:
+            if isinstance(tool, ProgressReportingTool):
+                tool.on_progress = self._emit_progress
         if self.workspace is not None:
             self._message_store.attach_connector(self.workspace)
             self._tools.add_canonical_name.attach_connector(self.workspace)
@@ -284,20 +301,11 @@ class ChatAgent:
                 model_settings=self._subagent_model_settings(),
                 enable_refresh=True,
             ),
-            get_column_json_schema=RegistryGetColumnJsonSchemaTool(self.registry),
             get_table_schema=RegistryGetTableSchemaTool(self.registry, SQLDDLSchemaFormatter(), enable_refresh=True),
+            get_column_json_schema=RegistryGetColumnJsonSchemaTool(self.registry),
             transfer_record=RegistryTransferRecordTool(self.registry, self._query_history),
             run_subagent_for_each_row=run_subagent_for_each_row,
             extract_rows_from_documents=extract_rows_from_documents,
-            add_canonical_name=AddCanonicalNameTool(
-                subagent_llm=self.subagent_model,
-                model_settings=self._subagent_model_settings(),
-                trajectory_log_dir=subagent_dir,
-            ),
-            render_chart=RenderChartTool(history=self._query_history),
-            render_graph=RenderGraphTool(history=self._query_history),
-            render_map=RenderMapTool(history=self._query_history),
-            web_browser=WebBrowserTool(),
             connect_data_source=(
                 ConnectDataSourceTool(self.registry, self.data_dir) if self.data_dir is not None else None
             ),
@@ -319,6 +327,15 @@ class ChatAgent:
                 if self.project_dir is not None
                 else None
             ),
+            add_canonical_name=AddCanonicalNameTool(
+                subagent_llm=self.subagent_model,
+                model_settings=self._subagent_model_settings(),
+                trajectory_log_dir=subagent_dir,
+            ),
+            render_chart=RenderChartTool(history=self._query_history),
+            render_graph=RenderGraphTool(history=self._query_history),
+            render_map=RenderMapTool(history=self._query_history),
+            web_browser=WebBrowserTool(),
         )
 
     def _build_bash_tool(self) -> ExecuteBashTool | None:
@@ -424,20 +441,30 @@ class ChatAgent:
             timeout=SUBAGENT_REQUEST_TIMEOUT,
         )
 
-    def _subagent_profile_tools(self) -> tuple[LLMProfileTool, ...]:
-        """Tools whose internal helper LLM follows the app subagent profile."""
-        tools: list[LLMProfileTool] = [self._tools.get_db_document, self._tools.add_canonical_name]
-        if self._tools.run_subagent_for_each_row is not None:
-            tools.append(self._tools.run_subagent_for_each_row)
-        if self._tools.extract_rows_from_documents is not None:
-            tools.append(self._tools.extract_rows_from_documents)
-        return tuple(tools)
+    def _emit_progress(self, update: ToolProgressUpdate) -> None:
+        """Forward a tool's progress tick to the active turn's event stream.
+
+        Wired once into every ``ProgressReportingTool`` at construction; a tick
+        arriving between turns is dropped."""
+        if self._active_emit is not None:
+            self._active_emit(
+                ToolProgress(
+                    completed=update.completed,
+                    total=update.total,
+                    unit=update.unit,
+                    stage=update.stage,
+                    tool_call_id=update.tool_call_id,
+                )
+            )
 
     def _apply_subagent_profile(self, *, model: str, reasoning_effort: str) -> None:
-        """Update existing subagent-backed tool instances with the supplied profile."""
+        """Update the tools whose internal helper LLM follows the app subagent profile."""
+        from tabulaflow.toolhub import LLMProfileTool
+
         model_settings = self._subagent_model_settings(model=model, reasoning_effort=reasoning_effort)
-        for tool in self._subagent_profile_tools():
-            tool.apply_llm_profile(llm=model, model_settings=model_settings)
+        for tool in self._tools:
+            if isinstance(tool, LLMProfileTool):
+                tool.apply_llm_profile(llm=model, model_settings=model_settings)
 
     def activate_llm_profile(
         self,
@@ -561,38 +588,17 @@ class ChatAgent:
         """Construct the model-specific runtime around the session's live tools."""
         from tabulaflow.toolhub.run_subagent_for_each_row import ReleaseBrowserBeforeFanout
 
-        fanout_tools = [
-            tool.as_pydantic_ai_tool()
-            for tool in (self._tools.run_subagent_for_each_row, self._tools.extract_rows_from_documents)
-            if tool is not None
-        ]
-        apply_patch_tool = self._tools.apply_patch if _model_supports_apply_patch(model) else None
-        host_tools = [
-            tool.as_pydantic_ai_tool()
-            for tool in (
-                self._tools.connect_data_source,
-                self._tools.bash,
-                self._tools.file_editor,
-                apply_patch_tool,
-            )
-            if tool is not None
-        ]
+        tools: list[Any] = []
+        for tool in self._tools:
+            if tool is self._tools.apply_patch and not _model_supports_apply_patch(model):
+                continue
+            if tool is self._tools.web_browser:
+                tools.extend(tool.as_pydantic_ai_tools())
+            else:
+                tools.append(tool.as_pydantic_ai_tool())
         return make_agent(
             model,
-            tools=[
-                self._tools.run_query.as_pydantic_ai_tool(),
-                self._tools.get_db_document.as_pydantic_ai_tool(),
-                self._tools.get_table_schema.as_pydantic_ai_tool(),
-                self._tools.get_column_json_schema.as_pydantic_ai_tool(),
-                self._tools.transfer_record.as_pydantic_ai_tool(),
-                *fanout_tools,
-                *host_tools,
-                self._tools.add_canonical_name.as_pydantic_ai_tool(),
-                self._tools.render_chart.as_pydantic_ai_tool(),
-                self._tools.render_graph.as_pydantic_ai_tool(),
-                self._tools.render_map.as_pydantic_ai_tool(),
-                *self._tools.web_browser.as_pydantic_ai_tools(),
-            ],
+            tools=tools,
             capabilities=[
                 self._tools.web_browser.lifecycle_capability(),
                 # Suspend the root agent's browser around any fan-out it triggers,
@@ -634,6 +640,7 @@ class ChatAgent:
             raise RuntimeError("a turn is already in progress on this ChatAgent")
         self._running = True
         queue: asyncio.Queue[ChatEvent | None] = asyncio.Queue()
+        self._active_emit = queue.put_nowait
         task = asyncio.create_task(self._run_to_queue(question, queue))
         try:
             while True:
@@ -647,6 +654,7 @@ class ChatAgent:
                 task.cancel()
                 with suppress(asyncio.CancelledError):
                     await task
+            self._active_emit = None
             self._running = False
 
     async def run(self, question: str) -> ChatResult:
@@ -672,19 +680,6 @@ class ChatAgent:
         from tabulaflow.core.types import Usage
 
         emit = queue.put_nowait
-        # Each fan-out tool passes its tool_call_id so the UI can route concurrent
-        # tools' progress to the right step.
-        if self._tools.run_subagent_for_each_row is not None:
-            self._tools.run_subagent_for_each_row.on_row_complete = lambda c, t, tcid: emit(
-                ToolProgress(completed=c, total=t, tool_call_id=tcid)
-            )
-        if self._tools.extract_rows_from_documents is not None:
-            self._tools.extract_rows_from_documents.on_rows_extracted = lambda c, tcid: emit(
-                ToolProgress(completed=c, total=None, unit="rows", tool_call_id=tcid)
-            )
-        self._tools.add_canonical_name.on_progress = lambda stage, c, t, tcid: emit(
-            ToolProgress(completed=c, total=t, stage=stage, tool_call_id=tcid)
-        )
 
         assert self._pydantic_ai_agent is not None
 
@@ -750,11 +745,6 @@ class ChatAgent:
                         if agent_run.result is not None:
                             answer_text = agent_run.result.output
             finally:
-                if self._tools.run_subagent_for_each_row is not None:
-                    self._tools.run_subagent_for_each_row.on_row_complete = None
-                if self._tools.extract_rows_from_documents is not None:
-                    self._tools.extract_rows_from_documents.on_rows_extracted = None
-                self._tools.add_canonical_name.on_progress = None
                 self._save_trajectory_for_debug()
 
             # Only reached on normal completion (cancellation re-raised above): emit

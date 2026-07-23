@@ -20,6 +20,7 @@ import sqlalchemy
 
 from tabulaflow.core.db_connector.db_registry import DBRegistry
 from tabulaflow.core.db_connector.sql_conn import SQLConnector
+from tabulaflow.toolhub.base import ToolProgressUpdate
 from tabulaflow.toolhub.run_subagent_for_each_row import RunSubagentForEachRowTool
 
 logger = logging.getLogger(__name__)
@@ -105,10 +106,10 @@ async def main() -> None:
         store_metadata=True,
     )
 
-    def _progress(c: int, t: int) -> None:
-        print(f"  progress: {c}/{t}")
+    def _progress(update: ToolProgressUpdate) -> None:
+        print(f"  progress: {update.completed}/{update.total}")
 
-    tool.on_row_complete = _progress
+    tool.on_progress = _progress
 
     print("Running run_subagent_for_each_row…")
     summary = await tool(

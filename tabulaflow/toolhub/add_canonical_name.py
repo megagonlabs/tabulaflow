@@ -19,6 +19,7 @@ from pydantic_ai.settings import ModelSettings
 
 from tabulaflow.core.db_connector.sql_conn import SQLConnector
 from tabulaflow.core.types import Trajectory
+from tabulaflow.toolhub.base import ToolProgressUpdate
 from tabulaflow.toolhub.engines.sql import qualified_table, sa_table
 from tabulaflow.toolhub.run_query import RunQueryTool
 from tabulaflow.core.llm import make_agent
@@ -228,11 +229,10 @@ class AddCanonicalNameTool:
         self.max_concurrency = max_concurrency
         self.trajectory_log_dir = trajectory_log_dir
         self._db_connector: SQLConnector | None = None
-        # Called as ``on_progress(stage, completed, total, tool_call_id)`` where
-        # ``stage`` is one of ``"resolve"``, ``"canonicalize"``, ``"disambiguate"``.
-        # Disambiguate ticks per batch and is only emitted when collisions exist.
-        # tool_call_id routes progress to the right step under concurrent fan-out.
-        self.on_progress: Callable[[str, int, int, str | None], None] | None = None
+        # Ticks carry a ``stage`` of ``"resolve"``, ``"canonicalize"``, or
+        # ``"disambiguate"``. Disambiguate ticks per batch and is only emitted
+        # when collisions exist.
+        self.on_progress: Callable[[ToolProgressUpdate], None] | None = None
 
     def attach_connector(self, connector: SQLConnector) -> None:
         """Bind the workspace connector after construction (mirrors QueryHistory)."""
@@ -423,7 +423,7 @@ class AddCanonicalNameTool:
         # rather than sitting on the previous stage's last tick until the first
         # task finishes (often a multi-second LLM call).
         if self.on_progress is not None and total > 0:
-            self.on_progress(stage, 0, total, tool_call_id)
+            self.on_progress(ToolProgressUpdate(completed=0, total=total, stage=stage, tool_call_id=tool_call_id))
 
         async def _wrap(value: str) -> Any:
             nonlocal completed, n_errors
@@ -444,7 +444,9 @@ class AddCanonicalNameTool:
                 if not cancelled:
                     completed += 1
                     if self.on_progress is not None:
-                        self.on_progress(stage, completed, total, tool_call_id)
+                        self.on_progress(
+                            ToolProgressUpdate(completed=completed, total=total, stage=stage, tool_call_id=tool_call_id)
+                        )
                         await asyncio.sleep(0)
 
         results = await asyncio.gather(*(_wrap(v) for v in distinct_values))
@@ -521,7 +523,9 @@ class AddCanonicalNameTool:
         n_clusters = len(clusters)
         picker_completed = 0
         if self.on_progress is not None and n_clusters > 0:
-            self.on_progress("canonicalize", 0, n_clusters, tool_call_id)
+            self.on_progress(
+                ToolProgressUpdate(completed=0, total=n_clusters, stage="canonicalize", tool_call_id=tool_call_id)
+            )
 
         async def _pick_with_progress(cluster: set[str], cluster_idx: int) -> str:
             nonlocal picker_completed
@@ -530,7 +534,14 @@ class AddCanonicalNameTool:
             finally:
                 picker_completed += 1
                 if self.on_progress is not None:
-                    self.on_progress("canonicalize", picker_completed, n_clusters, tool_call_id)
+                    self.on_progress(
+                        ToolProgressUpdate(
+                            completed=picker_completed,
+                            total=n_clusters,
+                            stage="canonicalize",
+                            tool_call_id=tool_call_id,
+                        )
+                    )
                     await asyncio.sleep(0)
 
         cluster_canonicals = await asyncio.gather(
@@ -604,7 +615,9 @@ class AddCanonicalNameTool:
         )
         batches_done = 0
         if self.on_progress is not None and total_batches > 0:
-            self.on_progress("disambiguate", 0, total_batches, tool_call_id)
+            self.on_progress(
+                ToolProgressUpdate(completed=0, total=total_batches, stage="disambiguate", tool_call_id=tool_call_id)
+            )
         for collision_idx, (canonical, idxs) in enumerate(collisions):
             n_batches = (len(idxs) + _DISAMBIGUATE_BATCH_SIZE - 1) // _DISAMBIGUATE_BATCH_SIZE
             for batch_idx in range(n_batches):
@@ -636,7 +649,14 @@ class AddCanonicalNameTool:
                     seen.add(name)
                 batches_done += 1
                 if self.on_progress is not None:
-                    self.on_progress("disambiguate", batches_done, total_batches, tool_call_id)
+                    self.on_progress(
+                        ToolProgressUpdate(
+                            completed=batches_done,
+                            total=total_batches,
+                            stage="disambiguate",
+                            tool_call_id=tool_call_id,
+                        )
+                    )
                     await asyncio.sleep(0)
 
         return resolved, None

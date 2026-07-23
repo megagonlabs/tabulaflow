@@ -24,6 +24,7 @@ from tabulaflow.core.db_connector.db_registry import DBRegistry
 from tabulaflow.core.db_connector.sql_conn import SQLConnector
 from tabulaflow.core.types import SQLDialect, Trajectory
 from tabulaflow.toolhub.add_canonical_name import AddCanonicalNameTool
+from tabulaflow.toolhub.base import ToolProgressUpdate
 from tabulaflow.toolhub.engines.column_types import resolve_column_types
 from tabulaflow.toolhub.extract_rows_from_documents import ExtractRowsFromDocumentsTool
 from tabulaflow.toolhub.engines.sql import qualified_table, sa_table
@@ -216,9 +217,8 @@ class RunSubagentForEachRowTool:
         self.max_concurrency = max_concurrency
         self.store_metadata = store_metadata
         self.trajectory_log_dir = trajectory_log_dir
-        # Called as ``on_row_complete(completed, total, tool_call_id)``; tool_call_id
-        # routes progress to the right step when fan-out tools run concurrently.
-        self.on_row_complete: Callable[[int, int, str | None], None] | None = None
+        # Emits one tick per completed row (``completed``/``total``).
+        self.on_progress: Callable[[ToolProgressUpdate], None] | None = None
 
     def apply_llm_profile(self, *, llm: str, model_settings: ModelSettings | None) -> None:
         """Apply the LLM profile used by per-row subagents."""
@@ -486,7 +486,7 @@ class RunSubagentForEachRowTool:
                     await self.db_connector.run_query_async(f"ALTER TABLE {qualified_target} ADD COLUMN {col} {dtype}")
 
         # If nesting is enabled, construct one fresh tool instance to share across
-        # all rows. Fresh (not ``self``) so its ``on_row_complete`` stays None and
+        # all rows. Fresh (not ``self``) so its ``on_progress`` stays None and
         # nested progress doesn't bleed into the parent's TUI callback. One per
         # outer ``__call__`` (not per row) — per-call state lives in the frame.
         nested_pa_tool: Tool | None = None
@@ -713,8 +713,10 @@ class RunSubagentForEachRowTool:
                     if self.store_metadata and metadata is not None:
                         await _save_row_metadata(key_payload, *metadata)
                     completed += 1
-                    if self.on_row_complete is not None:
-                        self.on_row_complete(completed, total, tool_call_id)
+                    if self.on_progress is not None:
+                        self.on_progress(
+                            ToolProgressUpdate(completed=completed, total=total, tool_call_id=tool_call_id)
+                        )
                         await asyncio.sleep(0)
             return error_msg
 
@@ -723,8 +725,8 @@ class RunSubagentForEachRowTool:
         semaphore = asyncio.Semaphore(self.max_concurrency)
         # Emit a 0/total tick up front so the UI shows the counter immediately
         # rather than sitting empty until the first row finishes (often seconds).
-        if self.on_row_complete is not None and total > 0:
-            self.on_row_complete(0, total, tool_call_id)
+        if self.on_progress is not None and total > 0:
+            self.on_progress(ToolProgressUpdate(completed=0, total=total, tool_call_id=tool_call_id))
 
         async def _throttled(row_idx: int, row: dict[str, object]) -> str | None:
             async with semaphore:

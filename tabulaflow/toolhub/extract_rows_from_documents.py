@@ -18,6 +18,7 @@ from pydantic_ai.models import Model
 from pydantic_ai.settings import ModelSettings
 
 from tabulaflow.core.db_connector.sql_conn import SQLConnector
+from tabulaflow.toolhub.base import ToolProgressUpdate
 from tabulaflow.toolhub.engines.column_types import resolve_column_types
 from tabulaflow.toolhub.engines.sql import qualified_table
 from tabulaflow.toolhub.entity_extractor import EntityExtractor
@@ -80,9 +81,8 @@ class ExtractRowsFromDocumentsTool:
         self.chunk_target = chunk_target
         self.chunk_max = chunk_max
         self.trajectory_log_dir = trajectory_log_dir
-        # Called as ``on_rows_extracted(count, tool_call_id)`` with the running count
-        # of entities extracted so far; tool_call_id routes progress to the right step.
-        self.on_rows_extracted: Callable[[int, str | None], None] | None = None
+        # Emits the running count of rows extracted so far (open-ended: no total).
+        self.on_progress: Callable[[ToolProgressUpdate], None] | None = None
 
     def apply_llm_profile(self, *, llm: str, model_settings: ModelSettings | None) -> None:
         """Apply the LLM profile used by per-chunk extraction subagents."""
@@ -256,14 +256,14 @@ class ExtractRowsFromDocumentsTool:
         total_docs = len(rows)
         extracted_count = 0
         tool_call_id = ctx.tool_call_id
-        if self.on_rows_extracted is not None and total_docs > 0:
-            self.on_rows_extracted(0, tool_call_id)
+        if self.on_progress is not None and total_docs > 0:
+            self.on_progress(ToolProgressUpdate(completed=0, unit="rows", tool_call_id=tool_call_id))
 
         def _on_chunk_complete(n: int) -> None:
             nonlocal extracted_count
             extracted_count += n
-            if self.on_rows_extracted is not None:
-                self.on_rows_extracted(extracted_count, tool_call_id)
+            if self.on_progress is not None:
+                self.on_progress(ToolProgressUpdate(completed=extracted_count, unit="rows", tool_call_id=tool_call_id))
 
         async def _process_document(doc_idx: int, row: dict[str, Any]) -> tuple[list[dict[str, Any]], str | None]:
             content = row.get(content_col)
