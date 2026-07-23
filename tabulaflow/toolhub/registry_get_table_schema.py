@@ -7,8 +7,8 @@ from pydantic_ai import Tool
 from tabulaflow.core.db_connector.base import NL2QDBConnector
 from tabulaflow.core.db_connector.db_registry import DBRegistry
 from tabulaflow.core.formatters.base import BaseSQLSchemaFormatter
+from tabulaflow.toolhub.base import sum_tool_metrics
 from tabulaflow.toolhub.get_table_schema import GetTableSchemaTool, GetTableSchemaToolMetrics
-from tabulaflow.toolhub.utils import sum_tool_metrics
 
 
 class RegistryGetTableSchemaTool:

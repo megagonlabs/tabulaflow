@@ -18,7 +18,7 @@ from typing import ClassVar, Literal
 from pydantic import BaseModel
 from pydantic_ai import Tool
 
-from tabulaflow.toolhub.fs_roots import (
+from tabulaflow.toolhub.engines.fs_roots import (
     _DEFAULT_ALLOWED_ROOTS,
     _DefaultAllowedRoots,
     _ResolvedFileEditorRoot,
@@ -231,7 +231,7 @@ class FileEditorTool:
         Text-layer extraction only — scanned/image-only PDFs return a clear notice.
         ``view_range`` does not apply (the full document is returned).
         """
-        from tabulaflow.toolhub.pdf_extract import extract_pdf_text
+        from tabulaflow.toolhub.engines.pdf_extract import extract_pdf_text
 
         if view_range is not None:
             return self._error(

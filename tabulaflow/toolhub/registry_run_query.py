@@ -9,9 +9,9 @@ from pydantic_ai import Tool
 from tabulaflow.core.config import tabulaflow_config
 from tabulaflow.core.db_connector.base import NL2QDBConnector
 from tabulaflow.core.db_connector.db_registry import DBRegistry
+from tabulaflow.toolhub.base import sum_tool_metrics
 from tabulaflow.toolhub.query_history import QueryHistory, QueryRecord
 from tabulaflow.toolhub.run_query import LLMParameter, RunQueryTool, RunQueryToolMetrics
-from tabulaflow.toolhub.utils import sum_tool_metrics
 
 _UNSET = object()
 

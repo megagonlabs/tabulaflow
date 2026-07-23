@@ -3,7 +3,7 @@
 Separate the non-tool machinery in `tabulaflow/toolhub/` from the tools themselves.
 Today the package is 30 flat modules mixing three kinds of code; this plan quarantines
 the deterministic engine/helper files into a `toolhub/engines/` subpackage while
-keeping the public API unchanged.
+keeping the top-level `tabulaflow.toolhub` package exports unchanged.
 
 ## Diagnosis (current state)
 
@@ -43,13 +43,16 @@ inverting the layering (`toolhub < modulehub`), so it stays top-level.
    would bloat `core` with browser/patch machinery nothing else uses.
 4. **`query_history.py`, `message_store.py`, `entity_extractor.py`, `base.py` stay
    top-level** (see diagnosis).
-5. **Public API is unchanged** — `toolhub/__init__.py` re-exports stay identical.
+5. **Top-level package API is unchanged** — `toolhub/__init__.py` re-exports stay
+   identical. Deep imports into implementation modules intentionally move, e.g.
+   `tabulaflow.toolhub.markdown_splitter` becomes
+   `tabulaflow.toolhub.engines.markdown_splitter`.
 
 ## Target structure
 
 ```
 toolhub/
-├── __init__.py              # public API unchanged
+├── __init__.py              # top-level public API unchanged
 ├── base.py                  # BaseTool, LLMProfileTool, + sum_tool_metrics (moved in)
 ├── query_history.py         # shared state
 ├── message_store.py         # shared state
@@ -78,8 +81,6 @@ Stop at the end of each phase for user inspection before starting the next.
   `column_types`).
 - Update all import sites. Known deep importers outside toolhub itself:
   - `tabulaflow/chat/agent.py` — `shell_guard.dangerous_command_reason`
-  - `tabulaflow/research/tools/get_column_description.py`, `search_keywords.py` —
-    `utils.equals_ci` (Phase 2 touches these again; point them at the new path once)
   - tests: `test_aria_to_markdown.py`, `test_markdown_splitter.py`,
     `test_shell_guard.py`, `test_extract_rows_from_documents.py`
 - Verify: `make lint`, `make mypy`, `make lint-arch`, `make test`.
@@ -90,7 +91,9 @@ Stop at the end of each phase for user inspection before starting the next.
   `base.py` next to that type. The remaining coherent set of SQL-identifier helpers
   (`equals_ci`, `qualified_table`, `sa_table`, `format_sqlalchemy_error_msg`) becomes
   `engines/sql.py`. A `utils.py` inside `engines/` would recreate the smell this
-  refactor removes.
+  refactor removes. Known external importers:
+  `tabulaflow/research/tools/get_column_description.py` and `search_keywords.py`
+  use `equals_ci`.
 - **Extract the patch engine from `apply_patch.py`.** The file's docstring says "Pure
   engine for OpenAI V4A apply_patch patches" but it mixes the ~450-line pure engine
   (`Parser`, `Patch`, `Chunk`, `PatchAction`, `Commit`, `DiffError`, apply logic)

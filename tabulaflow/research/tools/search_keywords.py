@@ -5,7 +5,7 @@ from sqlalchemy import select
 from pydantic import BaseModel
 from pydantic_ai import Tool
 from tabulaflow.core.db_connector import BaseSQLDBConnector
-from tabulaflow.toolhub.utils import equals_ci
+from tabulaflow.toolhub.engines.sql import equals_ci
 
 
 class SearchKeywordsToolMetrics(BaseModel):

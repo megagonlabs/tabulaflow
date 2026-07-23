@@ -6,8 +6,8 @@ from pydantic_ai import Tool
 
 from tabulaflow.core.db_connector.base import NL2QDBConnector
 from tabulaflow.core.db_connector.db_registry import DBRegistry
+from tabulaflow.toolhub.base import sum_tool_metrics
 from tabulaflow.toolhub.get_column_json_schema import GetColumnJsonSchemaTool, GetColumnJsonSchemaToolMetrics
-from tabulaflow.toolhub.utils import sum_tool_metrics
 
 
 class RegistryGetColumnJsonSchemaTool:

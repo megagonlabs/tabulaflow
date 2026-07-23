@@ -16,7 +16,7 @@ from pydantic_ai.settings import ModelSettings
 
 import tabulaflow.toolhub.extract_rows_from_documents as mod
 from tabulaflow.core.db_connector.sql_conn import SQLConnector
-from tabulaflow.toolhub.column_types import python_type_for_dtype
+from tabulaflow.toolhub.engines.column_types import python_type_for_dtype
 from tabulaflow.toolhub.entity_extractor import EntityExtractor
 from tabulaflow.toolhub.extract_rows_from_documents import ExtractRowsFromDocumentsTool
 

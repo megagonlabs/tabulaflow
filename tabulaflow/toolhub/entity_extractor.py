@@ -23,8 +23,8 @@ from pydantic_ai.models import Model
 from pydantic_ai.settings import ModelSettings
 from tabulaflow.core.llm import make_agent
 from tabulaflow.core.types import Trajectory
-from tabulaflow.toolhub.column_types import ALLOWED_COLUMN_TYPES, ColumnType
-from tabulaflow.toolhub.markdown_splitter import DEFAULT_MAX_CHARS, DEFAULT_TARGET_CHARS, Chunk, split_markdown
+from tabulaflow.toolhub.engines.column_types import ALLOWED_COLUMN_TYPES, ColumnType
+from tabulaflow.toolhub.engines.markdown_splitter import DEFAULT_MAX_CHARS, DEFAULT_TARGET_CHARS, Chunk, split_markdown
 
 logger = logging.getLogger(__name__)
 
@@ -68,7 +68,7 @@ class EntityExtractor:
     """Extract structured entities from document text by chunking and LLM extraction.
 
     A single document is split into non-overlapping, structure-aware chunks (see
-    :func:`tabulaflow.toolhub.markdown_splitter.split_markdown`); a leaf subagent
+    :func:`tabulaflow.toolhub.engines.markdown_splitter.split_markdown`); a leaf subagent
     extracts a list of entities from each chunk concurrently (bounded by
     ``max_concurrency``), and the union is returned. Entities are flat dicts keyed by
     ``output_columns``; each value is typed per ``column_types`` (defaulting to ``str``)

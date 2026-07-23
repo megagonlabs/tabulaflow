@@ -24,9 +24,9 @@ from tabulaflow.core.db_connector.db_registry import DBRegistry
 from tabulaflow.core.db_connector.sql_conn import SQLConnector
 from tabulaflow.core.types import SQLDialect, Trajectory
 from tabulaflow.toolhub.add_canonical_name import AddCanonicalNameTool
-from tabulaflow.toolhub.column_types import resolve_column_types
+from tabulaflow.toolhub.engines.column_types import resolve_column_types
 from tabulaflow.toolhub.extract_rows_from_documents import ExtractRowsFromDocumentsTool
-from tabulaflow.toolhub.utils import qualified_table, sa_table
+from tabulaflow.toolhub.engines.sql import qualified_table, sa_table
 from tabulaflow.toolhub.message_store import (
     MESSAGE_THRESHOLD_CHARS,
     MessageStore,

@@ -2,7 +2,7 @@ from typing import ClassVar
 from pydantic import BaseModel
 from pydantic_ai import Tool
 from tabulaflow.core.types import SQLSchema
-from tabulaflow.toolhub.utils import equals_ci
+from tabulaflow.toolhub.engines.sql import equals_ci
 
 
 class GetColumnDescriptionToolMetrics(BaseModel):

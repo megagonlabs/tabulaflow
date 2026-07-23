@@ -19,7 +19,7 @@ from pydantic_ai.settings import ModelSettings
 
 from tabulaflow.core.db_connector.sql_conn import SQLConnector
 from tabulaflow.core.types import Trajectory
-from tabulaflow.toolhub.utils import qualified_table, sa_table
+from tabulaflow.toolhub.engines.sql import qualified_table, sa_table
 from tabulaflow.toolhub.run_query import RunQueryTool
 from tabulaflow.core.llm import make_agent
 

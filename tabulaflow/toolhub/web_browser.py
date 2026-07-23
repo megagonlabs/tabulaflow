@@ -35,7 +35,7 @@ placed right after each link, button, or input.  Every interactive
 element is a self-contained single-line atom (``[text](url) [ref=eN]``
 for links; ``role "name" [ref=eN]`` for buttons / form controls / etc.)
 so the agent can locate one with a single grep / SQL regex.  See
-:mod:`tabulaflow.toolhub.aria_to_markdown` for the full atom-shape reference.
+:mod:`tabulaflow.toolhub.engines.aria_to_markdown` for the full atom-shape reference.
 """
 
 import asyncio
@@ -48,7 +48,7 @@ from urllib.parse import urlparse
 from pydantic import BaseModel
 from pydantic_ai import Tool
 
-from .aria_to_markdown import (
+from .engines.aria_to_markdown import (
     extract_refs,
     render_aria_markdown,
 )
@@ -56,7 +56,7 @@ from .message_store import (
     deref_call,
     id_marker,
 )
-from .pdf_extract import extract_pdf_text
+from .engines.pdf_extract import extract_pdf_text
 
 if TYPE_CHECKING:
     from playwright.async_api import (

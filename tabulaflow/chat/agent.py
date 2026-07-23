@@ -347,7 +347,7 @@ class ChatAgent:
             )
 
         from tabulaflow.toolhub import ExecuteBashTool
-        from tabulaflow.toolhub.shell_guard import dangerous_command_reason
+        from tabulaflow.toolhub.engines.shell_guard import dangerous_command_reason
 
         return ExecuteBashTool(
             working_dir=str(self.project_dir),

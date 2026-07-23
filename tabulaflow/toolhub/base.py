@@ -1,4 +1,5 @@
-from typing import Any, ClassVar, Protocol, TypeAlias
+from collections.abc import Iterable
+from typing import Any, ClassVar, Protocol, TypeAlias, TypeVar
 
 from pydantic import BaseModel
 from pydantic_ai import Tool, ToolOutput
@@ -6,6 +7,24 @@ from pydantic_ai.settings import ModelSettings
 
 
 BaseToolMetrics: TypeAlias = BaseModel
+
+_M = TypeVar("_M", bound=BaseModel)
+
+
+def sum_tool_metrics(metrics_iter: Iterable[_M], cls: type[_M]) -> _M:
+    """Sum numeric fields across multiple metrics instances.
+
+    Args:
+        metrics_iter: Iterable of metrics objects to aggregate.
+        cls: The metrics class to instantiate for the result.
+    """
+    totals: dict[str, int | float] = {}
+    for metrics in metrics_iter:
+        for field_name in metrics.model_fields:
+            value = getattr(metrics, field_name)
+            if isinstance(value, (int, float)):
+                totals[field_name] = totals.get(field_name, 0) + value
+    return cls(**totals)
 
 
 class BaseTool(Protocol):
