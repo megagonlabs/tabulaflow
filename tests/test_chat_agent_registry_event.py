@@ -65,7 +65,7 @@ def test_chat_agent_notes_pre_registered_sources(monkeypatch: pytest.MonkeyPatch
 
     assert len(agent._message_history) == 2
     assert str(cast(Any, agent._message_history[0].parts[0]).content) == (
-        "[system: the model powering this conversation is test:model.]"
+        "[system: the model powering this conversation is Model.]"
     )
     message = agent._message_history[1]
     event = str(cast(Any, message.parts[0]).content)

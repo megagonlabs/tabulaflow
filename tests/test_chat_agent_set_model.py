@@ -243,7 +243,7 @@ def _last_note(agent: ChatAgent) -> str:
 def test_startup_note_states_model() -> None:
     agent = ChatAgent(registry=DBRegistry(), model="test", reasoning_effort="medium")
     assert len(agent._message_history) == 1
-    assert _last_note(agent) == "[system: the model powering this conversation is test.]"
+    assert _last_note(agent) == "[system: the model powering this conversation is Test.]"
 
 
 def test_activate_llm_profile_notes_model_change(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -264,8 +264,8 @@ def test_activate_llm_profile_notes_model_change(tmp_path: Path, monkeypatch: py
         subagent_reasoning_effort=agent.subagent_reasoning_effort,
     )
     assert _last_note(agent) == (
-        "[system: the model powering this conversation changed from test to "
-        "openai-responses:gpt-5; the apply_patch tool is now available.]"
+        "[system: the model powering this conversation changed from Test to GPT 5; "
+        "the apply_patch tool is now available.]"
     )
 
     agent.activate_llm_profile(
@@ -275,8 +275,8 @@ def test_activate_llm_profile_notes_model_change(tmp_path: Path, monkeypatch: py
         subagent_reasoning_effort=agent.subagent_reasoning_effort,
     )
     assert _last_note(agent) == (
-        "[system: the model powering this conversation changed from "
-        "openai-responses:gpt-5 to test; the apply_patch tool is no longer available.]"
+        "[system: the model powering this conversation changed from GPT 5 to Test; "
+        "the apply_patch tool is no longer available.]"
     )
 
     # Effort- or subagent-only changes don't alter the main agent's context: no note.
@@ -300,9 +300,7 @@ def test_model_change_note_omits_apply_patch_without_file_tools(monkeypatch: pyt
         subagent_model=agent.subagent_model,
         subagent_reasoning_effort=agent.subagent_reasoning_effort,
     )
-    assert _last_note(agent) == (
-        "[system: the model powering this conversation changed from test to openai-responses:gpt-5.]"
-    )
+    assert _last_note(agent) == "[system: the model powering this conversation changed from Test to GPT 5.]"
 
 
 def test_resolve_subagent_api_key(monkeypatch: pytest.MonkeyPatch) -> None:

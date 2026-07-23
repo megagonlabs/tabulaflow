@@ -24,7 +24,7 @@ from tabulaflow.app.config import (
     ResolvedLLMSelection,
     load_app_config,
 )
-from tabulaflow.app.session import compact_model_label
+from tabulaflow.core.llm import compact_model_label
 from tabulaflow.app.theme import (
     ACCENT,
     ACCENT_BOLD,

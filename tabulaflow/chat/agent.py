@@ -30,7 +30,7 @@ from tabulaflow.toolhub.web_browser import (
     snapshot_snippet,
 )
 from tabulaflow.core.db_connector import connector_info
-from tabulaflow.core.llm import make_agent, make_model_settings
+from tabulaflow.core.llm import compact_model_name, make_agent, make_model_settings
 from tabulaflow.chat.result import ChatResult, ChatResultChart, ChatResultGraph, ChatResultMap, ChatResultRecord
 from tabulaflow.chat.events import (
     ChatEvent,
@@ -209,7 +209,7 @@ class ChatAgent:
             self._message_store.attach_connector(self.workspace)
             self._tools.add_canonical_name.attach_connector(self.workspace)
         self._system_prompt = self._compose_system_prompt()
-        self.note_event(f"the model powering this conversation is {self.model}.")
+        self.note_event(f"the model powering this conversation is {compact_model_name(self.model)}.")
         self._note_initial_registry()
         self._pydantic_ai_agent = self._make_agent(self.model)
 
@@ -521,7 +521,10 @@ class ChatAgent:
         toolset differs. The note states facts only (the switch and any tool
         availability delta); tool preferences live in the tool descriptions,
         which ship exactly when the tool does."""
-        description = f"the model powering this conversation changed from {previous} to {current}"
+        description = (
+            "the model powering this conversation changed from "
+            f"{compact_model_name(previous)} to {compact_model_name(current)}"
+        )
         if self._tools.apply_patch is not None:
             had = _model_supports_apply_patch(previous)
             has = _model_supports_apply_patch(current)

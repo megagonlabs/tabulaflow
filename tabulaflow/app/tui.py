@@ -25,11 +25,8 @@ from tabulaflow.app.config import (
 from tabulaflow.app.debug import debug_enabled, mount_debug_widgets
 from tabulaflow.app.pane import PaneCard, manual_card_turn, turn_payload
 from tabulaflow.app.runtime_paths import RuntimePaths, ensure_pane_dir
-from tabulaflow.app.session import (
-    LLM_UNAVAILABLE_MESSAGE,
-    SessionState,
-    compact_model_label,
-)
+from tabulaflow.app.session import LLM_UNAVAILABLE_MESSAGE, SessionState
+from tabulaflow.core.llm import compact_model_label
 from tabulaflow.app.theme import ERROR, FOCUS_SURFACE, KEY_HINT
 from tabulaflow.app.widgets import (
     AgentProgressWidget,

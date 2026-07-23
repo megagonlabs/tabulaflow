@@ -40,6 +40,47 @@ DEFAULT_USAGE_LIMITS = UsageLimits(request_limit=None)
 _ANTHROPIC_ANSWER_TOKEN_HEADROOM = 8192
 
 
+def compact_model_name(model: str) -> str:
+    """Return a compact display name for an LLM model identifier.
+
+    Examples:
+        ``anthropic:claude-opus-4-8`` → ``Opus 4.8``,
+        ``anthropic:claude-sonnet-4-5-20250929`` → ``Sonnet 4.5``,
+        ``openai-responses:gpt-5.4-mini`` → ``GPT 5.4 Mini``.
+    """
+    _, sep, name = model.partition(":")
+    if not sep:
+        name = model
+    name = name.rsplit("/", 1)[-1]
+    tokens = name.replace("_", "-").split("-")
+    if len(tokens) > 1 and tokens[-1].isdigit() and len(tokens[-1]) == 8:
+        tokens = tokens[:-1]
+    if len(tokens) >= 2 and tokens[-1].isdigit() and tokens[-2].isdigit():
+        tokens = [*tokens[:-2], f"{tokens[-2]}.{tokens[-1]}"]
+    if tokens and tokens[0].lower() == "claude":
+        tokens = tokens[1:]
+    parts: list[str] = []
+    for tok in tokens:
+        if tok.lower() == "gpt":
+            parts.append(tok.upper())
+        elif tok[:1].isalpha():
+            parts.append(tok.capitalize())
+        else:
+            parts.append(tok)
+    return " ".join(parts)
+
+
+def compact_model_label(model: str, reasoning_effort: str | None = None) -> str:
+    """Return a compact model label with optional reasoning effort.
+
+    Examples:
+        ``("anthropic:claude-opus-4-8", "high")`` → ``Opus 4.8 high``,
+        ``("openai-responses:gpt-5.4-mini", None)`` → ``GPT 5.4 Mini``.
+    """
+    label = compact_model_name(model)
+    return f"{label} {reasoning_effort}" if reasoning_effort else label
+
+
 def make_model_settings(
     *,
     model: str,
