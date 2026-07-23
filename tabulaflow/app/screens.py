@@ -24,7 +24,7 @@ from tabulaflow.app.config import (
     ResolvedLLMSelection,
     load_app_config,
 )
-from tabulaflow.core.llm import compact_model_label
+from tabulaflow.core.llm import model_display_name
 from tabulaflow.app.theme import (
     ACCENT,
     ACCENT_BOLD,
@@ -1890,8 +1890,8 @@ class ConfigScreen(Screen[ResolvedLLMSelection | None]):
         else:
             assert preset is not None
             models = Text(
-                f"{compact_model_label(preset.main.model, preset.main.reasoning_effort)}"
-                f" → {compact_model_label(preset.subagent.model, preset.subagent.reasoning_effort)}",
+                f"{model_display_name(preset.main.model, preset.main.reasoning_effort)}"
+                f" → {model_display_name(preset.subagent.model, preset.subagent.reasoning_effort)}",
                 style="dim",
             )
         return markers, label, models

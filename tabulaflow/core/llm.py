@@ -40,13 +40,14 @@ DEFAULT_USAGE_LIMITS = UsageLimits(request_limit=None)
 _ANTHROPIC_ANSWER_TOKEN_HEADROOM = 8192
 
 
-def compact_model_name(model: str) -> str:
-    """Return a compact display name for an LLM model identifier.
+def model_display_name(model: str, reasoning_effort: str | None = None) -> str:
+    """Return a human-readable display name for an LLM model identifier,
+    with the reasoning effort appended when given.
 
     Examples:
         ``anthropic:claude-opus-4-8`` → ``Opus 4.8``,
         ``anthropic:claude-sonnet-4-5-20250929`` → ``Sonnet 4.5``,
-        ``openai-responses:gpt-5.4-mini`` → ``GPT 5.4 Mini``.
+        ``("openai-responses:gpt-5.4-mini", "medium")`` → ``GPT 5.4 Mini medium``.
     """
     _, sep, name = model.partition(":")
     if not sep:
@@ -67,18 +68,8 @@ def compact_model_name(model: str) -> str:
             parts.append(tok.capitalize())
         else:
             parts.append(tok)
-    return " ".join(parts)
-
-
-def compact_model_label(model: str, reasoning_effort: str | None = None) -> str:
-    """Return a compact model label with optional reasoning effort.
-
-    Examples:
-        ``("anthropic:claude-opus-4-8", "high")`` → ``Opus 4.8 high``,
-        ``("openai-responses:gpt-5.4-mini", None)`` → ``GPT 5.4 Mini``.
-    """
-    label = compact_model_name(model)
-    return f"{label} {reasoning_effort}" if reasoning_effort else label
+    name = " ".join(parts)
+    return f"{name} {reasoning_effort}" if reasoning_effort else name
 
 
 def make_model_settings(

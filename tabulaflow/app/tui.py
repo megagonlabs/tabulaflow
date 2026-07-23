@@ -26,7 +26,7 @@ from tabulaflow.app.debug import debug_enabled, mount_debug_widgets
 from tabulaflow.app.pane import PaneCard, manual_card_turn, turn_payload
 from tabulaflow.app.runtime_paths import RuntimePaths, ensure_pane_dir
 from tabulaflow.app.session import LLM_UNAVAILABLE_MESSAGE, SessionState
-from tabulaflow.core.llm import compact_model_label
+from tabulaflow.core.llm import model_display_name
 from tabulaflow.app.theme import ERROR, FOCUS_SURFACE, KEY_HINT
 from tabulaflow.app.widgets import (
     AgentProgressWidget,
@@ -156,11 +156,11 @@ def _llm_preset_success_message(
         )
 
     message = Text(f"✓ LLM preset: {preset.label} · ", style="dim")
-    message.append(compact_model_label(preset.main.model, preset.main.reasoning_effort))
+    message.append(model_display_name(preset.main.model, preset.main.reasoning_effort))
     if main_mask is not None and not shared_key:
         message.append(f" [API key {main_mask}]")
     message.append(" → ")
-    message.append(compact_model_label(preset.subagent.model, preset.subagent.reasoning_effort))
+    message.append(model_display_name(preset.subagent.model, preset.subagent.reasoning_effort))
     if subagent_mask is not None and not shared_key:
         message.append(f" [API key {subagent_mask}]")
     if shared_key and main_mask is not None:
@@ -636,9 +636,9 @@ class TabulaflowApp(App[None]):
         url = self._pane.url if self._pane is not None else None
         if self._session is not None and self._session.llm_preset is not None:
             profile = self._session.llm_preset.main
-            model_label = compact_model_label(profile.model, profile.reasoning_effort)
+            model_label = model_display_name(profile.model, profile.reasoning_effort)
         elif self._session is None and self._llm_selection.preset is not None:
-            model_label = compact_model_label(
+            model_label = model_display_name(
                 self._llm_selection.preset.main.model,
                 self._llm_selection.preset.main.reasoning_effort,
             )
