@@ -4,12 +4,12 @@ from __future__ import annotations
 
 from typing import Any, ClassVar
 
-from pydantic_ai import Tool
+from pydantic_ai import Tool, ToolReturn
 
 from tabulaflow.core.config import tabulaflow_config
 from tabulaflow.core.db_connector.base import NL2QDBConnector
 from tabulaflow.core.db_connector.db_registry import DBRegistry
-from tabulaflow.toolhub.base import sum_tool_metrics
+from tabulaflow.toolhub.base import ToolCallOutcome, sum_tool_metrics
 from tabulaflow.toolhub.query_history import QueryHistory, QueryRecord
 from tabulaflow.toolhub.run_query import LLMParameter, RunQueryTool, RunQueryToolMetrics
 
@@ -90,7 +90,7 @@ class RegistryRunQueryTool:
         query: str,
         parameters: list[LLMParameter] = [],
         refresh: bool = False,
-    ) -> str:
+    ) -> ToolReturn:
         """Execute a query against a registered database and return the results.
 
         Returning large result sets is safe — the display is automatically
@@ -107,14 +107,14 @@ class RegistryRunQueryTool:
                 rebuild — be conservative on large cloud warehouses (e.g.
                 Snowflake).
         """
-        return await self._execute(db_alias, query, parameters, refresh)
+        return await self(db_alias, query, parameters, refresh)
 
     async def _run_with_params(
         self,
         db_alias: str,
         query: str,
         parameters: list[LLMParameter] = [],
-    ) -> str:
+    ) -> ToolReturn:
         """Execute a query against a registered database and return the results.
 
         Returning large result sets is safe — the display is automatically
@@ -126,9 +126,9 @@ class RegistryRunQueryTool:
             parameters: Query parameters.  A list of dictionaries, each
                 containing a ``parameter_name`` and a ``parameter_value`` field.
         """
-        return await self._execute(db_alias, query, parameters, False)
+        return await self(db_alias, query, parameters, False)
 
-    async def _run_no_params_with_refresh(self, db_alias: str, query: str, refresh: bool = False) -> str:
+    async def _run_no_params_with_refresh(self, db_alias: str, query: str, refresh: bool = False) -> ToolReturn:
         """Execute a query against a registered database and return the results.
 
         Returning large result sets is safe — the display is automatically
@@ -143,9 +143,9 @@ class RegistryRunQueryTool:
                 rebuild — be conservative on large cloud warehouses (e.g.
                 Snowflake).
         """
-        return await self._execute(db_alias, query, [], refresh)
+        return await self(db_alias, query, [], refresh)
 
-    async def _run_no_params(self, db_alias: str, query: str) -> str:
+    async def _run_no_params(self, db_alias: str, query: str) -> ToolReturn:
         """Execute a query against a registered database and return the results.
 
         Returning large result sets is safe — the display is automatically
@@ -155,24 +155,7 @@ class RegistryRunQueryTool:
             db_alias: Alias of the target database (see ``list_databases``).
             query: The query to execute.
         """
-        return await self._execute(db_alias, query, [], False)
-
-    async def _execute(
-        self,
-        db_alias: str,
-        query: str,
-        parameters: list[LLMParameter],
-        refresh: bool,
-    ) -> str:
-        try:
-            tool = self._get_tool(db_alias)
-        except ValueError:
-            available = ", ".join(self.registry.list_aliases()) or "(none)"
-            return f"(unknown db_alias: {db_alias!r}; available: {available})"
-        result = await tool(query, parameters, refresh)
-        pred_query = tool.last_pred_query()
-        record = await self._history.add(db_alias, tool.db_connector.connector_type, pred_query)
-        return f"[record_id={record.record_id}]\n{result}"
+        return await self(db_alias, query, [], False)
 
     async def __call__(
         self,
@@ -180,8 +163,25 @@ class RegistryRunQueryTool:
         query: str,
         parameters: list[LLMParameter] | None = None,
         refresh: bool = False,
-    ) -> str:
-        return await self._execute(db_alias, query, parameters or [], refresh and self.enable_refresh)
+    ) -> ToolReturn:
+        try:
+            tool = self._get_tool(db_alias)
+        except ValueError:
+            available = ", ".join(self.registry.list_aliases()) or "(none)"
+            return ToolReturn(
+                return_value=f"(unknown db_alias: {db_alias!r}; available: {available})",
+                metadata=ToolCallOutcome(error=True),
+            )
+        result = await tool(query, parameters or [], refresh and self.enable_refresh)
+        pred_query = tool.last_pred_query()
+        record = await self._history.add(db_alias, tool.db_connector.connector_type, pred_query)
+        exec_result = pred_query.exec_result
+        outcome = None
+        if exec_result is not None and exec_result.df is not None:
+            outcome = ToolCallOutcome(count=len(exec_result.df), unit="rows")
+        elif exec_result is not None and exec_result.error:
+            outcome = ToolCallOutcome(error=True)
+        return ToolReturn(return_value=f"[record_id={record.record_id}]\n{result}", metadata=outcome)
 
     def as_pydantic_ai_tool(self) -> Tool:
         fn: Any

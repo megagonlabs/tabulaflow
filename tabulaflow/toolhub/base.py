@@ -76,3 +76,21 @@ class ProgressReportingTool(Protocol):
     """Tool that reports progress ticks through its ``on_progress`` slot."""
 
     on_progress: Callable[[ToolProgressUpdate], None] | None
+
+
+@dataclass(frozen=True)
+class ToolCallOutcome:
+    """Facts about one completed tool call, for the host's display.
+
+    Attached as ``pydantic_ai.ToolReturn.metadata`` by the tool's LLM-facing
+    entrypoints, so it rides the call's own return — never sent to the model.
+
+    Attributes:
+        count: Units of work the call returned (e.g. result rows).
+        unit: Noun for the count (e.g. ``"rows"``, ``"columns"``).
+        error: Whether the call failed.
+    """
+
+    count: int | None = None
+    unit: str | None = None
+    error: bool = False

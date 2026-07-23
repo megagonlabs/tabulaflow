@@ -8,17 +8,13 @@ result it produces. All of it is re-exported here so frontends import from
 from typing import TYPE_CHECKING
 
 from tabulaflow.chat.events import (
-    ChatEvent,
-    ColumnsReturned,
-    Completed,
-    Failed,
     AnswerDelta,
+    ChatEvent,
     Finished,
     NarrationDelta,
-    RowsReturned,
     ThinkingDelta,
+    ToolCallOutcome,
     ToolFinished,
-    ToolOutcome,
     ToolProgress,
     ToolStarted,
     UsageUpdated,
@@ -37,10 +33,11 @@ if TYPE_CHECKING:
 
 
 def __getattr__(name: str) -> object:
-    # Lazy-load the heavy ``ChatAgent`` (which pulls in toolhub → sqlalchemy/duckdb +
-    # pydantic-ai, ~3s) so that importing the lightweight event/result types — as the
-    # TUI's widgets do — doesn't drag in the full agent stack. The agent itself loads
-    # the first time it's accessed (when a session opens, off the UI thread).
+    # Lazy-load ``ChatAgent`` itself so importing event/result types doesn't build
+    # an agent session. The event contract intentionally imports ToolCallOutcome
+    # from toolhub, so this module is no longer a toolhub-free import path.
+    # The agent itself loads the first time it's accessed (when a session opens,
+    # off the UI thread).
     # ``SYSTEM_PROMPT`` (the baseline prompt callers extend via ``extra_instructions``)
     # lives in the same module, so it loads on the same terms.
     if name in ("ChatAgent", "SYSTEM_PROMPT"):
@@ -68,9 +65,5 @@ __all__ = [
     "ToolProgress",
     "UsageUpdated",
     "Finished",
-    "ToolOutcome",
-    "RowsReturned",
-    "ColumnsReturned",
-    "Failed",
-    "Completed",
+    "ToolCallOutcome",
 ]

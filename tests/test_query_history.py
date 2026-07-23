@@ -49,14 +49,14 @@ class TestNoConnector:
         assert all(_exec_result(r.pred_query).df is not None for r in h._records.values())
 
     @pytest.mark.asyncio
-    async def test_get_and_last(self) -> None:
+    async def test_get(self) -> None:
         h = QueryHistory()
         await h.add("db", "sql", _make_pred_query(n_rows=3))
         await h.add("db", "sql", _make_pred_query(n_rows=7))
         assert _exec_result((await h.get("Q1")).pred_query).df is not None
-        last_df = _exec_result((await h.last()).pred_query).df
-        assert last_df is not None
-        assert len(last_df) == 7
+        q2_df = _exec_result((await h.get("Q2")).pred_query).df
+        assert q2_df is not None
+        assert len(q2_df) == 7
 
 
 class TestWithConnector:
@@ -110,17 +110,6 @@ class TestWithConnector:
         # Q1 back in memory, Q2 evicted
         assert "Q1" not in h._spilled
         assert "Q2" in h._spilled
-
-    @pytest.mark.asyncio
-    async def test_last_returns_most_recent(self, workspace: SQLConnector) -> None:
-        h = QueryHistory(max_in_memory=2, spill_connector=workspace)
-        await h.add("db", "sql", _make_pred_query(n_rows=3))
-        await h.add("db", "sql", _make_pred_query(n_rows=7))
-        record = await h.last()
-        assert record.record_id == "Q2"
-        last_df = _exec_result(record.pred_query).df
-        assert last_df is not None
-        assert len(last_df) == 7
 
     @pytest.mark.asyncio
     async def test_error_records_not_tracked(self, workspace: SQLConnector) -> None:

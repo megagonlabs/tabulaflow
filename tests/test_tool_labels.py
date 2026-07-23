@@ -10,7 +10,7 @@ from tabulaflow.app.widgets import (
     summarize_outcome,
     summarize_tool_args,
 )
-from tabulaflow.chat.events import Completed, Failed, RowsReturned
+from tabulaflow.chat.events import ToolCallOutcome
 
 
 class TestLineDiffstat:
@@ -372,10 +372,13 @@ class TestStyledLabel:
 class TestSummarizeOutcome:
     def test_plain_completion_has_no_suffix(self) -> None:
         # no "done" — completion is shown by the step's done-state, not a label
-        assert summarize_outcome(Completed()) == ""
+        assert summarize_outcome(None) == ""
 
     def test_rows_kept(self) -> None:
-        assert summarize_outcome(RowsReturned(count=42)) == "42 rows"
+        assert summarize_outcome(ToolCallOutcome(count=42, unit="rows")) == "42 rows"
+
+    def test_count_without_unit_kept(self) -> None:
+        assert summarize_outcome(ToolCallOutcome(count=42)) == "42"
 
     def test_error_kept(self) -> None:
-        assert summarize_outcome(Failed()) == "error"
+        assert summarize_outcome(ToolCallOutcome(error=True)) == "error"

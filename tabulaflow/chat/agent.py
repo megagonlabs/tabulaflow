@@ -34,16 +34,11 @@ from tabulaflow.core.llm import make_agent, make_model_settings, model_display_n
 from tabulaflow.chat.result import ChatResult, ChatResultChart, ChatResultGraph, ChatResultMap, ChatResultRecord
 from tabulaflow.chat.events import (
     ChatEvent,
-    ColumnsReturned,
     AnswerDelta,
-    Completed,
-    Failed,
     Finished,
     NarrationDelta,
-    RowsReturned,
     ThinkingDelta,
     ToolFinished,
-    ToolOutcome,
     ToolProgress,
     ToolStarted,
     UsageUpdated,
@@ -714,13 +709,7 @@ class ChatAgent:
                                         event.result, ToolReturnPart
                                     ):
                                         completed_results[event.tool_call_id] = event.result
-                                    await _emit_stream_event(
-                                        event,
-                                        emit,
-                                        self._query_history,
-                                        self._tools.get_table_schema,
-                                        text_router,
-                                    )
+                                    await _emit_stream_event(event, emit, text_router)
                                     await asyncio.sleep(0)
                             emit(UsageUpdated(usage=Usage.from_pydantic_ai_usage(agent_run.usage, self.model)))
                         completed_normally = True
@@ -1050,15 +1039,14 @@ def _chat_result_record_from_query_record(
 async def _emit_stream_event(
     event: object,
     emit: Callable[[ChatEvent], None],
-    query_history: QueryHistory,
-    get_table_schema_tool: RegistryGetTableSchemaTool | None,
     text_router: "_TextStreamRouter",
 ) -> None:
     """Map one pydantic-ai stream event to ``ChatEvent``s and emit them.
 
     Events carry structured data only: ``ToolStarted.args`` is the raw call args
-    (a frontend renders them); ``ToolFinished.outcome`` is the structured
-    ``ToolOutcome`` (built here because it needs the agent's query history).
+    (a frontend renders them); ``ToolFinished.outcome`` is the typed
+    ``ToolCallOutcome`` from the finished call's own return part, or ``None``
+    for plain completion.
 
     Text and reasoning each arrive as a ``PartStartEvent`` (the first chunk — its
     content is non-empty on content-bearing streaming providers) followed by
@@ -1082,9 +1070,17 @@ async def _emit_stream_event(
         )
 
     elif isinstance(event, FunctionToolResultEvent):
-        tool_name = event.result.tool_name or ""
-        result_part = event.result if isinstance(event.result, ToolReturnPart) else None
-        outcome = await _build_outcome(tool_name, query_history, get_table_schema_tool, result_part)
+        from tabulaflow.toolhub import ToolCallOutcome
+
+        tool_name = (event.part.tool_name if event.part is not None else "") or ""
+        result_part = event.part if isinstance(event.part, ToolReturnPart) else None
+        outcome = result_part.metadata if result_part is not None else None
+        if not isinstance(outcome, ToolCallOutcome):
+            outcome = None
+        if outcome is None:
+            content = result_part.content if result_part is not None else None
+            if isinstance(content, str) and content.startswith("(error:"):
+                outcome = ToolCallOutcome(error=True)
         emit(ToolFinished(tool_call_id=event.tool_call_id, name=tool_name, outcome=outcome))
 
     elif isinstance(event, PartStartEvent):
@@ -1115,32 +1111,3 @@ def _coerce_args(args: object) -> dict[str, Any]:
         except (json.JSONDecodeError, TypeError):
             return {}
     return args if isinstance(args, dict) else {}
-
-
-async def _build_outcome(
-    tool_name: str,
-    query_history: QueryHistory,
-    get_table_schema_tool: RegistryGetTableSchemaTool | None,
-    result_part: ToolReturnPart | None = None,
-) -> ToolOutcome:
-    """Derive the structured tool outcome from the agent's recorded state. Only
-    ``run_query`` (rows / error) and ``get_table_schema`` (columns) report a count;
-    everything else is ``Completed``. See ``chat.events`` for the tool→outcome map."""
-    if tool_name == "run_query":
-        try:
-            record = await query_history.last()
-            pred = record.pred_query
-            if pred.exec_result and pred.exec_result.df is not None:
-                return RowsReturned(count=len(pred.exec_result.df))
-            if pred.exec_result and pred.exec_result.error:
-                return Failed()
-        except ValueError:
-            pass
-    if tool_name == "get_table_schema" and get_table_schema_tool is not None:
-        n = get_table_schema_tool.last_columns_returned
-        if n is not None:
-            return ColumnsReturned(count=n)
-    content = result_part.content if result_part is not None else None
-    if isinstance(content, str) and content.startswith("(error:"):
-        return Failed()
-    return Completed()

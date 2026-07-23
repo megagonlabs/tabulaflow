@@ -4,11 +4,18 @@ from pathlib import Path
 
 import pytest
 import sqlalchemy
+from pydantic_ai import ToolReturn
 from sqlalchemy.ext.asyncio import create_async_engine
 
 from tabulaflow.core.db_connector.db_registry import DBRegistry
 from tabulaflow.core.db_connector.sql_conn import SQLConnector
 from tabulaflow.toolhub.registry_run_query import RegistryRunQueryTool
+
+
+def _text(result: ToolReturn) -> str:
+    value = result.return_value
+    assert isinstance(value, str)
+    return value
 
 
 async def _make_connector(tmp_path: Path, name: str, value: str) -> SQLConnector:
@@ -33,12 +40,12 @@ async def test_run_query_fails_after_disconnect(tmp_path: Path) -> None:
     registry.register("mydb", await _make_connector(tmp_path, "db_a", "alpha"))
     tool = RegistryRunQueryTool(registry)
 
-    assert "alpha" in await tool("mydb", "SELECT val FROM t")
+    assert "alpha" in _text(await tool("mydb", "SELECT val FROM t"))
 
     assert await registry.unregister_async("mydb")
-    result = await tool("mydb", "SELECT val FROM t")
-    assert "unknown db_alias" in result
-    assert "alpha" not in result
+    result_text = _text(await tool("mydb", "SELECT val FROM t"))
+    assert "unknown db_alias" in result_text
+    assert "alpha" not in result_text
 
 
 @pytest.mark.asyncio
@@ -47,11 +54,11 @@ async def test_run_query_uses_new_connector_after_rebind(tmp_path: Path) -> None
     registry = DBRegistry()
     registry.register("mydb", await _make_connector(tmp_path, "db_a", "alpha"))
     tool = RegistryRunQueryTool(registry)
-    assert "alpha" in await tool("mydb", "SELECT val FROM t")
+    assert "alpha" in _text(await tool("mydb", "SELECT val FROM t"))
 
     await registry.unregister_async("mydb")
     registry.register("mydb", await _make_connector(tmp_path, "db_b", "bravo"))
 
-    result = await tool("mydb", "SELECT val FROM t")
-    assert "bravo" in result
-    assert "alpha" not in result
+    result_text = _text(await tool("mydb", "SELECT val FROM t"))
+    assert "bravo" in result_text
+    assert "alpha" not in result_text

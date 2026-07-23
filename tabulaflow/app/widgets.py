@@ -46,12 +46,9 @@ from tabulaflow.app.screens import ChartBrowserScreen, DataBrowserScreen, QueryB
 from tabulaflow.chat import (
     AnswerDelta,
     ChatEvent,
-    ColumnsReturned,
-    Failed,
     Finished,
-    RowsReturned,
+    ToolCallOutcome,
     ToolFinished,
-    ToolOutcome,
     ToolProgress,
     ToolStarted,
     UsageUpdated,
@@ -816,17 +813,17 @@ def summarize_tool_args(name: str, args: Mapping[str, object]) -> str:
     return f"{name.replace('_', ' ').capitalize()} {_summarize_generic_args(args)}".rstrip()
 
 
-def summarize_outcome(outcome: ToolOutcome) -> str:
+def summarize_outcome(outcome: ToolCallOutcome | None) -> str:
     """A short outcome label for a finished tool step, or ``""`` when the outcome
     carries no extra information (a plain completion is already marked by the
     step's done-state, so it gets no suffix)."""
-    if isinstance(outcome, RowsReturned):
-        return f"{outcome.count} rows"
-    if isinstance(outcome, ColumnsReturned):
-        return f"{outcome.count} columns"
-    if isinstance(outcome, Failed):
+    if outcome is None:
+        return ""
+    if outcome.error:
         return "error"
-    return ""  # Completed — no suffix
+    if outcome.count is None:
+        return ""
+    return f"{outcome.count} {outcome.unit}" if outcome.unit is not None else str(outcome.count)
 
 
 def _styled_label(name: str, label: str, *, color_diffstat: bool = True) -> Text:
@@ -1318,8 +1315,8 @@ class AgentProgressWidget(Widget):
                         suffix = self._format_progress(total, total, last_stage, unit)
                     self._steps[i] = (status, step[1], step[2], f"{base_label} → {suffix}")
                 else:
-                    # Append the outcome only when it carries information (rows /
-                    # columns / error); a plain completion gets no suffix.
+                    # Append the outcome only when it carries display information;
+                    # a plain completion gets no suffix.
                     new_label = f"{label} → {result_summary}" if result_summary else label
                     self._steps[i] = (status, step[1], step[2], new_label)
                 break

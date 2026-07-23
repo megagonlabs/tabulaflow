@@ -27,55 +27,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from tabulaflow.chat.result import ChatResult
 from tabulaflow.core.types import Usage
-
-
-# ---------------------------------------------------------------------------
-# Tool outcomes — the structured ``ToolFinished`` payload.
-# Tool-AGNOSTIC (keyed by outcome shape, not by tool): the consumer matches the
-# outcome and renders / words it however it likes. Rendering is the frontend's
-# job — there is deliberately no default summarizer here.
-#
-# Which tool produces which outcome (every chat tool maps to exactly one):
-#   run_query                  -> RowsReturned (on success) | Failed (on error)
-#   get_table_schema           -> ColumnsReturned
-#   get_db_document            -> Completed
-#   get_column_json_schema     -> Completed
-#   render_chart               -> Completed
-#   transfer_record            -> Completed
-#   run_subagent_for_each_row  -> Completed
-#   apply_patch                -> Completed
-# Any tool not listed (or with no count to report) -> Completed. Adding a tool
-# that returns rows/columns just reuses RowsReturned/ColumnsReturned — the union
-# is keyed by outcome shape, so it stays closed as tools grow.
-# ---------------------------------------------------------------------------
-
-
-class _Outcome(BaseModel):
-    model_config = ConfigDict(frozen=True)
-
-
-class RowsReturned(_Outcome):
-    kind: Literal["rows"] = "rows"
-    count: int
-
-
-class ColumnsReturned(_Outcome):
-    kind: Literal["columns"] = "columns"
-    count: int
-
-
-class Failed(_Outcome):
-    kind: Literal["error"] = "error"
-    message: str | None = None
-
-
-class Completed(_Outcome):
-    """A tool finished with no count to report."""
-
-    kind: Literal["ok"] = "ok"
-
-
-ToolOutcome: TypeAlias = Annotated[Union[RowsReturned, ColumnsReturned, Failed, Completed], Field(discriminator="kind")]
+from tabulaflow.toolhub import ToolCallOutcome as ToolCallOutcome
 
 
 # ---------------------------------------------------------------------------
@@ -125,12 +77,13 @@ class ToolStarted(_ChatEvent):
 
 class ToolFinished(_ChatEvent):
     """A tool call returned. ``outcome`` is structured so a frontend can reword it;
-    the full result (if any) arrives later in ``Finished.result``."""
+    ``None`` means plain completion with no suffix-worthy fact. The full result
+    (if any) arrives later in ``Finished.result``."""
 
     kind: Literal["tool_finished"] = "tool_finished"
     tool_call_id: str
     name: str
-    outcome: ToolOutcome
+    outcome: ToolCallOutcome | None = None
 
 
 class ToolProgress(_ChatEvent):

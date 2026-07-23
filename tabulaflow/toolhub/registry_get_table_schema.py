@@ -2,12 +2,12 @@
 
 from typing import ClassVar
 
-from pydantic_ai import Tool
+from pydantic_ai import Tool, ToolReturn
 
 from tabulaflow.core.db_connector.base import NL2QDBConnector
 from tabulaflow.core.db_connector.db_registry import DBRegistry
 from tabulaflow.core.formatters.base import BaseSQLSchemaFormatter
-from tabulaflow.toolhub.base import sum_tool_metrics
+from tabulaflow.toolhub.base import ToolCallOutcome, sum_tool_metrics
 from tabulaflow.toolhub.get_table_schema import GetTableSchemaTool, GetTableSchemaToolMetrics
 
 
@@ -50,7 +50,6 @@ class RegistryGetTableSchemaTool:
         self.max_columns = max_columns
         self.enable_refresh = enable_refresh
         self._tools: dict[str, tuple[NL2QDBConnector, GetTableSchemaTool]] = {}
-        self._last_columns_returned: int | None = None
 
     def _get_tool(self, db_alias: str) -> GetTableSchemaTool:
         """Return a cached ``GetTableSchemaTool`` for ``db_alias``, rebuilding it if the alias was re-bound."""
@@ -80,7 +79,7 @@ class RegistryGetTableSchemaTool:
         column_offset: int = 0,
         column_limit: int | None = None,
         column_regex_filter: str | None = None,
-    ) -> str:
+    ) -> ToolReturn:
         """Get the full schema of a table, with optional column filtering and pagination.
 
         Args:
@@ -95,9 +94,7 @@ class RegistryGetTableSchemaTool:
             column_regex_filter: Regex pattern to filter columns by name
                 (case-insensitive).
         """
-        return await self._execute(
-            db_alias, schema_name, table_name, refresh, column_regex_filter, column_offset, column_limit
-        )
+        return await self(db_alias, schema_name, table_name, refresh, column_offset, column_limit, column_regex_filter)
 
     async def _no_refresh(
         self,
@@ -107,7 +104,7 @@ class RegistryGetTableSchemaTool:
         column_offset: int = 0,
         column_limit: int | None = None,
         column_regex_filter: str | None = None,
-    ) -> str:
+    ) -> ToolReturn:
         """Get the full schema of a table, with optional column filtering and pagination.
 
         Args:
@@ -120,30 +117,7 @@ class RegistryGetTableSchemaTool:
             column_regex_filter: Regex pattern to filter columns by name
                 (case-insensitive).
         """
-        return await self._execute(
-            db_alias, schema_name, table_name, False, column_regex_filter, column_offset, column_limit
-        )
-
-    async def _execute(
-        self,
-        db_alias: str,
-        schema_name: str | None,
-        table_name: str,
-        refresh: bool,
-        column_regex_filter: str | None,
-        column_offset: int,
-        column_limit: int | None,
-    ) -> str:
-        try:
-            tool = self._get_tool(db_alias)
-        except ValueError:
-            available = ", ".join(self.registry.list_aliases()) or "(none)"
-            return f"(unknown db_alias: {db_alias!r}; available: {available})"
-        except TypeError as e:
-            return f"(error: {e})"
-        result = await tool(schema_name, table_name, refresh, column_offset, column_limit, column_regex_filter)
-        self._last_columns_returned = tool.last_columns_returned
-        return result
+        return await self(db_alias, schema_name, table_name, False, column_offset, column_limit, column_regex_filter)
 
     async def __call__(
         self,
@@ -154,9 +128,18 @@ class RegistryGetTableSchemaTool:
         column_offset: int = 0,
         column_limit: int | None = None,
         column_regex_filter: str | None = None,
-    ) -> str:
-        return await self._execute(
-            db_alias,
+    ) -> ToolReturn:
+        try:
+            tool = self._get_tool(db_alias)
+        except ValueError:
+            available = ", ".join(self.registry.list_aliases()) or "(none)"
+            return ToolReturn(
+                return_value=f"(unknown db_alias: {db_alias!r}; available: {available})",
+                metadata=ToolCallOutcome(error=True),
+            )
+        except TypeError as e:
+            return ToolReturn(return_value=f"(error: {e})", metadata=ToolCallOutcome(error=True))
+        result, n_columns = await tool.execute(
             schema_name,
             table_name,
             refresh if self.enable_refresh else False,
@@ -164,14 +147,12 @@ class RegistryGetTableSchemaTool:
             column_offset,
             column_limit,
         )
+        outcome = ToolCallOutcome(count=n_columns, unit="columns") if n_columns is not None else None
+        return ToolReturn(return_value=result, metadata=outcome)
 
     def as_pydantic_ai_tool(self) -> Tool:
         fn = self._with_refresh if self.enable_refresh else self._no_refresh
         return Tool(fn, name=self.name)
-
-    @property
-    def last_columns_returned(self) -> int | None:
-        return self._last_columns_returned
 
     def metrics(self) -> GetTableSchemaToolMetrics:
         """Return aggregated metrics across all aliases."""

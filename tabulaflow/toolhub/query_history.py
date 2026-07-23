@@ -124,12 +124,6 @@ class QueryHistory:
             await self._hydrate(record_id, record)
         return record
 
-    async def last(self) -> QueryRecord:
-        """Return the most recently stored query record."""
-        if not self._records:
-            raise ValueError("No query has been executed")
-        return await self.get(f"Q{self._next_query_id - 1}")
-
     def add_chart(self, record_id: str, chart_spec: dict[str, Any]) -> str:
         """Store a chart artifact for an existing query record and return its opaque ``CHART*`` id."""
         if record_id not in self._records:

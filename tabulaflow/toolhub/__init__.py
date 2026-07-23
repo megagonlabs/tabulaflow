@@ -1,4 +1,10 @@
-from tabulaflow.toolhub.base import BaseTool, LLMProfileTool, ProgressReportingTool, ToolProgressUpdate
+from tabulaflow.toolhub.base import (
+    BaseTool,
+    LLMProfileTool,
+    ProgressReportingTool,
+    ToolCallOutcome,
+    ToolProgressUpdate,
+)
 from tabulaflow.toolhub.apply_patch import ApplyPatchTool
 from tabulaflow.toolhub.get_column_json_schema import GetColumnJsonSchemaTool
 from tabulaflow.toolhub.get_table_schema import GetTableSchemaTool
@@ -31,6 +37,7 @@ __all__ = [
     "BaseTool",
     "LLMProfileTool",
     "ProgressReportingTool",
+    "ToolCallOutcome",
     "ToolProgressUpdate",
     "ApplyPatchTool",
     "GetColumnJsonSchemaTool",

@@ -60,7 +60,6 @@ class GetTableSchemaTool:
         self._disconnect_on_finish = disconnect_on_finish
         self._enable_refresh = enable_refresh
         self._metrics = GetTableSchemaToolMetrics()
-        self.last_columns_returned: int | None = None
 
     def _invalidate_schema(self) -> None:
         self._compressed_schema = None
@@ -134,7 +133,8 @@ class GetTableSchemaTool:
                 Can be combined with column_offset/column_limit to paginate within filtered results.
                 Only provide if the table is too large.
         """
-        return await self._execute(schema_name, table_name, refresh, column_regex_filter, column_offset, column_limit)
+        text, _ = await self.execute(schema_name, table_name, refresh, column_regex_filter, column_offset, column_limit)
+        return text
 
     async def _no_refresh(
         self,
@@ -157,9 +157,10 @@ class GetTableSchemaTool:
                 Can be combined with column_offset/column_limit to paginate within filtered results.
                 Only provide if the table is too large.
         """
-        return await self._execute(schema_name, table_name, False, column_regex_filter, column_offset, column_limit)
+        text, _ = await self.execute(schema_name, table_name, False, column_regex_filter, column_offset, column_limit)
+        return text
 
-    async def _execute(
+    async def execute(
         self,
         schema_name: str | None,
         table_name: str,
@@ -167,7 +168,9 @@ class GetTableSchemaTool:
         column_regex_filter: str | None,
         column_offset: int,
         column_limit: int | None,
-    ) -> str:
+    ) -> tuple[str, int | None]:
+        """Render the table schema; returns ``(text, n_columns)`` with ``n_columns``
+        ``None`` on error paths."""
         self._metrics.num_calls += 1
 
         table = self._find_table(schema_name, table_name)
@@ -179,10 +182,10 @@ class GetTableSchemaTool:
             except Exception as e:
                 if table is None:
                     self._metrics.error_table_not_found += 1
-                    return f"(error: {e})"
+                    return f"(error: {e})", None
         if table is None:
             self._metrics.error_table_not_found += 1
-            return f"(table {table_name} in schema {schema_name} not found)"
+            return f"(table {table_name} in schema {schema_name} not found)", None
 
         total_columns = len(table.columns)
 
@@ -191,7 +194,7 @@ class GetTableSchemaTool:
                 re.compile(column_regex_filter)
             except re.error as e:
                 self._metrics.error_invalid_column_regex_filter += 1
-                return f"(invalid column_regex_filter regex: {e})"
+                return f"(invalid column_regex_filter regex: {e})", None
 
         selected_columns = self._filter_columns(
             table.columns,
@@ -205,7 +208,7 @@ class GetTableSchemaTool:
             return (
                 f"({len(selected_columns)} columns exceed the limit of"
                 f" {self.max_columns}. Use column_offset/column_limit or column_regex_filter to narrow down.)"
-            )
+            ), None
 
         column_names = [col.name for col in selected_columns]
         trimmed_table = table.trim(column_names, case_insensitive=False, keep_pk=False)
@@ -230,12 +233,10 @@ class GetTableSchemaTool:
                 table.model_copy(update={"columns": []}), add_description=self.add_description
             )
 
-        self.last_columns_returned = len(selected_columns)
-
         if self._disconnect_on_finish:
             await self.db_connector.disconnect_async()
 
-        return res
+        return res, len(selected_columns)
 
     async def __call__(
         self,
@@ -246,7 +247,7 @@ class GetTableSchemaTool:
         column_limit: int | None = None,
         column_regex_filter: str | None = None,
     ) -> str:
-        return await self._execute(
+        text, _ = await self.execute(
             schema_name,
             table_name,
             refresh if self._enable_refresh else False,
@@ -254,6 +255,7 @@ class GetTableSchemaTool:
             column_offset,
             column_limit,
         )
+        return text
 
     def as_pydantic_ai_tool(self) -> Tool:
         fn = self._with_refresh if self._enable_refresh else self._no_refresh
