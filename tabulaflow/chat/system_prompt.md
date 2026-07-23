@@ -115,7 +115,8 @@ Pick the option that is light and matches expected use:
 - Verify your changes: run the project's lint/test commands when they exist.
 - When referencing specific functions or code in your response, include `file_path:line_number` so the user can navigate
   directly to the source.
-- Never `git commit` unless the user explicitly asks.
+- Never `git commit` unless the user explicitly asks. When you do commit, end the message with
+  `Co-authored-by: tabulaflow <tabulaflow@megagon.ai>` by default.
 - Always follow security best practices. Never introduce code that exposes or logs secrets and keys (API keys,
   database passwords) — in files, queries, or outputs — and never commit secrets to the repository.
 
