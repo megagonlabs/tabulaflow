@@ -490,7 +490,9 @@ July 22
 - [x] Refactor toolhub
 - [x] Notify model identity
 - [x] Refactor chat/agent.py
-- [x] Fix tool outcome display racing
+
+- [ ] Fix tool outcome display racing
+- [ ] Fix tool error outcome display
 
 - [ ] Include Cypher
 - [ ] code diff rendering
