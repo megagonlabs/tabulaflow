@@ -1,4 +1,6 @@
 import asyncio
+import shlex
+import shutil
 from collections.abc import AsyncIterator
 
 import pytest
@@ -71,6 +73,38 @@ class TestLargeMultilineInput:
 
 
 class TestRobustness:
+    async def test_common_pagers_disabled_by_default(self, bash: ExecuteBashTool) -> None:
+        result = await bash("printf '%s\n' \"$PAGER\" \"$GIT_PAGER\" \"$GH_PAGER\" \"$DELTA_PAGER\" \"$BAT_PAGER\" \"$SYSTEMD_PAGER\" \"$MANPAGER\" \"$LESS\"")
+        lines = [line for line in result.splitlines() if line in {"cat", "-FRX"}]
+        assert lines == ["cat", "cat", "cat", "cat", "cat", "cat", "cat", "-FRX"]
+        assert "[exit_code: 0]" in result
+
+    async def test_git_log_does_not_wait_in_pager(self, tmp_path) -> None:
+        if shutil.which("git") is None:
+            pytest.skip("git is not installed")
+        tool = ExecuteBashTool(no_change_timeout=2, max_output_chars=5000)
+        try:
+            repo = shlex.quote(str(tmp_path))
+            result = await tool(
+                f"""
+                cd {repo}
+                git init -q
+                git config user.email test@example.com
+                git config user.name Test
+                touch file.txt
+                git add file.txt
+                git commit -qm init
+                git log -1 --oneline
+                """,
+                timeout=8,
+            )
+            assert "init" in result
+            assert "(END)" not in result
+            assert "exit_code: -1" not in result
+            assert "[exit_code: 0]" in result
+        finally:
+            await tool.close()
+
     async def test_output_cannot_forge_completion(self, bash: ExecuteBashTool) -> None:
         """A command printing the (un-nonced) sentinel must not forge a prompt.
 

@@ -73,6 +73,16 @@ _HISTORY_LIMIT = 10000
 # normal write finishes in milliseconds; hitting this means the shell is not
 # draining stdin (e.g. a foreground process ignoring input), so we reset.
 _WRITE_TIMEOUT = 10.0
+_PAGER_ENV_DEFAULTS = {
+    "PAGER": "cat",
+    "GIT_PAGER": "cat",
+    "GH_PAGER": "cat",
+    "DELTA_PAGER": "cat",
+    "BAT_PAGER": "cat",
+    "SYSTEMD_PAGER": "cat",
+    "MANPAGER": "cat",
+    "LESS": "-FRX",
+}
 
 
 def _parse_ps1_metadata(match: re.Match[str]) -> dict[str, str | int]:
@@ -194,6 +204,7 @@ class ExecuteBashTool:
         ps1 = self._build_ps1()
         self._decoder = codecs.getincrementaldecoder("utf-8")(errors="replace")
         env = os.environ.copy()
+        env.update(_PAGER_ENV_DEFAULTS)
         env["PS1"] = ps1
         env["PS2"] = ""
         env["TERM"] = "xterm-256color"
@@ -631,10 +642,13 @@ class ExecuteBashTool:
         timeout: float | None = None,
         reset: bool = False,
     ) -> str:
-        """Execute a bash command in a persistent shell session.
+        """Execute a bash command in a persistent PTY-backed shell session.
 
         Environment variables, working directory, and shell state persist
-        between calls, and the session has network access. The result ends with ``[exit_code: N]``; ``N`` is ``-1``
+        between calls, and the session has network access. Because the shell is
+        attached to a terminal-like PTY, interactive commands can be driven with
+        ``is_input``; common pagers are disabled by default so commands like
+        ``git log`` print and exit. The result ends with ``[exit_code: N]``; ``N`` is ``-1``
         when the command is still running (it produced no new output for a
         while, or hit ``timeout``), in which case poll or interact with
         ``is_input``. Long-running commands can be backgrounded, e.g.
