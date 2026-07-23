@@ -209,6 +209,7 @@ class ChatAgent:
             self._message_store.attach_connector(self.workspace)
             self._tools.add_canonical_name.attach_connector(self.workspace)
         self._system_prompt = self._compose_system_prompt()
+        self.note_event(f"the model powering this conversation is {self.model}.")
         self._note_initial_registry()
         self._pydantic_ai_agent = self._make_agent(self.model)
 
@@ -451,7 +452,9 @@ class ChatAgent:
         Conversation, query, tool, and message-store state remain attached to
         this ``ChatAgent``. Provider runtimes are prepared before the live
         profile is changed, so a construction failure leaves the old profile
-        usable. Returns the API keys resolved during preparation.
+        usable. A main-model change is recorded in the conversation history
+        (see ``_note_model_change``). Returns the API keys resolved during
+        preparation.
         """
         if self._running:
             raise RuntimeError("cannot change the LLM profile during an active turn")
@@ -473,6 +476,7 @@ class ChatAgent:
         if unchanged:
             return keys
 
+        previous_model = self.model
         previous_subagent_model = self.subagent_model
         previous_subagent_effort = self.subagent_reasoning_effort
         try:
@@ -491,6 +495,8 @@ class ChatAgent:
         self.subagent_model = subagent_model
         self.subagent_reasoning_effort = subagent_reasoning_effort
         self._pydantic_ai_agent = runtime_agent
+        if model != previous_model:
+            self._note_model_change(previous_model, model)
         return keys
 
     def note_event(self, description: str) -> None:
@@ -508,6 +514,22 @@ class ChatAgent:
         from pydantic_ai.messages import ModelRequest, UserPromptPart
 
         self._message_history.append(ModelRequest(parts=[UserPromptPart(content=f"[system: {description}]")]))
+
+    def _note_model_change(self, previous: str, current: str) -> None:
+        """Record a main-model switch in the conversation so the incoming model
+        doesn't blindly imitate the tool-use patterns in history when its own
+        toolset differs. The note states facts only (the switch and any tool
+        availability delta); tool preferences live in the tool descriptions,
+        which ship exactly when the tool does."""
+        description = f"the model powering this conversation changed from {previous} to {current}"
+        if self._tools.apply_patch is not None:
+            had = _model_supports_apply_patch(previous)
+            has = _model_supports_apply_patch(current)
+            if has and not had:
+                description += "; the apply_patch tool is now available"
+            elif had and not has:
+                description += "; the apply_patch tool is no longer available"
+        self.note_event(description + ".")
 
     def _note_initial_registry(self) -> None:
         aliases = self.registry.list_aliases()

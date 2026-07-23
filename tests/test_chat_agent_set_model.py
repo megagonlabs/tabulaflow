@@ -236,6 +236,75 @@ def test_chat_agent_apply_patch_tool_list_updates_on_model_switch(
     assert "apply_patch" not in non_gpt_tools
 
 
+def _last_note(agent: ChatAgent) -> str:
+    return cast(str, cast(Any, agent._message_history[-1]).parts[0].content)
+
+
+def test_startup_note_states_model() -> None:
+    agent = ChatAgent(registry=DBRegistry(), model="test", reasoning_effort="medium")
+    assert len(agent._message_history) == 1
+    assert _last_note(agent) == "[system: the model powering this conversation is test.]"
+
+
+def test_activate_llm_profile_notes_model_change(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("OPENAI_API_KEY", "sk-test123456789ab4x")
+    project = tmp_path / "project"
+    project.mkdir()
+    agent = ChatAgent(
+        registry=DBRegistry(),
+        model="test",
+        reasoning_effort="medium",
+        project_dir=project,
+    )
+
+    agent.activate_llm_profile(
+        model="openai-responses:gpt-5",
+        reasoning_effort="medium",
+        subagent_model=agent.subagent_model,
+        subagent_reasoning_effort=agent.subagent_reasoning_effort,
+    )
+    assert _last_note(agent) == (
+        "[system: the model powering this conversation changed from test to "
+        "openai-responses:gpt-5; the apply_patch tool is now available.]"
+    )
+
+    agent.activate_llm_profile(
+        model="test",
+        reasoning_effort="medium",
+        subagent_model=agent.subagent_model,
+        subagent_reasoning_effort=agent.subagent_reasoning_effort,
+    )
+    assert _last_note(agent) == (
+        "[system: the model powering this conversation changed from "
+        "openai-responses:gpt-5 to test; the apply_patch tool is no longer available.]"
+    )
+
+    # Effort- or subagent-only changes don't alter the main agent's context: no note.
+    history_len = len(agent._message_history)
+    agent.activate_llm_profile(
+        model="test",
+        reasoning_effort="high",
+        subagent_model="openai-responses:gpt-5.4-mini",
+        subagent_reasoning_effort="high",
+    )
+    assert len(agent._message_history) == history_len
+
+
+def test_model_change_note_omits_apply_patch_without_file_tools(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("OPENAI_API_KEY", "sk-test123456789ab4x")
+    agent = ChatAgent(registry=DBRegistry(), model="test", reasoning_effort="medium")
+
+    agent.activate_llm_profile(
+        model="openai-responses:gpt-5",
+        reasoning_effort="medium",
+        subagent_model=agent.subagent_model,
+        subagent_reasoning_effort=agent.subagent_reasoning_effort,
+    )
+    assert _last_note(agent) == (
+        "[system: the model powering this conversation changed from test to openai-responses:gpt-5.]"
+    )
+
+
 def test_resolve_subagent_api_key(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("OPENAI_API_KEY", "sk-sub123456789cd9y")
     agent = ChatAgent(

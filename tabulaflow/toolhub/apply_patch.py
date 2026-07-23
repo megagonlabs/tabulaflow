@@ -142,7 +142,7 @@ class ApplyPatchTool:
         return "\n".join(lines) if lines else "Done!"
 
     async def __call__(self, patch: str) -> str:
-        """Apply a multi-file text patch.
+        """Apply a multi-file text patch. The preferred tool for editing files.
 
         The patch must use the V4A envelope format with ``*** Begin Patch`` and
         ``*** End Patch``.
