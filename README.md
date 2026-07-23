@@ -491,9 +491,13 @@ July 22
 - [x] Notify model identity
 - [x] Refactor chat/agent.py
 
-- [ ] Fix tool outcome display racing
-- [ ] Fix tool error outcome display
+July 23
+- [x] Refactor toolhub
+  - [x] Fix tool outcome display racing
+  - [x] Fix tool error outcome display - standardize to "(error: ...)"
+- [x] Mermaid rendering? flowchart support? -> defered
 
+- [ ] Line number for TUI code block? sublime theme?
 - [ ] Include Cypher
 - [ ] code diff rendering
 - [ ] Inline artifact citation
