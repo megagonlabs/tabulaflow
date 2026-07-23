@@ -6,6 +6,7 @@ import difflib
 import json
 import re
 from collections.abc import Mapping
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, Protocol, TypedDict
 
 from markdown_it import MarkdownIt
@@ -569,6 +570,82 @@ def _summarize_file_editor(args: Mapping[str, object]) -> str:
     return f"{command} {path}".strip()
 
 
+def _format_patch_diffstat(added: int, removed: int) -> str:
+    parts = []
+    if added:
+        parts.append(f"+{added}")
+    if removed:
+        parts.append(f"-{removed}")
+    return (" " + " ".join(parts)) if parts else ""
+
+
+@dataclass
+class _PatchFileSummary:
+    path: str
+    added: int = 0
+    removed: int = 0
+    move: str = ""
+
+
+def _summarize_apply_patch(args: Mapping[str, object]) -> str:
+    patch = args.get("patch")
+    if not isinstance(patch, str) or not patch:
+        return "Patch"
+
+    files: list[_PatchFileSummary] = []
+    current: _PatchFileSummary | None = None
+    in_body = False
+    for line in patch.splitlines():
+        if line.startswith("*** Add File: "):
+            current = _PatchFileSummary(path=line.removeprefix("*** Add File: "))
+            files.append(current)
+            in_body = True
+            continue
+        if line.startswith("*** Update File: "):
+            current = _PatchFileSummary(path=line.removeprefix("*** Update File: "))
+            files.append(current)
+            in_body = True
+            continue
+        if line.startswith("*** Delete File: "):
+            current = _PatchFileSummary(path=line.removeprefix("*** Delete File: "))
+            files.append(current)
+            in_body = False
+            continue
+        if current is not None and line.startswith("*** Move to: "):
+            current.move = line.removeprefix("*** Move to: ")
+            continue
+        if line.startswith("***"):
+            in_body = False
+            continue
+        if current is None:
+            continue
+        if line.startswith("@@"):
+            in_body = True
+            continue
+        if not in_body:
+            continue
+        if line.startswith("+"):
+            current.added += 1
+        elif line.startswith("-"):
+            current.removed += 1
+
+    if not files:
+        return "Patch"
+
+    total_added = sum(file.added for file in files)
+    total_removed = sum(file.removed for file in files)
+    if len(files) >= 3:
+        return f"Patch {len(files)} files{_format_patch_diffstat(total_added, total_removed)}"
+
+    parts = []
+    for file in files:
+        path = _fmt_arg_value(file.path, 36)
+        move = file.move
+        target = f"{path} -> {_fmt_arg_value(move, 36)}" if move else path
+        parts.append(f"{target}{_format_patch_diffstat(file.added, file.removed)}")
+    return "Patch " + ", ".join(parts)
+
+
 def summarize_tool_args(name: str, args: Mapping[str, object]) -> str:
     """Render a tool call as a compact, verb-led one-line label for the TUI.
 
@@ -680,6 +757,8 @@ def summarize_tool_args(name: str, args: Mapping[str, object]) -> str:
         return f"Run {_fmt_arg_value(args.get('command', ''), 60)}".rstrip()
     if name == "file_editor":
         return _summarize_file_editor(args)
+    if name == "apply_patch":
+        return _summarize_apply_patch(args)
     return f"{name.replace('_', ' ').capitalize()} {_summarize_generic_args(args)}".rstrip()
 
 
@@ -713,7 +792,7 @@ def _styled_label(name: str, label: str) -> Text:
     text.append(label[:verb_end], style="bold dim")
     pos = 0
     rest = label[verb_end:]
-    if name != "file_editor" or not _DIFFSTAT_TOKEN_RE.search(rest):
+    if name not in {"file_editor", "apply_patch"} or not _DIFFSTAT_TOKEN_RE.search(rest):
         text.append(rest, style="dim")
         return text
 

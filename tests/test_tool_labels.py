@@ -50,6 +50,103 @@ class TestFileEditorLabel:
         assert label == "View x.py"
 
 
+class TestApplyPatchLabel:
+    def test_single_update_diffstat(self) -> None:
+        label = summarize_tool_args(
+            "apply_patch",
+            {
+                "patch": """*** Begin Patch
+*** Update File: README.md
+@@
+-old
++new
+*** End Patch"""
+            },
+        )
+        assert label == "Patch README.md +1 -1"
+
+    def test_add_file_diffstat(self) -> None:
+        label = summarize_tool_args(
+            "apply_patch",
+            {
+                "patch": """*** Begin Patch
+*** Add File: new.txt
++one
++two
+*** End Patch"""
+            },
+        )
+        assert label == "Patch new.txt +2"
+
+    def test_delete_file_label(self) -> None:
+        label = summarize_tool_args(
+            "apply_patch",
+            {
+                "patch": """*** Begin Patch
+*** Delete File: old.txt
+*** End Patch"""
+            },
+        )
+        assert label == "Patch old.txt"
+
+    def test_two_file_diffstats(self) -> None:
+        label = summarize_tool_args(
+            "apply_patch",
+            {
+                "patch": """*** Begin Patch
+*** Update File: README.md
+@@
+-old
++new
+*** Update File: src/config.txt
+@@
+-mode=old
++mode=new
+*** End Patch"""
+            },
+        )
+        assert label == "Patch README.md +1 -1, src/config.txt +1 -1"
+
+    def test_three_or_more_files_aggregate(self) -> None:
+        label = summarize_tool_args(
+            "apply_patch",
+            {
+                "patch": """*** Begin Patch
+*** Update File: a.txt
+@@
+-a
++A
+*** Update File: b.txt
+@@
+-b
++B
+*** Add File: c.txt
++C
+*** End Patch"""
+            },
+        )
+        assert label == "Patch 3 files +3 -2"
+
+    def test_move_label(self) -> None:
+        label = summarize_tool_args(
+            "apply_patch",
+            {
+                "patch": """*** Begin Patch
+*** Update File: old.txt
+*** Move to: new.txt
+@@
+-old
++new
+*** End Patch"""
+            },
+        )
+        assert label == "Patch old.txt -> new.txt +1 -1"
+
+    def test_missing_patch_fallback(self) -> None:
+        assert summarize_tool_args("apply_patch", {}) == "Patch"
+        assert summarize_tool_args("apply_patch", {"patch": "not a patch"}) == "Patch"
+
+
 class TestVerbLedLabels:
     def test_query(self) -> None:
         assert summarize_tool_args("run_query", {"db_alias": "main", "query": "SELECT 1"}) == "Query [main] SELECT 1"
@@ -102,6 +199,13 @@ class TestStyledLabel:
         assert styled["Edit"] == "bold dim"
         assert styled["+2"] == DIFF_ADDED  # added: green
         assert styled["-1"] == DIFF_REMOVED  # removed: red
+
+    def test_apply_patch_diffstat_colored(self) -> None:
+        text = _styled_label("apply_patch", "Patch x.sql +2 -1")
+        styled = {text.plain[s.start : s.end]: s.style for s in text.spans}
+        assert styled["Patch"] == "bold dim"
+        assert styled["+2"] == DIFF_ADDED
+        assert styled["-1"] == DIFF_REMOVED
 
     def test_non_editor_label_bolds_verb_but_stays_dim(self) -> None:
         text = _styled_label("run_query", "SELECT a - 1, b + 2")
