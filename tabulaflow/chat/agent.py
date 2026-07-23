@@ -105,6 +105,11 @@ SUBAGENT_REQUEST_TIMEOUT: Final = 120.0
 MAIN_REQUEST_TIMEOUT: Final = 180.0
 
 
+def _model_supports_apply_patch(model: str) -> bool:
+    provider, _, model_name = model.partition(":")
+    return provider == "openai-responses" and model_name.startswith("gpt-5")
+
+
 # ---------------------------------------------------------------------------
 # Data classes
 # ---------------------------------------------------------------------------
@@ -534,13 +539,14 @@ class ChatAgent:
             for tool in (self._tools.run_subagent_for_each_row, self._tools.extract_rows_from_documents)
             if tool is not None
         ]
+        apply_patch_tool = self._tools.apply_patch if _model_supports_apply_patch(model) else None
         host_tools = [
             tool.as_pydantic_ai_tool()
             for tool in (
                 self._tools.connect_data_source,
                 self._tools.bash,
                 self._tools.file_editor,
-                self._tools.apply_patch,
+                apply_patch_tool,
             )
             if tool is not None
         ]

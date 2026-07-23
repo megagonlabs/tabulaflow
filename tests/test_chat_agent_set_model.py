@@ -155,24 +155,85 @@ def test_chat_agent_file_editing_tools_follow_project_dir(tmp_path: Path) -> Non
     assert with_project._tools.apply_patch is not None
 
 
-def test_chat_agent_tool_list_includes_apply_patch_when_host_tools_available(tmp_path: Path) -> None:
+def test_chat_agent_tool_list_gates_apply_patch_to_gpt_models(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("OPENAI_API_KEY", "sk-test123456789ab4x")
     project = tmp_path / "project"
     project.mkdir()
 
-    without_project = ChatAgent(registry=DBRegistry(), model="test", reasoning_effort="medium")
-    with_project = ChatAgent(
+    without_project = ChatAgent(
+        registry=DBRegistry(),
+        model="openai-responses:gpt-5",
+        reasoning_effort="medium",
+    )
+    non_gpt = ChatAgent(
+        registry=DBRegistry(),
+        model="test",
+        reasoning_effort="medium",
+        project_dir=project,
+    )
+    openai_non_responses_gpt = ChatAgent(
+        registry=DBRegistry(),
+        model="openai-chat:gpt-5",
+        reasoning_effort="medium",
+        project_dir=project,
+    )
+    gpt = ChatAgent(
+        registry=DBRegistry(),
+        model="openai-responses:gpt-5",
+        reasoning_effort="medium",
+        project_dir=project,
+    )
+
+    without_tools = cast(Any, without_project._pydantic_ai_agent)._function_toolset.tools
+    non_gpt_tools = cast(Any, non_gpt._pydantic_ai_agent)._function_toolset.tools
+    openai_non_responses_gpt_tools = cast(Any, openai_non_responses_gpt._pydantic_ai_agent)._function_toolset.tools
+    gpt_tools = cast(Any, gpt._pydantic_ai_agent)._function_toolset.tools
+    assert "file_editor" not in without_tools
+    assert "apply_patch" not in without_tools
+    assert "file_editor" in non_gpt_tools
+    assert "apply_patch" not in non_gpt_tools
+    assert "file_editor" in openai_non_responses_gpt_tools
+    assert "apply_patch" not in openai_non_responses_gpt_tools
+    assert "file_editor" in gpt_tools
+    assert "apply_patch" in gpt_tools
+
+
+def test_chat_agent_apply_patch_tool_list_updates_on_model_switch(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("OPENAI_API_KEY", "sk-test123456789ab4x")
+    project = tmp_path / "project"
+    project.mkdir()
+    agent = ChatAgent(
         registry=DBRegistry(),
         model="test",
         reasoning_effort="medium",
         project_dir=project,
     )
 
-    without_tools = cast(Any, without_project._pydantic_ai_agent)._function_toolset.tools
-    with_tools = cast(Any, with_project._pydantic_ai_agent)._function_toolset.tools
-    assert "file_editor" not in without_tools
-    assert "apply_patch" not in without_tools
-    assert "file_editor" in with_tools
-    assert "apply_patch" in with_tools
+    initial_tools = cast(Any, agent._pydantic_ai_agent)._function_toolset.tools
+    assert "file_editor" in initial_tools
+    assert "apply_patch" not in initial_tools
+
+    agent.activate_llm_profile(
+        model="openai-responses:gpt-5",
+        reasoning_effort="medium",
+        subagent_model=agent.subagent_model,
+        subagent_reasoning_effort=agent.subagent_reasoning_effort,
+    )
+    gpt_tools = cast(Any, agent._pydantic_ai_agent)._function_toolset.tools
+    assert "file_editor" in gpt_tools
+    assert "apply_patch" in gpt_tools
+
+    agent.activate_llm_profile(
+        model="test",
+        reasoning_effort="medium",
+        subagent_model=agent.subagent_model,
+        subagent_reasoning_effort=agent.subagent_reasoning_effort,
+    )
+    non_gpt_tools = cast(Any, agent._pydantic_ai_agent)._function_toolset.tools
+    assert "file_editor" in non_gpt_tools
+    assert "apply_patch" not in non_gpt_tools
 
 
 def test_resolve_subagent_api_key(monkeypatch: pytest.MonkeyPatch) -> None:
