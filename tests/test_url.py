@@ -2,13 +2,14 @@
 
 import pytest
 
-from tabulaflow.core.db_connector import DB_FILE_SCHEMES, normalize_url, url_needs_password
+from tabulaflow.core.db_connector import DB_FILE_SCHEMES, credentialless_url, normalize_url, url_needs_password
 
 
 class TestNormalizeUrl:
     def test_db_file_path_to_url(self) -> None:
         assert normalize_url("/data/x.sqlite") == "sqlite+aiosqlite:////data/x.sqlite"
         assert normalize_url("/data/x.duckdb") == "duckdb:////data/x.duckdb"
+        assert normalize_url("/data/X.SQLITE") == "sqlite+aiosqlite:////data/X.SQLITE"
 
     def test_sync_driver_upgraded_to_async(self) -> None:
         assert normalize_url("postgresql://h/db") == "postgresql+asyncpg://h/db"
@@ -40,6 +41,16 @@ class TestUrlNeedsPassword:
     def test_no_username(self) -> None:
         assert url_needs_password("postgresql://host/db") is False
         assert url_needs_password("sqlite+aiosqlite:////data/x.sqlite") is False
+
+
+class TestCredentiallessUrl:
+    def test_strips_username_and_password(self) -> None:
+        assert credentialless_url("postgresql://alice:secret@example.com:5432/app") == (
+            "postgresql://example.com:5432/app"
+        )
+
+    def test_preserves_url_without_credentials(self) -> None:
+        assert credentialless_url("duckdb:////data/x.duckdb") == "duckdb:////data/x.duckdb"
 
 
 def test_db_file_schemes_cover_common_extensions() -> None:

@@ -45,7 +45,7 @@ def normalize_url(raw: str) -> str:
     # already-built URL that ends in e.g. ".sqlite" must not re-treat it as a path.)
     if "://" not in raw:
         for ext, scheme in DB_FILE_SCHEMES.items():
-            if raw.endswith(ext):
+            if raw.lower().endswith(ext):
                 return f"{scheme}:///{os.path.abspath(os.path.expanduser(raw))}"
         return raw
 
@@ -62,6 +62,19 @@ def url_needs_password(url: str) -> bool:
     and a URL with no username at all may still need credentials."""
     parsed = urlparse(url)
     return bool(parsed.username and not parsed.password and parsed.hostname)
+
+
+def credentialless_url(url: str) -> str:
+    """Return ``url`` with any username/password removed."""
+    parsed = urlparse(url)
+    if parsed.hostname is None:
+        return url
+
+    host = parsed.hostname
+    if ":" in host and not host.startswith("["):
+        host = f"[{host}]"
+    netloc = host + (f":{parsed.port}" if parsed.port else "")
+    return urlunparse(parsed._replace(netloc=netloc))
 
 
 def _is_neo4j_bolt_url(url: str) -> bool:
@@ -113,10 +126,7 @@ def _engine_kwargs_for_url(url: str) -> dict[str, Any]:
 
 def global_id_from_url(url: str) -> str:
     """Derive a stable global_id from a database URL, stripping credentials."""
-    parsed = urlparse(url)
-    host = parsed.hostname or ""
-    stripped = parsed._replace(netloc=host + (f":{parsed.port}" if parsed.port else ""))
-    safe = re.sub(r"[^a-zA-Z0-9_]", "_", urlunparse(stripped))
+    safe = re.sub(r"[^a-zA-Z0-9_]", "_", credentialless_url(url))
     return f"cli+{safe}"
 
 

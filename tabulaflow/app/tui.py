@@ -1092,15 +1092,6 @@ class TabulaflowApp(App[None]):
             self._request_exit()
             return
 
-        if result.password_prompt:
-            msg = SystemMessage(
-                "[dim]Password-protected connections: include the password in the URL "
-                "or set it via environment variables.[/dim]"
-            )
-            chat_log.mount(msg)
-            chat_log.scroll_end(animate=False)
-            return
-
         if result.should_clear:
             chat_log.remove_children()
             chat_log.mount(self._banner_for_preset(session.llm_preset))

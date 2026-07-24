@@ -6,14 +6,22 @@ import os
 import re
 import shlex
 from typing import TYPE_CHECKING
-from urllib.parse import urlparse, urlunparse
+from urllib.parse import urlparse
 
 from rich.console import RenderableType
+from rich.markup import escape
 from rich.text import Text
 
 from tabulaflow.app.theme import ERROR
 from tabulaflow.app.session import WORKSPACE_ALIAS, SessionState
-from tabulaflow.core.db_connector import DB_FILE_SCHEMES, connect_url, connector_info, normalize_url, url_needs_password
+from tabulaflow.core.db_connector import (
+    DB_FILE_SCHEMES,
+    connect_url,
+    connector_info,
+    credentialless_url,
+    normalize_url,
+    url_needs_password,
+)
 
 if TYPE_CHECKING:
     from tabulaflow.core.db_connector.base import NL2QDBConnector
@@ -35,13 +43,11 @@ class CommandResult:
         should_quit: bool = False,
         should_clear: bool = False,
         should_open_config: bool = False,
-        password_prompt: str | None = None,
     ) -> None:
         self.output = output
         self.should_quit = should_quit
         self.should_clear = should_clear
         self.should_open_config = should_open_config
-        self.password_prompt = password_prompt
 
 
 # ---------------------------------------------------------------------------
@@ -105,7 +111,7 @@ async def handle_command(text: str, session: SessionState) -> CommandResult:
     try:
         parts = shlex.split(text)
     except ValueError as e:
-        return CommandResult(output=Text.from_markup(f"[{ERROR}]Invalid command syntax:[/] {e}"))
+        return CommandResult(output=Text.from_markup(f"[{ERROR}]Invalid command syntax:[/] {escape(str(e))}"))
 
     cmd = parts[0].lower()
     args = parts[1:]
@@ -113,7 +119,7 @@ async def handle_command(text: str, session: SessionState) -> CommandResult:
     handler = COMMANDS.get(cmd)
     if handler is None:
         return CommandResult(
-            output=Text.from_markup(f"[{ERROR}]Unknown command:[/] {cmd}. Type /help for available commands.")
+            output=Text.from_markup(f"[{ERROR}]Unknown command:[/] {escape(cmd)}. Type /help for available commands.")
         )
 
     return await handler(args, session)  # type: ignore[operator, no-any-return]
@@ -168,8 +174,8 @@ async def _cmd_connect(args: list[str], session: SessionState) -> CommandResult:
                 output=Text.from_markup(
                     f"[{ERROR}]Cannot mix database files and data files.[/] "
                     "Connect them separately:\n"
-                    f"[dim]  /connect {db_file_args[0]}\n"
-                    f"  /connect {' '.join(os.path.basename(f) for f in file_args)}[/dim]"
+                    f"[dim]  /connect {escape(db_file_args[0])}\n"
+                    f"  /connect {escape(' '.join(os.path.basename(f) for f in file_args))}[/dim]"
                 )
             )
 
@@ -181,12 +187,14 @@ async def _cmd_connect(args: list[str], session: SessionState) -> CommandResult:
         if existing is not None:
             return CommandResult(
                 output=Text.from_markup(
-                    f"[{ERROR}]Already loaded as[/] {existing}. "
-                    f"Use that alias, or [dim]/disconnect {existing}[/dim] first to reload."
+                    f"[{ERROR}]Already loaded as[/] {escape(existing)}. "
+                    f"Use that alias, or [dim]/disconnect {escape(existing)}[/dim] first to reload."
                 )
             )
 
         alias_args = [a for a in non_file_args if not _is_db_file(a)]
+        if len(alias_args) > 1:
+            return CommandResult(output=Text.from_markup(f"[{ERROR}]Usage:[/] /connect <file...> \\[alias]"))
         if alias_args:
             alias = _sanitize_alias(alias_args[0])
             if session.registry.has(alias):
@@ -222,7 +230,7 @@ async def _cmd_connect(args: list[str], session: SessionState) -> CommandResult:
                 enable_query_caching=False,
             )
         except Exception as e:
-            return CommandResult(output=Text.from_markup(f"[{ERROR}]Failed to load files:[/] {e}"))
+            return CommandResult(output=Text.from_markup(f"[{ERROR}]Failed to load files:[/] {escape(str(e))}"))
 
         session.register_db(alias, connector, source_key)
         info = _announce_connect(session, alias, connector)
@@ -230,6 +238,9 @@ async def _cmd_connect(args: list[str], session: SessionState) -> CommandResult:
 
     # --- HuggingFace dataset connections ---
     from tabulaflow.datasources import is_hf_dataset_url
+
+    if len(args) > 2:
+        return CommandResult(output=Text.from_markup(f"[{ERROR}]Usage:[/] /connect <url_or_path> \\[alias]"))
 
     if is_hf_dataset_url(args[0]):
         return await _connect_hf_dataset(args, session)
@@ -247,13 +258,13 @@ async def _cmd_connect(args: list[str], session: SessionState) -> CommandResult:
     url = normalize_url(raw)
     alias = _sanitize_alias(args[1]) if len(args) > 1 else _alias_from_url(url)
 
-    url_source_key = ("url", url)
+    url_source_key = ("url", credentialless_url(url))
     existing = session.find_alias_by_source(url_source_key)
     if existing is not None:
         return CommandResult(
             output=Text.from_markup(
-                f"[{ERROR}]Already connected as[/] {existing}. "
-                f"Use that alias, or [dim]/disconnect {existing}[/dim] first to reconnect."
+                f"[{ERROR}]Already connected as[/] {escape(existing)}. "
+                f"Use that alias, or [dim]/disconnect {escape(existing)}[/dim] first to reconnect."
             )
         )
 
@@ -267,7 +278,12 @@ async def _cmd_connect(args: list[str], session: SessionState) -> CommandResult:
 
     # Check if password prompt is needed
     if url_needs_password(url):
-        return CommandResult(password_prompt=f"connect:{url}:{alias}")
+        return CommandResult(
+            output=Text(
+                "Password-protected connections: include the password in the URL or set it via environment variables.",
+                style="dim",
+            )
+        )
 
     return await _execute_connect(url, alias, session)
 
@@ -280,15 +296,15 @@ async def _connect_hf_dataset(args: list[str], session: SessionState) -> Command
     try:
         dataset_id, _, _ = parse_hf_dataset_url(url)
     except ValueError as e:
-        return CommandResult(output=Text.from_markup(f"[{ERROR}]{e}[/]"))
+        return CommandResult(output=Text.from_markup(f"[{ERROR}]{escape(str(e))}[/]"))
 
     source_key = ("hf", url)
     existing = session.find_alias_by_source(source_key)
     if existing is not None:
         return CommandResult(
             output=Text.from_markup(
-                f"[{ERROR}]Already loaded as[/] {existing}. "
-                f"Use that alias, or [dim]/disconnect {existing}[/dim] first to reload."
+                f"[{ERROR}]Already loaded as[/] {escape(existing)}. "
+                f"Use that alias, or [dim]/disconnect {escape(existing)}[/dim] first to reload."
             )
         )
 
@@ -313,21 +329,11 @@ async def _connect_hf_dataset(args: list[str], session: SessionState) -> Command
             summarize=TextSummarizer().summarize,
         )
     except Exception as e:
-        return CommandResult(output=Text.from_markup(f"[{ERROR}]Failed to load HF dataset:[/] {e}"))
+        return CommandResult(output=Text.from_markup(f"[{ERROR}]Failed to load HF dataset:[/] {escape(str(e))}"))
 
     session.register_db(alias, connector, source_key)
     info = _announce_connect(session, alias, connector)
     return CommandResult(output=Text(f"✓ Loaded {dataset_id} as {alias} ({info})", style="dim"))
-
-
-async def execute_connect_with_password(url: str, alias: str, password: str, session: SessionState) -> CommandResult:
-    """Complete a connection that required a password prompt."""
-    parsed = urlparse(url)
-    replaced = parsed._replace(
-        netloc=f"{parsed.username}:{password}@{parsed.hostname}" + (f":{parsed.port}" if parsed.port else "")
-    )
-    url = urlunparse(replaced)
-    return await _execute_connect(url, alias, session)
 
 
 async def _execute_connect(url: str, alias: str, session: SessionState) -> CommandResult:
@@ -335,14 +341,17 @@ async def _execute_connect(url: str, alias: str, session: SessionState) -> Comma
     try:
         connector = await connect_url(url, db_name=alias, read_only=True)
     except Exception as e:
-        return CommandResult(output=Text.from_markup(f"[{ERROR}]Connection failed:[/] {e}"))
+        return CommandResult(output=Text.from_markup(f"[{ERROR}]Connection failed:[/] {escape(str(e))}"))
 
-    session.register_db(alias, connector, ("url", url))
+    session.register_db(alias, connector, ("url", credentialless_url(url)))
     info = _announce_connect(session, alias, connector)
     return CommandResult(output=Text(f"✓ Connected to {alias} ({info})", style="dim"))
 
 
 async def _cmd_disconnect(args: list[str], session: SessionState) -> CommandResult:
+    if len(args) > 1:
+        return CommandResult(output=Text.from_markup(f"[{ERROR}]Usage:[/] /disconnect <alias>"))
+
     aliases = session.registry.list_aliases()
     user_aliases = [alias for alias in aliases if alias != WORKSPACE_ALIAS]
     if not args:
@@ -365,7 +374,7 @@ async def _cmd_disconnect(args: list[str], session: SessionState) -> CommandResu
         session.note_event(f"the user disconnected the data source `{alias}`; it is no longer available.")
         return CommandResult(output=Text(f"✓ Disconnected from {alias}", style="dim"))
     else:
-        return CommandResult(output=Text.from_markup(f"[{ERROR}]No connection named:[/] {alias}"))
+        return CommandResult(output=Text.from_markup(f"[{ERROR}]No connection named:[/] {escape(alias)}"))
 
 
 async def _cmd_config(args: list[str], session: SessionState) -> CommandResult:

@@ -8,6 +8,7 @@ from tabulaflow.core.db_connector.db_registry import DBRegistry
 from tabulaflow.core.db_connector.url import (
     DB_FILE_SCHEMES,
     connect_url,
+    credentialless_url,
     normalize_url,
     url_needs_password,
 )
@@ -24,6 +25,7 @@ __all__ = [
     "SQLConnector",
     "connect_url",
     "connector_info",
+    "credentialless_url",
     "normalize_url",
     "url_needs_password",
 ]
