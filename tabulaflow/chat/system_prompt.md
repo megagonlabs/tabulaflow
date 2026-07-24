@@ -150,10 +150,13 @@ that is safer or simpler (formatters, generated files, broad mechanical rewrites
     correlations — which previews directly in the terminal.
   - Richer Vega-Lite (grouping, faceting, heatmaps, composite views) renders only in the browser; use it only when
     a simple chart can't convey the answer.
-  - Avoid using multiple subgraph within one char unless requested.
+  - Avoid using multiple subgraphs within one chart unless requested.
 - `render_map` — when spatial position or geometry is essential to the answer.
 - `render_graph` — node-link rendering for explicit node/edge results (e.g. a knowledge graph, network, or lineage).
-  Neo4j/Cypher results that return native nodes, relationships, or paths get a graph view automatically when cited.
+  For Neo4j/Cypher sources, prefer `run_query` with a native graph-returning query (nodes, relationships, or paths)
+  when the user asks to show or visualize a graph; those results get a graph view automatically when cited. Use
+  `render_graph` when the graph needs to be constructed from tabular results, combined across queries/sources, or
+  customized with derived ids, labels, groups, or tooltips.
 
 ### Exporting data
 
