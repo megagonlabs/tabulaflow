@@ -4,12 +4,10 @@ from __future__ import annotations
 
 import json
 from collections.abc import Mapping
-from datetime import date
 from typing import Any
 
 import pandas as pd
 import pytest
-from neo4j.graph import Graph, Node, Path, Relationship
 
 from tabulaflow.core.types import ExecResult, PredQuery
 from tabulaflow.toolhub.query_history import QueryHistory
@@ -25,34 +23,6 @@ async def _history_with(*dfs: pd.DataFrame) -> QueryHistory:
 
 def _norm(spec: Mapping[str, object], **sources: pd.DataFrame) -> dict[str, Any]:
     return normalize_graph_spec(spec, sources)
-
-
-def _neo4j_objects() -> tuple[Node, Node, Relationship, Path]:
-    graph = Graph()
-    alice = Node(
-        graph,
-        "alice-id",
-        1,
-        ["Person"],
-        {
-            "name": "Alice",
-            "age": 36,
-            "tags": ["lead", "founder"],
-            "profile": {"city": "Oakland", "active": True},
-            "born": date(1988, 3, 4),
-        },
-    )
-    matrix = Node(graph, "matrix-id", 2, ["Movie"], {"title": "The Matrix", "released": 1999})
-    rel_cls = graph.relationship_type("ACTED_IN")
-    acted_in = rel_cls(
-        graph,
-        "acted-in-id",
-        3,
-        {"role": "Trinity", "scenes": ["lobby", "rooftop"], "metadata": {"billing": 2}},
-    )
-    acted_in._start_node = alice
-    acted_in._end_node = matrix
-    return alice, matrix, acted_in, Path(alice, acted_in)
 
 
 class TestNormalizeGraphSpec:
@@ -193,88 +163,9 @@ class TestNormalizeGraphSpec:
         assert size.groups == 2  # a keeps 'x' from its first source; b gets the constant 'y'
         assert size.ungrouped_nodes == 1  # c is declared without a group
 
-    def test_subgraph_extracts_dynamic_relationship_subclasses(self) -> None:
-        alice, matrix, acted_in, _ = _neo4j_objects()
-        df = pd.DataFrame({"nodes": [[alice, matrix]], "relationships": [[acted_in]]})
-
-        normalized = _norm(
-            {"subgraph": [{"record_id": "Q1", "caption": "name"}]},
-            Q1=df,
-        )
-
-        assert normalized["nodes"] == [
-            {
-                "data": [
-                    {
-                        "id": "alice-id",
-                        "label": "Alice",
-                        "group": "Person",
-                        "name": "Alice",
-                        "age": 36,
-                        "tags": ["lead", "founder"],
-                        "profile": {"city": "Oakland", "active": True},
-                        "born": "1988-03-04",
-                    },
-                    {
-                        "id": "matrix-id",
-                        "label": "The Matrix",
-                        "group": "Movie",
-                        "title": "The Matrix",
-                        "released": 1999,
-                    },
-                ],
-                "id": "id",
-                "label": "label",
-                "group": "group",
-                "tooltip": True,
-            }
-        ]
-        assert normalized["edges"] == [
-            {
-                "data": [
-                    {
-                        "id": "acted-in-id",
-                        "source": "alice-id",
-                        "target": "matrix-id",
-                        "label": "ACTED_IN",
-                        "role": "Trinity",
-                        "scenes": ["lobby", "rooftop"],
-                        "metadata": {"billing": 2},
-                    }
-                ],
-                "source": "source",
-                "target": "target",
-                "label": "label",
-                "directed": True,
-                "tooltip": True,
-            }
-        ]
-
-    def test_subgraph_recursively_extracts_nested_paths_and_relationships(self) -> None:
-        _, _, acted_in, path = _neo4j_objects()
-        df = pd.DataFrame({"payload": [{"items": [{"path": path}, [acted_in]]}]})
-
-        normalized = _norm({"subgraph": [{"record_id": "Q1"}]}, Q1=df)
-
-        assert len(normalized["nodes"][0]["data"]) == 2
-        assert normalized["edges"][0]["data"] == [
-            {
-                "id": "acted-in-id",
-                "source": "alice-id",
-                "target": "matrix-id",
-                "label": "ACTED_IN",
-                "role": "Trinity",
-                "scenes": ["lobby", "rooftop"],
-                "metadata": {"billing": 2},
-            }
-        ]
-
-    def test_subgraph_rejects_group_override(self) -> None:
-        alice, matrix, acted_in, _ = _neo4j_objects()
-        df = pd.DataFrame({"nodes": [[alice, matrix]], "relationships": [[acted_in]]})
-
-        with pytest.raises(ValueError, match="group"):
-            _norm({"subgraph": [{"record_id": "Q1", "group": "labels"}]}, Q1=df)
+    def test_subgraph_mode_is_not_supported(self) -> None:
+        with pytest.raises(ValueError, match="subgraph"):
+            _norm({"subgraph": [{"record_id": "Q1"}]})
 
 
 class TestRenderGraphTool:

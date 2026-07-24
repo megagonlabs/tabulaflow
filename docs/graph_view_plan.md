@@ -1,5 +1,10 @@
 # Graph View (Node-Link) — Design & Implementation Plan
 
+> **Update:** Neo4j-native node/relationship/path results are now attached
+> automatically to cited `Q<n>` query records as a `Graph | Table | Query` card.
+> The `render_graph` tool is reserved for explicit node/edge specs and no longer
+> supports the older `subgraph` spec mode described in this historical plan.
+
 ## Goal
 
 Add a **graph / node-link visualization** to the output pane, alongside the

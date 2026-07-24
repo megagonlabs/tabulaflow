@@ -115,6 +115,73 @@ def _edge_id(index: int, node_ids: set[str]) -> str:
     return edge_id
 
 
+def _graph_card_data_from_rows(
+    nodes: list[dict[str, object]],
+    edges: list[dict[str, object]],
+    *,
+    layout: str = "force",
+) -> GraphCardData | None:
+    if not nodes:
+        return None
+    if len(nodes) > GRAPH_MAX_NODES or len(edges) > GRAPH_MAX_EDGES:
+        return None
+
+    node_payloads = sorted((dict(node) for node in nodes), key=lambda node: str(node.get("id", "")))
+    _assign_colors(node_payloads)
+    node_ids = {str(node["id"]) for node in node_payloads if node.get("id") is not None}
+
+    edge_payloads = sorted(
+        (dict(edge) for edge in edges),
+        key=lambda edge: (
+            str(edge.get("source", "")),
+            str(edge.get("target", "")),
+            str(edge.get("label", "")),
+            str(edge.get("directed", "")),
+        ),
+    )
+    used_ids = set(node_ids)
+    for index, edge in enumerate(edge_payloads, start=1):
+        edge_id = _as_str(edge.get("id")) or _edge_id(index, used_ids)
+        while edge_id in used_ids:
+            edge_id = f"_{edge_id}"
+        edge["id"] = edge_id
+        used_ids.add(edge_id)
+
+    return cast(
+        GraphCardData,
+        {
+            "graph": {
+                "layout": layout,
+                "elements": {
+                    "nodes": [{"data": node} for node in node_payloads],
+                    "edges": [{"data": edge} for edge in edge_payloads],
+                },
+            }
+        },
+    )
+
+
+def build_graph_result_data(graph_result: object) -> GraphCardData | None:
+    """Build a browser-pane graph payload from an attached query graph result."""
+    nodes = getattr(graph_result, "nodes", None)
+    edges = getattr(graph_result, "edges", None)
+    if not isinstance(nodes, list) or not isinstance(edges, list):
+        return None
+
+    def to_row(value: object) -> dict[str, object] | None:
+        if isinstance(value, Mapping):
+            return dict(value)
+        model_dump = getattr(value, "model_dump", None)
+        if callable(model_dump):
+            dumped = model_dump(exclude_none=True)
+            return dict(dumped) if isinstance(dumped, Mapping) else None
+        return None
+
+    node_rows = [row for node in nodes if (row := to_row(node)) is not None]
+    edge_rows = [row for edge in edges if (row := to_row(edge)) is not None]
+    return _graph_card_data_from_rows(node_rows, edge_rows)
+
+
 def build_graph_data(
     graph_spec: Mapping[str, object],
     sources: Mapping[str, Mapping[str, object]],
@@ -189,36 +256,6 @@ def build_graph_data(
 
     if not edges:
         return None
-    if len(nodes_by_id) > GRAPH_MAX_NODES or len(edges) > GRAPH_MAX_EDGES:
-        return None
-
-    node_payloads = sorted(nodes_by_id.values(), key=lambda node: str(node["id"]))
-    _assign_colors(node_payloads)
-    node_ids = {str(node["id"]) for node in node_payloads}
-
-    edge_payloads = sorted(
-        edges,
-        key=lambda edge: (
-            str(edge.get("source", "")),
-            str(edge.get("target", "")),
-            str(edge.get("label", "")),
-            str(edge.get("directed", "")),
-        ),
-    )
-    for index, edge in enumerate(edge_payloads, start=1):
-        edge["id"] = _edge_id(index, node_ids)
-
     raw_layout = graph_spec.get("layout")
     layout = raw_layout if isinstance(raw_layout, str) and raw_layout in {"force", "layered", "tree"} else "force"
-    return cast(
-        GraphCardData,
-        {
-            "graph": {
-                "layout": layout,
-                "elements": {
-                    "nodes": [{"data": node} for node in node_payloads],
-                    "edges": [{"data": edge} for edge in edge_payloads],
-                },
-            }
-        },
-    )
+    return _graph_card_data_from_rows(list(nodes_by_id.values()), edges, layout=layout)

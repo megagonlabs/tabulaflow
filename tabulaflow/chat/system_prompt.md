@@ -140,7 +140,8 @@ Pick the option that is light and matches expected use:
     a simple chart can't convey the answer.
   - Avoid using multiple subgraph within one char unless requested.
 - `render_map` — when spatial position or geometry is essential to the answer.
-- `render_graph` — node-link rendering for graph-shaped results (e.g. a knowledge graph, network, or lineage).
+- `render_graph` — node-link rendering for explicit node/edge results (e.g. a knowledge graph, network, or lineage).
+  Neo4j/Cypher results that return native nodes, relationships, or paths get a graph view automatically when cited.
 
 ### Exporting data
 

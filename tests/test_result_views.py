@@ -14,6 +14,7 @@ from tabulaflow.app.display import (
     build_card_views,
 )
 from tabulaflow.chat.result import ChatResult, ChatResultChart, ChatResultGraph, ChatResultMap, ChatResultRecord
+from tabulaflow.core.types import GraphView
 
 
 def _record(record_id: str, label: str) -> ChatResultRecord:
@@ -102,6 +103,20 @@ def test_record_artifact_has_no_chart_view() -> None:
     groups = build_card_views(result)
     assert groups[0].source_record_id == "Q1"
     assert [v.kind for v in groups[0].views] == [VIEW_KIND_DATA, VIEW_KIND_QUERY]
+
+
+def test_record_artifact_with_graph_has_graph_data_query_views() -> None:
+    record = _record("Q1", "paths")
+    record.query_lexer = "cypher"
+    record.graph = GraphView(
+        nodes=[{"id": "a", "label": "Alice", "group": "Person"}, {"id": "b", "label": "Bob", "group": "Person"}],
+        edges=[{"source": "a", "target": "b", "label": "KNOWS", "directed": True}],
+    )
+    result = ChatResult(text="x", artifacts=[record])
+
+    groups = build_card_views(result)
+
+    assert [v.kind for v in groups[0].views] == [VIEW_KIND_GRAPH, VIEW_KIND_DATA, VIEW_KIND_QUERY]
 
 
 def test_browser_only_chart_placeholder_uses_artifact_caption() -> None:

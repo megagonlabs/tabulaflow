@@ -112,6 +112,29 @@ class TestWithConnector:
         assert "Q2" in h._spilled
 
     @pytest.mark.asyncio
+    async def test_persist_failure_keeps_record_in_memory(self, workspace: SQLConnector, monkeypatch: pytest.MonkeyPatch) -> None:
+        h = QueryHistory(max_in_memory=1, spill_connector=workspace)
+
+        async def fake_persist(record_id: str, df: pd.DataFrame) -> bool:
+            return record_id != "Q1"
+
+        monkeypatch.setattr(h, "_persist", fake_persist)
+
+        await h.add("db", "sql", _make_pred_query(n_rows=10))
+        await h.add("db", "sql", _make_pred_query(n_rows=20))
+        await h.add("db", "sql", _make_pred_query(n_rows=30))
+
+        assert "Q1" not in h._spilled
+        assert _exec_result(h._records["Q1"].pred_query).df is not None
+        assert "Q2" in h._spilled
+        assert _exec_result(h._records["Q2"].pred_query).df is None
+
+        record = await h.get("Q1")
+        df = _exec_result(record.pred_query).df
+        assert df is not None
+        assert len(df) == 10
+
+    @pytest.mark.asyncio
     async def test_error_records_not_tracked(self, workspace: SQLConnector) -> None:
         h = QueryHistory(max_in_memory=2, spill_connector=workspace)
         await h.add("db", "sql", _make_error_pred_query())

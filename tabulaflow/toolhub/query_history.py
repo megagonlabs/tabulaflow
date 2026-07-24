@@ -109,9 +109,9 @@ class QueryHistory:
         self._records[record_id] = record
         self._next_query_id += 1
         if pred_query.exec_result is not None and pred_query.exec_result.df is not None:
-            await self._persist(record_id, pred_query.exec_result.df)
-            self._in_memory.append(record_id)
-            self._evict()
+            if self._spill_connector is None or await self._persist(record_id, pred_query.exec_result.df):
+                self._in_memory.append(record_id)
+                self._evict()
         return record
 
     async def get(self, record_id: str) -> QueryRecord:
@@ -177,10 +177,10 @@ class QueryHistory:
         await self._spill_connector.run_query_async(f'CREATE SCHEMA IF NOT EXISTS "{_QH_SCHEMA}"')
         self._schema_created = True
 
-    async def _persist(self, record_id: str, df: pd.DataFrame) -> None:
-        """Write a DF to the workspace DuckDB."""
+    async def _persist(self, record_id: str, df: pd.DataFrame) -> bool:
+        """Write a DF to the workspace DuckDB; return whether it can be hydrated later."""
         if self._spill_connector is None:
-            return
+            return False
         try:
             await self._ensure_schema()
             await self._spill_connector.write_dataframe_async(
@@ -189,8 +189,10 @@ class QueryHistory:
                 schema_name=_QH_SCHEMA,
                 mode="replace",
             )
+            return True
         except Exception:
             logger.warning("Failed to persist %s to workspace", record_id, exc_info=True)
+            return False
 
     def _evict(self) -> None:
         """Remove oldest in-memory DFs until within the limit."""

@@ -1022,11 +1022,13 @@ def _chat_result_record_from_query_record(
     label: str | None,
 ) -> ChatResultRecord:
     pred = query_record.pred_query
+    exec_result = pred.exec_result
     return ChatResultRecord(
         record_id=query_record.record_id,
         label=label,
         query=pred.query,
-        df=pred.exec_result.df if pred.exec_result else None,
+        df=exec_result.df if exec_result else None,
+        graph=exec_result.graph if exec_result else None,
         query_lexer="cypher" if query_record.connector_type == "property_graph" else "sql",
     )
 

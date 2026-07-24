@@ -631,10 +631,42 @@ class ErrorInfo(BaseModel):
     message: str
 
 
+class GraphViewNode(BaseModel):
+    """Node in a generic query-result graph view."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    id: str
+    label: str | None = None
+    group: str | None = None
+    properties: dict[str, Any] = Field(default_factory=dict)
+
+
+class GraphViewEdge(BaseModel):
+    """Edge in a generic query-result graph view."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    id: str | None = None
+    source: str
+    target: str
+    label: str | None = None
+    directed: bool = True
+    properties: dict[str, Any] = Field(default_factory=dict)
+
+
+class GraphView(BaseModel):
+    """Generic node-link graph view attached to a query result."""
+
+    nodes: list[GraphViewNode]
+    edges: list[GraphViewEdge]
+
+
 class ExecResult(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     df: pd.DataFrame | None = None
+    graph: GraphView | None = None
     df_is_truncated: bool = False
     """True if the df is truncated, e.g. when the result is too large"""
     affected_rows: int | None = None

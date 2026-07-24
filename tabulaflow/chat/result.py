@@ -13,7 +13,7 @@ import pandas as pd
 from pydantic import BaseModel, ConfigDict, Field, field_serializer, field_validator
 
 from tabulaflow.core.dataframe import _deserialize_dataframe, _serialize_dataframe
-from tabulaflow.core.types import Usage
+from tabulaflow.core.types import GraphView, Usage
 
 
 class ChatResultRecord(BaseModel):
@@ -26,6 +26,7 @@ class ChatResultRecord(BaseModel):
     label: str | None
     query: str | None
     df: pd.DataFrame | None
+    graph: GraphView | None = None
     query_lexer: str = "sql"
 
     @field_serializer("df", when_used="always")

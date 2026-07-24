@@ -9,6 +9,7 @@ import pandas as pd
 
 from tabulaflow.app.pane import CARD_ID_PREFIX, VIEW_KINDS, CardData, PaneCard
 from tabulaflow.app.pane.cards import render_graph_data, render_map_data, render_record_data
+from tabulaflow.core.types import GraphView
 
 
 def _load_card_data(card: PaneCard, pane_dir: Path) -> CardData:
@@ -101,6 +102,25 @@ def test_record_card_payload_matches_contract(tmp_path: Path) -> None:
 
     assert card is not None
     assert card["views"] == ["chart", "data", "query"]
+    _assert_card_payload(card, _load_card_data(card, tmp_path))
+
+
+def test_record_card_with_attached_graph_payload_matches_contract(tmp_path: Path) -> None:
+    df = pd.DataFrame({"path": ["Alice -> Matrix"]})
+    graph = GraphView(
+        nodes=[
+            {"id": "alice", "label": "Alice", "group": "Person"},
+            {"id": "matrix", "label": "The Matrix", "group": "Movie"},
+        ],
+        edges=[{"id": "acted_in", "source": "alice", "target": "matrix", "label": "ACTED_IN", "directed": True}],
+    )
+    card = render_record_data(
+        SimpleNamespace(df=df, chart_spec=None, graph=graph, query="MATCH p=()-->() RETURN p", label="paths", query_lexer="cypher"),
+        tmp_path,
+    )
+
+    assert card is not None
+    assert card["views"] == ["graph", "data", "query"]
     _assert_card_payload(card, _load_card_data(card, tmp_path))
 
 

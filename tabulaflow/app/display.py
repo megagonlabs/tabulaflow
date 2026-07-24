@@ -387,6 +387,13 @@ def build_card_views(result: object, width: int = 80) -> list[CardGroup]:
         chart_spec = record.chart_spec if isinstance(record, ChatResultChart) else None
         artifact_id = record.chart_id if isinstance(record, ChatResultChart) else record.record_id
         views: list[ViewItem] = []
+        if getattr(record, "graph", None) is not None:
+            views.append(
+                ViewItem(
+                    kind=VIEW_KIND_GRAPH,
+                    renderable=_build_graph_card({}),
+                )
+            )
         if chart_spec is not None and record.df is not None:
             views.append(
                 ViewItem(

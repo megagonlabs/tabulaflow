@@ -2,8 +2,9 @@ import logging
 import os
 import re
 import time
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from typing import Any, ClassVar, Literal, Mapping
+from typing import Any, ClassVar, Literal
 
 import neo4j
 import pandas as pd
@@ -13,6 +14,7 @@ from tabulaflow.core.types import (
     ErrorInfo,
     ExecResult,
     GraphPropertySchema,
+    GraphView,
     NodeSchema,
     NonSQLLanguage,
     PropertyGraphSchema,
@@ -50,6 +52,178 @@ UNWIND labels(m) AS target
 RETURN DISTINCT source, type(r) AS type, target
 ORDER BY type, source, target
 """.strip()
+
+_GRAPH_RESULT_MAX_NODES = 300
+_GRAPH_RESULT_MAX_EDGES = 700
+
+
+def _safe_scalar(value: object) -> bool:
+    return value is None or isinstance(value, str | int | float | bool)
+
+
+def _graph_property_value(value: object, *, depth: int = 0) -> object:
+    if _safe_scalar(value):
+        return value
+    if depth >= 4:
+        return str(value)
+    if isinstance(value, Mapping):
+        return {str(key): _graph_property_value(item, depth=depth + 1) for key, item in value.items()}
+    if isinstance(value, Sequence) and not isinstance(value, (str, bytes, bytearray)):
+        return [_graph_property_value(item, depth=depth + 1) for item in value]
+    return str(value)
+
+
+def _neo4j_node_id(node: object) -> str:
+    element_id = getattr(node, "element_id", None)
+    if element_id is not None:
+        return str(element_id)
+    return str(getattr(node, "id", node))
+
+
+def _neo4j_node_label(node: object) -> str:
+    for key in ("name", "title"):
+        if hasattr(node, "get"):
+            value = node.get(key)
+            if isinstance(value, str) and value.strip():
+                return value
+    if hasattr(node, "items"):
+        for _, value in node.items():
+            if isinstance(value, str) and value.strip():
+                return value
+    return _neo4j_node_id(node)
+
+
+def _neo4j_node_group(node: object) -> str:
+    labels = sorted(str(label) for label in getattr(node, "labels", []) or [])
+    return ":".join(labels) if labels else "node"
+
+
+def _is_neo4j_node(value: object) -> bool:
+    return (
+        hasattr(value, "labels") and hasattr(value, "items") and (hasattr(value, "element_id") or hasattr(value, "id"))
+    )
+
+
+def _relationship_endpoints(rel: object) -> tuple[object, object] | None:
+    start = getattr(rel, "start_node", None)
+    end = getattr(rel, "end_node", None)
+    if start is not None and end is not None:
+        return start, end
+
+    rel_nodes = getattr(rel, "nodes", None)
+    if rel_nodes is None:
+        return None
+    try:
+        if len(rel_nodes) < 2:
+            return None
+        start, end = rel_nodes[0], rel_nodes[1]
+    except (TypeError, IndexError, KeyError):
+        return None
+    if start is None or end is None:
+        return None
+    return start, end
+
+
+def _is_neo4j_relationship(value: object) -> bool:
+    return (
+        _relationship_endpoints(value) is not None
+        and hasattr(value, "items")
+        and (hasattr(value, "type") or hasattr(value, "element_id") or hasattr(value, "id"))
+    )
+
+
+def _is_neo4j_path(value: object) -> bool:
+    return hasattr(value, "nodes") and hasattr(value, "relationships")
+
+
+def _extract_neo4j_graph_result(df: pd.DataFrame) -> GraphView | None:
+    """Extract a generic graph view from Neo4j node/relationship/path cells."""
+    nodes: dict[str, dict[str, Any]] = {}
+    edges: dict[str, dict[str, Any]] = {}
+
+    def add_node(node: object) -> str:
+        node_id = _neo4j_node_id(node)
+        if node_id in nodes:
+            return node_id
+        data: dict[str, Any] = {
+            "id": node_id,
+            "label": _neo4j_node_label(node),
+            "group": _neo4j_node_group(node),
+        }
+        if hasattr(node, "items"):
+            properties: dict[str, object] = {}
+            for key, value in node.items():
+                properties[str(key)] = _graph_property_value(value)
+            if properties:
+                data["properties"] = properties
+        nodes[node_id] = data
+        return node_id
+
+    def add_relationship(rel: object) -> None:
+        endpoints = _relationship_endpoints(rel)
+        if endpoints is None:
+            return
+        start, end = endpoints
+        source_id = add_node(start)
+        target_id = add_node(end)
+        rel_id = getattr(rel, "element_id", None) or getattr(rel, "id", None)
+        edge_id = str(rel_id) if rel_id is not None else f"{source_id}->{target_id}:{len(edges) + 1}"
+        if edge_id in edges:
+            return
+        label = getattr(rel, "type", None) or type(rel).__name__
+        data: dict[str, Any] = {
+            "id": edge_id,
+            "source": source_id,
+            "target": target_id,
+            "label": str(label),
+            "directed": True,
+        }
+        if hasattr(rel, "items"):
+            properties: dict[str, object] = {}
+            for key, value in rel.items():
+                properties[str(key)] = _graph_property_value(value)
+            if properties:
+                data["properties"] = properties
+        edges[edge_id] = data
+
+    def walk(value: object) -> None:
+        if value is None:
+            return
+        if _is_neo4j_node(value):
+            add_node(value)
+            return
+        if _is_neo4j_relationship(value):
+            add_relationship(value)
+            return
+        if _is_neo4j_path(value):
+            for node in getattr(value, "nodes"):
+                add_node(node)
+            for rel in getattr(value, "relationships"):
+                add_relationship(rel)
+            return
+        if isinstance(value, Mapping):
+            for item in value.values():
+                walk(item)
+            return
+        if isinstance(value, Sequence) and not isinstance(value, (str, bytes, bytearray)):
+            for item in value:
+                walk(item)
+
+    for _, row in df.iterrows():
+        for value in row:
+            walk(value)
+
+    if not nodes:
+        return None
+    if len(nodes) > _GRAPH_RESULT_MAX_NODES or len(edges) > _GRAPH_RESULT_MAX_EDGES:
+        return None
+    return GraphView(
+        nodes=sorted(nodes.values(), key=lambda node: str(node["id"])),
+        edges=sorted(
+            edges.values(),
+            key=lambda edge: (str(edge.get("source", "")), str(edge.get("target", "")), str(edge.get("label", ""))),
+        ),
+    )
 
 
 def _parse_type_labels(raw: str) -> list[str]:
@@ -192,8 +366,9 @@ class Neo4jConnector:
         t0 = time.time()
         try:
             df = await self._run_cypher(query_str, parameters, timeout, return_df=True)
+            graph = _extract_neo4j_graph_result(df)
             latency = time.time() - t0
-            return ExecResult(df=df, latency_seconds=latency)
+            return ExecResult(df=df, graph=graph, latency_seconds=latency)
         except Exception as e:
             return ExecResult(
                 error=ErrorInfo(exc_type=type(e).__name__, message=str(e)),

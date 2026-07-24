@@ -459,7 +459,7 @@ function graphDetailHtml(ele) {
   if (!ele || !ele.data) return '';
   var data = ele.data();
   var label = data.label || data.id || '';
-  var tooltip = data.tooltip;
+  var tooltip = data.tooltip || data.properties;
   var html = '<div class="tf-graph-popup">';
   if (label) html += '<div class="tf-graph-popup-title">' + escapeHtml(label) + '</div>';
   if (tooltip && typeof tooltip === 'object') {

@@ -15,7 +15,7 @@ from pygments.util import ClassNotFound
 
 from tabulaflow.app.pane.types import CARD_ID_PREFIX, CodeData, PaneCard, QueryCardData, ViewKind, card_payload
 from tabulaflow.app.pane.charts import build_chart_data
-from tabulaflow.app.pane.graphs import build_graph_data
+from tabulaflow.app.pane.graphs import build_graph_data, build_graph_result_data
 from tabulaflow.app.pane.maps import build_map_data
 from tabulaflow.app.pane.tables import PANE_TABLE_MAX_HEIGHT, _build_table_data
 from tabulaflow.app.theme import CODE_TEXT, TabulaflowPygmentsStyle, normalize_query_lexer
@@ -88,6 +88,12 @@ def render_record_data(record: ResultRecordLike, pane_dir: Path) -> PaneCard | N
     views: list[ViewKind] = []
     card_id = f"{CARD_ID_PREFIX}{secrets.token_hex(6)}"
     record_data: dict[str, object] = {}
+    graph = getattr(record, "graph", None)
+    if graph is not None:
+        graph_data = build_graph_result_data(graph)
+        if graph_data is not None:
+            record_data.update(graph_data)
+            views.append("graph")
     df = record.df
     if df is not None and not df.empty:
         table_build = _build_table_data(

@@ -32,6 +32,7 @@ from tabulaflow.app.pane import PaneCard, PaneSource, card_payload, turn_payload
 from tabulaflow.app.pane.cards import render_graph_data, render_map_data, render_record_data
 from tabulaflow.app.pane import server as pane_server
 from tabulaflow.app.runtime_paths import generate_session_id
+from tabulaflow.core.types import GraphView
 from tabulaflow.toolhub.render_graph import normalize_graph_spec
 from tabulaflow.toolhub.render_map import normalize_map_spec
 
@@ -293,6 +294,8 @@ def _record(
     query: str | None,
     df: pd.DataFrame | None,
     chart_spec: dict[str, object] | None = None,
+    graph: GraphView | None = None,
+    query_lexer: str = "sql",
 ) -> SimpleNamespace:
     return SimpleNamespace(
         record_id=record_id,
@@ -300,7 +303,8 @@ def _record(
         query=query,
         df=df,
         chart_spec=chart_spec,
-        query_lexer="sql",
+        graph=graph,
+        query_lexer=query_lexer,
     )
 
 
@@ -529,6 +533,84 @@ def _large_agent_table_record() -> SimpleNamespace:
         label="large_agent_table",
         query="-- synthetic 1,000-row agent result table",
         df=pd.DataFrame(data),
+    )
+
+
+def _cypher_graph_record() -> SimpleNamespace:
+    df = pd.DataFrame(
+        {
+            "p": [
+                "(:Person {name: 'Alice'})-[:ACTED_IN {role: 'Analyst'}]->(:Movie {title: 'The Matrix'})",
+                "(:Person {name: 'Bob'})-[:DIRECTED]->(:Movie {title: 'The Matrix'})",
+            ]
+        }
+    )
+    graph = GraphView(
+        nodes=[
+            {
+                "id": "person:alice",
+                "label": "Alice",
+                "group": "Person",
+                "properties": {"name": "Alice", "born": 1988},
+            },
+            {
+                "id": "person:bob",
+                "label": "Bob",
+                "group": "Person",
+                "properties": {"name": "Bob", "born": 1975},
+            },
+            {
+                "id": "movie:matrix",
+                "label": "The Matrix",
+                "group": "Movie",
+                "properties": {"title": "The Matrix", "released": 1999},
+            },
+        ],
+        edges=[
+            {
+                "id": "rel:alice-acted-in-matrix",
+                "source": "person:alice",
+                "target": "movie:matrix",
+                "label": "ACTED_IN",
+                "directed": True,
+                "properties": {"role": "Analyst"},
+            },
+            {
+                "id": "rel:bob-directed-matrix",
+                "source": "person:bob",
+                "target": "movie:matrix",
+                "label": "DIRECTED",
+                "directed": True,
+            },
+        ],
+    )
+    return _record(
+        record_id="QDEBUG_CYPHER_GRAPH",
+        label="cypher_path_result",
+        query="MATCH p=(:Person)-[r]->(:Movie) RETURN p LIMIT 2",
+        df=df,
+        graph=graph,
+        query_lexer="cypher",
+    )
+
+
+def _cypher_non_graph_record() -> SimpleNamespace:
+    return _record(
+        record_id="QDEBUG_CYPHER_TABLE",
+        label="cypher_scalar_result",
+        query=(
+            "MATCH (m:Movie)<-[:ACTED_IN]-(p:Person)\n"
+            "RETURN m.title AS movie, count(p) AS actor_count\n"
+            "ORDER BY actor_count DESC\n"
+            "LIMIT 3"
+        ),
+        df=pd.DataFrame(
+            {
+                "movie": ["The Matrix", "Inception", "Arrival"],
+                "actor_count": [42, 28, 17],
+            }
+        ),
+        query_lexer="cypher",
     )
 
 
@@ -1471,6 +1553,17 @@ def _populate_pane(
                 "the compact output-pane table frame and internal scrolling."
             ),
             records=[_large_agent_table_record()],
+        )
+        _push_turn(
+            pane,
+            pane_dir,
+            title="Cypher graph auto-view",
+            user="Show two Cypher query results: one with an extracted graph view and one scalar table result.",
+            assistant=(
+                "The first Cypher result simulates a native path query, so the record opens with Graph, Data, "
+                "and Query views. The second Cypher result is scalar-only, so it should only show Data and Query."
+            ),
+            records=[_cypher_graph_record(), _cypher_non_graph_record()],
         )
         _push_turn(
             pane,
