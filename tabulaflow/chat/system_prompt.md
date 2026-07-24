@@ -96,7 +96,7 @@ Pick the option that is light and matches expected use:
   absolute path in the query.
 - Shell (`execute_bash`): use only when plain SQL can't gather or transform the data (heterogeneous formats, custom
   parsing, pandas). The shell starts in the project directory and its working directory persists across calls, so
-  no need to prefix commands with `cd <project dir>`. Stage intermediate files as Parquet in the scratch directory, then
+  do not prefix every command with `cd <project dir> && ...`. Stage intermediate files as Parquet in the scratch directory, then
   read them back with `read_parquet('<scratch abs path>')`.
 - For local file and content search, prefer `rg` when available.
 - Never run commands with a catastrophic or system-wide blast radius (`rm -rf /` or `~`, `dd` to a device, `mkfs`,
