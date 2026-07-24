@@ -179,7 +179,9 @@ class TestRenderGraphTool:
         msg = await RenderGraphTool(history=history)(graph_spec=json.dumps(spec))
         assert "Network graph GRAPH1 created from Q1" in msg
         assert "3 nodes, 2 edges (all nodes one color; set group on node sources to color by type)" in msg
-        assert history.get_graph("GRAPH1").graph_spec["edges"][0]["source"] == "src"
+        graph = history.get_graph("GRAPH1").graph
+        assert graph.edges[0].source == "a"
+        assert graph.edges[0].target == "b"
 
     async def test_graph_created_reports_node_types(self) -> None:
         history = await _history_with(

@@ -107,22 +107,8 @@ class ChatResultGraph(BaseModel):
     kind: Literal["graph"] = "graph"
     graph_id: str
     label: str | None
-    graph_spec: dict[str, Any]
-    sources: dict[str, pd.DataFrame]
-
-    @field_serializer("sources", when_used="always")
-    def _serialize_sources(self, sources: dict[str, pd.DataFrame]) -> dict[str, Any]:
-        return {rid: _serialize_dataframe(df) for rid, df in sources.items()}
-
-    @field_validator("sources", mode="before")
-    @classmethod
-    def _deserialize_sources(cls, v: dict[str, Any]) -> dict[str, pd.DataFrame]:
-        out: dict[str, pd.DataFrame] = {}
-        for rid, df in (v or {}).items():
-            deserialized = _deserialize_dataframe(df)
-            if deserialized is not None:
-                out[rid] = deserialized
-        return out
+    graph: GraphView
+    layout: Literal["force", "layered", "tree"] = "force"
 
 
 # A cited artifact is either a query result (record) or a standalone chart, map,

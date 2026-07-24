@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping
 from typing import cast
 
 from tabulaflow.app.pane.types import GraphCardData
@@ -26,76 +26,6 @@ def _as_str(value: object) -> str | None:
         return None
     text = str(value)
     return text if text else None
-
-
-def _field_name(value: object, field_by_column: Mapping[str, str]) -> str | None:
-    if not isinstance(value, str) or not value:
-        return None
-    return field_by_column.get(value, value)
-
-
-def _constant_value(value: object) -> str | None:
-    if isinstance(value, Mapping):
-        return _as_str(value.get("value"))
-    return None
-
-
-def _tooltip_value(value: object, *, depth: int = 0) -> object:
-    if value is None or isinstance(value, str | int | float | bool):
-        return value
-    if depth >= 4:
-        return str(value)
-    if isinstance(value, Mapping):
-        return {str(key): _tooltip_value(item, depth=depth + 1) for key, item in value.items()}
-    if isinstance(value, Sequence) and not isinstance(value, (str, bytes, bytearray)):
-        return [_tooltip_value(item, depth=depth + 1) for item in value]
-    return str(value)
-
-
-def _rows_for(
-    source: Mapping[str, object], sources: Mapping[str, Mapping[str, object]]
-) -> tuple[list[dict[str, object]], Mapping[str, str]]:
-    inline = source.get("data")
-    if isinstance(inline, Sequence) and not isinstance(inline, (str, bytes, bytearray)):
-        rows = [dict(row) for row in inline if isinstance(row, Mapping)]
-        return rows, {}
-
-    rid = _as_str(source.get("record_id"))
-    if rid is None:
-        return [], {}
-    payload = sources.get(rid, {})
-    rows_obj = payload.get("rows", [])
-    rows = cast(list[dict[str, object]], rows_obj if isinstance(rows_obj, list) else [])
-    fbc = payload.get("field_by_column", {})
-    field_by_column = {str(k): str(v) for k, v in fbc.items()} if isinstance(fbc, Mapping) else {}
-    return rows, field_by_column
-
-
-def _tooltip(
-    row: Mapping[str, object],
-    tooltip: object,
-    field_by_column: Mapping[str, str],
-) -> dict[str, object] | None:
-    if tooltip is None:
-        return None
-    if tooltip is True:
-        fields = [str(key) for key in row.keys()]
-    elif isinstance(tooltip, str):
-        field = _field_name(tooltip, field_by_column)
-        fields = [field] if field is not None else []
-    elif isinstance(tooltip, Sequence) and not isinstance(tooltip, (str, bytes, bytearray)):
-        fields = [field for item in tooltip if (field := _field_name(item, field_by_column)) is not None]
-    else:
-        fields = []
-
-    out: dict[str, object] = {}
-    reverse = {field: column for column, field in field_by_column.items()}
-    for field in fields:
-        if field not in row:
-            continue
-        value = row[field]
-        out[reverse.get(field, field)] = _tooltip_value(value)
-    return out or None
 
 
 def _assign_colors(nodes: list[dict[str, object]]) -> None:
@@ -141,6 +71,8 @@ def _graph_card_data_from_rows(
     )
     used_ids = set(node_ids)
     for index, edge in enumerate(edge_payloads, start=1):
+        if edge.get("directed") is False:
+            edge.pop("directed")
         edge_id = _as_str(edge.get("id")) or _edge_id(index, used_ids)
         while edge_id in used_ids:
             edge_id = f"_{edge_id}"
@@ -162,7 +94,7 @@ def _graph_card_data_from_rows(
 
 
 def build_graph_result_data(graph_result: object) -> GraphCardData | None:
-    """Build a browser-pane graph payload from an attached query graph result."""
+    """Build a browser-pane graph payload from a materialized graph view."""
     nodes = getattr(graph_result, "nodes", None)
     edges = getattr(graph_result, "edges", None)
     if not isinstance(nodes, list) or not isinstance(edges, list):
@@ -180,82 +112,3 @@ def build_graph_result_data(graph_result: object) -> GraphCardData | None:
     node_rows = [row for node in nodes if (row := to_row(node)) is not None]
     edge_rows = [row for edge in edges if (row := to_row(edge)) is not None]
     return _graph_card_data_from_rows(node_rows, edge_rows)
-
-
-def build_graph_data(
-    graph_spec: Mapping[str, object],
-    sources: Mapping[str, Mapping[str, object]],
-) -> GraphCardData | None:
-    """Build a browser-pane graph payload from a spec and per-source datasets."""
-    nodes_by_id: dict[str, dict[str, object]] = {}
-
-    raw_node_sources = graph_spec.get("nodes", [])
-    if isinstance(raw_node_sources, Sequence) and not isinstance(raw_node_sources, (str, bytes, bytearray)):
-        for raw_source in raw_node_sources:
-            if not isinstance(raw_source, Mapping):
-                continue
-            rows, field_by_column = _rows_for(raw_source, sources)
-            id_field = _field_name(raw_source.get("id"), field_by_column)
-            if id_field is None:
-                continue
-            label_field = _field_name(raw_source.get("label"), field_by_column)
-            group_field = _field_name(raw_source.get("group"), field_by_column)
-            group_value = _constant_value(raw_source.get("group"))
-            for row in rows:
-                node_id = _as_str(row.get(id_field))
-                if node_id is None or node_id in nodes_by_id:
-                    continue
-                node: dict[str, object] = {
-                    "id": node_id,
-                    "label": _as_str(row.get(label_field)) if label_field else node_id,
-                }
-                if group_value is not None:
-                    node["group"] = group_value
-                elif group_field and row.get(group_field) is not None:
-                    node["group"] = str(row[group_field])
-                tooltip = _tooltip(row, raw_source.get("tooltip"), field_by_column)
-                if tooltip is not None:
-                    node["tooltip"] = tooltip
-                nodes_by_id[node_id] = node
-
-    edges: list[dict[str, object]] = []
-    raw_edge_sources = graph_spec.get("edges", [])
-    if isinstance(raw_edge_sources, Sequence) and not isinstance(raw_edge_sources, (str, bytes, bytearray)):
-        for raw_source in raw_edge_sources:
-            if not isinstance(raw_source, Mapping):
-                continue
-            rows, field_by_column = _rows_for(raw_source, sources)
-            source_field = _field_name(raw_source.get("source"), field_by_column)
-            target_field = _field_name(raw_source.get("target"), field_by_column)
-            if source_field is None or target_field is None:
-                continue
-            label_field = _field_name(raw_source.get("label"), field_by_column)
-            label_value = _constant_value(raw_source.get("label"))
-            directed = bool(raw_source.get("directed", True))
-            for row in rows:
-                source_id = _as_str(row.get(source_field))
-                target_id = _as_str(row.get(target_field))
-                if source_id is None or target_id is None:
-                    continue
-                if source_id not in nodes_by_id or target_id not in nodes_by_id:
-                    continue
-                edge: dict[str, object] = {
-                    "source": source_id,
-                    "target": target_id,
-                }
-                if directed:
-                    edge["directed"] = True
-                if label_value is not None:
-                    edge["label"] = label_value
-                elif label_field and row.get(label_field) is not None:
-                    edge["label"] = str(row[label_field])
-                tooltip = _tooltip(row, raw_source.get("tooltip"), field_by_column)
-                if tooltip is not None:
-                    edge["tooltip"] = tooltip
-                edges.append(edge)
-
-    if not edges:
-        return None
-    raw_layout = graph_spec.get("layout")
-    layout = raw_layout if isinstance(raw_layout, str) and raw_layout in {"force", "layered", "tree"} else "force"
-    return _graph_card_data_from_rows(list(nodes_by_id.values()), edges, layout=layout)

@@ -7,7 +7,7 @@ import pandas as pd
 import pytest
 
 from tabulaflow.core.db_connector.sql_conn import SQLConnector
-from tabulaflow.core.types import ExecResult, PredQuery
+from tabulaflow.core.types import ExecResult, GraphView, PredQuery
 from tabulaflow.toolhub.query_history import QueryHistory
 
 
@@ -195,10 +195,11 @@ class TestWithConnector:
     @pytest.mark.asyncio
     async def test_add_graph_stores_standalone_artifact(self, workspace: SQLConnector) -> None:
         h = QueryHistory(spill_connector=workspace)
-        spec = {"layout": "force", "edges": [{"record_id": "Q1", "source": "src", "target": "dst"}]}
-        graph_id = h.add_graph(spec)
+        graph = GraphView(nodes=[{"id": "a"}, {"id": "b"}], edges=[{"source": "a", "target": "b"}])
+        graph_id = h.add_graph(graph, layout="force")
         assert graph_id == "GRAPH1"
-        assert h.get_graph("GRAPH1").graph_spec == spec
-        assert h.add_graph(spec) == "GRAPH2"
+        assert h.get_graph("GRAPH1").graph == graph
+        assert h.get_graph("GRAPH1").layout == "force"
+        assert h.add_graph(graph) == "GRAPH2"
         with pytest.raises(KeyError):
             h.get_graph("GRAPH9")

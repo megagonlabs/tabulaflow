@@ -12,6 +12,7 @@ import pandas as pd
 from pydantic import BaseModel, ConfigDict, ValidationError, model_validator
 from pydantic_ai import Tool
 
+from tabulaflow.core.types import GraphView
 from tabulaflow.toolhub.query_history import QueryHistory
 from tabulaflow.toolhub.render_map import resolve_column
 
@@ -288,29 +289,67 @@ def _node_id(value: object) -> str | None:
     return text if text else None
 
 
-def graph_size(graph_spec: Mapping[str, object], sources: Mapping[str, pd.DataFrame]) -> GraphSize:
-    """Compute unique node, valid edge, and node-type counts for a normalized graph spec.
+def _safe_graph_property(value: object, *, depth: int = 0) -> object:
+    if value is None or isinstance(value, str | int | float | bool):
+        return value
+    if depth >= 4:
+        return str(value)
+    if isinstance(value, Mapping):
+        return {str(key): _safe_graph_property(item, depth=depth + 1) for key, item in value.items()}
+    if isinstance(value, Sequence) and not isinstance(value, (str, bytes, bytearray)):
+        return [_safe_graph_property(item, depth=depth + 1) for item in value]
+    return str(value)
 
-    Mirrors the renderer's first-source-wins node dedup: the source that first
-    introduces a node id also fixes whether it is grouped. Raises
-    ``GraphSpecError`` when an edge endpoint matches no declared node id.
-    """
-    group_by_id: dict[str, str | None] = {}
+
+def _constant_value(value: object) -> object:
+    return value.get("value") if isinstance(value, Mapping) else None
+
+
+def _properties(
+    row: Mapping[str, object],
+    tooltip: object,
+) -> dict[str, object]:
+    if tooltip is None:
+        return {}
+    if tooltip is True:
+        fields = [str(key) for key in row.keys()]
+    elif isinstance(tooltip, str):
+        fields = [tooltip]
+    elif isinstance(tooltip, Sequence) and not isinstance(tooltip, (str, bytes, bytearray)):
+        fields = [str(item) for item in tooltip if isinstance(item, str)]
+    else:
+        fields = []
+    return {field: _safe_graph_property(row[field]) for field in fields if field in row}
+
+
+def materialize_graph_view(graph_spec: Mapping[str, object], sources: Mapping[str, pd.DataFrame]) -> GraphView:
+    """Materialize a normalized graph spec into the typed graph-view data contract."""
+    nodes_by_id: dict[str, dict[str, object]] = {}
     raw_nodes = graph_spec.get("nodes")
     for raw_source in raw_nodes if isinstance(raw_nodes, list) else []:
         if not isinstance(raw_source, Mapping):
             continue
         id_field = raw_source.get("id")
+        label_field = raw_source.get("label")
         group_field = raw_source.get("group")
-        constant_group = group_field.get("value") if isinstance(group_field, Mapping) else None
+        constant_group = _constant_value(group_field)
         for row in _source_rows(raw_source, sources):
             node_id = _node_id(_row_value(row, id_field))
-            if node_id is None or node_id in group_by_id:
+            if node_id is None or node_id in nodes_by_id:
                 continue
+            label = _row_value(row, label_field) if isinstance(label_field, str) else None
             group = constant_group if constant_group is not None else _row_value(row, group_field)
-            group_by_id[node_id] = str(group) if group is not None else None
+            properties = _properties(row, raw_source.get("tooltip"))
+            node: dict[str, object] = {"id": node_id}
+            if label is not None:
+                node["label"] = str(label)
+            if group is not None:
+                node["group"] = str(group)
+            if properties:
+                node["properties"] = properties
+            nodes_by_id[node_id] = node
 
-    edge_count = 0
+    edges: list[dict[str, object]] = []
     unmatched: set[str] = set()
     raw_edges = graph_spec.get("edges")
     for raw_source in raw_edges if isinstance(raw_edges, list) else []:
@@ -318,15 +357,25 @@ def graph_size(graph_spec: Mapping[str, object], sources: Mapping[str, pd.DataFr
             continue
         source_field = raw_source.get("source")
         target_field = raw_source.get("target")
+        label_field = raw_source.get("label")
+        constant_label = _constant_value(label_field)
+        directed = bool(raw_source.get("directed", True))
         for row in _source_rows(raw_source, sources):
             source_id = _node_id(_row_value(row, source_field))
             target_id = _node_id(_row_value(row, target_field))
             if source_id is None or target_id is None:
                 continue
             for node_id in (source_id, target_id):
-                if node_id not in group_by_id:
+                if node_id not in nodes_by_id:
                     unmatched.add(node_id)
-            edge_count += 1
+            label = constant_label if constant_label is not None else _row_value(row, label_field)
+            properties = _properties(row, raw_source.get("tooltip"))
+            edge: dict[str, object] = {"source": source_id, "target": target_id, "directed": directed}
+            if label is not None:
+                edge["label"] = str(label)
+            if properties:
+                edge["properties"] = properties
+            edges.append(edge)
 
     if unmatched:
         sample = ", ".join(repr(node_id) for node_id in sorted(unmatched)[:5])
@@ -335,9 +384,26 @@ def graph_size(graph_spec: Mapping[str, object], sources: Mapping[str, pd.DataFr
             "declare a node source covering every endpoint column"
         )
 
-    groups = {group for group in group_by_id.values() if group is not None}
-    ungrouped = sum(1 for group in group_by_id.values() if group is None)
-    return GraphSize(nodes=len(group_by_id), edges=edge_count, groups=len(groups), ungrouped_nodes=ungrouped)
+    return GraphView(
+        nodes=sorted(nodes_by_id.values(), key=lambda node: str(node["id"])),
+        edges=edges,
+    )
+
+
+def graph_view_size(graph: GraphView) -> GraphSize:
+    groups = {node.group for node in graph.nodes if node.group is not None}
+    ungrouped = sum(1 for node in graph.nodes if node.group is None)
+    return GraphSize(nodes=len(graph.nodes), edges=len(graph.edges), groups=len(groups), ungrouped_nodes=ungrouped)
+
+
+def graph_size(graph_spec: Mapping[str, object], sources: Mapping[str, pd.DataFrame]) -> GraphSize:
+    """Compute unique node, valid edge, and node-type counts for a normalized graph spec.
+
+    Mirrors the renderer's first-source-wins node dedup: the source that first
+    introduces a node id also fixes whether it is grouped. Raises
+    ``GraphSpecError`` when an edge endpoint matches no declared node id.
+    """
+    return graph_view_size(materialize_graph_view(graph_spec, sources))
 
 
 def validate_graph_size(size: GraphSize) -> None:
@@ -452,12 +518,15 @@ class RenderGraphTool:
 
         try:
             normalized = resolve_graph_spec(parsed, sources)
-            size = graph_size(normalized, sources)
+            graph = materialize_graph_view(normalized, sources)
+            size = graph_view_size(graph)
             validate_graph_size(size)
         except GraphSpecError as e:
             return f"(error: {e})"
 
-        graph_id = self._history.add_graph(normalized)
+        raw_layout = normalized.get("layout")
+        layout: Literal["force", "layered", "tree"] = raw_layout if raw_layout in {"force", "layered", "tree"} else "force"
+        graph_id = self._history.add_graph(graph, layout=layout)
         label = graph_type_label(normalized)
         from_text = f" from {', '.join(record_ids)}" if record_ids else ""
         if size.groups == 0:

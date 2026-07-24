@@ -33,7 +33,7 @@ from tabulaflow.app.pane.cards import render_graph_data, render_map_data, render
 from tabulaflow.app.pane import server as pane_server
 from tabulaflow.app.runtime_paths import generate_session_id
 from tabulaflow.core.types import GraphView
-from tabulaflow.toolhub.render_graph import normalize_graph_spec
+from tabulaflow.toolhub.render_graph import materialize_graph_view, normalize_graph_spec
 from tabulaflow.toolhub.render_map import normalize_map_spec
 
 _MARKDOWN_SHOWCASE = r"""# Heading 1
@@ -337,8 +337,9 @@ def _graph_card(
 ) -> PaneCard:
     """Build a graph card via the real spec → normalize → render pipeline."""
     normalized = normalize_graph_spec(graph_spec, sources)
+    graph = materialize_graph_view(normalized, sources)
     card = render_graph_data(
-        SimpleNamespace(graph_id=graph_id, label=label, graph_spec=normalized, sources=sources),
+        SimpleNamespace(graph_id=graph_id, label=label, graph=graph, layout=normalized.get("layout", "force")),
         pane_dir,
     )
     assert card is not None

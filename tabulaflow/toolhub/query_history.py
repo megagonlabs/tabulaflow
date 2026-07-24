@@ -7,7 +7,7 @@ from collections import deque
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Literal
 
-from tabulaflow.core.types import PredQuery
+from tabulaflow.core.types import GraphView, PredQuery
 
 if TYPE_CHECKING:
     import pandas as pd
@@ -57,10 +57,11 @@ class MapArtifact:
 
 @dataclass
 class GraphArtifact:
-    """A node-link graph assembled from one or more query results."""
+    """A materialized node-link graph assembled from one or more query results."""
 
     graph_id: str
-    graph_spec: dict[str, Any]
+    graph: GraphView
+    layout: Literal["force", "layered", "tree"] = "force"
 
 
 class QueryHistory:
@@ -154,10 +155,10 @@ class QueryHistory:
         except KeyError:
             raise KeyError(f"No map with id {map_id}") from None
 
-    def add_graph(self, graph_spec: dict[str, Any]) -> str:
+    def add_graph(self, graph: GraphView, *, layout: Literal["force", "layered", "tree"] = "force") -> str:
         """Store a standalone graph artifact and return its opaque ``GRAPH*`` id."""
         graph_id = f"GRAPH{self._next_graph_id}"
-        self._graphs[graph_id] = GraphArtifact(graph_id=graph_id, graph_spec=graph_spec)
+        self._graphs[graph_id] = GraphArtifact(graph_id=graph_id, graph=graph, layout=layout)
         self._next_graph_id += 1
         return graph_id
 

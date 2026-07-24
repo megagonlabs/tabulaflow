@@ -800,8 +800,8 @@ class TabulaflowApp(App[None]):
                         SimpleNamespace(
                             graph_id=artifact.graph_id,
                             label=artifact.label,
-                            graph_spec=artifact.graph_spec,
-                            sources=dict(artifact.sources),
+                            graph=artifact.graph,
+                            layout=artifact.layout,
                         ),
                     )
                 )

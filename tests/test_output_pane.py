@@ -19,13 +19,14 @@ import pandas as pd
 import pytest
 
 from tabulaflow.app.config import LLM_OFF, ResolvedLLMSelection
-from tabulaflow.app.pane.graphs import build_graph_data
+from tabulaflow.app.pane.graphs import build_graph_result_data
 from tabulaflow.app.pane.cards import PANE_CODE_TEXT, build_query_data, render_map_data, render_record_data
 from tabulaflow.app.pane.tables import TABLE_RENDER_MAX_ROWS
 from tabulaflow.app.theme import CODE_TEXT
 from tabulaflow.app.pane import CARD_ID_PREFIX, OutputPane, OutputPanePortError, _PANE_HTML
 from tabulaflow.app.pane import PaneCard, PaneTurn, turn_payload
 from tabulaflow.app.screens import send_table_to_output_pane
+from tabulaflow.toolhub.render_graph import materialize_graph_view, normalize_graph_spec
 from tabulaflow.app.tui import TabulaflowApp
 from tabulaflow.toolhub.render_map import MAP_RENDER_MAX_ROWS
 
@@ -796,68 +797,66 @@ def test_graph_tooltips_truncate_long_values() -> None:
 
 
 def test_graph_tooltips_preserve_nested_values() -> None:
-    payload = build_graph_data(
-        {
-            "nodes": [
-                {
-                    "data": [
-                        {"id": "a", "label": "Alice", "tags": ["lead"], "profile": {"city": "Oakland"}},
-                        {"id": "b", "label": "Bob"},
-                    ],
-                    "id": "id",
-                    "label": "label",
-                    "tooltip": True,
-                }
-            ],
-            "edges": [
-                {
-                    "data": [
-                        {
-                            "src": "a",
-                            "dst": "b",
-                            "rel": "knows",
-                            "roles": ["mentor", "reviewer"],
-                            "metadata": {"since": 2024},
-                        }
-                    ],
-                    "source": "src",
-                    "target": "dst",
-                    "label": "rel",
-                    "tooltip": True,
-                }
-            ],
-        },
-        {},
-    )
+    spec = {
+        "nodes": [
+            {
+                "data": [
+                    {"id": "a", "label": "Alice", "tags": ["lead"], "profile": {"city": "Oakland"}},
+                    {"id": "b", "label": "Bob"},
+                ],
+                "id": "id",
+                "label": "label",
+                "tooltip": True,
+            }
+        ],
+        "edges": [
+            {
+                "data": [
+                    {
+                        "src": "a",
+                        "dst": "b",
+                        "rel": "knows",
+                        "roles": ["mentor", "reviewer"],
+                        "metadata": {"since": 2024},
+                    }
+                ],
+                "source": "src",
+                "target": "dst",
+                "label": "rel",
+                "tooltip": True,
+            }
+        ],
+    }
+    normalized = normalize_graph_spec(spec, {})
+    payload = build_graph_result_data(materialize_graph_view(normalized, {}))
     assert payload is not None
     # Element dicts hold ``object`` values; the test asserts on their nested shape.
     nodes = cast("list[dict[str, Any]]", payload["graph"]["elements"]["nodes"])
     edges = cast("list[dict[str, Any]]", payload["graph"]["elements"]["edges"])
     alice = next(node["data"] for node in nodes if node["data"]["id"] == "a")
-    assert alice["tooltip"]["tags"] == ["lead"]
-    assert alice["tooltip"]["profile"] == {"city": "Oakland"}
-    assert edges[0]["data"]["tooltip"]["roles"] == ["mentor", "reviewer"]
-    assert edges[0]["data"]["tooltip"]["metadata"] == {"since": 2024}
+    assert alice["properties"]["tags"] == ["lead"]
+    assert alice["properties"]["profile"] == {"city": "Oakland"}
+    assert edges[0]["data"]["properties"]["roles"] == ["mentor", "reviewer"]
+    assert edges[0]["data"]["properties"]["metadata"] == {"since": 2024}
 
 
 def test_graph_constant_group_colors_and_edge_label() -> None:
-    payload = build_graph_data(
-        {
-            "nodes": [
-                {"data": [{"id": "a"}], "id": "id", "group": {"value": "Customer"}},
-                {"data": [{"id": "p"}], "id": "id", "group": {"value": "Product"}},
-            ],
-            "edges": [
-                {
-                    "data": [{"src": "a", "dst": "p"}],
-                    "source": "src",
-                    "target": "dst",
-                    "label": {"value": "PURCHASED"},
-                }
-            ],
-        },
-        {},
-    )
+    spec = {
+        "nodes": [
+            {"data": [{"id": "a"}], "id": "id", "group": {"value": "Customer"}},
+            {"data": [{"id": "p"}], "id": "id", "group": {"value": "Product"}},
+        ],
+        "edges": [
+            {
+                "data": [{"src": "a", "dst": "p"}],
+                "source": "src",
+                "target": "dst",
+                "label": {"value": "PURCHASED"},
+            }
+        ],
+    }
+    normalized = normalize_graph_spec(spec, {})
+    payload = build_graph_result_data(materialize_graph_view(normalized, {}))
     assert payload is not None
     nodes = cast("list[dict[str, Any]]", payload["graph"]["elements"]["nodes"])
     edges = cast("list[dict[str, Any]]", payload["graph"]["elements"]["edges"])

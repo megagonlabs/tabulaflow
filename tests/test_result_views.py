@@ -59,12 +59,8 @@ def _graph(graph_id: str, label: str) -> ChatResultGraph:
     return ChatResultGraph(
         graph_id=graph_id,
         label=label,
-        graph_spec={
-            "layout": "force",
-            "nodes": [{"record_id": "Q1", "id": "src"}, {"record_id": "Q1", "id": "dst"}],
-            "edges": [{"record_id": "Q1", "source": "src", "target": "dst"}],
-        },
-        sources={"Q1": pd.DataFrame({"src": ["a"], "dst": ["b"]})},
+        graph=GraphView(nodes=[{"id": "a"}, {"id": "b"}], edges=[{"source": "a", "target": "b"}]),
+        layout="force",
     )
 
 
@@ -141,8 +137,8 @@ def test_map_artifact_sources_released_after_render() -> None:
     assert chat_map.sources == {}
 
 
-def test_graph_artifact_sources_released_after_render() -> None:
+def test_graph_artifact_graph_view_survives_terminal_render() -> None:
     chat_graph = _graph("GRAPH1", "lineage")
     result = ChatResult(text="x", artifacts=[chat_graph])
     build_card_views(result)
-    assert chat_graph.sources == {}
+    assert len(chat_graph.graph.nodes) == 2

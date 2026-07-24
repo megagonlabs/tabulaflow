@@ -996,25 +996,13 @@ async def _chat_result_graph_from_artifact(
     label: str | None,
     query_history: QueryHistory,
 ) -> ChatResultGraph:
-    """Resolve a stored graph artifact's per-source DataFrames into a display record."""
-    spec = graph_artifact.graph_spec
-    source_ids: list[str] = []
-    for key in ("nodes", "edges"):
-        entries = spec.get(key) or []
-        for entry in entries:
-            rid = entry.get("record_id") if isinstance(entry, dict) else None
-            if rid and rid not in source_ids:
-                source_ids.append(rid)
-    sources: dict[str, pd.DataFrame] = {}
-    for sid in source_ids:
-        try:
-            record = await query_history.get(sid)
-        except (KeyError, ValueError):
-            continue
-        exec_result = record.pred_query.exec_result
-        if exec_result is not None and exec_result.df is not None:
-            sources[sid] = exec_result.df
-    return ChatResultGraph(graph_id=graph_artifact.graph_id, label=label, graph_spec=spec, sources=sources)
+    """Resolve a stored graph artifact into a display record."""
+    return ChatResultGraph(
+        graph_id=graph_artifact.graph_id,
+        label=label,
+        graph=graph_artifact.graph,
+        layout=graph_artifact.layout,
+    )
 
 
 def _chat_result_record_from_query_record(

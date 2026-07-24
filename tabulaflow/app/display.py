@@ -305,16 +305,10 @@ def _build_map_card(map_spec: dict[str, object]) -> RenderableType:
     return Panel(Group(*lines), box=box.ROUNDED, border_style=ACCENT_DIM, padding=(1, 2))
 
 
-def _build_graph_card(graph_spec: dict[str, object]) -> RenderableType:
+def _build_graph_card() -> RenderableType:
     """Placeholder box for a graph (rendered in the browser, not the terminal)."""
-    from tabulaflow.toolhub.render_graph import graph_type_label
-
-    type_label = graph_type_label(graph_spec)
-    title = graph_spec.get("title") if isinstance(graph_spec, dict) else None
-    heading = str(title) if isinstance(title, str) and title.strip() else type_label
+    heading = "Network graph"
     lines: list[RenderableType] = [Text(heading, style="dim bold", justify="center")]
-    if isinstance(title, str) and title.strip():
-        lines.append(Text(type_label, style="dim", justify="center"))
     lines.append(Text(""))
     lines.append(Text("Open the browser pane to view this graph.", style="dim", justify="center"))
     return Panel(Group(*lines), box=box.ROUNDED, border_style=ACCENT_DIM, padding=(1, 2))
@@ -378,7 +372,7 @@ def build_card_views(result: object, width: int = 80) -> list[CardGroup]:
                 CardGroup(
                     label=label,
                     artifact_id=artifact.graph_id,
-                    views=[ViewItem(kind=VIEW_KIND_GRAPH, renderable=_build_graph_card(artifact.graph_spec))],
+                    views=[ViewItem(kind=VIEW_KIND_GRAPH, renderable=_build_graph_card())],
                 )
             )
             continue
@@ -391,7 +385,7 @@ def build_card_views(result: object, width: int = 80) -> list[CardGroup]:
             views.append(
                 ViewItem(
                     kind=VIEW_KIND_GRAPH,
-                    renderable=_build_graph_card({}),
+                    renderable=_build_graph_card(),
                 )
             )
         if chart_spec is not None and record.df is not None:
@@ -431,7 +425,7 @@ def build_card_views(result: object, width: int = 80) -> list[CardGroup]:
         if isinstance(artifact, ChatResultMap):
             artifact.sources = {}
         elif isinstance(artifact, ChatResultGraph):
-            artifact.sources = {}
+            pass
         else:
             artifact.df = None
 
