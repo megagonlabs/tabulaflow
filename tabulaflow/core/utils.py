@@ -4,6 +4,7 @@ import numbers
 import re
 import statistics
 from collections.abc import Mapping, Sequence
+from decimal import Decimal
 from pathlib import Path
 from typing import Literal, Any, Coroutine
 
@@ -18,15 +19,26 @@ from tqdm.asyncio import tqdm_asyncio
 from tabulaflow.core.types import NumericOrNull, SQLColumnSchema
 
 
+def _is_missing_scalar(value: object) -> bool:
+    try:
+        return bool(pd.isna(value))
+    except (TypeError, ValueError):
+        return False
+
+
 def json_ready(value: object) -> object:
-    """Convert nested Python values into strict JSON-compatible data."""
-    if value is None or isinstance(value, str | bool):
+    """Convert data-shaped Python values into strict JSON-compatible data."""
+    if value is None or _is_missing_scalar(value):
+        return None
+    if isinstance(value, str | bool):
         return value
     if isinstance(value, numbers.Integral):
         return int(value)
     if isinstance(value, numbers.Real):
         numeric = float(value)
         return numeric if math.isfinite(numeric) else None
+    if isinstance(value, Decimal):
+        return str(value) if value.is_finite() else None
     if isinstance(value, Mapping):
         return {str(key): json_ready(item) for key, item in value.items()}
     if isinstance(value, Sequence) and not isinstance(value, (str, bytes, bytearray)):
