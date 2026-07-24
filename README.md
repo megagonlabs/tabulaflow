@@ -1,20 +1,31 @@
 # tabulaflow
 
-## Installation (for developers)
+## Quick Start
 
 ```bash
 git clone git@github.com:megagon-internal/tabulaflow.git
 cd tabulaflow
-uv venv
-make sync
+uv tool install --editable .
 ```
 
-## Quick Start
-
+Then run tabulaflow from the project you want it to work on, like Claude Code:
 
 ```bash
+cd /path/to/your/project
 export OPENAI_API_KEY=sk-...
-uv run tabulaflow
+tabulaflow
+```
+
+tabulaflow uses the launch directory as its project directory, so local file
+paths and shell commands resolve relative to `/path/to/your/project` in the
+example above.
+
+For development on tabulaflow itself, sync the repo environment and use the
+developer commands below:
+
+```bash
+cd /path/to/tabulaflow
+make sync
 ```
 
 

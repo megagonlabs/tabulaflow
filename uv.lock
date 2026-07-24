@@ -5151,7 +5151,7 @@ requires-dist = [
     { name = "httpx", specifier = ">=0.28.1" },
     { name = "jinja2", specifier = ">=3.1.6" },
     { name = "langfuse", specifier = ">=3.0.1" },
-    { name = "litellm", specifier = ">=1.82.0" },
+    { name = "litellm", specifier = ">=1.82.0,<1.83.0" },
     { name = "logfire", specifier = ">=3.16.0" },
     { name = "markdown-it-py", specifier = ">=4.0.0" },
     { name = "matplotlib", marker = "extra == 'plot'" },
