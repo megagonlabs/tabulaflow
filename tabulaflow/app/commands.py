@@ -102,7 +102,11 @@ def _alias_from_url(url: str) -> str:
 
 async def handle_command(text: str, session: SessionState) -> CommandResult:
     """Dispatch a slash command. Returns a CommandResult."""
-    parts = shlex.split(text)
+    try:
+        parts = shlex.split(text)
+    except ValueError as e:
+        return CommandResult(output=Text.from_markup(f"[{ERROR}]Invalid command syntax:[/] {e}"))
+
     cmd = parts[0].lower()
     args = parts[1:]
 
