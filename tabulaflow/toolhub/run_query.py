@@ -112,6 +112,8 @@ class RunQueryTool:
 
         Returning large result sets is safe — the display is automatically truncated,
         and full execution results are always recorded.
+        Neo4j/Cypher results returning native nodes, relationships, or paths
+        automatically show a Graph view when cited.
 
         Procedural / anonymous blocks (e.g. ``DECLARE … BEGIN … END``,
         ``EXECUTE IMMEDIATE``) are supported for SQL dialects.
@@ -141,6 +143,8 @@ class RunQueryTool:
 
         Returning large result sets is safe — the display is automatically truncated,
         and full execution results are always recorded.
+        Neo4j/Cypher results returning native nodes, relationships, or paths
+        automatically show a Graph view when cited.
 
         Procedural / anonymous blocks (e.g. ``DECLARE … BEGIN … END``,
         ``EXECUTE IMMEDIATE``) are supported for SQL dialects.
@@ -165,6 +169,8 @@ class RunQueryTool:
 
         Returning large result sets is safe — the display is automatically truncated,
         and full execution results are always recorded.
+        Neo4j/Cypher results returning native nodes, relationships, or paths
+        automatically show a Graph view when cited.
 
         Procedural / anonymous blocks (e.g. ``DECLARE … BEGIN … END``,
         ``EXECUTE IMMEDIATE``) are supported for SQL dialects.
@@ -184,6 +190,8 @@ class RunQueryTool:
 
         Returning large result sets is safe — the display is automatically truncated,
         and full execution results are always recorded.
+        Neo4j/Cypher results returning native nodes, relationships, or paths
+        automatically show a Graph view when cited.
 
         Procedural / anonymous blocks (e.g. ``DECLARE … BEGIN … END``,
         ``EXECUTE IMMEDIATE``) are supported for SQL dialects.
