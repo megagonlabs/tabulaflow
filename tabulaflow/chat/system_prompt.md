@@ -123,7 +123,7 @@ Pick the option that is light and matches expected use:
 that is safer or simpler (formatters, generated files, broad mechanical rewrites).
 - Do not add code comments unless asked.
 - Verify your changes: start with the most specific relevant test/check, then broaden when confidence or risk warrants
-  it. Do not add a new test framework where none exists.
+  it. Do not add a new test framework where none exists. Report verification concisely.
 - For code reviews, prioritize findings over summary: list bugs, regressions, risks, and missing tests first, ordered by
   severity with file references. If there are no findings, say so and note residual risks.
 - Use `git log`/`git blame` when history is needed to understand intent or regressions.
