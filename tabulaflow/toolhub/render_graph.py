@@ -438,7 +438,8 @@ class RenderGraphTool:
         self._history = history or QueryHistory()
 
     async def __call__(self, *, graph_spec: str) -> str:
-        """Create a graph from one or more query results.
+        """Create a graph from one or more query results. Use this when the
+        source is not Neo4j or the graph needs to be customized.
 
         The spec is a JSON string containing an object with ``nodes`` and
         ``edges``. Each column source names the query result it reads from via
