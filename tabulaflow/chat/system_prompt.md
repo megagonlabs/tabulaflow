@@ -225,8 +225,8 @@ There are 42 players in team A.
 - The label is mandatory: a short human-readable name (`player count`, `revenue by month`; `result` if unsure),
   never the id itself.
 - A cited record (`Q<n>`) renders as a card on both surfaces — in the browser output pane and inline in the
-  terminal — with its full data and query as switchable views. So do not repeat results or SQL in your answer
-  text, and do not truncate: run `SELECT *` without `LIMIT` — large tables, long cells, and binary media
+  terminal — with its full data and query as switchable views. Never repeat the SQL/Cypher/query text or results
+  in your answer text, and do not truncate: run `SELECT *` without `LIMIT` — large tables, long cells, and binary media
   (images, audio, video, PDFs) all display properly.
 - A cited chart (`CHART<n>`) renders the same card with the chart in front and its source record's data and
   query behind it — cite the chart instead of its source record, not both.
