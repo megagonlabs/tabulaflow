@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import math
 from pathlib import Path
 from types import SimpleNamespace
 from typing import cast
@@ -15,6 +16,11 @@ from tabulaflow.toolhub.render_graph import materialize_graph_view, normalize_gr
 
 def _load_card_data(card: PaneCard, pane_dir: Path) -> CardData:
     return cast(CardData, json.loads((pane_dir / f"{card['id']}.data.json").read_text()))
+
+
+def _load_card_data_strict(card: PaneCard, pane_dir: Path) -> CardData:
+    text = (pane_dir / f"{card['id']}.data.json").read_text()
+    return cast(CardData, json.loads(text, parse_constant=lambda token: (_ for _ in ()).throw(ValueError(token))))
 
 
 def _assert_columns(value: object) -> None:
@@ -188,3 +194,35 @@ def test_graph_card_omits_directed_flag_for_undirected_edges(tmp_path: Path) -> 
     edge_data = data["graph"]["elements"]["edges"][0]["data"]
     assert isinstance(edge_data, dict)
     assert "directed" not in edge_data
+
+
+def test_graph_card_writes_strict_json_for_non_finite_values(tmp_path: Path) -> None:
+    graph = GraphView(
+        nodes=[
+            {"id": "director", "label": "Director", "group": "Director", "properties": {"rating": math.nan}},
+            {"id": "movie", "label": "Movie", "group": "Movie", "properties": {"score": math.inf}},
+        ],
+        edges=[
+            {
+                "source": "director",
+                "target": "movie",
+                "label": "DIRECTED",
+                "properties": {"imdb_rating": math.nan},
+            }
+        ],
+    )
+    card = render_graph_data(
+        SimpleNamespace(graph_id="GRAPH1", label="graph", graph=graph, layout="force"),
+        tmp_path,
+    )
+
+    assert card is not None
+    text = (tmp_path / f"{card['id']}.data.json").read_text()
+    assert "NaN" not in text
+    assert "Infinity" not in text
+    data = _load_card_data_strict(card, tmp_path)
+    nodes = data["graph"]["elements"]["nodes"]
+    edges = data["graph"]["elements"]["edges"]
+    assert nodes[0]["data"]["properties"]["rating"] is None
+    assert nodes[1]["data"]["properties"]["score"] is None
+    assert edges[0]["data"]["properties"]["imdb_rating"] is None

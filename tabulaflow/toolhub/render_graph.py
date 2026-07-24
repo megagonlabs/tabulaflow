@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import copy
 import json
+import numbers
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any, ClassVar, Literal
@@ -13,6 +14,7 @@ from pydantic import BaseModel, ConfigDict, ValidationError, model_validator
 from pydantic_ai import Tool
 
 from tabulaflow.core.types import GraphView
+from tabulaflow.core.utils import json_ready
 from tabulaflow.toolhub.query_history import QueryHistory
 from tabulaflow.toolhub.render_map import resolve_column
 
@@ -290,8 +292,8 @@ def _node_id(value: object) -> str | None:
 
 
 def _safe_graph_property(value: object, *, depth: int = 0) -> object:
-    if value is None or isinstance(value, str | int | float | bool):
-        return value
+    if value is None or isinstance(value, (str, bool, numbers.Integral, numbers.Real)):
+        return json_ready(value)
     if depth >= 4:
         return str(value)
     if isinstance(value, Mapping):

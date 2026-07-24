@@ -1,6 +1,10 @@
 import json
+import math
+import numbers
 import re
 import statistics
+from collections.abc import Mapping, Sequence
+from pathlib import Path
 from typing import Literal, Any, Coroutine
 
 import pandas as pd
@@ -12,6 +16,32 @@ from sqlglot.optimizer.scope import build_scope, Scope
 from tqdm.asyncio import tqdm_asyncio
 
 from tabulaflow.core.types import NumericOrNull, SQLColumnSchema
+
+
+def json_ready(value: object) -> object:
+    """Convert nested Python values into strict JSON-compatible data."""
+    if value is None or isinstance(value, str | bool):
+        return value
+    if isinstance(value, numbers.Integral):
+        return int(value)
+    if isinstance(value, numbers.Real):
+        numeric = float(value)
+        return numeric if math.isfinite(numeric) else None
+    if isinstance(value, Mapping):
+        return {str(key): json_ready(item) for key, item in value.items()}
+    if isinstance(value, Sequence) and not isinstance(value, (str, bytes, bytearray)):
+        return [json_ready(item) for item in value]
+    return value
+
+
+def dumps_strict_json(data: object) -> str:
+    """Serialize as standards-compliant JSON, never emitting NaN or Infinity."""
+    return json.dumps(json_ready(data), ensure_ascii=False, default=str, allow_nan=False)
+
+
+def write_strict_json(path: Path, data: object) -> None:
+    """Write standards-compliant JSON to disk."""
+    path.write_text(dumps_strict_json(data), encoding="utf-8")
 
 
 def extract_code(response: str) -> str:

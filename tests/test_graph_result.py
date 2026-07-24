@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import date
+import math
 
 import pandas as pd
 from neo4j.graph import Graph, Node, Path, Relationship
@@ -98,6 +99,24 @@ def test_extracts_node_only_results() -> None:
     assert result is not None
     assert result.nodes[0].id == "alice-id"
     assert result.edges == []
+
+
+def test_extracts_non_finite_graph_properties_as_null() -> None:
+    graph = Graph()
+    movie = Node(graph, "movie-id", 1, ["Movie"], {"title": "Movie", "imdb_rating": math.nan})
+    actor = Node(graph, "actor-id", 2, ["Person"], {"name": "Actor", "score": math.inf})
+    rel_cls = graph.relationship_type("ACTED_IN")
+    rel = rel_cls(graph, "rel-id", 3, {"confidence": math.nan})
+    rel._start_node = actor
+    rel._end_node = movie
+
+    result = _extract_neo4j_graph_result(pd.DataFrame({"node": [movie], "relationship": [rel]}))
+
+    assert result is not None
+    by_id = {node.id: node for node in result.nodes}
+    assert by_id["movie-id"].properties["imdb_rating"] is None
+    assert by_id["actor-id"].properties["score"] is None
+    assert result.edges[0].properties["confidence"] is None
 
 
 def test_returns_none_without_graph_objects() -> None:

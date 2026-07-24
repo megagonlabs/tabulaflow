@@ -1,4 +1,5 @@
 import logging
+import numbers
 import os
 import re
 import time
@@ -21,6 +22,7 @@ from tabulaflow.core.types import (
     RelationshipEndpoint,
     RelationshipSchema,
 )
+from tabulaflow.core.utils import json_ready
 
 logger = logging.getLogger(__name__)
 
@@ -58,12 +60,12 @@ _GRAPH_RESULT_MAX_EDGES = 700
 
 
 def _safe_scalar(value: object) -> bool:
-    return value is None or isinstance(value, str | int | float | bool)
+    return value is None or isinstance(value, (str, bool, numbers.Integral, numbers.Real))
 
 
 def _graph_property_value(value: object, *, depth: int = 0) -> object:
     if _safe_scalar(value):
-        return value
+        return json_ready(value)
     if depth >= 4:
         return str(value)
     if isinstance(value, Mapping):

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 import secrets
 from pathlib import Path
 from typing import TYPE_CHECKING, Protocol
@@ -19,6 +18,7 @@ from tabulaflow.app.pane.graphs import build_graph_result_data
 from tabulaflow.app.pane.maps import build_map_data
 from tabulaflow.app.pane.tables import PANE_TABLE_MAX_HEIGHT, _build_table_data
 from tabulaflow.app.theme import CODE_TEXT, TabulaflowPygmentsStyle, normalize_query_lexer
+from tabulaflow.core.utils import write_strict_json
 
 if TYPE_CHECKING:
     import pandas as pd
@@ -113,10 +113,7 @@ def render_record_data(record: ResultRecordLike, pane_dir: Path) -> PaneCard | N
     if not views:
         return None
     pane_dir.mkdir(parents=True, exist_ok=True)
-    (pane_dir / f"{card_id}.data.json").write_text(
-        json.dumps(record_data, ensure_ascii=False, default=str),
-        encoding="utf-8",
-    )
+    write_strict_json(pane_dir / f"{card_id}.data.json", record_data)
     return card_payload(card_id=card_id, label=record.label, views=views)
 
 
@@ -149,10 +146,7 @@ def render_map_data(map_record: MapArtifactLike, pane_dir: Path) -> PaneCard | N
     if map_data is None:
         return None
     pane_dir.mkdir(parents=True, exist_ok=True)
-    (pane_dir / f"{card_id}.data.json").write_text(
-        json.dumps(map_data, ensure_ascii=False, default=str),
-        encoding="utf-8",
-    )
+    write_strict_json(pane_dir / f"{card_id}.data.json", map_data)
     return card_payload(card_id=card_id, label=map_record.label, views=["map"])
 
 
@@ -164,8 +158,5 @@ def render_graph_data(graph_record: GraphArtifactLike, pane_dir: Path) -> PaneCa
         return None
     graph_data["graph"]["layout"] = graph_record.layout if graph_record.layout in {"force", "layered", "tree"} else "force"
     pane_dir.mkdir(parents=True, exist_ok=True)
-    (pane_dir / f"{card_id}.data.json").write_text(
-        json.dumps(graph_data, ensure_ascii=False, default=str),
-        encoding="utf-8",
-    )
+    write_strict_json(pane_dir / f"{card_id}.data.json", graph_data)
     return card_payload(card_id=card_id, label=graph_record.label, views=["graph"])

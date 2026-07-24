@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import math
 from collections.abc import Mapping
 from typing import Any
 
@@ -11,7 +12,13 @@ import pytest
 
 from tabulaflow.core.types import ExecResult, PredQuery
 from tabulaflow.toolhub.query_history import QueryHistory
-from tabulaflow.toolhub.render_graph import GRAPH_MAX_NODES, RenderGraphTool, graph_size, normalize_graph_spec
+from tabulaflow.toolhub.render_graph import (
+    GRAPH_MAX_NODES,
+    RenderGraphTool,
+    graph_size,
+    materialize_graph_view,
+    normalize_graph_spec,
+)
 
 
 async def _history_with(*dfs: pd.DataFrame) -> QueryHistory:
@@ -166,6 +173,31 @@ class TestNormalizeGraphSpec:
     def test_subgraph_mode_is_not_supported(self) -> None:
         with pytest.raises(ValueError, match="subgraph"):
             _norm({"subgraph": [{"record_id": "Q1"}]})
+
+    def test_materialized_graph_properties_use_json_null_for_non_finite_values(self) -> None:
+        df = pd.DataFrame(
+            {
+                "src": ["director"],
+                "dst": ["movie"],
+                "src_rating": [math.nan],
+                "edge_rating": [math.inf],
+            }
+        )
+        spec = _norm(
+            {
+                "nodes": [
+                    {"record_id": "Q1", "id": "src", "tooltip": "src_rating"},
+                    {"record_id": "Q1", "id": "dst"},
+                ],
+                "edges": [{"record_id": "Q1", "source": "src", "target": "dst", "tooltip": "edge_rating"}],
+            },
+            Q1=df,
+        )
+
+        graph = materialize_graph_view(spec, {"Q1": df})
+
+        assert graph.nodes[0].properties["src_rating"] is None
+        assert graph.edges[0].properties["edge_rating"] is None
 
 
 class TestRenderGraphTool:
