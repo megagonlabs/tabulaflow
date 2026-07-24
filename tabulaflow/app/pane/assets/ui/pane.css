@@ -207,7 +207,7 @@ body { margin: 0; background: var(--bg); color: var(--text); display: flex; flex
                         font: 0.9em/1.5 ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
 .message-body.md pre { max-width: 100%; margin: 0.8em 0; padding: 12px 14px; box-sizing: border-box;
                        overflow-x: auto; border: 1px solid var(--border); border-radius: 7px;
-                       background: var(--card); white-space: pre; overflow-wrap: normal; }
+                       background: var(--card); white-space: pre; overflow-wrap: normal; line-height: 1.5; }
 .message-body.md pre code { padding: 0; border-radius: 0; background: transparent; color: inherit; }
 .message-body.md .code-card { margin: 0.85em 0; }
 .message-body.md table { display: block; max-width: 100%; margin: 0.8em 0; overflow-x: auto;
@@ -649,4 +649,5 @@ body { margin: 0; background: var(--bg); color: var(--text); display: flex; flex
 .code-card .highlight { margin: 0; background: var(--query-bg) !important; }
 .code-card .highlight pre { margin: 0; padding: 18px 20px 20px; border: 0; border-radius: 0;
                              white-space: pre-wrap; word-break: break-word; overflow-x: auto;
-                             background: var(--query-bg) !important; font: 13px/1.6 ui-monospace, SFMono-Regular, Menlo, monospace; }
+                             background: var(--query-bg) !important; font: 13px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
+                             line-height: 1.5 !important; }
