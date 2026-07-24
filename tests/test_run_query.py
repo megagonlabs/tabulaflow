@@ -5,7 +5,9 @@ import tempfile
 import sqlalchemy
 import os
 from typing import AsyncGenerator, Any
+import pandas as pd
 from tabulaflow.toolhub.run_query import RunQueryTool, LLMParameter, _format_latency
+from tabulaflow.core.types import ExecResult, GraphView
 from tabulaflow.core.db_connector.sql_conn import SQLConnector, _contains_ddl_statement, _contains_write_statement
 from sqlalchemy.ext.asyncio import create_async_engine
 
@@ -73,6 +75,17 @@ async def test_run_query_reports_latency(db_connector: SQLConnector) -> None:
     tool = RunQueryTool(db_connector, enable_params=True, timeout=10)
     result: str = await tool("SELECT * FROM users ORDER BY id")
     assert "(latency:" in result
+
+
+def test_format_exec_result_reports_graph_view(db_connector: SQLConnector) -> None:
+    tool = RunQueryTool(db_connector, enable_params=True, timeout=10)
+    result = tool._format_exec_result(
+        ExecResult(
+            df=pd.DataFrame({"p": ["path"]}),
+            graph=GraphView(nodes=[{"id": "a"}, {"id": "b"}], edges=[{"source": "a", "target": "b"}]),
+        )
+    )
+    assert "(Graph view: 2 nodes, 1 edge)" in result
 
 
 @pytest.mark.asyncio

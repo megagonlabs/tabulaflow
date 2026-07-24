@@ -3,7 +3,7 @@ import pandas as pd
 from pydantic_ai import Tool
 from pydantic import BaseModel, Field
 from tabulaflow.core.db_connector import NL2QDBConnector
-from tabulaflow.core.types import PredQuery
+from tabulaflow.core.types import ExecResult, GraphView, PredQuery
 from tabulaflow.core.utils import format_df
 from tabulaflow.toolhub.engines.sql import format_sqlalchemy_error_msg
 from tabulaflow.core.config import tabulaflow_config
@@ -38,6 +38,14 @@ def _detect_result_hints(df: pd.DataFrame) -> list[str]:
         )
 
     return hints
+
+
+def _format_graph_view(graph: GraphView | None) -> str:
+    if graph is None:
+        return ""
+    node_word = "node" if len(graph.nodes) == 1 else "nodes"
+    edge_word = "edge" if len(graph.edges) == 1 else "edges"
+    return f"\n(Graph view: {len(graph.nodes):,} {node_word}, {len(graph.edges):,} {edge_word})"
 
 
 class RunQueryToolMetrics(BaseModel):
@@ -228,7 +236,7 @@ class RunQueryTool:
             if self._disconnect_on_finish:
                 await self.db_connector.disconnect_async()
 
-    def _format_exec_result(self, exec_result: Any) -> str:
+    def _format_exec_result(self, exec_result: ExecResult) -> str:
         if exec_result.error is not None:
             if exec_result.error.exc_type == "ReadOnlyViolationError":
                 self._metrics.error_read_only_violation += 1
@@ -244,6 +252,7 @@ class RunQueryTool:
         # line (omitted when the connector recorded none, e.g. older cached results).
         lat = _format_latency(exec_result.latency_seconds)
         lat_line = f"\n(latency: {lat})" if lat else ""
+        graph_line = _format_graph_view(exec_result.graph)
 
         if exec_result.df is None:
             # A successful non-row-returning statement (DDL/DML). For DML the
@@ -251,19 +260,19 @@ class RunQueryTool:
             # (0 rows) is visible rather than reading as a plain success.
             affected = exec_result.affected_rows
             if affected is None:
-                return f"(statement executed successfully){lat_line}"
+                return f"(statement executed successfully){lat_line}{graph_line}"
             if affected == 0:
-                return f"(statement executed successfully, but 0 rows were affected — check the WHERE clause){lat_line}"
-            return f"(statement executed successfully, {affected} row{'s' if affected != 1 else ''} affected){lat_line}"
+                return f"(statement executed successfully, but 0 rows were affected — check the WHERE clause){lat_line}{graph_line}"
+            return f"(statement executed successfully, {affected} row{'s' if affected != 1 else ''} affected){lat_line}{graph_line}"
 
         df = exec_result.df
         if df.empty:
-            return f"(query executed successfully, but results are empty){lat_line}"
+            return f"(query executed successfully, but results are empty){lat_line}{graph_line}"
 
         res = format_df(
             df, max_visible_rows=self.max_visible_rows, max_cell_width=self.max_cell_width, floatfmt=self.floatfmt
         )
-        res += f"\n({len(df)} rows){lat_line}"
+        res += f"\n({len(df)} rows){lat_line}{graph_line}"
         res += f"\n\n(disaplay configuration: max_visible_rows={self.max_visible_rows}, max_cell_width={self.max_cell_width}, floatfmt='{self.floatfmt}'. Full execution results have been recorded.)"
 
         for hint in _detect_result_hints(df):
