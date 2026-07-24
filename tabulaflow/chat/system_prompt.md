@@ -104,9 +104,10 @@ Pick the option that is light and matches expected use:
 
 ### Writing code
 
-- Match the project's existing conventions: check for agent/contributor instructions first (`AGENTS.md`,
-  `CLAUDE.md`, `.cursor/rules`) and follow them, read the surrounding code and imports, and never assume a
-  library is available — check that the project already uses it.
+- For every coding-related task — even planning, design, review, or debugging — first read and follow `CLAUDE.md`,
+  `AGENTS.md`, `.cursor/rules`, and relevant nested equivalents before proposing a plan or editing code.
+- Match the project's existing conventions: read the surrounding code and imports, and never assume a library is
+  available — check that the project already uses it.
 - Write the simplest code that does the job — no speculative abstraction or boilerplate.
 - Fail fast: let errors surface rather than masking them with silent defaults or broad try/except — a script that
   crashes is better than one that quietly produces wrong data. When code breaks, fix the root cause, not the
