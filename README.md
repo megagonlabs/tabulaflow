@@ -496,7 +496,17 @@ July 23
   - [x] Fix tool outcome display racing
   - [x] Fix tool error outcome display - standardize to "(error: ...)"
 - [x] Mermaid rendering? flowchart support? -> defered
+- [x] Fix `git diff` hung bug
+- [x] Graph rendering - auto-detect Cypher graph
+- [x] Fix JSON serialization bug
+- [x] Fix commands.py crash
+- [x] Tune prompt - "report verification concisely"
+- [x] Tune prompt - coding instructions from codex
 
+- [ ] Context compaction
+- Multimodal
+  - [ ] Pasting images
+  - [ ] Media in tables
 - [ ] Line number for TUI code block? sublime theme?
 - [ ] Include Cypher
 - [ ] code diff rendering
@@ -519,8 +529,7 @@ July 23
   - [ ] Do not auto-scroll when browsing old turns
   - [ ] Onboarding - browser install
 
-- [ ] Image rendering in output pane
-- [ ] Improve output pane UI - new turn loading, session ID, ...
+- [x] Image rendering in output pane -> defered
 - [ ] web_fetch tool for static html
 - [ ] Bump pydantic-ai to 2.0 and type llm.py
 
