@@ -199,6 +199,8 @@ class AmbigPointStats:
         for match in matches:
             if match.pred_id is None:
                 continue
+            if any(match.gold_id == gold_id for gold_id, _ in res):
+                continue
             if any(match.pred_id == pred_id for _, pred_id in res):
                 continue
             res.append((match.gold_id, match.pred_id))
