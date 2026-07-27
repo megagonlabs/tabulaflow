@@ -104,7 +104,7 @@ class DirectPrompting:
 
         agent = make_agent(self.config.llm, instructions=system_prompt, model_settings=self.config.to_model_settings())
         result = await agent.run(format_question(task))
-        usage = Usage.from_pydantic_ai_usage(result.usage(), self.config.llm)
+        usage = Usage.from_pydantic_ai_usage(result.usage, self.config.llm)
         trajectory = Trajectory.from_pydantic_ai_messages(result.all_messages(), id="TRJY-GEN-QUERY")
         pred_query = PredQuery(query=extract_code(result.output))
 

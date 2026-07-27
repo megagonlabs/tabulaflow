@@ -207,7 +207,7 @@ class SchemaLinker:
         )
         result = await agent.run(format_question(task))
         pred_query: PredQuery = tools["run_query"].last_pred_query()  # type: ignore
-        ctx.usage += Usage.from_pydantic_ai_usage(result.usage(), self.config.llm)
+        ctx.usage += Usage.from_pydantic_ai_usage(result.usage, self.config.llm)
         trajectory = Trajectory.from_pydantic_ai_messages(result.all_messages(), id="TRJY-SCHEMA-LINK-SQL")
         ctx.trajectories.append(trajectory)
         return pred_query
@@ -239,7 +239,7 @@ class SchemaLinker:
                 document=task.document,
             )
             result = await agent.run(prompt)
-            ctx.usage += Usage.from_pydantic_ai_usage(result.usage(), self.config.llm)
+            ctx.usage += Usage.from_pydantic_ai_usage(result.usage, self.config.llm)
             ctx.trajectories.append(
                 Trajectory.from_pydantic_ai_messages(result.all_messages(), id=f"TRJY-EXPAND-SCHEMA-{batch_idx}")
             )
@@ -351,7 +351,7 @@ class Postprocessor:
         )
         result = await agent.run(prompt)
         revised_pred_query = extract_code(result.output)
-        ctx.usage += Usage.from_pydantic_ai_usage(result.usage(), self.config.llm)
+        ctx.usage += Usage.from_pydantic_ai_usage(result.usage, self.config.llm)
         ctx.trajectories.append(Trajectory.from_pydantic_ai_messages(result.all_messages(), id="TRJY-POSTPROCESS"))
 
         if pred_query.exec_result is None:
@@ -515,7 +515,7 @@ class SQLAgent:
         )
         result = await agent.run(format_question(task))
         raw_pred_query: PredQuery = tools["run_query"].last_pred_query()  # type: ignore
-        ctx.usage += Usage.from_pydantic_ai_usage(result.usage(), self.config.llm)
+        ctx.usage += Usage.from_pydantic_ai_usage(result.usage, self.config.llm)
         trajectory = Trajectory.from_pydantic_ai_messages(result.all_messages(), id="TRJY-GEN-SQL")
         ctx.trajectories.append(trajectory)
 

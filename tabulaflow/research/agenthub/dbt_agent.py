@@ -194,7 +194,7 @@ class DbtAgent:
         result = await agent.run(
             f"Complete the dbt project by writing the missing SQL model files and running `dbt run` successfully:\n{task.question}"
         )
-        usage = Usage.from_pydantic_ai_usage(result.usage(), self.config.llm)
+        usage = Usage.from_pydantic_ai_usage(result.usage, self.config.llm)
         trajectory = Trajectory.from_pydantic_ai_messages(result.all_messages(), id="TRJY-DBT-AGENT")
 
         pred_db_path = _find_duckdb_file(task.working_dir)

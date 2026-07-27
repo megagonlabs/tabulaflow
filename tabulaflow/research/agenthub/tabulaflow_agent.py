@@ -138,7 +138,7 @@ class TabulaflowAgent:
         )
         result = await agent.run(format_question(task))
         pred_query: PredQuery = tools["run_query"].last_pred_query()  # type: ignore
-        usage = Usage.from_pydantic_ai_usage(result.usage(), self.config.llm)
+        usage = Usage.from_pydantic_ai_usage(result.usage, self.config.llm)
         trajectory = Trajectory.from_pydantic_ai_messages(result.all_messages(), id="TRJY-GEN-SQL")
 
         metrics = {}

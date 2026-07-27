@@ -202,7 +202,7 @@ class LLMErrorClassifier:
             model_settings=make_model_settings(model=self.llm, reasoning_effort="medium"),
         )
         result = await agent.run(prompt)
-        self._usage += Usage.from_pydantic_ai_usage(result.usage(), self.llm)
+        self._usage += Usage.from_pydantic_ai_usage(result.usage, self.llm)
         return list(set(result.output))
 
     async def classify_async(self, result: NL2QRunResult) -> list[ErrorCategory]:

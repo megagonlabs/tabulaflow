@@ -94,7 +94,7 @@ class QuestionEmbedder(CachedPreprocessorMixin[tuple[npt.NDArray[Any], QuestionE
         user_prompt = jinja2.Template(PREPROCESSING_USER_PROMPT).render(question=question)
         agent = make_agent(self.preprocessing_llm, output_type=str, instructions=system_prompt)
         result = await agent.run(user_prompt)
-        self._usage += Usage.from_pydantic_ai_usage(result.usage(), self.preprocessing_llm)
+        self._usage += Usage.from_pydantic_ai_usage(result.usage, self.preprocessing_llm)
         return result.output
 
     async def embed_task_async(self, task: NL2QTask) -> tuple[npt.NDArray[Any], QuestionSkeleton]:

@@ -178,7 +178,7 @@ class UserSimulator:
             ],
             message_history=self._message_history if self.config.include_history else None,
         )
-        self._usage += Usage.from_pydantic_ai_usage(result.usage(), self.config.llm)
+        self._usage += Usage.from_pydantic_ai_usage(result.usage, self.config.llm)
         self._message_history += result.new_messages()
         if not result.output:
             return []
@@ -217,7 +217,7 @@ class UserSimulator:
             result = await answer_agent.run(question_str)
             self._user_effort += self._compute_user_effort(question_str, result.output)
 
-            self._usage += Usage.from_pydantic_ai_usage(result.usage(), self.config.llm)
+            self._usage += Usage.from_pydantic_ai_usage(result.usage, self.config.llm)
             self._message_history += result.new_messages()[1:]
         return result.output
 

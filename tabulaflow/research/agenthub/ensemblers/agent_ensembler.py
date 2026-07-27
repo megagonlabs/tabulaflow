@@ -277,7 +277,7 @@ class AgentEnsembler:
         )
 
         result = await agent.run(user_prompt)
-        usage = Usage.from_pydantic_ai_usage(result.usage(), self.config.llm)
+        usage = Usage.from_pydantic_ai_usage(result.usage, self.config.llm)
         trajectory = Trajectory.from_pydantic_ai_messages(result.all_messages(), id="TRJY-ENSEMBLE")
 
         chosen = result.output

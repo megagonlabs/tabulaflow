@@ -200,7 +200,7 @@ class DbtLLMEnsembler:
             model_settings=self.config.to_model_settings(),
         )
         result = await agent.run(user_prompt)
-        usage = Usage.from_pydantic_ai_usage(result.usage(), self.config.llm)
+        usage = Usage.from_pydantic_ai_usage(result.usage, self.config.llm)
         trajectory = Trajectory.from_pydantic_ai_messages(result.all_messages(), id="TRJY-DBT-ENSEMBLE")
 
         best_output = candidates[result.output]

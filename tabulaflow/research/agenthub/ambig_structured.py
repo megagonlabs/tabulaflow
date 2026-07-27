@@ -199,7 +199,7 @@ class AmbigStructuredSQLAgent:
 
         result = await disamb_agent.run(prompt)
         ctx.trajectories.append(Trajectory.from_pydantic_ai_messages(result.all_messages(), id="TRJY-DISAMB"))
-        ctx.usage += Usage.from_pydantic_ai_usage(result.usage(), self.config.llm)
+        ctx.usage += Usage.from_pydantic_ai_usage(result.usage, self.config.llm)
 
         res: list[PredAmbiguityPoint] = []
         for ap in result.output.finite_ambiguity_points:
@@ -247,7 +247,7 @@ class AmbigStructuredSQLAgent:
         ctx.trajectories.append(
             Trajectory.from_pydantic_ai_messages(result.all_messages(), id=f"TRJY-GEN-SQL-{query_id}")
         )
-        ctx.usage += Usage.from_pydantic_ai_usage(result.usage(), self.config.llm)
+        ctx.usage += Usage.from_pydantic_ai_usage(result.usage, self.config.llm)
         return pred_query
 
     def _fix_pred_queries(self, pred_queries: list[PredQuery], ambiguity_points: list[PredAmbiguityPoint]) -> None:

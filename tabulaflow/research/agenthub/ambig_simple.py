@@ -121,7 +121,7 @@ class AmbigSimpleSQLAgent:
             **task.model_dump(),
             pred_intended_query=pred_query,
             trajectory=[trajectory, user_simulator.trajectory()],
-            usage=Usage.from_pydantic_ai_usage(result.usage(), self.config.llm),
+            usage=Usage.from_pydantic_ai_usage(result.usage, self.config.llm),
             user_simulator_usage=user_simulator.usage(),
             inference_metrics=metrics,
         )

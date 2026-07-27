@@ -115,5 +115,5 @@ class DBSummarizer(CachedPreprocessorMixin[DBSummary]):
             model_settings=model_settings,
         )
         result = await agent.run(truncate_user_prompt(user_prompt))
-        self._usage += Usage.from_pydantic_ai_usage(result.usage(), self.llm)
+        self._usage += Usage.from_pydantic_ai_usage(result.usage, self.llm)
         return result.output

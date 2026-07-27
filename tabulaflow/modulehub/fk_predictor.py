@@ -74,7 +74,7 @@ class ForeignKeyPredictor:
         )
         user_prompt = format_user_prompt(table_ref)
         result = await agent.run(user_prompt)
-        self._usage += Usage.from_pydantic_ai_usage(result.usage(), self.llm)
+        self._usage += Usage.from_pydantic_ai_usage(result.usage, self.llm)
         return result.output.missing_foreign_keys
 
     async def run_async(self, db_connector: BaseSQLDBConnector, schema: SQLSchema) -> SQLSchema:

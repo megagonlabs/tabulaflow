@@ -150,7 +150,7 @@ class AmbigFlatSQLAgent:
         )
         result = await disamb_interp_agent.run(f"List all interpretations: {ctx.task.question}")
         ctx.trajectories.append(Trajectory.from_pydantic_ai_messages(result.all_messages(), id="TRJY-DISAMB-INTERP"))
-        ctx.usage += Usage.from_pydantic_ai_usage(result.usage(), self.config.llm)
+        ctx.usage += Usage.from_pydantic_ai_usage(result.usage, self.config.llm)
         return result.output.interpretations
 
     async def _disambiguate_parameters_async(self, ctx: TaskRunContext) -> list[PredAmbiguityPointInfinite]:
@@ -175,7 +175,7 @@ class AmbigFlatSQLAgent:
         )
         result = await disamb_param_agent.run(f"List all parameter ambiguity points: {ctx.task.question}")
         ctx.trajectories.append(Trajectory.from_pydantic_ai_messages(result.all_messages(), id="TRJY-DISAMB-PARAM"))
-        ctx.usage += Usage.from_pydantic_ai_usage(result.usage(), self.config.llm)
+        ctx.usage += Usage.from_pydantic_ai_usage(result.usage, self.config.llm)
         return [
             PredAmbiguityPointInfinite(**ap.model_dump(), id=int_to_letter(i))
             for i, ap in enumerate(result.output.parameter_ambiguity_points)
@@ -217,7 +217,7 @@ class AmbigFlatSQLAgent:
         ctx.trajectories.append(
             Trajectory.from_pydantic_ai_messages(result.all_messages(), id=f"TRJY-GEN-SQL-{query_id}")
         )
-        ctx.usage += Usage.from_pydantic_ai_usage(result.usage(), self.config.llm)
+        ctx.usage += Usage.from_pydantic_ai_usage(result.usage, self.config.llm)
         return pred_query
 
     async def _resolve_async(
