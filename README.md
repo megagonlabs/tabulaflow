@@ -517,6 +517,14 @@ July 23
 - [x] Tune prompt - "report verification concisely"
 - [x] Tune prompt - coding instructions from codex
 
+July 29
+- [ ] Shell messed up after ssh disconnect
+- [ ] Check if uv tool install install browser
+
+- [ ] Data provenance
+- [ ] "result" -> "response", Escape go to last viewed response
+- [ ] Fix copy icon checkmark bg
+- [ ] Bell icon when finished
 - [ ] Context compaction
 - Multimodal
   - [ ] Pasting images
