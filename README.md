@@ -6,6 +6,7 @@
 git clone git@github.com:megagon-internal/tabulaflow.git
 cd tabulaflow
 uv tool install --editable .
+uv tool run --from playwright playwright install chromium
 ```
 
 Then run tabulaflow from the project you want it to work on, like Claude Code:
@@ -27,6 +28,8 @@ developer commands below:
 cd /path/to/tabulaflow
 make sync
 ```
+
+`make sync` also installs Playwright's Chromium browser.
 
 
 Paste this after launch to a quick smoke teset:
