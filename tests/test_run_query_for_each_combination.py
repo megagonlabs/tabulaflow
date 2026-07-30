@@ -64,9 +64,7 @@ class TestRunQueryForEachCombination:
             """,
         )
 
-        assert (
-            _text(result)
-            == dedent("""\
+        assert _text(result) == dedent("""\
             QS1 — dimensions: ranking (2) × period (2) = 4 combinations, 4 executed
 
             period=q2;ranking=net (2 rows):
@@ -75,8 +73,25 @@ class TestRunQueryForEachCombination:
             | Acme       |      10 |
             | Globex     |       7 |
 
-            other combinations: period=q3;ranking=net (1 row), period=q2;ranking=gross (2 rows), period=q3;ranking=gross (1 row)""")
+            other combinations:
+              period=q3;ranking=net (1 row)
+              period=q2;ranking=gross (2 rows)
+              period=q3;ranking=gross (1 row)""")
+
+    @pytest.mark.asyncio
+    async def test_notes_combinations_whose_result_repeats(self, registry: DBRegistry) -> None:
+        """Two readings that run different queries but display the same result are called out."""
+        result = await _tool(registry)(
+            "workspace",
+            [QueryDimension(id="threshold", choices=["gt_zero", "ge_one"])],
+            """
+            SELECT customer, SUM(net) AS value FROM orders
+            WHERE {% if threshold == "gt_zero" %} net > 0 {% else %} net >= 1 {% endif %}
+            GROUP BY customer ORDER BY value DESC
+            """,
         )
+
+        assert "threshold=ge_one (2 rows, same result as threshold=gt_zero)" in _text(result)
 
     @pytest.mark.asyncio
     async def test_expands_and_registers_family(self, registry: DBRegistry) -> None:
@@ -134,6 +149,7 @@ class TestRunQueryForEachCombination:
         )
 
         assert "4 combinations, 3 executed (1 identical)" in _text(result)
+        assert "period=q3;ranking=gross (2 rows, same query as period=q2;ranking=gross)" in _text(result)
         family = history.get_family("QS1")
         assert (
             family.record_ids_by_selection["period=q2;ranking=gross"]

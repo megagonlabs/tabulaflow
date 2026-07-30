@@ -11,6 +11,7 @@ from typing import Annotated, ClassVar, TypeAlias
 
 import jinja2
 import jinja2.meta
+import pandas as pd
 from pydantic import BaseModel, Field
 from pydantic_ai import Tool, ToolReturn
 
@@ -71,19 +72,71 @@ def _format_table(pred_query: PredQuery) -> str:
     return format_df(df, max_visible_rows=_SAMPLE_ROWS)
 
 
+def _result_fingerprint(pred_query: PredQuery) -> tuple[tuple[str, ...], bytes] | None:
+    """Fingerprint of everything a result displays, or ``None`` when unavailable.
+
+    Column headers, row values and row order all count, since each is something the
+    user sees; the pandas index does not, since it is never rendered.
+
+    Unhashable cell types (DuckDB ``LIST`` / ``STRUCT`` / ``MAP`` / ``BLOB``) yield
+    ``None``: the fingerprint only drives a diagnostic note, so dropping it beats
+    stringifying every row to keep it.
+    """
+    df = pred_query.exec_result.df if pred_query.exec_result is not None else None
+    if df is None or df.empty:
+        return None
+    try:
+        digest = pd.util.hash_pandas_object(df, index=False).values.tobytes()
+    except TypeError:
+        return None
+    return tuple(str(column) for column in df.columns), digest
+
+
+def _repetition_notes(by_selection: dict[str, PredQuery]) -> dict[str, str]:
+    """Note, per combination, the earlier combination it repeats.
+
+    ``same query as`` is a render that deduplicated. ``same result as`` is two
+    readings whose queries differ but whose output does not — a choice the user can
+    switch to with no visible effect, which comparing rendered queries cannot catch.
+    """
+    first_by_query: dict[str, str] = {}
+    first_by_result: dict[tuple[tuple[str, ...], bytes], str] = {}
+    notes: dict[str, str] = {}
+    for key, pred_query in by_selection.items():
+        if (earlier := first_by_query.get(pred_query.query)) is not None:
+            notes[key] = f"same query as {earlier}"
+            continue
+        first_by_query[pred_query.query] = key
+        fingerprint = _result_fingerprint(pred_query)
+        if fingerprint is None:
+            continue
+        if (earlier := first_by_result.get(fingerprint)) is not None:
+            notes[key] = f"same result as {earlier}"
+        else:
+            first_by_result[fingerprint] = key
+    return notes
+
+
 def _format_run(family: QueryFamily, by_selection: dict[str, PredQuery]) -> str:
-    """Render the family header, one sampled combination in full, and the other row counts."""
+    """Render the family header, the first combination in full, then the rest as row counts.
+
+    The combination shown in full is the first choice of every dimension — the
+    reading a panel opens on.
+    """
     grid = " × ".join(f"{name} ({len(choices)})" for name, choices in family.dimensions.items())
     executed = len(set(family.record_ids_by_selection.values()))
     total = len(by_selection)
     identical = f" ({total - executed} identical)" if total > executed else ""
     header = f"{family.family_id} — dimensions: {grid} = {total} combinations, {executed} executed{identical}"
 
+    notes = _repetition_notes(by_selection)
     (sample_key, sample), *others = by_selection.items()
     lines = [header, "", f"{sample_key} ({_rows_label(sample)}):", _format_table(sample)]
     if others:
-        counts = ", ".join(f"{key} ({_rows_label(pred_query)})" for key, pred_query in others)
-        lines += ["", f"other combinations: {counts}"]
+        lines += ["", "other combinations:"]
+        for key, pred_query in others:
+            note = f", {notes[key]}" if key in notes else ""
+            lines.append(f"  {key} ({_rows_label(pred_query)}{note})")
     return "\n".join(lines)
 
 
