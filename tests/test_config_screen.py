@@ -27,7 +27,7 @@ _PRESETS = [
     ),
     LLMPreset(
         label="Anthropic balanced",
-        main=LLMRoleConfig(model="anthropic:claude-opus-4-8", reasoning_effort="high"),
+        main=LLMRoleConfig(model="anthropic:claude-opus-5", reasoning_effort="high"),
         subagent=LLMRoleConfig(model="anthropic:claude-sonnet-4-5-20250929", reasoning_effort="high"),
     ),
     LLMPreset(
@@ -101,7 +101,7 @@ async def test_renders_presets() -> None:
         assert "OpenAI budget" in _row_plain(screen, 2)
         assert "GPT 5.4 Mini medium" in _row_plain(screen, 2)
         assert "GPT 5 Mini medium" in _row_plain(screen, 2)
-        assert "Opus 4.8 high" in _row_plain(screen, 3)
+        assert "Opus 5 high" in _row_plain(screen, 3)
         assert "Sonnet 4.5 high" in _row_plain(screen, 3)
         assert "Claude" not in _row_plain(screen, 3)
         assert "20250929" not in _row_plain(screen, 3)
@@ -228,7 +228,7 @@ async def test_multiple_selections_return_only_the_last_choice() -> None:
 async def test_unverified_selected_preset_has_active_dot_without_error() -> None:
     session = _StubSession(
         label="Anthropic balanced",
-        model="anthropic:claude-opus-4-8",
+        model="anthropic:claude-opus-5",
         reasoning_effort="high",
         subagent_model="anthropic:claude-sonnet-4-5-20250929",
         subagent_reasoning_effort="high",

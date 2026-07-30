@@ -113,7 +113,7 @@ _DEFAULT_LLM_PRESETS_DATA = (
     {
         "label": "Anthropic balanced",
         "main": {
-            "model": "anthropic:claude-opus-4-8",
+            "model": "anthropic:claude-opus-5",
             "reasoning_effort": "high",
         },
         "subagent": {
