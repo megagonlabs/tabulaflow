@@ -130,7 +130,7 @@ that is safer or simpler (formatters, generated files, broad mechanical rewrites
 - When referencing specific functions or code in your response, use standalone inline-code file references with
   `file_path:line_number` so the user can navigate directly to the source; do not use URI links or line ranges.
 - Never `git commit` unless the user explicitly asks. When you do commit, end the message with
-  `Co-authored-by: tabulaflow <tabulaflow@megagon.ai>` by default.
+  `Co-authored-by: tabulaflow <tabulaflow@megagon.ai>` by default (but no need to mention it in your response).
 - Always follow security best practices. Never introduce code that exposes or logs secrets and keys (API keys,
   database passwords) — in files, queries, or outputs — and never commit secrets to the repository.
 
