@@ -62,6 +62,16 @@ def test_adaptive_thinking_claude_does_not_set_max_tokens() -> None:
     assert settings == {"thinking": "high"}
 
 
+def test_opus_5_uses_adaptive_thinking_override() -> None:
+    settings = make_model_settings(model="anthropic:claude-opus-5", reasoning_effort="high")
+    assert settings == {
+        "thinking": "high",
+        "anthropic_thinking": {"type": "adaptive"},
+        "anthropic_effort": "high",
+        "max_tokens": 24576,
+    }
+
+
 def test_make_model_settings_translates_service_tier_for_openai() -> None:
     assert make_model_settings(model="openai-responses:gpt-5", service_tier="priority") == {
         "openai_service_tier": "priority"

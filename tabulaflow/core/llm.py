@@ -28,6 +28,7 @@ from pydantic_ai.profiles.anthropic import (
     ANTHROPIC_THINKING_BUDGET_MAP,
     AnthropicModelProfile,
     anthropic_model_profile,
+    resolve_anthropic_effort,
 )
 from pydantic_ai.settings import ModelSettings
 
@@ -93,6 +94,7 @@ def make_model_settings(
         ModelSettings,
         {
             **_reasoning_model_settings(reasoning_effort, model=model),
+            **({"anthropic_thinking": {"type": "adaptive"}, "anthropic_effort": resolve_anthropic_effort(reasoning_effort, supports_xhigh=True)} if model.startswith("anthropic:claude-opus-5") and isinstance(reasoning_effort, str) and reasoning_effort != "none" else {}),
             **_anthropic_token_settings(reasoning_effort, model=model),
             **_service_tier_model_settings(service_tier, model=model),
             **({} if timeout is None else {"timeout": timeout}),
