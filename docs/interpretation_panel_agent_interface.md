@@ -1,6 +1,7 @@
 # Interpretation Panel — Agent-Facing Interface
 
-Status: design settled for the two agent-facing tools; not implemented.
+Status: `run_query_for_each_combination` is implemented (`tabulaflow/toolhub/run_query_for_each_combination.py`,
+not yet wired into the chat toolset); `show_artifacts` is designed, not implemented.
 
 Supersedes the "Proposed tool surface", "Query alignment idea" and "Why not fully implicit query
 expansion?" sections of `interpretation_panel_design.md`. The product direction, UI prototype notes
@@ -94,8 +95,10 @@ Deliberately absent:
 
 1. The template's Jinja variables equal the declared dimension ids, both directions, under
    `StrictUndefined`.
-2. Dimension ids unique; choice ids unique within a dimension; at least one choice each.
-3. Caps on dimension count and total combinations — rejected, not truncated.
+2. Dimension ids unique; choice ids unique within a dimension. Non-empty ids and a non-empty
+   choice list are expressed as schema constraints (`min_length`), so a violation is a retryable
+   schema error rather than a tool error string.
+3. A cap on total combinations (50) — rejected, not truncated.
 4. After rendering, before running: for each dimension, if changing it never changes the rendered
    SQL, error naming that dimension.
 
@@ -111,26 +114,15 @@ convention of naming the language in the argument description rather than the ar
 
 ### Return value
 
-```
-QS3 — dimensions: ranking (2) × period (2) × returns (2) = 8 combinations, 6 executed (2 identical)
+One combination in full so the agent can sanity-check the query, then one row count per remaining
+combination so it can see they ran — an empty variant means a card that renders empty for that
+reading, which is either real or a bug in that branch. The tool goes in the message-store allowlist
+so wide results spill instead of flooding context.
 
-ranking=net_revenue, period=compl_qtr, returns=excl:
-  customer          net_revenue_usd
-  Acme Corp                 124500
-  Globex                     98200
-  …
-  (5 rows, 340ms)
+The exact layout is pinned by `test_output_format` in `tests/test_run_query_for_each_combination.py`;
+that assertion is the spec, not a copy of it here.
 
-remaining combinations: 5 rows each, except
-  ranking=order_count, period=qtd, returns=incl: 0 rows
-```
-
-One combination in full so the agent can sanity-check the query; row counts for the rest so it can
-see they ran. Zero-row combinations are called out separately — an empty variant means a card that
-renders empty for that reading, which is either real or a bug in that branch. The tool goes in the
-message-store allowlist so wide results spill instead of flooding context.
-
-On failure nothing is registered, and the return names the failing combinations with their errors.
+On failure nothing is registered, and the return names the first failing combination with its error.
 Partial registration would push the hole downstream; a batch is complete or absent.
 
 ## Tool 2: `show_artifacts`
@@ -378,25 +370,28 @@ trailing text run as the answer, buffered.
 
 ### Storage
 
+As implemented in `toolhub/query_history.py`:
+
 ```python
 @dataclass
 class QueryFamily:
-    family_id: str                     # QS<n>, own counter
+    family_id: str                             # QS<n>, own counter
     db_alias: str
-    dimensions: dict[str, list[str]]   # dim id -> choice ids, declared order
-    template: str
-    variants: dict[str, str]           # selection key -> variant record id
+    connector_type: Literal["sql", "property_graph"]
+    dimensions: dict[str, list[str]]           # dim id -> choice ids, declared order
+    query_template: str
+    record_ids_by_selection: dict[str, str]    # selection key -> variant record id
 ```
 
 Variants are ordinary `QueryRecord`s, so spill, hydrate and eviction work unchanged. Their ids must
 avoid dots — `QS3_v0`, not `QS3.v0` — because `_persist` passes the record id straight through as a
-DuckDB table name (`query_history.py:187`). They stay out of the citable `_records` namespace so
-`render_chart(Q17)` can never land on a variant.
+DuckDB table name. Selections whose rendered query is identical share one variant. Variant ids are
+not `Q<n>`, so `render_chart(Q17)` can never land on one.
 
-`max_in_memory=5` (line 81) is now smaller than a single family. An 8-combination family evicts
+`QueryHistory(max_in_memory=5)` is smaller than a single family. An 8-combination family evicts
 everything else plus three of its own variants on creation, and `_build_chat_result` then hydrates
 all eight to build the payload. Correct but thrashy — either raise the default or hydrate a family in
-one pass. It is also a reason to keep the combination cap low.
+one pass. Unresolved, and it gets worse at the 50-combination cap.
 
 ### `ChatResult`
 

@@ -1,263 +1,277 @@
-"""Run a query template over a cartesian product of dimension choices."""
+"""Run one query template over the combinations of a set of dimension choices."""
 
 from __future__ import annotations
 
-from collections import OrderedDict
+from collections import defaultdict
 from dataclasses import dataclass
 from itertools import product
+import math
 import re
-from typing import ClassVar
+from typing import Annotated, ClassVar, TypeAlias
 
 import jinja2
 import jinja2.meta
 from pydantic import BaseModel, Field
+from pydantic_ai import Tool, ToolReturn
 
 from tabulaflow.core.config import tabulaflow_config
 from tabulaflow.core.db_connector import NL2QDBConnector
+from tabulaflow.core.db_connector.db_registry import DBRegistry
 from tabulaflow.core.types import PredQuery
 from tabulaflow.core.utils import format_df
-from tabulaflow.toolhub.query_history import QueryFamily
+from tabulaflow.toolhub.base import ToolCallOutcome
+from tabulaflow.toolhub.engines.sql import format_sqlalchemy_error_msg
+from tabulaflow.toolhub.query_history import QueryFamily, QueryHistory
 
+DEFAULT_MAX_COMBINATIONS = 50
+
+_SAMPLE_ROWS = 5
 _JINJA_ENV = jinja2.Environment(undefined=jinja2.StrictUndefined)
-DEFAULT_MAX_COMBINATIONS = 100
-_LINE_COMMENT_RE = re.compile(r"--.*?(?=\n|$)")
-_BLOCK_COMMENT_RE = re.compile(r"/\*.*?\*/", re.DOTALL)
+_SQL_COMMENT_RE = re.compile(r"--[^\n]*|/\*.*?\*/", re.DOTALL)
 
 
 class QueryDimension(BaseModel):
-    id: str = Field(description="Dimension id. The query template must reference it as a Jinja variable.")
-    choices: list[str] = Field(description="Choice ids for this dimension. The template must branch on these values.")
+    id: str = Field(min_length=1, description="Dimension id. The query template must reference it as a Jinja variable.")
+    choices: list[str] = Field(
+        min_length=1, description="Choice ids for this dimension. The template must branch on these values."
+    )
+
+
+Dimensions: TypeAlias = Annotated[list[QueryDimension], Field(min_length=1)]
 
 
 @dataclass(frozen=True)
 class CombinationQueryRun:
-    """Result of running one query template across dimension selections."""
+    """Result of one run-query-for-each-combination invocation."""
 
-    dimensions: dict[str, list[str]]
-    query_template: str
-    pred_queries_by_selection: dict[str, PredQuery]
-    executed_count: int
+    output: str
+    family: QueryFamily
 
 
 def _selection_key(selection: dict[str, str]) -> str:
-    return ";".join(f"{dim}={selection[dim]}" for dim in sorted(selection))
+    return ";".join(f"{dim}={choice}" for dim, choice in sorted(selection.items()))
 
 
-def _format_dimensions(dimensions: list[QueryDimension]) -> str:
-    return " × ".join(f"{dim.id} ({len(dim.choices)})" for dim in dimensions)
+def _normalize(query: str) -> str:
+    """Strip SQL comments and collapse whitespace, so no-op branches compare equal."""
+    return " ".join(_SQL_COMMENT_RE.sub(" ", query).split())
 
 
-def _semantic_sql(sql: str) -> str:
-    sql = _BLOCK_COMMENT_RE.sub("", sql)
-    sql = _LINE_COMMENT_RE.sub("", sql)
-    return " ".join(sql.split())
+def _rows_label(pred_query: PredQuery) -> str:
+    df = pred_query.exec_result.df if pred_query.exec_result is not None else None
+    if df is None:
+        return "no result set"
+    return f"{len(df)} row{'' if len(df) == 1 else 's'}"
 
 
-def _combinations(dimensions: list[QueryDimension]) -> list[dict[str, str]]:
-    return [
-        dict(zip((dim.id for dim in dimensions), choices, strict=True))
-        for choices in product(*(d.choices for d in dimensions))
-    ]
+def _format_table(pred_query: PredQuery) -> str:
+    df = pred_query.exec_result.df if pred_query.exec_result is not None else None
+    if df is None or df.empty:
+        return "(query executed successfully, but results are empty)"
+    return format_df(df, max_visible_rows=_SAMPLE_ROWS)
+
+
+def _format_run(family: QueryFamily, by_selection: dict[str, PredQuery]) -> str:
+    """Render the family header, one sampled combination in full, and the other row counts."""
+    grid = " × ".join(f"{name} ({len(choices)})" for name, choices in family.dimensions.items())
+    executed = len(set(family.record_ids_by_selection.values()))
+    total = len(by_selection)
+    identical = f" ({total - executed} identical)" if total > executed else ""
+    header = f"{family.family_id} — dimensions: {grid} = {total} combinations, {executed} executed{identical}"
+
+    (sample_key, sample), *others = by_selection.items()
+    lines = [header, "", f"{sample_key} ({_rows_label(sample)}):", _format_table(sample)]
+    if others:
+        counts = ", ".join(f"{key} ({_rows_label(pred_query)})" for key, pred_query in others)
+        lines += ["", f"other combinations: {counts}"]
+    return "\n".join(lines)
+
+
+def _validate_dimensions(dimensions: list[QueryDimension], max_combinations: int) -> None:
+    """Raise ``ValueError`` for duplicate ids or choices, or an oversized grid.
+
+    Duplicates would silently collapse selection keys rather than fail, which is
+    why they are checked here instead of left to the caller.
+    """
+    ids = [dim.id for dim in dimensions]
+    if len(set(ids)) != len(ids):
+        raise ValueError("dimension ids must be unique")
+    for dim in dimensions:
+        if len(set(dim.choices)) != len(dim.choices):
+            raise ValueError(f"dimension {dim.id!r} has duplicate choices")
+    total = math.prod(len(dim.choices) for dim in dimensions)
+    if total > max_combinations:
+        raise ValueError(f"{total} combinations exceeds the cap of {max_combinations}")
+
+
+def _compile_template(dimensions: list[QueryDimension], query_template: str) -> jinja2.Template:
+    """Compile the template, requiring its variables to be exactly the dimension ids."""
+    try:
+        used = jinja2.meta.find_undeclared_variables(_JINJA_ENV.parse(query_template))
+        template = _JINJA_ENV.from_string(query_template)
+    except Exception as exc:
+        raise ValueError(f"template compile failed: {type(exc).__name__}: {exc}") from None
+    declared = {dim.id for dim in dimensions}
+    problems = []
+    if declared - used:
+        problems.append(f"missing template variables for dimensions: {', '.join(sorted(declared - used))}")
+    if used - declared:
+        problems.append(f"template variables not declared as dimensions: {', '.join(sorted(used - declared))}")
+    if problems:
+        raise ValueError("; ".join(problems))
+    return template
+
+
+def _check_every_dimension_matters(dimensions: list[QueryDimension], renders: list[tuple[dict[str, str], str]]) -> None:
+    """Raise ``ValueError`` for a dimension whose choices never change the rendered query.
+
+    Such a dimension is a toggle the user can flip with no effect, which a variable
+    check alone misses: a template can mention it in a comment or a no-op position.
+    """
+    for dim in dimensions:
+        if len(dim.choices) < 2:
+            continue
+        by_others: defaultdict[tuple[str, ...], set[str]] = defaultdict(set)
+        for selection, query in renders:
+            others = tuple(choice for name, choice in sorted(selection.items()) if name != dim.id)
+            by_others[others].add(_normalize(query))
+        if all(len(queries) == 1 for queries in by_others.values()):
+            raise ValueError(f"changing dimension {dim.id!r} never changes the rendered query")
+
+
+def _render_queries(dimensions: list[QueryDimension], query_template: str, max_combinations: int) -> dict[str, str]:
+    """Validate the request and render one query per combination, keyed by selection."""
+    _validate_dimensions(dimensions, max_combinations)
+    template = _compile_template(dimensions, query_template)
+    names = [dim.id for dim in dimensions]
+    renders: list[tuple[dict[str, str], str]] = []
+    for choices in product(*(dim.choices for dim in dimensions)):
+        selection = dict(zip(names, choices, strict=True))
+        try:
+            rendered = template.render(**selection).strip()
+        except Exception as exc:
+            key = _selection_key(selection)
+            raise ValueError(f"template render failed at {key}: {type(exc).__name__}: {exc}") from None
+        renders.append((selection, rendered))
+    _check_every_dimension_matters(dimensions, renders)
+    return {_selection_key(selection): query for selection, query in renders}
 
 
 class RunQueryForEachCombinationTool:
-    """Run one Jinja query template over combinations on a single connector."""
+    """Run one query template over the combinations of a set of dimension choices.
+
+    Renders the template once per combination, executes the distinct renders against
+    a registered database, and registers the whole set as one query family (``QS*``)
+    in ``QueryHistory``.
+
+    Attributes:
+        registry: Registry the ``db_alias`` argument resolves against.
+        timeout: Per-query timeout in seconds.
+        max_combinations: Largest grid accepted; bigger requests are rejected.
+    """
 
     name: ClassVar = "run_query_for_each_combination"
 
     def __init__(
         self,
-        db_connector: NL2QDBConnector,
+        registry: DBRegistry,
         *,
+        history: QueryHistory,
         timeout: int | None = None,
-        max_visible_rows: int = 20,
-        max_cell_width: int = 200,
-        floatfmt: str = ".8g",
         max_combinations: int = DEFAULT_MAX_COMBINATIONS,
     ) -> None:
-        self.db_connector = db_connector
+        self.registry = registry
         self.timeout = tabulaflow_config.query_timeout if timeout is None else timeout
-        self.max_visible_rows = max_visible_rows
-        self.max_cell_width = max_cell_width
-        self.floatfmt = floatfmt
         self.max_combinations = max_combinations
+        self._history = history
 
-    async def execute(
-        self,
-        dimensions: list[QueryDimension],
-        query_template: str,
-    ) -> CombinationQueryRun:
-        """Run a SQL Jinja template over every combination of dimension choices.
+    async def _run(self, db_alias: str, dimensions: Dimensions, query_template: str) -> ToolReturn:
+        """Render a query template once per combination of dimension choices and run each.
 
-        Use this when one result card needs the same query shape evaluated across a
-        small grid of interpretations. Each dimension id is available in the Jinja
-        context as the selected choice id. The template must reference exactly the
-        declared dimension ids, and each dimension must change the rendered SQL.
-        Identical rendered SQL is executed once and shared across matching
-        combinations.
+        Each dimension id is bound to the chosen choice id in the Jinja context, so the
+        template branches on it and owns all query logic. The template must reference
+        exactly the declared dimension ids, and every dimension must change the rendered
+        query. Combinations that render identically are executed once. The whole set is
+        recorded as one query family (``QS*``).
+
+        Example:
+        ```python
+        run_query_for_each_combination(
+            db_alias="workspace",
+            dimensions=[
+                {"id": "ranking", "choices": ["net_revenue", "order_count"]},
+                {"id": "period", "choices": ["completed_qtr", "last_90_days"]},
+            ],
+            query_template='''
+            SELECT customer_name AS customer,
+              {% if ranking == "net_revenue" %} SUM(net_revenue_usd) AS value
+              {% elif ranking == "order_count" %} COUNT(*) AS value
+              {% endif %}
+            FROM orders
+            WHERE {% if period == "completed_qtr" %} order_date >= DATE '2026-04-01' AND order_date < DATE '2026-07-01'
+                  {% elif period == "last_90_days" %} order_date > CURRENT_DATE - INTERVAL 90 DAY
+                  {% endif %}
+            GROUP BY customer_name ORDER BY value DESC LIMIT 5
+            ''',
+        )
+        ```
 
         Args:
-            dimensions: Dimensions to vary over. Choice ids are the values supplied
-                to the Jinja variables.
-            query_template: SQL Jinja template to render and execute for each
-                dimension-choice combination.
+            db_alias: Alias of the target database.
+            dimensions: Dimensions to vary over. Choice ids are the values supplied to
+                the Jinja variables.
+            query_template: Jinja template rendered and executed for each combination.
         """
+        return await self(db_alias, dimensions, query_template)
 
-        validation_error = self._validate(dimensions, query_template)
-        if validation_error is not None:
-            raise ValueError(validation_error)
-
-        selections = _combinations(dimensions)
-        template = _JINJA_ENV.from_string(query_template)
-        rendered_by_key: OrderedDict[str, str] = OrderedDict()
-        rendered_items_by_selection: list[tuple[dict[str, str], str]] = []
+    async def __call__(self, db_alias: str, dimensions: Dimensions, query_template: str) -> ToolReturn:
         try:
-            for selection in selections:
-                rendered_query = template.render(**selection).strip()
-                rendered_by_key[_selection_key(selection)] = rendered_query
-                rendered_items_by_selection.append((selection, rendered_query))
-        except jinja2.TemplateError as exc:
-            raise ValueError(f"template render failed: {type(exc).__name__}: {exc}") from exc
-
-        dimension_effect_error = self._validate_dimensions_affect_sql(dimensions, rendered_items_by_selection)
-        if dimension_effect_error is not None:
-            raise ValueError(dimension_effect_error)
-
-        pred_by_sql: OrderedDict[str, PredQuery] = OrderedDict()
-        errors: list[str] = []
-        for selection_key, rendered_query in rendered_by_key.items():
-            if rendered_query in pred_by_sql:
-                continue
-            exec_result = await self.db_connector.run_query_async(rendered_query, timeout=self.timeout)
-            pred_query = PredQuery(query=rendered_query, exec_result=exec_result)
-            if exec_result.error is not None:
-                errors.append(f"{selection_key}: {exec_result.error.message}")
-            pred_by_sql[rendered_query] = pred_query
-
-        if errors:
-            raise ValueError("query failed for " + "; ".join(errors[:5]))
-
-        pred_queries_by_selection = {
-            selection_key: pred_by_sql[rendered_query] for selection_key, rendered_query in rendered_by_key.items()
-        }
-        return CombinationQueryRun(
-            dimensions={dim.id: list(dim.choices) for dim in dimensions},
-            query_template=query_template,
-            pred_queries_by_selection=pred_queries_by_selection,
-            executed_count=len(pred_by_sql),
+            run = await self.execute(db_alias, dimensions, query_template)
+        except ValueError as exc:
+            return ToolReturn(return_value=f"(error: {exc})", metadata=ToolCallOutcome(error=True))
+        return ToolReturn(
+            return_value=run.output,
+            metadata=ToolCallOutcome(count=len(run.family.record_ids_by_selection), unit="combinations"),
         )
 
-    async def __call__(
-        self,
-        dimensions: list[QueryDimension],
-        query_template: str,
-    ) -> CombinationQueryRun:
-        return await self.execute(dimensions, query_template)
+    async def execute(self, db_alias: str, dimensions: Dimensions, query_template: str) -> CombinationQueryRun:
+        """Run the template over every combination and register the resulting family.
 
-    def _validate(self, dimensions: list[QueryDimension], query_template: str) -> str | None:
-        if not dimensions:
-            return "at least one dimension is required"
-        dim_ids = [dim.id for dim in dimensions]
-        if len(set(dim_ids)) != len(dim_ids):
-            return "dimension ids must be unique"
-        for dim in dimensions:
-            if not dim.id.strip():
-                return "dimension ids cannot be empty"
-            if not dim.choices:
-                return f"dimension {dim.id!r} must have at least one choice"
-            if len(set(dim.choices)) != len(dim.choices):
-                return f"dimension {dim.id!r} has duplicate choices"
-            if any(not choice.strip() for choice in dim.choices):
-                return f"dimension {dim.id!r} has an empty choice id"
-        total = 1
-        for dim in dimensions:
-            total *= len(dim.choices)
-        if total > self.max_combinations:
-            return f"{total} combinations exceeds the cap of {self.max_combinations}"
-        try:
-            ast = _JINJA_ENV.parse(query_template)
-        except jinja2.TemplateSyntaxError as exc:
-            return f"template syntax error: {exc.message}"
-        variables = jinja2.meta.find_undeclared_variables(ast)
-        expected = set(dim_ids)
-        if variables != expected:
-            missing = sorted(expected - variables)
-            extra = sorted(variables - expected)
-            parts = []
-            if missing:
-                parts.append(f"missing template variables for dimensions: {', '.join(missing)}")
-            if extra:
-                parts.append(f"template variables not declared as dimensions: {', '.join(extra)}")
-            return "; ".join(parts)
-        return None
+        Raises:
+            ValueError: If the alias is unknown, the request is invalid, or a
+                combination's query fails — in which case nothing is registered.
+        """
+        connector = self._connector(db_alias)
+        queries = _render_queries(dimensions, query_template, self.max_combinations)
 
-    def _validate_dimensions_affect_sql(
-        self,
-        dimensions: list[QueryDimension],
-        rendered_items_by_selection: list[tuple[dict[str, str], str]],
-    ) -> str | None:
-        if len(dimensions) == 1:
-            dim = dimensions[0]
-            if len(dim.choices) > 1 and len({_semantic_sql(sql) for _, sql in rendered_items_by_selection}) == 1:
-                return f"changing dimension {dim.id!r} never changes the rendered SQL"
-            return None
-        for dim in dimensions:
-            if len(dim.choices) == 1:
+        pred_queries: dict[str, PredQuery] = {}
+        for selection_key, query in queries.items():
+            normalized = _normalize(query)
+            if normalized in pred_queries:
                 continue
-            changes = False
-            for i, (selection_i, sql_i) in enumerate(rendered_items_by_selection):
-                for j in range(i + 1, len(rendered_items_by_selection)):
-                    selection_j, sql_j = rendered_items_by_selection[j]
-                    if selection_i[dim.id] == selection_j[dim.id]:
-                        continue
-                    if all(
-                        selection_i[other.id] == selection_j[other.id] for other in dimensions if other.id != dim.id
-                    ):
-                        changes = changes or _semantic_sql(sql_i) != _semantic_sql(sql_j)
-                if changes:
-                    break
-            if not changes:
-                return f"changing dimension {dim.id!r} never changes the rendered SQL"
-        return None
+            exec_result = await connector.run_query_async(query, timeout=self.timeout)
+            if (error := exec_result.error) is not None:
+                # A timeout's message echoes the whole query; the agent already has it.
+                detail = "timed out" if error.exc_type == "TimeoutError" else format_sqlalchemy_error_msg(error.message)
+                raise ValueError(f"query failed at {selection_key}: {detail}")
+            pred_queries[normalized] = PredQuery(query=query, exec_result=exec_result)
 
-    def format_run_summary(
-        self,
-        family: QueryFamily,
-        run: CombinationQueryRun,
-    ) -> str:
-        pred_queries_by_selection = run.pred_queries_by_selection
-        total = len(pred_queries_by_selection)
-        identical = total - run.executed_count
-        line = (
-            f"{family.family_id} — dimensions: "
-            f"{_format_dimensions([QueryDimension(id=k, choices=v) for k, v in run.dimensions.items()])} "
-            f"= {total} combinations, {run.executed_count} executed"
+        by_selection = {key: pred_queries[_normalize(query)] for key, query in queries.items()}
+        family = await self._history.add_family(
+            db_alias,
+            connector.connector_type,
+            {dim.id: list(dim.choices) for dim in dimensions},
+            query_template,
+            by_selection,
         )
-        if identical:
-            line += f" ({identical} identical)"
-        first_key, first_pred = next(iter(pred_queries_by_selection.items()))
-        first_result = first_pred.exec_result
-        sample = [line, "", f"{first_key}:"]
-        if first_result is not None and first_result.df is not None and not first_result.df.empty:
-            sample.append(
-                format_df(
-                    first_result.df, max_visible_rows=5, max_cell_width=self.max_cell_width, floatfmt=self.floatfmt
-                )
-            )
-            sample.append(f"({len(first_result.df)} rows)")
-        elif first_result is not None and first_result.df is not None:
-            sample.append("(query executed successfully, but results are empty)")
-        else:
-            sample.append("(statement executed successfully)")
-        remaining = total - 1
-        if remaining:
-            zero_rows = [
-                key
-                for key, pred in list(pred_queries_by_selection.items())[1:]
-                if pred.exec_result is not None and pred.exec_result.df is not None and pred.exec_result.df.empty
-            ]
-            sample.append("")
-            sample.append(f"remaining combinations: {remaining}")
-            if zero_rows:
-                sample.append("zero-row combinations: " + ", ".join(zero_rows[:5]))
-        return "\n".join(sample)
+        return CombinationQueryRun(output=_format_run(family, by_selection), family=family)
+
+    def _connector(self, db_alias: str) -> NL2QDBConnector:
+        try:
+            return self.registry.get(db_alias)
+        except ValueError:
+            available = ", ".join(self.registry.list_aliases()) or "(none)"
+            raise ValueError(f"unknown db_alias: {db_alias!r}; available: {available}") from None
+
+    def as_pydantic_ai_tool(self) -> Tool:
+        return Tool(self._run, name=self.name)

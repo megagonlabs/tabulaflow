@@ -117,17 +117,8 @@ class QueryHistory:
     ) -> QueryRecord:
         """Store a query and assign it the next opaque record ID."""
         record_id = f"Q{self._next_query_id}"
-        record = QueryRecord(
-            record_id=record_id, connector_type=connector_type, db_alias=db_alias, pred_query=pred_query
-        )
-        pred_query.id = record.record_id
-        self._records[record_id] = record
         self._next_query_id += 1
-        if pred_query.exec_result is not None and pred_query.exec_result.df is not None:
-            if self._spill_connector is None or await self._persist(record_id, pred_query.exec_result.df):
-                self._in_memory.append(record_id)
-                self._evict()
-        return record
+        return await self._store(record_id, db_alias, connector_type, pred_query)
 
     async def add_family(
         self,
@@ -137,29 +128,21 @@ class QueryHistory:
         query_template: str,
         pred_queries_by_selection: dict[str, PredQuery],
     ) -> QueryFamily:
-        """Store a query family and its per-selection query records under a ``QS*`` id."""
+        """Store a query family and its per-selection records under a ``QS*`` id.
+
+        Selections whose query text is identical share a single record.  Variant
+        record ids stay out of the citable ``Q*`` namespace.
+        """
         family_id = f"QS{self._next_family_id}"
         self._next_family_id += 1
+        record_ids_by_query: dict[str, str] = {}
         record_ids_by_selection: dict[str, str] = {}
-        records_by_pred_query: dict[int, str] = {}
         for selection_key, pred_query in pred_queries_by_selection.items():
-            pred_key = id(pred_query)
-            record_id = records_by_pred_query.get(pred_key)
+            record_id = record_ids_by_query.get(pred_query.query)
             if record_id is None:
-                record_id = f"{family_id}_v{len(records_by_pred_query)}"
-                records_by_pred_query[pred_key] = record_id
-                record = QueryRecord(
-                    record_id=record_id,
-                    connector_type=connector_type,
-                    db_alias=db_alias,
-                    pred_query=pred_query,
-                )
-                pred_query.id = record_id
-                self._records[record_id] = record
-                if pred_query.exec_result is not None and pred_query.exec_result.df is not None:
-                    if self._spill_connector is None or await self._persist(record_id, pred_query.exec_result.df):
-                        self._in_memory.append(record_id)
-                        self._evict()
+                record_id = f"{family_id}_v{len(record_ids_by_query)}"
+                record_ids_by_query[pred_query.query] = record_id
+                await self._store(record_id, db_alias, connector_type, pred_query)
             record_ids_by_selection[selection_key] = record_id
         family = QueryFamily(
             family_id=family_id,
@@ -171,6 +154,25 @@ class QueryHistory:
         )
         self._families[family_id] = family
         return family
+
+    async def _store(
+        self,
+        record_id: str,
+        db_alias: str,
+        connector_type: Literal["sql", "property_graph"],
+        pred_query: PredQuery,
+    ) -> QueryRecord:
+        """Register one record under ``record_id``, spilling its DataFrame when possible."""
+        record = QueryRecord(
+            record_id=record_id, connector_type=connector_type, db_alias=db_alias, pred_query=pred_query
+        )
+        pred_query.id = record_id
+        self._records[record_id] = record
+        if pred_query.exec_result is not None and pred_query.exec_result.df is not None:
+            if self._spill_connector is None or await self._persist(record_id, pred_query.exec_result.df):
+                self._in_memory.append(record_id)
+                self._evict()
+        return record
 
     def get_family(self, family_id: str) -> QueryFamily:
         """Return a previously stored query family."""

@@ -81,6 +81,7 @@ import threading
 import warnings
 
 import sqlparse
+from sqlparse.lexer import Lexer as SQLLexer
 from typing import Any, Callable, ClassVar, Coroutine, Sequence, Mapping, Literal, AsyncGenerator, TypeVar
 import dataclasses
 from dataclasses import dataclass
@@ -185,10 +186,17 @@ _DDL_KEYWORDS = frozenset(
 # Dialects that need DDL serialization.
 _DDL_SERIAL_DIALECTS = frozenset({"duckdb", "sqlite"})
 
+_LEXER = SQLLexer.get_default_instance()
 
-def _first_keyword(stmt: sqlparse.sql.Statement) -> str | None:
-    """Return the first significant keyword of ``stmt`` (uppercased),
+
+def _first_keyword(statement: str) -> str | None:
+    """Return the first significant keyword of ``statement`` (uppercased),
     skipping leading whitespace and comments.
+
+    Reads the raw lexer stream rather than a parsed :class:`sqlparse.sql.Statement`:
+    ``sqlparse.parse`` also *groups* the token tree, which is quadratic in
+    statement length (a 100 KB generated query takes ~17s, 1 MB takes minutes),
+    while the lexer is a lazy linear scan that stops at the first keywords.
 
     Returns ``None`` if the statement starts with something other than
     a keyword (punctuation, an identifier, etc.) or contains no
@@ -200,13 +208,8 @@ def _first_keyword(stmt: sqlparse.sql.Statement) -> str | None:
     behaviour.
     """
     keywords: list[str] = []
-    for tok in stmt.flatten():
-        if tok.is_whitespace:
-            continue
-        ttype = tok.ttype
-        if ttype is None:
-            continue
-        if ttype in sqlparse.tokens.Comment:
+    for ttype, value in _LEXER.get_tokens(statement):
+        if ttype in sqlparse.tokens.Whitespace or ttype in sqlparse.tokens.Comment:
             continue
         # Accept Keyword (any subtype: DML, DDL, CTE) or Name.
         # Dialect-specific keywords like ``ATTACH`` / ``DETACH`` /
@@ -215,7 +218,7 @@ def _first_keyword(stmt: sqlparse.sql.Statement) -> str | None:
         # the keyword-set check at the call site filters out genuine
         # identifiers.
         if ttype in sqlparse.tokens.Keyword or ttype is sqlparse.tokens.Name:
-            keywords.append(tok.value.upper())
+            keywords.append(value.upper())
             if len(keywords) >= 2:
                 break
             continue
@@ -231,25 +234,25 @@ def _first_keyword(stmt: sqlparse.sql.Statement) -> str | None:
     return keywords[0]
 
 
+def _leading_keywords(query: str) -> list[str | None]:
+    """Return the leading keyword of every statement in ``query``, one entry each."""
+    return [_first_keyword(statement) for statement in sqlparse.split(query)]
+
+
 def _contains_write_statement(query: str) -> str | None:
     """Return the first write/DDL/DCL keyword (uppercased) if any
     statement in ``query`` is a write, or ``None`` if all statements
     are read-only.
     """
-    for stmt in sqlparse.parse(query):
-        kw = _first_keyword(stmt)
-        if kw is not None and kw in _WRITE_KEYWORDS:
-            return kw
+    for keyword in _leading_keywords(query):
+        if keyword is not None and keyword in _WRITE_KEYWORDS:
+            return keyword
     return None
 
 
 def _contains_ddl_statement(query: str) -> bool:
     """Return True if any statement in ``query`` is a DDL operation."""
-    for stmt in sqlparse.parse(query):
-        kw = _first_keyword(stmt)
-        if kw is not None and kw in _DDL_KEYWORDS:
-            return True
-    return False
+    return any(keyword in _DDL_KEYWORDS for keyword in _leading_keywords(query) if keyword is not None)
 
 
 def _classify_statement(statement: str | sqlalchemy.sql.expression.Executable) -> tuple[bool, bool]:
@@ -263,7 +266,7 @@ def _classify_statement(statement: str | sqlalchemy.sql.expression.Executable) -
     keyword, ``Executable``s by SQLAlchemy's ``is_dml``/``is_ddl`` flags.
     """
     if isinstance(statement, str):
-        keywords = [_first_keyword(s) for s in sqlparse.parse(statement) if str(s).strip()]
+        keywords = _leading_keywords(statement)
         is_write = any(kw in _WRITE_KEYWORDS for kw in keywords if kw is not None)
         is_dml = len(keywords) == 1 and keywords[0] in _DML_KEYWORDS
         return is_write, is_dml

@@ -1,13 +1,14 @@
 from __future__ import annotations
 
 from pathlib import Path
+from textwrap import dedent
 
 import pytest
 from pydantic_ai import ToolReturn
 
 from tabulaflow.core.db_connector.db_registry import DBRegistry
 from tabulaflow.core.db_connector.sql_conn import SQLConnector
-from tabulaflow.toolhub import QueryDimension, QueryHistory, RegistryRunQueryForEachCombinationTool, ToolCallOutcome
+from tabulaflow.toolhub import QueryDimension, QueryHistory, RunQueryForEachCombinationTool, ToolCallOutcome
 
 
 def _text(result: ToolReturn) -> str:
@@ -40,11 +41,43 @@ async def registry(tmp_path: Path) -> DBRegistry:
     return r
 
 
-def _tool(registry: DBRegistry, history: QueryHistory | None = None) -> RegistryRunQueryForEachCombinationTool:
-    return RegistryRunQueryForEachCombinationTool(registry, history=history or QueryHistory(), max_combinations=16)
+def _tool(registry: DBRegistry, history: QueryHistory | None = None) -> RunQueryForEachCombinationTool:
+    return RunQueryForEachCombinationTool(registry, history=history or QueryHistory(), max_combinations=16)
 
 
 class TestRunQueryForEachCombination:
+    @pytest.mark.asyncio
+    async def test_output_format(self, registry: DBRegistry) -> None:
+        """Pin the whole agent-facing output: header, sampled combination, other row counts."""
+        result = await _tool(registry)(
+            "workspace",
+            [
+                QueryDimension(id="ranking", choices=["net", "gross"]),
+                QueryDimension(id="period", choices=["q2", "q3"]),
+            ],
+            """
+            SELECT customer,
+              {% if ranking == "net" %} SUM(net) AS value {% else %} SUM(gross) AS value {% endif %}
+            FROM orders
+            WHERE {% if period == "q2" %} order_date < DATE '2026-07-01' {% else %} order_date >= DATE '2026-07-01' {% endif %}
+            GROUP BY customer ORDER BY value DESC
+            """,
+        )
+
+        assert (
+            _text(result)
+            == dedent("""\
+            QS1 — dimensions: ranking (2) × period (2) = 4 combinations, 4 executed
+
+            period=q2;ranking=net (2 rows):
+            | customer   |   value |
+            |------------|---------|
+            | Acme       |      10 |
+            | Globex     |       7 |
+
+            other combinations: period=q3;ranking=net (1 row), period=q2;ranking=gross (2 rows), period=q3;ranking=gross (1 row)""")
+        )
+
     @pytest.mark.asyncio
     async def test_expands_and_registers_family(self, registry: DBRegistry) -> None:
         history = QueryHistory()
@@ -108,6 +141,24 @@ class TestRunQueryForEachCombination:
         )
 
     @pytest.mark.asyncio
+    async def test_comment_only_difference_shares_record(self, registry: DBRegistry) -> None:
+        history = QueryHistory()
+        result = await _tool(registry, history)(
+            "workspace",
+            [QueryDimension(id="ranking", choices=["net", "net_again", "gross"])],
+            """
+            SELECT customer,
+              {% if ranking == "gross" %} SUM(gross) {% else %} SUM(net) -- {{ ranking }}
+              {% endif %} AS value
+            FROM orders GROUP BY customer
+            """,
+        )
+
+        assert "3 combinations, 2 executed (1 identical)" in _text(result)
+        family = history.get_family("QS1")
+        assert family.record_ids_by_selection["ranking=net"] == family.record_ids_by_selection["ranking=net_again"]
+
+    @pytest.mark.asyncio
     async def test_template_variables_must_match_dimensions(self, registry: DBRegistry) -> None:
         result = await _tool(registry)(
             "workspace",
@@ -130,6 +181,32 @@ class TestRunQueryForEachCombination:
         assert result.metadata == ToolCallOutcome(error=True)
         assert "changing dimension 'ranking' never changes" in _text(result)
 
+    @pytest.mark.parametrize(
+        ("query_template", "expected"),
+        [
+            ("SELECT {{ ranking | nosuchfilter }}", "template compile failed: TemplateAssertionError"),
+            (
+                "SELECT 1 {% if ranking > 1 %}+1{% endif %} {{ ranking }}",
+                "template render failed at ranking=net: TypeError",
+            ),
+            ("SELECT {{ 1 / 0 }} {{ ranking }}", "template render failed at ranking=net: ZeroDivisionError"),
+            ("{% include 'other.sql' %}{{ ranking }}", "template render failed at ranking=net: TypeError"),
+            ("SELECT {{ ranking.missing_attr }}", "template render failed at ranking=net: UndefinedError"),
+        ],
+    )
+    @pytest.mark.asyncio
+    async def test_template_errors_are_returned_not_raised(
+        self, registry: DBRegistry, query_template: str, expected: str
+    ) -> None:
+        result = await _tool(registry)(
+            "workspace",
+            [QueryDimension(id="ranking", choices=["net", "gross"])],
+            query_template,
+        )
+
+        assert result.metadata == ToolCallOutcome(error=True)
+        assert expected in _text(result)
+
     @pytest.mark.asyncio
     async def test_query_failure_registers_no_family(self, registry: DBRegistry) -> None:
         history = QueryHistory()
@@ -140,6 +217,7 @@ class TestRunQueryForEachCombination:
         )
 
         assert result.metadata == ToolCallOutcome(error=True)
+        assert "query failed at ranking=net" in _text(result)
         with pytest.raises(KeyError):
             history.get_family("QS1")
 

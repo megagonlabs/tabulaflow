@@ -21,9 +21,15 @@ from tabulaflow.toolhub.registry_get_column_json_schema import RegistryGetColumn
 from tabulaflow.toolhub.registry_get_db_document import RegistryGetDBDocumentTool
 from tabulaflow.toolhub.registry_get_schema import RegistryGetSchemaTool
 from tabulaflow.toolhub.registry_get_table_schema import RegistryGetTableSchemaTool
-from tabulaflow.toolhub.query_history import ChartArtifact, GraphArtifact, MapArtifact, QueryFamily, QueryHistory, QueryRecord
+from tabulaflow.toolhub.query_history import (
+    ChartArtifact,
+    GraphArtifact,
+    MapArtifact,
+    QueryFamily,
+    QueryHistory,
+    QueryRecord,
+)
 from tabulaflow.toolhub.registry_run_query import RegistryRunQueryTool
-from tabulaflow.toolhub.registry_run_query_for_each_combination import RegistryRunQueryForEachCombinationTool
 from tabulaflow.toolhub.registry_transfer_record import RegistryTransferRecordTool
 from tabulaflow.toolhub.run_query import RunQueryTool
 from tabulaflow.toolhub.run_query_for_each_combination import QueryDimension, RunQueryForEachCombinationTool
@@ -65,7 +71,6 @@ __all__ = [
     "QueryHistory",
     "QueryRecord",
     "RegistryRunQueryTool",
-    "RegistryRunQueryForEachCombinationTool",
     "RegistryTransferRecordTool",
     "RenderChartTool",
     "RenderGraphTool",
