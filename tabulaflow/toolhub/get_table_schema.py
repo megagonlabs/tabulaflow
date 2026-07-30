@@ -1,4 +1,5 @@
 import re
+from dataclasses import dataclass
 from typing import ClassVar
 from pydantic_ai import Tool
 from pydantic import BaseModel
@@ -14,6 +15,14 @@ class GetTableSchemaToolMetrics(BaseModel):
     max_columns_exceeded: int = 0
     error_invalid_column_regex_filter: int = 0
     error_table_not_found: int = 0
+
+
+@dataclass(frozen=True)
+class TableSchemaExecution:
+    """Result of one get-table-schema invocation."""
+
+    output: str
+    n_columns: int | None
 
 
 class GetTableSchemaTool:
@@ -133,8 +142,9 @@ class GetTableSchemaTool:
                 Can be combined with column_offset/column_limit to paginate within filtered results.
                 Only provide if the table is too large.
         """
-        text, _ = await self.execute(schema_name, table_name, refresh, column_regex_filter, column_offset, column_limit)
-        return text
+        return (
+            await self.execute(schema_name, table_name, refresh, column_regex_filter, column_offset, column_limit)
+        ).output
 
     async def _no_refresh(
         self,
@@ -157,8 +167,9 @@ class GetTableSchemaTool:
                 Can be combined with column_offset/column_limit to paginate within filtered results.
                 Only provide if the table is too large.
         """
-        text, _ = await self.execute(schema_name, table_name, False, column_regex_filter, column_offset, column_limit)
-        return text
+        return (
+            await self.execute(schema_name, table_name, False, column_regex_filter, column_offset, column_limit)
+        ).output
 
     async def execute(
         self,
@@ -168,9 +179,8 @@ class GetTableSchemaTool:
         column_regex_filter: str | None,
         column_offset: int,
         column_limit: int | None,
-    ) -> tuple[str, int | None]:
-        """Render the table schema; returns ``(text, n_columns)`` with ``n_columns``
-        ``None`` on error paths."""
+    ) -> TableSchemaExecution:
+        """Render the table schema and return output plus the selected-column count."""
         self._metrics.num_calls += 1
 
         table = self._find_table(schema_name, table_name)
@@ -182,10 +192,12 @@ class GetTableSchemaTool:
             except Exception as e:
                 if table is None:
                     self._metrics.error_table_not_found += 1
-                    return f"(error: {e})", None
+                    return TableSchemaExecution(output=f"(error: {e})", n_columns=None)
         if table is None:
             self._metrics.error_table_not_found += 1
-            return f"(error: table {table_name} in schema {schema_name} not found)", None
+            return TableSchemaExecution(
+                output=f"(error: table {table_name} in schema {schema_name} not found)", n_columns=None
+            )
 
         total_columns = len(table.columns)
 
@@ -194,7 +206,7 @@ class GetTableSchemaTool:
                 re.compile(column_regex_filter)
             except re.error as e:
                 self._metrics.error_invalid_column_regex_filter += 1
-                return f"(error: invalid column_regex_filter regex: {e})", None
+                return TableSchemaExecution(output=f"(error: invalid column_regex_filter regex: {e})", n_columns=None)
 
         selected_columns = self._filter_columns(
             table.columns,
@@ -205,10 +217,13 @@ class GetTableSchemaTool:
 
         if self.max_columns is not None and len(selected_columns) > self.max_columns:
             self._metrics.max_columns_exceeded += 1
-            return (
-                f"(error: {len(selected_columns)} columns exceed the limit of"
-                f" {self.max_columns}. Use column_offset/column_limit or column_regex_filter to narrow down.)"
-            ), None
+            return TableSchemaExecution(
+                output=(
+                    f"(error: {len(selected_columns)} columns exceed the limit of"
+                    f" {self.max_columns}. Use column_offset/column_limit or column_regex_filter to narrow down.)"
+                ),
+                n_columns=None,
+            )
 
         column_names = [col.name for col in selected_columns]
         trimmed_table = table.trim(column_names, case_insensitive=False, keep_pk=False)
@@ -236,7 +251,7 @@ class GetTableSchemaTool:
         if self._disconnect_on_finish:
             await self.db_connector.disconnect_async()
 
-        return res, len(selected_columns)
+        return TableSchemaExecution(output=res, n_columns=len(selected_columns))
 
     async def __call__(
         self,
@@ -247,7 +262,7 @@ class GetTableSchemaTool:
         column_limit: int | None = None,
         column_regex_filter: str | None = None,
     ) -> str:
-        text, _ = await self.execute(
+        execution = await self.execute(
             schema_name,
             table_name,
             refresh if self._enable_refresh else False,
@@ -255,7 +270,7 @@ class GetTableSchemaTool:
             column_offset,
             column_limit,
         )
-        return text
+        return execution.output
 
     def as_pydantic_ai_tool(self) -> Tool:
         fn = self._with_refresh if self._enable_refresh else self._no_refresh

@@ -542,7 +542,7 @@ class ExecuteBashTool:
 
     # -- main execution loop ---------------------------------------------------
 
-    async def _execute(self, command: str, is_input: bool, timeout: float | None) -> str:
+    async def _run_in_session(self, command: str, is_input: bool, timeout: float | None) -> str:
         await self._ensure_session()
         # is_input is raw stdin for a running process — never strip it, or
         # whitespace-sensitive input (indented REPL lines, passwords) is corrupted.
@@ -635,6 +635,24 @@ class ExecuteBashTool:
 
     # -- BaseTool protocol -----------------------------------------------------
 
+    async def execute(
+        self,
+        command: str,
+        is_input: bool = False,
+        timeout: float | None = None,
+        reset: bool = False,
+    ) -> str:
+        """Execute a bash command and return agent-facing output text."""
+
+        async with self._lock:
+            if reset:
+                await self._close_internal()
+            if is_input:
+                self._metrics.num_input_calls += 1
+            else:
+                self._metrics.num_calls += 1
+            return await self._run_in_session(command, is_input, timeout)
+
     async def __call__(
         self,
         command: str,
@@ -669,14 +687,7 @@ class ExecuteBashTool:
                 (env vars, cwd, background processes). For an unresponsive
                 session; cannot be combined with ``is_input``.
         """
-        async with self._lock:
-            if reset:
-                await self._close_internal()
-            if is_input:
-                self._metrics.num_input_calls += 1
-            else:
-                self._metrics.num_calls += 1
-            return await self._execute(command, is_input, timeout)
+        return await self.execute(command, is_input, timeout, reset)
 
     async def close(self) -> None:
         """Terminate the bash session and clean up resources."""

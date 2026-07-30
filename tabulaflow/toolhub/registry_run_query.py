@@ -88,7 +88,7 @@ class RegistryRunQueryTool:
         self,
         db_alias: str,
         query: str,
-        parameters: list[LLMParameter] = [],
+        parameters: list[LLMParameter] | None = None,
         refresh: bool = False,
     ) -> ToolReturn:
         """Execute a query against a registered database and return the results.
@@ -113,7 +113,7 @@ class RegistryRunQueryTool:
         self,
         db_alias: str,
         query: str,
-        parameters: list[LLMParameter] = [],
+        parameters: list[LLMParameter] | None = None,
     ) -> ToolReturn:
         """Execute a query against a registered database and return the results.
 
@@ -172,8 +172,8 @@ class RegistryRunQueryTool:
                 return_value=f"(error: unknown db_alias: {db_alias!r}; available: {available})",
                 metadata=ToolCallOutcome(error=True),
             )
-        result = await tool(query, parameters or [], refresh and self.enable_refresh)
-        pred_query = tool.last_pred_query()
+        execution = await tool.execute(query, parameters, refresh and self.enable_refresh)
+        pred_query = execution.pred_query
         record = await self._history.add(db_alias, tool.db_connector.connector_type, pred_query)
         exec_result = pred_query.exec_result
         outcome = None
@@ -181,7 +181,7 @@ class RegistryRunQueryTool:
             outcome = ToolCallOutcome(count=len(exec_result.df), unit="rows")
         elif exec_result is not None and exec_result.error:
             outcome = ToolCallOutcome(error=True)
-        return ToolReturn(return_value=f"[record_id={record.record_id}]\n{result}", metadata=outcome)
+        return ToolReturn(return_value=f"[record_id={record.record_id}]\n{execution.output}", metadata=outcome)
 
     def as_pydantic_ai_tool(self) -> Tool:
         fn: Any

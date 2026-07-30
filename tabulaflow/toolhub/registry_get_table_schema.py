@@ -139,7 +139,7 @@ class RegistryGetTableSchemaTool:
             )
         except TypeError as e:
             return ToolReturn(return_value=f"(error: {e})", metadata=ToolCallOutcome(error=True))
-        result, n_columns = await tool.execute(
+        execution = await tool.execute(
             schema_name,
             table_name,
             refresh if self.enable_refresh else False,
@@ -147,8 +147,10 @@ class RegistryGetTableSchemaTool:
             column_offset,
             column_limit,
         )
-        outcome = ToolCallOutcome(count=n_columns, unit="columns") if n_columns is not None else None
-        return ToolReturn(return_value=result, metadata=outcome)
+        outcome = (
+            ToolCallOutcome(count=execution.n_columns, unit="columns") if execution.n_columns is not None else None
+        )
+        return ToolReturn(return_value=execution.output, metadata=outcome)
 
     def as_pydantic_ai_tool(self) -> Tool:
         fn = self._with_refresh if self.enable_refresh else self._no_refresh

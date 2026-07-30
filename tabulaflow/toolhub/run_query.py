@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from typing import Any, ClassVar
 import pandas as pd
 from pydantic_ai import Tool
@@ -62,6 +63,14 @@ class LLMParameter(BaseModel):
     parameter_value: int | float | str = Field(description="The intended value of the parameter.")
 
 
+@dataclass(frozen=True)
+class QueryExecution:
+    """Result of one run-query invocation."""
+
+    output: str
+    pred_query: PredQuery
+
+
 class RunQueryTool:
     """Execute a query against the database and return formatted results.
 
@@ -114,7 +123,7 @@ class RunQueryTool:
         self._last_pred_query: PredQuery | None = None
 
     async def _run_with_params_with_refresh(
-        self, query: str, parameters: list[LLMParameter] = [], refresh: bool = False
+        self, query: str, parameters: list[LLMParameter] | None = None, refresh: bool = False
     ) -> str:
         """Execute a query against the database and return the results.
 
@@ -144,9 +153,9 @@ class RunQueryTool:
                 rebuild — be conservative on large cloud warehouses (e.g.
                 Snowflake).
         """
-        return await self._execute(query, parameters, refresh)
+        return (await self.execute(query, parameters, refresh)).output
 
-    async def _run_with_params(self, query: str, parameters: list[LLMParameter] = []) -> str:
+    async def _run_with_params(self, query: str, parameters: list[LLMParameter] | None = None) -> str:
         """Execute a query against the database and return the results.
 
         Returning large result sets is safe — the display is automatically truncated,
@@ -170,7 +179,7 @@ class RunQueryTool:
             parameters: The parameters to use in the query. A list of dictionaries,
                 each containing a `parameter_name` and a `parameter_value` field.
         """
-        return await self._execute(query, parameters, False)
+        return (await self.execute(query, parameters, False)).output
 
     async def _run_no_params_with_refresh(self, query: str, refresh: bool = False) -> str:
         """Execute a query against the database and return the results.
@@ -191,7 +200,7 @@ class RunQueryTool:
                 rebuild — be conservative on large cloud warehouses (e.g.
                 Snowflake).
         """
-        return await self._execute(query, [], refresh)
+        return (await self.execute(query, [], refresh)).output
 
     async def _run_no_params(self, query: str) -> str:
         """Execute a query against the database and return the results.
@@ -207,10 +216,15 @@ class RunQueryTool:
         Args:
             query: The query to execute.
         """
-        return await self._execute(query, [], False)
+        return (await self.execute(query, [], False)).output
 
-    async def _execute(self, query: str, parameters: list[LLMParameter], refresh: bool) -> str:
+    async def execute(
+        self, query: str, parameters: list[LLMParameter] | None = None, refresh: bool = False
+    ) -> QueryExecution:
+        """Execute one query and return both agent-facing output and recorded query data."""
+
         self._metrics.num_calls += 1
+        parameters = parameters or []
         param_dict = {p.parameter_name: p.parameter_value for p in parameters}
         try:
             exec_result = await self.db_connector.run_query_async(
@@ -218,12 +232,13 @@ class RunQueryTool:
                 parameters=param_dict,
                 timeout=self.timeout,
             )
-            self._last_pred_query = PredQuery(
+            pred_query = PredQuery(
                 query=query,
                 parameter_names=[p.parameter_name for p in parameters],
                 parameter_values=param_dict,
                 exec_result=exec_result,
             )
+            self._last_pred_query = pred_query
             res = self._format_exec_result(exec_result)
             if refresh:
                 try:
@@ -231,7 +246,7 @@ class RunQueryTool:
                     res += "\n(schema refreshed from live database)"
                 except Exception as e:
                     res += f"\n(warning: schema refresh failed: {type(e).__name__}: {e})"
-            return res
+            return QueryExecution(output=res, pred_query=pred_query)
         finally:
             if self._disconnect_on_finish:
                 await self.db_connector.disconnect_async()
@@ -286,7 +301,7 @@ class RunQueryTool:
         parameters: list[LLMParameter] | None = None,
         refresh: bool = False,
     ) -> str:
-        return await self._execute(query, parameters or [], refresh and self.enable_refresh)
+        return (await self.execute(query, parameters, refresh and self.enable_refresh)).output
 
     def as_pydantic_ai_tool(self) -> Tool:
         fn: Any

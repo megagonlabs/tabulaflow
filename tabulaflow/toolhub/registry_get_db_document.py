@@ -137,7 +137,7 @@ class RegistryGetDBDocumentTool:
                 LLM re-summarization — be conservative on large cloud
                 warehouses (e.g. Snowflake).
         """
-        return await self._execute(db_alias, refresh)
+        return await self.execute(db_alias, refresh)
 
     async def _no_refresh(self, db_alias: str) -> str:
         """Get a connector-aware database document.
@@ -145,9 +145,11 @@ class RegistryGetDBDocumentTool:
         Args:
             db_alias: Alias of the target database.
         """
-        return await self._execute(db_alias, False)
+        return await self.execute(db_alias, False)
 
-    async def _execute(self, db_alias: str, refresh: bool) -> str:
+    async def execute(self, db_alias: str, refresh: bool = False) -> str:
+        """Render a registered database document as agent-facing text."""
+
         self._metrics.num_calls += 1
 
         try:
@@ -175,7 +177,7 @@ class RegistryGetDBDocumentTool:
             db_alias: Alias of the target database.
             refresh: Whether to refresh connector schema before rendering.
         """
-        return await self._execute(db_alias, refresh if self.enable_refresh else False)
+        return await self.execute(db_alias, refresh if self.enable_refresh else False)
 
     def as_pydantic_ai_tool(self) -> Tool:
         fn = self._with_refresh if self.enable_refresh else self._no_refresh
