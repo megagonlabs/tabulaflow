@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from collections import defaultdict
 from dataclasses import dataclass
 from itertools import product
@@ -247,9 +248,9 @@ def _render_queries(dimensions: list[QueryDimension], query_template: str, max_c
 class RunQueryForEachCombinationTool:
     """Run one query template over the combinations of a set of dimension choices.
 
-    Renders the template once per combination, executes the distinct renders against
-    a registered database, and registers the whole set as one query family (``QS*``)
-    in ``QueryHistory``.
+    Renders the template once per combination, executes the distinct renders
+    concurrently against a registered database, and registers the whole set as one
+    query family (``QS*``) in ``QueryHistory``.
 
     Attributes:
         registry: Registry the ``db_alias`` argument resolves against.
@@ -331,12 +332,17 @@ class RunQueryForEachCombinationTool:
         connector = self._connector(db_alias)
         queries = _render_queries(dimensions, query_template, self.max_combinations)
 
-        pred_queries: dict[str, PredQuery] = {}
+        # Distinct renders only, in combination order; the connector's own semaphores
+        # bound how many of them actually run at once.
+        distinct: dict[str, tuple[str, str]] = {}
         for selection_key, query in queries.items():
-            normalized = _normalize(query)
-            if normalized in pred_queries:
-                continue
-            exec_result = await connector.run_query_async(query, timeout=self.timeout)
+            distinct.setdefault(_normalize(query), (selection_key, query))
+        exec_results = await asyncio.gather(
+            *(connector.run_query_async(query, timeout=self.timeout) for _, query in distinct.values())
+        )
+
+        pred_queries: dict[str, PredQuery] = {}
+        for (normalized, (selection_key, query)), exec_result in zip(distinct.items(), exec_results, strict=True):
             if (error := exec_result.error) is not None:
                 # A timeout's message echoes the whole query; the agent already has it.
                 detail = "timed out" if error.exc_type == "TimeoutError" else format_sqlalchemy_error_msg(error.message)

@@ -1,13 +1,16 @@
 from __future__ import annotations
 
+import asyncio
 from pathlib import Path
 from textwrap import dedent
+from typing import Any
 
 import pytest
 from pydantic_ai import ToolReturn
 
 from tabulaflow.core.db_connector.db_registry import DBRegistry
 from tabulaflow.core.db_connector.sql_conn import SQLConnector
+from tabulaflow.core.types import ExecResult
 from tabulaflow.toolhub import QueryDimension, QueryHistory, RunQueryForEachCombinationTool, ToolCallOutcome
 
 
@@ -92,6 +95,45 @@ class TestRunQueryForEachCombination:
         )
 
         assert "threshold=ge_one (2 rows) — same result as threshold=gt_zero" in _text(result)
+
+    @pytest.mark.asyncio
+    async def test_distinct_renders_run_concurrently(
+        self, registry: DBRegistry, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """All distinct renders are in flight at once; the connector bounds them, not the tool."""
+        connector = registry.get("workspace")
+        original = connector.run_query_async
+        in_flight = 0
+        peak = 0
+
+        async def tracked(query: Any, *args: Any, **kwargs: Any) -> ExecResult:
+            nonlocal in_flight, peak
+            in_flight += 1
+            peak = max(peak, in_flight)
+            try:
+                await asyncio.sleep(0.05)
+                return await original(query, *args, **kwargs)
+            finally:
+                in_flight -= 1
+
+        monkeypatch.setattr(connector, "run_query_async", tracked)
+        result = await _tool(registry)(
+            "workspace",
+            [
+                QueryDimension(id="ranking", choices=["net", "gross"]),
+                QueryDimension(id="period", choices=["q2", "q3"]),
+            ],
+            """
+            SELECT customer,
+              {% if ranking == "net" %} SUM(net) AS value {% else %} SUM(gross) AS value {% endif %}
+            FROM orders
+            WHERE {% if period == "q2" %} order_date < DATE '2026-07-01' {% else %} order_date >= DATE '2026-07-01' {% endif %}
+            GROUP BY customer ORDER BY value DESC
+            """,
+        )
+
+        assert result.metadata == ToolCallOutcome(count=4, unit="combinations")
+        assert peak == 4
 
     @pytest.mark.asyncio
     async def test_expands_and_registers_family(self, registry: DBRegistry) -> None:
