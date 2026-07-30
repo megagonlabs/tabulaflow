@@ -19,7 +19,7 @@ from tabulaflow.core.config import tabulaflow_config
 from tabulaflow.core.db_connector import NL2QDBConnector
 from tabulaflow.core.db_connector.db_registry import DBRegistry
 from tabulaflow.core.types import PredQuery
-from tabulaflow.core.utils import format_df
+from tabulaflow.core.utils import flatten_multiline, format_df
 from tabulaflow.toolhub.base import ToolCallOutcome
 from tabulaflow.toolhub.engines.sql import format_sqlalchemy_error_msg
 from tabulaflow.toolhub.query_history import QueryFamily, QueryHistory
@@ -27,6 +27,8 @@ from tabulaflow.toolhub.query_history import QueryFamily, QueryHistory
 DEFAULT_MAX_COMBINATIONS = 50
 
 _SAMPLE_ROWS = 5
+_FIRST_ROW_COLUMNS = 4
+_FIRST_ROW_CELL_CHARS = 40
 _JINJA_ENV = jinja2.Environment(undefined=jinja2.StrictUndefined)
 _SQL_COMMENT_RE = re.compile(r"--[^\n]*|/\*.*?\*/", re.DOTALL)
 
@@ -70,6 +72,33 @@ def _format_table(pred_query: PredQuery) -> str:
     if df is None or df.empty:
         return "(query executed successfully, but results are empty)"
     return format_df(df, max_visible_rows=_SAMPLE_ROWS)
+
+
+def _format_cell(value: object) -> str:
+    """Render one cell as ``format_df`` would: ``[NULL]`` for nulls, ``.8g`` floats, one line."""
+    try:
+        if pd.isna(value):
+            return "[NULL]"
+    except (ValueError, TypeError):
+        pass  # container cells (list, dict, ndarray) make pd.isna non-scalar
+    if isinstance(value, float):
+        return f"{value:.8g}"
+    text = flatten_multiline(str(value))
+    if len(text) > _FIRST_ROW_CELL_CHARS:
+        half = _FIRST_ROW_CELL_CHARS // 2
+        return f"{text[:half]}...{text[-half:]}"
+    return text
+
+
+def _format_first_row(pred_query: PredQuery) -> str | None:
+    """Render a result's first row as ``column=value`` pairs, or ``None`` when it has no rows."""
+    df = pred_query.exec_result.df if pred_query.exec_result is not None else None
+    if df is None or df.empty:
+        return None
+    row = df.iloc[0]
+    shown = min(len(df.columns), _FIRST_ROW_COLUMNS)
+    pairs = ", ".join(f"{df.columns[index]}={_format_cell(row.iloc[index])}" for index in range(shown))
+    return f"{pairs}, …" if shown < len(df.columns) else pairs
 
 
 def _result_fingerprint(pred_query: PredQuery) -> tuple[tuple[str, ...], bytes] | None:
@@ -135,8 +164,13 @@ def _format_run(family: QueryFamily, by_selection: dict[str, PredQuery]) -> str:
     if others:
         lines += ["", "other combinations:"]
         for key, pred_query in others:
-            note = f", {notes[key]}" if key in notes else ""
-            lines.append(f"  {key} ({_rows_label(pred_query)}{note})")
+            # A repeat needs no first row: it is the same one already shown for the
+            # combination the note points at.
+            annotation = notes.get(key)
+            if annotation is None and (first_row := _format_first_row(pred_query)) is not None:
+                annotation = f"first row: {first_row}"
+            suffix = f" — {annotation}" if annotation is not None else ""
+            lines.append(f"  {key} ({_rows_label(pred_query)}){suffix}")
     return "\n".join(lines)
 
 

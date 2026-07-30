@@ -74,9 +74,9 @@ class TestRunQueryForEachCombination:
             | Globex     |       7 |
 
             other combinations:
-              period=q3;ranking=net (1 row)
-              period=q2;ranking=gross (2 rows)
-              period=q3;ranking=gross (1 row)""")
+              period=q3;ranking=net (1 row) — first row: customer=Acme, value=20
+              period=q2;ranking=gross (2 rows) — first row: customer=Acme, value=12
+              period=q3;ranking=gross (1 row) — first row: customer=Acme, value=25""")
 
     @pytest.mark.asyncio
     async def test_notes_combinations_whose_result_repeats(self, registry: DBRegistry) -> None:
@@ -91,7 +91,7 @@ class TestRunQueryForEachCombination:
             """,
         )
 
-        assert "threshold=ge_one (2 rows, same result as threshold=gt_zero)" in _text(result)
+        assert "threshold=ge_one (2 rows) — same result as threshold=gt_zero" in _text(result)
 
     @pytest.mark.asyncio
     async def test_expands_and_registers_family(self, registry: DBRegistry) -> None:
@@ -149,7 +149,7 @@ class TestRunQueryForEachCombination:
         )
 
         assert "4 combinations, 3 executed (1 identical)" in _text(result)
-        assert "period=q3;ranking=gross (2 rows, same query as period=q2;ranking=gross)" in _text(result)
+        assert "period=q3;ranking=gross (2 rows) — same query as period=q2;ranking=gross" in _text(result)
         family = history.get_family("QS1")
         assert (
             family.record_ids_by_selection["period=q2;ranking=gross"]
