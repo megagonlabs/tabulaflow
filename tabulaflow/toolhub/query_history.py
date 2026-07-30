@@ -30,6 +30,18 @@ class QueryRecord:
 
 
 @dataclass
+class QueryFamily:
+    """A family of query results rendered from one template over dimension choices."""
+
+    family_id: str
+    db_alias: str
+    connector_type: Literal["sql", "property_graph"]
+    dimensions: dict[str, list[str]]
+    query_template: str
+    record_ids_by_selection: dict[str, str]
+
+
+@dataclass
 class ChartArtifact:
     """A chart drawn from a single query result.
 
@@ -85,10 +97,12 @@ class QueryHistory:
         if max_in_memory < 1:
             raise ValueError("max_in_memory must be >= 1")
         self._records: dict[str, QueryRecord] = {}
+        self._families: dict[str, QueryFamily] = {}
         self._charts: dict[str, ChartArtifact] = {}
         self._maps: dict[str, MapArtifact] = {}
         self._graphs: dict[str, GraphArtifact] = {}
         self._next_query_id = 1
+        self._next_family_id = 1
         self._next_chart_id = 1
         self._next_map_id = 1
         self._next_graph_id = 1
@@ -114,6 +128,56 @@ class QueryHistory:
                 self._in_memory.append(record_id)
                 self._evict()
         return record
+
+    async def add_family(
+        self,
+        db_alias: str,
+        connector_type: Literal["sql", "property_graph"],
+        dimensions: dict[str, list[str]],
+        query_template: str,
+        pred_queries_by_selection: dict[str, PredQuery],
+    ) -> QueryFamily:
+        """Store a query family and its per-selection query records under a ``QS*`` id."""
+        family_id = f"QS{self._next_family_id}"
+        self._next_family_id += 1
+        record_ids_by_selection: dict[str, str] = {}
+        records_by_pred_query: dict[int, str] = {}
+        for selection_key, pred_query in pred_queries_by_selection.items():
+            pred_key = id(pred_query)
+            record_id = records_by_pred_query.get(pred_key)
+            if record_id is None:
+                record_id = f"{family_id}_v{len(records_by_pred_query)}"
+                records_by_pred_query[pred_key] = record_id
+                record = QueryRecord(
+                    record_id=record_id,
+                    connector_type=connector_type,
+                    db_alias=db_alias,
+                    pred_query=pred_query,
+                )
+                pred_query.id = record_id
+                self._records[record_id] = record
+                if pred_query.exec_result is not None and pred_query.exec_result.df is not None:
+                    if self._spill_connector is None or await self._persist(record_id, pred_query.exec_result.df):
+                        self._in_memory.append(record_id)
+                        self._evict()
+            record_ids_by_selection[selection_key] = record_id
+        family = QueryFamily(
+            family_id=family_id,
+            db_alias=db_alias,
+            connector_type=connector_type,
+            dimensions=dimensions,
+            query_template=query_template,
+            record_ids_by_selection=record_ids_by_selection,
+        )
+        self._families[family_id] = family
+        return family
+
+    def get_family(self, family_id: str) -> QueryFamily:
+        """Return a previously stored query family."""
+        try:
+            return self._families[family_id]
+        except KeyError:
+            raise KeyError(f"No query family with id {family_id}") from None
 
     async def get(self, record_id: str) -> QueryRecord:
         """Return a previously stored query record, hydrating spilled DFs."""

@@ -160,3 +160,16 @@ Dark-app feel, mint accent, modern data-app references (Linear, Stripe, GitHub).
 - When the current architecture or abstraction is not optimal for the new feature, stop and discuss with me first on a refactoring plan. You can suggest removal of current features if that can lead to a cleaner architecture.
 - Do not commit code unless I explicitly ask you to.
 - For UI changes, ask me to verify it visually for you (without taking screenshot yourself) to save time.
+
+## Toolhub Development Principles
+
+- Keep `__call__` as the LLM-facing adapter; put reusable logic in `execute(...)`.
+- Use structured result dataclasses only when fields have real consumers; otherwise return the output string.
+- Do not bridge awaited calls with shared `last_*` state; return per-call data from `execute(...)`.
+- Registry tools resolve aliases, call the underlying `execute(...)`, and convert results to `ToolReturn` metadata.
+- Model-facing errors should be `(error: ...)` strings, unless immediately caught and converted.
+- Reserve/increment user-visible ids before awaits that can interleave.
+- Prefer small tool-specific dataclasses; do not add broad result hierarchies.
+- Rebuild cached per-alias tools when an alias is rebound.
+- Keep metrics in the shared execution path.
+- In tests, assert `ToolReturn.return_value` is a string before searching it.
