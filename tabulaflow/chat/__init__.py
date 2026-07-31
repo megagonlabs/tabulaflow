@@ -22,9 +22,13 @@ from tabulaflow.chat.events import (
 from tabulaflow.chat.result import (
     ChatResult,
     ChatResultArtifact,
+    ChatResultCard,
     ChatResultChart,
+    ChatResultCombination,
     ChatResultGraph,
     ChatResultMap,
+    ChatResultPanel,
+    ChatResultPlaceholder,
     ChatResultRecord,
 )
 
@@ -52,10 +56,14 @@ __all__ = [
     "SYSTEM_PROMPT",
     "ChatResult",
     "ChatResultArtifact",
+    "ChatResultCard",
     "ChatResultChart",
+    "ChatResultCombination",
     "ChatResultGraph",
     "ChatResultRecord",
     "ChatResultMap",
+    "ChatResultPanel",
+    "ChatResultPlaceholder",
     "ChatEvent",
     "AnswerDelta",
     "NarrationDelta",

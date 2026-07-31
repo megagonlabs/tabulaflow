@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
@@ -47,6 +48,7 @@ QUERY_PREVIEW_MAX_LINES = 7
 if TYPE_CHECKING:
     import pandas as pd
     from rich.console import RenderableType
+    from tabulaflow.chat import ChatResultCard
 
 
 def build_query(
@@ -284,6 +286,7 @@ VIEW_KIND_DATA = "Data"
 VIEW_KIND_QUERY = "Query"
 VIEW_KIND_MAP = "Map"
 VIEW_KIND_GRAPH = "Graph"
+VIEW_KIND_INFO = "Info"
 
 
 def _build_map_card(map_spec: dict[str, object]) -> RenderableType:
@@ -314,6 +317,11 @@ def _build_graph_card() -> RenderableType:
     return Panel(Group(*lines), box=box.ROUNDED, border_style=ACCENT_DIM, padding=(1, 2))
 
 
+def _build_info_card(message: str) -> RenderableType:
+    """Simple informational card body, used for panel combinations without rows."""
+    return Panel(Text(message, style="dim", justify="center"), box=box.ROUNDED, border_style=ACCENT_DIM, padding=(1, 2))
+
+
 @dataclass
 class ViewItem:
     """A single view (Chart/Data/Query) belonging to one record."""
@@ -339,24 +347,32 @@ class CardGroup:
     views: list[ViewItem] = field(default_factory=list)
 
 
-def build_card_views(result: object, width: int = 80) -> list[CardGroup]:
-    """Build per-artifact view groups from a ChatResult, in citation order.
+def build_artifact_card_views(artifacts: Sequence[ChatResultCard], width: int = 80) -> list[CardGroup]:
+    """Build per-artifact view groups from already-resolved artifacts, in order.
 
-    Record artifacts yield Data -> Query views and chart artifacts Chart ->
-    Data -> Query views (absent kinds omitted); map and graph artifacts yield a
-    single browser-pane placeholder view, since they don't render in the
-    terminal. Artifacts with no views are dropped.
+    Record artifacts yield Data -> Query views and chart artifacts Chart -> Data ->
+    Query views (absent kinds omitted); map and graph artifacts yield a single
+    browser-pane placeholder view, since they don't render in the terminal. Panel
+    placeholders yield a single informational view. Artifacts with no views are dropped.
     """
-    from tabulaflow.chat import ChatResult, ChatResultChart, ChatResultGraph, ChatResultMap
-
-    assert isinstance(result, ChatResult)
+    from tabulaflow.chat import ChatResultChart, ChatResultGraph, ChatResultMap, ChatResultPlaceholder
 
     groups: list[CardGroup] = []
     used_labels: set[str] = set()
-    for artifact in result.artifacts:
+    for artifact in artifacts:
         base_label = artifact.label or "result"
         label = _unique_record_label(base_label, used_labels)
         used_labels.add(label)
+
+        if isinstance(artifact, ChatResultPlaceholder):
+            groups.append(
+                CardGroup(
+                    label=label,
+                    artifact_id=f"placeholder:{label}",
+                    views=[ViewItem(kind=VIEW_KIND_INFO, renderable=_build_info_card(artifact.message))],
+                )
+            )
+            continue
 
         if isinstance(artifact, ChatResultMap):
             groups.append(
@@ -421,15 +437,25 @@ def build_card_views(result: object, width: int = 80) -> list[CardGroup]:
             )
 
     # Release DataFrame references — previews have been rendered to Rich renderables.
-    for artifact in result.artifacts:
+    for artifact in artifacts:
         if isinstance(artifact, ChatResultMap):
             artifact.sources = {}
         elif isinstance(artifact, ChatResultGraph):
+            pass
+        elif isinstance(artifact, ChatResultPlaceholder):
             pass
         else:
             artifact.df = None
 
     return groups
+
+
+def build_card_views(result: object, width: int = 80) -> list[CardGroup]:
+    """Build per-artifact view groups from a ChatResult, in citation order."""
+    from tabulaflow.chat import ChatResult
+
+    assert isinstance(result, ChatResult)
+    return build_artifact_card_views(result.artifacts, width)
 
 
 def _unique_record_label(base_label: str, used: set[str]) -> str:
