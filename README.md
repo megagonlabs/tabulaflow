@@ -521,6 +521,9 @@ July 29
 - [ ] Shell messed up after ssh disconnect
 - [ ] Check if uv tool install install browser
 
+- [ ] Review data flow architecture and RAM complexity
+- [ ] Fix `/clear`
+- [ ] Scrolling and typing slow in long conversation (50+ turns)
 - [ ] Data provenance
 - [ ] "result" -> "response", Escape go to last viewed response
 - [ ] Fix copy icon checkmark bg
