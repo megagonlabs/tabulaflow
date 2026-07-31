@@ -19,7 +19,7 @@ from pydantic_ai import Tool, ToolReturn
 from tabulaflow.core.config import tabulaflow_config
 from tabulaflow.core.db_connector import NL2QDBConnector
 from tabulaflow.core.db_connector.db_registry import DBRegistry
-from tabulaflow.core.types import PredQuery
+from tabulaflow.core.types import ErrorInfo, PredQuery
 from tabulaflow.core.utils import flatten_multiline, format_df
 from tabulaflow.toolhub.base import ToolCallOutcome
 from tabulaflow.toolhub.engines.sql import format_sqlalchemy_error_msg
@@ -30,6 +30,8 @@ DEFAULT_MAX_COMBINATIONS = 50
 _SAMPLE_ROWS = 5
 _FIRST_ROW_COLUMNS = 4
 _FIRST_ROW_CELL_CHARS = 40
+_MAX_REPORTED_ERRORS = 5
+_KEYS_PER_ERROR = 3
 _JINJA_ENV = jinja2.Environment(undefined=jinja2.StrictUndefined)
 _SQL_COMMENT_RE = re.compile(r"--[^\n]*|/\*.*?\*/", re.DOTALL)
 
@@ -172,6 +174,29 @@ def _format_run(family: QueryFamily, by_selection: dict[str, PredQuery]) -> str:
                 annotation = f"first row: {first_row}"
             suffix = f" — {annotation}" if annotation is not None else ""
             lines.append(f"  {key} ({_rows_label(pred_query)}){suffix}")
+    return "\n".join(lines)
+
+
+def _error_summary(error: ErrorInfo) -> str:
+    """One-line form of a query error: the driver's own first line.
+
+    The rest is the echoed SQL and hints, which the agent already has as its template.
+    """
+    if error.exc_type == "TimeoutError":
+        return "timed out"
+    return (format_sqlalchemy_error_msg(error.message).splitlines() or [error.exc_type])[0]
+
+
+def _format_failures(failures: dict[str, list[str]], executed: int) -> str:
+    """One line per distinct error, naming the combinations that hit it."""
+    failed = sum(len(keys) for keys in failures.values())
+    lines = [f"{failed} of {executed} queries failed; anything not listed ran fine"]
+    for message, keys in list(failures.items())[:_MAX_REPORTED_ERRORS]:
+        shown = ", ".join(keys[:_KEYS_PER_ERROR])
+        extra = f" +{len(keys) - _KEYS_PER_ERROR} more" if len(keys) > _KEYS_PER_ERROR else ""
+        lines.append(f"  {shown}{extra} — {message}")
+    if len(failures) > _MAX_REPORTED_ERRORS:
+        lines.append(f"  (and {len(failures) - _MAX_REPORTED_ERRORS} more distinct errors)")
     return "\n".join(lines)
 
 
@@ -342,12 +367,14 @@ class RunQueryForEachCombinationTool:
         )
 
         pred_queries: dict[str, PredQuery] = {}
+        failures: dict[str, list[str]] = {}
         for (normalized, (selection_key, query)), exec_result in zip(distinct.items(), exec_results, strict=True):
             if (error := exec_result.error) is not None:
-                # A timeout's message echoes the whole query; the agent already has it.
-                detail = "timed out" if error.exc_type == "TimeoutError" else format_sqlalchemy_error_msg(error.message)
-                raise ValueError(f"query failed at {selection_key}: {detail}")
+                failures.setdefault(_error_summary(error), []).append(selection_key)
+                continue
             pred_queries[normalized] = PredQuery(query=query, exec_result=exec_result)
+        if failures:
+            raise ValueError(_format_failures(failures, len(distinct)))
 
         by_selection = {key: pred_queries[_normalize(query)] for key, query in queries.items()}
         family = await self._history.add_family(

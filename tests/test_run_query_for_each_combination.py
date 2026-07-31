@@ -275,9 +275,25 @@ class TestRunQueryForEachCombination:
         )
 
         assert result.metadata == ToolCallOutcome(error=True)
-        assert "query failed at ranking=net" in _text(result)
+        assert "2 of 2 queries failed" in _text(result)
+        assert "ranking=net — " in _text(result)
+        assert "ranking=gross — " in _text(result)
         with pytest.raises(KeyError):
             history.get_family("QS1")
+
+    @pytest.mark.asyncio
+    async def test_combinations_sharing_an_error_are_grouped(self, registry: DBRegistry) -> None:
+        result = await _tool(registry)(
+            "workspace",
+            [QueryDimension(id="ranking", choices=["net", "gross"])],
+            "SELECT {% if ranking == 'net' %} net {% else %} gross {% endif %} FROM missing_table",
+        )
+
+        text = _text(result)
+        assert result.metadata == ToolCallOutcome(error=True)
+        assert "2 of 2 queries failed" in text
+        assert "ranking=net, ranking=gross — " in text
+        assert text.count("missing_table") == 1
 
     @pytest.mark.asyncio
     async def test_duplicate_dimension_and_choice_validation(self, registry: DBRegistry) -> None:
