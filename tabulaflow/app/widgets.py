@@ -1098,6 +1098,9 @@ class AgentTextBlock(Markdown):
         await stream.stop()
 
 
+_UNLISTED_TOOL = "show_artifacts"
+
+
 class AgentProgressWidget(Widget):
     """Shows agent execution progress with tool steps; streams the agent's text
     into sibling ``AgentTextBlock`` widgets.
@@ -1182,6 +1185,8 @@ class AgentProgressWidget(Widget):
         Another frontend (e.g. a webapp) is free to render the trace from the same
         event; the choice of how to surface reasoning is the frontend's.
         """
+        if isinstance(event, (ToolStarted, ToolFinished)) and event.name == _UNLISTED_TOOL:
+            return  # declaring the turn's cards is bookkeeping, not a step worth showing
         if isinstance(event, ToolStarted):
             self._on_tool_start(event.tool_call_id, event.name, summarize_tool_args(event.name, event.args))
         elif isinstance(event, ToolFinished):

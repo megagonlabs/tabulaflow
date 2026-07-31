@@ -34,6 +34,7 @@ from tabulaflow.toolhub.registry_transfer_record import RegistryTransferRecordTo
 from tabulaflow.toolhub.run_query import RunQueryTool
 from tabulaflow.toolhub.run_query_for_each_combination import QueryDimension, RunQueryForEachCombinationTool
 from tabulaflow.toolhub.run_subagent_for_each_row import RunSubagentForEachRowTool
+from tabulaflow.toolhub.show_artifacts import Artifact, ArtifactBundle, ShowArtifactsTool
 from tabulaflow.toolhub.web_browser import (
     WebBrowserManager,
     WebBrowserTool,
@@ -65,6 +66,8 @@ __all__ = [
     "RegistryGetDBDocumentTool",
     "RegistryGetSchemaTool",
     "RegistryGetTableSchemaTool",
+    "Artifact",
+    "ArtifactBundle",
     "MapArtifact",
     "QueryDimension",
     "QueryFamily",
@@ -78,6 +81,7 @@ __all__ = [
     "RunQueryForEachCombinationTool",
     "RunQueryTool",
     "RunSubagentForEachRowTool",
+    "ShowArtifactsTool",
     "WebBrowserManager",
     "WebBrowserTool",
     "default_manager",

@@ -9,7 +9,6 @@ from importlib.resources import files
 import json
 import logging
 from pathlib import Path
-import re
 import sys
 from contextlib import suppress
 from dataclasses import dataclass, field, fields
@@ -55,6 +54,7 @@ if TYPE_CHECKING:
     from tabulaflow.toolhub import (
         AddCanonicalNameTool,
         ApplyPatchTool,
+        ArtifactBundle,
         ChartArtifact,
         ConnectDataSourceTool,
         ExecuteBashTool,
@@ -73,13 +73,12 @@ if TYPE_CHECKING:
         RenderGraphTool,
         RenderMapTool,
         RunSubagentForEachRowTool,
+        ShowArtifactsTool,
         ToolProgressUpdate,
         WebBrowserTool,
     )
 
 logger = logging.getLogger(__name__)
-
-_ARTIFACT_REF_RE = re.compile(r"\[\[artifact:((?:Q|CHART|MAP|GRAPH)\d+)(?::([^\]]+))?\]\]")
 
 
 SYSTEM_PROMPT = files("tabulaflow.chat").joinpath("system_prompt.md").read_text(encoding="utf-8").strip()
@@ -136,6 +135,7 @@ class _Toolset:
     render_chart: RenderChartTool
     render_graph: RenderGraphTool
     render_map: RenderMapTool
+    show_artifacts: ShowArtifactsTool
     web_browser: WebBrowserTool
 
     def __iter__(self) -> Iterator[Any]:
@@ -173,7 +173,7 @@ class ChatAgent:
     # session tail (see ``_compose_system_prompt``), so the large prefix still
     # prompt-caches; keep it stable across a session's turns. A full prompt replacement
     # is intentionally not offered: the baseline ``SYSTEM_PROMPT`` is half of a contract
-    # with this module's tools and citation parser, so callers extend rather than swap it.
+    # with this module's tools and answer-marker router, so callers extend rather than swap it.
     extra_instructions: str | None = None
     # Where to persist conversation + subagent trajectories. ``None`` (default)
     # disables all trajectory persistence — set a dir to enable it. Servers leave it
@@ -262,6 +262,7 @@ class ChatAgent:
             RenderGraphTool,
             RenderMapTool,
             RunSubagentForEachRowTool,
+            ShowArtifactsTool,
             WebBrowserTool,
         )
 
@@ -330,6 +331,7 @@ class ChatAgent:
             render_chart=RenderChartTool(history=self._query_history),
             render_graph=RenderGraphTool(history=self._query_history),
             render_map=RenderMapTool(history=self._query_history),
+            show_artifacts=ShowArtifactsTool(history=self._query_history),
             web_browser=WebBrowserTool(),
         )
 
@@ -740,7 +742,7 @@ class ChatAgent:
             # the authoritative final usage, then the terminal result.
             if final_usage is not None:
                 emit(UsageUpdated(usage=final_usage))
-            result = await _build_chat_result(answer_text, self._query_history)
+            result = await _build_chat_result(answer_text, _declared_bundle(completed_results), self._query_history)
             result.usage = final_usage
             emit(Finished(result=result))
         finally:
@@ -764,12 +766,25 @@ class ChatAgent:
 
 async def _build_chat_result(
     answer_text: str,
+    bundle: ArtifactBundle | None,
     query_history: QueryHistory,
 ) -> ChatResult:
-    display_text, refs = _extract_result_refs(answer_text)
+    refs = [(artifact.id, artifact.label) for artifact in bundle.artifacts] if bundle is not None else []
     artifacts = await _artifacts_from_refs(refs, query_history)
     primary_artifact_index: int | None = 0 if artifacts else None
-    return ChatResult(text=display_text, artifacts=artifacts, primary_artifact_index=primary_artifact_index)
+    return ChatResult(
+        text=_strip_answer_marker(answer_text), artifacts=artifacts, primary_artifact_index=primary_artifact_index
+    )
+
+
+def _declared_bundle(completed_results: dict[str, ToolReturnPart]) -> "ArtifactBundle | None":
+    """The bundle from the turn's last successful ``show_artifacts`` call, if any."""
+    from tabulaflow.toolhub import ArtifactBundle, ShowArtifactsTool
+
+    for part in reversed(list(completed_results.values())):
+        if part.tool_name == ShowArtifactsTool.name and isinstance(part.metadata, ArtifactBundle):
+            return part.metadata
+    return None
 
 
 def _patch_incomplete_messages(
@@ -820,52 +835,25 @@ def _patch_incomplete_messages(
     return out
 
 
-_ARTIFACTS_OPEN = "<artifacts>"
-_ARTIFACTS_CLOSE = "</artifacts>"
+_ANSWER_OPEN = "<answer>"
 
 
-def _parse_refs(text: str) -> list[tuple[str, str | None]]:
-    """Extract ``(record_id, label)`` pairs from ``[[artifact:Q<id>:<label>]]`` markers
-    (label normalized to ``None`` when absent or blank)."""
-    return [(m.group(1), (m.group(2) or "").strip() or None) for m in _ARTIFACT_REF_RE.finditer(text)]
-
-
-def _extract_result_refs(answer_text: str) -> tuple[str, list[tuple[str, str | None]]]:
-    close_start = answer_text.find(_ARTIFACTS_CLOSE)
-    open_start = answer_text.find(_ARTIFACTS_OPEN)
-    if open_start != -1 and close_start > open_start:
-        block_start = open_start + len(_ARTIFACTS_OPEN)
-        block = answer_text[block_start:close_start]
-        display_text = answer_text[close_start + len(_ARTIFACTS_CLOSE) :]
-        refs = _parse_refs(block)
-        # Refs belong inside the block, but the model occasionally cites inline;
-        # strip those markers from the prose and still resolve them.
-        seen = {record_id for record_id, _ in refs}
-        for ref in _parse_refs(display_text):
-            if ref[0] not in seen:
-                refs.append(ref)
-                seen.add(ref[0])
-        return _ARTIFACT_REF_RE.sub("", display_text).strip(), refs
-
-    # No recognized artifact block: the whole output is user-facing. Still strip
-    # any inline ``[[artifact:...]]`` markers the agent may have left in the prose.
-    refs = _parse_refs(answer_text)
-    if refs:
-        answer_text = _ARTIFACT_REF_RE.sub("", answer_text)
-    return answer_text.strip(), refs
+def _strip_answer_marker(text: str) -> str:
+    """Drop the leading ``<answer>`` marker from a final answer."""
+    stripped = text.lstrip()
+    return stripped[len(_ANSWER_OPEN) :].strip() if stripped.startswith(_ANSWER_OPEN) else stripped
 
 
 class _TextStreamRouter:
-    """Routes a streamed text run into the final answer vs. mid-turn narration, and
-    strips the artifact refs block from the answer.
+    """Routes a streamed text run into the final answer vs. mid-turn narration.
 
-    A run that opens with an ``<artifacts>...</artifacts>`` block is the **answer**:
-    held back until the closing tag, then the text after it streams. Any other run is
-    **narration** and streams live. After the first chunk that yields text,
-    :attr:`is_answer` says which it is. Reset via :meth:`reset` per text part.
+    A run opening with ``<answer>`` is the **answer**: held back only until that
+    marker is complete, then streamed without it. Any other run is **narration** and
+    streams live. After the first chunk that yields text, :attr:`is_answer` says which
+    it is. Reset via :meth:`reset` per text part.
 
-    Kept here (not the frontend) so the artifact-block convention — owned by this
-    agent's prompt — never crosses the layer boundary.
+    Kept here (not the frontend) so the marker convention — owned by this agent's
+    prompt — never crosses the layer boundary.
     """
 
     def __init__(self) -> None:
@@ -883,23 +871,20 @@ class _TextStreamRouter:
         if self._open:
             return chunk
 
-        close_start = self._raw.find(_ARTIFACTS_CLOSE)
-        open_start = self._raw.find(_ARTIFACTS_OPEN)
-        if open_start != -1 and close_start > open_start:
-            answer = self._raw[close_start + len(_ARTIFACTS_CLOSE) :].lstrip("\n")
+        stripped = self._raw.lstrip()
+        if stripped.startswith(_ANSWER_OPEN):
+            answer = stripped[len(_ANSWER_OPEN) :].lstrip("\n")
             if not answer:
-                return ""  # artifact block complete but answer hasn't started yet
+                return ""  # marker complete but the answer hasn't started yet
             self._open = True
             self.is_answer = True
             return answer
-
-        stripped = self._raw.lstrip()
-        if _ARTIFACTS_OPEN.startswith(stripped):
-            return ""
-        if stripped and not stripped.startswith(_ARTIFACTS_OPEN):
+        if _ANSWER_OPEN.startswith(stripped):
+            return ""  # could still become the marker
+        if stripped:
             self._open = True
             self.is_answer = False
-            return self._raw  # narration (or an answer the model failed to delimit)
+            return self._raw  # narration (or an answer the model failed to mark)
         return ""
 
 
