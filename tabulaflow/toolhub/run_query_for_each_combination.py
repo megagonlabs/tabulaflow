@@ -298,7 +298,7 @@ class RunQueryForEachCombinationTool:
         self.max_combinations = max_combinations
         self._history = history
 
-    async def _run(self, db_alias: str, dimensions: Dimensions, query_template: str) -> ToolReturn:
+    async def __call__(self, db_alias: str, dimensions: Dimensions, query_template: str) -> ToolReturn:
         """Render a query template once per combination of dimension choices and run each.
 
         Each dimension id is bound to the chosen choice id in the Jinja context, so the
@@ -335,9 +335,6 @@ class RunQueryForEachCombinationTool:
                 the Jinja variables.
             query_template: Jinja template rendered and executed for each combination.
         """
-        return await self(db_alias, dimensions, query_template)
-
-    async def __call__(self, db_alias: str, dimensions: Dimensions, query_template: str) -> ToolReturn:
         try:
             run = await self.execute(db_alias, dimensions, query_template)
         except ValueError as exc:
@@ -394,4 +391,4 @@ class RunQueryForEachCombinationTool:
             raise ValueError(f"unknown db_alias: {db_alias!r}; available: {available}") from None
 
     def as_pydantic_ai_tool(self) -> Tool:
-        return Tool(self._run, name=self.name)
+        return Tool(self.__call__, name=self.name)

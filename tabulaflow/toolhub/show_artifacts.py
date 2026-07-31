@@ -45,7 +45,7 @@ class ShowArtifactsTool:
     def __init__(self, history: QueryHistory) -> None:
         self._history = history
 
-    async def _run(self, artifacts: Artifacts) -> ToolReturn:
+    async def __call__(self, artifacts: Artifacts) -> ToolReturn:
         """Show the user a set of results, each as a labelled card.
 
         Ids come from the tools that produced them: ``Q*`` from a query, ``CHART*``,
@@ -58,12 +58,8 @@ class ShowArtifactsTool:
         ```
 
         Args:
-            artifacts: The results to show. Pass an empty list for an answer that
-                shows nothing.
+            artifacts: The results to show, in display order.
         """
-        return await self(artifacts)
-
-    async def __call__(self, artifacts: Artifacts) -> ToolReturn:
         problems = [problem for artifact in artifacts if (problem := await self._problem(artifact)) is not None]
         if problems:
             return ToolReturn(return_value=f"(error: {'; '.join(problems)})")
@@ -89,4 +85,4 @@ class ShowArtifactsTool:
         return None
 
     def as_pydantic_ai_tool(self) -> Tool:
-        return Tool(self._run, name=self.name)
+        return Tool(self.__call__, name=self.name)
