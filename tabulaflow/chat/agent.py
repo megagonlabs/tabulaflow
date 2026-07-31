@@ -88,6 +88,7 @@ if TYPE_CHECKING:
         RenderChartTool,
         RenderGraphTool,
         RenderMapTool,
+        RunQueryForEachCombinationTool,
         RunSubagentForEachRowTool,
         ShowArtifactsTool,
         ToolProgressUpdate,
@@ -133,6 +134,7 @@ class _Toolset:
     iterates it. A ``None`` field means the tool is absent for the session."""
 
     run_query: RegistryRunQueryTool
+    run_query_for_each_combination: RunQueryForEachCombinationTool
     get_db_document: RegistryGetDBDocumentTool
     get_table_schema: RegistryGetTableSchemaTool
     get_column_json_schema: RegistryGetColumnJsonSchemaTool
@@ -277,6 +279,7 @@ class ChatAgent:
             RenderChartTool,
             RenderGraphTool,
             RenderMapTool,
+            RunQueryForEachCombinationTool,
             RunSubagentForEachRowTool,
             ShowArtifactsTool,
             WebBrowserTool,
@@ -306,6 +309,7 @@ class ChatAgent:
 
         return _Toolset(
             run_query=RegistryRunQueryTool(self.registry, history=self._query_history, enable_refresh=True),
+            run_query_for_each_combination=RunQueryForEachCombinationTool(self.registry, history=self._query_history),
             get_db_document=RegistryGetDBDocumentTool(
                 self.registry,
                 db_summarizer_cls=DBSummarizer,

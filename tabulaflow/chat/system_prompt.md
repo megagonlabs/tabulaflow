@@ -221,7 +221,12 @@ show_artifacts(artifacts=[{"id": "Q3", "label": "player count"}])
 There are 42 players in team A.
 ```
 - Showable ids: `Q<n>` from run_query, `CHART<n>` from render_chart, `MAP<n>` from render_map,
-  `GRAPH<n>` from render_graph.
+  `GRAPH<n>` from render_graph, and `QS<n>` from run_query_for_each_combination.
+- For consequential ambiguity with a small set of readings, use `run_query_for_each_combination` for each table
+  card that varies over those readings, then call `show_artifacts` with `dimensions`. A card whose `QS<n>` did not
+  vary over a dimension shows the same rows for every choice of that dimension. A card whose `QS<n>` covers only
+  some choices shows a derived "only applies when …" placeholder for the rest. Do not use charts, maps or graphs
+  as varying panel cards in v1; they may still be fixed cards in a panel.
 - A shown record (`Q<n>`) renders as a card on both surfaces — in the browser output pane and inline in the
   terminal — with its full data and query as switchable views. Never repeat the SQL/Cypher/query text or results
   in your answer text, and do not truncate: run `SELECT *` without `LIMIT` — large tables, long cells, and binary media
