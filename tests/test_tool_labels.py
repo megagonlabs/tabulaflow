@@ -99,6 +99,38 @@ class TestFileEditorLabel:
         assert label == "View x.py"
 
 
+class TestQueryCombinationLabel:
+    def test_two_dimensions(self) -> None:
+        label = summarize_tool_args(
+            "run_query_for_each_combination",
+            {
+                "db_alias": "workspace",
+                "dimensions": [
+                    {"id": "ranking", "choices": ["net", "count"]},
+                    {"id": "period", "choices": ["q2", "q3"]},
+                ],
+                "query_template": "SELECT ...",
+            },
+        )
+
+        assert label == "Query [workspace] 2 ranking × 2 period"
+
+    def test_one_dimension(self) -> None:
+        label = summarize_tool_args(
+            "run_query_for_each_combination",
+            {"db_alias": "workspace", "dimensions": [{"id": "period", "choices": ["q1", "q2", "q3"]}]},
+        )
+
+        assert label == "Query [workspace] 3 period"
+
+    def test_malformed_dimensions_falls_back_to_the_verb(self) -> None:
+        label = summarize_tool_args(
+            "run_query_for_each_combination", {"db_alias": "workspace", "dimensions": "ranking"}
+        )
+
+        assert label == "Query [workspace]"
+
+
 class TestApplyPatchLabel:
     def test_single_update_diffstat(self) -> None:
         label = summarize_tool_args(
