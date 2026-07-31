@@ -1427,6 +1427,10 @@ class AgentResultWidget(Widget):
         background: $focus-surface;
     }
 
+    AgentResultWidget.-has-panel {
+        padding: 0 1 1 1;
+    }
+
     AgentResultWidget .top-bar-row {
         layout: horizontal;
         height: auto;
@@ -1442,6 +1446,22 @@ class AgentResultWidget(Widget):
 
     AgentResultWidget .view-stepper {
         width: auto;
+        height: auto;
+    }
+
+    AgentResultWidget .interpretation-panel {
+        height: auto;
+        margin: 0 0 1 0;
+        padding: 0 2;
+        border: round #6a737d;
+    }
+
+    AgentResultWidget .interpretation-title {
+        height: auto;
+        margin: 0 0 1 0;
+    }
+
+    AgentResultWidget .interpretation-content {
         height: auto;
     }
 
@@ -1466,6 +1486,7 @@ class AgentResultWidget(Widget):
         self._result = result
         self._width = width
         self._panel = result.panel
+        self.set_class(self._panel is not None, "-has-panel")
         self._applied_selection: dict[str, str] = (
             dict(self._panel.combinations[0].selection) if self._panel is not None else {}
         )
@@ -1478,7 +1499,6 @@ class AgentResultWidget(Widget):
         self._query_history: QueryHistory | None = query_history if isinstance(query_history, QueryHistory) else None
         self._interpretation_title: Static | None = None
         self._interpretation_content: Static | None = None
-        self._interpretation_separator: Static | None = None
         self._content = Static(id="result-content")
         self._mounted = False
         self._card_bar_widget: Static | None = None
@@ -1501,15 +1521,16 @@ class AgentResultWidget(Widget):
         return bool(self._cards)
 
     def compose(self) -> ComposeResult:
-        from textual.containers import Horizontal
+        from textual.containers import Horizontal, Vertical
 
         if self._panel is not None:
-            self._interpretation_title = Static()
-            self._interpretation_content = Static()
-            self._interpretation_separator = Static()
-            yield self._interpretation_title
-            yield self._interpretation_content
-            yield self._interpretation_separator
+            self._interpretation_title = Static(classes="interpretation-title")
+            self._interpretation_content = Static(classes="interpretation-content")
+            yield Vertical(
+                self._interpretation_title,
+                self._interpretation_content,
+                classes="interpretation-panel",
+            )
         if self._has_top_bar:
             self._card_bar_widget = Static(classes="card-bar")
             self._view_stepper_widget = Static(classes="view-stepper")
@@ -1675,18 +1696,14 @@ class AgentResultWidget(Widget):
 
         if self._panel is None:
             return
-        if (
-            self._interpretation_title is None
-            or self._interpretation_content is None
-            or self._interpretation_separator is None
-        ):
+        if self._interpretation_title is None or self._interpretation_content is None:
             return
 
         available = self._interpretation_title.size.width or 80
         hint = Text(no_wrap=True)
         hint.append("↑↓", style=self._focus_key_hint)
         hint.append(" Move · ", style="dim")
-        hint.append("↵", style=self._focus_key_hint)
+        hint.append("Space", style=self._focus_key_hint)
         hint.append(" Apply", style="dim")
         title = Text("Refine interpretation", style="bold dim")
         title_line = Text(no_wrap=True, overflow="crop")
@@ -1725,11 +1742,7 @@ class AgentResultWidget(Widget):
                 rows.append(line)
                 self._choice_hit_areas.append((self._choice_flat_index(dim_idx, choice_idx), row))
                 row += 1
-        content = Text("\n")
-        content.append_text(Text("\n").join(rows))
-        content.append("\n")
-        self._interpretation_content.update(content)
-        self._interpretation_separator.update(Text("─" * max(1, available), style="dim"))
+        self._interpretation_content.update(Text("\n").join(rows))
 
     def _update_card_bar(self) -> None:
         """Render record pills left-anchored, wrapping across multiple lines.
@@ -1909,6 +1922,8 @@ class AgentResultWidget(Widget):
             hint.append("↵", style=self._focus_key_hint)
             hint.append(" Inspect", style="dim")
         else:
+            hint.append("↵", style=self._focus_key_hint)
+            hint.append(" Inspect    ", style="dim")
             hint.append("Esc", style=self._focus_key_hint)
             hint.append(" Back to input", style="dim")
 
@@ -2042,10 +2057,11 @@ class AgentResultWidget(Widget):
             self.current_card = (self.current_card - 1) % len(self._cards)
 
     def action_result_enter(self) -> None:
+        self.run_worker(self.action_open_full_screen(), exclusive=True)
+
+    def action_apply_interpretation(self) -> None:
         if self._panel is not None:
             self._apply_interpretation_cursor()
-        else:
-            self.run_worker(self.action_open_full_screen(), exclusive=True)
 
     def action_result_up(self) -> None:
         if self._panel is not None:
@@ -2066,7 +2082,8 @@ class AgentResultWidget(Widget):
         ("left_square_bracket", "prev_view", "Previous view"),
         ("right", "next_record", "Next record"),
         ("left", "prev_record", "Previous record"),
-        ("enter", "result_enter", "Apply / Full screen"),
+        ("space", "apply_interpretation", "Apply interpretation"),
+        ("enter", "result_enter", "Full screen"),
         # ``priority=True`` so these beat ``VerticalScroll``'s own priority
         # up/down bindings (which would otherwise scroll the chat log
         # instead of moving between focused result widgets).
