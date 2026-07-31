@@ -59,7 +59,7 @@ if TYPE_CHECKING:
     import pandas as pd
     from rich.console import RenderableType
 
-    from tabulaflow.chat import ChatResult
+    from tabulaflow.chat import ChatResult, ChatResultCard, ChatResultCombination
     from tabulaflow.app.display import CardGroup, ViewItem
     from tabulaflow.core.types import Usage
 
@@ -1436,13 +1436,25 @@ class AgentResultWidget(Widget):
         query_history: object | None = None,
     ) -> None:
         super().__init__()
-        from tabulaflow.app.display import build_card_views
+        from tabulaflow.app.display import build_artifact_card_views
         from tabulaflow.toolhub.query_history import QueryHistory
 
-        self._cards = build_card_views(result, width)
+        self._result = result
+        self._width = width
+        self._panel = result.panel
+        self._applied_selection: dict[str, str] = (
+            dict(self._panel.combinations[0].selection) if self._panel is not None else {}
+        )
+        self._interpretation_cursor = 0
+        self._cards = build_artifact_card_views(
+            self._current_artifacts(), width, release_dataframes=self._panel is None
+        )
         # Selected view index per card; every card has at least one view.
         self._view_indices: list[int] = [0] * len(self._cards)
         self._query_history: QueryHistory | None = query_history if isinstance(query_history, QueryHistory) else None
+        self._interpretation_title: Static | None = None
+        self._interpretation_content: Static | None = None
+        self._interpretation_separator: Static | None = None
         self._content = Static(id="result-content")
         self._mounted = False
         self._card_bar_widget: Static | None = None
@@ -1455,6 +1467,9 @@ class AgentResultWidget(Widget):
         # View hit areas: (target, col_start, col_end) relative to the view
         # stepper widget. Target is "prev" or "next".
         self._view_hit_areas: list[tuple[str, int, int]] = []
+        # Interpretation choice hit areas: (flat_choice_index, row) relative to
+        # the interpretation-content widget.
+        self._choice_hit_areas: list[tuple[int, int]] = []
 
     @property
     def _has_top_bar(self) -> bool:
@@ -1464,6 +1479,13 @@ class AgentResultWidget(Widget):
     def compose(self) -> ComposeResult:
         from textual.containers import Horizontal
 
+        if self._panel is not None:
+            self._interpretation_title = Static()
+            self._interpretation_content = Static()
+            self._interpretation_separator = Static()
+            yield self._interpretation_title
+            yield self._interpretation_content
+            yield self._interpretation_separator
         if self._has_top_bar:
             self._card_bar_widget = Static(classes="card-bar")
             self._view_stepper_widget = Static(classes="view-stepper")
@@ -1480,6 +1502,10 @@ class AgentResultWidget(Widget):
     def on_mount(self) -> None:
         self._mounted = True
         self._refresh_all()
+        # The first refresh can run before the child widgets have final widths;
+        # refresh once more after layout so the interpretation header/separator
+        # don't render with width 0 until the first keypress.
+        self.call_after_refresh(self._refresh_all)
 
     def on_resize(self) -> None:
         if self._card_bar_widget is not None:
@@ -1522,6 +1548,8 @@ class AgentResultWidget(Widget):
         return KEY_HINT if self.has_focus else KEY_HINT_DIM
 
     def _refresh_all(self) -> None:
+        if self._panel is not None:
+            self._update_interpretation_panel()
         self._update_content()
         if self._card_bar_widget is not None:
             self._update_card_bar()
@@ -1532,6 +1560,32 @@ class AgentResultWidget(Widget):
         if self._is_last_chat_item():
             chat_log = self.app.query_one("#chat-log")
             chat_log.scroll_end(animate=False)
+
+    def _current_artifacts(self) -> list["ChatResultCard"]:
+        if self._panel is None:
+            return list(self._result.artifacts)
+        combination = self._current_combination()
+        return list(combination.artifacts) if combination is not None else []
+
+    def _current_combination(self) -> "ChatResultCombination | None":
+        if self._panel is None:
+            return None
+        for combination in self._panel.combinations:
+            if combination.selection == self._applied_selection:
+                return combination
+        return self._panel.combinations[0] if self._panel.combinations else None
+
+    def _rebuild_cards_for_selection(self) -> None:
+        from tabulaflow.app.display import build_artifact_card_views
+
+        old_indices = self._view_indices
+        old_card = self.current_card
+        self._cards = build_artifact_card_views(self._current_artifacts(), self._width, release_dataframes=False)
+        self.current_card = min(old_card, max(len(self._cards) - 1, 0))
+        self._view_indices = [0] * len(self._cards)
+        for i, old in enumerate(old_indices[: len(self._cards)]):
+            if self._cards[i].views:
+                self._view_indices[i] = min(old, len(self._cards[i].views) - 1)
 
     def _is_last_chat_item(self) -> bool:
         """Return True when this widget is the last chat log child."""
@@ -1553,6 +1607,105 @@ class AgentResultWidget(Widget):
         if rec is None or not rec.views:
             return None
         return rec.views[self._view_indices[min(self.current_card, len(self._cards) - 1)]]
+
+    def _choice_count(self) -> int:
+        if self._panel is None:
+            return 0
+        return sum(len(dim.choices) for dim in self._panel.dimensions)
+
+    def _cursor_location(self) -> tuple[int, int]:
+        assert self._panel is not None
+        cursor = self._interpretation_cursor
+        for dim_idx, dim in enumerate(self._panel.dimensions):
+            if cursor < len(dim.choices):
+                return dim_idx, cursor
+            cursor -= len(dim.choices)
+        last_dim = len(self._panel.dimensions) - 1
+        return last_dim, len(self._panel.dimensions[last_dim].choices) - 1
+
+    def _choice_flat_index(self, dim_idx: int, choice_idx: int) -> int:
+        assert self._panel is not None
+        return sum(len(dim.choices) for dim in self._panel.dimensions[:dim_idx]) + choice_idx
+
+    def _move_interpretation_cursor(self, delta: int) -> None:
+        max_cursor = self._choice_count() - 1
+        if max_cursor < 0:
+            return
+        self._interpretation_cursor = max(0, min(max_cursor, self._interpretation_cursor + delta))
+        self._refresh_all()
+
+    def _apply_interpretation_cursor(self) -> None:
+        if self._panel is None:
+            return
+        dim_idx, choice_idx = self._cursor_location()
+        dim = self._panel.dimensions[dim_idx]
+        choice = dim.choices[choice_idx]
+        if self._applied_selection.get(dim.id) == choice.id:
+            return
+        self._applied_selection = {**self._applied_selection, dim.id: choice.id}
+        self._rebuild_cards_for_selection()
+        self._refresh_all()
+
+    def _update_interpretation_panel(self) -> None:
+        from rich.style import Style
+
+        if self._panel is None:
+            return
+        if (
+            self._interpretation_title is None
+            or self._interpretation_content is None
+            or self._interpretation_separator is None
+        ):
+            return
+
+        available = self._interpretation_title.size.width or 80
+        hint = Text(no_wrap=True)
+        hint.append("↑↓", style=self._focus_key_hint)
+        hint.append(" Move · ", style="dim")
+        hint.append("↵", style=self._focus_key_hint)
+        hint.append(" Apply", style="dim")
+        title = Text("Refine interpretation", style="bold dim")
+        title_line = Text(no_wrap=True, overflow="crop")
+        title_line.append_text(title)
+        title_line.append(" " * max(1, available - title.cell_len - hint.cell_len))
+        title_line.append_text(hint)
+        self._interpretation_title.update(title_line)
+
+        cursor_dim, cursor_choice = self._cursor_location()
+        rows: list[Text] = []
+        self._choice_hit_areas = []
+        row = 0
+        for dim_idx, dim in enumerate(self._panel.dimensions):
+            if rows:
+                rows.append(Text(""))
+                row += 1
+            rows.append(Text(dim.label, style=Style(bold=True)))
+            row += 1
+            for choice_idx, choice in enumerate(dim.choices):
+                is_cursor = dim_idx == cursor_dim and choice_idx == cursor_choice
+                is_applied = self._applied_selection.get(dim.id) == choice.id
+                line = Text()
+                line.append("  ")
+                line.append(
+                    "❯ " if is_cursor else "  ",
+                    style=KEY_HINT if is_cursor and self.has_focus else KEY_HINT_DIM if is_cursor else "",
+                )
+                line.append("● " if is_applied else "  ", style=self._focus_accent if is_applied else "")
+                if is_applied:
+                    label_style = Style(bold=True, color=self._focus_accent)
+                elif is_cursor:
+                    label_style = Style(bold=True)
+                else:
+                    label_style = Style()
+                line.append(choice.label, style=label_style)
+                rows.append(line)
+                self._choice_hit_areas.append((self._choice_flat_index(dim_idx, choice_idx), row))
+                row += 1
+        content = Text("\n")
+        content.append_text(Text("\n").join(rows))
+        content.append("\n")
+        self._interpretation_content.update(content)
+        self._interpretation_separator.update(Text("─" * max(1, available), style="dim"))
 
     def _update_card_bar(self) -> None:
         """Render record pills left-anchored, wrapping across multiple lines.
@@ -1722,14 +1875,18 @@ class AgentResultWidget(Widget):
             return
 
         hint = Text(no_wrap=True)
-        # ↑↓ and Enter only do anything when this widget is focused, so
-        # both follow focus-state dimming (bright when focused, dim when
-        # not) — the "way in" comes from the docked bottom-bar hint, not
-        # from the widget itself.
-        hint.append("↑↓", style=self._focus_key_hint)
-        hint.append(" Prev/Next result    ", style="dim")
-        hint.append("↵", style=self._focus_key_hint)
-        hint.append(" Inspect", style="dim")
+        if self._panel is None:
+            # ↑↓ and Enter only do anything when this widget is focused, so
+            # both follow focus-state dimming (bright when focused, dim when
+            # not) — the "way in" comes from the docked bottom-bar hint, not
+            # from the widget itself.
+            hint.append("↑↓", style=self._focus_key_hint)
+            hint.append(" Prev/Next result    ", style="dim")
+            hint.append("↵", style=self._focus_key_hint)
+            hint.append(" Inspect", style="dim")
+        else:
+            hint.append("Esc", style=self._focus_key_hint)
+            hint.append(" Back to input", style="dim")
 
         caption = self._data_preview_caption(view)
         available = self._bottom_hint_widget.size.width or 0
@@ -1770,6 +1927,14 @@ class AgentResultWidget(Widget):
         from textual.events import Click
 
         assert isinstance(event, Click)
+
+        if self._interpretation_content is not None and event.widget is self._interpretation_content:
+            for flat_idx, row in self._choice_hit_areas:
+                if row == event.y:
+                    self._interpretation_cursor = flat_idx
+                    self._apply_interpretation_cursor()
+                    return
+            return
 
         if self._card_bar_widget is not None and event.widget is self._card_bar_widget:
             for rec_idx, col_start, col_end, row in self._record_hit_areas:
@@ -1852,6 +2017,24 @@ class AgentResultWidget(Widget):
         if len(self._cards) > 1:
             self.current_card = (self.current_card - 1) % len(self._cards)
 
+    def action_result_enter(self) -> None:
+        if self._panel is not None:
+            self._apply_interpretation_cursor()
+        else:
+            self.run_worker(self.action_open_full_screen(), exclusive=True)
+
+    def action_result_up(self) -> None:
+        if self._panel is not None:
+            self._move_interpretation_cursor(-1)
+        else:
+            self.action_focus_prev_result()
+
+    def action_result_down(self) -> None:
+        if self._panel is not None:
+            self._move_interpretation_cursor(1)
+        else:
+            self.action_focus_next_result()
+
     can_focus = True
 
     BINDINGS = [
@@ -1859,12 +2042,12 @@ class AgentResultWidget(Widget):
         ("left_square_bracket", "prev_view", "Previous view"),
         ("right", "next_record", "Next record"),
         ("left", "prev_record", "Previous record"),
-        ("enter", "open_full_screen", "Full screen"),
+        ("enter", "result_enter", "Apply / Full screen"),
         # ``priority=True`` so these beat ``VerticalScroll``'s own priority
         # up/down bindings (which would otherwise scroll the chat log
         # instead of moving between focused result widgets).
-        Binding("up", "focus_prev_result", "Previous result", priority=True),
-        Binding("down", "focus_next_result", "Next result", priority=True),
+        Binding("up", "result_up", "Move up", priority=True),
+        Binding("down", "result_down", "Move down", priority=True),
         ("escape", "focus_input", "Back to input"),
     ]
 

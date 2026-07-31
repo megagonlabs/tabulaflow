@@ -347,7 +347,9 @@ class CardGroup:
     views: list[ViewItem] = field(default_factory=list)
 
 
-def build_artifact_card_views(artifacts: Sequence[ChatResultCard], width: int = 80) -> list[CardGroup]:
+def build_artifact_card_views(
+    artifacts: Sequence[ChatResultCard], width: int = 80, *, release_dataframes: bool = True
+) -> list[CardGroup]:
     """Build per-artifact view groups from already-resolved artifacts, in order.
 
     Record artifacts yield Data -> Query views and chart artifacts Chart -> Data ->
@@ -436,16 +438,17 @@ def build_artifact_card_views(artifacts: Sequence[ChatResultCard], width: int = 
                 CardGroup(label=label, artifact_id=artifact_id, source_record_id=record.record_id, views=views)
             )
 
-    # Release DataFrame references — previews have been rendered to Rich renderables.
-    for artifact in artifacts:
-        if isinstance(artifact, ChatResultMap):
-            artifact.sources = {}
-        elif isinstance(artifact, ChatResultGraph):
-            pass
-        elif isinstance(artifact, ChatResultPlaceholder):
-            pass
-        else:
-            artifact.df = None
+    if release_dataframes:
+        # Release DataFrame references — previews have been rendered to Rich renderables.
+        for artifact in artifacts:
+            if isinstance(artifact, ChatResultMap):
+                artifact.sources = {}
+            elif isinstance(artifact, ChatResultGraph):
+                pass
+            elif isinstance(artifact, ChatResultPlaceholder):
+                pass
+            else:
+                artifact.df = None
 
     return groups
 

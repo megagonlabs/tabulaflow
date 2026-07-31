@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+from typing import cast
+
 import pandas as pd
 from rich.console import Console
 
+from tabulaflow.app.widgets import AgentResultWidget
 from tabulaflow.app.display import (
     VIEW_KIND_INFO,
     VIEW_KIND_CHART,
@@ -17,13 +20,18 @@ from tabulaflow.app.display import (
 )
 from tabulaflow.chat.result import (
     ChatResult,
+    ChatResultArtifact,
+    ChatResultCard,
     ChatResultChart,
+    ChatResultCombination,
     ChatResultGraph,
     ChatResultMap,
+    ChatResultPanel,
     ChatResultPlaceholder,
     ChatResultRecord,
 )
 from tabulaflow.core.types import GraphView
+from tabulaflow.toolhub import Choice, Dimension
 
 
 def _record(record_id: str, label: str) -> ChatResultRecord:
@@ -137,6 +145,62 @@ def test_placeholder_artifact_yields_single_info_view() -> None:
     console = Console(width=80, record=True)
     console.print(groups[0].views[0].renderable)
     assert "only applies when Time period = Q2" in console.export_text()
+
+
+def test_panel_result_widget_switches_combinations_and_preserves_card_views() -> None:
+    dims = [
+        Dimension(
+            id="ranking", label="Ranking", choices=[Choice(id="net", label="Net"), Choice(id="count", label="Count")]
+        ),
+        Dimension(id="period", label="Period", choices=[Choice(id="q2", label="Q2"), Choice(id="q3", label="Q3")]),
+    ]
+    first_artifacts = [_record("Q1", "top"), _record("Q5", "fixed")]
+    combinations = [
+        ChatResultCombination(
+            selection={"ranking": "net", "period": "q2"}, artifacts=cast(list[ChatResultCard], first_artifacts)
+        ),
+        ChatResultCombination(
+            selection={"ranking": "net", "period": "q3"}, artifacts=[_record("Q2", "top"), _record("Q5", "fixed")]
+        ),
+        ChatResultCombination(
+            selection={"ranking": "count", "period": "q2"}, artifacts=[_record("Q3", "top"), _record("Q5", "fixed")]
+        ),
+        ChatResultCombination(
+            selection={"ranking": "count", "period": "q3"},
+            artifacts=[
+                ChatResultPlaceholder(label="top", message="only applies when Period = Q2"),
+                _record("Q5", "fixed"),
+            ],
+        ),
+    ]
+    widget = AgentResultWidget(
+        ChatResult(
+            text="x",
+            artifacts=cast(list[ChatResultArtifact], first_artifacts),
+            panel=ChatResultPanel(dimensions=dims, combinations=combinations),
+        )
+    )
+
+    assert [(card.artifact_id, card.views[0].kind) for card in widget._cards] == [
+        ("Q1", VIEW_KIND_DATA),
+        ("Q5", VIEW_KIND_DATA),
+    ]
+
+    widget._move_interpretation_cursor(1)  # ranking=count
+    widget._apply_interpretation_cursor()
+    assert widget._applied_selection == {"ranking": "count", "period": "q2"}
+    assert [(card.artifact_id, card.views[0].kind) for card in widget._cards] == [
+        ("Q3", VIEW_KIND_DATA),
+        ("Q5", VIEW_KIND_DATA),
+    ]
+
+    widget._move_interpretation_cursor(2)  # period=q3
+    widget._apply_interpretation_cursor()
+    assert widget._applied_selection == {"ranking": "count", "period": "q3"}
+    assert [(card.artifact_id, card.views[0].kind) for card in widget._cards] == [
+        ("placeholder:top", VIEW_KIND_INFO),
+        ("Q5", VIEW_KIND_DATA),
+    ]
 
 
 def test_browser_only_chart_placeholder_uses_artifact_caption() -> None:
