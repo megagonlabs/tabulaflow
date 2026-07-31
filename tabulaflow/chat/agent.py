@@ -6,6 +6,7 @@ import asyncio
 from collections.abc import AsyncIterator, Callable, Iterable, Iterator
 from datetime import date
 from importlib.resources import files
+from itertools import product
 import json
 import logging
 from pathlib import Path
@@ -30,7 +31,19 @@ from tabulaflow.toolhub.web_browser import (
 )
 from tabulaflow.core.db_connector import connector_info
 from tabulaflow.core.llm import make_agent, make_model_settings, model_display_name
-from tabulaflow.chat.result import ChatResult, ChatResultChart, ChatResultGraph, ChatResultMap, ChatResultRecord
+from tabulaflow.chat.result import (
+    ChatResult,
+    ChatResultArtifact,
+    ChatResultCard,
+    ChatResultChart,
+    ChatResultCombination,
+    ChatResultGraph,
+    ChatResultMap,
+    ChatResultPanel,
+    ChatResultPlaceholder,
+    ChatResultRecord,
+)
+from tabulaflow.toolhub import selection_key
 from tabulaflow.chat.events import (
     ChatEvent,
     AnswerDelta,
@@ -54,14 +67,17 @@ if TYPE_CHECKING:
     from tabulaflow.toolhub import (
         AddCanonicalNameTool,
         ApplyPatchTool,
+        Artifact,
         ArtifactBundle,
         ChartArtifact,
+        Dimension,
         ConnectDataSourceTool,
         ExecuteBashTool,
         ExtractRowsFromDocumentsTool,
         FileEditorTool,
         GraphArtifact,
         MapArtifact,
+        QueryFamily,
         QueryHistory,
         QueryRecord,
         RegistryGetColumnJsonSchemaTool,
@@ -769,12 +785,86 @@ async def _build_chat_result(
     bundle: ArtifactBundle | None,
     query_history: QueryHistory,
 ) -> ChatResult:
-    refs = [(artifact.id, artifact.label) for artifact in bundle.artifacts] if bundle is not None else []
-    artifacts = await _artifacts_from_refs(refs, query_history)
+    panel = await _panel_from_bundle(bundle, query_history) if bundle is not None and bundle.dimensions else None
+    artifacts: list[ChatResultArtifact]
+    if panel is not None:
+        # A card that does not apply at the first choice of every dimension is rejected
+        # by ``show_artifacts``, so the mirror is placeholder-free.
+        artifacts = [
+            card
+            for card in panel.combinations[0].artifacts
+            if isinstance(card, (ChatResultRecord, ChatResultChart, ChatResultMap, ChatResultGraph))
+        ]
+    else:
+        refs = [(artifact.id, artifact.label) for artifact in bundle.artifacts] if bundle is not None else []
+        artifacts = list(await _artifacts_from_refs(refs, query_history))
     primary_artifact_index: int | None = 0 if artifacts else None
     return ChatResult(
-        text=_strip_answer_marker(answer_text), artifacts=artifacts, primary_artifact_index=primary_artifact_index
+        text=_strip_answer_marker(answer_text),
+        artifacts=artifacts,
+        primary_artifact_index=primary_artifact_index,
+        panel=panel,
     )
+
+
+async def _panel_from_bundle(bundle: "ArtifactBundle", query_history: QueryHistory) -> ChatResultPanel:
+    """Resolve every card at every combination of the declared dimensions.
+
+    A card varies only over the dimensions its own query ran, so it is looked up with
+    the selection projected onto those — the same rows appear at every choice of a
+    dimension it never mentions.
+    """
+    dimensions = list(bundle.dimensions)
+    families = {
+        artifact.id: query_history.get_family(artifact.id)
+        for artifact in bundle.artifacts
+        if artifact.id.startswith("QS")
+    }
+    fixed = await _artifacts_from_refs(
+        [(a.id, a.label) for a in bundle.artifacts if a.id not in families], query_history
+    )
+    fixed_by_id = dict(zip([a.id for a in bundle.artifacts if a.id not in families], fixed, strict=False))
+
+    combinations = []
+    for choices in product(*([(dim.id, choice.id) for choice in dim.choices] for dim in dimensions)):
+        selection = dict(choices)
+        cards: list[ChatResultCard] = []
+        for artifact in bundle.artifacts:
+            family = families.get(artifact.id)
+            if family is None:
+                if (resolved := fixed_by_id.get(artifact.id)) is not None:
+                    cards.append(resolved)
+                continue
+            cards.append(await _card_at(artifact, family, selection, dimensions, query_history))
+        combinations.append(ChatResultCombination(selection=selection, artifacts=cards))
+    return ChatResultPanel(dimensions=dimensions, combinations=combinations)
+
+
+async def _card_at(
+    artifact: "Artifact",
+    family: "QueryFamily",
+    selection: dict[str, str],
+    dimensions: list["Dimension"],
+    query_history: QueryHistory,
+) -> ChatResultCard:
+    """One card's payload at ``selection``, or a placeholder where its query never ran."""
+    projected = {name: selection[name] for name in family.dimensions if name in selection}
+    outside = [name for name, choice in projected.items() if choice not in family.dimensions[name]]
+    if outside:
+        return ChatResultPlaceholder(label=artifact.label, message=_only_applies_when(family, dimensions, outside))
+    record = await query_history.get(family.record_ids_by_selection[selection_key(projected)])
+    return _chat_result_record_from_query_record(record, artifact.label)
+
+
+def _only_applies_when(family: "QueryFamily", dimensions: list["Dimension"], outside: list[str]) -> str:
+    """Name the choices a partially covered card does apply to, in the panel's own words."""
+    labels = {dim.id: dim for dim in dimensions}
+    parts = []
+    for name in outside:
+        dim = labels[name]
+        covered = [choice.label for choice in dim.choices if choice.id in family.dimensions[name]]
+        parts.append(f"{dim.label} = {' or '.join(covered)}")
+    return "only applies when " + "; ".join(parts)
 
 
 def _declared_bundle(completed_results: dict[str, ToolReturnPart]) -> "ArtifactBundle | None":

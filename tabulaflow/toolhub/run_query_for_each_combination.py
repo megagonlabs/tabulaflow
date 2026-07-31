@@ -54,7 +54,8 @@ class CombinationQueryRun:
     family: QueryFamily
 
 
-def _selection_key(selection: dict[str, str]) -> str:
+def selection_key(selection: dict[str, str]) -> str:
+    """Key one dimension selection into a family's ``record_ids_by_selection``."""
     return ";".join(f"{dim}={choice}" for dim, choice in sorted(selection.items()))
 
 
@@ -263,11 +264,11 @@ def _render_queries(dimensions: list[QueryDimension], query_template: str, max_c
         try:
             rendered = template.render(**selection).strip()
         except Exception as exc:
-            key = _selection_key(selection)
+            key = selection_key(selection)
             raise ValueError(f"template render failed at {key}: {type(exc).__name__}: {exc}") from None
         renders.append((selection, rendered))
     _check_every_dimension_matters(dimensions, renders)
-    return {_selection_key(selection): query for selection, query in renders}
+    return {selection_key(selection): query for selection, query in renders}
 
 
 class RunQueryForEachCombinationTool:

@@ -14,6 +14,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_serializer, field_valid
 
 from tabulaflow.core.dataframe import _deserialize_dataframe, _serialize_dataframe
 from tabulaflow.core.types import GraphView, Usage
+from tabulaflow.toolhub import Dimension
 
 
 class ChatResultRecord(BaseModel):
@@ -111,12 +112,54 @@ class ChatResultGraph(BaseModel):
     layout: Literal["force", "layered", "tree"] = "force"
 
 
+class ChatResultPlaceholder(BaseModel):
+    """Stands in for a card at a combination its query never ran.
+
+    ``message`` is derived from the panel's own labels (e.g. "only applies when
+    Time period = Last completed quarter"), so it cannot contradict the coordinates.
+    """
+
+    kind: Literal["placeholder"] = "placeholder"
+    label: str | None
+    message: str
+
+
 # A cited artifact is either a query result (record) or a standalone chart, map,
 # or graph, discriminated by ``kind``; ``ChatResult.artifacts`` holds them in
 # citation order.
 ChatResultArtifact = Annotated[
     ChatResultRecord | ChatResultChart | ChatResultMap | ChatResultGraph, Field(discriminator="kind")
 ]
+
+# Inside a panel a card may also be a placeholder, for a combination its query never
+# ran.  Kept out of ``ChatResultArtifact`` so the ordinary render path — which every
+# frontend already implements — never has to consider it.
+ChatResultCard = Annotated[
+    ChatResultRecord | ChatResultChart | ChatResultMap | ChatResultGraph | ChatResultPlaceholder,
+    Field(discriminator="kind"),
+]
+
+
+class ChatResultCombination(BaseModel):
+    """One point of the interpretation space: a choice per dimension, and the cards there.
+
+    ``artifacts`` carries the same labels in the same order at every combination — only
+    their contents change as the user switches.
+    """
+
+    selection: dict[str, str]
+    artifacts: list[ChatResultCard] = Field(default_factory=list)
+
+
+class ChatResultPanel(BaseModel):
+    """The turn's interpretation space: what the user may switch between, and the results.
+
+    ``combinations`` is ordered so the first entry is the first choice of every
+    dimension — the reading the answer text describes.
+    """
+
+    dimensions: list[Dimension]
+    combinations: list[ChatResultCombination]
 
 
 class ChatResult(BaseModel):
@@ -126,6 +169,10 @@ class ChatResult(BaseModel):
     artifacts: list[ChatResultArtifact] = Field(default_factory=list)
     primary_artifact_index: int | None = 0
     usage: Usage | None = None
+    # Present when the turn offered interpretations. ``artifacts`` then mirrors the
+    # panel's first combination, so a frontend with no panel support still renders
+    # the reading the answer describes.
+    panel: ChatResultPanel | None = None
 
     @property
     def primary_artifact(self) -> ChatResultArtifact | None:
