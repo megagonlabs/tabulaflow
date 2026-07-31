@@ -16,7 +16,9 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-_QH_SCHEMA = "_query_history"
+# Schema this module spills result DataFrames into — one table per record. Kept out
+# of the workspace connector's introspected schema (see ``create_workspace_connector``).
+QUERY_HISTORY_SCHEMA = "_query_history"
 
 
 @dataclass
@@ -241,7 +243,7 @@ class QueryHistory:
         """Create the spill schema once."""
         if self._schema_created or self._spill_connector is None:
             return
-        await self._spill_connector.run_query_async(f'CREATE SCHEMA IF NOT EXISTS "{_QH_SCHEMA}"')
+        await self._spill_connector.run_query_async(f'CREATE SCHEMA IF NOT EXISTS "{QUERY_HISTORY_SCHEMA}"')
         self._schema_created = True
 
     async def _persist(self, record_id: str, df: pd.DataFrame) -> bool:
@@ -253,7 +255,7 @@ class QueryHistory:
             await self._spill_connector.write_dataframe_async(
                 df=df,
                 table_name=record_id,
-                schema_name=_QH_SCHEMA,
+                schema_name=QUERY_HISTORY_SCHEMA,
                 mode="replace",
             )
             return True
@@ -275,7 +277,7 @@ class QueryHistory:
     async def _hydrate(self, record_id: str, record: QueryRecord) -> None:
         """Load a spilled DF back from the workspace DuckDB."""
         assert self._spill_connector is not None
-        result = await self._spill_connector.run_query_async(f'SELECT * FROM "{_QH_SCHEMA}"."{record_id}"')
+        result = await self._spill_connector.run_query_async(f'SELECT * FROM "{QUERY_HISTORY_SCHEMA}"."{record_id}"')
         record.pred_query.exec_result.df = result.df  # type: ignore[union-attr]
         self._spilled.discard(record_id)
         self._in_memory.append(record_id)

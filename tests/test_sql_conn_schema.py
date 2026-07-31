@@ -11,6 +11,7 @@ import duckdb
 import pytest
 
 from tabulaflow.core.db_connector.sql_conn import SQLConnector, _canonicalize_dtype
+from tabulaflow.core.types import TableRef
 
 
 def test_canonicalize_dtype_scalars() -> None:
@@ -90,3 +91,33 @@ async def test_duckdb_list_and_struct_dtype_resolved(tmp_path: Path) -> None:
         assert cols["info"].json_schema["type"] == "object"
     finally:
         await sql_conn.disconnect_async()
+
+
+@pytest.mark.asyncio
+async def test_exclude_schema_names_keeps_a_schema_out_of_introspection(tmp_path: Path) -> None:
+    """An excluded schema stays out of the schema on both refresh paths."""
+    db_path = str(tmp_path / "excluded.duckdb")
+    con = duckdb.connect(db_path)
+    con.execute("CREATE TABLE visible(a INTEGER)")
+    con.execute("CREATE SCHEMA bookkeeping")
+    con.execute("CREATE TABLE bookkeeping.hidden(a INTEGER)")
+    con.close()
+
+    connector = await SQLConnector.from_url_async(
+        global_id="excluded-test",
+        url=f"duckdb:///{db_path}",
+        db_name="excluded",
+        read_only=False,
+        enable_schema_caching=False,
+        enable_query_caching=False,
+        exclude_schema_names=["bookkeeping"],
+    )
+
+    assert [t.name for t in connector.schema.tables] == ["visible"]
+
+    # A targeted refresh of an excluded table is a no-op, not an addition.
+    await connector.refresh_schema_async(tables=[TableRef(schema_name="bookkeeping", table_name="hidden")])
+    assert [t.name for t in connector.schema.tables] == ["visible"]
+
+    await connector.refresh_schema_async()
+    assert [t.name for t in connector.schema.tables] == ["visible"]

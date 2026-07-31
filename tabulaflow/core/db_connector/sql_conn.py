@@ -1531,6 +1531,7 @@ async def load_schema_with_cache_async(
     group_date_partitioned_tables: bool = True,
     group_table_regexes: list[str] = [],
     include_schema_names: list[str] | None = None,
+    exclude_schema_names: list[str] | None = None,
     enable_schema_caching: bool = True,
     column_stats_mode: ColumnStatsMode | None = None,
     description: str | None = None,
@@ -1557,6 +1558,9 @@ async def load_schema_with_cache_async(
             table groupings.
         include_schema_names: When provided, restrict introspection
             to these schemas only.
+        exclude_schema_names: When provided, keep these schemas out of the
+            introspected schema — for schemas a caller writes as its own
+            bookkeeping and nobody browses or queries by name.
         enable_schema_caching: When False, skip cache read/write
             regardless of the global config.  Useful for mutable
             databases where a stale cache would mislead callers.
@@ -1605,6 +1609,7 @@ async def load_schema_with_cache_async(
             if column_stats_mode is not None
             else tabulaflow_config.column_stats_mode,
             include_schema_names=include_schema_names,
+            exclude_schema_names=exclude_schema_names,
         )
         if t_eng.engine_type == "async":
             await t_eng.engine.dispose()  # type: ignore
@@ -2101,6 +2106,7 @@ async def build_schema_async(
     group_table_regexes: list[str] = [],
     column_stats_mode: ColumnStatsMode = "skip_for_large_tables",
     include_schema_names: list[str] | None = None,
+    exclude_schema_names: list[str] | None = None,
 ) -> SQLSchema:
     t0 = time.time()
     logger.info(f"Building schema for {db_name}...")
@@ -2119,6 +2125,9 @@ async def build_schema_async(
     if include_schema_names is not None:
         allowed = set(include_schema_names)
         schema_names = [s for s in schema_names if s in allowed]
+    if exclude_schema_names is not None:
+        denied = set(exclude_schema_names)
+        schema_names = [s for s in schema_names if s not in denied]
 
     # Discover table/view names for all schemas concurrently
     discovery_results = await asyncio.gather(
@@ -2196,6 +2205,7 @@ class _SchemaBuildConfig:
     group_date_partitioned_tables: bool = True
     group_table_regexes: list[str] = dataclasses.field(default_factory=list)
     include_schema_names: list[str] | None = None
+    exclude_schema_names: list[str] | None = None
     column_stats_mode: ColumnStatsMode = "skip_for_large_tables"
 
 
@@ -2276,6 +2286,7 @@ class SQLConnector:
         enable_schema_caching: bool = True,
         enable_query_caching: bool = False,
         include_schema_names: list[str] | None = None,
+        exclude_schema_names: list[str] | None = None,
         column_stats_mode: ColumnStatsMode | None = None,
         duckdb_init_sql: list[str] | None = None,
         description: str | None = None,
@@ -2355,6 +2366,7 @@ class SQLConnector:
                     group_date_partitioned_tables,
                     group_table_regexes,
                     include_schema_names=include_schema_names,
+                    exclude_schema_names=exclude_schema_names,
                     enable_schema_caching=enable_schema_caching,
                     column_stats_mode=column_stats_mode,
                     description=description,
@@ -2370,6 +2382,7 @@ class SQLConnector:
                     group_date_partitioned_tables=group_date_partitioned_tables,
                     group_table_regexes=list(group_table_regexes),
                     include_schema_names=include_schema_names,
+                    exclude_schema_names=exclude_schema_names,
                     column_stats_mode=column_stats_mode
                     if column_stats_mode is not None
                     else tabulaflow_config.column_stats_mode,
@@ -2433,6 +2446,11 @@ class SQLConnector:
         Returns:
             The updated :class:`SQLSchema`.
         """
+        excluded = set(self._schema_build_config.exclude_schema_names or ())
+        if tables is not None and excluded:
+            tables = [ref for ref in tables if ref.schema_name not in excluded]
+            if not tables:
+                return self.schema
         async with self._schema_lock:
             if tables is not None:
                 async_inspector = AsyncInspector(self._t_eng)
@@ -2476,6 +2494,7 @@ class SQLConnector:
                     cfg.group_table_regexes,
                     column_stats_mode=cfg.column_stats_mode,
                     include_schema_names=cfg.include_schema_names,
+                    exclude_schema_names=cfg.exclude_schema_names,
                 )
 
             self.save_schema_cache()

@@ -22,6 +22,7 @@ from tabulaflow.toolhub.registry_get_db_document import RegistryGetDBDocumentToo
 from tabulaflow.toolhub.registry_get_schema import RegistryGetSchemaTool
 from tabulaflow.toolhub.registry_get_table_schema import RegistryGetTableSchemaTool
 from tabulaflow.toolhub.query_history import (
+    QUERY_HISTORY_SCHEMA,
     ChartArtifact,
     GraphArtifact,
     MapArtifact,
@@ -43,6 +44,7 @@ from tabulaflow.toolhub.web_browser import (
 )
 
 __all__ = [
+    "QUERY_HISTORY_SCHEMA",
     "BaseTool",
     "LLMProfileTool",
     "ProgressReportingTool",
