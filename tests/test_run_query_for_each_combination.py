@@ -169,6 +169,32 @@ class TestRunQueryForEachCombination:
         assert record.pred_query.exec_result.df.to_dict("records")[0] == {"customer": "Acme", "value": 10}
 
     @pytest.mark.asyncio
+    async def test_rendered_queries_trim_jinja_block_blank_lines(self, registry: DBRegistry) -> None:
+        history = QueryHistory()
+        await _tool(registry, history)(
+            "workspace",
+            [QueryDimension(id="ranking", choices=["net", "gross"])],
+            """
+            SELECT
+            {% if ranking == "net" %}
+              SUM(net) AS value
+            {% else %}
+              SUM(gross) AS value
+            {% endif %}
+            FROM orders
+            """,
+        )
+
+        family = history.get_family("QS1")
+        record = await history.get(family.record_ids_by_selection["ranking=net"])
+
+        assert "\n\n" not in record.pred_query.query
+        assert record.pred_query.query == dedent("""\
+            SELECT
+              SUM(net) AS value
+            FROM orders""")
+
+    @pytest.mark.asyncio
     async def test_identical_renders_share_record(self, registry: DBRegistry) -> None:
         history = QueryHistory()
         result = await _tool(registry, history)(

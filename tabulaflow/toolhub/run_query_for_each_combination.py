@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from itertools import product
 import math
 import re
+from textwrap import dedent
 from typing import Annotated, ClassVar, TypeAlias
 
 import jinja2
@@ -32,7 +33,7 @@ _FIRST_ROW_COLUMNS = 4
 _FIRST_ROW_CELL_CHARS = 40
 _MAX_REPORTED_ERRORS = 5
 _KEYS_PER_ERROR = 3
-_JINJA_ENV = jinja2.Environment(undefined=jinja2.StrictUndefined)
+_JINJA_ENV = jinja2.Environment(undefined=jinja2.StrictUndefined, trim_blocks=True, lstrip_blocks=True)
 _SQL_COMMENT_RE = re.compile(r"--[^\n]*|/\*.*?\*/", re.DOTALL)
 
 
@@ -256,6 +257,7 @@ def _check_every_dimension_matters(dimensions: list[QueryDimension], renders: li
 def _render_queries(dimensions: list[QueryDimension], query_template: str, max_combinations: int) -> dict[str, str]:
     """Validate the request and render one query per combination, keyed by selection."""
     _validate_dimensions(dimensions, max_combinations)
+    query_template = dedent(query_template).strip()
     template = _compile_template(dimensions, query_template)
     names = [dim.id for dim in dimensions]
     renders: list[tuple[dict[str, str], str]] = []
@@ -303,9 +305,11 @@ class RunQueryForEachCombinationTool:
         """Render a query template once per combination of dimension choices and run each.
 
         Each dimension id is bound to the chosen choice id in the Jinja context, so the
-        template branches on it and owns all query logic. The template must reference
-        exactly the declared dimension ids, and every dimension must change the rendered
-        query. Combinations that render identically are executed once. The whole set is
+        template branches on it and owns all query logic. Jinja block whitespace is
+        trimmed so block-only ``if`` / ``elif`` / ``endif`` lines do not leave large
+        blank gaps in the rendered SQL. The template must reference exactly the
+        declared dimension ids, and every dimension must change the rendered query.
+        Combinations that render identically are executed once. The whole set is
         recorded as one query family (``QS*``).
 
         Example:
