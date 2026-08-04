@@ -195,6 +195,32 @@ class TestRunQueryForEachCombination:
             FROM orders""")
 
     @pytest.mark.asyncio
+    async def test_output_format_survives_history_spill(self, registry: DBRegistry) -> None:
+        connector = registry.get("workspace")
+        assert isinstance(connector, SQLConnector)
+        history = QueryHistory(max_in_memory=1, spill_connector=connector)
+
+        result = await _tool(registry, history)(
+            "workspace",
+            [
+                QueryDimension(id="ranking", choices=["net", "gross"]),
+                QueryDimension(id="period", choices=["q2", "q3"]),
+            ],
+            """
+            SELECT customer,
+              {% if ranking == "net" %} SUM(net) AS value {% else %} SUM(gross) AS value {% endif %}
+            FROM orders
+            WHERE {% if period == "q2" %} order_date < DATE '2026-07-01' {% else %} order_date >= DATE '2026-07-01' {% endif %}
+            GROUP BY customer ORDER BY value DESC
+            """,
+        )
+
+        text = _text(result)
+        assert "period=q2;ranking=net (2 rows):" in text
+        assert "period=q3;ranking=net (1 row) — first row: customer=Acme, value=20" in text
+        assert "no result set" not in text
+
+    @pytest.mark.asyncio
     async def test_identical_renders_share_record(self, registry: DBRegistry) -> None:
         history = QueryHistory()
         result = await _tool(registry, history)(

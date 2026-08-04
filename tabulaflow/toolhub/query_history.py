@@ -78,6 +78,12 @@ class GraphArtifact:
     layout: Literal["force", "layered", "tree"] = "force"
 
 
+def _owned_pred_query(pred_query: PredQuery, record_id: str) -> PredQuery:
+    """Return the history-owned wrapper object for a stored query result."""
+    exec_result = pred_query.exec_result.model_copy() if pred_query.exec_result is not None else None
+    return pred_query.model_copy(update={"id": record_id, "exec_result": exec_result})
+
+
 class QueryHistory:
     """Query history with write-through spill to a workspace DuckDB.
 
@@ -165,10 +171,10 @@ class QueryHistory:
         pred_query: PredQuery,
     ) -> QueryRecord:
         """Register one record under ``record_id``, spilling its DataFrame when possible."""
+        pred_query = _owned_pred_query(pred_query, record_id)
         record = QueryRecord(
             record_id=record_id, connector_type=connector_type, db_alias=db_alias, pred_query=pred_query
         )
-        pred_query.id = record_id
         self._records[record_id] = record
         if pred_query.exec_result is not None and pred_query.exec_result.df is not None:
             if self._spill_connector is None or await self._persist(record_id, pred_query.exec_result.df):

@@ -96,6 +96,19 @@ class TestWithConnector:
         assert _exec_result(h._records["Q3"].pred_query).df is not None
 
     @pytest.mark.asyncio
+    async def test_eviction_does_not_mutate_caller_owned_pred_query(self, workspace: SQLConnector) -> None:
+        h = QueryHistory(max_in_memory=1, spill_connector=workspace)
+        pred_query = _make_pred_query(n_rows=10)
+
+        await h.add("db", "sql", pred_query)
+        await h.add("db", "sql", _make_pred_query(n_rows=20))
+
+        assert pred_query.id == "PQRY"
+        assert _exec_result(pred_query).df is not None
+        assert "Q1" in h._spilled
+        assert _exec_result(h._records["Q1"].pred_query).df is None
+
+    @pytest.mark.asyncio
     async def test_get_hydrates_spilled_record(self, workspace: SQLConnector) -> None:
         h = QueryHistory(max_in_memory=2, spill_connector=workspace)
         await h.add("db", "sql", _make_pred_query(n_rows=10))
