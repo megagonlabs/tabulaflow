@@ -61,9 +61,10 @@ class RegistryTransferRecordTool:
         except KeyError:
             return f"(error: unknown record_id {record_id!r})"
 
-        pred = record.pred_query
-        if pred.exec_result is None or pred.exec_result.df is None:
-            return f"(error: query {record.record_id} returned no data)"
+        try:
+            df = await self._history.get_dataframe(record.record_id)
+        except ValueError as e:
+            return f"(error: {e})"
 
         try:
             connector = self.registry.get(target_alias)
@@ -79,7 +80,6 @@ class RegistryTransferRecordTool:
         if not isinstance(connector, SQLConnector):
             return "(error: unsupported SQL connector implementation for transfer_record)"
 
-        df = pred.exec_result.df
         try:
             rows_written = await connector.write_dataframe_async(
                 df=df,

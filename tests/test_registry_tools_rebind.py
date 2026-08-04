@@ -91,7 +91,7 @@ class RefreshBlockingConnector:
 
 
 @pytest.mark.asyncio
-async def test_concurrent_run_query_records_each_invocation_pred_query() -> None:
+async def test_concurrent_run_query_records_each_invocation_query() -> None:
     """Registry recording must not read a shared last-query slot after another call overwrites it."""
     connector = RefreshBlockingConnector()
     registry = DBRegistry()
@@ -110,5 +110,5 @@ async def test_concurrent_run_query_records_each_invocation_pred_query() -> None
 
     second_record = await tool.get_query_record("Q1")
     first_record = await tool.get_query_record("Q2")
-    assert second_record.pred_query.query == "SELECT 'second' AS label"
-    assert first_record.pred_query.query == "SELECT 'first' AS label"
+    assert second_record.query == "SELECT 'second' AS label"
+    assert first_record.query == "SELECT 'first' AS label"

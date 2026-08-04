@@ -3,11 +3,11 @@
 from __future__ import annotations
 
 import logging
-from collections import deque
+from collections import OrderedDict
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Any, Literal, TypeAlias
 
-from tabulaflow.core.types import GraphView, PredQuery
+from tabulaflow.core.types import ErrorInfo, GraphView, PredQuery
 
 if TYPE_CHECKING:
     import pandas as pd
@@ -22,13 +22,45 @@ QUERY_HISTORY_SCHEMA = "_query_history"
 
 
 @dataclass
+class QueryFailure:
+    """A query that failed during execution."""
+
+    error: ErrorInfo
+
+
+@dataclass
+class TabularResult:
+    """A successful query result with rows stored in the result store."""
+
+    storage_key: str
+    row_count: int
+    columns: tuple[str, ...]
+    df_is_truncated: bool = False
+    graph: GraphView | None = None
+
+
+@dataclass
+class StatementSuccess:
+    """A successful statement that did not return a tabular result set."""
+
+    affected_rows: int | None = None
+
+
+QueryOutcome: TypeAlias = QueryFailure | TabularResult | StatementSuccess
+
+
+@dataclass
 class QueryRecord:
     """Metadata for a query executed through the registry tool."""
 
     record_id: str
     connector_type: Literal["sql", "property_graph"]
     db_alias: str
-    pred_query: PredQuery
+    query: str
+    parameter_names: tuple[str, ...]
+    parameter_values: dict[str, Any]
+    outcome: QueryOutcome
+    latency_seconds: float | None = None
 
 
 @dataclass
@@ -78,19 +110,89 @@ class GraphArtifact:
     layout: Literal["force", "layered", "tree"] = "force"
 
 
-def _owned_pred_query(pred_query: PredQuery, record_id: str) -> PredQuery:
-    """Return the history-owned wrapper object for a stored query result."""
-    exec_result = pred_query.exec_result.model_copy() if pred_query.exec_result is not None else None
-    return pred_query.model_copy(update={"id": record_id, "exec_result": exec_result})
+class _ResultStore:
+    """DuckDB-backed store for tabular query results, with a small memory cache."""
+
+    def __init__(self, *, max_in_memory: int, spill_connector: SQLConnector | None = None) -> None:
+        self._max_in_memory = max_in_memory
+        self._spill_connector = spill_connector
+        self._schema_created = False
+        self._cache: OrderedDict[str, pd.DataFrame] = OrderedDict()
+        self._persisted: set[str] = set()
+
+    async def put_dataframe(self, storage_key: str, df: pd.DataFrame) -> str:
+        if self._spill_connector is not None and await self._persist(storage_key, df):
+            self._persisted.add(storage_key)
+        self._cache[storage_key] = df
+        self._cache.move_to_end(storage_key)
+        self._evict()
+        return storage_key
+
+    async def get_dataframe(self, storage_key: str) -> pd.DataFrame:
+        if storage_key in self._cache:
+            self._cache.move_to_end(storage_key)
+            return self._cache[storage_key]
+        if storage_key not in self._persisted or self._spill_connector is None:
+            raise KeyError(f"No stored result for {storage_key}")
+        result = await self._spill_connector.run_query_async(
+            f'SELECT * FROM "{QUERY_HISTORY_SCHEMA}"."{storage_key}"'
+        )
+        if result.df is None:
+            raise KeyError(f"No stored result for {storage_key}")
+        self._cache[storage_key] = result.df
+        self._cache.move_to_end(storage_key)
+        self._evict()
+        return result.df
+
+    def has_in_memory(self, storage_key: str) -> bool:
+        return storage_key in self._cache
+
+    def is_persisted(self, storage_key: str) -> bool:
+        return storage_key in self._persisted
+
+    @property
+    def in_memory_count(self) -> int:
+        return len(self._cache)
+
+    async def _ensure_schema(self) -> None:
+        if self._schema_created or self._spill_connector is None:
+            return
+        await self._spill_connector.run_query_async(f'CREATE SCHEMA IF NOT EXISTS "{QUERY_HISTORY_SCHEMA}"')
+        self._schema_created = True
+
+    async def _persist(self, storage_key: str, df: pd.DataFrame) -> bool:
+        if self._spill_connector is None:
+            return False
+        try:
+            await self._ensure_schema()
+            await self._spill_connector.write_dataframe_async(
+                df=df,
+                table_name=storage_key,
+                schema_name=QUERY_HISTORY_SCHEMA,
+                mode="replace",
+            )
+            return True
+        except Exception:
+            logger.warning("Failed to persist %s to workspace", storage_key, exc_info=True)
+            return False
+
+    def _evict(self) -> None:
+        if self._spill_connector is None:
+            return
+        while len(self._cache) > self._max_in_memory:
+            evictable = next((storage_key for storage_key in self._cache if storage_key in self._persisted), None)
+            if evictable is None:
+                return
+            self._cache.pop(evictable)
 
 
 class QueryHistory:
-    """Query history with write-through spill to a workspace DuckDB.
+    """Query history with write-through result storage in a workspace DuckDB.
 
     Every successful result DataFrame is persisted to the workspace
-    connector (when set).  The most recent ``max_in_memory`` DFs are also
-    kept in RAM; older ones are evicted and transparently reloaded from the
-    workspace on access via ``get()``.
+    connector (when set). The most recent ``max_in_memory`` DataFrames are
+    cached in RAM; older cached frames are reloaded explicitly through
+    ``get_dataframe()``.
 
     Args:
         max_in_memory: Number of result DataFrames to keep in RAM.
@@ -114,11 +216,7 @@ class QueryHistory:
         self._next_chart_id = 1
         self._next_map_id = 1
         self._next_graph_id = 1
-        self._max_in_memory = max_in_memory
-        self._in_memory: deque[str] = deque()
-        self._spilled: set[str] = set()
-        self._spill_connector = spill_connector
-        self._schema_created = False
+        self._results = _ResultStore(max_in_memory=max_in_memory, spill_connector=spill_connector)
 
     async def add(
         self, db_alias: str, connector_type: Literal["sql", "property_graph"], pred_query: PredQuery
@@ -170,17 +268,38 @@ class QueryHistory:
         connector_type: Literal["sql", "property_graph"],
         pred_query: PredQuery,
     ) -> QueryRecord:
-        """Register one record under ``record_id``, spilling its DataFrame when possible."""
-        pred_query = _owned_pred_query(pred_query, record_id)
+        """Register one record under ``record_id``."""
+        outcome = await self._outcome(record_id, pred_query)
+        exec_result = pred_query.exec_result
         record = QueryRecord(
-            record_id=record_id, connector_type=connector_type, db_alias=db_alias, pred_query=pred_query
+            record_id=record_id,
+            connector_type=connector_type,
+            db_alias=db_alias,
+            query=pred_query.query,
+            parameter_names=tuple(pred_query.parameter_names),
+            parameter_values=dict(pred_query.parameter_values),
+            outcome=outcome,
+            latency_seconds=exec_result.latency_seconds if exec_result is not None else None,
         )
         self._records[record_id] = record
-        if pred_query.exec_result is not None and pred_query.exec_result.df is not None:
-            if self._spill_connector is None or await self._persist(record_id, pred_query.exec_result.df):
-                self._in_memory.append(record_id)
-                self._evict()
         return record
+
+    async def _outcome(self, record_id: str, pred_query: PredQuery) -> QueryOutcome:
+        exec_result = pred_query.exec_result
+        if exec_result is None:
+            return StatementSuccess()
+        if exec_result.error is not None:
+            return QueryFailure(exec_result.error)
+        if exec_result.df is None:
+            return StatementSuccess(affected_rows=exec_result.affected_rows)
+        storage_key = await self._results.put_dataframe(record_id, exec_result.df)
+        return TabularResult(
+            storage_key=storage_key,
+            row_count=len(exec_result.df),
+            columns=tuple(str(column) for column in exec_result.df.columns),
+            df_is_truncated=exec_result.df_is_truncated,
+            graph=exec_result.graph,
+        )
 
     def get_family(self, family_id: str) -> QueryFamily:
         """Return a previously stored query family."""
@@ -190,14 +309,20 @@ class QueryHistory:
             raise KeyError(f"No query family with id {family_id}") from None
 
     async def get(self, record_id: str) -> QueryRecord:
-        """Return a previously stored query record, hydrating spilled DFs."""
+        """Return a previously stored query record."""
         try:
-            record = self._records[record_id]
+            return self._records[record_id]
         except KeyError:
             raise KeyError(f"No query with id {record_id}") from None
-        if record_id in self._spilled:
-            await self._hydrate(record_id, record)
-        return record
+
+    async def get_dataframe(self, record_id: str) -> pd.DataFrame:
+        """Return the DataFrame for a tabular query result."""
+        record = await self.get(record_id)
+        if isinstance(record.outcome, QueryFailure):
+            raise ValueError(f"query {record_id} failed: {record.outcome.error.message}")
+        if not isinstance(record.outcome, TabularResult):
+            raise ValueError(f"query {record_id} returned no data")
+        return await self._results.get_dataframe(record.outcome.storage_key)
 
     def add_chart(self, record_id: str, chart_spec: dict[str, Any]) -> str:
         """Store a chart artifact for an existing query record and return its opaque ``CHART*`` id."""
@@ -242,49 +367,3 @@ class QueryHistory:
             return self._graphs[graph_id]
         except KeyError:
             raise KeyError(f"No graph with id {graph_id}") from None
-
-    # -- spill / hydrate internals --
-
-    async def _ensure_schema(self) -> None:
-        """Create the spill schema once."""
-        if self._schema_created or self._spill_connector is None:
-            return
-        await self._spill_connector.run_query_async(f'CREATE SCHEMA IF NOT EXISTS "{QUERY_HISTORY_SCHEMA}"')
-        self._schema_created = True
-
-    async def _persist(self, record_id: str, df: pd.DataFrame) -> bool:
-        """Write a DF to the workspace DuckDB; return whether it can be hydrated later."""
-        if self._spill_connector is None:
-            return False
-        try:
-            await self._ensure_schema()
-            await self._spill_connector.write_dataframe_async(
-                df=df,
-                table_name=record_id,
-                schema_name=QUERY_HISTORY_SCHEMA,
-                mode="replace",
-            )
-            return True
-        except Exception:
-            logger.warning("Failed to persist %s to workspace", record_id, exc_info=True)
-            return False
-
-    def _evict(self) -> None:
-        """Remove oldest in-memory DFs until within the limit."""
-        if not self._spill_connector:
-            return
-        while len(self._in_memory) > self._max_in_memory:
-            oldest_id = self._in_memory.popleft()
-            exec_result = self._records[oldest_id].pred_query.exec_result
-            if exec_result is not None:
-                exec_result.df = None
-            self._spilled.add(oldest_id)
-
-    async def _hydrate(self, record_id: str, record: QueryRecord) -> None:
-        """Load a spilled DF back from the workspace DuckDB."""
-        assert self._spill_connector is not None
-        result = await self._spill_connector.run_query_async(f'SELECT * FROM "{QUERY_HISTORY_SCHEMA}"."{record_id}"')
-        record.pred_query.exec_result.df = result.df  # type: ignore[union-attr]
-        self._spilled.discard(record_id)
-        self._in_memory.append(record_id)
-        self._evict()

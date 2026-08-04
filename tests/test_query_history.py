@@ -8,7 +8,7 @@ import pytest
 
 from tabulaflow.core.db_connector.sql_conn import SQLConnector
 from tabulaflow.core.types import ExecResult, GraphView, PredQuery
-from tabulaflow.toolhub.query_history import QueryHistory
+from tabulaflow.toolhub.query_history import QueryFailure, QueryHistory, TabularResult
 
 
 def _make_pred_query(n_rows: int = 5) -> PredQuery:
@@ -45,17 +45,16 @@ class TestNoConnector:
         h = QueryHistory(max_in_memory=2)
         for _ in range(5):
             await h.add("db", "sql", _make_pred_query())
-        assert len(h._spilled) == 0
-        assert all(_exec_result(r.pred_query).df is not None for r in h._records.values())
+        assert h._results.in_memory_count == 5
+        assert all(h._results.has_in_memory(r.record_id) for r in h._records.values())
 
     @pytest.mark.asyncio
     async def test_get(self) -> None:
         h = QueryHistory()
         await h.add("db", "sql", _make_pred_query(n_rows=3))
         await h.add("db", "sql", _make_pred_query(n_rows=7))
-        assert _exec_result((await h.get("Q1")).pred_query).df is not None
-        q2_df = _exec_result((await h.get("Q2")).pred_query).df
-        assert q2_df is not None
+        assert (await h.get("Q1")).query == "SELECT 1"
+        q2_df = await h.get_dataframe("Q2")
         assert len(q2_df) == 7
 
 
@@ -80,8 +79,7 @@ class TestWithConnector:
         h = QueryHistory(max_in_memory=5, spill_connector=workspace)
         for _ in range(5):
             await h.add("db", "sql", _make_pred_query())
-        assert len(h._spilled) == 0
-        assert len(h._in_memory) == 5
+        assert h._results.in_memory_count == 5
 
     @pytest.mark.asyncio
     async def test_evicts_oldest(self, workspace: SQLConnector) -> None:
@@ -89,11 +87,12 @@ class TestWithConnector:
         for _ in range(5):
             await h.add("db", "sql", _make_pred_query())
 
-        assert len(h._in_memory) == 3
-        assert h._spilled == {"Q1", "Q2"}
-        assert _exec_result(h._records["Q1"].pred_query).df is None
-        assert _exec_result(h._records["Q2"].pred_query).df is None
-        assert _exec_result(h._records["Q3"].pred_query).df is not None
+        assert h._results.in_memory_count == 3
+        assert not h._results.has_in_memory("Q1")
+        assert not h._results.has_in_memory("Q2")
+        assert h._results.has_in_memory("Q3")
+        assert h._results.is_persisted("Q1")
+        assert isinstance(h._records["Q1"].outcome, TabularResult)
 
     @pytest.mark.asyncio
     async def test_eviction_does_not_mutate_caller_owned_pred_query(self, workspace: SQLConnector) -> None:
@@ -105,55 +104,49 @@ class TestWithConnector:
 
         assert pred_query.id == "PQRY"
         assert _exec_result(pred_query).df is not None
-        assert "Q1" in h._spilled
-        assert _exec_result(h._records["Q1"].pred_query).df is None
+        assert not h._results.has_in_memory("Q1")
+        assert isinstance(h._records["Q1"].outcome, TabularResult)
 
     @pytest.mark.asyncio
-    async def test_get_hydrates_spilled_record(self, workspace: SQLConnector) -> None:
+    async def test_get_dataframe_loads_evicted_record(self, workspace: SQLConnector) -> None:
         h = QueryHistory(max_in_memory=2, spill_connector=workspace)
         await h.add("db", "sql", _make_pred_query(n_rows=10))
         await h.add("db", "sql", _make_pred_query(n_rows=20))
         await h.add("db", "sql", _make_pred_query(n_rows=30))
-        assert "Q1" in h._spilled
+        assert not h._results.has_in_memory("Q1")
 
-        record = await h.get("Q1")
-        df = _exec_result(record.pred_query).df
-        assert df is not None
+        df = await h.get_dataframe("Q1")
         assert len(df) == 10
-        # Q1 back in memory, Q2 evicted
-        assert "Q1" not in h._spilled
-        assert "Q2" in h._spilled
+        assert h._results.has_in_memory("Q1")
+        assert not h._results.has_in_memory("Q2")
 
     @pytest.mark.asyncio
     async def test_persist_failure_keeps_record_in_memory(self, workspace: SQLConnector, monkeypatch: pytest.MonkeyPatch) -> None:
         h = QueryHistory(max_in_memory=1, spill_connector=workspace)
 
-        async def fake_persist(record_id: str, df: pd.DataFrame) -> bool:
-            return record_id != "Q1"
+        async def fake_persist(storage_key: str, df: pd.DataFrame) -> bool:
+            return storage_key != "Q1"
 
-        monkeypatch.setattr(h, "_persist", fake_persist)
+        monkeypatch.setattr(h._results, "_persist", fake_persist)
 
         await h.add("db", "sql", _make_pred_query(n_rows=10))
         await h.add("db", "sql", _make_pred_query(n_rows=20))
         await h.add("db", "sql", _make_pred_query(n_rows=30))
 
-        assert "Q1" not in h._spilled
-        assert _exec_result(h._records["Q1"].pred_query).df is not None
-        assert "Q2" in h._spilled
-        assert _exec_result(h._records["Q2"].pred_query).df is None
+        assert h._results.has_in_memory("Q1")
+        assert not h._results.is_persisted("Q1")
+        assert not h._results.has_in_memory("Q2")
 
-        record = await h.get("Q1")
-        df = _exec_result(record.pred_query).df
-        assert df is not None
+        df = await h.get_dataframe("Q1")
         assert len(df) == 10
 
     @pytest.mark.asyncio
     async def test_error_records_not_tracked(self, workspace: SQLConnector) -> None:
         h = QueryHistory(max_in_memory=2, spill_connector=workspace)
-        await h.add("db", "sql", _make_error_pred_query())
+        record = await h.add("db", "sql", _make_error_pred_query())
         await h.add("db", "sql", _make_pred_query())
-        assert len(h._in_memory) == 1
-        assert len(h._spilled) == 0
+        assert isinstance(record.outcome, QueryFailure)
+        assert h._results.in_memory_count == 1
 
     @pytest.mark.asyncio
     async def test_roundtrip_preserves_data(self, workspace: SQLConnector) -> None:
@@ -168,10 +161,9 @@ class TestWithConnector:
         pq = PredQuery(query="SELECT *", exec_result=ExecResult(df=df_original.copy()))
         await h.add("db", "sql", pq)
         await h.add("db", "sql", _make_pred_query())  # evicts Q1
-        assert "Q1" in h._spilled
+        assert not h._results.has_in_memory("Q1")
 
-        record = await h.get("Q1")
-        df_loaded = _exec_result(record.pred_query).df
+        df_loaded = await h.get_dataframe("Q1")
         # Hydration goes through the connector read path, which upgrades
         # to nullable extension dtypes (Int64 / Float64 / string).  Values
         # round-trip, dtypes don't.
@@ -182,9 +174,9 @@ class TestWithConnector:
         h = QueryHistory(max_in_memory=1, spill_connector=workspace)
         await h.add("db", "sql", _make_pred_query())
         await h.add("db", "sql", _make_pred_query())
-        assert "Q1" in h._spilled
+        assert not h._results.has_in_memory("Q1")
         chart_id = h.add_chart("Q1", {"mark": "bar"})
-        assert "Q1" in h._spilled
+        assert not h._results.has_in_memory("Q1")
         assert chart_id == "CHART1"
         chart = h.get_chart("CHART1")
         assert chart.record_id == "Q1"

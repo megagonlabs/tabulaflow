@@ -164,9 +164,8 @@ class TestRunQueryForEachCombination:
             "period=q3;ranking=gross",
         }
         record = await history.get(family.record_ids_by_selection["period=q2;ranking=net"])
-        assert record.pred_query.exec_result is not None
-        assert record.pred_query.exec_result.df is not None
-        assert record.pred_query.exec_result.df.to_dict("records")[0] == {"customer": "Acme", "value": 10}
+        df = await history.get_dataframe(record.record_id)
+        assert df.to_dict("records")[0] == {"customer": "Acme", "value": 10}
 
     @pytest.mark.asyncio
     async def test_rendered_queries_trim_jinja_block_blank_lines(self, registry: DBRegistry) -> None:
@@ -188,8 +187,8 @@ class TestRunQueryForEachCombination:
         family = history.get_family("QS1")
         record = await history.get(family.record_ids_by_selection["ranking=net"])
 
-        assert "\n\n" not in record.pred_query.query
-        assert record.pred_query.query == dedent("""\
+        assert "\n\n" not in record.query
+        assert record.query == dedent("""\
             SELECT
               SUM(net) AS value
             FROM orders""")

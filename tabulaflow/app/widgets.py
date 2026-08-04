@@ -2150,16 +2150,13 @@ class AgentResultWidget(Widget):
             self.app.push_screen(QueryBrowserScreen(title=title, query=query, lexer=lexer))
 
     async def _fetch_df(self, record_id: str | None) -> pd.DataFrame | None:
-        """Fetch a DataFrame from QueryHistory, hydrating from DuckDB if needed."""
+        """Fetch a DataFrame from QueryHistory, loading from DuckDB if needed."""
         if self._query_history is None or record_id is None:
             return None
         try:
-            record = await self._query_history.get(record_id)
+            return await self._query_history.get_dataframe(record_id)
         except (KeyError, ValueError):
             return None
-        if record.pred_query.exec_result is None:
-            return None
-        return record.pred_query.exec_result.df
 
 
 # ---------------------------------------------------------------------------

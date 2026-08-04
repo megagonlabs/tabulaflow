@@ -857,7 +857,7 @@ async def _card_at(
     if outside:
         return ChatResultPlaceholder(label=artifact.label, message=_only_applies_when(family, dimensions, outside))
     record = await query_history.get(family.record_ids_by_selection[selection_key(projected)])
-    return _chat_result_record_from_query_record(record, artifact.label)
+    return await _chat_result_record_from_query_record(record, artifact.label, query_history)
 
 
 def _only_applies_when(family: "QueryFamily", dimensions: list["Dimension"], outside: list[str]) -> str:
@@ -1012,7 +1012,7 @@ async def _artifacts_from_refs(
                 query_record = await query_history.get(ref_id)
             except (KeyError, ValueError):
                 continue
-            artifacts.append(_chat_result_record_from_query_record(query_record, label))
+            artifacts.append(await _chat_result_record_from_query_record(query_record, label, query_history))
     return artifacts
 
 
@@ -1030,9 +1030,9 @@ async def _chat_result_chart_from_artifact(
     except (KeyError, ValueError):
         record = None
     if record is not None:
-        query = record.pred_query.query
-        if record.pred_query.exec_result is not None:
-            df = record.pred_query.exec_result.df
+        query = record.query
+        with suppress(ValueError):
+            df = await query_history.get_dataframe(record.record_id)
         query_lexer = "cypher" if record.connector_type == "property_graph" else "sql"
     return ChatResultChart(
         chart_id=chart_artifact.chart_id,
@@ -1061,12 +1061,11 @@ async def _chat_result_map_from_artifact(
     sources: dict[str, pd.DataFrame] = {}
     for sid in source_ids:
         try:
-            record = await query_history.get(sid)
+            await query_history.get(sid)
         except (KeyError, ValueError):
             continue
-        exec_result = record.pred_query.exec_result
-        if exec_result is not None and exec_result.df is not None:
-            sources[sid] = exec_result.df
+        with suppress(ValueError):
+            sources[sid] = await query_history.get_dataframe(sid)
     return ChatResultMap(map_id=map_artifact.map_id, label=label, map_spec=spec, sources=sources)
 
 
@@ -1084,18 +1083,21 @@ async def _chat_result_graph_from_artifact(
     )
 
 
-def _chat_result_record_from_query_record(
+async def _chat_result_record_from_query_record(
     query_record: QueryRecord,
     label: str | None,
+    query_history: QueryHistory,
 ) -> ChatResultRecord:
-    pred = query_record.pred_query
-    exec_result = pred.exec_result
+    df = None
+    with suppress(ValueError):
+        df = await query_history.get_dataframe(query_record.record_id)
+    graph = getattr(query_record.outcome, "graph", None)
     return ChatResultRecord(
         record_id=query_record.record_id,
         label=label,
-        query=pred.query,
-        df=exec_result.df if exec_result else None,
-        graph=exec_result.graph if exec_result else None,
+        query=query_record.query,
+        df=df,
+        graph=graph,
         query_lexer="cypher" if query_record.connector_type == "property_graph" else "sql",
     )
 

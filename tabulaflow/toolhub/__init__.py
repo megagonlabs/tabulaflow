@@ -26,9 +26,13 @@ from tabulaflow.toolhub.query_history import (
     ChartArtifact,
     GraphArtifact,
     MapArtifact,
+    QueryFailure,
     QueryFamily,
     QueryHistory,
+    QueryOutcome,
     QueryRecord,
+    StatementSuccess,
+    TabularResult,
 )
 from tabulaflow.toolhub.registry_run_query import RegistryRunQueryTool
 from tabulaflow.toolhub.registry_transfer_record import RegistryTransferRecordTool
@@ -78,10 +82,14 @@ __all__ = [
     "Dimension",
     "selection_key",
     "MapArtifact",
+    "QueryFailure",
     "QueryDimension",
     "QueryFamily",
     "QueryHistory",
+    "QueryOutcome",
     "QueryRecord",
+    "StatementSuccess",
+    "TabularResult",
     "RegistryRunQueryTool",
     "RegistryTransferRecordTool",
     "RenderChartTool",

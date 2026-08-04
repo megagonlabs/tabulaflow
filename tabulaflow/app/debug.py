@@ -28,26 +28,27 @@ def _debug_history_for(result: "ChatResult") -> "QueryHistory":
     awkward way to do the same in-memory bookkeeping.
     """
     from tabulaflow.chat import ChatResultChart, ChatResultRecord
-    from tabulaflow.core.types import ExecResult, PredQuery
-    from tabulaflow.toolhub.query_history import QueryHistory, QueryRecord
+    from tabulaflow.toolhub.query_history import QueryHistory, QueryRecord, TabularResult
 
     history = QueryHistory()
     for record in result.artifacts:
         if not isinstance(record, (ChatResultRecord, ChatResultChart)) or record.df is None:
             continue
-        pred_query = PredQuery(
-            id=record.record_id,
-            query=record.query or "",
-            exec_result=ExecResult(df=record.df),
-        )
         query_record = QueryRecord(
             record_id=record.record_id,
             connector_type="sql",
             db_alias="debug",
-            pred_query=pred_query,
+            query=record.query or "",
+            parameter_names=(),
+            parameter_values={},
+            outcome=TabularResult(
+                storage_key=record.record_id,
+                row_count=len(record.df),
+                columns=tuple(str(column) for column in record.df.columns),
+            ),
         )
         history._records[record.record_id] = query_record
-        history._in_memory.append(record.record_id)
+        history._results._cache[record.record_id] = record.df
     return history
 
 

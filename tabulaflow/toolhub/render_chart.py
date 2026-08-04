@@ -447,12 +447,10 @@ class RenderChartTool:
         except KeyError:
             return f"(error: unknown record_id {record_id!r})"
 
-        pred = record.pred_query
-
-        if pred.exec_result is None or pred.exec_result.df is None:
-            return f"(error: query {record.record_id} returned no data)"
-
-        df = pred.exec_result.df
+        try:
+            df = await self._history.get_dataframe(record.record_id)
+        except ValueError as e:
+            return f"(error: {e})"
         if df.empty:
             return f"(error: query {record.record_id} result is empty)"
 

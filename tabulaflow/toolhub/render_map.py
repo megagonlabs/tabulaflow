@@ -485,13 +485,13 @@ class RenderMapTool:
         row_counts: dict[str, int] = {}
         for rid in record_ids:
             try:
-                record = await self._history.get(rid)
+                await self._history.get(rid)
             except KeyError:
                 return f"(error: unknown record_id {rid!r})"
-            pred = record.pred_query
-            if pred.exec_result is None or pred.exec_result.df is None:
-                return f"(error: query {rid} returned no data)"
-            df = pred.exec_result.df
+            try:
+                df = await self._history.get_dataframe(rid)
+            except ValueError as e:
+                return f"(error: {e})"
             if df.empty:
                 return f"(error: query {rid} result is empty)"
             if len(df) > MAP_RENDER_MAX_ROWS:
