@@ -10,11 +10,53 @@ from __future__ import annotations
 from typing import Annotated, Any, Literal
 
 import pandas as pd
-from pydantic import BaseModel, ConfigDict, Field, field_serializer, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_serializer, field_validator, model_validator
 
 from tabulaflow.core.dataframe import _deserialize_dataframe, _serialize_dataframe
 from tabulaflow.core.types import GraphView, Usage
-from tabulaflow.toolhub import Dimension
+from tabulaflow.toolhub import Choice, Dimension
+
+
+SelectionValue = str | int | float | bool
+
+
+class ChoiceControl(BaseModel):
+    """Answer-level finite-choice control."""
+
+    kind: Literal["choice"] = "choice"
+    id: str
+    label: str
+    choices: list[Choice]
+
+    @classmethod
+    def from_dimension(cls, dimension: Dimension) -> "ChoiceControl":
+        return cls(id=dimension.id, label=dimension.label, choices=list(dimension.choices))
+
+
+class SliderControl(BaseModel):
+    """Answer-level numeric threshold/range control represented by a slider."""
+
+    kind: Literal["slider"] = "slider"
+    id: str
+    label: str
+    min: float
+    max: float
+    step: float
+    default: float
+    unit: str | None = None
+
+    @model_validator(mode="after")
+    def validate_range(self) -> "SliderControl":
+        if self.max <= self.min:
+            raise ValueError("slider max must be greater than min")
+        if self.step <= 0:
+            raise ValueError("slider step must be positive")
+        if not self.min <= self.default <= self.max:
+            raise ValueError("slider default must be between min and max")
+        return self
+
+
+AnswerControl = Annotated[ChoiceControl | SliderControl, Field(discriminator="kind")]
 
 
 class ChatResultRecord(BaseModel):
@@ -147,7 +189,7 @@ class ChatResultCombination(BaseModel):
     their contents change as the user switches.
     """
 
-    selection: dict[str, str]
+    selection: dict[str, SelectionValue]
     artifacts: list[ChatResultCard] = Field(default_factory=list)
 
 
@@ -158,8 +200,21 @@ class ChatResultPanel(BaseModel):
     dimension — the reading the answer text describes.
     """
 
-    dimensions: list[Dimension]
+    controls: list[AnswerControl] = Field(default_factory=list)
+    dimensions: list[Dimension] = Field(default_factory=list)
     combinations: list[ChatResultCombination]
+
+    @model_validator(mode="after")
+    def bridge_controls_and_dimensions(self) -> "ChatResultPanel":
+        if not self.controls:
+            self.controls = [ChoiceControl.from_dimension(dimension) for dimension in self.dimensions]
+        if not self.dimensions:
+            self.dimensions = [
+                Dimension(id=control.id, label=control.label, choices=list(control.choices))
+                for control in self.controls
+                if isinstance(control, ChoiceControl)
+            ]
+        return self
 
 
 class ChatResult(BaseModel):

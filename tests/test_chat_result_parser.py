@@ -4,6 +4,7 @@ import pandas as pd
 import pytest
 from pydantic_ai.messages import ToolReturnPart
 
+from tabulaflow.chat import ChatResultPanel, SliderControl
 from tabulaflow.chat.agent import _build_chat_result, _declared_bundle, _TextStreamRouter, _strip_answer_marker
 from tabulaflow.core.db_connector.db_registry import DBRegistry
 from tabulaflow.core.db_connector.sql_conn import SQLConnector
@@ -34,6 +35,35 @@ def test_strip_answer_marker_leaves_unmarked_text_alone() -> None:
     text = "I'm tabulaflow, an interactive data assistant.\n\n---\nAsk me anything about your data."
 
     assert _strip_answer_marker(text) == text
+
+
+def test_panel_derives_choice_controls_from_dimensions() -> None:
+    panel = ChatResultPanel(
+        dimensions=[
+            Dimension(
+                id="ranking",
+                label="Ranking",
+                choices=[Choice(id="net", label="Net"), Choice(id="count", label="Count")],
+            )
+        ],
+        combinations=[],
+    )
+
+    assert len(panel.controls) == 1
+    control = panel.controls[0]
+    assert control.kind == "choice"
+    assert control.id == "ranking"
+    assert control.choices[0].id == "net"
+
+
+def test_panel_accepts_slider_controls_without_dimensions() -> None:
+    panel = ChatResultPanel(
+        controls=[SliderControl(id="height_cm", label="Minimum height", min=180, max=220, step=1, default=200)],
+        combinations=[],
+    )
+
+    assert panel.dimensions == []
+    assert panel.controls[0].kind == "slider"
 
 
 def test_text_stream_router_waits_for_the_answer_marker() -> None:

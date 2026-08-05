@@ -20,6 +20,7 @@ from tabulaflow.chat.events import (
     UsageUpdated,
 )
 from tabulaflow.chat.result import (
+    AnswerControl,
     ChatResult,
     ChatResultArtifact,
     ChatResultCard,
@@ -30,6 +31,9 @@ from tabulaflow.chat.result import (
     ChatResultPanel,
     ChatResultPlaceholder,
     ChatResultRecord,
+    ChoiceControl,
+    SelectionValue,
+    SliderControl,
 )
 
 if TYPE_CHECKING:
@@ -54,6 +58,7 @@ def __getattr__(name: str) -> object:
 __all__ = [
     "ChatAgent",
     "SYSTEM_PROMPT",
+    "AnswerControl",
     "ChatResult",
     "ChatResultArtifact",
     "ChatResultCard",
@@ -64,6 +69,9 @@ __all__ = [
     "ChatResultMap",
     "ChatResultPanel",
     "ChatResultPlaceholder",
+    "ChoiceControl",
+    "SelectionValue",
+    "SliderControl",
     "ChatEvent",
     "AnswerDelta",
     "NarrationDelta",
