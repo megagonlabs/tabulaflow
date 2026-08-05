@@ -59,7 +59,7 @@ if TYPE_CHECKING:
     import pandas as pd
     from rich.console import RenderableType
 
-    from tabulaflow.chat import ChatResult, ChatResultCard, ChatResultCombination
+    from tabulaflow.chat import ChatResult, ChatResultCard, ChatResultCombination, ChoiceControl, SelectionValue
     from tabulaflow.app.display import CardGroup, ViewItem
     from tabulaflow.core.types import Usage
 
@@ -1487,7 +1487,7 @@ class AgentResultWidget(Widget):
         self._width = width
         self._panel = result.panel
         self.set_class(self._panel is not None, "-has-panel")
-        self._applied_selection: dict[str, str] = (
+        self._applied_selection: dict[str, SelectionValue] = (
             dict(self._panel.combinations[0].selection) if self._panel is not None else {}
         )
         self._interpretation_cursor = 0
@@ -1653,24 +1653,30 @@ class AgentResultWidget(Widget):
             return None
         return rec.views[self._view_indices[min(self.current_card, len(self._cards) - 1)]]
 
-    def _choice_count(self) -> int:
+    def _choice_controls(self) -> list["ChoiceControl"]:
         if self._panel is None:
-            return 0
-        return sum(len(dim.choices) for dim in self._panel.dimensions)
+            return []
+        from tabulaflow.chat import ChoiceControl
+
+        return [control for control in self._panel.controls if isinstance(control, ChoiceControl)]
+
+    def _choice_count(self) -> int:
+        return sum(len(control.choices) for control in self._choice_controls())
 
     def _cursor_location(self) -> tuple[int, int]:
-        assert self._panel is not None
+        controls = self._choice_controls()
+        assert controls
         cursor = self._interpretation_cursor
-        for dim_idx, dim in enumerate(self._panel.dimensions):
-            if cursor < len(dim.choices):
-                return dim_idx, cursor
-            cursor -= len(dim.choices)
-        last_dim = len(self._panel.dimensions) - 1
-        return last_dim, len(self._panel.dimensions[last_dim].choices) - 1
+        for control_idx, control in enumerate(controls):
+            if cursor < len(control.choices):
+                return control_idx, cursor
+            cursor -= len(control.choices)
+        last_control = len(controls) - 1
+        return last_control, len(controls[last_control].choices) - 1
 
-    def _choice_flat_index(self, dim_idx: int, choice_idx: int) -> int:
-        assert self._panel is not None
-        return sum(len(dim.choices) for dim in self._panel.dimensions[:dim_idx]) + choice_idx
+    def _choice_flat_index(self, control_idx: int, choice_idx: int) -> int:
+        controls = self._choice_controls()
+        return sum(len(control.choices) for control in controls[:control_idx]) + choice_idx
 
     def _move_interpretation_cursor(self, delta: int) -> None:
         max_cursor = self._choice_count() - 1
@@ -1680,14 +1686,15 @@ class AgentResultWidget(Widget):
         self._refresh_all()
 
     def _apply_interpretation_cursor(self) -> None:
-        if self._panel is None:
+        controls = self._choice_controls()
+        if not controls:
             return
-        dim_idx, choice_idx = self._cursor_location()
-        dim = self._panel.dimensions[dim_idx]
-        choice = dim.choices[choice_idx]
-        if self._applied_selection.get(dim.id) == choice.id:
+        control_idx, choice_idx = self._cursor_location()
+        control = controls[control_idx]
+        choice = control.choices[choice_idx]
+        if self._applied_selection.get(control.id) == choice.id:
             return
-        self._applied_selection = {**self._applied_selection, dim.id: choice.id}
+        self._applied_selection = {**self._applied_selection, control.id: choice.id}
         self._rebuild_cards_for_selection()
         self._refresh_all()
 
@@ -1712,19 +1719,23 @@ class AgentResultWidget(Widget):
         title_line.append_text(hint)
         self._interpretation_title.update(title_line)
 
-        cursor_dim, cursor_choice = self._cursor_location()
+        controls = self._choice_controls()
         rows: list[Text] = []
         self._choice_hit_areas = []
+        if not controls:
+            self._interpretation_content.update(Text("No supported answer controls yet.", style="dim"))
+            return
+        cursor_control, cursor_choice = self._cursor_location()
         row = 0
-        for dim_idx, dim in enumerate(self._panel.dimensions):
+        for control_idx, control in enumerate(controls):
             if rows:
                 rows.append(Text(""))
                 row += 1
-            rows.append(Text(dim.label, style=Style(bold=True)))
+            rows.append(Text(control.label, style=Style(bold=True)))
             row += 1
-            for choice_idx, choice in enumerate(dim.choices):
-                is_cursor = dim_idx == cursor_dim and choice_idx == cursor_choice
-                is_applied = self._applied_selection.get(dim.id) == choice.id
+            for choice_idx, choice in enumerate(control.choices):
+                is_cursor = control_idx == cursor_control and choice_idx == cursor_choice
+                is_applied = self._applied_selection.get(control.id) == choice.id
                 line = Text()
                 line.append("  ")
                 line.append(
@@ -1740,7 +1751,7 @@ class AgentResultWidget(Widget):
                     label_style = Style()
                 line.append(choice.label, style=label_style)
                 rows.append(line)
-                self._choice_hit_areas.append((self._choice_flat_index(dim_idx, choice_idx), row))
+                self._choice_hit_areas.append((self._choice_flat_index(control_idx, choice_idx), row))
                 row += 1
         self._interpretation_content.update(Text("\n").join(rows))
 

@@ -29,6 +29,8 @@ from tabulaflow.chat.result import (
     ChatResultPanel,
     ChatResultPlaceholder,
     ChatResultRecord,
+    ChoiceControl,
+    SliderControl,
 )
 from tabulaflow.core.types import GraphView
 from tabulaflow.toolhub import Choice, Dimension
@@ -201,6 +203,57 @@ def test_panel_result_widget_switches_combinations_and_preserves_card_views() ->
         ("placeholder:top", VIEW_KIND_INFO),
         ("Q5", VIEW_KIND_DATA),
     ]
+
+
+def test_panel_result_widget_uses_choice_controls_as_primary_model() -> None:
+    controls = [
+        ChoiceControl(
+            id="ranking",
+            label="Ranking",
+            choices=[Choice(id="net", label="Net"), Choice(id="count", label="Count")],
+        )
+    ]
+    stale_dimensions = [
+        Dimension(id="period", label="Period", choices=[Choice(id="q2", label="Q2"), Choice(id="q3", label="Q3")])
+    ]
+    widget = AgentResultWidget(
+        ChatResult(
+            text="x",
+            artifacts=[_record("Q1", "top")],
+            panel=ChatResultPanel(
+                controls=controls,
+                dimensions=stale_dimensions,
+                combinations=[
+                    ChatResultCombination(selection={"ranking": "net"}, artifacts=[_record("Q1", "top")]),
+                    ChatResultCombination(selection={"ranking": "count"}, artifacts=[_record("Q2", "top")]),
+                ],
+            ),
+        )
+    )
+
+    assert widget._choice_count() == 2
+    widget._move_interpretation_cursor(1)
+    widget._apply_interpretation_cursor()
+    assert widget._applied_selection == {"ranking": "count"}
+    assert [card.artifact_id for card in widget._cards] == ["Q2"]
+
+
+def test_slider_only_panel_does_not_crash_choice_navigation() -> None:
+    widget = AgentResultWidget(
+        ChatResult(
+            text="x",
+            artifacts=[_record("Q1", "players")],
+            panel=ChatResultPanel(
+                controls=[SliderControl(id="height_cm", label="Minimum height", min=180, max=220, step=1, default=200)],
+                combinations=[ChatResultCombination(selection={"height_cm": 200}, artifacts=[_record("Q1", "players")])],
+            ),
+        )
+    )
+
+    assert widget._choice_count() == 0
+    widget._move_interpretation_cursor(1)
+    widget._apply_interpretation_cursor()
+    assert widget._applied_selection == {"height_cm": 200}
 
 
 def test_browser_only_chart_placeholder_uses_artifact_caption() -> None:
