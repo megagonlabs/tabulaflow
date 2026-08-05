@@ -124,11 +124,11 @@ class ChartArtifact:
     """A chart drawn from a single query result.
 
     A standalone artifact whose Vega-Lite ``chart_spec`` renders the DataFrame
-    of the ``record_id`` it was created from — see ``toolhub.render_chart``.
+    selected by ``source`` — see ``toolhub.render_chart``.
     """
 
     chart_id: str
-    record_id: str
+    source: ArtifactSource
     chart_spec: dict[str, Any]
 
 
@@ -392,12 +392,16 @@ class QueryHistory:
             raise ValueError(f"query {record_id} returned no data")
         return await self._results.get_dataframe(record.outcome.storage_key)
 
-    def add_chart(self, record_id: str, chart_spec: dict[str, Any]) -> str:
+    def add_chart(self, source: ArtifactSource, chart_spec: dict[str, Any]) -> str:
         """Store a chart artifact for an existing query record and return its opaque ``CHART*`` id."""
-        if record_id not in self._records:
-            raise KeyError(f"No query with id {record_id}")
+        if source.kind == "record":
+            self._require_record(source.id)
+        elif source.kind == "family":
+            self.get_family(source.id)
+        else:
+            raise ValueError(f"unknown artifact source kind: {source.kind!r}")
         chart_id = f"CHART{self._next_chart_id}"
-        self._charts[chart_id] = ChartArtifact(chart_id=chart_id, record_id=record_id, chart_spec=chart_spec)
+        self._charts[chart_id] = ChartArtifact(chart_id=chart_id, source=source, chart_spec=chart_spec)
         self._next_chart_id += 1
         return chart_id
 

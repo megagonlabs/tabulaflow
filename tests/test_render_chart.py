@@ -10,7 +10,7 @@ import pytest
 
 from tabulaflow.app.pane import _add_line_hover, build_chart_data
 from tabulaflow.core.types import ExecResult, PredQuery
-from tabulaflow.toolhub.query_history import QueryHistory
+from tabulaflow.toolhub.query_history import ArtifactSource, QueryHistory
 from tabulaflow.toolhub.render_chart import (
     ChartNotRenderable,
     RenderChartTool,
@@ -170,25 +170,71 @@ async def _history_with(df: pd.DataFrame) -> QueryHistory:
 
 
 class TestRenderChartTool:
-    async def test_record_id_required(self) -> None:
+    async def test_source_id_required(self) -> None:
         history = await _history_with(pd.DataFrame({"a": ["x"], "b": [1]}))
         spec = {"mark": "bar", "encoding": {"x": {"field": "a"}, "y": {"field": "b"}}}
-        msg = await RenderChartTool(history=history)(record_id="", vegalite_spec=json.dumps(spec))
-        assert "record_id must be a non-empty string" in msg
+        msg = await RenderChartTool(history=history)(source_id="", vegalite_spec=json.dumps(spec))
+        assert "source_id must be a non-empty string" in msg
 
     async def test_simple_bar_creates_chart(self) -> None:
         history = await _history_with(pd.DataFrame({"a": ["x", "y"], "b": [1, 2]}))
         spec = {"mark": "bar", "encoding": {"x": {"field": "a"}, "y": {"field": "b"}}}
-        msg = await RenderChartTool(history=history)(record_id="Q1", vegalite_spec=json.dumps(spec))
+        msg = await RenderChartTool(history=history)(source_id="Q1", vegalite_spec=json.dumps(spec))
         assert "Bar chart CHART1 created from Q1" in msg
         chart = history.get_chart("CHART1")
-        assert chart.record_id == "Q1"
+        assert chart.source == ArtifactSource(kind="record", id="Q1")
         assert chart.chart_spec == spec
+
+    async def test_query_family_source_creates_chart(self) -> None:
+        history = QueryHistory()
+        await history.add_family(
+            "db",
+            "sql",
+            {"ranking": ["net", "count"]},
+            "SELECT 1",
+            {
+                "ranking=net": PredQuery(query="SELECT 'net' AS a, 1 AS b", exec_result=ExecResult(df=pd.DataFrame({"a": ["net"], "b": [1]}))),
+                "ranking=count": PredQuery(
+                    query="SELECT 'count' AS a, 2 AS b", exec_result=ExecResult(df=pd.DataFrame({"a": ["count"], "b": [2]}))
+                ),
+            },
+        )
+        spec = {"mark": "bar", "encoding": {"x": {"field": "a"}, "y": {"field": "b"}}}
+
+        msg = await RenderChartTool(history=history)(source_id="QS1", vegalite_spec=json.dumps(spec))
+
+        assert "Bar chart CHART1 created from QS1 — 2 source variants" in msg
+        chart = history.get_chart("CHART1")
+        assert chart.source == ArtifactSource(kind="family", id="QS1")
+        assert chart.chart_spec == spec
+
+    async def test_query_family_validation_reports_all_failing_selections(self) -> None:
+        history = QueryHistory()
+        await history.add_family(
+            "db",
+            "sql",
+            {"ranking": ["net", "count"]},
+            "SELECT 1",
+            {
+                "ranking=net": PredQuery(query="SELECT 'net' AS a", exec_result=ExecResult(df=pd.DataFrame({"a": ["net"]}))),
+                "ranking=count": PredQuery(query="SELECT 2 AS c", exec_result=ExecResult(df=pd.DataFrame({"c": [2]}))),
+            },
+        )
+        spec = {"mark": "bar", "encoding": {"x": {"field": "a"}, "y": {"field": "b"}}}
+
+        msg = await RenderChartTool(history=history)(source_id="QS1", vegalite_spec=json.dumps(spec))
+
+        assert "chart source validation failed for 2 issue(s)" in msg
+        assert "ranking=net — field(s) not found: ['b']" in msg
+        assert "ranking=count — field(s) not found: ['a', 'b']" in msg
+        assert "QS1_v" not in msg
+        with pytest.raises(KeyError):
+            history.get_chart("CHART1")
 
     async def test_rich_spec_creates_chart(self) -> None:
         history = await _history_with(pd.DataFrame({"a": ["x", "y"], "b": [1, 2], "c": ["g", "h"]}))
         spec = {"mark": "arc", "encoding": {"theta": {"field": "b"}, "color": {"field": "c"}}}
-        msg = await RenderChartTool(history=history)(record_id="Q1", vegalite_spec=json.dumps(spec))
+        msg = await RenderChartTool(history=history)(source_id="Q1", vegalite_spec=json.dumps(spec))
         assert "CHART1 created" in msg
         assert history.get_chart("CHART1").chart_spec == spec
 
@@ -197,8 +243,8 @@ class TestRenderChartTool:
         history = await _history_with(pd.DataFrame({"a": ["x", "y"], "b": [1, 2]}))
         bar = {"mark": "bar", "encoding": {"x": {"field": "a"}, "y": {"field": "b"}}}
         line = {"mark": "line", "encoding": {"x": {"field": "a"}, "y": {"field": "b"}}}
-        await RenderChartTool(history=history)(record_id="Q1", vegalite_spec=json.dumps(bar))
-        msg = await RenderChartTool(history=history)(record_id="Q1", vegalite_spec=json.dumps(line))
+        await RenderChartTool(history=history)(source_id="Q1", vegalite_spec=json.dumps(bar))
+        msg = await RenderChartTool(history=history)(source_id="Q1", vegalite_spec=json.dumps(line))
         assert "CHART2 created" in msg
         assert history.get_chart("CHART1").chart_spec == bar
         assert history.get_chart("CHART2").chart_spec == line
@@ -206,7 +252,7 @@ class TestRenderChartTool:
     async def test_oversized_result_refused_without_creating(self) -> None:
         history = await _history_with(pd.DataFrame({"a": range(20_001), "b": range(20_001)}))
         spec = {"mark": "bar", "encoding": {"x": {"field": "a"}, "y": {"field": "b"}}}
-        msg = await RenderChartTool(history=history)(record_id="Q1", vegalite_spec=json.dumps(spec))
+        msg = await RenderChartTool(history=history)(source_id="Q1", vegalite_spec=json.dumps(spec))
         assert "too large" in msg
         with pytest.raises(KeyError):
             history.get_chart("CHART1")
@@ -215,7 +261,7 @@ class TestRenderChartTool:
         # an invalid field reference (typo) is blocked, not stored
         history = await _history_with(pd.DataFrame({"a": ["x"], "b": [1]}))
         spec = {"mark": "bar", "encoding": {"x": {"field": "nope"}, "y": {"field": "b"}}}
-        msg = await RenderChartTool(history=history)(record_id="Q1", vegalite_spec=json.dumps(spec))
+        msg = await RenderChartTool(history=history)(source_id="Q1", vegalite_spec=json.dumps(spec))
         assert "not found" in msg and "nope" in msg
         with pytest.raises(KeyError):
             history.get_chart("CHART1")
@@ -224,7 +270,7 @@ class TestRenderChartTool:
         # browser-only specs are validated too: a bad color field is blocked
         history = await _history_with(pd.DataFrame({"a": ["x"], "b": [1], "c": ["g"]}))
         spec = {"mark": "arc", "encoding": {"theta": {"field": "b"}, "color": {"field": "nope"}}}
-        msg = await RenderChartTool(history=history)(record_id="Q1", vegalite_spec=json.dumps(spec))
+        msg = await RenderChartTool(history=history)(source_id="Q1", vegalite_spec=json.dumps(spec))
         assert "not found" in msg
         with pytest.raises(KeyError):
             history.get_chart("CHART1")
@@ -233,7 +279,7 @@ class TestRenderChartTool:
         # a nested-struct reference (meta.country) resolves via its root column 'meta'
         history = await _history_with(pd.DataFrame({"meta": [{"country": "US"}], "b": [1]}))
         spec = {"mark": "bar", "encoding": {"x": {"field": "meta.country"}, "y": {"field": "b"}}}
-        msg = await RenderChartTool(history=history)(record_id="Q1", vegalite_spec=json.dumps(spec))
+        msg = await RenderChartTool(history=history)(source_id="Q1", vegalite_spec=json.dumps(spec))
         assert "not found" not in msg
         assert history.get_chart("CHART1").chart_spec == spec
 
@@ -245,7 +291,7 @@ class TestRenderChartTool:
             "mark": "bar",
             "encoding": {"x": {"field": "a"}, "y": {"field": "derived"}},
         }
-        msg = await RenderChartTool(history=history)(record_id="Q1", vegalite_spec=json.dumps(spec))
+        msg = await RenderChartTool(history=history)(source_id="Q1", vegalite_spec=json.dumps(spec))
         assert "not found" not in msg
         assert history.get_chart("CHART1").chart_spec == spec
 

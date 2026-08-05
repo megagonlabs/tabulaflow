@@ -8,12 +8,13 @@ from __future__ import annotations
 
 import json
 import re
+from dataclasses import dataclass
 from typing import Any, ClassVar
 
 import pandas as pd
 from pydantic_ai import Tool
 
-from tabulaflow.toolhub.query_history import QueryHistory
+from tabulaflow.toolhub.query_history import ArtifactSource, QueryHistory
 
 
 # Marks plotext can draw faithfully as a single x/y series, mapped to the
@@ -31,6 +32,21 @@ _PLOTEXT_MARKS = frozenset(_MARK_TO_PLOTEXT)
 # rows is also almost always un-aggregated. The tool refuses rather than
 # truncating (a partial chart would silently misrepresent the data).
 _MAX_CHART_ROWS = 20_000
+
+
+def _artifact_source_from_id(source_id: str) -> ArtifactSource:
+    if source_id.startswith("QS"):
+        return ArtifactSource(kind="family", id=source_id)
+    if source_id.startswith("Q"):
+        return ArtifactSource(kind="record", id=source_id)
+    raise ValueError(f"source_id must start with 'Q' or 'QS', got {source_id!r}")
+
+
+@dataclass(frozen=True)
+class _SourceVariant:
+    label: str
+    record_id: str
+    df: pd.DataFrame
 
 # Terminal preview gets unreadable past these counts (bar labels collapse to a
 # char; plotext slows on dense series). Beyond them ``render_plotext`` raises
@@ -388,9 +404,9 @@ def render_plotext(
 
 
 class RenderChartTool:
-    """Create a standalone chart artifact from a stored query result.
+    """Create a standalone chart artifact from a query record or family source.
 
-    Validates the spec against the result DataFrame and stores it as a citable
+    Validates the spec against the source DataFrame(s) and stores it as a citable
     ``ChartArtifact``. Simple x/y specs also get a terminal (plotext) preview;
     richer specs render in the browser via the full Vega runtime.
     """
@@ -400,8 +416,8 @@ class RenderChartTool:
     def __init__(self, history: QueryHistory | None = None) -> None:
         self._history = history or QueryHistory()
 
-    async def __call__(self, record_id: str, *, vegalite_spec: str) -> str:
-        """Create a Vega-Lite chart from a query result.
+    async def __call__(self, source_id: str, *, vegalite_spec: str) -> str:
+        """Create a Vega-Lite chart from a query record or query family source.
 
         Accepts any Vega-Lite spec — single or multi-view: bar, line, point,
         area, arc/pie, heatmap, stacked/grouped bars via a color encoding,
@@ -425,11 +441,17 @@ class RenderChartTool:
         Returns the new chart id (``CHART1``, ``CHART2``, …) to cite in the answer.
 
         Args:
-            record_id: Query-history record ID (e.g. ``"Q3"``).
+            source_id: Query-history source ID. Use a fixed query record (e.g.
+                ``"Q3"``) or a query family (e.g. ``"QS1"``) that resolves under
+                answer controls.
             vegalite_spec: A Vega-Lite JSON specification string.
         """
-        if not isinstance(record_id, str) or not record_id.strip():
-            return "(error: record_id must be a non-empty string)"
+        if not isinstance(source_id, str) or not source_id.strip():
+            return "(error: source_id must be a non-empty string)"
+        try:
+            source = _artifact_source_from_id(source_id)
+        except ValueError as e:
+            return f"(error: {e})"
 
         try:
             spec = json.loads(vegalite_spec)
@@ -443,35 +465,50 @@ class RenderChartTool:
             return "(error: spec must have a 'mark' or be a multi-view spec (layer/facet/concat))"
 
         try:
-            record = await self._history.get(record_id)
+            variants = await self._source_variants(source)
         except KeyError:
-            return f"(error: unknown record_id {record_id!r})"
-
-        try:
-            df = await self._history.get_dataframe(record.record_id)
+            return f"(error: unknown source_id {source_id!r})"
         except ValueError as e:
             return f"(error: {e})"
-        if df.empty:
-            return f"(error: query {record.record_id} result is empty)"
-
-        if len(df) > _MAX_CHART_ROWS:
-            return (
-                f"(error: {len(df):,} rows is too large to chart — aggregate the result first "
-                f"(e.g. GROUP BY) and chart the summary; max {_MAX_CHART_ROWS:,} rows)"
-            )
 
         # Block a spec that references fields the result doesn't have (a typo, an
         # invalid chart). Valid nested references resolve via their root column, and
         # a transform may derive fields, so neither is rejected.
         field_refs, has_transform = _spec_field_refs(spec)
-        if not has_transform:
-            missing = sorted(f for f in field_refs if not _field_resolves(df, f))
-            if missing:
-                return f"(error: field(s) not found: {missing}. Available columns: {list(df.columns)})"
+        errors = []
+        for variant in variants:
+            if variant.df.empty:
+                errors.append(f"{variant.label} — result is empty")
+            if len(variant.df) > _MAX_CHART_ROWS:
+                errors.append(
+                    f"{variant.label} — {len(variant.df):,} rows is too large to chart; max {_MAX_CHART_ROWS:,} rows"
+                )
+            if not has_transform:
+                missing = sorted(f for f in field_refs if not _field_resolves(variant.df, f))
+                if missing:
+                    errors.append(
+                        f"{variant.label} — field(s) not found: {missing}. Available columns: {list(variant.df.columns)}"
+                    )
+        if errors:
+            return f"(error: chart source validation failed for {len(errors)} issue(s):\n  " + "\n  ".join(errors) + ")"
 
         label = chart_type_label(spec)
-        chart_id = self._history.add_chart(record.record_id, spec)
-        return f"{label} {chart_id} created from {record.record_id} — {len(df):,} rows"
+        chart_id = self._history.add_chart(source, spec)
+        rows = len(variants[0].df)
+        suffix = f" — {rows:,} rows" if len(variants) == 1 else f" — {len(variants):,} source variants"
+        return f"{label} {chart_id} created from {source_id}{suffix}"
+
+    async def _source_variants(self, source: ArtifactSource) -> list[_SourceVariant]:
+        if source.kind == "record":
+            await self._history.get(source.id)
+            return [_SourceVariant(label=source.id, record_id=source.id, df=await self._history.get_dataframe(source.id))]
+        if source.kind != "family":
+            raise ValueError(f"unknown artifact source kind: {source.kind!r}")
+        family = self._history.get_family(source.id)
+        out: list[_SourceVariant] = []
+        for selection, record_id in family.record_ids_by_selection.items():
+            out.append(_SourceVariant(label=selection, record_id=record_id, df=await self._history.get_dataframe(record_id)))
+        return out
 
     def as_pydantic_ai_tool(self) -> Tool:
         return Tool(self.__call__, name=self.name)

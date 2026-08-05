@@ -71,9 +71,10 @@ class ShowArtifactsTool:
 
         With ``dimensions``, the user gets a chooser and every card updates together as
         they switch. A ``QS*`` card shows the combination selected for the dimensions its
-        query varied over; a card that did not vary over a dimension shows the same rows
-        whatever the user picks there, and one run over only some of a dimension's choices
-        shows "only applies when …" for the rest.
+        query varied over. A ``CHART*`` card whose source is ``QS*`` varies the same way.
+        A card that did not vary over a dimension shows the same rows whatever the user
+        picks there, and one run over only some of a dimension's choices shows "only
+        applies when …" for the rest.
 
         Normal answer, no chooser:
         ```python
@@ -177,12 +178,16 @@ class ShowArtifactsTool:
 
     def _family(self, artifact_id: str) -> QueryFamily | None:
         """The query family behind ``artifact_id``, or ``None`` for a fixed artifact."""
-        if not artifact_id.startswith("QS"):
-            return None
         try:
-            return self._history.get_family(artifact_id)
+            if artifact_id.startswith("QS"):
+                return self._history.get_family(artifact_id)
+            if artifact_id.startswith("CHART"):
+                chart = self._history.get_chart(artifact_id)
+                if chart.source.kind == "family":
+                    return self._history.get_family(chart.source.id)
         except KeyError:
             return None
+        return None
 
     def as_pydantic_ai_tool(self) -> Tool:
         return Tool(self.__call__, name=self.name)

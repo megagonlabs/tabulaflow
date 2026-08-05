@@ -820,9 +820,9 @@ async def _panel_from_bundle(bundle: "ArtifactBundle", query_history: QueryHisto
     """
     dimensions = list(bundle.dimensions)
     families = {
-        artifact.id: query_history.get_family(artifact.id)
+        artifact.id: family
         for artifact in bundle.artifacts
-        if artifact.id.startswith("QS")
+        if (family := _artifact_family(artifact.id, query_history)) is not None
     }
     fixed = await _artifacts_from_refs(
         [(a.id, a.label) for a in bundle.artifacts if a.id not in families], query_history
@@ -857,7 +857,24 @@ async def _card_at(
     if outside:
         return ChatResultPlaceholder(label=artifact.label, message=_only_applies_when(family, dimensions, outside))
     record = await query_history.get(family.record_ids_by_selection[selection_key(projected)])
+    if artifact.id.startswith("CHART"):
+        chart_artifact = query_history.get_chart(artifact.id)
+        chart = await _chat_result_chart_from_artifact(chart_artifact, artifact.label, query_history, selection)
+        return chart if chart is not None else ChatResultPlaceholder(label=artifact.label, message="chart source unavailable")
     return await _chat_result_record_from_query_record(record, artifact.label, query_history)
+
+
+def _artifact_family(artifact_id: str, query_history: QueryHistory) -> "QueryFamily | None":
+    if artifact_id.startswith("QS"):
+        return query_history.get_family(artifact_id)
+    if artifact_id.startswith("CHART"):
+        try:
+            chart = query_history.get_chart(artifact_id)
+        except KeyError:
+            return None
+        if chart.source.kind == "family":
+            return query_history.get_family(chart.source.id)
+    return None
 
 
 def _only_applies_when(family: "QueryFamily", dimensions: list["Dimension"], outside: list[str]) -> str:
@@ -994,7 +1011,9 @@ async def _artifacts_from_refs(
                 chart_artifact = query_history.get_chart(ref_id)
             except (KeyError, ValueError):
                 continue
-            artifacts.append(await _chat_result_chart_from_artifact(chart_artifact, label, query_history))
+            chart = await _chat_result_chart_from_artifact(chart_artifact, label, query_history)
+            if isinstance(chart, ChatResultChart):
+                artifacts.append(chart)
         elif ref_id.startswith("MAP"):
             try:
                 map_artifact = query_history.get_map(ref_id)
@@ -1020,13 +1039,23 @@ async def _chat_result_chart_from_artifact(
     chart_artifact: ChartArtifact,
     label: str | None,
     query_history: QueryHistory,
-) -> ChatResultChart:
+    selection: dict[str, object] | None = None,
+) -> ChatResultChart | ChatResultPlaceholder | None:
     """Resolve a stored chart artifact's source record into a display record."""
     query: str | None = None
     df: pd.DataFrame | None = None
     query_lexer = "sql"
+    from tabulaflow.toolhub import ResolvedRecordRef, SourceNotApplicable
+
     try:
-        record = await query_history.get(chart_artifact.record_id)
+        resolution = query_history.resolve_artifact_source(chart_artifact.source, selection or {})
+    except (KeyError, ValueError):
+        return None
+    if isinstance(resolution, SourceNotApplicable):
+        return ChatResultPlaceholder(label=label, message=resolution.reason)
+    assert isinstance(resolution, ResolvedRecordRef)
+    try:
+        record = await query_history.get(resolution.record_id)
     except (KeyError, ValueError):
         record = None
     if record is not None:
@@ -1038,7 +1067,7 @@ async def _chat_result_chart_from_artifact(
         chart_id=chart_artifact.chart_id,
         label=label,
         chart_spec=chart_artifact.chart_spec,
-        record_id=chart_artifact.record_id,
+        record_id=resolution.record_id,
         query=query,
         df=df,
         query_lexer=query_lexer,

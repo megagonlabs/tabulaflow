@@ -31,7 +31,9 @@ def _text(result: ToolReturn) -> str:
 async def history() -> QueryHistory:
     h = QueryHistory()
     await h.add("workspace", "sql", PredQuery(query="SELECT 1", exec_result=ExecResult(df=pd.DataFrame({"a": [1]}))))
-    h.add_chart("Q1", {"mark": "bar"})
+    from tabulaflow.toolhub.query_history import ArtifactSource
+
+    h.add_chart(ArtifactSource(kind="record", id="Q1"), {"mark": "bar"})
     return h
 
 

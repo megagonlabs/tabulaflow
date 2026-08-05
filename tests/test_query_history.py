@@ -260,14 +260,14 @@ class TestWithConnector:
         await h.add("db", "sql", _make_pred_query())
         await h.add("db", "sql", _make_pred_query())
         assert not h._results.has_in_memory("Q1")
-        chart_id = h.add_chart("Q1", {"mark": "bar"})
+        chart_id = h.add_chart(ArtifactSource(kind="record", id="Q1"), {"mark": "bar"})
         assert not h._results.has_in_memory("Q1")
         assert chart_id == "CHART1"
         chart = h.get_chart("CHART1")
-        assert chart.record_id == "Q1"
+        assert chart.source == ArtifactSource(kind="record", id="Q1")
         assert chart.chart_spec == {"mark": "bar"}
         with pytest.raises(KeyError):
-            h.add_chart("Q9", {"mark": "bar"})
+            h.add_chart(ArtifactSource(kind="record", id="Q9"), {"mark": "bar"})
         with pytest.raises(KeyError):
             h.get_chart("CHART9")
 

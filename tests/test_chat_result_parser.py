@@ -1,4 +1,5 @@
 from pathlib import Path
+import json
 
 import pandas as pd
 import pytest
@@ -16,6 +17,7 @@ from tabulaflow.toolhub import (
     Dimension,
     QueryDimension,
     QueryHistory,
+    RenderChartTool,
     RunQueryForEachCombinationTool,
 )
 
@@ -198,6 +200,43 @@ async def test_build_chat_result_resolves_a_panel(tmp_path: Path) -> None:
     assert len({_record_id(combination.artifacts[0]) for combination in result.panel.combinations}) == 4
     # The flat artifact list mirrors the first combination.
     assert [_record_id(a) for a in result.artifacts] == [_record_id(a) for a in result.panel.combinations[0].artifacts]
+
+
+@pytest.mark.asyncio
+async def test_build_chat_result_resolves_source_backed_chart_in_panel(tmp_path: Path) -> None:
+    connector = await SQLConnector.from_url_async(
+        global_id="test-chat-chart-panel",
+        url=f"duckdb:///{tmp_path / 'w.duckdb'}",
+        db_name="w",
+        read_only=False,
+        enable_schema_caching=False,
+        enable_query_caching=False,
+    )
+    await connector.run_query_async("CREATE TABLE orders(customer TEXT, net INT, quarter TEXT)")
+    await connector.run_query_async("INSERT INTO orders VALUES ('Acme', 10, 'q2'), ('Globex', 7, 'q3')")
+    registry = DBRegistry()
+    registry.register("workspace", connector)
+    history = QueryHistory()
+    runner = RunQueryForEachCombinationTool(registry, history=history)
+    await runner(
+        "workspace",
+        [QueryDimension(id="period", choices=["q2", "q3"])],
+        "SELECT customer, SUM(net) AS value FROM orders WHERE quarter = '{{ period }}' GROUP BY customer",
+    )
+    spec = {"mark": "bar", "encoding": {"x": {"field": "customer"}, "y": {"field": "value"}}}
+    await RenderChartTool(history=history)(source_id="QS1", vegalite_spec=json.dumps(spec))
+    bundle = ArtifactBundle(
+        artifacts=(Artifact(id="CHART1", label="top customers"),),
+        dimensions=(Dimension(id="period", label="Quarter", choices=[Choice(id="q2", label="Q2"), Choice(id="q3", label="Q3")]),),
+    )
+
+    result = await _build_chat_result("<answer>\nChart shown.", bundle, history)
+
+    assert result.panel is not None
+    assert [combination.artifacts[0].kind for combination in result.panel.combinations] == ["chart", "chart"]
+    chart_ids = [getattr(combination.artifacts[0], "record_id") for combination in result.panel.combinations]
+    assert chart_ids == ["QS1_v0", "QS1_v1"]
+    assert [getattr(a, "record_id") for a in result.artifacts] == ["QS1_v0"]
 
 
 @pytest.mark.asyncio
