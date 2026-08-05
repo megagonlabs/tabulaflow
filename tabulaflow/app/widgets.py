@@ -18,7 +18,6 @@ from rich.spinner import Spinner
 from rich.text import Text
 
 from textual import events
-from textual._compositor import Compositor
 from textual.binding import Binding
 from textual.content import Content, Span
 from textual.geometry import Region, Size
@@ -1135,27 +1134,25 @@ class AgentTextBlock(Markdown):
         parent = self.parent
         if not isinstance(parent, Widget) or not self.is_mounted:
             return None
-        width = (
-            self.size.width
-            or self.content_size.width
-            or self.container_size.width
-            or parent.content_size.width
-            or parent.size.width
-            or self.app.size.width
-        )
-        if width <= 0:
-            return None
-        height = max(self.size.height, self.get_content_height(Size(width, self.app.size.height), self.app.size, width))
-        if height <= 0:
-            return None
         children = self.walk_children(with_self=False)
         if children and not any(child.size.width > 0 and child.size.height > 0 for child in children if isinstance(child, Widget)):
             self.refresh(layout=True)
             return None
-        compositor = Compositor()
-        compositor.reflow(self, Size(width, height))
-        strips = [Strip.join(list(line)) for line in compositor.render_full_update().strips]
-        frozen = FrozenAgentTextBlock(strips, width)
+        compositor = self.app.screen._compositor
+        region = clip = None
+        for widget, geometry in compositor.layers:
+            if widget is self:
+                region = geometry.region
+                clip = geometry.clip
+                break
+        if region is None or clip is None or not clip.contains_region(region):
+            self.refresh(layout=True)
+            return None
+        full_lines = [Strip.join(list(line)) for line in compositor.render_full_update().strips]
+        if region.bottom > len(full_lines):
+            return None
+        strips = [full_lines[y].crop_extend(region.x, region.right, self.rich_style) for y in region.line_range]
+        frozen = FrozenAgentTextBlock(strips, region.width)
         with self.app.batch_update():
             await parent.mount(frozen, after=self)
             await self.remove()
@@ -1176,7 +1173,6 @@ class FrozenAgentTextBlock(Widget):
         super().__init__()
         self._strips = [strip.adjust_cell_length(width) for strip in strips]
         self._width = width
-        self.styles.width = width
 
     def get_content_width(self, container: Size, viewport: Size) -> int:
         return min(self._width, container.width) if container.width else self._width
@@ -1234,6 +1230,7 @@ class AgentProgressWidget(Widget):
         self._usage: Usage | None = None
         self._interrupted: bool = False
         self._freeze_scheduled = False
+        self._freeze_attempts = 0
 
     def on_mount(self) -> None:
         self._timer = self.set_interval(1 / 12, self.refresh)
@@ -1468,9 +1465,12 @@ class AgentProgressWidget(Widget):
         self._freeze_scheduled = False
         if self._text_block is not None and await self._text_block.freeze() is not None:
             self._text_block = None
+            self._freeze_attempts = 0
             self._refresh(layout=True)
         elif self._text_block is not None:
-            await self._freeze_text_block()
+            self._freeze_attempts += 1
+            if self._freeze_attempts < 3:
+                await self._freeze_text_block()
 
     async def _ensure_text_block(self) -> AgentTextBlock:
         if self._text_block is not None:

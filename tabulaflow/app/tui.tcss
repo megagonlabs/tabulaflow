@@ -6,6 +6,7 @@ TabulaflowApp {
     height: 1fr;
     overflow-y: auto;
     overflow-x: hidden;
+    scrollbar-gutter: stable;
     padding: 0 1 2 1;
 }
 
