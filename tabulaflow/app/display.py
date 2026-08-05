@@ -341,8 +341,8 @@ class CardGroup:
 
     label: str
     artifact_id: str
-    # The query record backing the Data/Chart views (the artifact itself for a
-    # record, the chart's source for a chart); ``None`` for maps and graphs.
+    # The query record backing the Data/Chart views (the table artifact itself,
+    # or the chart's source); ``None`` for maps and graphs.
     source_record_id: str | None = None
     views: list[ViewItem] = field(default_factory=list)
 
@@ -352,7 +352,7 @@ def build_artifact_card_views(
 ) -> list[CardGroup]:
     """Build per-artifact view groups from already-resolved artifacts, in order.
 
-    Record artifacts yield Data -> Query views and chart artifacts Chart -> Data ->
+    Table artifacts yield Data -> Query views and chart artifacts Chart -> Data ->
     Query views (absent kinds omitted); map and graph artifacts yield a single
     browser-pane placeholder view, since they don't render in the terminal. Panel
     placeholders yield a single informational view. Artifacts with no views are dropped.
@@ -395,47 +395,47 @@ def build_artifact_card_views(
             )
             continue
 
-        record = artifact
-        chart_spec = record.chart_spec if isinstance(record, ChatResultChart) else None
-        artifact_id = record.chart_id if isinstance(record, ChatResultChart) else record.record_id
+        table = artifact
+        chart_spec = table.chart_spec if isinstance(table, ChatResultChart) else None
+        artifact_id = table.chart_id if isinstance(table, ChatResultChart) else table.record_id
         views: list[ViewItem] = []
-        if getattr(record, "graph", None) is not None:
+        if getattr(table, "graph", None) is not None:
             views.append(
                 ViewItem(
                     kind=VIEW_KIND_GRAPH,
                     renderable=_build_graph_card(),
                 )
             )
-        if chart_spec is not None and record.df is not None:
+        if chart_spec is not None and table.df is not None:
             views.append(
                 ViewItem(
                     kind=VIEW_KIND_CHART,
-                    renderable=build_chart(record.df, chart_spec, width),
+                    renderable=build_chart(table.df, chart_spec, width),
                     chart_spec=chart_spec,
                 )
             )
-        if record.df is not None and not record.df.empty:
-            renderable, shown_cols = build_table(record.df, available_width=width, include_footer=False)
+        if table.df is not None and not table.df.empty:
+            renderable, shown_cols = build_table(table.df, available_width=width, include_footer=False)
             views.append(
                 ViewItem(
                     kind=VIEW_KIND_DATA,
                     renderable=renderable,
-                    data_shape=(len(record.df), len(record.df.columns)),
+                    data_shape=(len(table.df), len(table.df.columns)),
                     shown_cols=shown_cols,
                 )
             )
-        if record.query:
+        if table.query:
             views.append(
                 ViewItem(
                     kind=VIEW_KIND_QUERY,
-                    renderable=build_query(record.query, lexer=record.query_lexer),
-                    query=(record.query, record.query_lexer),
+                    renderable=build_query(table.query, lexer=table.query_lexer),
+                    query=(table.query, table.query_lexer),
                 )
             )
 
         if views:
             groups.append(
-                CardGroup(label=label, artifact_id=artifact_id, source_record_id=record.record_id, views=views)
+                CardGroup(label=label, artifact_id=artifact_id, source_record_id=table.record_id, views=views)
             )
 
     if release_dataframes:

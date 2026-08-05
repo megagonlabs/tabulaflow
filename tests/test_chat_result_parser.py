@@ -23,7 +23,7 @@ from tabulaflow.toolhub import (
 
 
 def _record_id(artifact: object) -> str:
-    assert getattr(artifact, "kind") == "record"
+    assert getattr(artifact, "kind") == "table"
     record_id = getattr(artifact, "record_id")
     assert isinstance(record_id, str)
     return record_id
@@ -275,7 +275,7 @@ async def test_build_chat_result_placeholders_a_partially_covered_card(tmp_path:
 
     assert result.panel is not None
     covered, uncovered = result.panel.combinations
-    assert covered.artifacts[0].kind == "record"
+    assert covered.artifacts[0].kind == "table"
     assert uncovered.artifacts[0].kind == "placeholder"
     assert uncovered.artifacts[0].message == "only applies when Time period = Last completed quarter"
     assert uncovered.artifacts[0].label == "net revenue"

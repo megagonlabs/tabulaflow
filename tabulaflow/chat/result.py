@@ -59,12 +59,12 @@ class SliderControl(BaseModel):
 AnswerControl = Annotated[ChoiceControl | SliderControl, Field(discriminator="kind")]
 
 
-class ChatResultRecord(BaseModel):
-    """Display-ready data for one referenced query result."""
+class ChatResultTable(BaseModel):
+    """Display-ready table card for one resolved query source."""
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    kind: Literal["record"] = "record"
+    kind: Literal["table"] = "table"
     record_id: str
     label: str | None
     query: str | None
@@ -166,18 +166,18 @@ class ChatResultPlaceholder(BaseModel):
     message: str
 
 
-# A cited artifact is either a query result (record) or a standalone chart, map,
+# A cited artifact is either a table result or a standalone chart, map,
 # or graph, discriminated by ``kind``; ``ChatResult.artifacts`` holds them in
 # citation order.
 ChatResultArtifact = Annotated[
-    ChatResultRecord | ChatResultChart | ChatResultMap | ChatResultGraph, Field(discriminator="kind")
+    ChatResultTable | ChatResultChart | ChatResultMap | ChatResultGraph, Field(discriminator="kind")
 ]
 
 # Inside a panel a card may also be a placeholder, for a combination its query never
 # ran.  Kept out of ``ChatResultArtifact`` so the ordinary render path — which every
 # frontend already implements — never has to consider it.
 ChatResultCard = Annotated[
-    ChatResultRecord | ChatResultChart | ChatResultMap | ChatResultGraph | ChatResultPlaceholder,
+    ChatResultTable | ChatResultChart | ChatResultMap | ChatResultGraph | ChatResultPlaceholder,
     Field(discriminator="kind"),
 ]
 

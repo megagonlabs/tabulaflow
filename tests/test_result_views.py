@@ -28,7 +28,7 @@ from tabulaflow.chat.result import (
     ChatResultMap,
     ChatResultPanel,
     ChatResultPlaceholder,
-    ChatResultRecord,
+    ChatResultTable,
     ChoiceControl,
     SliderControl,
 )
@@ -36,8 +36,8 @@ from tabulaflow.core.types import GraphView
 from tabulaflow.toolhub import Choice, Dimension
 
 
-def _record(record_id: str, label: str) -> ChatResultRecord:
-    return ChatResultRecord(
+def _record(record_id: str, label: str) -> ChatResultTable:
+    return ChatResultTable(
         record_id=record_id,
         label=label,
         query="SELECT 1",

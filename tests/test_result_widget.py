@@ -6,11 +6,11 @@ from textual.containers import VerticalScroll
 
 from tabulaflow.app.display import VIEW_KIND_DATA, VIEW_KIND_QUERY
 from tabulaflow.app.widgets import AgentResultWidget
-from tabulaflow.chat.result import ChatResult, ChatResultRecord
+from tabulaflow.chat.result import ChatResult, ChatResultTable
 
 
-def _record(record_id: str, label: str) -> ChatResultRecord:
-    return ChatResultRecord(
+def _record(record_id: str, label: str) -> ChatResultTable:
+    return ChatResultTable(
         record_id=record_id,
         label=label,
         query=f"SELECT '{label}' AS label",

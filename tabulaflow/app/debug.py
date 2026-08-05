@@ -27,12 +27,12 @@ def _debug_history_for(result: "ChatResult") -> "QueryHistory":
     have no spill connector, so the async ``add()`` path would just be an
     awkward way to do the same in-memory bookkeeping.
     """
-    from tabulaflow.chat import ChatResultChart, ChatResultRecord
+    from tabulaflow.chat import ChatResultChart, ChatResultTable
     from tabulaflow.toolhub.query_history import QueryHistory, QueryRecord, TabularResult
 
     history = QueryHistory()
     for record in result.artifacts:
-        if not isinstance(record, (ChatResultRecord, ChatResultChart)) or record.df is None:
+        if not isinstance(record, (ChatResultTable, ChatResultChart)) or record.df is None:
             continue
         query_record = QueryRecord(
             record_id=record.record_id,
@@ -62,7 +62,7 @@ def debug_enabled() -> bool:
 def _build_debug_result_widget(app: TabulaflowApp) -> AgentResultWidget:
     import pandas as pd
 
-    from tabulaflow.chat import ChatResult, ChatResultRecord
+    from tabulaflow.chat import ChatResult, ChatResultTable
 
     import datetime
     import json
@@ -412,7 +412,7 @@ LIMIT 4000"""
     result = ChatResult(
         text="Debug startup table",
         artifacts=[
-            ChatResultRecord(
+            ChatResultTable(
                 record_id="QDEBUG",
                 label="debug_4000x60",
                 query=debug_query,
@@ -438,7 +438,7 @@ def _build_debug_huge_cell_result_widget(app: TabulaflowApp) -> AgentResultWidge
     """
     import pandas as pd
 
-    from tabulaflow.chat import ChatResult, ChatResultRecord
+    from tabulaflow.chat import ChatResult, ChatResultTable
 
     def long_json(n_items: int, note_chars: int = 0) -> dict[str, object]:
         # Pretty-printed lines per item are ~8; with note_chars > 0 each
@@ -509,7 +509,7 @@ def _build_debug_huge_cell_result_widget(app: TabulaflowApp) -> AgentResultWidge
     result = ChatResult(
         text="Debug long/wide cell fixture (Enter on `value` to open CellBrowserScreen)",
         artifacts=[
-            ChatResultRecord(
+            ChatResultTable(
                 record_id="QDEBUG_HUGE_CELL",
                 label="debug_long_wide_cells",
                 query="-- synthetic fixture: escalating cell sizes",
@@ -541,7 +541,7 @@ def _build_debug_media_result_widget(app: TabulaflowApp) -> AgentResultWidget:
     import pandas as pd
     from PIL import Image, ImageDraw
 
-    from tabulaflow.chat import ChatResult, ChatResultRecord
+    from tabulaflow.chat import ChatResult, ChatResultTable
 
     def wav_bytes(freq_hz: float, seconds: float = 0.4, rate: int = 8000) -> bytes:
         # Minimal PCM WAV: header + 16-bit mono samples of a sine tone.
@@ -627,7 +627,7 @@ def _build_debug_media_result_widget(app: TabulaflowApp) -> AgentResultWidget:
     result = ChatResult(
         text="Debug startup media table",
         artifacts=[
-            ChatResultRecord(
+            ChatResultTable(
                 record_id="QDEBUG_MEDIA",
                 label="debug_media",
                 query=query,
@@ -647,7 +647,7 @@ def _build_debug_media_result_widget(app: TabulaflowApp) -> AgentResultWidget:
 def _build_debug_small_result_widget(app: TabulaflowApp) -> AgentResultWidget:
     import pandas as pd
 
-    from tabulaflow.chat import ChatResult, ChatResultRecord
+    from tabulaflow.chat import ChatResult, ChatResultTable
 
     df = pd.DataFrame(
         [
@@ -669,7 +669,7 @@ def _build_debug_small_result_widget(app: TabulaflowApp) -> AgentResultWidget:
     result = ChatResult(
         text="Debug startup small table",
         artifacts=[
-            ChatResultRecord(
+            ChatResultTable(
                 record_id="QDEBUG_SMALL",
                 label="debug_5x3_multiline",
                 query=query,
@@ -690,7 +690,7 @@ def _build_debug_quad_result_widget(app: TabulaflowApp) -> AgentResultWidget:
     """Compact 4-artifact fixture exercising every view-kind combination."""
     import pandas as pd
 
-    from tabulaflow.chat import ChatResult, ChatResultChart, ChatResultRecord
+    from tabulaflow.chat import ChatResult, ChatResultChart, ChatResultTable
 
     # Artifact 1: chart artifact — Chart + Data + Query
     regions_df = pd.DataFrame(
@@ -774,7 +774,7 @@ def _build_debug_quad_result_widget(app: TabulaflowApp) -> AgentResultWidget:
                 df=regions_df,
                 query_lexer="sql",
             ),
-            ChatResultRecord(
+            ChatResultTable(
                 record_id="QDEBUG_QUAD_2",
                 label="top_products",
                 query=products_query,
@@ -790,7 +790,7 @@ def _build_debug_quad_result_widget(app: TabulaflowApp) -> AgentResultWidget:
                 df=channels_df,
                 query_lexer="sql",
             ),
-            ChatResultRecord(
+            ChatResultTable(
                 record_id="QDEBUG_QUAD_4",
                 label="low_stock_alerts",
                 query=low_stock_query,
@@ -813,7 +813,7 @@ def _build_debug_multi_result_widget(app: TabulaflowApp) -> AgentResultWidget:
 
     import pandas as pd
 
-    from tabulaflow.chat import ChatResult, ChatResultArtifact, ChatResultChart, ChatResultRecord
+    from tabulaflow.chat import ChatResult, ChatResultArtifact, ChatResultChart, ChatResultTable
 
     rng = random.Random(20260423)
 
@@ -1009,7 +1009,7 @@ def _build_debug_multi_result_widget(app: TabulaflowApp) -> AgentResultWidget:
             )
         else:
             records.append(
-                ChatResultRecord(
+                ChatResultTable(
                     record_id=f"QDEBUG_MULTI_{i + 1}",
                     label=label,
                     query=query,

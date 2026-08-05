@@ -1,6 +1,36 @@
 # Answer Controls Plan
 
-Status: planning notes from discussion; ignores earlier interpretation-panel plans.
+Status: active implementation plan; ignores earlier interpretation-panel plans.
+
+## Current implementation progress
+
+Implemented on `dev` so far:
+
+- Answer controls are first-class in the chat result model:
+  - `AnswerControl = ChoiceControl | SliderControl`.
+  - `ChatResultPanel.controls` exists.
+  - Legacy `ChatResultPanel.dimensions` still exists as a compatibility bridge for current tools.
+  - `ChatResultCombination.selection` supports typed values (`str | int | float | bool`).
+- The TUI result widget reads choice controls from `panel.controls` instead of treating `dimensions` as the primary UI model.
+  Slider controls are accepted by the model but are not yet interactive.
+- Query history now has source resolution primitives:
+  - `ArtifactSource(kind="record", id="Q1")`
+  - `ArtifactSource(kind="family", id="QS1")`
+  - `ResolvedRecordRef`
+  - `SourceNotApplicable`
+  - `QueryHistory.resolve_artifact_source(...)`
+- Chart artifacts are source-backed:
+  - `ChartArtifact.source: ArtifactSource`
+  - `render_chart(source_id=...)` accepts `Q*` and `QS*`.
+  - For `QS*`, chart validation checks every source variant and reports all failures by selection key, not internal variant record id.
+  - `show_artifacts` treats a chart backed by a `QS*` source as varying over that family.
+- Current chart/table source resolution still happens while building `ChatResult` in the chat layer. This is transitional: `ChatResult` remains display-ready, not an unresolved artifact graph.
+
+In progress / next cleanup:
+
+- Rename resolved table payloads from `ChatResultRecord`/`kind="record"` to `ChatResultTable`/`kind="table"`.
+  This preserves agent ergonomics: there is intentionally no `render_table`; `Q*` and `QS*` remain directly showable as implicit table cards.
+- After that cleanup, the next architectural step is to stop resolving all artifacts in the chat layer and move toward frontend/runtime resolution of unresolved artifact definitions under the active selection.
 
 ## Product thesis
 

@@ -814,7 +814,7 @@ class TabulaflowApp(App[None]):
                         SimpleNamespace(
                             df=artifact.df,
                             chart_spec=artifact.chart_spec if artifact.kind == "chart" else None,
-                            graph=artifact.graph if artifact.kind == "record" else None,
+                            graph=artifact.graph if artifact.kind == "table" else None,
                             query=artifact.query,
                             label=artifact.label,
                             query_lexer=artifact.query_lexer,

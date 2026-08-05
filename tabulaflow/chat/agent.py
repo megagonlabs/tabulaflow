@@ -41,9 +41,9 @@ from tabulaflow.chat.result import (
     ChatResultMap,
     ChatResultPanel,
     ChatResultPlaceholder,
-    ChatResultRecord,
+    ChatResultTable,
 )
-from tabulaflow.toolhub import selection_key
+from tabulaflow.toolhub import ArtifactSource
 from tabulaflow.chat.events import (
     ChatEvent,
     AnswerDelta,
@@ -797,7 +797,7 @@ async def _build_chat_result(
         artifacts = [
             card
             for card in panel.combinations[0].artifacts
-            if isinstance(card, (ChatResultRecord, ChatResultChart, ChatResultMap, ChatResultGraph))
+            if isinstance(card, (ChatResultTable, ChatResultChart, ChatResultMap, ChatResultGraph))
         ]
     else:
         refs = [(artifact.id, artifact.label) for artifact in bundle.artifacts] if bundle is not None else []
@@ -856,12 +856,14 @@ async def _card_at(
     outside = [name for name, choice in projected.items() if choice not in family.dimensions[name]]
     if outside:
         return ChatResultPlaceholder(label=artifact.label, message=_only_applies_when(family, dimensions, outside))
-    record = await query_history.get(family.record_ids_by_selection[selection_key(projected)])
     if artifact.id.startswith("CHART"):
         chart_artifact = query_history.get_chart(artifact.id)
         chart = await _chat_result_chart_from_artifact(chart_artifact, artifact.label, query_history, selection)
         return chart if chart is not None else ChatResultPlaceholder(label=artifact.label, message="chart source unavailable")
-    return await _chat_result_record_from_query_record(record, artifact.label, query_history)
+    table = await _chat_result_table_from_source(
+        ArtifactSource(kind="family", id=artifact.id), artifact.label, query_history, selection
+    )
+    return table if table is not None else ChatResultPlaceholder(label=artifact.label, message="table source unavailable")
 
 
 def _artifact_family(artifact_id: str, query_history: QueryHistory) -> "QueryFamily | None":
@@ -1002,9 +1004,9 @@ class _TextStreamRouter:
 async def _artifacts_from_refs(
     refs: Iterable[tuple[str, str | None]],
     query_history: QueryHistory,
-) -> list[ChatResultRecord | ChatResultChart | ChatResultMap | ChatResultGraph]:
+) -> list[ChatResultTable | ChatResultChart | ChatResultMap | ChatResultGraph]:
     """Resolve citation refs into display artifacts, preserving citation order."""
-    artifacts: list[ChatResultRecord | ChatResultChart | ChatResultMap | ChatResultGraph] = []
+    artifacts: list[ChatResultTable | ChatResultChart | ChatResultMap | ChatResultGraph] = []
     for ref_id, label in refs:
         if ref_id.startswith("CHART"):
             try:
@@ -1031,7 +1033,7 @@ async def _artifacts_from_refs(
                 query_record = await query_history.get(ref_id)
             except (KeyError, ValueError):
                 continue
-            artifacts.append(await _chat_result_record_from_query_record(query_record, label, query_history))
+            artifacts.append(await _chat_result_table_from_query_record(query_record, label, query_history))
     return artifacts
 
 
@@ -1074,6 +1076,28 @@ async def _chat_result_chart_from_artifact(
     )
 
 
+async def _chat_result_table_from_source(
+    source: ArtifactSource,
+    label: str | None,
+    query_history: QueryHistory,
+    selection: dict[str, object],
+) -> ChatResultTable | ChatResultPlaceholder | None:
+    from tabulaflow.toolhub import ResolvedRecordRef, SourceNotApplicable
+
+    try:
+        resolution = query_history.resolve_artifact_source(source, selection)
+    except (KeyError, ValueError):
+        return None
+    if isinstance(resolution, SourceNotApplicable):
+        return ChatResultPlaceholder(label=label, message=resolution.reason)
+    assert isinstance(resolution, ResolvedRecordRef)
+    try:
+        record = await query_history.get(resolution.record_id)
+    except (KeyError, ValueError):
+        return None
+    return await _chat_result_table_from_query_record(record, label, query_history)
+
+
 async def _chat_result_map_from_artifact(
     map_artifact: MapArtifact,
     label: str | None,
@@ -1112,16 +1136,16 @@ async def _chat_result_graph_from_artifact(
     )
 
 
-async def _chat_result_record_from_query_record(
+async def _chat_result_table_from_query_record(
     query_record: QueryRecord,
     label: str | None,
     query_history: QueryHistory,
-) -> ChatResultRecord:
+) -> ChatResultTable:
     df = None
     with suppress(ValueError):
         df = await query_history.get_dataframe(query_record.record_id)
     graph = getattr(query_record.outcome, "graph", None)
-    return ChatResultRecord(
+    return ChatResultTable(
         record_id=query_record.record_id,
         label=label,
         query=query_record.query,
