@@ -8,7 +8,14 @@ import pytest
 
 from tabulaflow.core.db_connector.sql_conn import SQLConnector
 from tabulaflow.core.types import ExecResult, GraphView, PredQuery
-from tabulaflow.toolhub.query_history import QueryFailure, QueryHistory, TabularResult
+from tabulaflow.toolhub.query_history import (
+    ArtifactSource,
+    QueryFailure,
+    QueryHistory,
+    ResolvedRecordRef,
+    SourceNotApplicable,
+    TabularResult,
+)
 
 
 def _make_pred_query(n_rows: int = 5) -> PredQuery:
@@ -56,6 +63,84 @@ class TestNoConnector:
         assert (await h.get("Q1")).query == "SELECT 1"
         q2_df = await h.get_dataframe("Q2")
         assert len(q2_df) == 7
+
+    @pytest.mark.asyncio
+    async def test_resolves_fixed_artifact_source(self) -> None:
+        h = QueryHistory()
+        await h.add("db", "sql", _make_pred_query())
+
+        resolution = h.resolve_artifact_source(ArtifactSource(kind="record", id="Q1"), {"ranking": "net"})
+
+        assert resolution == ResolvedRecordRef("Q1")
+
+    @pytest.mark.asyncio
+    async def test_resolves_family_artifact_source_by_projecting_selection(self) -> None:
+        h = QueryHistory()
+        await h.add_family(
+            "db",
+            "sql",
+            {"ranking": ["net", "count"], "period": ["q2", "q3"]},
+            "SELECT 1",
+            {
+                "period=q2;ranking=net": PredQuery(query="SELECT 1", exec_result=ExecResult(df=pd.DataFrame({"a": [1]}))),
+                "period=q3;ranking=net": PredQuery(query="SELECT 2", exec_result=ExecResult(df=pd.DataFrame({"a": [2]}))),
+                "period=q2;ranking=count": PredQuery(query="SELECT 3", exec_result=ExecResult(df=pd.DataFrame({"a": [3]}))),
+                "period=q3;ranking=count": PredQuery(query="SELECT 4", exec_result=ExecResult(df=pd.DataFrame({"a": [4]}))),
+            },
+        )
+
+        resolution = h.resolve_artifact_source(
+            ArtifactSource(kind="family", id="QS1"), {"ranking": "count", "period": "q3", "unrelated": "ignored"}
+        )
+
+        assert resolution == ResolvedRecordRef("QS1_v3")
+
+    @pytest.mark.asyncio
+    async def test_family_artifact_source_is_not_applicable_outside_coverage(self) -> None:
+        h = QueryHistory()
+        await h.add_family(
+            "db",
+            "sql",
+            {"period": ["q2"]},
+            "SELECT 1",
+            {"period=q2": _make_pred_query()},
+        )
+
+        resolution = h.resolve_artifact_source(ArtifactSource(kind="family", id="QS1"), {"period": "q3"})
+
+        assert isinstance(resolution, SourceNotApplicable)
+        assert resolution.reason == "period=q3 is outside QS1"
+
+    @pytest.mark.asyncio
+    async def test_family_artifact_source_requires_relevant_selection(self) -> None:
+        h = QueryHistory()
+        await h.add_family(
+            "db",
+            "sql",
+            {"period": ["q2"]},
+            "SELECT 1",
+            {"period=q2": _make_pred_query()},
+        )
+
+        resolution = h.resolve_artifact_source(ArtifactSource(kind="family", id="QS1"), {})
+
+        assert isinstance(resolution, SourceNotApplicable)
+        assert resolution.reason == "missing selection for 'period'"
+
+    @pytest.mark.asyncio
+    async def test_family_artifact_source_raises_for_corrupt_record_reference(self) -> None:
+        h = QueryHistory()
+        family = await h.add_family(
+            "db",
+            "sql",
+            {"period": ["q2"]},
+            "SELECT 1",
+            {"period=q2": _make_pred_query()},
+        )
+        family.record_ids_by_selection["period=q2"] = "Q999"
+
+        with pytest.raises(KeyError, match="No query with id Q999"):
+            h.resolve_artifact_source(ArtifactSource(kind="family", id="QS1"), {"period": "q2"})
 
 
 class TestWithConnector:

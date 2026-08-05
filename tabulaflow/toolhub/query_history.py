@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 from collections import OrderedDict
+from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Literal, TypeAlias
 
@@ -73,6 +74,49 @@ class QueryFamily:
     dimensions: dict[str, list[str]]
     query_template: str
     record_ids_by_selection: dict[str, str]
+
+
+@dataclass
+class ArtifactSource:
+    """Logical data source for an artifact, resolved under an answer-control selection."""
+
+    kind: Literal["record", "family"]
+    id: str
+
+
+@dataclass
+class ResolvedRecordRef:
+    """Concrete query record selected for an artifact source."""
+
+    record_id: str
+
+
+@dataclass
+class SourceNotApplicable:
+    """An artifact source has no record at the selected controls."""
+
+    reason: str
+
+
+SourceResolution: TypeAlias = ResolvedRecordRef | SourceNotApplicable
+
+
+def _selection_key(selection: Mapping[str, str]) -> str:
+    """Key a projected finite-choice selection into a query-family variant map."""
+    return ";".join(f"{name}={choice}" for name, choice in sorted(selection.items()))
+
+
+def _project_family_selection(family: QueryFamily, selection: Mapping[str, Any]) -> dict[str, str] | SourceNotApplicable:
+    """Project an answer selection onto the finite choices covered by ``family``."""
+    projected: dict[str, str] = {}
+    for name, choices in family.dimensions.items():
+        if name not in selection:
+            return SourceNotApplicable(f"missing selection for {name!r}")
+        choice = str(selection[name])
+        if choice not in choices:
+            return SourceNotApplicable(f"{name}={choice} is outside {family.family_id}")
+        projected[name] = choice
+    return projected
 
 
 @dataclass
@@ -307,6 +351,30 @@ class QueryHistory:
             return self._families[family_id]
         except KeyError:
             raise KeyError(f"No query family with id {family_id}") from None
+
+    def resolve_artifact_source(self, source: ArtifactSource, selection: Mapping[str, Any]) -> SourceResolution:
+        """Resolve an artifact's logical source to a concrete query record under ``selection``."""
+        if source.kind == "record":
+            self._require_record(source.id)
+            return ResolvedRecordRef(source.id)
+
+        if source.kind != "family":
+            raise ValueError(f"unknown artifact source kind: {source.kind!r}")
+
+        family = self.get_family(source.id)
+        projected = _project_family_selection(family, selection)
+        if isinstance(projected, SourceNotApplicable):
+            return projected
+        key = _selection_key(projected)
+        record_id = family.record_ids_by_selection.get(key)
+        if record_id is None:
+            return SourceNotApplicable(f"{source.id} has no result for {key}")
+        self._require_record(record_id)
+        return ResolvedRecordRef(record_id)
+
+    def _require_record(self, record_id: str) -> None:
+        if record_id not in self._records:
+            raise KeyError(f"No query with id {record_id}")
 
     async def get(self, record_id: str) -> QueryRecord:
         """Return a previously stored query record."""

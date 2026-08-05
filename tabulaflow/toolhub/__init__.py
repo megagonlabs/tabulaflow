@@ -23,6 +23,7 @@ from tabulaflow.toolhub.registry_get_schema import RegistryGetSchemaTool
 from tabulaflow.toolhub.registry_get_table_schema import RegistryGetTableSchemaTool
 from tabulaflow.toolhub.query_history import (
     QUERY_HISTORY_SCHEMA,
+    ArtifactSource,
     ChartArtifact,
     GraphArtifact,
     MapArtifact,
@@ -31,6 +32,9 @@ from tabulaflow.toolhub.query_history import (
     QueryHistory,
     QueryOutcome,
     QueryRecord,
+    ResolvedRecordRef,
+    SourceNotApplicable,
+    SourceResolution,
     StatementSuccess,
     TabularResult,
 )
@@ -70,6 +74,7 @@ __all__ = [
     "FileEditorRoot",
     "FileEditorTool",
     "FileEditorToolMetrics",
+    "ArtifactSource",
     "ChartArtifact",
     "GraphArtifact",
     "RegistryGetColumnJsonSchemaTool",
@@ -88,6 +93,9 @@ __all__ = [
     "QueryHistory",
     "QueryOutcome",
     "QueryRecord",
+    "ResolvedRecordRef",
+    "SourceNotApplicable",
+    "SourceResolution",
     "StatementSuccess",
     "TabularResult",
     "RegistryRunQueryTool",
