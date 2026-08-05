@@ -18,10 +18,13 @@ from rich.spinner import Spinner
 from rich.text import Text
 
 from textual import events
+from textual._compositor import Compositor
 from textual.binding import Binding
 from textual.content import Content, Span
+from textual.geometry import Region, Size
 from textual.highlight import highlight
 from textual.reactive import reactive
+from textual.strip import Strip
 from textual.suggester import Suggester
 from textual.timer import Timer
 from textual.app import ComposeResult
@@ -1119,6 +1122,77 @@ class AgentTextBlock(Markdown):
         self._stream = None
         await stream.stop()
 
+    async def freeze(self) -> "FrozenAgentTextBlock | None":
+        """Replace the live Markdown widget tree with a lightweight snapshot.
+
+        Textual's ``Markdown`` expands each completed answer into many mounted
+        child widgets. Keeping all those old children live makes unrelated input
+        updates slower as a conversation grows. Completed answers are static, so
+        snapshot Textual's own rendered strips and replay them from a single
+        widget without adding descendants to the Textual DOM.
+        """
+        await self.stop_stream()
+        parent = self.parent
+        if not isinstance(parent, Widget) or not self.is_mounted:
+            return None
+        width = (
+            self.size.width
+            or self.content_size.width
+            or self.container_size.width
+            or parent.content_size.width
+            or parent.size.width
+            or self.app.size.width
+        )
+        if width <= 0:
+            return None
+        height = max(self.size.height, self.get_content_height(Size(width, self.app.size.height), self.app.size, width))
+        if height <= 0:
+            return None
+        children = self.walk_children(with_self=False)
+        if children and not any(child.size.width > 0 and child.size.height > 0 for child in children if isinstance(child, Widget)):
+            self.refresh(layout=True)
+            return None
+        compositor = Compositor()
+        compositor.reflow(self, Size(width, height))
+        strips = [Strip.join(list(line)) for line in compositor.render_full_update().strips]
+        frozen = FrozenAgentTextBlock(strips, width)
+        with self.app.batch_update():
+            await parent.mount(frozen, after=self)
+            await self.remove()
+        return frozen
+
+
+class FrozenAgentTextBlock(Widget):
+    """Lightweight snapshot of a completed assistant answer."""
+
+    DEFAULT_CSS = """
+    FrozenAgentTextBlock {
+        margin: 1 0 0 0;
+        height: auto;
+    }
+    """
+
+    def __init__(self, strips: list[Strip], width: int) -> None:
+        super().__init__()
+        self._strips = [strip.adjust_cell_length(width) for strip in strips]
+        self._width = width
+        self.styles.width = width
+
+    def get_content_width(self, container: Size, viewport: Size) -> int:
+        return min(self._width, container.width) if container.width else self._width
+
+    def get_content_height(self, container: Size, viewport: Size, width: int) -> int:
+        return len(self._strips)
+
+    def render_lines(self, crop: Region) -> list[Strip]:
+        style = self.rich_style
+        start = crop.x
+        end = crop.x + crop.width
+        return [
+            self._strips[y].crop_extend(start, end, style) if 0 <= y < len(self._strips) else Strip.blank(crop.width, style)
+            for y in crop.line_range
+        ]
+
 
 _UNLISTED_TOOL = "show_artifacts"
 
@@ -1159,6 +1233,7 @@ class AgentProgressWidget(Widget):
         self._timer: Timer | None = None
         self._usage: Usage | None = None
         self._interrupted: bool = False
+        self._freeze_scheduled = False
 
     def on_mount(self) -> None:
         self._timer = self.set_interval(1 / 12, self.refresh)
@@ -1225,15 +1300,15 @@ class AgentProgressWidget(Widget):
     async def _on_finished(self, result: ChatResult) -> None:
         # Reconcile the live-streamed prose with the authoritative final text
         # (the terminal Finished event carries the full ChatResult), then freeze.
+        final_text = result.text or self._streaming_text
         if self._text_block is not None:
-            if result.text and result.text != self._streaming_text:
-                self._streaming_text = result.text
-                await self._text_block.replace_markdown(result.text)
-            else:
-                await self._text_block.stop_stream()
-        elif result.text:
-            self._streaming_text = result.text
-            await self._set_text(result.text)
+            if final_text:
+                await self._text_block.replace_markdown(final_text)
+            self._streaming_text = final_text
+            await self._freeze_text_block()
+        elif final_text:
+            self._streaming_text = final_text
+            await self._set_frozen_text(final_text)
         if result.usage is not None:
             self._usage = result.usage
         self._status_text = None
@@ -1373,6 +1448,29 @@ class AgentProgressWidget(Widget):
         after the progress widget on first use."""
         block = await self._ensure_text_block()
         await block.replace_markdown(text)
+
+    async def _set_frozen_text(self, text: str) -> None:
+        await self._set_text(text)
+        await self._freeze_text_block()
+
+    async def _freeze_text_block(self) -> None:
+        if self._text_block is None:
+            return
+        if self._freeze_scheduled:
+            return
+        self._freeze_scheduled = True
+        self.call_after_refresh(self._freeze_text_block_after_refresh)
+
+    def _freeze_text_block_after_refresh(self) -> None:
+        self.run_worker(self._freeze_text_block_now(), exclusive=True, group=f"freeze-answer-{id(self)}")
+
+    async def _freeze_text_block_now(self) -> None:
+        self._freeze_scheduled = False
+        if self._text_block is not None and await self._text_block.freeze() is not None:
+            self._text_block = None
+            self._refresh(layout=True)
+        elif self._text_block is not None:
+            await self._freeze_text_block()
 
     async def _ensure_text_block(self) -> AgentTextBlock:
         if self._text_block is not None:
