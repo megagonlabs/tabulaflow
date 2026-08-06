@@ -517,7 +517,13 @@ July 23
 - [x] Tune prompt - "report verification concisely"
 - [x] Tune prompt - coding instructions from codex
 
-July 29
+Aug 4 - 5
+- [x] Fix typing/scrolling slow in 50+ turn conversation
+- [ ] Source-backed artifacts
+
+
+
+
 - [ ] Shell messed up after ssh disconnect
 - [ ] Check if uv tool install install browser
 
@@ -563,6 +569,7 @@ July 29
 - [ ] Tune prompt for non-data tasks
 - [ ] Chrome browser
 
+- [ ] Bug: Warning sign emoji display width
 - [ ] sample_data disconnect policy
 - [ ] Banner - /connect pre-built data sources as most important use case
 - [ ] Include multimodal data in sample_data
