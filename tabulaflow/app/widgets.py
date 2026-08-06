@@ -1017,7 +1017,6 @@ class AgentTextBlock(Markdown):
     handle, so it never reaches here.
     """
 
-    ALLOW_SELECT = False
     BULLETS = ["- "]
     BLOCKS = {
         **Markdown.BLOCKS,

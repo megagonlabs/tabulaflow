@@ -45,8 +45,8 @@ class _AgentMarkdownApp(App[None]):
         yield VerticalScroll(self.progress, id="chat-log")
 
 
-def test_streaming_markdown_is_not_selectable_but_frozen_markdown_is() -> None:
-    assert AgentTextBlock.ALLOW_SELECT is False
+def test_agent_markdown_blocks_are_selectable() -> None:
+    assert AgentTextBlock.ALLOW_SELECT is True
     assert FrozenAgentTextBlock.ALLOW_SELECT is True
 
 
