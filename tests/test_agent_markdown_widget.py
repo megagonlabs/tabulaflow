@@ -3,9 +3,13 @@ from __future__ import annotations
 from pygments import lex
 from pygments.lexers import get_lexer_by_name
 from pygments.token import Token
+from rich.segment import Segment
 from textual.app import App, ComposeResult
 from textual.containers import VerticalScroll
 from textual.content import Content
+from textual.geometry import Offset
+from textual.selection import Selection
+from textual.strip import Strip
 from textual.widgets._markdown import MarkdownParagraph, MarkdownTableCellContents
 
 from tabulaflow.app.theme import (
@@ -20,10 +24,11 @@ from tabulaflow.app.widgets import (
     AgentMarkdownFence,
     AgentProgressWidget,
     AgentTextBlock,
+    FrozenAgentTextBlock,
     _make_agent_markdown_parser,
+    _strips_to_text,
 )
-from tabulaflow.chat import AnswerDelta, Finished
-from tabulaflow.chat.result import ChatResult
+from tabulaflow.chat import AnswerDelta
 
 
 class _AgentMarkdownApp(App[None]):
@@ -38,6 +43,31 @@ class _AgentMarkdownApp(App[None]):
 
     def compose(self) -> ComposeResult:
         yield VerticalScroll(self.progress, id="chat-log")
+
+
+def test_streaming_markdown_is_not_selectable_but_frozen_markdown_is() -> None:
+    assert AgentTextBlock.ALLOW_SELECT is False
+    assert FrozenAgentTextBlock.ALLOW_SELECT is True
+
+
+def test_frozen_markdown_selection_uses_snapshot_text() -> None:
+    block = FrozenAgentTextBlock(
+        [Strip([Segment("Hello world")]), Strip([Segment("Second line")])],
+        width=20,
+    )
+
+    result = block.get_selection(Selection.from_offsets(Offset(6, 0), Offset(6, 1)))
+    assert result is not None
+    selected, ending = result
+
+    assert selected == "world\nSecond"
+    assert ending == "\n"
+
+
+def test_frozen_markdown_text_snapshot_trims_padding() -> None:
+    text = _strips_to_text([Strip([Segment("Hello"), Segment("   ")])])
+
+    assert text.plain == "Hello"
 
 
 async def test_agent_answer_streams_as_markdown() -> None:
@@ -63,7 +93,6 @@ print("hi")
     async with app.run_test(size=(100, 30)) as pilot:
         await app.progress.apply(AnswerDelta(content=markdown[:40]))
         await app.progress.apply(AnswerDelta(content=markdown[40:]))
-        await app.progress.apply(Finished(result=ChatResult(text=markdown)))
         await pilot.pause()
 
         block = app.progress._text_block
@@ -93,7 +122,7 @@ async def test_agent_markdown_links_show_visible_destinations() -> None:
     app = _AgentMarkdownApp()
 
     async with app.run_test(size=(120, 20)) as pilot:
-        await app.progress.apply(Finished(result=ChatResult(text=markdown)))
+        await app.progress.apply(AnswerDelta(content=markdown))
         await pilot.pause()
 
         block = app.progress._text_block

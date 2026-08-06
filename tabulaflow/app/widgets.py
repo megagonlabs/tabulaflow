@@ -21,7 +21,7 @@ from textual import events
 from textual._compositor import Compositor
 from textual.binding import Binding
 from textual.content import Content, Span
-from textual.geometry import Region, Size
+from textual.geometry import Size
 from textual.highlight import highlight
 from textual.reactive import reactive
 from textual.strip import Strip
@@ -61,6 +61,7 @@ from tabulaflow.chat import (
 if TYPE_CHECKING:
     import pandas as pd
     from rich.console import RenderableType
+    from textual.selection import Selection
 
     from tabulaflow.chat import ChatResult, ChatResultCard, ChatResultCombination, ChoiceControl, SelectionValue
     from tabulaflow.app.display import CardGroup, ViewItem
@@ -1016,6 +1017,7 @@ class AgentTextBlock(Markdown):
     handle, so it never reaches here.
     """
 
+    ALLOW_SELECT = False
     BULLETS = ["- "]
     BLOCKS = {
         **Markdown.BLOCKS,
@@ -1157,14 +1159,33 @@ class AgentTextBlock(Markdown):
         compositor.reflow(self, Size(width, height))
         strips = [Strip.join(list(line)) for line in compositor.render_full_update().strips]
         frozen = FrozenAgentTextBlock(strips, width)
+        self.screen.clear_selection()
         with self.app.batch_update():
             await parent.mount(frozen, after=self)
             await self.remove()
         return frozen
 
 
-class FrozenAgentTextBlock(Widget):
+def _strips_to_text(strips: list[Strip]) -> Text:
+    """Convert pre-rendered strips into one styled, pre-line-broken text object."""
+    out = Text(no_wrap=True, overflow="crop")
+    for line_no, strip in enumerate(strips):
+        if line_no:
+            out.append("\n")
+        remaining = len(strip.text.rstrip())
+        for segment in strip._segments:
+            if remaining <= 0:
+                break
+            text = segment.text[:remaining]
+            out.append(text, segment.style)
+            remaining -= len(text)
+    return out
+
+
+class FrozenAgentTextBlock(Static):
     """Lightweight snapshot of a completed assistant answer."""
+
+    ALLOW_SELECT = True
 
     DEFAULT_CSS = """
     FrozenAgentTextBlock {
@@ -1174,24 +1195,20 @@ class FrozenAgentTextBlock(Widget):
     """
 
     def __init__(self, strips: list[Strip], width: int) -> None:
-        super().__init__()
-        self._strips = [strip.adjust_cell_length(width) for strip in strips]
+        text = _strips_to_text(strips)
+        super().__init__(text, markup=False)
+        self._plain_text = text.plain
         self._width = width
+        self._height = len(strips)
 
     def get_content_width(self, container: Size, viewport: Size) -> int:
         return min(self._width, container.width) if container.width else self._width
 
     def get_content_height(self, container: Size, viewport: Size, width: int) -> int:
-        return len(self._strips)
+        return self._height
 
-    def render_lines(self, crop: Region) -> list[Strip]:
-        style = self.rich_style
-        start = crop.x
-        end = crop.x + crop.width
-        return [
-            self._strips[y].crop_extend(start, end, style) if 0 <= y < len(self._strips) else Strip.blank(crop.width, style)
-            for y in crop.line_range
-        ]
+    def get_selection(self, selection: "Selection") -> tuple[str, str] | None:
+        return selection.extract(self._plain_text), "\n"
 
 
 _UNLISTED_TOOL = "show_artifacts"
