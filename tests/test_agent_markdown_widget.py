@@ -137,6 +137,24 @@ async def test_agent_markdown_links_show_visible_destinations() -> None:
         assert all("@click" not in str(span.style) for span in paragraph._content._spans)
 
 
+async def test_interrupted_answer_freezes_to_selectable_snapshot() -> None:
+    app = _AgentMarkdownApp()
+
+    async with app.run_test(size=(80, 20)) as pilot:
+        await app.progress.apply(AnswerDelta(content="Partial answer text"))
+        await pilot.pause()
+
+        await app.progress.mark_interrupted()
+        await pilot.pause()
+
+        assert app.progress._text_block is None
+        frozen = list(app.query(FrozenAgentTextBlock))
+        assert len(frozen) == 1
+        result = frozen[0].get_selection(Selection.from_offsets(Offset(1, 0), Offset(8, 0)))
+        assert result is not None
+        assert result[0] == "Partial"
+
+
 def test_agent_markdown_parser_supports_tables_without_raw_html_or_fuzzy_linkify() -> None:
     parser = _make_agent_markdown_parser()
 

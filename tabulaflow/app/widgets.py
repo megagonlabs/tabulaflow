@@ -1355,6 +1355,7 @@ class AgentProgressWidget(Widget):
         so the trailing status line sits flush against the user prompt."""
         if self._text_block is not None:
             await self._text_block.stop_stream()
+            await self._freeze_text_block_now()
         self._status_text = None
         self._frozen = True
         if self._timer is not None:
