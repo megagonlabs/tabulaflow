@@ -84,6 +84,21 @@ class ResolvedRecordRef:
 
 
 @dataclass
+class ResolvedQueryRecord:
+    """Concrete query record payload selected for display/export."""
+
+    record_id: str
+    connector_type: Literal["sql", "property_graph"]
+    query: str
+    df: pd.DataFrame | None = None
+    graph: GraphView | None = None
+
+    @property
+    def query_lexer(self) -> Literal["sql", "cypher"]:
+        return "cypher" if self.connector_type == "property_graph" else "sql"
+
+
+@dataclass
 class SourceNotApplicable:
     """An artifact source has no record at the selected controls."""
 
@@ -383,6 +398,33 @@ class QueryHistory:
         if not isinstance(record.outcome, TabularResult):
             raise ValueError(f"query {record_id} returned no data")
         return await self._results.get_dataframe(record.outcome.storage_key)
+
+    async def get_query_record_payload(self, record_id: str) -> ResolvedQueryRecord:
+        """Return a query record with its stored DataFrame when one exists."""
+        record = await self.get(record_id)
+        df = None
+        try:
+            df = await self.get_dataframe(record.record_id)
+        except ValueError:
+            pass
+        return ResolvedQueryRecord(
+            record_id=record.record_id,
+            connector_type=record.connector_type,
+            query=record.query,
+            df=df,
+            graph=getattr(record.outcome, "graph", None),
+        )
+
+    async def resolve_query_record(
+        self,
+        source_id: str,
+        selection: Mapping[str, Any],
+    ) -> ResolvedQueryRecord | SourceNotApplicable:
+        """Resolve a ``Q*``/``QS*`` source id to its concrete query record payload."""
+        resolution = self.resolve_source_id(source_id, selection)
+        if isinstance(resolution, SourceNotApplicable):
+            return resolution
+        return await self.get_query_record_payload(resolution.record_id)
 
     def add_chart(self, source_id: str, chart_spec: dict[str, Any]) -> str:
         """Store a chart artifact for an existing query record and return its opaque ``CHART*`` id."""

@@ -3,10 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterable, Mapping, Sequence
-from contextlib import suppress
-
-import pandas as pd
-
+from typing import TYPE_CHECKING
 from tabulaflow.chat.result import (
     AnswerControl,
     Artifact,
@@ -26,8 +23,11 @@ from tabulaflow.chat.result import (
 )
 from tabulaflow.toolhub import GraphArtifact as StoredGraphArtifact
 from tabulaflow.toolhub import MapArtifact as StoredMapArtifact
-from tabulaflow.toolhub import QueryHistory, QueryRecord
-from tabulaflow.toolhub.query_history import ResolvedRecordRef, SourceNotApplicable
+from tabulaflow.toolhub import QueryHistory, ResolvedQueryRecord
+from tabulaflow.toolhub.query_history import SourceNotApplicable
+
+if TYPE_CHECKING:
+    import pandas as pd
 
 
 class ArtifactResolver:
@@ -81,7 +81,7 @@ class ArtifactResolver:
         selection: Mapping[str, SelectionValue],
         controls: Sequence[AnswerControl],
     ) -> ResolvedTableArtifact | ArtifactPlaceholder | None:
-        resolution = self._resolve_source_id(artifact.source_id, selection)
+        resolution = await self._resolve_query_record(artifact.source_id, selection)
         if isinstance(resolution, SourceNotApplicable):
             return ArtifactPlaceholder(
                 label=artifact.label,
@@ -89,11 +89,7 @@ class ArtifactResolver:
             )
         if resolution is None:
             return None
-        try:
-            record = await self._query_history.get(resolution.record_id)
-        except (KeyError, ValueError):
-            return None
-        return await self._table_from_query_record(record, artifact.label)
+        return self._table_from_query_record(resolution, artifact.label)
 
     async def _resolve_chart(
         self,
@@ -101,7 +97,7 @@ class ArtifactResolver:
         selection: Mapping[str, SelectionValue],
         controls: Sequence[AnswerControl],
     ) -> ResolvedChartArtifact | ArtifactPlaceholder | None:
-        resolution = self._resolve_source_id(artifact.source_id, selection)
+        resolution = await self._resolve_query_record(artifact.source_id, selection)
         if isinstance(resolution, SourceNotApplicable):
             return ArtifactPlaceholder(
                 label=artifact.label,
@@ -109,26 +105,14 @@ class ArtifactResolver:
             )
         if resolution is None:
             return None
-        query: str | None = None
-        df: pd.DataFrame | None = None
-        query_lexer = "sql"
-        try:
-            record = await self._query_history.get(resolution.record_id)
-        except (KeyError, ValueError):
-            record = None
-        if record is not None:
-            query = record.query
-            with suppress(ValueError):
-                df = await self._query_history.get_dataframe(record.record_id)
-            query_lexer = "cypher" if record.connector_type == "property_graph" else "sql"
         return ResolvedChartArtifact(
             chart_id=artifact.chart_id,
             label=artifact.label,
             chart_spec=artifact.chart_spec,
             record_id=resolution.record_id,
-            query=query,
-            df=df,
-            query_lexer=query_lexer,
+            query=resolution.query,
+            df=resolution.df,
+            query_lexer=resolution.query_lexer,
         )
 
     async def _resolve_map(self, artifact: MapArtifact) -> ResolvedMapArtifact | None:
@@ -145,13 +129,13 @@ class ArtifactResolver:
             return None
         return self._graph_from_stored(stored, artifact.label)
 
-    def _resolve_source_id(
+    async def _resolve_query_record(
         self,
         source_id: str,
         selection: Mapping[str, SelectionValue],
-    ) -> ResolvedRecordRef | SourceNotApplicable | None:
+    ) -> ResolvedQueryRecord | SourceNotApplicable | None:
         try:
-            return self._query_history.resolve_source_id(source_id, selection)
+            return await self._query_history.resolve_query_record(source_id, selection)
         except (KeyError, ValueError):
             return None
 
@@ -182,18 +166,15 @@ class ArtifactResolver:
             parts.append(f"{control.label} = {' or '.join(covered)}")
         return "only applies when " + "; ".join(parts) if parts else fallback
 
-    async def _table_from_query_record(self, query_record: QueryRecord, label: str | None) -> ResolvedTableArtifact:
-        df = None
-        with suppress(ValueError):
-            df = await self._query_history.get_dataframe(query_record.record_id)
-        graph = getattr(query_record.outcome, "graph", None)
+    @staticmethod
+    def _table_from_query_record(query_record: ResolvedQueryRecord, label: str | None) -> ResolvedTableArtifact:
         return ResolvedTableArtifact(
             record_id=query_record.record_id,
             label=label,
             query=query_record.query,
-            df=df,
-            graph=graph,
-            query_lexer="cypher" if query_record.connector_type == "property_graph" else "sql",
+            df=query_record.df,
+            graph=query_record.graph,
+            query_lexer=query_record.query_lexer,
         )
 
     async def _map_from_stored(self, stored: StoredMapArtifact, label: str | None) -> ResolvedMapArtifact:
@@ -207,11 +188,11 @@ class ArtifactResolver:
         sources: dict[str, pd.DataFrame] = {}
         for sid in source_ids:
             try:
-                await self._query_history.get(sid)
+                payload = await self._query_history.get_query_record_payload(sid)
             except (KeyError, ValueError):
                 continue
-            with suppress(ValueError):
-                sources[sid] = await self._query_history.get_dataframe(sid)
+            if payload.df is not None:
+                sources[sid] = payload.df
         return ResolvedMapArtifact(map_id=stored.map_id, label=label, map_spec=spec, sources=sources)
 
     @staticmethod

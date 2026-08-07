@@ -64,6 +64,19 @@ class TestNoConnector:
         assert len(q2_df) == 7
 
     @pytest.mark.asyncio
+    async def test_get_query_record_payload(self) -> None:
+        h = QueryHistory()
+        await h.add("db", "sql", _make_pred_query(n_rows=3))
+
+        payload = await h.get_query_record_payload("Q1")
+
+        assert payload.record_id == "Q1"
+        assert payload.query == "SELECT 1"
+        assert payload.query_lexer == "sql"
+        assert payload.df is not None
+        assert len(payload.df) == 3
+
+    @pytest.mark.asyncio
     async def test_resolves_fixed_artifact_source(self) -> None:
         h = QueryHistory()
         await h.add("db", "sql", _make_pred_query())
@@ -99,6 +112,27 @@ class TestNoConnector:
         resolution = h.resolve_source_id("QS1", {"ranking": "count", "period": "q3", "unrelated": "ignored"})
 
         assert resolution == ResolvedRecordRef("QS1_v3")
+
+    @pytest.mark.asyncio
+    async def test_resolves_query_record_payload_from_family_source(self) -> None:
+        h = QueryHistory()
+        await h.add_family(
+            "db",
+            "sql",
+            {"period": ["q2", "q3"]},
+            "SELECT 1",
+            {
+                "period=q2": PredQuery(query="SELECT 2 AS a", exec_result=ExecResult(df=pd.DataFrame({"a": [2]}))),
+                "period=q3": PredQuery(query="SELECT 3 AS a", exec_result=ExecResult(df=pd.DataFrame({"a": [3]}))),
+            },
+        )
+
+        payload = await h.resolve_query_record("QS1", {"period": "q3"})
+
+        assert not isinstance(payload, SourceNotApplicable)
+        assert payload.record_id == "QS1_v1"
+        assert payload.df is not None
+        assert payload.df.loc[0, "a"] == 3
 
     @pytest.mark.asyncio
     async def test_family_artifact_source_is_not_applicable_outside_coverage(self) -> None:
