@@ -30,8 +30,18 @@ from tabulaflow.toolhub.web_browser import (
 )
 from tabulaflow.core.db_connector import connector_info
 from tabulaflow.core.llm import make_agent, make_model_settings, model_display_name
-from tabulaflow.chat.artifact_resolver import ArtifactResolver, artifacts_from_refs
-from tabulaflow.chat.result import AnswerPanel, ChatResult, ChoiceControl, ControlChoice
+from tabulaflow.chat.artifact_resolver import ArtifactResolver
+from tabulaflow.chat.result import (
+    AnswerPanel,
+    Artifact as ChatArtifact,
+    ChartArtifact as ChatChartArtifact,
+    ChatResult,
+    ChoiceControl,
+    ControlChoice,
+    GraphArtifact as ChatGraphArtifact,
+    MapArtifact as ChatMapArtifact,
+    TableArtifact,
+)
 from tabulaflow.chat.events import (
     ChatEvent,
     AnswerDelta,
@@ -777,7 +787,7 @@ async def _build_chat_result(
     query_history: QueryHistory,
 ) -> ChatResult:
     refs = [(artifact.id, artifact.label) for artifact in bundle.artifacts] if bundle is not None else []
-    artifacts = artifacts_from_refs(refs, query_history)
+    artifacts = _artifacts_from_refs(refs, query_history)
     panel = _panel_from_bundle(bundle) if bundle is not None and bundle.dimensions else None
     primary_artifact_index: int | None = 0 if artifacts else None
     return ChatResult(
@@ -799,6 +809,50 @@ def _panel_from_bundle(bundle: "ArtifactBundle") -> AnswerPanel:
             for dimension in bundle.dimensions
         ]
     )
+
+
+def _artifacts_from_refs(refs: list[tuple[str, str | None]], query_history: QueryHistory) -> list[ChatArtifact]:
+    artifacts: list[ChatArtifact] = []
+    for ref_id, label in refs:
+        artifact = _artifact_from_ref(ref_id, label, query_history)
+        if artifact is not None:
+            artifacts.append(artifact)
+    return artifacts
+
+
+def _artifact_from_ref(ref_id: str, label: str | None, query_history: QueryHistory) -> ChatArtifact | None:
+    if ref_id.startswith("CHART"):
+        try:
+            chart = query_history.get_chart(ref_id)
+        except (KeyError, ValueError):
+            return None
+        return ChatChartArtifact(
+            chart_id=chart.chart_id,
+            label=label,
+            source_id=chart.source_id,
+            chart_spec=chart.chart_spec,
+        )
+    if ref_id.startswith("MAP"):
+        try:
+            stored_map = query_history.get_map(ref_id)
+        except (KeyError, ValueError):
+            return None
+        return ChatMapArtifact(map_id=stored_map.map_id, label=label)
+    if ref_id.startswith("GRAPH"):
+        try:
+            graph = query_history.get_graph(ref_id)
+        except (KeyError, ValueError):
+            return None
+        return ChatGraphArtifact(graph_id=graph.graph_id, label=label)
+    if ref_id.startswith("QS"):
+        try:
+            query_history.get_family(ref_id)
+        except (KeyError, ValueError):
+            return None
+        return TableArtifact(label=label, source_id=ref_id)
+    if ref_id.startswith("Q"):
+        return TableArtifact(label=label, source_id=ref_id)
+    return None
 
 
 def _declared_bundle(completed_results: dict[str, ToolReturnPart]) -> "ArtifactBundle | None":

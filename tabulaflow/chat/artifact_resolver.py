@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterable, Mapping, Sequence
+from collections.abc import Mapping, Sequence
 from typing import TYPE_CHECKING
 from tabulaflow.chat.result import (
     AnswerControl,
@@ -81,15 +81,10 @@ class ArtifactResolver:
         selection: Mapping[str, SelectionValue],
         controls: Sequence[AnswerControl],
     ) -> ResolvedTableArtifact | ArtifactPlaceholder | None:
-        resolution = await self._resolve_query_record(artifact.source_id, selection)
-        if isinstance(resolution, SourceNotApplicable):
-            return ArtifactPlaceholder(
-                label=artifact.label,
-                message=self._not_applicable_message(artifact.source_id, selection, controls, resolution.reason),
-            )
-        if resolution is None:
-            return None
-        return self._table_from_query_record(resolution, artifact.label)
+        payload = await self._source_payload(artifact.source_id, artifact.label, selection, controls)
+        if isinstance(payload, (ArtifactPlaceholder, type(None))):
+            return payload
+        return self._table_from_query_record(payload, artifact.label)
 
     async def _resolve_chart(
         self,
@@ -97,22 +92,17 @@ class ArtifactResolver:
         selection: Mapping[str, SelectionValue],
         controls: Sequence[AnswerControl],
     ) -> ResolvedChartArtifact | ArtifactPlaceholder | None:
-        resolution = await self._resolve_query_record(artifact.source_id, selection)
-        if isinstance(resolution, SourceNotApplicable):
-            return ArtifactPlaceholder(
-                label=artifact.label,
-                message=self._not_applicable_message(artifact.source_id, selection, controls, resolution.reason),
-            )
-        if resolution is None:
-            return None
+        payload = await self._source_payload(artifact.source_id, artifact.label, selection, controls)
+        if isinstance(payload, (ArtifactPlaceholder, type(None))):
+            return payload
         return ResolvedChartArtifact(
             chart_id=artifact.chart_id,
             label=artifact.label,
             chart_spec=artifact.chart_spec,
-            record_id=resolution.record_id,
-            query=resolution.query,
-            df=resolution.df,
-            query_lexer=resolution.query_lexer,
+            record_id=payload.record_id,
+            query=payload.query,
+            df=payload.df,
+            query_lexer=payload.query_lexer,
         )
 
     async def _resolve_map(self, artifact: MapArtifact) -> ResolvedMapArtifact | None:
@@ -128,6 +118,21 @@ class ArtifactResolver:
         except (KeyError, ValueError):
             return None
         return self._graph_from_stored(stored, artifact.label)
+
+    async def _source_payload(
+        self,
+        source_id: str,
+        label: str | None,
+        selection: Mapping[str, SelectionValue],
+        controls: Sequence[AnswerControl],
+    ) -> ResolvedQueryRecord | ArtifactPlaceholder | None:
+        resolution = await self._resolve_query_record(source_id, selection)
+        if isinstance(resolution, SourceNotApplicable):
+            return ArtifactPlaceholder(
+                label=label,
+                message=self._not_applicable_message(source_id, selection, controls, resolution.reason),
+            )
+        return resolution
 
     async def _resolve_query_record(
         self,
@@ -203,46 +208,3 @@ class ArtifactResolver:
             graph=stored.graph,
             layout=stored.layout,
         )
-
-
-def artifacts_from_refs(refs: Iterable[tuple[str, str | None]], query_history: QueryHistory) -> list[Artifact]:
-    """Convert showable ids to logical chat artifacts, preserving citation order."""
-    artifacts: list[Artifact] = []
-    for ref_id, label in refs:
-        artifact = artifact_from_ref(ref_id, label, query_history)
-        if artifact is not None:
-            artifacts.append(artifact)
-    return artifacts
-
-
-def artifact_from_ref(ref_id: str, label: str | None, query_history: QueryHistory) -> Artifact | None:
-    """Convert one showable id to a logical chat artifact."""
-    if ref_id.startswith("CHART"):
-        try:
-            chart = query_history.get_chart(ref_id)
-        except (KeyError, ValueError):
-            return None
-        return ChartArtifact(
-            chart_id=chart.chart_id, label=label, source_id=chart.source_id, chart_spec=chart.chart_spec
-        )
-    if ref_id.startswith("MAP"):
-        try:
-            stored_map = query_history.get_map(ref_id)
-        except (KeyError, ValueError):
-            return None
-        return MapArtifact(map_id=stored_map.map_id, label=label)
-    if ref_id.startswith("GRAPH"):
-        try:
-            graph = query_history.get_graph(ref_id)
-        except (KeyError, ValueError):
-            return None
-        return GraphArtifact(graph_id=graph.graph_id, label=label)
-    if ref_id.startswith("QS"):
-        try:
-            query_history.get_family(ref_id)
-        except (KeyError, ValueError):
-            return None
-        return TableArtifact(label=label, source_id=ref_id)
-    if ref_id.startswith("Q"):
-        return TableArtifact(label=label, source_id=ref_id)
-    return None
