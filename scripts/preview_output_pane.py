@@ -11,7 +11,9 @@ iterating on ``tabulaflow/app/pane.py`` and the HTML renderers.
 from __future__ import annotations
 
 import argparse
+import asyncio
 import functools
+import json
 import math
 import signal
 import struct
@@ -29,10 +31,13 @@ import pandas as pd
 from tabulaflow.app import pane as pane_mod
 from tabulaflow.app.debug import debug_chart_fixtures
 from tabulaflow.app.pane import PaneCard, PaneSource, card_payload, turn_payload
-from tabulaflow.app.pane.cards import render_graph_data, render_map_data, render_record_data
+from tabulaflow.app.pane.cards import render_graph_data, render_map_data, render_record_data, render_resolved_artifacts
 from tabulaflow.app.pane import server as pane_server
 from tabulaflow.app.runtime_paths import generate_session_id
-from tabulaflow.core.types import GraphView
+from tabulaflow.chat import AnswerPanel, ChartArtifact, ChatResult, ChoiceControl, ControlChoice, TableArtifact
+from tabulaflow.chat.artifact_resolver import ArtifactResolver
+from tabulaflow.core.types import ExecResult, GraphView, PredQuery
+from tabulaflow.toolhub import QueryHistory
 from tabulaflow.toolhub.render_graph import materialize_graph_view, normalize_graph_spec
 from tabulaflow.toolhub.render_map import normalize_map_spec
 
@@ -374,6 +379,89 @@ def _push_turn(
             cards=[*cards, *_render_records(records, pane_dir)],
             source=source,
         )
+    )
+
+
+def _push_controls_turn(pane: pane_mod.OutputPane, pane_dir: Path) -> None:
+    history = QueryHistory()
+    pred_queries: dict[str, PredQuery] = {}
+    values = {
+        ("q2", "revenue"): ("Q2", "Revenue", [120, 95, 72]),
+        ("q3", "revenue"): ("Q3", "Revenue", [138, 104, 86]),
+        ("q2", "orders"): ("Q2", "Orders", [42, 35, 28]),
+        ("q3", "orders"): ("Q3", "Orders", [49, 39, 31]),
+    }
+    for (period, metric), (period_label, metric_label, metric_values) in values.items():
+        df = pd.DataFrame(
+            {
+                "customer": ["Acme", "Globex", "Initech"],
+                "period": [period_label] * 3,
+                "metric": [metric_label] * 3,
+                "value": metric_values,
+            }
+        )
+        pred_queries[f"metric={metric};period={period}"] = PredQuery(
+            query=f"-- preview fixture for {period_label} {metric_label.lower()}",
+            exec_result=ExecResult(df=df),
+        )
+    asyncio.run(
+        history.add_family(
+            "preview",
+            "sql",
+            {"metric": ["revenue", "orders"], "period": ["q2", "q3"]},
+            "-- preview controls fixture",
+            pred_queries,
+        )
+    )
+    result = ChatResult(
+        text=(
+            "This turn has answer-level controls. Switch the metric or period in the browser pane; "
+            "the table and chart resolve through the live preview session instead of a precomputed bundle."
+        ),
+        artifacts=[
+            TableArtifact(label="top customers", source_id="QS1"),
+            ChartArtifact(
+                chart_id="CHART_PREVIEW_CONTROLS",
+                label="customer comparison",
+                source_id="QS1",
+                chart_spec={
+                    "mark": "bar",
+                    "encoding": {
+                        "x": {"field": "customer", "type": "nominal"},
+                        "y": {"field": "value", "type": "quantitative"},
+                        "color": {"field": "customer", "type": "nominal"},
+                    },
+                    "title": "Selected customer metric",
+                },
+            ),
+        ],
+        panel=AnswerPanel(
+            controls=[
+                ChoiceControl(
+                    id="metric",
+                    label="Metric",
+                    choices=[ControlChoice(id="revenue", label="Revenue"), ControlChoice(id="orders", label="Orders")],
+                ),
+                ChoiceControl(
+                    id="period",
+                    label="Period",
+                    choices=[ControlChoice(id="q2", label="Q2"), ControlChoice(id="q3", label="Q3")],
+                ),
+            ]
+        ),
+    )
+    resolver = ArtifactResolver(history)
+    cards = render_resolved_artifacts(asyncio.run(resolver.resolve(result)), pane_dir)
+    pane.push(
+        turn_payload(
+            title="Answer controls preview",
+            user="Compare top customers, with controls for the interpretation.",
+            assistant=result.text,
+            cards=cards,
+            panel=result.panel.model_dump(mode="json") if result.panel is not None else None,
+        ),
+        result=result,
+        artifact_resolver=resolver,
     )
 
 
@@ -1463,6 +1551,34 @@ class _PreviewHandler(pane_server._Handler):  # noqa: SLF001
             return
         self.send_error(404)
 
+    def do_POST(self) -> None:  # noqa: N802 (http.server API name)
+        if self.path.split("?", 1)[0].lstrip("/") != "resolve":
+            self.send_error(404)
+            return
+        assert isinstance(self.server, pane_server._PaneServer)  # noqa: SLF001
+        pane = self.server.pane
+        try:
+            length = int(self.headers.get("Content-Length", "0"))
+            body = self.rfile.read(length).decode("utf-8")
+            request = json.loads(body)
+        except (ValueError, UnicodeDecodeError, json.JSONDecodeError):
+            self.send_error(400)
+            return
+        if not isinstance(request, dict):
+            self.send_error(400)
+            return
+        turn_id = request.get("turn_id")
+        selection = request.get("selection")
+        if not isinstance(turn_id, int) or not isinstance(selection, dict):
+            self.send_error(400)
+            return
+        try:
+            cards = asyncio.run(pane.resolve_turn(turn_id, selection))
+        except KeyError:
+            self._send_json({"error": "turn is not available for live resolution"}, status=404)
+            return
+        self._send_json({"selection": selection, "cards": cards})
+
 
 def _preview_url(host: str, port: int) -> str:
     display_host = "127.0.0.1" if host in ("0.0.0.0", "::", "localhost") else host
@@ -1544,6 +1660,7 @@ def _populate_pane(
 
     if chart_cards:
         _push_manual_table_turn(pane, pane_dir)
+        _push_controls_turn(pane, pane_dir)
         _push_turn(
             pane,
             pane_dir,

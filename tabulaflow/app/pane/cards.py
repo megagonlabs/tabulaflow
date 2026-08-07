@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import secrets
 from pathlib import Path
+from types import SimpleNamespace
 from typing import TYPE_CHECKING, Protocol
 
 from pygments import highlight
@@ -156,7 +157,40 @@ def render_graph_data(graph_record: GraphArtifactLike, pane_dir: Path) -> PaneCa
     graph_data = build_graph_result_data(graph_record.graph)
     if graph_data is None:
         return None
-    graph_data["graph"]["layout"] = graph_record.layout if graph_record.layout in {"force", "layered", "tree"} else "force"
+    graph_data["graph"]["layout"] = (
+        graph_record.layout if graph_record.layout in {"force", "layered", "tree"} else "force"
+    )
     pane_dir.mkdir(parents=True, exist_ok=True)
     write_strict_json(pane_dir / f"{card_id}.data.json", graph_data)
     return card_payload(card_id=card_id, label=graph_record.label, views=["graph"])
+
+
+def render_resolved_artifacts(artifacts: list[object], pane_dir: Path) -> list[PaneCard]:
+    """Render resolved chat artifacts to pane card descriptors."""
+    cards: list[PaneCard] = []
+    for artifact in artifacts:
+        try:
+            kind = getattr(artifact, "kind", None)
+            if kind == "map":
+                card = render_map_data(artifact, pane_dir)
+            elif kind == "graph":
+                card = render_graph_data(artifact, pane_dir)
+            elif kind == "placeholder":
+                card = None
+            else:
+                card = render_record_data(
+                    SimpleNamespace(
+                        df=getattr(artifact, "df", None),
+                        chart_spec=getattr(artifact, "chart_spec", None),
+                        graph=getattr(artifact, "graph", None),
+                        query=getattr(artifact, "query", None),
+                        label=getattr(artifact, "label", None),
+                        query_lexer=getattr(artifact, "query_lexer", "sql"),
+                    ),
+                    pane_dir,
+                )
+        except Exception:
+            card = None
+        if card is not None:
+            cards.append(card)
+    return cards

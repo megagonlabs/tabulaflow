@@ -1,6 +1,12 @@
 """Browser output-pane server and payload builders."""
 
-from tabulaflow.app.pane.cards import build_query_data, render_graph_data, render_map_data, render_record_data
+from tabulaflow.app.pane.cards import (
+    build_query_data,
+    render_graph_data,
+    render_map_data,
+    render_record_data,
+    render_resolved_artifacts,
+)
 from tabulaflow.app.pane.charts import _add_line_hover, build_chart_data
 from tabulaflow.app.pane.server import (
     DEFAULT_OUTPUT_PANE_HOST,
@@ -76,5 +82,6 @@ __all__ = [
     "render_graph_data",
     "render_map_data",
     "render_record_data",
+    "render_resolved_artifacts",
     "turn_payload",
 ]

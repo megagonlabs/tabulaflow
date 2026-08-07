@@ -8,6 +8,23 @@ export interface PaneCard {
   views: ViewKind[];
 }
 
+export interface PaneControlChoice {
+  id: string;
+  label: string;
+}
+
+export interface PaneChoiceControl {
+  kind: "choice";
+  id: string;
+  label: string;
+  choices: PaneControlChoice[];
+}
+
+export interface PanePanel {
+  controls: PaneChoiceControl[];
+  default_selection: Record<string, string | number | boolean>;
+}
+
 export interface PaneTurn {
   id?: number;
   title: string;
@@ -16,6 +33,7 @@ export interface PaneTurn {
   assistant?: string;
   assistantCodeBlocks?: CodeData[];
   source?: PaneSource;
+  panel?: PanePanel;
 }
 
 export interface ColumnDesc {

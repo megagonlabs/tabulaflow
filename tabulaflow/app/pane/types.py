@@ -17,6 +17,23 @@ class PaneCard(TypedDict):
     views: list[ViewKind]
 
 
+class PaneControlChoice(TypedDict):
+    id: str
+    label: str
+
+
+class PaneChoiceControl(TypedDict):
+    kind: Literal["choice"]
+    id: str
+    label: str
+    choices: list[PaneControlChoice]
+
+
+class PanePanel(TypedDict):
+    controls: list[PaneChoiceControl]
+    default_selection: dict[str, str | int | float | bool]
+
+
 class PaneTurn(TypedDict, total=False):
     id: int
     title: Required[str]
@@ -25,6 +42,7 @@ class PaneTurn(TypedDict, total=False):
     assistant: str
     assistantCodeBlocks: list["CodeData"]
     source: PaneSource
+    panel: PanePanel
 
 
 class ColumnDesc(TypedDict, total=False):
@@ -118,6 +136,7 @@ def turn_payload(
     user: str | None = None,
     assistant: str | None = None,
     source: PaneSource | None = None,
+    panel: PanePanel | None = None,
 ) -> PaneTurn:
     """Build one output-pane turn."""
     turn: PaneTurn = {"title": title, "cards": cards}
@@ -127,6 +146,8 @@ def turn_payload(
         turn["assistant"] = assistant
     if source is not None:
         turn["source"] = source
+    if panel is not None:
+        turn["panel"] = panel
     return turn
 
 

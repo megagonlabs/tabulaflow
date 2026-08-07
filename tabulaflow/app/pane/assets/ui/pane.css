@@ -198,6 +198,24 @@ body { margin: 0; background: var(--bg); color: var(--text); display: flex; flex
 .message-body.md .md-image-label { min-width: 0; max-width: 100%; color: inherit; font-weight: 550;
                                    overflow-wrap: anywhere; }
 .message-body.md strong { color: #f4f4f5; }
+.answer-controls {
+    display: flex; flex-direction: column; gap: 14px; padding: 12px 14px;
+    background: rgba(255, 255, 255, 0.025); border: 1px solid rgba(154, 164, 178, 0.16);
+    border-radius: 12px;
+}
+.answer-control { display: grid; gap: 8px; }
+.answer-control-label { color: var(--text-muted); font: 600 12px/1.2 ui-monospace, monospace; }
+.answer-control-options { display: flex; flex-wrap: wrap; gap: 8px; }
+.answer-control-option {
+    appearance: none; border: 1px solid rgba(154, 164, 178, 0.24); border-radius: 999px;
+    background: rgba(255, 255, 255, 0.03); color: var(--text-muted); cursor: pointer;
+    padding: 5px 11px; font: 600 12px/1.25 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+.answer-control-option:hover:not(:disabled) { color: var(--text); background: rgba(255, 255, 255, 0.06); }
+.answer-control-option.active { color: #08130f; background: var(--accent); border-color: var(--accent); }
+.answer-control-option:disabled { cursor: default; opacity: 0.62; }
+.answer-control-status { color: var(--text-dim); font: 12px/1.3 ui-monospace, monospace; }
+.answer-control-status.error { color: #ff8a8a; }
 .message-body.md ul,
 .message-body.md ol { margin: 0.65em 0; padding-left: 1.55em; }
 .message-body.md li + li { margin-top: 0.25em; }

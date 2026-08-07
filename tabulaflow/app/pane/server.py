@@ -11,6 +11,7 @@ interface, and every failure here is swallowed so it can never block a chat turn
 
 from __future__ import annotations
 
+import asyncio
 import functools
 import hashlib
 import html
@@ -23,17 +24,21 @@ import secrets
 import threading
 from collections.abc import Callable, Sequence
 from pathlib import Path
-from typing import cast
+from typing import TYPE_CHECKING, cast
 from urllib.parse import unquote, urlsplit, urlunsplit
 
 from markdown_it import MarkdownIt
 
-from tabulaflow.app.pane.cards import build_code_data
-from tabulaflow.app.pane.types import CARD_ID_PREFIX, CodeData, PaneTurn
+from tabulaflow.app.pane.cards import build_code_data, render_resolved_artifacts
+from tabulaflow.app.pane.types import CARD_ID_PREFIX, CodeData, PaneCard, PaneTurn
 from tabulaflow.app.runtime_paths import generate_session_id
 from tabulaflow.app.theme import GITHUB_SLUG, GITHUB_URL
 
 logger = logging.getLogger(__name__)
+
+if TYPE_CHECKING:
+    from tabulaflow.chat import ChatResult
+    from tabulaflow.chat.artifact_resolver import ArtifactResolver
 
 DEFAULT_OUTPUT_PANE_PORT_START = 61111
 DEFAULT_OUTPUT_PANE_PORT_END = 61130
@@ -170,6 +175,56 @@ class _Handler(http.server.SimpleHTTPRequestHandler):
             self._serve_pane_file(session_path)
             return
         self.send_error(404)
+
+    def do_POST(self) -> None:  # noqa: N802 (http.server API name)
+        assert isinstance(self.server, _PaneServer)
+        pane = self.server.pane
+        session_path = pane._session_path(self.path)
+        if session_path != "resolve":
+            self.send_error(404)
+            return
+        try:
+            length = int(self.headers.get("Content-Length", "0"))
+        except ValueError:
+            self.send_error(400)
+            return
+        if length <= 0 or length > 65536:
+            self.send_error(400)
+            return
+        try:
+            body = self.rfile.read(length).decode("utf-8")
+            request = json.loads(body)
+        except (UnicodeDecodeError, json.JSONDecodeError):
+            self.send_error(400)
+            return
+        if not isinstance(request, dict):
+            self.send_error(400)
+            return
+        turn_id = request.get("turn_id")
+        selection = request.get("selection")
+        if not isinstance(turn_id, int) or not isinstance(selection, dict):
+            self.send_error(400)
+            return
+        try:
+            cards = asyncio.run(pane.resolve_turn(turn_id, selection))
+        except KeyError:
+            self._send_json({"error": "turn is not available for live resolution"}, status=404)
+            return
+        except Exception:
+            logger.debug("output pane resolve failed", exc_info=True)
+            self._send_json({"error": "failed to resolve selection"}, status=500)
+            return
+        self._send_json({"selection": selection, "cards": cards})
+
+    def _send_json(self, payload: object, *, status: int = 200) -> None:
+        body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
+        self.send_response(status)
+        self.send_header("Content-Type", "application/json; charset=utf-8")
+        self.send_header("Content-Length", str(len(body)))
+        self.send_header("Cache-Control", "no-store")
+        self.send_header("X-Content-Type-Options", "nosniff")
+        self.end_headers()
+        self.wfile.write(body)
 
     def _send_pane_html(self) -> None:
         assert isinstance(self.server, _PaneServer)
@@ -377,6 +432,7 @@ class OutputPane:
         self._port_config = port
         self._port_range = tuple(port_range)
         self._results: list[PaneTurn] = []
+        self._live_results: dict[int, tuple[ChatResult, ArtifactResolver]] = {}
         self._lock = threading.Lock()
         self._cond = threading.Condition(self._lock)
         self._next_id = 0
@@ -466,7 +522,13 @@ class OutputPane:
             return ""
         return "/".join(parts[1:])
 
-    def push(self, turn: PaneTurn) -> None:
+    def push(
+        self,
+        turn: PaneTurn,
+        *,
+        result: ChatResult | None = None,
+        artifact_resolver: ArtifactResolver | None = None,
+    ) -> None:
         """Record a turn ({"cards": [{"label", "views": [...]}, ...]}) for the pane."""
         with self._cond:
             self._load_manifest_locked()
@@ -478,9 +540,20 @@ class OutputPane:
                     assigned["assistantCodeBlocks"] = code_blocks
             assigned["id"] = self._next_id
             self._next_id += 1
+            if result is not None and artifact_resolver is not None:
+                self._live_results[int(assigned["id"])] = (result, artifact_resolver)
             self._results.append(assigned)
             self._append_manifest_locked(assigned)
             self._cond.notify_all()
+
+    async def resolve_turn(self, turn_id: int, selection: dict[str, object]) -> list[PaneCard]:
+        with self._lock:
+            live = self._live_results.get(turn_id)
+        if live is None:
+            raise KeyError(turn_id)
+        result, resolver = live
+        artifacts = await resolver.resolve(result, selection)
+        return await asyncio.to_thread(render_resolved_artifacts, artifacts, self._pane_dir)
 
     def _load_manifest_locked(self) -> None:
         """Load persisted pane turns once. Caller must hold ``_cond``."""

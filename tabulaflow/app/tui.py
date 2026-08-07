@@ -23,7 +23,7 @@ from tabulaflow.app.config import (
     update_app_config,
 )
 from tabulaflow.app.debug import debug_enabled, mount_debug_widgets
-from tabulaflow.app.pane import PaneCard, manual_card_turn, turn_payload
+from tabulaflow.app.pane import PaneCard, manual_card_turn, render_resolved_artifacts, turn_payload
 from tabulaflow.app.runtime_paths import RuntimePaths, ensure_pane_dir
 from tabulaflow.app.session import LLM_UNAVAILABLE_MESSAGE, SessionState
 from tabulaflow.core.llm import model_display_name
@@ -41,6 +41,7 @@ from tabulaflow.app.widgets import (
 if TYPE_CHECKING:
     from tabulaflow.app.pane import OutputPane
     from tabulaflow.chat import ChatAgent, ChatResult, ResolvedArtifact
+    from tabulaflow.chat.artifact_resolver import ArtifactResolver
 
 logger = logging.getLogger(__name__)
 
@@ -88,6 +89,32 @@ def _compact_project_dir(path: Path) -> str:
         return f"~/{path.resolve().relative_to(Path.home()).as_posix()}"
     except ValueError:
         return path.resolve().as_posix()
+
+
+def _pane_panel(result: "ChatResult") -> dict[str, object] | None:
+    if result.panel is None:
+        return None
+    from tabulaflow.chat import ChoiceControl
+
+    controls = [control for control in result.panel.controls if isinstance(control, ChoiceControl)]
+    if not controls:
+        return None
+    return {
+        "controls": [
+            {
+                "kind": "choice",
+                "id": control.id,
+                "label": control.label,
+                "choices": [{"id": choice.id, "label": choice.label} for choice in control.choices],
+            }
+            for control in controls
+        ],
+        "default_selection": {
+            key: value
+            for key, value in result.panel.default_selection.items()
+            if any(control.id == key for control in controls)
+        },
+    }
 
 
 def _masked_api_key(key: str | None) -> str | None:
@@ -760,6 +787,7 @@ class TabulaflowApp(App[None]):
         self,
         result: "ChatResult",
         artifacts: list["ResolvedArtifact"],
+        artifact_resolver: "ArtifactResolver",
         *,
         title: str,
         user_text: str,
@@ -771,86 +799,28 @@ class TabulaflowApp(App[None]):
         is swallowed so the pane never blocks or fails a chat turn.
         """
         import asyncio
-        from types import SimpleNamespace
 
         pane_dir = self._runtime_paths.pane_dir
         try:
             ensure_pane_dir(pane_dir)
         except Exception:
             return
-        # Snapshot each cited artifact (capturing DataFrames before build_card_views
-        # nulls them), tagged by kind, preserving citation order.
-        artifact_snapshots: list[tuple[str, SimpleNamespace]] = []
-        for artifact in artifacts:
-            if artifact.kind == "map":
-                artifact_snapshots.append(
-                    (
-                        "map",
-                        SimpleNamespace(
-                            map_id=artifact.map_id,
-                            label=artifact.label,
-                            map_spec=artifact.map_spec,
-                            sources=dict(artifact.sources),
-                        ),
-                    )
-                )
-            elif artifact.kind == "graph":
-                artifact_snapshots.append(
-                    (
-                        "graph",
-                        SimpleNamespace(
-                            graph_id=artifact.graph_id,
-                            label=artifact.label,
-                            graph=artifact.graph,
-                            layout=artifact.layout,
-                        ),
-                    )
-                )
-            else:
-                # Records and charts share the tabbed-card render path; a chart
-                # artifact adds the chart view on top of its source's data/query.
-                artifact_snapshots.append(
-                    (
-                        "record",
-                        SimpleNamespace(
-                            df=artifact.df,
-                            chart_spec=artifact.chart_spec if artifact.kind == "chart" else None,
-                            graph=artifact.graph if artifact.kind == "table" else None,
-                            query=artifact.query,
-                            label=artifact.label,
-                            query_lexer=artifact.query_lexer,
-                        ),
-                    )
-                )
-        if not artifact_snapshots and not user_text and not result.text:
+        if not artifacts and not user_text and not result.text:
             return
         pane = self._ensure_pane()
         if pane is None:
             return
 
+        panel = _pane_panel(result)
+
         async def render_and_push() -> None:
-            from tabulaflow.app.pane import render_graph_data, render_map_data, render_record_data
-
-            def render_cards() -> list[PaneCard]:
-                cards: list[PaneCard] = []
-                for kind, snap in artifact_snapshots:
-                    try:
-                        if kind == "map":
-                            card = render_map_data(snap, pane_dir)
-                        elif kind == "graph":
-                            card = render_graph_data(snap, pane_dir)
-                        else:
-                            card = render_record_data(snap, pane_dir)
-                    except Exception:
-                        logger.debug("output pane card render failed", exc_info=True)
-                        continue
-                    if card is not None:
-                        cards.append(card)
-                return cards
-
-            cards = await asyncio.to_thread(render_cards)
+            cards = await asyncio.to_thread(render_resolved_artifacts, artifacts, pane_dir)
             if cards or user_text or result.text:
-                pane.push(turn_payload(title=title, user=user_text, assistant=result.text, cards=cards))
+                pane.push(
+                    turn_payload(title=title, user=user_text, assistant=result.text, cards=cards, panel=panel),
+                    result=result if panel is not None else None,
+                    artifact_resolver=artifact_resolver if panel is not None else None,
+                )
 
         def log_background_error(task: asyncio.Task[None]) -> None:
             try:
@@ -1174,6 +1144,7 @@ class TabulaflowApp(App[None]):
         await self._push_turn_to_pane(
             result,
             artifacts,
+            chat_agent.artifact_resolver,
             title=display_text,
             user_text=display_text,
         )

@@ -28,6 +28,7 @@ from tabulaflow.app.pane import PaneCard, PaneTurn, turn_payload
 from tabulaflow.app.screens import send_table_to_output_pane
 from tabulaflow.toolhub.render_graph import materialize_graph_view, normalize_graph_spec
 from tabulaflow.app.tui import TabulaflowApp
+from tabulaflow.chat import AnswerPanel, ChatResult, ChoiceControl, ControlChoice, ResolvedTableArtifact
 from tabulaflow.toolhub.render_map import MAP_RENDER_MAX_ROWS
 
 
@@ -2303,6 +2304,45 @@ def test_view_card_in_pane_marks_turn_as_manual(tmp_path: Path) -> None:
             "cards": [{"id": "rec_orders", "label": None, "views": ["data"]}],
         }
     ]
+
+
+@pytest.mark.asyncio
+async def test_output_pane_resolves_live_turn_selection(tmp_path: Path) -> None:
+    class FakeResolver:
+        async def resolve(self, result: ChatResult, selection: dict[str, object]) -> list[ResolvedTableArtifact]:
+            return [
+                ResolvedTableArtifact(
+                    record_id="Q1",
+                    label=f"period_{selection['period']}",
+                    query="SELECT 1",
+                    df=pd.DataFrame({"period": [selection["period"]]}),
+                    query_lexer="sql",
+                )
+            ]
+
+    pane = OutputPane(tmp_path)
+    result = ChatResult(
+        text="x",
+        panel=AnswerPanel(
+            controls=[
+                ChoiceControl(
+                    id="period",
+                    label="Period",
+                    choices=[ControlChoice(id="q2", label="Q2"), ControlChoice(id="q3", label="Q3")],
+                )
+            ]
+        ),
+    )
+    pane.push(
+        turn_payload(title="x", cards=[], panel=result.panel.model_dump(mode="json")),
+        result=result,
+        artifact_resolver=FakeResolver(),
+    )  # type: ignore[arg-type]
+
+    cards = await pane.resolve_turn(0, {"period": "q3"})
+
+    assert cards == [{"id": cards[0]["id"], "label": "period_q3", "views": ["data", "query"]}]
+    assert (tmp_path / f"{cards[0]['id']}.data.json").exists()
 
 
 def test_query_payload_contains_language_and_pane_theme_highlight() -> None:

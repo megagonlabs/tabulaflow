@@ -69,6 +69,102 @@ function buildTranscript(turn) {
   return wrap.children.length ? wrap : null;
 }
 
+function choiceControls(turn) {
+  var panel = turn && turn.panel;
+  var controls = panel && Array.isArray(panel.controls) ? panel.controls : [];
+  return controls.filter(function (control) {
+    return control && control.kind === 'choice' && Array.isArray(control.choices) && control.choices.length;
+  });
+}
+
+function defaultSelection(turn) {
+  var panel = turn && turn.panel;
+  return Object.assign({}, panel && panel.default_selection ? panel.default_selection : {});
+}
+
+function sameSelection(a, b) {
+  var ak = Object.keys(a || {}).sort();
+  var bk = Object.keys(b || {}).sort();
+  if (ak.length !== bk.length) return false;
+  for (var i = 0; i < ak.length; i++) {
+    if (ak[i] !== bk[i] || String(a[ak[i]]) !== String(b[bk[i]])) return false;
+  }
+  return true;
+}
+
+function resolveTurnSelection(turn, index, selection) {
+  if (turn.id == null) return;
+  var state = getTurnState(turn, index);
+  var seq = (state.resolveSeq || 0) + 1;
+  state.resolveSeq = seq;
+  state.resolving = true;
+  state.resolveError = '';
+  updateSelectedTurn(index);
+  fetch('resolve', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ turn_id: turn.id, selection: selection })
+  }).then(function (response) {
+    if (!response.ok) throw new Error('resolve failed');
+    return response.json();
+  }).then(function (payload) {
+    if (state.resolveSeq !== seq || !sameSelection(selection, state.selection || {})) return;
+    turn.cards = Array.isArray(payload.cards) ? payload.cards : [];
+    state.activeCard = 0;
+    state.views = {};
+    state.resolving = false;
+    updateSelectedTurn(index);
+  }).catch(function () {
+    if (state.resolveSeq !== seq) return;
+    state.resolving = false;
+    state.resolveError = 'Could not update results for this selection.';
+    updateSelectedTurn(index);
+  });
+}
+
+function buildAnswerControls(turn, state, index) {
+  var controls = choiceControls(turn);
+  if (!controls.length) return null;
+  if (!state.selection) state.selection = defaultSelection(turn);
+  var panel = el('section', 'answer-controls');
+  controls.forEach(function (control) {
+    var group = el('div', 'answer-control');
+    var label = el('div', 'answer-control-label');
+    label.textContent = control.label || control.id;
+    var opts = el('div', 'answer-control-options');
+    control.choices.forEach(function (choice) {
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'answer-control-option';
+      btn.textContent = choice.label || choice.id;
+      var active = String(state.selection[control.id]) === String(choice.id);
+      btn.classList.toggle('active', active);
+      btn.disabled = !!state.resolving;
+      btn.onclick = function () {
+        if (active) return;
+        var next = Object.assign({}, state.selection);
+        next[control.id] = choice.id;
+        state.selection = next;
+        resolveTurnSelection(turn, index, Object.assign({}, state.selection));
+      };
+      opts.appendChild(btn);
+    });
+    group.appendChild(label);
+    group.appendChild(opts);
+    panel.appendChild(group);
+  });
+  if (state.resolving) {
+    var loading = el('div', 'answer-control-status');
+    loading.textContent = 'Updating results…';
+    panel.appendChild(loading);
+  } else if (state.resolveError) {
+    var error = el('div', 'answer-control-status error');
+    error.textContent = state.resolveError;
+    panel.appendChild(error);
+  }
+  return panel;
+}
+
 function isManualPreview(turn) {
   return turn.source === 'manual' && (turn.cards || []).length === 1;
 }
@@ -863,6 +959,8 @@ function renderTurn(turn, index) {
   } else if (transcript) {
     view.appendChild(transcript);
   }
+  var controls = buildAnswerControls(turn, state, index);
+  if (controls) view.appendChild(controls);
   if (!cards.length) return view;
   if (cards.length <= 1) {
     view.appendChild(buildCard(cards[0], { state: state, cardIndex: 0 }));
