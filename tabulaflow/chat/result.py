@@ -1,9 +1,4 @@
-"""The chat-turn result view-model — the ``Finished`` event payload.
-
-Pydantic models (consistent with the rest of the data layer in ``core.types`` /
-``research.types``), so the whole chat⇄frontend contract is wire-serializable.
-The DataFrame field reuses the same Arrow serializer as ``core.ExecResult``.
-"""
+"""Serializable chat-turn result models."""
 
 from __future__ import annotations
 
@@ -14,10 +9,16 @@ from pydantic import BaseModel, ConfigDict, Field, field_serializer, field_valid
 
 from tabulaflow.core.dataframe import _deserialize_dataframe, _serialize_dataframe
 from tabulaflow.core.types import GraphView, Usage
-from tabulaflow.toolhub import Choice, Dimension
 
 
 SelectionValue = str | int | float | bool
+
+
+class ControlChoice(BaseModel):
+    """One option in a finite answer control."""
+
+    id: str
+    label: str
 
 
 class ChoiceControl(BaseModel):
@@ -26,15 +27,11 @@ class ChoiceControl(BaseModel):
     kind: Literal["choice"] = "choice"
     id: str
     label: str
-    choices: list[Choice]
-
-    @classmethod
-    def from_dimension(cls, dimension: Dimension) -> "ChoiceControl":
-        return cls(id=dimension.id, label=dimension.label, choices=list(dimension.choices))
+    choices: list[ControlChoice]
 
 
 class SliderControl(BaseModel):
-    """Answer-level numeric threshold/range control represented by a slider."""
+    """Answer-level numeric slider control."""
 
     kind: Literal["slider"] = "slider"
     id: str
@@ -59,8 +56,62 @@ class SliderControl(BaseModel):
 AnswerControl = Annotated[ChoiceControl | SliderControl, Field(discriminator="kind")]
 
 
-class ChatResultTable(BaseModel):
-    """Display-ready table card for one resolved query source."""
+class AnswerPanel(BaseModel):
+    """Answer-level controls and initial selection."""
+
+    controls: list[AnswerControl] = Field(default_factory=list)
+    default_selection: dict[str, SelectionValue] = Field(default_factory=dict)
+
+    @model_validator(mode="after")
+    def fill_default_selection(self) -> "AnswerPanel":
+        if not self.default_selection:
+            for control in self.controls:
+                if isinstance(control, ChoiceControl) and control.choices:
+                    self.default_selection[control.id] = control.choices[0].id
+                elif isinstance(control, SliderControl):
+                    self.default_selection[control.id] = control.default
+        return self
+
+
+class TableArtifact(BaseModel):
+    """Logical table artifact, resolved from a query source."""
+
+    kind: Literal["table"] = "table"
+    label: str | None
+    source_id: str
+
+
+class ChartArtifact(BaseModel):
+    """Logical chart artifact, resolved from a query source and Vega-Lite spec."""
+
+    kind: Literal["chart"] = "chart"
+    chart_id: str
+    label: str | None
+    source_id: str
+    chart_spec: dict[str, Any]
+
+
+class MapArtifact(BaseModel):
+    """Logical fixed map artifact."""
+
+    kind: Literal["map"] = "map"
+    map_id: str
+    label: str | None
+
+
+class GraphArtifact(BaseModel):
+    """Logical fixed graph artifact."""
+
+    kind: Literal["graph"] = "graph"
+    graph_id: str
+    label: str | None
+
+
+Artifact = Annotated[TableArtifact | ChartArtifact | MapArtifact | GraphArtifact, Field(discriminator="kind")]
+
+
+class ResolvedTableArtifact(BaseModel):
+    """Display-ready table artifact."""
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
@@ -82,13 +133,8 @@ class ChatResultTable(BaseModel):
         return _deserialize_dataframe(v)
 
 
-class ChatResultChart(BaseModel):
-    """Display-ready data for one cited chart artifact.
-
-    A standalone chart drawn from a single query result. Carries the source
-    record's rows and query alongside the ``chart_spec`` so the card offers
-    chart, data, and query views.
-    """
+class ResolvedChartArtifact(BaseModel):
+    """Display-ready chart artifact."""
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
@@ -111,13 +157,8 @@ class ChatResultChart(BaseModel):
         return _deserialize_dataframe(v)
 
 
-class ChatResultMap(BaseModel):
-    """Display-ready data for one cited map artifact.
-
-    A standalone, map-only card assembled from one or more query results. Its
-    normalized ``map_spec`` layers each name the ``source`` record they read from;
-    ``sources`` holds those records' DataFrames keyed by record id.
-    """
+class ResolvedMapArtifact(BaseModel):
+    """Display-ready map artifact."""
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
@@ -142,8 +183,8 @@ class ChatResultMap(BaseModel):
         return out
 
 
-class ChatResultGraph(BaseModel):
-    """Display-ready data for one cited graph artifact."""
+class ResolvedGraphArtifact(BaseModel):
+    """Display-ready graph artifact."""
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
@@ -154,83 +195,31 @@ class ChatResultGraph(BaseModel):
     layout: Literal["force", "layered", "tree"] = "force"
 
 
-class ChatResultPlaceholder(BaseModel):
-    """Stands in for a card at a combination its query never ran.
-
-    ``message`` is derived from the panel's own labels (e.g. "only applies when
-    Time period = Last completed quarter"), so it cannot contradict the coordinates.
-    """
+class ArtifactPlaceholder(BaseModel):
+    """Placeholder for a source that does not apply to the selected controls."""
 
     kind: Literal["placeholder"] = "placeholder"
     label: str | None
     message: str
 
 
-# A cited artifact is either a table result or a standalone chart, map,
-# or graph, discriminated by ``kind``; ``ChatResult.artifacts`` holds them in
-# citation order.
-ChatResultArtifact = Annotated[
-    ChatResultTable | ChatResultChart | ChatResultMap | ChatResultGraph, Field(discriminator="kind")
-]
-
-# Inside a panel a card may also be a placeholder, for a combination its query never
-# ran.  Kept out of ``ChatResultArtifact`` so the ordinary render path — which every
-# frontend already implements — never has to consider it.
-ChatResultCard = Annotated[
-    ChatResultTable | ChatResultChart | ChatResultMap | ChatResultGraph | ChatResultPlaceholder,
+ResolvedArtifact = Annotated[
+    ResolvedTableArtifact | ResolvedChartArtifact | ResolvedMapArtifact | ResolvedGraphArtifact | ArtifactPlaceholder,
     Field(discriminator="kind"),
 ]
 
 
-class ChatResultCombination(BaseModel):
-    """One point of the interpretation space: a choice per dimension, and the cards there.
-
-    ``artifacts`` carries the same labels in the same order at every combination — only
-    their contents change as the user switches.
-    """
-
-    selection: dict[str, SelectionValue]
-    artifacts: list[ChatResultCard] = Field(default_factory=list)
-
-
-class ChatResultPanel(BaseModel):
-    """The turn's interpretation space: what the user may switch between, and the results.
-
-    ``combinations`` is ordered so the first entry is the first choice of every
-    dimension — the reading the answer text describes.
-    """
-
-    controls: list[AnswerControl] = Field(default_factory=list)
-    dimensions: list[Dimension] = Field(default_factory=list)
-    combinations: list[ChatResultCombination]
-
-    @model_validator(mode="after")
-    def bridge_controls_and_dimensions(self) -> "ChatResultPanel":
-        if not self.controls:
-            self.controls = [ChoiceControl.from_dimension(dimension) for dimension in self.dimensions]
-        if not self.dimensions:
-            self.dimensions = [
-                Dimension(id=control.id, label=control.label, choices=list(control.choices))
-                for control in self.controls
-                if isinstance(control, ChoiceControl)
-            ]
-        return self
-
-
 class ChatResult(BaseModel):
-    """The complete result of a single chat turn (the ``Finished`` payload)."""
+    """Logical result of one chat turn."""
 
     text: str
-    artifacts: list[ChatResultArtifact] = Field(default_factory=list)
+    artifacts: list[Artifact] = Field(default_factory=list)
     primary_artifact_index: int | None = 0
     usage: Usage | None = None
-    # Present when the turn offered interpretations. ``artifacts`` then mirrors the
-    # panel's first combination, so a frontend with no panel support still renders
-    # the reading the answer describes.
-    panel: ChatResultPanel | None = None
+    panel: AnswerPanel | None = None
 
     @property
-    def primary_artifact(self) -> ChatResultArtifact | None:
+    def primary_artifact(self) -> Artifact | None:
         if not self.artifacts:
             return None
         if self.primary_artifact_index is None:

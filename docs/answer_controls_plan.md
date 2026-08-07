@@ -8,29 +8,34 @@ Implemented on `dev` so far:
 
 - Answer controls are first-class in the chat result model:
   - `AnswerControl = ChoiceControl | SliderControl`.
-  - `ChatResultPanel.controls` exists.
-  - Legacy `ChatResultPanel.dimensions` still exists as a compatibility bridge for current tools.
-  - `ChatResultCombination.selection` supports typed values (`str | int | float | bool`).
+  - `AnswerPanel.controls` exists.
+  - `AnswerPanel.default_selection` supports typed values (`str | int | float | bool`).
 - The TUI result widget reads choice controls from `panel.controls` instead of treating `dimensions` as the primary UI model.
   Slider controls are accepted by the model but are not yet interactive.
 - Query history now has source resolution primitives:
-  - `ArtifactSource(kind="record", id="Q1")`
-  - `ArtifactSource(kind="family", id="QS1")`
+  - `source_id="Q1"`
+  - `source_id="QS1"`
   - `ResolvedRecordRef`
   - `SourceNotApplicable`
-  - `QueryHistory.resolve_artifact_source(...)`
+  - `QueryHistory.resolve_source_id(...)`
 - Chart artifacts are source-backed:
-  - `ChartArtifact.source: ArtifactSource`
+  - `ChartArtifact.source_id: str`
   - `render_chart(source_id=...)` accepts `Q*` and `QS*`.
   - For `QS*`, chart validation checks every source variant and reports all failures by selection key, not internal variant record id.
   - `show_artifacts` treats a chart backed by a `QS*` source as varying over that family.
-- Current chart/table source resolution still happens while building `ChatResult` in the chat layer. This is transitional: `ChatResult` remains display-ready, not an unresolved artifact graph.
+- Chat results now carry only logical artifacts:
+  - `ChatResult.artifacts` is the source-backed artifact graph for the turn.
+  - `TableArtifact` models implicit `Q*` / `QS*` table cards; there is intentionally no `render_table`.
+  - `ChartArtifact` models source-backed charts.
+  - `MapArtifact` and `GraphArtifact` keep maps/graphs fixed for now.
+  - `ChatAgent.artifact_resolver.resolve(result, selection=None)` resolves default or active selections.
+  - Resolved payloads are separate `Resolved*Artifact` models, plus `ArtifactPlaceholder` for not-applicable selections.
+- Source ids are plain `Q*` / `QS*` strings; no separate `ArtifactSource` wrapper.
 
 In progress / next cleanup:
 
-- Rename resolved table payloads from `ChatResultRecord`/`kind="record"` to `ChatResultTable`/`kind="table"`.
-  This preserves agent ergonomics: there is intentionally no `render_table`; `Q*` and `QS*` remain directly showable as implicit table cards.
-- After that cleanup, the next architectural step is to stop resolving all artifacts in the chat layer and move toward frontend/runtime resolution of unresolved artifact definitions under the active selection.
+- Make the browser pane consume answer-level controls and source-backed artifact definitions for finite choice controls.
+- Design true server-side parameterized sources for sliders; current sliders are model/UI-safe but do not rerun or parameterize queries.
 
 ## Product thesis
 

@@ -63,7 +63,8 @@ if TYPE_CHECKING:
     from rich.console import RenderableType
     from textual.selection import Selection
 
-    from tabulaflow.chat import ChatResult, ChatResultCard, ChatResultCombination, ChoiceControl, SelectionValue
+    from tabulaflow.chat import ChatResult, ChoiceControl, ResolvedArtifact, SelectionValue
+    from tabulaflow.chat.artifact_resolver import ArtifactResolver
     from tabulaflow.app.display import CardGroup, ViewItem
     from tabulaflow.core.types import Usage
 
@@ -1137,7 +1138,9 @@ class AgentTextBlock(Markdown):
         if not isinstance(parent, Widget) or not self.is_mounted:
             return None
         children = self.walk_children(with_self=False)
-        if children and not any(child.size.width > 0 and child.size.height > 0 for child in children if isinstance(child, Widget)):
+        if children and not any(
+            child.size.width > 0 and child.size.height > 0 for child in children if isinstance(child, Widget)
+        ):
             self.refresh(layout=True)
             return None
         content_width = (
@@ -1151,7 +1154,10 @@ class AgentTextBlock(Markdown):
         if content_width <= 0:
             return None
         width = content_width + self.styles.gutter.width
-        height = max(self.size.height, self.get_content_height(Size(content_width, self.app.size.height), self.app.size, content_width))
+        height = max(
+            self.size.height,
+            self.get_content_height(Size(content_width, self.app.size.height), self.app.size, content_width),
+        )
         if height <= 0:
             return None
         compositor = Compositor()
@@ -1589,27 +1595,25 @@ class AgentResultWidget(Widget):
     def __init__(
         self,
         result: ChatResult,
+        artifacts: list[ResolvedArtifact],
         width: int = 80,
-        query_history: object | None = None,
+        artifact_resolver: ArtifactResolver | None = None,
     ) -> None:
         super().__init__()
         from tabulaflow.app.display import build_artifact_card_views
-        from tabulaflow.toolhub.query_history import QueryHistory
 
         self._result = result
         self._width = width
         self._panel = result.panel
         self.set_class(self._panel is not None, "-has-panel")
         self._applied_selection: dict[str, SelectionValue] = (
-            dict(self._panel.combinations[0].selection) if self._panel is not None else {}
+            dict(self._panel.default_selection) if self._panel is not None else {}
         )
         self._interpretation_cursor = 0
-        self._cards = build_artifact_card_views(
-            self._current_artifacts(), width, release_dataframes=self._panel is None
-        )
+        self._cards = build_artifact_card_views(artifacts, width, release_dataframes=self._panel is None)
         # Selected view index per card; every card has at least one view.
         self._view_indices: list[int] = [0] * len(self._cards)
-        self._query_history: QueryHistory | None = query_history if isinstance(query_history, QueryHistory) else None
+        self._artifact_resolver = artifact_resolver
         self._interpretation_title: Static | None = None
         self._interpretation_content: Static | None = None
         self._content = Static(id="result-content")
@@ -1719,31 +1723,24 @@ class AgentResultWidget(Widget):
             chat_log = self.app.query_one("#chat-log")
             chat_log.scroll_end(animate=False)
 
-    def _current_artifacts(self) -> list["ChatResultCard"]:
-        if self._panel is None:
-            return list(self._result.artifacts)
-        combination = self._current_combination()
-        return list(combination.artifacts) if combination is not None else []
-
-    def _current_combination(self) -> "ChatResultCombination | None":
-        if self._panel is None:
-            return None
-        for combination in self._panel.combinations:
-            if combination.selection == self._applied_selection:
-                return combination
-        return self._panel.combinations[0] if self._panel.combinations else None
-
-    def _rebuild_cards_for_selection(self) -> None:
+    def _rebuild_cards_for_selection(self, artifacts: list["ResolvedArtifact"]) -> None:
         from tabulaflow.app.display import build_artifact_card_views
 
         old_indices = self._view_indices
         old_card = self.current_card
-        self._cards = build_artifact_card_views(self._current_artifacts(), self._width, release_dataframes=False)
+        self._cards = build_artifact_card_views(artifacts, self._width, release_dataframes=False)
         self.current_card = min(old_card, max(len(self._cards) - 1, 0))
         self._view_indices = [0] * len(self._cards)
         for i, old in enumerate(old_indices[: len(self._cards)]):
             if self._cards[i].views:
                 self._view_indices[i] = min(old, len(self._cards[i].views) - 1)
+
+    async def _resolve_cards_for_selection(self, selection: dict[str, "SelectionValue"]) -> None:
+        if self._artifact_resolver is None:
+            return
+        artifacts = await self._artifact_resolver.resolve(self._result, selection)
+        self._rebuild_cards_for_selection(artifacts)
+        self._refresh_all()
 
     def _is_last_chat_item(self) -> bool:
         """Return True when this widget is the last chat log child."""
@@ -1808,8 +1805,10 @@ class AgentResultWidget(Widget):
         if self._applied_selection.get(control.id) == choice.id:
             return
         self._applied_selection = {**self._applied_selection, control.id: choice.id}
-        self._rebuild_cards_for_selection()
-        self._refresh_all()
+        if self._artifact_resolver is not None:
+            self.run_worker(self._resolve_cards_for_selection(dict(self._applied_selection)), exclusive=True)
+        else:
+            self._refresh_all()
 
     def _update_interpretation_panel(self) -> None:
         from rich.style import Style

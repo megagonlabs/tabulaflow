@@ -9,7 +9,6 @@ import pytest
 from tabulaflow.core.db_connector.sql_conn import SQLConnector
 from tabulaflow.core.types import ExecResult, GraphView, PredQuery
 from tabulaflow.toolhub.query_history import (
-    ArtifactSource,
     QueryFailure,
     QueryHistory,
     ResolvedRecordRef,
@@ -69,7 +68,7 @@ class TestNoConnector:
         h = QueryHistory()
         await h.add("db", "sql", _make_pred_query())
 
-        resolution = h.resolve_artifact_source(ArtifactSource(kind="record", id="Q1"), {"ranking": "net"})
+        resolution = h.resolve_source_id("Q1", {"ranking": "net"})
 
         assert resolution == ResolvedRecordRef("Q1")
 
@@ -82,16 +81,22 @@ class TestNoConnector:
             {"ranking": ["net", "count"], "period": ["q2", "q3"]},
             "SELECT 1",
             {
-                "period=q2;ranking=net": PredQuery(query="SELECT 1", exec_result=ExecResult(df=pd.DataFrame({"a": [1]}))),
-                "period=q3;ranking=net": PredQuery(query="SELECT 2", exec_result=ExecResult(df=pd.DataFrame({"a": [2]}))),
-                "period=q2;ranking=count": PredQuery(query="SELECT 3", exec_result=ExecResult(df=pd.DataFrame({"a": [3]}))),
-                "period=q3;ranking=count": PredQuery(query="SELECT 4", exec_result=ExecResult(df=pd.DataFrame({"a": [4]}))),
+                "period=q2;ranking=net": PredQuery(
+                    query="SELECT 1", exec_result=ExecResult(df=pd.DataFrame({"a": [1]}))
+                ),
+                "period=q3;ranking=net": PredQuery(
+                    query="SELECT 2", exec_result=ExecResult(df=pd.DataFrame({"a": [2]}))
+                ),
+                "period=q2;ranking=count": PredQuery(
+                    query="SELECT 3", exec_result=ExecResult(df=pd.DataFrame({"a": [3]}))
+                ),
+                "period=q3;ranking=count": PredQuery(
+                    query="SELECT 4", exec_result=ExecResult(df=pd.DataFrame({"a": [4]}))
+                ),
             },
         )
 
-        resolution = h.resolve_artifact_source(
-            ArtifactSource(kind="family", id="QS1"), {"ranking": "count", "period": "q3", "unrelated": "ignored"}
-        )
+        resolution = h.resolve_source_id("QS1", {"ranking": "count", "period": "q3", "unrelated": "ignored"})
 
         assert resolution == ResolvedRecordRef("QS1_v3")
 
@@ -106,7 +111,7 @@ class TestNoConnector:
             {"period=q2": _make_pred_query()},
         )
 
-        resolution = h.resolve_artifact_source(ArtifactSource(kind="family", id="QS1"), {"period": "q3"})
+        resolution = h.resolve_source_id("QS1", {"period": "q3"})
 
         assert isinstance(resolution, SourceNotApplicable)
         assert resolution.reason == "period=q3 is outside QS1"
@@ -122,7 +127,7 @@ class TestNoConnector:
             {"period=q2": _make_pred_query()},
         )
 
-        resolution = h.resolve_artifact_source(ArtifactSource(kind="family", id="QS1"), {})
+        resolution = h.resolve_source_id("QS1", {})
 
         assert isinstance(resolution, SourceNotApplicable)
         assert resolution.reason == "missing selection for 'period'"
@@ -140,7 +145,7 @@ class TestNoConnector:
         family.record_ids_by_selection["period=q2"] = "Q999"
 
         with pytest.raises(KeyError, match="No query with id Q999"):
-            h.resolve_artifact_source(ArtifactSource(kind="family", id="QS1"), {"period": "q2"})
+            h.resolve_source_id("QS1", {"period": "q2"})
 
 
 class TestWithConnector:
@@ -206,7 +211,9 @@ class TestWithConnector:
         assert not h._results.has_in_memory("Q2")
 
     @pytest.mark.asyncio
-    async def test_persist_failure_keeps_record_in_memory(self, workspace: SQLConnector, monkeypatch: pytest.MonkeyPatch) -> None:
+    async def test_persist_failure_keeps_record_in_memory(
+        self, workspace: SQLConnector, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         h = QueryHistory(max_in_memory=1, spill_connector=workspace)
 
         async def fake_persist(storage_key: str, df: pd.DataFrame) -> bool:
@@ -260,14 +267,14 @@ class TestWithConnector:
         await h.add("db", "sql", _make_pred_query())
         await h.add("db", "sql", _make_pred_query())
         assert not h._results.has_in_memory("Q1")
-        chart_id = h.add_chart(ArtifactSource(kind="record", id="Q1"), {"mark": "bar"})
+        chart_id = h.add_chart("Q1", {"mark": "bar"})
         assert not h._results.has_in_memory("Q1")
         assert chart_id == "CHART1"
         chart = h.get_chart("CHART1")
-        assert chart.source == ArtifactSource(kind="record", id="Q1")
+        assert chart.source_id == "Q1"
         assert chart.chart_spec == {"mark": "bar"}
         with pytest.raises(KeyError):
-            h.add_chart(ArtifactSource(kind="record", id="Q9"), {"mark": "bar"})
+            h.add_chart("Q9", {"mark": "bar"})
         with pytest.raises(KeyError):
             h.get_chart("CHART9")
 

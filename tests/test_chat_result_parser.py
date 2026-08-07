@@ -5,8 +5,9 @@ import pandas as pd
 import pytest
 from pydantic_ai.messages import ToolReturnPart
 
-from tabulaflow.chat import ChatResultPanel, SliderControl
+from tabulaflow.chat import AnswerPanel, ChoiceControl, ControlChoice, SliderControl
 from tabulaflow.chat.agent import _build_chat_result, _declared_bundle, _TextStreamRouter, _strip_answer_marker
+from tabulaflow.chat.artifact_resolver import ArtifactResolver
 from tabulaflow.core.db_connector.db_registry import DBRegistry
 from tabulaflow.core.db_connector.sql_conn import SQLConnector
 from tabulaflow.core.types import ExecResult, PredQuery
@@ -39,33 +40,27 @@ def test_strip_answer_marker_leaves_unmarked_text_alone() -> None:
     assert _strip_answer_marker(text) == text
 
 
-def test_panel_derives_choice_controls_from_dimensions() -> None:
-    panel = ChatResultPanel(
-        dimensions=[
-            Dimension(
+def test_panel_default_selection_uses_first_choice() -> None:
+    panel = AnswerPanel(
+        controls=[
+            ChoiceControl(
                 id="ranking",
                 label="Ranking",
-                choices=[Choice(id="net", label="Net"), Choice(id="count", label="Count")],
+                choices=[ControlChoice(id="net", label="Net"), ControlChoice(id="count", label="Count")],
             )
-        ],
-        combinations=[],
+        ]
     )
 
-    assert len(panel.controls) == 1
-    control = panel.controls[0]
-    assert control.kind == "choice"
-    assert control.id == "ranking"
-    assert control.choices[0].id == "net"
+    assert panel.default_selection == {"ranking": "net"}
 
 
 def test_panel_accepts_slider_controls_without_dimensions() -> None:
-    panel = ChatResultPanel(
+    panel = AnswerPanel(
         controls=[SliderControl(id="height_cm", label="Minimum height", min=180, max=220, step=1, default=200)],
-        combinations=[],
     )
 
-    assert panel.dimensions == []
     assert panel.controls[0].kind == "slider"
+    assert panel.default_selection == {"height_cm": 200}
 
 
 def test_text_stream_router_waits_for_the_answer_marker() -> None:
@@ -129,7 +124,7 @@ async def test_build_chat_result_resolves_the_declared_bundle() -> None:
     result = await _build_chat_result("<answer>\nThere is 1 row.", bundle, history)
 
     assert result.text == "There is 1 row."
-    assert [(_record_id(artifact), artifact.label) for artifact in result.artifacts] == [("Q1", "row count")]
+    assert [(artifact.source_id, artifact.label) for artifact in result.artifacts] == [("Q1", "row count")]
     assert result.primary_artifact_index == 0
 
     without = await _build_chat_result("<answer>\nNothing to show.", None, history)
@@ -187,19 +182,17 @@ async def test_build_chat_result_resolves_a_panel(tmp_path: Path) -> None:
     result = await _build_chat_result("<answer>\nAcme leads.", bundle, history)
 
     assert result.panel is not None
-    assert [combination.selection for combination in result.panel.combinations] == [
-        {"ranking": "net", "period": "q2"},
-        {"ranking": "net", "period": "q3"},
-        {"ranking": "count", "period": "q2"},
-        {"ranking": "count", "period": "q3"},
-    ]
-    # "order count" ignores `ranking`, so the same record serves both of its choices.
-    order_count_ids = [_record_id(combination.artifacts[1]) for combination in result.panel.combinations]
-    assert order_count_ids[0] == order_count_ids[2] and order_count_ids[1] == order_count_ids[3]
-    # "top customers" varies over both, so every combination is its own record.
-    assert len({_record_id(combination.artifacts[0]) for combination in result.panel.combinations}) == 4
-    # The flat artifact list mirrors the first combination.
-    assert [_record_id(a) for a in result.artifacts] == [_record_id(a) for a in result.panel.combinations[0].artifacts]
+    assert result.panel.default_selection == {"ranking": "net", "period": "q2"}
+    assert [artifact.kind for artifact in result.artifacts] == ["table", "table"]
+    resolver = ArtifactResolver(history)
+    default_cards = await resolver.resolve(result)
+    assert [_record_id(a) for a in default_cards] == ["QS1_v0", "QS2_v0"]
+
+    count_q2 = await resolver.resolve(result, {"ranking": "count", "period": "q2"})
+    count_q3 = await resolver.resolve(result, {"ranking": "count", "period": "q3"})
+    # "order count" ignores `ranking`, while "top customers" varies over both.
+    assert [_record_id(a) for a in count_q2] == ["QS1_v2", "QS2_v0"]
+    assert [_record_id(a) for a in count_q3] == ["QS1_v3", "QS2_v1"]
 
 
 @pytest.mark.asyncio
@@ -227,16 +220,20 @@ async def test_build_chat_result_resolves_source_backed_chart_in_panel(tmp_path:
     await RenderChartTool(history=history)(source_id="QS1", vegalite_spec=json.dumps(spec))
     bundle = ArtifactBundle(
         artifacts=(Artifact(id="CHART1", label="top customers"),),
-        dimensions=(Dimension(id="period", label="Quarter", choices=[Choice(id="q2", label="Q2"), Choice(id="q3", label="Q3")]),),
+        dimensions=(
+            Dimension(id="period", label="Quarter", choices=[Choice(id="q2", label="Q2"), Choice(id="q3", label="Q3")]),
+        ),
     )
 
     result = await _build_chat_result("<answer>\nChart shown.", bundle, history)
 
     assert result.panel is not None
-    assert [combination.artifacts[0].kind for combination in result.panel.combinations] == ["chart", "chart"]
-    chart_ids = [getattr(combination.artifacts[0], "record_id") for combination in result.panel.combinations]
+    assert [artifact.kind for artifact in result.artifacts] == ["chart"]
+    resolver = ArtifactResolver(history)
+    default_cards = await resolver.resolve(result)
+    q3_cards = await resolver.resolve(result, {"period": "q3"})
+    chart_ids = [getattr(default_cards[0], "record_id"), getattr(q3_cards[0], "record_id")]
     assert chart_ids == ["QS1_v0", "QS1_v1"]
-    assert [getattr(a, "record_id") for a in result.artifacts] == ["QS1_v0"]
 
 
 @pytest.mark.asyncio
@@ -274,10 +271,10 @@ async def test_build_chat_result_placeholders_a_partially_covered_card(tmp_path:
     result = await _build_chat_result("<answer>\n17 in the last quarter.", bundle, history)
 
     assert result.panel is not None
-    covered, uncovered = result.panel.combinations
-    assert covered.artifacts[0].kind == "table"
-    assert uncovered.artifacts[0].kind == "placeholder"
-    assert uncovered.artifacts[0].message == "only applies when Time period = Last completed quarter"
-    assert uncovered.artifacts[0].label == "net revenue"
-    # The mirror keeps only real cards, and the first combination has one.
+    assert result.panel.default_selection == {"period": "q2"}
+    assert result.artifacts[0].kind == "table"
+    uncovered = await ArtifactResolver(history).resolve(result, {"period": "q3"})
+    assert uncovered[0].kind == "placeholder"
+    assert uncovered[0].message == "only applies when Time period = Last completed quarter"
+    assert uncovered[0].label == "net revenue"
     assert [a.label for a in result.artifacts] == ["net revenue"]

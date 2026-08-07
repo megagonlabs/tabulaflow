@@ -77,14 +77,6 @@ class QueryFamily:
 
 
 @dataclass
-class ArtifactSource:
-    """Logical data source for an artifact, resolved under an answer-control selection."""
-
-    kind: Literal["record", "family"]
-    id: str
-
-
-@dataclass
 class ResolvedRecordRef:
     """Concrete query record selected for an artifact source."""
 
@@ -106,7 +98,9 @@ def _selection_key(selection: Mapping[str, str]) -> str:
     return ";".join(f"{name}={choice}" for name, choice in sorted(selection.items()))
 
 
-def _project_family_selection(family: QueryFamily, selection: Mapping[str, Any]) -> dict[str, str] | SourceNotApplicable:
+def _project_family_selection(
+    family: QueryFamily, selection: Mapping[str, Any]
+) -> dict[str, str] | SourceNotApplicable:
     """Project an answer selection onto the finite choices covered by ``family``."""
     projected: dict[str, str] = {}
     for name, choices in family.dimensions.items():
@@ -124,11 +118,11 @@ class ChartArtifact:
     """A chart drawn from a single query result.
 
     A standalone artifact whose Vega-Lite ``chart_spec`` renders the DataFrame
-    selected by ``source`` — see ``toolhub.render_chart``.
+    selected by ``source_id`` — see ``toolhub.render_chart``.
     """
 
     chart_id: str
-    source: ArtifactSource
+    source_id: str
     chart_spec: dict[str, Any]
 
 
@@ -178,9 +172,7 @@ class _ResultStore:
             return self._cache[storage_key]
         if storage_key not in self._persisted or self._spill_connector is None:
             raise KeyError(f"No stored result for {storage_key}")
-        result = await self._spill_connector.run_query_async(
-            f'SELECT * FROM "{QUERY_HISTORY_SCHEMA}"."{storage_key}"'
-        )
+        result = await self._spill_connector.run_query_async(f'SELECT * FROM "{QUERY_HISTORY_SCHEMA}"."{storage_key}"')
         if result.df is None:
             raise KeyError(f"No stored result for {storage_key}")
         self._cache[storage_key] = result.df
@@ -352,25 +344,25 @@ class QueryHistory:
         except KeyError:
             raise KeyError(f"No query family with id {family_id}") from None
 
-    def resolve_artifact_source(self, source: ArtifactSource, selection: Mapping[str, Any]) -> SourceResolution:
+    def resolve_source_id(self, source_id: str, selection: Mapping[str, Any]) -> SourceResolution:
         """Resolve an artifact's logical source to a concrete query record under ``selection``."""
-        if source.kind == "record":
-            self._require_record(source.id)
-            return ResolvedRecordRef(source.id)
+        if source_id.startswith("QS"):
+            family = self.get_family(source_id)
+            projected = _project_family_selection(family, selection)
+            if isinstance(projected, SourceNotApplicable):
+                return projected
+            key = _selection_key(projected)
+            record_id = family.record_ids_by_selection.get(key)
+            if record_id is None:
+                return SourceNotApplicable(f"{source_id} has no result for {key}")
+            self._require_record(record_id)
+            return ResolvedRecordRef(record_id)
 
-        if source.kind != "family":
-            raise ValueError(f"unknown artifact source kind: {source.kind!r}")
+        if source_id.startswith("Q"):
+            self._require_record(source_id)
+            return ResolvedRecordRef(source_id)
 
-        family = self.get_family(source.id)
-        projected = _project_family_selection(family, selection)
-        if isinstance(projected, SourceNotApplicable):
-            return projected
-        key = _selection_key(projected)
-        record_id = family.record_ids_by_selection.get(key)
-        if record_id is None:
-            return SourceNotApplicable(f"{source.id} has no result for {key}")
-        self._require_record(record_id)
-        return ResolvedRecordRef(record_id)
+        raise ValueError(f"source_id must start with 'Q' or 'QS', got {source_id!r}")
 
     def _require_record(self, record_id: str) -> None:
         if record_id not in self._records:
@@ -392,16 +384,16 @@ class QueryHistory:
             raise ValueError(f"query {record_id} returned no data")
         return await self._results.get_dataframe(record.outcome.storage_key)
 
-    def add_chart(self, source: ArtifactSource, chart_spec: dict[str, Any]) -> str:
+    def add_chart(self, source_id: str, chart_spec: dict[str, Any]) -> str:
         """Store a chart artifact for an existing query record and return its opaque ``CHART*`` id."""
-        if source.kind == "record":
-            self._require_record(source.id)
-        elif source.kind == "family":
-            self.get_family(source.id)
+        if source_id.startswith("QS"):
+            self.get_family(source_id)
+        elif source_id.startswith("Q"):
+            self._require_record(source_id)
         else:
-            raise ValueError(f"unknown artifact source kind: {source.kind!r}")
+            raise ValueError(f"source_id must start with 'Q' or 'QS', got {source_id!r}")
         chart_id = f"CHART{self._next_chart_id}"
-        self._charts[chart_id] = ChartArtifact(chart_id=chart_id, source=source, chart_spec=chart_spec)
+        self._charts[chart_id] = ChartArtifact(chart_id=chart_id, source_id=source_id, chart_spec=chart_spec)
         self._next_chart_id += 1
         return chart_id
 

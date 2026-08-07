@@ -48,7 +48,7 @@ QUERY_PREVIEW_MAX_LINES = 7
 if TYPE_CHECKING:
     import pandas as pd
     from rich.console import RenderableType
-    from tabulaflow.chat import ChatResultCard
+    from tabulaflow.chat import ResolvedArtifact
 
 
 def build_query(
@@ -348,7 +348,7 @@ class CardGroup:
 
 
 def build_artifact_card_views(
-    artifacts: Sequence[ChatResultCard], width: int = 80, *, release_dataframes: bool = True
+    artifacts: Sequence[ResolvedArtifact], width: int = 80, *, release_dataframes: bool = True
 ) -> list[CardGroup]:
     """Build per-artifact view groups from already-resolved artifacts, in order.
 
@@ -357,7 +357,12 @@ def build_artifact_card_views(
     browser-pane placeholder view, since they don't render in the terminal. Panel
     placeholders yield a single informational view. Artifacts with no views are dropped.
     """
-    from tabulaflow.chat import ChatResultChart, ChatResultGraph, ChatResultMap, ChatResultPlaceholder
+    from tabulaflow.chat import (
+        ArtifactPlaceholder,
+        ResolvedChartArtifact,
+        ResolvedGraphArtifact,
+        ResolvedMapArtifact,
+    )
 
     groups: list[CardGroup] = []
     used_labels: set[str] = set()
@@ -366,7 +371,7 @@ def build_artifact_card_views(
         label = _unique_record_label(base_label, used_labels)
         used_labels.add(label)
 
-        if isinstance(artifact, ChatResultPlaceholder):
+        if isinstance(artifact, ArtifactPlaceholder):
             groups.append(
                 CardGroup(
                     label=label,
@@ -376,7 +381,7 @@ def build_artifact_card_views(
             )
             continue
 
-        if isinstance(artifact, ChatResultMap):
+        if isinstance(artifact, ResolvedMapArtifact):
             groups.append(
                 CardGroup(
                     label=label,
@@ -385,7 +390,7 @@ def build_artifact_card_views(
                 )
             )
             continue
-        if isinstance(artifact, ChatResultGraph):
+        if isinstance(artifact, ResolvedGraphArtifact):
             groups.append(
                 CardGroup(
                     label=label,
@@ -396,8 +401,8 @@ def build_artifact_card_views(
             continue
 
         table = artifact
-        chart_spec = table.chart_spec if isinstance(table, ChatResultChart) else None
-        artifact_id = table.chart_id if isinstance(table, ChatResultChart) else table.record_id
+        chart_spec = table.chart_spec if isinstance(table, ResolvedChartArtifact) else None
+        artifact_id = table.chart_id if isinstance(table, ResolvedChartArtifact) else table.record_id
         views: list[ViewItem] = []
         if getattr(table, "graph", None) is not None:
             views.append(
@@ -441,11 +446,11 @@ def build_artifact_card_views(
     if release_dataframes:
         # Release DataFrame references — previews have been rendered to Rich renderables.
         for artifact in artifacts:
-            if isinstance(artifact, ChatResultMap):
+            if isinstance(artifact, ResolvedMapArtifact):
                 artifact.sources = {}
-            elif isinstance(artifact, ChatResultGraph):
+            elif isinstance(artifact, ResolvedGraphArtifact):
                 pass
-            elif isinstance(artifact, ChatResultPlaceholder):
+            elif isinstance(artifact, ArtifactPlaceholder):
                 pass
             else:
                 artifact.df = None
@@ -454,11 +459,8 @@ def build_artifact_card_views(
 
 
 def build_card_views(result: object, width: int = 80) -> list[CardGroup]:
-    """Build per-artifact view groups from a ChatResult, in citation order."""
-    from tabulaflow.chat import ChatResult
-
-    assert isinstance(result, ChatResult)
-    return build_artifact_card_views(result.artifacts, width)
+    """Build per-artifact view groups from resolved artifacts, in citation order."""
+    return build_artifact_card_views(result, width)  # type: ignore[arg-type]
 
 
 def _unique_record_label(base_label: str, used: set[str]) -> str:

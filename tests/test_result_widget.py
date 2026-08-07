@@ -6,11 +6,11 @@ from textual.containers import VerticalScroll
 
 from tabulaflow.app.display import VIEW_KIND_DATA, VIEW_KIND_QUERY
 from tabulaflow.app.widgets import AgentResultWidget
-from tabulaflow.chat.result import ChatResult, ChatResultTable
+from tabulaflow.chat.result import ChatResult, ResolvedTableArtifact
 
 
-def _record(record_id: str, label: str) -> ChatResultTable:
-    return ChatResultTable(
+def _record(record_id: str, label: str) -> ResolvedTableArtifact:
+    return ResolvedTableArtifact(
         record_id=record_id,
         label=label,
         query=f"SELECT '{label}' AS label",
@@ -22,14 +22,15 @@ def _record(record_id: str, label: str) -> ChatResultTable:
 class _ResultWidgetApp(App[None]):
     def __init__(self) -> None:
         super().__init__()
+        artifacts = [
+            _record("Q1", "one"),
+            _record("Q2", "two"),
+        ]
         self.result_widget = AgentResultWidget(
             ChatResult(
                 text="x",
-                artifacts=[
-                    _record("Q1", "one"),
-                    _record("Q2", "two"),
-                ],
-            )
+            ),
+            artifacts,
         )
 
     def get_css_variables(self) -> dict[str, str]:

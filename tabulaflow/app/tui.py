@@ -40,7 +40,7 @@ from tabulaflow.app.widgets import (
 
 if TYPE_CHECKING:
     from tabulaflow.app.pane import OutputPane
-    from tabulaflow.chat import ChatAgent, ChatResult
+    from tabulaflow.chat import ChatAgent, ChatResult, ResolvedArtifact
 
 logger = logging.getLogger(__name__)
 
@@ -759,6 +759,7 @@ class TabulaflowApp(App[None]):
     async def _push_turn_to_pane(
         self,
         result: "ChatResult",
+        artifacts: list["ResolvedArtifact"],
         *,
         title: str,
         user_text: str,
@@ -780,7 +781,7 @@ class TabulaflowApp(App[None]):
         # Snapshot each cited artifact (capturing DataFrames before build_card_views
         # nulls them), tagged by kind, preserving citation order.
         artifact_snapshots: list[tuple[str, SimpleNamespace]] = []
-        for artifact in result.artifacts:
+        for artifact in artifacts:
             if artifact.kind == "map":
                 artifact_snapshots.append(
                     (
@@ -1169,17 +1170,20 @@ class TabulaflowApp(App[None]):
 
         # Push to the browser pane BEFORE building the widget: AgentResultWidget
         # -> build_card_views() nulls each record.df after rendering to Rich.
+        artifacts = await chat_agent.artifact_resolver.resolve(result)
         await self._push_turn_to_pane(
             result,
+            artifacts,
             title=display_text,
             user_text=display_text,
         )
-        if result.artifacts:
+        if artifacts:
             # chat-log padding (2) + scrollbar (2) + widget margin (5) + widget padding (2) = 11
             result_widget = AgentResultWidget(
                 result,
+                artifacts,
                 width=self.size.width - 11,
-                query_history=chat_agent.query_history,
+                artifact_resolver=chat_agent.artifact_resolver,
             )
             await chat_log.mount(result_widget)
             self._refresh_esc_hint()

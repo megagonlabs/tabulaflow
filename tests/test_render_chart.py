@@ -10,7 +10,7 @@ import pytest
 
 from tabulaflow.app.pane import _add_line_hover, build_chart_data
 from tabulaflow.core.types import ExecResult, PredQuery
-from tabulaflow.toolhub.query_history import ArtifactSource, QueryHistory
+from tabulaflow.toolhub.query_history import QueryHistory
 from tabulaflow.toolhub.render_chart import (
     ChartNotRenderable,
     RenderChartTool,
@@ -182,7 +182,7 @@ class TestRenderChartTool:
         msg = await RenderChartTool(history=history)(source_id="Q1", vegalite_spec=json.dumps(spec))
         assert "Bar chart CHART1 created from Q1" in msg
         chart = history.get_chart("CHART1")
-        assert chart.source == ArtifactSource(kind="record", id="Q1")
+        assert chart.source_id == "Q1"
         assert chart.chart_spec == spec
 
     async def test_query_family_source_creates_chart(self) -> None:
@@ -193,9 +193,12 @@ class TestRenderChartTool:
             {"ranking": ["net", "count"]},
             "SELECT 1",
             {
-                "ranking=net": PredQuery(query="SELECT 'net' AS a, 1 AS b", exec_result=ExecResult(df=pd.DataFrame({"a": ["net"], "b": [1]}))),
+                "ranking=net": PredQuery(
+                    query="SELECT 'net' AS a, 1 AS b", exec_result=ExecResult(df=pd.DataFrame({"a": ["net"], "b": [1]}))
+                ),
                 "ranking=count": PredQuery(
-                    query="SELECT 'count' AS a, 2 AS b", exec_result=ExecResult(df=pd.DataFrame({"a": ["count"], "b": [2]}))
+                    query="SELECT 'count' AS a, 2 AS b",
+                    exec_result=ExecResult(df=pd.DataFrame({"a": ["count"], "b": [2]})),
                 ),
             },
         )
@@ -205,7 +208,7 @@ class TestRenderChartTool:
 
         assert "Bar chart CHART1 created from QS1 — 2 source variants" in msg
         chart = history.get_chart("CHART1")
-        assert chart.source == ArtifactSource(kind="family", id="QS1")
+        assert chart.source_id == "QS1"
         assert chart.chart_spec == spec
 
     async def test_query_family_validation_reports_all_failing_selections(self) -> None:
@@ -216,7 +219,9 @@ class TestRenderChartTool:
             {"ranking": ["net", "count"]},
             "SELECT 1",
             {
-                "ranking=net": PredQuery(query="SELECT 'net' AS a", exec_result=ExecResult(df=pd.DataFrame({"a": ["net"]}))),
+                "ranking=net": PredQuery(
+                    query="SELECT 'net' AS a", exec_result=ExecResult(df=pd.DataFrame({"a": ["net"]}))
+                ),
                 "ranking=count": PredQuery(query="SELECT 2 AS c", exec_result=ExecResult(df=pd.DataFrame({"c": [2]}))),
             },
         )

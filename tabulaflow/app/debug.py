@@ -16,40 +16,6 @@ if TYPE_CHECKING:
     from textual.containers import VerticalScroll
 
     from tabulaflow.app.tui import TabulaflowApp
-    from tabulaflow.chat import ChatResult
-    from tabulaflow.toolhub.query_history import QueryHistory
-
-
-def _debug_history_for(result: "ChatResult") -> "QueryHistory":
-    """Build a QueryHistory populated with the DFs from a debug ChatResult.
-
-    Pokes records directly into the in-memory maps because debug widgets
-    have no spill connector, so the async ``add()`` path would just be an
-    awkward way to do the same in-memory bookkeeping.
-    """
-    from tabulaflow.chat import ChatResultChart, ChatResultTable
-    from tabulaflow.toolhub.query_history import QueryHistory, QueryRecord, TabularResult
-
-    history = QueryHistory()
-    for record in result.artifacts:
-        if not isinstance(record, (ChatResultTable, ChatResultChart)) or record.df is None:
-            continue
-        query_record = QueryRecord(
-            record_id=record.record_id,
-            connector_type="sql",
-            db_alias="debug",
-            query=record.query or "",
-            parameter_names=(),
-            parameter_values={},
-            outcome=TabularResult(
-                storage_key=record.record_id,
-                row_count=len(record.df),
-                columns=tuple(str(column) for column in record.df.columns),
-            ),
-        )
-        history._records[record.record_id] = query_record
-        history._results._cache[record.record_id] = record.df
-    return history
 
 
 def debug_enabled() -> bool:
@@ -62,7 +28,7 @@ def debug_enabled() -> bool:
 def _build_debug_result_widget(app: TabulaflowApp) -> AgentResultWidget:
     import pandas as pd
 
-    from tabulaflow.chat import ChatResult, ChatResultTable
+    from tabulaflow.chat import ChatResult, ResolvedTableArtifact
 
     import datetime
     import json
@@ -409,23 +375,20 @@ WHERE region_revenue_rank <= 50
 ORDER BY region, gross_revenue DESC, sale_month
 LIMIT 4000"""
 
-    result = ChatResult(
-        text="Debug startup table",
-        artifacts=[
-            ChatResultTable(
-                record_id="QDEBUG",
-                label="debug_4000x60",
-                query=debug_query,
-                df=df,
-                query_lexer="sql",
-            )
-        ],
-        primary_artifact_index=0,
-    )
+    records = [
+        ResolvedTableArtifact(
+            record_id="QDEBUG",
+            label="debug_4000x60",
+            query=debug_query,
+            df=df,
+            query_lexer="sql",
+        )
+    ]
+    result = ChatResult(text="Debug startup table", primary_artifact_index=0)
     return AgentResultWidget(
         result,
+        records,
         width=app.size.width - 11,
-        query_history=_debug_history_for(result),
     )
 
 
@@ -438,7 +401,7 @@ def _build_debug_huge_cell_result_widget(app: TabulaflowApp) -> AgentResultWidge
     """
     import pandas as pd
 
-    from tabulaflow.chat import ChatResult, ChatResultTable
+    from tabulaflow.chat import ChatResult, ResolvedTableArtifact
 
     def long_json(n_items: int, note_chars: int = 0) -> dict[str, object]:
         # Pretty-printed lines per item are ~8; with note_chars > 0 each
@@ -506,23 +469,22 @@ def _build_debug_huge_cell_result_widget(app: TabulaflowApp) -> AgentResultWidge
             "value": [r[2] for r in rows],
         }
     )
+    records = [
+        ResolvedTableArtifact(
+            record_id="QDEBUG_HUGE_CELL",
+            label="debug_long_wide_cells",
+            query="-- synthetic fixture: escalating cell sizes",
+            df=df,
+            query_lexer="sql",
+        )
+    ]
     result = ChatResult(
-        text="Debug long/wide cell fixture (Enter on `value` to open CellBrowserScreen)",
-        artifacts=[
-            ChatResultTable(
-                record_id="QDEBUG_HUGE_CELL",
-                label="debug_long_wide_cells",
-                query="-- synthetic fixture: escalating cell sizes",
-                df=df,
-                query_lexer="sql",
-            )
-        ],
-        primary_artifact_index=0,
+        text="Debug long/wide cell fixture (Enter on `value` to open CellBrowserScreen)", primary_artifact_index=0
     )
     return AgentResultWidget(
         result,
+        records,
         width=app.size.width - 11,
-        query_history=_debug_history_for(result),
     )
 
 
@@ -541,7 +503,7 @@ def _build_debug_media_result_widget(app: TabulaflowApp) -> AgentResultWidget:
     import pandas as pd
     from PIL import Image, ImageDraw
 
-    from tabulaflow.chat import ChatResult, ChatResultTable
+    from tabulaflow.chat import ChatResult, ResolvedTableArtifact
 
     def wav_bytes(freq_hz: float, seconds: float = 0.4, rate: int = 8000) -> bytes:
         # Minimal PCM WAV: header + 16-bit mono samples of a sine tone.
@@ -624,30 +586,27 @@ def _build_debug_media_result_widget(app: TabulaflowApp) -> AgentResultWidget:
     )
 
     query = "-- synthetic media payloads (JPEG/GIF/PDF/WAV/MP4)"
-    result = ChatResult(
-        text="Debug startup media table",
-        artifacts=[
-            ChatResultTable(
-                record_id="QDEBUG_MEDIA",
-                label="debug_media",
-                query=query,
-                df=df,
-                query_lexer="sql",
-            )
-        ],
-        primary_artifact_index=0,
-    )
+    records = [
+        ResolvedTableArtifact(
+            record_id="QDEBUG_MEDIA",
+            label="debug_media",
+            query=query,
+            df=df,
+            query_lexer="sql",
+        )
+    ]
+    result = ChatResult(text="Debug startup media table", primary_artifact_index=0)
     return AgentResultWidget(
         result,
+        records,
         width=app.size.width - 11,
-        query_history=_debug_history_for(result),
     )
 
 
 def _build_debug_small_result_widget(app: TabulaflowApp) -> AgentResultWidget:
     import pandas as pd
 
-    from tabulaflow.chat import ChatResult, ChatResultTable
+    from tabulaflow.chat import ChatResult, ResolvedTableArtifact
 
     df = pd.DataFrame(
         [
@@ -666,23 +625,20 @@ def _build_debug_small_result_widget(app: TabulaflowApp) -> AgentResultWidget:
             "LIMIT 5",
         ]
     )
-    result = ChatResult(
-        text="Debug startup small table",
-        artifacts=[
-            ChatResultTable(
-                record_id="QDEBUG_SMALL",
-                label="debug_5x3_multiline",
-                query=query,
-                df=df,
-                query_lexer="sql",
-            )
-        ],
-        primary_artifact_index=0,
-    )
+    records = [
+        ResolvedTableArtifact(
+            record_id="QDEBUG_SMALL",
+            label="debug_5x3_multiline",
+            query=query,
+            df=df,
+            query_lexer="sql",
+        )
+    ]
+    result = ChatResult(text="Debug startup small table", primary_artifact_index=0)
     return AgentResultWidget(
         result,
+        records,
         width=app.size.width - 11,
-        query_history=_debug_history_for(result),
     )
 
 
@@ -690,7 +646,7 @@ def _build_debug_quad_result_widget(app: TabulaflowApp) -> AgentResultWidget:
     """Compact 4-artifact fixture exercising every view-kind combination."""
     import pandas as pd
 
-    from tabulaflow.chat import ChatResult, ChatResultChart, ChatResultTable
+    from tabulaflow.chat import ChatResult, ResolvedChartArtifact, ResolvedTableArtifact
 
     # Artifact 1: chart artifact — Chart + Data + Query
     regions_df = pd.DataFrame(
@@ -762,48 +718,45 @@ def _build_debug_quad_result_widget(app: TabulaflowApp) -> AgentResultWidget:
         "ORDER BY (reorder_point - stock_on_hand) DESC"
     )
 
-    result = ChatResult(
-        text="Debug quad-record result",
-        artifacts=[
-            ChatResultChart(
-                chart_id="CHARTDEBUG_QUAD_1",
-                record_id="QDEBUG_QUAD_1",
-                label="top_regions",
-                chart_spec=regions_chart,
-                query=regions_query,
-                df=regions_df,
-                query_lexer="sql",
-            ),
-            ChatResultTable(
-                record_id="QDEBUG_QUAD_2",
-                label="top_products",
-                query=products_query,
-                df=products_df,
-                query_lexer="sql",
-            ),
-            ChatResultChart(
-                chart_id="CHARTDEBUG_QUAD_3",
-                record_id="QDEBUG_QUAD_3",
-                label="channel_mix",
-                chart_spec=channels_chart,
-                query=channels_query,
-                df=channels_df,
-                query_lexer="sql",
-            ),
-            ChatResultTable(
-                record_id="QDEBUG_QUAD_4",
-                label="low_stock_alerts",
-                query=low_stock_query,
-                df=None,
-                query_lexer="sql",
-            ),
-        ],
-        primary_artifact_index=0,
-    )
+    records = [
+        ResolvedChartArtifact(
+            chart_id="CHARTDEBUG_QUAD_1",
+            record_id="QDEBUG_QUAD_1",
+            label="top_regions",
+            chart_spec=regions_chart,
+            query=regions_query,
+            df=regions_df,
+            query_lexer="sql",
+        ),
+        ResolvedTableArtifact(
+            record_id="QDEBUG_QUAD_2",
+            label="top_products",
+            query=products_query,
+            df=products_df,
+            query_lexer="sql",
+        ),
+        ResolvedChartArtifact(
+            chart_id="CHARTDEBUG_QUAD_3",
+            record_id="QDEBUG_QUAD_3",
+            label="channel_mix",
+            chart_spec=channels_chart,
+            query=channels_query,
+            df=channels_df,
+            query_lexer="sql",
+        ),
+        ResolvedTableArtifact(
+            record_id="QDEBUG_QUAD_4",
+            label="low_stock_alerts",
+            query=low_stock_query,
+            df=None,
+            query_lexer="sql",
+        ),
+    ]
+    result = ChatResult(text="Debug quad-record result", primary_artifact_index=0)
     return AgentResultWidget(
         result,
+        records,
         width=app.size.width - 11,
-        query_history=_debug_history_for(result),
     )
 
 
@@ -813,7 +766,7 @@ def _build_debug_multi_result_widget(app: TabulaflowApp) -> AgentResultWidget:
 
     import pandas as pd
 
-    from tabulaflow.chat import ChatResult, ChatResultArtifact, ChatResultChart, ChatResultTable
+    from tabulaflow.chat import ChatResult, ResolvedArtifact, ResolvedChartArtifact, ResolvedTableArtifact
 
     rng = random.Random(20260423)
 
@@ -989,7 +942,7 @@ def _build_debug_multi_result_widget(app: TabulaflowApp) -> AgentResultWidget:
             "title": label.replace("_", " ").title(),
         }
 
-    records: list[ChatResultArtifact] = []
+    records: list[ResolvedArtifact] = []
     for i, (label, query, columns, n_rows) in enumerate(record_specs):
         # Every 3rd artifact is query-only, every 2nd of the rest is a chart,
         # so the final mix is: 5 chart+data+query, 5 data+query, 5 query-only.
@@ -997,7 +950,7 @@ def _build_debug_multi_result_widget(app: TabulaflowApp) -> AgentResultWidget:
         chart_spec = _chart_spec_for(columns, label) if i % 3 == 0 and df is not None else None
         if chart_spec is not None:
             records.append(
-                ChatResultChart(
+                ResolvedChartArtifact(
                     chart_id=f"CHARTDEBUG_MULTI_{i + 1}",
                     record_id=f"QDEBUG_MULTI_{i + 1}",
                     label=label,
@@ -1009,7 +962,7 @@ def _build_debug_multi_result_widget(app: TabulaflowApp) -> AgentResultWidget:
             )
         else:
             records.append(
-                ChatResultTable(
+                ResolvedTableArtifact(
                     record_id=f"QDEBUG_MULTI_{i + 1}",
                     label=label,
                     query=query,
@@ -1018,15 +971,11 @@ def _build_debug_multi_result_widget(app: TabulaflowApp) -> AgentResultWidget:
                 )
             )
 
-    result = ChatResult(
-        text="Debug multi-record result",
-        artifacts=records,
-        primary_artifact_index=0,
-    )
+    result = ChatResult(text="Debug multi-record result", primary_artifact_index=0)
     return AgentResultWidget(
         result,
+        records,
         width=app.size.width - 11,
-        query_history=_debug_history_for(result),
     )
 
 
@@ -1244,10 +1193,10 @@ def _build_debug_chart_result_widget(app: TabulaflowApp) -> AgentResultWidget:
     preview inline via plotext; stacked-bar/pie/facet/heatmap show the
     "open in browser" card (Enter → ``b`` renders the real chart).
     """
-    from tabulaflow.chat import ChatResult, ChatResultArtifact, ChatResultChart
+    from tabulaflow.chat import ChatResult, ResolvedArtifact, ResolvedChartArtifact
 
-    records: list[ChatResultArtifact] = [
-        ChatResultChart(
+    records: list[ResolvedArtifact] = [
+        ResolvedChartArtifact(
             chart_id=f"CHARTDEBUG_{i + 1}",
             record_id=rid,
             label=label,
@@ -1260,13 +1209,12 @@ def _build_debug_chart_result_widget(app: TabulaflowApp) -> AgentResultWidget:
     ]
     result = ChatResult(
         text="Debug charts — simple specs preview inline; rich specs show a card (Enter, then `b` to open in browser).",
-        artifacts=records,
         primary_artifact_index=0,
     )
     return AgentResultWidget(
         result,
+        records,
         width=app.size.width - 11,
-        query_history=_debug_history_for(result),
     )
 
 

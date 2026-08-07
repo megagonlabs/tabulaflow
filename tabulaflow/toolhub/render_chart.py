@@ -14,7 +14,7 @@ from typing import Any, ClassVar
 import pandas as pd
 from pydantic_ai import Tool
 
-from tabulaflow.toolhub.query_history import ArtifactSource, QueryHistory
+from tabulaflow.toolhub.query_history import QueryHistory
 
 
 # Marks plotext can draw faithfully as a single x/y series, mapped to the
@@ -34,11 +34,9 @@ _PLOTEXT_MARKS = frozenset(_MARK_TO_PLOTEXT)
 _MAX_CHART_ROWS = 20_000
 
 
-def _artifact_source_from_id(source_id: str) -> ArtifactSource:
-    if source_id.startswith("QS"):
-        return ArtifactSource(kind="family", id=source_id)
-    if source_id.startswith("Q"):
-        return ArtifactSource(kind="record", id=source_id)
+def _validate_source_id(source_id: str) -> None:
+    if source_id.startswith(("Q", "QS")):
+        return
     raise ValueError(f"source_id must start with 'Q' or 'QS', got {source_id!r}")
 
 
@@ -47,6 +45,7 @@ class _SourceVariant:
     label: str
     record_id: str
     df: pd.DataFrame
+
 
 # Terminal preview gets unreadable past these counts (bar labels collapse to a
 # char; plotext slows on dense series). Beyond them ``render_plotext`` raises
@@ -449,7 +448,7 @@ class RenderChartTool:
         if not isinstance(source_id, str) or not source_id.strip():
             return "(error: source_id must be a non-empty string)"
         try:
-            source = _artifact_source_from_id(source_id)
+            _validate_source_id(source_id)
         except ValueError as e:
             return f"(error: {e})"
 
@@ -465,7 +464,7 @@ class RenderChartTool:
             return "(error: spec must have a 'mark' or be a multi-view spec (layer/facet/concat))"
 
         try:
-            variants = await self._source_variants(source)
+            variants = await self._source_variants(source_id)
         except KeyError:
             return f"(error: unknown source_id {source_id!r})"
         except ValueError as e:
@@ -493,22 +492,26 @@ class RenderChartTool:
             return f"(error: chart source validation failed for {len(errors)} issue(s):\n  " + "\n  ".join(errors) + ")"
 
         label = chart_type_label(spec)
-        chart_id = self._history.add_chart(source, spec)
+        chart_id = self._history.add_chart(source_id, spec)
         rows = len(variants[0].df)
         suffix = f" — {rows:,} rows" if len(variants) == 1 else f" — {len(variants):,} source variants"
         return f"{label} {chart_id} created from {source_id}{suffix}"
 
-    async def _source_variants(self, source: ArtifactSource) -> list[_SourceVariant]:
-        if source.kind == "record":
-            await self._history.get(source.id)
-            return [_SourceVariant(label=source.id, record_id=source.id, df=await self._history.get_dataframe(source.id))]
-        if source.kind != "family":
-            raise ValueError(f"unknown artifact source kind: {source.kind!r}")
-        family = self._history.get_family(source.id)
-        out: list[_SourceVariant] = []
-        for selection, record_id in family.record_ids_by_selection.items():
-            out.append(_SourceVariant(label=selection, record_id=record_id, df=await self._history.get_dataframe(record_id)))
-        return out
+    async def _source_variants(self, source_id: str) -> list[_SourceVariant]:
+        if source_id.startswith("QS"):
+            family = self._history.get_family(source_id)
+            out: list[_SourceVariant] = []
+            for selection, record_id in family.record_ids_by_selection.items():
+                out.append(
+                    _SourceVariant(
+                        label=selection, record_id=record_id, df=await self._history.get_dataframe(record_id)
+                    )
+                )
+            return out
+        if not source_id.startswith("Q"):
+            raise ValueError(f"source_id must start with 'Q' or 'QS', got {source_id!r}")
+        await self._history.get(source_id)
+        return [_SourceVariant(label=source_id, record_id=source_id, df=await self._history.get_dataframe(source_id))]
 
     def as_pydantic_ai_tool(self) -> Tool:
         return Tool(self.__call__, name=self.name)

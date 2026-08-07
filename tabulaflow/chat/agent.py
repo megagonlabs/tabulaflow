@@ -3,15 +3,14 @@
 from __future__ import annotations
 
 import asyncio
-from collections.abc import AsyncIterator, Callable, Iterable, Iterator
+from collections.abc import AsyncIterator, Callable, Iterator
+from contextlib import suppress
 from datetime import date
 from importlib.resources import files
-from itertools import product
 import json
 import logging
 from pathlib import Path
 import sys
-from contextlib import suppress
 from dataclasses import dataclass, field, fields
 from typing import TYPE_CHECKING, Any, Final
 
@@ -31,19 +30,8 @@ from tabulaflow.toolhub.web_browser import (
 )
 from tabulaflow.core.db_connector import connector_info
 from tabulaflow.core.llm import make_agent, make_model_settings, model_display_name
-from tabulaflow.chat.result import (
-    ChatResult,
-    ChatResultArtifact,
-    ChatResultCard,
-    ChatResultChart,
-    ChatResultCombination,
-    ChatResultGraph,
-    ChatResultMap,
-    ChatResultPanel,
-    ChatResultPlaceholder,
-    ChatResultTable,
-)
-from tabulaflow.toolhub import ArtifactSource
+from tabulaflow.chat.artifact_resolver import ArtifactResolver, artifacts_from_refs
+from tabulaflow.chat.result import AnswerPanel, ChatResult, ChoiceControl, ControlChoice
 from tabulaflow.chat.events import (
     ChatEvent,
     AnswerDelta,
@@ -57,7 +45,6 @@ from tabulaflow.chat.events import (
 )
 
 if TYPE_CHECKING:
-    import pandas as pd
     from pydantic_ai import Agent
     from pydantic_ai.messages import ModelMessage, ToolReturnPart
 
@@ -67,19 +54,12 @@ if TYPE_CHECKING:
     from tabulaflow.toolhub import (
         AddCanonicalNameTool,
         ApplyPatchTool,
-        Artifact,
         ArtifactBundle,
-        ChartArtifact,
-        Dimension,
         ConnectDataSourceTool,
         ExecuteBashTool,
         ExtractRowsFromDocumentsTool,
         FileEditorTool,
-        GraphArtifact,
-        MapArtifact,
-        QueryFamily,
         QueryHistory,
-        QueryRecord,
         RegistryGetColumnJsonSchemaTool,
         RegistryGetDBDocumentTool,
         RegistryGetTableSchemaTool,
@@ -216,6 +196,7 @@ class ChatAgent:
     _system_prompt: str = field(init=False, default=SYSTEM_PROMPT)
     _pydantic_ai_agent: Agent[None, str] | None = field(init=False, default=None)
     _query_history: QueryHistory = field(init=False)
+    _artifact_resolver: ArtifactResolver = field(init=False)
     _message_store: MessageStore = field(init=False)
     _main_scope: ScopedMessageStore = field(init=False)
     _tools: _Toolset = field(init=False)
@@ -228,6 +209,7 @@ class ChatAgent:
         from tabulaflow.toolhub import ProgressReportingTool, QueryHistory
 
         self._query_history = QueryHistory(spill_connector=self.workspace)
+        self._artifact_resolver = ArtifactResolver(self._query_history)
         self._message_store = MessageStore()
         self._main_scope = self._message_store.scoped("main")
         subagent_dir = self.trajectory_log_dir / "subagents" if self.trajectory_log_dir is not None else None
@@ -394,6 +376,11 @@ class ChatAgent:
     def query_history(self) -> QueryHistory:
         """The live query history — results the agent's answers reference."""
         return self._query_history
+
+    @property
+    def artifact_resolver(self) -> ArtifactResolver:
+        """Resolver for this session's logical chat artifacts."""
+        return self._artifact_resolver
 
     @staticmethod
     def _unwrap_model(model: object) -> object:
@@ -789,19 +776,9 @@ async def _build_chat_result(
     bundle: ArtifactBundle | None,
     query_history: QueryHistory,
 ) -> ChatResult:
-    panel = await _panel_from_bundle(bundle, query_history) if bundle is not None and bundle.dimensions else None
-    artifacts: list[ChatResultArtifact]
-    if panel is not None:
-        # A card that does not apply at the first choice of every dimension is rejected
-        # by ``show_artifacts``, so the mirror is placeholder-free.
-        artifacts = [
-            card
-            for card in panel.combinations[0].artifacts
-            if isinstance(card, (ChatResultTable, ChatResultChart, ChatResultMap, ChatResultGraph))
-        ]
-    else:
-        refs = [(artifact.id, artifact.label) for artifact in bundle.artifacts] if bundle is not None else []
-        artifacts = list(await _artifacts_from_refs(refs, query_history))
+    refs = [(artifact.id, artifact.label) for artifact in bundle.artifacts] if bundle is not None else []
+    artifacts = artifacts_from_refs(refs, query_history)
+    panel = _panel_from_bundle(bundle) if bundle is not None and bundle.dimensions else None
     primary_artifact_index: int | None = 0 if artifacts else None
     return ChatResult(
         text=_strip_answer_marker(answer_text),
@@ -811,83 +788,17 @@ async def _build_chat_result(
     )
 
 
-async def _panel_from_bundle(bundle: "ArtifactBundle", query_history: QueryHistory) -> ChatResultPanel:
-    """Resolve every card at every combination of the declared dimensions.
-
-    A card varies only over the dimensions its own query ran, so it is looked up with
-    the selection projected onto those — the same rows appear at every choice of a
-    dimension it never mentions.
-    """
-    dimensions = list(bundle.dimensions)
-    families = {
-        artifact.id: family
-        for artifact in bundle.artifacts
-        if (family := _artifact_family(artifact.id, query_history)) is not None
-    }
-    fixed = await _artifacts_from_refs(
-        [(a.id, a.label) for a in bundle.artifacts if a.id not in families], query_history
+def _panel_from_bundle(bundle: "ArtifactBundle") -> AnswerPanel:
+    return AnswerPanel(
+        controls=[
+            ChoiceControl(
+                id=dimension.id,
+                label=dimension.label,
+                choices=[ControlChoice(id=choice.id, label=choice.label) for choice in dimension.choices],
+            )
+            for dimension in bundle.dimensions
+        ]
     )
-    fixed_by_id = dict(zip([a.id for a in bundle.artifacts if a.id not in families], fixed, strict=False))
-
-    combinations = []
-    for choices in product(*([(dim.id, choice.id) for choice in dim.choices] for dim in dimensions)):
-        selection = dict(choices)
-        cards: list[ChatResultCard] = []
-        for artifact in bundle.artifacts:
-            family = families.get(artifact.id)
-            if family is None:
-                if (resolved := fixed_by_id.get(artifact.id)) is not None:
-                    cards.append(resolved)
-                continue
-            cards.append(await _card_at(artifact, family, selection, dimensions, query_history))
-        combinations.append(ChatResultCombination(selection=selection, artifacts=cards))
-    return ChatResultPanel(dimensions=dimensions, combinations=combinations)
-
-
-async def _card_at(
-    artifact: "Artifact",
-    family: "QueryFamily",
-    selection: dict[str, str],
-    dimensions: list["Dimension"],
-    query_history: QueryHistory,
-) -> ChatResultCard:
-    """One card's payload at ``selection``, or a placeholder where its query never ran."""
-    projected = {name: selection[name] for name in family.dimensions if name in selection}
-    outside = [name for name, choice in projected.items() if choice not in family.dimensions[name]]
-    if outside:
-        return ChatResultPlaceholder(label=artifact.label, message=_only_applies_when(family, dimensions, outside))
-    if artifact.id.startswith("CHART"):
-        chart_artifact = query_history.get_chart(artifact.id)
-        chart = await _chat_result_chart_from_artifact(chart_artifact, artifact.label, query_history, selection)
-        return chart if chart is not None else ChatResultPlaceholder(label=artifact.label, message="chart source unavailable")
-    table = await _chat_result_table_from_source(
-        ArtifactSource(kind="family", id=artifact.id), artifact.label, query_history, selection
-    )
-    return table if table is not None else ChatResultPlaceholder(label=artifact.label, message="table source unavailable")
-
-
-def _artifact_family(artifact_id: str, query_history: QueryHistory) -> "QueryFamily | None":
-    if artifact_id.startswith("QS"):
-        return query_history.get_family(artifact_id)
-    if artifact_id.startswith("CHART"):
-        try:
-            chart = query_history.get_chart(artifact_id)
-        except KeyError:
-            return None
-        if chart.source.kind == "family":
-            return query_history.get_family(chart.source.id)
-    return None
-
-
-def _only_applies_when(family: "QueryFamily", dimensions: list["Dimension"], outside: list[str]) -> str:
-    """Name the choices a partially covered card does apply to, in the panel's own words."""
-    labels = {dim.id: dim for dim in dimensions}
-    parts = []
-    for name in outside:
-        dim = labels[name]
-        covered = [choice.label for choice in dim.choices if choice.id in family.dimensions[name]]
-        parts.append(f"{dim.label} = {' or '.join(covered)}")
-    return "only applies when " + "; ".join(parts)
 
 
 def _declared_bundle(completed_results: dict[str, ToolReturnPart]) -> "ArtifactBundle | None":
@@ -999,160 +910,6 @@ class _TextStreamRouter:
             self.is_answer = False
             return self._raw  # narration (or an answer the model failed to mark)
         return ""
-
-
-async def _artifacts_from_refs(
-    refs: Iterable[tuple[str, str | None]],
-    query_history: QueryHistory,
-) -> list[ChatResultTable | ChatResultChart | ChatResultMap | ChatResultGraph]:
-    """Resolve citation refs into display artifacts, preserving citation order."""
-    artifacts: list[ChatResultTable | ChatResultChart | ChatResultMap | ChatResultGraph] = []
-    for ref_id, label in refs:
-        if ref_id.startswith("CHART"):
-            try:
-                chart_artifact = query_history.get_chart(ref_id)
-            except (KeyError, ValueError):
-                continue
-            chart = await _chat_result_chart_from_artifact(chart_artifact, label, query_history)
-            if isinstance(chart, ChatResultChart):
-                artifacts.append(chart)
-        elif ref_id.startswith("MAP"):
-            try:
-                map_artifact = query_history.get_map(ref_id)
-            except (KeyError, ValueError):
-                continue
-            artifacts.append(await _chat_result_map_from_artifact(map_artifact, label, query_history))
-        elif ref_id.startswith("GRAPH"):
-            try:
-                graph_artifact = query_history.get_graph(ref_id)
-            except (KeyError, ValueError):
-                continue
-            artifacts.append(await _chat_result_graph_from_artifact(graph_artifact, label, query_history))
-        else:
-            try:
-                query_record = await query_history.get(ref_id)
-            except (KeyError, ValueError):
-                continue
-            artifacts.append(await _chat_result_table_from_query_record(query_record, label, query_history))
-    return artifacts
-
-
-async def _chat_result_chart_from_artifact(
-    chart_artifact: ChartArtifact,
-    label: str | None,
-    query_history: QueryHistory,
-    selection: dict[str, object] | None = None,
-) -> ChatResultChart | ChatResultPlaceholder | None:
-    """Resolve a stored chart artifact's source record into a display record."""
-    query: str | None = None
-    df: pd.DataFrame | None = None
-    query_lexer = "sql"
-    from tabulaflow.toolhub import ResolvedRecordRef, SourceNotApplicable
-
-    try:
-        resolution = query_history.resolve_artifact_source(chart_artifact.source, selection or {})
-    except (KeyError, ValueError):
-        return None
-    if isinstance(resolution, SourceNotApplicable):
-        return ChatResultPlaceholder(label=label, message=resolution.reason)
-    assert isinstance(resolution, ResolvedRecordRef)
-    try:
-        record = await query_history.get(resolution.record_id)
-    except (KeyError, ValueError):
-        record = None
-    if record is not None:
-        query = record.query
-        with suppress(ValueError):
-            df = await query_history.get_dataframe(record.record_id)
-        query_lexer = "cypher" if record.connector_type == "property_graph" else "sql"
-    return ChatResultChart(
-        chart_id=chart_artifact.chart_id,
-        label=label,
-        chart_spec=chart_artifact.chart_spec,
-        record_id=resolution.record_id,
-        query=query,
-        df=df,
-        query_lexer=query_lexer,
-    )
-
-
-async def _chat_result_table_from_source(
-    source: ArtifactSource,
-    label: str | None,
-    query_history: QueryHistory,
-    selection: dict[str, object],
-) -> ChatResultTable | ChatResultPlaceholder | None:
-    from tabulaflow.toolhub import ResolvedRecordRef, SourceNotApplicable
-
-    try:
-        resolution = query_history.resolve_artifact_source(source, selection)
-    except (KeyError, ValueError):
-        return None
-    if isinstance(resolution, SourceNotApplicable):
-        return ChatResultPlaceholder(label=label, message=resolution.reason)
-    assert isinstance(resolution, ResolvedRecordRef)
-    try:
-        record = await query_history.get(resolution.record_id)
-    except (KeyError, ValueError):
-        return None
-    return await _chat_result_table_from_query_record(record, label, query_history)
-
-
-async def _chat_result_map_from_artifact(
-    map_artifact: MapArtifact,
-    label: str | None,
-    query_history: QueryHistory,
-) -> ChatResultMap:
-    """Resolve a stored map artifact's per-source DataFrames into a display record."""
-    spec = map_artifact.map_spec
-    layers = spec.get("layers") or []
-    source_ids: list[str] = []
-    for layer in layers:
-        sid = layer.get("source") if isinstance(layer, dict) else None
-        if sid and sid not in source_ids:
-            source_ids.append(sid)
-    sources: dict[str, pd.DataFrame] = {}
-    for sid in source_ids:
-        try:
-            await query_history.get(sid)
-        except (KeyError, ValueError):
-            continue
-        with suppress(ValueError):
-            sources[sid] = await query_history.get_dataframe(sid)
-    return ChatResultMap(map_id=map_artifact.map_id, label=label, map_spec=spec, sources=sources)
-
-
-async def _chat_result_graph_from_artifact(
-    graph_artifact: GraphArtifact,
-    label: str | None,
-    query_history: QueryHistory,
-) -> ChatResultGraph:
-    """Resolve a stored graph artifact into a display record."""
-    return ChatResultGraph(
-        graph_id=graph_artifact.graph_id,
-        label=label,
-        graph=graph_artifact.graph,
-        layout=graph_artifact.layout,
-    )
-
-
-async def _chat_result_table_from_query_record(
-    query_record: QueryRecord,
-    label: str | None,
-    query_history: QueryHistory,
-) -> ChatResultTable:
-    df = None
-    with suppress(ValueError):
-        df = await query_history.get_dataframe(query_record.record_id)
-    graph = getattr(query_record.outcome, "graph", None)
-    return ChatResultTable(
-        record_id=query_record.record_id,
-        label=label,
-        query=query_record.query,
-        df=df,
-        graph=graph,
-        query_lexer="cypher" if query_record.connector_type == "property_graph" else "sql",
-    )
 
 
 # ---------------------------------------------------------------------------

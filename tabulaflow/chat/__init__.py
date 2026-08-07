@@ -1,9 +1,4 @@
-"""Interactive tabulaflow agent — the chat lib that frontends (app, webapp) build on.
-
-The chat ⇄ frontend contract is: drive a ``ChatAgent``, and consume the events /
-result it produces. All of it is re-exported here so frontends import from
-``tabulaflow.chat`` rather than reaching into submodules.
-"""
+"""Interactive tabulaflow agent public API."""
 
 from typing import TYPE_CHECKING
 
@@ -21,57 +16,64 @@ from tabulaflow.chat.events import (
 )
 from tabulaflow.chat.result import (
     AnswerControl,
+    AnswerPanel,
+    Artifact,
+    ArtifactPlaceholder,
+    ChartArtifact,
     ChatResult,
-    ChatResultArtifact,
-    ChatResultCard,
-    ChatResultChart,
-    ChatResultCombination,
-    ChatResultGraph,
-    ChatResultMap,
-    ChatResultPanel,
-    ChatResultPlaceholder,
-    ChatResultTable,
     ChoiceControl,
+    ControlChoice,
+    GraphArtifact,
+    MapArtifact,
+    ResolvedArtifact,
+    ResolvedChartArtifact,
+    ResolvedGraphArtifact,
+    ResolvedMapArtifact,
+    ResolvedTableArtifact,
     SelectionValue,
     SliderControl,
+    TableArtifact,
 )
 
 if TYPE_CHECKING:
     from tabulaflow.chat.agent import SYSTEM_PROMPT, ChatAgent
+    from tabulaflow.chat.artifact_resolver import ArtifactResolver
 
 
 def __getattr__(name: str) -> object:
-    # Lazy-load ``ChatAgent`` itself so importing event/result types doesn't build
-    # an agent session. The event contract intentionally imports ToolCallOutcome
-    # from toolhub, so this module is no longer a toolhub-free import path.
-    # The agent itself loads the first time it's accessed (when a session opens,
-    # off the UI thread).
-    # ``SYSTEM_PROMPT`` (the baseline prompt callers extend via ``extra_instructions``)
-    # lives in the same module, so it loads on the same terms.
     if name in ("ChatAgent", "SYSTEM_PROMPT"):
         from tabulaflow.chat import agent
 
         return getattr(agent, name)
+    if name == "ArtifactResolver":
+        from tabulaflow.chat.artifact_resolver import ArtifactResolver
+
+        return ArtifactResolver
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 
 __all__ = [
     "ChatAgent",
     "SYSTEM_PROMPT",
+    "ArtifactResolver",
     "AnswerControl",
+    "AnswerPanel",
+    "Artifact",
+    "ArtifactPlaceholder",
+    "ChartArtifact",
     "ChatResult",
-    "ChatResultArtifact",
-    "ChatResultCard",
-    "ChatResultChart",
-    "ChatResultCombination",
-    "ChatResultGraph",
-    "ChatResultTable",
-    "ChatResultMap",
-    "ChatResultPanel",
-    "ChatResultPlaceholder",
     "ChoiceControl",
+    "ControlChoice",
+    "GraphArtifact",
+    "MapArtifact",
+    "ResolvedArtifact",
+    "ResolvedChartArtifact",
+    "ResolvedGraphArtifact",
+    "ResolvedMapArtifact",
+    "ResolvedTableArtifact",
     "SelectionValue",
     "SliderControl",
+    "TableArtifact",
     "ChatEvent",
     "AnswerDelta",
     "NarrationDelta",

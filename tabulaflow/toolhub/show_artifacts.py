@@ -183,8 +183,8 @@ class ShowArtifactsTool:
                 return self._history.get_family(artifact_id)
             if artifact_id.startswith("CHART"):
                 chart = self._history.get_chart(artifact_id)
-                if chart.source.kind == "family":
-                    return self._history.get_family(chart.source.id)
+                if chart.source_id.startswith("QS"):
+                    return self._history.get_family(chart.source_id)
         except KeyError:
             return None
         return None
