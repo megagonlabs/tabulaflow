@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from collections.abc import Mapping, Sequence
 from typing import TYPE_CHECKING
 from tabulaflow.chat.result import (
@@ -57,22 +58,24 @@ class ArtifactResolver:
         controls: Sequence[AnswerControl] = (),
     ) -> list[ResolvedArtifact]:
         """Resolve logical artifacts under ``selection``."""
-        resolved: list[ResolvedArtifact] = []
-        for artifact in artifacts:
-            item: ResolvedArtifact | None
-            if isinstance(artifact, TableArtifact):
-                item = await self._resolve_table(artifact, selection, controls)
-            elif isinstance(artifact, ChartArtifact):
-                item = await self._resolve_chart(artifact, selection, controls)
-            elif isinstance(artifact, MapArtifact):
-                item = await self._resolve_map(artifact)
-            elif isinstance(artifact, GraphArtifact):
-                item = await self._resolve_graph(artifact, selection, controls)
-            else:
-                item = None
-            if item is not None:
-                resolved.append(item)
-        return resolved
+        resolved = await asyncio.gather(*(self._resolve_one(artifact, selection, controls) for artifact in artifacts))
+        return [artifact for artifact in resolved if artifact is not None]
+
+    async def _resolve_one(
+        self,
+        artifact: Artifact,
+        selection: Mapping[str, SelectionValue],
+        controls: Sequence[AnswerControl],
+    ) -> ResolvedArtifact | None:
+        if isinstance(artifact, TableArtifact):
+            return await self._resolve_table(artifact, selection, controls)
+        if isinstance(artifact, ChartArtifact):
+            return await self._resolve_chart(artifact, selection, controls)
+        if isinstance(artifact, MapArtifact):
+            return await self._resolve_map(artifact)
+        if isinstance(artifact, GraphArtifact):
+            return await self._resolve_graph(artifact, selection, controls)
+        return None
 
     async def _resolve_table(
         self,
