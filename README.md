@@ -523,7 +523,7 @@ Aug 4 - 5
 
 
 
-
+- [ ] Fix flicker when change selection in answer controls
 - [ ] Shell messed up after ssh disconnect
 - [ ] Check if uv tool install install browser
 
