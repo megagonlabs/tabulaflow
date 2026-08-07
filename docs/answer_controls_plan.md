@@ -16,8 +16,10 @@ Implemented on `dev` so far:
   - `source_id="Q1"`
   - `source_id="QS1"`
   - `ResolvedRecordRef`
+  - `ResolvedQueryRecord`
   - `SourceNotApplicable`
   - `QueryHistory.resolve_source_id(...)`
+  - `QueryHistory.resolve_query_record(...)`
 - Chart artifacts are source-backed:
   - `ChartArtifact.source_id: str`
   - `render_chart(source_id=...)` accepts `Q*` and `QS*`.
@@ -31,11 +33,16 @@ Implemented on `dev` so far:
   - `ChatAgent.artifact_resolver.resolve(result, selection=None)` resolves default or active selections.
   - Resolved payloads are separate `Resolved*Artifact` models, plus `ArtifactPlaceholder` for not-applicable selections.
 - Source ids are plain `Q*` / `QS*` strings; no separate `ArtifactSource` wrapper.
+- `ArtifactResolver` now only materializes logical chat artifacts; query-record payload lookup lives in `QueryHistory`, and `show_artifacts` refs are converted to logical artifacts during chat-result construction.
 
 In progress / next cleanup:
 
 - Make the browser pane consume answer-level controls and source-backed artifact definitions for finite choice controls.
-- Design true server-side parameterized sources for sliders; current sliders are model/UI-safe but do not rerun or parameterize queries.
+- After browser-pane finite controls, harden the artifact definition model before adding lazy/server-side sliders:
+  - rename tool-facing `show_artifacts.Artifact` to `ArtifactRef`;
+  - distinguish stored artifact records from answer artifacts;
+  - move toward one shared lightweight/spec-backed `ArtifactDef` shape when graph can also be spec-backed.
+- Design true server-side parameterized sources for sliders after the shared artifact-definition shape is settled; current sliders are model/UI-safe but do not rerun or parameterize queries.
 
 ## Product thesis
 
@@ -230,7 +237,45 @@ control state -> resolved sources -> artifacts -> views
 
 Changing a control should rebuild the relevant cards/views while preserving user context where possible.
 
-### Phase 4 — Parameterized/lazy results
+### Phase 4 — Browser pane finite controls
+
+Extend the browser pane payload and frontend to support answer-level controls for already-materialized finite choices.
+
+Goals:
+
+- Include `AnswerPanel` and logical `ChatResult.artifacts` in the pane turn payload.
+- Resolve the default selection and finite choice changes through the live session/runtime.
+- Update table/chart/map/graph cards when choice controls change.
+- Keep this phase to precomputed `Q*` / `QS*` sources; do not add lazy query execution yet.
+
+This phase should validate the public runtime API:
+
+```python
+await chat_agent.artifact_resolver.resolve(result, selection)
+```
+
+### Phase 5 — Shared artifact-definition model
+
+After browser-pane finite controls prove the runtime-resolution model, consolidate artifact definitions before adding parameterized/lazy sources.
+
+Goals:
+
+- Rename the tool-facing `show_artifacts.Artifact` to `ArtifactRef` because it is only an id+label reference.
+- Clarify stored session artifacts versus answer-level logical artifacts, e.g. `StoredChartArtifact` vs `ChartArtifact`, if separate classes still exist.
+- Prefer one shared lightweight/spec-backed `ArtifactDef` family once all artifact types can fit it.
+- Carry lightweight specs in logical artifacts where appropriate, especially map specs.
+- Refactor graph artifacts toward source/spec-backed definitions rather than stored materialized `GraphView`, if feasible.
+- Keep `ResolvedArtifact` payloads in the chat/frontend contract; do not move resolved DataFrames or graph payloads into the shared definition layer.
+
+Target long-term taxonomy:
+
+```text
+ArtifactRef      # tool input: id + label
+ArtifactDef      # logical/spec-backed artifact definition
+ResolvedArtifact # materialized payload for rendering
+```
+
+### Phase 6 — Parameterized/lazy results
 
 Support true runtime parameters, especially sliders.
 
@@ -238,13 +283,7 @@ Add caching by normalized selection/source definition, so repeated selections re
 
 Server-side vs client-side slider execution should be decided in detail here.
 
-### Phase 5 — Browser pane controls
-
-Extend the browser pane payload and frontend to support answer-level controls.
-
-Start with precomputed finite choices if simpler, then add session-backed lazy controls.
-
-### Phase 6 — Agent/tool policy
+### Phase 7 — Agent/tool policy
 
 Update tool and system-prompt guidance.
 
@@ -255,7 +294,7 @@ Policy:
 - avoid turning simple answers into dashboards;
 - avoid adding every possible schema-derived filter.
 
-### Phase 7 — Cleanup
+### Phase 8 — Cleanup
 
 After the new model is stable:
 
