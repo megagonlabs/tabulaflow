@@ -97,9 +97,17 @@ function resolveTurnSelection(turn, index, selection) {
   var state = getTurnState(turn, index);
   var seq = (state.resolveSeq || 0) + 1;
   state.resolveSeq = seq;
-  state.resolving = true;
+  if (state.resolveTimer) window.clearTimeout(state.resolveTimer);
+  state.resolving = false;
   state.resolveError = '';
-  updateSelectedTurn(index);
+  refreshActiveTurnControls(index);
+  setActiveTurnArtifactsLoading(index, false);
+  state.resolveTimer = window.setTimeout(function () {
+    if (state.resolveSeq !== seq) return;
+    state.resolving = true;
+    refreshActiveTurnControls(index);
+    setActiveTurnArtifactsLoading(index, true);
+  }, LOADING_DELAY_MS);
   fetch('resolve', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -109,16 +117,21 @@ function resolveTurnSelection(turn, index, selection) {
     return response.json();
   }).then(function (payload) {
     if (state.resolveSeq !== seq || !sameSelection(selection, state.selection || {})) return;
+    if (state.resolveTimer) window.clearTimeout(state.resolveTimer);
+    state.resolveTimer = null;
     turn.cards = Array.isArray(payload.cards) ? payload.cards : [];
-    state.activeCard = 0;
-    state.views = {};
+    state.activeCard = Math.min(state.activeCard || 0, Math.max(turn.cards.length - 1, 0));
     state.resolving = false;
-    updateSelectedTurn(index);
+    refreshActiveTurnControls(index);
+    refreshActiveTurnArtifacts(index);
   }).catch(function () {
     if (state.resolveSeq !== seq) return;
+    if (state.resolveTimer) window.clearTimeout(state.resolveTimer);
+    state.resolveTimer = null;
     state.resolving = false;
     state.resolveError = 'Could not update results for this selection.';
-    updateSelectedTurn(index);
+    refreshActiveTurnControls(index);
+    setActiveTurnArtifactsLoading(index, false);
   });
 }
 
@@ -163,6 +176,59 @@ function buildAnswerControls(turn, state, index) {
     panel.appendChild(error);
   }
   return panel;
+}
+
+function activeTurnView(index) {
+  if (index !== activeTurn) return null;
+  var inner = document.getElementById('content-inner');
+  return inner ? inner.querySelector('.turnview') : null;
+}
+
+function refreshActiveTurnControls(index) {
+  var turnView = activeTurnView(index);
+  if (!turnView) return;
+  var turn = turns[index];
+  var state = getTurnState(turn, index);
+  var current = turnView.querySelector('.answer-controls');
+  var next = buildAnswerControls(turn, state, index);
+  if (current && next) current.replaceWith(next);
+  else if (current) current.remove();
+  else if (next) {
+    var artifacts = turnView.querySelector('.artifacts-region');
+    if (artifacts) turnView.insertBefore(next, artifacts);
+    else turnView.appendChild(next);
+  }
+}
+
+function renderArtifactsInto(region, turn, state) {
+  deactivateViewTree(region);
+  region.replaceChildren();
+  region.classList.remove('resolving');
+  var cards = turn.cards || [];
+  if (!cards.length) return;
+  if (cards.length <= 1) {
+    region.appendChild(buildCard(cards[0], { state: state, cardIndex: 0 }));
+    return;
+  }
+  var box = el('div', 'panesbox');
+  box.appendChild(buildMultiCard(cards, state));
+  region.appendChild(box);
+}
+
+function refreshActiveTurnArtifacts(index) {
+  var turnView = activeTurnView(index);
+  if (!turnView) return;
+  var region = turnView.querySelector('.artifacts-region');
+  if (!region) return;
+  var turn = turns[index];
+  renderArtifactsInto(region, turn, getTurnState(turn, index));
+}
+
+function setActiveTurnArtifactsLoading(index, loading) {
+  var turnView = activeTurnView(index);
+  if (!turnView) return;
+  var region = turnView.querySelector('.artifacts-region');
+  if (region) region.classList.toggle('resolving', loading);
 }
 
 function isManualPreview(turn) {
@@ -951,7 +1017,6 @@ function buildMultiCard(cards, state) {
 function renderTurn(turn, index) {
   var view = el('div', 'turnview');
   var transcript = buildTranscript(turn);
-  var cards = turn.cards || [];
   var state = getTurnState(turn, index);
   if (isManualPreview(turn)) {
     view.classList.add('manual-preview');
@@ -961,14 +1026,9 @@ function renderTurn(turn, index) {
   }
   var controls = buildAnswerControls(turn, state, index);
   if (controls) view.appendChild(controls);
-  if (!cards.length) return view;
-  if (cards.length <= 1) {
-    view.appendChild(buildCard(cards[0], { state: state, cardIndex: 0 }));
-    return view;
-  }
-  var box = el('div', 'panesbox');
-  box.appendChild(buildMultiCard(cards, state));
-  view.appendChild(box);
+  var artifacts = el('section', 'artifacts-region');
+  renderArtifactsInto(artifacts, turn, state);
+  view.appendChild(artifacts);
   return view;
 }
 

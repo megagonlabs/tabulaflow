@@ -216,6 +216,8 @@ body { margin: 0; background: var(--bg); color: var(--text); display: flex; flex
 .answer-control-option:disabled { cursor: default; opacity: 0.62; }
 .answer-control-status { color: var(--text-dim); font: 12px/1.3 ui-monospace, monospace; }
 .answer-control-status.error { color: #ff8a8a; }
+.artifacts-region { transition: opacity 120ms ease-out; }
+.artifacts-region.resolving { opacity: 0.58; pointer-events: none; }
 .message-body.md ul,
 .message-body.md ol { margin: 0.65em 0; padding-left: 1.55em; }
 .message-body.md li + li { margin-top: 0.25em; }
