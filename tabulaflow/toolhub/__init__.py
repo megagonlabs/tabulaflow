@@ -23,9 +23,9 @@ from tabulaflow.toolhub.registry_get_schema import RegistryGetSchemaTool
 from tabulaflow.toolhub.registry_get_table_schema import RegistryGetTableSchemaTool
 from tabulaflow.toolhub.query_history import (
     QUERY_HISTORY_SCHEMA,
-    ChartArtifact,
-    GraphArtifact,
-    MapArtifact,
+    StoredChartArtifact,
+    StoredGraphArtifact,
+    StoredMapArtifact,
     QueryFailure,
     QueryFamily,
     QueryHistory,
@@ -47,7 +47,7 @@ from tabulaflow.toolhub.run_query_for_each_combination import (
     selection_key,
 )
 from tabulaflow.toolhub.run_subagent_for_each_row import RunSubagentForEachRowTool
-from tabulaflow.toolhub.show_artifacts import Artifact, ArtifactBundle, Choice, Dimension, ShowArtifactsTool
+from tabulaflow.toolhub.show_artifacts import ArtifactBundle, ArtifactRef, Choice, Dimension, ShowArtifactsTool
 from tabulaflow.toolhub.web_browser import (
     WebBrowserManager,
     WebBrowserTool,
@@ -74,18 +74,18 @@ __all__ = [
     "FileEditorRoot",
     "FileEditorTool",
     "FileEditorToolMetrics",
-    "ChartArtifact",
-    "GraphArtifact",
+    "StoredChartArtifact",
+    "StoredGraphArtifact",
     "RegistryGetColumnJsonSchemaTool",
     "RegistryGetDBDocumentTool",
     "RegistryGetSchemaTool",
     "RegistryGetTableSchemaTool",
-    "Artifact",
+    "ArtifactRef",
     "ArtifactBundle",
     "Choice",
     "Dimension",
     "selection_key",
-    "MapArtifact",
+    "StoredMapArtifact",
     "QueryFailure",
     "QueryDimension",
     "QueryFamily",

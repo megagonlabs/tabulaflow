@@ -129,7 +129,7 @@ def _project_family_selection(
 
 
 @dataclass
-class ChartArtifact:
+class StoredChartArtifact:
     """A chart drawn from a single query result.
 
     A standalone artifact whose Vega-Lite ``chart_spec`` renders the DataFrame
@@ -142,7 +142,7 @@ class ChartArtifact:
 
 
 @dataclass
-class MapArtifact:
+class StoredMapArtifact:
     """A map assembled from one or more query results.
 
     A standalone artifact (not attached to any single ``QueryRecord``) whose
@@ -155,7 +155,7 @@ class MapArtifact:
 
 
 @dataclass
-class GraphArtifact:
+class StoredGraphArtifact:
     """A materialized node-link graph assembled from one or more query results."""
 
     graph_id: str
@@ -259,9 +259,9 @@ class QueryHistory:
             raise ValueError("max_in_memory must be >= 1")
         self._records: dict[str, QueryRecord] = {}
         self._families: dict[str, QueryFamily] = {}
-        self._charts: dict[str, ChartArtifact] = {}
-        self._maps: dict[str, MapArtifact] = {}
-        self._graphs: dict[str, GraphArtifact] = {}
+        self._charts: dict[str, StoredChartArtifact] = {}
+        self._maps: dict[str, StoredMapArtifact] = {}
+        self._graphs: dict[str, StoredGraphArtifact] = {}
         self._next_query_id = 1
         self._next_family_id = 1
         self._next_chart_id = 1
@@ -435,11 +435,11 @@ class QueryHistory:
         else:
             raise ValueError(f"source_id must start with 'Q' or 'QS', got {source_id!r}")
         chart_id = f"CHART{self._next_chart_id}"
-        self._charts[chart_id] = ChartArtifact(chart_id=chart_id, source_id=source_id, chart_spec=chart_spec)
+        self._charts[chart_id] = StoredChartArtifact(chart_id=chart_id, source_id=source_id, chart_spec=chart_spec)
         self._next_chart_id += 1
         return chart_id
 
-    def get_chart(self, chart_id: str) -> ChartArtifact:
+    def get_chart(self, chart_id: str) -> StoredChartArtifact:
         """Return a previously stored chart artifact."""
         try:
             return self._charts[chart_id]
@@ -449,11 +449,11 @@ class QueryHistory:
     def add_map(self, map_spec: dict[str, Any]) -> str:
         """Store a standalone map artifact and return its opaque ``MAP*`` id."""
         map_id = f"MAP{self._next_map_id}"
-        self._maps[map_id] = MapArtifact(map_id=map_id, map_spec=map_spec)
+        self._maps[map_id] = StoredMapArtifact(map_id=map_id, map_spec=map_spec)
         self._next_map_id += 1
         return map_id
 
-    def get_map(self, map_id: str) -> MapArtifact:
+    def get_map(self, map_id: str) -> StoredMapArtifact:
         """Return a previously stored map artifact."""
         try:
             return self._maps[map_id]
@@ -463,11 +463,11 @@ class QueryHistory:
     def add_graph(self, graph: GraphView, *, layout: Literal["force", "layered", "tree"] = "force") -> str:
         """Store a standalone graph artifact and return its opaque ``GRAPH*`` id."""
         graph_id = f"GRAPH{self._next_graph_id}"
-        self._graphs[graph_id] = GraphArtifact(graph_id=graph_id, graph=graph, layout=layout)
+        self._graphs[graph_id] = StoredGraphArtifact(graph_id=graph_id, graph=graph, layout=layout)
         self._next_graph_id += 1
         return graph_id
 
-    def get_graph(self, graph_id: str) -> GraphArtifact:
+    def get_graph(self, graph_id: str) -> StoredGraphArtifact:
         """Return a previously stored graph artifact."""
         try:
             return self._graphs[graph_id]

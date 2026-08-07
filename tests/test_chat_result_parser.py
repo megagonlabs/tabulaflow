@@ -12,7 +12,7 @@ from tabulaflow.core.db_connector.db_registry import DBRegistry
 from tabulaflow.core.db_connector.sql_conn import SQLConnector
 from tabulaflow.core.types import ExecResult, PredQuery
 from tabulaflow.toolhub import (
-    Artifact,
+    ArtifactRef,
     ArtifactBundle,
     Choice,
     Dimension,
@@ -100,8 +100,8 @@ def _show_artifacts_part(call_id: str, bundle: ArtifactBundle | None) -> ToolRet
 
 
 def test_declared_bundle_skips_failed_calls_and_takes_the_last() -> None:
-    first = ArtifactBundle(artifacts=(Artifact(id="Q1", label="first"),))
-    second = ArtifactBundle(artifacts=(Artifact(id="Q1", label="second"),))
+    first = ArtifactBundle(artifacts=(ArtifactRef(id="Q1", label="first"),))
+    second = ArtifactBundle(artifacts=(ArtifactRef(id="Q1", label="second"),))
     completed = {
         "a": _show_artifacts_part("a", first),
         "b": ToolReturnPart(tool_name="run_query", content="1 row", tool_call_id="b"),
@@ -119,7 +119,7 @@ async def test_build_chat_result_resolves_the_declared_bundle() -> None:
     await history.add(
         "workspace", "sql", PredQuery(query="SELECT 1", exec_result=ExecResult(df=pd.DataFrame({"a": [1]})))
     )
-    bundle = ArtifactBundle(artifacts=(Artifact(id="Q1", label="row count"),))
+    bundle = ArtifactBundle(artifacts=(ArtifactRef(id="Q1", label="row count"),))
 
     result = await _build_chat_result("<answer>\nThere is 1 row.", bundle, history)
 
@@ -168,7 +168,7 @@ async def test_build_chat_result_resolves_a_panel(tmp_path: Path) -> None:
         "SELECT COUNT(*) AS orders FROM orders WHERE quarter = '{{ period }}'",
     )
     bundle = ArtifactBundle(
-        artifacts=(Artifact(id="QS1", label="top customers"), Artifact(id="QS2", label="order count")),
+        artifacts=(ArtifactRef(id="QS1", label="top customers"), ArtifactRef(id="QS2", label="order count")),
         dimensions=(
             Dimension(
                 id="ranking",
@@ -219,7 +219,7 @@ async def test_build_chat_result_resolves_source_backed_chart_in_panel(tmp_path:
     spec = {"mark": "bar", "encoding": {"x": {"field": "customer"}, "y": {"field": "value"}}}
     await RenderChartTool(history=history)(source_id="QS1", vegalite_spec=json.dumps(spec))
     bundle = ArtifactBundle(
-        artifacts=(Artifact(id="CHART1", label="top customers"),),
+        artifacts=(ArtifactRef(id="CHART1", label="top customers"),),
         dimensions=(
             Dimension(id="period", label="Quarter", choices=[Choice(id="q2", label="Q2"), Choice(id="q3", label="Q3")]),
         ),
@@ -258,7 +258,7 @@ async def test_build_chat_result_placeholders_a_partially_covered_card(tmp_path:
         "SELECT SUM(net) AS net FROM orders WHERE quarter = '{{ period }}'",
     )
     bundle = ArtifactBundle(
-        artifacts=(Artifact(id="QS1", label="net revenue"),),
+        artifacts=(ArtifactRef(id="QS1", label="net revenue"),),
         dimensions=(
             Dimension(
                 id="period",

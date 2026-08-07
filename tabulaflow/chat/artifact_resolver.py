@@ -21,10 +21,8 @@ from tabulaflow.chat.result import (
     SelectionValue,
     TableArtifact,
 )
-from tabulaflow.toolhub import GraphArtifact as StoredGraphArtifact
-from tabulaflow.toolhub import MapArtifact as StoredMapArtifact
 from tabulaflow.toolhub import QueryHistory, ResolvedQueryRecord
-from tabulaflow.toolhub.query_history import SourceNotApplicable
+from tabulaflow.toolhub.query_history import SourceNotApplicable, StoredGraphArtifact
 
 if TYPE_CHECKING:
     import pandas as pd
@@ -106,11 +104,7 @@ class ArtifactResolver:
         )
 
     async def _resolve_map(self, artifact: MapArtifact) -> ResolvedMapArtifact | None:
-        try:
-            stored = self._query_history.get_map(artifact.map_id)
-        except (KeyError, ValueError):
-            return None
-        return await self._map_from_stored(stored, artifact.label)
+        return await self._map_from_artifact(artifact)
 
     async def _resolve_graph(self, artifact: GraphArtifact) -> ResolvedGraphArtifact | None:
         try:
@@ -182,8 +176,8 @@ class ArtifactResolver:
             query_lexer=query_record.query_lexer,
         )
 
-    async def _map_from_stored(self, stored: StoredMapArtifact, label: str | None) -> ResolvedMapArtifact:
-        spec = stored.map_spec
+    async def _map_from_artifact(self, artifact: MapArtifact) -> ResolvedMapArtifact:
+        spec = artifact.map_spec
         layers = spec.get("layers") or []
         source_ids: list[str] = []
         for layer in layers:
@@ -198,7 +192,7 @@ class ArtifactResolver:
                 continue
             if payload.df is not None:
                 sources[sid] = payload.df
-        return ResolvedMapArtifact(map_id=stored.map_id, label=label, map_spec=spec, sources=sources)
+        return ResolvedMapArtifact(map_id=artifact.map_id, label=artifact.label, map_spec=spec, sources=sources)
 
     @staticmethod
     def _graph_from_stored(stored: StoredGraphArtifact, label: str | None) -> ResolvedGraphArtifact:

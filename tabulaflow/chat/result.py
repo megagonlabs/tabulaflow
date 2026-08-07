@@ -92,11 +92,12 @@ class ChartArtifact(BaseModel):
 
 
 class MapArtifact(BaseModel):
-    """Logical fixed map artifact."""
+    """Logical map artifact."""
 
     kind: Literal["map"] = "map"
     map_id: str
     label: str | None
+    map_spec: dict[str, Any]
 
 
 class GraphArtifact(BaseModel):

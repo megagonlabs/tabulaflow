@@ -837,7 +837,7 @@ def _artifact_from_ref(ref_id: str, label: str | None, query_history: QueryHisto
             stored_map = query_history.get_map(ref_id)
         except (KeyError, ValueError):
             return None
-        return ChatMapArtifact(map_id=stored_map.map_id, label=label)
+        return ChatMapArtifact(map_id=stored_map.map_id, label=label, map_spec=stored_map.map_spec)
     if ref_id.startswith("GRAPH"):
         try:
             graph = query_history.get_graph(ref_id)

@@ -11,7 +11,7 @@ from pydantic_ai import Tool, ToolReturn
 from tabulaflow.toolhub.query_history import QueryFamily, QueryHistory
 
 
-class Artifact(BaseModel):
+class ArtifactRef(BaseModel):
     id: str = Field(min_length=1, description="Id of a result to show: Q*, QS*, CHART*, MAP* or GRAPH*.")
     label: str = Field(min_length=1, description="Short human-readable name for the card, never the id itself.")
 
@@ -27,7 +27,7 @@ class Dimension(BaseModel):
     choices: list[Choice] = Field(min_length=2, description="Readings of this dimension, best reading first.")
 
 
-Artifacts: TypeAlias = Annotated[list[Artifact], Field(max_length=20)]
+Artifacts: TypeAlias = Annotated[list[ArtifactRef], Field(max_length=20)]
 Dimensions: TypeAlias = Annotated[list[Dimension], Field(max_length=4)]
 
 
@@ -43,7 +43,7 @@ class ArtifactBundle:
     at a point using only the dimensions its own query varied over.
     """
 
-    artifacts: tuple[Artifact, ...]
+    artifacts: tuple[ArtifactRef, ...]
     dimensions: tuple[Dimension, ...] = ()
 
 
@@ -111,7 +111,7 @@ class ShowArtifactsTool:
         shown = ", ".join(self._describe(artifact, dimensions) for artifact in artifacts) or "nothing"
         return ToolReturn(return_value=f"showing {shown}", metadata=bundle)
 
-    def _describe(self, artifact: Artifact, dimensions: Dimensions) -> str:
+    def _describe(self, artifact: ArtifactRef, dimensions: Dimensions) -> str:
         """``label (id)``, naming the choices a partially covered card is limited to."""
         family = self._family(artifact.id)
         if family is None or not dimensions:
@@ -157,7 +157,7 @@ class ShowArtifactsTool:
         problems += [f"dimension {name!r} is not varied over by any card" for name in declared if name not in varied]
         return problems
 
-    async def _problem(self, artifact: Artifact) -> str | None:
+    async def _problem(self, artifact: ArtifactRef) -> str | None:
         """Why ``artifact`` cannot be shown, or ``None`` when it can."""
         if artifact.label == artifact.id:
             return f"{artifact.id} needs a human-readable label, not its id"

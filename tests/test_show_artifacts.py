@@ -10,7 +10,7 @@ from tabulaflow.core.db_connector.db_registry import DBRegistry
 from tabulaflow.core.db_connector.sql_conn import SQLConnector
 from tabulaflow.core.types import ExecResult, PredQuery
 from tabulaflow.toolhub import (
-    Artifact,
+    ArtifactRef,
     ArtifactBundle,
     Choice,
     Dimension,
@@ -39,12 +39,12 @@ class TestShowArtifacts:
     @pytest.mark.asyncio
     async def test_declares_the_bundle_in_metadata(self, history: QueryHistory) -> None:
         result = await ShowArtifactsTool(history=history)(
-            [Artifact(id="Q1", label="row count"), Artifact(id="CHART1", label="rows by group")]
+            [ArtifactRef(id="Q1", label="row count"), ArtifactRef(id="CHART1", label="rows by group")]
         )
 
         assert _text(result) == "showing row count (Q1), rows by group (CHART1)"
         assert result.metadata == ArtifactBundle(
-            artifacts=(Artifact(id="Q1", label="row count"), Artifact(id="CHART1", label="rows by group"))
+            artifacts=(ArtifactRef(id="Q1", label="row count"), ArtifactRef(id="CHART1", label="rows by group"))
         )
 
     @pytest.mark.asyncio
@@ -57,7 +57,7 @@ class TestShowArtifacts:
     @pytest.mark.asyncio
     async def test_rejects_unknown_ids(self, history: QueryHistory) -> None:
         result = await ShowArtifactsTool(history=history)(
-            [Artifact(id="Q9", label="missing"), Artifact(id="MAP1", label="also missing")]
+            [ArtifactRef(id="Q9", label="missing"), ArtifactRef(id="MAP1", label="also missing")]
         )
 
         assert _text(result) == "(error: unknown artifact id 'Q9'; unknown artifact id 'MAP1')"
@@ -65,7 +65,7 @@ class TestShowArtifacts:
 
     @pytest.mark.asyncio
     async def test_rejects_the_id_as_its_own_label(self, history: QueryHistory) -> None:
-        result = await ShowArtifactsTool(history=history)([Artifact(id="Q1", label="Q1")])
+        result = await ShowArtifactsTool(history=history)([ArtifactRef(id="Q1", label="Q1")])
 
         assert "needs a human-readable label" in _text(result)
         assert result.metadata is None
@@ -145,9 +145,9 @@ class TestShowArtifactsPanel:
 
         result = await show(
             [
-                Artifact(id="QS1", label="top customers"),
-                Artifact(id="QS2", label="orders by region"),
-                Artifact(id="QS3", label="net revenue"),
+                ArtifactRef(id="QS1", label="top customers"),
+                ArtifactRef(id="QS2", label="orders by region"),
+                ArtifactRef(id="QS3", label="net revenue"),
             ],
             _dimensions(),
         )
@@ -162,7 +162,7 @@ class TestShowArtifactsPanel:
     async def test_rejects_a_family_without_a_panel(self, families: tuple[QueryHistory, ShowArtifactsTool]) -> None:
         _, show = families
 
-        result = await show([Artifact(id="QS1", label="top customers")])
+        result = await show([ArtifactRef(id="QS1", label="top customers")])
 
         assert "QS1 varies over ranking, period; declare them as dimensions" in _text(result)
         assert result.metadata is None
@@ -174,7 +174,7 @@ class TestShowArtifactsPanel:
         _, show = families
         period_only = [_dimensions()[1]]
 
-        result = await show([Artifact(id="QS1", label="top customers")], period_only)
+        result = await show([ArtifactRef(id="QS1", label="top customers")], period_only)
         assert "QS1 varies over 'ranking', which is not a declared dimension" in _text(result)
 
         narrowed = [
@@ -185,7 +185,7 @@ class TestShowArtifactsPanel:
                 choices=[Choice(id="q2", label="Q2"), Choice(id="q4", label="Q4")],
             ),
         ]
-        result = await show([Artifact(id="QS1", label="top customers")], narrowed)
+        result = await show([ArtifactRef(id="QS1", label="top customers")], narrowed)
         assert "QS1 ran period=q3, not declared for 'period'" in _text(result)
 
     @pytest.mark.asyncio
@@ -194,7 +194,7 @@ class TestShowArtifactsPanel:
     ) -> None:
         _, show = families
 
-        result = await show([Artifact(id="QS2", label="orders by region")], _dimensions())
+        result = await show([ArtifactRef(id="QS2", label="orders by region")], _dimensions())
 
         assert "dimension 'ranking' is not varied over by any card" in _text(result)
         assert result.metadata is None
@@ -214,7 +214,7 @@ class TestShowArtifactsPanel:
         ]
 
         result = await show(
-            [Artifact(id="QS1", label="top customers"), Artifact(id="QS3", label="net revenue")], q3_first
+            [ArtifactRef(id="QS1", label="top customers"), ArtifactRef(id="QS3", label="net revenue")], q3_first
         )
 
         assert "QS3 does not apply at period=q3, the first choice of 'period'" in _text(result)
