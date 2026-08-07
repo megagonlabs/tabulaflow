@@ -29,20 +29,20 @@ Implemented on `dev` so far:
   - `ChatResult.artifacts` is the source-backed artifact graph for the turn.
   - `TableArtifact` models implicit `Q*` / `QS*` table cards; there is intentionally no `render_table`.
   - `ChartArtifact` models source-backed charts.
-  - `MapArtifact` carries lightweight `map_spec`; `GraphArtifact` remains fixed by `graph_id` for now.
+  - `MapArtifact` carries lightweight `map_spec`; `GraphArtifact` carries lightweight `graph_spec`.
   - `ChatAgent.artifact_resolver.resolve(result, selection=None)` resolves default or active selections.
   - Resolved payloads are separate `Resolved*Artifact` models, plus `ArtifactPlaceholder` for not-applicable selections.
 - Source ids are plain `Q*` / `QS*` strings; no separate `ArtifactSource` wrapper.
 - `ArtifactResolver` now only materializes logical chat artifacts; query-record payload lookup lives in `QueryHistory`, and `show_artifacts` refs are converted to logical artifacts during chat-result construction.
 - The tool-facing `show_artifacts` item is named `ArtifactRef`, because it is only an id+label reference.
 - Query-history artifact registry entries are named `StoredChartArtifact`, `StoredMapArtifact`, and `StoredGraphArtifact` to distinguish session storage from answer-level logical artifacts.
+- Stored graph artifacts now keep normalized graph specs rather than materialized `GraphView` payloads.
 - The browser pane supports finite choice controls via live session-backed resolution.
 
 In progress / next cleanup:
 
 - Continue hardening the artifact definition model before adding lazy/server-side sliders:
-  - move toward one shared lightweight/spec-backed `ArtifactDef` shape when graph can also be spec-backed;
-  - refactor graph from stored materialized `GraphView` toward a source/spec-backed definition, if feasible.
+  - move toward one shared lightweight/spec-backed `ArtifactDef` shape across chat results and query-history storage;
 - Design true server-side parameterized sources for sliders after the shared artifact-definition shape is settled; current sliders are model/UI-safe but do not rerun or parameterize queries.
 
 ## Product thesis

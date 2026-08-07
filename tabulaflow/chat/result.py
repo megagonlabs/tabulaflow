@@ -101,11 +101,12 @@ class MapArtifact(BaseModel):
 
 
 class GraphArtifact(BaseModel):
-    """Logical fixed graph artifact."""
+    """Logical graph artifact."""
 
     kind: Literal["graph"] = "graph"
     graph_id: str
     label: str | None
+    graph_spec: dict[str, Any]
 
 
 Artifact = Annotated[TableArtifact | ChartArtifact | MapArtifact | GraphArtifact, Field(discriminator="kind")]

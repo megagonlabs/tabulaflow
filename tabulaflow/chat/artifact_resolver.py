@@ -22,7 +22,8 @@ from tabulaflow.chat.result import (
     TableArtifact,
 )
 from tabulaflow.toolhub import QueryHistory, ResolvedQueryRecord
-from tabulaflow.toolhub.query_history import SourceNotApplicable, StoredGraphArtifact
+from tabulaflow.toolhub.query_history import SourceNotApplicable
+from tabulaflow.toolhub.render_graph import GraphSpecError, materialize_graph_view
 
 if TYPE_CHECKING:
     import pandas as pd
@@ -66,7 +67,7 @@ class ArtifactResolver:
             elif isinstance(artifact, MapArtifact):
                 item = await self._resolve_map(artifact)
             elif isinstance(artifact, GraphArtifact):
-                item = await self._resolve_graph(artifact)
+                item = await self._resolve_graph(artifact, selection, controls)
             else:
                 item = None
             if item is not None:
@@ -106,12 +107,19 @@ class ArtifactResolver:
     async def _resolve_map(self, artifact: MapArtifact) -> ResolvedMapArtifact | None:
         return await self._map_from_artifact(artifact)
 
-    async def _resolve_graph(self, artifact: GraphArtifact) -> ResolvedGraphArtifact | None:
+    async def _resolve_graph(
+        self,
+        artifact: GraphArtifact,
+        selection: Mapping[str, SelectionValue],
+        controls: Sequence[AnswerControl],
+    ) -> ResolvedGraphArtifact | ArtifactPlaceholder | None:
+        sources = await self._graph_sources(artifact.graph_spec, artifact.label, selection, controls)
+        if isinstance(sources, (ArtifactPlaceholder, type(None))):
+            return sources
         try:
-            stored = self._query_history.get_graph(artifact.graph_id)
-        except (KeyError, ValueError):
+            return self._graph_from_artifact(artifact, sources)
+        except GraphSpecError:
             return None
-        return self._graph_from_stored(stored, artifact.label)
 
     async def _source_payload(
         self,
@@ -194,11 +202,38 @@ class ArtifactResolver:
                 sources[sid] = payload.df
         return ResolvedMapArtifact(map_id=artifact.map_id, label=artifact.label, map_spec=spec, sources=sources)
 
+    async def _graph_sources(
+        self,
+        graph_spec: Mapping[str, object],
+        label: str | None,
+        selection: Mapping[str, SelectionValue],
+        controls: Sequence[AnswerControl],
+    ) -> dict[str, pd.DataFrame] | ArtifactPlaceholder | None:
+        source_ids: list[str] = []
+        for key in ("nodes", "edges"):
+            raw_sources = graph_spec.get(key)
+            for source in raw_sources if isinstance(raw_sources, list) else []:
+                if not isinstance(source, Mapping) or "data" in source:
+                    continue
+                source_id = source.get("source_id")
+                if isinstance(source_id, str) and source_id not in source_ids:
+                    source_ids.append(source_id)
+        sources: dict[str, pd.DataFrame] = {}
+        for source_id in source_ids:
+            payload = await self._source_payload(source_id, label, selection, controls)
+            if isinstance(payload, ArtifactPlaceholder):
+                return payload
+            if payload is None or payload.df is None:
+                return None
+            sources[source_id] = payload.df
+        return sources
+
     @staticmethod
-    def _graph_from_stored(stored: StoredGraphArtifact, label: str | None) -> ResolvedGraphArtifact:
+    def _graph_from_artifact(artifact: GraphArtifact, sources: Mapping[str, pd.DataFrame]) -> ResolvedGraphArtifact:
+        raw_layout = artifact.graph_spec.get("layout")
         return ResolvedGraphArtifact(
-            graph_id=stored.graph_id,
-            label=label,
-            graph=stored.graph,
-            layout=stored.layout,
+            graph_id=artifact.graph_id,
+            label=artifact.label,
+            graph=materialize_graph_view(artifact.graph_spec, sources),
+            layout=raw_layout if raw_layout in {"force", "layered", "tree"} else "force",
         )

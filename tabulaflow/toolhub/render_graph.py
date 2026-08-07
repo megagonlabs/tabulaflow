@@ -35,15 +35,15 @@ class _ValueRef(_StrictModel):
 
 
 class _SourceModel(_StrictModel):
-    record_id: str | None = None
+    source_id: str | None = None
     data: list[dict[str, Any]] | None = None
 
     @model_validator(mode="after")
     def _validate_source_mode(self) -> _SourceModel:
-        has_record = self.record_id is not None
+        has_record = self.source_id is not None
         has_data = self.data is not None
         if has_record == has_data:
-            raise ValueError("graph sources must set exactly one of record_id or data")
+            raise ValueError("graph sources must set exactly one of source_id or data")
         if self.data is not None and not self.data:
             raise ValueError("inline graph data must be a non-empty list")
         return self
@@ -169,7 +169,7 @@ def _normalize_node_source(df: pd.DataFrame | None, source: _NodeSource, index: 
         def resolve_field(value: str | None, *, path: str) -> str:
             return _field(df, value, path=path)
 
-        out = {"record_id": source.record_id, "id": resolve_field(source.id, path=f"nodes[{index}].id")}
+        out = {"source_id": source.source_id, "id": resolve_field(source.id, path=f"nodes[{index}].id")}
 
     label = _optional_field(resolve_field, source.label, path=f"nodes[{index}].label")
     if label is not None:
@@ -202,7 +202,7 @@ def _normalize_edge_source(df: pd.DataFrame | None, source: _EdgeSource, index: 
             return _field(df, value, path=path)
 
         out = {
-            "record_id": source.record_id,
+            "source_id": source.source_id,
             "source": resolve_field(source.source, path=f"edges[{index}].source"),
             "target": resolve_field(source.target, path=f"edges[{index}].target"),
         }
@@ -225,15 +225,15 @@ def parse_graph_spec(spec: Mapping[str, object]) -> _GraphSpec:
         raise GraphSpecError(_validation_message(e)) from None
 
 
-def referenced_record_ids(parsed: _GraphSpec) -> list[str]:
-    """Return the distinct query-history record ids referenced by a parsed spec."""
+def referenced_source_ids(parsed: _GraphSpec) -> list[str]:
+    """Return the distinct query-history source ids referenced by a parsed spec."""
     ids: list[str] = []
     all_sources: list[_NodeSource | _EdgeSource] = [
         *parsed.nodes,
         *parsed.edges,
     ]
     for source in all_sources:
-        rid = source.record_id
+        rid = source.source_id
         if rid and rid not in ids:
             ids.append(rid)
     return ids
@@ -248,14 +248,14 @@ def resolve_graph_spec(parsed: _GraphSpec, sources: Mapping[str, pd.DataFrame]) 
     nodes: list[dict[str, Any]] = []
     edges: list[dict[str, Any]] = []
     for index, node_source in enumerate(parsed.nodes):
-        df = sources.get(node_source.record_id) if node_source.record_id is not None else None
-        if node_source.record_id is not None and df is None:
-            raise GraphSpecError(f"nodes[{index}] references unknown record_id {node_source.record_id!r}")
+        df = sources.get(node_source.source_id) if node_source.source_id is not None else None
+        if node_source.source_id is not None and df is None:
+            raise GraphSpecError(f"nodes[{index}] references unknown source_id {node_source.source_id!r}")
         nodes.append(_normalize_node_source(df, node_source, index))
     for index, edge_source in enumerate(parsed.edges):
-        df = sources.get(edge_source.record_id) if edge_source.record_id is not None else None
-        if edge_source.record_id is not None and df is None:
-            raise GraphSpecError(f"edges[{index}] references unknown record_id {edge_source.record_id!r}")
+        df = sources.get(edge_source.source_id) if edge_source.source_id is not None else None
+        if edge_source.source_id is not None and df is None:
+            raise GraphSpecError(f"edges[{index}] references unknown source_id {edge_source.source_id!r}")
         edges.append(_normalize_edge_source(df, edge_source, index))
 
     if not edges:
@@ -274,7 +274,7 @@ def _source_rows(source: Mapping[str, object], sources: Mapping[str, pd.DataFram
     inline = source.get("data")
     if isinstance(inline, Sequence) and not isinstance(inline, str | bytes | bytearray):
         return [row for row in inline if isinstance(row, Mapping)]
-    rid = source.get("record_id")
+    rid = source.get("source_id")
     if not isinstance(rid, str) or rid not in sources:
         return []
     return [row for row in sources[rid].to_dict(orient="records") if isinstance(row, Mapping)]
@@ -443,7 +443,7 @@ class RenderGraphTool:
 
         The spec is a JSON string containing an object with ``nodes`` and
         ``edges``. Each column source names the query result it reads from via
-        ``record_id``. Nodes may be supplied in one result while edges come
+        ``source_id``. Nodes may be supplied in one result while edges come
         from another; every edge endpoint id must match a declared node id.
 
         Full public grammar:
@@ -454,7 +454,7 @@ class RenderGraphTool:
           ``edges``: required list of edge sources.
         - Node source:
           Column mode:
-          ``{"record_id":"Q1","id":"id","label":"name","group":"type"}``.
+          ``{"source_id":"Q1","id":"id","label":"name","group":"type"}``.
           Inline mode:
           ``{"data":[{"id":"a","name":"A"}],"id":"id","label":"name"}``.
           Node ``id`` values are global across all sources: equal ids are
@@ -470,7 +470,7 @@ class RenderGraphTool:
           fields; node titles use ``label`` or ``id``.
         - Edge source:
           Column mode:
-          ``{"record_id":"Q2","source":"from_id","target":"to_id","label":"rel"}``.
+          ``{"source_id":"Q2","source":"from_id","target":"to_id","label":"rel"}``.
           Inline mode:
           ``{"data":[{"from":"a","to":"b"}],"source":"from","target":"to"}``.
           ``label`` is drawn along the edge (typically the relationship
@@ -481,10 +481,10 @@ class RenderGraphTool:
           Explicit tooltip lists define body fields; edge titles use ``label``
           when present.
         Minimal examples:
-        ``{"nodes":[{"record_id":"Q1","id":"src"},{"record_id":"Q1","id":"dst"}],"edges":[{"record_id":"Q1","source":"src","target":"dst","label":"rel"}]}``
-        ``{"layout":"layered","nodes":[{"record_id":"Q1","id":"id","label":"name"}],"edges":[{"record_id":"Q2","source":"from_id","target":"to_id"}]}``
+        ``{"nodes":[{"source_id":"Q1","id":"src"},{"source_id":"Q1","id":"dst"}],"edges":[{"source_id":"Q1","source":"src","target":"dst","label":"rel"}]}``
+        ``{"layout":"layered","nodes":[{"source_id":"Q1","id":"id","label":"name"}],"edges":[{"source_id":"Q2","source":"from_id","target":"to_id"}]}``
         ``{"nodes":[{"data":[{"id":"a"},{"id":"b"}],"id":"id"}],"edges":[{"data":[{"from":"a","to":"b"}],"source":"from","target":"to"}]}``
-        ``{"nodes":[{"record_id":"Q1","id":"customer","group":{"value":"Customer"}},{"record_id":"Q1","id":"product","group":{"value":"Product"}}],"edges":[{"record_id":"Q1","source":"customer","target":"product","label":{"value":"PURCHASED"}}]}``
+        ``{"nodes":[{"source_id":"Q1","id":"customer","group":{"value":"Customer"}},{"source_id":"Q1","id":"product","group":{"value":"Product"}}],"edges":[{"source_id":"Q1","source":"customer","target":"product","label":{"value":"PURCHASED"}}]}``
 
         Returns the new graph id (``GRAPH1``, ``GRAPH2``, …) to cite in the answer.
 
@@ -504,13 +504,13 @@ class RenderGraphTool:
         except GraphSpecError as e:
             return f"(error: {e})"
 
-        record_ids = referenced_record_ids(parsed)
+        source_ids = referenced_source_ids(parsed)
         sources: dict[str, pd.DataFrame] = {}
-        for rid in record_ids:
+        for rid in source_ids:
             try:
                 await self._history.get(rid)
             except KeyError:
-                return f"(error: unknown record_id {rid!r})"
+                return f"(error: unknown source_id {rid!r})"
             try:
                 df = await self._history.get_dataframe(rid)
             except ValueError as e:
@@ -527,11 +527,9 @@ class RenderGraphTool:
         except GraphSpecError as e:
             return f"(error: {e})"
 
-        raw_layout = normalized.get("layout")
-        layout: Literal["force", "layered", "tree"] = raw_layout if raw_layout in {"force", "layered", "tree"} else "force"
-        graph_id = self._history.add_graph(graph, layout=layout)
+        graph_id = self._history.add_graph(normalized)
         label = graph_type_label(normalized)
-        from_text = f" from {', '.join(record_ids)}" if record_ids else ""
+        from_text = f" from {', '.join(source_ids)}" if source_ids else ""
         if size.groups == 0:
             counts = (
                 f"{size.nodes:,} nodes, {size.edges:,} edges "

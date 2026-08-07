@@ -1017,7 +1017,7 @@ def _graph_network_card(pane_dir: Path) -> PaneCard:
             "layout": "force",
             "nodes": [
                 {
-                    "record_id": "Q_GRAPH_NODES",
+                    "source_id": "Q_GRAPH_NODES",
                     "id": "id",
                     "label": "name",
                     "group": "team",
@@ -1026,7 +1026,7 @@ def _graph_network_card(pane_dir: Path) -> PaneCard:
             ],
             "edges": [
                 {
-                    "record_id": "Q_GRAPH_EDGES",
+                    "source_id": "Q_GRAPH_EDGES",
                     "source": "src",
                     "target": "dst",
                     "label": "rel",
@@ -1191,7 +1191,7 @@ def _physics_graph_card(
             "layout": "force",
             "nodes": [
                 {
-                    "record_id": f"Q_{shape.upper()}_NODES",
+                    "source_id": f"Q_{shape.upper()}_NODES",
                     "id": "id",
                     "label": "label",
                     "group": "group",
@@ -1200,7 +1200,7 @@ def _physics_graph_card(
             ],
             "edges": [
                 {
-                    "record_id": f"Q_{shape.upper()}_EDGES",
+                    "source_id": f"Q_{shape.upper()}_EDGES",
                     "source": "src",
                     "target": "dst",
                     "label": "rel",
@@ -1404,7 +1404,7 @@ def _graph_lineage_card(pane_dir: Path) -> PaneCard:
             "layout": "layered",
             "nodes": [
                 {
-                    "record_id": "Q_LINEAGE_NODES",
+                    "source_id": "Q_LINEAGE_NODES",
                     "id": "id",
                     "label": "label",
                     "group": "layer",
@@ -1413,7 +1413,7 @@ def _graph_lineage_card(pane_dir: Path) -> PaneCard:
             ],
             "edges": [
                 {
-                    "record_id": "Q_LINEAGE",
+                    "source_id": "Q_LINEAGE",
                     "source": "from_id",
                     "target": "to_id",
                     "label": "rel",
@@ -1459,7 +1459,7 @@ def _graph_tree_card(pane_dir: Path) -> PaneCard:
             "layout": "tree",
             "nodes": [
                 {
-                    "record_id": "Q_TREE_NODES",
+                    "source_id": "Q_TREE_NODES",
                     "id": "id",
                     "label": "label",
                     "group": "group",
@@ -1468,7 +1468,7 @@ def _graph_tree_card(pane_dir: Path) -> PaneCard:
             ],
             "edges": [
                 {
-                    "record_id": "Q_TREE_EDGES",
+                    "source_id": "Q_TREE_EDGES",
                     "source": "src",
                     "target": "dst",
                     "label": "rel",

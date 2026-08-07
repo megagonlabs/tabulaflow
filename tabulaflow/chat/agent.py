@@ -843,7 +843,7 @@ def _artifact_from_ref(ref_id: str, label: str | None, query_history: QueryHisto
             graph = query_history.get_graph(ref_id)
         except (KeyError, ValueError):
             return None
-        return ChatGraphArtifact(graph_id=graph.graph_id, label=label)
+        return ChatGraphArtifact(graph_id=graph.graph_id, label=label, graph_spec=graph.graph_spec)
     if ref_id.startswith("QS"):
         try:
             query_history.get_family(ref_id)

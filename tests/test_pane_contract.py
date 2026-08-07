@@ -122,7 +122,9 @@ def test_record_card_with_attached_graph_payload_matches_contract(tmp_path: Path
         edges=[{"id": "acted_in", "source": "alice", "target": "matrix", "label": "ACTED_IN", "directed": True}],
     )
     card = render_record_data(
-        SimpleNamespace(df=df, chart_spec=None, graph=graph, query="MATCH p=()-->() RETURN p", label="paths", query_lexer="cypher"),
+        SimpleNamespace(
+            df=df, chart_spec=None, graph=graph, query="MATCH p=()-->() RETURN p", label="paths", query_lexer="cypher"
+        ),
         tmp_path,
     )
 
@@ -152,8 +154,8 @@ def test_graph_card_payload_matches_contract(tmp_path: Path) -> None:
     df = pd.DataFrame({"src": ["a"], "dst": ["b"], "rel": ["feeds"]})
     spec = {
         "layout": "layered",
-        "nodes": [{"record_id": "Q1", "id": "src"}, {"record_id": "Q1", "id": "dst"}],
-        "edges": [{"record_id": "Q1", "source": "src", "target": "dst", "label": "rel"}],
+        "nodes": [{"source_id": "Q1", "id": "src"}, {"source_id": "Q1", "id": "dst"}],
+        "edges": [{"source_id": "Q1", "source": "src", "target": "dst", "label": "rel"}],
     }
     normalized = normalize_graph_spec(spec, {"Q1": df})
     card = render_graph_data(
@@ -175,8 +177,8 @@ def test_graph_card_omits_directed_flag_for_undirected_edges(tmp_path: Path) -> 
     df = pd.DataFrame({"src": ["a"], "dst": ["b"]})
     spec = {
         "layout": "force",
-        "nodes": [{"record_id": "Q1", "id": "src"}, {"record_id": "Q1", "id": "dst"}],
-        "edges": [{"record_id": "Q1", "source": "src", "target": "dst", "directed": False}],
+        "nodes": [{"source_id": "Q1", "id": "src"}, {"source_id": "Q1", "id": "dst"}],
+        "edges": [{"source_id": "Q1", "source": "src", "target": "dst", "directed": False}],
     }
     normalized = normalize_graph_spec(spec, {"Q1": df})
     card = render_graph_data(
