@@ -406,7 +406,7 @@ class RenderChartTool:
     """Create a standalone chart artifact from a query record or family source.
 
     Validates the spec against the source DataFrame(s) and stores it as a citable
-    ``ChartArtifact``. Simple x/y specs also get a terminal (plotext) preview;
+    ``ChartArtifactDef``. Simple x/y specs also get a terminal (plotext) preview;
     richer specs render in the browser via the full Vega runtime.
     """
 

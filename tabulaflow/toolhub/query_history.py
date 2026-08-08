@@ -8,6 +8,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Literal, TypeAlias
 
+from tabulaflow.core.outputs import ArtifactDef, ChartArtifactDef, GraphArtifactDef, MapArtifactDef
 from tabulaflow.core.types import ErrorInfo, GraphView, PredQuery
 
 if TYPE_CHECKING:
@@ -128,40 +129,6 @@ def _project_family_selection(
     return projected
 
 
-@dataclass
-class StoredChartArtifact:
-    """A chart drawn from a single query result.
-
-    A standalone artifact whose Vega-Lite ``chart_spec`` renders the DataFrame
-    selected by ``source_id`` — see ``toolhub.render_chart``.
-    """
-
-    chart_id: str
-    source_id: str
-    chart_spec: dict[str, Any]
-
-
-@dataclass
-class StoredMapArtifact:
-    """A map assembled from one or more query results.
-
-    A standalone artifact (not attached to any single ``QueryRecord``) whose
-    normalized ``map_spec`` layers each carry the ``source`` record id they read
-    from — see ``toolhub.render_map``.
-    """
-
-    map_id: str
-    map_spec: dict[str, Any]
-
-
-@dataclass
-class StoredGraphArtifact:
-    """A normalized node-link graph spec stored for later materialization."""
-
-    graph_id: str
-    graph_spec: dict[str, Any]
-
-
 class _ResultStore:
     """DuckDB-backed store for tabular query results, with a small memory cache."""
 
@@ -258,9 +225,7 @@ class QueryHistory:
             raise ValueError("max_in_memory must be >= 1")
         self._records: dict[str, QueryRecord] = {}
         self._families: dict[str, QueryFamily] = {}
-        self._charts: dict[str, StoredChartArtifact] = {}
-        self._maps: dict[str, StoredMapArtifact] = {}
-        self._graphs: dict[str, StoredGraphArtifact] = {}
+        self._artifacts: dict[str, ArtifactDef] = {}
         self._next_query_id = 1
         self._next_family_id = 1
         self._next_chart_id = 1
@@ -434,41 +399,48 @@ class QueryHistory:
         else:
             raise ValueError(f"source_id must start with 'Q' or 'QS', got {source_id!r}")
         chart_id = f"CHART{self._next_chart_id}"
-        self._charts[chart_id] = StoredChartArtifact(chart_id=chart_id, source_id=source_id, chart_spec=chart_spec)
+        self._artifacts[chart_id] = ChartArtifactDef(chart_id=chart_id, source_id=source_id, chart_spec=chart_spec)
         self._next_chart_id += 1
         return chart_id
 
-    def get_chart(self, chart_id: str) -> StoredChartArtifact:
+    def get_chart(self, chart_id: str) -> ChartArtifactDef:
         """Return a previously stored chart artifact."""
-        try:
-            return self._charts[chart_id]
-        except KeyError:
+        artifact = self.get_artifact(chart_id)
+        if not isinstance(artifact, ChartArtifactDef):
             raise KeyError(f"No chart with id {chart_id}") from None
+        return artifact
 
     def add_map(self, map_spec: dict[str, Any]) -> str:
         """Store a standalone map artifact and return its opaque ``MAP*`` id."""
         map_id = f"MAP{self._next_map_id}"
-        self._maps[map_id] = StoredMapArtifact(map_id=map_id, map_spec=map_spec)
+        self._artifacts[map_id] = MapArtifactDef(map_id=map_id, map_spec=map_spec)
         self._next_map_id += 1
         return map_id
 
-    def get_map(self, map_id: str) -> StoredMapArtifact:
+    def get_map(self, map_id: str) -> MapArtifactDef:
         """Return a previously stored map artifact."""
-        try:
-            return self._maps[map_id]
-        except KeyError:
+        artifact = self.get_artifact(map_id)
+        if not isinstance(artifact, MapArtifactDef):
             raise KeyError(f"No map with id {map_id}") from None
+        return artifact
 
     def add_graph(self, graph_spec: dict[str, Any]) -> str:
         """Store a standalone graph artifact and return its opaque ``GRAPH*`` id."""
         graph_id = f"GRAPH{self._next_graph_id}"
-        self._graphs[graph_id] = StoredGraphArtifact(graph_id=graph_id, graph_spec=graph_spec)
+        self._artifacts[graph_id] = GraphArtifactDef(graph_id=graph_id, graph_spec=graph_spec)
         self._next_graph_id += 1
         return graph_id
 
-    def get_graph(self, graph_id: str) -> StoredGraphArtifact:
+    def get_graph(self, graph_id: str) -> GraphArtifactDef:
         """Return a previously stored graph artifact."""
-        try:
-            return self._graphs[graph_id]
-        except KeyError:
+        artifact = self.get_artifact(graph_id)
+        if not isinstance(artifact, GraphArtifactDef):
             raise KeyError(f"No graph with id {graph_id}") from None
+        return artifact
+
+    def get_artifact(self, artifact_id: str) -> ArtifactDef:
+        """Return a previously stored chart, map, or graph artifact definition."""
+        try:
+            return self._artifacts[artifact_id]
+        except KeyError:
+            raise KeyError(f"No artifact with id {artifact_id}") from None

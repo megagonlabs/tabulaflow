@@ -8,6 +8,7 @@ import pandas as pd
 from pydantic import BaseModel, ConfigDict, Field, field_serializer, field_validator, model_validator
 
 from tabulaflow.core.dataframe import _deserialize_dataframe, _serialize_dataframe
+from tabulaflow.core.outputs import ArtifactDef
 from tabulaflow.core.types import GraphView, Usage
 
 
@@ -71,45 +72,6 @@ class AnswerPanel(BaseModel):
                 elif isinstance(control, SliderControl):
                     self.default_selection[control.id] = control.default
         return self
-
-
-class TableArtifact(BaseModel):
-    """Logical table artifact, resolved from a query source."""
-
-    kind: Literal["table"] = "table"
-    label: str | None
-    source_id: str
-
-
-class ChartArtifact(BaseModel):
-    """Logical chart artifact, resolved from a query source and Vega-Lite spec."""
-
-    kind: Literal["chart"] = "chart"
-    chart_id: str
-    label: str | None
-    source_id: str
-    chart_spec: dict[str, Any]
-
-
-class MapArtifact(BaseModel):
-    """Logical map artifact."""
-
-    kind: Literal["map"] = "map"
-    map_id: str
-    label: str | None
-    map_spec: dict[str, Any]
-
-
-class GraphArtifact(BaseModel):
-    """Logical graph artifact."""
-
-    kind: Literal["graph"] = "graph"
-    graph_id: str
-    label: str | None
-    graph_spec: dict[str, Any]
-
-
-Artifact = Annotated[TableArtifact | ChartArtifact | MapArtifact | GraphArtifact, Field(discriminator="kind")]
 
 
 class ResolvedTableArtifact(BaseModel):
@@ -215,13 +177,13 @@ class ChatResult(BaseModel):
     """Logical result of one chat turn."""
 
     text: str
-    artifacts: list[Artifact] = Field(default_factory=list)
+    artifacts: list[ArtifactDef] = Field(default_factory=list)
     primary_artifact_index: int | None = 0
     usage: Usage | None = None
     panel: AnswerPanel | None = None
 
     @property
-    def primary_artifact(self) -> Artifact | None:
+    def primary_artifact(self) -> ArtifactDef | None:
         if not self.artifacts:
             return None
         if self.primary_artifact_index is None:

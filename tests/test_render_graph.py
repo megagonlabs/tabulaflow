@@ -246,4 +246,4 @@ class TestRenderGraphTool:
         msg = await RenderGraphTool(history=history)(graph_spec=json.dumps(spec))
         assert "too large" in msg
         assert "nodes" in msg
-        assert history._graphs == {}
+        assert history._artifacts == {}

@@ -21,28 +21,28 @@ Implemented on `dev` so far:
   - `QueryHistory.resolve_source_id(...)`
   - `QueryHistory.resolve_query_record(...)`
 - Chart artifacts are source-backed:
-  - `ChartArtifact.source_id: str`
+  - `ChartArtifactDef.source_id: str`
   - `render_chart(source_id=...)` accepts `Q*` and `QS*`.
   - For `QS*`, chart validation checks every source variant and reports all failures by selection key, not internal variant record id.
   - `show_artifacts` treats a chart backed by a `QS*` source as varying over that family.
 - Chat results now carry only logical artifacts:
   - `ChatResult.artifacts` is the source-backed artifact graph for the turn.
-  - `TableArtifact` models implicit `Q*` / `QS*` table cards; there is intentionally no `render_table`.
-  - `ChartArtifact` models source-backed charts.
-  - `MapArtifact` carries lightweight `map_spec`; `GraphArtifact` carries lightweight `graph_spec`.
+  - `TableArtifactDef` models implicit `Q*` / `QS*` table cards; there is intentionally no `render_table`.
+  - `ChartArtifactDef` models source-backed charts.
+  - `MapArtifactDef` carries lightweight `map_spec`; `GraphArtifactDef` carries lightweight `graph_spec`.
   - `ChatAgent.artifact_resolver.resolve(result, selection=None)` resolves default or active selections.
   - Resolved payloads are separate `Resolved*Artifact` models, plus `ArtifactPlaceholder` for not-applicable selections.
 - Source ids are plain `Q*` / `QS*` strings; no separate `ArtifactSource` wrapper.
 - `ArtifactResolver` now only materializes logical chat artifacts; query-record payload lookup lives in `QueryHistory`, and `show_artifacts` refs are converted to logical artifacts during chat-result construction.
 - The tool-facing `show_artifacts` item is named `ArtifactRef`, because it is only an id+label reference.
-- Query-history artifact registry entries are named `StoredChartArtifact`, `StoredMapArtifact`, and `StoredGraphArtifact` to distinguish session storage from answer-level logical artifacts.
+- Query-history artifact registry entries reuse the shared `*ArtifactDef` models.
 - Stored graph artifacts now keep normalized graph specs rather than materialized `GraphView` payloads.
 - The browser pane supports finite choice controls via live session-backed resolution.
 
 In progress / next cleanup:
 
 - Continue hardening the artifact definition model before adding lazy/server-side sliders:
-  - move toward one shared lightweight/spec-backed `ArtifactDef` shape across chat results and query-history storage;
+  - continue consolidating around the shared lightweight/spec-backed `ArtifactDef` shape across chat results and query-history storage;
 - Design true server-side parameterized sources for sliders after the shared artifact-definition shape is settled; current sliders are model/UI-safe but do not rerun or parameterize queries.
 
 ## Product thesis
@@ -261,11 +261,9 @@ After browser-pane finite controls prove the runtime-resolution model, consolida
 
 Goals:
 
-- Rename the tool-facing `show_artifacts.Artifact` to `ArtifactRef` because it is only an id+label reference.
-- Clarify stored session artifacts versus answer-level logical artifacts, e.g. `StoredChartArtifact` vs `ChartArtifact`, if separate classes still exist.
-- Prefer one shared lightweight/spec-backed `ArtifactDef` family once all artifact types can fit it.
-- Carry lightweight specs in logical artifacts where appropriate, especially map specs.
-- Refactor graph artifacts toward source/spec-backed definitions rather than stored materialized `GraphView`, if feasible.
+- Keep the tool-facing `ArtifactRef` separate because it is only an id+label reference.
+- Use one shared lightweight/spec-backed `ArtifactDef` family for chat results and query-history artifact storage.
+- Keep graph/map/chart specs lightweight; materialize render payloads through `ArtifactResolver`.
 - Keep `ResolvedArtifact` payloads in the chat/frontend contract; do not move resolved DataFrames or graph payloads into the shared definition layer.
 
 Target long-term taxonomy:

@@ -7,21 +7,17 @@ from collections.abc import Mapping, Sequence
 from typing import TYPE_CHECKING
 from tabulaflow.chat.result import (
     AnswerControl,
-    Artifact,
     ArtifactPlaceholder,
-    ChartArtifact,
     ChatResult,
     ChoiceControl,
-    GraphArtifact,
-    MapArtifact,
     ResolvedArtifact,
     ResolvedChartArtifact,
     ResolvedGraphArtifact,
     ResolvedMapArtifact,
     ResolvedTableArtifact,
     SelectionValue,
-    TableArtifact,
 )
+from tabulaflow.core.outputs import ArtifactDef, ChartArtifactDef, GraphArtifactDef, MapArtifactDef, TableArtifactDef
 from tabulaflow.toolhub import QueryHistory, ResolvedQueryRecord
 from tabulaflow.toolhub.query_history import SourceNotApplicable
 from tabulaflow.toolhub.render_graph import GraphSpecError, materialize_graph_view
@@ -52,7 +48,7 @@ class ArtifactResolver:
 
     async def _resolve_many(
         self,
-        artifacts: Sequence[Artifact],
+        artifacts: Sequence[ArtifactDef],
         selection: Mapping[str, SelectionValue],
         *,
         controls: Sequence[AnswerControl] = (),
@@ -63,23 +59,23 @@ class ArtifactResolver:
 
     async def _resolve_one(
         self,
-        artifact: Artifact,
+        artifact: ArtifactDef,
         selection: Mapping[str, SelectionValue],
         controls: Sequence[AnswerControl],
     ) -> ResolvedArtifact | None:
-        if isinstance(artifact, TableArtifact):
+        if isinstance(artifact, TableArtifactDef):
             return await self._resolve_table(artifact, selection, controls)
-        if isinstance(artifact, ChartArtifact):
+        if isinstance(artifact, ChartArtifactDef):
             return await self._resolve_chart(artifact, selection, controls)
-        if isinstance(artifact, MapArtifact):
+        if isinstance(artifact, MapArtifactDef):
             return await self._resolve_map(artifact)
-        if isinstance(artifact, GraphArtifact):
+        if isinstance(artifact, GraphArtifactDef):
             return await self._resolve_graph(artifact, selection, controls)
         return None
 
     async def _resolve_table(
         self,
-        artifact: TableArtifact,
+        artifact: TableArtifactDef,
         selection: Mapping[str, SelectionValue],
         controls: Sequence[AnswerControl],
     ) -> ResolvedTableArtifact | ArtifactPlaceholder | None:
@@ -90,7 +86,7 @@ class ArtifactResolver:
 
     async def _resolve_chart(
         self,
-        artifact: ChartArtifact,
+        artifact: ChartArtifactDef,
         selection: Mapping[str, SelectionValue],
         controls: Sequence[AnswerControl],
     ) -> ResolvedChartArtifact | ArtifactPlaceholder | None:
@@ -107,12 +103,12 @@ class ArtifactResolver:
             query_lexer=payload.query_lexer,
         )
 
-    async def _resolve_map(self, artifact: MapArtifact) -> ResolvedMapArtifact | None:
+    async def _resolve_map(self, artifact: MapArtifactDef) -> ResolvedMapArtifact | None:
         return await self._map_from_artifact(artifact)
 
     async def _resolve_graph(
         self,
-        artifact: GraphArtifact,
+        artifact: GraphArtifactDef,
         selection: Mapping[str, SelectionValue],
         controls: Sequence[AnswerControl],
     ) -> ResolvedGraphArtifact | ArtifactPlaceholder | None:
@@ -187,7 +183,7 @@ class ArtifactResolver:
             query_lexer=query_record.query_lexer,
         )
 
-    async def _map_from_artifact(self, artifact: MapArtifact) -> ResolvedMapArtifact:
+    async def _map_from_artifact(self, artifact: MapArtifactDef) -> ResolvedMapArtifact:
         spec = artifact.map_spec
         layers = spec.get("layers") or []
         source_ids: list[str] = []
@@ -232,7 +228,7 @@ class ArtifactResolver:
         return sources
 
     @staticmethod
-    def _graph_from_artifact(artifact: GraphArtifact, sources: Mapping[str, pd.DataFrame]) -> ResolvedGraphArtifact:
+    def _graph_from_artifact(artifact: GraphArtifactDef, sources: Mapping[str, pd.DataFrame]) -> ResolvedGraphArtifact:
         raw_layout = artifact.graph_spec.get("layout")
         return ResolvedGraphArtifact(
             graph_id=artifact.graph_id,

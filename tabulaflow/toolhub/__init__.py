@@ -23,9 +23,6 @@ from tabulaflow.toolhub.registry_get_schema import RegistryGetSchemaTool
 from tabulaflow.toolhub.registry_get_table_schema import RegistryGetTableSchemaTool
 from tabulaflow.toolhub.query_history import (
     QUERY_HISTORY_SCHEMA,
-    StoredChartArtifact,
-    StoredGraphArtifact,
-    StoredMapArtifact,
     QueryFailure,
     QueryFamily,
     QueryHistory,
@@ -74,8 +71,6 @@ __all__ = [
     "FileEditorRoot",
     "FileEditorTool",
     "FileEditorToolMetrics",
-    "StoredChartArtifact",
-    "StoredGraphArtifact",
     "RegistryGetColumnJsonSchemaTool",
     "RegistryGetDBDocumentTool",
     "RegistryGetSchemaTool",
@@ -85,7 +80,6 @@ __all__ = [
     "Choice",
     "Dimension",
     "selection_key",
-    "StoredMapArtifact",
     "QueryFailure",
     "QueryDimension",
     "QueryFamily",

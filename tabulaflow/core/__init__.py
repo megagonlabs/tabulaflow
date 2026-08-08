@@ -31,9 +31,18 @@ from tabulaflow.core.types import (
     Usage,
     UserMessage,
 )
+from tabulaflow.core.outputs import (
+    ArtifactDef,
+    ChartArtifactDef,
+    GraphArtifactDef,
+    MapArtifactDef,
+    TableArtifactDef,
+)
 
 __all__ = [
     "AssistantMessage",
+    "ArtifactDef",
+    "ChartArtifactDef",
     "ColumnRef",
     "ErrorInfo",
     "ExecResult",
@@ -42,6 +51,8 @@ __all__ = [
     "GraphView",
     "GraphViewEdge",
     "GraphViewNode",
+    "GraphArtifactDef",
+    "MapArtifactDef",
     "NodeSchema",
     "NumericOrNull",
     "PredQuery",
@@ -53,6 +64,7 @@ __all__ = [
     "SQLTableSchema",
     "SystemMessage",
     "TableRef",
+    "TableArtifactDef",
     "ToolCall",
     "ToolResponse",
     "Trajectory",

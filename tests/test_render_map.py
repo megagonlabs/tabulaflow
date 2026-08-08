@@ -227,7 +227,7 @@ class TestRenderMapTool:
         spec = {"layers": [{"type": "points", "lat": "lat", "lng": "lng"}]}
         msg = await RenderMapTool(history=history)(map_spec=json.dumps(spec))
         assert "record_id" in msg
-        assert history._maps == {}
+        assert history._artifacts == {}
 
     async def test_points_map_created(self) -> None:
         history = await _history_with(pd.DataFrame({"lat": [37.7], "lng": [-122.4], "name": ["SF"]}))
@@ -279,21 +279,21 @@ class TestRenderMapTool:
         spec = {"layers": [{"type": "points", "record_id": "Q9", "lat": "lat", "lng": "lng"}]}
         msg = await RenderMapTool(history=history)(map_spec=json.dumps(spec))
         assert "unknown record_id" in msg
-        assert history._maps == {}
+        assert history._artifacts == {}
 
     async def test_unknown_column_errors_without_creating(self) -> None:
         history = await _history_with(pd.DataFrame({"lat": [37.7], "lng": [-122.4]}))
         spec = {"layers": [{"type": "points", "record_id": "Q1", "lat": "lat", "lng": "missing"}]}
         msg = await RenderMapTool(history=history)(map_spec=json.dumps(spec))
         assert "field not found" in msg and "missing" in msg
-        assert history._maps == {}
+        assert history._artifacts == {}
 
     async def test_invalid_coordinates_error_without_creating(self) -> None:
         history = await _history_with(pd.DataFrame({"lat": [4_547_675], "lng": [-13_627_665]}))
         spec = {"layers": [{"type": "points", "record_id": "Q1", "lat": "lat", "lng": "lng"}]}
         msg = await RenderMapTool(history=history)(map_spec=json.dumps(spec))
         assert "no valid latitude/longitude" in msg
-        assert history._maps == {}
+        assert history._artifacts == {}
 
     async def test_too_many_rows_error_without_creating(self) -> None:
         history = await _history_with(
@@ -308,4 +308,4 @@ class TestRenderMapTool:
         msg = await RenderMapTool(history=history)(map_spec=json.dumps(spec))
         assert "too large to map directly" in msg
         assert f"max {MAP_RENDER_MAX_ROWS:,} rows" in msg
-        assert history._maps == {}
+        assert history._artifacts == {}

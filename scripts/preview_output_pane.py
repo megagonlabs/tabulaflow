@@ -34,7 +34,8 @@ from tabulaflow.app.pane import PaneCard, PaneSource, card_payload, turn_payload
 from tabulaflow.app.pane.cards import render_graph_data, render_map_data, render_record_data, render_resolved_artifacts
 from tabulaflow.app.pane import server as pane_server
 from tabulaflow.app.runtime_paths import generate_session_id
-from tabulaflow.chat import AnswerPanel, ChartArtifact, ChatResult, ChoiceControl, ControlChoice, TableArtifact
+from tabulaflow.chat import AnswerPanel, ChatResult, ChoiceControl, ControlChoice
+from tabulaflow.core.outputs import ChartArtifactDef, TableArtifactDef
 from tabulaflow.chat.artifact_resolver import ArtifactResolver
 from tabulaflow.core.types import ExecResult, GraphView, PredQuery
 from tabulaflow.toolhub import QueryHistory
@@ -419,8 +420,8 @@ def _push_controls_turn(pane: pane_mod.OutputPane, pane_dir: Path) -> None:
             "the table and chart resolve through the live preview session instead of a precomputed bundle."
         ),
         artifacts=[
-            TableArtifact(label="top customers", source_id="QS1"),
-            ChartArtifact(
+            TableArtifactDef(label="top customers", source_id="QS1"),
+            ChartArtifactDef(
                 chart_id="CHART_PREVIEW_CONTROLS",
                 label="customer comparison",
                 source_id="QS1",
