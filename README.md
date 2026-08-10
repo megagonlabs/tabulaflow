@@ -517,11 +517,12 @@ July 23
 - [x] Tune prompt - "report verification concisely"
 - [x] Tune prompt - coding instructions from codex
 
-Aug 4 - 5
+Aug 4 - 7
 - [x] Fix typing/scrolling slow in 50+ turn conversation
+- [x] Source-backed artifacts
+
+Aug 10
 - [ ] Source-backed artifacts
-
-
 
 - [ ] Fix flicker when change selection in answer controls
 - [ ] Shell messed up after ssh disconnect
