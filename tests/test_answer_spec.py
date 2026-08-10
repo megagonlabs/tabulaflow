@@ -10,6 +10,7 @@ from tabulaflow.core import (
     QueryPlan,
     ResultLookupPlan,
     ResultRecord,
+    ResultVariant,
     SourceDef,
     TableView,
     canonical_selection_key,
@@ -50,11 +51,12 @@ def test_result_lookup_plan_uses_canonical_selection_keys() -> None:
     source = SourceDef(
         id="top_customers_by_metric",
         parameter_ids=["metric"],
-        plan=ResultLookupPlan(result_ids_by_selection={key: "Q2"}),
+        plan=ResultLookupPlan(variants=[ResultVariant(selection={"metric": "profit"}, result_id="Q2")]),
     )
 
     assert isinstance(source.plan, ResultLookupPlan)
-    assert source.plan.result_ids_by_selection[key] == "Q2"
+    assert canonical_selection_key(source.plan.variants[0].selection) == key
+    assert source.plan.variants[0].result_id == "Q2"
 
 
 def test_result_record_owns_query_provenance() -> None:

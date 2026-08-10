@@ -79,11 +79,18 @@ class ConstantResultPlan(BaseModel):
     result_id: ResultId
 
 
+class ResultVariant(BaseModel):
+    """One precomputed result for a source-local selection."""
+
+    selection: dict[ParameterId, SelectionValue]
+    result_id: ResultId
+
+
 class ResultLookupPlan(BaseModel):
-    """Plan that maps normalized source-local selections to existing results."""
+    """Plan that maps source-local selections to existing results."""
 
     kind: Literal["result_lookup"] = "result_lookup"
-    result_ids_by_selection: dict[SelectionKey, ResultId]
+    variants: list[ResultVariant]
 
 
 class QueryPlan(BaseModel):
