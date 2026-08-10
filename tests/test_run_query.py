@@ -7,7 +7,7 @@ import os
 from typing import AsyncGenerator, Any
 import pandas as pd
 from tabulaflow.toolhub.run_query import RunQueryTool, LLMParameter, _format_latency
-from tabulaflow.core.types import ExecResult, GraphView
+from tabulaflow.core.types import ExecResult, GraphView, GraphViewEdge, GraphViewNode
 from tabulaflow.core.db_connector.sql_conn import SQLConnector, _contains_ddl_statement, _contains_write_statement
 from sqlalchemy.ext.asyncio import create_async_engine
 
@@ -82,7 +82,7 @@ def test_format_exec_result_reports_graph_view(db_connector: SQLConnector) -> No
     result = tool._format_exec_result(
         ExecResult(
             df=pd.DataFrame({"p": ["path"]}),
-            graph=GraphView(nodes=[{"id": "a"}, {"id": "b"}], edges=[{"source": "a", "target": "b"}]),
+            graph=GraphView(nodes=[GraphViewNode(id="a"), GraphViewNode(id="b")], edges=[GraphViewEdge(source="a", target="b")]),
         )
     )
     assert "(Graph view: 2 nodes, 1 edge)" in result

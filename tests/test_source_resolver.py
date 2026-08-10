@@ -78,9 +78,8 @@ async def test_result_lookup_plan_resolves_by_projected_selection() -> None:
     record = await resolver.resolve(source, parameters=_parameters(), selection={"metric": "profit", "unused": True})
 
     assert record.id == "Q2"
-    assert canonical_selection_key({"metric": "profit"}) == canonical_selection_key(
-        source.plan.variants[1].selection
-    )
+    assert isinstance(source.plan, ResultLookupPlan)
+    assert canonical_selection_key({"metric": "profit"}) == canonical_selection_key(source.plan.variants[1].selection)
 
 
 @pytest.mark.asyncio

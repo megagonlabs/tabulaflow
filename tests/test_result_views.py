@@ -30,7 +30,7 @@ from tabulaflow.chat.result import (
     ControlChoice,
     SliderControl,
 )
-from tabulaflow.core.types import GraphView
+from tabulaflow.core.types import GraphView, GraphViewEdge, GraphViewNode
 
 
 def _record(record_id: str, label: str) -> ResolvedTableArtifact:
@@ -75,7 +75,7 @@ def _graph(graph_id: str, label: str) -> ResolvedGraphArtifact:
     return ResolvedGraphArtifact(
         graph_id=graph_id,
         label=label,
-        graph=GraphView(nodes=[{"id": "a"}, {"id": "b"}], edges=[{"source": "a", "target": "b"}]),
+        graph=GraphView(nodes=[GraphViewNode(id="a"), GraphViewNode(id="b")], edges=[GraphViewEdge(source="a", target="b")]),
         layout="force",
     )
 
@@ -116,8 +116,8 @@ def test_record_artifact_with_graph_has_graph_data_query_views() -> None:
     record = _record("Q1", "paths")
     record.query_lexer = "cypher"
     record.graph = GraphView(
-        nodes=[{"id": "a", "label": "Alice", "group": "Person"}, {"id": "b", "label": "Bob", "group": "Person"}],
-        edges=[{"source": "a", "target": "b", "label": "KNOWS", "directed": True}],
+        nodes=[GraphViewNode(id="a", label="Alice", group="Person"), GraphViewNode(id="b", label="Bob", group="Person")],
+        edges=[GraphViewEdge(source="a", target="b", label="KNOWS", directed=True)],
     )
     groups = build_artifact_card_views([record])
 

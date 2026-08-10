@@ -646,7 +646,7 @@ def _build_debug_quad_result_widget(app: TabulaflowApp) -> AgentResultWidget:
     """Compact 4-artifact fixture exercising every view-kind combination."""
     import pandas as pd
 
-    from tabulaflow.chat import ChatResult, ResolvedChartArtifact, ResolvedTableArtifact
+    from tabulaflow.chat import ChatResult, ResolvedArtifact, ResolvedChartArtifact, ResolvedTableArtifact
 
     # Artifact 1: chart artifact — Chart + Data + Query
     regions_df = pd.DataFrame(
@@ -718,7 +718,7 @@ def _build_debug_quad_result_widget(app: TabulaflowApp) -> AgentResultWidget:
         "ORDER BY (reorder_point - stock_on_hand) DESC"
     )
 
-    records = [
+    records: list[ResolvedArtifact] = [
         ResolvedChartArtifact(
             chart_id="CHARTDEBUG_QUAD_1",
             record_id="QDEBUG_QUAD_1",

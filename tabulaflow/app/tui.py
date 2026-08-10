@@ -23,7 +23,7 @@ from tabulaflow.app.config import (
     update_app_config,
 )
 from tabulaflow.app.debug import debug_enabled, mount_debug_widgets
-from tabulaflow.app.pane import PaneCard, manual_card_turn, render_resolved_artifacts, turn_payload
+from tabulaflow.app.pane import PaneCard, PanePanel, manual_card_turn, render_resolved_artifacts, turn_payload
 from tabulaflow.app.runtime_paths import RuntimePaths, ensure_pane_dir
 from tabulaflow.app.session import LLM_UNAVAILABLE_MESSAGE, SessionState
 from tabulaflow.core.llm import model_display_name
@@ -91,7 +91,7 @@ def _compact_project_dir(path: Path) -> str:
         return path.resolve().as_posix()
 
 
-def _pane_panel(result: "ChatResult") -> dict[str, object] | None:
+def _pane_panel(result: "ChatResult") -> PanePanel | None:
     if result.panel is None:
         return None
     from tabulaflow.chat import ChoiceControl

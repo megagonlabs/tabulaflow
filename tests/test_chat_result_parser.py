@@ -30,6 +30,13 @@ def _record_id(artifact: object) -> str:
     return record_id
 
 
+def _source_id(artifact: object) -> str:
+    assert getattr(artifact, "kind") == "table"
+    source_id = getattr(artifact, "source_id")
+    assert isinstance(source_id, str)
+    return source_id
+
+
 def test_strip_answer_marker_removes_the_marker() -> None:
     assert _strip_answer_marker("<answer>\nThere are 3 rows.") == "There are 3 rows."
 
@@ -124,7 +131,7 @@ async def test_build_chat_result_resolves_the_declared_bundle() -> None:
     result = await _build_chat_result("<answer>\nThere is 1 row.", bundle, history)
 
     assert result.text == "There is 1 row."
-    assert [(artifact.source_id, artifact.label) for artifact in result.artifacts] == [("Q1", "row count")]
+    assert [(_source_id(artifact), artifact.label) for artifact in result.artifacts] == [("Q1", "row count")]
     assert result.primary_artifact_index == 0
 
     without = await _build_chat_result("<answer>\nNothing to show.", None, history)

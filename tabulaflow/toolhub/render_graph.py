@@ -13,7 +13,7 @@ import pandas as pd
 from pydantic import BaseModel, ConfigDict, ValidationError, model_validator
 from pydantic_ai import Tool
 
-from tabulaflow.core.types import GraphView
+from tabulaflow.core.types import GraphView, GraphViewEdge, GraphViewNode
 from tabulaflow.core.utils import json_ready
 from tabulaflow.toolhub.query_history import QueryHistory
 from tabulaflow.toolhub.render_map import resolve_column
@@ -326,7 +326,7 @@ def _properties(
 
 def materialize_graph_view(graph_spec: Mapping[str, object], sources: Mapping[str, pd.DataFrame]) -> GraphView:
     """Materialize a normalized graph spec into the typed graph-view data contract."""
-    nodes_by_id: dict[str, dict[str, object]] = {}
+    nodes_by_id: dict[str, GraphViewNode] = {}
     raw_nodes = graph_spec.get("nodes")
     for raw_source in raw_nodes if isinstance(raw_nodes, list) else []:
         if not isinstance(raw_source, Mapping):
@@ -342,16 +342,14 @@ def materialize_graph_view(graph_spec: Mapping[str, object], sources: Mapping[st
             label = _row_value(row, label_field) if isinstance(label_field, str) else None
             group = constant_group if constant_group is not None else _row_value(row, group_field)
             properties = _properties(row, raw_source.get("tooltip"))
-            node: dict[str, object] = {"id": node_id}
-            if label is not None:
-                node["label"] = str(label)
-            if group is not None:
-                node["group"] = str(group)
-            if properties:
-                node["properties"] = properties
-            nodes_by_id[node_id] = node
+            nodes_by_id[node_id] = GraphViewNode(
+                id=node_id,
+                label=str(label) if label is not None else None,
+                group=str(group) if group is not None else None,
+                properties=properties,
+            )
 
-    edges: list[dict[str, object]] = []
+    edges: list[GraphViewEdge] = []
     unmatched: set[str] = set()
     raw_edges = graph_spec.get("edges")
     for raw_source in raw_edges if isinstance(raw_edges, list) else []:
@@ -372,12 +370,15 @@ def materialize_graph_view(graph_spec: Mapping[str, object], sources: Mapping[st
                     unmatched.add(node_id)
             label = constant_label if constant_label is not None else _row_value(row, label_field)
             properties = _properties(row, raw_source.get("tooltip"))
-            edge: dict[str, object] = {"source": source_id, "target": target_id, "directed": directed}
-            if label is not None:
-                edge["label"] = str(label)
-            if properties:
-                edge["properties"] = properties
-            edges.append(edge)
+            edges.append(
+                GraphViewEdge(
+                    source=source_id,
+                    target=target_id,
+                    directed=directed,
+                    label=str(label) if label is not None else None,
+                    properties=properties,
+                )
+            )
 
     if unmatched:
         sample = ", ".join(repr(node_id) for node_id in sorted(unmatched)[:5])
@@ -387,7 +388,7 @@ def materialize_graph_view(graph_spec: Mapping[str, object], sources: Mapping[st
         )
 
     return GraphView(
-        nodes=sorted(nodes_by_id.values(), key=lambda node: str(node["id"])),
+        nodes=sorted(nodes_by_id.values(), key=lambda node: node.id),
         edges=edges,
     )
 

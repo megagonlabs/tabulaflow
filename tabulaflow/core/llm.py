@@ -17,7 +17,7 @@ import json
 import re
 from collections.abc import Sequence
 from contextlib import AsyncExitStack, asynccontextmanager
-from typing import Any, AsyncIterator, TypeVar, cast, overload
+from typing import Any, AsyncIterator, Literal, TypeVar, cast, overload
 
 from aiolimiter import AsyncLimiter
 from pydantic_ai import Agent, ToolOutput, UsageLimits
@@ -39,6 +39,13 @@ from tabulaflow.core.config import tabulaflow_config
 DEFAULT_USAGE_LIMITS = UsageLimits(request_limit=None)
 
 _ANTHROPIC_ANSWER_TOKEN_HEADROOM = 8192
+_AnthropicEffort = Literal["minimal", "low", "medium", "high", "xhigh"]
+
+
+def _anthropic_effort(reasoning_effort: str | bool | None) -> _AnthropicEffort | None:
+    if reasoning_effort in {"minimal", "low", "medium", "high", "xhigh"}:
+        return cast(_AnthropicEffort, reasoning_effort)
+    return None
 
 
 def model_display_name(model: str, reasoning_effort: str | None = None) -> str:
@@ -94,7 +101,14 @@ def make_model_settings(
         ModelSettings,
         {
             **_reasoning_model_settings(reasoning_effort, model=model),
-            **({"anthropic_thinking": {"type": "adaptive"}, "anthropic_effort": resolve_anthropic_effort(reasoning_effort, supports_xhigh=True)} if model.startswith("anthropic:claude-opus-5") and isinstance(reasoning_effort, str) and reasoning_effort != "none" else {}),
+            **(
+                {
+                    "anthropic_thinking": {"type": "adaptive"},
+                    "anthropic_effort": resolve_anthropic_effort(effort, supports_xhigh=True),
+                }
+                if model.startswith("anthropic:claude-opus-5") and (effort := _anthropic_effort(reasoning_effort)) is not None
+                else {}
+            ),
             **_anthropic_token_settings(reasoning_effort, model=model),
             **_service_tier_model_settings(service_tier, model=model),
             **({} if timeout is None else {"timeout": timeout}),

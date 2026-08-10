@@ -42,6 +42,9 @@ class ArtifactResolver:
         controls = result.panel.controls if result.panel is not None else ()
         return await self._resolve_many(result.artifacts, active_selection, controls=controls)
 
+    async def get_dataframe(self, record_id: str) -> pd.DataFrame:
+        return await self._query_history.get_dataframe(record_id)
+
     @staticmethod
     def _default_selection(result: ChatResult) -> dict[str, SelectionValue]:
         return dict(result.panel.default_selection) if result.panel is not None else {}

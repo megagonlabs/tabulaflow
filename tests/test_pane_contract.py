@@ -4,13 +4,13 @@ import json
 import math
 from pathlib import Path
 from types import SimpleNamespace
-from typing import cast
+from typing import Any, cast
 
 import pandas as pd
 
 from tabulaflow.app.pane import CARD_ID_PREFIX, VIEW_KINDS, CardData, PaneCard
 from tabulaflow.app.pane.cards import render_graph_data, render_map_data, render_record_data
-from tabulaflow.core.types import GraphView
+from tabulaflow.core.types import GraphView, GraphViewEdge, GraphViewNode
 from tabulaflow.toolhub.render_graph import materialize_graph_view, normalize_graph_spec
 
 
@@ -116,10 +116,10 @@ def test_record_card_with_attached_graph_payload_matches_contract(tmp_path: Path
     df = pd.DataFrame({"path": ["Alice -> Matrix"]})
     graph = GraphView(
         nodes=[
-            {"id": "alice", "label": "Alice", "group": "Person"},
-            {"id": "matrix", "label": "The Matrix", "group": "Movie"},
+            GraphViewNode(id="alice", label="Alice", group="Person"),
+            GraphViewNode(id="matrix", label="The Matrix", group="Movie"),
         ],
-        edges=[{"id": "acted_in", "source": "alice", "target": "matrix", "label": "ACTED_IN", "directed": True}],
+        edges=[GraphViewEdge(id="acted_in", source="alice", target="matrix", label="ACTED_IN", directed=True)],
     )
     card = render_record_data(
         SimpleNamespace(
@@ -201,16 +201,11 @@ def test_graph_card_omits_directed_flag_for_undirected_edges(tmp_path: Path) -> 
 def test_graph_card_writes_strict_json_for_non_finite_values(tmp_path: Path) -> None:
     graph = GraphView(
         nodes=[
-            {"id": "director", "label": "Director", "group": "Director", "properties": {"rating": math.nan}},
-            {"id": "movie", "label": "Movie", "group": "Movie", "properties": {"score": math.inf}},
+            GraphViewNode(id="director", label="Director", group="Director", properties={"rating": math.nan}),
+            GraphViewNode(id="movie", label="Movie", group="Movie", properties={"score": math.inf}),
         ],
         edges=[
-            {
-                "source": "director",
-                "target": "movie",
-                "label": "DIRECTED",
-                "properties": {"imdb_rating": math.nan},
-            }
+            GraphViewEdge(source="director", target="movie", label="DIRECTED", properties={"imdb_rating": math.nan})
         ],
     )
     card = render_graph_data(
@@ -223,8 +218,8 @@ def test_graph_card_writes_strict_json_for_non_finite_values(tmp_path: Path) -> 
     assert "NaN" not in text
     assert "Infinity" not in text
     data = _load_card_data_strict(card, tmp_path)
-    nodes = data["graph"]["elements"]["nodes"]
-    edges = data["graph"]["elements"]["edges"]
+    nodes = cast(list[dict[str, Any]], data["graph"]["elements"]["nodes"])
+    edges = cast(list[dict[str, Any]], data["graph"]["elements"]["edges"])
     assert nodes[0]["data"]["properties"]["rating"] is None
     assert nodes[1]["data"]["properties"]["score"] is None
     assert edges[0]["data"]["properties"]["imdb_rating"] is None

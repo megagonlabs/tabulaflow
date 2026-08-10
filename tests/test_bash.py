@@ -2,6 +2,7 @@ import asyncio
 import shlex
 import shutil
 from collections.abc import AsyncIterator
+from pathlib import Path
 
 import pytest
 
@@ -79,7 +80,7 @@ class TestRobustness:
         assert lines == ["cat", "cat", "cat", "cat", "cat", "cat", "cat", "-FRX"]
         assert "[exit_code: 0]" in result
 
-    async def test_git_log_does_not_wait_in_pager(self, tmp_path) -> None:
+    async def test_git_log_does_not_wait_in_pager(self, tmp_path: Path) -> None:
         if shutil.which("git") is None:
             pytest.skip("git is not installed")
         tool = ExecuteBashTool(no_change_timeout=2, max_output_chars=5000)

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from typing import Annotated, Any, Literal
 
 import pandas as pd
@@ -60,7 +61,7 @@ AnswerControl = Annotated[ChoiceControl | SliderControl, Field(discriminator="ki
 class AnswerPanel(BaseModel):
     """Answer-level controls and initial selection."""
 
-    controls: list[AnswerControl] = Field(default_factory=list)
+    controls: Sequence[AnswerControl] = Field(default_factory=list)
     default_selection: dict[str, SelectionValue] = Field(default_factory=dict)
 
     @model_validator(mode="after")

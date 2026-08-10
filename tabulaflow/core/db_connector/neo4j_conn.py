@@ -16,6 +16,8 @@ from tabulaflow.core.types import (
     ExecResult,
     GraphPropertySchema,
     GraphView,
+    GraphViewEdge,
+    GraphViewNode,
     NodeSchema,
     NonSQLLanguage,
     PropertyGraphSchema,
@@ -140,25 +142,23 @@ def _is_neo4j_path(value: object) -> bool:
 
 def _extract_neo4j_graph_result(df: pd.DataFrame) -> GraphView | None:
     """Extract a generic graph view from Neo4j node/relationship/path cells."""
-    nodes: dict[str, dict[str, Any]] = {}
-    edges: dict[str, dict[str, Any]] = {}
+    nodes: dict[str, GraphViewNode] = {}
+    edges: dict[str, GraphViewEdge] = {}
 
     def add_node(node: object) -> str:
         node_id = _neo4j_node_id(node)
         if node_id in nodes:
             return node_id
-        data: dict[str, Any] = {
-            "id": node_id,
-            "label": _neo4j_node_label(node),
-            "group": _neo4j_node_group(node),
-        }
+        properties: dict[str, object] = {}
         if hasattr(node, "items"):
-            properties: dict[str, object] = {}
             for key, value in node.items():
                 properties[str(key)] = _graph_property_value(value)
-            if properties:
-                data["properties"] = properties
-        nodes[node_id] = data
+        nodes[node_id] = GraphViewNode(
+            id=node_id,
+            label=_neo4j_node_label(node),
+            group=_neo4j_node_group(node),
+            properties=properties,
+        )
         return node_id
 
     def add_relationship(rel: object) -> None:
@@ -173,20 +173,18 @@ def _extract_neo4j_graph_result(df: pd.DataFrame) -> GraphView | None:
         if edge_id in edges:
             return
         label = getattr(rel, "type", None) or type(rel).__name__
-        data: dict[str, Any] = {
-            "id": edge_id,
-            "source": source_id,
-            "target": target_id,
-            "label": str(label),
-            "directed": True,
-        }
+        properties: dict[str, object] = {}
         if hasattr(rel, "items"):
-            properties: dict[str, object] = {}
             for key, value in rel.items():
                 properties[str(key)] = _graph_property_value(value)
-            if properties:
-                data["properties"] = properties
-        edges[edge_id] = data
+        edges[edge_id] = GraphViewEdge(
+            id=edge_id,
+            source=source_id,
+            target=target_id,
+            label=str(label),
+            directed=True,
+            properties=properties,
+        )
 
     def walk(value: object) -> None:
         if value is None:
@@ -220,10 +218,10 @@ def _extract_neo4j_graph_result(df: pd.DataFrame) -> GraphView | None:
     if len(nodes) > _GRAPH_RESULT_MAX_NODES or len(edges) > _GRAPH_RESULT_MAX_EDGES:
         return None
     return GraphView(
-        nodes=sorted(nodes.values(), key=lambda node: str(node["id"])),
+        nodes=sorted(nodes.values(), key=lambda node: node.id),
         edges=sorted(
             edges.values(),
-            key=lambda edge: (str(edge.get("source", "")), str(edge.get("target", "")), str(edge.get("label", ""))),
+            key=lambda edge: (edge.source, edge.target, edge.label or ""),
         ),
     )
 

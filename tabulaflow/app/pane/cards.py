@@ -5,7 +5,8 @@ from __future__ import annotations
 import secrets
 from pathlib import Path
 from types import SimpleNamespace
-from typing import TYPE_CHECKING, Protocol
+from collections.abc import Sequence
+from typing import TYPE_CHECKING, Protocol, cast
 
 from pygments import highlight
 from pygments.formatters import HtmlFormatter
@@ -165,16 +166,16 @@ def render_graph_data(graph_record: GraphArtifactLike, pane_dir: Path) -> PaneCa
     return card_payload(card_id=card_id, label=graph_record.label, views=["graph"])
 
 
-def render_resolved_artifacts(artifacts: list[object], pane_dir: Path) -> list[PaneCard]:
+def render_resolved_artifacts(artifacts: Sequence[object], pane_dir: Path) -> list[PaneCard]:
     """Render resolved chat artifacts to pane card descriptors."""
     cards: list[PaneCard] = []
     for artifact in artifacts:
         try:
             kind = getattr(artifact, "kind", None)
             if kind == "map":
-                card = render_map_data(artifact, pane_dir)
+                card = render_map_data(cast(MapArtifactLike, artifact), pane_dir)
             elif kind == "graph":
-                card = render_graph_data(artifact, pane_dir)
+                card = render_graph_data(cast(GraphArtifactLike, artifact), pane_dir)
             elif kind == "placeholder":
                 card = None
             else:

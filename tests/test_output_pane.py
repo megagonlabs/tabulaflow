@@ -24,11 +24,12 @@ from tabulaflow.app.pane.cards import PANE_CODE_TEXT, build_query_data, render_m
 from tabulaflow.app.pane.tables import TABLE_RENDER_MAX_ROWS
 from tabulaflow.app.theme import CODE_TEXT
 from tabulaflow.app.pane import CARD_ID_PREFIX, OutputPane, OutputPanePortError, _PANE_HTML
-from tabulaflow.app.pane import PaneCard, PaneTurn, turn_payload
+from tabulaflow.app.pane import PaneCard, PanePanel, PaneTurn, turn_payload
 from tabulaflow.app.screens import send_table_to_output_pane
 from tabulaflow.toolhub.render_graph import materialize_graph_view, normalize_graph_spec
 from tabulaflow.app.tui import TabulaflowApp
 from tabulaflow.chat import AnswerPanel, ChatResult, ChoiceControl, ControlChoice, ResolvedTableArtifact
+from tabulaflow.chat.artifact_resolver import ArtifactResolver
 from tabulaflow.toolhub.render_map import MAP_RENDER_MAX_ROWS
 
 
@@ -2333,11 +2334,12 @@ async def test_output_pane_resolves_live_turn_selection(tmp_path: Path) -> None:
             ]
         ),
     )
+    assert result.panel is not None
     pane.push(
-        turn_payload(title="x", cards=[], panel=result.panel.model_dump(mode="json")),
+        turn_payload(title="x", cards=[], panel=cast(PanePanel, result.panel.model_dump(mode="json"))),
         result=result,
-        artifact_resolver=FakeResolver(),
-    )  # type: ignore[arg-type]
+        artifact_resolver=cast(ArtifactResolver, FakeResolver()),
+    )
 
     cards = await pane.resolve_turn(0, {"period": "q3"})
 

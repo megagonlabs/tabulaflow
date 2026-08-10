@@ -1,7 +1,7 @@
 """Registry tools must not serve a stale connector after its alias is unregistered or re-bound."""
 
 from pathlib import Path
-from typing import Any, ClassVar, Literal
+from typing import Any, ClassVar, Literal, cast
 
 import asyncio
 import pandas as pd
@@ -95,7 +95,7 @@ async def test_concurrent_run_query_records_each_invocation_query() -> None:
     """Registry recording must not read a shared last-query slot after another call overwrites it."""
     connector = RefreshBlockingConnector()
     registry = DBRegistry()
-    registry.register("mydb", connector)
+    registry.register("mydb", cast(Any, connector))
     tool = RegistryRunQueryTool(registry, enable_refresh=True)
 
     first_task = asyncio.create_task(tool("mydb", "SELECT 'first' AS label", refresh=True))

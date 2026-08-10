@@ -37,7 +37,7 @@ from tabulaflow.app.theme import GITHUB_SLUG, GITHUB_URL
 logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
-    from tabulaflow.chat import ChatResult
+    from tabulaflow.chat import ChatResult, SelectionValue
     from tabulaflow.chat.artifact_resolver import ArtifactResolver
 
 DEFAULT_OUTPUT_PANE_PORT_START = 61111
@@ -552,7 +552,7 @@ class OutputPane:
         if live is None:
             raise KeyError(turn_id)
         result, resolver = live
-        artifacts = await resolver.resolve(result, selection)
+        artifacts = await resolver.resolve(result, cast("dict[str, SelectionValue]", selection))
         return await asyncio.to_thread(render_resolved_artifacts, artifacts, self._pane_dir)
 
     def _load_manifest_locked(self) -> None:

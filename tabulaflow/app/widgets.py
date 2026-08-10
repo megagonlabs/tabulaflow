@@ -5,7 +5,7 @@ from __future__ import annotations
 import difflib
 import json
 import re
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Protocol, TypedDict
 
@@ -1595,7 +1595,7 @@ class AgentResultWidget(Widget):
     def __init__(
         self,
         result: ChatResult,
-        artifacts: list[ResolvedArtifact],
+        artifacts: Sequence[ResolvedArtifact],
         width: int = 80,
         artifact_resolver: ArtifactResolver | None = None,
     ) -> None:
@@ -2274,10 +2274,10 @@ class AgentResultWidget(Widget):
 
     async def _fetch_df(self, record_id: str | None) -> pd.DataFrame | None:
         """Fetch a DataFrame from QueryHistory, loading from DuckDB if needed."""
-        if self._query_history is None or record_id is None:
+        if self._artifact_resolver is None or record_id is None:
             return None
         try:
-            return await self._query_history.get_dataframe(record_id)
+            return await self._artifact_resolver.get_dataframe(record_id)
         except (KeyError, ValueError):
             return None
 

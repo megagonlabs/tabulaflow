@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import asyncio
-from collections.abc import AsyncIterator, Callable, Iterator
+from collections.abc import AsyncIterator, Callable, Iterator, Sequence
 from contextlib import suppress
 from datetime import date
 from importlib.resources import files
@@ -802,7 +802,7 @@ def _panel_from_bundle(bundle: "ArtifactBundle") -> AnswerPanel:
     )
 
 
-def _artifacts_from_refs(refs: list[tuple[str, str | None]], query_history: QueryHistory) -> list[ArtifactDef]:
+def _artifacts_from_refs(refs: Sequence[tuple[str, str | None]], query_history: QueryHistory) -> list[ArtifactDef]:
     artifacts: list[ArtifactDef] = []
     for ref_id, label in refs:
         artifact = _artifact_from_ref(ref_id, label, query_history)
