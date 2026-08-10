@@ -30,7 +30,7 @@ from tabulaflow.toolhub.web_browser import (
 )
 from tabulaflow.core.db_connector import connector_info
 from tabulaflow.core.llm import make_agent, make_model_settings, model_display_name
-from tabulaflow.core.outputs import ArtifactDef, TableArtifactDef
+from tabulaflow.core.legacy_outputs import ArtifactDef, TableArtifactDef
 from tabulaflow.chat.artifact_resolver import ArtifactResolver
 from tabulaflow.chat.result import AnswerPanel, ChatResult, ChoiceControl, ControlChoice
 from tabulaflow.chat.events import (

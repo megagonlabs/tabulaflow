@@ -8,7 +8,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Literal, TypeAlias
 
-from tabulaflow.core.outputs import ArtifactDef, ChartArtifactDef, GraphArtifactDef, MapArtifactDef
+from tabulaflow.core.legacy_outputs import ArtifactDef, ChartArtifactDef, GraphArtifactDef, MapArtifactDef
 from tabulaflow.core.types import ErrorInfo, GraphView, PredQuery
 
 if TYPE_CHECKING:

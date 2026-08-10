@@ -17,7 +17,7 @@ from tabulaflow.chat.result import (
     ResolvedTableArtifact,
     SelectionValue,
 )
-from tabulaflow.core.outputs import ArtifactDef, ChartArtifactDef, GraphArtifactDef, MapArtifactDef, TableArtifactDef
+from tabulaflow.core.legacy_outputs import ArtifactDef, ChartArtifactDef, GraphArtifactDef, MapArtifactDef, TableArtifactDef
 from tabulaflow.toolhub import QueryHistory, ResolvedQueryRecord
 from tabulaflow.toolhub.query_history import SourceNotApplicable
 from tabulaflow.toolhub.render_graph import GraphSpecError, materialize_graph_view

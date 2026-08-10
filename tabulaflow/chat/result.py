@@ -8,7 +8,7 @@ import pandas as pd
 from pydantic import BaseModel, ConfigDict, Field, field_serializer, field_validator, model_validator
 
 from tabulaflow.core.dataframe import _deserialize_dataframe, _serialize_dataframe
-from tabulaflow.core.outputs import ArtifactDef
+from tabulaflow.core.legacy_outputs import ArtifactDef
 from tabulaflow.core.types import GraphView, Usage
 
 

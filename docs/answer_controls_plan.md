@@ -1,10 +1,44 @@
 # Answer Controls Plan
 
-Status: active implementation plan; ignores earlier interpretation-panel plans.
+Status: active implementation plan; ignores earlier interpretation-panel plans. The goal is now the clean end-state architecture, even when that means breaking from repo history rather than preserving old `Q*` / `QS*` / `ArtifactDef` shapes.
+
+## Architecture reset
+
+We are intentionally aiming for the ultimate clean output model instead of incrementally polishing the historical interpretation-panel implementation.
+
+The target core contract is:
+
+```text
+AnswerSpec = Parameters + Sources + Artifacts + default selection
+
+ParameterDef  = user-adjustable value, with UI/display hints
+SourceDef     = declarative, selection-dependent provider of results
+SourcePlan    = how a source obtains a result
+ArtifactSpec  = display intent; a view over one or more sources
+ResultRecord  = metadata/provenance for one materialized query result
+```
+
+The key dependency chain is:
+
+```text
+selection -> sources -> result records -> artifact views
+```
+
+The clean separation is:
+
+- `core.outputs` defines only pure, serializable specifications and metadata.
+- Runtime state such as caches, connector access, stored DataFrames, and query execution lives outside `core`.
+- The current runtime artifact models are historical compatibility only and should be migrated away, not treated as the target design.
 
 ## Current implementation progress
 
 Implemented on `dev` so far:
+
+- `core.outputs` now contains the clean target output-spec model:
+  - `AnswerSpec`, `ParameterDef`, `SourceDef`, `SourcePlan`, `ArtifactSpec`, `ViewDef`, and `ResultRecord`;
+  - semantic id aliases (`ParameterId`, `SourceId`, `ArtifactId`, `ResultId`, `SelectionKey`);
+  - source plans split into `ConstantResultPlan`, `ResultLookupPlan`, and `QueryPlan`;
+  - legacy runtime artifact definitions have been moved aside as compatibility scaffolding.
 
 - Answer controls are first-class in the chat result model:
   - `AnswerControl = ChoiceControl | SliderControl`.
@@ -41,9 +75,11 @@ Implemented on `dev` so far:
 
 In progress / next cleanup:
 
-- Continue hardening the artifact definition model before adding lazy/server-side sliders:
-  - continue consolidating around the shared lightweight/spec-backed `ArtifactDef` shape across chat results and query-history storage;
-- Design true server-side parameterized sources for sliders after the shared artifact-definition shape is settled; current sliders are model/UI-safe but do not rerun or parameterize queries.
+- Migrate runtime code toward the new `core.outputs` model:
+  - replace legacy `ArtifactDef` / `TableArtifactDef` / `ChartArtifactDef` usage with `AnswerSpec`, `ArtifactSpec`, and `ViewDef`;
+  - introduce a runtime source resolver that maps `SourceDef + selection` to `ResultRecord` / stored result payloads;
+  - keep old compatibility paths only as temporary migration scaffolding.
+- Design true server-side parameterized sources for sliders after the clean source/result runtime boundary is in place; current sliders are model/UI-safe but do not rerun or parameterize queries.
 
 ## Product thesis
 
@@ -110,17 +146,33 @@ local / visual / chart-only         -> Vega-Lite
 
 ## Target architecture
 
-The long-term model should not prebuild a full artifact copy for every selection. Instead, selection should resolve sources, and artifacts should derive from those sources.
+The long-term model should not prebuild a full artifact copy for every selection. Instead, the answer declares parameters, sources, and artifact views. The active selection resolves sources to concrete results, and artifacts render views over those results.
 
 ```text
-Turn
-└── controls and active selection
-    └── logical sources
-        └── concrete query records/results
-            └── artifact views: table, chart, map, graph
+AnswerSpec
+├── parameters
+├── sources
+│   └── source plans
+├── artifacts
+│   └── table/chart/map/graph views over source ids
+└── default_selection
+
+Runtime
+└── active selection
+    └── source resolver
+        └── result records + stored payloads
+            └── artifact renderers
 ```
 
-A chart/map/graph should be able to reference a logical source such as a fixed result, a query family, or eventually a parameterized query. The active control selection resolves that logical source to concrete data.
+A chart/map/graph should reference source ids, not concrete DataFrames. A source may point to a fixed existing result, a precomputed lookup of existing results, or a query plan that can materialize a new result for the active selection.
+
+The core source-plan split is intentionally intuitive:
+
+- `ConstantResultPlan` — always returns one already-materialized result.
+- `ResultLookupPlan` — maps normalized source-local selections to already-materialized results.
+- `QueryPlan` — can produce a new result by executing a parameterized query.
+
+Concrete query provenance belongs on `ResultRecord`, not duplicated into plans that simply reference existing results.
 
 ## Controls
 

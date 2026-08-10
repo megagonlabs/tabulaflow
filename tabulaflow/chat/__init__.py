@@ -29,7 +29,7 @@ from tabulaflow.chat.result import (
     SelectionValue,
     SliderControl,
 )
-from tabulaflow.core.outputs import (
+from tabulaflow.core.legacy_outputs import (
     ArtifactDef,
     ChartArtifactDef,
     GraphArtifactDef,
