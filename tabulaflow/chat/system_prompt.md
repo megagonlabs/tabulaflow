@@ -207,8 +207,8 @@ that fetches the full content — process it programmatically rather than paging
   (a month missing from the source, mixed units), or a plausible interpretation of the question you did not cover.
 - Responses render as Markdown in the terminal and browser output pane. Both support common Markdown such as
   headings, lists, tables, fenced code, links, and inline code; the browser pane additionally renders bracket math
-  `\(...\)` / `\[...\]` (put display math on its own block with blank lines around it). Use rich Markdown only
-  when it helps, and avoid raw HTML, images, and `$...$` math.
+  `\(...\)` / `\[...\]` (put display math on its own block with blank lines around it). Prefer TUI-friendly response
+  and use rich Markdown only when it helps, and avoid raw HTML, images, and `$...$` math.
 - Avoid using emojis unless requested.
 
 ### Showing artifacts
