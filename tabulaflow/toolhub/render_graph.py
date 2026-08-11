@@ -455,7 +455,7 @@ class RenderGraphTool:
           ``edges``: required list of edge sources.
         - Node source:
           Column mode:
-          ``{"source_id":"Q1","id":"id","label":"name","group":"type"}``.
+          ``{"source_id":"S1","id":"id","label":"name","group":"type"}``.
           Inline mode:
           ``{"data":[{"id":"a","name":"A"}],"id":"id","label":"name"}``.
           Node ``id`` values are global across all sources: equal ids are
@@ -471,7 +471,7 @@ class RenderGraphTool:
           fields; node titles use ``label`` or ``id``.
         - Edge source:
           Column mode:
-          ``{"source_id":"Q2","source":"from_id","target":"to_id","label":"rel"}``.
+          ``{"source_id":"S2","source":"from_id","target":"to_id","label":"rel"}``.
           Inline mode:
           ``{"data":[{"from":"a","to":"b"}],"source":"from","target":"to"}``.
           ``label`` is drawn along the edge (typically the relationship
@@ -482,10 +482,10 @@ class RenderGraphTool:
           Explicit tooltip lists define body fields; edge titles use ``label``
           when present.
         Minimal examples:
-        ``{"nodes":[{"source_id":"Q1","id":"src"},{"source_id":"Q1","id":"dst"}],"edges":[{"source_id":"Q1","source":"src","target":"dst","label":"rel"}]}``
-        ``{"layout":"layered","nodes":[{"source_id":"Q1","id":"id","label":"name"}],"edges":[{"source_id":"Q2","source":"from_id","target":"to_id"}]}``
+        ``{"nodes":[{"source_id":"S1","id":"src"},{"source_id":"S1","id":"dst"}],"edges":[{"source_id":"S1","source":"src","target":"dst","label":"rel"}]}``
+        ``{"layout":"layered","nodes":[{"source_id":"S1","id":"id","label":"name"}],"edges":[{"source_id":"S2","source":"from_id","target":"to_id"}]}``
         ``{"nodes":[{"data":[{"id":"a"},{"id":"b"}],"id":"id"}],"edges":[{"data":[{"from":"a","to":"b"}],"source":"from","target":"to"}]}``
-        ``{"nodes":[{"source_id":"Q1","id":"customer","group":{"value":"Customer"}},{"source_id":"Q1","id":"product","group":{"value":"Product"}}],"edges":[{"source_id":"Q1","source":"customer","target":"product","label":{"value":"PURCHASED"}}]}``
+        ``{"nodes":[{"source_id":"S1","id":"customer","group":{"value":"Customer"}},{"source_id":"S1","id":"product","group":{"value":"Product"}}],"edges":[{"source_id":"S1","source":"customer","target":"product","label":{"value":"PURCHASED"}}]}``
 
         Returns the new graph id (``GRAPH1``, ``GRAPH2``, …) to cite in the answer.
 
@@ -509,11 +509,13 @@ class RenderGraphTool:
         sources: dict[str, pd.DataFrame] = {}
         for rid in source_ids:
             try:
-                await self._output_store.get(rid)
+                result_id = self._output_store.get_constant_source_result_id(rid)
             except KeyError:
                 return f"(error: unknown source_id {rid!r})"
+            except ValueError as e:
+                return f"(error: {e})"
             try:
-                df = await self._output_store.get_dataframe(rid)
+                df = await self._output_store.get_dataframe(result_id)
             except ValueError as e:
                 return f"(error: {e})"
             if df.empty:

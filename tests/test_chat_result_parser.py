@@ -61,15 +61,15 @@ def test_text_stream_router_resets_between_runs() -> None:
 def _show_artifacts_part(call_id: str, bundle: ArtifactBundle | None) -> ToolReturnPart:
     return ToolReturnPart(
         tool_name="show_artifacts",
-        content="showing" if bundle is not None else "(error: unknown artifact id 'Q9')",
+        content="showing" if bundle is not None else "(error: unknown artifact id 'S9')",
         tool_call_id=call_id,
         metadata=bundle,
     )
 
 
 def test_declared_bundle_skips_failed_calls_and_takes_the_last() -> None:
-    first = ArtifactBundle(artifacts=(ArtifactRef(id="Q1", label="first"),))
-    second = ArtifactBundle(artifacts=(ArtifactRef(id="Q1", label="second"),))
+    first = ArtifactBundle(artifacts=(ArtifactRef(id="S1", label="first"),))
+    second = ArtifactBundle(artifacts=(ArtifactRef(id="S1", label="second"),))
     completed = {
         "a": _show_artifacts_part("a", first),
         "b": ToolReturnPart(tool_name="run_query", content="1 row", tool_call_id="b"),
@@ -87,12 +87,12 @@ async def test_build_chat_result_resolves_the_declared_bundle() -> None:
     await output_store.add(
         "workspace", "sql", PredQuery(query="SELECT 1", exec_result=ExecResult(df=pd.DataFrame({"a": [1]})))
     )
-    bundle = ArtifactBundle(artifacts=(ArtifactRef(id="Q1", label="row count"),))
+    bundle = ArtifactBundle(artifacts=(ArtifactRef(id="S1", label="row count"),))
 
     result = await _build_chat_result("<answer>\nThere is 1 row.", bundle, output_store)
 
     assert result.text == "There is 1 row."
-    assert [artifact.id for artifact in result.output.artifacts] == ["Q1"]
+    assert [artifact.id for artifact in result.output.artifacts] == ["S1"]
     assert result.output.sources[0].plan.kind == "constant_result"
 
     without = await _build_chat_result("<answer>\nNothing to show.", None, output_store)
@@ -116,7 +116,7 @@ async def test_build_chat_result_resolves_a_panel(tmp_path: Path) -> None:
     registry.register("workspace", connector)
     output_store = OutputStore()
     runner = RunQueryForEachCombinationTool(registry, output_store=output_store)
-    # QS1 varies over both dimensions; QS2 only over period.
+    # S1 varies over both dimensions; S2 only over period.
     await runner(
         "workspace",
         [
@@ -134,7 +134,7 @@ async def test_build_chat_result_resolves_a_panel(tmp_path: Path) -> None:
         "SELECT COUNT(*) AS orders FROM orders WHERE quarter = '{{ period }}'",
     )
     bundle = ArtifactBundle(
-        artifacts=(ArtifactRef(id="QS1", label="top customers"), ArtifactRef(id="QS2", label="order count")),
+        artifacts=(ArtifactRef(id="S1", label="top customers"), ArtifactRef(id="S2", label="order count")),
         dimensions=(
             Dimension(
                 id="ranking",
@@ -151,17 +151,17 @@ async def test_build_chat_result_resolves_a_panel(tmp_path: Path) -> None:
     resolved_output = await OutputResolver(output_store).resolve(
         result.output, {"ranking": "count", "period": "q3"}
     )
-    assert resolved_output.artifacts[0].results_by_source["QS1"].id == "QS1_v3"
-    assert resolved_output.artifacts[1].results_by_source["QS2"].id == "QS2_v1"
+    assert resolved_output.artifacts[0].results_by_source["S1"].id == "R4"
+    assert resolved_output.artifacts[1].results_by_source["S2"].id == "R6"
     resolver = OutputResolver(output_store)
     default_cards = await resolver.resolve(result.output)
-    assert [a.results_by_source[next(iter(a.results_by_source))].id for a in default_cards.artifacts] == ["QS1_v0", "QS2_v0"]
+    assert [a.results_by_source[next(iter(a.results_by_source))].id for a in default_cards.artifacts] == ["R1", "R5"]
 
     count_q2 = await resolver.resolve(result.output, {"ranking": "count", "period": "q2"})
     count_q3 = await resolver.resolve(result.output, {"ranking": "count", "period": "q3"})
     # "order count" ignores `ranking`, while "top customers" varies over both.
-    assert [a.results_by_source[next(iter(a.results_by_source))].id for a in count_q2.artifacts] == ["QS1_v2", "QS2_v0"]
-    assert [a.results_by_source[next(iter(a.results_by_source))].id for a in count_q3.artifacts] == ["QS1_v3", "QS2_v1"]
+    assert [a.results_by_source[next(iter(a.results_by_source))].id for a in count_q2.artifacts] == ["R3", "R5"]
+    assert [a.results_by_source[next(iter(a.results_by_source))].id for a in count_q3.artifacts] == ["R4", "R6"]
 
 
 @pytest.mark.asyncio
@@ -186,7 +186,7 @@ async def test_build_chat_result_resolves_source_backed_chart_in_panel(tmp_path:
         "SELECT customer, SUM(net) AS value FROM orders WHERE quarter = '{{ period }}' GROUP BY customer",
     )
     spec = {"mark": "bar", "encoding": {"x": {"field": "customer"}, "y": {"field": "value"}}}
-    await RenderChartTool(output_store=output_store)(source_id="QS1", vegalite_spec=json.dumps(spec))
+    await RenderChartTool(output_store=output_store)(source_id="S1", vegalite_spec=json.dumps(spec))
     bundle = ArtifactBundle(
         artifacts=(ArtifactRef(id="CHART1", label="top customers"),),
         dimensions=(
@@ -198,15 +198,15 @@ async def test_build_chat_result_resolves_source_backed_chart_in_panel(tmp_path:
 
     assert result.output.artifacts[0].view.kind == "chart"
     resolved_output = await OutputResolver(output_store).resolve(result.output, {"period": "q3"})
-    assert resolved_output.artifacts[0].results_by_source["QS1"].id == "QS1_v1"
+    assert resolved_output.artifacts[0].results_by_source["S1"].id == "R2"
     resolver = OutputResolver(output_store)
     default_cards = await resolver.resolve(result.output)
     q3_cards = await resolver.resolve(result.output, {"period": "q3"})
     chart_ids = [
-        default_cards.artifacts[0].results_by_source["QS1"].id,
-        q3_cards.artifacts[0].results_by_source["QS1"].id,
+        default_cards.artifacts[0].results_by_source["S1"].id,
+        q3_cards.artifacts[0].results_by_source["S1"].id,
     ]
-    assert chart_ids == ["QS1_v0", "QS1_v1"]
+    assert chart_ids == ["R1", "R2"]
 
 
 @pytest.mark.asyncio
@@ -231,7 +231,7 @@ async def test_build_chat_result_placeholders_a_partially_covered_card(tmp_path:
         "SELECT SUM(net) AS net FROM orders WHERE quarter = '{{ period }}'",
     )
     bundle = ArtifactBundle(
-        artifacts=(ArtifactRef(id="QS1", label="net revenue"),),
+        artifacts=(ArtifactRef(id="S1", label="net revenue"),),
         dimensions=(
             Dimension(
                 id="period",

@@ -8,15 +8,15 @@ from pydantic_ai import Tool
 
 from tabulaflow.core.db_connector.db_registry import DBRegistry
 from tabulaflow.core.db_connector.sql_conn import SQLConnector
+from tabulaflow.core.outputs import ConstantResultPlan
 
 from tabulaflow.toolhub.output_store import OutputStore
 
 
 class RegistryTransferRecordTool:
-    """Persist a output-store record into a target SQL table.
+    """Persist an output-store result into a target SQL table.
 
-    This tool is intentionally record-centric: callers reference a prior
-    ``run_query`` output by ``record_id`` and write that DataFrame into a
+    This tool resolves a prior ``run_query`` output source and writes that DataFrame into a
     target table. The target can be the session workspace DB or any writable
     SQL connector registered in the runtime.
     """
@@ -48,7 +48,7 @@ class RegistryTransferRecordTool:
         """Transfer a stored query result into a SQL target table.
 
         Args:
-            record_id: Query record ID from ``run_query`` (for example ``Q3``).
+            record_id: Source ID from ``run_query`` (for example ``S3``).
                 To transfer a full table, first run ``SELECT * FROM <table>``
                 without ``LIMIT``, then transfer that record's id.
             target_alias: Destination database alias.
@@ -57,12 +57,15 @@ class RegistryTransferRecordTool:
             mode: ``append`` to insert rows, ``replace`` to recreate table.
         """
         try:
-            record = await self._output_store.get(record_id)
+            source = self._output_store.get_source(record_id)
+            if not isinstance(source.plan, ConstantResultPlan):
+                return f"(error: source_id {record_id!r} is not a single-result source)"
+            record = await self._output_store.get(source.plan.result_id)
         except KeyError:
             return f"(error: unknown record_id {record_id!r})"
 
         try:
-            df = await self._output_store.get_dataframe(record.record_id)
+            df = await self._output_store.get_dataframe(record.result_id)
         except ValueError as e:
             return f"(error: {e})"
 
@@ -92,7 +95,7 @@ class RegistryTransferRecordTool:
 
         target_name = f"{target_schema}.{target_table}" if target_schema else target_table
         return (
-            f"Transferred {rows_written} rows from {record.record_id} "
+            f"Transferred {rows_written} rows from {record_id} "
             f"({record.db_alias}) to alias={target_alias}, table={target_name} (mode={mode})"
         )
 

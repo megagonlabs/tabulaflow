@@ -12,7 +12,19 @@ import pandas as pd
 from pydantic import BaseModel, ConfigDict, field_serializer, field_validator
 
 from tabulaflow.core.dataframe import _deserialize_dataframe, _serialize_dataframe
-from tabulaflow.core.outputs import ArtifactSpec, ChartView, GraphArtifactView, MapView, ResultId, ResultRecord
+from tabulaflow.core.outputs import (
+    ArtifactSpec,
+    ChartView,
+    ConstantResultPlan,
+    GraphArtifactView,
+    MapView,
+    ResultId,
+    ResultLookupPlan,
+    ResultRecord,
+    ResultVariant,
+    SelectionValue,
+    SourceDef,
+)
 from tabulaflow.core.types import ErrorInfo, GraphView, PredQuery
 
 if TYPE_CHECKING:
@@ -54,10 +66,11 @@ QueryOutcome: TypeAlias = QueryFailure | TabularResult | StatementSuccess
 
 
 @dataclass
-class QueryRecord:
-    """Metadata for a query executed through the registry tool."""
+class StoredResult:
+    """Internal metadata and outcome for a materialized result."""
 
-    record_id: str
+    result_id: str
+    source_id: str | None
     connector_type: Literal["sql", "property_graph"]
     db_alias: str
     query: str
@@ -65,19 +78,6 @@ class QueryRecord:
     parameter_values: dict[str, Any]
     outcome: QueryOutcome
     latency_seconds: float | None = None
-
-
-@dataclass
-class QueryFamily:
-    """A family of query results rendered from one template over dimension choices."""
-
-    family_id: str
-    db_alias: str
-    connector_type: Literal["sql", "property_graph"]
-    dimensions: dict[str, list[str]]
-    query_template: str
-    record_ids_by_selection: dict[str, str]
-
 
 class ResultPayload(BaseModel):
     """Runtime payload for a materialized result."""
@@ -118,6 +118,18 @@ def _graph_source_ids(spec: Mapping[str, Any]) -> list[str]:
             if isinstance(source_id, str) and source_id not in source_ids:
                 source_ids.append(source_id)
     return source_ids
+
+
+def _selection_from_key(key: str) -> dict[str, SelectionValue]:
+    if not key:
+        return {}
+    selection: dict[str, SelectionValue] = {}
+    for part in key.split(";"):
+        if not part:
+            continue
+        name, value = part.split("=", 1)
+        selection[name] = value
+    return selection
 
 
 class _ResultFrameStore:
@@ -214,11 +226,11 @@ class OutputStore:
     ) -> None:
         if max_in_memory < 1:
             raise ValueError("max_in_memory must be >= 1")
-        self._records: dict[str, QueryRecord] = {}
-        self._families: dict[str, QueryFamily] = {}
+        self._records: dict[str, StoredResult] = {}
+        self._sources: dict[str, SourceDef] = {}
         self._artifacts: dict[str, ArtifactSpec] = {}
-        self._next_query_id = 1
-        self._next_family_id = 1
+        self._next_result_id = 1
+        self._next_source_id = 1
         self._next_chart_id = 1
         self._next_map_id = 1
         self._next_graph_id = 1
@@ -226,11 +238,13 @@ class OutputStore:
 
     async def add(
         self, db_alias: str, connector_type: Literal["sql", "property_graph"], pred_query: PredQuery
-    ) -> QueryRecord:
-        """Store a query and assign it the next opaque record ID."""
-        record_id = f"Q{self._next_query_id}"
-        self._next_query_id += 1
-        return await self._store(record_id, db_alias, connector_type, pred_query)
+    ) -> StoredResult:
+        """Store a query result and create a constant source for it."""
+        result_id = self._next_result_id_value()
+        source_id = self._next_source_id_value()
+        record = await self._store(result_id, db_alias, connector_type, pred_query, source_id=source_id)
+        self._sources[source_id] = SourceDef(id=source_id, plan=ConstantResultPlan(result_id=result_id))
+        return record
 
     async def add_family(
         self,
@@ -239,33 +253,44 @@ class OutputStore:
         dimensions: dict[str, list[str]],
         query_template: str,
         pred_queries_by_selection: dict[str, PredQuery],
-    ) -> QueryFamily:
-        """Store a query family and its per-selection records under a ``QS*`` id.
+    ) -> SourceDef:
+        """Store a result-lookup source and its per-selection results.
 
         Selections whose query text is identical share a single record.  Variant
-        record ids stay out of the citable ``Q*`` namespace.
+        result ids stay out of the citable source namespace.
         """
-        family_id = f"QS{self._next_family_id}"
-        self._next_family_id += 1
+        source_id = self._next_source_id_value()
         record_ids_by_query: dict[str, str] = {}
         record_ids_by_selection: dict[str, str] = {}
         for selection_key, pred_query in pred_queries_by_selection.items():
             record_id = record_ids_by_query.get(pred_query.query)
             if record_id is None:
-                record_id = f"{family_id}_v{len(record_ids_by_query)}"
+                record_id = self._next_result_id_value()
                 record_ids_by_query[pred_query.query] = record_id
-                await self._store(record_id, db_alias, connector_type, pred_query)
+                await self._store(record_id, db_alias, connector_type, pred_query, source_id=None)
             record_ids_by_selection[selection_key] = record_id
-        family = QueryFamily(
-            family_id=family_id,
-            db_alias=db_alias,
-            connector_type=connector_type,
-            dimensions=dimensions,
-            query_template=query_template,
-            record_ids_by_selection=record_ids_by_selection,
+        source = SourceDef(
+            id=source_id,
+            parameter_ids=list(dimensions),
+            plan=ResultLookupPlan(
+                variants=[
+                    ResultVariant(selection=_selection_from_key(key), result_id=result_id)
+                    for key, result_id in record_ids_by_selection.items()
+                ]
+            ),
         )
-        self._families[family_id] = family
-        return family
+        self._sources[source_id] = source
+        return source
+
+    def _next_result_id_value(self) -> str:
+        result_id = f"R{self._next_result_id}"
+        self._next_result_id += 1
+        return result_id
+
+    def _next_source_id_value(self) -> str:
+        source_id = f"S{self._next_source_id}"
+        self._next_source_id += 1
+        return source_id
 
     async def _store(
         self,
@@ -273,12 +298,15 @@ class OutputStore:
         db_alias: str,
         connector_type: Literal["sql", "property_graph"],
         pred_query: PredQuery,
-    ) -> QueryRecord:
+        *,
+        source_id: str | None,
+    ) -> StoredResult:
         """Register one record under ``record_id``."""
         outcome = await self._outcome(record_id, pred_query)
         exec_result = pred_query.exec_result
-        record = QueryRecord(
-            record_id=record_id,
+        record = StoredResult(
+            result_id=record_id,
+            source_id=source_id,
             connector_type=connector_type,
             db_alias=db_alias,
             query=pred_query.query,
@@ -307,23 +335,30 @@ class OutputStore:
             graph=exec_result.graph,
         )
 
-    def get_family(self, family_id: str) -> QueryFamily:
-        """Return a previously stored query family."""
+    def get_source(self, source_id: str) -> SourceDef:
+        """Return a previously stored source."""
         try:
-            return self._families[family_id]
+            return self._sources[source_id]
         except KeyError:
-            raise KeyError(f"No query family with id {family_id}") from None
+            raise KeyError(f"No source with id {source_id}") from None
+
+    def get_constant_source_result_id(self, source_id: str) -> str:
+        """Return the result id for a single-result source."""
+        source = self.get_source(source_id)
+        if not isinstance(source.plan, ConstantResultPlan):
+            raise ValueError(f"source {source_id!r} is not a single-result source")
+        return source.plan.result_id
 
     def _require_record(self, record_id: str) -> None:
         if record_id not in self._records:
-            raise KeyError(f"No query with id {record_id}")
+            raise KeyError(f"No result with id {record_id}")
 
-    async def get(self, record_id: str) -> QueryRecord:
-        """Return a previously stored query record."""
+    async def get(self, record_id: str) -> StoredResult:
+        """Return an internal stored result."""
         try:
             return self._records[record_id]
         except KeyError:
-            raise KeyError(f"No query with id {record_id}") from None
+            raise KeyError(f"No result with id {record_id}") from None
 
     async def get_dataframe(self, record_id: str) -> pd.DataFrame:
         """Return the DataFrame for a tabular query result."""
@@ -343,7 +378,7 @@ class OutputStore:
             row_count = record.outcome.row_count
             columns = list(record.outcome.columns)
         return ResultRecord(
-            id=record.record_id,
+            id=record.result_id,
             db_alias=record.db_alias,
             query=record.query,
             connector_type=record.connector_type,
@@ -364,13 +399,8 @@ class OutputStore:
         return ResultPayload(record=record, df=df, graph=getattr(raw.outcome, "graph", None))
 
     def add_chart(self, source_id: str, chart_spec: dict[str, Any]) -> str:
-        """Store a chart artifact for an existing query record and return its opaque ``CHART*`` id."""
-        if source_id.startswith("QS"):
-            self.get_family(source_id)
-        elif source_id.startswith("Q"):
-            self._require_record(source_id)
-        else:
-            raise ValueError(f"source_id must start with 'Q' or 'QS', got {source_id!r}")
+        """Store a chart artifact for an existing source and return its opaque ``CHART*`` id."""
+        self.get_source(source_id)
         chart_id = f"CHART{self._next_chart_id}"
         self._artifacts[chart_id] = ArtifactSpec(id=chart_id, view=ChartView(source=source_id, spec=chart_spec))
         self._next_chart_id += 1

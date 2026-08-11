@@ -24,12 +24,11 @@ from tabulaflow.toolhub.registry_get_table_schema import RegistryGetTableSchemaT
 from tabulaflow.toolhub.output_store import (
     OUTPUT_STORE_SCHEMA,
     QueryFailure,
-    QueryFamily,
     OutputStore,
     QueryOutcome,
-    QueryRecord,
     ResultPayload,
     StatementSuccess,
+    StoredResult,
     TabularResult,
 )
 from tabulaflow.toolhub.registry_run_query import RegistryRunQueryTool
@@ -85,12 +84,11 @@ __all__ = [
     "selection_key",
     "QueryFailure",
     "QueryDimension",
-    "QueryFamily",
     "OutputStore",
     "QueryOutcome",
-    "QueryRecord",
     "ResultPayload",
     "StatementSuccess",
+    "StoredResult",
     "TabularResult",
     "RegistryRunQueryTool",
     "RegistryTransferRecordTool",

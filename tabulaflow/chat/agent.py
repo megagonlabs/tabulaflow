@@ -35,14 +35,10 @@ from tabulaflow.core.outputs import (
     ChartView,
     ChoiceOption,
     ChoiceParameter,
-    ConstantResultPlan,
     GraphArtifactView,
     MapView,
     OutputSpec,
     ParameterDef,
-    ResultLookupPlan,
-    ResultVariant,
-    SelectionValue,
     SourceDef,
     SourceId,
     TableView,
@@ -808,20 +804,10 @@ def _output_spec_from_bundle(bundle: "ArtifactBundle", output_store: OutputStore
     def ensure_source(source_id: str) -> None:
         if source_id in sources:
             return
-        if source_id.startswith("QS"):
-            family = output_store.get_family(source_id)
-            sources[source_id] = SourceDef(
-                id=source_id,
-                parameter_ids=list(family.dimensions),
-                plan=ResultLookupPlan(
-                    variants=[
-                        ResultVariant(selection=_selection_from_key(key), result_id=result_id)
-                        for key, result_id in family.record_ids_by_selection.items()
-                    ]
-                ),
-            )
+        if source_id.startswith("S"):
+            sources[source_id] = output_store.get_source(source_id)
         else:
-            sources[source_id] = SourceDef(id=source_id, plan=ConstantResultPlan(result_id=source_id))
+            raise KeyError(f"No source with id {source_id}")
 
     for ref in bundle.artifacts:
         artifact = _artifact_from_ref(ref.id, ref.label, output_store)
@@ -832,18 +818,6 @@ def _output_spec_from_bundle(bundle: "ArtifactBundle", output_store: OutputStore
         artifacts.append(artifact)
 
     return OutputSpec(parameters=parameters, sources=list(sources.values()), artifacts=artifacts)
-
-
-def _selection_from_key(key: str) -> dict[str, SelectionValue]:
-    if not key:
-        return {}
-    selection: dict[str, SelectionValue] = {}
-    for part in key.split(";"):
-        if not part:
-            continue
-        name, value = part.split("=", 1)
-        selection[name] = value
-    return selection
 
 
 def _artifact_from_ref(ref_id: str, label: str | None, output_store: OutputStore) -> ArtifactSpec | None:
@@ -865,13 +839,11 @@ def _artifact_from_ref(ref_id: str, label: str | None, output_store: OutputStore
         except (KeyError, ValueError):
             return None
         return graph.model_copy(update={"label": label})
-    if ref_id.startswith("QS"):
+    if ref_id.startswith("S"):
         try:
-            output_store.get_family(ref_id)
+            output_store.get_source(ref_id)
         except (KeyError, ValueError):
             return None
-        return ArtifactSpec(id=ref_id, label=label, view=TableView(source=ref_id))
-    if ref_id.startswith("Q"):
         return ArtifactSpec(id=ref_id, label=label, view=TableView(source=ref_id))
     return None
 

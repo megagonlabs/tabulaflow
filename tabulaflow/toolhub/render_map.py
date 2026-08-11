@@ -417,7 +417,7 @@ class RenderMapTool:
           ``layers``: required non-empty list.
         - Common layer fields:
           ``record_id``: output-store record id the layer reads from (e.g.
-          ``"Q3"``). Required for column and geojson layers; omit for inline
+          ``"S3"``). Required for column and geojson layers; omit for inline
           ``points``.
           ``label``: optional field name for the short feature identity.
           ``tooltip``: optional field name, list of field names, or ``true``;
@@ -428,7 +428,7 @@ class RenderMapTool:
           ``{"field":"status","domain":[...]}``; the output pane chooses the
           palette.
         - ``points`` layer:
-          Column mode: ``{"type":"points","record_id":"Q3","lat":"lat","lng":"lng"}``.
+          Column mode: ``{"type":"points","record_id":"S3","lat":"lat","lng":"lng"}``.
           Inline mode:
           ``{"type":"points","points":[{"lat":37.7,"lng":-122.4,"label":"Destination"}]}``.
           Add optional ``label``, ``tooltip``, ``color``, ``marker``, and
@@ -438,7 +438,7 @@ class RenderMapTool:
           ``size`` is ``{"field":"value"}``; the output pane chooses the
           radius range.
         - ``geojson`` layer:
-          ``{"type":"geojson","record_id":"Q3","geojson":"geom_geojson"}`` plus
+          ``{"type":"geojson","record_id":"S3","geojson":"geom_geojson"}`` plus
           optional ``label``, ``tooltip``, and ``color``. ``geojson`` is a
           column name or inline WGS84 GeoJSON object. If the database has
           native geometry, convert it in SQL first (e.g.
@@ -446,12 +446,12 @@ class RenderMapTool:
           reference that column.
 
         Minimal examples:
-        ``{"layers":[{"type":"points","record_id":"Q3","lat":"lat","lng":"lng","label":"name","tooltip":["status"]}]}``
+        ``{"layers":[{"type":"points","record_id":"S3","lat":"lat","lng":"lng","label":"name","tooltip":["status"]}]}``
         ``{"layers":[{"type":"points","points":[{"lat":37.7,"lng":-122.4,"label":"Destination"}],"label":"label"}]}``
-        ``{"layers":[{"type":"geojson","record_id":"Q3","geojson":"geom_geojson","label":"name","tooltip":["status"]}]}``
+        ``{"layers":[{"type":"geojson","record_id":"S3","geojson":"geom_geojson","label":"name","tooltip":["status"]}]}``
 
         Multi-record overlay:
-        ``{"layers":[{"type":"geojson","record_id":"Q1","geojson":"area_geojson","label":"area"},{"type":"points","record_id":"Q2","lat":"lat","lng":"lng","label":"name"}]}``
+        ``{"layers":[{"type":"geojson","record_id":"S1","geojson":"area_geojson","label":"area"},{"type":"points","record_id":"S2","lat":"lat","lng":"lng","label":"name"}]}``
 
         Prefer defaults unless the user asks for styling or a fixed viewport.
 
@@ -485,11 +485,13 @@ class RenderMapTool:
         row_counts: dict[str, int] = {}
         for rid in record_ids:
             try:
-                await self._output_store.get(rid)
+                result_id = self._output_store.get_constant_source_result_id(rid)
             except KeyError:
                 return f"(error: unknown record_id {rid!r})"
+            except ValueError as e:
+                return f"(error: {e})"
             try:
-                df = await self._output_store.get_dataframe(rid)
+                df = await self._output_store.get_dataframe(result_id)
             except ValueError as e:
                 return f"(error: {e})"
             if df.empty:

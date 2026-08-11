@@ -10,6 +10,7 @@ from pydantic_ai import ToolReturn
 
 from tabulaflow.core.db_connector.db_registry import DBRegistry
 from tabulaflow.core.db_connector.sql_conn import SQLConnector
+from tabulaflow.core.outputs import ResultLookupPlan, SourceDef
 from tabulaflow.core.types import ExecResult
 from tabulaflow.toolhub import QueryDimension, OutputStore, RunQueryForEachCombinationTool, ToolCallOutcome
 
@@ -48,6 +49,25 @@ def _tool(registry: DBRegistry, output_store: OutputStore | None = None) -> RunQ
     return RunQueryForEachCombinationTool(registry, output_store=output_store or OutputStore(), max_combinations=16)
 
 
+def _source_dimensions(source: SourceDef) -> dict[str, list[str]]:
+    assert isinstance(source.plan, ResultLookupPlan)
+    out: dict[str, list[str]] = {parameter_id: [] for parameter_id in source.parameter_ids}
+    for variant in source.plan.variants:
+        for parameter_id in source.parameter_ids:
+            value = str(variant.selection[parameter_id])
+            if value not in out[parameter_id]:
+                out[parameter_id].append(value)
+    return out
+
+
+def _record_ids_by_selection(source: SourceDef) -> dict[str, str]:
+    assert isinstance(source.plan, ResultLookupPlan)
+    return {
+        ";".join(f"{key}={value}" for key, value in sorted(variant.selection.items())): variant.result_id
+        for variant in source.plan.variants
+    }
+
+
 class TestRunQueryForEachCombination:
     @pytest.mark.asyncio
     async def test_output_format(self, registry: DBRegistry) -> None:
@@ -68,7 +88,7 @@ class TestRunQueryForEachCombination:
         )
 
         assert _text(result) == dedent("""\
-            QS1 — dimensions: ranking (2) × period (2) = 4 combinations, 4 executed
+            S1 — dimensions: ranking (2) × period (2) = 4 combinations, 4 executed
 
             period=q2;ranking=net (2 rows):
             | customer   |   value |
@@ -154,17 +174,17 @@ class TestRunQueryForEachCombination:
         )
 
         assert result.metadata == ToolCallOutcome(count=4, unit="combinations")
-        assert _text(result).startswith("QS1 —")
-        family = output_store.get_family("QS1")
-        assert family.dimensions == {"ranking": ["net", "gross"], "period": ["q2", "q3"]}
-        assert set(family.record_ids_by_selection) == {
+        assert _text(result).startswith("S1 —")
+        family = output_store.get_source("S1")
+        assert _source_dimensions(family) == {"ranking": ["net", "gross"], "period": ["q2", "q3"]}
+        assert set(_record_ids_by_selection(family)) == {
             "period=q2;ranking=net",
             "period=q3;ranking=net",
             "period=q2;ranking=gross",
             "period=q3;ranking=gross",
         }
-        record = await output_store.get(family.record_ids_by_selection["period=q2;ranking=net"])
-        df = await output_store.get_dataframe(record.record_id)
+        record = await output_store.get(_record_ids_by_selection(family)["period=q2;ranking=net"])
+        df = await output_store.get_dataframe(record.result_id)
         assert df.to_dict("records")[0] == {"customer": "Acme", "value": 10}
 
     @pytest.mark.asyncio
@@ -184,8 +204,8 @@ class TestRunQueryForEachCombination:
             """,
         )
 
-        family = output_store.get_family("QS1")
-        record = await output_store.get(family.record_ids_by_selection["ranking=net"])
+        family = output_store.get_source("S1")
+        record = await output_store.get(_record_ids_by_selection(family)["ranking=net"])
 
         assert "\n\n" not in record.query
         assert record.query == dedent("""\
@@ -243,10 +263,10 @@ class TestRunQueryForEachCombination:
 
         assert "4 combinations, 3 executed (1 identical)" in _text(result)
         assert "period=q3;ranking=gross (2 rows) — same query as period=q2;ranking=gross" in _text(result)
-        family = output_store.get_family("QS1")
+        family = output_store.get_source("S1")
         assert (
-            family.record_ids_by_selection["period=q2;ranking=gross"]
-            == family.record_ids_by_selection["period=q3;ranking=gross"]
+            _record_ids_by_selection(family)["period=q2;ranking=gross"]
+            == _record_ids_by_selection(family)["period=q3;ranking=gross"]
         )
 
     @pytest.mark.asyncio
@@ -264,8 +284,8 @@ class TestRunQueryForEachCombination:
         )
 
         assert "3 combinations, 2 executed (1 identical)" in _text(result)
-        family = output_store.get_family("QS1")
-        assert family.record_ids_by_selection["ranking=net"] == family.record_ids_by_selection["ranking=net_again"]
+        family = output_store.get_source("S1")
+        assert _record_ids_by_selection(family)["ranking=net"] == _record_ids_by_selection(family)["ranking=net_again"]
 
     @pytest.mark.asyncio
     async def test_template_variables_must_match_dimensions(self, registry: DBRegistry) -> None:
@@ -330,7 +350,7 @@ class TestRunQueryForEachCombination:
         assert "ranking=net — " in _text(result)
         assert "ranking=gross — " in _text(result)
         with pytest.raises(KeyError):
-            output_store.get_family("QS1")
+            output_store.get_source("S1")
 
     @pytest.mark.asyncio
     async def test_combinations_sharing_an_error_are_grouped(self, registry: DBRegistry) -> None:

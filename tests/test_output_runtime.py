@@ -50,7 +50,7 @@ async def test_constant_result_plan_resolves_answer_artifact() -> None:
     output_store = await _output_store_with_results()
     resolver = OutputResolver(output_store)
     output = OutputSpec(
-        sources=[SourceDef(id="fixed", plan=ConstantResultPlan(result_id="Q1"))],
+        sources=[SourceDef(id="fixed", plan=ConstantResultPlan(result_id="R1"))],
         artifacts=[ArtifactSpec(id="table", view=TableView(source="fixed"))],
     )
 
@@ -58,7 +58,7 @@ async def test_constant_result_plan_resolves_answer_artifact() -> None:
 
     record = resolved.artifacts[0].results_by_source["fixed"]
     assert resolved.selection == {}
-    assert record.id == "Q1"
+    assert record.id == "R1"
     assert record.db_alias == "workspace"
     assert record.query == "SELECT 1 AS a"
     assert record.row_count == 1
@@ -77,8 +77,8 @@ async def test_result_lookup_plan_resolves_by_projected_selection() -> None:
                 parameter_ids=["metric"],
                 plan=ResultLookupPlan(
                     variants=[
-                        ResultVariant(selection={"metric": "revenue"}, result_id="Q1"),
-                        ResultVariant(selection={"metric": "profit"}, result_id="Q2"),
+                        ResultVariant(selection={"metric": "revenue"}, result_id="R1"),
+                        ResultVariant(selection={"metric": "profit"}, result_id="R2"),
                     ]
                 ),
             )
@@ -90,7 +90,7 @@ async def test_result_lookup_plan_resolves_by_projected_selection() -> None:
 
     record = resolved.artifacts[0].results_by_source["top_customers"]
     assert resolved.selection == {"metric": "profit", "min_spend": 10_000}
-    assert record.id == "Q2"
+    assert record.id == "R2"
     assert isinstance(output.sources[0].plan, ResultLookupPlan)
     assert canonical_selection_key({"metric": "profit"}) == canonical_selection_key(
         output.sources[0].plan.variants[1].selection
@@ -107,7 +107,7 @@ async def test_result_lookup_plan_rejects_invalid_choice() -> None:
             SourceDef(
                 id="top_customers",
                 parameter_ids=["metric"],
-                plan=ResultLookupPlan(variants=[ResultVariant(selection={"metric": "revenue"}, result_id="Q1")]),
+                plan=ResultLookupPlan(variants=[ResultVariant(selection={"metric": "revenue"}, result_id="R1")]),
             )
         ],
         artifacts=[ArtifactSpec(id="table", view=TableView(source="top_customers"))],
@@ -127,7 +127,7 @@ async def test_result_lookup_plan_reports_unavailable_selection() -> None:
             SourceDef(
                 id="top_customers",
                 parameter_ids=["metric"],
-                plan=ResultLookupPlan(variants=[ResultVariant(selection={"metric": "revenue"}, result_id="Q1")]),
+                plan=ResultLookupPlan(variants=[ResultVariant(selection={"metric": "revenue"}, result_id="R1")]),
             )
         ],
         artifacts=[ArtifactSpec(id="table", view=TableView(source="top_customers"))],

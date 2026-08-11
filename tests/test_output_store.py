@@ -69,15 +69,15 @@ class TestNoConnector:
         for _ in range(5):
             await h.add("db", "sql", _make_pred_query())
         assert h._results.in_memory_count == 5
-        assert all(h._results.has_in_memory(r.record_id) for r in h._records.values())
+        assert all(h._results.has_in_memory(r.result_id) for r in h._records.values())
 
     @pytest.mark.asyncio
     async def test_get(self) -> None:
         h = OutputStore()
         await h.add("db", "sql", _make_pred_query(n_rows=3))
         await h.add("db", "sql", _make_pred_query(n_rows=7))
-        assert (await h.get("Q1")).query == "SELECT 1"
-        q2_df = await h.get_dataframe("Q2")
+        assert (await h.get("R1")).query == "SELECT 1"
+        q2_df = await h.get_dataframe("R2")
         assert len(q2_df) == 7
 
     @pytest.mark.asyncio
@@ -85,9 +85,9 @@ class TestNoConnector:
         h = OutputStore()
         await h.add("db", "sql", _make_pred_query(n_rows=3))
 
-        payload = await h.get_payload("Q1")
+        payload = await h.get_payload("R1")
 
-        assert payload.record.id == "Q1"
+        assert payload.record.id == "R1"
         assert payload.record.query == "SELECT 1"
         assert payload.df is not None
         assert len(payload.df) == 3
@@ -123,11 +123,11 @@ class TestWithConnector:
             await h.add("db", "sql", _make_pred_query())
 
         assert h._results.in_memory_count == 3
-        assert not h._results.has_in_memory("Q1")
-        assert not h._results.has_in_memory("Q2")
-        assert h._results.has_in_memory("Q3")
-        assert h._results.is_persisted("Q1")
-        assert isinstance(h._records["Q1"].outcome, TabularResult)
+        assert not h._results.has_in_memory("R1")
+        assert not h._results.has_in_memory("R2")
+        assert h._results.has_in_memory("R3")
+        assert h._results.is_persisted("R1")
+        assert isinstance(h._records["R1"].outcome, TabularResult)
 
     @pytest.mark.asyncio
     async def test_eviction_does_not_mutate_caller_owned_pred_query(self, workspace: SQLConnector) -> None:
@@ -139,8 +139,8 @@ class TestWithConnector:
 
         assert pred_query.id == "PQRY"
         assert _exec_result(pred_query).df is not None
-        assert not h._results.has_in_memory("Q1")
-        assert isinstance(h._records["Q1"].outcome, TabularResult)
+        assert not h._results.has_in_memory("R1")
+        assert isinstance(h._records["R1"].outcome, TabularResult)
 
     @pytest.mark.asyncio
     async def test_get_dataframe_loads_evicted_record(self, workspace: SQLConnector) -> None:
@@ -148,12 +148,12 @@ class TestWithConnector:
         await h.add("db", "sql", _make_pred_query(n_rows=10))
         await h.add("db", "sql", _make_pred_query(n_rows=20))
         await h.add("db", "sql", _make_pred_query(n_rows=30))
-        assert not h._results.has_in_memory("Q1")
+        assert not h._results.has_in_memory("R1")
 
-        df = await h.get_dataframe("Q1")
+        df = await h.get_dataframe("R1")
         assert len(df) == 10
-        assert h._results.has_in_memory("Q1")
-        assert not h._results.has_in_memory("Q2")
+        assert h._results.has_in_memory("R1")
+        assert not h._results.has_in_memory("R2")
 
     @pytest.mark.asyncio
     async def test_persist_failure_keeps_record_in_memory(
@@ -162,7 +162,7 @@ class TestWithConnector:
         h = OutputStore(max_in_memory=1, spill_connector=workspace)
 
         async def fake_persist(storage_key: str, df: pd.DataFrame) -> bool:
-            return storage_key != "Q1"
+            return storage_key != "R1"
 
         monkeypatch.setattr(h._results, "_persist", fake_persist)
 
@@ -170,11 +170,11 @@ class TestWithConnector:
         await h.add("db", "sql", _make_pred_query(n_rows=20))
         await h.add("db", "sql", _make_pred_query(n_rows=30))
 
-        assert h._results.has_in_memory("Q1")
-        assert not h._results.is_persisted("Q1")
-        assert not h._results.has_in_memory("Q2")
+        assert h._results.has_in_memory("R1")
+        assert not h._results.is_persisted("R1")
+        assert not h._results.has_in_memory("R2")
 
-        df = await h.get_dataframe("Q1")
+        df = await h.get_dataframe("R1")
         assert len(df) == 10
 
     @pytest.mark.asyncio
@@ -198,9 +198,9 @@ class TestWithConnector:
         pq = PredQuery(query="SELECT *", exec_result=ExecResult(df=df_original.copy()))
         await h.add("db", "sql", pq)
         await h.add("db", "sql", _make_pred_query())  # evicts Q1
-        assert not h._results.has_in_memory("Q1")
+        assert not h._results.has_in_memory("R1")
 
-        df_loaded = await h.get_dataframe("Q1")
+        df_loaded = await h.get_dataframe("R1")
         # Hydration goes through the connector read path, which upgrades
         # to nullable extension dtypes (Int64 / Float64 / string).  Values
         # round-trip, dtypes don't.
@@ -211,21 +211,21 @@ class TestWithConnector:
         h = OutputStore(max_in_memory=1, spill_connector=workspace)
         await h.add("db", "sql", _make_pred_query())
         await h.add("db", "sql", _make_pred_query())
-        assert not h._results.has_in_memory("Q1")
-        chart_id = h.add_chart("Q1", {"mark": "bar"})
-        assert not h._results.has_in_memory("Q1")
+        assert not h._results.has_in_memory("R1")
+        chart_id = h.add_chart("S1", {"mark": "bar"})
+        assert not h._results.has_in_memory("R1")
         assert chart_id == "CHART1"
-        assert _chart_view(h, "CHART1").source == "Q1"
+        assert _chart_view(h, "CHART1").source == "S1"
         assert _chart_view(h, "CHART1").spec == {"mark": "bar"}
         with pytest.raises(KeyError):
-            h.add_chart("Q9", {"mark": "bar"})
+            h.add_chart("S9", {"mark": "bar"})
         with pytest.raises(KeyError):
             h.get_chart("CHART9")
 
     @pytest.mark.asyncio
     async def test_add_map_stores_standalone_artifact(self, workspace: SQLConnector) -> None:
         h = OutputStore(spill_connector=workspace)
-        spec = {"layers": [{"type": "points", "source": "Q1", "lat": "lat", "lng": "lng"}]}
+        spec = {"layers": [{"type": "points", "source": "S1", "lat": "lat", "lng": "lng"}]}
         map_id = h.add_map(spec)
         assert map_id == "MAP1"
         assert _map_view(h, "MAP1").spec == spec

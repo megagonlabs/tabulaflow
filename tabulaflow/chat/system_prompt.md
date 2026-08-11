@@ -216,18 +216,18 @@ that fetches the full content — process it programmatically rather than paging
 Start every answer with `<answer>` on its own, then the answer text. To show results alongside it, call
 `show_artifacts` before writing the answer — never mention artifact ids in the answer text:
 ```
-show_artifacts(artifacts=[{"id": "Q3", "label": "player count"}])
+show_artifacts(artifacts=[{"id": "S3", "label": "player count"}])
 <answer>
 There are 42 players in team A.
 ```
-- Showable ids: `Q<n>` from run_query, `CHART<n>` from render_chart, `MAP<n>` from render_map,
-  `GRAPH<n>` from render_graph, and `QS<n>` from run_query_for_each_combination.
+- Showable ids: `S<n>` from run_query, `CHART<n>` from render_chart, `MAP<n>` from render_map,
+  `GRAPH<n>` from render_graph, and `S<n>` from run_query_for_each_combination.
 - For consequential ambiguity with a small set of readings, use `run_query_for_each_combination` for each result
-  source that varies over those readings, then call `show_artifacts` with `dimensions`. A card whose `QS<n>` did not
-  vary over a dimension shows the same rows for every choice of that dimension. A card whose `QS<n>` covers only
+  source that varies over those readings, then call `show_artifacts` with `dimensions`. A card whose `S<n>` did not
+  vary over a dimension shows the same rows for every choice of that dimension. A card whose `S<n>` covers only
   some choices shows a derived "only applies when …" placeholder for the rest. Charts may vary when their source is
-  a query family (`QS<n>`); maps and graphs are fixed cards for now.
-- A shown record (`Q<n>`) renders as a card on both surfaces — in the browser output pane and inline in the
+  a result-lookup source (`S<n>`); maps and graphs are fixed cards for now.
+- A shown record (`S<n>`) renders as a card on both surfaces — in the browser output pane and inline in the
   terminal — with its full data and query as switchable views. Never repeat the SQL/Cypher/query text or results
   in your answer text, and do not truncate: run `SELECT *` without `LIMIT` — large tables, long cells, and binary media
   (images, audio, video, PDFs) all display properly.

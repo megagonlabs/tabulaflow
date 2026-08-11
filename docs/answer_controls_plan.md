@@ -1,6 +1,6 @@
 # Answer Controls Plan
 
-Status: active implementation plan; ignores earlier interpretation-panel plans. The goal is now the clean end-state architecture, even when that means breaking from repo history rather than preserving old `Q*` / `QS*` / `ArtifactDef` shapes.
+Status: active implementation plan; ignores earlier interpretation-panel plans. The goal is now the clean end-state architecture, even when that means breaking from repo history rather than preserving old `S*` / `S*` / `ArtifactDef` shapes.
 
 ## Architecture reset
 
@@ -42,18 +42,18 @@ Implemented on `dev` so far:
 - Chat results now carry `ChatResult.output: OutputSpec` as the live output model.
 - TUI and browser-pane controls read from `OutputSpec.parameters` / `OutputSpec.default_selection`; the old `AnswerPanel` / `ChoiceControl` chat model has been removed.
 - `toolhub.output_store.OutputStore` owns runtime output state:
-  - `source_id="Q1"`
-  - `source_id="QS1"`
+  - `source_id="S1"`
+  - `source_id="S1"`
   - `ResultRecord` metadata and `ResultPayload` data access;
   - query-family storage for `ResultLookupPlan` sources;
   - clean `ArtifactSpec` / `ViewDef` artifact registry.
 - Chart artifacts are source-backed:
   - chart artifact specs reference a source through `ChartView.source`;
-  - `render_chart(source_id=...)` accepts `Q*` and `QS*`.
-  - For `QS*`, chart validation checks every source variant and reports all failures by selection key, not internal variant record id.
-  - `show_artifacts` treats a chart backed by a `QS*` source as varying over that family.
+  - `render_chart(source_id=...)` accepts `S*` and `S*`.
+  - For `S*`, chart validation checks every source variant and reports all failures by selection key, not internal variant record id.
+  - `show_artifacts` treats a chart backed by a `S*` source as varying over that family.
 - Chat output resolution now goes through `OutputResolver`; app and pane renderers consume `ResolvedOutput` directly.
-- Source ids are plain `Q*` / `QS*` strings; no separate `ArtifactSource` wrapper.
+- Source ids are plain `S*` / `S*` strings; no separate `ArtifactSource` wrapper.
 - `show_artifacts` refs are converted to `OutputSpec` during chat-result construction.
 - The tool-facing `show_artifacts` item is named `ArtifactRef`, because it is only an id+label reference.
 - Output-store artifact registry entries now store clean `ArtifactSpec` / `ViewDef` models.
@@ -258,7 +258,7 @@ control selection + source id -> concrete record/result
 
 Sources may include:
 
-- fixed query records;
+- fixed results;
 - query families;
 - later, parameterized query definitions.
 
@@ -283,7 +283,7 @@ Goals:
 - Include `OutputSpec.parameters` and `OutputSpec.artifacts` in the pane turn payload.
 - Resolve the default selection and finite choice changes through the live session/runtime.
 - Update table/chart/map/graph cards when choice controls change.
-- Keep this phase to precomputed `Q*` / `QS*` sources; do not add lazy query execution yet.
+- Keep this phase to precomputed `S*` / `S*` sources; do not add lazy query execution yet.
 
 This phase should validate the public runtime API:
 

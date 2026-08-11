@@ -10,7 +10,7 @@ from tabulaflow.core.config import tabulaflow_config
 from tabulaflow.core.db_connector.base import NL2QDBConnector
 from tabulaflow.core.db_connector.db_registry import DBRegistry
 from tabulaflow.toolhub.base import ToolCallOutcome, sum_tool_metrics
-from tabulaflow.toolhub.output_store import OutputStore, QueryRecord
+from tabulaflow.toolhub.output_store import OutputStore, StoredResult
 from tabulaflow.toolhub.run_query import LLMParameter, RunQueryTool, RunQueryToolMetrics
 
 _UNSET = object()
@@ -181,7 +181,9 @@ class RegistryRunQueryTool:
             outcome = ToolCallOutcome(count=len(exec_result.df), unit="rows")
         elif exec_result is not None and exec_result.error:
             outcome = ToolCallOutcome(error=True)
-        return ToolReturn(return_value=f"[record_id={record.record_id}]\n{execution.output}", metadata=outcome)
+        if record.source_id is None:
+            return ToolReturn(return_value="(error: query did not create a source)", metadata=ToolCallOutcome(error=True))
+        return ToolReturn(return_value=f"[source_id={record.source_id}]\n{execution.output}", metadata=outcome)
 
     def as_pydantic_ai_tool(self) -> Tool:
         fn: Any
@@ -195,13 +197,13 @@ class RegistryRunQueryTool:
         """Return aggregated metrics across all aliases."""
         return sum_tool_metrics((t.metrics() for _, t in self._tools.values()), RunQueryToolMetrics)
 
-    async def get_query_record(self, record_id: str) -> QueryRecord:
-        """Return the record for a previously executed query.
+    async def get_result(self, result_id: str) -> StoredResult:
+        """Return the internal store entry for a materialized result.
 
         Args:
-            record_id: The string ID assigned to the query record at execution time.
+            result_id: The string ID assigned to the result at execution time.
 
         Raises:
-            KeyError: If no query with ``record_id`` exists.
+            KeyError: If no result with ``result_id`` exists.
         """
-        return await self._output_store.get(record_id)
+        return await self._output_store.get(result_id)

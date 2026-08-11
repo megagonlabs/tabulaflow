@@ -31,7 +31,7 @@ def _text(result: ToolReturn) -> str:
 async def output_store() -> OutputStore:
     h = OutputStore()
     await h.add("workspace", "sql", PredQuery(query="SELECT 1", exec_result=ExecResult(df=pd.DataFrame({"a": [1]}))))
-    h.add_chart("Q1", {"mark": "bar"})
+    h.add_chart("S1", {"mark": "bar"})
     return h
 
 
@@ -39,12 +39,12 @@ class TestShowArtifacts:
     @pytest.mark.asyncio
     async def test_declares_the_bundle_in_metadata(self, output_store: OutputStore) -> None:
         result = await ShowArtifactsTool(output_store=output_store)(
-            [ArtifactRef(id="Q1", label="row count"), ArtifactRef(id="CHART1", label="rows by group")]
+            [ArtifactRef(id="S1", label="row count"), ArtifactRef(id="CHART1", label="rows by group")]
         )
 
-        assert _text(result) == "showing row count (Q1), rows by group (CHART1)"
+        assert _text(result) == "showing row count (S1), rows by group (CHART1)"
         assert result.metadata == ArtifactBundle(
-            artifacts=(ArtifactRef(id="Q1", label="row count"), ArtifactRef(id="CHART1", label="rows by group"))
+            artifacts=(ArtifactRef(id="S1", label="row count"), ArtifactRef(id="CHART1", label="rows by group"))
         )
 
     @pytest.mark.asyncio
@@ -57,15 +57,15 @@ class TestShowArtifacts:
     @pytest.mark.asyncio
     async def test_rejects_unknown_ids(self, output_store: OutputStore) -> None:
         result = await ShowArtifactsTool(output_store=output_store)(
-            [ArtifactRef(id="Q9", label="missing"), ArtifactRef(id="MAP1", label="also missing")]
+            [ArtifactRef(id="S9", label="missing"), ArtifactRef(id="MAP1", label="also missing")]
         )
 
-        assert _text(result) == "(error: unknown artifact id 'Q9'; unknown artifact id 'MAP1')"
+        assert _text(result) == "(error: unknown artifact id 'S9'; unknown artifact id 'MAP1')"
         assert result.metadata is None
 
     @pytest.mark.asyncio
     async def test_rejects_the_id_as_its_own_label(self, output_store: OutputStore) -> None:
-        result = await ShowArtifactsTool(output_store=output_store)([ArtifactRef(id="Q1", label="Q1")])
+        result = await ShowArtifactsTool(output_store=output_store)([ArtifactRef(id="S1", label="S1")])
 
         assert "needs a human-readable label" in _text(result)
         assert result.metadata is None
@@ -130,9 +130,9 @@ async def families(tmp_path: Path) -> tuple[OutputStore, ShowArtifactsTool]:
         QueryDimension(id="ranking", choices=["net", "order_count"]),
         QueryDimension(id="period", choices=["q2", "q3"]),
     ]
-    await runner("workspace", both, TOP)  # QS1
-    await runner("workspace", [QueryDimension(id="period", choices=["q2", "q3"])], BY_REGION)  # QS2
-    await runner("workspace", [QueryDimension(id="period", choices=["q2"])], QUARTER_ONLY)  # QS3
+    await runner("workspace", both, TOP)  # S1
+    await runner("workspace", [QueryDimension(id="period", choices=["q2", "q3"])], BY_REGION)  # S2
+    await runner("workspace", [QueryDimension(id="period", choices=["q2"])], QUARTER_ONLY)  # S3
     return output_store, ShowArtifactsTool(output_store=output_store)
 
 
@@ -145,15 +145,15 @@ class TestShowArtifactsPanel:
 
         result = await show(
             [
-                ArtifactRef(id="QS1", label="top customers"),
-                ArtifactRef(id="QS2", label="orders by region"),
-                ArtifactRef(id="QS3", label="net revenue"),
+                ArtifactRef(id="S1", label="top customers"),
+                ArtifactRef(id="S2", label="orders by region"),
+                ArtifactRef(id="S3", label="net revenue"),
             ],
             _dimensions(),
         )
 
         assert _text(result) == (
-            "showing top customers (QS1), orders by region (QS2), net revenue (QS3 — only applies at period=q2)"
+            "showing top customers (S1), orders by region (S2), net revenue (S3 — only applies at period=q2)"
         )
         assert result.metadata is not None
         assert [dim.id for dim in result.metadata.dimensions] == ["ranking", "period"]
@@ -162,9 +162,9 @@ class TestShowArtifactsPanel:
     async def test_rejects_a_family_without_a_panel(self, families: tuple[OutputStore, ShowArtifactsTool]) -> None:
         _, show = families
 
-        result = await show([ArtifactRef(id="QS1", label="top customers")])
+        result = await show([ArtifactRef(id="S1", label="top customers")])
 
-        assert "QS1 varies over ranking, period; declare them as dimensions" in _text(result)
+        assert "S1 varies over ranking, period; declare them as dimensions" in _text(result)
         assert result.metadata is None
 
     @pytest.mark.asyncio
@@ -174,8 +174,8 @@ class TestShowArtifactsPanel:
         _, show = families
         period_only = [_dimensions()[1]]
 
-        result = await show([ArtifactRef(id="QS1", label="top customers")], period_only)
-        assert "QS1 varies over 'ranking', which is not a declared dimension" in _text(result)
+        result = await show([ArtifactRef(id="S1", label="top customers")], period_only)
+        assert "S1 varies over 'ranking', which is not a declared dimension" in _text(result)
 
         narrowed = [
             _dimensions()[0],
@@ -185,8 +185,8 @@ class TestShowArtifactsPanel:
                 choices=[Choice(id="q2", label="Q2"), Choice(id="q4", label="Q4")],
             ),
         ]
-        result = await show([ArtifactRef(id="QS1", label="top customers")], narrowed)
-        assert "QS1 ran period=q3, not declared for 'period'" in _text(result)
+        result = await show([ArtifactRef(id="S1", label="top customers")], narrowed)
+        assert "S1 ran period=q3, not declared for 'period'" in _text(result)
 
     @pytest.mark.asyncio
     async def test_rejects_a_dimension_no_card_varies_over(
@@ -194,7 +194,7 @@ class TestShowArtifactsPanel:
     ) -> None:
         _, show = families
 
-        result = await show([ArtifactRef(id="QS2", label="orders by region")], _dimensions())
+        result = await show([ArtifactRef(id="S2", label="orders by region")], _dimensions())
 
         assert "dimension 'ranking' is not varied over by any card" in _text(result)
         assert result.metadata is None
@@ -214,8 +214,8 @@ class TestShowArtifactsPanel:
         ]
 
         result = await show(
-            [ArtifactRef(id="QS1", label="top customers"), ArtifactRef(id="QS3", label="net revenue")], q3_first
+            [ArtifactRef(id="S1", label="top customers"), ArtifactRef(id="S3", label="net revenue")], q3_first
         )
 
-        assert "QS3 does not apply at period=q3, the first choice of 'period'" in _text(result)
+        assert "S3 does not apply at period=q3, the first choice of 'period'" in _text(result)
         assert result.metadata is None

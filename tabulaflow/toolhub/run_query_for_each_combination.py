@@ -20,11 +20,12 @@ from pydantic_ai import Tool, ToolReturn
 from tabulaflow.core.config import tabulaflow_config
 from tabulaflow.core.db_connector import NL2QDBConnector
 from tabulaflow.core.db_connector.db_registry import DBRegistry
+from tabulaflow.core.outputs import ResultLookupPlan, SourceDef
 from tabulaflow.core.types import ErrorInfo, PredQuery
 from tabulaflow.core.utils import flatten_multiline, format_df
 from tabulaflow.toolhub.base import ToolCallOutcome
 from tabulaflow.toolhub.engines.sql import format_sqlalchemy_error_msg
-from tabulaflow.toolhub.output_store import QueryFamily, OutputStore
+from tabulaflow.toolhub.output_store import OutputStore
 
 DEFAULT_MAX_COMBINATIONS = 50
 
@@ -52,12 +53,30 @@ class CombinationQueryRun:
     """Result of one run-query-for-each-combination invocation."""
 
     output: str
-    family: QueryFamily
+    source: SourceDef
 
 
 def selection_key(selection: dict[str, str]) -> str:
-    """Key one dimension selection into a family's ``record_ids_by_selection``."""
+    """Key one dimension selection into a result-lookup source variant."""
     return ";".join(f"{dim}={choice}" for dim, choice in sorted(selection.items()))
+
+
+def _source_dimensions(source: SourceDef) -> dict[str, list[str]]:
+    if not isinstance(source.plan, ResultLookupPlan):
+        return {}
+    dimensions: dict[str, list[str]] = {parameter_id: [] for parameter_id in source.parameter_ids}
+    for variant in source.plan.variants:
+        for parameter_id in source.parameter_ids:
+            value = str(variant.selection.get(parameter_id))
+            if value not in dimensions[parameter_id]:
+                dimensions[parameter_id].append(value)
+    return dimensions
+
+
+def _record_ids_by_selection(source: SourceDef) -> dict[str, str]:
+    if not isinstance(source.plan, ResultLookupPlan):
+        return {}
+    return {selection_key({k: str(v) for k, v in variant.selection.items()}): variant.result_id for variant in source.plan.variants}
 
 
 def _normalize(query: str) -> str:
@@ -151,17 +170,19 @@ def _repetition_notes(by_selection: dict[str, PredQuery]) -> dict[str, str]:
     return notes
 
 
-def _format_run(family: QueryFamily, by_selection: dict[str, PredQuery]) -> str:
+def _format_run(source: SourceDef, by_selection: dict[str, PredQuery]) -> str:
     """Render the family header, the first combination in full, then the rest as row counts.
 
     The combination shown in full is the first choice of every dimension — the
     reading a panel opens on.
     """
-    grid = " × ".join(f"{name} ({len(choices)})" for name, choices in family.dimensions.items())
-    executed = len(set(family.record_ids_by_selection.values()))
+    dimensions = _source_dimensions(source)
+    record_ids_by_selection = _record_ids_by_selection(source)
+    grid = " × ".join(f"{name} ({len(choices)})" for name, choices in dimensions.items())
+    executed = len(set(record_ids_by_selection.values()))
     total = len(by_selection)
     identical = f" ({total - executed} identical)" if total > executed else ""
-    header = f"{family.family_id} — dimensions: {grid} = {total} combinations, {executed} executed{identical}"
+    header = f"{source.id} — dimensions: {grid} = {total} combinations, {executed} executed{identical}"
 
     notes = _repetition_notes(by_selection)
     (sample_key, sample), *others = by_selection.items()
@@ -278,7 +299,7 @@ class RunQueryForEachCombinationTool:
 
     Renders the template once per combination, executes the distinct renders
     concurrently against a registered database, and registers the whole set as one
-    query family (``QS*``) in ``OutputStore``.
+    result-lookup source (``S*``) in ``OutputStore``.
 
     Attributes:
         registry: Registry the ``db_alias`` argument resolves against.
@@ -310,7 +331,7 @@ class RunQueryForEachCombinationTool:
         blank gaps in the rendered SQL. The template must reference exactly the
         declared dimension ids, and every dimension must change the rendered query.
         Combinations that render identically are executed once. The whole set is
-        recorded as one query family (``QS*``).
+        recorded as one result-lookup source (``S*``).
 
         Example:
         ```python
@@ -346,11 +367,11 @@ class RunQueryForEachCombinationTool:
             return ToolReturn(return_value=f"(error: {exc})", metadata=ToolCallOutcome(error=True))
         return ToolReturn(
             return_value=run.output,
-            metadata=ToolCallOutcome(count=len(run.family.record_ids_by_selection), unit="combinations"),
+            metadata=ToolCallOutcome(count=len(_record_ids_by_selection(run.source)), unit="combinations"),
         )
 
     async def execute(self, db_alias: str, dimensions: Dimensions, query_template: str) -> CombinationQueryRun:
-        """Run the template over every combination and register the resulting family.
+        """Run the template over every combination and register the resulting source.
 
         Raises:
             ValueError: If the alias is unknown, the request is invalid, or a
@@ -379,14 +400,14 @@ class RunQueryForEachCombinationTool:
             raise ValueError(_format_failures(failures, len(distinct)))
 
         by_selection = {key: pred_queries[_normalize(query)] for key, query in queries.items()}
-        family = await self._output_store.add_family(
+        source = await self._output_store.add_family(
             db_alias,
             connector.connector_type,
             {dim.id: list(dim.choices) for dim in dimensions},
             query_template,
             by_selection,
         )
-        return CombinationQueryRun(output=_format_run(family, by_selection), family=family)
+        return CombinationQueryRun(output=_format_run(source, by_selection), source=source)
 
     def _connector(self, db_alias: str) -> NL2QDBConnector:
         try:

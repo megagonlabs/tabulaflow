@@ -14,6 +14,7 @@ from typing import Any, ClassVar
 import pandas as pd
 from pydantic_ai import Tool
 
+from tabulaflow.core.outputs import ConstantResultPlan, ResultLookupPlan
 from tabulaflow.toolhub.output_store import OutputStore
 
 
@@ -35,9 +36,9 @@ _MAX_CHART_ROWS = 20_000
 
 
 def _validate_source_id(source_id: str) -> None:
-    if source_id.startswith(("Q", "QS")):
+    if source_id.startswith("S"):
         return
-    raise ValueError(f"source_id must start with 'Q' or 'QS', got {source_id!r}")
+    raise ValueError(f"source_id must start with 'S', got {source_id!r}")
 
 
 @dataclass(frozen=True)
@@ -403,7 +404,7 @@ def render_plotext(
 
 
 class RenderChartTool:
-    """Create a standalone chart artifact from a query record or family source.
+    """Create a standalone chart artifact from a result or family source.
 
     Validates the spec against the source DataFrame(s) and stores it as a citable
     clean chart ``ArtifactSpec``. Simple x/y specs also get a terminal (plotext) preview;
@@ -416,7 +417,7 @@ class RenderChartTool:
         self._output_store = output_store or OutputStore()
 
     async def __call__(self, source_id: str, *, vegalite_spec: str) -> str:
-        """Create a Vega-Lite chart from a query record or query family source.
+        """Create a Vega-Lite chart from a result or result-lookup source source.
 
         Accepts any Vega-Lite spec — single or multi-view: bar, line, point,
         area, arc/pie, heatmap, stacked/grouped bars via a color encoding,
@@ -440,9 +441,7 @@ class RenderChartTool:
         Returns the new chart id (``CHART1``, ``CHART2``, …) to cite in the answer.
 
         Args:
-            source_id: Output-store source ID. Use a fixed query record (e.g.
-                ``"Q3"``) or a query family (e.g. ``"QS1"``) that resolves under
-                answer controls.
+            source_id: Output-store source ID, such as ``"S1"``.
             vegalite_spec: A Vega-Lite JSON specification string.
         """
         if not isinstance(source_id, str) or not source_id.strip():
@@ -498,20 +497,24 @@ class RenderChartTool:
         return f"{label} {chart_id} created from {source_id}{suffix}"
 
     async def _source_variants(self, source_id: str) -> list[_SourceVariant]:
-        if source_id.startswith("QS"):
-            family = self._output_store.get_family(source_id)
+        source = self._output_store.get_source(source_id)
+        if isinstance(source.plan, ResultLookupPlan):
             out: list[_SourceVariant] = []
-            for selection, record_id in family.record_ids_by_selection.items():
+            for variant in source.plan.variants:
+                selection = ";".join(f"{key}={value}" for key, value in sorted(variant.selection.items()))
                 out.append(
                     _SourceVariant(
-                        label=selection, record_id=record_id, df=await self._output_store.get_dataframe(record_id)
+                        label=selection,
+                        record_id=variant.result_id,
+                        df=await self._output_store.get_dataframe(variant.result_id),
                     )
                 )
             return out
-        if not source_id.startswith("Q"):
-            raise ValueError(f"source_id must start with 'Q' or 'QS', got {source_id!r}")
-        await self._output_store.get(source_id)
-        return [_SourceVariant(label=source_id, record_id=source_id, df=await self._output_store.get_dataframe(source_id))]
+        if isinstance(source.plan, ConstantResultPlan):
+            result_id = source.plan.result_id
+            await self._output_store.get(result_id)
+            return [_SourceVariant(label=source_id, record_id=result_id, df=await self._output_store.get_dataframe(result_id))]
+        raise ValueError(f"source_id {source_id!r} is not chartable yet")
 
     def as_pydantic_ai_tool(self) -> Tool:
         return Tool(self.__call__, name=self.name)

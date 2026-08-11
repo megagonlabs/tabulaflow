@@ -8,12 +8,12 @@ from typing import Annotated, ClassVar, TypeAlias
 from pydantic import BaseModel, Field
 from pydantic_ai import Tool, ToolReturn
 
-from tabulaflow.core.outputs import ChartView
-from tabulaflow.toolhub.output_store import QueryFamily, OutputStore
+from tabulaflow.core.outputs import ChartView, ResultLookupPlan, SourceDef
+from tabulaflow.toolhub.output_store import OutputStore
 
 
 class ArtifactRef(BaseModel):
-    id: str = Field(min_length=1, description="Id of a result to show: Q*, QS*, CHART*, MAP* or GRAPH*.")
+    id: str = Field(min_length=1, description="Id of a source or artifact to show: S*, CHART*, MAP* or GRAPH*.")
     label: str = Field(min_length=1, description="Short human-readable name for the card, never the id itself.")
 
 
@@ -66,26 +66,25 @@ class ShowArtifactsTool:
     async def __call__(self, artifacts: Artifacts, dimensions: Dimensions = []) -> ToolReturn:
         """Show the user a set of results, each as a labelled card.
 
-        Ids come from the tools that produced them: ``Q*`` from a query, ``QS*`` from a
-        query run over dimension combinations, ``CHART*``, ``MAP*`` and ``GRAPH*`` from
+        Ids come from the tools that produced them: ``S*`` from a query or source, ``CHART*``, ``MAP*`` and ``GRAPH*`` from
         the render tools. Cards appear in the order given, the first one open.
 
         With ``dimensions``, the user gets a chooser and every card updates together as
-        they switch. A ``QS*`` card shows the combination selected for the dimensions its
-        query varied over. A ``CHART*`` card whose source is ``QS*`` varies the same way.
+        they switch. A source card shows the combination selected for the dimensions its
+        query varied over. A ``CHART*`` card whose source varies does the same.
         A card that did not vary over a dimension shows the same rows whatever the user
         picks there, and one run over only some of a dimension's choices shows "only
         applies when …" for the rest.
 
         Normal answer, no chooser:
         ```python
-        show_artifacts(artifacts=[{"id": "Q1", "label": "player count"}])
+        show_artifacts(artifacts=[{"id": "S1", "label": "player count"}])
         ```
 
         Panel answer, with a chooser:
         ```python
         show_artifacts(
-            artifacts=[{"id": "QS1", "label": "top customers"}],
+            artifacts=[{"id": "S1", "label": "top customers"}],
             dimensions=[
                 {
                     "id": "period",
@@ -114,13 +113,13 @@ class ShowArtifactsTool:
 
     def _describe(self, artifact: ArtifactRef, dimensions: Dimensions) -> str:
         """``label (id)``, naming the choices a partially covered card is limited to."""
-        family = self._family(artifact.id)
+        family = self._lookup_source(artifact.id)
         if family is None or not dimensions:
             return f"{artifact.label} ({artifact.id})"
         declared = {dim.id: [choice.id for choice in dim.choices] for dim in dimensions}
         partial = [
             f"{name}={'|'.join(choices)}"
-            for name, choices in family.dimensions.items()
+            for name, choices in _source_dimensions(family).items()
             if len(choices) < len(declared.get(name, choices))
         ]
         limits = f" — only applies at {', '.join(partial)}" if partial else ""
@@ -135,13 +134,13 @@ class ShowArtifactsTool:
         problems: list[str] = []
         varied: set[str] = set()
         for artifact in artifacts:
-            family = self._family(artifact.id)
+            family = self._lookup_source(artifact.id)
             if family is None:
                 continue
             if not dimensions:
-                problems.append(f"{artifact.id} varies over {', '.join(family.dimensions)}; declare them as dimensions")
+                problems.append(f"{artifact.id} varies over {', '.join(_source_dimensions(family))}; declare them as dimensions")
                 continue
-            for name, choices in family.dimensions.items():
+            for name, choices in _source_dimensions(family).items():
                 if name not in declared:
                     problems.append(f"{artifact.id} varies over {name!r}, which is not a declared dimension")
                     continue
@@ -169,26 +168,40 @@ class ShowArtifactsTool:
                 self._output_store.get_map(artifact.id)
             elif artifact.id.startswith("GRAPH"):
                 self._output_store.get_graph(artifact.id)
-            elif artifact.id.startswith("QS"):
-                self._output_store.get_family(artifact.id)
+            elif artifact.id.startswith("S"):
+                self._output_store.get_source(artifact.id)
             else:
-                await self._output_store.get(artifact.id)
+                return f"unknown artifact id {artifact.id!r}"
         except (KeyError, ValueError):
             return f"unknown artifact id {artifact.id!r}"
         return None
 
-    def _family(self, artifact_id: str) -> QueryFamily | None:
-        """The query family behind ``artifact_id``, or ``None`` for a fixed artifact."""
+    def _lookup_source(self, artifact_id: str) -> SourceDef | None:
+        """The result-lookup source behind ``artifact_id``, or ``None`` for a fixed artifact."""
         try:
-            if artifact_id.startswith("QS"):
-                return self._output_store.get_family(artifact_id)
+            if artifact_id.startswith("S"):
+                source = self._output_store.get_source(artifact_id)
+                return source if isinstance(source.plan, ResultLookupPlan) else None
             if artifact_id.startswith("CHART"):
                 chart = self._output_store.get_chart(artifact_id)
-                if isinstance(chart.view, ChartView) and chart.view.source.startswith("QS"):
-                    return self._output_store.get_family(chart.view.source)
+                if isinstance(chart.view, ChartView) and chart.view.source.startswith("S"):
+                    source = self._output_store.get_source(chart.view.source)
+                    return source if isinstance(source.plan, ResultLookupPlan) else None
         except KeyError:
             return None
         return None
 
     def as_pydantic_ai_tool(self) -> Tool:
         return Tool(self.__call__, name=self.name)
+
+
+def _source_dimensions(source: SourceDef) -> dict[str, list[str]]:
+    if not isinstance(source.plan, ResultLookupPlan):
+        return {}
+    dimensions: dict[str, list[str]] = {parameter_id: [] for parameter_id in source.parameter_ids}
+    for variant in source.plan.variants:
+        for parameter_id in source.parameter_ids:
+            value = str(variant.selection.get(parameter_id))
+            if value not in dimensions[parameter_id]:
+                dimensions[parameter_id].append(value)
+    return dimensions

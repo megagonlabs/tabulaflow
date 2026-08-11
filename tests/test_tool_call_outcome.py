@@ -40,7 +40,7 @@ class TestRunQueryOutcome:
     async def test_success_reports_rows(self, registry: DBRegistry) -> None:
         result = await RegistryRunQueryTool(registry)._run_no_params("mydb", "SELECT * FROM t")
         assert isinstance(result, ToolReturn)
-        assert isinstance(result.return_value, str) and result.return_value.startswith("[record_id=")
+        assert isinstance(result.return_value, str) and result.return_value.startswith("[source_id=")
         assert result.metadata == ToolCallOutcome(count=3, unit="rows")
 
     @pytest.mark.asyncio
@@ -59,7 +59,7 @@ class TestRunQueryOutcome:
     async def test_programmatic_call_returns_text(self, registry: DBRegistry) -> None:
         result = await RegistryRunQueryTool(registry)("mydb", "SELECT * FROM t")
         assert isinstance(result, ToolReturn)
-        assert isinstance(result.return_value, str) and result.return_value.startswith("[record_id=")
+        assert isinstance(result.return_value, str) and result.return_value.startswith("[source_id=")
 
 
 class TestGetTableSchemaOutcome:

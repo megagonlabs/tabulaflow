@@ -186,9 +186,9 @@ class TestRenderChartTool:
     async def test_simple_bar_creates_chart(self) -> None:
         output_store = await _output_store_with(pd.DataFrame({"a": ["x", "y"], "b": [1, 2]}))
         spec = {"mark": "bar", "encoding": {"x": {"field": "a"}, "y": {"field": "b"}}}
-        msg = await RenderChartTool(output_store=output_store)(source_id="Q1", vegalite_spec=json.dumps(spec))
-        assert "Bar chart CHART1 created from Q1" in msg
-        assert _chart_view(output_store, "CHART1").source == "Q1"
+        msg = await RenderChartTool(output_store=output_store)(source_id="S1", vegalite_spec=json.dumps(spec))
+        assert "Bar chart CHART1 created from S1" in msg
+        assert _chart_view(output_store, "CHART1").source == "S1"
         assert _chart_view(output_store, "CHART1").spec == spec
 
     async def test_query_family_source_creates_chart(self) -> None:
@@ -210,10 +210,10 @@ class TestRenderChartTool:
         )
         spec = {"mark": "bar", "encoding": {"x": {"field": "a"}, "y": {"field": "b"}}}
 
-        msg = await RenderChartTool(output_store=output_store)(source_id="QS1", vegalite_spec=json.dumps(spec))
+        msg = await RenderChartTool(output_store=output_store)(source_id="S1", vegalite_spec=json.dumps(spec))
 
-        assert "Bar chart CHART1 created from QS1 — 2 source variants" in msg
-        assert _chart_view(output_store, "CHART1").source == "QS1"
+        assert "Bar chart CHART1 created from S1 — 2 source variants" in msg
+        assert _chart_view(output_store, "CHART1").source == "S1"
         assert _chart_view(output_store, "CHART1").spec == spec
 
     async def test_query_family_validation_reports_all_failing_selections(self) -> None:
@@ -232,19 +232,19 @@ class TestRenderChartTool:
         )
         spec = {"mark": "bar", "encoding": {"x": {"field": "a"}, "y": {"field": "b"}}}
 
-        msg = await RenderChartTool(output_store=output_store)(source_id="QS1", vegalite_spec=json.dumps(spec))
+        msg = await RenderChartTool(output_store=output_store)(source_id="S1", vegalite_spec=json.dumps(spec))
 
         assert "chart source validation failed for 2 issue(s)" in msg
         assert "ranking=net — field(s) not found: ['b']" in msg
         assert "ranking=count — field(s) not found: ['a', 'b']" in msg
-        assert "QS1_v" not in msg
+        assert "S1_v" not in msg
         with pytest.raises(KeyError):
             output_store.get_chart("CHART1")
 
     async def test_rich_spec_creates_chart(self) -> None:
         output_store = await _output_store_with(pd.DataFrame({"a": ["x", "y"], "b": [1, 2], "c": ["g", "h"]}))
         spec = {"mark": "arc", "encoding": {"theta": {"field": "b"}, "color": {"field": "c"}}}
-        msg = await RenderChartTool(output_store=output_store)(source_id="Q1", vegalite_spec=json.dumps(spec))
+        msg = await RenderChartTool(output_store=output_store)(source_id="S1", vegalite_spec=json.dumps(spec))
         assert "CHART1 created" in msg
         assert _chart_view(output_store, "CHART1").spec == spec
 
@@ -253,8 +253,8 @@ class TestRenderChartTool:
         output_store = await _output_store_with(pd.DataFrame({"a": ["x", "y"], "b": [1, 2]}))
         bar = {"mark": "bar", "encoding": {"x": {"field": "a"}, "y": {"field": "b"}}}
         line = {"mark": "line", "encoding": {"x": {"field": "a"}, "y": {"field": "b"}}}
-        await RenderChartTool(output_store=output_store)(source_id="Q1", vegalite_spec=json.dumps(bar))
-        msg = await RenderChartTool(output_store=output_store)(source_id="Q1", vegalite_spec=json.dumps(line))
+        await RenderChartTool(output_store=output_store)(source_id="S1", vegalite_spec=json.dumps(bar))
+        msg = await RenderChartTool(output_store=output_store)(source_id="S1", vegalite_spec=json.dumps(line))
         assert "CHART2 created" in msg
         assert _chart_view(output_store, "CHART1").spec == bar
         assert _chart_view(output_store, "CHART2").spec == line
@@ -262,7 +262,7 @@ class TestRenderChartTool:
     async def test_oversized_result_refused_without_creating(self) -> None:
         output_store = await _output_store_with(pd.DataFrame({"a": range(20_001), "b": range(20_001)}))
         spec = {"mark": "bar", "encoding": {"x": {"field": "a"}, "y": {"field": "b"}}}
-        msg = await RenderChartTool(output_store=output_store)(source_id="Q1", vegalite_spec=json.dumps(spec))
+        msg = await RenderChartTool(output_store=output_store)(source_id="S1", vegalite_spec=json.dumps(spec))
         assert "too large" in msg
         with pytest.raises(KeyError):
             output_store.get_chart("CHART1")
@@ -271,7 +271,7 @@ class TestRenderChartTool:
         # an invalid field reference (typo) is blocked, not stored
         output_store = await _output_store_with(pd.DataFrame({"a": ["x"], "b": [1]}))
         spec = {"mark": "bar", "encoding": {"x": {"field": "nope"}, "y": {"field": "b"}}}
-        msg = await RenderChartTool(output_store=output_store)(source_id="Q1", vegalite_spec=json.dumps(spec))
+        msg = await RenderChartTool(output_store=output_store)(source_id="S1", vegalite_spec=json.dumps(spec))
         assert "not found" in msg and "nope" in msg
         with pytest.raises(KeyError):
             output_store.get_chart("CHART1")
@@ -280,7 +280,7 @@ class TestRenderChartTool:
         # browser-only specs are validated too: a bad color field is blocked
         output_store = await _output_store_with(pd.DataFrame({"a": ["x"], "b": [1], "c": ["g"]}))
         spec = {"mark": "arc", "encoding": {"theta": {"field": "b"}, "color": {"field": "nope"}}}
-        msg = await RenderChartTool(output_store=output_store)(source_id="Q1", vegalite_spec=json.dumps(spec))
+        msg = await RenderChartTool(output_store=output_store)(source_id="S1", vegalite_spec=json.dumps(spec))
         assert "not found" in msg
         with pytest.raises(KeyError):
             output_store.get_chart("CHART1")
@@ -289,7 +289,7 @@ class TestRenderChartTool:
         # a nested-struct reference (meta.country) resolves via its root column 'meta'
         output_store = await _output_store_with(pd.DataFrame({"meta": [{"country": "US"}], "b": [1]}))
         spec = {"mark": "bar", "encoding": {"x": {"field": "meta.country"}, "y": {"field": "b"}}}
-        msg = await RenderChartTool(output_store=output_store)(source_id="Q1", vegalite_spec=json.dumps(spec))
+        msg = await RenderChartTool(output_store=output_store)(source_id="S1", vegalite_spec=json.dumps(spec))
         assert "not found" not in msg
         assert _chart_view(output_store, "CHART1").spec == spec
 
@@ -301,7 +301,7 @@ class TestRenderChartTool:
             "mark": "bar",
             "encoding": {"x": {"field": "a"}, "y": {"field": "derived"}},
         }
-        msg = await RenderChartTool(output_store=output_store)(source_id="Q1", vegalite_spec=json.dumps(spec))
+        msg = await RenderChartTool(output_store=output_store)(source_id="S1", vegalite_spec=json.dumps(spec))
         assert "not found" not in msg
         assert _chart_view(output_store, "CHART1").spec == spec
 
