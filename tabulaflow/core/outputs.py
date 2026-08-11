@@ -184,8 +184,9 @@ class AnswerSpec(BaseModel):
         _require_unique(source_ids, "source ids")
         _require_unique(artifact_ids, "artifact ids")
 
-        if not self.default_selection:
-            self.default_selection = _parameter_defaults(self.parameters)
+        defaults = _parameter_defaults(self.parameters)
+        defaults.update(self.default_selection)
+        self.default_selection = defaults
         parameter_by_id = {parameter.id: parameter for parameter in self.parameters}
         for key, value in self.default_selection.items():
             parameter = parameter_by_id.get(key)

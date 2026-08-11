@@ -95,7 +95,7 @@ class AnswerResolver:
         answer: AnswerSpec,
         selection: Mapping[ParameterId, object] | None = None,
     ) -> ResolvedAnswer:
-        active_selection = _active_selection(answer, selection)
+        active_selection = _normalize_selection(answer, selection)
         parameters = {parameter.id: parameter for parameter in answer.parameters}
         sources = {source.id: source for source in answer.sources}
         resolved_sources: dict[SourceId, ResultRecord] = {}
@@ -132,29 +132,18 @@ class AnswerResolver:
         raise TypeError(f"unsupported source plan {type(plan).__name__}")
 
 
-def _active_selection(
+def _normalize_selection(
     answer: AnswerSpec,
     selection: Mapping[ParameterId, object] | None,
 ) -> dict[ParameterId, SelectionValue]:
     parameters = {parameter.id: parameter for parameter in answer.parameters}
-    active: dict[ParameterId, object] = {
-        parameter.id: _parameter_default(parameter) for parameter in answer.parameters
-    }
-    active.update(answer.default_selection)
+    active: dict[ParameterId, object] = dict(answer.default_selection)
     if selection is not None:
         active.update(selection)
     for parameter_id in active:
         if parameter_id not in parameters:
             raise AnswerResolutionError(f"selection references unknown parameter {parameter_id!r}")
     return {parameter.id: _validate_parameter_value(parameter, active[parameter.id]) for parameter in answer.parameters}
-
-
-def _parameter_default(parameter: ParameterDef) -> SelectionValue:
-    if isinstance(parameter, ChoiceParameter):
-        return parameter.default if parameter.default is not None else parameter.choices[0].id
-    if isinstance(parameter, NumberParameter):
-        return parameter.default
-    raise TypeError(f"unsupported parameter {type(parameter).__name__}")
 
 
 def _resolved_artifact(artifact: ArtifactSpec, results_by_source: dict[SourceId, ResultRecord]) -> ResolvedArtifact:
