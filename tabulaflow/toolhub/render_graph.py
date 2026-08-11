@@ -13,6 +13,7 @@ import pandas as pd
 from pydantic import BaseModel, ConfigDict, ValidationError, model_validator
 from pydantic_ai import Tool
 
+from tabulaflow.core.outputs import ConstantResultPlan, GraphArtifactView
 from tabulaflow.core.types import GraphView, GraphViewEdge, GraphViewNode
 from tabulaflow.core.utils import json_ready
 from tabulaflow.toolhub.output_store import OutputStore
@@ -509,15 +510,20 @@ class RenderGraphTool:
         sources: dict[str, pd.DataFrame] = {}
         for rid in source_ids:
             try:
-                result_id = self._output_store.get_constant_source_result_id(rid)
+                source = self._output_store.get_source(rid)
+                if not isinstance(source.plan, ConstantResultPlan):
+                    return f"(error: source_id {rid!r} is not a single-result source)"
+                result_id = source.plan.result_id
             except KeyError:
                 return f"(error: unknown source_id {rid!r})"
             except ValueError as e:
                 return f"(error: {e})"
             try:
-                df = await self._output_store.get_dataframe(result_id)
+                df = (await self._output_store.get_payload(result_id)).df
             except ValueError as e:
                 return f"(error: {e})"
+            if df is None:
+                return f"(error: query {rid} returned no data)"
             if df.empty:
                 return f"(error: query {rid} result is empty)"
             sources[rid] = df
@@ -530,7 +536,8 @@ class RenderGraphTool:
         except GraphSpecError as e:
             return f"(error: {e})"
 
-        graph_id = self._output_store.add_graph(normalized)
+        artifact = self._output_store.add_artifact("GRAPH", GraphArtifactView(sources=source_ids, spec=normalized))
+        graph_id = artifact.id
         label = graph_type_label(normalized)
         from_text = f" from {', '.join(source_ids)}" if source_ids else ""
         if size.groups == 0:

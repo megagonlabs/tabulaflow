@@ -8,7 +8,7 @@ from typing import Annotated, ClassVar, TypeAlias
 from pydantic import BaseModel, Field
 from pydantic_ai import Tool, ToolReturn
 
-from tabulaflow.core.outputs import ChartView, ResultLookupPlan, SourceDef
+from tabulaflow.core.outputs import ChartView, GraphArtifactView, MapView, ResultLookupPlan, SourceDef
 from tabulaflow.toolhub.output_store import OutputStore
 
 
@@ -163,11 +163,17 @@ class ShowArtifactsTool:
             return f"{artifact.id} needs a human-readable label, not its id"
         try:
             if artifact.id.startswith("CHART"):
-                self._output_store.get_chart(artifact.id)
+                artifact_spec = self._output_store.get_artifact(artifact.id)
+                if not isinstance(artifact_spec.view, ChartView):
+                    return f"unknown artifact id {artifact.id!r}"
             elif artifact.id.startswith("MAP"):
-                self._output_store.get_map(artifact.id)
+                artifact_spec = self._output_store.get_artifact(artifact.id)
+                if not isinstance(artifact_spec.view, MapView):
+                    return f"unknown artifact id {artifact.id!r}"
             elif artifact.id.startswith("GRAPH"):
-                self._output_store.get_graph(artifact.id)
+                artifact_spec = self._output_store.get_artifact(artifact.id)
+                if not isinstance(artifact_spec.view, GraphArtifactView):
+                    return f"unknown artifact id {artifact.id!r}"
             elif artifact.id.startswith("S"):
                 self._output_store.get_source(artifact.id)
             else:
@@ -183,7 +189,7 @@ class ShowArtifactsTool:
                 source = self._output_store.get_source(artifact_id)
                 return source if isinstance(source.plan, ResultLookupPlan) else None
             if artifact_id.startswith("CHART"):
-                chart = self._output_store.get_chart(artifact_id)
+                chart = self._output_store.get_artifact(artifact_id)
                 if isinstance(chart.view, ChartView) and chart.view.source.startswith("S"):
                     source = self._output_store.get_source(chart.view.source)
                     return source if isinstance(source.plan, ResultLookupPlan) else None

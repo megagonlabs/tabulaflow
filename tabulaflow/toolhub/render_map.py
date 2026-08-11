@@ -11,6 +11,7 @@ import pandas as pd
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator, model_validator
 from pydantic_ai import Tool
 
+from tabulaflow.core.outputs import ConstantResultPlan, MapView
 from tabulaflow.toolhub.output_store import OutputStore
 
 MAP_RENDER_MAX_ROWS = 50_000
@@ -485,15 +486,20 @@ class RenderMapTool:
         row_counts: dict[str, int] = {}
         for rid in record_ids:
             try:
-                result_id = self._output_store.get_constant_source_result_id(rid)
+                source = self._output_store.get_source(rid)
+                if not isinstance(source.plan, ConstantResultPlan):
+                    return f"(error: source_id {rid!r} is not a single-result source)"
+                result_id = source.plan.result_id
             except KeyError:
                 return f"(error: unknown record_id {rid!r})"
             except ValueError as e:
                 return f"(error: {e})"
             try:
-                df = await self._output_store.get_dataframe(result_id)
+                df = (await self._output_store.get_payload(result_id)).df
             except ValueError as e:
                 return f"(error: {e})"
+            if df is None:
+                return f"(error: query {rid} returned no data)"
             if df.empty:
                 return f"(error: query {rid} result is empty)"
             if len(df) > MAP_RENDER_MAX_ROWS:
@@ -509,7 +515,8 @@ class RenderMapTool:
         except MapSpecError as e:
             return f"(error: {e})"
 
-        map_id = self._output_store.add_map(normalized)
+        map_artifact = self._output_store.add_artifact("MAP", MapView(sources=record_ids, spec=normalized))
+        map_id = map_artifact.id
         label = map_type_label(normalized)
         if record_ids:
             rows_desc = " + ".join(f"{row_counts[rid]:,}" for rid in record_ids)

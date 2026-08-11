@@ -400,11 +400,10 @@ class RunQueryForEachCombinationTool:
             raise ValueError(_format_failures(failures, len(distinct)))
 
         by_selection = {key: pred_queries[_normalize(query)] for key, query in queries.items()}
-        source = await self._output_store.add_family(
+        source = await self._output_store.add_lookup_source(
             db_alias,
             connector.connector_type,
             {dim.id: list(dim.choices) for dim in dimensions},
-            query_template,
             by_selection,
         )
         return CombinationQueryRun(output=_format_run(source, by_selection), source=source)

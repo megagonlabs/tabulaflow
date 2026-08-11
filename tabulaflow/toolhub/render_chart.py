@@ -14,7 +14,7 @@ from typing import Any, ClassVar
 import pandas as pd
 from pydantic_ai import Tool
 
-from tabulaflow.core.outputs import ConstantResultPlan, ResultLookupPlan
+from tabulaflow.core.outputs import ChartView, ConstantResultPlan, ResultLookupPlan
 from tabulaflow.toolhub.output_store import OutputStore
 
 
@@ -491,7 +491,8 @@ class RenderChartTool:
             return f"(error: chart source validation failed for {len(errors)} issue(s):\n  " + "\n  ".join(errors) + ")"
 
         label = chart_type_label(spec)
-        chart_id = self._output_store.add_chart(source_id, spec)
+        chart = self._output_store.add_artifact("CHART", ChartView(source=source_id, spec=spec))
+        chart_id = chart.id
         rows = len(variants[0].df)
         suffix = f" — {rows:,} rows" if len(variants) == 1 else f" — {len(variants):,} source variants"
         return f"{label} {chart_id} created from {source_id}{suffix}"
@@ -506,14 +507,14 @@ class RenderChartTool:
                     _SourceVariant(
                         label=selection,
                         record_id=variant.result_id,
-                        df=await self._output_store.get_dataframe(variant.result_id),
+                        df=(await self._output_store.get_payload(variant.result_id)).df,
                     )
                 )
             return out
         if isinstance(source.plan, ConstantResultPlan):
             result_id = source.plan.result_id
-            await self._output_store.get(result_id)
-            return [_SourceVariant(label=source_id, record_id=result_id, df=await self._output_store.get_dataframe(result_id))]
+            await self._output_store.get_result(result_id)
+            return [_SourceVariant(label=source_id, record_id=result_id, df=(await self._output_store.get_payload(result_id)).df)]
         raise ValueError(f"source_id {source_id!r} is not chartable yet")
 
     def as_pydantic_ai_tool(self) -> Tool:

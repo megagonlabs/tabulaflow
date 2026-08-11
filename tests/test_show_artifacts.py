@@ -8,6 +8,7 @@ from pydantic_ai import ToolReturn
 
 from tabulaflow.core.db_connector.db_registry import DBRegistry
 from tabulaflow.core.db_connector.sql_conn import SQLConnector
+from tabulaflow.core.outputs import ChartView
 from tabulaflow.core.types import ExecResult, PredQuery
 from tabulaflow.toolhub import (
     ArtifactRef,
@@ -30,8 +31,8 @@ def _text(result: ToolReturn) -> str:
 @pytest.fixture
 async def output_store() -> OutputStore:
     h = OutputStore()
-    await h.add("workspace", "sql", PredQuery(query="SELECT 1", exec_result=ExecResult(df=pd.DataFrame({"a": [1]}))))
-    h.add_chart("S1", {"mark": "bar"})
+    await h.add_result("workspace", "sql", PredQuery(query="SELECT 1", exec_result=ExecResult(df=pd.DataFrame({"a": [1]}))))
+    h.add_artifact("CHART", ChartView(source="S1", spec={"mark": "bar"}))
     return h
 
 

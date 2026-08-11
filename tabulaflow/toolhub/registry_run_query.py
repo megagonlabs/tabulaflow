@@ -174,7 +174,7 @@ class RegistryRunQueryTool:
             )
         execution = await tool.execute(query, parameters, refresh and self.enable_refresh)
         pred_query = execution.pred_query
-        record = await self._output_store.add(db_alias, tool.db_connector.connector_type, pred_query)
+        record = await self._output_store.add_result(db_alias, tool.db_connector.connector_type, pred_query)
         exec_result = pred_query.exec_result
         outcome = None
         if exec_result is not None and exec_result.df is not None:
@@ -206,4 +206,4 @@ class RegistryRunQueryTool:
         Raises:
             KeyError: If no result with ``result_id`` exists.
         """
-        return await self._output_store.get(result_id)
+        return await self._output_store.get_result(result_id)

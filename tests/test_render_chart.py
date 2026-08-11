@@ -24,7 +24,7 @@ SIMPLE_BAR: dict[str, object] = {"mark": "bar", "encoding": {"x": {"field": "a"}
 
 
 def _chart_view(output_store: OutputStore, chart_id: str) -> ChartView:
-    view = output_store.get_chart(chart_id).view
+    view = output_store.get_artifact(chart_id).view
     assert isinstance(view, ChartView)
     return view
 
@@ -172,7 +172,7 @@ class TestAutoLineHover:
 
 async def _output_store_with(df: pd.DataFrame) -> OutputStore:
     output_store = OutputStore()
-    await output_store.add("db", "sql", PredQuery(query="SELECT 1", exec_result=ExecResult(df=df)))
+    await output_store.add_result("db", "sql", PredQuery(query="SELECT 1", exec_result=ExecResult(df=df)))
     return output_store
 
 
@@ -193,11 +193,10 @@ class TestRenderChartTool:
 
     async def test_query_family_source_creates_chart(self) -> None:
         output_store = OutputStore()
-        await output_store.add_family(
+        await output_store.add_lookup_source(
             "db",
             "sql",
             {"ranking": ["net", "count"]},
-            "SELECT 1",
             {
                 "ranking=net": PredQuery(
                     query="SELECT 'net' AS a, 1 AS b", exec_result=ExecResult(df=pd.DataFrame({"a": ["net"], "b": [1]}))
@@ -218,11 +217,10 @@ class TestRenderChartTool:
 
     async def test_query_family_validation_reports_all_failing_selections(self) -> None:
         output_store = OutputStore()
-        await output_store.add_family(
+        await output_store.add_lookup_source(
             "db",
             "sql",
             {"ranking": ["net", "count"]},
-            "SELECT 1",
             {
                 "ranking=net": PredQuery(
                     query="SELECT 'net' AS a", exec_result=ExecResult(df=pd.DataFrame({"a": ["net"]}))
@@ -239,7 +237,7 @@ class TestRenderChartTool:
         assert "ranking=count — field(s) not found: ['a', 'b']" in msg
         assert "S1_v" not in msg
         with pytest.raises(KeyError):
-            output_store.get_chart("CHART1")
+            output_store.get_artifact("CHART1")
 
     async def test_rich_spec_creates_chart(self) -> None:
         output_store = await _output_store_with(pd.DataFrame({"a": ["x", "y"], "b": [1, 2], "c": ["g", "h"]}))
@@ -265,7 +263,7 @@ class TestRenderChartTool:
         msg = await RenderChartTool(output_store=output_store)(source_id="S1", vegalite_spec=json.dumps(spec))
         assert "too large" in msg
         with pytest.raises(KeyError):
-            output_store.get_chart("CHART1")
+            output_store.get_artifact("CHART1")
 
     async def test_unknown_column_errors_without_creating(self) -> None:
         # an invalid field reference (typo) is blocked, not stored
@@ -274,7 +272,7 @@ class TestRenderChartTool:
         msg = await RenderChartTool(output_store=output_store)(source_id="S1", vegalite_spec=json.dumps(spec))
         assert "not found" in msg and "nope" in msg
         with pytest.raises(KeyError):
-            output_store.get_chart("CHART1")
+            output_store.get_artifact("CHART1")
 
     async def test_rich_spec_bad_field_errors_without_creating(self) -> None:
         # browser-only specs are validated too: a bad color field is blocked
@@ -283,7 +281,7 @@ class TestRenderChartTool:
         msg = await RenderChartTool(output_store=output_store)(source_id="S1", vegalite_spec=json.dumps(spec))
         assert "not found" in msg
         with pytest.raises(KeyError):
-            output_store.get_chart("CHART1")
+            output_store.get_artifact("CHART1")
 
     async def test_nested_field_creates_chart(self) -> None:
         # a nested-struct reference (meta.country) resolves via its root column 'meta'

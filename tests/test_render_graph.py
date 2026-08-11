@@ -25,12 +25,12 @@ from tabulaflow.toolhub.render_graph import (
 async def _output_store_with(*dfs: pd.DataFrame) -> OutputStore:
     output_store = OutputStore()
     for df in dfs:
-        await output_store.add("db", "sql", PredQuery(query="SELECT 1", exec_result=ExecResult(df=df)))
+        await output_store.add_result("db", "sql", PredQuery(query="SELECT 1", exec_result=ExecResult(df=df)))
     return output_store
 
 
 def _graph_view(output_store: OutputStore, graph_id: str) -> GraphArtifactView:
-    view = output_store.get_graph(graph_id).view
+    view = output_store.get_artifact(graph_id).view
     assert isinstance(view, GraphArtifactView)
     return view
 
@@ -219,7 +219,7 @@ class TestRenderGraphTool:
         msg = await RenderGraphTool(output_store=output_store)(graph_spec=json.dumps(spec))
         assert "Network graph GRAPH1 created from S1" in msg
         assert "3 nodes, 2 edges (all nodes one color; set group on node sources to color by type)" in msg
-        graph = materialize_graph_view(_graph_view(output_store, "GRAPH1").spec, {"S1": await output_store.get_dataframe("R1")})
+        graph = materialize_graph_view(_graph_view(output_store, "GRAPH1").spec, {"S1": (await output_store.get_payload("R1")).df})
         assert graph.edges[0].source == "a"
         assert graph.edges[0].target == "b"
 

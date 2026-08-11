@@ -823,19 +823,19 @@ def _output_spec_from_bundle(bundle: "ArtifactBundle", output_store: OutputStore
 def _artifact_from_ref(ref_id: str, label: str | None, output_store: OutputStore) -> ArtifactSpec | None:
     if ref_id.startswith("CHART"):
         try:
-            chart = output_store.get_chart(ref_id)
+            chart = output_store.get_artifact(ref_id)
         except (KeyError, ValueError):
             return None
         return chart.model_copy(update={"label": label})
     if ref_id.startswith("MAP"):
         try:
-            stored_map = output_store.get_map(ref_id)
+            stored_map = output_store.get_artifact(ref_id)
         except (KeyError, ValueError):
             return None
         return stored_map.model_copy(update={"label": label})
     if ref_id.startswith("GRAPH"):
         try:
-            graph = output_store.get_graph(ref_id)
+            graph = output_store.get_artifact(ref_id)
         except (KeyError, ValueError):
             return None
         return graph.model_copy(update={"label": label})

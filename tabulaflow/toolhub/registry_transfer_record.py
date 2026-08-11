@@ -60,12 +60,15 @@ class RegistryTransferRecordTool:
             source = self._output_store.get_source(record_id)
             if not isinstance(source.plan, ConstantResultPlan):
                 return f"(error: source_id {record_id!r} is not a single-result source)"
-            record = await self._output_store.get(source.plan.result_id)
+            record = await self._output_store.get_result(source.plan.result_id)
         except KeyError:
             return f"(error: unknown record_id {record_id!r})"
 
         try:
-            df = await self._output_store.get_dataframe(record.result_id)
+            payload = await self._output_store.get_payload(record.result_id)
+            df = payload.df
+            if df is None:
+                return f"(error: source_id {record_id!r} returned no data)"
         except ValueError as e:
             return f"(error: {e})"
 

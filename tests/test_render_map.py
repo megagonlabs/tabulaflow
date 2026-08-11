@@ -17,12 +17,12 @@ from tabulaflow.toolhub.render_map import MAP_RENDER_MAX_ROWS, RenderMapTool, no
 async def _output_store_with(*dfs: pd.DataFrame) -> OutputStore:
     output_store = OutputStore()
     for df in dfs:
-        await output_store.add("db", "sql", PredQuery(query="SELECT 1", exec_result=ExecResult(df=df)))
+        await output_store.add_result("db", "sql", PredQuery(query="SELECT 1", exec_result=ExecResult(df=df)))
     return output_store
 
 
 def _map_view(output_store: OutputStore, map_id: str) -> MapView:
-    view = output_store.get_map(map_id).view
+    view = output_store.get_artifact(map_id).view
     assert isinstance(view, MapView)
     return view
 

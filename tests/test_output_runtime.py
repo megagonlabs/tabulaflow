@@ -21,12 +21,12 @@ from tabulaflow.toolhub import OutputResolutionError, OutputResolver, OutputStor
 
 async def _output_store_with_results() -> OutputStore:
     output_store = OutputStore()
-    await output_store.add(
+    await output_store.add_result(
         "workspace",
         "sql",
         PredQuery(query="SELECT 1 AS a", exec_result=ExecResult(df=pd.DataFrame({"a": [1]}))),
     )
-    await output_store.add(
+    await output_store.add_result(
         "workspace",
         "sql",
         PredQuery(query="SELECT 2 AS a", exec_result=ExecResult(df=pd.DataFrame({"a": [2]}))),

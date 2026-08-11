@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import logging
 from collections import OrderedDict
-from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Literal, TypeAlias
 
@@ -13,17 +12,16 @@ from pydantic import BaseModel, ConfigDict, field_serializer, field_validator
 
 from tabulaflow.core.dataframe import _deserialize_dataframe, _serialize_dataframe
 from tabulaflow.core.outputs import (
+    ArtifactId,
     ArtifactSpec,
-    ChartView,
     ConstantResultPlan,
-    GraphArtifactView,
-    MapView,
     ResultId,
     ResultLookupPlan,
     ResultRecord,
     ResultVariant,
     SelectionValue,
     SourceDef,
+    ViewDef,
 )
 from tabulaflow.core.types import ErrorInfo, GraphView, PredQuery
 
@@ -98,28 +96,6 @@ class ResultPayload(BaseModel):
         return _deserialize_dataframe(v)
 
 
-def _map_source_ids(spec: Mapping[str, Any]) -> list[str]:
-    source_ids: list[str] = []
-    for layer in spec.get("layers") or []:
-        source_id = layer.get("source") if isinstance(layer, Mapping) else None
-        if isinstance(source_id, str) and source_id not in source_ids:
-            source_ids.append(source_id)
-    return source_ids
-
-
-def _graph_source_ids(spec: Mapping[str, Any]) -> list[str]:
-    source_ids: list[str] = []
-    for key in ("nodes", "edges"):
-        raw_sources = spec.get(key)
-        for source in raw_sources if isinstance(raw_sources, list) else []:
-            if not isinstance(source, Mapping) or "data" in source:
-                continue
-            source_id = source.get("source_id")
-            if isinstance(source_id, str) and source_id not in source_ids:
-                source_ids.append(source_id)
-    return source_ids
-
-
 def _selection_from_key(key: str) -> dict[str, SelectionValue]:
     if not key:
         return {}
@@ -150,7 +126,7 @@ class _ResultFrameStore:
         self._evict()
         return storage_key
 
-    async def get_dataframe(self, storage_key: str) -> pd.DataFrame:
+    async def get_result_dataframe(self, storage_key: str) -> pd.DataFrame:
         if storage_key in self._cache:
             self._cache.move_to_end(storage_key)
             return self._cache[storage_key]
@@ -212,7 +188,7 @@ class OutputStore:
     Every successful result DataFrame is persisted to the workspace
     connector (when set). The most recent ``max_in_memory`` DataFrames are
     cached in RAM; older cached frames are reloaded explicitly through
-    ``get_dataframe()``.
+    ``get_payload()``.
 
     Args:
         max_in_memory: Number of result DataFrames to keep in RAM.
@@ -231,12 +207,10 @@ class OutputStore:
         self._artifacts: dict[str, ArtifactSpec] = {}
         self._next_result_id = 1
         self._next_source_id = 1
-        self._next_chart_id = 1
-        self._next_map_id = 1
-        self._next_graph_id = 1
+        self._next_artifact_ids: dict[str, int] = {}
         self._results = _ResultFrameStore(max_in_memory=max_in_memory, spill_connector=spill_connector)
 
-    async def add(
+    async def add_result(
         self, db_alias: str, connector_type: Literal["sql", "property_graph"], pred_query: PredQuery
     ) -> StoredResult:
         """Store a query result and create a constant source for it."""
@@ -246,12 +220,11 @@ class OutputStore:
         self._sources[source_id] = SourceDef(id=source_id, plan=ConstantResultPlan(result_id=result_id))
         return record
 
-    async def add_family(
+    async def add_lookup_source(
         self,
         db_alias: str,
         connector_type: Literal["sql", "property_graph"],
         dimensions: dict[str, list[str]],
-        query_template: str,
         pred_queries_by_selection: dict[str, PredQuery],
     ) -> SourceDef:
         """Store a result-lookup source and its per-selection results.
@@ -342,36 +315,29 @@ class OutputStore:
         except KeyError:
             raise KeyError(f"No source with id {source_id}") from None
 
-    def get_constant_source_result_id(self, source_id: str) -> str:
-        """Return the result id for a single-result source."""
-        source = self.get_source(source_id)
-        if not isinstance(source.plan, ConstantResultPlan):
-            raise ValueError(f"source {source_id!r} is not a single-result source")
-        return source.plan.result_id
-
     def _require_record(self, record_id: str) -> None:
         if record_id not in self._records:
             raise KeyError(f"No result with id {record_id}")
 
-    async def get(self, record_id: str) -> StoredResult:
+    async def get_result(self, record_id: str) -> StoredResult:
         """Return an internal stored result."""
         try:
             return self._records[record_id]
         except KeyError:
             raise KeyError(f"No result with id {record_id}") from None
 
-    async def get_dataframe(self, record_id: str) -> pd.DataFrame:
+    async def _get_dataframe(self, record_id: str) -> pd.DataFrame:
         """Return the DataFrame for a tabular query result."""
-        record = await self.get(record_id)
+        record = await self.get_result(record_id)
         if isinstance(record.outcome, QueryFailure):
             raise ValueError(f"query {record_id} failed: {record.outcome.error.message}")
         if not isinstance(record.outcome, TabularResult):
             raise ValueError(f"query {record_id} returned no data")
-        return await self._results.get_dataframe(record.outcome.storage_key)
+        return await self._results.get_result_dataframe(record.outcome.storage_key)
 
     async def get_record(self, result_id: ResultId) -> ResultRecord:
         """Return clean metadata for a materialized result."""
-        record = await self.get(result_id)
+        record = await self.get_result(result_id)
         row_count = None
         columns = None
         if isinstance(record.outcome, TabularResult):
@@ -389,58 +355,24 @@ class OutputStore:
 
     async def get_payload(self, result_id: ResultId) -> ResultPayload:
         """Return clean payload for a materialized result."""
-        raw = await self.get(result_id)
+        raw = await self.get_result(result_id)
         record = await self.get_record(result_id)
         df = None
         try:
-            df = await self.get_dataframe(result_id)
+            df = await self._get_dataframe(result_id)
         except ValueError:
             pass
         return ResultPayload(record=record, df=df, graph=getattr(raw.outcome, "graph", None))
 
-    def add_chart(self, source_id: str, chart_spec: dict[str, Any]) -> str:
-        """Store a chart artifact for an existing source and return its opaque ``CHART*`` id."""
-        self.get_source(source_id)
-        chart_id = f"CHART{self._next_chart_id}"
-        self._artifacts[chart_id] = ArtifactSpec(id=chart_id, view=ChartView(source=source_id, spec=chart_spec))
-        self._next_chart_id += 1
-        return chart_id
-
-    def get_chart(self, chart_id: str) -> ArtifactSpec:
-        """Return a previously stored chart artifact."""
-        artifact = self.get_artifact(chart_id)
-        if not isinstance(artifact.view, ChartView):
-            raise KeyError(f"No chart with id {chart_id}") from None
-        return artifact
-
-    def add_map(self, map_spec: dict[str, Any]) -> str:
-        """Store a standalone map artifact and return its opaque ``MAP*`` id."""
-        map_id = f"MAP{self._next_map_id}"
-        self._artifacts[map_id] = ArtifactSpec(id=map_id, view=MapView(sources=_map_source_ids(map_spec), spec=map_spec))
-        self._next_map_id += 1
-        return map_id
-
-    def get_map(self, map_id: str) -> ArtifactSpec:
-        """Return a previously stored map artifact."""
-        artifact = self.get_artifact(map_id)
-        if not isinstance(artifact.view, MapView):
-            raise KeyError(f"No map with id {map_id}") from None
-        return artifact
-
-    def add_graph(self, graph_spec: dict[str, Any]) -> str:
-        """Store a standalone graph artifact and return its opaque ``GRAPH*`` id."""
-        graph_id = f"GRAPH{self._next_graph_id}"
-        self._artifacts[graph_id] = ArtifactSpec(
-            id=graph_id, view=GraphArtifactView(sources=_graph_source_ids(graph_spec), spec=graph_spec)
-        )
-        self._next_graph_id += 1
-        return graph_id
-
-    def get_graph(self, graph_id: str) -> ArtifactSpec:
-        """Return a previously stored graph artifact."""
-        artifact = self.get_artifact(graph_id)
-        if not isinstance(artifact.view, GraphArtifactView):
-            raise KeyError(f"No graph with id {graph_id}") from None
+    def add_artifact(self, prefix: str, view: ViewDef, label: str | None = None) -> ArtifactSpec:
+        """Store an artifact spec under an id allocated from ``prefix``."""
+        if not prefix or not prefix.isidentifier() or prefix != prefix.upper():
+            raise ValueError(f"artifact prefix must be uppercase identifier text, got {prefix!r}")
+        next_id = self._next_artifact_ids.get(prefix, 1)
+        artifact_id: ArtifactId = f"{prefix}{next_id}"
+        self._next_artifact_ids[prefix] = next_id + 1
+        artifact = ArtifactSpec(id=artifact_id, label=label, view=view)
+        self._artifacts[artifact_id] = artifact
         return artifact
 
     def get_artifact(self, artifact_id: str) -> ArtifactSpec:
