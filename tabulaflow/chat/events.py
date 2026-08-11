@@ -25,7 +25,7 @@ from typing import Annotated, Any, Literal, TypeAlias, Union
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from tabulaflow.chat.result import ChatResult
+from tabulaflow.core.outputs import OutputSpec
 from tabulaflow.core.types import Usage
 from tabulaflow.toolhub import ToolCallOutcome as ToolCallOutcome
 
@@ -114,6 +114,14 @@ class UsageUpdated(_ChatEvent):
 # ---------------------------------------------------------------------------
 # Terminal event (ends the stream on normal completion)
 # ---------------------------------------------------------------------------
+
+
+class ChatResult(BaseModel):
+    """Logical result of one chat turn."""
+
+    text: str
+    output: OutputSpec = Field(default_factory=OutputSpec)
+    usage: Usage | None = None
 
 
 class Finished(_ChatEvent):

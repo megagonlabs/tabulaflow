@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 from tabulaflow.chat.events import (
     AnswerDelta,
     ChatEvent,
+    ChatResult,
     Finished,
     NarrationDelta,
     ThinkingDelta,
@@ -14,7 +15,6 @@ from tabulaflow.chat.events import (
     ToolStarted,
     UsageUpdated,
 )
-from tabulaflow.chat.result import ChatResult, SelectionValue
 
 if TYPE_CHECKING:
     from tabulaflow.chat.agent import SYSTEM_PROMPT, ChatAgent
@@ -32,7 +32,6 @@ __all__ = [
     "ChatAgent",
     "SYSTEM_PROMPT",
     "ChatResult",
-    "SelectionValue",
     "ChatEvent",
     "AnswerDelta",
     "NarrationDelta",

@@ -48,9 +48,9 @@ from tabulaflow.core.outputs import (
     TableView,
     ViewDef,
 )
-from tabulaflow.chat.result import ChatResult
 from tabulaflow.chat.events import (
     ChatEvent,
+    ChatResult,
     AnswerDelta,
     Finished,
     NarrationDelta,

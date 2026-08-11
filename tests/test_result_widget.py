@@ -7,7 +7,7 @@ from textual.containers import VerticalScroll
 
 from tabulaflow.app.display import VIEW_KIND_DATA, VIEW_KIND_QUERY, build_artifact_card_views
 from tabulaflow.app.widgets import AgentResultWidget
-from tabulaflow.chat.result import ChatResult
+from tabulaflow.chat import ChatResult
 
 
 def _record(record_id: str, label: str) -> SimpleNamespace:

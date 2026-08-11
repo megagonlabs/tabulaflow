@@ -37,7 +37,8 @@ from tabulaflow.app.theme import GITHUB_SLUG, GITHUB_URL
 logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
-    from tabulaflow.chat import ChatResult, SelectionValue
+    from tabulaflow.chat import ChatResult
+    from tabulaflow.core.outputs import SelectionValue
     from tabulaflow.toolhub.output_resolver import ResultStore
 
 DEFAULT_OUTPUT_PANE_PORT_START = 61111

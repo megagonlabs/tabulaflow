@@ -17,7 +17,7 @@ from tabulaflow.app.display import (
     VIEW_KIND_QUERY,
     build_artifact_card_views,
 )
-from tabulaflow.chat.result import ChatResult
+from tabulaflow.chat import ChatResult
 from tabulaflow.core.types import GraphView, GraphViewEdge, GraphViewNode
 from tabulaflow.core.outputs import ChoiceOption, ChoiceParameter, NumberParameter, OutputSpec, ParameterDef
 

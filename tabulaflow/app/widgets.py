@@ -63,7 +63,8 @@ if TYPE_CHECKING:
     from rich.console import RenderableType
     from textual.selection import Selection
 
-    from tabulaflow.chat import ChatResult, SelectionValue
+    from tabulaflow.chat import ChatResult
+    from tabulaflow.core.outputs import SelectionValue
     from tabulaflow.app.display import CardGroup, ViewItem
     from tabulaflow.core.types import Usage
     from tabulaflow.toolhub.output_resolver import ResultStore
