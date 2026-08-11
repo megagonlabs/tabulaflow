@@ -137,12 +137,10 @@ async def test_build_chat_result_resolves_the_declared_bundle() -> None:
     assert result.output is not None
     assert [artifact.id for artifact in result.output.artifacts] == ["Q1"]
     assert result.output.sources[0].plan.kind == "constant_result"
-    assert result.primary_artifact_index == 0
 
     without = await _build_chat_result("<answer>\nNothing to show.", None, history)
     assert without.artifacts == []
     assert without.output is None
-    assert without.primary_artifact_index is None
     assert without.panel is None
 
 

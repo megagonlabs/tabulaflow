@@ -181,16 +181,5 @@ class ChatResult(BaseModel):
     text: str
     artifacts: list[ArtifactDef] = Field(default_factory=list)
     output: OutputSpec | None = None
-    primary_artifact_index: int | None = 0
     usage: Usage | None = None
     panel: AnswerPanel | None = None
-
-    @property
-    def primary_artifact(self) -> ArtifactDef | None:
-        if not self.artifacts:
-            return None
-        if self.primary_artifact_index is None:
-            return None
-        if self.primary_artifact_index < 0 or self.primary_artifact_index >= len(self.artifacts):
-            return None
-        return self.artifacts[self.primary_artifact_index]

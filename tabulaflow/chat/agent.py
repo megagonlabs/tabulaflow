@@ -803,12 +803,10 @@ async def _build_chat_result(
     artifacts = _artifacts_from_refs(refs, query_history)
     panel = _panel_from_bundle(bundle) if bundle is not None and bundle.dimensions else None
     output = _output_spec_from_bundle(bundle, query_history) if bundle is not None else None
-    primary_artifact_index: int | None = 0 if artifacts else None
     return ChatResult(
         text=_strip_answer_marker(answer_text),
         artifacts=artifacts,
         output=output,
-        primary_artifact_index=primary_artifact_index,
         panel=panel,
     )
 

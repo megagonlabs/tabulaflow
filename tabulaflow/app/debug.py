@@ -384,7 +384,7 @@ LIMIT 4000"""
             query_lexer="sql",
         )
     ]
-    result = ChatResult(text="Debug startup table", primary_artifact_index=0)
+    result = ChatResult(text="Debug startup table")
     return AgentResultWidget(
         result,
         records,
@@ -479,7 +479,7 @@ def _build_debug_huge_cell_result_widget(app: TabulaflowApp) -> AgentResultWidge
         )
     ]
     result = ChatResult(
-        text="Debug long/wide cell fixture (Enter on `value` to open CellBrowserScreen)", primary_artifact_index=0
+        text="Debug long/wide cell fixture (Enter on `value` to open CellBrowserScreen)"
     )
     return AgentResultWidget(
         result,
@@ -595,7 +595,7 @@ def _build_debug_media_result_widget(app: TabulaflowApp) -> AgentResultWidget:
             query_lexer="sql",
         )
     ]
-    result = ChatResult(text="Debug startup media table", primary_artifact_index=0)
+    result = ChatResult(text="Debug startup media table")
     return AgentResultWidget(
         result,
         records,
@@ -634,7 +634,7 @@ def _build_debug_small_result_widget(app: TabulaflowApp) -> AgentResultWidget:
             query_lexer="sql",
         )
     ]
-    result = ChatResult(text="Debug startup small table", primary_artifact_index=0)
+    result = ChatResult(text="Debug startup small table")
     return AgentResultWidget(
         result,
         records,
@@ -752,7 +752,7 @@ def _build_debug_quad_result_widget(app: TabulaflowApp) -> AgentResultWidget:
             query_lexer="sql",
         ),
     ]
-    result = ChatResult(text="Debug quad-record result", primary_artifact_index=0)
+    result = ChatResult(text="Debug quad-record result")
     return AgentResultWidget(
         result,
         records,
@@ -971,7 +971,7 @@ def _build_debug_multi_result_widget(app: TabulaflowApp) -> AgentResultWidget:
                 )
             )
 
-    result = ChatResult(text="Debug multi-record result", primary_artifact_index=0)
+    result = ChatResult(text="Debug multi-record result")
     return AgentResultWidget(
         result,
         records,
@@ -1209,7 +1209,7 @@ def _build_debug_chart_result_widget(app: TabulaflowApp) -> AgentResultWidget:
     ]
     result = ChatResult(
         text="Debug charts — simple specs preview inline; rich specs show a card (Enter, then `b` to open in browser).",
-        primary_artifact_index=0,
+        
     )
     return AgentResultWidget(
         result,
