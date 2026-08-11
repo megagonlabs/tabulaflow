@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 from collections import OrderedDict
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Literal, TypeAlias
+from typing import TYPE_CHECKING, Literal, TypeAlias
 
 import pandas as pd
 from pydantic import BaseModel, ConfigDict, field_serializer, field_validator
@@ -23,7 +23,7 @@ from tabulaflow.core.outputs import (
     SourceDef,
     ViewDef,
 )
-from tabulaflow.core.types import ErrorInfo, GraphView, PredQuery
+from tabulaflow.core.types import GraphView, PredQuery
 
 if TYPE_CHECKING:
     from tabulaflow.core.db_connector.sql_conn import SQLConnector
@@ -33,13 +33,6 @@ logger = logging.getLogger(__name__)
 # Schema this module spills result DataFrames into — one table per record. Kept out
 # of the workspace connector's introspected schema (see ``create_workspace_connector``).
 OUTPUT_STORE_SCHEMA = "_output_store"
-
-
-@dataclass
-class QueryFailure:
-    """A query that failed during execution."""
-
-    error: ErrorInfo
 
 
 @dataclass
@@ -54,28 +47,22 @@ class TabularResult:
 
 
 @dataclass
-class StatementSuccess:
+class StatementResult:
     """A successful statement that did not return a tabular result set."""
 
     affected_rows: int | None = None
 
 
-QueryOutcome: TypeAlias = QueryFailure | TabularResult | StatementSuccess
+ResultOutcome: TypeAlias = TabularResult | StatementResult
 
 
 @dataclass
-class StoredResult:
+class _StoredResult:
     """Internal metadata and outcome for a materialized result."""
 
-    result_id: str
-    source_id: str | None
-    connector_type: Literal["sql", "property_graph"]
-    db_alias: str
-    query: str
-    parameter_names: tuple[str, ...]
-    parameter_values: dict[str, Any]
-    outcome: QueryOutcome
-    latency_seconds: float | None = None
+    record: ResultRecord
+    outcome: ResultOutcome
+    graph: GraphView | None = None
 
 class ResultPayload(BaseModel):
     """Runtime payload for a materialized result."""
@@ -202,7 +189,7 @@ class OutputStore:
     ) -> None:
         if max_in_memory < 1:
             raise ValueError("max_in_memory must be >= 1")
-        self._records: dict[str, StoredResult] = {}
+        self._records: dict[str, _StoredResult] = {}
         self._sources: dict[str, SourceDef] = {}
         self._artifacts: dict[str, ArtifactSpec] = {}
         self._next_result_id = 1
@@ -212,13 +199,14 @@ class OutputStore:
 
     async def add_result(
         self, db_alias: str, connector_type: Literal["sql", "property_graph"], pred_query: PredQuery
-    ) -> StoredResult:
+    ) -> SourceDef:
         """Store a query result and create a constant source for it."""
         result_id = self._next_result_id_value()
         source_id = self._next_source_id_value()
-        record = await self._store(result_id, db_alias, connector_type, pred_query, source_id=source_id)
-        self._sources[source_id] = SourceDef(id=source_id, plan=ConstantResultPlan(result_id=result_id))
-        return record
+        await self._store(result_id, db_alias, connector_type, pred_query)
+        source = SourceDef(id=source_id, plan=ConstantResultPlan(result_id=result_id))
+        self._sources[source_id] = source
+        return source
 
     async def add_lookup_source(
         self,
@@ -240,7 +228,7 @@ class OutputStore:
             if record_id is None:
                 record_id = self._next_result_id_value()
                 record_ids_by_query[pred_query.query] = record_id
-                await self._store(record_id, db_alias, connector_type, pred_query, source_id=None)
+                await self._store(record_id, db_alias, connector_type, pred_query)
             record_ids_by_selection[selection_key] = record_id
         source = SourceDef(
             id=source_id,
@@ -271,34 +259,34 @@ class OutputStore:
         db_alias: str,
         connector_type: Literal["sql", "property_graph"],
         pred_query: PredQuery,
-        *,
-        source_id: str | None,
-    ) -> StoredResult:
+    ) -> _StoredResult:
         """Register one record under ``record_id``."""
-        outcome = await self._outcome(record_id, pred_query)
         exec_result = pred_query.exec_result
-        record = StoredResult(
-            result_id=record_id,
-            source_id=source_id,
-            connector_type=connector_type,
+        if exec_result is not None and exec_result.error is not None:
+            raise ValueError(exec_result.error.message)
+        outcome = await self._outcome(record_id, pred_query)
+        row_count = outcome.row_count if isinstance(outcome, TabularResult) else None
+        columns = list(outcome.columns) if isinstance(outcome, TabularResult) else None
+        record = ResultRecord(
+            id=record_id,
             db_alias=db_alias,
             query=pred_query.query,
-            parameter_names=tuple(pred_query.parameter_names),
+            connector_type=connector_type,
             parameter_values=dict(pred_query.parameter_values),
-            outcome=outcome,
+            row_count=row_count,
+            columns=columns,
             latency_seconds=exec_result.latency_seconds if exec_result is not None else None,
         )
-        self._records[record_id] = record
-        return record
+        stored = _StoredResult(record=record, outcome=outcome, graph=exec_result.graph if exec_result is not None else None)
+        self._records[record_id] = stored
+        return stored
 
-    async def _outcome(self, record_id: str, pred_query: PredQuery) -> QueryOutcome:
+    async def _outcome(self, record_id: str, pred_query: PredQuery) -> ResultOutcome:
         exec_result = pred_query.exec_result
         if exec_result is None:
-            return StatementSuccess()
-        if exec_result.error is not None:
-            return QueryFailure(exec_result.error)
+            return StatementResult()
         if exec_result.df is None:
-            return StatementSuccess(affected_rows=exec_result.affected_rows)
+            return StatementResult(affected_rows=exec_result.affected_rows)
         storage_key = await self._results.put_dataframe(record_id, exec_result.df)
         return TabularResult(
             storage_key=storage_key,
@@ -315,11 +303,7 @@ class OutputStore:
         except KeyError:
             raise KeyError(f"No source with id {source_id}") from None
 
-    def _require_record(self, record_id: str) -> None:
-        if record_id not in self._records:
-            raise KeyError(f"No result with id {record_id}")
-
-    async def get_result(self, record_id: str) -> StoredResult:
+    async def _get_result(self, record_id: str) -> _StoredResult:
         """Return an internal stored result."""
         try:
             return self._records[record_id]
@@ -328,46 +312,32 @@ class OutputStore:
 
     async def _get_dataframe(self, record_id: str) -> pd.DataFrame:
         """Return the DataFrame for a tabular query result."""
-        record = await self.get_result(record_id)
-        if isinstance(record.outcome, QueryFailure):
-            raise ValueError(f"query {record_id} failed: {record.outcome.error.message}")
+        record = await self._get_result(record_id)
         if not isinstance(record.outcome, TabularResult):
             raise ValueError(f"query {record_id} returned no data")
         return await self._results.get_result_dataframe(record.outcome.storage_key)
 
     async def get_record(self, result_id: ResultId) -> ResultRecord:
         """Return clean metadata for a materialized result."""
-        record = await self.get_result(result_id)
-        row_count = None
-        columns = None
-        if isinstance(record.outcome, TabularResult):
-            row_count = record.outcome.row_count
-            columns = list(record.outcome.columns)
-        return ResultRecord(
-            id=record.result_id,
-            db_alias=record.db_alias,
-            query=record.query,
-            connector_type=record.connector_type,
-            parameter_values=record.parameter_values,
-            row_count=row_count,
-            columns=columns,
-        )
+        return (await self._get_result(result_id)).record
 
     async def get_payload(self, result_id: ResultId) -> ResultPayload:
         """Return clean payload for a materialized result."""
-        raw = await self.get_result(result_id)
+        raw = await self._get_result(result_id)
         record = await self.get_record(result_id)
         df = None
         try:
             df = await self._get_dataframe(result_id)
         except ValueError:
             pass
-        return ResultPayload(record=record, df=df, graph=getattr(raw.outcome, "graph", None))
+        return ResultPayload(record=record, df=df, graph=raw.graph)
 
     def add_artifact(self, prefix: str, view: ViewDef, label: str | None = None) -> ArtifactSpec:
         """Store an artifact spec under an id allocated from ``prefix``."""
         if not prefix or not prefix.isidentifier() or prefix != prefix.upper():
             raise ValueError(f"artifact prefix must be uppercase identifier text, got {prefix!r}")
+        for source_id in _view_source_ids(view):
+            self.get_source(source_id)
         next_id = self._next_artifact_ids.get(prefix, 1)
         artifact_id: ArtifactId = f"{prefix}{next_id}"
         self._next_artifact_ids[prefix] = next_id + 1
@@ -381,3 +351,11 @@ class OutputStore:
             return self._artifacts[artifact_id]
         except KeyError:
             raise KeyError(f"No artifact with id {artifact_id}") from None
+
+
+def _view_source_ids(view: ViewDef) -> tuple[str, ...]:
+    if hasattr(view, "source"):
+        return (view.source,)
+    if hasattr(view, "sources"):
+        return tuple(view.sources)
+    return ()

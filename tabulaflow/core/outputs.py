@@ -115,6 +115,7 @@ class ResultRecord(BaseModel):
     parameter_values: dict[ParameterId, SelectionValue] = Field(default_factory=dict)
     row_count: int | None = None
     columns: list[str] | None = None
+    latency_seconds: float | None = None
 
 
 class SourceDef(BaseModel):

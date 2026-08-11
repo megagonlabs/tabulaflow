@@ -10,7 +10,6 @@ from tabulaflow.core.db_connector.sql_conn import SQLConnector
 from tabulaflow.core.outputs import ChartView, GraphArtifactView, MapView
 from tabulaflow.core.types import ExecResult, PredQuery
 from tabulaflow.toolhub.output_store import (
-    QueryFailure,
     OutputStore,
     TabularResult,
 )
@@ -69,14 +68,14 @@ class TestNoConnector:
         for _ in range(5):
             await h.add_result("db", "sql", _make_pred_query())
         assert h._results.in_memory_count == 5
-        assert all(h._results.has_in_memory(r.result_id) for r in h._records.values())
+        assert all(h._results.has_in_memory(r.record.id) for r in h._records.values())
 
     @pytest.mark.asyncio
     async def test_get(self) -> None:
         h = OutputStore()
         await h.add_result("db", "sql", _make_pred_query(n_rows=3))
         await h.add_result("db", "sql", _make_pred_query(n_rows=7))
-        assert (await h.get_result("R1")).query == "SELECT 1"
+        assert (await h.get_record("R1")).query == "SELECT 1"
         q2_df = (await h.get_payload("R2")).df
         assert q2_df is not None
         assert len(q2_df) == 7
@@ -183,9 +182,9 @@ class TestWithConnector:
     @pytest.mark.asyncio
     async def test_error_records_not_tracked(self, workspace: SQLConnector) -> None:
         h = OutputStore(max_in_memory=2, spill_connector=workspace)
-        record = await h.add_result("db", "sql", _make_error_pred_query())
+        with pytest.raises(ValueError, match="syntax error"):
+            await h.add_result("db", "sql", _make_error_pred_query())
         await h.add_result("db", "sql", _make_pred_query())
-        assert isinstance(record.outcome, QueryFailure)
         assert h._results.in_memory_count == 1
 
     @pytest.mark.asyncio
@@ -229,6 +228,7 @@ class TestWithConnector:
     @pytest.mark.asyncio
     async def test_add_map_stores_standalone_artifact(self, workspace: SQLConnector) -> None:
         h = OutputStore(spill_connector=workspace)
+        await h.add_result("db", "sql", _make_pred_query())
         spec = {"layers": [{"type": "points", "source": "S1", "lat": "lat", "lng": "lng"}]}
         map_id = h.add_artifact("MAP", MapView(sources=["S1"], spec=spec)).id
         assert map_id == "MAP1"

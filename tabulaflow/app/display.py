@@ -427,7 +427,7 @@ async def build_resolved_output_card_views(
     from typing import cast
 
     from tabulaflow.core.outputs import ChartView, GraphArtifactView, MapView, TableView
-    from tabulaflow.toolhub.output_runtime import ResolvedOutput
+    from tabulaflow.toolhub.output_resolver import ResolvedOutput
     from tabulaflow.toolhub.output_store import OutputStore
     from tabulaflow.toolhub.render_graph import GraphSpecError, materialize_graph_view
 

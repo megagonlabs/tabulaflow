@@ -41,7 +41,7 @@ from tabulaflow.app.widgets import (
 if TYPE_CHECKING:
     from tabulaflow.app.pane import OutputPane
     from tabulaflow.chat import ChatAgent, ChatResult
-    from tabulaflow.toolhub.output_runtime import ResolvedOutput
+    from tabulaflow.toolhub.output_resolver import ResolvedOutput
     from tabulaflow.toolhub.output_store import OutputStore
 
 logger = logging.getLogger(__name__)
@@ -1139,7 +1139,7 @@ class TabulaflowApp(App[None]):
             return  # normal completion always yields a terminal Finished
 
         from tabulaflow.app.display import build_resolved_output_card_views
-        from tabulaflow.toolhub.output_runtime import OutputResolver
+        from tabulaflow.toolhub.output_resolver import OutputResolver
 
         output_store = chat_agent.output_store
         resolved_output = await OutputResolver(output_store).resolve(result.output)

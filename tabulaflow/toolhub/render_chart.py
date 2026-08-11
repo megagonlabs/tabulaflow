@@ -513,7 +513,7 @@ class RenderChartTool:
             return out
         if isinstance(source.plan, ConstantResultPlan):
             result_id = source.plan.result_id
-            await self._output_store.get_result(result_id)
+            await self._output_store.get_record(result_id)
             return [_SourceVariant(label=source_id, record_id=result_id, df=(await self._output_store.get_payload(result_id)).df)]
         raise ValueError(f"source_id {source_id!r} is not chartable yet")
 

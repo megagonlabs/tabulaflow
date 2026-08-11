@@ -108,7 +108,7 @@ async def test_concurrent_run_query_records_each_invocation_query() -> None:
     assert "SELECT 'second' AS label" in _text(second_result)
     assert "SELECT 'first' AS label" in _text(first_result)
 
-    second_record = await tool.get_result("R1")
-    first_record = await tool.get_result("R2")
+    second_record = await tool.get_record("R1")
+    first_record = await tool.get_record("R2")
     assert second_record.query == "SELECT 'second' AS label"
     assert first_record.query == "SELECT 'first' AS label"

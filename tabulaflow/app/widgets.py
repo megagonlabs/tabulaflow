@@ -1735,7 +1735,7 @@ class AgentResultWidget(Widget):
         if self._output_store is None:
             return
         from tabulaflow.app.display import build_resolved_output_card_views
-        from tabulaflow.toolhub.output_runtime import OutputResolver
+        from tabulaflow.toolhub.output_resolver import OutputResolver
 
         resolved_output = await OutputResolver(self._output_store).resolve(self._result.output, selection)
         cards = await build_resolved_output_card_views(resolved_output, self._output_store, self._width)

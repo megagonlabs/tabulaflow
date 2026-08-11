@@ -169,7 +169,7 @@ def render_graph_data(graph_record: GraphArtifactLike, pane_dir: Path) -> PaneCa
 async def render_resolved_output(resolved_output: object, output_store: object, pane_dir: Path) -> list[PaneCard]:
     """Render a resolved output spec to pane card descriptors."""
     from tabulaflow.core.outputs import ChartView, GraphArtifactView, MapView, TableView
-    from tabulaflow.toolhub.output_runtime import ResolvedOutput
+    from tabulaflow.toolhub.output_resolver import ResolvedOutput
     from tabulaflow.toolhub.output_store import OutputStore
     from tabulaflow.toolhub.render_graph import GraphSpecError, materialize_graph_view
 

@@ -183,8 +183,7 @@ class TestRunQueryForEachCombination:
             "period=q2;ranking=gross",
             "period=q3;ranking=gross",
         }
-        record = await output_store.get_result(_record_ids_by_selection(family)["period=q2;ranking=net"])
-        df = (await output_store.get_payload(record.result_id)).df
+        df = (await output_store.get_payload(_record_ids_by_selection(family)["period=q2;ranking=net"])).df
         assert df is not None
         assert df.to_dict("records")[0] == {"customer": "Acme", "value": 10}
 
@@ -206,7 +205,7 @@ class TestRunQueryForEachCombination:
         )
 
         family = output_store.get_source("S1")
-        record = await output_store.get_result(_record_ids_by_selection(family)["ranking=net"])
+        record = await output_store.get_record(_record_ids_by_selection(family)["ranking=net"])
 
         assert "\n\n" not in record.query
         assert record.query == dedent("""\

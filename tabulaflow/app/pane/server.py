@@ -553,7 +553,7 @@ class OutputPane:
         if live is None:
             raise KeyError(turn_id)
         result, output_store = live
-        from tabulaflow.toolhub.output_runtime import OutputResolver
+        from tabulaflow.toolhub.output_resolver import OutputResolver
 
         resolved_output = await OutputResolver(output_store).resolve(result.output, cast("dict[str, SelectionValue]", selection))
         return await render_resolved_output(resolved_output, output_store, self._pane_dir)
