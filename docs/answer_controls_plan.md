@@ -9,7 +9,7 @@ We are intentionally aiming for the ultimate clean output model instead of incre
 The target core contract is:
 
 ```text
-AnswerSpec = Parameters + Sources + Artifacts + default selection
+OutputSpec = Parameters + Sources + Artifacts + default selection
 
 ParameterDef  = user-adjustable value, with UI/display hints
 SourceDef     = declarative, selection-dependent provider of results
@@ -35,7 +35,7 @@ The clean separation is:
 Implemented on `dev` so far:
 
 - `core.outputs` now contains the clean target output-spec model:
-  - `AnswerSpec`, `ParameterDef`, `SourceDef`, `SourcePlan`, `ArtifactSpec`, `ViewDef`, and `ResultRecord`;
+  - `OutputSpec`, `ParameterDef`, `SourceDef`, `SourcePlan`, `ArtifactSpec`, `ViewDef`, and `ResultRecord`;
   - semantic id aliases (`ParameterId`, `SourceId`, `ArtifactId`, `ResultId`, `SelectionKey`);
   - source plans split into `ConstantResultPlan`, `ResultLookupPlan`, and `QueryPlan`;
   - legacy runtime artifact definitions have been moved aside as compatibility scaffolding.
@@ -76,7 +76,7 @@ Implemented on `dev` so far:
 In progress / next cleanup:
 
 - Migrate runtime code toward the new `core.outputs` model:
-  - replace legacy `ArtifactDef` / `TableArtifactDef` / `ChartArtifactDef` usage with `AnswerSpec`, `ArtifactSpec`, and `ViewDef`;
+  - replace legacy `ArtifactDef` / `TableArtifactDef` / `ChartArtifactDef` usage with `OutputSpec`, `ArtifactSpec`, and `ViewDef`;
   - introduce a runtime source resolver that maps `SourceDef + selection` to `ResultRecord` / stored result payloads;
   - keep old compatibility paths only as temporary migration scaffolding.
 - Design true server-side parameterized sources for sliders after the clean source/result runtime boundary is in place; current sliders are model/UI-safe but do not rerun or parameterize queries.
@@ -149,7 +149,7 @@ local / visual / chart-only         -> Vega-Lite
 The long-term model should not prebuild a full artifact copy for every selection. Instead, the answer declares parameters, sources, and artifact views. The active selection resolves sources to concrete results, and artifacts render views over those results.
 
 ```text
-AnswerSpec
+OutputSpec
 ├── parameters
 ├── sources
 │   └── source plans

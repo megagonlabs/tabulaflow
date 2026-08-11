@@ -1,7 +1,7 @@
 import pytest
 
 from tabulaflow.core import (
-    AnswerSpec,
+    OutputSpec,
     ArtifactSpec,
     ChoiceOption,
     ChoiceParameter,
@@ -17,8 +17,8 @@ from tabulaflow.core import (
 )
 
 
-def test_answer_spec_fills_default_selection_and_validates_references() -> None:
-    spec = AnswerSpec(
+def test_output_spec_fills_default_selection_and_validates_references() -> None:
+    spec = OutputSpec(
         parameters=[
             ChoiceParameter(
                 id="metric",
@@ -80,15 +80,15 @@ def test_constant_result_source_has_no_inputs() -> None:
     assert isinstance(source.plan, ConstantResultPlan)
 
 
-def test_answer_spec_rejects_unknown_artifact_source() -> None:
+def test_output_spec_rejects_unknown_artifact_source() -> None:
     with pytest.raises(ValueError, match="unknown source"):
-        AnswerSpec(artifacts=[ArtifactSpec(id="table", view=TableView(source="missing"))])
+        OutputSpec(artifacts=[ArtifactSpec(id="table", view=TableView(source="missing"))])
 
 
-def test_answer_spec_serialization_round_trip() -> None:
-    spec = AnswerSpec(
+def test_output_spec_serialization_round_trip() -> None:
+    spec = OutputSpec(
         sources=[SourceDef(id="fixed", plan=ConstantResultPlan(result_id="Q1"))],
         artifacts=[ArtifactSpec(id="table", view=TableView(source="fixed"))],
     )
 
-    assert AnswerSpec.model_validate_json(spec.model_dump_json()) == spec
+    assert OutputSpec.model_validate_json(spec.model_dump_json()) == spec

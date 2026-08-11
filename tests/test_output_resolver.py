@@ -2,7 +2,7 @@ import pandas as pd
 import pytest
 
 from tabulaflow.core import (
-    AnswerSpec,
+    OutputSpec,
     ArtifactSpec,
     ChoiceOption,
     ChoiceParameter,
@@ -16,7 +16,7 @@ from tabulaflow.core import (
     canonical_selection_key,
 )
 from tabulaflow.core.types import ExecResult, PredQuery
-from tabulaflow.toolhub import AnswerResolutionError, AnswerResolver, QueryHistory, QueryHistoryResultStore
+from tabulaflow.toolhub import OutputResolutionError, OutputResolver, QueryHistory, QueryHistoryResultStore
 
 
 async def _history_with_results() -> QueryHistory:
@@ -48,13 +48,13 @@ def _parameters() -> list[ChoiceParameter | NumberParameter]:
 @pytest.mark.asyncio
 async def test_constant_result_plan_resolves_answer_artifact() -> None:
     history = await _history_with_results()
-    resolver = AnswerResolver(QueryHistoryResultStore(history))
-    answer = AnswerSpec(
+    resolver = OutputResolver(QueryHistoryResultStore(history))
+    output = OutputSpec(
         sources=[SourceDef(id="fixed", plan=ConstantResultPlan(result_id="Q1"))],
         artifacts=[ArtifactSpec(id="table", view=TableView(source="fixed"))],
     )
 
-    resolved = await resolver.resolve(answer)
+    resolved = await resolver.resolve(output)
 
     record = resolved.artifacts[0].results_by_source["fixed"]
     assert resolved.selection == {}
@@ -68,8 +68,8 @@ async def test_constant_result_plan_resolves_answer_artifact() -> None:
 @pytest.mark.asyncio
 async def test_result_lookup_plan_resolves_by_projected_selection() -> None:
     history = await _history_with_results()
-    resolver = AnswerResolver(QueryHistoryResultStore(history))
-    answer = AnswerSpec(
+    resolver = OutputResolver(QueryHistoryResultStore(history))
+    output = OutputSpec(
         parameters=_parameters(),
         sources=[
             SourceDef(
@@ -86,22 +86,22 @@ async def test_result_lookup_plan_resolves_by_projected_selection() -> None:
         artifacts=[ArtifactSpec(id="table", view=TableView(source="top_customers"))],
     )
 
-    resolved = await resolver.resolve(answer, {"metric": "profit"})
+    resolved = await resolver.resolve(output, {"metric": "profit"})
 
     record = resolved.artifacts[0].results_by_source["top_customers"]
     assert resolved.selection == {"metric": "profit", "min_spend": 10_000}
     assert record.id == "Q2"
-    assert isinstance(answer.sources[0].plan, ResultLookupPlan)
+    assert isinstance(output.sources[0].plan, ResultLookupPlan)
     assert canonical_selection_key({"metric": "profit"}) == canonical_selection_key(
-        answer.sources[0].plan.variants[1].selection
+        output.sources[0].plan.variants[1].selection
     )
 
 
 @pytest.mark.asyncio
 async def test_result_lookup_plan_rejects_invalid_choice() -> None:
     history = await _history_with_results()
-    resolver = AnswerResolver(QueryHistoryResultStore(history))
-    answer = AnswerSpec(
+    resolver = OutputResolver(QueryHistoryResultStore(history))
+    output = OutputSpec(
         parameters=_parameters(),
         sources=[
             SourceDef(
@@ -113,15 +113,15 @@ async def test_result_lookup_plan_rejects_invalid_choice() -> None:
         artifacts=[ArtifactSpec(id="table", view=TableView(source="top_customers"))],
     )
 
-    with pytest.raises(AnswerResolutionError, match="not a valid choice"):
-        await resolver.resolve(answer, {"metric": "count"})
+    with pytest.raises(OutputResolutionError, match="not a valid choice"):
+        await resolver.resolve(output, {"metric": "count"})
 
 
 @pytest.mark.asyncio
 async def test_result_lookup_plan_reports_unavailable_selection() -> None:
     history = await _history_with_results()
-    resolver = AnswerResolver(QueryHistoryResultStore(history))
-    answer = AnswerSpec(
+    resolver = OutputResolver(QueryHistoryResultStore(history))
+    output = OutputSpec(
         parameters=_parameters(),
         sources=[
             SourceDef(
@@ -133,15 +133,15 @@ async def test_result_lookup_plan_reports_unavailable_selection() -> None:
         artifacts=[ArtifactSpec(id="table", view=TableView(source="top_customers"))],
     )
 
-    with pytest.raises(AnswerResolutionError, match="has no result"):
-        await resolver.resolve(answer, {"metric": "profit"})
+    with pytest.raises(OutputResolutionError, match="has no result"):
+        await resolver.resolve(output, {"metric": "profit"})
 
 
 @pytest.mark.asyncio
 async def test_query_plan_materialization_is_not_implemented_yet() -> None:
     history = await _history_with_results()
-    resolver = AnswerResolver(QueryHistoryResultStore(history))
-    answer = AnswerSpec(
+    resolver = OutputResolver(QueryHistoryResultStore(history))
+    output = OutputSpec(
         parameters=_parameters(),
         sources=[
             SourceDef(
@@ -153,5 +153,5 @@ async def test_query_plan_materialization_is_not_implemented_yet() -> None:
         artifacts=[ArtifactSpec(id="table", view=TableView(source="lazy"))],
     )
 
-    with pytest.raises(AnswerResolutionError, match="not implemented"):
-        await resolver.resolve(answer, {"min_spend": 10_000})
+    with pytest.raises(OutputResolutionError, match="not implemented"):
+        await resolver.resolve(output, {"min_spend": 10_000})

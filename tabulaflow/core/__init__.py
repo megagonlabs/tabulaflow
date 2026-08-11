@@ -39,7 +39,7 @@ from tabulaflow.core.legacy_outputs import (
     TableArtifactDef,
 )
 from tabulaflow.core.outputs import (
-    AnswerSpec,
+    OutputSpec,
     ArtifactId,
     ArtifactSpec,
     ChartView,
@@ -68,7 +68,7 @@ from tabulaflow.core.outputs import (
 
 __all__ = [
     "AssistantMessage",
-    "AnswerSpec",
+    "OutputSpec",
     "ArtifactId",
     "ArtifactDef",
     "ArtifactSpec",

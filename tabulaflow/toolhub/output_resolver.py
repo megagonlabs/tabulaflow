@@ -1,4 +1,4 @@
-"""Runtime resolution of clean output answer specs."""
+"""Runtime resolution of clean output output specs."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ from typing import Protocol
 from pydantic import BaseModel, Field
 
 from tabulaflow.core.outputs import (
-    AnswerSpec,
+    OutputSpec,
     ArtifactId,
     ArtifactSpec,
     ChartView,
@@ -33,8 +33,8 @@ from tabulaflow.core.outputs import (
 from tabulaflow.toolhub.query_history import QueryHistory, TabularResult
 
 
-class AnswerResolutionError(ValueError):
-    """An answer cannot resolve for the requested selection."""
+class OutputResolutionError(ValueError):
+    """An output cannot resolve for the requested selection."""
 
 
 class ResolvedArtifact(BaseModel):
@@ -46,8 +46,8 @@ class ResolvedArtifact(BaseModel):
     results_by_source: dict[SourceId, ResultRecord]
 
 
-class ResolvedAnswer(BaseModel):
-    """A resolved answer spec under one active selection."""
+class ResolvedOutput(BaseModel):
+    """An output spec resolved under one active selection."""
 
     selection: dict[ParameterId, SelectionValue]
     artifacts: list[ResolvedArtifact] = Field(default_factory=list)
@@ -84,33 +84,33 @@ class QueryHistoryResultStore:
         )
 
 
-class AnswerResolver:
-    """Resolve an AnswerSpec under a selection to materialized result records."""
+class OutputResolver:
+    """Resolve an OutputSpec under a selection to materialized result records."""
 
     def __init__(self, result_store: ResultStore) -> None:
         self._result_store = result_store
 
     async def resolve(
         self,
-        answer: AnswerSpec,
+        output: OutputSpec,
         selection: Mapping[ParameterId, object] | None = None,
-    ) -> ResolvedAnswer:
-        active_selection = _normalize_selection(answer, selection)
-        parameters = {parameter.id: parameter for parameter in answer.parameters}
-        sources = {source.id: source for source in answer.sources}
+    ) -> ResolvedOutput:
+        active_selection = _normalize_selection(output, selection)
+        parameters = {parameter.id: parameter for parameter in output.parameters}
+        sources = {source.id: source for source in output.sources}
         resolved_sources: dict[SourceId, ResultRecord] = {}
         artifacts: list[ResolvedArtifact] = []
-        for artifact in answer.artifacts:
+        for artifact in output.artifacts:
             source_results: dict[SourceId, ResultRecord] = {}
             for source_id in _view_source_ids(artifact.view):
                 source = sources.get(source_id)
                 if source is None:
-                    raise AnswerResolutionError(f"artifact {artifact.id!r} references unknown source {source_id!r}")
+                    raise OutputResolutionError(f"artifact {artifact.id!r} references unknown source {source_id!r}")
                 if source_id not in resolved_sources:
                     resolved_sources[source_id] = await self._resolve_source(source, parameters, active_selection)
                 source_results[source_id] = resolved_sources[source_id]
             artifacts.append(_resolved_artifact(artifact, source_results))
-        return ResolvedAnswer(selection=active_selection, artifacts=artifacts)
+        return ResolvedOutput(selection=active_selection, artifacts=artifacts)
 
     async def _resolve_source(
         self,
@@ -126,24 +126,24 @@ class AnswerResolver:
             for variant in plan.variants:
                 if canonical_selection_key(variant.selection) == key:
                     return await self._result_store.get_record(variant.result_id)
-            raise AnswerResolutionError(f"source {source.id!r} has no result for selection {key}")
+            raise OutputResolutionError(f"source {source.id!r} has no result for selection {key}")
         if isinstance(plan, QueryPlan):
-            raise AnswerResolutionError("query source materialization is not implemented")
+            raise OutputResolutionError("query source materialization is not implemented")
         raise TypeError(f"unsupported source plan {type(plan).__name__}")
 
 
 def _normalize_selection(
-    answer: AnswerSpec,
+    output: OutputSpec,
     selection: Mapping[ParameterId, object] | None,
 ) -> dict[ParameterId, SelectionValue]:
-    parameters = {parameter.id: parameter for parameter in answer.parameters}
-    active: dict[ParameterId, object] = dict(answer.default_selection)
+    parameters = {parameter.id: parameter for parameter in output.parameters}
+    active: dict[ParameterId, object] = dict(output.default_selection)
     if selection is not None:
         active.update(selection)
     for parameter_id in active:
         if parameter_id not in parameters:
-            raise AnswerResolutionError(f"selection references unknown parameter {parameter_id!r}")
-    return {parameter.id: _validate_parameter_value(parameter, active[parameter.id]) for parameter in answer.parameters}
+            raise OutputResolutionError(f"selection references unknown parameter {parameter_id!r}")
+    return {parameter.id: _validate_parameter_value(parameter, active[parameter.id]) for parameter in output.parameters}
 
 
 def _resolved_artifact(artifact: ArtifactSpec, results_by_source: dict[SourceId, ResultRecord]) -> ResolvedArtifact:
@@ -164,9 +164,9 @@ def _project_selection(
     for parameter_id in source.parameter_ids:
         parameter = parameters.get(parameter_id)
         if parameter is None:
-            raise AnswerResolutionError(f"source {source.id!r} references unknown parameter {parameter_id!r}")
+            raise OutputResolutionError(f"source {source.id!r} references unknown parameter {parameter_id!r}")
         if parameter_id not in selection:
-            raise AnswerResolutionError(f"missing selection for {parameter_id!r}")
+            raise OutputResolutionError(f"missing selection for {parameter_id!r}")
         projected[parameter_id] = _validate_parameter_value(parameter, selection[parameter_id])
     return projected
 
@@ -175,14 +175,14 @@ def _validate_parameter_value(parameter: ParameterDef, value: object) -> Selecti
     if isinstance(parameter, ChoiceParameter):
         choice = str(value)
         if choice not in {option.id for option in parameter.choices}:
-            raise AnswerResolutionError(f"{parameter.id}={choice!r} is not a valid choice")
+            raise OutputResolutionError(f"{parameter.id}={choice!r} is not a valid choice")
         return choice
     if isinstance(parameter, NumberParameter):
         if isinstance(value, bool) or not isinstance(value, int | float):
-            raise AnswerResolutionError(f"{parameter.id} must be numeric")
+            raise OutputResolutionError(f"{parameter.id} must be numeric")
         number = float(value)
         if not parameter.min <= number <= parameter.max:
-            raise AnswerResolutionError(f"{parameter.id}={number:g} is outside range")
+            raise OutputResolutionError(f"{parameter.id}={number:g} is outside range")
         return value
     raise TypeError(f"unsupported parameter {type(parameter).__name__}")
 

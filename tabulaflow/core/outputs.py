@@ -1,6 +1,6 @@
 """Pure output specification models.
 
-These models describe an interactive answer without executing anything. Runtime
+These models describe an interactive output without executing anything. Runtime
 state such as source caches, query records, connector access, and materialized
 DataFrames belongs outside ``core``.
 """
@@ -167,8 +167,8 @@ class ArtifactSpec(BaseModel):
     view: ViewDef
 
 
-class AnswerSpec(BaseModel):
-    """Complete declarative contract for an interactive answer."""
+class OutputSpec(BaseModel):
+    """Complete declarative contract for an interactive output."""
 
     parameters: list[ParameterDef] = Field(default_factory=list)
     sources: list[SourceDef] = Field(default_factory=list)
@@ -176,7 +176,7 @@ class AnswerSpec(BaseModel):
     default_selection: dict[ParameterId, SelectionValue] = Field(default_factory=dict)
 
     @model_validator(mode="after")
-    def validate_spec(self) -> "AnswerSpec":
+    def validate_spec(self) -> "OutputSpec":
         parameter_ids = [parameter.id for parameter in self.parameters]
         source_ids = [source.id for source in self.sources]
         artifact_ids = [artifact.id for artifact in self.artifacts]
