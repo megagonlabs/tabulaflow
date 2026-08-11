@@ -7,7 +7,7 @@ import json
 import re
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Protocol, TypedDict
+from typing import TYPE_CHECKING, Any, Protocol, TypedDict
 
 from markdown_it import MarkdownIt
 from markdown_it.rules_core import StateCore
@@ -63,7 +63,7 @@ if TYPE_CHECKING:
     from rich.console import RenderableType
     from textual.selection import Selection
 
-    from tabulaflow.chat import ChatResult, ChoiceControl, ResolvedArtifact, SelectionValue
+    from tabulaflow.chat import ChatResult, ResolvedArtifact, SelectionValue
     from tabulaflow.chat.artifact_resolver import ArtifactResolver
     from tabulaflow.app.display import CardGroup, ViewItem
     from tabulaflow.core.types import Usage
@@ -1605,12 +1605,17 @@ class AgentResultWidget(Widget):
         self._result = result
         self._width = width
         self._panel = result.panel
-        self.set_class(self._panel is not None, "-has-panel")
-        self._applied_selection: dict[str, SelectionValue] = (
-            dict(self._panel.default_selection) if self._panel is not None else {}
-        )
+        self._choice_controls_cache = self._choice_controls_from_result(result)
+        self._has_answer_controls = bool(self._choice_controls_cache)
+        self.set_class(self._has_answer_controls, "-has-panel")
+        if result.output is not None:
+            self._applied_selection: dict[str, SelectionValue] = dict(result.output.default_selection)
+        elif self._panel is not None:
+            self._applied_selection = dict(self._panel.default_selection)
+        else:
+            self._applied_selection = {}
         self._interpretation_cursor = 0
-        self._cards = build_artifact_card_views(artifacts, width, release_dataframes=self._panel is None)
+        self._cards = build_artifact_card_views(artifacts, width, release_dataframes=not self._has_answer_controls)
         # Selected view index per card; every card has at least one view.
         self._view_indices: list[int] = [0] * len(self._cards)
         self._artifact_resolver = artifact_resolver
@@ -1640,7 +1645,7 @@ class AgentResultWidget(Widget):
     def compose(self) -> ComposeResult:
         from textual.containers import Horizontal, Vertical
 
-        if self._panel is not None:
+        if self._has_answer_controls:
             self._interpretation_title = Static(classes="interpretation-title")
             self._interpretation_content = Static(classes="interpretation-content")
             yield Vertical(
@@ -1710,7 +1715,7 @@ class AgentResultWidget(Widget):
         return KEY_HINT if self.has_focus else KEY_HINT_DIM
 
     def _refresh_all(self) -> None:
-        if self._panel is not None:
+        if self._has_answer_controls:
             self._update_interpretation_panel()
         self._update_content()
         if self._card_bar_widget is not None:
@@ -1763,12 +1768,19 @@ class AgentResultWidget(Widget):
             return None
         return rec.views[self._view_indices[min(self.current_card, len(self._cards) - 1)]]
 
-    def _choice_controls(self) -> list["ChoiceControl"]:
-        if self._panel is None:
-            return []
+    @staticmethod
+    def _choice_controls_from_result(result: "ChatResult") -> list[Any]:
         from tabulaflow.chat import ChoiceControl
+        from tabulaflow.core.outputs import ChoiceParameter
 
-        return [control for control in self._panel.controls if isinstance(control, ChoiceControl)]
+        if result.output is not None:
+            return [parameter for parameter in result.output.parameters if isinstance(parameter, ChoiceParameter)]
+        if result.panel is not None:
+            return [control for control in result.panel.controls if isinstance(control, ChoiceControl)]
+        return []
+
+    def _choice_controls(self) -> list[Any]:
+        return self._choice_controls_cache
 
     def _choice_count(self) -> int:
         return sum(len(control.choices) for control in self._choice_controls())
@@ -1813,7 +1825,7 @@ class AgentResultWidget(Widget):
     def _update_interpretation_panel(self) -> None:
         from rich.style import Style
 
-        if self._panel is None:
+        if not self._has_answer_controls:
             return
         if self._interpretation_title is None or self._interpretation_content is None:
             return
@@ -2035,7 +2047,7 @@ class AgentResultWidget(Widget):
             return
 
         hint = Text(no_wrap=True)
-        if self._panel is None:
+        if not self._has_answer_controls:
             # ↑↓ and Enter only do anything when this widget is focused, so
             # both follow focus-state dimming (bright when focused, dim when
             # not) — the "way in" comes from the docked bottom-bar hint, not
@@ -2183,17 +2195,17 @@ class AgentResultWidget(Widget):
         self.run_worker(self.action_open_full_screen(), exclusive=True)
 
     def action_apply_interpretation(self) -> None:
-        if self._panel is not None:
+        if self._has_answer_controls:
             self._apply_interpretation_cursor()
 
     def action_result_up(self) -> None:
-        if self._panel is not None:
+        if self._has_answer_controls:
             self._move_interpretation_cursor(-1)
         else:
             self.action_focus_prev_result()
 
     def action_result_down(self) -> None:
-        if self._panel is not None:
+        if self._has_answer_controls:
             self._move_interpretation_cursor(1)
         else:
             self.action_focus_next_result()

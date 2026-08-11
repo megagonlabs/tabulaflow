@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 import os
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from rich.text import Text
 from textual import events
@@ -92,11 +92,17 @@ def _compact_project_dir(path: Path) -> str:
 
 
 def _pane_panel(result: "ChatResult") -> PanePanel | None:
-    if result.panel is None:
-        return None
     from tabulaflow.chat import ChoiceControl
+    from tabulaflow.core.outputs import ChoiceParameter
 
-    controls = [control for control in result.panel.controls if isinstance(control, ChoiceControl)]
+    if result.output is not None:
+        controls: list[Any] = [parameter for parameter in result.output.parameters if isinstance(parameter, ChoiceParameter)]
+        default_selection = result.output.default_selection
+    elif result.panel is not None:
+        controls = [control for control in result.panel.controls if isinstance(control, ChoiceControl)]
+        default_selection = result.panel.default_selection
+    else:
+        return None
     if not controls:
         return None
     return {
@@ -111,7 +117,7 @@ def _pane_panel(result: "ChatResult") -> PanePanel | None:
         ],
         "default_selection": {
             key: value
-            for key, value in result.panel.default_selection.items()
+            for key, value in default_selection.items()
             if any(control.id == key for control in controls)
         },
     }

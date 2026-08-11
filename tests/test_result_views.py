@@ -31,6 +31,7 @@ from tabulaflow.chat.result import (
     SliderControl,
 )
 from tabulaflow.core.types import GraphView, GraphViewEdge, GraphViewNode
+from tabulaflow.core.outputs import ChoiceOption, ChoiceParameter, OutputSpec
 
 
 def _record(record_id: str, label: str) -> ResolvedTableArtifact:
@@ -208,6 +209,29 @@ def test_panel_result_widget_uses_choice_controls_as_primary_model() -> None:
     widget._apply_interpretation_cursor()
     assert widget._applied_selection == {"ranking": "count"}
     assert [card.artifact_id for card in widget._cards] == ["Q1"]
+
+
+def test_result_widget_uses_output_parameters_without_legacy_panel() -> None:
+    widget = AgentResultWidget(
+        ChatResult(
+            text="x",
+            output=OutputSpec(
+                parameters=[
+                    ChoiceParameter(
+                        id="ranking",
+                        label="Ranking",
+                        choices=[ChoiceOption(id="net", label="Net"), ChoiceOption(id="count", label="Count")],
+                    )
+                ]
+            ),
+        ),
+        [_record("Q1", "top")],
+    )
+
+    assert widget._choice_count() == 2
+    widget._move_interpretation_cursor(1)
+    widget._apply_interpretation_cursor()
+    assert widget._applied_selection == {"ranking": "count"}
 
 
 def test_slider_only_panel_does_not_crash_choice_navigation() -> None:
