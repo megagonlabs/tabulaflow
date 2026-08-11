@@ -8,7 +8,7 @@ from pydantic_ai import Tool
 
 from tabulaflow.core.db_connector.db_registry import DBRegistry
 from tabulaflow.core.db_connector.sql_conn import SQLConnector
-from tabulaflow.core.outputs import ConstantResultPlan
+from tabulaflow.core.outputs import FixedResultSource
 
 from tabulaflow.toolhub.output_store import OutputStore
 
@@ -58,9 +58,9 @@ class RegistryTransferRecordTool:
         """
         try:
             source = self._output_store.get_source(source_id)
-            if not isinstance(source.plan, ConstantResultPlan):
+            if not isinstance(source, FixedResultSource):
                 return f"(error: source_id {source_id!r} is not a single-result source)"
-            metadata = await self._output_store.get_metadata(source.plan.result_id)
+            metadata = await self._output_store.get_metadata(source.result_id)
         except KeyError:
             return f"(error: unknown source_id {source_id!r})"
 

@@ -35,7 +35,7 @@ from tabulaflow.core.outputs import (
     ChartView,
     ChoiceOption,
     ChoiceParameter,
-    GraphArtifactView,
+    GraphViewSpec,
     MapView,
     OutputSpec,
     ParameterDef,
@@ -851,7 +851,7 @@ def _artifact_from_ref(ref_id: str, label: str | None, output_store: OutputStore
 def _view_source_ids(view: ViewDef) -> tuple[SourceId, ...]:
     if isinstance(view, TableView | ChartView):
         return (view.source,)
-    if isinstance(view, MapView | GraphArtifactView):
+    if isinstance(view, MapView | GraphViewSpec):
         return tuple(view.sources)
     raise TypeError(f"unsupported view {type(view).__name__}")
 

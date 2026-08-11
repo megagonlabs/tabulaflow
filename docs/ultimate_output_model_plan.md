@@ -130,8 +130,6 @@ class ParameterizedSource(BaseModel):
     parameter_ids: list[ParameterId]
     db_alias: str
     query_template: str
-    connector_type: Literal["sql", "property_graph"] = "sql"
-    max_warm_variants: int = 10
 ```
 
 This replaces both current `ResultLookupPlan` and `QueryPlan` as core concepts.
@@ -149,7 +147,6 @@ class ResultMetadata(BaseModel):
     id: ResultId
     db_alias: str
     query: str
-    connector_type: Literal["sql", "property_graph"] = "sql"
     parameter_values: dict[ParameterId, SelectionValue] = Field(default_factory=dict)
     row_count: int | None = None
     columns: list[str] | None = None
@@ -341,7 +338,7 @@ and its tool metadata should include the `ParameterDef`s and `SourceDef`, so cha
 
 ### `run_query_for_each_combination`
 
-Eventually replace or implement as a wrapper over `create_parameterized_source` where all parameters are finite choices and `max_warm_variants` is high enough to prewarm all variants.
+Eventually replace or implement as a wrapper over `create_parameterized_source`.
 
 ### `render_chart`, `render_map`, `render_graph`
 
@@ -449,7 +446,7 @@ Defer until `ParameterizedSource` execution exists.
 Initial policy:
 
 ```text
-if all parameters are finite choices and combinations <= max_warm_variants:
+if all parameters are finite choices and combinations <= the runtime warm-cache limit:
     prewarm all variants
 else:
     prewarm default only
@@ -458,7 +455,6 @@ else:
 Deferred details:
 
 ```text
-- whether max_warm_variants belongs in core SourceDef or runtime/tool options
 - whether warming happens at source creation or first resolution
 - how to report warming failures
 ```

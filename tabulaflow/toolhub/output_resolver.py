@@ -12,21 +12,19 @@ from tabulaflow.core.outputs import (
     ArtifactSpec,
     ChartView,
     ChoiceParameter,
-    ConstantResultPlan,
-    GraphArtifactView,
+    FixedResultSource,
+    GraphViewSpec,
     MapView,
     NumberParameter,
     ParameterDef,
     ParameterId,
-    QueryPlan,
-    ResultLookupPlan,
+    ParameterizedSource,
     ResultMetadata,
     SelectionValue,
     SourceId,
     SourceDef,
     TableView,
     ViewDef,
-    canonical_selection_key,
 )
 from tabulaflow.toolhub.output_store import OutputStore
 
@@ -85,18 +83,16 @@ class OutputResolver:
         parameters: Mapping[ParameterId, ParameterDef],
         selection: Mapping[ParameterId, SelectionValue],
     ) -> ResultMetadata:
-        plan = source.plan
-        if isinstance(plan, ConstantResultPlan):
-            return await self._output_store.get_metadata(plan.result_id)
-        if isinstance(plan, ResultLookupPlan):
-            key = canonical_selection_key(_project_selection(source, parameters, selection))
-            for variant in plan.variants:
-                if canonical_selection_key(variant.selection) == key:
-                    return await self._output_store.get_metadata(variant.result_id)
-            raise OutputResolutionError(f"source {source.id!r} has no result for selection {key}")
-        if isinstance(plan, QueryPlan):
-            raise OutputResolutionError("query source materialization is not implemented")
-        raise TypeError(f"unsupported source plan {type(plan).__name__}")
+        if isinstance(source, FixedResultSource):
+            return await self._output_store.get_metadata(source.result_id)
+        if isinstance(source, ParameterizedSource):
+            try:
+                return await self._output_store.resolve_parameterized_source(
+                    source, _project_selection(source, parameters, selection)
+                )
+            except KeyError as exc:
+                raise OutputResolutionError(str(exc)) from None
+        raise TypeError(f"unsupported source {type(source).__name__}")
 
 
 def _normalize_selection(
@@ -123,7 +119,7 @@ def _resolved_artifact(artifact: ArtifactSpec, metadata_by_source: dict[SourceId
 
 
 def _project_selection(
-    source: SourceDef,
+    source: ParameterizedSource,
     parameters: Mapping[ParameterId, ParameterDef],
     selection: Mapping[ParameterId, object],
 ) -> dict[ParameterId, SelectionValue]:
@@ -157,6 +153,6 @@ def _validate_parameter_value(parameter: ParameterDef, value: object) -> Selecti
 def _view_source_ids(view: ViewDef) -> tuple[SourceId, ...]:
     if isinstance(view, TableView | ChartView):
         return (view.source,)
-    if isinstance(view, MapView | GraphArtifactView):
+    if isinstance(view, MapView | GraphViewSpec):
         return tuple(view.sources)
     raise TypeError(f"unsupported view {type(view).__name__}")

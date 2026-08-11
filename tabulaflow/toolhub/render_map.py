@@ -11,7 +11,7 @@ import pandas as pd
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator, model_validator
 from pydantic_ai import Tool
 
-from tabulaflow.core.outputs import ConstantResultPlan, MapView
+from tabulaflow.core.outputs import FixedResultSource, MapView
 from tabulaflow.toolhub.output_store import OutputStore
 
 MAP_RENDER_MAX_ROWS = 50_000
@@ -487,9 +487,9 @@ class RenderMapTool:
         for rid in record_ids:
             try:
                 source = self._output_store.get_source(rid)
-                if not isinstance(source.plan, ConstantResultPlan):
+                if not isinstance(source, FixedResultSource):
                     return f"(error: source_id {rid!r} is not a single-result source)"
-                result_id = source.plan.result_id
+                result_id = source.result_id
             except KeyError:
                 return f"(error: unknown record_id {rid!r})"
             except ValueError as e:

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 from collections import defaultdict
 from dataclasses import dataclass
 from itertools import product
@@ -20,7 +21,7 @@ from pydantic_ai import Tool, ToolReturn
 from tabulaflow.core.config import tabulaflow_config
 from tabulaflow.core.db_connector import NL2QDBConnector
 from tabulaflow.core.db_connector.db_registry import DBRegistry
-from tabulaflow.core.outputs import ResultLookupPlan, SourceDef
+from tabulaflow.core.outputs import ParameterizedSource, SelectionValue, SourceDef
 from tabulaflow.core.types import ErrorInfo, PredQuery
 from tabulaflow.core.utils import flatten_multiline, format_df
 from tabulaflow.toolhub.base import ToolCallOutcome
@@ -61,22 +62,26 @@ def selection_key(selection: dict[str, str]) -> str:
     return ";".join(f"{dim}={choice}" for dim, choice in sorted(selection.items()))
 
 
-def _source_dimensions(source: SourceDef) -> dict[str, list[str]]:
-    if not isinstance(source.plan, ResultLookupPlan):
+def _source_dimensions(output_store: OutputStore, source: SourceDef) -> dict[str, list[str]]:
+    if not isinstance(source, ParameterizedSource):
         return {}
     dimensions: dict[str, list[str]] = {parameter_id: [] for parameter_id in source.parameter_ids}
-    for variant in source.plan.variants:
+    for selection_key in output_store.get_cached_source_results(source.id):
+        selection: dict[str, SelectionValue] = json.loads(selection_key)
         for parameter_id in source.parameter_ids:
-            value = str(variant.selection.get(parameter_id))
+            value = str(selection.get(parameter_id))
             if value not in dimensions[parameter_id]:
                 dimensions[parameter_id].append(value)
     return dimensions
 
 
-def _record_ids_by_selection(source: SourceDef) -> dict[str, str]:
-    if not isinstance(source.plan, ResultLookupPlan):
+def _record_ids_by_selection(output_store: OutputStore, source: SourceDef) -> dict[str, str]:
+    if not isinstance(source, ParameterizedSource):
         return {}
-    return {selection_key({k: str(v) for k, v in variant.selection.items()}): variant.result_id for variant in source.plan.variants}
+    return {
+        selection_key({k: str(v) for k, v in json.loads(key).items()}): result_id
+        for key, result_id in output_store.get_cached_source_results(source.id).items()
+    }
 
 
 def _normalize(query: str) -> str:
@@ -170,14 +175,14 @@ def _repetition_notes(by_selection: dict[str, PredQuery]) -> dict[str, str]:
     return notes
 
 
-def _format_run(source: SourceDef, by_selection: dict[str, PredQuery]) -> str:
+def _format_run(output_store: OutputStore, source: SourceDef, by_selection: dict[str, PredQuery]) -> str:
     """Render the family header, the first combination in full, then the rest as row counts.
 
     The combination shown in full is the first choice of every dimension — the
     reading a panel opens on.
     """
-    dimensions = _source_dimensions(source)
-    record_ids_by_selection = _record_ids_by_selection(source)
+    dimensions = _source_dimensions(output_store, source)
+    record_ids_by_selection = _record_ids_by_selection(output_store, source)
     grid = " × ".join(f"{name} ({len(choices)})" for name, choices in dimensions.items())
     executed = len(set(record_ids_by_selection.values()))
     total = len(by_selection)
@@ -367,7 +372,7 @@ class RunQueryForEachCombinationTool:
             return ToolReturn(return_value=f"(error: {exc})", metadata=ToolCallOutcome(error=True))
         return ToolReturn(
             return_value=run.output,
-            metadata=ToolCallOutcome(count=len(_record_ids_by_selection(run.source)), unit="combinations"),
+            metadata=ToolCallOutcome(count=len(_record_ids_by_selection(self._output_store, run.source)), unit="combinations"),
         )
 
     async def execute(self, db_alias: str, dimensions: Dimensions, query_template: str) -> CombinationQueryRun:
@@ -406,7 +411,7 @@ class RunQueryForEachCombinationTool:
             {dim.id: list(dim.choices) for dim in dimensions},
             by_selection,
         )
-        return CombinationQueryRun(output=_format_run(source, by_selection), source=source)
+        return CombinationQueryRun(output=_format_run(self._output_store, source, by_selection), source=source)
 
     def _connector(self, db_alias: str) -> NL2QDBConnector:
         try:

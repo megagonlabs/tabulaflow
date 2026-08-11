@@ -426,7 +426,7 @@ async def build_resolved_output_card_views(
     """Build display cards directly from a resolved output spec."""
     from typing import cast
 
-    from tabulaflow.core.outputs import ChartView, GraphArtifactView, MapView, TableView
+    from tabulaflow.core.outputs import ChartView, GraphViewSpec, MapView, TableView
     from tabulaflow.toolhub.output_resolver import ResolvedOutput
     from tabulaflow.toolhub.output_store import OutputStore
     from tabulaflow.toolhub.render_graph import GraphSpecError, materialize_graph_view
@@ -458,7 +458,7 @@ async def build_resolved_output_card_views(
                     views=[ViewItem(kind=VIEW_KIND_MAP, renderable=_build_map_card(view.spec))],
                 )
             )
-        elif isinstance(view, GraphArtifactView):
+        elif isinstance(view, GraphViewSpec):
             graph_sources = {}
             for source_id, metadata in artifact.metadata_by_source.items():
                 payload = await store.get_payload(metadata.id)

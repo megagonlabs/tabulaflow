@@ -8,7 +8,7 @@ from typing import Annotated, ClassVar, TypeAlias
 from pydantic import BaseModel, Field
 from pydantic_ai import Tool, ToolReturn
 
-from tabulaflow.core.outputs import ChartView, GraphArtifactView, MapView, ResultLookupPlan, SourceDef
+from tabulaflow.core.outputs import ChartView, GraphViewSpec, MapView, ParameterizedSource, SourceDef
 from tabulaflow.toolhub.output_store import OutputStore
 
 
@@ -119,7 +119,7 @@ class ShowArtifactsTool:
         declared = {dim.id: [choice.id for choice in dim.choices] for dim in dimensions}
         partial = [
             f"{name}={'|'.join(choices)}"
-            for name, choices in _source_dimensions(family).items()
+            for name, choices in _source_dimensions(self._output_store, family).items()
             if len(choices) < len(declared.get(name, choices))
         ]
         limits = f" — only applies at {', '.join(partial)}" if partial else ""
@@ -138,9 +138,9 @@ class ShowArtifactsTool:
             if family is None:
                 continue
             if not dimensions:
-                problems.append(f"{artifact.id} varies over {', '.join(_source_dimensions(family))}; declare them as dimensions")
+                problems.append(f"{artifact.id} varies over {', '.join(_source_dimensions(self._output_store, family))}; declare them as dimensions")
                 continue
-            for name, choices in _source_dimensions(family).items():
+            for name, choices in _source_dimensions(self._output_store, family).items():
                 if name not in declared:
                     problems.append(f"{artifact.id} varies over {name!r}, which is not a declared dimension")
                     continue
@@ -172,7 +172,7 @@ class ShowArtifactsTool:
                     return f"unknown artifact id {artifact.id!r}"
             elif artifact.id.startswith("GRAPH"):
                 artifact_spec = self._output_store.get_artifact(artifact.id)
-                if not isinstance(artifact_spec.view, GraphArtifactView):
+                if not isinstance(artifact_spec.view, GraphViewSpec):
                     return f"unknown artifact id {artifact.id!r}"
             elif artifact.id.startswith("S"):
                 self._output_store.get_source(artifact.id)
@@ -187,12 +187,12 @@ class ShowArtifactsTool:
         try:
             if artifact_id.startswith("S"):
                 source = self._output_store.get_source(artifact_id)
-                return source if isinstance(source.plan, ResultLookupPlan) else None
+                return source if isinstance(source, ParameterizedSource) else None
             if artifact_id.startswith("CHART"):
                 chart = self._output_store.get_artifact(artifact_id)
                 if isinstance(chart.view, ChartView) and chart.view.source.startswith("S"):
                     source = self._output_store.get_source(chart.view.source)
-                    return source if isinstance(source.plan, ResultLookupPlan) else None
+                    return source if isinstance(source, ParameterizedSource) else None
         except KeyError:
             return None
         return None
@@ -201,13 +201,13 @@ class ShowArtifactsTool:
         return Tool(self.__call__, name=self.name)
 
 
-def _source_dimensions(source: SourceDef) -> dict[str, list[str]]:
-    if not isinstance(source.plan, ResultLookupPlan):
+def _source_dimensions(output_store: OutputStore, source: SourceDef) -> dict[str, list[str]]:
+    if not isinstance(source, ParameterizedSource):
         return {}
     dimensions: dict[str, list[str]] = {parameter_id: [] for parameter_id in source.parameter_ids}
-    for variant in source.plan.variants:
+    for selection in output_store.get_cached_source_selections(source.id):
         for parameter_id in source.parameter_ids:
-            value = str(variant.selection.get(parameter_id))
+            value = str(selection.get(parameter_id))
             if value not in dimensions[parameter_id]:
                 dimensions[parameter_id].append(value)
     return dimensions

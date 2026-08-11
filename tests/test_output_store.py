@@ -7,7 +7,7 @@ import pandas as pd
 import pytest
 
 from tabulaflow.core.db_connector.sql_conn import SQLConnector
-from tabulaflow.core.outputs import ChartView, GraphArtifactView, MapView
+from tabulaflow.core.outputs import ChartView, GraphViewSpec, MapView
 from tabulaflow.core.types import ExecResult, PredQuery
 from tabulaflow.toolhub.output_store import OutputStore
 
@@ -29,9 +29,9 @@ def _map_view(output_store: OutputStore, map_id: str) -> MapView:
     return view
 
 
-def _graph_view(output_store: OutputStore, graph_id: str) -> GraphArtifactView:
+def _graph_view(output_store: OutputStore, graph_id: str) -> GraphViewSpec:
     view = output_store.get_artifact(graph_id).view
-    assert isinstance(view, GraphArtifactView)
+    assert isinstance(view, GraphViewSpec)
     return view
 
 
@@ -242,9 +242,9 @@ class TestWithConnector:
             "nodes": [{"data": [{"id": "a"}, {"id": "b"}], "id": "id"}],
             "edges": [{"data": [{"source": "a", "target": "b"}], "source": "source", "target": "target"}],
         }
-        graph_id = h.add_artifact("GRAPH", GraphArtifactView(sources=[], spec=graph_spec)).id
+        graph_id = h.add_artifact("GRAPH", GraphViewSpec(sources=[], spec=graph_spec)).id
         assert graph_id == "GRAPH1"
         assert _graph_view(h, "GRAPH1").spec == graph_spec
-        assert h.add_artifact("GRAPH", GraphArtifactView(sources=[], spec=graph_spec)).id == "GRAPH2"
+        assert h.add_artifact("GRAPH", GraphViewSpec(sources=[], spec=graph_spec)).id == "GRAPH2"
         with pytest.raises(KeyError):
             h.get_artifact("GRAPH9")

@@ -1,8 +1,8 @@
 """Pure output specification models.
 
 These models describe an interactive output without executing anything. Runtime
-state such as source caches, query records, connector access, and materialized
-DataFrames belongs outside ``core``.
+state such as source caches, connector access, and materialized DataFrames
+belongs outside ``core``.
 """
 
 from __future__ import annotations
@@ -30,7 +30,7 @@ class ChoiceOption(BaseModel):
 
 
 class ChoiceParameter(BaseModel):
-    """Finite answer parameter."""
+    """Finite output parameter."""
 
     kind: Literal["choice"] = "choice"
     id: ParameterId
@@ -46,7 +46,7 @@ class ChoiceParameter(BaseModel):
 
 
 class NumberParameter(BaseModel):
-    """Numeric answer parameter, optionally rendered as a slider."""
+    """Numeric output parameter, optionally rendered as a slider."""
 
     kind: Literal["number"] = "number"
     id: ParameterId
@@ -72,41 +72,29 @@ class NumberParameter(BaseModel):
 ParameterDef = Annotated[ChoiceParameter | NumberParameter, Field(discriminator="kind")]
 
 
-class ConstantResultPlan(BaseModel):
-    """Plan that always returns one already-materialized result."""
+class FixedResultSource(BaseModel):
+    """Source that always resolves to one materialized result."""
 
-    kind: Literal["constant_result"] = "constant_result"
+    kind: Literal["fixed"] = "fixed"
+    id: SourceId
     result_id: ResultId
 
 
-class ResultVariant(BaseModel):
-    """One precomputed result for a source-local selection."""
+class ParameterizedSource(BaseModel):
+    """Source that materializes/cache results under a source-local selection."""
 
-    selection: dict[ParameterId, SelectionValue]
-    result_id: ResultId
-
-
-class ResultLookupPlan(BaseModel):
-    """Plan that maps source-local selections to existing results."""
-
-    kind: Literal["result_lookup"] = "result_lookup"
-    variants: list[ResultVariant]
-
-
-class QueryPlan(BaseModel):
-    """Plan that can produce a result by executing a parameterized query."""
-
-    kind: Literal["query"] = "query"
+    kind: Literal["parameterized"] = "parameterized"
+    id: SourceId
+    parameter_ids: list[ParameterId]
     db_alias: str
-    query_template: str
-    connector_type: Literal["sql", "property_graph"] = "sql"
+    query_template: str = ""
 
 
-SourcePlan = Annotated[ConstantResultPlan | ResultLookupPlan | QueryPlan, Field(discriminator="kind")]
+SourceDef = Annotated[FixedResultSource | ParameterizedSource, Field(discriminator="kind")]
 
 
 class ResultMetadata(BaseModel):
-    """Metadata for a concrete materialized query result; data lives in runtime storage."""
+    """Metadata for a concrete materialized result; data lives in runtime storage."""
 
     id: ResultId
     db_alias: str
@@ -116,14 +104,6 @@ class ResultMetadata(BaseModel):
     row_count: int | None = None
     columns: list[str] | None = None
     latency_seconds: float | None = None
-
-
-class SourceDef(BaseModel):
-    """Declarative, selection-dependent provider of concrete results."""
-
-    id: SourceId
-    parameter_ids: list[ParameterId] = Field(default_factory=list)
-    plan: SourcePlan
 
 
 class TableView(BaseModel):
@@ -149,7 +129,7 @@ class MapView(BaseModel):
     spec: dict[str, Any]
 
 
-class GraphArtifactView(BaseModel):
+class GraphViewSpec(BaseModel):
     """Graph view over one or more sources."""
 
     kind: Literal["graph"] = "graph"
@@ -157,7 +137,7 @@ class GraphArtifactView(BaseModel):
     spec: dict[str, Any]
 
 
-ViewDef = Annotated[TableView | ChartView | MapView | GraphArtifactView, Field(discriminator="kind")]
+ViewDef = Annotated[TableView | ChartView | MapView | GraphViewSpec, Field(discriminator="kind")]
 
 
 class ArtifactSpec(BaseModel):
@@ -196,9 +176,10 @@ class OutputSpec(BaseModel):
             _validate_parameter_value(parameter, value)
 
         for source in self.sources:
-            for parameter_id in source.parameter_ids:
-                if parameter_id not in parameter_by_id:
-                    raise ValueError(f"source {source.id!r} references unknown parameter {parameter_id!r}")
+            if isinstance(source, ParameterizedSource):
+                for parameter_id in source.parameter_ids:
+                    if parameter_id not in parameter_by_id:
+                        raise ValueError(f"source {source.id!r} references unknown parameter {parameter_id!r}")
 
         known_sources = set(source_ids)
         for artifact in self.artifacts:
@@ -250,6 +231,6 @@ def _view_source_ids(view: ViewDef) -> tuple[SourceId, ...]:
     """Source ids referenced by a view."""
     if isinstance(view, TableView | ChartView):
         return (view.source,)
-    if isinstance(view, MapView | GraphArtifactView):
+    if isinstance(view, MapView | GraphViewSpec):
         return tuple(view.sources)
     raise TypeError(f"unsupported view {type(view).__name__}")

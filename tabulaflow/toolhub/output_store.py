@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import json
 from collections import OrderedDict
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Literal
@@ -14,14 +15,15 @@ from tabulaflow.core.dataframe import _deserialize_dataframe, _serialize_datafra
 from tabulaflow.core.outputs import (
     ArtifactId,
     ArtifactSpec,
-    ConstantResultPlan,
+    FixedResultSource,
+    ParameterId,
+    ParameterizedSource,
     ResultId,
-    ResultLookupPlan,
     ResultMetadata,
-    ResultVariant,
     SelectionValue,
     SourceDef,
     ViewDef,
+    canonical_selection_key,
 )
 from tabulaflow.core.types import GraphView, PredQuery
 
@@ -170,6 +172,7 @@ class OutputStore:
             raise ValueError("max_in_memory must be >= 1")
         self._records: dict[str, _StoredResult] = {}
         self._sources: dict[str, SourceDef] = {}
+        self._source_cache: dict[tuple[str, str], str] = {}
         self._artifacts: dict[str, ArtifactSpec] = {}
         self._next_result_id = 1
         self._next_source_id = 1
@@ -183,7 +186,7 @@ class OutputStore:
         result_id = self._next_result_id_value()
         source_id = self._next_source_id_value()
         await self._store(result_id, db_alias, connector_type, pred_query)
-        source = SourceDef(id=source_id, plan=ConstantResultPlan(result_id=result_id))
+        source = FixedResultSource(id=source_id, result_id=result_id)
         self._sources[source_id] = source
         return source
 
@@ -209,17 +212,15 @@ class OutputStore:
                 result_ids_by_query[pred_query.query] = result_id
                 await self._store(result_id, db_alias, connector_type, pred_query)
             result_ids_by_selection[selection_key] = result_id
-        source = SourceDef(
+        source = ParameterizedSource(
             id=source_id,
             parameter_ids=list(dimensions),
-            plan=ResultLookupPlan(
-                variants=[
-                    ResultVariant(selection=_selection_from_key(key), result_id=result_id)
-                    for key, result_id in result_ids_by_selection.items()
-                ]
-            ),
+            db_alias=db_alias,
+            query_template="",
         )
         self._sources[source_id] = source
+        for key, result_id in result_ids_by_selection.items():
+            self._source_cache[(source_id, canonical_selection_key(_selection_from_key(key)))] = result_id
         return source
 
     def _next_result_id_value(self) -> str:
@@ -268,6 +269,32 @@ class OutputStore:
             return self._sources[source_id]
         except KeyError:
             raise KeyError(f"No source with id {source_id}") from None
+
+    def get_cached_source_selections(self, source_id: str) -> list[dict[ParameterId, SelectionValue]]:
+        """Return selections currently cached for a parameterized source."""
+        selections: list[dict[ParameterId, SelectionValue]] = []
+        for cached_source_id, selection_key in self._source_cache:
+            if cached_source_id == source_id:
+                selections.append(json.loads(selection_key))
+        return selections
+
+    def get_cached_source_results(self, source_id: str) -> dict[str, str]:
+        """Return cached selection keys and result ids for a parameterized source."""
+        return {
+            selection_key: result_id
+            for (cached_source_id, selection_key), result_id in self._source_cache.items()
+            if cached_source_id == source_id
+        }
+
+    async def resolve_parameterized_source(
+        self, source: ParameterizedSource, selection: dict[ParameterId, SelectionValue]
+    ) -> ResultMetadata:
+        """Resolve a parameterized source through the runtime cache."""
+        selection_key = canonical_selection_key(selection)
+        result_id = self._source_cache.get((source.id, selection_key))
+        if result_id is None:
+            raise KeyError(f"source {source.id!r} has no result for selection {selection_key}")
+        return await self.get_metadata(result_id)
 
     async def _get_result(self, result_id: str) -> _StoredResult:
         """Return an internal stored result."""

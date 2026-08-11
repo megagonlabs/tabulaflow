@@ -14,7 +14,7 @@ from typing import Any, ClassVar
 import pandas as pd
 from pydantic_ai import Tool
 
-from tabulaflow.core.outputs import ChartView, ConstantResultPlan, ResultLookupPlan
+from tabulaflow.core.outputs import ChartView, FixedResultSource, ParameterizedSource
 from tabulaflow.toolhub.output_store import OutputStore
 
 
@@ -499,20 +499,21 @@ class RenderChartTool:
 
     async def _source_variants(self, source_id: str) -> list[_SourceVariant]:
         source = self._output_store.get_source(source_id)
-        if isinstance(source.plan, ResultLookupPlan):
+        if isinstance(source, ParameterizedSource):
             out: list[_SourceVariant] = []
-            for variant in source.plan.variants:
-                selection = ";".join(f"{key}={value}" for key, value in sorted(variant.selection.items()))
+            for key, result_id in self._output_store.get_cached_source_results(source.id).items():
+                selection_dict = json.loads(key)
+                selection = ";".join(f"{name}={value}" for name, value in sorted(selection_dict.items()))
                 out.append(
                     _SourceVariant(
                         label=selection,
-                        result_id=variant.result_id,
-                        df=(await self._output_store.get_payload(variant.result_id)).df,
+                        result_id=result_id,
+                        df=(await self._output_store.get_payload(result_id)).df,
                     )
                 )
             return out
-        if isinstance(source.plan, ConstantResultPlan):
-            result_id = source.plan.result_id
+        if isinstance(source, FixedResultSource):
+            result_id = source.result_id
             await self._output_store.get_metadata(result_id)
             return [_SourceVariant(label=source_id, result_id=result_id, df=(await self._output_store.get_payload(result_id)).df)]
         raise ValueError(f"source_id {source_id!r} is not chartable yet")

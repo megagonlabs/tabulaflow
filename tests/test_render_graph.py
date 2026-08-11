@@ -11,7 +11,7 @@ import pandas as pd
 import pytest
 
 from tabulaflow.core.types import ExecResult, PredQuery
-from tabulaflow.core.outputs import GraphArtifactView
+from tabulaflow.core.outputs import GraphViewSpec
 from tabulaflow.toolhub.output_store import OutputStore
 from tabulaflow.toolhub.render_graph import (
     GRAPH_MAX_NODES,
@@ -29,9 +29,9 @@ async def _output_store_with(*dfs: pd.DataFrame) -> OutputStore:
     return output_store
 
 
-def _graph_view(output_store: OutputStore, graph_id: str) -> GraphArtifactView:
+def _graph_view(output_store: OutputStore, graph_id: str) -> GraphViewSpec:
     view = output_store.get_artifact(graph_id).view
-    assert isinstance(view, GraphArtifactView)
+    assert isinstance(view, GraphViewSpec)
     return view
 
 
