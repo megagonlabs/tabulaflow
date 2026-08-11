@@ -10,6 +10,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_serializer, field_valid
 
 from tabulaflow.core.dataframe import _deserialize_dataframe, _serialize_dataframe
 from tabulaflow.core.legacy_outputs import ArtifactDef
+from tabulaflow.core.outputs import OutputSpec
 from tabulaflow.core.types import GraphView, Usage
 
 
@@ -179,6 +180,7 @@ class ChatResult(BaseModel):
 
     text: str
     artifacts: list[ArtifactDef] = Field(default_factory=list)
+    output: OutputSpec | None = None
     primary_artifact_index: int | None = 0
     usage: Usage | None = None
     panel: AnswerPanel | None = None

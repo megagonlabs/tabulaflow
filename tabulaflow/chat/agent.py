@@ -30,7 +30,29 @@ from tabulaflow.toolhub.web_browser import (
 )
 from tabulaflow.core.db_connector import connector_info
 from tabulaflow.core.llm import make_agent, make_model_settings, model_display_name
-from tabulaflow.core.legacy_outputs import ArtifactDef, TableArtifactDef
+from tabulaflow.core.legacy_outputs import (
+    ArtifactDef,
+    ChartArtifactDef,
+    GraphArtifactDef,
+    MapArtifactDef,
+    TableArtifactDef,
+)
+from tabulaflow.core.outputs import (
+    ArtifactSpec,
+    ChartView,
+    ChoiceOption,
+    ChoiceParameter,
+    ConstantResultPlan,
+    GraphArtifactView,
+    MapView,
+    OutputSpec,
+    ParameterDef,
+    ResultLookupPlan,
+    ResultVariant,
+    SelectionValue,
+    SourceDef,
+    TableView,
+)
 from tabulaflow.chat.artifact_resolver import ArtifactResolver
 from tabulaflow.chat.result import AnswerPanel, ChatResult, ChoiceControl, ControlChoice
 from tabulaflow.chat.events import (
@@ -780,10 +802,12 @@ async def _build_chat_result(
     refs = [(artifact.id, artifact.label) for artifact in bundle.artifacts] if bundle is not None else []
     artifacts = _artifacts_from_refs(refs, query_history)
     panel = _panel_from_bundle(bundle) if bundle is not None and bundle.dimensions else None
+    output = _output_spec_from_bundle(bundle, query_history) if bundle is not None else None
     primary_artifact_index: int | None = 0 if artifacts else None
     return ChatResult(
         text=_strip_answer_marker(answer_text),
         artifacts=artifacts,
+        output=output,
         primary_artifact_index=primary_artifact_index,
         panel=panel,
     )
@@ -800,6 +824,115 @@ def _panel_from_bundle(bundle: "ArtifactBundle") -> AnswerPanel:
             for dimension in bundle.dimensions
         ]
     )
+
+
+def _output_spec_from_bundle(bundle: "ArtifactBundle", query_history: QueryHistory) -> OutputSpec:
+    sources: dict[str, SourceDef] = {}
+    artifacts: list[ArtifactSpec] = []
+    parameters: list[ParameterDef] = [
+        ChoiceParameter(
+            id=dimension.id,
+            label=dimension.label,
+            choices=[ChoiceOption(id=choice.id, label=choice.label) for choice in dimension.choices],
+        )
+        for dimension in bundle.dimensions
+    ]
+
+    def ensure_source(source_id: str) -> None:
+        if source_id in sources:
+            return
+        if source_id.startswith("QS"):
+            family = query_history.get_family(source_id)
+            sources[source_id] = SourceDef(
+                id=source_id,
+                parameter_ids=list(family.dimensions),
+                plan=ResultLookupPlan(
+                    variants=[
+                        ResultVariant(selection=_selection_from_key(key), result_id=result_id)
+                        for key, result_id in family.record_ids_by_selection.items()
+                    ]
+                ),
+            )
+        else:
+            sources[source_id] = SourceDef(id=source_id, plan=ConstantResultPlan(result_id=source_id))
+
+    for ref in bundle.artifacts:
+        artifact = _artifact_from_ref(ref.id, ref.label, query_history)
+        if artifact is None:
+            continue
+        output_artifact = _output_artifact_from_legacy(artifact, ensure_source)
+        if output_artifact is not None:
+            artifacts.append(output_artifact)
+
+    return OutputSpec(parameters=parameters, sources=list(sources.values()), artifacts=artifacts)
+
+
+def _output_artifact_from_legacy(
+    artifact: ArtifactDef, ensure_source: Callable[[str], None]
+) -> ArtifactSpec | None:
+    if isinstance(artifact, TableArtifactDef):
+        ensure_source(artifact.source_id)
+        return ArtifactSpec(id=artifact.source_id, label=artifact.label, view=TableView(source=artifact.source_id))
+    if isinstance(artifact, ChartArtifactDef):
+        ensure_source(artifact.source_id)
+        return ArtifactSpec(
+            id=artifact.chart_id,
+            label=artifact.label,
+            view=ChartView(source=artifact.source_id, spec=artifact.chart_spec),
+        )
+    if isinstance(artifact, MapArtifactDef):
+        source_ids = _map_source_ids(artifact.map_spec)
+        for source_id in source_ids:
+            ensure_source(source_id)
+        return ArtifactSpec(
+            id=artifact.map_id,
+            label=artifact.label,
+            view=MapView(sources=source_ids, spec=artifact.map_spec),
+        )
+    if isinstance(artifact, GraphArtifactDef):
+        source_ids = _graph_source_ids(artifact.graph_spec)
+        for source_id in source_ids:
+            ensure_source(source_id)
+        return ArtifactSpec(
+            id=artifact.graph_id,
+            label=artifact.label,
+            view=GraphArtifactView(sources=source_ids, spec=artifact.graph_spec),
+        )
+    return None
+
+
+def _selection_from_key(key: str) -> dict[str, SelectionValue]:
+    if not key:
+        return {}
+    selection: dict[str, SelectionValue] = {}
+    for part in key.split(";"):
+        if not part:
+            continue
+        name, value = part.split("=", 1)
+        selection[name] = value
+    return selection
+
+
+def _map_source_ids(spec: dict[str, Any]) -> list[str]:
+    source_ids: list[str] = []
+    for layer in spec.get("layers") or []:
+        source_id = layer.get("source") if isinstance(layer, dict) else None
+        if isinstance(source_id, str) and source_id not in source_ids:
+            source_ids.append(source_id)
+    return source_ids
+
+
+def _graph_source_ids(spec: dict[str, Any]) -> list[str]:
+    source_ids: list[str] = []
+    for key in ("nodes", "edges"):
+        raw_sources = spec.get(key)
+        for source in raw_sources if isinstance(raw_sources, list) else []:
+            if not isinstance(source, dict) or "data" in source:
+                continue
+            source_id = source.get("source_id")
+            if isinstance(source_id, str) and source_id not in source_ids:
+                source_ids.append(source_id)
+    return source_ids
 
 
 def _artifacts_from_refs(refs: Sequence[tuple[str, str | None]], query_history: QueryHistory) -> list[ArtifactDef]:

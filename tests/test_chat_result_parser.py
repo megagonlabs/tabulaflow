@@ -16,7 +16,9 @@ from tabulaflow.toolhub import (
     ArtifactBundle,
     Choice,
     Dimension,
+    OutputResolver,
     QueryDimension,
+    QueryHistoryResultStore,
     QueryHistory,
     RenderChartTool,
     RunQueryForEachCombinationTool,
@@ -132,10 +134,14 @@ async def test_build_chat_result_resolves_the_declared_bundle() -> None:
 
     assert result.text == "There is 1 row."
     assert [(_source_id(artifact), artifact.label) for artifact in result.artifacts] == [("Q1", "row count")]
+    assert result.output is not None
+    assert [artifact.id for artifact in result.output.artifacts] == ["Q1"]
+    assert result.output.sources[0].plan.kind == "constant_result"
     assert result.primary_artifact_index == 0
 
     without = await _build_chat_result("<answer>\nNothing to show.", None, history)
     assert without.artifacts == []
+    assert without.output is None
     assert without.primary_artifact_index is None
     assert without.panel is None
 
@@ -190,6 +196,13 @@ async def test_build_chat_result_resolves_a_panel(tmp_path: Path) -> None:
 
     assert result.panel is not None
     assert result.panel.default_selection == {"ranking": "net", "period": "q2"}
+    assert result.output is not None
+    assert result.output.default_selection == {"ranking": "net", "period": "q2"}
+    resolved_output = await OutputResolver(QueryHistoryResultStore(history)).resolve(
+        result.output, {"ranking": "count", "period": "q3"}
+    )
+    assert resolved_output.artifacts[0].results_by_source["QS1"].id == "QS1_v3"
+    assert resolved_output.artifacts[1].results_by_source["QS2"].id == "QS2_v1"
     assert [artifact.kind for artifact in result.artifacts] == ["table", "table"]
     resolver = ArtifactResolver(history)
     default_cards = await resolver.resolve(result)
@@ -235,6 +248,10 @@ async def test_build_chat_result_resolves_source_backed_chart_in_panel(tmp_path:
     result = await _build_chat_result("<answer>\nChart shown.", bundle, history)
 
     assert result.panel is not None
+    assert result.output is not None
+    assert result.output.artifacts[0].view.kind == "chart"
+    resolved_output = await OutputResolver(QueryHistoryResultStore(history)).resolve(result.output, {"period": "q3"})
+    assert resolved_output.artifacts[0].results_by_source["QS1"].id == "QS1_v1"
     assert [artifact.kind for artifact in result.artifacts] == ["chart"]
     resolver = ArtifactResolver(history)
     default_cards = await resolver.resolve(result)
