@@ -27,7 +27,6 @@ from tabulaflow.chat.result import (
 
 if TYPE_CHECKING:
     from tabulaflow.chat.agent import SYSTEM_PROMPT, ChatAgent
-    from tabulaflow.chat.output_display_resolver import OutputDisplayResolver
 
 
 def __getattr__(name: str) -> object:
@@ -35,17 +34,12 @@ def __getattr__(name: str) -> object:
         from tabulaflow.chat import agent
 
         return getattr(agent, name)
-    if name == "OutputDisplayResolver":
-        from tabulaflow.chat.output_display_resolver import OutputDisplayResolver
-
-        return OutputDisplayResolver
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 
 __all__ = [
     "ChatAgent",
     "SYSTEM_PROMPT",
-    "OutputDisplayResolver",
     "ArtifactPlaceholder",
     "ChatResult",
     "ResolvedArtifact",

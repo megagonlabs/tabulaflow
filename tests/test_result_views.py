@@ -155,7 +155,7 @@ def test_panel_result_widget_switches_combinations_and_preserves_card_views() ->
             text="x",
             output=OutputSpec(parameters=controls),
         ),
-        cast(list[ResolvedArtifact], first_artifacts),
+        build_artifact_card_views(cast(list[ResolvedArtifact], first_artifacts)),
     )
 
     assert [(card.artifact_id, card.views[0].kind) for card in widget._cards] == [
@@ -195,7 +195,7 @@ def test_panel_result_widget_uses_choice_controls_as_primary_model() -> None:
             text="x",
             output=OutputSpec(parameters=controls),
         ),
-        [_record("Q1", "top")],
+        build_artifact_card_views([_record("Q1", "top")]),
     )
 
     assert widget._choice_count() == 2
@@ -219,7 +219,7 @@ def test_result_widget_uses_output_parameters_without_legacy_panel() -> None:
                 ]
             ),
         ),
-        [_record("Q1", "top")],
+        build_artifact_card_views([_record("Q1", "top")]),
     )
 
     assert widget._choice_count() == 2
@@ -238,7 +238,7 @@ def test_slider_only_panel_does_not_crash_choice_navigation() -> None:
                 ],
             ),
         ),
-        [_record("Q1", "players")],
+        build_artifact_card_views([_record("Q1", "players")]),
     )
 
     assert widget._choice_count() == 0

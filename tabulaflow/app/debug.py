@@ -9,6 +9,7 @@ from __future__ import annotations
 import os
 from typing import TYPE_CHECKING, Any
 
+from tabulaflow.app.display import build_artifact_card_views
 from tabulaflow.app.widgets import AgentResultWidget
 
 if TYPE_CHECKING:
@@ -387,7 +388,7 @@ LIMIT 4000"""
     result = ChatResult(text="Debug startup table")
     return AgentResultWidget(
         result,
-        records,
+        build_artifact_card_views(records),
         width=app.size.width - 11,
     )
 
@@ -483,7 +484,7 @@ def _build_debug_huge_cell_result_widget(app: TabulaflowApp) -> AgentResultWidge
     )
     return AgentResultWidget(
         result,
-        records,
+        build_artifact_card_views(records),
         width=app.size.width - 11,
     )
 
@@ -598,7 +599,7 @@ def _build_debug_media_result_widget(app: TabulaflowApp) -> AgentResultWidget:
     result = ChatResult(text="Debug startup media table")
     return AgentResultWidget(
         result,
-        records,
+        build_artifact_card_views(records),
         width=app.size.width - 11,
     )
 
@@ -637,7 +638,7 @@ def _build_debug_small_result_widget(app: TabulaflowApp) -> AgentResultWidget:
     result = ChatResult(text="Debug startup small table")
     return AgentResultWidget(
         result,
-        records,
+        build_artifact_card_views(records),
         width=app.size.width - 11,
     )
 
@@ -755,7 +756,7 @@ def _build_debug_quad_result_widget(app: TabulaflowApp) -> AgentResultWidget:
     result = ChatResult(text="Debug quad-record result")
     return AgentResultWidget(
         result,
-        records,
+        build_artifact_card_views(records),
         width=app.size.width - 11,
     )
 
@@ -974,7 +975,7 @@ def _build_debug_multi_result_widget(app: TabulaflowApp) -> AgentResultWidget:
     result = ChatResult(text="Debug multi-record result")
     return AgentResultWidget(
         result,
-        records,
+        build_artifact_card_views(records),
         width=app.size.width - 11,
     )
 
@@ -1213,7 +1214,7 @@ def _build_debug_chart_result_widget(app: TabulaflowApp) -> AgentResultWidget:
     )
     return AgentResultWidget(
         result,
-        records,
+        build_artifact_card_views(records),
         width=app.size.width - 11,
     )
 

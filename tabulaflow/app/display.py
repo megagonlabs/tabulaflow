@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 from rich.align import Align
 from rich.columns import Columns
@@ -456,6 +456,104 @@ def build_artifact_card_views(
                 artifact.df = None
 
     return groups
+
+
+async def build_resolved_output_card_views(
+    resolved_output: object,
+    result_store: object,
+    width: int = 80,
+) -> list[CardGroup]:
+    """Build display cards directly from a resolved output spec."""
+    from tabulaflow.core.outputs import ChartView, GraphArtifactView, MapView, TableView
+    from tabulaflow.toolhub.output_resolver import ResolvedOutput
+    from tabulaflow.toolhub.render_graph import GraphSpecError, materialize_graph_view
+    from tabulaflow.toolhub.output_resolver import ResultStore
+
+    assert isinstance(resolved_output, ResolvedOutput)
+    store = cast(ResultStore, result_store)
+
+    groups: list[CardGroup] = []
+    used_labels: set[str] = set()
+    for artifact in resolved_output.artifacts:
+        base_label = artifact.label or "result"
+        label = _unique_record_label(base_label, used_labels)
+        used_labels.add(label)
+        view = artifact.view
+        if isinstance(view, TableView):
+            payload = await store.get_payload(artifact.results_by_source[view.source].id)
+            group = _card_group_from_payload(label, artifact.artifact_id, payload, width)
+            if group is not None:
+                groups.append(group)
+        elif isinstance(view, ChartView):
+            payload = await store.get_payload(artifact.results_by_source[view.source].id)
+            group = _card_group_from_payload(label, artifact.artifact_id, payload, width, chart_spec=view.spec)
+            if group is not None:
+                groups.append(group)
+        elif isinstance(view, MapView):
+            groups.append(
+                CardGroup(
+                    label=label,
+                    artifact_id=artifact.artifact_id,
+                    views=[ViewItem(kind=VIEW_KIND_MAP, renderable=_build_map_card(view.spec))],
+                )
+            )
+        elif isinstance(view, GraphArtifactView):
+            graph_sources = {}
+            for source_id, record in artifact.results_by_source.items():
+                payload = await store.get_payload(record.id)
+                if payload.df is not None:
+                    graph_sources[source_id] = payload.df
+            try:
+                materialize_graph_view(view.spec, graph_sources)
+            except GraphSpecError:
+                continue
+            groups.append(
+                CardGroup(
+                    label=label,
+                    artifact_id=artifact.artifact_id,
+                    views=[ViewItem(kind=VIEW_KIND_GRAPH, renderable=_build_graph_card())],
+                )
+            )
+    return groups
+
+
+def _card_group_from_payload(
+    label: str,
+    artifact_id: str,
+    payload: object,
+    width: int,
+    chart_spec: dict[str, object] | None = None,
+) -> CardGroup | None:
+    from tabulaflow.toolhub.output_resolver import ResultPayload
+
+    assert isinstance(payload, ResultPayload)
+    views: list[ViewItem] = []
+    if payload.graph is not None:
+        views.append(ViewItem(kind=VIEW_KIND_GRAPH, renderable=_build_graph_card()))
+    if chart_spec is not None and payload.df is not None:
+        views.append(ViewItem(kind=VIEW_KIND_CHART, renderable=build_chart(payload.df, chart_spec, width), chart_spec=chart_spec))
+    if payload.df is not None and not payload.df.empty:
+        renderable, shown_cols = build_table(payload.df, available_width=width, include_footer=False)
+        views.append(
+            ViewItem(
+                kind=VIEW_KIND_DATA,
+                renderable=renderable,
+                data_shape=(len(payload.df), len(payload.df.columns)),
+                shown_cols=shown_cols,
+            )
+        )
+    if payload.record.query:
+        lexer = "cypher" if payload.record.connector_type == "property_graph" else "sql"
+        views.append(
+            ViewItem(
+                kind=VIEW_KIND_QUERY,
+                renderable=build_query(payload.record.query, lexer=lexer),
+                query=(payload.record.query, lexer),
+            )
+        )
+    if not views:
+        return None
+    return CardGroup(label=label, artifact_id=artifact_id, source_record_id=payload.record.id, views=views)
 
 
 def build_card_views(result: object, width: int = 80) -> list[CardGroup]:

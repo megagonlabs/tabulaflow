@@ -195,3 +195,77 @@ def render_resolved_artifacts(artifacts: Sequence[object], pane_dir: Path) -> li
         if card is not None:
             cards.append(card)
     return cards
+
+
+async def render_resolved_output(resolved_output: object, result_store: object, pane_dir: Path) -> list[PaneCard]:
+    """Render a resolved output spec to pane card descriptors."""
+    from tabulaflow.core.outputs import ChartView, GraphArtifactView, MapView, TableView
+    from tabulaflow.toolhub.output_resolver import ResolvedOutput, ResultStore
+    from tabulaflow.toolhub.render_graph import GraphSpecError, materialize_graph_view
+
+    assert isinstance(resolved_output, ResolvedOutput)
+    cards: list[PaneCard] = []
+    for artifact in resolved_output.artifacts:
+        view = artifact.view
+        try:
+            if isinstance(view, TableView):
+                payload = await cast(ResultStore, result_store).get_payload(artifact.results_by_source[view.source].id)
+                card = render_record_data(
+                    SimpleNamespace(
+                        df=payload.df,
+                        chart_spec=None,
+                        graph=payload.graph,
+                        query=payload.record.query,
+                        label=artifact.label,
+                        query_lexer="cypher" if payload.record.connector_type == "property_graph" else "sql",
+                    ),
+                    pane_dir,
+                )
+            elif isinstance(view, ChartView):
+                payload = await cast(ResultStore, result_store).get_payload(artifact.results_by_source[view.source].id)
+                card = render_record_data(
+                    SimpleNamespace(
+                        df=payload.df,
+                        chart_spec=view.spec,
+                        graph=payload.graph,
+                        query=payload.record.query,
+                        label=artifact.label,
+                        query_lexer="cypher" if payload.record.connector_type == "property_graph" else "sql",
+                    ),
+                    pane_dir,
+                )
+            elif isinstance(view, MapView):
+                sources = {}
+                for source_id, record in artifact.results_by_source.items():
+                    payload = await cast(ResultStore, result_store).get_payload(record.id)
+                    if payload.df is not None:
+                        sources[source_id] = payload.df
+                card = render_map_data(SimpleNamespace(map_id=artifact.artifact_id, label=artifact.label, map_spec=view.spec, sources=sources), pane_dir)
+            elif isinstance(view, GraphArtifactView):
+                sources = {}
+                for source_id, record in artifact.results_by_source.items():
+                    payload = await cast(ResultStore, result_store).get_payload(record.id)
+                    if payload.df is not None:
+                        sources[source_id] = payload.df
+                try:
+                    graph = materialize_graph_view(view.spec, sources)
+                except GraphSpecError:
+                    card = None
+                else:
+                    layout = view.spec.get("layout")
+                    card = render_graph_data(
+                        SimpleNamespace(
+                            graph_id=artifact.artifact_id,
+                            label=artifact.label,
+                            graph=graph,
+                            layout=layout if layout in {"force", "layered", "tree"} else "force",
+                        ),
+                        pane_dir,
+                    )
+            else:
+                card = None
+        except Exception:
+            card = None
+        if card is not None:
+            cards.append(card)
+    return cards

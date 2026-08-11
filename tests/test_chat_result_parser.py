@@ -6,7 +6,6 @@ import pytest
 from pydantic_ai.messages import ToolReturnPart
 
 from tabulaflow.chat.agent import _build_chat_result, _declared_bundle, _TextStreamRouter, _strip_answer_marker
-from tabulaflow.chat.output_display_resolver import OutputDisplayResolver
 from tabulaflow.core.db_connector.db_registry import DBRegistry
 from tabulaflow.core.db_connector.sql_conn import SQLConnector
 from tabulaflow.core.types import ExecResult, PredQuery
@@ -22,13 +21,6 @@ from tabulaflow.toolhub import (
     RenderChartTool,
     RunQueryForEachCombinationTool,
 )
-
-
-def _record_id(artifact: object) -> str:
-    assert getattr(artifact, "kind") == "table"
-    record_id = getattr(artifact, "record_id")
-    assert isinstance(record_id, str)
-    return record_id
 
 
 def test_strip_answer_marker_removes_the_marker() -> None:
@@ -162,15 +154,15 @@ async def test_build_chat_result_resolves_a_panel(tmp_path: Path) -> None:
     )
     assert resolved_output.artifacts[0].results_by_source["QS1"].id == "QS1_v3"
     assert resolved_output.artifacts[1].results_by_source["QS2"].id == "QS2_v1"
-    resolver = OutputDisplayResolver(history)
-    default_cards = await resolver.resolve(result)
-    assert [_record_id(a) for a in default_cards] == ["QS1_v0", "QS2_v0"]
+    resolver = OutputResolver(QueryHistoryResultStore(history))
+    default_cards = await resolver.resolve(result.output)
+    assert [a.results_by_source[next(iter(a.results_by_source))].id for a in default_cards.artifacts] == ["QS1_v0", "QS2_v0"]
 
-    count_q2 = await resolver.resolve(result, {"ranking": "count", "period": "q2"})
-    count_q3 = await resolver.resolve(result, {"ranking": "count", "period": "q3"})
+    count_q2 = await resolver.resolve(result.output, {"ranking": "count", "period": "q2"})
+    count_q3 = await resolver.resolve(result.output, {"ranking": "count", "period": "q3"})
     # "order count" ignores `ranking`, while "top customers" varies over both.
-    assert [_record_id(a) for a in count_q2] == ["QS1_v2", "QS2_v0"]
-    assert [_record_id(a) for a in count_q3] == ["QS1_v3", "QS2_v1"]
+    assert [a.results_by_source[next(iter(a.results_by_source))].id for a in count_q2.artifacts] == ["QS1_v2", "QS2_v0"]
+    assert [a.results_by_source[next(iter(a.results_by_source))].id for a in count_q3.artifacts] == ["QS1_v3", "QS2_v1"]
 
 
 @pytest.mark.asyncio
@@ -208,10 +200,13 @@ async def test_build_chat_result_resolves_source_backed_chart_in_panel(tmp_path:
     assert result.output.artifacts[0].view.kind == "chart"
     resolved_output = await OutputResolver(QueryHistoryResultStore(history)).resolve(result.output, {"period": "q3"})
     assert resolved_output.artifacts[0].results_by_source["QS1"].id == "QS1_v1"
-    resolver = OutputDisplayResolver(history)
-    default_cards = await resolver.resolve(result)
-    q3_cards = await resolver.resolve(result, {"period": "q3"})
-    chart_ids = [getattr(default_cards[0], "record_id"), getattr(q3_cards[0], "record_id")]
+    resolver = OutputResolver(QueryHistoryResultStore(history))
+    default_cards = await resolver.resolve(result.output)
+    q3_cards = await resolver.resolve(result.output, {"period": "q3"})
+    chart_ids = [
+        default_cards.artifacts[0].results_by_source["QS1"].id,
+        q3_cards.artifacts[0].results_by_source["QS1"].id,
+    ]
     assert chart_ids == ["QS1_v0", "QS1_v1"]
 
 
@@ -250,8 +245,6 @@ async def test_build_chat_result_placeholders_a_partially_covered_card(tmp_path:
     result = await _build_chat_result("<answer>\n17 in the last quarter.", bundle, history)
 
     assert result.output.default_selection == {"period": "q2"}
-    uncovered = await OutputDisplayResolver(history).resolve(result, {"period": "q3"})
-    assert uncovered[0].kind == "placeholder"
-    assert uncovered[0].message == "only applies when Time period = Last completed quarter"
-    assert uncovered[0].label == "net revenue"
+    with pytest.raises(Exception, match="has no result"):
+        await OutputResolver(QueryHistoryResultStore(history)).resolve(result.output, {"period": "q3"})
     assert [a.label for a in result.output.artifacts] == ["net revenue"]

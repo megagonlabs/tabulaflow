@@ -23,7 +23,7 @@ from tabulaflow.app.config import (
     update_app_config,
 )
 from tabulaflow.app.debug import debug_enabled, mount_debug_widgets
-from tabulaflow.app.pane import PaneCard, PanePanel, manual_card_turn, render_resolved_artifacts, turn_payload
+from tabulaflow.app.pane import PaneCard, PanePanel, manual_card_turn, render_resolved_output, turn_payload
 from tabulaflow.app.runtime_paths import RuntimePaths, ensure_pane_dir
 from tabulaflow.app.session import LLM_UNAVAILABLE_MESSAGE, SessionState
 from tabulaflow.core.llm import model_display_name
@@ -40,8 +40,8 @@ from tabulaflow.app.widgets import (
 
 if TYPE_CHECKING:
     from tabulaflow.app.pane import OutputPane
-    from tabulaflow.chat import ChatAgent, ChatResult, ResolvedArtifact
-    from tabulaflow.chat.output_display_resolver import OutputDisplayResolver
+    from tabulaflow.chat import ChatAgent, ChatResult
+    from tabulaflow.toolhub.output_resolver import ResolvedOutput, ResultStore
 
 logger = logging.getLogger(__name__)
 
@@ -785,8 +785,8 @@ class TabulaflowApp(App[None]):
     async def _push_turn_to_pane(
         self,
         result: "ChatResult",
-        artifacts: list["ResolvedArtifact"],
-        output_display_resolver: "OutputDisplayResolver",
+        resolved_output: "ResolvedOutput",
+        result_store: "ResultStore",
         *,
         title: str,
         user_text: str,
@@ -804,7 +804,7 @@ class TabulaflowApp(App[None]):
             ensure_pane_dir(pane_dir)
         except Exception:
             return
-        if not artifacts and not user_text and not result.text:
+        if not resolved_output.artifacts and not user_text and not result.text:
             return
         pane = self._ensure_pane()
         if pane is None:
@@ -813,12 +813,12 @@ class TabulaflowApp(App[None]):
         panel = _pane_panel(result)
 
         async def render_and_push() -> None:
-            cards = await asyncio.to_thread(render_resolved_artifacts, artifacts, pane_dir)
+            cards = await render_resolved_output(resolved_output, result_store, pane_dir)
             if cards or user_text or result.text:
                 pane.push(
                     turn_payload(title=title, user=user_text, assistant=result.text, cards=cards, panel=panel),
                     result=result if panel is not None else None,
-                    output_display_resolver=output_display_resolver if panel is not None else None,
+                    result_store=result_store if panel is not None else None,
                 )
 
         def log_background_error(task: asyncio.Task[None]) -> None:
@@ -1137,23 +1137,25 @@ class TabulaflowApp(App[None]):
         if result is None:
             return  # normal completion always yields a terminal Finished
 
-        # Push to the browser pane BEFORE building the widget: AgentResultWidget
-        # -> build_card_views() nulls each record.df after rendering to Rich.
-        artifacts = await chat_agent.output_display_resolver.resolve(result)
+        from tabulaflow.app.display import build_resolved_output_card_views
+        from tabulaflow.toolhub.output_resolver import OutputResolver, QueryHistoryResultStore
+
+        result_store = QueryHistoryResultStore(chat_agent.query_history)
+        resolved_output = await OutputResolver(result_store).resolve(result.output)
         await self._push_turn_to_pane(
             result,
-            artifacts,
-            chat_agent.output_display_resolver,
+            resolved_output,
+            result_store,
             title=display_text,
             user_text=display_text,
         )
-        if artifacts:
+        cards = await build_resolved_output_card_views(resolved_output, result_store, self.size.width - 11)
+        if cards:
             # chat-log padding (2) + scrollbar (2) + widget margin (5) + widget padding (2) = 11
             result_widget = AgentResultWidget(
                 result,
-                artifacts,
-                width=self.size.width - 11,
-                output_display_resolver=chat_agent.output_display_resolver,
+                cards,
+                result_store=result_store,
             )
             await chat_log.mount(result_widget)
             self._refresh_esc_hint()

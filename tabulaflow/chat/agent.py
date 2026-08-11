@@ -48,7 +48,6 @@ from tabulaflow.core.outputs import (
     TableView,
     ViewDef,
 )
-from tabulaflow.chat.output_display_resolver import OutputDisplayResolver
 from tabulaflow.chat.result import ChatResult
 from tabulaflow.chat.events import (
     ChatEvent,
@@ -214,7 +213,6 @@ class ChatAgent:
     _system_prompt: str = field(init=False, default=SYSTEM_PROMPT)
     _pydantic_ai_agent: Agent[None, str] | None = field(init=False, default=None)
     _query_history: QueryHistory = field(init=False)
-    _output_display_resolver: OutputDisplayResolver = field(init=False)
     _message_store: MessageStore = field(init=False)
     _main_scope: ScopedMessageStore = field(init=False)
     _tools: _Toolset = field(init=False)
@@ -227,7 +225,6 @@ class ChatAgent:
         from tabulaflow.toolhub import ProgressReportingTool, QueryHistory
 
         self._query_history = QueryHistory(spill_connector=self.workspace)
-        self._output_display_resolver = OutputDisplayResolver(self._query_history)
         self._message_store = MessageStore()
         self._main_scope = self._message_store.scoped("main")
         subagent_dir = self.trajectory_log_dir / "subagents" if self.trajectory_log_dir is not None else None
@@ -394,11 +391,6 @@ class ChatAgent:
     def query_history(self) -> QueryHistory:
         """The live query history — results the agent's answers reference."""
         return self._query_history
-
-    @property
-    def output_display_resolver(self) -> OutputDisplayResolver:
-        """Resolver for this session's logical chat artifacts."""
-        return self._output_display_resolver
 
     @staticmethod
     def _unwrap_model(model: object) -> object:

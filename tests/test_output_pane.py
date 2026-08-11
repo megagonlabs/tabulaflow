@@ -28,9 +28,9 @@ from tabulaflow.app.pane import PaneCard, PanePanel, PaneTurn, turn_payload
 from tabulaflow.app.screens import send_table_to_output_pane
 from tabulaflow.toolhub.render_graph import materialize_graph_view, normalize_graph_spec
 from tabulaflow.app.tui import TabulaflowApp
-from tabulaflow.chat import ChatResult, ResolvedTableArtifact
-from tabulaflow.chat.output_display_resolver import OutputDisplayResolver
-from tabulaflow.core import ChoiceOption, ChoiceParameter, OutputSpec
+from tabulaflow.chat import ChatResult
+from tabulaflow.core import ChoiceOption, ChoiceParameter, ConstantResultPlan, OutputSpec, ResultRecord, SourceDef, TableView, ArtifactSpec
+from tabulaflow.toolhub.output_resolver import ResultPayload
 from tabulaflow.toolhub.render_map import MAP_RENDER_MAX_ROWS
 
 
@@ -2310,17 +2310,15 @@ def test_view_card_in_pane_marks_turn_as_manual(tmp_path: Path) -> None:
 
 @pytest.mark.asyncio
 async def test_output_pane_resolves_live_turn_selection(tmp_path: Path) -> None:
-    class FakeResolver:
-        async def resolve(self, result: ChatResult, selection: dict[str, object]) -> list[ResolvedTableArtifact]:
-            return [
-                ResolvedTableArtifact(
-                    record_id="Q1",
-                    label=f"period_{selection['period']}",
-                    query="SELECT 1",
-                    df=pd.DataFrame({"period": [selection["period"]]}),
-                    query_lexer="sql",
-                )
-            ]
+    class FakeResultStore:
+        async def get_record(self, result_id: str) -> ResultRecord:
+            return ResultRecord(id=result_id, db_alias="workspace", query="SELECT 1")
+
+        async def get_payload(self, result_id: str) -> ResultPayload:
+            return ResultPayload(
+                record=await self.get_record(result_id),
+                df=pd.DataFrame({"period": ["q3"]}),
+            )
 
     pane = OutputPane(tmp_path)
     result = ChatResult(
@@ -2332,7 +2330,9 @@ async def test_output_pane_resolves_live_turn_selection(tmp_path: Path) -> None:
                     label="Period",
                     choices=[ChoiceOption(id="q2", label="Q2"), ChoiceOption(id="q3", label="Q3")],
                 )
-            ]
+            ],
+            sources=[SourceDef(id="period_q3", plan=ConstantResultPlan(result_id="Q1"))],
+            artifacts=[ArtifactSpec(id="period_q3", label="period_q3", view=TableView(source="period_q3"))],
         ),
     )
     pane.push(
@@ -2355,7 +2355,7 @@ async def test_output_pane_resolves_live_turn_selection(tmp_path: Path) -> None:
             ),
         ),
         result=result,
-        output_display_resolver=cast(OutputDisplayResolver, FakeResolver()),
+        result_store=FakeResultStore(),
     )
 
     cards = await pane.resolve_turn(0, {"period": "q3"})

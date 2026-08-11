@@ -6,6 +6,7 @@ from tabulaflow.app.pane.cards import (
     render_map_data,
     render_record_data,
     render_resolved_artifacts,
+    render_resolved_output,
 )
 from tabulaflow.app.pane.charts import _add_line_hover, build_chart_data
 from tabulaflow.app.pane.server import (
@@ -85,5 +86,6 @@ __all__ = [
     "render_map_data",
     "render_record_data",
     "render_resolved_artifacts",
+    "render_resolved_output",
     "turn_payload",
 ]

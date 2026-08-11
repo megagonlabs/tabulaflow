@@ -63,10 +63,10 @@ if TYPE_CHECKING:
     from rich.console import RenderableType
     from textual.selection import Selection
 
-    from tabulaflow.chat import ChatResult, ResolvedArtifact, SelectionValue
-    from tabulaflow.chat.output_display_resolver import OutputDisplayResolver
+    from tabulaflow.chat import ChatResult, SelectionValue
     from tabulaflow.app.display import CardGroup, ViewItem
     from tabulaflow.core.types import Usage
+    from tabulaflow.toolhub.output_resolver import ResultStore
 
 
 class _MarkdownStream(Protocol):
@@ -1595,13 +1595,11 @@ class AgentResultWidget(Widget):
     def __init__(
         self,
         result: ChatResult,
-        artifacts: Sequence[ResolvedArtifact],
+        cards: Sequence["CardGroup"],
         width: int = 80,
-        output_display_resolver: OutputDisplayResolver | None = None,
+        result_store: "ResultStore | None" = None,
     ) -> None:
         super().__init__()
-        from tabulaflow.app.display import build_artifact_card_views
-
         self._result = result
         self._width = width
         self._choice_controls_cache = self._choice_controls_from_result(result)
@@ -1609,10 +1607,10 @@ class AgentResultWidget(Widget):
         self.set_class(self._has_answer_controls, "-has-panel")
         self._applied_selection: dict[str, SelectionValue] = dict(result.output.default_selection)
         self._interpretation_cursor = 0
-        self._cards = build_artifact_card_views(artifacts, width, release_dataframes=not self._has_answer_controls)
+        self._cards = list(cards)
         # Selected view index per card; every card has at least one view.
         self._view_indices: list[int] = [0] * len(self._cards)
-        self._output_display_resolver = output_display_resolver
+        self._result_store = result_store
         self._interpretation_title: Static | None = None
         self._interpretation_content: Static | None = None
         self._content = Static(id="result-content")
@@ -1722,12 +1720,10 @@ class AgentResultWidget(Widget):
             chat_log = self.app.query_one("#chat-log")
             chat_log.scroll_end(animate=False)
 
-    def _rebuild_cards_for_selection(self, artifacts: list["ResolvedArtifact"]) -> None:
-        from tabulaflow.app.display import build_artifact_card_views
-
+    def _rebuild_cards_for_selection(self, cards: list["CardGroup"]) -> None:
         old_indices = self._view_indices
         old_card = self.current_card
-        self._cards = build_artifact_card_views(artifacts, self._width, release_dataframes=False)
+        self._cards = cards
         self.current_card = min(old_card, max(len(self._cards) - 1, 0))
         self._view_indices = [0] * len(self._cards)
         for i, old in enumerate(old_indices[: len(self._cards)]):
@@ -1735,10 +1731,14 @@ class AgentResultWidget(Widget):
                 self._view_indices[i] = min(old, len(self._cards[i].views) - 1)
 
     async def _resolve_cards_for_selection(self, selection: dict[str, "SelectionValue"]) -> None:
-        if self._output_display_resolver is None:
+        if self._result_store is None:
             return
-        artifacts = await self._output_display_resolver.resolve(self._result, selection)
-        self._rebuild_cards_for_selection(artifacts)
+        from tabulaflow.app.display import build_resolved_output_card_views
+        from tabulaflow.toolhub.output_resolver import OutputResolver
+
+        resolved_output = await OutputResolver(self._result_store).resolve(self._result.output, selection)
+        cards = await build_resolved_output_card_views(resolved_output, self._result_store, self._width)
+        self._rebuild_cards_for_selection(cards)
         self._refresh_all()
 
     def _is_last_chat_item(self) -> bool:
@@ -1806,7 +1806,7 @@ class AgentResultWidget(Widget):
         if self._applied_selection.get(control.id) == choice.id:
             return
         self._applied_selection = {**self._applied_selection, control.id: choice.id}
-        if self._output_display_resolver is not None:
+        if self._result_store is not None:
             self.run_worker(self._resolve_cards_for_selection(dict(self._applied_selection)), exclusive=True)
         else:
             self._refresh_all()
@@ -2275,10 +2275,11 @@ class AgentResultWidget(Widget):
 
     async def _fetch_df(self, record_id: str | None) -> pd.DataFrame | None:
         """Fetch a DataFrame from QueryHistory, loading from DuckDB if needed."""
-        if self._output_display_resolver is None or record_id is None:
+        if self._result_store is None or record_id is None:
             return None
         try:
-            return await self._output_display_resolver.get_dataframe(record_id)
+            payload = await self._result_store.get_payload(record_id)
+            return payload.df
         except (KeyError, ValueError):
             return None
 

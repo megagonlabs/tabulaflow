@@ -5,7 +5,8 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Protocol
 
-from pydantic import BaseModel, Field
+import pandas as pd
+from pydantic import BaseModel, ConfigDict, Field, field_serializer, field_validator
 
 from tabulaflow.core.outputs import (
     OutputSpec,
@@ -30,6 +31,8 @@ from tabulaflow.core.outputs import (
     ViewDef,
     canonical_selection_key,
 )
+from tabulaflow.core.dataframe import _deserialize_dataframe, _serialize_dataframe
+from tabulaflow.core.types import GraphView
 from tabulaflow.toolhub.query_history import QueryHistory, TabularResult
 
 
@@ -53,11 +56,33 @@ class ResolvedOutput(BaseModel):
     artifacts: list[ResolvedArtifact] = Field(default_factory=list)
 
 
+class ResultPayload(BaseModel):
+    """Runtime payload for a materialized result."""
+
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
+    record: ResultRecord
+    df: pd.DataFrame | None = None
+    graph: GraphView | None = None
+
+    @field_serializer("df", when_used="always")
+    def _serialize_df(self, df: pd.DataFrame | None) -> dict[str, object] | None:
+        return _serialize_dataframe(df)
+
+    @field_validator("df", mode="before")
+    @classmethod
+    def _deserialize_df(cls, v: dict[str, object] | pd.DataFrame | None) -> pd.DataFrame | None:
+        return _deserialize_dataframe(v)
+
+
 class ResultStore(Protocol):
     """Runtime store for materialized result metadata."""
 
     async def get_record(self, result_id: ResultId) -> ResultRecord:
         """Return metadata for a materialized result."""
+
+    async def get_payload(self, result_id: ResultId) -> ResultPayload:
+        """Return runtime payload for a materialized result."""
 
 
 class QueryHistoryResultStore:
@@ -82,6 +107,11 @@ class QueryHistoryResultStore:
             row_count=row_count,
             columns=columns,
         )
+
+    async def get_payload(self, result_id: ResultId) -> ResultPayload:
+        record = await self.get_record(result_id)
+        payload = await self._query_history.get_query_record_payload(result_id)
+        return ResultPayload(record=record, df=payload.df, graph=payload.graph)
 
 
 class OutputResolver:

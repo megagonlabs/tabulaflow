@@ -4,7 +4,7 @@ import pandas as pd
 from textual.app import App, ComposeResult
 from textual.containers import VerticalScroll
 
-from tabulaflow.app.display import VIEW_KIND_DATA, VIEW_KIND_QUERY
+from tabulaflow.app.display import VIEW_KIND_DATA, VIEW_KIND_QUERY, build_artifact_card_views
 from tabulaflow.app.widgets import AgentResultWidget
 from tabulaflow.chat.result import ChatResult, ResolvedTableArtifact
 
@@ -30,7 +30,7 @@ class _ResultWidgetApp(App[None]):
             ChatResult(
                 text="x",
             ),
-            artifacts,
+            build_artifact_card_views(artifacts),
         )
 
     def get_css_variables(self) -> dict[str, str]:

@@ -55,7 +55,7 @@ Implemented on `dev` so far:
   - `render_chart(source_id=...)` accepts `Q*` and `QS*`.
   - For `QS*`, chart validation checks every source variant and reports all failures by selection key, not internal variant record id.
   - `show_artifacts` treats a chart backed by a `QS*` source as varying over that family.
-- Chat output resolution now goes through `OutputDisplayResolver`, which resolves `OutputSpec` through `OutputResolver` and adapts to the current display payloads.
+- Chat output resolution now goes through `OutputResolver`; app and pane renderers consume `ResolvedOutput` directly.
 - Source ids are plain `Q*` / `QS*` strings; no separate `ArtifactSource` wrapper.
 - `show_artifacts` refs are converted to `OutputSpec` during chat-result construction.
 - The tool-facing `show_artifacts` item is named `ArtifactRef`, because it is only an id+label reference.
@@ -66,8 +66,7 @@ Implemented on `dev` so far:
 In progress / next cleanup:
 
 - Migrate runtime code toward the new `core.outputs` model:
-  - replace the temporary display `Resolved*Artifact` payloads with a clean renderer-facing model;
-  - remove `OutputDisplayResolver` once the app/pane renderers consume `ResolvedOutput` directly.
+  - finish replacing the temporary display `Resolved*Artifact` payloads in tests/debug helpers with a clean renderer-facing model.
 - Design true server-side parameterized sources for sliders after the clean source/result runtime boundary is in place; current sliders are model/UI-safe but do not rerun or parameterize queries.
 
 ## Product thesis
@@ -293,7 +292,7 @@ Goals:
 This phase should validate the public runtime API:
 
 ```python
-await chat_agent.output_display_resolver.resolve(result, selection)
+await OutputResolver(result_store).resolve(result.output, selection)
 ```
 
 ### Phase 5 — Shared artifact-definition model
@@ -304,7 +303,7 @@ Goals:
 
 - Keep the tool-facing `ArtifactRef` separate because it is only an id+label reference.
 - Use `OutputSpec`, `ArtifactSpec`, and `ViewDef` as the chat output contract.
-- Keep graph/map/chart specs lightweight; materialize render payloads through `OutputDisplayResolver`.
+- Keep graph/map/chart specs lightweight; materialize render payloads through app/pane renderers consuming `ResolvedOutput`.
 - Treat current `Resolved*Artifact` payloads as temporary display compatibility models; do not move resolved DataFrames or graph payloads into `core.outputs`.
 
 Target long-term taxonomy:
