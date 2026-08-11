@@ -54,7 +54,7 @@ class RegistryRunQueryTool:
             max_cell_width: Maximum character width per cell in the formatted
                 output.
             floatfmt: Float format string passed to tabulate.
-            history: Optional shared output-store store. If not provided, the
+            output_store: Optional shared output store. If not provided, the
                 tool creates its own in-memory output_store.
         """
         self.registry = registry

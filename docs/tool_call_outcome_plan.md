@@ -9,7 +9,7 @@ Baseline below).
 ## Background and decisions (already settled — do not relitigate)
 
 The original bug: `ToolFinished.outcome` was derived from last-write-wins shared
-state (`query_history.last()`, `last_columns_returned`), so concurrent calls of
+state (`output_store.last()`, `last_columns_returned`), so concurrent calls of
 the same tool in one turn could cross-attribute row/column counts or failed
 states. The fix direction — verified against the installed pydantic-ai — is that
 facts ride the call's own return: a tool returns

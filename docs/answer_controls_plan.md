@@ -337,4 +337,4 @@ After the new model is stable:
 - remove compatibility paths;
 - settle naming;
 - consolidate tests around the dynamic dependency chain;
-- keep historical compatibility docs/tests from reintroducing old history-centric terminology into the runtime model.
+- keep historical compatibility docs/tests from reintroducing old old store terminology into the runtime model.

@@ -19,7 +19,7 @@ problem:
    `aria_to_markdown.py` (1,312 lines, used only by `web_browser`),
    `markdown_splitter.py` (439), `pdf_extract.py`, `file_access.py`, `shell_guard.py`,
    `column_types.py`, `utils.py`.
-3. **Shared session state (2 files, correctly top-level)** — `query_history.py` and
+3. **Shared session state (2 files, correctly top-level)** — `output_store.py` and
    `message_store.py`. Not utils: runtime state objects that tools write into and
    `app`/`chat` read from. Part of toolhub's public API.
 
@@ -41,7 +41,7 @@ inverting the layering (`toolhub < modulehub`), so it stays top-level.
 3. **Engines do not move down to `core`** despite being deterministic. They exist
    solely to serve specific tools; code lives in its consumer's layer. Moving them
    would bloat `core` with browser/patch machinery nothing else uses.
-4. **`query_history.py`, `message_store.py`, `entity_extractor.py`, `base.py` stay
+4. **`output_store.py`, `message_store.py`, `entity_extractor.py`, `base.py` stay
    top-level** (see diagnosis).
 5. **Top-level package API is unchanged** — `toolhub/__init__.py` re-exports stay
    identical. Deep imports into implementation modules intentionally move, e.g.
@@ -54,7 +54,7 @@ inverting the layering (`toolhub < modulehub`), so it stays top-level.
 toolhub/
 ├── __init__.py              # top-level public API unchanged
 ├── base.py                  # BaseTool, LLMProfileTool, + sum_tool_metrics (moved in)
-├── query_history.py         # shared state
+├── output_store.py         # shared state
 ├── message_store.py         # shared state
 ├── entity_extractor.py      # LLM helper
 ├── <20 tool files>          # flat, unchanged

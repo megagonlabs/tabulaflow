@@ -158,7 +158,7 @@ def test_panel_result_widget_switches_combinations_and_preserves_card_views() ->
     widget._move_interpretation_cursor(1)  # ranking=count
     widget._apply_interpretation_cursor()
     assert widget._applied_selection == {"ranking": "count", "period": "q2"}
-    # Without a query-history resolver, the widget updates selection state but keeps
+    # Without an output store, the widget updates selection state but keeps
     # the default fallback cards.
     assert [(card.artifact_id, card.views[0].kind) for card in widget._cards] == [
         ("Q1", VIEW_KIND_DATA),

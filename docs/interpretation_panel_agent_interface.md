@@ -333,8 +333,8 @@ its **grain** in dimensional-modeling terms.
 Both tools live in `toolhub`; `chat` continues to define no tools of its own.
 
 `run_query_for_each_combination` has exactly `RegistryRunQueryTool`'s dependencies — `DBRegistry`
-from `core.db_connector`, and `QueryHistory`. `show_artifacts` needs no chat imports either: it
-validates against `QueryHistory` and stores a bundle of artifact ids, which `chat` hydrates into
+from `core.db_connector`, and `OutputStore`. `show_artifacts` needs no chat imports either: it
+validates against `OutputStore` and stores a bundle of artifact ids, which `chat` hydrates into
 display payloads. That is the split toolhub already uses — `ChartArtifact` (toolhub: spec + record
 id) becomes `ChatResultChart` (chat: spec + rows + query).
 
@@ -347,11 +347,11 @@ Type placement:
 - `Dimension`, `Choice`, `At`, `Part`, `Artifact` — `toolhub/show_artifacts.py`, as pydantic models
   since the tool schema needs them. `chat/result.py` imports `Dimension`/`Choice` directly rather
   than mirroring: they carry no DataFrames, so there is nothing to hydrate.
-- `QueryFamily` — `toolhub/query_history.py`, alongside the other artifact dataclasses.
+- `QueryFamily` — `toolhub/output_store.py`, alongside the other artifact dataclasses.
 - `ChatResultCard` — `chat/result.py`, the only genuinely chat-side new type, because it holds
   resolved payloads.
 
-The declared bundle lives on the `ShowArtifactsTool` instance rather than in `QueryHistory`: it is
+The declared bundle lives on the `ShowArtifactsTool` instance rather than in `OutputStore`: it is
 turn-scoped and not id-addressed. Same shape as `RunQueryTool._last_pred_query`.
 
 ### The citation block is also the answer boundary
@@ -370,7 +370,7 @@ trailing text run as the answer, buffered.
 
 ### Storage
 
-As implemented in `toolhub/query_history.py`:
+As implemented in `toolhub/output_store.py`:
 
 ```python
 @dataclass
@@ -388,7 +388,7 @@ avoid dots — `QS3_v0`, not `QS3.v0` — because `_persist` passes the record i
 DuckDB table name. Selections whose rendered query is identical share one variant. Variant ids are
 not `Q<n>`, so `render_chart(Q17)` can never land on one.
 
-`QueryHistory(max_in_memory=5)` is smaller than a single family. An 8-combination family evicts
+`OutputStore(max_in_memory=5)` is smaller than a single family. An 8-combination family evicts
 everything else plus three of its own variants on creation, and `_build_chat_result` then hydrates
 all eight to build the payload. Correct but thrashy — either raise the default or hydrate a family in
 one pass. Unresolved, and it gets worse at the 50-combination cap.

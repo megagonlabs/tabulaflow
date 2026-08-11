@@ -96,7 +96,7 @@ inline mode.
 
 | Field | Required | Description |
 |---|---|---|
-| `record_id` | column mode | Query-history record the node rows come from (`"Q1"`). |
+| `record_id` | column mode | Output-store record the node rows come from (`"Q1"`). |
 | `data` | inline mode | Non-empty list of literal node objects. Mutually exclusive with `record_id`. |
 | `id` | yes | Column/property holding the node's unique id. Edge endpoints join to this. |
 | `label` | no | Short display caption. Defaults to the id. |
@@ -107,7 +107,7 @@ inline mode.
 
 | Field | Required | Description |
 |---|---|---|
-| `record_id` | column mode | Query-history record the edge rows come from. |
+| `record_id` | column mode | Output-store record the edge rows come from. |
 | `data` | inline mode | Non-empty list of literal edge objects. Mutually exclusive with `record_id`. |
 | `source` | yes | Column/property holding the source node id. |
 | `target` | yes | Column/property holding the target node id. |
@@ -190,7 +190,7 @@ import-linter layers: the tool lives in `toolhub`, the pane builder in
 `app/pane`.
 
 ```
-render_graph tool                query_history                pane render (browser-side)
+render_graph tool                output_store                pane render (browser-side)
 ─────────────────                ─────────────                ──────────────────────────
 render_graph(*, graph_spec) ──►  add_graph(spec) → "GRAPH1"
   parse + validate spec          GraphArtifact(graph_id,
@@ -257,7 +257,7 @@ app/tui.py snapshot dispatch     render_graph_data(snap, dir)  window.TF.renderG
   `render_map` (grammar + minimal examples); **describe functionality only, no
   lecturing** (per AGENTS.md).
 
-### 2.2 History (`tabulaflow/toolhub/query_history.py`)
+### 2.2 Output store (`tabulaflow/toolhub/output_store.py`)
 
 Add, mirroring `MapArtifact`/`add_map`/`get_map`/`_maps`/`_next_map_id`:
 
@@ -267,7 +267,7 @@ class GraphArtifact:
     graph_id: str
     graph_spec: dict[str, Any]
 
-# in QueryHistory.__init__: self._graphs = {}; self._next_graph_id = 1
+# in OutputStore.__init__: self._graphs = {}; self._next_graph_id = 1
 def add_graph(self, graph_spec) -> str: ...   # "GRAPH1", ...
 def get_graph(self, graph_id) -> GraphArtifact: ...
 ```
@@ -294,8 +294,8 @@ In `_artifacts_from_refs`, add a branch before/after the `MAP` branch:
 
 ```python
 elif ref_id.startswith("GRAPH"):
-    graph_artifact = query_history.get_graph(ref_id)   # try/except KeyError,ValueError: continue
-    artifacts.append(await _chat_result_graph_from_artifact(graph_artifact, label, query_history))
+    graph_artifact = output_store.get_graph(ref_id)   # try/except KeyError,ValueError: continue
+    artifacts.append(await _chat_result_graph_from_artifact(graph_artifact, label, output_store))
 ```
 
 Add `_chat_result_graph_from_artifact` — copy `_chat_result_map_from_artifact`
@@ -309,7 +309,7 @@ id alternation is currently `(?:Q|MAP)\d+` — change it to `(?:Q|MAP|GRAPH)\d+`
 branching by prefix is safe.
 
 Register the tool: add `render_graph: RenderGraphTool` to `_Toolset`, construct
-it in `_build_tools` (`RenderGraphTool(history=self._query_history)`), and add
+it in `_build_tools` (`RenderGraphTool(output_store=self._output_store)`), and add
 `self._tools.render_graph.as_pydantic_ai_tool()` to the `tools=[...]` list. Add a
 one-line usage note to the system prompt next to the `render_map` note (~line
 218): "Call `render_graph` for graph/network results (node-link). It returns a
@@ -480,7 +480,7 @@ gallery.
 
 **Phase 1 — Foundation (column mode, the whole vertical slice).**
 `nodes`/`edges` column sources (single + multi-record), force/layered/tree,
-color encoding, full plumbing (tool → history → citation → chat result →
+color encoding, full plumbing (tool → output store → citation → chat result →
 tui snapshot → `render_graph_data` → `build_graph_data` → `renderGraph`), assets,
 CSS, view-only card, terminal placeholder. Ship the whole path for column mode
 before anything else. Add unit tests mirroring the render_map / build_map_data
@@ -555,7 +555,7 @@ linked selection, and graph exports beyond the existing pane/export path.
 
 - `docs/graph_view_plan.md` (this file)
 - `tabulaflow/toolhub/render_graph.py` (new)
-- `tabulaflow/toolhub/query_history.py` (`GraphArtifact`, `add_graph`, `get_graph`)
+- `tabulaflow/toolhub/output_store.py` (`GraphArtifact`, `add_graph`, `get_graph`)
 - `tabulaflow/toolhub/__init__.py` (exports)
 - `tabulaflow/chat/result.py` (`ChatResultGraph`, union)
 - `tabulaflow/chat/__init__.py` (export `ChatResultGraph`)

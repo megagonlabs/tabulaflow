@@ -32,7 +32,7 @@ class RegistryTransferRecordTool:
 
         Args:
             registry: The database registry containing available connectors.
-            history: Shared output-store store used by ``run_query``.
+            output_store: Shared output store used by ``run_query``.
         """
         self.registry = registry
         self._output_store = output_store

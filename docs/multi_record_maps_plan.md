@@ -14,7 +14,7 @@ own source record — e.g. polygon boundaries from `Q1` and point markers from `
 - A map is currently 1:1 with a query record: `render_map(record_id, map_spec)`
   attaches `map_spec` to `record.map_spec`, and `normalize_map_spec(df, spec)`
   resolves every layer against that one `df`
-  (`tabulaflow/toolhub/render_map.py`, `query_history.py:attach_map`).
+  (`tabulaflow/toolhub/render_map.py`, `output_store.py:attach_map`).
 - The layers people most want to overlay **cannot come from one query**:
   - GeoJSON boundaries from one table + point markers from another — different
     row cardinalities and columns, so no clean `UNION`/join produces them
@@ -35,7 +35,7 @@ own source record — e.g. polygon boundaries from `Q1` and point markers from `
   vestige of the deleted attach-to-a-record model. Backward compatibility is not a
   goal.
 - **The map is a standalone artifact with its own id.** Drop `QueryRecord.map_spec`;
-  store maps as a sibling collection in `QueryHistory` (`_maps`) keyed by a
+  store maps as a sibling collection in `OutputStore` (`_maps`) keyed by a
   **`MAP`-prefixed id** (`MAP1`, `MAP2`, …). `MAP` — not `M` — because `M` is
   already the offloaded-message prefix.
 - **Option 1 data model: the map card bundles one dataset per source record.**
@@ -138,15 +138,15 @@ async def __call__(self, *, map_spec: str) -> str:
 
 1. Collect referenced ids from column/geojson layers. Error if any such layer
    omits `record_id`.
-2. `await history.get()` each referenced id (hydrates spilled DataFrames), and run
+2. `await output_store.get_metadata()/get_payload()` each referenced id (hydrates spilled DataFrames), and run
    the existing empty / `MAP_RENDER_MAX_ROWS` checks **per record**.
-3. Store via `history.add_map(spec) -> map_id` (mints a `MAP*` id).
+3. Store via `output_store.add_artifact(...) -> map_id` (mints a `MAP*` id).
 4. Return `"Map MAP1 created from Q1, Q2 — 312 + 1,204 rows"`.
 
 **Docstring / description.** Add `record_id` to the common-layer-fields block and
 the overlay example; describe it plainly:
 
-> `record_id`: query-history record id the layer reads from (e.g. `"Q3"`).
+> `record_id`: output-store record id the layer reads from (e.g. `"Q3"`).
 > Required for column and geojson layers; omit for inline `points`.
 
 Update the two `render_map` mentions in `chat/agent.py` (~line 216) to describe
@@ -166,7 +166,7 @@ markers, then `---`, then prose (`agent.py:786–886`). The map is cited by its 
 
 - `_QUERY_REF_RE` broadens from `Q\d+` to `(?:Q|MAP)\d+`.
 - `_records_from_refs` dispatches on prefix: `Q*` builds a query-result card via
-  `query_history.get`; `MAP*` builds a map card via the `_maps` lookup.
+  `output_store.get_payload`; `MAP*` builds a map card via the `_maps` lookup.
 - Ordering is preserved: cards render in citation order.
 
 ## 7. `record` → `artifact` Rename (deferred — separate pass, after the feature)
@@ -186,15 +186,15 @@ Also the delimiter machinery: `_QUERY_REF_RE`, `_TextStreamRouter._MARKER`,
 `_is_citation_block`, `_parse_refs`.
 
 **Not renamed:** the `record_id` *field/value* stays `record_id` — it is the id
-minted by `QueryHistory` (storage) and legitimately crosses layers; renaming it
-would reach into `query_history` and every tool consumer (the out-of-scope
+minted by `OutputStore` (storage) and legitimately crosses layers; renaming it
+would reach into `output_store` and every tool consumer (the out-of-scope
 storage rename). Files: `chat/result.py`, `app/pane_types.py`, `app/render/*`,
 `chat/agent.py`, `app/{tui,screens,debug}.py`, and the tests. Done as Phase 2, a
 pure refactor verified green before the feature lands. JS payload var names
 (`recordData`) are internal and left as-is; only JSON keys that change (`datasets`)
 matter across the boundary.
 
-## 8. Storage Changes (`QueryHistory`)
+## 8. Output Store Changes
 
 ```python
 @dataclass
@@ -202,7 +202,7 @@ class MapArtifact:
     map_id: str
     map_spec: dict[str, Any]   # layers carry a resolved `source` record id
 
-class QueryHistory:
+class OutputStore:
     _records: dict[str, QueryRecord]   # unchanged
     _maps: dict[str, MapArtifact]      # new
     _next_map_id: int                  # mints MAP1, MAP2, …
@@ -241,7 +241,7 @@ per-source datasets:
   dataset builder so field names (`f0`, `f1`) stay consistent per source.
 - **`app/render/cards.py`**: a new `render_map_artifact_data(map_artifact, resolve_df, pane_dir)`
   builds a map-only card (no table/chart/query views), resolving each source df via
-  the history. `render_artifact_data` (renamed) keeps handling query-result cards.
+  the output store. `render_artifact_data` (renamed) keeps handling query-result cards.
 - **`chat/result.py`**: a new `ChatResultMap` model (map_id, spec, per-source
   dataframes), added to the `ChatResult.artifacts` discriminated union so query and
   map cards interleave in citation order in both the pane and the TUI.
@@ -263,7 +263,7 @@ color/size resolution) is unchanged — it runs per source DataFrame.
    with per-source resolution and `source`-tagged layers. Tests in
    `test_render_map.py`.
 3. **Storage** — `MapArtifact`, `_maps`, `add_map`/`get_map`; drop
-   `QueryRecord.map_spec`/`attach_map`. Tests in `test_query_history.py`.
+   `QueryRecord.map_spec`/`attach_map`. Tests in `test_output_store.py`.
 4. **Tool** — new signature, per-record validation, `add_map`; docstring + example.
 5. **Result + citation** — `ChatResultMap`, `MAP` prefix in `_QUERY_REF_RE`,
    prefix dispatch in `_records_from_refs`, prompt update.
