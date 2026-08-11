@@ -1,21 +1,24 @@
 from __future__ import annotations
 
 import pandas as pd
+from types import SimpleNamespace
 from textual.app import App, ComposeResult
 from textual.containers import VerticalScroll
 
 from tabulaflow.app.display import VIEW_KIND_DATA, VIEW_KIND_QUERY, build_artifact_card_views
 from tabulaflow.app.widgets import AgentResultWidget
-from tabulaflow.chat.result import ChatResult, ResolvedTableArtifact
+from tabulaflow.chat.result import ChatResult
 
 
-def _record(record_id: str, label: str) -> ResolvedTableArtifact:
-    return ResolvedTableArtifact(
+def _record(record_id: str, label: str) -> SimpleNamespace:
+    return SimpleNamespace(
+        kind="table",
         record_id=record_id,
         label=label,
         query=f"SELECT '{label}' AS label",
         df=pd.DataFrame({"label": [label], "value": [1]}),
         query_lexer="sql",
+        graph=None,
     )
 
 

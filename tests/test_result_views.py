@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import cast
+from types import SimpleNamespace
 
 import pandas as pd
 from rich.console import Console
@@ -17,21 +17,13 @@ from tabulaflow.app.display import (
     VIEW_KIND_QUERY,
     build_artifact_card_views,
 )
-from tabulaflow.chat.result import (
-    ChatResult,
-    ResolvedArtifact,
-    ResolvedChartArtifact,
-    ResolvedGraphArtifact,
-    ResolvedMapArtifact,
-    ArtifactPlaceholder,
-    ResolvedTableArtifact,
-)
+from tabulaflow.chat.result import ChatResult
 from tabulaflow.core.types import GraphView, GraphViewEdge, GraphViewNode
 from tabulaflow.core.outputs import ChoiceOption, ChoiceParameter, NumberParameter, OutputSpec, ParameterDef
 
 
-def _record(record_id: str, label: str) -> ResolvedTableArtifact:
-    return ResolvedTableArtifact(
+def _record(record_id: str, label: str) -> SimpleNamespace:
+    return SimpleNamespace(kind="table", graph=None, 
         record_id=record_id,
         label=label,
         query="SELECT 1",
@@ -40,8 +32,8 @@ def _record(record_id: str, label: str) -> ResolvedTableArtifact:
     )
 
 
-def _browser_only_chart(chart_id: str, label: str) -> ResolvedChartArtifact:
-    return ResolvedChartArtifact(
+def _browser_only_chart(chart_id: str, label: str) -> SimpleNamespace:
+    return SimpleNamespace(kind="chart", 
         chart_id=chart_id,
         record_id="Q1",
         label=label,
@@ -59,8 +51,8 @@ def _browser_only_chart(chart_id: str, label: str) -> ResolvedChartArtifact:
     )
 
 
-def _map(map_id: str, label: str) -> ResolvedMapArtifact:
-    return ResolvedMapArtifact(
+def _map(map_id: str, label: str) -> SimpleNamespace:
+    return SimpleNamespace(kind="map", 
         map_id=map_id,
         label=label,
         map_spec={"title": "Cities", "layers": [{"type": "points", "source": "Q1", "lat": "c0", "lng": "c1"}]},
@@ -68,8 +60,8 @@ def _map(map_id: str, label: str) -> ResolvedMapArtifact:
     )
 
 
-def _graph(graph_id: str, label: str) -> ResolvedGraphArtifact:
-    return ResolvedGraphArtifact(
+def _graph(graph_id: str, label: str) -> SimpleNamespace:
+    return SimpleNamespace(kind="graph", 
         graph_id=graph_id,
         label=label,
         graph=GraphView(nodes=[GraphViewNode(id="a"), GraphViewNode(id="b")], edges=[GraphViewEdge(source="a", target="b")]),
@@ -123,7 +115,7 @@ def test_record_artifact_with_graph_has_graph_data_query_views() -> None:
 
 def test_placeholder_artifact_yields_single_info_view() -> None:
     groups = build_artifact_card_views(
-        [ArtifactPlaceholder(label="QoQ change", message="only applies when Time period = Q2")]
+        [SimpleNamespace(kind="placeholder", label="QoQ change", message="only applies when Time period = Q2")]
     )
 
     assert len(groups) == 1
@@ -155,7 +147,7 @@ def test_panel_result_widget_switches_combinations_and_preserves_card_views() ->
             text="x",
             output=OutputSpec(parameters=controls),
         ),
-        build_artifact_card_views(cast(list[ResolvedArtifact], first_artifacts)),
+        build_artifact_card_views(first_artifacts),
     )
 
     assert [(card.artifact_id, card.views[0].kind) for card in widget._cards] == [

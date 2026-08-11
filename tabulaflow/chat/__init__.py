@@ -14,16 +14,7 @@ from tabulaflow.chat.events import (
     ToolStarted,
     UsageUpdated,
 )
-from tabulaflow.chat.result import (
-    ArtifactPlaceholder,
-    ChatResult,
-    ResolvedArtifact,
-    ResolvedChartArtifact,
-    ResolvedGraphArtifact,
-    ResolvedMapArtifact,
-    ResolvedTableArtifact,
-    SelectionValue,
-)
+from tabulaflow.chat.result import ChatResult, SelectionValue
 
 if TYPE_CHECKING:
     from tabulaflow.chat.agent import SYSTEM_PROMPT, ChatAgent
@@ -40,13 +31,7 @@ def __getattr__(name: str) -> object:
 __all__ = [
     "ChatAgent",
     "SYSTEM_PROMPT",
-    "ArtifactPlaceholder",
     "ChatResult",
-    "ResolvedArtifact",
-    "ResolvedChartArtifact",
-    "ResolvedGraphArtifact",
-    "ResolvedMapArtifact",
-    "ResolvedTableArtifact",
     "SelectionValue",
     "ChatEvent",
     "AnswerDelta",

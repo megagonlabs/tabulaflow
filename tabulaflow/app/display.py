@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING
 
 from rich.align import Align
 from rich.columns import Columns
@@ -48,7 +48,6 @@ QUERY_PREVIEW_MAX_LINES = 7
 if TYPE_CHECKING:
     import pandas as pd
     from rich.console import RenderableType
-    from tabulaflow.chat import ResolvedArtifact
 
 
 def build_query(
@@ -348,113 +347,74 @@ class CardGroup:
 
 
 def build_artifact_card_views(
-    artifacts: Sequence[ResolvedArtifact], width: int = 80, *, release_dataframes: bool = True
+    artifacts: Sequence[object], width: int = 80, *, release_dataframes: bool = True
 ) -> list[CardGroup]:
-    """Build per-artifact view groups from already-resolved artifacts, in order.
-
-    Table artifacts yield Data -> Query views and chart artifacts Chart -> Data ->
-    Query views (absent kinds omitted); map and graph artifacts yield a single
-    browser-pane placeholder view, since they don't render in the terminal. Panel
-    placeholders yield a single informational view. Artifacts with no views are dropped.
-    """
-    from tabulaflow.chat import (
-        ArtifactPlaceholder,
-        ResolvedChartArtifact,
-        ResolvedGraphArtifact,
-        ResolvedMapArtifact,
-    )
-
+    """Build card groups from legacy/debug display payload objects."""
     groups: list[CardGroup] = []
     used_labels: set[str] = set()
     for artifact in artifacts:
-        base_label = artifact.label or "result"
+        base_label = getattr(artifact, "label", None) or "result"
         label = _unique_record_label(base_label, used_labels)
         used_labels.add(label)
-
-        if isinstance(artifact, ArtifactPlaceholder):
+        kind = getattr(artifact, "kind", None)
+        if kind == "placeholder":
             groups.append(
                 CardGroup(
                     label=label,
                     artifact_id=f"placeholder:{label}",
-                    views=[ViewItem(kind=VIEW_KIND_INFO, renderable=_build_info_card(artifact.message))],
+                    views=[ViewItem(kind=VIEW_KIND_INFO, renderable=_build_info_card(str(getattr(artifact, "message", ""))))],
                 )
             )
             continue
-
-        if isinstance(artifact, ResolvedMapArtifact):
+        if kind == "map":
             groups.append(
                 CardGroup(
                     label=label,
-                    artifact_id=artifact.map_id,
-                    views=[ViewItem(kind=VIEW_KIND_MAP, renderable=_build_map_card(artifact.map_spec))],
+                    artifact_id=str(getattr(artifact, "map_id")),
+                    views=[ViewItem(kind=VIEW_KIND_MAP, renderable=_build_map_card(getattr(artifact, "map_spec")))],
                 )
             )
             continue
-        if isinstance(artifact, ResolvedGraphArtifact):
+        if kind == "graph":
             groups.append(
                 CardGroup(
                     label=label,
-                    artifact_id=artifact.graph_id,
+                    artifact_id=str(getattr(artifact, "graph_id")),
                     views=[ViewItem(kind=VIEW_KIND_GRAPH, renderable=_build_graph_card())],
                 )
             )
             continue
-
-        table = artifact
-        chart_spec = table.chart_spec if isinstance(table, ResolvedChartArtifact) else None
-        artifact_id = table.chart_id if isinstance(table, ResolvedChartArtifact) else table.record_id
+        chart_spec = getattr(artifact, "chart_spec", None)
+        artifact_id = str(getattr(artifact, "chart_id", getattr(artifact, "record_id", "result")))
+        record_id = str(getattr(artifact, "record_id", artifact_id))
         views: list[ViewItem] = []
-        if getattr(table, "graph", None) is not None:
-            views.append(
-                ViewItem(
-                    kind=VIEW_KIND_GRAPH,
-                    renderable=_build_graph_card(),
-                )
-            )
-        if chart_spec is not None and table.df is not None:
-            views.append(
-                ViewItem(
-                    kind=VIEW_KIND_CHART,
-                    renderable=build_chart(table.df, chart_spec, width),
-                    chart_spec=chart_spec,
-                )
-            )
-        if table.df is not None and not table.df.empty:
-            renderable, shown_cols = build_table(table.df, available_width=width, include_footer=False)
+        if getattr(artifact, "graph", None) is not None:
+            views.append(ViewItem(kind=VIEW_KIND_GRAPH, renderable=_build_graph_card()))
+        df = getattr(artifact, "df", None)
+        if chart_spec is not None and df is not None:
+            views.append(ViewItem(kind=VIEW_KIND_CHART, renderable=build_chart(df, chart_spec, width), chart_spec=chart_spec))
+        if df is not None and not df.empty:
+            renderable, shown_cols = build_table(df, available_width=width, include_footer=False)
             views.append(
                 ViewItem(
                     kind=VIEW_KIND_DATA,
                     renderable=renderable,
-                    data_shape=(len(table.df), len(table.df.columns)),
+                    data_shape=(len(df), len(df.columns)),
                     shown_cols=shown_cols,
                 )
             )
-        if table.query:
-            views.append(
-                ViewItem(
-                    kind=VIEW_KIND_QUERY,
-                    renderable=build_query(table.query, lexer=table.query_lexer),
-                    query=(table.query, table.query_lexer),
-                )
-            )
-
+        query = getattr(artifact, "query", None)
+        query_lexer = getattr(artifact, "query_lexer", "sql")
+        if query:
+            views.append(ViewItem(kind=VIEW_KIND_QUERY, renderable=build_query(query, lexer=query_lexer), query=(query, query_lexer)))
         if views:
-            groups.append(
-                CardGroup(label=label, artifact_id=artifact_id, source_record_id=table.record_id, views=views)
-            )
-
+            groups.append(CardGroup(label=label, artifact_id=artifact_id, source_record_id=record_id, views=views))
     if release_dataframes:
-        # Release DataFrame references — previews have been rendered to Rich renderables.
         for artifact in artifacts:
-            if isinstance(artifact, ResolvedMapArtifact):
-                artifact.sources = {}
-            elif isinstance(artifact, ResolvedGraphArtifact):
-                pass
-            elif isinstance(artifact, ArtifactPlaceholder):
-                pass
-            else:
+            if hasattr(artifact, "df"):
                 artifact.df = None
-
+            if hasattr(artifact, "sources"):
+                artifact.sources = {}
     return groups
 
 
@@ -464,14 +424,14 @@ async def build_resolved_output_card_views(
     width: int = 80,
 ) -> list[CardGroup]:
     """Build display cards directly from a resolved output spec."""
+    from typing import cast
+
     from tabulaflow.core.outputs import ChartView, GraphArtifactView, MapView, TableView
-    from tabulaflow.toolhub.output_resolver import ResolvedOutput
+    from tabulaflow.toolhub.output_resolver import ResolvedOutput, ResultStore
     from tabulaflow.toolhub.render_graph import GraphSpecError, materialize_graph_view
-    from tabulaflow.toolhub.output_resolver import ResultStore
 
     assert isinstance(resolved_output, ResolvedOutput)
     store = cast(ResultStore, result_store)
-
     groups: list[CardGroup] = []
     used_labels: set[str] = set()
     for artifact in resolved_output.artifacts:
@@ -554,11 +514,6 @@ def _card_group_from_payload(
     if not views:
         return None
     return CardGroup(label=label, artifact_id=artifact_id, source_record_id=payload.record.id, views=views)
-
-
-def build_card_views(result: object, width: int = 80) -> list[CardGroup]:
-    """Build per-artifact view groups from resolved artifacts, in citation order."""
-    return build_artifact_card_views(result, width)  # type: ignore[arg-type]
 
 
 def _unique_record_label(base_label: str, used: set[str]) -> str:

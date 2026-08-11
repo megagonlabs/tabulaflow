@@ -5,7 +5,6 @@ from __future__ import annotations
 import secrets
 from pathlib import Path
 from types import SimpleNamespace
-from collections.abc import Sequence
 from typing import TYPE_CHECKING, Protocol, cast
 
 from pygments import highlight
@@ -165,36 +164,6 @@ def render_graph_data(graph_record: GraphArtifactLike, pane_dir: Path) -> PaneCa
     write_strict_json(pane_dir / f"{card_id}.data.json", graph_data)
     return card_payload(card_id=card_id, label=graph_record.label, views=["graph"])
 
-
-def render_resolved_artifacts(artifacts: Sequence[object], pane_dir: Path) -> list[PaneCard]:
-    """Render resolved chat artifacts to pane card descriptors."""
-    cards: list[PaneCard] = []
-    for artifact in artifacts:
-        try:
-            kind = getattr(artifact, "kind", None)
-            if kind == "map":
-                card = render_map_data(cast(MapArtifactLike, artifact), pane_dir)
-            elif kind == "graph":
-                card = render_graph_data(cast(GraphArtifactLike, artifact), pane_dir)
-            elif kind == "placeholder":
-                card = None
-            else:
-                card = render_record_data(
-                    SimpleNamespace(
-                        df=getattr(artifact, "df", None),
-                        chart_spec=getattr(artifact, "chart_spec", None),
-                        graph=getattr(artifact, "graph", None),
-                        query=getattr(artifact, "query", None),
-                        label=getattr(artifact, "label", None),
-                        query_lexer=getattr(artifact, "query_lexer", "sql"),
-                    ),
-                    pane_dir,
-                )
-        except Exception:
-            card = None
-        if card is not None:
-            cards.append(card)
-    return cards
 
 
 async def render_resolved_output(resolved_output: object, result_store: object, pane_dir: Path) -> list[PaneCard]:
