@@ -323,7 +323,7 @@ def _build_info_card(message: str) -> RenderableType:
 
 @dataclass
 class ViewItem:
-    """A single view (Chart/Data/Query) belonging to one record."""
+    """A single view (Chart/Data/Query) belonging to one result."""
 
     kind: str
     renderable: RenderableType
@@ -340,9 +340,9 @@ class CardGroup:
 
     label: str
     artifact_id: str
-    # The query record backing the Data/Chart views (the table artifact itself,
+    # The result backing the Data/Chart views (the table artifact itself,
     # or the chart's source); ``None`` for maps and graphs.
-    source_record_id: str | None = None
+    source_result_id: str | None = None
     views: list[ViewItem] = field(default_factory=list)
 
 
@@ -408,7 +408,7 @@ def build_artifact_card_views(
         if query:
             views.append(ViewItem(kind=VIEW_KIND_QUERY, renderable=build_query(query, lexer=query_lexer), query=(query, query_lexer)))
         if views:
-            groups.append(CardGroup(label=label, artifact_id=artifact_id, source_record_id=record_id, views=views))
+            groups.append(CardGroup(label=label, artifact_id=artifact_id, source_result_id=record_id, views=views))
     if release_dataframes:
         for artifact in artifacts:
             if hasattr(artifact, "df"):
@@ -441,12 +441,12 @@ async def build_resolved_output_card_views(
         used_labels.add(label)
         view = artifact.view
         if isinstance(view, TableView):
-            payload = await store.get_payload(artifact.results_by_source[view.source].id)
+            payload = await store.get_payload(artifact.metadata_by_source[view.source].id)
             group = _card_group_from_payload(label, artifact.artifact_id, payload, width)
             if group is not None:
                 groups.append(group)
         elif isinstance(view, ChartView):
-            payload = await store.get_payload(artifact.results_by_source[view.source].id)
+            payload = await store.get_payload(artifact.metadata_by_source[view.source].id)
             group = _card_group_from_payload(label, artifact.artifact_id, payload, width, chart_spec=view.spec)
             if group is not None:
                 groups.append(group)
@@ -460,8 +460,8 @@ async def build_resolved_output_card_views(
             )
         elif isinstance(view, GraphArtifactView):
             graph_sources = {}
-            for source_id, record in artifact.results_by_source.items():
-                payload = await store.get_payload(record.id)
+            for source_id, metadata in artifact.metadata_by_source.items():
+                payload = await store.get_payload(metadata.id)
                 if payload.df is not None:
                     graph_sources[source_id] = payload.df
             try:
@@ -503,18 +503,18 @@ def _card_group_from_payload(
                 shown_cols=shown_cols,
             )
         )
-    if payload.record.query:
-        lexer = "cypher" if payload.record.connector_type == "property_graph" else "sql"
+    if payload.metadata.query:
+        lexer = "cypher" if payload.metadata.connector_type == "property_graph" else "sql"
         views.append(
             ViewItem(
                 kind=VIEW_KIND_QUERY,
-                renderable=build_query(payload.record.query, lexer=lexer),
-                query=(payload.record.query, lexer),
+                renderable=build_query(payload.metadata.query, lexer=lexer),
+                query=(payload.metadata.query, lexer),
             )
         )
     if not views:
         return None
-    return CardGroup(label=label, artifact_id=artifact_id, source_record_id=payload.record.id, views=views)
+    return CardGroup(label=label, artifact_id=artifact_id, source_result_id=payload.metadata.id, views=views)
 
 
 def _unique_record_label(base_label: str, used: set[str]) -> str:

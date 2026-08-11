@@ -9,7 +9,7 @@ from tabulaflow.core import (
     NumberParameter,
     QueryPlan,
     ResultLookupPlan,
-    ResultRecord,
+    ResultMetadata,
     ResultVariant,
     SourceDef,
     TableView,
@@ -60,7 +60,7 @@ def test_result_lookup_plan_uses_canonical_selection_keys() -> None:
 
 
 def test_result_record_owns_query_provenance() -> None:
-    record = ResultRecord(
+    record = ResultMetadata(
         id="Q2",
         db_alias="workspace",
         query="SELECT * FROM customers WHERE total_spend >= 50000",

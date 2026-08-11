@@ -205,10 +205,10 @@ class TestRunQueryForEachCombination:
         )
 
         family = output_store.get_source("S1")
-        record = await output_store.get_record(_record_ids_by_selection(family)["ranking=net"])
+        metadata = await output_store.get_metadata(_record_ids_by_selection(family)["ranking=net"])
 
-        assert "\n\n" not in record.query
-        assert record.query == dedent("""\
+        assert "\n\n" not in metadata.query
+        assert metadata.query == dedent("""\
             SELECT
               SUM(net) AS value
             FROM orders""")

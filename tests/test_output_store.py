@@ -65,14 +65,14 @@ class TestNoConnector:
         for _ in range(5):
             await h.add_result("db", "sql", _make_pred_query())
         assert h._results.in_memory_count == 5
-        assert all(h._results.has_in_memory(r.record.id) for r in h._records.values())
+        assert all(h._results.has_in_memory(r.metadata.id) for r in h._records.values())
 
     @pytest.mark.asyncio
     async def test_get(self) -> None:
         h = OutputStore()
         await h.add_result("db", "sql", _make_pred_query(n_rows=3))
         await h.add_result("db", "sql", _make_pred_query(n_rows=7))
-        assert (await h.get_record("R1")).query == "SELECT 1"
+        assert (await h.get_metadata("R1")).query == "SELECT 1"
         q2_df = (await h.get_payload("R2")).df
         assert q2_df is not None
         assert len(q2_df) == 7
@@ -84,8 +84,8 @@ class TestNoConnector:
 
         payload = await h.get_payload("R1")
 
-        assert payload.record.id == "R1"
-        assert payload.record.query == "SELECT 1"
+        assert payload.metadata.id == "R1"
+        assert payload.metadata.query == "SELECT 1"
         assert payload.df is not None
         assert len(payload.df) == 3
 

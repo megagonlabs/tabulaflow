@@ -17,7 +17,7 @@ from tabulaflow.core.outputs import (
     ConstantResultPlan,
     ResultId,
     ResultLookupPlan,
-    ResultRecord,
+    ResultMetadata,
     ResultVariant,
     SelectionValue,
     SourceDef,
@@ -30,7 +30,7 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-# Schema this module spills result DataFrames into — one table per record. Kept out
+# Schema this module spills result DataFrames into — one table per result. Kept out
 # of the workspace connector's introspected schema (see ``create_workspace_connector``).
 OUTPUT_STORE_SCHEMA = "_output_store"
 
@@ -39,7 +39,7 @@ OUTPUT_STORE_SCHEMA = "_output_store"
 class _StoredResult:
     """Internal metadata and outcome for a materialized result."""
 
-    record: ResultRecord
+    metadata: ResultMetadata
     has_dataframe: bool = False
     graph: GraphView | None = None
 
@@ -48,7 +48,7 @@ class ResultPayload(BaseModel):
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    record: ResultRecord
+    metadata: ResultMetadata
     df: pd.DataFrame | None = None
     graph: GraphView | None = None
 
@@ -196,26 +196,26 @@ class OutputStore:
     ) -> SourceDef:
         """Store a result-lookup source and its per-selection results.
 
-        Selections whose query text is identical share a single record.  Variant
+        Selections whose query text is identical share a single result.  Variant
         result ids stay out of the citable source namespace.
         """
         source_id = self._next_source_id_value()
-        record_ids_by_query: dict[str, str] = {}
-        record_ids_by_selection: dict[str, str] = {}
+        result_ids_by_query: dict[str, str] = {}
+        result_ids_by_selection: dict[str, str] = {}
         for selection_key, pred_query in pred_queries_by_selection.items():
-            record_id = record_ids_by_query.get(pred_query.query)
-            if record_id is None:
-                record_id = self._next_result_id_value()
-                record_ids_by_query[pred_query.query] = record_id
-                await self._store(record_id, db_alias, connector_type, pred_query)
-            record_ids_by_selection[selection_key] = record_id
+            result_id = result_ids_by_query.get(pred_query.query)
+            if result_id is None:
+                result_id = self._next_result_id_value()
+                result_ids_by_query[pred_query.query] = result_id
+                await self._store(result_id, db_alias, connector_type, pred_query)
+            result_ids_by_selection[selection_key] = result_id
         source = SourceDef(
             id=source_id,
             parameter_ids=list(dimensions),
             plan=ResultLookupPlan(
                 variants=[
                     ResultVariant(selection=_selection_from_key(key), result_id=result_id)
-                    for key, result_id in record_ids_by_selection.items()
+                    for key, result_id in result_ids_by_selection.items()
                 ]
             ),
         )
@@ -234,22 +234,22 @@ class OutputStore:
 
     async def _store(
         self,
-        record_id: str,
+        result_id: str,
         db_alias: str,
         connector_type: Literal["sql", "property_graph"],
         pred_query: PredQuery,
     ) -> _StoredResult:
-        """Register one record under ``record_id``."""
+        """Register one result under ``result_id``."""
         exec_result = pred_query.exec_result
         if exec_result is not None and exec_result.error is not None:
             raise ValueError(exec_result.error.message)
         df = exec_result.df if exec_result is not None else None
         if df is not None:
-            await self._results.put_dataframe(record_id, df)
+            await self._results.put_dataframe(result_id, df)
         row_count = len(df) if df is not None else None
         columns = [str(column) for column in df.columns] if df is not None else None
-        record = ResultRecord(
-            id=record_id,
+        metadata = ResultMetadata(
+            id=result_id,
             db_alias=db_alias,
             query=pred_query.query,
             connector_type=connector_type,
@@ -258,8 +258,8 @@ class OutputStore:
             columns=columns,
             latency_seconds=exec_result.latency_seconds if exec_result is not None else None,
         )
-        stored = _StoredResult(record=record, has_dataframe=df is not None, graph=exec_result.graph if exec_result is not None else None)
-        self._records[record_id] = stored
+        stored = _StoredResult(metadata=metadata, has_dataframe=df is not None, graph=exec_result.graph if exec_result is not None else None)
+        self._records[result_id] = stored
         return stored
 
     def get_source(self, source_id: str) -> SourceDef:
@@ -269,34 +269,34 @@ class OutputStore:
         except KeyError:
             raise KeyError(f"No source with id {source_id}") from None
 
-    async def _get_result(self, record_id: str) -> _StoredResult:
+    async def _get_result(self, result_id: str) -> _StoredResult:
         """Return an internal stored result."""
         try:
-            return self._records[record_id]
+            return self._records[result_id]
         except KeyError:
-            raise KeyError(f"No result with id {record_id}") from None
+            raise KeyError(f"No result with id {result_id}") from None
 
-    async def _get_dataframe(self, record_id: str) -> pd.DataFrame:
+    async def _get_dataframe(self, result_id: str) -> pd.DataFrame:
         """Return the DataFrame for a tabular query result."""
-        record = await self._get_result(record_id)
-        if not record.has_dataframe:
-            raise ValueError(f"query {record_id} returned no data")
-        return await self._results.get_result_dataframe(record_id)
+        stored = await self._get_result(result_id)
+        if not stored.has_dataframe:
+            raise ValueError(f"query {result_id} returned no data")
+        return await self._results.get_result_dataframe(result_id)
 
-    async def get_record(self, result_id: ResultId) -> ResultRecord:
+    async def get_metadata(self, result_id: ResultId) -> ResultMetadata:
         """Return clean metadata for a materialized result."""
-        return (await self._get_result(result_id)).record
+        return (await self._get_result(result_id)).metadata
 
     async def get_payload(self, result_id: ResultId) -> ResultPayload:
         """Return clean payload for a materialized result."""
         raw = await self._get_result(result_id)
-        record = await self.get_record(result_id)
+        metadata = await self.get_metadata(result_id)
         df = None
         try:
             df = await self._get_dataframe(result_id)
         except ValueError:
             pass
-        return ResultPayload(record=record, df=df, graph=raw.graph)
+        return ResultPayload(metadata=metadata, df=df, graph=raw.graph)
 
     def add_artifact(self, prefix: str, view: ViewDef, label: str | None = None) -> ArtifactSpec:
         """Store an artifact spec under an id allocated from ``prefix``."""

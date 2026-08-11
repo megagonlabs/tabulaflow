@@ -2261,12 +2261,12 @@ class AgentResultWidget(Widget):
         title = f"{view.kind} ({rec.label})"
 
         if view.kind == VIEW_KIND_CHART and view.chart_spec is not None:
-            df = await self._fetch_df(rec.source_record_id)
+            df = await self._fetch_df(rec.source_result_id)
             if df is not None:
                 self.app.push_screen(ChartBrowserScreen(title=title, df=df, vegalite_spec=view.chart_spec))
             return
         if view.kind == VIEW_KIND_DATA:
-            df = await self._fetch_df(rec.source_record_id)
+            df = await self._fetch_df(rec.source_result_id)
             if df is not None:
                 self.app.push_screen(DataBrowserScreen(title=title, df=df))
             return
@@ -2274,12 +2274,12 @@ class AgentResultWidget(Widget):
             query, lexer = view.query
             self.app.push_screen(QueryBrowserScreen(title=title, query=query, lexer=lexer))
 
-    async def _fetch_df(self, record_id: str | None) -> pd.DataFrame | None:
+    async def _fetch_df(self, result_id: str | None) -> pd.DataFrame | None:
         """Fetch a DataFrame from OutputStore, loading from DuckDB if needed."""
-        if self._output_store is None or record_id is None:
+        if self._output_store is None or result_id is None:
             return None
         try:
-            payload = await self._output_store.get_payload(record_id)
+            payload = await self._output_store.get_payload(result_id)
             return payload.df
         except (KeyError, ValueError):
             return None

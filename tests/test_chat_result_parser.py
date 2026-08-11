@@ -151,17 +151,17 @@ async def test_build_chat_result_resolves_a_panel(tmp_path: Path) -> None:
     resolved_output = await OutputResolver(output_store).resolve(
         result.output, {"ranking": "count", "period": "q3"}
     )
-    assert resolved_output.artifacts[0].results_by_source["S1"].id == "R4"
-    assert resolved_output.artifacts[1].results_by_source["S2"].id == "R6"
+    assert resolved_output.artifacts[0].metadata_by_source["S1"].id == "R4"
+    assert resolved_output.artifacts[1].metadata_by_source["S2"].id == "R6"
     resolver = OutputResolver(output_store)
     default_cards = await resolver.resolve(result.output)
-    assert [a.results_by_source[next(iter(a.results_by_source))].id for a in default_cards.artifacts] == ["R1", "R5"]
+    assert [a.metadata_by_source[next(iter(a.metadata_by_source))].id for a in default_cards.artifacts] == ["R1", "R5"]
 
     count_q2 = await resolver.resolve(result.output, {"ranking": "count", "period": "q2"})
     count_q3 = await resolver.resolve(result.output, {"ranking": "count", "period": "q3"})
     # "order count" ignores `ranking`, while "top customers" varies over both.
-    assert [a.results_by_source[next(iter(a.results_by_source))].id for a in count_q2.artifacts] == ["R3", "R5"]
-    assert [a.results_by_source[next(iter(a.results_by_source))].id for a in count_q3.artifacts] == ["R4", "R6"]
+    assert [a.metadata_by_source[next(iter(a.metadata_by_source))].id for a in count_q2.artifacts] == ["R3", "R5"]
+    assert [a.metadata_by_source[next(iter(a.metadata_by_source))].id for a in count_q3.artifacts] == ["R4", "R6"]
 
 
 @pytest.mark.asyncio
@@ -198,13 +198,13 @@ async def test_build_chat_result_resolves_source_backed_chart_in_panel(tmp_path:
 
     assert result.output.artifacts[0].view.kind == "chart"
     resolved_output = await OutputResolver(output_store).resolve(result.output, {"period": "q3"})
-    assert resolved_output.artifacts[0].results_by_source["S1"].id == "R2"
+    assert resolved_output.artifacts[0].metadata_by_source["S1"].id == "R2"
     resolver = OutputResolver(output_store)
     default_cards = await resolver.resolve(result.output)
     q3_cards = await resolver.resolve(result.output, {"period": "q3"})
     chart_ids = [
-        default_cards.artifacts[0].results_by_source["S1"].id,
-        q3_cards.artifacts[0].results_by_source["S1"].id,
+        default_cards.artifacts[0].metadata_by_source["S1"].id,
+        q3_cards.artifacts[0].metadata_by_source["S1"].id,
     ]
     assert chart_ids == ["R1", "R2"]
 

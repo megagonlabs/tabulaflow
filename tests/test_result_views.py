@@ -91,13 +91,13 @@ def test_artifacts_render_in_citation_order() -> None:
 def test_chart_artifact_yields_chart_data_views_with_source_record() -> None:
     groups = build_artifact_card_views([_browser_only_chart("CHART1", "chart")])
     assert groups[0].artifact_id == "CHART1"
-    assert groups[0].source_record_id == "Q1"
+    assert groups[0].source_result_id == "Q1"
     assert [v.kind for v in groups[0].views] == [VIEW_KIND_CHART, VIEW_KIND_DATA]
 
 
 def test_record_artifact_has_no_chart_view() -> None:
     groups = build_artifact_card_views([_record("Q1", "table1")])
-    assert groups[0].source_record_id == "Q1"
+    assert groups[0].source_result_id == "Q1"
     assert [v.kind for v in groups[0].views] == [VIEW_KIND_DATA, VIEW_KIND_QUERY]
 
 

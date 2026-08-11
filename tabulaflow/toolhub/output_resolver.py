@@ -20,7 +20,7 @@ from tabulaflow.core.outputs import (
     ParameterId,
     QueryPlan,
     ResultLookupPlan,
-    ResultRecord,
+    ResultMetadata,
     SelectionValue,
     SourceId,
     SourceDef,
@@ -41,7 +41,7 @@ class ResolvedArtifact(BaseModel):
     artifact_id: ArtifactId
     label: str | None = None
     view: ViewDef
-    results_by_source: dict[SourceId, ResultRecord]
+    metadata_by_source: dict[SourceId, ResultMetadata]
 
 
 class ResolvedOutput(BaseModel):
@@ -65,10 +65,10 @@ class OutputResolver:
         active_selection = _normalize_selection(output, selection)
         parameters = {parameter.id: parameter for parameter in output.parameters}
         sources = {source.id: source for source in output.sources}
-        resolved_sources: dict[SourceId, ResultRecord] = {}
+        resolved_sources: dict[SourceId, ResultMetadata] = {}
         artifacts: list[ResolvedArtifact] = []
         for artifact in output.artifacts:
-            source_results: dict[SourceId, ResultRecord] = {}
+            source_results: dict[SourceId, ResultMetadata] = {}
             for source_id in _view_source_ids(artifact.view):
                 source = sources.get(source_id)
                 if source is None:
@@ -84,15 +84,15 @@ class OutputResolver:
         source: SourceDef,
         parameters: Mapping[ParameterId, ParameterDef],
         selection: Mapping[ParameterId, SelectionValue],
-    ) -> ResultRecord:
+    ) -> ResultMetadata:
         plan = source.plan
         if isinstance(plan, ConstantResultPlan):
-            return await self._output_store.get_record(plan.result_id)
+            return await self._output_store.get_metadata(plan.result_id)
         if isinstance(plan, ResultLookupPlan):
             key = canonical_selection_key(_project_selection(source, parameters, selection))
             for variant in plan.variants:
                 if canonical_selection_key(variant.selection) == key:
-                    return await self._output_store.get_record(variant.result_id)
+                    return await self._output_store.get_metadata(variant.result_id)
             raise OutputResolutionError(f"source {source.id!r} has no result for selection {key}")
         if isinstance(plan, QueryPlan):
             raise OutputResolutionError("query source materialization is not implemented")
@@ -113,12 +113,12 @@ def _normalize_selection(
     return {parameter.id: _validate_parameter_value(parameter, active[parameter.id]) for parameter in output.parameters}
 
 
-def _resolved_artifact(artifact: ArtifactSpec, results_by_source: dict[SourceId, ResultRecord]) -> ResolvedArtifact:
+def _resolved_artifact(artifact: ArtifactSpec, metadata_by_source: dict[SourceId, ResultMetadata]) -> ResolvedArtifact:
     return ResolvedArtifact(
         artifact_id=artifact.id,
         label=artifact.label,
         view=artifact.view,
-        results_by_source=results_by_source,
+        metadata_by_source=metadata_by_source,
     )
 
 

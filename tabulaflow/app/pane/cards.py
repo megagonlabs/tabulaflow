@@ -1,4 +1,4 @@
-"""Compose a cited result record into structured browser-pane data."""
+"""Compose output results into structured browser-pane data."""
 
 from __future__ import annotations
 
@@ -50,9 +50,9 @@ def build_code_data(code: str, *, lexer: str = "text", fallback_lexer: str = "te
     return {"code": code, "lexer": resolved_lexer, "language": language, "html": highlighted}
 
 
-class ResultRecordLike(Protocol):
-    """The tabbed-card payload: a query record (``chart_spec`` None) or a chart
-    artifact carrying its source record's data and query."""
+class ResultMetadataLike(Protocol):
+    """The tabbed-card payload: a result (``chart_spec`` None) or a chart
+    artifact carrying its source result's data and query."""
 
     df: "pd.DataFrame | None"
     chart_spec: dict[str, object] | None
@@ -80,8 +80,8 @@ def build_query_data(sql: str, *, lexer: str = "sql") -> QueryCardData:
     return {"query": build_code_data(sql, lexer=lexer, fallback_lexer="sql")}
 
 
-def render_record_data(record: ResultRecordLike, pane_dir: Path) -> PaneCard | None:
-    """Render a record or chart artifact's payload to JSON; return a pane manifest.
+def render_record_data(metadata: ResultMetadataLike, pane_dir: Path) -> PaneCard | None:
+    """Render a result or chart artifact's payload to JSON; return a pane manifest.
 
     The descriptor is ordered chart -> data -> query, including only the views
     the artifact has, or ``None`` when it has nothing displayable.
@@ -89,13 +89,13 @@ def render_record_data(record: ResultRecordLike, pane_dir: Path) -> PaneCard | N
     views: list[ViewKind] = []
     card_id = f"{CARD_ID_PREFIX}{secrets.token_hex(6)}"
     record_data: dict[str, object] = {}
-    graph = getattr(record, "graph", None)
+    graph = getattr(metadata, "graph", None)
     if graph is not None:
         graph_data = build_graph_result_data(graph)
         if graph_data is not None:
             record_data.update(graph_data)
             views.append("graph")
-    df = record.df
+    df = metadata.df
     if df is not None and not df.empty:
         table_build = _build_table_data(
             df,
@@ -104,18 +104,18 @@ def render_record_data(record: ResultRecordLike, pane_dir: Path) -> PaneCard | N
             max_height=PANE_TABLE_MAX_HEIGHT,
         )
         record_data.update(table_build.data)
-        if record.chart_spec is not None:
-            record_data.update(build_chart_data(df, record.chart_spec, field_by_column=table_build.field_by_column))
+        if metadata.chart_spec is not None:
+            record_data.update(build_chart_data(df, metadata.chart_spec, field_by_column=table_build.field_by_column))
             views.append("chart")
         views.append("data")
-    if record.query:
-        record_data.update(build_query_data(record.query, lexer=record.query_lexer or "sql"))
+    if metadata.query:
+        record_data.update(build_query_data(metadata.query, lexer=metadata.query_lexer or "sql"))
         views.append("query")
     if not views:
         return None
     pane_dir.mkdir(parents=True, exist_ok=True)
     write_strict_json(pane_dir / f"{card_id}.data.json", record_data)
-    return card_payload(card_id=card_id, label=record.label, views=views)
+    return card_payload(card_id=card_id, label=metadata.label, views=views)
 
 
 def render_map_data(map_record: MapArtifactLike, pane_dir: Path) -> PaneCard | None:
@@ -179,42 +179,42 @@ async def render_resolved_output(resolved_output: object, output_store: object, 
         view = artifact.view
         try:
             if isinstance(view, TableView):
-                payload = await cast(OutputStore, output_store).get_payload(artifact.results_by_source[view.source].id)
+                payload = await cast(OutputStore, output_store).get_payload(artifact.metadata_by_source[view.source].id)
                 card = render_record_data(
                     SimpleNamespace(
                         df=payload.df,
                         chart_spec=None,
                         graph=payload.graph,
-                        query=payload.record.query,
+                        query=payload.metadata.query,
                         label=artifact.label,
-                        query_lexer="cypher" if payload.record.connector_type == "property_graph" else "sql",
+                        query_lexer="cypher" if payload.metadata.connector_type == "property_graph" else "sql",
                     ),
                     pane_dir,
                 )
             elif isinstance(view, ChartView):
-                payload = await cast(OutputStore, output_store).get_payload(artifact.results_by_source[view.source].id)
+                payload = await cast(OutputStore, output_store).get_payload(artifact.metadata_by_source[view.source].id)
                 card = render_record_data(
                     SimpleNamespace(
                         df=payload.df,
                         chart_spec=view.spec,
                         graph=payload.graph,
-                        query=payload.record.query,
+                        query=payload.metadata.query,
                         label=artifact.label,
-                        query_lexer="cypher" if payload.record.connector_type == "property_graph" else "sql",
+                        query_lexer="cypher" if payload.metadata.connector_type == "property_graph" else "sql",
                     ),
                     pane_dir,
                 )
             elif isinstance(view, MapView):
                 sources = {}
-                for source_id, record in artifact.results_by_source.items():
-                    payload = await cast(OutputStore, output_store).get_payload(record.id)
+                for source_id, metadata in artifact.metadata_by_source.items():
+                    payload = await cast(OutputStore, output_store).get_payload(metadata.id)
                     if payload.df is not None:
                         sources[source_id] = payload.df
                 card = render_map_data(SimpleNamespace(map_id=artifact.artifact_id, label=artifact.label, map_spec=view.spec, sources=sources), pane_dir)
             elif isinstance(view, GraphArtifactView):
                 sources = {}
-                for source_id, record in artifact.results_by_source.items():
-                    payload = await cast(OutputStore, output_store).get_payload(record.id)
+                for source_id, metadata in artifact.metadata_by_source.items():
+                    payload = await cast(OutputStore, output_store).get_payload(metadata.id)
                     if payload.df is not None:
                         sources[source_id] = payload.df
                 try:

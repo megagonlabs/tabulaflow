@@ -29,7 +29,7 @@ from tabulaflow.app.screens import send_table_to_output_pane
 from tabulaflow.toolhub.render_graph import materialize_graph_view, normalize_graph_spec
 from tabulaflow.app.tui import TabulaflowApp
 from tabulaflow.chat import ChatResult
-from tabulaflow.core import ChoiceOption, ChoiceParameter, ConstantResultPlan, OutputSpec, ResultRecord, SourceDef, TableView, ArtifactSpec
+from tabulaflow.core import ChoiceOption, ChoiceParameter, ConstantResultPlan, OutputSpec, ResultMetadata, SourceDef, TableView, ArtifactSpec
 from tabulaflow.toolhub.output_store import OutputStore, ResultPayload
 from tabulaflow.toolhub.render_map import MAP_RENDER_MAX_ROWS
 
@@ -2311,12 +2311,12 @@ def test_view_card_in_pane_marks_turn_as_manual(tmp_path: Path) -> None:
 @pytest.mark.asyncio
 async def test_output_pane_resolves_live_turn_selection(tmp_path: Path) -> None:
     class FakeOutputStore:
-        async def get_record(self, result_id: str) -> ResultRecord:
-            return ResultRecord(id=result_id, db_alias="workspace", query="SELECT 1")
+        async def get_metadata(self, result_id: str) -> ResultMetadata:
+            return ResultMetadata(id=result_id, db_alias="workspace", query="SELECT 1")
 
         async def get_payload(self, result_id: str) -> ResultPayload:
             return ResultPayload(
-                record=await self.get_record(result_id),
+                metadata=await self.get_metadata(result_id),
                 df=pd.DataFrame({"period": ["q3"]}),
             )
 

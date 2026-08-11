@@ -10,7 +10,7 @@ from tabulaflow.core.config import tabulaflow_config
 from tabulaflow.core.db_connector.base import NL2QDBConnector
 from tabulaflow.core.db_connector.db_registry import DBRegistry
 from tabulaflow.toolhub.base import ToolCallOutcome, sum_tool_metrics
-from tabulaflow.core.outputs import ResultRecord
+from tabulaflow.core.outputs import ResultMetadata
 from tabulaflow.toolhub.output_store import OutputStore
 from tabulaflow.toolhub.run_query import LLMParameter, RunQueryTool, RunQueryToolMetrics
 
@@ -196,7 +196,7 @@ class RegistryRunQueryTool:
         """Return aggregated metrics across all aliases."""
         return sum_tool_metrics((t.metrics() for _, t in self._tools.values()), RunQueryToolMetrics)
 
-    async def get_record(self, result_id: str) -> ResultRecord:
+    async def get_metadata(self, result_id: str) -> ResultMetadata:
         """Return clean metadata for a materialized result.
 
         Args:
@@ -205,4 +205,4 @@ class RegistryRunQueryTool:
         Raises:
             KeyError: If no result with ``result_id`` exists.
         """
-        return await self._output_store.get_record(result_id)
+        return await self._output_store.get_metadata(result_id)

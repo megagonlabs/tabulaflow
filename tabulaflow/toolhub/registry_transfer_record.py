@@ -39,7 +39,7 @@ class RegistryTransferRecordTool:
 
     async def __call__(
         self,
-        record_id: str,
+        source_id: str,
         target_alias: str,
         target_schema: str | None,
         target_table: str,
@@ -48,7 +48,7 @@ class RegistryTransferRecordTool:
         """Transfer a stored query result into a SQL target table.
 
         Args:
-            record_id: Source ID from ``run_query`` (for example ``S3``).
+            source_id: Source ID from ``run_query`` (for example ``S3``).
                 To transfer a full table, first run ``SELECT * FROM <table>``
                 without ``LIMIT``, then transfer that record's id.
             target_alias: Destination database alias.
@@ -57,18 +57,18 @@ class RegistryTransferRecordTool:
             mode: ``append`` to insert rows, ``replace`` to recreate table.
         """
         try:
-            source = self._output_store.get_source(record_id)
+            source = self._output_store.get_source(source_id)
             if not isinstance(source.plan, ConstantResultPlan):
-                return f"(error: source_id {record_id!r} is not a single-result source)"
-            record = await self._output_store.get_record(source.plan.result_id)
+                return f"(error: source_id {source_id!r} is not a single-result source)"
+            metadata = await self._output_store.get_metadata(source.plan.result_id)
         except KeyError:
-            return f"(error: unknown record_id {record_id!r})"
+            return f"(error: unknown source_id {source_id!r})"
 
         try:
-            payload = await self._output_store.get_payload(record.id)
+            payload = await self._output_store.get_payload(metadata.id)
             df = payload.df
             if df is None:
-                return f"(error: source_id {record_id!r} returned no data)"
+                return f"(error: source_id {source_id!r} returned no data)"
         except ValueError as e:
             return f"(error: {e})"
 
@@ -98,8 +98,8 @@ class RegistryTransferRecordTool:
 
         target_name = f"{target_schema}.{target_table}" if target_schema else target_table
         return (
-            f"Transferred {rows_written} rows from {record_id} "
-            f"({record.db_alias}) to alias={target_alias}, table={target_name} (mode={mode})"
+            f"Transferred {rows_written} rows from {source_id} "
+            f"({metadata.db_alias}) to alias={target_alias}, table={target_name} (mode={mode})"
         )
 
     def as_pydantic_ai_tool(self) -> Tool:

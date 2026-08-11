@@ -44,7 +44,7 @@ def _validate_source_id(source_id: str) -> None:
 @dataclass(frozen=True)
 class _SourceVariant:
     label: str
-    record_id: str
+    result_id: str
     df: pd.DataFrame
 
 
@@ -506,15 +506,15 @@ class RenderChartTool:
                 out.append(
                     _SourceVariant(
                         label=selection,
-                        record_id=variant.result_id,
+                        result_id=variant.result_id,
                         df=(await self._output_store.get_payload(variant.result_id)).df,
                     )
                 )
             return out
         if isinstance(source.plan, ConstantResultPlan):
             result_id = source.plan.result_id
-            await self._output_store.get_record(result_id)
-            return [_SourceVariant(label=source_id, record_id=result_id, df=(await self._output_store.get_payload(result_id)).df)]
+            await self._output_store.get_metadata(result_id)
+            return [_SourceVariant(label=source_id, result_id=result_id, df=(await self._output_store.get_payload(result_id)).df)]
         raise ValueError(f"source_id {source_id!r} is not chartable yet")
 
     def as_pydantic_ai_tool(self) -> Tool:

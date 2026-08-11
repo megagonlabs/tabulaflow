@@ -56,13 +56,13 @@ async def test_constant_result_plan_resolves_answer_artifact() -> None:
 
     resolved = await resolver.resolve(output)
 
-    record = resolved.artifacts[0].results_by_source["fixed"]
+    metadata = resolved.artifacts[0].metadata_by_source["fixed"]
     assert resolved.selection == {}
-    assert record.id == "R1"
-    assert record.db_alias == "workspace"
-    assert record.query == "SELECT 1 AS a"
-    assert record.row_count == 1
-    assert record.columns == ["a"]
+    assert metadata.id == "R1"
+    assert metadata.db_alias == "workspace"
+    assert metadata.query == "SELECT 1 AS a"
+    assert metadata.row_count == 1
+    assert metadata.columns == ["a"]
 
 
 @pytest.mark.asyncio
@@ -88,9 +88,9 @@ async def test_result_lookup_plan_resolves_by_projected_selection() -> None:
 
     resolved = await resolver.resolve(output, {"metric": "profit"})
 
-    record = resolved.artifacts[0].results_by_source["top_customers"]
+    metadata = resolved.artifacts[0].metadata_by_source["top_customers"]
     assert resolved.selection == {"metric": "profit", "min_spend": 10_000}
-    assert record.id == "R2"
+    assert metadata.id == "R2"
     assert isinstance(output.sources[0].plan, ResultLookupPlan)
     assert canonical_selection_key({"metric": "profit"}) == canonical_selection_key(
         output.sources[0].plan.variants[1].selection

@@ -105,7 +105,7 @@ class QueryPlan(BaseModel):
 SourcePlan = Annotated[ConstantResultPlan | ResultLookupPlan | QueryPlan, Field(discriminator="kind")]
 
 
-class ResultRecord(BaseModel):
+class ResultMetadata(BaseModel):
     """Metadata for a concrete materialized query result; data lives in runtime storage."""
 
     id: ResultId
