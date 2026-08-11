@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 from collections import OrderedDict
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Literal, TypeAlias
+from typing import TYPE_CHECKING, Literal
 
 import pandas as pd
 from pydantic import BaseModel, ConfigDict, field_serializer, field_validator
@@ -36,32 +36,11 @@ OUTPUT_STORE_SCHEMA = "_output_store"
 
 
 @dataclass
-class TabularResult:
-    """A successful query result with rows stored in the result store."""
-
-    storage_key: str
-    row_count: int
-    columns: tuple[str, ...]
-    df_is_truncated: bool = False
-    graph: GraphView | None = None
-
-
-@dataclass
-class StatementResult:
-    """A successful statement that did not return a tabular result set."""
-
-    affected_rows: int | None = None
-
-
-ResultOutcome: TypeAlias = TabularResult | StatementResult
-
-
-@dataclass
 class _StoredResult:
     """Internal metadata and outcome for a materialized result."""
 
     record: ResultRecord
-    outcome: ResultOutcome
+    has_dataframe: bool = False
     graph: GraphView | None = None
 
 class ResultPayload(BaseModel):
@@ -264,9 +243,11 @@ class OutputStore:
         exec_result = pred_query.exec_result
         if exec_result is not None and exec_result.error is not None:
             raise ValueError(exec_result.error.message)
-        outcome = await self._outcome(record_id, pred_query)
-        row_count = outcome.row_count if isinstance(outcome, TabularResult) else None
-        columns = list(outcome.columns) if isinstance(outcome, TabularResult) else None
+        df = exec_result.df if exec_result is not None else None
+        if df is not None:
+            await self._results.put_dataframe(record_id, df)
+        row_count = len(df) if df is not None else None
+        columns = [str(column) for column in df.columns] if df is not None else None
         record = ResultRecord(
             id=record_id,
             db_alias=db_alias,
@@ -277,24 +258,9 @@ class OutputStore:
             columns=columns,
             latency_seconds=exec_result.latency_seconds if exec_result is not None else None,
         )
-        stored = _StoredResult(record=record, outcome=outcome, graph=exec_result.graph if exec_result is not None else None)
+        stored = _StoredResult(record=record, has_dataframe=df is not None, graph=exec_result.graph if exec_result is not None else None)
         self._records[record_id] = stored
         return stored
-
-    async def _outcome(self, record_id: str, pred_query: PredQuery) -> ResultOutcome:
-        exec_result = pred_query.exec_result
-        if exec_result is None:
-            return StatementResult()
-        if exec_result.df is None:
-            return StatementResult(affected_rows=exec_result.affected_rows)
-        storage_key = await self._results.put_dataframe(record_id, exec_result.df)
-        return TabularResult(
-            storage_key=storage_key,
-            row_count=len(exec_result.df),
-            columns=tuple(str(column) for column in exec_result.df.columns),
-            df_is_truncated=exec_result.df_is_truncated,
-            graph=exec_result.graph,
-        )
 
     def get_source(self, source_id: str) -> SourceDef:
         """Return a previously stored source."""
@@ -313,9 +279,9 @@ class OutputStore:
     async def _get_dataframe(self, record_id: str) -> pd.DataFrame:
         """Return the DataFrame for a tabular query result."""
         record = await self._get_result(record_id)
-        if not isinstance(record.outcome, TabularResult):
+        if not record.has_dataframe:
             raise ValueError(f"query {record_id} returned no data")
-        return await self._results.get_result_dataframe(record.outcome.storage_key)
+        return await self._results.get_result_dataframe(record_id)
 
     async def get_record(self, result_id: ResultId) -> ResultRecord:
         """Return clean metadata for a materialized result."""

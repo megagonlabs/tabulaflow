@@ -9,10 +9,7 @@ import pytest
 from tabulaflow.core.db_connector.sql_conn import SQLConnector
 from tabulaflow.core.outputs import ChartView, GraphArtifactView, MapView
 from tabulaflow.core.types import ExecResult, PredQuery
-from tabulaflow.toolhub.output_store import (
-    OutputStore,
-    TabularResult,
-)
+from tabulaflow.toolhub.output_store import OutputStore
 
 
 def _make_pred_query(n_rows: int = 5) -> PredQuery:
@@ -127,7 +124,7 @@ class TestWithConnector:
         assert not h._results.has_in_memory("R2")
         assert h._results.has_in_memory("R3")
         assert h._results.is_persisted("R1")
-        assert isinstance(h._records["R1"].outcome, TabularResult)
+        assert h._records["R1"].has_dataframe
 
     @pytest.mark.asyncio
     async def test_eviction_does_not_mutate_caller_owned_pred_query(self, workspace: SQLConnector) -> None:
@@ -140,7 +137,7 @@ class TestWithConnector:
         assert pred_query.id == "PQRY"
         assert _exec_result(pred_query).df is not None
         assert not h._results.has_in_memory("R1")
-        assert isinstance(h._records["R1"].outcome, TabularResult)
+        assert h._records["R1"].has_dataframe
 
     @pytest.mark.asyncio
     async def test_get_dataframe_loads_evicted_record(self, workspace: SQLConnector) -> None:
