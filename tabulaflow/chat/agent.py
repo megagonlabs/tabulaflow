@@ -30,13 +30,6 @@ from tabulaflow.toolhub.web_browser import (
 )
 from tabulaflow.core.db_connector import connector_info
 from tabulaflow.core.llm import make_agent, make_model_settings, model_display_name
-from tabulaflow.core.legacy_outputs import (
-    ArtifactDef,
-    ChartArtifactDef,
-    GraphArtifactDef,
-    MapArtifactDef,
-    TableArtifactDef,
-)
 from tabulaflow.core.outputs import (
     ArtifactSpec,
     ChartView,
@@ -51,7 +44,9 @@ from tabulaflow.core.outputs import (
     ResultVariant,
     SelectionValue,
     SourceDef,
+    SourceId,
     TableView,
+    ViewDef,
 )
 from tabulaflow.chat.output_display_resolver import OutputDisplayResolver
 from tabulaflow.chat.result import ChatResult
@@ -840,45 +835,11 @@ def _output_spec_from_bundle(bundle: "ArtifactBundle", query_history: QueryHisto
         artifact = _artifact_from_ref(ref.id, ref.label, query_history)
         if artifact is None:
             continue
-        output_artifact = _output_artifact_from_legacy(artifact, ensure_source)
-        if output_artifact is not None:
-            artifacts.append(output_artifact)
+        for source_id in _view_source_ids(artifact.view):
+            ensure_source(source_id)
+        artifacts.append(artifact)
 
     return OutputSpec(parameters=parameters, sources=list(sources.values()), artifacts=artifacts)
-
-
-def _output_artifact_from_legacy(
-    artifact: ArtifactDef, ensure_source: Callable[[str], None]
-) -> ArtifactSpec | None:
-    if isinstance(artifact, TableArtifactDef):
-        ensure_source(artifact.source_id)
-        return ArtifactSpec(id=artifact.source_id, label=artifact.label, view=TableView(source=artifact.source_id))
-    if isinstance(artifact, ChartArtifactDef):
-        ensure_source(artifact.source_id)
-        return ArtifactSpec(
-            id=artifact.chart_id,
-            label=artifact.label,
-            view=ChartView(source=artifact.source_id, spec=artifact.chart_spec),
-        )
-    if isinstance(artifact, MapArtifactDef):
-        source_ids = _map_source_ids(artifact.map_spec)
-        for source_id in source_ids:
-            ensure_source(source_id)
-        return ArtifactSpec(
-            id=artifact.map_id,
-            label=artifact.label,
-            view=MapView(sources=source_ids, spec=artifact.map_spec),
-        )
-    if isinstance(artifact, GraphArtifactDef):
-        source_ids = _graph_source_ids(artifact.graph_spec)
-        for source_id in source_ids:
-            ensure_source(source_id)
-        return ArtifactSpec(
-            id=artifact.graph_id,
-            label=artifact.label,
-            view=GraphArtifactView(sources=source_ids, spec=artifact.graph_spec),
-        )
-    return None
 
 
 def _selection_from_key(key: str) -> dict[str, SelectionValue]:
@@ -893,29 +854,7 @@ def _selection_from_key(key: str) -> dict[str, SelectionValue]:
     return selection
 
 
-def _map_source_ids(spec: dict[str, Any]) -> list[str]:
-    source_ids: list[str] = []
-    for layer in spec.get("layers") or []:
-        source_id = layer.get("source") if isinstance(layer, dict) else None
-        if isinstance(source_id, str) and source_id not in source_ids:
-            source_ids.append(source_id)
-    return source_ids
-
-
-def _graph_source_ids(spec: dict[str, Any]) -> list[str]:
-    source_ids: list[str] = []
-    for key in ("nodes", "edges"):
-        raw_sources = spec.get(key)
-        for source in raw_sources if isinstance(raw_sources, list) else []:
-            if not isinstance(source, dict) or "data" in source:
-                continue
-            source_id = source.get("source_id")
-            if isinstance(source_id, str) and source_id not in source_ids:
-                source_ids.append(source_id)
-    return source_ids
-
-
-def _artifact_from_ref(ref_id: str, label: str | None, query_history: QueryHistory) -> ArtifactDef | None:
+def _artifact_from_ref(ref_id: str, label: str | None, query_history: QueryHistory) -> ArtifactSpec | None:
     if ref_id.startswith("CHART"):
         try:
             chart = query_history.get_chart(ref_id)
@@ -939,10 +878,18 @@ def _artifact_from_ref(ref_id: str, label: str | None, query_history: QueryHisto
             query_history.get_family(ref_id)
         except (KeyError, ValueError):
             return None
-        return TableArtifactDef(label=label, source_id=ref_id)
+        return ArtifactSpec(id=ref_id, label=label, view=TableView(source=ref_id))
     if ref_id.startswith("Q"):
-        return TableArtifactDef(label=label, source_id=ref_id)
+        return ArtifactSpec(id=ref_id, label=label, view=TableView(source=ref_id))
     return None
+
+
+def _view_source_ids(view: ViewDef) -> tuple[SourceId, ...]:
+    if isinstance(view, TableView | ChartView):
+        return (view.source,)
+    if isinstance(view, MapView | GraphArtifactView):
+        return tuple(view.sources)
+    raise TypeError(f"unsupported view {type(view).__name__}")
 
 
 def _declared_bundle(completed_results: dict[str, ToolReturnPart]) -> "ArtifactBundle | None":

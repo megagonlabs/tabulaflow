@@ -7,6 +7,7 @@ import pandas as pd
 import pytest
 
 from tabulaflow.core.db_connector.sql_conn import SQLConnector
+from tabulaflow.core.outputs import ChartView, GraphArtifactView, MapView
 from tabulaflow.core.types import ExecResult, PredQuery
 from tabulaflow.toolhub.query_history import (
     QueryFailure,
@@ -20,6 +21,24 @@ from tabulaflow.toolhub.query_history import (
 def _make_pred_query(n_rows: int = 5) -> PredQuery:
     df = pd.DataFrame({"a": range(n_rows), "b": [f"val_{i}" for i in range(n_rows)]})
     return PredQuery(query="SELECT 1", exec_result=ExecResult(df=df))
+
+
+def _chart_view(history: QueryHistory, chart_id: str) -> ChartView:
+    view = history.get_chart(chart_id).view
+    assert isinstance(view, ChartView)
+    return view
+
+
+def _map_view(history: QueryHistory, map_id: str) -> MapView:
+    view = history.get_map(map_id).view
+    assert isinstance(view, MapView)
+    return view
+
+
+def _graph_view(history: QueryHistory, graph_id: str) -> GraphArtifactView:
+    view = history.get_graph(graph_id).view
+    assert isinstance(view, GraphArtifactView)
+    return view
 
 
 def _make_error_pred_query() -> PredQuery:
@@ -304,9 +323,8 @@ class TestWithConnector:
         chart_id = h.add_chart("Q1", {"mark": "bar"})
         assert not h._results.has_in_memory("Q1")
         assert chart_id == "CHART1"
-        chart = h.get_chart("CHART1")
-        assert chart.source_id == "Q1"
-        assert chart.chart_spec == {"mark": "bar"}
+        assert _chart_view(h, "CHART1").source == "Q1"
+        assert _chart_view(h, "CHART1").spec == {"mark": "bar"}
         with pytest.raises(KeyError):
             h.add_chart("Q9", {"mark": "bar"})
         with pytest.raises(KeyError):
@@ -318,7 +336,7 @@ class TestWithConnector:
         spec = {"layers": [{"type": "points", "source": "Q1", "lat": "lat", "lng": "lng"}]}
         map_id = h.add_map(spec)
         assert map_id == "MAP1"
-        assert h.get_map("MAP1").map_spec == spec
+        assert _map_view(h, "MAP1").spec == spec
         assert h.add_map(spec) == "MAP2"
         with pytest.raises(KeyError):
             h.get_map("MAP9")
@@ -333,7 +351,7 @@ class TestWithConnector:
         }
         graph_id = h.add_graph(graph_spec)
         assert graph_id == "GRAPH1"
-        assert h.get_graph("GRAPH1").graph_spec == graph_spec
+        assert _graph_view(h, "GRAPH1").spec == graph_spec
         assert h.add_graph(graph_spec) == "GRAPH2"
         with pytest.raises(KeyError):
             h.get_graph("GRAPH9")

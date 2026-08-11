@@ -9,6 +9,7 @@ import pandas as pd
 import pytest
 
 from tabulaflow.core.types import ExecResult, PredQuery
+from tabulaflow.core.outputs import MapView
 from tabulaflow.toolhub.query_history import QueryHistory
 from tabulaflow.toolhub.render_map import MAP_RENDER_MAX_ROWS, RenderMapTool, normalize_map_spec
 
@@ -18,6 +19,12 @@ async def _history_with(*dfs: pd.DataFrame) -> QueryHistory:
     for df in dfs:
         await history.add("db", "sql", PredQuery(query="SELECT 1", exec_result=ExecResult(df=df)))
     return history
+
+
+def _map_view(history: QueryHistory, map_id: str) -> MapView:
+    view = history.get_map(map_id).view
+    assert isinstance(view, MapView)
+    return view
 
 
 def _norm(spec: dict[str, Any], **sources: pd.DataFrame) -> dict[str, Any]:
@@ -237,7 +244,7 @@ class TestRenderMapTool:
         }
         msg = await RenderMapTool(history=history)(map_spec=json.dumps(spec))
         assert "Map MAP1 created from Q1" in msg
-        assert history.get_map("MAP1").map_spec == {
+        assert _map_view(history, "MAP1").spec == {
             "title": "Cities",
             "layers": [{"type": "points", "source": "Q1", "lat": "lat", "lng": "lng", "label": "name"}],
         }
@@ -253,7 +260,7 @@ class TestRenderMapTool:
         spec = {"layers": [{"type": "geojson", "record_id": "Q1", "geojson": "geom", "label": "name"}]}
         msg = await RenderMapTool(history=history)(map_spec=json.dumps(spec))
         assert "Map MAP1 created" in msg
-        assert history.get_map("MAP1").map_spec == {
+        assert _map_view(history, "MAP1").spec == {
             "layers": [{"type": "geojson", "source": "Q1", "geojson": "geom", "label": "name"}]
         }
 
@@ -271,7 +278,7 @@ class TestRenderMapTool:
         }
         msg = await RenderMapTool(history=history)(map_spec=json.dumps(spec))
         assert "MAP1 created from Q1, Q2" in msg
-        stored = history.get_map("MAP1").map_spec
+        stored = _map_view(history, "MAP1").spec
         assert [layer["source"] for layer in stored["layers"]] == ["Q1", "Q2"]
 
     async def test_unknown_record_id_errors_without_creating(self) -> None:

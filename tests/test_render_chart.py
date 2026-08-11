@@ -9,6 +9,7 @@ import pandas as pd
 import pytest
 
 from tabulaflow.app.pane import _add_line_hover, build_chart_data
+from tabulaflow.core.outputs import ChartView
 from tabulaflow.core.types import ExecResult, PredQuery
 from tabulaflow.toolhub.query_history import QueryHistory
 from tabulaflow.toolhub.render_chart import (
@@ -20,6 +21,12 @@ from tabulaflow.toolhub.render_chart import (
 )
 
 SIMPLE_BAR: dict[str, object] = {"mark": "bar", "encoding": {"x": {"field": "a"}, "y": {"field": "b"}}}
+
+
+def _chart_view(history: QueryHistory, chart_id: str) -> ChartView:
+    view = history.get_chart(chart_id).view
+    assert isinstance(view, ChartView)
+    return view
 
 
 class TestIsPlotextRenderable:
@@ -181,9 +188,8 @@ class TestRenderChartTool:
         spec = {"mark": "bar", "encoding": {"x": {"field": "a"}, "y": {"field": "b"}}}
         msg = await RenderChartTool(history=history)(source_id="Q1", vegalite_spec=json.dumps(spec))
         assert "Bar chart CHART1 created from Q1" in msg
-        chart = history.get_chart("CHART1")
-        assert chart.source_id == "Q1"
-        assert chart.chart_spec == spec
+        assert _chart_view(history, "CHART1").source == "Q1"
+        assert _chart_view(history, "CHART1").spec == spec
 
     async def test_query_family_source_creates_chart(self) -> None:
         history = QueryHistory()
@@ -207,9 +213,8 @@ class TestRenderChartTool:
         msg = await RenderChartTool(history=history)(source_id="QS1", vegalite_spec=json.dumps(spec))
 
         assert "Bar chart CHART1 created from QS1 — 2 source variants" in msg
-        chart = history.get_chart("CHART1")
-        assert chart.source_id == "QS1"
-        assert chart.chart_spec == spec
+        assert _chart_view(history, "CHART1").source == "QS1"
+        assert _chart_view(history, "CHART1").spec == spec
 
     async def test_query_family_validation_reports_all_failing_selections(self) -> None:
         history = QueryHistory()
@@ -241,7 +246,7 @@ class TestRenderChartTool:
         spec = {"mark": "arc", "encoding": {"theta": {"field": "b"}, "color": {"field": "c"}}}
         msg = await RenderChartTool(history=history)(source_id="Q1", vegalite_spec=json.dumps(spec))
         assert "CHART1 created" in msg
-        assert history.get_chart("CHART1").chart_spec == spec
+        assert _chart_view(history, "CHART1").spec == spec
 
     async def test_second_chart_gets_next_id(self) -> None:
         # two charts of the same record coexist — creating one never overwrites another
@@ -251,8 +256,8 @@ class TestRenderChartTool:
         await RenderChartTool(history=history)(source_id="Q1", vegalite_spec=json.dumps(bar))
         msg = await RenderChartTool(history=history)(source_id="Q1", vegalite_spec=json.dumps(line))
         assert "CHART2 created" in msg
-        assert history.get_chart("CHART1").chart_spec == bar
-        assert history.get_chart("CHART2").chart_spec == line
+        assert _chart_view(history, "CHART1").spec == bar
+        assert _chart_view(history, "CHART2").spec == line
 
     async def test_oversized_result_refused_without_creating(self) -> None:
         history = await _history_with(pd.DataFrame({"a": range(20_001), "b": range(20_001)}))
@@ -286,7 +291,7 @@ class TestRenderChartTool:
         spec = {"mark": "bar", "encoding": {"x": {"field": "meta.country"}, "y": {"field": "b"}}}
         msg = await RenderChartTool(history=history)(source_id="Q1", vegalite_spec=json.dumps(spec))
         assert "not found" not in msg
-        assert history.get_chart("CHART1").chart_spec == spec
+        assert _chart_view(history, "CHART1").spec == spec
 
     async def test_transform_derived_field_creates_chart(self) -> None:
         # 'derived' is created by the transform, not a source column — must not block
@@ -298,7 +303,7 @@ class TestRenderChartTool:
         }
         msg = await RenderChartTool(history=history)(source_id="Q1", vegalite_spec=json.dumps(spec))
         assert "not found" not in msg
-        assert history.get_chart("CHART1").chart_spec == spec
+        assert _chart_view(history, "CHART1").spec == spec
 
 
 class TestRenderPlotextDataTypes:

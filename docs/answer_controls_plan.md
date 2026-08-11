@@ -51,7 +51,7 @@ Implemented on `dev` so far:
   - `QueryHistory.resolve_source_id(...)`
   - `QueryHistory.resolve_query_record(...)`
 - Chart artifacts are source-backed:
-  - legacy `ChartArtifactDef.source_id: str`
+  - chart artifact specs reference a source through `ChartView.source`;
   - `render_chart(source_id=...)` accepts `Q*` and `QS*`.
   - For `QS*`, chart validation checks every source variant and reports all failures by selection key, not internal variant record id.
   - `show_artifacts` treats a chart backed by a `QS*` source as varying over that family.
@@ -59,16 +59,15 @@ Implemented on `dev` so far:
 - Source ids are plain `Q*` / `QS*` strings; no separate `ArtifactSource` wrapper.
 - `show_artifacts` refs are converted to `OutputSpec` during chat-result construction.
 - The tool-facing `show_artifacts` item is named `ArtifactRef`, because it is only an id+label reference.
-- Query-history artifact registry entries still use legacy `*ArtifactDef` models; this is now the main remaining legacy output registry.
+- Query-history artifact registry entries now store clean `ArtifactSpec` / `ViewDef` models.
 - Stored graph artifacts now keep normalized graph specs rather than materialized `GraphView` payloads.
 - The browser pane supports finite choice controls via live session-backed resolution.
 
 In progress / next cleanup:
 
 - Migrate runtime code toward the new `core.outputs` model:
-  - migrate the `QueryHistory` chart/map/graph registry from legacy artifact defs to clean `ArtifactSpec` / `ViewDef`;
-  - delete `core.legacy_outputs` once the registry migration is complete;
-  - replace the temporary display `Resolved*Artifact` payloads with a clean renderer-facing model.
+  - replace the temporary display `Resolved*Artifact` payloads with a clean renderer-facing model;
+  - remove `OutputDisplayResolver` once the app/pane renderers consume `ResolvedOutput` directly.
 - Design true server-side parameterized sources for sliders after the clean source/result runtime boundary is in place; current sliders are model/UI-safe but do not rerun or parameterize queries.
 
 ## Product thesis

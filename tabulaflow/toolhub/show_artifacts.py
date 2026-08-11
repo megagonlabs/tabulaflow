@@ -8,6 +8,7 @@ from typing import Annotated, ClassVar, TypeAlias
 from pydantic import BaseModel, Field
 from pydantic_ai import Tool, ToolReturn
 
+from tabulaflow.core.outputs import ChartView
 from tabulaflow.toolhub.query_history import QueryFamily, QueryHistory
 
 
@@ -183,8 +184,8 @@ class ShowArtifactsTool:
                 return self._history.get_family(artifact_id)
             if artifact_id.startswith("CHART"):
                 chart = self._history.get_chart(artifact_id)
-                if chart.source_id.startswith("QS"):
-                    return self._history.get_family(chart.source_id)
+                if isinstance(chart.view, ChartView) and chart.view.source.startswith("QS"):
+                    return self._history.get_family(chart.view.source)
         except KeyError:
             return None
         return None

@@ -31,13 +31,6 @@ from tabulaflow.core.types import (
     Usage,
     UserMessage,
 )
-from tabulaflow.core.legacy_outputs import (
-    ArtifactDef,
-    ChartArtifactDef,
-    GraphArtifactDef,
-    MapArtifactDef,
-    TableArtifactDef,
-)
 from tabulaflow.core.outputs import (
     OutputSpec,
     ArtifactId,
@@ -70,9 +63,7 @@ __all__ = [
     "AssistantMessage",
     "OutputSpec",
     "ArtifactId",
-    "ArtifactDef",
     "ArtifactSpec",
-    "ChartArtifactDef",
     "ChartView",
     "ChoiceOption",
     "ChoiceParameter",
@@ -85,9 +76,7 @@ __all__ = [
     "GraphView",
     "GraphViewEdge",
     "GraphViewNode",
-    "GraphArtifactDef",
     "GraphArtifactView",
-    "MapArtifactDef",
     "MapView",
     "NodeSchema",
     "NumberParameter",
@@ -113,7 +102,6 @@ __all__ = [
     "SourcePlan",
     "SystemMessage",
     "TableRef",
-    "TableArtifactDef",
     "TableView",
     "ToolCall",
     "ToolResponse",
