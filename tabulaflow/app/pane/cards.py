@@ -166,10 +166,10 @@ def render_graph_data(graph_record: GraphArtifactLike, pane_dir: Path) -> PaneCa
 
 
 
-async def render_resolved_output(resolved_output: object, result_store: object, pane_dir: Path) -> list[PaneCard]:
+async def render_resolved_output(resolved_output: object, output_store: object, pane_dir: Path) -> list[PaneCard]:
     """Render a resolved output spec to pane card descriptors."""
     from tabulaflow.core.outputs import ChartView, GraphArtifactView, MapView, TableView
-    from tabulaflow.toolhub.output_resolver import ResolvedOutput, ResultStore
+    from tabulaflow.toolhub.output_runtime import ResolvedOutput, OutputStore
     from tabulaflow.toolhub.render_graph import GraphSpecError, materialize_graph_view
 
     assert isinstance(resolved_output, ResolvedOutput)
@@ -178,7 +178,7 @@ async def render_resolved_output(resolved_output: object, result_store: object, 
         view = artifact.view
         try:
             if isinstance(view, TableView):
-                payload = await cast(ResultStore, result_store).get_payload(artifact.results_by_source[view.source].id)
+                payload = await cast(OutputStore, output_store).get_payload(artifact.results_by_source[view.source].id)
                 card = render_record_data(
                     SimpleNamespace(
                         df=payload.df,
@@ -191,7 +191,7 @@ async def render_resolved_output(resolved_output: object, result_store: object, 
                     pane_dir,
                 )
             elif isinstance(view, ChartView):
-                payload = await cast(ResultStore, result_store).get_payload(artifact.results_by_source[view.source].id)
+                payload = await cast(OutputStore, output_store).get_payload(artifact.results_by_source[view.source].id)
                 card = render_record_data(
                     SimpleNamespace(
                         df=payload.df,
@@ -206,14 +206,14 @@ async def render_resolved_output(resolved_output: object, result_store: object, 
             elif isinstance(view, MapView):
                 sources = {}
                 for source_id, record in artifact.results_by_source.items():
-                    payload = await cast(ResultStore, result_store).get_payload(record.id)
+                    payload = await cast(OutputStore, output_store).get_payload(record.id)
                     if payload.df is not None:
                         sources[source_id] = payload.df
                 card = render_map_data(SimpleNamespace(map_id=artifact.artifact_id, label=artifact.label, map_spec=view.spec, sources=sources), pane_dir)
             elif isinstance(view, GraphArtifactView):
                 sources = {}
                 for source_id, record in artifact.results_by_source.items():
-                    payload = await cast(ResultStore, result_store).get_payload(record.id)
+                    payload = await cast(OutputStore, output_store).get_payload(record.id)
                     if payload.df is not None:
                         sources[source_id] = payload.df
                 try:

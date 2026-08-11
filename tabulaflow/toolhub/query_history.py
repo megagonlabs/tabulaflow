@@ -151,7 +151,7 @@ def _graph_source_ids(spec: Mapping[str, Any]) -> list[str]:
     return source_ids
 
 
-class _ResultStore:
+class _ResultFrameStore:
     """DuckDB-backed store for tabular query results, with a small memory cache."""
 
     def __init__(self, *, max_in_memory: int, spill_connector: SQLConnector | None = None) -> None:
@@ -253,7 +253,7 @@ class QueryHistory:
         self._next_chart_id = 1
         self._next_map_id = 1
         self._next_graph_id = 1
-        self._results = _ResultStore(max_in_memory=max_in_memory, spill_connector=spill_connector)
+        self._results = _ResultFrameStore(max_in_memory=max_in_memory, spill_connector=spill_connector)
 
     async def add(
         self, db_alias: str, connector_type: Literal["sql", "property_graph"], pred_query: PredQuery

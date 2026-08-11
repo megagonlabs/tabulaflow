@@ -16,7 +16,7 @@ from tabulaflow.toolhub import (
     Dimension,
     OutputResolver,
     QueryDimension,
-    QueryHistoryResultStore,
+    QueryHistoryOutputStore,
     QueryHistory,
     RenderChartTool,
     RunQueryForEachCombinationTool,
@@ -149,12 +149,12 @@ async def test_build_chat_result_resolves_a_panel(tmp_path: Path) -> None:
     result = await _build_chat_result("<answer>\nAcme leads.", bundle, history)
 
     assert result.output.default_selection == {"ranking": "net", "period": "q2"}
-    resolved_output = await OutputResolver(QueryHistoryResultStore(history)).resolve(
+    resolved_output = await OutputResolver(QueryHistoryOutputStore(history)).resolve(
         result.output, {"ranking": "count", "period": "q3"}
     )
     assert resolved_output.artifacts[0].results_by_source["QS1"].id == "QS1_v3"
     assert resolved_output.artifacts[1].results_by_source["QS2"].id == "QS2_v1"
-    resolver = OutputResolver(QueryHistoryResultStore(history))
+    resolver = OutputResolver(QueryHistoryOutputStore(history))
     default_cards = await resolver.resolve(result.output)
     assert [a.results_by_source[next(iter(a.results_by_source))].id for a in default_cards.artifacts] == ["QS1_v0", "QS2_v0"]
 
@@ -198,9 +198,9 @@ async def test_build_chat_result_resolves_source_backed_chart_in_panel(tmp_path:
     result = await _build_chat_result("<answer>\nChart shown.", bundle, history)
 
     assert result.output.artifacts[0].view.kind == "chart"
-    resolved_output = await OutputResolver(QueryHistoryResultStore(history)).resolve(result.output, {"period": "q3"})
+    resolved_output = await OutputResolver(QueryHistoryOutputStore(history)).resolve(result.output, {"period": "q3"})
     assert resolved_output.artifacts[0].results_by_source["QS1"].id == "QS1_v1"
-    resolver = OutputResolver(QueryHistoryResultStore(history))
+    resolver = OutputResolver(QueryHistoryOutputStore(history))
     default_cards = await resolver.resolve(result.output)
     q3_cards = await resolver.resolve(result.output, {"period": "q3"})
     chart_ids = [
@@ -246,5 +246,5 @@ async def test_build_chat_result_placeholders_a_partially_covered_card(tmp_path:
 
     assert result.output.default_selection == {"period": "q2"}
     with pytest.raises(Exception, match="has no result"):
-        await OutputResolver(QueryHistoryResultStore(history)).resolve(result.output, {"period": "q3"})
+        await OutputResolver(QueryHistoryOutputStore(history)).resolve(result.output, {"period": "q3"})
     assert [a.label for a in result.output.artifacts] == ["net revenue"]

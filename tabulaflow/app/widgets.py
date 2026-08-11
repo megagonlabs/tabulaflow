@@ -67,7 +67,7 @@ if TYPE_CHECKING:
     from tabulaflow.core.outputs import SelectionValue
     from tabulaflow.app.display import CardGroup, ViewItem
     from tabulaflow.core.types import Usage
-    from tabulaflow.toolhub.output_resolver import ResultStore
+    from tabulaflow.toolhub.output_runtime import OutputStore
 
 
 class _MarkdownStream(Protocol):
@@ -1598,7 +1598,7 @@ class AgentResultWidget(Widget):
         result: ChatResult,
         cards: Sequence["CardGroup"],
         width: int = 80,
-        result_store: "ResultStore | None" = None,
+        output_store: "OutputStore | None" = None,
     ) -> None:
         super().__init__()
         self._result = result
@@ -1611,7 +1611,7 @@ class AgentResultWidget(Widget):
         self._cards = list(cards)
         # Selected view index per card; every card has at least one view.
         self._view_indices: list[int] = [0] * len(self._cards)
-        self._result_store = result_store
+        self._output_store = output_store
         self._interpretation_title: Static | None = None
         self._interpretation_content: Static | None = None
         self._content = Static(id="result-content")
@@ -1732,13 +1732,13 @@ class AgentResultWidget(Widget):
                 self._view_indices[i] = min(old, len(self._cards[i].views) - 1)
 
     async def _resolve_cards_for_selection(self, selection: dict[str, "SelectionValue"]) -> None:
-        if self._result_store is None:
+        if self._output_store is None:
             return
         from tabulaflow.app.display import build_resolved_output_card_views
-        from tabulaflow.toolhub.output_resolver import OutputResolver
+        from tabulaflow.toolhub.output_runtime import OutputResolver
 
-        resolved_output = await OutputResolver(self._result_store).resolve(self._result.output, selection)
-        cards = await build_resolved_output_card_views(resolved_output, self._result_store, self._width)
+        resolved_output = await OutputResolver(self._output_store).resolve(self._result.output, selection)
+        cards = await build_resolved_output_card_views(resolved_output, self._output_store, self._width)
         self._rebuild_cards_for_selection(cards)
         self._refresh_all()
 
@@ -1807,7 +1807,7 @@ class AgentResultWidget(Widget):
         if self._applied_selection.get(control.id) == choice.id:
             return
         self._applied_selection = {**self._applied_selection, control.id: choice.id}
-        if self._result_store is not None:
+        if self._output_store is not None:
             self.run_worker(self._resolve_cards_for_selection(dict(self._applied_selection)), exclusive=True)
         else:
             self._refresh_all()
@@ -2276,10 +2276,10 @@ class AgentResultWidget(Widget):
 
     async def _fetch_df(self, record_id: str | None) -> pd.DataFrame | None:
         """Fetch a DataFrame from QueryHistory, loading from DuckDB if needed."""
-        if self._result_store is None or record_id is None:
+        if self._output_store is None or record_id is None:
             return None
         try:
-            payload = await self._result_store.get_payload(record_id)
+            payload = await self._output_store.get_payload(record_id)
             return payload.df
         except (KeyError, ValueError):
             return None

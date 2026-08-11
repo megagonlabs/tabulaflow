@@ -420,18 +420,18 @@ def build_artifact_card_views(
 
 async def build_resolved_output_card_views(
     resolved_output: object,
-    result_store: object,
+    output_store: object,
     width: int = 80,
 ) -> list[CardGroup]:
     """Build display cards directly from a resolved output spec."""
     from typing import cast
 
     from tabulaflow.core.outputs import ChartView, GraphArtifactView, MapView, TableView
-    from tabulaflow.toolhub.output_resolver import ResolvedOutput, ResultStore
+    from tabulaflow.toolhub.output_runtime import ResolvedOutput, OutputStore
     from tabulaflow.toolhub.render_graph import GraphSpecError, materialize_graph_view
 
     assert isinstance(resolved_output, ResolvedOutput)
-    store = cast(ResultStore, result_store)
+    store = cast(OutputStore, output_store)
     groups: list[CardGroup] = []
     used_labels: set[str] = set()
     for artifact in resolved_output.artifacts:
@@ -484,7 +484,7 @@ def _card_group_from_payload(
     width: int,
     chart_spec: dict[str, object] | None = None,
 ) -> CardGroup | None:
-    from tabulaflow.toolhub.output_resolver import ResultPayload
+    from tabulaflow.toolhub.output_runtime import ResultPayload
 
     assert isinstance(payload, ResultPayload)
     views: list[ViewItem] = []

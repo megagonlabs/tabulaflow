@@ -41,7 +41,7 @@ from tabulaflow.app.widgets import (
 if TYPE_CHECKING:
     from tabulaflow.app.pane import OutputPane
     from tabulaflow.chat import ChatAgent, ChatResult
-    from tabulaflow.toolhub.output_resolver import ResolvedOutput, ResultStore
+    from tabulaflow.toolhub.output_runtime import ResolvedOutput, OutputStore
 
 logger = logging.getLogger(__name__)
 
@@ -786,7 +786,7 @@ class TabulaflowApp(App[None]):
         self,
         result: "ChatResult",
         resolved_output: "ResolvedOutput",
-        result_store: "ResultStore",
+        output_store: "OutputStore",
         *,
         title: str,
         user_text: str,
@@ -813,12 +813,12 @@ class TabulaflowApp(App[None]):
         panel = _pane_panel(result)
 
         async def render_and_push() -> None:
-            cards = await render_resolved_output(resolved_output, result_store, pane_dir)
+            cards = await render_resolved_output(resolved_output, output_store, pane_dir)
             if cards or user_text or result.text:
                 pane.push(
                     turn_payload(title=title, user=user_text, assistant=result.text, cards=cards, panel=panel),
                     result=result if panel is not None else None,
-                    result_store=result_store if panel is not None else None,
+                    output_store=output_store if panel is not None else None,
                 )
 
         def log_background_error(task: asyncio.Task[None]) -> None:
@@ -1138,24 +1138,24 @@ class TabulaflowApp(App[None]):
             return  # normal completion always yields a terminal Finished
 
         from tabulaflow.app.display import build_resolved_output_card_views
-        from tabulaflow.toolhub.output_resolver import OutputResolver, QueryHistoryResultStore
+        from tabulaflow.toolhub.output_runtime import OutputResolver, QueryHistoryOutputStore
 
-        result_store = QueryHistoryResultStore(chat_agent.query_history)
-        resolved_output = await OutputResolver(result_store).resolve(result.output)
+        output_store = QueryHistoryOutputStore(chat_agent.query_history)
+        resolved_output = await OutputResolver(output_store).resolve(result.output)
         await self._push_turn_to_pane(
             result,
             resolved_output,
-            result_store,
+            output_store,
             title=display_text,
             user_text=display_text,
         )
-        cards = await build_resolved_output_card_views(resolved_output, result_store, self.size.width - 11)
+        cards = await build_resolved_output_card_views(resolved_output, output_store, self.size.width - 11)
         if cards:
             # chat-log padding (2) + scrollbar (2) + widget margin (5) + widget padding (2) = 11
             result_widget = AgentResultWidget(
                 result,
                 cards,
-                result_store=result_store,
+                output_store=output_store,
             )
             await chat_log.mount(result_widget)
             self._refresh_esc_hint()

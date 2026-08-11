@@ -30,7 +30,7 @@ from tabulaflow.toolhub.render_graph import materialize_graph_view, normalize_gr
 from tabulaflow.app.tui import TabulaflowApp
 from tabulaflow.chat import ChatResult
 from tabulaflow.core import ChoiceOption, ChoiceParameter, ConstantResultPlan, OutputSpec, ResultRecord, SourceDef, TableView, ArtifactSpec
-from tabulaflow.toolhub.output_resolver import ResultPayload
+from tabulaflow.toolhub.output_runtime import ResultPayload
 from tabulaflow.toolhub.render_map import MAP_RENDER_MAX_ROWS
 
 
@@ -2310,7 +2310,7 @@ def test_view_card_in_pane_marks_turn_as_manual(tmp_path: Path) -> None:
 
 @pytest.mark.asyncio
 async def test_output_pane_resolves_live_turn_selection(tmp_path: Path) -> None:
-    class FakeResultStore:
+    class FakeOutputStore:
         async def get_record(self, result_id: str) -> ResultRecord:
             return ResultRecord(id=result_id, db_alias="workspace", query="SELECT 1")
 
@@ -2355,7 +2355,7 @@ async def test_output_pane_resolves_live_turn_selection(tmp_path: Path) -> None:
             ),
         ),
         result=result,
-        result_store=FakeResultStore(),
+        output_store=FakeOutputStore(),
     )
 
     cards = await pane.resolve_turn(0, {"period": "q3"})

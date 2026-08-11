@@ -45,13 +45,13 @@ from tabulaflow.toolhub.run_query_for_each_combination import (
 )
 from tabulaflow.toolhub.run_subagent_for_each_row import RunSubagentForEachRowTool
 from tabulaflow.toolhub.show_artifacts import ArtifactBundle, ArtifactRef, Choice, Dimension, ShowArtifactsTool
-from tabulaflow.toolhub.output_resolver import (
+from tabulaflow.toolhub.output_runtime import (
     OutputResolutionError,
     OutputResolver,
-    QueryHistoryResultStore,
+    QueryHistoryOutputStore,
     ResolvedOutput,
     ResolvedArtifact,
-    ResultStore,
+    OutputStore,
 )
 from tabulaflow.toolhub.web_browser import (
     WebBrowserManager,
@@ -111,10 +111,10 @@ __all__ = [
     "ShowArtifactsTool",
     "OutputResolutionError",
     "OutputResolver",
-    "QueryHistoryResultStore",
+    "QueryHistoryOutputStore",
     "ResolvedOutput",
     "ResolvedArtifact",
-    "ResultStore",
+    "OutputStore",
     "WebBrowserManager",
     "WebBrowserTool",
     "default_manager",

@@ -39,7 +39,7 @@ logger = logging.getLogger(__name__)
 if TYPE_CHECKING:
     from tabulaflow.chat import ChatResult
     from tabulaflow.core.outputs import SelectionValue
-    from tabulaflow.toolhub.output_resolver import ResultStore
+    from tabulaflow.toolhub.output_runtime import OutputStore
 
 DEFAULT_OUTPUT_PANE_PORT_START = 61111
 DEFAULT_OUTPUT_PANE_PORT_END = 61130
@@ -433,7 +433,7 @@ class OutputPane:
         self._port_config = port
         self._port_range = tuple(port_range)
         self._results: list[PaneTurn] = []
-        self._live_results: dict[int, tuple[ChatResult, ResultStore]] = {}
+        self._live_results: dict[int, tuple[ChatResult, OutputStore]] = {}
         self._lock = threading.Lock()
         self._cond = threading.Condition(self._lock)
         self._next_id = 0
@@ -528,7 +528,7 @@ class OutputPane:
         turn: PaneTurn,
         *,
         result: ChatResult | None = None,
-        result_store: ResultStore | None = None,
+        output_store: OutputStore | None = None,
     ) -> None:
         """Record a turn ({"cards": [{"label", "views": [...]}, ...]}) for the pane."""
         with self._cond:
@@ -541,8 +541,8 @@ class OutputPane:
                     assigned["assistantCodeBlocks"] = code_blocks
             assigned["id"] = self._next_id
             self._next_id += 1
-            if result is not None and result_store is not None:
-                self._live_results[int(assigned["id"])] = (result, result_store)
+            if result is not None and output_store is not None:
+                self._live_results[int(assigned["id"])] = (result, output_store)
             self._results.append(assigned)
             self._append_manifest_locked(assigned)
             self._cond.notify_all()
@@ -552,11 +552,11 @@ class OutputPane:
             live = self._live_results.get(turn_id)
         if live is None:
             raise KeyError(turn_id)
-        result, result_store = live
-        from tabulaflow.toolhub.output_resolver import OutputResolver
+        result, output_store = live
+        from tabulaflow.toolhub.output_runtime import OutputResolver
 
-        resolved_output = await OutputResolver(result_store).resolve(result.output, cast("dict[str, SelectionValue]", selection))
-        return await render_resolved_output(resolved_output, result_store, self._pane_dir)
+        resolved_output = await OutputResolver(output_store).resolve(result.output, cast("dict[str, SelectionValue]", selection))
+        return await render_resolved_output(resolved_output, output_store, self._pane_dir)
 
     def _load_manifest_locked(self) -> None:
         """Load persisted pane turns once. Caller must hold ``_cond``."""
