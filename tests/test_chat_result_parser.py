@@ -5,9 +5,8 @@ import pandas as pd
 import pytest
 from pydantic_ai.messages import ToolReturnPart
 
-from tabulaflow.chat import AnswerPanel, ChoiceControl, ControlChoice, SliderControl
 from tabulaflow.chat.agent import _build_chat_result, _declared_bundle, _TextStreamRouter, _strip_answer_marker
-from tabulaflow.chat.artifact_resolver import ArtifactResolver
+from tabulaflow.chat.output_display_resolver import OutputDisplayResolver
 from tabulaflow.core.db_connector.db_registry import DBRegistry
 from tabulaflow.core.db_connector.sql_conn import SQLConnector
 from tabulaflow.core.types import ExecResult, PredQuery
@@ -32,13 +31,6 @@ def _record_id(artifact: object) -> str:
     return record_id
 
 
-def _source_id(artifact: object) -> str:
-    assert getattr(artifact, "kind") == "table"
-    source_id = getattr(artifact, "source_id")
-    assert isinstance(source_id, str)
-    return source_id
-
-
 def test_strip_answer_marker_removes_the_marker() -> None:
     assert _strip_answer_marker("<answer>\nThere are 3 rows.") == "There are 3 rows."
 
@@ -47,30 +39,6 @@ def test_strip_answer_marker_leaves_unmarked_text_alone() -> None:
     text = "I'm tabulaflow, an interactive data assistant.\n\n---\nAsk me anything about your data."
 
     assert _strip_answer_marker(text) == text
-
-
-def test_panel_default_selection_uses_first_choice() -> None:
-    panel = AnswerPanel(
-        controls=[
-            ChoiceControl(
-                id="ranking",
-                label="Ranking",
-                choices=[ControlChoice(id="net", label="Net"), ControlChoice(id="count", label="Count")],
-            )
-        ]
-    )
-
-    assert panel.default_selection == {"ranking": "net"}
-
-
-def test_panel_accepts_slider_controls_without_dimensions() -> None:
-    panel = AnswerPanel(
-        controls=[SliderControl(id="height_cm", label="Minimum height", min=180, max=220, step=1, default=200)],
-    )
-
-    assert panel.controls[0].kind == "slider"
-    assert panel.default_selection == {"height_cm": 200}
-
 
 def test_text_stream_router_waits_for_the_answer_marker() -> None:
     router = _TextStreamRouter()
@@ -133,15 +101,11 @@ async def test_build_chat_result_resolves_the_declared_bundle() -> None:
     result = await _build_chat_result("<answer>\nThere is 1 row.", bundle, history)
 
     assert result.text == "There is 1 row."
-    assert [(_source_id(artifact), artifact.label) for artifact in result.artifacts] == [("Q1", "row count")]
-    assert result.output is not None
     assert [artifact.id for artifact in result.output.artifacts] == ["Q1"]
     assert result.output.sources[0].plan.kind == "constant_result"
 
     without = await _build_chat_result("<answer>\nNothing to show.", None, history)
-    assert without.artifacts == []
-    assert without.output is None
-    assert without.panel is None
+    assert without.output.artifacts == []
 
 
 @pytest.mark.asyncio
@@ -192,17 +156,13 @@ async def test_build_chat_result_resolves_a_panel(tmp_path: Path) -> None:
 
     result = await _build_chat_result("<answer>\nAcme leads.", bundle, history)
 
-    assert result.panel is not None
-    assert result.panel.default_selection == {"ranking": "net", "period": "q2"}
-    assert result.output is not None
     assert result.output.default_selection == {"ranking": "net", "period": "q2"}
     resolved_output = await OutputResolver(QueryHistoryResultStore(history)).resolve(
         result.output, {"ranking": "count", "period": "q3"}
     )
     assert resolved_output.artifacts[0].results_by_source["QS1"].id == "QS1_v3"
     assert resolved_output.artifacts[1].results_by_source["QS2"].id == "QS2_v1"
-    assert [artifact.kind for artifact in result.artifacts] == ["table", "table"]
-    resolver = ArtifactResolver(history)
+    resolver = OutputDisplayResolver(history)
     default_cards = await resolver.resolve(result)
     assert [_record_id(a) for a in default_cards] == ["QS1_v0", "QS2_v0"]
 
@@ -245,13 +205,10 @@ async def test_build_chat_result_resolves_source_backed_chart_in_panel(tmp_path:
 
     result = await _build_chat_result("<answer>\nChart shown.", bundle, history)
 
-    assert result.panel is not None
-    assert result.output is not None
     assert result.output.artifacts[0].view.kind == "chart"
     resolved_output = await OutputResolver(QueryHistoryResultStore(history)).resolve(result.output, {"period": "q3"})
     assert resolved_output.artifacts[0].results_by_source["QS1"].id == "QS1_v1"
-    assert [artifact.kind for artifact in result.artifacts] == ["chart"]
-    resolver = ArtifactResolver(history)
+    resolver = OutputDisplayResolver(history)
     default_cards = await resolver.resolve(result)
     q3_cards = await resolver.resolve(result, {"period": "q3"})
     chart_ids = [getattr(default_cards[0], "record_id"), getattr(q3_cards[0], "record_id")]
@@ -292,11 +249,9 @@ async def test_build_chat_result_placeholders_a_partially_covered_card(tmp_path:
 
     result = await _build_chat_result("<answer>\n17 in the last quarter.", bundle, history)
 
-    assert result.panel is not None
-    assert result.panel.default_selection == {"period": "q2"}
-    assert result.artifacts[0].kind == "table"
-    uncovered = await ArtifactResolver(history).resolve(result, {"period": "q3"})
+    assert result.output.default_selection == {"period": "q2"}
+    uncovered = await OutputDisplayResolver(history).resolve(result, {"period": "q3"})
     assert uncovered[0].kind == "placeholder"
     assert uncovered[0].message == "only applies when Time period = Last completed quarter"
     assert uncovered[0].label == "net revenue"
-    assert [a.label for a in result.artifacts] == ["net revenue"]
+    assert [a.label for a in result.output.artifacts] == ["net revenue"]

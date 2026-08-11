@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 import os
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 from rich.text import Text
 from textual import events
@@ -41,7 +41,7 @@ from tabulaflow.app.widgets import (
 if TYPE_CHECKING:
     from tabulaflow.app.pane import OutputPane
     from tabulaflow.chat import ChatAgent, ChatResult, ResolvedArtifact
-    from tabulaflow.chat.artifact_resolver import ArtifactResolver
+    from tabulaflow.chat.output_display_resolver import OutputDisplayResolver
 
 logger = logging.getLogger(__name__)
 
@@ -92,17 +92,10 @@ def _compact_project_dir(path: Path) -> str:
 
 
 def _pane_panel(result: "ChatResult") -> PanePanel | None:
-    from tabulaflow.chat import ChoiceControl
     from tabulaflow.core.outputs import ChoiceParameter
 
-    if result.output is not None:
-        controls: list[Any] = [parameter for parameter in result.output.parameters if isinstance(parameter, ChoiceParameter)]
-        default_selection = result.output.default_selection
-    elif result.panel is not None:
-        controls = [control for control in result.panel.controls if isinstance(control, ChoiceControl)]
-        default_selection = result.panel.default_selection
-    else:
-        return None
+    controls = [parameter for parameter in result.output.parameters if isinstance(parameter, ChoiceParameter)]
+    default_selection = result.output.default_selection
     if not controls:
         return None
     return {
@@ -793,7 +786,7 @@ class TabulaflowApp(App[None]):
         self,
         result: "ChatResult",
         artifacts: list["ResolvedArtifact"],
-        artifact_resolver: "ArtifactResolver",
+        output_display_resolver: "OutputDisplayResolver",
         *,
         title: str,
         user_text: str,
@@ -825,7 +818,7 @@ class TabulaflowApp(App[None]):
                 pane.push(
                     turn_payload(title=title, user=user_text, assistant=result.text, cards=cards, panel=panel),
                     result=result if panel is not None else None,
-                    artifact_resolver=artifact_resolver if panel is not None else None,
+                    output_display_resolver=output_display_resolver if panel is not None else None,
                 )
 
         def log_background_error(task: asyncio.Task[None]) -> None:
@@ -1146,11 +1139,11 @@ class TabulaflowApp(App[None]):
 
         # Push to the browser pane BEFORE building the widget: AgentResultWidget
         # -> build_card_views() nulls each record.df after rendering to Rich.
-        artifacts = await chat_agent.artifact_resolver.resolve(result)
+        artifacts = await chat_agent.output_display_resolver.resolve(result)
         await self._push_turn_to_pane(
             result,
             artifacts,
-            chat_agent.artifact_resolver,
+            chat_agent.output_display_resolver,
             title=display_text,
             user_text=display_text,
         )
@@ -1160,7 +1153,7 @@ class TabulaflowApp(App[None]):
                 result,
                 artifacts,
                 width=self.size.width - 11,
-                artifact_resolver=chat_agent.artifact_resolver,
+                output_display_resolver=chat_agent.output_display_resolver,
             )
             await chat_log.mount(result_widget)
             self._refresh_esc_hint()

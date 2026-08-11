@@ -28,8 +28,9 @@ from tabulaflow.app.pane import PaneCard, PanePanel, PaneTurn, turn_payload
 from tabulaflow.app.screens import send_table_to_output_pane
 from tabulaflow.toolhub.render_graph import materialize_graph_view, normalize_graph_spec
 from tabulaflow.app.tui import TabulaflowApp
-from tabulaflow.chat import AnswerPanel, ChatResult, ChoiceControl, ControlChoice, ResolvedTableArtifact
-from tabulaflow.chat.artifact_resolver import ArtifactResolver
+from tabulaflow.chat import ChatResult, ResolvedTableArtifact
+from tabulaflow.chat.output_display_resolver import OutputDisplayResolver
+from tabulaflow.core import ChoiceOption, ChoiceParameter, OutputSpec
 from tabulaflow.toolhub.render_map import MAP_RENDER_MAX_ROWS
 
 
@@ -2324,21 +2325,37 @@ async def test_output_pane_resolves_live_turn_selection(tmp_path: Path) -> None:
     pane = OutputPane(tmp_path)
     result = ChatResult(
         text="x",
-        panel=AnswerPanel(
-            controls=[
-                ChoiceControl(
+        output=OutputSpec(
+            parameters=[
+                ChoiceParameter(
                     id="period",
                     label="Period",
-                    choices=[ControlChoice(id="q2", label="Q2"), ControlChoice(id="q3", label="Q3")],
+                    choices=[ChoiceOption(id="q2", label="Q2"), ChoiceOption(id="q3", label="Q3")],
                 )
             ]
         ),
     )
-    assert result.panel is not None
     pane.push(
-        turn_payload(title="x", cards=[], panel=cast(PanePanel, result.panel.model_dump(mode="json"))),
+        turn_payload(
+            title="x",
+            cards=[],
+            panel=cast(
+                PanePanel,
+                {
+                    "controls": [
+                        {
+                            "kind": "choice",
+                            "id": "period",
+                            "label": "Period",
+                            "choices": [{"id": "q2", "label": "Q2"}, {"id": "q3", "label": "Q3"}],
+                        }
+                    ],
+                    "default_selection": {"period": "q2"},
+                },
+            ),
+        ),
         result=result,
-        artifact_resolver=cast(ArtifactResolver, FakeResolver()),
+        output_display_resolver=cast(OutputDisplayResolver, FakeResolver()),
     )
 
     cards = await pane.resolve_turn(0, {"period": "q3"})

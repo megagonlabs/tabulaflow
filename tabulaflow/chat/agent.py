@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import asyncio
-from collections.abc import AsyncIterator, Callable, Iterator, Sequence
+from collections.abc import AsyncIterator, Callable, Iterator
 from contextlib import suppress
 from datetime import date
 from importlib.resources import files
@@ -53,8 +53,8 @@ from tabulaflow.core.outputs import (
     SourceDef,
     TableView,
 )
-from tabulaflow.chat.artifact_resolver import ArtifactResolver
-from tabulaflow.chat.result import AnswerPanel, ChatResult, ChoiceControl, ControlChoice
+from tabulaflow.chat.output_display_resolver import OutputDisplayResolver
+from tabulaflow.chat.result import ChatResult
 from tabulaflow.chat.events import (
     ChatEvent,
     AnswerDelta,
@@ -219,7 +219,7 @@ class ChatAgent:
     _system_prompt: str = field(init=False, default=SYSTEM_PROMPT)
     _pydantic_ai_agent: Agent[None, str] | None = field(init=False, default=None)
     _query_history: QueryHistory = field(init=False)
-    _artifact_resolver: ArtifactResolver = field(init=False)
+    _output_display_resolver: OutputDisplayResolver = field(init=False)
     _message_store: MessageStore = field(init=False)
     _main_scope: ScopedMessageStore = field(init=False)
     _tools: _Toolset = field(init=False)
@@ -232,7 +232,7 @@ class ChatAgent:
         from tabulaflow.toolhub import ProgressReportingTool, QueryHistory
 
         self._query_history = QueryHistory(spill_connector=self.workspace)
-        self._artifact_resolver = ArtifactResolver(self._query_history)
+        self._output_display_resolver = OutputDisplayResolver(self._query_history)
         self._message_store = MessageStore()
         self._main_scope = self._message_store.scoped("main")
         subagent_dir = self.trajectory_log_dir / "subagents" if self.trajectory_log_dir is not None else None
@@ -401,9 +401,9 @@ class ChatAgent:
         return self._query_history
 
     @property
-    def artifact_resolver(self) -> ArtifactResolver:
+    def output_display_resolver(self) -> OutputDisplayResolver:
         """Resolver for this session's logical chat artifacts."""
-        return self._artifact_resolver
+        return self._output_display_resolver
 
     @staticmethod
     def _unwrap_model(model: object) -> object:
@@ -799,28 +799,10 @@ async def _build_chat_result(
     bundle: ArtifactBundle | None,
     query_history: QueryHistory,
 ) -> ChatResult:
-    refs = [(artifact.id, artifact.label) for artifact in bundle.artifacts] if bundle is not None else []
-    artifacts = _artifacts_from_refs(refs, query_history)
-    panel = _panel_from_bundle(bundle) if bundle is not None and bundle.dimensions else None
-    output = _output_spec_from_bundle(bundle, query_history) if bundle is not None else None
+    output = _output_spec_from_bundle(bundle, query_history) if bundle is not None else OutputSpec()
     return ChatResult(
         text=_strip_answer_marker(answer_text),
-        artifacts=artifacts,
         output=output,
-        panel=panel,
-    )
-
-
-def _panel_from_bundle(bundle: "ArtifactBundle") -> AnswerPanel:
-    return AnswerPanel(
-        controls=[
-            ChoiceControl(
-                id=dimension.id,
-                label=dimension.label,
-                choices=[ControlChoice(id=choice.id, label=choice.label) for choice in dimension.choices],
-            )
-            for dimension in bundle.dimensions
-        ]
     )
 
 
@@ -931,15 +913,6 @@ def _graph_source_ids(spec: dict[str, Any]) -> list[str]:
             if isinstance(source_id, str) and source_id not in source_ids:
                 source_ids.append(source_id)
     return source_ids
-
-
-def _artifacts_from_refs(refs: Sequence[tuple[str, str | None]], query_history: QueryHistory) -> list[ArtifactDef]:
-    artifacts: list[ArtifactDef] = []
-    for ref_id, label in refs:
-        artifact = _artifact_from_ref(ref_id, label, query_history)
-        if artifact is not None:
-            artifacts.append(artifact)
-    return artifacts
 
 
 def _artifact_from_ref(ref_id: str, label: str | None, query_history: QueryHistory) -> ArtifactDef | None:

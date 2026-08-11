@@ -2,78 +2,17 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
 from typing import Annotated, Any, Literal
 
 import pandas as pd
-from pydantic import BaseModel, ConfigDict, Field, field_serializer, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_serializer, field_validator
 
 from tabulaflow.core.dataframe import _deserialize_dataframe, _serialize_dataframe
-from tabulaflow.core.legacy_outputs import ArtifactDef
 from tabulaflow.core.outputs import OutputSpec
 from tabulaflow.core.types import GraphView, Usage
 
 
 SelectionValue = str | int | float | bool
-
-
-class ControlChoice(BaseModel):
-    """One option in a finite answer control."""
-
-    id: str
-    label: str
-
-
-class ChoiceControl(BaseModel):
-    """Answer-level finite-choice control."""
-
-    kind: Literal["choice"] = "choice"
-    id: str
-    label: str
-    choices: list[ControlChoice]
-
-
-class SliderControl(BaseModel):
-    """Answer-level numeric slider control."""
-
-    kind: Literal["slider"] = "slider"
-    id: str
-    label: str
-    min: float
-    max: float
-    step: float
-    default: float
-    unit: str | None = None
-
-    @model_validator(mode="after")
-    def validate_range(self) -> "SliderControl":
-        if self.max <= self.min:
-            raise ValueError("slider max must be greater than min")
-        if self.step <= 0:
-            raise ValueError("slider step must be positive")
-        if not self.min <= self.default <= self.max:
-            raise ValueError("slider default must be between min and max")
-        return self
-
-
-AnswerControl = Annotated[ChoiceControl | SliderControl, Field(discriminator="kind")]
-
-
-class AnswerPanel(BaseModel):
-    """Answer-level controls and initial selection."""
-
-    controls: Sequence[AnswerControl] = Field(default_factory=list)
-    default_selection: dict[str, SelectionValue] = Field(default_factory=dict)
-
-    @model_validator(mode="after")
-    def fill_default_selection(self) -> "AnswerPanel":
-        if not self.default_selection:
-            for control in self.controls:
-                if isinstance(control, ChoiceControl) and control.choices:
-                    self.default_selection[control.id] = control.choices[0].id
-                elif isinstance(control, SliderControl):
-                    self.default_selection[control.id] = control.default
-        return self
 
 
 class ResolvedTableArtifact(BaseModel):
@@ -179,7 +118,5 @@ class ChatResult(BaseModel):
     """Logical result of one chat turn."""
 
     text: str
-    artifacts: list[ArtifactDef] = Field(default_factory=list)
-    output: OutputSpec | None = None
+    output: OutputSpec = Field(default_factory=OutputSpec)
     usage: Usage | None = None
-    panel: AnswerPanel | None = None

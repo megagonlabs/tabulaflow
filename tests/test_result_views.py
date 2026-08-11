@@ -23,15 +23,11 @@ from tabulaflow.chat.result import (
     ResolvedChartArtifact,
     ResolvedGraphArtifact,
     ResolvedMapArtifact,
-    AnswerPanel,
     ArtifactPlaceholder,
     ResolvedTableArtifact,
-    ChoiceControl,
-    ControlChoice,
-    SliderControl,
 )
 from tabulaflow.core.types import GraphView, GraphViewEdge, GraphViewNode
-from tabulaflow.core.outputs import ChoiceOption, ChoiceParameter, OutputSpec
+from tabulaflow.core.outputs import ChoiceOption, ChoiceParameter, NumberParameter, OutputSpec, ParameterDef
 
 
 def _record(record_id: str, label: str) -> ResolvedTableArtifact:
@@ -141,23 +137,23 @@ def test_placeholder_artifact_yields_single_info_view() -> None:
 
 
 def test_panel_result_widget_switches_combinations_and_preserves_card_views() -> None:
-    controls = [
-        ChoiceControl(
+    controls: list[ParameterDef] = [
+        ChoiceParameter(
             id="ranking",
             label="Ranking",
-            choices=[ControlChoice(id="net", label="Net"), ControlChoice(id="count", label="Count")],
+            choices=[ChoiceOption(id="net", label="Net"), ChoiceOption(id="count", label="Count")],
         ),
-        ChoiceControl(
+        ChoiceParameter(
             id="period",
             label="Period",
-            choices=[ControlChoice(id="q2", label="Q2"), ControlChoice(id="q3", label="Q3")],
+            choices=[ChoiceOption(id="q2", label="Q2"), ChoiceOption(id="q3", label="Q3")],
         ),
     ]
     first_artifacts = [_record("Q1", "top"), _record("Q5", "fixed")]
     widget = AgentResultWidget(
         ChatResult(
             text="x",
-            panel=AnswerPanel(controls=controls),
+            output=OutputSpec(parameters=controls),
         ),
         cast(list[ResolvedArtifact], first_artifacts),
     )
@@ -187,19 +183,17 @@ def test_panel_result_widget_switches_combinations_and_preserves_card_views() ->
 
 
 def test_panel_result_widget_uses_choice_controls_as_primary_model() -> None:
-    controls = [
-        ChoiceControl(
+    controls: list[ParameterDef] = [
+        ChoiceParameter(
             id="ranking",
             label="Ranking",
-            choices=[ControlChoice(id="net", label="Net"), ControlChoice(id="count", label="Count")],
+            choices=[ChoiceOption(id="net", label="Net"), ChoiceOption(id="count", label="Count")],
         )
     ]
     widget = AgentResultWidget(
         ChatResult(
             text="x",
-            panel=AnswerPanel(
-                controls=controls,
-            ),
+            output=OutputSpec(parameters=controls),
         ),
         [_record("Q1", "top")],
     )
@@ -238,8 +232,10 @@ def test_slider_only_panel_does_not_crash_choice_navigation() -> None:
     widget = AgentResultWidget(
         ChatResult(
             text="x",
-            panel=AnswerPanel(
-                controls=[SliderControl(id="height_cm", label="Minimum height", min=180, max=220, step=1, default=200)],
+            output=OutputSpec(
+                parameters=[
+                    NumberParameter(id="height_cm", label="Minimum height", min=180, max=220, step=1, default=200)
+                ],
             ),
         ),
         [_record("Q1", "players")],

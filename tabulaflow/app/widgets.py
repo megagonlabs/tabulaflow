@@ -64,7 +64,7 @@ if TYPE_CHECKING:
     from textual.selection import Selection
 
     from tabulaflow.chat import ChatResult, ResolvedArtifact, SelectionValue
-    from tabulaflow.chat.artifact_resolver import ArtifactResolver
+    from tabulaflow.chat.output_display_resolver import OutputDisplayResolver
     from tabulaflow.app.display import CardGroup, ViewItem
     from tabulaflow.core.types import Usage
 
@@ -1597,28 +1597,22 @@ class AgentResultWidget(Widget):
         result: ChatResult,
         artifacts: Sequence[ResolvedArtifact],
         width: int = 80,
-        artifact_resolver: ArtifactResolver | None = None,
+        output_display_resolver: OutputDisplayResolver | None = None,
     ) -> None:
         super().__init__()
         from tabulaflow.app.display import build_artifact_card_views
 
         self._result = result
         self._width = width
-        self._panel = result.panel
         self._choice_controls_cache = self._choice_controls_from_result(result)
         self._has_answer_controls = bool(self._choice_controls_cache)
         self.set_class(self._has_answer_controls, "-has-panel")
-        if result.output is not None:
-            self._applied_selection: dict[str, SelectionValue] = dict(result.output.default_selection)
-        elif self._panel is not None:
-            self._applied_selection = dict(self._panel.default_selection)
-        else:
-            self._applied_selection = {}
+        self._applied_selection: dict[str, SelectionValue] = dict(result.output.default_selection)
         self._interpretation_cursor = 0
         self._cards = build_artifact_card_views(artifacts, width, release_dataframes=not self._has_answer_controls)
         # Selected view index per card; every card has at least one view.
         self._view_indices: list[int] = [0] * len(self._cards)
-        self._artifact_resolver = artifact_resolver
+        self._output_display_resolver = output_display_resolver
         self._interpretation_title: Static | None = None
         self._interpretation_content: Static | None = None
         self._content = Static(id="result-content")
@@ -1741,9 +1735,9 @@ class AgentResultWidget(Widget):
                 self._view_indices[i] = min(old, len(self._cards[i].views) - 1)
 
     async def _resolve_cards_for_selection(self, selection: dict[str, "SelectionValue"]) -> None:
-        if self._artifact_resolver is None:
+        if self._output_display_resolver is None:
             return
-        artifacts = await self._artifact_resolver.resolve(self._result, selection)
+        artifacts = await self._output_display_resolver.resolve(self._result, selection)
         self._rebuild_cards_for_selection(artifacts)
         self._refresh_all()
 
@@ -1770,14 +1764,9 @@ class AgentResultWidget(Widget):
 
     @staticmethod
     def _choice_controls_from_result(result: "ChatResult") -> list[Any]:
-        from tabulaflow.chat import ChoiceControl
         from tabulaflow.core.outputs import ChoiceParameter
 
-        if result.output is not None:
-            return [parameter for parameter in result.output.parameters if isinstance(parameter, ChoiceParameter)]
-        if result.panel is not None:
-            return [control for control in result.panel.controls if isinstance(control, ChoiceControl)]
-        return []
+        return [parameter for parameter in result.output.parameters if isinstance(parameter, ChoiceParameter)]
 
     def _choice_controls(self) -> list[Any]:
         return self._choice_controls_cache
@@ -1817,7 +1806,7 @@ class AgentResultWidget(Widget):
         if self._applied_selection.get(control.id) == choice.id:
             return
         self._applied_selection = {**self._applied_selection, control.id: choice.id}
-        if self._artifact_resolver is not None:
+        if self._output_display_resolver is not None:
             self.run_worker(self._resolve_cards_for_selection(dict(self._applied_selection)), exclusive=True)
         else:
             self._refresh_all()
@@ -2286,10 +2275,10 @@ class AgentResultWidget(Widget):
 
     async def _fetch_df(self, record_id: str | None) -> pd.DataFrame | None:
         """Fetch a DataFrame from QueryHistory, loading from DuckDB if needed."""
-        if self._artifact_resolver is None or record_id is None:
+        if self._output_display_resolver is None or record_id is None:
             return None
         try:
-            return await self._artifact_resolver.get_dataframe(record_id)
+            return await self._output_display_resolver.get_dataframe(record_id)
         except (KeyError, ValueError):
             return None
 

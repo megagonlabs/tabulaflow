@@ -15,31 +15,19 @@ from tabulaflow.chat.events import (
     UsageUpdated,
 )
 from tabulaflow.chat.result import (
-    AnswerControl,
-    AnswerPanel,
     ArtifactPlaceholder,
     ChatResult,
-    ChoiceControl,
-    ControlChoice,
     ResolvedArtifact,
     ResolvedChartArtifact,
     ResolvedGraphArtifact,
     ResolvedMapArtifact,
     ResolvedTableArtifact,
     SelectionValue,
-    SliderControl,
-)
-from tabulaflow.core.legacy_outputs import (
-    ArtifactDef,
-    ChartArtifactDef,
-    GraphArtifactDef,
-    MapArtifactDef,
-    TableArtifactDef,
 )
 
 if TYPE_CHECKING:
     from tabulaflow.chat.agent import SYSTEM_PROMPT, ChatAgent
-    from tabulaflow.chat.artifact_resolver import ArtifactResolver
+    from tabulaflow.chat.output_display_resolver import OutputDisplayResolver
 
 
 def __getattr__(name: str) -> object:
@@ -47,35 +35,25 @@ def __getattr__(name: str) -> object:
         from tabulaflow.chat import agent
 
         return getattr(agent, name)
-    if name == "ArtifactResolver":
-        from tabulaflow.chat.artifact_resolver import ArtifactResolver
+    if name == "OutputDisplayResolver":
+        from tabulaflow.chat.output_display_resolver import OutputDisplayResolver
 
-        return ArtifactResolver
+        return OutputDisplayResolver
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 
 __all__ = [
     "ChatAgent",
     "SYSTEM_PROMPT",
-    "ArtifactResolver",
-    "AnswerControl",
-    "AnswerPanel",
-    "ArtifactDef",
+    "OutputDisplayResolver",
     "ArtifactPlaceholder",
-    "ChartArtifactDef",
     "ChatResult",
-    "ChoiceControl",
-    "ControlChoice",
-    "GraphArtifactDef",
-    "MapArtifactDef",
     "ResolvedArtifact",
     "ResolvedChartArtifact",
     "ResolvedGraphArtifact",
     "ResolvedMapArtifact",
     "ResolvedTableArtifact",
     "SelectionValue",
-    "SliderControl",
-    "TableArtifactDef",
     "ChatEvent",
     "AnswerDelta",
     "NarrationDelta",

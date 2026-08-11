@@ -40,12 +40,8 @@ Implemented on `dev` so far:
   - source plans split into `ConstantResultPlan`, `ResultLookupPlan`, and `QueryPlan`;
   - legacy runtime artifact definitions have been moved aside as compatibility scaffolding.
 
-- Answer controls are first-class in the chat result model:
-  - `AnswerControl = ChoiceControl | SliderControl`.
-  - `AnswerPanel.controls` exists.
-  - `AnswerPanel.default_selection` supports typed values (`str | int | float | bool`).
-- The TUI result widget reads choice controls from `panel.controls` instead of treating `dimensions` as the primary UI model.
-  Slider controls are accepted by the model but are not yet interactive.
+- Chat results now carry `ChatResult.output: OutputSpec` as the live output model.
+- TUI and browser-pane controls read from `OutputSpec.parameters` / `OutputSpec.default_selection`; the old `AnswerPanel` / `ChoiceControl` chat model has been removed.
 - Query history now has source resolution primitives:
   - `source_id="Q1"`
   - `source_id="QS1"`
@@ -55,30 +51,24 @@ Implemented on `dev` so far:
   - `QueryHistory.resolve_source_id(...)`
   - `QueryHistory.resolve_query_record(...)`
 - Chart artifacts are source-backed:
-  - `ChartArtifactDef.source_id: str`
+  - legacy `ChartArtifactDef.source_id: str`
   - `render_chart(source_id=...)` accepts `Q*` and `QS*`.
   - For `QS*`, chart validation checks every source variant and reports all failures by selection key, not internal variant record id.
   - `show_artifacts` treats a chart backed by a `QS*` source as varying over that family.
-- Chat results now carry only logical artifacts:
-  - `ChatResult.artifacts` is the source-backed artifact graph for the turn.
-  - `TableArtifactDef` models implicit `Q*` / `QS*` table cards; there is intentionally no `render_table`.
-  - `ChartArtifactDef` models source-backed charts.
-  - `MapArtifactDef` carries lightweight `map_spec`; `GraphArtifactDef` carries lightweight `graph_spec`.
-  - `ChatAgent.artifact_resolver.resolve(result, selection=None)` resolves default or active selections.
-  - Resolved payloads are separate `Resolved*Artifact` models, plus `ArtifactPlaceholder` for not-applicable selections.
+- Chat output resolution now goes through `OutputDisplayResolver`, which resolves `OutputSpec` through `OutputResolver` and adapts to the current display payloads.
 - Source ids are plain `Q*` / `QS*` strings; no separate `ArtifactSource` wrapper.
-- `ArtifactResolver` now only materializes logical chat artifacts; query-record payload lookup lives in `QueryHistory`, and `show_artifacts` refs are converted to logical artifacts during chat-result construction.
+- `show_artifacts` refs are converted to `OutputSpec` during chat-result construction.
 - The tool-facing `show_artifacts` item is named `ArtifactRef`, because it is only an id+label reference.
-- Query-history artifact registry entries reuse the shared `*ArtifactDef` models.
+- Query-history artifact registry entries still use legacy `*ArtifactDef` models; this is now the main remaining legacy output registry.
 - Stored graph artifacts now keep normalized graph specs rather than materialized `GraphView` payloads.
 - The browser pane supports finite choice controls via live session-backed resolution.
 
 In progress / next cleanup:
 
 - Migrate runtime code toward the new `core.outputs` model:
-  - replace legacy `ArtifactDef` / `TableArtifactDef` / `ChartArtifactDef` usage with `OutputSpec`, `ArtifactSpec`, and `ViewDef`;
-  - introduce a runtime source resolver that maps `SourceDef + selection` to `ResultRecord` / stored result payloads;
-  - keep old compatibility paths only as temporary migration scaffolding.
+  - migrate the `QueryHistory` chart/map/graph registry from legacy artifact defs to clean `ArtifactSpec` / `ViewDef`;
+  - delete `core.legacy_outputs` once the registry migration is complete;
+  - replace the temporary display `Resolved*Artifact` payloads with a clean renderer-facing model.
 - Design true server-side parameterized sources for sliders after the clean source/result runtime boundary is in place; current sliders are model/UI-safe but do not rerun or parameterize queries.
 
 ## Product thesis
@@ -296,7 +286,7 @@ Extend the browser pane payload and frontend to support answer-level controls fo
 
 Goals:
 
-- Include `AnswerPanel` and logical `ChatResult.artifacts` in the pane turn payload.
+- Include `OutputSpec.parameters` and `OutputSpec.artifacts` in the pane turn payload.
 - Resolve the default selection and finite choice changes through the live session/runtime.
 - Update table/chart/map/graph cards when choice controls change.
 - Keep this phase to precomputed `Q*` / `QS*` sources; do not add lazy query execution yet.
@@ -304,7 +294,7 @@ Goals:
 This phase should validate the public runtime API:
 
 ```python
-await chat_agent.artifact_resolver.resolve(result, selection)
+await chat_agent.output_display_resolver.resolve(result, selection)
 ```
 
 ### Phase 5 — Shared artifact-definition model
@@ -314,16 +304,17 @@ After browser-pane finite controls prove the runtime-resolution model, consolida
 Goals:
 
 - Keep the tool-facing `ArtifactRef` separate because it is only an id+label reference.
-- Use one shared lightweight/spec-backed `ArtifactDef` family for chat results and query-history artifact storage.
-- Keep graph/map/chart specs lightweight; materialize render payloads through `ArtifactResolver`.
-- Keep `ResolvedArtifact` payloads in the chat/frontend contract; do not move resolved DataFrames or graph payloads into the shared definition layer.
+- Use `OutputSpec`, `ArtifactSpec`, and `ViewDef` as the chat output contract.
+- Keep graph/map/chart specs lightweight; materialize render payloads through `OutputDisplayResolver`.
+- Treat current `Resolved*Artifact` payloads as temporary display compatibility models; do not move resolved DataFrames or graph payloads into `core.outputs`.
 
 Target long-term taxonomy:
 
 ```text
 ArtifactRef      # tool input: id + label
-ArtifactDef      # logical/spec-backed artifact definition
-ResolvedArtifact # materialized payload for rendering
+OutputSpec       # declarative output contract
+ResolvedOutput   # source-result resolution
+Display payloads # renderer compatibility layer, temporary
 ```
 
 ### Phase 6 — Parameterized/lazy results
