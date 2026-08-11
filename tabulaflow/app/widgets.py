@@ -67,7 +67,7 @@ if TYPE_CHECKING:
     from tabulaflow.core.outputs import SelectionValue
     from tabulaflow.app.display import CardGroup, ViewItem
     from tabulaflow.core.types import Usage
-    from tabulaflow.toolhub.output_runtime import OutputStore
+    from tabulaflow.toolhub.output_store import OutputStore
 
 
 class _MarkdownStream(Protocol):
@@ -2275,7 +2275,7 @@ class AgentResultWidget(Widget):
             self.app.push_screen(QueryBrowserScreen(title=title, query=query, lexer=lexer))
 
     async def _fetch_df(self, record_id: str | None) -> pd.DataFrame | None:
-        """Fetch a DataFrame from QueryHistory, loading from DuckDB if needed."""
+        """Fetch a DataFrame from OutputStore, loading from DuckDB if needed."""
         if self._output_store is None or record_id is None:
             return None
         try:

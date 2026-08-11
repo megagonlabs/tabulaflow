@@ -235,7 +235,7 @@ class AddCanonicalNameTool:
         self.on_progress: Callable[[ToolProgressUpdate], None] | None = None
 
     def attach_connector(self, connector: SQLConnector) -> None:
-        """Bind the workspace connector after construction (mirrors QueryHistory)."""
+        """Bind the workspace connector after construction (mirrors OutputStore)."""
         self._db_connector = connector
 
     def apply_llm_profile(self, *, llm: str, model_settings: ModelSettings | None) -> None:

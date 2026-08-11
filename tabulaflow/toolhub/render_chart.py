@@ -14,7 +14,7 @@ from typing import Any, ClassVar
 import pandas as pd
 from pydantic_ai import Tool
 
-from tabulaflow.toolhub.query_history import QueryHistory
+from tabulaflow.toolhub.output_store import OutputStore
 
 
 # Marks plotext can draw faithfully as a single x/y series, mapped to the
@@ -412,8 +412,8 @@ class RenderChartTool:
 
     name: ClassVar = "render_chart"
 
-    def __init__(self, history: QueryHistory | None = None) -> None:
-        self._history = history or QueryHistory()
+    def __init__(self, output_store: OutputStore | None = None) -> None:
+        self._output_store = output_store or OutputStore()
 
     async def __call__(self, source_id: str, *, vegalite_spec: str) -> str:
         """Create a Vega-Lite chart from a query record or query family source.
@@ -440,7 +440,7 @@ class RenderChartTool:
         Returns the new chart id (``CHART1``, ``CHART2``, …) to cite in the answer.
 
         Args:
-            source_id: Query-history source ID. Use a fixed query record (e.g.
+            source_id: Output-store source ID. Use a fixed query record (e.g.
                 ``"Q3"``) or a query family (e.g. ``"QS1"``) that resolves under
                 answer controls.
             vegalite_spec: A Vega-Lite JSON specification string.
@@ -492,26 +492,26 @@ class RenderChartTool:
             return f"(error: chart source validation failed for {len(errors)} issue(s):\n  " + "\n  ".join(errors) + ")"
 
         label = chart_type_label(spec)
-        chart_id = self._history.add_chart(source_id, spec)
+        chart_id = self._output_store.add_chart(source_id, spec)
         rows = len(variants[0].df)
         suffix = f" — {rows:,} rows" if len(variants) == 1 else f" — {len(variants):,} source variants"
         return f"{label} {chart_id} created from {source_id}{suffix}"
 
     async def _source_variants(self, source_id: str) -> list[_SourceVariant]:
         if source_id.startswith("QS"):
-            family = self._history.get_family(source_id)
+            family = self._output_store.get_family(source_id)
             out: list[_SourceVariant] = []
             for selection, record_id in family.record_ids_by_selection.items():
                 out.append(
                     _SourceVariant(
-                        label=selection, record_id=record_id, df=await self._history.get_dataframe(record_id)
+                        label=selection, record_id=record_id, df=await self._output_store.get_dataframe(record_id)
                     )
                 )
             return out
         if not source_id.startswith("Q"):
             raise ValueError(f"source_id must start with 'Q' or 'QS', got {source_id!r}")
-        await self._history.get(source_id)
-        return [_SourceVariant(label=source_id, record_id=source_id, df=await self._history.get_dataframe(source_id))]
+        await self._output_store.get(source_id)
+        return [_SourceVariant(label=source_id, record_id=source_id, df=await self._output_store.get_dataframe(source_id))]
 
     def as_pydantic_ai_tool(self) -> Tool:
         return Tool(self.__call__, name=self.name)

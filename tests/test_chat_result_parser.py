@@ -16,8 +16,7 @@ from tabulaflow.toolhub import (
     Dimension,
     OutputResolver,
     QueryDimension,
-    QueryHistoryOutputStore,
-    QueryHistory,
+    OutputStore,
     RenderChartTool,
     RunQueryForEachCombinationTool,
 )
@@ -84,19 +83,19 @@ def test_declared_bundle_skips_failed_calls_and_takes_the_last() -> None:
 
 @pytest.mark.asyncio
 async def test_build_chat_result_resolves_the_declared_bundle() -> None:
-    history = QueryHistory()
-    await history.add(
+    output_store = OutputStore()
+    await output_store.add(
         "workspace", "sql", PredQuery(query="SELECT 1", exec_result=ExecResult(df=pd.DataFrame({"a": [1]})))
     )
     bundle = ArtifactBundle(artifacts=(ArtifactRef(id="Q1", label="row count"),))
 
-    result = await _build_chat_result("<answer>\nThere is 1 row.", bundle, history)
+    result = await _build_chat_result("<answer>\nThere is 1 row.", bundle, output_store)
 
     assert result.text == "There is 1 row."
     assert [artifact.id for artifact in result.output.artifacts] == ["Q1"]
     assert result.output.sources[0].plan.kind == "constant_result"
 
-    without = await _build_chat_result("<answer>\nNothing to show.", None, history)
+    without = await _build_chat_result("<answer>\nNothing to show.", None, output_store)
     assert without.output.artifacts == []
 
 
@@ -115,8 +114,8 @@ async def test_build_chat_result_resolves_a_panel(tmp_path: Path) -> None:
     await connector.run_query_async("INSERT INTO orders VALUES ('Acme', 10, 'q2'), ('Globex', 7, 'q3')")
     registry = DBRegistry()
     registry.register("workspace", connector)
-    history = QueryHistory()
-    runner = RunQueryForEachCombinationTool(registry, history=history)
+    output_store = OutputStore()
+    runner = RunQueryForEachCombinationTool(registry, output_store=output_store)
     # QS1 varies over both dimensions; QS2 only over period.
     await runner(
         "workspace",
@@ -146,15 +145,15 @@ async def test_build_chat_result_resolves_a_panel(tmp_path: Path) -> None:
         ),
     )
 
-    result = await _build_chat_result("<answer>\nAcme leads.", bundle, history)
+    result = await _build_chat_result("<answer>\nAcme leads.", bundle, output_store)
 
     assert result.output.default_selection == {"ranking": "net", "period": "q2"}
-    resolved_output = await OutputResolver(QueryHistoryOutputStore(history)).resolve(
+    resolved_output = await OutputResolver(output_store).resolve(
         result.output, {"ranking": "count", "period": "q3"}
     )
     assert resolved_output.artifacts[0].results_by_source["QS1"].id == "QS1_v3"
     assert resolved_output.artifacts[1].results_by_source["QS2"].id == "QS2_v1"
-    resolver = OutputResolver(QueryHistoryOutputStore(history))
+    resolver = OutputResolver(output_store)
     default_cards = await resolver.resolve(result.output)
     assert [a.results_by_source[next(iter(a.results_by_source))].id for a in default_cards.artifacts] == ["QS1_v0", "QS2_v0"]
 
@@ -179,15 +178,15 @@ async def test_build_chat_result_resolves_source_backed_chart_in_panel(tmp_path:
     await connector.run_query_async("INSERT INTO orders VALUES ('Acme', 10, 'q2'), ('Globex', 7, 'q3')")
     registry = DBRegistry()
     registry.register("workspace", connector)
-    history = QueryHistory()
-    runner = RunQueryForEachCombinationTool(registry, history=history)
+    output_store = OutputStore()
+    runner = RunQueryForEachCombinationTool(registry, output_store=output_store)
     await runner(
         "workspace",
         [QueryDimension(id="period", choices=["q2", "q3"])],
         "SELECT customer, SUM(net) AS value FROM orders WHERE quarter = '{{ period }}' GROUP BY customer",
     )
     spec = {"mark": "bar", "encoding": {"x": {"field": "customer"}, "y": {"field": "value"}}}
-    await RenderChartTool(history=history)(source_id="QS1", vegalite_spec=json.dumps(spec))
+    await RenderChartTool(output_store=output_store)(source_id="QS1", vegalite_spec=json.dumps(spec))
     bundle = ArtifactBundle(
         artifacts=(ArtifactRef(id="CHART1", label="top customers"),),
         dimensions=(
@@ -195,12 +194,12 @@ async def test_build_chat_result_resolves_source_backed_chart_in_panel(tmp_path:
         ),
     )
 
-    result = await _build_chat_result("<answer>\nChart shown.", bundle, history)
+    result = await _build_chat_result("<answer>\nChart shown.", bundle, output_store)
 
     assert result.output.artifacts[0].view.kind == "chart"
-    resolved_output = await OutputResolver(QueryHistoryOutputStore(history)).resolve(result.output, {"period": "q3"})
+    resolved_output = await OutputResolver(output_store).resolve(result.output, {"period": "q3"})
     assert resolved_output.artifacts[0].results_by_source["QS1"].id == "QS1_v1"
-    resolver = OutputResolver(QueryHistoryOutputStore(history))
+    resolver = OutputResolver(output_store)
     default_cards = await resolver.resolve(result.output)
     q3_cards = await resolver.resolve(result.output, {"period": "q3"})
     chart_ids = [
@@ -224,8 +223,8 @@ async def test_build_chat_result_placeholders_a_partially_covered_card(tmp_path:
     await connector.run_query_async("INSERT INTO orders VALUES (10, 'q2')")
     registry = DBRegistry()
     registry.register("workspace", connector)
-    history = QueryHistory()
-    runner = RunQueryForEachCombinationTool(registry, history=history)
+    output_store = OutputStore()
+    runner = RunQueryForEachCombinationTool(registry, output_store=output_store)
     await runner(
         "workspace",
         [QueryDimension(id="period", choices=["q2"])],
@@ -242,9 +241,9 @@ async def test_build_chat_result_placeholders_a_partially_covered_card(tmp_path:
         ),
     )
 
-    result = await _build_chat_result("<answer>\n17 in the last quarter.", bundle, history)
+    result = await _build_chat_result("<answer>\n17 in the last quarter.", bundle, output_store)
 
     assert result.output.default_selection == {"period": "q2"}
     with pytest.raises(Exception, match="has no result"):
-        await OutputResolver(QueryHistoryOutputStore(history)).resolve(result.output, {"period": "q3"})
+        await OutputResolver(output_store).resolve(result.output, {"period": "q3"})
     assert [a.label for a in result.output.artifacts] == ["net revenue"]

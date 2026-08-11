@@ -10,7 +10,7 @@ from tabulaflow.core.config import tabulaflow_config
 from tabulaflow.core.db_connector.base import NL2QDBConnector
 from tabulaflow.core.db_connector.db_registry import DBRegistry
 from tabulaflow.toolhub.base import ToolCallOutcome, sum_tool_metrics
-from tabulaflow.toolhub.query_history import QueryHistory, QueryRecord
+from tabulaflow.toolhub.output_store import OutputStore, QueryRecord
 from tabulaflow.toolhub.run_query import LLMParameter, RunQueryTool, RunQueryToolMetrics
 
 _UNSET = object()
@@ -36,7 +36,7 @@ class RegistryRunQueryTool:
         max_visible_rows: int = 20,
         max_cell_width: int = 200,
         floatfmt: str = ".8g",
-        history: QueryHistory | None = None,
+        output_store: OutputStore | None = None,
     ):
         """Initialize the tool.
 
@@ -53,8 +53,8 @@ class RegistryRunQueryTool:
             max_cell_width: Maximum character width per cell in the formatted
                 output.
             floatfmt: Float format string passed to tabulate.
-            history: Optional shared query-history store. If not provided, the
-                tool creates its own in-memory history.
+            history: Optional shared output-store store. If not provided, the
+                tool creates its own in-memory output_store.
         """
         self.registry = registry
         self.enable_params = enable_params
@@ -64,7 +64,7 @@ class RegistryRunQueryTool:
         self.max_cell_width = max_cell_width
         self.floatfmt = floatfmt
         self._tools: dict[str, tuple[NL2QDBConnector, RunQueryTool]] = {}
-        self._history = history or QueryHistory()
+        self._output_store = output_store or OutputStore()
 
     def _get_tool(self, db_alias: str) -> RunQueryTool:
         """Return a cached ``RunQueryTool`` for ``db_alias``, rebuilding it if the alias was re-bound."""
@@ -174,7 +174,7 @@ class RegistryRunQueryTool:
             )
         execution = await tool.execute(query, parameters, refresh and self.enable_refresh)
         pred_query = execution.pred_query
-        record = await self._history.add(db_alias, tool.db_connector.connector_type, pred_query)
+        record = await self._output_store.add(db_alias, tool.db_connector.connector_type, pred_query)
         exec_result = pred_query.exec_result
         outcome = None
         if exec_result is not None and exec_result.df is not None:
@@ -204,4 +204,4 @@ class RegistryRunQueryTool:
         Raises:
             KeyError: If no query with ``record_id`` exists.
         """
-        return await self._history.get(record_id)
+        return await self._output_store.get(record_id)

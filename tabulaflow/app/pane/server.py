@@ -39,7 +39,7 @@ logger = logging.getLogger(__name__)
 if TYPE_CHECKING:
     from tabulaflow.chat import ChatResult
     from tabulaflow.core.outputs import SelectionValue
-    from tabulaflow.toolhub.output_runtime import OutputStore
+    from tabulaflow.toolhub.output_store import OutputStore
 
 DEFAULT_OUTPUT_PANE_PORT_START = 61111
 DEFAULT_OUTPUT_PANE_PORT_END = 61130

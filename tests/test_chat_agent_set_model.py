@@ -66,7 +66,7 @@ def test_activate_llm_profile_preserves_conversation_state(monkeypatch: pytest.M
     )
     agent.note_event("remember this")
     message_history = agent._message_history
-    query_history = agent.query_history
+    output_store = agent.output_store
     tools = agent._tools
     runtime_agent = agent._pydantic_ai_agent
 
@@ -78,7 +78,7 @@ def test_activate_llm_profile_preserves_conversation_state(monkeypatch: pytest.M
     )
 
     assert agent._message_history is message_history
-    assert agent.query_history is query_history
+    assert agent.output_store is output_store
     assert agent._tools is tools
     assert agent._pydantic_ai_agent is not runtime_agent
     assert agent.model == "openai-responses:gpt-5.4-mini"

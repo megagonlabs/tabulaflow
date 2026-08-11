@@ -30,7 +30,7 @@ from tabulaflow.toolhub.render_graph import materialize_graph_view, normalize_gr
 from tabulaflow.app.tui import TabulaflowApp
 from tabulaflow.chat import ChatResult
 from tabulaflow.core import ChoiceOption, ChoiceParameter, ConstantResultPlan, OutputSpec, ResultRecord, SourceDef, TableView, ArtifactSpec
-from tabulaflow.toolhub.output_runtime import ResultPayload
+from tabulaflow.toolhub.output_store import OutputStore, ResultPayload
 from tabulaflow.toolhub.render_map import MAP_RENDER_MAX_ROWS
 
 
@@ -2355,7 +2355,7 @@ async def test_output_pane_resolves_live_turn_selection(tmp_path: Path) -> None:
             ),
         ),
         result=result,
-        output_store=FakeOutputStore(),
+        output_store=cast(OutputStore, FakeOutputStore()),
     )
 
     cards = await pane.resolve_turn(0, {"period": "q3"})

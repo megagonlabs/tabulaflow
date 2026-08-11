@@ -427,7 +427,8 @@ async def build_resolved_output_card_views(
     from typing import cast
 
     from tabulaflow.core.outputs import ChartView, GraphArtifactView, MapView, TableView
-    from tabulaflow.toolhub.output_runtime import ResolvedOutput, OutputStore
+    from tabulaflow.toolhub.output_runtime import ResolvedOutput
+    from tabulaflow.toolhub.output_store import OutputStore
     from tabulaflow.toolhub.render_graph import GraphSpecError, materialize_graph_view
 
     assert isinstance(resolved_output, ResolvedOutput)
@@ -484,7 +485,7 @@ def _card_group_from_payload(
     width: int,
     chart_spec: dict[str, object] | None = None,
 ) -> CardGroup | None:
-    from tabulaflow.toolhub.output_runtime import ResultPayload
+    from tabulaflow.toolhub.output_store import ResultPayload
 
     assert isinstance(payload, ResultPayload)
     views: list[ViewItem] = []

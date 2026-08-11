@@ -1,4 +1,4 @@
-"""Tests for QueryHistory LRU spill to workspace DuckDB."""
+"""Tests for OutputStore LRU spill to workspace DuckDB."""
 
 from pathlib import Path
 from typing import AsyncGenerator
@@ -9,11 +9,9 @@ import pytest
 from tabulaflow.core.db_connector.sql_conn import SQLConnector
 from tabulaflow.core.outputs import ChartView, GraphArtifactView, MapView
 from tabulaflow.core.types import ExecResult, PredQuery
-from tabulaflow.toolhub.query_history import (
+from tabulaflow.toolhub.output_store import (
     QueryFailure,
-    QueryHistory,
-    ResolvedRecordRef,
-    SourceNotApplicable,
+    OutputStore,
     TabularResult,
 )
 
@@ -23,20 +21,20 @@ def _make_pred_query(n_rows: int = 5) -> PredQuery:
     return PredQuery(query="SELECT 1", exec_result=ExecResult(df=df))
 
 
-def _chart_view(history: QueryHistory, chart_id: str) -> ChartView:
-    view = history.get_chart(chart_id).view
+def _chart_view(output_store: OutputStore, chart_id: str) -> ChartView:
+    view = output_store.get_chart(chart_id).view
     assert isinstance(view, ChartView)
     return view
 
 
-def _map_view(history: QueryHistory, map_id: str) -> MapView:
-    view = history.get_map(map_id).view
+def _map_view(output_store: OutputStore, map_id: str) -> MapView:
+    view = output_store.get_map(map_id).view
     assert isinstance(view, MapView)
     return view
 
 
-def _graph_view(history: QueryHistory, graph_id: str) -> GraphArtifactView:
-    view = history.get_graph(graph_id).view
+def _graph_view(output_store: OutputStore, graph_id: str) -> GraphArtifactView:
+    view = output_store.get_graph(graph_id).view
     assert isinstance(view, GraphArtifactView)
     return view
 
@@ -63,11 +61,11 @@ class TestNoConnector:
 
     def test_rejects_zero_max_in_memory(self) -> None:
         with pytest.raises(ValueError, match="max_in_memory must be >= 1"):
-            QueryHistory(max_in_memory=0)
+            OutputStore(max_in_memory=0)
 
     @pytest.mark.asyncio
     async def test_no_eviction(self) -> None:
-        h = QueryHistory(max_in_memory=2)
+        h = OutputStore(max_in_memory=2)
         for _ in range(5):
             await h.add("db", "sql", _make_pred_query())
         assert h._results.in_memory_count == 5
@@ -75,7 +73,7 @@ class TestNoConnector:
 
     @pytest.mark.asyncio
     async def test_get(self) -> None:
-        h = QueryHistory()
+        h = OutputStore()
         await h.add("db", "sql", _make_pred_query(n_rows=3))
         await h.add("db", "sql", _make_pred_query(n_rows=7))
         assert (await h.get("Q1")).query == "SELECT 1"
@@ -83,122 +81,16 @@ class TestNoConnector:
         assert len(q2_df) == 7
 
     @pytest.mark.asyncio
-    async def test_get_query_record_payload(self) -> None:
-        h = QueryHistory()
+    async def test_get_payload(self) -> None:
+        h = OutputStore()
         await h.add("db", "sql", _make_pred_query(n_rows=3))
 
-        payload = await h.get_query_record_payload("Q1")
+        payload = await h.get_payload("Q1")
 
-        assert payload.record_id == "Q1"
-        assert payload.query == "SELECT 1"
-        assert payload.query_lexer == "sql"
+        assert payload.record.id == "Q1"
+        assert payload.record.query == "SELECT 1"
         assert payload.df is not None
         assert len(payload.df) == 3
-
-    @pytest.mark.asyncio
-    async def test_resolves_fixed_artifact_source(self) -> None:
-        h = QueryHistory()
-        await h.add("db", "sql", _make_pred_query())
-
-        resolution = h.resolve_source_id("Q1", {"ranking": "net"})
-
-        assert resolution == ResolvedRecordRef("Q1")
-
-    @pytest.mark.asyncio
-    async def test_resolves_family_artifact_source_by_projecting_selection(self) -> None:
-        h = QueryHistory()
-        await h.add_family(
-            "db",
-            "sql",
-            {"ranking": ["net", "count"], "period": ["q2", "q3"]},
-            "SELECT 1",
-            {
-                "period=q2;ranking=net": PredQuery(
-                    query="SELECT 1", exec_result=ExecResult(df=pd.DataFrame({"a": [1]}))
-                ),
-                "period=q3;ranking=net": PredQuery(
-                    query="SELECT 2", exec_result=ExecResult(df=pd.DataFrame({"a": [2]}))
-                ),
-                "period=q2;ranking=count": PredQuery(
-                    query="SELECT 3", exec_result=ExecResult(df=pd.DataFrame({"a": [3]}))
-                ),
-                "period=q3;ranking=count": PredQuery(
-                    query="SELECT 4", exec_result=ExecResult(df=pd.DataFrame({"a": [4]}))
-                ),
-            },
-        )
-
-        resolution = h.resolve_source_id("QS1", {"ranking": "count", "period": "q3", "unrelated": "ignored"})
-
-        assert resolution == ResolvedRecordRef("QS1_v3")
-
-    @pytest.mark.asyncio
-    async def test_resolves_query_record_payload_from_family_source(self) -> None:
-        h = QueryHistory()
-        await h.add_family(
-            "db",
-            "sql",
-            {"period": ["q2", "q3"]},
-            "SELECT 1",
-            {
-                "period=q2": PredQuery(query="SELECT 2 AS a", exec_result=ExecResult(df=pd.DataFrame({"a": [2]}))),
-                "period=q3": PredQuery(query="SELECT 3 AS a", exec_result=ExecResult(df=pd.DataFrame({"a": [3]}))),
-            },
-        )
-
-        payload = await h.resolve_query_record("QS1", {"period": "q3"})
-
-        assert not isinstance(payload, SourceNotApplicable)
-        assert payload.record_id == "QS1_v1"
-        assert payload.df is not None
-        assert payload.df.loc[0, "a"] == 3
-
-    @pytest.mark.asyncio
-    async def test_family_artifact_source_is_not_applicable_outside_coverage(self) -> None:
-        h = QueryHistory()
-        await h.add_family(
-            "db",
-            "sql",
-            {"period": ["q2"]},
-            "SELECT 1",
-            {"period=q2": _make_pred_query()},
-        )
-
-        resolution = h.resolve_source_id("QS1", {"period": "q3"})
-
-        assert isinstance(resolution, SourceNotApplicable)
-        assert resolution.reason == "period=q3 is outside QS1"
-
-    @pytest.mark.asyncio
-    async def test_family_artifact_source_requires_relevant_selection(self) -> None:
-        h = QueryHistory()
-        await h.add_family(
-            "db",
-            "sql",
-            {"period": ["q2"]},
-            "SELECT 1",
-            {"period=q2": _make_pred_query()},
-        )
-
-        resolution = h.resolve_source_id("QS1", {})
-
-        assert isinstance(resolution, SourceNotApplicable)
-        assert resolution.reason == "missing selection for 'period'"
-
-    @pytest.mark.asyncio
-    async def test_family_artifact_source_raises_for_corrupt_record_reference(self) -> None:
-        h = QueryHistory()
-        family = await h.add_family(
-            "db",
-            "sql",
-            {"period": ["q2"]},
-            "SELECT 1",
-            {"period=q2": _make_pred_query()},
-        )
-        family.record_ids_by_selection["period=q2"] = "Q999"
-
-        with pytest.raises(KeyError, match="No query with id Q999"):
-            h.resolve_source_id("QS1", {"period": "q2"})
 
 
 class TestWithConnector:
@@ -219,14 +111,14 @@ class TestWithConnector:
 
     @pytest.mark.asyncio
     async def test_no_spill_within_limit(self, workspace: SQLConnector) -> None:
-        h = QueryHistory(max_in_memory=5, spill_connector=workspace)
+        h = OutputStore(max_in_memory=5, spill_connector=workspace)
         for _ in range(5):
             await h.add("db", "sql", _make_pred_query())
         assert h._results.in_memory_count == 5
 
     @pytest.mark.asyncio
     async def test_evicts_oldest(self, workspace: SQLConnector) -> None:
-        h = QueryHistory(max_in_memory=3, spill_connector=workspace)
+        h = OutputStore(max_in_memory=3, spill_connector=workspace)
         for _ in range(5):
             await h.add("db", "sql", _make_pred_query())
 
@@ -239,7 +131,7 @@ class TestWithConnector:
 
     @pytest.mark.asyncio
     async def test_eviction_does_not_mutate_caller_owned_pred_query(self, workspace: SQLConnector) -> None:
-        h = QueryHistory(max_in_memory=1, spill_connector=workspace)
+        h = OutputStore(max_in_memory=1, spill_connector=workspace)
         pred_query = _make_pred_query(n_rows=10)
 
         await h.add("db", "sql", pred_query)
@@ -252,7 +144,7 @@ class TestWithConnector:
 
     @pytest.mark.asyncio
     async def test_get_dataframe_loads_evicted_record(self, workspace: SQLConnector) -> None:
-        h = QueryHistory(max_in_memory=2, spill_connector=workspace)
+        h = OutputStore(max_in_memory=2, spill_connector=workspace)
         await h.add("db", "sql", _make_pred_query(n_rows=10))
         await h.add("db", "sql", _make_pred_query(n_rows=20))
         await h.add("db", "sql", _make_pred_query(n_rows=30))
@@ -267,7 +159,7 @@ class TestWithConnector:
     async def test_persist_failure_keeps_record_in_memory(
         self, workspace: SQLConnector, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        h = QueryHistory(max_in_memory=1, spill_connector=workspace)
+        h = OutputStore(max_in_memory=1, spill_connector=workspace)
 
         async def fake_persist(storage_key: str, df: pd.DataFrame) -> bool:
             return storage_key != "Q1"
@@ -287,7 +179,7 @@ class TestWithConnector:
 
     @pytest.mark.asyncio
     async def test_error_records_not_tracked(self, workspace: SQLConnector) -> None:
-        h = QueryHistory(max_in_memory=2, spill_connector=workspace)
+        h = OutputStore(max_in_memory=2, spill_connector=workspace)
         record = await h.add("db", "sql", _make_error_pred_query())
         await h.add("db", "sql", _make_pred_query())
         assert isinstance(record.outcome, QueryFailure)
@@ -295,7 +187,7 @@ class TestWithConnector:
 
     @pytest.mark.asyncio
     async def test_roundtrip_preserves_data(self, workspace: SQLConnector) -> None:
-        h = QueryHistory(max_in_memory=1, spill_connector=workspace)
+        h = OutputStore(max_in_memory=1, spill_connector=workspace)
         df_original = pd.DataFrame(
             {
                 "int_col": [1, 2, 3],
@@ -316,7 +208,7 @@ class TestWithConnector:
 
     @pytest.mark.asyncio
     async def test_add_chart_does_not_hydrate(self, workspace: SQLConnector) -> None:
-        h = QueryHistory(max_in_memory=1, spill_connector=workspace)
+        h = OutputStore(max_in_memory=1, spill_connector=workspace)
         await h.add("db", "sql", _make_pred_query())
         await h.add("db", "sql", _make_pred_query())
         assert not h._results.has_in_memory("Q1")
@@ -332,7 +224,7 @@ class TestWithConnector:
 
     @pytest.mark.asyncio
     async def test_add_map_stores_standalone_artifact(self, workspace: SQLConnector) -> None:
-        h = QueryHistory(spill_connector=workspace)
+        h = OutputStore(spill_connector=workspace)
         spec = {"layers": [{"type": "points", "source": "Q1", "lat": "lat", "lng": "lng"}]}
         map_id = h.add_map(spec)
         assert map_id == "MAP1"
@@ -343,7 +235,7 @@ class TestWithConnector:
 
     @pytest.mark.asyncio
     async def test_add_graph_stores_standalone_artifact(self, workspace: SQLConnector) -> None:
-        h = QueryHistory(spill_connector=workspace)
+        h = OutputStore(spill_connector=workspace)
         graph_spec = {
             "layout": "force",
             "nodes": [{"data": [{"id": "a"}, {"id": "b"}], "id": "id"}],

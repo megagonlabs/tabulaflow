@@ -21,17 +21,14 @@ from tabulaflow.toolhub.registry_get_column_json_schema import RegistryGetColumn
 from tabulaflow.toolhub.registry_get_db_document import RegistryGetDBDocumentTool
 from tabulaflow.toolhub.registry_get_schema import RegistryGetSchemaTool
 from tabulaflow.toolhub.registry_get_table_schema import RegistryGetTableSchemaTool
-from tabulaflow.toolhub.query_history import (
-    QUERY_HISTORY_SCHEMA,
+from tabulaflow.toolhub.output_store import (
+    OUTPUT_STORE_SCHEMA,
     QueryFailure,
     QueryFamily,
-    QueryHistory,
+    OutputStore,
     QueryOutcome,
     QueryRecord,
-    ResolvedQueryRecord,
-    ResolvedRecordRef,
-    SourceNotApplicable,
-    SourceResolution,
+    ResultPayload,
     StatementSuccess,
     TabularResult,
 )
@@ -48,10 +45,8 @@ from tabulaflow.toolhub.show_artifacts import ArtifactBundle, ArtifactRef, Choic
 from tabulaflow.toolhub.output_runtime import (
     OutputResolutionError,
     OutputResolver,
-    QueryHistoryOutputStore,
     ResolvedOutput,
     ResolvedArtifact,
-    OutputStore,
 )
 from tabulaflow.toolhub.web_browser import (
     WebBrowserManager,
@@ -61,7 +56,7 @@ from tabulaflow.toolhub.web_browser import (
 )
 
 __all__ = [
-    "QUERY_HISTORY_SCHEMA",
+    "OUTPUT_STORE_SCHEMA",
     "BaseTool",
     "LLMProfileTool",
     "ProgressReportingTool",
@@ -91,13 +86,10 @@ __all__ = [
     "QueryFailure",
     "QueryDimension",
     "QueryFamily",
-    "QueryHistory",
+    "OutputStore",
     "QueryOutcome",
     "QueryRecord",
-    "ResolvedQueryRecord",
-    "ResolvedRecordRef",
-    "SourceNotApplicable",
-    "SourceResolution",
+    "ResultPayload",
     "StatementSuccess",
     "TabularResult",
     "RegistryRunQueryTool",
@@ -111,10 +103,8 @@ __all__ = [
     "ShowArtifactsTool",
     "OutputResolutionError",
     "OutputResolver",
-    "QueryHistoryOutputStore",
     "ResolvedOutput",
     "ResolvedArtifact",
-    "OutputStore",
     "WebBrowserManager",
     "WebBrowserTool",
     "default_manager",

@@ -15,7 +15,7 @@ from pydantic_ai import Tool
 
 from tabulaflow.core.types import GraphView, GraphViewEdge, GraphViewNode
 from tabulaflow.core.utils import json_ready
-from tabulaflow.toolhub.query_history import QueryHistory
+from tabulaflow.toolhub.output_store import OutputStore
 from tabulaflow.toolhub.render_map import resolve_column
 
 GRAPH_MAX_NODES = 300
@@ -226,7 +226,7 @@ def parse_graph_spec(spec: Mapping[str, object]) -> _GraphSpec:
 
 
 def referenced_source_ids(parsed: _GraphSpec) -> list[str]:
-    """Return the distinct query-history source ids referenced by a parsed spec."""
+    """Return the distinct output-store source ids referenced by a parsed spec."""
     ids: list[str] = []
     all_sources: list[_NodeSource | _EdgeSource] = [
         *parsed.nodes,
@@ -435,8 +435,8 @@ class RenderGraphTool:
 
     name: ClassVar = "render_graph"
 
-    def __init__(self, history: QueryHistory | None = None) -> None:
-        self._history = history or QueryHistory()
+    def __init__(self, output_store: OutputStore | None = None) -> None:
+        self._output_store = output_store or OutputStore()
 
     async def __call__(self, *, graph_spec: str) -> str:
         """Create a graph from one or more query results. Use this when the
@@ -509,11 +509,11 @@ class RenderGraphTool:
         sources: dict[str, pd.DataFrame] = {}
         for rid in source_ids:
             try:
-                await self._history.get(rid)
+                await self._output_store.get(rid)
             except KeyError:
                 return f"(error: unknown source_id {rid!r})"
             try:
-                df = await self._history.get_dataframe(rid)
+                df = await self._output_store.get_dataframe(rid)
             except ValueError as e:
                 return f"(error: {e})"
             if df.empty:
@@ -528,7 +528,7 @@ class RenderGraphTool:
         except GraphSpecError as e:
             return f"(error: {e})"
 
-        graph_id = self._history.add_graph(normalized)
+        graph_id = self._output_store.add_graph(normalized)
         label = graph_type_label(normalized)
         from_text = f" from {', '.join(source_ids)}" if source_ids else ""
         if size.groups == 0:

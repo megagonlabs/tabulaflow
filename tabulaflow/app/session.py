@@ -24,7 +24,7 @@ async def create_workspace_connector(workspace_db_path: Path) -> SQLConnector:
     connector is handed to the session/agent at construction rather than attached
     afterwards."""
     from tabulaflow.core.db_connector.sql_conn import SQLConnector
-    from tabulaflow.toolhub import QUERY_HISTORY_SCHEMA
+    from tabulaflow.toolhub import OUTPUT_STORE_SCHEMA
 
     workspace_db_path.parent.mkdir(parents=True, exist_ok=True)
     abspath = os.path.abspath(workspace_db_path)
@@ -38,7 +38,7 @@ async def create_workspace_connector(workspace_db_path: Path) -> SQLConnector:
         enable_query_caching=False,
         # The agent spills every query result here, one table per record. Excluding it
         # keeps the data explorer and schema tools showing data rather than bookkeeping.
-        exclude_schema_names=[QUERY_HISTORY_SCHEMA],
+        exclude_schema_names=[OUTPUT_STORE_SCHEMA],
     )
 
 

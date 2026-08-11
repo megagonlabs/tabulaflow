@@ -108,7 +108,7 @@ class MessageStore:
         self._lock = asyncio.Lock()
 
     def attach_connector(self, connector: SQLConnector) -> None:
-        """Bind a workspace connector after construction (mirrors QueryHistory)."""
+        """Bind a workspace connector after construction (mirrors OutputStore)."""
         self._spill_connector = connector
         self._table_created = False
 

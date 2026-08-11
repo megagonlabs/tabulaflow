@@ -10,19 +10,19 @@ import pytest
 
 from tabulaflow.core.types import ExecResult, PredQuery
 from tabulaflow.core.outputs import MapView
-from tabulaflow.toolhub.query_history import QueryHistory
+from tabulaflow.toolhub.output_store import OutputStore
 from tabulaflow.toolhub.render_map import MAP_RENDER_MAX_ROWS, RenderMapTool, normalize_map_spec
 
 
-async def _history_with(*dfs: pd.DataFrame) -> QueryHistory:
-    history = QueryHistory()
+async def _output_store_with(*dfs: pd.DataFrame) -> OutputStore:
+    output_store = OutputStore()
     for df in dfs:
-        await history.add("db", "sql", PredQuery(query="SELECT 1", exec_result=ExecResult(df=df)))
-    return history
+        await output_store.add("db", "sql", PredQuery(query="SELECT 1", exec_result=ExecResult(df=df)))
+    return output_store
 
 
-def _map_view(history: QueryHistory, map_id: str) -> MapView:
-    view = history.get_map(map_id).view
+def _map_view(output_store: OutputStore, map_id: str) -> MapView:
+    view = output_store.get_map(map_id).view
     assert isinstance(view, MapView)
     return view
 
@@ -230,21 +230,21 @@ class TestRenderMapTool:
         assert "URLs render as links" in " ".join(doc.split())
 
     async def test_column_layer_missing_record_id_errors(self) -> None:
-        history = await _history_with(pd.DataFrame({"lat": [37.7], "lng": [-122.4]}))
+        output_store = await _output_store_with(pd.DataFrame({"lat": [37.7], "lng": [-122.4]}))
         spec = {"layers": [{"type": "points", "lat": "lat", "lng": "lng"}]}
-        msg = await RenderMapTool(history=history)(map_spec=json.dumps(spec))
+        msg = await RenderMapTool(output_store=output_store)(map_spec=json.dumps(spec))
         assert "record_id" in msg
-        assert history._artifacts == {}
+        assert output_store._artifacts == {}
 
     async def test_points_map_created(self) -> None:
-        history = await _history_with(pd.DataFrame({"lat": [37.7], "lng": [-122.4], "name": ["SF"]}))
+        output_store = await _output_store_with(pd.DataFrame({"lat": [37.7], "lng": [-122.4], "name": ["SF"]}))
         spec = {
             "title": "Cities",
             "layers": [{"type": "points", "record_id": "Q1", "lat": "lat", "lng": "lng", "label": "name"}],
         }
-        msg = await RenderMapTool(history=history)(map_spec=json.dumps(spec))
+        msg = await RenderMapTool(output_store=output_store)(map_spec=json.dumps(spec))
         assert "Map MAP1 created from Q1" in msg
-        assert _map_view(history, "MAP1").spec == {
+        assert _map_view(output_store, "MAP1").spec == {
             "title": "Cities",
             "layers": [{"type": "points", "source": "Q1", "lat": "lat", "lng": "lng", "label": "name"}],
         }
@@ -256,11 +256,11 @@ class TestRenderMapTool:
                 "name": ["SF"],
             }
         )
-        history = await _history_with(df)
+        output_store = await _output_store_with(df)
         spec = {"layers": [{"type": "geojson", "record_id": "Q1", "geojson": "geom", "label": "name"}]}
-        msg = await RenderMapTool(history=history)(map_spec=json.dumps(spec))
+        msg = await RenderMapTool(output_store=output_store)(map_spec=json.dumps(spec))
         assert "Map MAP1 created" in msg
-        assert _map_view(history, "MAP1").spec == {
+        assert _map_view(output_store, "MAP1").spec == {
             "layers": [{"type": "geojson", "source": "Q1", "geojson": "geom", "label": "name"}]
         }
 
@@ -269,41 +269,41 @@ class TestRenderMapTool:
             {"geom": [json.dumps({"type": "Point", "coordinates": [-122.4, 37.7]})], "area": ["A"]}
         )
         points = pd.DataFrame({"lat": [37.7], "lng": [-122.4], "name": ["SF"]})
-        history = await _history_with(boundaries, points)
+        output_store = await _output_store_with(boundaries, points)
         spec = {
             "layers": [
                 {"type": "geojson", "record_id": "Q1", "geojson": "geom", "label": "area"},
                 {"type": "points", "record_id": "Q2", "lat": "lat", "lng": "lng", "label": "name"},
             ]
         }
-        msg = await RenderMapTool(history=history)(map_spec=json.dumps(spec))
+        msg = await RenderMapTool(output_store=output_store)(map_spec=json.dumps(spec))
         assert "MAP1 created from Q1, Q2" in msg
-        stored = _map_view(history, "MAP1").spec
+        stored = _map_view(output_store, "MAP1").spec
         assert [layer["source"] for layer in stored["layers"]] == ["Q1", "Q2"]
 
     async def test_unknown_record_id_errors_without_creating(self) -> None:
-        history = await _history_with(pd.DataFrame({"lat": [37.7], "lng": [-122.4]}))
+        output_store = await _output_store_with(pd.DataFrame({"lat": [37.7], "lng": [-122.4]}))
         spec = {"layers": [{"type": "points", "record_id": "Q9", "lat": "lat", "lng": "lng"}]}
-        msg = await RenderMapTool(history=history)(map_spec=json.dumps(spec))
+        msg = await RenderMapTool(output_store=output_store)(map_spec=json.dumps(spec))
         assert "unknown record_id" in msg
-        assert history._artifacts == {}
+        assert output_store._artifacts == {}
 
     async def test_unknown_column_errors_without_creating(self) -> None:
-        history = await _history_with(pd.DataFrame({"lat": [37.7], "lng": [-122.4]}))
+        output_store = await _output_store_with(pd.DataFrame({"lat": [37.7], "lng": [-122.4]}))
         spec = {"layers": [{"type": "points", "record_id": "Q1", "lat": "lat", "lng": "missing"}]}
-        msg = await RenderMapTool(history=history)(map_spec=json.dumps(spec))
+        msg = await RenderMapTool(output_store=output_store)(map_spec=json.dumps(spec))
         assert "field not found" in msg and "missing" in msg
-        assert history._artifacts == {}
+        assert output_store._artifacts == {}
 
     async def test_invalid_coordinates_error_without_creating(self) -> None:
-        history = await _history_with(pd.DataFrame({"lat": [4_547_675], "lng": [-13_627_665]}))
+        output_store = await _output_store_with(pd.DataFrame({"lat": [4_547_675], "lng": [-13_627_665]}))
         spec = {"layers": [{"type": "points", "record_id": "Q1", "lat": "lat", "lng": "lng"}]}
-        msg = await RenderMapTool(history=history)(map_spec=json.dumps(spec))
+        msg = await RenderMapTool(output_store=output_store)(map_spec=json.dumps(spec))
         assert "no valid latitude/longitude" in msg
-        assert history._artifacts == {}
+        assert output_store._artifacts == {}
 
     async def test_too_many_rows_error_without_creating(self) -> None:
-        history = await _history_with(
+        output_store = await _output_store_with(
             pd.DataFrame(
                 {
                     "lat": [37.7] * (MAP_RENDER_MAX_ROWS + 1),
@@ -312,7 +312,7 @@ class TestRenderMapTool:
             )
         )
         spec = {"layers": [{"type": "points", "record_id": "Q1", "lat": "lat", "lng": "lng"}]}
-        msg = await RenderMapTool(history=history)(map_spec=json.dumps(spec))
+        msg = await RenderMapTool(output_store=output_store)(map_spec=json.dumps(spec))
         assert "too large to map directly" in msg
         assert f"max {MAP_RENDER_MAX_ROWS:,} rows" in msg
-        assert history._artifacts == {}
+        assert output_store._artifacts == {}

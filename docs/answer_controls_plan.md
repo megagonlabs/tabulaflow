@@ -37,19 +37,16 @@ Implemented on `dev` so far:
 - `core.outputs` now contains the clean target output-spec model:
   - `OutputSpec`, `ParameterDef`, `SourceDef`, `SourcePlan`, `ArtifactSpec`, `ViewDef`, and `ResultRecord`;
   - semantic id aliases (`ParameterId`, `SourceId`, `ArtifactId`, `ResultId`, `SelectionKey`);
-  - source plans split into `ConstantResultPlan`, `ResultLookupPlan`, and `QueryPlan`;
-  - legacy runtime artifact definitions have been moved aside as compatibility scaffolding.
+  - source plans split into `ConstantResultPlan`, `ResultLookupPlan`, and `QueryPlan`.
 
 - Chat results now carry `ChatResult.output: OutputSpec` as the live output model.
 - TUI and browser-pane controls read from `OutputSpec.parameters` / `OutputSpec.default_selection`; the old `AnswerPanel` / `ChoiceControl` chat model has been removed.
-- Query history now has source resolution primitives:
+- `toolhub.output_store.OutputStore` owns runtime output state:
   - `source_id="Q1"`
   - `source_id="QS1"`
-  - `ResolvedRecordRef`
-  - `ResolvedQueryRecord`
-  - `SourceNotApplicable`
-  - `QueryHistory.resolve_source_id(...)`
-  - `QueryHistory.resolve_query_record(...)`
+  - `ResultRecord` metadata and `ResultPayload` data access;
+  - query-family storage for `ResultLookupPlan` sources;
+  - clean `ArtifactSpec` / `ViewDef` artifact registry.
 - Chart artifacts are source-backed:
   - chart artifact specs reference a source through `ChartView.source`;
   - `render_chart(source_id=...)` accepts `Q*` and `QS*`.
@@ -59,14 +56,13 @@ Implemented on `dev` so far:
 - Source ids are plain `Q*` / `QS*` strings; no separate `ArtifactSource` wrapper.
 - `show_artifacts` refs are converted to `OutputSpec` during chat-result construction.
 - The tool-facing `show_artifacts` item is named `ArtifactRef`, because it is only an id+label reference.
-- Query-history artifact registry entries now store clean `ArtifactSpec` / `ViewDef` models.
+- Output-store artifact registry entries now store clean `ArtifactSpec` / `ViewDef` models.
 - Stored graph artifacts now keep normalized graph specs rather than materialized `GraphView` payloads.
 - The browser pane supports finite choice controls via live session-backed resolution.
 
 In progress / next cleanup:
 
-- Migrate runtime code toward the new `core.outputs` model:
-  - finish replacing the temporary display `Resolved*Artifact` payloads in tests/debug helpers with a clean renderer-facing model.
+- Runtime now uses `OutputStore` / `OutputResolver`; the next major step is implementing `QueryPlan` materialization.
 - Design true server-side parameterized sources for sliders after the clean source/result runtime boundary is in place; current sliders are model/UI-safe but do not rerun or parameterize queries.
 
 ## Product thesis
@@ -304,7 +300,7 @@ Goals:
 - Keep the tool-facing `ArtifactRef` separate because it is only an id+label reference.
 - Use `OutputSpec`, `ArtifactSpec`, and `ViewDef` as the chat output contract.
 - Keep graph/map/chart specs lightweight; materialize render payloads through app/pane renderers consuming `ResolvedOutput`.
-- Treat current `Resolved*Artifact` payloads as temporary display compatibility models; do not move resolved DataFrames or graph payloads into `core.outputs`.
+- Keep resolved DataFrames and graph payloads out of `core.outputs`; runtime payloads live in `toolhub.output_store.ResultPayload`.
 
 Target long-term taxonomy:
 
@@ -312,7 +308,7 @@ Target long-term taxonomy:
 ArtifactRef      # tool input: id + label
 OutputSpec       # declarative output contract
 ResolvedOutput   # source-result resolution
-Display payloads # renderer compatibility layer, temporary
+ResultPayload    # runtime data access for renderers
 ```
 
 ### Phase 6 — Parameterized/lazy results
@@ -341,4 +337,4 @@ After the new model is stable:
 - remove compatibility paths;
 - settle naming;
 - consolidate tests around the dynamic dependency chain;
-- consider renaming `QueryHistory` if its role has clearly become an artifact/source registry.
+- keep historical compatibility docs/tests from reintroducing old history-centric terminology into the runtime model.

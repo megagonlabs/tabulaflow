@@ -16,22 +16,22 @@ from tabulaflow.core import (
     canonical_selection_key,
 )
 from tabulaflow.core.types import ExecResult, PredQuery
-from tabulaflow.toolhub import OutputResolutionError, OutputResolver, QueryHistory, QueryHistoryOutputStore
+from tabulaflow.toolhub import OutputResolutionError, OutputResolver, OutputStore
 
 
-async def _history_with_results() -> QueryHistory:
-    history = QueryHistory()
-    await history.add(
+async def _output_store_with_results() -> OutputStore:
+    output_store = OutputStore()
+    await output_store.add(
         "workspace",
         "sql",
         PredQuery(query="SELECT 1 AS a", exec_result=ExecResult(df=pd.DataFrame({"a": [1]}))),
     )
-    await history.add(
+    await output_store.add(
         "workspace",
         "sql",
         PredQuery(query="SELECT 2 AS a", exec_result=ExecResult(df=pd.DataFrame({"a": [2]}))),
     )
-    return history
+    return output_store
 
 
 def _parameters() -> list[ChoiceParameter | NumberParameter]:
@@ -47,8 +47,8 @@ def _parameters() -> list[ChoiceParameter | NumberParameter]:
 
 @pytest.mark.asyncio
 async def test_constant_result_plan_resolves_answer_artifact() -> None:
-    history = await _history_with_results()
-    resolver = OutputResolver(QueryHistoryOutputStore(history))
+    output_store = await _output_store_with_results()
+    resolver = OutputResolver(output_store)
     output = OutputSpec(
         sources=[SourceDef(id="fixed", plan=ConstantResultPlan(result_id="Q1"))],
         artifacts=[ArtifactSpec(id="table", view=TableView(source="fixed"))],
@@ -67,8 +67,8 @@ async def test_constant_result_plan_resolves_answer_artifact() -> None:
 
 @pytest.mark.asyncio
 async def test_result_lookup_plan_resolves_by_projected_selection() -> None:
-    history = await _history_with_results()
-    resolver = OutputResolver(QueryHistoryOutputStore(history))
+    output_store = await _output_store_with_results()
+    resolver = OutputResolver(output_store)
     output = OutputSpec(
         parameters=_parameters(),
         sources=[
@@ -99,8 +99,8 @@ async def test_result_lookup_plan_resolves_by_projected_selection() -> None:
 
 @pytest.mark.asyncio
 async def test_result_lookup_plan_rejects_invalid_choice() -> None:
-    history = await _history_with_results()
-    resolver = OutputResolver(QueryHistoryOutputStore(history))
+    output_store = await _output_store_with_results()
+    resolver = OutputResolver(output_store)
     output = OutputSpec(
         parameters=_parameters(),
         sources=[
@@ -119,8 +119,8 @@ async def test_result_lookup_plan_rejects_invalid_choice() -> None:
 
 @pytest.mark.asyncio
 async def test_result_lookup_plan_reports_unavailable_selection() -> None:
-    history = await _history_with_results()
-    resolver = OutputResolver(QueryHistoryOutputStore(history))
+    output_store = await _output_store_with_results()
+    resolver = OutputResolver(output_store)
     output = OutputSpec(
         parameters=_parameters(),
         sources=[
@@ -139,8 +139,8 @@ async def test_result_lookup_plan_reports_unavailable_selection() -> None:
 
 @pytest.mark.asyncio
 async def test_query_plan_materialization_is_not_implemented_yet() -> None:
-    history = await _history_with_results()
-    resolver = OutputResolver(QueryHistoryOutputStore(history))
+    output_store = await _output_store_with_results()
+    resolver = OutputResolver(output_store)
     output = OutputSpec(
         parameters=_parameters(),
         sources=[

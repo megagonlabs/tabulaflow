@@ -76,7 +76,7 @@ if TYPE_CHECKING:
         ExecuteBashTool,
         ExtractRowsFromDocumentsTool,
         FileEditorTool,
-        QueryHistory,
+        OutputStore,
         RegistryGetColumnJsonSchemaTool,
         RegistryGetDBDocumentTool,
         RegistryGetTableSchemaTool,
@@ -212,7 +212,7 @@ class ChatAgent:
     _message_history: list[ModelMessage] = field(init=False, default_factory=list)
     _system_prompt: str = field(init=False, default=SYSTEM_PROMPT)
     _pydantic_ai_agent: Agent[None, str] | None = field(init=False, default=None)
-    _query_history: QueryHistory = field(init=False)
+    _output_store: OutputStore = field(init=False)
     _message_store: MessageStore = field(init=False)
     _main_scope: ScopedMessageStore = field(init=False)
     _tools: _Toolset = field(init=False)
@@ -222,9 +222,9 @@ class ChatAgent:
     _active_emit: Callable[[ChatEvent], None] | None = field(init=False, default=None)
 
     def __post_init__(self) -> None:
-        from tabulaflow.toolhub import ProgressReportingTool, QueryHistory
+        from tabulaflow.toolhub import ProgressReportingTool, OutputStore
 
-        self._query_history = QueryHistory(spill_connector=self.workspace)
+        self._output_store = OutputStore(spill_connector=self.workspace)
         self._message_store = MessageStore()
         self._main_scope = self._message_store.scoped("main")
         subagent_dir = self.trajectory_log_dir / "subagents" if self.trajectory_log_dir is not None else None
@@ -258,7 +258,7 @@ class ChatAgent:
         return "\n\n".join(parts)
 
     def _build_tools(self, subagent_dir: Path | None) -> _Toolset:
-        """Construct the agent's toolset, wiring in the shared query history and
+        """Construct the agent's toolset, wiring in the shared output store and
         message store. ``subagent_dir`` (if set) is where subagent trajectories land."""
         from tabulaflow.core.formatters.sql_ddl import SQLDDLSchemaFormatter
         from tabulaflow.modulehub.db_summarizer import DBSummarizer
@@ -305,8 +305,8 @@ class ChatAgent:
             )
 
         return _Toolset(
-            run_query=RegistryRunQueryTool(self.registry, history=self._query_history, enable_refresh=True),
-            run_query_for_each_combination=RunQueryForEachCombinationTool(self.registry, history=self._query_history),
+            run_query=RegistryRunQueryTool(self.registry, output_store=self._output_store, enable_refresh=True),
+            run_query_for_each_combination=RunQueryForEachCombinationTool(self.registry, output_store=self._output_store),
             get_db_document=RegistryGetDBDocumentTool(
                 self.registry,
                 db_summarizer_cls=DBSummarizer,
@@ -316,7 +316,7 @@ class ChatAgent:
             ),
             get_table_schema=RegistryGetTableSchemaTool(self.registry, SQLDDLSchemaFormatter(), enable_refresh=True),
             get_column_json_schema=RegistryGetColumnJsonSchemaTool(self.registry),
-            transfer_record=RegistryTransferRecordTool(self.registry, self._query_history),
+            transfer_record=RegistryTransferRecordTool(self.registry, self._output_store),
             run_subagent_for_each_row=run_subagent_for_each_row,
             extract_rows_from_documents=extract_rows_from_documents,
             connect_data_source=(
@@ -345,10 +345,10 @@ class ChatAgent:
                 model_settings=self._subagent_model_settings(),
                 trajectory_log_dir=subagent_dir,
             ),
-            render_chart=RenderChartTool(history=self._query_history),
-            render_graph=RenderGraphTool(history=self._query_history),
-            render_map=RenderMapTool(history=self._query_history),
-            show_artifacts=ShowArtifactsTool(history=self._query_history),
+            render_chart=RenderChartTool(output_store=self._output_store),
+            render_graph=RenderGraphTool(output_store=self._output_store),
+            render_map=RenderMapTool(output_store=self._output_store),
+            show_artifacts=ShowArtifactsTool(output_store=self._output_store),
             web_browser=WebBrowserTool(),
         )
 
@@ -388,9 +388,9 @@ class ChatAgent:
         )
 
     @property
-    def query_history(self) -> QueryHistory:
-        """The live query history — results the agent's answers reference."""
-        return self._query_history
+    def output_store(self) -> OutputStore:
+        """The live output store — results the agent's answers reference."""
+        return self._output_store
 
     @staticmethod
     def _unwrap_model(model: object) -> object:
@@ -759,7 +759,7 @@ class ChatAgent:
             # the authoritative final usage, then the terminal result.
             if final_usage is not None:
                 emit(UsageUpdated(usage=final_usage))
-            result = await _build_chat_result(answer_text, _declared_bundle(completed_results), self._query_history)
+            result = await _build_chat_result(answer_text, _declared_bundle(completed_results), self._output_store)
             result.usage = final_usage
             emit(Finished(result=result))
         finally:
@@ -784,16 +784,16 @@ class ChatAgent:
 async def _build_chat_result(
     answer_text: str,
     bundle: ArtifactBundle | None,
-    query_history: QueryHistory,
+    output_store: OutputStore,
 ) -> ChatResult:
-    output = _output_spec_from_bundle(bundle, query_history) if bundle is not None else OutputSpec()
+    output = _output_spec_from_bundle(bundle, output_store) if bundle is not None else OutputSpec()
     return ChatResult(
         text=_strip_answer_marker(answer_text),
         output=output,
     )
 
 
-def _output_spec_from_bundle(bundle: "ArtifactBundle", query_history: QueryHistory) -> OutputSpec:
+def _output_spec_from_bundle(bundle: "ArtifactBundle", output_store: OutputStore) -> OutputSpec:
     sources: dict[str, SourceDef] = {}
     artifacts: list[ArtifactSpec] = []
     parameters: list[ParameterDef] = [
@@ -809,7 +809,7 @@ def _output_spec_from_bundle(bundle: "ArtifactBundle", query_history: QueryHisto
         if source_id in sources:
             return
         if source_id.startswith("QS"):
-            family = query_history.get_family(source_id)
+            family = output_store.get_family(source_id)
             sources[source_id] = SourceDef(
                 id=source_id,
                 parameter_ids=list(family.dimensions),
@@ -824,7 +824,7 @@ def _output_spec_from_bundle(bundle: "ArtifactBundle", query_history: QueryHisto
             sources[source_id] = SourceDef(id=source_id, plan=ConstantResultPlan(result_id=source_id))
 
     for ref in bundle.artifacts:
-        artifact = _artifact_from_ref(ref.id, ref.label, query_history)
+        artifact = _artifact_from_ref(ref.id, ref.label, output_store)
         if artifact is None:
             continue
         for source_id in _view_source_ids(artifact.view):
@@ -846,28 +846,28 @@ def _selection_from_key(key: str) -> dict[str, SelectionValue]:
     return selection
 
 
-def _artifact_from_ref(ref_id: str, label: str | None, query_history: QueryHistory) -> ArtifactSpec | None:
+def _artifact_from_ref(ref_id: str, label: str | None, output_store: OutputStore) -> ArtifactSpec | None:
     if ref_id.startswith("CHART"):
         try:
-            chart = query_history.get_chart(ref_id)
+            chart = output_store.get_chart(ref_id)
         except (KeyError, ValueError):
             return None
         return chart.model_copy(update={"label": label})
     if ref_id.startswith("MAP"):
         try:
-            stored_map = query_history.get_map(ref_id)
+            stored_map = output_store.get_map(ref_id)
         except (KeyError, ValueError):
             return None
         return stored_map.model_copy(update={"label": label})
     if ref_id.startswith("GRAPH"):
         try:
-            graph = query_history.get_graph(ref_id)
+            graph = output_store.get_graph(ref_id)
         except (KeyError, ValueError):
             return None
         return graph.model_copy(update={"label": label})
     if ref_id.startswith("QS"):
         try:
-            query_history.get_family(ref_id)
+            output_store.get_family(ref_id)
         except (KeyError, ValueError):
             return None
         return ArtifactSpec(id=ref_id, label=label, view=TableView(source=ref_id))

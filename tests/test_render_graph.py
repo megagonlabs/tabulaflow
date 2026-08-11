@@ -12,7 +12,7 @@ import pytest
 
 from tabulaflow.core.types import ExecResult, PredQuery
 from tabulaflow.core.outputs import GraphArtifactView
-from tabulaflow.toolhub.query_history import QueryHistory
+from tabulaflow.toolhub.output_store import OutputStore
 from tabulaflow.toolhub.render_graph import (
     GRAPH_MAX_NODES,
     RenderGraphTool,
@@ -22,15 +22,15 @@ from tabulaflow.toolhub.render_graph import (
 )
 
 
-async def _history_with(*dfs: pd.DataFrame) -> QueryHistory:
-    history = QueryHistory()
+async def _output_store_with(*dfs: pd.DataFrame) -> OutputStore:
+    output_store = OutputStore()
     for df in dfs:
-        await history.add("db", "sql", PredQuery(query="SELECT 1", exec_result=ExecResult(df=df)))
-    return history
+        await output_store.add("db", "sql", PredQuery(query="SELECT 1", exec_result=ExecResult(df=df)))
+    return output_store
 
 
-def _graph_view(history: QueryHistory, graph_id: str) -> GraphArtifactView:
-    view = history.get_graph(graph_id).view
+def _graph_view(output_store: OutputStore, graph_id: str) -> GraphArtifactView:
+    view = output_store.get_graph(graph_id).view
     assert isinstance(view, GraphArtifactView)
     return view
 
@@ -209,21 +209,21 @@ class TestNormalizeGraphSpec:
 
 class TestRenderGraphTool:
     async def test_graph_created(self) -> None:
-        history = await _history_with(pd.DataFrame({"src": ["a", "b"], "dst": ["b", "c"], "rel": ["x", "y"]}))
+        output_store = await _output_store_with(pd.DataFrame({"src": ["a", "b"], "dst": ["b", "c"], "rel": ["x", "y"]}))
         spec = {
             "title": "Lineage",
             "nodes": [{"source_id": "Q1", "id": "src"}, {"source_id": "Q1", "id": "dst"}],
             "edges": [{"source_id": "Q1", "source": "src", "target": "dst", "label": "rel"}],
         }
-        msg = await RenderGraphTool(history=history)(graph_spec=json.dumps(spec))
+        msg = await RenderGraphTool(output_store=output_store)(graph_spec=json.dumps(spec))
         assert "Network graph GRAPH1 created from Q1" in msg
         assert "3 nodes, 2 edges (all nodes one color; set group on node sources to color by type)" in msg
-        graph = materialize_graph_view(_graph_view(history, "GRAPH1").spec, {"Q1": await history.get_dataframe("Q1")})
+        graph = materialize_graph_view(_graph_view(output_store, "GRAPH1").spec, {"Q1": await output_store.get_dataframe("Q1")})
         assert graph.edges[0].source == "a"
         assert graph.edges[0].target == "b"
 
     async def test_graph_created_reports_node_types(self) -> None:
-        history = await _history_with(
+        output_store = await _output_store_with(
             pd.DataFrame({"account": ["a", "b"], "merchant": ["m1", "m2"], "rel": ["paid", "paid"]})
         )
         spec = {
@@ -233,7 +233,7 @@ class TestRenderGraphTool:
             ],
             "edges": [{"source_id": "Q1", "source": "account", "target": "merchant", "label": "rel"}],
         }
-        msg = await RenderGraphTool(history=history)(graph_spec=json.dumps(spec))
+        msg = await RenderGraphTool(output_store=output_store)(graph_spec=json.dumps(spec))
         assert "4 nodes in 2 types, 2 edges" in msg
         assert "one color" not in msg
 
@@ -244,12 +244,12 @@ class TestRenderGraphTool:
                 "dst": [f"d{i}" for i in range(GRAPH_MAX_NODES + 1)],
             }
         )
-        history = await _history_with(df)
+        output_store = await _output_store_with(df)
         spec = {
             "nodes": [{"source_id": "Q1", "id": "src"}, {"source_id": "Q1", "id": "dst"}],
             "edges": [{"source_id": "Q1", "source": "src", "target": "dst"}],
         }
-        msg = await RenderGraphTool(history=history)(graph_spec=json.dumps(spec))
+        msg = await RenderGraphTool(output_store=output_store)(graph_spec=json.dumps(spec))
         assert "too large" in msg
         assert "nodes" in msg
-        assert history._artifacts == {}
+        assert output_store._artifacts == {}

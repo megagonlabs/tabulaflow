@@ -15,7 +15,7 @@ from tabulaflow.toolhub import (
     Choice,
     Dimension,
     QueryDimension,
-    QueryHistory,
+    OutputStore,
     RunQueryForEachCombinationTool,
     ShowArtifactsTool,
 )
@@ -28,8 +28,8 @@ def _text(result: ToolReturn) -> str:
 
 
 @pytest.fixture
-async def history() -> QueryHistory:
-    h = QueryHistory()
+async def output_store() -> OutputStore:
+    h = OutputStore()
     await h.add("workspace", "sql", PredQuery(query="SELECT 1", exec_result=ExecResult(df=pd.DataFrame({"a": [1]}))))
     h.add_chart("Q1", {"mark": "bar"})
     return h
@@ -37,8 +37,8 @@ async def history() -> QueryHistory:
 
 class TestShowArtifacts:
     @pytest.mark.asyncio
-    async def test_declares_the_bundle_in_metadata(self, history: QueryHistory) -> None:
-        result = await ShowArtifactsTool(history=history)(
+    async def test_declares_the_bundle_in_metadata(self, output_store: OutputStore) -> None:
+        result = await ShowArtifactsTool(output_store=output_store)(
             [ArtifactRef(id="Q1", label="row count"), ArtifactRef(id="CHART1", label="rows by group")]
         )
 
@@ -48,15 +48,15 @@ class TestShowArtifacts:
         )
 
     @pytest.mark.asyncio
-    async def test_accepts_an_empty_bundle(self, history: QueryHistory) -> None:
-        result = await ShowArtifactsTool(history=history)([])
+    async def test_accepts_an_empty_bundle(self, output_store: OutputStore) -> None:
+        result = await ShowArtifactsTool(output_store=output_store)([])
 
         assert _text(result) == "showing nothing"
         assert result.metadata == ArtifactBundle(artifacts=())
 
     @pytest.mark.asyncio
-    async def test_rejects_unknown_ids(self, history: QueryHistory) -> None:
-        result = await ShowArtifactsTool(history=history)(
+    async def test_rejects_unknown_ids(self, output_store: OutputStore) -> None:
+        result = await ShowArtifactsTool(output_store=output_store)(
             [ArtifactRef(id="Q9", label="missing"), ArtifactRef(id="MAP1", label="also missing")]
         )
 
@@ -64,8 +64,8 @@ class TestShowArtifacts:
         assert result.metadata is None
 
     @pytest.mark.asyncio
-    async def test_rejects_the_id_as_its_own_label(self, history: QueryHistory) -> None:
-        result = await ShowArtifactsTool(history=history)([ArtifactRef(id="Q1", label="Q1")])
+    async def test_rejects_the_id_as_its_own_label(self, output_store: OutputStore) -> None:
+        result = await ShowArtifactsTool(output_store=output_store)([ArtifactRef(id="Q1", label="Q1")])
 
         assert "needs a human-readable label" in _text(result)
         assert result.metadata is None
@@ -103,8 +103,8 @@ def _dimensions() -> list[Dimension]:
 
 
 @pytest.fixture
-async def families(tmp_path: Path) -> tuple[QueryHistory, ShowArtifactsTool]:
-    """A history holding three families: arity 2, arity 1, and one partial over ``period``."""
+async def families(tmp_path: Path) -> tuple[OutputStore, ShowArtifactsTool]:
+    """A output_store holding three families: arity 2, arity 1, and one partial over ``period``."""
     connector = await SQLConnector.from_url_async(
         global_id="test-panel",
         url=f"duckdb:///{tmp_path / 'w.duckdb'}",
@@ -124,8 +124,8 @@ async def families(tmp_path: Path) -> tuple[QueryHistory, ShowArtifactsTool]:
     )
     registry = DBRegistry()
     registry.register("workspace", connector)
-    history = QueryHistory()
-    runner = RunQueryForEachCombinationTool(registry, history=history)
+    output_store = OutputStore()
+    runner = RunQueryForEachCombinationTool(registry, output_store=output_store)
     both = [
         QueryDimension(id="ranking", choices=["net", "order_count"]),
         QueryDimension(id="period", choices=["q2", "q3"]),
@@ -133,13 +133,13 @@ async def families(tmp_path: Path) -> tuple[QueryHistory, ShowArtifactsTool]:
     await runner("workspace", both, TOP)  # QS1
     await runner("workspace", [QueryDimension(id="period", choices=["q2", "q3"])], BY_REGION)  # QS2
     await runner("workspace", [QueryDimension(id="period", choices=["q2"])], QUARTER_ONLY)  # QS3
-    return history, ShowArtifactsTool(history=history)
+    return output_store, ShowArtifactsTool(output_store=output_store)
 
 
 class TestShowArtifactsPanel:
     @pytest.mark.asyncio
     async def test_declares_dimensions_and_flags_partial_coverage(
-        self, families: tuple[QueryHistory, ShowArtifactsTool]
+        self, families: tuple[OutputStore, ShowArtifactsTool]
     ) -> None:
         _, show = families
 
@@ -159,7 +159,7 @@ class TestShowArtifactsPanel:
         assert [dim.id for dim in result.metadata.dimensions] == ["ranking", "period"]
 
     @pytest.mark.asyncio
-    async def test_rejects_a_family_without_a_panel(self, families: tuple[QueryHistory, ShowArtifactsTool]) -> None:
+    async def test_rejects_a_family_without_a_panel(self, families: tuple[OutputStore, ShowArtifactsTool]) -> None:
         _, show = families
 
         result = await show([ArtifactRef(id="QS1", label="top customers")])
@@ -169,7 +169,7 @@ class TestShowArtifactsPanel:
 
     @pytest.mark.asyncio
     async def test_rejects_an_undeclared_dimension_or_choice(
-        self, families: tuple[QueryHistory, ShowArtifactsTool]
+        self, families: tuple[OutputStore, ShowArtifactsTool]
     ) -> None:
         _, show = families
         period_only = [_dimensions()[1]]
@@ -190,7 +190,7 @@ class TestShowArtifactsPanel:
 
     @pytest.mark.asyncio
     async def test_rejects_a_dimension_no_card_varies_over(
-        self, families: tuple[QueryHistory, ShowArtifactsTool]
+        self, families: tuple[OutputStore, ShowArtifactsTool]
     ) -> None:
         _, show = families
 
@@ -201,7 +201,7 @@ class TestShowArtifactsPanel:
 
     @pytest.mark.asyncio
     async def test_rejects_a_card_that_misses_the_first_choice(
-        self, families: tuple[QueryHistory, ShowArtifactsTool]
+        self, families: tuple[OutputStore, ShowArtifactsTool]
     ) -> None:
         _, show = families
         q3_first = [

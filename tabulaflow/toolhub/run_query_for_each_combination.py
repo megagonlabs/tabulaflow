@@ -24,7 +24,7 @@ from tabulaflow.core.types import ErrorInfo, PredQuery
 from tabulaflow.core.utils import flatten_multiline, format_df
 from tabulaflow.toolhub.base import ToolCallOutcome
 from tabulaflow.toolhub.engines.sql import format_sqlalchemy_error_msg
-from tabulaflow.toolhub.query_history import QueryFamily, QueryHistory
+from tabulaflow.toolhub.output_store import QueryFamily, OutputStore
 
 DEFAULT_MAX_COMBINATIONS = 50
 
@@ -278,7 +278,7 @@ class RunQueryForEachCombinationTool:
 
     Renders the template once per combination, executes the distinct renders
     concurrently against a registered database, and registers the whole set as one
-    query family (``QS*``) in ``QueryHistory``.
+    query family (``QS*``) in ``OutputStore``.
 
     Attributes:
         registry: Registry the ``db_alias`` argument resolves against.
@@ -292,14 +292,14 @@ class RunQueryForEachCombinationTool:
         self,
         registry: DBRegistry,
         *,
-        history: QueryHistory,
+        output_store: OutputStore,
         timeout: int | None = None,
         max_combinations: int = DEFAULT_MAX_COMBINATIONS,
     ) -> None:
         self.registry = registry
         self.timeout = tabulaflow_config.query_timeout if timeout is None else timeout
         self.max_combinations = max_combinations
-        self._history = history
+        self._output_store = output_store
 
     async def __call__(self, db_alias: str, dimensions: Dimensions, query_template: str) -> ToolReturn:
         """Render a query template once per combination of dimension choices and run each.
@@ -379,7 +379,7 @@ class RunQueryForEachCombinationTool:
             raise ValueError(_format_failures(failures, len(distinct)))
 
         by_selection = {key: pred_queries[_normalize(query)] for key, query in queries.items()}
-        family = await self._history.add_family(
+        family = await self._output_store.add_family(
             db_alias,
             connector.connector_type,
             {dim.id: list(dim.choices) for dim in dimensions},

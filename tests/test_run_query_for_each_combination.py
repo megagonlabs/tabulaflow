@@ -11,7 +11,7 @@ from pydantic_ai import ToolReturn
 from tabulaflow.core.db_connector.db_registry import DBRegistry
 from tabulaflow.core.db_connector.sql_conn import SQLConnector
 from tabulaflow.core.types import ExecResult
-from tabulaflow.toolhub import QueryDimension, QueryHistory, RunQueryForEachCombinationTool, ToolCallOutcome
+from tabulaflow.toolhub import QueryDimension, OutputStore, RunQueryForEachCombinationTool, ToolCallOutcome
 
 
 def _text(result: ToolReturn) -> str:
@@ -44,8 +44,8 @@ async def registry(tmp_path: Path) -> DBRegistry:
     return r
 
 
-def _tool(registry: DBRegistry, history: QueryHistory | None = None) -> RunQueryForEachCombinationTool:
-    return RunQueryForEachCombinationTool(registry, history=history or QueryHistory(), max_combinations=16)
+def _tool(registry: DBRegistry, output_store: OutputStore | None = None) -> RunQueryForEachCombinationTool:
+    return RunQueryForEachCombinationTool(registry, output_store=output_store or OutputStore(), max_combinations=16)
 
 
 class TestRunQueryForEachCombination:
@@ -137,8 +137,8 @@ class TestRunQueryForEachCombination:
 
     @pytest.mark.asyncio
     async def test_expands_and_registers_family(self, registry: DBRegistry) -> None:
-        history = QueryHistory()
-        result = await _tool(registry, history)(
+        output_store = OutputStore()
+        result = await _tool(registry, output_store)(
             "workspace",
             [
                 QueryDimension(id="ranking", choices=["net", "gross"]),
@@ -155,7 +155,7 @@ class TestRunQueryForEachCombination:
 
         assert result.metadata == ToolCallOutcome(count=4, unit="combinations")
         assert _text(result).startswith("QS1 —")
-        family = history.get_family("QS1")
+        family = output_store.get_family("QS1")
         assert family.dimensions == {"ranking": ["net", "gross"], "period": ["q2", "q3"]}
         assert set(family.record_ids_by_selection) == {
             "period=q2;ranking=net",
@@ -163,14 +163,14 @@ class TestRunQueryForEachCombination:
             "period=q2;ranking=gross",
             "period=q3;ranking=gross",
         }
-        record = await history.get(family.record_ids_by_selection["period=q2;ranking=net"])
-        df = await history.get_dataframe(record.record_id)
+        record = await output_store.get(family.record_ids_by_selection["period=q2;ranking=net"])
+        df = await output_store.get_dataframe(record.record_id)
         assert df.to_dict("records")[0] == {"customer": "Acme", "value": 10}
 
     @pytest.mark.asyncio
     async def test_rendered_queries_trim_jinja_block_blank_lines(self, registry: DBRegistry) -> None:
-        history = QueryHistory()
-        await _tool(registry, history)(
+        output_store = OutputStore()
+        await _tool(registry, output_store)(
             "workspace",
             [QueryDimension(id="ranking", choices=["net", "gross"])],
             """
@@ -184,8 +184,8 @@ class TestRunQueryForEachCombination:
             """,
         )
 
-        family = history.get_family("QS1")
-        record = await history.get(family.record_ids_by_selection["ranking=net"])
+        family = output_store.get_family("QS1")
+        record = await output_store.get(family.record_ids_by_selection["ranking=net"])
 
         assert "\n\n" not in record.query
         assert record.query == dedent("""\
@@ -197,9 +197,9 @@ class TestRunQueryForEachCombination:
     async def test_output_format_survives_history_spill(self, registry: DBRegistry) -> None:
         connector = registry.get("workspace")
         assert isinstance(connector, SQLConnector)
-        history = QueryHistory(max_in_memory=1, spill_connector=connector)
+        output_store = OutputStore(max_in_memory=1, spill_connector=connector)
 
-        result = await _tool(registry, history)(
+        result = await _tool(registry, output_store)(
             "workspace",
             [
                 QueryDimension(id="ranking", choices=["net", "gross"]),
@@ -221,8 +221,8 @@ class TestRunQueryForEachCombination:
 
     @pytest.mark.asyncio
     async def test_identical_renders_share_record(self, registry: DBRegistry) -> None:
-        history = QueryHistory()
-        result = await _tool(registry, history)(
+        output_store = OutputStore()
+        result = await _tool(registry, output_store)(
             "workspace",
             [
                 QueryDimension(id="ranking", choices=["net", "gross"]),
@@ -243,7 +243,7 @@ class TestRunQueryForEachCombination:
 
         assert "4 combinations, 3 executed (1 identical)" in _text(result)
         assert "period=q3;ranking=gross (2 rows) — same query as period=q2;ranking=gross" in _text(result)
-        family = history.get_family("QS1")
+        family = output_store.get_family("QS1")
         assert (
             family.record_ids_by_selection["period=q2;ranking=gross"]
             == family.record_ids_by_selection["period=q3;ranking=gross"]
@@ -251,8 +251,8 @@ class TestRunQueryForEachCombination:
 
     @pytest.mark.asyncio
     async def test_comment_only_difference_shares_record(self, registry: DBRegistry) -> None:
-        history = QueryHistory()
-        result = await _tool(registry, history)(
+        output_store = OutputStore()
+        result = await _tool(registry, output_store)(
             "workspace",
             [QueryDimension(id="ranking", choices=["net", "net_again", "gross"])],
             """
@@ -264,7 +264,7 @@ class TestRunQueryForEachCombination:
         )
 
         assert "3 combinations, 2 executed (1 identical)" in _text(result)
-        family = history.get_family("QS1")
+        family = output_store.get_family("QS1")
         assert family.record_ids_by_selection["ranking=net"] == family.record_ids_by_selection["ranking=net_again"]
 
     @pytest.mark.asyncio
@@ -318,8 +318,8 @@ class TestRunQueryForEachCombination:
 
     @pytest.mark.asyncio
     async def test_query_failure_registers_no_family(self, registry: DBRegistry) -> None:
-        history = QueryHistory()
-        result = await _tool(registry, history)(
+        output_store = OutputStore()
+        result = await _tool(registry, output_store)(
             "workspace",
             [QueryDimension(id="ranking", choices=["net", "gross"])],
             "SELECT * FROM missing_{{ ranking }}",
@@ -330,7 +330,7 @@ class TestRunQueryForEachCombination:
         assert "ranking=net — " in _text(result)
         assert "ranking=gross — " in _text(result)
         with pytest.raises(KeyError):
-            history.get_family("QS1")
+            output_store.get_family("QS1")
 
     @pytest.mark.asyncio
     async def test_combinations_sharing_an_error_are_grouped(self, registry: DBRegistry) -> None:

@@ -9,11 +9,11 @@ from pydantic_ai import Tool
 from tabulaflow.core.db_connector.db_registry import DBRegistry
 from tabulaflow.core.db_connector.sql_conn import SQLConnector
 
-from tabulaflow.toolhub.query_history import QueryHistory
+from tabulaflow.toolhub.output_store import OutputStore
 
 
 class RegistryTransferRecordTool:
-    """Persist a query-history record into a target SQL table.
+    """Persist a output-store record into a target SQL table.
 
     This tool is intentionally record-centric: callers reference a prior
     ``run_query`` output by ``record_id`` and write that DataFrame into a
@@ -26,16 +26,16 @@ class RegistryTransferRecordTool:
     def __init__(
         self,
         registry: DBRegistry,
-        history: QueryHistory,
+        output_store: OutputStore,
     ) -> None:
         """Initialize the tool.
 
         Args:
             registry: The database registry containing available connectors.
-            history: Shared query-history store used by ``run_query``.
+            history: Shared output-store store used by ``run_query``.
         """
         self.registry = registry
-        self._history = history
+        self._output_store = output_store
 
     async def __call__(
         self,
@@ -57,12 +57,12 @@ class RegistryTransferRecordTool:
             mode: ``append`` to insert rows, ``replace`` to recreate table.
         """
         try:
-            record = await self._history.get(record_id)
+            record = await self._output_store.get(record_id)
         except KeyError:
             return f"(error: unknown record_id {record_id!r})"
 
         try:
-            df = await self._history.get_dataframe(record.record_id)
+            df = await self._output_store.get_dataframe(record.record_id)
         except ValueError as e:
             return f"(error: {e})"
 

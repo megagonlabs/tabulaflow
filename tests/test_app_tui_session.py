@@ -335,7 +335,7 @@ def test_switching_preset_preserves_live_chat_agent_state(tmp_path: Path, monkey
     agent = _activate_selected(session)
     agent.note_event("remember this")
     message_history = agent._message_history
-    query_history = agent.query_history
+    output_store = agent.output_store
 
     session.llm_preset = _preset(
         model="openai-responses:gpt-5.4-mini",
@@ -349,7 +349,7 @@ def test_switching_preset_preserves_live_chat_agent_state(tmp_path: Path, monkey
     assert session.active_chat_agent is agent
     assert agent.resolve_api_keys()[0] == "sk-test123456789ab4x"
     assert agent._message_history is message_history
-    assert agent.query_history is query_history
+    assert agent.output_store is output_store
 
 
 @pytest.mark.asyncio

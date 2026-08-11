@@ -9,7 +9,7 @@ from pydantic import BaseModel, Field
 from pydantic_ai import Tool, ToolReturn
 
 from tabulaflow.core.outputs import ChartView
-from tabulaflow.toolhub.query_history import QueryFamily, QueryHistory
+from tabulaflow.toolhub.output_store import QueryFamily, OutputStore
 
 
 class ArtifactRef(BaseModel):
@@ -51,17 +51,17 @@ class ArtifactBundle:
 class ShowArtifactsTool:
     """Declare which recorded results a turn shows, each with a display label.
 
-    Validates the ids against ``QueryHistory`` and hands the host the declared
+    Validates the ids against ``OutputStore`` and hands the host the declared
     bundle via the tool return's metadata.
 
     Attributes:
-        history: Where the cited ids are resolved.
+        output_store: Where the cited ids are resolved.
     """
 
     name: ClassVar = "show_artifacts"
 
-    def __init__(self, history: QueryHistory) -> None:
-        self._history = history
+    def __init__(self, output_store: OutputStore) -> None:
+        self._output_store = output_store
 
     async def __call__(self, artifacts: Artifacts, dimensions: Dimensions = []) -> ToolReturn:
         """Show the user a set of results, each as a labelled card.
@@ -164,15 +164,15 @@ class ShowArtifactsTool:
             return f"{artifact.id} needs a human-readable label, not its id"
         try:
             if artifact.id.startswith("CHART"):
-                self._history.get_chart(artifact.id)
+                self._output_store.get_chart(artifact.id)
             elif artifact.id.startswith("MAP"):
-                self._history.get_map(artifact.id)
+                self._output_store.get_map(artifact.id)
             elif artifact.id.startswith("GRAPH"):
-                self._history.get_graph(artifact.id)
+                self._output_store.get_graph(artifact.id)
             elif artifact.id.startswith("QS"):
-                self._history.get_family(artifact.id)
+                self._output_store.get_family(artifact.id)
             else:
-                await self._history.get(artifact.id)
+                await self._output_store.get(artifact.id)
         except (KeyError, ValueError):
             return f"unknown artifact id {artifact.id!r}"
         return None
@@ -181,11 +181,11 @@ class ShowArtifactsTool:
         """The query family behind ``artifact_id``, or ``None`` for a fixed artifact."""
         try:
             if artifact_id.startswith("QS"):
-                return self._history.get_family(artifact_id)
+                return self._output_store.get_family(artifact_id)
             if artifact_id.startswith("CHART"):
-                chart = self._history.get_chart(artifact_id)
+                chart = self._output_store.get_chart(artifact_id)
                 if isinstance(chart.view, ChartView) and chart.view.source.startswith("QS"):
-                    return self._history.get_family(chart.view.source)
+                    return self._output_store.get_family(chart.view.source)
         except KeyError:
             return None
         return None

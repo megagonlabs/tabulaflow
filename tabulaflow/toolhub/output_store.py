@@ -1,4 +1,4 @@
-"""Session-level query history with LRU spill to a workspace DuckDB."""
+"""Session-level output store with LRU DataFrame spill to a workspace DuckDB."""
 
 from __future__ import annotations
 
@@ -8,19 +8,21 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Literal, TypeAlias
 
-from tabulaflow.core.outputs import ArtifactSpec, ChartView, GraphArtifactView, MapView
+import pandas as pd
+from pydantic import BaseModel, ConfigDict, field_serializer, field_validator
+
+from tabulaflow.core.dataframe import _deserialize_dataframe, _serialize_dataframe
+from tabulaflow.core.outputs import ArtifactSpec, ChartView, GraphArtifactView, MapView, ResultId, ResultRecord
 from tabulaflow.core.types import ErrorInfo, GraphView, PredQuery
 
 if TYPE_CHECKING:
-    import pandas as pd
-
     from tabulaflow.core.db_connector.sql_conn import SQLConnector
 
 logger = logging.getLogger(__name__)
 
 # Schema this module spills result DataFrames into — one table per record. Kept out
 # of the workspace connector's introspected schema (see ``create_workspace_connector``).
-QUERY_HISTORY_SCHEMA = "_query_history"
+OUTPUT_STORE_SCHEMA = "_output_store"
 
 
 @dataclass
@@ -77,56 +79,23 @@ class QueryFamily:
     record_ids_by_selection: dict[str, str]
 
 
-@dataclass
-class ResolvedRecordRef:
-    """Concrete query record selected for an artifact source."""
+class ResultPayload(BaseModel):
+    """Runtime payload for a materialized result."""
 
-    record_id: str
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
-
-@dataclass
-class ResolvedQueryRecord:
-    """Concrete query record payload selected for display/export."""
-
-    record_id: str
-    connector_type: Literal["sql", "property_graph"]
-    query: str
+    record: ResultRecord
     df: pd.DataFrame | None = None
     graph: GraphView | None = None
 
-    @property
-    def query_lexer(self) -> Literal["sql", "cypher"]:
-        return "cypher" if self.connector_type == "property_graph" else "sql"
+    @field_serializer("df", when_used="always")
+    def _serialize_df(self, df: pd.DataFrame | None) -> dict[str, object] | None:
+        return _serialize_dataframe(df)
 
-
-@dataclass
-class SourceNotApplicable:
-    """An artifact source has no record at the selected controls."""
-
-    reason: str
-
-
-SourceResolution: TypeAlias = ResolvedRecordRef | SourceNotApplicable
-
-
-def _selection_key(selection: Mapping[str, str]) -> str:
-    """Key a projected finite-choice selection into a query-family variant map."""
-    return ";".join(f"{name}={choice}" for name, choice in sorted(selection.items()))
-
-
-def _project_family_selection(
-    family: QueryFamily, selection: Mapping[str, Any]
-) -> dict[str, str] | SourceNotApplicable:
-    """Project an answer selection onto the finite choices covered by ``family``."""
-    projected: dict[str, str] = {}
-    for name, choices in family.dimensions.items():
-        if name not in selection:
-            return SourceNotApplicable(f"missing selection for {name!r}")
-        choice = str(selection[name])
-        if choice not in choices:
-            return SourceNotApplicable(f"{name}={choice} is outside {family.family_id}")
-        projected[name] = choice
-    return projected
+    @field_validator("df", mode="before")
+    @classmethod
+    def _deserialize_df(cls, v: dict[str, object] | pd.DataFrame | None) -> pd.DataFrame | None:
+        return _deserialize_dataframe(v)
 
 
 def _map_source_ids(spec: Mapping[str, Any]) -> list[str]:
@@ -175,7 +144,7 @@ class _ResultFrameStore:
             return self._cache[storage_key]
         if storage_key not in self._persisted or self._spill_connector is None:
             raise KeyError(f"No stored result for {storage_key}")
-        result = await self._spill_connector.run_query_async(f'SELECT * FROM "{QUERY_HISTORY_SCHEMA}"."{storage_key}"')
+        result = await self._spill_connector.run_query_async(f'SELECT * FROM "{OUTPUT_STORE_SCHEMA}"."{storage_key}"')
         if result.df is None:
             raise KeyError(f"No stored result for {storage_key}")
         self._cache[storage_key] = result.df
@@ -196,7 +165,7 @@ class _ResultFrameStore:
     async def _ensure_schema(self) -> None:
         if self._schema_created or self._spill_connector is None:
             return
-        await self._spill_connector.run_query_async(f'CREATE SCHEMA IF NOT EXISTS "{QUERY_HISTORY_SCHEMA}"')
+        await self._spill_connector.run_query_async(f'CREATE SCHEMA IF NOT EXISTS "{OUTPUT_STORE_SCHEMA}"')
         self._schema_created = True
 
     async def _persist(self, storage_key: str, df: pd.DataFrame) -> bool:
@@ -207,7 +176,7 @@ class _ResultFrameStore:
             await self._spill_connector.write_dataframe_async(
                 df=df,
                 table_name=storage_key,
-                schema_name=QUERY_HISTORY_SCHEMA,
+                schema_name=OUTPUT_STORE_SCHEMA,
                 mode="replace",
             )
             return True
@@ -225,8 +194,8 @@ class _ResultFrameStore:
             self._cache.pop(evictable)
 
 
-class QueryHistory:
-    """Query history with write-through result storage in a workspace DuckDB.
+class OutputStore:
+    """Output store with write-through result storage in a workspace DuckDB.
 
     Every successful result DataFrame is persisted to the workspace
     connector (when set). The most recent ``max_in_memory`` DataFrames are
@@ -345,26 +314,6 @@ class QueryHistory:
         except KeyError:
             raise KeyError(f"No query family with id {family_id}") from None
 
-    def resolve_source_id(self, source_id: str, selection: Mapping[str, Any]) -> SourceResolution:
-        """Resolve an artifact's logical source to a concrete query record under ``selection``."""
-        if source_id.startswith("QS"):
-            family = self.get_family(source_id)
-            projected = _project_family_selection(family, selection)
-            if isinstance(projected, SourceNotApplicable):
-                return projected
-            key = _selection_key(projected)
-            record_id = family.record_ids_by_selection.get(key)
-            if record_id is None:
-                return SourceNotApplicable(f"{source_id} has no result for {key}")
-            self._require_record(record_id)
-            return ResolvedRecordRef(record_id)
-
-        if source_id.startswith("Q"):
-            self._require_record(source_id)
-            return ResolvedRecordRef(source_id)
-
-        raise ValueError(f"source_id must start with 'Q' or 'QS', got {source_id!r}")
-
     def _require_record(self, record_id: str) -> None:
         if record_id not in self._records:
             raise KeyError(f"No query with id {record_id}")
@@ -385,32 +334,34 @@ class QueryHistory:
             raise ValueError(f"query {record_id} returned no data")
         return await self._results.get_dataframe(record.outcome.storage_key)
 
-    async def get_query_record_payload(self, record_id: str) -> ResolvedQueryRecord:
-        """Return a query record with its stored DataFrame when one exists."""
-        record = await self.get(record_id)
-        df = None
-        try:
-            df = await self.get_dataframe(record.record_id)
-        except ValueError:
-            pass
-        return ResolvedQueryRecord(
-            record_id=record.record_id,
-            connector_type=record.connector_type,
+    async def get_record(self, result_id: ResultId) -> ResultRecord:
+        """Return clean metadata for a materialized result."""
+        record = await self.get(result_id)
+        row_count = None
+        columns = None
+        if isinstance(record.outcome, TabularResult):
+            row_count = record.outcome.row_count
+            columns = list(record.outcome.columns)
+        return ResultRecord(
+            id=record.record_id,
+            db_alias=record.db_alias,
             query=record.query,
-            df=df,
-            graph=getattr(record.outcome, "graph", None),
+            connector_type=record.connector_type,
+            parameter_values=record.parameter_values,
+            row_count=row_count,
+            columns=columns,
         )
 
-    async def resolve_query_record(
-        self,
-        source_id: str,
-        selection: Mapping[str, Any],
-    ) -> ResolvedQueryRecord | SourceNotApplicable:
-        """Resolve a ``Q*``/``QS*`` source id to its concrete query record payload."""
-        resolution = self.resolve_source_id(source_id, selection)
-        if isinstance(resolution, SourceNotApplicable):
-            return resolution
-        return await self.get_query_record_payload(resolution.record_id)
+    async def get_payload(self, result_id: ResultId) -> ResultPayload:
+        """Return clean payload for a materialized result."""
+        raw = await self.get(result_id)
+        record = await self.get_record(result_id)
+        df = None
+        try:
+            df = await self.get_dataframe(result_id)
+        except ValueError:
+            pass
+        return ResultPayload(record=record, df=df, graph=getattr(raw.outcome, "graph", None))
 
     def add_chart(self, source_id: str, chart_spec: dict[str, Any]) -> str:
         """Store a chart artifact for an existing query record and return its opaque ``CHART*`` id."""
