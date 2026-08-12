@@ -136,6 +136,15 @@ This replaces both current `ResultLookupPlan` and `QueryPlan` as core concepts.
 
 The runtime decides whether to prewarm/cache all variants or lazily materialize selections. This is not a separate source kind.
 
+`query_template` is a Jinja template rendered with validated source-local parameter values. For the initial supported parameter set:
+
+```text
+ChoiceParameter -> fixed allowed ids, suitable for Jinja conditionals / structural branches
+NumberParameter -> finite numeric values, suitable for direct unquoted numeric literals
+```
+
+The rendered SQL is the executed SQL and is stored in `ResultMetadata.query`, so the query view shows copy-paste executable SQL for the active selection.
+
 ## Results
 
 A result is a materialized data product produced by a source.
@@ -214,6 +223,74 @@ class OutputSpec(BaseModel):
 ```
 
 `OutputSpec.default_selection` should be completed from parameter defaults during validation.
+
+## Parameter registration
+
+`ParameterId` is semantic and agent-chosen, not store-assigned. It should be globally unique within one `OutputStore` / chat session.
+
+```text
+same ParameterId -> same control
+different meaning -> different ParameterId
+```
+
+`OutputStore` should register parameter definitions and reject conflicting reuse:
+
+```python
+class OutputStore:
+    _parameters: dict[ParameterId, ParameterDef]
+
+    def add_parameter(self, parameter: ParameterDef) -> None:
+        existing = self._parameters.get(parameter.id)
+        if existing is None:
+            self._parameters[parameter.id] = parameter
+        elif existing != parameter:
+            raise ValueError(f"parameter {parameter.id!r} already exists with a different definition")
+```
+
+The store assigns opaque ids for runtime entities:
+
+```text
+ResultId
+SourceId
+ArtifactId
+```
+
+The agent assigns semantic ids for parameters:
+
+```text
+metric
+period
+min_spend
+region
+```
+
+This lets multiple sources share one UI control by using the same `ParameterId`.
+
+Do **not** add a separate agent-facing `register_parameter` tool. Parameter registration should happen as part of source creation.
+
+The source-creation tool should accept full parameter definitions:
+
+```python
+create_parameterized_source(
+    db_alias="workspace",
+    parameters=[
+        ChoiceParameter(id="metric", ...),
+        NumberParameter(id="min_spend", ...),
+    ],
+    query_template="...",
+)
+```
+
+The tool/store then:
+
+```text
+1. registers/validates parameter definitions;
+2. creates a ParameterizedSource with parameter_ids=[...];
+3. optionally prewarms cache;
+4. returns source id S<n>.
+```
+
+`OutputSpec.parameters` remains necessary because `OutputSpec` is a self-contained snapshot for one answer. It should be assembled from the registered parameters required by the selected sources/artifacts.
 
 ## Runtime model
 
@@ -336,6 +413,8 @@ It returns:
 
 and its tool metadata should include the `ParameterDef`s and `SourceDef`, so chat output construction can include them in `OutputSpec`.
 
+The tool should register parameters in `OutputStore`; it should not require a prior parameter-registration call.
+
 ### `run_query_for_each_combination`
 
 Eventually replace or implement as a wrapper over `create_parameterized_source`.
@@ -360,6 +439,18 @@ CHART<n> / MAP<n> / GRAPH<n> explicit artifacts
 ```
 
 No `render_table` tool is needed.
+
+`show_artifacts` should not define controls/dimensions. It only selects and labels source/artifact ids. The output spec is assembled by collecting dependencies from the store:
+
+```text
+selected source/artifact refs
+-> ArtifactSpec(s)
+-> SourceDef(s)
+-> ParameterDef(s)
+-> OutputSpec
+```
+
+Therefore the final `show_artifacts` API should not have a `dimensions` argument. Controls are defined when parameterized sources are created.
 
 ## Handling choice + numeric slider examples
 
@@ -393,36 +484,111 @@ The runtime uses one code path:
 selection -> canonical selection key -> cache -> materialize if miss -> ResultMetadata
 ```
 
-If all source parameters are finite choices and the total combinations are small enough, prewarm all variants. If numeric/range/text parameters are present, prewarm only default and lazily materialize other selections.
+If all source parameters are finite choices and the total combinations are small enough, prewarm all variants. If numeric parameters are present, prewarm only default and lazily materialize other selections.
 
-## Deferred design choices
+## Query template semantics
 
-### 1. Query template binding semantics
+Decision: use Jinja rendering for the currently supported parameter types (`ChoiceParameter` and `NumberParameter`).
 
-We still need to choose how `ParameterizedSource.query_template` handles parameters.
+Runtime rules:
 
-Options:
+- Validate every selected parameter value before rendering.
+- `ChoiceParameter` values must be one of the declared option ids.
+- `NumberParameter` values must be numeric, not boolean, finite, and within min/max.
+- Render `ParameterizedSource.query_template` with the validated source-local selection.
+- Execute the rendered query.
+- Store the rendered query in `ResultMetadata.query`.
+- Store selected source-local values in `ResultMetadata.parameter_values`.
 
-```text
-A. Jinja for all parameters
-B. Bound scalar parameters only
-C. Hybrid: whitelisted structural bindings + bound scalar parameters
-```
+Agent/template conventions:
 
-Preferred long-term: hybrid.
+- Use `ChoiceParameter` mainly for Jinja branching and fixed structural alternatives.
+- Use `NumberParameter` directly as an unquoted numeric literal.
+- Do not quote `NumberParameter` values in SQL templates.
+- Do not add text/date/list parameters to raw Jinja rendering without a separate safe literalization design.
 
 Example:
 
-```text
-metric -> structural binding from whitelist
-min_spend -> bound scalar value
+```jinja
+SELECT *
+FROM customers
+WHERE spend >= {{ min_spend }}
+ORDER BY
+{% if metric == "revenue" %} revenue_usd
+{% elif metric == "profit" %} profit_usd
+{% elif metric == "order_count" %} order_count
+{% endif %} DESC
 ```
 
-Do not allow arbitrary raw string interpolation for scalar values in the final design.
+With `metric="profit"` and `min_spend=50000`, the materialized `ResultMetadata.query` is the rendered SQL for that selection, not a placeholder query plus a separate parameter bag.
+
+## Not-applicable handling
+
+We do not add `ArtifactSpec.applies_when` in the minimal core model.
+
+Artifacts always exist in the output. Applicability is handled at source-resolution time.
+
+For intentional source-level non-applicability, support an explicit Jinja helper in `ParameterizedSource.query_template`:
+
+```jinja
+{% if quarter != "q3" %}
+  {{ not_applicable("only applies when Quarter = Q3") }}
+{% endif %}
+
+SELECT ...
+```
+
+The helper should raise a specific runtime exception, not rely on accidental Jinja/render/SQL errors:
+
+```python
+class SourceNotApplicable(Exception):
+    reason: str
+```
+
+Runtime behavior:
+
+```text
+1. OutputResolver resolves each artifact independently.
+2. Source materialization can return metadata or raise SourceNotApplicable.
+3. A non-applicable source makes that artifact unavailable for the active selection.
+4. Other artifacts still resolve/render.
+```
+
+Generic template errors or SQL execution failures are bugs/errors, not not-applicable signals.
+
+This preserves expressibility without adding a separate artifact predicate model. If only one artifact should be conditional but its source is generally applicable, the agent can create a separate parameterized source for that artifact.
+
+Eventually `ResolvedOutput` should represent unavailable artifacts explicitly, for example:
+
+```python
+ResolvedArtifact = AvailableArtifact | UnavailableArtifact
+```
+
+or an equivalent minimal runtime shape. The core `ArtifactSpec` should remain predicate-free for now.
+
+## Deferred design choices
+
+### 1. Future non-numeric scalar parameters
+
+Raw Jinja rendering is not safe enough for arbitrary strings, dates, arrays, or multi-select values. Before adding parameter types such as:
+
+```text
+TextParameter
+DateParameter / DateRangeParameter
+MultiSelectParameter
+```
+
+we need one of:
+
+```text
+- dialect-aware safe literalization;
+- bound-parameter execution plus a query+parameters display;
+- explicit restrictions preventing those params from being interpolated raw.
+```
 
 ### 2. Structural bindings model
 
-For finite choices that change SQL structure, e.g. ranking by revenue/profit/order_count, we need a safe representation.
+For finite choices that change SQL structure, e.g. ranking by revenue/profit/order_count, Jinja conditionals over `ChoiceParameter` ids are acceptable for now. A more structured whitelist model may be useful later if we want to validate or transform structural SQL branches programmatically.
 
 Possible future shape:
 
