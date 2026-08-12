@@ -12,7 +12,7 @@ import math
 from collections.abc import Mapping, Sequence
 from typing import Annotated, Any, Literal, TypeAlias
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 SelectionValue: TypeAlias = str | int | float | bool
@@ -33,17 +33,12 @@ class ChoiceOption(BaseModel):
 class ChoiceParameter(BaseModel):
     """Finite output parameter."""
 
+    model_config = ConfigDict(extra="forbid")
+
     kind: Literal["choice"] = "choice"
     id: ParameterId
     label: str
     choices: list[ChoiceOption] = Field(min_length=1)
-    default: str | None = None
-
-    @model_validator(mode="after")
-    def validate_default(self) -> "ChoiceParameter":
-        if self.default is not None and self.default not in {choice.id for choice in self.choices}:
-            raise ValueError("choice parameter default must be one of choices")
-        return self
 
 
 class NumberParameter(BaseModel):
@@ -200,7 +195,7 @@ def _parameter_defaults(parameters: Sequence[ParameterDef]) -> dict[ParameterId,
     defaults: dict[ParameterId, SelectionValue] = {}
     for parameter in parameters:
         if isinstance(parameter, ChoiceParameter):
-            defaults[parameter.id] = parameter.default if parameter.default is not None else parameter.choices[0].id
+            defaults[parameter.id] = parameter.choices[0].id
         elif isinstance(parameter, NumberParameter):
             defaults[parameter.id] = parameter.default
     return defaults

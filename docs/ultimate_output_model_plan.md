@@ -71,7 +71,6 @@ class ChoiceParameter(BaseModel):
     id: ParameterId
     label: str
     choices: list[ChoiceOption]
-    default: str | None = None
 
 
 class NumberParameter(BaseModel):
@@ -88,6 +87,8 @@ class NumberParameter(BaseModel):
 
 ParameterDef = ChoiceParameter | NumberParameter
 ```
+
+For choice parameters, the first choice is the default. Put the preferred initial reading first.
 
 Future parameter types can be added only when needed:
 

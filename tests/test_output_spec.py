@@ -38,6 +38,32 @@ def test_output_spec_fills_default_selection_and_validates_references() -> None:
     assert spec.default_selection == {"metric": "revenue", "min_spend": 10_000}
 
 
+def test_choice_parameter_default_is_first_choice() -> None:
+    spec = OutputSpec(
+        parameters=[
+            ChoiceParameter(
+                id="metric",
+                label="Metric",
+                choices=[ChoiceOption(id="profit", label="Profit"), ChoiceOption(id="revenue", label="Revenue")],
+            )
+        ]
+    )
+
+    assert spec.default_selection == {"metric": "profit"}
+
+
+def test_choice_parameter_rejects_explicit_default_field() -> None:
+    with pytest.raises(ValueError, match="Extra inputs are not permitted"):
+        ChoiceParameter.model_validate(
+            {
+                "id": "metric",
+                "label": "Metric",
+                "choices": [{"id": "profit", "label": "Profit"}],
+                "default": "profit",
+            }
+        )
+
+
 def test_canonical_selection_key_is_stable() -> None:
     assert canonical_selection_key({"metric": "profit", "min_spend": 50_000}) == canonical_selection_key(
         {"min_spend": 50_000, "metric": "profit"}

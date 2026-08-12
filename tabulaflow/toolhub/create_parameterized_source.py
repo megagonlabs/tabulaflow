@@ -110,6 +110,7 @@ class CreateParameterizedSourceTool:
         Args:
             db_alias: Alias of the target database.
             parameters: Choice or number parameters referenced by the Jinja query template.
+                For choice parameters, the first choice is the default.
             query_template: Jinja template rendered with validated parameter values.
             max_warm_variants: Maximum finite choice combinations to precompute. If omitted,
                 the session default is used. Numeric parameters are fixed at their
@@ -225,7 +226,7 @@ def _default_selection(parameters: list[ParameterDef]) -> dict[str, SelectionVal
     out: dict[str, SelectionValue] = {}
     for parameter in parameters:
         if isinstance(parameter, ChoiceParameter):
-            out[parameter.id] = parameter.default if parameter.default is not None else parameter.choices[0].id
+            out[parameter.id] = parameter.choices[0].id
         elif isinstance(parameter, NumberParameter):
             out[parameter.id] = parameter.default
     return out
