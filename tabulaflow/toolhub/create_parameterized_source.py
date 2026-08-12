@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import itertools
 import math
+import asyncio
 from dataclasses import dataclass
 from typing import ClassVar
 
@@ -11,6 +12,7 @@ import jinja2
 import jinja2.meta
 from pydantic_ai import Tool, ToolReturn
 
+from tabulaflow.core.config import tabulaflow_config
 from tabulaflow.core.db_connector.db_registry import DBRegistry
 from tabulaflow.core.outputs import (
     ChoiceParameter,
@@ -19,11 +21,15 @@ from tabulaflow.core.outputs import (
     ParameterizedSource,
     SelectionValue,
 )
+from tabulaflow.core.types import ErrorInfo, ExecResult, PredQuery
+from tabulaflow.core.utils import format_df
 from tabulaflow.toolhub.base import ToolCallOutcome
+from tabulaflow.toolhub.engines.sql import format_sqlalchemy_error_msg
 from tabulaflow.toolhub.output_store import OutputStore, render_parameterized_query
-from tabulaflow.toolhub.run_query import RunQueryTool
 
 _JINJA_ENV = jinja2.Environment(undefined=jinja2.StrictUndefined, trim_blocks=True, lstrip_blocks=True)
+_MAX_REPORTED_ERRORS = 5
+_KEYS_PER_ERROR = 3
 
 
 @dataclass(frozen=True)
@@ -42,10 +48,12 @@ class CreateParameterizedSourceTool:
         registry: DBRegistry,
         output_store: OutputStore,
         *,
+        timeout: int | None = None,
         default_max_warm_variants: int = 10,
     ) -> None:
         self._registry = registry
         self._output_store = output_store
+        self.timeout = tabulaflow_config.query_timeout if timeout is None else timeout
         self._default_max_warm_variants = default_max_warm_variants
 
     async def __call__(
@@ -128,28 +136,36 @@ class CreateParameterizedSourceTool:
             raise ValueError(f"unknown db_alias: {db_alias!r}; available: {available}") from None
         _validate_parameters(parameters)
         _validate_template(parameters, query_template)
+        warm_queries = [
+            (selection, render_parameterized_query(query_template, selection))
+            for selection in _warm_selections(parameters, max_warm_variants)
+        ]
+        exec_results = await asyncio.gather(
+            *(connector.run_query_async(query, timeout=self.timeout) for _, query in warm_queries)
+        )
+        pred_queries: list[tuple[dict[str, SelectionValue], PredQuery]] = []
+        failures: dict[str, list[str]] = {}
+        for (selection, query), exec_result in zip(warm_queries, exec_results, strict=True):
+            label = _selection_label(selection)
+            if (error := exec_result.error) is not None:
+                failures.setdefault(_error_summary(error), []).append(label)
+                continue
+            pred_queries.append((selection, PredQuery(query=query, parameter_values=dict(selection), exec_result=exec_result)))
+        if failures:
+            raise ValueError(_format_failures(failures, len(warm_queries)))
+
         source = await self._output_store.add_parameterized_source(db_alias, parameters, query_template)
-        selections = _warm_selections(parameters, max_warm_variants)
-        runner = RunQueryTool(connector)
         lines = [f"[source_id={source.id}]", f"created parameterized source {source.id}"]
-        for index, selection in enumerate(selections):
-            query = render_parameterized_query(query_template, selection)
-            execution = await runner.execute(query)
-            pred_query = execution.pred_query
-            if pred_query.exec_result is not None and pred_query.exec_result.error is not None:
-                raise ValueError(f"warm query failed for {_selection_label(selection)}: {pred_query.exec_result.error.message}")
-            pred_query.parameter_values = dict(selection)
+        for index, (selection, pred_query) in enumerate(pred_queries):
+            assert pred_query.exec_result is not None
             result_id = await self._output_store.add_cached_parameterized_result(
-                source,
-                connector.connector_type,
-                selection,
-                pred_query,
+                source, connector.connector_type, selection, pred_query
             )
             if index == 0:
-                lines += [f"default {_selection_label(selection)} -> {result_id}:", execution.output]
+                lines += [f"default {_selection_label(selection)} -> {result_id}:", _format_exec_result(pred_query.exec_result)]
             else:
                 lines.append(f"warmed {_selection_label(selection)} -> {result_id}")
-        if len(selections) == 1:
+        if len(warm_queries) == 1:
             lines.append("other selections will materialize lazily when selected")
         return CreatedParameterizedSource(output="\n".join(lines), source=source)
 
@@ -212,3 +228,32 @@ def _default_selection(parameters: list[ParameterDef]) -> dict[str, SelectionVal
 
 def _selection_label(selection: dict[str, SelectionValue]) -> str:
     return ";".join(f"{key}={value}" for key, value in sorted(selection.items())) or "default"
+
+
+def _format_exec_result(exec_result: ExecResult) -> str:
+    if exec_result.df is None:
+        affected = exec_result.affected_rows
+        if affected is None:
+            return "(statement executed successfully)"
+        return f"(statement executed successfully, {affected} row{'s' if affected != 1 else ''} affected)"
+    if exec_result.df.empty:
+        return "(query executed successfully, but results are empty)"
+    return f"{format_df(exec_result.df)}\n({len(exec_result.df)} row{'' if len(exec_result.df) == 1 else 's'})"
+
+
+def _error_summary(error: ErrorInfo) -> str:
+    if error.exc_type == "TimeoutError":
+        return "timed out"
+    return (format_sqlalchemy_error_msg(error.message).splitlines() or [error.exc_type])[0]
+
+
+def _format_failures(failures: dict[str, list[str]], executed: int) -> str:
+    failed = sum(len(keys) for keys in failures.values())
+    lines = [f"{failed} of {executed} warm queries failed; source was not created"]
+    for message, keys in list(failures.items())[:_MAX_REPORTED_ERRORS]:
+        shown = ", ".join(keys[:_KEYS_PER_ERROR])
+        extra = f" +{len(keys) - _KEYS_PER_ERROR} more" if len(keys) > _KEYS_PER_ERROR else ""
+        lines.append(f"  {shown}{extra} — {message}")
+    if len(failures) > _MAX_REPORTED_ERRORS:
+        lines.append(f"  (and {len(failures) - _MAX_REPORTED_ERRORS} more distinct errors)")
+    return "\n".join(lines)
