@@ -57,6 +57,46 @@ class CreateParameterizedSourceTool:
     ) -> ToolReturn:
         """Create a parameterized source and warm its default or small finite choice grid.
 
+        Example:
+        ```python
+        create_parameterized_source(
+            db_alias="workspace",
+            parameters=[
+                {
+                    "kind": "choice",
+                    "id": "metric",
+                    "label": "Ranking metric",
+                    "choices": [
+                        {"id": "revenue", "label": "Revenue"},
+                        {"id": "profit", "label": "Profit"},
+                        {"id": "orders", "label": "Order count"},
+                    ],
+                },
+                {
+                    "kind": "number",
+                    "id": "min_spend",
+                    "label": "Minimum spend",
+                    "min": 0,
+                    "max": 100000,
+                    "step": 5000,
+                    "default": 10000,
+                    "unit": "USD",
+                },
+            ],
+            query_template='''
+                SELECT customer,
+                {% if metric == "revenue" %} SUM(revenue_usd) AS value
+                {% elif metric == "profit" %} SUM(profit_usd) AS value
+                {% elif metric == "orders" %} COUNT(*) AS value
+                {% endif %}
+                FROM orders
+                GROUP BY customer
+                HAVING SUM(revenue_usd) >= {{ min_spend }}
+                ORDER BY value DESC
+            ''',
+        )
+        ```
+
         Args:
             db_alias: Alias of the target database.
             parameters: Choice or number parameters referenced by the Jinja query template.
