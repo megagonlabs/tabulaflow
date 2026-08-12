@@ -58,7 +58,9 @@ async def test_create_parameterized_source_registers_parameters_and_warms_choice
         |---------|
         |      17 |
         (1 row)
-        warmed metric=gross""")
+
+        other warmed selections:
+          metric=gross (1 row) — first row: value=21""")
     source = output_store.get_source("S1")
     assert output_store.parameters_for_source(source)[0].id == "metric"
     assert len(output_store.get_cached_source_results("S1")) == 2
@@ -152,7 +154,7 @@ async def test_mixed_choice_and_number_warms_choice_grid_at_number_default(regis
 
     text = _text(result)
     assert "default metric=net;min_value=8.0:" in text
-    assert "warmed metric=gross;min_value=8.0" in text
+    assert "metric=gross;min_value=8.0 (1 row) — first row: value=21" in text
     assert "-> R" not in text
     assert "other selections will materialize lazily" not in text
     assert len(output_store.get_cached_source_results("S1")) == 2

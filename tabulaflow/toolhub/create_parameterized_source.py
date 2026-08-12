@@ -10,6 +10,7 @@ from typing import ClassVar
 
 import jinja2
 import jinja2.meta
+import pandas as pd
 from pydantic_ai import Tool, ToolReturn
 
 from tabulaflow.core.config import tabulaflow_config
@@ -22,7 +23,7 @@ from tabulaflow.core.outputs import (
     SelectionValue,
 )
 from tabulaflow.core.types import ErrorInfo, ExecResult, PredQuery
-from tabulaflow.core.utils import format_df
+from tabulaflow.core.utils import flatten_multiline, format_df
 from tabulaflow.toolhub.base import ToolCallOutcome
 from tabulaflow.toolhub.engines.sql import format_sqlalchemy_error_msg
 from tabulaflow.toolhub.output_store import OutputStore, render_parameterized_query
@@ -32,6 +33,8 @@ _JINJA_ENV = jinja2.Environment(undefined=jinja2.StrictUndefined, trim_blocks=Tr
 # failing selection labels per group are printed so large warm grids stay readable.
 _MAX_REPORTED_ERRORS = 5
 _KEYS_PER_ERROR = 3
+_FIRST_ROW_COLUMNS = 4
+_FIRST_ROW_CELL_CHARS = 40
 
 
 @dataclass(frozen=True)
@@ -160,6 +163,7 @@ class CreateParameterizedSourceTool:
 
         source = await self._output_store.add_parameterized_source(db_alias, parameters, query_template)
         lines = [f"[source_id={source.id}]", f"created parameterized source {source.id}"]
+        other_lines: list[str] = []
         for index, (selection, pred_query) in enumerate(pred_queries):
             assert pred_query.exec_result is not None
             await self._output_store.add_cached_parameterized_result(
@@ -168,7 +172,9 @@ class CreateParameterizedSourceTool:
             if index == 0:
                 lines += [f"default {_selection_label(selection)}:", _format_exec_result(pred_query.exec_result)]
             else:
-                lines.append(f"warmed {_selection_label(selection)}")
+                other_lines.append(_format_other_warmed_selection(selection, pred_query.exec_result))
+        if other_lines:
+            lines += ["", "other warmed selections:", *other_lines]
         if len(warm_queries) == 1:
             lines.append("other selections will materialize lazily when selected")
         return CreatedParameterizedSource(output="\n".join(lines), source=source)
@@ -245,6 +251,45 @@ def _format_exec_result(exec_result: ExecResult) -> str:
     if exec_result.df.empty:
         return "(query executed successfully, but results are empty)"
     return f"{format_df(exec_result.df)}\n({len(exec_result.df)} row{'' if len(exec_result.df) == 1 else 's'})"
+
+
+def _format_other_warmed_selection(selection: dict[str, SelectionValue], exec_result: ExecResult) -> str:
+    first_row = _format_first_row(exec_result)
+    suffix = f" — first row: {first_row}" if first_row is not None else ""
+    return f"  {_selection_label(selection)} ({_rows_label(exec_result)}){suffix}"
+
+
+def _rows_label(exec_result: ExecResult) -> str:
+    if exec_result.df is None:
+        return "no result set"
+    if exec_result.df.empty:
+        return "empty"
+    return f"{len(exec_result.df)} row{'' if len(exec_result.df) == 1 else 's'}"
+
+
+def _format_first_row(exec_result: ExecResult) -> str | None:
+    df = exec_result.df
+    if df is None or df.empty:
+        return None
+    row = df.iloc[0]
+    shown = min(len(df.columns), _FIRST_ROW_COLUMNS)
+    pairs = ", ".join(f"{df.columns[index]}={_format_cell(row.iloc[index])}" for index in range(shown))
+    return f"{pairs}, …" if shown < len(df.columns) else pairs
+
+
+def _format_cell(value: object) -> str:
+    try:
+        if pd.isna(value):
+            return "[NULL]"
+    except (TypeError, ValueError):
+        pass
+    if isinstance(value, float):
+        return f"{value:.8g}"
+    text = flatten_multiline(str(value))
+    if len(text) > _FIRST_ROW_CELL_CHARS:
+        half = _FIRST_ROW_CELL_CHARS // 2
+        return f"{text[:half]}...{text[-half:]}"
+    return text
 
 
 def _error_summary(error: ErrorInfo) -> str:
