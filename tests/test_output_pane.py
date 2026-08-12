@@ -29,7 +29,7 @@ from tabulaflow.app.screens import send_table_to_output_pane
 from tabulaflow.toolhub.render_graph import materialize_graph_view, normalize_graph_spec
 from tabulaflow.app.tui import TabulaflowApp
 from tabulaflow.chat import ChatResult
-from tabulaflow.core import ChoiceOption, ChoiceParameter, ConstantResultPlan, OutputSpec, ResultMetadata, SourceDef, TableView, ArtifactSpec
+from tabulaflow.core import ChoiceOption, ChoiceParameter, FixedResultSource, OutputSpec, ResultMetadata, TableView, ArtifactSpec
 from tabulaflow.toolhub.output_store import OutputStore, ResultPayload
 from tabulaflow.toolhub.render_map import MAP_RENDER_MAX_ROWS
 
@@ -2331,7 +2331,7 @@ async def test_output_pane_resolves_live_turn_selection(tmp_path: Path) -> None:
                     choices=[ChoiceOption(id="q2", label="Q2"), ChoiceOption(id="q3", label="Q3")],
                 )
             ],
-            sources=[SourceDef(id="period_q3", plan=ConstantResultPlan(result_id="Q1"))],
+            sources=[FixedResultSource(id="period_q3", result_id="Q1")],
             artifacts=[ArtifactSpec(id="period_q3", label="period_q3", view=TableView(source="period_q3"))],
         ),
     )

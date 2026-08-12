@@ -409,6 +409,7 @@ class RunQueryForEachCombinationTool:
             db_alias,
             connector.connector_type,
             {dim.id: list(dim.choices) for dim in dimensions},
+            query_template,
             by_selection,
         )
         return CombinationQueryRun(output=_format_run(self._output_store, source, by_selection), source=source)

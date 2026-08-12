@@ -197,6 +197,7 @@ class TestRenderChartTool:
             "db",
             "sql",
             {"ranking": ["net", "count"]},
+            "SELECT 1",
             {
                 "ranking=net": PredQuery(
                     query="SELECT 'net' AS a, 1 AS b", exec_result=ExecResult(df=pd.DataFrame({"a": ["net"], "b": [1]}))
@@ -221,6 +222,7 @@ class TestRenderChartTool:
             "db",
             "sql",
             {"ranking": ["net", "count"]},
+            "SELECT 1",
             {
                 "ranking=net": PredQuery(
                     query="SELECT 'net' AS a", exec_result=ExecResult(df=pd.DataFrame({"a": ["net"]}))

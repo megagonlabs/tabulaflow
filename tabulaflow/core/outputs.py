@@ -87,7 +87,7 @@ class ParameterizedSource(BaseModel):
     id: SourceId
     parameter_ids: list[ParameterId]
     db_alias: str
-    query_template: str = ""
+    query_template: str
 
 
 SourceDef = Annotated[FixedResultSource | ParameterizedSource, Field(discriminator="kind")]

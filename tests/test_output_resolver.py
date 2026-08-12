@@ -2,18 +2,14 @@ import pandas as pd
 import pytest
 
 from tabulaflow.core import (
-    OutputSpec,
     ArtifactSpec,
     ChoiceOption,
     ChoiceParameter,
-    ConstantResultPlan,
+    FixedResultSource,
     NumberParameter,
-    QueryPlan,
-    ResultLookupPlan,
-    ResultVariant,
-    SourceDef,
+    OutputSpec,
+    ParameterizedSource,
     TableView,
-    canonical_selection_key,
 )
 from tabulaflow.core.types import ExecResult, PredQuery
 from tabulaflow.toolhub import OutputResolutionError, OutputResolver, OutputStore
@@ -46,11 +42,11 @@ def _parameters() -> list[ChoiceParameter | NumberParameter]:
 
 
 @pytest.mark.asyncio
-async def test_constant_result_plan_resolves_answer_artifact() -> None:
+async def test_fixed_source_resolves_output_artifact() -> None:
     output_store = await _output_store_with_results()
     resolver = OutputResolver(output_store)
     output = OutputSpec(
-        sources=[SourceDef(id="fixed", plan=ConstantResultPlan(result_id="R1"))],
+        sources=[FixedResultSource(id="fixed", result_id="R1")],
         artifacts=[ArtifactSpec(id="table", view=TableView(source="fixed"))],
     )
 
@@ -66,50 +62,41 @@ async def test_constant_result_plan_resolves_answer_artifact() -> None:
 
 
 @pytest.mark.asyncio
-async def test_result_lookup_plan_resolves_by_projected_selection() -> None:
-    output_store = await _output_store_with_results()
+async def test_parameterized_source_resolves_by_projected_selection() -> None:
+    output_store = OutputStore()
+    source = await output_store.add_lookup_source(
+        "workspace",
+        "sql",
+        {"metric": ["revenue", "profit"]},
+        "SELECT {{ metric }}",
+        {
+            "metric=revenue": PredQuery(query="SELECT 1 AS a", exec_result=ExecResult(df=pd.DataFrame({"a": [1]}))),
+            "metric=profit": PredQuery(query="SELECT 2 AS a", exec_result=ExecResult(df=pd.DataFrame({"a": [2]}))),
+        },
+    )
     resolver = OutputResolver(output_store)
     output = OutputSpec(
         parameters=_parameters(),
-        sources=[
-            SourceDef(
-                id="top_customers",
-                parameter_ids=["metric"],
-                plan=ResultLookupPlan(
-                    variants=[
-                        ResultVariant(selection={"metric": "revenue"}, result_id="R1"),
-                        ResultVariant(selection={"metric": "profit"}, result_id="R2"),
-                    ]
-                ),
-            )
-        ],
-        artifacts=[ArtifactSpec(id="table", view=TableView(source="top_customers"))],
+        sources=[source],
+        artifacts=[ArtifactSpec(id="table", view=TableView(source=source.id))],
     )
 
     resolved = await resolver.resolve(output, {"metric": "profit"})
 
-    metadata = resolved.artifacts[0].metadata_by_source["top_customers"]
+    metadata = resolved.artifacts[0].metadata_by_source[source.id]
     assert resolved.selection == {"metric": "profit", "min_spend": 10_000}
     assert metadata.id == "R2"
-    assert isinstance(output.sources[0].plan, ResultLookupPlan)
-    assert canonical_selection_key({"metric": "profit"}) == canonical_selection_key(
-        output.sources[0].plan.variants[1].selection
-    )
+    assert isinstance(output.sources[0], ParameterizedSource)
 
 
 @pytest.mark.asyncio
-async def test_result_lookup_plan_rejects_invalid_choice() -> None:
+async def test_parameterized_source_rejects_invalid_choice() -> None:
     output_store = await _output_store_with_results()
     resolver = OutputResolver(output_store)
+    source = ParameterizedSource(id="top_customers", parameter_ids=["metric"], db_alias="workspace", query_template="SELECT 1")
     output = OutputSpec(
         parameters=_parameters(),
-        sources=[
-            SourceDef(
-                id="top_customers",
-                parameter_ids=["metric"],
-                plan=ResultLookupPlan(variants=[ResultVariant(selection={"metric": "revenue"}, result_id="R1")]),
-            )
-        ],
+        sources=[source],
         artifacts=[ArtifactSpec(id="table", view=TableView(source="top_customers"))],
     )
 
@@ -118,18 +105,13 @@ async def test_result_lookup_plan_rejects_invalid_choice() -> None:
 
 
 @pytest.mark.asyncio
-async def test_result_lookup_plan_reports_unavailable_selection() -> None:
+async def test_parameterized_source_reports_unavailable_selection() -> None:
     output_store = await _output_store_with_results()
     resolver = OutputResolver(output_store)
+    source = ParameterizedSource(id="top_customers", parameter_ids=["metric"], db_alias="workspace", query_template="SELECT 1")
     output = OutputSpec(
         parameters=_parameters(),
-        sources=[
-            SourceDef(
-                id="top_customers",
-                parameter_ids=["metric"],
-                plan=ResultLookupPlan(variants=[ResultVariant(selection={"metric": "revenue"}, result_id="R1")]),
-            )
-        ],
+        sources=[source],
         artifacts=[ArtifactSpec(id="table", view=TableView(source="top_customers"))],
     )
 
@@ -138,20 +120,14 @@ async def test_result_lookup_plan_reports_unavailable_selection() -> None:
 
 
 @pytest.mark.asyncio
-async def test_query_plan_materialization_is_not_implemented_yet() -> None:
+async def test_parameterized_source_without_cache_errors_until_materialization_exists() -> None:
     output_store = await _output_store_with_results()
     resolver = OutputResolver(output_store)
     output = OutputSpec(
         parameters=_parameters(),
-        sources=[
-            SourceDef(
-                id="lazy",
-                parameter_ids=["min_spend"],
-                plan=QueryPlan(db_alias="workspace", query_template="SELECT 1"),
-            )
-        ],
+        sources=[ParameterizedSource(id="lazy", parameter_ids=["min_spend"], db_alias="workspace", query_template="SELECT 1")],
         artifacts=[ArtifactSpec(id="table", view=TableView(source="lazy"))],
     )
 
-    with pytest.raises(OutputResolutionError, match="not implemented"):
+    with pytest.raises(OutputResolutionError, match="has no result"):
         await resolver.resolve(output, {"min_spend": 10_000})

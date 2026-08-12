@@ -5,13 +5,10 @@ from tabulaflow.core import (
     ArtifactSpec,
     ChoiceOption,
     ChoiceParameter,
-    ConstantResultPlan,
+    FixedResultSource,
     NumberParameter,
-    QueryPlan,
-    ResultLookupPlan,
     ResultMetadata,
-    ResultVariant,
-    SourceDef,
+    ParameterizedSource,
     TableView,
     canonical_selection_key,
 )
@@ -28,10 +25,11 @@ def test_output_spec_fills_default_selection_and_validates_references() -> None:
             NumberParameter(id="min_spend", label="Minimum spend", min=0, max=100_000, step=5_000, default=10_000),
         ],
         sources=[
-            SourceDef(
+            ParameterizedSource(
                 id="top_customers",
                 parameter_ids=["metric", "min_spend"],
-                plan=QueryPlan(db_alias="workspace", query_template="SELECT 1"),
+                db_alias="workspace",
+                query_template="SELECT 1",
             )
         ],
         artifacts=[ArtifactSpec(id="table", label="Top customers", view=TableView(source="top_customers"))],
@@ -46,17 +44,17 @@ def test_canonical_selection_key_is_stable() -> None:
     )
 
 
-def test_result_lookup_plan_uses_canonical_selection_keys() -> None:
+def test_parameterized_source_keeps_query_template() -> None:
     key = canonical_selection_key({"metric": "profit"})
-    source = SourceDef(
+    source = ParameterizedSource(
         id="top_customers_by_metric",
         parameter_ids=["metric"],
-        plan=ResultLookupPlan(variants=[ResultVariant(selection={"metric": "profit"}, result_id="Q2")]),
+        db_alias="workspace",
+        query_template="SELECT * FROM customers WHERE metric = {{ metric }}",
     )
 
-    assert isinstance(source.plan, ResultLookupPlan)
-    assert canonical_selection_key(source.plan.variants[0].selection) == key
-    assert source.plan.variants[0].result_id == "Q2"
+    assert key == '{"metric":"profit"}'
+    assert source.query_template == "SELECT * FROM customers WHERE metric = {{ metric }}"
 
 
 def test_result_record_owns_query_provenance() -> None:
@@ -74,10 +72,9 @@ def test_result_record_owns_query_provenance() -> None:
 
 
 def test_constant_result_source_has_no_inputs() -> None:
-    source = SourceDef(id="fixed", plan=ConstantResultPlan(result_id="Q1"))
+    source = FixedResultSource(id="fixed", result_id="Q1")
 
-    assert source.parameter_ids == []
-    assert isinstance(source.plan, ConstantResultPlan)
+    assert source.result_id == "Q1"
 
 
 def test_output_spec_rejects_unknown_artifact_source() -> None:
@@ -87,7 +84,7 @@ def test_output_spec_rejects_unknown_artifact_source() -> None:
 
 def test_output_spec_serialization_round_trip() -> None:
     spec = OutputSpec(
-        sources=[SourceDef(id="fixed", plan=ConstantResultPlan(result_id="Q1"))],
+        sources=[FixedResultSource(id="fixed", result_id="Q1")],
         artifacts=[ArtifactSpec(id="table", view=TableView(source="fixed"))],
     )
 

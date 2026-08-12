@@ -93,7 +93,7 @@ async def test_build_chat_result_resolves_the_declared_bundle() -> None:
 
     assert result.text == "There is 1 row."
     assert [artifact.id for artifact in result.output.artifacts] == ["S1"]
-    assert result.output.sources[0].plan.kind == "constant_result"
+    assert result.output.sources[0].kind == "fixed"
 
     without = await _build_chat_result("<answer>\nNothing to show.", None, output_store)
     assert without.output.artifacts == []

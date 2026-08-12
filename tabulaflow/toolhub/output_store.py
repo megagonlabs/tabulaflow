@@ -195,6 +195,7 @@ class OutputStore:
         db_alias: str,
         connector_type: Literal["sql", "property_graph"],
         dimensions: dict[str, list[str]],
+        query_template: str,
         pred_queries_by_selection: dict[str, PredQuery],
     ) -> SourceDef:
         """Store a result-lookup source and its per-selection results.
@@ -216,7 +217,7 @@ class OutputStore:
             id=source_id,
             parameter_ids=list(dimensions),
             db_alias=db_alias,
-            query_template="",
+            query_template=query_template,
         )
         self._sources[source_id] = source
         for key, result_id in result_ids_by_selection.items():
