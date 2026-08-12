@@ -161,13 +161,13 @@ class CreateParameterizedSourceTool:
         lines = [f"[source_id={source.id}]", f"created parameterized source {source.id}"]
         for index, (selection, pred_query) in enumerate(pred_queries):
             assert pred_query.exec_result is not None
-            result_id = await self._output_store.add_cached_parameterized_result(
+            await self._output_store.add_cached_parameterized_result(
                 source, connector.connector_type, selection, pred_query
             )
             if index == 0:
-                lines += [f"default {_selection_label(selection)} -> {result_id}:", _format_exec_result(pred_query.exec_result)]
+                lines += [f"default {_selection_label(selection)}:", _format_exec_result(pred_query.exec_result)]
             else:
-                lines.append(f"warmed {_selection_label(selection)} -> {result_id}")
+                lines.append(f"warmed {_selection_label(selection)}")
         if len(warm_queries) == 1:
             lines.append("other selections will materialize lazily when selected")
         return CreatedParameterizedSource(output="\n".join(lines), source=source)
