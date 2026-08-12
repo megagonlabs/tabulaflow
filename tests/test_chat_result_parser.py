@@ -12,8 +12,6 @@ from tabulaflow.core.types import ExecResult, PredQuery
 from tabulaflow.toolhub import (
     ArtifactRef,
     ArtifactBundle,
-    Choice,
-    Dimension,
     OutputResolver,
     QueryDimension,
     OutputStore,
@@ -135,14 +133,6 @@ async def test_build_chat_result_resolves_a_panel(tmp_path: Path) -> None:
     )
     bundle = ArtifactBundle(
         artifacts=(ArtifactRef(id="S1", label="top customers"), ArtifactRef(id="S2", label="order count")),
-        dimensions=(
-            Dimension(
-                id="ranking",
-                label="Ranking",
-                choices=[Choice(id="net", label="Net revenue"), Choice(id="count", label="Orders")],
-            ),
-            Dimension(id="period", label="Quarter", choices=[Choice(id="q2", label="Q2"), Choice(id="q3", label="Q3")]),
-        ),
     )
 
     result = await _build_chat_result("<answer>\nAcme leads.", bundle, output_store)
@@ -187,12 +177,7 @@ async def test_build_chat_result_resolves_source_backed_chart_in_panel(tmp_path:
     )
     spec = {"mark": "bar", "encoding": {"x": {"field": "customer"}, "y": {"field": "value"}}}
     await RenderChartTool(output_store=output_store)(source_id="S1", vegalite_spec=json.dumps(spec))
-    bundle = ArtifactBundle(
-        artifacts=(ArtifactRef(id="CHART1", label="top customers"),),
-        dimensions=(
-            Dimension(id="period", label="Quarter", choices=[Choice(id="q2", label="Q2"), Choice(id="q3", label="Q3")]),
-        ),
-    )
+    bundle = ArtifactBundle(artifacts=(ArtifactRef(id="CHART1", label="top customers"),))
 
     result = await _build_chat_result("<answer>\nChart shown.", bundle, output_store)
 
@@ -230,20 +215,11 @@ async def test_build_chat_result_placeholders_a_partially_covered_card(tmp_path:
         [QueryDimension(id="period", choices=["q2"])],
         "SELECT SUM(net) AS net FROM orders WHERE quarter = '{{ period }}'",
     )
-    bundle = ArtifactBundle(
-        artifacts=(ArtifactRef(id="S1", label="net revenue"),),
-        dimensions=(
-            Dimension(
-                id="period",
-                label="Time period",
-                choices=[Choice(id="q2", label="Last completed quarter"), Choice(id="q3", label="Current quarter")],
-            ),
-        ),
-    )
+    bundle = ArtifactBundle(artifacts=(ArtifactRef(id="S1", label="net revenue"),))
 
     result = await _build_chat_result("<answer>\n17 in the last quarter.", bundle, output_store)
 
     assert result.output.default_selection == {"period": "q2"}
-    with pytest.raises(Exception, match="has no result"):
+    with pytest.raises(Exception, match="not a valid choice"):
         await OutputResolver(output_store).resolve(result.output, {"period": "q3"})
     assert [a.label for a in result.output.artifacts] == ["net revenue"]

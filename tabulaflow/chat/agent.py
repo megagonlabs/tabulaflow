@@ -33,8 +33,6 @@ from tabulaflow.core.llm import make_agent, make_model_settings, model_display_n
 from tabulaflow.core.outputs import (
     ArtifactSpec,
     ChartView,
-    ChoiceOption,
-    ChoiceParameter,
     GraphViewSpec,
     MapView,
     OutputSpec,
@@ -69,6 +67,7 @@ if TYPE_CHECKING:
         ApplyPatchTool,
         ArtifactBundle,
         ConnectDataSourceTool,
+        CreateParameterizedSourceTool,
         ExecuteBashTool,
         ExtractRowsFromDocumentsTool,
         FileEditorTool,
@@ -127,6 +126,7 @@ class _Toolset:
     iterates it. A ``None`` field means the tool is absent for the session."""
 
     run_query: RegistryRunQueryTool
+    create_parameterized_source: CreateParameterizedSourceTool
     run_query_for_each_combination: RunQueryForEachCombinationTool
     get_db_document: RegistryGetDBDocumentTool
     get_table_schema: RegistryGetTableSchemaTool
@@ -220,7 +220,7 @@ class ChatAgent:
     def __post_init__(self) -> None:
         from tabulaflow.toolhub import ProgressReportingTool, OutputStore
 
-        self._output_store = OutputStore(spill_connector=self.workspace)
+        self._output_store = OutputStore(spill_connector=self.workspace, registry=self.registry)
         self._message_store = MessageStore()
         self._main_scope = self._message_store.scoped("main")
         subagent_dir = self.trajectory_log_dir / "subagents" if self.trajectory_log_dir is not None else None
@@ -276,6 +276,7 @@ class ChatAgent:
             RunSubagentForEachRowTool,
             ShowArtifactsTool,
             WebBrowserTool,
+            CreateParameterizedSourceTool,
         )
 
         # The fan-out tools operate on the workspace only: sub-tasks are laid out
@@ -302,6 +303,7 @@ class ChatAgent:
 
         return _Toolset(
             run_query=RegistryRunQueryTool(self.registry, output_store=self._output_store, enable_refresh=True),
+            create_parameterized_source=CreateParameterizedSourceTool(self.registry, output_store=self._output_store),
             run_query_for_each_combination=RunQueryForEachCombinationTool(self.registry, output_store=self._output_store),
             get_db_document=RegistryGetDBDocumentTool(
                 self.registry,
@@ -792,14 +794,7 @@ async def _build_chat_result(
 def _output_spec_from_bundle(bundle: "ArtifactBundle", output_store: OutputStore) -> OutputSpec:
     sources: dict[str, SourceDef] = {}
     artifacts: list[ArtifactSpec] = []
-    parameters: list[ParameterDef] = [
-        ChoiceParameter(
-            id=dimension.id,
-            label=dimension.label,
-            choices=[ChoiceOption(id=choice.id, label=choice.label) for choice in dimension.choices],
-        )
-        for dimension in bundle.dimensions
-    ]
+    parameters: dict[str, ParameterDef] = {}
 
     def ensure_source(source_id: str) -> None:
         if source_id in sources:
@@ -817,7 +812,11 @@ def _output_spec_from_bundle(bundle: "ArtifactBundle", output_store: OutputStore
             ensure_source(source_id)
         artifacts.append(artifact)
 
-    return OutputSpec(parameters=parameters, sources=list(sources.values()), artifacts=artifacts)
+    for source in sources.values():
+        for parameter in output_store.parameters_for_source(source):
+            parameters.setdefault(parameter.id, parameter)
+
+    return OutputSpec(parameters=list(parameters.values()), sources=list(sources.values()), artifacts=artifacts)
 
 
 def _artifact_from_ref(ref_id: str, label: str | None, output_store: OutputStore) -> ArtifactSpec | None:

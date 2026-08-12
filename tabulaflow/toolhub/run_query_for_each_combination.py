@@ -21,7 +21,7 @@ from pydantic_ai import Tool, ToolReturn
 from tabulaflow.core.config import tabulaflow_config
 from tabulaflow.core.db_connector import NL2QDBConnector
 from tabulaflow.core.db_connector.db_registry import DBRegistry
-from tabulaflow.core.outputs import ParameterizedSource, SelectionValue, SourceDef
+from tabulaflow.core.outputs import ChoiceOption, ChoiceParameter, ParameterizedSource, SelectionValue, SourceDef
 from tabulaflow.core.types import ErrorInfo, PredQuery
 from tabulaflow.core.utils import flatten_multiline, format_df
 from tabulaflow.toolhub.base import ToolCallOutcome
@@ -405,10 +405,17 @@ class RunQueryForEachCombinationTool:
             raise ValueError(_format_failures(failures, len(distinct)))
 
         by_selection = {key: pred_queries[_normalize(query)] for key, query in queries.items()}
-        source = await self._output_store.add_parameterized_source(
+        source = await self._output_store.add_prewarmed_parameterized_source(
             db_alias,
             connector.connector_type,
-            {dim.id: list(dim.choices) for dim in dimensions},
+            [
+                ChoiceParameter(
+                    id=dim.id,
+                    label=dim.id,
+                    choices=[ChoiceOption(id=choice, label=choice) for choice in dim.choices],
+                )
+                for dim in dimensions
+            ],
             query_template,
             by_selection,
         )

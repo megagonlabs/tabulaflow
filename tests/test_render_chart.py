@@ -9,7 +9,7 @@ import pandas as pd
 import pytest
 
 from tabulaflow.app.pane import _add_line_hover, build_chart_data
-from tabulaflow.core.outputs import ChartView
+from tabulaflow.core.outputs import ChartView, ChoiceOption, ChoiceParameter
 from tabulaflow.core.types import ExecResult, PredQuery
 from tabulaflow.toolhub.output_store import OutputStore
 from tabulaflow.toolhub.render_chart import (
@@ -193,10 +193,16 @@ class TestRenderChartTool:
 
     async def test_query_family_source_creates_chart(self) -> None:
         output_store = OutputStore()
-        await output_store.add_parameterized_source(
+        await output_store.add_prewarmed_parameterized_source(
             "db",
             "sql",
-            {"ranking": ["net", "count"]},
+            [
+                ChoiceParameter(
+                    id="ranking",
+                    label="Ranking",
+                    choices=[ChoiceOption(id="net", label="Net"), ChoiceOption(id="count", label="Count")],
+                )
+            ],
             "SELECT 1",
             {
                 "ranking=net": PredQuery(
@@ -218,10 +224,16 @@ class TestRenderChartTool:
 
     async def test_query_family_validation_reports_all_failing_selections(self) -> None:
         output_store = OutputStore()
-        await output_store.add_parameterized_source(
+        await output_store.add_prewarmed_parameterized_source(
             "db",
             "sql",
-            {"ranking": ["net", "count"]},
+            [
+                ChoiceParameter(
+                    id="ranking",
+                    label="Ranking",
+                    choices=[ChoiceOption(id="net", label="Net"), ChoiceOption(id="count", label="Count")],
+                )
+            ],
             "SELECT 1",
             {
                 "ranking=net": PredQuery(

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
+import math
 
 from pydantic import BaseModel, Field
 
@@ -144,6 +145,8 @@ def _validate_parameter_value(parameter: ParameterDef, value: object) -> Selecti
         if isinstance(value, bool) or not isinstance(value, int | float):
             raise OutputResolutionError(f"{parameter.id} must be numeric")
         number = float(value)
+        if not math.isfinite(number):
+            raise OutputResolutionError(f"{parameter.id} must be finite")
         if not parameter.min <= number <= parameter.max:
             raise OutputResolutionError(f"{parameter.id}={number:g} is outside range")
         return value

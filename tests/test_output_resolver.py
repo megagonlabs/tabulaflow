@@ -64,10 +64,16 @@ async def test_fixed_source_resolves_output_artifact() -> None:
 @pytest.mark.asyncio
 async def test_parameterized_source_resolves_by_projected_selection() -> None:
     output_store = OutputStore()
-    source = await output_store.add_parameterized_source(
+    source = await output_store.add_prewarmed_parameterized_source(
         "workspace",
         "sql",
-        {"metric": ["revenue", "profit"]},
+        [
+            ChoiceParameter(
+                id="metric",
+                label="Metric",
+                choices=[ChoiceOption(id="revenue", label="Revenue"), ChoiceOption(id="profit", label="Profit")],
+            )
+        ],
         "SELECT {{ metric }}",
         {
             "metric=revenue": PredQuery(query="SELECT 1 AS a", exec_result=ExecResult(df=pd.DataFrame({"a": [1]}))),

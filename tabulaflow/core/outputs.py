@@ -8,6 +8,7 @@ belongs outside ``core``.
 from __future__ import annotations
 
 import json
+import math
 from collections.abc import Mapping, Sequence
 from typing import Annotated, Any, Literal, TypeAlias
 
@@ -216,6 +217,8 @@ def _validate_parameter_value(parameter: ParameterDef, value: object) -> Selecti
         if isinstance(value, bool) or not isinstance(value, int | float):
             raise ValueError(f"{parameter.id} must be numeric")
         number = float(value)
+        if not math.isfinite(number):
+            raise ValueError(f"{parameter.id} must be finite")
         if not parameter.min <= number <= parameter.max:
             raise ValueError(f"{parameter.id}={number:g} is outside range")
         return value

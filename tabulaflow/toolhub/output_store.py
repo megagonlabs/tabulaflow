@@ -6,8 +6,10 @@ import logging
 import json
 from collections import OrderedDict
 from dataclasses import dataclass
+import math
 from typing import TYPE_CHECKING, Literal
 
+import jinja2
 import pandas as pd
 from pydantic import BaseModel, ConfigDict, field_serializer, field_validator
 
@@ -17,6 +19,7 @@ from tabulaflow.core.outputs import (
     ArtifactSpec,
     FixedResultSource,
     ParameterId,
+    ParameterDef,
     ParameterizedSource,
     ResultId,
     ResultMetadata,
@@ -28,6 +31,7 @@ from tabulaflow.core.outputs import (
 from tabulaflow.core.types import GraphView, PredQuery
 
 if TYPE_CHECKING:
+    from tabulaflow.core.db_connector.db_registry import DBRegistry
     from tabulaflow.core.db_connector.sql_conn import SQLConnector
 
 logger = logging.getLogger(__name__)
@@ -35,6 +39,7 @@ logger = logging.getLogger(__name__)
 # Schema this module spills result DataFrames into — one table per result. Kept out
 # of the workspace connector's introspected schema (see ``create_workspace_connector``).
 OUTPUT_STORE_SCHEMA = "_output_store"
+_JINJA_ENV = jinja2.Environment(undefined=jinja2.StrictUndefined, trim_blocks=True, lstrip_blocks=True)
 
 
 @dataclass
@@ -167,10 +172,12 @@ class OutputStore:
         *,
         max_in_memory: int = 5,
         spill_connector: SQLConnector | None = None,
+        registry: DBRegistry | None = None,
     ) -> None:
         if max_in_memory < 1:
             raise ValueError("max_in_memory must be >= 1")
         self._records: dict[str, _StoredResult] = {}
+        self._parameters: dict[str, ParameterDef] = {}
         self._sources: dict[str, SourceDef] = {}
         self._source_cache: dict[tuple[str, str], str] = {}
         self._artifacts: dict[str, ArtifactSpec] = {}
@@ -178,6 +185,7 @@ class OutputStore:
         self._next_source_id = 1
         self._next_artifact_ids: dict[str, int] = {}
         self._results = _ResultFrameStore(max_in_memory=max_in_memory, spill_connector=spill_connector)
+        self._registry = registry
 
     async def add_result(
         self, db_alias: str, connector_type: Literal["sql", "property_graph"], pred_query: PredQuery
@@ -190,39 +198,90 @@ class OutputStore:
         self._sources[source_id] = source
         return source
 
+    def add_parameter(self, parameter: ParameterDef) -> None:
+        """Register one output parameter, rejecting conflicting reuse."""
+        existing = self._parameters.get(parameter.id)
+        if existing is None:
+            self._parameters[parameter.id] = parameter
+            return
+        if existing != parameter:
+            raise ValueError(f"parameter {parameter.id!r} already exists with a different definition")
+
+    def get_parameter(self, parameter_id: str) -> ParameterDef:
+        """Return a registered parameter definition."""
+        try:
+            return self._parameters[parameter_id]
+        except KeyError:
+            raise KeyError(f"No parameter with id {parameter_id}") from None
+
+    def parameters_for_source(self, source: SourceDef) -> list[ParameterDef]:
+        """Return the parameter definitions required by ``source``."""
+        if not isinstance(source, ParameterizedSource):
+            return []
+        return [self.get_parameter(parameter_id) for parameter_id in source.parameter_ids]
+
     async def add_parameterized_source(
         self,
         db_alias: str,
+        parameters: list[ParameterDef],
+        query_template: str,
+    ) -> ParameterizedSource:
+        """Create a parameterized source from registered parameters and a query template."""
+        source_id = self._next_source_id_value()
+        for parameter in parameters:
+            self.add_parameter(parameter)
+        source = ParameterizedSource(
+            id=source_id,
+            parameter_ids=[parameter.id for parameter in parameters],
+            db_alias=db_alias,
+            query_template=query_template,
+        )
+        self._sources[source_id] = source
+        return source
+
+    async def add_prewarmed_parameterized_source(
+        self,
+        db_alias: str,
         connector_type: Literal["sql", "property_graph"],
-        dimensions: dict[str, list[str]],
+        parameters: list[ParameterDef],
         query_template: str,
         pred_queries_by_selection: dict[str, PredQuery],
-    ) -> SourceDef:
-        """Store a result-lookup source and its per-selection results.
+    ) -> ParameterizedSource:
+        """Create a parameterized source and seed its runtime cache.
 
         Selections whose query text is identical share a single result.  Variant
         result ids stay out of the citable source namespace.
         """
-        source_id = self._next_source_id_value()
+        source = await self.add_parameterized_source(db_alias, parameters, query_template)
+        source_id = source.id
         result_ids_by_query: dict[str, str] = {}
         result_ids_by_selection: dict[str, str] = {}
         for selection_key, pred_query in pred_queries_by_selection.items():
+            selection = _selection_from_key(selection_key)
+            pred_query.parameter_values = dict(selection)
             result_id = result_ids_by_query.get(pred_query.query)
             if result_id is None:
                 result_id = self._next_result_id_value()
                 result_ids_by_query[pred_query.query] = result_id
                 await self._store(result_id, db_alias, connector_type, pred_query)
             result_ids_by_selection[selection_key] = result_id
-        source = ParameterizedSource(
-            id=source_id,
-            parameter_ids=list(dimensions),
-            db_alias=db_alias,
-            query_template=query_template,
-        )
-        self._sources[source_id] = source
         for key, result_id in result_ids_by_selection.items():
             self._source_cache[(source_id, canonical_selection_key(_selection_from_key(key)))] = result_id
         return source
+
+    async def add_cached_parameterized_result(
+        self,
+        source: ParameterizedSource,
+        connector_type: Literal["sql", "property_graph"],
+        selection: dict[ParameterId, SelectionValue],
+        pred_query: PredQuery,
+    ) -> ResultId:
+        """Seed or replace one cached materialization for a parameterized source."""
+        result_id = self._next_result_id_value()
+        pred_query.parameter_values = dict(selection)
+        await self._store(result_id, source.db_alias, connector_type, pred_query)
+        self._source_cache[(source.id, canonical_selection_key(selection))] = result_id
+        return result_id
 
     def _next_result_id_value(self) -> str:
         result_id = f"R{self._next_result_id}"
@@ -294,8 +353,21 @@ class OutputStore:
         selection_key = canonical_selection_key(selection)
         result_id = self._source_cache.get((source.id, selection_key))
         if result_id is None:
-            raise KeyError(f"source {source.id!r} has no result for selection {selection_key}")
+            result_id = await self._materialize_parameterized_source(source, selection)
         return await self.get_metadata(result_id)
+
+    async def _materialize_parameterized_source(
+        self,
+        source: ParameterizedSource,
+        selection: dict[ParameterId, SelectionValue],
+    ) -> ResultId:
+        if self._registry is None:
+            raise KeyError(f"source {source.id!r} has no result for selection {canonical_selection_key(selection)}")
+        query = render_parameterized_query(source.query_template, selection)
+        connector = self._registry.get(source.db_alias)
+        exec_result = await connector.run_query_async(query)
+        pred_query = PredQuery(query=query, parameter_values=dict(selection), exec_result=exec_result)
+        return await self.add_cached_parameterized_result(source, connector.connector_type, selection, pred_query)
 
     async def _get_result(self, result_id: str) -> _StoredResult:
         """Return an internal stored result."""
@@ -353,3 +425,13 @@ def _view_source_ids(view: ViewDef) -> tuple[str, ...]:
     if hasattr(view, "sources"):
         return tuple(view.sources)
     return ()
+
+
+def render_parameterized_query(query_template: str, selection: dict[ParameterId, SelectionValue]) -> str:
+    """Render a parameterized-source query template with validated scalar values."""
+    for name, value in selection.items():
+        if isinstance(value, bool):
+            raise ValueError(f"{name} must not be boolean")
+        if isinstance(value, float) and not math.isfinite(value):
+            raise ValueError(f"{name} must be finite")
+    return _JINJA_ENV.from_string(query_template).render(**selection)

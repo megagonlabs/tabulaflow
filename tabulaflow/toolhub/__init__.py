@@ -10,6 +10,7 @@ from tabulaflow.toolhub.get_column_json_schema import GetColumnJsonSchemaTool
 from tabulaflow.toolhub.get_table_schema import GetTableSchemaTool
 from tabulaflow.toolhub.add_canonical_name import AddCanonicalNameTool
 from tabulaflow.toolhub.connect_data_source import ConnectDataSourceTool
+from tabulaflow.toolhub.create_parameterized_source import CreateParameterizedSourceTool
 from tabulaflow.toolhub.entity_extractor import EntityExtractor
 from tabulaflow.toolhub.execute_bash import BashToolMetrics, ExecuteBashTool
 from tabulaflow.toolhub.extract_rows_from_documents import ExtractRowsFromDocumentsTool
@@ -35,7 +36,7 @@ from tabulaflow.toolhub.run_query_for_each_combination import (
     selection_key,
 )
 from tabulaflow.toolhub.run_subagent_for_each_row import RunSubagentForEachRowTool
-from tabulaflow.toolhub.show_artifacts import ArtifactBundle, ArtifactRef, Choice, Dimension, ShowArtifactsTool
+from tabulaflow.toolhub.show_artifacts import ArtifactBundle, ArtifactRef, ShowArtifactsTool
 from tabulaflow.toolhub.output_resolver import (
     OutputResolutionError,
     OutputResolver,
@@ -62,6 +63,7 @@ __all__ = [
     "AddCanonicalNameTool",
     "BashToolMetrics",
     "ConnectDataSourceTool",
+    "CreateParameterizedSourceTool",
     "EntityExtractor",
     "ExecuteBashTool",
     "ExtractRowsFromDocumentsTool",
@@ -74,8 +76,6 @@ __all__ = [
     "RegistryGetTableSchemaTool",
     "ArtifactRef",
     "ArtifactBundle",
-    "Choice",
-    "Dimension",
     "selection_key",
     "QueryDimension",
     "OutputStore",
