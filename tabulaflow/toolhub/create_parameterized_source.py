@@ -28,6 +28,8 @@ from tabulaflow.toolhub.engines.sql import format_sqlalchemy_error_msg
 from tabulaflow.toolhub.output_store import OutputStore, render_parameterized_query
 
 _JINJA_ENV = jinja2.Environment(undefined=jinja2.StrictUndefined, trim_blocks=True, lstrip_blocks=True)
+# Failure reports group by distinct error. Limit how many error groups and
+# failing selection labels per group are printed so large warm grids stay readable.
 _MAX_REPORTED_ERRORS = 5
 _KEYS_PER_ERROR = 3
 
@@ -110,7 +112,8 @@ class CreateParameterizedSourceTool:
             parameters: Choice or number parameters referenced by the Jinja query template.
             query_template: Jinja template rendered with validated parameter values.
             max_warm_variants: Maximum finite choice combinations to precompute. If omitted,
-                the session default is used. Numeric parameters warm only the default selection.
+                the session default is used. Numeric parameters are fixed at their
+                defaults while choice combinations are warmed up to this cap.
         """
         try:
             created = await self.execute(db_alias, parameters, query_template, max_warm_variants)
@@ -204,15 +207,17 @@ def _validate_template(parameters: list[ParameterDef], query_template: str) -> N
 
 def _warm_selections(parameters: list[ParameterDef], max_warm_variants: int) -> list[dict[str, SelectionValue]]:
     default = _default_selection(parameters)
-    if any(isinstance(parameter, NumberParameter) for parameter in parameters):
-        return [default]
     choice_parameters = [parameter for parameter in parameters if isinstance(parameter, ChoiceParameter)]
+    if not choice_parameters:
+        return [default]
     combinations = math.prod(len(parameter.choices) for parameter in choice_parameters)
     if combinations > max_warm_variants:
         return [default]
     selections: list[dict[str, SelectionValue]] = []
     for choices in itertools.product(*(parameter.choices for parameter in choice_parameters)):
-        selections.append({parameter.id: choice.id for parameter, choice in zip(choice_parameters, choices, strict=True)})
+        selection = dict(default)
+        selection.update({parameter.id: choice.id for parameter, choice in zip(choice_parameters, choices, strict=True)})
+        selections.append(selection)
     return selections or [default]
 
 

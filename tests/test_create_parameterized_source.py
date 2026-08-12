@@ -99,9 +99,11 @@ async def test_create_parameterized_source_batches_warm_errors_and_registers_not
     )
 
     text = _text(result)
-    assert "2 of 2 warm queries failed; source was not created" in text
-    assert "metric=bad_a" in text
-    assert "metric=bad_b" in text
+    assert text.startswith("(error: 2 of 2 warm queries failed; source was not created\n  metric=bad_a — ")
+    assert "Referenced column \"missing_a\" not found" in text
+    assert "\n  metric=bad_b — " in text
+    assert "Referenced column \"missing_b\" not found" in text
+    assert text.endswith(")")
     with pytest.raises(KeyError):
         output_store.get_source("S1")
 
@@ -126,3 +128,30 @@ async def test_number_parameter_materializes_lazy_selection(registry: DBRegistry
     payload = await output_store.get_payload(result_id)
     assert payload.df is not None
     assert payload.df.to_dict("records") == [{"customer": "Acme"}, {"customer": "Globex"}]
+
+
+@pytest.mark.asyncio
+async def test_mixed_choice_and_number_warms_choice_grid_at_number_default(registry: DBRegistry) -> None:
+    output_store = OutputStore(registry=registry)
+    result = await CreateParameterizedSourceTool(registry, output_store)(
+        "workspace",
+        [
+            ChoiceParameter(
+                id="metric",
+                label="Metric",
+                choices=[ChoiceOption(id="net", label="Net"), ChoiceOption(id="gross", label="Gross")],
+            ),
+            NumberParameter(id="min_value", label="Minimum value", min=0, max=20, step=1, default=8),
+        ],
+        """
+        SELECT SUM({% if metric == 'net' %}net{% else %}gross{% endif %}) AS value
+        FROM orders
+        WHERE {% if metric == 'net' %}net{% else %}gross{% endif %} >= {{ min_value }}
+        """,
+    )
+
+    text = _text(result)
+    assert "default metric=net;min_value=8.0 -> R1" in text
+    assert "warmed metric=gross;min_value=8.0 -> R2" in text
+    assert "other selections will materialize lazily" not in text
+    assert len(output_store.get_cached_source_results("S1")) == 2
