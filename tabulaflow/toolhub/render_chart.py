@@ -501,7 +501,7 @@ class RenderChartTool:
         source = self._output_store.get_source(source_id)
         if isinstance(source, ParameterizedSource):
             out: list[_SourceVariant] = []
-            for key, result_id in self._output_store.get_cached_source_results(source.id).items():
+            for key, result_id in self._output_store.cached_parameterized_results(source.id).items():
                 selection_dict = json.loads(key)
                 selection = ";".join(f"{name}={value}" for name, value in sorted(selection_dict.items()))
                 out.append(

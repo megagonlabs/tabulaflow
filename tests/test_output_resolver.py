@@ -17,12 +17,12 @@ from tabulaflow.toolhub import OutputResolutionError, OutputResolver, OutputStor
 
 async def _output_store_with_results() -> OutputStore:
     output_store = OutputStore()
-    await output_store.add_result(
+    await output_store.add_fixed_result_source(
         "workspace",
         "sql",
         PredQuery(query="SELECT 1 AS a", exec_result=ExecResult(df=pd.DataFrame({"a": [1]}))),
     )
-    await output_store.add_result(
+    await output_store.add_fixed_result_source(
         "workspace",
         "sql",
         PredQuery(query="SELECT 2 AS a", exec_result=ExecResult(df=pd.DataFrame({"a": [2]}))),
@@ -64,9 +64,8 @@ async def test_fixed_source_resolves_output_artifact() -> None:
 @pytest.mark.asyncio
 async def test_parameterized_source_resolves_by_projected_selection() -> None:
     output_store = OutputStore()
-    source = await output_store.add_prewarmed_parameterized_source(
+    source = output_store.add_parameterized_source(
         "workspace",
-        "sql",
         [
             ChoiceParameter(
                 id="metric",
@@ -75,10 +74,18 @@ async def test_parameterized_source_resolves_by_projected_selection() -> None:
             )
         ],
         "SELECT {{ metric }}",
-        {
-            "metric=revenue": PredQuery(query="SELECT 1 AS a", exec_result=ExecResult(df=pd.DataFrame({"a": [1]}))),
-            "metric=profit": PredQuery(query="SELECT 2 AS a", exec_result=ExecResult(df=pd.DataFrame({"a": [2]}))),
-        },
+    )
+    await output_store.cache_parameterized_result(
+        source.id,
+        "sql",
+        {"metric": "revenue"},
+        PredQuery(query="SELECT 1 AS a", exec_result=ExecResult(df=pd.DataFrame({"a": [1]}))),
+    )
+    await output_store.cache_parameterized_result(
+        source.id,
+        "sql",
+        {"metric": "profit"},
+        PredQuery(query="SELECT 2 AS a", exec_result=ExecResult(df=pd.DataFrame({"a": [2]}))),
     )
     resolver = OutputResolver(output_store)
     output = OutputSpec(
@@ -99,11 +106,21 @@ async def test_parameterized_source_resolves_by_projected_selection() -> None:
 async def test_parameterized_source_rejects_invalid_choice() -> None:
     output_store = await _output_store_with_results()
     resolver = OutputResolver(output_store)
-    source = ParameterizedSource(id="top_customers", parameter_ids=["metric"], db_alias="workspace", query_template="SELECT 1")
+    source = output_store.add_parameterized_source(
+        "workspace",
+        [
+            ChoiceParameter(
+                id="metric",
+                label="Metric",
+                choices=[ChoiceOption(id="revenue", label="Revenue"), ChoiceOption(id="profit", label="Profit")],
+            )
+        ],
+        "SELECT 1",
+    )
     output = OutputSpec(
         parameters=_parameters(),
         sources=[source],
-        artifacts=[ArtifactSpec(id="table", view=TableView(source="top_customers"))],
+        artifacts=[ArtifactSpec(id="table", view=TableView(source=source.id))],
     )
 
     with pytest.raises(OutputResolutionError, match="not a valid choice"):
@@ -114,11 +131,21 @@ async def test_parameterized_source_rejects_invalid_choice() -> None:
 async def test_parameterized_source_reports_unavailable_selection() -> None:
     output_store = await _output_store_with_results()
     resolver = OutputResolver(output_store)
-    source = ParameterizedSource(id="top_customers", parameter_ids=["metric"], db_alias="workspace", query_template="SELECT 1")
+    source = output_store.add_parameterized_source(
+        "workspace",
+        [
+            ChoiceParameter(
+                id="metric",
+                label="Metric",
+                choices=[ChoiceOption(id="revenue", label="Revenue"), ChoiceOption(id="profit", label="Profit")],
+            )
+        ],
+        "SELECT 1",
+    )
     output = OutputSpec(
         parameters=_parameters(),
         sources=[source],
-        artifacts=[ArtifactSpec(id="table", view=TableView(source="top_customers"))],
+        artifacts=[ArtifactSpec(id="table", view=TableView(source=source.id))],
     )
 
     with pytest.raises(OutputResolutionError, match="has no result"):
@@ -129,10 +156,15 @@ async def test_parameterized_source_reports_unavailable_selection() -> None:
 async def test_parameterized_source_without_cache_errors_until_materialization_exists() -> None:
     output_store = await _output_store_with_results()
     resolver = OutputResolver(output_store)
+    source = output_store.add_parameterized_source(
+        "workspace",
+        [NumberParameter(id="min_spend", label="Minimum spend", min=0, max=100_000, step=5_000, default=10_000)],
+        "SELECT 1",
+    )
     output = OutputSpec(
         parameters=_parameters(),
-        sources=[ParameterizedSource(id="lazy", parameter_ids=["min_spend"], db_alias="workspace", query_template="SELECT 1")],
-        artifacts=[ArtifactSpec(id="table", view=TableView(source="lazy"))],
+        sources=[source],
+        artifacts=[ArtifactSpec(id="table", view=TableView(source=source.id))],
     )
 
     with pytest.raises(OutputResolutionError, match="has no result"):

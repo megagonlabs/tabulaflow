@@ -25,7 +25,7 @@ from tabulaflow.toolhub.render_graph import (
 async def _output_store_with(*dfs: pd.DataFrame) -> OutputStore:
     output_store = OutputStore()
     for df in dfs:
-        await output_store.add_result("db", "sql", PredQuery(query="SELECT 1", exec_result=ExecResult(df=df)))
+        await output_store.add_fixed_result_source("db", "sql", PredQuery(query="SELECT 1", exec_result=ExecResult(df=df)))
     return output_store
 
 

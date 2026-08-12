@@ -62,11 +62,11 @@ async def test_create_parameterized_source_registers_parameters_and_warms_choice
         other warmed selections:
           metric=gross (1 row) — first row: value=21""")
     source = output_store.get_source("S1")
-    assert output_store.parameters_for_source(source)[0].id == "metric"
-    assert len(output_store.get_cached_source_results("S1")) == 2
+    assert output_store.source_parameters(source.id)[0].id == "metric"
+    assert len(output_store.cached_parameterized_results("S1")) == 2
 
     resolved = await OutputResolver(output_store).resolve(
-        OutputSpec(parameters=output_store.parameters_for_source(source), sources=[source], artifacts=[ArtifactSpec(id="S1", view=TableView(source="S1"))]),
+        OutputSpec(parameters=output_store.source_parameters(source.id), sources=[source], artifacts=[ArtifactSpec(id="S1", view=TableView(source="S1"))]),
         {"metric": "gross"},
     )
     result_id = resolved.artifacts[0].metadata_by_source["S1"].id
@@ -122,7 +122,7 @@ async def test_number_parameter_materializes_lazy_selection(registry: DBRegistry
     source = output_store.get_source("S1")
 
     resolved = await OutputResolver(output_store).resolve(
-        OutputSpec(parameters=output_store.parameters_for_source(source), sources=[source], artifacts=[ArtifactSpec(id="S1", view=TableView(source="S1"))]),
+        OutputSpec(parameters=output_store.source_parameters(source.id), sources=[source], artifacts=[ArtifactSpec(id="S1", view=TableView(source="S1"))]),
         {"min_net": 6},
     )
 
@@ -157,4 +157,4 @@ async def test_mixed_choice_and_number_warms_choice_grid_at_number_default(regis
     assert "metric=gross;min_value=8.0 (1 row) — first row: value=21" in text
     assert "-> R" not in text
     assert "other selections will materialize lazily" not in text
-    assert len(output_store.get_cached_source_results("S1")) == 2
+    assert len(output_store.cached_parameterized_results("S1")) == 2

@@ -18,7 +18,7 @@ def _text(result: ToolReturn) -> str:
 @pytest.fixture
 async def output_store() -> OutputStore:
     h = OutputStore()
-    await h.add_result("workspace", "sql", PredQuery(query="SELECT 1", exec_result=ExecResult(df=pd.DataFrame({"a": [1]}))))
+    await h.add_fixed_result_source("workspace", "sql", PredQuery(query="SELECT 1", exec_result=ExecResult(df=pd.DataFrame({"a": [1]}))))
     h.add_artifact("CHART", ChartView(source="S1", spec={"mark": "bar"}))
     return h
 
@@ -61,7 +61,7 @@ class TestShowArtifacts:
     @pytest.mark.asyncio
     async def test_parameterized_sources_need_no_show_artifacts_dimensions(self) -> None:
         output_store = OutputStore()
-        await output_store.add_parameterized_source(
+        output_store.add_parameterized_source(
             "workspace",
             [ChoiceParameter(id="metric", label="Metric", choices=[ChoiceOption(id="revenue", label="Revenue")])],
             "SELECT 1",

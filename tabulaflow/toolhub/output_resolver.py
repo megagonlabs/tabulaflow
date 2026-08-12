@@ -88,9 +88,7 @@ class OutputResolver:
             return await self._output_store.get_metadata(source.result_id)
         if isinstance(source, ParameterizedSource):
             try:
-                return await self._output_store.resolve_parameterized_source(
-                    source, _project_selection(source, parameters, selection)
-                )
+                return await self._output_store.resolve_source(source.id, _project_selection(source, parameters, selection))
             except KeyError as exc:
                 raise OutputResolutionError(str(exc)) from None
         raise TypeError(f"unsupported source {type(source).__name__}")

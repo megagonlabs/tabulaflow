@@ -172,7 +172,7 @@ class TestAutoLineHover:
 
 async def _output_store_with(df: pd.DataFrame) -> OutputStore:
     output_store = OutputStore()
-    await output_store.add_result("db", "sql", PredQuery(query="SELECT 1", exec_result=ExecResult(df=df)))
+    await output_store.add_fixed_result_source("db", "sql", PredQuery(query="SELECT 1", exec_result=ExecResult(df=df)))
     return output_store
 
 
@@ -193,9 +193,8 @@ class TestRenderChartTool:
 
     async def test_query_family_source_creates_chart(self) -> None:
         output_store = OutputStore()
-        await output_store.add_prewarmed_parameterized_source(
+        source = output_store.add_parameterized_source(
             "db",
-            "sql",
             [
                 ChoiceParameter(
                     id="ranking",
@@ -204,15 +203,21 @@ class TestRenderChartTool:
                 )
             ],
             "SELECT 1",
-            {
-                "ranking=net": PredQuery(
-                    query="SELECT 'net' AS a, 1 AS b", exec_result=ExecResult(df=pd.DataFrame({"a": ["net"], "b": [1]}))
-                ),
-                "ranking=count": PredQuery(
-                    query="SELECT 'count' AS a, 2 AS b",
-                    exec_result=ExecResult(df=pd.DataFrame({"a": ["count"], "b": [2]})),
-                ),
-            },
+        )
+        await output_store.cache_parameterized_result(
+            source.id,
+            "sql",
+            {"ranking": "net"},
+            PredQuery(query="SELECT 'net' AS a, 1 AS b", exec_result=ExecResult(df=pd.DataFrame({"a": ["net"], "b": [1]}))),
+        )
+        await output_store.cache_parameterized_result(
+            source.id,
+            "sql",
+            {"ranking": "count"},
+            PredQuery(
+                query="SELECT 'count' AS a, 2 AS b",
+                exec_result=ExecResult(df=pd.DataFrame({"a": ["count"], "b": [2]})),
+            ),
         )
         spec = {"mark": "bar", "encoding": {"x": {"field": "a"}, "y": {"field": "b"}}}
 
@@ -224,9 +229,8 @@ class TestRenderChartTool:
 
     async def test_query_family_validation_reports_all_failing_selections(self) -> None:
         output_store = OutputStore()
-        await output_store.add_prewarmed_parameterized_source(
+        source = output_store.add_parameterized_source(
             "db",
-            "sql",
             [
                 ChoiceParameter(
                     id="ranking",
@@ -235,12 +239,18 @@ class TestRenderChartTool:
                 )
             ],
             "SELECT 1",
-            {
-                "ranking=net": PredQuery(
-                    query="SELECT 'net' AS a", exec_result=ExecResult(df=pd.DataFrame({"a": ["net"]}))
-                ),
-                "ranking=count": PredQuery(query="SELECT 2 AS c", exec_result=ExecResult(df=pd.DataFrame({"c": [2]}))),
-            },
+        )
+        await output_store.cache_parameterized_result(
+            source.id,
+            "sql",
+            {"ranking": "net"},
+            PredQuery(query="SELECT 'net' AS a", exec_result=ExecResult(df=pd.DataFrame({"a": ["net"]}))),
+        )
+        await output_store.cache_parameterized_result(
+            source.id,
+            "sql",
+            {"ranking": "count"},
+            PredQuery(query="SELECT 2 AS c", exec_result=ExecResult(df=pd.DataFrame({"c": [2]}))),
         )
         spec = {"mark": "bar", "encoding": {"x": {"field": "a"}, "y": {"field": "b"}}}
 

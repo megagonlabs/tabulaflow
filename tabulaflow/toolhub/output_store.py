@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import logging
-import json
 from collections import OrderedDict
 from dataclasses import dataclass
 import math
@@ -67,18 +66,6 @@ class ResultPayload(BaseModel):
     @classmethod
     def _deserialize_df(cls, v: dict[str, object] | pd.DataFrame | None) -> pd.DataFrame | None:
         return _deserialize_dataframe(v)
-
-
-def _selection_from_key(key: str) -> dict[str, SelectionValue]:
-    if not key:
-        return {}
-    selection: dict[str, SelectionValue] = {}
-    for part in key.split(";"):
-        if not part:
-            continue
-        name, value = part.split("=", 1)
-        selection[name] = value
-    return selection
 
 
 class _ResultFrameStore:
@@ -187,10 +174,10 @@ class OutputStore:
         self._results = _ResultFrameStore(max_in_memory=max_in_memory, spill_connector=spill_connector)
         self._registry = registry
 
-    async def add_result(
+    async def add_fixed_result_source(
         self, db_alias: str, connector_type: Literal["sql", "property_graph"], pred_query: PredQuery
-    ) -> SourceDef:
-        """Store a query result and create a constant source for it."""
+    ) -> FixedResultSource:
+        """Store a query result and create a fixed source for it."""
         result_id = self._next_result_id_value()
         source_id = self._next_source_id_value()
         await self._store(result_id, db_alias, connector_type, pred_query)
@@ -198,7 +185,7 @@ class OutputStore:
         self._sources[source_id] = source
         return source
 
-    def add_parameter(self, parameter: ParameterDef) -> None:
+    def register_parameter(self, parameter: ParameterDef) -> None:
         """Register one output parameter, rejecting conflicting reuse."""
         existing = self._parameters.get(parameter.id)
         if existing is None:
@@ -214,13 +201,14 @@ class OutputStore:
         except KeyError:
             raise KeyError(f"No parameter with id {parameter_id}") from None
 
-    def parameters_for_source(self, source: SourceDef) -> list[ParameterDef]:
-        """Return the parameter definitions required by ``source``."""
+    def source_parameters(self, source_id: str) -> list[ParameterDef]:
+        """Return the parameter definitions required by ``source_id``."""
+        source = self.get_source(source_id)
         if not isinstance(source, ParameterizedSource):
             return []
         return [self.get_parameter(parameter_id) for parameter_id in source.parameter_ids]
 
-    async def add_parameterized_source(
+    def add_parameterized_source(
         self,
         db_alias: str,
         parameters: list[ParameterDef],
@@ -229,7 +217,7 @@ class OutputStore:
         """Create a parameterized source from registered parameters and a query template."""
         source_id = self._next_source_id_value()
         for parameter in parameters:
-            self.add_parameter(parameter)
+            self.register_parameter(parameter)
         source = ParameterizedSource(
             id=source_id,
             parameter_ids=[parameter.id for parameter in parameters],
@@ -239,44 +227,17 @@ class OutputStore:
         self._sources[source_id] = source
         return source
 
-    async def add_prewarmed_parameterized_source(
+    async def cache_parameterized_result(
         self,
-        db_alias: str,
-        connector_type: Literal["sql", "property_graph"],
-        parameters: list[ParameterDef],
-        query_template: str,
-        pred_queries_by_selection: dict[str, PredQuery],
-    ) -> ParameterizedSource:
-        """Create a parameterized source and seed its runtime cache.
-
-        Selections whose query text is identical share a single result.  Variant
-        result ids stay out of the citable source namespace.
-        """
-        source = await self.add_parameterized_source(db_alias, parameters, query_template)
-        source_id = source.id
-        result_ids_by_query: dict[str, str] = {}
-        result_ids_by_selection: dict[str, str] = {}
-        for selection_key, pred_query in pred_queries_by_selection.items():
-            selection = _selection_from_key(selection_key)
-            pred_query.parameter_values = dict(selection)
-            result_id = result_ids_by_query.get(pred_query.query)
-            if result_id is None:
-                result_id = self._next_result_id_value()
-                result_ids_by_query[pred_query.query] = result_id
-                await self._store(result_id, db_alias, connector_type, pred_query)
-            result_ids_by_selection[selection_key] = result_id
-        for key, result_id in result_ids_by_selection.items():
-            self._source_cache[(source_id, canonical_selection_key(_selection_from_key(key)))] = result_id
-        return source
-
-    async def add_cached_parameterized_result(
-        self,
-        source: ParameterizedSource,
+        source_id: str,
         connector_type: Literal["sql", "property_graph"],
         selection: dict[ParameterId, SelectionValue],
         pred_query: PredQuery,
     ) -> ResultId:
         """Seed or replace one cached materialization for a parameterized source."""
+        source = self.get_source(source_id)
+        if not isinstance(source, ParameterizedSource):
+            raise ValueError(f"source {source_id!r} is not parameterized")
         result_id = self._next_result_id_value()
         pred_query.parameter_values = dict(selection)
         await self._store(result_id, source.db_alias, connector_type, pred_query)
@@ -330,15 +291,7 @@ class OutputStore:
         except KeyError:
             raise KeyError(f"No source with id {source_id}") from None
 
-    def get_cached_source_selections(self, source_id: str) -> list[dict[ParameterId, SelectionValue]]:
-        """Return selections currently cached for a parameterized source."""
-        selections: list[dict[ParameterId, SelectionValue]] = []
-        for cached_source_id, selection_key in self._source_cache:
-            if cached_source_id == source_id:
-                selections.append(json.loads(selection_key))
-        return selections
-
-    def get_cached_source_results(self, source_id: str) -> dict[str, str]:
+    def cached_parameterized_results(self, source_id: str) -> dict[str, str]:
         """Return cached selection keys and result ids for a parameterized source."""
         return {
             selection_key: result_id
@@ -346,10 +299,14 @@ class OutputStore:
             if cached_source_id == source_id
         }
 
-    async def resolve_parameterized_source(
-        self, source: ParameterizedSource, selection: dict[ParameterId, SelectionValue]
-    ) -> ResultMetadata:
-        """Resolve a parameterized source through the runtime cache."""
+    async def resolve_source(self, source_id: str, selection: dict[ParameterId, SelectionValue] | None = None) -> ResultMetadata:
+        """Resolve a source to result metadata, materializing parameterized cache misses."""
+        source = self.get_source(source_id)
+        if isinstance(source, FixedResultSource):
+            return await self.get_metadata(source.result_id)
+        if not isinstance(source, ParameterizedSource):
+            raise TypeError(f"unsupported source {type(source).__name__}")
+        selection = selection or {}
         selection_key = canonical_selection_key(selection)
         result_id = self._source_cache.get((source.id, selection_key))
         if result_id is None:
@@ -367,7 +324,7 @@ class OutputStore:
         connector = self._registry.get(source.db_alias)
         exec_result = await connector.run_query_async(query)
         pred_query = PredQuery(query=query, parameter_values=dict(selection), exec_result=exec_result)
-        return await self.add_cached_parameterized_result(source, connector.connector_type, selection, pred_query)
+        return await self.cache_parameterized_result(source.id, connector.connector_type, selection, pred_query)
 
     async def _get_result(self, result_id: str) -> _StoredResult:
         """Return an internal stored result."""

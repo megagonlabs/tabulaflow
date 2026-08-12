@@ -240,7 +240,7 @@ different meaning -> different ParameterId
 class OutputStore:
     _parameters: dict[ParameterId, ParameterDef]
 
-    def add_parameter(self, parameter: ParameterDef) -> None:
+    def register_parameter(self, parameter: ParameterDef) -> None:
         existing = self._parameters.get(parameter.id)
         if existing is None:
             self._parameters[parameter.id] = parameter
@@ -330,8 +330,10 @@ Minimal public API target:
 
 ```python
 class OutputStore:
-    async def add_result(...) -> FixedResultSource
-    async def add_parameterized_source(...) -> ParameterizedSource
+    async def add_fixed_result_source(...) -> FixedResultSource
+    def add_parameterized_source(...) -> ParameterizedSource
+    async def cache_parameterized_result(...) -> ResultId
+    async def resolve_source(...) -> ResultMetadata
 
     def get_source(source_id: SourceId) -> SourceDef
 
@@ -415,10 +417,6 @@ It returns:
 and its tool metadata should include the `ParameterDef`s and `SourceDef`, so chat output construction can include them in `OutputSpec`.
 
 The tool should register parameters in `OutputStore`; it should not require a prior parameter-registration call.
-
-### `run_query_for_each_combination`
-
-Eventually replace or implement as a wrapper over `create_parameterized_source`.
 
 ### `render_chart`, `render_map`, `render_graph`
 
@@ -680,6 +678,5 @@ Declared graph artifacts from tabular data are different: they are view material
 3. Replace `ResultLookupPlan` and `QueryPlan` with `ParameterizedSource` plus runtime source cache.
 4. Add `OutputStore.resolve_parameterized_source(...)`.
 5. Add `create_parameterized_source` tool.
-6. Reimplement `run_query_for_each_combination` as a wrapper or compatibility path over `create_parameterized_source`.
-7. Update `show_artifacts` and render tools to consume only source/artifact ids from the new model.
-8. Remove stale plan classes and tests.
+6. Update `show_artifacts` and render tools to consume only source/artifact ids from the new model.
+7. Remove stale plan classes and tests.

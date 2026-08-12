@@ -161,14 +161,12 @@ class CreateParameterizedSourceTool:
         if failures:
             raise ValueError(_format_failures(failures, len(warm_queries)))
 
-        source = await self._output_store.add_parameterized_source(db_alias, parameters, query_template)
+        source = self._output_store.add_parameterized_source(db_alias, parameters, query_template)
         lines = [f"[source_id={source.id}]", f"created parameterized source {source.id}"]
         other_lines: list[str] = []
         for index, (selection, pred_query) in enumerate(pred_queries):
             assert pred_query.exec_result is not None
-            await self._output_store.add_cached_parameterized_result(
-                source, connector.connector_type, selection, pred_query
-            )
+            await self._output_store.cache_parameterized_result(source.id, connector.connector_type, selection, pred_query)
             if index == 0:
                 lines += [f"default {_selection_label(selection)}:", _format_exec_result(pred_query.exec_result)]
             else:

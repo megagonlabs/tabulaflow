@@ -8,15 +8,15 @@ from pydantic_ai.messages import ToolReturnPart
 from tabulaflow.chat.agent import _build_chat_result, _declared_bundle, _TextStreamRouter, _strip_answer_marker
 from tabulaflow.core.db_connector.db_registry import DBRegistry
 from tabulaflow.core.db_connector.sql_conn import SQLConnector
+from tabulaflow.core.outputs import ChoiceOption, ChoiceParameter
 from tabulaflow.core.types import ExecResult, PredQuery
 from tabulaflow.toolhub import (
     ArtifactRef,
     ArtifactBundle,
+    CreateParameterizedSourceTool,
     OutputResolver,
-    QueryDimension,
     OutputStore,
     RenderChartTool,
-    RunQueryForEachCombinationTool,
 )
 
 
@@ -82,7 +82,7 @@ def test_declared_bundle_skips_failed_calls_and_takes_the_last() -> None:
 @pytest.mark.asyncio
 async def test_build_chat_result_resolves_the_declared_bundle() -> None:
     output_store = OutputStore()
-    await output_store.add_result(
+    await output_store.add_fixed_result_source(
         "workspace", "sql", PredQuery(query="SELECT 1", exec_result=ExecResult(df=pd.DataFrame({"a": [1]})))
     )
     bundle = ArtifactBundle(artifacts=(ArtifactRef(id="S1", label="row count"),))
@@ -112,23 +112,37 @@ async def test_build_chat_result_resolves_a_panel(tmp_path: Path) -> None:
     await connector.run_query_async("INSERT INTO orders VALUES ('Acme', 10, 'q2'), ('Globex', 7, 'q3')")
     registry = DBRegistry()
     registry.register("workspace", connector)
-    output_store = OutputStore()
-    runner = RunQueryForEachCombinationTool(registry, output_store=output_store)
+    output_store = OutputStore(registry=registry)
+    create_source = CreateParameterizedSourceTool(registry, output_store)
     # S1 varies over both dimensions; S2 only over period.
-    await runner(
+    await create_source(
         "workspace",
         [
-            QueryDimension(id="ranking", choices=["net", "count"]),
-            QueryDimension(id="period", choices=["q2", "q3"]),
+            ChoiceParameter(
+                id="ranking",
+                label="Ranking",
+                choices=[ChoiceOption(id="net", label="Net"), ChoiceOption(id="count", label="Count")],
+            ),
+            ChoiceParameter(
+                id="period",
+                label="Period",
+                choices=[ChoiceOption(id="q2", label="Q2"), ChoiceOption(id="q3", label="Q3")],
+            ),
         ],
         """
         SELECT customer, {% if ranking == "net" %} SUM(net) {% else %} COUNT(*) {% endif %} AS value
         FROM orders WHERE quarter = '{{ period }}' GROUP BY customer
         """,
     )
-    await runner(
+    await create_source(
         "workspace",
-        [QueryDimension(id="period", choices=["q2", "q3"])],
+        [
+            ChoiceParameter(
+                id="period",
+                label="Period",
+                choices=[ChoiceOption(id="q2", label="Q2"), ChoiceOption(id="q3", label="Q3")],
+            )
+        ],
         "SELECT COUNT(*) AS orders FROM orders WHERE quarter = '{{ period }}'",
     )
     bundle = ArtifactBundle(
@@ -168,11 +182,16 @@ async def test_build_chat_result_resolves_source_backed_chart_in_panel(tmp_path:
     await connector.run_query_async("INSERT INTO orders VALUES ('Acme', 10, 'q2'), ('Globex', 7, 'q3')")
     registry = DBRegistry()
     registry.register("workspace", connector)
-    output_store = OutputStore()
-    runner = RunQueryForEachCombinationTool(registry, output_store=output_store)
-    await runner(
+    output_store = OutputStore(registry=registry)
+    await CreateParameterizedSourceTool(registry, output_store)(
         "workspace",
-        [QueryDimension(id="period", choices=["q2", "q3"])],
+        [
+            ChoiceParameter(
+                id="period",
+                label="Period",
+                choices=[ChoiceOption(id="q2", label="Q2"), ChoiceOption(id="q3", label="Q3")],
+            )
+        ],
         "SELECT customer, SUM(net) AS value FROM orders WHERE quarter = '{{ period }}' GROUP BY customer",
     )
     spec = {"mark": "bar", "encoding": {"x": {"field": "customer"}, "y": {"field": "value"}}}
@@ -208,11 +227,10 @@ async def test_build_chat_result_placeholders_a_partially_covered_card(tmp_path:
     await connector.run_query_async("INSERT INTO orders VALUES (10, 'q2')")
     registry = DBRegistry()
     registry.register("workspace", connector)
-    output_store = OutputStore()
-    runner = RunQueryForEachCombinationTool(registry, output_store=output_store)
-    await runner(
+    output_store = OutputStore(registry=registry)
+    await CreateParameterizedSourceTool(registry, output_store)(
         "workspace",
-        [QueryDimension(id="period", choices=["q2"])],
+        [ChoiceParameter(id="period", label="Period", choices=[ChoiceOption(id="q2", label="Q2")])],
         "SELECT SUM(net) AS net FROM orders WHERE quarter = '{{ period }}'",
     )
     bundle = ArtifactBundle(artifacts=(ArtifactRef(id="S1", label="net revenue"),))

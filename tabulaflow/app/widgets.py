@@ -578,26 +578,6 @@ def _summarize_generic_args(args: Mapping[str, object]) -> str:
     return ", ".join(f"{k}={_fmt_arg_value(v, 24)}" for k, v in items)[:80]
 
 
-def _summarize_query_combinations(args: Mapping[str, object], db_prefix: str) -> str:
-    """Compact step label for ``run_query_for_each_combination``."""
-    dimensions = args.get("dimensions")
-    if not isinstance(dimensions, list):
-        return f"Query {db_prefix}".rstrip()
-
-    labels: list[str] = []
-    for dim in dimensions:
-        if not isinstance(dim, dict):
-            return f"Query {db_prefix}".rstrip()
-        name = str(dim.get("id") or "").strip()
-        choices = dim.get("choices")
-        if not name or not isinstance(choices, list) or not choices:
-            return f"Query {db_prefix}".rstrip()
-        labels.append(f"{len(choices)} {name}")
-
-    dims = " × ".join(labels)
-    return f"Query {db_prefix}{dims}".rstrip()
-
-
 def _line_diffstat(old: str, new: str) -> tuple[int, int]:
     """Lines added/removed between two strings, git-diff style (changed lines only)."""
     old_lines = old.splitlines()
@@ -737,8 +717,6 @@ def summarize_tool_args(name: str, args: Mapping[str, object]) -> str:
         if len(query) > 40:
             query = query[:37] + "..."
         return f"Query {db_prefix}{query}"
-    if name == "run_query_for_each_combination":
-        return _summarize_query_combinations(args, db_prefix)
     if name == "get_db_document":
         return f"Inspect {db_prefix}".rstrip()
     if name == "get_table_schema":
@@ -1421,8 +1399,6 @@ class AgentProgressWidget(Widget):
         self._refresh(layout=True, scroll=True)
 
     def _on_tool_end(self, tool_call_id: str, name: str, result_summary: str) -> None:
-        if name == "run_query_for_each_combination" and result_summary != "error":
-            result_summary = ""
         for i in range(len(self._steps) - 1, -1, -1):
             step = self._steps[i]
             if step[0] == "running" and step[1] == tool_call_id:

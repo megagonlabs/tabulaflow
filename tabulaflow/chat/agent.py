@@ -80,7 +80,6 @@ if TYPE_CHECKING:
         RenderChartTool,
         RenderGraphTool,
         RenderMapTool,
-        RunQueryForEachCombinationTool,
         RunSubagentForEachRowTool,
         ShowArtifactsTool,
         ToolProgressUpdate,
@@ -127,7 +126,6 @@ class _Toolset:
 
     run_query: RegistryRunQueryTool
     create_parameterized_source: CreateParameterizedSourceTool
-    run_query_for_each_combination: RunQueryForEachCombinationTool
     get_db_document: RegistryGetDBDocumentTool
     get_table_schema: RegistryGetTableSchemaTool
     get_column_json_schema: RegistryGetColumnJsonSchemaTool
@@ -272,7 +270,6 @@ class ChatAgent:
             RenderChartTool,
             RenderGraphTool,
             RenderMapTool,
-            RunQueryForEachCombinationTool,
             RunSubagentForEachRowTool,
             ShowArtifactsTool,
             WebBrowserTool,
@@ -304,7 +301,6 @@ class ChatAgent:
         return _Toolset(
             run_query=RegistryRunQueryTool(self.registry, output_store=self._output_store, enable_refresh=True),
             create_parameterized_source=CreateParameterizedSourceTool(self.registry, output_store=self._output_store),
-            run_query_for_each_combination=RunQueryForEachCombinationTool(self.registry, output_store=self._output_store),
             get_db_document=RegistryGetDBDocumentTool(
                 self.registry,
                 db_summarizer_cls=DBSummarizer,
@@ -813,7 +809,7 @@ def _output_spec_from_bundle(bundle: "ArtifactBundle", output_store: OutputStore
         artifacts.append(artifact)
 
     for source in sources.values():
-        for parameter in output_store.parameters_for_source(source):
+        for parameter in output_store.source_parameters(source.id):
             parameters.setdefault(parameter.id, parameter)
 
     return OutputSpec(parameters=list(parameters.values()), sources=list(sources.values()), artifacts=artifacts)

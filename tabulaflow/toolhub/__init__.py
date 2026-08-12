@@ -30,11 +30,6 @@ from tabulaflow.toolhub.output_store import (
 from tabulaflow.toolhub.registry_run_query import RegistryRunQueryTool
 from tabulaflow.toolhub.registry_transfer_record import RegistryTransferRecordTool
 from tabulaflow.toolhub.run_query import RunQueryTool
-from tabulaflow.toolhub.run_query_for_each_combination import (
-    QueryDimension,
-    RunQueryForEachCombinationTool,
-    selection_key,
-)
 from tabulaflow.toolhub.run_subagent_for_each_row import RunSubagentForEachRowTool
 from tabulaflow.toolhub.show_artifacts import ArtifactBundle, ArtifactRef, ShowArtifactsTool
 from tabulaflow.toolhub.output_resolver import (
@@ -76,8 +71,6 @@ __all__ = [
     "RegistryGetTableSchemaTool",
     "ArtifactRef",
     "ArtifactBundle",
-    "selection_key",
-    "QueryDimension",
     "OutputStore",
     "ResultPayload",
     "RegistryRunQueryTool",
@@ -85,7 +78,6 @@ __all__ = [
     "RenderChartTool",
     "RenderGraphTool",
     "RenderMapTool",
-    "RunQueryForEachCombinationTool",
     "RunQueryTool",
     "RunSubagentForEachRowTool",
     "ShowArtifactsTool",

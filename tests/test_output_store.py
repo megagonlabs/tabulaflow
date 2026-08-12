@@ -63,15 +63,15 @@ class TestNoConnector:
     async def test_no_eviction(self) -> None:
         h = OutputStore(max_in_memory=2)
         for _ in range(5):
-            await h.add_result("db", "sql", _make_pred_query())
+            await h.add_fixed_result_source("db", "sql", _make_pred_query())
         assert h._results.in_memory_count == 5
         assert all(h._results.has_in_memory(r.metadata.id) for r in h._records.values())
 
     @pytest.mark.asyncio
     async def test_get(self) -> None:
         h = OutputStore()
-        await h.add_result("db", "sql", _make_pred_query(n_rows=3))
-        await h.add_result("db", "sql", _make_pred_query(n_rows=7))
+        await h.add_fixed_result_source("db", "sql", _make_pred_query(n_rows=3))
+        await h.add_fixed_result_source("db", "sql", _make_pred_query(n_rows=7))
         assert (await h.get_metadata("R1")).query == "SELECT 1"
         q2_df = (await h.get_payload("R2")).df
         assert q2_df is not None
@@ -80,7 +80,7 @@ class TestNoConnector:
     @pytest.mark.asyncio
     async def test_get_payload(self) -> None:
         h = OutputStore()
-        await h.add_result("db", "sql", _make_pred_query(n_rows=3))
+        await h.add_fixed_result_source("db", "sql", _make_pred_query(n_rows=3))
 
         payload = await h.get_payload("R1")
 
@@ -110,14 +110,14 @@ class TestWithConnector:
     async def test_no_spill_within_limit(self, workspace: SQLConnector) -> None:
         h = OutputStore(max_in_memory=5, spill_connector=workspace)
         for _ in range(5):
-            await h.add_result("db", "sql", _make_pred_query())
+            await h.add_fixed_result_source("db", "sql", _make_pred_query())
         assert h._results.in_memory_count == 5
 
     @pytest.mark.asyncio
     async def test_evicts_oldest(self, workspace: SQLConnector) -> None:
         h = OutputStore(max_in_memory=3, spill_connector=workspace)
         for _ in range(5):
-            await h.add_result("db", "sql", _make_pred_query())
+            await h.add_fixed_result_source("db", "sql", _make_pred_query())
 
         assert h._results.in_memory_count == 3
         assert not h._results.has_in_memory("R1")
@@ -131,8 +131,8 @@ class TestWithConnector:
         h = OutputStore(max_in_memory=1, spill_connector=workspace)
         pred_query = _make_pred_query(n_rows=10)
 
-        await h.add_result("db", "sql", pred_query)
-        await h.add_result("db", "sql", _make_pred_query(n_rows=20))
+        await h.add_fixed_result_source("db", "sql", pred_query)
+        await h.add_fixed_result_source("db", "sql", _make_pred_query(n_rows=20))
 
         assert pred_query.id == "PQRY"
         assert _exec_result(pred_query).df is not None
@@ -142,9 +142,9 @@ class TestWithConnector:
     @pytest.mark.asyncio
     async def test_get_dataframe_loads_evicted_record(self, workspace: SQLConnector) -> None:
         h = OutputStore(max_in_memory=2, spill_connector=workspace)
-        await h.add_result("db", "sql", _make_pred_query(n_rows=10))
-        await h.add_result("db", "sql", _make_pred_query(n_rows=20))
-        await h.add_result("db", "sql", _make_pred_query(n_rows=30))
+        await h.add_fixed_result_source("db", "sql", _make_pred_query(n_rows=10))
+        await h.add_fixed_result_source("db", "sql", _make_pred_query(n_rows=20))
+        await h.add_fixed_result_source("db", "sql", _make_pred_query(n_rows=30))
         assert not h._results.has_in_memory("R1")
 
         df = (await h.get_payload("R1")).df
@@ -164,9 +164,9 @@ class TestWithConnector:
 
         monkeypatch.setattr(h._results, "_persist", fake_persist)
 
-        await h.add_result("db", "sql", _make_pred_query(n_rows=10))
-        await h.add_result("db", "sql", _make_pred_query(n_rows=20))
-        await h.add_result("db", "sql", _make_pred_query(n_rows=30))
+        await h.add_fixed_result_source("db", "sql", _make_pred_query(n_rows=10))
+        await h.add_fixed_result_source("db", "sql", _make_pred_query(n_rows=20))
+        await h.add_fixed_result_source("db", "sql", _make_pred_query(n_rows=30))
 
         assert h._results.has_in_memory("R1")
         assert not h._results.is_persisted("R1")
@@ -180,8 +180,8 @@ class TestWithConnector:
     async def test_error_records_not_tracked(self, workspace: SQLConnector) -> None:
         h = OutputStore(max_in_memory=2, spill_connector=workspace)
         with pytest.raises(ValueError, match="syntax error"):
-            await h.add_result("db", "sql", _make_error_pred_query())
-        await h.add_result("db", "sql", _make_pred_query())
+            await h.add_fixed_result_source("db", "sql", _make_error_pred_query())
+        await h.add_fixed_result_source("db", "sql", _make_pred_query())
         assert h._results.in_memory_count == 1
 
     @pytest.mark.asyncio
@@ -195,8 +195,8 @@ class TestWithConnector:
             }
         )
         pq = PredQuery(query="SELECT *", exec_result=ExecResult(df=df_original.copy()))
-        await h.add_result("db", "sql", pq)
-        await h.add_result("db", "sql", _make_pred_query())  # evicts Q1
+        await h.add_fixed_result_source("db", "sql", pq)
+        await h.add_fixed_result_source("db", "sql", _make_pred_query())  # evicts Q1
         assert not h._results.has_in_memory("R1")
 
         df_loaded = (await h.get_payload("R1")).df
@@ -209,8 +209,8 @@ class TestWithConnector:
     @pytest.mark.asyncio
     async def test_add_chart_does_not_hydrate(self, workspace: SQLConnector) -> None:
         h = OutputStore(max_in_memory=1, spill_connector=workspace)
-        await h.add_result("db", "sql", _make_pred_query())
-        await h.add_result("db", "sql", _make_pred_query())
+        await h.add_fixed_result_source("db", "sql", _make_pred_query())
+        await h.add_fixed_result_source("db", "sql", _make_pred_query())
         assert not h._results.has_in_memory("R1")
         chart_id = h.add_artifact("CHART", ChartView(source="S1", spec={"mark": "bar"})).id
         assert not h._results.has_in_memory("R1")
@@ -225,7 +225,7 @@ class TestWithConnector:
     @pytest.mark.asyncio
     async def test_add_map_stores_standalone_artifact(self, workspace: SQLConnector) -> None:
         h = OutputStore(spill_connector=workspace)
-        await h.add_result("db", "sql", _make_pred_query())
+        await h.add_fixed_result_source("db", "sql", _make_pred_query())
         spec = {"layers": [{"type": "points", "source": "S1", "lat": "lat", "lng": "lng"}]}
         map_id = h.add_artifact("MAP", MapView(sources=["S1"], spec=spec)).id
         assert map_id == "MAP1"

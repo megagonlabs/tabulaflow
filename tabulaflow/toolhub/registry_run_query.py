@@ -181,7 +181,7 @@ class RegistryRunQueryTool:
             outcome = ToolCallOutcome(count=len(exec_result.df), unit="rows")
         elif exec_result is not None and exec_result.error:
             return ToolReturn(return_value=execution.output, metadata=ToolCallOutcome(error=True))
-        source = await self._output_store.add_result(db_alias, tool.db_connector.connector_type, pred_query)
+        source = await self._output_store.add_fixed_result_source(db_alias, tool.db_connector.connector_type, pred_query)
         return ToolReturn(return_value=f"[source_id={source.id}]\n{execution.output}", metadata=outcome)
 
     def as_pydantic_ai_tool(self) -> Tool:
