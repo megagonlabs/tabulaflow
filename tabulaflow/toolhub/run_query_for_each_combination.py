@@ -62,7 +62,7 @@ def selection_key(selection: dict[str, str]) -> str:
     return ";".join(f"{dim}={choice}" for dim, choice in sorted(selection.items()))
 
 
-def _source_dimensions(output_store: OutputStore, source: SourceDef) -> dict[str, list[str]]:
+def _cached_parameter_choices(output_store: OutputStore, source: SourceDef) -> dict[str, list[str]]:
     if not isinstance(source, ParameterizedSource):
         return {}
     dimensions: dict[str, list[str]] = {parameter_id: [] for parameter_id in source.parameter_ids}
@@ -75,7 +75,7 @@ def _source_dimensions(output_store: OutputStore, source: SourceDef) -> dict[str
     return dimensions
 
 
-def _record_ids_by_selection(output_store: OutputStore, source: SourceDef) -> dict[str, str]:
+def _result_ids_by_selection(output_store: OutputStore, source: SourceDef) -> dict[str, str]:
     if not isinstance(source, ParameterizedSource):
         return {}
     return {
@@ -181,8 +181,8 @@ def _format_run(output_store: OutputStore, source: SourceDef, by_selection: dict
     The combination shown in full is the first choice of every dimension — the
     reading a panel opens on.
     """
-    dimensions = _source_dimensions(output_store, source)
-    record_ids_by_selection = _record_ids_by_selection(output_store, source)
+    dimensions = _cached_parameter_choices(output_store, source)
+    record_ids_by_selection = _result_ids_by_selection(output_store, source)
     grid = " × ".join(f"{name} ({len(choices)})" for name, choices in dimensions.items())
     executed = len(set(record_ids_by_selection.values()))
     total = len(by_selection)
@@ -372,7 +372,7 @@ class RunQueryForEachCombinationTool:
             return ToolReturn(return_value=f"(error: {exc})", metadata=ToolCallOutcome(error=True))
         return ToolReturn(
             return_value=run.output,
-            metadata=ToolCallOutcome(count=len(_record_ids_by_selection(self._output_store, run.source)), unit="combinations"),
+            metadata=ToolCallOutcome(count=len(_result_ids_by_selection(self._output_store, run.source)), unit="combinations"),
         )
 
     async def execute(self, db_alias: str, dimensions: Dimensions, query_template: str) -> CombinationQueryRun:
@@ -405,7 +405,7 @@ class RunQueryForEachCombinationTool:
             raise ValueError(_format_failures(failures, len(distinct)))
 
         by_selection = {key: pred_queries[_normalize(query)] for key, query in queries.items()}
-        source = await self._output_store.add_lookup_source(
+        source = await self._output_store.add_parameterized_source(
             db_alias,
             connector.connector_type,
             {dim.id: list(dim.choices) for dim in dimensions},

@@ -64,7 +64,7 @@ async def test_fixed_source_resolves_output_artifact() -> None:
 @pytest.mark.asyncio
 async def test_parameterized_source_resolves_by_projected_selection() -> None:
     output_store = OutputStore()
-    source = await output_store.add_lookup_source(
+    source = await output_store.add_parameterized_source(
         "workspace",
         "sql",
         {"metric": ["revenue", "profit"]},

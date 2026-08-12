@@ -119,7 +119,7 @@ class ShowArtifactsTool:
         declared = {dim.id: [choice.id for choice in dim.choices] for dim in dimensions}
         partial = [
             f"{name}={'|'.join(choices)}"
-            for name, choices in _source_dimensions(self._output_store, family).items()
+            for name, choices in _cached_parameter_choices(self._output_store, family).items()
             if len(choices) < len(declared.get(name, choices))
         ]
         limits = f" — only applies at {', '.join(partial)}" if partial else ""
@@ -138,9 +138,9 @@ class ShowArtifactsTool:
             if family is None:
                 continue
             if not dimensions:
-                problems.append(f"{artifact.id} varies over {', '.join(_source_dimensions(self._output_store, family))}; declare them as dimensions")
+                problems.append(f"{artifact.id} varies over {', '.join(_cached_parameter_choices(self._output_store, family))}; declare them as dimensions")
                 continue
-            for name, choices in _source_dimensions(self._output_store, family).items():
+            for name, choices in _cached_parameter_choices(self._output_store, family).items():
                 if name not in declared:
                     problems.append(f"{artifact.id} varies over {name!r}, which is not a declared dimension")
                     continue
@@ -201,7 +201,7 @@ class ShowArtifactsTool:
         return Tool(self.__call__, name=self.name)
 
 
-def _source_dimensions(output_store: OutputStore, source: SourceDef) -> dict[str, list[str]]:
+def _cached_parameter_choices(output_store: OutputStore, source: SourceDef) -> dict[str, list[str]]:
     if not isinstance(source, ParameterizedSource):
         return {}
     dimensions: dict[str, list[str]] = {parameter_id: [] for parameter_id in source.parameter_ids}

@@ -193,7 +193,7 @@ class TestRenderChartTool:
 
     async def test_query_family_source_creates_chart(self) -> None:
         output_store = OutputStore()
-        await output_store.add_lookup_source(
+        await output_store.add_parameterized_source(
             "db",
             "sql",
             {"ranking": ["net", "count"]},
@@ -218,7 +218,7 @@ class TestRenderChartTool:
 
     async def test_query_family_validation_reports_all_failing_selections(self) -> None:
         output_store = OutputStore()
-        await output_store.add_lookup_source(
+        await output_store.add_parameterized_source(
             "db",
             "sql",
             {"ranking": ["net", "count"]},

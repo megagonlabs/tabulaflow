@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 from pathlib import Path
 from textwrap import dedent
 from typing import Any
@@ -49,7 +50,7 @@ def _tool(registry: DBRegistry, output_store: OutputStore | None = None) -> RunQ
     return RunQueryForEachCombinationTool(registry, output_store=output_store or OutputStore(), max_combinations=16)
 
 
-def _source_dimensions(output_store: OutputStore, source: SourceDef) -> dict[str, list[str]]:
+def _cached_parameter_choices(output_store: OutputStore, source: SourceDef) -> dict[str, list[str]]:
     assert isinstance(source, ParameterizedSource)
     out: dict[str, list[str]] = {parameter_id: [] for parameter_id in source.parameter_ids}
     for selection in output_store.get_cached_source_selections(source.id):
@@ -60,12 +61,12 @@ def _source_dimensions(output_store: OutputStore, source: SourceDef) -> dict[str
     return out
 
 
-def _record_ids_by_selection(output_store: OutputStore, source: SourceDef) -> dict[str, str]:
+def _result_ids_by_selection(output_store: OutputStore, source: SourceDef) -> dict[str, str]:
     assert isinstance(source, ParameterizedSource)
     return {
         ";".join(f"{key}={value}" for key, value in sorted(selection.items())): result_id
         for selection_key, result_id in output_store.get_cached_source_results(source.id).items()
-        for selection in [__import__("json").loads(selection_key)]
+        for selection in [json.loads(selection_key)]
     }
 
 
@@ -177,14 +178,14 @@ class TestRunQueryForEachCombination:
         assert result.metadata == ToolCallOutcome(count=4, unit="combinations")
         assert _text(result).startswith("S1 —")
         family = output_store.get_source("S1")
-        assert _source_dimensions(output_store, family) == {"ranking": ["net", "gross"], "period": ["q2", "q3"]}
-        assert set(_record_ids_by_selection(output_store, family)) == {
+        assert _cached_parameter_choices(output_store, family) == {"ranking": ["net", "gross"], "period": ["q2", "q3"]}
+        assert set(_result_ids_by_selection(output_store, family)) == {
             "period=q2;ranking=net",
             "period=q3;ranking=net",
             "period=q2;ranking=gross",
             "period=q3;ranking=gross",
         }
-        df = (await output_store.get_payload(_record_ids_by_selection(output_store, family)["period=q2;ranking=net"])).df
+        df = (await output_store.get_payload(_result_ids_by_selection(output_store, family)["period=q2;ranking=net"])).df
         assert df is not None
         assert df.to_dict("records")[0] == {"customer": "Acme", "value": 10}
 
@@ -206,7 +207,7 @@ class TestRunQueryForEachCombination:
         )
 
         family = output_store.get_source("S1")
-        metadata = await output_store.get_metadata(_record_ids_by_selection(output_store, family)["ranking=net"])
+        metadata = await output_store.get_metadata(_result_ids_by_selection(output_store, family)["ranking=net"])
 
         assert "\n\n" not in metadata.query
         assert metadata.query == dedent("""\
@@ -266,8 +267,8 @@ class TestRunQueryForEachCombination:
         assert "period=q3;ranking=gross (2 rows) — same query as period=q2;ranking=gross" in _text(result)
         family = output_store.get_source("S1")
         assert (
-            _record_ids_by_selection(output_store, family)["period=q2;ranking=gross"]
-            == _record_ids_by_selection(output_store, family)["period=q3;ranking=gross"]
+            _result_ids_by_selection(output_store, family)["period=q2;ranking=gross"]
+            == _result_ids_by_selection(output_store, family)["period=q3;ranking=gross"]
         )
 
     @pytest.mark.asyncio
@@ -286,7 +287,7 @@ class TestRunQueryForEachCombination:
 
         assert "3 combinations, 2 executed (1 identical)" in _text(result)
         family = output_store.get_source("S1")
-        assert _record_ids_by_selection(output_store, family)["ranking=net"] == _record_ids_by_selection(output_store, family)["ranking=net_again"]
+        assert _result_ids_by_selection(output_store, family)["ranking=net"] == _result_ids_by_selection(output_store, family)["ranking=net_again"]
 
     @pytest.mark.asyncio
     async def test_template_variables_must_match_dimensions(self, registry: DBRegistry) -> None:

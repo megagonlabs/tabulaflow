@@ -190,7 +190,7 @@ class OutputStore:
         self._sources[source_id] = source
         return source
 
-    async def add_lookup_source(
+    async def add_parameterized_source(
         self,
         db_alias: str,
         connector_type: Literal["sql", "property_graph"],
