@@ -20,7 +20,8 @@ from tabulaflow.core.outputs import (
     NumberParameter,
     ParameterDef,
     ParameterizedSource,
-    SelectionValue,
+    Selection,
+    default_selection,
 )
 from tabulaflow.core.types import ErrorInfo, ExecResult, PredQuery
 from tabulaflow.core.utils import flatten_multiline, format_df
@@ -150,7 +151,7 @@ class CreateParameterizedSourceTool:
         exec_results = await asyncio.gather(
             *(connector.run_query_async(query, timeout=self.timeout) for _, query in warm_queries)
         )
-        pred_queries: list[tuple[dict[str, SelectionValue], PredQuery]] = []
+        pred_queries: list[tuple[Selection, PredQuery]] = []
         failures: dict[str, list[str]] = {}
         for (selection, query), exec_result in zip(warm_queries, exec_results, strict=True):
             label = _selection_label(selection)
@@ -210,15 +211,15 @@ def _validate_template(parameters: list[ParameterDef], query_template: str) -> N
         raise ValueError("; ".join(problems))
 
 
-def _warm_selections(parameters: list[ParameterDef], max_warm_variants: int) -> list[dict[str, SelectionValue]]:
-    default = _default_selection(parameters)
+def _warm_selections(parameters: list[ParameterDef], max_warm_variants: int) -> list[Selection]:
+    default = default_selection(parameters)
     choice_parameters = [parameter for parameter in parameters if isinstance(parameter, ChoiceParameter)]
     if not choice_parameters:
         return [default]
     combinations = math.prod(len(parameter.choices) for parameter in choice_parameters)
     if combinations > max_warm_variants:
         return [default]
-    selections: list[dict[str, SelectionValue]] = []
+    selections: list[Selection] = []
     for choices in itertools.product(*(parameter.choices for parameter in choice_parameters)):
         selection = dict(default)
         selection.update({parameter.id: choice.id for parameter, choice in zip(choice_parameters, choices, strict=True)})
@@ -226,17 +227,7 @@ def _warm_selections(parameters: list[ParameterDef], max_warm_variants: int) -> 
     return selections or [default]
 
 
-def _default_selection(parameters: list[ParameterDef]) -> dict[str, SelectionValue]:
-    out: dict[str, SelectionValue] = {}
-    for parameter in parameters:
-        if isinstance(parameter, ChoiceParameter):
-            out[parameter.id] = parameter.choices[0].id
-        elif isinstance(parameter, NumberParameter):
-            out[parameter.id] = parameter.default
-    return out
-
-
-def _selection_label(selection: dict[str, SelectionValue]) -> str:
+def _selection_label(selection: Selection) -> str:
     return ";".join(f"{key}={value}" for key, value in sorted(selection.items())) or "default"
 
 
@@ -251,7 +242,7 @@ def _format_exec_result(exec_result: ExecResult) -> str:
     return f"{format_df(exec_result.df)}\n({len(exec_result.df)} row{'' if len(exec_result.df) == 1 else 's'})"
 
 
-def _format_other_warmed_selection(selection: dict[str, SelectionValue], exec_result: ExecResult) -> str:
+def _format_other_warmed_selection(selection: Selection, exec_result: ExecResult) -> str:
     first_row = _format_first_row(exec_result)
     suffix = f" — first row: {first_row}" if first_row is not None else ""
     return f"  {_selection_label(selection)} ({_rows_label(exec_result)}){suffix}"

@@ -17,12 +17,11 @@ from tabulaflow.core.outputs import (
     ArtifactId,
     ArtifactSpec,
     FixedResultSource,
-    ParameterId,
     ParameterDef,
     ParameterizedSource,
     ResultId,
     ResultMetadata,
-    SelectionValue,
+    Selection,
     SourceDef,
     ViewDef,
     canonical_selection_key,
@@ -231,7 +230,7 @@ class OutputStore:
         self,
         source_id: str,
         connector_type: Literal["sql", "property_graph"],
-        selection: dict[ParameterId, SelectionValue],
+        selection: Selection,
         pred_query: PredQuery,
     ) -> ResultId:
         """Seed or replace one cached materialization for a parameterized source."""
@@ -260,7 +259,7 @@ class OutputStore:
         connector_type: Literal["sql", "property_graph"],
         pred_query: PredQuery,
         *,
-        selection: dict[ParameterId, SelectionValue] | None = None,
+        selection: Selection | None = None,
     ) -> _StoredResult:
         """Register one result under ``result_id``."""
         exec_result = pred_query.exec_result
@@ -300,7 +299,7 @@ class OutputStore:
             if cached_source_id == source_id
         }
 
-    async def resolve_source(self, source_id: str, selection: dict[ParameterId, SelectionValue] | None = None) -> ResultMetadata:
+    async def resolve_source(self, source_id: str, selection: Selection | None = None) -> ResultMetadata:
         """Resolve a source to result metadata, materializing parameterized cache misses."""
         source = self.get_source(source_id)
         if isinstance(source, FixedResultSource):
@@ -317,7 +316,7 @@ class OutputStore:
     async def _materialize_parameterized_source(
         self,
         source: ParameterizedSource,
-        selection: dict[ParameterId, SelectionValue],
+        selection: Selection,
     ) -> ResultId:
         if self._registry is None:
             raise KeyError(f"source {source.id!r} has no result for selection {canonical_selection_key(selection)}")
@@ -385,7 +384,7 @@ def _view_source_ids(view: ViewDef) -> tuple[str, ...]:
     return ()
 
 
-def render_parameterized_query(query_template: str, selection: dict[ParameterId, SelectionValue]) -> str:
+def render_parameterized_query(query_template: str, selection: Selection) -> str:
     """Render a parameterized-source query template with validated scalar values."""
     for name, value in selection.items():
         if isinstance(value, bool):

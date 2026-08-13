@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-import math
 
 from pydantic import BaseModel, Field
 
@@ -12,20 +11,20 @@ from tabulaflow.core.outputs import (
     ArtifactId,
     ArtifactSpec,
     ChartView,
-    ChoiceParameter,
     FixedResultSource,
     GraphViewSpec,
     MapView,
-    NumberParameter,
     ParameterDef,
     ParameterId,
     ParameterizedSource,
     ResultMetadata,
+    Selection,
     SelectionValue,
     SourceId,
     SourceDef,
     TableView,
     ViewDef,
+    validate_parameter_value,
 )
 from tabulaflow.toolhub.output_store import OutputStore
 
@@ -46,7 +45,7 @@ class ResolvedArtifact(BaseModel):
 class ResolvedOutput(BaseModel):
     """An output spec resolved under one active selection."""
 
-    selection: dict[ParameterId, SelectionValue]
+    selection: Selection
     artifacts: list[ResolvedArtifact] = Field(default_factory=list)
 
 
@@ -97,7 +96,7 @@ class OutputResolver:
 def _normalize_selection(
     output: OutputSpec,
     selection: Mapping[ParameterId, object] | None,
-) -> dict[ParameterId, SelectionValue]:
+) -> Selection:
     parameters = {parameter.id: parameter for parameter in output.parameters}
     active: dict[ParameterId, object] = dict(output.default_selection)
     if selection is not None:
@@ -105,7 +104,10 @@ def _normalize_selection(
     for parameter_id in active:
         if parameter_id not in parameters:
             raise OutputResolutionError(f"selection references unknown parameter {parameter_id!r}")
-    return {parameter.id: _validate_parameter_value(parameter, active[parameter.id]) for parameter in output.parameters}
+    try:
+        return {parameter.id: validate_parameter_value(parameter, active[parameter.id]) for parameter in output.parameters}
+    except ValueError as exc:
+        raise OutputResolutionError(str(exc)) from None
 
 
 def _resolved_artifact(artifact: ArtifactSpec, metadata_by_source: dict[SourceId, ResultMetadata]) -> ResolvedArtifact:
@@ -121,34 +123,19 @@ def _project_selection(
     source: ParameterizedSource,
     parameters: Mapping[ParameterId, ParameterDef],
     selection: Mapping[ParameterId, object],
-) -> dict[ParameterId, SelectionValue]:
-    projected: dict[ParameterId, SelectionValue] = {}
+) -> Selection:
+    projected: Selection = {}
     for parameter_id in source.parameter_ids:
         parameter = parameters.get(parameter_id)
         if parameter is None:
             raise OutputResolutionError(f"source {source.id!r} references unknown parameter {parameter_id!r}")
         if parameter_id not in selection:
             raise OutputResolutionError(f"missing selection for {parameter_id!r}")
-        projected[parameter_id] = _validate_parameter_value(parameter, selection[parameter_id])
+        try:
+            projected[parameter_id] = validate_parameter_value(parameter, selection[parameter_id])
+        except ValueError as exc:
+            raise OutputResolutionError(str(exc)) from None
     return projected
-
-
-def _validate_parameter_value(parameter: ParameterDef, value: object) -> SelectionValue:
-    if isinstance(parameter, ChoiceParameter):
-        choice = str(value)
-        if choice not in {option.id for option in parameter.choices}:
-            raise OutputResolutionError(f"{parameter.id}={choice!r} is not a valid choice")
-        return choice
-    if isinstance(parameter, NumberParameter):
-        if isinstance(value, bool) or not isinstance(value, int | float):
-            raise OutputResolutionError(f"{parameter.id} must be numeric")
-        number = float(value)
-        if not math.isfinite(number):
-            raise OutputResolutionError(f"{parameter.id} must be finite")
-        if not parameter.min <= number <= parameter.max:
-            raise OutputResolutionError(f"{parameter.id}={number:g} is outside range")
-        return value
-    raise TypeError(f"unsupported parameter {type(parameter).__name__}")
 
 
 def _view_source_ids(view: ViewDef) -> tuple[SourceId, ...]:

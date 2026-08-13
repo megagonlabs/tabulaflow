@@ -47,6 +47,7 @@ from tabulaflow.core.outputs import (
     ParameterizedSource,
     ResultId,
     ResultMetadata,
+    Selection,
     SelectionKey,
     SelectionValue,
     SourceDef,
@@ -54,6 +55,9 @@ from tabulaflow.core.outputs import (
     TableView,
     ViewDef,
     canonical_selection_key,
+    default_selection,
+    parameter_default,
+    validate_parameter_value,
 )
 
 __all__ = [
@@ -87,6 +91,7 @@ __all__ = [
     "RelationshipSchema",
     "ResultId",
     "ResultMetadata",
+    "Selection",
     "SQLColumnSchema",
     "SQLSchema",
     "SQLTableSchema",
@@ -104,4 +109,7 @@ __all__ = [
     "UserMessage",
     "ViewDef",
     "canonical_selection_key",
+    "default_selection",
+    "parameter_default",
+    "validate_parameter_value",
 ]

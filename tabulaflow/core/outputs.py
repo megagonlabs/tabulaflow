@@ -21,6 +21,7 @@ SourceId: TypeAlias = str
 ArtifactId: TypeAlias = str
 ResultId: TypeAlias = str
 SelectionKey: TypeAlias = str
+Selection: TypeAlias = dict[ParameterId, SelectionValue]
 
 
 class ChoiceOption(BaseModel):
@@ -96,7 +97,7 @@ class ResultMetadata(BaseModel):
     db_alias: str
     query: str
     connector_type: Literal["sql", "property_graph"] = "sql"
-    selection: dict[ParameterId, SelectionValue] = Field(default_factory=dict)
+    selection: Selection = Field(default_factory=dict)
     row_count: int | None = None
     columns: list[str] | None = None
     latency_seconds: float | None = None
@@ -150,7 +151,7 @@ class OutputSpec(BaseModel):
     parameters: list[ParameterDef] = Field(default_factory=list)
     sources: list[SourceDef] = Field(default_factory=list)
     artifacts: list[ArtifactSpec] = Field(default_factory=list)
-    default_selection: dict[ParameterId, SelectionValue] = Field(default_factory=dict)
+    default_selection: Selection = Field(default_factory=dict)
 
     @model_validator(mode="after")
     def validate_spec(self) -> "OutputSpec":
@@ -161,7 +162,7 @@ class OutputSpec(BaseModel):
         _require_unique(source_ids, "source ids")
         _require_unique(artifact_ids, "artifact ids")
 
-        defaults = _parameter_defaults(self.parameters)
+        defaults = default_selection(self.parameters)
         defaults.update(self.default_selection)
         self.default_selection = defaults
         parameter_by_id = {parameter.id: parameter for parameter in self.parameters}
@@ -169,7 +170,7 @@ class OutputSpec(BaseModel):
             parameter = parameter_by_id.get(key)
             if parameter is None:
                 raise ValueError(f"default selection references unknown parameter {key!r}")
-            _validate_parameter_value(parameter, value)
+            validate_parameter_value(parameter, value)
 
         for source in self.sources:
             if isinstance(source, ParameterizedSource):
@@ -190,18 +191,21 @@ def _require_unique(values: Sequence[str], label: str) -> None:
         raise ValueError(f"{label} must be unique")
 
 
-def _parameter_defaults(parameters: Sequence[ParameterDef]) -> dict[ParameterId, SelectionValue]:
+def parameter_default(parameter: ParameterDef) -> SelectionValue:
+    """Default value implied by a parameter definition."""
+    if isinstance(parameter, ChoiceParameter):
+        return parameter.choices[0].id
+    if isinstance(parameter, NumberParameter):
+        return parameter.default
+    raise TypeError(f"unsupported parameter {type(parameter).__name__}")
+
+
+def default_selection(parameters: Sequence[ParameterDef]) -> Selection:
     """Default selection implied by parameter definitions."""
-    defaults: dict[ParameterId, SelectionValue] = {}
-    for parameter in parameters:
-        if isinstance(parameter, ChoiceParameter):
-            defaults[parameter.id] = parameter.choices[0].id
-        elif isinstance(parameter, NumberParameter):
-            defaults[parameter.id] = parameter.default
-    return defaults
+    return {parameter.id: parameter_default(parameter) for parameter in parameters}
 
 
-def _validate_parameter_value(parameter: ParameterDef, value: object) -> SelectionValue:
+def validate_parameter_value(parameter: ParameterDef, value: object) -> SelectionValue:
     """Return a typed parameter value or raise ``ValueError``."""
     if isinstance(parameter, ChoiceParameter):
         choice = str(value)
