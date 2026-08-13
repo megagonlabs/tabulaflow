@@ -9,7 +9,7 @@ from pydantic_ai import ToolReturn
 from tabulaflow.core.db_connector.db_registry import DBRegistry
 from tabulaflow.core.db_connector.sql_conn import SQLConnector
 from tabulaflow.core.outputs import ChoiceOption, ChoiceParameter, NumberParameter, OutputSpec, TableArtifactSpec
-from tabulaflow.toolhub import CreateParameterizedSourceTool, OutputResolver, OutputStore, ResolvedTableArtifact
+from tabulaflow.toolhub import CreateParameterizedSourceTool, OutputResolver, OutputStore, ResolvedTableArtifact, UnavailableArtifact
 
 
 def _text(result: ToolReturn) -> str:
@@ -162,3 +162,37 @@ async def test_mixed_choice_and_number_warms_choice_grid_at_number_default(regis
     assert "-> R" not in text
     assert "other selections will materialize lazily" not in text
     assert len(output_store.cached_parameterized_results("S1")) == 2
+
+
+@pytest.mark.asyncio
+async def test_create_parameterized_source_warms_not_applicable_selection(registry: DBRegistry) -> None:
+    output_store = OutputStore(registry=registry)
+    result = await CreateParameterizedSourceTool(registry, output_store)(
+        "workspace",
+        [
+            ChoiceParameter(
+                id="metric",
+                label="Metric",
+                choices=[ChoiceOption(id="net", label="Net"), ChoiceOption(id="gross", label="Gross")],
+            )
+        ],
+        """
+        {% if metric == 'gross' %}{{ not_applicable('gross is not available for this source') }}{% endif %}
+        SELECT SUM(net) AS value FROM orders
+        """,
+    )
+
+    text = _text(result)
+    assert "default metric=net:" in text
+    assert "1 warmed selection not applicable" in text
+    source = output_store.get_source("S1")
+
+    resolved = await OutputResolver(output_store).resolve(
+        OutputSpec(parameters=output_store.source_parameters(source.id), sources=[source], artifacts=[TableArtifactSpec(id="S1", source_id="S1")]),
+        {"metric": "gross"},
+    )
+
+    artifact = resolved.artifacts[0]
+    assert isinstance(artifact, UnavailableArtifact)
+    assert artifact.status == "not_applicable"
+    assert artifact.reason == "gross is not available for this source"

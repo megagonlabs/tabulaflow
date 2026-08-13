@@ -27,9 +27,10 @@ from tabulaflow.core.types import ErrorInfo, ExecResult, PredQuery
 from tabulaflow.core.utils import flatten_multiline, format_df
 from tabulaflow.toolhub.base import ToolCallOutcome
 from tabulaflow.toolhub.engines.sql import format_sqlalchemy_error_msg
-from tabulaflow.toolhub.output_store import OutputStore, render_parameterized_query
+from tabulaflow.toolhub.output_store import OutputStore, SourceNotApplicable, render_parameterized_query
 
 _JINJA_ENV = jinja2.Environment(undefined=jinja2.StrictUndefined, trim_blocks=True, lstrip_blocks=True)
+_JINJA_ENV.globals["not_applicable"] = lambda reason="not applicable": None
 # Failure reports group by distinct error. Limit how many error groups and
 # failing selection labels per group are printed so large warm grids stay readable.
 _MAX_REPORTED_ERRORS = 5
@@ -111,11 +112,44 @@ class CreateParameterizedSourceTool:
         )
         ```
 
+        Use ``not_applicable(reason)`` when a source intentionally does not apply
+        for a parameter branch; no SQL is run for that selection, and dependent
+        artifacts render the reason as a not-applicable message.
+
+        Example:
+        ```python
+        create_parameterized_source(
+            db_alias="workspace",
+            parameters=[
+                {
+                    "kind": "choice",
+                    "id": "metric",
+                    "label": "Metric",
+                    "choices": [
+                        {"id": "revenue", "label": "Revenue"},
+                        {"id": "orders", "label": "Orders"},
+                    ],
+                },
+            ],
+            query_template='''
+                {% if metric != "revenue" %}
+                  {{ not_applicable("Revenue detail only applies when metric is Revenue") }}
+                {% endif %}
+
+                SELECT customer, revenue_usd
+                FROM customer_revenue
+                ORDER BY revenue_usd DESC
+            ''',
+        )
+        ```
+
         Args:
             db_alias: Alias of the target database.
             parameters: Choice or number parameters referenced by the Jinja query template.
                 For choice parameters, the first choice is the default.
             query_template: Jinja template rendered with validated parameter values.
+                It may call ``not_applicable(reason)`` to declare that the source
+                intentionally does not apply for the active selection.
             max_warm_variants: Maximum finite choice combinations to precompute. If omitted,
                 the session default is used. Numeric parameters are fixed at their
                 defaults while choice combinations are warmed up to this cap.
@@ -144,10 +178,15 @@ class CreateParameterizedSourceTool:
             raise ValueError(f"unknown db_alias: {db_alias!r}; available: {available}") from None
         _validate_parameters(parameters)
         _validate_template(parameters, query_template)
-        warm_queries = [
-            (selection, render_parameterized_query(query_template, selection))
-            for selection in _warm_selections(parameters, max_warm_variants)
-        ]
+        warm_queries: list[tuple[Selection, str]] = []
+        not_applicable_count = 0
+        for selection in _warm_selections(parameters, max_warm_variants):
+            try:
+                warm_queries.append((selection, render_parameterized_query(query_template, selection)))
+            except SourceNotApplicable:
+                not_applicable_count += 1
+        if not warm_queries:
+            raise ValueError("all warmed selections were not applicable; source was not created")
         exec_results = await asyncio.gather(
             *(connector.run_query_async(query, timeout=self.timeout) for _, query in warm_queries)
         )
@@ -164,14 +203,22 @@ class CreateParameterizedSourceTool:
 
         source = self._output_store.add_parameterized_source(db_alias, parameters, query_template)
         lines = [f"[source_id={source.id}]", f"created parameterized source {source.id}"]
-        other_lines: list[str] = []
-        for index, (selection, pred_query) in enumerate(pred_queries):
+        for selection, pred_query in pred_queries:
             assert pred_query.exec_result is not None
             await self._output_store.cache_parameterized_result(source.id, connector.connector_type, selection, pred_query)
-            if index == 0:
-                lines += [f"default {_selection_label(selection)}:", _format_exec_result(pred_query.exec_result)]
-            else:
-                other_lines.append(_format_other_warmed_selection(selection, pred_query.exec_result))
+        first_selection, first_pred_query = pred_queries[0]
+        assert first_pred_query.exec_result is not None
+        default_label = _selection_label(default_selection(parameters))
+        first_label = _selection_label(first_selection)
+        heading = "default" if first_label == default_label else "first applicable warmed selection"
+        lines += [f"{heading} {first_label}:", _format_exec_result(first_pred_query.exec_result)]
+        other_lines: list[str] = []
+        for selection, pred_query in pred_queries[1:]:
+            assert pred_query.exec_result is not None
+            other_lines.append(_format_other_warmed_selection(selection, pred_query.exec_result))
+        if not_applicable_count:
+            label = "selection" if not_applicable_count == 1 else "selections"
+            other_lines.append(f"  {not_applicable_count} warmed {label} not applicable")
         if other_lines:
             lines += ["", "other warmed selections:", *other_lines]
         if len(warm_queries) == 1:

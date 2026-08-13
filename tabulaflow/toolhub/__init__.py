@@ -26,6 +26,7 @@ from tabulaflow.toolhub.output_store import (
     OUTPUT_STORE_SCHEMA,
     ResultPayload,
     OutputStore,
+    SourceNotApplicable,
 )
 from tabulaflow.toolhub.registry_run_query import RegistryRunQueryTool
 from tabulaflow.toolhub.registry_transfer_source_table import RegistryTransferSourceTableTool
@@ -78,6 +79,7 @@ __all__ = [
     "ArtifactBundle",
     "OutputStore",
     "ResultPayload",
+    "SourceNotApplicable",
     "RegistryRunQueryTool",
     "RegistryTransferSourceTableTool",
     "RenderChartTool",

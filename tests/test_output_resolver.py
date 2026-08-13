@@ -11,7 +11,8 @@ from tabulaflow.core import (
     TableArtifactSpec,
 )
 from tabulaflow.core.types import ExecResult, PredQuery
-from tabulaflow.toolhub import OutputResolutionError, OutputResolver, OutputStore, ResolvedTableArtifact, UnavailableArtifact
+from tabulaflow.toolhub import OutputResolutionError, OutputResolver, OutputStore, ResolvedTableArtifact, SourceNotApplicable, UnavailableArtifact
+from tabulaflow.toolhub.output_store import render_parameterized_query
 
 
 async def _output_store_with_results() -> OutputStore:
@@ -210,3 +211,39 @@ async def test_unavailable_artifact_does_not_hide_siblings() -> None:
     assert first.payload.metadata.id == "R1"
     assert isinstance(second, UnavailableArtifact)
     assert "has no result" in second.reason
+
+
+def test_parameterized_query_can_declare_not_applicable() -> None:
+    with pytest.raises(SourceNotApplicable, match="only applies to revenue"):
+        render_parameterized_query(
+            "{% if metric != 'revenue' %}{{ not_applicable('only applies to revenue') }}{% endif %} SELECT 1",
+            {"metric": "orders"},
+        )
+
+
+@pytest.mark.asyncio
+async def test_parameterized_source_not_applicable_is_not_an_error() -> None:
+    output_store = OutputStore()
+    source = output_store.add_parameterized_source(
+        "workspace",
+        [ChoiceParameter(id="metric", label="Metric", choices=[ChoiceOption(id="revenue", label="Revenue"), ChoiceOption(id="orders", label="Orders")])],
+        "{% if metric != 'revenue' %}{{ not_applicable('only applies to revenue') }}{% endif %} SELECT 1 AS value",
+    )
+    await output_store.cache_parameterized_result(
+        source.id,
+        "sql",
+        {"metric": "revenue"},
+        PredQuery(query="SELECT 1 AS value", exec_result=ExecResult(df=pd.DataFrame({"value": [1]}))),
+    )
+    output = OutputSpec(
+        parameters=output_store.source_parameters(source.id),
+        sources=[source],
+        artifacts=[TableArtifactSpec(id="table", source_id=source.id)],
+    )
+
+    resolved = await OutputResolver(output_store).resolve(output, {"metric": "orders"})
+
+    artifact = resolved.artifacts[0]
+    assert isinstance(artifact, UnavailableArtifact)
+    assert artifact.status == "not_applicable"
+    assert artifact.reason == "only applies to revenue"

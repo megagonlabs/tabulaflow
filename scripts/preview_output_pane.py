@@ -397,6 +397,12 @@ def _push_controls_turn(pane: pane_mod.OutputPane, pane_dir: Path) -> None:
         ),
     ]
     source = output_store.add_parameterized_source("preview", parameters, "-- preview controls fixture")
+    revenue_source = output_store.add_parameterized_source(
+        "preview",
+        parameters,
+        "{% if metric != 'revenue' %}{{ not_applicable('Revenue detail only applies when Metric is Revenue') }}{% endif %}\n"
+        "-- preview revenue-only detail fixture",
+    )
     values = {
         ("q2", "revenue"): ("Q2", "Revenue", [120, 95, 72]),
         ("q3", "revenue"): ("Q3", "Revenue", [138, 104, 86]),
@@ -417,17 +423,31 @@ def _push_controls_turn(pane: pane_mod.OutputPane, pane_dir: Path) -> None:
             for min_value in range(0, 141, 20):
                 df = full_df[full_df["value"] >= min_value].reset_index(drop=True)
                 for min_selection in (min_value, float(min_value)):
+                    selection = {"metric": metric, "period": period, "min_value": min_selection}
                     asyncio.run(
                         output_store.cache_parameterized_result(
                             source.id,
                             "sql",
-                            {"metric": metric, "period": period, "min_value": min_selection},
+                            selection,
                             PredQuery(
                                 query=f"-- preview fixture for {period_label} {metric_label.lower()}, min_value={min_value}",
                                 exec_result=ExecResult(df=df),
                             ),
                         )
                     )
+                    if metric == "revenue":
+                        detail = df.assign(note="revenue-only source")
+                        asyncio.run(
+                            output_store.cache_parameterized_result(
+                                revenue_source.id,
+                                "sql",
+                                selection,
+                                PredQuery(
+                                    query=f"-- preview revenue-only detail fixture for {period_label}, min_value={min_value}",
+                                    exec_result=ExecResult(df=detail),
+                                ),
+                            )
+                        )
     result = ChatResult(
         text=(
             "This turn has answer-level controls. Switch the metric/period buttons or drag the minimum-value slider; "
@@ -435,7 +455,7 @@ def _push_controls_turn(pane: pane_mod.OutputPane, pane_dir: Path) -> None:
         ),
         output=OutputSpec(
             parameters=parameters,
-            sources=[source],
+            sources=[source, revenue_source],
             artifacts=[
                 TableArtifactSpec(id=source.id, label="top customers", source_id=source.id),
                 ChartArtifactSpec(
@@ -452,6 +472,7 @@ def _push_controls_turn(pane: pane_mod.OutputPane, pane_dir: Path) -> None:
                     "title": "Selected customer metric",
                     },
                 ),
+                TableArtifactSpec(id=revenue_source.id, label="revenue-only detail", source_id=revenue_source.id),
             ],
         ),
     )

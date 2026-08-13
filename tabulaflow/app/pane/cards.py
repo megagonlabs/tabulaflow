@@ -186,9 +186,10 @@ async def render_resolved_output(resolved_output: ResolvedOutput, pane_dir: Path
     cards: list[PaneCard] = []
     for artifact in resolved_output.artifacts:
         if isinstance(artifact, UnavailableArtifact):
+            column = "message" if artifact.status == "not_applicable" else "error"
             card = render_result_data(
                 ResultCardInput(
-                    df=pd.DataFrame({"error": [artifact.reason]}),
+                    df=pd.DataFrame({column: [artifact.reason]}),
                     chart_spec=None,
                     graph=None,
                     query=None,

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import dataclass, field
-from typing import TypeAlias
+from typing import Literal, TypeAlias
 
 import pandas as pd
 
@@ -28,7 +28,7 @@ from tabulaflow.core.outputs import (
     validate_parameter_value,
 )
 from tabulaflow.core.types import GraphView
-from tabulaflow.toolhub.output_store import OutputStore, ResultPayload
+from tabulaflow.toolhub.output_store import OutputStore, ResultPayload, SourceNotApplicable
 from tabulaflow.toolhub.render_graph import materialize_graph_view, validate_graph_size, graph_view_size
 
 
@@ -84,6 +84,7 @@ class UnavailableArtifact:
     artifact_id: ArtifactId
     reason: str = "unavailable"
     label: str | None = None
+    status: Literal["error", "not_applicable"] = "error"
 
 
 ResolvedArtifact: TypeAlias = (
@@ -131,6 +132,15 @@ class OutputResolver:
                     payload_by_source[source_id] = resolved_sources[source_id]
             except OutputResolutionError:
                 raise
+            except SourceNotApplicable as exc:
+                artifacts.append(
+                    UnavailableArtifact(
+                        artifact_id=artifact.id,
+                        label=artifact.label,
+                        reason=str(exc),
+                        status="not_applicable",
+                    )
+                )
             except (KeyError, ValueError) as exc:
                 artifacts.append(UnavailableArtifact(artifact_id=artifact.id, label=artifact.label, reason=str(exc)))
             else:

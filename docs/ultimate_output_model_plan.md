@@ -108,6 +108,18 @@ SourceSpec = FixedResultSource | ParameterizedSource
 
 A parameterized source renders `query_template` with validated source-local parameter values. The rendered SQL is stored on the resulting `ResultMetadata.query` so the query view is copy-paste executable.
 
+Templates may declare that the source intentionally does not apply for the active selection:
+
+```jinja
+{% if metric != "revenue" %}
+  {{ not_applicable("Revenue detail only applies when Metric is Revenue") }}
+{% endif %}
+
+SELECT ...
+```
+
+`not_applicable(...)` is semantic control flow, not a SQL error. The source is not materialized for that selection, and artifacts depending on it resolve to a not-applicable `UnavailableArtifact`.
+
 ## Results
 
 Core stores metadata only:

@@ -7,7 +7,7 @@ from collections import OrderedDict
 from collections.abc import Mapping
 from dataclasses import dataclass
 import math
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING, Literal, NoReturn
 
 import jinja2
 import pandas as pd
@@ -40,7 +40,18 @@ logger = logging.getLogger(__name__)
 # Schema this module spills result DataFrames into — one table per result. Kept out
 # of the workspace connector's introspected schema (see ``create_workspace_connector``).
 OUTPUT_STORE_SCHEMA = "_output_store"
+
+
+class SourceNotApplicable(Exception):
+    """A parameterized source intentionally does not apply to a selection."""
+
+
+def _not_applicable(reason: object = "not applicable") -> NoReturn:
+    raise SourceNotApplicable(str(reason))
+
+
 _JINJA_ENV = jinja2.Environment(undefined=jinja2.StrictUndefined, trim_blocks=True, lstrip_blocks=True)
+_JINJA_ENV.globals["not_applicable"] = _not_applicable
 
 
 @dataclass
@@ -311,9 +322,9 @@ class OutputStore:
         source: ParameterizedSource,
         selection: Selection,
     ) -> ResultId:
+        query = render_parameterized_query(source.query_template, selection)
         if self._registry is None:
             raise KeyError(f"source {source.id!r} has no result for selection {canonical_selection_key(selection)}")
-        query = render_parameterized_query(source.query_template, selection)
         connector = self._registry.get(source.db_alias)
         exec_result = await connector.run_query_async(query)
         pred_query = PredQuery(query=query, exec_result=exec_result)
@@ -388,6 +399,8 @@ class OutputStore:
             return self._artifacts[artifact_id]
         except KeyError:
             raise KeyError(f"No artifact with id {artifact_id}") from None
+
+
 def render_parameterized_query(query_template: str, selection: Selection) -> str:
     """Render a parameterized-source query template with validated scalar values."""
     for name, value in selection.items():
