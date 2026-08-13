@@ -6,7 +6,7 @@ def test_pane_panel_for_output_projects_parameters_to_browser_contract() -> None
     output = OutputSpec(
         parameters=[
             ChoiceParameter(id="metric", label="Metric", choices=[ChoiceOption(id="revenue", label="Revenue")]),
-            NumberParameter(id="limit", label="Limit", min=1, max=10, step=1, default=5, display="input"),
+            NumberParameter(id="limit", label="Limit", min=1, max=10, step=1, default=5),
         ]
     )
 
@@ -26,7 +26,6 @@ def test_pane_panel_for_output_projects_parameters_to_browser_contract() -> None
                 "max": 10,
                 "step": 1,
                 "default": 5,
-                "display": "input",
                 "unit": None,
             },
         ],

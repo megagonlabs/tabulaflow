@@ -165,6 +165,7 @@ Surface-specific projection is still useful at the boundary:
 
 - terminal currently supports `ChoiceParameter` navigation;
 - browser-pane JSON projects `ParameterSpec` into `PaneChoiceControl | PaneNumberControl`;
+- `NumberParameter` renders as a slider;
 - number controls are part of the pane contract but are not drawn yet.
 
 ## Remaining cleanup opportunities

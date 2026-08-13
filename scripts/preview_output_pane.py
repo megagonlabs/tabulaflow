@@ -394,16 +394,6 @@ def _push_controls_turn(pane: pane_mod.OutputPane, pane_dir: Path) -> None:
             max=140,
             step=20,
             default=60,
-            display="slider",
-        ),
-        NumberParameter(
-            id="top_n",
-            label="Top N",
-            min=1,
-            max=3,
-            step=1,
-            default=3,
-            display="input",
         ),
     ]
     source = output_store.add_parameterized_source("preview", parameters, "-- preview controls fixture")
@@ -425,25 +415,22 @@ def _push_controls_turn(pane: pane_mod.OutputPane, pane_dir: Path) -> None:
                 }
             )
             for min_value in range(0, 141, 20):
-                for top_n in (1, 2, 3):
-                    df = full_df[full_df["value"] >= min_value].head(top_n).reset_index(drop=True)
-                    for min_selection in (min_value, float(min_value)):
-                        for top_selection in (top_n, float(top_n)):
-                            asyncio.run(
-                                output_store.cache_parameterized_result(
-                                    source.id,
-                                    "sql",
-                                    {"metric": metric, "period": period, "min_value": min_selection, "top_n": top_selection},
-                                    PredQuery(
-                                        query=f"-- preview fixture for {period_label} {metric_label.lower()}, min_value={min_value}, top_n={top_n}",
-                                        exec_result=ExecResult(df=df),
-                                    ),
-                                )
+                df = full_df[full_df["value"] >= min_value].reset_index(drop=True)
+                for min_selection in (min_value, float(min_value)):
+                    asyncio.run(
+                        output_store.cache_parameterized_result(
+                            source.id,
+                            "sql",
+                            {"metric": metric, "period": period, "min_value": min_selection},
+                            PredQuery(
+                                query=f"-- preview fixture for {period_label} {metric_label.lower()}, min_value={min_value}",
+                                exec_result=ExecResult(df=df),
+                            ),
                         )
+                    )
     result = ChatResult(
         text=(
-            "This turn has answer-level controls. Switch the metric/period buttons, drag the minimum-value slider, "
-            "or edit Top N in the browser pane; "
+            "This turn has answer-level controls. Switch the metric/period buttons or drag the minimum-value slider; "
             "the table and chart resolve through the live preview session instead of a precomputed bundle."
         ),
         output=OutputSpec(

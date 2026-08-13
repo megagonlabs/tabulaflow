@@ -217,12 +217,6 @@ body { margin: 0; background: var(--bg); color: var(--text); display: flex; flex
 .answer-control-number { display: flex; align-items: center; gap: 10px; }
 .answer-control-number-input { accent-color: var(--accent); }
 .answer-control-number-input[type="range"] { flex: 1 1 180px; min-width: 160px; }
-.answer-control-number-input[type="number"] {
-    width: 88px; padding: 5px 8px; box-sizing: border-box;
-    border: 1px solid rgba(154, 164, 178, 0.24); border-radius: 8px;
-    background: rgba(255, 255, 255, 0.03); color: var(--text);
-    font: 600 12px/1.25 ui-monospace, monospace;
-}
 .answer-control-number-input:disabled { opacity: 0.62; }
 .answer-control-number-value { min-width: 48px; color: var(--text); font: 600 12px/1.25 ui-monospace, monospace; }
 .answer-control-status { color: var(--text-dim); font: 12px/1.3 ui-monospace, monospace; }

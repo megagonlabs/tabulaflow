@@ -74,7 +74,6 @@ class NumberParameter(BaseModel):
     max: float
     step: float
     default: float
-    display: Literal["slider", "input"] = "slider"
     unit: str | None = None
 
 

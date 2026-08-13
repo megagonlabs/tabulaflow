@@ -192,7 +192,7 @@ function buildAnswerControls(turn, state, index) {
     } else if (control.kind === 'number') {
       var row = el('div', 'answer-control-number');
       var input = document.createElement('input');
-      input.type = control.display === 'input' ? 'number' : 'range';
+      input.type = 'range';
       input.className = 'answer-control-number-input';
       input.min = String(control.min);
       input.max = String(control.max);

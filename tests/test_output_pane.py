@@ -954,7 +954,7 @@ def test_answer_controls_render_choice_and_number_inputs() -> None:
     assert "export type PaneControl = PaneChoiceControl | PaneNumberControl;" in contract
     assert "function answerControls(turn)" in pane_js
     assert "control.kind === 'number'" in pane_js
-    assert "input.type = control.display === 'input' ? 'number' : 'range';" in pane_js
+    assert "input.type = 'range';" in pane_js
     assert "applyControlSelection(turn, state, index, control.id, nextValue);" in pane_js
     assert ".answer-control-number" in pane_css
 

@@ -28,7 +28,6 @@ export interface PaneNumberControl {
   max: number;
   step: number;
   default: number;
-  display: "slider" | "input";
   unit: string | null;
 }
 

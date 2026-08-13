@@ -39,7 +39,6 @@ class PaneNumberControl(TypedDict):
     max: float
     step: float
     default: float
-    display: Literal["slider", "input"]
     unit: str | None
 
 
@@ -186,7 +185,6 @@ def pane_control(parameter: ParameterSpec) -> PaneControl:
             "max": parameter.max,
             "step": parameter.step,
             "default": parameter.default,
-            "display": parameter.display,
             "unit": parameter.unit,
         }
     raise TypeError(f"unsupported parameter {type(parameter).__name__}")
