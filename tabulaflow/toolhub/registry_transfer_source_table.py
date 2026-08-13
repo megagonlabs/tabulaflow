@@ -1,4 +1,4 @@
-"""Transfer-record tool backed by a DBRegistry."""
+"""Transfer-source-table tool backed by a DBRegistry."""
 
 from __future__ import annotations
 
@@ -13,15 +13,15 @@ from tabulaflow.core.outputs import FixedResultSource
 from tabulaflow.toolhub.output_store import OutputStore
 
 
-class RegistryTransferRecordTool:
-    """Persist an output-store result into a target SQL table.
+class RegistryTransferSourceTableTool:
+    """Persist a fixed output source into a target SQL table.
 
     This tool resolves a prior ``run_query`` output source and writes that DataFrame into a
     target table. The target can be the session workspace DB or any writable
     SQL connector registered in the runtime.
     """
 
-    name: ClassVar = "transfer_record"
+    name: ClassVar = "transfer_source_table"
 
     def __init__(
         self,
@@ -45,12 +45,12 @@ class RegistryTransferRecordTool:
         target_table: str,
         mode: Literal["append", "replace"] = "append",
     ) -> str:
-        """Transfer a stored query result into a SQL target table.
+        """Transfer a fixed source's table into a SQL target table.
 
         Args:
             source_id: Source ID from ``run_query`` (for example ``S3``).
                 To transfer a full table, first run ``SELECT * FROM <table>``
-                without ``LIMIT``, then transfer that record's id.
+                without ``LIMIT``, then transfer that source id.
             target_alias: Destination database alias.
             target_schema: Optional destination schema name.
             target_table: Destination table name.
@@ -80,11 +80,11 @@ class RegistryTransferRecordTool:
 
         if connector.connector_type != "sql":
             return (
-                "(error: transfer_record currently supports SQL targets only; "
+                "(error: transfer_source_table currently supports SQL targets only; "
                 f"got connector_type={connector.connector_type!r})"
             )
         if not isinstance(connector, SQLConnector):
-            return "(error: unsupported SQL connector implementation for transfer_record)"
+            return "(error: unsupported SQL connector implementation for transfer_source_table)"
 
         try:
             rows_written = await connector.write_dataframe_async(

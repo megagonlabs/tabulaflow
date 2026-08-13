@@ -70,7 +70,7 @@ An intermediate version of this design is already implemented and verified
   names**, to be changed.
 - `toolhub/registry_run_query.py`: `_execute -> tuple[str, ToolCallOutcome | None]`,
   `_execute_llm -> ToolReturn`, four LLM wrappers returning `ToolReturn`,
-  `__call__ -> str`. The `[record_id=...]` marker prefix on returns is a
+  `__call__ -> str`. The `[source_id=...]` marker prefix on returns is a
   model-facing contract — **keep it**.
 - `toolhub/registry_get_table_schema.py`: same `_execute`/`_execute_llm`
   pattern. The inner `toolhub/get_table_schema.py` already has

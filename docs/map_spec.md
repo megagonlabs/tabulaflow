@@ -1,11 +1,11 @@
 # Agent-Facing Map Spec
 
 Declarative map interface for agents. The goal is to let an agent attach a map
-view to a query result without exposing Leaflet internals or requiring browser
+view to a source without exposing Leaflet internals or requiring browser
 rendering knowledge.
 
 The map spec is intentionally much smaller than Vega-Lite. Vega-Lite is a full
-visual grammar; maps need a stable semantic contract over spatial query results:
+visual grammar; maps need a stable semantic contract over spatial sources:
 points from latitude/longitude columns, GeoJSON geometry, semantic encodings,
 tooltips, and viewport behavior. Concrete presentation such as exact colors,
 opacity, stroke width, and point radius ranges belongs to the output pane
@@ -19,12 +19,12 @@ render_map(
 ) -> str
 ```
 
-- The map is a standalone artifact, not attached to a query record. Each
-  column/geojson layer names the query result it reads from via its own
-  `record_id`; inline `points` layers omit it. Layers with different `record_id`
-  values overlay data from multiple query results on one map.
+- The map is a standalone artifact, not attached to a source. Each
+  column/geojson layer names the source it reads from via its own
+  `source_id`; inline `points` layers omit it. Layers with different `source_id`
+  values overlay data from multiple sources on one map.
 - `map_spec` references each source's query-result columns by their original names.
-- The tool returns a `MAP<n>` id; cite that id (e.g. `[[record:MAP1:label]]`) to
+- The tool returns a `MAP<n>` id; cite that id (e.g. `MAP1`) to
   show the map. It renders as its own map-only card (no data/query tabs) — the
   source tables are cited separately when the user wants them.
 - The app validates the spec, rewrites each layer's column names to its source's
@@ -121,7 +121,7 @@ Fields:
 | Field | Required | Description |
 |---|---:|---|
 | `type` | yes | Must be `"points"`. |
-| `record_id` | yes in column mode | Source query-result id (e.g. `"Q3"`). Omit for inline mode. |
+| `source_id` | yes in column mode | Source id (e.g. `"S3"`). Omit for inline mode. |
 | `lat` | yes in column mode | Latitude column. Values must be numeric and in `[-90, 90]`. |
 | `lng` | yes in column mode | Longitude column. Values must be numeric and in `[-180, 180]`. |
 | `points` | yes in inline mode | Non-empty list of inline point objects with numeric `lat` and `lng`. |
@@ -190,7 +190,7 @@ Fields:
 | Field | Required | Description |
 |---|---:|---|
 | `type` | yes | Must be `"geojson"`. |
-| `record_id` | yes for a column source | Source query-result id (e.g. `"Q3"`). Required when `geojson` is a column; also required for an inline object that uses `label`/`tooltip`/`color`. |
+| `source_id` | yes for a column source | Source id (e.g. `"S3"`). Required when `geojson` is a column; also required for an inline object that uses `label`/`tooltip`/`color`. |
 | `geojson` | yes | Column name containing GeoJSON, or an inline GeoJSON object. |
 | `label` | no | Short identity column/property used for feature names. |
 | `tooltip` | no | Detail content shown on hover and click in V1. Column/property, list of columns/properties, or `true`. |
@@ -364,7 +364,7 @@ usually knows the source CRS and has mature spatial functions.
 
 The tool should fail fast when:
 
-- no query result exists
+- no source exists
 - `layers` is missing or empty
 - a layer has an unsupported `type`
 - a referenced column does not exist
@@ -399,7 +399,7 @@ Implement the smallest useful contract first:
   "layers": [
     {
       "type": "points",
-      "record_id": "Q1",
+      "source_id": "S1",
       "lat": "lat",
       "lng": "lng",
       "label": "name",
@@ -414,7 +414,7 @@ Implement the smallest useful contract first:
   "layers": [
     {
       "type": "geojson",
-      "record_id": "Q1",
+      "source_id": "S1",
       "geojson": "geom_geojson",
       "tooltip": ["name", "value"]
     }
@@ -455,7 +455,7 @@ Defer:
   "layers": [
     {
       "type": "points",
-      "record_id": "Q1",
+      "source_id": "S1",
       "lat": "latitude",
       "lng": "longitude",
       "label": "store_name",
@@ -473,7 +473,7 @@ Defer:
   "layers": [
     {
       "type": "geojson",
-      "record_id": "Q1",
+      "source_id": "S1",
       "geojson": "region_geojson",
       "label": "region",
       "tooltip": ["region", "revenue"],
@@ -486,9 +486,9 @@ Defer:
 }
 ```
 
-### Boundaries Plus Points (multiple records)
+### Boundaries Plus Points (multiple sources)
 
-Overlay boundaries from one query (`Q1`) and facility points from another (`Q2`)
+Overlay boundaries from one query (`S1`) and facility points from another (`S2`)
 — the layers come from different results and are joined only on the map.
 
 ```json
@@ -497,13 +497,13 @@ Overlay boundaries from one query (`Q1`) and facility points from another (`Q2`)
   "layers": [
     {
       "type": "geojson",
-      "record_id": "Q1",
+      "source_id": "S1",
       "geojson": "service_area_geojson",
       "label": "service_area"
     },
     {
       "type": "points",
-      "record_id": "Q2",
+      "source_id": "S2",
       "lat": "facility_lat",
       "lng": "facility_lng",
       "label": "facility_name",

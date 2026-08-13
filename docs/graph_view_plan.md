@@ -31,11 +31,11 @@ and `tabulaflow/app/pane/cards.py` first — graph mirrors all three.
 
 The codebase has two established patterns:
 
-- **Attached view** — `attach_chart(record_id, spec)` puts a Vega spec on one
+- **Attached view** — `attach_chart(source_id, spec)` puts a Vega spec on one
   `QueryRecord`; it renders as a `Chart | Data | Query` tab strip on that
-  record's card. Correct for a chart: it is *one lens on one DataFrame*.
+  source's card. Correct for a chart: it is *one lens on one DataFrame*.
 - **Standalone artifact** — `add_map(spec) → "MAP1"` stores a `MapArtifact` in a
-  registry parallel to `QueryRecord`; each layer names the `record_id` it reads
+  registry parallel to `QueryRecord`; each layer names the `source_id` it reads
   from, so one map can overlay several query results. Cited by its own id.
 
 A graph composes potentially **multiple** results (a nodes table + an edges
@@ -81,23 +81,23 @@ least one edge-bearing source required:
 Plus top-level `title` (string, optional) and `layout`
 (`"force" | "layered" | "tree"`, optional, default `"force"`).
 
-Each `nodes`/`edges` entry reads from **either** a query result (`record_id`)
+Each `nodes`/`edges` entry reads from **either** a query result (`source_id`)
 **or** inline literal data (`data`) — never both. Field keys
 (`id`/`label`/`group`/`source`/`target`/`tooltip`) name **columns** of the
 named record in column mode, or **property names** of the inline objects in
 inline mode.
 
 > **Naming note for implementers:** edge endpoint columns are `source` and
-> `target`. The *source record* is always `record_id` — never `source`. (This
-> differs from the map's normalized output, where `source` tags the record id.
+> `target`. The *source* is always `source_id` — never `source`. (This
+> differs from the map's normalized output, where `source` tags the source id.
 > Do not copy that convention here.)
 
 ### 1.1 Node source
 
 | Field | Required | Description |
 |---|---|---|
-| `record_id` | column mode | Output-store record the node rows come from (`"Q1"`). |
-| `data` | inline mode | Non-empty list of literal node objects. Mutually exclusive with `record_id`. |
+| `source_id` | column mode | Output-store record the node rows come from (`"Q1"`). |
+| `data` | inline mode | Non-empty list of literal node objects. Mutually exclusive with `source_id`. |
 | `id` | yes | Column/property holding the node's unique id. Edge endpoints join to this. |
 | `label` | no | Short display caption. Defaults to the id. |
 | `group` | no | Field name for categorical color, e.g. `"type"` (a plain string; the pane chooses the palette). |
@@ -107,8 +107,8 @@ inline mode.
 
 | Field | Required | Description |
 |---|---|---|
-| `record_id` | column mode | Output-store record the edge rows come from. |
-| `data` | inline mode | Non-empty list of literal edge objects. Mutually exclusive with `record_id`. |
+| `source_id` | column mode | Output-store record the edge rows come from. |
+| `data` | inline mode | Non-empty list of literal edge objects. Mutually exclusive with `source_id`. |
 | `source` | yes | Column/property holding the source node id. |
 | `target` | yes | Column/property holding the target node id. |
 | `label` | no | Edge caption (rendered along the edge, auto-rotated). |
@@ -134,7 +134,7 @@ inline mode.
 Edge-only, single source (nodes implicit):
 
 ```json
-{ "edges": [{ "record_id": "Q1", "source": "src", "target": "dst", "label": "rel" }] }
+{ "edges": [{ "source_id": "Q1", "source": "src", "target": "dst", "label": "rel" }] }
 ```
 
 Normalized two-source with encodings:
@@ -144,11 +144,11 @@ Normalized two-source with encodings:
   "title": "Collaboration network",
   "layout": "force",
   "nodes": [
-    { "record_id": "Q1", "id": "id", "label": "name",
+    { "source_id": "Q1", "id": "id", "label": "name",
       "group": "type", "tooltip": ["name","type"] }
   ],
   "edges": [
-    { "record_id": "Q2", "source": "from_id", "target": "to_id",
+    { "source_id": "Q2", "source": "from_id", "target": "to_id",
       "label": "rel", "directed": true, "tooltip": ["rel"] }
   ]
 }
@@ -175,7 +175,7 @@ Cypher auto-extract (Phase 3 — near-spec-free; one record yields both nodes an
 edges from its native objects):
 
 ```json
-{ "subgraph": [{ "record_id": "Q1", "caption": "title" }] }
+{ "subgraph": [{ "source_id": "Q1", "caption": "title" }] }
 ```
 
 `caption` (default: `name`/`title`/first string prop) is the only optional
@@ -225,15 +225,15 @@ app/tui.py snapshot dispatch     render_graph_data(snap, dir)  window.TF.renderG
   `layout` is `Literal["force","layered","tree"]`.
 - `parse_graph_spec(spec) -> _GraphSpec` (raise `GraphSpecError` with a friendly
   message — copy `_validation_message`).
-- `referenced_record_ids(parsed) -> list[str]` over all `nodes`/`edges`/`subgraph`
-  entries that carry a `record_id`.
+- `referenced_source_ids(parsed) -> list[str]` over all `nodes`/`edges`/`subgraph`
+  entries that carry a `source_id`.
 - `resolve_graph_spec(parsed, sources: Mapping[str, pd.DataFrame]) -> dict`:
-  validate each entry's referenced columns exist in `sources[record_id]`
+  validate each entry's referenced columns exist in `sources[source_id]`
   (case-insensitive via `resolve_column`), verify ≥1 edge row overall, tag each
-  entry with its `record_id`. Store original column names (the pane rewrites to
+  entry with its `source_id`. Store original column names (the pane rewrites to
   compact field names later, exactly like maps).
 - `RenderGraphTool.__call__(self, *, graph_spec: str) -> str`: parse JSON →
-  parse spec → collect `referenced_record_ids` → fetch each from
+  parse spec → collect `referenced_source_ids` → fetch each from
   `self._history.get(rid)` (error on unknown/empty) → `resolve_graph_spec` →
   enforce **graph-specific element caps** (not a row cap) → `add_graph` → return
   `f"{label} {graph_id} created from {...} — {n} nodes, {m} edges"`.
@@ -299,7 +299,7 @@ elif ref_id.startswith("GRAPH"):
 ```
 
 Add `_chat_result_graph_from_artifact` — copy `_chat_result_map_from_artifact`
-verbatim: walk `graph_spec` `nodes`/`edges`/`subgraph` entries for `record_id`s,
+verbatim: walk `graph_spec` `nodes`/`edges`/`subgraph` entries for `source_id`s,
 fetch each source DataFrame, return `ChatResultGraph(...)`.
 
 **Update the citation ref regex** (`_ARTIFACT_REF_RE` in `chat/agent.py`): the
@@ -355,7 +355,7 @@ renderer trivial and puts the cross-source join where it belongs (Python, with
 the row values in hand).
 
 `build_graph_data` steps:
-1. For each `nodes` entry: read `sources[record_id].rows` (or the inline `data`);
+1. For each `nodes` entry: read `sources[source_id].rows` (or the inline `data`);
    rewrite column names → compact field names via that source's
    `field_by_column`; emit node records `{id, label, group?, tooltip?}`.
 2. Assemble the merged node set; dedup by `id` (first wins).
@@ -488,11 +488,11 @@ tests. *State after phase:* agent can `render_graph` from query results and cite
 `GRAPH<n>`; draggable nodes, autorotating edge labels, tooltips, three layouts.
 
 **Phase 2 — Inline mode.** Accept `data: [...]` on `nodes`/`edges` entries
-(mutually exclusive with `record_id`); field keys resolve against inline object
+(mutually exclusive with `source_id`); field keys resolve against inline object
 properties. A resolver branch only — no artifact/renderer changes. Enables
 authored diagrams and inline annotation overlays on record-backed graphs.
 
-**Phase 3 — Cypher auto-extract (`subgraph`).** A `subgraph: [{record_id,
+**Phase 3 — Cypher auto-extract (`subgraph`).** A `subgraph: [{source_id,
 caption?, group?}]` source whose resolution **walks native
 `neo4j.graph.Node/Relationship/Path` objects** into `{nodes, edges}`.
 - Prerequisite to verify first: those objects live in result cells
@@ -512,8 +512,8 @@ Reject with a clear message when:
 - JSON is invalid or not an object.
 - No edge-bearing source (`edges`/`subgraph`) is present, or all edge sources are
   empty.
-- A `nodes`/`edges` entry sets both `record_id` and `data`, or neither.
-- A referenced `record_id` is unknown or its result is empty.
+- A `nodes`/`edges` entry sets both `source_id` and `data`, or neither.
+- A referenced `source_id` is unknown or its result is empty.
 - A referenced column does not exist in its source (list available columns).
 - Total node rows exceed `GRAPH_MAX_NODES` or total edge rows exceed
   `GRAPH_MAX_EDGES` (suggest filter/aggregate).

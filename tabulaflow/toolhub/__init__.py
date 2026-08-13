@@ -28,7 +28,7 @@ from tabulaflow.toolhub.output_store import (
     OutputStore,
 )
 from tabulaflow.toolhub.registry_run_query import RegistryRunQueryTool
-from tabulaflow.toolhub.registry_transfer_record import RegistryTransferRecordTool
+from tabulaflow.toolhub.registry_transfer_source_table import RegistryTransferSourceTableTool
 from tabulaflow.toolhub.run_query import RunQueryTool
 from tabulaflow.toolhub.run_subagent_for_each_row import RunSubagentForEachRowTool
 from tabulaflow.toolhub.show_artifacts import ArtifactBundle, ArtifactRef, ShowArtifactsTool
@@ -74,7 +74,7 @@ __all__ = [
     "OutputStore",
     "ResultPayload",
     "RegistryRunQueryTool",
-    "RegistryTransferRecordTool",
+    "RegistryTransferSourceTableTool",
     "RenderChartTool",
     "RenderGraphTool",
     "RenderMapTool",

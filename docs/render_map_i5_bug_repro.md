@@ -6,7 +6,7 @@ This document captures the last `render_map` call made in the session, plus the 
 
 ```json
 {
-  "record_id": "Q5",
+  "source_id": "Q5",
   "map_spec": "{\"title\":\"California Superfund sites near I-5\",\"view\":{\"fit\":false,\"center\":[36.3,-119.7],\"zoom\":5.3,\"maxZoom\":12},\"layers\":[{\"type\":\"geojson\",\"geojson\":\"route_geojson\"},{\"type\":\"points\",\"lat\":\"lat\",\"lng\":\"lng\",\"label\":\"primary_name\",\"tooltip\":[\"primary_name\",\"city_name\",\"county_name\",\"active_status\",\"distance_to_i5_mi\"],\"color\":{\"field\":\"active_status\",\"domain\":[\"CURRENTLY ON THE FINAL NPL\",\"PROPOSED FOR NPL\",\"SITE IS PART OF NPL SITE\",\"NOT ON THE NPL\",\"REMOVED FROM PROPOSED NPL\",\"DELETED FROM THE FINAL NPL\"]},\"marker\":{\"type\":\"circle\"}}]}"
 }
 ```

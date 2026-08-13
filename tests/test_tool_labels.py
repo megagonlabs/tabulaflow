@@ -276,8 +276,8 @@ class TestVerbLedLabels:
 
     def test_transfer_uses_to_not_arrow(self) -> None:
         # "->" would collide with the result-metric arrow, so the target reads "to"
-        args = {"record_id": "rec_42", "target_alias": "dw", "target_table": "orders", "mode": "append"}
-        assert summarize_tool_args("transfer_record", args) == "Transfer rec_42 to [dw] orders (append)"
+        args = {"source_id": "S42", "target_alias": "dw", "target_table": "orders", "mode": "append"}
+        assert summarize_tool_args("transfer_source_table", args) == "Transfer S42 to [dw] orders (append)"
 
     def test_browser_navigate(self) -> None:
         assert summarize_tool_args("browser_navigate", {"url": "stripe.com"}) == "Navigate stripe.com"

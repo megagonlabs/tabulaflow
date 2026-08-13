@@ -28,15 +28,14 @@ def _map_view(output_store: OutputStore, map_id: str) -> MapView:
 
 
 def _norm(spec: dict[str, Any], **sources: pd.DataFrame) -> dict[str, Any]:
-    sources = {key.replace("Q", "S", 1) if key.startswith("Q") else key: value for key, value in sources.items()}
     return normalize_map_spec(spec, sources)
 
 
 class TestNormalizeMapSpec:
     def test_points_layer_resolves_fields_case_insensitively(self) -> None:
         df = pd.DataFrame({"Lat": [37.7], "Lng": [-122.4], "Name": ["SF"]})
-        spec = {"layers": [{"type": "points", "record_id": "S1", "lat": "lat", "lng": "lng", "label": "name"}]}
-        assert _norm(spec, Q1=df) == {
+        spec = {"layers": [{"type": "points", "source_id": "S1", "lat": "lat", "lng": "lng", "label": "name"}]}
+        assert _norm(spec, S1=df) == {
             "layers": [{"type": "points", "source": "S1", "lat": "Lat", "lng": "Lng", "label": "Name"}]
         }
 
@@ -48,8 +47,8 @@ class TestNormalizeMapSpec:
                 "name": ["missing", "valid", "invalid"],
             }
         )
-        spec = {"layers": [{"type": "points", "record_id": "S1", "lat": "lat", "lng": "lng", "label": "name"}]}
-        assert _norm(spec, Q1=df) == {
+        spec = {"layers": [{"type": "points", "source_id": "S1", "lat": "lat", "lng": "lng", "label": "name"}]}
+        assert _norm(spec, S1=df) == {
             "layers": [{"type": "points", "source": "S1", "lat": "lat", "lng": "lng", "label": "name"}]
         }
 
@@ -66,25 +65,25 @@ class TestNormalizeMapSpec:
                 }
             ]
         }
-        # Inline layers carry their own data and need no source record.
+        # Inline layers carry their own data and need no source.
         assert _norm(spec) == spec
 
-    def test_inline_points_reject_record_id(self) -> None:
-        spec = {"layers": [{"type": "points", "record_id": "S1", "points": [{"lat": 37.7, "lng": -122.4}]}]}
-        with pytest.raises(ValueError, match="inline points layers must not set record_id"):
-            _norm(spec, Q1=pd.DataFrame({"x": [1]}))
+    def test_inline_points_reject_source_id(self) -> None:
+        spec = {"layers": [{"type": "points", "source_id": "S1", "points": [{"lat": 37.7, "lng": -122.4}]}]}
+        with pytest.raises(ValueError, match="inline points layers must not set source_id"):
+            _norm(spec, S1=pd.DataFrame({"x": [1]}))
 
-    def test_column_points_require_record_id(self) -> None:
+    def test_column_points_require_source_id(self) -> None:
         spec = {"layers": [{"type": "points", "lat": "lat", "lng": "lng"}]}
-        with pytest.raises(ValueError, match="points layers must set record_id"):
-            _norm(spec, Q1=pd.DataFrame({"lat": [37.7], "lng": [-122.4]}))
+        with pytest.raises(ValueError, match="points layers must set source_id"):
+            _norm(spec, S1=pd.DataFrame({"lat": [37.7], "lng": [-122.4]}))
 
     def test_inline_points_are_mutually_exclusive_with_column_points(self) -> None:
         spec = {
             "layers": [
                 {
                     "type": "points",
-                    "record_id": "S1",
+                    "source_id": "S1",
                     "lat": "lat",
                     "lng": "lng",
                     "points": [{"lat": 37.7, "lng": -122.4}],
@@ -92,7 +91,7 @@ class TestNormalizeMapSpec:
             ]
         }
         with pytest.raises(ValueError, match="either points or lat/lng columns"):
-            _norm(spec, Q1=pd.DataFrame({"lat": [37.7], "lng": [-122.4]}))
+            _norm(spec, S1=pd.DataFrame({"lat": [37.7], "lng": [-122.4]}))
 
     def test_inline_points_validate_coordinates_and_properties(self) -> None:
         cases: list[dict[str, Any]] = [
@@ -112,25 +111,25 @@ class TestNormalizeMapSpec:
                 "name": ["SF"],
             }
         )
-        spec = {"layers": [{"type": "geojson", "record_id": "S1", "geojson": "geom", "tooltip": ["name"]}]}
-        assert _norm(spec, Q1=df) == {
+        spec = {"layers": [{"type": "geojson", "source_id": "S1", "geojson": "geom", "tooltip": ["name"]}]}
+        assert _norm(spec, S1=df) == {
             "layers": [{"type": "geojson", "source": "S1", "geojson": "geom", "tooltip": ["name"]}]
         }
 
-    def test_geojson_column_requires_record_id(self) -> None:
+    def test_geojson_column_requires_source_id(self) -> None:
         df = pd.DataFrame({"geom": [{"type": "Point", "coordinates": [-122.4, 37.7]}]})
         spec = {"layers": [{"type": "geojson", "geojson": "geom"}]}
-        with pytest.raises(ValueError, match="geojson layers must set record_id"):
-            _norm(spec, Q1=df)
+        with pytest.raises(ValueError, match="geojson layers must set source_id"):
+            _norm(spec, S1=df)
 
     def test_custom_basemap_is_rejected(self) -> None:
         df = pd.DataFrame({"lat": [37.7], "lng": [-122.4]})
         spec = {
             "basemap": {"type": "tile", "tileUrl": "https://example.com/{z}/{x}/{y}.png"},
-            "layers": [{"type": "points", "record_id": "S1", "lat": "lat", "lng": "lng"}],
+            "layers": [{"type": "points", "source_id": "S1", "lat": "lat", "lng": "lng"}],
         }
         with pytest.raises(ValueError, match="unsupported map_spec field"):
-            _norm(spec, Q1=df)
+            _norm(spec, S1=df)
 
     def test_raw_styling_fields_are_rejected(self) -> None:
         df = pd.DataFrame(
@@ -141,24 +140,24 @@ class TestNormalizeMapSpec:
             }
         )
         cases: list[dict[str, Any]] = [
-            {"layers": [{"type": "geojson", "record_id": "S1", "geojson": "geom", "style": {"weight": 1}}]},
-            {"layers": [{"type": "geojson", "record_id": "S1", "geojson": "geom", "color": "#3eb489"}]},
+            {"layers": [{"type": "geojson", "source_id": "S1", "geojson": "geom", "style": {"weight": 1}}]},
+            {"layers": [{"type": "geojson", "source_id": "S1", "geojson": "geom", "color": "#3eb489"}]},
             {
                 "layers": [
                     {
                         "type": "geojson",
-                        "record_id": "S1",
+                        "source_id": "S1",
                         "geojson": "geom",
                         "color": {"field": "status", "range": ["#3eb489"]},
                     }
                 ]
             },
-            {"layers": [{"type": "points", "record_id": "S1", "lat": "value", "lng": "value", "size": 12}]},
+            {"layers": [{"type": "points", "source_id": "S1", "lat": "value", "lng": "value", "size": 12}]},
             {
                 "layers": [
                     {
                         "type": "points",
-                        "record_id": "S1",
+                        "source_id": "S1",
                         "lat": "value",
                         "lng": "value",
                         "size": {"field": "value", "range": [5, 18]},
@@ -168,7 +167,7 @@ class TestNormalizeMapSpec:
         ]
         for spec in cases:
             with pytest.raises(ValueError):
-                _norm(spec, Q1=df)
+                _norm(spec, S1=df)
 
     def test_semantic_color_and_size_encodings_are_kept(self) -> None:
         df = pd.DataFrame({"lat": [37.7], "lng": [-122.4], "status": ["open"], "value": [10]})
@@ -176,7 +175,7 @@ class TestNormalizeMapSpec:
             "layers": [
                 {
                     "type": "points",
-                    "record_id": "S1",
+                    "source_id": "S1",
                     "lat": "lat",
                     "lng": "lng",
                     "color": {"field": "status", "domain": ["open", "closed"]},
@@ -184,7 +183,7 @@ class TestNormalizeMapSpec:
                 }
             ]
         }
-        assert _norm(spec, Q1=df) == {
+        assert _norm(spec, S1=df) == {
             "layers": [
                 {
                     "type": "points",
@@ -201,21 +200,21 @@ class TestNormalizeMapSpec:
         df = pd.DataFrame({"lat": [37.7], "lng": [-122.4], "status": ["open"]})
         spec = {
             "legend": True,
-            "layers": [{"type": "points", "record_id": "S1", "lat": "lat", "lng": "lng", "color": {"field": "status"}}],
+            "layers": [{"type": "points", "source_id": "S1", "lat": "lat", "lng": "lng", "color": {"field": "status"}}],
         }
         with pytest.raises(ValueError, match="unsupported map_spec field"):
-            _norm(spec, Q1=df)
+            _norm(spec, S1=df)
 
-    def test_multi_record_overlay_tags_each_layer_with_its_source(self) -> None:
+    def test_multi_source_overlay_tags_each_layer_with_its_source(self) -> None:
         boundaries = pd.DataFrame({"geom": [{"type": "Point", "coordinates": [-122.4, 37.7]}], "area": ["A"]})
         points = pd.DataFrame({"lat": [37.7], "lng": [-122.4], "name": ["SF"]})
         spec = {
             "layers": [
-                {"type": "geojson", "record_id": "S1", "geojson": "geom", "label": "area"},
-                {"type": "points", "record_id": "S2", "lat": "lat", "lng": "lng", "label": "name"},
+                {"type": "geojson", "source_id": "S1", "geojson": "geom", "label": "area"},
+                {"type": "points", "source_id": "S2", "lat": "lat", "lng": "lng", "label": "name"},
             ]
         }
-        assert _norm(spec, Q1=boundaries, Q2=points) == {
+        assert _norm(spec, S1=boundaries, S2=points) == {
             "layers": [
                 {"type": "geojson", "source": "S1", "geojson": "geom", "label": "area"},
                 {"type": "points", "source": "S2", "lat": "lat", "lng": "lng", "label": "name"},
@@ -230,18 +229,18 @@ class TestRenderMapTool:
         # Whitespace-normalized: the phrase may wrap across docstring lines.
         assert "URLs render as links" in " ".join(doc.split())
 
-    async def test_column_layer_missing_record_id_errors(self) -> None:
+    async def test_column_layer_missing_source_id_errors(self) -> None:
         output_store = await _output_store_with(pd.DataFrame({"lat": [37.7], "lng": [-122.4]}))
         spec = {"layers": [{"type": "points", "lat": "lat", "lng": "lng"}]}
         msg = await RenderMapTool(output_store=output_store)(map_spec=json.dumps(spec))
-        assert "record_id" in msg
+        assert "source_id" in msg
         assert output_store._artifacts == {}
 
     async def test_points_map_created(self) -> None:
         output_store = await _output_store_with(pd.DataFrame({"lat": [37.7], "lng": [-122.4], "name": ["SF"]}))
         spec = {
             "title": "Cities",
-            "layers": [{"type": "points", "record_id": "S1", "lat": "lat", "lng": "lng", "label": "name"}],
+            "layers": [{"type": "points", "source_id": "S1", "lat": "lat", "lng": "lng", "label": "name"}],
         }
         msg = await RenderMapTool(output_store=output_store)(map_spec=json.dumps(spec))
         assert "Map MAP1 created from S1" in msg
@@ -258,14 +257,14 @@ class TestRenderMapTool:
             }
         )
         output_store = await _output_store_with(df)
-        spec = {"layers": [{"type": "geojson", "record_id": "S1", "geojson": "geom", "label": "name"}]}
+        spec = {"layers": [{"type": "geojson", "source_id": "S1", "geojson": "geom", "label": "name"}]}
         msg = await RenderMapTool(output_store=output_store)(map_spec=json.dumps(spec))
         assert "Map MAP1 created" in msg
         assert _map_view(output_store, "MAP1").spec == {
             "layers": [{"type": "geojson", "source": "S1", "geojson": "geom", "label": "name"}]
         }
 
-    async def test_multi_record_map_created_from_two_sources(self) -> None:
+    async def test_multi_source_map_created_from_two_sources(self) -> None:
         boundaries = pd.DataFrame(
             {"geom": [json.dumps({"type": "Point", "coordinates": [-122.4, 37.7]})], "area": ["A"]}
         )
@@ -273,8 +272,8 @@ class TestRenderMapTool:
         output_store = await _output_store_with(boundaries, points)
         spec = {
             "layers": [
-                {"type": "geojson", "record_id": "S1", "geojson": "geom", "label": "area"},
-                {"type": "points", "record_id": "S2", "lat": "lat", "lng": "lng", "label": "name"},
+                {"type": "geojson", "source_id": "S1", "geojson": "geom", "label": "area"},
+                {"type": "points", "source_id": "S2", "lat": "lat", "lng": "lng", "label": "name"},
             ]
         }
         msg = await RenderMapTool(output_store=output_store)(map_spec=json.dumps(spec))
@@ -282,23 +281,23 @@ class TestRenderMapTool:
         stored = _map_view(output_store, "MAP1").spec
         assert [layer["source"] for layer in stored["layers"]] == ["S1", "S2"]
 
-    async def test_unknown_record_id_errors_without_creating(self) -> None:
+    async def test_unknown_source_id_errors_without_creating(self) -> None:
         output_store = await _output_store_with(pd.DataFrame({"lat": [37.7], "lng": [-122.4]}))
-        spec = {"layers": [{"type": "points", "record_id": "S9", "lat": "lat", "lng": "lng"}]}
+        spec = {"layers": [{"type": "points", "source_id": "S9", "lat": "lat", "lng": "lng"}]}
         msg = await RenderMapTool(output_store=output_store)(map_spec=json.dumps(spec))
-        assert "unknown record_id" in msg
+        assert "unknown source_id" in msg
         assert output_store._artifacts == {}
 
     async def test_unknown_column_errors_without_creating(self) -> None:
         output_store = await _output_store_with(pd.DataFrame({"lat": [37.7], "lng": [-122.4]}))
-        spec = {"layers": [{"type": "points", "record_id": "S1", "lat": "lat", "lng": "missing"}]}
+        spec = {"layers": [{"type": "points", "source_id": "S1", "lat": "lat", "lng": "missing"}]}
         msg = await RenderMapTool(output_store=output_store)(map_spec=json.dumps(spec))
         assert "field not found" in msg and "missing" in msg
         assert output_store._artifacts == {}
 
     async def test_invalid_coordinates_error_without_creating(self) -> None:
         output_store = await _output_store_with(pd.DataFrame({"lat": [4_547_675], "lng": [-13_627_665]}))
-        spec = {"layers": [{"type": "points", "record_id": "S1", "lat": "lat", "lng": "lng"}]}
+        spec = {"layers": [{"type": "points", "source_id": "S1", "lat": "lat", "lng": "lng"}]}
         msg = await RenderMapTool(output_store=output_store)(map_spec=json.dumps(spec))
         assert "no valid latitude/longitude" in msg
         assert output_store._artifacts == {}
@@ -312,7 +311,7 @@ class TestRenderMapTool:
                 }
             )
         )
-        spec = {"layers": [{"type": "points", "record_id": "S1", "lat": "lat", "lng": "lng"}]}
+        spec = {"layers": [{"type": "points", "source_id": "S1", "lat": "lat", "lng": "lng"}]}
         msg = await RenderMapTool(output_store=output_store)(map_spec=json.dumps(spec))
         assert "too large to map directly" in msg
         assert f"max {MAP_RENDER_MAX_ROWS:,} rows" in msg

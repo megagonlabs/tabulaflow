@@ -76,7 +76,7 @@ if TYPE_CHECKING:
         RegistryGetDBDocumentTool,
         RegistryGetTableSchemaTool,
         RegistryRunQueryTool,
-        RegistryTransferRecordTool,
+        RegistryTransferSourceTableTool,
         RenderChartTool,
         RenderGraphTool,
         RenderMapTool,
@@ -129,7 +129,7 @@ class _Toolset:
     get_db_document: RegistryGetDBDocumentTool
     get_table_schema: RegistryGetTableSchemaTool
     get_column_json_schema: RegistryGetColumnJsonSchemaTool
-    transfer_record: RegistryTransferRecordTool
+    transfer_source_table: RegistryTransferSourceTableTool
     # The fan-out tools are bound to the session workspace (the only DB they may
     # read from and write to); ``None`` when the agent runs without a workspace.
     run_subagent_for_each_row: RunSubagentForEachRowTool | None
@@ -266,7 +266,7 @@ class ChatAgent:
             RegistryGetDBDocumentTool,
             RegistryGetTableSchemaTool,
             RegistryRunQueryTool,
-            RegistryTransferRecordTool,
+            RegistryTransferSourceTableTool,
             RenderChartTool,
             RenderGraphTool,
             RenderMapTool,
@@ -278,7 +278,7 @@ class ChatAgent:
 
         # The fan-out tools operate on the workspace only: sub-tasks are laid out
         # as workspace tables and results written back there (user data reaches
-        # them via transfer_record). Without a workspace they are disabled.
+        # them via transfer_source_table). Without a workspace they are disabled.
         run_subagent_for_each_row = None
         extract_rows_from_documents = None
         if self.workspace is not None:
@@ -310,7 +310,7 @@ class ChatAgent:
             ),
             get_table_schema=RegistryGetTableSchemaTool(self.registry, SQLDDLSchemaFormatter(), enable_refresh=True),
             get_column_json_schema=RegistryGetColumnJsonSchemaTool(self.registry),
-            transfer_record=RegistryTransferRecordTool(self.registry, self._output_store),
+            transfer_source_table=RegistryTransferSourceTableTool(self.registry, self._output_store),
             run_subagent_for_each_row=run_subagent_for_each_row,
             extract_rows_from_documents=extract_rows_from_documents,
             connect_data_source=(
