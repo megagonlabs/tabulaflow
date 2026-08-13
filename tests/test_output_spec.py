@@ -88,13 +88,13 @@ def test_result_record_owns_query_provenance() -> None:
         id="Q2",
         db_alias="workspace",
         query="SELECT * FROM customers WHERE total_spend >= 50000",
-        parameter_values={"min_spend": 50_000},
+        selection={"min_spend": 50_000},
         row_count=20,
         columns=["customer", "total_spend"],
     )
 
     assert record.db_alias == "workspace"
-    assert record.parameter_values == {"min_spend": 50_000}
+    assert record.selection == {"min_spend": 50_000}
 
 
 def test_constant_result_source_has_no_inputs() -> None:

@@ -157,7 +157,7 @@ class CreateParameterizedSourceTool:
             if (error := exec_result.error) is not None:
                 failures.setdefault(_error_summary(error), []).append(label)
                 continue
-            pred_queries.append((selection, PredQuery(query=query, parameter_values=dict(selection), exec_result=exec_result)))
+            pred_queries.append((selection, PredQuery(query=query, exec_result=exec_result)))
         if failures:
             raise ValueError(_format_failures(failures, len(warm_queries)))
 

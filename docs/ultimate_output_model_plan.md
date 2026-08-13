@@ -157,7 +157,7 @@ class ResultMetadata(BaseModel):
     id: ResultId
     db_alias: str
     query: str
-    parameter_values: dict[ParameterId, SelectionValue] = Field(default_factory=dict)
+    selection: dict[ParameterId, SelectionValue] = Field(default_factory=dict)
     row_count: int | None = None
     columns: list[str] | None = None
     latency_seconds: float | None = None
@@ -497,7 +497,7 @@ Runtime rules:
 - Render `ParameterizedSource.query_template` with the validated source-local selection.
 - Execute the rendered query.
 - Store the rendered query in `ResultMetadata.query`.
-- Store selected source-local values in `ResultMetadata.parameter_values`.
+- Store selected source-local values in `ResultMetadata.selection`.
 
 Agent/template conventions:
 

@@ -239,8 +239,7 @@ class OutputStore:
         if not isinstance(source, ParameterizedSource):
             raise ValueError(f"source {source_id!r} is not parameterized")
         result_id = self._next_result_id_value()
-        pred_query.parameter_values = dict(selection)
-        await self._store(result_id, source.db_alias, connector_type, pred_query)
+        await self._store(result_id, source.db_alias, connector_type, pred_query, selection=selection)
         self._source_cache[(source.id, canonical_selection_key(selection))] = result_id
         return result_id
 
@@ -260,6 +259,8 @@ class OutputStore:
         db_alias: str,
         connector_type: Literal["sql", "property_graph"],
         pred_query: PredQuery,
+        *,
+        selection: dict[ParameterId, SelectionValue] | None = None,
     ) -> _StoredResult:
         """Register one result under ``result_id``."""
         exec_result = pred_query.exec_result
@@ -275,7 +276,7 @@ class OutputStore:
             db_alias=db_alias,
             query=pred_query.query,
             connector_type=connector_type,
-            parameter_values=dict(pred_query.parameter_values),
+            selection={} if selection is None else dict(selection),
             row_count=row_count,
             columns=columns,
             latency_seconds=exec_result.latency_seconds if exec_result is not None else None,
@@ -323,7 +324,7 @@ class OutputStore:
         query = render_parameterized_query(source.query_template, selection)
         connector = self._registry.get(source.db_alias)
         exec_result = await connector.run_query_async(query)
-        pred_query = PredQuery(query=query, parameter_values=dict(selection), exec_result=exec_result)
+        pred_query = PredQuery(query=query, exec_result=exec_result)
         return await self.cache_parameterized_result(source.id, connector.connector_type, selection, pred_query)
 
     async def _get_result(self, result_id: str) -> _StoredResult:
