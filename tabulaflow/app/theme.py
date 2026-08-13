@@ -38,7 +38,7 @@ DIFF_ADDED = "#3FB950"
 DIFF_REMOVED = "#F85149"
 
 # Grey shade for inactive/unfocused states of widgets that normally
-# display mint accents (record pill bg, view stepper chevrons / label in
+# display mint accents (card pill bg, view stepper chevrons / label in
 # an unfocused AgentResultWidget). Matches the exact color Textual
 # resolves Rich's ``dim`` attribute to (``#999999``), so the unfocused
 # pill / view stepper sit in the same visual register as the dim hint

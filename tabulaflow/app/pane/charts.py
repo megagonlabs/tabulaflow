@@ -144,8 +144,8 @@ def build_chart_data(
             dataset field names.
 
     Returns:
-        A record-data fragment containing a ``chart`` payload. Row values are
-        not included; the live pane attaches the record-level dataset at mount.
+        A card-data fragment containing a ``chart`` payload. Row values are
+        not included; the live pane attaches the card-level dataset at mount.
     """
     spec = copy.deepcopy(vegalite_spec)
     colmap = {str(c).lower(): str(c) for c in df.columns}

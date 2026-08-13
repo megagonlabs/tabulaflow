@@ -10,10 +10,10 @@ from tabulaflow.app.widgets import AgentResultWidget
 from tabulaflow.chat import ChatResult
 
 
-def _record(record_id: str, label: str) -> SimpleNamespace:
+def _result(result_id: str, label: str) -> SimpleNamespace:
     return SimpleNamespace(
         kind="table",
-        record_id=record_id,
+        result_id=result_id,
         label=label,
         query=f"SELECT '{label}' AS label",
         df=pd.DataFrame({"label": [label], "value": [1]}),
@@ -26,8 +26,8 @@ class _ResultWidgetApp(App[None]):
     def __init__(self) -> None:
         super().__init__()
         artifacts = [
-            _record("Q1", "one"),
-            _record("Q2", "two"),
+            _result("Q1", "one"),
+            _result("Q2", "two"),
         ]
         self.result_widget = AgentResultWidget(
             ChatResult(
@@ -48,7 +48,7 @@ class _ResultWidgetApp(App[None]):
         self.result_widget.focus()
 
 
-async def test_record_switch_refreshes_displayed_content() -> None:
+async def test_card_switch_refreshes_displayed_content() -> None:
     app = _ResultWidgetApp()
 
     async with app.run_test(size=(100, 30)) as pilot:
@@ -76,7 +76,7 @@ def _current_kind(widget: AgentResultWidget) -> str:
     return view.kind
 
 
-async def test_view_selection_is_per_record() -> None:
+async def test_view_selection_is_per_result() -> None:
     app = _ResultWidgetApp()
 
     async with app.run_test(size=(100, 30)) as pilot:

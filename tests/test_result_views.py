@@ -22,9 +22,9 @@ from tabulaflow.core.types import GraphView, GraphViewEdge, GraphViewNode
 from tabulaflow.core.outputs import ChoiceOption, ChoiceParameter, NumberParameter, OutputSpec, ParameterDef
 
 
-def _record(record_id: str, label: str) -> SimpleNamespace:
+def _result(result_id: str, label: str) -> SimpleNamespace:
     return SimpleNamespace(kind="table", graph=None, 
-        record_id=record_id,
+        result_id=result_id,
         label=label,
         query="SELECT 1",
         df=pd.DataFrame({"a": [1, 2]}),
@@ -35,7 +35,7 @@ def _record(record_id: str, label: str) -> SimpleNamespace:
 def _browser_only_chart(chart_id: str, label: str) -> SimpleNamespace:
     return SimpleNamespace(kind="chart", 
         chart_id=chart_id,
-        record_id="Q1",
+        result_id="Q1",
         label=label,
         chart_spec={
             "mark": "bar",
@@ -78,37 +78,37 @@ def test_map_artifact_yields_single_map_placeholder_view() -> None:
 
 def test_artifacts_render_in_citation_order() -> None:
     groups = build_artifact_card_views(
-        [_record("Q1", "table1"), _map("MAP1", "map1"), _graph("GRAPH1", "graph1"), _record("Q2", "table2")]
+        [_result("Q1", "table1"), _map("MAP1", "map1"), _graph("GRAPH1", "graph1"), _result("Q2", "table2")]
     )
     assert [g.artifact_id for g in groups] == ["Q1", "MAP1", "GRAPH1", "Q2"]
-    # The map group is map-only; the record groups keep their data/query views.
+    # The map group is map-only; the card groups keep their data/query views.
     assert [v.kind for v in groups[1].views] == [VIEW_KIND_MAP]
     assert [v.kind for v in groups[2].views] == [VIEW_KIND_GRAPH]
     assert VIEW_KIND_DATA in [v.kind for v in groups[0].views]
     assert VIEW_KIND_QUERY in [v.kind for v in groups[0].views]
 
 
-def test_chart_artifact_yields_chart_data_views_with_source_record() -> None:
+def test_chart_artifact_yields_chart_data_views_with_source_result() -> None:
     groups = build_artifact_card_views([_browser_only_chart("CHART1", "chart")])
     assert groups[0].artifact_id == "CHART1"
-    assert groups[0].source_result_id == "Q1"
+    assert groups[0].result_id == "Q1"
     assert [v.kind for v in groups[0].views] == [VIEW_KIND_CHART, VIEW_KIND_DATA]
 
 
-def test_record_artifact_has_no_chart_view() -> None:
-    groups = build_artifact_card_views([_record("Q1", "table1")])
-    assert groups[0].source_result_id == "Q1"
+def test_table_artifact_has_no_chart_view() -> None:
+    groups = build_artifact_card_views([_result("Q1", "table1")])
+    assert groups[0].result_id == "Q1"
     assert [v.kind for v in groups[0].views] == [VIEW_KIND_DATA, VIEW_KIND_QUERY]
 
 
-def test_record_artifact_with_graph_has_graph_data_query_views() -> None:
-    record = _record("Q1", "paths")
-    record.query_lexer = "cypher"
-    record.graph = GraphView(
+def test_table_artifact_with_graph_has_graph_data_query_views() -> None:
+    card = _result("Q1", "paths")
+    card.query_lexer = "cypher"
+    card.graph = GraphView(
         nodes=[GraphViewNode(id="a", label="Alice", group="Person"), GraphViewNode(id="b", label="Bob", group="Person")],
         edges=[GraphViewEdge(source="a", target="b", label="KNOWS", directed=True)],
     )
-    groups = build_artifact_card_views([record])
+    groups = build_artifact_card_views([card])
 
     assert [v.kind for v in groups[0].views] == [VIEW_KIND_GRAPH, VIEW_KIND_DATA, VIEW_KIND_QUERY]
 
@@ -141,7 +141,7 @@ def test_panel_result_widget_switches_combinations_and_preserves_card_views() ->
             choices=[ChoiceOption(id="q2", label="Q2"), ChoiceOption(id="q3", label="Q3")],
         ),
     ]
-    first_artifacts = [_record("Q1", "top"), _record("Q5", "fixed")]
+    first_artifacts = [_result("Q1", "top"), _result("Q5", "fixed")]
     widget = AgentResultWidget(
         ChatResult(
             text="x",
@@ -187,7 +187,7 @@ def test_panel_result_widget_uses_choice_controls_as_primary_model() -> None:
             text="x",
             output=OutputSpec(parameters=controls),
         ),
-        build_artifact_card_views([_record("Q1", "top")]),
+        build_artifact_card_views([_result("Q1", "top")]),
     )
 
     assert widget._choice_count() == 2
@@ -211,7 +211,7 @@ def test_result_widget_uses_output_parameters_without_legacy_panel() -> None:
                 ]
             ),
         ),
-        build_artifact_card_views([_record("Q1", "top")]),
+        build_artifact_card_views([_result("Q1", "top")]),
     )
 
     assert widget._choice_count() == 2
@@ -230,7 +230,7 @@ def test_slider_only_panel_does_not_crash_choice_navigation() -> None:
                 ],
             ),
         ),
-        build_artifact_card_views([_record("Q1", "players")]),
+        build_artifact_card_views([_result("Q1", "players")]),
     )
 
     assert widget._choice_count() == 0

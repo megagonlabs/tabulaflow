@@ -20,7 +20,7 @@ import pytest
 
 from tabulaflow.app.config import LLM_OFF, ResolvedLLMSelection
 from tabulaflow.app.pane.graphs import build_graph_result_data
-from tabulaflow.app.pane.cards import PANE_CODE_TEXT, build_query_data, render_map_data, render_record_data
+from tabulaflow.app.pane.cards import PANE_CODE_TEXT, build_query_data, render_map_data, render_result_data
 from tabulaflow.app.pane.tables import TABLE_RENDER_MAX_ROWS
 from tabulaflow.app.theme import CODE_TEXT
 from tabulaflow.app.pane import CARD_ID_PREFIX, OutputPane, OutputPanePortError, _PANE_HTML
@@ -225,15 +225,15 @@ def test_output_pane_rejects_missing_or_wrong_token(tmp_path: Path) -> None:
         pane.stop()
 
 
-def test_record_card_includes_data_view_meta(tmp_path: Path) -> None:
+def test_result_card_includes_data_view_meta(tmp_path: Path) -> None:
     df = pd.DataFrame({"region": ["North", "South"], "revenue": [10, 20]})
-    card = render_record_data(
+    card = render_result_data(
         SimpleNamespace(
             df=df,
             chart_spec=None,
             query=None,
             label="sales",
-            record_id="r1",
+            result_id="r1",
             query_lexer="sql",
         ),
         tmp_path,
@@ -251,15 +251,15 @@ def test_map_and_table_row_caps_are_aligned() -> None:
     assert TABLE_RENDER_MAX_ROWS == MAP_RENDER_MAX_ROWS
 
 
-def test_record_card_preserves_null_cells(tmp_path: Path) -> None:
+def test_result_card_preserves_null_cells(tmp_path: Path) -> None:
     df = pd.DataFrame({"name": ["valid", None], "score": [0.019593312555829002, None]})
-    card = render_record_data(
+    card = render_result_data(
         SimpleNamespace(
             df=df,
             chart_spec=None,
             query=None,
             label="nulls",
-            record_id="r1",
+            result_id="r1",
             query_lexer="sql",
         ),
         tmp_path,
@@ -958,13 +958,13 @@ def test_live_view_survives_rapid_browser_replay_and_switches_atomically(tmp_pat
     spec = {"mark": "bar", "encoding": {"x": {"field": "cat"}, "y": {"field": "n"}}}
     cards = []
     for index in range(27):
-        card = render_record_data(
+        card = render_result_data(
             SimpleNamespace(
                 df=df,
                 chart_spec=spec,
                 query=None,
                 label=f"chart_{index}",
-                record_id=f"browser-{index}",
+                result_id=f"browser-{index}",
                 query_lexer="sql",
             ),
             tmp_path,
@@ -2297,13 +2297,13 @@ def test_view_card_in_pane_marks_turn_as_manual(tmp_path: Path) -> None:
     app = TabulaflowApp(llm_selection=ResolvedLLMSelection(LLM_OFF, None))
     app._pane = FakePane()  # type: ignore[assignment]  # noqa: SLF001
 
-    card: PaneCard = {"id": "rec_orders", "label": None, "views": ["data"]}
+    card: PaneCard = {"id": "card_orders", "label": None, "views": ["data"]}
     assert app.view_card_in_pane(card, title="orders")
     assert pushed == [
         {
             "title": "orders",
             "source": "manual",
-            "cards": [{"id": "rec_orders", "label": None, "views": ["data"]}],
+            "cards": [{"id": "card_orders", "label": None, "views": ["data"]}],
         }
     ]
 
@@ -2390,11 +2390,11 @@ def test_query_payload_normalizes_sql_dialects_and_reports_fallback_lexer() -> N
     assert cypher["lexer"] == "cypher"
 
 
-def test_record_card_writes_structured_data_instead_of_html(tmp_path: Path) -> None:
+def test_result_card_writes_structured_data_instead_of_html(tmp_path: Path) -> None:
     df = pd.DataFrame({"cat": ["a", "b"], "n": [3, 5]})
     spec = {"mark": "bar", "encoding": {"x": {"field": "cat"}, "y": {"field": "n"}}}
-    card = render_record_data(
-        SimpleNamespace(df=df, chart_spec=spec, query=None, label="x", record_id="r1", query_lexer="sql"),
+    card = render_result_data(
+        SimpleNamespace(df=df, chart_spec=spec, query=None, label="x", result_id="r1", query_lexer="sql"),
         tmp_path,
     )
     assert card is not None
@@ -2409,8 +2409,8 @@ def test_record_card_writes_structured_data_instead_of_html(tmp_path: Path) -> N
 
 def test_output_pane_serves_card_data_only_under_token(tmp_path: Path) -> None:
     df = pd.DataFrame({"cat": ["a"], "n": [3]})
-    card = render_record_data(
-        SimpleNamespace(df=df, chart_spec=None, query=None, label="x", record_id="r1", query_lexer="sql"),
+    card = render_result_data(
+        SimpleNamespace(df=df, chart_spec=None, query=None, label="x", result_id="r1", query_lexer="sql"),
         tmp_path,
     )
     assert card is not None

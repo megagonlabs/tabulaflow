@@ -385,9 +385,9 @@ WHERE region_revenue_rank <= 50
 ORDER BY region, gross_revenue DESC, sale_month
 LIMIT 4000"""
 
-    records = [
+    cards = [
         DebugTablePayload(
-            record_id="QDEBUG",
+            result_id="QDEBUG",
             label="debug_4000x60",
             query=debug_query,
             df=df,
@@ -397,7 +397,7 @@ LIMIT 4000"""
     result = ChatResult(text="Debug startup table")
     return AgentResultWidget(
         result,
-        build_artifact_card_views(records),
+        build_artifact_card_views(cards),
         width=app.size.width - 11,
     )
 
@@ -479,9 +479,9 @@ def _build_debug_huge_cell_result_widget(app: TabulaflowApp) -> AgentResultWidge
             "value": [r[2] for r in rows],
         }
     )
-    records = [
+    cards = [
         DebugTablePayload(
-            record_id="QDEBUG_HUGE_CELL",
+            result_id="QDEBUG_HUGE_CELL",
             label="debug_long_wide_cells",
             query="-- synthetic fixture: escalating cell sizes",
             df=df,
@@ -493,7 +493,7 @@ def _build_debug_huge_cell_result_widget(app: TabulaflowApp) -> AgentResultWidge
     )
     return AgentResultWidget(
         result,
-        build_artifact_card_views(records),
+        build_artifact_card_views(cards),
         width=app.size.width - 11,
     )
 
@@ -596,9 +596,9 @@ def _build_debug_media_result_widget(app: TabulaflowApp) -> AgentResultWidget:
     )
 
     query = "-- synthetic media payloads (JPEG/GIF/PDF/WAV/MP4)"
-    records = [
+    cards = [
         DebugTablePayload(
-            record_id="QDEBUG_MEDIA",
+            result_id="QDEBUG_MEDIA",
             label="debug_media",
             query=query,
             df=df,
@@ -608,7 +608,7 @@ def _build_debug_media_result_widget(app: TabulaflowApp) -> AgentResultWidget:
     result = ChatResult(text="Debug startup media table")
     return AgentResultWidget(
         result,
-        build_artifact_card_views(records),
+        build_artifact_card_views(cards),
         width=app.size.width - 11,
     )
 
@@ -635,9 +635,9 @@ def _build_debug_small_result_widget(app: TabulaflowApp) -> AgentResultWidget:
             "LIMIT 5",
         ]
     )
-    records = [
+    cards = [
         DebugTablePayload(
-            record_id="QDEBUG_SMALL",
+            result_id="QDEBUG_SMALL",
             label="debug_5x3_multiline",
             query=query,
             df=df,
@@ -647,7 +647,7 @@ def _build_debug_small_result_widget(app: TabulaflowApp) -> AgentResultWidget:
     result = ChatResult(text="Debug startup small table")
     return AgentResultWidget(
         result,
-        build_artifact_card_views(records),
+        build_artifact_card_views(cards),
         width=app.size.width - 11,
     )
 
@@ -678,7 +678,7 @@ def _build_debug_quad_result_widget(app: TabulaflowApp) -> AgentResultWidget:
         "SELECT region, SUM(amount) AS revenue, COUNT(*) AS orders\nFROM sales GROUP BY region ORDER BY revenue DESC"
     )
 
-    # Artifact 2: record — Data + Query
+    # Artifact 2: card — Data + Query
     products_df = pd.DataFrame(
         {
             "sku": ["SKU-00042", "SKU-01337", "SKU-00218", "SKU-00999", "SKU-00024"],
@@ -720,7 +720,7 @@ def _build_debug_quad_result_widget(app: TabulaflowApp) -> AgentResultWidget:
         "SELECT channel, AVG(amount) AS avg_order, COUNT(*) AS tx\nFROM sales GROUP BY channel ORDER BY tx DESC"
     )
 
-    # Artifact 4: record — Query-only
+    # Artifact 4: card — Query-only
     low_stock_query = (
         "SELECT sku, product_name, stock_on_hand, reorder_point\n"
         "FROM inventory\n"
@@ -728,10 +728,10 @@ def _build_debug_quad_result_widget(app: TabulaflowApp) -> AgentResultWidget:
         "ORDER BY (reorder_point - stock_on_hand) DESC"
     )
 
-    records: list[SimpleNamespace] = [
+    cards: list[SimpleNamespace] = [
         DebugChartPayload(
             chart_id="CHARTDEBUG_QUAD_1",
-            record_id="QDEBUG_QUAD_1",
+            result_id="QDEBUG_QUAD_1",
             label="top_regions",
             chart_spec=regions_chart,
             query=regions_query,
@@ -739,7 +739,7 @@ def _build_debug_quad_result_widget(app: TabulaflowApp) -> AgentResultWidget:
             query_lexer="sql",
         ),
         DebugTablePayload(
-            record_id="QDEBUG_QUAD_2",
+            result_id="QDEBUG_QUAD_2",
             label="top_products",
             query=products_query,
             df=products_df,
@@ -747,7 +747,7 @@ def _build_debug_quad_result_widget(app: TabulaflowApp) -> AgentResultWidget:
         ),
         DebugChartPayload(
             chart_id="CHARTDEBUG_QUAD_3",
-            record_id="QDEBUG_QUAD_3",
+            result_id="QDEBUG_QUAD_3",
             label="channel_mix",
             chart_spec=channels_chart,
             query=channels_query,
@@ -755,23 +755,23 @@ def _build_debug_quad_result_widget(app: TabulaflowApp) -> AgentResultWidget:
             query_lexer="sql",
         ),
         DebugTablePayload(
-            record_id="QDEBUG_QUAD_4",
+            result_id="QDEBUG_QUAD_4",
             label="low_stock_alerts",
             query=low_stock_query,
             df=None,
             query_lexer="sql",
         ),
     ]
-    result = ChatResult(text="Debug quad-record result")
+    result = ChatResult(text="Debug quad-card result")
     return AgentResultWidget(
         result,
-        build_artifact_card_views(records),
+        build_artifact_card_views(cards),
         width=app.size.width - 11,
     )
 
 
 def _build_debug_multi_result_widget(app: TabulaflowApp) -> AgentResultWidget:
-    """Exercises the two-level tab UI with 15 records of varying view kinds."""
+    """Exercises the two-level tab UI with 15 cards of varying view kinds."""
     import random
 
     import pandas as pd
@@ -780,10 +780,10 @@ def _build_debug_multi_result_widget(app: TabulaflowApp) -> AgentResultWidget:
 
     rng = random.Random(20260423)
 
-    # (label, sql, columns, row_hint) — one entry per record. The view mix
-    # (chart / data / query) is chosen below based on the record's index so
+    # (label, sql, columns, row_hint) — one entry per card. The view mix
+    # (chart / data / query) is chosen below based on the card's index so
     # we exercise every combination while stepping through.
-    record_specs: list[tuple[str, str, list[str], int]] = [
+    card_specs: list[tuple[str, str, list[str], int]] = [
         (
             "top_regions",
             "SELECT region, SUM(amount) AS revenue, COUNT(*) AS orders\nFROM sales GROUP BY region ORDER BY revenue DESC",
@@ -952,17 +952,17 @@ def _build_debug_multi_result_widget(app: TabulaflowApp) -> AgentResultWidget:
             "title": label.replace("_", " ").title(),
         }
 
-    records: list[SimpleNamespace] = []
-    for i, (label, query, columns, n_rows) in enumerate(record_specs):
+    cards: list[SimpleNamespace] = []
+    for i, (label, query, columns, n_rows) in enumerate(card_specs):
         # Every 3rd artifact is query-only, every 2nd of the rest is a chart,
         # so the final mix is: 5 chart+data+query, 5 data+query, 5 query-only.
         df = None if i % 3 == 2 else _make_df(columns, n_rows)
         chart_spec = _chart_spec_for(columns, label) if i % 3 == 0 and df is not None else None
         if chart_spec is not None:
-            records.append(
+            cards.append(
                 DebugChartPayload(
                     chart_id=f"CHARTDEBUG_MULTI_{i + 1}",
-                    record_id=f"QDEBUG_MULTI_{i + 1}",
+                    result_id=f"QDEBUG_MULTI_{i + 1}",
                     label=label,
                     chart_spec=chart_spec,
                     query=query,
@@ -971,9 +971,9 @@ def _build_debug_multi_result_widget(app: TabulaflowApp) -> AgentResultWidget:
                 )
             )
         else:
-            records.append(
+            cards.append(
                 DebugTablePayload(
-                    record_id=f"QDEBUG_MULTI_{i + 1}",
+                    result_id=f"QDEBUG_MULTI_{i + 1}",
                     label=label,
                     query=query,
                     df=df,
@@ -981,16 +981,16 @@ def _build_debug_multi_result_widget(app: TabulaflowApp) -> AgentResultWidget:
                 )
             )
 
-    result = ChatResult(text="Debug multi-record result")
+    result = ChatResult(text="Debug multi-card result")
     return AgentResultWidget(
         result,
-        build_artifact_card_views(records),
+        build_artifact_card_views(cards),
         width=app.size.width - 11,
     )
 
 
 def debug_chart_fixtures() -> list[tuple[str, str, str, pd.DataFrame, dict[str, object]]]:
-    """Canonical debug chart specs: ``(record_id, label, query, df, spec)``.
+    """Canonical debug chart specs: ``(result_id, label, query, df, spec)``.
 
     Shared by the TUI debug gallery and output-pane preview fixtures. Covers
     every render path: plotext-renderable (bar/line/scatter) and beyond-plotext
@@ -1199,16 +1199,16 @@ def debug_chart_fixtures() -> list[tuple[str, str, str, pd.DataFrame, dict[str, 
 def _build_debug_chart_result_widget(app: TabulaflowApp) -> AgentResultWidget:
     """A gallery of chart specs covering every render path.
 
-    Step through the records (↑↓) to exercise each: simple bar/line/scatter
+    Step through the cards (↑↓) to exercise each: simple bar/line/scatter
     preview inline via plotext; stacked-bar/pie/facet/heatmap show the
     "open in browser" card (Enter → ``b`` renders the real chart).
     """
     from tabulaflow.chat import ChatResult
 
-    records: list[SimpleNamespace] = [
+    cards: list[SimpleNamespace] = [
         DebugChartPayload(
             chart_id=f"CHARTDEBUG_{i + 1}",
-            record_id=rid,
+            result_id=rid,
             label=label,
             chart_spec=spec,
             query=query,
@@ -1223,7 +1223,7 @@ def _build_debug_chart_result_widget(app: TabulaflowApp) -> AgentResultWidget:
     )
     return AgentResultWidget(
         result,
-        build_artifact_card_views(records),
+        build_artifact_card_views(cards),
         width=app.size.width - 11,
     )
 

@@ -323,7 +323,7 @@ def _build_info_card(message: str) -> RenderableType:
 
 @dataclass
 class ViewItem:
-    """A single view (Chart/Data/Query) belonging to one result."""
+    """A single view (Chart/Data/Query) belonging to one card."""
 
     kind: str
     renderable: RenderableType
@@ -340,9 +340,8 @@ class CardGroup:
 
     label: str
     artifact_id: str
-    # The result backing the Data/Chart views (the table artifact itself,
-    # or the chart's source); ``None`` for maps and graphs.
-    source_result_id: str | None = None
+    # Materialized result backing Data/Chart views; ``None`` for maps and graphs.
+    result_id: str | None = None
     views: list[ViewItem] = field(default_factory=list)
 
 
@@ -354,7 +353,7 @@ def build_artifact_card_views(
     used_labels: set[str] = set()
     for artifact in artifacts:
         base_label = getattr(artifact, "label", None) or "result"
-        label = _unique_record_label(base_label, used_labels)
+        label = _unique_card_label(base_label, used_labels)
         used_labels.add(label)
         kind = getattr(artifact, "kind", None)
         if kind == "placeholder":
@@ -385,8 +384,8 @@ def build_artifact_card_views(
             )
             continue
         chart_spec = getattr(artifact, "chart_spec", None)
-        artifact_id = str(getattr(artifact, "chart_id", getattr(artifact, "record_id", "result")))
-        record_id = str(getattr(artifact, "record_id", artifact_id))
+        artifact_id = str(getattr(artifact, "chart_id", getattr(artifact, "result_id", "result")))
+        result_id = str(getattr(artifact, "result_id", artifact_id))
         views: list[ViewItem] = []
         if getattr(artifact, "graph", None) is not None:
             views.append(ViewItem(kind=VIEW_KIND_GRAPH, renderable=_build_graph_card()))
@@ -408,7 +407,7 @@ def build_artifact_card_views(
         if query:
             views.append(ViewItem(kind=VIEW_KIND_QUERY, renderable=build_query(query, lexer=query_lexer), query=(query, query_lexer)))
         if views:
-            groups.append(CardGroup(label=label, artifact_id=artifact_id, source_result_id=record_id, views=views))
+            groups.append(CardGroup(label=label, artifact_id=artifact_id, result_id=result_id, views=views))
     if release_dataframes:
         for artifact in artifacts:
             if hasattr(artifact, "df"):
@@ -437,7 +436,7 @@ async def build_resolved_output_card_views(
     used_labels: set[str] = set()
     for artifact in resolved_output.artifacts:
         base_label = artifact.label or "result"
-        label = _unique_record_label(base_label, used_labels)
+        label = _unique_card_label(base_label, used_labels)
         used_labels.add(label)
         view = artifact.view
         if isinstance(view, TableView):
@@ -514,10 +513,10 @@ def _card_group_from_payload(
         )
     if not views:
         return None
-    return CardGroup(label=label, artifact_id=artifact_id, source_result_id=payload.metadata.id, views=views)
+    return CardGroup(label=label, artifact_id=artifact_id, result_id=payload.metadata.id, views=views)
 
 
-def _unique_record_label(base_label: str, used: set[str]) -> str:
+def _unique_card_label(base_label: str, used: set[str]) -> str:
     """Return a unique label suitable for view names."""
     if base_label not in used:
         return base_label

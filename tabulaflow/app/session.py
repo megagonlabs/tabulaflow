@@ -36,7 +36,7 @@ async def create_workspace_connector(workspace_db_path: Path) -> SQLConnector:
         # Mutable store: a cached schema would go stale as tables/rows change.
         enable_schema_caching=False,
         enable_query_caching=False,
-        # The agent spills every query result here, one table per record. Excluding it
+        # The agent spills every query result here, one table per materialized result. Excluding it
         # keeps the data explorer and schema tools showing data rather than bookkeeping.
         exclude_schema_names=[OUTPUT_STORE_SCHEMA],
     )

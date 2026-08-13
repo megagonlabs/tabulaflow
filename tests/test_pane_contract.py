@@ -9,7 +9,7 @@ from typing import Any, cast
 import pandas as pd
 
 from tabulaflow.app.pane import CARD_ID_PREFIX, VIEW_KINDS, CardData, PaneCard
-from tabulaflow.app.pane.cards import render_graph_data, render_map_data, render_record_data
+from tabulaflow.app.pane.cards import render_graph_data, render_map_data, render_result_data
 from tabulaflow.core.types import GraphView, GraphViewEdge, GraphViewNode
 from tabulaflow.toolhub.render_graph import materialize_graph_view, normalize_graph_spec
 
@@ -100,7 +100,7 @@ def _assert_card_payload(card: PaneCard, data: CardData) -> None:
 def test_record_card_payload_matches_contract(tmp_path: Path) -> None:
     df = pd.DataFrame({"region": ["north", "south"], "revenue": [10, 20]})
     spec = {"mark": "bar", "encoding": {"x": {"field": "region"}, "y": {"field": "revenue"}}}
-    card = render_record_data(
+    card = render_result_data(
         SimpleNamespace(
             df=df, chart_spec=spec, query="select region, revenue from sales", label="sales", query_lexer="sql"
         ),
@@ -121,7 +121,7 @@ def test_record_card_with_attached_graph_payload_matches_contract(tmp_path: Path
         ],
         edges=[GraphViewEdge(id="acted_in", source="alice", target="matrix", label="ACTED_IN", directed=True)],
     )
-    card = render_record_data(
+    card = render_result_data(
         SimpleNamespace(
             df=df, chart_spec=None, graph=graph, query="MATCH p=()-->() RETURN p", label="paths", query_lexer="cypher"
         ),

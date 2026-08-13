@@ -80,7 +80,7 @@ def build_query_data(sql: str, *, lexer: str = "sql") -> QueryCardData:
     return {"query": build_code_data(sql, lexer=lexer, fallback_lexer="sql")}
 
 
-def render_record_data(metadata: ResultMetadataLike, pane_dir: Path) -> PaneCard | None:
+def render_result_data(metadata: ResultMetadataLike, pane_dir: Path) -> PaneCard | None:
     """Render a result or chart artifact's payload to JSON; return a pane manifest.
 
     The descriptor is ordered chart -> data -> query, including only the views
@@ -88,12 +88,12 @@ def render_record_data(metadata: ResultMetadataLike, pane_dir: Path) -> PaneCard
     """
     views: list[ViewKind] = []
     card_id = f"{CARD_ID_PREFIX}{secrets.token_hex(6)}"
-    record_data: dict[str, object] = {}
+    card_data: dict[str, object] = {}
     graph = getattr(metadata, "graph", None)
     if graph is not None:
         graph_data = build_graph_result_data(graph)
         if graph_data is not None:
-            record_data.update(graph_data)
+            card_data.update(graph_data)
             views.append("graph")
     df = metadata.df
     if df is not None and not df.empty:
@@ -103,22 +103,22 @@ def render_record_data(metadata: ResultMetadataLike, pane_dir: Path) -> PaneCard
             output_dir=pane_dir,
             max_height=PANE_TABLE_MAX_HEIGHT,
         )
-        record_data.update(table_build.data)
+        card_data.update(table_build.data)
         if metadata.chart_spec is not None:
-            record_data.update(build_chart_data(df, metadata.chart_spec, field_by_column=table_build.field_by_column))
+            card_data.update(build_chart_data(df, metadata.chart_spec, field_by_column=table_build.field_by_column))
             views.append("chart")
         views.append("data")
     if metadata.query:
-        record_data.update(build_query_data(metadata.query, lexer=metadata.query_lexer or "sql"))
+        card_data.update(build_query_data(metadata.query, lexer=metadata.query_lexer or "sql"))
         views.append("query")
     if not views:
         return None
     pane_dir.mkdir(parents=True, exist_ok=True)
-    write_strict_json(pane_dir / f"{card_id}.data.json", record_data)
+    write_strict_json(pane_dir / f"{card_id}.data.json", card_data)
     return card_payload(card_id=card_id, label=metadata.label, views=views)
 
 
-def render_map_data(map_record: MapArtifactLike, pane_dir: Path) -> PaneCard | None:
+def render_map_data(map_artifact: MapArtifactLike, pane_dir: Path) -> PaneCard | None:
     """Render a standalone map card's payload to JSON; return a pane manifest.
 
     A map-only card (no chart/data/query views) assembled from one or more query
@@ -127,7 +127,7 @@ def render_map_data(map_record: MapArtifactLike, pane_dir: Path) -> PaneCard | N
     """
     card_id = f"{CARD_ID_PREFIX}{secrets.token_hex(6)}"
     sources_payload: dict[str, dict[str, object]] = {}
-    for source_id, df in map_record.sources.items():
+    for source_id, df in map_artifact.sources.items():
         if df is None or df.empty:
             continue
         table_build = _build_table_data(
@@ -143,26 +143,26 @@ def render_map_data(map_record: MapArtifactLike, pane_dir: Path) -> PaneCard | N
             "columns": table_payload.get("columns", []) if isinstance(table_payload, dict) else [],
             "field_by_column": table_build.field_by_column,
         }
-    map_data = build_map_data(map_record.map_spec, sources_payload)
+    map_data = build_map_data(map_artifact.map_spec, sources_payload)
     if map_data is None:
         return None
     pane_dir.mkdir(parents=True, exist_ok=True)
     write_strict_json(pane_dir / f"{card_id}.data.json", map_data)
-    return card_payload(card_id=card_id, label=map_record.label, views=["map"])
+    return card_payload(card_id=card_id, label=map_artifact.label, views=["map"])
 
 
-def render_graph_data(graph_record: GraphArtifactLike, pane_dir: Path) -> PaneCard | None:
+def render_graph_data(graph_artifact: GraphArtifactLike, pane_dir: Path) -> PaneCard | None:
     """Render a standalone graph card's payload to JSON; return a pane manifest."""
     card_id = f"{CARD_ID_PREFIX}{secrets.token_hex(6)}"
-    graph_data = build_graph_result_data(graph_record.graph)
+    graph_data = build_graph_result_data(graph_artifact.graph)
     if graph_data is None:
         return None
     graph_data["graph"]["layout"] = (
-        graph_record.layout if graph_record.layout in {"force", "layered", "tree"} else "force"
+        graph_artifact.layout if graph_artifact.layout in {"force", "layered", "tree"} else "force"
     )
     pane_dir.mkdir(parents=True, exist_ok=True)
     write_strict_json(pane_dir / f"{card_id}.data.json", graph_data)
-    return card_payload(card_id=card_id, label=graph_record.label, views=["graph"])
+    return card_payload(card_id=card_id, label=graph_artifact.label, views=["graph"])
 
 
 
@@ -180,7 +180,7 @@ async def render_resolved_output(resolved_output: object, output_store: object, 
         try:
             if isinstance(view, TableView):
                 payload = await cast(OutputStore, output_store).get_payload(artifact.metadata_by_source[view.source].id)
-                card = render_record_data(
+                card = render_result_data(
                     SimpleNamespace(
                         df=payload.df,
                         chart_spec=None,
@@ -193,7 +193,7 @@ async def render_resolved_output(resolved_output: object, output_store: object, 
                 )
             elif isinstance(view, ChartView):
                 payload = await cast(OutputStore, output_store).get_payload(artifact.metadata_by_source[view.source].id)
-                card = render_record_data(
+                card = render_result_data(
                     SimpleNamespace(
                         df=payload.df,
                         chart_spec=view.spec,

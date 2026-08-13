@@ -77,19 +77,19 @@ def _normalize_json_like(value: object) -> object:
 
 
 def _show_path(
-    record: object,
+    card: object,
     app: object,
     *,
     status: "Callable[[Text], None]",
     title: str | None = None,
 ) -> None:
-    """Show a dumped record-data payload in the live results pane.
+    """Show a dumped card-data payload in the live results pane.
 
     Manual "send to output pane" actions route here so one pane accumulates
     both agent results and explorer views.
     """
     try:
-        shown = bool(app.view_card_in_pane(record, title=title))  # type: ignore[attr-defined]
+        shown = bool(app.view_card_in_pane(card, title=title))  # type: ignore[attr-defined]
     except Exception:
         shown = False
     if shown:
@@ -105,13 +105,13 @@ def send_table_to_output_pane(
     *,
     status: "Callable[[Text], None]",
 ) -> "Path | None":
-    """Render ``df`` as pane record data and send it to the output pane.
+    """Render ``df`` as pane card data and send it to the output pane.
 
     Returns the written data path on success, or ``None`` on failure.
     """
     from types import SimpleNamespace
 
-    from tabulaflow.app.pane import render_record_data
+    from tabulaflow.app.pane import render_result_data
 
     try:
         pane_dir: Path = app._runtime_paths.pane_dir  # type: ignore[attr-defined]
@@ -119,7 +119,7 @@ def send_table_to_output_pane(
         status(Text("save failed: no pane dir", style=ERROR))
         return None
     try:
-        card = render_record_data(
+        card = render_result_data(
             SimpleNamespace(df=df, chart_spec=None, query=None, label=None, query_lexer="sql"),
             pane_dir,
         )

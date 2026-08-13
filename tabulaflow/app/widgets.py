@@ -202,7 +202,7 @@ class HistoryInput(Input):
         # ``priority=False`` so these only fire when the input is actually
         # focused. With ``priority=True`` the bindings would claim ``up`` /
         # ``down`` globally, blocking the AgentResultWidget's own arrow-
-        # key navigation between records.
+        # key navigation between result cards.
         Binding("up", "history_prev", "Previous command"),
         Binding("down", "history_next", "Next command"),
         Binding("ctrl+d", "quit_only", "Quit", show=False, priority=True),
@@ -1505,10 +1505,10 @@ class AgentProgressWidget(Widget):
 class AgentResultWidget(Widget):
     """Displays an agent result with two-level tab switching.
 
-    Top bar: records (shown when there is more than one record).
-    Bottom bar: view kinds (Chart / Data / Query) for the selected record.
-    Each record keeps its own selected view; stepping the view on one
-    record never affects what another record shows.
+    Top bar: cards (shown when there is more than one card).
+    Bottom bar: view kinds (Chart / Data / Query) for the selected card.
+    Each card keeps its own selected view; stepping the view on one
+    card never affects what another card shows.
     """
 
     DEFAULT_CSS = """
@@ -1595,10 +1595,10 @@ class AgentResultWidget(Widget):
         self._card_bar_widget: Static | None = None
         self._view_stepper_widget: Static | None = None
         self._bottom_hint_widget: Static | None = None
-        # Record hit areas: (record_index, col_start, col_end, row) relative
-        # to the record bar widget. Pills wrap across multiple rows when they
+        # Card hit areas: (card_index, col_start, col_end, row) relative
+        # to the card bar widget. Pills wrap across multiple rows when they
         # don't all fit on a single line.
-        self._record_hit_areas: list[tuple[int, int, int, int]] = []
+        self._card_hit_areas: list[tuple[int, int, int, int]] = []
         # View hit areas: (target, col_start, col_end) relative to the view
         # stepper widget. Target is "prev" or "next".
         self._view_hit_areas: list[tuple[str, int, int]] = []
@@ -1608,7 +1608,7 @@ class AgentResultWidget(Widget):
 
     @property
     def _has_top_bar(self) -> bool:
-        """Top bar exists whenever the result has any displayable records."""
+        """Top bar exists whenever the result has any displayable cards."""
         return bool(self._cards)
 
     def compose(self) -> ComposeResult:
@@ -1659,7 +1659,7 @@ class AgentResultWidget(Widget):
     def watch_has_focus(self, has_focus: bool) -> None:
         """Re-render styled elements when focus changes.
 
-        The record pill, view stepper chevrons / kind label, and the
+        The card pill, view stepper chevrons / kind label, and the
         ``KEY_HINT`` glyphs use mint accents when this widget is focused
         and a muted gray when it isn't — the focus indication emerges
         from element saturation rather than added chrome (no border,
@@ -1727,17 +1727,17 @@ class AgentResultWidget(Widget):
         children = list(chat_log.children)
         return bool(children) and children[-1] is self
 
-    def _current_record_or_none(self) -> "CardGroup | None":
+    def _current_card_or_none(self) -> "CardGroup | None":
         if not self._cards:
             return None
         idx = min(self.current_card, len(self._cards) - 1)
         return self._cards[idx]
 
     def _current_view_or_none(self) -> "ViewItem | None":
-        rec = self._current_record_or_none()
-        if rec is None or not rec.views:
+        card = self._current_card_or_none()
+        if card is None or not card.views:
             return None
-        return rec.views[self._view_indices[min(self.current_card, len(self._cards) - 1)]]
+        return card.views[self._view_indices[min(self.current_card, len(self._cards) - 1)]]
 
     @staticmethod
     def _choice_controls_from_result(result: "ChatResult") -> list[Any]:
@@ -1846,14 +1846,14 @@ class AgentResultWidget(Widget):
         self._interpretation_content.update(Text("\n").join(rows))
 
     def _update_card_bar(self) -> None:
-        """Render record pills left-anchored, wrapping across multiple lines.
+        """Render card pills left-anchored, wrapping across multiple lines.
 
         All pills are shown; when the row fills, subsequent pills wrap to a
-        new line. When more than one record exists, a ``·  ←/→ Switch record``
+        new line. When more than one card exists, a ``·  ←/→ Switch card``
         hint is appended inline after the final pill if it fits on the last
         line, otherwise on a new line below.
 
-        Hit areas are stored as ``(record_index, col_start, col_end, row)``
+        Hit areas are stored as ``(card_index, col_start, col_end, row)``
         relative to ``self._card_bar_widget`` so the click handler can test
         ``event.x``/``event.y`` directly without worrying about the enclosing
         layout.
@@ -1868,18 +1868,18 @@ class AgentResultWidget(Widget):
 
         HINT_SEP = " · "
         HINT_KEY = "←/→"
-        HINT_TEXT = " Switch record"
+        HINT_TEXT = " Switch card"
         hint_width = len(HINT_SEP) + len(HINT_KEY) + len(HINT_TEXT) if card_interactive else 0
 
         SEP = 1  # space between pills on the same row
         dim_style = Style(dim=True)
 
         line = Text(no_wrap=True, overflow="crop")
-        self._record_hit_areas = []
+        self._card_hit_areas = []
         row = 0
         col = 0
 
-        for rec_idx, r in enumerate(self._cards):
+        for card_idx, r in enumerate(self._cards):
             pill = f" {r.label} "
             pill_width = len(pill)
             needed = pill_width + (SEP if col > 0 else 0)
@@ -1894,12 +1894,12 @@ class AgentResultWidget(Widget):
             col_start = col
             pill_style = (
                 Style(bold=True, color="black", bgcolor=self._focus_accent)
-                if rec_idx == self.current_card
+                if card_idx == self.current_card
                 else Style(dim=True)
             )
             line.append_text(Text(pill, style=pill_style))
             col += pill_width
-            self._record_hit_areas.append((rec_idx, col_start, col, row))
+            self._card_hit_areas.append((card_idx, col_start, col, row))
 
         if card_interactive:
             if col + hint_width > available_width:
@@ -1924,15 +1924,15 @@ class AgentResultWidget(Widget):
         if self._view_stepper_widget is None:
             return
 
-        rec = self._current_record_or_none()
-        has_views = rec is not None and bool(rec.views)
-        view_interactive = rec is not None and len(rec.views) > 1
+        card = self._current_card_or_none()
+        has_views = card is not None and bool(card.views)
+        view_interactive = card is not None and len(card.views) > 1
 
         self._view_hit_areas = []
         if not has_views:
             self._view_stepper_widget.update(Text(""))
             return
-        assert rec is not None
+        assert card is not None
 
         chevron_style = Style(bold=True, color=self._focus_accent)
         label_style = Style(bold=True, color=self._focus_accent)
@@ -1948,10 +1948,10 @@ class AgentResultWidget(Widget):
         col = 0
 
         # Always reserve the Switch view hint width so the stepper's total
-        # width stays constant across records. If we rendered this block only
-        # when the record has multiple views, clicking a single-view record
+        # width stays constant across cards. If we rendered this block only
+        # when the card has multiple views, clicking a single-view card
         # would shrink the stepper and — since it shares a row with the
-        # ``width: 1fr`` record bar — cause the record pills to re-wrap.
+        # ``width: 1fr`` card bar — cause the card pills to re-wrap.
         if view_interactive:
             line.append_text(Text("[", style=self._focus_key_hint))
             line.append_text(Text("/", style="dim"))
@@ -2003,7 +2003,7 @@ class AgentResultWidget(Widget):
         The hint cluster is right-aligned. For data views, the truncation
         caption ('showing N of M rows/cols') is left-aligned on the same
         line. Hints read left-to-right as the user's natural progression:
-        navigate to a record (↑↓), then inspect it (Enter).
+        navigate to a card (↑↓), then inspect it (Enter).
         """
         if self._bottom_hint_widget is None:
             return
@@ -2077,9 +2077,9 @@ class AgentResultWidget(Widget):
             return
 
         if self._card_bar_widget is not None and event.widget is self._card_bar_widget:
-            for rec_idx, col_start, col_end, row in self._record_hit_areas:
+            for card_idx, col_start, col_end, row in self._card_hit_areas:
                 if row == event.y and col_start <= event.x < col_end:
-                    self.current_card = rec_idx
+                    self.current_card = card_idx
                     return
             return
 
@@ -2138,9 +2138,9 @@ class AgentResultWidget(Widget):
         return int(measurement.maximum)
 
     def _step_view(self, delta: int) -> None:
-        rec = self._current_record_or_none()
-        if rec is not None and len(rec.views) > 1:
-            self._view_indices[self.current_card] = (self._view_indices[self.current_card] + delta) % len(rec.views)
+        card = self._current_card_or_none()
+        if card is not None and len(card.views) > 1:
+            self._view_indices[self.current_card] = (self._view_indices[self.current_card] + delta) % len(card.views)
             self._refresh_all()
 
     def action_next_view(self) -> None:
@@ -2149,11 +2149,11 @@ class AgentResultWidget(Widget):
     def action_prev_view(self) -> None:
         self._step_view(-1)
 
-    def action_next_record(self) -> None:
+    def action_next_card(self) -> None:
         if len(self._cards) > 1:
             self.current_card = (self.current_card + 1) % len(self._cards)
 
-    def action_prev_record(self) -> None:
+    def action_prev_card(self) -> None:
         if len(self._cards) > 1:
             self.current_card = (self.current_card - 1) % len(self._cards)
 
@@ -2181,8 +2181,8 @@ class AgentResultWidget(Widget):
     BINDINGS = [
         ("right_square_bracket", "next_view", "Next view"),
         ("left_square_bracket", "prev_view", "Previous view"),
-        ("right", "next_record", "Next record"),
-        ("left", "prev_record", "Previous record"),
+        ("right", "next_card", "Next card"),
+        ("left", "prev_card", "Previous card"),
         ("space", "apply_interpretation", "Apply interpretation"),
         ("enter", "result_enter", "Full screen"),
         # ``priority=True`` so these beat ``VerticalScroll``'s own priority
@@ -2230,19 +2230,19 @@ class AgentResultWidget(Widget):
         """Open full-screen viewer for the active Chart, Data, or Query tab."""
         from tabulaflow.app.display import VIEW_KIND_CHART, VIEW_KIND_DATA, VIEW_KIND_QUERY
 
-        rec = self._current_record_or_none()
+        card = self._current_card_or_none()
         view = self._current_view_or_none()
-        if rec is None or view is None:
+        if card is None or view is None:
             return
-        title = f"{view.kind} ({rec.label})"
+        title = f"{view.kind} ({card.label})"
 
         if view.kind == VIEW_KIND_CHART and view.chart_spec is not None:
-            df = await self._fetch_df(rec.source_result_id)
+            df = await self._fetch_df(card.result_id)
             if df is not None:
                 self.app.push_screen(ChartBrowserScreen(title=title, df=df, vegalite_spec=view.chart_spec))
             return
         if view.kind == VIEW_KIND_DATA:
-            df = await self._fetch_df(rec.source_result_id)
+            df = await self._fetch_df(card.result_id)
             if df is not None:
                 self.app.push_screen(DataBrowserScreen(title=title, df=df))
             return

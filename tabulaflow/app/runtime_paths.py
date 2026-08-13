@@ -56,7 +56,7 @@ class RuntimePaths:
         # the session. Sibling of ``data/`` (which holds live connector DBs) so
         # transient blobs never mix with materialized datasets. Wiped on exit.
         scratch_dir = session_dir / "scratch"
-        # Browser pane artifacts are durable session state: record data JSON,
+        # Browser pane artifacts are durable session state: card data JSON,
         # spilled media, and the turn manifest log used to replay output when a
         # session is resumed.
         pane_dir = session_dir / "pane"

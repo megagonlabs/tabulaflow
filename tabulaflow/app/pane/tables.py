@@ -291,7 +291,7 @@ def build_table_data(
         max_height: Fixed pixel cap for framed table views.
 
     Returns:
-        A record-data fragment containing ``dataset`` and ``table``.
+        A card-data fragment containing ``dataset`` and ``table``.
     """
     return _build_table_data(
         df,

@@ -1,7 +1,7 @@
 """Embedded HTTP server that mirrors the agent's cited results in a live browser pane.
 
 A stdlib ``http.server`` running in a daemon thread serves the single-page pane,
-structured record-data files written to the session dumps dir, and a Server-Sent
+structured card-data files written to the session dumps dir, and a Server-Sent
 Events stream of turn manifests. Session data routes are protected by a
 per-session URL token; bundled assets are public and cacheable.
 

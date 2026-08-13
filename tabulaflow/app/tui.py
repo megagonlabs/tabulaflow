@@ -481,7 +481,7 @@ class TabulaflowApp(App[None]):
         if ch is None or len(ch) != 1 or not ch.isprintable():
             return
         # Let the focused widget's own BINDINGS win — e.g. ``[`` and ``]``
-        # for view nav on AgentResultWidget, or ``j``/``k`` for record
+        # for view nav on AgentResultWidget, or ``j``/``k`` for card
         # nav. Without this check, typeahead would steal those keys for
         # the input instead of triggering the widget's binding.
         if _focused_has_binding_for(focused, event.key):
@@ -645,12 +645,12 @@ class TabulaflowApp(App[None]):
                 self._refresh_bottom_status()
         return self._pane
 
-    def view_card_in_pane(self, record: PaneCard, *, title: str | None = None) -> bool:
-        """Push an already-written record-data payload to the pane."""
+    def view_card_in_pane(self, card: PaneCard, *, title: str | None = None) -> bool:
+        """Push an already-written card-data payload to the pane."""
         pane = self._ensure_pane()
         if pane is None or pane.url is None:
             return False
-        pane.push(manual_card_turn(record, title=title))
+        pane.push(manual_card_turn(card, title=title))
         return True
 
     def _refresh_bottom_status(self) -> None:

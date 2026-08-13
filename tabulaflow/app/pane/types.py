@@ -6,7 +6,7 @@ from typing import Literal, Required, TypedDict
 
 ViewKind = Literal["map", "chart", "data", "query", "graph"]
 VIEW_KINDS: tuple[ViewKind, ...] = ("map", "chart", "data", "query", "graph")
-CARD_ID_PREFIX = "rec_"
+CARD_ID_PREFIX = "card_"
 PaneSource = Literal["manual"]
 ColumnRole = Literal["text", "number", "bool", "media"]
 
