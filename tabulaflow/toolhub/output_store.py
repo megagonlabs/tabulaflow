@@ -26,7 +26,6 @@ from tabulaflow.core.outputs import (
     Selection,
     SourceSpec,
     SourceId,
-    TableArtifactSpec,
     artifact_source_ids,
     canonical_selection_key,
 )
@@ -348,13 +347,6 @@ class OutputStore:
         except ValueError:
             pass
         return ResultPayload(metadata=metadata, df=df, graph=raw.graph)
-
-    def add_table_artifact(self, source_id: SourceId, label: str | None = None) -> TableArtifactSpec:
-        """Store a table artifact under its source id."""
-        self.get_source(source_id)
-        artifact = TableArtifactSpec(id=source_id, label=label, source_id=source_id)
-        self._artifacts[source_id] = artifact
-        return artifact
 
     def add_chart_artifact(self, source_id: SourceId, spec: Mapping[str, object], label: str | None = None) -> ChartArtifactSpec:
         """Store a chart artifact under a ``CHART<n>`` id."""
