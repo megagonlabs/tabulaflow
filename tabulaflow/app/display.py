@@ -30,7 +30,7 @@ from tabulaflow.app.theme import (
     normalize_query_lexer,
 )
 from tabulaflow.core.outputs import ChartView, GraphViewSpec, MapView, TableView
-from tabulaflow.toolhub.output_resolver import ResolvedOutput
+from tabulaflow.toolhub.output_resolver import AvailableArtifact, ResolvedOutput, UnavailableArtifact
 from tabulaflow.toolhub.output_store import OutputStore, ResultPayload
 from tabulaflow.toolhub.render_graph import GraphSpecError, materialize_graph_view
 
@@ -433,14 +433,24 @@ async def build_resolved_output_card_views(
         base_label = artifact.label or "result"
         label = _unique_card_label(base_label, used_labels)
         used_labels.add(label)
+        if isinstance(artifact, UnavailableArtifact):
+            groups.append(
+                CardGroup(
+                    label=label,
+                    artifact_id=artifact.artifact_id,
+                    views=[ViewItem(kind=VIEW_KIND_INFO, renderable=_build_info_card(artifact.reason))],
+                )
+            )
+            continue
+        assert isinstance(artifact, AvailableArtifact)
         view = artifact.view
         if isinstance(view, TableView):
-            payload = await output_store.get_payload(artifact.metadata_by_source[view.source].id)
+            payload = artifact.payload_by_source[view.source]
             group = _card_group_from_payload(label, artifact.artifact_id, payload, width)
             if group is not None:
                 groups.append(group)
         elif isinstance(view, ChartView):
-            payload = await output_store.get_payload(artifact.metadata_by_source[view.source].id)
+            payload = artifact.payload_by_source[view.source]
             group = _card_group_from_payload(label, artifact.artifact_id, payload, width, chart_spec=view.spec)
             if group is not None:
                 groups.append(group)
@@ -454,8 +464,7 @@ async def build_resolved_output_card_views(
             )
         elif isinstance(view, GraphViewSpec):
             graph_sources = {}
-            for source_id, metadata in artifact.metadata_by_source.items():
-                payload = await output_store.get_payload(metadata.id)
+            for source_id, payload in artifact.payload_by_source.items():
                 if payload.df is not None:
                     graph_sources[source_id] = payload.df
             try:

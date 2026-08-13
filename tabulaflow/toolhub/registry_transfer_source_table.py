@@ -60,12 +60,11 @@ class RegistryTransferSourceTableTool:
             source = self._output_store.get_source(source_id)
             if not isinstance(source, FixedResultSource):
                 return f"(error: source_id {source_id!r} is not a single-result source)"
-            metadata = await self._output_store.get_metadata(source.result_id)
+            payload = await self._output_store.get_payload(source.result_id)
         except KeyError:
             return f"(error: unknown source_id {source_id!r})"
 
         try:
-            payload = await self._output_store.get_payload(metadata.id)
             df = payload.df
             if df is None:
                 return f"(error: source_id {source_id!r} returned no data)"
@@ -99,7 +98,7 @@ class RegistryTransferSourceTableTool:
         target_name = f"{target_schema}.{target_table}" if target_schema else target_table
         return (
             f"Transferred {rows_written} rows from {source_id} "
-            f"({metadata.db_alias}) to alias={target_alias}, table={target_name} (mode={mode})"
+            f"({payload.metadata.db_alias}) to alias={target_alias}, table={target_name} (mode={mode})"
         )
 
     def as_pydantic_ai_tool(self) -> Tool:

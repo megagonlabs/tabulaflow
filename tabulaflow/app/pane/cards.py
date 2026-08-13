@@ -7,6 +7,7 @@ from pathlib import Path
 from types import SimpleNamespace
 from typing import TYPE_CHECKING, Protocol
 
+import pandas as pd
 from pygments import highlight
 from pygments.formatters import HtmlFormatter
 from pygments.lexers import get_lexer_by_name
@@ -21,7 +22,7 @@ from tabulaflow.app.pane.tables import PANE_TABLE_MAX_HEIGHT, _build_table_data
 from tabulaflow.app.theme import CODE_TEXT, TabulaflowPygmentsStyle, normalize_query_lexer
 from tabulaflow.core.outputs import ChartView, GraphViewSpec, MapView, TableView
 from tabulaflow.core.utils import write_strict_json
-from tabulaflow.toolhub.output_resolver import ResolvedOutput
+from tabulaflow.toolhub.output_resolver import AvailableArtifact, ResolvedOutput, UnavailableArtifact
 from tabulaflow.toolhub.output_store import OutputStore
 from tabulaflow.toolhub.render_graph import GraphSpecError, materialize_graph_view
 
@@ -174,10 +175,26 @@ async def render_resolved_output(resolved_output: ResolvedOutput, output_store: 
     """Render a resolved output spec to pane card descriptors."""
     cards: list[PaneCard] = []
     for artifact in resolved_output.artifacts:
+        if isinstance(artifact, UnavailableArtifact):
+            card = render_result_data(
+                SimpleNamespace(
+                    df=pd.DataFrame({"error": [artifact.reason]}),
+                    chart_spec=None,
+                    graph=None,
+                    query=None,
+                    label=artifact.label,
+                    query_lexer="sql",
+                ),
+                pane_dir,
+            )
+            if card is not None:
+                cards.append(card)
+            continue
+        assert isinstance(artifact, AvailableArtifact)
         view = artifact.view
         try:
             if isinstance(view, TableView):
-                payload = await output_store.get_payload(artifact.metadata_by_source[view.source].id)
+                payload = artifact.payload_by_source[view.source]
                 card = render_result_data(
                     SimpleNamespace(
                         df=payload.df,
@@ -190,7 +207,7 @@ async def render_resolved_output(resolved_output: ResolvedOutput, output_store: 
                     pane_dir,
                 )
             elif isinstance(view, ChartView):
-                payload = await output_store.get_payload(artifact.metadata_by_source[view.source].id)
+                payload = artifact.payload_by_source[view.source]
                 card = render_result_data(
                     SimpleNamespace(
                         df=payload.df,
@@ -204,15 +221,13 @@ async def render_resolved_output(resolved_output: ResolvedOutput, output_store: 
                 )
             elif isinstance(view, MapView):
                 sources = {}
-                for source_id, metadata in artifact.metadata_by_source.items():
-                    payload = await output_store.get_payload(metadata.id)
+                for source_id, payload in artifact.payload_by_source.items():
                     if payload.df is not None:
                         sources[source_id] = payload.df
                 card = render_map_data(SimpleNamespace(map_id=artifact.artifact_id, label=artifact.label, map_spec=view.spec, sources=sources), pane_dir)
             elif isinstance(view, GraphViewSpec):
                 sources = {}
-                for source_id, metadata in artifact.metadata_by_source.items():
-                    payload = await output_store.get_payload(metadata.id)
+                for source_id, payload in artifact.payload_by_source.items():
                     if payload.df is not None:
                         sources[source_id] = payload.df
                 try:

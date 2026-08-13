@@ -10,9 +10,7 @@ from typing import TYPE_CHECKING, Literal
 
 import jinja2
 import pandas as pd
-from pydantic import BaseModel, ConfigDict, field_serializer, field_validator
 
-from tabulaflow.core.dataframe import _deserialize_dataframe, _serialize_dataframe
 from tabulaflow.core.outputs import (
     ArtifactId,
     ArtifactSpec,
@@ -48,23 +46,13 @@ class _StoredResult:
     has_dataframe: bool = False
     graph: GraphView | None = None
 
-class ResultPayload(BaseModel):
+@dataclass(frozen=True)
+class ResultPayload:
     """Runtime payload for a materialized result."""
-
-    model_config = ConfigDict(arbitrary_types_allowed=True)
 
     metadata: ResultMetadata
     df: pd.DataFrame | None = None
     graph: GraphView | None = None
-
-    @field_serializer("df", when_used="always")
-    def _serialize_df(self, df: pd.DataFrame | None) -> dict[str, object] | None:
-        return _serialize_dataframe(df)
-
-    @field_validator("df", mode="before")
-    @classmethod
-    def _deserialize_df(cls, v: dict[str, object] | pd.DataFrame | None) -> pd.DataFrame | None:
-        return _deserialize_dataframe(v)
 
 
 class _ResultFrameStore:
@@ -299,11 +287,11 @@ class OutputStore:
             if cached_source_id == source_id
         }
 
-    async def resolve_source(self, source_id: str, selection: Selection | None = None) -> ResultMetadata:
-        """Resolve a source to result metadata, materializing parameterized cache misses."""
+    async def resolve_source(self, source_id: str, selection: Selection | None = None) -> ResultPayload:
+        """Resolve a source to a materialized payload, materializing parameterized cache misses."""
         source = self.get_source(source_id)
         if isinstance(source, FixedResultSource):
-            return await self.get_metadata(source.result_id)
+            return await self.get_payload(source.result_id)
         if not isinstance(source, ParameterizedSource):
             raise TypeError(f"unsupported source {type(source).__name__}")
         selection = selection or {}
@@ -311,7 +299,7 @@ class OutputStore:
         result_id = self._source_cache.get((source.id, selection_key))
         if result_id is None:
             result_id = await self._materialize_parameterized_source(source, selection)
-        return await self.get_metadata(result_id)
+        return await self.get_payload(result_id)
 
     async def _materialize_parameterized_source(
         self,

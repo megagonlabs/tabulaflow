@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-
-from pydantic import BaseModel, Field
+from dataclasses import dataclass, field
+from typing import TypeAlias
 
 from tabulaflow.core.outputs import (
     OutputSpec,
@@ -17,7 +17,6 @@ from tabulaflow.core.outputs import (
     ParameterDef,
     ParameterId,
     ParameterizedSource,
-    ResultMetadata,
     Selection,
     SelectionValue,
     SourceId,
@@ -26,27 +25,41 @@ from tabulaflow.core.outputs import (
     ViewDef,
     validate_parameter_value,
 )
-from tabulaflow.toolhub.output_store import OutputStore
+from tabulaflow.toolhub.output_store import OutputStore, ResultPayload
 
 
 class OutputResolutionError(ValueError):
     """An output cannot resolve for the requested selection."""
 
 
-class ResolvedArtifact(BaseModel):
-    """An artifact with the result records needed to render its view."""
+@dataclass(frozen=True)
+class AvailableArtifact:
+    """An artifact with payloads needed to render its view."""
 
     artifact_id: ArtifactId
-    label: str | None = None
     view: ViewDef
-    metadata_by_source: dict[SourceId, ResultMetadata]
+    label: str | None = None
+    payload_by_source: dict[SourceId, ResultPayload] = field(default_factory=dict)
 
 
-class ResolvedOutput(BaseModel):
+@dataclass(frozen=True)
+class UnavailableArtifact:
+    """An artifact that cannot render for the active selection."""
+
+    artifact_id: ArtifactId
+    reason: str = "unavailable"
+    label: str | None = None
+
+
+ResolvedArtifact: TypeAlias = AvailableArtifact | UnavailableArtifact
+
+
+@dataclass(frozen=True)
+class ResolvedOutput:
     """An output spec resolved under one active selection."""
 
     selection: Selection
-    artifacts: list[ResolvedArtifact] = Field(default_factory=list)
+    artifacts: list[ResolvedArtifact] = field(default_factory=list)
 
 
 class OutputResolver:
@@ -63,18 +76,24 @@ class OutputResolver:
         active_selection = _normalize_selection(output, selection)
         parameters = {parameter.id: parameter for parameter in output.parameters}
         sources = {source.id: source for source in output.sources}
-        resolved_sources: dict[SourceId, ResultMetadata] = {}
+        resolved_sources: dict[SourceId, ResultPayload] = {}
         artifacts: list[ResolvedArtifact] = []
         for artifact in output.artifacts:
-            source_results: dict[SourceId, ResultMetadata] = {}
-            for source_id in _view_source_ids(artifact.view):
-                source = sources.get(source_id)
-                if source is None:
-                    raise OutputResolutionError(f"artifact {artifact.id!r} references unknown source {source_id!r}")
-                if source_id not in resolved_sources:
-                    resolved_sources[source_id] = await self._resolve_source(source, parameters, active_selection)
-                source_results[source_id] = resolved_sources[source_id]
-            artifacts.append(_resolved_artifact(artifact, source_results))
+            try:
+                payload_by_source: dict[SourceId, ResultPayload] = {}
+                for source_id in _view_source_ids(artifact.view):
+                    source = sources.get(source_id)
+                    if source is None:
+                        raise OutputResolutionError(f"artifact {artifact.id!r} references unknown source {source_id!r}")
+                    if source_id not in resolved_sources:
+                        resolved_sources[source_id] = await self._resolve_source(source, parameters, active_selection)
+                    payload_by_source[source_id] = resolved_sources[source_id]
+            except OutputResolutionError:
+                raise
+            except (KeyError, ValueError) as exc:
+                artifacts.append(UnavailableArtifact(artifact_id=artifact.id, label=artifact.label, reason=str(exc)))
+            else:
+                artifacts.append(_resolved_artifact(artifact, payload_by_source))
         return ResolvedOutput(selection=active_selection, artifacts=artifacts)
 
     async def _resolve_source(
@@ -82,14 +101,11 @@ class OutputResolver:
         source: SourceDef,
         parameters: Mapping[ParameterId, ParameterDef],
         selection: Mapping[ParameterId, SelectionValue],
-    ) -> ResultMetadata:
+    ) -> ResultPayload:
         if isinstance(source, FixedResultSource):
-            return await self._output_store.get_metadata(source.result_id)
+            return await self._output_store.get_payload(source.result_id)
         if isinstance(source, ParameterizedSource):
-            try:
-                return await self._output_store.resolve_source(source.id, _project_selection(source, parameters, selection))
-            except KeyError as exc:
-                raise OutputResolutionError(str(exc)) from None
+            return await self._output_store.resolve_source(source.id, _project_selection(source, parameters, selection))
         raise TypeError(f"unsupported source {type(source).__name__}")
 
 
@@ -110,12 +126,12 @@ def _normalize_selection(
         raise OutputResolutionError(str(exc)) from None
 
 
-def _resolved_artifact(artifact: ArtifactSpec, metadata_by_source: dict[SourceId, ResultMetadata]) -> ResolvedArtifact:
-    return ResolvedArtifact(
+def _resolved_artifact(artifact: ArtifactSpec, payload_by_source: dict[SourceId, ResultPayload]) -> AvailableArtifact:
+    return AvailableArtifact(
         artifact_id=artifact.id,
         label=artifact.label,
         view=artifact.view,
-        metadata_by_source=metadata_by_source,
+        payload_by_source=payload_by_source,
     )
 
 

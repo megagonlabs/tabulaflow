@@ -12,7 +12,7 @@ from tabulaflow.core import (
     TableView,
 )
 from tabulaflow.core.types import ExecResult, PredQuery
-from tabulaflow.toolhub import OutputResolutionError, OutputResolver, OutputStore
+from tabulaflow.toolhub import AvailableArtifact, OutputResolutionError, OutputResolver, OutputStore, UnavailableArtifact
 
 
 async def _output_store_with_results() -> OutputStore:
@@ -52,7 +52,9 @@ async def test_fixed_source_resolves_output_artifact() -> None:
 
     resolved = await resolver.resolve(output)
 
-    metadata = resolved.artifacts[0].metadata_by_source["fixed"]
+    artifact = resolved.artifacts[0]
+    assert isinstance(artifact, AvailableArtifact)
+    metadata = artifact.payload_by_source["fixed"].metadata
     assert resolved.selection == {}
     assert metadata.id == "R1"
     assert metadata.db_alias == "workspace"
@@ -96,7 +98,9 @@ async def test_parameterized_source_resolves_by_projected_selection() -> None:
 
     resolved = await resolver.resolve(output, {"metric": "profit"})
 
-    metadata = resolved.artifacts[0].metadata_by_source[source.id]
+    artifact = resolved.artifacts[0]
+    assert isinstance(artifact, AvailableArtifact)
+    metadata = artifact.payload_by_source[source.id].metadata
     assert resolved.selection == {"metric": "profit", "min_spend": 10_000}
     assert metadata.id == "R2"
     assert isinstance(output.sources[0], ParameterizedSource)
@@ -148,8 +152,11 @@ async def test_parameterized_source_reports_unavailable_selection() -> None:
         artifacts=[ArtifactSpec(id="table", view=TableView(source=source.id))],
     )
 
-    with pytest.raises(OutputResolutionError, match="has no result"):
-        await resolver.resolve(output, {"metric": "profit"})
+    resolved = await resolver.resolve(output, {"metric": "profit"})
+
+    artifact = resolved.artifacts[0]
+    assert isinstance(artifact, UnavailableArtifact)
+    assert "has no result" in artifact.reason
 
 
 @pytest.mark.asyncio
@@ -167,5 +174,40 @@ async def test_parameterized_source_without_cache_errors_until_materialization_e
         artifacts=[ArtifactSpec(id="table", view=TableView(source=source.id))],
     )
 
-    with pytest.raises(OutputResolutionError, match="has no result"):
-        await resolver.resolve(output, {"min_spend": 10_000})
+    resolved = await resolver.resolve(output, {"min_spend": 10_000})
+
+    artifact = resolved.artifacts[0]
+    assert isinstance(artifact, UnavailableArtifact)
+    assert "has no result" in artifact.reason
+
+
+@pytest.mark.asyncio
+async def test_unavailable_artifact_does_not_hide_siblings() -> None:
+    output_store = await _output_store_with_results()
+    missing = output_store.add_parameterized_source(
+        "workspace",
+        [
+            ChoiceParameter(
+                id="metric",
+                label="Metric",
+                choices=[ChoiceOption(id="revenue", label="Revenue"), ChoiceOption(id="profit", label="Profit")],
+            )
+        ],
+        "SELECT 1",
+    )
+    output = OutputSpec(
+        parameters=_parameters(),
+        sources=[FixedResultSource(id="fixed", result_id="R1"), missing],
+        artifacts=[
+            ArtifactSpec(id="fixed", view=TableView(source="fixed")),
+            ArtifactSpec(id="missing", view=TableView(source=missing.id)),
+        ],
+    )
+
+    resolved = await OutputResolver(output_store).resolve(output, {"metric": "profit"})
+
+    first, second = resolved.artifacts
+    assert isinstance(first, AvailableArtifact)
+    assert first.payload_by_source["fixed"].metadata.id == "R1"
+    assert isinstance(second, UnavailableArtifact)
+    assert "has no result" in second.reason
