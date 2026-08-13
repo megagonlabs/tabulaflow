@@ -946,6 +946,19 @@ def test_heavy_view_cache_weights_are_tuned_for_retained_renderers() -> None:
     assert "if (entry.kind === 'graph') return graphCacheWeight(entry);" in pane_js
 
 
+def test_answer_controls_render_choice_and_number_inputs() -> None:
+    pane_js = _pane_asset_text("pane.js")
+    pane_css = _pane_asset_text("pane.css")
+    contract = _pane_asset_text("contract.d.ts")
+    assert "export interface PaneNumberControl" in contract
+    assert "export type PaneControl = PaneChoiceControl | PaneNumberControl;" in contract
+    assert "function answerControls(turn)" in pane_js
+    assert "control.kind === 'number'" in pane_js
+    assert "input.type = control.display === 'input' ? 'number' : 'range';" in pane_js
+    assert "applyControlSelection(turn, state, index, control.id, nextValue);" in pane_js
+    assert ".answer-control-number" in pane_css
+
+
 def test_live_view_survives_rapid_browser_replay_and_switches_atomically(tmp_path: Path) -> None:
     from playwright.sync_api import Error as PlaywrightError
     from playwright.sync_api import sync_playwright

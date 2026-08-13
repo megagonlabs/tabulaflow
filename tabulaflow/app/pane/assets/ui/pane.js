@@ -69,13 +69,39 @@ function buildTranscript(turn) {
   return wrap.children.length ? wrap : null;
 }
 
-function choiceControls(turn) {
+function answerControls(turn) {
   var panel = turn && turn.panel;
   var controls = panel && Array.isArray(panel.controls) ? panel.controls : [];
-  // Number controls are part of the pane contract but not drawn yet.
   return controls.filter(function (control) {
-    return control && control.kind === 'choice' && Array.isArray(control.choices) && control.choices.length;
+    return control && (
+      (control.kind === 'choice' && Array.isArray(control.choices) && control.choices.length) ||
+      (control.kind === 'number' && isFiniteNumber(control.min) && isFiniteNumber(control.max) && isFiniteNumber(control.step))
+    );
   });
+}
+
+function isFiniteNumber(value) {
+  return typeof value === 'number' && Number.isFinite(value);
+}
+
+function controlNumberValue(control, selection) {
+  var raw = selection && selection[control.id];
+  var value = typeof raw === 'number' ? raw : Number(raw);
+  if (!Number.isFinite(value)) value = isFiniteNumber(control.default) ? control.default : control.min;
+  return Math.min(control.max, Math.max(control.min, value));
+}
+
+function formatNumberControlValue(control, value) {
+  var text = String(value);
+  return control.unit ? text + ' ' + control.unit : text;
+}
+
+function applyControlSelection(turn, state, index, id, value) {
+  var next = Object.assign({}, state.selection);
+  if (String(next[id]) === String(value)) return;
+  next[id] = value;
+  state.selection = next;
+  resolveTurnSelection(turn, index, Object.assign({}, state.selection));
 }
 
 function defaultSelection(turn) {
@@ -137,7 +163,7 @@ function resolveTurnSelection(turn, index, selection) {
 }
 
 function buildAnswerControls(turn, state, index) {
-  var controls = choiceControls(turn);
+  var controls = answerControls(turn);
   if (!controls.length) return null;
   if (!state.selection) state.selection = defaultSelection(turn);
   var panel = el('section', 'answer-controls');
@@ -145,26 +171,56 @@ function buildAnswerControls(turn, state, index) {
     var group = el('div', 'answer-control');
     var label = el('div', 'answer-control-label');
     label.textContent = control.label || control.id;
-    var opts = el('div', 'answer-control-options');
-    control.choices.forEach(function (choice) {
-      var btn = document.createElement('button');
-      btn.type = 'button';
-      btn.className = 'answer-control-option';
-      btn.textContent = choice.label || choice.id;
-      var active = String(state.selection[control.id]) === String(choice.id);
-      btn.classList.toggle('active', active);
-      btn.disabled = !!state.resolving;
-      btn.onclick = function () {
-        if (active) return;
-        var next = Object.assign({}, state.selection);
-        next[control.id] = choice.id;
-        state.selection = next;
-        resolveTurnSelection(turn, index, Object.assign({}, state.selection));
-      };
-      opts.appendChild(btn);
-    });
     group.appendChild(label);
-    group.appendChild(opts);
+    if (control.kind === 'choice') {
+      var opts = el('div', 'answer-control-options');
+      control.choices.forEach(function (choice) {
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'answer-control-option';
+        btn.textContent = choice.label || choice.id;
+        var active = String(state.selection[control.id]) === String(choice.id);
+        btn.classList.toggle('active', active);
+        btn.disabled = !!state.resolving;
+        btn.onclick = function () {
+          if (active) return;
+          applyControlSelection(turn, state, index, control.id, choice.id);
+        };
+        opts.appendChild(btn);
+      });
+      group.appendChild(opts);
+    } else if (control.kind === 'number') {
+      var row = el('div', 'answer-control-number');
+      var input = document.createElement('input');
+      input.type = control.display === 'input' ? 'number' : 'range';
+      input.className = 'answer-control-number-input';
+      input.min = String(control.min);
+      input.max = String(control.max);
+      input.step = String(control.step);
+      var value = controlNumberValue(control, state.selection);
+      input.value = String(value);
+      input.disabled = !!state.resolving;
+      var valueLabel = el('span', 'answer-control-number-value');
+      valueLabel.textContent = formatNumberControlValue(control, value);
+      input.oninput = function () {
+        var live = Number(input.value);
+        if (Number.isFinite(live)) valueLabel.textContent = formatNumberControlValue(control, live);
+      };
+      input.onchange = function () {
+        var nextValue = Number(input.value);
+        if (!Number.isFinite(nextValue)) return;
+        nextValue = Math.min(control.max, Math.max(control.min, nextValue));
+        input.value = String(nextValue);
+        valueLabel.textContent = formatNumberControlValue(control, nextValue);
+        applyControlSelection(turn, state, index, control.id, nextValue);
+      };
+      input.onkeydown = function (event) {
+        if (event.key === 'Enter') input.dispatchEvent(new Event('change'));
+      };
+      row.appendChild(input);
+      row.appendChild(valueLabel);
+      group.appendChild(row);
+    }
     panel.appendChild(group);
   });
   if (state.resolving) {

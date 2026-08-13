@@ -24,21 +24,19 @@ from base64 import b64encode
 from collections.abc import Sequence
 from importlib.resources import files as resource_files
 from pathlib import Path
-from types import SimpleNamespace
 
 import pandas as pd
 
 from tabulaflow.app import pane as pane_mod
 from tabulaflow.app.debug import debug_chart_fixtures
-from tabulaflow.app.pane import PaneCard, PaneSource, card_payload, turn_payload
-from tabulaflow.app.pane.cards import render_graph_data, render_map_data, render_record_data, render_resolved_artifacts
+from tabulaflow.app.pane import PaneCard, PaneSource, card_payload, pane_panel_for_output, render_resolved_output, turn_payload
+from tabulaflow.app.pane.cards import GraphCardInput, MapCardInput, ResultCardInput, render_graph_data, render_map_data, render_result_data
 from tabulaflow.app.pane import server as pane_server
 from tabulaflow.app.runtime_paths import generate_session_id
-from tabulaflow.chat import AnswerPanel, ChatResult, ChoiceControl, ControlChoice
-from tabulaflow.core.outputs import ChartArtifactDef, TableArtifactDef
-from tabulaflow.chat.artifact_resolver import ArtifactResolver
+from tabulaflow.chat import ChatResult
+from tabulaflow.core.outputs import ChartArtifactSpec, ChoiceOption, ChoiceParameter, NumberParameter, OutputSpec, TableArtifactSpec
 from tabulaflow.core.types import ExecResult, GraphView, PredQuery
-from tabulaflow.toolhub import QueryHistory
+from tabulaflow.toolhub import OutputResolver, OutputStore
 from tabulaflow.toolhub.render_graph import materialize_graph_view, normalize_graph_spec
 from tabulaflow.toolhub.render_map import normalize_map_spec
 
@@ -302,9 +300,8 @@ def _record(
     chart_spec: dict[str, object] | None = None,
     graph: GraphView | None = None,
     query_lexer: str = "sql",
-) -> SimpleNamespace:
-    return SimpleNamespace(
-        record_id=record_id,
+) -> ResultCardInput:
+    return ResultCardInput(
         label=label,
         query=query,
         df=df,
@@ -325,10 +322,7 @@ def _map_card(
 ) -> PaneCard:
     """Build a map card via the real spec → normalize → render pipeline."""
     normalized = normalize_map_spec({"title": title, "layers": layers}, sources)
-    card = render_map_data(
-        SimpleNamespace(map_id=map_id, label=label, map_spec=normalized, sources=sources),
-        pane_dir,
-    )
+    card = render_map_data(MapCardInput(label=label, spec=normalized, sources=sources), pane_dir)
     assert card is not None
     return card
 
@@ -344,18 +338,15 @@ def _graph_card(
     """Build a graph card via the real spec → normalize → render pipeline."""
     normalized = normalize_graph_spec(graph_spec, sources)
     graph = materialize_graph_view(normalized, sources)
-    card = render_graph_data(
-        SimpleNamespace(graph_id=graph_id, label=label, graph=graph, layout=normalized.get("layout", "force")),
-        pane_dir,
-    )
+    card = render_graph_data(GraphCardInput(label=label, graph=graph, layout=str(normalized.get("layout", "force"))), pane_dir)
     assert card is not None
     return card
 
 
-def _render_records(records: Sequence[SimpleNamespace], pane_dir: Path) -> list[PaneCard]:
+def _render_records(records: Sequence[ResultCardInput], pane_dir: Path) -> list[PaneCard]:
     cards: list[PaneCard] = []
     for record in records:
-        card = render_record_data(record, pane_dir)
+        card = render_result_data(record, pane_dir)
         if card is not None:
             cards.append(card)
     return cards
@@ -368,7 +359,7 @@ def _push_turn(
     title: str,
     user: str,
     assistant: str,
-    records: Sequence[SimpleNamespace] = (),
+    records: Sequence[ResultCardInput] = (),
     cards: Sequence[PaneCard] = (),
     source: PaneSource | None = None,
 ) -> None:
@@ -384,48 +375,87 @@ def _push_turn(
 
 
 def _push_controls_turn(pane: pane_mod.OutputPane, pane_dir: Path) -> None:
-    history = QueryHistory()
-    pred_queries: dict[str, PredQuery] = {}
+    output_store = OutputStore()
+    parameters = [
+        ChoiceParameter(
+            id="metric",
+            label="Metric",
+            choices=[ChoiceOption(id="revenue", label="Revenue"), ChoiceOption(id="orders", label="Orders")],
+        ),
+        ChoiceParameter(
+            id="period",
+            label="Period",
+            choices=[ChoiceOption(id="q2", label="Q2"), ChoiceOption(id="q3", label="Q3")],
+        ),
+        NumberParameter(
+            id="min_value",
+            label="Minimum value",
+            min=0,
+            max=140,
+            step=20,
+            default=60,
+            display="slider",
+        ),
+        NumberParameter(
+            id="top_n",
+            label="Top N",
+            min=1,
+            max=3,
+            step=1,
+            default=3,
+            display="input",
+        ),
+    ]
+    source = output_store.add_parameterized_source("preview", parameters, "-- preview controls fixture")
     values = {
         ("q2", "revenue"): ("Q2", "Revenue", [120, 95, 72]),
         ("q3", "revenue"): ("Q3", "Revenue", [138, 104, 86]),
         ("q2", "orders"): ("Q2", "Orders", [42, 35, 28]),
         ("q3", "orders"): ("Q3", "Orders", [49, 39, 31]),
     }
-    for (period, metric), (period_label, metric_label, metric_values) in values.items():
-        df = pd.DataFrame(
-            {
-                "customer": ["Acme", "Globex", "Initech"],
-                "period": [period_label] * 3,
-                "metric": [metric_label] * 3,
-                "value": metric_values,
-            }
-        )
-        pred_queries[f"metric={metric};period={period}"] = PredQuery(
-            query=f"-- preview fixture for {period_label} {metric_label.lower()}",
-            exec_result=ExecResult(df=df),
-        )
-    asyncio.run(
-        history.add_family(
-            "preview",
-            "sql",
-            {"metric": ["revenue", "orders"], "period": ["q2", "q3"]},
-            "-- preview controls fixture",
-            pred_queries,
-        )
-    )
+    for metric in ("revenue", "orders"):
+        for period in ("q2", "q3"):
+            period_label, metric_label, metric_values = values[(period, metric)]
+            full_df = pd.DataFrame(
+                {
+                    "customer": ["Acme", "Globex", "Initech"],
+                    "period": [period_label] * 3,
+                    "metric": [metric_label] * 3,
+                    "value": metric_values,
+                }
+            )
+            for min_value in range(0, 141, 20):
+                for top_n in (1, 2, 3):
+                    df = full_df[full_df["value"] >= min_value].head(top_n).reset_index(drop=True)
+                    for min_selection in (min_value, float(min_value)):
+                        for top_selection in (top_n, float(top_n)):
+                            asyncio.run(
+                                output_store.cache_parameterized_result(
+                                    source.id,
+                                    "sql",
+                                    {"metric": metric, "period": period, "min_value": min_selection, "top_n": top_selection},
+                                    PredQuery(
+                                        query=f"-- preview fixture for {period_label} {metric_label.lower()}, min_value={min_value}, top_n={top_n}",
+                                        exec_result=ExecResult(df=df),
+                                    ),
+                                )
+                        )
     result = ChatResult(
         text=(
-            "This turn has answer-level controls. Switch the metric or period in the browser pane; "
+            "This turn has answer-level controls. Switch the metric/period buttons, drag the minimum-value slider, "
+            "or edit Top N in the browser pane; "
             "the table and chart resolve through the live preview session instead of a precomputed bundle."
         ),
-        artifacts=[
-            TableArtifactDef(label="top customers", source_id="QS1"),
-            ChartArtifactDef(
-                chart_id="CHART_PREVIEW_CONTROLS",
-                label="customer comparison",
-                source_id="QS1",
-                chart_spec={
+        output=OutputSpec(
+            parameters=parameters,
+            sources=[source],
+            artifacts=[
+                TableArtifactSpec(id=source.id, label="top customers", source_id=source.id),
+                ChartArtifactSpec(
+                    id="CHART_PREVIEW_CONTROLS",
+                    label="customer comparison",
+                    source_id=source.id,
+                    spec={
                     "mark": "bar",
                     "encoding": {
                         "x": {"field": "customer", "type": "nominal"},
@@ -433,36 +463,22 @@ def _push_controls_turn(pane: pane_mod.OutputPane, pane_dir: Path) -> None:
                         "color": {"field": "customer", "type": "nominal"},
                     },
                     "title": "Selected customer metric",
-                },
-            ),
-        ],
-        panel=AnswerPanel(
-            controls=[
-                ChoiceControl(
-                    id="metric",
-                    label="Metric",
-                    choices=[ControlChoice(id="revenue", label="Revenue"), ControlChoice(id="orders", label="Orders")],
+                    },
                 ),
-                ChoiceControl(
-                    id="period",
-                    label="Period",
-                    choices=[ControlChoice(id="q2", label="Q2"), ControlChoice(id="q3", label="Q3")],
-                ),
-            ]
+            ],
         ),
     )
-    resolver = ArtifactResolver(history)
-    cards = render_resolved_artifacts(asyncio.run(resolver.resolve(result)), pane_dir)
+    cards = asyncio.run(render_resolved_output(asyncio.run(OutputResolver(output_store).resolve(result.output)), pane_dir))
     pane.push(
         turn_payload(
             title="Answer controls preview",
             user="Compare top customers, with controls for the interpretation.",
             assistant=result.text,
             cards=cards,
-            panel=result.panel.model_dump(mode="json") if result.panel is not None else None,
+            panel=pane_panel_for_output(result.output),
         ),
         result=result,
-        artifact_resolver=resolver,
+        output_store=output_store,
     )
 
 
@@ -495,7 +511,7 @@ def _chart_cards(pane_dir: Path, *, limit: int | None) -> list[PaneCard]:
     if limit is not None:
         fixtures = fixtures[:limit]
     for record_id, label, query, df, spec in fixtures:
-        card = render_record_data(
+        card = render_result_data(
             _record(record_id=record_id, label=label, query=query, df=df, chart_spec=spec),
             pane_dir,
         )
@@ -553,7 +569,7 @@ def _manual_table_card(pane_dir: Path) -> PaneCard:
             * 2,
         }
     )
-    card = render_record_data(_record(record_id="manual", label="", query=None, df=df), pane_dir)
+    card = render_result_data(_record(record_id="manual", label="", query=None, df=df), pane_dir)
     assert card is not None
     return card
 
@@ -569,7 +585,7 @@ def _wide_manual_table_card(pane_dir: Path) -> PaneCard:
     for col in range(1, cols - len(data) + 1):
         data[f"metric_{col:02d}"] = [round(((row * (col + 7)) % 100_000) / 37.0, 2) for row in range(rows)]
     df = pd.DataFrame(data)
-    card = render_record_data(_record(record_id="wide_manual", label="", query=None, df=df), pane_dir)
+    card = render_result_data(_record(record_id="wide_manual", label="", query=None, df=df), pane_dir)
     assert card is not None
     return card
 
@@ -591,7 +607,7 @@ def _push_manual_table_turn(pane: pane_mod.OutputPane, pane_dir: Path) -> None:
     )
 
 
-def _large_table_record(num_rows: int) -> SimpleNamespace:
+def _large_table_record(num_rows: int) -> ResultCardInput:
     df = pd.DataFrame(
         {
             "row_id": range(1, num_rows + 1),
@@ -609,7 +625,7 @@ def _large_table_record(num_rows: int) -> SimpleNamespace:
     )
 
 
-def _large_agent_table_record() -> SimpleNamespace:
+def _large_agent_table_record() -> ResultCardInput:
     rows = 1_000
     data: dict[str, list[object]] = {
         "row_id": list(range(1, rows + 1)),
@@ -626,7 +642,7 @@ def _large_agent_table_record() -> SimpleNamespace:
     )
 
 
-def _cypher_graph_record() -> SimpleNamespace:
+def _cypher_graph_record() -> ResultCardInput:
     df = pd.DataFrame(
         {
             "p": [
@@ -684,7 +700,7 @@ def _cypher_graph_record() -> SimpleNamespace:
     )
 
 
-def _cypher_non_graph_record() -> SimpleNamespace:
+def _cypher_non_graph_record() -> ResultCardInput:
     return _record(
         record_id="QDEBUG_CYPHER_TABLE",
         label="cypher_scalar_result",
@@ -836,7 +852,7 @@ def _map_showcase_card(pane_dir: Path) -> PaneCard:
         layers=[
             {
                 "type": "points",
-                "record_id": "QDEBUG_MAP",
+                "source_id": "QDEBUG_MAP",
                 "lat": "lat",
                 "lng": "lng",
                 "label": "name",
@@ -845,7 +861,7 @@ def _map_showcase_card(pane_dir: Path) -> PaneCard:
             },
             {
                 "type": "geojson",
-                "record_id": "QDEBUG_MAP",
+                "source_id": "QDEBUG_MAP",
                 "geojson": "geom",
                 "label": "name",
                 "tooltip": ["kind", "url"],
@@ -926,7 +942,7 @@ def _map_overlay_card(pane_dir: Path) -> PaneCard:
         layers=[
             {
                 "type": "geojson",
-                "record_id": "Q_AREAS",
+                "source_id": "Q_AREAS",
                 "geojson": "boundary",
                 "label": "area",
                 "tooltip": ["tier"],
@@ -934,7 +950,7 @@ def _map_overlay_card(pane_dir: Path) -> PaneCard:
             },
             {
                 "type": "points",
-                "record_id": "Q_STORES",
+                "source_id": "Q_STORES",
                 "lat": "lat",
                 "lng": "lng",
                 "label": "store",
@@ -1492,7 +1508,7 @@ def _wav_bytes(freq_hz: float, seconds: float = 0.4, rate: int = 8000) -> bytes:
     return bytes(header + samples)
 
 
-def _media_table_record() -> SimpleNamespace:
+def _media_table_record() -> ResultCardInput:
     names = ["red", "green", "blue", "amber", "violet"]
     assets = resource_files("tabulaflow.app.assets.debug")
     jpeg = [assets.joinpath(f"jpeg_{i}.jpg").read_bytes() for i in range(5)]
