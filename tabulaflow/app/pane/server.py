@@ -12,6 +12,7 @@ interface, and every failure here is swallowed so it can never block a chat turn
 from __future__ import annotations
 
 import asyncio
+import concurrent.futures
 import functools
 import hashlib
 import html
@@ -46,6 +47,7 @@ DEFAULT_OUTPUT_PANE_PORT_END = 61130
 DEFAULT_OUTPUT_PANE_PORTS = tuple(range(DEFAULT_OUTPUT_PANE_PORT_START, DEFAULT_OUTPUT_PANE_PORT_END + 1))
 DEFAULT_OUTPUT_PANE_HOST = "127.0.0.1"
 _OUTPUT_PANE_TOKEN_BYTES = 6
+_RESOLVE_TIMEOUT_SECONDS = 30
 _SESSION_ID_PLACEHOLDER = "__SESSION_ID__"
 _SESSION_ID_RE = re.compile(r"[0-9a-z]{6}")
 _MARKDOWN_CODE_PARSER = MarkdownIt("commonmark", {"html": False}).enable(["table"])
@@ -207,9 +209,12 @@ class _Handler(http.server.SimpleHTTPRequestHandler):
             self.send_error(400)
             return
         try:
-            cards = asyncio.run(pane.resolve_turn(turn_id, selection))
+            cards = pane.resolve_turn_threadsafe(turn_id, selection)
         except KeyError:
             self._send_json({"error": "turn is not available for live resolution"}, status=404)
+            return
+        except TimeoutError:
+            self._send_json({"error": "selection resolution timed out"}, status=500)
             return
         except Exception:
             logger.debug("output pane resolve failed", exc_info=True)
@@ -439,6 +444,7 @@ class OutputPane:
         self._next_id = 0
         self._loaded = False
         self._server: _PaneServer | None = None
+        self._loop: asyncio.AbstractEventLoop | None = None
         self._port: int | None = None
         self._browser_opened = False
 
@@ -450,6 +456,10 @@ class OutputPane:
         """
         with self._cond:
             self._load_manifest_locked()
+        try:
+            self._loop = asyncio.get_running_loop()
+        except RuntimeError:
+            self._loop = None
         host = self._host
         handler = functools.partial(_Handler, directory=str(self._pane_dir))
         ports = (self._port_config,) if self._port_config is not None else self._port_range
@@ -557,6 +567,17 @@ class OutputPane:
 
         resolved_output = await OutputResolver(output_store).resolve(result.output, cast("dict[str, SelectionValue]", selection))
         return await render_resolved_output(resolved_output, output_store, self._pane_dir)
+
+    def resolve_turn_threadsafe(self, turn_id: int, selection: dict[str, object]) -> list[PaneCard]:
+        """Resolve a live turn on the app loop from the HTTP server thread."""
+        if self._loop is None:
+            raise RuntimeError("output pane was not started from an event loop")
+        future = asyncio.run_coroutine_threadsafe(self.resolve_turn(turn_id, selection), self._loop)
+        try:
+            return future.result(timeout=_RESOLVE_TIMEOUT_SECONDS)
+        except concurrent.futures.TimeoutError:
+            future.cancel()
+            raise TimeoutError from None
 
     def _load_manifest_locked(self) -> None:
         """Load persisted pane turns once. Caller must hold ``_cond``."""

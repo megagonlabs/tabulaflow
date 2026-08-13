@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import contextlib
+import asyncio
 import json
 import re
 import shutil
@@ -2362,6 +2363,52 @@ async def test_output_pane_resolves_live_turn_selection(tmp_path: Path) -> None:
 
     assert cards == [{"id": cards[0]["id"], "label": "period_q3", "views": ["data", "query"]}]
     assert (tmp_path / f"{cards[0]['id']}.data.json").exists()
+
+
+@pytest.mark.asyncio
+async def test_output_pane_http_resolve_runs_on_app_loop(tmp_path: Path) -> None:
+    app_loop = asyncio.get_running_loop()
+
+    class LoopCheckingOutputStore:
+        async def get_metadata(self, result_id: str) -> ResultMetadata:
+            return ResultMetadata(id=result_id, db_alias="workspace", query="SELECT 1")
+
+        async def get_payload(self, result_id: str) -> ResultPayload:
+            assert asyncio.get_running_loop() is app_loop
+            return ResultPayload(
+                metadata=await self.get_metadata(result_id),
+                df=pd.DataFrame({"period": ["q3"]}),
+            )
+
+    pane = OutputPane(tmp_path, port=_unused_loopback_port())
+    pane.start()
+    pane.push(
+        turn_payload(title="x", cards=[]),
+        result=ChatResult(
+            text="x",
+            output=OutputSpec(
+                sources=[FixedResultSource(id="S1", result_id="R1")],
+                artifacts=[ArtifactSpec(id="S1", label="period_q3", view=TableView(source="S1"))],
+            ),
+        ),
+        output_store=cast(OutputStore, LoopCheckingOutputStore()),
+    )
+    assert pane.url is not None
+    request = urllib.request.Request(
+        f"{pane.url}resolve",
+        data=json.dumps({"turn_id": 0, "selection": {}}).encode("utf-8"),
+        headers={"Content-Type": "application/json"},
+        method="POST",
+    )
+
+    def post_resolve() -> dict[str, Any]:
+        with urllib.request.urlopen(request, timeout=3) as response:
+            return cast(dict[str, Any], json.loads(response.read().decode("utf-8")))
+
+    payload = await asyncio.to_thread(post_resolve)
+
+    assert payload["selection"] == {}
+    assert payload["cards"] == [{"id": payload["cards"][0]["id"], "label": "period_q3", "views": ["data", "query"]}]
 
 
 def test_query_payload_contains_language_and_pane_theme_highlight() -> None:
