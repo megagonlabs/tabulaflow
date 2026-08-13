@@ -23,6 +23,7 @@ from tabulaflow.app.config import (
     update_app_config,
 )
 from tabulaflow.app.debug import debug_enabled, mount_debug_widgets
+from tabulaflow.app.display import build_resolved_output_card_views
 from tabulaflow.app.pane import PaneCard, PanePanel, manual_card_turn, render_resolved_output, turn_payload
 from tabulaflow.app.runtime_paths import RuntimePaths, ensure_pane_dir
 from tabulaflow.app.session import LLM_UNAVAILABLE_MESSAGE, SessionState
@@ -37,6 +38,7 @@ from tabulaflow.app.widgets import (
     SystemMessage,
     UserMessage,
 )
+from tabulaflow.toolhub.output_resolver import OutputResolver
 
 if TYPE_CHECKING:
     from tabulaflow.app.pane import OutputPane
@@ -1137,9 +1139,6 @@ class TabulaflowApp(App[None]):
             return
         if result is None:
             return  # normal completion always yields a terminal Finished
-
-        from tabulaflow.app.display import build_resolved_output_card_views
-        from tabulaflow.toolhub.output_resolver import OutputResolver
 
         output_store = chat_agent.output_store
         resolved_output = await OutputResolver(output_store).resolve(result.output)

@@ -34,12 +34,13 @@ from tabulaflow.app.pane.cards import build_code_data, render_resolved_output
 from tabulaflow.app.pane.types import CARD_ID_PREFIX, CodeData, PaneCard, PaneTurn
 from tabulaflow.app.runtime_paths import generate_session_id
 from tabulaflow.app.theme import GITHUB_SLUG, GITHUB_URL
+from tabulaflow.core.outputs import SelectionValue
+from tabulaflow.toolhub.output_resolver import OutputResolver
 
 logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     from tabulaflow.chat import ChatResult
-    from tabulaflow.core.outputs import SelectionValue
     from tabulaflow.toolhub.output_store import OutputStore
 
 DEFAULT_OUTPUT_PANE_PORT_START = 61111
@@ -563,8 +564,6 @@ class OutputPane:
         if live is None:
             raise KeyError(turn_id)
         result, output_store = live
-        from tabulaflow.toolhub.output_resolver import OutputResolver
-
         resolved_output = await OutputResolver(output_store).resolve(result.output, cast("dict[str, SelectionValue]", selection))
         return await render_resolved_output(resolved_output, output_store, self._pane_dir)
 

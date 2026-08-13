@@ -32,7 +32,7 @@ from textual.widget import Widget
 from textual.widgets import Input, Markdown, Static
 from textual.widgets._markdown import MarkdownFence, MarkdownTable, MarkdownTableContent
 
-from tabulaflow.app.display import DATA_PREVIEW_MAX_ROWS
+from tabulaflow.app.display import DATA_PREVIEW_MAX_ROWS, build_resolved_output_card_views
 from tabulaflow.app.theme import (
     ACCENT,
     ACCENT_DIM,
@@ -56,6 +56,7 @@ from tabulaflow.chat import (
     ToolStarted,
     UsageUpdated,
 )
+from tabulaflow.toolhub.output_resolver import OutputResolver
 
 
 if TYPE_CHECKING:
@@ -1710,9 +1711,6 @@ class AgentResultWidget(Widget):
     async def _resolve_cards_for_selection(self, selection: dict[str, "SelectionValue"]) -> None:
         if self._output_store is None:
             return
-        from tabulaflow.app.display import build_resolved_output_card_views
-        from tabulaflow.toolhub.output_resolver import OutputResolver
-
         resolved_output = await OutputResolver(self._output_store).resolve(self._result.output, selection)
         cards = await build_resolved_output_card_views(resolved_output, self._output_store, self._width)
         self._rebuild_cards_for_selection(cards)

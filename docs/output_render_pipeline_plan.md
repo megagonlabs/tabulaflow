@@ -6,24 +6,29 @@ clean shape of `core/outputs.py` and the `toolhub` runtime but stops at `Resolve
 Everything below the resolver — turning a resolved output into something a user sees, and
 turning a user gesture back into a selection — is currently unspecified and has grown two
 independent implementations. This plan describes the shape to converge to. It intentionally
-ignores historical burden.
+ignores historical burden and compatibility.
 
 Scope note: `NumberParameter` has no control on either surface today. That gap is a
-*symptom* of the diagnosis below, not a separate work item; Phase 4 creates the seam it
+*symptom* of the diagnosis below, not a separate work item; Phase 5 creates the seam it
 needs, but actually drawing sliders is out of scope here.
 
 ## Goal
 
-The app layer should express the render pipeline exactly once:
+The app layer should express the render pipeline exactly once, and everything below the
+resolver should be synchronous and storeless:
 
 ```text
 selection -> resolve -> plan -> present -> swap
-             ^^^^^^^    ^^^^    ^^^^^^^
-             toolhub    app     app, per surface
+             ^^^^^^^    ^^^^    ^^^^^^^    ^^^^
+             toolhub    app     app        app
+             async      sync    sync       per surface
+             owns I/O   pure    pure
 ```
 
-Only the last step may differ per surface. Today the middle step is duplicated and the
-first and last are each hand-rolled twice.
+The single most valuable property to optimize for: **`resolve` is the only step that
+touches the store, the connectors, or the disk.** Everything after it is a pure function of
+data already in hand. That makes the plan builder and both presenters testable with
+hand-built values — no DuckDB file, no connector, no event loop.
 
 ## Diagnosis (current state)
 
@@ -51,10 +56,9 @@ in the middle of a duplicated traversal rather than at a declared presenter boun
 
 ### Root cause: the missing type
 
-`ResolvedOutput` carries `ResultMetadata` — ids, row counts, column names — and no data.
-That is the right contract for a serializable resolver result and should not change. But it
-means every consumer must independently perform the same two steps: `isinstance`-dispatch on
-the view kind, then `await store.get_payload(...)` to obtain the DataFrame.
+`ResolvedOutput` carries `ResultMetadata` — ids, row counts, column names — and no data. So
+every consumer must independently perform the same two steps: `isinstance`-dispatch on the
+view kind, then `await store.get_payload(...)` to obtain the DataFrame.
 
 There is no type that represents "an artifact, dispatched, with its data attached". The
 absence shows up directly in the code:
@@ -66,6 +70,30 @@ absence shows up directly in the code:
 
 Hand-written structural Protocols over `SimpleNamespace` are the signature of a missing
 nominal type. Introduce it and all seven of those constructs delete themselves.
+
+### The resolver stops one step too early
+
+`ResolvedOutput` hands back claim tickets, not coats. Auditing who redeems them:
+
+- **Production: 7 lines, 2 files.** Every use of `metadata_by_source` is in `display.py`
+  (438, 443, 457) or `pane/cards.py` (180, 193, 207, 214), and every one has the shape
+  `await store.get_payload(artifact.metadata_by_source[...].id)`. There is no consumer
+  anywhere that reads metadata *without* immediately fetching the payload.
+- **Tests: 12 assertion lines, 3 files** (`test_chat_result_parser`, `test_output_resolver`,
+  `test_create_parameterized_source`), all of the form
+  `resolved.artifacts[0].metadata_by_source["S1"].id == "R4"`, plus two fake stores in
+  `test_output_pane.py`.
+
+When 3 of 3 production callers perform the same step immediately after you return, that step
+is your job. The same pattern repeats one layer down in the store's own API:
+
+- `render_chart.py:517` calls `get_metadata(result_id)` and then `get_payload(result_id)` on
+  the very next line — a pure redundant existence check.
+- `registry_transfer_source_table.py:63` calls `get_metadata(...)` then `get_payload(...)`
+  five lines later.
+
+Strip those two and `get_metadata` has exactly one real caller left (`registry_run_query`'s
+tool-facing passthrough at line 199). The metadata/payload split is largely ceremony.
 
 ### Control projection is duplicated too
 
@@ -131,49 +159,83 @@ The usual justification would be cold-start cost — importing `tabulaflow.toolh
 import tabulaflow.app.pane            -> 1.039s
   tabulaflow.toolhub                  already loaded: True
   tabulaflow.toolhub.output_resolver  already loaded: True
-  tabulaflow.toolhub.output_store      already loaded: True
+  tabulaflow.toolhub.output_store     already loaded: True
 ```
 
 The deferral buys nothing. There is no cycle either — `import-linter` already forbids
 `toolhub` from importing `app`, and `grep` confirms none exists. These imports are vestige,
 and the `object` signatures are lying to preserve it.
 
+### Vestigial pydantic
+
+Neither `ResolvedOutput`/`ResolvedArtifact` (`output_resolver.py:36-49`) nor `ResultPayload`
+(`output_store.py:51`) is ever serialized — there is no `model_dump`, `model_dump_json`, or
+`model_validate` call against any of them anywhere in the repo or the tests. They are
+in-process values that happen to be `BaseModel`s.
+
+`ResultPayload` goes further: it carries `@field_serializer` / `@field_validator` DataFrame
+hooks (lines 60-67) that no caller can reach. (The live users of `_serialize_dataframe` are
+`ExecResult` and `Trajectory` in `core/types.py`, which genuinely do serialize.) Those two
+methods are dead code.
+
 ## Decisions (settled — do not relitigate)
 
-1. **`core/outputs.py` and the `toolhub` runtime are unchanged.** `OutputSpec`,
-   `OutputStore`, `OutputResolver`, and `ResolvedOutput` keep their current contracts.
-   `ResolvedOutput` continues to carry metadata only — attaching DataFrames to it would put
-   runtime data in a serializable pydantic model and break the layering that
-   `ultimate_output_model_plan.md` establishes.
-2. **Full recompute stays.** A selection change re-resolves and rebuilds every card. No
+1. **`core/outputs.py` is unchanged.** `OutputSpec` and everything in it keeps its current
+   contract. This plan changes only the runtime and the app layer.
+2. **`resolve()` returns payloads, not metadata.** `ResolvedArtifact.metadata_by_source`
+   becomes `payload_by_source: dict[SourceId, ResultPayload]`. This is a strict superset —
+   `ResultPayload` already contains `.metadata`, so every existing metadata read survives
+   with one extra hop. Justification is the audit above: 3 of 3 production callers fetch
+   payloads immediately, and nothing serializes `ResolvedOutput`, so there is no wire-format
+   argument for keeping data out of it.
+3. **Payloads force the availability union, and the two ship together.** Today
+   `get_payload` is called inside each renderer's per-artifact `try/except`
+   (`cards.py:237`), so one bad payload drops one card. Move the fetch into `resolve()` and
+   one failure kills the entire resolution — every card vanishes and the pane shows "failed
+   to resolve selection" (`server.py:216`). `_ResultFrameStore.get_result_dataframe` raises
+   `KeyError` for an evicted frame whose spill write failed (`output_store.py:93`), so this
+   is reachable. Therefore `ResolvedArtifact` becomes
+   `AvailableArtifact | UnavailableArtifact(reason)` in the same change. This is the shape
+   `ultimate_output_model_plan.md` already anticipated, and it subsumes `SourceNotApplicable`
+   and the error-card work.
+4. **`ResolvedOutput`, `ResolvedArtifact`, and `ResultPayload` become frozen dataclasses.**
+   Nothing serializes them; pydantic validation over a DataFrame-carrying in-process value is
+   pure overhead. `ResultPayload`'s two dead serializer methods are deleted.
+5. **Eager payload loading is accepted, with its memory cost stated.** A payload-carrying
+   `ResolvedOutput` pins every source's DataFrame for its lifetime, so the store's LRU
+   (`max_in_memory=5`) no longer bounds peak footprint during a render;
+   `show_artifacts` caps a turn at 20 artifacts. Mitigation is structural rather than added
+   machinery: `build_plans` is synchronous and converts straight to renderables/JSON, so the
+   `ResolvedOutput` is dropped immediately after. A lazy `load()` handle was rejected — it
+   pushes store coupling back into presenters, which is the coupling being removed. Minor
+   upside: the resolver already dedupes by source (`output_resolver.py:66`), so two charts
+   over `S1` load it once where today they load it twice.
+6. **Full recompute stays.** A selection change re-resolves and rebuilds every card. No
    incremental patching, no per-artifact diffing. At this data scale it is correct and it
    eliminates a class of state bugs.
-3. **Immutable card files stay.** Each render mints `card_<hex>` and writes a fresh
+7. **Immutable card files stay.** Each render mints `card_<hex>` and writes a fresh
    `.data.json`; the client fetches by id (`pane.js:580`). No invalidation protocol, stale
    ids stay valid.
-4. **Presenters keep their freedom to differ.** The terminal may render a placeholder where
+8. **Presenters keep their freedom to differ.** The terminal may render a placeholder where
    the browser renders a map. The plan builder attaches data; what a presenter does with it
    is the presenter's business.
-5. **The shared pipeline lives in `app/`, not `toolhub/`.** It needs `OutputStore` (toolhub)
-   and encodes presentation intent. `app` may import `toolhub` at module scope.
-6. **Existing presenters stay where they are.** `display.py` remains the terminal presenter
-   and `pane/cards.py` the browser presenter. This plan reduces them to presentation; it does
-   not move them.
-7. **`CardPlan` carries eager payloads, not lazy handles.** A lazy `load()` callable would
-   push store coupling back into presenters, which is the coupling being removed. The cost is
-   that the terminal now fetches map/graph payloads it renders as placeholders; that cost is
-   near zero because `get_payload` hits the in-memory LRU that the same turn's browser push
-   has already warmed.
+9. **The shared app pipeline lives in `app/output/`, and existing presenters stay put.**
+   `display.py` remains the terminal presenter, `pane/cards.py` the browser presenter. This
+   plan reduces them to presentation; it does not move them.
 
 ## Target structure
 
 ```text
+tabulaflow/toolhub/
+├── output_store.py          # OutputStore; ResultPayload -> frozen dataclass
+└── output_resolver.py       # resolve() -> ResolvedOutput carrying payloads + availability
+
 tabulaflow/app/
 ├── output/                  # NEW — the shared pipeline, defined once
 │   ├── __init__.py
-│   ├── plan.py              #   CardPlan, ViewPlan union, build_plans(resolved, store)
+│   ├── plan.py              #   CardPlan, ViewPlan union, build_plans(resolved)   [pure, sync]
 │   ├── controls.py          #   Control union, controls_for(spec)
-│   └── turn.py              #   TurnOutput(spec, store, selection).apply(selection)
+│   └── turn.py              #   TurnOutput(spec, store).apply(selection)
 ├── display.py               # terminal presenter: CardPlan -> CardGroup
 ├── widgets.py               # terminal input: keypress -> TurnOutput.apply
 ├── tui.py                   # wiring
@@ -185,6 +247,42 @@ tabulaflow/app/
 
 ## Key types
 
+### toolhub — resolution now yields data
+
+```python
+@dataclass(frozen=True)
+class ResultPayload:
+    metadata: ResultMetadata
+    df: pd.DataFrame | None = None
+    graph: GraphView | None = None
+
+@dataclass(frozen=True)
+class AvailableArtifact:
+    artifact_id: ArtifactId
+    label: str | None
+    view: ViewDef
+    payload_by_source: dict[SourceId, ResultPayload]
+
+@dataclass(frozen=True)
+class UnavailableArtifact:
+    artifact_id: ArtifactId
+    label: str | None
+    reason: str
+
+ResolvedArtifact = AvailableArtifact | UnavailableArtifact
+
+@dataclass(frozen=True)
+class ResolvedOutput:
+    selection: Selection
+    artifacts: list[ResolvedArtifact]
+```
+
+A selection that is itself invalid still raises `OutputResolutionError` — that is a whole-
+output failure, not a per-artifact one. Only source materialization and payload loading
+degrade to `UnavailableArtifact`.
+
+### app — the presentation join
+
 ```python
 # app/output/plan.py
 
@@ -192,7 +290,7 @@ tabulaflow/app/
 class TableViewPlan:
     df: pd.DataFrame
     query: str
-    query_lexer: str            # "sql" | "cypher", already derived from connector_type
+    query_lexer: str            # "sql" | "cypher" — a syntax-highlighting decision, hence app-side
 
 @dataclass(frozen=True)
 class ChartViewPlan:
@@ -211,21 +309,23 @@ class GraphViewPlan:
     graph: GraphView
     layout: str
 
-ViewPlan = TableViewPlan | ChartViewPlan | MapViewPlan | GraphViewPlan
+@dataclass(frozen=True)
+class ErrorViewPlan:
+    reason: str
+
+ViewPlan = TableViewPlan | ChartViewPlan | MapViewPlan | GraphViewPlan | ErrorViewPlan
 
 @dataclass(frozen=True)
 class CardPlan:
     artifact_id: ArtifactId
     label: str
     view: ViewPlan
-    error: str | None = None    # see Phase 6
 
-async def build_plans(resolved: ResolvedOutput, store: OutputStore) -> list[CardPlan]:
-    """The only place that dispatches on ViewDef and fetches payloads."""
+def build_plans(resolved: ResolvedOutput) -> list[CardPlan]:
+    """The only place that dispatches on ViewDef. Pure: no store, no await, no I/O."""
 ```
 
-Both presenters then collapse to a single dispatch over `ViewPlan` with no store access, no
-`await`, and no `SimpleNamespace`:
+Both presenters then collapse to a single dispatch over `ViewPlan`:
 
 ```python
 # app/display.py
@@ -314,23 +414,44 @@ Mechanical, no behavior change. Do it before Phase 3 so the new code is not writ
   `assert isinstance(...)` lines and the `cast(OutputStore, ...)` calls they enabled.
 - Confirm `make lint-arch` still passes (it should — `app` may import `toolhub`).
 
-### Phase 3 — introduce `CardPlan`
+### Phase 3 — toolhub: resolve to payloads, with per-artifact availability
 
-The core of the plan.
+The load-bearing change. Decisions 2, 3, 4 land together.
+
+- Convert `ResolvedOutput`, `ResolvedArtifact`, and `ResultPayload` to frozen dataclasses;
+  delete `ResultPayload`'s dead `_serialize_df` / `_deserialize_df` methods.
+- Split `ResolvedArtifact` into `AvailableArtifact | UnavailableArtifact`.
+- `OutputResolver._resolve_source` loads payloads; wrap per-artifact resolution so a source
+  materialization or payload-load failure yields `UnavailableArtifact(reason=...)` instead of
+  propagating. Keep whole-output `OutputResolutionError` for an invalid selection.
+- `OutputStore.resolve_source` returns a payload instead of metadata.
+- Delete the redundant `get_metadata` calls in `render_chart.py:517` and
+  `registry_transfer_source_table.py:63`.
+- Update the 12 test assertions to `.payload_by_source[...].metadata.id`, and the two fake
+  stores in `test_output_pane.py`.
+- The two renderers still work at this point — they just read
+  `artifact.payload_by_source[view.source]` instead of fetching. Do not restructure them yet.
+- Add tests: one artifact unavailable while its siblings still resolve; an evicted-frame
+  payload failure degrading to `UnavailableArtifact` rather than killing the output.
+
+### Phase 4 — introduce `CardPlan`
 
 - Add `app/output/plan.py` with the types above and `build_plans`, moving the four-branch
-  dispatch and every `get_payload` call into it.
+  dispatch into it. It takes no store and is not `async`.
 - Rewrite `display.py:build_resolved_output_card_views` as `present(plan, width)` over
   `ViewPlan`, preserving today's terminal behavior exactly: `MapViewPlan` and
   `GraphViewPlan` still render placeholders, and a `GraphViewPlan` that fails
   `materialize_graph_view` is still skipped (that check moves into `build_plans`).
 - Rewrite `pane/cards.py:render_resolved_output` as `present(plan, pane_dir)`.
+- Both presenters render `ErrorViewPlan` as a visible error card. This replaces the blanket
+  `except Exception: card = None` at `cards.py:237` — silent is worse than ugly for a card
+  the agent explicitly chose to show.
 - Delete `ResultMetadataLike`, `MapArtifactLike`, `GraphArtifactLike`, and all four
   `SimpleNamespace` constructions.
-- Update the callers in `tui.py:1145-1153` and `server.py:558` to
-  `build_plans(...)` → `present(...)`.
+- `materialize_graph_view` moves into `build_plans` — it is currently called in both
+  renderers, and `display.py:467` runs it only to validate and throws the result away.
 
-### Phase 4 — unify controls
+### Phase 5 — unify controls
 
 - Add `app/output/controls.py` with `Control` and `controls_for`.
 - Delete `_pane_panel` (`tui.py:95`) and `_choice_controls_from_result`
@@ -342,7 +463,7 @@ The core of the plan.
   explicitly with a comment pointing at the follow-up, so the gap is visible in one place
   instead of implicit in four.
 
-### Phase 5 — `TurnOutput`
+### Phase 6 — `TurnOutput`
 
 - Add `app/output/turn.py`.
 - `AgentResultWidget` drops `_result` / `_output_store` / `_applied_selection` in favour of
@@ -357,28 +478,22 @@ The core of the plan.
   decision, and a shared `TurnOutput` makes sharing the default with divergence available as
   an opt-out.
 
-### Phase 6 — error cards instead of silent drops
-
-- `pane/cards.py:237` wraps each artifact in `except Exception: card = None`, so an artifact
-  the user explicitly asked to see can vanish with no message.
-- Populate `CardPlan.error` in `build_plans` and have both presenters render a visible error
-  card. Silent is worse than ugly for a card the agent chose to show.
-- This is the app-side counterpart of the `SourceNotApplicable` /
-  `ResolvedArtifact = AvailableArtifact | UnavailableArtifact` direction sketched in
-  `ultimate_output_model_plan.md`. If that lands first, `CardPlan.error` should carry the
-  distinction between "not applicable for this selection" and "failed to render".
-
 ## Deferred / explicitly out of scope
 
-1. **Drawing number controls.** Phase 4 creates the seam; the slider widget, its debounce
+1. **Drawing number controls.** Phase 5 creates the seam; the slider widget, its debounce
    policy (every drag position is a cache miss), and the JS range input are separate work.
-2. **Persisting interactivity across restarts.** `_live_results` is in-memory, so a restored
+2. **`SourceNotApplicable`.** Phase 3 gives every artifact a `reason` string, which is
+   enough to render "not applicable for this selection". Distinguishing *intentional*
+   non-applicability from a render failure — the Jinja `not_applicable()` helper sketched in
+   `ultimate_output_model_plan.md` — is a follow-up that only needs to add a discriminator to
+   `UnavailableArtifact`.
+3. **Persisting interactivity across restarts.** `_live_results` is in-memory, so a restored
    turn renders from its on-disk `.data.json` but returns 404 from `/resolve`. Making this
    survive is closer than it looks — `OutputSpec` already round-trips through JSON exactly
    and result frames already spill to the workspace DuckDB; what is missing is persisting the
    spec and the `(source_id, selection_key) -> result_id` map. Until then, the manifest should
    at least mark a turn non-live so controls render disabled with a reason instead of failing
    on click.
-3. **Cross-filtering and view-shape parameterization.** A Vega selection cannot feed back
+4. **Cross-filtering and view-shape parameterization.** A Vega selection cannot feed back
    into a `ParameterId`, and `ChartView.spec` is fixed. Both are core-model changes and belong
    in `ultimate_output_model_plan.md`, not here.

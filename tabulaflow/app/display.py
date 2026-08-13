@@ -29,6 +29,10 @@ from tabulaflow.app.theme import (
     TABULAFLOW_RICH_SYNTAX_THEME,
     normalize_query_lexer,
 )
+from tabulaflow.core.outputs import ChartView, GraphViewSpec, MapView, TableView
+from tabulaflow.toolhub.output_resolver import ResolvedOutput
+from tabulaflow.toolhub.output_store import OutputStore, ResultPayload
+from tabulaflow.toolhub.render_graph import GraphSpecError, materialize_graph_view
 
 TABULAFLOW_THEME = Theme(
     {
@@ -418,20 +422,11 @@ def build_artifact_card_views(
 
 
 async def build_resolved_output_card_views(
-    resolved_output: object,
-    output_store: object,
+    resolved_output: ResolvedOutput,
+    output_store: OutputStore,
     width: int = 80,
 ) -> list[CardGroup]:
     """Build display cards directly from a resolved output spec."""
-    from typing import cast
-
-    from tabulaflow.core.outputs import ChartView, GraphViewSpec, MapView, TableView
-    from tabulaflow.toolhub.output_resolver import ResolvedOutput
-    from tabulaflow.toolhub.output_store import OutputStore
-    from tabulaflow.toolhub.render_graph import GraphSpecError, materialize_graph_view
-
-    assert isinstance(resolved_output, ResolvedOutput)
-    store = cast(OutputStore, output_store)
     groups: list[CardGroup] = []
     used_labels: set[str] = set()
     for artifact in resolved_output.artifacts:
@@ -440,12 +435,12 @@ async def build_resolved_output_card_views(
         used_labels.add(label)
         view = artifact.view
         if isinstance(view, TableView):
-            payload = await store.get_payload(artifact.metadata_by_source[view.source].id)
+            payload = await output_store.get_payload(artifact.metadata_by_source[view.source].id)
             group = _card_group_from_payload(label, artifact.artifact_id, payload, width)
             if group is not None:
                 groups.append(group)
         elif isinstance(view, ChartView):
-            payload = await store.get_payload(artifact.metadata_by_source[view.source].id)
+            payload = await output_store.get_payload(artifact.metadata_by_source[view.source].id)
             group = _card_group_from_payload(label, artifact.artifact_id, payload, width, chart_spec=view.spec)
             if group is not None:
                 groups.append(group)
@@ -460,7 +455,7 @@ async def build_resolved_output_card_views(
         elif isinstance(view, GraphViewSpec):
             graph_sources = {}
             for source_id, metadata in artifact.metadata_by_source.items():
-                payload = await store.get_payload(metadata.id)
+                payload = await output_store.get_payload(metadata.id)
                 if payload.df is not None:
                     graph_sources[source_id] = payload.df
             try:
@@ -480,13 +475,10 @@ async def build_resolved_output_card_views(
 def _card_group_from_payload(
     label: str,
     artifact_id: str,
-    payload: object,
+    payload: ResultPayload,
     width: int,
     chart_spec: dict[str, object] | None = None,
 ) -> CardGroup | None:
-    from tabulaflow.toolhub.output_store import ResultPayload
-
-    assert isinstance(payload, ResultPayload)
     views: list[ViewItem] = []
     if payload.graph is not None:
         views.append(ViewItem(kind=VIEW_KIND_GRAPH, renderable=_build_graph_card()))
