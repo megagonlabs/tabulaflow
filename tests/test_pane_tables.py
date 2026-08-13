@@ -103,20 +103,20 @@ class TestTryDecodeBase64:
 class TestBuildTableData:
     def test_renders_image_column_inline(self, tmp_path: Path) -> None:
         df = pd.DataFrame({"img": [PNG_MAGIC, PNG_MAGIC], "name": ["a", "b"]})
-        payload = build_table_data(df, asset_stem="rec_abc", output_dir=tmp_path)
+        payload = build_table_data(df, asset_stem="card_abc", output_dir=tmp_path)
 
         rows = _payload_rows(payload)
         table = _payload_table(payload)
         assert rows[0]["c0"]["src"].startswith("data:image/png;base64,")
         assert table["columns"][0]["role"] == "media"
-        assert not (tmp_path / "rec_abc").exists()
+        assert not (tmp_path / "card_abc").exists()
 
     def test_spills_large_blobs(self, tmp_path: Path) -> None:
         big_png = PNG_MAGIC + b"\x00" * (300 * 1024)
         df = pd.DataFrame({"img": [big_png]})
-        payload = build_table_data(df, asset_stem="rec_xyz", output_dir=tmp_path, inline_cap=256 * 1024)
+        payload = build_table_data(df, asset_stem="card_xyz", output_dir=tmp_path, inline_cap=256 * 1024)
 
-        sib_dir = tmp_path / "rec_xyz"
+        sib_dir = tmp_path / "card_xyz"
         assert sib_dir.is_dir()
         spilled = list(sib_dir.glob("*.png"))
         assert len(spilled) == 1
@@ -134,7 +134,7 @@ class TestBuildTableData:
         """
         cell = {"bytes": PNG_MAGIC, "path": None}
         df = pd.DataFrame({"img": [cell, cell, cell], "label": [1, 2, 3]})
-        payload = build_table_data(df, asset_stem="rec_hfimg", output_dir=tmp_path)
+        payload = build_table_data(df, asset_stem="card_hfimg", output_dir=tmp_path)
 
         rows = _payload_rows(payload)
         assert rows[0]["c0"]["src"].startswith("data:image/png;base64,")
@@ -142,14 +142,14 @@ class TestBuildTableData:
     def test_base64_string_column_rendered(self, tmp_path: Path) -> None:
         png_b64 = base64.b64encode(PNG_MAGIC + b"\x00" * 64).decode("ascii")
         df = pd.DataFrame({"img_b64": [png_b64, png_b64]})
-        payload = build_table_data(df, asset_stem="rec_b64", output_dir=tmp_path)
+        payload = build_table_data(df, asset_stem="card_b64", output_dir=tmp_path)
 
         rows = _payload_rows(payload)
         assert rows[0]["c0"]["src"].startswith("data:image/png;base64,")
 
     def test_row_cap_truncates(self, tmp_path: Path) -> None:
         df = pd.DataFrame({"n": list(range(1000))})
-        payload = build_table_data(df, asset_stem="rec_cap", output_dir=tmp_path, max_rows=10)
+        payload = build_table_data(df, asset_stem="card_cap", output_dir=tmp_path, max_rows=10)
 
         table = _payload_table(payload)
         assert table["meta"] == "showing 10 of 1,000 rows · 1 column"
@@ -157,18 +157,18 @@ class TestBuildTableData:
 
     def test_max_height_is_preserved(self, tmp_path: Path) -> None:
         df = pd.DataFrame({"a": [1, 2, 3]})
-        payload = build_table_data(df, asset_stem="rec_short_pane", output_dir=tmp_path, max_height=640)
+        payload = build_table_data(df, asset_stem="card_short_pane", output_dir=tmp_path, max_height=640)
 
         assert _payload_table(payload)["maxHeight"] == 640
 
     def test_mixed_column_not_treated_as_media(self, tmp_path: Path) -> None:
         df = pd.DataFrame({"col": [PNG_MAGIC, "plain string", 42, None, b"random"]})
-        payload = build_table_data(df, asset_stem="rec_mix", output_dir=tmp_path)
+        payload = build_table_data(df, asset_stem="card_mix", output_dir=tmp_path)
 
         assert _payload_table(payload)["columns"][0]["role"] == "text"
 
     def test_numeric_column_gets_number_role(self, tmp_path: Path) -> None:
         df = pd.DataFrame({"a": [1, 2, 3]})
-        payload = build_table_data(df, asset_stem="rec_assets", output_dir=tmp_path)
+        payload = build_table_data(df, asset_stem="card_assets", output_dir=tmp_path)
 
         assert _payload_table(payload)["columns"][0]["role"] == "number"
