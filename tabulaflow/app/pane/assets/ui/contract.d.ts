@@ -20,8 +20,22 @@ export interface PaneChoiceControl {
   choices: PaneControlChoice[];
 }
 
+export interface PaneNumberControl {
+  kind: "number";
+  id: string;
+  label: string;
+  min: number;
+  max: number;
+  step: number;
+  default: number;
+  display: "slider" | "input";
+  unit: string | null;
+}
+
+export type PaneControl = PaneChoiceControl | PaneNumberControl;
+
 export interface PanePanel {
-  controls: PaneChoiceControl[];
+  controls: PaneControl[];
   default_selection: Record<string, string | number | boolean>;
 }
 

@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import Literal, Required, TypedDict
 
+from tabulaflow.core.outputs import ChoiceParameter, NumberParameter, OutputSpec, ParameterSpec
+
 ViewKind = Literal["map", "chart", "data", "query", "graph"]
 VIEW_KINDS: tuple[ViewKind, ...] = ("map", "chart", "data", "query", "graph")
 CARD_ID_PREFIX = "card_"
@@ -29,8 +31,23 @@ class PaneChoiceControl(TypedDict):
     choices: list[PaneControlChoice]
 
 
+class PaneNumberControl(TypedDict):
+    kind: Literal["number"]
+    id: str
+    label: str
+    min: float
+    max: float
+    step: float
+    default: float
+    display: Literal["slider", "input"]
+    unit: str | None
+
+
+PaneControl = PaneChoiceControl | PaneNumberControl
+
+
 class PanePanel(TypedDict):
-    controls: list[PaneChoiceControl]
+    controls: list[PaneControl]
     default_selection: dict[str, str | int | float | bool]
 
 
@@ -149,6 +166,42 @@ def turn_payload(
     if panel is not None:
         turn["panel"] = panel
     return turn
+
+
+def pane_control(parameter: ParameterSpec) -> PaneControl:
+    """Project one output parameter to the browser-pane JSON contract."""
+    if isinstance(parameter, ChoiceParameter):
+        return {
+            "kind": "choice",
+            "id": parameter.id,
+            "label": parameter.label,
+            "choices": [{"id": choice.id, "label": choice.label} for choice in parameter.choices],
+        }
+    if isinstance(parameter, NumberParameter):
+        return {
+            "kind": "number",
+            "id": parameter.id,
+            "label": parameter.label,
+            "min": parameter.min,
+            "max": parameter.max,
+            "step": parameter.step,
+            "default": parameter.default,
+            "display": parameter.display,
+            "unit": parameter.unit,
+        }
+    raise TypeError(f"unsupported parameter {type(parameter).__name__}")
+
+
+def pane_panel_for_output(output: OutputSpec) -> PanePanel | None:
+    """Build the browser-pane control panel for an output."""
+    parameters = output.parameters
+    if not parameters:
+        return None
+    parameter_ids = {parameter.id for parameter in parameters}
+    return {
+        "controls": [pane_control(parameter) for parameter in parameters],
+        "default_selection": {key: value for key, value in output.default_selection.items() if key in parameter_ids},
+    }
 
 
 def manual_card_turn(card: PaneCard, *, title: str | None = None) -> PaneTurn:

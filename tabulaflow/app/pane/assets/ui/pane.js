@@ -72,6 +72,7 @@ function buildTranscript(turn) {
 function choiceControls(turn) {
   var panel = turn && turn.panel;
   var controls = panel && Array.isArray(panel.controls) ? panel.controls : [];
+  // Number controls are part of the pane contract but not drawn yet.
   return controls.filter(function (control) {
     return control && control.kind === 'choice' && Array.isArray(control.choices) && control.choices.length;
   });

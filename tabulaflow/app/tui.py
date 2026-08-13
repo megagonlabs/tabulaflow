@@ -24,7 +24,7 @@ from tabulaflow.app.config import (
 )
 from tabulaflow.app.debug import debug_enabled, mount_debug_widgets
 from tabulaflow.app.display import build_resolved_output_card_views
-from tabulaflow.app.pane import PaneCard, PanePanel, manual_card_turn, render_resolved_output, turn_payload
+from tabulaflow.app.pane import PaneCard, PanePanel, manual_card_turn, pane_panel_for_output, render_resolved_output, turn_payload
 from tabulaflow.app.runtime_paths import RuntimePaths, ensure_pane_dir
 from tabulaflow.app.session import LLM_UNAVAILABLE_MESSAGE, SessionState
 from tabulaflow.core.llm import model_display_name
@@ -95,28 +95,7 @@ def _compact_project_dir(path: Path) -> str:
 
 
 def _pane_panel(result: "ChatResult") -> PanePanel | None:
-    from tabulaflow.core.outputs import ChoiceParameter
-
-    controls = [parameter for parameter in result.output.parameters if isinstance(parameter, ChoiceParameter)]
-    default_selection = result.output.default_selection
-    if not controls:
-        return None
-    return {
-        "controls": [
-            {
-                "kind": "choice",
-                "id": control.id,
-                "label": control.label,
-                "choices": [{"id": choice.id, "label": choice.label} for choice in control.choices],
-            }
-            for control in controls
-        ],
-        "default_selection": {
-            key: value
-            for key, value in default_selection.items()
-            if any(control.id == key for control in controls)
-        },
-    }
+    return pane_panel_for_output(result.output)
 
 
 def _masked_api_key(key: str | None) -> str | None:

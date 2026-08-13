@@ -159,7 +159,13 @@ No `kind` discriminator is needed on resolved dataclasses unless they become ser
 
 ## Control projection
 
-Controls are still derived from `OutputSpec.parameters`. The clean next step is a small app helper that projects `ParameterSpec` to drawable controls once for both surfaces, including number parameters. That helper should not alter the output/resolved artifact model.
+`ParameterSpec` is the answer-control model. The app should not wrap parameters in a duplicate `Control` dataclass hierarchy unless a future presenter needs fields that do not belong in core.
+
+Surface-specific projection is still useful at the boundary:
+
+- terminal currently supports `ChoiceParameter` navigation;
+- browser-pane JSON projects `ParameterSpec` into `PaneChoiceControl | PaneNumberControl`;
+- number controls are part of the pane contract but are not drawn yet.
 
 ## Remaining cleanup opportunities
 

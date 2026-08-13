@@ -7,7 +7,7 @@ import json
 import re
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Protocol, TypedDict
+from typing import TYPE_CHECKING, Protocol, TypedDict
 
 from markdown_it import MarkdownIt
 from markdown_it.rules_core import StateCore
@@ -33,6 +33,7 @@ from textual.widgets import Input, Markdown, Static
 from textual.widgets._markdown import MarkdownFence, MarkdownTable, MarkdownTableContent
 
 from tabulaflow.app.display import DATA_PREVIEW_MAX_ROWS, build_resolved_output_card_views
+from tabulaflow.core.outputs import ChoiceParameter
 from tabulaflow.app.theme import (
     ACCENT,
     ACCENT_DIM,
@@ -1738,12 +1739,10 @@ class AgentResultWidget(Widget):
         return card.views[self._view_indices[min(self.current_card, len(self._cards) - 1)]]
 
     @staticmethod
-    def _choice_controls_from_result(result: "ChatResult") -> list[Any]:
-        from tabulaflow.core.outputs import ChoiceParameter
-
+    def _choice_controls_from_result(result: "ChatResult") -> list[ChoiceParameter]:
         return [parameter for parameter in result.output.parameters if isinstance(parameter, ChoiceParameter)]
 
-    def _choice_controls(self) -> list[Any]:
+    def _choice_controls(self) -> list[ChoiceParameter]:
         return self._choice_controls_cache
 
     def _choice_count(self) -> int:
