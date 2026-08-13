@@ -6,26 +6,30 @@ from collections.abc import Mapping
 from dataclasses import dataclass, field
 from typing import TypeAlias
 
+import pandas as pd
+
 from tabulaflow.core.outputs import (
     OutputSpec,
     ArtifactId,
     ArtifactSpec,
-    ChartView,
+    ChartArtifactSpec,
     FixedResultSource,
-    GraphViewSpec,
-    MapView,
-    ParameterDef,
+    GraphArtifactSpec,
+    MapArtifactSpec,
     ParameterId,
+    ParameterSpec,
     ParameterizedSource,
     Selection,
     SelectionValue,
     SourceId,
-    SourceDef,
-    TableView,
-    ViewDef,
+    SourceSpec,
+    TableArtifactSpec,
+    artifact_source_ids,
     validate_parameter_value,
 )
+from tabulaflow.core.types import GraphView
 from tabulaflow.toolhub.output_store import OutputStore, ResultPayload
+from tabulaflow.toolhub.render_graph import materialize_graph_view, validate_graph_size, graph_view_size
 
 
 class OutputResolutionError(ValueError):
@@ -33,13 +37,44 @@ class OutputResolutionError(ValueError):
 
 
 @dataclass(frozen=True)
-class AvailableArtifact:
-    """An artifact with payloads needed to render its view."""
+class ResolvedTableArtifact:
+    """Resolved table artifact with its source payload attached."""
 
     artifact_id: ArtifactId
-    view: ViewDef
+    source_id: SourceId
+    payload: ResultPayload
     label: str | None = None
-    payload_by_source: dict[SourceId, ResultPayload] = field(default_factory=dict)
+
+
+@dataclass(frozen=True)
+class ResolvedChartArtifact:
+    """Resolved chart artifact with its source payload and chart spec attached."""
+
+    artifact_id: ArtifactId
+    source_id: SourceId
+    payload: ResultPayload
+    spec: dict[str, object]
+    label: str | None = None
+
+
+@dataclass(frozen=True)
+class ResolvedMapArtifact:
+    """Resolved map artifact with all source payloads attached."""
+
+    artifact_id: ArtifactId
+    spec: dict[str, object]
+    payload_by_source: Mapping[SourceId, ResultPayload]
+    label: str | None = None
+
+
+@dataclass(frozen=True)
+class ResolvedGraphArtifact:
+    """Resolved graph artifact with its materialized graph attached."""
+
+    artifact_id: ArtifactId
+    graph: GraphView
+    layout: str = "force"
+    label: str | None = None
 
 
 @dataclass(frozen=True)
@@ -51,7 +86,13 @@ class UnavailableArtifact:
     label: str | None = None
 
 
-ResolvedArtifact: TypeAlias = AvailableArtifact | UnavailableArtifact
+ResolvedArtifact: TypeAlias = (
+    ResolvedTableArtifact
+    | ResolvedChartArtifact
+    | ResolvedMapArtifact
+    | ResolvedGraphArtifact
+    | UnavailableArtifact
+)
 
 
 @dataclass(frozen=True)
@@ -81,7 +122,7 @@ class OutputResolver:
         for artifact in output.artifacts:
             try:
                 payload_by_source: dict[SourceId, ResultPayload] = {}
-                for source_id in _view_source_ids(artifact.view):
+                for source_id in artifact_source_ids(artifact):
                     source = sources.get(source_id)
                     if source is None:
                         raise OutputResolutionError(f"artifact {artifact.id!r} references unknown source {source_id!r}")
@@ -98,8 +139,8 @@ class OutputResolver:
 
     async def _resolve_source(
         self,
-        source: SourceDef,
-        parameters: Mapping[ParameterId, ParameterDef],
+        source: SourceSpec,
+        parameters: Mapping[ParameterId, ParameterSpec],
         selection: Mapping[ParameterId, SelectionValue],
     ) -> ResultPayload:
         if isinstance(source, FixedResultSource):
@@ -126,18 +167,55 @@ def _normalize_selection(
         raise OutputResolutionError(str(exc)) from None
 
 
-def _resolved_artifact(artifact: ArtifactSpec, payload_by_source: dict[SourceId, ResultPayload]) -> AvailableArtifact:
-    return AvailableArtifact(
-        artifact_id=artifact.id,
-        label=artifact.label,
-        view=artifact.view,
-        payload_by_source=payload_by_source,
-    )
+def _resolved_artifact(artifact: ArtifactSpec, payload_by_source: dict[SourceId, ResultPayload]) -> ResolvedArtifact:
+    if isinstance(artifact, TableArtifactSpec):
+        return ResolvedTableArtifact(
+            artifact_id=artifact.id,
+            label=artifact.label,
+            source_id=artifact.source_id,
+            payload=payload_by_source[artifact.source_id],
+        )
+    if isinstance(artifact, ChartArtifactSpec):
+        return ResolvedChartArtifact(
+            artifact_id=artifact.id,
+            label=artifact.label,
+            source_id=artifact.source_id,
+            payload=payload_by_source[artifact.source_id],
+            spec=artifact.spec,
+        )
+    if isinstance(artifact, MapArtifactSpec):
+        return ResolvedMapArtifact(
+            artifact_id=artifact.id,
+            label=artifact.label,
+            spec=artifact.spec,
+            payload_by_source=payload_by_source,
+        )
+    if isinstance(artifact, GraphArtifactSpec):
+        sources = _dataframes_by_source(payload_by_source)
+        graph = materialize_graph_view(artifact.spec, sources)
+        validate_graph_size(graph_view_size(graph))
+        layout = artifact.spec.get("layout")
+        return ResolvedGraphArtifact(
+            artifact_id=artifact.id,
+            label=artifact.label,
+            graph=graph,
+            layout=layout if layout in {"force", "layered", "tree"} else "force",
+        )
+    raise TypeError(f"unsupported artifact {type(artifact).__name__}")
+
+
+def _dataframes_by_source(payload_by_source: Mapping[SourceId, ResultPayload]) -> dict[SourceId, pd.DataFrame]:
+    sources = {}
+    for source_id, payload in payload_by_source.items():
+        if payload.df is None:
+            raise ValueError(f"source {source_id!r} returned no data")
+        sources[source_id] = payload.df
+    return sources
 
 
 def _project_selection(
     source: ParameterizedSource,
-    parameters: Mapping[ParameterId, ParameterDef],
+    parameters: Mapping[ParameterId, ParameterSpec],
     selection: Mapping[ParameterId, object],
 ) -> Selection:
     projected: Selection = {}
@@ -152,11 +230,3 @@ def _project_selection(
         except ValueError as exc:
             raise OutputResolutionError(str(exc)) from None
     return projected
-
-
-def _view_source_ids(view: ViewDef) -> tuple[SourceId, ...]:
-    if isinstance(view, TableView | ChartView):
-        return (view.source,)
-    if isinstance(view, MapView | GraphViewSpec):
-        return tuple(view.sources)
-    raise TypeError(f"unsupported view {type(view).__name__}")

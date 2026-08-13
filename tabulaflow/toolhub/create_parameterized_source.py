@@ -18,7 +18,7 @@ from tabulaflow.core.db_connector.db_registry import DBRegistry
 from tabulaflow.core.outputs import (
     ChoiceParameter,
     NumberParameter,
-    ParameterDef,
+    ParameterSpec,
     ParameterizedSource,
     Selection,
     default_selection,
@@ -65,7 +65,7 @@ class CreateParameterizedSourceTool:
     async def __call__(
         self,
         db_alias: str,
-        parameters: list[ParameterDef],
+        parameters: list[ParameterSpec],
         query_template: str,
         max_warm_variants: int | None = None,
     ) -> ToolReturn:
@@ -129,7 +129,7 @@ class CreateParameterizedSourceTool:
     async def execute(
         self,
         db_alias: str,
-        parameters: list[ParameterDef],
+        parameters: list[ParameterSpec],
         query_template: str,
         max_warm_variants: int | None = None,
     ) -> CreatedParameterizedSource:
@@ -182,7 +182,7 @@ class CreateParameterizedSourceTool:
         return Tool(self.__call__, name=self.name)
 
 
-def _validate_parameters(parameters: list[ParameterDef]) -> None:
+def _validate_parameters(parameters: list[ParameterSpec]) -> None:
     if not parameters:
         raise ValueError("parameters must not be empty")
     ids = [parameter.id for parameter in parameters]
@@ -195,7 +195,7 @@ def _validate_parameters(parameters: list[ParameterDef]) -> None:
                     raise ValueError(f"number parameter {parameter.id!r} {field_name} must be finite")
 
 
-def _validate_template(parameters: list[ParameterDef], query_template: str) -> None:
+def _validate_template(parameters: list[ParameterSpec], query_template: str) -> None:
     try:
         parsed = _JINJA_ENV.parse(query_template)
     except jinja2.TemplateError as exc:
@@ -211,7 +211,7 @@ def _validate_template(parameters: list[ParameterDef], query_template: str) -> N
         raise ValueError("; ".join(problems))
 
 
-def _warm_selections(parameters: list[ParameterDef], max_warm_variants: int) -> list[Selection]:
+def _warm_selections(parameters: list[ParameterSpec], max_warm_variants: int) -> list[Selection]:
     default = default_selection(parameters)
     choice_parameters = [parameter for parameter in parameters if isinstance(parameter, ChoiceParameter)]
     if not choice_parameters:

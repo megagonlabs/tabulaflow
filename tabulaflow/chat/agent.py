@@ -32,15 +32,11 @@ from tabulaflow.core.db_connector import connector_info
 from tabulaflow.core.llm import make_agent, make_model_settings, model_display_name
 from tabulaflow.core.outputs import (
     ArtifactSpec,
-    ChartView,
-    GraphViewSpec,
-    MapView,
     OutputSpec,
-    ParameterDef,
-    SourceDef,
-    SourceId,
-    TableView,
-    ViewDef,
+    ParameterSpec,
+    SourceSpec,
+    TableArtifactSpec,
+    artifact_source_ids,
 )
 from tabulaflow.chat.events import (
     ChatEvent,
@@ -788,9 +784,9 @@ async def _build_chat_result(
 
 
 def _output_spec_from_bundle(bundle: "ArtifactBundle", output_store: OutputStore) -> OutputSpec:
-    sources: dict[str, SourceDef] = {}
+    sources: dict[str, SourceSpec] = {}
     artifacts: list[ArtifactSpec] = []
-    parameters: dict[str, ParameterDef] = {}
+    parameters: dict[str, ParameterSpec] = {}
 
     def ensure_source(source_id: str) -> None:
         if source_id in sources:
@@ -804,7 +800,7 @@ def _output_spec_from_bundle(bundle: "ArtifactBundle", output_store: OutputStore
         artifact = _artifact_from_ref(ref.id, ref.label, output_store)
         if artifact is None:
             continue
-        for source_id in _view_source_ids(artifact.view):
+        for source_id in artifact_source_ids(artifact):
             ensure_source(source_id)
         artifacts.append(artifact)
 
@@ -839,16 +835,8 @@ def _artifact_from_ref(ref_id: str, label: str | None, output_store: OutputStore
             output_store.get_source(ref_id)
         except (KeyError, ValueError):
             return None
-        return ArtifactSpec(id=ref_id, label=label, view=TableView(source=ref_id))
+        return TableArtifactSpec(id=ref_id, label=label, source_id=ref_id)
     return None
-
-
-def _view_source_ids(view: ViewDef) -> tuple[SourceId, ...]:
-    if isinstance(view, TableView | ChartView):
-        return (view.source,)
-    if isinstance(view, MapView | GraphViewSpec):
-        return tuple(view.sources)
-    raise TypeError(f"unsupported view {type(view).__name__}")
 
 
 def _declared_bundle(completed_results: dict[str, ToolReturnPart]) -> "ArtifactBundle | None":

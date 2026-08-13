@@ -14,7 +14,7 @@ from typing import Any, ClassVar
 import pandas as pd
 from pydantic_ai import Tool
 
-from tabulaflow.core.outputs import ChartView, FixedResultSource, ParameterizedSource
+from tabulaflow.core.outputs import FixedResultSource, ParameterizedSource
 from tabulaflow.toolhub.output_store import OutputStore
 
 
@@ -491,7 +491,7 @@ class RenderChartTool:
             return f"(error: chart source validation failed for {len(errors)} issue(s):\n  " + "\n  ".join(errors) + ")"
 
         label = chart_type_label(spec)
-        chart = self._output_store.add_artifact("CHART", ChartView(source=source_id, spec=spec))
+        chart = self._output_store.add_chart_artifact(source_id, spec)
         chart_id = chart.id
         rows = len(variants[0].df)
         suffix = f" — {rows:,} rows" if len(variants) == 1 else f" — {len(variants):,} source variants"

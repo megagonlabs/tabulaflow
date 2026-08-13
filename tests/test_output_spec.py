@@ -2,14 +2,13 @@ import pytest
 
 from tabulaflow.core import (
     OutputSpec,
-    ArtifactSpec,
     ChoiceOption,
     ChoiceParameter,
     FixedResultSource,
     NumberParameter,
     ResultMetadata,
     ParameterizedSource,
-    TableView,
+    TableArtifactSpec,
     canonical_selection_key,
 )
 
@@ -32,7 +31,7 @@ def test_output_spec_fills_default_selection_and_validates_references() -> None:
                 query_template="SELECT 1",
             )
         ],
-        artifacts=[ArtifactSpec(id="table", label="Top customers", view=TableView(source="top_customers"))],
+        artifacts=[TableArtifactSpec(id="table", label="Top customers", source_id="top_customers")],
     )
 
     assert spec.default_selection == {"metric": "revenue", "min_spend": 10_000}
@@ -88,13 +87,13 @@ def test_result_record_owns_query_provenance() -> None:
         id="Q2",
         db_alias="workspace",
         query="SELECT * FROM customers WHERE total_spend >= 50000",
-        selection={"min_spend": 50_000},
+        source_selection={"min_spend": 50_000},
         row_count=20,
         columns=["customer", "total_spend"],
     )
 
     assert record.db_alias == "workspace"
-    assert record.selection == {"min_spend": 50_000}
+    assert record.source_selection == {"min_spend": 50_000}
 
 
 def test_constant_result_source_has_no_inputs() -> None:
@@ -105,13 +104,13 @@ def test_constant_result_source_has_no_inputs() -> None:
 
 def test_output_spec_rejects_unknown_artifact_source() -> None:
     with pytest.raises(ValueError, match="unknown source"):
-        OutputSpec(artifacts=[ArtifactSpec(id="table", view=TableView(source="missing"))])
+        OutputSpec(artifacts=[TableArtifactSpec(id="table", source_id="missing")])
 
 
 def test_output_spec_serialization_round_trip() -> None:
     spec = OutputSpec(
         sources=[FixedResultSource(id="fixed", result_id="Q1")],
-        artifacts=[ArtifactSpec(id="table", view=TableView(source="fixed"))],
+        artifacts=[TableArtifactSpec(id="table", source_id="fixed")],
     )
 
     assert OutputSpec.model_validate_json(spec.model_dump_json()) == spec

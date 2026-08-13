@@ -7,7 +7,7 @@ import pandas as pd
 import pytest
 
 from tabulaflow.core.db_connector.sql_conn import SQLConnector
-from tabulaflow.core.outputs import ChartView, GraphViewSpec, MapView
+from tabulaflow.core.outputs import ChartArtifactSpec, GraphArtifactSpec, MapArtifactSpec
 from tabulaflow.core.types import ExecResult, PredQuery
 from tabulaflow.toolhub.output_store import OutputStore
 
@@ -17,22 +17,22 @@ def _make_pred_query(n_rows: int = 5) -> PredQuery:
     return PredQuery(query="SELECT 1", exec_result=ExecResult(df=df))
 
 
-def _chart_view(output_store: OutputStore, chart_id: str) -> ChartView:
-    view = output_store.get_artifact(chart_id).view
-    assert isinstance(view, ChartView)
-    return view
+def _chart_artifact(output_store: OutputStore, chart_id: str) -> ChartArtifactSpec:
+    artifact = output_store.get_artifact(chart_id)
+    assert isinstance(artifact, ChartArtifactSpec)
+    return artifact
 
 
-def _map_view(output_store: OutputStore, map_id: str) -> MapView:
-    view = output_store.get_artifact(map_id).view
-    assert isinstance(view, MapView)
-    return view
+def _map_artifact(output_store: OutputStore, map_id: str) -> MapArtifactSpec:
+    artifact = output_store.get_artifact(map_id)
+    assert isinstance(artifact, MapArtifactSpec)
+    return artifact
 
 
-def _graph_view(output_store: OutputStore, graph_id: str) -> GraphViewSpec:
-    view = output_store.get_artifact(graph_id).view
-    assert isinstance(view, GraphViewSpec)
-    return view
+def _graph_artifact(output_store: OutputStore, graph_id: str) -> GraphArtifactSpec:
+    artifact = output_store.get_artifact(graph_id)
+    assert isinstance(artifact, GraphArtifactSpec)
+    return artifact
 
 
 def _make_error_pred_query() -> PredQuery:
@@ -212,13 +212,13 @@ class TestWithConnector:
         await h.add_fixed_result_source("db", "sql", _make_pred_query())
         await h.add_fixed_result_source("db", "sql", _make_pred_query())
         assert not h._results.has_in_memory("R1")
-        chart_id = h.add_artifact("CHART", ChartView(source="S1", spec={"mark": "bar"})).id
+        chart_id = h.add_chart_artifact("S1", {"mark": "bar"}).id
         assert not h._results.has_in_memory("R1")
         assert chart_id == "CHART1"
-        assert _chart_view(h, "CHART1").source == "S1"
-        assert _chart_view(h, "CHART1").spec == {"mark": "bar"}
-        with pytest.raises(ValueError):
-            h.add_artifact("chart", ChartView(source="S1", spec={"mark": "bar"}))
+        assert _chart_artifact(h, "CHART1").source_id == "S1"
+        assert _chart_artifact(h, "CHART1").spec == {"mark": "bar"}
+        with pytest.raises(KeyError):
+            h.add_chart_artifact("S9", {"mark": "bar"})
         with pytest.raises(KeyError):
             h.get_artifact("CHART9")
 
@@ -227,10 +227,10 @@ class TestWithConnector:
         h = OutputStore(spill_connector=workspace)
         await h.add_fixed_result_source("db", "sql", _make_pred_query())
         spec = {"layers": [{"type": "points", "source": "S1", "lat": "lat", "lng": "lng"}]}
-        map_id = h.add_artifact("MAP", MapView(sources=["S1"], spec=spec)).id
+        map_id = h.add_map_artifact(["S1"], spec).id
         assert map_id == "MAP1"
-        assert _map_view(h, "MAP1").spec == spec
-        assert h.add_artifact("MAP", MapView(sources=["S1"], spec=spec)).id == "MAP2"
+        assert _map_artifact(h, "MAP1").spec == spec
+        assert h.add_map_artifact(["S1"], spec).id == "MAP2"
         with pytest.raises(KeyError):
             h.get_artifact("MAP9")
 
@@ -242,9 +242,9 @@ class TestWithConnector:
             "nodes": [{"data": [{"id": "a"}, {"id": "b"}], "id": "id"}],
             "edges": [{"data": [{"source": "a", "target": "b"}], "source": "source", "target": "target"}],
         }
-        graph_id = h.add_artifact("GRAPH", GraphViewSpec(sources=[], spec=graph_spec)).id
+        graph_id = h.add_graph_artifact([], graph_spec).id
         assert graph_id == "GRAPH1"
-        assert _graph_view(h, "GRAPH1").spec == graph_spec
-        assert h.add_artifact("GRAPH", GraphViewSpec(sources=[], spec=graph_spec)).id == "GRAPH2"
+        assert _graph_artifact(h, "GRAPH1").spec == graph_spec
+        assert h.add_graph_artifact([], graph_spec).id == "GRAPH2"
         with pytest.raises(KeyError):
             h.get_artifact("GRAPH9")

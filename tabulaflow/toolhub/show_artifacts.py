@@ -8,7 +8,7 @@ from typing import Annotated, ClassVar, TypeAlias
 from pydantic import BaseModel, Field
 from pydantic_ai import Tool, ToolReturn
 
-from tabulaflow.core.outputs import ChartView, GraphViewSpec, MapView
+from tabulaflow.core.outputs import ChartArtifactSpec, GraphArtifactSpec, MapArtifactSpec
 from tabulaflow.toolhub.output_store import OutputStore
 
 
@@ -64,15 +64,15 @@ class ShowArtifactsTool:
         try:
             if artifact.id.startswith("CHART"):
                 artifact_spec = self._output_store.get_artifact(artifact.id)
-                if not isinstance(artifact_spec.view, ChartView):
+                if not isinstance(artifact_spec, ChartArtifactSpec):
                     return f"unknown artifact id {artifact.id!r}"
             elif artifact.id.startswith("MAP"):
                 artifact_spec = self._output_store.get_artifact(artifact.id)
-                if not isinstance(artifact_spec.view, MapView):
+                if not isinstance(artifact_spec, MapArtifactSpec):
                     return f"unknown artifact id {artifact.id!r}"
             elif artifact.id.startswith("GRAPH"):
                 artifact_spec = self._output_store.get_artifact(artifact.id)
-                if not isinstance(artifact_spec.view, GraphViewSpec):
+                if not isinstance(artifact_spec, GraphArtifactSpec):
                     return f"unknown artifact id {artifact.id!r}"
             elif artifact.id.startswith("S"):
                 self._output_store.get_source(artifact.id)

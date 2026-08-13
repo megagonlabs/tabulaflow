@@ -2,17 +2,16 @@ import pandas as pd
 import pytest
 
 from tabulaflow.core import (
-    ArtifactSpec,
     ChoiceOption,
     ChoiceParameter,
     FixedResultSource,
     NumberParameter,
     OutputSpec,
     ParameterizedSource,
-    TableView,
+    TableArtifactSpec,
 )
 from tabulaflow.core.types import ExecResult, PredQuery
-from tabulaflow.toolhub import AvailableArtifact, OutputResolutionError, OutputResolver, OutputStore, UnavailableArtifact
+from tabulaflow.toolhub import OutputResolutionError, OutputResolver, OutputStore, ResolvedTableArtifact, UnavailableArtifact
 
 
 async def _output_store_with_results() -> OutputStore:
@@ -47,14 +46,14 @@ async def test_fixed_source_resolves_output_artifact() -> None:
     resolver = OutputResolver(output_store)
     output = OutputSpec(
         sources=[FixedResultSource(id="fixed", result_id="R1")],
-        artifacts=[ArtifactSpec(id="table", view=TableView(source="fixed"))],
+        artifacts=[TableArtifactSpec(id="table", source_id="fixed")],
     )
 
     resolved = await resolver.resolve(output)
 
     artifact = resolved.artifacts[0]
-    assert isinstance(artifact, AvailableArtifact)
-    metadata = artifact.payload_by_source["fixed"].metadata
+    assert isinstance(artifact, ResolvedTableArtifact)
+    metadata = artifact.payload.metadata
     assert resolved.selection == {}
     assert metadata.id == "R1"
     assert metadata.db_alias == "workspace"
@@ -93,14 +92,14 @@ async def test_parameterized_source_resolves_by_projected_selection() -> None:
     output = OutputSpec(
         parameters=_parameters(),
         sources=[source],
-        artifacts=[ArtifactSpec(id="table", view=TableView(source=source.id))],
+        artifacts=[TableArtifactSpec(id="table", source_id=source.id)],
     )
 
     resolved = await resolver.resolve(output, {"metric": "profit"})
 
     artifact = resolved.artifacts[0]
-    assert isinstance(artifact, AvailableArtifact)
-    metadata = artifact.payload_by_source[source.id].metadata
+    assert isinstance(artifact, ResolvedTableArtifact)
+    metadata = artifact.payload.metadata
     assert resolved.selection == {"metric": "profit", "min_spend": 10_000}
     assert metadata.id == "R2"
     assert isinstance(output.sources[0], ParameterizedSource)
@@ -124,7 +123,7 @@ async def test_parameterized_source_rejects_invalid_choice() -> None:
     output = OutputSpec(
         parameters=_parameters(),
         sources=[source],
-        artifacts=[ArtifactSpec(id="table", view=TableView(source=source.id))],
+        artifacts=[TableArtifactSpec(id="table", source_id=source.id)],
     )
 
     with pytest.raises(OutputResolutionError, match="not a valid choice"):
@@ -149,7 +148,7 @@ async def test_parameterized_source_reports_unavailable_selection() -> None:
     output = OutputSpec(
         parameters=_parameters(),
         sources=[source],
-        artifacts=[ArtifactSpec(id="table", view=TableView(source=source.id))],
+        artifacts=[TableArtifactSpec(id="table", source_id=source.id)],
     )
 
     resolved = await resolver.resolve(output, {"metric": "profit"})
@@ -171,7 +170,7 @@ async def test_parameterized_source_without_cache_errors_until_materialization_e
     output = OutputSpec(
         parameters=_parameters(),
         sources=[source],
-        artifacts=[ArtifactSpec(id="table", view=TableView(source=source.id))],
+        artifacts=[TableArtifactSpec(id="table", source_id=source.id)],
     )
 
     resolved = await resolver.resolve(output, {"min_spend": 10_000})
@@ -199,15 +198,15 @@ async def test_unavailable_artifact_does_not_hide_siblings() -> None:
         parameters=_parameters(),
         sources=[FixedResultSource(id="fixed", result_id="R1"), missing],
         artifacts=[
-            ArtifactSpec(id="fixed", view=TableView(source="fixed")),
-            ArtifactSpec(id="missing", view=TableView(source=missing.id)),
+            TableArtifactSpec(id="fixed", source_id="fixed"),
+            TableArtifactSpec(id="missing", source_id=missing.id),
         ],
     )
 
     resolved = await OutputResolver(output_store).resolve(output, {"metric": "profit"})
 
     first, second = resolved.artifacts
-    assert isinstance(first, AvailableArtifact)
-    assert first.payload_by_source["fixed"].metadata.id == "R1"
+    assert isinstance(first, ResolvedTableArtifact)
+    assert first.payload.metadata.id == "R1"
     assert isinstance(second, UnavailableArtifact)
     assert "has no result" in second.reason

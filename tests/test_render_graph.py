@@ -11,7 +11,7 @@ import pandas as pd
 import pytest
 
 from tabulaflow.core.types import ExecResult, PredQuery
-from tabulaflow.core.outputs import GraphViewSpec
+from tabulaflow.core.outputs import GraphArtifactSpec
 from tabulaflow.toolhub.output_store import OutputStore
 from tabulaflow.toolhub.render_graph import (
     GRAPH_MAX_NODES,
@@ -29,10 +29,10 @@ async def _output_store_with(*dfs: pd.DataFrame) -> OutputStore:
     return output_store
 
 
-def _graph_view(output_store: OutputStore, graph_id: str) -> GraphViewSpec:
-    view = output_store.get_artifact(graph_id).view
-    assert isinstance(view, GraphViewSpec)
-    return view
+def _graph_artifact(output_store: OutputStore, graph_id: str) -> GraphArtifactSpec:
+    artifact = output_store.get_artifact(graph_id)
+    assert isinstance(artifact, GraphArtifactSpec)
+    return artifact
 
 
 def _norm(spec: Mapping[str, object], **sources: pd.DataFrame) -> dict[str, Any]:
@@ -219,7 +219,7 @@ class TestRenderGraphTool:
         msg = await RenderGraphTool(output_store=output_store)(graph_spec=json.dumps(spec))
         assert "Network graph GRAPH1 created from S1" in msg
         assert "3 nodes, 2 edges (all nodes one color; set group on node sources to color by type)" in msg
-        graph = materialize_graph_view(_graph_view(output_store, "GRAPH1").spec, {"S1": (await output_store.get_payload("R1")).df})
+        graph = materialize_graph_view(_graph_artifact(output_store, "GRAPH1").spec, {"S1": (await output_store.get_payload("R1")).df})
         assert graph.edges[0].source == "a"
         assert graph.edges[0].target == "b"
 

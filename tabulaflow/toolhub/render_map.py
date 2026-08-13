@@ -11,7 +11,7 @@ import pandas as pd
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator, model_validator
 from pydantic_ai import Tool
 
-from tabulaflow.core.outputs import FixedResultSource, MapView
+from tabulaflow.core.outputs import FixedResultSource
 from tabulaflow.toolhub.output_store import OutputStore
 
 MAP_RENDER_MAX_ROWS = 50_000
@@ -515,7 +515,7 @@ class RenderMapTool:
         except MapSpecError as e:
             return f"(error: {e})"
 
-        map_artifact = self._output_store.add_artifact("MAP", MapView(sources=source_ids, spec=normalized))
+        map_artifact = self._output_store.add_map_artifact(source_ids, normalized)
         map_id = map_artifact.id
         label = map_type_label(normalized)
         if source_ids:

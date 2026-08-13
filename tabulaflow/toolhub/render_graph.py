@@ -13,7 +13,7 @@ import pandas as pd
 from pydantic import BaseModel, ConfigDict, ValidationError, model_validator
 from pydantic_ai import Tool
 
-from tabulaflow.core.outputs import FixedResultSource, GraphViewSpec
+from tabulaflow.core.outputs import FixedResultSource
 from tabulaflow.core.types import GraphView, GraphViewEdge, GraphViewNode
 from tabulaflow.core.utils import json_ready
 from tabulaflow.toolhub.output_store import OutputStore
@@ -536,7 +536,7 @@ class RenderGraphTool:
         except GraphSpecError as e:
             return f"(error: {e})"
 
-        artifact = self._output_store.add_artifact("GRAPH", GraphViewSpec(sources=source_ids, spec=normalized))
+        artifact = self._output_store.add_graph_artifact(source_ids, normalized)
         graph_id = artifact.id
         label = graph_type_label(normalized)
         from_text = f" from {', '.join(source_ids)}" if source_ids else ""

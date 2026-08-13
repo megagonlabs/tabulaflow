@@ -3,13 +3,12 @@ from __future__ import annotations
 import json
 import math
 from pathlib import Path
-from types import SimpleNamespace
 from typing import Any, cast
 
 import pandas as pd
 
 from tabulaflow.app.pane import CARD_ID_PREFIX, VIEW_KINDS, CardData, PaneCard
-from tabulaflow.app.pane.cards import render_graph_data, render_map_data, render_result_data
+from tabulaflow.app.pane.cards import GraphCardInput, MapCardInput, ResultCardInput, render_graph_data, render_map_data, render_result_data
 from tabulaflow.core.types import GraphView, GraphViewEdge, GraphViewNode
 from tabulaflow.toolhub.render_graph import materialize_graph_view, normalize_graph_spec
 
@@ -101,9 +100,7 @@ def test_record_card_payload_matches_contract(tmp_path: Path) -> None:
     df = pd.DataFrame({"region": ["north", "south"], "revenue": [10, 20]})
     spec = {"mark": "bar", "encoding": {"x": {"field": "region"}, "y": {"field": "revenue"}}}
     card = render_result_data(
-        SimpleNamespace(
-            df=df, chart_spec=spec, query="select region, revenue from sales", label="sales", query_lexer="sql"
-        ),
+        ResultCardInput(df=df, label="sales", chart_spec=spec, query="select region, revenue from sales", query_lexer="sql"),
         tmp_path,
     )
 
@@ -122,9 +119,7 @@ def test_record_card_with_attached_graph_payload_matches_contract(tmp_path: Path
         edges=[GraphViewEdge(id="acted_in", source="alice", target="matrix", label="ACTED_IN", directed=True)],
     )
     card = render_result_data(
-        SimpleNamespace(
-            df=df, chart_spec=None, graph=graph, query="MATCH p=()-->() RETURN p", label="paths", query_lexer="cypher"
-        ),
+        ResultCardInput(df=df, label="paths", graph=graph, query="MATCH p=()-->() RETURN p", query_lexer="cypher"),
         tmp_path,
     )
 
@@ -136,10 +131,9 @@ def test_record_card_with_attached_graph_payload_matches_contract(tmp_path: Path
 def test_map_card_payload_matches_contract(tmp_path: Path) -> None:
     df = pd.DataFrame({"city": ["San Francisco"], "lat": [37.7749], "lng": [-122.4194]})
     card = render_map_data(
-        SimpleNamespace(
-            map_id="MAP1",
+        MapCardInput(
             label="locations",
-            map_spec={"layers": [{"type": "points", "source": "Q1", "lat": "lat", "lng": "lng", "label": "city"}]},
+            spec={"layers": [{"type": "points", "source": "Q1", "lat": "lat", "lng": "lng", "label": "city"}]},
             sources={"Q1": df},
         ),
         tmp_path,
@@ -159,8 +153,7 @@ def test_graph_card_payload_matches_contract(tmp_path: Path) -> None:
     }
     normalized = normalize_graph_spec(spec, {"Q1": df})
     card = render_graph_data(
-        SimpleNamespace(
-            graph_id="GRAPH1",
+        GraphCardInput(
             label="lineage",
             graph=materialize_graph_view(normalized, {"Q1": df}),
             layout=normalized["layout"],
@@ -182,8 +175,7 @@ def test_graph_card_omits_directed_flag_for_undirected_edges(tmp_path: Path) -> 
     }
     normalized = normalize_graph_spec(spec, {"Q1": df})
     card = render_graph_data(
-        SimpleNamespace(
-            graph_id="GRAPH1",
+        GraphCardInput(
             label="network",
             graph=materialize_graph_view(normalized, {"Q1": df}),
             layout=normalized["layout"],
@@ -209,7 +201,7 @@ def test_graph_card_writes_strict_json_for_non_finite_values(tmp_path: Path) -> 
         ],
     )
     card = render_graph_data(
-        SimpleNamespace(graph_id="GRAPH1", label="graph", graph=graph, layout="force"),
+        GraphCardInput(label="graph", graph=graph, layout="force"),
         tmp_path,
     )
 

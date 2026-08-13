@@ -21,7 +21,7 @@ import pytest
 
 from tabulaflow.app.config import LLM_OFF, ResolvedLLMSelection
 from tabulaflow.app.pane.graphs import build_graph_result_data
-from tabulaflow.app.pane.cards import PANE_CODE_TEXT, build_query_data, render_map_data, render_result_data
+from tabulaflow.app.pane.cards import PANE_CODE_TEXT, MapCardInput, ResultCardInput, build_query_data, render_map_data, render_result_data
 from tabulaflow.app.pane.tables import TABLE_RENDER_MAX_ROWS
 from tabulaflow.app.theme import CODE_TEXT
 from tabulaflow.app.pane import CARD_ID_PREFIX, OutputPane, OutputPanePortError, _PANE_HTML
@@ -30,7 +30,7 @@ from tabulaflow.app.screens import send_table_to_output_pane
 from tabulaflow.toolhub.render_graph import materialize_graph_view, normalize_graph_spec
 from tabulaflow.app.tui import TabulaflowApp
 from tabulaflow.chat import ChatResult
-from tabulaflow.core import ChoiceOption, ChoiceParameter, FixedResultSource, OutputSpec, ResultMetadata, TableView, ArtifactSpec
+from tabulaflow.core import ChoiceOption, ChoiceParameter, FixedResultSource, OutputSpec, ResultMetadata, TableArtifactSpec
 from tabulaflow.toolhub.output_store import OutputStore, ResultPayload
 from tabulaflow.toolhub.render_map import MAP_RENDER_MAX_ROWS
 
@@ -229,12 +229,11 @@ def test_output_pane_rejects_missing_or_wrong_token(tmp_path: Path) -> None:
 def test_result_card_includes_data_view_meta(tmp_path: Path) -> None:
     df = pd.DataFrame({"region": ["North", "South"], "revenue": [10, 20]})
     card = render_result_data(
-        SimpleNamespace(
+        ResultCardInput(
             df=df,
+            label="sales",
             chart_spec=None,
             query=None,
-            label="sales",
-            result_id="r1",
             query_lexer="sql",
         ),
         tmp_path,
@@ -255,12 +254,11 @@ def test_map_and_table_row_caps_are_aligned() -> None:
 def test_result_card_preserves_null_cells(tmp_path: Path) -> None:
     df = pd.DataFrame({"name": ["valid", None], "score": [0.019593312555829002, None]})
     card = render_result_data(
-        SimpleNamespace(
+        ResultCardInput(
             df=df,
+            label="nulls",
             chart_spec=None,
             query=None,
-            label="nulls",
-            result_id="r1",
             query_lexer="sql",
         ),
         tmp_path,
@@ -279,10 +277,7 @@ def _map_card(
     *,
     label: str = "map",
 ) -> PaneCard:
-    card = render_map_data(
-        SimpleNamespace(map_id="MAP1", label=label, map_spec=map_spec, sources=sources),
-        tmp_path,
-    )
+    card = render_map_data(MapCardInput(label=label, spec=map_spec, sources=sources), tmp_path)
     assert card is not None
     assert card["id"].startswith(CARD_ID_PREFIX)
     return card
@@ -960,12 +955,11 @@ def test_live_view_survives_rapid_browser_replay_and_switches_atomically(tmp_pat
     cards = []
     for index in range(27):
         card = render_result_data(
-            SimpleNamespace(
+            ResultCardInput(
                 df=df,
+                label=f"chart_{index}",
                 chart_spec=spec,
                 query=None,
-                label=f"chart_{index}",
-                result_id=f"browser-{index}",
                 query_lexer="sql",
             ),
             tmp_path,
@@ -2333,7 +2327,7 @@ async def test_output_pane_resolves_live_turn_selection(tmp_path: Path) -> None:
                 )
             ],
             sources=[FixedResultSource(id="period_q3", result_id="Q1")],
-            artifacts=[ArtifactSpec(id="period_q3", label="period_q3", view=TableView(source="period_q3"))],
+            artifacts=[TableArtifactSpec(id="period_q3", label="period_q3", source_id="period_q3")],
         ),
     )
     pane.push(
@@ -2388,7 +2382,7 @@ async def test_output_pane_http_resolve_runs_on_app_loop(tmp_path: Path) -> None
             text="x",
             output=OutputSpec(
                 sources=[FixedResultSource(id="S1", result_id="R1")],
-                artifacts=[ArtifactSpec(id="S1", label="period_q3", view=TableView(source="S1"))],
+                artifacts=[TableArtifactSpec(id="S1", label="period_q3", source_id="S1")],
             ),
         ),
         output_store=cast(OutputStore, LoopCheckingOutputStore()),
@@ -2441,7 +2435,7 @@ def test_result_card_writes_structured_data_instead_of_html(tmp_path: Path) -> N
     df = pd.DataFrame({"cat": ["a", "b"], "n": [3, 5]})
     spec = {"mark": "bar", "encoding": {"x": {"field": "cat"}, "y": {"field": "n"}}}
     card = render_result_data(
-        SimpleNamespace(df=df, chart_spec=spec, query=None, label="x", result_id="r1", query_lexer="sql"),
+        ResultCardInput(df=df, label="x", chart_spec=spec),
         tmp_path,
     )
     assert card is not None
@@ -2457,7 +2451,7 @@ def test_result_card_writes_structured_data_instead_of_html(tmp_path: Path) -> N
 def test_output_pane_serves_card_data_only_under_token(tmp_path: Path) -> None:
     df = pd.DataFrame({"cat": ["a"], "n": [3]})
     card = render_result_data(
-        SimpleNamespace(df=df, chart_spec=None, query=None, label="x", result_id="r1", query_lexer="sql"),
+        ResultCardInput(df=df, label="x"),
         tmp_path,
     )
     assert card is not None

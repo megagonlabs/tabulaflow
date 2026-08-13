@@ -8,8 +8,8 @@ from pydantic_ai import ToolReturn
 
 from tabulaflow.core.db_connector.db_registry import DBRegistry
 from tabulaflow.core.db_connector.sql_conn import SQLConnector
-from tabulaflow.core.outputs import ChoiceOption, ChoiceParameter, NumberParameter, OutputSpec, TableView, ArtifactSpec
-from tabulaflow.toolhub import AvailableArtifact, CreateParameterizedSourceTool, OutputResolver, OutputStore
+from tabulaflow.core.outputs import ChoiceOption, ChoiceParameter, NumberParameter, OutputSpec, TableArtifactSpec
+from tabulaflow.toolhub import CreateParameterizedSourceTool, OutputResolver, OutputStore, ResolvedTableArtifact
 
 
 def _text(result: ToolReturn) -> str:
@@ -66,12 +66,12 @@ async def test_create_parameterized_source_registers_parameters_and_warms_choice
     assert len(output_store.cached_parameterized_results("S1")) == 2
 
     resolved = await OutputResolver(output_store).resolve(
-        OutputSpec(parameters=output_store.source_parameters(source.id), sources=[source], artifacts=[ArtifactSpec(id="S1", view=TableView(source="S1"))]),
+        OutputSpec(parameters=output_store.source_parameters(source.id), sources=[source], artifacts=[TableArtifactSpec(id="S1", source_id="S1")]),
         {"metric": "gross"},
     )
     artifact = resolved.artifacts[0]
-    assert isinstance(artifact, AvailableArtifact)
-    result_id = artifact.payload_by_source["S1"].metadata.id
+    assert isinstance(artifact, ResolvedTableArtifact)
+    result_id = artifact.payload.metadata.id
     payload = await output_store.get_payload(result_id)
     assert payload.df is not None
     assert payload.df.to_dict("records") == [{"value": 21}]
@@ -124,13 +124,13 @@ async def test_number_parameter_materializes_lazy_selection(registry: DBRegistry
     source = output_store.get_source("S1")
 
     resolved = await OutputResolver(output_store).resolve(
-        OutputSpec(parameters=output_store.source_parameters(source.id), sources=[source], artifacts=[ArtifactSpec(id="S1", view=TableView(source="S1"))]),
+        OutputSpec(parameters=output_store.source_parameters(source.id), sources=[source], artifacts=[TableArtifactSpec(id="S1", source_id="S1")]),
         {"min_net": 6},
     )
 
     artifact = resolved.artifacts[0]
-    assert isinstance(artifact, AvailableArtifact)
-    result_id = artifact.payload_by_source["S1"].metadata.id
+    assert isinstance(artifact, ResolvedTableArtifact)
+    result_id = artifact.payload.metadata.id
     payload = await output_store.get_payload(result_id)
     assert payload.df is not None
     assert payload.df.to_dict("records") == [{"customer": "Acme"}, {"customer": "Globex"}]

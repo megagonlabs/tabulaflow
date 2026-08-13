@@ -109,9 +109,7 @@ def send_table_to_output_pane(
 
     Returns the written data path on success, or ``None`` on failure.
     """
-    from types import SimpleNamespace
-
-    from tabulaflow.app.pane import render_result_data
+    from tabulaflow.app.pane import ResultCardInput, render_result_data
 
     try:
         pane_dir: Path = app._runtime_paths.pane_dir  # type: ignore[attr-defined]
@@ -119,10 +117,7 @@ def send_table_to_output_pane(
         status(Text("save failed: no pane dir", style=ERROR))
         return None
     try:
-        card = render_result_data(
-            SimpleNamespace(df=df, chart_spec=None, query=None, label=None, query_lexer="sql"),
-            pane_dir,
-        )
+        card = render_result_data(ResultCardInput(df=df, label=None), pane_dir)
     except OSError as exc:
         status(Text(f"write failed: {exc}", style=ERROR))
         return None

@@ -1,6 +1,9 @@
 """Browser output-pane server and payload builders."""
 
 from tabulaflow.app.pane.cards import (
+    GraphCardInput,
+    MapCardInput,
+    ResultCardInput,
     build_query_data,
     render_graph_data,
     render_map_data,
@@ -62,14 +65,17 @@ __all__ = [
     "ColumnRole",
     "DatasetData",
     "GraphCardData",
+    "GraphCardInput",
     "GraphData",
     "MapCardData",
+    "MapCardInput",
     "MapData",
     "PaneCard",
     "PanePanel",
     "PaneSource",
     "PaneTurn",
     "QueryCardData",
+    "ResultCardInput",
     "TABLE_RENDER_MAX_ROWS",
     "TableCardData",
     "TableData",

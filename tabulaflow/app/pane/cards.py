@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 import secrets
+from dataclasses import dataclass
 from pathlib import Path
-from types import SimpleNamespace
-from typing import TYPE_CHECKING, Protocol
+from collections.abc import Mapping
+from typing import TYPE_CHECKING
 
 import pandas as pd
 from pygments import highlight
@@ -20,11 +21,15 @@ from tabulaflow.app.pane.graphs import build_graph_result_data
 from tabulaflow.app.pane.maps import build_map_data
 from tabulaflow.app.pane.tables import PANE_TABLE_MAX_HEIGHT, _build_table_data
 from tabulaflow.app.theme import CODE_TEXT, TabulaflowPygmentsStyle, normalize_query_lexer
-from tabulaflow.core.outputs import ChartView, GraphViewSpec, MapView, TableView
 from tabulaflow.core.utils import write_strict_json
-from tabulaflow.toolhub.output_resolver import AvailableArtifact, ResolvedOutput, UnavailableArtifact
-from tabulaflow.toolhub.output_store import OutputStore
-from tabulaflow.toolhub.render_graph import GraphSpecError, materialize_graph_view
+from tabulaflow.toolhub.output_resolver import (
+    ResolvedChartArtifact,
+    ResolvedGraphArtifact,
+    ResolvedMapArtifact,
+    ResolvedOutput,
+    ResolvedTableArtifact,
+    UnavailableArtifact,
+)
 
 if TYPE_CHECKING:
     import pandas as pd
@@ -55,29 +60,34 @@ def build_code_data(code: str, *, lexer: str = "text", fallback_lexer: str = "te
     return {"code": code, "lexer": resolved_lexer, "language": language, "html": highlighted}
 
 
-class ResultMetadataLike(Protocol):
-    """The tabbed-card payload: a result (``chart_spec`` None) or a chart
-    artifact carrying its source result's data and query."""
+@dataclass(frozen=True)
+class ResultCardInput:
+    """Input for a browser-pane result card."""
 
     df: "pd.DataFrame | None"
-    chart_spec: dict[str, object] | None
-    query: str | None
     label: str | None
-    query_lexer: str
+    chart_spec: Mapping[str, object] | None = None
+    graph: object | None = None
+    query: str | None = None
+    query_lexer: str = "sql"
 
 
-class MapArtifactLike(Protocol):
-    map_id: str
+@dataclass(frozen=True)
+class MapCardInput:
+    """Input for a browser-pane map card."""
+
     label: str | None
-    map_spec: dict[str, object]
+    spec: Mapping[str, object]
     sources: "dict[str, pd.DataFrame]"
 
 
-class GraphArtifactLike(Protocol):
-    graph_id: str
+@dataclass(frozen=True)
+class GraphCardInput:
+    """Input for a browser-pane graph card."""
+
     label: str | None
     graph: object
-    layout: str
+    layout: str = "force"
 
 
 def build_query_data(sql: str, *, lexer: str = "sql") -> QueryCardData:
@@ -85,7 +95,7 @@ def build_query_data(sql: str, *, lexer: str = "sql") -> QueryCardData:
     return {"query": build_code_data(sql, lexer=lexer, fallback_lexer="sql")}
 
 
-def render_result_data(metadata: ResultMetadataLike, pane_dir: Path) -> PaneCard | None:
+def render_result_data(metadata: ResultCardInput, pane_dir: Path) -> PaneCard | None:
     """Render a result or chart artifact's payload to JSON; return a pane manifest.
 
     The descriptor is ordered chart -> data -> query, including only the views
@@ -110,7 +120,7 @@ def render_result_data(metadata: ResultMetadataLike, pane_dir: Path) -> PaneCard
         )
         card_data.update(table_build.data)
         if metadata.chart_spec is not None:
-            card_data.update(build_chart_data(df, metadata.chart_spec, field_by_column=table_build.field_by_column))
+            card_data.update(build_chart_data(df, dict(metadata.chart_spec), field_by_column=table_build.field_by_column))
             views.append("chart")
         views.append("data")
     if metadata.query:
@@ -123,7 +133,7 @@ def render_result_data(metadata: ResultMetadataLike, pane_dir: Path) -> PaneCard
     return card_payload(card_id=card_id, label=metadata.label, views=views)
 
 
-def render_map_data(map_artifact: MapArtifactLike, pane_dir: Path) -> PaneCard | None:
+def render_map_data(map_artifact: MapCardInput, pane_dir: Path) -> PaneCard | None:
     """Render a standalone map card's payload to JSON; return a pane manifest.
 
     A map-only card (no chart/data/query views) assembled from one or more query
@@ -148,7 +158,7 @@ def render_map_data(map_artifact: MapArtifactLike, pane_dir: Path) -> PaneCard |
             "columns": table_payload.get("columns", []) if isinstance(table_payload, dict) else [],
             "field_by_column": table_build.field_by_column,
         }
-    map_data = build_map_data(map_artifact.map_spec, sources_payload)
+    map_data = build_map_data(map_artifact.spec, sources_payload)
     if map_data is None:
         return None
     pane_dir.mkdir(parents=True, exist_ok=True)
@@ -156,7 +166,7 @@ def render_map_data(map_artifact: MapArtifactLike, pane_dir: Path) -> PaneCard |
     return card_payload(card_id=card_id, label=map_artifact.label, views=["map"])
 
 
-def render_graph_data(graph_artifact: GraphArtifactLike, pane_dir: Path) -> PaneCard | None:
+def render_graph_data(graph_artifact: GraphCardInput, pane_dir: Path) -> PaneCard | None:
     """Render a standalone graph card's payload to JSON; return a pane manifest."""
     card_id = f"{CARD_ID_PREFIX}{secrets.token_hex(6)}"
     graph_data = build_graph_result_data(graph_artifact.graph)
@@ -171,13 +181,13 @@ def render_graph_data(graph_artifact: GraphArtifactLike, pane_dir: Path) -> Pane
 
 
 
-async def render_resolved_output(resolved_output: ResolvedOutput, output_store: OutputStore, pane_dir: Path) -> list[PaneCard]:
+async def render_resolved_output(resolved_output: ResolvedOutput, pane_dir: Path) -> list[PaneCard]:
     """Render a resolved output spec to pane card descriptors."""
     cards: list[PaneCard] = []
     for artifact in resolved_output.artifacts:
         if isinstance(artifact, UnavailableArtifact):
             card = render_result_data(
-                SimpleNamespace(
+                ResultCardInput(
                     df=pd.DataFrame({"error": [artifact.reason]}),
                     chart_spec=None,
                     graph=None,
@@ -190,13 +200,11 @@ async def render_resolved_output(resolved_output: ResolvedOutput, output_store: 
             if card is not None:
                 cards.append(card)
             continue
-        assert isinstance(artifact, AvailableArtifact)
-        view = artifact.view
         try:
-            if isinstance(view, TableView):
-                payload = artifact.payload_by_source[view.source]
+            if isinstance(artifact, ResolvedTableArtifact):
+                payload = artifact.payload
                 card = render_result_data(
-                    SimpleNamespace(
+                    ResultCardInput(
                         df=payload.df,
                         chart_spec=None,
                         graph=payload.graph,
@@ -206,12 +214,12 @@ async def render_resolved_output(resolved_output: ResolvedOutput, output_store: 
                     ),
                     pane_dir,
                 )
-            elif isinstance(view, ChartView):
-                payload = artifact.payload_by_source[view.source]
+            elif isinstance(artifact, ResolvedChartArtifact):
+                payload = artifact.payload
                 card = render_result_data(
-                    SimpleNamespace(
+                    ResultCardInput(
                         df=payload.df,
-                        chart_spec=view.spec,
+                        chart_spec=artifact.spec,
                         graph=payload.graph,
                         query=payload.metadata.query,
                         label=artifact.label,
@@ -219,32 +227,17 @@ async def render_resolved_output(resolved_output: ResolvedOutput, output_store: 
                     ),
                     pane_dir,
                 )
-            elif isinstance(view, MapView):
+            elif isinstance(artifact, ResolvedMapArtifact):
                 sources = {}
                 for source_id, payload in artifact.payload_by_source.items():
                     if payload.df is not None:
                         sources[source_id] = payload.df
-                card = render_map_data(SimpleNamespace(map_id=artifact.artifact_id, label=artifact.label, map_spec=view.spec, sources=sources), pane_dir)
-            elif isinstance(view, GraphViewSpec):
-                sources = {}
-                for source_id, payload in artifact.payload_by_source.items():
-                    if payload.df is not None:
-                        sources[source_id] = payload.df
-                try:
-                    graph = materialize_graph_view(view.spec, sources)
-                except GraphSpecError:
-                    card = None
-                else:
-                    layout = view.spec.get("layout")
-                    card = render_graph_data(
-                        SimpleNamespace(
-                            graph_id=artifact.artifact_id,
-                            label=artifact.label,
-                            graph=graph,
-                            layout=layout if layout in {"force", "layered", "tree"} else "force",
-                        ),
-                        pane_dir,
-                    )
+                card = render_map_data(MapCardInput(label=artifact.label, spec=artifact.spec, sources=sources), pane_dir)
+            elif isinstance(artifact, ResolvedGraphArtifact):
+                card = render_graph_data(
+                    GraphCardInput(label=artifact.label, graph=artifact.graph, layout=artifact.layout),
+                    pane_dir,
+                )
             else:
                 card = None
         except Exception:

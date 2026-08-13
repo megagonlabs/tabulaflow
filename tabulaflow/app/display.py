@@ -29,10 +29,15 @@ from tabulaflow.app.theme import (
     TABULAFLOW_RICH_SYNTAX_THEME,
     normalize_query_lexer,
 )
-from tabulaflow.core.outputs import ChartView, GraphViewSpec, MapView, TableView
-from tabulaflow.toolhub.output_resolver import AvailableArtifact, ResolvedOutput, UnavailableArtifact
-from tabulaflow.toolhub.output_store import OutputStore, ResultPayload
-from tabulaflow.toolhub.render_graph import GraphSpecError, materialize_graph_view
+from tabulaflow.toolhub.output_resolver import (
+    ResolvedChartArtifact,
+    ResolvedGraphArtifact,
+    ResolvedMapArtifact,
+    ResolvedOutput,
+    ResolvedTableArtifact,
+    UnavailableArtifact,
+)
+from tabulaflow.toolhub.output_store import ResultPayload
 
 TABULAFLOW_THEME = Theme(
     {
@@ -423,7 +428,6 @@ def build_artifact_card_views(
 
 async def build_resolved_output_card_views(
     resolved_output: ResolvedOutput,
-    output_store: OutputStore,
     width: int = 80,
 ) -> list[CardGroup]:
     """Build display cards directly from a resolved output spec."""
@@ -442,35 +446,23 @@ async def build_resolved_output_card_views(
                 )
             )
             continue
-        assert isinstance(artifact, AvailableArtifact)
-        view = artifact.view
-        if isinstance(view, TableView):
-            payload = artifact.payload_by_source[view.source]
-            group = _card_group_from_payload(label, artifact.artifact_id, payload, width)
+        if isinstance(artifact, ResolvedTableArtifact):
+            group = _card_group_from_payload(label, artifact.artifact_id, artifact.payload, width)
             if group is not None:
                 groups.append(group)
-        elif isinstance(view, ChartView):
-            payload = artifact.payload_by_source[view.source]
-            group = _card_group_from_payload(label, artifact.artifact_id, payload, width, chart_spec=view.spec)
+        elif isinstance(artifact, ResolvedChartArtifact):
+            group = _card_group_from_payload(label, artifact.artifact_id, artifact.payload, width, chart_spec=artifact.spec)
             if group is not None:
                 groups.append(group)
-        elif isinstance(view, MapView):
+        elif isinstance(artifact, ResolvedMapArtifact):
             groups.append(
                 CardGroup(
                     label=label,
                     artifact_id=artifact.artifact_id,
-                    views=[ViewItem(kind=VIEW_KIND_MAP, renderable=_build_map_card(view.spec))],
+                    views=[ViewItem(kind=VIEW_KIND_MAP, renderable=_build_map_card(artifact.spec))],
                 )
             )
-        elif isinstance(view, GraphViewSpec):
-            graph_sources = {}
-            for source_id, payload in artifact.payload_by_source.items():
-                if payload.df is not None:
-                    graph_sources[source_id] = payload.df
-            try:
-                materialize_graph_view(view.spec, graph_sources)
-            except GraphSpecError:
-                continue
+        elif isinstance(artifact, ResolvedGraphArtifact):
             groups.append(
                 CardGroup(
                     label=label,

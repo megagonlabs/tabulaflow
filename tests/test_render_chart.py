@@ -9,7 +9,7 @@ import pandas as pd
 import pytest
 
 from tabulaflow.app.pane import _add_line_hover, build_chart_data
-from tabulaflow.core.outputs import ChartView, ChoiceOption, ChoiceParameter
+from tabulaflow.core.outputs import ChartArtifactSpec, ChoiceOption, ChoiceParameter
 from tabulaflow.core.types import ExecResult, PredQuery
 from tabulaflow.toolhub.output_store import OutputStore
 from tabulaflow.toolhub.render_chart import (
@@ -23,10 +23,10 @@ from tabulaflow.toolhub.render_chart import (
 SIMPLE_BAR: dict[str, object] = {"mark": "bar", "encoding": {"x": {"field": "a"}, "y": {"field": "b"}}}
 
 
-def _chart_view(output_store: OutputStore, chart_id: str) -> ChartView:
-    view = output_store.get_artifact(chart_id).view
-    assert isinstance(view, ChartView)
-    return view
+def _chart_artifact(output_store: OutputStore, chart_id: str) -> ChartArtifactSpec:
+    artifact = output_store.get_artifact(chart_id)
+    assert isinstance(artifact, ChartArtifactSpec)
+    return artifact
 
 
 class TestIsPlotextRenderable:
@@ -188,8 +188,8 @@ class TestRenderChartTool:
         spec = {"mark": "bar", "encoding": {"x": {"field": "a"}, "y": {"field": "b"}}}
         msg = await RenderChartTool(output_store=output_store)(source_id="S1", vegalite_spec=json.dumps(spec))
         assert "Bar chart CHART1 created from S1" in msg
-        assert _chart_view(output_store, "CHART1").source == "S1"
-        assert _chart_view(output_store, "CHART1").spec == spec
+        assert _chart_artifact(output_store, "CHART1").source_id == "S1"
+        assert _chart_artifact(output_store, "CHART1").spec == spec
 
     async def test_query_family_source_creates_chart(self) -> None:
         output_store = OutputStore()
@@ -224,8 +224,8 @@ class TestRenderChartTool:
         msg = await RenderChartTool(output_store=output_store)(source_id="S1", vegalite_spec=json.dumps(spec))
 
         assert "Bar chart CHART1 created from S1 — 2 source variants" in msg
-        assert _chart_view(output_store, "CHART1").source == "S1"
-        assert _chart_view(output_store, "CHART1").spec == spec
+        assert _chart_artifact(output_store, "CHART1").source_id == "S1"
+        assert _chart_artifact(output_store, "CHART1").spec == spec
 
     async def test_query_family_validation_reports_all_failing_selections(self) -> None:
         output_store = OutputStore()
@@ -268,7 +268,7 @@ class TestRenderChartTool:
         spec = {"mark": "arc", "encoding": {"theta": {"field": "b"}, "color": {"field": "c"}}}
         msg = await RenderChartTool(output_store=output_store)(source_id="S1", vegalite_spec=json.dumps(spec))
         assert "CHART1 created" in msg
-        assert _chart_view(output_store, "CHART1").spec == spec
+        assert _chart_artifact(output_store, "CHART1").spec == spec
 
     async def test_second_chart_gets_next_id(self) -> None:
         # two charts of the same record coexist — creating one never overwrites another
@@ -278,8 +278,8 @@ class TestRenderChartTool:
         await RenderChartTool(output_store=output_store)(source_id="S1", vegalite_spec=json.dumps(bar))
         msg = await RenderChartTool(output_store=output_store)(source_id="S1", vegalite_spec=json.dumps(line))
         assert "CHART2 created" in msg
-        assert _chart_view(output_store, "CHART1").spec == bar
-        assert _chart_view(output_store, "CHART2").spec == line
+        assert _chart_artifact(output_store, "CHART1").spec == bar
+        assert _chart_artifact(output_store, "CHART2").spec == line
 
     async def test_oversized_result_refused_without_creating(self) -> None:
         output_store = await _output_store_with(pd.DataFrame({"a": range(20_001), "b": range(20_001)}))
@@ -313,7 +313,7 @@ class TestRenderChartTool:
         spec = {"mark": "bar", "encoding": {"x": {"field": "meta.country"}, "y": {"field": "b"}}}
         msg = await RenderChartTool(output_store=output_store)(source_id="S1", vegalite_spec=json.dumps(spec))
         assert "not found" not in msg
-        assert _chart_view(output_store, "CHART1").spec == spec
+        assert _chart_artifact(output_store, "CHART1").spec == spec
 
     async def test_transform_derived_field_creates_chart(self) -> None:
         # 'derived' is created by the transform, not a source column — must not block
@@ -325,7 +325,7 @@ class TestRenderChartTool:
         }
         msg = await RenderChartTool(output_store=output_store)(source_id="S1", vegalite_spec=json.dumps(spec))
         assert "not found" not in msg
-        assert _chart_view(output_store, "CHART1").spec == spec
+        assert _chart_artifact(output_store, "CHART1").spec == spec
 
 
 class TestRenderPlotextDataTypes:

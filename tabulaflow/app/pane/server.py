@@ -565,7 +565,7 @@ class OutputPane:
             raise KeyError(turn_id)
         result, output_store = live
         resolved_output = await OutputResolver(output_store).resolve(result.output, cast("dict[str, SelectionValue]", selection))
-        return await render_resolved_output(resolved_output, output_store, self._pane_dir)
+        return await render_resolved_output(resolved_output, self._pane_dir)
 
     def resolve_turn_threadsafe(self, turn_id: int, selection: dict[str, object]) -> list[PaneCard]:
         """Resolve a live turn on the app loop from the HTTP server thread."""

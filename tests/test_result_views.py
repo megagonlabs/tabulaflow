@@ -19,7 +19,7 @@ from tabulaflow.app.display import (
 )
 from tabulaflow.chat import ChatResult
 from tabulaflow.core.types import GraphView, GraphViewEdge, GraphViewNode
-from tabulaflow.core.outputs import ChoiceOption, ChoiceParameter, NumberParameter, OutputSpec, ParameterDef
+from tabulaflow.core.outputs import ChoiceOption, ChoiceParameter, NumberParameter, OutputSpec, ParameterSpec
 
 
 def _result(result_id: str, label: str) -> SimpleNamespace:
@@ -129,7 +129,7 @@ def test_placeholder_artifact_yields_single_info_view() -> None:
 
 
 def test_panel_result_widget_switches_combinations_and_preserves_card_views() -> None:
-    controls: list[ParameterDef] = [
+    controls: list[ParameterSpec] = [
         ChoiceParameter(
             id="ranking",
             label="Ranking",
@@ -175,7 +175,7 @@ def test_panel_result_widget_switches_combinations_and_preserves_card_views() ->
 
 
 def test_panel_result_widget_uses_choice_controls_as_primary_model() -> None:
-    controls: list[ParameterDef] = [
+    controls: list[ParameterSpec] = [
         ChoiceParameter(
             id="ranking",
             label="Ranking",

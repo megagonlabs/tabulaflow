@@ -9,7 +9,7 @@ import pandas as pd
 import pytest
 
 from tabulaflow.core.types import ExecResult, PredQuery
-from tabulaflow.core.outputs import MapView
+from tabulaflow.core.outputs import MapArtifactSpec
 from tabulaflow.toolhub.output_store import OutputStore
 from tabulaflow.toolhub.render_map import MAP_RENDER_MAX_ROWS, RenderMapTool, normalize_map_spec
 
@@ -21,10 +21,10 @@ async def _output_store_with(*dfs: pd.DataFrame) -> OutputStore:
     return output_store
 
 
-def _map_view(output_store: OutputStore, map_id: str) -> MapView:
-    view = output_store.get_artifact(map_id).view
-    assert isinstance(view, MapView)
-    return view
+def _map_artifact(output_store: OutputStore, map_id: str) -> MapArtifactSpec:
+    artifact = output_store.get_artifact(map_id)
+    assert isinstance(artifact, MapArtifactSpec)
+    return artifact
 
 
 def _norm(spec: dict[str, Any], **sources: pd.DataFrame) -> dict[str, Any]:
@@ -244,7 +244,7 @@ class TestRenderMapTool:
         }
         msg = await RenderMapTool(output_store=output_store)(map_spec=json.dumps(spec))
         assert "Map MAP1 created from S1" in msg
-        assert _map_view(output_store, "MAP1").spec == {
+        assert _map_artifact(output_store, "MAP1").spec == {
             "title": "Cities",
             "layers": [{"type": "points", "source": "S1", "lat": "lat", "lng": "lng", "label": "name"}],
         }
@@ -260,7 +260,7 @@ class TestRenderMapTool:
         spec = {"layers": [{"type": "geojson", "source_id": "S1", "geojson": "geom", "label": "name"}]}
         msg = await RenderMapTool(output_store=output_store)(map_spec=json.dumps(spec))
         assert "Map MAP1 created" in msg
-        assert _map_view(output_store, "MAP1").spec == {
+        assert _map_artifact(output_store, "MAP1").spec == {
             "layers": [{"type": "geojson", "source": "S1", "geojson": "geom", "label": "name"}]
         }
 
@@ -278,7 +278,7 @@ class TestRenderMapTool:
         }
         msg = await RenderMapTool(output_store=output_store)(map_spec=json.dumps(spec))
         assert "MAP1 created from S1, S2" in msg
-        stored = _map_view(output_store, "MAP1").spec
+        stored = _map_artifact(output_store, "MAP1").spec
         assert [layer["source"] for layer in stored["layers"]] == ["S1", "S2"]
 
     async def test_unknown_source_id_errors_without_creating(self) -> None:

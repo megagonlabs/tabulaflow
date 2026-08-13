@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 from collections import OrderedDict
+from collections.abc import Mapping
 from dataclasses import dataclass
 import math
 from typing import TYPE_CHECKING, Literal
@@ -14,14 +15,19 @@ import pandas as pd
 from tabulaflow.core.outputs import (
     ArtifactId,
     ArtifactSpec,
+    ChartArtifactSpec,
     FixedResultSource,
-    ParameterDef,
+    GraphArtifactSpec,
+    MapArtifactSpec,
+    ParameterSpec,
     ParameterizedSource,
     ResultId,
     ResultMetadata,
     Selection,
-    SourceDef,
-    ViewDef,
+    SourceSpec,
+    SourceId,
+    TableArtifactSpec,
+    artifact_source_ids,
     canonical_selection_key,
 )
 from tabulaflow.core.types import GraphView, PredQuery
@@ -151,8 +157,8 @@ class OutputStore:
         if max_in_memory < 1:
             raise ValueError("max_in_memory must be >= 1")
         self._records: dict[str, _StoredResult] = {}
-        self._parameters: dict[str, ParameterDef] = {}
-        self._sources: dict[str, SourceDef] = {}
+        self._parameters: dict[str, ParameterSpec] = {}
+        self._sources: dict[str, SourceSpec] = {}
         self._source_cache: dict[tuple[str, str], str] = {}
         self._artifacts: dict[str, ArtifactSpec] = {}
         self._next_result_id = 1
@@ -172,7 +178,7 @@ class OutputStore:
         self._sources[source_id] = source
         return source
 
-    def register_parameter(self, parameter: ParameterDef) -> None:
+    def register_parameter(self, parameter: ParameterSpec) -> None:
         """Register one output parameter, rejecting conflicting reuse."""
         existing = self._parameters.get(parameter.id)
         if existing is None:
@@ -181,14 +187,14 @@ class OutputStore:
         if existing != parameter:
             raise ValueError(f"parameter {parameter.id!r} already exists with a different definition")
 
-    def get_parameter(self, parameter_id: str) -> ParameterDef:
+    def get_parameter(self, parameter_id: str) -> ParameterSpec:
         """Return a registered parameter definition."""
         try:
             return self._parameters[parameter_id]
         except KeyError:
             raise KeyError(f"No parameter with id {parameter_id}") from None
 
-    def source_parameters(self, source_id: str) -> list[ParameterDef]:
+    def source_parameters(self, source_id: str) -> list[ParameterSpec]:
         """Return the parameter definitions required by ``source_id``."""
         source = self.get_source(source_id)
         if not isinstance(source, ParameterizedSource):
@@ -198,7 +204,7 @@ class OutputStore:
     def add_parameterized_source(
         self,
         db_alias: str,
-        parameters: list[ParameterDef],
+        parameters: list[ParameterSpec],
         query_template: str,
     ) -> ParameterizedSource:
         """Create a parameterized source from registered parameters and a query template."""
@@ -263,7 +269,7 @@ class OutputStore:
             db_alias=db_alias,
             query=pred_query.query,
             connector_type=connector_type,
-            selection={} if selection is None else dict(selection),
+            source_selection={} if selection is None else dict(selection),
             row_count=row_count,
             columns=columns,
             latency_seconds=exec_result.latency_seconds if exec_result is not None else None,
@@ -272,7 +278,7 @@ class OutputStore:
         self._records[result_id] = stored
         return stored
 
-    def get_source(self, source_id: str) -> SourceDef:
+    def get_source(self, source_id: str) -> SourceSpec:
         """Return a previously stored source."""
         try:
             return self._sources[source_id]
@@ -343,18 +349,46 @@ class OutputStore:
             pass
         return ResultPayload(metadata=metadata, df=df, graph=raw.graph)
 
-    def add_artifact(self, prefix: str, view: ViewDef, label: str | None = None) -> ArtifactSpec:
-        """Store an artifact spec under an id allocated from ``prefix``."""
+    def add_table_artifact(self, source_id: SourceId, label: str | None = None) -> TableArtifactSpec:
+        """Store a table artifact under its source id."""
+        self.get_source(source_id)
+        artifact = TableArtifactSpec(id=source_id, label=label, source_id=source_id)
+        self._artifacts[source_id] = artifact
+        return artifact
+
+    def add_chart_artifact(self, source_id: SourceId, spec: Mapping[str, object], label: str | None = None) -> ChartArtifactSpec:
+        """Store a chart artifact under a ``CHART<n>`` id."""
+        artifact_id = self._next_artifact_id("CHART")
+        artifact = ChartArtifactSpec(id=artifact_id, label=label, source_id=source_id, spec=dict(spec))
+        self._store_artifact(artifact)
+        return artifact
+
+    def add_map_artifact(self, source_ids: list[SourceId], spec: Mapping[str, object], label: str | None = None) -> MapArtifactSpec:
+        """Store a map artifact under a ``MAP<n>`` id."""
+        artifact_id = self._next_artifact_id("MAP")
+        artifact = MapArtifactSpec(id=artifact_id, label=label, source_ids=source_ids, spec=dict(spec))
+        self._store_artifact(artifact)
+        return artifact
+
+    def add_graph_artifact(self, source_ids: list[SourceId], spec: Mapping[str, object], label: str | None = None) -> GraphArtifactSpec:
+        """Store a graph artifact under a ``GRAPH<n>`` id."""
+        artifact_id = self._next_artifact_id("GRAPH")
+        artifact = GraphArtifactSpec(id=artifact_id, label=label, source_ids=source_ids, spec=dict(spec))
+        self._store_artifact(artifact)
+        return artifact
+
+    def _next_artifact_id(self, prefix: str) -> ArtifactId:
         if not prefix or not prefix.isidentifier() or prefix != prefix.upper():
             raise ValueError(f"artifact prefix must be uppercase identifier text, got {prefix!r}")
-        for source_id in _view_source_ids(view):
-            self.get_source(source_id)
         next_id = self._next_artifact_ids.get(prefix, 1)
         artifact_id: ArtifactId = f"{prefix}{next_id}"
         self._next_artifact_ids[prefix] = next_id + 1
-        artifact = ArtifactSpec(id=artifact_id, label=label, view=view)
-        self._artifacts[artifact_id] = artifact
-        return artifact
+        return artifact_id
+
+    def _store_artifact(self, artifact: ArtifactSpec) -> None:
+        for source_id in artifact_source_ids(artifact):
+            self.get_source(source_id)
+        self._artifacts[artifact.id] = artifact
 
     def get_artifact(self, artifact_id: str) -> ArtifactSpec:
         """Return a previously stored chart, map, or graph artifact definition."""
@@ -362,16 +396,6 @@ class OutputStore:
             return self._artifacts[artifact_id]
         except KeyError:
             raise KeyError(f"No artifact with id {artifact_id}") from None
-
-
-def _view_source_ids(view: ViewDef) -> tuple[str, ...]:
-    if hasattr(view, "source"):
-        return (view.source,)
-    if hasattr(view, "sources"):
-        return tuple(view.sources)
-    return ()
-
-
 def render_parameterized_query(query_template: str, selection: Selection) -> str:
     """Render a parameterized-source query template with validated scalar values."""
     for name, value in selection.items():

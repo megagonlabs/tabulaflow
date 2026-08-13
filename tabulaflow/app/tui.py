@@ -816,7 +816,7 @@ class TabulaflowApp(App[None]):
         panel = _pane_panel(result)
 
         async def render_and_push() -> None:
-            cards = await render_resolved_output(resolved_output, output_store, pane_dir)
+            cards = await render_resolved_output(resolved_output, pane_dir)
             if cards or user_text or result.text:
                 pane.push(
                     turn_payload(title=title, user=user_text, assistant=result.text, cards=cards, panel=panel),
@@ -1149,7 +1149,7 @@ class TabulaflowApp(App[None]):
             title=display_text,
             user_text=display_text,
         )
-        cards = await build_resolved_output_card_views(resolved_output, output_store, self.size.width - 11)
+        cards = await build_resolved_output_card_views(resolved_output, self.size.width - 11)
         if cards:
             # chat-log padding (2) + scrollbar (2) + widget margin (5) + widget padding (2) = 11
             result_widget = AgentResultWidget(

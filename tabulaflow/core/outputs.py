@@ -27,6 +27,8 @@ Selection: TypeAlias = dict[ParameterId, SelectionValue]
 class ChoiceOption(BaseModel):
     """One finite parameter option."""
 
+    model_config = ConfigDict(extra="forbid")
+
     id: str
     label: str
 
@@ -44,6 +46,8 @@ class ChoiceParameter(BaseModel):
 
 class NumberParameter(BaseModel):
     """Numeric output parameter, optionally rendered as a slider."""
+
+    model_config = ConfigDict(extra="forbid")
 
     kind: Literal["number"] = "number"
     id: ParameterId
@@ -66,11 +70,13 @@ class NumberParameter(BaseModel):
         return self
 
 
-ParameterDef = Annotated[ChoiceParameter | NumberParameter, Field(discriminator="kind")]
+ParameterSpec: TypeAlias = Annotated[ChoiceParameter | NumberParameter, Field(discriminator="kind")]
 
 
 class FixedResultSource(BaseModel):
     """Source that always resolves to one materialized result."""
+
+    model_config = ConfigDict(extra="forbid")
 
     kind: Literal["fixed"] = "fixed"
     id: SourceId
@@ -80,6 +86,8 @@ class FixedResultSource(BaseModel):
 class ParameterizedSource(BaseModel):
     """Source that materializes/cache results under a source-local selection."""
 
+    model_config = ConfigDict(extra="forbid")
+
     kind: Literal["parameterized"] = "parameterized"
     id: SourceId
     parameter_ids: list[ParameterId]
@@ -87,69 +95,84 @@ class ParameterizedSource(BaseModel):
     query_template: str
 
 
-SourceDef = Annotated[FixedResultSource | ParameterizedSource, Field(discriminator="kind")]
+SourceSpec: TypeAlias = Annotated[FixedResultSource | ParameterizedSource, Field(discriminator="kind")]
 
 
 class ResultMetadata(BaseModel):
     """Metadata for a concrete materialized result; data lives in runtime storage."""
 
+    model_config = ConfigDict(extra="forbid")
+
     id: ResultId
     db_alias: str
     query: str
     connector_type: Literal["sql", "property_graph"] = "sql"
-    selection: Selection = Field(default_factory=dict)
+    source_selection: Selection = Field(default_factory=dict)
     row_count: int | None = None
     columns: list[str] | None = None
     latency_seconds: float | None = None
 
 
-class TableView(BaseModel):
-    """Tabular view over one source."""
+class TableArtifactSpec(BaseModel):
+    """Table artifact over one source."""
+
+    model_config = ConfigDict(extra="forbid")
 
     kind: Literal["table"] = "table"
-    source: SourceId
-
-
-class ChartView(BaseModel):
-    """Chart view over one source."""
-
-    kind: Literal["chart"] = "chart"
-    source: SourceId
-    spec: dict[str, Any]
-
-
-class MapView(BaseModel):
-    """Map view over one or more sources."""
-
-    kind: Literal["map"] = "map"
-    sources: list[SourceId]
-    spec: dict[str, Any]
-
-
-class GraphViewSpec(BaseModel):
-    """Graph view over one or more sources."""
-
-    kind: Literal["graph"] = "graph"
-    sources: list[SourceId]
-    spec: dict[str, Any]
-
-
-ViewDef = Annotated[TableView | ChartView | MapView | GraphViewSpec, Field(discriminator="kind")]
-
-
-class ArtifactSpec(BaseModel):
-    """Display artifact: identity, label, and view intent."""
-
     id: ArtifactId
     label: str | None = None
-    view: ViewDef
+    source_id: SourceId
+
+
+class ChartArtifactSpec(BaseModel):
+    """Chart artifact over one source."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    kind: Literal["chart"] = "chart"
+    id: ArtifactId
+    label: str | None = None
+    source_id: SourceId
+    spec: dict[str, Any]
+
+
+class MapArtifactSpec(BaseModel):
+    """Map artifact over one or more sources."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    kind: Literal["map"] = "map"
+    id: ArtifactId
+    label: str | None = None
+    source_ids: list[SourceId]
+    spec: dict[str, Any]
+
+
+class GraphArtifactSpec(BaseModel):
+    """Graph artifact over one or more sources."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    kind: Literal["graph"] = "graph"
+    id: ArtifactId
+    label: str | None = None
+    source_ids: list[SourceId]
+    spec: dict[str, Any]
+
+
+ArtifactSpec: TypeAlias = Annotated[
+    TableArtifactSpec | ChartArtifactSpec | MapArtifactSpec | GraphArtifactSpec,
+    Field(discriminator="kind"),
+]
 
 
 class OutputSpec(BaseModel):
     """Complete declarative contract for an interactive output."""
 
-    parameters: list[ParameterDef] = Field(default_factory=list)
-    sources: list[SourceDef] = Field(default_factory=list)
+    model_config = ConfigDict(extra="forbid")
+
+    parameters: list[ParameterSpec] = Field(default_factory=list)
+    sources: list[SourceSpec] = Field(default_factory=list)
     artifacts: list[ArtifactSpec] = Field(default_factory=list)
     default_selection: Selection = Field(default_factory=dict)
 
@@ -180,7 +203,7 @@ class OutputSpec(BaseModel):
 
         known_sources = set(source_ids)
         for artifact in self.artifacts:
-            for source_id in _view_source_ids(artifact.view):
+            for source_id in artifact_source_ids(artifact):
                 if source_id not in known_sources:
                     raise ValueError(f"artifact {artifact.id!r} references unknown source {source_id!r}")
         return self
@@ -191,7 +214,7 @@ def _require_unique(values: Sequence[str], label: str) -> None:
         raise ValueError(f"{label} must be unique")
 
 
-def parameter_default(parameter: ParameterDef) -> SelectionValue:
+def parameter_default(parameter: ParameterSpec) -> SelectionValue:
     """Default value implied by a parameter definition."""
     if isinstance(parameter, ChoiceParameter):
         return parameter.choices[0].id
@@ -200,12 +223,12 @@ def parameter_default(parameter: ParameterDef) -> SelectionValue:
     raise TypeError(f"unsupported parameter {type(parameter).__name__}")
 
 
-def default_selection(parameters: Sequence[ParameterDef]) -> Selection:
+def default_selection(parameters: Sequence[ParameterSpec]) -> Selection:
     """Default selection implied by parameter definitions."""
     return {parameter.id: parameter_default(parameter) for parameter in parameters}
 
 
-def validate_parameter_value(parameter: ParameterDef, value: object) -> SelectionValue:
+def validate_parameter_value(parameter: ParameterSpec, value: object) -> SelectionValue:
     """Return a typed parameter value or raise ``ValueError``."""
     if isinstance(parameter, ChoiceParameter):
         choice = str(value)
@@ -229,10 +252,10 @@ def canonical_selection_key(selection: Mapping[str, SelectionValue]) -> str:
     return json.dumps(dict(sorted(selection.items())), separators=(",", ":"), sort_keys=True)
 
 
-def _view_source_ids(view: ViewDef) -> tuple[SourceId, ...]:
-    """Source ids referenced by a view."""
-    if isinstance(view, TableView | ChartView):
-        return (view.source,)
-    if isinstance(view, MapView | GraphViewSpec):
-        return tuple(view.sources)
-    raise TypeError(f"unsupported view {type(view).__name__}")
+def artifact_source_ids(artifact: ArtifactSpec) -> tuple[SourceId, ...]:
+    """Source ids referenced by an artifact."""
+    if isinstance(artifact, TableArtifactSpec | ChartArtifactSpec):
+        return (artifact.source_id,)
+    if isinstance(artifact, MapArtifactSpec | GraphArtifactSpec):
+        return tuple(artifact.source_ids)
+    raise TypeError(f"unsupported artifact {type(artifact).__name__}")

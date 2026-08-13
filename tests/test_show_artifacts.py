@@ -4,7 +4,7 @@ import pandas as pd
 import pytest
 from pydantic_ai import ToolReturn
 
-from tabulaflow.core.outputs import ChartView, ChoiceOption, ChoiceParameter
+from tabulaflow.core.outputs import ChoiceOption, ChoiceParameter
 from tabulaflow.core.types import ExecResult, PredQuery
 from tabulaflow.toolhub import ArtifactBundle, ArtifactRef, OutputStore, ShowArtifactsTool
 
@@ -19,7 +19,7 @@ def _text(result: ToolReturn) -> str:
 async def output_store() -> OutputStore:
     h = OutputStore()
     await h.add_fixed_result_source("workspace", "sql", PredQuery(query="SELECT 1", exec_result=ExecResult(df=pd.DataFrame({"a": [1]}))))
-    h.add_artifact("CHART", ChartView(source="S1", spec={"mark": "bar"}))
+    h.add_chart_artifact("S1", {"mark": "bar"})
     return h
 
 

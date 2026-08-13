@@ -13,19 +13,20 @@ from tabulaflow.core.types import ExecResult, PredQuery
 from tabulaflow.toolhub import (
     ArtifactRef,
     ArtifactBundle,
-    AvailableArtifact,
     CreateParameterizedSourceTool,
     OutputResolver,
     OutputStore,
     RenderChartTool,
+    ResolvedChartArtifact,
+    ResolvedTableArtifact,
 )
 
 
 def _result_id(artifact: object, source_id: str | None = None) -> str:
-    assert isinstance(artifact, AvailableArtifact)
-    if source_id is None:
-        source_id = next(iter(artifact.payload_by_source))
-    return artifact.payload_by_source[source_id].metadata.id
+    assert isinstance(artifact, ResolvedTableArtifact | ResolvedChartArtifact)
+    if source_id is not None:
+        assert artifact.source_id == source_id
+    return artifact.payload.metadata.id
 
 
 def test_strip_answer_marker_removes_the_marker() -> None:
@@ -208,7 +209,7 @@ async def test_build_chat_result_resolves_source_backed_chart_in_panel(tmp_path:
 
     result = await _build_chat_result("<answer>\nChart shown.", bundle, output_store)
 
-    assert result.output.artifacts[0].view.kind == "chart"
+    assert result.output.artifacts[0].kind == "chart"
     resolved_output = await OutputResolver(output_store).resolve(result.output, {"period": "q3"})
     assert _result_id(resolved_output.artifacts[0], "S1") == "R2"
     resolver = OutputResolver(output_store)
