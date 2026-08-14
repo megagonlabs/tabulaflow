@@ -15,6 +15,7 @@ into ``AgentResultWidget``.  It exercises the intended key model:
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 
 from rich.style import Style
@@ -99,10 +100,7 @@ class TerminalControlPanelPreview(Static, can_focus=True):
         if not isinstance(parameter, NumberParameter):
             return
         current = float(self._pending_selection[parameter.id])
-        values = _number_values(parameter)
-        current_index = min(range(len(values)), key=lambda i: abs(values[i] - current))
-        next_index = max(0, min(len(values) - 1, current_index + direction))
-        self._pending_selection[parameter.id] = _coerce_number_value(parameter, values[next_index])
+        self._pending_selection[parameter.id] = _next_number_value(parameter, current, direction)
         self._refresh()
 
     def _discard_current_number_draft(self) -> None:
@@ -200,18 +198,14 @@ def _is_int_like(value: float) -> bool:
     return float(value).is_integer()
 
 
-def _number_values(parameter: NumberParameter) -> list[float]:
-    values: list[float] = []
-    value = float(parameter.min)
-    max_value = float(parameter.max)
+def _next_number_value(parameter: NumberParameter, current: float, direction: int) -> int | float:
     step = float(parameter.step)
-    tolerance = abs(step) * 1e-9
-    while value <= max_value + tolerance:
-        values.append(min(value, max_value))
-        value += step
-    if values and values[-1] > max_value + tolerance:
-        values.pop()
-    return values or [float(parameter.min)]
+    min_value = float(parameter.min)
+    max_value = float(parameter.max)
+    max_index = max(0, math.floor((max_value - min_value) / step + 1e-9))
+    current_index = round((current - min_value) / step)
+    next_index = max(0, min(max_index, current_index + direction))
+    return _coerce_number_value(parameter, min_value + next_index * step)
 
 
 def _coerce_number_value(parameter: NumberParameter, value: float) -> int | float:

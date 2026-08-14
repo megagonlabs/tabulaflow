@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import difflib
 import json
+import math
 import re
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
@@ -33,7 +34,7 @@ from textual.widgets import Input, Markdown, Static
 from textual.widgets._markdown import MarkdownFence, MarkdownTable, MarkdownTableContent
 
 from tabulaflow.app.display import DATA_PREVIEW_MAX_ROWS, build_resolved_output_card_views
-from tabulaflow.core.outputs import ChoiceParameter
+from tabulaflow.core.outputs import ChoiceParameter, NumberParameter, SelectionValue
 from tabulaflow.app.theme import (
     ACCENT,
     ACCENT_DIM,
@@ -64,7 +65,6 @@ if TYPE_CHECKING:
     from textual.selection import Selection
 
     from tabulaflow.chat import ChatResult
-    from tabulaflow.core.outputs import SelectionValue
     from tabulaflow.app.display import CardGroup, ViewItem
     from tabulaflow.core.types import Usage
 
@@ -1501,6 +1501,50 @@ class AgentProgressWidget(Widget):
 # ---------------------------------------------------------------------------
 
 
+@dataclass(frozen=True)
+class _ControlCursorItem:
+    parameter_index: int
+    choice_index: int | None = None
+
+
+_SLIDER_WIDTH = 16
+
+
+def _is_int_like(value: float) -> bool:
+    return float(value).is_integer()
+
+
+def _next_number_parameter_value(parameter: NumberParameter, current: float, direction: int) -> int | float:
+    step = float(parameter.step)
+    min_value = float(parameter.min)
+    max_value = float(parameter.max)
+    max_index = max(0, math.floor((max_value - min_value) / step + 1e-9))
+    current_index = round((current - min_value) / step)
+    next_index = max(0, min(max_index, current_index + direction))
+    return _coerce_number_parameter_value(parameter, min_value + next_index * step)
+
+
+def _coerce_number_parameter_value(parameter: NumberParameter, value: float) -> int | float:
+    if _is_int_like(parameter.min) and _is_int_like(parameter.max) and _is_int_like(parameter.step):
+        return int(round(value))
+    return value
+
+
+def _format_number_parameter_value(value: object, unit: str | None) -> str:
+    number = float(value) if isinstance(value, int | float) else 0.0
+    text = f"{number:g}"
+    return f"{text} {unit}" if unit else text
+
+
+def _slider_text(parameter: NumberParameter, value: float, width: int = _SLIDER_WIDTH) -> str:
+    if parameter.max <= parameter.min:
+        filled = 0
+    else:
+        filled = round((value - parameter.min) / (parameter.max - parameter.min) * width)
+    filled = max(0, min(width, filled))
+    return "[" + "━" * filled + "●" + "─" * (width - filled) + "]"
+
+
 class AgentResultWidget(Widget):
     """Displays an agent result with two-level tab switching.
 
@@ -1578,10 +1622,12 @@ class AgentResultWidget(Widget):
         super().__init__()
         self._result = result
         self._width = width
-        self._choice_controls_cache = self._choice_controls_from_result(result)
-        self._has_answer_controls = bool(self._choice_controls_cache)
+        self._control_parameters = list(result.output.parameters)
+        self._control_cursor_items = self._build_control_cursor_items()
+        self._has_answer_controls = bool(self._control_cursor_items)
         self.set_class(self._has_answer_controls, "-has-panel")
         self._applied_selection: dict[str, SelectionValue] = dict(result.output.default_selection)
+        self._pending_selection: dict[str, SelectionValue] = dict(self._applied_selection)
         self._interpretation_cursor = 0
         self._cards = list(cards)
         # Selected view index per card; every card has at least one view.
@@ -1603,7 +1649,7 @@ class AgentResultWidget(Widget):
         self._view_hit_areas: list[tuple[str, int, int]] = []
         # Interpretation choice hit areas: (flat_choice_index, row) relative to
         # the interpretation-content widget.
-        self._choice_hit_areas: list[tuple[int, int]] = []
+        self._control_hit_areas: list[tuple[int, int]] = []
 
     @property
     def _has_top_bar(self) -> bool:
@@ -1735,48 +1781,70 @@ class AgentResultWidget(Widget):
             return None
         return card.views[self._view_indices[min(self.current_card, len(self._cards) - 1)]]
 
-    @staticmethod
-    def _choice_controls_from_result(result: "ChatResult") -> list[ChoiceParameter]:
-        return [parameter for parameter in result.output.parameters if isinstance(parameter, ChoiceParameter)]
-
-    def _choice_controls(self) -> list[ChoiceParameter]:
-        return self._choice_controls_cache
+    def _build_control_cursor_items(self) -> list[_ControlCursorItem]:
+        items: list[_ControlCursorItem] = []
+        for parameter_index, parameter in enumerate(self._control_parameters):
+            if isinstance(parameter, ChoiceParameter):
+                items.extend(
+                    _ControlCursorItem(parameter_index=parameter_index, choice_index=choice_index)
+                    for choice_index in range(len(parameter.choices))
+                )
+            elif isinstance(parameter, NumberParameter):
+                items.append(_ControlCursorItem(parameter_index=parameter_index))
+        return items
 
     def _choice_count(self) -> int:
-        return sum(len(control.choices) for control in self._choice_controls())
+        return sum(len(parameter.choices) for parameter in self._control_parameters if isinstance(parameter, ChoiceParameter))
 
-    def _cursor_location(self) -> tuple[int, int]:
-        controls = self._choice_controls()
-        assert controls
-        cursor = self._interpretation_cursor
-        for control_idx, control in enumerate(controls):
-            if cursor < len(control.choices):
-                return control_idx, cursor
-            cursor -= len(control.choices)
-        last_control = len(controls) - 1
-        return last_control, len(controls[last_control].choices) - 1
-
-    def _choice_flat_index(self, control_idx: int, choice_idx: int) -> int:
-        controls = self._choice_controls()
-        return sum(len(control.choices) for control in controls[:control_idx]) + choice_idx
+    def _current_control_item(self) -> _ControlCursorItem | None:
+        if not self._control_cursor_items:
+            return None
+        return self._control_cursor_items[self._interpretation_cursor]
 
     def _move_interpretation_cursor(self, delta: int) -> None:
-        max_cursor = self._choice_count() - 1
+        max_cursor = len(self._control_cursor_items) - 1
         if max_cursor < 0:
             return
+        self._discard_current_number_draft()
         self._interpretation_cursor = max(0, min(max_cursor, self._interpretation_cursor + delta))
         self._refresh_all()
 
+    def _adjust_number_control(self, direction: int) -> None:
+        item = self._current_control_item()
+        if item is None:
+            return
+        parameter = self._control_parameters[item.parameter_index]
+        if not isinstance(parameter, NumberParameter):
+            return
+        current = float(self._pending_selection[parameter.id])
+        self._pending_selection[parameter.id] = _next_number_parameter_value(parameter, current, direction)
+        self._refresh_all()
+
+    def _discard_current_number_draft(self) -> None:
+        item = self._current_control_item()
+        if item is None:
+            return
+        parameter = self._control_parameters[item.parameter_index]
+        if isinstance(parameter, NumberParameter):
+            self._pending_selection[parameter.id] = self._applied_selection[parameter.id]
+
     def _apply_interpretation_cursor(self) -> None:
-        controls = self._choice_controls()
-        if not controls:
+        item = self._current_control_item()
+        if item is None:
             return
-        control_idx, choice_idx = self._cursor_location()
-        control = controls[control_idx]
-        choice = control.choices[choice_idx]
-        if self._applied_selection.get(control.id) == choice.id:
+        parameter = self._control_parameters[item.parameter_index]
+        value: SelectionValue
+        if isinstance(parameter, ChoiceParameter):
+            assert item.choice_index is not None
+            value = parameter.choices[item.choice_index].id
+        elif isinstance(parameter, NumberParameter):
+            value = self._pending_selection[parameter.id]
+        else:
             return
-        self._applied_selection = {**self._applied_selection, control.id: choice.id}
+        if self._applied_selection.get(parameter.id) == value:
+            return
+        self._applied_selection = {**self._applied_selection, parameter.id: value}
+        self._pending_selection = {**self._pending_selection, parameter.id: value}
         if self._turn_output is not None:
             self.run_worker(self._resolve_cards_for_selection(dict(self._applied_selection)), exclusive=True)
         else:
@@ -1794,6 +1862,8 @@ class AgentResultWidget(Widget):
         hint = Text(no_wrap=True)
         hint.append("↑↓", style=self._focus_key_hint)
         hint.append(" Move · ", style="dim")
+        hint.append("+/-", style=self._focus_key_hint)
+        hint.append(" Adjust · ", style="dim")
         hint.append("Space", style=self._focus_key_hint)
         hint.append(" Apply", style="dim")
         title = Text("Refine interpretation", style="bold dim")
@@ -1803,13 +1873,13 @@ class AgentResultWidget(Widget):
         title_line.append_text(hint)
         self._interpretation_title.update(title_line)
 
-        controls = self._choice_controls()
+        controls = self._control_parameters
         rows: list[Text] = []
-        self._choice_hit_areas = []
+        self._control_hit_areas = []
         if not controls:
             self._interpretation_content.update(Text("No supported answer controls yet.", style="dim"))
             return
-        cursor_control, cursor_choice = self._cursor_location()
+        cursor_item = self._current_control_item()
         row = 0
         for control_idx, control in enumerate(controls):
             if rows:
@@ -1817,27 +1887,58 @@ class AgentResultWidget(Widget):
                 row += 1
             rows.append(Text(control.label, style=Style(bold=True)))
             row += 1
-            for choice_idx, choice in enumerate(control.choices):
-                is_cursor = control_idx == cursor_control and choice_idx == cursor_choice
-                is_applied = self._applied_selection.get(control.id) == choice.id
-                line = Text()
-                line.append("  ")
-                line.append(
-                    "❯ " if is_cursor else "  ",
-                    style=KEY_HINT if is_cursor and self.has_focus else KEY_HINT_DIM if is_cursor else "",
+            if isinstance(control, ChoiceParameter):
+                for choice_idx, choice in enumerate(control.choices):
+                    item_index = self._control_cursor_items.index(
+                        _ControlCursorItem(parameter_index=control_idx, choice_index=choice_idx)
+                    )
+                    is_cursor = cursor_item == _ControlCursorItem(parameter_index=control_idx, choice_index=choice_idx)
+                    is_applied = self._applied_selection.get(control.id) == choice.id
+                    rows.append(
+                        self._control_line(
+                            choice.label,
+                            is_cursor=is_cursor,
+                            is_applied=is_applied,
+                            show_applied_marker=True,
+                        )
+                    )
+                    self._control_hit_areas.append((item_index, row))
+                    row += 1
+            elif isinstance(control, NumberParameter):
+                item_index = self._control_cursor_items.index(_ControlCursorItem(parameter_index=control_idx))
+                pending = self._pending_selection[control.id]
+                applied = self._applied_selection.get(control.id)
+                rows.append(
+                    self._control_line(
+                        f"{_slider_text(control, float(pending))} {_format_number_parameter_value(pending, control.unit)}",
+                        is_cursor=cursor_item == _ControlCursorItem(parameter_index=control_idx),
+                        is_applied=pending == applied,
+                        show_applied_marker=False,
+                    )
                 )
-                line.append("● " if is_applied else "  ", style=self._focus_accent if is_applied else "")
-                if is_applied:
-                    label_style = Style(bold=True, color=self._focus_accent)
-                elif is_cursor:
-                    label_style = Style(bold=True)
-                else:
-                    label_style = Style()
-                line.append(choice.label, style=label_style)
-                rows.append(line)
-                self._choice_hit_areas.append((self._choice_flat_index(control_idx, choice_idx), row))
+                self._control_hit_areas.append((item_index, row))
                 row += 1
         self._interpretation_content.update(Text("\n").join(rows))
+
+    def _control_line(self, label: str, *, is_cursor: bool, is_applied: bool, show_applied_marker: bool) -> Text:
+        from rich.style import Style
+
+        line = Text()
+        line.append("  ")
+        line.append(
+            "❯ " if is_cursor else "  ",
+            style=KEY_HINT if is_cursor and self.has_focus else KEY_HINT_DIM if is_cursor else "",
+        )
+        if show_applied_marker:
+            line.append("● " if is_applied else "  ", style=self._focus_accent if is_applied else "")
+        if is_applied:
+            label_style = Style(bold=True, color=self._focus_accent)
+        elif is_cursor:
+            label_style = Style(bold=True)
+        else:
+            label_style = Style()
+        line.append(label, style=label_style)
+        return line
 
     def _update_card_bar(self) -> None:
         """Render card pills left-anchored, wrapping across multiple lines.
@@ -2063,10 +2164,15 @@ class AgentResultWidget(Widget):
         assert isinstance(event, Click)
 
         if self._interpretation_content is not None and event.widget is self._interpretation_content:
-            for flat_idx, row in self._choice_hit_areas:
+            for item_idx, row in self._control_hit_areas:
                 if row == event.y:
-                    self._interpretation_cursor = flat_idx
-                    self._apply_interpretation_cursor()
+                    self._discard_current_number_draft()
+                    self._interpretation_cursor = item_idx
+                    item = self._current_control_item()
+                    if item is not None and isinstance(self._control_parameters[item.parameter_index], ChoiceParameter):
+                        self._apply_interpretation_cursor()
+                    else:
+                        self._refresh_all()
                     return
             return
 
@@ -2104,6 +2210,16 @@ class AgentResultWidget(Widget):
             if view.kind == VIEW_KIND_QUERY:
                 self.run_worker(self.action_open_full_screen(), exclusive=True)
                 return
+
+    def on_key(self, event: events.Key) -> None:
+        if not self._has_answer_controls:
+            return
+        if event.character in {"+", "="}:
+            self._adjust_number_control(1)
+            event.stop()
+        elif event.character == "-":
+            self._adjust_number_control(-1)
+            event.stop()
 
     def _is_chart_region_click(self, view: "ViewItem", x: int, y: int) -> bool:
         """Return True when click lands within the rendered chart area."""

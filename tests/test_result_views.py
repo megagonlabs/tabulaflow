@@ -300,6 +300,47 @@ def test_slider_only_panel_does_not_crash_choice_navigation() -> None:
     assert widget._applied_selection == {"height_cm": 200}
 
 
+def test_number_control_adjusts_pending_value_and_applies_on_space() -> None:
+    widget = AgentResultWidget(
+        ChatResult(
+            text="x",
+            output=OutputSpec(
+                parameters=[NumberParameter(id="threshold", label="Threshold", min=0, max=1, step=0.1, default=0.5)],
+            ),
+        ),
+        _groups(_table("Q1", "players")),
+    )
+
+    widget._adjust_number_control(1)
+    widget._adjust_number_control(1)
+
+    assert abs(float(widget._pending_selection["threshold"]) - 0.7) < 1e-9
+    assert widget._applied_selection == {"threshold": 0.5}
+    widget._apply_interpretation_cursor()
+    assert abs(float(widget._applied_selection["threshold"]) - 0.7) < 1e-9
+
+
+def test_number_control_draft_reverts_when_cursor_moves_away() -> None:
+    widget = AgentResultWidget(
+        ChatResult(
+            text="x",
+            output=OutputSpec(
+                parameters=[
+                    NumberParameter(id="threshold", label="Threshold", min=0, max=1, step=0.1, default=0.5),
+                    ChoiceParameter(id="metric", label="Metric", choices=[ChoiceOption(id="a", label="A")]),
+                ],
+            ),
+        ),
+        _groups(_table("Q1", "players")),
+    )
+
+    widget._adjust_number_control(1)
+    widget._move_interpretation_cursor(1)
+
+    assert widget._pending_selection["threshold"] == 0.5
+    assert widget._applied_selection["threshold"] == 0.5
+
+
 def test_browser_only_chart_placeholder_uses_artifact_caption() -> None:
     groups = _groups(_chart("CHART1", "chart"))
     chart_view = groups[0].views[0]
