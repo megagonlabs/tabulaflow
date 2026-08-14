@@ -43,6 +43,11 @@ class ChoiceParameter(BaseModel):
     label: str
     choices: list[ChoiceOption] = Field(min_length=1)
 
+    @model_validator(mode="after")
+    def validate_choice_ids(self) -> "ChoiceParameter":
+        _require_unique([choice.id for choice in self.choices], "choice ids")
+        return self
+
 
 class NumberParameter(BaseModel):
     """Numeric output parameter, optionally rendered as a slider."""
@@ -218,7 +223,7 @@ def parameter_default(parameter: ParameterSpec) -> SelectionValue:
     if isinstance(parameter, ChoiceParameter):
         return parameter.choices[0].id
     if isinstance(parameter, NumberParameter):
-        return parameter.default
+        return validate_parameter_value(parameter, parameter.default)
     raise TypeError(f"unsupported parameter {type(parameter).__name__}")
 
 
@@ -242,6 +247,11 @@ def validate_parameter_value(parameter: ParameterSpec, value: object) -> Selecti
             raise ValueError(f"{parameter.id} must be finite")
         if not parameter.min <= number <= parameter.max:
             raise ValueError(f"{parameter.id}={number:g} is outside range")
+        steps = (number - parameter.min) / parameter.step
+        if not math.isclose(steps, round(steps), rel_tol=1e-9, abs_tol=1e-9):
+            raise ValueError(f"{parameter.id}={number:g} is not aligned to step")
+        if parameter.min.is_integer() and parameter.max.is_integer() and parameter.step.is_integer():
+            return int(round(number))
         return value
     raise TypeError(f"unsupported parameter {type(parameter).__name__}")
 

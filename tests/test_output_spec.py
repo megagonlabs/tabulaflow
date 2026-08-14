@@ -10,6 +10,7 @@ from tabulaflow.core import (
     ParameterizedSource,
     TableArtifactSpec,
     canonical_selection_key,
+    validate_parameter_value,
 )
 
 
@@ -61,6 +62,30 @@ def test_choice_parameter_rejects_explicit_default_field() -> None:
                 "default": "profit",
             }
         )
+
+
+def test_choice_parameter_rejects_duplicate_choice_ids() -> None:
+    with pytest.raises(ValueError, match="choice ids must be unique"):
+        ChoiceParameter(
+            id="metric",
+            label="Metric",
+            choices=[ChoiceOption(id="revenue", label="Revenue"), ChoiceOption(id="revenue", label="Revenue again")],
+        )
+
+
+def test_integer_number_parameter_defaults_and_values_are_normalized_to_int() -> None:
+    parameter = NumberParameter(id="top_n", label="Top N", min=1, max=5, step=1, default=3)
+    spec = OutputSpec(parameters=[parameter])
+
+    assert spec.default_selection == {"top_n": 3}
+    assert validate_parameter_value(parameter, 4.0) == 4
+
+
+def test_number_parameter_rejects_off_step_values() -> None:
+    parameter = NumberParameter(id="top_n", label="Top N", min=1, max=5, step=1, default=3)
+
+    with pytest.raises(ValueError, match="not aligned to step"):
+        validate_parameter_value(parameter, 3.5)
 
 
 def test_canonical_selection_key_is_stable() -> None:

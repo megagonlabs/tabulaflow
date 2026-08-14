@@ -157,8 +157,8 @@ async def test_mixed_choice_and_number_warms_choice_grid_at_number_default(regis
     )
 
     text = _text(result)
-    assert "default metric=net;min_value=8.0:" in text
-    assert "metric=gross;min_value=8.0 (1 row) — first row: value=21" in text
+    assert "default metric=net;min_value=8:" in text
+    assert "metric=gross;min_value=8 (1 row) — first row: value=21" in text
     assert "-> R" not in text
     assert "other selections will materialize lazily" not in text
     assert len(output_store.cached_parameterized_results("S1")) == 2
