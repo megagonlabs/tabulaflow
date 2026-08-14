@@ -156,10 +156,9 @@ class TerminalControlPanelPreview(Static, can_focus=True):
                 is_cursor = self._cursor == item_index
                 pending = self._pending_selection[parameter.id]
                 applied = self._applied_selection.get(parameter.id)
-                display = _format_number(pending, parameter.unit).rjust(_number_value_width(parameter))
                 self._append_option_line(
                     text,
-                    f"{display}  {_slider_text(parameter, float(pending))}",
+                    f"{_slider_text(parameter, float(pending))} {_format_number(pending, parameter.unit)}",
                     is_cursor=is_cursor,
                     is_applied=pending == applied,
                     accent=accent,
@@ -195,13 +194,6 @@ def _format_number(value: object, unit: str | None) -> str:
     number = float(value) if isinstance(value, int | float) else 0.0
     text = f"{number:g}"
     return f"{text} {unit}" if unit else text
-
-
-def _number_value_width(parameter: NumberParameter) -> int:
-    return max(
-        len(_format_number(value, parameter.unit))
-        for value in (parameter.min, parameter.max, parameter.default)
-    )
 
 
 def _slider_text(parameter: NumberParameter, value: float, width: int = _SLIDER_WIDTH) -> str:
