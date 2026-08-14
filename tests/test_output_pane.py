@@ -967,7 +967,7 @@ def test_pane_sets_fixed_favicon_and_result_ready_title() -> None:
     assert "<rect width=\"64\" height=\"64\" fill=\"#283629\"/>" in pane_js
     assert "<rect x=\"8\" y=\"0\" width=\"48\" height=\"14\" fill=\"#3EB489\"/>" in pane_js
     assert "<rect x=\"8\" y=\"14\" width=\"48\" height=\"14\" fill=\"#121212\"/>" in pane_js
-    assert "document.title = status === 'ready' ? '● tabulaflow' : 'tabulaflow';" in pane_js
+    assert "document.title = status === 'ready' ? '◆ tabulaflow' : 'tabulaflow';" in pane_js
     assert "applyPageStatus(document.hasFocus() ? 'idle' : 'ready');" in pane_js
     assert "window.addEventListener('focus'" in pane_js
     assert "fetch('status'" not in pane_js

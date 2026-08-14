@@ -36,7 +36,7 @@ function setFavicon() {
 }
 
 function applyPageStatus(status) {
-  document.title = status === 'ready' ? '● tabulaflow' : 'tabulaflow';
+  document.title = status === 'ready' ? '◆ tabulaflow' : 'tabulaflow';
 }
 
 function startPageStatus() {
