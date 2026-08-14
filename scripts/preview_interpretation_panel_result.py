@@ -29,6 +29,7 @@ from tabulaflow.app.theme import ACCENT, ACCENT_DIM, FOCUS_SURFACE, KEY_HINT, KE
 from tabulaflow.core.outputs import ChoiceOption, ChoiceParameter, NumberParameter, ParameterSpec, SelectionValue, parameter_default
 
 _SLIDER_WIDTH = 16
+_SLIDER_THUMB = "◆"
 
 
 @dataclass(frozen=True)
@@ -226,7 +227,7 @@ def _slider_text(parameter: NumberParameter, value: float, width: int = _SLIDER_
     else:
         filled = round((value - parameter.min) / (parameter.max - parameter.min) * width)
     filled = max(0, min(width, filled))
-    return "[" + "━" * filled + "●" + "─" * (width - filled) + "]"
+    return "[" + "━" * filled + _SLIDER_THUMB + "─" * (width - filled) + "]"
 
 
 def _parameters() -> list[ParameterSpec]:

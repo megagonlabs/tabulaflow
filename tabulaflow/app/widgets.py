@@ -1508,6 +1508,7 @@ class _ControlCursorItem:
 
 
 _SLIDER_WIDTH = 16
+_SLIDER_THUMB = "◆"
 
 
 def _is_int_like(value: float) -> bool:
@@ -1542,7 +1543,7 @@ def _slider_text(parameter: NumberParameter, value: float, width: int = _SLIDER_
     else:
         filled = round((value - parameter.min) / (parameter.max - parameter.min) * width)
     filled = max(0, min(width, filled))
-    return "[" + "━" * filled + "●" + "─" * (width - filled) + "]"
+    return "[" + "━" * filled + _SLIDER_THUMB + "─" * (width - filled) + "]"
 
 
 class AgentResultWidget(Widget):
