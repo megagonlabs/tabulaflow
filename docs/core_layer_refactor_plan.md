@@ -1,0 +1,533 @@
+# Core Layer Refactor Plan
+
+## Goal
+
+Refactor TabulaFlow into a small set of intuitive layers while keeping `core` clean, minimal, and stable.
+
+Final top-level package shape:
+
+```text
+tabulaflow/
+  core/
+  data/
+  output/
+  agents/
+  app/
+  research/
+```
+
+Layer meanings:
+
+- `core`: stable primitives and deterministic helpers.
+- `data`: connect to, load, introspect, and query data. Queryable backends are connectors; raw external inputs are loaded by loaders.
+- `output`: structured output protocol: parameters, output sources, display artifacts, result storage/resolution, and output-facing formatting.
+- `agents`: ChatSession, model-facing tools, LLM runtime, modules, and subagents.
+- `app`: bundled end-user TUI/app.
+- `research`: benchmarks, metrics, eval pipelines, and research-only agents.
+
+Dependency direction:
+
+```text
+core
+  ↓
+data
+  ↓
+output
+  ↓
+agents
+  ↓
+app
+```
+
+`research` is a leaf consumer: it may import `core`, `data`, `output`, and `agents`, but nothing should import `research`.
+
+## Final core layer decision
+
+Use the name `core`, not `foundation`, `types`, `common`, or `shared`.
+
+Reasoning:
+
+- `core` is conventional and communicates central platform primitives.
+- `foundation` is too broad now that live runtime machinery is moving to `data`, `output`, and `agents`.
+- `types` is too narrow and implementation-oriented; these are domain primitives, not just type aliases.
+- `common` / `shared` invite unrelated shared-code dumping.
+
+Definition:
+
+> `core` contains stable primitives and deterministic operations on those primitives. It must not contain concrete runtime integrations, product workflows, app state, or research concepts.
+
+## Final `core/` file structure
+
+```text
+core/
+  __init__.py
+  schema.py
+  results.py
+  trace.py
+  serialization.py
+  registry.py
+```
+
+This is intentionally not one giant `types.py`, but also not one-file-per-small-concept fragmentation.
+
+## `core/schema.py`
+
+Owns database and graph schema primitives.
+
+Move here:
+
+- `SQLDialect`
+- `NonSQLLanguage`
+- `TableRef`
+- `ColumnRef`
+- `ForeignKeySchema`
+- `SQLColumnSchema`
+- `NamePattern`
+- `SQLTableSchema`
+- `SQLSchema`
+- `GraphPropertySchema`
+- `NodeSchema`
+- `RelationshipEndpoint`
+- `RelationshipSchema`
+- `PropertyGraphSchema`
+
+Rationale: these are central data/schema structures consumed by data connectors, output rendering, agents, app, and research.
+
+Do not split `TableRef` / `ColumnRef` into a separate `refs.py` initially; they are schema-adjacent and small.
+
+## `core/results.py`
+
+Owns raw execution result primitives.
+
+Move here:
+
+- `ErrorInfo`
+- `GraphViewNode`
+- `GraphViewEdge`
+- `GraphView`
+- `ExecResult`
+
+Rationale: `data` produces `ExecResult`, `output` stores/resolves/displays it, `agents` use it in tools, and `research` evaluates it. It is a core platform result shape.
+
+Notes:
+
+- `GraphView` stays in core because it is attached to query results, especially graph query results. Rendering graph views belongs outside core.
+- `ErrorInfo` stays in `results.py`, not `errors.py`, because it is a structured result payload rather than an exception class.
+- `ExecResult.to_markdown()` is presentation-ish. It can remain temporarily to reduce churn, but the clean target is to move result formatting to `output`.
+
+Do not merge `results.py` into `schema.py`, `trace.py`, `data`, or `output`. Execution results are a distinct platform primitive.
+
+## `core/trace.py`
+
+Owns provider-independent trace/conversation accounting models.
+
+Move here:
+
+- `Usage`
+- `SystemMessage`
+- `UserMessage`
+- `ToolCall`
+- `AssistantMessage`
+- `ToolResponse`
+- `Message`
+- `Trajectory`
+
+Rationale: messages, trajectories, and usage are all records of a run/conversation. They are normalized TabulaFlow trace records, not Pydantic AI or provider-specific runtime objects.
+
+Keep core trace models provider-independent.
+
+Move out of core:
+
+- `Usage.from_pydantic_ai_usage(...)`
+- `Trajectory.from_pydantic_ai_messages(...)`
+- `compute_api_cost(...)`
+- `pydantic_ai_model_to_litellm_model(...)`
+- ideally `Trajectory.to_markdown()` eventually
+
+Target home for provider/runtime adapters:
+
+```text
+agents/trace.py   # if large enough
+agents/llm.py     # acceptable initially
+```
+
+## `core/serialization.py`
+
+Owns pure serialization/conversion helpers needed by core models.
+
+Move/keep here:
+
+- `json_ready`
+- `dumps_strict_json`
+- DataFrame serialization/sanitization helpers currently used by `SQLTableSchema.sampled_df` and `ExecResult.df`
+- `_serialize_dataframe(...)`
+- `_deserialize_dataframe(...)`
+- `_sanitize_df(...)`
+- helper functions needed by those DataFrame serializers
+
+Rationale: `ExecResult` and `SQLTableSchema` currently store pandas DataFrames and need stable JSON round-tripping. Serialization is core; display formatting is not.
+
+Do **not** keep file-writing helpers here:
+
+- `write_strict_json(...)` should move out of core because it performs file I/O. Current app-pane usage can own a local helper or move to app/output I/O.
+
+Move display helpers out of core:
+
+- `format_df(...)`
+- `flatten_multiline(...)` if only used for display
+- `format_ratio_as_percent(...)`
+- `render_column_dtype(...)`
+- `format_json_schema(...)`
+
+Target home for display formatting:
+
+```text
+output/
+```
+
+Do not split into `json.py` and `dataframe.py` initially. A single `serialization.py` is the minimal clear abstraction.
+
+## `core/registry.py`
+
+Owns only the generic named class/plugin registry.
+
+Final name:
+
+```python
+class NamedClass(Protocol): ...
+class ClassRegistry(Generic[T]): ...
+```
+
+Use `ClassRegistry`, not the broad name `Registry`.
+
+Rationale: this distinguishes the generic class registry from live runtime registries:
+
+```text
+core.ClassRegistry = registry of named classes/plugins
+data.DBRegistry    = registry of live database connectors
+```
+
+Consumers include formatter registries, preprocessor/module registries, research agent registries, dataset registries, and metric registries.
+
+Keep methods:
+
+- `register(cls)`
+- `get_class(name)`
+- `list_names()`
+
+Move out:
+
+- `DBRegistry` goes to `data/registry.py` because it owns live connectors and disconnect lifecycle.
+
+## Final data layer shape
+
+The finalized data layer shape is:
+
+```text
+data/
+  __init__.py
+  base.py
+  registry.py
+  url.py
+  sql.py
+  neo4j.py
+  schema_compressor.py
+  loaders/
+    __init__.py
+    files.py
+    huggingface.py
+```
+
+Concepts:
+
+- **Connector**: a live queryable object. Examples: `SQLConnector`, `Neo4jConnector`.
+- **Loader**: builds a connector from raw external data. Examples: `load_files`, `load_hf_dataset`.
+- **Registry**: maps `db_alias` strings to live connectors. The class remains `DBRegistry` to align with the established `db_alias` vocabulary.
+
+Naming decisions:
+
+- Use `data/loaders/`, not `data/sources/`, because `source` is overloaded by the output layer (`SourceSpec`, `FixedResultSource`, `ParameterizedSource`).
+- Use `loaders`, not `adapters` or `injectors`: these modules load external raw inputs into queryable connectors.
+- Keep `DBRegistry`, not `ConnectorRegistry`, because the user/tool vocabulary is `db_alias`.
+- Drop `NL2Q` from connector protocols/aliases. Use generic names such as `SQLConnectorProtocol`, `GraphConnectorProtocol`, and `DataConnector`.
+- Use `data/neo4j.py`, not `data/graph.py`, because the file is backend-specific.
+- Keep a single `data/sql.py` initially. Do not create `data/sql/` unless the file is later split.
+
+## Final output layer shape
+
+The finalized output layer shape is:
+
+```text
+output/
+  __init__.py
+  specs.py
+  store.py
+  resolver.py
+  formatting.py
+  schema_formatters/
+    __init__.py
+    base.py
+    sql_basic.py
+    sql_ddl.py
+    cypher.py
+    er_diagram.py
+```
+
+Concepts:
+
+- **Result**: a concrete materialized query result. Runtime forms include `ResultMetadata` and `ResultPayload`.
+- **Source**: a declarative output source that can produce or point to a result. Examples: `FixedResultSource`, `ParameterizedSource`.
+- **Artifact**: a display object over one or more output sources. Examples: table, chart, map, graph artifacts.
+- **Output**: a bundle of parameters, sources, and artifacts. Represented by `OutputSpec`.
+
+Naming decisions:
+
+- Use the layer name `output`, not `artifacts`, because the layer is broader than display artifacts.
+- Keep `OutputSpec`, `OutputStore`, and `OutputResolver` as names.
+- Keep source terminology inside the output layer. `SourceSpec`, `FixedResultSource`, and `ParameterizedSource` are output source specs, distinct from data loaders.
+- Keep artifact terminology for table/chart/map/graph display specs.
+- Rename generic `formatter_registry` to `schema_formatter_registry` when schema formatters move here.
+
+File ownership:
+
+- `output/specs.py`: pure declarative output models and helpers, including `OutputSpec`, parameter specs, source specs, artifact specs, `ResultMetadata`, `canonical_selection_key`, and `artifact_source_ids`.
+- `output/store.py`: `OutputStore`, `ResultPayload`, `SourceNotApplicable`, `render_parameterized_query`, `OUTPUT_STORE_SCHEMA`, and runtime result/source/artifact storage.
+- `output/resolver.py`: `OutputResolver` and resolved artifact/result payload types.
+- `output/formatting.py`: output-facing human/LLM formatting helpers such as `format_df`, `format_exec_result_markdown`, JSON-schema formatting, and result display formatting.
+- `output/schema_formatters/`: schema renderers currently under `core/formatters/`.
+
+Dependency decisions:
+
+- `output` may depend on `data` because `OutputStore` and `OutputResolver` materialize query-backed output sources via `db_alias` / `DBRegistry`.
+- `output` must not depend on `agents`, `app`, or `research`.
+- Agents produce outputs, but the output layer should not know about agents.
+
+API cleanup:
+
+- `OutputStore` should stop accepting `PredQuery`. Use explicit query/result arguments or a local neutral record instead:
+
+```python
+await output_store.add_fixed_result_source(
+    db_alias=db_alias,
+    connector_type=connector_type,
+    query=query,
+    exec_result=exec_result,
+)
+```
+
+and:
+
+```python
+await output_store.cache_parameterized_result(
+    source_id=source.id,
+    connector_type=connector.connector_type,
+    selection=selection,
+    query=query,
+    exec_result=exec_result,
+)
+```
+
+`PredQuery` remains a research type only.
+
+## What must leave core
+
+### `PredQuery`
+
+`PredQuery` should not be in core.
+
+Reasoning:
+
+- The name is research-specific: it means predicted query.
+- Research already has the counterpart `GoldQuery`.
+- Product/tool/output usages are using it only as a generic `query + exec_result` carrier, which is a smell.
+- It has research/reporting methods like `to_directory()` and `to_markdown()`.
+
+Final home:
+
+```text
+research/types.py
+```
+
+Keep the name `PredQuery`.
+
+Product/tool/output code should stop using `PredQuery`. Prefer explicit arguments or a local neutral execution record:
+
+```python
+@dataclass(frozen=True)
+class QueryExecution:
+    output: str
+    query: str
+    parameter_values: dict[str, Any]
+    exec_result: ExecResult
+```
+
+`RunQueryTool.last_pred_query` should become something like `last_execution` or `last_query_execution`. Research agents can convert that into `PredQuery` when needed.
+
+### DB connectors
+
+Move all of current `core/db_connector/` to `data/`.
+
+Target ownership:
+
+- `SQLConnector` → `data/sql.py`
+- `Neo4jConnector` → `data/neo4j.py`
+- connector protocols / aliases → `data/base.py`
+- `DBRegistry` → `data/registry.py`
+- URL connection helpers / `connect_url` → `data/url.py`
+- file and HuggingFace loaders → `data/loaders/`
+
+Use `data/neo4j.py`, not `data/graph.py`, because the implementation is Neo4j-specific. Generic graph schema/result primitives stay in `core`; generic graph connector protocols stay in `data/base.py`.
+
+Do not split `sql.py` during the first move. Move current `sql_conn.py` to `data/sql.py`, update imports, get tests passing, then split internals later only if needed.
+
+### LLM runtime
+
+Move current `core/llm.py` to `agents/llm.py`.
+
+Reasoning: LLM provider setup, Pydantic AI wrappers, throttling, model settings, Anthropic/OpenAI/LiteLLM specifics are agent/runtime concerns, not core primitives.
+
+### Output specs
+
+Move current `core/outputs.py` to `output/specs.py`.
+
+Reasoning: output specs are pure data models, but they are output-domain models, not foundational platform primitives.
+
+This includes:
+
+- `OutputSpec`
+- `ParameterSpec`
+- `ChoiceParameter`
+- `NumberParameter`
+- `FixedResultSource`
+- `ParameterizedSource`
+- `ArtifactSpec`
+- `TableArtifactSpec`
+- `ChartArtifactSpec`
+- `MapArtifactSpec`
+- `GraphArtifactSpec`
+- `ResultMetadata`
+
+### Schema formatters
+
+Move current `core/formatters/` to:
+
+```text
+output/schema_formatters/
+```
+
+Reasoning: schema formatting is presentation/prompt/output behavior, not core schema modeling.
+
+### `schema_compressor.py`
+
+Do not keep in core.
+
+It is deterministic, but it is a schema transformation/service rather than a primitive. Candidate homes:
+
+- `data/schema_compressor.py` if it is part of schema preprocessing/introspection
+- `output/schema_formatters/` if it mainly exists for prompt/schema display compression
+
+Default recommendation: move to `data/schema_compressor.py` unless usage proves it is primarily prompt-formatting.
+
+### `er_diagram.py`
+
+Do not keep in core unless it becomes a truly central primitive.
+
+Recommended homes:
+
+- `agents/modules/er_diagram.py` if primarily LLM-generated/consumed
+- `output/erd.py` if the ERD data model is primarily display/output-facing
+- `output/schema_formatters/er_diagram.py` for formatting only
+
+## Core import policy
+
+`core` may import lightweight dependencies needed for primitives and serialization:
+
+- `typing`
+- `dataclasses`
+- `decimal`
+- `json`
+- `math`
+- `pathlib`
+- `pydantic`
+- `pandas` / `pyarrow` only as needed for `ExecResult` and schema sampled-DataFrame serialization
+
+`core` must not import:
+
+- SQLAlchemy
+- Neo4j
+- Pydantic AI
+- LiteLLM
+- Anthropic/OpenAI provider packages
+- Playwright
+- Textual
+- Jinja2
+- tabulate
+- tqdm
+- sqlglot
+- `tabulaflow.data`
+- `tabulaflow.output`
+- `tabulaflow.agents`
+- `tabulaflow.app`
+- `tabulaflow.research`
+
+## Refactor sequence for core
+
+Recommended order:
+
+1. Create the new `core/` files while keeping behavior unchanged.
+2. Move schema primitives from `core/types.py` to `core/schema.py`.
+3. Move result primitives to `core/results.py`.
+4. Move usage/messages/trajectory data models to `core/trace.py`.
+5. Move JSON/DataFrame serialization helpers to `core/serialization.py`.
+6. Rename `Registry` → `ClassRegistry` in `core/registry.py` and update consumers.
+7. Remove `PredQuery` from core and move it to `research/types.py`.
+8. Move provider-specific usage/trajectory conversion to `agents/llm.py` or `agents/trace.py`.
+9. Update `core/__init__.py` to export only stable primitives.
+10. Update imports to use package boundaries where possible:
+
+```python
+from tabulaflow.core import SQLSchema, ExecResult, Usage, Trajectory
+```
+
+11. Delete the old `core/types.py` once all consumers are updated.
+
+## Final `core/__init__.py` policy
+
+Export stable primitives only.
+
+Good exports:
+
+- schema primitives
+- result primitives
+- trace primitives
+- `ClassRegistry`
+
+Do not export:
+
+- `PredQuery`
+- `OutputSpec`
+- `SQLConnector`
+- `DBRegistry`
+- `make_agent`
+- schema formatter registries
+- app/research/tool classes
+
+## Summary
+
+Final core is:
+
+```text
+core/
+  __init__.py
+  schema.py
+  results.py
+  trace.py
+  serialization.py
+  registry.py
+```
+
+Core means:
+
+> Stable TabulaFlow primitives and deterministic helpers.
+
+Everything that connects, executes, resolves, renders, prompts, chats, evaluates, or manages session lifecycle belongs outside core.
