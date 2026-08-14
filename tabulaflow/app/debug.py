@@ -7,25 +7,94 @@ Only used when the ``DEBUG`` env var is set (see ``debug_enabled``). Kept out of
 from __future__ import annotations
 
 import os
-from types import SimpleNamespace
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
-from tabulaflow.app.display import build_artifact_card_views
+from tabulaflow.app.display import CardGroup, build_resolved_output_card_views
 from tabulaflow.app.widgets import AgentResultWidget
+from tabulaflow.core.outputs import ResultMetadata
+from tabulaflow.toolhub.output_resolver import ResolvedArtifact, ResolvedChartArtifact, ResolvedOutput, ResolvedTableArtifact, UnavailableArtifact
+from tabulaflow.toolhub.output_store import ResultPayload
 
 
-def DebugTablePayload(**kwargs: Any) -> SimpleNamespace:
-    return SimpleNamespace(kind="table", graph=None, **kwargs)
+@dataclass(frozen=True)
+class DebugTablePayload:
+    result_id: str
+    label: str
+    query: str | None
+    df: "pd.DataFrame | None"
+    query_lexer: str = "sql"
+    graph: "GraphView | None" = None
 
 
-def DebugChartPayload(**kwargs: Any) -> SimpleNamespace:
-    return SimpleNamespace(kind="chart", graph=None, **kwargs)
+@dataclass(frozen=True)
+class DebugChartPayload(DebugTablePayload):
+    chart_id: str = "CHARTDEBUG"
+    chart_spec: dict[str, object] | None = None
+
+
+def _debug_cards(payloads: list[DebugTablePayload], width: int) -> list[CardGroup]:
+    artifacts: list[ResolvedArtifact] = []
+    for payload in payloads:
+        result_payload = ResultPayload(
+            metadata=ResultMetadata(
+                id=payload.result_id,
+                db_alias="debug",
+                query=payload.query or "",
+                connector_type="property_graph" if payload.query_lexer == "cypher" else "sql",
+                row_count=len(payload.df) if payload.df is not None else None,
+                columns=[str(column) for column in payload.df.columns] if payload.df is not None else None,
+            ),
+            df=payload.df,
+            graph=payload.graph,
+        )
+        if isinstance(payload, DebugChartPayload) and payload.chart_spec is not None:
+            if payload.df is None:
+                artifacts.append(
+                    UnavailableArtifact(
+                        artifact_id=payload.chart_id,
+                        label=payload.label,
+                        reason="Source returned no tabular data",
+                        status="error",
+                    )
+                )
+                continue
+            artifacts.append(
+                ResolvedChartArtifact(
+                    artifact_id=payload.chart_id,
+                    label=payload.label,
+                    source_id=payload.result_id,
+                    payload=result_payload,
+                    spec=payload.chart_spec,
+                )
+            )
+        else:
+            if payload.df is None and payload.graph is None:
+                artifacts.append(
+                    UnavailableArtifact(
+                        artifact_id=payload.result_id,
+                        label=payload.label,
+                        reason="Source returned no displayable data",
+                        status="error",
+                    )
+                )
+                continue
+            artifacts.append(
+                ResolvedTableArtifact(
+                    artifact_id=payload.result_id,
+                    label=payload.label,
+                    source_id=payload.result_id,
+                    payload=result_payload,
+                )
+            )
+    return build_resolved_output_card_views(ResolvedOutput(selection={}, artifacts=artifacts), width)
 
 if TYPE_CHECKING:
     import pandas as pd
     from textual.containers import VerticalScroll
 
     from tabulaflow.app.tui import TabulaflowApp
+    from tabulaflow.core.types import GraphView
 
 
 def debug_enabled() -> bool:
@@ -397,7 +466,7 @@ LIMIT 4000"""
     result = ChatResult(text="Debug startup table")
     return AgentResultWidget(
         result,
-        build_artifact_card_views(cards),
+        _debug_cards(cards, app.size.width - 11),
         width=app.size.width - 11,
     )
 
@@ -493,7 +562,7 @@ def _build_debug_huge_cell_result_widget(app: TabulaflowApp) -> AgentResultWidge
     )
     return AgentResultWidget(
         result,
-        build_artifact_card_views(cards),
+        _debug_cards(cards, app.size.width - 11),
         width=app.size.width - 11,
     )
 
@@ -608,7 +677,7 @@ def _build_debug_media_result_widget(app: TabulaflowApp) -> AgentResultWidget:
     result = ChatResult(text="Debug startup media table")
     return AgentResultWidget(
         result,
-        build_artifact_card_views(cards),
+        _debug_cards(cards, app.size.width - 11),
         width=app.size.width - 11,
     )
 
@@ -647,7 +716,7 @@ def _build_debug_small_result_widget(app: TabulaflowApp) -> AgentResultWidget:
     result = ChatResult(text="Debug startup small table")
     return AgentResultWidget(
         result,
-        build_artifact_card_views(cards),
+        _debug_cards(cards, app.size.width - 11),
         width=app.size.width - 11,
     )
 
@@ -728,7 +797,7 @@ def _build_debug_quad_result_widget(app: TabulaflowApp) -> AgentResultWidget:
         "ORDER BY (reorder_point - stock_on_hand) DESC"
     )
 
-    cards: list[SimpleNamespace] = [
+    cards: list[DebugTablePayload] = [
         DebugChartPayload(
             chart_id="CHARTDEBUG_QUAD_1",
             result_id="QDEBUG_QUAD_1",
@@ -765,7 +834,7 @@ def _build_debug_quad_result_widget(app: TabulaflowApp) -> AgentResultWidget:
     result = ChatResult(text="Debug quad-card result")
     return AgentResultWidget(
         result,
-        build_artifact_card_views(cards),
+        _debug_cards(cards, app.size.width - 11),
         width=app.size.width - 11,
     )
 
@@ -952,7 +1021,7 @@ def _build_debug_multi_result_widget(app: TabulaflowApp) -> AgentResultWidget:
             "title": label.replace("_", " ").title(),
         }
 
-    cards: list[SimpleNamespace] = []
+    cards: list[DebugTablePayload] = []
     for i, (label, query, columns, n_rows) in enumerate(card_specs):
         # Every 3rd artifact is query-only, every 2nd of the rest is a chart,
         # so the final mix is: 5 chart+data+query, 5 data+query, 5 query-only.
@@ -984,7 +1053,7 @@ def _build_debug_multi_result_widget(app: TabulaflowApp) -> AgentResultWidget:
     result = ChatResult(text="Debug multi-card result")
     return AgentResultWidget(
         result,
-        build_artifact_card_views(cards),
+        _debug_cards(cards, app.size.width - 11),
         width=app.size.width - 11,
     )
 
@@ -1205,7 +1274,7 @@ def _build_debug_chart_result_widget(app: TabulaflowApp) -> AgentResultWidget:
     """
     from tabulaflow.chat import ChatResult
 
-    cards: list[SimpleNamespace] = [
+    cards: list[DebugTablePayload] = [
         DebugChartPayload(
             chart_id=f"CHARTDEBUG_{i + 1}",
             result_id=rid,
@@ -1223,7 +1292,7 @@ def _build_debug_chart_result_widget(app: TabulaflowApp) -> AgentResultWidget:
     )
     return AgentResultWidget(
         result,
-        build_artifact_card_views(cards),
+        _debug_cards(cards, app.size.width - 11),
         width=app.size.width - 11,
     )
 

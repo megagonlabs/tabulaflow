@@ -1,43 +1,75 @@
-"""Tests for building TUI result views from a ChatResult's artifacts."""
+"""Tests for building TUI result views from resolved output artifacts."""
 
 from __future__ import annotations
 
-from types import SimpleNamespace
+from typing import Literal
 
 import pandas as pd
 from rich.console import Console
 
-from tabulaflow.app.widgets import AgentResultWidget
 from tabulaflow.app.display import (
+    CardGroup,
     VIEW_KIND_INFO,
     VIEW_KIND_CHART,
     VIEW_KIND_DATA,
     VIEW_KIND_GRAPH,
     VIEW_KIND_MAP,
     VIEW_KIND_QUERY,
-    build_artifact_card_views,
+    build_resolved_output_card_views,
 )
+from tabulaflow.app.widgets import AgentResultWidget
 from tabulaflow.chat import ChatResult
+from tabulaflow.core.outputs import ChoiceOption, ChoiceParameter, NumberParameter, OutputSpec, ParameterSpec, ResultMetadata
 from tabulaflow.core.types import GraphView, GraphViewEdge, GraphViewNode
-from tabulaflow.core.outputs import ChoiceOption, ChoiceParameter, NumberParameter, OutputSpec, ParameterSpec
+from tabulaflow.toolhub.output_resolver import (
+    ResolvedChartArtifact,
+    ResolvedArtifact,
+    ResolvedGraphArtifact,
+    ResolvedMapArtifact,
+    ResolvedOutput,
+    ResolvedTableArtifact,
+    UnavailableArtifact,
+)
+from tabulaflow.toolhub.output_store import ResultPayload
 
 
-def _result(result_id: str, label: str) -> SimpleNamespace:
-    return SimpleNamespace(kind="table", graph=None, 
-        result_id=result_id,
-        label=label,
-        query="SELECT 1",
-        df=pd.DataFrame({"a": [1, 2]}),
-        query_lexer="sql",
+def _payload(
+    result_id: str,
+    *,
+    df: pd.DataFrame | None = None,
+    query: str = "SELECT 1",
+    graph: GraphView | None = None,
+    connector_type: Literal["sql", "property_graph"] = "sql",
+) -> ResultPayload:
+    return ResultPayload(
+        metadata=ResultMetadata(
+            id=result_id,
+            db_alias="debug",
+            query=query,
+            connector_type=connector_type,
+            row_count=len(df) if df is not None else None,
+            columns=[str(column) for column in df.columns] if df is not None else None,
+        ),
+        df=df,
+        graph=graph,
     )
 
 
-def _browser_only_chart(chart_id: str, label: str) -> SimpleNamespace:
-    return SimpleNamespace(kind="chart", 
-        chart_id=chart_id,
-        result_id="Q1",
+def _table(result_id: str, label: str) -> ResolvedTableArtifact:
+    return ResolvedTableArtifact(
+        artifact_id=result_id,
+        source_id=result_id,
         label=label,
-        chart_spec={
+        payload=_payload(result_id, df=pd.DataFrame({"a": [1, 2]})),
+    )
+
+
+def _chart(chart_id: str, label: str) -> ResolvedChartArtifact:
+    return ResolvedChartArtifact(
+        artifact_id=chart_id,
+        source_id="Q1",
+        label=label,
+        spec={
             "mark": "bar",
             "encoding": {
                 "x": {"field": "region"},
@@ -45,43 +77,42 @@ def _browser_only_chart(chart_id: str, label: str) -> SimpleNamespace:
                 "color": {"field": "region"},
             },
         },
-        query=None,
-        df=pd.DataFrame({"region": ["north", "south"], "revenue": [10, 20]}),
-        query_lexer="sql",
+        payload=_payload("Q1", df=pd.DataFrame({"region": ["north", "south"], "revenue": [10, 20]}), query=""),
     )
 
 
-def _map(map_id: str, label: str) -> SimpleNamespace:
-    return SimpleNamespace(kind="map", 
-        map_id=map_id,
+def _map(map_id: str, label: str) -> ResolvedMapArtifact:
+    return ResolvedMapArtifact(
+        artifact_id=map_id,
         label=label,
-        map_spec={"title": "Cities", "layers": [{"type": "points", "source": "Q1", "lat": "c0", "lng": "c1"}]},
-        sources={"Q1": pd.DataFrame({"lat": [37.7], "lng": [-122.4]})},
+        spec={"title": "Cities", "layers": [{"type": "points", "source": "Q1", "lat": "c0", "lng": "c1"}]},
+        payload_by_source={"Q1": _payload("Q1", df=pd.DataFrame({"lat": [37.7], "lng": [-122.4]}))},
     )
 
 
-def _graph(graph_id: str, label: str) -> SimpleNamespace:
-    return SimpleNamespace(kind="graph", 
-        graph_id=graph_id,
+def _graph(graph_id: str, label: str) -> ResolvedGraphArtifact:
+    return ResolvedGraphArtifact(
+        artifact_id=graph_id,
         label=label,
         graph=GraphView(nodes=[GraphViewNode(id="a"), GraphViewNode(id="b")], edges=[GraphViewEdge(source="a", target="b")]),
         layout="force",
     )
 
 
+def _groups(*artifacts: ResolvedArtifact) -> list[CardGroup]:
+    return build_resolved_output_card_views(ResolvedOutput(selection={}, artifacts=list(artifacts)))
+
+
 def test_map_artifact_yields_single_map_placeholder_view() -> None:
-    groups = build_artifact_card_views([_map("MAP1", "cities")])
+    groups = _groups(_map("MAP1", "cities"))
     assert len(groups) == 1
     assert [v.kind for v in groups[0].views] == [VIEW_KIND_MAP]
     assert groups[0].artifact_id == "MAP1"
 
 
 def test_artifacts_render_in_citation_order() -> None:
-    groups = build_artifact_card_views(
-        [_result("Q1", "table1"), _map("MAP1", "map1"), _graph("GRAPH1", "graph1"), _result("Q2", "table2")]
-    )
+    groups = _groups(_table("Q1", "table1"), _map("MAP1", "map1"), _graph("GRAPH1", "graph1"), _table("Q2", "table2"))
     assert [g.artifact_id for g in groups] == ["Q1", "MAP1", "GRAPH1", "Q2"]
-    # The map group is map-only; the card groups keep their data/query views.
     assert [v.kind for v in groups[1].views] == [VIEW_KIND_MAP]
     assert [v.kind for v in groups[2].views] == [VIEW_KIND_GRAPH]
     assert VIEW_KIND_DATA in [v.kind for v in groups[0].views]
@@ -89,53 +120,66 @@ def test_artifacts_render_in_citation_order() -> None:
 
 
 def test_chart_artifact_yields_chart_data_views_with_source_result() -> None:
-    groups = build_artifact_card_views([_browser_only_chart("CHART1", "chart")])
+    groups = _groups(_chart("CHART1", "chart"))
     assert groups[0].artifact_id == "CHART1"
     assert groups[0].result_id == "Q1"
     assert [v.kind for v in groups[0].views] == [VIEW_KIND_CHART, VIEW_KIND_DATA]
 
 
 def test_table_artifact_has_no_chart_view() -> None:
-    groups = build_artifact_card_views([_result("Q1", "table1")])
+    groups = _groups(_table("Q1", "table1"))
     assert groups[0].result_id == "Q1"
     assert [v.kind for v in groups[0].views] == [VIEW_KIND_DATA, VIEW_KIND_QUERY]
 
 
 def test_empty_table_artifact_keeps_data_view() -> None:
-    card = _result("Q1", "empty")
-    card.df = pd.DataFrame({"customer": pd.Series(dtype="object"), "value": pd.Series(dtype="int64")})
+    card = ResolvedTableArtifact(
+        artifact_id="Q1",
+        source_id="Q1",
+        label="empty",
+        payload=_payload("Q1", df=pd.DataFrame({"customer": pd.Series(dtype="object"), "value": pd.Series(dtype="int64")})),
+    )
 
-    groups = build_artifact_card_views([card])
+    groups = _groups(card)
 
     assert [v.kind for v in groups[0].views] == [VIEW_KIND_DATA, VIEW_KIND_QUERY]
     assert groups[0].views[0].data_shape == (0, 2)
 
 
 def test_empty_chart_artifact_skips_chart_but_keeps_data_view() -> None:
-    card = _browser_only_chart("CHART1", "empty chart")
-    card.df = pd.DataFrame({"region": pd.Series(dtype="object"), "revenue": pd.Series(dtype="int64")})
+    card = _chart("CHART1", "empty chart")
+    card = ResolvedChartArtifact(
+        artifact_id=card.artifact_id,
+        source_id=card.source_id,
+        label=card.label,
+        spec=card.spec,
+        payload=_payload("Q1", df=pd.DataFrame({"region": pd.Series(dtype="object"), "revenue": pd.Series(dtype="int64")}), query=""),
+    )
 
-    groups = build_artifact_card_views([card])
+    groups = _groups(card)
 
     assert [v.kind for v in groups[0].views] == [VIEW_KIND_DATA]
 
 
 def test_table_artifact_with_graph_has_graph_data_query_views() -> None:
-    card = _result("Q1", "paths")
-    card.query_lexer = "cypher"
-    card.graph = GraphView(
+    graph = GraphView(
         nodes=[GraphViewNode(id="a", label="Alice", group="Person"), GraphViewNode(id="b", label="Bob", group="Person")],
         edges=[GraphViewEdge(source="a", target="b", label="KNOWS", directed=True)],
     )
-    groups = build_artifact_card_views([card])
+    card = ResolvedTableArtifact(
+        artifact_id="Q1",
+        source_id="Q1",
+        label="paths",
+        payload=_payload("Q1", df=pd.DataFrame({"a": [1, 2]}), graph=graph, connector_type="property_graph"),
+    )
+
+    groups = _groups(card)
 
     assert [v.kind for v in groups[0].views] == [VIEW_KIND_GRAPH, VIEW_KIND_DATA, VIEW_KIND_QUERY]
 
 
-def test_placeholder_artifact_yields_single_info_view() -> None:
-    groups = build_artifact_card_views(
-        [SimpleNamespace(kind="placeholder", label="QoQ change", message="only applies when Time period = Q2")]
-    )
+def test_unavailable_artifact_yields_single_info_view() -> None:
+    groups = _groups(UnavailableArtifact(artifact_id="placeholder:QoQ change", label="QoQ change", reason="only applies when Time period = Q2", status="not_applicable"))
 
     assert len(groups) == 1
     assert groups[0].label == "QoQ change"
@@ -160,13 +204,13 @@ def test_panel_result_widget_switches_combinations_and_preserves_card_views() ->
             choices=[ChoiceOption(id="q2", label="Q2"), ChoiceOption(id="q3", label="Q3")],
         ),
     ]
-    first_artifacts = [_result("Q1", "top"), _result("Q5", "fixed")]
+    first_artifacts = [_table("Q1", "top"), _table("Q5", "fixed")]
     widget = AgentResultWidget(
         ChatResult(
             text="x",
             output=OutputSpec(parameters=controls),
         ),
-        build_artifact_card_views(first_artifacts),
+        _groups(*first_artifacts),
     )
 
     assert [(card.artifact_id, card.views[0].kind) for card in widget._cards] == [
@@ -174,17 +218,15 @@ def test_panel_result_widget_switches_combinations_and_preserves_card_views() ->
         ("Q5", VIEW_KIND_DATA),
     ]
 
-    widget._move_interpretation_cursor(1)  # ranking=count
+    widget._move_interpretation_cursor(1)
     widget._apply_interpretation_cursor()
     assert widget._applied_selection == {"ranking": "count", "period": "q2"}
-    # Without an output store, the widget updates selection state but keeps
-    # the default fallback cards.
     assert [(card.artifact_id, card.views[0].kind) for card in widget._cards] == [
         ("Q1", VIEW_KIND_DATA),
         ("Q5", VIEW_KIND_DATA),
     ]
 
-    widget._move_interpretation_cursor(2)  # period=q3
+    widget._move_interpretation_cursor(2)
     widget._apply_interpretation_cursor()
     assert widget._applied_selection == {"ranking": "count", "period": "q3"}
     assert [(card.artifact_id, card.views[0].kind) for card in widget._cards] == [
@@ -206,7 +248,7 @@ def test_panel_result_widget_uses_choice_controls_as_primary_model() -> None:
             text="x",
             output=OutputSpec(parameters=controls),
         ),
-        build_artifact_card_views([_result("Q1", "top")]),
+        _groups(_table("Q1", "top")),
     )
 
     assert widget._choice_count() == 2
@@ -230,7 +272,7 @@ def test_result_widget_uses_output_parameters_without_legacy_panel() -> None:
                 ]
             ),
         ),
-        build_artifact_card_views([_result("Q1", "top")]),
+        _groups(_table("Q1", "top")),
     )
 
     assert widget._choice_count() == 2
@@ -249,7 +291,7 @@ def test_slider_only_panel_does_not_crash_choice_navigation() -> None:
                 ],
             ),
         ),
-        build_artifact_card_views([_result("Q1", "players")]),
+        _groups(_table("Q1", "players")),
     )
 
     assert widget._choice_count() == 0
@@ -259,7 +301,7 @@ def test_slider_only_panel_does_not_crash_choice_navigation() -> None:
 
 
 def test_browser_only_chart_placeholder_uses_artifact_caption() -> None:
-    groups = build_artifact_card_views([_browser_only_chart("CHART1", "chart")])
+    groups = _groups(_chart("CHART1", "chart"))
     chart_view = groups[0].views[0]
     assert chart_view.kind == VIEW_KIND_CHART
 
@@ -271,14 +313,13 @@ def test_browser_only_chart_placeholder_uses_artifact_caption() -> None:
     assert "Open this one in your browser" not in rendered
 
 
-def test_map_artifact_sources_released_after_render() -> None:
-    chat_map = _map("MAP1", "cities")
-    build_artifact_card_views([chat_map])
-    # DataFrame references are dropped once previews are rendered.
-    assert chat_map.sources == {}
+def test_map_artifact_payload_survives_terminal_render() -> None:
+    artifact = _map("MAP1", "cities")
+    _groups(artifact)
+    assert artifact.payload_by_source["Q1"].df is not None
 
 
 def test_graph_artifact_graph_view_survives_terminal_render() -> None:
-    chat_graph = _graph("GRAPH1", "lineage")
-    build_artifact_card_views([chat_graph])
-    assert len(chat_graph.graph.nodes) == 2
+    artifact = _graph("GRAPH1", "lineage")
+    _groups(artifact)
+    assert len(artifact.graph.nodes) == 2

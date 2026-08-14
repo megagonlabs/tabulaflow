@@ -1128,7 +1128,7 @@ class TabulaflowApp(App[None]):
             title=display_text,
             user_text=display_text,
         )
-        cards = await build_resolved_output_card_views(resolved_output, self.size.width - 11)
+        cards = build_resolved_output_card_views(resolved_output, self.size.width - 11)
         if cards:
             # chat-log padding (2) + scrollbar (2) + widget margin (5) + widget padding (2) = 11
             result_widget = AgentResultWidget(

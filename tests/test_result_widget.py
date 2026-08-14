@@ -1,31 +1,33 @@
 from __future__ import annotations
 
 import pandas as pd
-from types import SimpleNamespace
 from textual.app import App, ComposeResult
 from textual.containers import VerticalScroll
 
-from tabulaflow.app.display import VIEW_KIND_DATA, VIEW_KIND_QUERY, build_artifact_card_views
+from tabulaflow.app.display import VIEW_KIND_DATA, VIEW_KIND_QUERY, build_resolved_output_card_views
 from tabulaflow.app.widgets import AgentResultWidget
 from tabulaflow.chat import ChatResult
+from tabulaflow.core.outputs import ResultMetadata
+from tabulaflow.toolhub.output_resolver import ResolvedArtifact, ResolvedOutput, ResolvedTableArtifact
+from tabulaflow.toolhub.output_store import ResultPayload
 
 
-def _result(result_id: str, label: str) -> SimpleNamespace:
-    return SimpleNamespace(
-        kind="table",
-        result_id=result_id,
+def _result(result_id: str, label: str) -> ResolvedTableArtifact:
+    return ResolvedTableArtifact(
+        artifact_id=result_id,
+        source_id=result_id,
         label=label,
-        query=f"SELECT '{label}' AS label",
-        df=pd.DataFrame({"label": [label], "value": [1]}),
-        query_lexer="sql",
-        graph=None,
+        payload=ResultPayload(
+            metadata=ResultMetadata(id=result_id, db_alias="debug", query=f"SELECT '{label}' AS label"),
+            df=pd.DataFrame({"label": [label], "value": [1]}),
+        ),
     )
 
 
 class _ResultWidgetApp(App[None]):
     def __init__(self) -> None:
         super().__init__()
-        artifacts = [
+        artifacts: list[ResolvedArtifact] = [
             _result("Q1", "one"),
             _result("Q2", "two"),
         ]
@@ -33,7 +35,7 @@ class _ResultWidgetApp(App[None]):
             ChatResult(
                 text="x",
             ),
-            build_artifact_card_views(artifacts),
+            build_resolved_output_card_views(ResolvedOutput(selection={}, artifacts=artifacts)),
         )
 
     def get_css_variables(self) -> dict[str, str]:

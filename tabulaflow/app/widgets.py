@@ -1713,7 +1713,7 @@ class AgentResultWidget(Widget):
         if self._output_store is None:
             return
         resolved_output = await OutputResolver(self._output_store).resolve(self._result.output, selection)
-        cards = await build_resolved_output_card_views(resolved_output, self._width)
+        cards = build_resolved_output_card_views(resolved_output, self._width)
         self._rebuild_cards_for_selection(cards)
         self._refresh_all()
 

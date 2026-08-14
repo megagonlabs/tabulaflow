@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
@@ -354,79 +353,7 @@ class CardGroup:
     views: list[ViewItem] = field(default_factory=list)
 
 
-def build_artifact_card_views(
-    artifacts: Sequence[object], width: int = 80, *, release_dataframes: bool = True
-) -> list[CardGroup]:
-    """Build card groups from legacy/debug display payload objects."""
-    groups: list[CardGroup] = []
-    used_labels: set[str] = set()
-    for artifact in artifacts:
-        base_label = getattr(artifact, "label", None) or "result"
-        label = _unique_card_label(base_label, used_labels)
-        used_labels.add(label)
-        kind = getattr(artifact, "kind", None)
-        if kind == "placeholder":
-            groups.append(
-                CardGroup(
-                    label=label,
-                    artifact_id=f"placeholder:{label}",
-                    views=[ViewItem(kind=VIEW_KIND_INFO, renderable=_build_info_card(str(getattr(artifact, "message", ""))))],
-                )
-            )
-            continue
-        if kind == "map":
-            groups.append(
-                CardGroup(
-                    label=label,
-                    artifact_id=str(getattr(artifact, "map_id")),
-                    views=[ViewItem(kind=VIEW_KIND_MAP, renderable=_build_map_card(getattr(artifact, "map_spec")))],
-                )
-            )
-            continue
-        if kind == "graph":
-            groups.append(
-                CardGroup(
-                    label=label,
-                    artifact_id=str(getattr(artifact, "graph_id")),
-                    views=[ViewItem(kind=VIEW_KIND_GRAPH, renderable=_build_graph_card())],
-                )
-            )
-            continue
-        chart_spec = getattr(artifact, "chart_spec", None)
-        artifact_id = str(getattr(artifact, "chart_id", getattr(artifact, "result_id", "result")))
-        result_id = str(getattr(artifact, "result_id", artifact_id))
-        views: list[ViewItem] = []
-        if getattr(artifact, "graph", None) is not None:
-            views.append(ViewItem(kind=VIEW_KIND_GRAPH, renderable=_build_graph_card()))
-        df = getattr(artifact, "df", None)
-        if chart_spec is not None and df is not None and not df.empty:
-            views.append(ViewItem(kind=VIEW_KIND_CHART, renderable=build_chart(df, chart_spec, width), chart_spec=chart_spec))
-        if df is not None:
-            renderable, shown_cols = build_table(df, available_width=width, include_footer=False)
-            views.append(
-                ViewItem(
-                    kind=VIEW_KIND_DATA,
-                    renderable=renderable,
-                    data_shape=(len(df), len(df.columns)),
-                    shown_cols=shown_cols,
-                )
-            )
-        query = getattr(artifact, "query", None)
-        query_lexer = getattr(artifact, "query_lexer", "sql")
-        if query:
-            views.append(ViewItem(kind=VIEW_KIND_QUERY, renderable=build_query(query, lexer=query_lexer), query=(query, query_lexer)))
-        if views:
-            groups.append(CardGroup(label=label, artifact_id=artifact_id, result_id=result_id, views=views))
-    if release_dataframes:
-        for artifact in artifacts:
-            if hasattr(artifact, "df"):
-                artifact.df = None
-            if hasattr(artifact, "sources"):
-                artifact.sources = {}
-    return groups
-
-
-async def build_resolved_output_card_views(
+def build_resolved_output_card_views(
     resolved_output: ResolvedOutput,
     width: int = 80,
 ) -> list[CardGroup]:
