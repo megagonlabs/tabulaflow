@@ -195,7 +195,7 @@ def test_custom_presets_appended_to_defaults(tmp_path: Path) -> None:
 def test_custom_preset_overrides_matching_default_in_place() -> None:
     override = LLMPreset(
         label=DEFAULT_LLM_PRESETS[0].label,
-        main=LLMRoleConfig(model="openai-responses:gpt-5.5", reasoning_effort="high"),
+        main=LLMRoleConfig(model="openai-responses:gpt-5.6-sol", reasoning_effort="high"),
         subagent=LLMRoleConfig(model="openai-responses:gpt-5.4-mini", reasoning_effort="low"),
     )
     catalog = AppConfig(custom_llm_presets=[override]).llm_presets

@@ -17,7 +17,7 @@ from tabulaflow.app.screens import ConfigScreen
 _PRESETS = [
     LLMPreset(
         label="OpenAI balanced",
-        main=LLMRoleConfig(model="openai-responses:gpt-5.5", reasoning_effort="medium"),
+        main=LLMRoleConfig(model="openai-responses:gpt-5.6-sol", reasoning_effort="medium"),
         subagent=LLMRoleConfig(model="openai-responses:gpt-5.4-mini", reasoning_effort="medium"),
     ),
     LLMPreset(
@@ -42,7 +42,7 @@ class _StubSession:
     def __init__(
         self,
         label: str = "OpenAI balanced",
-        model: str = "openai-responses:gpt-5.5",
+        model: str = "openai-responses:gpt-5.6-sol",
         reasoning_effort: ReasoningEffort = "medium",
         subagent_model: str = "openai-responses:gpt-5.4-mini",
         subagent_reasoning_effort: ReasoningEffort = "medium",
@@ -96,7 +96,7 @@ async def test_renders_presets() -> None:
         assert "●" not in _row_plain(screen, 0)
         assert "●" in _row_plain(screen, 1)
         assert "OpenAI balanced" in _row_plain(screen, 1)
-        assert "GPT 5.5 medium" in _row_plain(screen, 1)
+        assert "GPT 5.6 Sol medium" in _row_plain(screen, 1)
         assert "GPT 5.4 Mini medium" in _row_plain(screen, 1)
         assert "OpenAI budget" in _row_plain(screen, 2)
         assert "GPT 5.4 Mini medium" in _row_plain(screen, 2)
@@ -249,7 +249,7 @@ async def test_unverified_selected_preset_has_active_dot_without_error() -> None
 async def test_current_custom_row_for_unmatched_runtime_profile() -> None:
     session = _StubSession(
         label="Test",
-        model="openai-responses:gpt-5.5",
+        model="openai-responses:gpt-5.6-sol",
         reasoning_effort="high",
         subagent_model="anthropic:claude-sonnet-4-5-20250929",
         subagent_reasoning_effort="medium",

@@ -14,7 +14,7 @@ Example config with an explicitly selected custom preset::
         {
           "label": "My research stack",
           "main": {
-            "model": "openai-responses:gpt-5.5",
+            "model": "openai-responses:gpt-5.6-sol",
             "reasoning_effort": "high"
           },
           "subagent": {
@@ -91,7 +91,7 @@ _DEFAULT_LLM_PRESETS_DATA = (
     {
         "label": "OpenAI balanced",
         "main": {
-            "model": "openai-responses:gpt-5.5",
+            "model": "openai-responses:gpt-5.6-sol",
             "reasoning_effort": "medium",
         },
         "subagent": {
