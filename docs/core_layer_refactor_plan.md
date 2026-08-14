@@ -408,6 +408,104 @@ from tabulaflow.agents.llm import make_agent
 
 Avoid importing all tools from `agents/__init__.py` if that pulls heavy dependencies such as browser/runtime packages.
 
+## Final app layer shape
+
+The app layer remains the bundled end-user application and should stay a leaf over `core`, `data`, `output`, and `agents`.
+
+Final app shape should stay close to the current structure:
+
+```text
+app/
+  __init__.py
+  main.py
+  state.py          # renamed from session.py
+  config.py
+  commands.py
+  tui.py
+  screens.py
+  widgets.py
+  runtime_paths.py
+
+  pane/
+    __init__.py
+    server.py
+    cards.py
+    tables.py
+    charts.py
+    maps.py
+    graphs.py
+    types.py
+    assets/
+
+  sample_data.py
+  debug.py
+  display.py
+  theme.py
+  banner.py
+  media.py
+```
+
+Naming decisions:
+
+- Rename `app/session.py` to `app/state.py`.
+- Rename `SessionState` to `AppState`.
+- Rename `_chat_agent` / `active_chat_agent` / `_build_chat_agent` to `_chat_session` / `active_chat_session` / `_build_chat_session`.
+- Keep `ChatSession` in `agents/chat/session.py`; do not call the app object `AppSession` because that creates two competing session concepts.
+
+Ownership decisions:
+
+- `AppState` owns app-level environment and lifecycle: selected LLM preset, `DBRegistry`, workspace connector, project/scratch/data dirs, trajectory dir, source alias tracking, active `ChatSession`, and app-level cleanup.
+- `ChatSession` owns one stateful conversation runtime: history, tools, output/message stores, model runtime, event stream, and chat-owned cleanup.
+- Keep `create_workspace_connector(...)` in the app for now; workspace creation is app lifecycle setup. Move it lower only if a non-app SDK needs the same workspace abstraction.
+- Keep app config, commands, TUI, screens, widgets, sample data, debug helpers, and pane server/rendering in `app`.
+- Do not split or merge app UI files just for architecture cleanliness. App layers naturally have many concrete files; the boundary matters more than file count.
+
+Pane boundary:
+
+- `output/` owns output specs, result/source/artifact storage and resolution, and generic formatting.
+- `app/pane/` owns concrete browser-pane rendering/server/assets for already-resolved payloads.
+- The pane should not own output source resolution or query/materialization logic.
+
+Dependency decisions:
+
+- `app` may import `core`, `data`, `output`, and `agents`.
+- Nothing in `core`, `data`, `output`, `agents`, or `research` should import `app`.
+- `research` should not import `app`; any reusable rendering/reporting should live in `output` or `research`, not app.
+
+## Final research layer decision
+
+Keep the research layer mostly as-is for this refactor:
+
+```text
+research/
+  agenthub/
+  benchmarks/
+  metrics/
+  tools/
+  pipelines/
+  types.py
+  visualization.py
+  question_embedder.py
+  utils.py
+```
+
+Research is a leaf consumer of `core`, `data`, `output`, and `agents`. Nothing in the platform layers should import `research`.
+
+Scope decision:
+
+- Preserve existing research names and structure for now.
+- Do not rename `research/agenthub` to `research/agents` in this refactor.
+- Do not split `research/types.py` in this refactor.
+- Keep research registries (`agent_registry`, `dataset_registry`, `metric_registry`) as research concepts.
+- Only perform boundary cleanup that prevents research concepts from leaking into platform layers.
+
+Necessary move:
+
+- Move `PredQuery` from core to `research/types.py`, near `GoldQuery`.
+- Keep the name `PredQuery`.
+- Product/tool/output code should stop using `PredQuery`; use explicit query/result arguments or a neutral `QueryExecution` record instead.
+- Research agents can convert `QueryExecution` into `PredQuery` when needed.
+
 ## What must leave core
 
 ### `PredQuery`
@@ -592,6 +690,63 @@ Do not export:
 - `make_agent`
 - schema formatter registries
 - app/research/tool classes
+
+## Overall implementation order
+
+Move by ownership first; split internals second.
+
+1. Create `data/`, `output/`, and `agents/` packages.
+2. Split `core/types.py` into `core/schema.py`, `core/results.py`, and `core/serialization.py`; rename `Registry` to `ClassRegistry`.
+3. Move trace models/adapters to `agents/trace.py`; move `PredQuery` to `research/types.py`.
+4. Move data runtime to `data/`: connectors, URL helpers, registry, schema compressor, and loaders.
+5. Move output runtime to `output/`: specs, store, resolver, formatting, and schema formatters.
+6. Move agent runtime to `agents/`: LLM helper, ChatSession, tools, and modules.
+7. Rename app `SessionState` to `AppState` and update app imports.
+8. Update import-linter rules and `AGENTS.md`.
+9. Delete old modules/paths once all imports are migrated.
+
+Do not leave permanent compatibility shims for old import paths; this repo is still pre-publication and the goal is clean architecture.
+
+## Import-linter target
+
+Enforce the product/platform chain:
+
+```text
+core < data < output < agents < app
+```
+
+Research is a separate leaf:
+
+- `research` may import `core`, `data`, `output`, and `agents`.
+- `research` must not import `app`.
+- Nothing in `core`, `data`, `output`, `agents`, or `app` may import `research`.
+
+## Config decision
+
+Config ownership is intentionally deferred until after the package/layer refactor.
+
+Current config is cross-cutting (data cache/query settings, LLM throttling, browser settings, app settings, instrumentation). Splitting it during the package move would add unnecessary churn. During this refactor, preserve existing config behavior and avoid expanding core config further. Revisit whether config belongs in top-level `tabulaflow/config.py` or split by layer after the architecture move lands.
+
+## Utilities cleanup
+
+Delete `core/utils.py` eventually by moving helpers to their owning layers:
+
+- strict JSON helpers → `core/serialization.py`
+- file-writing helpers such as `write_strict_json` → app/output I/O code
+- display/table/schema formatting → `output/formatting.py` or `output/schema_formatters/`
+- SQL source-column analysis → `data` (for SQL analysis) or agents if only used for prompting
+- metrics aggregation helpers → `research`
+- LLM response parsing helpers such as `extract_code` → `agents` or `research`, depending on consumers
+- async progress helpers such as `tqdm_gather_with_exceptions` → `agents` or `research`, depending on consumers
+
+## Documentation scope
+
+For this refactor, update only:
+
+- this design document
+- `AGENTS.md` after implementation
+
+Leave other docs untouched unless a specific test or command depends on them. Broad documentation cleanup can happen after code stabilizes.
 
 ## Summary
 
