@@ -2391,12 +2391,9 @@ def test_view_card_in_pane_marks_turn_as_manual(tmp_path: Path) -> None:
 @pytest.mark.asyncio
 async def test_output_pane_resolves_live_turn_selection(tmp_path: Path) -> None:
     class FakeOutputStore:
-        async def get_metadata(self, result_id: str) -> ResultMetadata:
-            return ResultMetadata(id=result_id, db_alias="workspace", query="SELECT 1")
-
         async def get_payload(self, result_id: str) -> ResultPayload:
             return ResultPayload(
-                metadata=await self.get_metadata(result_id),
+                metadata=ResultMetadata(id=result_id, db_alias="workspace", query="SELECT 1"),
                 df=pd.DataFrame({"period": ["q3"]}),
             )
 
@@ -2448,13 +2445,10 @@ async def test_output_pane_http_resolve_runs_on_app_loop(tmp_path: Path) -> None
     app_loop = asyncio.get_running_loop()
 
     class LoopCheckingOutputStore:
-        async def get_metadata(self, result_id: str) -> ResultMetadata:
-            return ResultMetadata(id=result_id, db_alias="workspace", query="SELECT 1")
-
         async def get_payload(self, result_id: str) -> ResultPayload:
             assert asyncio.get_running_loop() is app_loop
             return ResultPayload(
-                metadata=await self.get_metadata(result_id),
+                metadata=ResultMetadata(id=result_id, db_alias="workspace", query="SELECT 1"),
                 df=pd.DataFrame({"period": ["q3"]}),
             )
 

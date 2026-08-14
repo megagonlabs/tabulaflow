@@ -344,20 +344,15 @@ class OutputStore:
             raise ValueError(f"query {result_id} returned no data")
         return await self._results.get_result_dataframe(result_id)
 
-    async def get_metadata(self, result_id: ResultId) -> ResultMetadata:
-        """Return clean metadata for a materialized result."""
-        return (await self._get_result_entry(result_id)).metadata
-
     async def get_payload(self, result_id: ResultId) -> ResultPayload:
         """Return clean payload for a materialized result."""
         entry = await self._get_result_entry(result_id)
-        metadata = await self.get_metadata(result_id)
         df = None
         try:
             df = await self._get_dataframe(result_id)
         except ValueError:
             pass
-        return ResultPayload(metadata=metadata, df=df, graph=entry.graph)
+        return ResultPayload(metadata=entry.metadata, df=df, graph=entry.graph)
 
     def add_chart_artifact(self, source_id: SourceId, spec: Mapping[str, object], label: str | None = None) -> ChartArtifactSpec:
         """Store a chart artifact under a ``CHART<n>`` id."""

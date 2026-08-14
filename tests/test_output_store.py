@@ -72,7 +72,7 @@ class TestNoConnector:
         h = OutputStore()
         await h.add_fixed_result_source("db", "sql", _make_pred_query(n_rows=3))
         await h.add_fixed_result_source("db", "sql", _make_pred_query(n_rows=7))
-        assert (await h.get_metadata("R1")).query == "SELECT 1"
+        assert (await h.get_payload("R1")).metadata.query == "SELECT 1"
         q2_df = (await h.get_payload("R2")).df
         assert q2_df is not None
         assert len(q2_df) == 7

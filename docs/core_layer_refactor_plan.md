@@ -322,6 +322,92 @@ await output_store.cache_parameterized_result(
 
 `PredQuery` remains a research type only.
 
+## Final agents layer shape
+
+The finalized agents layer shape is:
+
+```text
+agents/
+  __init__.py
+  llm.py
+  trace.py
+  chat/
+    __init__.py
+    session.py
+    events.py
+    toolset.py
+  tools/
+    __init__.py
+    ...
+  modules/
+    __init__.py
+    ...
+```
+
+Concepts:
+
+- **ChatSession**: the reusable stateful conversation object. It owns message history, output/message stores, tool instances, model profile, workspace/registry references, and lifecycle cleanup.
+- **Trace**: agent/LLM interaction records such as `Usage`, messages, tool calls, and `Trajectory`, plus provider/runtime adapters for those records.
+- **LLM runtime**: model factory/settings/provider glue currently in `core/llm.py`.
+- **Tools**: model-facing tools currently in `toolhub/`.
+- **Modules**: LLM-powered support modules currently in `modulehub/`.
+
+Naming decisions:
+
+- Rename current `ChatAgent` to `ChatSession`. The current object is session-like, not a stateless agent definition.
+- Move current `chat/agent.py` to `agents/chat/session.py`.
+- Move current `chat/events.py` to `agents/chat/events.py`.
+- Move current `core/llm.py` to `agents/llm.py`.
+- Move usage/messages/trajectory models and adapters to `agents/trace.py`.
+- Move current `toolhub/` to `agents/tools/`.
+- Move current `modulehub/` to `agents/modules/`.
+- Do not add top-level `llm/`, `chat/`, `toolhub/`, or `modulehub/` in the final architecture.
+- Do not add `sdk.py` yet; make `ChatSession` clean first.
+
+File ownership:
+
+- `agents/llm.py`: `make_agent`, `make_model_settings`, `model_display_name`, provider wrappers, throttling, and provider setup.
+- `agents/trace.py`: `Usage`, normalized message models, `Trajectory`, Pydantic AI usage/message conversion, cost calculation, and trajectory markdown/debug formatting.
+- `agents/chat/session.py`: `ChatSession` turn execution, conversation state, model profile switching, progress/event streaming, and lifecycle.
+- `agents/chat/events.py`: `ChatEvent`, `ChatResult`, and event models produced by `ChatSession.run_stream()`.
+- `agents/chat/toolset.py`: default chat toolset construction and tool wiring helpers.
+- `agents/tools/`: model-facing tools.
+- `agents/modules/`: LLM-powered modules and preprocessors.
+
+Dependency decisions:
+
+- `agents` may depend on `core`, `data`, and `output`.
+- `agents` must not depend on `app` or `research`.
+- `app` and `research` are consumers of `agents`.
+
+API cleanup:
+
+- `RunQueryTool` should stop exposing `last_pred_query`. Use a neutral `QueryExecution` record and `last_execution()` instead.
+
+```python
+@dataclass(frozen=True)
+class QueryExecution:
+    output: str
+    query: str
+    parameter_values: dict[str, Any]
+    exec_result: ExecResult
+```
+
+Research agents can convert `QueryExecution` into `research.PredQuery` when needed.
+
+- Keep `app.SessionState` separate from `ChatSession`; it owns app-specific preset selection, source dedupe, TUI lifecycle, and workspace setup.
+- Rename app fields from `_chat_agent` / `active_chat_agent` to `_chat_session` / `active_chat_session` during the app update.
+
+Public imports should be lightweight:
+
+```python
+from tabulaflow.agents import ChatSession
+from tabulaflow.agents.trace import Usage, Trajectory
+from tabulaflow.agents.llm import make_agent
+```
+
+Avoid importing all tools from `agents/__init__.py` if that pulls heavy dependencies such as browser/runtime packages.
+
 ## What must leave core
 
 ### `PredQuery`

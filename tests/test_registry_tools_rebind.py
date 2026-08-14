@@ -108,7 +108,7 @@ async def test_concurrent_run_query_records_each_invocation_query() -> None:
     assert "SELECT 'second' AS label" in _text(second_result)
     assert "SELECT 'first' AS label" in _text(first_result)
 
-    second_record = await tool.get_metadata("R1")
-    first_record = await tool.get_metadata("R2")
-    assert second_record.query == "SELECT 'second' AS label"
-    assert first_record.query == "SELECT 'first' AS label"
+    second_payload = await tool._output_store.get_payload("R1")  # noqa: SLF001
+    first_payload = await tool._output_store.get_payload("R2")  # noqa: SLF001
+    assert second_payload.metadata.query == "SELECT 'second' AS label"
+    assert first_payload.metadata.query == "SELECT 'first' AS label"
