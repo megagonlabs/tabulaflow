@@ -55,8 +55,8 @@ _JINJA_ENV.globals["not_applicable"] = _not_applicable
 
 
 @dataclass
-class _StoredResult:
-    """Internal metadata and outcome for a materialized result."""
+class _StoredResultEntry:
+    """Internal metadata and storage pointers for one materialized result."""
 
     metadata: ResultMetadata
     has_dataframe: bool = False
@@ -166,7 +166,7 @@ class OutputStore:
     ) -> None:
         if max_in_memory < 1:
             raise ValueError("max_in_memory must be >= 1")
-        self._records: dict[str, _StoredResult] = {}
+        self._results_by_id: dict[str, _StoredResultEntry] = {}
         self._parameters: dict[str, ParameterSpec] = {}
         self._sources: dict[str, SourceSpec] = {}
         self._source_cache: dict[tuple[str, str], str] = {}
@@ -264,7 +264,7 @@ class OutputStore:
         pred_query: PredQuery,
         *,
         selection: Selection | None = None,
-    ) -> _StoredResult:
+    ) -> _StoredResultEntry:
         """Register one result under ``result_id``."""
         exec_result = pred_query.exec_result
         if exec_result is not None and exec_result.error is not None:
@@ -284,8 +284,8 @@ class OutputStore:
             columns=columns,
             latency_seconds=exec_result.latency_seconds if exec_result is not None else None,
         )
-        stored = _StoredResult(metadata=metadata, has_dataframe=df is not None, graph=exec_result.graph if exec_result is not None else None)
-        self._records[result_id] = stored
+        stored = _StoredResultEntry(metadata=metadata, has_dataframe=df is not None, graph=exec_result.graph if exec_result is not None else None)
+        self._results_by_id[result_id] = stored
         return stored
 
     def get_source(self, source_id: str) -> SourceSpec:
@@ -330,34 +330,34 @@ class OutputStore:
         pred_query = PredQuery(query=query, exec_result=exec_result)
         return await self.cache_parameterized_result(source.id, connector.connector_type, selection, pred_query)
 
-    async def _get_result(self, result_id: str) -> _StoredResult:
-        """Return an internal stored result."""
+    async def _get_result_entry(self, result_id: str) -> _StoredResultEntry:
+        """Return the stored entry for a materialized result."""
         try:
-            return self._records[result_id]
+            return self._results_by_id[result_id]
         except KeyError:
             raise KeyError(f"No result with id {result_id}") from None
 
     async def _get_dataframe(self, result_id: str) -> pd.DataFrame:
         """Return the DataFrame for a tabular query result."""
-        stored = await self._get_result(result_id)
+        stored = await self._get_result_entry(result_id)
         if not stored.has_dataframe:
             raise ValueError(f"query {result_id} returned no data")
         return await self._results.get_result_dataframe(result_id)
 
     async def get_metadata(self, result_id: ResultId) -> ResultMetadata:
         """Return clean metadata for a materialized result."""
-        return (await self._get_result(result_id)).metadata
+        return (await self._get_result_entry(result_id)).metadata
 
     async def get_payload(self, result_id: ResultId) -> ResultPayload:
         """Return clean payload for a materialized result."""
-        raw = await self._get_result(result_id)
+        entry = await self._get_result_entry(result_id)
         metadata = await self.get_metadata(result_id)
         df = None
         try:
             df = await self._get_dataframe(result_id)
         except ValueError:
             pass
-        return ResultPayload(metadata=metadata, df=df, graph=raw.graph)
+        return ResultPayload(metadata=metadata, df=df, graph=entry.graph)
 
     def add_chart_artifact(self, source_id: SourceId, spec: Mapping[str, object], label: str | None = None) -> ChartArtifactSpec:
         """Store a chart artifact under a ``CHART<n>`` id."""

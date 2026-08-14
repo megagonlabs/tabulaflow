@@ -65,7 +65,7 @@ class TestNoConnector:
         for _ in range(5):
             await h.add_fixed_result_source("db", "sql", _make_pred_query())
         assert h._results.in_memory_count == 5
-        assert all(h._results.has_in_memory(r.metadata.id) for r in h._records.values())
+        assert all(h._results.has_in_memory(r.metadata.id) for r in h._results_by_id.values())
 
     @pytest.mark.asyncio
     async def test_get(self) -> None:
@@ -124,7 +124,7 @@ class TestWithConnector:
         assert not h._results.has_in_memory("R2")
         assert h._results.has_in_memory("R3")
         assert h._results.is_persisted("R1")
-        assert h._records["R1"].has_dataframe
+        assert h._results_by_id["R1"].has_dataframe
 
     @pytest.mark.asyncio
     async def test_eviction_does_not_mutate_caller_owned_pred_query(self, workspace: SQLConnector) -> None:
@@ -137,10 +137,10 @@ class TestWithConnector:
         assert pred_query.id == "PQRY"
         assert _exec_result(pred_query).df is not None
         assert not h._results.has_in_memory("R1")
-        assert h._records["R1"].has_dataframe
+        assert h._results_by_id["R1"].has_dataframe
 
     @pytest.mark.asyncio
-    async def test_get_dataframe_loads_evicted_record(self, workspace: SQLConnector) -> None:
+    async def test_get_dataframe_loads_evicted_result(self, workspace: SQLConnector) -> None:
         h = OutputStore(max_in_memory=2, spill_connector=workspace)
         await h.add_fixed_result_source("db", "sql", _make_pred_query(n_rows=10))
         await h.add_fixed_result_source("db", "sql", _make_pred_query(n_rows=20))
@@ -154,7 +154,7 @@ class TestWithConnector:
         assert not h._results.has_in_memory("R2")
 
     @pytest.mark.asyncio
-    async def test_persist_failure_keeps_record_in_memory(
+    async def test_persist_failure_keeps_result_in_memory(
         self, workspace: SQLConnector, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         h = OutputStore(max_in_memory=1, spill_connector=workspace)
@@ -177,7 +177,7 @@ class TestWithConnector:
         assert len(df) == 10
 
     @pytest.mark.asyncio
-    async def test_error_records_not_tracked(self, workspace: SQLConnector) -> None:
+    async def test_error_results_not_tracked(self, workspace: SQLConnector) -> None:
         h = OutputStore(max_in_memory=2, spill_connector=workspace)
         with pytest.raises(ValueError, match="syntax error"):
             await h.add_fixed_result_source("db", "sql", _make_error_pred_query())
