@@ -69,7 +69,7 @@ include = ["tabulaflow*"]
 
 [tool.setuptools.package-data]
 tabulaflow = [
-    "chat/*.md",
+    "agents/chat/*.md",
     "app/assets/debug/*",
     "app/assets/samples/*",
     "app/pane/assets/ui/*",
@@ -114,8 +114,10 @@ norecursedirs = ["data/*"]
 asyncio_mode = "auto"
 
 # Architecture contract for the layered package (see AGENTS.md "Project Structure").
-# Layers, lowest first: core < datasources < toolhub < modulehub < {chat | research} < app.
-# `chat` and `research` are siblings and must not import each other. Run: make lint-arch
+# Product/platform layers, lowest first: core < data < output < agents < app.
+# Research is a separate leaf consumer: it may import core/data/output/agents,
+# but neither app nor platform layers may import research, and research must not import app.
+# Run: make lint-arch
 [tool.importlinter]
 root_package = "tabulaflow"
 
@@ -123,9 +125,27 @@ root_package = "tabulaflow"
 name = "Layered architecture"
 type = "layers"
 layers = [
-    "tabulaflow.app | tabulaflow.research",
+    "tabulaflow.app",
     "tabulaflow.agents",
     "tabulaflow.output",
     "tabulaflow.data",
     "tabulaflow.core",
 ]
+
+[[tool.importlinter.contracts]]
+name = "Platform and app do not import research"
+type = "forbidden"
+source_modules = [
+    "tabulaflow.core",
+    "tabulaflow.data",
+    "tabulaflow.output",
+    "tabulaflow.agents",
+    "tabulaflow.app",
+]
+forbidden_modules = ["tabulaflow.research"]
+
+[[tool.importlinter.contracts]]
+name = "Research does not import app"
+type = "forbidden"
+source_modules = ["tabulaflow.research"]
+forbidden_modules = ["tabulaflow.app"]

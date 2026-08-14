@@ -34,7 +34,7 @@ def configure(**kwargs: object) -> None:
 
     # Process-global LLM setup (custom prices + BigQuery-tracing suppression) is
     # deferred: it imports litellm (~1s), so it would block startup before the first
-    # banner. ``core.llm.make_agent`` runs it once, lazily, when the first agent is
+    # banner. ``agents.llm.make_agent`` runs it once, lazily, when the first agent is
     # built (in the background session worker for the TUI). See llm.ensure_global_setup.
 
     if tabulaflow_config.instrument_enabled:

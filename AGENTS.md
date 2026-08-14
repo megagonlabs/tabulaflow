@@ -39,8 +39,10 @@ uv run tabulaflow/research/pipelines/analyze_errors.py --debug
 ## Project Structure
 
 The package is organized into dependency layers, enforced by `import-linter`
-(`make lint-arch`): **`core < data < output < agents < {app | research}`**.
-`app` and `research` are leaf siblings and must not import each other.
+(`make lint-arch`): **`core < data < output < agents < app`**. `research`
+is a separate leaf consumer of the platform layers; it may import
+`core`/`data`/`output`/`agents`, but neither `app` nor platform layers may
+import `research`, and `research` must not import `app`.
 
 ```
 tabulaflow/

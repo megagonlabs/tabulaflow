@@ -9,7 +9,6 @@ import pytest
 from tabulaflow.data.sql import SQLConnector
 from tabulaflow.output.specs import ChartArtifactSpec, GraphArtifactSpec, MapArtifactSpec
 from tabulaflow.core import ExecResult
-from tabulaflow.research.types import PredQuery
 from tabulaflow.output.store import OutputStore
 
 
@@ -40,14 +39,6 @@ def _make_error_execution() -> tuple[str, ExecResult]:
     from tabulaflow.core import ErrorInfo
 
     return "SELECT bad", ExecResult(error=ErrorInfo(exc_type="ProgrammingError", message="syntax error"))
-
-
-def _exec_result(pq: PredQuery) -> ExecResult:
-    """Narrow ``pq.exec_result`` from ``ExecResult | None`` for test
-    assertions — callers in this file always construct ``PredQuery``
-    with a non-None ``exec_result``."""
-    assert pq.exec_result is not None
-    return pq.exec_result
 
 
 class TestNoConnector:
