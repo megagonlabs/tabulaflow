@@ -21,7 +21,7 @@ Layer meanings:
 - `core`: stable primitives and deterministic helpers.
 - `data`: connect to, load, introspect, and query data. Queryable backends are connectors; raw external inputs are loaded by loaders.
 - `output`: structured output protocol: parameters, output sources, display artifacts, result storage/resolution, and output-facing formatting.
-- `agents`: ChatSession, model-facing tools, LLM runtime, modules, and subagents.
+- `agents`: ChatSession, agent trace models, model-facing tools, LLM runtime, modules, and subagents.
 - `app`: bundled end-user TUI/app.
 - `research`: benchmarks, metrics, eval pipelines, and research-only agents.
 
@@ -63,7 +63,6 @@ core/
   __init__.py
   schema.py
   results.py
-  trace.py
   serialization.py
   registry.py
 ```
@@ -115,13 +114,13 @@ Notes:
 - `ErrorInfo` stays in `results.py`, not `errors.py`, because it is a structured result payload rather than an exception class.
 - `ExecResult.to_markdown()` is presentation-ish. It can remain temporarily to reduce churn, but the clean target is to move result formatting to `output`.
 
-Do not merge `results.py` into `schema.py`, `trace.py`, `data`, or `output`. Execution results are a distinct platform primitive.
+Do not merge `results.py` into `schema.py`, `data`, or `output`. Execution results are a distinct platform primitive.
 
-## `core/trace.py`
+## No `core/trace.py`
 
-Owns provider-independent trace/conversation accounting models.
+Do not keep usage, messages, or trajectories in core.
 
-Move here:
+Move these to `agents/trace.py`:
 
 - `Usage`
 - `SystemMessage`
@@ -132,24 +131,17 @@ Move here:
 - `Message`
 - `Trajectory`
 
-Rationale: messages, trajectories, and usage are all records of a run/conversation. They are normalized TabulaFlow trace records, not Pydantic AI or provider-specific runtime objects.
+Rationale: usage, messages, and trajectories are pure data models, but they describe the agents/LLM interaction domain. This mirrors the output-layer decision: pure data structures live in the layer whose domain they describe when there is a clear owner. `OutputSpec` belongs to `output`; `Usage` and `Trajectory` belong to `agents`.
 
-Keep core trace models provider-independent.
+Provider/runtime adapters also live with agents:
 
-Move out of core:
-
-- `Usage.from_pydantic_ai_usage(...)`
-- `Trajectory.from_pydantic_ai_messages(...)`
+- `Usage.from_pydantic_ai_usage(...)` or a free `usage_from_pydantic_ai_usage(...)`
+- `Trajectory.from_pydantic_ai_messages(...)` or a free `trajectory_from_pydantic_ai_messages(...)`
 - `compute_api_cost(...)`
 - `pydantic_ai_model_to_litellm_model(...)`
-- ideally `Trajectory.to_markdown()` eventually
+- trajectory markdown/debug formatting
 
-Target home for provider/runtime adapters:
-
-```text
-agents/trace.py   # if large enough
-agents/llm.py     # acceptable initially
-```
+Core keeps only cross-layer platform contracts with no clearer owning subsystem, such as schemas and execution results.
 
 ## `core/serialization.py`
 
@@ -477,19 +469,19 @@ Recommended order:
 1. Create the new `core/` files while keeping behavior unchanged.
 2. Move schema primitives from `core/types.py` to `core/schema.py`.
 3. Move result primitives to `core/results.py`.
-4. Move usage/messages/trajectory data models to `core/trace.py`.
-5. Move JSON/DataFrame serialization helpers to `core/serialization.py`.
-6. Rename `Registry` → `ClassRegistry` in `core/registry.py` and update consumers.
+4. Move JSON/DataFrame serialization helpers to `core/serialization.py`.
+5. Rename `Registry` → `ClassRegistry` in `core/registry.py` and update consumers.
+6. Move usage/messages/trajectory data models and adapters to `agents/trace.py`.
 7. Remove `PredQuery` from core and move it to `research/types.py`.
-8. Move provider-specific usage/trajectory conversion to `agents/llm.py` or `agents/trace.py`.
-9. Update `core/__init__.py` to export only stable primitives.
-10. Update imports to use package boundaries where possible:
+8. Update `core/__init__.py` to export only stable primitives.
+9. Update imports to use package boundaries where possible:
 
 ```python
-from tabulaflow.core import SQLSchema, ExecResult, Usage, Trajectory
+from tabulaflow.core import SQLSchema, ExecResult
+from tabulaflow.agents.trace import Usage, Trajectory
 ```
 
-11. Delete the old `core/types.py` once all consumers are updated.
+10. Delete the old `core/types.py` once all consumers are updated.
 
 ## Final `core/__init__.py` policy
 
@@ -499,11 +491,13 @@ Good exports:
 
 - schema primitives
 - result primitives
-- trace primitives
 - `ClassRegistry`
 
 Do not export:
 
+- `Usage`
+- `Trajectory`
+- message/trace models
 - `PredQuery`
 - `OutputSpec`
 - `SQLConnector`
@@ -521,7 +515,6 @@ core/
   __init__.py
   schema.py
   results.py
-  trace.py
   serialization.py
   registry.py
 ```
