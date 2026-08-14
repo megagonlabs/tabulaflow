@@ -332,7 +332,8 @@ body { margin: 0; background: var(--bg); color: var(--text); display: flex; flex
 .view-shell.view-data .view-loading-state { border-radius: 0; background: #171d25;
                                             box-shadow: inset 0 0 0 1px rgba(58, 67, 82, 0.48); }
 .view-shell.view-chart .view-loading-state,
-.view-shell.view-map .view-loading-state { background: var(--card); }
+.view-shell.view-map .view-loading-state,
+.view-shell.view-message .view-loading-state { background: var(--card); }
 .view-shell.view-graph .view-loading-state { background: #19212c; }
 .manual-preview .view-shell,
 .manual-preview .viewmeta { width: min(1280px, 100%); }
@@ -344,7 +345,8 @@ body { margin: 0; background: var(--bg); color: var(--text); display: flex; flex
 .tf-table-view,
 .tf-chart-view,
 .tf-map-view,
-.tf-graph-view {
+.tf-graph-view,
+.tf-message-view {
     --artifact-bg: var(--card);
     --artifact-radius: 10px;
     --artifact-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
@@ -358,7 +360,8 @@ body { margin: 0; background: var(--bg); color: var(--text); display: flex; flex
 .tf-table-view::after,
 .tf-chart-view::after,
 .tf-map-view::after,
-.tf-graph-view::after {
+.tf-graph-view::after,
+.tf-message-view::after {
     content: "";
     position: absolute;
     inset: 0;
@@ -366,6 +369,15 @@ body { margin: 0; background: var(--bg); color: var(--text); display: flex; flex
     border-radius: inherit;
     box-shadow: var(--artifact-outline);
 }
+
+.tf-message-view { padding: 18px 20px; box-sizing: border-box; }
+.tf-message-view.tone-info { --artifact-bg: rgba(62, 180, 137, 0.06); }
+.tf-message-view.tone-error { --artifact-bg: rgba(255, 138, 138, 0.06); }
+.tf-message-card { display: grid; gap: 8px; }
+.tf-message-label { color: var(--text-muted); font: 650 12px/1.2 ui-monospace, monospace; text-transform: uppercase; letter-spacing: 0.02em; }
+.tf-message-view.tone-info .tf-message-label { color: var(--accent); }
+.tf-message-view.tone-error .tf-message-label { color: #ff8a8a; }
+.tf-message-text { color: var(--text); font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; overflow-wrap: anywhere; }
 
 /* Direct table rendering. */
 .tf-table-view {

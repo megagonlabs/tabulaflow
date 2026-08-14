@@ -6,7 +6,7 @@ import secrets
 from dataclasses import dataclass
 from pathlib import Path
 from collections.abc import Mapping
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
 import pandas as pd
 from pygments import highlight
@@ -15,7 +15,7 @@ from pygments.lexers import get_lexer_by_name
 from pygments.style import Style as PygmentsStyle
 from pygments.util import ClassNotFound
 
-from tabulaflow.app.pane.types import CARD_ID_PREFIX, CodeData, PaneCard, QueryCardData, ViewKind, card_payload
+from tabulaflow.app.pane.types import CARD_ID_PREFIX, CodeData, MessageTone, PaneCard, QueryCardData, ViewKind, card_payload
 from tabulaflow.app.pane.charts import build_chart_data
 from tabulaflow.app.pane.graphs import build_graph_result_data
 from tabulaflow.app.pane.maps import build_map_data
@@ -88,6 +88,15 @@ class GraphCardInput:
     label: str | None
     graph: object
     layout: str = "force"
+
+
+@dataclass(frozen=True)
+class MessageCardInput:
+    """Input for a browser-pane message card."""
+
+    label: str | None
+    text: str
+    tone: MessageTone = "info"
 
 
 def build_query_data(sql: str, *, lexer: str = "sql") -> QueryCardData:
@@ -180,26 +189,22 @@ def render_graph_data(graph_artifact: GraphCardInput, pane_dir: Path) -> PaneCar
     return card_payload(card_id=card_id, label=graph_artifact.label, views=["graph"])
 
 
+def render_message_data(message: MessageCardInput, pane_dir: Path) -> PaneCard:
+    """Render a standalone message card's payload to JSON; return a pane manifest."""
+    card_id = f"{CARD_ID_PREFIX}{secrets.token_hex(6)}"
+    pane_dir.mkdir(parents=True, exist_ok=True)
+    write_strict_json(pane_dir / f"{card_id}.data.json", {"message": {"tone": message.tone, "text": message.text}})
+    return card_payload(card_id=card_id, label=message.label, views=["message"])
+
+
 
 async def render_resolved_output(resolved_output: ResolvedOutput, pane_dir: Path) -> list[PaneCard]:
     """Render a resolved output spec to pane card descriptors."""
     cards: list[PaneCard] = []
     for artifact in resolved_output.artifacts:
         if isinstance(artifact, UnavailableArtifact):
-            column = "message" if artifact.status == "not_applicable" else "error"
-            card = render_result_data(
-                ResultCardInput(
-                    df=pd.DataFrame({column: [artifact.reason]}),
-                    chart_spec=None,
-                    graph=None,
-                    query=None,
-                    label=artifact.label,
-                    query_lexer="sql",
-                ),
-                pane_dir,
-            )
-            if card is not None:
-                cards.append(card)
+            tone: Literal["info", "error"] = "info" if artifact.status == "not_applicable" else "error"
+            cards.append(render_message_data(MessageCardInput(label=artifact.label, text=artifact.reason, tone=tone), pane_dir))
             continue
         try:
             if isinstance(artifact, ResolvedTableArtifact):

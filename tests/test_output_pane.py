@@ -21,7 +21,7 @@ import pytest
 
 from tabulaflow.app.config import LLM_OFF, ResolvedLLMSelection
 from tabulaflow.app.pane.graphs import build_graph_result_data
-from tabulaflow.app.pane.cards import PANE_CODE_TEXT, MapCardInput, ResultCardInput, build_query_data, render_map_data, render_result_data
+from tabulaflow.app.pane.cards import PANE_CODE_TEXT, MapCardInput, ResultCardInput, build_query_data, render_map_data, render_resolved_output, render_result_data
 from tabulaflow.app.pane.tables import TABLE_RENDER_MAX_ROWS
 from tabulaflow.app.theme import CODE_TEXT
 from tabulaflow.app.pane import CARD_ID_PREFIX, OutputPane, OutputPanePortError, _PANE_HTML
@@ -32,6 +32,7 @@ from tabulaflow.app.tui import TabulaflowApp
 from tabulaflow.chat import ChatResult
 from tabulaflow.core import ChoiceOption, ChoiceParameter, FixedResultSource, OutputSpec, ResultMetadata, TableArtifactSpec
 from tabulaflow.toolhub.output_store import OutputStore, ResultPayload
+from tabulaflow.toolhub.output_resolver import ResolvedOutput, UnavailableArtifact
 from tabulaflow.toolhub.render_map import MAP_RENDER_MAX_ROWS
 
 
@@ -959,6 +960,46 @@ def test_answer_controls_render_choice_and_number_inputs() -> None:
     assert ".answer-control-number" in pane_css
 
 
+def test_message_view_has_browser_contract_and_renderer() -> None:
+    pane_js = _pane_asset_text("pane.js")
+    pane_css = _pane_asset_text("pane.css")
+    contract = _pane_asset_text("contract.d.ts")
+    assert 'export type ViewKind = "message" | "map" | "chart" | "data" | "query" | "graph";' in contract
+    assert "export interface MessageData" in contract
+    assert "message?: MessageData;" in contract
+    assert "if (kind === 'message') return renderMessage(node, data);" in pane_js
+    assert "function renderMessage(node, data)" in pane_js
+    assert ".tf-message-view" in pane_css
+
+
+@pytest.mark.asyncio
+async def test_unavailable_artifact_renders_message_view(tmp_path: Path) -> None:
+    resolved = ResolvedOutput(
+        selection={},
+        artifacts=[UnavailableArtifact(artifact_id="S1", label="detail", reason="Only applies to revenue", status="not_applicable")],
+    )
+
+    cards = await render_resolved_output(resolved, tmp_path)
+
+    assert cards == [{"id": cards[0]["id"], "label": "detail", "views": ["message"]}]
+    payload = json.loads((tmp_path / f"{cards[0]['id']}.data.json").read_text())
+    assert payload == {"message": {"tone": "info", "text": "Only applies to revenue"}}
+
+
+@pytest.mark.asyncio
+async def test_error_artifact_renders_error_message_view(tmp_path: Path) -> None:
+    resolved = ResolvedOutput(
+        selection={},
+        artifacts=[UnavailableArtifact(artifact_id="S1", label="detail", reason="boom", status="error")],
+    )
+
+    cards = await render_resolved_output(resolved, tmp_path)
+
+    payload = json.loads((tmp_path / f"{cards[0]['id']}.data.json").read_text())
+    assert cards[0]["views"] == ["message"]
+    assert payload == {"message": {"tone": "error", "text": "boom"}}
+
+
 def test_live_view_survives_rapid_browser_replay_and_switches_atomically(tmp_path: Path) -> None:
     from playwright.sync_api import Error as PlaywrightError
     from playwright.sync_api import sync_playwright
@@ -1120,7 +1161,7 @@ def test_pane_view_shell_is_layout_only() -> None:
     assert ".view-shell { position: relative; width: min(800px, 100%); margin: 0 auto;" in _PANE_HTML
     assert "background: transparent; border-radius: 0; overflow: visible; box-shadow: none;" in _PANE_HTML
     assert ".view-shell::after { content: none; }" in _PANE_HTML
-    assert ".tf-table-view,\n.tf-chart-view,\n.tf-map-view,\n.tf-graph-view {" in _PANE_HTML
+    assert ".tf-table-view,\n.tf-chart-view,\n.tf-map-view,\n.tf-graph-view,\n.tf-message-view {" in _PANE_HTML
     assert "--artifact-outline: inset 0 0 0 1px rgba(255, 255, 255, 0.03);" in _PANE_HTML
     assert ".tf-chart-view { --artifact-bg: var(--card); }" in _PANE_HTML
     assert ".tf-vis-stage { background: var(--card); }" in _PANE_HTML

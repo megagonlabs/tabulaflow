@@ -1,4 +1,4 @@
-export type ViewKind = "map" | "chart" | "data" | "query" | "graph";
+export type ViewKind = "message" | "map" | "chart" | "data" | "query" | "graph";
 export type PaneSource = "manual";
 export type ColumnRole = "text" | "number" | "bool" | "media";
 
@@ -97,7 +97,15 @@ export interface GraphData {
   meta?: Record<string, unknown>;
 }
 
+export type MessageTone = "info" | "error";
+
+export interface MessageData {
+  tone: MessageTone;
+  text: string;
+}
+
 export interface CardData {
+  message?: MessageData;
   table?: TableData;
   dataset?: DatasetData;
   chart?: ChartData;

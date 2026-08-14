@@ -651,12 +651,28 @@ function getCachedCardData(card) {
 }
 
 function renderKind(node, kind, data) {
+  if (kind === 'message') return renderMessage(node, data);
   if (kind === 'map') return renderMap(node, data);
   if (kind === 'graph') return renderGraph(node, data);
   if (kind === 'chart') return renderChart(node, data);
   if (kind === 'data') return renderTable(node, data);
   if (kind === 'query') return renderQuery(node, data);
   node.textContent = 'Unknown view: ' + kind;
+  return { destroy: function () {} };
+}
+
+function renderMessage(node, data) {
+  var message = data && data.message && typeof data.message === 'object' ? data.message : {};
+  var tone = message.tone === 'error' ? 'error' : 'info';
+  node.className = 'tf-view tf-message-view tone-' + tone;
+  var box = el('div', 'tf-message-card');
+  var label = el('div', 'tf-message-label');
+  label.textContent = tone === 'error' ? 'Could not render artifact' : 'Not applicable';
+  var text = el('div', 'tf-message-text');
+  text.textContent = typeof message.text === 'string' && message.text ? message.text : 'No message available.';
+  box.appendChild(label);
+  box.appendChild(text);
+  node.appendChild(box);
   return { destroy: function () {} };
 }
 

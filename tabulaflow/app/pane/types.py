@@ -6,11 +6,12 @@ from typing import Literal, Required, TypedDict
 
 from tabulaflow.core.outputs import ChoiceParameter, NumberParameter, OutputSpec, ParameterSpec
 
-ViewKind = Literal["map", "chart", "data", "query", "graph"]
-VIEW_KINDS: tuple[ViewKind, ...] = ("map", "chart", "data", "query", "graph")
+ViewKind = Literal["message", "map", "chart", "data", "query", "graph"]
+VIEW_KINDS: tuple[ViewKind, ...] = ("message", "map", "chart", "data", "query", "graph")
 CARD_ID_PREFIX = "card_"
 PaneSource = Literal["manual"]
 ColumnRole = Literal["text", "number", "bool", "media"]
+MessageTone = Literal["info", "error"]
 
 
 class PaneCard(TypedDict):
@@ -108,6 +109,15 @@ class GraphData(TypedDict, total=False):
     elements: Required[dict[str, list[dict[str, object]]]]
 
 
+class MessageData(TypedDict):
+    tone: MessageTone
+    text: str
+
+
+class MessageCardData(TypedDict):
+    message: MessageData
+
+
 class TableCardData(TypedDict):
     dataset: DatasetData
     table: TableData
@@ -131,6 +141,7 @@ class GraphCardData(TypedDict):
 
 
 class CardData(TypedDict, total=False):
+    message: MessageData
     table: TableData
     dataset: DatasetData
     chart: ChartData
