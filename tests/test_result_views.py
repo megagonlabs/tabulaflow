@@ -101,6 +101,25 @@ def test_table_artifact_has_no_chart_view() -> None:
     assert [v.kind for v in groups[0].views] == [VIEW_KIND_DATA, VIEW_KIND_QUERY]
 
 
+def test_empty_table_artifact_keeps_data_view() -> None:
+    card = _result("Q1", "empty")
+    card.df = pd.DataFrame({"customer": pd.Series(dtype="object"), "value": pd.Series(dtype="int64")})
+
+    groups = build_artifact_card_views([card])
+
+    assert [v.kind for v in groups[0].views] == [VIEW_KIND_DATA, VIEW_KIND_QUERY]
+    assert groups[0].views[0].data_shape == (0, 2)
+
+
+def test_empty_chart_artifact_skips_chart_but_keeps_data_view() -> None:
+    card = _browser_only_chart("CHART1", "empty chart")
+    card.df = pd.DataFrame({"region": pd.Series(dtype="object"), "revenue": pd.Series(dtype="int64")})
+
+    groups = build_artifact_card_views([card])
+
+    assert [v.kind for v in groups[0].views] == [VIEW_KIND_DATA]
+
+
 def test_table_artifact_with_graph_has_graph_data_query_views() -> None:
     card = _result("Q1", "paths")
     card.query_lexer = "cypher"

@@ -399,9 +399,9 @@ def build_artifact_card_views(
         if getattr(artifact, "graph", None) is not None:
             views.append(ViewItem(kind=VIEW_KIND_GRAPH, renderable=_build_graph_card()))
         df = getattr(artifact, "df", None)
-        if chart_spec is not None and df is not None:
+        if chart_spec is not None and df is not None and not df.empty:
             views.append(ViewItem(kind=VIEW_KIND_CHART, renderable=build_chart(df, chart_spec, width), chart_spec=chart_spec))
-        if df is not None and not df.empty:
+        if df is not None:
             renderable, shown_cols = build_table(df, available_width=width, include_footer=False)
             views.append(
                 ViewItem(
@@ -483,9 +483,9 @@ def _card_group_from_payload(
     views: list[ViewItem] = []
     if payload.graph is not None:
         views.append(ViewItem(kind=VIEW_KIND_GRAPH, renderable=_build_graph_card()))
-    if chart_spec is not None and payload.df is not None:
+    if chart_spec is not None and payload.df is not None and not payload.df.empty:
         views.append(ViewItem(kind=VIEW_KIND_CHART, renderable=build_chart(payload.df, chart_spec, width), chart_spec=chart_spec))
-    if payload.df is not None and not payload.df.empty:
+    if payload.df is not None:
         renderable, shown_cols = build_table(payload.df, available_width=width, include_footer=False)
         views.append(
             ViewItem(

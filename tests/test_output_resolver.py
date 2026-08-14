@@ -4,6 +4,7 @@ import pytest
 from tabulaflow.core import (
     ChoiceOption,
     ChoiceParameter,
+    ChartArtifactSpec,
     FixedResultSource,
     NumberParameter,
     OutputSpec,
@@ -247,3 +248,45 @@ async def test_parameterized_source_not_applicable_is_not_an_error() -> None:
     assert isinstance(artifact, UnavailableArtifact)
     assert artifact.status == "not_applicable"
     assert artifact.reason == "only applies to revenue"
+
+
+@pytest.mark.asyncio
+async def test_table_artifact_without_displayable_payload_is_unavailable() -> None:
+    output_store = OutputStore()
+    await output_store.add_fixed_result_source(
+        "workspace",
+        "sql",
+        PredQuery(query="CREATE TABLE t(a INT)", exec_result=ExecResult()),
+    )
+    output = OutputSpec(
+        sources=[FixedResultSource(id="fixed", result_id="R1")],
+        artifacts=[TableArtifactSpec(id="table", source_id="fixed")],
+    )
+
+    resolved = await OutputResolver(output_store).resolve(output)
+
+    artifact = resolved.artifacts[0]
+    assert isinstance(artifact, UnavailableArtifact)
+    assert artifact.status == "error"
+    assert artifact.reason == "Source returned no displayable data"
+
+
+@pytest.mark.asyncio
+async def test_chart_artifact_without_dataframe_is_unavailable() -> None:
+    output_store = OutputStore()
+    await output_store.add_fixed_result_source(
+        "workspace",
+        "sql",
+        PredQuery(query="CREATE TABLE t(a INT)", exec_result=ExecResult()),
+    )
+    output = OutputSpec(
+        sources=[FixedResultSource(id="fixed", result_id="R1")],
+        artifacts=[ChartArtifactSpec(id="chart", source_id="fixed", spec={"mark": "bar"})],
+    )
+
+    resolved = await OutputResolver(output_store).resolve(output)
+
+    artifact = resolved.artifacts[0]
+    assert isinstance(artifact, UnavailableArtifact)
+    assert artifact.status == "error"
+    assert artifact.reason == "Source returned no tabular data"

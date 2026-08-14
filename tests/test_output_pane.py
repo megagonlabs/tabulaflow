@@ -271,6 +271,29 @@ def test_result_card_preserves_null_cells(tmp_path: Path) -> None:
     assert payload["table"]["columns"][1]["role"] == "number"
 
 
+def test_result_card_renders_empty_dataframe_as_data_view(tmp_path: Path) -> None:
+    df = pd.DataFrame({"customer": pd.Series(dtype="object"), "value": pd.Series(dtype="int64")})
+    card = render_result_data(ResultCardInput(df=df, label="empty", query="SELECT customer, value FROM t"), tmp_path)
+
+    assert card is not None
+    assert card["views"] == ["data", "query"]
+    payload = json.loads((tmp_path / f"{card['id']}.data.json").read_text())
+    assert payload["dataset"]["rows"] == []
+    assert payload["table"]["meta"] == "0 rows · 2 columns"
+
+
+def test_empty_chart_result_skips_chart_but_keeps_data_view(tmp_path: Path) -> None:
+    df = pd.DataFrame({"customer": pd.Series(dtype="object"), "value": pd.Series(dtype="int64")})
+    spec = {"mark": "bar", "encoding": {"x": {"field": "customer"}, "y": {"field": "value"}}}
+    card = render_result_data(ResultCardInput(df=df, label="empty chart", chart_spec=spec), tmp_path)
+
+    assert card is not None
+    assert card["views"] == ["data"]
+    payload = json.loads((tmp_path / f"{card['id']}.data.json").read_text())
+    assert "chart" not in payload
+    assert payload["table"]["meta"] == "0 rows · 2 columns"
+
+
 def _map_card(
     map_spec: dict[str, object],
     sources: dict[str, pd.DataFrame],

@@ -179,18 +179,34 @@ def _normalize_selection(
 
 def _resolved_artifact(artifact: ArtifactSpec, payload_by_source: dict[SourceId, ResultPayload]) -> ResolvedArtifact:
     if isinstance(artifact, TableArtifactSpec):
+        payload = payload_by_source[artifact.source_id]
+        if payload.df is None and payload.graph is None:
+            return UnavailableArtifact(
+                artifact_id=artifact.id,
+                label=artifact.label,
+                reason="Source returned no displayable data",
+                status="error",
+            )
         return ResolvedTableArtifact(
             artifact_id=artifact.id,
             label=artifact.label,
             source_id=artifact.source_id,
-            payload=payload_by_source[artifact.source_id],
+            payload=payload,
         )
     if isinstance(artifact, ChartArtifactSpec):
+        payload = payload_by_source[artifact.source_id]
+        if payload.df is None:
+            return UnavailableArtifact(
+                artifact_id=artifact.id,
+                label=artifact.label,
+                reason="Source returned no tabular data",
+                status="error",
+            )
         return ResolvedChartArtifact(
             artifact_id=artifact.id,
             label=artifact.label,
             source_id=artifact.source_id,
-            payload=payload_by_source[artifact.source_id],
+            payload=payload,
             spec=artifact.spec,
         )
     if isinstance(artifact, MapArtifactSpec):

@@ -120,7 +120,7 @@ def render_result_data(metadata: ResultCardInput, pane_dir: Path) -> PaneCard | 
             card_data.update(graph_data)
             views.append("graph")
     df = metadata.df
-    if df is not None and not df.empty:
+    if df is not None:
         table_build = _build_table_data(
             df,
             asset_stem=card_id,
@@ -128,7 +128,7 @@ def render_result_data(metadata: ResultCardInput, pane_dir: Path) -> PaneCard | 
             max_height=PANE_TABLE_MAX_HEIGHT,
         )
         card_data.update(table_build.data)
-        if metadata.chart_spec is not None:
+        if metadata.chart_spec is not None and not df.empty:
             card_data.update(build_chart_data(df, dict(metadata.chart_spec), field_by_column=table_build.field_by_column))
             views.append("chart")
         views.append("data")

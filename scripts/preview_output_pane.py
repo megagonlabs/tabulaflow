@@ -403,6 +403,23 @@ def _push_controls_turn(pane: pane_mod.OutputPane, pane_dir: Path) -> None:
         "{% if metric != 'revenue' %}{{ not_applicable('Revenue detail only applies when Metric is Revenue') }}{% endif %}\n"
         "-- preview revenue-only detail fixture",
     )
+    empty_source = asyncio.run(
+        output_store.add_fixed_result_source(
+            "preview",
+            "sql",
+            PredQuery(
+                query="-- preview empty table fixture",
+                exec_result=ExecResult(df=pd.DataFrame({"customer": pd.Series(dtype="object"), "value": pd.Series(dtype="int64")})),
+            ),
+        )
+    )
+    no_data_source = asyncio.run(
+        output_store.add_fixed_result_source(
+            "preview",
+            "sql",
+            PredQuery(query="-- preview no tabular data fixture", exec_result=ExecResult()),
+        )
+    )
     values = {
         ("q2", "revenue"): ("Q2", "Revenue", [120, 95, 72]),
         ("q3", "revenue"): ("Q3", "Revenue", [138, 104, 86]),
@@ -455,7 +472,7 @@ def _push_controls_turn(pane: pane_mod.OutputPane, pane_dir: Path) -> None:
         ),
         output=OutputSpec(
             parameters=parameters,
-            sources=[source, revenue_source],
+            sources=[source, revenue_source, empty_source, no_data_source],
             artifacts=[
                 TableArtifactSpec(id=source.id, label="top customers", source_id=source.id),
                 ChartArtifactSpec(
@@ -473,6 +490,8 @@ def _push_controls_turn(pane: pane_mod.OutputPane, pane_dir: Path) -> None:
                     },
                 ),
                 TableArtifactSpec(id=revenue_source.id, label="revenue-only detail", source_id=revenue_source.id),
+                TableArtifactSpec(id=empty_source.id, label="empty table", source_id=empty_source.id),
+                TableArtifactSpec(id=no_data_source.id, label="no-data message", source_id=no_data_source.id),
             ],
         ),
     )
