@@ -7,7 +7,7 @@ from textual.containers import VerticalScroll
 from tabulaflow.app.display import VIEW_KIND_DATA, VIEW_KIND_QUERY, build_resolved_output_card_views
 from tabulaflow.app.widgets import AgentResultWidget
 from tabulaflow.chat import ChatResult
-from tabulaflow.core.outputs import ResultMetadata
+from tabulaflow.core.outputs import NumberParameter, OutputSpec, ResultMetadata
 from tabulaflow.toolhub.output_resolver import ResolvedArtifact, ResolvedOutput, ResolvedTableArtifact
 from tabulaflow.toolhub.output_store import ResultPayload
 
@@ -34,6 +34,32 @@ class _ResultWidgetApp(App[None]):
         self.result_widget = AgentResultWidget(
             ChatResult(
                 text="x",
+            ),
+            build_resolved_output_card_views(ResolvedOutput(selection={}, artifacts=artifacts)),
+        )
+
+    def get_css_variables(self) -> dict[str, str]:
+        variables = super().get_css_variables()
+        variables["focus-surface"] = "#1a212c"
+        return variables
+
+    def compose(self) -> ComposeResult:
+        yield VerticalScroll(self.result_widget, id="chat-log")
+
+    def on_mount(self) -> None:
+        self.result_widget.focus()
+
+
+class _NumberControlWidgetApp(App[None]):
+    def __init__(self) -> None:
+        super().__init__()
+        artifacts: list[ResolvedArtifact] = [_result("Q1", "one")]
+        self.result_widget = AgentResultWidget(
+            ChatResult(
+                text="x",
+                output=OutputSpec(
+                    parameters=[NumberParameter(id="threshold", label="Threshold", min=0, max=1, step=0.1, default=0.5)]
+                ),
             ),
             build_resolved_output_card_views(ResolvedOutput(selection={}, artifacts=artifacts)),
         )
@@ -98,3 +124,23 @@ async def test_view_selection_is_per_result() -> None:
         await pilot.pause()
         assert widget.current_card == 0
         assert _current_kind(widget) == VIEW_KIND_QUERY
+
+
+async def test_number_control_keyboard_adjusts_pending_then_space_applies() -> None:
+    app = _NumberControlWidgetApp()
+
+    async with app.run_test(size=(100, 30)) as pilot:
+        widget = app.result_widget
+        await pilot.pause()
+
+        await pilot.press("+")
+        await pilot.press("+")
+        await pilot.pause()
+
+        assert abs(float(widget._pending_selection["threshold"]) - 0.7) < 1e-9
+        assert widget._applied_selection == {"threshold": 0.5}
+
+        await pilot.press("space")
+        await pilot.pause()
+
+        assert abs(float(widget._applied_selection["threshold"]) - 0.7) < 1e-9

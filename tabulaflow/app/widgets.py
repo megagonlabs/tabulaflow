@@ -1625,6 +1625,7 @@ class AgentResultWidget(Widget):
         self._width = width
         self._control_parameters = list(result.output.parameters)
         self._control_cursor_items = self._build_control_cursor_items()
+        self._control_cursor_index_by_item = {item: index for index, item in enumerate(self._control_cursor_items)}
         self._has_answer_controls = bool(self._control_cursor_items)
         self.set_class(self._has_answer_controls, "-has-panel")
         self._applied_selection: dict[str, SelectionValue] = dict(result.output.default_selection)
@@ -1648,7 +1649,7 @@ class AgentResultWidget(Widget):
         # View hit areas: (target, col_start, col_end) relative to the view
         # stepper widget. Target is "prev" or "next".
         self._view_hit_areas: list[tuple[str, int, int]] = []
-        # Interpretation choice hit areas: (flat_choice_index, row) relative to
+        # Interpretation control hit areas: (cursor_item_index, row) relative to
         # the interpretation-content widget.
         self._control_hit_areas: list[tuple[int, int]] = []
 
@@ -1802,6 +1803,9 @@ class AgentResultWidget(Widget):
             return None
         return self._control_cursor_items[self._interpretation_cursor]
 
+    def _control_item_index(self, item: _ControlCursorItem) -> int:
+        return self._control_cursor_index_by_item[item]
+
     def _move_interpretation_cursor(self, delta: int) -> None:
         max_cursor = len(self._control_cursor_items) - 1
         if max_cursor < 0:
@@ -1874,50 +1878,47 @@ class AgentResultWidget(Widget):
         title_line.append_text(hint)
         self._interpretation_title.update(title_line)
 
-        controls = self._control_parameters
+        parameters = self._control_parameters
         rows: list[Text] = []
         self._control_hit_areas = []
-        if not controls:
+        if not parameters:
             self._interpretation_content.update(Text("No supported answer controls yet.", style="dim"))
             return
         cursor_item = self._current_control_item()
         row = 0
-        for control_idx, control in enumerate(controls):
+        for parameter_index, parameter in enumerate(parameters):
             if rows:
                 rows.append(Text(""))
                 row += 1
-            rows.append(Text(control.label, style=Style(bold=True)))
+            rows.append(Text(parameter.label, style=Style(bold=True)))
             row += 1
-            if isinstance(control, ChoiceParameter):
-                for choice_idx, choice in enumerate(control.choices):
-                    item_index = self._control_cursor_items.index(
-                        _ControlCursorItem(parameter_index=control_idx, choice_index=choice_idx)
-                    )
-                    is_cursor = cursor_item == _ControlCursorItem(parameter_index=control_idx, choice_index=choice_idx)
-                    is_applied = self._applied_selection.get(control.id) == choice.id
+            if isinstance(parameter, ChoiceParameter):
+                for choice_idx, choice in enumerate(parameter.choices):
+                    item = _ControlCursorItem(parameter_index=parameter_index, choice_index=choice_idx)
+                    is_applied = self._applied_selection.get(parameter.id) == choice.id
                     rows.append(
                         self._control_line(
                             choice.label,
-                            is_cursor=is_cursor,
+                            is_cursor=cursor_item == item,
                             is_applied=is_applied,
                             show_applied_marker=True,
                         )
                     )
-                    self._control_hit_areas.append((item_index, row))
+                    self._control_hit_areas.append((self._control_item_index(item), row))
                     row += 1
-            elif isinstance(control, NumberParameter):
-                item_index = self._control_cursor_items.index(_ControlCursorItem(parameter_index=control_idx))
-                pending = self._pending_selection[control.id]
-                applied = self._applied_selection.get(control.id)
+            elif isinstance(parameter, NumberParameter):
+                item = _ControlCursorItem(parameter_index=parameter_index)
+                pending = self._pending_selection[parameter.id]
+                applied = self._applied_selection.get(parameter.id)
                 rows.append(
                     self._control_line(
-                        f"{_slider_text(control, float(pending))} {_format_number_parameter_value(pending, control.unit)}",
-                        is_cursor=cursor_item == _ControlCursorItem(parameter_index=control_idx),
+                        f"{_slider_text(parameter, float(pending))} {_format_number_parameter_value(pending, parameter.unit)}",
+                        is_cursor=cursor_item == item,
                         is_applied=pending == applied,
                         show_applied_marker=False,
                     )
                 )
-                self._control_hit_areas.append((item_index, row))
+                self._control_hit_areas.append((self._control_item_index(item), row))
                 row += 1
         self._interpretation_content.update(Text("\n").join(rows))
 
