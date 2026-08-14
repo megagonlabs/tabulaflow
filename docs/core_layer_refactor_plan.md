@@ -101,16 +101,17 @@ Owns raw execution result primitives.
 Move here:
 
 - `ErrorInfo`
-- `GraphViewNode`
-- `GraphViewEdge`
-- `GraphView`
+- `GraphResultNode` (rename from `GraphViewNode`)
+- `GraphResultEdge` (rename from `GraphViewEdge`)
+- `GraphResult` (rename from `GraphView`)
 - `ExecResult`
 
 Rationale: `data` produces `ExecResult`, `output` stores/resolves/displays it, `agents` use it in tools, and `research` evaluates it. It is a core platform result shape.
 
 Notes:
 
-- `GraphView` stays in core because it is attached to query results, especially graph query results. Rendering graph views belongs outside core.
+- `GraphResult` stays in core because it is attached to query results, especially graph query results. Rendering graph results belongs outside core.
+- Rename `GraphView` / `GraphViewNode` / `GraphViewEdge` to `GraphResult` / `GraphResultNode` / `GraphResultEdge`. `View` sounds presentation/UI-oriented, while this object is a graph-shaped execution-result payload.
 - `ErrorInfo` stays in `results.py`, not `errors.py`, because it is a structured result payload rather than an exception class.
 - `ExecResult.to_markdown()` is presentation-ish. It can remain temporarily to reduce churn, but the clean target is to move result formatting to `output`.
 
