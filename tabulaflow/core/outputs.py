@@ -114,6 +114,7 @@ class ResultMetadata(BaseModel):
     source_selection: Selection = Field(default_factory=dict)
     row_count: int | None = None
     columns: list[str] | None = None
+    affected_rows: int | None = None
     latency_seconds: float | None = None
 
 

@@ -282,6 +282,7 @@ class OutputStore:
             source_selection={} if selection is None else dict(selection),
             row_count=row_count,
             columns=columns,
+            affected_rows=exec_result.affected_rows if exec_result is not None else None,
             latency_seconds=exec_result.latency_seconds if exec_result is not None else None,
         )
         stored = _StoredResultEntry(metadata=metadata, has_dataframe=df is not None, graph=exec_result.graph if exec_result is not None else None)

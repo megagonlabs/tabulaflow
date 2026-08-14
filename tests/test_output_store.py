@@ -89,6 +89,19 @@ class TestNoConnector:
         assert payload.df is not None
         assert len(payload.df) == 3
 
+    @pytest.mark.asyncio
+    async def test_result_metadata_records_affected_rows(self) -> None:
+        h = OutputStore()
+        await h.add_fixed_result_source(
+            "db",
+            "sql",
+            PredQuery(query="UPDATE t SET a = 1", exec_result=ExecResult(affected_rows=2)),
+        )
+
+        payload = await h.get_payload("R1")
+
+        assert payload.metadata.affected_rows == 2
+
 
 class TestWithConnector:
     """With a workspace connector, old DFs are evicted from RAM."""

@@ -267,8 +267,29 @@ async def test_table_artifact_without_displayable_payload_is_unavailable() -> No
 
     artifact = resolved.artifacts[0]
     assert isinstance(artifact, UnavailableArtifact)
-    assert artifact.status == "error"
-    assert artifact.reason == "Source returned no displayable data"
+    assert artifact.status == "no_data"
+    assert artifact.reason == "Statement executed successfully but returned no displayable data"
+
+
+@pytest.mark.asyncio
+async def test_table_artifact_without_displayable_payload_reports_affected_rows() -> None:
+    output_store = OutputStore()
+    await output_store.add_fixed_result_source(
+        "workspace",
+        "sql",
+        PredQuery(query="UPDATE t SET a = 1", exec_result=ExecResult(affected_rows=3)),
+    )
+    output = OutputSpec(
+        sources=[FixedResultSource(id="fixed", result_id="R1")],
+        artifacts=[TableArtifactSpec(id="table", source_id="fixed")],
+    )
+
+    resolved = await OutputResolver(output_store).resolve(output)
+
+    artifact = resolved.artifacts[0]
+    assert isinstance(artifact, UnavailableArtifact)
+    assert artifact.status == "no_data"
+    assert artifact.reason == "Statement executed successfully, affected 3 rows, and returned no displayable data"
 
 
 @pytest.mark.asyncio
@@ -288,5 +309,5 @@ async def test_chart_artifact_without_dataframe_is_unavailable() -> None:
 
     artifact = resolved.artifacts[0]
     assert isinstance(artifact, UnavailableArtifact)
-    assert artifact.status == "error"
+    assert artifact.status == "no_data"
     assert artifact.reason == "Source returned no tabular data"

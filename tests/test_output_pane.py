@@ -1031,6 +1031,20 @@ async def test_error_artifact_renders_error_message_view(tmp_path: Path) -> None
     assert payload == {"message": {"tone": "error", "text": "boom"}}
 
 
+@pytest.mark.asyncio
+async def test_no_data_artifact_renders_info_message_view(tmp_path: Path) -> None:
+    resolved = ResolvedOutput(
+        selection={},
+        artifacts=[UnavailableArtifact(artifact_id="S1", label="detail", reason="No tabular data", status="no_data")],
+    )
+
+    cards = await render_resolved_output(resolved, tmp_path)
+
+    payload = json.loads((tmp_path / f"{cards[0]['id']}.data.json").read_text())
+    assert cards[0]["views"] == ["message"]
+    assert payload == {"message": {"tone": "info", "text": "No tabular data"}}
+
+
 def test_live_view_survives_rapid_browser_replay_and_switches_atomically(tmp_path: Path) -> None:
     from playwright.sync_api import Error as PlaywrightError
     from playwright.sync_api import sync_playwright

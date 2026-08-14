@@ -84,7 +84,7 @@ class UnavailableArtifact:
     artifact_id: ArtifactId
     reason: str = "unavailable"
     label: str | None = None
-    status: Literal["error", "not_applicable"] = "error"
+    status: Literal["error", "not_applicable", "no_data"] = "error"
 
 
 ResolvedArtifact: TypeAlias = (
@@ -184,8 +184,8 @@ def _resolved_artifact(artifact: ArtifactSpec, payload_by_source: dict[SourceId,
             return UnavailableArtifact(
                 artifact_id=artifact.id,
                 label=artifact.label,
-                reason="Source returned no displayable data",
-                status="error",
+                reason=_no_displayable_data_reason(payload),
+                status="no_data",
             )
         return ResolvedTableArtifact(
             artifact_id=artifact.id,
@@ -200,7 +200,7 @@ def _resolved_artifact(artifact: ArtifactSpec, payload_by_source: dict[SourceId,
                 artifact_id=artifact.id,
                 label=artifact.label,
                 reason="Source returned no tabular data",
-                status="error",
+                status="no_data",
             )
         return ResolvedChartArtifact(
             artifact_id=artifact.id,
@@ -237,6 +237,14 @@ def _dataframes_by_source(payload_by_source: Mapping[SourceId, ResultPayload]) -
             raise ValueError(f"source {source_id!r} returned no data")
         sources[source_id] = payload.df
     return sources
+
+
+def _no_displayable_data_reason(payload: ResultPayload) -> str:
+    affected_rows = payload.metadata.affected_rows
+    if affected_rows is None:
+        return "Statement executed successfully but returned no displayable data"
+    row_word = "row" if affected_rows == 1 else "rows"
+    return f"Statement executed successfully, affected {affected_rows:,} {row_word}, and returned no displayable data"
 
 
 def _project_selection(

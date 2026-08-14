@@ -58,7 +58,7 @@ class UnavailableArtifact:
     artifact_id: ArtifactId
     reason: str = "unavailable"
     label: str | None = None
-    status: Literal["error", "not_applicable"] = "error"
+    status: Literal["error", "not_applicable", "no_data"] = "error"
 
 
 ResolvedArtifact = (
@@ -118,6 +118,7 @@ Browser presenter:
 - `ResolvedGraphArtifact` -> graph JSON payload from the already-materialized `GraphView`.
 - `UnavailableArtifact(status="error")` -> visible error data card.
 - `UnavailableArtifact(status="not_applicable")` -> neutral message card.
+- `UnavailableArtifact(status="no_data")` -> neutral message card.
 
 The surfaces differ only at presentation boundaries. They no longer duplicate source resolution or graph materialization.
 
@@ -138,6 +139,7 @@ Reason:
 Per-artifact unavailability:
 
 - parameterized source template calls `not_applicable(reason)` for the selection;
+- a source succeeds but returns no displayable payload;
 - parameterized source cache/materialization failure;
 - payload loading failure;
 - missing DataFrame for a visual source;

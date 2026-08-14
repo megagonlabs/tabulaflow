@@ -203,7 +203,7 @@ async def render_resolved_output(resolved_output: ResolvedOutput, pane_dir: Path
     cards: list[PaneCard] = []
     for artifact in resolved_output.artifacts:
         if isinstance(artifact, UnavailableArtifact):
-            tone: Literal["info", "error"] = "info" if artifact.status == "not_applicable" else "error"
+            tone: Literal["info", "error"] = "error" if artifact.status == "error" else "info"
             cards.append(render_message_data(MessageCardInput(label=artifact.label, text=artifact.reason, tone=tone), pane_dir, artifact_id=artifact.artifact_id))
             continue
         try:
