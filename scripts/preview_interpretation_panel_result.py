@@ -162,6 +162,7 @@ class TerminalControlPanelPreview(Static, can_focus=True):
                     is_applied=pending == applied,
                     accent=accent,
                     key_hint=key_hint,
+                    show_applied_marker=False,
                 )
                 item_index += 1
 
@@ -171,10 +172,20 @@ class TerminalControlPanelPreview(Static, can_focus=True):
         self.update(text)
 
     @staticmethod
-    def _append_option_line(text: Text, label: str, *, is_cursor: bool, is_applied: bool, accent: str, key_hint: str) -> None:
+    def _append_option_line(
+        text: Text,
+        label: str,
+        *,
+        is_cursor: bool,
+        is_applied: bool,
+        accent: str,
+        key_hint: str,
+        show_applied_marker: bool = True,
+    ) -> None:
         text.append("  ")
         text.append("❯ " if is_cursor else "  ", style=key_hint if is_cursor else "")
-        text.append("● " if is_applied else "  ", style=accent if is_applied else "")
+        if show_applied_marker:
+            text.append("● " if is_applied else "  ", style=accent if is_applied else "")
         if is_applied:
             style = Style(bold=True, color=accent)
         elif is_cursor:
