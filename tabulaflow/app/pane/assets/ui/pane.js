@@ -17,6 +17,36 @@ function hasText(value) {
   return typeof value === 'string' && value.trim().length > 0;
 }
 
+function setFavicon() {
+  var svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" shape-rendering="crispEdges">'
+    + '<rect width="64" height="64" fill="#283629"/>'
+    + '<rect x="8" y="0" width="48" height="14" fill="#3EB489"/>'
+    + '<rect x="8" y="14" width="48" height="14" fill="#121212"/>'
+    + '<rect x="25" y="14" width="14" height="36" fill="#3EB489"/>'
+    + '<rect x="25" y="50" width="14" height="14" fill="#121212"/>'
+    + '</svg>';
+  var link = document.querySelector('link[rel="icon"]');
+  if (!link) {
+    link = document.createElement('link');
+    link.rel = 'icon';
+    document.head.appendChild(link);
+  }
+  link.type = 'image/svg+xml';
+  link.href = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+}
+
+function applyPageStatus(status) {
+  document.title = status === 'ready' ? '● tabulaflow' : 'tabulaflow';
+}
+
+function startPageStatus() {
+  setFavicon();
+  applyPageStatus('idle');
+  window.addEventListener('focus', function () {
+    applyPageStatus('idle');
+  });
+}
+
 function moveThumb(thumb, opt) {
   thumb.style.width = opt.offsetWidth + 'px';
   thumb.style.transform = 'translateX(' + opt.offsetLeft + 'px)';
@@ -1155,8 +1185,10 @@ function startEvents() {
   var source = new EventSource('events');
   source.addEventListener('turn', function (event) {
     appendTurn(JSON.parse(event.data));
+    applyPageStatus(document.hasFocus() ? 'idle' : 'ready');
   });
 }
 
+startPageStatus();
 startEvents();
 watchContentScroll();
