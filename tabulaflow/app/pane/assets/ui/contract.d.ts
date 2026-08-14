@@ -4,6 +4,7 @@ export type ColumnRole = "text" | "number" | "bool" | "media";
 
 export interface PaneCard {
   id: string;
+  artifact_id: string;
   label: string | null;
   views: ViewKind[];
 }

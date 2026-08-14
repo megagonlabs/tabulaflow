@@ -104,7 +104,7 @@ def build_query_data(sql: str, *, lexer: str = "sql") -> QueryCardData:
     return {"query": build_code_data(sql, lexer=lexer, fallback_lexer="sql")}
 
 
-def render_result_data(metadata: ResultCardInput, pane_dir: Path) -> PaneCard | None:
+def render_result_data(metadata: ResultCardInput, pane_dir: Path, *, artifact_id: str | None = None) -> PaneCard | None:
     """Render a result or chart artifact's payload to JSON; return a pane manifest.
 
     The descriptor is ordered chart -> data -> query, including only the views
@@ -139,10 +139,10 @@ def render_result_data(metadata: ResultCardInput, pane_dir: Path) -> PaneCard | 
         return None
     pane_dir.mkdir(parents=True, exist_ok=True)
     write_strict_json(pane_dir / f"{card_id}.data.json", card_data)
-    return card_payload(card_id=card_id, label=metadata.label, views=views)
+    return card_payload(card_id=card_id, artifact_id=artifact_id, label=metadata.label, views=views)
 
 
-def render_map_data(map_artifact: MapCardInput, pane_dir: Path) -> PaneCard | None:
+def render_map_data(map_artifact: MapCardInput, pane_dir: Path, *, artifact_id: str | None = None) -> PaneCard | None:
     """Render a standalone map card's payload to JSON; return a pane manifest.
 
     A map-only card (no chart/data/query views) assembled from one or more query
@@ -172,10 +172,10 @@ def render_map_data(map_artifact: MapCardInput, pane_dir: Path) -> PaneCard | No
         return None
     pane_dir.mkdir(parents=True, exist_ok=True)
     write_strict_json(pane_dir / f"{card_id}.data.json", map_data)
-    return card_payload(card_id=card_id, label=map_artifact.label, views=["map"])
+    return card_payload(card_id=card_id, artifact_id=artifact_id, label=map_artifact.label, views=["map"])
 
 
-def render_graph_data(graph_artifact: GraphCardInput, pane_dir: Path) -> PaneCard | None:
+def render_graph_data(graph_artifact: GraphCardInput, pane_dir: Path, *, artifact_id: str | None = None) -> PaneCard | None:
     """Render a standalone graph card's payload to JSON; return a pane manifest."""
     card_id = f"{CARD_ID_PREFIX}{secrets.token_hex(6)}"
     graph_data = build_graph_result_data(graph_artifact.graph)
@@ -186,15 +186,15 @@ def render_graph_data(graph_artifact: GraphCardInput, pane_dir: Path) -> PaneCar
     )
     pane_dir.mkdir(parents=True, exist_ok=True)
     write_strict_json(pane_dir / f"{card_id}.data.json", graph_data)
-    return card_payload(card_id=card_id, label=graph_artifact.label, views=["graph"])
+    return card_payload(card_id=card_id, artifact_id=artifact_id, label=graph_artifact.label, views=["graph"])
 
 
-def render_message_data(message: MessageCardInput, pane_dir: Path) -> PaneCard:
+def render_message_data(message: MessageCardInput, pane_dir: Path, *, artifact_id: str | None = None) -> PaneCard:
     """Render a standalone message card's payload to JSON; return a pane manifest."""
     card_id = f"{CARD_ID_PREFIX}{secrets.token_hex(6)}"
     pane_dir.mkdir(parents=True, exist_ok=True)
     write_strict_json(pane_dir / f"{card_id}.data.json", {"message": {"tone": message.tone, "text": message.text}})
-    return card_payload(card_id=card_id, label=message.label, views=["message"])
+    return card_payload(card_id=card_id, artifact_id=artifact_id, label=message.label, views=["message"])
 
 
 
@@ -204,7 +204,7 @@ async def render_resolved_output(resolved_output: ResolvedOutput, pane_dir: Path
     for artifact in resolved_output.artifacts:
         if isinstance(artifact, UnavailableArtifact):
             tone: Literal["info", "error"] = "info" if artifact.status == "not_applicable" else "error"
-            cards.append(render_message_data(MessageCardInput(label=artifact.label, text=artifact.reason, tone=tone), pane_dir))
+            cards.append(render_message_data(MessageCardInput(label=artifact.label, text=artifact.reason, tone=tone), pane_dir, artifact_id=artifact.artifact_id))
             continue
         try:
             if isinstance(artifact, ResolvedTableArtifact):
@@ -219,6 +219,7 @@ async def render_resolved_output(resolved_output: ResolvedOutput, pane_dir: Path
                         query_lexer="cypher" if payload.metadata.connector_type == "property_graph" else "sql",
                     ),
                     pane_dir,
+                    artifact_id=artifact.artifact_id,
                 )
             elif isinstance(artifact, ResolvedChartArtifact):
                 payload = artifact.payload
@@ -232,17 +233,19 @@ async def render_resolved_output(resolved_output: ResolvedOutput, pane_dir: Path
                         query_lexer="cypher" if payload.metadata.connector_type == "property_graph" else "sql",
                     ),
                     pane_dir,
+                    artifact_id=artifact.artifact_id,
                 )
             elif isinstance(artifact, ResolvedMapArtifact):
                 sources = {}
                 for source_id, payload in artifact.payload_by_source.items():
                     if payload.df is not None:
                         sources[source_id] = payload.df
-                card = render_map_data(MapCardInput(label=artifact.label, spec=artifact.spec, sources=sources), pane_dir)
+                card = render_map_data(MapCardInput(label=artifact.label, spec=artifact.spec, sources=sources), pane_dir, artifact_id=artifact.artifact_id)
             elif isinstance(artifact, ResolvedGraphArtifact):
                 card = render_graph_data(
                     GraphCardInput(label=artifact.label, graph=artifact.graph, layout=artifact.layout),
                     pane_dir,
+                    artifact_id=artifact.artifact_id,
                 )
             else:
                 card = None

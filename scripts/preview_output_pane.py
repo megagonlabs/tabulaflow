@@ -566,7 +566,12 @@ def _many_cards(cards: Sequence[PaneCard]) -> list[PaneCard]:
         "warehouse_inventory_reconciliation_status",
     ]
     return [
-        card_payload(card_id=cards[i % len(cards)]["id"], label=label, views=cards[i % len(cards)]["views"])
+        card_payload(
+            card_id=cards[i % len(cards)]["id"],
+            artifact_id=f"many-card-{i}",
+            label=label,
+            views=cards[i % len(cards)]["views"],
+        )
         for i, label in enumerate(labels)
     ]
 

@@ -16,6 +16,7 @@ MessageTone = Literal["info", "error"]
 
 class PaneCard(TypedDict):
     id: str
+    artifact_id: str
     label: str | None
     views: list[ViewKind]
 
@@ -151,9 +152,9 @@ class CardData(TypedDict, total=False):
     datasets: dict[str, DatasetData]
 
 
-def card_payload(*, card_id: str, label: str | None, views: list[ViewKind]) -> PaneCard:
+def card_payload(*, card_id: str, label: str | None, views: list[ViewKind], artifact_id: str | None = None) -> PaneCard:
     """Build one result card descriptor for the pane."""
-    return {"id": card_id, "label": label, "views": views}
+    return {"id": card_id, "artifact_id": artifact_id or card_id, "label": label, "views": views}
 
 
 def turn_payload(

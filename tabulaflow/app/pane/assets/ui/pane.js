@@ -500,7 +500,7 @@ function getTurnState(turn, index) {
 }
 
 function cardStateKey(card, cardIndex) {
-  return cardIndex + ':' + card.id;
+  return card.artifact_id || card.id || String(cardIndex);
 }
 
 function savedViewKind(state, card, cardIndex, views) {

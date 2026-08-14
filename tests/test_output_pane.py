@@ -971,6 +971,13 @@ def test_heavy_view_cache_weights_are_tuned_for_retained_renderers() -> None:
     assert "if (entry.kind === 'graph') return graphCacheWeight(entry);" in pane_js
 
 
+def test_pane_cards_have_stable_artifact_identity_for_view_state() -> None:
+    pane_js = _pane_asset_text("pane.js")
+    contract = _pane_asset_text("contract.d.ts")
+    assert "artifact_id: string;" in contract
+    assert "return card.artifact_id || card.id || String(cardIndex);" in pane_js
+
+
 def test_answer_controls_render_choice_and_number_inputs() -> None:
     pane_js = _pane_asset_text("pane.js")
     pane_css = _pane_asset_text("pane.css")
@@ -1005,7 +1012,7 @@ async def test_unavailable_artifact_renders_message_view(tmp_path: Path) -> None
 
     cards = await render_resolved_output(resolved, tmp_path)
 
-    assert cards == [{"id": cards[0]["id"], "label": "detail", "views": ["message"]}]
+    assert cards == [{"id": cards[0]["id"], "artifact_id": "S1", "label": "detail", "views": ["message"]}]
     payload = json.loads((tmp_path / f"{cards[0]['id']}.data.json").read_text())
     assert payload == {"message": {"tone": "info", "text": "Only applies to revenue"}}
 
@@ -2370,13 +2377,13 @@ def test_view_card_in_pane_marks_turn_as_manual(tmp_path: Path) -> None:
     app = TabulaflowApp(llm_selection=ResolvedLLMSelection(LLM_OFF, None))
     app._pane = FakePane()  # type: ignore[assignment]  # noqa: SLF001
 
-    card: PaneCard = {"id": "card_orders", "label": None, "views": ["data"]}
+    card: PaneCard = {"id": "card_orders", "artifact_id": "orders", "label": None, "views": ["data"]}
     assert app.view_card_in_pane(card, title="orders")
     assert pushed == [
         {
             "title": "orders",
             "source": "manual",
-            "cards": [{"id": "card_orders", "label": None, "views": ["data"]}],
+            "cards": [{"id": "card_orders", "artifact_id": "orders", "label": None, "views": ["data"]}],
         }
     ]
 
@@ -2432,7 +2439,7 @@ async def test_output_pane_resolves_live_turn_selection(tmp_path: Path) -> None:
 
     cards = await pane.resolve_turn(0, {"period": "q3"})
 
-    assert cards == [{"id": cards[0]["id"], "label": "period_q3", "views": ["data", "query"]}]
+    assert cards == [{"id": cards[0]["id"], "artifact_id": "period_q3", "label": "period_q3", "views": ["data", "query"]}]
     assert (tmp_path / f"{cards[0]['id']}.data.json").exists()
 
 
@@ -2479,7 +2486,7 @@ async def test_output_pane_http_resolve_runs_on_app_loop(tmp_path: Path) -> None
     payload = await asyncio.to_thread(post_resolve)
 
     assert payload["selection"] == {}
-    assert payload["cards"] == [{"id": payload["cards"][0]["id"], "label": "period_q3", "views": ["data", "query"]}]
+    assert payload["cards"] == [{"id": payload["cards"][0]["id"], "artifact_id": "S1", "label": "period_q3", "views": ["data", "query"]}]
 
 
 def test_query_payload_contains_language_and_pane_theme_highlight() -> None:

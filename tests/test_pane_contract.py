@@ -42,6 +42,7 @@ def _assert_dataset(value: object) -> None:
 
 def _assert_card_payload(card: PaneCard, data: CardData) -> None:
     assert card["id"].startswith(CARD_ID_PREFIX)
+    assert card["artifact_id"]
     assert set(card["views"]) <= set(VIEW_KINDS)
 
     if "data" in card["views"]:
