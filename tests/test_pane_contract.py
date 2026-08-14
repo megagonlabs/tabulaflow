@@ -96,7 +96,7 @@ def _assert_card_payload(card: PaneCard, data: CardData) -> None:
             assert isinstance(edge_data.get("target"), str)
 
 
-def test_record_card_payload_matches_contract(tmp_path: Path) -> None:
+def test_result_card_payload_matches_contract(tmp_path: Path) -> None:
     df = pd.DataFrame({"region": ["north", "south"], "revenue": [10, 20]})
     spec = {"mark": "bar", "encoding": {"x": {"field": "region"}, "y": {"field": "revenue"}}}
     card = render_result_data(
@@ -109,7 +109,7 @@ def test_record_card_payload_matches_contract(tmp_path: Path) -> None:
     _assert_card_payload(card, _load_card_data(card, tmp_path))
 
 
-def test_record_card_with_attached_graph_payload_matches_contract(tmp_path: Path) -> None:
+def test_result_card_with_attached_graph_payload_matches_contract(tmp_path: Path) -> None:
     df = pd.DataFrame({"path": ["Alice -> Matrix"]})
     graph = GraphView(
         nodes=[

@@ -3,7 +3,7 @@
     uv run scripts/preview_output_pane.py --port 61211
     uv run scripts/preview_output_pane.py --port 61211 --full
 
-The script reuses the production pane server, index shape, and record renderers,
+The script reuses the production pane server, index shape, and card renderers,
 but pushes synthetic turns directly. It is intended for browser inspection while
 iterating on ``tabulaflow/app/pane.py`` and the HTML renderers.
 """
@@ -291,9 +291,9 @@ Escapable characters include:
 """.replace("{TWO_SPACES}", "  ")
 
 
-def _record(
+def _result_input(
     *,
-    record_id: str,
+    result_id: str,
     label: str,
     query: str | None,
     df: pd.DataFrame | None,
@@ -343,10 +343,10 @@ def _graph_card(
     return card
 
 
-def _render_records(records: Sequence[ResultCardInput], pane_dir: Path) -> list[PaneCard]:
+def _render_result_inputs(result_inputs: Sequence[ResultCardInput], pane_dir: Path) -> list[PaneCard]:
     cards: list[PaneCard] = []
-    for record in records:
-        card = render_result_data(record, pane_dir)
+    for result_input in result_inputs:
+        card = render_result_data(result_input, pane_dir)
         if card is not None:
             cards.append(card)
     return cards
@@ -359,7 +359,7 @@ def _push_turn(
     title: str,
     user: str,
     assistant: str,
-    records: Sequence[ResultCardInput] = (),
+    result_inputs: Sequence[ResultCardInput] = (),
     cards: Sequence[PaneCard] = (),
     source: PaneSource | None = None,
 ) -> None:
@@ -368,7 +368,7 @@ def _push_turn(
             title=title,
             user=user,
             assistant=assistant,
-            cards=[*cards, *_render_records(records, pane_dir)],
+            cards=[*cards, *_render_result_inputs(result_inputs, pane_dir)],
             source=source,
         )
     )
@@ -515,11 +515,11 @@ def _long_result_response(summary: str) -> str:
             summary,
             (
                 "I kept the written response above the artifacts because it should provide context "
-                "before the user starts inspecting the cited records. The result panel below should "
+                "before the user starts inspecting the cited cards. The result panel below should "
                 "feel attached to this explanation, but not crowded against it."
             ),
             (
-                "Each record can expose multiple views. The Chart view is useful for scanning shape "
+                "Each card can expose multiple views. The Chart view is useful for scanning shape "
                 "and trend, the Data view is useful for checking exact rows, and the Query view keeps "
                 "the generated source available for audit."
             ),
@@ -537,9 +537,9 @@ def _chart_cards(pane_dir: Path, *, limit: int | None) -> list[PaneCard]:
     fixtures = debug_chart_fixtures()
     if limit is not None:
         fixtures = fixtures[:limit]
-    for record_id, label, query, df, spec in fixtures:
+    for result_id, label, query, df, spec in fixtures:
         card = render_result_data(
-            _record(record_id=record_id, label=label, query=query, df=df, chart_spec=spec),
+            _result_input(result_id=result_id, label=label, query=query, df=df, chart_spec=spec),
             pane_dir,
         )
         if card is not None:
@@ -547,7 +547,7 @@ def _chart_cards(pane_dir: Path, *, limit: int | None) -> list[PaneCard]:
     return cards
 
 
-def _many_record_cards(cards: Sequence[PaneCard]) -> list[PaneCard]:
+def _many_cards(cards: Sequence[PaneCard]) -> list[PaneCard]:
     if not cards:
         return []
     labels = [
@@ -559,7 +559,7 @@ def _many_record_cards(cards: Sequence[PaneCard]) -> list[PaneCard]:
         "north_america_enterprise_revenue",
         "sku",
         "monthly_active_accounts",
-        "very_long_record_label_that_should_no_longer_truncate",
+        "very_long_card_label_that_should_no_longer_truncate",
         "cohort_retention",
         "x",
         "warehouse_inventory_reconciliation_status",
@@ -596,7 +596,7 @@ def _manual_table_card(pane_dir: Path) -> PaneCard:
             * 2,
         }
     )
-    card = render_result_data(_record(record_id="manual", label="", query=None, df=df), pane_dir)
+    card = render_result_data(_result_input(result_id="manual", label="", query=None, df=df), pane_dir)
     assert card is not None
     return card
 
@@ -612,7 +612,7 @@ def _wide_manual_table_card(pane_dir: Path) -> PaneCard:
     for col in range(1, cols - len(data) + 1):
         data[f"metric_{col:02d}"] = [round(((row * (col + 7)) % 100_000) / 37.0, 2) for row in range(rows)]
     df = pd.DataFrame(data)
-    card = render_result_data(_record(record_id="wide_manual", label="", query=None, df=df), pane_dir)
+    card = render_result_data(_result_input(result_id="wide_manual", label="", query=None, df=df), pane_dir)
     assert card is not None
     return card
 
@@ -634,7 +634,7 @@ def _push_manual_table_turn(pane: pane_mod.OutputPane, pane_dir: Path) -> None:
     )
 
 
-def _large_table_record(num_rows: int) -> ResultCardInput:
+def _large_table_result(num_rows: int) -> ResultCardInput:
     df = pd.DataFrame(
         {
             "row_id": range(1, num_rows + 1),
@@ -644,15 +644,15 @@ def _large_table_record(num_rows: int) -> ResultCardInput:
             "status": (["ok", "review", "hold"] * ((num_rows // 3) + 1))[:num_rows],
         }
     )
-    return _record(
-        record_id="QDEBUG_VERY_LARGE",
+    return _result_input(
+        result_id="QDEBUG_VERY_LARGE",
         label="very_large_table",
         query=f"-- synthetic {num_rows:,}-row table",
         df=df,
     )
 
 
-def _large_agent_table_record() -> ResultCardInput:
+def _large_agent_table_result() -> ResultCardInput:
     rows = 1_000
     data: dict[str, list[object]] = {
         "row_id": list(range(1, rows + 1)),
@@ -661,15 +661,15 @@ def _large_agent_table_record() -> ResultCardInput:
     }
     for col in range(1, 10):
         data[f"metric_{col:02d}"] = [round(((row * (col + 5)) % 50_000) / 29.0, 2) for row in range(rows)]
-    return _record(
-        record_id="QDEBUG_LARGE_AGENT_TABLE",
+    return _result_input(
+        result_id="QDEBUG_LARGE_AGENT_TABLE",
         label="large_agent_table",
         query="-- synthetic 1,000-row agent result table",
         df=pd.DataFrame(data),
     )
 
 
-def _cypher_graph_record() -> ResultCardInput:
+def _cypher_graph_result() -> ResultCardInput:
     df = pd.DataFrame(
         {
             "p": [
@@ -717,8 +717,8 @@ def _cypher_graph_record() -> ResultCardInput:
             },
         ],
     )
-    return _record(
-        record_id="QDEBUG_CYPHER_GRAPH",
+    return _result_input(
+        result_id="QDEBUG_CYPHER_GRAPH",
         label="cypher_path_result",
         query="MATCH p=(:Person)-[r]->(:Movie) RETURN p LIMIT 2",
         df=df,
@@ -727,9 +727,9 @@ def _cypher_graph_record() -> ResultCardInput:
     )
 
 
-def _cypher_non_graph_record() -> ResultCardInput:
-    return _record(
-        record_id="QDEBUG_CYPHER_TABLE",
+def _cypher_non_graph_result() -> ResultCardInput:
+    return _result_input(
+        result_id="QDEBUG_CYPHER_TABLE",
         label="cypher_scalar_result",
         query=(
             "MATCH (m:Movie)<-[:ACTED_IN]-(p:Person)\n"
@@ -914,7 +914,7 @@ def _map_showcase_card(pane_dir: Path) -> PaneCard:
 
 
 def _map_overlay_card(pane_dir: Path) -> PaneCard:
-    """Multi-record overlay: neighborhood boundaries (Q1) + store points (Q2)."""
+    """Multi-card overlay: neighborhood boundaries (Q1) + store points (Q2)."""
     areas = pd.DataFrame(
         [
             {
@@ -1535,7 +1535,7 @@ def _wav_bytes(freq_hz: float, seconds: float = 0.4, rate: int = 8000) -> bytes:
     return bytes(header + samples)
 
 
-def _media_table_record() -> ResultCardInput:
+def _media_table_result() -> ResultCardInput:
     names = ["red", "green", "blue", "amber", "violet"]
     assets = resource_files("tabulaflow.app.assets.debug")
     jpeg = [assets.joinpath(f"jpeg_{i}.jpg").read_bytes() for i in range(5)]
@@ -1557,8 +1557,8 @@ def _media_table_record() -> ResultCardInput:
             "mixed": [jpeg[0], "plain text", 42, None, "another"],
         }
     )
-    return _record(
-        record_id="QDEBUG_MEDIA",
+    return _result_input(
+        result_id="QDEBUG_MEDIA",
         label="debug_media",
         query="-- synthetic media payloads (JPEG/GIF/PDF/WAV/MP4)",
         df=df,
@@ -1670,9 +1670,9 @@ def _populate_pane(
                         "\\]"
                     ),
                     (
-                        "When cited records are present, each result gets the same inspection model: "
-                        "record selection first, then the Chart, Data, and Query views. This keeps the "
-                        "mental model predictable even when one turn contains many records."
+                        "When cited cards are present, each result gets the same inspection model: "
+                        "card selection first, then the Chart, Data, and Query views. This keeps the "
+                        "mental model predictable even when one turn contains many cards."
                     ),
                     (
                         "The browser pane should also handle idle and transitional states cleanly. "
@@ -1711,10 +1711,10 @@ def _populate_pane(
             title="Large agent table",
             user="Show a large table as a normal agent result.",
             assistant=(
-                "This is a normal agent result record with 1,000 rows, so the Data view should use "
+                "This is a normal agent result card with 1,000 rows, so the Data view should use "
                 "the compact output-pane table frame and internal scrolling."
             ),
-            records=[_large_agent_table_record()],
+            result_inputs=[_large_agent_table_result()],
         )
         _push_turn(
             pane,
@@ -1722,10 +1722,10 @@ def _populate_pane(
             title="Cypher graph auto-view",
             user="Show two Cypher query results: one with an extracted graph view and one scalar table result.",
             assistant=(
-                "The first Cypher result simulates a native path query, so the record opens with Graph, Data, "
+                "The first Cypher result simulates a native path query, so the card opens with Graph, Data, "
                 "and Query views. The second Cypher result is scalar-only, so it should only show Data and Query."
             ),
-            records=[_cypher_graph_record(), _cypher_non_graph_record()],
+            result_inputs=[_cypher_graph_result(), _cypher_non_graph_result()],
         )
         _push_turn(
             pane,
@@ -1749,7 +1749,7 @@ def _populate_pane(
         _push_turn(
             pane,
             pane_dir,
-            title="Multi-record map overlay",
+            title="Multi-card map overlay",
             user="Overlay store locations on neighborhood service areas.",
             assistant=(
                 "This map overlays two separate query results: neighborhood boundaries from one query and "
@@ -1764,7 +1764,7 @@ def _populate_pane(
             user="Show one live-physics graph for each graph layout mode.",
             assistant=(
                 "This turn contains one live-physics graph card for each supported layout mode: force, tree, and "
-                "layered. Use the record tabs to switch layouts while inspecting the same graph renderer styling."
+                "layered. Use the card tabs to switch layouts while inspecting the same graph renderer styling."
             ),
             cards=[
                 _graph_network_card(pane_dir),
@@ -1788,7 +1788,7 @@ def _populate_pane(
                 _graph_network_card(pane_dir),
                 *chart_cards[:2],
             ],
-            records=[_large_agent_table_record()],
+            result_inputs=[_large_agent_table_result()],
         )
         _push_turn(
             pane,
@@ -1807,21 +1807,21 @@ def _populate_pane(
             title="Compare the first four chart fixtures",
             user="Compare the first four chart fixtures and call out the useful result views.",
             assistant=_long_result_response(
-                "I generated four cited result records. Use the record tabs to switch between fixtures, "
-                "then the Chart, Data, and Query tabs to inspect each record."
+                "I generated four cited result cards. Use the card tabs to switch between fixtures, "
+                "then the Chart, Data, and Query tabs to inspect each card."
             ),
             cards=chart_cards[:4],
         )
         _push_turn(
             pane,
             pane_dir,
-            title="Many-record wrapping test",
-            user="Show a single turn with many records and varied label lengths.",
+            title="Many-card wrapping test",
+            user="Show a single turn with many cards and varied label lengths.",
             assistant=_long_result_response(
-                "This turn intentionally mixes short, medium, and long record labels to exercise "
+                "This turn intentionally mixes short, medium, and long card labels to exercise "
                 "wrapping and active-tab sizing without label truncation."
             ),
-            cards=_many_record_cards(chart_cards),
+            cards=_many_cards(chart_cards),
         )
 
     if include_large:
@@ -1834,7 +1834,7 @@ def _populate_pane(
                 f"This table has {large_rows:,} source rows. The browser table renderer may cap "
                 "the rendered rows and report that in the Data view caption."
             ),
-            records=[_large_table_record(large_rows)],
+            result_inputs=[_large_table_result(large_rows)],
         )
 
     if include_media:
@@ -1846,7 +1846,7 @@ def _populate_pane(
             assistant=(
                 "This table exercises image, GIF, PDF, audio, video, base64 image, data URI, and mixed-content cells."
             ),
-            records=[_media_table_record()],
+            result_inputs=[_media_table_result()],
         )
 
     if all_chart_turns:

@@ -41,9 +41,9 @@ class _SourceModel(_StrictModel):
 
     @model_validator(mode="after")
     def _validate_source_mode(self) -> _SourceModel:
-        has_record = self.source_id is not None
+        has_source_id = self.source_id is not None
         has_data = self.data is not None
-        if has_record == has_data:
+        if has_source_id == has_data:
             raise ValueError("graph sources must set exactly one of source_id or data")
         if self.data is not None and not self.data:
             raise ValueError("inline graph data must be a non-empty list")

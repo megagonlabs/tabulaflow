@@ -105,7 +105,7 @@ class ResolvedOutput:
 
 
 class OutputResolver:
-    """Resolve an OutputSpec under a selection to materialized result records."""
+    """Resolve an OutputSpec under a selection to display-ready artifacts."""
 
     def __init__(self, output_store: OutputStore) -> None:
         self._output_store = output_store

@@ -541,7 +541,7 @@ class OutputPane:
         result: ChatResult | None = None,
         output_store: OutputStore | None = None,
     ) -> None:
-        """Record a turn ({"cards": [{"label", "views": [...]}, ...]}) for the pane."""
+        """Store a turn ({"cards": [{"label", "views": [...]}, ...]}) for the pane."""
         with self._cond:
             self._load_manifest_locked()
             assigned = cast(PaneTurn, dict(turn))
