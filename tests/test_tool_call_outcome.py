@@ -8,12 +8,12 @@ from pydantic_ai import ToolReturn
 from pydantic_ai.messages import FunctionToolResultEvent, ToolReturnPart
 from sqlalchemy.ext.asyncio import create_async_engine
 
-from tabulaflow.chat.agent import _TextStreamRouter, _emit_stream_event
-from tabulaflow.chat.events import ChatEvent, ToolFinished
-from tabulaflow.core.db_connector.db_registry import DBRegistry
-from tabulaflow.core.db_connector.sql_conn import SQLConnector
-from tabulaflow.core.formatters.sql_ddl import SQLDDLSchemaFormatter
-from tabulaflow.toolhub import RegistryGetTableSchemaTool, RegistryRunQueryTool, ToolCallOutcome
+from tabulaflow.agents.chat.session import _TextStreamRouter, _emit_stream_event
+from tabulaflow.agents.chat.events import ChatEvent, ToolFinished
+from tabulaflow.data.registry import DBRegistry
+from tabulaflow.data.sql import SQLConnector
+from tabulaflow.output.schema_formatters.sql_ddl import SQLDDLSchemaFormatter
+from tabulaflow.agents.tools import RegistryGetTableSchemaTool, RegistryRunQueryTool, ToolCallOutcome
 
 
 async def _make_connector(tmp_path: Path) -> SQLConnector:

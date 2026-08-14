@@ -8,7 +8,7 @@ class NamedClass(Protocol):
 T = TypeVar("T", bound=NamedClass)
 
 
-class Registry(Generic[T]):
+class ClassRegistry(Generic[T]):
     def __init__(self, registry_name: str):
         self.registry_name = registry_name
         self._name_to_cls: dict[str, Type[T]] = {}

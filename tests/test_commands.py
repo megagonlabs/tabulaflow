@@ -7,7 +7,7 @@ from rich.text import Text
 
 import tabulaflow.app.commands as commands
 from tabulaflow.app.commands import CommandResult, handle_command
-from tabulaflow.app.session import SessionState
+from tabulaflow.app.state import AppState
 
 
 class _FakeRegistry:
@@ -34,7 +34,7 @@ class _FakeSession:
 async def test_handle_command_reports_unclosed_quote_as_user_error() -> None:
     result = await handle_command(
         "/connect 'neo4j+s://recommendations:recommendations@demo.neo4jlabs.com?database=recommendations",
-        cast(SessionState, object()),
+        cast(AppState, object()),
     )
 
     assert isinstance(result, CommandResult)
@@ -46,14 +46,14 @@ async def test_handle_command_reports_unclosed_quote_as_user_error() -> None:
 async def test_handle_command_dispatches_valid_shell_quoted_command(monkeypatch: pytest.MonkeyPatch) -> None:
     seen_args: list[str] | None = None
 
-    async def fake_handler(args: list[str], _session: SessionState) -> CommandResult:
+    async def fake_handler(args: list[str], _session: AppState) -> CommandResult:
         nonlocal seen_args
         seen_args = args
         return CommandResult()
 
     monkeypatch.setitem(cast(Any, commands.COMMANDS), "/fake", fake_handler)
 
-    result = await handle_command("/fake 'path with spaces.csv' alias", cast(SessionState, object()))
+    result = await handle_command("/fake 'path with spaces.csv' alias", cast(AppState, object()))
 
     assert isinstance(result, CommandResult)
     assert seen_args == ["path with spaces.csv", "alias"]
@@ -61,7 +61,7 @@ async def test_handle_command_dispatches_valid_shell_quoted_command(monkeypatch:
 
 @pytest.mark.asyncio
 async def test_handle_command_escapes_unknown_command_markup() -> None:
-    result = await handle_command("/[/]", cast(SessionState, object()))
+    result = await handle_command("/[/]", cast(AppState, object()))
 
     assert isinstance(result.output, Text)
     assert result.output.plain == "Unknown command: /[/]. Type /help for available commands."
@@ -69,7 +69,7 @@ async def test_handle_command_escapes_unknown_command_markup() -> None:
 
 @pytest.mark.asyncio
 async def test_connect_rejects_extra_url_args() -> None:
-    result = await handle_command("/connect duckdb:///tmp/a.duckdb alias extra", cast(SessionState, object()))
+    result = await handle_command("/connect duckdb:///tmp/a.duckdb alias extra", cast(AppState, object()))
 
     assert isinstance(result.output, Text)
     assert result.output.plain == "Usage: /connect <url_or_path> [alias]"
@@ -77,7 +77,7 @@ async def test_connect_rejects_extra_url_args() -> None:
 
 @pytest.mark.asyncio
 async def test_connect_rejects_extra_file_aliases() -> None:
-    result = await handle_command("/connect ./sales.csv alias extra", cast(SessionState, _FakeSession()))
+    result = await handle_command("/connect ./sales.csv alias extra", cast(AppState, _FakeSession()))
 
     assert isinstance(result.output, Text)
     assert result.output.plain == "Usage: /connect <file...> [alias]"
@@ -85,7 +85,7 @@ async def test_connect_rejects_extra_file_aliases() -> None:
 
 @pytest.mark.asyncio
 async def test_disconnect_rejects_extra_args() -> None:
-    result = await handle_command("/disconnect sales extra", cast(SessionState, object()))
+    result = await handle_command("/disconnect sales extra", cast(AppState, object()))
 
     assert isinstance(result.output, Text)
     assert result.output.plain == "Usage: /disconnect <alias>"
@@ -103,7 +103,7 @@ async def test_connect_source_key_strips_credentials(monkeypatch: pytest.MonkeyP
 
     result = await handle_command(
         "/connect postgres://alice:secret@example.com:5432/app sales",
-        cast(SessionState, session),
+        cast(AppState, session),
     )
 
     assert isinstance(result.output, Text)

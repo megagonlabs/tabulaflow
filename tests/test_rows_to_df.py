@@ -16,7 +16,7 @@ from typing import AsyncGenerator
 import pandas as pd
 import pytest
 
-from tabulaflow.core.db_connector.sql_conn import _rows_to_df, ThrottledEngine
+from tabulaflow.data.sql import _rows_to_df, ThrottledEngine
 
 
 # ---------------------------------------------------------------------------

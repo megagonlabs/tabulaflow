@@ -1,5 +1,5 @@
 from tabulaflow.app.pane import pane_panel_for_output
-from tabulaflow.core import ChoiceOption, ChoiceParameter, NumberParameter, OutputSpec
+from tabulaflow.output.specs import ChoiceOption, ChoiceParameter, NumberParameter, OutputSpec
 
 
 def test_pane_panel_for_output_projects_parameters_to_browser_contract() -> None:

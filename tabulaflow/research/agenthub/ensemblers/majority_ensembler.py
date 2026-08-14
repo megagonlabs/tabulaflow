@@ -7,7 +7,7 @@ from pydantic import BaseModel
 from tabulaflow.research.agenthub.base import BaseAgentConfig
 from tabulaflow.research.agenthub.utils import instrument
 from tabulaflow.research.types import SimpleNL2QTask, SimpleNL2QTaskOutput
-from tabulaflow.core.db_connector import BaseSQLDBConnector
+from tabulaflow.data import SQLConnectorProtocol
 from tabulaflow.research.pipelines.populate_exec_results import populate_task_async
 
 
@@ -48,7 +48,7 @@ class MajorityEnsembler:
 
     @instrument
     async def ensemble_async(
-        self, task: SimpleNL2QTask, db_connector: BaseSQLDBConnector, task_outputs: list[SimpleNL2QTaskOutput]
+        self, task: SimpleNL2QTask, db_connector: SQLConnectorProtocol, task_outputs: list[SimpleNL2QTaskOutput]
     ) -> SimpleNL2QTaskOutput:
         # Filter to outputs that have a pred_query
         candidates = [output for output in task_outputs if output.pred_query is not None]

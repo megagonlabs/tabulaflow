@@ -26,7 +26,14 @@ from textual.containers import VerticalScroll
 from textual.widgets import Input, Static
 
 from tabulaflow.app.theme import ACCENT, ACCENT_DIM, FOCUS_SURFACE, KEY_HINT, KEY_HINT_DIM
-from tabulaflow.core.outputs import ChoiceOption, ChoiceParameter, NumberParameter, ParameterSpec, SelectionValue, parameter_default
+from tabulaflow.output.specs import (
+    ChoiceOption,
+    ChoiceParameter,
+    NumberParameter,
+    ParameterSpec,
+    SelectionValue,
+    parameter_default,
+)
 
 _SLIDER_WIDTH = 16
 _SLIDER_THUMB = "◆"
@@ -76,7 +83,9 @@ class TerminalControlPanelPreview(Static, can_focus=True):
         items: list[_CursorItem] = []
         for parameter_index, parameter in enumerate(self._parameters):
             if isinstance(parameter, ChoiceParameter):
-                items.extend(_CursorItem(parameter_index=parameter_index, choice_index=i) for i in range(len(parameter.choices)))
+                items.extend(
+                    _CursorItem(parameter_index=parameter_index, choice_index=i) for i in range(len(parameter.choices))
+                )
             elif isinstance(parameter, NumberParameter):
                 items.append(_CursorItem(parameter_index=parameter_index))
         return items
@@ -148,7 +157,9 @@ class TerminalControlPanelPreview(Static, can_focus=True):
                 for choice_index, choice in enumerate(parameter.choices):
                     is_cursor = self._cursor == item_index
                     is_applied = self._applied_selection.get(parameter.id) == choice.id
-                    self._append_option_line(text, choice.label, is_cursor=is_cursor, is_applied=is_applied, accent=accent, key_hint=key_hint)
+                    self._append_option_line(
+                        text, choice.label, is_cursor=is_cursor, is_applied=is_applied, accent=accent, key_hint=key_hint
+                    )
                     item_index += 1
             elif isinstance(parameter, NumberParameter):
                 is_cursor = self._cursor == item_index

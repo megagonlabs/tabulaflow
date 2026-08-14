@@ -18,8 +18,8 @@ import pytest
 from pydantic_ai.messages import ModelMessage, ModelResponse, TextPart, ToolCallPart
 from pydantic_ai.models.function import AgentInfo, FunctionModel
 
-from tabulaflow.core.db_connector.sql_conn import SQLConnector
-from tabulaflow.toolhub.run_subagent_for_each_row import RunSubagentForEachRowTool
+from tabulaflow.data.sql import SQLConnector
+from tabulaflow.agents.tools.run_subagent_for_each_row import RunSubagentForEachRowTool
 
 
 def _emit_const(value: object) -> Callable[[list[ModelMessage], AgentInfo], ModelResponse]:

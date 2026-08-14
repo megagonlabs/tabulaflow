@@ -2,7 +2,7 @@ import math
 import pandas as pd
 from typing import Any, ClassVar
 from tabulaflow.research.types import NL2QTaskOutput
-from tabulaflow.core.db_connector import NL2QDBConnector
+from tabulaflow.data import DataConnector
 from tabulaflow.research.metrics.base import metric_registry
 from tabulaflow.research.metrics.utils import get_final_pred_query, get_final_gold_query
 
@@ -104,7 +104,7 @@ class SimpleEx:
                 return 0.0
         return 1.0
 
-    async def compute_async(self, task: NL2QTaskOutput, db_connector: NL2QDBConnector | None = None) -> float:
+    async def compute_async(self, task: NL2QTaskOutput, db_connector: DataConnector | None = None) -> float:
         pred_query = get_final_pred_query(task)
         gold_query = get_final_gold_query(task)
 

@@ -8,8 +8,8 @@ from typing import Any, Literal
 from pydantic import BaseModel, Field
 import jinja2
 import tabulaflow
-from tabulaflow.core.llm import make_agent, make_model_settings
-from tabulaflow.core.types import Usage
+from tabulaflow.agents.llm import make_agent, make_model_settings
+from tabulaflow.agents.trace import Usage
 from tabulaflow.research.types import NL2QRunResult, NL2QTaskOutput
 from tabulaflow.research.pipelines.utils import bool_flag
 

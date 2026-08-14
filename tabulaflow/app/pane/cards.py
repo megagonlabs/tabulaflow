@@ -15,14 +15,22 @@ from pygments.lexers import get_lexer_by_name
 from pygments.style import Style as PygmentsStyle
 from pygments.util import ClassNotFound
 
-from tabulaflow.app.pane.types import CARD_ID_PREFIX, CodeData, MessageTone, PaneCard, QueryCardData, ViewKind, card_payload
+from tabulaflow.app.pane.types import (
+    CARD_ID_PREFIX,
+    CodeData,
+    MessageTone,
+    PaneCard,
+    QueryCardData,
+    ViewKind,
+    card_payload,
+)
 from tabulaflow.app.pane.charts import build_chart_data
 from tabulaflow.app.pane.graphs import build_graph_result_data
 from tabulaflow.app.pane.maps import build_map_data
 from tabulaflow.app.pane.tables import PANE_TABLE_MAX_HEIGHT, _build_table_data
 from tabulaflow.app.theme import CODE_TEXT, TabulaflowPygmentsStyle, normalize_query_lexer
-from tabulaflow.core.utils import write_strict_json
-from tabulaflow.toolhub.output_resolver import (
+from tabulaflow.core.serialization import dumps_strict_json
+from tabulaflow.output.resolver import (
     ResolvedChartArtifact,
     ResolvedGraphArtifact,
     ResolvedMapArtifact,
@@ -33,6 +41,11 @@ from tabulaflow.toolhub.output_resolver import (
 
 if TYPE_CHECKING:
     import pandas as pd
+
+
+def _write_strict_json(path: Path, data: object) -> None:
+    path.write_text(dumps_strict_json(data), encoding="utf-8")
+
 
 PANE_CODE_TEXT = "#E0E0E0"
 
@@ -129,7 +142,9 @@ def render_result_data(metadata: ResultCardInput, pane_dir: Path, *, artifact_id
         )
         card_data.update(table_build.data)
         if metadata.chart_spec is not None and not df.empty:
-            card_data.update(build_chart_data(df, dict(metadata.chart_spec), field_by_column=table_build.field_by_column))
+            card_data.update(
+                build_chart_data(df, dict(metadata.chart_spec), field_by_column=table_build.field_by_column)
+            )
             views.append("chart")
         views.append("data")
     if metadata.query:
@@ -138,7 +153,7 @@ def render_result_data(metadata: ResultCardInput, pane_dir: Path, *, artifact_id
     if not views:
         return None
     pane_dir.mkdir(parents=True, exist_ok=True)
-    write_strict_json(pane_dir / f"{card_id}.data.json", card_data)
+    _write_strict_json(pane_dir / f"{card_id}.data.json", card_data)
     return card_payload(card_id=card_id, artifact_id=artifact_id, label=metadata.label, views=views)
 
 
@@ -171,11 +186,13 @@ def render_map_data(map_artifact: MapCardInput, pane_dir: Path, *, artifact_id: 
     if map_data is None:
         return None
     pane_dir.mkdir(parents=True, exist_ok=True)
-    write_strict_json(pane_dir / f"{card_id}.data.json", map_data)
+    _write_strict_json(pane_dir / f"{card_id}.data.json", map_data)
     return card_payload(card_id=card_id, artifact_id=artifact_id, label=map_artifact.label, views=["map"])
 
 
-def render_graph_data(graph_artifact: GraphCardInput, pane_dir: Path, *, artifact_id: str | None = None) -> PaneCard | None:
+def render_graph_data(
+    graph_artifact: GraphCardInput, pane_dir: Path, *, artifact_id: str | None = None
+) -> PaneCard | None:
     """Render a standalone graph card's payload to JSON; return a pane manifest."""
     card_id = f"{CARD_ID_PREFIX}{secrets.token_hex(6)}"
     graph_data = build_graph_result_data(graph_artifact.graph)
@@ -185,7 +202,7 @@ def render_graph_data(graph_artifact: GraphCardInput, pane_dir: Path, *, artifac
         graph_artifact.layout if graph_artifact.layout in {"force", "layered", "tree"} else "force"
     )
     pane_dir.mkdir(parents=True, exist_ok=True)
-    write_strict_json(pane_dir / f"{card_id}.data.json", graph_data)
+    _write_strict_json(pane_dir / f"{card_id}.data.json", graph_data)
     return card_payload(card_id=card_id, artifact_id=artifact_id, label=graph_artifact.label, views=["graph"])
 
 
@@ -193,9 +210,8 @@ def render_message_data(message: MessageCardInput, pane_dir: Path, *, artifact_i
     """Render a standalone message card's payload to JSON; return a pane manifest."""
     card_id = f"{CARD_ID_PREFIX}{secrets.token_hex(6)}"
     pane_dir.mkdir(parents=True, exist_ok=True)
-    write_strict_json(pane_dir / f"{card_id}.data.json", {"message": {"tone": message.tone, "text": message.text}})
+    _write_strict_json(pane_dir / f"{card_id}.data.json", {"message": {"tone": message.tone, "text": message.text}})
     return card_payload(card_id=card_id, artifact_id=artifact_id, label=message.label, views=["message"])
-
 
 
 async def render_resolved_output(resolved_output: ResolvedOutput, pane_dir: Path) -> list[PaneCard]:
@@ -204,7 +220,13 @@ async def render_resolved_output(resolved_output: ResolvedOutput, pane_dir: Path
     for artifact in resolved_output.artifacts:
         if isinstance(artifact, UnavailableArtifact):
             tone: Literal["info", "error"] = "error" if artifact.status == "error" else "info"
-            cards.append(render_message_data(MessageCardInput(label=artifact.label, text=artifact.reason, tone=tone), pane_dir, artifact_id=artifact.artifact_id))
+            cards.append(
+                render_message_data(
+                    MessageCardInput(label=artifact.label, text=artifact.reason, tone=tone),
+                    pane_dir,
+                    artifact_id=artifact.artifact_id,
+                )
+            )
             continue
         try:
             if isinstance(artifact, ResolvedTableArtifact):
@@ -240,7 +262,11 @@ async def render_resolved_output(resolved_output: ResolvedOutput, pane_dir: Path
                 for source_id, payload in artifact.payload_by_source.items():
                     if payload.df is not None:
                         sources[source_id] = payload.df
-                card = render_map_data(MapCardInput(label=artifact.label, spec=artifact.spec, sources=sources), pane_dir, artifact_id=artifact.artifact_id)
+                card = render_map_data(
+                    MapCardInput(label=artifact.label, spec=artifact.spec, sources=sources),
+                    pane_dir,
+                    artifact_id=artifact.artifact_id,
+                )
             elif isinstance(artifact, ResolvedGraphArtifact):
                 card = render_graph_data(
                     GraphCardInput(label=artifact.label, graph=artifact.graph, layout=artifact.layout),

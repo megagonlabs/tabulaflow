@@ -10,22 +10,17 @@ from typing import Any
 import pandas as pd
 import pytest
 
-from tabulaflow.core.types import ExecResult, PredQuery
-from tabulaflow.core.outputs import GraphArtifactSpec
-from tabulaflow.toolhub.output_store import OutputStore
-from tabulaflow.toolhub.render_graph import (
-    GRAPH_MAX_NODES,
-    RenderGraphTool,
-    graph_size,
-    materialize_graph_view,
-    normalize_graph_spec,
-)
+from tabulaflow.core import ExecResult
+from tabulaflow.output.specs import GraphArtifactSpec
+from tabulaflow.output.store import OutputStore
+from tabulaflow.output.graphs import GRAPH_MAX_NODES, graph_size, materialize_graph_result, normalize_graph_spec
+from tabulaflow.agents.tools.render_graph import RenderGraphTool
 
 
 async def _output_store_with(*dfs: pd.DataFrame) -> OutputStore:
     output_store = OutputStore()
     for df in dfs:
-        await output_store.add_fixed_result_source("db", "sql", PredQuery(query="SELECT 1", exec_result=ExecResult(df=df)))
+        await output_store.add_fixed_result_source("db", "sql", "SELECT 1", ExecResult(df=df))
     return output_store
 
 
@@ -202,7 +197,7 @@ class TestNormalizeGraphSpec:
             Q1=df,
         )
 
-        graph = materialize_graph_view(spec, {"S1": df})
+        graph = materialize_graph_result(spec, {"S1": df})
 
         assert graph.nodes[0].properties["src_rating"] is None
         assert graph.edges[0].properties["edge_rating"] is None
@@ -219,7 +214,9 @@ class TestRenderGraphTool:
         msg = await RenderGraphTool(output_store=output_store)(graph_spec=json.dumps(spec))
         assert "Network graph GRAPH1 created from S1" in msg
         assert "3 nodes, 2 edges (all nodes one color; set group on node sources to color by type)" in msg
-        graph = materialize_graph_view(_graph_artifact(output_store, "GRAPH1").spec, {"S1": (await output_store.get_payload("R1")).df})
+        graph = materialize_graph_result(
+            _graph_artifact(output_store, "GRAPH1").spec, {"S1": (await output_store.get_payload("R1")).df}
+        )
         assert graph.edges[0].source == "a"
         assert graph.edges[0].target == "b"
 

@@ -1,6 +1,6 @@
 from io import StringIO
 import pandas as pd
-from tabulaflow.core.types import PredQuery
+from tabulaflow.research.types import PredQuery
 from tabulaflow.research.types import GoldQuery
 from tabulaflow.research.types import NL2QTaskOutput
 

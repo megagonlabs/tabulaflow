@@ -6,9 +6,9 @@ import sqlalchemy
 import os
 from typing import AsyncGenerator, Any
 import pandas as pd
-from tabulaflow.toolhub.run_query import RunQueryTool, LLMParameter, _format_latency
-from tabulaflow.core.types import ExecResult, GraphView, GraphViewEdge, GraphViewNode
-from tabulaflow.core.db_connector.sql_conn import SQLConnector, _contains_ddl_statement, _contains_write_statement
+from tabulaflow.agents.tools.run_query import RunQueryTool, LLMParameter, _format_latency
+from tabulaflow.core import ExecResult, GraphResult, GraphResultEdge, GraphResultNode
+from tabulaflow.data.sql import SQLConnector, _contains_ddl_statement, _contains_write_statement
 from sqlalchemy.ext.asyncio import create_async_engine
 
 INIT_SQL = [
@@ -77,12 +77,15 @@ async def test_run_query_reports_latency(db_connector: SQLConnector) -> None:
     assert "(latency:" in result
 
 
-def test_format_exec_result_reports_graph_view(db_connector: SQLConnector) -> None:
+def test_format_exec_result_reports_graph_result(db_connector: SQLConnector) -> None:
     tool = RunQueryTool(db_connector, enable_params=True, timeout=10)
     result = tool._format_exec_result(
         ExecResult(
             df=pd.DataFrame({"p": ["path"]}),
-            graph=GraphView(nodes=[GraphViewNode(id="a"), GraphViewNode(id="b")], edges=[GraphViewEdge(source="a", target="b")]),
+            graph=GraphResult(
+                nodes=[GraphResultNode(id="a"), GraphResultNode(id="b")],
+                edges=[GraphResultEdge(source="a", target="b")],
+            ),
         )
     )
     assert "(Graph view: 2 nodes, 1 edge)" in result
@@ -283,7 +286,7 @@ def test_run_query_pydantic_tool_signatures() -> None:
     """as_pydantic_ai_tool should select the variant matching the enabled flags."""
     import inspect
 
-    from tabulaflow.toolhub.run_query import RunQueryTool
+    from tabulaflow.agents.tools.run_query import RunQueryTool
 
     class _StubConnector:
         connector_type = "sql"

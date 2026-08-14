@@ -3,16 +3,16 @@ import time
 import asyncio
 import os
 from tqdm.asyncio import tqdm_asyncio
-from tabulaflow import dataset_registry
+from tabulaflow.research.benchmarks.base import dataset_registry
 import tabulaflow
 from tabulaflow.research.types import NL2QTask, NL2QTaskOutput, NL2QRunResult, NL2QDataset
-from tabulaflow.core.db_connector import NL2QDBConnector
-from tabulaflow.core.config import tabulaflow_config
+from tabulaflow.data import DataConnector
+from tabulaflow.config import tabulaflow_config
 
 
 async def populate_task_async(
     task: NL2QTask | NL2QTaskOutput,
-    db_connector: NL2QDBConnector,
+    db_connector: DataConnector,
     timeout: int | None = None,
     force: bool = False,
 ) -> None:

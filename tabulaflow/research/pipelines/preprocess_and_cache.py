@@ -5,9 +5,9 @@ import asyncio
 import logging
 from typing import Any
 from tqdm.asyncio import tqdm_asyncio
-from tabulaflow import dataset_registry
+from tabulaflow.research.benchmarks.base import dataset_registry
 import tabulaflow
-from tabulaflow.modulehub.base import NL2QPreprocessor, preprocessor_registry
+from tabulaflow.agents.modules.base import NL2QPreprocessor, preprocessor_registry
 from tabulaflow.research.types import NL2QDataset
 
 logger = logging.getLogger(__name__)

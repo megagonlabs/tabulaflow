@@ -2,7 +2,7 @@ import json
 from typing import ClassVar, Any
 from pydantic import BaseModel
 import jinja2
-from tabulaflow.core.types import NumericOrNull
+from tabulaflow.core import NumericOrNull
 from tabulaflow.research.types import (
     ARCSAmbiguityType,
     FlatAmbigNL2QTaskOutput,
@@ -10,11 +10,11 @@ from tabulaflow.research.types import (
     SimpleAmbigNL2QTaskOutput,
     StructuredAmbigNL2QTaskOutput,
 )
-from tabulaflow.core.db_connector import NL2QDBConnector
+from tabulaflow.data import DataConnector
 from tabulaflow.research.metrics.base import metric_registry
 from tabulaflow.research.types import PredAmbiguityPoint, GoldAmbiguityPoint
-from tabulaflow.core.utils import int_to_letter
-from tabulaflow.core.llm import make_agent
+from tabulaflow.research.utils import int_to_letter
+from tabulaflow.agents.llm import make_agent
 
 AmbigTaskOutput = SimpleAmbigNL2QTaskOutput | FlatAmbigNL2QTaskOutput | StructuredAmbigNL2QTaskOutput
 
@@ -385,7 +385,7 @@ class AmbigPointStats:
     async def compute_async(
         self,
         task: NL2QTaskOutput,
-        db_connector: NL2QDBConnector | None = None,
+        db_connector: DataConnector | None = None,
     ) -> dict[str, NumericOrNull]:
         assert isinstance(task, AmbigTaskOutput)
         if task.output_type == "ambig-simple":

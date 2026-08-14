@@ -24,7 +24,7 @@ from tabulaflow.app.config import (
     ResolvedLLMSelection,
     load_app_config,
 )
-from tabulaflow.core.llm import model_display_name
+from tabulaflow.agents.llm import model_display_name
 from tabulaflow.app.theme import (
     ACCENT,
     ACCENT_BOLD,
@@ -1121,7 +1121,7 @@ class SchemaBrowserScreen(Screen[None]):
         state: _ExplorerState | None = None,
     ) -> None:
         super().__init__()
-        from tabulaflow.core.db_connector.db_registry import DBRegistry
+        from tabulaflow.data.registry import DBRegistry
 
         assert isinstance(registry, DBRegistry)
         self._registry: DBRegistry = registry
@@ -1276,7 +1276,7 @@ class SchemaBrowserScreen(Screen[None]):
         Shared by ``_build_tree`` and ``_update_status`` so the status-bar count
         always matches what the tree actually renders.
         """
-        from tabulaflow.core.types import SQLSchema
+        from tabulaflow.core import SQLSchema
 
         assert isinstance(schema, SQLSchema)
         tables = list(schema.tables)
@@ -1287,7 +1287,7 @@ class SchemaBrowserScreen(Screen[None]):
     def _build_tree(self) -> None:
         from textual.widgets import Tree
 
-        from tabulaflow.core.types import PropertyGraphSchema, SQLSchema, SQLTableSchema
+        from tabulaflow.core import PropertyGraphSchema, SQLSchema, SQLTableSchema
 
         tree = self.query_one("#browse-tree", Tree)
 
@@ -1336,7 +1336,7 @@ class SchemaBrowserScreen(Screen[None]):
                     self._add_table_node(db_node, alias, t)
 
     def _add_graph_db_node(self, parent: object, alias: str, connector: object, schema: object) -> None:
-        from tabulaflow.core.types import PropertyGraphSchema
+        from tabulaflow.core import PropertyGraphSchema
 
         assert isinstance(schema, PropertyGraphSchema)
         parent_node: Any = parent
@@ -1433,7 +1433,7 @@ class SchemaBrowserScreen(Screen[None]):
         display_path: tuple[str, ...],
         properties: list[Any],
     ) -> None:
-        from tabulaflow.core.types import GraphPropertySchema
+        from tabulaflow.core import GraphPropertySchema
 
         parent_node: Any = parent
         name_width = max((len(prop.name) for prop in properties if isinstance(prop, GraphPropertySchema)), default=0)
@@ -1451,7 +1451,7 @@ class SchemaBrowserScreen(Screen[None]):
             )
 
     def _add_table_node(self, parent: object, alias: str, table: object) -> None:
-        from tabulaflow.core.types import SQLTableSchema
+        from tabulaflow.core import SQLTableSchema
 
         assert isinstance(table, SQLTableSchema)
         parent_node: Any = parent
@@ -1504,7 +1504,7 @@ class SchemaBrowserScreen(Screen[None]):
         """
         from textual.widgets import Tree
 
-        from tabulaflow.core.types import SQLSchema
+        from tabulaflow.core import SQLSchema
 
         tree = self.query_one("#browse-tree", Tree)
         try:
@@ -1519,7 +1519,7 @@ class SchemaBrowserScreen(Screen[None]):
         schema = connector.schema
         assert isinstance(schema, SQLSchema)
         # SQLSchema implies a SQL connector; the live preview path uses
-        # SQLAlchemy ``Executable`` which only ``BaseSQLDBConnector``
+        # SQLAlchemy ``Executable`` which only ``SQLConnectorProtocol``
         # accepts.
         assert connector.connector_type == "sql"
         assert node_data.table_name is not None
@@ -1639,7 +1639,7 @@ class SchemaBrowserScreen(Screen[None]):
         """Return True if the cursor is on a table node with sampled_df."""
         from textual.widgets import Tree
 
-        from tabulaflow.core.types import SQLSchema
+        from tabulaflow.core import SQLSchema
 
         tree = self.query_one("#browse-tree", Tree)
         try:
@@ -1663,7 +1663,7 @@ class SchemaBrowserScreen(Screen[None]):
         """Update the status bar with table/column/row counts for the highlighted scope."""
         from textual.widgets import Tree
 
-        from tabulaflow.core.types import SQLSchema
+        from tabulaflow.core import SQLSchema
 
         tree = self.query_one("#browse-tree", Tree)
         try:

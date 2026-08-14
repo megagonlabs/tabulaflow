@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Literal, Required, TypedDict
 
-from tabulaflow.core.outputs import ChoiceParameter, NumberParameter, OutputSpec, ParameterSpec
+from tabulaflow.output.specs import ChoiceParameter, NumberParameter, OutputSpec, ParameterSpec
 
 ViewKind = Literal["message", "map", "chart", "data", "query", "graph"]
 VIEW_KINDS: tuple[ViewKind, ...] = ("message", "map", "chart", "data", "query", "graph")

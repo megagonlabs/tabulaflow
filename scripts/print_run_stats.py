@@ -5,7 +5,7 @@ import os
 from tabulate import tabulate
 import tabulaflow
 from tabulaflow.research.types import NL2QRunResult, StructuredAmbigNL2QTaskOutput
-from tabulaflow.core.utils import dict_to_df
+from tabulaflow.research.utils import dict_to_df
 
 
 def print_ambig_stats(tasks: list[StructuredAmbigNL2QTaskOutput]) -> None:

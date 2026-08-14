@@ -18,10 +18,10 @@ from pathlib import Path
 import pandas as pd
 import sqlalchemy
 
-from tabulaflow.core.db_connector.db_registry import DBRegistry
-from tabulaflow.core.db_connector.sql_conn import SQLConnector
-from tabulaflow.toolhub.base import ToolProgressUpdate
-from tabulaflow.toolhub.run_subagent_for_each_row import RunSubagentForEachRowTool
+from tabulaflow.data.registry import DBRegistry
+from tabulaflow.data.sql import SQLConnector
+from tabulaflow.agents.tools.base import ToolProgressUpdate
+from tabulaflow.agents.tools.run_subagent_for_each_row import RunSubagentForEachRowTool
 
 logger = logging.getLogger(__name__)
 

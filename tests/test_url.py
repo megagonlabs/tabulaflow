@@ -2,7 +2,7 @@
 
 import pytest
 
-from tabulaflow.core.db_connector import DB_FILE_SCHEMES, credentialless_url, normalize_url, url_needs_password
+from tabulaflow.data import DB_FILE_SCHEMES, credentialless_url, normalize_url, url_needs_password
 
 
 class TestNormalizeUrl:
@@ -61,7 +61,7 @@ class TestNeo4jDriverParams:
     """Neo4j creds come from the URL (the driver takes them separately, not in the URI)."""
 
     def test_credentials_extracted_and_stripped(self) -> None:
-        from tabulaflow.core.db_connector.url import _neo4j_driver_params
+        from tabulaflow.data.url import _neo4j_driver_params
 
         driver_url, database, auth = _neo4j_driver_params("neo4j://neo4j:cypherbench@localhost:7687")
         assert driver_url == "neo4j://localhost:7687"
@@ -69,7 +69,7 @@ class TestNeo4jDriverParams:
         assert database is None
 
     def test_database_query_param_extracted(self) -> None:
-        from tabulaflow.core.db_connector.url import _neo4j_driver_params
+        from tabulaflow.data.url import _neo4j_driver_params
 
         driver_url, database, auth = _neo4j_driver_params("bolt://host:7687?database=graph")
         assert driver_url == "bolt://host:7687"
@@ -77,7 +77,7 @@ class TestNeo4jDriverParams:
         assert auth is None
 
     def test_no_credentials(self) -> None:
-        from tabulaflow.core.db_connector.url import _neo4j_driver_params
+        from tabulaflow.data.url import _neo4j_driver_params
 
         driver_url, database, auth = _neo4j_driver_params("neo4j://localhost:7687")
         assert driver_url == "neo4j://localhost:7687"
@@ -86,7 +86,7 @@ class TestNeo4jDriverParams:
 
 class TestNeo4jGlobalId:
     def test_db_and_database_params_share_cache_key(self) -> None:
-        from tabulaflow.core.db_connector.url import _neo4j_driver_params, _neo4j_global_id
+        from tabulaflow.data.url import _neo4j_driver_params, _neo4j_global_id
 
         driver_url_a, database_a, _ = _neo4j_driver_params("neo4j+s://u:p@demo.neo4jlabs.com?db=companies")
         driver_url_b, database_b, _ = _neo4j_driver_params(

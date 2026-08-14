@@ -15,9 +15,9 @@ from typing import Any, ClassVar
 import duckdb
 import pandas as pd
 
-from tabulaflow.core.db_connector import NL2QDBConnector
+from tabulaflow.data import DataConnector
 from tabulaflow.research.metrics.base import metric_registry
-from tabulaflow.core.types import NumericOrNull
+from tabulaflow.core import NumericOrNull
 from tabulaflow.research.types import DbtTaskOutput, NL2QTaskOutput
 
 logger = logging.getLogger(__name__)
@@ -73,7 +73,7 @@ class Spider2DuckdbMatch:
     name: ClassVar[str] = "spider2_duckdb_match"
     compatible_output_types: ClassVar[list[str]] = ["dbt"]
 
-    async def compute_async(self, task: NL2QTaskOutput, db_connector: NL2QDBConnector | None = None) -> NumericOrNull:
+    async def compute_async(self, task: NL2QTaskOutput, db_connector: DataConnector | None = None) -> NumericOrNull:
         assert isinstance(task, DbtTaskOutput)
         if not task.gold_db_path or not os.path.exists(task.gold_db_path):
             raise ValueError(f"No gold DuckDB for {task.qid}")

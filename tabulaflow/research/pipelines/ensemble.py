@@ -9,7 +9,7 @@ import traceback
 from functools import reduce
 from typing import Any
 
-from tabulaflow import dataset_registry
+from tabulaflow.research.benchmarks.base import dataset_registry
 import tabulaflow
 from tabulaflow.research.agenthub.ensemblers.majority_ensembler import MajorityEnsembler, MajorityEnsemblerConfig
 from tabulaflow.research.agenthub.ensemblers.llm_ensembler import LLMEnsembler, LLMEnsemblerConfig
@@ -18,7 +18,7 @@ from tabulaflow.research.agenthub.ensemblers.dbt_llm_ensembler import DbtLLMEnse
 from tabulaflow.research.metrics import SimpleInferenceMetricsAggregator
 from tabulaflow.research.types import NL2QRunResult, NL2QDataset, NL2QTaskOutput
 from tabulaflow.research.pipelines.utils import bool_flag
-from tabulaflow.core.utils import tqdm_gather_with_exceptions
+from tabulaflow.research.utils import tqdm_gather_with_exceptions
 
 Ensembler = MajorityEnsembler | LLMEnsembler | AgentEnsembler | DbtLLMEnsembler
 

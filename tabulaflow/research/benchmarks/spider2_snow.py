@@ -13,10 +13,10 @@ import asyncio
 from urllib.parse import quote_plus
 from typing import Optional, ClassVar
 import pandas as pd
-from tabulaflow.core.types import ExecResult
+from tabulaflow.core import ExecResult
 from tabulaflow.research.types import GoldQuery
 from tabulaflow.research.types import SimpleNL2QTask, NL2QDataset
-from tabulaflow.core.db_connector import SQLConnector, BaseSQLDBConnector
+from tabulaflow.data import SQLConnector, SQLConnectorProtocol
 from tabulaflow.research.benchmarks.base import dataset_registry
 
 logger = logging.getLogger(__name__)
@@ -271,14 +271,14 @@ class Spider2SnowDatasetLoader:
 
     async def get_db_connectors_async(
         self, split: str, databases: list[str] | None = None
-    ) -> dict[str, BaseSQLDBConnector]:
+    ) -> dict[str, SQLConnectorProtocol]:
         if split not in self.splits:
             raise ValueError(f"Split {split} not supported, only {self.splits} are supported for {self.name}")
 
         databases = databases or self.get_databases(split)
         column_descriptions = self._load_column_descriptions()
 
-        connectors: dict[str, BaseSQLDBConnector] = {}
+        connectors: dict[str, SQLConnectorProtocol] = {}
         for db_name in databases:
             conn = await self._build_snowflake_connector(db_name)
 

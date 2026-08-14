@@ -1,7 +1,7 @@
 from typing import ClassVar
 from pydantic_ai import RunContext, ModelRetry, ToolOutput
 from pydantic import BaseModel
-from tabulaflow.core.types import Trajectory
+from tabulaflow.agents.trace import Trajectory
 
 
 class FinishToolMetrics(BaseModel):

@@ -1,9 +1,9 @@
 from typing import ClassVar
-from tabulaflow.core.types import NumericOrNull, SQLSchema
+from tabulaflow.core import NumericOrNull, SQLSchema
 from tabulaflow.research.types import NL2QTaskOutput
 from tabulaflow.research.metrics.base import metric_registry
-from tabulaflow.core.utils import extract_all_source_columns
-from tabulaflow.core.db_connector import NL2QDBConnector
+from tabulaflow.data.query_analysis import extract_all_source_columns
+from tabulaflow.data import DataConnector
 from tabulaflow.research.metrics.utils import get_final_gold_query
 
 
@@ -13,7 +13,7 @@ class SchemaLinkingStats:
     compatible_output_types: ClassVar[list[str]] = ["simple", "ambig-simple", "ambig-flat", "ambig-structured"]
 
     async def compute_async(
-        self, task: NL2QTaskOutput, db_connector: NL2QDBConnector | None = None
+        self, task: NL2QTaskOutput, db_connector: DataConnector | None = None
     ) -> dict[str, NumericOrNull]:
         if db_connector is None:
             raise ValueError("SchemaLinkingStats requires a db_connector")

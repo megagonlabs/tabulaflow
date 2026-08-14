@@ -5,9 +5,9 @@ from __future__ import annotations
 from collections.abc import Mapping
 from dataclasses import dataclass
 
-from tabulaflow.core.outputs import OutputSpec, ParameterId
-from tabulaflow.toolhub.output_resolver import OutputResolver, ResolvedOutput
-from tabulaflow.toolhub.output_store import OutputStore
+from tabulaflow.output.specs import OutputSpec, ParameterId
+from tabulaflow.output.resolver import OutputResolver, ResolvedOutput
+from tabulaflow.output.store import OutputStore
 
 
 @dataclass(frozen=True)

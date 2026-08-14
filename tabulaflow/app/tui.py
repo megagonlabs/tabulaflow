@@ -24,11 +24,18 @@ from tabulaflow.app.config import (
 )
 from tabulaflow.app.debug import debug_enabled, mount_debug_widgets
 from tabulaflow.app.display import build_resolved_output_card_views
-from tabulaflow.app.pane import PaneCard, PanePanel, manual_card_turn, pane_panel_for_output, render_resolved_output, turn_payload
+from tabulaflow.app.pane import (
+    PaneCard,
+    PanePanel,
+    manual_card_turn,
+    pane_panel_for_output,
+    render_resolved_output,
+    turn_payload,
+)
 from tabulaflow.app.runtime_paths import RuntimePaths, ensure_pane_dir
-from tabulaflow.app.session import LLM_UNAVAILABLE_MESSAGE, SessionState
+from tabulaflow.app.state import LLM_UNAVAILABLE_MESSAGE, AppState
 from tabulaflow.app.turn import TurnOutput
-from tabulaflow.core.llm import model_display_name
+from tabulaflow.agents.llm import model_display_name
 from tabulaflow.app.theme import ERROR, FOCUS_SURFACE, KEY_HINT
 from tabulaflow.app.widgets import (
     AgentProgressWidget,
@@ -42,8 +49,8 @@ from tabulaflow.app.widgets import (
 
 if TYPE_CHECKING:
     from tabulaflow.app.pane import OutputPane
-    from tabulaflow.chat import ChatAgent, ChatResult
-    from tabulaflow.toolhub.output_resolver import ResolvedOutput
+    from tabulaflow.agents.chat import ChatSession, ChatResult
+    from tabulaflow.output.resolver import ResolvedOutput
 
 logger = logging.getLogger(__name__)
 
@@ -182,8 +189,8 @@ def _warm_session_imports() -> None:
     loop-bound), so its first import of this stack (~0.7s cold) would briefly freeze
     the UI during the background session build. Warming it in the executor first keeps
     the UI responsive. The agent's other heavy imports happen in the executor-thread
-    ``SessionState`` construction, so they need no warming here."""
-    import tabulaflow.core.db_connector.sql_conn  # noqa: F401
+    ``AppState`` construction, so they need no warming here."""
+    import tabulaflow.data.sql  # noqa: F401
 
 
 def _focused_has_binding_for(widget: object, key: str) -> bool:
@@ -254,7 +261,7 @@ class TabulaflowApp(App[None]):
         # dir" design holds only while those two stay equal, i.e. cwd never changes.
         self._project_dir = Path(os.getcwd())
         ensure_pane_dir(self._runtime_paths.pane_dir)
-        self._session: SessionState | None = None
+        self._session: AppState | None = None
         self._pane: OutputPane | None = None
         self._session_lock = asyncio.Lock()
         self._llm_activation_in_progress = False
@@ -697,7 +704,7 @@ class TabulaflowApp(App[None]):
 
     @staticmethod
     def _initialize_llm_runtime(
-        session: SessionState,
+        session: AppState,
         preset: LLMPreset,
     ) -> tuple[str | None, str | None]:
         return session.activate_llm_preset(preset)
@@ -853,13 +860,13 @@ class TabulaflowApp(App[None]):
         else:
             inp.focus()
 
-    async def _ensure_session(self) -> SessionState:
+    async def _ensure_session(self) -> AppState:
         """Get or create the session, initializing in a thread to avoid blocking the UI."""
         if self._session is not None:
             return self._session
         import asyncio
 
-        from tabulaflow.app.session import create_workspace_connector
+        from tabulaflow.app.state import create_workspace_connector
 
         async with self._session_lock:
             if self._session is not None:
@@ -877,7 +884,7 @@ class TabulaflowApp(App[None]):
             session = await loop.run_in_executor(
                 None,
                 partial(
-                    SessionState,
+                    AppState,
                     llm_preset=self._llm_selection.preset,
                     trajectories_dir=self._runtime_paths.trajectories_dir,
                     data_dir=self._runtime_paths.data_dir,
@@ -915,7 +922,7 @@ class TabulaflowApp(App[None]):
         except Exception:
             pass
 
-    async def _maybe_autoconnect_sample(self, session: SessionState) -> None:
+    async def _maybe_autoconnect_sample(self, session: AppState) -> None:
         """Silently load the bundled sample DB when the user connected nothing of their own."""
         from tabulaflow.app.sample_data import autoconnect_sample
 
@@ -968,8 +975,8 @@ class TabulaflowApp(App[None]):
                 chat_log.scroll_end(animate=False)
                 return
 
-            chat_agent = session.active_chat_agent
-            if chat_agent is None:
+            chat_session = session.active_chat_session
+            if chat_session is None:
                 error_text = Text.from_markup(f"[{ERROR}]LLM unavailable:[/] ")
                 error_text.append(self._llm_unavailable_message())
                 await chat_log.mount(SystemMessage(error_text))
@@ -977,7 +984,7 @@ class TabulaflowApp(App[None]):
                 self._refresh_bottom_status()
                 return
 
-            await self._run_agent(text, chat_agent, chat_log, display_text)
+            await self._run_agent(text, chat_session, chat_log, display_text)
         except asyncio.CancelledError:
             if is_command and user_msg.is_mounted:
                 await user_msg.remove()
@@ -1031,7 +1038,7 @@ class TabulaflowApp(App[None]):
     def _show_command_result(
         self,
         result: object,
-        session: SessionState,
+        session: AppState,
         chat_log: VerticalScroll,
     ) -> None:
         from tabulaflow.app.commands import CommandResult
@@ -1079,13 +1086,13 @@ class TabulaflowApp(App[None]):
     async def _run_agent(
         self,
         question: str,
-        chat_agent: ChatAgent,
+        chat_session: ChatSession,
         chat_log: VerticalScroll,
         display_text: str,
     ) -> None:
         import asyncio
 
-        from tabulaflow.chat import Finished
+        from tabulaflow.agents.chat import Finished
 
         progress = AgentProgressWidget()
         await chat_log.mount(progress)
@@ -1093,14 +1100,14 @@ class TabulaflowApp(App[None]):
 
         result: ChatResult | None = None
         try:
-            async for event in chat_agent.run_stream(question):
+            async for event in chat_session.run_stream(question):
                 await progress.apply(event)
                 if isinstance(event, Finished):
                     result = event.result
         except asyncio.CancelledError:
-            # Freeze the partial progress widget; ChatAgent's message history and
+            # Freeze the partial progress widget; ChatSession's message history and
             # last_usage already reflect the interrupted run.
-            await progress.mark_interrupted(chat_agent.last_usage)
+            await progress.mark_interrupted(chat_session.last_usage)
             raise
         except Exception as e:
             # Freeze the partial progress widget (mirrors the interrupt path) so the
@@ -1117,7 +1124,7 @@ class TabulaflowApp(App[None]):
         if result is None:
             return  # normal completion always yields a terminal Finished
 
-        turn_output = TurnOutput(result.output, chat_agent.output_store)
+        turn_output = TurnOutput(result.output, chat_session.output_store)
         resolved_output = await turn_output.resolve()
         await self._push_turn_to_pane(
             result,

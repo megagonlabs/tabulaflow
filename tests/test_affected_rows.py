@@ -12,9 +12,9 @@ import pytest
 from pydantic_ai.messages import ModelMessage, ModelResponse, ToolCallPart
 from pydantic_ai.models.function import AgentInfo, FunctionModel
 
-from tabulaflow.core.db_connector.sql_conn import SQLConnector
-from tabulaflow.toolhub.run_query import RunQueryTool
-from tabulaflow.toolhub.run_subagent_for_each_row import RunSubagentForEachRowTool
+from tabulaflow.data.sql import SQLConnector
+from tabulaflow.agents.tools.run_query import RunQueryTool
+from tabulaflow.agents.tools.run_subagent_for_each_row import RunSubagentForEachRowTool
 
 
 @pytest.fixture
@@ -51,7 +51,7 @@ class TestAsyncEngineDML:
         # (it returns no rows); regression for "This result object does not return rows".
         import sqlalchemy
 
-        from tabulaflow.toolhub.engines.sql import sa_table
+        from tabulaflow.agents.tools.engines.sql import sa_table
 
         await sqlite_conn.run_query_async("CREATE TABLE t(id INTEGER, v INTEGER)")
         await sqlite_conn.run_query_async("INSERT INTO t VALUES (1,0),(2,0),(3,0)")

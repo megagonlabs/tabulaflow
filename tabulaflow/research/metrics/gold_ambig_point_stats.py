@@ -1,12 +1,12 @@
 from typing import ClassVar
-from tabulaflow.core.types import NumericOrNull
+from tabulaflow.core import NumericOrNull
 from tabulaflow.research.types import (
     NL2QTaskOutput,
     SimpleAmbigNL2QTaskOutput,
     FlatAmbigNL2QTaskOutput,
     StructuredAmbigNL2QTaskOutput,
 )
-from tabulaflow.core.db_connector import NL2QDBConnector
+from tabulaflow.data import DataConnector
 from tabulaflow.research.metrics.base import metric_registry
 
 AmbigTaskOutput = SimpleAmbigNL2QTaskOutput | FlatAmbigNL2QTaskOutput | StructuredAmbigNL2QTaskOutput
@@ -20,7 +20,7 @@ class GoldAmbigPointStats:
     async def compute_async(
         self,
         task: NL2QTaskOutput,
-        db_connector: NL2QDBConnector | None = None,
+        db_connector: DataConnector | None = None,
     ) -> dict[str, NumericOrNull]:
         assert isinstance(task, AmbigTaskOutput)
         return {

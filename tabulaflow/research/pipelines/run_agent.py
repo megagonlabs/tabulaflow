@@ -9,15 +9,16 @@ import asyncio
 import logging
 import litellm
 import traceback
-from tabulaflow import agent_registry, dataset_registry
 import tabulaflow
+from tabulaflow.research.agenthub.base import agent_registry
+from tabulaflow.research.benchmarks.base import dataset_registry
 from tabulaflow.research.metrics import BaseMetricAggregator, SimpleInferenceMetricsAggregator
-from tabulaflow.core.utils import pprint_dict, tqdm_gather_with_exceptions
+from tabulaflow.research.utils import pprint_dict, tqdm_gather_with_exceptions
 from tabulaflow.research.pipelines.utils import bool_flag
 from tabulaflow.research.agenthub import NL2QAgent, BaseAgentConfig
 from tabulaflow.research.agenthub.user_simulator import UserSimulator
 from tabulaflow.research.benchmarks.spider2_dbt import prepare_working_env_async
-from tabulaflow.core.types import Usage
+from tabulaflow.agents.trace import Usage
 from tabulaflow.research.types import (
     NL2QDataset,
     NL2QRunResult,

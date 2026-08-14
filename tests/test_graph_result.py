@@ -6,7 +6,7 @@ import math
 import pandas as pd
 from neo4j.graph import Graph, Node, Path, Relationship
 
-from tabulaflow.core.db_connector.neo4j_conn import _extract_neo4j_graph_result
+from tabulaflow.data.neo4j import _extract_neo4j_graph_result
 
 
 def _neo4j_objects() -> tuple[Node, Node, Relationship, Path]:

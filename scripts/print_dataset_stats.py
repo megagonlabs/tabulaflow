@@ -5,10 +5,10 @@ import asyncio
 from tabulate import tabulate
 import tabulaflow
 from tabulaflow.research.benchmarks import dataset_registry
-from tabulaflow.core.schema_compressor import SchemaCompressor
-from tabulaflow.modulehub.schema_preprocessor import SchemaPreprocessor
+from tabulaflow.data.schema_compressor import SchemaCompressor
+from tabulaflow.agents.modules.schema_preprocessor import SchemaPreprocessor
 from tabulaflow.research.types import NL2QDataset
-from tabulaflow.core.utils import dict_to_df
+from tabulaflow.research.utils import dict_to_df
 
 
 MAX_DBS_TO_PRINT = 12

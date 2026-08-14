@@ -123,10 +123,9 @@ root_package = "tabulaflow"
 name = "Layered architecture"
 type = "layers"
 layers = [
-    "tabulaflow.app",
-    "tabulaflow.chat | tabulaflow.research",
-    "tabulaflow.modulehub",
-    "tabulaflow.toolhub",
-    "tabulaflow.datasources",
+    "tabulaflow.app | tabulaflow.research",
+    "tabulaflow.agents",
+    "tabulaflow.output",
+    "tabulaflow.data",
     "tabulaflow.core",
 ]

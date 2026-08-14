@@ -5,12 +5,12 @@ import pandas as pd
 import pytest
 from pydantic_ai.messages import ToolReturnPart
 
-from tabulaflow.chat.agent import _build_chat_result, _declared_bundle, _TextStreamRouter, _strip_answer_marker
-from tabulaflow.core.db_connector.db_registry import DBRegistry
-from tabulaflow.core.db_connector.sql_conn import SQLConnector
-from tabulaflow.core.outputs import ChoiceOption, ChoiceParameter
-from tabulaflow.core.types import ExecResult, PredQuery
-from tabulaflow.toolhub import (
+from tabulaflow.agents.chat.session import _build_chat_result, _declared_bundle, _TextStreamRouter, _strip_answer_marker
+from tabulaflow.data.registry import DBRegistry
+from tabulaflow.data.sql import SQLConnector
+from tabulaflow.output.specs import ChoiceOption, ChoiceParameter
+from tabulaflow.core import ExecResult
+from tabulaflow.agents.tools import (
     ArtifactRef,
     ArtifactBundle,
     CreateParameterizedSourceTool,
@@ -37,6 +37,7 @@ def test_strip_answer_marker_leaves_unmarked_text_alone() -> None:
     text = "I'm tabulaflow, an interactive data assistant.\n\n---\nAsk me anything about your data."
 
     assert _strip_answer_marker(text) == text
+
 
 def test_text_stream_router_waits_for_the_answer_marker() -> None:
     router = _TextStreamRouter()
@@ -91,9 +92,7 @@ def test_declared_bundle_skips_failed_calls_and_takes_the_last() -> None:
 @pytest.mark.asyncio
 async def test_build_chat_result_resolves_the_declared_bundle() -> None:
     output_store = OutputStore()
-    await output_store.add_fixed_result_source(
-        "workspace", "sql", PredQuery(query="SELECT 1", exec_result=ExecResult(df=pd.DataFrame({"a": [1]})))
-    )
+    await output_store.add_fixed_result_source("workspace", "sql", "SELECT 1", ExecResult(df=pd.DataFrame({"a": [1]})))
     bundle = ArtifactBundle(artifacts=(ArtifactRef(id="S1", label="row count"),))
 
     result = await _build_chat_result("<answer>\nThere is 1 row.", bundle, output_store)
@@ -161,9 +160,7 @@ async def test_build_chat_result_resolves_a_panel(tmp_path: Path) -> None:
     result = await _build_chat_result("<answer>\nAcme leads.", bundle, output_store)
 
     assert result.output.default_selection == {"ranking": "net", "period": "q2"}
-    resolved_output = await OutputResolver(output_store).resolve(
-        result.output, {"ranking": "count", "period": "q3"}
-    )
+    resolved_output = await OutputResolver(output_store).resolve(result.output, {"ranking": "count", "period": "q3"})
     assert _result_id(resolved_output.artifacts[0], "S1") == "R4"
     assert _result_id(resolved_output.artifacts[1], "S2") == "R6"
     resolver = OutputResolver(output_store)

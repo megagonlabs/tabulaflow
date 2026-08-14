@@ -19,7 +19,7 @@ from typing import Any, ClassVar
 import duckdb
 
 from tabulaflow.research.benchmarks.base import dataset_registry
-from tabulaflow.core.db_connector import SQLConnector, BaseSQLDBConnector
+from tabulaflow.data import SQLConnector, SQLConnectorProtocol
 from tabulaflow.research.types import DbtTask, DbtGoldTable, NL2QDataset
 
 logger = logging.getLogger(__name__)
@@ -271,7 +271,7 @@ class Spider2DbtDatasetLoader:
 
     async def get_db_connectors_async(
         self, split: str, databases: list[str] | None = None
-    ) -> dict[str, BaseSQLDBConnector]:
+    ) -> dict[str, SQLConnectorProtocol]:
         """Return DuckDB connectors keyed by instance_id.
 
         Each dbt project directory contains a ``.duckdb`` file that serves as
@@ -281,7 +281,7 @@ class Spider2DbtDatasetLoader:
             raise ValueError(f"Split {split} not supported, only {self.splits} are supported for {self.name}")
 
         databases = databases or self.get_databases(split)
-        connectors: dict[str, BaseSQLDBConnector] = {}
+        connectors: dict[str, SQLConnectorProtocol] = {}
 
         for instance_id in databases:
             project_dir = os.path.join(self.directory, "examples", instance_id)

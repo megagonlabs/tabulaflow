@@ -4,22 +4,58 @@ import os
 import re
 from pydantic import BaseModel, Field, model_validator, AfterValidator, ConfigDict
 from pydantic.types import StringConstraints
-from typing import Any, Literal, Annotated, Protocol, TypeAlias, Union, get_args, overload
+from typing import TYPE_CHECKING, Any, Literal, Annotated, Protocol, TypeAlias, Union, get_args, overload
 import pandas as pd
 import logging
 import math
 import itertools
-from tabulaflow.core.types import (
-    ColumnRef,
-    ExecResult,
-    PredQuery,
-    SQLSchema,
-    Trajectory,
-    Usage,
-    is_id_unique,
-)
+from tabulaflow.agents.trace import Trajectory, Usage
+from tabulaflow.core import ColumnRef, ExecResult, SQLSchema
+
+if TYPE_CHECKING:
+    from tabulaflow.agents.tools.run_query import QueryExecution
 
 logger = logging.getLogger(__name__)
+
+
+class PredQuery(BaseModel):
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
+    id: str = "PQRY"
+    query: str
+    parameter_names: list[str] = Field(default_factory=list)
+    parameter_values: dict[str, Any] = Field(default_factory=dict)
+    exec_result: ExecResult | None = None
+
+    @classmethod
+    def from_execution(cls, execution: "QueryExecution") -> "PredQuery":
+        return cls(
+            query=execution.query,
+            parameter_names=list(execution.parameter_values),
+            parameter_values=execution.parameter_values,
+            exec_result=execution.exec_result,
+        )
+
+    def to_directory(self, directory: str) -> None:
+        os.makedirs(directory, exist_ok=True)
+        if self.exec_result is not None and self.exec_result.df is not None:
+            self.exec_result.df.to_csv(os.path.join(directory, f"{self.id}.csv"), index=False)
+
+    def to_markdown(self, heading_level: int = 2) -> str:
+        from tabulaflow.output.formatting import format_exec_result_markdown
+
+        h = "#" * heading_level
+        lines = [f"{h} Pred Query", "\n```sql", self.query, "```"]
+        if self.exec_result is not None:
+            lines.extend(["\n**Execution Result:**\n", format_exec_result_markdown(self.exec_result)])
+        return "\n".join(lines)
+
+
+def is_id_unique(objs: list[Any]) -> list[Any]:
+    ids = [obj.id for obj in objs]
+    if len(ids) != len(set(ids)):
+        raise ValueError(f"IDs of {type(objs[0]).__name__} are not unique.")
+    return objs
 
 
 class GoldQuery(BaseModel):
@@ -49,6 +85,8 @@ class GoldQuery(BaseModel):
                 exec_result.df.to_csv(os.path.join(directory, f"{self.id}_alternative_{i}.csv"), index=False)
 
     def to_markdown(self, heading_level: int = 2) -> str:
+        from tabulaflow.output.formatting import format_exec_result_markdown
+
         h = "#" * heading_level
         lines = [f"{h} Gold Query"]
         if self.query:
@@ -57,10 +95,10 @@ class GoldQuery(BaseModel):
             lines.append("```")
         if self.exec_result is not None:
             lines.append("\n**Execution Result:**\n")
-            lines.append(self.exec_result.to_markdown())
+            lines.append(format_exec_result_markdown(self.exec_result))
         for i, exec_result in enumerate(self.alternative_results):
             lines.append(f"\n**Alt Result {i}:**\n")
-            lines.append(exec_result.to_markdown())
+            lines.append(format_exec_result_markdown(exec_result))
         return "\n".join(lines)
 
 

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from tabulaflow.core.llm import make_model_settings
+from tabulaflow.agents.llm import make_model_settings
 from tabulaflow.research.agenthub.ensemblers.dbt_llm_ensembler import DbtLLMEnsemblerConfig
 from tabulaflow.research.agenthub.ensemblers.llm_ensembler import LLMEnsemblerConfig
 from tabulaflow.research.agenthub.utils import BasicAgentConfig

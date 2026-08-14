@@ -34,7 +34,7 @@ from textual.widgets import Input, Markdown, Static
 from textual.widgets._markdown import MarkdownFence, MarkdownTable, MarkdownTableContent
 
 from tabulaflow.app.display import DATA_PREVIEW_MAX_ROWS, build_resolved_output_card_views
-from tabulaflow.core.outputs import ChoiceParameter, NumberParameter, SelectionValue
+from tabulaflow.output.specs import ChoiceParameter, NumberParameter, SelectionValue
 from tabulaflow.app.theme import (
     ACCENT,
     ACCENT_DIM,
@@ -49,7 +49,7 @@ from tabulaflow.app.theme import (
 )
 from tabulaflow.app.screens import ChartBrowserScreen, DataBrowserScreen, QueryBrowserScreen
 from tabulaflow.app.turn import TurnOutput
-from tabulaflow.chat import (
+from tabulaflow.agents.chat import (
     AnswerDelta,
     ChatEvent,
     Finished,
@@ -59,14 +59,15 @@ from tabulaflow.chat import (
     ToolStarted,
     UsageUpdated,
 )
+
 if TYPE_CHECKING:
     import pandas as pd
     from rich.console import RenderableType
     from textual.selection import Selection
 
-    from tabulaflow.chat import ChatResult
+    from tabulaflow.agents.chat import ChatResult
     from tabulaflow.app.display import CardGroup, ViewItem
-    from tabulaflow.core.types import Usage
+    from tabulaflow.agents.trace import Usage
 
 
 class _MarkdownStream(Protocol):
@@ -493,7 +494,7 @@ class SpinnerWidget(Widget):
 
 
 # ---------------------------------------------------------------------------
-# Agent progress widget (consumes the ChatAgent event stream)
+# Agent progress widget (consumes the ChatSession event stream)
 # ---------------------------------------------------------------------------
 
 
@@ -1201,7 +1202,7 @@ class AgentProgressWidget(Widget):
     """Shows agent execution progress with tool steps; streams the agent's text
     into sibling ``AgentTextBlock`` widgets.
 
-    Driven by ``apply(event)`` over the ``ChatAgent.run_stream`` event stream; the
+    Driven by ``apply(event)`` over the ``ChatSession.run_stream`` event stream; the
     consumer (``tui._run_agent``) calls ``mark_interrupted`` on cancellation."""
 
     DEFAULT_CSS = """
@@ -1275,7 +1276,7 @@ class AgentProgressWidget(Widget):
     # Event-stream consumption
 
     async def apply(self, event: ChatEvent) -> None:
-        """Dispatch one ``ChatEvent`` from ``ChatAgent.run_stream`` to the renderer.
+        """Dispatch one ``ChatEvent`` from ``ChatSession.run_stream`` to the renderer.
 
         ``ThinkingDelta`` (model reasoning) is intentionally not rendered — the TUI
         shows the "Thinking..." spinner rather than streaming the reasoning text.
@@ -1796,7 +1797,9 @@ class AgentResultWidget(Widget):
         return items
 
     def _choice_count(self) -> int:
-        return sum(len(parameter.choices) for parameter in self._control_parameters if isinstance(parameter, ChoiceParameter))
+        return sum(
+            len(parameter.choices) for parameter in self._control_parameters if isinstance(parameter, ChoiceParameter)
+        )
 
     def _current_control_item(self) -> _ControlCursorItem | None:
         if not self._control_cursor_items:

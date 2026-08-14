@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from tabulaflow.toolhub.execute_bash import ExecuteBashTool
+from tabulaflow.agents.tools.execute_bash import ExecuteBashTool
 
 
 @pytest.fixture
@@ -75,7 +75,9 @@ class TestLargeMultilineInput:
 
 class TestRobustness:
     async def test_common_pagers_disabled_by_default(self, bash: ExecuteBashTool) -> None:
-        result = await bash("printf '%s\n' \"$PAGER\" \"$GIT_PAGER\" \"$GH_PAGER\" \"$DELTA_PAGER\" \"$BAT_PAGER\" \"$SYSTEMD_PAGER\" \"$MANPAGER\" \"$LESS\"")
+        result = await bash(
+            'printf \'%s\n\' "$PAGER" "$GIT_PAGER" "$GH_PAGER" "$DELTA_PAGER" "$BAT_PAGER" "$SYSTEMD_PAGER" "$MANPAGER" "$LESS"'
+        )
         lines = [line for line in result.splitlines() if line in {"cat", "-FRX"}]
         assert lines == ["cat", "cat", "cat", "cat", "cat", "cat", "cat", "-FRX"]
         assert "[exit_code: 0]" in result

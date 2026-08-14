@@ -5,10 +5,10 @@ import numpy as np
 import numpy.typing as npt
 from pydantic import BaseModel
 from pydantic_ai import Embedder
-from tabulaflow.modulehub.base import CachedPreprocessorMixin, preprocessor_registry, CacheableResult
-from tabulaflow.core.types import Usage
+from tabulaflow.agents.modules.base import CachedPreprocessorMixin, preprocessor_registry, CacheableResult
+from tabulaflow.agents.trace import Usage
 from tabulaflow.research.types import NL2QDataset, NL2QTask
-from tabulaflow.core.llm import make_agent, embedding_throttle
+from tabulaflow.agents.llm import make_agent, embedding_throttle
 
 
 # Revised based on https://github.com/antgroup/Agentar-Scale-SQL/blob/main/ScaleSQL/prompts/nlu.yaml

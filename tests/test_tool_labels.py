@@ -10,7 +10,7 @@ from tabulaflow.app.widgets import (
     summarize_outcome,
     summarize_tool_args,
 )
-from tabulaflow.chat.events import ToolCallOutcome
+from tabulaflow.agents.chat.events import ToolCallOutcome
 
 
 class TestLineDiffstat:

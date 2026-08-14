@@ -8,9 +8,16 @@ from typing import Any, cast
 import pandas as pd
 
 from tabulaflow.app.pane import CARD_ID_PREFIX, VIEW_KINDS, CardData, PaneCard
-from tabulaflow.app.pane.cards import GraphCardInput, MapCardInput, ResultCardInput, render_graph_data, render_map_data, render_result_data
-from tabulaflow.core.types import GraphView, GraphViewEdge, GraphViewNode
-from tabulaflow.toolhub.render_graph import materialize_graph_view, normalize_graph_spec
+from tabulaflow.app.pane.cards import (
+    GraphCardInput,
+    MapCardInput,
+    ResultCardInput,
+    render_graph_data,
+    render_map_data,
+    render_result_data,
+)
+from tabulaflow.core import GraphResult, GraphResultEdge, GraphResultNode
+from tabulaflow.output.graphs import materialize_graph_result, normalize_graph_spec
 
 
 def _load_card_data(card: PaneCard, pane_dir: Path) -> CardData:
@@ -101,7 +108,9 @@ def test_result_card_payload_matches_contract(tmp_path: Path) -> None:
     df = pd.DataFrame({"region": ["north", "south"], "revenue": [10, 20]})
     spec = {"mark": "bar", "encoding": {"x": {"field": "region"}, "y": {"field": "revenue"}}}
     card = render_result_data(
-        ResultCardInput(df=df, label="sales", chart_spec=spec, query="select region, revenue from sales", query_lexer="sql"),
+        ResultCardInput(
+            df=df, label="sales", chart_spec=spec, query="select region, revenue from sales", query_lexer="sql"
+        ),
         tmp_path,
     )
 
@@ -112,12 +121,12 @@ def test_result_card_payload_matches_contract(tmp_path: Path) -> None:
 
 def test_result_card_with_attached_graph_payload_matches_contract(tmp_path: Path) -> None:
     df = pd.DataFrame({"path": ["Alice -> Matrix"]})
-    graph = GraphView(
+    graph = GraphResult(
         nodes=[
-            GraphViewNode(id="alice", label="Alice", group="Person"),
-            GraphViewNode(id="matrix", label="The Matrix", group="Movie"),
+            GraphResultNode(id="alice", label="Alice", group="Person"),
+            GraphResultNode(id="matrix", label="The Matrix", group="Movie"),
         ],
-        edges=[GraphViewEdge(id="acted_in", source="alice", target="matrix", label="ACTED_IN", directed=True)],
+        edges=[GraphResultEdge(id="acted_in", source="alice", target="matrix", label="ACTED_IN", directed=True)],
     )
     card = render_result_data(
         ResultCardInput(df=df, label="paths", graph=graph, query="MATCH p=()-->() RETURN p", query_lexer="cypher"),
@@ -156,7 +165,7 @@ def test_graph_card_payload_matches_contract(tmp_path: Path) -> None:
     card = render_graph_data(
         GraphCardInput(
             label="lineage",
-            graph=materialize_graph_view(normalized, {"Q1": df}),
+            graph=materialize_graph_result(normalized, {"Q1": df}),
             layout=normalized["layout"],
         ),
         tmp_path,
@@ -178,7 +187,7 @@ def test_graph_card_omits_directed_flag_for_undirected_edges(tmp_path: Path) -> 
     card = render_graph_data(
         GraphCardInput(
             label="network",
-            graph=materialize_graph_view(normalized, {"Q1": df}),
+            graph=materialize_graph_result(normalized, {"Q1": df}),
             layout=normalized["layout"],
         ),
         tmp_path,
@@ -192,13 +201,13 @@ def test_graph_card_omits_directed_flag_for_undirected_edges(tmp_path: Path) -> 
 
 
 def test_graph_card_writes_strict_json_for_non_finite_values(tmp_path: Path) -> None:
-    graph = GraphView(
+    graph = GraphResult(
         nodes=[
-            GraphViewNode(id="director", label="Director", group="Director", properties={"rating": math.nan}),
-            GraphViewNode(id="movie", label="Movie", group="Movie", properties={"score": math.inf}),
+            GraphResultNode(id="director", label="Director", group="Director", properties={"rating": math.nan}),
+            GraphResultNode(id="movie", label="Movie", group="Movie", properties={"score": math.inf}),
         ],
         edges=[
-            GraphViewEdge(source="director", target="movie", label="DIRECTED", properties={"imdb_rating": math.nan})
+            GraphResultEdge(source="director", target="movie", label="DIRECTED", properties={"imdb_rating": math.nan})
         ],
     )
     card = render_graph_data(

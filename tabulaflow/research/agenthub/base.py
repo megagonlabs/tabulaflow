@@ -19,8 +19,8 @@ from tabulaflow.research.types import (
     UserQuestion,
     UserAnswer,
 )
-from tabulaflow.core.db_connector import BaseSQLDBConnector, NL2QDBConnector
-from tabulaflow.core.registry import Registry
+from tabulaflow.data import SQLConnectorProtocol, DataConnector
+from tabulaflow.core.registry import ClassRegistry
 
 __all__ = [
     "BaseAgentConfig",
@@ -49,7 +49,7 @@ class BaseSimpleSQLAgent(Protocol):
     output_type: ClassVar[str]
     config_cls: ClassVar[type[BaseAgentConfig]]
 
-    async def predict_async(self, task: SimpleNL2QTask, db_connector: NL2QDBConnector) -> SimpleNL2QTaskOutput: ...
+    async def predict_async(self, task: SimpleNL2QTask, db_connector: DataConnector) -> SimpleNL2QTaskOutput: ...
 
 
 class BaseAmbigSQLAgent(Protocol):
@@ -59,7 +59,7 @@ class BaseAmbigSQLAgent(Protocol):
     config_cls: ClassVar[type[BaseAgentConfig]]
 
     async def predict_async(
-        self, task: AmbigNL2QTask, db_connector: BaseSQLDBConnector, user_simulator: BaseUserSimulator
+        self, task: AmbigNL2QTask, db_connector: SQLConnectorProtocol, user_simulator: BaseUserSimulator
     ) -> SimpleAmbigNL2QTaskOutput | FlatAmbigNL2QTaskOutput | StructuredAmbigNL2QTaskOutput: ...
 
 
@@ -69,10 +69,10 @@ class BaseDbtAgent(Protocol):
     output_type: ClassVar[str]
     config_cls: ClassVar[type[BaseAgentConfig]]
 
-    async def predict_async(self, task: DbtTask, db_connector: BaseSQLDBConnector) -> DbtTaskOutput: ...
+    async def predict_async(self, task: DbtTask, db_connector: SQLConnectorProtocol) -> DbtTaskOutput: ...
 
 
 NL2QAgent: TypeAlias = Union[BaseSimpleSQLAgent, BaseAmbigSQLAgent, BaseDbtAgent]
 
 
-agent_registry = Registry[NL2QAgent]("agent")
+agent_registry = ClassRegistry[NL2QAgent]("agent")

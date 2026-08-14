@@ -6,7 +6,7 @@ from collections.abc import Mapping
 from typing import cast
 
 from tabulaflow.app.pane.types import GraphCardData
-from tabulaflow.toolhub.render_graph import GRAPH_MAX_EDGES, GRAPH_MAX_NODES
+from tabulaflow.output.graphs import GRAPH_MAX_EDGES, GRAPH_MAX_NODES
 
 _DEFAULT_NODE_COLOR = "#3eb489"
 _PALETTE = [

@@ -2,9 +2,9 @@ from typing import Any
 
 import pytest
 
-from tabulaflow.core.utils import format_json_schema
-from tabulaflow.core.types import SQLColumnSchema, SQLSchema, SQLTableSchema
-from tabulaflow.toolhub.get_column_json_schema import (
+from tabulaflow.output.formatting import format_json_schema
+from tabulaflow.core import SQLColumnSchema, SQLSchema, SQLTableSchema
+from tabulaflow.agents.tools.get_column_json_schema import (
     GetColumnJsonSchemaTool,
     _extract_examples_at_path,
     _parse_json_examples,

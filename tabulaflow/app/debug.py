@@ -12,9 +12,15 @@ from typing import TYPE_CHECKING, Any
 
 from tabulaflow.app.display import CardGroup, build_resolved_output_card_views
 from tabulaflow.app.widgets import AgentResultWidget
-from tabulaflow.core.outputs import ResultMetadata
-from tabulaflow.toolhub.output_resolver import ResolvedArtifact, ResolvedChartArtifact, ResolvedOutput, ResolvedTableArtifact, UnavailableArtifact
-from tabulaflow.toolhub.output_store import ResultPayload
+from tabulaflow.output.specs import ResultMetadata
+from tabulaflow.output.resolver import (
+    ResolvedArtifact,
+    ResolvedChartArtifact,
+    ResolvedOutput,
+    ResolvedTableArtifact,
+    UnavailableArtifact,
+)
+from tabulaflow.output.store import ResultPayload
 
 
 @dataclass(frozen=True)
@@ -24,7 +30,7 @@ class DebugTablePayload:
     query: str | None
     df: "pd.DataFrame | None"
     query_lexer: str = "sql"
-    graph: "GraphView | None" = None
+    graph: "GraphResult | None" = None
 
 
 @dataclass(frozen=True)
@@ -89,12 +95,13 @@ def _debug_cards(payloads: list[DebugTablePayload], width: int) -> list[CardGrou
             )
     return build_resolved_output_card_views(ResolvedOutput(selection={}, artifacts=artifacts), width)
 
+
 if TYPE_CHECKING:
     import pandas as pd
     from textual.containers import VerticalScroll
 
     from tabulaflow.app.tui import TabulaflowApp
-    from tabulaflow.core.types import GraphView
+    from tabulaflow.core import GraphResult
 
 
 def debug_enabled() -> bool:
@@ -107,7 +114,7 @@ def debug_enabled() -> bool:
 def _build_debug_result_widget(app: TabulaflowApp) -> AgentResultWidget:
     import pandas as pd
 
-    from tabulaflow.chat import ChatResult
+    from tabulaflow.agents.chat import ChatResult
 
     import datetime
     import json
@@ -480,7 +487,7 @@ def _build_debug_huge_cell_result_widget(app: TabulaflowApp) -> AgentResultWidge
     """
     import pandas as pd
 
-    from tabulaflow.chat import ChatResult
+    from tabulaflow.agents.chat import ChatResult
 
     def long_json(n_items: int, note_chars: int = 0) -> dict[str, object]:
         # Pretty-printed lines per item are ~8; with note_chars > 0 each
@@ -557,9 +564,7 @@ def _build_debug_huge_cell_result_widget(app: TabulaflowApp) -> AgentResultWidge
             query_lexer="sql",
         )
     ]
-    result = ChatResult(
-        text="Debug long/wide cell fixture (Enter on `value` to open CellBrowserScreen)"
-    )
+    result = ChatResult(text="Debug long/wide cell fixture (Enter on `value` to open CellBrowserScreen)")
     return AgentResultWidget(
         result,
         _debug_cards(cards, app.size.width - 11),
@@ -582,7 +587,7 @@ def _build_debug_media_result_widget(app: TabulaflowApp) -> AgentResultWidget:
     import pandas as pd
     from PIL import Image, ImageDraw
 
-    from tabulaflow.chat import ChatResult
+    from tabulaflow.agents.chat import ChatResult
 
     def wav_bytes(freq_hz: float, seconds: float = 0.4, rate: int = 8000) -> bytes:
         # Minimal PCM WAV: header + 16-bit mono samples of a sine tone.
@@ -685,7 +690,7 @@ def _build_debug_media_result_widget(app: TabulaflowApp) -> AgentResultWidget:
 def _build_debug_small_result_widget(app: TabulaflowApp) -> AgentResultWidget:
     import pandas as pd
 
-    from tabulaflow.chat import ChatResult
+    from tabulaflow.agents.chat import ChatResult
 
     df = pd.DataFrame(
         [
@@ -725,7 +730,7 @@ def _build_debug_quad_result_widget(app: TabulaflowApp) -> AgentResultWidget:
     """Compact 4-artifact fixture exercising every view-kind combination."""
     import pandas as pd
 
-    from tabulaflow.chat import ChatResult
+    from tabulaflow.agents.chat import ChatResult
 
     # Artifact 1: chart artifact — Chart + Data + Query
     regions_df = pd.DataFrame(
@@ -845,7 +850,7 @@ def _build_debug_multi_result_widget(app: TabulaflowApp) -> AgentResultWidget:
 
     import pandas as pd
 
-    from tabulaflow.chat import ChatResult
+    from tabulaflow.agents.chat import ChatResult
 
     rng = random.Random(20260423)
 
@@ -1272,7 +1277,7 @@ def _build_debug_chart_result_widget(app: TabulaflowApp) -> AgentResultWidget:
     preview inline via plotext; stacked-bar/pie/facet/heatmap show the
     "open in browser" card (Enter → ``b`` renders the real chart).
     """
-    from tabulaflow.chat import ChatResult
+    from tabulaflow.agents.chat import ChatResult
 
     cards: list[DebugTablePayload] = [
         DebugChartPayload(
@@ -1288,7 +1293,6 @@ def _build_debug_chart_result_widget(app: TabulaflowApp) -> AgentResultWidget:
     ]
     result = ChatResult(
         text="Debug charts — simple specs preview inline; rich specs show a card (Enter, then `b` to open in browser).",
-        
     )
     return AgentResultWidget(
         result,

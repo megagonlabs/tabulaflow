@@ -8,16 +8,16 @@ from typing import Any
 import pandas as pd
 import pytest
 
-from tabulaflow.core.types import ExecResult, PredQuery
-from tabulaflow.core.outputs import MapArtifactSpec
-from tabulaflow.toolhub.output_store import OutputStore
-from tabulaflow.toolhub.render_map import MAP_RENDER_MAX_ROWS, RenderMapTool, normalize_map_spec
+from tabulaflow.core import ExecResult
+from tabulaflow.output.specs import MapArtifactSpec
+from tabulaflow.output.store import OutputStore
+from tabulaflow.agents.tools.render_map import MAP_RENDER_MAX_ROWS, RenderMapTool, normalize_map_spec
 
 
 async def _output_store_with(*dfs: pd.DataFrame) -> OutputStore:
     output_store = OutputStore()
     for df in dfs:
-        await output_store.add_fixed_result_source("db", "sql", PredQuery(query="SELECT 1", exec_result=ExecResult(df=df)))
+        await output_store.add_fixed_result_source("db", "sql", "SELECT 1", ExecResult(df=df))
     return output_store
 
 

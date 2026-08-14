@@ -13,13 +13,13 @@ from pydantic_ai import ToolOutput
 
 from tabulaflow.research.agenthub.base import BaseAgentConfig
 from tabulaflow.research.agenthub.utils import instrument
-from tabulaflow.core.db_connector import BaseSQLDBConnector
-from tabulaflow.core.formatters.sql_ddl import SQLDDLSchemaFormatter
-from tabulaflow.modulehub import DBSummarizer
-from tabulaflow.core.llm import make_model_settings
-from tabulaflow.core.types import Usage, Trajectory
+from tabulaflow.data import SQLConnectorProtocol
+from tabulaflow.output.schema_formatters.sql_ddl import SQLDDLSchemaFormatter
+from tabulaflow.agents.modules import DBSummarizer
+from tabulaflow.agents.llm import make_model_settings
+from tabulaflow.agents.trace import Usage, Trajectory
 from tabulaflow.research.types import DbtTask, DbtTaskOutput
-from tabulaflow.core.llm import make_agent
+from tabulaflow.agents.llm import make_agent
 
 logger = logging.getLogger(__name__)
 
@@ -123,7 +123,7 @@ class DbtLLMEnsembler:
     async def ensemble_async(
         self,
         task: DbtTask,
-        db_connector: BaseSQLDBConnector,
+        db_connector: SQLConnectorProtocol,
         task_outputs: list[DbtTaskOutput],
     ) -> DbtTaskOutput:
         candidates = list(task_outputs)

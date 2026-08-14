@@ -4,7 +4,7 @@ import asyncio
 from typing import Any
 import tabulaflow
 from tabulaflow.research.benchmarks import dataset_registry
-from tabulaflow.core.db_connector import BaseSQLDBConnector
+from tabulaflow.data import SQLConnectorProtocol
 
 query = """
 SELECT n.n_name AS nation, SUM(l.l_extendedprice) AS total_revenue
@@ -45,7 +45,7 @@ def print_current_time() -> None:
     print(f"Current time: {time.strftime('%Y-%m-%d %H:%M:%S')}")
 
 
-async def run_query(db_connector: BaseSQLDBConnector, query: str, parameters: dict[str, Any], timeout: int) -> None:
+async def run_query(db_connector: SQLConnectorProtocol, query: str, parameters: dict[str, Any], timeout: int) -> None:
     print_current_time()
     # t0 = time.time()
     result = await db_connector.run_query_async(query, parameters, timeout=timeout)

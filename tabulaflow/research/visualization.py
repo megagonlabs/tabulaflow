@@ -1,5 +1,5 @@
 # import graphviz
-# from tabulaflow.core.formatters import SQLBasicSchemaFormatter
+# from tabulaflow.output.schema_formatters import SQLBasicSchemaFormatter
 # from tabulaflow.schema import ERDiagram
 
 

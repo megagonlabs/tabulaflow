@@ -1,8 +1,8 @@
 from typing import ClassVar
 from pydantic import BaseModel
 from pydantic_ai import Tool
-from tabulaflow.core.types import SQLSchema
-from tabulaflow.toolhub.engines.sql import equals_ci
+from tabulaflow.core import SQLSchema
+from tabulaflow.agents.tools.engines.sql import equals_ci
 
 
 class GetColumnDescriptionToolMetrics(BaseModel):

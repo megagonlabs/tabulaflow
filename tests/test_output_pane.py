@@ -21,20 +21,35 @@ import pytest
 
 from tabulaflow.app.config import LLM_OFF, ResolvedLLMSelection
 from tabulaflow.app.pane.graphs import build_graph_result_data
-from tabulaflow.app.pane.cards import PANE_CODE_TEXT, MapCardInput, ResultCardInput, build_query_data, render_map_data, render_resolved_output, render_result_data
+from tabulaflow.app.pane.cards import (
+    PANE_CODE_TEXT,
+    MapCardInput,
+    ResultCardInput,
+    build_query_data,
+    render_map_data,
+    render_resolved_output,
+    render_result_data,
+)
 from tabulaflow.app.pane.tables import TABLE_RENDER_MAX_ROWS
 from tabulaflow.app.theme import CODE_TEXT
 from tabulaflow.app.pane import CARD_ID_PREFIX, OutputPane, OutputPanePortError, _PANE_HTML
 from tabulaflow.app.pane import PaneCard, PanePanel, PaneTurn, turn_payload
 from tabulaflow.app.screens import send_table_to_output_pane
-from tabulaflow.toolhub.render_graph import materialize_graph_view, normalize_graph_spec
+from tabulaflow.output.graphs import materialize_graph_result, normalize_graph_spec
 from tabulaflow.app.tui import TabulaflowApp
 from tabulaflow.app.turn import TurnOutput
-from tabulaflow.chat import ChatResult
-from tabulaflow.core import ChoiceOption, ChoiceParameter, FixedResultSource, OutputSpec, ResultMetadata, TableArtifactSpec
-from tabulaflow.toolhub.output_store import OutputStore, ResultPayload
-from tabulaflow.toolhub.output_resolver import ResolvedOutput, UnavailableArtifact
-from tabulaflow.toolhub.render_map import MAP_RENDER_MAX_ROWS
+from tabulaflow.agents.chat import ChatResult
+from tabulaflow.output.specs import (
+    ChoiceOption,
+    ChoiceParameter,
+    FixedResultSource,
+    OutputSpec,
+    ResultMetadata,
+    TableArtifactSpec,
+)
+from tabulaflow.output.store import OutputStore, ResultPayload
+from tabulaflow.output.resolver import ResolvedOutput, UnavailableArtifact
+from tabulaflow.agents.tools.render_map import MAP_RENDER_MAX_ROWS
 
 
 @contextlib.contextmanager
@@ -852,7 +867,7 @@ def test_graph_tooltips_preserve_nested_values() -> None:
         ],
     }
     normalized = normalize_graph_spec(spec, {})
-    payload = build_graph_result_data(materialize_graph_view(normalized, {}))
+    payload = build_graph_result_data(materialize_graph_result(normalized, {}))
     assert payload is not None
     # Element dicts hold ``object`` values; the test asserts on their nested shape.
     nodes = cast("list[dict[str, Any]]", payload["graph"]["elements"]["nodes"])
@@ -880,7 +895,7 @@ def test_graph_constant_group_colors_and_edge_label() -> None:
         ],
     }
     normalized = normalize_graph_spec(spec, {})
-    payload = build_graph_result_data(materialize_graph_view(normalized, {}))
+    payload = build_graph_result_data(materialize_graph_result(normalized, {}))
     assert payload is not None
     nodes = cast("list[dict[str, Any]]", payload["graph"]["elements"]["nodes"])
     edges = cast("list[dict[str, Any]]", payload["graph"]["elements"]["edges"])
@@ -964,9 +979,9 @@ def test_cached_views_are_destroyed_only_on_eviction() -> None:
 
 def test_pane_sets_fixed_favicon_and_result_ready_title() -> None:
     pane_js = _pane_asset_text("pane.js")
-    assert "<rect width=\"64\" height=\"64\" fill=\"#283629\"/>" in pane_js
-    assert "<rect x=\"8\" y=\"0\" width=\"48\" height=\"14\" fill=\"#3EB489\"/>" in pane_js
-    assert "<rect x=\"8\" y=\"14\" width=\"48\" height=\"14\" fill=\"#121212\"/>" in pane_js
+    assert '<rect width="64" height="64" fill="#283629"/>' in pane_js
+    assert '<rect x="8" y="0" width="48" height="14" fill="#3EB489"/>' in pane_js
+    assert '<rect x="8" y="14" width="48" height="14" fill="#121212"/>' in pane_js
     assert "document.title = status === 'ready' ? '◆ tabulaflow' : 'tabulaflow';" in pane_js
     assert "applyPageStatus(document.hasFocus() ? 'idle' : 'ready');" in pane_js
     assert "window.addEventListener('focus'" in pane_js
@@ -1018,7 +1033,11 @@ def test_message_view_has_browser_contract_and_renderer() -> None:
 async def test_unavailable_artifact_renders_message_view(tmp_path: Path) -> None:
     resolved = ResolvedOutput(
         selection={},
-        artifacts=[UnavailableArtifact(artifact_id="S1", label="detail", reason="Only applies to revenue", status="not_applicable")],
+        artifacts=[
+            UnavailableArtifact(
+                artifact_id="S1", label="detail", reason="Only applies to revenue", status="not_applicable"
+            )
+        ],
     )
 
     cards = await render_resolved_output(resolved, tmp_path)
@@ -2461,7 +2480,9 @@ async def test_output_pane_resolves_live_turn_selection(tmp_path: Path) -> None:
 
     cards = await pane.resolve_turn(0, {"period": "q3"})
 
-    assert cards == [{"id": cards[0]["id"], "artifact_id": "period_q3", "label": "period_q3", "views": ["data", "query"]}]
+    assert cards == [
+        {"id": cards[0]["id"], "artifact_id": "period_q3", "label": "period_q3", "views": ["data", "query"]}
+    ]
     assert (tmp_path / f"{cards[0]['id']}.data.json").exists()
 
 
@@ -2505,7 +2526,9 @@ async def test_output_pane_http_resolve_runs_on_app_loop(tmp_path: Path) -> None
     payload = await asyncio.to_thread(post_resolve)
 
     assert payload["selection"] == {}
-    assert payload["cards"] == [{"id": payload["cards"][0]["id"], "artifact_id": "S1", "label": "period_q3", "views": ["data", "query"]}]
+    assert payload["cards"] == [
+        {"id": payload["cards"][0]["id"], "artifact_id": "S1", "label": "period_q3", "views": ["data", "query"]}
+    ]
 
 
 def test_query_payload_contains_language_and_pane_theme_highlight() -> None:

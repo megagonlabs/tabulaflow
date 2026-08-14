@@ -10,11 +10,11 @@ import logging
 import re
 from typing import ClassVar
 
-from tabulaflow.core.db_connector import NL2QDBConnector
-from tabulaflow.core.db_connector.neo4j_conn import Neo4jConnector
+from tabulaflow.data import DataConnector
+from tabulaflow.data.neo4j import Neo4jConnector
 from tabulaflow.research.metrics.base import metric_registry
 from tabulaflow.research.metrics.utils import get_final_gold_query, get_final_pred_query
-from tabulaflow.core.types import NumericOrNull
+from tabulaflow.core import NumericOrNull
 from tabulaflow.research.types import NL2QTaskOutput
 
 logger = logging.getLogger(__name__)
@@ -148,7 +148,7 @@ class PSJS:
     name: ClassVar[str] = "psjs"
     compatible_output_types: ClassVar[list[str]] = ["simple"]
 
-    async def compute_async(self, task: NL2QTaskOutput, db_connector: NL2QDBConnector | None = None) -> NumericOrNull:
+    async def compute_async(self, task: NL2QTaskOutput, db_connector: DataConnector | None = None) -> NumericOrNull:
         pred_query = get_final_pred_query(task, check_exec_result=False, roundtrip_exec_result_csv=False)
         gold_query = get_final_gold_query(task, check_exec_result=False, roundtrip_exec_result_csv=False)
 

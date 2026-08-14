@@ -6,13 +6,14 @@ from opentelemetry import trace
 from pydantic_ai import RunContext
 from pydantic_ai.messages import ModelMessage, ModelRequest, UserPromptPart
 from pydantic import BaseModel
-from tabulaflow.core.types import Usage, Trajectory, SQLSchema
+from tabulaflow.core import SQLSchema
+from tabulaflow.agents.trace import Usage, Trajectory
 from tabulaflow.research.types import NL2QTask
-from tabulaflow.core.config import tabulaflow_config
-from tabulaflow.core.db_connector import NL2QDBConnector
-from tabulaflow.core.llm import make_model_settings
-from tabulaflow.toolhub import BaseTool
-from tabulaflow.core.formatters.base import BaseSQLSchemaFormatter
+from tabulaflow.config import tabulaflow_config
+from tabulaflow.data import DataConnector
+from tabulaflow.agents.llm import make_model_settings
+from tabulaflow.agents.tools import BaseTool
+from tabulaflow.output.schema_formatters.base import BaseSQLSchemaFormatter
 
 
 def max_steps_processor(
@@ -66,7 +67,7 @@ def instrument(predict_async_fn: Callable[..., Any]) -> Callable[..., Any]:
 @dataclass
 class TaskRunContext:
     task: NL2QTask
-    db_connector: NL2QDBConnector
+    db_connector: DataConnector
     preprocessed_schema: SQLSchema
     schema_formatter: BaseSQLSchemaFormatter
     usage: Usage

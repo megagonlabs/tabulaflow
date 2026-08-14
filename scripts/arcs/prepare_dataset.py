@@ -14,7 +14,7 @@ import tabulaflow
 from tabulaflow.research.types import GoldQuery
 from tabulaflow.research.types import AmbigNL2QTask, GoldAmbiguityPointFinite, GoldAmbiguityPointInfinite
 from tabulaflow.research.benchmarks import dataset_registry
-from tabulaflow.core.db_connector import SQLConnector
+from tabulaflow.data import SQLConnector
 from tabulaflow.research.utils import sort_ambiguity_points
 
 AMBIGUITY_POINT_IDS = list("ABCDEFGHIJKLMNOPQRSTUVWXYZ")

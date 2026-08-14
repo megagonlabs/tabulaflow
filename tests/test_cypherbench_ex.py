@@ -12,7 +12,8 @@ from tabulaflow.research.metrics.cypherbench_ex import (
     _to_hashable,
     CypherBenchEx,
 )
-from tabulaflow.core.types import ExecResult, PredQuery
+from tabulaflow.core import ExecResult
+from tabulaflow.research.types import PredQuery
 from tabulaflow.research.types import GoldQuery
 from tabulaflow.research.types import SimpleNL2QTaskOutput
 

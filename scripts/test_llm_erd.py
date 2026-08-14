@@ -3,7 +3,7 @@ import asyncio
 import json
 import os
 import tabulaflow
-from tabulaflow.core.db_connector.snowflake_conn import SnowflakeConnector
+from tabulaflow.data.snowflake_conn import SnowflakeConnector
 from tabulaflow.research.visualization import er_diagram_to_graphviz
 from tabulaflow.metadata_synthesizer import LLMERDiagramSynthesizer
 

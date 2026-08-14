@@ -3,10 +3,11 @@ import asyncio
 import os
 import time
 from tqdm.asyncio import tqdm_asyncio
-from tabulaflow import metric_registry, dataset_registry
 import tabulaflow
+from tabulaflow.research.benchmarks.base import dataset_registry
+from tabulaflow.research.metrics.base import metric_registry
 from tabulaflow.research.types import NL2QTaskOutput, NL2QRunResult, NL2QDataset
-from tabulaflow.core.db_connector import NL2QDBConnector
+from tabulaflow.data import DataConnector
 from tabulaflow.research.metrics import NL2QMetric, BaseMetricAggregator
 from tabulaflow.research.metrics.aggregators import (
     ByAmbrosiaTaxonomyTypeAggregator,
@@ -16,11 +17,11 @@ from tabulaflow.research.metrics.aggregators import (
     ByAmbigPointNumAggregator,
     ByBirdSQLDifficultyAggregator,
 )
-from tabulaflow.core.utils import pprint_dict
+from tabulaflow.research.utils import pprint_dict
 
 
 async def compute_metrics_async(
-    task: NL2QTaskOutput, metrics: list[NL2QMetric], db_connector: NL2QDBConnector | None
+    task: NL2QTaskOutput, metrics: list[NL2QMetric], db_connector: DataConnector | None
 ) -> NL2QTaskOutput:
     results = await asyncio.gather(*[m.compute_async(task, db_connector) for m in metrics])
     task.eval_metrics = {}

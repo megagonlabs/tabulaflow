@@ -1,8 +1,8 @@
 from typing import Protocol, ClassVar, Any
-from tabulaflow.core.types import NumericOrNull
+from tabulaflow.core import NumericOrNull
 from tabulaflow.research.types import NL2QRunResult, NL2QTaskOutput
-from tabulaflow.core.db_connector import NL2QDBConnector
-from tabulaflow.core.registry import Registry
+from tabulaflow.data import DataConnector
+from tabulaflow.core.registry import ClassRegistry
 
 
 class BaseNL2QMetric(Protocol):
@@ -10,7 +10,7 @@ class BaseNL2QMetric(Protocol):
     compatible_output_types: ClassVar[list[str]]
 
     async def compute_async(
-        self, task: NL2QTaskOutput, db_connector: NL2QDBConnector | None = None
+        self, task: NL2QTaskOutput, db_connector: DataConnector | None = None
     ) -> NumericOrNull | dict[str, NumericOrNull]: ...
 
 
@@ -20,4 +20,4 @@ class BaseMetricAggregator(Protocol):
 
 NL2QMetric = BaseNL2QMetric
 
-metric_registry = Registry[NL2QMetric]("metric")
+metric_registry = ClassRegistry[NL2QMetric]("metric")

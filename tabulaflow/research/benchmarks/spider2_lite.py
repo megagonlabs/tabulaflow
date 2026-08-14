@@ -14,10 +14,10 @@ import asyncio
 from urllib.parse import quote_plus
 from typing import Any, ClassVar, Literal, Optional
 import pandas as pd
-from tabulaflow.core.types import ExecResult
+from tabulaflow.core import ExecResult
 from tabulaflow.research.types import GoldQuery
 from tabulaflow.research.types import SimpleNL2QTask, NL2QDataset
-from tabulaflow.core.db_connector import SQLConnector, BaseSQLDBConnector
+from tabulaflow.data import SQLConnector, SQLConnectorProtocol
 from tabulaflow.research.benchmarks.base import dataset_registry
 
 logger = logging.getLogger(__name__)
@@ -394,7 +394,7 @@ class Spider2LiteDatasetLoader:
 
     async def get_db_connectors_async(
         self, split: str, databases: list[str] | None = None
-    ) -> dict[str, BaseSQLDBConnector]:
+    ) -> dict[str, SQLConnectorProtocol]:
         """Return DB connectors keyed by database name.
 
         Dispatches to BigQuery, Snowflake, or SQLite based on the resource
@@ -406,7 +406,7 @@ class Spider2LiteDatasetLoader:
         databases = databases or self.get_databases(split)
         column_descriptions = self._load_column_descriptions()
 
-        connectors: dict[str, BaseSQLDBConnector] = {}
+        connectors: dict[str, SQLConnectorProtocol] = {}
         for db_name in databases:
             db_info = self._db_info.get(db_name)
             if db_info is None:

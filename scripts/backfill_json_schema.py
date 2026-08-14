@@ -31,15 +31,15 @@ from sqlalchemy.ext.asyncio import create_async_engine
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from tabulaflow.core.db_connector.sql_conn import (
+from tabulaflow.data.sql import (
     JSON_TYPES,
     TEXT_TYPES,
     ThrottledEngine,
     _JSON_SCHEMA_SAMPLE_SIZE,
     _is_async_url,
 )
-from tabulaflow.core.db_connector.utils import infer_json_schema, looks_like_json
-from tabulaflow.core.types import SQLColumnSchema, SQLSchema, SQLTableSchema
+from tabulaflow.data.introspection import infer_json_schema, looks_like_json
+from tabulaflow.core import SQLColumnSchema, SQLSchema, SQLTableSchema
 
 logger = logging.getLogger(__name__)
 

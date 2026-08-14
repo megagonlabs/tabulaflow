@@ -10,10 +10,10 @@ import sqlalchemy
 from pydantic_ai import ToolReturn
 from sqlalchemy.ext.asyncio import create_async_engine
 
-from tabulaflow.core.db_connector.db_registry import DBRegistry
-from tabulaflow.core.db_connector.sql_conn import SQLConnector
-from tabulaflow.core.types import ExecResult
-from tabulaflow.toolhub.registry_run_query import RegistryRunQueryTool
+from tabulaflow.data.registry import DBRegistry
+from tabulaflow.data.sql import SQLConnector
+from tabulaflow.core import ExecResult
+from tabulaflow.agents.tools.registry_run_query import RegistryRunQueryTool
 
 
 def _text(result: ToolReturn) -> str:

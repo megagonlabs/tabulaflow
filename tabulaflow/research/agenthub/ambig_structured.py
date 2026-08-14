@@ -6,9 +6,10 @@ import itertools
 from typing import ClassVar, Literal, Any
 from pydantic import BaseModel, TypeAdapter
 from pydantic_ai import Agent, ToolOutput
-from tabulaflow.core.db_connector import BaseSQLDBConnector
-from tabulaflow.core.formatters.base import formatter_registry, NL2QFormatter
-from tabulaflow.core.types import PredQuery, Usage, Trajectory
+from tabulaflow.data import SQLConnectorProtocol
+from tabulaflow.output.schema_formatters.base import schema_formatter_registry, SchemaFormatter
+from tabulaflow.agents.trace import Usage, Trajectory
+from tabulaflow.research.types import PredQuery
 from tabulaflow.research.types import (
     AmbigNL2QTask,
     PredAmbiguityPointFinite,
@@ -16,7 +17,7 @@ from tabulaflow.research.types import (
     PredAmbiguityPoint,
     StructuredAmbigNL2QTaskOutput,
 )
-from tabulaflow.toolhub import BaseTool, RunQueryTool
+from tabulaflow.agents.tools import BaseTool, RunQueryTool
 from tabulaflow.research.tools import SearchKeywordsTool, FinishTool, GetSchemaTool, GetColumnDescriptionTool
 from tabulaflow.research.agenthub.base import (
     agent_registry,
@@ -26,9 +27,9 @@ from tabulaflow.research.agenthub.base import (
     BaseAgentConfig,
 )
 from tabulaflow.research.agenthub.utils import get_max_steps_processor, instrument, TaskRunContext, BasicAgentConfig
-from tabulaflow.core.schema_compressor import SchemaCompressor
-from tabulaflow.core.utils import int_to_letter
-from tabulaflow.core.llm import make_agent
+from tabulaflow.data.schema_compressor import SchemaCompressor
+from tabulaflow.research.utils import int_to_letter
+from tabulaflow.agents.llm import make_agent
 
 
 DISAMBIGUATION_PROMPT = """
@@ -133,7 +134,7 @@ class AmbigStructuredSQLAgent:
         config: AmbigStructuredSQLAgentConfig,
     ):
         self.config = config
-        self.formatter: NL2QFormatter = formatter_registry.get_class(config.schema_formatter)(
+        self.formatter: SchemaFormatter = schema_formatter_registry.get_class(config.schema_formatter)(
             **config.to_formatter_kwargs()
         )
         self.compressor = SchemaCompressor() if config.compress_schema else None
@@ -242,7 +243,7 @@ class AmbigStructuredSQLAgent:
             prompt += f"\nYou can use any of the following parameters as placeholders in the query:\n{json.dumps(params, indent=2, default=str)}"
         result = await sql_agent.run(prompt)
         query_id = "PQRY" + "".join(f"-{ap.id}.{idx}" for ap, idx in zip(finite_aps, finite_interpretation_indexes))
-        pred_query: PredQuery = ctx.tools["run_query"].last_pred_query()  # type: ignore
+        pred_query: PredQuery = PredQuery.from_execution(ctx.tools["run_query"].last_execution())  # type: ignore
         pred_query.id = query_id
         ctx.trajectories.append(
             Trajectory.from_pydantic_ai_messages(result.all_messages(), id=f"TRJY-GEN-SQL-{query_id}")
@@ -299,7 +300,7 @@ class AmbigStructuredSQLAgent:
         )
         return pred_intended_query_id
 
-    async def _get_tools(self, db_connector: BaseSQLDBConnector) -> dict[str, BaseTool]:
+    async def _get_tools(self, db_connector: SQLConnectorProtocol) -> dict[str, BaseTool]:
         schema = db_connector.schema
         if self.compressor is not None:
             schema = self.compressor.compress(schema)
@@ -314,7 +315,7 @@ class AmbigStructuredSQLAgent:
 
     @instrument
     async def predict_async(
-        self, task: AmbigNL2QTask, db_connector: BaseSQLDBConnector, user_simulator: BaseUserSimulator
+        self, task: AmbigNL2QTask, db_connector: SQLConnectorProtocol, user_simulator: BaseUserSimulator
     ) -> StructuredAmbigNL2QTaskOutput:
         t0 = time.time()
 

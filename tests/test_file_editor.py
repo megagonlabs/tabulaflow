@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from tabulaflow.toolhub.file_editor import FileEditorRoot, FileEditorTool
+from tabulaflow.agents.tools.file_editor import FileEditorRoot, FileEditorTool
 
 
 @pytest.fixture
@@ -282,7 +282,7 @@ class TestPdf:
         assert "(error" in out
 
     async def test_pdf_view_offloaded_with_store(self, tmp_path: Path) -> None:
-        from tabulaflow.toolhub.message_store import MessageStore
+        from tabulaflow.agents.tools.message_store import MessageStore
 
         tool = FileEditorTool(str(tmp_path), message_store=MessageStore().scoped("test"))
         (tmp_path / "doc.pdf").write_bytes(_make_pdf("OFFLOAD_ME"))
@@ -291,7 +291,7 @@ class TestPdf:
         assert "OFFLOAD_ME" in out  # small PDF -> full content kept (make_marked)
 
     async def test_non_pdf_view_not_offloaded(self, tmp_path: Path) -> None:
-        from tabulaflow.toolhub.message_store import MessageStore
+        from tabulaflow.agents.tools.message_store import MessageStore
 
         tool = FileEditorTool(str(tmp_path), message_store=MessageStore().scoped("test"))
         (tmp_path / "f.txt").write_text("plain text\n")

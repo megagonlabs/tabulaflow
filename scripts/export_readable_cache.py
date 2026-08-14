@@ -1,13 +1,13 @@
 import argparse
 import os
 import tabulaflow
-from tabulaflow.core.config import tabulaflow_config
-from tabulaflow.modulehub.db_summarizer import DBSummary
-from tabulaflow.core.types import SQLSchema
-from tabulaflow.core.schema_compressor import SchemaCompressor
-from tabulaflow.core.er_diagram import ERDiagram
-from tabulaflow.core.formatters.sql_ddl import SQLDDLSchemaFormatter
-from tabulaflow.core.formatters.er_diagram import ERDiagramMermaidFormatter
+from tabulaflow.config import tabulaflow_config
+from tabulaflow.agents.modules.db_summarizer import DBSummary
+from tabulaflow.core import SQLSchema
+from tabulaflow.data.schema_compressor import SchemaCompressor
+from tabulaflow.output.erd import ERDiagram
+from tabulaflow.output.schema_formatters.sql_ddl import SQLDDLSchemaFormatter
+from tabulaflow.output.schema_formatters.er_diagram import ERDiagramMermaidFormatter
 
 
 def main() -> None:

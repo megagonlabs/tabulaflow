@@ -28,7 +28,7 @@ from tabulaflow.app.widgets import (
     _make_agent_markdown_parser,
     _strips_to_text,
 )
-from tabulaflow.chat import AnswerDelta
+from tabulaflow.agents.chat import AnswerDelta
 
 
 class _AgentMarkdownApp(App[None]):

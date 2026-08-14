@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from tabulaflow.app.session import LLM_UNAVAILABLE_MESSAGE
-from tabulaflow.core.llm import model_display_name
+from tabulaflow.app.state import LLM_UNAVAILABLE_MESSAGE
+from tabulaflow.agents.llm import model_display_name
 
 
 def test_llm_unavailable_message_is_provider_neutral() -> None:

@@ -6,8 +6,8 @@ from textual.app import App, ComposeResult
 from textual.widgets import Tree
 
 from tabulaflow.app.screens import SchemaBrowserScreen
-from tabulaflow.core.db_connector import DBRegistry
-from tabulaflow.core.types import (
+from tabulaflow.data import DBRegistry
+from tabulaflow.core import (
     ExecResult,
     GraphPropertySchema,
     NodeSchema,
@@ -130,7 +130,7 @@ async def test_schema_browser_renders_property_graph_schema() -> None:
 
 
 def test_cypher_formatter_renders_multi_endpoint_relationship_type_once() -> None:
-    from tabulaflow.core.formatters.cypher import CypherSchemaFormatter
+    from tabulaflow.output.schema_formatters.cypher import CypherSchemaFormatter
 
     schema = PropertyGraphSchema(
         name="places",

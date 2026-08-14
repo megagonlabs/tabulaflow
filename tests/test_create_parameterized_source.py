@@ -6,10 +6,16 @@ from textwrap import dedent
 import pytest
 from pydantic_ai import ToolReturn
 
-from tabulaflow.core.db_connector.db_registry import DBRegistry
-from tabulaflow.core.db_connector.sql_conn import SQLConnector
-from tabulaflow.core.outputs import ChoiceOption, ChoiceParameter, NumberParameter, OutputSpec, TableArtifactSpec
-from tabulaflow.toolhub import CreateParameterizedSourceTool, OutputResolver, OutputStore, ResolvedTableArtifact, UnavailableArtifact
+from tabulaflow.data.registry import DBRegistry
+from tabulaflow.data.sql import SQLConnector
+from tabulaflow.output.specs import ChoiceOption, ChoiceParameter, NumberParameter, OutputSpec, TableArtifactSpec
+from tabulaflow.agents.tools import (
+    CreateParameterizedSourceTool,
+    OutputResolver,
+    OutputStore,
+    ResolvedTableArtifact,
+    UnavailableArtifact,
+)
 
 
 def _text(result: ToolReturn) -> str:
@@ -66,7 +72,11 @@ async def test_create_parameterized_source_registers_parameters_and_warms_choice
     assert len(output_store.cached_parameterized_results("S1")) == 2
 
     resolved = await OutputResolver(output_store).resolve(
-        OutputSpec(parameters=output_store.source_parameters(source.id), sources=[source], artifacts=[TableArtifactSpec(id="S1", source_id="S1")]),
+        OutputSpec(
+            parameters=output_store.source_parameters(source.id),
+            sources=[source],
+            artifacts=[TableArtifactSpec(id="S1", source_id="S1")],
+        ),
         {"metric": "gross"},
     )
     artifact = resolved.artifacts[0]
@@ -104,9 +114,9 @@ async def test_create_parameterized_source_batches_warm_errors_and_registers_not
 
     text = _text(result)
     assert text.startswith("(error: 2 of 2 warm queries failed; source was not created\n  metric=bad_a — ")
-    assert "Referenced column \"missing_a\" not found" in text
+    assert 'Referenced column "missing_a" not found' in text
     assert "\n  metric=bad_b — " in text
-    assert "Referenced column \"missing_b\" not found" in text
+    assert 'Referenced column "missing_b" not found' in text
     assert text.endswith(")")
     with pytest.raises(KeyError):
         output_store.get_source("S1")
@@ -124,7 +134,11 @@ async def test_number_parameter_materializes_lazy_selection(registry: DBRegistry
     source = output_store.get_source("S1")
 
     resolved = await OutputResolver(output_store).resolve(
-        OutputSpec(parameters=output_store.source_parameters(source.id), sources=[source], artifacts=[TableArtifactSpec(id="S1", source_id="S1")]),
+        OutputSpec(
+            parameters=output_store.source_parameters(source.id),
+            sources=[source],
+            artifacts=[TableArtifactSpec(id="S1", source_id="S1")],
+        ),
         {"min_net": 6},
     )
 
@@ -188,7 +202,11 @@ async def test_create_parameterized_source_warms_not_applicable_selection(regist
     source = output_store.get_source("S1")
 
     resolved = await OutputResolver(output_store).resolve(
-        OutputSpec(parameters=output_store.source_parameters(source.id), sources=[source], artifacts=[TableArtifactSpec(id="S1", source_id="S1")]),
+        OutputSpec(
+            parameters=output_store.source_parameters(source.id),
+            sources=[source],
+            artifacts=[TableArtifactSpec(id="S1", source_id="S1")],
+        ),
         {"metric": "gross"},
     )
 

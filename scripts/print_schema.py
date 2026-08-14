@@ -3,9 +3,9 @@ import argparse
 import time
 import tabulaflow
 from tabulaflow.research.benchmarks import dataset_registry
-from tabulaflow.core.formatters import formatter_registry
-from tabulaflow.core.types import SQLSchema
-from tabulaflow.core.schema_compressor import SchemaCompressor
+from tabulaflow.output.schema_formatters import schema_formatter_registry
+from tabulaflow.core import SQLSchema
+from tabulaflow.data.schema_compressor import SchemaCompressor
 
 
 async def main() -> None:
@@ -54,7 +54,7 @@ async def main() -> None:
     if not args.no_compress:
         schema = SchemaCompressor().compress(schema)
 
-    formatter = formatter_registry.get_class(args.formatter)()
+    formatter = schema_formatter_registry.get_class(args.formatter)()
     schema_str = formatter.format(schema, add_description=not args.no_description)
     print(schema_str)
     print()

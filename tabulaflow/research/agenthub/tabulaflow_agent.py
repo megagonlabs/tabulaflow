@@ -2,20 +2,21 @@ import jinja2
 import time
 from typing import ClassVar
 import logging
-from tabulaflow.core.db_connector import NL2QDBConnector
-from tabulaflow.core.types import PredQuery, Usage, Trajectory
+from tabulaflow.data import DataConnector
+from tabulaflow.agents.trace import Usage, Trajectory
+from tabulaflow.research.types import PredQuery
 from tabulaflow.research.types import SimpleNL2QTask, SimpleNL2QTaskOutput
-from tabulaflow.modulehub import DBSummarizer
-from tabulaflow.toolhub import BaseTool, GetColumnJsonSchemaTool, GetTableSchemaTool, RunQueryTool
+from tabulaflow.agents.modules import DBSummarizer
+from tabulaflow.agents.tools import BaseTool, GetColumnJsonSchemaTool, GetTableSchemaTool, RunQueryTool
 from tabulaflow.research.tools import FinishTool
-from tabulaflow.core.formatters.base import formatter_registry, NL2QFormatter
+from tabulaflow.output.schema_formatters.base import schema_formatter_registry, SchemaFormatter
 from tabulaflow.research.agenthub.base import agent_registry, BaseAgentConfig
 from tabulaflow.research.agenthub.utils import (
     get_max_steps_processor,
     instrument,
     BasicAgentConfig,
 )
-from tabulaflow.core.llm import make_agent
+from tabulaflow.agents.llm import make_agent
 
 
 logger = logging.getLogger(__name__)
@@ -93,7 +94,7 @@ class TabulaflowAgent:
         config: TabulaflowAgentConfig,
     ):
         self.config = config
-        self.formatter: NL2QFormatter = formatter_registry.get_class(config.schema_formatter)(
+        self.formatter: SchemaFormatter = schema_formatter_registry.get_class(config.schema_formatter)(
             **config.to_formatter_kwargs()
         )
 
@@ -102,7 +103,7 @@ class TabulaflowAgent:
         return cls(config)
 
     @instrument
-    async def predict_async(self, task: SimpleNL2QTask, db_connector: NL2QDBConnector) -> SimpleNL2QTaskOutput:
+    async def predict_async(self, task: SimpleNL2QTask, db_connector: DataConnector) -> SimpleNL2QTaskOutput:
         if db_connector.connector_type != "sql":
             raise TypeError(f"TabulaflowAgent requires a SQL db connector, got {type(db_connector)!r}")
         t0 = time.time()
@@ -137,7 +138,7 @@ class TabulaflowAgent:
             model_settings=self.config.to_model_settings(),
         )
         result = await agent.run(format_question(task))
-        pred_query: PredQuery = tools["run_query"].last_pred_query()  # type: ignore
+        pred_query: PredQuery = PredQuery.from_execution(tools["run_query"].last_execution())  # type: ignore
         usage = Usage.from_pydantic_ai_usage(result.usage, self.config.llm)
         trajectory = Trajectory.from_pydantic_ai_messages(result.all_messages(), id="TRJY-GEN-SQL")
 

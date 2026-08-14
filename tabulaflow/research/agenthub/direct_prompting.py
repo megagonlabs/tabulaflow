@@ -3,20 +3,21 @@ import time
 from typing import ClassVar
 import logging
 
-import tabulaflow.core.formatters  # noqa: F401 — register sql_*, cypher, … formatters
+import tabulaflow.output.schema_formatters  # noqa: F401 — register sql_*, cypher, … formatters
 
-from tabulaflow.core.db_connector import NL2QDBConnector
-from tabulaflow.core.types import PredQuery, Usage, Trajectory
+from tabulaflow.data import DataConnector
+from tabulaflow.agents.trace import Usage, Trajectory
+from tabulaflow.research.types import PredQuery
 from tabulaflow.research.types import SimpleNL2QTask, SimpleNL2QTaskOutput
-from tabulaflow.core.schema_compressor import SchemaCompressor
-from tabulaflow.core.formatters.base import formatter_registry
+from tabulaflow.data.schema_compressor import SchemaCompressor
+from tabulaflow.output.schema_formatters.base import schema_formatter_registry
 from tabulaflow.research.agenthub.base import agent_registry, BaseAgentConfig
 from tabulaflow.research.agenthub.utils import (
     instrument,
     BasicAgentConfig,
 )
-from tabulaflow.core.utils import extract_code
-from tabulaflow.core.llm import make_agent
+from tabulaflow.agents.response_parsing import extract_code
+from tabulaflow.agents.llm import make_agent
 
 
 logger = logging.getLogger(__name__)
@@ -77,20 +78,22 @@ class DirectPrompting:
     async def from_config_async(cls, config: BasicAgentConfig) -> "DirectPrompting":
         return cls(config)
 
-    def _format_schema_for_prompt(self, db_connector: NL2QDBConnector) -> str:
+    def _format_schema_for_prompt(self, db_connector: DataConnector) -> str:
         schema = db_connector.schema
         if db_connector.connector_type == "sql":
             if self.compressor is not None:
                 schema = self.compressor.compress(schema)  # type: ignore[arg-type]
-            formatter = formatter_registry.get_class(self.config.schema_formatter)(**self.config.to_formatter_kwargs())
+            formatter = schema_formatter_registry.get_class(self.config.schema_formatter)(
+                **self.config.to_formatter_kwargs()
+            )
             return formatter.format(schema, add_description=self.config.use_column_description)  # type: ignore[arg-type, call-arg]
         if db_connector.connector_type == "property_graph":
-            formatter = formatter_registry.get_class(self.config.schema_formatter)()
+            formatter = schema_formatter_registry.get_class(self.config.schema_formatter)()
             return formatter.format(schema)  # type: ignore[arg-type]
         raise TypeError(f"Unsupported connector type for DirectPrompting: {db_connector.connector_type!r}")
 
     @instrument
-    async def predict_async(self, task: SimpleNL2QTask, db_connector: NL2QDBConnector) -> SimpleNL2QTaskOutput:
+    async def predict_async(self, task: SimpleNL2QTask, db_connector: DataConnector) -> SimpleNL2QTaskOutput:
         t0 = time.time()
 
         schema_str = self._format_schema_for_prompt(db_connector)

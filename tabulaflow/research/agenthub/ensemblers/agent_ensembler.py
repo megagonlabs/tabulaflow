@@ -9,15 +9,15 @@ from pydantic_ai import ModelRetry, RunContext, ToolOutput
 from tabulaflow.research.agenthub.base import BaseAgentConfig
 from tabulaflow.research.agenthub.ensemblers.majority_ensembler import _normalize_value
 from tabulaflow.research.agenthub.utils import BasicAgentConfig, get_max_steps_processor, instrument
-from tabulaflow.core.db_connector import BaseSQLDBConnector
-from tabulaflow.core.formatters.base import NL2QFormatter, formatter_registry
-from tabulaflow.core.utils import format_df
+from tabulaflow.data import SQLConnectorProtocol
+from tabulaflow.output.schema_formatters.base import SchemaFormatter, schema_formatter_registry
+from tabulaflow.output.formatting import format_df
 from tabulaflow.research.pipelines.populate_exec_results import populate_task_async
-from tabulaflow.modulehub import DBSummarizer
-from tabulaflow.core.types import Trajectory, Usage
-from tabulaflow.research.types import SimpleNL2QTask, SimpleNL2QTaskOutput
-from tabulaflow.toolhub import BaseTool, GetColumnJsonSchemaTool, GetTableSchemaTool, RunQueryTool
-from tabulaflow.core.llm import make_agent
+from tabulaflow.agents.modules import DBSummarizer
+from tabulaflow.agents.trace import Trajectory, Usage
+from tabulaflow.research.types import PredQuery, SimpleNL2QTask, SimpleNL2QTaskOutput
+from tabulaflow.agents.tools import BaseTool, GetColumnJsonSchemaTool, GetTableSchemaTool, RunQueryTool
+from tabulaflow.agents.llm import make_agent
 
 
 logger = logging.getLogger(__name__)
@@ -123,7 +123,7 @@ class AgentEnsembler:
 
     def __init__(self, config: AgentEnsemblerConfig):
         self.config = config
-        self.formatter: NL2QFormatter = formatter_registry.get_class(config.schema_formatter)(
+        self.formatter: SchemaFormatter = schema_formatter_registry.get_class(config.schema_formatter)(
             **config.to_formatter_kwargs()
         )
 
@@ -147,7 +147,7 @@ class AgentEnsembler:
     async def ensemble_async(
         self,
         task: SimpleNL2QTask,
-        db_connector: BaseSQLDBConnector,
+        db_connector: SQLConnectorProtocol,
         task_outputs: list[SimpleNL2QTaskOutput],
     ) -> SimpleNL2QTaskOutput:
         t0 = time.time()
@@ -287,7 +287,7 @@ class AgentEnsembler:
             pred_query = best_output.pred_query
         else:
             # Agent wrote a new/revised query
-            pred_query = run_query_tool.last_pred_query()
+            pred_query = PredQuery.from_execution(run_query_tool.last_execution())
 
         metrics: dict[str, Any] = {}
         metrics["latency_seconds"] = time.time() - t0

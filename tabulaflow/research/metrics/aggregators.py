@@ -1,6 +1,6 @@
 from typing import Any, Literal
 from tabulaflow.research.types import AmbigNL2QTask, NL2QRunResult
-from tabulaflow.core.utils import aggregate_metrics
+from tabulaflow.research.utils import aggregate_metrics
 
 
 class RealScoreAggregator:

@@ -1,10 +1,10 @@
 import copy
 from typing import ClassVar
 from tabulaflow.research.types import NL2QTaskOutput, SimpleNL2QTaskOutput
-from tabulaflow.core.db_connector import NL2QDBConnector
+from tabulaflow.data import DataConnector
 from tabulaflow.research.metrics.base import metric_registry
 from tabulaflow.research.metrics.bird_sql_ex import BirdSQLEx
-from tabulaflow.core.types import NumericOrNull
+from tabulaflow.core import NumericOrNull
 
 
 @metric_registry.register
@@ -12,7 +12,7 @@ class RawPredBirdSQLEx:
     name: ClassVar[str] = "raw_pred_bird_sql_ex"
     compatible_output_types: ClassVar[list[str]] = ["simple"]
 
-    async def compute_async(self, task: NL2QTaskOutput, db_connector: NL2QDBConnector | None = None) -> NumericOrNull:
+    async def compute_async(self, task: NL2QTaskOutput, db_connector: DataConnector | None = None) -> NumericOrNull:
         assert isinstance(task, SimpleNL2QTaskOutput)
         bird_sql_ex = BirdSQLEx()
         task = copy.deepcopy(task)

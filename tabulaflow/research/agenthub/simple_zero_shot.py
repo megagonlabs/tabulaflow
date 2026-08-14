@@ -5,11 +5,12 @@ import jinja2
 import logging
 import asyncio
 from typing import Any, ClassVar
-from tabulaflow.core.utils import extract_code
-from tabulaflow.core.schema_compressor import SchemaCompressor
-from tabulaflow.core.formatters import formatter_registry
-from tabulaflow.core.db_connector import NL2QDBConnector
-from tabulaflow.core.types import Trajectory, SystemMessage, UserMessage, AssistantMessage, PredQuery, Usage
+from tabulaflow.agents.response_parsing import extract_code
+from tabulaflow.data.schema_compressor import SchemaCompressor
+from tabulaflow.output.schema_formatters import schema_formatter_registry
+from tabulaflow.data import DataConnector
+from tabulaflow.agents.trace import Trajectory, SystemMessage, UserMessage, AssistantMessage, Usage
+from tabulaflow.research.types import PredQuery
 from tabulaflow.research.types import SimpleNL2QTask, SimpleNL2QTaskOutput
 from tabulaflow.research.agenthub.base import agent_registry, BaseAgentConfig
 from tabulaflow.research.agenthub.utils import instrument, BasicAgentConfig
@@ -65,14 +66,14 @@ class SimpleZeroShotNL2Q:
         config: SimpleZeroShotNL2QConfig,
     ):
         self.config = config
-        self.formatter = formatter_registry.get_class(config.schema_formatter)(**config.to_formatter_kwargs())
+        self.formatter = schema_formatter_registry.get_class(config.schema_formatter)(**config.to_formatter_kwargs())
 
     @classmethod
     async def from_config_async(cls, config: SimpleZeroShotNL2QConfig) -> "SimpleZeroShotNL2Q":
         return cls(config)
 
     @instrument
-    async def predict_async(self, task: SimpleNL2QTask, db_connector: NL2QDBConnector) -> SimpleNL2QTaskOutput:
+    async def predict_async(self, task: SimpleNL2QTask, db_connector: DataConnector) -> SimpleNL2QTaskOutput:
         t0 = time.time()
 
         schema = db_connector.schema
@@ -153,7 +154,7 @@ class SimpleZeroShotNL2Q:
             inference_metrics=metrics,
         )
 
-    async def select_best_query_async(self, candidates: list[str], db_connector: NL2QDBConnector) -> int:
+    async def select_best_query_async(self, candidates: list[str], db_connector: DataConnector) -> int:
         all_results = await asyncio.gather(
             *[db_connector.run_query_async(query) for query in candidates], return_exceptions=True
         )

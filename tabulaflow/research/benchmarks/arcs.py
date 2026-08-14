@@ -5,7 +5,7 @@ import json
 import copy
 from typing import ClassVar
 from tabulaflow.research.types import AmbigNL2QTask, NL2QDataset
-from tabulaflow.core.db_connector import SQLConnector
+from tabulaflow.data import SQLConnector
 from tabulaflow.research.benchmarks.base import dataset_registry
 
 ARCS_DATASET_INSTRUCTIONS = """

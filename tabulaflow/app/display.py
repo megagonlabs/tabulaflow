@@ -28,7 +28,7 @@ from tabulaflow.app.theme import (
     TABULAFLOW_RICH_SYNTAX_THEME,
     normalize_query_lexer,
 )
-from tabulaflow.toolhub.output_resolver import (
+from tabulaflow.output.resolver import (
     ResolvedChartArtifact,
     ResolvedGraphArtifact,
     ResolvedMapArtifact,
@@ -36,7 +36,7 @@ from tabulaflow.toolhub.output_resolver import (
     ResolvedTableArtifact,
     UnavailableArtifact,
 )
-from tabulaflow.toolhub.output_store import ResultPayload
+from tabulaflow.output.store import ResultPayload
 
 TABULAFLOW_THEME = Theme(
     {
@@ -239,7 +239,7 @@ def _build_chart_card(spec: dict[str, object], *, height: int | None) -> Rendera
     centered. Full-screen (``height`` set) fills the chart region and centers
     vertically; the inline result preview (``height`` is None) sizes to content.
     """
-    from tabulaflow.toolhub.render_chart import chart_type_label
+    from tabulaflow.agents.tools.render_chart import chart_type_label
 
     type_label = chart_type_label(spec)
     title = _spec_title(spec)
@@ -262,7 +262,7 @@ def build_chart(
     transform/multi-view or an unsupported mark) returns a card directing the
     user to open it in the browser, rather than a misleading approximation.
     """
-    from tabulaflow.toolhub.render_chart import (
+    from tabulaflow.agents.tools.render_chart import (
         ChartNotRenderable,
         is_plotext_renderable,
         parse_vegalite_spec,
@@ -302,7 +302,7 @@ def _build_map_card(map_spec: dict[str, object]) -> RenderableType:
     Mirrors :func:`_build_chart_card`: a dim rounded box with the map's title/type
     and a line directing the user to the browser pane.
     """
-    from tabulaflow.toolhub.render_map import map_type_label
+    from tabulaflow.agents.tools.render_map import map_type_label
 
     type_label = map_type_label(map_spec)
     title = map_spec.get("title") if isinstance(map_spec, dict) else None
@@ -378,7 +378,9 @@ def build_resolved_output_card_views(
             if group is not None:
                 groups.append(group)
         elif isinstance(artifact, ResolvedChartArtifact):
-            group = _card_group_from_payload(label, artifact.artifact_id, artifact.payload, width, chart_spec=artifact.spec)
+            group = _card_group_from_payload(
+                label, artifact.artifact_id, artifact.payload, width, chart_spec=artifact.spec
+            )
             if group is not None:
                 groups.append(group)
         elif isinstance(artifact, ResolvedMapArtifact):
@@ -411,7 +413,9 @@ def _card_group_from_payload(
     if payload.graph is not None:
         views.append(ViewItem(kind=VIEW_KIND_GRAPH, renderable=_build_graph_card()))
     if chart_spec is not None and payload.df is not None and not payload.df.empty:
-        views.append(ViewItem(kind=VIEW_KIND_CHART, renderable=build_chart(payload.df, chart_spec, width), chart_spec=chart_spec))
+        views.append(
+            ViewItem(kind=VIEW_KIND_CHART, renderable=build_chart(payload.df, chart_spec, width), chart_spec=chart_spec)
+        )
     if payload.df is not None:
         renderable, shown_cols = build_table(payload.df, available_width=width, include_footer=False)
         views.append(

@@ -29,17 +29,38 @@ import pandas as pd
 
 from tabulaflow.app import pane as pane_mod
 from tabulaflow.app.debug import debug_chart_fixtures
-from tabulaflow.app.pane import PaneCard, PaneSource, card_payload, pane_panel_for_output, render_resolved_output, turn_payload
-from tabulaflow.app.pane.cards import GraphCardInput, MapCardInput, ResultCardInput, render_graph_data, render_map_data, render_result_data
+from tabulaflow.app.pane import (
+    PaneCard,
+    PaneSource,
+    card_payload,
+    pane_panel_for_output,
+    render_resolved_output,
+    turn_payload,
+)
+from tabulaflow.app.pane.cards import (
+    GraphCardInput,
+    MapCardInput,
+    ResultCardInput,
+    render_graph_data,
+    render_map_data,
+    render_result_data,
+)
 from tabulaflow.app.pane import server as pane_server
 from tabulaflow.app.runtime_paths import generate_session_id
 from tabulaflow.app.turn import TurnOutput
-from tabulaflow.chat import ChatResult
-from tabulaflow.core.outputs import ChartArtifactSpec, ChoiceOption, ChoiceParameter, NumberParameter, OutputSpec, TableArtifactSpec
-from tabulaflow.core.types import ExecResult, GraphView, PredQuery
-from tabulaflow.toolhub import OutputStore
-from tabulaflow.toolhub.render_graph import materialize_graph_view, normalize_graph_spec
-from tabulaflow.toolhub.render_map import normalize_map_spec
+from tabulaflow.agents.chat import ChatResult
+from tabulaflow.output.specs import (
+    ChartArtifactSpec,
+    ChoiceOption,
+    ChoiceParameter,
+    NumberParameter,
+    OutputSpec,
+    TableArtifactSpec,
+)
+from tabulaflow.core import ExecResult, GraphResult
+from tabulaflow.agents.tools import OutputStore
+from tabulaflow.output.graphs import materialize_graph_result, normalize_graph_spec
+from tabulaflow.agents.tools.render_map import normalize_map_spec
 
 _MARKDOWN_SHOWCASE = r"""# Heading 1
 
@@ -299,7 +320,7 @@ def _result_input(
     query: str | None,
     df: pd.DataFrame | None,
     chart_spec: dict[str, object] | None = None,
-    graph: GraphView | None = None,
+    graph: GraphResult | None = None,
     query_lexer: str = "sql",
 ) -> ResultCardInput:
     return ResultCardInput(
@@ -338,8 +359,10 @@ def _graph_card(
 ) -> PaneCard:
     """Build a graph card via the real spec → normalize → render pipeline."""
     normalized = normalize_graph_spec(graph_spec, sources)
-    graph = materialize_graph_view(normalized, sources)
-    card = render_graph_data(GraphCardInput(label=label, graph=graph, layout=str(normalized.get("layout", "force"))), pane_dir)
+    graph = materialize_graph_result(normalized, sources)
+    card = render_graph_data(
+        GraphCardInput(label=label, graph=graph, layout=str(normalized.get("layout", "force"))), pane_dir
+    )
     assert card is not None
     return card
 
@@ -408,17 +431,16 @@ def _push_controls_turn(pane: pane_mod.OutputPane, pane_dir: Path) -> None:
         output_store.add_fixed_result_source(
             "preview",
             "sql",
-            PredQuery(
-                query="-- preview empty table fixture",
-                exec_result=ExecResult(df=pd.DataFrame({"customer": pd.Series(dtype="object"), "value": pd.Series(dtype="int64")})),
-            ),
+            "-- preview empty table fixture",
+            ExecResult(df=pd.DataFrame({"customer": pd.Series(dtype="object"), "value": pd.Series(dtype="int64")})),
         )
     )
     no_data_source = asyncio.run(
         output_store.add_fixed_result_source(
             "preview",
             "sql",
-            PredQuery(query="-- preview no tabular data fixture", exec_result=ExecResult()),
+            "-- preview no tabular data fixture",
+            ExecResult(),
         )
     )
     values = {
@@ -447,10 +469,8 @@ def _push_controls_turn(pane: pane_mod.OutputPane, pane_dir: Path) -> None:
                             source.id,
                             "sql",
                             selection,
-                            PredQuery(
-                                query=f"-- preview fixture for {period_label} {metric_label.lower()}, min_value={min_value}",
-                                exec_result=ExecResult(df=df),
-                            ),
+                            f"-- preview fixture for {period_label} {metric_label.lower()}, min_value={min_value}",
+                            ExecResult(df=df),
                         )
                     )
                     if metric == "revenue":
@@ -460,10 +480,8 @@ def _push_controls_turn(pane: pane_mod.OutputPane, pane_dir: Path) -> None:
                                 revenue_source.id,
                                 "sql",
                                 selection,
-                                PredQuery(
-                                    query=f"-- preview revenue-only detail fixture for {period_label}, min_value={min_value}",
-                                    exec_result=ExecResult(df=detail),
-                                ),
+                                f"-- preview revenue-only detail fixture for {period_label}, min_value={min_value}",
+                                ExecResult(df=detail),
                             )
                         )
     result = ChatResult(
@@ -481,13 +499,13 @@ def _push_controls_turn(pane: pane_mod.OutputPane, pane_dir: Path) -> None:
                     label="customer comparison",
                     source_id=source.id,
                     spec={
-                    "mark": "bar",
-                    "encoding": {
-                        "x": {"field": "customer", "type": "nominal"},
-                        "y": {"field": "value", "type": "quantitative"},
-                        "color": {"field": "customer", "type": "nominal"},
-                    },
-                    "title": "Selected customer metric",
+                        "mark": "bar",
+                        "encoding": {
+                            "x": {"field": "customer", "type": "nominal"},
+                            "y": {"field": "value", "type": "quantitative"},
+                            "color": {"field": "customer", "type": "nominal"},
+                        },
+                        "title": "Selected customer metric",
                     },
                 ),
                 TableArtifactSpec(id=revenue_source.id, label="revenue-only detail", source_id=revenue_source.id),
@@ -684,7 +702,7 @@ def _cypher_graph_result() -> ResultCardInput:
             ]
         }
     )
-    graph = GraphView(
+    graph = GraphResult(
         nodes=[
             {
                 "id": "person:alice",

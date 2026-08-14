@@ -15,8 +15,8 @@ from textual.containers import VerticalScroll
 
 from tabulaflow.app.theme import FOCUS_SURFACE
 from tabulaflow.app.widgets import AgentProgressWidget
-from tabulaflow.chat import AnswerDelta, Finished
-from tabulaflow.chat.result import ChatResult
+from tabulaflow.agents.chat import AnswerDelta, Finished
+from tabulaflow.agents.chat.result import ChatResult
 
 
 MARKDOWN = """# Heading 1

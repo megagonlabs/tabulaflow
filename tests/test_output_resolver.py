@@ -1,7 +1,7 @@
 import pandas as pd
 import pytest
 
-from tabulaflow.core import (
+from tabulaflow.output.specs import (
     ChoiceOption,
     ChoiceParameter,
     ChartArtifactSpec,
@@ -11,9 +11,16 @@ from tabulaflow.core import (
     ParameterizedSource,
     TableArtifactSpec,
 )
-from tabulaflow.core.types import ExecResult, PredQuery
-from tabulaflow.toolhub import OutputResolutionError, OutputResolver, OutputStore, ResolvedTableArtifact, SourceNotApplicable, UnavailableArtifact
-from tabulaflow.toolhub.output_store import render_parameterized_query
+from tabulaflow.core import ExecResult
+from tabulaflow.agents.tools import (
+    OutputResolutionError,
+    OutputResolver,
+    OutputStore,
+    ResolvedTableArtifact,
+    SourceNotApplicable,
+    UnavailableArtifact,
+)
+from tabulaflow.output.store import render_parameterized_query
 
 
 async def _output_store_with_results() -> OutputStore:
@@ -21,12 +28,14 @@ async def _output_store_with_results() -> OutputStore:
     await output_store.add_fixed_result_source(
         "workspace",
         "sql",
-        PredQuery(query="SELECT 1 AS a", exec_result=ExecResult(df=pd.DataFrame({"a": [1]}))),
+        "SELECT 1 AS a",
+        ExecResult(df=pd.DataFrame({"a": [1]})),
     )
     await output_store.add_fixed_result_source(
         "workspace",
         "sql",
-        PredQuery(query="SELECT 2 AS a", exec_result=ExecResult(df=pd.DataFrame({"a": [2]}))),
+        "SELECT 2 AS a",
+        ExecResult(df=pd.DataFrame({"a": [2]})),
     )
     return output_store
 
@@ -82,13 +91,15 @@ async def test_parameterized_source_resolves_by_projected_selection() -> None:
         source.id,
         "sql",
         {"metric": "revenue"},
-        PredQuery(query="SELECT 1 AS a", exec_result=ExecResult(df=pd.DataFrame({"a": [1]}))),
+        "SELECT 1 AS a",
+        ExecResult(df=pd.DataFrame({"a": [1]})),
     )
     await output_store.cache_parameterized_result(
         source.id,
         "sql",
         {"metric": "profit"},
-        PredQuery(query="SELECT 2 AS a", exec_result=ExecResult(df=pd.DataFrame({"a": [2]}))),
+        "SELECT 2 AS a",
+        ExecResult(df=pd.DataFrame({"a": [2]})),
     )
     resolver = OutputResolver(output_store)
     output = OutputSpec(
@@ -227,14 +238,21 @@ async def test_parameterized_source_not_applicable_is_not_an_error() -> None:
     output_store = OutputStore()
     source = output_store.add_parameterized_source(
         "workspace",
-        [ChoiceParameter(id="metric", label="Metric", choices=[ChoiceOption(id="revenue", label="Revenue"), ChoiceOption(id="orders", label="Orders")])],
+        [
+            ChoiceParameter(
+                id="metric",
+                label="Metric",
+                choices=[ChoiceOption(id="revenue", label="Revenue"), ChoiceOption(id="orders", label="Orders")],
+            )
+        ],
         "{% if metric != 'revenue' %}{{ not_applicable('only applies to revenue') }}{% endif %} SELECT 1 AS value",
     )
     await output_store.cache_parameterized_result(
         source.id,
         "sql",
         {"metric": "revenue"},
-        PredQuery(query="SELECT 1 AS value", exec_result=ExecResult(df=pd.DataFrame({"value": [1]}))),
+        "SELECT 1 AS value",
+        ExecResult(df=pd.DataFrame({"value": [1]})),
     )
     output = OutputSpec(
         parameters=output_store.source_parameters(source.id),
@@ -256,7 +274,8 @@ async def test_table_artifact_without_displayable_payload_is_unavailable() -> No
     await output_store.add_fixed_result_source(
         "workspace",
         "sql",
-        PredQuery(query="CREATE TABLE t(a INT)", exec_result=ExecResult()),
+        "CREATE TABLE t(a INT)",
+        ExecResult(),
     )
     output = OutputSpec(
         sources=[FixedResultSource(id="fixed", result_id="R1")],
@@ -277,7 +296,8 @@ async def test_table_artifact_without_displayable_payload_reports_affected_rows(
     await output_store.add_fixed_result_source(
         "workspace",
         "sql",
-        PredQuery(query="UPDATE t SET a = 1", exec_result=ExecResult(affected_rows=3)),
+        "UPDATE t SET a = 1",
+        ExecResult(affected_rows=3),
     )
     output = OutputSpec(
         sources=[FixedResultSource(id="fixed", result_id="R1")],
@@ -298,7 +318,8 @@ async def test_chart_artifact_without_dataframe_is_unavailable() -> None:
     await output_store.add_fixed_result_source(
         "workspace",
         "sql",
-        PredQuery(query="CREATE TABLE t(a INT)", exec_result=ExecResult()),
+        "CREATE TABLE t(a INT)",
+        ExecResult(),
     )
     output = OutputSpec(
         sources=[FixedResultSource(id="fixed", result_id="R1")],

@@ -1,11 +1,12 @@
 import jinja2
 import time
 from typing import ClassVar, Literal
-from tabulaflow.core.db_connector import BaseSQLDBConnector
-from tabulaflow.core.formatters.base import formatter_registry, NL2QFormatter
-from tabulaflow.core.types import PredQuery, Usage, Trajectory
+from tabulaflow.data import SQLConnectorProtocol
+from tabulaflow.output.schema_formatters.base import schema_formatter_registry, SchemaFormatter
+from tabulaflow.agents.trace import Usage, Trajectory
+from tabulaflow.research.types import PredQuery
 from tabulaflow.research.types import AmbigNL2QTask, SimpleAmbigNL2QTaskOutput
-from tabulaflow.toolhub import BaseTool, RunQueryTool
+from tabulaflow.agents.tools import BaseTool, RunQueryTool
 from tabulaflow.research.tools import (
     SearchKeywordsTool,
     FinishTool,
@@ -15,8 +16,8 @@ from tabulaflow.research.tools import (
 )
 from tabulaflow.research.agenthub.base import agent_registry, BaseUserSimulator, BaseAgentConfig
 from tabulaflow.research.agenthub.utils import get_max_steps_processor, instrument, BasicAgentConfig
-from tabulaflow.core.schema_compressor import SchemaCompressor
-from tabulaflow.core.llm import make_agent
+from tabulaflow.data.schema_compressor import SchemaCompressor
+from tabulaflow.agents.llm import make_agent
 
 
 SYSTEM_PROMPT = """
@@ -61,7 +62,7 @@ class AmbigSimpleSQLAgent:
         config: AmbigSimpleSQLAgentConfig,
     ):
         self.config = config
-        self.formatter: NL2QFormatter = formatter_registry.get_class(config.schema_formatter)(
+        self.formatter: SchemaFormatter = schema_formatter_registry.get_class(config.schema_formatter)(
             **config.to_formatter_kwargs()
         )
         self.compressor = SchemaCompressor() if config.compress_schema else None
@@ -72,7 +73,7 @@ class AmbigSimpleSQLAgent:
 
     @instrument
     async def predict_async(
-        self, task: AmbigNL2QTask, db_connector: BaseSQLDBConnector, user_simulator: BaseUserSimulator
+        self, task: AmbigNL2QTask, db_connector: SQLConnectorProtocol, user_simulator: BaseUserSimulator
     ) -> SimpleAmbigNL2QTaskOutput:
         t0 = time.time()
 
@@ -107,7 +108,7 @@ class AmbigSimpleSQLAgent:
         )
 
         result = await agent.run(task.question)
-        pred_query: PredQuery = tools["run_query"].last_pred_query()  # type: ignore
+        pred_query: PredQuery = PredQuery.from_execution(tools["run_query"].last_execution())  # type: ignore
         trajectory = Trajectory.from_pydantic_ai_messages(result.all_messages())
 
         metrics = {}

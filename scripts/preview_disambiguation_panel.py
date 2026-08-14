@@ -306,7 +306,10 @@ class AmbiguityPanelPreview(Widget):
                 cursor = amb_idx == cursor_ambiguity and choice_idx == cursor_choice
                 applied = self._selected[amb_idx] == choice_idx
                 text.append("  ")
-                text.append("❯ " if cursor else "  ", style=KEY_HINT if cursor and self.has_focus else KEY_HINT_DIM if cursor else "")
+                text.append(
+                    "❯ " if cursor else "  ",
+                    style=KEY_HINT if cursor and self.has_focus else KEY_HINT_DIM if cursor else "",
+                )
                 text.append("● " if applied else "  ", style=self._focus_accent if applied else "")
                 if applied:
                     label_style = Style(bold=True, color=self._focus_accent)

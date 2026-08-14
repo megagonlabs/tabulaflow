@@ -9,17 +9,17 @@ from typing import TYPE_CHECKING, Any
 import pytest
 from textual.widgets import Button, Input
 
-from tabulaflow.app import session as session_module
+from tabulaflow.app import state as state_module
 from tabulaflow.app import tui
 from tabulaflow.app.commands import CommandResult
 from tabulaflow.app.config import LLM_OFF, LLMRoleConfig, LLMPreset, ReasoningEffort, ResolvedLLMSelection
 from tabulaflow.app.runtime_paths import RuntimePaths
-from tabulaflow.app.session import SessionState
+from tabulaflow.app.state import AppState
 from tabulaflow.app.tui import TabulaflowApp
 from tabulaflow.app.widgets import HistoryInput, SpinnerWidget, SystemMessage, UserMessage
 
 if TYPE_CHECKING:
-    from tabulaflow.chat import ChatAgent
+    from tabulaflow.agents.chat import ChatSession
 
 
 class _StatusCapture:
@@ -59,10 +59,10 @@ def _app(preset: LLMPreset | None) -> TabulaflowApp:
     return TabulaflowApp(llm_selection=_selection(preset))
 
 
-def _activate_selected(session: SessionState) -> ChatAgent:
+def _activate_selected(session: AppState) -> ChatSession:
     assert session.llm_preset is not None
     session.activate_llm_preset(session.llm_preset)
-    agent = session.active_chat_agent
+    agent = session.active_chat_session
     assert agent is not None
     return agent
 
@@ -96,9 +96,9 @@ async def test_ensure_session_passes_session_paths_by_keyword(tmp_path: Path, mo
     async def fake_autoconnect_sample(_session: object) -> None:
         captured["autoconnect_session"] = _session
 
-    monkeypatch.setattr(session_module, "create_workspace_connector", fake_create_workspace_connector)
+    monkeypatch.setattr(state_module, "create_workspace_connector", fake_create_workspace_connector)
     monkeypatch.setattr(tui, "_warm_session_imports", lambda: None)
-    monkeypatch.setattr(tui, "SessionState", fake_session_state)
+    monkeypatch.setattr(tui, "AppState", fake_session_state)
     monkeypatch.setattr(app, "_maybe_autoconnect_sample", fake_autoconnect_sample)
     monkeypatch.setattr(app, "_enable_explorer_button", lambda: None)
 
@@ -127,7 +127,7 @@ def test_bottom_status_shows_selected_model_before_agent_is_ready(
     )
     app = _app(preset)
     app._project_dir = tmp_path
-    session = SessionState(
+    session = AppState(
         llm_preset=preset,
         trajectories_dir=tmp_path / "trajectories",
         data_dir=tmp_path / "data",
@@ -192,7 +192,7 @@ def test_bottom_status_shows_llm_off_before_session_when_no_profile(
 def test_session_starts_with_unverified_llm_preset(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
 
-    session = SessionState(
+    session = AppState(
         llm_preset=_preset(
             model="anthropic:claude-sonnet-4-5-20250929",
             reasoning_effort="medium",
@@ -204,7 +204,7 @@ def test_session_starts_with_unverified_llm_preset(tmp_path: Path, monkeypatch: 
         workspace=None,
     )
 
-    assert session.active_chat_agent is None
+    assert session.active_chat_session is None
     assert session.llm_preset is not None
     assert session.llm_preset.main.model == "anthropic:claude-sonnet-4-5-20250929"
     assert session.registry.list_aliases() == []
@@ -212,12 +212,12 @@ def test_session_starts_with_unverified_llm_preset(tmp_path: Path, monkeypatch: 
 
     with pytest.raises(Exception, match="ANTHROPIC_API_KEY"):
         _activate_selected(session)
-    assert session.active_chat_agent is None
+    assert session.active_chat_session is None
 
 
 def test_initial_activation_requires_subagent_provider(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
-    session = SessionState(
+    session = AppState(
         llm_preset=_preset(
             model="test",
             subagent_model="anthropic:claude-haiku-4-5-20251001",
@@ -229,11 +229,11 @@ def test_initial_activation_requires_subagent_provider(tmp_path: Path, monkeypat
 
     with pytest.raises(Exception, match="ANTHROPIC_API_KEY"):
         _activate_selected(session)
-    assert session.active_chat_agent is None
+    assert session.active_chat_session is None
 
 
 def test_session_starts_without_llm_preset(tmp_path: Path) -> None:
-    session = SessionState(
+    session = AppState(
         llm_preset=None,
         trajectories_dir=tmp_path / "trajectories",
         data_dir=tmp_path / "data",
@@ -241,12 +241,12 @@ def test_session_starts_without_llm_preset(tmp_path: Path) -> None:
     )
 
     assert session.llm_preset is None
-    assert session.active_chat_agent is None
+    assert session.active_chat_session is None
 
 
 def test_llm_off_keeps_initialized_agent_dormant(tmp_path: Path) -> None:
     preset = _preset()
-    session = SessionState(
+    session = AppState(
         llm_preset=preset,
         trajectories_dir=tmp_path / "trajectories",
         data_dir=tmp_path / "data",
@@ -257,16 +257,16 @@ def test_llm_off_keeps_initialized_agent_dormant(tmp_path: Path) -> None:
     session.llm_preset = None
 
     assert session.llm_preset is None
-    assert session.active_chat_agent is None
+    assert session.active_chat_session is None
     session.llm_preset = preset
-    assert session.active_chat_agent is agent
+    assert session.active_chat_session is agent
 
 
 def test_unverified_session_can_select_and_then_build_valid_llm(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
-    session = SessionState(
+    session = AppState(
         llm_preset=_preset(
             model="anthropic:claude-sonnet-4-5-20250929",
             reasoning_effort="medium",
@@ -280,18 +280,18 @@ def test_unverified_session_can_select_and_then_build_valid_llm(
 
     session.llm_preset = _preset()
 
-    assert session.active_chat_agent is None
+    assert session.active_chat_session is None
     assert session.llm_preset == _preset()
 
     _activate_selected(session)
-    assert session.active_chat_agent is not None
+    assert session.active_chat_session is not None
 
 
 def test_selecting_unusable_preset_defers_error_until_agent_build(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
-    session = SessionState(
+    session = AppState(
         llm_preset=_preset(),
         trajectories_dir=tmp_path / "trajectories",
         data_dir=tmp_path / "data",
@@ -308,20 +308,20 @@ def test_selecting_unusable_preset_defers_error_until_agent_build(
     )
     session.llm_preset = selected_preset
 
-    assert session.active_chat_agent is None
+    assert session.active_chat_session is None
     assert session.llm_preset == selected_preset
 
     with pytest.raises(Exception, match="ANTHROPIC_API_KEY"):
         _activate_selected(session)
-    assert session.active_chat_agent is None
+    assert session.active_chat_session is None
     assert old_agent.model == old_model
     session.llm_preset = _preset()
-    assert session.active_chat_agent is old_agent
+    assert session.active_chat_session is old_agent
 
 
-def test_switching_preset_preserves_live_chat_agent_state(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_switching_preset_preserves_live_chat_session_state(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("OPENAI_API_KEY", "sk-test123456789ab4x")
-    session = SessionState(
+    session = AppState(
         llm_preset=_preset(
             model="openai-responses:gpt-5",
             reasoning_effort="medium",
@@ -344,9 +344,9 @@ def test_switching_preset_preserves_live_chat_agent_state(tmp_path: Path, monkey
         subagent_reasoning_effort="medium",
     )
 
-    assert session.active_chat_agent is None
+    assert session.active_chat_session is None
     _activate_selected(session)
-    assert session.active_chat_agent is agent
+    assert session.active_chat_session is agent
     assert agent.resolve_api_keys()[0] == "sk-test123456789ab4x"
     assert agent._message_history is message_history
     assert agent.output_store is output_store

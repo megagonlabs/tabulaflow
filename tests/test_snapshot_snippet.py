@@ -2,7 +2,7 @@
 
 import re
 
-from tabulaflow.toolhub.web_browser import (
+from tabulaflow.agents.tools.web_browser import (
     _SNIPPET_HEAD_CHARS,
     _SNIPPET_REF_BUDGET_CHARS,
     _SNIPPET_TAIL_CHARS,

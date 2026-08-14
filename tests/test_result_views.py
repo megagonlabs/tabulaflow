@@ -18,10 +18,17 @@ from tabulaflow.app.display import (
     build_resolved_output_card_views,
 )
 from tabulaflow.app.widgets import AgentResultWidget
-from tabulaflow.chat import ChatResult
-from tabulaflow.core.outputs import ChoiceOption, ChoiceParameter, NumberParameter, OutputSpec, ParameterSpec, ResultMetadata
-from tabulaflow.core.types import GraphView, GraphViewEdge, GraphViewNode
-from tabulaflow.toolhub.output_resolver import (
+from tabulaflow.agents.chat import ChatResult
+from tabulaflow.output.specs import (
+    ChoiceOption,
+    ChoiceParameter,
+    NumberParameter,
+    OutputSpec,
+    ParameterSpec,
+    ResultMetadata,
+)
+from tabulaflow.core import GraphResult, GraphResultEdge, GraphResultNode
+from tabulaflow.output.resolver import (
     ResolvedChartArtifact,
     ResolvedArtifact,
     ResolvedGraphArtifact,
@@ -30,7 +37,7 @@ from tabulaflow.toolhub.output_resolver import (
     ResolvedTableArtifact,
     UnavailableArtifact,
 )
-from tabulaflow.toolhub.output_store import ResultPayload
+from tabulaflow.output.store import ResultPayload
 
 
 def _payload(
@@ -38,7 +45,7 @@ def _payload(
     *,
     df: pd.DataFrame | None = None,
     query: str = "SELECT 1",
-    graph: GraphView | None = None,
+    graph: GraphResult | None = None,
     connector_type: Literal["sql", "property_graph"] = "sql",
 ) -> ResultPayload:
     return ResultPayload(
@@ -94,7 +101,9 @@ def _graph(graph_id: str, label: str) -> ResolvedGraphArtifact:
     return ResolvedGraphArtifact(
         artifact_id=graph_id,
         label=label,
-        graph=GraphView(nodes=[GraphViewNode(id="a"), GraphViewNode(id="b")], edges=[GraphViewEdge(source="a", target="b")]),
+        graph=GraphResult(
+            nodes=[GraphResultNode(id="a"), GraphResultNode(id="b")], edges=[GraphResultEdge(source="a", target="b")]
+        ),
         layout="force",
     )
 
@@ -137,7 +146,9 @@ def test_empty_table_artifact_keeps_data_view() -> None:
         artifact_id="Q1",
         source_id="Q1",
         label="empty",
-        payload=_payload("Q1", df=pd.DataFrame({"customer": pd.Series(dtype="object"), "value": pd.Series(dtype="int64")})),
+        payload=_payload(
+            "Q1", df=pd.DataFrame({"customer": pd.Series(dtype="object"), "value": pd.Series(dtype="int64")})
+        ),
     )
 
     groups = _groups(card)
@@ -153,7 +164,9 @@ def test_empty_chart_artifact_skips_chart_but_keeps_data_view() -> None:
         source_id=card.source_id,
         label=card.label,
         spec=card.spec,
-        payload=_payload("Q1", df=pd.DataFrame({"region": pd.Series(dtype="object"), "revenue": pd.Series(dtype="int64")}), query=""),
+        payload=_payload(
+            "Q1", df=pd.DataFrame({"region": pd.Series(dtype="object"), "revenue": pd.Series(dtype="int64")}), query=""
+        ),
     )
 
     groups = _groups(card)
@@ -162,9 +175,12 @@ def test_empty_chart_artifact_skips_chart_but_keeps_data_view() -> None:
 
 
 def test_table_artifact_with_graph_has_graph_data_query_views() -> None:
-    graph = GraphView(
-        nodes=[GraphViewNode(id="a", label="Alice", group="Person"), GraphViewNode(id="b", label="Bob", group="Person")],
-        edges=[GraphViewEdge(source="a", target="b", label="KNOWS", directed=True)],
+    graph = GraphResult(
+        nodes=[
+            GraphResultNode(id="a", label="Alice", group="Person"),
+            GraphResultNode(id="b", label="Bob", group="Person"),
+        ],
+        edges=[GraphResultEdge(source="a", target="b", label="KNOWS", directed=True)],
     )
     card = ResolvedTableArtifact(
         artifact_id="Q1",
@@ -179,7 +195,14 @@ def test_table_artifact_with_graph_has_graph_data_query_views() -> None:
 
 
 def test_unavailable_artifact_yields_single_info_view() -> None:
-    groups = _groups(UnavailableArtifact(artifact_id="placeholder:QoQ change", label="QoQ change", reason="only applies when Time period = Q2", status="not_applicable"))
+    groups = _groups(
+        UnavailableArtifact(
+            artifact_id="placeholder:QoQ change",
+            label="QoQ change",
+            reason="only applies when Time period = Q2",
+            status="not_applicable",
+        )
+    )
 
     assert len(groups) == 1
     assert groups[0].label == "QoQ change"
@@ -360,7 +383,7 @@ def test_map_artifact_payload_survives_terminal_render() -> None:
     assert artifact.payload_by_source["Q1"].df is not None
 
 
-def test_graph_artifact_graph_view_survives_terminal_render() -> None:
+def test_graph_artifact_graph_result_survives_terminal_render() -> None:
     artifact = _graph("GRAPH1", "lineage")
     _groups(artifact)
     assert len(artifact.graph.nodes) == 2

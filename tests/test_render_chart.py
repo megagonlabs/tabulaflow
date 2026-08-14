@@ -9,10 +9,10 @@ import pandas as pd
 import pytest
 
 from tabulaflow.app.pane import _add_line_hover, build_chart_data
-from tabulaflow.core.outputs import ChartArtifactSpec, ChoiceOption, ChoiceParameter
-from tabulaflow.core.types import ExecResult, PredQuery
-from tabulaflow.toolhub.output_store import OutputStore
-from tabulaflow.toolhub.render_chart import (
+from tabulaflow.output.specs import ChartArtifactSpec, ChoiceOption, ChoiceParameter
+from tabulaflow.core import ExecResult
+from tabulaflow.output.store import OutputStore
+from tabulaflow.agents.tools.render_chart import (
     ChartNotRenderable,
     RenderChartTool,
     chart_type_label,
@@ -172,7 +172,7 @@ class TestAutoLineHover:
 
 async def _output_store_with(df: pd.DataFrame) -> OutputStore:
     output_store = OutputStore()
-    await output_store.add_fixed_result_source("db", "sql", PredQuery(query="SELECT 1", exec_result=ExecResult(df=df)))
+    await output_store.add_fixed_result_source("db", "sql", "SELECT 1", ExecResult(df=df))
     return output_store
 
 
@@ -208,16 +208,15 @@ class TestRenderChartTool:
             source.id,
             "sql",
             {"ranking": "net"},
-            PredQuery(query="SELECT 'net' AS a, 1 AS b", exec_result=ExecResult(df=pd.DataFrame({"a": ["net"], "b": [1]}))),
+            "SELECT 'net' AS a, 1 AS b",
+            ExecResult(df=pd.DataFrame({"a": ["net"], "b": [1]})),
         )
         await output_store.cache_parameterized_result(
             source.id,
             "sql",
             {"ranking": "count"},
-            PredQuery(
-                query="SELECT 'count' AS a, 2 AS b",
-                exec_result=ExecResult(df=pd.DataFrame({"a": ["count"], "b": [2]})),
-            ),
+            "SELECT 'count' AS a, 2 AS b",
+            ExecResult(df=pd.DataFrame({"a": ["count"], "b": [2]})),
         )
         spec = {"mark": "bar", "encoding": {"x": {"field": "a"}, "y": {"field": "b"}}}
 
@@ -244,13 +243,15 @@ class TestRenderChartTool:
             source.id,
             "sql",
             {"ranking": "net"},
-            PredQuery(query="SELECT 'net' AS a", exec_result=ExecResult(df=pd.DataFrame({"a": ["net"]}))),
+            "SELECT 'net' AS a",
+            ExecResult(df=pd.DataFrame({"a": ["net"]})),
         )
         await output_store.cache_parameterized_result(
             source.id,
             "sql",
             {"ranking": "count"},
-            PredQuery(query="SELECT 2 AS c", exec_result=ExecResult(df=pd.DataFrame({"c": [2]}))),
+            "SELECT 2 AS c",
+            ExecResult(df=pd.DataFrame({"c": [2]})),
         )
         spec = {"mark": "bar", "encoding": {"x": {"field": "a"}, "y": {"field": "b"}}}
 

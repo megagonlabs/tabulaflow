@@ -14,11 +14,11 @@ import duckdb
 import pytest
 from pydantic_ai.settings import ModelSettings
 
-import tabulaflow.toolhub.extract_rows_from_documents as mod
-from tabulaflow.core.db_connector.sql_conn import SQLConnector
-from tabulaflow.toolhub.engines.column_types import python_type_for_dtype
-from tabulaflow.toolhub.entity_extractor import EntityExtractor
-from tabulaflow.toolhub.extract_rows_from_documents import ExtractRowsFromDocumentsTool
+import tabulaflow.agents.tools.extract_rows_from_documents as mod
+from tabulaflow.data.sql import SQLConnector
+from tabulaflow.agents.tools.engines.column_types import python_type_for_dtype
+from tabulaflow.agents.tools.entity_extractor import EntityExtractor
+from tabulaflow.agents.tools.extract_rows_from_documents import ExtractRowsFromDocumentsTool
 
 
 def test_python_type_for_dtype() -> None:

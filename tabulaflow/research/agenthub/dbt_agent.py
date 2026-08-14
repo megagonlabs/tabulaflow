@@ -12,14 +12,14 @@ import jinja2
 
 from tabulaflow.research.agenthub.base import agent_registry, BaseAgentConfig
 from tabulaflow.research.agenthub.utils import BasicAgentConfig, get_max_steps_processor, instrument
-from tabulaflow.core.db_connector import BaseSQLDBConnector
-from tabulaflow.core.formatters import NL2QFormatter, formatter_registry
-from tabulaflow.modulehub import DBSummarizer
-from tabulaflow.core.types import Usage, Trajectory
+from tabulaflow.data import SQLConnectorProtocol
+from tabulaflow.output.schema_formatters import SchemaFormatter, schema_formatter_registry
+from tabulaflow.agents.modules import DBSummarizer
+from tabulaflow.agents.trace import Usage, Trajectory
 from tabulaflow.research.types import DbtTask, DbtTaskOutput
-from tabulaflow.toolhub import GetTableSchemaTool, RunQueryTool
+from tabulaflow.agents.tools import GetTableSchemaTool, RunQueryTool
 from tabulaflow.research.tools import ExecuteBashTool, FileEditorTool, RunDbtTool
-from tabulaflow.core.llm import make_agent
+from tabulaflow.agents.llm import make_agent
 
 logger = logging.getLogger(__name__)
 
@@ -109,7 +109,7 @@ class DbtAgent:
 
     def __init__(self, config: DbtAgentConfig):
         self.config = config
-        self.formatter: NL2QFormatter = formatter_registry.get_class(config.schema_formatter)(
+        self.formatter: SchemaFormatter = schema_formatter_registry.get_class(config.schema_formatter)(
             **config.to_formatter_kwargs()
         )
 
@@ -118,7 +118,7 @@ class DbtAgent:
         return cls(config)
 
     @instrument
-    async def predict_async(self, task: DbtTask, db_connector: BaseSQLDBConnector) -> DbtTaskOutput:
+    async def predict_async(self, task: DbtTask, db_connector: SQLConnectorProtocol) -> DbtTaskOutput:
         t0 = time.time()
         assert task.working_dir is not None, "working_dir must be set before calling predict_async"
         working_dir: str = task.working_dir

@@ -1,6 +1,6 @@
 import pytest
 
-from tabulaflow.core import (
+from tabulaflow.output.specs import (
     OutputSpec,
     ChoiceOption,
     ChoiceParameter,

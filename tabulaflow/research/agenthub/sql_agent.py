@@ -9,14 +9,16 @@ import numpy as np
 import numpy.typing as npt
 from pydantic import BaseModel
 import logging
-from tabulaflow.core.db_connector import NL2QDBConnector
-from tabulaflow.core.types import SQLSchema, SQLTableSchema, PredQuery, Usage, Trajectory, ColumnRef
+from tabulaflow.data import DataConnector
+from tabulaflow.core import SQLSchema, SQLTableSchema, ColumnRef
+from tabulaflow.agents.trace import Usage, Trajectory
+from tabulaflow.research.types import PredQuery
 from tabulaflow.research.types import ExtraPredInfo, NL2QDataset, SimpleNL2QTask, SimpleNL2QTaskOutput
-from tabulaflow.modulehub import ERDiagramSynthesizer, SchemaPreprocessor
+from tabulaflow.agents.modules import ERDiagramSynthesizer, SchemaPreprocessor
 from tabulaflow.research.question_embedder import QuestionEmbedder
-from tabulaflow.toolhub import BaseTool, RunQueryTool
+from tabulaflow.agents.tools import BaseTool, RunQueryTool
 from tabulaflow.research.tools import SearchKeywordsTool, FinishTool
-from tabulaflow.core.formatters.base import formatter_registry, NL2QFormatter
+from tabulaflow.output.schema_formatters.base import schema_formatter_registry, SchemaFormatter
 from tabulaflow.research.agenthub.base import agent_registry, BaseAgentConfig
 from tabulaflow.research.agenthub.utils import (
     get_max_steps_processor,
@@ -24,10 +26,11 @@ from tabulaflow.research.agenthub.utils import (
     BasicAgentConfig,
     TaskRunContext,
 )
-from tabulaflow.core.utils import extract_code, extract_all_source_columns
-from tabulaflow.core.er_diagram import ERDiagram
-from tabulaflow.core.formatters.er_diagram import ERDiagramMermaidFormatter
-from tabulaflow.core.llm import make_agent
+from tabulaflow.agents.response_parsing import extract_code
+from tabulaflow.data.query_analysis import extract_all_source_columns
+from tabulaflow.output.erd import ERDiagram
+from tabulaflow.output.schema_formatters.er_diagram import ERDiagramMermaidFormatter
+from tabulaflow.agents.llm import make_agent
 
 
 logger = logging.getLogger(__name__)
@@ -206,7 +209,7 @@ class SchemaLinker:
             model_settings=self.config.to_model_settings(),
         )
         result = await agent.run(format_question(task))
-        pred_query: PredQuery = tools["run_query"].last_pred_query()  # type: ignore
+        pred_query: PredQuery = PredQuery.from_execution(tools["run_query"].last_execution())  # type: ignore
         ctx.usage += Usage.from_pydantic_ai_usage(result.usage, self.config.llm)
         trajectory = Trajectory.from_pydantic_ai_messages(result.all_messages(), id="TRJY-SCHEMA-LINK-SQL")
         ctx.trajectories.append(trajectory)
@@ -391,7 +394,7 @@ class SQLAgent:
         self.few_shot_dataset = few_shot_dataset
         self.few_shot_embeddings = few_shot_embeddings
 
-        self.formatter: NL2QFormatter = formatter_registry.get_class(config.schema_formatter)(
+        self.formatter: SchemaFormatter = schema_formatter_registry.get_class(config.schema_formatter)(
             **config.to_formatter_kwargs()
         )
         self.schema_linker = SchemaLinker(config) if config.do_schema_linking else None
@@ -427,7 +430,7 @@ class SQLAgent:
         return preprocessed_schema
 
     @instrument
-    async def predict_async(self, task: SimpleNL2QTask, db_connector: NL2QDBConnector) -> SimpleNL2QTaskOutput:
+    async def predict_async(self, task: SimpleNL2QTask, db_connector: DataConnector) -> SimpleNL2QTaskOutput:
         if db_connector.connector_type != "sql":
             raise TypeError(f"SQLAgent requires a SQL db connector, got {type(db_connector)!r}")
         t0 = time.time()
@@ -514,7 +517,7 @@ class SQLAgent:
             model_settings=self.config.to_model_settings(),
         )
         result = await agent.run(format_question(task))
-        raw_pred_query: PredQuery = tools["run_query"].last_pred_query()  # type: ignore
+        raw_pred_query: PredQuery = PredQuery.from_execution(tools["run_query"].last_execution())  # type: ignore
         ctx.usage += Usage.from_pydantic_ai_usage(result.usage, self.config.llm)
         trajectory = Trajectory.from_pydantic_ai_messages(result.all_messages(), id="TRJY-GEN-SQL")
         ctx.trajectories.append(trajectory)
