@@ -27,6 +27,7 @@ from tabulaflow.app.display import build_resolved_output_card_views
 from tabulaflow.app.pane import PaneCard, PanePanel, manual_card_turn, pane_panel_for_output, render_resolved_output, turn_payload
 from tabulaflow.app.runtime_paths import RuntimePaths, ensure_pane_dir
 from tabulaflow.app.session import LLM_UNAVAILABLE_MESSAGE, SessionState
+from tabulaflow.app.turn import TurnOutput
 from tabulaflow.core.llm import model_display_name
 from tabulaflow.app.theme import ERROR, FOCUS_SURFACE, KEY_HINT
 from tabulaflow.app.widgets import (
@@ -38,13 +39,11 @@ from tabulaflow.app.widgets import (
     SystemMessage,
     UserMessage,
 )
-from tabulaflow.toolhub.output_resolver import OutputResolver
 
 if TYPE_CHECKING:
     from tabulaflow.app.pane import OutputPane
     from tabulaflow.chat import ChatAgent, ChatResult
     from tabulaflow.toolhub.output_resolver import ResolvedOutput
-    from tabulaflow.toolhub.output_store import OutputStore
 
 logger = logging.getLogger(__name__)
 
@@ -768,7 +767,7 @@ class TabulaflowApp(App[None]):
         self,
         result: "ChatResult",
         resolved_output: "ResolvedOutput",
-        output_store: "OutputStore",
+        turn_output: TurnOutput,
         *,
         title: str,
         user_text: str,
@@ -799,8 +798,7 @@ class TabulaflowApp(App[None]):
             if cards or user_text or result.text:
                 pane.push(
                     turn_payload(title=title, user=user_text, assistant=result.text, cards=cards, panel=panel),
-                    result=result if panel is not None else None,
-                    output_store=output_store if panel is not None else None,
+                    turn_output=turn_output if panel is not None else None,
                 )
 
         def log_background_error(task: asyncio.Task[None]) -> None:
@@ -1119,12 +1117,12 @@ class TabulaflowApp(App[None]):
         if result is None:
             return  # normal completion always yields a terminal Finished
 
-        output_store = chat_agent.output_store
-        resolved_output = await OutputResolver(output_store).resolve(result.output)
+        turn_output = TurnOutput(result.output, chat_agent.output_store)
+        resolved_output = await turn_output.resolve()
         await self._push_turn_to_pane(
             result,
             resolved_output,
-            output_store,
+            turn_output,
             title=display_text,
             user_text=display_text,
         )
@@ -1134,7 +1132,7 @@ class TabulaflowApp(App[None]):
             result_widget = AgentResultWidget(
                 result,
                 cards,
-                output_store=output_store,
+                turn_output=turn_output,
             )
             await chat_log.mount(result_widget)
             self._refresh_esc_hint()

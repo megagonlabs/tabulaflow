@@ -29,6 +29,7 @@ from tabulaflow.app.pane import PaneCard, PanePanel, PaneTurn, turn_payload
 from tabulaflow.app.screens import send_table_to_output_pane
 from tabulaflow.toolhub.render_graph import materialize_graph_view, normalize_graph_spec
 from tabulaflow.app.tui import TabulaflowApp
+from tabulaflow.app.turn import TurnOutput
 from tabulaflow.chat import ChatResult
 from tabulaflow.core import ChoiceOption, ChoiceParameter, FixedResultSource, OutputSpec, ResultMetadata, TableArtifactSpec
 from tabulaflow.toolhub.output_store import OutputStore, ResultPayload
@@ -2426,8 +2427,7 @@ async def test_output_pane_resolves_live_turn_selection(tmp_path: Path) -> None:
                 },
             ),
         ),
-        result=result,
-        output_store=cast(OutputStore, FakeOutputStore()),
+        turn_output=TurnOutput(result.output, cast(OutputStore, FakeOutputStore())),
     )
 
     cards = await pane.resolve_turn(0, {"period": "q3"})
@@ -2453,16 +2453,16 @@ async def test_output_pane_http_resolve_runs_on_app_loop(tmp_path: Path) -> None
 
     pane = OutputPane(tmp_path, port=_unused_loopback_port())
     pane.start()
+    result = ChatResult(
+        text="x",
+        output=OutputSpec(
+            sources=[FixedResultSource(id="S1", result_id="R1")],
+            artifacts=[TableArtifactSpec(id="S1", label="period_q3", source_id="S1")],
+        ),
+    )
     pane.push(
         turn_payload(title="x", cards=[]),
-        result=ChatResult(
-            text="x",
-            output=OutputSpec(
-                sources=[FixedResultSource(id="S1", result_id="R1")],
-                artifacts=[TableArtifactSpec(id="S1", label="period_q3", source_id="S1")],
-            ),
-        ),
-        output_store=cast(OutputStore, LoopCheckingOutputStore()),
+        turn_output=TurnOutput(result.output, cast(OutputStore, LoopCheckingOutputStore())),
     )
     assert pane.url is not None
     request = urllib.request.Request(

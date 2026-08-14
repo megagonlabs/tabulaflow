@@ -33,10 +33,11 @@ from tabulaflow.app.pane import PaneCard, PaneSource, card_payload, pane_panel_f
 from tabulaflow.app.pane.cards import GraphCardInput, MapCardInput, ResultCardInput, render_graph_data, render_map_data, render_result_data
 from tabulaflow.app.pane import server as pane_server
 from tabulaflow.app.runtime_paths import generate_session_id
+from tabulaflow.app.turn import TurnOutput
 from tabulaflow.chat import ChatResult
 from tabulaflow.core.outputs import ChartArtifactSpec, ChoiceOption, ChoiceParameter, NumberParameter, OutputSpec, TableArtifactSpec
 from tabulaflow.core.types import ExecResult, GraphView, PredQuery
-from tabulaflow.toolhub import OutputResolver, OutputStore
+from tabulaflow.toolhub import OutputStore
 from tabulaflow.toolhub.render_graph import materialize_graph_view, normalize_graph_spec
 from tabulaflow.toolhub.render_map import normalize_map_spec
 
@@ -495,7 +496,8 @@ def _push_controls_turn(pane: pane_mod.OutputPane, pane_dir: Path) -> None:
             ],
         ),
     )
-    cards = asyncio.run(render_resolved_output(asyncio.run(OutputResolver(output_store).resolve(result.output)), pane_dir))
+    turn_output = TurnOutput(result.output, output_store)
+    cards = asyncio.run(render_resolved_output(asyncio.run(turn_output.resolve()), pane_dir))
     pane.push(
         turn_payload(
             title="Answer controls preview",
@@ -504,8 +506,7 @@ def _push_controls_turn(pane: pane_mod.OutputPane, pane_dir: Path) -> None:
             cards=cards,
             panel=pane_panel_for_output(result.output),
         ),
-        result=result,
-        output_store=output_store,
+        turn_output=turn_output,
     )
 
 

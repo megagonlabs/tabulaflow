@@ -25,7 +25,7 @@ import secrets
 import threading
 from collections.abc import Callable, Sequence
 from pathlib import Path
-from typing import TYPE_CHECKING, cast
+from typing import cast
 from urllib.parse import unquote, urlsplit, urlunsplit
 
 from markdown_it import MarkdownIt
@@ -34,14 +34,9 @@ from tabulaflow.app.pane.cards import build_code_data, render_resolved_output
 from tabulaflow.app.pane.types import CARD_ID_PREFIX, CodeData, PaneCard, PaneTurn
 from tabulaflow.app.runtime_paths import generate_session_id
 from tabulaflow.app.theme import GITHUB_SLUG, GITHUB_URL
-from tabulaflow.core.outputs import SelectionValue
-from tabulaflow.toolhub.output_resolver import OutputResolver
+from tabulaflow.app.turn import TurnOutput
 
 logger = logging.getLogger(__name__)
-
-if TYPE_CHECKING:
-    from tabulaflow.chat import ChatResult
-    from tabulaflow.toolhub.output_store import OutputStore
 
 DEFAULT_OUTPUT_PANE_PORT_START = 61111
 DEFAULT_OUTPUT_PANE_PORT_END = 61130
@@ -439,7 +434,7 @@ class OutputPane:
         self._port_config = port
         self._port_range = tuple(port_range)
         self._results: list[PaneTurn] = []
-        self._live_results: dict[int, tuple[ChatResult, OutputStore]] = {}
+        self._live_results: dict[int, TurnOutput] = {}
         self._lock = threading.Lock()
         self._cond = threading.Condition(self._lock)
         self._next_id = 0
@@ -538,8 +533,7 @@ class OutputPane:
         self,
         turn: PaneTurn,
         *,
-        result: ChatResult | None = None,
-        output_store: OutputStore | None = None,
+        turn_output: TurnOutput | None = None,
     ) -> None:
         """Store a turn ({"cards": [{"label", "views": [...]}, ...]}) for the pane."""
         with self._cond:
@@ -552,8 +546,8 @@ class OutputPane:
                     assigned["assistantCodeBlocks"] = code_blocks
             assigned["id"] = self._next_id
             self._next_id += 1
-            if result is not None and output_store is not None:
-                self._live_results[int(assigned["id"])] = (result, output_store)
+            if turn_output is not None:
+                self._live_results[int(assigned["id"])] = turn_output
             self._results.append(assigned)
             self._append_manifest_locked(assigned)
             self._cond.notify_all()
@@ -563,8 +557,7 @@ class OutputPane:
             live = self._live_results.get(turn_id)
         if live is None:
             raise KeyError(turn_id)
-        result, output_store = live
-        resolved_output = await OutputResolver(output_store).resolve(result.output, cast("dict[str, SelectionValue]", selection))
+        resolved_output = await live.resolve(selection)
         return await render_resolved_output(resolved_output, self._pane_dir)
 
     def resolve_turn_threadsafe(self, turn_id: int, selection: dict[str, object]) -> list[PaneCard]:
