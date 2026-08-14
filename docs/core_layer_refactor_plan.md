@@ -1,5 +1,12 @@
 # Core Layer Refactor Plan
 
+## Implementation status
+
+Implemented on the `refactor/ultimate-layer-architecture` branch. The legacy
+`datasources`, `toolhub`, `modulehub`, and top-level `chat` packages were removed;
+there are no compatibility import shims. The final architecture is enforced by
+import-linter.
+
 ## Goal
 
 Refactor TabulaFlow into a small set of intuitive layers while keeping `core` clean, minimal, and stable.
@@ -8,6 +15,7 @@ Final top-level package shape:
 
 ```text
 tabulaflow/
+  config.py
   core/
   data/
   output/
@@ -227,8 +235,11 @@ data/
   schema_compressor.py
   loaders/
     __init__.py
+    _runner.py
     files.py
     huggingface.py
+  introspection.py
+  query_analysis.py
 ```
 
 Concepts:
@@ -257,6 +268,8 @@ output/
   store.py
   resolver.py
   formatting.py
+  graphs.py
+  erd.py
   schema_formatters/
     __init__.py
     base.py
@@ -331,6 +344,7 @@ agents/
   __init__.py
   llm.py
   trace.py
+  response_parsing.py
   chat/
     __init__.py
     session.py
@@ -723,9 +737,10 @@ Research is a separate leaf:
 
 ## Config decision
 
-Config ownership is intentionally deferred until after the package/layer refactor.
-
-Current config is cross-cutting (data cache/query settings, LLM throttling, browser settings, app settings, instrumentation). Splitting it during the package move would add unnecessary churn. During this refactor, preserve existing config behavior and avoid expanding core config further. Revisit whether config belongs in top-level `tabulaflow/config.py` or split by layer after the architecture move lands.
+Configuration lives at top-level `tabulaflow/config.py`. It is intentionally
+cross-cutting and is not part of the stable core primitive layer. Existing
+configuration behavior is preserved; splitting settings by subsystem remains a
+separate concern.
 
 ## Utilities cleanup
 

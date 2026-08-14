@@ -39,39 +39,32 @@ uv run tabulaflow/research/pipelines/analyze_errors.py --debug
 ## Project Structure
 
 The package is organized into dependency layers, enforced by `import-linter`
-(`make lint-arch`): **`core < datasources < toolhub < modulehub < {chat | research} < app`**.
-`chat` and `research` are siblings and must not import each other.
+(`make lint-arch`): **`core < data < output < agents < {app | research}`**.
+`app` and `research` are leaf siblings and must not import each other.
 
 ```
 tabulaflow/
-├── core/            # deterministic foundation — depends on nothing else in tabulaflow
-│   ├── types.py     #   core data structures (schema, queries, ExecResult, Usage, Trajectory)
-│   ├── dataframe.py #   Arrow/DataFrame (de)serialization
-│   ├── er_diagram.py schema_compressor.py   # ERD data types + deterministic schema compression
-│   ├── config.py registry.py utils.py llm.py
-│   └── db_connector/  formatters/
-├── datasources/     # acquire external data → a connector (files, HuggingFace, …) — depends on core
-├── toolhub/         # agent tools — depends on core
-│                    #   BaseTool, run_query, registry_* (wrap the plain tools),
-│                    #   web_browser, render_chart, run_subagent, message_store, ...
-├── modulehub/       # LLM-powered schema-analysis modules — depends on toolhub, core
-│                    #   db_summarizer, er_diagram (synth), fk_predictor, column_profiler,
-│                    #   text_summarizer, schema_preprocessor + the caching base
-├── chat/            # the interactive tabulaflow agent (ChatAgent.run_stream → ChatEvent stream, ChatResult)
-├── research/        # NL2SQL research — sibling of chat, never imports it
+├── core/            # stable schema/result primitives, serialization, and class registry
+├── data/            # connectors, live DB registry, schema services, and external-data loaders
+├── output/          # output specs, result storage/resolution, formatting, and schema renderers
+├── agents/          # ChatSession, trace models, LLM runtime, tools, and LLM-powered modules
+│   ├── chat/        #   reusable stateful chat runtime and semantic event stream
+│   ├── tools/       #   model-facing tools and their deterministic engines
+│   └── modules/     #   schema analysis and preprocessing modules
+├── research/        # NL2SQL research — a leaf consumer of the platform layers
 │   ├── agenthub/  benchmarks/  metrics/  pipelines/   # benchmarks = eval datasets (tasks+gold+metrics)
 │   ├── tools/       #   research-only tools (ask_user, run_dbt, finish, get_schema, ...)
 │   └── types.py utils.py question_embedder.py   # NL2QTask/NL2QDataset/GoldQuery, dataset-level analysis
-└── app/             # end-user TUI — tui, dump (HTML export), widgets, main, assets
+└── app/             # end-user TUI and browser output pane
 tests/               # pytest tests
 scripts/             # utility scripts
 output/              # experiment results
 cache/               # schema and preprocessing cache
 ```
 
-Public types are re-exported from each layer's `__init__` (e.g.
-`from tabulaflow.core import SQLSchema, ExecResult, Usage`); prefer those over
-deep module paths.
+Stable core primitives are re-exported from `tabulaflow.core`; use explicit
+submodules for layer-specific APIs such as `tabulaflow.agents.trace` and
+`tabulaflow.output.specs`.
 
 ## Environment Variables
 
