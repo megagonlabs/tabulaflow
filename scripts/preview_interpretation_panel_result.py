@@ -99,11 +99,10 @@ class TerminalControlPanelPreview(Static, can_focus=True):
         if not isinstance(parameter, NumberParameter):
             return
         current = float(self._pending_selection[parameter.id])
-        next_value = min(parameter.max, max(parameter.min, current + direction * parameter.step))
-        if _is_int_like(parameter.min) and _is_int_like(parameter.max) and _is_int_like(parameter.step):
-            self._pending_selection[parameter.id] = int(next_value)
-        else:
-            self._pending_selection[parameter.id] = next_value
+        values = _number_values(parameter)
+        current_index = min(range(len(values)), key=lambda i: abs(values[i] - current))
+        next_index = max(0, min(len(values) - 1, current_index + direction))
+        self._pending_selection[parameter.id] = _coerce_number_value(parameter, values[next_index])
         self._refresh()
 
     def _discard_current_number_draft(self) -> None:
@@ -190,6 +189,26 @@ def _is_int_like(value: float) -> bool:
     return float(value).is_integer()
 
 
+def _number_values(parameter: NumberParameter) -> list[float]:
+    values: list[float] = []
+    value = float(parameter.min)
+    max_value = float(parameter.max)
+    step = float(parameter.step)
+    tolerance = abs(step) * 1e-9
+    while value <= max_value + tolerance:
+        values.append(min(value, max_value))
+        value += step
+    if values and values[-1] > max_value + tolerance:
+        values.pop()
+    return values or [float(parameter.min)]
+
+
+def _coerce_number_value(parameter: NumberParameter, value: float) -> int | float:
+    if _is_int_like(parameter.min) and _is_int_like(parameter.max) and _is_int_like(parameter.step):
+        return int(round(value))
+    return value
+
+
 def _format_number(value: object, unit: str | None) -> str:
     number = float(value) if isinstance(value, int | float) else 0.0
     text = f"{number:g}"
@@ -217,7 +236,7 @@ def _parameters() -> list[ParameterSpec]:
             label="Period",
             choices=[ChoiceOption(id="q2", label="Q2"), ChoiceOption(id="q3", label="Q3")],
         ),
-        NumberParameter(id="min_value", label="Minimum value", min=0, max=140, step=20, default=60, unit="USD"),
+        NumberParameter(id="min_value", label="Minimum value", min=0, max=140, step=0.1, default=60, unit="USD"),
     ]
 
 
