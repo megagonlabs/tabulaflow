@@ -1,4 +1,4 @@
-"""Shared SQL and property-graph schema models with optional profiling metadata."""
+"""Database schema models for SQL and property-graph databases, with optional profiling metadata."""
 
 from typing import Any, Literal, TypeAlias
 
