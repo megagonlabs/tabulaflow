@@ -101,7 +101,7 @@ class MiniAgent:
                 SQLSchemaFormatter,
                 schema_formatter_registry.get_class(self.config.schema_formatter)(**self.config.to_formatter_kwargs()),
             )
-            return sql_formatter.format(schema, include_descriptions=self.config.use_column_description)
+            return sql_formatter.format(schema, include_descriptions=self.config.use_column_descriptions)
         if db_connector.connector_type == "property_graph":
             graph_formatter = cast(
                 PropertyGraphSchemaFormatter,

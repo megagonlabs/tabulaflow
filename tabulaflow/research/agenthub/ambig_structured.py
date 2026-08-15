@@ -307,7 +307,7 @@ class AmbigStructuredSQLAgent:
             schema = self.compressor.compress(schema)
         tools: dict[str, BaseTool] = {}
         tools["get_schema"] = GetSchemaTool(schema, self.formatter)
-        if self.config.use_column_description:
+        if self.config.use_column_descriptions:
             tools["get_column_description"] = GetColumnDescriptionTool(schema)
         tools["search_keywords"] = SearchKeywordsTool(db_connector)
         tools["run_query"] = RunQueryTool(db_connector, enable_params=True)

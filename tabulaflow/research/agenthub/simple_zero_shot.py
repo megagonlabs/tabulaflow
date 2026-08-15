@@ -88,7 +88,7 @@ class SimpleZeroShotNL2Q:
                 schema = SchemaCompressor().compress(schema)
             schema_str = cast(SQLSchemaFormatter, self.formatter).format(
                 schema,
-                include_descriptions=self.config.use_column_description,
+                include_descriptions=self.config.use_column_descriptions,
             )
         else:
             raise TypeError(f"Unsupported connector type for SimpleZeroShotNL2Q: {db_connector.connector_type!r}")

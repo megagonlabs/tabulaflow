@@ -145,7 +145,7 @@ class DbtAgent:
             db_connector,
             self.formatter,
             compress=self.config.compress_schema,
-            add_description=self.config.use_column_description,
+            include_descriptions=self.config.use_column_descriptions,
             disconnect_on_finish=True,
             enable_refresh=True,
         )

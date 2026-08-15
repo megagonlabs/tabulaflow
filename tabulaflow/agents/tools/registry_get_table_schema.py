@@ -27,7 +27,7 @@ class RegistryGetTableSchemaTool:
         formatter: SQLSchemaFormatter,
         *,
         compress: bool = True,
-        add_description: bool = True,
+        include_descriptions: bool = True,
         max_columns: int | None = 50,
         enable_refresh: bool = False,
     ):
@@ -37,7 +37,7 @@ class RegistryGetTableSchemaTool:
             registry: The database registry containing available connectors.
             formatter: The formatter used to render table schema as text.
             compress: Whether to compress the schema.
-            add_description: Whether to include column descriptions in output.
+            include_descriptions: Whether to include column descriptions in output.
             max_columns: If set, reject requests whose resulting columns
                 exceed this limit.
             enable_refresh: If True, expose the ``refresh`` parameter to the
@@ -46,7 +46,7 @@ class RegistryGetTableSchemaTool:
         self.registry = registry
         self.formatter = formatter
         self.compress = compress
-        self.add_description = add_description
+        self.include_descriptions = include_descriptions
         self.max_columns = max_columns
         self.enable_refresh = enable_refresh
         self._tools: dict[str, tuple[DataConnector, GetTableSchemaTool]] = {}
@@ -63,7 +63,7 @@ class RegistryGetTableSchemaTool:
             connector,
             self.formatter,
             compress=self.compress,
-            add_description=self.add_description,
+            include_descriptions=self.include_descriptions,
             max_columns=self.max_columns,
             enable_refresh=self.enable_refresh,
         )

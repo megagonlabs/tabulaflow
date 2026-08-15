@@ -229,7 +229,7 @@ class AgentEnsembler:
                 db_connector,
                 self.formatter,
                 compress=self.config.compress_schema,
-                add_description=self.config.use_column_description,
+                include_descriptions=self.config.use_column_descriptions,
             ),
             "get_column_json_schema": GetColumnJsonSchemaTool(db_connector.schema),
             "run_query": run_query_tool,

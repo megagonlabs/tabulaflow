@@ -88,7 +88,7 @@ class AmbigSimpleSQLAgent:
             schema = self.compressor.compress(schema)
         tools: dict[str, BaseTool] = {}
         tools["get_schema"] = GetSchemaTool(schema, self.formatter)
-        if self.config.use_column_description:
+        if self.config.use_column_descriptions:
             tools["get_column_description"] = GetColumnDescriptionTool(schema)
         tools["ask_user"] = AskUserTool(user_simulator, patience=user_patience)
         tools["search_keywords"] = SearchKeywordsTool(db_connector)

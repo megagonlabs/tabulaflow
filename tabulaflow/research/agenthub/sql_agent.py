@@ -194,7 +194,7 @@ class SchemaLinker:
             language=ctx.db_connector.language,
             dataset_instructions=task.dataset_instructions,
             schema=ctx.schema_formatter.format(
-                ctx.preprocessed_schema, include_descriptions=self.config.use_column_description
+                ctx.preprocessed_schema, include_descriptions=self.config.use_column_descriptions
             ),
             er_diagram=ctx.er_diagram_formatter.format(ctx.er_diagram) if ctx.er_diagram is not None else None,  # type: ignore
             document=task.document,
@@ -508,7 +508,7 @@ class SQLAgent:
         system_prompt = jinja2.Template(SQL_AGENT_SYSTEM_PROMPT).render(
             language=db_connector.language,
             dataset_instructions=task.dataset_instructions,
-            schema=self.formatter.format(linked_schema, include_descriptions=self.config.use_column_description),
+            schema=self.formatter.format(linked_schema, include_descriptions=self.config.use_column_descriptions),
             er_diagram=ctx.er_diagram_formatter.format(linked_er_diagram),  # type: ignore
             document=task.document,
             examples=examples,

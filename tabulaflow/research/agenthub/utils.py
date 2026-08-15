@@ -82,7 +82,7 @@ class BasicAgentConfig(BaseModel):
     temperature: float | None = None
     max_steps: int = 50
     formatter_max_total_columns: int | None = 5000
-    use_column_description: bool = True
+    use_column_descriptions: bool = True
     reasoning_effort: Literal["none", "minimal", "low", "medium", "high", "xhigh"] | None = None
     service_tier: Literal["auto", "default", "flex", "priority"] | None = None
 
