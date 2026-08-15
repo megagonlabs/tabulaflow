@@ -72,12 +72,12 @@ class ColumnProfiler:
         return result.output
 
     async def run_async(self, db_connector: SQLConnectorProtocol, schema: SQLSchema) -> SQLSchema:
-        column_refs = schema.get_all_column_refs()
+        column_refs = schema.column_refs()
         all_results = await asyncio.gather(
             *[self.run_column_async(db_connector, schema, column_ref) for column_ref in column_refs]
         )
         new_schema = copy.deepcopy(schema)
-        for column_ref, result in zip(column_refs, all_results):
-            column = new_schema.get_column_by_ref(column_ref)
+        columns = [column for table in new_schema.tables for column in table.columns]
+        for column, result in zip(columns, all_results, strict=True):
             column.description = result.revised_concise_description
         return new_schema

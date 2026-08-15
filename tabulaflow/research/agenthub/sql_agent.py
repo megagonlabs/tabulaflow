@@ -225,7 +225,7 @@ class SchemaLinker:
         class LLMOutput(BaseModel):
             results: list[ColumnWithAlternatives]
 
-        current_columns = schema_to_expand.get_all_column_refs()
+        current_columns = schema_to_expand.column_refs()
 
         async def process_batch_async(batch_idx: int, batch: list[ColumnRef]) -> list[ColumnWithAlternatives]:
             agent = make_agent(self.config.llm, output_type=LLMOutput, model_settings=self.config.to_model_settings())
@@ -490,7 +490,7 @@ class SQLAgent:
             linked_schema = await self.schema_linker.link_schema_async(ctx, task)
         else:
             linked_schema = ctx.preprocessed_schema
-        linked_er_diagram = ctx.er_diagram.trim(linked_schema.get_all_table_refs(), case_insensitive=True)  # type: ignore
+        linked_er_diagram = ctx.er_diagram.trim(linked_schema.table_refs(), case_insensitive=True)  # type: ignore
 
         tools: dict[str, BaseTool] = {
             # "get_schema": GetSchemaTool(linked_schema, self.formatter),
@@ -541,6 +541,6 @@ class SQLAgent:
             inference_metrics=metrics,
             extra_pred_info=ExtraPredInfo(
                 raw_pred_query=raw_pred_query,
-                linked_schema=linked_schema.get_all_column_refs(),
+                linked_schema=linked_schema.column_refs(),
             ),
         )

@@ -25,7 +25,7 @@ class SchemaLinkingStats:
             raise TypeError(f"SchemaLinkingStats requires a SQL schema, got {type(schema)!r}")
 
         res: dict[str, NumericOrNull] = {
-            "linked_percentage": len(task.extra_pred_info.linked_schema or []) / len(schema.get_all_column_refs()),
+            "linked_percentage": len(task.extra_pred_info.linked_schema or []) / len(schema.column_refs()),
         }
 
         # We rely on the gold query to extract the ground-truth linked schema.

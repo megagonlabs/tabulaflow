@@ -79,7 +79,7 @@ class ForeignKeyPredictor:
         return result.output.missing_foreign_keys
 
     async def run_async(self, db_connector: SQLConnectorProtocol, schema: SQLSchema) -> SQLSchema:
-        table_refs = schema.get_all_table_refs()
+        table_refs = schema.table_refs()
         all_results = await asyncio.gather(
             *[self.run_table_async(db_connector, schema, table_ref) for table_ref in table_refs]
         )
@@ -89,8 +89,7 @@ class ForeignKeyPredictor:
         def _fk_target_table(fk: ForeignKeySchema) -> tuple[str | None, str]:
             return (fk.foreign_schema_name, fk.foreign_table)
 
-        for table_ref, fks in zip(table_refs, all_results):
-            table = new_schema.get_table_by_ref(table_ref)
+        for table, fks in zip(new_schema.tables, all_results, strict=True):
             for fk in fks:
                 # Skip if there is already a foreign key to the same target table.
                 if any(_fk_target_table(fk) == _fk_target_table(existing_fk) for existing_fk in table.foreign_keys):
