@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from tabulaflow.core import ForeignKeySchema, SQLDialect, SQLSchema, SQLTableSchema, SQLColumnSchema
 from tabulaflow.output.schema_formatters.base import schema_formatter_registry
 from tabulaflow.output.schema_formatters._sql_quoting import SQLQuoting
+from tabulaflow.output.schema_formatters._sql_selection import select_tables_for_formatting
 from tabulaflow.output.formatting import (
     format_df,
     flatten_multiline,
@@ -63,15 +64,6 @@ class SQLDDLSchemaFormatter:
             md_table = format_df(df, max_visible_rows=5, add_bottom_ellipsis_row=True)
             return f"Sample rows:\n{md_table}"
 
-    def _compute_column_quotas(self, tables: list[SQLTableSchema]) -> list[int | None]:
-        """Compute equal per-table column quotas from max_total_columns."""
-        if self.max_total_columns is None:
-            return [None] * len(tables)
-        if not tables:
-            return []
-        quota = max(1, self.max_total_columns // len(tables))
-        return [quota] * len(tables)
-
     def format(self, schema: SQLSchema, *, include_descriptions: bool = False) -> str:
         quoting = SQLQuoting.for_dialect(schema.dialect)
         name_label = "Project" if schema.dialect == "bigquery" else "Database"
@@ -86,15 +78,14 @@ class SQLDDLSchemaFormatter:
             return "\n".join(metadata_lines)
 
         lines: list[str] = []
-        quotas = self._compute_column_quotas(schema.tables)
-        for table, max_columns in zip(schema.tables, quotas, strict=True):
+        for table, omitted_count in select_tables_for_formatting(schema, self.max_total_columns):
             lines.append("")  # Blank line between tables
             lines.append(
                 self._format_table(
                     table,
                     quoting=quoting,
                     include_descriptions=include_descriptions,
-                    max_columns=max_columns,
+                    omitted_count=omitted_count,
                     num_tables=len(schema.tables),
                 )
             )
@@ -121,7 +112,7 @@ class SQLDDLSchemaFormatter:
         *,
         quoting: SQLQuoting,
         include_descriptions: bool,
-        max_columns: int | None = None,
+        omitted_count: int = 0,
         num_tables: int | None = None,
     ) -> str:
         lines = []
@@ -160,23 +151,9 @@ class SQLDDLSchemaFormatter:
         kind = "VIEW" if table.is_view else "TABLE"
         create_stmt = f"CREATE {kind} {table_name} ("
 
-        columns = table.columns
-
-        # Truncate columns if max_columns is set
-        omitted_count = 0
-        if max_columns is not None and len(columns) > max_columns:
-            omitted_count = len(columns) - max_columns
-            columns = columns[:max_columns]
-
-        visible_column_names = {column.name for column in columns}
-        primary_key_names = set(table.primary_key) if set(table.primary_key) <= visible_column_names else set()
-        visible_foreign_keys = [
-            foreign_key
-            for foreign_key in table.foreign_keys
-            if all(name in visible_column_names for name in foreign_key.columns)
-        ]
-        foreign_keys_by_column: dict[str, list[ForeignKeySchema]] = {column.name: [] for column in columns}
-        for foreign_key in visible_foreign_keys:
+        primary_key_names = set(table.primary_key)
+        foreign_keys_by_column: dict[str, list[ForeignKeySchema]] = {column.name: [] for column in table.columns}
+        for foreign_key in table.foreign_keys:
             for column_name in foreign_key.columns:
                 if column_name in foreign_keys_by_column:
                     foreign_keys_by_column[column_name].append(foreign_key)
@@ -189,7 +166,7 @@ class SQLDDLSchemaFormatter:
                 is_single_primary_key=len(primary_key_names) == 1 and column.name in primary_key_names,
                 foreign_keys=foreign_keys_by_column[column.name],
             )
-            for column in columns
+            for column in table.columns
         ]
 
         if omitted_count > 0:
@@ -201,7 +178,7 @@ class SQLDDLSchemaFormatter:
             column_defs.append(f"    PRIMARY KEY ({pk_cols_str})")
 
         # Add foreign key constraints
-        for fk in visible_foreign_keys:
+        for fk in table.foreign_keys:
             fk_cols = ", ".join(quoting.quote_column(name) for name in fk.columns)
             ref_table = quoting.full_table_name(fk.referenced_table, fk.referenced_schema_name)
             ref_cols = ", ".join(quoting.quote_column(name) for name in fk.referenced_columns)

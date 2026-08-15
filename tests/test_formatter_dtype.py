@@ -1,6 +1,6 @@
 """Tests for native_dtype rendering in schema formatters."""
 
-from tabulaflow.core import ForeignKeySchema, SQLColumnSchema, SQLTableSchema
+from tabulaflow.core import ForeignKeySchema, SQLColumnSchema, SQLSchema, SQLTableSchema
 from tabulaflow.output.formatting import render_column_dtype
 from tabulaflow.output.schema_formatters.sql_basic import SQLBasicSchemaFormatter
 from tabulaflow.output.schema_formatters.sql_ddl import SQLDDLSchemaFormatter
@@ -132,3 +132,43 @@ def test_format_table_uses_explicit_dialect_without_retaining_state() -> None:
 
     assert "CREATE TABLE items (\n    `item name` INTEGER" in bigquery
     assert 'CREATE TABLE items (\n    "item name" INTEGER' in postgres
+
+
+def test_schema_column_limit_prioritizes_complete_key_relationships() -> None:
+    foreign_key = ForeignKeySchema(
+        columns=["customer_id"],
+        referenced_schema_name="public",
+        referenced_table="customers",
+        referenced_columns=["id"],
+    )
+    customers = SQLTableSchema(
+        name="customers",
+        schema_name="public",
+        is_view=False,
+        columns=[_col("name", "VARCHAR", None), _col("id", "INTEGER", None)],
+        primary_key=["id"],
+        foreign_keys=[],
+    )
+    orders = SQLTableSchema(
+        name="orders",
+        schema_name="public",
+        is_view=False,
+        columns=[
+            _col("total", "DECIMAL", None),
+            _col("id", "INTEGER", None),
+            _col("customer_id", "INTEGER", None),
+        ],
+        primary_key=["id"],
+        foreign_keys=[foreign_key],
+    )
+    schema = SQLSchema(name="shop", dialect="postgres", tables=[customers, orders])
+
+    formatted = SQLDDLSchemaFormatter(max_total_columns=2).format(schema)
+
+    assert 'CREATE TABLE public.customers (\n    "id" INTEGER NULL PRIMARY KEY' in formatted
+    assert (
+        'CREATE TABLE public.orders (\n    "id" INTEGER NULL PRIMARY KEY,\n    "customer_id" INTEGER NULL,' in formatted
+    )
+    assert 'FOREIGN KEY ("customer_id") REFERENCES public.customers("id")' in formatted
+    assert '"name"' not in formatted
+    assert '"total"' not in formatted

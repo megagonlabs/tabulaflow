@@ -4,6 +4,7 @@ from typing import ClassVar
 from tabulaflow.core import ForeignKeySchema, SQLColumnSchema, SQLDialect, SQLSchema, SQLTableSchema
 from tabulaflow.output.formatting import flatten_multiline, format_ratio_as_percent, render_column_dtype
 from tabulaflow.output.schema_formatters._sql_quoting import SQLQuoting
+from tabulaflow.output.schema_formatters._sql_selection import select_tables_for_formatting
 from tabulaflow.output.schema_formatters.base import schema_formatter_registry
 
 
@@ -29,14 +30,6 @@ class SQLBasicSchemaFormatter:
             return value
         return value[: self.example_max_chars // 2] + "..." + value[-self.example_max_chars // 2 :]
 
-    def _compute_column_quotas(self, tables: list[SQLTableSchema]) -> list[int | None]:
-        if self.max_total_columns is None:
-            return [None] * len(tables)
-        if not tables:
-            return []
-        quota = max(1, self.max_total_columns // len(tables))
-        return [quota] * len(tables)
-
     def format(self, schema: SQLSchema, *, include_descriptions: bool = False) -> str:
         quoting = SQLQuoting.for_dialect(schema.dialect)
         name_label = "Project" if schema.dialect == "bigquery" else "Database"
@@ -48,15 +41,14 @@ class SQLBasicSchemaFormatter:
         if not schema.tables:
             return f"{result}\n(database has no tables)"
 
-        quotas = self._compute_column_quotas(schema.tables)
         tables = [
             self._format_table(
                 table,
                 quoting=quoting,
                 include_descriptions=include_descriptions,
-                max_columns=max_columns,
+                omitted_count=omitted_count,
             )
-            for table, max_columns in zip(schema.tables, quotas, strict=True)
+            for table, omitted_count in select_tables_for_formatting(schema, self.max_total_columns)
         ]
         return result + "\n\n" + "\n\n".join(tables)
 
@@ -79,7 +71,7 @@ class SQLBasicSchemaFormatter:
         *,
         quoting: SQLQuoting,
         include_descriptions: bool,
-        max_columns: int | None = None,
+        omitted_count: int = 0,
     ) -> str:
         result = f"(SCHEMA: {quoting.quote_if_needed(table.schema_name)}) TABLE:"
         if table.name_patterns:
@@ -98,20 +90,8 @@ class SQLBasicSchemaFormatter:
             result += f" -- {table.description}"
         result = f"=== {result} ===\n"
 
-        columns = table.columns
-        omitted_count = 0
-        if max_columns is not None and len(columns) > max_columns:
-            omitted_count = len(columns) - max_columns
-            columns = columns[:max_columns]
-
-        visible_column_names = {column.name for column in columns}
-        visible_foreign_keys = [
-            foreign_key
-            for foreign_key in table.foreign_keys
-            if all(name in visible_column_names for name in foreign_key.columns)
-        ]
         composite_foreign_keys = []
-        for foreign_key in visible_foreign_keys:
+        for foreign_key in table.foreign_keys:
             if len(foreign_key.columns) > 1:
                 local_columns = "(" + ", ".join(quoting.quote_column(name) for name in foreign_key.columns) + ")"
                 referenced_table = quoting.full_table_name(
@@ -124,10 +104,10 @@ class SQLBasicSchemaFormatter:
         if composite_foreign_keys:
             result += "[Composite FKs]\n" + "\n".join(composite_foreign_keys) + "\n\n"
 
-        primary_key_names = set(table.primary_key) if set(table.primary_key) <= visible_column_names else set()
+        primary_key_names = set(table.primary_key)
         primary_key_kind = "single" if len(primary_key_names) == 1 else "composite"
-        foreign_keys_by_column: dict[str, list[ForeignKeySchema]] = {column.name: [] for column in columns}
-        for foreign_key in visible_foreign_keys:
+        foreign_keys_by_column: dict[str, list[ForeignKeySchema]] = {column.name: [] for column in table.columns}
+        for foreign_key in table.foreign_keys:
             for column_name in foreign_key.columns:
                 if column_name in foreign_keys_by_column:
                     foreign_keys_by_column[column_name].append(foreign_key)
@@ -140,7 +120,7 @@ class SQLBasicSchemaFormatter:
                 primary_key_kind=primary_key_kind if column.name in primary_key_names else None,
                 foreign_keys=foreign_keys_by_column[column.name],
             )
-            for column in columns
+            for column in table.columns
         ]
         if omitted_count:
             column_lines.append(f"  ... {omitted_count} more columns omitted")
