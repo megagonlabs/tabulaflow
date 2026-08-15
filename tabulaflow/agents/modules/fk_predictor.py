@@ -87,7 +87,7 @@ class ForeignKeyPredictor:
         new_schema = copy.deepcopy(schema)
 
         def _fk_target_table(fk: ForeignKeySchema) -> tuple[str | None, str]:
-            return (fk.referenced_schema_name, fk.referenced_table)
+            return (fk.foreign_schema_name, fk.foreign_table)
 
         for table, fks in zip(new_schema.tables, all_results, strict=True):
             for fk in fks:

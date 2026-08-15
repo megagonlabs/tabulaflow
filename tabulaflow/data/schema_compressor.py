@@ -4,7 +4,7 @@ from typing import Any, Hashable, Protocol, TypeVar
 from dataclasses import dataclass, field
 import datetime
 import re
-from tabulaflow.core import NamePattern, SQLSchema, SQLTableSchema, SQLColumnSchema, ForeignKeySchema
+from tabulaflow.core import TableNamePattern, SQLSchema, SQLTableSchema, SQLColumnSchema, ForeignKeySchema
 
 
 T = TypeVar("T")
@@ -167,9 +167,9 @@ class SchemaCompressor:
         return (
             table.schema_name,
             table.name,
-            tuple(sorted(zip(fk.columns, fk.referenced_columns, strict=True))),
-            fk.referenced_schema_name,
-            fk.referenced_table,
+            tuple(sorted(zip(fk.columns, fk.foreign_columns, strict=True))),
+            fk.foreign_schema_name,
+            fk.foreign_table,
         )
 
     def _table_digest(self, table: SQLTableSchema, full_schema: SQLSchema) -> Hashable:
@@ -191,7 +191,7 @@ class SchemaCompressor:
                     self._foreign_key_digest(fk, t)
                     for t in full_schema.tables
                     for fk in t.foreign_keys
-                    if (fk.referenced_schema_name, fk.referenced_table) == (table.schema_name, table.name)
+                    if (fk.foreign_schema_name, fk.foreign_table) == (table.schema_name, table.name)
                 ]
             )
         )
@@ -223,12 +223,12 @@ class SchemaCompressor:
             json_schema=merged_json_schema,
         )
 
-    def _get_patterns(self, names: list[str]) -> list[NamePattern]:
+    def _get_patterns(self, names: list[str]) -> list[TableNamePattern]:
         """Example:
         _get_patterns(names=["revenue_20200101", "revenue_20200102", "revenue_20200103", "profit_20200101", "profit_20200102", "profit_20200103"])
         returns: [
-          NamePattern(pattern="revenue_YYYYMMDD", comment="YYYYMMDD from 20200101 to 20200103", original_names=["revenue_20200101", "revenue_20200102", "revenue_20200103"]),
-          NamePattern(pattern="profit_YYYYMMDD", comment="YYYYMMDD from 20200101 to 20200103", original_names=["profit_20200101", "profit_20200102", "profit_20200103"]),
+          TableNamePattern(pattern="revenue_YYYYMMDD", comment="YYYYMMDD from 20200101 to 20200103", original_names=["revenue_20200101", "revenue_20200102", "revenue_20200103"]),
+          TableNamePattern(pattern="profit_YYYYMMDD", comment="YYYYMMDD from 20200101 to 20200103", original_names=["profit_20200101", "profit_20200102", "profit_20200103"]),
         ]
         """
         res = []
@@ -247,10 +247,10 @@ class SchemaCompressor:
                 name_description = func.summarize(variations)
                 if name_description is not None:
                     remaining = [name for name in remaining if name not in group_names]
-                    res.append(NamePattern(pattern=pattern, comment=name_description, original_names=group_names))
+                    res.append(TableNamePattern(pattern=pattern, comment=name_description, original_names=group_names))
 
         for name in remaining:
-            res.append(NamePattern(pattern=name, original_names=[name]))
+            res.append(TableNamePattern(pattern=name, original_names=[name]))
 
         return res
 

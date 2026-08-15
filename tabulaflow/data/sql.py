@@ -2001,11 +2001,11 @@ async def build_table_async(
         foreign_keys.append(
             ForeignKeySchema(
                 columns=[_denorm(t_eng, c) for c in fk["constrained_columns"]],
-                referenced_schema_name=_denorm(t_eng, fk["referred_schema"])
+                foreign_schema_name=_denorm(t_eng, fk["referred_schema"])
                 if fk["referred_schema"] is not None
                 else None,
-                referenced_table=_denorm(t_eng, fk["referred_table"]),
-                referenced_columns=[_denorm(t_eng, c) for c in fk["referred_columns"]],
+                foreign_table=_denorm(t_eng, fk["referred_table"]),
+                foreign_columns=[_denorm(t_eng, c) for c in fk["referred_columns"]],
             )
         )
     # Sample rows from the table

@@ -112,9 +112,9 @@ def test_format_table_uses_explicit_dialect_without_retaining_state() -> None:
 def test_schema_column_limit_prioritizes_complete_key_relationships() -> None:
     foreign_key = ForeignKeySchema(
         columns=["customer_id"],
-        referenced_schema_name="public",
-        referenced_table="customers",
-        referenced_columns=["id"],
+        foreign_schema_name="public",
+        foreign_table="customers",
+        foreign_columns=["id"],
     )
     customers = SQLTableSchema(
         name="customers",
@@ -171,15 +171,15 @@ def test_complete_primary_and_foreign_key_formatting() -> None:
         foreign_keys=[
             ForeignKeySchema(
                 columns=["customer_id"],
-                referenced_schema_name="public",
-                referenced_table="customers",
-                referenced_columns=["id"],
+                foreign_schema_name="public",
+                foreign_table="customers",
+                foreign_columns=["id"],
             ),
             ForeignKeySchema(
                 columns=["tenant_id", "customer_id"],
-                referenced_schema_name="public",
-                referenced_table="customer_keys",
-                referenced_columns=["tenant_id", "id"],
+                foreign_schema_name="public",
+                foreign_table="customer_keys",
+                foreign_columns=["tenant_id", "id"],
             ),
         ],
     )

@@ -10,17 +10,17 @@ def test_foreign_key_requires_matching_column_counts() -> None:
     with pytest.raises(ValueError, match="same length"):
         ForeignKeySchema(
             columns=["a", "b"],
-            referenced_table="target",
-            referenced_columns=["id"],
+            foreign_table="target",
+            foreign_columns=["id"],
         )
 
 
 def _table(name: str = "orders") -> SQLTableSchema:
     foreign_key = ForeignKeySchema(
         columns=["customer_id"],
-        referenced_schema_name="public",
-        referenced_table="customers",
-        referenced_columns=["id"],
+        foreign_schema_name="public",
+        foreign_table="customers",
+        foreign_columns=["id"],
     )
     return SQLTableSchema(
         name=name,

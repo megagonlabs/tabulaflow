@@ -182,8 +182,8 @@ class SQLDDLSchemaFormatter:
         # Add foreign key constraints
         for fk in table.foreign_keys:
             fk_cols = ", ".join(quoting.quote_column(name) for name in fk.columns)
-            ref_table = quoting.qualified_table(fk.referenced_table, fk.referenced_schema_name)
-            ref_cols = ", ".join(quoting.quote_column(name) for name in fk.referenced_columns)
+            ref_table = quoting.qualified_table(fk.foreign_table, fk.foreign_schema_name)
+            ref_cols = ", ".join(quoting.quote_column(name) for name in fk.foreign_columns)
             column_defs.append(f"    FOREIGN KEY ({fk_cols}) REFERENCES {ref_table}({ref_cols})")
 
         lines.append(create_stmt)
@@ -265,8 +265,8 @@ class SQLDDLSchemaFormatter:
         # Add FK reference info as comment
         for fk in foreign_keys:
             if len(fk.columns) == 1:  # Single column FK
-                ref_table = quoting.qualified_table(fk.referenced_table, fk.referenced_schema_name)
-                ref_col = quoting.quote_column(fk.referenced_columns[0])
+                ref_table = quoting.qualified_table(fk.foreign_table, fk.foreign_schema_name)
+                ref_col = quoting.quote_column(fk.foreign_columns[0])
                 comment_lines.append(f"        -- <fk> -> {ref_table}.{ref_col}</fk>")
             else:
                 comment_lines.append("        -- <fk>composite</fk>")

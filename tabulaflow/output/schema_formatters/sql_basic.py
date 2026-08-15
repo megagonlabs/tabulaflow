@@ -96,13 +96,11 @@ class SQLBasicSchemaFormatter:
         for foreign_key in table.foreign_keys:
             if len(foreign_key.columns) > 1:
                 local_columns = "(" + ", ".join(quoting.quote_column(name) for name in foreign_key.columns) + ")"
-                referenced_table = quoting.qualified_table(
-                    foreign_key.referenced_table, foreign_key.referenced_schema_name
+                foreign_table = quoting.qualified_table(foreign_key.foreign_table, foreign_key.foreign_schema_name)
+                foreign_columns = (
+                    "(" + ", ".join(quoting.quote_column(name) for name in foreign_key.foreign_columns) + ")"
                 )
-                referenced_columns = (
-                    "(" + ", ".join(quoting.quote_column(name) for name in foreign_key.referenced_columns) + ")"
-                )
-                composite_foreign_keys.append(f"* {local_columns} -> {referenced_table}.{referenced_columns}")
+                composite_foreign_keys.append(f"* {local_columns} -> {foreign_table}.{foreign_columns}")
         if composite_foreign_keys:
             result += "[Composite FKs]\n" + "\n".join(composite_foreign_keys) + "\n\n"
 
@@ -163,11 +161,9 @@ class SQLBasicSchemaFormatter:
             result += " [PK]" if primary_key_kind == "single" else " [PK-composite]"
         for foreign_key in foreign_keys:
             if len(foreign_key.columns) == 1:
-                referenced_table = quoting.qualified_table(
-                    foreign_key.referenced_table, foreign_key.referenced_schema_name
-                )
-                referenced_column = quoting.quote_column(foreign_key.referenced_columns[0])
-                result += f" [FK -> {referenced_table}.{referenced_column}]"
+                foreign_table = quoting.qualified_table(foreign_key.foreign_table, foreign_key.foreign_schema_name)
+                referenced_column = quoting.quote_column(foreign_key.foreign_columns[0])
+                result += f" [FK -> {foreign_table}.{referenced_column}]"
             else:
                 result += " [FK-composite]"
 

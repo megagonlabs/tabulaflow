@@ -92,15 +92,15 @@ class ForeignKeySchema(BaseModel):
     """An ordered mapping from local columns to columns in a referenced table."""
 
     columns: list[str]
-    referenced_schema_name: str | None = None
-    referenced_table: str
-    referenced_columns: list[str]
+    foreign_schema_name: str | None = None
+    foreign_table: str
+    foreign_columns: list[str]
 
     @model_validator(mode="after")
     def validate_columns(self) -> "ForeignKeySchema":
         if not self.columns:
             raise ValueError("foreign key columns must not be empty")
-        if len(self.columns) != len(self.referenced_columns):
+        if len(self.columns) != len(self.foreign_columns):
             raise ValueError("foreign key columns and referenced columns must have the same length")
         return self
 
@@ -133,7 +133,7 @@ class SQLColumnSchema(BaseModel):
     examples: list[Any]
 
 
-class NamePattern(BaseModel):
+class TableNamePattern(BaseModel):
     """A compressed table-name pattern and the concrete names it represents.
 
     Attributes:
@@ -163,7 +163,7 @@ class SQLTableSchema(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     name: str
-    name_patterns: list[NamePattern] = Field(default_factory=list)
+    name_patterns: list[TableNamePattern] = Field(default_factory=list)
     schema_name: str | None = None
     description: str | None = None
     is_view: bool

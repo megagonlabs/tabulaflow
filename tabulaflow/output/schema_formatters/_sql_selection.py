@@ -17,9 +17,9 @@ def select_tables_for_formatting(
             column_name for foreign_key in table.foreign_keys for column_name in foreign_key.columns
         )
         for foreign_key in table.foreign_keys:
-            target = (foreign_key.referenced_schema_name, foreign_key.referenced_table)
+            target = (foreign_key.foreign_schema_name, foreign_key.foreign_table)
             if target in required_by_table:
-                required_by_table[target].update(foreign_key.referenced_columns)
+                required_by_table[target].update(foreign_key.foreign_columns)
 
     selected_tables = []
     for table in schema.tables:
