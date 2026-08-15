@@ -31,6 +31,7 @@ def select_tables_for_formatting(
         ordinary = [column.name for column in table.columns if column.name not in required]
         selected_names = required | set(ordinary[: max(0, quota - len(required))])
         selected = table.select_columns(list(selected_names), include_primary_key=False)
-        selected_tables.append((selected, len(table.columns) - len(selected.columns)))
+        omitted_column_count = len(table.columns) - len(selected.columns)
+        selected_tables.append((selected, omitted_column_count))
 
     return selected_tables

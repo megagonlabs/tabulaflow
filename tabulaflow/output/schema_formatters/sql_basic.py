@@ -46,9 +46,9 @@ class SQLBasicSchemaFormatter:
                 table,
                 quoting=quoting,
                 include_descriptions=include_descriptions,
-                omitted_count=omitted_count,
+                omitted_column_count=omitted_column_count,
             )
-            for table, omitted_count in select_tables_for_formatting(schema, self.max_total_columns)
+            for table, omitted_column_count in select_tables_for_formatting(schema, self.max_total_columns)
         ]
         return result + "\n\n" + "\n\n".join(tables)
 
@@ -71,7 +71,7 @@ class SQLBasicSchemaFormatter:
         *,
         quoting: SQLQuoting,
         include_descriptions: bool,
-        omitted_count: int = 0,
+        omitted_column_count: int = 0,
     ) -> str:
         result = f"(SCHEMA: {quoting.quote_if_needed(table.schema_name)}) TABLE:"
         if table.name_patterns:
@@ -122,8 +122,8 @@ class SQLBasicSchemaFormatter:
             )
             for column in table.columns
         ]
-        if omitted_count:
-            column_lines.append(f"  ... {omitted_count} more columns omitted")
+        if omitted_column_count:
+            column_lines.append(f"  ... {omitted_column_count} more columns omitted")
         result += "\n".join(column_lines)
         return result + "\n=== END OF TABLE ==="
 

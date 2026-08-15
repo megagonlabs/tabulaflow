@@ -78,15 +78,16 @@ class SQLDDLSchemaFormatter:
             return "\n".join(metadata_lines)
 
         lines: list[str] = []
-        for table, omitted_count in select_tables_for_formatting(schema, self.max_total_columns):
+        include_sampled_rows = self.include_sampled_df and len(schema.tables) <= self.include_sampled_df_max_tables
+        for table, omitted_column_count in select_tables_for_formatting(schema, self.max_total_columns):
             lines.append("")  # Blank line between tables
             lines.append(
                 self._format_table(
                     table,
                     quoting=quoting,
                     include_descriptions=include_descriptions,
-                    omitted_count=omitted_count,
-                    num_tables=len(schema.tables),
+                    omitted_column_count=omitted_column_count,
+                    include_sampled_rows=include_sampled_rows,
                 )
             )
 
@@ -104,6 +105,7 @@ class SQLDDLSchemaFormatter:
             table,
             quoting=SQLQuoting.for_dialect(dialect),
             include_descriptions=include_descriptions,
+            include_sampled_rows=self.include_sampled_df,
         )
 
     def _format_table(
@@ -112,8 +114,8 @@ class SQLDDLSchemaFormatter:
         *,
         quoting: SQLQuoting,
         include_descriptions: bool,
-        omitted_count: int = 0,
-        num_tables: int | None = None,
+        include_sampled_rows: bool,
+        omitted_column_count: int = 0,
     ) -> str:
         lines = []
 
@@ -137,9 +139,8 @@ class SQLDDLSchemaFormatter:
 
         # Add sampled rows to info block
         if (
-            self.include_sampled_df
+            include_sampled_rows
             and len(table.columns) <= self.include_sampled_df_max_columns
-            and (num_tables is None or num_tables <= self.include_sampled_df_max_tables)
             and table.sampled_df is not None
             and not table.sampled_df.empty
         ):
@@ -169,8 +170,8 @@ class SQLDDLSchemaFormatter:
             for column in table.columns
         ]
 
-        if omitted_count > 0:
-            column_defs.append(f"    -- ... {omitted_count} more columns omitted")
+        if omitted_column_count > 0:
+            column_defs.append(f"    -- ... {omitted_column_count} more columns omitted")
 
         # Add composite primary key constraint if needed
         if len(primary_key_names) > 1:
