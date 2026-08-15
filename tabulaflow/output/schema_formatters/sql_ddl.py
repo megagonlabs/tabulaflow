@@ -65,7 +65,7 @@ class SQLDDLSchemaFormatter:
             return f"Sample rows:\n{md_table}"
 
     def format(self, schema: SQLSchema, *, include_descriptions: bool = False) -> str:
-        quoting = SQLQuoting.for_dialect(schema.dialect)
+        quoting = SQLQuoting.from_dialect(schema.dialect)
         name_label = "Project" if schema.dialect == "bigquery" else "Database"
         metadata_lines = [f"**{name_label}:** `{schema.name}`"]
         if schema.dialect:
@@ -104,7 +104,7 @@ class SQLDDLSchemaFormatter:
     ) -> str:
         return self._format_table(
             table,
-            quoting=SQLQuoting.for_dialect(dialect),
+            quoting=SQLQuoting.from_dialect(dialect),
             include_descriptions=include_descriptions,
             include_sampled_rows=self.include_sampled_df,
         )
@@ -121,7 +121,7 @@ class SQLDDLSchemaFormatter:
         lines = []
 
         # Build table info block content
-        table_name = quoting.full_table_name(table.name, table.schema_name)
+        table_name = quoting.qualified_table(table.name, table.schema_name)
         title = ""
         title += f"Schema: {quoting.quote_if_needed(table.schema_name)}"
         title += "\nTable:"
@@ -182,7 +182,7 @@ class SQLDDLSchemaFormatter:
         # Add foreign key constraints
         for fk in table.foreign_keys:
             fk_cols = ", ".join(quoting.quote_column(name) for name in fk.columns)
-            ref_table = quoting.full_table_name(fk.referenced_table, fk.referenced_schema_name)
+            ref_table = quoting.qualified_table(fk.referenced_table, fk.referenced_schema_name)
             ref_cols = ", ".join(quoting.quote_column(name) for name in fk.referenced_columns)
             column_defs.append(f"    FOREIGN KEY ({fk_cols}) REFERENCES {ref_table}({ref_cols})")
 
@@ -265,7 +265,7 @@ class SQLDDLSchemaFormatter:
         # Add FK reference info as comment
         for fk in foreign_keys:
             if len(fk.columns) == 1:  # Single column FK
-                ref_table = quoting.full_table_name(fk.referenced_table, fk.referenced_schema_name)
+                ref_table = quoting.qualified_table(fk.referenced_table, fk.referenced_schema_name)
                 ref_col = quoting.quote_column(fk.referenced_columns[0])
                 comment_lines.append(f"        -- <fk> -> {ref_table}.{ref_col}</fk>")
             else:

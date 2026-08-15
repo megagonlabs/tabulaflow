@@ -21,7 +21,7 @@ class SQLQuoting:
     always_quote_columns: bool
 
     @classmethod
-    def for_dialect(cls, dialect: SQLDialect | None) -> "SQLQuoting":
+    def from_dialect(cls, dialect: SQLDialect | None) -> "SQLQuoting":
         return cls(*_DIALECT_QUOTING.get(dialect or "", _DEFAULT_QUOTING))
 
     def quote(self, value: str) -> str:
@@ -37,7 +37,7 @@ class SQLQuoting:
     def quote_column(self, name: str) -> str:
         return self.quote(name) if self.always_quote_columns else self.quote_if_needed(name)
 
-    def full_table_name(self, table: str, schema: str | None) -> str:
+    def qualified_table(self, table: str, schema: str | None) -> str:
         if schema is None:
             return self.quote_if_needed(table)
         return f"{self.quote_if_needed(schema)}.{self.quote_if_needed(table)}"

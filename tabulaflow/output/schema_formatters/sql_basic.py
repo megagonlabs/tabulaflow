@@ -33,7 +33,7 @@ class SQLBasicSchemaFormatter:
         return value[: self.example_max_chars // 2] + "..." + value[-self.example_max_chars // 2 :]
 
     def format(self, schema: SQLSchema, *, include_descriptions: bool = False) -> str:
-        quoting = SQLQuoting.for_dialect(schema.dialect)
+        quoting = SQLQuoting.from_dialect(schema.dialect)
         name_label = "Project" if schema.dialect == "bigquery" else "Database"
         result = f"{name_label}: {schema.name}"
         if schema.dialect:
@@ -63,7 +63,7 @@ class SQLBasicSchemaFormatter:
     ) -> str:
         return self._format_table(
             table,
-            quoting=SQLQuoting.for_dialect(dialect),
+            quoting=SQLQuoting.from_dialect(dialect),
             include_descriptions=include_descriptions,
         )
 
@@ -96,7 +96,7 @@ class SQLBasicSchemaFormatter:
         for foreign_key in table.foreign_keys:
             if len(foreign_key.columns) > 1:
                 local_columns = "(" + ", ".join(quoting.quote_column(name) for name in foreign_key.columns) + ")"
-                referenced_table = quoting.full_table_name(
+                referenced_table = quoting.qualified_table(
                     foreign_key.referenced_table, foreign_key.referenced_schema_name
                 )
                 referenced_columns = (
@@ -163,7 +163,7 @@ class SQLBasicSchemaFormatter:
             result += " [PK]" if primary_key_kind == "single" else " [PK-composite]"
         for foreign_key in foreign_keys:
             if len(foreign_key.columns) == 1:
-                referenced_table = quoting.full_table_name(
+                referenced_table = quoting.qualified_table(
                     foreign_key.referenced_table, foreign_key.referenced_schema_name
                 )
                 referenced_column = quoting.quote_column(foreign_key.referenced_columns[0])
