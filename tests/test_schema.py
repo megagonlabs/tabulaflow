@@ -1,0 +1,77 @@
+from __future__ import annotations
+
+import pandas as pd
+
+from tabulaflow.core import ColumnRef, ForeignKeySchema, SQLColumnSchema, SQLSchema, SQLTableSchema
+
+
+def _table(name: str = "orders") -> SQLTableSchema:
+    foreign_key = ForeignKeySchema(
+        columns=["customer_id"],
+        foreign_schema_name="public",
+        foreign_table="customers",
+        foreign_columns=["id"],
+    )
+    return SQLTableSchema(
+        name=name,
+        schema_name="public",
+        is_view=False,
+        columns=[
+            SQLColumnSchema(
+                name="id",
+                dtype="INTEGER",
+                nullable=False,
+                examples=[],
+                primary_key_type="single",
+            ),
+            SQLColumnSchema(
+                name="customer_id",
+                dtype="INTEGER",
+                nullable=False,
+                examples=[],
+                foreign_keys=[foreign_key],
+            ),
+            SQLColumnSchema(name="total", dtype="DECIMAL", nullable=False, examples=[]),
+        ],
+        primary_key=["id"],
+        foreign_keys=[foreign_key],
+        sampled_df=pd.DataFrame({"id": [1], "customer_id": [2], "total": [10]}),
+    )
+
+
+def test_table_select_columns_copies_and_updates_metadata() -> None:
+    table = _table()
+
+    selected = table.select_columns(["total"])
+
+    assert [column.name for column in selected.columns] == ["id", "total"]
+    assert selected.primary_key == ["id"]
+    assert selected.foreign_keys == []
+    assert selected.sampled_df is not None
+    assert list(selected.sampled_df.columns) == ["id", "total"]
+    assert selected.columns[0] is not table.columns[0]
+
+
+def test_table_select_columns_can_return_an_empty_table() -> None:
+    selected = _table().select_columns(["missing"], include_primary_key=False)
+
+    assert selected.columns == []
+    assert selected.primary_key == []
+    assert selected.foreign_keys == []
+    assert selected.sampled_df is not None
+    assert selected.sampled_df.empty
+    assert list(selected.sampled_df.columns) == []
+
+
+def test_schema_select_columns_drops_unselected_tables() -> None:
+    schema = SQLSchema(name="shop", dialect="postgres", tables=[_table(), _table("archived_orders")])
+
+    selected = schema.select_columns(
+        [ColumnRef(schema_name="PUBLIC", table_name="ORDERS", column_name="CUSTOMER_ID")],
+        include_primary_keys=False,
+    )
+
+    assert [table.name for table in selected.tables] == ["orders"]
+    assert [column.name for column in selected.tables[0].columns] == ["customer_id"]
+    assert selected.tables[0].primary_key == []
+    assert len(selected.tables[0].foreign_keys) == 1

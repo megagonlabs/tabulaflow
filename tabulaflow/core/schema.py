@@ -1,4 +1,3 @@
-import copy
 from typing import Any, Literal, TypeAlias
 
 import pandas as pd
@@ -153,37 +152,54 @@ class SQLTableSchema(BaseModel):
             self.sampled_df = _sanitize_df(self.sampled_df)
         return self
 
-    def trim(
+    def select_columns(
         self,
         column_names: list[str],
+        *,
         case_insensitive: bool = True,
-        keep_pk: bool = True,
-    ) -> "SQLTableSchema | None":
-        """Return a trimmed copy keeping only the specified columns.
+        include_primary_key: bool = True,
+    ) -> "SQLTableSchema":
+        """Return a copy containing only the selected columns.
 
         Args:
             column_names: Column names to retain.
             case_insensitive: If True, column name matching ignores case.
-            keep_pk: If True, primary-key columns are always retained.
+            include_primary_key: If True, primary-key columns are always retained.
 
         Returns:
-            A deep-copied ``SQLTableSchema`` with only the matched columns,
-            or ``None`` if no columns remain after trimming.
+            A deep-copied table with only the selected columns and applicable constraints.
         """
 
         def normalize(s: str) -> str:
             return s.lower() if case_insensitive else s
 
         normalized_names = {normalize(n) for n in column_names}
+        if include_primary_key:
+            normalized_names.update(normalize(name) for name in self.primary_key)
 
-        new_columns = [
-            col for col in self.columns if normalize(col.name) in normalized_names or (keep_pk and col.primary_key_type)
+        table = self.model_copy(deep=True)
+        table.columns = [column for column in table.columns if normalize(column.name) in normalized_names]
+        selected_names = {normalize(column.name) for column in table.columns}
+
+        if not all(normalize(name) in selected_names for name in table.primary_key):
+            table.primary_key = []
+        table.foreign_keys = [
+            foreign_key
+            for foreign_key in table.foreign_keys
+            if all(normalize(name) in selected_names for name in foreign_key.columns)
         ]
-        if not new_columns:
-            return None
 
-        table = copy.deepcopy(self)
-        table.columns = new_columns
+        primary_key_type: Literal["single", "composite"] | None = None
+        if table.primary_key:
+            primary_key_type = "single" if len(table.primary_key) == 1 else "composite"
+        primary_key_names = {normalize(name) for name in table.primary_key}
+        for column in table.columns:
+            column.primary_key_type = primary_key_type if normalize(column.name) in primary_key_names else None
+            column.foreign_keys = [
+                foreign_key
+                for foreign_key in table.foreign_keys
+                if normalize(column.name) in {normalize(name) for name in foreign_key.columns}
+            ]
 
         if table.sampled_df is not None:
             remaining_col_names = [col.name for col in table.columns]
@@ -224,25 +240,37 @@ class SQLSchema(BaseModel):
             for column in table.columns
         ]
 
-    def trim(self, column_refs: list[ColumnRef], case_insensitive: bool = True, keep_pk: bool = True) -> "SQLSchema":
-        def normalize(s: str | None) -> str | None:
-            return s.lower() if case_insensitive and s is not None else s
+    def select_columns(
+        self,
+        column_refs: list[ColumnRef],
+        *,
+        case_insensitive: bool = True,
+        include_primary_keys: bool = True,
+    ) -> "SQLSchema":
+        def normalize(name: str) -> str:
+            return name.lower() if case_insensitive else name
 
-        # Group column names by (schema_name, table_name)
+        def normalize_schema(name: str | None) -> str | None:
+            return normalize(name) if name is not None else None
+
         columns_by_table: dict[tuple[str | None, str], set[str]] = {}
         for ref in column_refs:
-            key = (normalize(ref.schema_name), normalize(ref.table_name))
-            columns_by_table.setdefault(key, set()).add(ref.column_name)  # type: ignore[arg-type]
+            key = (normalize_schema(ref.schema_name), normalize(ref.table_name))
+            columns_by_table.setdefault(key, set()).add(ref.column_name)
 
         new_tables: list[SQLTableSchema] = []
         for table in self.tables:
-            table_key = (normalize(table.schema_name), normalize(table.name))
-            col_names = columns_by_table.get(table_key)  # type: ignore[arg-type]
+            table_key = (normalize_schema(table.schema_name), normalize(table.name))
+            col_names = columns_by_table.get(table_key)
             if col_names is None:
                 continue
-            trimmed = table.trim(list(col_names), case_insensitive=case_insensitive, keep_pk=keep_pk)
-            if trimmed is not None:
-                new_tables.append(trimmed)
+            selected = table.select_columns(
+                list(col_names),
+                case_insensitive=case_insensitive,
+                include_primary_key=include_primary_keys,
+            )
+            if selected.columns:
+                new_tables.append(selected)
 
         schema = self.model_copy(deep=False)
         schema.tables = new_tables

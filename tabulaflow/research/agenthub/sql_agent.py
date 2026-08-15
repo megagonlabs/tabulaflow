@@ -258,7 +258,11 @@ class SchemaLinker:
             for alt in item.alternatives
         }
         linked_column_refs = [ColumnRef(schema_name=s, table_name=t, column_name=c) for s, t, c in linked]
-        linked_schema = ctx.preprocessed_schema.trim(linked_column_refs, case_insensitive=True, keep_pk=True)
+        linked_schema = ctx.preprocessed_schema.select_columns(
+            linked_column_refs,
+            case_insensitive=True,
+            include_primary_keys=True,
+        )
         return linked_schema
 
     async def link_schema_async(self, ctx: SQLAgentContext, task: SimpleNL2QTask) -> SQLSchema:

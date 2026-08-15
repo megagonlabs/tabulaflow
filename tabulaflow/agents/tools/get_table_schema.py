@@ -226,7 +226,11 @@ class GetTableSchemaTool:
             )
 
         column_names = [col.name for col in selected_columns]
-        trimmed_table = table.trim(column_names, case_insensitive=False, keep_pk=False)
+        selected_table = table.select_columns(
+            column_names,
+            case_insensitive=False,
+            include_primary_key=False,
+        )
 
         res = ""
         if table.name.lower() != table_name.lower():
@@ -241,12 +245,7 @@ class GetTableSchemaTool:
                 parts.append(f"range {column_offset + 1}-{end}")
             res += f"(showing {len(selected_columns)} of {total_columns} total columns, {', '.join(parts)})\n\n"
         self.formatter.set_dialect(self.schema.dialect)
-        if trimmed_table is not None:
-            res += self.formatter.format_table(trimmed_table, add_description=self.add_description)
-        else:
-            res += self.formatter.format_table(
-                table.model_copy(update={"columns": []}), add_description=self.add_description
-            )
+        res += self.formatter.format_table(selected_table, add_description=self.add_description)
 
         if self._disconnect_on_finish:
             await self.db_connector.disconnect_async()
