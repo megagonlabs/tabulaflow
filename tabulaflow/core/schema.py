@@ -1,3 +1,5 @@
+"""Shared SQL and property-graph schema models with optional profiling metadata."""
+
 from typing import Any, Literal, TypeAlias
 
 import pandas as pd
@@ -36,11 +38,15 @@ NonSQLLanguage: TypeAlias = Literal["cypher", "mongo"]
 
 
 class GraphPropertySchema(BaseModel):
-    """A single property on a node type or relationship type."""
+    """A property on a node or relationship type.
+
+    Attributes:
+        dtype: Database-reported type such as ``STRING``, ``INTEGER``, or
+            ``LIST OF STRING``.
+    """
 
     name: str
     dtype: str
-    """Database-reported type string (e.g. ``"STRING"``, ``"INTEGER"``, ``"LIST OF STRING"``)."""
     description: str | None = None
 
 
@@ -83,6 +89,8 @@ class PropertyGraphSchema(BaseModel):
 
 
 class ForeignKeySchema(BaseModel):
+    """An ordered mapping from local columns to columns in a referenced table."""
+
     columns: list[str]
     referenced_schema_name: str | None = None
     referenced_table: str
@@ -98,43 +106,65 @@ class ForeignKeySchema(BaseModel):
 
 
 class SQLColumnSchema(BaseModel):
+    """Structural and profiling metadata for a SQL column.
+
+    Attributes:
+        dtype: Canonical atomic type used for category checks, such as ``VARCHAR``,
+            ``BIGINT``, ``ARRAY``, or ``STRUCT``.
+        native_dtype: Dialect-native type preserving parameters and nested shape,
+            such as ``VARCHAR(100)``, ``STRUCT(a INT, b VARCHAR)``, or
+            ``ARRAY<STRING>``.
+        json_schema: Inferred structure of JSON, JSONB, or VARIANT values.
+        null_ratio: Fraction of sampled values that are null.
+        num_unique: Number of distinct sampled values when computed.
+        unique_ratio: Fraction of sampled values that are distinct.
+        examples: Representative non-null values.
+    """
+
     name: str
     dtype: str
-    """Canonical atomic type token (e.g. ``VARCHAR``, ``BIGINT``, ``ARRAY``, ``STRUCT``).
-    Used for categorical type-class checks. See ``native_dtype`` for the dialect-native string."""
     native_dtype: str | None = None
-    """Dialect-native type string preserving parameters/nested shape
-    (e.g. ``VARCHAR(100)`` on Postgres, ``STRUCT(a INT, b VARCHAR)`` on DuckDB,
-    ``ARRAY<STRING>`` on BigQuery). Best-effort: ``None`` when neither SQLAlchemy
-    nor the dialect catalog could resolve it."""
     description: str | None = None
-    """Concise description of the column"""
     json_schema: dict[str, Any] | None = None
-    """JSON Schema describing the internal structure of JSON/VARIANT columns (nested objects, arrays, etc.)"""
     nullable: bool
     null_ratio: float | None = None
-    num_unique: int | None = None  # Only for text or integer columns
-    unique_ratio: float | None = None  # Only for text or integer columns
+    num_unique: int | None = None
+    unique_ratio: float | None = None
     examples: list[Any]
 
 
 class NamePattern(BaseModel):
+    """A compressed table-name pattern and the concrete names it represents.
+
+    Attributes:
+        pattern: Generalized name such as ``events_{YYYYMMDD}``.
+        comment: Variation summary such as ``YYYYMMDD from 20200101 to 20200102``.
+        original_names: Concrete names such as ``events_20200101`` and
+            ``events_20200102``.
+    """
+
     pattern: str
-    """(e.g. "events_{YYYYMMDD}")"""
     comment: str | None = None
-    """(e.g. "YYYYMMDD from 20200101 to 20200102")"""
     original_names: list[str] = Field(default_factory=list)
-    """The original table names in the compressed schema (e.g. ["events_20200101", "events_20200102"])"""
 
 
 class SQLTableSchema(BaseModel):
+    """Structural and profiling metadata for a SQL table or view.
+
+    Attributes:
+        name_patterns: Compressed name variants represented by this table.
+        schema_name: Namespace containing the table, or ``None`` for databases
+            without schemas, such as SQLite.
+        primary_key: Ordered primary-key column names.
+        foreign_keys: Outgoing foreign-key constraints.
+        sampled_df: Sample rows used by schema browsers and formatters.
+    """
+
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     name: str
     name_patterns: list[NamePattern] = Field(default_factory=list)
-    """All variations of the table name in the compressed schema."""
     schema_name: str | None = None
-    """null for DBMS that does not support schemas such as SQLite"""
     description: str | None = None
     is_view: bool
     columns: list[SQLColumnSchema]
@@ -165,7 +195,10 @@ class SQLTableSchema(BaseModel):
         case_insensitive: bool = True,
         include_primary_key: bool = True,
     ) -> "SQLTableSchema":
-        """Return a copy containing only the selected columns.
+        """Return a deep copy containing the selected columns.
+
+        Incomplete primary- and foreign-key constraints are removed, and sample
+        rows are projected to the remaining columns.
 
         Args:
             column_names: Column names to retain.
@@ -173,7 +206,7 @@ class SQLTableSchema(BaseModel):
             include_primary_key: If True, primary-key columns are always retained.
 
         Returns:
-            A deep-copied table with only the selected columns and applicable constraints.
+            The projected table schema.
         """
 
         def normalize(s: str) -> str:
@@ -204,25 +237,32 @@ class SQLTableSchema(BaseModel):
 
 
 class ColumnRef(BaseModel):
+    """A column identifier scoped to one database."""
+
     schema_name: str | None = None
     table_name: str
     column_name: str
 
 
 class TableRef(BaseModel):
+    """A table identifier scoped to one database."""
+
     schema_name: str | None = None
     table_name: str
 
 
 class SQLSchema(BaseModel):
+    """A database-level SQL schema document.
+
+    Attributes:
+        name: Database name, or project name for BigQuery.
+        dialect: SQL dialect when known.
+    """
+
     name: str
-    """Database name, or project name for BigQuery."""
     dialect: SQLDialect | None = None
     description: str | None = None
     tables: list[SQLTableSchema]
-
-    def num_total_columns(self) -> int:
-        return sum(len(table.columns) for table in self.tables)
 
     def table_refs(self) -> list[TableRef]:
         return [TableRef(schema_name=table.schema_name, table_name=table.name) for table in self.tables]
@@ -241,6 +281,19 @@ class SQLSchema(BaseModel):
         case_insensitive: bool = True,
         include_primary_keys: bool = True,
     ) -> "SQLSchema":
+        """Return a copy containing the referenced columns.
+
+        Unreferenced tables and tables with no matching columns are omitted.
+
+        Args:
+            column_refs: Qualified columns to retain.
+            case_insensitive: If True, schema, table, and column matching ignores case.
+            include_primary_keys: If True, primary-key columns are retained for selected tables.
+
+        Returns:
+            The projected database schema.
+        """
+
         def normalize(name: str) -> str:
             return name.lower() if case_insensitive else name
 

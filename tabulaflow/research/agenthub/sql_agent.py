@@ -267,7 +267,10 @@ class SchemaLinker:
         return linked_schema
 
     async def link_schema_async(self, ctx: SQLAgentContext, task: SimpleNL2QTask) -> SQLSchema:
-        if ctx.preprocessed_schema.num_total_columns() < self.config.min_columns_for_schema_linking:
+        if (
+            sum(len(table.columns) for table in ctx.preprocessed_schema.tables)
+            < self.config.min_columns_for_schema_linking
+        ):
             return ctx.preprocessed_schema
 
         pred_query = await self._generate_sql_async(ctx, task)
