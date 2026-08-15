@@ -1,6 +1,6 @@
 import jinja2
 import time
-from typing import ClassVar
+from typing import ClassVar, cast
 import logging
 from tabulaflow.data import DataConnector
 from tabulaflow.agents.trace import Usage, Trajectory
@@ -9,7 +9,7 @@ from tabulaflow.research.types import SimpleNL2QTask, SimpleNL2QTaskOutput
 from tabulaflow.agents.modules import DBSummarizer
 from tabulaflow.agents.tools import BaseTool, GetColumnJsonSchemaTool, GetTableSchemaTool, RunQueryTool
 from tabulaflow.research.tools import FinishTool
-from tabulaflow.output.schema_formatters.base import schema_formatter_registry, SchemaFormatter
+from tabulaflow.output.schema_formatters.base import schema_formatter_registry, SQLSchemaFormatter
 from tabulaflow.research.agenthub.base import agent_registry, BaseAgentConfig
 from tabulaflow.research.agenthub.utils import (
     get_max_steps_processor,
@@ -94,8 +94,9 @@ class TabulaflowAgent:
         config: TabulaflowAgentConfig,
     ):
         self.config = config
-        self.formatter: SchemaFormatter = schema_formatter_registry.get_class(config.schema_formatter)(
-            **config.to_formatter_kwargs()
+        self.formatter = cast(
+            SQLSchemaFormatter,
+            schema_formatter_registry.get_class(config.schema_formatter)(**config.to_formatter_kwargs()),
         )
 
     @classmethod
@@ -120,7 +121,7 @@ class TabulaflowAgent:
         tools: dict[str, BaseTool] = {
             "get_table_schema": GetTableSchemaTool(
                 db_connector,
-                self.formatter,  # type: ignore[arg-type]
+                self.formatter,
                 compress=self.config.compress_schema,
                 add_description=self.config.use_column_description,
             ),

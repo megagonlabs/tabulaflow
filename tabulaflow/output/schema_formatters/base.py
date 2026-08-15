@@ -1,47 +1,29 @@
-from typing import Protocol, ClassVar, TypeAlias, Union
-from tabulaflow.core import (
-    SQLDialect,
-    SQLSchema,
-    SQLTableSchema,
-    SQLColumnSchema,
-    PropertyGraphSchema,
-    NodeSchema,
-    GraphPropertySchema,
-)
+from typing import ClassVar, Protocol, TypeAlias
+
+from tabulaflow.core import PropertyGraphSchema, SQLDialect, SQLSchema, SQLTableSchema
 from tabulaflow.core.registry import ClassRegistry
 
 
-class BaseSQLSchemaFormatter(Protocol):
+class SQLSchemaFormatter(Protocol):
     name: ClassVar[str]
 
-    def set_dialect(self, dialect: SQLDialect | None) -> None: ...
-
-    def format(self, schema: SQLSchema, pk_fk_column_only: bool = False, add_description: bool = False) -> str: ...
-
-    def format_table_name(self, table: SQLTableSchema) -> str: ...
+    def format(self, schema: SQLSchema, *, include_descriptions: bool = False) -> str: ...
 
     def format_table(
         self,
         table: SQLTableSchema,
-        pk_fk_column_only: bool = False,
-        add_description: bool = False,
+        *,
+        dialect: SQLDialect | None,
+        include_descriptions: bool = False,
     ) -> str: ...
 
-    def format_column(self, column: SQLColumnSchema, add_description: bool = False) -> str: ...
 
-
-class BasePropertyGraphSchemaFormatter(Protocol):
+class PropertyGraphSchemaFormatter(Protocol):
     name: ClassVar[str]
 
     def format(self, schema: PropertyGraphSchema) -> str: ...
 
-    def format_node(self, node: NodeSchema) -> str: ...
 
-    def format_pattern(self, label: str, source_label: str, target_label: str) -> str: ...
-
-    def format_property(self, prop: GraphPropertySchema) -> str: ...
-
-
-SchemaFormatter: TypeAlias = Union[BaseSQLSchemaFormatter, BasePropertyGraphSchemaFormatter]
+SchemaFormatter: TypeAlias = SQLSchemaFormatter | PropertyGraphSchemaFormatter
 
 schema_formatter_registry = ClassRegistry[SchemaFormatter]("formatter")

@@ -1,8 +1,8 @@
 import jinja2
 import time
-from typing import ClassVar, Literal
+from typing import ClassVar, Literal, cast
 from tabulaflow.data import SQLConnectorProtocol
-from tabulaflow.output.schema_formatters.base import schema_formatter_registry, SchemaFormatter
+from tabulaflow.output.schema_formatters.base import schema_formatter_registry, SQLSchemaFormatter
 from tabulaflow.agents.trace import Usage, Trajectory
 from tabulaflow.research.types import PredQuery
 from tabulaflow.research.types import AmbigNL2QTask, SimpleAmbigNL2QTaskOutput
@@ -62,8 +62,9 @@ class AmbigSimpleSQLAgent:
         config: AmbigSimpleSQLAgentConfig,
     ):
         self.config = config
-        self.formatter: SchemaFormatter = schema_formatter_registry.get_class(config.schema_formatter)(
-            **config.to_formatter_kwargs()
+        self.formatter = cast(
+            SQLSchemaFormatter,
+            schema_formatter_registry.get_class(config.schema_formatter)(**config.to_formatter_kwargs()),
         )
         self.compressor = SchemaCompressor() if config.compress_schema else None
 
@@ -86,7 +87,7 @@ class AmbigSimpleSQLAgent:
         if self.compressor is not None:
             schema = self.compressor.compress(schema)
         tools: dict[str, BaseTool] = {}
-        tools["get_schema"] = GetSchemaTool(schema, self.formatter)  # type: ignore[arg-type]
+        tools["get_schema"] = GetSchemaTool(schema, self.formatter)
         if self.config.use_column_description:
             tools["get_column_description"] = GetColumnDescriptionTool(schema)
         tools["ask_user"] = AskUserTool(user_simulator, patience=user_patience)

@@ -6,7 +6,7 @@ from pydantic_ai import Tool, ToolReturn
 
 from tabulaflow.data.base import DataConnector
 from tabulaflow.data.registry import DBRegistry
-from tabulaflow.output.schema_formatters.base import BaseSQLSchemaFormatter
+from tabulaflow.output.schema_formatters.base import SQLSchemaFormatter
 from tabulaflow.agents.tools.base import ToolCallOutcome, sum_tool_metrics
 from tabulaflow.agents.tools.get_table_schema import GetTableSchemaTool, GetTableSchemaToolMetrics
 
@@ -24,7 +24,7 @@ class RegistryGetTableSchemaTool:
     def __init__(
         self,
         registry: DBRegistry,
-        formatter: BaseSQLSchemaFormatter,
+        formatter: SQLSchemaFormatter,
         *,
         compress: bool = True,
         add_description: bool = True,

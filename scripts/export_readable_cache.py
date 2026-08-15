@@ -27,7 +27,7 @@ def main() -> None:
             continue
         schema = SQLSchema.model_validate_json(open(os.path.join(input_dir, file)).read())
         compressed_schema = SchemaCompressor().compress(schema)
-        compressed_schema_str = SQLDDLSchemaFormatter().format(compressed_schema, add_description=True)
+        compressed_schema_str = SQLDDLSchemaFormatter().format(compressed_schema, include_descriptions=True)
         with open(output_path, "w") as f:
             f.write(compressed_schema_str)
     print(f"Exported {len(os.listdir(input_dir))} schemas to {output_dir}")
@@ -52,7 +52,7 @@ def main() -> None:
         if args.skip_exists and os.path.exists(output_path):
             continue
         schema = SQLSchema.model_validate_json(open(os.path.join(input_dir, f)).read())
-        schema_str = SQLDDLSchemaFormatter().format(schema, add_description=True)
+        schema_str = SQLDDLSchemaFormatter().format(schema, include_descriptions=True)
         with open(output_path, "w") as f:
             f.write(schema_str)
     print(f"Exported {len(os.listdir(input_dir))} preprocessed schemas to {output_dir}")

@@ -91,8 +91,7 @@ class RegistryGetDBDocumentTool:
         connector = self.registry.get(db_alias)
         if connector.connector_type == "sql":
             schema = self._compressor.compress(connector.schema)
-            self._sql_formatter.set_dialect(schema.dialect)
-            return self._sql_formatter.format(schema, add_description=True)
+            return self._sql_formatter.format(schema, include_descriptions=True)
         if connector.connector_type == "property_graph":
             return self._graph_formatter.format(connector.schema)
         raise TypeError(f"Unsupported connector type for get_db_document: {connector.connector_type!r}")

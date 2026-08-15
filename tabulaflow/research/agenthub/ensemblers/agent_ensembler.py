@@ -1,7 +1,7 @@
 import asyncio
 import logging
 import time
-from typing import Any, ClassVar
+from typing import Any, ClassVar, cast
 
 import jinja2
 from pydantic_ai import ModelRetry, RunContext, ToolOutput
@@ -10,7 +10,7 @@ from tabulaflow.research.agenthub.base import BaseAgentConfig
 from tabulaflow.research.agenthub.ensemblers.majority_ensembler import _normalize_value
 from tabulaflow.research.agenthub.utils import BasicAgentConfig, get_max_steps_processor, instrument
 from tabulaflow.data import SQLConnectorProtocol
-from tabulaflow.output.schema_formatters.base import SchemaFormatter, schema_formatter_registry
+from tabulaflow.output.schema_formatters.base import SQLSchemaFormatter, schema_formatter_registry
 from tabulaflow.output.formatting import format_df
 from tabulaflow.research.pipelines.populate_exec_results import populate_task_async
 from tabulaflow.agents.modules import DBSummarizer
@@ -123,8 +123,9 @@ class AgentEnsembler:
 
     def __init__(self, config: AgentEnsemblerConfig):
         self.config = config
-        self.formatter: SchemaFormatter = schema_formatter_registry.get_class(config.schema_formatter)(
-            **config.to_formatter_kwargs()
+        self.formatter = cast(
+            SQLSchemaFormatter,
+            schema_formatter_registry.get_class(config.schema_formatter)(**config.to_formatter_kwargs()),
         )
 
     @classmethod
@@ -226,7 +227,7 @@ class AgentEnsembler:
         tools: dict[str, BaseTool] = {
             "get_table_schema": GetTableSchemaTool(
                 db_connector,
-                self.formatter,  # type: ignore[arg-type]
+                self.formatter,
                 compress=self.config.compress_schema,
                 add_description=self.config.use_column_description,
             ),

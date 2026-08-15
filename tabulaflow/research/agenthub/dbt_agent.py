@@ -6,14 +6,14 @@ import shutil
 import sys
 import time
 from pathlib import Path
-from typing import Any, ClassVar
+from typing import Any, ClassVar, cast
 
 import jinja2
 
 from tabulaflow.research.agenthub.base import agent_registry, BaseAgentConfig
 from tabulaflow.research.agenthub.utils import BasicAgentConfig, get_max_steps_processor, instrument
 from tabulaflow.data import SQLConnectorProtocol
-from tabulaflow.output.schema_formatters import SchemaFormatter, schema_formatter_registry
+from tabulaflow.output.schema_formatters import SQLSchemaFormatter, schema_formatter_registry
 from tabulaflow.agents.modules import DBSummarizer
 from tabulaflow.agents.trace import Usage, Trajectory
 from tabulaflow.research.types import DbtTask, DbtTaskOutput
@@ -109,8 +109,9 @@ class DbtAgent:
 
     def __init__(self, config: DbtAgentConfig):
         self.config = config
-        self.formatter: SchemaFormatter = schema_formatter_registry.get_class(config.schema_formatter)(
-            **config.to_formatter_kwargs()
+        self.formatter = cast(
+            SQLSchemaFormatter,
+            schema_formatter_registry.get_class(config.schema_formatter)(**config.to_formatter_kwargs()),
         )
 
     @classmethod
@@ -142,7 +143,7 @@ class DbtAgent:
 
         get_table_schema = GetTableSchemaTool(
             db_connector,
-            self.formatter,  # type: ignore[arg-type]
+            self.formatter,
             compress=self.config.compress_schema,
             add_description=self.config.use_column_description,
             disconnect_on_finish=True,

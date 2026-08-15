@@ -1473,13 +1473,15 @@ class SchemaBrowserScreen(Screen[None]):
         )
 
         name_width = max((len(col.name) for col in table.columns), default=0)
+        primary_key_columns = set(table.primary_key)
+        foreign_key_columns = {name for foreign_key in table.foreign_keys for name in foreign_key.columns}
         for col in table.columns:
             c_label = Text()
             c_label.append(col.name.ljust(name_width))
             c_label.append(f"  {col.dtype}", style="dim")
-            if col.primary_key_type:
+            if col.name in primary_key_columns:
                 c_label.append(" PK", style=PK_MARKER)
-            if col.foreign_keys:
+            if col.name in foreign_key_columns:
                 c_label.append(" FK", style=FK_MARKER)
             table_node.add_leaf(
                 c_label,

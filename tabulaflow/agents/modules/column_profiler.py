@@ -57,7 +57,7 @@ class ColumnProfiler:
         self, db_connector: SQLConnectorProtocol, schema: SQLSchema, column_ref: ColumnRef
     ) -> LLMOutput:
         system_prompt = jinja2.Template(COLUMN_PROFILER_SYSTEM_PROMPT).render(
-            schema=self.formatter.format(schema, add_description=True)
+            schema=self.formatter.format(schema, include_descriptions=True)
         )
         # run_query_tool = RunQueryNoParamsTool(db_connector)
         agent = make_agent(

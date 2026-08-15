@@ -1,7 +1,7 @@
 from tabulaflow.output.schema_formatters.base import (
-    BaseSQLSchemaFormatter,
-    BasePropertyGraphSchemaFormatter,
+    PropertyGraphSchemaFormatter,
     SchemaFormatter,
+    SQLSchemaFormatter,
     schema_formatter_registry,
 )
 from tabulaflow.output.schema_formatters.sql_basic import SQLBasicSchemaFormatter
@@ -10,9 +10,9 @@ from tabulaflow.output.schema_formatters.er_diagram import ERDiagramMermaidForma
 from tabulaflow.output.schema_formatters.cypher import CypherSchemaFormatter
 
 __all__ = [
-    "BaseSQLSchemaFormatter",
-    "BasePropertyGraphSchemaFormatter",
+    "PropertyGraphSchemaFormatter",
     "SchemaFormatter",
+    "SQLSchemaFormatter",
     "SQLBasicSchemaFormatter",
     "SQLDDLSchemaFormatter",
     "ERDiagramMermaidFormatter",

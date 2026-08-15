@@ -1,6 +1,6 @@
 import jinja2
 import time
-from typing import ClassVar
+from typing import ClassVar, cast
 import logging
 
 import tabulaflow.output.schema_formatters  # noqa: F401 — register sql_*, cypher, … formatters
@@ -10,7 +10,11 @@ from tabulaflow.agents.trace import Usage, Trajectory
 from tabulaflow.research.types import PredQuery
 from tabulaflow.research.types import SimpleNL2QTask, SimpleNL2QTaskOutput
 from tabulaflow.data.schema_compressor import SchemaCompressor
-from tabulaflow.output.schema_formatters.base import schema_formatter_registry
+from tabulaflow.output.schema_formatters.base import (
+    PropertyGraphSchemaFormatter,
+    SQLSchemaFormatter,
+    schema_formatter_registry,
+)
 from tabulaflow.research.agenthub.base import agent_registry, BaseAgentConfig
 from tabulaflow.research.agenthub.utils import (
     instrument,
@@ -79,17 +83,21 @@ class DirectPrompting:
         return cls(config)
 
     def _format_schema_for_prompt(self, db_connector: DataConnector) -> str:
-        schema = db_connector.schema
         if db_connector.connector_type == "sql":
+            schema = db_connector.schema
             if self.compressor is not None:
-                schema = self.compressor.compress(schema)  # type: ignore[arg-type]
-            formatter = schema_formatter_registry.get_class(self.config.schema_formatter)(
-                **self.config.to_formatter_kwargs()
+                schema = self.compressor.compress(schema)
+            sql_formatter = cast(
+                SQLSchemaFormatter,
+                schema_formatter_registry.get_class(self.config.schema_formatter)(**self.config.to_formatter_kwargs()),
             )
-            return formatter.format(schema, add_description=self.config.use_column_description)  # type: ignore[arg-type, call-arg]
+            return sql_formatter.format(schema, include_descriptions=self.config.use_column_description)
         if db_connector.connector_type == "property_graph":
-            formatter = schema_formatter_registry.get_class(self.config.schema_formatter)()
-            return formatter.format(schema)  # type: ignore[arg-type]
+            graph_formatter = cast(
+                PropertyGraphSchemaFormatter,
+                schema_formatter_registry.get_class(self.config.schema_formatter)(),
+            )
+            return graph_formatter.format(db_connector.schema)
         raise TypeError(f"Unsupported connector type for DirectPrompting: {db_connector.connector_type!r}")
 
     @instrument

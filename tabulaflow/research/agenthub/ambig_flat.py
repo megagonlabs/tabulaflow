@@ -2,11 +2,11 @@ import asyncio
 import json
 import jinja2
 import time
-from typing import ClassVar, Literal, Any
+from typing import ClassVar, Literal, Any, cast
 from pydantic import BaseModel
 from pydantic_ai import Agent, ToolOutput
 from tabulaflow.data import SQLConnectorProtocol
-from tabulaflow.output.schema_formatters.base import schema_formatter_registry, SchemaFormatter
+from tabulaflow.output.schema_formatters.base import schema_formatter_registry, SQLSchemaFormatter
 from tabulaflow.agents.trace import Usage, Trajectory
 from tabulaflow.research.types import PredQuery
 from tabulaflow.research.types import AmbigNL2QTask, FlatAmbigNL2QTaskOutput, PredAmbiguityPointInfinite
@@ -112,8 +112,9 @@ class AmbigFlatSQLAgent:
         config: AmbigFlatSQLAgentConfig,
     ):
         self.config = config
-        self.formatter: SchemaFormatter = schema_formatter_registry.get_class(config.schema_formatter)(
-            **config.to_formatter_kwargs()
+        self.formatter = cast(
+            SQLSchemaFormatter,
+            schema_formatter_registry.get_class(config.schema_formatter)(**config.to_formatter_kwargs()),
         )
         self.compressor = SchemaCompressor() if config.compress_schema else None
 
@@ -273,7 +274,7 @@ class AmbigFlatSQLAgent:
         if self.compressor is not None:
             schema = self.compressor.compress(schema)
         tools: dict[str, BaseTool] = {}
-        tools["get_schema"] = GetSchemaTool(schema, self.formatter)  # type: ignore[arg-type]
+        tools["get_schema"] = GetSchemaTool(schema, self.formatter)
         if self.config.use_column_description:
             tools["get_column_description"] = GetColumnDescriptionTool(schema)
         tools["search_keywords"] = SearchKeywordsTool(db_connector)
@@ -292,7 +293,7 @@ class AmbigFlatSQLAgent:
             task=task,
             db_connector=db_connector,
             preprocessed_schema=db_connector.schema,
-            schema_formatter=self.formatter,  # type: ignore[arg-type]
+            schema_formatter=self.formatter,
             usage=Usage.create(llm=self.config.llm),
             tools=tools,
             trajectories=[],

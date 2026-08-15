@@ -4,12 +4,12 @@ import json
 import jinja2
 import time
 from dataclasses import dataclass, field
-from typing import ClassVar, Any
+from typing import ClassVar, Any, cast
 import numpy as np
 import numpy.typing as npt
 from pydantic import BaseModel
 import logging
-from tabulaflow.data import DataConnector
+from tabulaflow.data import DataConnector, SQLConnectorProtocol
 from tabulaflow.core import SQLSchema, SQLTableSchema, ColumnRef
 from tabulaflow.agents.trace import Usage, Trajectory
 from tabulaflow.research.types import PredQuery
@@ -18,7 +18,7 @@ from tabulaflow.agents.modules import ERDiagramSynthesizer, SchemaPreprocessor
 from tabulaflow.research.question_embedder import QuestionEmbedder
 from tabulaflow.agents.tools import BaseTool, RunQueryTool
 from tabulaflow.research.tools import SearchKeywordsTool, FinishTool
-from tabulaflow.output.schema_formatters.base import schema_formatter_registry, SchemaFormatter
+from tabulaflow.output.schema_formatters.base import schema_formatter_registry, SQLSchemaFormatter
 from tabulaflow.research.agenthub.base import agent_registry, BaseAgentConfig
 from tabulaflow.research.agenthub.utils import (
     get_max_steps_processor,
@@ -53,6 +53,7 @@ def format_question(task: SimpleNL2QTask) -> str:
 
 @dataclass
 class SQLAgentContext(TaskRunContext):
+    db_connector: SQLConnectorProtocol
     er_diagram: ERDiagram | None = None
     er_diagram_formatter: ERDiagramMermaidFormatter | None = None
     few_shot_examples: list[SimpleNL2QTask] = field(default_factory=list)
@@ -185,7 +186,7 @@ class SchemaLinker:
         tools: dict[str, BaseTool] = {
             # "get_schema": GetSchemaTool(ctx.preprocessed_schema, ctx.schema_formatter),
             # "get_column_description": GetColumnDescriptionTool(ctx.preprocessed_schema),
-            "search_keywords": SearchKeywordsTool(db_connector),  # type: ignore[arg-type]
+            "search_keywords": SearchKeywordsTool(db_connector),
             "run_query": RunQueryTool(db_connector),
             "finish": FinishTool(),
         }
@@ -193,7 +194,7 @@ class SchemaLinker:
             language=ctx.db_connector.language,
             dataset_instructions=task.dataset_instructions,
             schema=ctx.schema_formatter.format(
-                ctx.preprocessed_schema, add_description=self.config.use_column_description
+                ctx.preprocessed_schema, include_descriptions=self.config.use_column_description
             ),
             er_diagram=ctx.er_diagram_formatter.format(ctx.er_diagram) if ctx.er_diagram is not None else None,  # type: ignore
             document=task.document,
@@ -398,8 +399,9 @@ class SQLAgent:
         self.few_shot_dataset = few_shot_dataset
         self.few_shot_embeddings = few_shot_embeddings
 
-        self.formatter: SchemaFormatter = schema_formatter_registry.get_class(config.schema_formatter)(
-            **config.to_formatter_kwargs()
+        self.formatter = cast(
+            SQLSchemaFormatter,
+            schema_formatter_registry.get_class(config.schema_formatter)(**config.to_formatter_kwargs()),
         )
         self.schema_linker = SchemaLinker(config) if config.do_schema_linking else None
         self.postprocessor = Postprocessor(config) if config.do_postprocessing else None
@@ -465,7 +467,7 @@ class SQLAgent:
             task=task,
             db_connector=db_connector,
             preprocessed_schema=preprocessed_schema,
-            schema_formatter=self.formatter,  # type: ignore[arg-type]
+            schema_formatter=self.formatter,
             usage=Usage.create(llm=self.config.llm),
             tools={},
             trajectories=[],
@@ -506,7 +508,7 @@ class SQLAgent:
         system_prompt = jinja2.Template(SQL_AGENT_SYSTEM_PROMPT).render(
             language=db_connector.language,
             dataset_instructions=task.dataset_instructions,
-            schema=self.formatter.format(linked_schema, add_description=self.config.use_column_description),  # type: ignore[arg-type, call-arg]
+            schema=self.formatter.format(linked_schema, include_descriptions=self.config.use_column_description),
             er_diagram=ctx.er_diagram_formatter.format(linked_er_diagram),  # type: ignore
             document=task.document,
             examples=examples,

@@ -13,7 +13,7 @@ async def main():
     schema = conn.schema
 
     formatter = SQLDDLSchemaFormatter()
-    formatted = formatter.format(schema, add_description=True)
+    formatted = formatter.format(schema, include_descriptions=True)
 
     with open("log/schema.out", "w") as f:
         f.write(formatted)

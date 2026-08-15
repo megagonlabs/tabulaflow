@@ -4,7 +4,7 @@ from typing import ClassVar
 from pydantic_ai import Tool
 from pydantic import BaseModel
 from tabulaflow.data.base import SQLConnectorProtocol
-from tabulaflow.output.schema_formatters import BaseSQLSchemaFormatter
+from tabulaflow.output.schema_formatters import SQLSchemaFormatter
 from tabulaflow.data.schema_compressor import SchemaCompressor
 from tabulaflow.core import SQLColumnSchema, SQLSchema, SQLTableSchema, TableRef
 from tabulaflow.agents.tools.engines.sql import equals_ci
@@ -52,7 +52,7 @@ class GetTableSchemaTool:
     def __init__(
         self,
         db_connector: SQLConnectorProtocol,
-        formatter: BaseSQLSchemaFormatter,
+        formatter: SQLSchemaFormatter,
         *,
         compress: bool = True,
         add_description: bool = True,
@@ -244,8 +244,11 @@ class GetTableSchemaTool:
                 end = column_offset + len(selected_columns)
                 parts.append(f"range {column_offset + 1}-{end}")
             res += f"(showing {len(selected_columns)} of {total_columns} total columns, {', '.join(parts)})\n\n"
-        self.formatter.set_dialect(self.schema.dialect)
-        res += self.formatter.format_table(selected_table, add_description=self.add_description)
+        res += self.formatter.format_table(
+            selected_table,
+            dialect=self.schema.dialect,
+            include_descriptions=self.add_description,
+        )
 
         if self._disconnect_on_finish:
             await self.db_connector.disconnect_async()

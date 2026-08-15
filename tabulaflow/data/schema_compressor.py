@@ -167,10 +167,9 @@ class SchemaCompressor:
         return (
             table.schema_name,
             table.name,
-            tuple(sorted(fk.columns)),
-            fk.foreign_schema_name,
-            fk.foreign_table,
-            tuple(sorted(fk.foreign_columns)),
+            tuple(sorted(zip(fk.columns, fk.referenced_columns, strict=True))),
+            fk.referenced_schema_name,
+            fk.referenced_table,
         )
 
     def _table_digest(self, table: SQLTableSchema, full_schema: SQLSchema) -> Hashable:
@@ -192,7 +191,7 @@ class SchemaCompressor:
                     self._foreign_key_digest(fk, t)
                     for t in full_schema.tables
                     for fk in t.foreign_keys
-                    if (fk.foreign_schema_name, fk.foreign_table) == (table.schema_name, table.name)
+                    if (fk.referenced_schema_name, fk.referenced_table) == (table.schema_name, table.name)
                 ]
             )
         )
@@ -221,8 +220,6 @@ class SchemaCompressor:
             num_unique=merged_num_unique,
             unique_ratio=merged_unique_ratio,
             examples=merged_examples,
-            primary_key_type=columns[0].primary_key_type,
-            foreign_keys=columns[0].foreign_keys,
             json_schema=merged_json_schema,
         )
 

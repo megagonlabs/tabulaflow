@@ -55,7 +55,7 @@ async def main() -> None:
         schema = SchemaCompressor().compress(schema)
 
     formatter = schema_formatter_registry.get_class(args.formatter)()
-    schema_str = formatter.format(schema, add_description=not args.no_description)
+    schema_str = formatter.format(schema, include_descriptions=not args.no_description)
     print(schema_str)
     print()
     print(f"(schema length: {len(schema_str)} characters)")

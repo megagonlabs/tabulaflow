@@ -1,7 +1,8 @@
 from typing import ClassVar
-from dataclasses import dataclass, field
-from tabulaflow.core import SQLDialect, SQLSchema, SQLTableSchema, SQLColumnSchema
+from dataclasses import dataclass
+from tabulaflow.core import ForeignKeySchema, SQLDialect, SQLSchema, SQLTableSchema, SQLColumnSchema
 from tabulaflow.output.schema_formatters.base import schema_formatter_registry
+from tabulaflow.output.schema_formatters._sql_quoting import SQLQuoting
 from tabulaflow.output.formatting import (
     format_df,
     flatten_multiline,
@@ -9,17 +10,6 @@ from tabulaflow.output.formatting import (
     format_ratio_as_percent,
     render_column_dtype,
 )
-
-_DIALECT_QUOTING: dict[str, tuple[str, bool]] = {
-    "bigquery": ("`", False),
-    "snowflake": ('"', True),
-    "sqlite": ('"', False),
-    "mysql": ("`", False),
-    "athena": ('"', False),
-    "clickhouse": ('"', False),
-    "tsql": ('"', True),
-}
-_DEFAULT_QUOTING = ('"', True)
 
 
 @schema_formatter_registry.register
@@ -43,37 +33,6 @@ class SQLDDLSchemaFormatter:
     emit it as the DDL column type instead of the canonical ``dtype`` token.
     For long composite types, the structural info is conveyed via the
     ``<json_schema>`` comment instead."""
-
-    _quote_char: str = field(default='"', init=False, repr=False)
-    _always_quote_columns: bool = field(default=True, init=False, repr=False)
-
-    def set_dialect(self, dialect: SQLDialect | None) -> None:
-        """Configure quoting for a SQL dialect."""
-        self._quote_char, self._always_quote_columns = _DIALECT_QUOTING.get(dialect or "", _DEFAULT_QUOTING)
-
-    def _quote(self, s: str) -> str:
-        return f"{self._quote_char}{s}{self._quote_char}"
-
-    def _quote_if_needed(self, s: str | None) -> str:
-        if s is None:
-            return "NULL"
-        if " " in s or "-" in s or not s.isidentifier():
-            return self._quote(s)
-        return s
-
-    def _quote_column(self, s: str) -> str:
-        if self._always_quote_columns:
-            return self._quote(s)
-        return self._quote_if_needed(s)
-
-    def _full_table_name(self, table: str, schema: str | None) -> str:
-        if schema is None:
-            return self._quote_if_needed(table)
-        else:
-            return f"{self._quote_if_needed(schema)}.{self._quote_if_needed(table)}"
-
-    def format_table_name(self, table: SQLTableSchema) -> str:
-        return self._full_table_name(table.name, table.schema_name)
 
     def _truncate(self, s: str) -> str:
         s = flatten_multiline(s)
@@ -113,13 +72,13 @@ class SQLDDLSchemaFormatter:
         quota = max(1, self.max_total_columns // len(tables))
         return [quota] * len(tables)
 
-    def format(self, schema: SQLSchema, pk_fk_column_only: bool = False, add_description: bool = False) -> str:
-        self.set_dialect(schema.dialect)
+    def format(self, schema: SQLSchema, *, include_descriptions: bool = False) -> str:
+        quoting = SQLQuoting.for_dialect(schema.dialect)
         name_label = "Project" if schema.dialect == "bigquery" else "Database"
         metadata_lines = [f"**{name_label}:** `{schema.name}`"]
         if schema.dialect:
             metadata_lines.append(f"**SQL Dialect:** `{schema.dialect}`")
-        if schema.description:
+        if include_descriptions and schema.description:
             metadata_lines.append("**Description:**")
             metadata_lines.append(f"```text\n{schema.description}\n```")
         if not schema.tables:
@@ -128,13 +87,13 @@ class SQLDDLSchemaFormatter:
 
         lines: list[str] = []
         quotas = self._compute_column_quotas(schema.tables)
-        for table, max_columns in zip(schema.tables, quotas):
+        for table, max_columns in zip(schema.tables, quotas, strict=True):
             lines.append("")  # Blank line between tables
             lines.append(
-                self.format_table(
+                self._format_table(
                     table,
-                    pk_fk_column_only,
-                    add_description,
+                    quoting=quoting,
+                    include_descriptions=include_descriptions,
                     max_columns=max_columns,
                     num_tables=len(schema.tables),
                 )
@@ -146,29 +105,43 @@ class SQLDDLSchemaFormatter:
     def format_table(
         self,
         table: SQLTableSchema,
-        pk_fk_column_only: bool = False,
-        add_description: bool = False,
+        *,
+        dialect: SQLDialect | None,
+        include_descriptions: bool = False,
+    ) -> str:
+        return self._format_table(
+            table,
+            quoting=SQLQuoting.for_dialect(dialect),
+            include_descriptions=include_descriptions,
+        )
+
+    def _format_table(
+        self,
+        table: SQLTableSchema,
+        *,
+        quoting: SQLQuoting,
+        include_descriptions: bool,
         max_columns: int | None = None,
         num_tables: int | None = None,
     ) -> str:
         lines = []
 
         # Build table info block content
-        table_name = self.format_table_name(table)
+        table_name = quoting.full_table_name(table.name, table.schema_name)
         title = ""
-        title += f"Schema: {self._quote_if_needed(table.schema_name)}"
+        title += f"Schema: {quoting.quote_if_needed(table.schema_name)}"
         title += "\nTable:"
         if table.name_patterns:  # This is a compressed table
             for pattern in table.name_patterns:
-                title += f"\n  - {self._quote_if_needed(pattern.pattern)}"
+                title += f"\n  - {quoting.quote_if_needed(pattern.pattern)}"
                 if pattern.comment:
                     title += f" ({pattern.comment})"
         else:
-            title += f" {self._quote_if_needed(table.name)}"
+            title += f" {quoting.quote_if_needed(table.name)}"
         info_parts = [title]
         if table.num_rows is not None:
             info_parts.append(f"Rows: {table.num_rows}")
-        if add_description and table.description:
+        if include_descriptions and table.description:
             info_parts.append(f"Description: {table.description}")
 
         # Add sampled rows to info block
@@ -187,8 +160,7 @@ class SQLDDLSchemaFormatter:
         kind = "VIEW" if table.is_view else "TABLE"
         create_stmt = f"CREATE {kind} {table_name} ("
 
-        # Filter columns if pk_fk_column_only
-        columns = [col for col in table.columns if not pk_fk_column_only or col.primary_key_type or col.foreign_keys]
+        columns = table.columns
 
         # Truncate columns if max_columns is set
         omitted_count = 0
@@ -196,25 +168,43 @@ class SQLDDLSchemaFormatter:
             omitted_count = len(columns) - max_columns
             columns = columns[:max_columns]
 
-        # Format columns
-        column_defs = []
-        for column in columns:
-            column_defs.append(self.format_column(column, add_description))
+        visible_column_names = {column.name for column in columns}
+        primary_key_names = set(table.primary_key) if set(table.primary_key) <= visible_column_names else set()
+        visible_foreign_keys = [
+            foreign_key
+            for foreign_key in table.foreign_keys
+            if all(name in visible_column_names for name in foreign_key.columns)
+        ]
+        foreign_keys_by_column: dict[str, list[ForeignKeySchema]] = {column.name: [] for column in columns}
+        for foreign_key in visible_foreign_keys:
+            for column_name in foreign_key.columns:
+                if column_name in foreign_keys_by_column:
+                    foreign_keys_by_column[column_name].append(foreign_key)
+
+        column_defs = [
+            self._format_column(
+                column,
+                quoting=quoting,
+                include_description=include_descriptions,
+                is_single_primary_key=len(primary_key_names) == 1 and column.name in primary_key_names,
+                foreign_keys=foreign_keys_by_column[column.name],
+            )
+            for column in columns
+        ]
 
         if omitted_count > 0:
             column_defs.append(f"    -- ... {omitted_count} more columns omitted")
 
         # Add composite primary key constraint if needed
-        composite_pk_cols = [col.name for col in table.columns if col.primary_key_type == "composite"]
-        if composite_pk_cols:
-            pk_cols_str = ", ".join(self._quote_column(c) for c in composite_pk_cols)
+        if len(primary_key_names) > 1:
+            pk_cols_str = ", ".join(quoting.quote_column(name) for name in table.primary_key)
             column_defs.append(f"    PRIMARY KEY ({pk_cols_str})")
 
         # Add foreign key constraints
-        for fk in table.foreign_keys:
-            fk_cols = ", ".join(self._quote_column(c) for c in fk.columns)
-            ref_table = self._full_table_name(fk.foreign_table, fk.foreign_schema_name)
-            ref_cols = ", ".join(self._quote_column(c) for c in fk.foreign_columns)
+        for fk in visible_foreign_keys:
+            fk_cols = ", ".join(quoting.quote_column(name) for name in fk.columns)
+            ref_table = quoting.full_table_name(fk.referenced_table, fk.referenced_schema_name)
+            ref_cols = ", ".join(quoting.quote_column(name) for name in fk.referenced_columns)
             column_defs.append(f"    FOREIGN KEY ({fk_cols}) REFERENCES {ref_table}({ref_cols})")
 
         lines.append(create_stmt)
@@ -235,11 +225,19 @@ class SQLDDLSchemaFormatter:
 
         return "\n".join(lines)
 
-    def format_column(self, column: SQLColumnSchema, add_description: bool = False) -> str:
+    def _format_column(
+        self,
+        column: SQLColumnSchema,
+        *,
+        quoting: SQLQuoting,
+        include_description: bool,
+        is_single_primary_key: bool,
+        foreign_keys: list[ForeignKeySchema],
+    ) -> str:
         parts = []
 
         # Column name and type
-        col_name = self._quote_column(column.name)
+        col_name = quoting.quote_column(column.name)
         col_type = self._map_dtype_to_sql(column)
         parts.append(f"    {col_name} {col_type}")
 
@@ -250,7 +248,7 @@ class SQLDDLSchemaFormatter:
             parts.append("NULL")
 
         # Single primary key constraint (inline)
-        if column.primary_key_type == "single":
+        if is_single_primary_key:
             parts.append("PRIMARY KEY")
 
         # Build the column definition
@@ -259,7 +257,7 @@ class SQLDDLSchemaFormatter:
         # Build comment lines with tags, each on a separate line
         comment_lines = []
 
-        if add_description and column.description:
+        if include_description and column.description:
             comment_lines.append(f"        -- <description>{column.description}</description>")
 
         # Add null ratio for nullable columns
@@ -286,10 +284,10 @@ class SQLDDLSchemaFormatter:
                 comment_lines.append(f"        -- <example>{self.format_value(column.examples[0])}</example>")
 
         # Add FK reference info as comment
-        for fk in column.foreign_keys:
+        for fk in foreign_keys:
             if len(fk.columns) == 1:  # Single column FK
-                ref_table = self._full_table_name(fk.foreign_table, fk.foreign_schema_name)
-                ref_col = self._quote_column(fk.foreign_columns[0])
+                ref_table = quoting.full_table_name(fk.referenced_table, fk.referenced_schema_name)
+                ref_col = quoting.quote_column(fk.referenced_columns[0])
                 comment_lines.append(f"        -- <fk> -> {ref_table}.{ref_col}</fk>")
             else:
                 comment_lines.append("        -- <fk>composite</fk>")

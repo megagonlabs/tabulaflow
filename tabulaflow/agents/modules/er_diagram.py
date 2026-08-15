@@ -5,7 +5,7 @@ from pydantic_ai.settings import ModelSettings
 
 from tabulaflow.data import SQLConnectorProtocol
 from tabulaflow.output.erd import ERDiagram
-from tabulaflow.output.schema_formatters.base import BaseSQLSchemaFormatter
+from tabulaflow.output.schema_formatters.base import SQLSchemaFormatter
 from tabulaflow.output.schema_formatters.sql_ddl import SQLDDLSchemaFormatter
 from tabulaflow.data.schema_compressor import SchemaCompressor
 from tabulaflow.core import SQLSchema
@@ -57,9 +57,9 @@ You are an AI database expert tasked with generating an ER diagram given a physi
 """
 
 
-def format_user_prompt(schema: SQLSchema, formatter: BaseSQLSchemaFormatter) -> str:
+def format_user_prompt(schema: SQLSchema, formatter: SQLSchemaFormatter) -> str:
     return "Generate the conceptual ER diagram for the following physical database schema:\n" + formatter.format(
-        schema, add_description=False
+        schema, include_descriptions=False
     )
 
 

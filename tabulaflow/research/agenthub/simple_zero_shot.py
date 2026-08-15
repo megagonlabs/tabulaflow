@@ -4,10 +4,14 @@ import collections
 import jinja2
 import logging
 import asyncio
-from typing import Any, ClassVar
+from typing import Any, ClassVar, cast
 from tabulaflow.agents.response_parsing import extract_code
 from tabulaflow.data.schema_compressor import SchemaCompressor
-from tabulaflow.output.schema_formatters import schema_formatter_registry
+from tabulaflow.output.schema_formatters import (
+    PropertyGraphSchemaFormatter,
+    SQLSchemaFormatter,
+    schema_formatter_registry,
+)
 from tabulaflow.data import DataConnector
 from tabulaflow.agents.trace import Trajectory, SystemMessage, UserMessage, AssistantMessage, Usage
 from tabulaflow.research.types import PredQuery
@@ -76,14 +80,16 @@ class SimpleZeroShotNL2Q:
     async def predict_async(self, task: SimpleNL2QTask, db_connector: DataConnector) -> SimpleNL2QTaskOutput:
         t0 = time.time()
 
-        schema = db_connector.schema
-        if self.config.compress_schema and db_connector.connector_type == "sql":
-            schema = SchemaCompressor().compress(schema)  # type: ignore[arg-type]
-
         if db_connector.connector_type == "property_graph":
-            schema_str = self.formatter.format(schema)  # type: ignore[arg-type]
+            schema_str = cast(PropertyGraphSchemaFormatter, self.formatter).format(db_connector.schema)
         elif db_connector.connector_type == "sql":
-            schema_str = self.formatter.format(schema, add_description=self.config.use_column_description)  # type: ignore[arg-type, call-arg]
+            schema = db_connector.schema
+            if self.config.compress_schema:
+                schema = SchemaCompressor().compress(schema)
+            schema_str = cast(SQLSchemaFormatter, self.formatter).format(
+                schema,
+                include_descriptions=self.config.use_column_description,
+            )
         else:
             raise TypeError(f"Unsupported connector type for SimpleZeroShotNL2Q: {db_connector.connector_type!r}")
         if len(schema_str) > SCHEMA_MAX_CHARS:

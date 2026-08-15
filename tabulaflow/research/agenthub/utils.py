@@ -13,7 +13,7 @@ from tabulaflow.config import tabulaflow_config
 from tabulaflow.data import DataConnector
 from tabulaflow.agents.llm import make_model_settings
 from tabulaflow.agents.tools import BaseTool
-from tabulaflow.output.schema_formatters.base import BaseSQLSchemaFormatter
+from tabulaflow.output.schema_formatters.base import SQLSchemaFormatter
 
 
 def max_steps_processor(
@@ -69,7 +69,7 @@ class TaskRunContext:
     task: NL2QTask
     db_connector: DataConnector
     preprocessed_schema: SQLSchema
-    schema_formatter: BaseSQLSchemaFormatter
+    schema_formatter: SQLSchemaFormatter
     usage: Usage
     tools: dict[str, BaseTool]
     trajectories: list[Trajectory]

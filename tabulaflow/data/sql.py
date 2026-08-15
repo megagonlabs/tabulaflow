@@ -1994,28 +1994,20 @@ async def build_table_async(
             for col in col_dicts
         ]
     )
-    name2col = {col.name: col for col in columns}
-
     primary_key = (await async_inspector.get_pk_constraint(table_name, schema=schema_name))["constrained_columns"]
-    for col in primary_key:
-        name2col[_denorm(t_eng, col)].primary_key_type = "single" if len(primary_key) == 1 else "composite"
 
     foreign_keys = []
     for fk in await async_inspector.get_foreign_keys(table_name, schema=schema_name):
         foreign_keys.append(
             ForeignKeySchema(
                 columns=[_denorm(t_eng, c) for c in fk["constrained_columns"]],
-                foreign_schema_name=_denorm(t_eng, fk["referred_schema"])
+                referenced_schema_name=_denorm(t_eng, fk["referred_schema"])
                 if fk["referred_schema"] is not None
                 else None,
-                foreign_table=_denorm(t_eng, fk["referred_table"]),
-                foreign_columns=[_denorm(t_eng, c) for c in fk["referred_columns"]],
+                referenced_table=_denorm(t_eng, fk["referred_table"]),
+                referenced_columns=[_denorm(t_eng, c) for c in fk["referred_columns"]],
             )
         )
-    for fk in foreign_keys:
-        for col in fk.columns:
-            name2col[col].foreign_keys.append(fk)
-
     # Sample rows from the table
     if is_view and column_stats_mode == "always_skip":
         sampled_df = None

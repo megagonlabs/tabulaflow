@@ -84,9 +84,17 @@ class PropertyGraphSchema(BaseModel):
 
 class ForeignKeySchema(BaseModel):
     columns: list[str]
-    foreign_schema_name: str | None = None
-    foreign_table: str
-    foreign_columns: list[str]
+    referenced_schema_name: str | None = None
+    referenced_table: str
+    referenced_columns: list[str]
+
+    @model_validator(mode="after")
+    def validate_columns(self) -> "ForeignKeySchema":
+        if not self.columns:
+            raise ValueError("foreign key columns must not be empty")
+        if len(self.columns) != len(self.referenced_columns):
+            raise ValueError("foreign key columns and referenced columns must have the same length")
+        return self
 
 
 class SQLColumnSchema(BaseModel):
@@ -108,8 +116,6 @@ class SQLColumnSchema(BaseModel):
     num_unique: int | None = None  # Only for text or integer columns
     unique_ratio: float | None = None  # Only for text or integer columns
     examples: list[Any]
-    primary_key_type: Literal["single", "composite"] | None = None
-    foreign_keys: list[ForeignKeySchema] = Field(default_factory=list)  # Includes composite foreign keys
 
 
 class NamePattern(BaseModel):
@@ -188,18 +194,6 @@ class SQLTableSchema(BaseModel):
             for foreign_key in table.foreign_keys
             if all(normalize(name) in selected_names for name in foreign_key.columns)
         ]
-
-        primary_key_type: Literal["single", "composite"] | None = None
-        if table.primary_key:
-            primary_key_type = "single" if len(table.primary_key) == 1 else "composite"
-        primary_key_names = {normalize(name) for name in table.primary_key}
-        for column in table.columns:
-            column.primary_key_type = primary_key_type if normalize(column.name) in primary_key_names else None
-            column.foreign_keys = [
-                foreign_key
-                for foreign_key in table.foreign_keys
-                if normalize(column.name) in {normalize(name) for name in foreign_key.columns}
-            ]
 
         if table.sampled_df is not None:
             remaining_col_names = [col.name for col in table.columns]

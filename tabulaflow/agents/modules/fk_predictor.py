@@ -63,7 +63,7 @@ class ForeignKeyPredictor:
         self, db_connector: SQLConnectorProtocol, schema: SQLSchema, table_ref: TableRef
     ) -> list[ForeignKeySchema]:
         system_prompt = jinja2.Template(FK_PREDICTOR_SYSTEM_PROMPT).render(
-            schema=self.formatter.format(schema, add_description=True)
+            schema=self.formatter.format(schema, include_descriptions=True)
         )
         run_query_tool = RunQueryTool(db_connector)
         agent = make_agent(
@@ -87,7 +87,7 @@ class ForeignKeyPredictor:
         new_schema = copy.deepcopy(schema)
 
         def _fk_target_table(fk: ForeignKeySchema) -> tuple[str | None, str]:
-            return (fk.foreign_schema_name, fk.foreign_table)
+            return (fk.referenced_schema_name, fk.referenced_table)
 
         for table, fks in zip(new_schema.tables, all_results, strict=True):
             for fk in fks:
@@ -95,7 +95,4 @@ class ForeignKeyPredictor:
                 if any(_fk_target_table(fk) == _fk_target_table(existing_fk) for existing_fk in table.foreign_keys):
                     continue
                 table.foreign_keys.append(fk)
-                for col in table.columns:
-                    if col.name in fk.columns:
-                        col.foreign_keys.append(fk)
         return new_schema

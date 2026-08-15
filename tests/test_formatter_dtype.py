@@ -1,6 +1,6 @@
 """Tests for native_dtype rendering in schema formatters."""
 
-from tabulaflow.core import SQLColumnSchema
+from tabulaflow.core import ForeignKeySchema, SQLColumnSchema, SQLTableSchema
 from tabulaflow.output.formatting import render_column_dtype
 from tabulaflow.output.schema_formatters.sql_basic import SQLBasicSchemaFormatter
 from tabulaflow.output.schema_formatters.sql_ddl import SQLDDLSchemaFormatter
@@ -13,6 +13,16 @@ def _col(name: str, dtype: str, native_dtype: str | None) -> SQLColumnSchema:
         native_dtype=native_dtype,
         nullable=True,
         examples=[],
+    )
+
+
+def _table(column: SQLColumnSchema) -> SQLTableSchema:
+    return SQLTableSchema(
+        name="items",
+        is_view=False,
+        columns=[column],
+        primary_key=[],
+        foreign_keys=[],
     )
 
 
@@ -40,32 +50,28 @@ def test_render_column_dtype_cap_is_configurable() -> None:
 
 def test_sql_basic_uses_native_dtype_when_short() -> None:
     fmt = SQLBasicSchemaFormatter()
-    fmt.set_dialect(None)
-    line = fmt.format_column(_col("price", "DECIMAL", "DECIMAL(18, 2)"))
+    line = fmt.format_table(_table(_col("price", "DECIMAL", "DECIMAL(18, 2)")), dialect=None)
     assert "DECIMAL(18, 2)" in line
 
 
 def test_sql_basic_falls_back_for_long_native() -> None:
     long_native = "STRUCT(" + ", ".join(f"f{i} VARCHAR" for i in range(40)) + ")"
     fmt = SQLBasicSchemaFormatter()
-    fmt.set_dialect(None)
-    line = fmt.format_column(_col("events", "STRUCT", long_native))
+    line = fmt.format_table(_table(_col("events", "STRUCT", long_native)), dialect=None)
     assert long_native not in line
     assert "STRUCT" in line
 
 
 def test_sql_ddl_uses_native_dtype_when_short() -> None:
     fmt = SQLDDLSchemaFormatter()
-    fmt.set_dialect(None)
-    line = fmt.format_column(_col("price", "DECIMAL", "DECIMAL(18, 2)"))
+    line = fmt.format_table(_table(_col("price", "DECIMAL", "DECIMAL(18, 2)")), dialect=None)
     assert "DECIMAL(18, 2)" in line
 
 
 def test_sql_ddl_falls_back_for_long_native() -> None:
     long_native = "STRUCT(" + ", ".join(f"f{i} VARCHAR" for i in range(40)) + ")"
     fmt = SQLDDLSchemaFormatter()
-    fmt.set_dialect(None)
-    line = fmt.format_column(_col("events", "STRUCT", long_native))
+    line = fmt.format_table(_table(_col("events", "STRUCT", long_native)), dialect=None)
     assert long_native not in line
 
 
@@ -75,22 +81,54 @@ def test_sql_ddl_cap_override_at_format_time() -> None:
     col = _col("name", "VARCHAR", native)
 
     fmt_strict = SQLDDLSchemaFormatter(max_native_dtype_chars=5)
-    fmt_strict.set_dialect(None)
-    assert native not in fmt_strict.format_column(col)
+    assert native not in fmt_strict.format_table(_table(col), dialect=None)
 
     fmt_default = SQLDDLSchemaFormatter()
-    fmt_default.set_dialect(None)
-    assert native in fmt_default.format_column(col)
+    assert native in fmt_default.format_table(_table(col), dialect=None)
 
 
 def test_existing_columns_without_native_dtype_render_unchanged() -> None:
     """Schemas loaded from old caches won't have native_dtype set —
     must still render via the canonical dtype token."""
     fmt_basic = SQLBasicSchemaFormatter()
-    fmt_basic.set_dialect(None)
     fmt_ddl = SQLDDLSchemaFormatter()
-    fmt_ddl.set_dialect(None)
 
     col = _col("age", "INTEGER", None)
-    assert "INTEGER" in fmt_basic.format_column(col)
-    assert "INTEGER" in fmt_ddl.format_column(col)
+    assert "INTEGER" in fmt_basic.format_table(_table(col), dialect=None)
+    assert "INTEGER" in fmt_ddl.format_table(_table(col), dialect=None)
+
+
+def test_formatters_derive_primary_and_foreign_key_markers_from_table() -> None:
+    foreign_key = ForeignKeySchema(
+        columns=["customer_id"],
+        referenced_schema_name="public",
+        referenced_table="customers",
+        referenced_columns=["id"],
+    )
+    table = SQLTableSchema(
+        name="orders",
+        schema_name="public",
+        is_view=False,
+        columns=[_col("id", "INTEGER", None), _col("customer_id", "INTEGER", None)],
+        primary_key=["id"],
+        foreign_keys=[foreign_key],
+    )
+
+    basic = SQLBasicSchemaFormatter().format_table(table, dialect="postgres")
+    ddl = SQLDDLSchemaFormatter().format_table(table, dialect="postgres")
+
+    assert '"id": INTEGER' in basic and "[PK]" in basic
+    assert '"customer_id": INTEGER' in basic and '[FK -> public.customers."id"]' in basic
+    assert '"id" INTEGER NULL PRIMARY KEY' in ddl
+    assert 'FOREIGN KEY ("customer_id") REFERENCES public.customers("id")' in ddl
+
+
+def test_format_table_uses_explicit_dialect_without_retaining_state() -> None:
+    table = _table(_col("item name", "INTEGER", None))
+    formatter = SQLDDLSchemaFormatter()
+
+    bigquery = formatter.format_table(table, dialect="bigquery")
+    postgres = formatter.format_table(table, dialect="postgres")
+
+    assert "CREATE TABLE items (\n    `item name` INTEGER" in bigquery
+    assert 'CREATE TABLE items (\n    "item name" INTEGER' in postgres

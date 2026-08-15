@@ -1,9 +1,10 @@
+from dataclasses import dataclass
 from typing import ClassVar
-from dataclasses import dataclass, field
-from tabulaflow.core import SQLDialect, SQLSchema, SQLTableSchema, SQLColumnSchema
-from tabulaflow.output.schema_formatters.base import schema_formatter_registry
+
+from tabulaflow.core import ForeignKeySchema, SQLColumnSchema, SQLDialect, SQLSchema, SQLTableSchema
 from tabulaflow.output.formatting import flatten_multiline, format_ratio_as_percent, render_column_dtype
-from tabulaflow.output.schema_formatters.sql_ddl import _DIALECT_QUOTING, _DEFAULT_QUOTING
+from tabulaflow.output.schema_formatters._sql_quoting import SQLQuoting
+from tabulaflow.output.schema_formatters.base import schema_formatter_registry
 
 
 @schema_formatter_registry.register
@@ -14,59 +15,21 @@ class SQLBasicSchemaFormatter:
     floatfmt: str = ".8g"
     max_total_columns: int | None = None
     max_native_dtype_chars: int = 80
-    """When ``column.native_dtype`` is set and its length is within this cap,
-    render it instead of the canonical ``dtype`` token. Picks up
-    ``VARCHAR(100)`` / ``DECIMAL(18, 2)``-style scalar parameters while
-    keeping deeply nested composites out of the rendered schema."""
 
-    _quote_char: str = field(default='"', init=False, repr=False)
-    _always_quote_columns: bool = field(default=True, init=False, repr=False)
-
-    def set_dialect(self, dialect: SQLDialect | None) -> None:
-        """Configure quoting for a SQL dialect."""
-        self._quote_char, self._always_quote_columns = _DIALECT_QUOTING.get(dialect or "", _DEFAULT_QUOTING)
-
-    def _quote(self, s: str) -> str:
-        return f"{self._quote_char}{s}{self._quote_char}"
-
-    def _quote_if_needed(self, s: str | None) -> str:
-        if s is None:
-            return "NULL"
-        if " " in s or "-" in s or not s.isidentifier():
-            return self._quote(s)
-        return s
-
-    def _quote_column(self, s: str) -> str:
-        if self._always_quote_columns:
-            return self._quote(s)
-        return self._quote_if_needed(s)
-
-    def _full_table_name(self, table: str, schema: str | None) -> str:
-        if schema is None:
-            return self._quote_if_needed(table)
-        else:
-            return f"{self._quote_if_needed(schema)}.{self._quote_if_needed(table)}"
-
-    def format_table_name(self, table: SQLTableSchema) -> str:
-        return self._full_table_name(table.name, table.schema_name)
-
-    def format_value(self, value: object) -> str:
-        """Format a single value for display."""
+    def _format_value(self, value: object, quoting: SQLQuoting) -> str:
         if isinstance(value, str):
-            return self._quote(self._truncate(value))
-        elif isinstance(value, float):
+            return quoting.quote(self._truncate(value))
+        if isinstance(value, float):
             return f"{value:{self.floatfmt}}"
-        else:
-            return str(value)
+        return str(value)
 
-    def _truncate(self, s: str) -> str:
-        s = flatten_multiline(s)
-        if len(s) <= self.example_max_chars:
-            return s
-        return s[: self.example_max_chars // 2] + "..." + s[-self.example_max_chars // 2 :]
+    def _truncate(self, value: str) -> str:
+        value = flatten_multiline(value)
+        if len(value) <= self.example_max_chars:
+            return value
+        return value[: self.example_max_chars // 2] + "..." + value[-self.example_max_chars // 2 :]
 
     def _compute_column_quotas(self, tables: list[SQLTableSchema]) -> list[int | None]:
-        """Compute equal per-table column quotas from max_total_columns."""
         if self.max_total_columns is None:
             return [None] * len(tables)
         if not tables:
@@ -74,105 +37,157 @@ class SQLBasicSchemaFormatter:
         quota = max(1, self.max_total_columns // len(tables))
         return [quota] * len(tables)
 
-    def format(self, schema: SQLSchema, pk_fk_column_only: bool = False, add_description: bool = False) -> str:
-        self.set_dialect(schema.dialect)
+    def format(self, schema: SQLSchema, *, include_descriptions: bool = False) -> str:
+        quoting = SQLQuoting.for_dialect(schema.dialect)
         name_label = "Project" if schema.dialect == "bigquery" else "Database"
-        res = f"{name_label}: {schema.name}"
+        result = f"{name_label}: {schema.name}"
         if schema.dialect:
-            res += f" (SQL Dialect: {schema.dialect})"
-        if schema.description:
-            res += f"\nDescription: {schema.description}"
+            result += f" (SQL Dialect: {schema.dialect})"
+        if include_descriptions and schema.description:
+            result += f"\nDescription: {schema.description}"
         if not schema.tables:
-            return f"{res}\n(database has no tables)"
-        res += "\n\n"
+            return f"{result}\n(database has no tables)"
+
         quotas = self._compute_column_quotas(schema.tables)
-        res += "\n\n".join(
-            [
-                self.format_table(table, pk_fk_column_only, add_description, max_columns=max_columns)
-                for table, max_columns in zip(schema.tables, quotas)
-            ]
-        )
-        return res
+        tables = [
+            self._format_table(
+                table,
+                quoting=quoting,
+                include_descriptions=include_descriptions,
+                max_columns=max_columns,
+            )
+            for table, max_columns in zip(schema.tables, quotas, strict=True)
+        ]
+        return result + "\n\n" + "\n\n".join(tables)
 
     def format_table(
         self,
         table: SQLTableSchema,
-        pk_fk_column_only: bool = False,
-        add_description: bool = False,
+        *,
+        dialect: SQLDialect | None,
+        include_descriptions: bool = False,
+    ) -> str:
+        return self._format_table(
+            table,
+            quoting=SQLQuoting.for_dialect(dialect),
+            include_descriptions=include_descriptions,
+        )
+
+    def _format_table(
+        self,
+        table: SQLTableSchema,
+        *,
+        quoting: SQLQuoting,
+        include_descriptions: bool,
         max_columns: int | None = None,
     ) -> str:
-        res = f"(SCHEMA: {self._quote_if_needed(table.schema_name)}) TABLE:"
-        if table.name_patterns:  # This is a compressed table
-            pattern_strs = []
+        result = f"(SCHEMA: {quoting.quote_if_needed(table.schema_name)}) TABLE:"
+        if table.name_patterns:
+            patterns = []
             for pattern in table.name_patterns:
-                p = self._quote_if_needed(pattern.pattern)
+                formatted = quoting.quote_if_needed(pattern.pattern)
                 if pattern.comment:
-                    p += f" ({pattern.comment})"
-                pattern_strs.append(p)
-            res += " " + ", ".join(pattern_strs)
+                    formatted += f" ({pattern.comment})"
+                patterns.append(formatted)
+            result += " " + ", ".join(patterns)
         else:
-            res += f" {self._quote_if_needed(table.name)}"
+            result += f" {quoting.quote_if_needed(table.name)}"
         if table.num_rows is not None:
-            res += f" ({table.num_rows} rows)"
-        if add_description and table.description:
-            res += f" -- {table.description}"
-        res = f"=== {res} ===\n"
+            result += f" ({table.num_rows} rows)"
+        if include_descriptions and table.description:
+            result += f" -- {table.description}"
+        result = f"=== {result} ===\n"
 
-        composite_fks = []
-        for fk in table.foreign_keys:
-            if len(fk.columns) > 1:
-                fk_cols = "(" + ", ".join([self._quote_column(c) for c in fk.columns]) + ")"
-                ref_table = self._full_table_name(fk.foreign_table, fk.foreign_schema_name)
-                ref_cols = "(" + ", ".join([self._quote_column(c) for c in fk.foreign_columns]) + ")"
-                composite_fks.append(f"* {fk_cols} -> {ref_table}.{ref_cols}")
-        if composite_fks:
-            res += "[Composite FKs]\n" + "\n".join(composite_fks) + "\n\n"
-
-        columns = [col for col in table.columns if not pk_fk_column_only or col.primary_key_type or col.foreign_keys]
-
-        # Truncate columns if max_columns is set
+        columns = table.columns
         omitted_count = 0
         if max_columns is not None and len(columns) > max_columns:
             omitted_count = len(columns) - max_columns
             columns = columns[:max_columns]
 
-        column_lines = [self.format_column(column, add_description) for column in columns]
-        if omitted_count > 0:
-            column_lines.append(f"  ... {omitted_count} more columns omitted")
-        res += "\n".join(column_lines)
-        res += "\n=== END OF TABLE ==="
-        return res
+        visible_column_names = {column.name for column in columns}
+        visible_foreign_keys = [
+            foreign_key
+            for foreign_key in table.foreign_keys
+            if all(name in visible_column_names for name in foreign_key.columns)
+        ]
+        composite_foreign_keys = []
+        for foreign_key in visible_foreign_keys:
+            if len(foreign_key.columns) > 1:
+                local_columns = "(" + ", ".join(quoting.quote_column(name) for name in foreign_key.columns) + ")"
+                referenced_table = quoting.full_table_name(
+                    foreign_key.referenced_table, foreign_key.referenced_schema_name
+                )
+                referenced_columns = (
+                    "(" + ", ".join(quoting.quote_column(name) for name in foreign_key.referenced_columns) + ")"
+                )
+                composite_foreign_keys.append(f"* {local_columns} -> {referenced_table}.{referenced_columns}")
+        if composite_foreign_keys:
+            result += "[Composite FKs]\n" + "\n".join(composite_foreign_keys) + "\n\n"
 
-    def format_column(self, column: SQLColumnSchema, add_description: bool = False) -> str:
-        res = f"- {self._quote_column(column.name)}: {render_column_dtype(column, self.max_native_dtype_chars)}"
-        if column.null_ratio is not None and column.null_ratio == 1.0:
-            res += " (all values are null)"
+        primary_key_names = set(table.primary_key) if set(table.primary_key) <= visible_column_names else set()
+        primary_key_kind = "single" if len(primary_key_names) == 1 else "composite"
+        foreign_keys_by_column: dict[str, list[ForeignKeySchema]] = {column.name: [] for column in columns}
+        for foreign_key in visible_foreign_keys:
+            for column_name in foreign_key.columns:
+                if column_name in foreign_keys_by_column:
+                    foreign_keys_by_column[column_name].append(foreign_key)
+
+        column_lines = [
+            self._format_column(
+                column,
+                quoting=quoting,
+                include_description=include_descriptions,
+                primary_key_kind=primary_key_kind if column.name in primary_key_names else None,
+                foreign_keys=foreign_keys_by_column[column.name],
+            )
+            for column in columns
+        ]
+        if omitted_count:
+            column_lines.append(f"  ... {omitted_count} more columns omitted")
+        result += "\n".join(column_lines)
+        return result + "\n=== END OF TABLE ==="
+
+    def _format_column(
+        self,
+        column: SQLColumnSchema,
+        *,
+        quoting: SQLQuoting,
+        include_description: bool,
+        primary_key_kind: str | None,
+        foreign_keys: list[ForeignKeySchema],
+    ) -> str:
+        result = f"- {quoting.quote_column(column.name)}: {render_column_dtype(column, self.max_native_dtype_chars)}"
+        if column.null_ratio == 1.0:
+            result += " (all values are null)"
         elif column.null_ratio is None or column.null_ratio > 0.0:
-            res += " NULLABLE"
+            result += " NULLABLE"
             if column.null_ratio is not None:
-                res += f" (null_ratio={format_ratio_as_percent(column.null_ratio)})"
+                result += f" (null_ratio={format_ratio_as_percent(column.null_ratio)})"
+
         is_categorical = (
             column.dtype in ("TEXT", "VARCHAR", "STRING", "ENUM")
             and column.num_unique is not None
             and column.unique_ratio is not None
             and (0 < column.num_unique <= 10 or (0 < column.num_unique <= 20 and column.unique_ratio < 0.01))
         )
-        if is_categorical:  # show all possible values
-            valid_values = sorted(self.format_value(v) for v in column.examples)
-            res += " {" + ", ".join(valid_values) + "}"
+        if is_categorical:
+            values = sorted(self._format_value(value, quoting) for value in column.examples)
+            result += " {" + ", ".join(values) + "}"
         elif column.examples:
-            res += f" (e.g. {self.format_value(column.examples[0])})"
+            result += f" (e.g. {self._format_value(column.examples[0], quoting)})"
 
-        if column.primary_key_type:
-            res += " [PK]" if column.primary_key_type == "single" else " [PK-composite]"
-        for fk in column.foreign_keys:
-            is_composite_fk = len(fk.columns) > 1
-            res += (
-                f" [FK -> {self._full_table_name(fk.foreign_table, fk.foreign_schema_name)}.{self._quote_column(fk.foreign_columns[0])}]"
-                if not is_composite_fk
-                else " [FK-composite]"
-            )
+        if primary_key_kind:
+            result += " [PK]" if primary_key_kind == "single" else " [PK-composite]"
+        for foreign_key in foreign_keys:
+            if len(foreign_key.columns) == 1:
+                referenced_table = quoting.full_table_name(
+                    foreign_key.referenced_table, foreign_key.referenced_schema_name
+                )
+                referenced_column = quoting.quote_column(foreign_key.referenced_columns[0])
+                result += f" [FK -> {referenced_table}.{referenced_column}]"
+            else:
+                result += " [FK-composite]"
 
-        if add_description and column.description:
-            res += f" /* {column.description} */"
-        return res
+        if include_description and column.description:
+            result += f" /* {column.description} */"
+        return result

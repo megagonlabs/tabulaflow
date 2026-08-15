@@ -110,8 +110,7 @@ class RegistryGetSchemaTool:
                 # which invalidates the cached entry via its identity check.
                 await connector.refresh_schema_async()
             schema = self._get_compressed_sql_schema(db_alias, connector.schema)
-            self._sql_formatter.set_dialect(schema.dialect)
-            result = self._sql_formatter.format(schema, add_description=True)
+            result = self._sql_formatter.format(schema, include_descriptions=True)
         elif connector.connector_type == "property_graph":
             if refresh:
                 await connector.refresh_schema_async()
