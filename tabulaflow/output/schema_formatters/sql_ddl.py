@@ -16,7 +16,7 @@ from tabulaflow.output.formatting import (
 @schema_formatter_registry.register
 @dataclass
 class SQLDDLSchemaFormatter:
-    """Formats schema as DDL statements with additional info like descriptions using comments."""
+    """Formats SQL schemas as annotated DDL with complete table-level constraints."""
 
     name: ClassVar[str] = "sql_ddl"
     include_examples: bool = True
@@ -80,7 +80,8 @@ class SQLDDLSchemaFormatter:
         lines: list[str] = []
         include_sampled_rows = self.include_sampled_df and len(schema.tables) <= self.include_sampled_df_max_tables
         for table, omitted_column_count in select_tables_for_formatting(schema, self.max_total_columns):
-            lines.append("")  # Blank line between tables
+            if lines:
+                lines.append("")
             lines.append(
                 self._format_table(
                     table,

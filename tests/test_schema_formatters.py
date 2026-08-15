@@ -1,4 +1,4 @@
-"""Tests for native_dtype rendering in schema formatters."""
+"""Tests for SQL schema formatting."""
 
 from tabulaflow.core import ForeignKeySchema, SQLColumnSchema, SQLSchema, SQLTableSchema
 from tabulaflow.output.formatting import render_column_dtype
@@ -6,12 +6,12 @@ from tabulaflow.output.schema_formatters.sql_basic import SQLBasicSchemaFormatte
 from tabulaflow.output.schema_formatters.sql_ddl import SQLDDLSchemaFormatter
 
 
-def _col(name: str, dtype: str, native_dtype: str | None) -> SQLColumnSchema:
+def _col(name: str, dtype: str, native_dtype: str | None, *, nullable: bool = True) -> SQLColumnSchema:
     return SQLColumnSchema(
         name=name,
         dtype=dtype,
         native_dtype=native_dtype,
-        nullable=True,
+        nullable=nullable,
         examples=[],
     )
 
@@ -98,31 +98,6 @@ def test_existing_columns_without_native_dtype_render_unchanged() -> None:
     assert "INTEGER" in fmt_ddl.format_table(_table(col), dialect=None)
 
 
-def test_formatters_derive_primary_and_foreign_key_markers_from_table() -> None:
-    foreign_key = ForeignKeySchema(
-        columns=["customer_id"],
-        referenced_schema_name="public",
-        referenced_table="customers",
-        referenced_columns=["id"],
-    )
-    table = SQLTableSchema(
-        name="orders",
-        schema_name="public",
-        is_view=False,
-        columns=[_col("id", "INTEGER", None), _col("customer_id", "INTEGER", None)],
-        primary_key=["id"],
-        foreign_keys=[foreign_key],
-    )
-
-    basic = SQLBasicSchemaFormatter().format_table(table, dialect="postgres")
-    ddl = SQLDDLSchemaFormatter().format_table(table, dialect="postgres")
-
-    assert '"id": INTEGER' in basic and "[PK]" in basic
-    assert '"customer_id": INTEGER' in basic and '[FK -> public.customers."id"]' in basic
-    assert '"id" INTEGER NULL PRIMARY KEY' in ddl
-    assert 'FOREIGN KEY ("customer_id") REFERENCES public.customers("id")' in ddl
-
-
 def test_format_table_uses_explicit_dialect_without_retaining_state() -> None:
     table = _table(_col("item name", "INTEGER", None))
     formatter = SQLDDLSchemaFormatter()
@@ -172,3 +147,97 @@ def test_schema_column_limit_prioritizes_complete_key_relationships() -> None:
     assert 'FOREIGN KEY ("customer_id") REFERENCES public.customers("id")' in formatted
     assert '"name"' not in formatted
     assert '"total"' not in formatted
+
+
+def test_complete_primary_and_foreign_key_formatting() -> None:
+    customers = SQLTableSchema(
+        name="customers",
+        schema_name="public",
+        is_view=False,
+        columns=[_col("id", "INTEGER", None, nullable=False)],
+        primary_key=["id"],
+        foreign_keys=[],
+    )
+    orders = SQLTableSchema(
+        name="orders",
+        schema_name="public",
+        is_view=False,
+        columns=[
+            _col("tenant_id", "INTEGER", None, nullable=False),
+            _col("order_id", "INTEGER", None, nullable=False),
+            _col("customer_id", "INTEGER", None, nullable=False),
+        ],
+        primary_key=["tenant_id", "order_id"],
+        foreign_keys=[
+            ForeignKeySchema(
+                columns=["customer_id"],
+                referenced_schema_name="public",
+                referenced_table="customers",
+                referenced_columns=["id"],
+            ),
+            ForeignKeySchema(
+                columns=["tenant_id", "customer_id"],
+                referenced_schema_name="public",
+                referenced_table="customer_keys",
+                referenced_columns=["tenant_id", "id"],
+            ),
+        ],
+    )
+    schema = SQLSchema(name="shop", dialect="postgres", tables=[customers, orders])
+
+    basic = SQLBasicSchemaFormatter().format(schema)
+    ddl = SQLDDLSchemaFormatter(
+        include_examples=False,
+        include_sampled_df=False,
+        include_null_ratio=False,
+        include_json_schema=False,
+    ).format(schema)
+
+    assert (
+        basic
+        == """Database: shop (SQL Dialect: postgres)
+
+=== (SCHEMA: public) TABLE: customers ===
+- "id": INTEGER [PK]
+=== END OF TABLE ===
+
+=== (SCHEMA: public) TABLE: orders ===
+[Composite FKs]
+* ("tenant_id", "customer_id") -> public.customer_keys.("tenant_id", "id")
+
+- "tenant_id": INTEGER [PK-composite] [FK-composite]
+- "order_id": INTEGER [PK-composite]
+- "customer_id": INTEGER [FK -> public.customers."id"] [FK-composite]
+=== END OF TABLE ==="""
+    )
+    assert (
+        ddl
+        == """**Database:** `shop`
+**SQL Dialect:** `postgres`
+
+```sql
+/*
+Schema: public
+Table: customers
+*/
+CREATE TABLE public.customers (
+    "id" INTEGER NOT NULL PRIMARY KEY
+);
+
+/*
+Schema: public
+Table: orders
+*/
+CREATE TABLE public.orders (
+    "tenant_id" INTEGER NOT NULL,
+        -- <fk>composite</fk>
+    "order_id" INTEGER NOT NULL,
+    "customer_id" INTEGER NOT NULL,
+        -- <fk> -> public.customers."id"</fk>
+        -- <fk>composite</fk>
+    PRIMARY KEY ("tenant_id", "order_id"),
+    FOREIGN KEY ("customer_id") REFERENCES public.customers("id"),
+    FOREIGN KEY ("tenant_id", "customer_id") REFERENCES public.customer_keys("tenant_id", "id")
+);
+```"""
+    )

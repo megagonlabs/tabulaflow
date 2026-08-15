@@ -11,6 +11,8 @@ from tabulaflow.output.schema_formatters.base import schema_formatter_registry
 @schema_formatter_registry.register
 @dataclass
 class SQLBasicSchemaFormatter:
+    """Formats SQL schemas as compact text with inline PK/FK markers."""
+
     name: ClassVar[str] = "sql_basic"
     example_max_chars: int = 100
     floatfmt: str = ".8g"
@@ -137,12 +139,13 @@ class SQLBasicSchemaFormatter:
         foreign_keys: list[ForeignKeySchema],
     ) -> str:
         result = f"- {quoting.quote_column(column.name)}: {render_column_dtype(column, self.max_native_dtype_chars)}"
-        if column.null_ratio == 1.0:
-            result += " (all values are null)"
-        elif column.null_ratio is None or column.null_ratio > 0.0:
-            result += " NULLABLE"
-            if column.null_ratio is not None:
-                result += f" (null_ratio={format_ratio_as_percent(column.null_ratio)})"
+        if column.nullable:
+            if column.null_ratio == 1.0:
+                result += " (all values are null)"
+            else:
+                result += " NULLABLE"
+                if column.null_ratio is not None:
+                    result += f" (null_ratio={format_ratio_as_percent(column.null_ratio)})"
 
         is_categorical = (
             column.dtype in ("TEXT", "VARCHAR", "STRING", "ENUM")
