@@ -17,6 +17,8 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
+NumericOrNull: TypeAlias = Union[float, int, None]
+
 
 class PredQuery(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)

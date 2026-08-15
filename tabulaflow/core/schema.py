@@ -1,13 +1,10 @@
 import copy
-from collections.abc import Iterator
-from typing import Any, Literal, TypeAlias, Union
+from typing import Any, Literal, TypeAlias
 
 import pandas as pd
 from pydantic import BaseModel, ConfigDict, Field, field_serializer, field_validator, model_validator
 
 from tabulaflow.core.serialization import _deserialize_dataframe, _sanitize_df, _serialize_dataframe
-
-NumericOrNull: TypeAlias = Union[float, int, None]
 
 SQLDialect: TypeAlias = Literal[
     "athena",
@@ -80,24 +77,6 @@ class PropertyGraphSchema(BaseModel):
     nodes: list[NodeSchema] = Field(default_factory=list)
     relationships: list[RelationshipSchema] = Field(default_factory=list)
 
-    def get_node(self, label: str) -> NodeSchema:
-        for n in self.nodes:
-            if n.label == label:
-                return n
-        raise ValueError(f"Node type {label!r} not found.")
-
-    def get_relationship(self, label: str) -> RelationshipSchema:
-        for r in self.relationships:
-            if r.label == label:
-                return r
-        raise ValueError(f"Relationship type {label!r} not found.")
-
-    def iter_patterns(self) -> Iterator[tuple[str, str, str]]:
-        """Yield ``(label, source_label, target_label)`` for every endpoint."""
-        for rel in self.relationships:
-            for endpoint in rel.endpoints:
-                yield (rel.label, endpoint.source_label, endpoint.target_label)
-
 
 # ---------------------------------------------------------------------------
 # SQL schema (MySQL, PostgreSQL, Snowflake, BigQuery, etc.)
@@ -123,12 +102,8 @@ class SQLColumnSchema(BaseModel):
     nor the dialect catalog could resolve it."""
     description: str | None = None
     """Concise description of the column"""
-    detailed_description_markdown: str | None = None
-    """Markdown-formatted detailed description of the column"""
     json_schema: dict[str, Any] | None = None
     """JSON Schema describing the internal structure of JSON/VARIANT columns (nested objects, arrays, etc.)"""
-    not_used: bool = False
-    """Indicates that the column contains no valid data or has been explicitly marked as not useful"""
     nullable: bool
     null_ratio: float | None = None
     num_unique: int | None = None  # Only for text or integer columns
@@ -262,38 +237,6 @@ class SQLSchema(BaseModel):
                     if column.name == column_ref.column_name:
                         return column
         raise ValueError(f"Column {column_ref.column_name} not found in table {column_ref.table_name}.")
-
-    def get_pk_column_refs(self) -> list[ColumnRef]:
-        return [
-            ColumnRef(schema_name=table.schema_name, table_name=table.name, column_name=column.name)
-            for table in self.tables
-            for column in table.columns
-            if column.primary_key_type is not None
-        ]
-
-    def get_fk_column_refs(self) -> list[ColumnRef]:
-        """Get columns involved in foreign key relationships (both outgoing and incoming)."""
-        result: list[ColumnRef] = []
-        seen: set[tuple[str | None, str, str]] = set()
-
-        for table in self.tables:
-            for fk in table.foreign_keys:
-                # Outgoing FK columns
-                for col in fk.columns:
-                    key = (table.schema_name, table.name, col)
-                    if key not in seen:
-                        seen.add(key)
-                        result.append(ColumnRef(schema_name=table.schema_name, table_name=table.name, column_name=col))
-                # Incoming FK columns
-                for col in fk.foreign_columns:
-                    key = (fk.foreign_schema_name, fk.foreign_table, col)
-                    if key not in seen:
-                        seen.add(key)
-                        result.append(
-                            ColumnRef(schema_name=fk.foreign_schema_name, table_name=fk.foreign_table, column_name=col)
-                        )
-
-        return result
 
     def trim(self, column_refs: list[ColumnRef], case_insensitive: bool = True, keep_pk: bool = True) -> "SQLSchema":
         def normalize(s: str | None) -> str | None:

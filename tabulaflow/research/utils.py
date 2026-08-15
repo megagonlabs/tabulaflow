@@ -6,8 +6,7 @@ from typing import Any, Coroutine, Literal, cast
 import numpy as np
 from tqdm.asyncio import tqdm_asyncio
 
-from tabulaflow.core import NumericOrNull
-from tabulaflow.research.types import AmbigNL2QTask, GoldAmbiguityPoint
+from tabulaflow.research.types import AmbigNL2QTask, GoldAmbiguityPoint, NumericOrNull
 
 
 def int_to_letter(idx: int) -> str:

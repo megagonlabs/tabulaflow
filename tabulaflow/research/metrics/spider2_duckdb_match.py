@@ -17,8 +17,7 @@ import pandas as pd
 
 from tabulaflow.data import DataConnector
 from tabulaflow.research.metrics.base import metric_registry
-from tabulaflow.core import NumericOrNull
-from tabulaflow.research.types import DbtTaskOutput, NL2QTaskOutput
+from tabulaflow.research.types import DbtTaskOutput, NL2QTaskOutput, NumericOrNull
 
 logger = logging.getLogger(__name__)
 

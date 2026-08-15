@@ -2,11 +2,11 @@ import json
 from typing import ClassVar, Any
 from pydantic import BaseModel
 import jinja2
-from tabulaflow.core import NumericOrNull
 from tabulaflow.research.types import (
     ARCSAmbiguityType,
     FlatAmbigNL2QTaskOutput,
     NL2QTaskOutput,
+    NumericOrNull,
     SimpleAmbigNL2QTaskOutput,
     StructuredAmbigNL2QTaskOutput,
 )

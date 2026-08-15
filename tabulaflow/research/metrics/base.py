@@ -1,6 +1,5 @@
 from typing import Protocol, ClassVar, Any
-from tabulaflow.core import NumericOrNull
-from tabulaflow.research.types import NL2QRunResult, NL2QTaskOutput
+from tabulaflow.research.types import NL2QRunResult, NL2QTaskOutput, NumericOrNull
 from tabulaflow.data import DataConnector
 from tabulaflow.core.registry import ClassRegistry
 

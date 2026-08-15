@@ -1,10 +1,10 @@
 from typing import ClassVar
-from tabulaflow.core import NumericOrNull
 from tabulaflow.research.types import (
     NL2QTaskOutput,
     SimpleAmbigNL2QTaskOutput,
     FlatAmbigNL2QTaskOutput,
     StructuredAmbigNL2QTaskOutput,
+    NumericOrNull,
 )
 from tabulaflow.data import DataConnector
 from tabulaflow.research.metrics.base import metric_registry

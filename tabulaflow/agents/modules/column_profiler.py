@@ -14,7 +14,7 @@ COLUMN_PROFILER_SYSTEM_PROMPT = """
 <goal>
 You are a helpful AI database expert responsible for profiling columns in the database schema.
 You will be given the full database schema and a column to profile.
-Your goal is to generate descriptions and identify if the column is not used.
+Your goal is to generate concise column descriptions.
 </goal>
 
 <tool_calling>
@@ -27,12 +27,6 @@ Your output should include:
   - If a column already has a description, revise it to be more concise and informative.
   - Do not repeat information already covered by column metadata (such as data type or categorical values).
   - Retain any non-redundant information from the original description, including notes indicating that a column is not useful.
-- optionally `detailed_description_markdown`: only needed for complex columns with nested structures like JSON.
-  - a markdown-formatted explanation for complex JSON columns.
-  - null for most columns.
-- optionally `not_used`:
-  - True for columns that contain no valid data or have been explicitly marked as "not useful" in the original description.
-  - Do not set this to true if the column is a primary key or is involved in a foreign key.
 </output>
 
 <database_schema>
@@ -47,8 +41,6 @@ def format_user_prompt(column_ref: ColumnRef) -> str:
 
 class LLMOutput(BaseModel):
     revised_concise_description: str
-    detailed_description_markdown: str | None = None
-    not_used: bool = False
 
 
 class ColumnProfiler:
@@ -88,6 +80,4 @@ class ColumnProfiler:
         for column_ref, result in zip(column_refs, all_results):
             column = new_schema.get_column_by_ref(column_ref)
             column.description = result.revised_concise_description
-            column.detailed_description_markdown = result.detailed_description_markdown
-            column.not_used = result.not_used
         return new_schema
