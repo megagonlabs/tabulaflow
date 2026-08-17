@@ -3,9 +3,9 @@
 from typing import Any, Literal, TypeAlias
 
 import pandas as pd
-from pydantic import BaseModel, ConfigDict, Field, field_serializer, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from tabulaflow.core.serialization import _deserialize_dataframe, _sanitize_df, _serialize_dataframe
+from tabulaflow.core.serialization import SerializableDataFrame
 
 SQLDialect: TypeAlias = Literal[
     "athena",
@@ -171,22 +171,7 @@ class SQLTableSchema(BaseModel):
     primary_key: list[str]
     num_rows: int | None = None
     foreign_keys: list[ForeignKeySchema]
-    sampled_df: pd.DataFrame | None = None
-
-    @field_serializer("sampled_df", when_used="always")
-    def serialize_df(self, df: pd.DataFrame | None) -> dict[str, Any] | None:
-        return _serialize_dataframe(df)
-
-    @field_validator("sampled_df", mode="before")
-    @classmethod
-    def deserialize_df(cls, v: dict[str, Any] | pd.DataFrame | None) -> pd.DataFrame | None:
-        return _deserialize_dataframe(v)
-
-    @model_validator(mode="after")
-    def sanitize_sampled_df(self) -> "SQLTableSchema":
-        if self.sampled_df is not None:
-            self.sampled_df = _sanitize_df(self.sampled_df)
-        return self
+    sampled_df: SerializableDataFrame = None
 
     def select_columns(
         self,

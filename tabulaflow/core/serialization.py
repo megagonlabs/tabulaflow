@@ -7,9 +7,10 @@ import math
 import numbers
 from collections.abc import Mapping, Sequence
 from decimal import Decimal
-from typing import Any
+from typing import Annotated, Any, TypeAlias
 
 import pandas as pd
+from pydantic import AfterValidator, BeforeValidator, PlainSerializer
 
 
 _DF_SERIALIZATION_FORMAT = "parquet_base64_v1"
@@ -245,6 +246,22 @@ def _deserialize_dataframe(value: dict[str, Any] | pd.DataFrame | None) -> pd.Da
     dtypes = value["schema"]["dtypes"]
     df = pd.DataFrame(value["data"], columns=list(dtypes.keys()))
     return df.astype(dtypes)
+
+
+def _sanitize_optional_dataframe(df: pd.DataFrame | None) -> pd.DataFrame | None:
+    return _sanitize_df(df) if df is not None else None
+
+
+SerializableDataFrame: TypeAlias = Annotated[
+    pd.DataFrame | None,
+    BeforeValidator(_deserialize_dataframe),
+    AfterValidator(_sanitize_optional_dataframe),
+    PlainSerializer(
+        _serialize_dataframe,
+        return_type=dict[str, Any] | None,
+        when_used="always",
+    ),
+]
 
 
 def _is_missing_scalar(value: object) -> bool:

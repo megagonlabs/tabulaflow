@@ -1,9 +1,8 @@
 from typing import Any
 
-import pandas as pd
-from pydantic import BaseModel, ConfigDict, Field, field_serializer, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from tabulaflow.core.serialization import _deserialize_dataframe, _sanitize_df, _serialize_dataframe
+from tabulaflow.core.serialization import SerializableDataFrame
 
 
 class ErrorInfo(BaseModel):
@@ -45,7 +44,7 @@ class GraphResult(BaseModel):
 class ExecResult(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    df: pd.DataFrame | None = None
+    df: SerializableDataFrame = None
     graph: GraphResult | None = None
     df_is_truncated: bool = False
     """True if the df is truncated, e.g. when the result is too large"""
@@ -66,21 +65,6 @@ class ExecResult(BaseModel):
         has ``succeeded=True`` but no result set (``df is None``). A result set
         is ``df is not None`` — check that directly."""
         return self.error is None
-
-    @field_serializer("df", when_used="always")
-    def serialize_df(self, df: pd.DataFrame | None) -> dict[str, Any] | None:
-        return _serialize_dataframe(df)
-
-    @field_validator("df", mode="before")
-    @classmethod
-    def deserialize_df(cls, v: dict[str, Any] | pd.DataFrame | None) -> pd.DataFrame | None:
-        return _deserialize_dataframe(v)
-
-    @model_validator(mode="after")
-    def sanitize_df(self) -> "ExecResult":
-        if self.df is not None:
-            self.df = _sanitize_df(self.df)
-        return self
 
     @model_validator(mode="after")
     def validate_df_or_error(self) -> "ExecResult":
