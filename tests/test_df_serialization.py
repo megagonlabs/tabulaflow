@@ -1,6 +1,7 @@
 import pandas as pd
 from decimal import Decimal
 from pandas.testing import assert_frame_equal
+import pytest
 
 from tabulaflow.core.serialization import (
     _DF_SERIALIZATION_FORMAT,
@@ -26,7 +27,6 @@ def test_dataframe_round_trip_parquet_payload() -> None:
     assert serialized is not None
     assert serialized["format"] == _DF_SERIALIZATION_FORMAT
     assert "parquet_base64" in serialized
-    assert "preview" in serialized
     assert serialized["preview"]["num_rows"] == 3
     assert len(serialized["preview"]["sample_data"]) == 3
 
@@ -51,7 +51,6 @@ def test_dataframe_deserialize_feather_payload() -> None:
     payload = {
         "format": _DF_SERIALIZATION_FORMAT_FEATHER,
         "feather_base64": encoded,
-        "preview": {"sample_data": [], "num_rows": 2},
     }
 
     deserialized = _deserialize_dataframe(payload)
@@ -69,6 +68,11 @@ def test_dataframe_deserialize_legacy_payload() -> None:
     expected = pd.DataFrame({"x": [1, 2], "y": ["a", "b"]})
     expected = expected.astype({"x": "int64", "y": "object"})
     assert_frame_equal(expected, deserialized, check_dtype=True)
+
+
+def test_dataframe_deserialize_rejects_invalid_payload() -> None:
+    with pytest.raises(ValueError, match="invalid DataFrame payload: list"):
+        _deserialize_dataframe([])
 
 
 def test_dataframe_round_trip_nested_columns() -> None:

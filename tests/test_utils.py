@@ -58,6 +58,10 @@ def test_json_ready_recurses_through_data_shaped_containers() -> None:
     assert json_ready(payload) == {"tuple": [1, "2.5", None], "list": [None]}
 
 
+def test_json_ready_stringifies_unsupported_values() -> None:
+    assert json_ready(b"data") == "b'data'"
+
+
 def test_dumps_strict_json_rejects_non_json_constants_after_normalization() -> None:
     text = dumps_strict_json({"values": [math.nan, np.float64("inf"), Decimal("NaN")]})
 

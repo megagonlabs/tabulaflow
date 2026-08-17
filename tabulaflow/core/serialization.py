@@ -1,3 +1,5 @@
+"""DataFrame and strict JSON serialization helpers for core models."""
+
 import base64
 import io
 import json
@@ -139,38 +141,12 @@ def _stringify_mixed_type_columns(df: pd.DataFrame) -> pd.DataFrame:
 
 def _build_readable_df_preview(df: pd.DataFrame) -> dict[str, Any]:
     preview_df = df.head(_DF_PREVIEW_MAX_ROWS)
-    # Round-trip through CSV so every column type is handled exactly like to_csv()
-    # (bytes → str repr, timestamps → ISO strings, etc.) with no risk of encoding errors.
     csv_buf = io.StringIO()
     preview_df.to_csv(csv_buf, index=False)
     csv_buf.seek(0)
-    records = pd.read_csv(csv_buf).to_dict(orient="records")
     return {
-        "sample_data": records,
+        "sample_data": pd.read_csv(csv_buf).to_dict(orient="records"),
         "num_rows": len(df),
-    }
-
-
-def _serialize_dataframe_legacy(df: pd.DataFrame | None) -> dict[str, Any] | None:
-    """Old JSON format kept for backward compatibility fallback."""
-    if df is None:
-        return None
-    records = df.to_dict(orient="records")
-    for row in records:
-        for key, val in row.items():
-            if isinstance(val, pd.Timestamp):
-                row[key] = val.isoformat()
-            elif val is pd.NaT:
-                row[key] = None
-            elif isinstance(val, (bytes, bytearray)):
-                row[key] = str(val)
-            elif isinstance(val, str):
-                row[key] = val.encode("utf-8", errors="replace").decode("utf-8")
-    return {
-        "schema": {
-            "dtypes": {col: str(dtype) for col, dtype in df.dtypes.items()},
-        },
-        "data": records,
     }
 
 
@@ -233,20 +209,20 @@ def _serialize_dataframe(df: pd.DataFrame | None) -> dict[str, Any] | None:
     }
 
 
-def _deserialize_dataframe(v: dict[str, Any] | pd.DataFrame | None) -> pd.DataFrame | None:
+def _deserialize_dataframe(value: dict[str, Any] | pd.DataFrame | None) -> pd.DataFrame | None:
     """Deserialize Parquet, Feather, or legacy schema+records payloads."""
-    if v is None or isinstance(v, pd.DataFrame):
-        return v
-    if not isinstance(v, dict):
-        return v
+    if value is None or isinstance(value, pd.DataFrame):
+        return value
+    if not isinstance(value, dict):
+        raise ValueError(f"invalid DataFrame payload: {type(value).__name__}")
 
-    fmt = v.get("format")
+    fmt = value.get("format")
 
     if fmt == _DF_SERIALIZATION_FORMAT:
         import pyarrow as pa
         import pyarrow.parquet as pq
 
-        raw = base64.b64decode(v["parquet_base64"])
+        raw = base64.b64decode(value["parquet_base64"])
         table = pq.read_table(io.BytesIO(raw))
         json_cols = [f.name for f in table.schema if isinstance(f.type, pa.JsonType)]
         df = table.to_pandas()
@@ -257,7 +233,7 @@ def _deserialize_dataframe(v: dict[str, Any] | pd.DataFrame | None) -> pd.DataFr
         return df
 
     if fmt == _DF_SERIALIZATION_FORMAT_FEATHER:
-        raw = base64.b64decode(v["feather_base64"])
+        raw = base64.b64decode(value["feather_base64"])
         import pyarrow.feather as feather
 
         df = feather.read_feather(io.BytesIO(raw))
@@ -266,8 +242,8 @@ def _deserialize_dataframe(v: dict[str, Any] | pd.DataFrame | None) -> pd.DataFr
         return df
 
     # Backward compatibility for old cached/result JSON payloads.
-    dtypes = v["schema"]["dtypes"]
-    df = pd.DataFrame(v["data"], columns=list(dtypes.keys()))
+    dtypes = value["schema"]["dtypes"]
+    df = pd.DataFrame(value["data"], columns=list(dtypes.keys()))
     return df.astype(dtypes)
 
 
@@ -295,9 +271,9 @@ def json_ready(value: object) -> object:
         return {str(key): json_ready(item) for key, item in value.items()}
     if isinstance(value, Sequence) and not isinstance(value, (str, bytes, bytearray)):
         return [json_ready(item) for item in value]
-    return value
+    return str(value)
 
 
 def dumps_strict_json(data: object) -> str:
     """Serialize as standards-compliant JSON, never emitting NaN or Infinity."""
-    return json.dumps(json_ready(data), ensure_ascii=False, default=str, allow_nan=False)
+    return json.dumps(json_ready(data), ensure_ascii=False, allow_nan=False)
