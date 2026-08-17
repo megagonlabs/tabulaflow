@@ -1,3 +1,5 @@
+"""Database execution result models."""
+
 from typing import Any, Self
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -6,12 +8,14 @@ from tabulaflow.core.serialization import SerializableDataFrame
 
 
 class ErrorInfo(BaseModel):
+    """Exception details returned as part of an execution result."""
+
     exc_type: str
     message: str
 
 
 class GraphResultNode(BaseModel):
-    """Node in a generic query-result graph view."""
+    """Node in a graph-shaped query result."""
 
     model_config = ConfigDict(extra="forbid")
 
@@ -22,7 +26,7 @@ class GraphResultNode(BaseModel):
 
 
 class GraphResultEdge(BaseModel):
-    """Edge in a generic query-result graph view."""
+    """Edge in a graph-shaped query result."""
 
     model_config = ConfigDict(extra="forbid")
 
@@ -35,7 +39,7 @@ class GraphResultEdge(BaseModel):
 
 
 class GraphResult(BaseModel):
-    """Generic node-link graph view attached to a query result."""
+    """Node-link graph returned by a query."""
 
     nodes: list[GraphResultNode]
     edges: list[GraphResultEdge]
@@ -44,10 +48,14 @@ class GraphResult(BaseModel):
 class ExecResult(BaseModel):
     """Outcome of executing one database statement.
 
-    Successful data-producing queries carry ``df``, ``graph``, or both.
-    Successful non-row statements may carry ``affected_rows``. Failures carry
-    ``error`` and no successful payload. ``latency_seconds`` may accompany any
-    outcome.
+    A successful statement may have no payload, as with DDL.
+
+    Attributes:
+        df: Complete tabular result for a row-returning query.
+        graph: Graph representation of a data-producing query.
+        affected_rows: Rows affected by successful non-row DML, when reported.
+        error: Failure details; mutually exclusive with successful payloads.
+        latency_seconds: Elapsed execution time, when measured.
     """
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
