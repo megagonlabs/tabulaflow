@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, Self
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
@@ -42,17 +42,21 @@ class GraphResult(BaseModel):
 
 
 class ExecResult(BaseModel):
+    """Outcome of executing one database statement.
+
+    Successful data-producing queries carry ``df``, ``graph``, or both.
+    Successful non-row statements may carry ``affected_rows``. Failures carry
+    ``error`` and no successful payload. ``latency_seconds`` may accompany any
+    outcome.
+    """
+
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     df: SerializableDataFrame | None = None
     graph: GraphResult | None = None
-    affected_rows: int | None = None
-    """Rows matched/affected by a single-statement DML (INSERT/UPDATE/DELETE/MERGE),
-    when the driver reports it. ``None`` for SELECT, DDL, multi-statement scripts,
-    and drivers that don't surface a count. ``0`` means the statement ran but
-    matched no rows (e.g. a WHERE that hit nothing) — distinct from ``None``."""
+    affected_rows: int | None = Field(default=None, ge=0)
     error: ErrorInfo | None = None
-    latency_seconds: float | None = None
+    latency_seconds: float | None = Field(default=None, ge=0, allow_inf_nan=False)
 
     @property
     def succeeded(self) -> bool:
@@ -65,10 +69,10 @@ class ExecResult(BaseModel):
         return self.error is None
 
     @model_validator(mode="after")
-    def validate_df_or_error(self) -> "ExecResult":
-        # Success is ``error is None``; a result set is ``df is not None``. These
-        # are independent: a successful non-row statement (DDL/DML) has neither a
-        # df nor an error. Only a df *and* an error together is contradictory.
-        if self.df is not None and self.error is not None:
-            raise ValueError("ExecResult must not carry both df and error")
+    def validate_state(self) -> Self:
+        has_result = self.df is not None or self.graph is not None
+        if self.error is not None and (has_result or self.affected_rows is not None):
+            raise ValueError("an error cannot accompany a result or affected-row count")
+        if has_result and self.affected_rows is not None:
+            raise ValueError("a result cannot carry an affected-row count")
         return self
