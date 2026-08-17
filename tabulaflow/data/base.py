@@ -3,6 +3,13 @@ import sqlalchemy
 from tabulaflow.core import SQLDialect, NonSQLLanguage, SQLSchema, PropertyGraphSchema, ExecResult, TableRef
 
 
+class ResultTooLargeError(RuntimeError):
+    """A query produced more rows than may be materialized safely."""
+
+    def __init__(self, max_rows: int) -> None:
+        super().__init__(f"Query returned more than {max_rows:,} rows; add a LIMIT, filter, or aggregation")
+
+
 class SQLConnectorProtocol(Protocol):
     connector_type: ClassVar[Literal["sql"]]
     global_id: str

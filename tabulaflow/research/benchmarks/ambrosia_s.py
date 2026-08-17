@@ -127,7 +127,6 @@ class AmbrosiaSDatasetLoader:
                         exec_result = gold_query["exec_result"]
                         gold_query["exec_result"] = {
                             "df": pd.DataFrame.from_records(exec_result),
-                            "df_is_truncated": False,
                             "error": None,
                             "latency_seconds": None,
                         }

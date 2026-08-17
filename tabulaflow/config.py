@@ -8,7 +8,7 @@ ColumnStatsMode = Literal["always_skip", "always_precise", "sample_for_large_tab
 QueryCacheMode = Literal["all", "successful_only"]
 
 _POSITIVE_INT_OR_NONE_FIELDS = (
-    "df_max_rows",
+    "max_result_rows",
     "max_llm_concurrency",
     "max_llm_requests_per_minute",
     "max_embedding_concurrency",
@@ -36,7 +36,7 @@ class Settings(BaseSettings):
     instrument_enabled: bool = True
     instrument_prefix: str = "exp"
     disable_bigquery_tracing: bool = True
-    df_max_rows: int | None = 100000
+    max_result_rows: int | None = 100000
     max_llm_concurrency: int | None = 64
     max_llm_requests_per_minute: int | None = 600
     max_embedding_concurrency: int | None = 16

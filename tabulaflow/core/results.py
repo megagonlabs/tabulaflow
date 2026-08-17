@@ -46,8 +46,6 @@ class ExecResult(BaseModel):
 
     df: SerializableDataFrame | None = None
     graph: GraphResult | None = None
-    df_is_truncated: bool = False
-    """True if the df is truncated, e.g. when the result is too large"""
     affected_rows: int | None = None
     """Rows matched/affected by a single-statement DML (INSERT/UPDATE/DELETE/MERGE),
     when the driver reports it. ``None`` for SELECT, DDL, multi-statement scripts,

@@ -25,6 +25,7 @@ from tabulaflow.core import (
     RelationshipSchema,
 )
 from tabulaflow.core.serialization import json_ready
+from tabulaflow.data.base import ResultTooLargeError
 
 logger = logging.getLogger(__name__)
 
@@ -59,6 +60,17 @@ ORDER BY type, source, target
 
 _GRAPH_RESULT_MAX_NODES = 300
 _GRAPH_RESULT_MAX_EDGES = 700
+
+
+def _records_to_df(records: Sequence[neo4j.Record], columns: Sequence[str]) -> pd.DataFrame:
+    from neo4j.time import Date, DateTime
+
+    df = pd.DataFrame([record.values() for record in records], columns=columns)
+    for column in df.columns:
+        values = df[column].dropna()
+        if not values.empty and values.map(lambda value: isinstance(value, (Date, DateTime))).all():
+            df[column] = df[column].map(lambda value: pd.NaT if value is None else pd.Timestamp(value.to_native()))
+    return df
 
 
 def _safe_scalar(value: object) -> bool:
@@ -336,6 +348,7 @@ class Neo4jConnector:
         timeout: float | None = None,
         *,
         return_df: bool = False,
+        max_rows: int | None = None,
     ) -> list[dict[str, Any]] | pd.DataFrame:
         async with self._driver.session(database=self._database) as session:
             result = await session.run(
@@ -343,7 +356,12 @@ class Neo4jConnector:
                 parameters=dict(parameters) if parameters else {},
             )
             if return_df:
-                return await result.to_df(expand=False, parse_dates=True)
+                if max_rows is None:
+                    return await result.to_df(expand=False, parse_dates=True)
+                records = await result.fetch(max_rows + 1)
+                if len(records) > max_rows:
+                    raise ResultTooLargeError(max_rows)
+                return _records_to_df(records, result.keys())
             return await result.data()
 
     async def run_query_async(
@@ -365,7 +383,13 @@ class Neo4jConnector:
 
         t0 = time.time()
         try:
-            df = await self._run_cypher(query_str, parameters, timeout, return_df=True)
+            df = await self._run_cypher(
+                query_str,
+                parameters,
+                timeout,
+                return_df=True,
+                max_rows=tabulaflow_config.max_result_rows,
+            )
             graph = _extract_neo4j_graph_result(df)
             latency = time.time() - t0
             return ExecResult(df=df, graph=graph, latency_seconds=latency)

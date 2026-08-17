@@ -49,8 +49,8 @@ class RegistryTransferSourceTableTool:
 
         Args:
             source_id: Source ID from ``run_query`` (for example ``S3``).
-                To transfer a full table, first run ``SELECT * FROM <table>``
-                without ``LIMIT``, then transfer that source id.
+                To transfer a complete table, first run ``SELECT * FROM <table>``
+                without ``LIMIT``, then transfer that source.
             target_alias: Destination database alias.
             target_schema: Optional destination schema name.
             target_table: Destination table name.

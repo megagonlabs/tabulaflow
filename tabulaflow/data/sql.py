@@ -109,6 +109,7 @@ from tabulaflow.core import (
 )
 
 from tabulaflow.config import tabulaflow_config, ColumnStatsMode
+from tabulaflow.data.base import ResultTooLargeError
 from tabulaflow.data.introspection import infer_json_schema, looks_like_json
 
 logger = logging.getLogger(__name__)
@@ -293,6 +294,13 @@ def _rowcount_affected(rowcount: int | None, is_dml: bool) -> int | None:
     """Affected count from a DBAPI ``rowcount`` (the cross-dialect source), or
     ``None`` when it is not a DML or the driver reports ``-1`` (unsupported)."""
     return rowcount if (is_dml and rowcount is not None and rowcount >= 0) else None
+
+
+def _fetch_rows(result: Any, max_rows: int | None) -> list[Any]:
+    rows = list(result.fetchall() if max_rows is None else result.fetchmany(max_rows + 1))
+    if max_rows is not None and len(rows) > max_rows:
+        raise ResultTooLargeError(max_rows)
+    return rows
 
 
 def _build_row_outcome(
@@ -1216,6 +1224,7 @@ class ThrottledEngine:
         parameters: Sequence[Any] | Mapping[str, Any] = (),
         timeout: int | None = None,
         return_df: bool = False,
+        max_rows: int | None = None,
     ) -> QueryResult:
         """Execute a query with timeout and cancellation routed through
         the dialect's :class:`_CancelStrategy`.
@@ -1247,6 +1256,7 @@ class ThrottledEngine:
                 pyformat).
             timeout: Per-query deadline in seconds.  ``None`` disables.
             return_df: Wrap rows in a ``pandas.DataFrame``.
+            max_rows: Maximum rows to materialize. ``None`` disables the limit.
 
         Returns:
             A :class:`QueryResult` carrying rows (or DataFrame) and
@@ -1254,14 +1264,17 @@ class ThrottledEngine:
 
         Raises:
             asyncio.CancelledError: If the awaiting task is cancelled.
+            ResultTooLargeError: If the result exceeds ``max_rows``.
             TimeoutError: If ``timeout`` expires.
         """
+        if max_rows is not None and max_rows < 1:
+            raise ValueError("max_rows must be positive or None")
         ddl = isinstance(query, str) and _contains_ddl_statement(query)
         async with self.throttle(ddl=ddl):
             t0 = time.time()
             outcome = await self._dispatch_with_cancel(
-                sync_inner=lambda box: self._execute_sync_engine(query, parameters, return_df, box),
-                async_inner=lambda box: self._execute_async_engine(query, parameters, return_df, box),
+                sync_inner=lambda box: self._execute_sync_engine(query, parameters, return_df, max_rows, box),
+                async_inner=lambda box: self._execute_async_engine(query, parameters, return_df, max_rows, box),
                 timeout=timeout,
                 timeout_label=f"Query {query}",
             )
@@ -1354,6 +1367,7 @@ class ThrottledEngine:
         statement: str | sqlalchemy.sql.expression.Executable,
         parameters: Sequence[Any] | Mapping[str, Any] = (),
         return_df: bool = False,
+        max_rows: int | None = None,
         cancel_handle_box: list[Any] | None = None,
     ) -> _ExecOutcome:
         is_write, is_dml = _classify_statement(statement)
@@ -1381,13 +1395,14 @@ class ThrottledEngine:
             # distinguishes a succeeded DDL/DML from an empty SELECT.
             if not result.returns_rows:
                 return _ExecOutcome(result=None, affected_rows=_rowcount_affected(result.rowcount, is_dml))
-            return _build_row_outcome(result.fetchall(), list(result.keys()), return_df, is_write, is_dml)
+            return _build_row_outcome(_fetch_rows(result, max_rows), list(result.keys()), return_df, is_write, is_dml)
 
     async def _execute_async_engine(
         self,
         statement: str | sqlalchemy.sql.expression.Executable,
         parameters: Sequence[Any] | Mapping[str, Any] = (),
         return_df: bool = False,
+        max_rows: int | None = None,
         cancel_handle_box: list[Any] | None = None,
     ) -> _ExecOutcome:
         """Async-engine query path.  Mirrors :meth:`_execute_sync_engine` for the
@@ -1409,7 +1424,7 @@ class ThrottledEngine:
                 # fetchall() would raise ResourceClosedError.
                 if not result.returns_rows:
                     return _ExecOutcome(result=None, affected_rows=_rowcount_affected(result.rowcount, is_dml))
-                rows: list[Any] = list(result.fetchall())
+                rows = _fetch_rows(result, max_rows)
             elif is_write:
                 # A write Executable (UPDATE/INSERT/DELETE/DDL) is not row-returning
                 # in general — ``conn.stream`` would raise "does not return rows".
@@ -1417,7 +1432,7 @@ class ThrottledEngine:
                 wresult = await conn.execute(statement, parameters)
                 if not wresult.returns_rows:
                     return _ExecOutcome(result=None, affected_rows=_rowcount_affected(wresult.rowcount, is_dml))
-                rows = list(wresult.fetchall())  # e.g. UPDATE ... RETURNING
+                rows = _fetch_rows(wresult, max_rows)  # e.g. UPDATE ... RETURNING
                 keys = list(wresult.keys())
                 return _build_row_outcome(rows, keys, return_df, is_write, is_dml)
             else:
@@ -1425,6 +1440,8 @@ class ThrottledEngine:
                 result = await conn.stream(statement, parameters)
                 async for row in result:
                     rows.append(row)
+                    if max_rows is not None and len(rows) > max_rows:
+                        raise ResultTooLargeError(max_rows)
             keys = list(result.keys())
 
         # Reaching here means a result set: the string path returned early on the
@@ -2596,7 +2613,13 @@ class SQLConnector:
         )
 
     @staticmethod
-    def _query_cache_key(global_id: str, query: str, parameters: Mapping[str, Any], timeout: int | None) -> str:
+    def _query_cache_key(
+        global_id: str,
+        query: str,
+        parameters: Mapping[str, Any],
+        timeout: int | None,
+        max_rows: int | None,
+    ) -> str:
         """Build a deterministic cache key for a query."""
         key_data = json.dumps(
             {
@@ -2604,6 +2627,7 @@ class SQLConnector:
                 "query": query.strip(),
                 "parameters": dict(sorted(parameters.items())) if parameters else {},
                 "timeout": timeout,
+                "max_rows": max_rows,
             },
             sort_keys=True,
             ensure_ascii=True,
@@ -2698,7 +2722,13 @@ class SQLConnector:
 
         cache_hash: str | None = None
         if caching_on:
-            cache_hash = self._query_cache_key(self.global_id, query_str, params_map, timeout)
+            cache_hash = self._query_cache_key(
+                self.global_id,
+                query_str,
+                params_map,
+                timeout,
+                tabulaflow_config.max_result_rows,
+            )
             cache_dir = os.path.join(tabulaflow_config.cache_dir, "query_results")
             cache_path = os.path.join(cache_dir, f"{self.global_id}_{cache_hash}.json")
 
@@ -2731,7 +2761,13 @@ class SQLConnector:
         error, latency_seconds = None, None
         affected_rows: int | None = None
         try:
-            result = await self._t_eng.execute_async(query, parameters, timeout, return_df=True)
+            result = await self._t_eng.execute_async(
+                query,
+                parameters,
+                timeout,
+                return_df=True,
+                max_rows=tabulaflow_config.max_result_rows,
+            )
             df = result.result  # return_df=True ⟹ DataFrame | None
             latency_seconds = result.latency_seconds
             affected_rows = result.affected_rows
