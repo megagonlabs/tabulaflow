@@ -248,20 +248,19 @@ def _deserialize_dataframe(value: dict[str, Any] | pd.DataFrame | None) -> pd.Da
     return df.astype(dtypes)
 
 
-def _sanitize_optional_dataframe(df: pd.DataFrame | None) -> pd.DataFrame | None:
-    return _sanitize_df(df) if df is not None else None
-
-
-SerializableDataFrame: TypeAlias = Annotated[
-    pd.DataFrame | None,
-    BeforeValidator(_deserialize_dataframe),
-    AfterValidator(_sanitize_optional_dataframe),
-    PlainSerializer(
-        _serialize_dataframe,
-        return_type=dict[str, Any] | None,
-        when_used="always",
-    ),
-]
+SerializableDataFrame: TypeAlias = (
+    Annotated[
+        pd.DataFrame,
+        BeforeValidator(_deserialize_dataframe),
+        AfterValidator(_sanitize_df),
+        PlainSerializer(
+            _serialize_dataframe,
+            return_type=dict[str, Any],
+            when_used="always",
+        ),
+    ]
+    | None
+)
 
 
 def _is_missing_scalar(value: object) -> bool:
