@@ -22,7 +22,10 @@ from tabulaflow.core import ErrorInfo, ExecResult, GraphResult
     ],
 )
 def test_accepts_valid_execution_states(result: ExecResult) -> None:
-    assert result.succeeded is (result.error is None)
+    if result.error is not None:
+        assert result.df is None
+        assert result.graph is None
+        assert result.affected_rows is None
 
 
 @pytest.mark.parametrize(

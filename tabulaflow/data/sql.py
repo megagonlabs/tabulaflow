@@ -2747,7 +2747,7 @@ class SQLConnector:
                     if os.path.exists(cache_path):
                         with open(cache_path, "r", encoding="utf-8") as f:
                             cached = ExecResult.model_validate_json(f.read())
-                        if successful_only and not cached.succeeded:
+                        if successful_only and cached.error is not None:
                             logger.debug(f"Query cache skip (error in successful_only mode): {query_str[:80]}")
                         else:
                             _query_cache[cache_hash] = cached
@@ -2782,7 +2782,7 @@ class SQLConnector:
 
         # --- write to cache ---
         if caching_on and cache_hash is not None:
-            skip = tabulaflow_config.query_cache_mode == "successful_only" and not exec_result.succeeded
+            skip = tabulaflow_config.query_cache_mode == "successful_only" and exec_result.error is not None
             if not skip:
                 async with _query_cache_locks[cache_hash]:
                     os.makedirs(cache_dir, exist_ok=True)

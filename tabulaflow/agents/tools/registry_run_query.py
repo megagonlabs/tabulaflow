@@ -174,11 +174,11 @@ class RegistryRunQueryTool:
             )
         execution = await tool.execute(query, parameters, refresh and self.enable_refresh)
         exec_result = execution.exec_result
+        if exec_result.error is not None:
+            return ToolReturn(return_value=execution.output, metadata=ToolCallOutcome(error=True))
         outcome = None
         if exec_result.df is not None:
             outcome = ToolCallOutcome(count=len(exec_result.df), unit="rows")
-        elif exec_result.error:
-            return ToolReturn(return_value=execution.output, metadata=ToolCallOutcome(error=True))
         source = await self._output_store.add_fixed_result_source(
             db_alias=db_alias,
             connector_type=tool.db_connector.connector_type,

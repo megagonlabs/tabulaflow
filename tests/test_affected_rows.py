@@ -59,11 +59,11 @@ class TestAsyncEngineDML:
         sa_t = sa_table(None, "t", "id", "v")
         stmt = sqlalchemy.update(sa_t).where(sa_t.c["id"] <= 2).values({sa_t.c["v"]: 9})
         r = await sqlite_conn.run_query_async(stmt)
-        assert r.succeeded and r.df is None and r.affected_rows == 2
+        assert r.error is None and r.df is None and r.affected_rows == 2
 
         # raw-string DML and SELECT still work on the async engine.
         r0 = await sqlite_conn.run_query_async("UPDATE t SET v=1 WHERE id=999")
-        assert r0.succeeded and r0.df is None and r0.affected_rows == 0
+        assert r0.error is None and r0.df is None and r0.affected_rows == 0
         rs = await sqlite_conn.run_query_async("SELECT * FROM t")
         assert rs.df is not None and len(rs.df) == 3
 
@@ -77,17 +77,17 @@ class TestConnectorAffectedRows:
         # Non-row statements: success carried by error-is-None, df is None.
         # DDL: no count.
         r = await run("CREATE TABLE t(id INT, v INT)")
-        assert r.affected_rows is None and r.df is None and r.succeeded
+        assert r.affected_rows is None and r.df is None and r.error is None
 
         r = await run("INSERT INTO t VALUES (1,10),(2,20),(3,30)")
-        assert r.affected_rows == 3 and r.df is None and r.succeeded
+        assert r.affected_rows == 3 and r.df is None and r.error is None
 
         r = await run("UPDATE t SET v=99 WHERE id<=2")
         assert r.affected_rows == 2 and r.df is None
 
         # 0 affected is reported as 0 (a no-op), not None.
         r = await run("UPDATE t SET v=0 WHERE id=999")
-        assert r.affected_rows == 0 and r.df is None and r.succeeded
+        assert r.affected_rows == 0 and r.df is None and r.error is None
 
         r = await run("DELETE FROM t WHERE id=3")
         assert r.affected_rows == 1 and r.df is None
@@ -107,9 +107,9 @@ class TestConnectorAffectedRows:
         assert r.df.to_dict("records") == [{"Count": 2}]
 
     @pytest.mark.asyncio
-    async def test_error_is_not_succeeded_and_has_no_df(self, conn: SQLConnector) -> None:
+    async def test_error_has_no_df(self, conn: SQLConnector) -> None:
         r = await conn.run_query_async("SELECT * FROM does_not_exist")
-        assert not r.succeeded and r.df is None and r.error is not None
+        assert r.error is not None and r.df is None
 
 
 class TestRunQueryMessaging:

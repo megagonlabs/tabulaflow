@@ -58,16 +58,6 @@ class ExecResult(BaseModel):
     error: ErrorInfo | None = None
     latency_seconds: float | None = Field(default=None, ge=0, allow_inf_nan=False)
 
-    @property
-    def succeeded(self) -> bool:
-        """Whether the statement executed without error.
-
-        This is the success signal — ``error is None``. It is independent of
-        whether the statement produced rows: a successful ``CREATE``/``UPDATE``
-        has ``succeeded=True`` but no result set (``df is None``). A result set
-        is ``df is not None`` — check that directly."""
-        return self.error is None
-
     @model_validator(mode="after")
     def validate_state(self) -> Self:
         has_result = self.df is not None or self.graph is not None
