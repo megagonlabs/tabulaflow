@@ -528,6 +528,7 @@ Aug 10
 - [ ] Shell messed up after ssh disconnect
 - [ ] Check if uv tool install install browser
 
+- [ ] Bug: parallel tool call in a turn keep spinning until last tool finish?
 - [ ] Review data flow architecture and RAM complexity
 - [ ] Fix `/clear`
 - [ ] Scrolling and typing slow in long conversation (50+ turns)
