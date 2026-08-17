@@ -248,19 +248,16 @@ def _deserialize_dataframe(value: dict[str, Any] | pd.DataFrame | None) -> pd.Da
     return df.astype(dtypes)
 
 
-SerializableDataFrame: TypeAlias = (
-    Annotated[
-        pd.DataFrame,
-        BeforeValidator(_deserialize_dataframe),
-        AfterValidator(_sanitize_df),
-        PlainSerializer(
-            _serialize_dataframe,
-            return_type=dict[str, Any],
-            when_used="always",
-        ),
-    ]
-    | None
-)
+SerializableDataFrame: TypeAlias = Annotated[
+    pd.DataFrame,
+    BeforeValidator(_deserialize_dataframe),
+    AfterValidator(_sanitize_df),
+    PlainSerializer(
+        _serialize_dataframe,
+        return_type=dict[str, Any],
+        when_used="always",
+    ),
+]
 
 
 def _is_missing_scalar(value: object) -> bool:

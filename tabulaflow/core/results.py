@@ -44,7 +44,7 @@ class GraphResult(BaseModel):
 class ExecResult(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    df: SerializableDataFrame = None
+    df: SerializableDataFrame | None = None
     graph: GraphResult | None = None
     df_is_truncated: bool = False
     """True if the df is truncated, e.g. when the result is too large"""

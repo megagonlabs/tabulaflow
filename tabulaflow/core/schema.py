@@ -171,7 +171,7 @@ class SQLTableSchema(BaseModel):
     primary_key: list[str]
     num_rows: int | None = None
     foreign_keys: list[ForeignKeySchema]
-    sampled_df: SerializableDataFrame = None
+    sampled_df: SerializableDataFrame | None = None
 
     def select_columns(
         self,
