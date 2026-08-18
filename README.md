@@ -519,10 +519,19 @@ July 23
 
 Aug 4 - 7
 - [x] Fix typing/scrolling slow in 50+ turn conversation
-- [x] Source-backed artifacts
+- [x] Parametrized source
 
-Aug 10
-- [ ] Source-backed artifacts
+Aug 10 - Aug 13
+- [x] Parametrized source
+
+Aug 14
+- [x] output pane state indicator and favicon
+- [x] Repo refactor: core, data, output, agents, {app, research}
+- [x] core layer cleanup
+
+Aug 17
+- [x] core layer cleanup
+- [x] configuraion migration design and cleanup
 
 - [ ] Fix flicker when change selection in answer controls
 - [ ] Shell messed up after ssh disconnect
