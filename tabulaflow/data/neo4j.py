@@ -1,6 +1,5 @@
 import logging
 import numbers
-import re
 import time
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
@@ -29,15 +28,6 @@ from tabulaflow.data.base import ResultTooLargeError
 
 logger = logging.getLogger(__name__)
 _UNSET = object()
-
-_WRITE_STATEMENT_RE = re.compile(
-    r"^\s*"
-    r"(?://[^\n]*\n\s*)*"
-    r"(?P<keyword>"
-    r"CREATE|MERGE|DELETE|DETACH|SET|REMOVE|DROP"
-    r")\b",
-    re.IGNORECASE | re.DOTALL,
-)
 
 _NODE_TYPE_PROPERTIES_QUERY = """
 CALL db.schema.nodeTypeProperties()
@@ -276,7 +266,7 @@ class Neo4jConnector:
         Returns ``None`` on older servers that don't support ``SHOW DEFAULT DATABASE``.
         """
         try:
-            async with driver.session(database="system") as session:
+            async with driver.session(database="system", default_access_mode=neo4j.READ_ACCESS) as session:
                 result = await session.run("SHOW DEFAULT DATABASE")
                 record = await result.single()
                 if record:
@@ -323,25 +313,32 @@ class Neo4jConnector:
             auth=auth,
             **driver_kwargs,
         )
-        await driver.verify_connectivity()
+        try:
+            await driver.verify_connectivity()
 
-        schema_name = db_name or database or await cls._fetch_default_db_name(driver) or "N/A"
+            schema_name = db_name or database or await cls._fetch_default_db_name(driver) or "N/A"
 
-        connector = cls(
-            global_id=global_id,
-            schema=schema or PropertyGraphSchema(name=schema_name),
-            language="cypher",
-            _driver=driver,
-            _database=database,
-            _schema_name=schema_name,
-            config=config,
-            read_only=read_only,
-        )
+            connector = cls(
+                global_id=global_id,
+                schema=schema or PropertyGraphSchema(name=schema_name),
+                language="cypher",
+                _driver=driver,
+                _database=database,
+                _schema_name=schema_name,
+                config=config,
+                read_only=read_only,
+            )
 
-        if schema is None:
-            await connector._load_schema_async()
+            if schema is None:
+                await connector._load_schema_async()
 
-        return connector
+            return connector
+        except BaseException:
+            try:
+                await driver.close()
+            except Exception:
+                logger.debug("Neo4j driver close during construction failed", exc_info=True)
+            raise
 
     async def _run_cypher(
         self,
@@ -352,7 +349,8 @@ class Neo4jConnector:
         return_df: bool = False,
         max_rows: int | None = None,
     ) -> list[dict[str, Any]] | pd.DataFrame:
-        async with self._driver.session(database=self._database) as session:
+        access_mode = neo4j.READ_ACCESS if self.read_only else neo4j.WRITE_ACCESS
+        async with self._driver.session(database=self._database, default_access_mode=access_mode) as session:
             result = await session.run(
                 neo4j.Query(query, timeout=timeout),
                 parameters=dict(parameters) if parameters else {},
@@ -375,15 +373,6 @@ class Neo4jConnector:
         effective_timeout = self.config.query_timeout_seconds if timeout is _UNSET else timeout
         assert isinstance(effective_timeout, int) or effective_timeout is None
         query_str = query.strip()
-        if self.read_only and _WRITE_STATEMENT_RE.match(query_str):
-            match = _WRITE_STATEMENT_RE.match(query_str)
-            assert match is not None
-            return ExecResult(
-                error=ErrorInfo(
-                    exc_type="ReadOnlyViolationError",
-                    message=(f"Write statement blocked (read_only=True): {match.group('keyword').upper()} ..."),
-                ),
-            )
 
         t0 = time.time()
         try:

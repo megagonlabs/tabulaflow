@@ -49,7 +49,7 @@ class _FakeDriver:
     def __init__(self, result: _FakeNeo4jResult) -> None:
         self._result = result
 
-    def session(self, *, database: str | None) -> _FakeSession:
+    def session(self, *, database: str | None, default_access_mode: str) -> _FakeSession:
         return _FakeSession(self._result)
 
 
@@ -135,6 +135,7 @@ async def test_neo4j_fetch_is_bounded_before_dataframe_materialization() -> None
     connector = object.__new__(Neo4jConnector)
     connector._driver = _FakeDriver(result)  # type: ignore[assignment]
     connector._database = None
+    connector.read_only = True
 
     with pytest.raises(ResultTooLargeError, match="more than 2 rows"):
         await connector._run_cypher("RETURN 1", return_df=True, max_rows=2)
