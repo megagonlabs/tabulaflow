@@ -7,6 +7,7 @@ from tabulaflow.core.serialization import (
     _DF_SERIALIZATION_FORMAT,
     _DF_SERIALIZATION_FORMAT_FEATHER,
     _deserialize_dataframe,
+    _sanitize_df,
     _serialize_dataframe,
 )
 from tabulaflow.core import ExecResult
@@ -77,8 +78,6 @@ def test_dataframe_deserialize_rejects_invalid_payload() -> None:
 
 def test_dataframe_round_trip_nested_columns() -> None:
     """Nested dicts/lists round-trip as native Python objects (no key merging)."""
-    from tabulaflow.core.serialization import _sanitize_df
-
     df = pd.DataFrame(
         {
             "id": [1, 2],
@@ -96,6 +95,22 @@ def test_dataframe_round_trip_nested_columns() -> None:
     assert deserialized.loc[1, "meta"] == {"a": 3, "c": 4}
     assert deserialized.loc[0, "tags"] == ["x", "y"]
     assert deserialized.loc[1, "tags"] == ["z"]
+
+
+def test_dataframe_sanitization_does_not_copy_regular_input() -> None:
+    df = pd.DataFrame({"id": [1, 2], "label": ["a", "b"]})
+
+    assert _sanitize_df(df) is df
+
+
+def test_dataframe_sanitization_copies_before_stringifying_mixed_column() -> None:
+    df = pd.DataFrame({"mixed": ["a", 1, None]})
+
+    sanitized = _sanitize_df(df)
+
+    assert sanitized is not df
+    assert sanitized["mixed"].tolist() == ["a", "1", None]
+    assert df["mixed"].tolist() == ["a", 1, None]
 
 
 def test_exec_result_json_round_trip_dataframe() -> None:

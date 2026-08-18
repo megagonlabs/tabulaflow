@@ -123,19 +123,21 @@ def _stringify_mixed_type_columns(df: pd.DataFrame) -> pd.DataFrame:
     Arrow can't infer a single type for such columns. Only touches columns
     that contain both string and non-string scalars. Preserves actual nulls.
     """
-    df = df.copy()
-    for col in df.columns:
-        if df[col].dtype != object:
-            continue
+    copied = False
+    for col in df.select_dtypes(include=["object"]).columns:
         sample = df[col].dropna()
-        if sample.empty or sample.map(lambda x: isinstance(x, str)).all():
+        if sample.empty:
             continue
-        if sample.map(lambda x: isinstance(x, str)).any():
+        is_string = sample.map(lambda value: isinstance(value, str))
+        if is_string.any() and not is_string.all():
             # ``astype(str)`` on object columns goes through Cython's
             # ``ensure_string_array``, which UTF-8-decodes bytes values
             # instead of calling Python's ``str()``. That crashes on any
             # binary blob (PNG, etc.). ``map(str)`` uses ``bytes.__repr__``
             # safely. The outer ``where`` preserves real nulls.
+            if not copied:
+                df = df.copy()
+                copied = True
             df[col] = df[col].where(df[col].isna(), df[col].map(str))
     return df
 
