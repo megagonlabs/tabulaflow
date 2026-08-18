@@ -39,14 +39,14 @@ async def _make_connector(tmp_path: Path, name: str, value: str) -> SQLConnector
 
 @pytest.mark.asyncio
 async def test_run_query_fails_after_disconnect(tmp_path: Path) -> None:
-    """After unregistering an alias, a previously used run_query tool must reject it."""
+    """After disconnecting an alias, a previously used run_query tool must reject it."""
     registry = DBRegistry()
     registry.register("mydb", await _make_connector(tmp_path, "db_a", "alpha"))
     tool = RegistryRunQueryTool(registry)
 
     assert "alpha" in _text(await tool("mydb", "SELECT val FROM t"))
 
-    assert await registry.unregister_async("mydb")
+    assert await registry.disconnect_async("mydb")
     result_text = _text(await tool("mydb", "SELECT val FROM t"))
     assert "unknown db_alias" in result_text
     assert "alpha" not in result_text
@@ -60,7 +60,7 @@ async def test_run_query_uses_new_connector_after_rebind(tmp_path: Path) -> None
     tool = RegistryRunQueryTool(registry)
     assert "alpha" in _text(await tool("mydb", "SELECT val FROM t"))
 
-    await registry.unregister_async("mydb")
+    await registry.disconnect_async("mydb")
     registry.register("mydb", await _make_connector(tmp_path, "db_b", "bravo"))
 
     result_text = _text(await tool("mydb", "SELECT val FROM t"))

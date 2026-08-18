@@ -369,7 +369,7 @@ async def _cmd_disconnect(args: list[str], session: AppState) -> CommandResult:
             )
         )
 
-    if await session.registry.unregister_async(alias):
+    if await session.registry.disconnect_async(alias):
         session.unregister_alias_sources(alias)
         session.note_event(f"the user disconnected the data source `{alias}`; it is no longer available.")
         return CommandResult(output=Text(f"✓ Disconnected from {alias}", style="dim"))

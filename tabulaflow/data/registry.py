@@ -43,7 +43,7 @@ class DBRegistry:
             raise ValueError(f"Database alias already registered: {alias}")
         self._connectors[alias] = connector
 
-    async def unregister_async(self, alias: str) -> bool:
+    async def disconnect_async(self, alias: str) -> bool:
         """Remove and disconnect the connector registered for ``alias``."""
         connector = self._connectors.pop(alias, None)
         if connector is None:
