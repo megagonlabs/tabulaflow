@@ -64,6 +64,17 @@ def test_frozen_markdown_selection_uses_snapshot_text() -> None:
     assert ending == "\n"
 
 
+def test_frozen_markdown_selection_handles_trailing_blank_line() -> None:
+    block = FrozenAgentTextBlock(
+        [Strip([Segment("First line")]), Strip([])],
+        width=20,
+    )
+
+    result = block.get_selection(Selection(start=Offset(0, 1), end=None))
+
+    assert result == ("", "\n")
+
+
 def test_frozen_markdown_text_snapshot_trims_padding() -> None:
     text = _strips_to_text([Strip([Segment("Hello"), Segment("   ")])])
 

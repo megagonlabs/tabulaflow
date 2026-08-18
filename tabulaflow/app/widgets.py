@@ -1181,7 +1181,7 @@ class FrozenAgentTextBlock(Static):
     def __init__(self, strips: list[Strip], width: int) -> None:
         text = _strips_to_text(strips)
         super().__init__(text, markup=False)
-        self._plain_text = text.plain
+        self._selection_text = f"{text.plain}\n"
         self._width = width
         self._height = len(strips)
 
@@ -1192,7 +1192,7 @@ class FrozenAgentTextBlock(Static):
         return self._height
 
     def get_selection(self, selection: "Selection") -> tuple[str, str] | None:
-        return selection.extract(self._plain_text), "\n"
+        return selection.extract(self._selection_text), "\n"
 
 
 _UNLISTED_TOOL = "show_artifacts"
