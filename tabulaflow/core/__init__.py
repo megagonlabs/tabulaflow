@@ -1,6 +1,6 @@
 """Stable platform primitives and deterministic helpers."""
 
-from tabulaflow.core.registry import ClassRegistry, NamedClass
+from tabulaflow.core.registry import ClassRegistry
 from tabulaflow.core.results import ErrorInfo, ExecResult, GraphResult, GraphResultEdge, GraphResultNode
 from tabulaflow.core.schema import (
     ColumnRef,
@@ -21,7 +21,6 @@ from tabulaflow.core.schema import (
 
 __all__ = [
     "ClassRegistry",
-    "NamedClass",
     "ColumnRef",
     "ErrorInfo",
     "ExecResult",

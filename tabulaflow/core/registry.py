@@ -1,28 +1,34 @@
-from typing import Protocol, Type, TypeVar, Generic, ClassVar
+"""Named plugin class registry."""
+
+from typing import ClassVar, Generic, Protocol, TypeVar
 
 
-class NamedClass(Protocol):
+class _NamedClass(Protocol):
     name: ClassVar[str]
 
 
-T = TypeVar("T", bound=NamedClass)
+_T = TypeVar("_T", bound=_NamedClass)
 
 
-class ClassRegistry(Generic[T]):
-    def __init__(self, registry_name: str):
-        self.registry_name = registry_name
-        self._name_to_cls: dict[str, Type[T]] = {}
+class ClassRegistry(Generic[_T]):
+    """Registry of plugin classes keyed by their class-level ``name``."""
 
-    def register(self, cls: Type[T]) -> Type[T]:
-        if cls.name in self._name_to_cls:
-            raise ValueError(f"Class {cls.name} already registered")
-        self._name_to_cls[cls.name] = cls
+    def __init__(self, kind: str) -> None:
+        self._kind = kind
+        self._classes: dict[str, type[_T]] = {}
+
+    def register(self, cls: type[_T]) -> type[_T]:
+        if cls.name in self._classes:
+            raise ValueError(f"{self._kind} {cls.name!r} is already registered")
+        self._classes[cls.name] = cls
         return cls
 
-    def get_class(self, name: str) -> Type[T]:
-        if name not in self._name_to_cls:
-            raise ValueError(f"Unknown {self.registry_name} {name}, available: {self.list_names()}")
-        return self._name_to_cls[name]
+    def get_class(self, name: str) -> type[_T]:
+        try:
+            return self._classes[name]
+        except KeyError:
+            available = ", ".join(self.list_names()) or "(none)"
+            raise ValueError(f"unknown {self._kind} {name!r}; available: {available}") from None
 
     def list_names(self) -> list[str]:
-        return list(self._name_to_cls.keys())
+        return list(self._classes)
