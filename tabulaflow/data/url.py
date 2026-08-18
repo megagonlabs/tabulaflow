@@ -1,10 +1,8 @@
-"""Build a connector from a raw database URL or local database-file path.
+"""Normalize database connection sources and open live connectors.
 
-A higher-level "smart constructor" on top of the type-specific ``from_url_async``
-constructors: it normalizes a user-supplied URL (local db-file path -> scheme, sync ->
-async driver), dispatches to the SQL or Neo4j connector by scheme, and applies
-engine kwargs (e.g. BigQuery billing). Distinct from loaders (which *acquire*
-external file/HuggingFace data) — this only opens a live connection.
+``connect_url`` accepts a database URL or SQLite/DuckDB path, selects the
+appropriate async driver, derives a credential-free identity, and dispatches to
+SQL or Neo4j. Loading raw files and Hugging Face datasets belongs to loaders.
 """
 
 from __future__ import annotations
