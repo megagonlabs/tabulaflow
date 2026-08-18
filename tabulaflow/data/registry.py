@@ -1,15 +1,15 @@
-"""Core registry for live database connectors."""
+"""Registry for live data connectors."""
 
 from __future__ import annotations
-from dataclasses import dataclass, field
+
 from tabulaflow.data.base import DataConnector
 
 
-@dataclass
 class DBRegistry:
     """Store named database connectors for a runtime."""
 
-    _connectors: dict[str, DataConnector] = field(default_factory=dict)
+    def __init__(self) -> None:
+        self._connectors: dict[str, DataConnector] = {}
 
     def has(self, alias: str) -> bool:
         """Return whether a connector is registered for ``alias``."""
