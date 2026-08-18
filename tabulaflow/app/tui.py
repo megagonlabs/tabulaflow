@@ -351,9 +351,13 @@ class TabulaflowApp(App[None]):
         in-app selection ourselves on release (``TextSelected`` is not sent for
         Input/TextArea, which handle their own selection).
         """
-        text = self.screen.get_selected_text()
-        if text:
-            self._copy_to_clipboard(text)
+        try:
+            text = self.screen.get_selected_text()
+            if text:
+                self._copy_to_clipboard(text)
+        except Exception:
+            logger.warning("copying selected text failed", exc_info=True)
+            self.screen.clear_selection()
 
     def _copy_to_clipboard(self, text: str) -> None:
         """Write ``text`` to the system clipboard.
@@ -377,9 +381,12 @@ class TabulaflowApp(App[None]):
         else:
             return
         try:
-            subprocess.run(cmd, input=text.encode("utf-8"), check=False)
-        except Exception:
-            pass
+            result = subprocess.run(cmd, input=text.encode("utf-8"), check=False)
+        except OSError:
+            logger.debug("native clipboard command failed", exc_info=True)
+        else:
+            if result.returncode:
+                logger.debug("native clipboard command exited with status %d", result.returncode)
 
     def action_scroll_log(self, direction: str) -> None:
         """Page-scroll the chat log even when the input bar has focus.

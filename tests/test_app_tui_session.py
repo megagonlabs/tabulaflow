@@ -7,6 +7,7 @@ from types import SimpleNamespace
 from typing import TYPE_CHECKING, Any
 
 import pytest
+from textual import events
 from textual.widgets import Button, Input
 
 from tabulaflow.app import state as state_module
@@ -65,6 +66,31 @@ def _activate_selected(session: AppState) -> ChatSession:
     agent = session.active_chat_session
     assert agent is not None
     return agent
+
+
+def test_text_selection_failure_is_contained(
+    caplog: pytest.LogCaptureFixture,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    app = _app(None)
+
+    class BrokenSelectionScreen:
+        selection_cleared = False
+
+        def get_selected_text(self) -> str | None:
+            raise IndexError("stale selection")
+
+        def clear_selection(self) -> None:
+            self.selection_cleared = True
+
+    screen = BrokenSelectionScreen()
+    monkeypatch.setattr(TabulaflowApp, "screen", property(lambda _app: screen))
+
+    with caplog.at_level("DEBUG", logger=tui.__name__):
+        app.on_text_selected(events.TextSelected())
+
+    assert screen.selection_cleared is True
+    assert "copying selected text failed" in caplog.text
 
 
 @pytest.mark.asyncio
