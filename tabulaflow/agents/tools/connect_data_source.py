@@ -9,7 +9,8 @@ from typing import TYPE_CHECKING, ClassVar
 
 from pydantic_ai import Tool
 
-from tabulaflow.data import DB_FILE_SCHEMES, DBRegistry, connect_url, url_needs_password
+from tabulaflow.data import DBRegistry, connect_url
+from tabulaflow.data.url import is_database_file_path, url_has_username_without_password
 
 if TYPE_CHECKING:
     from tabulaflow.data.base import DataConnector
@@ -54,11 +55,10 @@ class ConnectDataSourceTool:
         is_hf = is_hf_dataset_url(source)
         is_url = not is_hf and "://" in source
         path = os.path.expanduser(source)
-        ext = os.path.splitext(path)[1].lower()
 
         if not is_hf and not is_url and not os.path.isfile(path):
             return f"(error: no such file: {source!r}; pass a local file path or a HuggingFace dataset URL)"
-        if is_url and url_needs_password(source):
+        if is_url and url_has_username_without_password(source):
             return f"(error: this source needs a password; ask the user to connect it with: /connect {source})"
 
         try:
@@ -66,7 +66,7 @@ class ConnectDataSourceTool:
                 connector: DataConnector = await load_hf_dataset(source, db_name=alias, read_only=True)
             elif is_url:
                 connector = await connect_url(source, db_name=alias, read_only=True)
-            elif ext in DB_FILE_SCHEMES:
+            elif is_database_file_path(path):
                 connector = await connect_url(path, db_name=alias, read_only=True)
             else:
                 connector = await load_files(

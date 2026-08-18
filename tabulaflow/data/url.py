@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import os
 import re
+from pathlib import Path
 from typing import TYPE_CHECKING, Any
 from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 
@@ -20,7 +21,7 @@ if TYPE_CHECKING:
     from tabulaflow.data.base import DataConnector
 
 # Local database-file extension -> SQLAlchemy scheme.
-DB_FILE_SCHEMES: dict[str, str] = {
+_DB_FILE_SCHEMES: dict[str, str] = {
     ".sqlite": "sqlite+aiosqlite",
     ".sqlite3": "sqlite+aiosqlite",
     ".db": "sqlite+aiosqlite",
@@ -36,7 +37,7 @@ _ASYNC_DRIVER_UPGRADES: dict[str, str] = {
 }
 
 
-def normalize_url(raw: str) -> str:
+def normalize_connection_url(source: str) -> str:
     """Normalize a raw source to a connectable URL.
 
     A local database-file path becomes a file URL; a sync driver scheme is upgraded to
@@ -45,28 +46,25 @@ def normalize_url(raw: str) -> str:
     # No scheme yet → it's a path; turn a known db-file extension into a file URL.
     # (Guarded by the scheme check so the function is idempotent — re-normalizing an
     # already-built URL that ends in e.g. ".sqlite" must not re-treat it as a path.)
-    if "://" not in raw:
-        for ext, scheme in DB_FILE_SCHEMES.items():
-            if raw.lower().endswith(ext):
-                return f"{scheme}:///{os.path.abspath(os.path.expanduser(raw))}"
-        return raw
+    if "://" not in source:
+        for ext, scheme in _DB_FILE_SCHEMES.items():
+            if source.lower().endswith(ext):
+                return f"{scheme}:///{os.path.abspath(os.path.expanduser(source))}"
+        return source
 
-    scheme, rest = raw.split("://", 1)
+    scheme, rest = source.split("://", 1)
     if "+" not in scheme and scheme in _ASYNC_DRIVER_UPGRADES:
         return f"{_ASYNC_DRIVER_UPGRADES[scheme]}://{rest}"
-    return raw
+    return source
 
 
-def url_needs_password(url: str) -> bool:
-    """Return True if the URL gives a username but no password — a strong hint that a
-    password is expected (e.g. ``snowflake://user@account/db``), used to prompt for one
-    or defer to the user. A heuristic: it can't tell password auth from trust/peer auth,
-    and a URL with no username at all may still need credentials."""
+def url_has_username_without_password(url: str) -> bool:
+    """Return whether a URL contains a username and hostname but no password."""
     parsed = urlparse(url)
     return bool(parsed.username and not parsed.password and parsed.hostname)
 
 
-def credentialless_url(url: str) -> str:
+def strip_url_credentials(url: str) -> str:
     """Return ``url`` with any username/password removed."""
     parsed = urlparse(url)
     if parsed.hostname is None:
@@ -126,26 +124,31 @@ def _engine_kwargs_for_url(url: str) -> dict[str, Any]:
     return engine_kwargs
 
 
-def global_id_from_url(url: str) -> str:
+def _global_id_from_url(url: str) -> str:
     """Derive a stable global_id from a database URL, stripping credentials."""
-    safe = re.sub(r"[^a-zA-Z0-9_]", "_", credentialless_url(url))
+    safe = re.sub(r"[^a-zA-Z0-9_]", "_", strip_url_credentials(url))
     return f"cli+{safe}"
 
 
 def _neo4j_global_id(driver_url: str, database: str | None) -> str:
     """Derive a stable cache id from canonical Neo4j driver params."""
     if database is None:
-        return global_id_from_url(driver_url)
+        return _global_id_from_url(driver_url)
 
     parsed = urlparse(driver_url)
     pairs = parse_qsl(parsed.query, keep_blank_values=True)
     pairs.append(("database", database))
     canonical = urlunparse(parsed._replace(query=urlencode(sorted(pairs))))
-    return global_id_from_url(canonical)
+    return _global_id_from_url(canonical)
+
+
+def is_database_file_path(path: str) -> bool:
+    """Return whether ``path`` has a supported database-file extension."""
+    return Path(path).suffix.lower() in _DB_FILE_SCHEMES
 
 
 async def connect_url(
-    raw_url: str,
+    source: str,
     *,
     db_name: str,
     read_only: bool = True,
@@ -160,7 +163,7 @@ async def connect_url(
     ``auth``). Raises on a failed connection or, for BigQuery, a missing billing project.
 
     Args:
-        raw_url: A database URL (``postgresql://user:pass@…``, ``bigquery://…``,
+        source: A database URL (``postgresql://user:pass@…``, ``bigquery://…``,
             ``neo4j://user:pass@…``, …) or a local database-file path (``.sqlite`` / ``.duckdb``).
         db_name: Display name for the connector.
         read_only: Block write statements.
@@ -170,7 +173,7 @@ async def connect_url(
     from tabulaflow.data.neo4j import Neo4jConnector
     from tabulaflow.data.sql import SQLConnector
 
-    url = normalize_url(raw_url)
+    url = normalize_connection_url(source)
 
     if _is_neo4j_bolt_url(url):
         if config is not None and not isinstance(config, Neo4jConnectorConfig):
@@ -189,7 +192,7 @@ async def connect_url(
 
     if config is not None and not isinstance(config, SQLConnectorConfig):
         raise TypeError("SQL URLs require SQLConnectorConfig")
-    gid = global_id or global_id_from_url(url)
+    gid = global_id or _global_id_from_url(url)
     return await SQLConnector.from_url_async(
         global_id=gid,
         url=url,

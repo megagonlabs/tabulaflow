@@ -335,14 +335,14 @@ so the tool calls `load_files`/`load_hf_dataset` directly; the only pull toward 
 - **Scope: any local file + database URL + HuggingFace.** Data files → `load_files`;
   local db files (SQLite/DuckDB) and **database URLs** (Postgres/MySQL/BigQuery/Snowflake/
   Neo4j) → `connect_url`; HF → `load_hf_dataset`. A URL that needs a password not in
-  it is **deferred to the user** (`url_needs_password` pre-check, plus an "ask the user to
+  it is **deferred to the user** (`url_has_username_without_password` pre-check, plus an "ask the user to
   /connect" hint on any connection error). The response reports the source's **actual**
   dialect (e.g. `sqlite SQL` / `duckdb SQL` / `cypher`) so the agent writes correct syntax.
-- **URL→connector logic was extracted to `core/db_connector/from_url.py`** —
-  `connect_url` (+ `normalize_url`, `url_needs_password`, `DB_FILE_SCHEMES`), a smart
-  constructor above the type-specific `from_url_async`. This lives in `db_connector` (not
-  `datasources`, which is for *acquiring* file/HF data) and is shared by `/cmd_connect`
-  (now a thin caller) and the agent tool. `normalize_url` is idempotent.
+- **URL→connector logic lives in `data/url.py`** — `connect_url`, supported by
+  `normalize_connection_url`, `url_has_username_without_password`, and
+  `is_database_file_path`. It is a smart constructor above the type-specific
+  `from_url_async`, shared by `/cmd_connect` and the agent tool.
+  `normalize_connection_url` is idempotent.
 - Alias: the agent supplies it, used **verbatim-or-error** (like `create_dataset`) — no
   derivation, sanitization, or collision-suffixing; an invalid or taken alias is rejected.
 - Response names the dialect (`sqlite SQL` / `duckdb SQL`, N tables), host-agnostic.

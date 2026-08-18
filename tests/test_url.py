@@ -1,24 +1,29 @@
-"""Unit tests for the db_connector URL factory helpers."""
+"""Unit tests for database connection URL helpers."""
 
 import pytest
 
-from tabulaflow.data import DB_FILE_SCHEMES, credentialless_url, normalize_url, url_needs_password
+from tabulaflow.data.url import (
+    is_database_file_path,
+    normalize_connection_url,
+    strip_url_credentials,
+    url_has_username_without_password,
+)
 
 
-class TestNormalizeUrl:
+class TestNormalizeConnectionUrl:
     def test_db_file_path_to_url(self) -> None:
-        assert normalize_url("/data/x.sqlite") == "sqlite+aiosqlite:////data/x.sqlite"
-        assert normalize_url("/data/x.duckdb") == "duckdb:////data/x.duckdb"
-        assert normalize_url("/data/X.SQLITE") == "sqlite+aiosqlite:////data/X.SQLITE"
+        assert normalize_connection_url("/data/x.sqlite") == "sqlite+aiosqlite:////data/x.sqlite"
+        assert normalize_connection_url("/data/x.duckdb") == "duckdb:////data/x.duckdb"
+        assert normalize_connection_url("/data/X.SQLITE") == "sqlite+aiosqlite:////data/X.SQLITE"
 
     def test_sync_driver_upgraded_to_async(self) -> None:
-        assert normalize_url("postgresql://h/db") == "postgresql+asyncpg://h/db"
-        assert normalize_url("mysql://h/db") == "mysql+asyncmy://h/db"
+        assert normalize_connection_url("postgresql://h/db") == "postgresql+asyncpg://h/db"
+        assert normalize_connection_url("mysql://h/db") == "mysql+asyncmy://h/db"
 
     def test_already_async_or_other_unchanged(self) -> None:
-        assert normalize_url("postgresql+asyncpg://h/db") == "postgresql+asyncpg://h/db"
-        assert normalize_url("bigquery://proj/ds") == "bigquery://proj/ds"
-        assert normalize_url("neo4j://h:7687") == "neo4j://h:7687"
+        assert normalize_connection_url("postgresql+asyncpg://h/db") == "postgresql+asyncpg://h/db"
+        assert normalize_connection_url("bigquery://proj/ds") == "bigquery://proj/ds"
+        assert normalize_connection_url("neo4j://h:7687") == "neo4j://h:7687"
 
     @pytest.mark.parametrize(
         "raw",
@@ -27,34 +32,36 @@ class TestNormalizeUrl:
     def test_idempotent(self, raw: str) -> None:
         # A normalized URL must survive a second pass unchanged — a db-file URL still
         # ends in ".sqlite", so the path branch must not re-fire on it.
-        once = normalize_url(raw)
-        assert normalize_url(once) == once
+        once = normalize_connection_url(raw)
+        assert normalize_connection_url(once) == once
 
 
-class TestUrlNeedsPassword:
+class TestUrlHasUsernameWithoutPassword:
     def test_username_without_password(self) -> None:
-        assert url_needs_password("postgresql://alice@host:5432/db") is True
+        assert url_has_username_without_password("postgresql://alice@host:5432/db") is True
 
     def test_username_with_password(self) -> None:
-        assert url_needs_password("postgresql://alice:secret@host/db") is False
+        assert url_has_username_without_password("postgresql://alice:secret@host/db") is False
 
     def test_no_username(self) -> None:
-        assert url_needs_password("postgresql://host/db") is False
-        assert url_needs_password("sqlite+aiosqlite:////data/x.sqlite") is False
+        assert url_has_username_without_password("postgresql://host/db") is False
+        assert url_has_username_without_password("sqlite+aiosqlite:////data/x.sqlite") is False
 
 
-class TestCredentiallessUrl:
+class TestStripUrlCredentials:
     def test_strips_username_and_password(self) -> None:
-        assert credentialless_url("postgresql://alice:secret@example.com:5432/app") == (
+        assert strip_url_credentials("postgresql://alice:secret@example.com:5432/app") == (
             "postgresql://example.com:5432/app"
         )
 
     def test_preserves_url_without_credentials(self) -> None:
-        assert credentialless_url("duckdb:////data/x.duckdb") == "duckdb:////data/x.duckdb"
+        assert strip_url_credentials("duckdb:////data/x.duckdb") == "duckdb:////data/x.duckdb"
 
 
-def test_db_file_schemes_cover_common_extensions() -> None:
-    assert {".sqlite", ".sqlite3", ".db", ".duckdb"} <= set(DB_FILE_SCHEMES)
+def test_is_database_file_path_recognizes_common_extensions() -> None:
+    assert is_database_file_path("data.sqlite")
+    assert is_database_file_path("data.DUCKDB")
+    assert not is_database_file_path("data.csv")
 
 
 class TestNeo4jDriverParams:

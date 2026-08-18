@@ -14,12 +14,12 @@ from rich.text import Text
 
 from tabulaflow.app.theme import ERROR
 from tabulaflow.app.state import WORKSPACE_ALIAS, AppState
-from tabulaflow.data import (
-    DB_FILE_SCHEMES,
-    connect_url,
-    credentialless_url,
-    normalize_url,
-    url_needs_password,
+from tabulaflow.data import connect_url
+from tabulaflow.data.url import (
+    is_database_file_path,
+    normalize_connection_url,
+    strip_url_credentials,
+    url_has_username_without_password,
 )
 from tabulaflow.output.formatting import format_connector_summary
 
@@ -70,7 +70,7 @@ def _is_data_file(path: str) -> bool:
 
 
 def _is_db_file(path: str) -> bool:
-    return os.path.splitext(path)[1].lower() in DB_FILE_SCHEMES
+    return is_database_file_path(path)
 
 
 def _sanitize_alias(raw: str) -> str:
@@ -255,10 +255,10 @@ async def _cmd_connect(args: list[str], session: AppState) -> CommandResult:
 
     # --- URL / database-file connections ---
     raw = args[0]
-    url = normalize_url(raw)
+    url = normalize_connection_url(raw)
     alias = _sanitize_alias(args[1]) if len(args) > 1 else _alias_from_url(url)
 
-    url_source_key = ("url", credentialless_url(url))
+    url_source_key = ("url", strip_url_credentials(url))
     existing = session.find_alias_by_source(url_source_key)
     if existing is not None:
         return CommandResult(
@@ -277,7 +277,7 @@ async def _cmd_connect(args: list[str], session: AppState) -> CommandResult:
         )
 
     # Check if password prompt is needed
-    if url_needs_password(url):
+    if url_has_username_without_password(url):
         return CommandResult(
             output=Text(
                 "Password-protected connections: include the password in the URL or set it via environment variables.",
@@ -343,7 +343,7 @@ async def _execute_connect(url: str, alias: str, session: AppState) -> CommandRe
     except Exception as e:
         return CommandResult(output=Text.from_markup(f"[{ERROR}]Connection failed:[/] {escape(str(e))}"))
 
-    session.register_db(alias, connector, ("url", credentialless_url(url)))
+    session.register_db(alias, connector, ("url", strip_url_credentials(url)))
     info = _announce_connect(session, alias, connector)
     return CommandResult(output=Text(f"✓ Connected to {alias} ({info})", style="dim"))
 
