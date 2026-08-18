@@ -18,6 +18,7 @@ from pathlib import Path
 import pandas as pd
 import sqlalchemy
 
+from tabulaflow.data.config import SQLConnectorConfig
 from tabulaflow.data.registry import DBRegistry
 from tabulaflow.data.sql import SQLConnector
 from tabulaflow.agents.tools.base import ToolProgressUpdate
@@ -75,8 +76,7 @@ async def main() -> None:
         url=f"duckdb:///{db_path}",
         db_name="workspace",
         read_only=False,
-        enable_schema_caching=False,
-        enable_query_caching=False,
+        config=SQLConnectorConfig(schema_cache_mode="off", query_cache_mode="off"),
     )
 
     amazon_df = pd.read_csv(table_a, encoding="latin-1")

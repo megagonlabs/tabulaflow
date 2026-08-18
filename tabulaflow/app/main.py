@@ -53,8 +53,6 @@ def chat(
     startup_llm = _resolve_startup_llm_selection(llm_preset=llm_preset)
 
     tabulaflow.configure(
-        column_stats_mode="always_skip",
-        query_cache_enabled=False,
         instrument_enabled=False,
         log_level="WARNING",
     )

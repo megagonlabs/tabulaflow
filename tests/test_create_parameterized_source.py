@@ -6,6 +6,7 @@ from textwrap import dedent
 import pytest
 from pydantic_ai import ToolReturn
 
+from tabulaflow.data.config import SQLConnectorConfig
 from tabulaflow.data.registry import DBRegistry
 from tabulaflow.data.sql import SQLConnector
 from tabulaflow.output.specs import ChoiceOption, ChoiceParameter, NumberParameter, OutputSpec, TableArtifactSpec
@@ -31,8 +32,7 @@ async def registry(tmp_path: Path) -> DBRegistry:
         url=f"duckdb:///{tmp_path / 'w.duckdb'}",
         db_name="w",
         read_only=False,
-        enable_schema_caching=False,
-        enable_query_caching=False,
+        config=SQLConnectorConfig(schema_cache_mode="off", query_cache_mode="off"),
     )
     await connector.run_query_async("CREATE TABLE orders(customer TEXT, net INT, gross INT)")
     await connector.run_query_async("INSERT INTO orders VALUES ('Acme', 10, 12), ('Globex', 7, 9)")

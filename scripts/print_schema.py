@@ -1,11 +1,11 @@
 import asyncio
 import argparse
 import time
-import tabulaflow
 from tabulaflow.research.benchmarks import dataset_registry
 from tabulaflow.output.schema_formatters import schema_formatter_registry
 from tabulaflow.core import SQLSchema
 from tabulaflow.data.schema_compressor import SchemaCompressor
+from tabulaflow.data import Neo4jConnectorConfig, SQLConnectorConfig
 
 
 async def main() -> None:
@@ -33,8 +33,6 @@ async def main() -> None:
     print(args)
     print()
 
-    tabulaflow.configure(schema_cache_enabled=not args.no_cache)
-
     t0 = time.time()
 
     if args.file:
@@ -47,7 +45,12 @@ async def main() -> None:
             default_splits = {"bird-sql": "dev", "spider2-snow": "test", "beaver": "test"}
             split = default_splits.get(args.dataset, "dev")
 
-        dataset_loader = dataset_registry.get_class(args.dataset)()
+        config = (
+            Neo4jConnectorConfig(schema_cache_mode="off" if args.no_cache else "read_write")
+            if args.dataset == "cypherbench"
+            else SQLConnectorConfig(schema_cache_mode="off" if args.no_cache else "read_write")
+        )
+        dataset_loader = dataset_registry.get_class(args.dataset)(connector_config=config)  # type: ignore[call-arg]
         dataset = await dataset_loader.get_split_async(split, databases=[args.database])
         schema = dataset.db_connectors[args.database].schema
 

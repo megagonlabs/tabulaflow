@@ -6,7 +6,7 @@ from typing import ClassVar, Literal
 from datasets import load_dataset
 from tabulaflow.research.types import GoldQuery
 from tabulaflow.research.types import SimpleNL2QTask, NL2QDataset
-from tabulaflow.data import SQLConnector
+from tabulaflow.data import SQLConnector, SQLConnectorConfig
 from tabulaflow.research.benchmarks.base import dataset_registry
 
 
@@ -88,10 +88,12 @@ class BirdSQLDatasetLoader:
         directory: str = "data/BIRD-SQL",
         column_meaning_directory: str = "data/BIRD-SQL_column_meaning",
         max_concurrency: int = 16,
+        connector_config: SQLConnectorConfig | None = None,
     ):
         self.directory = directory
         self.column_meaning_directory = column_meaning_directory
         self.max_concurrency = max_concurrency
+        self.connector_config = SQLConnectorConfig() if connector_config is None else connector_config
         self._dbms_semaphore = asyncio.Semaphore(max_concurrency)
 
         self._task_files = {
@@ -211,6 +213,7 @@ WHERE c.name = 'Italy';"""
                     db_name=name,
                     max_concurrency_per_db=self.max_concurrency,
                     dbms_semaphore=self._dbms_semaphore,
+                    config=self.connector_config,
                 )
                 for name in databases
             ]

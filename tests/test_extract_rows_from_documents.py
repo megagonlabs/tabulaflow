@@ -15,6 +15,7 @@ import pytest
 from pydantic_ai.settings import ModelSettings
 
 import tabulaflow.agents.tools.extract_rows_from_documents as mod
+from tabulaflow.data.config import SQLConnectorConfig
 from tabulaflow.data.sql import SQLConnector
 from tabulaflow.agents.tools.engines.column_types import python_type_for_dtype
 from tabulaflow.agents.tools.entity_extractor import EntityExtractor
@@ -124,7 +125,7 @@ async def test_tool_resolves_types_and_appends_typed_rows(tmp_path: Path, monkey
         url=f"duckdb:///{db_path}",
         db_name="products",
         read_only=False,
-        enable_schema_caching=False,
+        config=SQLConnectorConfig(schema_cache_mode="off", query_cache_mode="off"),
     )
     conn.read_only = False
 
@@ -188,7 +189,7 @@ async def test_tool_rejects_non_scalar_output_column(tmp_path: Path, monkeypatch
         url=f"duckdb:///{db_path}",
         db_name="docs",
         read_only=False,
-        enable_schema_caching=False,
+        config=SQLConnectorConfig(schema_cache_mode="off", query_cache_mode="off"),
     )
     conn.read_only = False
 
@@ -221,7 +222,7 @@ async def test_unknown_placeholder_rejected(tmp_path: Path, monkeypatch: pytest.
         url=f"duckdb:///{db_path}",
         db_name="docs",
         read_only=False,
-        enable_schema_caching=False,
+        config=SQLConnectorConfig(schema_cache_mode="off", query_cache_mode="off"),
     )
     conn.read_only = False
 

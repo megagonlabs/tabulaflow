@@ -18,6 +18,7 @@ import pytest
 from pydantic_ai.messages import ModelMessage, ModelResponse, TextPart, ToolCallPart
 from pydantic_ai.models.function import AgentInfo, FunctionModel
 
+from tabulaflow.data.config import SQLConnectorConfig
 from tabulaflow.data.sql import SQLConnector
 from tabulaflow.agents.tools.run_subagent_for_each_row import RunSubagentForEachRowTool
 
@@ -69,8 +70,7 @@ async def conn(tmp_path: Path) -> AsyncGenerator[SQLConnector, None]:
         url=f"duckdb:///{db_path}",
         db_name="workspace",
         read_only=False,
-        enable_schema_caching=False,
-        enable_query_caching=False,
+        config=SQLConnectorConfig(schema_cache_mode="off", query_cache_mode="off"),
     )
     yield connector
 

@@ -2,7 +2,7 @@ import argparse
 import time
 import asyncio
 from tabulaflow.research.benchmarks import dataset_registry
-import tabulaflow
+from tabulaflow.data import Neo4jConnectorConfig, SQLConnectorConfig
 
 
 async def main() -> None:
@@ -15,14 +15,13 @@ async def main() -> None:
     print(args)
     print()
 
-    tabulaflow.configure(
-        schema_cache_enabled=True,
-        schema_cache_required=False,
-        schema_cache_overwrite=args.overwrite,
-    )
-
     t0 = time.time()
-    dataset_loader = dataset_registry.get_class(args.dataset)()
+    config = (
+        Neo4jConnectorConfig(schema_cache_mode="refresh" if args.overwrite else "read_write")
+        if args.dataset == "cypherbench"
+        else SQLConnectorConfig(schema_cache_mode="refresh" if args.overwrite else "read_write")
+    )
+    dataset_loader = dataset_registry.get_class(args.dataset)(connector_config=config)  # type: ignore[call-arg]
     dataset = await dataset_loader.get_split_async(args.split, databases=args.databases)
     print(
         f"Loaded {len(dataset.tasks)} samples and {len(dataset.db_connectors)} databases from {args.dataset} {args.split} set in {time.time() - t0:.2f} seconds."

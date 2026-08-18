@@ -1,16 +1,16 @@
 import logging
 import numbers
-import os
 import re
 import time
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any, ClassVar, Literal
 
 import neo4j
 import pandas as pd
 
-from tabulaflow.config import tabulaflow_config
+from tabulaflow.data.config import Neo4jConnectorConfig
 from tabulaflow.core import (
     ErrorInfo,
     ExecResult,
@@ -28,6 +28,7 @@ from tabulaflow.core.serialization import json_ready
 from tabulaflow.data.base import ResultTooLargeError
 
 logger = logging.getLogger(__name__)
+_UNSET = object()
 
 _WRITE_STATEMENT_RE = re.compile(
     r"^\s*"
@@ -265,8 +266,8 @@ class Neo4jConnector:
     _driver: neo4j.AsyncDriver
     _database: str | None
     _schema_name: str
+    config: Neo4jConnectorConfig
     read_only: bool = True
-    enable_schema_caching: bool = True
 
     @staticmethod
     async def _fetch_default_db_name(driver: neo4j.AsyncDriver) -> str | None:
@@ -294,7 +295,7 @@ class Neo4jConnector:
         db_name: str | None = None,
         schema: PropertyGraphSchema | None = None,
         read_only: bool = True,
-        enable_schema_caching: bool = True,
+        config: Neo4jConnectorConfig | None = None,
         **driver_kwargs: Any,
     ) -> "Neo4jConnector":
         """Create a connector from a Neo4j Bolt URL.
@@ -311,11 +312,12 @@ class Neo4jConnector:
             schema: Pre-loaded schema.  If ``None``, the schema is
                 introspected automatically.
             read_only: Block write statements when ``True``.
-            enable_schema_caching: If ``False``, skip schema cache
-                read/write regardless of global config.
+            config: Immutable connector execution and cache policy. Environment
+                values and built-in defaults are used when omitted.
             **driver_kwargs: Extra keyword arguments for
                 ``neo4j.AsyncGraphDatabase.driver``.
         """
+        config = Neo4jConnectorConfig() if config is None else config
         driver = neo4j.AsyncGraphDatabase.driver(
             url,
             auth=auth,
@@ -332,8 +334,8 @@ class Neo4jConnector:
             _driver=driver,
             _database=database,
             _schema_name=schema_name,
+            config=config,
             read_only=read_only,
-            enable_schema_caching=enable_schema_caching,
         )
 
         if schema is None:
@@ -368,8 +370,10 @@ class Neo4jConnector:
         self,
         query: str,
         parameters: Mapping[str, Any] | None = None,
-        timeout: int | None = None,
+        timeout: int | None | object = _UNSET,
     ) -> ExecResult:
+        effective_timeout = self.config.query_timeout_seconds if timeout is _UNSET else timeout
+        assert isinstance(effective_timeout, int) or effective_timeout is None
         query_str = query.strip()
         if self.read_only and _WRITE_STATEMENT_RE.match(query_str):
             match = _WRITE_STATEMENT_RE.match(query_str)
@@ -386,9 +390,9 @@ class Neo4jConnector:
             df = await self._run_cypher(
                 query_str,
                 parameters,
-                timeout,
+                effective_timeout,
                 return_df=True,
-                max_rows=tabulaflow_config.max_result_rows,
+                max_rows=self.config.max_result_rows,
             )
             graph = _extract_neo4j_graph_result(df)
             latency = time.time() - t0
@@ -402,32 +406,26 @@ class Neo4jConnector:
     async def disconnect_async(self) -> None:
         await self._driver.close()
 
-    def _schema_cache_path(self) -> str:
-        cache_dir = os.path.join(tabulaflow_config.cache_dir, "schemas")
-        os.makedirs(cache_dir, exist_ok=True)
-        return os.path.join(cache_dir, f"{self.global_id}.json")
+    def _schema_cache_path(self) -> Path:
+        return self.config.cache_dir / "schemas" / f"{self.global_id}.json"
 
     async def _load_schema_async(self) -> PropertyGraphSchema:
         """Load schema from cache or introspect, respecting cache config."""
         cache_path = self._schema_cache_path()
 
-        if (
-            self.enable_schema_caching
-            and tabulaflow_config.schema_cache_enabled
-            and not tabulaflow_config.schema_cache_overwrite
-            and os.path.exists(cache_path)
-        ):
-            with open(cache_path, "r", encoding="utf-8") as f:
+        if self.config.schema_cache_mode in ("read_write", "cache_only") and cache_path.exists():
+            with cache_path.open("r", encoding="utf-8") as f:
                 self.schema = PropertyGraphSchema.model_validate_json(f.read())
                 return self.schema
 
-        if self.enable_schema_caching and tabulaflow_config.schema_cache_required:
+        if self.config.schema_cache_mode == "cache_only":
             raise FileNotFoundError(f"Schema cache required but not found at {cache_path}")
 
         self.schema = await self._build_schema()
 
-        if self.enable_schema_caching and tabulaflow_config.schema_cache_enabled:
-            with open(cache_path, "w", encoding="utf-8") as f:
+        if self.config.schema_cache_mode in ("read_write", "refresh"):
+            cache_path.parent.mkdir(parents=True, exist_ok=True)
+            with cache_path.open("w", encoding="utf-8") as f:
                 f.write(self.schema.model_dump_json(indent=2))
 
         return self.schema
@@ -436,9 +434,10 @@ class Neo4jConnector:
         """Re-introspect the live database, bypassing cache on read."""
         self.schema = await self._build_schema()
 
-        if self.enable_schema_caching and tabulaflow_config.schema_cache_enabled:
+        if self.config.schema_cache_mode in ("read_write", "refresh"):
             cache_path = self._schema_cache_path()
-            with open(cache_path, "w", encoding="utf-8") as f:
+            cache_path.parent.mkdir(parents=True, exist_ok=True)
+            with cache_path.open("w", encoding="utf-8") as f:
                 f.write(self.schema.model_dump_json(indent=2))
 
         return self.schema

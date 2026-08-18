@@ -14,6 +14,8 @@ import re
 from typing import TYPE_CHECKING, Any
 from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 
+from tabulaflow.data.config import Neo4jConnectorConfig, SQLConnectorConfig
+
 if TYPE_CHECKING:
     from tabulaflow.data.base import DataConnector
 
@@ -148,7 +150,7 @@ async def connect_url(
     db_name: str,
     read_only: bool = True,
     global_id: str | None = None,
-    enable_schema_caching: bool = True,
+    config: SQLConnectorConfig | Neo4jConnectorConfig | None = None,
 ) -> DataConnector:
     """Build the appropriate connector from a raw database URL or local db-file path.
 
@@ -163,7 +165,7 @@ async def connect_url(
         db_name: Display name for the connector.
         read_only: Block write statements.
         global_id: Stable id for schema caching; derived from the URL if omitted.
-        enable_schema_caching: Cache the introspected schema across sessions.
+        config: Backend-appropriate immutable connector configuration.
     """
     from tabulaflow.data.neo4j import Neo4jConnector
     from tabulaflow.data.sql import SQLConnector
@@ -171,6 +173,8 @@ async def connect_url(
     url = normalize_url(raw_url)
 
     if _is_neo4j_bolt_url(url):
+        if config is not None and not isinstance(config, Neo4jConnectorConfig):
+            raise TypeError("Neo4j URLs require Neo4jConnectorConfig")
         driver_url, database, auth = _neo4j_driver_params(url)
         gid = global_id or _neo4j_global_id(driver_url, database)
         return await Neo4jConnector.from_url_async(
@@ -180,16 +184,17 @@ async def connect_url(
             db_name=db_name,
             read_only=read_only,
             auth=auth,
-            enable_schema_caching=enable_schema_caching,
+            config=config,
         )
 
+    if config is not None and not isinstance(config, SQLConnectorConfig):
+        raise TypeError("SQL URLs require SQLConnectorConfig")
     gid = global_id or global_id_from_url(url)
     return await SQLConnector.from_url_async(
         global_id=gid,
         url=url,
         db_name=db_name,
         read_only=read_only,
-        enable_schema_caching=enable_schema_caching,
-        enable_query_caching=False,
+        config=config,
         **_engine_kwargs_for_url(url),
     )

@@ -216,6 +216,7 @@ async def _cmd_connect(args: list[str], session: AppState) -> CommandResult:
                 suffix += 1
 
         from tabulaflow.data.loaders.files import load_files
+        from tabulaflow.data.config import SQLConnectorConfig
 
         global_id = f"cli+{alias}"
         file_label = ", ".join(os.path.basename(f) for f in file_args)
@@ -226,8 +227,7 @@ async def _cmd_connect(args: list[str], session: AppState) -> CommandResult:
                 db_name=alias,
                 data_dir=str(session.data_dir),
                 read_only=True,
-                enable_schema_caching=False,
-                enable_query_caching=False,
+                config=SQLConnectorConfig(schema_cache_mode="off", query_cache_mode="off"),
             )
         except Exception as e:
             return CommandResult(output=Text.from_markup(f"[{ERROR}]Failed to load files:[/] {escape(str(e))}"))

@@ -6,7 +6,6 @@ from typing import Any, ClassVar
 
 from pydantic_ai import Tool, ToolReturn
 
-from tabulaflow.config import tabulaflow_config
 from tabulaflow.data.base import DataConnector
 from tabulaflow.data.registry import DBRegistry
 from tabulaflow.agents.tools.base import ToolCallOutcome, sum_tool_metrics
@@ -47,8 +46,8 @@ class RegistryRunQueryTool:
             enable_refresh: Whether to expose the ``refresh`` argument to
                 the LLM.  When True, the agent can request a connector
                 schema refresh after DDL.
-            timeout: Query timeout in seconds.  Defaults to
-                ``tabulaflow_config.query_timeout``.
+            timeout: Query timeout in seconds. When omitted, use each connector's
+                default; ``None`` explicitly disables the timeout.
             max_visible_rows: Maximum rows shown in the formatted output.
             max_cell_width: Maximum character width per cell in the formatted
                 output.
@@ -59,7 +58,7 @@ class RegistryRunQueryTool:
         self.registry = registry
         self.enable_params = enable_params
         self.enable_refresh = enable_refresh
-        self.timeout: int | None = tabulaflow_config.query_timeout if timeout is _UNSET else timeout  # type: ignore[assignment]
+        self.timeout = timeout
         self.max_visible_rows = max_visible_rows
         self.max_cell_width = max_cell_width
         self.floatfmt = floatfmt
@@ -72,14 +71,17 @@ class RegistryRunQueryTool:
         entry = self._tools.get(db_alias)
         if entry is not None and entry[0] is connector:
             return entry[1]
+        kwargs: dict[str, Any] = {}
+        if self.timeout is not _UNSET:
+            kwargs["timeout"] = self.timeout
         tool = RunQueryTool(
             connector,
             enable_params=self.enable_params,
             enable_refresh=self.enable_refresh,
-            timeout=self.timeout,
             max_visible_rows=self.max_visible_rows,
             max_cell_width=self.max_cell_width,
             floatfmt=self.floatfmt,
+            **kwargs,
         )
         self._tools[db_alias] = (connector, tool)
         return tool

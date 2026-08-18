@@ -16,7 +16,7 @@ import pandas as pd
 from tabulaflow.core import ExecResult
 from tabulaflow.research.types import GoldQuery
 from tabulaflow.research.types import SimpleNL2QTask, NL2QDataset
-from tabulaflow.data import SQLConnector, SQLConnectorProtocol
+from tabulaflow.data import SQLConnector, SQLConnectorConfig, SQLConnectorProtocol
 from tabulaflow.research.benchmarks.base import dataset_registry
 
 logger = logging.getLogger(__name__)
@@ -101,6 +101,7 @@ class Spider2SnowDatasetLoader:
         sf_user: Optional[str] = None,
         sf_password: Optional[str] = None,
         sf_account: Optional[str] = None,
+        connector_config: SQLConnectorConfig | None = None,
     ):
         """Initializes the Spider 2.0 Snowflake dataset loader.
 
@@ -115,6 +116,7 @@ class Spider2SnowDatasetLoader:
         self.sf_user = sf_user
         self.sf_password = sf_password
         self.sf_account = sf_account
+        self.connector_config = SQLConnectorConfig() if connector_config is None else connector_config
 
         # The default warehouse for Spider2 snowflake is "small" which allows for 16 concurrent queries
         self._dbms_semaphore = asyncio.Semaphore(16)
@@ -266,7 +268,7 @@ class Spider2SnowDatasetLoader:
             connect_args=connect_args,
             group_date_partitioned_tables=True,
             group_table_regexes=GROUP_TABLE_REGEXES.get(db_name, []),
-            enable_query_caching=True,
+            config=self.connector_config,
         )
 
     async def get_db_connectors_async(

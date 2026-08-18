@@ -7,7 +7,6 @@ from tabulaflow.data import DataConnector
 from tabulaflow.core import ExecResult, GraphResult
 from tabulaflow.output.formatting import format_df
 from tabulaflow.agents.tools.engines.sql import format_sqlalchemy_error_msg
-from tabulaflow.config import tabulaflow_config
 
 _UNSET = object()
 
@@ -93,7 +92,8 @@ class RunQueryTool:
         db_connector: Database connector to execute queries against.
         enable_params: Whether to expose the ``parameters`` argument to the LLM.
         enable_refresh: Whether to expose the ``refresh`` argument to the LLM.
-        timeout: Query timeout in seconds. Defaults to ``tabulaflow_config.query_timeout``.
+        timeout: Query timeout in seconds. When omitted, use the connector default;
+            ``None`` explicitly disables the timeout.
         max_visible_rows: Maximum rows shown in the formatted output.
         max_cell_width: Maximum character width per cell in the formatted output.
         floatfmt: Float format string passed to tabulate.
@@ -116,7 +116,7 @@ class RunQueryTool:
         self.db_connector = db_connector
         self.enable_params = enable_params
         self.enable_refresh = enable_refresh
-        self.timeout: int | None = tabulaflow_config.query_timeout if timeout is _UNSET else timeout  # type: ignore
+        self.timeout = timeout
         self.max_visible_rows = max_visible_rows
         self.max_cell_width = max_cell_width
         self.floatfmt = floatfmt
@@ -229,11 +229,14 @@ class RunQueryTool:
         parameters = parameters or []
         param_dict = {p.parameter_name: p.parameter_value for p in parameters}
         try:
-            exec_result = await self.db_connector.run_query_async(
-                query,
-                parameters=param_dict,
-                timeout=self.timeout,
-            )
+            if self.timeout is _UNSET:
+                exec_result = await self.db_connector.run_query_async(query, parameters=param_dict)
+            else:
+                exec_result = await self.db_connector.run_query_async(
+                    query,
+                    parameters=param_dict,
+                    timeout=self.timeout,  # type: ignore[arg-type]
+                )
             res = self._format_exec_result(exec_result)
             if refresh:
                 try:

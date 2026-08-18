@@ -5,7 +5,7 @@ import json
 import copy
 from typing import ClassVar
 from tabulaflow.research.types import AmbigNL2QTask, NL2QDataset
-from tabulaflow.data import SQLConnector
+from tabulaflow.data import SQLConnector, SQLConnectorConfig
 from tabulaflow.research.benchmarks.base import dataset_registry
 
 ARCS_DATASET_INSTRUCTIONS = """
@@ -127,11 +127,13 @@ class ARCSDatasetLoader:
         column_meaning_directory: str = "data/BIRD-SQL_column_meaning",
         max_concurrency: int = 16,
         include_taxonomy: bool = False,
+        connector_config: SQLConnectorConfig | None = None,
     ):
         self.directory = directory
         self.column_meaning_directory = column_meaning_directory
         self.max_concurrency = max_concurrency
         self.include_taxonomy = include_taxonomy
+        self.connector_config = SQLConnectorConfig() if connector_config is None else connector_config
 
         self._dbms_semaphore = asyncio.Semaphore(max_concurrency)
 
@@ -198,6 +200,7 @@ class ARCSDatasetLoader:
                     db_name=name,
                     max_concurrency_per_db=self.max_concurrency,
                     dbms_semaphore=self._dbms_semaphore,
+                    config=self.connector_config,
                 )
                 for name in databases
             ]

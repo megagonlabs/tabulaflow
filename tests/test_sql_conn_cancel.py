@@ -13,6 +13,7 @@ from pathlib import Path
 import duckdb
 import pytest
 
+from tabulaflow.data.config import SQLConnectorConfig
 from tabulaflow.data.sql import SQLConnector, ThrottledEngine
 
 
@@ -41,7 +42,7 @@ async def test_cancel_then_retry_mixed_config(duckdb_with_tables: str) -> None:
             url=url,
             db_name="t",
             read_only=True,
-            enable_schema_caching=False,
+            config=SQLConnectorConfig(schema_cache_mode="off", query_cache_mode="off"),
         )
     )
     await asyncio.sleep(0.1)  # land cancel inside schema build
@@ -55,7 +56,7 @@ async def test_cancel_then_retry_mixed_config(duckdb_with_tables: str) -> None:
         url=url,
         db_name="t",
         read_only=False,
-        enable_schema_caching=False,
+        config=SQLConnectorConfig(schema_cache_mode="off", query_cache_mode="off"),
     )
     assert len(connector.schema.tables) == 30
     await connector.disconnect_async()
@@ -97,8 +98,7 @@ async def test_load_files_cancel_then_retry(tmp_path: Path) -> None:
             db_name="mydata",
             data_dir=str(tmp_path),
             read_only=True,
-            enable_schema_caching=False,
-            enable_query_caching=False,
+            config=SQLConnectorConfig(schema_cache_mode="off", query_cache_mode="off"),
         )
     )
     await asyncio.sleep(0.05)
@@ -114,8 +114,7 @@ async def test_load_files_cancel_then_retry(tmp_path: Path) -> None:
         db_name="mydata",
         data_dir=str(tmp_path),
         read_only=True,
-        enable_schema_caching=False,
-        enable_query_caching=False,
+        config=SQLConnectorConfig(schema_cache_mode="off", query_cache_mode="off"),
     )
     result = await connector.run_query_async("SELECT COUNT(*) FROM data")
     assert result.df is not None and result.df.iloc[0, 0] == 800000
@@ -137,8 +136,7 @@ async def test_write_dataframe_cancel_rolls_back(tmp_path: Path) -> None:
             url=f"duckdb:///{db_path}",
             db_name="t",
             read_only=False,
-            enable_schema_caching=False,
-            enable_query_caching=False,
+            config=SQLConnectorConfig(schema_cache_mode="off", query_cache_mode="off"),
         )
         df = pd.DataFrame({"x": range(500_000), "y": range(500_000)})
 
@@ -175,8 +173,7 @@ async def test_cancel_isolates_to_one_query(tmp_path: Path) -> None:
             url=f"duckdb:///{db_path}",
             db_name="t",
             read_only=False,
-            enable_schema_caching=False,
-            enable_query_caching=False,
+            config=SQLConnectorConfig(schema_cache_mode="off", query_cache_mode="off"),
         )
 
         slow_sql = "CREATE TABLE {name} AS SELECT range AS x, range * 2 AS y FROM range(5_000_000)"
@@ -235,7 +232,7 @@ async def _make_async_sqlite_connector(tmp_path: Path) -> SQLConnector:
         url=f"sqlite+aiosqlite:///{db_path}",
         db_name="t",
         read_only=True,
-        enable_schema_caching=False,
+        config=SQLConnectorConfig(schema_cache_mode="off", query_cache_mode="off"),
     )
 
 

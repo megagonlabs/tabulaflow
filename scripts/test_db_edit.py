@@ -9,8 +9,7 @@ from sqlalchemy import (
     insert,
 )
 import os
-import tabulaflow
-from tabulaflow.data import SQLConnector
+from tabulaflow.data import SQLConnector, SQLConnectorConfig
 from tabulaflow.research.agenthub.simple_zero_shot import SimpleZeroShotNL2Q, SimpleZeroShotNL2QConfig
 from tabulaflow.research.types import GoldQuery
 from tabulaflow.research.types import SimpleNL2QTask
@@ -56,13 +55,13 @@ def create_db(db_path: str) -> None:
 
 
 async def main() -> None:
-    tabulaflow.configure(schema_cache_enabled=False)
     db_path = "output/test.db"
     create_db(db_path)
     db_connector = await SQLConnector.from_url_async(
         "test+city_stats",
         f"sqlite:///{db_path}",
         "city_stats",
+        config=SQLConnectorConfig(schema_cache_mode="off"),
     )
     model = await SimpleZeroShotNL2Q.from_config_async(
         SimpleZeroShotNL2QConfig(

@@ -6,6 +6,7 @@ from typing import AsyncGenerator
 import pandas as pd
 import pytest
 
+from tabulaflow.data.config import SQLConnectorConfig
 from tabulaflow.data.sql import SQLConnector
 from tabulaflow.output.specs import ChartArtifactSpec, GraphArtifactSpec, MapArtifactSpec
 from tabulaflow.core import ExecResult
@@ -104,8 +105,7 @@ class TestWithConnector:
             url=f"duckdb:///{db_path}",
             db_name="workspace",
             read_only=False,
-            enable_schema_caching=False,
-            enable_query_caching=False,
+            config=SQLConnectorConfig(schema_cache_mode="off", query_cache_mode="off"),
         )
         yield connector
 

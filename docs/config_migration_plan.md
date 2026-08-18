@@ -363,7 +363,7 @@ Delete `disable_bigquery_tracing` and the monkey patch that sets BigQuery's `HAS
 - Re-export public config types from their owning packages.
 - Leave legacy consumers unchanged.
 
-### Phase 2: data layer
+### Phase 2: data layer — complete
 
 1. Add optional `config` to SQL and Neo4j connector factories.
 2. Resolve `SQLConnectorConfig()` or `Neo4jConnectorConfig()` when omitted.

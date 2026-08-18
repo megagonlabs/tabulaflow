@@ -63,6 +63,7 @@ async def autoconnect_sample(session: AppState) -> bool:
         return False
 
     from tabulaflow.data.sql import SQLConnector
+    from tabulaflow.data.config import SQLConnectorConfig
 
     path = os.path.abspath(materialize_sample_db())
     connector = await SQLConnector.from_url_async(
@@ -73,8 +74,7 @@ async def autoconnect_sample(session: AppState) -> bool:
         # The sample is tiny (instant to introspect) and its schema can change
         # between versions under the same global_id — caching would risk serving a
         # stale schema for no speed benefit.
-        enable_schema_caching=False,
-        enable_query_caching=False,
+        config=SQLConnectorConfig(schema_cache_mode="off", query_cache_mode="off"),
     )
     session.registry.register(SAMPLE_ALIAS, connector)
     session.register_source(("sample", _FILENAME), SAMPLE_ALIAS)

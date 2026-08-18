@@ -20,6 +20,8 @@ import sys
 from collections.abc import Awaitable, Callable
 from typing import TYPE_CHECKING, Any
 
+from tabulaflow.data.config import SQLConnectorConfig
+
 if TYPE_CHECKING:
     import httpx
 
@@ -390,6 +392,7 @@ async def _load_hf_into_duckdb(
     dataset_id: str,
     subset: str | None,
     split_filter: str | None,
+    config: SQLConnectorConfig,
 ) -> tuple[str, list[str]]:
     """Discover metadata and load a HuggingFace dataset into DuckDB.
 
@@ -404,10 +407,9 @@ async def _load_hf_into_duckdb(
     Returns:
         A tuple of (db_path, table_names).
     """
-    from tabulaflow.config import tabulaflow_config
     from tabulaflow.data.loaders._runner import run_loader_subprocess
 
-    cache_dir = os.path.join(tabulaflow_config.cache_dir, "hf")
+    cache_dir = str(config.cache_dir / "hf")
     os.makedirs(cache_dir, exist_ok=True)
 
     # Try cache before making any API calls.  If subset is given we know
@@ -420,8 +422,8 @@ async def _load_hf_into_duckdb(
 
     # Cache miss — resolve config and discover splits via API.
     try:
-        config = await _resolve_config(dataset_id, subset)
-        split_sizes = await _discover_splits_and_size(dataset_id, config)
+        hf_config = await _resolve_config(dataset_id, subset)
+        split_sizes = await _discover_splits_and_size(dataset_id, hf_config)
     except _DatasetServerUnavailableError:
         # datasets-server unavailable — fall back to datasets library.
         return await _load_hf_via_datasets_lib(dataset_id, subset, split_filter, cache_dir)
@@ -434,8 +436,8 @@ async def _load_hf_into_duckdb(
         splits = sorted(split_sizes)
 
     # Re-check cache if resolved config differs from the candidate.
-    if config != candidate_config:
-        db_path = _db_path(cache_dir, dataset_id, config, split_filter)
+    if hf_config != candidate_config:
+        db_path = _db_path(cache_dir, dataset_id, hf_config, split_filter)
         cached = await asyncio.to_thread(_try_cache, db_path)
         if cached is not None:
             return db_path, cached
@@ -445,7 +447,7 @@ async def _load_hf_into_duckdb(
     size_str = _format_size(loaded_total) if loaded_total > 0 else "unknown size"
     logger.info("Loading HF dataset '%s' (%s, %d splits)", dataset_id, size_str, len(splits))
 
-    payload_splits, table_names = await _build_hf_splits(dataset_id, config, loaded_sizes)
+    payload_splits, table_names = await _build_hf_splits(dataset_id, hf_config, loaded_sizes)
     try:
         await run_loader_subprocess(
             "tabulaflow.data.loaders.huggingface",
@@ -474,6 +476,7 @@ async def load_hf_dataset(
     db_name: str | None = None,
     read_only: bool = True,
     summarize: Callable[[str], Awaitable[str]] | None = None,
+    config: SQLConnectorConfig | None = None,
 ) -> SQLConnector:
     """Load a HuggingFace dataset into a DuckDB-backed SQLConnector.
 
@@ -491,23 +494,24 @@ async def load_hf_dataset(
     """
     from tabulaflow.data.sql import SQLConnector
 
+    config = SQLConnectorConfig() if config is None else config
+
     dataset_id, subset, split = parse_hf_dataset_url(dataset_url)
 
     if db_name is None:
         db_name = dataset_id.split("/")[-1]
 
-    db_path, _ = await _load_hf_into_duckdb(dataset_id, subset, split)
+    db_path, _ = await _load_hf_into_duckdb(dataset_id, subset, split, config)
 
     # Derive global_id from the DuckDB cache path so the schema cache key
     # is stable across sessions regardless of the user-chosen alias.
     global_id = f"hf+{os.path.splitext(os.path.basename(db_path))[0]}"
 
     # Fetch dataset description only on schema cache miss.
-    from tabulaflow.config import tabulaflow_config
-
-    schema_cache_path = os.path.join(tabulaflow_config.cache_dir, "schemas", f"{global_id}.json")
+    schema_cache_path = config.cache_dir / "schemas" / f"{global_id}.json"
     description: str | None = None
-    if not os.path.exists(schema_cache_path):
+    schema_cache_hit = config.schema_cache_mode in ("read_write", "cache_only") and schema_cache_path.exists()
+    if not schema_cache_hit and config.schema_cache_mode != "cache_only":
         hf_description = await _fetch_hf_description(dataset_id)
         if hf_description:
             if len(hf_description) > 5000 and summarize is not None:
@@ -520,8 +524,7 @@ async def load_hf_dataset(
         url=url,
         db_name=db_name,
         read_only=read_only,
-        enable_schema_caching=True,
-        enable_query_caching=False,
+        config=config,
         duckdb_init_sql=["LOAD httpfs"],
         description=description,
     )

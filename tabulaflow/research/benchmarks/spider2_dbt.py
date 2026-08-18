@@ -19,7 +19,7 @@ from typing import Any, ClassVar
 import duckdb
 
 from tabulaflow.research.benchmarks.base import dataset_registry
-from tabulaflow.data import SQLConnector, SQLConnectorProtocol
+from tabulaflow.data import SQLConnector, SQLConnectorConfig, SQLConnectorProtocol
 from tabulaflow.research.types import DbtTask, DbtGoldTable, NL2QDataset
 
 logger = logging.getLogger(__name__)
@@ -109,8 +109,7 @@ async def prepare_working_env_async(dataset: NL2QDataset, result_dir: str) -> No
             max_concurrency_per_db=4,
             schema=existing_schema,
             read_only=True,
-            enable_schema_caching=False,
-            enable_query_caching=False,
+            config=SQLConnectorConfig(schema_cache_mode="off", query_cache_mode="off"),
         )
         dataset.db_connectors[task.db] = conn
 
@@ -135,6 +134,7 @@ class Spider2DbtDatasetLoader:
         self,
         directory: str = "data/Spider2/spider2-dbt",
         max_concurrency: int = 16,
+        connector_config: SQLConnectorConfig | None = None,
     ):
         """Initializes the Spider 2.0-DBT dataset loader.
 
@@ -144,6 +144,7 @@ class Spider2DbtDatasetLoader:
         """
         self.directory = directory
         self.max_concurrency = max_concurrency
+        self.connector_config = SQLConnectorConfig() if connector_config is None else connector_config
         self._dbms_semaphore = asyncio.Semaphore(max_concurrency)
 
     def _jsonl_path(self) -> str:
@@ -300,6 +301,7 @@ class Spider2DbtDatasetLoader:
                 max_concurrency_per_db=4,
                 dbms_semaphore=self._dbms_semaphore,
                 read_only=True,
+                config=self.connector_config,
             )
             connectors[instance_id] = conn
 

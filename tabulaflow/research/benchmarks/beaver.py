@@ -5,7 +5,7 @@ import asyncio
 from typing import Any, ClassVar
 from tabulaflow.research.types import GoldQuery
 from tabulaflow.research.types import SimpleNL2QTask, NL2QDataset
-from tabulaflow.data import SQLConnector
+from tabulaflow.data import SQLConnector, SQLConnectorConfig
 from tabulaflow.research.benchmarks.base import dataset_registry
 
 
@@ -26,10 +26,12 @@ class BeaverDatasetLoader:
         directory: str = "data/beaver",
         dw_port: int = 3311,
         nw_port: int = 3312,
+        connector_config: SQLConnectorConfig | None = None,
     ):
         self.directory = directory
         self.dw_dbms_port = dw_port
         self.nw_dbms_port = nw_port
+        self.connector_config = SQLConnectorConfig() if connector_config is None else connector_config
         self._data: dict[Any, NL2QDataset] = {}
 
     def get_databases(self, split: str) -> list[str]:
@@ -79,7 +81,13 @@ class BeaverDatasetLoader:
         }
         db_connectors = await asyncio.gather(
             *[
-                SQLConnector.from_url_async(f"beaver+{name}", url, name, max_concurrency_per_db=16)
+                SQLConnector.from_url_async(
+                    f"beaver+{name}",
+                    url,
+                    name,
+                    max_concurrency_per_db=16,
+                    config=self.connector_config,
+                )
                 for name, url in urls.items()
             ]
         )

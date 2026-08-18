@@ -5,6 +5,7 @@ import pandas as pd
 import pytest
 from pydantic_ai.messages import ToolReturnPart
 
+from tabulaflow.data.config import SQLConnectorConfig
 from tabulaflow.agents.chat.session import _build_chat_result, _declared_bundle, _TextStreamRouter, _strip_answer_marker
 from tabulaflow.data.registry import DBRegistry
 from tabulaflow.data.sql import SQLConnector
@@ -113,8 +114,7 @@ async def test_build_chat_result_resolves_a_panel(tmp_path: Path) -> None:
         url=f"duckdb:///{tmp_path / 'w.duckdb'}",
         db_name="w",
         read_only=False,
-        enable_schema_caching=False,
-        enable_query_caching=False,
+        config=SQLConnectorConfig(schema_cache_mode="off", query_cache_mode="off"),
     )
     await connector.run_query_async("CREATE TABLE orders(customer TEXT, net INT, quarter TEXT)")
     await connector.run_query_async("INSERT INTO orders VALUES ('Acme', 10, 'q2'), ('Globex', 7, 'q3')")
@@ -181,8 +181,7 @@ async def test_build_chat_result_resolves_source_backed_chart_in_panel(tmp_path:
         url=f"duckdb:///{tmp_path / 'w.duckdb'}",
         db_name="w",
         read_only=False,
-        enable_schema_caching=False,
-        enable_query_caching=False,
+        config=SQLConnectorConfig(schema_cache_mode="off", query_cache_mode="off"),
     )
     await connector.run_query_async("CREATE TABLE orders(customer TEXT, net INT, quarter TEXT)")
     await connector.run_query_async("INSERT INTO orders VALUES ('Acme', 10, 'q2'), ('Globex', 7, 'q3')")
@@ -226,8 +225,7 @@ async def test_build_chat_result_placeholders_a_partially_covered_card(tmp_path:
         url=f"duckdb:///{tmp_path / 'w.duckdb'}",
         db_name="w",
         read_only=False,
-        enable_schema_caching=False,
-        enable_query_caching=False,
+        config=SQLConnectorConfig(schema_cache_mode="off", query_cache_mode="off"),
     )
     await connector.run_query_async("CREATE TABLE orders(net INT, quarter TEXT)")
     await connector.run_query_async("INSERT INTO orders VALUES (10, 'q2')")

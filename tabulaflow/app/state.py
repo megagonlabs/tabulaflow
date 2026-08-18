@@ -24,6 +24,7 @@ async def create_workspace_connector(workspace_db_path: Path) -> SQLConnector:
     connector is handed to the session/agent at construction rather than attached
     afterwards."""
     from tabulaflow.data.sql import SQLConnector
+    from tabulaflow.data.config import SQLConnectorConfig
     from tabulaflow.output.store import OUTPUT_STORE_SCHEMA
 
     workspace_db_path.parent.mkdir(parents=True, exist_ok=True)
@@ -33,9 +34,7 @@ async def create_workspace_connector(workspace_db_path: Path) -> SQLConnector:
         url=f"duckdb:///{abspath}",
         db_name=WORKSPACE_ALIAS,
         read_only=False,
-        # Mutable store: a cached schema would go stale as tables/rows change.
-        enable_schema_caching=False,
-        enable_query_caching=False,
+        config=SQLConnectorConfig(schema_cache_mode="off", query_cache_mode="off"),
         # The agent spills every query result here, one table per materialized result. Excluding it
         # keeps the data explorer and schema tools showing data rather than bookkeeping.
         exclude_schema_names=[OUTPUT_STORE_SCHEMA],

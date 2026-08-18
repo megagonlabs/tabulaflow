@@ -4,7 +4,7 @@ from typing import AsyncGenerator
 import pandas as pd
 import pytest
 
-from tabulaflow.config import tabulaflow_config
+from tabulaflow.data.config import SQLConnectorConfig
 from tabulaflow.data.base import ResultTooLargeError
 from tabulaflow.data.neo4j import Neo4jConnector
 from tabulaflow.data.sql import SQLConnector, ThrottledEngine
@@ -60,8 +60,11 @@ async def async_connector(tmp_path: Path) -> AsyncGenerator[SQLConnector, None]:
         url=f"sqlite+aiosqlite:///{tmp_path / 'result-limit.sqlite'}",
         db_name="result-limit",
         read_only=False,
-        enable_schema_caching=False,
-        enable_query_caching=False,
+        config=SQLConnectorConfig(
+            max_result_rows=2,
+            schema_cache_mode="off",
+            query_cache_mode="off",
+        ),
     )
     try:
         yield connector
@@ -90,10 +93,7 @@ async def test_throttled_engine_rejects_more_than_max_rows() -> None:
 @pytest.mark.asyncio
 async def test_connector_returns_error_for_oversized_result(
     async_connector: SQLConnector,
-    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr(tabulaflow_config, "max_result_rows", 2)
-
     exact = await async_connector.run_query_async("SELECT 1 AS n UNION ALL SELECT 2")
     assert exact.df is not None
     assert len(exact.df) == 2
@@ -107,12 +107,23 @@ async def test_connector_returns_error_for_oversized_result(
 
 @pytest.mark.asyncio
 async def test_none_disables_connector_result_limit(
-    async_connector: SQLConnector,
-    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
 ) -> None:
-    monkeypatch.setattr(tabulaflow_config, "max_result_rows", None)
-
-    result = await async_connector.run_query_async("SELECT 1 AS n UNION ALL SELECT 2 UNION ALL SELECT 3")
+    connector = await SQLConnector.from_url_async(
+        global_id="test-unlimited-result",
+        url=f"sqlite+aiosqlite:///{tmp_path / 'unlimited-result.sqlite'}",
+        db_name="unlimited-result",
+        read_only=False,
+        config=SQLConnectorConfig(
+            max_result_rows=None,
+            schema_cache_mode="off",
+            query_cache_mode="off",
+        ),
+    )
+    try:
+        result = await connector.run_query_async("SELECT 1 AS n UNION ALL SELECT 2 UNION ALL SELECT 3")
+    finally:
+        await connector.disconnect_async()
 
     assert result.df is not None
     assert len(result.df) == 3

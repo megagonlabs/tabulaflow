@@ -14,7 +14,7 @@ import random
 from typing import Any, ClassVar, Mapping
 
 from tabulaflow.research.benchmarks.base import dataset_registry
-from tabulaflow.data import Neo4jConnector
+from tabulaflow.data import Neo4jConnector, Neo4jConnectorConfig
 from tabulaflow.research.types import GoldQuery
 from tabulaflow.research.types import NL2QDataset, SimpleNL2QTask
 
@@ -79,6 +79,7 @@ class CypherBenchDatasetLoader:
         neo4j_user: str = "neo4j",
         neo4j_password: str = "cypherbench",
         graph_ports: Mapping[str, int] | None = None,
+        connector_config: Neo4jConnectorConfig | None = None,
     ):
         """Initializes the CypherBench dataset loader.
 
@@ -93,6 +94,7 @@ class CypherBenchDatasetLoader:
         self.neo4j_host = neo4j_host
         self.neo4j_user = neo4j_user
         self.neo4j_password = neo4j_password
+        self.connector_config = Neo4jConnectorConfig() if connector_config is None else connector_config
         self._graph_ports: dict[str, int] = dict(CYPHERBENCH_DEFAULT_GRAPH_PORTS)
         if graph_ports:
             self._graph_ports.update(dict(graph_ports))
@@ -162,6 +164,7 @@ class CypherBenchDatasetLoader:
                 database=None,
                 db_name=graph,
                 read_only=True,
+                config=self.connector_config,
             )
 
         connectors = await asyncio.gather(*[connect(g) for g in databases])

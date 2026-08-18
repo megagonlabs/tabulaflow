@@ -6,6 +6,7 @@ import sqlalchemy
 import os
 from typing import AsyncGenerator, Any
 import pandas as pd
+from tabulaflow.data.config import SQLConnectorConfig
 from tabulaflow.agents.tools.run_query import RunQueryTool, LLMParameter, _format_latency
 from tabulaflow.core import ExecResult, GraphResult, GraphResultEdge, GraphResultNode
 from tabulaflow.data.sql import SQLConnector, _contains_ddl_statement, _contains_write_statement
@@ -41,7 +42,7 @@ async def db_connector(sql_engine: Any) -> SQLConnector:
         db_name="test_db",
         # Disable the on-disk schema cache: it is keyed by ``global_id`` and would
         # otherwise leak a ``widgets`` table created by one run into the next.
-        enable_schema_caching=False,
+        config=SQLConnectorConfig(schema_cache_mode="off", query_cache_mode="off"),
     )
 
 

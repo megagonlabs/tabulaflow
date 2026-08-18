@@ -2,12 +2,12 @@ import argparse
 import time
 import asyncio
 import os
+from typing import Literal
 from tqdm.asyncio import tqdm_asyncio
 from tabulaflow.research.benchmarks.base import dataset_registry
 import tabulaflow
 from tabulaflow.research.types import NL2QTask, NL2QTaskOutput, NL2QRunResult, NL2QDataset
-from tabulaflow.data import DataConnector
-from tabulaflow.config import tabulaflow_config
+from tabulaflow.data import DataConnector, Neo4jConnectorConfig, SQLConnectorConfig
 
 
 async def populate_task_async(
@@ -28,12 +28,17 @@ async def populate_task_async(
         if getattr(task, f"{prefix}_queries", None):
             all_queries += getattr(task, f"{prefix}_queries")
         queries_to_populate = [q for q in all_queries if force or not q.exec_result]
-        results = await asyncio.gather(
-            *[
-                db_connector.run_query_async(q.query, parameters=q.parameter_values, timeout=timeout)
-                for q in queries_to_populate
-            ]
-        )
+        if timeout is None:
+            results = await asyncio.gather(
+                *(db_connector.run_query_async(q.query, parameters=q.parameter_values) for q in queries_to_populate)
+            )
+        else:
+            results = await asyncio.gather(
+                *(
+                    db_connector.run_query_async(q.query, parameters=q.parameter_values, timeout=timeout)
+                    for q in queries_to_populate
+                )
+            )
         for q, exec_result in zip(queries_to_populate, results):
             q.exec_result = exec_result
 
@@ -62,7 +67,7 @@ async def main_async() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--result_dir", default="output/test/")
     parser.add_argument("--batch_size", type=int, default=8)
-    parser.add_argument("--timeout", type=int, default=tabulaflow_config.query_timeout)
+    parser.add_argument("--timeout", type=int, default=None)
     parser.add_argument("--force", action="store_true")
     parser.add_argument("--no-query-cache", action="store_true", help="Disable query result cache for this run")
     parser.add_argument("--debug", action="store_true")
@@ -70,13 +75,21 @@ async def main_async() -> None:
     print(args)
     print()
 
-    tabulaflow.configure(query_cache_enabled=not args.no_query_cache)
+    tabulaflow.configure()
 
     with open(os.path.join(args.result_dir, "result.json"), "r") as f:
         result = NL2QRunResult.model_validate_json(f.read())
 
     t0 = time.time()
-    dataset_loader = dataset_registry.get_class(result.dataset)()
+    query_cache_mode: Literal["off", "read_write"] = "off" if args.no_query_cache else "read_write"
+    connector_config = (
+        Neo4jConnectorConfig()
+        if result.dataset == "cypherbench"
+        else SQLConnectorConfig(query_cache_mode=query_cache_mode)
+    )
+    dataset_loader = dataset_registry.get_class(result.dataset)(  # type: ignore[call-arg]
+        connector_config=connector_config
+    )
     dataset = await dataset_loader.get_split_async(
         result.split, databases=result.databases, subsample_size=result.subsample_size
     )

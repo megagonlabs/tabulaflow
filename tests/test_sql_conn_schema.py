@@ -10,6 +10,7 @@ from pathlib import Path
 import duckdb
 import pytest
 
+from tabulaflow.data.config import SQLConnectorConfig
 from tabulaflow.data.sql import SQLConnector, _canonicalize_dtype
 from tabulaflow.core import TableRef
 
@@ -57,7 +58,7 @@ async def test_duckdb_list_and_struct_dtype_resolved(tmp_path: Path) -> None:
         global_id="test+duckdb_composite",
         url=f"duckdb:///{db_path}",
         db_name="composite",
-        enable_schema_caching=False,
+        config=SQLConnectorConfig(schema_cache_mode="off", query_cache_mode="off"),
     )
     try:
         table = sql_conn.schema.tables[0]
@@ -108,8 +109,7 @@ async def test_exclude_schema_names_keeps_a_schema_out_of_introspection(tmp_path
         url=f"duckdb:///{db_path}",
         db_name="excluded",
         read_only=False,
-        enable_schema_caching=False,
-        enable_query_caching=False,
+        config=SQLConnectorConfig(schema_cache_mode="off", query_cache_mode="off"),
         exclude_schema_names=["bookkeeping"],
     )
 

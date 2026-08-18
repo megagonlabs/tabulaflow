@@ -13,7 +13,6 @@ import jinja2.meta
 import pandas as pd
 from pydantic_ai import Tool, ToolReturn
 
-from tabulaflow.config import tabulaflow_config
 from tabulaflow.data.registry import DBRegistry
 from tabulaflow.output.specs import (
     ChoiceParameter,
@@ -37,6 +36,7 @@ _MAX_REPORTED_ERRORS = 5
 _KEYS_PER_ERROR = 3
 _FIRST_ROW_COLUMNS = 4
 _FIRST_ROW_CELL_CHARS = 40
+_UNSET = object()
 
 
 @dataclass(frozen=True)
@@ -55,12 +55,12 @@ class CreateParameterizedSourceTool:
         registry: DBRegistry,
         output_store: OutputStore,
         *,
-        timeout: int | None = None,
+        timeout: int | None | object = _UNSET,
         default_max_warm_variants: int = 10,
     ) -> None:
         self._registry = registry
         self._output_store = output_store
-        self.timeout = tabulaflow_config.query_timeout if timeout is None else timeout
+        self.timeout = timeout
         self._default_max_warm_variants = default_max_warm_variants
 
     async def __call__(
@@ -187,9 +187,15 @@ class CreateParameterizedSourceTool:
                 not_applicable_count += 1
         if not warm_queries:
             raise ValueError("all warmed selections were not applicable; source was not created")
-        exec_results = await asyncio.gather(
-            *(connector.run_query_async(query, timeout=self.timeout) for _, query in warm_queries)
-        )
+        if self.timeout is _UNSET:
+            exec_results = await asyncio.gather(*(connector.run_query_async(query) for _, query in warm_queries))
+        else:
+            exec_results = await asyncio.gather(
+                *(
+                    connector.run_query_async(query, timeout=self.timeout)  # type: ignore[arg-type]
+                    for _, query in warm_queries
+                )
+            )
         executions: list[tuple[Selection, str, ExecResult]] = []
         failures: dict[str, list[str]] = {}
         for (selection, query), exec_result in zip(warm_queries, exec_results, strict=True):

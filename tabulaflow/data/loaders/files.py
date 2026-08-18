@@ -13,6 +13,9 @@ import re
 import tempfile
 from typing import TYPE_CHECKING
 
+from tabulaflow.core import SQLSchema
+from tabulaflow.data.config import SQLConnectorConfig
+
 if TYPE_CHECKING:
     from tabulaflow.data.sql import SQLConnector
 
@@ -88,8 +91,7 @@ async def load_files(
     db_name: str | None = None,
     data_dir: str | None = None,
     read_only: bool = True,
-    enable_schema_caching: bool = False,
-    enable_query_caching: bool = False,
+    config: SQLConnectorConfig | None = None,
 ) -> SQLConnector:
     """Create a connector from CSV, Excel, Parquet, or JSON files.
 
@@ -137,13 +139,15 @@ async def load_files(
         read_only: If True, block write statements at the SQLConnector
             layer.  The underlying DuckDB connection is always opened
             read-write so the loader can issue CREATE TABLE statements.
-        enable_schema_caching: Whether to cache the inferred schema.
-        enable_query_caching: Whether to cache query results.
+        config: Immutable connector execution and cache policy. Environment
+            values and built-in defaults are used when omitted.
 
     Returns:
         A :class:`SQLConnector` backed by a DuckDB database.
     """
     from tabulaflow.data.sql import SQLConnector
+
+    config = SQLConnectorConfig() if config is None else config
 
     seen: set[str] = set()
     resolved: list[str] = []
@@ -189,9 +193,9 @@ async def load_files(
             global_id=global_id,
             url=f"duckdb:///{db_path}",
             db_name=db_name,
+            schema=SQLSchema(name=db_name, dialect="duckdb", tables=[]),
             read_only=False,  # need DDL for the load; SQLConnector.read_only set below
-            enable_schema_caching=enable_schema_caching,
-            enable_query_caching=enable_query_caching,
+            config=config,
             duckdb_init_sql=duckdb_init_sql,
         )
     except BaseException:
@@ -204,7 +208,7 @@ async def load_files(
 
     try:
         for name, file_path in table_file_map.items():
-            result = await connector.run_query_async(_create_table_sql_for_file(name, file_path))
+            result = await connector.run_query_async(_create_table_sql_for_file(name, file_path), timeout=None)
             if result.error is not None:
                 raise RuntimeError(f"Failed to load {file_path}: {result.error.message}")
         await connector.refresh_schema_async()

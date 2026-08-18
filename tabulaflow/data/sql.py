@@ -41,8 +41,8 @@ DML/DDL/DCL/stored-proc invocations and surfaces a
 classification is sqlparse-based and dialect-agnostic.
 
 **Query result caching.**  Optional memory + disk cache keyed by
-query, parameters, and timeout.  Enabled via
-``SQLConnector(enable_query_caching=True)``.
+query, parameters, and timeout. Configured via
+:class:`tabulaflow.data.config.SQLConnectorConfig`.
 
 **Errors-as-data.**  :meth:`SQLConnector.run_query_async` returns
 errors in :class:`ExecResult` rather than raising — except
@@ -108,13 +108,14 @@ from tabulaflow.core import (
     TableRef,
 )
 
-from tabulaflow.config import tabulaflow_config, ColumnStatsMode
+from tabulaflow.data.config import ColumnStatsMode, SQLConnectorConfig
 from tabulaflow.data.base import ResultTooLargeError
 from tabulaflow.data.introspection import infer_json_schema, looks_like_json
 
 logger = logging.getLogger(__name__)
 
 _T = TypeVar("_T")
+_UNSET = object()
 
 # Keywords that mark a statement as data-modifying.  Used by the
 # read-only guard.  False positives are preferred over false negatives:
@@ -1545,12 +1546,11 @@ async def load_schema_with_cache_async(
     global_id: str,
     db_name: str,
     t_eng: ThrottledEngine,
+    config: SQLConnectorConfig,
     group_date_partitioned_tables: bool = True,
     group_table_regexes: list[str] = [],
     include_schema_names: list[str] | None = None,
     exclude_schema_names: list[str] | None = None,
-    enable_schema_caching: bool = True,
-    column_stats_mode: ColumnStatsMode | None = None,
     description: str | None = None,
 ) -> SQLSchema:
     """Load the database schema, using the on-disk cache when available
@@ -1578,11 +1578,7 @@ async def load_schema_with_cache_async(
         exclude_schema_names: When provided, keep these schemas out of the
             introspected schema — for schemas a caller writes as its own
             bookkeeping and nobody browses or queries by name.
-        enable_schema_caching: When False, skip cache read/write
-            regardless of the global config.  Useful for mutable
-            databases where a stale cache would mislead callers.
-        column_stats_mode: Override for ``tabulaflow_config.column_stats_mode``;
-            controls whether column-level statistics are computed.
+        config: Connector cache and schema-introspection policy.
         description: Optional database description stored in
             ``schema.description``.
 
@@ -1590,12 +1586,11 @@ async def load_schema_with_cache_async(
         The loaded :class:`SQLSchema`.
 
     Raises:
-        FileNotFoundError: If ``tabulaflow_config.schema_cache_required`` is
-            set and the cache file is missing.
+        FileNotFoundError: If schema cache mode is ``cache_only`` and the
+            cache file is missing.
     """
-    schema_cache_dir = os.path.join(tabulaflow_config.cache_dir, "schemas")
-    os.makedirs(schema_cache_dir, exist_ok=True)
-    cache_path = os.path.join(schema_cache_dir, f"{global_id}.json")
+    schema_cache_dir = config.cache_dir / "schemas"
+    cache_path = schema_cache_dir / f"{global_id}.json"
 
     lock = _db_locks[global_id]
     async with lock:
@@ -1604,16 +1599,11 @@ async def load_schema_with_cache_async(
         dialect_map: dict[str, str] = {"postgresql": "postgres"}
         dialect = dialect_map.get(sqlalchemy_dialect, sqlalchemy_dialect)
 
-        if (
-            enable_schema_caching
-            and tabulaflow_config.schema_cache_enabled
-            and not tabulaflow_config.schema_cache_overwrite
-            and os.path.exists(cache_path)
-        ):
-            with open(cache_path, "r", encoding="utf-8") as f:
+        if config.schema_cache_mode in ("read_write", "cache_only") and cache_path.exists():
+            with cache_path.open("r", encoding="utf-8") as f:
                 return SQLSchema.model_validate_json(f.read())
 
-        if enable_schema_caching and tabulaflow_config.schema_cache_required:
+        if config.schema_cache_mode == "cache_only":
             raise FileNotFoundError(f"Schema cache required but not found at {cache_path}")
 
         schema = await build_schema_async(
@@ -1622,9 +1612,7 @@ async def load_schema_with_cache_async(
             dialect,  # type: ignore
             group_date_partitioned_tables,
             group_table_regexes,
-            column_stats_mode=column_stats_mode
-            if column_stats_mode is not None
-            else tabulaflow_config.column_stats_mode,
+            column_stats_mode=config.column_stats_mode,
             include_schema_names=include_schema_names,
             exclude_schema_names=exclude_schema_names,
         )
@@ -1634,10 +1622,11 @@ async def load_schema_with_cache_async(
             t_eng.engine.dispose()
         if description:
             schema.description = description
-        if enable_schema_caching and tabulaflow_config.schema_cache_enabled and schema.tables:
+        if config.schema_cache_mode in ("read_write", "refresh") and schema.tables:
 
             def _write_cache() -> None:
-                with open(cache_path, "w", encoding="utf-8") as f:
+                schema_cache_dir.mkdir(parents=True, exist_ok=True)
+                with cache_path.open("w", encoding="utf-8") as f:
                     f.write(schema.model_dump_json(indent=2))
 
             await asyncio.to_thread(_write_cache)
@@ -2215,7 +2204,6 @@ class _SchemaBuildConfig:
     group_table_regexes: list[str] = dataclasses.field(default_factory=list)
     include_schema_names: list[str] | None = None
     exclude_schema_names: list[str] | None = None
-    column_stats_mode: ColumnStatsMode = "skip_for_large_tables"
 
 
 @dataclass
@@ -2255,9 +2243,8 @@ class SQLConnector:
     # after any operation that may mutate the database.
     schema: SQLSchema
     _t_eng: ThrottledEngine
+    config: SQLConnectorConfig = dataclasses.field(default_factory=SQLConnectorConfig)
     read_only: bool = True
-    enable_schema_caching: bool = True
-    enable_query_caching: bool = False
     _schema_build_config: _SchemaBuildConfig = dataclasses.field(default_factory=_SchemaBuildConfig)
     # Optional cleanup the loader registers (e.g. "delete the DuckDB
     # cache file I generated for this connector").  Called from
@@ -2273,11 +2260,11 @@ class SQLConnector:
 
     def save_schema_cache(self) -> None:
         """Write the current schema to the cache file if caching is enabled."""
-        if self.enable_schema_caching and tabulaflow_config.schema_cache_enabled:
-            schema_cache_dir = os.path.join(tabulaflow_config.cache_dir, "schemas")
-            os.makedirs(schema_cache_dir, exist_ok=True)
-            cache_path = os.path.join(schema_cache_dir, f"{self.global_id}.json")
-            with open(cache_path, "w", encoding="utf-8") as f:
+        if self.config.schema_cache_mode in ("read_write", "refresh"):
+            schema_cache_dir = self.config.cache_dir / "schemas"
+            schema_cache_dir.mkdir(parents=True, exist_ok=True)
+            cache_path = schema_cache_dir / f"{self.global_id}.json"
+            with cache_path.open("w", encoding="utf-8") as f:
                 f.write(self.schema.model_dump_json(indent=2))
 
     @classmethod
@@ -2292,11 +2279,9 @@ class SQLConnector:
         group_date_partitioned_tables: bool = True,
         group_table_regexes: list[str] = [],
         read_only: bool = True,
-        enable_schema_caching: bool = True,
-        enable_query_caching: bool = False,
+        config: SQLConnectorConfig | None = None,
         include_schema_names: list[str] | None = None,
         exclude_schema_names: list[str] | None = None,
-        column_stats_mode: ColumnStatsMode | None = None,
         duckdb_init_sql: list[str] | None = None,
         description: str | None = None,
         **engine_kwargs: Any,
@@ -2334,11 +2319,8 @@ class SQLConnector:
             read_only: If ``True`` (the default), write statements (INSERT,
                 UPDATE, DELETE, DROP, etc.) are rejected before reaching the
                 database, returning an :class:`ExecResult` with an error.
-            enable_schema_caching: If ``False``, skip schema cache
-                read/write for this connector regardless of global config.
-            enable_query_caching: If ``False``, skip query result caching
-                for this connector regardless of global config. Useful for
-                interactive use where fresh results are always needed.
+            config: Immutable connector execution and cache policy. Environment
+                values and built-in defaults are used when omitted.
             description: Optional database description stored in the schema
                 and persisted to the schema cache.
             **engine_kwargs: Additional keyword arguments forwarded to the
@@ -2348,6 +2330,7 @@ class SQLConnector:
             A fully initialised :class:`SQLConnector` instance ready to
             execute queries.
         """
+        config = SQLConnectorConfig() if config is None else config
         t_eng = ThrottledEngine.from_url(
             url,
             max_concurrency_per_db=max_concurrency_per_db,
@@ -2372,29 +2355,24 @@ class SQLConnector:
                     global_id,
                     db_name,
                     t_eng,
+                    config,
                     group_date_partitioned_tables,
                     group_table_regexes,
                     include_schema_names=include_schema_names,
                     exclude_schema_names=exclude_schema_names,
-                    enable_schema_caching=enable_schema_caching,
-                    column_stats_mode=column_stats_mode,
                     description=description,
                 )
             return cls(
                 global_id,
                 schema,
                 t_eng,
+                config=config,
                 read_only=read_only,
-                enable_schema_caching=enable_schema_caching,
-                enable_query_caching=enable_query_caching,
                 _schema_build_config=_SchemaBuildConfig(
                     group_date_partitioned_tables=group_date_partitioned_tables,
                     group_table_regexes=list(group_table_regexes),
                     include_schema_names=include_schema_names,
                     exclude_schema_names=exclude_schema_names,
-                    column_stats_mode=column_stats_mode
-                    if column_stats_mode is not None
-                    else tabulaflow_config.column_stats_mode,
                 ),
             )
         except BaseException:
@@ -2476,7 +2454,7 @@ class SQLConnector:
                             ref.table_name,
                             ref.schema_name,
                             is_view=ref.table_name in view_names_by_schema.get(ref.schema_name, set()),
-                            column_stats_mode=self._schema_build_config.column_stats_mode,
+                            column_stats_mode=self.config.column_stats_mode,
                         )
                         for ref in tables
                     ]
@@ -2501,7 +2479,7 @@ class SQLConnector:
                     self.schema.dialect,  # type: ignore[arg-type]
                     cfg.group_date_partitioned_tables,
                     cfg.group_table_regexes,
-                    column_stats_mode=cfg.column_stats_mode,
+                    column_stats_mode=self.config.column_stats_mode,
                     include_schema_names=cfg.include_schema_names,
                     exclude_schema_names=cfg.exclude_schema_names,
                 )
@@ -2638,7 +2616,7 @@ class SQLConnector:
         self,
         query: str | sqlalchemy.sql.expression.Executable,
         parameters: Sequence[Any] | Mapping[str, Any] = (),
-        timeout: int | None = None,
+        timeout: int | None | object = _UNSET,
     ) -> ExecResult:
         """Execute a query and return the result.
 
@@ -2675,8 +2653,9 @@ class SQLConnector:
             parameters: Bind parameters.  For raw SQL strings these must
                 use the driver's native paramstyle (e.g. ``%(name)s``
                 for pyformat drivers).
-            timeout: Query timeout in seconds. ``None`` means no timeout.
-                On expiry, the result's ``error.exc_type`` is
+            timeout: Query timeout in seconds. When omitted, use the connector
+                configuration; ``None`` explicitly disables the timeout. On
+                expiry, the result's ``error.exc_type`` is
                 ``"TimeoutError"`` (not raised).
 
         Returns:
@@ -2703,6 +2682,9 @@ class SQLConnector:
                 except asyncio.CancelledError:
                     ...  # query was aborted server-side
         """
+        effective_timeout = self.config.query_timeout_seconds if timeout is _UNSET else timeout
+        assert isinstance(effective_timeout, int) or effective_timeout is None
+
         # --- read-only guard (checks every statement in multi-statement strings) ---
         query_str = str(query) if not isinstance(query, str) else query
         if self.read_only:
@@ -2717,8 +2699,8 @@ class SQLConnector:
 
         # --- query result cache lookup ---
         params_map: Mapping[str, Any] = parameters if isinstance(parameters, Mapping) else {}
-        caching_on = self.enable_query_caching and tabulaflow_config.query_cache_enabled
-        use_cache = caching_on and not tabulaflow_config.query_cache_overwrite
+        caching_on = self.config.query_cache_mode != "off"
+        use_cache = self.config.query_cache_mode == "read_write"
 
         cache_hash: str | None = None
         if caching_on:
@@ -2726,11 +2708,11 @@ class SQLConnector:
                 self.global_id,
                 query_str,
                 params_map,
-                timeout,
-                tabulaflow_config.max_result_rows,
+                effective_timeout,
+                self.config.max_result_rows,
             )
-            cache_dir = os.path.join(tabulaflow_config.cache_dir, "query_results")
-            cache_path = os.path.join(cache_dir, f"{self.global_id}_{cache_hash}.json")
+            cache_dir = self.config.cache_dir / "query_results"
+            cache_path = cache_dir / f"{self.global_id}_{cache_hash}.json"
 
             if use_cache:
                 # Check in-memory cache first
@@ -2739,15 +2721,14 @@ class SQLConnector:
                     return _query_cache[cache_hash]
 
                 # Check disk cache
-                successful_only = tabulaflow_config.query_cache_mode == "successful_only"
                 async with _query_cache_locks[cache_hash]:
                     # Re-check memory after acquiring lock
                     if cache_hash in _query_cache:
                         return _query_cache[cache_hash]
-                    if os.path.exists(cache_path):
-                        with open(cache_path, "r", encoding="utf-8") as f:
+                    if cache_path.exists():
+                        with cache_path.open("r", encoding="utf-8") as f:
                             cached = ExecResult.model_validate_json(f.read())
-                        if successful_only and cached.error is not None:
+                        if self.config.query_cache_store == "successful_only" and cached.error is not None:
                             logger.debug(f"Query cache skip (error in successful_only mode): {query_str[:80]}")
                         else:
                             _query_cache[cache_hash] = cached
@@ -2764,9 +2745,9 @@ class SQLConnector:
             result = await self._t_eng.execute_async(
                 query,
                 parameters,
-                timeout,
+                effective_timeout,
                 return_df=True,
-                max_rows=tabulaflow_config.max_result_rows,
+                max_rows=self.config.max_result_rows,
             )
             df = result.result  # return_df=True ⟹ DataFrame | None
             latency_seconds = result.latency_seconds
@@ -2782,11 +2763,11 @@ class SQLConnector:
 
         # --- write to cache ---
         if caching_on and cache_hash is not None:
-            skip = tabulaflow_config.query_cache_mode == "successful_only" and exec_result.error is not None
+            skip = self.config.query_cache_store == "successful_only" and exec_result.error is not None
             if not skip:
                 async with _query_cache_locks[cache_hash]:
-                    os.makedirs(cache_dir, exist_ok=True)
-                    with open(cache_path, "w", encoding="utf-8") as f:
+                    cache_dir.mkdir(parents=True, exist_ok=True)
+                    with cache_path.open("w", encoding="utf-8") as f:
                         f.write(exec_result.model_dump_json(indent=2))
                     _query_cache[cache_hash] = exec_result
                     logger.debug(f"Query cache write: {query_str[:80]}")

@@ -17,7 +17,7 @@ import pandas as pd
 from tabulaflow.core import ExecResult
 from tabulaflow.research.types import GoldQuery
 from tabulaflow.research.types import SimpleNL2QTask, NL2QDataset
-from tabulaflow.data import SQLConnector, SQLConnectorProtocol
+from tabulaflow.data import SQLConnector, SQLConnectorConfig, SQLConnectorProtocol
 from tabulaflow.research.benchmarks.base import dataset_registry
 
 logger = logging.getLogger(__name__)
@@ -101,6 +101,7 @@ class Spider2LiteDatasetLoader:
         sf_account: Optional[str] = None,
         google_cloud_project: Optional[str] = None,
         google_application_credentials: Optional[str] = None,
+        connector_config: SQLConnectorConfig | None = None,
     ):
         """Initializes the Spider 2.0-Lite dataset loader.
 
@@ -121,6 +122,7 @@ class Spider2LiteDatasetLoader:
         self.sf_account = sf_account
         self.google_cloud_project = google_cloud_project
         self.google_application_credentials = google_application_credentials
+        self.connector_config = SQLConnectorConfig() if connector_config is None else connector_config
         self._sf_semaphore = asyncio.Semaphore(16)
         self._bq_semaphore = asyncio.Semaphore(64)
         self._db_info = self._build_db_info()
@@ -348,7 +350,7 @@ class Spider2LiteDatasetLoader:
             dbms_semaphore=self._bq_semaphore,
             include_schema_names=datasets,
             group_date_partitioned_tables=True,
-            enable_query_caching=True,
+            config=self.connector_config,
             **engine_kwargs,
         )
 
@@ -370,7 +372,7 @@ class Spider2LiteDatasetLoader:
             dbms_semaphore=self._sf_semaphore,
             connect_args=connect_args,
             group_date_partitioned_tables=True,
-            enable_query_caching=True,
+            config=self.connector_config,
         )
 
     async def _build_sqlite_connector(self, db_name: str) -> SQLConnector:
@@ -389,7 +391,7 @@ class Spider2LiteDatasetLoader:
             url,
             db_name,
             max_concurrency_per_db=4,
-            enable_query_caching=True,
+            config=self.connector_config,
         )
 
     async def get_db_connectors_async(
