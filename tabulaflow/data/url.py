@@ -7,11 +7,11 @@ SQL or Neo4j. Loading raw files and Hugging Face datasets belongs to loaders.
 
 from __future__ import annotations
 
+import hashlib
 import os
-import re
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
-from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
+from typing import TYPE_CHECKING
+from urllib.parse import parse_qsl, unquote, urlencode, urlparse, urlunparse
 
 from tabulaflow.data.config import Neo4jConnectorConfig, SQLConnectorConfig
 
@@ -51,6 +51,7 @@ def normalize_connection_url(source: str) -> str:
         return source
 
     scheme, rest = source.split("://", 1)
+    scheme = scheme.lower()
     if "+" not in scheme and scheme in _ASYNC_DRIVER_UPGRADES:
         return f"{_ASYNC_DRIVER_UPGRADES[scheme]}://{rest}"
     return source
@@ -84,10 +85,10 @@ def _neo4j_driver_params(url: str) -> tuple[str, str | None, tuple[str, str] | N
     returned driver URL). The ``database`` / ``db`` query parameter is likewise pulled out.
     """
     parsed = urlparse(url)
-    auth = (parsed.username, parsed.password or "") if parsed.username else None
-    netloc = (parsed.hostname or "") + (f":{parsed.port}" if parsed.port else "")
+    auth = (unquote(parsed.username), unquote(parsed.password or "")) if parsed.username else None
+    credentialless = urlparse(strip_url_credentials(url))
 
-    pairs = parse_qsl(parsed.query, keep_blank_values=True)
+    pairs = parse_qsl(credentialless.query, keep_blank_values=True)
     database: str | None = None
     kept: list[tuple[str, str]] = []
     for k, v in pairs:
@@ -97,29 +98,15 @@ def _neo4j_driver_params(url: str) -> tuple[str, str | None, tuple[str, str] | N
             continue
         kept.append((k, v))
     new_query = urlencode(kept) if kept else ""
-    return urlunparse(parsed._replace(netloc=netloc, query=new_query)), database, auth
-
-
-def _engine_kwargs_for_url(url: str) -> dict[str, Any]:
-    scheme = url.split("://", 1)[0].split("+", 1)[0].lower()
-    if scheme != "bigquery":
-        return {}
-
-    google_cloud_project = os.environ.get("GOOGLE_CLOUD_PROJECT") or os.environ.get("GCP_BILLING_PROJECT")
-    if not google_cloud_project:
-        raise ValueError("BigQuery billing project required: set GOOGLE_CLOUD_PROJECT (or GCP_BILLING_PROJECT).")
-
-    engine_kwargs: dict[str, Any] = {"billing_project_id": google_cloud_project}
-    google_application_credentials = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS")
-    if google_application_credentials:
-        engine_kwargs["credentials_path"] = google_application_credentials
-    return engine_kwargs
+    return urlunparse(credentialless._replace(query=new_query)), database, auth
 
 
 def _global_id_from_url(url: str) -> str:
     """Derive a stable global_id from a database URL, stripping credentials."""
-    safe = re.sub(r"[^a-zA-Z0-9_]", "_", strip_url_credentials(url))
-    return f"cli+{safe}"
+    parsed = urlparse(strip_url_credentials(url))
+    query = urlencode(sorted(parse_qsl(parsed.query, keep_blank_values=True)))
+    canonical = urlunparse(parsed._replace(query=query))
+    return f"url+{hashlib.sha256(canonical.encode()).hexdigest()}"
 
 
 def _neo4j_global_id(driver_url: str, database: str | None) -> str:
@@ -166,6 +153,8 @@ async def connect_url(
     from tabulaflow.data.sql import SQLConnector
 
     url = normalize_connection_url(source)
+    if "://" not in url:
+        raise ValueError(f"Unsupported database source: {source!r}; expected a database URL or SQLite/DuckDB file path")
 
     if _is_neo4j_bolt_url(url):
         if config is not None and not isinstance(config, Neo4jConnectorConfig):
@@ -191,5 +180,4 @@ async def connect_url(
         db_name=db_name,
         read_only=read_only,
         config=config,
-        **_engine_kwargs_for_url(url),
     )
