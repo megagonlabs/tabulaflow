@@ -4,9 +4,66 @@ import statistics
 from typing import Any, Coroutine, Literal, cast
 
 import numpy as np
+import sqlglot
+from sqlglot import exp
+from sqlglot.optimizer.qualify import qualify
+from sqlglot.optimizer.scope import Scope, build_scope
 from tqdm.asyncio import tqdm_asyncio
 
 from tabulaflow.research.types import AmbigNL2QTask, GoldAmbiguityPoint, NumericOrNull
+
+
+def extract_all_source_columns(query: str, language: str = "sqlite") -> list[tuple[str, str]]:
+    """Extract all source columns referenced by a SQL query.
+
+    Resolves table aliases and traces columns used in any clause through CTEs
+    and subqueries back to their original source tables.
+
+    Args:
+        query: SQL query to analyze.
+        language: SQL dialect used to parse the query.
+
+    Returns:
+        Deduplicated ``(table_name, column_name)`` pairs in discovery order.
+        Returns an empty list when the query cannot be parsed.
+    """
+    try:
+        parsed = sqlglot.parse_one(query, dialect=language)
+        qualified = qualify(parsed, dialect=language, validate_qualify_columns=False)
+        root = build_scope(qualified)
+    except Exception:
+        try:
+            parsed = sqlglot.parse_one(query)
+            qualified = qualify(parsed, validate_qualify_columns=False)
+            root = build_scope(qualified)
+        except Exception:
+            return []
+
+    if root is None:
+        return []
+
+    def collect_columns(scope: Scope, result: list[tuple[str, str]], seen: set[tuple[str, str]]) -> None:
+        for col in scope.columns:
+            source = scope.sources.get(col.table)
+            if isinstance(source, exp.Table):
+                key = (source.name, col.name)
+                if key not in seen:
+                    result.append(key)
+                    seen.add(key)
+
+        for union_scope in scope.union_scopes:
+            collect_columns(union_scope, result, seen)
+        for cte_scope in scope.cte_scopes:
+            collect_columns(cte_scope, result, seen)
+        for subquery_scope in scope.subquery_scopes:
+            collect_columns(subquery_scope, result, seen)
+        for source in scope.sources.values():
+            if isinstance(source, Scope):
+                collect_columns(source, result, seen)
+
+    result: list[tuple[str, str]] = []
+    collect_columns(root, result, set())
+    return result
 
 
 def int_to_letter(idx: int) -> str:

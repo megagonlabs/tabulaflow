@@ -27,7 +27,7 @@ from tabulaflow.research.agenthub.utils import (
     TaskRunContext,
 )
 from tabulaflow.agents.response_parsing import extract_code
-from tabulaflow.data.query_analysis import extract_all_source_columns
+from tabulaflow.research.utils import extract_all_source_columns
 from tabulaflow.output.erd import ERDiagram
 from tabulaflow.output.schema_formatters.er_diagram import ERDiagramMermaidFormatter
 from tabulaflow.agents.llm import make_agent

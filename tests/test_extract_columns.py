@@ -1,4 +1,4 @@
-from tabulaflow.data.query_analysis import extract_all_source_columns
+from tabulaflow.research.utils import extract_all_source_columns
 
 
 def test_simple_query() -> None:
