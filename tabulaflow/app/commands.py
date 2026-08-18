@@ -17,11 +17,11 @@ from tabulaflow.app.state import WORKSPACE_ALIAS, AppState
 from tabulaflow.data import (
     DB_FILE_SCHEMES,
     connect_url,
-    connector_info,
     credentialless_url,
     normalize_url,
     url_needs_password,
 )
+from tabulaflow.output.formatting import format_connector_summary
 
 if TYPE_CHECKING:
     from tabulaflow.data.base import DataConnector
@@ -58,7 +58,7 @@ class CommandResult:
 def _announce_connect(session: AppState, alias: str, connector: DataConnector) -> str:
     """Tell the agent the user just connected ``alias`` (so it gains temporal
     awareness of the new source) and return the connector's display summary."""
-    info = connector_info(connector)
+    info = format_connector_summary(connector)
     session.note_event(f"the user just connected a new data source `{alias}` ({info}).")
     return info
 

@@ -99,7 +99,7 @@ async def test_connect_source_key_strips_credentials(monkeypatch: pytest.MonkeyP
         return object()
 
     monkeypatch.setattr(commands, "connect_url", fake_connect_url)
-    monkeypatch.setattr(commands, "connector_info", lambda _connector: "test connector")
+    monkeypatch.setattr(commands, "format_connector_summary", lambda _connector: "test connector")
 
     result = await handle_command(
         "/connect postgres://alice:secret@example.com:5432/app sales",

@@ -1,4 +1,4 @@
-from tabulaflow.data.introspection import infer_json_schema, looks_like_json
+from tabulaflow.data.json_schema import infer_json_schema, looks_like_json
 
 
 def test_all_null_returns_none() -> None:

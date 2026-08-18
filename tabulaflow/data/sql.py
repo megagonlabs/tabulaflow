@@ -110,7 +110,7 @@ from tabulaflow.core import (
 
 from tabulaflow.data.config import ColumnStatsMode, SQLConnectorConfig
 from tabulaflow.data.base import ResultTooLargeError
-from tabulaflow.data.introspection import infer_json_schema, looks_like_json
+from tabulaflow.data.json_schema import infer_json_schema, looks_like_json
 
 logger = logging.getLogger(__name__)
 

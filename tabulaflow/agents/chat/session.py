@@ -28,7 +28,7 @@ from tabulaflow.agents.tools.web_browser import (
     SNAPSHOT_SNIPPET_THRESHOLD_CHARS,
     snapshot_snippet,
 )
-from tabulaflow.data import connector_info
+from tabulaflow.output.formatting import format_connector_summary
 from tabulaflow.agents.llm import make_agent, make_model_settings, model_display_name
 from tabulaflow.output.specs import (
     ArtifactSpec,
@@ -519,7 +519,7 @@ class ChatSession:
                 connector = self.registry.get(alias)
             except ValueError:
                 continue
-            entries.append(f"`{alias}` ({connector_info(connector)})")
+            entries.append(f"`{alias}` ({format_connector_summary(connector)})")
 
         if entries:
             self.note_event("the following data sources are already registered: " + ", ".join(entries) + ".")

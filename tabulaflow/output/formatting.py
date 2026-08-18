@@ -5,6 +5,31 @@ import pandas as pd
 from tabulate import tabulate
 
 from tabulaflow.core import ExecResult, SQLColumnSchema
+from tabulaflow.data.base import DataConnector
+
+
+def format_connector_summary(connector: DataConnector) -> str:
+    """Format a concise summary of a live data connector.
+
+    Args:
+        connector: Connector to summarize.
+
+    Returns:
+        Human-readable backend, language, and schema-size information.
+    """
+    if connector.connector_type == "property_graph":
+        n_labels = len(connector.schema.nodes)
+        n_relationships = len(connector.schema.relationships)
+        language = connector.language or "graph"
+        return (
+            f"{connector.backend}, {language}, {n_labels} label{'s' if n_labels != 1 else ''}, "
+            f"{n_relationships} relationship type{'s' if n_relationships != 1 else ''}"
+        )
+
+    schema = connector.schema
+    n_tables = len(schema.tables)
+    dialect = connector.language or schema.dialect or "unknown"
+    return f"{dialect}, {n_tables} table{'s' if n_tables != 1 else ''}"
 
 
 def flatten_multiline(val: str) -> str:

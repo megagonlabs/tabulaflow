@@ -13,7 +13,6 @@ from tabulaflow.data.url import (
     normalize_url,
     url_needs_password,
 )
-from tabulaflow.data.introspection import connector_info
 
 __all__ = [
     "DBRegistry",
@@ -26,7 +25,6 @@ __all__ = [
     "SQLConnectorProtocol",
     "DB_FILE_SCHEMES",
     "connect_url",
-    "connector_info",
     "credentialless_url",
     "global_id_from_url",
     "normalize_url",
