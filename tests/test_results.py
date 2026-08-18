@@ -12,7 +12,6 @@ from tabulaflow.core import ErrorInfo, ExecResult, GraphResult
     [
         ExecResult(),
         ExecResult(df=pd.DataFrame({"value": [1]})),
-        ExecResult(graph=GraphResult(nodes=[], edges=[])),
         ExecResult(
             df=pd.DataFrame({"value": [1]}),
             graph=GraphResult(nodes=[], edges=[]),
@@ -35,6 +34,7 @@ def test_accepts_valid_execution_states(result: ExecResult) -> None:
         {"graph": GraphResult(nodes=[], edges=[]), "error": ErrorInfo(exc_type="QueryError", message="failed")},
         {"affected_rows": 1, "error": ErrorInfo(exc_type="QueryError", message="failed")},
         {"df": pd.DataFrame(), "affected_rows": 1},
+        {"graph": GraphResult(nodes=[], edges=[])},
         {"graph": GraphResult(nodes=[], edges=[]), "affected_rows": 1},
     ],
 )

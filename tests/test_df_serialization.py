@@ -71,9 +71,21 @@ def test_dataframe_deserialize_legacy_payload() -> None:
     assert_frame_equal(expected, deserialized, check_dtype=True)
 
 
-def test_dataframe_deserialize_rejects_invalid_payload() -> None:
-    with pytest.raises(ValueError, match="invalid DataFrame payload: list"):
-        _deserialize_dataframe([])
+@pytest.mark.parametrize(
+    "payload",
+    [
+        [],
+        {},
+        {"format": "unknown"},
+        {"format": _DF_SERIALIZATION_FORMAT},
+        {"format": _DF_SERIALIZATION_FORMAT, "parquet_base64": "not base64"},
+        {"format": _DF_SERIALIZATION_FORMAT_FEATHER},
+        {"format": _DF_SERIALIZATION_FORMAT_FEATHER, "feather_base64": "not base64"},
+    ],
+)
+def test_dataframe_deserialize_rejects_invalid_payload(payload: object) -> None:
+    with pytest.raises(ValueError, match="invalid DataFrame payload"):
+        _deserialize_dataframe(payload)
 
 
 def test_dataframe_round_trip_nested_columns() -> None:
@@ -111,6 +123,14 @@ def test_dataframe_sanitization_copies_before_stringifying_mixed_column() -> Non
     assert sanitized is not df
     assert sanitized["mixed"].tolist() == ["a", "1", None]
     assert df["mixed"].tolist() == ["a", 1, None]
+
+
+def test_dataframe_sanitization_preserves_nulls_with_oversized_integers() -> None:
+    df = pd.DataFrame({"value": [2**100, None]}, dtype=object)
+
+    sanitized = _sanitize_df(df)
+
+    assert sanitized["value"].tolist() == [str(2**100), None]
 
 
 def test_exec_result_json_round_trip_dataframe() -> None:

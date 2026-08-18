@@ -52,7 +52,7 @@ class ExecResult(BaseModel):
 
     Attributes:
         df: Complete tabular result for a row-returning query.
-        graph: Graph representation of a data-producing query.
+        graph: Graph representation attached to a tabular result.
         affected_rows: Rows affected by successful non-row DML, when reported.
         error: Failure details; mutually exclusive with successful payloads.
         latency_seconds: Elapsed execution time, when measured.
@@ -73,4 +73,6 @@ class ExecResult(BaseModel):
             raise ValueError("an error cannot accompany a result or affected-row count")
         if has_result and self.affected_rows is not None:
             raise ValueError("a result cannot carry an affected-row count")
+        if self.graph is not None and self.df is None:
+            raise ValueError("a graph result requires a tabular result")
         return self

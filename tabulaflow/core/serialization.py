@@ -1,6 +1,7 @@
 """DataFrame and strict JSON serialization helpers for core models."""
 
 import base64
+import binascii
 import io
 import json
 import math
@@ -61,8 +62,8 @@ def _sanitize_df_strings(df: pd.DataFrame) -> pd.DataFrame:
     * **Lone surrogates** in ``str`` values - invalid UTF-8 that crashes Feather and
       pydantic-core's JSON encoder.  Re-encoded via ``errors="replace"`` (U+FFFD).
     * **Oversized Python ints** - values outside the int64/uint64 range that Arrow
-      cannot represent as C longs.  The entire column is cast to ``str`` to avoid
-      mixed str/int types that Arrow also rejects.
+      cannot represent as C longs. All non-null values in the column are cast to
+      ``str`` to avoid mixed str/int types that Arrow also rejects.
 
     Only copies the DataFrame when actual changes are needed.
     """
@@ -80,7 +81,7 @@ def _sanitize_df_strings(df: pd.DataFrame) -> pd.DataFrame:
         ).any()
 
         if has_oversized_int:
-            sanitized = series.map(lambda v: str(v))
+            sanitized = series.where(series.isna(), series.map(str))
         else:
             # Only fix lone surrogates in str values.
             sanitized = series.map(
@@ -212,7 +213,7 @@ def _serialize_dataframe(df: pd.DataFrame | None) -> dict[str, Any] | None:
     }
 
 
-def _deserialize_dataframe(value: dict[str, Any] | pd.DataFrame | None) -> pd.DataFrame | None:
+def _deserialize_dataframe(value: object) -> pd.DataFrame | None:
     """Deserialize Parquet, Feather, or legacy schema+records payloads."""
     if value is None or isinstance(value, pd.DataFrame):
         return value
@@ -225,29 +226,50 @@ def _deserialize_dataframe(value: dict[str, Any] | pd.DataFrame | None) -> pd.Da
         import pyarrow as pa
         import pyarrow.parquet as pq
 
-        raw = base64.b64decode(value["parquet_base64"])
-        table = pq.read_table(io.BytesIO(raw))
-        json_cols = [f.name for f in table.schema if isinstance(f.type, pa.JsonType)]
-        df = table.to_pandas()
-        for col in json_cols:
-            df[col] = df[col].apply(lambda x: json.loads(x) if isinstance(x, str) else x)
+        encoded = value.get("parquet_base64")
+        if not isinstance(encoded, str):
+            raise ValueError("invalid DataFrame payload: parquet_base64 must be a string")
+        try:
+            raw = base64.b64decode(encoded, validate=True)
+            table = pq.read_table(io.BytesIO(raw))
+            json_cols = [f.name for f in table.schema if isinstance(f.type, pa.JsonType)]
+            df = table.to_pandas()
+            for col in json_cols:
+                df[col] = df[col].apply(lambda x: json.loads(x) if isinstance(x, str) else x)
+        except (binascii.Error, json.JSONDecodeError, pa.ArrowException) as exc:
+            raise ValueError("invalid DataFrame payload: malformed Parquet data") from exc
         if list(df.columns) == ["_empty"] and df.empty:
             return pd.DataFrame()
         return df
 
     if fmt == _DF_SERIALIZATION_FORMAT_FEATHER:
-        raw = base64.b64decode(value["feather_base64"])
+        import pyarrow as pa
         import pyarrow.feather as feather
 
-        df = feather.read_feather(io.BytesIO(raw))
+        encoded = value.get("feather_base64")
+        if not isinstance(encoded, str):
+            raise ValueError("invalid DataFrame payload: feather_base64 must be a string")
+        try:
+            raw = base64.b64decode(encoded, validate=True)
+            df = feather.read_feather(io.BytesIO(raw))
+        except (binascii.Error, ValueError, pa.ArrowException) as exc:
+            raise ValueError("invalid DataFrame payload: malformed Feather data") from exc
         if list(df.columns) == ["_empty"] and df.empty:
             return pd.DataFrame()
         return df
 
     # Backward compatibility for old cached/result JSON payloads.
-    dtypes = value["schema"]["dtypes"]
-    df = pd.DataFrame(value["data"], columns=list(dtypes.keys()))
-    return df.astype(dtypes)
+    if fmt is not None:
+        raise ValueError(f"invalid DataFrame payload: unsupported format {fmt!r}")
+    schema = value.get("schema")
+    data = value.get("data")
+    if not isinstance(schema, dict) or not isinstance(schema.get("dtypes"), dict) or not isinstance(data, list):
+        raise ValueError("invalid DataFrame payload: expected a supported format or legacy schema and data")
+    dtypes = schema["dtypes"]
+    try:
+        return pd.DataFrame(data, columns=list(dtypes)).astype(dtypes)
+    except (KeyError, TypeError, ValueError) as exc:
+        raise ValueError("invalid DataFrame payload: malformed legacy data") from exc
 
 
 SerializableDataFrame: TypeAlias = Annotated[
