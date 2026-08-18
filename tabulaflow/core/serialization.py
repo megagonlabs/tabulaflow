@@ -1,4 +1,9 @@
-"""DataFrame and strict JSON serialization helpers for core models."""
+"""Typed DataFrame and strict JSON serialization for core models.
+
+DataFrames are embedded as versioned Parquet to preserve typed columns and
+indexes while compressing large results. A small records preview keeps the
+otherwise binary payload inspectable.
+"""
 
 import base64
 import binascii
