@@ -6,7 +6,6 @@ from tabulaflow.data.url import (
     is_database_file_path,
     normalize_connection_url,
     strip_url_credentials,
-    url_has_username_without_password,
 )
 
 
@@ -34,18 +33,6 @@ class TestNormalizeConnectionUrl:
         # ends in ".sqlite", so the path branch must not re-fire on it.
         once = normalize_connection_url(raw)
         assert normalize_connection_url(once) == once
-
-
-class TestUrlHasUsernameWithoutPassword:
-    def test_username_without_password(self) -> None:
-        assert url_has_username_without_password("postgresql://alice@host:5432/db") is True
-
-    def test_username_with_password(self) -> None:
-        assert url_has_username_without_password("postgresql://alice:secret@host/db") is False
-
-    def test_no_username(self) -> None:
-        assert url_has_username_without_password("postgresql://host/db") is False
-        assert url_has_username_without_password("sqlite+aiosqlite:////data/x.sqlite") is False
 
 
 class TestStripUrlCredentials:

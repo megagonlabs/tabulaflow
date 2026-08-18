@@ -19,7 +19,6 @@ from tabulaflow.data.url import (
     is_database_file_path,
     normalize_connection_url,
     strip_url_credentials,
-    url_has_username_without_password,
 )
 from tabulaflow.output.formatting import format_connector_summary
 
@@ -273,15 +272,6 @@ async def _cmd_connect(args: list[str], session: AppState) -> CommandResult:
             output=Text.from_markup(
                 f"[{ERROR}]Alias already in use:[/] {alias}. "
                 "Disconnect first or provide a different alias: /connect <url> <alias>"
-            )
-        )
-
-    # Check if password prompt is needed
-    if url_has_username_without_password(url):
-        return CommandResult(
-            output=Text(
-                "Password-protected connections: include the password in the URL or set it via environment variables.",
-                style="dim",
             )
         )
 

@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING, ClassVar
 from pydantic_ai import Tool
 
 from tabulaflow.data import DBRegistry, connect_url
-from tabulaflow.data.url import is_database_file_path, url_has_username_without_password
+from tabulaflow.data.url import is_database_file_path
 
 if TYPE_CHECKING:
     from tabulaflow.data.base import DataConnector
@@ -58,9 +58,6 @@ class ConnectDataSourceTool:
 
         if not is_hf and not is_url and not os.path.isfile(path):
             return f"(error: no such file: {source!r}; pass a local file path or a HuggingFace dataset URL)"
-        if is_url and url_has_username_without_password(source):
-            return f"(error: this source needs a password; ask the user to connect it with: /connect {source})"
-
         try:
             if is_hf:
                 connector: DataConnector = await load_hf_dataset(source, db_name=alias, read_only=True)

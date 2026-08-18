@@ -56,12 +56,6 @@ def normalize_connection_url(source: str) -> str:
     return source
 
 
-def url_has_username_without_password(url: str) -> bool:
-    """Return whether a URL contains a username and hostname but no password."""
-    parsed = urlparse(url)
-    return bool(parsed.username and not parsed.password and parsed.hostname)
-
-
 def strip_url_credentials(url: str) -> str:
     """Return ``url`` with any username/password removed."""
     parsed = urlparse(url)
