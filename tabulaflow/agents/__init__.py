@@ -2,6 +2,8 @@
 
 from typing import TYPE_CHECKING
 
+from tabulaflow.agents.config import AgentRuntimeConfig
+
 if TYPE_CHECKING:
     from tabulaflow.agents.chat import ChatSession
 
@@ -14,4 +16,4 @@ def __getattr__(name: str) -> object:
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 
-__all__ = ["ChatSession"]
+__all__ = ["AgentRuntimeConfig", "ChatSession"]
