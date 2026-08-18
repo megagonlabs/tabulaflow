@@ -16,7 +16,7 @@ from tabulaflow.research.tools import (
 )
 from tabulaflow.research.agenthub.base import agent_registry, BaseUserSimulator, BaseAgentConfig
 from tabulaflow.research.agenthub.utils import get_max_steps_processor, instrument, BasicAgentConfig
-from tabulaflow.data.schema_compressor import SchemaCompressor
+from tabulaflow.output.schema_compression import SchemaCompressor
 from tabulaflow.agents.llm import make_agent
 
 

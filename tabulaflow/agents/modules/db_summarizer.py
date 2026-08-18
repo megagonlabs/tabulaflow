@@ -8,7 +8,7 @@ from tabulaflow.data import DataConnector
 from tabulaflow.output.schema_formatters.cypher import CypherSchemaFormatter
 from tabulaflow.output.schema_formatters.sql_ddl import SQLDDLSchemaFormatter
 from tabulaflow.agents.modules.base import CachedPreprocessorMixin, CacheableResult, preprocessor_registry
-from tabulaflow.data.schema_compressor import SchemaCompressor
+from tabulaflow.output.schema_compression import SchemaCompressor
 from tabulaflow.agents.trace import Usage
 from tabulaflow.agents.llm import make_agent, make_model_settings
 

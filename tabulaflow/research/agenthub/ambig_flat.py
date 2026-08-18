@@ -20,7 +20,7 @@ from tabulaflow.research.agenthub.base import (
     UserValueQuestion,
 )
 from tabulaflow.research.agenthub.utils import get_max_steps_processor, instrument, TaskRunContext, BasicAgentConfig
-from tabulaflow.data.schema_compressor import SchemaCompressor
+from tabulaflow.output.schema_compression import SchemaCompressor
 from tabulaflow.research.utils import int_to_letter
 from tabulaflow.agents.llm import make_agent
 

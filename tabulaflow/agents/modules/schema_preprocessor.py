@@ -4,7 +4,7 @@ from tabulaflow.core import SQLSchema
 from tabulaflow.agents.trace import Usage
 from tabulaflow.data import SQLConnectorProtocol
 from tabulaflow.agents.modules.column_profiler import ColumnProfiler
-from tabulaflow.data.schema_compressor import SchemaCompressor
+from tabulaflow.output.schema_compression import SchemaCompressor
 from tabulaflow.agents.modules.fk_predictor import ForeignKeyPredictor
 from tabulaflow.agents.modules.base import (
     CachedPreprocessorMixin,

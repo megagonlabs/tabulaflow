@@ -4,7 +4,7 @@ import tabulaflow
 from tabulaflow.config import tabulaflow_config
 from tabulaflow.agents.modules.db_summarizer import DBSummary
 from tabulaflow.core import SQLSchema
-from tabulaflow.data.schema_compressor import SchemaCompressor
+from tabulaflow.output.schema_compression import SchemaCompressor
 from tabulaflow.output.erd import ERDiagram
 from tabulaflow.output.schema_formatters.sql_ddl import SQLDDLSchemaFormatter
 from tabulaflow.output.schema_formatters.er_diagram import ERDiagramMermaidFormatter

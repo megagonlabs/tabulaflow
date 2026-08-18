@@ -5,7 +5,7 @@ import asyncio
 from tabulate import tabulate
 from tabulaflow.research.benchmarks import dataset_registry
 from tabulaflow.data import Neo4jConnectorConfig, SQLConnectorConfig
-from tabulaflow.data.schema_compressor import SchemaCompressor
+from tabulaflow.output.schema_compression import SchemaCompressor
 from tabulaflow.agents.modules.schema_preprocessor import SchemaPreprocessor
 from tabulaflow.research.types import NL2QDataset
 from tabulaflow.research.utils import dict_to_df

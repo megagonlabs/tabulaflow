@@ -1,3 +1,5 @@
+"""Compress SQL schemas into compact logical representations for presentation."""
+
 import copy
 import collections
 from typing import Any, Hashable, Protocol, TypeVar

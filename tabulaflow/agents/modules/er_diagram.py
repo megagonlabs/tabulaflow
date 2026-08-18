@@ -7,7 +7,7 @@ from tabulaflow.data import SQLConnectorProtocol
 from tabulaflow.output.erd import ERDiagram
 from tabulaflow.output.schema_formatters.base import SQLSchemaFormatter
 from tabulaflow.output.schema_formatters.sql_ddl import SQLDDLSchemaFormatter
-from tabulaflow.data.schema_compressor import SchemaCompressor
+from tabulaflow.output.schema_compression import SchemaCompressor
 from tabulaflow.core import SQLSchema
 from tabulaflow.agents.trace import Usage
 from tabulaflow.agents.modules.base import CacheableResult, CachedPreprocessorMixin, preprocessor_registry

@@ -230,16 +230,15 @@ data/
   base.py
   registry.py
   url.py
+  config.py
   sql.py
   neo4j.py
-  schema_compressor.py
+  json_schema.py
   loaders/
     __init__.py
     _runner.py
     files.py
     huggingface.py
-  introspection.py
-  query_analysis.py
 ```
 
 Concepts:
@@ -268,6 +267,7 @@ output/
   store.py
   resolver.py
   formatting.py
+  schema_compression.py
   graphs.py
   erd.py
   schema_formatters/
@@ -300,6 +300,7 @@ File ownership:
 - `output/store.py`: `OutputStore`, `ResultPayload`, `SourceNotApplicable`, `render_parameterized_query`, `OUTPUT_STORE_SCHEMA`, and runtime result/source/artifact storage.
 - `output/resolver.py`: `OutputResolver` and resolved artifact/result payload types.
 - `output/formatting.py`: output-facing human/LLM formatting helpers such as `format_df`, `format_exec_result_markdown`, JSON-schema formatting, and result display formatting.
+- `output/schema_compression.py`: lossy schema compaction for prompt and display consumption.
 - `output/schema_formatters/`: schema renderers currently under `core/formatters/`.
 
 Dependency decisions:
@@ -608,16 +609,13 @@ output/schema_formatters/
 
 Reasoning: schema formatting is presentation/prompt/output behavior, not core schema modeling.
 
-### `schema_compressor.py`
+### `schema_compression.py`
 
 Do not keep in core.
 
-It is deterministic, but it is a schema transformation/service rather than a primitive. Candidate homes:
-
-- `data/schema_compressor.py` if it is part of schema preprocessing/introspection
-- `output/schema_formatters/` if it mainly exists for prompt/schema display compression
-
-Default recommendation: move to `data/schema_compressor.py` unless usage proves it is primarily prompt-formatting.
+It is deterministic but lossy: it merges physical tables into logical name
+patterns for compact prompt and display consumption. It therefore belongs in
+`output/schema_compression.py`, not in the source-of-truth data layer.
 
 ### `er_diagram.py`
 
