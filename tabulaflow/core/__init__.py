@@ -1,4 +1,4 @@
-"""Stable platform primitives and deterministic helpers."""
+"""Stable schema, result, and registry primitives."""
 
 from tabulaflow.core.registry import ClassRegistry
 from tabulaflow.core.results import ErrorInfo, ExecResult, GraphResult, GraphResultEdge, GraphResultNode
@@ -6,7 +6,6 @@ from tabulaflow.core.schema import (
     ColumnRef,
     ForeignKeySchema,
     GraphPropertySchema,
-    TableNamePattern,
     NodeSchema,
     NonSQLLanguage,
     PropertyGraphSchema,
@@ -16,6 +15,7 @@ from tabulaflow.core.schema import (
     SQLDialect,
     SQLSchema,
     SQLTableSchema,
+    TableNamePattern,
     TableRef,
 )
 
@@ -29,7 +29,6 @@ __all__ = [
     "GraphResult",
     "GraphResultEdge",
     "GraphResultNode",
-    "TableNamePattern",
     "NodeSchema",
     "NonSQLLanguage",
     "PropertyGraphSchema",
@@ -39,5 +38,6 @@ __all__ = [
     "SQLDialect",
     "SQLSchema",
     "SQLTableSchema",
+    "TableNamePattern",
     "TableRef",
 ]
