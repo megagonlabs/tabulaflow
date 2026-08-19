@@ -10,6 +10,8 @@ from typing import Annotated, Any, Literal, TypeAlias
 import pandas as pd
 from pydantic import AliasChoices, BaseModel, ConfigDict, Field, ValidationError, field_validator, model_validator
 
+from tabulaflow.output.specs import ArtifactSpecError
+
 
 _MAP_RENDER_MAX_ROWS = 50_000
 _GEOJSON_TYPES = {
@@ -42,7 +44,7 @@ __all__ = [
 ]
 
 
-class MapSpecError(ValueError):
+class MapSpecError(ArtifactSpecError):
     """Raised when a map spec cannot be applied to a result."""
 
 

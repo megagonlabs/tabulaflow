@@ -13,9 +13,12 @@ import jinja2
 import pandas as pd
 from pydantic import BaseModel, ConfigDict, Field
 
+import tabulaflow.output.graphs as graphs
+import tabulaflow.output.maps as maps
 from tabulaflow.output.specs import (
     ArtifactId,
     ArtifactSpec,
+    ArtifactSpecError,
     ChartArtifactSpec,
     FixedResultSource,
     GraphArtifactSpec,
@@ -26,7 +29,6 @@ from tabulaflow.output.specs import (
     Selection,
     SourceSpec,
     SourceId,
-    artifact_source_ids,
     canonical_selection_key,
 )
 from tabulaflow.core import ExecResult, GraphResult
@@ -42,6 +44,7 @@ __all__ = [
     "OutputStore",
     "ResultMetadata",
     "ResultPayload",
+    "SourceResolutionError",
     "SourceNotApplicable",
     "render_parameterized_query",
 ]
@@ -69,6 +72,10 @@ class ResultMetadata(BaseModel):
 
 class SourceNotApplicable(Exception):
     """A parameterized source intentionally does not apply to a selection."""
+
+
+class SourceResolutionError(RuntimeError):
+    """A query-backed source could not be materialized."""
 
 
 def _not_applicable(reason: object = "not applicable") -> NoReturn:
@@ -303,7 +310,7 @@ class OutputStore:
     ) -> _StoredResultEntry:
         """Register one result under ``result_id``."""
         if exec_result.error is not None:
-            raise ValueError(exec_result.error.message)
+            raise SourceResolutionError(exec_result.error.message)
         df = exec_result.df
         if df is not None:
             await self._results.put_dataframe(result_id, df)
@@ -360,7 +367,9 @@ class OutputStore:
     ) -> ResultId:
         query = render_parameterized_query(source.query_template, selection)
         if self._registry is None:
-            raise KeyError(f"source {source.id!r} has no result for selection {canonical_selection_key(selection)}")
+            raise SourceResolutionError(
+                f"source {source.id!r} has no result for selection {canonical_selection_key(selection)}"
+            )
         connector = self._registry.get(source.db_alias)
         exec_result = await connector.run_query_async(query)
         return await self.cache_parameterized_result(source.id, connector.connector_type, selection, query, exec_result)
@@ -393,6 +402,7 @@ class OutputStore:
         self, source_id: SourceId, spec: Mapping[str, object], label: str | None = None
     ) -> ChartArtifactSpec:
         """Store a chart artifact under a ``CHART<n>`` id."""
+        self.get_source(source_id)
         artifact_id = self._next_artifact_id("CHART")
         artifact = ChartArtifactSpec(id=artifact_id, label=label, source_id=source_id, spec=dict(spec))
         self._store_artifact(artifact)
@@ -402,6 +412,7 @@ class OutputStore:
         self, source_ids: list[SourceId], spec: Mapping[str, object], label: str | None = None
     ) -> MapArtifactSpec:
         """Store a map artifact under a ``MAP<n>`` id."""
+        self._validate_map_sources(source_ids, spec)
         artifact_id = self._next_artifact_id("MAP")
         artifact = MapArtifactSpec(id=artifact_id, label=label, source_ids=source_ids, spec=dict(spec))
         self._store_artifact(artifact)
@@ -411,6 +422,7 @@ class OutputStore:
         self, source_ids: list[SourceId], spec: Mapping[str, object], label: str | None = None
     ) -> GraphArtifactSpec:
         """Store a graph artifact under a ``GRAPH<n>`` id."""
+        self._validate_graph_sources(source_ids, spec)
         artifact_id = self._next_artifact_id("GRAPH")
         artifact = GraphArtifactSpec(id=artifact_id, label=label, source_ids=source_ids, spec=dict(spec))
         self._store_artifact(artifact)
@@ -425,11 +437,40 @@ class OutputStore:
         return artifact_id
 
     def _store_artifact(self, artifact: ArtifactSpec) -> None:
-        for source_id in artifact_source_ids(artifact):
-            source = self.get_source(source_id)
-            if isinstance(artifact, MapArtifactSpec | GraphArtifactSpec) and not isinstance(source, FixedResultSource):
-                raise ValueError(f"{artifact.kind} artifact {artifact.id!r} requires fixed sources")
         self._artifacts[artifact.id] = artifact
+
+    def _validate_map_sources(self, source_ids: list[SourceId], spec: Mapping[str, object]) -> None:
+        parsed = maps.parse_map_spec(spec)
+        self._validate_fixed_artifact_sources(
+            kind="map",
+            declared=source_ids,
+            referenced=maps.referenced_source_ids(parsed),
+        )
+
+    def _validate_graph_sources(self, source_ids: list[SourceId], spec: Mapping[str, object]) -> None:
+        parsed = graphs.parse_graph_spec(spec)
+        self._validate_fixed_artifact_sources(
+            kind="graph",
+            declared=source_ids,
+            referenced=graphs.referenced_source_ids(parsed),
+        )
+
+    def _validate_fixed_artifact_sources(
+        self,
+        *,
+        kind: str,
+        declared: list[SourceId],
+        referenced: list[SourceId],
+    ) -> None:
+        if len(declared) != len(set(declared)):
+            raise ArtifactSpecError(f"{kind} artifact source_ids must be unique")
+        for source_id in declared:
+            if not isinstance(self.get_source(source_id), FixedResultSource):
+                raise ArtifactSpecError(f"{kind} artifacts require fixed sources")
+        if set(declared) != set(referenced):
+            raise ArtifactSpecError(
+                f"{kind} artifact source_ids {declared!r} do not match spec source_ids {referenced!r}"
+            )
 
     def get_artifact(self, artifact_id: str) -> ArtifactSpec:
         """Return a previously stored chart, map, or graph artifact definition."""

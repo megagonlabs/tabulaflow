@@ -8,9 +8,9 @@ import pytest
 
 from tabulaflow.data.config import SQLConnectorConfig
 from tabulaflow.data.sql import SQLConnector
-from tabulaflow.output.specs import ChartArtifactSpec, GraphArtifactSpec, MapArtifactSpec
+from tabulaflow.output.specs import ArtifactSpecError, ChartArtifactSpec, GraphArtifactSpec, MapArtifactSpec
 from tabulaflow.core import ExecResult
-from tabulaflow.output.store import OutputStore, ResultMetadata
+from tabulaflow.output.store import OutputStore, ResultMetadata, SourceResolutionError
 
 
 def _make_execution(n_rows: int = 5) -> tuple[str, ExecResult]:
@@ -56,10 +56,13 @@ def test_map_and_graph_artifacts_reject_parameterized_sources() -> None:
     output_store = OutputStore()
     source = output_store.add_parameterized_source("workspace", [], "SELECT 1")
 
-    with pytest.raises(ValueError, match="map artifact 'MAP1' requires fixed sources"):
-        output_store.add_map_artifact([source.id], {"layers": []})
-    with pytest.raises(ValueError, match="graph artifact 'GRAPH1' requires fixed sources"):
-        output_store.add_graph_artifact([source.id], {"nodes": [], "edges": []})
+    with pytest.raises(ArtifactSpecError, match="map artifacts require fixed sources"):
+        output_store.add_map_artifact(
+            [source.id],
+            {"layers": [{"type": "points", "source_id": source.id, "lat": "lat", "lng": "lng"}]},
+        )
+    with pytest.raises(ArtifactSpecError, match="graph artifacts require fixed sources"):
+        output_store.add_graph_artifact([source.id], {"nodes": [{"source_id": source.id, "id": "id"}]})
 
 
 def _make_error_execution() -> tuple[str, ExecResult]:
@@ -207,7 +210,7 @@ class TestWithConnector:
     @pytest.mark.asyncio
     async def test_error_results_not_tracked(self, workspace: SQLConnector) -> None:
         h = OutputStore(max_in_memory=2, spill_connector=workspace)
-        with pytest.raises(ValueError, match="syntax error"):
+        with pytest.raises(SourceResolutionError, match="syntax error"):
             await h.add_fixed_result_source("db", "sql", *_make_error_execution())
         await h.add_fixed_result_source("db", "sql", *_make_execution())
         assert h._results.in_memory_count == 1
@@ -240,13 +243,13 @@ class TestWithConnector:
         await h.add_fixed_result_source("db", "sql", *_make_execution())
         await h.add_fixed_result_source("db", "sql", *_make_execution())
         assert not h._results.has_in_memory("R1")
+        with pytest.raises(KeyError):
+            h.add_chart_artifact("S9", {"mark": "bar"})
         chart_id = h.add_chart_artifact("S1", {"mark": "bar"}).id
         assert not h._results.has_in_memory("R1")
         assert chart_id == "CHART1"
         assert _chart_artifact(h, "CHART1").source_id == "S1"
         assert _chart_artifact(h, "CHART1").spec == {"mark": "bar"}
-        with pytest.raises(KeyError):
-            h.add_chart_artifact("S9", {"mark": "bar"})
         with pytest.raises(KeyError):
             h.get_artifact("CHART9")
 
@@ -255,6 +258,8 @@ class TestWithConnector:
         h = OutputStore(spill_connector=workspace)
         await h.add_fixed_result_source("db", "sql", *_make_execution())
         spec = {"layers": [{"type": "points", "source_id": "S1", "lat": "lat", "lng": "lng"}]}
+        with pytest.raises(ArtifactSpecError, match="do not match"):
+            h.add_map_artifact([], spec)
         map_id = h.add_map_artifact(["S1"], spec).id
         assert map_id == "MAP1"
         assert _map_artifact(h, "MAP1").spec == spec

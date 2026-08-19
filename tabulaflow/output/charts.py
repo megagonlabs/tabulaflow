@@ -6,6 +6,8 @@ import re
 from collections.abc import Mapping
 import pandas as pd
 
+from tabulaflow.output.specs import ArtifactSpecError
+
 _CHART_MAX_ROWS = 20_000
 _MULTIVIEW_KEYS = ("layer", "concat", "hconcat", "vconcat", "facet", "repeat", "spec")
 _MARK_LABELS = {
@@ -32,7 +34,7 @@ __all__ = [
 ]
 
 
-class ChartSpecError(ValueError):
+class ChartSpecError(ArtifactSpecError):
     """Raised when a chart specification cannot be applied to its sources."""
 
 

@@ -8,8 +8,11 @@ from typing import Literal, TypeAlias
 
 import pandas as pd
 
+import tabulaflow.output.graphs as graphs
+import tabulaflow.output.maps as maps
 from tabulaflow.output.specs import (
     OutputSpec,
+    ArtifactSpecError,
     ArtifactId,
     ArtifactSpec,
     ChartArtifactSpec,
@@ -29,14 +32,7 @@ from tabulaflow.output.specs import (
 )
 from tabulaflow.core import GraphResult
 from tabulaflow.output.charts import validate_chart_spec
-from tabulaflow.output.store import OutputStore, ResultPayload, SourceNotApplicable
-from tabulaflow.output.graphs import (
-    graph_size,
-    materialize_graph_result,
-    normalize_graph_spec,
-    validate_graph_size,
-)
-from tabulaflow.output.maps import normalize_map_spec
+from tabulaflow.output.store import OutputStore, ResultPayload, SourceNotApplicable, SourceResolutionError
 
 __all__ = [
     "OutputResolutionError",
@@ -133,7 +129,7 @@ class OutputResolver:
         active_selection = _normalize_selection(output, selection)
         parameters = {parameter.id: parameter for parameter in output.parameters}
         sources = {source.id: source for source in output.sources}
-        resolved_sources: dict[SourceId, ResultPayload] = {}
+        source_outcomes: dict[SourceId, ResultPayload | SourceNotApplicable | SourceResolutionError | KeyError] = {}
         artifacts: list[ResolvedArtifact] = []
         for artifact in output.artifacts:
             try:
@@ -142,9 +138,17 @@ class OutputResolver:
                     source = sources.get(source_id)
                     if source is None:
                         raise OutputResolutionError(f"artifact {artifact.id!r} references unknown source {source_id!r}")
-                    if source_id not in resolved_sources:
-                        resolved_sources[source_id] = await self._resolve_source(source, parameters, active_selection)
-                    payload_by_source[source_id] = resolved_sources[source_id]
+                    if source_id not in source_outcomes:
+                        try:
+                            source_outcomes[source_id] = await self._resolve_source(
+                                source, parameters, active_selection
+                            )
+                        except (SourceNotApplicable, SourceResolutionError, KeyError) as exc:
+                            source_outcomes[source_id] = exc
+                    outcome = source_outcomes[source_id]
+                    if isinstance(outcome, Exception):
+                        raise outcome
+                    payload_by_source[source_id] = outcome
                 artifacts.append(_resolved_artifact(artifact, payload_by_source))
             except OutputResolutionError:
                 raise
@@ -157,7 +161,7 @@ class OutputResolver:
                         status="not_applicable",
                     )
                 )
-            except (KeyError, ValueError) as exc:
+            except (ArtifactSpecError, SourceResolutionError, KeyError) as exc:
                 artifacts.append(UnavailableArtifact(artifact_id=artifact.id, label=artifact.label, reason=str(exc)))
         return ResolvedOutput(selection=active_selection, artifacts=artifacts)
 
@@ -227,18 +231,22 @@ def _resolved_artifact(artifact: ArtifactSpec, payload_by_source: dict[SourceId,
             spec=artifact.spec,
         )
     if isinstance(artifact, MapArtifactSpec):
+        parsed_map = maps.parse_map_spec(artifact.spec)
+        _validate_artifact_source_ids(artifact.id, artifact.source_ids, maps.referenced_source_ids(parsed_map))
         sources = _dataframes_by_source(payload_by_source)
         return ResolvedMapArtifact(
             artifact_id=artifact.id,
             label=artifact.label,
-            spec=normalize_map_spec(artifact.spec, sources),
+            spec=maps.normalize_map_spec(parsed_map, sources),
             payload_by_source=payload_by_source,
         )
     if isinstance(artifact, GraphArtifactSpec):
+        parsed_graph = graphs.parse_graph_spec(artifact.spec)
+        _validate_artifact_source_ids(artifact.id, artifact.source_ids, graphs.referenced_source_ids(parsed_graph))
         sources = _dataframes_by_source(payload_by_source)
-        normalized = normalize_graph_spec(artifact.spec, sources)
-        graph = materialize_graph_result(normalized, sources)
-        validate_graph_size(graph_size(graph))
+        normalized = graphs.normalize_graph_spec(parsed_graph, sources)
+        graph = graphs.materialize_graph_result(normalized, sources)
+        graphs.validate_graph_size(graphs.graph_size(graph))
         layout = normalized.get("layout")
         return ResolvedGraphArtifact(
             artifact_id=artifact.id,
@@ -249,11 +257,18 @@ def _resolved_artifact(artifact: ArtifactSpec, payload_by_source: dict[SourceId,
     raise TypeError(f"unsupported artifact {type(artifact).__name__}")
 
 
+def _validate_artifact_source_ids(artifact_id: str, declared: list[SourceId], referenced: list[SourceId]) -> None:
+    if set(declared) != set(referenced):
+        raise OutputResolutionError(
+            f"artifact {artifact_id!r} source_ids {declared!r} do not match spec source_ids {referenced!r}"
+        )
+
+
 def _dataframes_by_source(payload_by_source: Mapping[SourceId, ResultPayload]) -> dict[SourceId, pd.DataFrame]:
     sources = {}
     for source_id, payload in payload_by_source.items():
         if payload.df is None:
-            raise ValueError(f"source {source_id!r} returned no data")
+            raise ArtifactSpecError(f"source {source_id!r} returned no data")
         sources[source_id] = payload.df
     return sources
 

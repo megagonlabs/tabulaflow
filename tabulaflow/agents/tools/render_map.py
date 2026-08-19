@@ -129,11 +129,14 @@ class RenderMapTool:
             row_counts[rid] = len(df)
 
         try:
-            normalized = normalize_map_spec(parsed, sources)
+            normalize_map_spec(parsed, sources)
         except MapSpecError as e:
             return f"(error: {e})"
 
-        map_artifact = self._output_store.add_map_artifact(source_ids, normalized)
+        map_artifact = self._output_store.add_map_artifact(
+            source_ids,
+            parsed.model_dump(exclude_none=True, by_alias=True),
+        )
         map_id = map_artifact.id
         label = "Map"
         if source_ids:

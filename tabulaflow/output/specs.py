@@ -16,6 +16,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 __all__ = [
     "ArtifactId",
+    "ArtifactSpecError",
     "ArtifactSpec",
     "ChartArtifactSpec",
     "ChoiceOption",
@@ -48,6 +49,10 @@ SourceId: TypeAlias = str
 ArtifactId: TypeAlias = str
 ResultId: TypeAlias = str
 Selection: TypeAlias = dict[ParameterId, SelectionValue]
+
+
+class ArtifactSpecError(ValueError):
+    """An artifact-specific specification is invalid for its source data."""
 
 
 class ChoiceOption(BaseModel):

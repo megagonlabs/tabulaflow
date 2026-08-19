@@ -123,7 +123,7 @@ class RenderGraphTool:
         except GraphSpecError as e:
             return f"(error: {e})"
 
-        artifact = self._output_store.add_graph_artifact(source_ids, normalized)
+        artifact = self._output_store.add_graph_artifact(source_ids, parsed.model_dump(exclude_none=True))
         graph_id = artifact.id
         label = "Network graph"
         from_text = f" from {', '.join(source_ids)}" if source_ids else ""

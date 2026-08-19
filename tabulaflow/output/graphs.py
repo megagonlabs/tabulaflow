@@ -13,6 +13,7 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_valida
 
 from tabulaflow.core import GraphResult, GraphResultEdge, GraphResultNode
 from tabulaflow.core.serialization import json_ready
+from tabulaflow.output.specs import ArtifactSpecError
 
 
 def _resolve_column(df: pd.DataFrame, name: str) -> str | None:
@@ -41,7 +42,7 @@ __all__ = [
 ]
 
 
-class GraphSpecError(ValueError):
+class GraphSpecError(ArtifactSpecError):
     """Raised when a graph spec cannot be applied to a result."""
 
 

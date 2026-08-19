@@ -193,8 +193,8 @@ render_graph tool                output_store                pane render (browse
 render_graph(*, graph_spec) ──►  add_graph(spec) → "GRAPH1"
   parse + validate spec          GraphArtifact(graph_id,
   resolve columns vs source        graph_spec)  in _graphs
-  DataFrames; store normalized
-  spec (original col names)
+  DataFrames; store parsed
+  declarative spec
 
 agent cites "GRAPH1" in answer
   _artifacts_from_refs           get_graph("GRAPH1")

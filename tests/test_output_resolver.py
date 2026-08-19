@@ -11,6 +11,7 @@ from tabulaflow.output.specs import (
     NumberParameter,
     OutputSpec,
     ParameterizedSource,
+    Selection,
     TableArtifactSpec,
 )
 from tabulaflow.core import ExecResult
@@ -22,7 +23,13 @@ from tabulaflow.output.resolver import (
     ResolvedTableArtifact,
     UnavailableArtifact,
 )
-from tabulaflow.output.store import OutputStore, SourceNotApplicable, render_parameterized_query
+from tabulaflow.output.store import (
+    OutputStore,
+    ResultPayload,
+    SourceNotApplicable,
+    SourceResolutionError,
+    render_parameterized_query,
+)
 
 
 async def _output_store_with_results() -> OutputStore:
@@ -417,3 +424,74 @@ async def test_map_and_graph_specs_resolve_against_source_data() -> None:
     assert map_artifact.spec == {"layers": [{"type": "points", "source_id": source.id, "lat": "lat", "lng": "lng"}]}
     assert isinstance(graph_artifact, ResolvedGraphArtifact)
     assert [node.id for node in graph_artifact.graph.nodes] == ["a"]
+
+
+@pytest.mark.asyncio
+async def test_artifact_wrapper_and_nested_source_ids_must_match() -> None:
+    output_store = OutputStore()
+    await output_store.add_fixed_result_source(
+        "workspace",
+        "sql",
+        "SELECT 1 AS value",
+        ExecResult(df=pd.DataFrame({"value": [1], "lat": [1], "lng": [2]})),
+    )
+    await output_store.add_fixed_result_source(
+        "workspace",
+        "sql",
+        "SELECT 2 AS value",
+        ExecResult(df=pd.DataFrame({"value": [2], "lat": [3], "lng": [4]})),
+    )
+    output = OutputSpec(
+        sources=[FixedResultSource(id="first", result_id="R1"), FixedResultSource(id="second", result_id="R2")],
+        artifacts=[
+            MapArtifactSpec(
+                id="map",
+                source_ids=["first"],
+                spec={"layers": [{"type": "points", "source_id": "second", "lat": "lat", "lng": "lng"}]},
+            )
+        ],
+    )
+
+    with pytest.raises(OutputResolutionError, match="do not match"):
+        await OutputResolver(output_store).resolve(output)
+
+
+@pytest.mark.asyncio
+async def test_source_failure_is_reused_across_artifacts() -> None:
+    class FailingOutputStore(OutputStore):
+        def __init__(self) -> None:
+            super().__init__()
+            self.resolve_count = 0
+
+        async def resolve_source(self, source_id: str, selection: Selection | None = None) -> ResultPayload:
+            self.resolve_count += 1
+            raise SourceResolutionError("query failed")
+
+    output_store = FailingOutputStore()
+    source = output_store.add_parameterized_source("workspace", [], "SELECT 1")
+    output = OutputSpec(
+        sources=[source],
+        artifacts=[
+            TableArtifactSpec(id="first", source_id=source.id),
+            TableArtifactSpec(id="second", source_id=source.id),
+        ],
+    )
+
+    resolved = await OutputResolver(output_store).resolve(output)
+
+    assert output_store.resolve_count == 1
+    assert all(isinstance(artifact, UnavailableArtifact) for artifact in resolved.artifacts)
+
+
+@pytest.mark.asyncio
+async def test_unexpected_source_value_error_is_not_hidden() -> None:
+    class BrokenOutputStore(OutputStore):
+        async def resolve_source(self, source_id: str, selection: Selection | None = None) -> ResultPayload:
+            raise ValueError("programming bug")
+
+    output_store = BrokenOutputStore()
+    source = output_store.add_parameterized_source("workspace", [], "SELECT 1")
+    output = OutputSpec(sources=[source], artifacts=[TableArtifactSpec(id="table", source_id=source.id)])
+
+    with pytest.raises(ValueError, match="programming bug"):
+        await OutputResolver(output_store).resolve(output)
