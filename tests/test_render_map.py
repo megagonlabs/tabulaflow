@@ -11,7 +11,8 @@ import pytest
 from tabulaflow.core import ExecResult
 from tabulaflow.output.specs import MapArtifactSpec
 from tabulaflow.output.store import OutputStore
-from tabulaflow.agents.tools.render_map import MAP_RENDER_MAX_ROWS, RenderMapTool, normalize_map_spec
+from tabulaflow.agents.tools.render_map import RenderMapTool
+from tabulaflow.output.maps import MAP_RENDER_MAX_ROWS, MapSpec, normalize_map_spec, parse_map_spec
 
 
 async def _output_store_with(*dfs: pd.DataFrame) -> OutputStore:
@@ -32,6 +33,11 @@ def _norm(spec: dict[str, Any], **sources: pd.DataFrame) -> dict[str, Any]:
 
 
 class TestNormalizeMapSpec:
+    def test_parse_returns_public_map_spec(self) -> None:
+        parsed = parse_map_spec({"layers": [{"type": "points", "points": [{"lat": 1, "lng": 2}]}]})
+
+        assert isinstance(parsed, MapSpec)
+
     def test_points_layer_resolves_fields_case_insensitively(self) -> None:
         df = pd.DataFrame({"Lat": [37.7], "Lng": [-122.4], "Name": ["SF"]})
         spec = {"layers": [{"type": "points", "source_id": "S1", "lat": "lat", "lng": "lng", "label": "name"}]}

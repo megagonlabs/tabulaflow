@@ -58,9 +58,9 @@ from tabulaflow.output.specs import (
     TableArtifactSpec,
 )
 from tabulaflow.core import ExecResult, GraphResult
-from tabulaflow.agents.tools import OutputStore
+from tabulaflow.output.store import OutputStore
 from tabulaflow.output.graphs import materialize_graph_result, normalize_graph_spec
-from tabulaflow.agents.tools.render_map import normalize_map_spec
+from tabulaflow.output.maps import normalize_map_spec
 
 _MARKDOWN_SHOWCASE = r"""# Heading 1
 

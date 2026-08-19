@@ -6,7 +6,8 @@ from pydantic_ai import ToolReturn
 
 from tabulaflow.output.specs import ChoiceOption, ChoiceParameter
 from tabulaflow.core import ExecResult
-from tabulaflow.agents.tools import ArtifactBundle, ArtifactRef, OutputStore, ShowArtifactsTool
+from tabulaflow.agents.tools import ArtifactBundle, ArtifactRef, ShowArtifactsTool
+from tabulaflow.output.store import OutputStore
 
 
 def _text(result: ToolReturn) -> str:

@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING, Literal, NoReturn
 
 import jinja2
 import pandas as pd
+from pydantic import BaseModel, ConfigDict, Field
 
 from tabulaflow.output.specs import (
     ArtifactId,
@@ -22,7 +23,6 @@ from tabulaflow.output.specs import (
     ParameterSpec,
     ParameterizedSource,
     ResultId,
-    ResultMetadata,
     Selection,
     SourceSpec,
     SourceId,
@@ -37,9 +37,34 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
+__all__ = [
+    "OUTPUT_STORE_SCHEMA",
+    "OutputStore",
+    "ResultMetadata",
+    "ResultPayload",
+    "SourceNotApplicable",
+    "render_parameterized_query",
+]
+
 # Schema this module spills result DataFrames into — one table per result. Kept out
 # of the workspace connector's introspected schema (see ``create_workspace_connector``).
 OUTPUT_STORE_SCHEMA = "_output_store"
+
+
+class ResultMetadata(BaseModel):
+    """Metadata for a concrete materialized result; data lives in runtime storage."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    id: ResultId
+    db_alias: str
+    query: str
+    connector_type: Literal["sql", "property_graph"] = "sql"
+    source_selection: Selection = Field(default_factory=dict)
+    row_count: int | None = None
+    columns: list[str] | None = None
+    affected_rows: int | None = None
+    latency_seconds: float | None = None
 
 
 class SourceNotApplicable(Exception):
@@ -65,7 +90,11 @@ class _StoredResultEntry:
 
 @dataclass(frozen=True)
 class ResultPayload:
-    """Runtime payload for a materialized result."""
+    """Runtime payload for a materialized result.
+
+    Consumers must treat ``df`` as read-only because it may reference the
+    session cache directly.
+    """
 
     metadata: ResultMetadata
     df: pd.DataFrame | None = None
@@ -397,7 +426,9 @@ class OutputStore:
 
     def _store_artifact(self, artifact: ArtifactSpec) -> None:
         for source_id in artifact_source_ids(artifact):
-            self.get_source(source_id)
+            source = self.get_source(source_id)
+            if isinstance(artifact, MapArtifactSpec | GraphArtifactSpec) and not isinstance(source, FixedResultSource):
+                raise ValueError(f"{artifact.kind} artifact {artifact.id!r} requires fixed sources")
         self._artifacts[artifact.id] = artifact
 
     def get_artifact(self, artifact_id: str) -> ArtifactSpec:

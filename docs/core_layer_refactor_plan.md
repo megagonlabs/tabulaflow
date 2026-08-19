@@ -267,8 +267,10 @@ output/
   specs.py
   store.py
   resolver.py
-  schema_compression.py
+  charts.py
+  maps.py
   graphs.py
+  schema_compression.py
   erd.py
   formatting/
     __init__.py
@@ -298,9 +300,10 @@ Naming decisions:
 
 File ownership:
 
-- `output/specs.py`: pure declarative output models and helpers, including `OutputSpec`, parameter specs, source specs, artifact specs, `ResultMetadata`, `canonical_selection_key`, and `artifact_source_ids`.
-- `output/store.py`: `OutputStore`, `ResultPayload`, `SourceNotApplicable`, `render_parameterized_query`, `OUTPUT_STORE_SCHEMA`, and runtime result/source/artifact storage.
+- `output/specs.py`: pure declarative output models and helpers, including `OutputSpec`, parameter specs, source specs, artifact specs, `canonical_selection_key`, and `artifact_source_ids`.
+- `output/store.py`: `OutputStore`, `ResultMetadata`, `ResultPayload`, `SourceNotApplicable`, `render_parameterized_query`, `OUTPUT_STORE_SCHEMA`, and runtime result/source/artifact storage.
 - `output/resolver.py`: `OutputResolver` and resolved artifact/result payload types.
+- `output/charts.py`, `output/maps.py`, and `output/graphs.py`: artifact-specific grammar validation, normalization, and materialization.
 - `output/formatting/`: output-facing human/LLM formatting functions and schema/ERD formatter implementations.
 - `output/schema_compression.py`: lossy schema compaction for prompt and display consumption.
 
@@ -598,7 +601,6 @@ This includes:
 - `ChartArtifactSpec`
 - `MapArtifactSpec`
 - `GraphArtifactSpec`
-- `ResultMetadata`
 
 ### Schema formatters
 

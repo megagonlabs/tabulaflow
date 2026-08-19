@@ -1,4 +1,4 @@
-"""Runtime storage and resolution for clean output specs."""
+"""Resolve output specifications into display-ready artifacts."""
 
 from __future__ import annotations
 
@@ -28,8 +28,27 @@ from tabulaflow.output.specs import (
     validate_parameter_value,
 )
 from tabulaflow.core import GraphResult
+from tabulaflow.output.charts import validate_chart_spec
 from tabulaflow.output.store import OutputStore, ResultPayload, SourceNotApplicable
-from tabulaflow.output.graphs import materialize_graph_result, validate_graph_size, graph_result_size
+from tabulaflow.output.graphs import (
+    graph_result_size,
+    materialize_graph_result,
+    normalize_graph_spec,
+    validate_graph_size,
+)
+from tabulaflow.output.maps import normalize_map_spec
+
+__all__ = [
+    "OutputResolutionError",
+    "OutputResolver",
+    "ResolvedArtifact",
+    "ResolvedChartArtifact",
+    "ResolvedGraphArtifact",
+    "ResolvedMapArtifact",
+    "ResolvedOutput",
+    "ResolvedTableArtifact",
+    "UnavailableArtifact",
+]
 
 
 class OutputResolutionError(ValueError):
@@ -126,6 +145,7 @@ class OutputResolver:
                     if source_id not in resolved_sources:
                         resolved_sources[source_id] = await self._resolve_source(source, parameters, active_selection)
                     payload_by_source[source_id] = resolved_sources[source_id]
+                artifacts.append(_resolved_artifact(artifact, payload_by_source))
             except OutputResolutionError:
                 raise
             except SourceNotApplicable as exc:
@@ -139,8 +159,6 @@ class OutputResolver:
                 )
             except (KeyError, ValueError) as exc:
                 artifacts.append(UnavailableArtifact(artifact_id=artifact.id, label=artifact.label, reason=str(exc)))
-            else:
-                artifacts.append(_resolved_artifact(artifact, payload_by_source))
         return ResolvedOutput(selection=active_selection, artifacts=artifacts)
 
     async def _resolve_source(
@@ -205,20 +223,22 @@ def _resolved_artifact(artifact: ArtifactSpec, payload_by_source: dict[SourceId,
             label=artifact.label,
             source_id=artifact.source_id,
             payload=payload,
-            spec=artifact.spec,
+            spec=validate_chart_spec(artifact.spec, {artifact.source_id: payload.df}),
         )
     if isinstance(artifact, MapArtifactSpec):
+        sources = _dataframes_by_source(payload_by_source)
         return ResolvedMapArtifact(
             artifact_id=artifact.id,
             label=artifact.label,
-            spec=artifact.spec,
+            spec=normalize_map_spec(artifact.spec, sources),
             payload_by_source=payload_by_source,
         )
     if isinstance(artifact, GraphArtifactSpec):
         sources = _dataframes_by_source(payload_by_source)
-        graph = materialize_graph_result(artifact.spec, sources)
+        normalized = normalize_graph_spec(artifact.spec, sources)
+        graph = materialize_graph_result(normalized, sources)
         validate_graph_size(graph_result_size(graph))
-        layout = artifact.spec.get("layout")
+        layout = normalized.get("layout")
         return ResolvedGraphArtifact(
             artifact_id=artifact.id,
             label=artifact.label,

@@ -11,11 +11,11 @@ import pytest
 from tabulaflow.app.pane import _add_line_hover, build_chart_data
 from tabulaflow.output.specs import ChartArtifactSpec, ChoiceOption, ChoiceParameter
 from tabulaflow.core import ExecResult
+from tabulaflow.output.charts import chart_type_label
 from tabulaflow.output.store import OutputStore
 from tabulaflow.agents.tools.render_chart import (
     ChartNotRenderable,
     RenderChartTool,
-    chart_type_label,
     is_plotext_renderable,
     render_plotext,
 )

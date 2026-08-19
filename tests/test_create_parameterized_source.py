@@ -12,11 +12,9 @@ from tabulaflow.data.sql import SQLConnector
 from tabulaflow.output.specs import ChoiceOption, ChoiceParameter, NumberParameter, OutputSpec, TableArtifactSpec
 from tabulaflow.agents.tools import (
     CreateParameterizedSourceTool,
-    OutputResolver,
-    OutputStore,
-    ResolvedTableArtifact,
-    UnavailableArtifact,
 )
+from tabulaflow.output.resolver import OutputResolver, ResolvedTableArtifact, UnavailableArtifact
+from tabulaflow.output.store import OutputStore
 
 
 def _text(result: ToolReturn) -> str:

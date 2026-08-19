@@ -14,6 +14,34 @@ from typing import Annotated, Any, Literal, TypeAlias
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
+__all__ = [
+    "ArtifactId",
+    "ArtifactSpec",
+    "ChartArtifactSpec",
+    "ChoiceOption",
+    "ChoiceParameter",
+    "FixedResultSource",
+    "GraphArtifactSpec",
+    "MapArtifactSpec",
+    "NumberParameter",
+    "OutputSpec",
+    "ParameterId",
+    "ParameterSpec",
+    "ParameterizedSource",
+    "ResultId",
+    "Selection",
+    "SelectionKey",
+    "SelectionValue",
+    "SourceId",
+    "SourceSpec",
+    "TableArtifactSpec",
+    "artifact_source_ids",
+    "canonical_selection_key",
+    "default_selection",
+    "parameter_default",
+    "validate_parameter_value",
+]
+
 
 SelectionValue: TypeAlias = str | int | float | bool
 ParameterId: TypeAlias = str
@@ -100,22 +128,6 @@ class ParameterizedSource(BaseModel):
 
 
 SourceSpec: TypeAlias = Annotated[FixedResultSource | ParameterizedSource, Field(discriminator="kind")]
-
-
-class ResultMetadata(BaseModel):
-    """Metadata for a concrete materialized result; data lives in runtime storage."""
-
-    model_config = ConfigDict(extra="forbid")
-
-    id: ResultId
-    db_alias: str
-    query: str
-    connector_type: Literal["sql", "property_graph"] = "sql"
-    source_selection: Selection = Field(default_factory=dict)
-    row_count: int | None = None
-    columns: list[str] | None = None
-    affected_rows: int | None = None
-    latency_seconds: float | None = None
 
 
 class TableArtifactSpec(BaseModel):
@@ -206,11 +218,16 @@ class OutputSpec(BaseModel):
                     if parameter_id not in parameter_by_id:
                         raise ValueError(f"source {source.id!r} references unknown parameter {parameter_id!r}")
 
-        known_sources = set(source_ids)
+        sources_by_id = {source.id: source for source in self.sources}
         for artifact in self.artifacts:
             for source_id in artifact_source_ids(artifact):
-                if source_id not in known_sources:
+                artifact_source = sources_by_id.get(source_id)
+                if artifact_source is None:
                     raise ValueError(f"artifact {artifact.id!r} references unknown source {source_id!r}")
+                if isinstance(artifact, MapArtifactSpec | GraphArtifactSpec) and not isinstance(
+                    artifact_source, FixedResultSource
+                ):
+                    raise ValueError(f"{artifact.kind} artifact {artifact.id!r} requires fixed sources")
         return self
 
 

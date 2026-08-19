@@ -44,12 +44,11 @@ from tabulaflow.output.specs import (
     ChoiceParameter,
     FixedResultSource,
     OutputSpec,
-    ResultMetadata,
     TableArtifactSpec,
 )
-from tabulaflow.output.store import OutputStore, ResultPayload
+from tabulaflow.output.store import OutputStore, ResultMetadata, ResultPayload
 from tabulaflow.output.resolver import ResolvedOutput, UnavailableArtifact
-from tabulaflow.agents.tools.render_map import MAP_RENDER_MAX_ROWS
+from tabulaflow.output.maps import MAP_RENDER_MAX_ROWS
 
 
 @contextlib.contextmanager

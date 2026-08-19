@@ -10,7 +10,7 @@ from tabulaflow.data.config import SQLConnectorConfig
 from tabulaflow.data.sql import SQLConnector
 from tabulaflow.output.specs import ChartArtifactSpec, GraphArtifactSpec, MapArtifactSpec
 from tabulaflow.core import ExecResult
-from tabulaflow.output.store import OutputStore
+from tabulaflow.output.store import OutputStore, ResultMetadata
 
 
 def _make_execution(n_rows: int = 5) -> tuple[str, ExecResult]:
@@ -34,6 +34,32 @@ def _graph_artifact(output_store: OutputStore, graph_id: str) -> GraphArtifactSp
     artifact = output_store.get_artifact(graph_id)
     assert isinstance(artifact, GraphArtifactSpec)
     return artifact
+
+
+def test_result_metadata_owns_query_provenance() -> None:
+    metadata = ResultMetadata(
+        id="Q2",
+        db_alias="workspace",
+        query="SELECT * FROM customers WHERE total_spend >= 50000",
+        source_selection={"min_spend": 50_000},
+        affected_rows=3,
+        row_count=20,
+        columns=["customer", "total_spend"],
+    )
+
+    assert metadata.db_alias == "workspace"
+    assert metadata.source_selection == {"min_spend": 50_000}
+    assert metadata.affected_rows == 3
+
+
+def test_map_and_graph_artifacts_reject_parameterized_sources() -> None:
+    output_store = OutputStore()
+    source = output_store.add_parameterized_source("workspace", [], "SELECT 1")
+
+    with pytest.raises(ValueError, match="map artifact 'MAP1' requires fixed sources"):
+        output_store.add_map_artifact([source.id], {"layers": []})
+    with pytest.raises(ValueError, match="graph artifact 'GRAPH1' requires fixed sources"):
+        output_store.add_graph_artifact([source.id], {"nodes": [], "edges": []})
 
 
 def _make_error_execution() -> tuple[str, ExecResult]:

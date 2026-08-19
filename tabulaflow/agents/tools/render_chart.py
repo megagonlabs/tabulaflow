@@ -14,6 +14,13 @@ from typing import Any, ClassVar
 import pandas as pd
 from pydantic_ai import Tool
 
+from tabulaflow.output.charts import (
+    ChartSpecError,
+    chart_mark_type,
+    chart_type_label,
+    resolve_chart_column,
+    validate_chart_spec,
+)
 from tabulaflow.output.specs import FixedResultSource, ParameterizedSource
 from tabulaflow.output.store import OutputStore
 
@@ -27,12 +34,6 @@ _MARK_TO_PLOTEXT = {
     "point": "scatter",
 }
 _PLOTEXT_MARKS = frozenset(_MARK_TO_PLOTEXT)
-
-# Largest result that may be charted. The data is shipped to the browser pane,
-# so beyond this the payload balloons and Vega janks; a chart over this many raw
-# rows is also almost always un-aggregated. The tool refuses rather than
-# truncating (a partial chart would silently misrepresent the data).
-_MAX_CHART_ROWS = 20_000
 
 
 def _validate_source_id(source_id: str) -> None:
@@ -88,23 +89,6 @@ _GROUPING_CHANNELS = (
 # cover the rare unsorted case isn't worth it.
 _RESHAPING_KEYS = ("aggregate", "bin", "timeUnit")
 
-_MARK_LABELS = {
-    "bar": "Bar chart",
-    "line": "Line chart",
-    "point": "Scatter plot",
-    "circle": "Scatter plot",
-    "square": "Scatter plot",
-    "tick": "Strip plot",
-    "area": "Area chart",
-    "arc": "Pie chart",
-    "rect": "Heatmap",
-    "boxplot": "Box plot",
-    "rule": "Rule chart",
-    "text": "Text chart",
-    "trail": "Line chart",
-    "geoshape": "Map",
-}
-
 
 def parse_vegalite_spec(spec: dict[str, Any]) -> tuple[str, str, str, str]:
     """Extract (mark, x_field, y_field, title) from a Vega-Lite spec.
@@ -141,59 +125,6 @@ def parse_vegalite_spec(spec: dict[str, Any]) -> tuple[str, str, str, str]:
     return _MARK_TO_PLOTEXT[mark_type], str(x_field), str(y_field), str(title)
 
 
-def resolve_column(df: pd.DataFrame, name: str) -> str | None:
-    """Case-insensitive column name resolution."""
-    for col in df.columns:
-        if str(col).lower() == name.lower():
-            return str(col)
-    return None
-
-
-def _spec_field_refs(spec: object) -> tuple[set[str], bool]:
-    """Collect every ``field`` name referenced anywhere in a spec, with whether the
-    spec has any ``transform``.
-
-    Walks the whole tree, so layer/concat/facet sub-specs and channels like
-    ``tooltip`` / ``sort`` are covered. When a transform is present, fields may be
-    derived (not source columns), so the caller should skip column validation.
-    """
-    fields: set[str] = set()
-    has_transform = False
-
-    def walk(node: object) -> None:
-        nonlocal has_transform
-        if isinstance(node, dict):
-            if "transform" in node:
-                has_transform = True
-            field = node.get("field")
-            if isinstance(field, str):
-                fields.add(field)
-            for value in node.values():
-                walk(value)
-        elif isinstance(node, list):
-            for value in node:
-                walk(value)
-
-    walk(spec)
-    return fields, has_transform
-
-
-def _field_resolves(df: pd.DataFrame, field: str) -> bool:
-    """Whether a Vega-Lite field reference maps to a result column — directly or via
-    the root of a nested access (``meta.country`` / ``meta['country']`` → column
-    ``meta``), so a valid nested-field spec isn't mistaken for a typo."""
-    if resolve_column(df, field) is not None:
-        return True
-    root = re.split(r"[.\[]", field, maxsplit=1)[0]
-    return root != field and resolve_column(df, root) is not None
-
-
-def _mark_type(spec: dict[str, Any]) -> str:
-    """Extract the mark type string from a spec (``""`` if absent/multi-view)."""
-    mark = spec.get("mark", "")
-    return str(mark.get("type", "")) if isinstance(mark, dict) else str(mark)
-
-
 def is_plotext_renderable(spec: dict[str, Any]) -> bool:
     """Whether a Vega-Lite spec maps faithfully onto a plotext terminal chart.
 
@@ -207,7 +138,7 @@ def is_plotext_renderable(spec: dict[str, Any]) -> bool:
         return False
     if "transform" in spec or any(key in spec for key in _MULTIVIEW_KEYS):
         return False
-    if _mark_type(spec) not in _PLOTEXT_MARKS:
+    if chart_mark_type(spec) not in _PLOTEXT_MARKS:
         return False
     encoding = spec.get("encoding")
     if not isinstance(encoding, dict):
@@ -223,17 +154,6 @@ def is_plotext_renderable(spec: dict[str, Any]) -> bool:
         if any(key in enc for key in _RESHAPING_KEYS):
             return False
     return True
-
-
-def chart_type_label(spec: dict[str, Any]) -> str:
-    """Human-readable chart-type label for a spec (for UI cards and messages)."""
-    if not isinstance(spec, dict):
-        return "Chart"
-    if any(key in spec for key in ("layer", "hconcat", "vconcat", "concat")):
-        return "Composite chart"
-    if "facet" in spec or "repeat" in spec:
-        return "Faceted chart"
-    return _MARK_LABELS.get(_mark_type(spec), "Chart")
 
 
 def _fill_bars_with_background(rendered: str, color: tuple[int, int, int]) -> str:
@@ -329,8 +249,8 @@ def render_plotext(
     # plt.theme("dark")'s concrete canvas color.
     plt.canvas_color("default")
 
-    x_col = resolve_column(df, x_field)
-    y_col = resolve_column(df, y_field)
+    x_col = resolve_chart_column(df, x_field)
+    y_col = resolve_chart_column(df, y_field)
     if x_col is None or y_col is None:
         raise ChartNotRenderable(f"chart field not found (x='{x_field}', y='{y_field}')")
 
@@ -459,9 +379,6 @@ class RenderChartTool:
         if not isinstance(spec, dict):
             return "(error: spec must be a JSON object)"
 
-        if "mark" not in spec and not any(key in spec for key in _MULTIVIEW_KEYS):
-            return "(error: spec must have a 'mark' or be a multi-view spec (layer/facet/concat))"
-
         try:
             variants = await self._source_variants(source_id)
         except KeyError:
@@ -469,26 +386,10 @@ class RenderChartTool:
         except ValueError as e:
             return f"(error: {e})"
 
-        # Block a spec that references fields the result doesn't have (a typo, an
-        # invalid chart). Valid nested references resolve via their root column, and
-        # a transform may derive fields, so neither is rejected.
-        field_refs, has_transform = _spec_field_refs(spec)
-        errors = []
-        for variant in variants:
-            if variant.df.empty:
-                errors.append(f"{variant.label} — result is empty")
-            if len(variant.df) > _MAX_CHART_ROWS:
-                errors.append(
-                    f"{variant.label} — {len(variant.df):,} rows is too large to chart; max {_MAX_CHART_ROWS:,} rows"
-                )
-            if not has_transform:
-                missing = sorted(f for f in field_refs if not _field_resolves(variant.df, f))
-                if missing:
-                    errors.append(
-                        f"{variant.label} — field(s) not found: {missing}. Available columns: {list(variant.df.columns)}"
-                    )
-        if errors:
-            return f"(error: chart source validation failed for {len(errors)} issue(s):\n  " + "\n  ".join(errors) + ")"
+        try:
+            spec = validate_chart_spec(spec, {variant.label: variant.df for variant in variants})
+        except ChartSpecError as e:
+            return f"(error: {e})"
 
         label = chart_type_label(spec)
         chart = self._output_store.add_chart_artifact(source_id, spec)

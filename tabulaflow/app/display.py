@@ -239,7 +239,7 @@ def _build_chart_card(spec: dict[str, object], *, height: int | None) -> Rendera
     centered. Full-screen (``height`` set) fills the chart region and centers
     vertically; the inline result preview (``height`` is None) sizes to content.
     """
-    from tabulaflow.agents.tools.render_chart import chart_type_label
+    from tabulaflow.output.charts import chart_type_label
 
     type_label = chart_type_label(spec)
     title = _spec_title(spec)
@@ -302,7 +302,7 @@ def _build_map_card(map_spec: dict[str, object]) -> RenderableType:
     Mirrors :func:`_build_chart_card`: a dim rounded box with the map's title/type
     and a line directing the user to the browser pane.
     """
-    from tabulaflow.agents.tools.render_map import map_type_label
+    from tabulaflow.output.maps import map_type_label
 
     type_label = map_type_label(map_spec)
     title = map_spec.get("title") if isinstance(map_spec, dict) else None

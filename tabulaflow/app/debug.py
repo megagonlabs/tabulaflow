@@ -12,7 +12,6 @@ from typing import TYPE_CHECKING, Any
 
 from tabulaflow.app.display import CardGroup, build_resolved_output_card_views
 from tabulaflow.app.widgets import AgentResultWidget
-from tabulaflow.output.specs import ResultMetadata
 from tabulaflow.output.resolver import (
     ResolvedArtifact,
     ResolvedChartArtifact,
@@ -20,7 +19,7 @@ from tabulaflow.output.resolver import (
     ResolvedTableArtifact,
     UnavailableArtifact,
 )
-from tabulaflow.output.store import ResultPayload
+from tabulaflow.output.store import ResultMetadata, ResultPayload
 
 
 @dataclass(frozen=True)

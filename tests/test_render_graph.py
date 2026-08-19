@@ -13,7 +13,14 @@ import pytest
 from tabulaflow.core import ExecResult
 from tabulaflow.output.specs import GraphArtifactSpec
 from tabulaflow.output.store import OutputStore
-from tabulaflow.output.graphs import GRAPH_MAX_NODES, graph_size, materialize_graph_result, normalize_graph_spec
+from tabulaflow.output.graphs import (
+    GRAPH_MAX_NODES,
+    GraphSpec,
+    graph_size,
+    materialize_graph_result,
+    normalize_graph_spec,
+    parse_graph_spec,
+)
 from tabulaflow.agents.tools.render_graph import RenderGraphTool
 
 
@@ -36,6 +43,16 @@ def _norm(spec: Mapping[str, object], **sources: pd.DataFrame) -> dict[str, Any]
 
 
 class TestNormalizeGraphSpec:
+    def test_parse_returns_public_graph_spec(self) -> None:
+        parsed = parse_graph_spec(
+            {
+                "nodes": [{"data": [{"id": "a"}], "id": "id"}],
+                "edges": [{"data": [{"source": "a", "target": "a"}], "source": "source", "target": "target"}],
+            }
+        )
+
+        assert isinstance(parsed, GraphSpec)
+
     def test_edge_source_resolves_fields_case_insensitively(self) -> None:
         df = pd.DataFrame({"Src": ["a"], "Dst": ["b"], "Rel": ["knows"]})
         spec = {

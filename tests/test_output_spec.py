@@ -5,8 +5,9 @@ from tabulaflow.output.specs import (
     ChoiceOption,
     ChoiceParameter,
     FixedResultSource,
+    GraphArtifactSpec,
+    MapArtifactSpec,
     NumberParameter,
-    ResultMetadata,
     ParameterizedSource,
     TableArtifactSpec,
     canonical_selection_key,
@@ -107,22 +108,6 @@ def test_parameterized_source_keeps_query_template() -> None:
     assert source.query_template == "SELECT * FROM customers WHERE metric = {{ metric }}"
 
 
-def test_result_record_owns_query_provenance() -> None:
-    record = ResultMetadata(
-        id="Q2",
-        db_alias="workspace",
-        query="SELECT * FROM customers WHERE total_spend >= 50000",
-        source_selection={"min_spend": 50_000},
-        affected_rows=3,
-        row_count=20,
-        columns=["customer", "total_spend"],
-    )
-
-    assert record.db_alias == "workspace"
-    assert record.source_selection == {"min_spend": 50_000}
-    assert record.affected_rows == 3
-
-
 def test_constant_result_source_has_no_inputs() -> None:
     source = FixedResultSource(id="fixed", result_id="Q1")
 
@@ -132,6 +117,22 @@ def test_constant_result_source_has_no_inputs() -> None:
 def test_output_spec_rejects_unknown_artifact_source() -> None:
     with pytest.raises(ValueError, match="unknown source"):
         OutputSpec(artifacts=[TableArtifactSpec(id="table", source_id="missing")])
+
+
+def test_map_and_graph_artifacts_require_fixed_sources() -> None:
+    source = ParameterizedSource(id="source", parameter_ids=[], db_alias="workspace", query_template="SELECT 1")
+
+    with pytest.raises(ValueError, match="map artifact 'map' requires fixed sources"):
+        OutputSpec(
+            sources=[source],
+            artifacts=[MapArtifactSpec(id="map", source_ids=[source.id], spec={"layers": []})],
+        )
+
+    with pytest.raises(ValueError, match="graph artifact 'graph' requires fixed sources"):
+        OutputSpec(
+            sources=[source],
+            artifacts=[GraphArtifactSpec(id="graph", source_ids=[source.id], spec={"nodes": [], "edges": []})],
+        )
 
 
 def test_output_spec_serialization_round_trip() -> None:

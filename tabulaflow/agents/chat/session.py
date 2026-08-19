@@ -62,9 +62,9 @@ if TYPE_CHECKING:
     from tabulaflow.agents.tools import (
         ArtifactBundle,
         ExecuteBashTool,
-        OutputStore,
         ToolProgressUpdate,
     )
+    from tabulaflow.output.store import OutputStore
 
 logger = logging.getLogger(__name__)
 
@@ -153,7 +153,8 @@ class ChatSession:
     _active_emit: Callable[[ChatEvent], None] | None = field(init=False, default=None)
 
     def __post_init__(self) -> None:
-        from tabulaflow.agents.tools import ProgressReportingTool, OutputStore
+        from tabulaflow.agents.tools import ProgressReportingTool
+        from tabulaflow.output.store import OutputStore
 
         self._output_store = OutputStore(spill_connector=self.workspace, registry=self.registry)
         self._message_store = MessageStore()

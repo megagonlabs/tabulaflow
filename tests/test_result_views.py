@@ -25,7 +25,6 @@ from tabulaflow.output.specs import (
     NumberParameter,
     OutputSpec,
     ParameterSpec,
-    ResultMetadata,
 )
 from tabulaflow.core import GraphResult, GraphResultEdge, GraphResultNode
 from tabulaflow.output.resolver import (
@@ -37,7 +36,7 @@ from tabulaflow.output.resolver import (
     ResolvedTableArtifact,
     UnavailableArtifact,
 )
-from tabulaflow.output.store import ResultPayload
+from tabulaflow.output.store import ResultMetadata, ResultPayload
 
 
 def _payload(

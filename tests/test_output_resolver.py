@@ -6,21 +6,23 @@ from tabulaflow.output.specs import (
     ChoiceParameter,
     ChartArtifactSpec,
     FixedResultSource,
+    GraphArtifactSpec,
+    MapArtifactSpec,
     NumberParameter,
     OutputSpec,
     ParameterizedSource,
     TableArtifactSpec,
 )
 from tabulaflow.core import ExecResult
-from tabulaflow.agents.tools import (
+from tabulaflow.output.resolver import (
     OutputResolutionError,
     OutputResolver,
-    OutputStore,
+    ResolvedGraphArtifact,
+    ResolvedMapArtifact,
     ResolvedTableArtifact,
-    SourceNotApplicable,
     UnavailableArtifact,
 )
-from tabulaflow.output.store import render_parameterized_query
+from tabulaflow.output.store import OutputStore, SourceNotApplicable, render_parameterized_query
 
 
 async def _output_store_with_results() -> OutputStore:
@@ -332,3 +334,86 @@ async def test_chart_artifact_without_dataframe_is_unavailable() -> None:
     assert isinstance(artifact, UnavailableArtifact)
     assert artifact.status == "no_data"
     assert artifact.reason == "Source returned no tabular data"
+
+
+@pytest.mark.asyncio
+async def test_invalid_artifact_specs_do_not_abort_other_artifacts() -> None:
+    output_store = OutputStore()
+    await output_store.add_fixed_result_source(
+        "workspace",
+        "sql",
+        "SELECT 1 AS value",
+        ExecResult(df=pd.DataFrame({"value": [1]})),
+    )
+    source = FixedResultSource(id="fixed", result_id="R1")
+    output = OutputSpec(
+        sources=[source],
+        artifacts=[
+            ChartArtifactSpec(
+                id="chart",
+                source_id=source.id,
+                spec={"mark": "bar", "encoding": {"x": {"field": "missing"}}},
+            ),
+            MapArtifactSpec(
+                id="map",
+                source_ids=[source.id],
+                spec={"layers": [{"type": "points", "source_id": source.id, "lat": "missing", "lng": "value"}]},
+            ),
+            GraphArtifactSpec(
+                id="graph",
+                source_ids=[source.id],
+                spec={
+                    "nodes": [{"source_id": source.id, "id": "missing"}],
+                    "edges": [{"source_id": source.id, "source": "missing", "target": "value"}],
+                },
+            ),
+            TableArtifactSpec(id="table", source_id=source.id),
+        ],
+    )
+
+    resolved = await OutputResolver(output_store).resolve(output)
+
+    assert [type(artifact) for artifact in resolved.artifacts] == [
+        UnavailableArtifact,
+        UnavailableArtifact,
+        UnavailableArtifact,
+        ResolvedTableArtifact,
+    ]
+
+
+@pytest.mark.asyncio
+async def test_map_and_graph_specs_resolve_against_source_data() -> None:
+    output_store = OutputStore()
+    await output_store.add_fixed_result_source(
+        "workspace",
+        "sql",
+        "SELECT * FROM places",
+        ExecResult(df=pd.DataFrame({"id": ["a"], "lat": [1.0], "lng": [2.0], "target": ["a"]})),
+    )
+    source = FixedResultSource(id="fixed", result_id="R1")
+    output = OutputSpec(
+        sources=[source],
+        artifacts=[
+            MapArtifactSpec(
+                id="map",
+                source_ids=[source.id],
+                spec={"layers": [{"type": "points", "source_id": source.id, "lat": "lat", "lng": "lng"}]},
+            ),
+            GraphArtifactSpec(
+                id="graph",
+                source_ids=[source.id],
+                spec={
+                    "nodes": [{"source_id": source.id, "id": "id"}],
+                    "edges": [{"source_id": source.id, "source": "id", "target": "target"}],
+                },
+            ),
+        ],
+    )
+
+    resolved = await OutputResolver(output_store).resolve(output)
+
+    map_artifact, graph_artifact = resolved.artifacts
+    assert isinstance(map_artifact, ResolvedMapArtifact)
+    assert map_artifact.spec == {"layers": [{"type": "points", "source": source.id, "lat": "lat", "lng": "lng"}]}
+    assert isinstance(graph_artifact, ResolvedGraphArtifact)
+    assert [node.id for node in graph_artifact.graph.nodes] == ["a"]

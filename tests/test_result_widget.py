@@ -7,9 +7,9 @@ from textual.containers import VerticalScroll
 from tabulaflow.app.display import VIEW_KIND_DATA, VIEW_KIND_QUERY, build_resolved_output_card_views
 from tabulaflow.app.widgets import AgentResultWidget
 from tabulaflow.agents.chat import ChatResult
-from tabulaflow.output.specs import NumberParameter, OutputSpec, ResultMetadata
+from tabulaflow.output.specs import NumberParameter, OutputSpec
 from tabulaflow.output.resolver import ResolvedArtifact, ResolvedOutput, ResolvedTableArtifact
-from tabulaflow.output.store import ResultPayload
+from tabulaflow.output.store import ResultMetadata, ResultPayload
 
 
 def _result(result_id: str, label: str) -> ResolvedTableArtifact:

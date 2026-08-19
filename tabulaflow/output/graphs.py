@@ -1,4 +1,4 @@
-"""Tool that stores a declarative node-link graph artifact."""
+"""Graph specification parsing, normalization, and materialization."""
 
 from __future__ import annotations
 
@@ -15,13 +15,30 @@ from tabulaflow.core import GraphResult, GraphResultEdge, GraphResultNode
 from tabulaflow.core.serialization import json_ready
 
 
-def resolve_column(df: pd.DataFrame, name: str) -> str | None:
+def _resolve_column(df: pd.DataFrame, name: str) -> str | None:
     matches = [str(column) for column in df.columns if str(column).casefold() == name.casefold()]
     return matches[0] if len(matches) == 1 else None
 
 
 GRAPH_MAX_NODES = 300
 GRAPH_MAX_EDGES = 700
+
+__all__ = [
+    "GRAPH_MAX_EDGES",
+    "GRAPH_MAX_NODES",
+    "GraphSize",
+    "GraphSpec",
+    "GraphSpecError",
+    "graph_result_size",
+    "graph_size",
+    "graph_type_label",
+    "materialize_graph_result",
+    "normalize_graph_spec",
+    "parse_graph_spec",
+    "referenced_source_ids",
+    "resolve_graph_spec",
+    "validate_graph_size",
+]
 
 
 class GraphSpecError(ValueError):
@@ -66,14 +83,14 @@ class _EdgeSource(_SourceModel):
     tooltip: str | list[str] | Literal[True] | None = None
 
 
-class _GraphSpec(_StrictModel):
+class GraphSpec(_StrictModel):
     title: str | None = None
     layout: Literal["force", "layered", "tree"] = "force"
     nodes: list[_NodeSource] = []
     edges: list[_EdgeSource] = []
 
     @model_validator(mode="after")
-    def _require_sources(self) -> _GraphSpec:
+    def _require_sources(self) -> GraphSpec:
         if not self.edges:
             raise ValueError("graph_spec must include at least one edge-bearing source")
         if not self.nodes:
@@ -115,7 +132,7 @@ def _validation_message(error: ValidationError) -> str:
 def _field(df: pd.DataFrame, value: str | None, *, path: str) -> str:
     if not value:
         raise GraphSpecError(f"{path} must be a column name")
-    resolved = resolve_column(df, value)
+    resolved = _resolve_column(df, value)
     if resolved is None:
         raise GraphSpecError(f"field not found: {value!r}. Available columns: {list(df.columns)}")
     return resolved
@@ -219,15 +236,15 @@ def _normalize_edge_source(df: pd.DataFrame | None, source: _EdgeSource, index: 
     return out
 
 
-def parse_graph_spec(spec: Mapping[str, object]) -> _GraphSpec:
+def parse_graph_spec(spec: Mapping[str, object]) -> GraphSpec:
     """Validate a raw graph spec into a typed model, raising ``GraphSpecError``."""
     try:
-        return _GraphSpec.model_validate(spec)
+        return GraphSpec.model_validate(spec)
     except ValidationError as e:
         raise GraphSpecError(_validation_message(e)) from None
 
 
-def referenced_source_ids(parsed: _GraphSpec) -> list[str]:
+def referenced_source_ids(parsed: GraphSpec) -> list[str]:
     """Return the distinct output-store source ids referenced by a parsed spec."""
     ids: list[str] = []
     all_sources: list[_NodeSource | _EdgeSource] = [
@@ -241,7 +258,7 @@ def referenced_source_ids(parsed: _GraphSpec) -> list[str]:
     return ids
 
 
-def resolve_graph_spec(parsed: _GraphSpec, sources: Mapping[str, pd.DataFrame]) -> dict[str, Any]:
+def resolve_graph_spec(parsed: GraphSpec, sources: Mapping[str, pd.DataFrame]) -> dict[str, Any]:
     """Resolve a parsed spec against per-source DataFrames."""
     out: dict[str, Any] = {"layout": parsed.layout}
     if parsed.title is not None:
