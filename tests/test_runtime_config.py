@@ -20,7 +20,11 @@ def test_sql_config_uses_defaults() -> None:
 
 
 def test_neo4j_config_uses_fast_schema_introspection_by_default() -> None:
-    assert Neo4jConnectorConfig().schema_introspection_mode == "fast"
+    config = Neo4jConnectorConfig()
+
+    assert config.schema_introspection_mode == "fast"
+    assert config.max_graph_result_nodes == 300
+    assert config.max_graph_result_edges == 700
 
 
 def test_sql_config_resolves_explicit_over_environment_over_default(
@@ -40,12 +44,16 @@ def test_connector_configs_share_process_wide_environment_defaults(monkeypatch: 
     monkeypatch.setenv("TABULAFLOW_MAX_RESULT_ROWS", "250")
     monkeypatch.setenv("TABULAFLOW_QUERY_TIMEOUT_SECONDS", "120")
     monkeypatch.setenv("TABULAFLOW_SCHEMA_INTROSPECTION_MODE", "full_scan")
+    monkeypatch.setenv("TABULAFLOW_MAX_GRAPH_RESULT_NODES", "500")
+    monkeypatch.setenv("TABULAFLOW_MAX_GRAPH_RESULT_EDGES", "none")
 
     assert SQLConnectorConfig().max_result_rows == 250
     assert Neo4jConnectorConfig().max_result_rows == 250
     assert SQLConnectorConfig().query_timeout_seconds == 120
     assert Neo4jConnectorConfig().query_timeout_seconds == 120
     assert Neo4jConnectorConfig().schema_introspection_mode == "full_scan"
+    assert Neo4jConnectorConfig().max_graph_result_nodes == 500
+    assert Neo4jConnectorConfig().max_graph_result_edges is None
 
 
 def test_none_environment_value_disables_positive_limit(monkeypatch: pytest.MonkeyPatch) -> None:

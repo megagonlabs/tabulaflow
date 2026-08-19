@@ -85,9 +85,6 @@ RETURN source, type(r) AS relType, target, propertyName,
 ORDER BY relType, source, target, propertyName
 """.strip()
 
-_GRAPH_RESULT_MAX_NODES = 300
-_GRAPH_RESULT_MAX_EDGES = 700
-
 
 def _records_to_df(records: Sequence[neo4j.Record], columns: Sequence[str]) -> pd.DataFrame:
     from neo4j.time import Date, DateTime
@@ -179,15 +176,22 @@ def _is_neo4j_path(value: object) -> bool:
     return hasattr(value, "nodes") and hasattr(value, "relationships")
 
 
-def _extract_neo4j_graph_result(df: pd.DataFrame) -> GraphResult | None:
-    """Extract a generic graph view from Neo4j node/relationship/path cells."""
+def _extract_neo4j_graph_result(
+    df: pd.DataFrame,
+    *,
+    max_nodes: int | None,
+    max_edges: int | None,
+) -> GraphResult | None:
+    """Extract a complete bounded graph from Neo4j node, relationship, and path cells."""
     nodes: dict[str, GraphResultNode] = {}
     edges: dict[str, GraphResultEdge] = {}
 
-    def add_node(node: object) -> str:
+    def add_node(node: object) -> str | None:
         node_id = _neo4j_node_id(node)
         if node_id in nodes:
             return node_id
+        if max_nodes is not None and len(nodes) >= max_nodes:
+            return None
         properties: dict[str, object] = {}
         if hasattr(node, "items"):
             for key, value in node.items():
@@ -200,17 +204,24 @@ def _extract_neo4j_graph_result(df: pd.DataFrame) -> GraphResult | None:
         )
         return node_id
 
-    def add_relationship(rel: object) -> None:
+    def add_relationship(rel: object) -> bool:
         endpoints = _relationship_endpoints(rel)
         if endpoints is None:
-            return
+            return True
         start, end = endpoints
-        source_id = add_node(start)
-        target_id = add_node(end)
+        source_id = _neo4j_node_id(start)
+        target_id = _neo4j_node_id(end)
         rel_id = getattr(rel, "element_id", None) or getattr(rel, "id", None)
         edge_id = str(rel_id) if rel_id is not None else f"{source_id}->{target_id}:{len(edges) + 1}"
         if edge_id in edges:
-            return
+            return True
+        if max_edges is not None and len(edges) >= max_edges:
+            return False
+        new_node_ids = {source_id, target_id} - nodes.keys()
+        if max_nodes is not None and len(nodes) + len(new_node_ids) > max_nodes:
+            return False
+        assert add_node(start) is not None
+        assert add_node(end) is not None
         label = getattr(rel, "type", None) or type(rel).__name__
         properties: dict[str, object] = {}
         if hasattr(rel, "items"):
@@ -224,37 +235,30 @@ def _extract_neo4j_graph_result(df: pd.DataFrame) -> GraphResult | None:
             directed=True,
             properties=properties,
         )
+        return True
 
-    def walk(value: object) -> None:
+    def walk(value: object) -> bool:
         if value is None:
-            return
+            return True
         if _is_neo4j_node(value):
-            add_node(value)
-            return
+            return add_node(value) is not None
         if _is_neo4j_relationship(value):
-            add_relationship(value)
-            return
+            return add_relationship(value)
         if _is_neo4j_path(value):
-            for node in getattr(value, "nodes"):
-                add_node(node)
-            for rel in getattr(value, "relationships"):
-                add_relationship(rel)
-            return
+            return all(add_node(node) is not None for node in getattr(value, "nodes")) and all(
+                add_relationship(rel) for rel in getattr(value, "relationships")
+            )
         if isinstance(value, Mapping):
-            for item in value.values():
-                walk(item)
-            return
+            return all(walk(item) for item in value.values())
         if isinstance(value, Sequence) and not isinstance(value, (str, bytes, bytearray)):
-            for item in value:
-                walk(item)
+            return all(walk(item) for item in value)
+        return True
 
-    for _, row in df.iterrows():
-        for value in row:
-            walk(value)
+    for row in df.itertuples(index=False, name=None):
+        if not all(walk(value) for value in row):
+            return None
 
     if not nodes:
-        return None
-    if len(nodes) > _GRAPH_RESULT_MAX_NODES or len(edges) > _GRAPH_RESULT_MAX_EDGES:
         return None
     return GraphResult(
         nodes=sorted(nodes.values(), key=lambda node: node.id),
@@ -419,7 +423,11 @@ class Neo4jConnector:
                 return_df=True,
                 max_rows=self.config.max_result_rows,
             )
-            graph = _extract_neo4j_graph_result(df)
+            graph = _extract_neo4j_graph_result(
+                df,
+                max_nodes=self.config.max_graph_result_nodes,
+                max_edges=self.config.max_graph_result_edges,
+            )
             latency = time.time() - t0
             return ExecResult(df=df, graph=graph, latency_seconds=latency)
         except Exception as e:

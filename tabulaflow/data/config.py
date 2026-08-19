@@ -39,6 +39,8 @@ class Neo4jConnectorConfig(_ConnectorConfig):
     """Operational policy for a Neo4j connector."""
 
     schema_introspection_mode: Literal["fast", "full_scan"] = "fast"
+    max_graph_result_nodes: PositiveInt | None = 300
+    max_graph_result_edges: PositiveInt | None = 700
 
 
 __all__ = [

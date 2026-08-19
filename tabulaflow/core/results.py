@@ -39,7 +39,7 @@ class GraphResultEdge(BaseModel):
 
 
 class GraphResult(BaseModel):
-    """Node-link graph returned by a query."""
+    """Complete node-link graph derived from a query within connector limits."""
 
     nodes: list[GraphResultNode]
     edges: list[GraphResultEdge]
@@ -52,7 +52,8 @@ class ExecResult(BaseModel):
 
     Attributes:
         df: Complete tabular result for a row-returning query.
-        graph: Graph representation attached to a tabular result.
+        graph: Best-effort complete graph representation attached to a tabular
+            result, or None when no graph is derived within connector limits.
         affected_rows: Rows affected by successful non-row DML, when reported.
         error: Failure details; mutually exclusive with successful payloads.
         latency_seconds: Elapsed execution time, when measured.

@@ -6,7 +6,12 @@ import math
 import pandas as pd
 from neo4j.graph import Graph, Node, Path, Relationship
 
+from tabulaflow.core import GraphResult
 from tabulaflow.data.neo4j import _extract_neo4j_graph_result
+
+
+def _extract(df: pd.DataFrame, *, max_nodes: int | None = 300, max_edges: int | None = 700) -> GraphResult | None:
+    return _extract_neo4j_graph_result(df, max_nodes=max_nodes, max_edges=max_edges)
 
 
 def _neo4j_objects() -> tuple[Node, Node, Relationship, Path]:
@@ -39,7 +44,7 @@ def _neo4j_objects() -> tuple[Node, Node, Relationship, Path]:
 
 def test_extracts_dynamic_relationship_subclasses() -> None:
     alice, matrix, acted_in, _ = _neo4j_objects()
-    result = _extract_neo4j_graph_result(pd.DataFrame({"nodes": [[alice, matrix]], "relationships": [[acted_in]]}))
+    result = _extract(pd.DataFrame({"nodes": [[alice, matrix]], "relationships": [[acted_in]]}))
 
     assert result is not None
     assert [node.model_dump(exclude_none=True) for node in result.nodes] == [
@@ -76,7 +81,7 @@ def test_extracts_dynamic_relationship_subclasses() -> None:
 
 def test_recursively_extracts_nested_paths_and_relationships() -> None:
     _, _, acted_in, path = _neo4j_objects()
-    result = _extract_neo4j_graph_result(pd.DataFrame({"payload": [{"items": [{"path": path}, [acted_in]]}]}))
+    result = _extract(pd.DataFrame({"payload": [{"items": [{"path": path}, [acted_in]]}]}))
 
     assert result is not None
     assert len(result.nodes) == 2
@@ -94,7 +99,7 @@ def test_recursively_extracts_nested_paths_and_relationships() -> None:
 
 def test_extracts_node_only_results() -> None:
     alice, _, _, _ = _neo4j_objects()
-    result = _extract_neo4j_graph_result(pd.DataFrame({"node": [alice]}))
+    result = _extract(pd.DataFrame({"node": [alice]}))
 
     assert result is not None
     assert result.nodes[0].id == "alice-id"
@@ -110,7 +115,7 @@ def test_extracts_non_finite_graph_properties_as_null() -> None:
     rel._start_node = actor
     rel._end_node = movie
 
-    result = _extract_neo4j_graph_result(pd.DataFrame({"node": [movie], "relationship": [rel]}))
+    result = _extract(pd.DataFrame({"node": [movie], "relationship": [rel]}))
 
     assert result is not None
     by_id = {node.id: node for node in result.nodes}
@@ -120,4 +125,23 @@ def test_extracts_non_finite_graph_properties_as_null() -> None:
 
 
 def test_returns_none_without_graph_objects() -> None:
-    assert _extract_neo4j_graph_result(pd.DataFrame({"x": [1]})) is None
+    assert _extract(pd.DataFrame({"x": [1]})) is None
+
+
+def test_returns_none_as_soon_as_node_limit_is_exceeded() -> None:
+    graph = Graph()
+    nodes = [Node(graph, f"node-{index}", index, ["Node"], {}) for index in range(3)]
+
+    assert _extract(pd.DataFrame({"nodes": [nodes[:2]]}), max_nodes=2) is not None
+    assert _extract(pd.DataFrame({"nodes": [nodes]}), max_nodes=2) is None
+
+
+def test_returns_none_when_relationship_would_exceed_edge_limit() -> None:
+    alice, matrix, acted_in, _ = _neo4j_objects()
+    graph = Graph()
+    rel_cls = graph.relationship_type("LIKES")
+    likes = rel_cls(graph, "likes-id", 4, {})
+    likes._start_node = alice
+    likes._end_node = matrix
+
+    assert _extract(pd.DataFrame({"relationships": [[acted_in, likes]]}), max_edges=1) is None

@@ -84,6 +84,8 @@ Neo4j-specific fields:
 
 ```python
 schema_introspection_mode: Literal["fast", "full_scan"] = "fast"
+max_graph_result_nodes: PositiveInt | None = 300
+max_graph_result_edges: PositiveInt | None = 700
 ```
 
 `fast` uses Neo4j metadata procedures. `full_scan` explicitly scans graph data
@@ -144,6 +146,8 @@ TABULAFLOW_COLUMN_STATS_MODE
 TABULAFLOW_QUERY_CACHE_MODE
 TABULAFLOW_QUERY_CACHE_STORE
 TABULAFLOW_SCHEMA_INTROSPECTION_MODE
+TABULAFLOW_MAX_GRAPH_RESULT_NODES
+TABULAFLOW_MAX_GRAPH_RESULT_EDGES
 ```
 
 Agent variables:
