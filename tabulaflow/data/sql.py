@@ -1875,7 +1875,7 @@ def _qualified_name(schema_name: str | None, table_name: str, column_name: str |
     return ".".join(name for name in (schema_name, table_name, column_name) if name is not None)
 
 
-async def _run_optional_profile_query_async(
+async def _try_profile_query_async(
     t_eng: ThrottledEngine,
     query: sqlalchemy.sql.expression.Executable,
     *,
@@ -1890,28 +1890,7 @@ async def _run_optional_profile_query_async(
         return None
 
 
-async def _sample_relation_async(
-    t_eng: ThrottledEngine,
-    table_name: str,
-    schema_name: str | None,
-    query_timeout_seconds: int | None,
-) -> pd.DataFrame | None:
-    tbl = sqlalchemy.table(table_name, schema=schema_name)
-    result = await _run_optional_profile_query_async(
-        t_eng,
-        select("*").select_from(tbl).limit(_PROFILE_SAMPLE_ROWS),
-        timeout=query_timeout_seconds,
-        operation=f"sample relation {_qualified_name(schema_name, table_name)}",
-        return_df=True,
-    )
-    if result is None:
-        return None
-    sampled_df = result.result
-    assert isinstance(sampled_df, pd.DataFrame)
-    return sampled_df
-
-
-def _profile_column_from_sample(column: SQLColumnSchema, sampled_df: pd.DataFrame) -> SQLColumnSchema:
+def _enrich_column_from_sample(column: SQLColumnSchema, sampled_df: pd.DataFrame) -> SQLColumnSchema:
     if column.name not in sampled_df.columns:
         return column
     values = _non_null_sample_values(sampled_df[column.name].tolist())
@@ -1922,25 +1901,7 @@ def _profile_column_from_sample(column: SQLColumnSchema, sampled_df: pd.DataFram
     return column.model_copy(update={"examples": examples, "json_schema": json_schema})
 
 
-async def _count_table_rows_async(
-    t_eng: ThrottledEngine,
-    table_name: str,
-    schema_name: str | None,
-    query_timeout_seconds: int | None,
-) -> int | None:
-    tbl = sqlalchemy.table(table_name, schema=schema_name)
-    result = await _run_optional_profile_query_async(
-        t_eng,
-        select(func.count()).select_from(tbl),
-        timeout=query_timeout_seconds,
-        operation=f"collect row count for table {_qualified_name(schema_name, table_name)}",
-    )
-    if result is None:
-        return None
-    return int(result.rows[0][0])
-
-
-async def _collect_exact_column_stats_async(
+async def _collect_column_stats_async(
     t_eng: ThrottledEngine,
     column: SQLColumnSchema,
     table_name: str,
@@ -1954,7 +1915,7 @@ async def _collect_exact_column_stats_async(
     num_unique: int | None = None
 
     if num_rows > 0:
-        result = await _run_optional_profile_query_async(
+        result = await _try_profile_query_async(
             t_eng,
             select(func.count()).select_from(tbl).where(col.is_(None)),
             timeout=query_timeout_seconds,
@@ -1968,7 +1929,7 @@ async def _collect_exact_column_stats_async(
         if num_rows == 0:
             num_unique = 0
         else:
-            result = await _run_optional_profile_query_async(
+            result = await _try_profile_query_async(
                 t_eng,
                 select(func.count(distinct(col))).select_from(tbl),
                 timeout=query_timeout_seconds,
@@ -1979,7 +1940,7 @@ async def _collect_exact_column_stats_async(
 
     examples = column.examples
     if column.dtype in _ENUMERATION_TYPES and num_unique is not None and 0 < num_unique <= 20:
-        result = await _run_optional_profile_query_async(
+        result = await _try_profile_query_async(
             t_eng,
             select(col).distinct().select_from(tbl).where(col.isnot(None)).limit(num_unique),
             timeout=query_timeout_seconds,
@@ -2033,30 +1994,35 @@ async def build_table_async(
         ]
     )
 
-    profile_sample = await _sample_relation_async(
+    tbl = sqlalchemy.table(table_name, schema=schema_name)
+    sample_result = await _try_profile_query_async(
         t_eng,
-        table_name,
-        schema_name,
-        query_timeout_seconds,
+        select("*").select_from(tbl).limit(_PROFILE_SAMPLE_ROWS),
+        timeout=query_timeout_seconds,
+        operation=f"sample relation {_qualified_name(schema_name, table_name)}",
+        return_df=True,
     )
-    if profile_sample is not None:
-        columns = [_profile_column_from_sample(column, profile_sample) for column in columns]
+    if sample_result is not None:
+        profile_sample = sample_result.result
+        assert isinstance(profile_sample, pd.DataFrame)
+        columns = [_enrich_column_from_sample(column, profile_sample) for column in columns]
         sampled_df = profile_sample.head(_STORED_SAMPLE_ROWS)
     else:
         sampled_df = None
 
     num_rows = None
     if collect_column_stats and not is_view:
-        num_rows = await _count_table_rows_async(
+        count_result = await _try_profile_query_async(
             t_eng,
-            table_name,
-            schema_name,
-            query_timeout_seconds,
+            select(func.count()).select_from(tbl),
+            timeout=query_timeout_seconds,
+            operation=f"collect row count for table {_qualified_name(schema_name, table_name)}",
         )
-        if num_rows is not None:
+        if count_result is not None:
+            num_rows = int(count_result.rows[0][0])
             columns = await asyncio.gather(
                 *[
-                    _collect_exact_column_stats_async(
+                    _collect_column_stats_async(
                         t_eng,
                         column,
                         table_name,
