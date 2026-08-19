@@ -1871,6 +1871,25 @@ async def _build_column_structure_async(
     )
 
 
+def _qualified_name(schema_name: str | None, table_name: str, column_name: str | None = None) -> str:
+    return ".".join(name for name in (schema_name, table_name, column_name) if name is not None)
+
+
+async def _run_optional_profile_query_async(
+    t_eng: ThrottledEngine,
+    query: sqlalchemy.sql.expression.Executable,
+    *,
+    timeout: int | None,
+    operation: str,
+    return_df: bool = False,
+) -> QueryResult | None:
+    try:
+        return await t_eng.execute_async(query, timeout=timeout, return_df=return_df)
+    except (TimeoutError, DBAPIError) as e:
+        logger.warning("Could not %s: %s", operation, e)
+        return None
+
+
 async def _sample_relation_async(
     t_eng: ThrottledEngine,
     table_name: str,
@@ -1878,22 +1897,16 @@ async def _sample_relation_async(
     query_timeout_seconds: int | None,
 ) -> pd.DataFrame | None:
     tbl = sqlalchemy.table(table_name, schema=schema_name)
-    try:
-        sampled_df = (
-            await t_eng.execute_async(
-                select("*").select_from(tbl).limit(_PROFILE_SAMPLE_ROWS),
-                timeout=query_timeout_seconds,
-                return_df=True,
-            )
-        ).result
-    except (TimeoutError, DBAPIError) as e:
-        logger.warning(
-            "Could not sample relation %s.%s; using structural schema only: %s",
-            schema_name,
-            table_name,
-            e,
-        )
+    result = await _run_optional_profile_query_async(
+        t_eng,
+        select("*").select_from(tbl).limit(_PROFILE_SAMPLE_ROWS),
+        timeout=query_timeout_seconds,
+        operation=f"sample relation {_qualified_name(schema_name, table_name)}",
+        return_df=True,
+    )
+    if result is None:
         return None
+    sampled_df = result.result
     assert isinstance(sampled_df, pd.DataFrame)
     return sampled_df
 
@@ -1916,23 +1929,15 @@ async def _count_table_rows_async(
     query_timeout_seconds: int | None,
 ) -> int | None:
     tbl = sqlalchemy.table(table_name, schema=schema_name)
-    try:
-        return int(
-            (
-                await t_eng.execute_async(
-                    select(func.count()).select_from(tbl),
-                    timeout=query_timeout_seconds,
-                )
-            ).rows[0][0]
-        )
-    except (TimeoutError, DBAPIError) as e:
-        logger.warning(
-            "Could not collect row count for table %s.%s; skipping column statistics: %s",
-            schema_name,
-            table_name,
-            e,
-        )
+    result = await _run_optional_profile_query_async(
+        t_eng,
+        select(func.count()).select_from(tbl),
+        timeout=query_timeout_seconds,
+        operation=f"collect row count for table {_qualified_name(schema_name, table_name)}",
+    )
+    if result is None:
         return None
+    return int(result.rows[0][0])
 
 
 async def _collect_exact_column_stats_async(
@@ -1949,61 +1954,39 @@ async def _collect_exact_column_stats_async(
     num_unique: int | None = None
 
     if num_rows > 0:
-        try:
-            num_null = (
-                await t_eng.execute_async(
-                    select(func.count()).select_from(tbl).where(col.is_(None)),
-                    timeout=query_timeout_seconds,
-                )
-            ).rows[0][0]
+        result = await _run_optional_profile_query_async(
+            t_eng,
+            select(func.count()).select_from(tbl).where(col.is_(None)),
+            timeout=query_timeout_seconds,
+            operation=f"collect null ratio for {_qualified_name(schema_name, table_name, column.name)}",
+        )
+        if result is not None:
+            num_null = result.rows[0][0]
             null_ratio = num_null / num_rows
-        except (TimeoutError, DBAPIError) as e:
-            logger.warning(
-                "Could not collect null ratio for %s.%s.%s: %s",
-                schema_name,
-                table_name,
-                column.name,
-                e,
-            )
 
     if column.dtype in DISTINCT_SAFE_TYPES:
         if num_rows == 0:
             num_unique = 0
         else:
-            try:
-                num_unique = (
-                    await t_eng.execute_async(
-                        select(func.count(distinct(col))).select_from(tbl),
-                        timeout=query_timeout_seconds,
-                    )
-                ).rows[0][0]
-            except (TimeoutError, DBAPIError) as e:
-                logger.warning(
-                    "Could not collect distinct count for %s.%s.%s: %s",
-                    schema_name,
-                    table_name,
-                    column.name,
-                    e,
-                )
+            result = await _run_optional_profile_query_async(
+                t_eng,
+                select(func.count(distinct(col))).select_from(tbl),
+                timeout=query_timeout_seconds,
+                operation=f"collect distinct count for {_qualified_name(schema_name, table_name, column.name)}",
+            )
+            if result is not None:
+                num_unique = int(result.rows[0][0])
 
     examples = column.examples
     if column.dtype in _ENUMERATION_TYPES and num_unique is not None and 0 < num_unique <= 20:
-        try:
-            rows = (
-                await t_eng.execute_async(
-                    select(col).distinct().select_from(tbl).where(col.isnot(None)).limit(num_unique),
-                    timeout=query_timeout_seconds,
-                )
-            ).rows
-            examples = [_convert(row[0]) for row in rows]
-        except (TimeoutError, DBAPIError) as e:
-            logger.warning(
-                "Could not collect categorical values for %s.%s.%s: %s",
-                schema_name,
-                table_name,
-                column.name,
-                e,
-            )
+        result = await _run_optional_profile_query_async(
+            t_eng,
+            select(col).distinct().select_from(tbl).where(col.isnot(None)).limit(num_unique),
+            timeout=query_timeout_seconds,
+            operation=f"collect categorical values for {_qualified_name(schema_name, table_name, column.name)}",
+        )
+        if result is not None:
+            examples = [_convert(row[0]) for row in result.rows]
 
     unique_ratio = num_unique / num_rows if num_unique is not None and num_rows > 0 else None
     return column.model_copy(

@@ -201,6 +201,7 @@ async def test_view_sample_timeout_preserves_structural_schema(
         await connector.disconnect_async()
 
     assert "Could not sample relation" in caplog.text
+    assert "None.item_view" not in caplog.text
 
 
 @pytest.mark.asyncio
