@@ -11,7 +11,7 @@ import pytest
 from tabulaflow.app.pane import _add_line_hover, build_chart_data
 from tabulaflow.output.specs import ChartArtifactSpec, ChoiceOption, ChoiceParameter
 from tabulaflow.core import ExecResult
-from tabulaflow.output.charts import chart_type_label
+from tabulaflow.output.charts import chart_type_label, validate_chart_spec
 from tabulaflow.output.store import OutputStore
 from tabulaflow.agents.tools.render_chart import (
     ChartNotRenderable,
@@ -21,6 +21,10 @@ from tabulaflow.agents.tools.render_chart import (
 )
 
 SIMPLE_BAR: dict[str, object] = {"mark": "bar", "encoding": {"x": {"field": "a"}, "y": {"field": "b"}}}
+
+
+def test_validate_chart_spec_accepts_matching_fields() -> None:
+    validate_chart_spec(SIMPLE_BAR, {"S1": pd.DataFrame({"a": [1], "b": [2]})})
 
 
 def _chart_artifact(output_store: OutputStore, chart_id: str) -> ChartArtifactSpec:

@@ -31,7 +31,7 @@ from tabulaflow.core import GraphResult
 from tabulaflow.output.charts import validate_chart_spec
 from tabulaflow.output.store import OutputStore, ResultPayload, SourceNotApplicable
 from tabulaflow.output.graphs import (
-    graph_result_size,
+    graph_size,
     materialize_graph_result,
     normalize_graph_spec,
     validate_graph_size,
@@ -218,12 +218,13 @@ def _resolved_artifact(artifact: ArtifactSpec, payload_by_source: dict[SourceId,
                 reason="Source returned no tabular data",
                 status="no_data",
             )
+        validate_chart_spec(artifact.spec, {artifact.source_id: payload.df})
         return ResolvedChartArtifact(
             artifact_id=artifact.id,
             label=artifact.label,
             source_id=artifact.source_id,
             payload=payload,
-            spec=validate_chart_spec(artifact.spec, {artifact.source_id: payload.df}),
+            spec=artifact.spec,
         )
     if isinstance(artifact, MapArtifactSpec):
         sources = _dataframes_by_source(payload_by_source)
@@ -237,7 +238,7 @@ def _resolved_artifact(artifact: ArtifactSpec, payload_by_source: dict[SourceId,
         sources = _dataframes_by_source(payload_by_source)
         normalized = normalize_graph_spec(artifact.spec, sources)
         graph = materialize_graph_result(normalized, sources)
-        validate_graph_size(graph_result_size(graph))
+        validate_graph_size(graph_size(graph))
         layout = normalized.get("layout")
         return ResolvedGraphArtifact(
             artifact_id=artifact.id,

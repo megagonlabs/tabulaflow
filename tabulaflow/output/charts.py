@@ -2,11 +2,8 @@
 
 from __future__ import annotations
 
-import copy
 import re
 from collections.abc import Mapping
-from typing import Any
-
 import pandas as pd
 
 _CHART_MAX_ROWS = 20_000
@@ -70,7 +67,7 @@ def chart_type_label(spec: Mapping[str, object]) -> str:
 def validate_chart_spec(
     spec: Mapping[str, object],
     sources: Mapping[str, pd.DataFrame],
-) -> dict[str, Any]:
+) -> None:
     """Validate a Vega-Lite spec against one or more source variants."""
     if "mark" not in spec and not _is_multiview_spec(spec):
         raise ChartSpecError("spec must have a 'mark' or be a multi-view spec (layer/facet/concat)")
@@ -88,7 +85,6 @@ def validate_chart_spec(
                 errors.append(f"{label} — field(s) not found: {missing}. Available columns: {list(df.columns)}")
     if errors:
         raise ChartSpecError(f"chart source validation failed for {len(errors)} issue(s):\n  " + "\n  ".join(errors))
-    return copy.deepcopy(dict(spec))
 
 
 def _spec_field_refs(spec: object) -> tuple[set[str], bool]:

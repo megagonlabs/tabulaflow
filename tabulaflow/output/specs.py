@@ -30,7 +30,6 @@ __all__ = [
     "ParameterizedSource",
     "ResultId",
     "Selection",
-    "SelectionKey",
     "SelectionValue",
     "SourceId",
     "SourceSpec",
@@ -48,7 +47,6 @@ ParameterId: TypeAlias = str
 SourceId: TypeAlias = str
 ArtifactId: TypeAlias = str
 ResultId: TypeAlias = str
-SelectionKey: TypeAlias = str
 Selection: TypeAlias = dict[ParameterId, SelectionValue]
 
 

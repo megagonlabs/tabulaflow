@@ -393,7 +393,7 @@ class RenderChartTool:
             return f"(error: {e})"
 
         try:
-            spec = validate_chart_spec(spec, {variant.label: variant.df for variant in variants})
+            validate_chart_spec(spec, {variant.label: variant.df for variant in variants})
         except ChartSpecError as e:
             return f"(error: {e})"
 

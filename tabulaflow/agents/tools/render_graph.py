@@ -7,8 +7,7 @@ from pydantic_ai import Tool
 
 from tabulaflow.output.graphs import (
     GraphSpecError,
-    graph_type_label,
-    graph_result_size,
+    graph_size,
     materialize_graph_result,
     normalize_graph_spec,
     parse_graph_spec,
@@ -41,7 +40,7 @@ class RenderGraphTool:
           ``title``: optional string.
           ``layout``: optional ``force``, ``layered``, or ``tree``.
           ``nodes``: required list of node sources.
-          ``edges``: required list of edge sources.
+          ``edges``: optional list of edge sources; omit it for node-only graphs.
         - Node source:
           Column mode:
           ``{"source_id":"S1","id":"id","label":"name","group":"type"}``.
@@ -119,14 +118,14 @@ class RenderGraphTool:
         try:
             normalized = normalize_graph_spec(parsed, sources)
             graph = materialize_graph_result(normalized, sources)
-            size = graph_result_size(graph)
+            size = graph_size(graph)
             validate_graph_size(size)
         except GraphSpecError as e:
             return f"(error: {e})"
 
         artifact = self._output_store.add_graph_artifact(source_ids, normalized)
         graph_id = artifact.id
-        label = graph_type_label(normalized)
+        label = "Network graph"
         from_text = f" from {', '.join(source_ids)}" if source_ids else ""
         if size.groups == 0:
             counts = (

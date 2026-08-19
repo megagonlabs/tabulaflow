@@ -8,10 +8,10 @@ from collections.abc import Callable, Mapping, Sequence
 from typing import Annotated, Any, Literal, TypeAlias
 
 import pandas as pd
-from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator, model_validator
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field, ValidationError, field_validator, model_validator
 
 
-MAP_RENDER_MAX_ROWS = 50_000
+_MAP_RENDER_MAX_ROWS = 50_000
 _GEOJSON_TYPES = {
     "Feature",
     "FeatureCollection",
@@ -28,8 +28,8 @@ __all__ = [
     "ColorEncodingSpec",
     "GeoJsonLayerSpec",
     "InlinePointSpec",
-    "MAP_RENDER_MAX_ROWS",
     "MapLayerSpec",
+    "MapScalar",
     "MapSpec",
     "MapSpecError",
     "MapViewSpec",
@@ -47,14 +47,17 @@ class MapSpecError(ValueError):
 
 
 class _StrictModel(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
+
+MapScalar: TypeAlias = str | int | float | bool
 
 
 class ColorEncodingSpec(_StrictModel):
     """Color encoding driven by a source field."""
 
     field: str
-    domain: list[Any] | None = None
+    domain: list[MapScalar] | None = None
 
 
 class SizeEncodingSpec(_StrictModel):
@@ -72,10 +75,23 @@ class MarkerSpec(_StrictModel):
 class MapViewSpec(_StrictModel):
     """Initial map viewport configuration."""
 
-    fit: Any | None = None
-    center: Any | None = None
-    zoom: Any | None = None
-    maxZoom: Any | None = None
+    fit: bool | None = None
+    center: tuple[float, float] | None = None
+    zoom: float | None = Field(default=None, ge=0, allow_inf_nan=False)
+    max_zoom: float | None = Field(
+        default=None,
+        ge=0,
+        allow_inf_nan=False,
+        validation_alias=AliasChoices("max_zoom", "maxZoom"),
+        serialization_alias="maxZoom",
+    )
+
+    @field_validator("center")
+    @classmethod
+    def _validate_center(cls, value: tuple[float, float] | None) -> tuple[float, float] | None:
+        if value is not None and not (-90 <= value[0] <= 90 and -180 <= value[1] <= 180):
+            raise ValueError("invalid map center latitude/longitude")
+        return value
 
 
 class InlinePointSpec(BaseModel):
@@ -172,7 +188,7 @@ MapLayerSpec: TypeAlias = Annotated[PointsLayerSpec | GeoJsonLayerSpec, Field(di
 class MapSpec(_StrictModel):
     """Declarative map specification."""
 
-    title: Any | None = None
+    title: str | None = None
     view: MapViewSpec | None = None
     layers: list[MapLayerSpec]
 
@@ -399,11 +415,19 @@ def normalize_map_spec(
     else:
         parsed = parse_map_spec(spec)
 
+    for source_id in referenced_source_ids(parsed):
+        df = sources.get(source_id)
+        if df is not None and len(df) > _MAP_RENDER_MAX_ROWS:
+            raise MapSpecError(
+                f"{source_id} has {len(df):,} rows — too large to map directly; filter or aggregate first; "
+                f"max {_MAP_RENDER_MAX_ROWS:,} rows"
+            )
+
     out: dict[str, Any] = {}
     if parsed.title is not None:
         out["title"] = copy.deepcopy(parsed.title)
     if parsed.view is not None:
-        out["view"] = parsed.view.model_dump(exclude_none=True)
+        out["view"] = parsed.view.model_dump(exclude_none=True, by_alias=True)
 
     layers: list[dict[str, Any]] = []
     for index, layer in enumerate(parsed.layers):

@@ -13,7 +13,6 @@ from tabulaflow.output.specs import MapArtifactSpec
 from tabulaflow.output.store import OutputStore
 from tabulaflow.agents.tools.render_map import RenderMapTool
 from tabulaflow.output.maps import (
-    MAP_RENDER_MAX_ROWS,
     ColorEncodingSpec,
     GeoJsonLayerSpec,
     InlinePointSpec,
@@ -61,6 +60,24 @@ class TestNormalizeMapSpec:
         )
 
         assert len(spec.layers) == 2
+
+    def test_map_view_uses_typed_fields_and_serializes_max_zoom(self) -> None:
+        spec = MapSpec(
+            title="Places",
+            view=MapViewSpec(fit=True, center=(37.7, -122.4), zoom=4, max_zoom=12),
+            layers=[PointsLayerSpec(type="points", points=[InlinePointSpec(lat=37.7, lng=-122.4)])],
+        )
+
+        assert normalize_map_spec(spec, {})["view"] == {
+            "fit": True,
+            "center": (37.7, -122.4),
+            "zoom": 4.0,
+            "maxZoom": 12.0,
+        }
+
+    def test_map_view_rejects_invalid_center(self) -> None:
+        with pytest.raises(ValueError, match="invalid map center"):
+            MapViewSpec(center=(100, 0))
 
     def test_parse_returns_public_map_spec(self) -> None:
         parsed = parse_map_spec({"layers": [{"type": "points", "points": [{"lat": 1, "lng": 2}]}]})
@@ -341,13 +358,13 @@ class TestRenderMapTool:
         output_store = await _output_store_with(
             pd.DataFrame(
                 {
-                    "lat": [37.7] * (MAP_RENDER_MAX_ROWS + 1),
-                    "lng": [-122.4] * (MAP_RENDER_MAX_ROWS + 1),
+                    "lat": [37.7] * 50_001,
+                    "lng": [-122.4] * 50_001,
                 }
             )
         )
         spec = {"layers": [{"type": "points", "source_id": "S1", "lat": "lat", "lng": "lng"}]}
         msg = await RenderMapTool(output_store=output_store)(map_spec=json.dumps(spec))
         assert "too large to map directly" in msg
-        assert f"max {MAP_RENDER_MAX_ROWS:,} rows" in msg
+        assert "max 50,000 rows" in msg
         assert output_store._artifacts == {}

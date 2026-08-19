@@ -23,6 +23,7 @@ from tabulaflow.output.graphs import (
     materialize_graph_result,
     normalize_graph_spec,
     parse_graph_spec,
+    validate_graph_size,
 )
 from tabulaflow.agents.tools.render_graph import RenderGraphTool
 
@@ -144,9 +145,13 @@ class TestNormalizeGraphSpec:
                 Q1=df,
             )
 
-    def test_requires_edge_source(self) -> None:
-        with pytest.raises(ValueError, match="edge-bearing"):
-            _norm({"nodes": [{"data": [{"id": "a"}], "id": "id"}]})
+    def test_node_only_graph_is_supported(self) -> None:
+        normalized = _norm({"nodes": [{"data": [{"id": "a"}], "id": "id"}]})
+        graph = materialize_graph_result(normalized, {})
+
+        assert [node.id for node in graph.nodes] == ["a"]
+        assert graph.edges == []
+        validate_graph_size(graph_size(graph))
 
     def test_node_size_is_not_supported(self) -> None:
         spec = {
@@ -169,7 +174,7 @@ class TestNormalizeGraphSpec:
 
     def test_edges_without_node_sources_rejected(self) -> None:
         df = pd.DataFrame({"src": ["a"], "dst": ["b"]})
-        with pytest.raises(ValueError, match="node source"):
+        with pytest.raises(ValueError, match="nodes"):
             _norm({"edges": [{"source_id": "S1", "source": "src", "target": "dst"}]}, Q1=df)
 
     def test_unmatched_edge_endpoints_rejected(self) -> None:
@@ -182,7 +187,7 @@ class TestNormalizeGraphSpec:
             Q1=df,
         )
         with pytest.raises(ValueError, match="match no node source id.*'c'"):
-            graph_size(normalized, {"S1": df})
+            materialize_graph_result(normalized, {"S1": df})
 
     def test_graph_size_counts_groups_first_source_wins(self) -> None:
         nodes1 = pd.DataFrame({"id": ["a"], "kind": ["x"]})
@@ -201,7 +206,8 @@ class TestNormalizeGraphSpec:
             Q2=nodes2,
             Q3=edges,
         )
-        size = graph_size(normalized, {"S1": nodes1, "S2": nodes2, "S3": edges})
+        graph = materialize_graph_result(normalized, {"S1": nodes1, "S2": nodes2, "S3": edges})
+        size = graph_size(graph)
         assert size.nodes == 3
         assert size.edges == 1
         assert size.groups == 2  # a keeps 'x' from its first source; b gets the constant 'y'
@@ -238,6 +244,15 @@ class TestNormalizeGraphSpec:
 
 
 class TestRenderGraphTool:
+    async def test_node_only_graph_created(self) -> None:
+        output_store = await _output_store_with(pd.DataFrame({"id": ["a", "b"], "kind": ["Person", "Company"]}))
+        spec = {"nodes": [{"source_id": "S1", "id": "id", "group": "kind"}]}
+
+        msg = await RenderGraphTool(output_store=output_store)(graph_spec=json.dumps(spec))
+
+        assert "Network graph GRAPH1 created from S1" in msg
+        assert "2 nodes in 2 types, 0 edges" in msg
+
     async def test_graph_created(self) -> None:
         output_store = await _output_store_with(pd.DataFrame({"src": ["a", "b"], "dst": ["b", "c"], "rel": ["x", "y"]}))
         spec = {

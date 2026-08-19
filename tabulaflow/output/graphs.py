@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from typing import Any, Literal
 
 import pandas as pd
-from pydantic import BaseModel, ConfigDict, ValidationError, model_validator
+from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator
 
 from tabulaflow.core import GraphResult, GraphResultEdge, GraphResultNode
 from tabulaflow.core.serialization import json_ready
@@ -32,9 +32,7 @@ __all__ = [
     "GraphSize",
     "GraphSpec",
     "GraphSpecError",
-    "graph_result_size",
     "graph_size",
-    "graph_type_label",
     "materialize_graph_result",
     "normalize_graph_spec",
     "parse_graph_spec",
@@ -96,16 +94,8 @@ class GraphSpec(_StrictModel):
 
     title: str | None = None
     layout: Literal["force", "layered", "tree"] = "force"
-    nodes: list[GraphNodeSourceSpec] = []
-    edges: list[GraphEdgeSourceSpec] = []
-
-    @model_validator(mode="after")
-    def _require_sources(self) -> GraphSpec:
-        if not self.edges:
-            raise ValueError("graph_spec must include at least one edge-bearing source")
-        if not self.nodes:
-            raise ValueError("edges require node sources: declare one per endpoint column with id, label, and group")
-        return self
+    nodes: list[GraphNodeSourceSpec] = Field(min_length=1)
+    edges: list[GraphEdgeSourceSpec] = Field(default_factory=list)
 
 
 @dataclass(frozen=True)
@@ -291,8 +281,6 @@ def normalize_graph_spec(
             raise GraphSpecError(f"edges[{index}] references unknown source_id {edge_source.source_id!r}")
         edges.append(_normalize_edge_source(df, edge_source, index))
 
-    if not edges:
-        raise GraphSpecError("graph_spec must include at least one edge-bearing source")
     out["nodes"] = nodes
     out["edges"] = edges
     return out
@@ -421,26 +409,17 @@ def materialize_graph_result(graph_spec: Mapping[str, object], sources: Mapping[
     )
 
 
-def graph_result_size(graph: GraphResult) -> GraphSize:
+def graph_size(graph: GraphResult) -> GraphSize:
+    """Return node, edge, and node-group counts for a materialized graph."""
     groups = {node.group for node in graph.nodes if node.group is not None}
     ungrouped = sum(1 for node in graph.nodes if node.group is None)
     return GraphSize(nodes=len(graph.nodes), edges=len(graph.edges), groups=len(groups), ungrouped_nodes=ungrouped)
 
 
-def graph_size(graph_spec: Mapping[str, object], sources: Mapping[str, pd.DataFrame]) -> GraphSize:
-    """Compute unique node, valid edge, and node-type counts for a normalized graph spec.
-
-    Mirrors the renderer's first-source-wins node dedup: the source that first
-    introduces a node id also fixes whether it is grouped. Raises
-    ``GraphSpecError`` when an edge endpoint matches no declared node id.
-    """
-    return graph_result_size(materialize_graph_result(graph_spec, sources))
-
-
 def validate_graph_size(size: GraphSize) -> None:
     """Reject graph payloads that are too large for an interactive node-link view."""
-    if size.edges == 0:
-        raise GraphSpecError("graph has no valid edges")
+    if size.nodes == 0:
+        raise GraphSpecError("graph has no valid nodes")
     if size.nodes > GRAPH_MAX_NODES:
         raise GraphSpecError(
             f"graph has {size.nodes:,} nodes — too large to render directly; filter, aggregate, or take top-N first; "
@@ -451,8 +430,3 @@ def validate_graph_size(size: GraphSize) -> None:
             f"graph has {size.edges:,} edges — too large to render directly; filter, aggregate, or take top-N first; "
             f"max {GRAPH_MAX_EDGES:,} edges"
         )
-
-
-def graph_type_label(spec: Mapping[str, object]) -> str:
-    """Human-readable graph label for UI cards and tool messages."""
-    return "Network graph"

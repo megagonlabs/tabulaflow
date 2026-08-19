@@ -30,7 +30,6 @@ from tabulaflow.app.pane.cards import (
     render_resolved_output,
     render_result_data,
 )
-from tabulaflow.app.pane.tables import TABLE_RENDER_MAX_ROWS
 from tabulaflow.app.theme import CODE_TEXT
 from tabulaflow.app.pane import CARD_ID_PREFIX, OutputPane, OutputPanePortError, _PANE_HTML
 from tabulaflow.app.pane import PaneCard, PanePanel, PaneTurn, turn_payload
@@ -48,7 +47,6 @@ from tabulaflow.output.specs import (
 )
 from tabulaflow.output.store import OutputStore, ResultMetadata, ResultPayload
 from tabulaflow.output.resolver import ResolvedOutput, UnavailableArtifact
-from tabulaflow.output.maps import MAP_RENDER_MAX_ROWS
 
 
 @contextlib.contextmanager
@@ -261,10 +259,6 @@ def test_result_card_includes_data_view_meta(tmp_path: Path) -> None:
     assert payload["table"]["meta"] == "2 rows · 2 columns"
     assert payload["table"]["columns"][1]["role"] == "number"
     assert payload["dataset"]["rows"][0]["c1"] == 10
-
-
-def test_map_and_table_row_caps_are_aligned() -> None:
-    assert TABLE_RENDER_MAX_ROWS == MAP_RENDER_MAX_ROWS
 
 
 def test_result_card_preserves_null_cells(tmp_path: Path) -> None:

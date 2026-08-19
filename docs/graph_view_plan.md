@@ -70,13 +70,11 @@ Cytoscape's built-in `cose` (no extension); `fcose` is an optional later upgrade
 
 ## 1. Agent-facing graph spec
 
-A graph spec is a JSON object. It has **three source kinds**, all optional but at
-least one edge-bearing source required:
+A graph spec is a JSON object with a non-empty `nodes` list and an optional
+`edges` list:
 
 - `nodes: [...]` — node sources (node identity + attributes).
 - `edges: [...]` — edge sources (the topology).
-- `subgraph: [...]` — Cypher records whose native graph objects are auto-walked
-  (Phase 3).
 
 Plus top-level `title` (string, optional) and `layout`
 (`"force" | "layered" | "tree"`, optional, default `"force"`).
@@ -383,8 +381,7 @@ the row values in hand).
      }
    }
    ```
-   Return `None` if there are no valid edges (mirrors `build_map_data` returning
-   `None` on no valid layer).
+   Return `None` if there are no valid nodes.
 
 ### 2.8 Pane types (`tabulaflow/app/pane/types.py`)
 
@@ -510,8 +507,7 @@ caption?, group?}]` source whose resolution **walks native
 
 Reject with a clear message when:
 - JSON is invalid or not an object.
-- No edge-bearing source (`edges`/`subgraph`) is present, or all edge sources are
-  empty.
+- No node source is present, or all node sources are empty.
 - A `nodes`/`edges` entry sets both `source_id` and `data`, or neither.
 - A referenced `source_id` is unknown or its result is empty.
 - A referenced column does not exist in its source (list available columns).

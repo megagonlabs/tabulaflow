@@ -7,7 +7,6 @@ import pandas as pd
 from pydantic_ai import Tool
 
 from tabulaflow.output.maps import (
-    MAP_RENDER_MAX_ROWS,
     MapSpecError,
     normalize_map_spec,
     parse_map_spec,
@@ -126,11 +125,6 @@ class RenderMapTool:
                 return f"(error: query {rid} returned no data)"
             if df.empty:
                 return f"(error: query {rid} result is empty)"
-            if len(df) > MAP_RENDER_MAX_ROWS:
-                return (
-                    f"(error: {rid} has {len(df):,} rows — too large to map directly; filter or aggregate first; "
-                    f"max {MAP_RENDER_MAX_ROWS:,} rows)"
-                )
             sources[rid] = df
             row_counts[rid] = len(df)
 

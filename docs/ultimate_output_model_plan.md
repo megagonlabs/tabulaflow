@@ -28,7 +28,6 @@ ParameterId = str
 SourceId = str
 ArtifactId = str
 ResultId = str
-SelectionKey = str
 SelectionValue = str | int | float | bool
 Selection = dict[ParameterId, SelectionValue]
 ```
