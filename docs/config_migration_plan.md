@@ -94,10 +94,13 @@ from tabulaflow.data import SQLConnectorConfig, Neo4jConnectorConfig
 ```
 
 The common connector base remains private. Column statistics are an opt-in,
-timeout-bounded enrichment: enabled connectors attempt exact full-table null
-and distinct statistics, retain usable structural metadata when an individual
-statistics query fails, and cache the resulting best-effort schema. Cache
-variants keep schemas built with and without column statistics separate.
+timeout-bounded enrichment. Every table and view uses one bounded row sample
+for examples, inferred JSON structure, and displayed sample rows. Enabled
+connectors additionally attempt exact row counts and full-table null and
+distinct statistics for physical tables. Views are never exhaustively
+profiled. Individual profiling failures retain usable structural metadata, and
+the resulting best-effort schema is cached. Cache variants keep schemas built
+with and without exact column statistics separate.
 Cache literals remain inline because each defines one field.
 
 ### Agent runtime configuration

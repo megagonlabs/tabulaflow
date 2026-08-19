@@ -1547,7 +1547,7 @@ class AsyncInspector:
 
 
 def _sql_schema_cache_path(config: SQLConnectorConfig, global_id: str) -> Path:
-    variant = "column-stats" if config.collect_column_stats else "no-column-stats"
+    variant = "sampled+column-stats" if config.collect_column_stats else "sampled"
     return get_schema_cache_path(config.cache_dir, global_id, variant=variant)
 
 
@@ -1649,6 +1649,32 @@ def _convert(value: Any) -> str | int | float | bool:
     return str(value)
 
 
+def _non_null_sample_values(values: list[Any]) -> list[Any]:
+    result = []
+    for value in values:
+        if value is None:
+            continue
+        if pd.api.types.is_scalar(value) and bool(pd.isna(value)):
+            continue
+        result.append(value)
+    return result
+
+
+def _sample_examples(values: list[Any], limit: int = 5) -> list[str | int | float | bool]:
+    examples = []
+    seen: set[tuple[type[Any], str]] = set()
+    for value in values:
+        converted = _convert(value)
+        key = (type(converted), repr(converted))
+        if key in seen:
+            continue
+        seen.add(key)
+        examples.append(converted)
+        if len(examples) == limit:
+            break
+    return examples
+
+
 def _denorm(t_eng: ThrottledEngine, name: str | Any) -> str:
     """Denormalize a normalized identifier back to its actual stored form as a plain str."""
     if getattr(t_eng.engine.dialect, "requires_name_normalize", False):
@@ -1656,21 +1682,7 @@ def _denorm(t_eng: ThrottledEngine, name: str | Any) -> str:
     return str(name)
 
 
-# Types that might be categorical
-CATEGORICAL_TYPES = [
-    "CHAR",
-    "VARCHAR",
-    "NCHAR",
-    "NVARCHAR",
-    "STRING",
-    "TEXT",
-    "CLOB",
-    "BOOLEAN",
-    "SMALLINT",
-    "INTEGER",
-    "BIGINT",
-    "ENUM",
-]
+_ENUMERATION_TYPES = frozenset({"TEXT", "VARCHAR", "STRING", "ENUM"})
 
 # Column types whose values may contain nested JSON / semi-structured data
 JSON_TYPES = [
@@ -1733,14 +1745,14 @@ DISTINCT_SAFE_TYPES = {
     "BYTES",
 }
 
-# Number of sample values used to infer JSON schema for semi-structured columns
-_JSON_SCHEMA_SAMPLE_SIZE = 1000
+_PROFILE_SAMPLE_ROWS = 1000
+_STORED_SAMPLE_ROWS = 10
 
 
 def _canonicalize_dtype(native: str) -> str:
     """Map a dialect-native type string into a canonical uppercase atomic token.
 
-    The result is matched against CATEGORICAL_TYPES / JSON_TYPES /
+    The result is matched against _ENUMERATION_TYPES / JSON_TYPES /
     DISTINCT_SAFE_TYPES, so it must use the canonical names those
     constants use (e.g. ``ARRAY``, ``STRUCT``, ``DECIMAL``, ``VARCHAR``).
 
@@ -1834,19 +1846,12 @@ async def _resolve_native_dtype_async(
     return await _catalog_native_dtype_async(t_eng, schema_name, table_name, column["name"])
 
 
-async def build_column_async(
+async def _build_column_structure_async(
     t_eng: ThrottledEngine,
     column: dict[str, Any],
     table_name: str,
     schema_name: str | None,
-    num_rows: int | None,
-    collect_column_stats: bool = False,
-    query_timeout_seconds: int | None = 300,
 ) -> SQLColumnSchema:
-    tbl: sqlalchemy.sql.expression.FromClause = sqlalchemy.table(
-        table_name, sqlalchemy.column(column["name"]), schema=schema_name
-    )
-    col = tbl.c[column["name"]]
     dtype = column["type"].__visit_name__.upper()
     if dtype == "USER_DEFINED":
         dtype = type(column["type"]).__name__.upper()
@@ -1856,16 +1861,94 @@ async def build_column_async(
         # on LIST/STRUCT/MAP). Canonicalize from the native string so the
         # categorical type-class checks below still work.
         dtype = _canonicalize_dtype(native_dtype)
-    nullable = column["nullable"]
-    can_use_distinct = dtype in DISTINCT_SAFE_TYPES
 
-    skip_stats = not collect_column_stats or num_rows is None or num_rows == 0
-    if skip_stats:
-        null_ratio = num_unique = unique_ratio = None
-        if collect_column_stats and num_rows == 0 and can_use_distinct:
-            num_unique = 0
-    else:
-        assert num_rows is not None
+    return SQLColumnSchema(
+        name=_denorm(t_eng, column["name"]),
+        dtype=dtype,
+        native_dtype=native_dtype,
+        nullable=column["nullable"],
+        examples=[],
+    )
+
+
+async def _sample_relation_async(
+    t_eng: ThrottledEngine,
+    table_name: str,
+    schema_name: str | None,
+    query_timeout_seconds: int | None,
+) -> pd.DataFrame | None:
+    tbl = sqlalchemy.table(table_name, schema=schema_name)
+    try:
+        sampled_df = (
+            await t_eng.execute_async(
+                select("*").select_from(tbl).limit(_PROFILE_SAMPLE_ROWS),
+                timeout=query_timeout_seconds,
+                return_df=True,
+            )
+        ).result
+    except (TimeoutError, DBAPIError) as e:
+        logger.warning(
+            "Could not sample relation %s.%s; using structural schema only: %s",
+            schema_name,
+            table_name,
+            e,
+        )
+        return None
+    assert isinstance(sampled_df, pd.DataFrame)
+    return sampled_df
+
+
+def _profile_column_from_sample(column: SQLColumnSchema, sampled_df: pd.DataFrame) -> SQLColumnSchema:
+    if column.name not in sampled_df.columns:
+        return column
+    values = _non_null_sample_values(sampled_df[column.name].tolist())
+    examples = _sample_examples(values)
+    is_json_type = column.dtype in JSON_TYPES
+    is_text_with_json = column.dtype in TEXT_TYPES and looks_like_json(examples)
+    json_schema = infer_json_schema(values) if values and (is_json_type or is_text_with_json) else None
+    return column.model_copy(update={"examples": examples, "json_schema": json_schema})
+
+
+async def _count_table_rows_async(
+    t_eng: ThrottledEngine,
+    table_name: str,
+    schema_name: str | None,
+    query_timeout_seconds: int | None,
+) -> int | None:
+    tbl = sqlalchemy.table(table_name, schema=schema_name)
+    try:
+        return int(
+            (
+                await t_eng.execute_async(
+                    select(func.count()).select_from(tbl),
+                    timeout=query_timeout_seconds,
+                )
+            ).rows[0][0]
+        )
+    except (TimeoutError, DBAPIError) as e:
+        logger.warning(
+            "Could not collect row count for table %s.%s; skipping column statistics: %s",
+            schema_name,
+            table_name,
+            e,
+        )
+        return None
+
+
+async def _collect_exact_column_stats_async(
+    t_eng: ThrottledEngine,
+    column: SQLColumnSchema,
+    table_name: str,
+    schema_name: str | None,
+    num_rows: int,
+    query_timeout_seconds: int | None,
+) -> SQLColumnSchema:
+    tbl = sqlalchemy.table(table_name, sqlalchemy.column(column.name), schema=schema_name)
+    col = tbl.c[column.name]
+    null_ratio: float | None = None
+    num_unique: int | None = None
+
+    if num_rows > 0:
         try:
             num_null = (
                 await t_eng.execute_async(
@@ -1879,13 +1962,14 @@ async def build_column_async(
                 "Could not collect null ratio for %s.%s.%s: %s",
                 schema_name,
                 table_name,
-                column["name"],
+                column.name,
                 e,
             )
-            null_ratio = None
 
-        num_unique = None
-        if can_use_distinct:
+    if column.dtype in DISTINCT_SAFE_TYPES:
+        if num_rows == 0:
+            num_unique = 0
+        else:
             try:
                 num_unique = (
                     await t_eng.execute_async(
@@ -1898,62 +1982,37 @@ async def build_column_async(
                     "Could not collect distinct count for %s.%s.%s: %s",
                     schema_name,
                     table_name,
-                    column["name"],
+                    column.name,
                     e,
                 )
-        unique_ratio = (num_unique / num_rows) if num_unique is not None else None
 
-    examples: list[Any]
-    if skip_stats and num_rows is None:
-        examples = []
-    elif num_rows is not None and num_rows == 0:
-        examples = []
-    elif dtype in CATEGORICAL_TYPES and num_unique is not None:
-        examples = (
-            await t_eng.execute_async(
-                select(col).distinct().select_from(tbl).where(col.isnot(None)).limit(min(20, num_unique))
-            )
-        ).rows
-        # Note: examples will contain all possible values if cardinality <= 20
-        examples = [_convert(row[0]) for row in examples]
-    else:
-        # Avoids scanning a large table for distinct values while still providing diverse example values.
-        subq = select(col.label("_v")).select_from(tbl).where(col.isnot(None)).limit(1000).subquery()
-        if can_use_distinct:
-            stmt = select(subq.c._v).distinct().limit(5)
-        else:
-            stmt = select(subq.c._v).limit(5)
-        examples = (await t_eng.execute_async(stmt)).rows
-        examples = [_convert(row[0]) for row in examples]
-
-    # Infer JSON schema for semi-structured columns (VARIANT, JSON, JSONB, etc.)
-    # For text columns (e.g. SQLite TEXT), heuristically detect JSON content from examples.
-    json_schema: dict[str, Any] | None = None
-    if num_rows is None or num_rows > 0:
-        is_json_type = dtype in JSON_TYPES
-        is_text_with_json = dtype in TEXT_TYPES and looks_like_json(examples)
-        logger.debug(
-            f"table {table_name}, column {column['name']}: is_json_type: {is_json_type}, is_text_with_json: {is_text_with_json}"
-        )
-        if is_json_type or is_text_with_json:
-            json_sample_rows = (
+    examples = column.examples
+    if column.dtype in _ENUMERATION_TYPES and num_unique is not None and 0 < num_unique <= 20:
+        try:
+            rows = (
                 await t_eng.execute_async(
-                    select(col).select_from(tbl).where(col.isnot(None)).limit(_JSON_SCHEMA_SAMPLE_SIZE)
+                    select(col).distinct().select_from(tbl).where(col.isnot(None)).limit(num_unique),
+                    timeout=query_timeout_seconds,
                 )
             ).rows
-            json_sample_values = [row[0] for row in json_sample_rows]
-            json_schema = infer_json_schema(json_sample_values)
+            examples = [_convert(row[0]) for row in rows]
+        except (TimeoutError, DBAPIError) as e:
+            logger.warning(
+                "Could not collect categorical values for %s.%s.%s: %s",
+                schema_name,
+                table_name,
+                column.name,
+                e,
+            )
 
-    return SQLColumnSchema(
-        name=_denorm(t_eng, column["name"]),
-        dtype=dtype,
-        native_dtype=native_dtype,
-        nullable=nullable,
-        null_ratio=null_ratio,
-        num_unique=num_unique,
-        unique_ratio=unique_ratio,
-        examples=examples,
-        json_schema=json_schema,
+    unique_ratio = num_unique / num_rows if num_unique is not None and num_rows > 0 else None
+    return column.model_copy(
+        update={
+            "null_ratio": null_ratio,
+            "num_unique": num_unique,
+            "unique_ratio": unique_ratio,
+            "examples": examples,
+        }
     )
 
 
@@ -1979,39 +2038,53 @@ async def build_table_async(
         logger.warning(f"Skipping table {schema_name}.{table_name}: no columns found")
         return None
 
-    tbl = sqlalchemy.table(table_name, schema=schema_name)
-    try:
-        num_rows = (
-            await t_eng.execute_async(
-                select(func.count()).select_from(tbl),
-                timeout=query_timeout_seconds,
-            )
-        ).rows[0][0]
-    except (TimeoutError, DBAPIError) as e:
-        kind = "view" if is_view else "table"
-        logger.warning(
-            "Could not collect row count for %s %s.%s; skipping column statistics: %s",
-            kind,
-            schema_name,
-            table_name,
-            e,
-        )
-        num_rows = None
-
     columns = await asyncio.gather(
         *[
-            build_column_async(
+            _build_column_structure_async(
                 t_eng,
                 col,
                 table_name,
                 schema_name,
-                num_rows,
-                collect_column_stats=collect_column_stats,
-                query_timeout_seconds=query_timeout_seconds,
             )
             for col in col_dicts
         ]
     )
+
+    profile_sample = await _sample_relation_async(
+        t_eng,
+        table_name,
+        schema_name,
+        query_timeout_seconds,
+    )
+    if profile_sample is not None:
+        columns = [_profile_column_from_sample(column, profile_sample) for column in columns]
+        sampled_df = profile_sample.head(_STORED_SAMPLE_ROWS)
+    else:
+        sampled_df = None
+
+    num_rows = None
+    if collect_column_stats and not is_view:
+        num_rows = await _count_table_rows_async(
+            t_eng,
+            table_name,
+            schema_name,
+            query_timeout_seconds,
+        )
+        if num_rows is not None:
+            columns = await asyncio.gather(
+                *[
+                    _collect_exact_column_stats_async(
+                        t_eng,
+                        column,
+                        table_name,
+                        schema_name,
+                        num_rows,
+                        query_timeout_seconds,
+                    )
+                    for column in columns
+                ]
+            )
+
     primary_key = (await async_inspector.get_pk_constraint(table_name, schema=schema_name))["constrained_columns"]
 
     foreign_keys = []
@@ -2026,9 +2099,6 @@ async def build_table_async(
                 foreign_columns=[_denorm(t_eng, c) for c in fk["referred_columns"]],
             )
         )
-    # Sample rows from the table
-    sampled_df = (await t_eng.execute_async(select("*").select_from(tbl).limit(10), return_df=True)).result
-
     return SQLTableSchema(
         name=table_name,
         schema_name=schema_name,

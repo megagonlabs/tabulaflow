@@ -44,7 +44,7 @@ async def test_schema_cache_modes(tmp_path: Path) -> None:
     connector = await _connector(tmp_path, global_id="cached", config=read_write)
     await connector.disconnect_async()
 
-    cache_path = schema_cache_path(cache_dir, "cached", variant="no-column-stats")
+    cache_path = schema_cache_path(cache_dir, "cached", variant="sampled")
     assert cache_path.is_file()
 
     cached_schema = SQLSchema(name="from-cache", dialect="sqlite", tables=[])
@@ -92,7 +92,7 @@ async def test_schema_cache_modes(tmp_path: Path) -> None:
     invalid_required_path = schema_cache_path(
         cache_only.cache_dir,
         "invalid-required",
-        variant="no-column-stats",
+        variant="sampled",
     )
     invalid_required_path.parent.mkdir(parents=True)
     invalid_required_path.write_text("not json")
@@ -117,6 +117,26 @@ async def test_column_stats_are_exact_when_enabled(tmp_path: Path) -> None:
         assert column.null_ratio == 0.25
         assert column.num_unique == 2
         assert column.unique_ratio == 0.5
+    finally:
+        await connector.disconnect_async()
+
+
+async def test_exact_stats_complete_low_cardinality_text_values(tmp_path: Path) -> None:
+    db_path = tmp_path / "categorical-values.sqlite"
+    with sqlite3.connect(db_path) as connection:
+        connection.execute("CREATE TABLE items (status VARCHAR(20))")
+        connection.executemany("INSERT INTO items VALUES (?)", [("common",)] * 1000 + [("rare",)])
+
+    connector = await SQLConnector.from_url_async(
+        global_id="categorical-values",
+        url=f"sqlite+aiosqlite:///{db_path}",
+        db_name="categorical-values",
+        config=SQLConnectorConfig(schema_cache_mode="off", collect_column_stats=True),
+    )
+    try:
+        column = connector.schema.tables[0].columns[0]
+        assert column.num_unique == 2
+        assert set(column.examples) == {"common", "rare"}
     finally:
         await connector.disconnect_async()
 
@@ -180,7 +200,7 @@ async def test_column_stats_timeout_preserves_and_caches_schema(
     assert schema_cache_path(
         config.cache_dir,
         "stats-timeout",
-        variant="column-stats",
+        variant="sampled+column-stats",
     ).is_file()
 
 

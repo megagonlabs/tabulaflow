@@ -26,7 +26,14 @@ class _ConnectorConfig(BaseSettings):
 
 
 class SQLConnectorConfig(_ConnectorConfig):
-    """Operational policy for a SQL connector."""
+    """Operational policy for a SQL connector.
+
+    Attributes:
+        collect_column_stats: Whether to collect exact row counts and column
+            statistics for physical tables. Tables and views are always
+            enriched from one bounded row sample; views are never exhaustively
+            profiled.
+    """
 
     collect_column_stats: bool = False
     query_cache_mode: Literal["off", "read_write", "refresh"] = "off"

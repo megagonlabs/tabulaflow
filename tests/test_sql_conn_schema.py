@@ -6,12 +6,14 @@ returns ``NullType`` for a column (e.g. duckdb_engine on ``LIST`` /
 """
 
 from pathlib import Path
+import sqlite3
+from typing import Any
 
 import duckdb
 import pytest
 
 from tabulaflow.data.config import SQLConnectorConfig
-from tabulaflow.data.sql import SQLConnector, _canonicalize_dtype
+from tabulaflow.data.sql import SQLConnector, ThrottledEngine, _canonicalize_dtype
 from tabulaflow.core import SQLSchema, TableRef
 
 
@@ -53,6 +55,152 @@ async def test_connector_rejects_unsafe_global_id_before_opening_database(tmp_pa
     # BigQuery-style angle bracket notation
     assert _canonicalize_dtype("ARRAY<STRING>") == "ARRAY"
     assert _canonicalize_dtype("STRUCT<a INT64, b STRING>") == "STRUCT"
+
+
+async def test_table_without_column_stats_uses_one_bounded_sample(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    db_path = tmp_path / "table-sample.sqlite"
+    with sqlite3.connect(db_path) as connection:
+        connection.execute("CREATE TABLE items (value INTEGER)")
+        connection.executemany("INSERT INTO items VALUES (?)", [(1,), (2,), (2,)])
+
+    original_execute = ThrottledEngine.execute_async
+    table_queries: list[tuple[str, int | None, bool]] = []
+
+    async def execute(
+        self: ThrottledEngine,
+        query: Any,
+        parameters: Any = (),
+        timeout: int | None = None,
+        return_df: bool = False,
+        max_rows: int | None = None,
+    ) -> Any:
+        rendered = str(query)
+        if "FROM items" in rendered:
+            table_queries.append((rendered, timeout, return_df))
+        return await original_execute(self, query, parameters, timeout, return_df, max_rows)
+
+    monkeypatch.setattr(ThrottledEngine, "execute_async", execute)
+    connector = await SQLConnector.from_url_async(
+        global_id="table-sample",
+        url=f"sqlite+aiosqlite:///{db_path}",
+        db_name="table-sample",
+        config=SQLConnectorConfig(schema_cache_mode="off", query_timeout_seconds=7),
+    )
+    try:
+        table = connector.schema.tables[0]
+        column = table.columns[0]
+        assert table.num_rows is None
+        assert column.null_ratio is None
+        assert column.num_unique is None
+        assert column.unique_ratio is None
+        assert column.examples == [1, 2]
+        assert table.sampled_df is not None
+    finally:
+        await connector.disconnect_async()
+
+    assert len(table_queries) == 1
+    assert "LIMIT" in table_queries[0][0]
+    assert table_queries[0][1:] == (7, True)
+
+
+async def test_view_profiling_uses_one_bounded_sample(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    db_path = tmp_path / "view.sqlite"
+    with sqlite3.connect(db_path) as connection:
+        connection.execute("CREATE TABLE items (value INTEGER)")
+        connection.executemany("INSERT INTO items VALUES (?)", [(1,), (2,), (2,)])
+        connection.execute("CREATE VIEW item_view AS SELECT value FROM items")
+
+    original_execute = ThrottledEngine.execute_async
+    view_queries: list[tuple[str, int | None, bool]] = []
+
+    async def execute(
+        self: ThrottledEngine,
+        query: Any,
+        parameters: Any = (),
+        timeout: int | None = None,
+        return_df: bool = False,
+        max_rows: int | None = None,
+    ) -> Any:
+        rendered = str(query)
+        if "FROM item_view" in rendered:
+            view_queries.append((rendered, timeout, return_df))
+        return await original_execute(self, query, parameters, timeout, return_df, max_rows)
+
+    monkeypatch.setattr(ThrottledEngine, "execute_async", execute)
+    connector = await SQLConnector.from_url_async(
+        global_id="view-profile",
+        url=f"sqlite+aiosqlite:///{db_path}",
+        db_name="view-profile",
+        config=SQLConnectorConfig(
+            schema_cache_mode="off",
+            collect_column_stats=True,
+            query_timeout_seconds=7,
+        ),
+    )
+    try:
+        view = next(table for table in connector.schema.tables if table.name == "item_view")
+        column = view.columns[0]
+        assert view.num_rows is None
+        assert column.null_ratio is None
+        assert column.num_unique is None
+        assert column.unique_ratio is None
+        assert column.examples == [1, 2]
+        assert view.sampled_df is not None
+        assert view.sampled_df["value"].tolist() == [1, 2, 2]
+    finally:
+        await connector.disconnect_async()
+
+    assert len(view_queries) == 1
+    assert "LIMIT" in view_queries[0][0]
+    assert view_queries[0][1:] == (7, True)
+
+
+async def test_view_sample_timeout_preserves_structural_schema(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    db_path = tmp_path / "view-timeout.sqlite"
+    with sqlite3.connect(db_path) as connection:
+        connection.execute("CREATE TABLE items (value INTEGER)")
+        connection.execute("CREATE VIEW item_view AS SELECT value FROM items")
+
+    original_execute = ThrottledEngine.execute_async
+
+    async def execute(
+        self: ThrottledEngine,
+        query: Any,
+        parameters: Any = (),
+        timeout: int | None = None,
+        return_df: bool = False,
+        max_rows: int | None = None,
+    ) -> Any:
+        if "FROM item_view" in str(query):
+            raise TimeoutError("too expensive")
+        return await original_execute(self, query, parameters, timeout, return_df, max_rows)
+
+    monkeypatch.setattr(ThrottledEngine, "execute_async", execute)
+    connector = await SQLConnector.from_url_async(
+        global_id="view-timeout",
+        url=f"sqlite+aiosqlite:///{db_path}",
+        db_name="view-timeout",
+        config=SQLConnectorConfig(schema_cache_mode="off", query_timeout_seconds=7),
+    )
+    try:
+        view = next(table for table in connector.schema.tables if table.name == "item_view")
+        assert view.num_rows is None
+        assert view.sampled_df is None
+        assert view.columns[0].examples == []
+    finally:
+        await connector.disconnect_async()
+
+    assert "Could not sample relation" in caplog.text
 
 
 @pytest.mark.asyncio

@@ -156,6 +156,8 @@ class SQLTableSchema(BaseModel):
         schema_name: Namespace containing the table, or ``None`` for databases
             without schemas, such as SQLite.
         primary_key: Ordered primary-key column names.
+        num_rows: Exact physical-table row count when exhaustive profiling was
+            enabled and completed successfully.
         foreign_keys: Outgoing foreign-key constraints.
         sampled_df: Sample rows used by schema browsers and formatters.
     """

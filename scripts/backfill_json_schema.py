@@ -1,8 +1,7 @@
 """Backfill json_schema for cached SQLSchema files.
 
-Connects to the actual database and samples rows (same method as
-build_column_async in sql_conn.py) to infer JSON schemas for columns with
-JSON-like types or TEXT columns containing JSON.
+Connects to the actual database and samples rows to infer JSON schemas for
+columns with JSON-like types or TEXT columns containing JSON.
 
 Usage:
     # Dry-run (default): report what would change without writing
@@ -25,10 +24,10 @@ import os
 import sys
 import time
 from pathlib import Path
+from typing import Any
 
 import sqlalchemy
-from sqlalchemy import create_engine, select
-from sqlalchemy.ext.asyncio import create_async_engine
+from sqlalchemy import select
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -36,8 +35,6 @@ from tabulaflow.data.sql import (
     JSON_TYPES,
     TEXT_TYPES,
     ThrottledEngine,
-    _JSON_SCHEMA_SAMPLE_SIZE,
-    _is_async_url,
 )
 from tabulaflow.data.json_schema import infer_json_schema, looks_like_json
 from tabulaflow.data._cache import write_cached_model
@@ -46,6 +43,7 @@ from tabulaflow.core import SQLColumnSchema, SQLSchema, SQLTableSchema
 logger = logging.getLogger(__name__)
 
 DEFAULT_CACHE_DIR = os.path.join("cache", "schemas")
+JSON_SCHEMA_SAMPLE_ROWS = 1000
 
 
 def _build_snowflake_url(db_name: str) -> str:
@@ -80,7 +78,7 @@ def _build_mysql_url(dataset: str, db_name: str) -> str:
 
 _SUPPORTED_DATASETS = ["spider2-snow", "bird-sql", "arcs", "beaver"]
 
-DATASET_ENGINE_KWARGS: dict[str, dict] = {
+DATASET_ENGINE_KWARGS: dict[str, dict[str, Any]] = {
     "spider2-snow": {
         "connect_args": {
             "disable_ocsp_checks": True,
@@ -109,9 +107,8 @@ async def backfill_one_db(
 ) -> int:
     """Backfill json_schema for all applicable columns in a schema.
 
-    Uses the same sampling method as build_column_async: queries up to
-    _JSON_SCHEMA_SAMPLE_SIZE non-null rows from the actual database.
-    All eligible columns are sampled concurrently.
+    Queries up to ``JSON_SCHEMA_SAMPLE_ROWS`` non-null rows from the actual
+    database. All eligible columns are sampled concurrently.
 
     Args:
         schema: The SQLSchema loaded from cache (will be modified in-place).
@@ -124,7 +121,7 @@ async def backfill_one_db(
     # Collect all (table, column) pairs that need inference
     targets: list[tuple[SQLTableSchema, SQLColumnSchema]] = []
     for table in schema.tables:
-        if table.num_rows is None:
+        if table.is_view or table.sampled_df is None:
             continue
         for column in table.columns:
             if column.json_schema is not None and not force:
@@ -149,10 +146,10 @@ async def backfill_one_db(
             schema=sqlalchemy.quoted_name(table.schema_name, quote=True) if table.schema_name else None,
         )
         try:
-            result = await t_eng.run_query_async(
-                select(col).select_from(tbl).where(col.isnot(None)).limit(_JSON_SCHEMA_SAMPLE_SIZE)
+            result = await t_eng.execute_async(
+                select(col).select_from(tbl).where(col.isnot(None)).limit(JSON_SCHEMA_SAMPLE_ROWS)
             )
-            sample_values = [row[0] for row in result.result]
+            sample_values = [row[0] for row in result.rows]
         except Exception as e:
             logger.warning("  Failed to sample %s.%s: %s", table.name, column.name, e)
             return False
@@ -264,23 +261,12 @@ async def main() -> None:
             schema = SQLSchema.model_validate_json(f.read())
 
         url = _build_url(args.dataset, db_name)
-        is_async = _is_async_url(url)
-        if is_async:
-            engine = create_async_engine(url, pool_size=4, **engine_kwargs)
-        else:
-            engine = create_engine(url, pool_size=4, **engine_kwargs)  # type: ignore
-
-        db_semaphore = asyncio.Semaphore(4)
-        engine_type = "async" if is_async else "sync"
-        t_eng = ThrottledEngine(engine_type, engine, None, db_semaphore)
+        t_eng = ThrottledEngine.from_url(url, max_concurrency_per_db=4, **engine_kwargs)
 
         try:
             updated = await backfill_one_db(schema, t_eng, force=args.force)
         finally:
-            if is_async:
-                await engine.dispose()  # type: ignore
-            else:
-                engine.dispose()  # type: ignore
+            await t_eng.aclose()
 
         if updated > 0:
             files_changed += 1
