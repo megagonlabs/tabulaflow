@@ -4,7 +4,7 @@ from pydantic_ai.settings import ModelSettings
 
 from tabulaflow.agents.modules.column_profiler import ColumnProfiler
 from tabulaflow.agents.modules.db_summarizer import DBSummarizer
-from tabulaflow.agents.modules.er_diagram import ERDiagramSynthesizer
+from tabulaflow.research.agenthub._erd import ERDiagramSynthesizer
 from tabulaflow.agents.modules.fk_predictor import ForeignKeyPredictor
 from tabulaflow.agents.modules.schema_preprocessor import SchemaPreprocessor
 from tabulaflow.agents.modules.text_summarizer import TextSummarizer

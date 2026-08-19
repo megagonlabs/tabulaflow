@@ -775,9 +775,6 @@ tabulaflow
 │   ├── bird_sql_ex.py
 │   ├── executable.py
 │   └── ...
-├── metadata_synthesizer/   # metadata generation methods
-│   ├── er_diagram.py       # ER diagram inference
-│   └── ...
 ├── formatters/       # database schema formatters
 │   ├── sql.py
 │   └── ...

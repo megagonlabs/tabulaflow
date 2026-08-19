@@ -14,7 +14,6 @@ from tabulaflow.agents.modules.base import (
 )
 from tabulaflow.agents.modules.column_profiler import ColumnProfiler
 from tabulaflow.agents.modules.db_summarizer import DBSummarizer
-from tabulaflow.agents.modules.er_diagram import ERDiagramSynthesizer
 from tabulaflow.agents.modules.schema_preprocessor import SchemaPreprocessor
 
 __all__ = [
@@ -24,6 +23,5 @@ __all__ = [
     "preprocessor_registry",
     "ColumnProfiler",
     "DBSummarizer",
-    "ERDiagramSynthesizer",
     "SchemaPreprocessor",
 ]

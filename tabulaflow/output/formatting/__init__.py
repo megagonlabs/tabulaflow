@@ -8,7 +8,6 @@ from tabulaflow.output.formatting._core import (
     format_single_line_text,
 )
 from tabulaflow.output.formatting.cypher import CypherSchemaFormatter
-from tabulaflow.output.formatting.erd import MermaidERDiagramFormatter
 from tabulaflow.output.formatting.schema import (
     PropertyGraphSchemaFormatter,
     SQLSchemaFormatter,
@@ -19,7 +18,6 @@ from tabulaflow.output.formatting.sql_ddl import SQLDDLSchemaFormatter
 
 __all__ = [
     "CypherSchemaFormatter",
-    "MermaidERDiagramFormatter",
     "PropertyGraphSchemaFormatter",
     "SQLBasicSchemaFormatter",
     "SQLDDLSchemaFormatter",

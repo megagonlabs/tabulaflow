@@ -7,6 +7,7 @@ from typing import Any
 from tqdm.asyncio import tqdm_asyncio
 from tabulaflow.research.benchmarks.base import dataset_registry
 import tabulaflow
+import tabulaflow.research.agenthub._erd  # noqa: F401 — register the SQL-agent ERD preprocessor
 from tabulaflow.agents.modules.base import NL2QPreprocessor, preprocessor_registry
 from tabulaflow.research.types import NL2QDataset
 

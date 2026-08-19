@@ -14,11 +14,11 @@ from tabulaflow.core import SQLSchema, SQLTableSchema, ColumnRef
 from tabulaflow.agents.trace import Usage, Trajectory
 from tabulaflow.research.types import PredQuery
 from tabulaflow.research.types import ExtraPredInfo, NL2QDataset, SimpleNL2QTask, SimpleNL2QTaskOutput
-from tabulaflow.agents.modules import ERDiagramSynthesizer, SchemaPreprocessor
+from tabulaflow.agents.modules import SchemaPreprocessor
 from tabulaflow.research.question_embedder import QuestionEmbedder
 from tabulaflow.agents.tools import BaseTool, RunQueryTool
 from tabulaflow.research.tools import SearchKeywordsTool, FinishTool
-from tabulaflow.output.formatting import MermaidERDiagramFormatter, SQLSchemaFormatter, schema_formatter_registry
+from tabulaflow.output.formatting import SQLSchemaFormatter, schema_formatter_registry
 from tabulaflow.research.agenthub.base import agent_registry, BaseAgentConfig
 from tabulaflow.research.agenthub.utils import (
     get_max_steps_processor,
@@ -28,7 +28,7 @@ from tabulaflow.research.agenthub.utils import (
 )
 from tabulaflow.agents.response_parsing import extract_code
 from tabulaflow.research.utils import extract_all_source_columns
-from tabulaflow.output.erd import ERDiagram
+from tabulaflow.research.agenthub._erd import ERDiagram, ERDiagramSynthesizer, MermaidERDiagramFormatter
 from tabulaflow.agents.llm import make_agent
 
 

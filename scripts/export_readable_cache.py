@@ -6,8 +6,8 @@ from tabulaflow.config import tabulaflow_config
 from tabulaflow.agents.modules.db_summarizer import DBSummary
 from tabulaflow.core import SQLSchema
 from tabulaflow.output.schema_compression import SchemaCompressor
-from tabulaflow.output.erd import ERDiagram
-from tabulaflow.output.formatting import MermaidERDiagramFormatter, SQLDDLSchemaFormatter
+from tabulaflow.output.formatting import SQLDDLSchemaFormatter
+from tabulaflow.research.agenthub._erd import ERDiagram, MermaidERDiagramFormatter
 
 
 def main() -> None:

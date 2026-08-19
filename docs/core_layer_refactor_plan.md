@@ -271,7 +271,6 @@ output/
   maps.py
   graphs.py
   schema_compression.py
-  erd.py
   formatting/
     __init__.py
     _core.py
@@ -280,7 +279,6 @@ output/
     sql_basic.py
     sql_ddl.py
     cypher.py
-    erd.py
 ```
 
 Concepts:
@@ -626,9 +624,7 @@ Do not keep in core unless it becomes a truly central primitive.
 
 Recommended homes:
 
-- `agents/modules/er_diagram.py` if primarily LLM-generated/consumed
-- `output/erd.py` if the ERD data model is primarily display/output-facing
-- `output/formatting/erd.py` for formatting only
+- `research/agenthub/_erd.py` while it remains an implementation detail of the research SQL agent
 
 ## Core import policy
 
