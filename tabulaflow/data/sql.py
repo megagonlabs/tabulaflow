@@ -1518,8 +1518,8 @@ def _sql_schema_cache_path(
     global_id: str,
     options: _SchemaIntrospectionOptions = _SchemaIntrospectionOptions(),
 ) -> Path:
-    profile = "sampled+column-stats" if config.collect_column_stats else "sampled"
-    variant = f"{profile}+{options.cache_fingerprint()}"
+    stats_policy = "column-stats" if config.collect_column_stats else "no-column-stats"
+    variant = f"{stats_policy}+{options.cache_fingerprint()}"
     return get_schema_cache_path(config.cache_dir, global_id, variant=variant)
 
 
