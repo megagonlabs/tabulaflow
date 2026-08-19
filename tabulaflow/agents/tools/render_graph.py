@@ -10,9 +10,9 @@ from tabulaflow.output.graphs import (
     graph_type_label,
     graph_result_size,
     materialize_graph_result,
+    normalize_graph_spec,
     parse_graph_spec,
     referenced_source_ids,
-    resolve_graph_spec,
     validate_graph_size,
 )
 from tabulaflow.output.specs import FixedResultSource
@@ -117,7 +117,7 @@ class RenderGraphTool:
             sources[rid] = df
 
         try:
-            normalized = resolve_graph_spec(parsed, sources)
+            normalized = normalize_graph_spec(parsed, sources)
             graph = materialize_graph_result(normalized, sources)
             size = graph_result_size(graph)
             validate_graph_size(size)

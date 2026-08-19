@@ -31,7 +31,6 @@ __all__ = [
     "normalize_map_spec",
     "parse_map_spec",
     "referenced_source_ids",
-    "resolve_map_spec",
 ]
 
 
@@ -362,12 +361,26 @@ def referenced_source_ids(parsed: MapSpec) -> list[str]:
     return ids
 
 
-def resolve_map_spec(parsed: MapSpec, sources: Mapping[str, pd.DataFrame]) -> dict[str, Any]:
-    """Resolve a parsed spec against per-source DataFrames.
+def normalize_map_spec(
+    spec: MapSpec | Mapping[str, object],
+    sources: Mapping[str, pd.DataFrame],
+) -> dict[str, Any]:
+    """Validate and normalize a raw or parsed spec against source DataFrames.
 
     Each column/geojson layer is resolved against ``sources[layer.source_id]`` and
     tagged with its ``source`` id; inline layers need no source.
     """
+    if isinstance(spec, MapSpec):
+        parsed = spec
+    else:
+        raw = copy.deepcopy(dict(spec))
+        raw_layers = raw.get("layers")
+        if isinstance(raw_layers, list):
+            for layer in raw_layers:
+                if isinstance(layer, dict) and "source" in layer and "source_id" not in layer:
+                    layer["source_id"] = layer.pop("source")
+        parsed = parse_map_spec(raw)
+
     out: dict[str, Any] = {}
     if parsed.title is not None:
         out["title"] = copy.deepcopy(parsed.title)
@@ -388,14 +401,3 @@ def resolve_map_spec(parsed: MapSpec, sources: Mapping[str, pd.DataFrame]) -> di
             raise MapSpecError(f"layers[{index}].type must be 'points' or 'geojson'")
     out["layers"] = layers
     return out
-
-
-def normalize_map_spec(spec: Mapping[str, object], sources: Mapping[str, pd.DataFrame]) -> dict[str, Any]:
-    """Validate and normalize a map spec against its per-source DataFrames."""
-    raw = copy.deepcopy(dict(spec))
-    layers = raw.get("layers")
-    if isinstance(layers, list):
-        for layer in layers:
-            if isinstance(layer, dict) and "source" in layer and "source_id" not in layer:
-                layer["source_id"] = layer.pop("source")
-    return resolve_map_spec(parse_map_spec(raw), sources)

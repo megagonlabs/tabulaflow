@@ -227,14 +227,14 @@ app/tui.py snapshot dispatch     render_graph_data(snap, dir)  window.TF.renderG
   message — copy `_validation_message`).
 - `referenced_source_ids(parsed) -> list[str]` over all `nodes`/`edges`/`subgraph`
   entries that carry a `source_id`.
-- `resolve_graph_spec(parsed, sources: Mapping[str, pd.DataFrame]) -> dict`:
+- `normalize_graph_spec(parsed, sources: Mapping[str, pd.DataFrame]) -> dict`:
   validate each entry's referenced columns exist in `sources[source_id]`
   (case-insensitive via `resolve_column`), verify ≥1 edge row overall, tag each
   entry with its `source_id`. Store original column names (the pane rewrites to
   compact field names later, exactly like maps).
 - `RenderGraphTool.__call__(self, *, graph_spec: str) -> str`: parse JSON →
   parse spec → collect `referenced_source_ids` → fetch each from
-  `self._history.get(rid)` (error on unknown/empty) → `resolve_graph_spec` →
+  `self._history.get(rid)` (error on unknown/empty) → `normalize_graph_spec` →
   enforce **graph-specific element caps** (not a row cap) → `add_graph` → return
   `f"{label} {graph_id} created from {...} — {n} nodes, {m} edges"`.
 - Element caps — driven by **readability + interaction smoothness**, not the raw

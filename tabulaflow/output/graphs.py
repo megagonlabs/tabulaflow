@@ -36,7 +36,6 @@ __all__ = [
     "normalize_graph_spec",
     "parse_graph_spec",
     "referenced_source_ids",
-    "resolve_graph_spec",
     "validate_graph_size",
 ]
 
@@ -258,8 +257,12 @@ def referenced_source_ids(parsed: GraphSpec) -> list[str]:
     return ids
 
 
-def resolve_graph_spec(parsed: GraphSpec, sources: Mapping[str, pd.DataFrame]) -> dict[str, Any]:
-    """Resolve a parsed spec against per-source DataFrames."""
+def normalize_graph_spec(
+    spec: GraphSpec | Mapping[str, object],
+    sources: Mapping[str, pd.DataFrame],
+) -> dict[str, Any]:
+    """Validate and normalize a raw or parsed spec against source DataFrames."""
+    parsed = spec if isinstance(spec, GraphSpec) else parse_graph_spec(spec)
     out: dict[str, Any] = {"layout": parsed.layout}
     if parsed.title is not None:
         out["title"] = parsed.title
@@ -282,11 +285,6 @@ def resolve_graph_spec(parsed: GraphSpec, sources: Mapping[str, pd.DataFrame]) -
     out["nodes"] = nodes
     out["edges"] = edges
     return out
-
-
-def normalize_graph_spec(spec: Mapping[str, object], sources: Mapping[str, pd.DataFrame]) -> dict[str, Any]:
-    """Validate and normalize a graph spec against its per-source DataFrames."""
-    return resolve_graph_spec(parse_graph_spec(spec), sources)
 
 
 def _source_rows(source: Mapping[str, object], sources: Mapping[str, pd.DataFrame]) -> list[Mapping[str, object]]:

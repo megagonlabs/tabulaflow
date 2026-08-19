@@ -9,9 +9,9 @@ from pydantic_ai import Tool
 from tabulaflow.output.maps import (
     MAP_RENDER_MAX_ROWS,
     MapSpecError,
+    normalize_map_spec,
     parse_map_spec,
     referenced_source_ids,
-    resolve_map_spec,
 )
 from tabulaflow.output.specs import FixedResultSource
 from tabulaflow.output.store import OutputStore
@@ -135,7 +135,7 @@ class RenderMapTool:
             row_counts[rid] = len(df)
 
         try:
-            normalized = resolve_map_spec(parsed, sources)
+            normalized = normalize_map_spec(parsed, sources)
         except MapSpecError as e:
             return f"(error: {e})"
 
