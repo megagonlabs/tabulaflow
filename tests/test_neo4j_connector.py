@@ -158,7 +158,7 @@ async def test_full_scan_schema_introspection_uses_observed_properties_and_topol
         _NODE_LABELS_QUERY: [{"label": "Person"}, {"label": "Movie"}],
         _RELATIONSHIP_TYPES_QUERY: [{"relationshipType": "ACTED_IN"}],
         _FULL_SCAN_NODE_PROPERTIES_QUERY: [
-            {"nodeType": "Person", "propertyName": "id", "propertyTypes": ["INTEGER", "STRING"]}
+            {"nodeType": "Person", "propertyName": "id", "propertyTypes": ["STRING", "INTEGER", "STRING"]}
         ],
         _FULL_SCAN_RELATIONSHIPS_QUERY: [
             {
@@ -189,6 +189,7 @@ async def test_full_scan_schema_introspection_uses_observed_properties_and_topol
 
     person = next(node for node in schema.nodes if node.label == "Person")
     acted_in = schema.relationships[0]
+    assert [node.label for node in schema.nodes] == ["Movie", "Person"]
     assert person.properties[0].types == ["INTEGER", "STRING"]
     assert acted_in.properties[0].types == ["STRING"]
     assert [(e.source_label, e.target_label) for e in acted_in.endpoints] == [("Person", "Movie")]
