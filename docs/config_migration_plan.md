@@ -68,6 +68,7 @@ schema_cache_mode: Literal[
 SQL-specific fields:
 
 ```python
+max_query_concurrency: PositiveInt = 8
 collect_column_stats: bool = False
 query_cache_mode: Literal[
     "off",
@@ -146,6 +147,7 @@ TABULAFLOW_CACHE_DIR
 TABULAFLOW_MAX_RESULT_ROWS
 TABULAFLOW_QUERY_TIMEOUT_SECONDS
 TABULAFLOW_SCHEMA_CACHE_MODE
+TABULAFLOW_MAX_QUERY_CONCURRENCY
 TABULAFLOW_COLLECT_COLUMN_STATS
 TABULAFLOW_QUERY_CACHE_MODE
 TABULAFLOW_QUERY_CACHE_STORE

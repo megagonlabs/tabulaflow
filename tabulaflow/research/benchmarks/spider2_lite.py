@@ -343,10 +343,9 @@ class Spider2LiteDatasetLoader:
 
         url = f"bigquery://{project}/{datasets[0]}"
         return await SQLConnector.from_url_async(
-            f"spider2-lite+{db_name}",
             url,
-            project,
-            max_concurrency_per_db=8,
+            global_id=f"spider2-lite+{db_name}",
+            db_name=project,
             dbms_semaphore=self._bq_semaphore,
             include_schema_names=datasets,
             reuse_date_partition_schemas=True,
@@ -365,14 +364,13 @@ class Spider2LiteDatasetLoader:
             "client_session_keep_alive": True,
         }
         return await SQLConnector.from_url_async(
-            f"spider2-lite+{db_name}",
             f"{base_url}/{db_name}",
-            db_name,
-            max_concurrency_per_db=2,
+            global_id=f"spider2-lite+{db_name}",
+            db_name=db_name,
             dbms_semaphore=self._sf_semaphore,
             connect_args=connect_args,
             reuse_date_partition_schemas=True,
-            config=self.connector_config,
+            config=self.connector_config.model_copy(update={"max_query_concurrency": 2}),
         )
 
     async def _build_sqlite_connector(self, db_name: str) -> SQLConnector:
@@ -387,11 +385,10 @@ class Spider2LiteDatasetLoader:
             )
         url = f"sqlite+aiosqlite:///{db_path}"
         return await SQLConnector.from_url_async(
-            f"spider2-lite+{db_name}",
             url,
-            db_name,
-            max_concurrency_per_db=4,
-            config=self.connector_config,
+            global_id=f"spider2-lite+{db_name}",
+            db_name=db_name,
+            config=self.connector_config.model_copy(update={"max_query_concurrency": 4}),
         )
 
     async def get_db_connectors_async(

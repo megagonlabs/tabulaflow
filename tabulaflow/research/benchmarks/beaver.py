@@ -82,11 +82,10 @@ class BeaverDatasetLoader:
         db_connectors = await asyncio.gather(
             *[
                 SQLConnector.from_url_async(
-                    f"beaver+{name}",
                     url,
-                    name,
-                    max_concurrency_per_db=16,
-                    config=self.connector_config,
+                    global_id=f"beaver+{name}",
+                    db_name=name,
+                    config=self.connector_config.model_copy(update={"max_query_concurrency": 16}),
                 )
                 for name, url in urls.items()
             ]

@@ -14,6 +14,7 @@ def test_sql_config_uses_defaults() -> None:
     assert config.max_result_rows == 1_000_000
     assert config.query_timeout_seconds == 300
     assert config.schema_cache_mode == "read_write"
+    assert config.max_query_concurrency == 8
     assert config.collect_column_stats is False
     assert config.query_cache_mode == "off"
 
@@ -43,6 +44,12 @@ def test_sql_config_reads_column_stats_flag_from_environment(monkeypatch: pytest
     monkeypatch.setenv("TABULAFLOW_COLLECT_COLUMN_STATS", "true")
 
     assert SQLConnectorConfig().collect_column_stats is True
+
+
+def test_sql_config_reads_query_concurrency_from_environment(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("TABULAFLOW_MAX_QUERY_CONCURRENCY", "3")
+
+    assert SQLConnectorConfig().max_query_concurrency == 3
 
 
 def test_connector_configs_share_process_wide_environment_defaults(monkeypatch: pytest.MonkeyPatch) -> None:

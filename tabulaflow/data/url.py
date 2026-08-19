@@ -173,11 +173,10 @@ async def connect_url(
 
     if config is not None and not isinstance(config, SQLConnectorConfig):
         raise TypeError("SQL URLs require SQLConnectorConfig")
-    gid = global_id or _global_id_from_url(url)
     return await SQLConnector.from_url_async(
-        global_id=gid,
         url=url,
         db_name=db_name,
+        global_id=global_id,
         read_only=read_only,
         config=config,
     )

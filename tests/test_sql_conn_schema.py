@@ -57,6 +57,18 @@ async def test_connector_rejects_unsafe_global_id_before_opening_database(tmp_pa
     assert _canonicalize_dtype("STRUCT<a INT64, b STRING>") == "STRUCT"
 
 
+async def test_connector_derives_global_id_from_url(tmp_path: Path) -> None:
+    connector = await SQLConnector.from_url_async(
+        f"sqlite+aiosqlite:///{tmp_path / 'derived-id.sqlite'}",
+        db_name="derived-id",
+        config=SQLConnectorConfig(schema_cache_mode="off"),
+    )
+    try:
+        assert connector.global_id.startswith("url+")
+    finally:
+        await connector.disconnect_async()
+
+
 async def test_table_without_column_stats_uses_one_bounded_sample(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,

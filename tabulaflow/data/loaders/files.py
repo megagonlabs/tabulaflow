@@ -199,7 +199,7 @@ async def load_files(
             schema=SQLSchema(name=db_name, dialect="duckdb", tables=[]),
             read_only=False,  # need DDL for the load; SQLConnector.read_only set below
             config=loading_config,
-            duckdb_init_sql=duckdb_init_sql,
+            duckdb_init_sql=duckdb_init_sql or (),
         )
     except BaseException:
         if os.path.exists(db_path):
@@ -238,7 +238,7 @@ async def load_files(
         except OSError:
             pass
 
-    connector.register_disconnect_hook(_cleanup_cache)
+    connector._set_disconnect_hook(_cleanup_cache)
 
     for table in connector.schema.tables:
         source_file = table_file_map.get(table.name)

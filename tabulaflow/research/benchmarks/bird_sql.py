@@ -211,9 +211,8 @@ WHERE c.name = 'Italy';"""
                     global_id=f"bird-sql+{name}",
                     url=f"sqlite+aiosqlite:///{os.path.join(db_dir, name, f'{name}.sqlite')}",
                     db_name=name,
-                    max_concurrency_per_db=self.max_concurrency,
                     dbms_semaphore=self._dbms_semaphore,
-                    config=self.connector_config,
+                    config=self.connector_config.model_copy(update={"max_query_concurrency": self.max_concurrency}),
                 )
                 for name in databases
             ]

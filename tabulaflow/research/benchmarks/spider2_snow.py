@@ -260,15 +260,14 @@ class Spider2SnowDatasetLoader:
         }
         # Per-db concurrency is 2 because there are 152 databases so we can have up to 152 x 2 = 304 concurrent connections
         return await SQLConnector.from_url_async(
-            f"spider2-snow+{db_name}",
             f"{base_url}/{db_name}",
-            db_name,
-            max_concurrency_per_db=2,
+            global_id=f"spider2-snow+{db_name}",
+            db_name=db_name,
             dbms_semaphore=self._dbms_semaphore,
             connect_args=connect_args,
             reuse_date_partition_schemas=True,
             schema_reuse_regexes=SCHEMA_REUSE_REGEXES.get(db_name, []),
-            config=self.connector_config,
+            config=self.connector_config.model_copy(update={"max_query_concurrency": 2}),
         )
 
     async def get_db_connectors_async(

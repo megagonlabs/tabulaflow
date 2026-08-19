@@ -4,6 +4,7 @@ from collections.abc import Mapping, Sequence
 import re
 from typing import Any, ClassVar, Literal, Protocol, TypeAlias
 
+import pandas as pd
 from sqlalchemy.sql import Executable
 
 from tabulaflow.core import ExecResult, NonSQLLanguage, PropertyGraphSchema, SQLDialect, SQLSchema, TableRef
@@ -51,6 +52,14 @@ class SQLConnectorProtocol(Protocol):
         self,
         tables: list[TableRef] | None = None,
     ) -> SQLSchema: ...
+
+    async def write_dataframe_async(
+        self,
+        df: pd.DataFrame,
+        table_name: str,
+        schema_name: str | None = None,
+        mode: Literal["append", "replace"] = "append",
+    ) -> int: ...
 
 
 class PropertyGraphConnectorProtocol(Protocol):

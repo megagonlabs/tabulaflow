@@ -121,6 +121,7 @@ from tabulaflow.data._cache import (
     write_cached_model,
 )
 from tabulaflow.data.json_schema import infer_json_schema, looks_like_json
+from tabulaflow.data.url import _global_id_from_url
 
 logger = logging.getLogger(__name__)
 
@@ -2173,20 +2174,20 @@ class SQLConnector:
     @classmethod
     async def from_url_async(
         cls,
-        global_id: str,
         url: str | SQLAlchemyURL,
+        *,
         db_name: str,
-        max_concurrency_per_db: int = 8,
-        dbms_semaphore: asyncio.Semaphore | None = None,
-        schema: SQLSchema | None = None,
-        reuse_date_partition_schemas: bool = False,
-        schema_reuse_regexes: Sequence[str] = (),
+        global_id: str | None = None,
         read_only: bool = True,
         config: SQLConnectorConfig | None = None,
+        schema: SQLSchema | None = None,
         include_schema_names: Sequence[str] | None = None,
         exclude_schema_names: Sequence[str] = (),
-        duckdb_init_sql: list[str] | None = None,
+        reuse_date_partition_schemas: bool = False,
+        schema_reuse_regexes: Sequence[str] = (),
+        dbms_semaphore: asyncio.Semaphore | None = None,
         description: str | None = None,
+        duckdb_init_sql: Sequence[str] = (),
         **engine_kwargs: Any,
     ) -> "SQLConnector":
         """Asynchronously create a SQLConnector from a database URL.
@@ -2196,31 +2197,31 @@ class SQLConnector:
         the database schema if one is not provided.
 
         Args:
-            global_id: Globally unique, filename-safe identifier for this
-                database connection and its caches.
             url: The database URL (string or :class:`SQLAlchemyURL`).
             db_name: Human-readable database name used in ``schema.name``.
-            max_concurrency_per_db: Maximum number of concurrent queries
-                allowed against this database.  Also used as the engine's
-                ``pool_size``.  Defaults to ``8``.
-            dbms_semaphore: An optional semaphore shared across all databases
-                to limit overall concurrency.
-            schema: A pre-loaded :class:`SQLSchema`.  When ``None`` the schema
-                is loaded (and cached) automatically via
-                :func:`_load_schema_async`.
-            reuse_date_partition_schemas: If ``True``, date-suffixed table
-                families reuse one representative's structural schema.
-            schema_reuse_regexes: Regexes defining additional table families
-                whose members are asserted to share one structural schema.
+            global_id: Globally unique, filename-safe identifier for this
+                database connection and its caches. Derived from the
+                credential-free URL when omitted.
             read_only: If ``True`` (the default), write statements (INSERT,
                 UPDATE, DELETE, DROP, etc.) are rejected before reaching the
                 database, returning an :class:`ExecResult` with an error.
             config: Immutable connector execution and cache policy. Environment
                 values and built-in defaults are used when omitted.
+            schema: A pre-loaded :class:`SQLSchema`.  When ``None`` the schema
+                is loaded (and cached) automatically via
+                :func:`_load_schema_async`.
             include_schema_names: Optional allowlist of schemas to introspect.
             exclude_schema_names: Schemas to omit from introspection.
+            reuse_date_partition_schemas: If ``True``, date-suffixed table
+                families reuse one representative's structural schema.
+            schema_reuse_regexes: Regexes defining additional table families
+                whose members are asserted to share one structural schema.
+            dbms_semaphore: Optional semaphore shared across connectors to
+                limit aggregate DBMS concurrency.
             description: Optional database description stored in the schema
                 and persisted to the schema cache.
+            duckdb_init_sql: SQL statements to run on each new DuckDB
+                connection.
             **engine_kwargs: Additional keyword arguments forwarded to the
                 SQLAlchemy engine constructor (e.g. ``pool_pre_ping``).
 
@@ -2228,7 +2229,7 @@ class SQLConnector:
             A fully initialised :class:`SQLConnector` instance ready to
             execute queries.
         """
-        validate_global_id(global_id)
+        global_id = validate_global_id(global_id or _global_id_from_url(str(url)))
         config = SQLConnectorConfig() if config is None else config
         if not read_only and config.query_cache_mode != "off":
             raise ValueError("Query caching requires read_only=True")
@@ -2240,10 +2241,10 @@ class SQLConnector:
         )
         t_eng = ThrottledEngine.from_url(
             url,
-            max_concurrency_per_db=max_concurrency_per_db,
+            max_concurrency_per_db=config.max_query_concurrency,
             dbms_semaphore=dbms_semaphore,
             read_only=read_only,
-            duckdb_init_sql=duckdb_init_sql,
+            duckdb_init_sql=list(duckdb_init_sql),
             **engine_kwargs,
         )
         # If anything below raises (or the awaiting task is cancelled
@@ -2283,14 +2284,7 @@ class SQLConnector:
                 logger.debug("aclose during construction failed", exc_info=True)
             raise
 
-    def register_disconnect_hook(self, callback: Callable[[], None]) -> None:
-        """Register a callback to run after :meth:`disconnect_async`
-        closes the engine.
-
-        Useful for loader-side cleanup (e.g. deleting a generated cache
-        file) without coupling the connector to the loader's specific
-        resources.  Replaces any previously-registered hook.
-        """
+    def _set_disconnect_hook(self, callback: Callable[[], None]) -> None:
         self._on_disconnect = callback
 
     async def disconnect_async(self) -> None:
@@ -2304,8 +2298,7 @@ class SQLConnector:
         After disconnect, ``schema`` remains in memory and SQLAlchemy will
         transparently create new connections on demand.
 
-        If a hook was registered via :meth:`register_disconnect_hook`,
-        it runs after the engine is closed.
+        A loader-owned cleanup hook, when present, runs after the engine closes.
         """
         await self._t_eng.aclose()
         if self._on_disconnect is not None:

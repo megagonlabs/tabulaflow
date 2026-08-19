@@ -238,6 +238,22 @@ async def test_connector_timeout_uses_config_unless_explicitly_overridden(
     assert captured == [17, None, 5]
 
 
+async def test_connector_uses_configured_query_concurrency(tmp_path: Path) -> None:
+    connector = await _connector(
+        tmp_path,
+        global_id="concurrency",
+        config=SQLConnectorConfig(
+            max_query_concurrency=3,
+            schema_cache_mode="off",
+        ),
+    )
+    try:
+        assert connector._t_eng.db_semaphore is not None
+        assert connector._t_eng.db_semaphore._value == 3
+    finally:
+        await connector.disconnect_async()
+
+
 async def test_query_cache_mode_controls_reuse(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     config = SQLConnectorConfig(
         cache_dir=tmp_path / "cache",
