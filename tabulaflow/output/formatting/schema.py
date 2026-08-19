@@ -1,3 +1,5 @@
+"""Schema formatter protocols and registry."""
+
 from typing import ClassVar, Protocol, TypeAlias
 
 from tabulaflow.core import PropertyGraphSchema, SQLDialect, SQLSchema, SQLTableSchema
