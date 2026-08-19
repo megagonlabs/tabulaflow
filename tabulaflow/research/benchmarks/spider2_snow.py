@@ -51,8 +51,8 @@ SPIDER2_SNOW_DATASET_INSTRUCTIONS = """
 """.strip()
 
 
-# Avoid repeatitive construction of tables with the same schema to speed up schema loading
-GROUP_TABLE_REGEXES = {
+# Reuse structural schemas for known-homogeneous table families.
+SCHEMA_REUSE_REGEXES = {
     "CENSUS_BUREAU_ACS_1": [
         r"CENSUS_TRACTS_.*?",
     ],
@@ -266,8 +266,8 @@ class Spider2SnowDatasetLoader:
             max_concurrency_per_db=2,
             dbms_semaphore=self._dbms_semaphore,
             connect_args=connect_args,
-            group_date_partitioned_tables=True,
-            group_table_regexes=GROUP_TABLE_REGEXES.get(db_name, []),
+            reuse_date_partition_schemas=True,
+            schema_reuse_regexes=SCHEMA_REUSE_REGEXES.get(db_name, []),
             config=self.connector_config,
         )
 

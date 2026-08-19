@@ -349,7 +349,7 @@ class Spider2LiteDatasetLoader:
             max_concurrency_per_db=8,
             dbms_semaphore=self._bq_semaphore,
             include_schema_names=datasets,
-            group_date_partitioned_tables=True,
+            reuse_date_partition_schemas=True,
             config=self.connector_config,
             **engine_kwargs,
         )
@@ -371,7 +371,7 @@ class Spider2LiteDatasetLoader:
             max_concurrency_per_db=2,
             dbms_semaphore=self._sf_semaphore,
             connect_args=connect_args,
-            group_date_partitioned_tables=True,
+            reuse_date_partition_schemas=True,
             config=self.connector_config,
         )
 

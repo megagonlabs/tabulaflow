@@ -71,8 +71,9 @@ Loaders (``loaders/files.py``, ``loaders/huggingface.py``) build a
 datasets) by materializing into DuckDB.
 """
 
-import copy
+import hashlib
 import importlib
+import json
 import re
 import logging
 import threading
@@ -1448,20 +1449,86 @@ class AsyncInspector:
         return _stub_async
 
 
-def _sql_schema_cache_path(config: SQLConnectorConfig, global_id: str) -> Path:
-    variant = "sampled+column-stats" if config.collect_column_stats else "sampled"
+_DATE_PARTITION_PATTERNS = (
+    re.compile(r"^(?P<prefix>.*?)(?P<date>\d{8})(?P<suffix>.*?)$"),
+    re.compile(r"^(?P<prefix>.*?)(?P<date>\d{6})(?P<suffix>.*?)$"),
+    re.compile(r"^(?P<prefix>.*?)(?P<date>\d{4})(?P<suffix>.*?)$"),
+)
+
+
+@dataclass(frozen=True)
+class _SchemaIntrospectionOptions:
+    include_schema_names: frozenset[str] | None = None
+    exclude_schema_names: frozenset[str] = frozenset()
+    reuse_date_partition_schemas: bool = False
+    schema_reuse_regexes: tuple[str, ...] = ()
+
+    def __post_init__(self) -> None:
+        for pattern in self.schema_reuse_regexes:
+            re.compile(pattern)
+
+    def allows_schema(self, schema_name: str | None) -> bool:
+        return (
+            self.include_schema_names is None or schema_name in self.include_schema_names
+        ) and schema_name not in self.exclude_schema_names
+
+    def schema_reuse_groups(self, table_names: list[str]) -> list[list[str]]:
+        groups: list[list[str]] = []
+        remaining = list(table_names)
+
+        for reuse_pattern in self.schema_reuse_regexes:
+            matched = [name for name in remaining if re.match(reuse_pattern, name)]
+            if len(matched) > 1:
+                groups.append(matched)
+                matched_names = set(matched)
+                remaining = [name for name in remaining if name not in matched_names]
+
+        if self.reuse_date_partition_schemas:
+            for date_pattern in _DATE_PARTITION_PATTERNS:
+                by_affixes: dict[tuple[str, str], list[str]] = collections.defaultdict(list)
+                for name in remaining:
+                    if match := date_pattern.match(name):
+                        by_affixes[(match.group("prefix"), match.group("suffix"))].append(name)
+
+                reused = [group for group in by_affixes.values() if len(group) > 1]
+                groups.extend(reused)
+                reused_names = {name for group in reused for name in group}
+                remaining = [name for name in remaining if name not in reused_names]
+
+        groups.extend([name] for name in remaining)
+        return groups
+
+    def cache_fingerprint(self) -> str:
+        payload = json.dumps(
+            {
+                "include_schema_names": sorted(self.include_schema_names)
+                if self.include_schema_names is not None
+                else None,
+                "exclude_schema_names": sorted(self.exclude_schema_names),
+                "reuse_date_partition_schemas": self.reuse_date_partition_schemas,
+                "schema_reuse_regexes": self.schema_reuse_regexes,
+            },
+            sort_keys=True,
+        )
+        return hashlib.sha256(payload.encode()).hexdigest()
+
+
+def _sql_schema_cache_path(
+    config: SQLConnectorConfig,
+    global_id: str,
+    options: _SchemaIntrospectionOptions = _SchemaIntrospectionOptions(),
+) -> Path:
+    profile = "sampled+column-stats" if config.collect_column_stats else "sampled"
+    variant = f"{profile}+{options.cache_fingerprint()}"
     return get_schema_cache_path(config.cache_dir, global_id, variant=variant)
 
 
-async def load_schema_with_cache_async(
+async def _load_schema_async(
     global_id: str,
     db_name: str,
     t_eng: ThrottledEngine,
     config: SQLConnectorConfig,
-    group_date_partitioned_tables: bool = True,
-    group_table_regexes: list[str] = [],
-    include_schema_names: list[str] | None = None,
-    exclude_schema_names: list[str] | None = None,
+    options: _SchemaIntrospectionOptions,
     description: str | None = None,
 ) -> SQLSchema:
     """Load the database schema, using the on-disk cache when available
@@ -1469,7 +1536,7 @@ async def load_schema_with_cache_async(
 
     Reads the cache variant matching the configured column-statistics
     policy if it exists and caching is enabled; otherwise introspects the
-    live database via :func:`build_schema_async`, writes the result back
+    live database via :func:`_build_schema_async`, writes the result back
     to the cache (when caching is enabled and the schema is non-empty),
     and returns it.
 
@@ -1479,17 +1546,8 @@ async def load_schema_with_cache_async(
         db_name: Human-readable database name stored in
             ``schema.name``.
         t_eng: The :class:`ThrottledEngine` whose schema to load.
-        group_date_partitioned_tables: When True, tables sharing a
-            common prefix/suffix that differ only in a date-like
-            numeric segment are grouped into a single logical entry.
-        group_table_regexes: Regex patterns identifying additional
-            table groupings.
-        include_schema_names: When provided, restrict introspection
-            to these schemas only.
-        exclude_schema_names: When provided, keep these schemas out of the
-            introspected schema — for schemas a caller writes as its own
-            bookkeeping and nobody browses or queries by name.
         config: Connector cache and schema-introspection policy.
+        options: Source-specific schema scope and structural reuse assumptions.
         description: Optional database description stored in
             ``schema.description``.
 
@@ -1500,7 +1558,7 @@ async def load_schema_with_cache_async(
         FileNotFoundError: If schema cache mode is ``cache_only`` and the
             cache file is missing.
     """
-    cache_path = _sql_schema_cache_path(config, global_id)
+    cache_path = _sql_schema_cache_path(config, global_id, options)
 
     async with cache_lock(cache_path):
         sqlalchemy_dialect = t_eng.engine.dialect.name
@@ -1520,16 +1578,13 @@ async def load_schema_with_cache_async(
         if config.schema_cache_mode == "cache_only":
             raise FileNotFoundError(f"Schema cache required but not found at {cache_path}")
 
-        schema = await build_schema_async(
+        schema = await _build_schema_async(
             t_eng,
             db_name,
             dialect,  # type: ignore
-            group_date_partitioned_tables,
-            group_table_regexes,
+            options,
             collect_column_stats=config.collect_column_stats,
             query_timeout_seconds=config.query_timeout_seconds,
-            include_schema_names=include_schema_names,
-            exclude_schema_names=exclude_schema_names,
         )
         if t_eng.engine_type == "async":
             await t_eng.engine.dispose()  # type: ignore
@@ -1830,7 +1885,7 @@ async def _collect_column_stats_async(
     )
 
 
-async def build_table_async(
+async def _build_table_async(
     t_eng: ThrottledEngine,
     table_name: str,
     schema_name: str | None,
@@ -1930,43 +1985,6 @@ async def build_table_async(
     )
 
 
-def group_table_names(
-    table_names: list[str],
-    group_date_partitioned_tables: bool = True,
-    group_table_regexes: list[str] = [],
-) -> list[list[str]]:
-    groups = []
-    remaining = table_names
-
-    for regex in group_table_regexes:
-        matched = [table_name for table_name in remaining if re.match(regex, table_name)]
-        if len(matched) > 1:
-            groups.append(matched)
-            remaining = [table_name for table_name in remaining if table_name not in matched]
-
-    if group_date_partitioned_tables:
-        date_patterns = [
-            r"^(?P<prefix>.*?)(?P<date>\d{8})(?P<suffix>.*?)$",
-            r"^(?P<prefix>.*?)(?P<date>\d{6})(?P<suffix>.*?)$",
-            r"^(?P<prefix>.*?)(?P<date>\d{4})(?P<suffix>.*?)$",
-        ]
-        for regex in date_patterns:
-            affix_groups = collections.defaultdict(list)
-            for s in remaining:
-                match = re.match(regex, s)
-                if match:
-                    affix_groups[(match.group("prefix"), match.group("suffix"))].append(s)
-            for _, matched in affix_groups.items():
-                if len(matched) > 1:
-                    groups.append(matched)
-                    remaining = [table_name for table_name in remaining if table_name not in matched]
-
-    for t in remaining:
-        groups.append([t])
-
-    return groups
-
-
 async def _normalize_duckdb_schema_names(t_eng: ThrottledEngine, schema_names: list[str | None]) -> list[str | None]:
     """Strip the database prefix from duckdb-engine schema names.
 
@@ -1994,16 +2012,13 @@ async def _normalize_duckdb_schema_names(t_eng: ThrottledEngine, schema_names: l
     return result
 
 
-async def build_schema_async(
+async def _build_schema_async(
     t_eng: ThrottledEngine,
     db_name: str,
     dialect: SQLDialect,
-    group_date_partitioned_tables: bool = True,
-    group_table_regexes: list[str] = [],
+    options: _SchemaIntrospectionOptions,
     collect_column_stats: bool = False,
     query_timeout_seconds: int | None = 300,
-    include_schema_names: list[str] | None = None,
-    exclude_schema_names: list[str] | None = None,
 ) -> SQLSchema:
     t0 = time.time()
     logger.info(f"Building schema for {db_name}...")
@@ -2019,12 +2034,7 @@ async def build_schema_async(
         schema_names = await _normalize_duckdb_schema_names(t_eng, schema_names)
 
     schema_names = [s for s in schema_names if not (s and s.lower() == "information_schema")]
-    if include_schema_names is not None:
-        allowed = set(include_schema_names)
-        schema_names = [s for s in schema_names if s in allowed]
-    if exclude_schema_names is not None:
-        denied = set(exclude_schema_names)
-        schema_names = [s for s in schema_names if s not in denied]
+    schema_names = [name for name in schema_names if options.allows_schema(name)]
 
     # Discover table/view names for all schemas concurrently
     discovery_results = await asyncio.gather(
@@ -2037,42 +2047,46 @@ async def build_schema_async(
         ]
     )
 
-    tasks = []
-    all_groups = []
+    jobs: list[tuple[str | None, list[str], bool]] = []
 
     for schema_name, (raw_table_names, raw_view_names) in zip(schema_names, discovery_results):
         table_names = [_denorm(t_eng, name) for name in raw_table_names]
         view_names = [_denorm(t_eng, name) for name in raw_view_names]
-        view_name_set = set(view_names)
 
-        groups = group_table_names(table_names + view_names, group_date_partitioned_tables, group_table_regexes)
-        if groups:
-            logger.info(
-                f"Schema {schema_name}: {len(table_names) + len(view_names)} tables/views grouped into {len(groups)} representative tables ({', '.join(f'{g[0]} ({len(g)})' for g in groups)})"
-            )
-        for group in groups:
-            tasks.append(
-                asyncio.create_task(
-                    build_table_async(
-                        t_eng,
-                        group[0],
-                        schema_name,
-                        is_view=group[0] in view_name_set,
-                        collect_column_stats=collect_column_stats,
-                        query_timeout_seconds=query_timeout_seconds,
-                    )
+        for names, is_view in ((table_names, False), (view_names, True)):
+            groups = options.schema_reuse_groups(names)
+            reused_groups = [group for group in groups if len(group) > 1]
+            if reused_groups:
+                logger.info(
+                    "Schema %s: reusing representative schemas for %d families spanning %d relations",
+                    schema_name,
+                    len(reused_groups),
+                    sum(len(group) for group in reused_groups),
                 )
-            )
-            all_groups.append(group)
+            for group in groups:
+                jobs.append((schema_name, group, is_view))
 
     with warnings.catch_warnings(record=True):
         # Capture Snowflake's "failed to reflect" warnings; let all others pass through normally
         warnings.filterwarnings("always", message="Failed to reflect", category=SAWarning)
         warnings.filterwarnings("always", message="Did not recognize type", category=SAWarning)
-        task_results = await asyncio.gather(*tasks, return_exceptions=True)
+        results = await asyncio.gather(
+            *(
+                _build_table_async(
+                    t_eng,
+                    group[0],
+                    schema_name,
+                    is_view=is_view,
+                    collect_column_stats=collect_column_stats,
+                    query_timeout_seconds=query_timeout_seconds,
+                )
+                for schema_name, group, is_view in jobs
+            ),
+            return_exceptions=True,
+        )
 
     tables = []
-    for group, table in zip(all_groups, task_results):
+    for (_, group, _), table in zip(jobs, results):
         if table is None:
             continue
         if isinstance(table, BaseException):
@@ -2080,30 +2094,20 @@ async def build_schema_async(
             continue
         tables.append(table)
         for table_name in group[1:]:
-            table = copy.deepcopy(table)
-            table.name = table_name
-            table.num_rows = None
-            table.sampled_df = None
-            for col in table.columns:
+            copied = table.model_copy(deep=True)
+            copied.name = table_name
+            copied.num_rows = None
+            copied.sampled_df = None
+            for col in copied.columns:
+                col.null_ratio = None
+                col.num_unique = None
+                col.unique_ratio = None
                 col.examples = []
-            tables.append(SQLTableSchema.model_validate(table.model_dump()))
+                col.json_schema = None
+            tables.append(copied)
 
     logger.info(f"Time taken to build schema for {db_name}: {time.time() - t0} seconds")
     return SQLSchema(name=db_name, dialect=dialect, tables=tables)
-
-
-@dataclass(frozen=True)
-class _SchemaBuildConfig:
-    """Knobs that control how :func:`build_schema_async` and
-    :func:`build_table_async` introspect and post-process a database
-    schema.  Stored on :class:`SQLConnector` so
-    :meth:`refresh_schema_async` can rebuild with the same config.
-    """
-
-    group_date_partitioned_tables: bool = True
-    group_table_regexes: list[str] = dataclasses.field(default_factory=list)
-    include_schema_names: list[str] | None = None
-    exclude_schema_names: list[str] | None = None
 
 
 @dataclass
@@ -2145,7 +2149,7 @@ class SQLConnector:
     _t_eng: ThrottledEngine
     config: SQLConnectorConfig = dataclasses.field(default_factory=SQLConnectorConfig)
     read_only: bool = True
-    _schema_build_config: _SchemaBuildConfig = dataclasses.field(default_factory=_SchemaBuildConfig)
+    _schema_introspection: _SchemaIntrospectionOptions = dataclasses.field(default_factory=_SchemaIntrospectionOptions)
     # Optional cleanup the loader registers (e.g. "delete the DuckDB
     # cache file I generated for this connector").  Called from
     # ``disconnect_async`` after the engine is closed.  Lets loaders own
@@ -2162,7 +2166,7 @@ class SQLConnector:
     async def _save_schema_cache_async(self) -> None:
         """Write the current schema to the cache file if caching is enabled."""
         if self.config.schema_cache_mode in ("read_write", "refresh"):
-            cache_path = _sql_schema_cache_path(self.config, self.global_id)
+            cache_path = _sql_schema_cache_path(self.config, self.global_id, self._schema_introspection)
             async with cache_lock(cache_path):
                 await write_cached_model(cache_path, self.schema)
 
@@ -2175,12 +2179,12 @@ class SQLConnector:
         max_concurrency_per_db: int = 8,
         dbms_semaphore: asyncio.Semaphore | None = None,
         schema: SQLSchema | None = None,
-        group_date_partitioned_tables: bool = True,
-        group_table_regexes: list[str] = [],
+        reuse_date_partition_schemas: bool = False,
+        schema_reuse_regexes: Sequence[str] = (),
         read_only: bool = True,
         config: SQLConnectorConfig | None = None,
-        include_schema_names: list[str] | None = None,
-        exclude_schema_names: list[str] | None = None,
+        include_schema_names: Sequence[str] | None = None,
+        exclude_schema_names: Sequence[str] = (),
         duckdb_init_sql: list[str] | None = None,
         description: str | None = None,
         **engine_kwargs: Any,
@@ -2203,23 +2207,18 @@ class SQLConnector:
                 to limit overall concurrency.
             schema: A pre-loaded :class:`SQLSchema`.  When ``None`` the schema
                 is loaded (and cached) automatically via
-                :func:`load_schema_with_cache_async`.
-            group_date_partitioned_tables: If ``True``, tables whose names
-                share the same prefix and suffix but differ only by a
-                date-like numeric segment (8, 6, or 4 digits) are grouped
-                together.  Only the first table in each group has its schema
-                fully inspected; the remaining tables receive a shallow copy.
-                Defaults to ``True``.
-            group_table_regexes: A list of regex patterns used to group
-                tables.  For each pattern, all table names that match are
-                collected into a group.  If a group contains more than one
-                table, only the first is fully inspected and the rest receive
-                a shallow copy of its schema.
+                :func:`_load_schema_async`.
+            reuse_date_partition_schemas: If ``True``, date-suffixed table
+                families reuse one representative's structural schema.
+            schema_reuse_regexes: Regexes defining additional table families
+                whose members are asserted to share one structural schema.
             read_only: If ``True`` (the default), write statements (INSERT,
                 UPDATE, DELETE, DROP, etc.) are rejected before reaching the
                 database, returning an :class:`ExecResult` with an error.
             config: Immutable connector execution and cache policy. Environment
                 values and built-in defaults are used when omitted.
+            include_schema_names: Optional allowlist of schemas to introspect.
+            exclude_schema_names: Schemas to omit from introspection.
             description: Optional database description stored in the schema
                 and persisted to the schema cache.
             **engine_kwargs: Additional keyword arguments forwarded to the
@@ -2233,6 +2232,12 @@ class SQLConnector:
         config = SQLConnectorConfig() if config is None else config
         if not read_only and config.query_cache_mode != "off":
             raise ValueError("Query caching requires read_only=True")
+        introspection = _SchemaIntrospectionOptions(
+            include_schema_names=frozenset(include_schema_names) if include_schema_names is not None else None,
+            exclude_schema_names=frozenset(exclude_schema_names),
+            reuse_date_partition_schemas=reuse_date_partition_schemas,
+            schema_reuse_regexes=tuple(schema_reuse_regexes),
+        )
         t_eng = ThrottledEngine.from_url(
             url,
             max_concurrency_per_db=max_concurrency_per_db,
@@ -2253,15 +2258,12 @@ class SQLConnector:
             await t_eng.execute_async("SELECT 1")
 
             if schema is None:
-                schema = await load_schema_with_cache_async(
+                schema = await _load_schema_async(
                     global_id,
                     db_name,
                     t_eng,
                     config,
-                    group_date_partitioned_tables,
-                    group_table_regexes,
-                    include_schema_names=include_schema_names,
-                    exclude_schema_names=exclude_schema_names,
+                    introspection,
                     description=description,
                 )
             if schema.dialect is None:
@@ -2272,12 +2274,7 @@ class SQLConnector:
                 t_eng,
                 config=config,
                 read_only=read_only,
-                _schema_build_config=_SchemaBuildConfig(
-                    group_date_partitioned_tables=group_date_partitioned_tables,
-                    group_table_regexes=list(group_table_regexes),
-                    include_schema_names=include_schema_names,
-                    exclude_schema_names=exclude_schema_names,
-                ),
+                _schema_introspection=introspection,
             )
         except BaseException:
             try:
@@ -2337,9 +2334,8 @@ class SQLConnector:
         Returns:
             The updated :class:`SQLSchema`.
         """
-        excluded = set(self._schema_build_config.exclude_schema_names or ())
-        if tables is not None and excluded:
-            tables = [ref for ref in tables if ref.schema_name not in excluded]
+        if tables is not None:
+            tables = [ref for ref in tables if self._schema_introspection.allows_schema(ref.schema_name)]
             if not tables:
                 return self.schema
         async with self._schema_lock:
@@ -2353,7 +2349,7 @@ class SQLConnector:
 
                 new_tables = await asyncio.gather(
                     *[
-                        build_table_async(
+                        _build_table_async(
                             self._t_eng,
                             ref.table_name,
                             ref.schema_name,
@@ -2377,17 +2373,13 @@ class SQLConnector:
                     tables=kept,
                 )
             else:
-                cfg = self._schema_build_config
-                self.schema = await build_schema_async(
+                self.schema = await _build_schema_async(
                     self._t_eng,
                     self.schema.name,
                     self.schema.dialect,  # type: ignore[arg-type]
-                    cfg.group_date_partitioned_tables,
-                    cfg.group_table_regexes,
+                    self._schema_introspection,
                     collect_column_stats=self.config.collect_column_stats,
                     query_timeout_seconds=self.config.query_timeout_seconds,
-                    include_schema_names=cfg.include_schema_names,
-                    exclude_schema_names=cfg.exclude_schema_names,
                 )
 
             await self._save_schema_cache_async()
@@ -2398,7 +2390,7 @@ class SQLConnector:
     async def _default_schema_label_async(self) -> str | None:
         """Schema label an unqualified object resolves to under this connector.
 
-        Mirrors the per-dialect schema labelling in :func:`build_schema_async`
+        Mirrors the per-dialect schema labelling in :func:`_build_schema_async`
         so a table written with ``schema_name=None`` is recorded under the same
         label a full re-introspection would assign it. Without this, the live
         database resolves the unqualified write to its default schema (e.g.
@@ -2407,7 +2399,7 @@ class SQLConnector:
         entry alongside the real ``main`` one.
         """
         dialect = self.language
-        # build_schema_async collapses these single-logical-schema dialects to a
+        # _build_schema_async collapses these single-logical-schema dialects to a
         # ``None`` label, so unqualified writes must resolve to None to match.
         if dialect in ("sqlite", "mysql"):
             return None

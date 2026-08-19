@@ -204,6 +204,84 @@ async def test_view_sample_timeout_preserves_structural_schema(
     assert "None.item_view" not in caplog.text
 
 
+async def test_date_partition_schema_reuse_is_explicit_and_structural(tmp_path: Path) -> None:
+    db_path = tmp_path / "partitions.sqlite"
+    with sqlite3.connect(db_path) as connection:
+        connection.execute("CREATE TABLE events_20240101 (value INTEGER)")
+        connection.execute("CREATE TABLE events_20240102 (value VARCHAR(20))")
+        connection.execute("INSERT INTO events_20240101 VALUES (1)")
+        connection.execute("INSERT INTO events_20240102 VALUES ('two')")
+
+    exact = await SQLConnector.from_url_async(
+        global_id="partitions-exact",
+        url=f"sqlite+aiosqlite:///{db_path}",
+        db_name="partitions",
+        config=SQLConnectorConfig(schema_cache_mode="off"),
+    )
+    try:
+        exact_types = {table.name: table.columns[0].dtype for table in exact.schema.tables}
+        assert exact_types == {"events_20240101": "INTEGER", "events_20240102": "VARCHAR"}
+    finally:
+        await exact.disconnect_async()
+
+    reused = await SQLConnector.from_url_async(
+        global_id="partitions-reused",
+        url=f"sqlite+aiosqlite:///{db_path}",
+        db_name="partitions",
+        reuse_date_partition_schemas=True,
+        config=SQLConnectorConfig(schema_cache_mode="off", collect_column_stats=True),
+    )
+    try:
+        tables = {table.name: table for table in reused.schema.tables}
+        assert tables["events_20240101"].columns[0].dtype == "INTEGER"
+        copied = tables["events_20240102"]
+        assert copied.columns[0].dtype == "INTEGER"
+        assert copied.num_rows is None
+        assert copied.sampled_df is None
+        assert copied.columns[0].null_ratio is None
+        assert copied.columns[0].num_unique is None
+        assert copied.columns[0].examples == []
+    finally:
+        await reused.disconnect_async()
+
+
+async def test_schema_scope_is_part_of_cache_identity(tmp_path: Path) -> None:
+    db_path = tmp_path / "scoped-cache.duckdb"
+    connection = duckdb.connect(str(db_path))
+    connection.execute("CREATE SCHEMA first")
+    connection.execute("CREATE SCHEMA second")
+    connection.execute("CREATE TABLE first.items (value INTEGER)")
+    connection.execute("CREATE TABLE second.items (value VARCHAR)")
+    connection.close()
+
+    config = SQLConnectorConfig(cache_dir=tmp_path / "cache", schema_cache_mode="read_write")
+    first = await SQLConnector.from_url_async(
+        global_id="scoped-cache",
+        url=f"duckdb:///{db_path}",
+        db_name="scoped-cache",
+        include_schema_names=["first"],
+        config=config,
+    )
+    try:
+        assert {(table.schema_name, table.name) for table in first.schema.tables} == {("first", "items")}
+    finally:
+        await first.disconnect_async()
+
+    second = await SQLConnector.from_url_async(
+        global_id="scoped-cache",
+        url=f"duckdb:///{db_path}",
+        db_name="scoped-cache",
+        include_schema_names=["second"],
+        config=config,
+    )
+    try:
+        assert {(table.schema_name, table.name) for table in second.schema.tables} == {("second", "items")}
+    finally:
+        await second.disconnect_async()
+
+    assert len(list((config.cache_dir / "schemas").glob("*.json"))) == 2
+
+
 @pytest.mark.asyncio
 async def test_duckdb_list_and_struct_dtype_resolved(tmp_path: Path) -> None:
     """duckdb_engine returns NullType for LIST/STRUCT columns; the

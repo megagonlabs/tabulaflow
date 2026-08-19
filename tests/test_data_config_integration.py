@@ -9,8 +9,8 @@ import pytest
 
 from tabulaflow.core import SQLSchema
 from tabulaflow.data import Neo4jConnector, Neo4jConnectorConfig, SQLConnector, SQLConnectorConfig
-from tabulaflow.data._cache import query_cache_key, query_cache_path, read_cached_model, schema_cache_path
-from tabulaflow.data.sql import ThrottledEngine
+from tabulaflow.data._cache import query_cache_key, query_cache_path, read_cached_model
+from tabulaflow.data.sql import ThrottledEngine, _sql_schema_cache_path
 
 
 async def _connector(
@@ -44,7 +44,7 @@ async def test_schema_cache_modes(tmp_path: Path) -> None:
     connector = await _connector(tmp_path, global_id="cached", config=read_write)
     await connector.disconnect_async()
 
-    cache_path = schema_cache_path(cache_dir, "cached", variant="sampled")
+    cache_path = _sql_schema_cache_path(read_write, "cached")
     assert cache_path.is_file()
 
     cached_schema = SQLSchema(name="from-cache", dialect="sqlite", tables=[])
@@ -89,11 +89,7 @@ async def test_schema_cache_modes(tmp_path: Path) -> None:
         await _connector(tmp_path, global_id="missing", config=cache_only)
     assert not cache_only.cache_dir.exists()
 
-    invalid_required_path = schema_cache_path(
-        cache_only.cache_dir,
-        "invalid-required",
-        variant="sampled",
-    )
+    invalid_required_path = _sql_schema_cache_path(cache_only, "invalid-required")
     invalid_required_path.parent.mkdir(parents=True)
     invalid_required_path.write_text("not json")
     with pytest.raises(RuntimeError, match="Required schema cache is invalid"):
@@ -197,11 +193,7 @@ async def test_column_stats_timeout_preserves_and_caches_schema(
 
     assert captured_timeouts == [7]
     assert "Could not collect distinct count" in caplog.text
-    assert schema_cache_path(
-        config.cache_dir,
-        "stats-timeout",
-        variant="sampled+column-stats",
-    ).is_file()
+    assert _sql_schema_cache_path(config, "stats-timeout").is_file()
 
 
 async def test_connector_timeout_uses_config_unless_explicitly_overridden(

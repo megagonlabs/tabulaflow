@@ -334,7 +334,9 @@ cache/query_results/v1@<global_id>@<query-hash>.json
 
 Do not repeat connector type in the directory hierarchy. `global_id` is a genuine
 cross-backend uniqueness contract and must also be filename-safe. Schema filenames
-include a cache-format version; Neo4j also includes its introspection mode as a variant.
+include a cache-format version. SQL variants include profiling policy plus a
+fingerprint of schema scope and structural-reuse assumptions; Neo4j variants include
+the introspection mode.
 Query-result caching is disk-only, atomic, and available only for read-only connectors.
 
 ## Settings that are intentionally removed
