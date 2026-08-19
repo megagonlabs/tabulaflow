@@ -3,7 +3,7 @@ from typing import Any, ClassVar
 import pandas as pd
 from pydantic_ai import Tool
 from pydantic import BaseModel, Field
-from tabulaflow.data import DataConnector
+from tabulaflow.data import DBConnector
 from tabulaflow.core import ExecResult, GraphResult
 from tabulaflow.output.formatting import format_dataframe
 from tabulaflow.agents.tools.engines.sql import format_sqlalchemy_error_msg
@@ -103,7 +103,7 @@ class RunQueryTool:
 
     def __init__(
         self,
-        db_connector: DataConnector,
+        db_connector: DBConnector,
         *,
         enable_params: bool = False,
         enable_refresh: bool = False,

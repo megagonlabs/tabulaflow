@@ -2,7 +2,7 @@ import jinja2
 import time
 from typing import ClassVar, cast
 import logging
-from tabulaflow.data import DataConnector
+from tabulaflow.data import DBConnector
 from tabulaflow.agents.trace import Usage, Trajectory
 from tabulaflow.research.types import PredQuery
 from tabulaflow.research.types import SimpleNL2QTask, SimpleNL2QTaskOutput
@@ -104,7 +104,7 @@ class TabulaflowAgent:
         return cls(config)
 
     @instrument
-    async def predict_async(self, task: SimpleNL2QTask, db_connector: DataConnector) -> SimpleNL2QTaskOutput:
+    async def predict_async(self, task: SimpleNL2QTask, db_connector: DBConnector) -> SimpleNL2QTaskOutput:
         if db_connector.connector_type != "sql":
             raise TypeError(f"TabulaflowAgent requires a SQL db connector, got {type(db_connector)!r}")
         t0 = time.time()

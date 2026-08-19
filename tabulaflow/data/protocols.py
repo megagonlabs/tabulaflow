@@ -1,6 +1,11 @@
-from typing import Any, ClassVar, Literal, Protocol, Sequence, Mapping, TypeAlias, Union
-import sqlalchemy
-from tabulaflow.core import SQLDialect, NonSQLLanguage, SQLSchema, PropertyGraphSchema, ExecResult, TableRef
+"""Database connector protocols and shared execution errors."""
+
+from collections.abc import Mapping, Sequence
+from typing import Any, ClassVar, Literal, Protocol, TypeAlias
+
+from sqlalchemy.sql import Executable
+
+from tabulaflow.core import ExecResult, NonSQLLanguage, PropertyGraphSchema, SQLDialect, SQLSchema, TableRef
 
 
 class ResultTooLargeError(RuntimeError):
@@ -15,26 +20,18 @@ class SQLConnectorProtocol(Protocol):
     global_id: str
     schema: SQLSchema
 
-    # Read-only — ``SQLConnector`` derives this from ``schema.dialect``
-    # via ``@property``.  A plain class attribute on the implementation
-    # also satisfies a property-typed Protocol member.
     @property
     def language(self) -> SQLDialect: ...
 
-    def __init__(self, global_id: str, **kwargs: Any): ...
-
     async def run_query_async(
         self,
-        query: str | sqlalchemy.sql.expression.Executable,
+        query: str | Executable,
         parameters: Sequence[Any] | Mapping[str, Any] = (),
-        timeout: int | None = None,
+        timeout: int | None = ...,
     ) -> ExecResult: ...
 
     async def disconnect_async(self) -> None:
-        """Close active connections, releasing any held resources (e.g. file locks).
-
-        The connector remains usable — new connections are created on demand.
-        """
+        """Close active connections and release held resources."""
         ...
 
     async def refresh_schema_async(
@@ -43,7 +40,7 @@ class SQLConnectorProtocol(Protocol):
     ) -> SQLSchema: ...
 
 
-class GraphConnectorProtocol(Protocol):
+class PropertyGraphConnectorProtocol(Protocol):
     connector_type: ClassVar[Literal["property_graph"]]
     global_id: str
     schema: PropertyGraphSchema
@@ -54,20 +51,18 @@ class GraphConnectorProtocol(Protocol):
     @property
     def language(self) -> NonSQLLanguage: ...
 
-    def __init__(self, global_id: str, **kwargs: Any): ...
-
     async def run_query_async(
         self,
         query: str,
         parameters: Mapping[str, Any] | None = None,
-        timeout: int | None = None,
+        timeout: int | None = ...,
     ) -> ExecResult: ...
 
     async def disconnect_async(self) -> None:
-        """Close active connections, releasing any held resources."""
+        """Close active connections and release held resources."""
         ...
 
     async def refresh_schema_async(self) -> PropertyGraphSchema: ...
 
 
-DataConnector: TypeAlias = Union[SQLConnectorProtocol, GraphConnectorProtocol]
+DBConnector: TypeAlias = SQLConnectorProtocol | PropertyGraphConnectorProtocol

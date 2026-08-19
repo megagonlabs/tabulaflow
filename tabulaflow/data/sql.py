@@ -109,7 +109,7 @@ from tabulaflow.core import (
 )
 
 from tabulaflow.data.config import ColumnStatsMode, SQLConnectorConfig
-from tabulaflow.data.base import ResultTooLargeError
+from tabulaflow.data.protocols import ResultTooLargeError
 from tabulaflow.data.json_schema import infer_json_schema, looks_like_json
 
 logger = logging.getLogger(__name__)
@@ -2256,7 +2256,8 @@ class SQLConnector:
 
     @property
     def language(self) -> SQLDialect:
-        return self.schema.dialect  # type: ignore[return-value]
+        assert self.schema.dialect is not None
+        return self.schema.dialect
 
     def save_schema_cache(self) -> None:
         """Write the current schema to the cache file if caching is enabled."""
@@ -2362,6 +2363,8 @@ class SQLConnector:
                     exclude_schema_names=exclude_schema_names,
                     description=description,
                 )
+            if schema.dialect is None:
+                raise ValueError("SQL connector schema must declare its dialect")
             return cls(
                 global_id,
                 schema,

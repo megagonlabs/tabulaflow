@@ -9,7 +9,7 @@ import numpy as np
 import numpy.typing as npt
 from pydantic import BaseModel
 import logging
-from tabulaflow.data import DataConnector, SQLConnectorProtocol
+from tabulaflow.data import DBConnector, SQLConnectorProtocol
 from tabulaflow.core import SQLSchema, SQLTableSchema, ColumnRef
 from tabulaflow.agents.trace import Usage, Trajectory
 from tabulaflow.research.types import PredQuery
@@ -438,7 +438,7 @@ class SQLAgent:
         return preprocessed_schema
 
     @instrument
-    async def predict_async(self, task: SimpleNL2QTask, db_connector: DataConnector) -> SimpleNL2QTaskOutput:
+    async def predict_async(self, task: SimpleNL2QTask, db_connector: DBConnector) -> SimpleNL2QTaskOutput:
         if db_connector.connector_type != "sql":
             raise TypeError(f"SQLAgent requires a SQL db connector, got {type(db_connector)!r}")
         t0 = time.time()

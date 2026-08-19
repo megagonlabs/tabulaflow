@@ -10,7 +10,7 @@ from tabulaflow.core import SQLSchema
 from tabulaflow.agents.trace import Usage, Trajectory
 from tabulaflow.research.types import NL2QTask
 from tabulaflow.config import tabulaflow_config
-from tabulaflow.data import DataConnector
+from tabulaflow.data import DBConnector
 from tabulaflow.agents.llm import make_model_settings
 from tabulaflow.agents.tools import BaseTool
 from tabulaflow.output.formatting import SQLSchemaFormatter
@@ -67,7 +67,7 @@ def instrument(predict_async_fn: Callable[..., Any]) -> Callable[..., Any]:
 @dataclass
 class TaskRunContext:
     task: NL2QTask
-    db_connector: DataConnector
+    db_connector: DBConnector
     preprocessed_schema: SQLSchema
     schema_formatter: SQLSchemaFormatter
     usage: Usage

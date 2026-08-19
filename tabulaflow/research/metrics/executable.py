@@ -1,6 +1,6 @@
 from typing import ClassVar
 from tabulaflow.research.types import NL2QTaskOutput
-from tabulaflow.data import DataConnector
+from tabulaflow.data import DBConnector
 from tabulaflow.research.metrics.base import metric_registry
 from tabulaflow.research.metrics.utils import get_final_pred_query
 
@@ -10,7 +10,7 @@ class Executable:
     name: ClassVar[str] = "executable"
     compatible_output_types: ClassVar[list[str]] = ["simple", "ambig-simple", "ambig-flat", "ambig-structured"]
 
-    async def compute_async(self, task: NL2QTaskOutput, db_connector: DataConnector | None = None) -> float:
+    async def compute_async(self, task: NL2QTaskOutput, db_connector: DBConnector | None = None) -> float:
         pred_query = get_final_pred_query(task)
         if pred_query is None:
             return 0.0

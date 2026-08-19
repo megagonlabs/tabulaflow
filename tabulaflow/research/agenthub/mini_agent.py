@@ -3,7 +3,7 @@ import time
 from typing import ClassVar, cast
 import logging
 
-from tabulaflow.data import DataConnector
+from tabulaflow.data import DBConnector
 from tabulaflow.agents.trace import Usage, Trajectory
 from tabulaflow.research.types import PredQuery
 from tabulaflow.research.types import SimpleNL2QTask, SimpleNL2QTaskOutput
@@ -90,7 +90,7 @@ class MiniAgent:
     async def from_config_async(cls, config: BasicAgentConfig) -> "MiniAgent":
         return cls(config)
 
-    def _format_schema_for_prompt(self, db_connector: DataConnector) -> str:
+    def _format_schema_for_prompt(self, db_connector: DBConnector) -> str:
         if db_connector.connector_type == "sql":
             schema = db_connector.schema
             if self.compressor is not None:
@@ -109,7 +109,7 @@ class MiniAgent:
         raise TypeError(f"Unsupported connector type for MiniAgent: {db_connector.connector_type!r}")
 
     @instrument
-    async def predict_async(self, task: SimpleNL2QTask, db_connector: DataConnector) -> SimpleNL2QTaskOutput:
+    async def predict_async(self, task: SimpleNL2QTask, db_connector: DBConnector) -> SimpleNL2QTaskOutput:
         t0 = time.time()
 
         schema_str = self._format_schema_for_prompt(db_connector)

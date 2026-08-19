@@ -4,7 +4,7 @@ from pydantic_ai.settings import ModelSettings
 
 from typing import Any, ClassVar, Literal
 
-from tabulaflow.data import DataConnector
+from tabulaflow.data import DBConnector
 from tabulaflow.output.formatting import CypherSchemaFormatter, SQLDDLSchemaFormatter
 from tabulaflow.agents.modules.base import CachedPreprocessorMixin, CacheableResult, preprocessor_registry
 from tabulaflow.output.schema_compression import SchemaCompressor
@@ -77,7 +77,7 @@ class DBSummarizer(CachedPreprocessorMixin[DBSummary]):
     def _get_cache_id_suffix(self) -> str:
         return "_" + self.llm.replace(":", "--")
 
-    async def _preprocess_impl_async(self, db_connector: DataConnector) -> DBSummary:
+    async def _preprocess_impl_async(self, db_connector: DBConnector) -> DBSummary:
         from tabulaflow.agents.tools.run_query import RunQueryTool
 
         system_prompt = jinja2.Template(SUMMARIZATION_PROMPT).render(max_summary_words=self.max_summary_words)

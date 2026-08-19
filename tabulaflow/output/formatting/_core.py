@@ -5,10 +5,10 @@ import pandas as pd
 from tabulate import tabulate
 
 from tabulaflow.core import ExecResult
-from tabulaflow.data.base import DataConnector
+from tabulaflow.data.protocols import DBConnector
 
 
-def format_connector_summary(connector: DataConnector) -> str:
+def format_connector_summary(connector: DBConnector) -> str:
     """Format a concise summary of a live data connector.
 
     Args:

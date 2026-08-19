@@ -10,7 +10,7 @@ from tabulaflow.research.types import (
     SimpleAmbigNL2QTaskOutput,
     StructuredAmbigNL2QTaskOutput,
 )
-from tabulaflow.data import DataConnector
+from tabulaflow.data import DBConnector
 from tabulaflow.research.metrics.base import metric_registry
 from tabulaflow.research.types import PredAmbiguityPoint, GoldAmbiguityPoint
 from tabulaflow.research.utils import int_to_letter
@@ -385,7 +385,7 @@ class AmbigPointStats:
     async def compute_async(
         self,
         task: NL2QTaskOutput,
-        db_connector: DataConnector | None = None,
+        db_connector: DBConnector | None = None,
     ) -> dict[str, NumericOrNull]:
         assert isinstance(task, AmbigTaskOutput)
         if task.output_type == "ambig-simple":

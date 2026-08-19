@@ -3,7 +3,7 @@ from tabulaflow.core import SQLSchema
 from tabulaflow.research.types import NL2QTaskOutput, NumericOrNull
 from tabulaflow.research.metrics.base import metric_registry
 from tabulaflow.research.utils import extract_all_source_columns
-from tabulaflow.data import DataConnector
+from tabulaflow.data import DBConnector
 from tabulaflow.research.metrics.utils import get_final_gold_query
 
 
@@ -13,7 +13,7 @@ class SchemaLinkingStats:
     compatible_output_types: ClassVar[list[str]] = ["simple", "ambig-simple", "ambig-flat", "ambig-structured"]
 
     async def compute_async(
-        self, task: NL2QTaskOutput, db_connector: DataConnector | None = None
+        self, task: NL2QTaskOutput, db_connector: DBConnector | None = None
     ) -> dict[str, NumericOrNull]:
         if db_connector is None:
             raise ValueError("SchemaLinkingStats requires a db_connector")

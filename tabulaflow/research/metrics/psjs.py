@@ -10,7 +10,7 @@ import logging
 import re
 from typing import ClassVar
 
-from tabulaflow.data import DataConnector
+from tabulaflow.data import DBConnector
 from tabulaflow.data.neo4j import Neo4jConnector
 from tabulaflow.research.metrics.base import metric_registry
 from tabulaflow.research.metrics.utils import get_final_gold_query, get_final_pred_query
@@ -147,7 +147,7 @@ class PSJS:
     name: ClassVar[str] = "psjs"
     compatible_output_types: ClassVar[list[str]] = ["simple"]
 
-    async def compute_async(self, task: NL2QTaskOutput, db_connector: DataConnector | None = None) -> NumericOrNull:
+    async def compute_async(self, task: NL2QTaskOutput, db_connector: DBConnector | None = None) -> NumericOrNull:
         pred_query = get_final_pred_query(task, check_exec_result=False, roundtrip_exec_result_csv=False)
         gold_query = get_final_gold_query(task, check_exec_result=False, roundtrip_exec_result_csv=False)
 

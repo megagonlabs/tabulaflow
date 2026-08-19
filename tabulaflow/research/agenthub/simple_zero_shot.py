@@ -12,7 +12,7 @@ from tabulaflow.output.formatting import (
     SQLSchemaFormatter,
     schema_formatter_registry,
 )
-from tabulaflow.data import DataConnector
+from tabulaflow.data import DBConnector
 from tabulaflow.agents.trace import Trajectory, SystemMessage, UserMessage, AssistantMessage, Usage
 from tabulaflow.research.types import PredQuery
 from tabulaflow.research.types import SimpleNL2QTask, SimpleNL2QTaskOutput
@@ -77,7 +77,7 @@ class SimpleZeroShotNL2Q:
         return cls(config)
 
     @instrument
-    async def predict_async(self, task: SimpleNL2QTask, db_connector: DataConnector) -> SimpleNL2QTaskOutput:
+    async def predict_async(self, task: SimpleNL2QTask, db_connector: DBConnector) -> SimpleNL2QTaskOutput:
         t0 = time.time()
 
         if db_connector.connector_type == "property_graph":
@@ -160,7 +160,7 @@ class SimpleZeroShotNL2Q:
             inference_metrics=metrics,
         )
 
-    async def select_best_query_async(self, candidates: list[str], db_connector: DataConnector) -> int:
+    async def select_best_query_async(self, candidates: list[str], db_connector: DBConnector) -> int:
         all_results = await asyncio.gather(
             *[db_connector.run_query_async(query) for query in candidates], return_exceptions=True
         )

@@ -2,20 +2,20 @@
 
 from __future__ import annotations
 
-from tabulaflow.data.base import DataConnector
+from tabulaflow.data.protocols import DBConnector
 
 
 class DBRegistry:
     """Store named database connectors for a runtime."""
 
     def __init__(self) -> None:
-        self._connectors: dict[str, DataConnector] = {}
+        self._connectors: dict[str, DBConnector] = {}
 
     def has(self, alias: str) -> bool:
         """Return whether a connector is registered for ``alias``."""
         return alias in self._connectors
 
-    def get(self, alias: str) -> DataConnector:
+    def get(self, alias: str) -> DBConnector:
         """Return the connector registered for ``alias``.
 
         Args:
@@ -29,7 +29,7 @@ class DBRegistry:
             raise ValueError(f"Unknown database alias: {alias}")
         return connector
 
-    def register(self, alias: str, connector: DataConnector) -> None:
+    def register(self, alias: str, connector: DBConnector) -> None:
         """Register a connector under ``alias``.
 
         Args:

@@ -4,7 +4,7 @@ import numpy.typing as npt
 import asyncio
 import collections
 import os
-from tabulaflow.data import DataConnector
+from tabulaflow.data import DBConnector
 from tabulaflow.config import tabulaflow_config
 from pydantic import BaseModel
 from tabulaflow.agents.trace import Usage
@@ -21,7 +21,7 @@ class BaseDBPreprocessor(Protocol):
 
     def usage(self) -> Usage | None: ...
 
-    async def preprocess_async(self, db_connector: DataConnector) -> CacheableResult: ...
+    async def preprocess_async(self, db_connector: DBConnector) -> CacheableResult: ...
 
 
 class BaseDatasetPreprocessor(Protocol):

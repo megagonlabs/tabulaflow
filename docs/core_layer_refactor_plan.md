@@ -227,7 +227,7 @@ The finalized data layer shape is:
 ```text
 data/
   __init__.py
-  base.py
+  protocols.py
   registry.py
   url.py
   config.py
@@ -252,7 +252,7 @@ Naming decisions:
 - Use `data/loaders/`, not `data/sources/`, because `source` is overloaded by the output layer (`SourceSpec`, `FixedResultSource`, `ParameterizedSource`).
 - Use `loaders`, not `adapters` or `injectors`: these modules load external raw inputs into queryable connectors.
 - Keep `DBRegistry`, not `ConnectorRegistry`, because the user/tool vocabulary is `db_alias`.
-- Drop `NL2Q` from connector protocols/aliases. Use generic names such as `SQLConnectorProtocol`, `GraphConnectorProtocol`, and `DataConnector`.
+- Drop `NL2Q` from connector protocols/aliases. Use generic names such as `SQLConnectorProtocol`, `PropertyGraphConnectorProtocol`, and `DBConnector`.
 - Use `data/neo4j.py`, not `data/graph.py`, because the file is backend-specific.
 - Keep a single `data/sql.py` initially. Do not create `data/sql/` unless the file is later split.
 
@@ -563,12 +563,12 @@ Target ownership:
 
 - `SQLConnector` → `data/sql.py`
 - `Neo4jConnector` → `data/neo4j.py`
-- connector protocols / aliases → `data/base.py`
+- connector protocols / aliases → `data/protocols.py`
 - `DBRegistry` → `data/registry.py`
 - URL connection helpers / `connect_url` → `data/url.py`
 - file and HuggingFace loaders → `data/loaders/`
 
-Use `data/neo4j.py`, not `data/graph.py`, because the implementation is Neo4j-specific. Generic graph schema/result primitives stay in `core`; generic graph connector protocols stay in `data/base.py`.
+Use `data/neo4j.py`, not `data/graph.py`, because the implementation is Neo4j-specific. Generic graph schema/result primitives stay in `core`; generic graph connector protocols stay in `data/protocols.py`.
 
 Do not split `sql.py` during the first move. Move current `sql_conn.py` to `data/sql.py`, update imports, get tests passing, then split internals later only if needed.
 

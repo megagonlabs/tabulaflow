@@ -6,7 +6,7 @@ from typing import Any, ClassVar
 
 from pydantic_ai import Tool, ToolReturn
 
-from tabulaflow.data.base import DataConnector
+from tabulaflow.data.protocols import DBConnector
 from tabulaflow.data.registry import DBRegistry
 from tabulaflow.agents.tools.base import ToolCallOutcome, sum_tool_metrics
 from tabulaflow.output.store import OutputStore
@@ -62,7 +62,7 @@ class RegistryRunQueryTool:
         self.max_visible_rows = max_visible_rows
         self.max_cell_width = max_cell_width
         self.floatfmt = floatfmt
-        self._tools: dict[str, tuple[DataConnector, RunQueryTool]] = {}
+        self._tools: dict[str, tuple[DBConnector, RunQueryTool]] = {}
         self._output_store = output_store or OutputStore()
 
     def _get_tool(self, db_alias: str) -> RunQueryTool:

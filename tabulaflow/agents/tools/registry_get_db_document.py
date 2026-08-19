@@ -6,7 +6,7 @@ from pydantic import BaseModel
 from pydantic_ai import Tool
 from pydantic_ai.settings import ModelSettings
 
-from tabulaflow.data.base import DataConnector
+from tabulaflow.data.protocols import DBConnector
 from tabulaflow.data.registry import DBRegistry
 from tabulaflow.output.formatting import CypherSchemaFormatter, SQLDDLSchemaFormatter
 from tabulaflow.output.schema_compression import SchemaCompressor
@@ -68,7 +68,7 @@ class RegistryGetDBDocumentTool:
         self._graph_formatter = CypherSchemaFormatter()
         self._compressor = SchemaCompressor()
         self._metrics = RegistryGetDBDocumentToolMetrics()
-        self._document_cache: dict[str, tuple[DataConnector, str]] = {}
+        self._document_cache: dict[str, tuple[DBConnector, str]] = {}
 
     def apply_llm_profile(self, *, llm: str, model_settings: ModelSettings | None) -> None:
         """Apply the LLM profile used by generated database summaries."""

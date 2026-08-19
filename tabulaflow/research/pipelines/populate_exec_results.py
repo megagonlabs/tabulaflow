@@ -7,12 +7,12 @@ from tqdm.asyncio import tqdm_asyncio
 from tabulaflow.research.benchmarks.base import dataset_registry
 import tabulaflow
 from tabulaflow.research.types import NL2QTask, NL2QTaskOutput, NL2QRunResult, NL2QDataset
-from tabulaflow.data import DataConnector, Neo4jConnectorConfig, SQLConnectorConfig
+from tabulaflow.data import DBConnector, Neo4jConnectorConfig, SQLConnectorConfig
 
 
 async def populate_task_async(
     task: NL2QTask | NL2QTaskOutput,
-    db_connector: DataConnector,
+    db_connector: DBConnector,
     timeout: int | None = None,
     force: bool = False,
 ) -> None:

@@ -4,7 +4,7 @@ from typing import ClassVar
 
 from pydantic_ai import Tool, ToolReturn
 
-from tabulaflow.data.base import DataConnector
+from tabulaflow.data.protocols import DBConnector
 from tabulaflow.data.registry import DBRegistry
 from tabulaflow.output.formatting import SQLSchemaFormatter
 from tabulaflow.agents.tools.base import ToolCallOutcome, sum_tool_metrics
@@ -49,7 +49,7 @@ class RegistryGetTableSchemaTool:
         self.include_descriptions = include_descriptions
         self.max_columns = max_columns
         self.enable_refresh = enable_refresh
-        self._tools: dict[str, tuple[DataConnector, GetTableSchemaTool]] = {}
+        self._tools: dict[str, tuple[DBConnector, GetTableSchemaTool]] = {}
 
     def _get_tool(self, db_alias: str) -> GetTableSchemaTool:
         """Return a cached ``GetTableSchemaTool`` for ``db_alias``, rebuilding it if the alias was re-bound."""

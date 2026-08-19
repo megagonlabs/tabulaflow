@@ -5,7 +5,7 @@ import pandas as pd
 import pytest
 
 from tabulaflow.data.config import SQLConnectorConfig
-from tabulaflow.data.base import ResultTooLargeError
+from tabulaflow.data.protocols import ResultTooLargeError
 from tabulaflow.data.neo4j import Neo4jConnector
 from tabulaflow.data.sql import SQLConnector, ThrottledEngine
 

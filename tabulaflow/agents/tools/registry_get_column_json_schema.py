@@ -4,7 +4,7 @@ from typing import ClassVar
 
 from pydantic_ai import Tool
 
-from tabulaflow.data.base import DataConnector
+from tabulaflow.data.protocols import DBConnector
 from tabulaflow.data.registry import DBRegistry
 from tabulaflow.agents.tools.base import sum_tool_metrics
 from tabulaflow.agents.tools.get_column_json_schema import GetColumnJsonSchemaTool, GetColumnJsonSchemaToolMetrics
@@ -37,7 +37,7 @@ class RegistryGetColumnJsonSchemaTool:
         self.registry = registry
         self.include_examples = include_examples
         self.max_example_chars = max_example_chars
-        self._tools: dict[str, tuple[DataConnector, GetColumnJsonSchemaTool]] = {}
+        self._tools: dict[str, tuple[DBConnector, GetColumnJsonSchemaTool]] = {}
 
     def _get_tool(self, db_alias: str) -> GetColumnJsonSchemaTool:
         """Return a cached ``GetColumnJsonSchemaTool`` for ``db_alias``, rebuilding it if the alias was re-bound."""

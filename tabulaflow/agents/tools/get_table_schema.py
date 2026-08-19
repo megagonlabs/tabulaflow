@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from typing import ClassVar
 from pydantic_ai import Tool
 from pydantic import BaseModel
-from tabulaflow.data.base import SQLConnectorProtocol
+from tabulaflow.data.protocols import SQLConnectorProtocol
 from tabulaflow.output.formatting import SQLSchemaFormatter
 from tabulaflow.output.schema_compression import SchemaCompressor
 from tabulaflow.core import SQLColumnSchema, SQLSchema, SQLTableSchema, TableRef

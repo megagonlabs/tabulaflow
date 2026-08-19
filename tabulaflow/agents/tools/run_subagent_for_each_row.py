@@ -19,7 +19,7 @@ from pydantic_ai.capabilities.abstract import AbstractCapability
 from pydantic_ai.models import Model
 from pydantic_ai.settings import ModelSettings
 
-from tabulaflow.data.base import SQLConnectorProtocol
+from tabulaflow.data.protocols import SQLConnectorProtocol
 from tabulaflow.data.registry import DBRegistry
 from tabulaflow.data.sql import SQLConnector
 from tabulaflow.core import SQLDialect

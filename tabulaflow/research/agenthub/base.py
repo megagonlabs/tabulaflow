@@ -19,7 +19,7 @@ from tabulaflow.research.types import (
     UserQuestion,
     UserAnswer,
 )
-from tabulaflow.data import SQLConnectorProtocol, DataConnector
+from tabulaflow.data import SQLConnectorProtocol, DBConnector
 from tabulaflow.core.registry import ClassRegistry
 
 __all__ = [
@@ -49,7 +49,7 @@ class BaseSimpleSQLAgent(Protocol):
     output_type: ClassVar[str]
     config_cls: ClassVar[type[BaseAgentConfig]]
 
-    async def predict_async(self, task: SimpleNL2QTask, db_connector: DataConnector) -> SimpleNL2QTaskOutput: ...
+    async def predict_async(self, task: SimpleNL2QTask, db_connector: DBConnector) -> SimpleNL2QTaskOutput: ...
 
 
 class BaseAmbigSQLAgent(Protocol):

@@ -10,7 +10,7 @@ from tabulaflow.app.config import LLMPreset
 
 if TYPE_CHECKING:
     from tabulaflow.agents.chat import ChatSession
-    from tabulaflow.data.base import DataConnector
+    from tabulaflow.data.protocols import DBConnector
     from tabulaflow.data.sql import SQLConnector
 
 WORKSPACE_ALIAS = "workspace"
@@ -153,7 +153,7 @@ class AppState:
         """Remove every source entry pointing at ``alias``."""
         self._sources = {k: v for k, v in self._sources.items() if v != alias}
 
-    def register_db(self, alias: str, connector: DataConnector, source_key: object) -> None:
+    def register_db(self, alias: str, connector: DBConnector, source_key: object) -> None:
         """Register a user-connected database."""
         self.registry.register(alias, connector)
         self.register_source(source_key, alias)

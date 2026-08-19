@@ -12,7 +12,7 @@ import pytest
 
 from tabulaflow.data.config import SQLConnectorConfig
 from tabulaflow.data.sql import SQLConnector, _canonicalize_dtype
-from tabulaflow.core import TableRef
+from tabulaflow.core import SQLSchema, TableRef
 
 
 def test_canonicalize_dtype_scalars() -> None:
@@ -28,6 +28,17 @@ def test_canonicalize_dtype_composites() -> None:
     assert _canonicalize_dtype("STRUCT(id VARCHAR, n BIGINT)") == "STRUCT"
     assert _canonicalize_dtype("STRUCT(id VARCHAR)[]") == "ARRAY"
     assert _canonicalize_dtype("MAP(VARCHAR, BIGINT)") == "MAP"
+
+
+async def test_preloaded_connector_schema_requires_dialect(tmp_path: Path) -> None:
+    with pytest.raises(ValueError, match="must declare its dialect"):
+        await SQLConnector.from_url_async(
+            global_id="missing-dialect",
+            url=f"sqlite+aiosqlite:///{tmp_path / 'missing-dialect.sqlite'}",
+            db_name="missing-dialect",
+            schema=SQLSchema(name="missing-dialect", tables=[]),
+            config=SQLConnectorConfig(schema_cache_mode="off"),
+        )
     # BigQuery-style angle bracket notation
     assert _canonicalize_dtype("ARRAY<STRING>") == "ARRAY"
     assert _canonicalize_dtype("STRUCT<a INT64, b STRING>") == "STRUCT"

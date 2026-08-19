@@ -23,7 +23,7 @@ from tabulaflow.data.url import (
 from tabulaflow.output.formatting import format_connector_summary
 
 if TYPE_CHECKING:
-    from tabulaflow.data.base import DataConnector
+    from tabulaflow.data.protocols import DBConnector
 
 COMMAND_PREFIX = "/"
 
@@ -54,7 +54,7 @@ class CommandResult:
 # ---------------------------------------------------------------------------
 
 
-def _announce_connect(session: AppState, alias: str, connector: DataConnector) -> str:
+def _announce_connect(session: AppState, alias: str, connector: DBConnector) -> str:
     """Tell the agent the user just connected ``alias`` (so it gains temporal
     awareness of the new source) and return the connector's display summary."""
     info = format_connector_summary(connector)

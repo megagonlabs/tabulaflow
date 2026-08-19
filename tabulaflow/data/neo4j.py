@@ -24,7 +24,7 @@ from tabulaflow.core import (
     RelationshipSchema,
 )
 from tabulaflow.core.serialization import json_ready
-from tabulaflow.data.base import ResultTooLargeError
+from tabulaflow.data.protocols import ResultTooLargeError
 
 logger = logging.getLogger(__name__)
 _UNSET = object()

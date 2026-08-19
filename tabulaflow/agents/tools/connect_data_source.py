@@ -13,7 +13,7 @@ from tabulaflow.data import DBRegistry, connect_url
 from tabulaflow.data.url import is_database_file_path
 
 if TYPE_CHECKING:
-    from tabulaflow.data.base import DataConnector
+    from tabulaflow.data.protocols import DBConnector
 
 _VALID_NAME = re.compile(r"[A-Za-z0-9_]+")
 
@@ -60,7 +60,7 @@ class ConnectDataSourceTool:
             return f"(error: no such file: {source!r}; pass a local file path or a HuggingFace dataset URL)"
         try:
             if is_hf:
-                connector: DataConnector = await load_hf_dataset(source, db_name=alias, read_only=True)
+                connector: DBConnector = await load_hf_dataset(source, db_name=alias, read_only=True)
             elif is_url:
                 connector = await connect_url(source, db_name=alias, read_only=True)
             elif is_database_file_path(path):
@@ -85,7 +85,7 @@ class ConnectDataSourceTool:
         return f"Connected '{alias}' ({label}{suffix}). Query it using the alias '{alias}'."
 
     @staticmethod
-    def _table_count(connector: DataConnector) -> int:
+    def _table_count(connector: DBConnector) -> int:
         try:
             return len(connector.schema.tables)  # type: ignore[union-attr]
         except Exception:
