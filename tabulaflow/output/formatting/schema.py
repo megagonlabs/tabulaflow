@@ -24,6 +24,6 @@ class PropertyGraphSchemaFormatter(Protocol):
     def format(self, schema: PropertyGraphSchema) -> str: ...
 
 
-SchemaFormatter: TypeAlias = SQLSchemaFormatter | PropertyGraphSchemaFormatter
+_SchemaFormatter: TypeAlias = SQLSchemaFormatter | PropertyGraphSchemaFormatter
 
-schema_formatter_registry = ClassRegistry[SchemaFormatter]("formatter")
+schema_formatter_registry = ClassRegistry[_SchemaFormatter]("formatter")
