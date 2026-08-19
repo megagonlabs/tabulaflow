@@ -475,11 +475,12 @@ def _is_async_url(url: str | SQLAlchemyURL) -> bool:
 # Dialects without a registered strategy fall back to a no-op cancel —
 # the asyncio task's ``CancelledError`` propagates immediately but the
 # executor thread runs the query to completion (and any transaction
-# commits).  Add a subclass below when this matters for a new dialect.
+# commits).  Map new dialects to an existing mechanism below, adding a
+# strategy only when their cancellation behavior genuinely differs.
 
 
 class _CancelStrategy:
-    """Base class for per-dialect cancellation strategies.
+    """Base class for cancellation strategies.
 
     Subclasses are instantiated once per :class:`ThrottledEngine` (so
     they may hold per-engine state).  Each subclass owns its async
@@ -494,11 +495,13 @@ class _CancelStrategy:
     cursor map) or to parallelise.
     """
 
-    name: str = "default"
-
     def __init__(self, engine: "ThrottledEngine") -> None:
         self.engine = engine
         self.install()
+
+    @property
+    def dialect_name(self) -> str:
+        return self.engine.engine.dialect.name
 
     def install(self) -> None:
         """Hook for one-time setup (e.g. registering SQLAlchemy event
@@ -549,39 +552,28 @@ class _CancelStrategy:
             await self.aabort(raw)
 
 
-class _DuckDBCancel(_CancelStrategy):
-    name = "duckdb"
+class _InterruptCancel(_CancelStrategy):
+    """Cancel through a connection's fast in-process ``interrupt()``."""
 
     async def aabort(self, handle: Any) -> None:
         try:
             handle.interrupt()  # μs, no thread needed
         except Exception:
-            logger.debug("interrupt failed for duckdb", exc_info=True)
+            logger.debug("interrupt failed for %s", self.dialect_name, exc_info=True)
 
 
-class _SqliteCancel(_CancelStrategy):
-    name = "sqlite"
+class _ConnectionCancel(_CancelStrategy):
+    """Cancel through a connection's blocking ``cancel()`` method.
 
-    async def aabort(self, handle: Any) -> None:
-        try:
-            handle.interrupt()  # μs, no thread needed
-        except Exception:
-            logger.debug("interrupt failed for sqlite", exc_info=True)
-
-
-class _PostgresCancel(_CancelStrategy):
-    """Postgres / CockroachDB: ``Connection.cancel()`` over a side TCP
-    connection.  Works for psycopg2, psycopg3, and any DBAPI-shaped
-    driver that exposes ``.cancel()`` on the connection.
+    Used by Postgres-compatible drivers, where this opens a side TCP
+    connection, and by Oracle, where it sends an OCI break.
     """
 
-    name = "postgresql"
-
     async def aabort(self, handle: Any) -> None:
         try:
-            await asyncio.to_thread(handle.cancel)  # opens a side TCP conn
+            await asyncio.to_thread(handle.cancel)
         except Exception:
-            logger.debug("cancel failed for %s", self.name, exc_info=True)
+            logger.debug("cancel failed for %s", self.dialect_name, exc_info=True)
 
     async def acancel_all(self) -> None:
         with self.engine._inflight_sync_lock:
@@ -590,15 +582,6 @@ class _PostgresCancel(_CancelStrategy):
             *(asyncio.to_thread(raw.cancel) for raw in conns),
             return_exceptions=True,
         )
-
-
-class _OracleCancel(_PostgresCancel):
-    """Oracle (sync): ``Connection.cancel()`` sends an OCI break to the
-    server.  Cross-thread safe.  Same shape as :class:`_PostgresCancel`
-    — only ``name`` differs.
-    """
-
-    name = "oracle"
 
 
 class _CursorTrackingCancel(_CancelStrategy):
@@ -647,7 +630,7 @@ class _CursorTrackingCancel(_CancelStrategy):
         try:
             await asyncio.to_thread(self._cancel_cursor, cursor)
         except Exception:
-            logger.debug("cursor cancel failed for %s", self.name, exc_info=True)
+            logger.debug("cursor cancel failed for %s", self.dialect_name, exc_info=True)
 
     async def acancel_all(self) -> None:
         cursors = list(self._cursors.values())
@@ -661,8 +644,6 @@ class _CursorTrackingCancel(_CancelStrategy):
 class _SnowflakeCancel(_CursorTrackingCancel):
     """Snowflake: HTTP cancel via ``cursor.abort_query()`` (cross-thread safe)."""
 
-    name = "snowflake"
-
     def _cancel_cursor(self, cursor: Any) -> None:
         cursor.abort_query()
 
@@ -675,54 +656,19 @@ class _BigQueryCancel(_CursorTrackingCancel):
     job (cross-thread safe — it's just an HTTP call).
     """
 
-    name = "bigquery"
-
     def _cancel_cursor(self, cursor: Any) -> None:
         job = getattr(cursor, "query_job", None)
         if job is not None:
             job.cancel()
 
 
-class _SimpleCursorCancel(_CursorTrackingCancel):
+class _PlainCursorCancel(_CursorTrackingCancel):
     """For dialects whose cursor exposes a plain ``.cancel()`` method
     (Trino, Databricks, Athena, ClickHouse-native, Vertica, …).
-    Subclasses set ``name``; the cancel call is uniform.
     """
 
     def _cancel_cursor(self, cursor: Any) -> None:
         cursor.cancel()
-
-
-class _TrinoCancel(_SimpleCursorCancel):
-    """Trino / Presto / Starburst: ``cursor.cancel()`` issues a DELETE
-    on the running query URL to abort it server-side."""
-
-    name = "trino"
-
-
-class _DatabricksCancel(_SimpleCursorCancel):
-    """Databricks SQL Warehouse: ``cursor.cancel()`` aborts the running
-    statement via the Databricks SQL connector."""
-
-    name = "databricks"
-
-
-class _AthenaCancel(_SimpleCursorCancel):
-    """AWS Athena: ``cursor.cancel()`` calls ``StopQueryExecution``.
-
-    SQLAlchemy registers ``pyathena`` under dialect.name == ``awsathena``.
-    """
-
-    name = "awsathena"
-
-
-class _ClickHouseCancel(_SimpleCursorCancel):
-    """ClickHouse (native ``clickhouse-driver``): ``cursor.cancel()``
-    sends a Cancel packet on the wire.  HTTP-based variants
-    (``clickhouse-connect``) need a separate strategy if used.
-    """
-
-    name = "clickhouse"
 
 
 class _KillQueryCancel(_CancelStrategy):
@@ -739,8 +685,6 @@ class _KillQueryCancel(_CancelStrategy):
     Subclasses implement :meth:`_kill_one` for the engine-type-specific
     side-connection open path (sync DBAPI vs async driver).
     """
-
-    name = "mysql"
 
     def capture(self, conn: sqlalchemy.engine.Connection) -> Any:
         raw = conn.connection.driver_connection
@@ -849,8 +793,6 @@ class _MSSQLCancel(_CancelStrategy):
     miss) and look it up by ``id(conn)``.
     """
 
-    name = "mssql"
-
     def install(self) -> None:
         self._spids: dict[int, int] = {}
         sync_engine = (
@@ -921,8 +863,6 @@ class _AsyncOracleCancel(_CancelStrategy):
     ``AsyncConnection`` from the SQLAlchemy ``AsyncConnection``.
     """
 
-    name = "oracle"
-
     async def aabort(self, handle: Any) -> None:
         try:
             await handle.cancel()
@@ -936,7 +876,7 @@ class _AsyncSqliteCancel(_CancelStrategy):
     aiosqlite runs sqlite3 in a worker thread; an asyncio task cancel
     abandons the await but the worker keeps executing the SQL until
     ``Connection.interrupt()`` is called on the wrapper.  Same shape as
-    :class:`_SqliteCancel` but the handle comes from the *async*
+    :class:`_InterruptCancel` but the handle comes from the *async*
     SQLAlchemy connection — the default :meth:`acapture` does the right
     thing (it returns the aiosqlite ``Connection`` via
     ``await conn.get_raw_connection()`` + ``.driver_connection``).
@@ -944,8 +884,6 @@ class _AsyncSqliteCancel(_CancelStrategy):
     ``aiosqlite.Connection.interrupt`` is ``async def`` (it dispatches
     to the worker thread), so we ``await`` it.
     """
-
-    name = "sqlite"
 
     async def aabort(self, handle: Any) -> None:
         try:
@@ -957,22 +895,22 @@ class _AsyncSqliteCancel(_CancelStrategy):
 # Sync-engine strategies — keyed by SQLAlchemy dialect.name.  Selected
 # when ``ThrottledEngine.engine_type == "sync"``.
 _SYNC_CANCEL_STRATEGIES: dict[str, type[_CancelStrategy]] = {
-    "duckdb": _DuckDBCancel,
-    "sqlite": _SqliteCancel,
-    "postgresql": _PostgresCancel,
-    "cockroachdb": _PostgresCancel,  # Postgres wire protocol
-    "redshift": _PostgresCancel,  # AWS Redshift via psycopg2/psycopg
-    "yugabytedb": _PostgresCancel,  # distributed Postgres-compatible
+    "duckdb": _InterruptCancel,
+    "sqlite": _InterruptCancel,
+    "postgresql": _ConnectionCancel,
+    "cockroachdb": _ConnectionCancel,  # Postgres wire protocol
+    "redshift": _ConnectionCancel,  # AWS Redshift via psycopg2/psycopg
+    "yugabytedb": _ConnectionCancel,  # distributed Postgres-compatible
     "snowflake": _SnowflakeCancel,
     "bigquery": _BigQueryCancel,
     "mysql": _MySQLCancel,
     "mariadb": _MySQLCancel,  # identical KILL QUERY primitive
-    "oracle": _OracleCancel,
+    "oracle": _ConnectionCancel,
     "mssql": _MSSQLCancel,
-    "trino": _TrinoCancel,
-    "databricks": _DatabricksCancel,
-    "awsathena": _AthenaCancel,
-    "clickhouse": _ClickHouseCancel,
+    "trino": _PlainCursorCancel,
+    "databricks": _PlainCursorCancel,
+    "awsathena": _PlainCursorCancel,
+    "clickhouse": _PlainCursorCancel,
 }
 
 # Async-engine strategies — keyed by SQLAlchemy dialect.name.  Selected
@@ -985,36 +923,6 @@ _ASYNC_CANCEL_STRATEGIES: dict[str, type[_CancelStrategy]] = {
     "mysql": _AsyncMySQLCancel,  # asyncmy / aiomysql: KILL QUERY
     "mariadb": _AsyncMySQLCancel,
     "oracle": _AsyncOracleCancel,  # oracledb async: OCI break
-}
-
-
-# Dialect/engine-type pairs known to *need* a strategy — i.e. the driver
-# does not self-cancel on asyncio task cancel.  Used by ``__post_init__``
-# to log a warning when an engine is built without a registered strategy
-# for a combination that's known to need one.  The intent is to make a
-# missing strategy noisy rather than silent.
-_DIALECTS_NEEDING_STRATEGY: dict[str, set[str]] = {
-    "sync": {
-        "duckdb",
-        "sqlite",
-        "postgresql",
-        "cockroachdb",
-        "redshift",
-        "yugabytedb",
-        "snowflake",
-        "bigquery",
-        "mysql",
-        "mariadb",
-        "oracle",
-        "mssql",
-        "trino",
-        "databricks",
-        "awsathena",
-        "clickhouse",
-    },
-    # Async drivers that don't self-cancel on task cancel.  asyncpg and
-    # psycopg3 async self-cancel (no entry needed).
-    "async": {"sqlite", "mysql", "mariadb", "oracle"},
 }
 
 
@@ -1048,12 +956,6 @@ class ThrottledEngine:
             strategy_cls = _ASYNC_CANCEL_STRATEGIES.get(self.engine.dialect.name)
         if strategy_cls is not None:
             self._cancel_strategy = strategy_cls(self)
-        elif self.engine.dialect.name in _DIALECTS_NEEDING_STRATEGY[self.engine_type]:
-            logger.warning(
-                "no cancel strategy registered for %s/%s engine — task cancel and timeout may not stop a running query",
-                self.engine.dialect.name,
-                self.engine_type,
-            )
 
         # Track raw DBAPI connections via pool checkout/checkin events for
         # sync engines.  This covers the full lifetime of a checked-out
@@ -1386,7 +1288,7 @@ class ThrottledEngine:
                 try:
                     cancel_handle_box[0] = self._cancel_strategy.capture(conn)
                 except Exception:
-                    logger.debug("capture failed for %s", self._cancel_strategy.name, exc_info=True)
+                    logger.debug("capture failed for %s", self._cancel_strategy.dialect_name, exc_info=True)
             if isinstance(statement, str):
                 # exec_driver_sql avoids sqlalchemy.text() parameter parsing,
                 # which misinterprets :identifier patterns (Snowflake Scripting
@@ -1422,7 +1324,7 @@ class ThrottledEngine:
                 try:
                     cancel_handle_box[0] = await self._cancel_strategy.acapture(conn)
                 except Exception:
-                    logger.debug("acapture failed for %s", self._cancel_strategy.name, exc_info=True)
+                    logger.debug("acapture failed for %s", self._cancel_strategy.dialect_name, exc_info=True)
             if isinstance(statement, str):
                 result = await conn.exec_driver_sql(statement, parameters or None)
                 # Non-row-returning statements (DDL/DML) have no result set;
@@ -1469,7 +1371,7 @@ class ThrottledEngine:
                 try:
                     cancel_handle_box[0] = self._cancel_strategy.capture(conn)
                 except Exception:
-                    logger.debug("capture failed for %s", self._cancel_strategy.name, exc_info=True)
+                    logger.debug("capture failed for %s", self._cancel_strategy.dialect_name, exc_info=True)
             return callback(conn)
 
     async def _run_callback_async_engine(
@@ -1485,7 +1387,7 @@ class ThrottledEngine:
                 try:
                     cancel_handle_box[0] = await self._cancel_strategy.acapture(conn)
                 except Exception:
-                    logger.debug("acapture failed for %s", self._cancel_strategy.name, exc_info=True)
+                    logger.debug("acapture failed for %s", self._cancel_strategy.dialect_name, exc_info=True)
             return await conn.run_sync(callback)
 
     async def _abort_handle(self, handle: Any) -> None:
@@ -1748,19 +1650,6 @@ def _canonicalize_dtype(native: str) -> str:
     return up.strip()
 
 
-def _compile_native_dtype(t_eng: ThrottledEngine, col_type: Any) -> str | None:
-    """Render a SQLAlchemy ``TypeEngine`` as a dialect-native DDL string.
-
-    Dialect-agnostic API: works for any type SQLAlchemy understood, in any
-    dialect. Returns ``None`` when SQLAlchemy lost the type info
-    (``NullType`` → ``CompileError``).
-    """
-    try:
-        return str(col_type.compile(dialect=t_eng.engine.dialect))
-    except sqlalchemy.exc.CompileError:
-        return None
-
-
 async def _catalog_native_dtype_async(
     t_eng: ThrottledEngine,
     schema_name: str | None,
@@ -1814,9 +1703,10 @@ async def _resolve_native_dtype_async(
     back to the dialect's catalog for cases where SQLAlchemy lost the
     type (``NullType``).
     """
-    compiled = _compile_native_dtype(t_eng, column["type"])
-    if compiled is not None:
-        return compiled
+    try:
+        return str(column["type"].compile(dialect=t_eng.engine.dialect))
+    except sqlalchemy.exc.CompileError:
+        pass
     return await _catalog_native_dtype_async(t_eng, schema_name, table_name, column["name"])
 
 
@@ -2569,15 +2459,17 @@ class SQLConnector:
 
         if_exists: Literal["append", "replace"] = "replace" if mode == "replace" else "append"
 
-        await self._t_eng.run_with_conn_async(
-            lambda conn: self._write_df_to_sql(
-                df=df,
-                conn=conn,
-                table_name=table_name,
-                schema_name=schema_name,
+        def write(conn: sqlalchemy.engine.Connection) -> None:
+            df.to_sql(
+                name=table_name,
+                con=conn,
+                schema=schema_name,
                 if_exists=if_exists,
-            ),
-        )
+                index=False,
+                method="multi",
+            )
+
+        await self._t_eng.run_with_conn_async(write)
 
         # Resolve None to the schema the live DB actually wrote into, so the
         # in-memory schema label matches a full re-introspection (avoids a
@@ -2586,25 +2478,6 @@ class SQLConnector:
         await self.refresh_schema_async(tables=[TableRef(schema_name=effective_schema, table_name=table_name)])
 
         return len(df)
-
-    @staticmethod
-    def _write_df_to_sql(
-        *,
-        df: pd.DataFrame,
-        conn: sqlalchemy.engine.Connection,
-        table_name: str,
-        schema_name: str | None,
-        if_exists: Literal["append", "replace"],
-    ) -> None:
-        """Write a DataFrame to a SQL table using pandas."""
-        df.to_sql(
-            name=table_name,
-            con=conn,
-            schema=schema_name,
-            if_exists=if_exists,
-            index=False,
-            method="multi",
-        )
 
     async def _execute_query_async(
         self,
