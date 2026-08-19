@@ -227,10 +227,6 @@ class OutputSpec(BaseModel):
                 artifact_source = sources_by_id.get(source_id)
                 if artifact_source is None:
                     raise ValueError(f"artifact {artifact.id!r} references unknown source {source_id!r}")
-                if isinstance(artifact, MapArtifactSpec | GraphArtifactSpec) and not isinstance(
-                    artifact_source, FixedResultSource
-                ):
-                    raise ValueError(f"{artifact.kind} artifact {artifact.id!r} requires fixed sources")
         return self
 
 

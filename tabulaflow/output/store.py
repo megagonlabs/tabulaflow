@@ -30,6 +30,7 @@ from tabulaflow.output.specs import (
     SourceSpec,
     SourceId,
     canonical_selection_key,
+    default_selection,
 )
 from tabulaflow.core import ExecResult, GraphResult
 
@@ -353,7 +354,8 @@ class OutputStore:
             return await self.get_payload(source.result_id)
         if not isinstance(source, ParameterizedSource):
             raise TypeError(f"unsupported source {type(source).__name__}")
-        selection = selection or {}
+        if selection is None:
+            selection = default_selection(self.source_parameters(source.id))
         selection_key = canonical_selection_key(selection)
         result_id = self._source_cache.get((source.id, selection_key))
         if result_id is None:
@@ -441,7 +443,7 @@ class OutputStore:
 
     def _validate_map_sources(self, source_ids: list[SourceId], spec: Mapping[str, object]) -> None:
         parsed = maps.parse_map_spec(spec)
-        self._validate_fixed_artifact_sources(
+        self._validate_artifact_sources(
             kind="map",
             declared=source_ids,
             referenced=maps.referenced_source_ids(parsed),
@@ -449,13 +451,13 @@ class OutputStore:
 
     def _validate_graph_sources(self, source_ids: list[SourceId], spec: Mapping[str, object]) -> None:
         parsed = graphs.parse_graph_spec(spec)
-        self._validate_fixed_artifact_sources(
+        self._validate_artifact_sources(
             kind="graph",
             declared=source_ids,
             referenced=graphs.referenced_source_ids(parsed),
         )
 
-    def _validate_fixed_artifact_sources(
+    def _validate_artifact_sources(
         self,
         *,
         kind: str,
@@ -465,8 +467,7 @@ class OutputStore:
         if len(declared) != len(set(declared)):
             raise ArtifactSpecError(f"{kind} artifact source_ids must be unique")
         for source_id in declared:
-            if not isinstance(self.get_source(source_id), FixedResultSource):
-                raise ArtifactSpecError(f"{kind} artifacts require fixed sources")
+            self.get_source(source_id)
         if set(declared) != set(referenced):
             raise ArtifactSpecError(
                 f"{kind} artifact source_ids {declared!r} do not match spec source_ids {referenced!r}"

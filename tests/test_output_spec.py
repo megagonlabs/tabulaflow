@@ -119,20 +119,18 @@ def test_output_spec_rejects_unknown_artifact_source() -> None:
         OutputSpec(artifacts=[TableArtifactSpec(id="table", source_id="missing")])
 
 
-def test_map_and_graph_artifacts_require_fixed_sources() -> None:
+def test_map_and_graph_artifacts_accept_parameterized_sources() -> None:
     source = ParameterizedSource(id="source", parameter_ids=[], db_alias="workspace", query_template="SELECT 1")
 
-    with pytest.raises(ValueError, match="map artifact 'map' requires fixed sources"):
-        OutputSpec(
-            sources=[source],
-            artifacts=[MapArtifactSpec(id="map", source_ids=[source.id], spec={"layers": []})],
-        )
+    output = OutputSpec(
+        sources=[source],
+        artifacts=[
+            MapArtifactSpec(id="map", source_ids=[source.id], spec={"layers": []}),
+            GraphArtifactSpec(id="graph", source_ids=[source.id], spec={"nodes": []}),
+        ],
+    )
 
-    with pytest.raises(ValueError, match="graph artifact 'graph' requires fixed sources"):
-        OutputSpec(
-            sources=[source],
-            artifacts=[GraphArtifactSpec(id="graph", source_ids=[source.id], spec={"nodes": [], "edges": []})],
-        )
+    assert output.sources == [source]
 
 
 def test_output_spec_serialization_round_trip() -> None:

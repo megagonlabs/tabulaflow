@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import json
 import re
-from dataclasses import dataclass
 from typing import Any, ClassVar
 
 import pandas as pd
@@ -19,8 +18,7 @@ from tabulaflow.output.charts import (
     chart_type_label,
     validate_chart_spec,
 )
-from tabulaflow.output.specs import FixedResultSource, ParameterizedSource
-from tabulaflow.output.store import OutputStore
+from tabulaflow.output.store import OutputStore, SourceNotApplicable, SourceResolutionError
 
 
 # Marks plotext can draw faithfully as a single x/y series, mapped to the
@@ -50,13 +48,6 @@ def _validate_source_id(source_id: str) -> None:
     if source_id.startswith("S"):
         return
     raise ValueError(f"source_id must start with 'S', got {source_id!r}")
-
-
-@dataclass(frozen=True)
-class _SourceVariant:
-    label: str
-    result_id: str
-    df: pd.DataFrame
 
 
 # Terminal preview gets unreadable past these counts (bar labels collapse to a
@@ -386,47 +377,23 @@ class RenderChartTool:
             return "(error: spec must be a JSON object)"
 
         try:
-            variants = await self._source_variants(source_id)
+            payload = await self._output_store.resolve_source(source_id)
         except KeyError:
             return f"(error: unknown source_id {source_id!r})"
-        except ValueError as e:
+        except (SourceNotApplicable, SourceResolutionError) as e:
             return f"(error: {e})"
+        if payload.df is None:
+            return f"(error: query {source_id} returned no data)"
 
         try:
-            validate_chart_spec(spec, {variant.label: variant.df for variant in variants})
+            validate_chart_spec(spec, {source_id: payload.df})
         except ChartSpecError as e:
             return f"(error: {e})"
 
         label = chart_type_label(spec)
         chart = self._output_store.add_chart_artifact(source_id, spec)
         chart_id = chart.id
-        rows = len(variants[0].df)
-        suffix = f" — {rows:,} rows" if len(variants) == 1 else f" — {len(variants):,} source variants"
-        return f"{label} {chart_id} created from {source_id}{suffix}"
-
-    async def _source_variants(self, source_id: str) -> list[_SourceVariant]:
-        source = self._output_store.get_source(source_id)
-        if isinstance(source, ParameterizedSource):
-            out: list[_SourceVariant] = []
-            for key, result_id in self._output_store.cached_parameterized_results(source.id).items():
-                selection_dict = json.loads(key)
-                selection = ";".join(f"{name}={value}" for name, value in sorted(selection_dict.items()))
-                out.append(
-                    _SourceVariant(
-                        label=selection,
-                        result_id=result_id,
-                        df=(await self._output_store.get_payload(result_id)).df,
-                    )
-                )
-            return out
-        if isinstance(source, FixedResultSource):
-            result_id = source.result_id
-            return [
-                _SourceVariant(
-                    label=source_id, result_id=result_id, df=(await self._output_store.get_payload(result_id)).df
-                )
-            ]
-        raise ValueError(f"source_id {source_id!r} is not chartable yet")
+        return f"{label} {chart_id} created from {source_id} — {len(payload.df):,} rows"
 
     def as_pydantic_ai_tool(self) -> Tool:
         return Tool(self.__call__, name=self.name)

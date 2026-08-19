@@ -53,8 +53,11 @@ from tabulaflow.output.specs import (
     ChartArtifactSpec,
     ChoiceOption,
     ChoiceParameter,
+    GraphArtifactSpec,
+    MapArtifactSpec,
     NumberParameter,
     OutputSpec,
+    ParameterSpec,
     TableArtifactSpec,
 )
 from tabulaflow.core import ExecResult, GraphResult
@@ -400,7 +403,7 @@ def _push_turn(
 
 def _push_controls_turn(pane: pane_mod.OutputPane, pane_dir: Path) -> None:
     output_store = OutputStore()
-    parameters = [
+    parameters: list[ParameterSpec] = [
         ChoiceParameter(
             id="metric",
             label="Metric",
@@ -458,6 +461,8 @@ def _push_controls_turn(pane: pane_mod.OutputPane, pane_dir: Path) -> None:
                     "period": [period_label] * 3,
                     "metric": [metric_label] * 3,
                     "value": metric_values,
+                    "latitude": [37.7749, 40.7128, 47.6062],
+                    "longitude": [-122.4194, -74.0060, -122.3321],
                 }
             )
             for min_value in range(0, 141, 20):
@@ -487,7 +492,7 @@ def _push_controls_turn(pane: pane_mod.OutputPane, pane_dir: Path) -> None:
     result = ChatResult(
         text=(
             "This turn has answer-level controls. Switch the metric/period buttons or drag the minimum-value slider; "
-            "the table and chart resolve through the live preview session instead of a precomputed bundle."
+            "the table, chart, map, and graph resolve through the live preview session instead of a precomputed bundle."
         ),
         output=OutputSpec(
             parameters=parameters,
@@ -506,6 +511,58 @@ def _push_controls_turn(pane: pane_mod.OutputPane, pane_dir: Path) -> None:
                             "color": {"field": "customer", "type": "nominal"},
                         },
                         "title": "Selected customer metric",
+                    },
+                ),
+                MapArtifactSpec(
+                    id="MAP_PREVIEW_CONTROLS",
+                    label="customer locations",
+                    source_ids=[source.id],
+                    spec={
+                        "title": "Selected customer locations",
+                        "layers": [
+                            {
+                                "type": "points",
+                                "source_id": source.id,
+                                "lat": "latitude",
+                                "lng": "longitude",
+                                "label": "customer",
+                                "tooltip": ["period", "metric", "value"],
+                                "color": {"field": "metric"},
+                                "size": {"field": "value"},
+                            }
+                        ],
+                    },
+                ),
+                GraphArtifactSpec(
+                    id="GRAPH_PREVIEW_CONTROLS",
+                    label="customer metric network",
+                    source_ids=[source.id],
+                    spec={
+                        "title": "Selected customer metric network",
+                        "nodes": [
+                            {
+                                "source_id": source.id,
+                                "id": "customer",
+                                "label": "customer",
+                                "group": {"value": "Customer"},
+                                "tooltip": ["period", "value"],
+                            },
+                            {
+                                "source_id": source.id,
+                                "id": "metric",
+                                "label": "metric",
+                                "group": {"value": "Metric"},
+                            },
+                        ],
+                        "edges": [
+                            {
+                                "source_id": source.id,
+                                "source": "customer",
+                                "target": "metric",
+                                "label": "period",
+                                "tooltip": "value",
+                            }
+                        ],
                     },
                 ),
                 TableArtifactSpec(id=revenue_source.id, label="revenue-only detail", source_id=revenue_source.id),

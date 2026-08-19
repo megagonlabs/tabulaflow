@@ -14,8 +14,7 @@ from tabulaflow.output.graphs import (
     referenced_source_ids,
     validate_graph_size,
 )
-from tabulaflow.output.specs import FixedResultSource
-from tabulaflow.output.store import OutputStore
+from tabulaflow.output.store import OutputStore, SourceNotApplicable, SourceResolutionError
 
 
 class RenderGraphTool:
@@ -97,18 +96,12 @@ class RenderGraphTool:
         sources: dict[str, pd.DataFrame] = {}
         for rid in source_ids:
             try:
-                source = self._output_store.get_source(rid)
-                if not isinstance(source, FixedResultSource):
-                    return f"(error: source_id {rid!r} is not a single-result source)"
-                result_id = source.result_id
+                payload = await self._output_store.resolve_source(rid)
             except KeyError:
                 return f"(error: unknown source_id {rid!r})"
-            except ValueError as e:
+            except (SourceNotApplicable, SourceResolutionError) as e:
                 return f"(error: {e})"
-            try:
-                df = (await self._output_store.get_payload(result_id)).df
-            except ValueError as e:
-                return f"(error: {e})"
+            df = payload.df
             if df is None:
                 return f"(error: query {rid} returned no data)"
             if df.empty:

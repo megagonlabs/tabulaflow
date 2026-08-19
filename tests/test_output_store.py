@@ -52,17 +52,21 @@ def test_result_metadata_owns_query_provenance() -> None:
     assert metadata.affected_rows == 3
 
 
-def test_map_and_graph_artifacts_reject_parameterized_sources() -> None:
+def test_map_and_graph_artifacts_accept_parameterized_sources() -> None:
     output_store = OutputStore()
     source = output_store.add_parameterized_source("workspace", [], "SELECT 1")
 
-    with pytest.raises(ArtifactSpecError, match="map artifacts require fixed sources"):
-        output_store.add_map_artifact(
-            [source.id],
-            {"layers": [{"type": "points", "source_id": source.id, "lat": "lat", "lng": "lng"}]},
-        )
-    with pytest.raises(ArtifactSpecError, match="graph artifacts require fixed sources"):
-        output_store.add_graph_artifact([source.id], {"nodes": [{"source_id": source.id, "id": "id"}]})
+    map_artifact = output_store.add_map_artifact(
+        [source.id],
+        {"layers": [{"type": "points", "source_id": source.id, "lat": "lat", "lng": "lng"}]},
+    )
+    graph_artifact = output_store.add_graph_artifact(
+        [source.id],
+        {"nodes": [{"source_id": source.id, "id": "id"}]},
+    )
+
+    assert map_artifact.source_ids == [source.id]
+    assert graph_artifact.source_ids == [source.id]
 
 
 def _make_error_execution() -> tuple[str, ExecResult]:

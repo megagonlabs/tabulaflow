@@ -427,6 +427,49 @@ async def test_map_and_graph_specs_resolve_against_source_data() -> None:
 
 
 @pytest.mark.asyncio
+async def test_map_and_graph_resolve_parameterized_selection() -> None:
+    output_store = OutputStore()
+    parameter = ChoiceParameter(
+        id="period",
+        label="Period",
+        choices=[ChoiceOption(id="q1", label="Q1"), ChoiceOption(id="q2", label="Q2")],
+    )
+    source = output_store.add_parameterized_source("workspace", [parameter], "SELECT 1")
+    for period, node_id, lat in (("q1", "a", 1.0), ("q2", "b", 2.0)):
+        await output_store.cache_parameterized_result(
+            source.id,
+            "sql",
+            {"period": period},
+            "SELECT 1",
+            ExecResult(df=pd.DataFrame({"id": [node_id], "lat": [lat], "lng": [3.0]})),
+        )
+    output = OutputSpec(
+        parameters=[parameter],
+        sources=[source],
+        artifacts=[
+            MapArtifactSpec(
+                id="map",
+                source_ids=[source.id],
+                spec={"layers": [{"type": "points", "source_id": source.id, "lat": "lat", "lng": "lng"}]},
+            ),
+            GraphArtifactSpec(
+                id="graph",
+                source_ids=[source.id],
+                spec={"nodes": [{"source_id": source.id, "id": "id"}]},
+            ),
+        ],
+    )
+
+    resolved = await OutputResolver(output_store).resolve(output, {"period": "q2"})
+
+    map_artifact, graph_artifact = resolved.artifacts
+    assert isinstance(map_artifact, ResolvedMapArtifact)
+    assert map_artifact.payload_by_source[source.id].metadata.source_selection == {"period": "q2"}
+    assert isinstance(graph_artifact, ResolvedGraphArtifact)
+    assert [node.id for node in graph_artifact.graph.nodes] == ["b"]
+
+
+@pytest.mark.asyncio
 async def test_artifact_wrapper_and_nested_source_ids_must_match() -> None:
     output_store = OutputStore()
     await output_store.add_fixed_result_source(

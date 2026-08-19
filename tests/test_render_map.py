@@ -9,7 +9,7 @@ import pandas as pd
 import pytest
 
 from tabulaflow.core import ExecResult
-from tabulaflow.output.specs import MapArtifactSpec
+from tabulaflow.output.specs import ChoiceOption, ChoiceParameter, MapArtifactSpec
 from tabulaflow.output.store import OutputStore
 from tabulaflow.agents.tools.render_map import RenderMapTool
 from tabulaflow.output.maps import (
@@ -275,6 +275,32 @@ class TestNormalizeMapSpec:
 
 
 class TestRenderMapTool:
+    async def test_parameterized_source_uses_default_selection(self) -> None:
+        output_store = OutputStore()
+        source = output_store.add_parameterized_source(
+            "db",
+            [
+                ChoiceParameter(
+                    id="period",
+                    label="Period",
+                    choices=[ChoiceOption(id="q1", label="Q1"), ChoiceOption(id="q2", label="Q2")],
+                )
+            ],
+            "SELECT 1",
+        )
+        await output_store.cache_parameterized_result(
+            source.id,
+            "sql",
+            {"period": "q1"},
+            "SELECT 1",
+            ExecResult(df=pd.DataFrame({"lat": [37.7], "lng": [-122.4]})),
+        )
+        spec = {"layers": [{"type": "points", "source_id": source.id, "lat": "lat", "lng": "lng"}]}
+
+        msg = await RenderMapTool(output_store=output_store)(map_spec=json.dumps(spec))
+
+        assert "Map MAP1 created from S1" in msg
+
     def test_tool_description_mentions_url_tooltip_links(self) -> None:
         doc = RenderMapTool.__call__.__doc__
         assert doc is not None

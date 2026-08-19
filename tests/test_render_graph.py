@@ -11,7 +11,7 @@ import pandas as pd
 import pytest
 
 from tabulaflow.core import ExecResult
-from tabulaflow.output.specs import GraphArtifactSpec
+from tabulaflow.output.specs import ChoiceOption, ChoiceParameter, GraphArtifactSpec
 from tabulaflow.output.store import OutputStore
 from tabulaflow.output.graphs import (
     GRAPH_MAX_NODES,
@@ -244,6 +244,33 @@ class TestNormalizeGraphSpec:
 
 
 class TestRenderGraphTool:
+    async def test_parameterized_source_uses_default_selection(self) -> None:
+        output_store = OutputStore()
+        source = output_store.add_parameterized_source(
+            "db",
+            [
+                ChoiceParameter(
+                    id="period",
+                    label="Period",
+                    choices=[ChoiceOption(id="q1", label="Q1"), ChoiceOption(id="q2", label="Q2")],
+                )
+            ],
+            "SELECT 1",
+        )
+        await output_store.cache_parameterized_result(
+            source.id,
+            "sql",
+            {"period": "q1"},
+            "SELECT 1",
+            ExecResult(df=pd.DataFrame({"id": ["a", "b"]})),
+        )
+        spec = {"nodes": [{"source_id": source.id, "id": "id"}]}
+
+        msg = await RenderGraphTool(output_store=output_store)(graph_spec=json.dumps(spec))
+
+        assert "Network graph GRAPH1 created from S1" in msg
+        assert "2 nodes" in msg
+
     async def test_node_only_graph_created(self) -> None:
         output_store = await _output_store_with(pd.DataFrame({"id": ["a", "b"], "kind": ["Person", "Company"]}))
         spec = {"nodes": [{"source_id": "S1", "id": "id", "group": "kind"}]}

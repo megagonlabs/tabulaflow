@@ -226,11 +226,11 @@ class TestRenderChartTool:
 
         msg = await RenderChartTool(output_store=output_store)(source_id="S1", vegalite_spec=json.dumps(spec))
 
-        assert "Bar chart CHART1 created from S1 — 2 source variants" in msg
+        assert "Bar chart CHART1 created from S1 — 1 rows" in msg
         assert _chart_artifact(output_store, "CHART1").source_id == "S1"
         assert _chart_artifact(output_store, "CHART1").spec == spec
 
-    async def test_query_family_validation_reports_all_failing_selections(self) -> None:
+    async def test_query_family_validation_uses_default_selection(self) -> None:
         output_store = OutputStore()
         source = output_store.add_parameterized_source(
             "db",
@@ -261,10 +261,9 @@ class TestRenderChartTool:
 
         msg = await RenderChartTool(output_store=output_store)(source_id="S1", vegalite_spec=json.dumps(spec))
 
-        assert "chart source validation failed for 2 issue(s)" in msg
-        assert "ranking=net — field(s) not found: ['b']" in msg
-        assert "ranking=count — field(s) not found: ['a', 'b']" in msg
-        assert "S1_v" not in msg
+        assert "chart source validation failed for 1 issue(s)" in msg
+        assert "S1 — field(s) not found: ['b']" in msg
+        assert "['a', 'b']" not in msg
         with pytest.raises(KeyError):
             output_store.get_artifact("CHART1")
 
