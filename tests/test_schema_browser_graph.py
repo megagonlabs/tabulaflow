@@ -30,20 +30,20 @@ class FakeGraphConnector:
                 NodeSchema(
                     label="Movie",
                     properties=[
-                        GraphPropertySchema(name="title", dtype="STRING"),
-                        GraphPropertySchema(name="released", dtype="INTEGER"),
+                        GraphPropertySchema(name="title", types=["STRING"]),
+                        GraphPropertySchema(name="released", types=["INTEGER"]),
                     ],
                 ),
                 NodeSchema(
                     label="Person",
-                    properties=[GraphPropertySchema(name="name", dtype="STRING")],
+                    properties=[GraphPropertySchema(name="name", types=["STRING"])],
                 ),
             ],
             relationships=[
                 RelationshipSchema(
                     label="ACTED_IN",
                     endpoints=[RelationshipEndpoint(source_label="Person", target_label="Movie")],
-                    properties=[GraphPropertySchema(name="roles", dtype="LIST OF STRING")],
+                    properties=[GraphPropertySchema(name="roles", types=["LIST OF STRING"])],
                 )
             ],
         )
@@ -141,7 +141,7 @@ def test_cypher_formatter_renders_multi_endpoint_relationship_type_once() -> Non
                     RelationshipEndpoint(source_label="City", target_label="Country"),
                     RelationshipEndpoint(source_label="Landmark", target_label="Country"),
                 ],
-                properties=[GraphPropertySchema(name="since", dtype="INTEGER")],
+                properties=[GraphPropertySchema(name="since", types=["INTEGER"])],
             )
         ],
     )

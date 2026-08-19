@@ -1440,13 +1440,14 @@ class SchemaBrowserScreen(Screen[None]):
         for prop in properties:
             assert isinstance(prop, GraphPropertySchema)
             parent_label = " > ".join(display_path)
+            types = " | ".join(prop.types)
             parent_node.add_leaf(
-                Text.assemble(prop.name.ljust(name_width), (f"  {prop.dtype}", "dim")),
+                Text.assemble(prop.name.ljust(name_width), (f"  {types}", "dim")),
                 data=_NodeData(
                     kind=_NODE_KIND_GRAPH_PROPERTY,
                     alias=alias,
                     path=(alias, *identity_path, prop.name),
-                    status_text=f"{alias} > {parent_label} > {prop.name}  |  {prop.dtype}",
+                    status_text=f"{alias} > {parent_label} > {prop.name}  |  {types}",
                 ),
             )
 

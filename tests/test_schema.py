@@ -3,7 +3,7 @@ from __future__ import annotations
 import pandas as pd
 import pytest
 
-from tabulaflow.core import ColumnRef, ForeignKeySchema, SQLColumnSchema, SQLSchema, SQLTableSchema
+from tabulaflow.core import ColumnRef, ForeignKeySchema, GraphPropertySchema, SQLColumnSchema, SQLSchema, SQLTableSchema
 
 
 def test_foreign_key_requires_matching_column_counts() -> None:
@@ -13,6 +13,11 @@ def test_foreign_key_requires_matching_column_counts() -> None:
             foreign_table="target",
             foreign_columns=["id"],
         )
+
+
+def test_graph_property_requires_at_least_one_type() -> None:
+    with pytest.raises(ValueError, match="at least 1"):
+        GraphPropertySchema(name="id", types=[])
 
 
 def _table(name: str = "orders") -> SQLTableSchema:

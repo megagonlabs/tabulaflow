@@ -147,8 +147,8 @@ async def test_fast_schema_introspection_uses_metadata() -> None:
 
     person = next(node for node in schema.nodes if node.label == "Person")
     acted_in = schema.relationships[0]
-    assert person.properties[0].dtype == "INTEGER | STRING"
-    assert acted_in.properties[0].dtype == "STRING"
+    assert person.properties[0].types == ["INTEGER", "STRING"]
+    assert acted_in.properties[0].types == ["STRING"]
     assert [(e.source_label, e.target_label) for e in acted_in.endpoints] == [("Person", "Movie")]
     assert timeouts == [9, 9, 9, 9, 9]
 
@@ -189,8 +189,8 @@ async def test_full_scan_schema_introspection_uses_observed_properties_and_topol
 
     person = next(node for node in schema.nodes if node.label == "Person")
     acted_in = schema.relationships[0]
-    assert person.properties[0].dtype == "INTEGER | STRING"
-    assert acted_in.properties[0].dtype == "STRING"
+    assert person.properties[0].types == ["INTEGER", "STRING"]
+    assert acted_in.properties[0].types == ["STRING"]
     assert [(e.source_label, e.target_label) for e in acted_in.endpoints] == [("Person", "Movie")]
 
 

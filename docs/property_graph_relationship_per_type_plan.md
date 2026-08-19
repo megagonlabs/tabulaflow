@@ -156,7 +156,7 @@ async def _build_schema(self) -> PropertyGraphSchema:
             if prop_name in seen:
                 continue
             seen.add(prop_name)
-            rel.properties.append(GraphPropertySchema(name=prop_name, dtype=dtype))
+            rel.properties.append(GraphPropertySchema(name=prop_name, types=[dtype]))
 
     sorted_nodes = sorted(nodes.values(), key=lambda n: n.label)
     for rel in rels.values():
@@ -289,7 +289,7 @@ by iterating endpoints, but the group count now reflects **types**.
       RelationshipSchema(
           label="ACTED_IN",
           endpoints=[RelationshipEndpoint(source_label="Person", target_label="Movie")],
-          properties=[GraphPropertySchema(name="roles", dtype="LIST OF STRING")],
+          properties=[GraphPropertySchema(name="roles", types=["LIST OF STRING"])],
       )
   ],
   ```
@@ -311,7 +311,7 @@ by iterating endpoints, but the group count now reflects **types**.
           RelationshipEndpoint(source_label="City", target_label="Country"),
           RelationshipEndpoint(source_label="Landmark", target_label="Country"),
       ],
-      properties=[GraphPropertySchema(name="since", dtype="INTEGER")],
+      properties=[GraphPropertySchema(name="since", types=["INTEGER"])],
   )
   ```
   Assert the formatted output contains both `(:City)-[:LOCATED_IN]->(:Country)`

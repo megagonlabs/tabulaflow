@@ -555,7 +555,7 @@ class Neo4jConnector:
             NodeSchema(
                 label=label,
                 properties=[
-                    GraphPropertySchema(name=name, dtype=" | ".join(sorted(types)))
+                    GraphPropertySchema(name=name, types=sorted(types))
                     for name, types in sorted(node_properties.get(label, {}).items())
                 ],
             )
@@ -569,7 +569,7 @@ class Neo4jConnector:
                     for source, target in sorted(relationship_endpoints.get(rel_type, set()))
                 ],
                 properties=[
-                    GraphPropertySchema(name=name, dtype=" | ".join(sorted(types)))
+                    GraphPropertySchema(name=name, types=sorted(types))
                     for name, types in sorted(relationship_properties.get(rel_type, {}).items())
                 ],
             )

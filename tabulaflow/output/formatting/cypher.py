@@ -65,7 +65,7 @@ class CypherSchemaFormatter:
         return f"(:{source_label})-[:{label}]->(:{target_label})"
 
     def _format_property(self, prop: GraphPropertySchema) -> str:
-        return f"{prop.name}: {prop.dtype}"
+        return f"{prop.name}: {' | '.join(prop.types)}"
 
     def _format_relationship_properties(self, relationships: list[RelationshipSchema]) -> list[str]:
         lines: list[str] = []

@@ -41,12 +41,12 @@ class GraphPropertySchema(BaseModel):
     """A property on a node or relationship type.
 
     Attributes:
-        dtype: Database-reported type such as ``STRING``, ``INTEGER``, or
-            ``LIST OF STRING``.
+        types: Database-reported value types. Most properties have one type;
+            schemaless graphs may contain several observed types.
     """
 
     name: str
-    dtype: str
+    types: list[str] = Field(min_length=1)
     description: str | None = None
 
 
