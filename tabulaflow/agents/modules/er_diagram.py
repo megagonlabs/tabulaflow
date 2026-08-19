@@ -5,8 +5,7 @@ from pydantic_ai.settings import ModelSettings
 
 from tabulaflow.data import SQLConnectorProtocol
 from tabulaflow.output.erd import ERDiagram
-from tabulaflow.output.schema_formatters.base import SQLSchemaFormatter
-from tabulaflow.output.schema_formatters.sql_ddl import SQLDDLSchemaFormatter
+from tabulaflow.output.formatting import SQLDDLSchemaFormatter, SQLSchemaFormatter
 from tabulaflow.output.schema_compression import SchemaCompressor
 from tabulaflow.core import SQLSchema
 from tabulaflow.agents.trace import Usage

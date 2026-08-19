@@ -2,7 +2,7 @@ import asyncio
 import argparse
 import time
 from tabulaflow.research.benchmarks import dataset_registry
-from tabulaflow.output.schema_formatters import schema_formatter_registry
+from tabulaflow.output.formatting import schema_formatter_registry
 from tabulaflow.core import SQLSchema
 from tabulaflow.output.schema_compression import SchemaCompressor
 from tabulaflow.data import Neo4jConnectorConfig, SQLConnectorConfig

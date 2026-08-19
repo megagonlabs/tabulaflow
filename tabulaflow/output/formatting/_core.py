@@ -4,7 +4,7 @@ from typing import Any
 import pandas as pd
 from tabulate import tabulate
 
-from tabulaflow.core import ExecResult, SQLColumnSchema
+from tabulaflow.core import ExecResult
 from tabulaflow.data.base import DataConnector
 
 
@@ -47,36 +47,7 @@ def flatten_multiline(val: str) -> str:
         return val.replace("\r\n", "\\n").replace("\r", "\\n").replace("\n", "\\n")
 
 
-def format_ratio_as_percent(
-    ratio: float,
-    *,
-    decimals: int = 0,
-    min_nonzero_percent: float | None = 1.0,
-) -> str:
-    """Format a ratio in [0, 1] as a percentage string.
-
-    Args:
-        ratio: Ratio value where 0.0 means 0% and 1.0 means 100%.
-        decimals: Number of decimal places for standard percentage formatting.
-        min_nonzero_percent: If set, non-zero ratios below this threshold are
-            shown as ``less than X%`` (e.g., ``less than 1%``) to avoid
-            displaying misleading ``0%`` values due to rounding. Set to
-            ``None`` to disable.
-
-    Returns:
-        A human-readable percentage string.
-    """
-    if ratio <= 0:
-        return "0%"
-
-    if min_nonzero_percent is not None and ratio * 100 < min_nonzero_percent:
-        threshold = f"{min_nonzero_percent:g}%"
-        return f"less than {threshold}"
-
-    return f"{ratio:.{decimals}%}"
-
-
-def format_df(
+def format_dataframe(
     df: pd.DataFrame,
     *,
     max_visible_rows: int = 20,
@@ -127,22 +98,8 @@ def format_df(
     )
 
 
-def render_column_dtype(column: SQLColumnSchema, max_native_dtype_chars: int = 80) -> str:
-    """Render a column's type for display to an LLM.
-
-    Prefers ``native_dtype`` when it's short — it carries scalar parameters
-    (``VARCHAR(100)``, ``DECIMAL(18, 2)``) the canonical ``dtype`` token
-    discards. Falls back to ``dtype`` for unset or overly long native
-    strings (e.g. deeply nested BigQuery RECORDs or DuckDB STRUCTs whose
-    shape is better conveyed via ``json_schema``).
-    """
-    if column.native_dtype and len(column.native_dtype) <= max_native_dtype_chars:
-        return column.native_dtype
-    return column.dtype
-
-
 def _is_union_schema(schema: dict[str, Any]) -> bool:
-    """Whether ``schema`` renders with a top-level ``|`` via :func:`format_json_schema`.
+    """Whether ``schema`` renders with a top-level ``|`` via :func:`format_json_schema_type`.
 
     True when the schema has ``anyOf`` with more than one branch after
     collapsing duplicate ``null`` entries — i.e. the rendered form is
@@ -157,14 +114,12 @@ def _is_union_schema(schema: dict[str, Any]) -> bool:
     return len(non_null) >= 2 or (len(non_null) == 1 and has_null)
 
 
-def format_json_schema(
+def format_json_schema_type(
     schema: dict[str, Any],
     *,
     max_depth: int | None = None,
     max_fields: int | None = 20,
     always_expand_top_level: bool = True,
-    _depth: int = 0,
-    _budget: float | None = None,
 ) -> str:
     """Format a JSON Schema dict as a compact TypeScript-style type annotation.
 
@@ -192,18 +147,28 @@ def format_json_schema(
         always_expand_top_level: When ``True``, the top-level object always
             lists its fields even if the budget is insufficient.  Nested
             objects that exceed the budget still collapse to ``{...}``.
-        _depth: Current nesting depth (internal recursion parameter).
-        _budget: Remaining field budget (internal recursion parameter).
 
     Returns:
         A compact type-annotation string.
     """
-    if _budget is None and max_fields is not None:
-        _budget = float(max_fields)
-
-    kw: dict[str, Any] = dict(
-        max_depth=max_depth, max_fields=max_fields, always_expand_top_level=always_expand_top_level
+    return _format_json_schema_type(
+        schema,
+        max_depth=max_depth,
+        always_expand_top_level=always_expand_top_level,
+        depth=0,
+        budget=float(max_fields) if max_fields is not None else None,
     )
+
+
+def _format_json_schema_type(
+    schema: dict[str, Any],
+    *,
+    max_depth: int | None,
+    always_expand_top_level: bool,
+    depth: int,
+    budget: float | None,
+) -> str:
+    kw: dict[str, Any] = dict(max_depth=max_depth, always_expand_top_level=always_expand_top_level)
 
     # Handle anyOf (union types, including nullable)
     if "anyOf" in schema:
@@ -213,9 +178,9 @@ def format_json_schema(
         if not non_null:
             return "null"
         if len(non_null) == 1:
-            inner = format_json_schema(non_null[0], **kw, _depth=_depth, _budget=_budget)
+            inner = _format_json_schema_type(non_null[0], **kw, depth=depth, budget=budget)
         else:
-            parts = [format_json_schema(s, **kw, _depth=_depth, _budget=_budget) for s in non_null]
+            parts = [_format_json_schema_type(s, **kw, depth=depth, budget=budget) for s in non_null]
             inner = " | ".join(parts)
         return f"{inner} | null" if has_null else inner
 
@@ -225,28 +190,28 @@ def format_json_schema(
         props: dict[str, Any] = schema.get("properties", {})
         if not props:
             return "object"
-        if max_depth is not None and _depth >= max_depth:
+        if max_depth is not None and depth >= max_depth:
             return "{...}"
         child_budget: float | None
-        if _budget is not None and _budget < len(props):
-            if always_expand_top_level and _depth == 0:
+        if budget is not None and budget < len(props):
+            if always_expand_top_level and depth == 0:
                 child_budget = 0.0
             else:
                 return "{...}"
         else:
-            child_budget = _budget / len(props) - 1 if _budget is not None else None
+            child_budget = budget / len(props) - 1 if budget is not None else None
         required = set[Any](schema.get("required", []))
         field_parts: list[str] = []
         for key, val_schema in props.items():
             suffix = "?" if key not in required else ""
-            formatted = format_json_schema(val_schema, **kw, _depth=_depth + 1, _budget=child_budget)
+            formatted = _format_json_schema_type(val_schema, **kw, depth=depth + 1, budget=child_budget)
             field_parts.append(f"{key}{suffix}: {formatted}")
         return "{" + ", ".join(field_parts) + "}"
 
     if t == "array":
         items_schema = schema.get("items")
         if items_schema:
-            inner = format_json_schema(items_schema, **kw, _depth=_depth, _budget=_budget)
+            inner = _format_json_schema_type(items_schema, **kw, depth=depth, budget=budget)
             if inner.startswith("{"):
                 return f"[{inner}]"
             # Parenthesize unions so ``[]`` binds to the whole alternation,
@@ -271,7 +236,7 @@ def format_exec_result_markdown(result: ExecResult) -> str:
         if result.affected_rows is not None:
             return f"*Statement executed successfully ({result.affected_rows} rows affected).*"
         return "*Statement executed successfully.*"
-    rendered = format_df(result.df)
+    rendered = format_dataframe(result.df)
     count = len(result.df)
-    suffix = f"*... truncated ({count} rows total)*" if count > 10 else f"*{count} rows*"
+    suffix = f"*... truncated ({count} rows total)*" if count > 20 else f"*{count} rows*"
     return f"{rendered}\n\n{suffix}"

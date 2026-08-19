@@ -18,7 +18,7 @@ from tabulaflow.agents.modules import ERDiagramSynthesizer, SchemaPreprocessor
 from tabulaflow.research.question_embedder import QuestionEmbedder
 from tabulaflow.agents.tools import BaseTool, RunQueryTool
 from tabulaflow.research.tools import SearchKeywordsTool, FinishTool
-from tabulaflow.output.schema_formatters.base import schema_formatter_registry, SQLSchemaFormatter
+from tabulaflow.output.formatting import MermaidERDiagramFormatter, SQLSchemaFormatter, schema_formatter_registry
 from tabulaflow.research.agenthub.base import agent_registry, BaseAgentConfig
 from tabulaflow.research.agenthub.utils import (
     get_max_steps_processor,
@@ -29,7 +29,6 @@ from tabulaflow.research.agenthub.utils import (
 from tabulaflow.agents.response_parsing import extract_code
 from tabulaflow.research.utils import extract_all_source_columns
 from tabulaflow.output.erd import ERDiagram
-from tabulaflow.output.schema_formatters.er_diagram import ERDiagramMermaidFormatter
 from tabulaflow.agents.llm import make_agent
 
 
@@ -55,7 +54,7 @@ def format_question(task: SimpleNL2QTask) -> str:
 class SQLAgentContext(TaskRunContext):
     db_connector: SQLConnectorProtocol
     er_diagram: ERDiagram | None = None
-    er_diagram_formatter: ERDiagramMermaidFormatter | None = None
+    er_diagram_formatter: MermaidERDiagramFormatter | None = None
     few_shot_examples: list[SimpleNL2QTask] = field(default_factory=list)
 
 
@@ -449,7 +448,7 @@ class SQLAgent:
         question_embedder = QuestionEmbedder(embedding_llm=self.config.question_embedder_embedding_llm)
         er_diagram_synthesizer = ERDiagramSynthesizer()
         er_diagram = await er_diagram_synthesizer.preprocess_async(db_connector)
-        er_diagram_formatter = ERDiagramMermaidFormatter()
+        er_diagram_formatter = MermaidERDiagramFormatter()
 
         preprocessed_schema = self._sort_tables(preprocessed_schema, er_diagram)
 

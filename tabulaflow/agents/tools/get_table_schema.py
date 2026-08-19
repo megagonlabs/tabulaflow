@@ -4,7 +4,7 @@ from typing import ClassVar
 from pydantic_ai import Tool
 from pydantic import BaseModel
 from tabulaflow.data.base import SQLConnectorProtocol
-from tabulaflow.output.schema_formatters import SQLSchemaFormatter
+from tabulaflow.output.formatting import SQLSchemaFormatter
 from tabulaflow.output.schema_compression import SchemaCompressor
 from tabulaflow.core import SQLColumnSchema, SQLSchema, SQLTableSchema, TableRef
 from tabulaflow.agents.tools.engines.sql import equals_ci

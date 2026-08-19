@@ -6,8 +6,7 @@ from pydantic import BaseModel
 from pydantic_ai import Tool
 
 from tabulaflow.data.registry import DBRegistry
-from tabulaflow.output.schema_formatters.cypher import CypherSchemaFormatter
-from tabulaflow.output.schema_formatters.sql_ddl import SQLDDLSchemaFormatter
+from tabulaflow.output.formatting import CypherSchemaFormatter, SQLDDLSchemaFormatter
 from tabulaflow.output.schema_compression import SchemaCompressor
 from tabulaflow.core import SQLSchema
 

@@ -12,7 +12,7 @@ from tabulaflow.agents.chat.session import _TextStreamRouter, _emit_stream_event
 from tabulaflow.agents.chat.events import ChatEvent, ToolFinished
 from tabulaflow.data.registry import DBRegistry
 from tabulaflow.data.sql import SQLConnector
-from tabulaflow.output.schema_formatters.sql_ddl import SQLDDLSchemaFormatter
+from tabulaflow.output.formatting import SQLDDLSchemaFormatter
 from tabulaflow.agents.tools import RegistryGetTableSchemaTool, RegistryRunQueryTool, ToolCallOutcome
 
 

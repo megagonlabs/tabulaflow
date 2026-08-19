@@ -2,7 +2,7 @@ from typing import Any
 
 import pytest
 
-from tabulaflow.output.formatting import format_json_schema
+from tabulaflow.output.formatting import format_json_schema_type
 from tabulaflow.core import SQLColumnSchema, SQLSchema, SQLTableSchema
 from tabulaflow.agents.tools.get_column_json_schema import (
     GetColumnJsonSchemaTool,
@@ -132,34 +132,34 @@ WIDE_OBJECT_SCHEMA: dict[str, Any] = {
 
 
 # ---------------------------------------------------------------------------
-# Tests for format_json_schema always_expand_top_level
+# Tests for format_json_schema_type always_expand_top_level
 # ---------------------------------------------------------------------------
 
 
 class TestFormatJsonSchemaAlwaysExpandTopLevel:
     def test_wide_schema_expands_top_level_by_default(self) -> None:
         """Default (always_expand_top_level=True) shows all top-level fields."""
-        result = format_json_schema(WIDE_OBJECT_SCHEMA, max_fields=10)
+        result = format_json_schema_type(WIDE_OBJECT_SCHEMA, max_fields=10)
         # All 40 field names should appear
         for i in range(40):
             assert f"field_{i}" in result
 
     def test_wide_schema_nested_objects_collapse(self) -> None:
         """Nested objects should collapse to {...} when budget is exhausted."""
-        result = format_json_schema(WIDE_OBJECT_SCHEMA, max_fields=10)
+        result = format_json_schema_type(WIDE_OBJECT_SCHEMA, max_fields=10)
         # field_0..field_2 are objects — they should collapse to {...}
         assert "nested" not in result
         assert "{...}" in result
 
     def test_wide_schema_collapses_when_disabled(self) -> None:
         """With always_expand_top_level=False, wide schema collapses entirely."""
-        result = format_json_schema(WIDE_OBJECT_SCHEMA, max_fields=10, always_expand_top_level=False)
+        result = format_json_schema_type(WIDE_OBJECT_SCHEMA, max_fields=10, always_expand_top_level=False)
         assert result == "{...}"
 
     def test_narrow_schema_unaffected(self) -> None:
         """Schema within budget produces the same result regardless of the flag."""
-        result_on = format_json_schema(SIMPLE_OBJECT_SCHEMA, max_fields=20, always_expand_top_level=True)
-        result_off = format_json_schema(SIMPLE_OBJECT_SCHEMA, max_fields=20, always_expand_top_level=False)
+        result_on = format_json_schema_type(SIMPLE_OBJECT_SCHEMA, max_fields=20, always_expand_top_level=True)
+        result_off = format_json_schema_type(SIMPLE_OBJECT_SCHEMA, max_fields=20, always_expand_top_level=False)
         assert result_on == result_off
 
     def test_nested_wide_object_still_collapses(self) -> None:
@@ -173,7 +173,7 @@ class TestFormatJsonSchemaAlwaysExpandTopLevel:
                 },
             },
         }
-        result = format_json_schema(schema, max_fields=5, always_expand_top_level=True)
+        result = format_json_schema_type(schema, max_fields=5, always_expand_top_level=True)
         # Top-level "outer" is shown, but its 50 children collapse
         assert "outer" in result
         assert "{...}" in result
@@ -185,7 +185,7 @@ class TestFormatJsonSchemaAlwaysExpandTopLevel:
             "type": "array",
             "items": WIDE_OBJECT_SCHEMA,
         }
-        result = format_json_schema(schema, max_fields=10, always_expand_top_level=True)
+        result = format_json_schema_type(schema, max_fields=10, always_expand_top_level=True)
         # The items object is at _depth=0 (arrays pass depth through), so it expands
         for i in range(40):
             assert f"field_{i}" in result
@@ -203,7 +203,7 @@ class TestFormatJsonSchemaAlwaysExpandTopLevel:
                 ]
             },
         }
-        assert format_json_schema(schema) == "(string | integer | boolean)[]"
+        assert format_json_schema_type(schema) == "(string | integer | boolean)[]"
 
     def test_array_of_nullable_is_parenthesized(self) -> None:
         """``T | null`` inside an array must also be parenthesized."""
@@ -211,7 +211,7 @@ class TestFormatJsonSchemaAlwaysExpandTopLevel:
             "type": "array",
             "items": {"anyOf": [{"type": "string"}, {"type": "null"}]},
         }
-        assert format_json_schema(schema) == "(string | null)[]"
+        assert format_json_schema_type(schema) == "(string | null)[]"
 
     def test_nested_array_of_array_of_union(self) -> None:
         """Regression: the cypherbench ``answer_json`` shape — list-of-list-of-mixed."""
@@ -231,7 +231,7 @@ class TestFormatJsonSchemaAlwaysExpandTopLevel:
                 },
             },
         }
-        result = format_json_schema(schema)
+        result = format_json_schema_type(schema)
         assert result == "(string[] | boolean | integer | number | string | null)[][]"
 
 
@@ -362,7 +362,7 @@ class TestGetColumnJsonSchemaTool:
         result = await tool("test_schema", "test_table", "data_col")
         # Deeply nested fields should NOT appear at full depth in overview
         # (max_depth=2 means we see the object but its children are {…})
-        # The exact behavior depends on format_json_schema limits
+        # The exact behavior depends on format_json_schema_type limits
         assert isinstance(result, str)
         assert len(result) > 0
 

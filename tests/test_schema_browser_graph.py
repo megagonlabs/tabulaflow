@@ -130,7 +130,7 @@ async def test_schema_browser_renders_property_graph_schema() -> None:
 
 
 def test_cypher_formatter_renders_multi_endpoint_relationship_type_once() -> None:
-    from tabulaflow.output.schema_formatters.cypher import CypherSchemaFormatter
+    from tabulaflow.output.formatting import CypherSchemaFormatter
 
     schema = PropertyGraphSchema(
         name="places",

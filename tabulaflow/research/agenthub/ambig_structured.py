@@ -7,7 +7,7 @@ from typing import ClassVar, Literal, Any, cast
 from pydantic import BaseModel, TypeAdapter
 from pydantic_ai import Agent, ToolOutput
 from tabulaflow.data import SQLConnectorProtocol
-from tabulaflow.output.schema_formatters.base import schema_formatter_registry, SQLSchemaFormatter
+from tabulaflow.output.formatting import schema_formatter_registry, SQLSchemaFormatter
 from tabulaflow.agents.trace import Usage, Trajectory
 from tabulaflow.research.types import PredQuery
 from tabulaflow.research.types import (

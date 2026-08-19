@@ -14,7 +14,7 @@ from pydantic_ai import ToolOutput
 from tabulaflow.research.agenthub.base import BaseAgentConfig
 from tabulaflow.research.agenthub.utils import instrument
 from tabulaflow.data import SQLConnectorProtocol
-from tabulaflow.output.schema_formatters.sql_ddl import SQLDDLSchemaFormatter
+from tabulaflow.output.formatting import SQLDDLSchemaFormatter
 from tabulaflow.agents.modules import DBSummarizer
 from tabulaflow.agents.llm import make_model_settings
 from tabulaflow.agents.trace import Usage, Trajectory

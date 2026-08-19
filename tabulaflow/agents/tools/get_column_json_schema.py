@@ -4,7 +4,7 @@ from typing import Any, ClassVar
 from pydantic import BaseModel
 from pydantic_ai import Tool
 
-from tabulaflow.output.formatting import format_json_schema
+from tabulaflow.output.formatting import format_json_schema_type
 from tabulaflow.core import SQLSchema
 from tabulaflow.agents.tools.engines.sql import equals_ci
 
@@ -244,14 +244,14 @@ class GetColumnJsonSchemaTool:
             if target_schema is None:
                 self._metrics.error_path_not_found += 1
                 return f"(error: path '{path}' not found in JSON schema of column {column_name})"
-            result = format_json_schema(target_schema, max_depth=None, max_fields=None)
+            result = format_json_schema_type(target_schema, max_depth=None, max_fields=None)
             if self.include_examples and column.examples:
                 sub_examples = _extract_examples_at_path(_parse_json_examples(column.examples), path)
                 if sub_examples:
                     result += _format_examples(sub_examples, self.max_example_chars)
             return result
         else:
-            result = format_json_schema(
+            result = format_json_schema_type(
                 column.json_schema, max_fields=_DEFAULT_OVERVIEW_MAX_FIELDS, always_expand_top_level=True
             )
             if self.include_examples:

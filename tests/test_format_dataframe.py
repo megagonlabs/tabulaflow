@@ -1,13 +1,13 @@
 import pandas as pd
 import numpy as np
-from tabulaflow.output.formatting import format_df
+from tabulaflow.output.formatting import format_dataframe
 
 
 class TestFormatDf:
     def test_basic_formatting(self) -> None:
         """Test basic DataFrame formatting."""
         df = pd.DataFrame({"a": [1, 2, 3], "b": ["x", "y", "z"]})
-        result = format_df(df)
+        result = format_dataframe(df)
         assert "a" in result
         assert "b" in result
         assert "1" in result
@@ -16,27 +16,27 @@ class TestFormatDf:
     def test_null_handling_none(self) -> None:
         """Test that None values are displayed as [NULL]."""
         df = pd.DataFrame({"a": [1, None, 3], "b": ["x", None, "z"]})
-        result = format_df(df)
+        result = format_dataframe(df)
         assert "[NULL]" in result
 
     def test_null_handling_nan(self) -> None:
         """Test that np.nan values are displayed as [NULL]."""
         df = pd.DataFrame({"a": [1.0, np.nan, 3.0]})
-        result = format_df(df)
+        result = format_dataframe(df)
         assert "[NULL]" in result
         assert "nan" not in result.lower() or "[null]" in result.lower()
 
     def test_null_handling_nat(self) -> None:
         """Test that pd.NaT values are displayed as [NULL]."""
         df = pd.DataFrame({"dt": [pd.Timestamp("2020-01-01"), pd.NaT, pd.Timestamp("2020-01-03")]})
-        result = format_df(df)
+        result = format_dataframe(df)
         assert "[NULL]" in result
         assert "NaT" not in result
 
     def test_row_limiting(self) -> None:
         """Test that rows are limited with ellipsis."""
         df = pd.DataFrame({"a": list(range(10))})
-        result = format_df(df, max_visible_rows=5)
+        result = format_dataframe(df, max_visible_rows=5)
         assert "..." in result
         # Should have first rows and last rows
         assert "0" in result
@@ -45,14 +45,14 @@ class TestFormatDf:
     def test_row_limiting_small_df(self) -> None:
         """Test that small DataFrames are not limited."""
         df = pd.DataFrame({"a": [1, 2, 3]})
-        result = format_df(df, max_visible_rows=5)
+        result = format_dataframe(df, max_visible_rows=5)
         assert "..." not in result
 
     def test_string_truncation(self) -> None:
         """Test that long strings are truncated."""
         long_string = "a" * 200
         df = pd.DataFrame({"a": [long_string]})
-        result = format_df(df, max_cell_width=100)
+        result = format_dataframe(df, max_cell_width=100)
         assert "..." in result
         assert long_string not in result
         # Should have beginning and end of string
@@ -62,7 +62,7 @@ class TestFormatDf:
         """Test that short strings are not truncated."""
         short_string = "hello"
         df = pd.DataFrame({"a": [short_string]})
-        result = format_df(df, max_cell_width=100)
+        result = format_dataframe(df, max_cell_width=100)
         assert short_string in result
         # Only one occurrence (not truncated)
         assert result.count("...") == 0 or "..." not in result.split("hello")[0]
@@ -70,14 +70,14 @@ class TestFormatDf:
     def test_numeric_not_truncated(self) -> None:
         """Test that numeric values are not truncated (preserved as-is)."""
         df = pd.DataFrame({"a": [12345, 67890]})
-        result = format_df(df)
+        result = format_dataframe(df)
         assert "12345" in result
         assert "67890" in result
 
     def test_empty_dataframe(self) -> None:
         """Test handling of empty DataFrame."""
         df = pd.DataFrame({"a": [], "b": []})
-        result = format_df(df)
+        result = format_dataframe(df)
         assert "a" in result
         assert "b" in result
 
@@ -91,7 +91,7 @@ class TestFormatDf:
                 "datetime_col": [pd.Timestamp("2020-01-01"), pd.NaT, pd.Timestamp("2020-01-03")],
             }
         )
-        result = format_df(df)
+        result = format_dataframe(df)
         # print(result)
         # All nulls should be [NULL]
         assert result.count("[NULL]") == 4
@@ -103,7 +103,7 @@ class TestFormatDf:
         """Test that long bytes values are truncated."""
         long_bytes = b"x" * 300
         df = pd.DataFrame({"a": [long_bytes]})
-        result = format_df(df, max_cell_width=100)
+        result = format_dataframe(df, max_cell_width=100)
         assert "..." in result
         assert str(long_bytes) not in result
 
@@ -111,27 +111,27 @@ class TestFormatDf:
         """Test that long list values are truncated."""
         long_list = list(range(200))
         df = pd.DataFrame({"a": [long_list]})
-        result = format_df(df, max_cell_width=100)
+        result = format_dataframe(df, max_cell_width=100)
         assert "..." in result
 
     def test_non_string_truncation_dict(self) -> None:
         """Test that long dict values are truncated."""
         long_dict = {f"key_{i}": i for i in range(100)}
         df = pd.DataFrame({"a": [long_dict]})
-        result = format_df(df, max_cell_width=100)
+        result = format_dataframe(df, max_cell_width=100)
         assert "..." in result
 
     def test_list_with_none_not_crash(self) -> None:
         """Test that list cells containing None don't crash pd.isna."""
         df = pd.DataFrame({"a": [[1, None, 3]]})
-        result = format_df(df)
+        result = format_dataframe(df)
         assert "[1," in result or "1, None" in result or "1," in result
 
     def test_tablefmt_parameter(self) -> None:
         """Test different table formats."""
         df = pd.DataFrame({"a": [1, 2], "b": [3, 4]})
-        result_simple = format_df(df, tablefmt="simple")
-        result_grid = format_df(df, tablefmt="grid")
+        result_simple = format_dataframe(df, tablefmt="simple")
+        result_grid = format_dataframe(df, tablefmt="grid")
         # Grid format has more structure
         assert result_simple != result_grid
         assert "+" in result_grid or "|" in result_grid

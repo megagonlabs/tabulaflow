@@ -8,7 +8,7 @@ from tabulaflow.core import SQLSchema, ForeignKeySchema, TableRef
 from tabulaflow.agents.trace import Usage
 from tabulaflow.data import SQLConnectorProtocol
 from tabulaflow.agents.tools.run_query import RunQueryTool
-from tabulaflow.output.schema_formatters.sql_ddl import SQLDDLSchemaFormatter
+from tabulaflow.output.formatting import SQLDDLSchemaFormatter
 from tabulaflow.agents.llm import make_agent
 
 FK_PREDICTOR_SYSTEM_PROMPT = """

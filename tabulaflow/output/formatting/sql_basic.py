@@ -2,10 +2,14 @@ from dataclasses import dataclass
 from typing import ClassVar
 
 from tabulaflow.core import ForeignKeySchema, SQLColumnSchema, SQLDialect, SQLSchema, SQLTableSchema
-from tabulaflow.output.formatting import flatten_multiline, format_ratio_as_percent, render_column_dtype
-from tabulaflow.output.schema_formatters._sql_quoting import SQLQuoting
-from tabulaflow.output.schema_formatters._sql_selection import select_tables_for_formatting
-from tabulaflow.output.schema_formatters.base import schema_formatter_registry
+from tabulaflow.output.formatting._core import flatten_multiline
+from tabulaflow.output.formatting._sql import (
+    SQLQuoting,
+    format_column_type,
+    format_ratio_as_percent,
+    select_tables_for_formatting,
+)
+from tabulaflow.output.formatting.schema import schema_formatter_registry
 
 
 @schema_formatter_registry.register
@@ -136,7 +140,7 @@ class SQLBasicSchemaFormatter:
         primary_key_kind: str | None,
         foreign_keys: list[ForeignKeySchema],
     ) -> str:
-        result = f"- {quoting.quote_column(column.name)}: {render_column_dtype(column, self.max_native_dtype_chars)}"
+        result = f"- {quoting.quote_column(column.name)}: {format_column_type(column, self.max_native_dtype_chars)}"
         if column.nullable:
             if column.null_ratio == 1.0:
                 result += " (all values are null)"

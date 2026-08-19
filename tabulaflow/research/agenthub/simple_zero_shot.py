@@ -7,7 +7,7 @@ import asyncio
 from typing import Any, ClassVar, cast
 from tabulaflow.agents.response_parsing import extract_code
 from tabulaflow.output.schema_compression import SchemaCompressor
-from tabulaflow.output.schema_formatters import (
+from tabulaflow.output.formatting import (
     PropertyGraphSchemaFormatter,
     SQLSchemaFormatter,
     schema_formatter_registry,

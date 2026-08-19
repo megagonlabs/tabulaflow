@@ -1,15 +1,17 @@
 from typing import ClassVar
 from dataclasses import dataclass
 from tabulaflow.core import ForeignKeySchema, SQLDialect, SQLSchema, SQLTableSchema, SQLColumnSchema
-from tabulaflow.output.schema_formatters.base import schema_formatter_registry
-from tabulaflow.output.schema_formatters._sql_quoting import SQLQuoting
-from tabulaflow.output.schema_formatters._sql_selection import select_tables_for_formatting
-from tabulaflow.output.formatting import (
-    format_df,
+from tabulaflow.output.formatting.schema import schema_formatter_registry
+from tabulaflow.output.formatting._core import (
+    format_dataframe,
     flatten_multiline,
-    format_json_schema,
+    format_json_schema_type,
+)
+from tabulaflow.output.formatting._sql import (
+    SQLQuoting,
     format_ratio_as_percent,
-    render_column_dtype,
+    format_column_type,
+    select_tables_for_formatting,
 )
 
 
@@ -52,16 +54,16 @@ class SQLDDLSchemaFormatter:
 
     def _map_dtype_to_sql(self, column: SQLColumnSchema) -> str:
         """Render a column's type for emission in DDL."""
-        return render_column_dtype(column, self.max_native_dtype_chars)
+        return format_column_type(column, self.max_native_dtype_chars)
 
     def _format_sampled_df(self, table: SQLTableSchema) -> str:
         """Format a DataFrame as a markdown table (without wrapper)."""
         if table.num_rows is not None and table.num_rows <= 10:
-            md_table = format_df(table.sampled_df, max_visible_rows=len(table.sampled_df))  # type: ignore
+            md_table = format_dataframe(table.sampled_df, max_visible_rows=len(table.sampled_df))  # type: ignore
             return f"All rows:\n{md_table}"
         else:
             df = table.sampled_df.head(5)  # type: ignore
-            md_table = format_df(df, max_visible_rows=5, add_bottom_ellipsis_row=True)
+            md_table = format_dataframe(df, max_visible_rows=5, add_bottom_ellipsis_row=True)
             return f"Sample rows:\n{md_table}"
 
     def format(self, schema: SQLSchema, *, include_descriptions: bool = False) -> str:
@@ -245,7 +247,7 @@ class SQLDDLSchemaFormatter:
 
         # Add JSON schema for semi-structured columns
         if self.include_json_schema and column.json_schema:
-            formatted = format_json_schema(column.json_schema, max_fields=self.include_json_schema_max_fields)
+            formatted = format_json_schema_type(column.json_schema, max_fields=self.include_json_schema_max_fields)
             comment_lines.append(f"        -- <json_schema>{formatted}</json_schema>")
 
         # Add example values as comment

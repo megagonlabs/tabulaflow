@@ -6,8 +6,7 @@ from tabulaflow.agents.modules.db_summarizer import DBSummary
 from tabulaflow.core import SQLSchema
 from tabulaflow.output.schema_compression import SchemaCompressor
 from tabulaflow.output.erd import ERDiagram
-from tabulaflow.output.schema_formatters.sql_ddl import SQLDDLSchemaFormatter
-from tabulaflow.output.schema_formatters.er_diagram import ERDiagramMermaidFormatter
+from tabulaflow.output.formatting import MermaidERDiagramFormatter, SQLDDLSchemaFormatter
 
 
 def main() -> None:
@@ -65,7 +64,7 @@ def main() -> None:
         if args.skip_exists and os.path.exists(output_path):
             continue
         er_diagram = ERDiagram.model_validate_json(open(os.path.join(input_dir, f)).read())
-        er_diagram_str = ERDiagramMermaidFormatter().format(er_diagram)
+        er_diagram_str = MermaidERDiagramFormatter().format(er_diagram)
         with open(output_path, "w") as f:
             f.write(er_diagram_str)
     print(f"Exported {len(os.listdir(input_dir))} ER diagrams to {output_dir}")

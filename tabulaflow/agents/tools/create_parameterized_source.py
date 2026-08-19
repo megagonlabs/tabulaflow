@@ -23,7 +23,7 @@ from tabulaflow.output.specs import (
     default_selection,
 )
 from tabulaflow.core import ErrorInfo, ExecResult
-from tabulaflow.output.formatting import flatten_multiline, format_df
+from tabulaflow.output.formatting import flatten_multiline, format_dataframe
 from tabulaflow.agents.tools.base import ToolCallOutcome
 from tabulaflow.agents.tools.engines.sql import format_sqlalchemy_error_msg
 from tabulaflow.output.store import OutputStore, SourceNotApplicable, render_parameterized_query
@@ -298,7 +298,7 @@ def _format_exec_result(exec_result: ExecResult) -> str:
         return f"(statement executed successfully, {affected} row{'s' if affected != 1 else ''} affected)"
     if exec_result.df.empty:
         return "(query executed successfully, but results are empty)"
-    return f"{format_df(exec_result.df)}\n({len(exec_result.df)} row{'' if len(exec_result.df) == 1 else 's'})"
+    return f"{format_dataframe(exec_result.df)}\n({len(exec_result.df)} row{'' if len(exec_result.df) == 1 else 's'})"
 
 
 def _format_other_warmed_selection(selection: Selection, exec_result: ExecResult) -> str:

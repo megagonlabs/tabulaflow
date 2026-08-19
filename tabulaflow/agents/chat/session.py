@@ -191,7 +191,7 @@ class ChatSession:
     def _build_tools(self, subagent_dir: Path | None) -> ChatToolset:
         """Construct the agent's toolset, wiring in the shared output store and
         message store. ``subagent_dir`` (if set) is where subagent trajectories land."""
-        from tabulaflow.output.schema_formatters.sql_ddl import SQLDDLSchemaFormatter
+        from tabulaflow.output.formatting import SQLDDLSchemaFormatter
         from tabulaflow.agents.modules.db_summarizer import DBSummarizer
         from tabulaflow.agents.tools import (
             AddCanonicalNameTool,

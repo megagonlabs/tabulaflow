@@ -8,8 +8,7 @@ from pydantic_ai.settings import ModelSettings
 
 from tabulaflow.data.base import DataConnector
 from tabulaflow.data.registry import DBRegistry
-from tabulaflow.output.schema_formatters.cypher import CypherSchemaFormatter
-from tabulaflow.output.schema_formatters.sql_ddl import SQLDDLSchemaFormatter
+from tabulaflow.output.formatting import CypherSchemaFormatter, SQLDDLSchemaFormatter
 from tabulaflow.output.schema_compression import SchemaCompressor
 
 _MAX_CHARS = 50000

@@ -1,9 +1,8 @@
 """Tests for SQL schema formatting."""
 
 from tabulaflow.core import ForeignKeySchema, SQLColumnSchema, SQLSchema, SQLTableSchema
-from tabulaflow.output.formatting import render_column_dtype
-from tabulaflow.output.schema_formatters.sql_basic import SQLBasicSchemaFormatter
-from tabulaflow.output.schema_formatters.sql_ddl import SQLDDLSchemaFormatter
+from tabulaflow.output.formatting._sql import format_column_type
+from tabulaflow.output.formatting import SQLBasicSchemaFormatter, SQLDDLSchemaFormatter
 
 
 def _col(name: str, dtype: str, native_dtype: str | None, *, nullable: bool = True) -> SQLColumnSchema:
@@ -26,26 +25,26 @@ def _table(column: SQLColumnSchema) -> SQLTableSchema:
     )
 
 
-def test_render_column_dtype_prefers_short_native() -> None:
-    assert render_column_dtype(_col("a", "VARCHAR", "VARCHAR(100)")) == "VARCHAR(100)"
-    assert render_column_dtype(_col("b", "DECIMAL", "DECIMAL(18, 2)")) == "DECIMAL(18, 2)"
+def test_format_column_type_prefers_short_native() -> None:
+    assert format_column_type(_col("a", "VARCHAR", "VARCHAR(100)")) == "VARCHAR(100)"
+    assert format_column_type(_col("b", "DECIMAL", "DECIMAL(18, 2)")) == "DECIMAL(18, 2)"
 
 
-def test_render_column_dtype_falls_back_when_native_missing() -> None:
-    assert render_column_dtype(_col("a", "VARCHAR", None)) == "VARCHAR"
+def test_format_column_type_falls_back_when_native_missing() -> None:
+    assert format_column_type(_col("a", "VARCHAR", None)) == "VARCHAR"
 
 
-def test_render_column_dtype_falls_back_when_native_too_long() -> None:
+def test_format_column_type_falls_back_when_native_too_long() -> None:
     long_native = "STRUCT(" + ", ".join(f"f{i} VARCHAR" for i in range(40)) + ")"
     assert len(long_native) > 80
     col = _col("a", "STRUCT", long_native)
-    assert render_column_dtype(col, max_native_dtype_chars=80) == "STRUCT"
+    assert format_column_type(col, max_native_dtype_chars=80) == "STRUCT"
 
 
-def test_render_column_dtype_cap_is_configurable() -> None:
+def test_format_column_type_cap_is_configurable() -> None:
     col = _col("a", "VARCHAR", "VARCHAR(100)")
-    assert render_column_dtype(col, max_native_dtype_chars=5) == "VARCHAR"
-    assert render_column_dtype(col, max_native_dtype_chars=20) == "VARCHAR(100)"
+    assert format_column_type(col, max_native_dtype_chars=5) == "VARCHAR"
+    assert format_column_type(col, max_native_dtype_chars=20) == "VARCHAR(100)"
 
 
 def test_sql_basic_uses_native_dtype_when_short() -> None:

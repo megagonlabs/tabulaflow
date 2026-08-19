@@ -1,7 +1,7 @@
 from typing import ClassVar
 from pydantic_ai import Tool
 from pydantic import BaseModel
-from tabulaflow.output.schema_formatters import SQLSchemaFormatter
+from tabulaflow.output.formatting import SQLSchemaFormatter
 from tabulaflow.core import SQLSchema
 
 

@@ -10,7 +10,7 @@ from tabulaflow.research.agenthub.base import BaseAgentConfig
 from tabulaflow.research.agenthub.ensemblers.majority_ensembler import _normalize_value
 from tabulaflow.research.agenthub.utils import instrument
 from tabulaflow.data import SQLConnectorProtocol
-from tabulaflow.output.formatting import format_df
+from tabulaflow.output.formatting import format_dataframe
 from tabulaflow.research.pipelines.populate_exec_results import populate_task_async
 from tabulaflow.agents.modules import DBSummarizer
 from tabulaflow.agents.trace import Usage, Trajectory
@@ -120,7 +120,7 @@ class LLMEnsembler:
         if exec_result.df.empty:
             return "(empty result)"
         df = exec_result.df
-        preview = format_df(df, max_visible_rows=_DF_PREVIEW_MAX_ROWS)
+        preview = format_dataframe(df, max_visible_rows=_DF_PREVIEW_MAX_ROWS)
         preview += f"\n({len(df)} rows)"
         return preview
 

@@ -174,11 +174,11 @@ Do **not** keep file-writing helpers here:
 
 Move display helpers out of core:
 
-- `format_df(...)`
+- `format_dataframe(...)`
 - `flatten_multiline(...)` if only used for display
 - `format_ratio_as_percent(...)`
-- `render_column_dtype(...)`
-- `format_json_schema(...)`
+- `format_column_type(...)`
+- `format_json_schema_type(...)`
 
 Target home for display formatting:
 
@@ -266,17 +266,18 @@ output/
   specs.py
   store.py
   resolver.py
-  formatting.py
   schema_compression.py
   graphs.py
   erd.py
-  schema_formatters/
+  formatting/
     __init__.py
-    base.py
+    _core.py
+    _sql.py
+    schema.py
     sql_basic.py
     sql_ddl.py
     cypher.py
-    er_diagram.py
+    erd.py
 ```
 
 Concepts:
@@ -299,9 +300,8 @@ File ownership:
 - `output/specs.py`: pure declarative output models and helpers, including `OutputSpec`, parameter specs, source specs, artifact specs, `ResultMetadata`, `canonical_selection_key`, and `artifact_source_ids`.
 - `output/store.py`: `OutputStore`, `ResultPayload`, `SourceNotApplicable`, `render_parameterized_query`, `OUTPUT_STORE_SCHEMA`, and runtime result/source/artifact storage.
 - `output/resolver.py`: `OutputResolver` and resolved artifact/result payload types.
-- `output/formatting.py`: output-facing human/LLM formatting helpers such as `format_df`, `format_exec_result_markdown`, JSON-schema formatting, and result display formatting.
+- `output/formatting/`: output-facing human/LLM formatting functions and schema/ERD formatter implementations.
 - `output/schema_compression.py`: lossy schema compaction for prompt and display consumption.
-- `output/schema_formatters/`: schema renderers currently under `core/formatters/`.
 
 Dependency decisions:
 
@@ -604,7 +604,7 @@ This includes:
 Move current `core/formatters/` to:
 
 ```text
-output/schema_formatters/
+output/formatting/
 ```
 
 Reasoning: schema formatting is presentation/prompt/output behavior, not core schema modeling.
@@ -625,7 +625,7 @@ Recommended homes:
 
 - `agents/modules/er_diagram.py` if primarily LLM-generated/consumed
 - `output/erd.py` if the ERD data model is primarily display/output-facing
-- `output/schema_formatters/er_diagram.py` for formatting only
+- `output/formatting/erd.py` for formatting only
 
 ## Core import policy
 
@@ -746,7 +746,7 @@ Delete `core/utils.py` eventually by moving helpers to their owning layers:
 
 - strict JSON helpers → `core/serialization.py`
 - file-writing helpers such as `write_strict_json` → app/output I/O code
-- display/table/schema formatting → `output/formatting.py` or `output/schema_formatters/`
+- display/table/schema formatting → `output/formatting/`
 - SQL source-column analysis → `data` (for SQL analysis) or agents if only used for prompting
 - metrics aggregation helpers → `research`
 - LLM response parsing helpers such as `extract_code` → `agents` or `research`, depending on consumers

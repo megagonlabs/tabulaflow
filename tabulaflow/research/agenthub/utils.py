@@ -13,7 +13,7 @@ from tabulaflow.config import tabulaflow_config
 from tabulaflow.data import DataConnector
 from tabulaflow.agents.llm import make_model_settings
 from tabulaflow.agents.tools import BaseTool
-from tabulaflow.output.schema_formatters.base import SQLSchemaFormatter
+from tabulaflow.output.formatting import SQLSchemaFormatter
 
 
 def max_steps_processor(

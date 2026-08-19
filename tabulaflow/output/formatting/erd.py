@@ -4,7 +4,7 @@ from tabulaflow.output.erd import ERDiagram, ERDConceptualEntity, ERDRelationshi
 
 
 @dataclass
-class ERDiagramMermaidFormatter:
+class MermaidERDiagramFormatter:
     """Formats an ER diagram into Mermaid erDiagram format."""
 
     name: ClassVar[str] = "er_diagram_mermaid"

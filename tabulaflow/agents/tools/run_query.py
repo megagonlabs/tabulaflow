@@ -5,7 +5,7 @@ from pydantic_ai import Tool
 from pydantic import BaseModel, Field
 from tabulaflow.data import DataConnector
 from tabulaflow.core import ExecResult, GraphResult
-from tabulaflow.output.formatting import format_df
+from tabulaflow.output.formatting import format_dataframe
 from tabulaflow.agents.tools.engines.sql import format_sqlalchemy_error_msg
 
 _UNSET = object()
@@ -284,7 +284,7 @@ class RunQueryTool:
         if df.empty:
             return f"(query executed successfully, but results are empty){lat_line}{graph_line}"
 
-        res = format_df(
+        res = format_dataframe(
             df, max_visible_rows=self.max_visible_rows, max_cell_width=self.max_cell_width, floatfmt=self.floatfmt
         )
         res += f"\n({len(df)} rows){lat_line}{graph_line}"

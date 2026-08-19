@@ -3,8 +3,6 @@ import time
 from typing import ClassVar, cast
 import logging
 
-import tabulaflow.output.schema_formatters  # noqa: F401 — register sql_*, cypher, … formatters
-
 from tabulaflow.data import DataConnector
 from tabulaflow.agents.trace import Usage, Trajectory
 from tabulaflow.research.types import PredQuery
@@ -12,7 +10,7 @@ from tabulaflow.research.types import SimpleNL2QTask, SimpleNL2QTaskOutput
 from tabulaflow.output.schema_compression import SchemaCompressor
 from tabulaflow.agents.tools import BaseTool, RunQueryTool
 from tabulaflow.research.tools import FinishTool
-from tabulaflow.output.schema_formatters.base import (
+from tabulaflow.output.formatting import (
     PropertyGraphSchemaFormatter,
     SQLSchemaFormatter,
     schema_formatter_registry,
