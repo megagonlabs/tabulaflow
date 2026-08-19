@@ -15,6 +15,9 @@ from tabulaflow.output.specs import GraphArtifactSpec
 from tabulaflow.output.store import OutputStore
 from tabulaflow.output.graphs import (
     GRAPH_MAX_NODES,
+    GraphEdgeSourceSpec,
+    GraphLiteralValueSpec,
+    GraphNodeSourceSpec,
     GraphSpec,
     graph_size,
     materialize_graph_result,
@@ -43,6 +46,20 @@ def _norm(spec: Mapping[str, object], **sources: pd.DataFrame) -> dict[str, Any]
 
 
 class TestNormalizeGraphSpec:
+    def test_public_nested_models_construct_graph_spec(self) -> None:
+        spec = GraphSpec(
+            nodes=[
+                GraphNodeSourceSpec(
+                    data=[{"id": "a"}],
+                    id="id",
+                    group=GraphLiteralValueSpec(value="Person"),
+                )
+            ],
+            edges=[GraphEdgeSourceSpec(data=[{"source": "a", "target": "a"}], source="source", target="target")],
+        )
+
+        assert spec.nodes[0].group == GraphLiteralValueSpec(value="Person")
+
     def test_parse_returns_public_graph_spec(self) -> None:
         parsed = parse_graph_spec(
             {

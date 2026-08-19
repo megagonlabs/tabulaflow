@@ -216,7 +216,7 @@ app/tui.py snapshot dispatch     render_graph_data(snap, dir)  window.TF.renderG
 
 ### 2.1 Tool (`tabulaflow/toolhub/render_graph.py`) — mirror `render_map.py`
 
-- Pydantic models with `extra="forbid"`: `_NodeSource`, `_EdgeSource`,
+- Pydantic models with `extra="forbid"`: `GraphNodeSourceSpec`, `GraphEdgeSourceSpec`,
   `_GraphSpec` (`title`, `layout`, `nodes`, `edges`, `subgraph`). Node `group`,
   edge `source`/`target`/`label`, and `tooltip` are plain `str | None`
   (or `str | list[str] | Literal[True]` for tooltip) field names — **not**

@@ -26,6 +26,9 @@ GRAPH_MAX_EDGES = 700
 __all__ = [
     "GRAPH_MAX_EDGES",
     "GRAPH_MAX_NODES",
+    "GraphEdgeSourceSpec",
+    "GraphLiteralValueSpec",
+    "GraphNodeSourceSpec",
     "GraphSize",
     "GraphSpec",
     "GraphSpecError",
@@ -48,16 +51,18 @@ class _StrictModel(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
 
-class _ValueRef(_StrictModel):
+class GraphLiteralValueSpec(_StrictModel):
+    """Literal label or group value in a graph source."""
+
     value: str
 
 
-class _SourceModel(_StrictModel):
+class _GraphSourceBase(_StrictModel):
     source_id: str | None = None
     data: list[dict[str, Any]] | None = None
 
     @model_validator(mode="after")
-    def _validate_source_mode(self) -> _SourceModel:
+    def _validate_source_mode(self) -> _GraphSourceBase:
         has_source_id = self.source_id is not None
         has_data = self.data is not None
         if has_source_id == has_data:
@@ -67,26 +72,32 @@ class _SourceModel(_StrictModel):
         return self
 
 
-class _NodeSource(_SourceModel):
+class GraphNodeSourceSpec(_GraphSourceBase):
+    """Node source backed by columns or inline rows."""
+
     id: str
     label: str | None = None
-    group: str | _ValueRef | None = None
+    group: str | GraphLiteralValueSpec | None = None
     tooltip: str | list[str] | Literal[True] | None = None
 
 
-class _EdgeSource(_SourceModel):
+class GraphEdgeSourceSpec(_GraphSourceBase):
+    """Edge source backed by columns or inline rows."""
+
     source: str
     target: str
-    label: str | _ValueRef | None = None
+    label: str | GraphLiteralValueSpec | None = None
     directed: bool = True
     tooltip: str | list[str] | Literal[True] | None = None
 
 
 class GraphSpec(_StrictModel):
+    """Declarative node-link graph specification."""
+
     title: str | None = None
     layout: Literal["force", "layered", "tree"] = "force"
-    nodes: list[_NodeSource] = []
-    edges: list[_EdgeSource] = []
+    nodes: list[GraphNodeSourceSpec] = []
+    edges: list[GraphEdgeSourceSpec] = []
 
     @model_validator(mode="after")
     def _require_sources(self) -> GraphSpec:
@@ -152,9 +163,9 @@ def _optional_field(resolve_field: Callable[..., str], value: str | None, *, pat
 
 
 def _field_or_value(
-    resolve_field: Callable[..., str], value: str | _ValueRef | None, *, path: str
+    resolve_field: Callable[..., str], value: str | GraphLiteralValueSpec | None, *, path: str
 ) -> str | dict[str, str] | None:
-    if isinstance(value, _ValueRef):
+    if isinstance(value, GraphLiteralValueSpec):
         if not value.value:
             raise GraphSpecError(f"{path}.value must be a non-empty string")
         return {"value": value.value}
@@ -173,7 +184,7 @@ def _tooltip(
     return [resolve_field(item, path=f"{path}[]") for item in value]
 
 
-def _normalize_node_source(df: pd.DataFrame | None, source: _NodeSource, index: int) -> dict[str, Any]:
+def _normalize_node_source(df: pd.DataFrame | None, source: GraphNodeSourceSpec, index: int) -> dict[str, Any]:
     if source.data is not None:
         rows = source.data
 
@@ -201,7 +212,7 @@ def _normalize_node_source(df: pd.DataFrame | None, source: _NodeSource, index: 
     return out
 
 
-def _normalize_edge_source(df: pd.DataFrame | None, source: _EdgeSource, index: int) -> dict[str, Any]:
+def _normalize_edge_source(df: pd.DataFrame | None, source: GraphEdgeSourceSpec, index: int) -> dict[str, Any]:
     if source.data is not None:
         rows = source.data
 
@@ -246,7 +257,7 @@ def parse_graph_spec(spec: Mapping[str, object]) -> GraphSpec:
 def referenced_source_ids(parsed: GraphSpec) -> list[str]:
     """Return the distinct output-store source ids referenced by a parsed spec."""
     ids: list[str] = []
-    all_sources: list[_NodeSource | _EdgeSource] = [
+    all_sources: list[GraphNodeSourceSpec | GraphEdgeSourceSpec] = [
         *parsed.nodes,
         *parsed.edges,
     ]

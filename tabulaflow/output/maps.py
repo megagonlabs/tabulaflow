@@ -5,7 +5,7 @@ from __future__ import annotations
 import copy
 import json
 from collections.abc import Callable, Mapping, Sequence
-from typing import Annotated, Any, Literal
+from typing import Annotated, Any, Literal, TypeAlias
 
 import pandas as pd
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator, model_validator
@@ -25,9 +25,17 @@ _GEOJSON_TYPES = {
 }
 
 __all__ = [
+    "ColorEncodingSpec",
+    "GeoJsonLayerSpec",
+    "InlinePointSpec",
     "MAP_RENDER_MAX_ROWS",
+    "MapLayerSpec",
     "MapSpec",
     "MapSpecError",
+    "MapViewSpec",
+    "MarkerSpec",
+    "PointsLayerSpec",
+    "SizeEncodingSpec",
     "normalize_map_spec",
     "parse_map_spec",
     "referenced_source_ids",
@@ -42,27 +50,37 @@ class _StrictModel(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
 
-class _ColorEncoding(_StrictModel):
+class ColorEncodingSpec(_StrictModel):
+    """Color encoding driven by a source field."""
+
     field: str
     domain: list[Any] | None = None
 
 
-class _SizeEncoding(_StrictModel):
+class SizeEncodingSpec(_StrictModel):
+    """Marker-size encoding driven by a source field."""
+
     field: str
 
 
-class _MarkerSpec(_StrictModel):
+class MarkerSpec(_StrictModel):
+    """Point marker style."""
+
     type: Literal["pin", "circle"] = "pin"
 
 
-class _MapView(_StrictModel):
+class MapViewSpec(_StrictModel):
+    """Initial map viewport configuration."""
+
     fit: Any | None = None
     center: Any | None = None
     zoom: Any | None = None
     maxZoom: Any | None = None
 
 
-class _InlinePoint(BaseModel):
+class InlinePointSpec(BaseModel):
+    """One inline geographic point and its scalar properties."""
+
     model_config = ConfigDict(extra="allow")
 
     lat: float
@@ -76,7 +94,7 @@ class _InlinePoint(BaseModel):
         return value
 
     @model_validator(mode="after")
-    def _validate_point(self) -> _InlinePoint:
+    def _validate_point(self) -> InlinePointSpec:
         if not (-90 <= self.lat <= 90 and -180 <= self.lng <= 180):
             raise ValueError("invalid latitude/longitude")
         for key, value in (self.__pydantic_extra__ or {}).items():
@@ -94,10 +112,12 @@ class _InlinePoint(BaseModel):
         return point
 
 
-class _PointsLayer(_StrictModel):
+class PointsLayerSpec(_StrictModel):
+    """Point layer backed by columns or inline points."""
+
     type: Literal["points"]
     source_id: str | None = None
-    points: list[_InlinePoint] | None = None
+    points: list[InlinePointSpec] | None = None
     lat: str | None = None
     latitude: str | None = None
     lng: str | None = None
@@ -105,12 +125,12 @@ class _PointsLayer(_StrictModel):
     longitude: str | None = None
     label: str | None = None
     tooltip: str | list[str] | Literal[True] | None = None
-    marker: _MarkerSpec | None = None
-    color: _ColorEncoding | None = None
-    size: _SizeEncoding | None = None
+    marker: MarkerSpec | None = None
+    color: ColorEncodingSpec | None = None
+    size: SizeEncodingSpec | None = None
 
     @model_validator(mode="after")
-    def _validate_point_mode(self) -> _PointsLayer:
+    def _validate_point_mode(self) -> PointsLayerSpec:
         has_inline_points = self.points is not None
         has_column_points = any(
             value is not None for value in (self.lat, self.latitude, self.lng, self.lon, self.longitude)
@@ -126,16 +146,18 @@ class _PointsLayer(_StrictModel):
         return self
 
 
-class _GeoJsonLayer(_StrictModel):
+class GeoJsonLayerSpec(_StrictModel):
+    """GeoJSON layer backed by a column or inline GeoJSON."""
+
     type: Literal["geojson"]
     source_id: str | None = None
     geojson: str | dict[str, Any]
     label: str | None = None
     tooltip: str | list[str] | Literal[True] | None = None
-    color: _ColorEncoding | None = None
+    color: ColorEncodingSpec | None = None
 
     @model_validator(mode="after")
-    def _validate_source(self) -> _GeoJsonLayer:
+    def _validate_source(self) -> GeoJsonLayerSpec:
         is_column = isinstance(self.geojson, str)
         if is_column and self.source_id is None:
             raise ValueError("geojson layers must set source_id")
@@ -144,17 +166,19 @@ class _GeoJsonLayer(_StrictModel):
         return self
 
 
-_Layer = Annotated[_PointsLayer | _GeoJsonLayer, Field(discriminator="type")]
+MapLayerSpec: TypeAlias = Annotated[PointsLayerSpec | GeoJsonLayerSpec, Field(discriminator="type")]
 
 
 class MapSpec(_StrictModel):
+    """Declarative map specification."""
+
     title: Any | None = None
-    view: _MapView | None = None
-    layers: list[_Layer]
+    view: MapViewSpec | None = None
+    layers: list[MapLayerSpec]
 
     @field_validator("layers")
     @classmethod
-    def _require_layers(cls, value: list[_Layer]) -> list[_Layer]:
+    def _require_layers(cls, value: list[MapLayerSpec]) -> list[MapLayerSpec]:
         if not value:
             raise ValueError("map_spec.layers must be a non-empty list")
         return value
@@ -225,7 +249,7 @@ def _tooltip(
 
 
 def _color_encoding(
-    resolve_field: Callable[..., str], value: _ColorEncoding | None, *, path: str
+    resolve_field: Callable[..., str], value: ColorEncodingSpec | None, *, path: str
 ) -> dict[str, Any] | None:
     if value is None:
         return None
@@ -235,7 +259,7 @@ def _color_encoding(
 
 
 def _size_encoding(
-    resolve_field: Callable[..., str], value: _SizeEncoding | None, *, path: str
+    resolve_field: Callable[..., str], value: SizeEncodingSpec | None, *, path: str
 ) -> dict[str, Any] | None:
     if value is None:
         return None
@@ -251,7 +275,7 @@ def _has_valid_point(df: pd.DataFrame, lat_col: str, lng_col: str) -> bool:
     return bool(valid.any())
 
 
-def _normalize_points_layer(df: pd.DataFrame | None, layer: _PointsLayer, index: int) -> dict[str, Any]:
+def _normalize_points_layer(df: pd.DataFrame | None, layer: PointsLayerSpec, index: int) -> dict[str, Any]:
     if layer.points is not None:
         inline_points = [point.to_payload() for point in layer.points]
 
@@ -311,7 +335,7 @@ def _has_geojson_value(df: pd.DataFrame, column: str) -> bool:
     return False
 
 
-def _normalize_geojson_layer(df: pd.DataFrame | None, layer: _GeoJsonLayer, index: int) -> dict[str, Any]:
+def _normalize_geojson_layer(df: pd.DataFrame | None, layer: GeoJsonLayerSpec, index: int) -> dict[str, Any]:
     geojson = layer.geojson
     if isinstance(geojson, str):
         assert df is not None  # column mode implies a resolved source df
@@ -387,9 +411,9 @@ def normalize_map_spec(
         if rid is not None and rid not in sources:
             raise MapSpecError(f"layers[{index}] references unknown source_id {rid!r}")
         df = sources.get(rid) if rid is not None else None
-        if isinstance(layer, _PointsLayer):
+        if isinstance(layer, PointsLayerSpec):
             layers.append(_normalize_points_layer(df, layer, index))
-        elif isinstance(layer, _GeoJsonLayer):
+        elif isinstance(layer, GeoJsonLayerSpec):
             layers.append(_normalize_geojson_layer(df, layer, index))
         else:
             raise MapSpecError(f"layers[{index}].type must be 'points' or 'geojson'")

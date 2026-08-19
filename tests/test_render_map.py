@@ -12,7 +12,19 @@ from tabulaflow.core import ExecResult
 from tabulaflow.output.specs import MapArtifactSpec
 from tabulaflow.output.store import OutputStore
 from tabulaflow.agents.tools.render_map import RenderMapTool
-from tabulaflow.output.maps import MAP_RENDER_MAX_ROWS, MapSpec, normalize_map_spec, parse_map_spec
+from tabulaflow.output.maps import (
+    MAP_RENDER_MAX_ROWS,
+    ColorEncodingSpec,
+    GeoJsonLayerSpec,
+    InlinePointSpec,
+    MapSpec,
+    MapViewSpec,
+    MarkerSpec,
+    PointsLayerSpec,
+    SizeEncodingSpec,
+    normalize_map_spec,
+    parse_map_spec,
+)
 
 
 async def _output_store_with(*dfs: pd.DataFrame) -> OutputStore:
@@ -33,6 +45,23 @@ def _norm(spec: dict[str, Any], **sources: pd.DataFrame) -> dict[str, Any]:
 
 
 class TestNormalizeMapSpec:
+    def test_public_nested_models_construct_map_spec(self) -> None:
+        spec = MapSpec(
+            view=MapViewSpec(zoom=4),
+            layers=[
+                PointsLayerSpec(
+                    type="points",
+                    points=[InlinePointSpec(lat=1, lng=2)],
+                    marker=MarkerSpec(type="circle"),
+                    color=ColorEncodingSpec(field="lat"),
+                    size=SizeEncodingSpec(field="lng"),
+                ),
+                GeoJsonLayerSpec(type="geojson", geojson={"type": "Point", "coordinates": [2, 1]}),
+            ],
+        )
+
+        assert len(spec.layers) == 2
+
     def test_parse_returns_public_map_spec(self) -> None:
         parsed = parse_map_spec({"layers": [{"type": "points", "points": [{"lat": 1, "lng": 2}]}]})
 
