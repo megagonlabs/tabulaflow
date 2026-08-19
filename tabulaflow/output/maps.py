@@ -28,7 +28,6 @@ __all__ = [
     "MAP_RENDER_MAX_ROWS",
     "MapSpec",
     "MapSpecError",
-    "map_type_label",
     "normalize_map_spec",
     "parse_map_spec",
     "referenced_source_ids",
@@ -400,8 +399,3 @@ def normalize_map_spec(spec: Mapping[str, object], sources: Mapping[str, pd.Data
             if isinstance(layer, dict) and "source" in layer and "source_id" not in layer:
                 layer["source_id"] = layer.pop("source")
     return resolve_map_spec(parse_map_spec(raw), sources)
-
-
-def map_type_label(spec: Mapping[str, object]) -> str:
-    """Human-readable map label for UI cards and tool messages."""
-    return "Map"

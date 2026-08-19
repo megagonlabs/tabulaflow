@@ -9,7 +9,7 @@ from typing import Any
 
 import pandas as pd
 
-CHART_MAX_ROWS = 20_000
+_CHART_MAX_ROWS = 20_000
 _MULTIVIEW_KEYS = ("layer", "concat", "hconcat", "vconcat", "facet", "repeat", "spec")
 _MARK_LABELS = {
     "bar": "Bar chart",
@@ -29,12 +29,8 @@ _MARK_LABELS = {
 }
 
 __all__ = [
-    "CHART_MAX_ROWS",
     "ChartSpecError",
-    "chart_mark_type",
     "chart_type_label",
-    "is_multiview_spec",
-    "resolve_chart_column",
     "validate_chart_spec",
 ]
 
@@ -43,7 +39,7 @@ class ChartSpecError(ValueError):
     """Raised when a chart specification cannot be applied to its sources."""
 
 
-def resolve_chart_column(df: pd.DataFrame, name: str) -> str | None:
+def _resolve_chart_column(df: pd.DataFrame, name: str) -> str | None:
     """Resolve a column name case-insensitively."""
     for column in df.columns:
         if str(column).casefold() == name.casefold():
@@ -51,13 +47,13 @@ def resolve_chart_column(df: pd.DataFrame, name: str) -> str | None:
     return None
 
 
-def chart_mark_type(spec: Mapping[str, object]) -> str:
+def _chart_mark_type(spec: Mapping[str, object]) -> str:
     """Return the root Vega-Lite mark type, or an empty string for multi-view specs."""
     mark = spec.get("mark", "")
     return str(mark.get("type", "")) if isinstance(mark, Mapping) else str(mark)
 
 
-def is_multiview_spec(spec: Mapping[str, object]) -> bool:
+def _is_multiview_spec(spec: Mapping[str, object]) -> bool:
     """Return whether a Vega-Lite specification contains multiple views."""
     return any(key in spec for key in _MULTIVIEW_KEYS)
 
@@ -68,7 +64,7 @@ def chart_type_label(spec: Mapping[str, object]) -> str:
         return "Composite chart"
     if "facet" in spec or "repeat" in spec:
         return "Faceted chart"
-    return _MARK_LABELS.get(chart_mark_type(spec), "Chart")
+    return _MARK_LABELS.get(_chart_mark_type(spec), "Chart")
 
 
 def validate_chart_spec(
@@ -76,7 +72,7 @@ def validate_chart_spec(
     sources: Mapping[str, pd.DataFrame],
 ) -> dict[str, Any]:
     """Validate a Vega-Lite spec against one or more source variants."""
-    if "mark" not in spec and not is_multiview_spec(spec):
+    if "mark" not in spec and not _is_multiview_spec(spec):
         raise ChartSpecError("spec must have a 'mark' or be a multi-view spec (layer/facet/concat)")
 
     field_refs, has_transform = _spec_field_refs(spec)
@@ -84,8 +80,8 @@ def validate_chart_spec(
     for label, df in sources.items():
         if df.empty:
             errors.append(f"{label} — result is empty")
-        if len(df) > CHART_MAX_ROWS:
-            errors.append(f"{label} — {len(df):,} rows is too large to chart; max {CHART_MAX_ROWS:,} rows")
+        if len(df) > _CHART_MAX_ROWS:
+            errors.append(f"{label} — {len(df):,} rows is too large to chart; max {_CHART_MAX_ROWS:,} rows")
         if not has_transform:
             missing = sorted(field for field in field_refs if not _field_resolves(df, field))
             if missing:
@@ -118,7 +114,7 @@ def _spec_field_refs(spec: object) -> tuple[set[str], bool]:
 
 
 def _field_resolves(df: pd.DataFrame, field: str) -> bool:
-    if resolve_chart_column(df, field) is not None:
+    if _resolve_chart_column(df, field) is not None:
         return True
     root = re.split(r"[.\[]", field, maxsplit=1)[0]
-    return root != field and resolve_chart_column(df, root) is not None
+    return root != field and _resolve_chart_column(df, root) is not None

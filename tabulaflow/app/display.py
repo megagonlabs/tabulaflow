@@ -302,9 +302,7 @@ def _build_map_card(map_spec: dict[str, object]) -> RenderableType:
     Mirrors :func:`_build_chart_card`: a dim rounded box with the map's title/type
     and a line directing the user to the browser pane.
     """
-    from tabulaflow.output.maps import map_type_label
-
-    type_label = map_type_label(map_spec)
+    type_label = VIEW_KIND_MAP
     title = map_spec.get("title") if isinstance(map_spec, dict) else None
     heading = str(title) if isinstance(title, str) and title.strip() else type_label
     lines: list[RenderableType] = [Text(heading, style="dim bold", justify="center")]

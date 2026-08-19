@@ -9,7 +9,6 @@ from pydantic_ai import Tool
 from tabulaflow.output.maps import (
     MAP_RENDER_MAX_ROWS,
     MapSpecError,
-    map_type_label,
     parse_map_spec,
     referenced_source_ids,
     resolve_map_spec,
@@ -142,7 +141,7 @@ class RenderMapTool:
 
         map_artifact = self._output_store.add_map_artifact(source_ids, normalized)
         map_id = map_artifact.id
-        label = map_type_label(normalized)
+        label = "Map"
         if source_ids:
             rows_desc = " + ".join(f"{row_counts[rid]:,}" for rid in source_ids)
             return f"{label} {map_id} created from {', '.join(source_ids)} — {rows_desc} rows"

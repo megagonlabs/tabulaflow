@@ -16,9 +16,7 @@ from pydantic_ai import Tool
 
 from tabulaflow.output.charts import (
     ChartSpecError,
-    chart_mark_type,
     chart_type_label,
-    resolve_chart_column,
     validate_chart_spec,
 )
 from tabulaflow.output.specs import FixedResultSource, ParameterizedSource
@@ -34,6 +32,18 @@ _MARK_TO_PLOTEXT = {
     "point": "scatter",
 }
 _PLOTEXT_MARKS = frozenset(_MARK_TO_PLOTEXT)
+
+
+def _mark_type(spec: dict[str, Any]) -> str:
+    mark = spec.get("mark", "")
+    return str(mark.get("type", "")) if isinstance(mark, dict) else str(mark)
+
+
+def _resolve_column(df: pd.DataFrame, name: str) -> str | None:
+    for column in df.columns:
+        if str(column).casefold() == name.casefold():
+            return str(column)
+    return None
 
 
 def _validate_source_id(source_id: str) -> None:
@@ -96,11 +106,7 @@ def parse_vegalite_spec(spec: dict[str, Any]) -> tuple[str, str, str, str]:
     Returns the plotext-compatible mark name. Raises ValueError on
     unsupported or malformed specs.
     """
-    mark_raw = spec.get("mark", "")
-    if isinstance(mark_raw, dict):
-        mark_type = mark_raw.get("type", "")
-    else:
-        mark_type = str(mark_raw)
+    mark_type = _mark_type(spec)
 
     if mark_type not in _PLOTEXT_MARKS:
         supported = ", ".join(sorted(_PLOTEXT_MARKS))
@@ -138,7 +144,7 @@ def is_plotext_renderable(spec: dict[str, Any]) -> bool:
         return False
     if "transform" in spec or any(key in spec for key in _MULTIVIEW_KEYS):
         return False
-    if chart_mark_type(spec) not in _PLOTEXT_MARKS:
+    if _mark_type(spec) not in _PLOTEXT_MARKS:
         return False
     encoding = spec.get("encoding")
     if not isinstance(encoding, dict):
@@ -249,8 +255,8 @@ def render_plotext(
     # plt.theme("dark")'s concrete canvas color.
     plt.canvas_color("default")
 
-    x_col = resolve_chart_column(df, x_field)
-    y_col = resolve_chart_column(df, y_field)
+    x_col = _resolve_column(df, x_field)
+    y_col = _resolve_column(df, y_field)
     if x_col is None or y_col is None:
         raise ChartNotRenderable(f"chart field not found (x='{x_field}', y='{y_field}')")
 
