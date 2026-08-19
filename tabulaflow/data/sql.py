@@ -1649,32 +1649,6 @@ def _convert(value: Any) -> str | int | float | bool:
     return str(value)
 
 
-def _non_null_sample_values(values: list[Any]) -> list[Any]:
-    result = []
-    for value in values:
-        if value is None:
-            continue
-        if pd.api.types.is_scalar(value) and bool(pd.isna(value)):
-            continue
-        result.append(value)
-    return result
-
-
-def _sample_examples(values: list[Any], limit: int = 5) -> list[str | int | float | bool]:
-    examples = []
-    seen: set[tuple[type[Any], str]] = set()
-    for value in values:
-        converted = _convert(value)
-        key = (type(converted), repr(converted))
-        if key in seen:
-            continue
-        seen.add(key)
-        examples.append(converted)
-        if len(examples) == limit:
-            break
-    return examples
-
-
 def _denorm(t_eng: ThrottledEngine, name: str | Any) -> str:
     """Denormalize a normalized identifier back to its actual stored form as a plain str."""
     if getattr(t_eng.engine.dialect, "requires_name_normalize", False):
@@ -1893,8 +1867,14 @@ async def _try_profile_query_async(
 def _enrich_column_from_sample(column: SQLColumnSchema, sampled_df: pd.DataFrame) -> SQLColumnSchema:
     if column.name not in sampled_df.columns:
         return column
-    values = _non_null_sample_values(sampled_df[column.name].tolist())
-    examples = _sample_examples(values)
+    values: list[Any] = sampled_df[column.name].dropna().tolist()
+    examples: list[Any] = []
+    for value in values:
+        converted = _convert(value)
+        if converted not in examples:
+            examples.append(converted)
+        if len(examples) == 5:
+            break
     is_json_type = column.dtype in JSON_TYPES
     is_text_with_json = column.dtype in TEXT_TYPES and looks_like_json(examples)
     json_schema = infer_json_schema(values) if values and (is_json_type or is_text_with_json) else None
