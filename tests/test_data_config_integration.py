@@ -247,6 +247,42 @@ async def test_query_cache_coalesces_concurrent_identical_queries(
     assert sum(result.latency_seconds is None for result in results) == 1
 
 
+async def test_query_cache_does_not_store_successful_no_result_statements(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    config = SQLConnectorConfig(
+        cache_dir=tmp_path / "cache",
+        schema_cache_mode="off",
+        query_cache_mode="read_write",
+    )
+    connector = await _connector(
+        tmp_path,
+        global_id="no-result-query-cache",
+        config=config,
+        schema=SQLSchema(name="query-cache", dialect="sqlite", tables=[]),
+        read_only=True,
+    )
+    executions = 0
+
+    async def execute(*_args: object, **_kwargs: object) -> object:
+        nonlocal executions
+        executions += 1
+        return SimpleNamespace(result=None, latency_seconds=0.01, affected_rows=None)
+
+    monkeypatch.setattr(connector._t_eng, "execute_async", execute)
+    try:
+        first = await connector.run_query_async("SET some_session_option = 1")
+        second = await connector.run_query_async("SET some_session_option = 1")
+    finally:
+        await connector.disconnect_async()
+
+    assert first.df is None and first.error is None
+    assert second.df is None and second.error is None
+    assert executions == 2
+    assert not list((config.cache_dir / "query_results").glob("*.json"))
+
+
 async def test_neo4j_uses_configured_timeout_and_result_limit(monkeypatch: pytest.MonkeyPatch) -> None:
     connector = object.__new__(Neo4jConnector)
     connector.read_only = False
