@@ -21,7 +21,6 @@ from collections.abc import Awaitable, Callable
 from typing import TYPE_CHECKING, Any
 
 from tabulaflow.data.config import SQLConnectorConfig
-from tabulaflow.data._cache import schema_cache_path
 
 if TYPE_CHECKING:
     import httpx
@@ -493,7 +492,7 @@ async def load_hf_dataset(
     Returns:
         A :class:`SQLConnector` backed by a DuckDB database.
     """
-    from tabulaflow.data.sql import SQLConnector
+    from tabulaflow.data.sql import SQLConnector, _sql_schema_cache_path
 
     config = SQLConnectorConfig() if config is None else config
 
@@ -509,7 +508,7 @@ async def load_hf_dataset(
     global_id = f"hf+{os.path.splitext(os.path.basename(db_path))[0]}"
 
     # Fetch dataset description only on schema cache miss.
-    schema_path = schema_cache_path(config.cache_dir, global_id)
+    schema_path = _sql_schema_cache_path(config, global_id)
     description: str | None = None
     schema_cache_hit = config.schema_cache_mode in ("read_write", "cache_only") and schema_path.exists()
     if not schema_cache_hit and config.schema_cache_mode != "cache_only":

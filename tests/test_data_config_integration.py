@@ -2,6 +2,7 @@ import asyncio
 from pathlib import Path
 import sqlite3
 from types import SimpleNamespace
+from typing import Any
 
 import pandas as pd
 import pytest
@@ -9,6 +10,7 @@ import pytest
 from tabulaflow.core import SQLSchema
 from tabulaflow.data import Neo4jConnector, Neo4jConnectorConfig, SQLConnector, SQLConnectorConfig
 from tabulaflow.data._cache import query_cache_key, query_cache_path, read_cached_model, schema_cache_path
+from tabulaflow.data.sql import ThrottledEngine
 
 
 async def _connector(
@@ -42,7 +44,7 @@ async def test_schema_cache_modes(tmp_path: Path) -> None:
     connector = await _connector(tmp_path, global_id="cached", config=read_write)
     await connector.disconnect_async()
 
-    cache_path = schema_cache_path(cache_dir, "cached")
+    cache_path = schema_cache_path(cache_dir, "cached", variant="no-column-stats")
     assert cache_path.is_file()
 
     cached_schema = SQLSchema(name="from-cache", dialect="sqlite", tables=[])
@@ -87,11 +89,99 @@ async def test_schema_cache_modes(tmp_path: Path) -> None:
         await _connector(tmp_path, global_id="missing", config=cache_only)
     assert not cache_only.cache_dir.exists()
 
-    invalid_required_path = schema_cache_path(cache_only.cache_dir, "invalid-required")
+    invalid_required_path = schema_cache_path(
+        cache_only.cache_dir,
+        "invalid-required",
+        variant="no-column-stats",
+    )
     invalid_required_path.parent.mkdir(parents=True)
     invalid_required_path.write_text("not json")
     with pytest.raises(RuntimeError, match="Required schema cache is invalid"):
         await _connector(tmp_path, global_id="invalid-required", config=cache_only)
+
+
+async def test_column_stats_are_exact_when_enabled(tmp_path: Path) -> None:
+    db_path = tmp_path / "column-stats.sqlite"
+    with sqlite3.connect(db_path) as connection:
+        connection.execute("CREATE TABLE items (value INTEGER)")
+        connection.executemany("INSERT INTO items VALUES (?)", [(1,), (1,), (2,), (None,)])
+
+    connector = await SQLConnector.from_url_async(
+        global_id="column-stats",
+        url=f"sqlite+aiosqlite:///{db_path}",
+        db_name="column-stats",
+        config=SQLConnectorConfig(schema_cache_mode="off", collect_column_stats=True),
+    )
+    try:
+        column = connector.schema.tables[0].columns[0]
+        assert column.null_ratio == 0.25
+        assert column.num_unique == 2
+        assert column.unique_ratio == 0.5
+    finally:
+        await connector.disconnect_async()
+
+
+async def test_column_stats_timeout_preserves_and_caches_schema(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    db_path = tmp_path / "stats-timeout.sqlite"
+    with sqlite3.connect(db_path) as connection:
+        connection.execute("CREATE TABLE items (value INTEGER)")
+        connection.executemany("INSERT INTO items VALUES (?)", [(1,), (2,)])
+
+    original_execute = ThrottledEngine.execute_async
+    captured_timeouts: list[int | None] = []
+
+    async def execute(
+        self: ThrottledEngine,
+        query: Any,
+        parameters: Any = (),
+        timeout: int | None = None,
+        return_df: bool = False,
+        max_rows: int | None = None,
+    ) -> Any:
+        if "count(distinct" in str(query).lower():
+            captured_timeouts.append(timeout)
+            raise TimeoutError("too expensive")
+        return await original_execute(
+            self,
+            query,
+            parameters,
+            timeout,
+            return_df,
+            max_rows,
+        )
+
+    monkeypatch.setattr(ThrottledEngine, "execute_async", execute)
+    config = SQLConnectorConfig(
+        cache_dir=tmp_path / "cache",
+        schema_cache_mode="read_write",
+        collect_column_stats=True,
+        query_timeout_seconds=7,
+    )
+    connector = await SQLConnector.from_url_async(
+        global_id="stats-timeout",
+        url=f"sqlite+aiosqlite:///{db_path}",
+        db_name="stats-timeout",
+        config=config,
+    )
+    try:
+        column = connector.schema.tables[0].columns[0]
+        assert column.null_ratio == 0.0
+        assert column.num_unique is None
+        assert column.unique_ratio is None
+    finally:
+        await connector.disconnect_async()
+
+    assert captured_timeouts == [7]
+    assert "Could not collect distinct count" in caplog.text
+    assert schema_cache_path(
+        config.cache_dir,
+        "stats-timeout",
+        variant="column-stats",
+    ).is_file()
 
 
 async def test_connector_timeout_uses_config_unless_explicitly_overridden(

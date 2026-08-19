@@ -4,7 +4,6 @@ from typing import Any, Literal, Self
 from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-ColumnStatsMode = Literal["always_skip", "always_precise", "sample_for_large_tables", "skip_for_large_tables"]
 QueryCacheMode = Literal["all", "successful_only"]
 
 _POSITIVE_INT_OR_NONE_FIELDS = (
@@ -50,7 +49,6 @@ class Settings(BaseSettings):
     browser_headless: bool = True
     query_timeout: int | None = 300
     log_level: str = "WARNING"
-    column_stats_mode: ColumnStatsMode = "skip_for_large_tables"
 
     @field_validator(*_POSITIVE_INT_OR_NONE_FIELDS, mode="before")
     @classmethod

@@ -90,9 +90,10 @@ import time
 import asyncio
 import contextlib
 from contextlib import asynccontextmanager
+from pathlib import Path
 import sqlalchemy
 from pydantic import ValidationError
-from sqlalchemy.exc import SAWarning
+from sqlalchemy.exc import DBAPIError, SAWarning
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncEngine
 from sqlalchemy.engine.url import URL as SQLAlchemyURL
 from sqlalchemy import create_engine, event, select, func, distinct, inspect, text
@@ -107,7 +108,7 @@ from tabulaflow.core import (
     TableRef,
 )
 
-from tabulaflow.data.config import ColumnStatsMode, SQLConnectorConfig
+from tabulaflow.data.config import SQLConnectorConfig
 from tabulaflow.data.protocols import ResultTooLargeError, validate_global_id
 from tabulaflow.data._cache import (
     cache_lock,
@@ -1545,6 +1546,11 @@ class AsyncInspector:
         return _stub_async
 
 
+def _sql_schema_cache_path(config: SQLConnectorConfig, global_id: str) -> Path:
+    variant = "column-stats" if config.collect_column_stats else "no-column-stats"
+    return get_schema_cache_path(config.cache_dir, global_id, variant=variant)
+
+
 async def load_schema_with_cache_async(
     global_id: str,
     db_name: str,
@@ -1559,10 +1565,10 @@ async def load_schema_with_cache_async(
     """Load the database schema, using the on-disk cache when available
     and enabled.
 
-    Reads the cache at ``<cache_dir>/schemas/<global_id>.json`` if it
-    exists and caching is enabled; otherwise introspects the live
-    database via :func:`build_schema_async`, writes the result back to
-    the cache (when caching is enabled and the schema is non-empty),
+    Reads the cache variant matching the configured column-statistics
+    policy if it exists and caching is enabled; otherwise introspects the
+    live database via :func:`build_schema_async`, writes the result back
+    to the cache (when caching is enabled and the schema is non-empty),
     and returns it.
 
     Args:
@@ -1592,7 +1598,7 @@ async def load_schema_with_cache_async(
         FileNotFoundError: If schema cache mode is ``cache_only`` and the
             cache file is missing.
     """
-    cache_path = get_schema_cache_path(config.cache_dir, global_id)
+    cache_path = _sql_schema_cache_path(config, global_id)
 
     async with cache_lock(cache_path):
         sqlalchemy_dialect = t_eng.engine.dialect.name
@@ -1618,7 +1624,8 @@ async def load_schema_with_cache_async(
             dialect,  # type: ignore
             group_date_partitioned_tables,
             group_table_regexes,
-            column_stats_mode=config.column_stats_mode,
+            collect_column_stats=config.collect_column_stats,
+            query_timeout_seconds=config.query_timeout_seconds,
             include_schema_names=include_schema_names,
             exclude_schema_names=exclude_schema_names,
         )
@@ -1726,18 +1733,8 @@ DISTINCT_SAFE_TYPES = {
     "BYTES",
 }
 
-# Timeout (seconds) for per-table row-count queries during schema building.
-# Views backed by expensive joins can take hours; this prevents hangs.
-_TABLE_COUNT_TIMEOUT = 120
-_VIEW_COUNT_TIMEOUT = 10
-
 # Number of sample values used to infer JSON schema for semi-structured columns
 _JSON_SCHEMA_SAMPLE_SIZE = 1000
-
-# Used when column_stats_mode is either "sample_for_large_tables" or "skip_for_large_tables"
-_LARGE_TABLE_THRESHOLD = 1000000
-# Used when column_stats_mode is "sample_for_large_tables"
-_LARGE_TABLE_SAMPLE_SIZE = 1000000
 
 
 def _canonicalize_dtype(native: str) -> str:
@@ -1843,8 +1840,8 @@ async def build_column_async(
     table_name: str,
     schema_name: str | None,
     num_rows: int | None,
-    is_view: bool = False,
-    column_stats_mode: ColumnStatsMode = "skip_for_large_tables",
+    collect_column_stats: bool = False,
+    query_timeout_seconds: int | None = 300,
 ) -> SQLColumnSchema:
     tbl: sqlalchemy.sql.expression.FromClause = sqlalchemy.table(
         table_name, sqlalchemy.column(column["name"]), schema=schema_name
@@ -1862,41 +1859,49 @@ async def build_column_async(
     nullable = column["nullable"]
     can_use_distinct = dtype in DISTINCT_SAFE_TYPES
 
-    skip_stats = (
-        column_stats_mode == "always_skip"
-        or num_rows is None
-        or num_rows == 0
-        or (column_stats_mode == "skip_for_large_tables" and num_rows > _LARGE_TABLE_THRESHOLD)
-    )
+    skip_stats = not collect_column_stats or num_rows is None or num_rows == 0
     if skip_stats:
         null_ratio = num_unique = unique_ratio = None
+        if collect_column_stats and num_rows == 0 and can_use_distinct:
+            num_unique = 0
     else:
         assert num_rows is not None
-        sampled_rows = num_rows
-        if column_stats_mode == "sample_for_large_tables" and num_rows > _LARGE_TABLE_THRESHOLD:
-            if t_eng.engine.dialect.name in ("snowflake", "postgresql"):
-                sample_frac = min(_LARGE_TABLE_SAMPLE_SIZE / num_rows, 1.0)
-                sample_pct = max(sample_frac * 100, 0.1)  # sample at least 0.1%
-                # Snowflake views only support row-wise sampling (BERNOULLI) without seed
-                if t_eng.engine.dialect.name == "snowflake" and is_view:
-                    tbl = tbl.tablesample(func.bernoulli(sample_pct))
-                else:
-                    tbl = tbl.tablesample(func.system(sample_pct))
-                col = tbl.c[column["name"]]
-                sampled_rows = int(sample_pct / 100 * num_rows)
-
-        num_null = (await t_eng.execute_async(select(func.count()).select_from(tbl).where(col.is_(None)))).rows[0][0]
-        null_ratio = num_null / sampled_rows
+        try:
+            num_null = (
+                await t_eng.execute_async(
+                    select(func.count()).select_from(tbl).where(col.is_(None)),
+                    timeout=query_timeout_seconds,
+                )
+            ).rows[0][0]
+            null_ratio = num_null / num_rows
+        except (TimeoutError, DBAPIError) as e:
+            logger.warning(
+                "Could not collect null ratio for %s.%s.%s: %s",
+                schema_name,
+                table_name,
+                column["name"],
+                e,
+            )
+            null_ratio = None
 
         num_unique = None
-        if dtype in CATEGORICAL_TYPES:
-            use_snowflake_hll = t_eng.engine.dialect.name == "snowflake" and column_stats_mode != "always_precise"
-            if use_snowflake_hll:
-                # Efficient estimation using HyperLogLog (returns a float; cast to int)
-                num_unique = int((await t_eng.execute_async(select(func.hll(col)).select_from(tbl))).rows[0][0])
-            elif can_use_distinct:
-                num_unique = (await t_eng.execute_async(select(func.count(distinct(col))).select_from(tbl))).rows[0][0]
-        unique_ratio = (num_unique / sampled_rows) if num_unique is not None else None
+        if can_use_distinct:
+            try:
+                num_unique = (
+                    await t_eng.execute_async(
+                        select(func.count(distinct(col))).select_from(tbl),
+                        timeout=query_timeout_seconds,
+                    )
+                ).rows[0][0]
+            except (TimeoutError, DBAPIError) as e:
+                logger.warning(
+                    "Could not collect distinct count for %s.%s.%s: %s",
+                    schema_name,
+                    table_name,
+                    column["name"],
+                    e,
+                )
+        unique_ratio = (num_unique / num_rows) if num_unique is not None else None
 
     examples: list[Any]
     if skip_stats and num_rows is None:
@@ -1957,7 +1962,8 @@ async def build_table_async(
     table_name: str,
     schema_name: str | None,
     is_view: bool = False,
-    column_stats_mode: ColumnStatsMode = "skip_for_large_tables",
+    collect_column_stats: bool = False,
+    query_timeout_seconds: int | None = 300,
 ) -> SQLTableSchema | None:
     async_inspector = AsyncInspector(t_eng)
     try:
@@ -1974,28 +1980,34 @@ async def build_table_async(
         return None
 
     tbl = sqlalchemy.table(table_name, schema=schema_name)
-    if is_view and column_stats_mode == "always_skip":
-        num_rows = None
-    else:
-        count_timeout = _VIEW_COUNT_TIMEOUT if is_view else _TABLE_COUNT_TIMEOUT
-        try:
-            num_rows = (
-                await t_eng.execute_async(
-                    select(func.count()).select_from(tbl),
-                    timeout=count_timeout,
-                )
-            ).rows[0][0]
-        except (TimeoutError, asyncio.TimeoutError):
-            kind = "view" if is_view else "table"
-            logger.warning(
-                f"COUNT(*) on {kind} {schema_name}.{table_name} timed out after {count_timeout}s; skipping column stats"
+    try:
+        num_rows = (
+            await t_eng.execute_async(
+                select(func.count()).select_from(tbl),
+                timeout=query_timeout_seconds,
             )
-            num_rows = None
+        ).rows[0][0]
+    except (TimeoutError, DBAPIError) as e:
+        kind = "view" if is_view else "table"
+        logger.warning(
+            "Could not collect row count for %s %s.%s; skipping column statistics: %s",
+            kind,
+            schema_name,
+            table_name,
+            e,
+        )
+        num_rows = None
 
     columns = await asyncio.gather(
         *[
             build_column_async(
-                t_eng, col, table_name, schema_name, num_rows, is_view=is_view, column_stats_mode=column_stats_mode
+                t_eng,
+                col,
+                table_name,
+                schema_name,
+                num_rows,
+                collect_column_stats=collect_column_stats,
+                query_timeout_seconds=query_timeout_seconds,
             )
             for col in col_dicts
         ]
@@ -2015,10 +2027,7 @@ async def build_table_async(
             )
         )
     # Sample rows from the table
-    if is_view and column_stats_mode == "always_skip":
-        sampled_df = None
-    else:
-        sampled_df = (await t_eng.execute_async(select("*").select_from(tbl).limit(10), return_df=True)).result
+    sampled_df = (await t_eng.execute_async(select("*").select_from(tbl).limit(10), return_df=True)).result
 
     return SQLTableSchema(
         name=table_name,
@@ -2102,7 +2111,8 @@ async def build_schema_async(
     dialect: SQLDialect,
     group_date_partitioned_tables: bool = True,
     group_table_regexes: list[str] = [],
-    column_stats_mode: ColumnStatsMode = "skip_for_large_tables",
+    collect_column_stats: bool = False,
+    query_timeout_seconds: int | None = 300,
     include_schema_names: list[str] | None = None,
     exclude_schema_names: list[str] | None = None,
 ) -> SQLSchema:
@@ -2159,7 +2169,8 @@ async def build_schema_async(
                         group[0],
                         schema_name,
                         is_view=group[0] in view_name_set,
-                        column_stats_mode=column_stats_mode,
+                        collect_column_stats=collect_column_stats,
+                        query_timeout_seconds=query_timeout_seconds,
                     )
                 )
             )
@@ -2262,7 +2273,7 @@ class SQLConnector:
     async def _save_schema_cache_async(self) -> None:
         """Write the current schema to the cache file if caching is enabled."""
         if self.config.schema_cache_mode in ("read_write", "refresh"):
-            cache_path = get_schema_cache_path(self.config.cache_dir, self.global_id)
+            cache_path = _sql_schema_cache_path(self.config, self.global_id)
             async with cache_lock(cache_path):
                 await write_cached_model(cache_path, self.schema)
 
@@ -2458,7 +2469,8 @@ class SQLConnector:
                             ref.table_name,
                             ref.schema_name,
                             is_view=ref.table_name in view_names_by_schema.get(ref.schema_name, set()),
-                            column_stats_mode=self.config.column_stats_mode,
+                            collect_column_stats=self.config.collect_column_stats,
+                            query_timeout_seconds=self.config.query_timeout_seconds,
                         )
                         for ref in tables
                     ]
@@ -2483,7 +2495,8 @@ class SQLConnector:
                     self.schema.dialect,  # type: ignore[arg-type]
                     cfg.group_date_partitioned_tables,
                     cfg.group_table_regexes,
-                    column_stats_mode=self.config.column_stats_mode,
+                    collect_column_stats=self.config.collect_column_stats,
+                    query_timeout_seconds=self.config.query_timeout_seconds,
                     include_schema_names=cfg.include_schema_names,
                     exclude_schema_names=cfg.exclude_schema_names,
                 )

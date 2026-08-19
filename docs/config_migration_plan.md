@@ -68,7 +68,7 @@ schema_cache_mode: Literal[
 SQL-specific fields:
 
 ```python
-column_stats_mode: ColumnStatsMode = "skip_for_large_tables"
+collect_column_stats: bool = False
 query_cache_mode: Literal[
     "off",
     "read_write",
@@ -93,7 +93,12 @@ The public types are:
 from tabulaflow.data import SQLConnectorConfig, Neo4jConnectorConfig
 ```
 
-The common connector base remains private. `ColumnStatsMode` remains named because schema-building APIs use it beyond the configuration field. Cache literals remain inline because each defines one field.
+The common connector base remains private. Column statistics are an opt-in,
+timeout-bounded enrichment: enabled connectors attempt exact full-table null
+and distinct statistics, retain usable structural metadata when an individual
+statistics query fails, and cache the resulting best-effort schema. Cache
+variants keep schemas built with and without column statistics separate.
+Cache literals remain inline because each defines one field.
 
 ### Agent runtime configuration
 
@@ -138,7 +143,7 @@ TABULAFLOW_CACHE_DIR
 TABULAFLOW_MAX_RESULT_ROWS
 TABULAFLOW_QUERY_TIMEOUT_SECONDS
 TABULAFLOW_SCHEMA_CACHE_MODE
-TABULAFLOW_COLUMN_STATS_MODE
+TABULAFLOW_COLLECT_COLUMN_STATS
 TABULAFLOW_QUERY_CACHE_MODE
 TABULAFLOW_QUERY_CACHE_STORE
 TABULAFLOW_SCHEMA_INTROSPECTION_MODE
@@ -425,7 +430,7 @@ mechanically replace `tabulaflow.configure()` with another general initializer.
 | Current caller pattern | Final treatment |
 |---|---|
 | `tabulaflow.configure()` with no arguments | Delete the call. Initialize logging or observability explicitly only where that entry point needs it. |
-| App startup sets `column_stats_mode="always_skip"` and disables query caching | Construct the app's connector config once and pass it through app source/workspace construction. |
+| App startup disables query caching | Construct the app's connector config once and pass it through app source/workspace construction. |
 | App startup sets `instrument_enabled=False` | Delete it; the app simply does not call `instrument_agents()`. |
 | App startup sets `log_level="WARNING"` | Configure standard Python logging in the app entry point. |
 | Schema-cache scripts set enabled/required/overwrite flags | Construct `SQLConnectorConfig` with `schema_cache_mode="read_write"`, `"refresh"`, `"cache_only"`, or `"off"` and pass it to the loader/connector workflow. |

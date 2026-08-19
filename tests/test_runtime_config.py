@@ -14,7 +14,7 @@ def test_sql_config_uses_defaults() -> None:
     assert config.max_result_rows == 1_000_000
     assert config.query_timeout_seconds == 300
     assert config.schema_cache_mode == "read_write"
-    assert config.column_stats_mode == "skip_for_large_tables"
+    assert config.collect_column_stats is False
     assert config.query_cache_mode == "off"
 
 
@@ -37,6 +37,12 @@ def test_sql_config_resolves_explicit_over_environment_over_default(
     assert config.max_result_rows == 50
     assert config.schema_cache_mode == "refresh"
     assert config.query_cache_mode == "off"
+
+
+def test_sql_config_reads_column_stats_flag_from_environment(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("TABULAFLOW_COLLECT_COLUMN_STATS", "true")
+
+    assert SQLConnectorConfig().collect_column_stats is True
 
 
 def test_connector_configs_share_process_wide_environment_defaults(monkeypatch: pytest.MonkeyPatch) -> None:

@@ -115,9 +115,9 @@ class SQLColumnSchema(BaseModel):
             such as ``VARCHAR(100)``, ``STRUCT(a INT, b VARCHAR)``, or
             ``ARRAY<STRING>``.
         json_schema: Inferred structure of JSON, JSONB, or VARIANT values.
-        null_ratio: Fraction of sampled values that are null.
-        num_unique: Number of distinct sampled values when computed.
-        unique_ratio: Fraction of sampled values that are distinct.
+        null_ratio: Fraction of rows whose value is null.
+        num_unique: Number of distinct non-null values when computed.
+        unique_ratio: Number of distinct non-null values divided by row count.
         examples: Representative non-null values.
     """
 

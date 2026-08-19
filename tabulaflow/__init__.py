@@ -18,7 +18,6 @@ def configure(**kwargs: object) -> None:
         import tabulaflow
 
         tabulaflow.configure(
-            column_stats_mode="always_skip",
             query_cache_enabled=False,
             instrument_enabled=False,
         )

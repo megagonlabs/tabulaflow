@@ -6,8 +6,6 @@ from typing import Literal
 from pydantic import PositiveInt
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-ColumnStatsMode = Literal["always_skip", "always_precise", "sample_for_large_tables", "skip_for_large_tables"]
-
 DEFAULT_CACHE_DIR = Path.home() / ".tabulaflow" / "cache"
 
 
@@ -30,7 +28,7 @@ class _ConnectorConfig(BaseSettings):
 class SQLConnectorConfig(_ConnectorConfig):
     """Operational policy for a SQL connector."""
 
-    column_stats_mode: ColumnStatsMode = "skip_for_large_tables"
+    collect_column_stats: bool = False
     query_cache_mode: Literal["off", "read_write", "refresh"] = "off"
 
 
@@ -43,7 +41,6 @@ class Neo4jConnectorConfig(_ConnectorConfig):
 
 
 __all__ = [
-    "ColumnStatsMode",
     "Neo4jConnectorConfig",
     "SQLConnectorConfig",
 ]
