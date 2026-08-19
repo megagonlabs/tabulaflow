@@ -42,7 +42,7 @@ class TestNormalizeMapSpec:
         df = pd.DataFrame({"Lat": [37.7], "Lng": [-122.4], "Name": ["SF"]})
         spec = {"layers": [{"type": "points", "source_id": "S1", "lat": "lat", "lng": "lng", "label": "name"}]}
         assert _norm(spec, S1=df) == {
-            "layers": [{"type": "points", "source": "S1", "lat": "Lat", "lng": "Lng", "label": "Name"}]
+            "layers": [{"type": "points", "source_id": "S1", "lat": "Lat", "lng": "Lng", "label": "Name"}]
         }
 
     def test_points_layer_allows_mixed_missing_coordinates(self) -> None:
@@ -55,7 +55,7 @@ class TestNormalizeMapSpec:
         )
         spec = {"layers": [{"type": "points", "source_id": "S1", "lat": "lat", "lng": "lng", "label": "name"}]}
         assert _norm(spec, S1=df) == {
-            "layers": [{"type": "points", "source": "S1", "lat": "lat", "lng": "lng", "label": "name"}]
+            "layers": [{"type": "points", "source_id": "S1", "lat": "lat", "lng": "lng", "label": "name"}]
         }
 
     def test_points_layer_accepts_inline_points(self) -> None:
@@ -119,7 +119,7 @@ class TestNormalizeMapSpec:
         )
         spec = {"layers": [{"type": "geojson", "source_id": "S1", "geojson": "geom", "tooltip": ["name"]}]}
         assert _norm(spec, S1=df) == {
-            "layers": [{"type": "geojson", "source": "S1", "geojson": "geom", "tooltip": ["name"]}]
+            "layers": [{"type": "geojson", "source_id": "S1", "geojson": "geom", "tooltip": ["name"]}]
         }
 
     def test_geojson_column_requires_source_id(self) -> None:
@@ -193,7 +193,7 @@ class TestNormalizeMapSpec:
             "layers": [
                 {
                     "type": "points",
-                    "source": "S1",
+                    "source_id": "S1",
                     "lat": "lat",
                     "lng": "lng",
                     "color": {"field": "status", "domain": ["open", "closed"]},
@@ -222,8 +222,8 @@ class TestNormalizeMapSpec:
         }
         assert _norm(spec, S1=boundaries, S2=points) == {
             "layers": [
-                {"type": "geojson", "source": "S1", "geojson": "geom", "label": "area"},
-                {"type": "points", "source": "S2", "lat": "lat", "lng": "lng", "label": "name"},
+                {"type": "geojson", "source_id": "S1", "geojson": "geom", "label": "area"},
+                {"type": "points", "source_id": "S2", "lat": "lat", "lng": "lng", "label": "name"},
             ]
         }
 
@@ -252,7 +252,7 @@ class TestRenderMapTool:
         assert "Map MAP1 created from S1" in msg
         assert _map_artifact(output_store, "MAP1").spec == {
             "title": "Cities",
-            "layers": [{"type": "points", "source": "S1", "lat": "lat", "lng": "lng", "label": "name"}],
+            "layers": [{"type": "points", "source_id": "S1", "lat": "lat", "lng": "lng", "label": "name"}],
         }
 
     async def test_geojson_map_created(self) -> None:
@@ -267,7 +267,7 @@ class TestRenderMapTool:
         msg = await RenderMapTool(output_store=output_store)(map_spec=json.dumps(spec))
         assert "Map MAP1 created" in msg
         assert _map_artifact(output_store, "MAP1").spec == {
-            "layers": [{"type": "geojson", "source": "S1", "geojson": "geom", "label": "name"}]
+            "layers": [{"type": "geojson", "source_id": "S1", "geojson": "geom", "label": "name"}]
         }
 
     async def test_multi_source_map_created_from_two_sources(self) -> None:
@@ -285,7 +285,7 @@ class TestRenderMapTool:
         msg = await RenderMapTool(output_store=output_store)(map_spec=json.dumps(spec))
         assert "MAP1 created from S1, S2" in msg
         stored = _map_artifact(output_store, "MAP1").spec
-        assert [layer["source"] for layer in stored["layers"]] == ["S1", "S2"]
+        assert [layer["source_id"] for layer in stored["layers"]] == ["S1", "S2"]
 
     async def test_unknown_source_id_errors_without_creating(self) -> None:
         output_store = await _output_store_with(pd.DataFrame({"lat": [37.7], "lng": [-122.4]}))

@@ -331,7 +331,7 @@ def test_map_card_writes_points_payload(tmp_path: Path) -> None:
         }
     )
     card = _map_card(
-        {"layers": [{"type": "points", "source": "Q1", "lat": "latitude", "lng": "longitude", "label": "city"}]},
+        {"layers": [{"type": "points", "source_id": "Q1", "lat": "latitude", "lng": "longitude", "label": "city"}]},
         {"Q1": df},
         tmp_path,
         label="locations",
@@ -357,7 +357,7 @@ def test_map_card_preserves_blank_coordinate_strings_for_map_renderer(tmp_path: 
         }
     )
     card = _map_card(
-        {"layers": [{"type": "points", "source": "Q1", "lat": "latitude", "lng": "longitude", "label": "city"}]},
+        {"layers": [{"type": "points", "source_id": "Q1", "lat": "latitude", "lng": "longitude", "label": "city"}]},
         {"Q1": df},
         tmp_path,
     )
@@ -401,7 +401,7 @@ def test_map_card_writes_layered_single_source_payload(tmp_path: Path) -> None:
             "layers": [
                 {
                     "type": "geojson",
-                    "source": "Q1",
+                    "source_id": "Q1",
                     "geojson": "boundary_geojson",
                     "label": "region",
                     "tooltip": ["category"],
@@ -409,7 +409,7 @@ def test_map_card_writes_layered_single_source_payload(tmp_path: Path) -> None:
                 },
                 {
                     "type": "points",
-                    "source": "Q1",
+                    "source_id": "Q1",
                     "lat": "latitude",
                     "lng": "longitude",
                     "label": "city",
@@ -450,8 +450,8 @@ def test_map_card_writes_multi_source_datasets(tmp_path: Path) -> None:
     card = _map_card(
         {
             "layers": [
-                {"type": "geojson", "source": "Q1", "geojson": "boundary_geojson", "label": "area"},
-                {"type": "points", "source": "Q2", "lat": "latitude", "lng": "longitude", "label": "city"},
+                {"type": "geojson", "source_id": "Q1", "geojson": "boundary_geojson", "label": "area"},
+                {"type": "points", "source_id": "Q2", "lat": "latitude", "lng": "longitude", "label": "city"},
             ]
         },
         {"Q1": boundaries, "Q2": points},
@@ -488,7 +488,7 @@ def test_map_card_writes_inline_point_layer(tmp_path: Path) -> None:
     card = _map_card(
         {
             "layers": [
-                {"type": "geojson", "source": "Q1", "geojson": "route_geojson", "label": "route_name"},
+                {"type": "geojson", "source_id": "Q1", "geojson": "route_geojson", "label": "route_name"},
                 {
                     "type": "points",
                     "points": [{"lat": 37.8044, "lng": -122.2712, "label": "Destination", "kind": "destination"}],

@@ -414,6 +414,6 @@ async def test_map_and_graph_specs_resolve_against_source_data() -> None:
 
     map_artifact, graph_artifact = resolved.artifacts
     assert isinstance(map_artifact, ResolvedMapArtifact)
-    assert map_artifact.spec == {"layers": [{"type": "points", "source": source.id, "lat": "lat", "lng": "lng"}]}
+    assert map_artifact.spec == {"layers": [{"type": "points", "source_id": source.id, "lat": "lat", "lng": "lng"}]}
     assert isinstance(graph_artifact, ResolvedGraphArtifact)
     assert [node.id for node in graph_artifact.graph.nodes] == ["a"]

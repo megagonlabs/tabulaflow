@@ -254,7 +254,7 @@ class TestWithConnector:
     async def test_add_map_stores_standalone_artifact(self, workspace: SQLConnector) -> None:
         h = OutputStore(spill_connector=workspace)
         await h.add_fixed_result_source("db", "sql", *_make_execution())
-        spec = {"layers": [{"type": "points", "source": "S1", "lat": "lat", "lng": "lng"}]}
+        spec = {"layers": [{"type": "points", "source_id": "S1", "lat": "lat", "lng": "lng"}]}
         map_id = h.add_map_artifact(["S1"], spec).id
         assert map_id == "MAP1"
         assert _map_artifact(h, "MAP1").spec == spec

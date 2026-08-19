@@ -159,7 +159,7 @@ def _normalize_layers(
         for raw_layer in raw_layers:
             if not isinstance(raw_layer, Mapping):
                 continue
-            source = _as_str(raw_layer.get("source"))
+            source = _as_str(raw_layer.get("source_id"))
             field_by_column = field_by_column_by_source.get(source, {}) if source else {}
             layer_type = _as_str(raw_layer.get("type")) or "points"
             if layer_type == "points":
@@ -183,14 +183,14 @@ def build_map_data(
 ) -> MapCardData | None:
     """Build a browser-pane map payload from a spec and its per-source datasets.
 
-    Each column/geojson layer names the ``source`` id it reads from; column
+    Each column/geojson layer names the ``source_id`` it reads from; column
     references (using each source's original column names) are rewritten to that
     source's compact pane field names, and the source datasets are bundled so the
     browser reads ``datasets[layer.source].rows`` per layer.
 
     Args:
-        map_spec: Normalized map configuration (layers carry a ``source`` id
-            id) with a non-empty ``layers`` list.
+        map_spec: Normalized map configuration whose layers carry a
+            ``source_id``, with a non-empty ``layers`` list.
         sources: Mapping from source id to a dataset dict with ``rows``,
             ``columns``, and ``field_by_column`` (original column name → pane
             field name).

@@ -265,7 +265,7 @@ def _normalize_points_layer(df: pd.DataFrame | None, layer: _PointsLayer, index:
         lng = _field(df, layer.lng or layer.lon or layer.longitude, path=f"layers[{index}].lng")
         if not _has_valid_point(df, lat, lng):
             raise MapSpecError(f"layers[{index}] has no valid latitude/longitude rows")
-        out = {"type": "points", "source": layer.source_id, "lat": lat, "lng": lng}
+        out = {"type": "points", "source_id": layer.source_id, "lat": lat, "lng": lng}
 
         def resolve_field(value: str | None, *, path: str) -> str:
             return _field(df, value, path=path)
@@ -325,7 +325,7 @@ def _normalize_geojson_layer(df: pd.DataFrame | None, layer: _GeoJsonLayer, inde
 
     out: dict[str, Any] = {"type": "geojson", "geojson": geojson_value}
     if layer.source_id is not None:
-        out["source"] = layer.source_id
+        out["source_id"] = layer.source_id
 
     def resolve_field(value: str | None, *, path: str) -> str:
         assert df is not None
@@ -373,13 +373,7 @@ def normalize_map_spec(
     if isinstance(spec, MapSpec):
         parsed = spec
     else:
-        raw = copy.deepcopy(dict(spec))
-        raw_layers = raw.get("layers")
-        if isinstance(raw_layers, list):
-            for layer in raw_layers:
-                if isinstance(layer, dict) and "source" in layer and "source_id" not in layer:
-                    layer["source_id"] = layer.pop("source")
-        parsed = parse_map_spec(raw)
+        parsed = parse_map_spec(spec)
 
     out: dict[str, Any] = {}
     if parsed.title is not None:

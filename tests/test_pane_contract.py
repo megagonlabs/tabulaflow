@@ -143,7 +143,7 @@ def test_map_card_payload_matches_contract(tmp_path: Path) -> None:
     card = render_map_data(
         MapCardInput(
             label="locations",
-            spec={"layers": [{"type": "points", "source": "Q1", "lat": "lat", "lng": "lng", "label": "city"}]},
+            spec={"layers": [{"type": "points", "source_id": "Q1", "lat": "lat", "lng": "lng", "label": "city"}]},
             sources={"Q1": df},
         ),
         tmp_path,

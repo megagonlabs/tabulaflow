@@ -91,7 +91,10 @@ def _map(map_id: str, label: str) -> ResolvedMapArtifact:
     return ResolvedMapArtifact(
         artifact_id=map_id,
         label=label,
-        spec={"title": "Cities", "layers": [{"type": "points", "source": "Q1", "lat": "c0", "lng": "c1"}]},
+        spec={
+            "title": "Cities",
+            "layers": [{"type": "points", "source_id": "Q1", "lat": "c0", "lng": "c1"}],
+        },
         payload_by_source={"Q1": _payload("Q1", df=pd.DataFrame({"lat": [37.7], "lng": [-122.4]}))},
     )
 
