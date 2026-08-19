@@ -80,6 +80,15 @@ query_cache_store: Literal[
 ] = "successful_only"
 ```
 
+Neo4j-specific fields:
+
+```python
+schema_introspection_mode: Literal["fast", "full_scan"] = "fast"
+```
+
+`fast` uses Neo4j metadata procedures. `full_scan` explicitly scans graph data
+to derive observed node and relationship properties and topology.
+
 The public types are:
 
 ```python
@@ -134,6 +143,7 @@ TABULAFLOW_SCHEMA_CACHE_MODE
 TABULAFLOW_COLUMN_STATS_MODE
 TABULAFLOW_QUERY_CACHE_MODE
 TABULAFLOW_QUERY_CACHE_STORE
+TABULAFLOW_SCHEMA_INTROSPECTION_MODE
 ```
 
 Agent variables:

@@ -6,6 +6,15 @@ import pandas as pd
 import pytest
 
 from tabulaflow.data import Neo4jConnector, Neo4jConnectorConfig
+from tabulaflow.data.neo4j import (
+    _FAST_NODE_PROPERTIES_QUERY,
+    _FAST_RELATIONSHIP_PROPERTIES_QUERY,
+    _FAST_RELATIONSHIP_TOPOLOGY_QUERY,
+    _FULL_SCAN_NODE_PROPERTIES_QUERY,
+    _FULL_SCAN_RELATIONSHIPS_QUERY,
+    _NODE_LABELS_QUERY,
+    _RELATIONSHIP_TYPES_QUERY,
+)
 
 
 class _Result:
@@ -95,3 +104,101 @@ async def test_schema_initialization_failure_closes_driver(
         )
 
     assert driver.closed
+
+
+async def test_fast_schema_introspection_uses_metadata() -> None:
+    responses: dict[str, list[dict[str, Any]]] = {
+        _NODE_LABELS_QUERY: [{"label": "Person"}, {"label": "Movie"}],
+        _RELATIONSHIP_TYPES_QUERY: [{"relationshipType": "ACTED_IN"}],
+        _FAST_NODE_PROPERTIES_QUERY: [
+            {"nodeType": ":`Person`", "propertyName": "id", "propertyTypes": ["STRING"]},
+            {"nodeType": ":`Person`", "propertyName": "id", "propertyTypes": ["INTEGER"]},
+        ],
+        _FAST_RELATIONSHIP_PROPERTIES_QUERY: [
+            {
+                "source": None,
+                "relType": ":`ACTED_IN`",
+                "target": None,
+                "propertyName": "role",
+                "propertyTypes": ["STRING"],
+            }
+        ],
+        _FAST_RELATIONSHIP_TOPOLOGY_QUERY: [
+            {
+                "source": "Person",
+                "relType": "ACTED_IN",
+                "target": "Movie",
+                "propertyName": None,
+                "propertyTypes": [],
+            }
+        ],
+    }
+    timeouts: list[int | None] = []
+    connector = object.__new__(Neo4jConnector)
+    connector.config = Neo4jConnectorConfig(query_timeout_seconds=9, schema_introspection_mode="fast")
+    connector._schema_name = "movies"
+
+    async def run_cypher(query: str, *, timeout: int | None = None) -> list[dict[str, Any]]:
+        timeouts.append(timeout)
+        return responses[query]
+
+    connector._run_cypher = run_cypher  # type: ignore[assignment]
+    schema = await connector._build_schema()
+
+    person = next(node for node in schema.nodes if node.label == "Person")
+    acted_in = schema.relationships[0]
+    assert person.properties[0].dtype == "INTEGER | STRING"
+    assert acted_in.properties[0].dtype == "STRING"
+    assert [(e.source_label, e.target_label) for e in acted_in.endpoints] == [("Person", "Movie")]
+    assert timeouts == [9, 9, 9, 9, 9]
+
+
+async def test_full_scan_schema_introspection_uses_observed_properties_and_topology() -> None:
+    responses: dict[str, list[dict[str, Any]]] = {
+        _NODE_LABELS_QUERY: [{"label": "Person"}, {"label": "Movie"}],
+        _RELATIONSHIP_TYPES_QUERY: [{"relationshipType": "ACTED_IN"}],
+        _FULL_SCAN_NODE_PROPERTIES_QUERY: [
+            {"nodeType": "Person", "propertyName": "id", "propertyTypes": ["INTEGER", "STRING"]}
+        ],
+        _FULL_SCAN_RELATIONSHIPS_QUERY: [
+            {
+                "source": "Person",
+                "relType": "ACTED_IN",
+                "target": "Movie",
+                "propertyName": "role",
+                "propertyTypes": ["STRING"],
+            },
+            {
+                "source": "Person",
+                "relType": "ACTED_IN",
+                "target": "Movie",
+                "propertyName": None,
+                "propertyTypes": [],
+            },
+        ],
+    }
+    connector = object.__new__(Neo4jConnector)
+    connector.config = Neo4jConnectorConfig(schema_introspection_mode="full_scan")
+    connector._schema_name = "movies"
+
+    async def run_cypher(query: str, *, timeout: int | None = None) -> list[dict[str, Any]]:
+        return responses[query]
+
+    connector._run_cypher = run_cypher  # type: ignore[assignment]
+    schema = await connector._build_schema()
+
+    person = next(node for node in schema.nodes if node.label == "Person")
+    acted_in = schema.relationships[0]
+    assert person.properties[0].dtype == "INTEGER | STRING"
+    assert acted_in.properties[0].dtype == "STRING"
+    assert [(e.source_label, e.target_label) for e in acted_in.endpoints] == [("Person", "Movie")]
+
+
+def test_schema_cache_is_scoped_by_introspection_mode(tmp_path: Path) -> None:
+    connector = object.__new__(Neo4jConnector)
+    connector.global_id = "neo4j+movies"
+    connector.config = Neo4jConnectorConfig(cache_dir=tmp_path, schema_introspection_mode="fast")
+    fast_path = connector._schema_cache_path()
+    connector.config = Neo4jConnectorConfig(cache_dir=tmp_path, schema_introspection_mode="full_scan")
+
+    assert fast_path != connector._schema_cache_path()

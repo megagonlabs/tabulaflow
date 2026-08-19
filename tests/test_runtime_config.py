@@ -19,6 +19,10 @@ def test_sql_config_uses_defaults() -> None:
     assert config.query_cache_store == "successful_only"
 
 
+def test_neo4j_config_uses_fast_schema_introspection_by_default() -> None:
+    assert Neo4jConnectorConfig().schema_introspection_mode == "fast"
+
+
 def test_sql_config_resolves_explicit_over_environment_over_default(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -35,11 +39,13 @@ def test_sql_config_resolves_explicit_over_environment_over_default(
 def test_connector_configs_share_process_wide_environment_defaults(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("TABULAFLOW_MAX_RESULT_ROWS", "250")
     monkeypatch.setenv("TABULAFLOW_QUERY_TIMEOUT_SECONDS", "120")
+    monkeypatch.setenv("TABULAFLOW_SCHEMA_INTROSPECTION_MODE", "full_scan")
 
     assert SQLConnectorConfig().max_result_rows == 250
     assert Neo4jConnectorConfig().max_result_rows == 250
     assert SQLConnectorConfig().query_timeout_seconds == 120
     assert Neo4jConnectorConfig().query_timeout_seconds == 120
+    assert Neo4jConnectorConfig().schema_introspection_mode == "full_scan"
 
 
 def test_none_environment_value_disables_positive_limit(monkeypatch: pytest.MonkeyPatch) -> None:

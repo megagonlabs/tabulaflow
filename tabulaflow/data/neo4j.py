@@ -29,24 +29,60 @@ from tabulaflow.data.base import ResultTooLargeError
 logger = logging.getLogger(__name__)
 _UNSET = object()
 
-_NODE_TYPE_PROPERTIES_QUERY = """
+_NODE_LABELS_QUERY = """
+CALL db.labels()
+YIELD label
+RETURN label
+""".strip()
+
+_RELATIONSHIP_TYPES_QUERY = """
+CALL db.relationshipTypes()
+YIELD relationshipType
+RETURN relationshipType
+""".strip()
+
+_FAST_NODE_PROPERTIES_QUERY = """
 CALL db.schema.nodeTypeProperties()
 YIELD nodeType, propertyName, propertyTypes
 RETURN nodeType, propertyName, propertyTypes
 """.strip()
 
-_REL_TYPE_PROPERTIES_QUERY = """
+_FAST_RELATIONSHIP_PROPERTIES_QUERY = """
 CALL db.schema.relTypeProperties()
 YIELD relType, propertyName, propertyTypes
-RETURN relType, propertyName, propertyTypes
+RETURN null AS source, relType, null AS target, propertyName, propertyTypes
 """.strip()
 
-_REL_PATTERNS_QUERY = """
-MATCH (n)-[r]->(m)
-UNWIND labels(n) AS source
-UNWIND labels(m) AS target
-RETURN DISTINCT source, type(r) AS type, target
-ORDER BY type, source, target
+_FAST_RELATIONSHIP_TOPOLOGY_QUERY = """
+CALL db.schema.visualization()
+YIELD relationships
+UNWIND relationships AS r
+UNWIND labels(startNode(r)) AS source
+UNWIND labels(endNode(r)) AS target
+RETURN source, type(r) AS relType, target,
+       null AS propertyName, [] AS propertyTypes
+""".strip()
+
+_FULL_SCAN_NODE_PROPERTIES_QUERY = """
+MATCH (n)
+UNWIND labels(n) AS label
+UNWIND keys(n) AS propertyName
+RETURN label AS nodeType, propertyName,
+       collect(DISTINCT valueType(n[propertyName])) AS propertyTypes
+ORDER BY nodeType, propertyName
+""".strip()
+
+_FULL_SCAN_RELATIONSHIPS_QUERY = """
+MATCH (sourceNode)-[r]->(targetNode)
+UNWIND labels(sourceNode) AS source
+UNWIND labels(targetNode) AS target
+UNWIND CASE WHEN size(keys(r)) = 0 THEN [null] ELSE keys(r) END AS propertyName
+RETURN source, type(r) AS relType, target, propertyName,
+       collect(DISTINCT CASE
+           WHEN propertyName IS NULL THEN null
+           ELSE valueType(r[propertyName])
+       END) AS propertyTypes
+ORDER BY relType, source, target, propertyName
 """.strip()
 
 _GRAPH_RESULT_MAX_NODES = 300
@@ -244,8 +280,8 @@ class Neo4jConnector:
     """Property-graph connector for Neo4j databases.
 
     Uses the official ``neo4j`` async Python driver (Bolt protocol).
-    Schema introspection relies on ``db.schema.nodeTypeProperties()``
-    and ``db.schema.relTypeProperties()`` procedures (Neo4j 3.4+).
+    Fast schema introspection uses Neo4j metadata procedures; full-scan mode
+    exhaustively derives observed properties and topology from graph data.
     """
 
     connector_type: ClassVar[Literal["property_graph"]] = "property_graph"
@@ -396,7 +432,8 @@ class Neo4jConnector:
         await self._driver.close()
 
     def _schema_cache_path(self) -> Path:
-        return self.config.cache_dir / "schemas" / f"{self.global_id}.json"
+        mode = self.config.schema_introspection_mode
+        return self.config.cache_dir / "schemas" / f"{self.global_id}_{mode}.json"
 
     async def _load_schema_async(self) -> PropertyGraphSchema:
         """Load schema from cache or introspect, respecting cache config."""
@@ -432,65 +469,112 @@ class Neo4jConnector:
         return self.schema
 
     async def _build_schema(self) -> PropertyGraphSchema:
-        nodes: dict[str, NodeSchema] = {}
-        rels: dict[str, RelationshipSchema] = {}
+        timeout = self.config.query_timeout_seconds
 
-        for record in await self._run_cypher("CALL db.labels() YIELD label RETURN label"):
-            label: str = record["label"]
-            if label not in nodes:
-                nodes[label] = NodeSchema(label=label)
+        async def query(cypher: str) -> list[dict[str, Any]]:
+            result = await self._run_cypher(cypher, timeout=timeout)
+            assert isinstance(result, list)
+            return result
 
-        node_prop_seen: dict[str, set[str]] = {}
-        for record in await self._run_cypher(_NODE_TYPE_PROPERTIES_QUERY):
+        node_labels: set[str] = set()
+        relationship_types: set[str] = set()
+        node_properties: dict[str, dict[str, set[str]]] = {}
+        relationship_properties: dict[str, dict[str, set[str]]] = {}
+        relationship_endpoints: dict[str, set[tuple[str, str]]] = {}
+
+        def add_property(
+            properties: dict[str, dict[str, set[str]]],
+            owner: str,
+            name: str,
+            types: Sequence[str],
+        ) -> None:
+            properties.setdefault(owner, {}).setdefault(name, set()).update(types or ["UNKNOWN"])
+
+        for record in await query(_NODE_LABELS_QUERY):
+            node_labels.add(str(record["label"]))
+        for record in await query(_RELATIONSHIP_TYPES_QUERY):
+            relationship_types.add(str(record["relationshipType"]))
+
+        if self.config.schema_introspection_mode == "fast":
+            node_properties_query = _FAST_NODE_PROPERTIES_QUERY
+            relationship_queries: tuple[str, ...] = (
+                _FAST_RELATIONSHIP_PROPERTIES_QUERY,
+                _FAST_RELATIONSHIP_TOPOLOGY_QUERY,
+            )
+        else:
+            node_properties_query = _FULL_SCAN_NODE_PROPERTIES_QUERY
+            relationship_queries = (_FULL_SCAN_RELATIONSHIPS_QUERY,)
+
+        try:
+            node_property_records = await query(node_properties_query)
+            relationship_records = []
+            for relationship_query in relationship_queries:
+                relationship_records.extend(await query(relationship_query))
+        except neo4j.exceptions.ClientError as e:
+            if (
+                self.config.schema_introspection_mode == "full_scan"
+                and "Unknown function" in str(e)
+                and "valueType" in str(e)
+            ):
+                raise RuntimeError(
+                    'schema_introspection_mode="full_scan" requires Neo4j with valueType() support'
+                ) from e
+            raise
+
+        for record in node_property_records:
             if record["propertyName"] is None:
                 continue
-            labels = _parse_type_labels(record["nodeType"])
-            prop_name: str = record["propertyName"]
-            prop_types: list[str] = record["propertyTypes"] or []
-            dtype = prop_types[0] if prop_types else "UNKNOWN"
+            for label in _parse_type_labels(record["nodeType"]):
+                node_labels.add(label)
+                add_property(
+                    node_properties,
+                    label,
+                    str(record["propertyName"]),
+                    record["propertyTypes"] or [],
+                )
 
-            for label in labels:
-                if label not in nodes:
-                    nodes[label] = NodeSchema(label=label)
-                if label not in node_prop_seen:
-                    node_prop_seen[label] = set()
-                if prop_name not in node_prop_seen[label]:
-                    node_prop_seen[label].add(prop_name)
-                    nodes[label].properties.append(GraphPropertySchema(name=prop_name, dtype=dtype))
+        for record in relationship_records:
+            for rel_type in _parse_type_labels(record["relType"]):
+                relationship_types.add(rel_type)
+                source = record["source"]
+                target = record["target"]
+                if source is not None and target is not None:
+                    source = str(source)
+                    target = str(target)
+                    node_labels.update((source, target))
+                    relationship_endpoints.setdefault(rel_type, set()).add((source, target))
+                if record["propertyName"] is not None:
+                    add_property(
+                        relationship_properties,
+                        rel_type,
+                        str(record["propertyName"]),
+                        record["propertyTypes"] or [],
+                    )
 
-        for record in await self._run_cypher(_REL_PATTERNS_QUERY):
-            source: str = record["source"]
-            rel_type: str = record["type"]
-            target: str = record["target"]
-            rel = rels.setdefault(rel_type, RelationshipSchema(label=rel_type))
-            endpoint = RelationshipEndpoint(source_label=source, target_label=target)
-            if endpoint not in rel.endpoints:
-                rel.endpoints.append(endpoint)
-            for lbl in (source, target):
-                if lbl not in nodes:
-                    nodes[lbl] = NodeSchema(label=lbl)
-
-        rel_prop_seen: dict[str, set[str]] = {}
-        for record in await self._run_cypher(_REL_TYPE_PROPERTIES_QUERY):
-            if record["propertyName"] is None:
-                continue
-            rel_types = _parse_type_labels(record["relType"])
-            prop_name = record["propertyName"]
-            prop_types = record["propertyTypes"] or []
-            dtype = prop_types[0] if prop_types else "UNKNOWN"
-            for rel_type in rel_types:
-                if rel_type not in rel_prop_seen:
-                    rel_prop_seen[rel_type] = set()
-                if prop_name in rel_prop_seen[rel_type]:
-                    continue
-                rel_prop_seen[rel_type].add(prop_name)
-                rel = rels.setdefault(rel_type, RelationshipSchema(label=rel_type))
-                rel.properties.append(GraphPropertySchema(name=prop_name, dtype=dtype))
-
-        sorted_nodes = sorted(nodes.values(), key=lambda n: n.label)
-        for rel in rels.values():
-            rel.endpoints.sort(key=lambda e: (e.source_label, e.target_label))
-        sorted_rels = sorted(rels.values(), key=lambda r: r.label)
+        sorted_nodes = [
+            NodeSchema(
+                label=label,
+                properties=[
+                    GraphPropertySchema(name=name, dtype=" | ".join(sorted(types)))
+                    for name, types in sorted(node_properties.get(label, {}).items())
+                ],
+            )
+            for label in sorted(node_labels)
+        ]
+        sorted_rels = [
+            RelationshipSchema(
+                label=rel_type,
+                endpoints=[
+                    RelationshipEndpoint(source_label=source, target_label=target)
+                    for source, target in sorted(relationship_endpoints.get(rel_type, set()))
+                ],
+                properties=[
+                    GraphPropertySchema(name=name, dtype=" | ".join(sorted(types)))
+                    for name, types in sorted(relationship_properties.get(rel_type, {}).items())
+                ],
+            )
+            for rel_type in sorted(relationship_types)
+        ]
 
         return PropertyGraphSchema(
             name=self._schema_name,

@@ -38,6 +38,8 @@ class SQLConnectorConfig(_ConnectorConfig):
 class Neo4jConnectorConfig(_ConnectorConfig):
     """Operational policy for a Neo4j connector."""
 
+    schema_introspection_mode: Literal["fast", "full_scan"] = "fast"
+
 
 __all__ = [
     "ColumnStatsMode",
