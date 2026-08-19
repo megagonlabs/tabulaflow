@@ -24,6 +24,7 @@ import logging
 import os
 import sys
 import time
+from pathlib import Path
 
 import sqlalchemy
 from sqlalchemy import create_engine, select
@@ -38,7 +39,8 @@ from tabulaflow.data.sql import (
     _JSON_SCHEMA_SAMPLE_SIZE,
     _is_async_url,
 )
-from tabulaflow.data.introspection import infer_json_schema, looks_like_json
+from tabulaflow.data.json_schema import infer_json_schema, looks_like_json
+from tabulaflow.data.schema_cache import write_schema_cache
 from tabulaflow.core import SQLColumnSchema, SQLSchema, SQLTableSchema
 
 logger = logging.getLogger(__name__)
@@ -227,10 +229,11 @@ async def main() -> None:
 
     # Discover cached schema files for this dataset
     prefix = f"{args.dataset}+"
-    all_files = sorted(f for f in os.listdir(args.cache_dir) if f.startswith(prefix) and f.endswith(".json"))
+    marker = f"@{prefix}"
+    all_files = sorted(path for path in Path(args.cache_dir).rglob("*.json") if marker in path.name)
 
     if args.databases:
-        files = [f for f in all_files if f.removeprefix(prefix).removesuffix(".json") in args.databases]
+        files = [path for path in all_files if path.stem.split(marker, 1)[1] in args.databases]
     else:
         files = all_files
 
@@ -252,12 +255,12 @@ async def main() -> None:
     total_updated = 0
     files_changed = 0
 
-    for filename in files:
-        db_name = filename.removeprefix(prefix).removesuffix(".json")
-        cache_path = os.path.join(args.cache_dir, filename)
+    for cache_path in files:
+        filename = cache_path.name
+        db_name = cache_path.stem.split(marker, 1)[1]
 
         # Load cached schema
-        with open(cache_path, "r", encoding="utf-8") as f:
+        with cache_path.open("r", encoding="utf-8") as f:
             schema = SQLSchema.model_validate_json(f.read())
 
         url = _build_url(args.dataset, db_name)
@@ -285,8 +288,7 @@ async def main() -> None:
             logger.info("  %s: %d column(s) updated", filename, updated)
 
             if args.write:
-                with open(cache_path, "w", encoding="utf-8") as f:
-                    f.write(schema.model_dump_json(indent=2))
+                await write_schema_cache(cache_path, schema)
         else:
             logger.info("  %s: no changes", filename)
 

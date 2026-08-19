@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from tabulaflow.data.protocols import DBConnector
+from tabulaflow.data.protocols import DBConnector, validate_global_id
 
 
 class DBRegistry:
@@ -39,6 +39,7 @@ class DBRegistry:
         Raises:
             ValueError: If ``alias`` is already registered.
         """
+        validate_global_id(connector.global_id)
         if alias in self._connectors:
             raise ValueError(f"Database alias already registered: {alias}")
         self._connectors[alias] = connector

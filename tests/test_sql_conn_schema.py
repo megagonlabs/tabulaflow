@@ -39,6 +39,17 @@ async def test_preloaded_connector_schema_requires_dialect(tmp_path: Path) -> No
             schema=SQLSchema(name="missing-dialect", tables=[]),
             config=SQLConnectorConfig(schema_cache_mode="off"),
         )
+
+
+async def test_connector_rejects_unsafe_global_id_before_opening_database(tmp_path: Path) -> None:
+    with pytest.raises(ValueError, match="global_id must be"):
+        await SQLConnector.from_url_async(
+            global_id="../unsafe",
+            url=f"sqlite+aiosqlite:///{tmp_path / 'unsafe.sqlite'}",
+            db_name="unsafe",
+        )
+
+    assert not (tmp_path / "unsafe.sqlite").exists()
     # BigQuery-style angle bracket notation
     assert _canonicalize_dtype("ARRAY<STRING>") == "ARRAY"
     assert _canonicalize_dtype("STRUCT<a INT64, b STRING>") == "STRUCT"

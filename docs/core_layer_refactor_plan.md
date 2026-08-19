@@ -231,6 +231,7 @@ data/
   registry.py
   url.py
   config.py
+  schema_cache.py
   sql.py
   neo4j.py
   json_schema.py

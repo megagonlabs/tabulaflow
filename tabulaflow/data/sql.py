@@ -109,7 +109,13 @@ from tabulaflow.core import (
 )
 
 from tabulaflow.data.config import ColumnStatsMode, SQLConnectorConfig
-from tabulaflow.data.protocols import ResultTooLargeError
+from tabulaflow.data.protocols import ResultTooLargeError, validate_global_id
+from tabulaflow.data.schema_cache import (
+    read_schema_cache,
+    schema_cache_lock,
+    schema_cache_path as get_schema_cache_path,
+    write_schema_cache,
+)
 from tabulaflow.data.json_schema import infer_json_schema, looks_like_json
 
 logger = logging.getLogger(__name__)
@@ -331,7 +337,6 @@ def _build_row_outcome(
     return _ExecOutcome(result=data, affected_rows=None)
 
 
-_db_locks: dict[str, asyncio.Lock] = collections.defaultdict(asyncio.Lock)
 _query_cache: dict[str, ExecResult] = {}
 _query_cache_locks: dict[str, asyncio.Lock] = collections.defaultdict(asyncio.Lock)
 
@@ -1589,19 +1594,16 @@ async def load_schema_with_cache_async(
         FileNotFoundError: If schema cache mode is ``cache_only`` and the
             cache file is missing.
     """
-    schema_cache_dir = config.cache_dir / "schemas"
-    cache_path = schema_cache_dir / f"{global_id}.json"
+    cache_path = get_schema_cache_path(config.cache_dir, global_id)
 
-    lock = _db_locks[global_id]
-    async with lock:
+    async with schema_cache_lock(cache_path):
         sqlalchemy_dialect = t_eng.engine.dialect.name
         # SQLAlchemy uses "postgresql"; normalise to our SQLDialect literal "postgres"
         dialect_map: dict[str, str] = {"postgresql": "postgres"}
         dialect = dialect_map.get(sqlalchemy_dialect, sqlalchemy_dialect)
 
         if config.schema_cache_mode in ("read_write", "cache_only") and cache_path.exists():
-            with cache_path.open("r", encoding="utf-8") as f:
-                return SQLSchema.model_validate_json(f.read())
+            return await read_schema_cache(cache_path, SQLSchema)
 
         if config.schema_cache_mode == "cache_only":
             raise FileNotFoundError(f"Schema cache required but not found at {cache_path}")
@@ -1623,13 +1625,7 @@ async def load_schema_with_cache_async(
         if description:
             schema.description = description
         if config.schema_cache_mode in ("read_write", "refresh") and schema.tables:
-
-            def _write_cache() -> None:
-                schema_cache_dir.mkdir(parents=True, exist_ok=True)
-                with cache_path.open("w", encoding="utf-8") as f:
-                    f.write(schema.model_dump_json(indent=2))
-
-            await asyncio.to_thread(_write_cache)
+            await write_schema_cache(cache_path, schema)
         return schema
 
 
@@ -2259,14 +2255,12 @@ class SQLConnector:
         assert self.schema.dialect is not None
         return self.schema.dialect
 
-    def save_schema_cache(self) -> None:
+    async def _save_schema_cache_async(self) -> None:
         """Write the current schema to the cache file if caching is enabled."""
         if self.config.schema_cache_mode in ("read_write", "refresh"):
-            schema_cache_dir = self.config.cache_dir / "schemas"
-            schema_cache_dir.mkdir(parents=True, exist_ok=True)
-            cache_path = schema_cache_dir / f"{self.global_id}.json"
-            with cache_path.open("w", encoding="utf-8") as f:
-                f.write(self.schema.model_dump_json(indent=2))
+            cache_path = get_schema_cache_path(self.config.cache_dir, self.global_id)
+            async with schema_cache_lock(cache_path):
+                await write_schema_cache(cache_path, self.schema)
 
     @classmethod
     async def from_url_async(
@@ -2294,8 +2288,8 @@ class SQLConnector:
         the database schema if one is not provided.
 
         Args:
-            global_id: A globally unique identifier for this database connection, also
-                used as the cache key when loading the schema.
+            global_id: Globally unique, filename-safe identifier for this
+                database connection and its caches.
             url: The database URL (string or :class:`SQLAlchemyURL`).
             db_name: Human-readable database name used in ``schema.name``.
             max_concurrency_per_db: Maximum number of concurrent queries
@@ -2331,6 +2325,7 @@ class SQLConnector:
             A fully initialised :class:`SQLConnector` instance ready to
             execute queries.
         """
+        validate_global_id(global_id)
         config = SQLConnectorConfig() if config is None else config
         t_eng = ThrottledEngine.from_url(
             url,
@@ -2487,7 +2482,7 @@ class SQLConnector:
                     exclude_schema_names=cfg.exclude_schema_names,
                 )
 
-            self.save_schema_cache()
+            await self._save_schema_cache_async()
 
             logger.info(f"Schema refreshed for {self.global_id}: {len(self.schema.tables)} tables")
             return self.schema

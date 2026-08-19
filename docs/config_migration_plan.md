@@ -325,14 +325,13 @@ The result-population CLI uses `--timeout` as an optional override. Omitting it 
 Keep cache directories flat by artifact kind:
 
 ```text
-cache/schemas/<global_id>.json
+cache/schemas/v1[@<variant>]@<global_id>.json
 cache/query_results/<global_id>_<hash>.json
 ```
 
 Do not repeat connector type in the directory hierarchy. `global_id` is a genuine
-cross-backend uniqueness contract, and generated identifiers should include a
-stable source namespace such as `hf+`, `cli+`, or `neo4j+`. A manually supplied
-identifier that collides with another connector is a caller contract violation.
+cross-backend uniqueness contract and must also be filename-safe. Schema filenames
+include a cache-format version; Neo4j also includes its introspection mode as a variant.
 
 ## Settings that are intentionally removed
 

@@ -1,8 +1,9 @@
+import asyncio
 import logging
 import numbers
 import time
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, ClassVar, Literal
 
@@ -24,7 +25,8 @@ from tabulaflow.core import (
     RelationshipSchema,
 )
 from tabulaflow.core.serialization import json_ready
-from tabulaflow.data.protocols import ResultTooLargeError
+from tabulaflow.data.protocols import ResultTooLargeError, validate_global_id
+from tabulaflow.data.schema_cache import read_schema_cache, schema_cache_lock, schema_cache_path, write_schema_cache
 
 logger = logging.getLogger(__name__)
 _UNSET = object()
@@ -298,6 +300,7 @@ class Neo4jConnector:
     _schema_name: str
     config: Neo4jConnectorConfig
     read_only: bool = True
+    _schema_lock: asyncio.Lock = field(default_factory=asyncio.Lock)
 
     @staticmethod
     async def _fetch_default_db_name(driver: neo4j.AsyncDriver) -> str | None:
@@ -331,8 +334,8 @@ class Neo4jConnector:
         """Create a connector from a Neo4j Bolt URL.
 
         Args:
-            global_id: Globally unique identifier for this connection, also
-                used as the cache key when loading the schema.
+            global_id: Globally unique, filename-safe identifier for this
+                database connection and its caches.
             url: Neo4j URL (e.g. ``"neo4j://localhost:7687"``,
                 ``"bolt://localhost:7687"``, ``"neo4j+s://host"``).
             auth: ``(username, password)`` tuple or ``neo4j.Auth`` object.
@@ -347,6 +350,7 @@ class Neo4jConnector:
             **driver_kwargs: Extra keyword arguments for
                 ``neo4j.AsyncGraphDatabase.driver``.
         """
+        validate_global_id(global_id)
         config = Neo4jConnectorConfig() if config is None else config
         driver = neo4j.AsyncGraphDatabase.driver(
             url,
@@ -440,41 +444,41 @@ class Neo4jConnector:
         await self._driver.close()
 
     def _schema_cache_path(self) -> Path:
-        mode = self.config.schema_introspection_mode
-        return self.config.cache_dir / "schemas" / f"{self.global_id}_{mode}.json"
+        return schema_cache_path(
+            self.config.cache_dir,
+            self.global_id,
+            variant=self.config.schema_introspection_mode,
+        )
 
     async def _load_schema_async(self) -> PropertyGraphSchema:
         """Load schema from cache or introspect, respecting cache config."""
         cache_path = self._schema_cache_path()
-
-        if self.config.schema_cache_mode in ("read_write", "cache_only") and cache_path.exists():
-            with cache_path.open("r", encoding="utf-8") as f:
-                self.schema = PropertyGraphSchema.model_validate_json(f.read())
+        async with schema_cache_lock(cache_path):
+            if self.config.schema_cache_mode in ("read_write", "cache_only") and cache_path.exists():
+                self.schema = await read_schema_cache(cache_path, PropertyGraphSchema)
                 return self.schema
 
-        if self.config.schema_cache_mode == "cache_only":
-            raise FileNotFoundError(f"Schema cache required but not found at {cache_path}")
+            if self.config.schema_cache_mode == "cache_only":
+                raise FileNotFoundError(f"Schema cache required but not found at {cache_path}")
 
-        self.schema = await self._build_schema()
+            self.schema = await self._build_schema()
 
-        if self.config.schema_cache_mode in ("read_write", "refresh"):
-            cache_path.parent.mkdir(parents=True, exist_ok=True)
-            with cache_path.open("w", encoding="utf-8") as f:
-                f.write(self.schema.model_dump_json(indent=2))
+            if self.config.schema_cache_mode in ("read_write", "refresh"):
+                await write_schema_cache(cache_path, self.schema)
 
-        return self.schema
+            return self.schema
 
     async def refresh_schema_async(self) -> PropertyGraphSchema:
         """Re-introspect the live database, bypassing cache on read."""
-        self.schema = await self._build_schema()
-
-        if self.config.schema_cache_mode in ("read_write", "refresh"):
+        async with self._schema_lock:
             cache_path = self._schema_cache_path()
-            cache_path.parent.mkdir(parents=True, exist_ok=True)
-            with cache_path.open("w", encoding="utf-8") as f:
-                f.write(self.schema.model_dump_json(indent=2))
+            async with schema_cache_lock(cache_path):
+                self.schema = await self._build_schema()
 
-        return self.schema
+                if self.config.schema_cache_mode in ("read_write", "refresh"):
+                    await write_schema_cache(cache_path, self.schema)
+
+                return self.schema
 
     async def _build_schema(self) -> PropertyGraphSchema:
         timeout = self.config.query_timeout_seconds

@@ -1,11 +1,24 @@
 """Database connector protocols and shared execution errors."""
 
 from collections.abc import Mapping, Sequence
+import re
 from typing import Any, ClassVar, Literal, Protocol, TypeAlias
 
 from sqlalchemy.sql import Executable
 
 from tabulaflow.core import ExecResult, NonSQLLanguage, PropertyGraphSchema, SQLDialect, SQLSchema, TableRef
+
+_GLOBAL_ID_PATTERN = re.compile(r"[A-Za-z0-9][A-Za-z0-9._+-]{0,179}")
+
+
+def validate_global_id(global_id: str) -> str:
+    """Validate and return a globally unique, filename-safe connector ID."""
+    if _GLOBAL_ID_PATTERN.fullmatch(global_id) is None:
+        raise ValueError(
+            "global_id must be 1-180 characters, start with a letter or digit, "
+            "and contain only letters, digits, '.', '_', '+', or '-'"
+        )
+    return global_id
 
 
 class ResultTooLargeError(RuntimeError):

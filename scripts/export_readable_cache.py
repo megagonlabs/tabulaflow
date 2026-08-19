@@ -1,5 +1,6 @@
 import argparse
 import os
+from pathlib import Path
 import tabulaflow
 from tabulaflow.config import tabulaflow_config
 from tabulaflow.agents.modules.db_summarizer import DBSummary
@@ -17,19 +18,24 @@ def main() -> None:
 
     tabulaflow.configure()
 
-    input_dir = os.path.join(tabulaflow_config.cache_dir, "schemas")
+    input_dir = Path(tabulaflow_config.cache_dir) / "schemas"
     output_dir = os.path.join(args.output_dir, "schemas")
     os.makedirs(output_dir, exist_ok=True)
-    for file in os.listdir(input_dir):
-        output_path = os.path.join(output_dir, file.replace(".json", ".md"))
+    exported = 0
+    for path in input_dir.rglob("*.json"):
+        output_path = os.path.join(output_dir, path.name.replace(".json", ".md"))
         if args.skip_exists and os.path.exists(output_path):
             continue
-        schema = SQLSchema.model_validate_json(open(os.path.join(input_dir, file)).read())
+        try:
+            schema = SQLSchema.model_validate_json(path.read_text())
+        except ValueError:
+            continue
         compressed_schema = SchemaCompressor().compress(schema)
         compressed_schema_str = SQLDDLSchemaFormatter().format(compressed_schema, include_descriptions=True)
         with open(output_path, "w") as f:
             f.write(compressed_schema_str)
-    print(f"Exported {len(os.listdir(input_dir))} schemas to {output_dir}")
+        exported += 1
+    print(f"Exported {exported} schemas to {output_dir}")
 
     input_dir = os.path.join(tabulaflow_config.cache_dir, "preprocessors", "db_summarizer")
     output_dir = os.path.join(args.output_dir, "preprocessors", "db_summarizer")

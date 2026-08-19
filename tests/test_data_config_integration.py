@@ -7,6 +7,7 @@ import pytest
 
 from tabulaflow.core import SQLSchema
 from tabulaflow.data import Neo4jConnector, Neo4jConnectorConfig, SQLConnector, SQLConnectorConfig
+from tabulaflow.data.schema_cache import schema_cache_path
 
 
 async def _connector(
@@ -39,7 +40,7 @@ async def test_schema_cache_modes(tmp_path: Path) -> None:
     connector = await _connector(tmp_path, global_id="cached", config=read_write)
     await connector.disconnect_async()
 
-    cache_path = cache_dir / "schemas" / "cached.json"
+    cache_path = schema_cache_path(cache_dir, "cached")
     assert cache_path.is_file()
 
     cached_schema = SQLSchema(name="from-cache", dialect="sqlite", tables=[])
