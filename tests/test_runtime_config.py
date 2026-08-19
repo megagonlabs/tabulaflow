@@ -16,7 +16,6 @@ def test_sql_config_uses_defaults() -> None:
     assert config.schema_cache_mode == "read_write"
     assert config.column_stats_mode == "skip_for_large_tables"
     assert config.query_cache_mode == "off"
-    assert config.query_cache_store == "successful_only"
 
 
 def test_neo4j_config_uses_fast_schema_introspection_by_default() -> None:

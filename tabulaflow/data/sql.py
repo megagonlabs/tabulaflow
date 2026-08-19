@@ -2714,19 +2714,14 @@ class SQLConnector:
                     logger.warning("Removing invalid query cache entry: %s", path)
                     await remove_cached_file(path)
                 else:
-                    if cached.df is None and cached.error is None:
-                        await remove_cached_file(path)
-                    elif self.config.query_cache_store == "successful_only" and cached.error is not None:
+                    if cached.df is None or cached.error is not None:
                         await remove_cached_file(path)
                     else:
                         logger.debug("Query cache hit: %s", query_str[:80])
                         return cached.model_copy(update={"latency_seconds": None})
 
             result = await self._execute_query_async(query, parameters, effective_timeout)
-            should_cache = result.df is not None or (
-                self.config.query_cache_store == "all" and result.error is not None
-            )
-            if should_cache:
+            if result.df is not None:
                 await write_cached_model(path, result)
                 logger.debug("Query cache write: %s", query_str[:80])
             return result

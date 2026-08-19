@@ -32,7 +32,6 @@ class SQLConnectorConfig(_ConnectorConfig):
 
     column_stats_mode: ColumnStatsMode = "skip_for_large_tables"
     query_cache_mode: Literal["off", "read_write", "refresh"] = "off"
-    query_cache_store: Literal["successful_only", "all"] = "successful_only"
 
 
 class Neo4jConnectorConfig(_ConnectorConfig):

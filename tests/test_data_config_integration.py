@@ -283,6 +283,42 @@ async def test_query_cache_does_not_store_successful_no_result_statements(
     assert not list((config.cache_dir / "query_results").glob("*.json"))
 
 
+async def test_query_cache_does_not_store_errors(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    config = SQLConnectorConfig(
+        cache_dir=tmp_path / "cache",
+        schema_cache_mode="off",
+        query_cache_mode="read_write",
+    )
+    connector = await _connector(
+        tmp_path,
+        global_id="error-query-cache",
+        config=config,
+        schema=SQLSchema(name="query-cache", dialect="sqlite", tables=[]),
+        read_only=True,
+    )
+    executions = 0
+
+    async def execute(*_args: object, **_kwargs: object) -> object:
+        nonlocal executions
+        executions += 1
+        raise RuntimeError("query failed")
+
+    monkeypatch.setattr(connector._t_eng, "execute_async", execute)
+    try:
+        first = await connector.run_query_async("SELECT broken")
+        second = await connector.run_query_async("SELECT broken")
+    finally:
+        await connector.disconnect_async()
+
+    assert first.error is not None
+    assert second.error is not None
+    assert executions == 2
+    assert not list((config.cache_dir / "query_results").glob("*.json"))
+
+
 async def test_neo4j_uses_configured_timeout_and_result_limit(monkeypatch: pytest.MonkeyPatch) -> None:
     connector = object.__new__(Neo4jConnector)
     connector.read_only = False

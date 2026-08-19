@@ -74,10 +74,6 @@ query_cache_mode: Literal[
     "read_write",
     "refresh",
 ] = "off"
-query_cache_store: Literal[
-    "successful_only",
-    "all",
-] = "successful_only"
 ```
 
 Neo4j-specific fields:
@@ -203,7 +199,6 @@ Query cache operation and result eligibility are separate:
 
 ```python
 query_cache_mode="read_write"
-query_cache_store="successful_only"
 ```
 
 ## Public construction behavior
@@ -385,7 +380,7 @@ Delete `disable_bigquery_tracing` and the monkey patch that sets BigQuery's `HAS
 4. Replace all data-layer `tabulaflow_config` reads with the stored connector config.
 5. Replace schema-cache booleans with `schema_cache_mode` behavior.
 6. Replace SQL query-cache booleans with `query_cache_mode`.
-7. Replace legacy query result eligibility with `query_cache_store`.
+7. Cache only successful row-returning query results; never cache errors or no-result statements.
 8. Apply `max_result_rows=1_000_000` by default.
 9. Apply connector-level `query_timeout_seconds` when no operation override is supplied.
 10. Use `Path` operations for cache paths.
@@ -476,7 +471,7 @@ editing tests. After migration, a repository-wide search for
 - timeout included in query-cache identity using its effective value;
 - every schema cache mode;
 - every query cache mode;
-- `successful_only` versus `all` query result storage;
+- errors and successful no-result statements are never cached;
 - independent explicit configs for two connector instances;
 - shared flat environment defaults;
 - workspace caching disabled explicitly.
