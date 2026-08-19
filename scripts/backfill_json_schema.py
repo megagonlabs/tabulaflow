@@ -40,7 +40,7 @@ from tabulaflow.data.sql import (
     _is_async_url,
 )
 from tabulaflow.data.json_schema import infer_json_schema, looks_like_json
-from tabulaflow.data.schema_cache import write_schema_cache
+from tabulaflow.data._cache import write_cached_model
 from tabulaflow.core import SQLColumnSchema, SQLSchema, SQLTableSchema
 
 logger = logging.getLogger(__name__)
@@ -288,7 +288,7 @@ async def main() -> None:
             logger.info("  %s: %d column(s) updated", filename, updated)
 
             if args.write:
-                await write_schema_cache(cache_path, schema)
+                await write_cached_model(cache_path, schema)
         else:
             logger.info("  %s: no changes", filename)
 

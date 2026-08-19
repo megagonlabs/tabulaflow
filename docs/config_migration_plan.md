@@ -326,12 +326,13 @@ Keep cache directories flat by artifact kind:
 
 ```text
 cache/schemas/v1[@<variant>]@<global_id>.json
-cache/query_results/<global_id>_<hash>.json
+cache/query_results/v1@<global_id>@<query-hash>.json
 ```
 
 Do not repeat connector type in the directory hierarchy. `global_id` is a genuine
 cross-backend uniqueness contract and must also be filename-safe. Schema filenames
 include a cache-format version; Neo4j also includes its introspection mode as a variant.
+Query-result caching is disk-only, atomic, and available only for read-only connectors.
 
 ## Settings that are intentionally removed
 

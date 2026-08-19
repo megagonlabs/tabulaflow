@@ -1,3 +1,4 @@
+import asyncio
 from pathlib import Path
 import sqlite3
 from types import SimpleNamespace
@@ -7,7 +8,7 @@ import pytest
 
 from tabulaflow.core import SQLSchema
 from tabulaflow.data import Neo4jConnector, Neo4jConnectorConfig, SQLConnector, SQLConnectorConfig
-from tabulaflow.data.schema_cache import schema_cache_path
+from tabulaflow.data._cache import query_cache_key, query_cache_path, read_cached_model, schema_cache_path
 
 
 async def _connector(
@@ -16,6 +17,7 @@ async def _connector(
     global_id: str,
     config: SQLConnectorConfig,
     schema: SQLSchema | None = None,
+    read_only: bool = False,
 ) -> SQLConnector:
     db_path = tmp_path / f"{global_id}.sqlite"
     if schema is None:
@@ -26,7 +28,7 @@ async def _connector(
         url=f"sqlite+aiosqlite:///{db_path}",
         db_name=global_id,
         schema=schema,
-        read_only=False,
+        read_only=read_only,
         config=config,
     )
 
@@ -62,6 +64,13 @@ async def test_schema_cache_modes(tmp_path: Path) -> None:
     finally:
         await connector.disconnect_async()
 
+    cache_path.write_text("not json")
+    connector = await _connector(tmp_path, global_id="cached", config=read_write)
+    try:
+        assert connector.schema.name == "cached"
+    finally:
+        await connector.disconnect_async()
+
     off = SQLConnectorConfig(
         cache_dir=tmp_path / "off-cache",
         schema_cache_mode="off",
@@ -77,6 +86,12 @@ async def test_schema_cache_modes(tmp_path: Path) -> None:
     with pytest.raises(FileNotFoundError, match="Schema cache required"):
         await _connector(tmp_path, global_id="missing", config=cache_only)
     assert not cache_only.cache_dir.exists()
+
+    invalid_required_path = schema_cache_path(cache_only.cache_dir, "invalid-required")
+    invalid_required_path.parent.mkdir(parents=True)
+    invalid_required_path.write_text("not json")
+    with pytest.raises(RuntimeError, match="Required schema cache is invalid"):
+        await _connector(tmp_path, global_id="invalid-required", config=cache_only)
 
 
 async def test_connector_timeout_uses_config_unless_explicitly_overridden(
@@ -132,6 +147,7 @@ async def test_query_cache_mode_controls_reuse(tmp_path: Path, monkeypatch: pyte
         global_id="query-cache",
         config=config,
         schema=SQLSchema(name="query-cache", dialect="sqlite", tables=[]),
+        read_only=True,
     )
     first = await connector.run_query_async("SELECT 1 AS value")
     assert first.df is not None
@@ -147,7 +163,88 @@ async def test_query_cache_mode_controls_reuse(tmp_path: Path, monkeypatch: pyte
 
     assert second.df is not None
     assert second.df.to_dict(orient="records") == [{"value": 1}]
-    assert list((config.cache_dir / "query_results").glob("query-cache_*.json"))
+    assert second.latency_seconds is None
+    assert list((config.cache_dir / "query_results").glob("v1@query-cache@*.json"))
+
+
+async def test_query_cache_rejects_writable_connector(tmp_path: Path) -> None:
+    config = SQLConnectorConfig(schema_cache_mode="off", query_cache_mode="read_write")
+
+    with pytest.raises(ValueError, match="Query caching requires read_only=True"):
+        await _connector(
+            tmp_path,
+            global_id="writable-query-cache",
+            config=config,
+            schema=SQLSchema(name="query-cache", dialect="sqlite", tables=[]),
+        )
+
+
+async def test_invalid_query_cache_entry_is_rebuilt(tmp_path: Path) -> None:
+    config = SQLConnectorConfig(
+        cache_dir=tmp_path / "cache",
+        schema_cache_mode="off",
+        query_cache_mode="read_write",
+    )
+    key = query_cache_key("SELECT 1 AS value", (), config.query_timeout_seconds, config.max_result_rows)
+    path = query_cache_path(config.cache_dir, "invalid-query-cache", key)
+    path.parent.mkdir(parents=True)
+    path.write_text("not json")
+    connector = await _connector(
+        tmp_path,
+        global_id="invalid-query-cache",
+        config=config,
+        schema=SQLSchema(name="query-cache", dialect="sqlite", tables=[]),
+        read_only=True,
+    )
+
+    try:
+        result = await connector.run_query_async("SELECT 1 AS value")
+    finally:
+        await connector.disconnect_async()
+
+    assert result.error is None
+    assert (await read_cached_model(path, type(result))).df is not None
+
+
+async def test_query_cache_coalesces_concurrent_identical_queries(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    config = SQLConnectorConfig(
+        cache_dir=tmp_path / "cache",
+        schema_cache_mode="off",
+        query_cache_mode="read_write",
+    )
+    connector = await _connector(
+        tmp_path,
+        global_id="concurrent-query-cache",
+        config=config,
+        schema=SQLSchema(name="query-cache", dialect="sqlite", tables=[]),
+        read_only=True,
+    )
+    executions = 0
+
+    async def execute(*_args: object, **_kwargs: object) -> object:
+        nonlocal executions
+        executions += 1
+        await asyncio.sleep(0.01)
+        return SimpleNamespace(
+            result=pd.DataFrame({"value": [1]}),
+            latency_seconds=0.01,
+            affected_rows=None,
+        )
+
+    monkeypatch.setattr(connector._t_eng, "execute_async", execute)
+    try:
+        results = await asyncio.gather(
+            connector.run_query_async("SELECT 1 AS value"),
+            connector.run_query_async("SELECT 1 AS value"),
+        )
+    finally:
+        await connector.disconnect_async()
+
+    assert executions == 1
+    assert sum(result.latency_seconds is None for result in results) == 1
 
 
 async def test_neo4j_uses_configured_timeout_and_result_limit(monkeypatch: pytest.MonkeyPatch) -> None:

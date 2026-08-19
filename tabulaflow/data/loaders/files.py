@@ -148,6 +148,9 @@ async def load_files(
     from tabulaflow.data.sql import SQLConnector
 
     config = SQLConnectorConfig() if config is None else config
+    if not read_only and config.query_cache_mode != "off":
+        raise ValueError("Query caching requires read_only=True")
+    loading_config = config.model_copy(update={"query_cache_mode": "off"})
 
     seen: set[str] = set()
     resolved: list[str] = []
@@ -195,7 +198,7 @@ async def load_files(
             db_name=db_name,
             schema=SQLSchema(name=db_name, dialect="duckdb", tables=[]),
             read_only=False,  # need DDL for the load; SQLConnector.read_only set below
-            config=config,
+            config=loading_config,
             duckdb_init_sql=duckdb_init_sql,
         )
     except BaseException:
@@ -222,6 +225,7 @@ async def load_files(
         raise
 
     connector.read_only = read_only
+    connector.config = config
 
     # The DuckDB cache file is loader-owned: the source CSV/parquet/Excel
     # files are the truth; this file is regenerable.  Delete it on

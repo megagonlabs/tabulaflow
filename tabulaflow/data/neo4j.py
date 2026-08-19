@@ -9,6 +9,7 @@ from typing import Any, ClassVar, Literal
 
 import neo4j
 import pandas as pd
+from pydantic import ValidationError
 
 from tabulaflow.data.config import Neo4jConnectorConfig
 from tabulaflow.core import (
@@ -26,7 +27,13 @@ from tabulaflow.core import (
 )
 from tabulaflow.core.serialization import json_ready
 from tabulaflow.data.protocols import ResultTooLargeError, validate_global_id
-from tabulaflow.data.schema_cache import read_schema_cache, schema_cache_lock, schema_cache_path, write_schema_cache
+from tabulaflow.data._cache import (
+    cache_lock,
+    read_cached_model,
+    remove_cached_file,
+    schema_cache_path,
+    write_cached_model,
+)
 
 logger = logging.getLogger(__name__)
 _UNSET = object()
@@ -453,10 +460,16 @@ class Neo4jConnector:
     async def _load_schema_async(self) -> PropertyGraphSchema:
         """Load schema from cache or introspect, respecting cache config."""
         cache_path = self._schema_cache_path()
-        async with schema_cache_lock(cache_path):
+        async with cache_lock(cache_path):
             if self.config.schema_cache_mode in ("read_write", "cache_only") and cache_path.exists():
-                self.schema = await read_schema_cache(cache_path, PropertyGraphSchema)
-                return self.schema
+                try:
+                    self.schema = await read_cached_model(cache_path, PropertyGraphSchema)
+                    return self.schema
+                except (ValidationError, UnicodeError) as e:
+                    if self.config.schema_cache_mode == "cache_only":
+                        raise RuntimeError(f"Required schema cache is invalid: {cache_path}") from e
+                    logger.warning("Removing invalid schema cache entry: %s", cache_path)
+                    await remove_cached_file(cache_path)
 
             if self.config.schema_cache_mode == "cache_only":
                 raise FileNotFoundError(f"Schema cache required but not found at {cache_path}")
@@ -464,7 +477,7 @@ class Neo4jConnector:
             self.schema = await self._build_schema()
 
             if self.config.schema_cache_mode in ("read_write", "refresh"):
-                await write_schema_cache(cache_path, self.schema)
+                await write_cached_model(cache_path, self.schema)
 
             return self.schema
 
@@ -472,11 +485,11 @@ class Neo4jConnector:
         """Re-introspect the live database, bypassing cache on read."""
         async with self._schema_lock:
             cache_path = self._schema_cache_path()
-            async with schema_cache_lock(cache_path):
+            async with cache_lock(cache_path):
                 self.schema = await self._build_schema()
 
                 if self.config.schema_cache_mode in ("read_write", "refresh"):
-                    await write_schema_cache(cache_path, self.schema)
+                    await write_cached_model(cache_path, self.schema)
 
                 return self.schema
 

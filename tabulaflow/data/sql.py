@@ -72,9 +72,7 @@ datasets) by materializing into DuckDB.
 """
 
 import copy
-import hashlib
 import importlib
-import json
 import re
 import logging
 import threading
@@ -93,6 +91,7 @@ import asyncio
 import contextlib
 from contextlib import asynccontextmanager
 import sqlalchemy
+from pydantic import ValidationError
 from sqlalchemy.exc import SAWarning
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncEngine
 from sqlalchemy.engine.url import URL as SQLAlchemyURL
@@ -110,11 +109,14 @@ from tabulaflow.core import (
 
 from tabulaflow.data.config import ColumnStatsMode, SQLConnectorConfig
 from tabulaflow.data.protocols import ResultTooLargeError, validate_global_id
-from tabulaflow.data.schema_cache import (
-    read_schema_cache,
-    schema_cache_lock,
+from tabulaflow.data._cache import (
+    cache_lock,
+    query_cache_key,
+    query_cache_path,
+    read_cached_model,
+    remove_cached_file,
     schema_cache_path as get_schema_cache_path,
-    write_schema_cache,
+    write_cached_model,
 )
 from tabulaflow.data.json_schema import infer_json_schema, looks_like_json
 
@@ -335,10 +337,6 @@ def _build_row_outcome(
         return _ExecOutcome(result=None, affected_rows=affected)
     data = _rows_to_df(rows, keys) if return_df else list(rows)
     return _ExecOutcome(result=data, affected_rows=None)
-
-
-_query_cache: dict[str, ExecResult] = {}
-_query_cache_locks: dict[str, asyncio.Lock] = collections.defaultdict(asyncio.Lock)
 
 
 _INT64_MIN = -(2**63)
@@ -1596,14 +1594,20 @@ async def load_schema_with_cache_async(
     """
     cache_path = get_schema_cache_path(config.cache_dir, global_id)
 
-    async with schema_cache_lock(cache_path):
+    async with cache_lock(cache_path):
         sqlalchemy_dialect = t_eng.engine.dialect.name
         # SQLAlchemy uses "postgresql"; normalise to our SQLDialect literal "postgres"
         dialect_map: dict[str, str] = {"postgresql": "postgres"}
         dialect = dialect_map.get(sqlalchemy_dialect, sqlalchemy_dialect)
 
         if config.schema_cache_mode in ("read_write", "cache_only") and cache_path.exists():
-            return await read_schema_cache(cache_path, SQLSchema)
+            try:
+                return await read_cached_model(cache_path, SQLSchema)
+            except (ValidationError, UnicodeError) as e:
+                if config.schema_cache_mode == "cache_only":
+                    raise RuntimeError(f"Required schema cache is invalid: {cache_path}") from e
+                logger.warning("Removing invalid schema cache entry: %s", cache_path)
+                await remove_cached_file(cache_path)
 
         if config.schema_cache_mode == "cache_only":
             raise FileNotFoundError(f"Schema cache required but not found at {cache_path}")
@@ -1625,7 +1629,7 @@ async def load_schema_with_cache_async(
         if description:
             schema.description = description
         if config.schema_cache_mode in ("read_write", "refresh") and schema.tables:
-            await write_schema_cache(cache_path, schema)
+            await write_cached_model(cache_path, schema)
         return schema
 
 
@@ -2259,8 +2263,8 @@ class SQLConnector:
         """Write the current schema to the cache file if caching is enabled."""
         if self.config.schema_cache_mode in ("read_write", "refresh"):
             cache_path = get_schema_cache_path(self.config.cache_dir, self.global_id)
-            async with schema_cache_lock(cache_path):
-                await write_schema_cache(cache_path, self.schema)
+            async with cache_lock(cache_path):
+                await write_cached_model(cache_path, self.schema)
 
     @classmethod
     async def from_url_async(
@@ -2327,6 +2331,8 @@ class SQLConnector:
         """
         validate_global_id(global_id)
         config = SQLConnectorConfig() if config is None else config
+        if not read_only and config.query_cache_mode != "off":
+            raise ValueError("Query caching requires read_only=True")
         t_eng = ThrottledEngine.from_url(
             url,
             max_concurrency_per_db=max_concurrency_per_db,
@@ -2588,27 +2594,27 @@ class SQLConnector:
             method="multi",
         )
 
-    @staticmethod
-    def _query_cache_key(
-        global_id: str,
-        query: str,
-        parameters: Mapping[str, Any],
+    async def _execute_query_async(
+        self,
+        query: str | sqlalchemy.sql.expression.Executable,
+        parameters: Sequence[Any] | Mapping[str, Any],
         timeout: int | None,
-        max_rows: int | None,
-    ) -> str:
-        """Build a deterministic cache key for a query."""
-        key_data = json.dumps(
-            {
-                "global_id": global_id,
-                "query": query.strip(),
-                "parameters": dict(sorted(parameters.items())) if parameters else {},
-                "timeout": timeout,
-                "max_rows": max_rows,
-            },
-            sort_keys=True,
-            ensure_ascii=True,
+    ) -> ExecResult:
+        try:
+            result = await self._t_eng.execute_async(
+                query,
+                parameters,
+                timeout,
+                return_df=True,
+                max_rows=self.config.max_result_rows,
+            )
+        except Exception as e:
+            return ExecResult(error=ErrorInfo(exc_type=type(e).__name__, message=str(e)))
+        return ExecResult(
+            df=result.result,
+            latency_seconds=result.latency_seconds,
+            affected_rows=result.affected_rows,
         )
-        return hashlib.sha256(key_data.encode()).hexdigest()
 
     async def run_query_async(
         self,
@@ -2695,79 +2701,27 @@ class SQLConnector:
                     ),
                 )
 
-        # --- query result cache lookup ---
-        params_map: Mapping[str, Any] = parameters if isinstance(parameters, Mapping) else {}
-        caching_on = self.config.query_cache_mode != "off"
-        use_cache = self.config.query_cache_mode == "read_write"
+        if self.config.query_cache_mode == "off":
+            return await self._execute_query_async(query, parameters, effective_timeout)
 
-        cache_hash: str | None = None
-        if caching_on:
-            cache_hash = self._query_cache_key(
-                self.global_id,
-                query_str,
-                params_map,
-                effective_timeout,
-                self.config.max_result_rows,
-            )
-            cache_dir = self.config.cache_dir / "query_results"
-            cache_path = cache_dir / f"{self.global_id}_{cache_hash}.json"
+        key = query_cache_key(query_str, parameters, effective_timeout, self.config.max_result_rows)
+        path = query_cache_path(self.config.cache_dir, self.global_id, key)
+        async with cache_lock(path):
+            if self.config.query_cache_mode == "read_write" and path.exists():
+                try:
+                    cached = await read_cached_model(path, ExecResult)
+                except (ValidationError, UnicodeError):
+                    logger.warning("Removing invalid query cache entry: %s", path)
+                    await remove_cached_file(path)
+                else:
+                    if self.config.query_cache_store == "successful_only" and cached.error is not None:
+                        await remove_cached_file(path)
+                    else:
+                        logger.debug("Query cache hit: %s", query_str[:80])
+                        return cached.model_copy(update={"latency_seconds": None})
 
-            if use_cache:
-                # Check in-memory cache first
-                if cache_hash in _query_cache:
-                    logger.debug(f"Query cache hit (memory): {query_str[:80]}")
-                    return _query_cache[cache_hash]
-
-                # Check disk cache
-                async with _query_cache_locks[cache_hash]:
-                    # Re-check memory after acquiring lock
-                    if cache_hash in _query_cache:
-                        return _query_cache[cache_hash]
-                    if cache_path.exists():
-                        with cache_path.open("r", encoding="utf-8") as f:
-                            cached = ExecResult.model_validate_json(f.read())
-                        if self.config.query_cache_store == "successful_only" and cached.error is not None:
-                            logger.debug(f"Query cache skip (error in successful_only mode): {query_str[:80]}")
-                        else:
-                            _query_cache[cache_hash] = cached
-                            logger.debug(f"Query cache hit (disk): {query_str[:80]}")
-                            return cached
-
-        # --- execute query ---
-        # ``df`` is the result set for a row statement, ``None`` for a non-row
-        # statement (DDL/DML) or on error; success is carried by ``error is None``.
-        df: pd.DataFrame | None = None
-        error, latency_seconds = None, None
-        affected_rows: int | None = None
-        try:
-            result = await self._t_eng.execute_async(
-                query,
-                parameters,
-                effective_timeout,
-                return_df=True,
-                max_rows=self.config.max_result_rows,
-            )
-            df = result.result  # return_df=True ⟹ DataFrame | None
-            latency_seconds = result.latency_seconds
-            affected_rows = result.affected_rows
-        except Exception as e:
-            error = ErrorInfo(exc_type=type(e).__name__, message=str(e))
-        exec_result = ExecResult(
-            df=df,
-            error=error,
-            latency_seconds=latency_seconds,
-            affected_rows=affected_rows,
-        )
-
-        # --- write to cache ---
-        if caching_on and cache_hash is not None:
-            skip = self.config.query_cache_store == "successful_only" and exec_result.error is not None
-            if not skip:
-                async with _query_cache_locks[cache_hash]:
-                    cache_dir.mkdir(parents=True, exist_ok=True)
-                    with cache_path.open("w", encoding="utf-8") as f:
-                        f.write(exec_result.model_dump_json(indent=2))
-                    _query_cache[cache_hash] = exec_result
-                    logger.debug(f"Query cache write: {query_str[:80]}")
-
-        return exec_result
+            result = await self._execute_query_async(query, parameters, effective_timeout)
+            if self.config.query_cache_store == "all" or result.error is None:
+                await write_cached_model(path, result)
+                logger.debug("Query cache write: %s", query_str[:80])
+            return result

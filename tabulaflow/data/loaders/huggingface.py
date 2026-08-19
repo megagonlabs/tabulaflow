@@ -21,7 +21,7 @@ from collections.abc import Awaitable, Callable
 from typing import TYPE_CHECKING, Any
 
 from tabulaflow.data.config import SQLConnectorConfig
-from tabulaflow.data.schema_cache import schema_cache_path
+from tabulaflow.data._cache import schema_cache_path
 
 if TYPE_CHECKING:
     import httpx
