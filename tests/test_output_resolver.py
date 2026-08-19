@@ -1,3 +1,5 @@
+from collections.abc import Mapping
+
 import pandas as pd
 import pytest
 
@@ -11,7 +13,6 @@ from tabulaflow.output.specs import (
     NumberParameter,
     OutputSpec,
     ParameterizedSource,
-    Selection,
     TableArtifactSpec,
 )
 from tabulaflow.core import ExecResult
@@ -506,7 +507,7 @@ async def test_source_failure_is_reused_across_artifacts() -> None:
             super().__init__()
             self.resolve_count = 0
 
-        async def resolve_source(self, source_id: str, selection: Selection | None = None) -> ResultPayload:
+        async def resolve_source(self, source_id: str, selection: Mapping[str, object] | None = None) -> ResultPayload:
             self.resolve_count += 1
             raise SourceResolutionError("query failed")
 
@@ -529,7 +530,7 @@ async def test_source_failure_is_reused_across_artifacts() -> None:
 @pytest.mark.asyncio
 async def test_unexpected_source_value_error_is_not_hidden() -> None:
     class BrokenOutputStore(OutputStore):
-        async def resolve_source(self, source_id: str, selection: Selection | None = None) -> ResultPayload:
+        async def resolve_source(self, source_id: str, selection: Mapping[str, object] | None = None) -> ResultPayload:
             raise ValueError("programming bug")
 
     output_store = BrokenOutputStore()

@@ -20,10 +20,8 @@ from tabulaflow.output.specs import (
     GraphArtifactSpec,
     MapArtifactSpec,
     ParameterId,
-    ParameterSpec,
     ParameterizedSource,
     Selection,
-    SelectionValue,
     SourceId,
     SourceSpec,
     TableArtifactSpec,
@@ -127,7 +125,6 @@ class OutputResolver:
         selection: Mapping[ParameterId, object] | None = None,
     ) -> ResolvedOutput:
         active_selection = _normalize_selection(output, selection)
-        parameters = {parameter.id: parameter for parameter in output.parameters}
         sources = {source.id: source for source in output.sources}
         source_outcomes: dict[SourceId, ResultPayload | SourceNotApplicable | SourceResolutionError | KeyError] = {}
         artifacts: list[ResolvedArtifact] = []
@@ -140,9 +137,7 @@ class OutputResolver:
                         raise OutputResolutionError(f"artifact {artifact.id!r} references unknown source {source_id!r}")
                     if source_id not in source_outcomes:
                         try:
-                            source_outcomes[source_id] = await self._resolve_source(
-                                source, parameters, active_selection
-                            )
+                            source_outcomes[source_id] = await self._resolve_source(source, active_selection)
                         except (SourceNotApplicable, SourceResolutionError, KeyError) as exc:
                             source_outcomes[source_id] = exc
                     outcome = source_outcomes[source_id]
@@ -168,13 +163,12 @@ class OutputResolver:
     async def _resolve_source(
         self,
         source: SourceSpec,
-        parameters: Mapping[ParameterId, ParameterSpec],
-        selection: Mapping[ParameterId, SelectionValue],
+        selection: Mapping[ParameterId, object],
     ) -> ResultPayload:
         if isinstance(source, FixedResultSource):
             return await self._output_store.get_payload(source.result_id)
         if isinstance(source, ParameterizedSource):
-            return await self._output_store.resolve_source(source.id, _project_selection(source, parameters, selection))
+            return await self._output_store.resolve_source(source.id, selection)
         raise TypeError(f"unsupported source {type(source).__name__}")
 
 
@@ -279,22 +273,3 @@ def _no_displayable_data_reason(payload: ResultPayload) -> str:
         return "Statement executed successfully but returned no displayable data"
     row_word = "row" if affected_rows == 1 else "rows"
     return f"Statement executed successfully, affected {affected_rows:,} {row_word}, and returned no displayable data"
-
-
-def _project_selection(
-    source: ParameterizedSource,
-    parameters: Mapping[ParameterId, ParameterSpec],
-    selection: Mapping[ParameterId, object],
-) -> Selection:
-    projected: Selection = {}
-    for parameter_id in source.parameter_ids:
-        parameter = parameters.get(parameter_id)
-        if parameter is None:
-            raise OutputResolutionError(f"source {source.id!r} references unknown parameter {parameter_id!r}")
-        if parameter_id not in selection:
-            raise OutputResolutionError(f"missing selection for {parameter_id!r}")
-        try:
-            projected[parameter_id] = validate_parameter_value(parameter, selection[parameter_id])
-        except ValueError as exc:
-            raise OutputResolutionError(str(exc)) from None
-    return projected

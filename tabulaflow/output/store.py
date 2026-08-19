@@ -31,6 +31,7 @@ from tabulaflow.output.specs import (
     SourceId,
     canonical_selection_key,
     default_selection,
+    validate_parameter_value,
 )
 from tabulaflow.core import ExecResult, GraphResult
 
@@ -230,7 +231,7 @@ class OutputStore:
         self._sources[source_id] = source
         return source
 
-    def register_parameter(self, parameter: ParameterSpec) -> None:
+    def _register_parameter(self, parameter: ParameterSpec) -> None:
         """Register one output parameter, rejecting conflicting reuse."""
         existing = self._parameters.get(parameter.id)
         if existing is None:
@@ -239,7 +240,7 @@ class OutputStore:
         if existing != parameter:
             raise ValueError(f"parameter {parameter.id!r} already exists with a different definition")
 
-    def get_parameter(self, parameter_id: str) -> ParameterSpec:
+    def _get_parameter(self, parameter_id: str) -> ParameterSpec:
         """Return a registered parameter definition."""
         try:
             return self._parameters[parameter_id]
@@ -251,7 +252,7 @@ class OutputStore:
         source = self.get_source(source_id)
         if not isinstance(source, ParameterizedSource):
             return []
-        return [self.get_parameter(parameter_id) for parameter_id in source.parameter_ids]
+        return [self._get_parameter(parameter_id) for parameter_id in source.parameter_ids]
 
     def add_parameterized_source(
         self,
@@ -262,7 +263,7 @@ class OutputStore:
         """Create a parameterized source from registered parameters and a query template."""
         source_id = self._next_source_id_value()
         for parameter in parameters:
-            self.register_parameter(parameter)
+            self._register_parameter(parameter)
         source = ParameterizedSource(
             id=source_id,
             parameter_ids=[parameter.id for parameter in parameters],
@@ -339,27 +340,27 @@ class OutputStore:
         except KeyError:
             raise KeyError(f"No source with id {source_id}") from None
 
-    def cached_parameterized_results(self, source_id: str) -> dict[str, str]:
-        """Return cached selection keys and result ids for a parameterized source."""
-        return {
-            selection_key: result_id
-            for (cached_source_id, selection_key), result_id in self._source_cache.items()
-            if cached_source_id == source_id
-        }
-
-    async def resolve_source(self, source_id: str, selection: Selection | None = None) -> ResultPayload:
+    async def resolve_source(
+        self,
+        source_id: str,
+        selection: Mapping[str, object] | None = None,
+    ) -> ResultPayload:
         """Resolve a source to a materialized payload, materializing parameterized cache misses."""
         source = self.get_source(source_id)
         if isinstance(source, FixedResultSource):
             return await self.get_payload(source.result_id)
         if not isinstance(source, ParameterizedSource):
             raise TypeError(f"unsupported source {type(source).__name__}")
-        if selection is None:
-            selection = default_selection(self.source_parameters(source.id))
-        selection_key = canonical_selection_key(selection)
+        parameters = self.source_parameters(source.id)
+        projected_selection = default_selection(parameters)
+        if selection is not None:
+            for parameter in parameters:
+                if parameter.id in selection:
+                    projected_selection[parameter.id] = validate_parameter_value(parameter, selection[parameter.id])
+        selection_key = canonical_selection_key(projected_selection)
         result_id = self._source_cache.get((source.id, selection_key))
         if result_id is None:
-            result_id = await self._materialize_parameterized_source(source, selection)
+            result_id = await self._materialize_parameterized_source(source, projected_selection)
         return await self.get_payload(result_id)
 
     async def _materialize_parameterized_source(

@@ -67,7 +67,6 @@ async def test_create_parameterized_source_registers_parameters_and_warms_choice
           metric=gross (1 row) — first row: value=21""")
     source = output_store.get_source("S1")
     assert output_store.source_parameters(source.id)[0].id == "metric"
-    assert len(output_store.cached_parameterized_results("S1")) == 2
 
     resolved = await OutputResolver(output_store).resolve(
         OutputSpec(
@@ -173,7 +172,10 @@ async def test_mixed_choice_and_number_warms_choice_grid_at_number_default(regis
     assert "metric=gross;min_value=8 (1 row) — first row: value=21" in text
     assert "-> R" not in text
     assert "other selections will materialize lazily" not in text
-    assert len(output_store.cached_parameterized_results("S1")) == 2
+    payload = await output_store.resolve_source("S1", {"metric": "gross"})
+    assert payload.metadata.source_selection == {"metric": "gross", "min_value": 8}
+    assert payload.df is not None
+    assert payload.df.to_dict("records") == [{"value": 21}]
 
 
 @pytest.mark.asyncio
