@@ -175,7 +175,7 @@ Do **not** keep file-writing helpers here:
 Move display helpers out of core:
 
 - `format_dataframe(...)`
-- `flatten_multiline(...)` if only used for display
+- `format_single_line_text(...)`
 - `format_ratio_as_percent(...)`
 - `format_column_type(...)`
 - `format_json_schema_type(...)`

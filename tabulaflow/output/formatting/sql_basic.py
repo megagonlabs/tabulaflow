@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from typing import ClassVar
 
 from tabulaflow.core import ForeignKeySchema, SQLColumnSchema, SQLDialect, SQLSchema, SQLTableSchema
-from tabulaflow.output.formatting._core import flatten_multiline
+from tabulaflow.output.formatting._core import format_single_line_text
 from tabulaflow.output.formatting._sql import (
     SQLQuoting,
     format_column_type,
@@ -31,7 +31,7 @@ class SQLBasicSchemaFormatter:
         return str(value)
 
     def _truncate(self, value: str) -> str:
-        value = flatten_multiline(value)
+        value = format_single_line_text(value)
         if len(value) <= self.example_max_chars:
             return value
         return value[: self.example_max_chars // 2] + "..." + value[-self.example_max_chars // 2 :]

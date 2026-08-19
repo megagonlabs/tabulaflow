@@ -4,8 +4,8 @@ from tabulaflow.core import ForeignKeySchema, SQLDialect, SQLSchema, SQLTableSch
 from tabulaflow.output.formatting.schema import schema_formatter_registry
 from tabulaflow.output.formatting._core import (
     format_dataframe,
-    flatten_multiline,
     format_json_schema_type,
+    format_single_line_text,
 )
 from tabulaflow.output.formatting._sql import (
     SQLQuoting,
@@ -38,7 +38,7 @@ class SQLDDLSchemaFormatter:
     ``<json_schema>`` comment instead."""
 
     def _truncate(self, s: str) -> str:
-        s = flatten_multiline(s)
+        s = format_single_line_text(s)
         if len(s) <= self.example_max_chars:
             return s
         return s[: self.example_max_chars // 2] + "..." + s[-self.example_max_chars // 2 :]

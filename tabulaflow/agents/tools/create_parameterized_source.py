@@ -23,7 +23,7 @@ from tabulaflow.output.specs import (
     default_selection,
 )
 from tabulaflow.core import ErrorInfo, ExecResult
-from tabulaflow.output.formatting import flatten_multiline, format_dataframe
+from tabulaflow.output.formatting import format_dataframe, format_single_line_text
 from tabulaflow.agents.tools.base import ToolCallOutcome
 from tabulaflow.agents.tools.engines.sql import format_sqlalchemy_error_msg
 from tabulaflow.output.store import OutputStore, SourceNotApplicable, render_parameterized_query
@@ -333,7 +333,7 @@ def _format_cell(value: object) -> str:
         pass
     if isinstance(value, float):
         return f"{value:.8g}"
-    text = flatten_multiline(str(value))
+    text = format_single_line_text(str(value))
     if len(text) > _FIRST_ROW_CELL_CHARS:
         half = _FIRST_ROW_CELL_CHARS // 2
         return f"{text[:half]}...{text[-half:]}"

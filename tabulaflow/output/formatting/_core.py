@@ -32,19 +32,19 @@ def format_connector_summary(connector: DataConnector) -> str:
     return f"{dialect}, {n_tables} table{'s' if n_tables != 1 else ''}"
 
 
-def flatten_multiline(val: str) -> str:
-    """Collapse a multi-line string into a single line.
+def format_single_line_text(text: str) -> str:
+    """Format text for display on one physical line.
 
     For valid JSON, parse and re-dump compactly. For other strings, replace
     newlines with the literal ``\\n`` escape sequence.
     """
-    if "\n" not in val and "\r" not in val:
-        return val
+    if "\n" not in text and "\r" not in text:
+        return text
     try:
-        parsed = json.loads(val)
+        parsed = json.loads(text)
         return json.dumps(parsed, separators=(",", ":"), ensure_ascii=False)
     except (json.JSONDecodeError, ValueError):
-        return val.replace("\r\n", "\\n").replace("\r", "\\n").replace("\n", "\\n")
+        return text.replace("\r\n", "\\n").replace("\r", "\\n").replace("\n", "\\n")
 
 
 def format_dataframe(
@@ -57,7 +57,7 @@ def format_dataframe(
     add_bottom_ellipsis_row: bool = False,
 ) -> str:
     def _truncate_str(s: str) -> str:
-        s = flatten_multiline(s)
+        s = format_single_line_text(s)
         if len(s) > max_cell_width:
             half = max_cell_width // 2
             return s[:half] + "..." + s[-half:]

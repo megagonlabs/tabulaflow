@@ -1,11 +1,11 @@
 """Human- and model-readable output formatting."""
 
 from tabulaflow.output.formatting._core import (
-    flatten_multiline,
     format_connector_summary,
     format_dataframe,
     format_exec_result_markdown,
     format_json_schema_type,
+    format_single_line_text,
 )
 from tabulaflow.output.formatting.cypher import CypherSchemaFormatter
 from tabulaflow.output.formatting.erd import MermaidERDiagramFormatter
@@ -24,10 +24,10 @@ __all__ = [
     "SQLBasicSchemaFormatter",
     "SQLDDLSchemaFormatter",
     "SQLSchemaFormatter",
-    "flatten_multiline",
     "format_connector_summary",
     "format_dataframe",
     "format_exec_result_markdown",
     "format_json_schema_type",
+    "format_single_line_text",
     "schema_formatter_registry",
 ]
