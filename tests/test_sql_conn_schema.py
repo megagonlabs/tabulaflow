@@ -69,6 +69,15 @@ async def test_connector_derives_global_id_from_url(tmp_path: Path) -> None:
         await connector.disconnect_async()
 
 
+async def test_pool_size_override_is_rejected(tmp_path: Path) -> None:
+    with pytest.raises(TypeError, match="SQLConnectorConfig.max_query_concurrency"):
+        await SQLConnector.from_url_async(
+            f"sqlite+aiosqlite:///{tmp_path / 'pool-size.sqlite'}",
+            db_name="pool-size",
+            pool_size=4,
+        )
+
+
 async def test_table_without_column_stats_uses_one_bounded_sample(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,

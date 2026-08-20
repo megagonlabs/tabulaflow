@@ -57,6 +57,7 @@ Shared connector fields:
 cache_dir: Path = Path.home() / ".tabulaflow" / "cache"
 max_result_rows: PositiveInt | None = 1_000_000
 query_timeout_seconds: PositiveInt | None = 300
+max_query_concurrency: PositiveInt = 8
 schema_cache_mode: Literal[
     "off",
     "read_write",
@@ -68,7 +69,6 @@ schema_cache_mode: Literal[
 SQL-specific fields:
 
 ```python
-max_query_concurrency: PositiveInt = 8
 collect_column_stats: bool = False
 query_cache_mode: Literal[
     "off",

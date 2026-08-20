@@ -308,6 +308,10 @@ class Neo4jConnector:
     config: Neo4jConnectorConfig
     read_only: bool = True
     _schema_lock: asyncio.Lock = field(default_factory=asyncio.Lock)
+    _query_semaphore: asyncio.Semaphore = field(init=False)
+
+    def __post_init__(self) -> None:
+        self._query_semaphore = asyncio.Semaphore(self.config.max_query_concurrency)
 
     @staticmethod
     async def _fetch_default_db_name(driver: neo4j.AsyncDriver) -> str | None:
@@ -359,9 +363,12 @@ class Neo4jConnector:
         """
         validate_global_id(global_id)
         config = Neo4jConnectorConfig() if config is None else config
+        if "max_connection_pool_size" in driver_kwargs:
+            raise TypeError("Configure Neo4j query concurrency through Neo4jConnectorConfig.max_query_concurrency")
         driver = neo4j.AsyncGraphDatabase.driver(
             url,
             auth=auth,
+            max_connection_pool_size=config.max_query_concurrency,
             **driver_kwargs,
         )
         try:
@@ -401,19 +408,20 @@ class Neo4jConnector:
         max_rows: int | None = None,
     ) -> list[dict[str, Any]] | pd.DataFrame:
         access_mode = neo4j.READ_ACCESS if self.read_only else neo4j.WRITE_ACCESS
-        async with self._driver.session(database=self._database, default_access_mode=access_mode) as session:
-            result = await session.run(
-                neo4j.Query(query, timeout=timeout),
-                parameters=dict(parameters) if parameters else {},
-            )
-            if return_df:
-                if max_rows is None:
-                    return await result.to_df(expand=False, parse_dates=True)
-                records = await result.fetch(max_rows + 1)
-                if len(records) > max_rows:
-                    raise ResultTooLargeError(max_rows)
-                return _records_to_df(records, result.keys())
-            return await result.data()
+        async with self._query_semaphore:
+            async with self._driver.session(database=self._database, default_access_mode=access_mode) as session:
+                result = await session.run(
+                    neo4j.Query(query, timeout=timeout),
+                    parameters=dict(parameters) if parameters else {},
+                )
+                if return_df:
+                    if max_rows is None:
+                        return await result.to_df(expand=False, parse_dates=True)
+                    records = await result.fetch(max_rows + 1)
+                    if len(records) > max_rows:
+                        raise ResultTooLargeError(max_rows)
+                    return _records_to_df(records, result.keys())
+                return await result.data()
 
     async def run_query_async(
         self,

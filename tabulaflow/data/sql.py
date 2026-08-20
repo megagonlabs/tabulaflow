@@ -2233,6 +2233,8 @@ class SQLConnector:
         config = SQLConnectorConfig() if config is None else config
         if not read_only and config.query_cache_mode != "off":
             raise ValueError("Query caching requires read_only=True")
+        if "pool_size" in engine_kwargs:
+            raise TypeError("Configure SQL query concurrency through SQLConnectorConfig.max_query_concurrency")
         introspection = _SchemaIntrospectionOptions(
             include_schema_names=frozenset(include_schema_names) if include_schema_names is not None else None,
             exclude_schema_names=frozenset(exclude_schema_names),

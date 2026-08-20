@@ -22,6 +22,7 @@ def test_sql_config_uses_defaults() -> None:
 def test_neo4j_config_uses_fast_schema_introspection_by_default() -> None:
     config = Neo4jConnectorConfig()
 
+    assert config.max_query_concurrency == 8
     assert config.schema_introspection_mode == "fast"
     assert config.max_graph_result_nodes == 300
     assert config.max_graph_result_edges == 700
@@ -46,10 +47,11 @@ def test_sql_config_reads_column_stats_flag_from_environment(monkeypatch: pytest
     assert SQLConnectorConfig().collect_column_stats is True
 
 
-def test_sql_config_reads_query_concurrency_from_environment(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_connector_configs_read_query_concurrency_from_environment(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("TABULAFLOW_MAX_QUERY_CONCURRENCY", "3")
 
     assert SQLConnectorConfig().max_query_concurrency == 3
+    assert Neo4jConnectorConfig().max_query_concurrency == 3
 
 
 def test_connector_configs_share_process_wide_environment_defaults(monkeypatch: pytest.MonkeyPatch) -> None:

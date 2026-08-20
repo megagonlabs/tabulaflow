@@ -10,7 +10,12 @@ DEFAULT_CACHE_DIR = Path.home() / ".tabulaflow" / "cache"
 
 
 class _ConnectorConfig(BaseSettings):
-    """Common operational policy for a data connector."""
+    """Common operational policy for a data connector.
+
+    Attributes:
+        max_query_concurrency: Maximum in-flight queries per connector and
+            underlying connection-pool size.
+    """
 
     model_config = SettingsConfigDict(
         env_prefix="TABULAFLOW_",
@@ -22,6 +27,7 @@ class _ConnectorConfig(BaseSettings):
     cache_dir: Path = DEFAULT_CACHE_DIR
     max_result_rows: PositiveInt | None = 1_000_000
     query_timeout_seconds: PositiveInt | None = 300
+    max_query_concurrency: PositiveInt = 8
     schema_cache_mode: Literal["off", "read_write", "refresh", "cache_only"] = "read_write"
 
 
@@ -29,15 +35,12 @@ class SQLConnectorConfig(_ConnectorConfig):
     """Operational policy for a SQL connector.
 
     Attributes:
-        max_query_concurrency: Maximum in-flight queries per connector and
-            underlying connection-pool size.
         collect_column_stats: Whether to collect exact row counts and column
             statistics for physical tables. Tables and views are always
             enriched from one bounded row sample; views are never exhaustively
             profiled.
     """
 
-    max_query_concurrency: PositiveInt = 8
     collect_column_stats: bool = False
     query_cache_mode: Literal["off", "read_write", "refresh"] = "off"
 

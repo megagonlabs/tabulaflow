@@ -1,3 +1,4 @@
+import asyncio
 from pathlib import Path
 from typing import Any
 
@@ -5,6 +6,7 @@ import neo4j
 import pandas as pd
 import pytest
 
+from tabulaflow.core import PropertyGraphSchema
 from tabulaflow.data import Neo4jConnector, Neo4jConnectorConfig
 from tabulaflow.data.neo4j import (
     _FAST_NODE_PROPERTIES_QUERY,
@@ -65,10 +67,72 @@ async def test_query_session_uses_server_enforced_access_mode(read_only: bool, e
     connector._driver = driver  # type: ignore[assignment]
     connector._database = None
     connector.read_only = read_only
+    connector._query_semaphore = asyncio.Semaphore(1)
 
     await connector._run_cypher("MATCH (n) DELETE n", return_df=True)
 
     assert driver.access_modes == [expected_mode]
+
+
+async def test_query_concurrency_configures_semaphore_and_driver_pool(monkeypatch: pytest.MonkeyPatch) -> None:
+    driver = _Driver()
+    captured: dict[str, object] = {}
+
+    def build_driver(*_args: object, **kwargs: object) -> _Driver:
+        captured.update(kwargs)
+        return driver
+
+    monkeypatch.setattr(neo4j.AsyncGraphDatabase, "driver", build_driver)
+    connector = await Neo4jConnector.from_url_async(
+        global_id="neo4j+concurrency",
+        url="neo4j://localhost:7687",
+        db_name="test",
+        schema=PropertyGraphSchema(name="test"),
+        config=Neo4jConnectorConfig(max_query_concurrency=3),
+    )
+    try:
+        assert captured["max_connection_pool_size"] == 3
+        assert connector._query_semaphore._value == 3
+    finally:
+        await connector.disconnect_async()
+
+
+async def test_driver_pool_size_override_is_rejected() -> None:
+    with pytest.raises(TypeError, match="Neo4jConnectorConfig.max_query_concurrency"):
+        await Neo4jConnector.from_url_async(
+            global_id="neo4j+concurrency",
+            url="neo4j://localhost:7687",
+            max_connection_pool_size=4,
+        )
+
+
+async def test_query_semaphore_limits_concurrent_cypher_execution() -> None:
+    active = 0
+    max_active = 0
+
+    class TrackingSession(_Session):
+        async def run(self, query: neo4j.Query, parameters: dict[str, Any]) -> _Result:
+            nonlocal active, max_active
+            active += 1
+            max_active = max(max_active, active)
+            await asyncio.sleep(0.01)
+            active -= 1
+            return await super().run(query, parameters)
+
+    class TrackingDriver(_Driver):
+        def session(self, *, database: str | None, default_access_mode: str) -> _Session:
+            self.access_modes.append(default_access_mode)
+            return TrackingSession()
+
+    connector = object.__new__(Neo4jConnector)
+    connector._driver = TrackingDriver()  # type: ignore[assignment]
+    connector._database = None
+    connector.read_only = True
+    connector._query_semaphore = asyncio.Semaphore(2)
+
+    await asyncio.gather(*(connector._run_cypher("RETURN 1", return_df=True) for _ in range(5)))
+
+    assert max_active == 2
 
 
 async def test_failed_connectivity_verification_closes_driver(monkeypatch: pytest.MonkeyPatch) -> None:
