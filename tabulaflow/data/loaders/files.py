@@ -21,6 +21,7 @@ if TYPE_CHECKING:
 
 
 DATA_FILE_EXTENSIONS = frozenset({".csv", ".tsv", ".xlsx", ".xls", ".parquet", ".json", ".jsonl", ".ndjson"})
+"""File suffixes accepted by :func:`load_files`."""
 _DUCKDB_JSON_MAX_OBJECT_SIZE_BYTES = 1024 * 1024 * 1024
 
 

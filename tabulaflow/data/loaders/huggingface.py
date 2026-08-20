@@ -488,6 +488,10 @@ async def load_hf_dataset(
         dataset_url: A HuggingFace dataset URL.
         db_name: Display name for the database. Defaults to the dataset name.
         read_only: If True, block write statements.
+        summarize: Optional async function used to shorten long dataset
+            descriptions before storing them in the schema.
+        config: Immutable connector execution and cache policy. Environment
+            values and built-in defaults are used when omitted.
 
     Returns:
         A :class:`SQLConnector` backed by a DuckDB database.

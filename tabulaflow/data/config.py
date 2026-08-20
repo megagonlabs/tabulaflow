@@ -10,12 +10,7 @@ DEFAULT_CACHE_DIR = Path.home() / ".tabulaflow" / "cache"
 
 
 class _ConnectorConfig(BaseSettings):
-    """Common operational policy for a data connector.
-
-    Attributes:
-        max_query_concurrency: Maximum in-flight queries per connector and
-            underlying connection-pool size.
-    """
+    """Common operational policy for a data connector."""
 
     model_config = SettingsConfigDict(
         env_prefix="TABULAFLOW_",
@@ -35,10 +30,18 @@ class SQLConnectorConfig(_ConnectorConfig):
     """Operational policy for a SQL connector.
 
     Attributes:
+        cache_dir: Root directory for schema and query-result caches.
+        max_result_rows: Maximum rows materialized by one query, or ``None``
+            for no limit.
+        query_timeout_seconds: Default query timeout, or ``None`` to disable.
+        max_query_concurrency: Maximum in-flight queries and connection-pool
+            size per connector.
+        schema_cache_mode: Schema cache read/write policy.
         collect_column_stats: Whether to collect exact row counts and column
             statistics for physical tables. Tables and views are always
             enriched from one bounded row sample; views are never exhaustively
             profiled.
+        query_cache_mode: Query-result cache read/write policy.
     """
 
     collect_column_stats: bool = False
@@ -46,7 +49,21 @@ class SQLConnectorConfig(_ConnectorConfig):
 
 
 class Neo4jConnectorConfig(_ConnectorConfig):
-    """Operational policy for a Neo4j connector."""
+    """Operational policy for a Neo4j connector.
+
+    Attributes:
+        cache_dir: Root directory for schema caches.
+        max_result_rows: Maximum rows materialized by one query, or ``None``
+            for no limit.
+        query_timeout_seconds: Default query timeout, or ``None`` to disable.
+        max_query_concurrency: Maximum in-flight queries and connection-pool
+            size per connector.
+        schema_cache_mode: Schema cache read/write policy.
+        schema_introspection_mode: ``fast`` for metadata procedures or
+            ``full_scan`` for observed graph data.
+        max_graph_result_nodes: Maximum nodes extracted into a graph result.
+        max_graph_result_edges: Maximum edges extracted into a graph result.
+    """
 
     schema_introspection_mode: Literal["fast", "full_scan"] = "fast"
     max_graph_result_nodes: PositiveInt | None = 300

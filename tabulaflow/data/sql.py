@@ -40,7 +40,7 @@ DML/DDL/DCL/stored-proc invocations and surfaces a
 ``ReadOnlyViolationError`` in :class:`ExecResult`.  Statement
 classification is sqlparse-based and dialect-agnostic.
 
-**Query result caching.**  Optional memory + disk cache keyed by
+**Query result caching.**  Optional disk cache keyed by
 query, parameters, and timeout. Configured via
 :class:`tabulaflow.data.config.SQLConnectorConfig`.
 
@@ -406,6 +406,15 @@ def _rows_to_df(rows: Sequence[Any], keys: Any) -> pd.DataFrame:
 
 @dataclass
 class QueryResult:
+    """Low-level SQL execution result.
+
+    Attributes:
+        result: Row data as tuples or a DataFrame, or ``None`` for a
+            non-row-returning statement.
+        latency_seconds: Execution latency, excluding cache lookup.
+        affected_rows: Driver-reported affected row count when available.
+    """
+
     result: list[tuple[Any, ...]] | pd.DataFrame | None
     """Row data for a row-returning statement, or ``None`` for a non-row
     statement (DDL/DML) — mirrors ``ExecResult.df``."""
@@ -930,6 +939,13 @@ _ASYNC_CANCEL_STRATEGIES: dict[str, type[_CancelStrategy]] = {
 
 @dataclass
 class ThrottledEngine:
+    """Execute SQL across sync and async SQLAlchemy engines.
+
+    Provides per-connector and shared concurrency limits, result-size limits,
+    DataFrame conversion, and timeout/cancellation through backend-specific
+    cancel mechanisms. Most callers should use :class:`SQLConnector`.
+    """
+
     engine_type: Literal["async", "sync"]
     engine: AsyncEngine | sqlalchemy.engine.Engine
     dbms_semaphore: asyncio.Semaphore | None
@@ -2137,6 +2153,13 @@ class SQLConnector:
     bypassing SQLAlchemy's parameter parsing — procedural blocks
     (Snowflake Scripting, PL/SQL, T-SQL batches) and dialect-specific
     ``:identifier`` syntax work unchanged.
+
+    Attributes:
+        global_id: Stable, filename-safe identity used by caches.
+        schema: Current introspected SQL schema.
+        language: SQL dialect reported by the schema.
+        config: Resolved immutable connector configuration.
+        read_only: Whether write statements are blocked.
     """
 
     connector_type: ClassVar[Literal["sql"]] = "sql"
@@ -2161,6 +2184,7 @@ class SQLConnector:
 
     @property
     def language(self) -> SQLDialect:
+        """Return the connector's SQL dialect."""
         assert self.schema.dialect is not None
         return self.schema.dialect
 

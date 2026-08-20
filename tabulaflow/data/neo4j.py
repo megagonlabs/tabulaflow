@@ -295,6 +295,14 @@ class Neo4jConnector:
     Uses the official ``neo4j`` async Python driver (Bolt protocol).
     Fast schema introspection uses Neo4j metadata procedures; full-scan mode
     exhaustively derives observed properties and topology from graph data.
+
+    Attributes:
+        global_id: Stable, filename-safe identity used by caches.
+        schema: Current introspected property-graph schema.
+        backend: Graph database backend name (``neo4j``).
+        language: Graph query language (``cypher``).
+        config: Resolved immutable connector configuration.
+        read_only: Whether sessions use server-enforced read access.
     """
 
     connector_type: ClassVar[Literal["property_graph"]] = "property_graph"
@@ -429,6 +437,12 @@ class Neo4jConnector:
         parameters: Mapping[str, Any] | None = None,
         timeout: int | None | object = _UNSET,
     ) -> ExecResult:
+        """Execute Cypher and return tabular data with an optional graph.
+
+        Query failures are returned in ``ExecResult.error``. Omitting
+        ``timeout`` uses the connector configuration; ``None`` disables it.
+        Task cancellation propagates.
+        """
         effective_timeout = self.config.query_timeout_seconds if timeout is _UNSET else timeout
         assert isinstance(effective_timeout, int) or effective_timeout is None
         query_str = query.strip()
@@ -456,6 +470,7 @@ class Neo4jConnector:
             )
 
     async def disconnect_async(self) -> None:
+        """Close the Neo4j driver and all pooled connections."""
         await self._driver.close()
 
     def _schema_cache_path(self) -> Path:

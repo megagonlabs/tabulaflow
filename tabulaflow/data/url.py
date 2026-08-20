@@ -148,6 +148,14 @@ async def connect_url(
         read_only: Block write statements.
         global_id: Stable id for schema caching; derived from the URL if omitted.
         config: Backend-appropriate immutable connector configuration.
+
+    Returns:
+        A connected SQL or property-graph connector.
+
+    Raises:
+        ValueError: If the source is unsupported or required driver settings
+            are invalid.
+        TypeError: If ``config`` does not match the URL backend.
     """
     from tabulaflow.data.neo4j import Neo4jConnector
     from tabulaflow.data.sql import SQLConnector

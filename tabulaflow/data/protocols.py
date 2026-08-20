@@ -30,19 +30,25 @@ class ResultTooLargeError(RuntimeError):
 
 
 class SQLConnectorProtocol(Protocol):
+    """Structural interface implemented by SQL database connectors."""
+
     connector_type: ClassVar[Literal["sql"]]
     global_id: str
     schema: SQLSchema
 
     @property
-    def language(self) -> SQLDialect: ...
+    def language(self) -> SQLDialect:
+        """Return the SQL dialect understood by the connector."""
+        ...
 
     async def run_query_async(
         self,
         query: str | Executable,
         parameters: Sequence[Any] | Mapping[str, Any] = (),
         timeout: int | None = ...,
-    ) -> ExecResult: ...
+    ) -> ExecResult:
+        """Execute a SQL statement and return rows or an error as data."""
+        ...
 
     async def disconnect_async(self) -> None:
         """Close active connections and release held resources."""
@@ -51,7 +57,9 @@ class SQLConnectorProtocol(Protocol):
     async def refresh_schema_async(
         self,
         tables: list[TableRef] | None = None,
-    ) -> SQLSchema: ...
+    ) -> SQLSchema:
+        """Re-introspect all or selected tables and return the live schema."""
+        ...
 
     async def write_dataframe_async(
         self,
@@ -59,32 +67,45 @@ class SQLConnectorProtocol(Protocol):
         table_name: str,
         schema_name: str | None = None,
         mode: Literal["append", "replace"] = "append",
-    ) -> int: ...
+    ) -> int:
+        """Write a DataFrame and return the number of rows written."""
+        ...
 
 
 class PropertyGraphConnectorProtocol(Protocol):
+    """Structural interface implemented by property-graph connectors."""
+
     connector_type: ClassVar[Literal["property_graph"]]
     global_id: str
     schema: PropertyGraphSchema
 
     @property
-    def backend(self) -> str: ...
+    def backend(self) -> str:
+        """Return the graph database backend name."""
+        ...
 
     @property
-    def language(self) -> NonSQLLanguage: ...
+    def language(self) -> NonSQLLanguage:
+        """Return the query language understood by the connector."""
+        ...
 
     async def run_query_async(
         self,
         query: str,
         parameters: Mapping[str, Any] | None = None,
         timeout: int | None = ...,
-    ) -> ExecResult: ...
+    ) -> ExecResult:
+        """Execute a graph query and return tabular/graph data or an error."""
+        ...
 
     async def disconnect_async(self) -> None:
         """Close active connections and release held resources."""
         ...
 
-    async def refresh_schema_async(self) -> PropertyGraphSchema: ...
+    async def refresh_schema_async(self) -> PropertyGraphSchema:
+        """Re-introspect and return the live property-graph schema."""
+        ...
 
 
 DBConnector: TypeAlias = SQLConnectorProtocol | PropertyGraphConnectorProtocol
+"""Any live SQL or property-graph connector."""
