@@ -1,3 +1,5 @@
+"""Property-graph schema formatting in Text2Cypher form."""
+
 from typing import ClassVar
 from dataclasses import dataclass
 

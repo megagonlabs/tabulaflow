@@ -124,6 +124,20 @@ class OutputResolver:
         output: OutputSpec,
         selection: Mapping[ParameterId, object] | None = None,
     ) -> ResolvedOutput:
+        """Resolve an output under one active selection.
+
+        Explicit values override output defaults. Structural selection and
+        reference errors raise ``OutputResolutionError``; expected source or
+        artifact failures become ``UnavailableArtifact`` entries. Each source
+        is resolved at most once per call.
+
+        Args:
+            output: Declarative output to resolve.
+            selection: Optional parameter overrides.
+
+        Returns:
+            Display-ready artifacts and their normalized selection.
+        """
         active_selection = _normalize_selection(output, selection)
         sources = {source.id: source for source in output.sources}
         source_outcomes: dict[SourceId, ResultPayload | SourceNotApplicable | SourceResolutionError | KeyError] = {}

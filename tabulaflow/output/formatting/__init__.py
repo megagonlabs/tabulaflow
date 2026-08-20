@@ -1,4 +1,4 @@
-"""Human- and model-readable output formatting."""
+"""Human- and LLM-readable output formatting."""
 
 from tabulaflow.output.formatting._core import (
     format_connector_summary,

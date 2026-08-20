@@ -1,8 +1,7 @@
-"""Pure output specification models.
+"""Serializable, side-effect-free declarations for interactive outputs.
 
-These models describe an interactive output without executing anything. Runtime
-state such as source caches, connector access, and materialized DataFrames
-belongs outside ``core``.
+Runtime materialization and payload resolution live in ``store`` and
+``resolver``.
 """
 
 from __future__ import annotations
@@ -75,7 +74,7 @@ class ChoiceParameter(BaseModel):
     choices: list[ChoiceOption] = Field(min_length=1)
 
     @model_validator(mode="after")
-    def validate_choice_ids(self) -> "ChoiceParameter":
+    def _validate_choice_ids(self) -> "ChoiceParameter":
         _require_unique([choice.id for choice in self.choices], "choice ids")
         return self
 
@@ -95,7 +94,7 @@ class NumberParameter(BaseModel):
     unit: str | None = None
 
     @model_validator(mode="after")
-    def validate_range(self) -> "NumberParameter":
+    def _validate_range(self) -> "NumberParameter":
         if self.max <= self.min:
             raise ValueError("number parameter max must be greater than min")
         if self.step <= 0:
@@ -119,7 +118,7 @@ class FixedResultSource(BaseModel):
 
 
 class ParameterizedSource(BaseModel):
-    """Source that materializes/cache results under a source-local selection."""
+    """Source that materializes and caches results by source-local selection."""
 
     model_config = ConfigDict(extra="forbid")
 
@@ -197,7 +196,7 @@ class OutputSpec(BaseModel):
     default_selection: Selection = Field(default_factory=dict)
 
     @model_validator(mode="after")
-    def validate_spec(self) -> "OutputSpec":
+    def _validate_spec(self) -> "OutputSpec":
         parameter_ids = [parameter.id for parameter in self.parameters]
         source_ids = [source.id for source in self.sources]
         artifact_ids = [artifact.id for artifact in self.artifacts]

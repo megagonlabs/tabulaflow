@@ -1,3 +1,5 @@
+"""Annotated DDL formatting for SQL schemas."""
+
 from typing import ClassVar
 from dataclasses import dataclass
 from tabulaflow.core import ForeignKeySchema, SQLDialect, SQLSchema, SQLTableSchema, SQLColumnSchema

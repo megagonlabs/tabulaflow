@@ -7,9 +7,13 @@ from tabulaflow.core.registry import ClassRegistry
 
 
 class SQLSchemaFormatter(Protocol):
+    """Render SQL schema models as readable text."""
+
     name: ClassVar[str]
 
-    def format(self, schema: SQLSchema, *, include_descriptions: bool = False) -> str: ...
+    def format(self, schema: SQLSchema, *, include_descriptions: bool = False) -> str:
+        """Render a complete database schema."""
+        ...
 
     def format_table(
         self,
@@ -17,13 +21,19 @@ class SQLSchemaFormatter(Protocol):
         *,
         dialect: SQLDialect | None,
         include_descriptions: bool = False,
-    ) -> str: ...
+    ) -> str:
+        """Render one table using the supplied SQL dialect."""
+        ...
 
 
 class PropertyGraphSchemaFormatter(Protocol):
+    """Render property-graph schema models as readable text."""
+
     name: ClassVar[str]
 
-    def format(self, schema: PropertyGraphSchema) -> str: ...
+    def format(self, schema: PropertyGraphSchema) -> str:
+        """Render a complete property-graph schema."""
+        ...
 
 
 _SchemaFormatter: TypeAlias = SQLSchemaFormatter | PropertyGraphSchemaFormatter

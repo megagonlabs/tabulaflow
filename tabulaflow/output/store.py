@@ -345,7 +345,19 @@ class OutputStore:
         source_id: str,
         selection: Mapping[str, object] | None = None,
     ) -> ResultPayload:
-        """Resolve a source to a materialized payload, materializing parameterized cache misses."""
+        """Resolve a source to a materialized payload.
+
+        Fixed sources return their stored result. Parameterized sources project
+        relevant values from ``selection``, fill omitted values from declared
+        defaults, validate them, and materialize cache misses.
+
+        Args:
+            source_id: Registered output source ID.
+            selection: Global or source-local parameter values.
+
+        Returns:
+            The materialized result payload.
+        """
         source = self.get_source(source_id)
         if isinstance(source, FixedResultSource):
             return await self.get_payload(source.result_id)

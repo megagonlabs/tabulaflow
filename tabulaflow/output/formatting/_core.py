@@ -1,3 +1,5 @@
+"""General text formatting for output-facing data and results."""
+
 import json
 from typing import Any
 
@@ -56,6 +58,23 @@ def format_dataframe(
     floatfmt: str = ".8g",
     add_bottom_ellipsis_row: bool = False,
 ) -> str:
+    """Format a DataFrame as a compact text table.
+
+    Long results retain rows from both ends with an ellipsis between them;
+    multiline and oversized cells are converted to bounded single-line text.
+
+    Args:
+        df: DataFrame to format.
+        max_visible_rows: Maximum source rows to display before truncation.
+        max_cell_width: Maximum characters displayed per non-numeric cell.
+        tablefmt: Table format accepted by ``tabulate``.
+        floatfmt: Numeric format accepted by ``tabulate``.
+        add_bottom_ellipsis_row: Whether to append an ellipsis row.
+
+    Returns:
+        The formatted table text.
+    """
+
     def _truncate_str(s: str) -> str:
         s = format_single_line_text(s)
         if len(s) > max_cell_width:
@@ -76,7 +95,7 @@ def format_dataframe(
         # Convert other types (bytes, list, dict, Decimal, datetime, etc.) to str and truncate
         return _truncate_str(str(val))
 
-    # Apply truncation first to preserve numeric types (nulls stay as None for tabulate)
+    # Preserve numeric types while converting nulls to explicit display text.
     display_df = df.map(truncate_cell)
 
     n = len(display_df)
@@ -230,6 +249,7 @@ def _format_json_schema_type(
 
 
 def format_exec_result_markdown(result: ExecResult) -> str:
+    """Format a database execution result as concise Markdown."""
     if result.error is not None:
         return f"**Error:** {result.error.exc_type}: {result.error.message}"
     if result.df is None:

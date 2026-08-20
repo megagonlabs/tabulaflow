@@ -8,18 +8,20 @@ import datetime
 import re
 from tabulaflow.core import TableNamePattern, SQLSchema, SQLTableSchema, SQLColumnSchema, ForeignKeySchema
 
+__all__ = ["SchemaCompressor"]
+
 
 T = TypeVar("T")
 
 
-class BaseClusterFunc(Protocol[T]):
+class _ClusterFunc(Protocol[T]):
     def extract(self, name: str) -> tuple[str, T | None]: ...
 
     def summarize(self, variations: list[T]) -> str | None: ...
 
 
 @dataclass
-class DateAffixClusterFunc:
+class _DateAffixCluster:
     max_missing_ratio: float = 0.2
 
     def extract(self, name: str) -> tuple[str, datetime.date | None]:
@@ -58,7 +60,7 @@ class DateAffixClusterFunc:
 
 
 @dataclass
-class YearMonthAffixClusterFunc:
+class _YearMonthAffixCluster:
     max_missing_ratio: float = 0.2
 
     def extract(self, name: str) -> tuple[str, datetime.date | None]:
@@ -96,7 +98,7 @@ class YearMonthAffixClusterFunc:
 
 
 @dataclass
-class YearAffixClusterFunc:
+class _YearAffixCluster:
     max_missing_ratio: float = 0.2
 
     def extract(self, name: str) -> tuple[str, int | None]:
@@ -124,7 +126,7 @@ class YearAffixClusterFunc:
 
 
 @dataclass
-class IndexAffixClusterFunc:
+class _IndexAffixCluster:
     max_missing_ratio: float = 0.2
 
     def extract(self, name: str) -> tuple[str, str | None]:
@@ -152,17 +154,17 @@ class IndexAffixClusterFunc:
 
 @dataclass
 class SchemaCompressor:
-    """
-    Compresses the schema by iteratively merging tables with the same digest.
-    """
+    """Merge structurally equivalent SQL tables into compact name patterns."""
 
-    name_cluster_funcs: list[BaseClusterFunc[Any]] = field(
+    _name_cluster_funcs: list[_ClusterFunc[Any]] = field(
         default_factory=lambda: [
-            DateAffixClusterFunc(),
-            YearMonthAffixClusterFunc(),
-            YearAffixClusterFunc(),
-            IndexAffixClusterFunc(),
-        ]
+            _DateAffixCluster(),
+            _YearMonthAffixCluster(),
+            _YearAffixCluster(),
+            _IndexAffixCluster(),
+        ],
+        init=False,
+        repr=False,
     )
 
     def _foreign_key_digest(self, fk: ForeignKeySchema, table: SQLTableSchema) -> tuple[Any, ...]:
@@ -226,16 +228,28 @@ class SchemaCompressor:
         )
 
     def _get_patterns(self, names: list[str]) -> list[TableNamePattern]:
-        """Example:
-        _get_patterns(names=["revenue_20200101", "revenue_20200102", "revenue_20200103", "profit_20200101", "profit_20200102", "profit_20200103"])
-        returns: [
-          TableNamePattern(pattern="revenue_YYYYMMDD", comment="YYYYMMDD from 20200101 to 20200103", original_names=["revenue_20200101", "revenue_20200102", "revenue_20200103"]),
-          TableNamePattern(pattern="profit_YYYYMMDD", comment="YYYYMMDD from 20200101 to 20200103", original_names=["profit_20200101", "profit_20200102", "profit_20200103"]),
-        ]
+        """Group concrete table names into compact affix patterns.
+
+        Example:
+            Names such as ``revenue_20200101``, ``revenue_20200102``, and
+            ``revenue_20200103`` produce::
+
+                TableNamePattern(
+                    pattern="revenue_YYYYMMDD",
+                    comment="YYYYMMDD from 20200101 to 20200103",
+                    original_names=[
+                        "revenue_20200101",
+                        "revenue_20200102",
+                        "revenue_20200103",
+                    ],
+                )
+
+            A separate ``profit_YYYYMMDD`` pattern is produced for matching
+            ``profit_<date>`` names.
         """
         res = []
         remaining = names
-        for func in self.name_cluster_funcs:
+        for func in self._name_cluster_funcs:
             groups = collections.defaultdict(list)
             for name in remaining:
                 pattern, variation = func.extract(name)
@@ -274,6 +288,7 @@ class SchemaCompressor:
         return merged_table
 
     def compress(self, schema: SQLSchema) -> SQLSchema:
+        """Return a deep-copied schema with equivalent tables merged."""
         schema = copy.deepcopy(schema)
 
         digest2tables = collections.defaultdict(list)

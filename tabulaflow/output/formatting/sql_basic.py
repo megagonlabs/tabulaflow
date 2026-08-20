@@ -1,3 +1,5 @@
+"""Compact text formatting for SQL schemas."""
+
 from dataclasses import dataclass
 from typing import ClassVar
 

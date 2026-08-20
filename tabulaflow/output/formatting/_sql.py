@@ -1,3 +1,5 @@
+"""Shared SQL schema-formatting helpers."""
+
 from dataclasses import dataclass
 
 from tabulaflow.core import SQLColumnSchema, SQLDialect, SQLSchema, SQLTableSchema
