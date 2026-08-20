@@ -93,6 +93,8 @@ async def test_query_concurrency_configures_semaphore_and_driver_pool(monkeypatc
     try:
         assert captured["max_connection_pool_size"] == 3
         assert connector._query_semaphore._value == 3
+        assert connector.backend == "neo4j"
+        assert connector.language == "cypher"
     finally:
         await connector.disconnect_async()
 

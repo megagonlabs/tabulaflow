@@ -8,6 +8,7 @@ from tabulaflow.data import DBRegistry
 
 class FakeSQLConnector:
     connector_type = "sql"
+    backend = "sqlite"
     global_id = "fake+sql"
     schema = SimpleNamespace(dialect="sqlite", tables=[object(), object()])
 

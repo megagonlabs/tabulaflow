@@ -7,7 +7,7 @@ from typing import Any, ClassVar, Literal, Protocol, TypeAlias
 import pandas as pd
 from sqlalchemy.sql import Executable
 
-from tabulaflow.core import ExecResult, NonSQLLanguage, PropertyGraphSchema, SQLDialect, SQLSchema, TableRef
+from tabulaflow.core import ExecResult, GraphQueryLanguage, PropertyGraphSchema, SQLDialect, SQLSchema, TableRef
 
 _GLOBAL_ID_PATTERN = re.compile(r"[A-Za-z0-9][A-Za-z0-9._+-]{0,179}")
 
@@ -35,6 +35,11 @@ class SQLConnectorProtocol(Protocol):
     connector_type: ClassVar[Literal["sql"]]
     global_id: str
     schema: SQLSchema
+
+    @property
+    def backend(self) -> str:
+        """Return the concrete SQL database backend name."""
+        ...
 
     @property
     def language(self) -> SQLDialect:
@@ -85,7 +90,7 @@ class PropertyGraphConnectorProtocol(Protocol):
         ...
 
     @property
-    def language(self) -> NonSQLLanguage:
+    def language(self) -> GraphQueryLanguage:
         """Return the query language understood by the connector."""
         ...
 

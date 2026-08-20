@@ -7,6 +7,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from tabulaflow.core.serialization import SerializableDataFrame
 
+# Canonical TabulaFlow names; integrations translate library-specific aliases.
 SQLDialect: TypeAlias = Literal[
     "athena",
     "bigquery",
@@ -17,7 +18,7 @@ SQLDialect: TypeAlias = Literal[
     "hive",
     "mysql",
     "oracle",
-    "postgres",
+    "postgresql",
     "presto",
     "redshift",
     "snowflake",
@@ -29,7 +30,7 @@ SQLDialect: TypeAlias = Literal[
     "tsql",
 ]
 
-NonSQLLanguage: TypeAlias = Literal["cypher", "mongo"]
+GraphQueryLanguage: TypeAlias = Literal["cypher"]
 
 
 # ---------------------------------------------------------------------------

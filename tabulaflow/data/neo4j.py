@@ -20,7 +20,7 @@ from tabulaflow.core import (
     GraphResultEdge,
     GraphResultNode,
     NodeSchema,
-    NonSQLLanguage,
+    GraphQueryLanguage,
     PropertyGraphSchema,
     RelationshipEndpoint,
     RelationshipSchema,
@@ -307,9 +307,9 @@ class Neo4jConnector:
 
     connector_type: ClassVar[Literal["property_graph"]] = "property_graph"
     backend: ClassVar[Literal["neo4j"]] = "neo4j"
+    language: ClassVar[GraphQueryLanguage] = "cypher"
     global_id: str
     schema: PropertyGraphSchema
-    language: NonSQLLanguage
     _driver: neo4j.AsyncDriver
     _database: str | None
     _schema_name: str
@@ -387,7 +387,6 @@ class Neo4jConnector:
             connector = cls(
                 global_id=global_id,
                 schema=schema or PropertyGraphSchema(name=schema_name),
-                language="cypher",
                 _driver=driver,
                 _database=database,
                 _schema_name=schema_name,

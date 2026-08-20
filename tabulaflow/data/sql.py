@@ -93,7 +93,7 @@ import contextlib
 from contextlib import asynccontextmanager
 from pathlib import Path
 import sqlalchemy
-from pydantic import ValidationError
+from pydantic import TypeAdapter, ValidationError
 from sqlalchemy.exc import DBAPIError, SAWarning
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncEngine
 from sqlalchemy.engine.url import URL as SQLAlchemyURL
@@ -127,6 +127,11 @@ logger = logging.getLogger(__name__)
 
 _T = TypeVar("_T")
 _UNSET = object()
+_SQL_DIALECT_ADAPTER: TypeAdapter[SQLDialect] = TypeAdapter(SQLDialect)
+_SQL_DIALECT_BY_BACKEND: dict[str, str] = {
+    "awsathena": "athena",
+    "mssql": "tsql",
+}
 
 # Keywords that mark a statement as data-modifying.  Used by the
 # read-only guard.  False positives are preferred over false negatives:
@@ -1540,6 +1545,14 @@ def _sql_schema_cache_path(
     return get_schema_cache_path(config.cache_dir, global_id, variant=variant)
 
 
+def _sql_dialect_for_backend(backend: str) -> SQLDialect:
+    candidate = _SQL_DIALECT_BY_BACKEND.get(backend, backend)
+    try:
+        return _SQL_DIALECT_ADAPTER.validate_python(candidate)
+    except ValidationError as e:
+        raise ValueError(f"Unsupported SQLAlchemy dialect: {backend!r}") from e
+
+
 async def _load_schema_async(
     global_id: str,
     db_name: str,
@@ -1578,10 +1591,7 @@ async def _load_schema_async(
     cache_path = _sql_schema_cache_path(config, global_id, options)
 
     async with cache_lock(cache_path):
-        sqlalchemy_dialect = t_eng.engine.dialect.name
-        # SQLAlchemy uses "postgresql"; normalise to our SQLDialect literal "postgres"
-        dialect_map: dict[str, str] = {"postgresql": "postgres"}
-        dialect = dialect_map.get(sqlalchemy_dialect, sqlalchemy_dialect)
+        dialect = _sql_dialect_for_backend(t_eng.engine.dialect.name)
 
         if config.schema_cache_mode in ("read_write", "cache_only") and cache_path.exists():
             try:
@@ -1598,7 +1608,7 @@ async def _load_schema_async(
         schema = await _build_schema_async(
             t_eng,
             db_name,
-            dialect,  # type: ignore
+            dialect,
             options,
             collect_column_stats=config.collect_column_stats,
             query_timeout_seconds=config.query_timeout_seconds,
@@ -2157,6 +2167,7 @@ class SQLConnector:
     Attributes:
         global_id: Stable, filename-safe identity used by caches.
         schema: Current introspected SQL schema.
+        backend: Concrete SQLAlchemy database backend.
         language: SQL dialect reported by the schema.
         config: Resolved immutable connector configuration.
         read_only: Whether write statements are blocked.
@@ -2181,6 +2192,11 @@ class SQLConnector:
     # vocabulary into ``SQLConnector``.
     _on_disconnect: Callable[[], None] | None = None
     _schema_lock: asyncio.Lock = dataclasses.field(default_factory=asyncio.Lock)
+
+    @property
+    def backend(self) -> str:
+        """Return the SQLAlchemy database backend name."""
+        return self._t_eng.engine.dialect.name
 
     @property
     def language(self) -> SQLDialect:

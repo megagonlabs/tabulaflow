@@ -12,6 +12,12 @@ from tqdm.asyncio import tqdm_asyncio
 
 from tabulaflow.research.types import AmbigNL2QTask, GoldAmbiguityPoint, NumericOrNull
 
+_SQLGLOT_DIALECT_BY_LANGUAGE = {"postgresql": "postgres"}
+
+
+def _sqlglot_dialect(language: str) -> str:
+    return _SQLGLOT_DIALECT_BY_LANGUAGE.get(language, language)
+
 
 def extract_all_source_columns(query: str, language: str = "sqlite") -> list[tuple[str, str]]:
     """Extract all source columns referenced by a SQL query.
@@ -27,9 +33,10 @@ def extract_all_source_columns(query: str, language: str = "sqlite") -> list[tup
         Deduplicated ``(table_name, column_name)`` pairs in discovery order.
         Returns an empty list when the query cannot be parsed.
     """
+    dialect = _sqlglot_dialect(language)
     try:
-        parsed = sqlglot.parse_one(query, dialect=language)
-        qualified = qualify(parsed, dialect=language, validate_qualify_columns=False)
+        parsed = sqlglot.parse_one(query, dialect=dialect)
+        qualified = qualify(parsed, dialect=dialect, validate_qualify_columns=False)
         root = build_scope(qualified)
     except Exception:
         try:

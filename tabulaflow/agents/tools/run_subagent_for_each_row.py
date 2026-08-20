@@ -52,7 +52,7 @@ _INTERNAL_COLUMNS = [_COL_EXCEPTION, _COL_TRAJECTORY]
 # Dialects that support a native JSON column type and the SQL type name to use.
 _JSON_TYPE_FOR_DIALECT: dict[SQLDialect, str] = {
     "snowflake": "VARIANT",
-    "postgres": "JSONB",
+    "postgresql": "JSONB",
     "mysql": "JSON",
     "duckdb": "JSON",
     "bigquery": "JSON",

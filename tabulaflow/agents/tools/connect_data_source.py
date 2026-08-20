@@ -78,7 +78,7 @@ class ConnectDataSourceTool:
             return f"(error: failed to connect {source!r}: {type(e).__name__}: {e}.{hint})"
 
         self._registry.register(alias, connector)
-        lang = connector.language or "SQL"
+        lang = connector.language
         label = lang if lang.lower() == "cypher" else f"{lang} SQL"
         n_tables = self._table_count(connector)
         suffix = f", {n_tables} table{'s' if n_tables != 1 else ''}" if n_tables else ""

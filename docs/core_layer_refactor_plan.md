@@ -84,7 +84,7 @@ Owns database and graph schema primitives.
 Move here:
 
 - `SQLDialect`
-- `NonSQLLanguage`
+- `GraphQueryLanguage`
 - `TableRef`
 - `ColumnRef`
 - `ForeignKeySchema`

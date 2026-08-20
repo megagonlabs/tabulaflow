@@ -13,7 +13,7 @@ import duckdb
 import pytest
 
 from tabulaflow.data.config import SQLConnectorConfig
-from tabulaflow.data.sql import SQLConnector, ThrottledEngine, _canonicalize_dtype
+from tabulaflow.data.sql import SQLConnector, ThrottledEngine, _canonicalize_dtype, _sql_dialect_for_backend
 from tabulaflow.core import SQLSchema, TableRef
 
 
@@ -30,6 +30,19 @@ def test_canonicalize_dtype_composites() -> None:
     assert _canonicalize_dtype("STRUCT(id VARCHAR, n BIGINT)") == "STRUCT"
     assert _canonicalize_dtype("STRUCT(id VARCHAR)[]") == "ARRAY"
     assert _canonicalize_dtype("MAP(VARCHAR, BIGINT)") == "MAP"
+
+
+@pytest.mark.parametrize(
+    ("backend", "dialect"),
+    [("postgresql", "postgresql"), ("mssql", "tsql"), ("awsathena", "athena"), ("duckdb", "duckdb")],
+)
+def test_sql_backend_maps_to_query_dialect(backend: str, dialect: str) -> None:
+    assert _sql_dialect_for_backend(backend) == dialect
+
+
+def test_unknown_sql_backend_is_rejected() -> None:
+    with pytest.raises(ValueError, match="Unsupported SQLAlchemy dialect"):
+        _sql_dialect_for_backend("unknown")
 
 
 async def test_preloaded_connector_schema_requires_dialect(tmp_path: Path) -> None:
@@ -65,6 +78,8 @@ async def test_connector_derives_global_id_from_url(tmp_path: Path) -> None:
     )
     try:
         assert connector.global_id.startswith("url+")
+        assert connector.backend == "sqlite"
+        assert connector.language == "sqlite"
     finally:
         await connector.disconnect_async()
 

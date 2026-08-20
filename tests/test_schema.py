@@ -77,7 +77,7 @@ def test_table_select_columns_can_return_an_empty_table() -> None:
 
 
 def test_schema_select_columns_drops_unselected_tables() -> None:
-    schema = SQLSchema(name="shop", dialect="postgres", tables=[_table(), _table("archived_orders")])
+    schema = SQLSchema(name="shop", dialect="postgresql", tables=[_table(), _table("archived_orders")])
 
     selected = schema.select_columns(
         [ColumnRef(schema_name="PUBLIC", table_name="ORDERS", column_name="CUSTOMER_ID")],

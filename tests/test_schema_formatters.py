@@ -102,7 +102,7 @@ def test_format_table_uses_explicit_dialect_without_retaining_state() -> None:
     formatter = SQLDDLSchemaFormatter()
 
     bigquery = formatter.format_table(table, dialect="bigquery")
-    postgres = formatter.format_table(table, dialect="postgres")
+    postgres = formatter.format_table(table, dialect="postgresql")
 
     assert "CREATE TABLE items (\n    `item name` INTEGER" in bigquery
     assert 'CREATE TABLE items (\n    "item name" INTEGER' in postgres
@@ -135,7 +135,7 @@ def test_schema_column_limit_prioritizes_complete_key_relationships() -> None:
         primary_key=["id"],
         foreign_keys=[foreign_key],
     )
-    schema = SQLSchema(name="shop", dialect="postgres", tables=[customers, orders])
+    schema = SQLSchema(name="shop", dialect="postgresql", tables=[customers, orders])
 
     formatted = SQLDDLSchemaFormatter(max_total_columns=2).format(schema)
 
@@ -182,7 +182,7 @@ def test_complete_primary_and_foreign_key_formatting() -> None:
             ),
         ],
     )
-    schema = SQLSchema(name="shop", dialect="postgres", tables=[customers, orders])
+    schema = SQLSchema(name="shop", dialect="postgresql", tables=[customers, orders])
 
     basic = SQLBasicSchemaFormatter().format(schema)
     ddl = SQLDDLSchemaFormatter(
@@ -194,7 +194,7 @@ def test_complete_primary_and_foreign_key_formatting() -> None:
 
     assert (
         basic
-        == """Database: shop (SQL Dialect: postgres)
+        == """Database: shop (SQL Dialect: postgresql)
 
 === (SCHEMA: public) TABLE: customers ===
 - "id": INTEGER [PK]
@@ -212,7 +212,7 @@ def test_complete_primary_and_foreign_key_formatting() -> None:
     assert (
         ddl
         == """**Database:** `shop`
-**SQL Dialect:** `postgres`
+**SQL Dialect:** `postgresql`
 
 ```sql
 /*

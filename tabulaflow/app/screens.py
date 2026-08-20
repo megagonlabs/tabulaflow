@@ -8,7 +8,7 @@ from __future__ import annotations
 import json
 import re
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 from rich.text import Text
 from textual.app import ComposeResult
@@ -42,6 +42,7 @@ if TYPE_CHECKING:
     from typing import Any
 
     import pandas as pd
+    from tabulaflow.data.protocols import PropertyGraphConnectorProtocol
 
 
 def _normalize_json_like(value: object) -> object:
@@ -1295,7 +1296,12 @@ class SchemaBrowserScreen(Screen[None]):
             connector = self._registry.get(alias)
             schema = connector.schema
             if isinstance(schema, PropertyGraphSchema):
-                self._add_graph_db_node(tree.root, alias, connector, schema)
+                self._add_graph_db_node(
+                    tree.root,
+                    alias,
+                    cast("PropertyGraphConnectorProtocol", connector),
+                    schema,
+                )
                 continue
             if not isinstance(schema, SQLSchema):
                 continue
@@ -1335,7 +1341,13 @@ class SchemaBrowserScreen(Screen[None]):
                 for t in sorted(tables, key=lambda t: t.name):
                     self._add_table_node(db_node, alias, t)
 
-    def _add_graph_db_node(self, parent: object, alias: str, connector: object, schema: object) -> None:
+    def _add_graph_db_node(
+        self,
+        parent: object,
+        alias: str,
+        connector: PropertyGraphConnectorProtocol,
+        schema: object,
+    ) -> None:
         from tabulaflow.core import PropertyGraphSchema
 
         assert isinstance(schema, PropertyGraphSchema)
@@ -1345,9 +1357,7 @@ class SchemaBrowserScreen(Screen[None]):
 
         db_label = Text()
         db_label.append(alias, style="bold")
-        backend = getattr(connector, "backend", None)
-        if backend:
-            db_label.append(f"  {backend}", style="dim")
+        db_label.append(f"  {connector.backend}", style="dim")
 
         db_node = parent_node.add(
             db_label,
