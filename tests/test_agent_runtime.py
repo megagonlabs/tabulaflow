@@ -1,3 +1,4 @@
+import asyncio
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any, AsyncIterator, ClassVar, Literal
@@ -61,6 +62,19 @@ async def test_runtime_shares_loop_bound_resources() -> None:
     assert runtime.embedding_throttles() is runtime.embedding_throttles()
     assert runtime.get_base_model("model", build) is runtime.get_base_model("model", build)
     assert builds == 1
+
+
+def test_runtime_separates_resources_between_event_loops() -> None:
+    runtime = _get_agent_runtime()
+
+    async def resources() -> tuple[object, object]:
+        return runtime.llm_throttles(), runtime.get_base_model("model", object)
+
+    first = asyncio.run(resources())
+    second = asyncio.run(resources())
+
+    assert first[0] is not second[0]
+    assert first[1] is not second[1]
 
 
 async def test_runtime_owns_the_default_browser_manager() -> None:

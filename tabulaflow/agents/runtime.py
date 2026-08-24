@@ -21,9 +21,9 @@ _ThrottlePair = tuple[asyncio.Semaphore | None, AsyncLimiter | None]
 class _AgentRuntime:
     def __init__(self, config: AgentRuntimeConfig) -> None:
         self.config = config
-        self._llm_throttles: dict[int, _ThrottlePair] = {}
-        self._embedding_throttles: dict[int, _ThrottlePair] = {}
-        self._base_models: dict[int, dict[str, Any]] = {}
+        self._llm_throttles: dict[asyncio.AbstractEventLoop, _ThrottlePair] = {}
+        self._embedding_throttles: dict[asyncio.AbstractEventLoop, _ThrottlePair] = {}
+        self._base_models: dict[asyncio.AbstractEventLoop, dict[str, Any]] = {}
         self._browser_manager: WebBrowserManager | None = None
         self._resource_lock = threading.Lock()
 
@@ -42,8 +42,8 @@ class _AgentRuntime:
         )
 
     def get_base_model(self, name: str, factory: Callable[[], _ModelT]) -> _ModelT:
-        loop_id = id(asyncio.get_running_loop())
-        per_loop = self._base_models.setdefault(loop_id, {})
+        loop = asyncio.get_running_loop()
+        per_loop = self._base_models.setdefault(loop, {})
         if name not in per_loop:
             per_loop[name] = factory()
         return cast(_ModelT, per_loop[name])
@@ -70,16 +70,16 @@ class _AgentRuntime:
 
     @staticmethod
     def _throttles(
-        cache: dict[int, _ThrottlePair],
+        cache: dict[asyncio.AbstractEventLoop, _ThrottlePair],
         max_concurrency: int | None,
         max_requests_per_minute: int | None,
     ) -> _ThrottlePair:
-        loop_id = id(asyncio.get_running_loop())
-        if loop_id not in cache:
+        loop = asyncio.get_running_loop()
+        if loop not in cache:
             semaphore = asyncio.Semaphore(max_concurrency) if max_concurrency is not None else None
             limiter = AsyncLimiter(max_requests_per_minute, 60) if max_requests_per_minute is not None else None
-            cache[loop_id] = (semaphore, limiter)
-        return cache[loop_id]
+            cache[loop] = (semaphore, limiter)
+        return cache[loop]
 
 
 _runtime: _AgentRuntime | None = None
