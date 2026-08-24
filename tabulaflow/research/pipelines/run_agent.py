@@ -9,11 +9,11 @@ import asyncio
 import logging
 import litellm
 import traceback
-import tabulaflow
 from tabulaflow.research.agenthub.base import agent_registry
 from tabulaflow.research.benchmarks.base import dataset_registry
 from tabulaflow.research.metrics import BaseMetricAggregator, SimpleInferenceMetricsAggregator
 from tabulaflow.research.utils import pprint_dict, tqdm_gather_with_exceptions
+from tabulaflow.research.observability import configure_research_observability
 from tabulaflow.research.pipelines.utils import bool_flag
 from tabulaflow.research.agenthub import NL2QAgent, BaseAgentConfig
 from tabulaflow.research.agenthub.user_simulator import UserSimulator
@@ -330,7 +330,8 @@ async def main_async() -> None:
     print(args)
     print()
 
-    tabulaflow.configure()
+    logging.basicConfig(level=logging.DEBUG if args.debug else logging.WARNING)
+    configure_research_observability()
 
     ##### Remove #####
     is_a199_flag = False

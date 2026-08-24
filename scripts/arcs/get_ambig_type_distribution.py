@@ -1,10 +1,8 @@
-import tabulaflow
 from tabulaflow.research.benchmarks.arcs import ARCSDatasetLoader
 import asyncio
 
 
 async def main():
-    tabulaflow.configure()
     dataset_loader = ARCSDatasetLoader()
     dataset = await dataset_loader.get_split_async("test")
     # tasks = [task for task in dataset.tasks if task.qid.endswith("-0")]

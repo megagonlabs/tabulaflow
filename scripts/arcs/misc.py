@@ -1,5 +1,4 @@
 import os
-import tabulaflow
 from tabulaflow.research.types import NL2QRunResult
 
 
@@ -25,8 +24,6 @@ EXP_DIRS = {
 
 TALBE_FMT = "github"
 
-
-tabulaflow.configure()
 
 EXP_RESULTS = {}
 for method, exp_dir in EXP_DIRS.items():

@@ -1,5 +1,5 @@
 import asyncio
-import tabulaflow
+from tabulaflow.research.observability import configure_research_observability
 from tabulaflow.research.agenthub import SQLAgent, BasicAgentConfig
 from tabulaflow.research.benchmarks import BirdSQLDatasetLoader
 from tabulaflow.research.metrics import BirdSQLEx
@@ -7,7 +7,7 @@ from tabulaflow.research.pipelines import run_agent_async, populate_exec_results
 
 
 async def main() -> None:
-    tabulaflow.configure()
+    configure_research_observability()
     dataloader = BirdSQLDatasetLoader()
     # dataset includes the text-to-query tasks and the database connectors
     dataset = await dataloader.get_split_async("dev")

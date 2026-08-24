@@ -47,15 +47,11 @@ def chat(
 ) -> None:
     """Start an interactive database chat session (SQL or Neo4j Cypher)."""
     import asyncio
-
-    import tabulaflow
+    import logging
 
     startup_llm = _resolve_startup_llm_selection(llm_preset=llm_preset)
 
-    tabulaflow.configure(
-        instrument_enabled=False,
-        log_level="WARNING",
-    )
+    logging.basicConfig(level=logging.WARNING)
 
     from tabulaflow.app.tui import run_tui
 

@@ -3,7 +3,6 @@ import argparse
 import asyncio
 import os
 from tabulate import tabulate
-import tabulaflow
 from tabulaflow.research.types import NL2QRunResult, StructuredAmbigNL2QTaskOutput
 from tabulaflow.research.utils import dict_to_df
 
@@ -52,8 +51,6 @@ async def main() -> None:
     args = parser.parse_args()
     print(args)
     print()
-
-    tabulaflow.configure()
 
     with open(os.path.join(args.result_dir, "result.json"), "r") as f:
         result = NL2QRunResult.model_validate_json(f.read())

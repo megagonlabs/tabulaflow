@@ -9,7 +9,6 @@ from pydantic import BaseModel
 from tabulaflow.core import SQLSchema
 from tabulaflow.agents.trace import Usage, Trajectory
 from tabulaflow.research.types import NL2QTask
-from tabulaflow.config import tabulaflow_config
 from tabulaflow.data import DBConnector
 from tabulaflow.agents.llm import make_model_settings
 from tabulaflow.agents.tools import BaseTool
@@ -39,9 +38,6 @@ def get_max_steps_processor(max_steps: int) -> Any:
 
 
 def instrument(predict_async_fn: Callable[..., Any]) -> Callable[..., Any]:
-    if not tabulaflow_config.instrument_enabled:
-        return predict_async_fn
-
     @wraps(predict_async_fn)
     async def wrapper(self: Any, task: NL2QTask, *args: Any, **kwargs: Any) -> Any:
         from tabulaflow import __version__
@@ -55,10 +51,7 @@ def instrument(predict_async_fn: Callable[..., Any]) -> Callable[..., Any]:
             # Already inside a span, do not start a new span
             return await predict_async_fn(self, task, *args, **kwargs)
 
-        span_name = f"qid={task.qid}".strip()
-        if tabulaflow_config.instrument_prefix:
-            span_name = f"{tabulaflow_config.instrument_prefix} | {span_name}"
-        with tracer.start_as_current_span(span_name):
+        with tracer.start_as_current_span(f"qid={task.qid}"):
             return await predict_async_fn(self, task, *args, **kwargs)
 
     return wrapper

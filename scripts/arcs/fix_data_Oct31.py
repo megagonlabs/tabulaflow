@@ -1,4 +1,3 @@
-import tabulaflow
 from tabulaflow.research.benchmarks.arcs import ARCSDatasetLoader
 from tabulaflow.research.types import AmbigNL2QTask
 from pydantic import TypeAdapter
@@ -7,7 +6,6 @@ import asyncio
 
 
 async def main():
-    tabulaflow.configure()
     dataset_loader = ARCSDatasetLoader()
     dataset = await dataset_loader.get_split_async("test")
     tasks = [task for task in dataset.tasks if task.qid.endswith("-0")]

@@ -2,7 +2,6 @@
 import time
 import asyncio
 from typing import Any
-import tabulaflow
 from tabulaflow.research.benchmarks import dataset_registry
 from tabulaflow.data import SQLConnectorProtocol
 
@@ -55,7 +54,6 @@ async def run_query(db_connector: SQLConnectorProtocol, query: str, parameters: 
 
 
 async def main() -> None:
-    tabulaflow.configure()
     dataset_loader = dataset_registry.get_class("arcs")()
     # dataset = await dataset_loader.get_split_async("dev")
     # db_connector: SQLConnector = dataset.db_connectors["retails"]

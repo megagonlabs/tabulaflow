@@ -1,11 +1,9 @@
 # mypy: ignore-errors
-import tabulaflow
 from tabulaflow.research.types import AmbigNL2QTask
 import os
 
 
 def main():
-    tabulaflow.configure()
     latency_1 = []
     for qid in os.listdir("data/ARCS/tasks_1"):
         if qid.endswith(".json"):

@@ -1,8 +1,6 @@
 import os
-import tabulaflow
 from tabulaflow.research.types import NL2QRunResult
 
-tabulaflow.configure()
 
 result_dir = "output/115_o4-mini-structured/"
 

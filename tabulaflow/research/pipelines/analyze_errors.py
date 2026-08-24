@@ -3,14 +3,15 @@ import asyncio
 import os
 import copy
 import json
+import logging
 import time
 from typing import Any, Literal
 from pydantic import BaseModel, Field
 import jinja2
-import tabulaflow
 from tabulaflow.agents.llm import make_agent, make_model_settings
 from tabulaflow.agents.trace import Usage
 from tabulaflow.research.types import NL2QRunResult, NL2QTaskOutput
+from tabulaflow.research.observability import configure_research_observability
 from tabulaflow.research.pipelines.utils import bool_flag
 
 
@@ -475,7 +476,8 @@ async def main_async() -> None:
     print(args)
     print()
 
-    tabulaflow.configure()
+    logging.basicConfig(level=logging.DEBUG if args.debug else logging.WARNING)
+    configure_research_observability()
 
     with open(os.path.join(args.result_dir, "result.json"), "r") as f:
         result = NL2QRunResult.model_validate_json(f.read())

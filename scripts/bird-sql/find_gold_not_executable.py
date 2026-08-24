@@ -1,13 +1,11 @@
 import asyncio
 import os
-import tabulaflow
 from tabulaflow.research.types import NL2QRunResult
 from tabulaflow.data import SQLConnector
 from tabulaflow.research.benchmarks import BirdSQLDatasetLoader
 
 
 async def main() -> None:
-    tabulaflow.configure()
     result_dir = "output/152_gpt-5-mini-minimal/"
     with open(os.path.join(result_dir, "result.json"), "r") as f:
         result = NL2QRunResult.model_validate_json(f.read())

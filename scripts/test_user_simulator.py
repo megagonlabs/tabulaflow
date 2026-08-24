@@ -1,12 +1,12 @@
 # mypy: ignore-errors
 import asyncio
-import tabulaflow
+from tabulaflow.research.observability import configure_research_observability
 from tabulaflow.research.agenthub.user_simulator import UserSimulator, UserFreeTextQuestion
 from tabulaflow.research.benchmarks import dataset_registry
 
 
 async def main() -> None:
-    tabulaflow.configure()
+    configure_research_observability()
     dataset_loader = dataset_registry.get_class("arcs")()
     dataset = await dataset_loader.get_split_async("dev")
     user_simulator = UserSimulator.from_ambig_nl2q_task(dataset.tasks[3])  # type: ignore

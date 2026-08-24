@@ -1,8 +1,6 @@
 import argparse
 import os
-from pathlib import Path
-import tabulaflow
-from tabulaflow.config import tabulaflow_config
+from tabulaflow.agents import AgentRuntimeConfig
 from tabulaflow.agents.modules.db_summarizer import DBSummary
 from tabulaflow.core import SQLSchema
 from tabulaflow.output.formatting import SQLDDLSchemaFormatter
@@ -15,9 +13,8 @@ def main() -> None:
     parser.add_argument("--skip_exists", action="store_true", help="Skip if output file already exists")
     args = parser.parse_args()
 
-    tabulaflow.configure()
-
-    input_dir = Path(tabulaflow_config.cache_dir) / "schemas"
+    cache_dir = AgentRuntimeConfig().cache_dir
+    input_dir = cache_dir / "schemas"
     output_dir = os.path.join(args.output_dir, "schemas")
     os.makedirs(output_dir, exist_ok=True)
     exported = 0
@@ -35,7 +32,7 @@ def main() -> None:
         exported += 1
     print(f"Exported {exported} schemas to {output_dir}")
 
-    input_dir = os.path.join(tabulaflow_config.cache_dir, "preprocessors", "db_summarizer")
+    input_dir = os.path.join(cache_dir, "preprocessors", "db_summarizer")
     output_dir = os.path.join(args.output_dir, "preprocessors", "db_summarizer")
     os.makedirs(output_dir, exist_ok=True)
     for f in os.listdir(input_dir):
@@ -47,7 +44,7 @@ def main() -> None:
             f.write(summary.db_summary_markdown)
     print(f"Exported {len(os.listdir(input_dir))} DB summaries to {output_dir}")
 
-    input_dir = os.path.join(tabulaflow_config.cache_dir, "preprocessors", "schema_preprocessor")
+    input_dir = os.path.join(cache_dir, "preprocessors", "schema_preprocessor")
     output_dir = os.path.join(args.output_dir, "preprocessors", "schema_preprocessor")
     os.makedirs(output_dir, exist_ok=True)
     for f in os.listdir(input_dir):
@@ -60,7 +57,7 @@ def main() -> None:
             f.write(schema_str)
     print(f"Exported {len(os.listdir(input_dir))} preprocessed schemas to {output_dir}")
 
-    input_dir = os.path.join(tabulaflow_config.cache_dir, "preprocessors", "er_diagram_synthesizer")
+    input_dir = os.path.join(cache_dir, "preprocessors", "er_diagram_synthesizer")
     output_dir = os.path.join(args.output_dir, "preprocessors", "er_diagram_synthesizer")
     os.makedirs(output_dir, exist_ok=True)
     for f in os.listdir(input_dir):

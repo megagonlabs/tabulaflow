@@ -1,12 +1,9 @@
 # mypy: ignore-errors
 import asyncio
-import tabulaflow
 from tabulaflow.research.benchmarks import dataset_registry
 
 
 async def main() -> None:
-    tabulaflow.configure()
-
     latency = []
     dataset_loader = dataset_registry.get_class("arcs")()
     dataset = await dataset_loader.get_split_async("dev")

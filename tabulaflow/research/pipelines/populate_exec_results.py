@@ -1,11 +1,11 @@
 import argparse
+import logging
 import time
 import asyncio
 import os
 from typing import Literal
 from tqdm.asyncio import tqdm_asyncio
 from tabulaflow.research.benchmarks.base import dataset_registry
-import tabulaflow
 from tabulaflow.research.types import NL2QTask, NL2QTaskOutput, NL2QRunResult, NL2QDataset
 from tabulaflow.data import DBConnector, Neo4jConnectorConfig, SQLConnectorConfig
 
@@ -75,7 +75,7 @@ async def main_async() -> None:
     print(args)
     print()
 
-    tabulaflow.configure()
+    logging.basicConfig(level=logging.DEBUG if args.debug else logging.WARNING)
 
     with open(os.path.join(args.result_dir, "result.json"), "r") as f:
         result = NL2QRunResult.model_validate_json(f.read())

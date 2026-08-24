@@ -1,4 +1,3 @@
-import tabulaflow
 from tabulaflow.agents.trace import Usage
 
 LLMS = [
@@ -15,7 +14,6 @@ LLMS = [
 
 
 def main():
-    tabulaflow.configure()
     for llm in LLMS:
         print(llm)
         usage = Usage.create(llm, 1, 1000000, 1000000)

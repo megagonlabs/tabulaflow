@@ -10,7 +10,6 @@ import sqlparse
 import asyncio
 from pydantic import TypeAdapter
 from tabulate import tabulate
-import tabulaflow
 from tabulaflow.research.types import GoldQuery
 from tabulaflow.research.types import AmbigNL2QTask, GoldAmbiguityPointFinite, GoldAmbiguityPointInfinite
 from tabulaflow.research.benchmarks import dataset_registry
@@ -247,8 +246,6 @@ async def main():
     args = parser.parse_args()
     print(args)
     print()
-
-    tabulaflow.configure()
 
     # If output_dir exists and is not empty, exit
     if os.path.exists(args.output_dir) and os.listdir(args.output_dir):

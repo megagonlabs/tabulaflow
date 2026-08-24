@@ -9,6 +9,7 @@ from tabulaflow.research.benchmarks.base import dataset_registry
 from tabulaflow.agents import AgentRuntimeConfig, initialize_agent_runtime
 import tabulaflow.research.agenthub._erd  # noqa: F401 — register the SQL-agent ERD preprocessor
 from tabulaflow.agents.modules.base import NL2QPreprocessor, preprocessor_registry
+from tabulaflow.research.observability import configure_research_observability
 from tabulaflow.research.types import NL2QDataset
 
 logger = logging.getLogger(__name__)
@@ -89,6 +90,8 @@ async def main_async() -> None:
     print()
 
     initialize_agent_runtime(AgentRuntimeConfig(preprocessor_cache_mode="refresh" if args.overwrite else "read_write"))
+    logging.basicConfig(level=logging.DEBUG if args.debug else logging.WARNING)
+    configure_research_observability()
 
     t0 = time.time()
     dataset_loader = dataset_registry.get_class(args.dataset)()

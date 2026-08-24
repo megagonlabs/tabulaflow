@@ -2,12 +2,14 @@
 
 ## Status
 
-Phase one is implemented in commit `010f6e37`:
+The migration is complete:
 
 - `tabulaflow.data.config` defines immutable SQL and Neo4j connector configuration.
 - `tabulaflow.agents.config` defines immutable process-wide agent runtime configuration.
 - Public configuration types are re-exported from their owning packages.
-- The legacy `tabulaflow/config.py`, `tabulaflow.configure()`, and all current consumers remain in place until the migrations below are complete.
+- Agent resources are owned by a private, one-time initialized runtime.
+- Observability is enabled explicitly by application entry points.
+- The legacy `tabulaflow/config.py` and `tabulaflow.configure()` have been removed.
 
 This plan is a clean break. There will be no compatibility aliases for old fields, environment-variable names, import paths, or mutation behavior.
 
@@ -419,7 +421,7 @@ Connector-specific constructor booleans that duplicate config policy, such as `e
 
 Do not add runtime parameters throughout chat, tools, modules, app, or research.
 
-### Phase 4: observability and entry points
+### Phase 4: observability and entry points — complete
 
 1. Add explicit, idempotent agent instrumentation setup.
 2. Move `Agent.instrument_all()`, Phoenix, and Langfuse initialization to the observability owner.
@@ -450,7 +452,7 @@ schema printing, dataset statistics, result population, preprocessing, and datab
 editing tests. After migration, a repository-wide search for
 `tabulaflow.configure(` must return no call sites.
 
-### Phase 5: delete the legacy system
+### Phase 5: delete the legacy system — complete
 
 1. Verify no imports of `tabulaflow.config` or `tabulaflow_config` remain.
 2. Delete `tabulaflow/config.py`.

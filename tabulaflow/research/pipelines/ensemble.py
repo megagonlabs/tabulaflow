@@ -10,7 +10,7 @@ from functools import reduce
 from typing import Any
 
 from tabulaflow.research.benchmarks.base import dataset_registry
-import tabulaflow
+from tabulaflow.research.observability import configure_research_observability
 from tabulaflow.research.agenthub.ensemblers.majority_ensembler import MajorityEnsembler, MajorityEnsemblerConfig
 from tabulaflow.research.agenthub.ensemblers.llm_ensembler import LLMEnsembler, LLMEnsemblerConfig
 from tabulaflow.research.agenthub.ensemblers.agent_ensembler import AgentEnsembler, AgentEnsemblerConfig
@@ -187,7 +187,8 @@ async def main_async() -> None:
     print(args)
     print()
 
-    tabulaflow.configure()
+    logging.basicConfig(level=logging.DEBUG if args.debug else logging.WARNING)
+    configure_research_observability()
 
     if os.path.exists(args.output_dir):
         if not args.overwrite:
