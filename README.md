@@ -546,6 +546,9 @@ Aug 18 - 19
 Aug 23
 - [x] data layer and output layer cleanup
   - [x] schema compression
+  - [x] find_table and find_column
+  - [x] close_async and release_connections_async
+  - [x] preserve schema description across refresh
 
 
 - [ ] Fix flicker when change selection in answer controls
