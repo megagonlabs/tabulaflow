@@ -56,7 +56,7 @@ from ..message_store import (
     deref_call,
     id_marker,
 )
-from ..engines.pdf_extract import extract_pdf_text
+from ...extraction.pdf import extract_pdf_text
 from .manager import WebBrowserManager
 
 if TYPE_CHECKING:

@@ -1,8 +1,7 @@
-"""PDF text extraction for the web browser tool.
+"""PDF text extraction for browser and local-file documents.
 
-Pure, browser-agnostic helper: turns raw PDF bytes into plain text for an LLM
-to read. Kept separate from ``web_browser`` (mirroring ``aria_to_markdown``) so
-the pypdf dependency and the extraction logic live in one testable place.
+Turns raw PDF bytes into plain text for an LLM to read while keeping the pypdf
+dependency and extraction logic in one testable place.
 """
 
 

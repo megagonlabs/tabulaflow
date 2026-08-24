@@ -231,7 +231,7 @@ class FileEditorTool:
         Text-layer extraction only — scanned/image-only PDFs return a clear notice.
         ``view_range`` does not apply (the full document is returned).
         """
-        from tabulaflow.agents.tools.engines.pdf_extract import extract_pdf_text
+        from tabulaflow.agents.extraction.pdf import extract_pdf_text
 
         if view_range is not None:
             return self._error(
