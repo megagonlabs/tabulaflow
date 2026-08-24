@@ -78,7 +78,7 @@ class TaskRunContext:
 class BasicAgentConfig(BaseModel):
     llm: str = "openai-responses:gpt-5-mini"
     schema_formatter: str = "sql_ddl"
-    compress_schema: bool = True
+    compact_table_families: bool = True
     temperature: float | None = None
     max_steps: int = 50
     formatter_max_total_columns: int | None = 5000
@@ -87,7 +87,9 @@ class BasicAgentConfig(BaseModel):
     service_tier: Literal["auto", "default", "flex", "priority"] | None = None
 
     def to_formatter_kwargs(self) -> dict[str, Any]:
-        res: dict[str, Any] = {}
+        if self.schema_formatter == "cypher":
+            return {}
+        res: dict[str, Any] = {"compact_table_families": self.compact_table_families}
         if self.formatter_max_total_columns is not None:
             res["max_total_columns"] = self.formatter_max_total_columns
         return res

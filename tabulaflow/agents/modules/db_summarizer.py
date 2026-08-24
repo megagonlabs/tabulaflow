@@ -7,7 +7,6 @@ from typing import Any, ClassVar, Literal
 from tabulaflow.data import DBConnector
 from tabulaflow.output.formatting import CypherSchemaFormatter, SQLDDLSchemaFormatter
 from tabulaflow.agents.modules.base import CachedPreprocessorMixin, CacheableResult, preprocessor_registry
-from tabulaflow.output.schema_compression import SchemaCompressor
 from tabulaflow.agents.trace import Usage
 from tabulaflow.agents.llm import make_agent, make_model_settings
 
@@ -57,14 +56,12 @@ class DBSummarizer(CachedPreprocessorMixin[DBSummary]):
     def __init__(
         self,
         llm: str = "openai-responses:gpt-5.4",
-        compress_schema: bool = True,
         reasoning_effort: Literal["none", "minimal", "low", "medium", "high", "xhigh"] | None = "high",
         max_summary_words: int = 4000,
         model_settings: ModelSettings | None = None,
     ) -> None:
         self.llm = llm
-        self.compressor = SchemaCompressor() if compress_schema else None
-        self.sql_formatter = SQLDDLSchemaFormatter(max_total_columns=200)
+        self.sql_formatter = SQLDDLSchemaFormatter(max_total_columns=200, compact_table_families=True)
         self.graph_formatter = CypherSchemaFormatter()
         self.reasoning_effort = reasoning_effort
         self.max_summary_words = max_summary_words
@@ -75,7 +72,7 @@ class DBSummarizer(CachedPreprocessorMixin[DBSummary]):
         return self._usage
 
     def _get_cache_id_suffix(self) -> str:
-        return "_" + self.llm.replace(":", "--")
+        return "_table-families-v2_" + self.llm.replace(":", "--")
 
     async def _preprocess_impl_async(self, db_connector: DBConnector) -> DBSummary:
         from tabulaflow.agents.tools.run_query import RunQueryTool
@@ -86,8 +83,6 @@ class DBSummarizer(CachedPreprocessorMixin[DBSummary]):
             schema = db_connector.schema
             if not schema.tables:
                 return DBSummary(db_summary_markdown=f"# Database: `{schema.name}`\n\nThis database has no tables.")
-            if self.compressor is not None:
-                schema = self.compressor.compress(schema)
             user_prompt = format_user_prompt(self.sql_formatter.format(schema, include_descriptions=True))
         elif db_connector.connector_type == "property_graph":
             graph_schema = db_connector.schema

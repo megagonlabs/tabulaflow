@@ -5,7 +5,6 @@ import asyncio
 from tabulate import tabulate
 from tabulaflow.research.benchmarks import dataset_registry
 from tabulaflow.data import Neo4jConnectorConfig, SQLConnectorConfig
-from tabulaflow.output.schema_compression import SchemaCompressor
 from tabulaflow.agents.modules.schema_preprocessor import SchemaPreprocessor
 from tabulaflow.research.types import NL2QDataset
 from tabulaflow.research.utils import dict_to_df
@@ -111,26 +110,21 @@ async def print_basic_stats(dataset: NL2QDataset, tablefmt: str = "github") -> N
     per_db_stats = {
         "database": [],
         "tables": [],
-        "tables_compressed": [],
         "total_rows": [],
         "max_rows_per_table": [],
         "columns": [],
-        "columns_compressed": [],
         "ratio_columns_with_desc": [],
     }  # type: ignore
     db_names = sorted(dataset.db_connectors.keys())
     for db_name in db_names:
         schema = dataset.db_connectors[db_name].schema
-        compressed_schema = SchemaCompressor().compress(schema)
         per_db_stats["database"].append(db_name)
         per_db_stats["tables"].append(len(schema.tables))
-        per_db_stats["tables_compressed"].append(len(compressed_schema.tables))
         per_db_stats["total_rows"].append(sum(table.num_rows for table in schema.tables if table.num_rows is not None))
         per_db_stats["max_rows_per_table"].append(
             max((table.num_rows for table in schema.tables if table.num_rows is not None), default=0)
         )
         per_db_stats["columns"].append(sum(len(table.columns) for table in schema.tables))
-        per_db_stats["columns_compressed"].append(sum(len(table.columns) for table in compressed_schema.tables))
         per_db_stats["ratio_columns_with_desc"].append(
             sum(1 for table in schema.tables for column in table.columns if column.description is not None)
             / per_db_stats["columns"][-1]
@@ -149,9 +143,6 @@ async def print_basic_stats(dataset: NL2QDataset, tablefmt: str = "github") -> N
         "max_tables_per_db": max(per_db_stats["tables"]),
         "avg_tables_per_db": sum(per_db_stats["tables"]) / len(dataset.db_connectors),
         "min_tables_per_db": min(per_db_stats["tables"]),
-        "max_tables_compressed_per_db": max(per_db_stats["tables_compressed"]),
-        "avg_tables_compressed_per_db": sum(per_db_stats["tables_compressed"]) / len(dataset.db_connectors),
-        "min_tables_compressed_per_db": min(per_db_stats["tables_compressed"]),
         "max_rows_per_db": max(per_db_stats["total_rows"]),
         "avg_rows_per_db": sum(per_db_stats["total_rows"]) / len(dataset.db_connectors),
         "min_rows_per_db": min(per_db_stats["total_rows"]),
@@ -161,9 +152,6 @@ async def print_basic_stats(dataset: NL2QDataset, tablefmt: str = "github") -> N
         "max_columns_per_db": max(per_db_stats["columns"]),
         "avg_columns_per_db": sum(per_db_stats["columns"]) / len(dataset.db_connectors),
         "min_columns_per_db": min(per_db_stats["columns"]),
-        "max_columns_compressed_per_db": max(per_db_stats["columns_compressed"]),
-        "avg_columns_compressed_per_db": sum(per_db_stats["columns_compressed"]) / len(dataset.db_connectors),
-        "min_columns_compressed_per_db": min(per_db_stats["columns_compressed"]),
         "avg_columns_per_table": sum(per_db_stats["columns"]) / sum(per_db_stats["tables"]),
         "avg_ratio_columns_with_desc": sum(per_db_stats["ratio_columns_with_desc"]) / len(dataset.db_connectors),
     }

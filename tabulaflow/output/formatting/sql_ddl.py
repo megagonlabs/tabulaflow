@@ -10,10 +10,11 @@ from tabulaflow.output.formatting._core import (
     format_single_line_text,
 )
 from tabulaflow.output.formatting._sql import (
+    _PreparedTable,
     SQLQuoting,
     format_ratio_as_percent,
     format_column_type,
-    select_tables_for_formatting,
+    prepare_tables_for_formatting,
 )
 
 
@@ -34,6 +35,7 @@ class SQLDDLSchemaFormatter:
     include_json_schema: bool = True
     include_json_schema_max_fields: int | None = 20
     max_native_dtype_chars: int = 80
+    compact_table_families: bool = False
     """When ``column.native_dtype`` is set and its length is within this cap,
     emit it as the DDL column type instead of the canonical ``dtype`` token.
     For long composite types, the structural info is conveyed via the
@@ -60,13 +62,10 @@ class SQLDDLSchemaFormatter:
 
     def _format_sampled_df(self, table: SQLTableSchema) -> str:
         """Format a DataFrame as a markdown table (without wrapper)."""
-        if table.num_rows is not None and table.num_rows <= 10:
-            md_table = format_dataframe(table.sampled_df, max_visible_rows=len(table.sampled_df))  # type: ignore
-            return f"All rows:\n{md_table}"
-        else:
-            df = table.sampled_df.head(5)  # type: ignore
-            md_table = format_dataframe(df, max_visible_rows=5, add_bottom_ellipsis_row=True)
-            return f"Sample rows:\n{md_table}"
+        df = table.sampled_df.head(5)  # type: ignore
+        has_more_rows = len(table.sampled_df) > len(df) or table.num_rows is None or table.num_rows > len(df)  # type: ignore
+        md_table = format_dataframe(df, max_visible_rows=5, add_bottom_ellipsis_row=has_more_rows)
+        return f"Sample rows:\n{md_table}"
 
     def format(self, schema: SQLSchema, *, include_descriptions: bool = False) -> str:
         quoting = SQLQuoting.from_dialect(schema.dialect)
@@ -81,17 +80,21 @@ class SQLDDLSchemaFormatter:
             metadata_lines.append("_(database has no tables)_")
             return "\n".join(metadata_lines)
 
+        prepared_tables = prepare_tables_for_formatting(
+            schema,
+            compact_table_families=self.compact_table_families,
+            max_total_columns=self.max_total_columns,
+        )
         lines: list[str] = []
-        include_sampled_rows = self.include_sampled_df and len(schema.tables) <= self.include_sampled_df_max_tables
-        for table, omitted_column_count in select_tables_for_formatting(schema, self.max_total_columns):
+        include_sampled_rows = self.include_sampled_df and len(prepared_tables) <= self.include_sampled_df_max_tables
+        for prepared in prepared_tables:
             if lines:
                 lines.append("")
             lines.append(
-                self._format_table(
-                    table,
+                self._format_prepared_table(
+                    prepared,
                     quoting=quoting,
                     include_descriptions=include_descriptions,
-                    omitted_column_count=omitted_column_count,
                     include_sampled_rows=include_sampled_rows,
                 )
             )
@@ -106,37 +109,41 @@ class SQLDDLSchemaFormatter:
         dialect: SQLDialect | None,
         include_descriptions: bool = False,
     ) -> str:
-        return self._format_table(
-            table,
+        return self._format_prepared_table(
+            _PreparedTable.from_table(table),
             quoting=SQLQuoting.from_dialect(dialect),
             include_descriptions=include_descriptions,
             include_sampled_rows=self.include_sampled_df,
         )
 
-    def _format_table(
+    def _format_prepared_table(
         self,
-        table: SQLTableSchema,
+        prepared: _PreparedTable,
         *,
         quoting: SQLQuoting,
         include_descriptions: bool,
         include_sampled_rows: bool,
-        omitted_column_count: int = 0,
     ) -> str:
+        table = prepared.render_table
+        group = prepared.group
         lines = []
 
         # Build table info block content
         table_name = quoting.qualified_table(table.name, table.schema_name)
-        title = ""
-        title += f"Schema: {quoting.quote_if_needed(table.schema_name)}"
-        title += "\nTable:"
-        if table.name_patterns:  # This is a compressed table
-            for pattern in table.name_patterns:
-                title += f"\n  - {quoting.quote_if_needed(pattern.pattern)}"
-                if pattern.comment:
-                    title += f" ({pattern.comment})"
+        info_parts = [f"Schema: {quoting.quote_if_needed(table.schema_name)}"]
+        if group.is_family:
+            info_parts.extend(
+                [
+                    f"Table family: {quoting.quote_if_needed(group.display_name)}",
+                    str(group.member_summary),
+                    "",
+                    f"Representative table: {quoting.quote_if_needed(group.representative.name)}",
+                    "The schema, row count, descriptions, column profiles, and samples below come from this physical table.",
+                ]
+            )
         else:
-            title += f" {quoting.quote_if_needed(table.name)}"
-        info_parts = [title]
+            info_parts.append(f"Table: {quoting.quote_if_needed(table.name)}")
+
         if table.num_rows is not None:
             info_parts.append(f"Rows: {table.num_rows}")
         if include_descriptions and table.description:
@@ -175,8 +182,8 @@ class SQLDDLSchemaFormatter:
             for column in table.columns
         ]
 
-        if omitted_column_count > 0:
-            column_defs.append(f"    -- ... {omitted_column_count} more columns omitted")
+        if prepared.omitted_column_count > 0:
+            column_defs.append(f"    -- ... {prepared.omitted_column_count} more columns omitted")
 
         # Add composite primary key constraint if needed
         if len(primary_key_names) > 1:

@@ -6,10 +6,11 @@ from typing import ClassVar
 from tabulaflow.core import ForeignKeySchema, SQLColumnSchema, SQLDialect, SQLSchema, SQLTableSchema
 from tabulaflow.output.formatting._core import format_single_line_text
 from tabulaflow.output.formatting._sql import (
+    _PreparedTable,
     SQLQuoting,
     format_column_type,
     format_ratio_as_percent,
-    select_tables_for_formatting,
+    prepare_tables_for_formatting,
 )
 from tabulaflow.output.formatting.schema import schema_formatter_registry
 
@@ -24,6 +25,7 @@ class SQLBasicSchemaFormatter:
     floatfmt: str = ".8g"
     max_total_columns: int | None = None
     max_native_dtype_chars: int = 80
+    compact_table_families: bool = False
 
     def _format_value(self, value: object, quoting: SQLQuoting) -> str:
         if isinstance(value, str):
@@ -50,13 +52,16 @@ class SQLBasicSchemaFormatter:
             return f"{result}\n(database has no tables)"
 
         tables = [
-            self._format_table(
-                table,
+            self._format_prepared_table(
+                prepared,
                 quoting=quoting,
                 include_descriptions=include_descriptions,
-                omitted_column_count=omitted_column_count,
             )
-            for table, omitted_column_count in select_tables_for_formatting(schema, self.max_total_columns)
+            for prepared in prepare_tables_for_formatting(
+                schema,
+                compact_table_families=self.compact_table_families,
+                max_total_columns=self.max_total_columns,
+            )
         ]
         return result + "\n\n" + "\n\n".join(tables)
 
@@ -67,36 +72,44 @@ class SQLBasicSchemaFormatter:
         dialect: SQLDialect | None,
         include_descriptions: bool = False,
     ) -> str:
-        return self._format_table(
-            table,
+        return self._format_prepared_table(
+            _PreparedTable.from_table(table),
             quoting=SQLQuoting.from_dialect(dialect),
             include_descriptions=include_descriptions,
         )
 
-    def _format_table(
+    def _format_prepared_table(
         self,
-        table: SQLTableSchema,
+        prepared: _PreparedTable,
         *,
         quoting: SQLQuoting,
         include_descriptions: bool,
-        omitted_column_count: int = 0,
     ) -> str:
-        result = f"(SCHEMA: {quoting.quote_if_needed(table.schema_name)}) TABLE:"
-        if table.name_patterns:
-            patterns = []
-            for pattern in table.name_patterns:
-                formatted = quoting.quote_if_needed(pattern.pattern)
-                if pattern.comment:
-                    formatted += f" ({pattern.comment})"
-                patterns.append(formatted)
-            result += " " + ", ".join(patterns)
+        table = prepared.render_table
+        group = prepared.group
+        title = f"(SCHEMA: {quoting.quote_if_needed(table.schema_name)})"
+        metadata: list[str] = []
+        if group.is_family:
+            title += f" TABLE FAMILY: {quoting.quote_if_needed(group.display_name)}"
+            metadata.extend(
+                [
+                    str(group.member_summary),
+                    "",
+                    f"Representative table: {quoting.quote_if_needed(group.representative.name)}",
+                    "The schema, row count, descriptions, and column profiles below come from this physical table.",
+                ]
+            )
         else:
-            result += f" {quoting.quote_if_needed(table.name)}"
+            title += f" TABLE: {quoting.quote_if_needed(table.name)}"
+
         if table.num_rows is not None:
-            result += f" ({table.num_rows} rows)"
+            metadata.append(f"Rows: {table.num_rows}")
         if include_descriptions and table.description:
-            result += f" -- {table.description}"
-        result = f"=== {result} ===\n"
+            metadata.append(f"Description: {table.description}")
+
+        result = f"=== {title} ===\n"
+        if metadata:
+            result += "\n".join(metadata) + "\n"
 
         composite_foreign_keys = []
         for foreign_key in table.foreign_keys:
@@ -128,8 +141,8 @@ class SQLBasicSchemaFormatter:
             )
             for column in table.columns
         ]
-        if omitted_column_count:
-            column_lines.append(f"  ... {omitted_column_count} more columns omitted")
+        if prepared.omitted_column_count:
+            column_lines.append(f"  ... {prepared.omitted_column_count} more columns omitted")
         result += "\n".join(column_lines)
         return result + "\n=== END OF TABLE ==="
 

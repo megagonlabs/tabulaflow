@@ -27,7 +27,6 @@ from tabulaflow.research.agenthub.base import (
     BaseAgentConfig,
 )
 from tabulaflow.research.agenthub.utils import get_max_steps_processor, instrument, TaskRunContext, BasicAgentConfig
-from tabulaflow.output.schema_compression import SchemaCompressor
 from tabulaflow.research.utils import int_to_letter
 from tabulaflow.agents.llm import make_agent
 
@@ -138,7 +137,6 @@ class AmbigStructuredSQLAgent:
             SQLSchemaFormatter,
             schema_formatter_registry.get_class(config.schema_formatter)(**config.to_formatter_kwargs()),
         )
-        self.compressor = SchemaCompressor() if config.compress_schema else None
 
     @classmethod
     async def from_config_async(cls, config: AmbigStructuredSQLAgentConfig) -> "AmbigStructuredSQLAgent":
@@ -303,8 +301,6 @@ class AmbigStructuredSQLAgent:
 
     async def _get_tools(self, db_connector: SQLConnectorProtocol) -> dict[str, BaseTool]:
         schema = db_connector.schema
-        if self.compressor is not None:
-            schema = self.compressor.compress(schema)
         tools: dict[str, BaseTool] = {}
         tools["get_schema"] = GetSchemaTool(schema, self.formatter)
         if self.config.use_column_descriptions:

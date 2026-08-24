@@ -5,7 +5,6 @@ from pydantic_ai import Tool
 from pydantic import BaseModel
 from tabulaflow.data.protocols import SQLConnectorProtocol
 from tabulaflow.output.formatting import SQLSchemaFormatter
-from tabulaflow.output.schema_compression import SchemaCompressor
 from tabulaflow.core import SQLColumnSchema, SQLSchema, SQLTableSchema, TableRef
 from tabulaflow.agents.tools.engines.sql import equals_ci
 
@@ -34,7 +33,6 @@ class GetTableSchemaTool:
     Attributes:
         db_connector: Database connector providing live schema access and refresh.
         formatter: The formatter used to render table schema as text.
-        compress: Whether to compress the schema (merge structurally identical tables).
         include_descriptions: Whether to include column descriptions in output.
         max_columns: If set, reject requests whose resulting columns exceed
             this limit, prompting the agent to use column_offset/column_limit or
@@ -54,7 +52,6 @@ class GetTableSchemaTool:
         db_connector: SQLConnectorProtocol,
         formatter: SQLSchemaFormatter,
         *,
-        compress: bool = True,
         include_descriptions: bool = True,
         max_columns: int | None = 50,
         disconnect_on_finish: bool = False,
@@ -62,24 +59,16 @@ class GetTableSchemaTool:
     ):
         self.db_connector = db_connector
         self.formatter = formatter
-        self._compressor = SchemaCompressor() if compress else None
-        self._compressed_schema: SQLSchema | None = None
         self.include_descriptions = include_descriptions
         self.max_columns = max_columns
         self._disconnect_on_finish = disconnect_on_finish
         self._enable_refresh = enable_refresh
         self._metrics = GetTableSchemaToolMetrics()
 
-    def _invalidate_schema(self) -> None:
-        self._compressed_schema = None
-
     @property
     def schema(self) -> SQLSchema:
-        """Return the (optionally compressed) schema, building it lazily."""
-        if self._compressed_schema is None:
-            schema = self.db_connector.schema
-            self._compressed_schema = self._compressor.compress(schema) if self._compressor else schema
-        return self._compressed_schema
+        """Return the connector's physical schema."""
+        return self.db_connector.schema
 
     def _find_table(self, schema_name: str | None, table_name: str) -> SQLTableSchema | None:
         """Find a table by schema name and table name (case-insensitive).
@@ -92,10 +81,7 @@ class GetTableSchemaTool:
             schema_name = all_schema_names[0]
 
         for t in self.schema.tables:
-            if (schema_name is None or equals_ci(t.schema_name, schema_name)) and (
-                t.name.lower() == table_name.lower()
-                or any(s.lower() == table_name.lower() for pattern in t.name_patterns for s in pattern.original_names)
-            ):
+            if (schema_name is None or equals_ci(t.schema_name, schema_name)) and t.name.lower() == table_name.lower():
                 return t
         return None
 
@@ -187,7 +173,6 @@ class GetTableSchemaTool:
         if refresh:
             try:
                 await self.db_connector.refresh_schema_async([TableRef(schema_name=schema_name, table_name=table_name)])
-                self._invalidate_schema()
                 table = self._find_table(schema_name, table_name)
             except Exception as e:
                 if table is None:
@@ -233,8 +218,6 @@ class GetTableSchemaTool:
         )
 
         res = ""
-        if table.name.lower() != table_name.lower():
-            res += f"(table {table_name} shares the same schema with {table.name} shown below)\n\n"
         needs_pagination = column_offset > 0 or column_limit is not None
         if column_regex_filter is not None or needs_pagination:
             parts = []

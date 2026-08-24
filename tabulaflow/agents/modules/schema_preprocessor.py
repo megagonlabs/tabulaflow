@@ -4,7 +4,6 @@ from tabulaflow.core import SQLSchema
 from tabulaflow.agents.trace import Usage
 from tabulaflow.data import SQLConnectorProtocol
 from tabulaflow.agents.modules.column_profiler import ColumnProfiler
-from tabulaflow.output.schema_compression import SchemaCompressor
 from tabulaflow.agents.modules.fk_predictor import ForeignKeyPredictor
 from tabulaflow.agents.modules.base import (
     CachedPreprocessorMixin,
@@ -25,13 +24,11 @@ class SchemaPreprocessor(CachedPreprocessorMixin[SQLSchema]):
         foreign_key_predictor_llm: str | None = None,
         column_profiler_model_settings: ModelSettings | None = None,
         foreign_key_predictor_model_settings: ModelSettings | None = None,
-        compress_schema: bool = True,
     ):
         self.column_profiler_llm = column_profiler_llm
         self.foreign_key_predictor_llm = foreign_key_predictor_llm
         self.column_profiler_model_settings = column_profiler_model_settings
         self.foreign_key_predictor_model_settings = foreign_key_predictor_model_settings
-        self.compressor = SchemaCompressor() if compress_schema else None
         self.column_profiler = (
             ColumnProfiler(column_profiler_llm, model_settings=column_profiler_model_settings)
             if column_profiler_llm is not None
@@ -47,10 +44,11 @@ class SchemaPreprocessor(CachedPreprocessorMixin[SQLSchema]):
     def usage(self) -> Usage:
         return self._usage
 
+    def _get_cache_id_suffix(self) -> str:
+        return "_physical-v2"
+
     async def _preprocess_impl_async(self, db_connector: SQLConnectorProtocol) -> SQLSchema:
         schema = db_connector.schema
-        if self.compressor is not None:
-            schema = self.compressor.compress(schema)
         if self.foreign_key_predictor is not None:
             schema = await self.foreign_key_predictor.run_async(db_connector, schema)
             self._usage += self.foreign_key_predictor.usage()

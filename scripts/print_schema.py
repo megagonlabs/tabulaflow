@@ -4,7 +4,6 @@ import time
 from tabulaflow.research.benchmarks import dataset_registry
 from tabulaflow.output.formatting import schema_formatter_registry
 from tabulaflow.core import SQLSchema
-from tabulaflow.output.schema_compression import SchemaCompressor
 from tabulaflow.data import Neo4jConnectorConfig, SQLConnectorConfig
 
 
@@ -20,7 +19,11 @@ async def main() -> None:
     )
     source.add_argument("--database", default=None, help="Database name (required when using --dataset)")
     parser.add_argument("--formatter", default="sql_ddl", help="Schema formatter (default: sql_ddl)")
-    parser.add_argument("--no_compress", action="store_true", help="Do not compress schema before formatting")
+    parser.add_argument(
+        "--no-compact-table-families",
+        action="store_true",
+        help="Render every physical table instead of compacting table families",
+    )
     parser.add_argument("--no_description", action="store_true", help="Omit column descriptions")
     parser.add_argument("--no_cache", action="store_true", help="Do not load schema from cache")
     args = parser.parse_args()
@@ -54,10 +57,10 @@ async def main() -> None:
         dataset = await dataset_loader.get_split_async(split, databases=[args.database])
         schema = dataset.db_connectors[args.database].schema
 
-    if not args.no_compress:
-        schema = SchemaCompressor().compress(schema)
-
-    formatter = schema_formatter_registry.get_class(args.formatter)()
+    formatter_kwargs = (
+        {"compact_table_families": not args.no_compact_table_families} if isinstance(schema, SQLSchema) else {}
+    )
+    formatter = schema_formatter_registry.get_class(args.formatter)(**formatter_kwargs)
     schema_str = formatter.format(schema, include_descriptions=not args.no_description)
     print(schema_str)
     print()

@@ -15,7 +15,6 @@ from tabulaflow.core.schema import (
     SQLDialect,
     SQLSchema,
     SQLTableSchema,
-    TableNamePattern,
     TableRef,
 )
 
@@ -38,6 +37,5 @@ __all__ = [
     "SQLDialect",
     "SQLSchema",
     "SQLTableSchema",
-    "TableNamePattern",
     "TableRef",
 ]

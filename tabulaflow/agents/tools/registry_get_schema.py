@@ -7,8 +7,6 @@ from pydantic_ai import Tool
 
 from tabulaflow.data.registry import DBRegistry
 from tabulaflow.output.formatting import CypherSchemaFormatter, SQLDDLSchemaFormatter
-from tabulaflow.output.schema_compression import SchemaCompressor
-from tabulaflow.core import SQLSchema
 
 _DEFAULT_MAX_CHARS = 50000
 
@@ -49,20 +47,9 @@ class RegistryGetSchemaTool:
         self.registry = registry
         self.enable_refresh = enable_refresh
         self.max_chars = max_chars
-        self._sql_formatter = SQLDDLSchemaFormatter()
+        self._sql_formatter = SQLDDLSchemaFormatter(compact_table_families=True)
         self._graph_formatter = CypherSchemaFormatter()
-        self._compressor = SchemaCompressor()
         self._metrics = RegistryGetSchemaToolMetrics()
-        self._compressed_cache: dict[str, tuple[SQLSchema, SQLSchema]] = {}
-
-    def _get_compressed_sql_schema(self, alias: str, schema: SQLSchema) -> SQLSchema:
-        """Return a compressed SQL schema, cached per alias while its source schema is unchanged."""
-        entry = self._compressed_cache.get(alias)
-        if entry is not None and entry[0] is schema:
-            return entry[1]
-        compressed = self._compressor.compress(schema)
-        self._compressed_cache[alias] = (schema, compressed)
-        return compressed
 
     def _truncate(self, text: str) -> str:
         if len(text) <= self.max_chars:
@@ -105,11 +92,8 @@ class RegistryGetSchemaTool:
 
         if connector.connector_type == "sql":
             if refresh:
-                # No cache pop needed: the refresh replaces ``connector.schema``,
-                # which invalidates the cached entry via its identity check.
                 await connector.refresh_schema_async()
-            schema = self._get_compressed_sql_schema(db_alias, connector.schema)
-            result = self._sql_formatter.format(schema, include_descriptions=True)
+            result = self._sql_formatter.format(connector.schema, include_descriptions=True)
         elif connector.connector_type == "property_graph":
             if refresh:
                 await connector.refresh_schema_async()

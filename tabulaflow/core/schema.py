@@ -134,26 +134,10 @@ class SQLColumnSchema(BaseModel):
     examples: list[Any]
 
 
-class TableNamePattern(BaseModel):
-    """A compressed table-name pattern and the concrete names it represents.
-
-    Attributes:
-        pattern: Generalized name such as ``events_{YYYYMMDD}``.
-        comment: Variation summary such as ``YYYYMMDD from 20200101 to 20200102``.
-        original_names: Concrete names such as ``events_20200101`` and
-            ``events_20200102``.
-    """
-
-    pattern: str
-    comment: str | None = None
-    original_names: list[str] = Field(default_factory=list)
-
-
 class SQLTableSchema(BaseModel):
     """Structural and profiling metadata for a SQL table or view.
 
     Attributes:
-        name_patterns: Compressed name variants represented by this table.
         schema_name: Namespace containing the table, or ``None`` for databases
             without schemas, such as SQLite.
         primary_key: Ordered primary-key column names.
@@ -166,7 +150,6 @@ class SQLTableSchema(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     name: str
-    name_patterns: list[TableNamePattern] = Field(default_factory=list)
     schema_name: str | None = None
     description: str | None = None
     is_view: bool

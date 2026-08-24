@@ -26,7 +26,6 @@ class RegistryGetTableSchemaTool:
         registry: DBRegistry,
         formatter: SQLSchemaFormatter,
         *,
-        compress: bool = True,
         include_descriptions: bool = True,
         max_columns: int | None = 50,
         enable_refresh: bool = False,
@@ -36,7 +35,6 @@ class RegistryGetTableSchemaTool:
         Args:
             registry: The database registry containing available connectors.
             formatter: The formatter used to render table schema as text.
-            compress: Whether to compress the schema.
             include_descriptions: Whether to include column descriptions in output.
             max_columns: If set, reject requests whose resulting columns
                 exceed this limit.
@@ -45,7 +43,6 @@ class RegistryGetTableSchemaTool:
         """
         self.registry = registry
         self.formatter = formatter
-        self.compress = compress
         self.include_descriptions = include_descriptions
         self.max_columns = max_columns
         self.enable_refresh = enable_refresh
@@ -62,7 +59,6 @@ class RegistryGetTableSchemaTool:
         tool = GetTableSchemaTool(
             connector,
             self.formatter,
-            compress=self.compress,
             include_descriptions=self.include_descriptions,
             max_columns=self.max_columns,
             enable_refresh=self.enable_refresh,

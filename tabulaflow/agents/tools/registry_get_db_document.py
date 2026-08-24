@@ -9,7 +9,6 @@ from pydantic_ai.settings import ModelSettings
 from tabulaflow.data.protocols import DBConnector
 from tabulaflow.data.registry import DBRegistry
 from tabulaflow.output.formatting import CypherSchemaFormatter, SQLDDLSchemaFormatter
-from tabulaflow.output.schema_compression import SchemaCompressor
 
 _MAX_CHARS = 50000
 
@@ -64,9 +63,8 @@ class RegistryGetDBDocumentTool:
         self.summary_max_words = summary_max_words
         self.min_items_for_summary = min_items_for_summary
         self.enable_refresh = enable_refresh
-        self._sql_formatter = SQLDDLSchemaFormatter()
+        self._sql_formatter = SQLDDLSchemaFormatter(compact_table_families=True)
         self._graph_formatter = CypherSchemaFormatter()
-        self._compressor = SchemaCompressor()
         self._metrics = RegistryGetDBDocumentToolMetrics()
         self._document_cache: dict[str, tuple[DBConnector, str]] = {}
 
@@ -80,7 +78,7 @@ class RegistryGetDBDocumentTool:
     def _schema_item_count(self, db_alias: str) -> int:
         connector = self.registry.get(db_alias)
         if connector.connector_type == "sql":
-            return len(self._compressor.compress(connector.schema).tables)
+            return len(connector.schema.tables)
         if connector.connector_type == "property_graph":
             pattern_count = sum(len(rel.endpoints) for rel in connector.schema.relationships)
             return len(connector.schema.nodes) + len(connector.schema.relationships) + pattern_count
@@ -89,8 +87,7 @@ class RegistryGetDBDocumentTool:
     def _format_direct_document(self, db_alias: str) -> str:
         connector = self.registry.get(db_alias)
         if connector.connector_type == "sql":
-            schema = self._compressor.compress(connector.schema)
-            return self._sql_formatter.format(schema, include_descriptions=True)
+            return self._sql_formatter.format(connector.schema, include_descriptions=True)
         if connector.connector_type == "property_graph":
             return self._graph_formatter.format(connector.schema)
         raise TypeError(f"Unsupported connector type for get_db_document: {connector.connector_type!r}")

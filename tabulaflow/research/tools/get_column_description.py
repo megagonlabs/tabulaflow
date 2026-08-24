@@ -18,8 +18,7 @@ class GetColumnDescriptionTool:
     returns its description if available.
 
     Attributes:
-        schema: The SQL schema containing all available tables. Can be a
-            compressed schema produced by SchemaCompressor.
+        schema: The physical SQL schema containing all available tables.
     """
 
     name: ClassVar = "get_column_description"
@@ -52,10 +51,7 @@ class GetColumnDescriptionTool:
 
         table = None
         for t in self.schema.tables:
-            if (schema_name is None or equals_ci(t.schema_name, schema_name)) and (
-                t.name.lower() == table_name.lower()
-                or any(s.lower() == table_name.lower() for pattern in t.name_patterns for s in pattern.original_names)
-            ):
+            if (schema_name is None or equals_ci(t.schema_name, schema_name)) and t.name.lower() == table_name.lower():
                 table = t
                 break
 

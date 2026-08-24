@@ -6,7 +6,6 @@ import logging
 import asyncio
 from typing import Any, ClassVar, cast
 from tabulaflow.agents.response_parsing import extract_code
-from tabulaflow.output.schema_compression import SchemaCompressor
 from tabulaflow.output.formatting import (
     PropertyGraphSchemaFormatter,
     SQLSchemaFormatter,
@@ -84,8 +83,6 @@ class SimpleZeroShotNL2Q:
             schema_str = cast(PropertyGraphSchemaFormatter, self.formatter).format(db_connector.schema)
         elif db_connector.connector_type == "sql":
             schema = db_connector.schema
-            if self.config.compress_schema:
-                schema = SchemaCompressor().compress(schema)
             schema_str = cast(SQLSchemaFormatter, self.formatter).format(
                 schema,
                 include_descriptions=self.config.use_column_descriptions,

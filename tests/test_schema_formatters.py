@@ -1,5 +1,7 @@
 """Tests for SQL schema formatting."""
 
+import pandas as pd
+
 from tabulaflow.core import ForeignKeySchema, SQLColumnSchema, SQLSchema, SQLTableSchema
 from tabulaflow.output.formatting._sql import format_column_type
 from tabulaflow.output.formatting import SQLBasicSchemaFormatter, SQLDDLSchemaFormatter
@@ -22,6 +24,30 @@ def _table(column: SQLColumnSchema) -> SQLTableSchema:
         columns=[column],
         primary_key=[],
         foreign_keys=[],
+    )
+
+
+def _family_table(name: str, example: str, num_rows: int) -> SQLTableSchema:
+    return SQLTableSchema(
+        name=name,
+        schema_name="analytics",
+        is_view=False,
+        columns=[
+            SQLColumnSchema(
+                name="event",
+                dtype="VARCHAR",
+                native_dtype="VARCHAR(100)",
+                nullable=True,
+                null_ratio=0.25,
+                num_unique=2,
+                unique_ratio=0.1,
+                examples=[example],
+            )
+        ],
+        primary_key=[],
+        num_rows=num_rows,
+        foreign_keys=[],
+        sampled_df=pd.DataFrame({"event": [example]}),
     )
 
 
@@ -237,6 +263,74 @@ CREATE TABLE public.orders (
     PRIMARY KEY ("tenant_id", "order_id"),
     FOREIGN KEY ("customer_id") REFERENCES public.customers("id"),
     FOREIGN KEY ("tenant_id", "customer_id") REFERENCES public.customer_keys("tenant_id", "id")
+);
+```"""
+    )
+
+
+def test_sql_basic_compacted_family_format() -> None:
+    schema = SQLSchema(
+        name="warehouse",
+        dialect="duckdb",
+        tables=[
+            _family_table("events_20240101", "open", 5),
+            _family_table("events_20240102", "closed", 7),
+        ],
+    )
+
+    formatted = SQLBasicSchemaFormatter(compact_table_families=True).format(schema)
+
+    assert (
+        formatted
+        == """Database: warehouse (SQL Dialect: duckdb)
+
+=== (SCHEMA: analytics) TABLE FAMILY: "events_{YYYYMMDD}" ===
+Partitions: YYYYMMDD from 20240101 to 20240102 (2 total)
+
+Representative table: events_20240101
+The schema, row count, descriptions, and column profiles below come from this physical table.
+Rows: 5
+- "event": VARCHAR(100) NULLABLE (null_ratio=25%) {"open"}
+=== END OF TABLE ==="""
+    )
+
+
+def test_sql_ddl_compacted_family_format() -> None:
+    schema = SQLSchema(
+        name="warehouse",
+        dialect="duckdb",
+        tables=[
+            _family_table("events_20240101", "open", 5),
+            _family_table("events_20240102", "closed", 7),
+        ],
+    )
+
+    formatted = SQLDDLSchemaFormatter(compact_table_families=True).format(schema)
+
+    assert (
+        formatted
+        == """**Database:** `warehouse`
+**SQL Dialect:** `duckdb`
+
+```sql
+/*
+Schema: analytics
+Table family: "events_{YYYYMMDD}"
+Partitions: YYYYMMDD from 20240101 to 20240102 (2 total)
+
+Representative table: events_20240101
+The schema, row count, descriptions, column profiles, and samples below come from this physical table.
+Rows: 5
+Sample rows:
+| event   |
+|---------|
+| open    |
+| ...     |
+*/
+CREATE TABLE analytics.events_20240101 (
+    "event" VARCHAR(100) NULL
+        -- <null_ratio>25%</null_ratio>
+        -- <values>{'open'}</values>
 );
 ```"""
     )

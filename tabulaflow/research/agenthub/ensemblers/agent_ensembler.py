@@ -227,7 +227,6 @@ class AgentEnsembler:
             "get_table_schema": GetTableSchemaTool(
                 db_connector,
                 self.formatter,
-                compress=self.config.compress_schema,
                 include_descriptions=self.config.use_column_descriptions,
             ),
             "get_column_json_schema": GetColumnJsonSchemaTool(db_connector.schema),

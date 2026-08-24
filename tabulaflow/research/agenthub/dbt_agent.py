@@ -144,7 +144,6 @@ class DbtAgent:
         get_table_schema = GetTableSchemaTool(
             db_connector,
             self.formatter,
-            compress=self.config.compress_schema,
             include_descriptions=self.config.use_column_descriptions,
             disconnect_on_finish=True,
             enable_refresh=True,

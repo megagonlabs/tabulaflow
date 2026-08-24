@@ -16,7 +16,6 @@ from tabulaflow.agents.trace import Usage
 from tabulaflow.core import SQLSchema, TableRef
 from tabulaflow.data import SQLConnectorProtocol
 from tabulaflow.output.formatting import SQLDDLSchemaFormatter, SQLSchemaFormatter
-from tabulaflow.output.schema_compression import SchemaCompressor
 
 
 class EntitySourceTable(BaseModel):
@@ -265,22 +264,21 @@ class ERDiagramSynthesizer(CachedPreprocessorMixin[ERDiagram]):
     def __init__(
         self,
         llm: str = "openai-responses:gpt-5",
-        compress_schema: bool = True,
         model_settings: ModelSettings | None = None,
     ):
         self.llm = llm
         self.model_settings = model_settings
-        self.compressor = SchemaCompressor() if compress_schema else None
-        self.formatter = SQLDDLSchemaFormatter()
+        self.formatter = SQLDDLSchemaFormatter(compact_table_families=True)
         self._usage = Usage.create(llm=llm)
 
     def usage(self) -> Usage:
         return self._usage
 
+    def _get_cache_id_suffix(self) -> str:
+        return "_table-families-v2"
+
     async def _preprocess_impl_async(self, db_connector: SQLConnectorProtocol) -> ERDiagram:
         schema = db_connector.schema
-        if self.compressor is not None:
-            schema = self.compressor.compress(schema)
 
         system_prompt = jinja2.Template(ER_DIAGRAM_SYNTHESIS_PROMPT).render()
         run_query_tool = RunQueryTool(db_connector)

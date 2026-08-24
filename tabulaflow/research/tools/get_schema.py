@@ -15,8 +15,7 @@ class GetSchemaTool:
     Formats and returns the complete schema using the configured formatter.
 
     Attributes:
-        schema: The SQL schema containing all available tables. Can be a
-            compressed schema produced by SchemaCompressor.
+        schema: The physical SQL schema containing all available tables.
         formatter: The formatter used to render the schema as text.
     """
 

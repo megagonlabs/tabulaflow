@@ -7,7 +7,6 @@ from tabulaflow.data import DBConnector
 from tabulaflow.agents.trace import Usage, Trajectory
 from tabulaflow.research.types import PredQuery
 from tabulaflow.research.types import SimpleNL2QTask, SimpleNL2QTaskOutput
-from tabulaflow.output.schema_compression import SchemaCompressor
 from tabulaflow.agents.tools import BaseTool, RunQueryTool
 from tabulaflow.research.tools import FinishTool
 from tabulaflow.output.formatting import (
@@ -84,7 +83,6 @@ class MiniAgent:
         config: BasicAgentConfig,
     ):
         self.config = config
-        self.compressor = SchemaCompressor() if config.compress_schema else None
 
     @classmethod
     async def from_config_async(cls, config: BasicAgentConfig) -> "MiniAgent":
@@ -93,8 +91,6 @@ class MiniAgent:
     def _format_schema_for_prompt(self, db_connector: DBConnector) -> str:
         if db_connector.connector_type == "sql":
             schema = db_connector.schema
-            if self.compressor is not None:
-                schema = self.compressor.compress(schema)
             sql_formatter = cast(
                 SQLSchemaFormatter,
                 schema_formatter_registry.get_class(self.config.schema_formatter)(**self.config.to_formatter_kwargs()),

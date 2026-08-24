@@ -5,7 +5,6 @@ import tabulaflow
 from tabulaflow.config import tabulaflow_config
 from tabulaflow.agents.modules.db_summarizer import DBSummary
 from tabulaflow.core import SQLSchema
-from tabulaflow.output.schema_compression import SchemaCompressor
 from tabulaflow.output.formatting import SQLDDLSchemaFormatter
 from tabulaflow.research.agenthub._erd import ERDiagram, MermaidERDiagramFormatter
 
@@ -30,10 +29,9 @@ def main() -> None:
             schema = SQLSchema.model_validate_json(path.read_text())
         except ValueError:
             continue
-        compressed_schema = SchemaCompressor().compress(schema)
-        compressed_schema_str = SQLDDLSchemaFormatter().format(compressed_schema, include_descriptions=True)
+        schema_str = SQLDDLSchemaFormatter(compact_table_families=True).format(schema, include_descriptions=True)
         with open(output_path, "w") as f:
-            f.write(compressed_schema_str)
+            f.write(schema_str)
         exported += 1
     print(f"Exported {exported} schemas to {output_dir}")
 
@@ -57,7 +55,7 @@ def main() -> None:
         if args.skip_exists and os.path.exists(output_path):
             continue
         schema = SQLSchema.model_validate_json(open(os.path.join(input_dir, f)).read())
-        schema_str = SQLDDLSchemaFormatter().format(schema, include_descriptions=True)
+        schema_str = SQLDDLSchemaFormatter(compact_table_families=True).format(schema, include_descriptions=True)
         with open(output_path, "w") as f:
             f.write(schema_str)
     print(f"Exported {len(os.listdir(input_dir))} preprocessed schemas to {output_dir}")
