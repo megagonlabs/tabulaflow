@@ -8,7 +8,8 @@ from typing import TYPE_CHECKING, Any
 
 import pytest
 from textual import events
-from textual.widgets import Button, Input
+from textual.containers import VerticalScroll
+from textual.widgets import Button, Input, Static
 
 from tabulaflow.app import state as state_module
 from tabulaflow.app import tui
@@ -17,7 +18,7 @@ from tabulaflow.app.config import LLM_OFF, LLMRoleConfig, LLMPreset, ReasoningEf
 from tabulaflow.app.runtime_paths import RuntimePaths
 from tabulaflow.app.state import AppState
 from tabulaflow.app.tui import TabulaflowApp
-from tabulaflow.app.widgets import HistoryInput, SpinnerWidget, SystemMessage, UserMessage
+from tabulaflow.app.widgets import BannerWidget, HistoryInput, SpinnerWidget, SystemMessage, UserMessage
 
 if TYPE_CHECKING:
     from tabulaflow.agents.chat import ChatSession
@@ -604,6 +605,29 @@ async def test_starting_llm_off_reports_available_tools(
             "✓ LLM off · /connect and the data explorer remain available.",
             "✓ LLM off · /connect and the data explorer remain available.",
         ]
+
+
+@pytest.mark.asyncio
+async def test_startup_paints_banner_before_starting_initialization(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    app = _app(None)
+    started: list[bool] = []
+
+    def fake_start(_selection: ResolvedLLMSelection) -> None:
+        banner = app.query_one(BannerWidget)
+        started.append(banner.query_one(".banner-art", Static).is_mounted)
+
+    monkeypatch.setattr(app, "_setup_logging", lambda: None)
+    monkeypatch.setattr(app, "_ensure_pane", lambda: None)
+    monkeypatch.setattr(app, "_start_llm_activation", fake_start)
+
+    async with app.run_test() as pilot:
+        await pilot.pause()
+
+        chat_log = app.query_one("#chat-log", VerticalScroll)
+        assert [type(child) for child in chat_log.children[:2]] == [BannerWidget, SpinnerWidget]
+        assert started == [True]
 
 
 @pytest.mark.asyncio

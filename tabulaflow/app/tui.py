@@ -266,7 +266,7 @@ class TabulaflowApp(App[None]):
         self._session_lock = asyncio.Lock()
         self._llm_activation_in_progress = False
         self._llm_activation_error: str | None = None
-        self._initialization_spinner: SpinnerWidget | None = None
+        self._initialization_spinner: SpinnerWidget | None = SpinnerWidget("Initializing session...")
         self._submission_worker: Worker[None] | None = None
         self._last_idle_interrupt_ts: float = 0.0
         self._saved_input_placeholder: str | None = None
@@ -280,7 +280,11 @@ class TabulaflowApp(App[None]):
         self._explorer_state = _ExplorerState()
 
     def compose(self) -> ComposeResult:
-        yield VerticalScroll(id="chat-log")
+        initialization_spinner = self._initialization_spinner
+        assert initialization_spinner is not None
+        with VerticalScroll(id="chat-log"):
+            yield self._banner_for_preset(self._llm_selection.preset)
+            yield initialization_spinner
         with Vertical(id="bottom-bar"):
             yield BottomSeparator(classes="bottom-sep")
             with Horizontal(id="input-row"):
@@ -309,14 +313,13 @@ class TabulaflowApp(App[None]):
     def on_mount(self) -> None:
         self._setup_logging()
         chat_log = self.query_one("#chat-log", VerticalScroll)
-        chat_log.mount(self._banner_for_preset(self._llm_selection.preset))
         if debug_enabled():
             mount_debug_widgets(self, chat_log)
         self.query_one("#input-bar", Input).focus()
         chat_log.scroll_end(animate=False)
         self._refresh_esc_hint()
         self._ensure_pane()
-        self._start_llm_activation(self._llm_selection)
+        self.call_after_refresh(self._start_llm_activation, self._llm_selection)
 
     def _refresh_esc_hint(self) -> None:
         """Update the docked ``Esc`` hint label to match current state.
