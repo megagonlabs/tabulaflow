@@ -1016,6 +1016,8 @@ def test_answer_controls_render_choice_and_number_inputs() -> None:
     assert "--answer-control-progress" in pane_css
     assert ".answer-control-number-input::-webkit-slider-thumb" in pane_css
     assert ".answer-control-number-input::-moz-range-thumb" in pane_css
+    assert ".answer-control-number-input:focus-visible::-webkit-slider-thumb" in pane_css
+    assert ".answer-control-number-input:focus-visible::-moz-range-thumb" in pane_css
     assert ".answer-control-status:empty" in pane_css
     assert ".answer-control-number" in pane_css
 
