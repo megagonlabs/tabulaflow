@@ -1,9 +1,9 @@
 from dataclasses import dataclass
-from typing import Any, ClassVar
+from typing import Any, ClassVar, cast
 import pandas as pd
 from pydantic_ai import Tool
 from pydantic import BaseModel, Field
-from tabulaflow.data import DBConnector
+from tabulaflow.data import DBConnector, SQLConnectorProtocol
 from tabulaflow.core import ExecResult, GraphResult
 from tabulaflow.output.formatting import format_dataframe
 from tabulaflow.agents.tools.engines.sql import format_sqlalchemy_error_msg
@@ -97,6 +97,8 @@ class RunQueryTool:
         max_visible_rows: Maximum rows shown in the formatted output.
         max_cell_width: Maximum character width per cell in the formatted output.
         floatfmt: Float format string passed to tabulate.
+        release_connections_on_finish: Whether to release SQL connection-pool
+            resources after each execution while keeping the connector usable.
     """
 
     name: ClassVar = "run_query"
@@ -111,8 +113,10 @@ class RunQueryTool:
         max_visible_rows: int = 20,
         max_cell_width: int = 200,
         floatfmt: str = ".8g",
-        disconnect_on_finish: bool = False,
+        release_connections_on_finish: bool = False,
     ):
+        if release_connections_on_finish and db_connector.connector_type != "sql":
+            raise ValueError("release_connections_on_finish is only supported for SQL connectors")
         self.db_connector = db_connector
         self.enable_params = enable_params
         self.enable_refresh = enable_refresh
@@ -120,7 +124,7 @@ class RunQueryTool:
         self.max_visible_rows = max_visible_rows
         self.max_cell_width = max_cell_width
         self.floatfmt = floatfmt
-        self._disconnect_on_finish = disconnect_on_finish
+        self._release_connections_on_finish = release_connections_on_finish
         self._metrics = RunQueryToolMetrics()
         self._last_execution: QueryExecution | None = None
 
@@ -248,8 +252,8 @@ class RunQueryTool:
             self._last_execution = execution
             return execution
         finally:
-            if self._disconnect_on_finish:
-                await self.db_connector.disconnect_async()
+            if self._release_connections_on_finish:
+                await cast(SQLConnectorProtocol, self.db_connector).release_connections_async()
 
     def _format_exec_result(self, exec_result: ExecResult) -> str:
         if exec_result.error is not None:

@@ -2192,6 +2192,7 @@ class SQLConnector:
     # vocabulary into ``SQLConnector``.
     _on_disconnect: Callable[[], None] | None = None
     _schema_lock: asyncio.Lock = dataclasses.field(default_factory=asyncio.Lock)
+    _closed: bool = dataclasses.field(default=False, init=False)
 
     @property
     def backend(self) -> str:
@@ -2329,20 +2330,29 @@ class SQLConnector:
     def _set_disconnect_hook(self, callback: Callable[[], None]) -> None:
         self._on_disconnect = callback
 
+    def _check_open(self) -> None:
+        if self._closed:
+            raise RuntimeError("SQLConnector is closed")
+
+    async def release_connections_async(self) -> None:
+        """Release pooled connections while keeping the connector reusable."""
+        self._check_open()
+        await self._t_eng.aclose()
+
     async def disconnect_async(self) -> None:
-        """Close all pooled connections in the underlying SQLAlchemy engine.
+        """Permanently close the connector and release its resources.
 
         For read-write DuckDB connectors, this releases the file-level
         lock so external processes (e.g. ``dbt run``) can acquire a write
         lock.  Read-only connectors already use DuckDB's native read-only
         mode and do not hold a lock.
 
-        After disconnect, ``schema`` remains in memory and SQLAlchemy will
-        transparently create new connections on demand.
-
         A loader-owned cleanup hook, when present, runs after the engine closes.
         """
+        if self._closed:
+            return
         await self._t_eng.aclose()
+        self._closed = True
         if self._on_disconnect is not None:
             try:
                 self._on_disconnect()
@@ -2369,6 +2379,7 @@ class SQLConnector:
         Returns:
             The updated :class:`SQLSchema`.
         """
+        self._check_open()
         if tables is not None:
             tables = [ref for ref in tables if self._schema_introspection.allows_schema(ref.schema_name)]
             if not tables:
@@ -2477,6 +2488,7 @@ class SQLConnector:
             ValueError: If ``table_name`` is empty, ``mode`` is invalid, or
                 the connector is read-only.
         """
+        self._check_open()
         if self.read_only:
             raise ValueError("write_dataframe_async is blocked when read_only=True")
         if not table_name.strip():
@@ -2598,6 +2610,7 @@ class SQLConnector:
                 except asyncio.CancelledError:
                     ...  # query was aborted server-side
         """
+        self._check_open()
         effective_timeout = self.config.query_timeout_seconds if timeout is _UNSET else timeout
         assert isinstance(effective_timeout, int) or effective_timeout is None
 

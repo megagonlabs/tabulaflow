@@ -254,6 +254,27 @@ async def test_connector_uses_configured_query_concurrency(tmp_path: Path) -> No
         await connector.disconnect_async()
 
 
+async def test_release_connections_keeps_connector_usable_but_disconnect_is_terminal(tmp_path: Path) -> None:
+    connector = await _connector(
+        tmp_path,
+        global_id="lifecycle",
+        config=SQLConnectorConfig(schema_cache_mode="off"),
+    )
+
+    await connector.release_connections_async()
+    assert (await connector.run_query_async("SELECT 1")).error is None
+
+    await connector.disconnect_async()
+    await connector.disconnect_async()
+
+    with pytest.raises(RuntimeError, match="SQLConnector is closed"):
+        await connector.run_query_async("SELECT 1")
+    with pytest.raises(RuntimeError, match="SQLConnector is closed"):
+        await connector.refresh_schema_async()
+    with pytest.raises(RuntimeError, match="SQLConnector is closed"):
+        await connector.write_dataframe_async(pd.DataFrame({"value": [1]}), "closed")
+
+
 async def test_query_cache_mode_controls_reuse(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     config = SQLConnectorConfig(
         cache_dir=tmp_path / "cache",

@@ -56,7 +56,11 @@ class SQLConnectorProtocol(Protocol):
         ...
 
     async def disconnect_async(self) -> None:
-        """Close active connections and release held resources."""
+        """Permanently close the connector and release held resources."""
+        ...
+
+    async def release_connections_async(self) -> None:
+        """Release pooled connections while keeping the connector reusable."""
         ...
 
     async def refresh_schema_async(
@@ -104,7 +108,7 @@ class PropertyGraphConnectorProtocol(Protocol):
         ...
 
     async def disconnect_async(self) -> None:
-        """Close active connections and release held resources."""
+        """Permanently close the connector and release held resources."""
         ...
 
     async def refresh_schema_async(self) -> PropertyGraphSchema:

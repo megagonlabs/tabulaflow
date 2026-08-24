@@ -138,6 +138,7 @@ async def test_neo4j_fetch_is_bounded_before_dataframe_materialization() -> None
     connector._database = None
     connector.read_only = True
     connector._query_semaphore = asyncio.Semaphore(1)
+    connector._closed = False
 
     with pytest.raises(ResultTooLargeError, match="more than 2 rows"):
         await connector._run_cypher("RETURN 1", return_df=True, max_rows=2)

@@ -27,6 +27,7 @@ from tabulaflow.core import (
 )
 from tabulaflow.core.serialization import json_ready
 from tabulaflow.data.protocols import ResultTooLargeError, validate_global_id
+from tabulaflow.data.url import _neo4j_global_id
 from tabulaflow.data._cache import (
     cache_lock,
     read_cached_model,
@@ -317,6 +318,7 @@ class Neo4jConnector:
     read_only: bool = True
     _schema_lock: asyncio.Lock = field(default_factory=asyncio.Lock)
     _query_semaphore: asyncio.Semaphore = field(init=False)
+    _closed: bool = field(default=False, init=False)
 
     def __post_init__(self) -> None:
         self._query_semaphore = asyncio.Semaphore(self.config.max_query_concurrency)
@@ -340,8 +342,9 @@ class Neo4jConnector:
     @classmethod
     async def from_url_async(
         cls,
-        global_id: str,
         url: str,
+        *,
+        global_id: str | None = None,
         auth: tuple[str, str] | neo4j.Auth | None = None,
         database: str | None = None,
         db_name: str | None = None,
@@ -353,10 +356,11 @@ class Neo4jConnector:
         """Create a connector from a Neo4j Bolt URL.
 
         Args:
-            global_id: Globally unique, filename-safe identifier for this
-                database connection and its caches.
             url: Neo4j URL (e.g. ``"neo4j://localhost:7687"``,
                 ``"bolt://localhost:7687"``, ``"neo4j+s://host"``).
+            global_id: Globally unique, filename-safe identifier for this
+                database connection and its caches. Derived from the
+                credential-free URL and database when omitted.
             auth: ``(username, password)`` tuple or ``neo4j.Auth`` object.
             database: Neo4j database name.  ``None`` uses the server default.
             db_name: Human-readable database name used in ``schema.name``.
@@ -369,7 +373,7 @@ class Neo4jConnector:
             **driver_kwargs: Extra keyword arguments for
                 ``neo4j.AsyncGraphDatabase.driver``.
         """
-        validate_global_id(global_id)
+        global_id = validate_global_id(global_id or _neo4j_global_id(url, database))
         config = Neo4jConnectorConfig() if config is None else config
         if "max_connection_pool_size" in driver_kwargs:
             raise TypeError("Configure Neo4j query concurrency through Neo4jConnectorConfig.max_query_concurrency")
@@ -414,6 +418,7 @@ class Neo4jConnector:
         return_df: bool = False,
         max_rows: int | None = None,
     ) -> list[dict[str, Any]] | pd.DataFrame:
+        self._check_open()
         access_mode = neo4j.READ_ACCESS if self.read_only else neo4j.WRITE_ACCESS
         async with self._query_semaphore:
             async with self._driver.session(database=self._database, default_access_mode=access_mode) as session:
@@ -442,6 +447,7 @@ class Neo4jConnector:
         ``timeout`` uses the connector configuration; ``None`` disables it.
         Task cancellation propagates.
         """
+        self._check_open()
         effective_timeout = self.config.query_timeout_seconds if timeout is _UNSET else timeout
         assert isinstance(effective_timeout, int) or effective_timeout is None
         query_str = query.strip()
@@ -470,7 +476,14 @@ class Neo4jConnector:
 
     async def disconnect_async(self) -> None:
         """Close the Neo4j driver and all pooled connections."""
+        if self._closed:
+            return
         await self._driver.close()
+        self._closed = True
+
+    def _check_open(self) -> None:
+        if self._closed:
+            raise RuntimeError("Neo4jConnector is closed")
 
     def _schema_cache_path(self) -> Path:
         return schema_cache_path(
@@ -505,6 +518,7 @@ class Neo4jConnector:
 
     async def refresh_schema_async(self) -> PropertyGraphSchema:
         """Re-introspect the live database, bypassing cache on read."""
+        self._check_open()
         async with self._schema_lock:
             cache_path = self._schema_cache_path()
             async with cache_lock(cache_path):

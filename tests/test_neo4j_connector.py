@@ -68,6 +68,7 @@ async def test_query_session_uses_server_enforced_access_mode(read_only: bool, e
     connector._database = None
     connector.read_only = read_only
     connector._query_semaphore = asyncio.Semaphore(1)
+    connector._closed = False
 
     await connector._run_cypher("MATCH (n) DELETE n", return_df=True)
 
@@ -97,6 +98,25 @@ async def test_query_concurrency_configures_semaphore_and_driver_pool(monkeypatc
         assert connector.language == "cypher"
     finally:
         await connector.disconnect_async()
+
+
+async def test_disconnect_is_terminal_and_idempotent(monkeypatch: pytest.MonkeyPatch) -> None:
+    driver = _Driver()
+    monkeypatch.setattr(neo4j.AsyncGraphDatabase, "driver", lambda *_args, **_kwargs: driver)
+    connector = await Neo4jConnector.from_url_async(
+        "neo4j://localhost:7687",
+        db_name="test",
+        schema=PropertyGraphSchema(name="test"),
+    )
+    assert connector.global_id.startswith("url+")
+
+    await connector.disconnect_async()
+    await connector.disconnect_async()
+
+    with pytest.raises(RuntimeError, match="Neo4jConnector is closed"):
+        await connector.run_query_async("RETURN 1")
+    with pytest.raises(RuntimeError, match="Neo4jConnector is closed"):
+        await connector.refresh_schema_async()
 
 
 async def test_driver_pool_size_override_is_rejected() -> None:
@@ -131,6 +151,7 @@ async def test_query_semaphore_limits_concurrent_cypher_execution() -> None:
     connector._database = None
     connector.read_only = True
     connector._query_semaphore = asyncio.Semaphore(2)
+    connector._closed = False
 
     await asyncio.gather(*(connector._run_cypher("RETURN 1", return_df=True) for _ in range(5)))
 

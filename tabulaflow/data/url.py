@@ -168,10 +168,9 @@ async def connect_url(
         if config is not None and not isinstance(config, Neo4jConnectorConfig):
             raise TypeError("Neo4j URLs require Neo4jConnectorConfig")
         driver_url, database, auth = _neo4j_driver_params(url)
-        gid = global_id or _neo4j_global_id(driver_url, database)
         return await Neo4jConnector.from_url_async(
-            global_id=gid,
             url=driver_url,
+            global_id=global_id,
             database=database,
             db_name=db_name,
             read_only=read_only,

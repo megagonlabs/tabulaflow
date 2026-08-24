@@ -131,7 +131,7 @@ class DbtAgent:
         file_editor = FileEditorTool(working_dir)
 
         async def _pre_run_hook() -> None:
-            await db_connector.disconnect_async()
+            await db_connector.release_connections_async()
             # Restore DuckDB files from pristine backup before each dbt run
             # to prevent unrecoverable corruption caused by previous dbt runs.
             db_files = list(Path(working_dir).resolve().glob("*.duckdb"))
@@ -145,14 +145,14 @@ class DbtAgent:
             db_connector,
             self.formatter,
             include_descriptions=self.config.use_column_descriptions,
-            disconnect_on_finish=True,
+            release_connections_on_finish=True,
             enable_refresh=True,
         )
         run_query = RunQueryTool(
             db_connector,
             timeout=30,
             max_visible_rows=20,
-            disconnect_on_finish=True,
+            release_connections_on_finish=True,
         )
 
         if self.config.use_bash_tool:
@@ -189,7 +189,7 @@ class DbtAgent:
             model_settings=self.config.to_model_settings(),
         )
 
-        await db_connector.disconnect_async()
+        await db_connector.release_connections_async()
 
         result = await agent.run(
             f"Complete the dbt project by writing the missing SQL model files and running `dbt run` successfully:\n{task.question}"
