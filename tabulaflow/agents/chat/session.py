@@ -16,7 +16,7 @@ from typing import TYPE_CHECKING, Any, Final
 
 from pydantic_ai.settings import ModelSettings
 
-from tabulaflow.agents.tools.message_store import (
+from tabulaflow.agents.message_store import (
     MESSAGE_THRESHOLD_CHARS,
     MessageStore,
     MessageStoreCapability,

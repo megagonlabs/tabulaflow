@@ -67,7 +67,7 @@ greps::
     grep -oE '\\bbutton "[^"]*" \\[ref=e[0-9]+\\]' snapshot.md
 
 When a snapshot has spilled to the workspace DuckDB (see
-:class:`tabulaflow.agents.tools.message_store.MessageStore`), the same atom shape
+:class:`tabulaflow.agents.message_store.MessageStore`), the same atom shape
 works as a SQL regex on ``_internal.messages.content``.  Use the inline
 ``(?i)`` flag for case-insensitive recall and alternation for multiple
 keywords; the full atom comes back so the agent can verify the match::

@@ -29,7 +29,7 @@ from tabulaflow.agents.tools.base import ToolProgressUpdate
 from tabulaflow.agents.extraction.column_types import resolve_column_types
 from tabulaflow.agents.tools.extract_rows_from_documents import ExtractRowsFromDocumentsTool
 from tabulaflow.agents.tools._sql import qualified_table, sa_table
-from tabulaflow.agents.tools.message_store import (
+from tabulaflow.agents.message_store import (
     MESSAGE_THRESHOLD_CHARS,
     MessageStore,
     MessageStoreCapability,

@@ -26,7 +26,7 @@ from tabulaflow.agents.tools.filesystem.access import (
     _resolve_roots,
     FileEditorRoot as FileEditorRoot,
 )
-from tabulaflow.agents.tools.message_store import (
+from tabulaflow.agents.message_store import (
     MESSAGE_THRESHOLD_CHARS,
     ScopedMessageStore,
     make_marked,

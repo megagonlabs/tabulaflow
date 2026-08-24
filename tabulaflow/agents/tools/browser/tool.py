@@ -52,7 +52,7 @@ from .aria import (
     extract_refs,
     render_aria_markdown,
 )
-from ..message_store import (
+from tabulaflow.agents.message_store import (
     deref_call,
     id_marker,
 )
