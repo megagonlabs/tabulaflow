@@ -36,7 +36,7 @@ from tabulaflow.agents.tools.message_store import (
     make_snippet,
 )
 from tabulaflow.agents.tools.registry_run_query import RegistryRunQueryTool
-from tabulaflow.agents.tools.web_browser import (
+from tabulaflow.agents.tools.browser.tool import (
     BROWSER_TOOL_NAMES,
     SNAPSHOT_SNIPPET_THRESHOLD_CHARS,
     WebBrowserTool,

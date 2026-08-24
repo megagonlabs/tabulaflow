@@ -1,9 +1,9 @@
 """Structure-aware, non-overlapping splitter for markdown documents.
 
-Serves both :mod:`tabulaflow.agents.tools.web_browser` snapshots (markdown from a page's
-accessibility tree) and PDF/plain text. It is *source-agnostic*: it cuts on whatever
-structure exists and degrades through heading → paragraph → line → sentence → hard
-char, so a structureless document still splits cleanly.
+Used by ``EntityExtractor`` to chunk Markdown browser snapshots, extracted PDF text,
+and plain text. It is *source-agnostic*: it cuts on whatever structure exists and
+degrades through heading → paragraph → line → sentence → hard char, so a structureless
+document still splits cleanly.
 
 Two properties replace the old fixed-window + overlap scheme (overlap only existed so a
 boundary-straddling entity was seen whole by one chunk, at the cost of duplicates):

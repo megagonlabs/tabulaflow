@@ -9,10 +9,10 @@ alternative — Chromium-per-session, single foreground tab — costs
 ~15 GB at 50 agents and forces every multi-source workflow through
 subagent fan-out.
 
-What this module adds on top of Playwright (and differs from browser-use)
-=========================================================================
+What this browser implementation adds on top of Playwright
+===========================================================
 
-**One Chromium, many isolated agents.**  Singleton ``WebBrowserManager``
+**One Chromium, many isolated agents.**  A shared ``WebBrowserManager``
 owns one Chromium + a shared ``BrowserContext``; many ``WebBrowserTool``
 instances coexist in-process.  ``isolated=True`` opts into a private
 context when cookie/storage isolation matters.  Browser-use launches one
@@ -35,7 +35,7 @@ placed right after each link, button, or input.  Every interactive
 element is a self-contained single-line atom (``[text](url) [ref=eN]``
 for links; ``role "name" [ref=eN]`` for buttons / form controls / etc.)
 so the agent can locate one with a single grep / SQL regex.  See
-:mod:`tabulaflow.agents.tools.engines.aria_to_markdown` for the full atom-shape reference.
+:mod:`tabulaflow.agents.tools.browser.aria` for the full atom-shape reference.
 """
 
 import asyncio
@@ -48,23 +48,22 @@ from urllib.parse import urlparse
 from pydantic import BaseModel
 from pydantic_ai import Tool
 
-from .engines.aria_to_markdown import (
+from .aria import (
     extract_refs,
     render_aria_markdown,
 )
-from .message_store import (
+from ..message_store import (
     deref_call,
     id_marker,
 )
-from .engines.pdf_extract import extract_pdf_text
+from ..engines.pdf_extract import extract_pdf_text
+from .manager import WebBrowserManager
 
 if TYPE_CHECKING:
     from playwright.async_api import (
-        Browser,
         BrowserContext,
         Locator,
         Page,
-        Playwright,
         Response,
     )
     from pydantic_ai.capabilities import Hooks
@@ -105,13 +104,6 @@ _AUTOCOMPLETE_WAIT_MS = 1_500
 # names, form controls show as bare ``textbox [ref=eN]``, icons render as
 # bare ``[]``.
 _POST_LOAD_SETTLE_MS = 1_000
-
-
-_USER_AGENT = (
-    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
-    "AppleWebKit/537.36 (KHTML, like Gecko) "
-    "Chrome/124.0.0.0 Safari/537.36"
-)
 
 
 # Names of the LLM-facing browser action tools (see ``as_pydantic_ai_tools``).
@@ -338,152 +330,6 @@ def _snapshot_marker(total: int, message_id: str, shown: int, total_refs: int) -
     if total_refs:
         ref_note = f"; {shown} of {total_refs} interactive refs from the omitted region shown below"
     return f"... [truncated, {total} chars total{ref_note} — read full content with {deref_call(message_id)}] ..."
-
-
-# ---------------------------------------------------------------------------
-# Browser process manager
-# ---------------------------------------------------------------------------
-
-
-class _PageBudget:
-    """Process-wide cap on simultaneously-open browser pages.
-
-    A permit is taken before a tab opens and returned when it closes, bounding
-    total live Chromium pages across every ``WebBrowserTool`` — the dominant
-    memory cost under wide/deep subagent fan-out.
-
-    Acquire policy (chosen by the caller):
-    - ``block=True`` waits (indefinitely, event-driven) for a free slot. Use it
-      only when the caller holds no permit yet (a tool's first tab): waiting
-      while holding nothing is deadlock-safe (the waiter is in no cycle) and
-      never fails a one-tab task.
-    - ``block=False`` returns immediately. Use it once the caller already holds
-      a permit (a tool's 2nd+ tab) so a holder never blocks-while-holding, which
-      would risk deadlock when permit-holders await permit-seekers.
-    """
-
-    def __init__(self, limit: int | None) -> None:
-        self._limit = limit
-        self._in_use = 0
-        self._cond = asyncio.Condition()
-
-    async def acquire(self, *, block: bool) -> bool:
-        limit = self._limit
-        if limit is None:
-            return True
-        async with self._cond:
-            if self._in_use < limit:
-                self._in_use += 1
-                return True
-            if not block:
-                return False
-            await self._cond.wait_for(lambda: self._in_use < limit)
-            self._in_use += 1
-            return True
-
-    async def release(self) -> None:
-        if self._limit is None:
-            return
-        async with self._cond:
-            if self._in_use > 0:
-                self._in_use -= 1
-                self._cond.notify(1)
-
-
-class WebBrowserManager:
-    """Owns a Chromium browser process and a shared ``BrowserContext``.
-
-    Mental model — same as Chrome on your laptop:
-
-    - ``Chromium browser`` ≈ one running Chrome.app
-    - ``BrowserContext`` ≈ one Chrome profile (or incognito window):
-      own cookies, own storage, fully isolated from siblings
-    - ``Page`` ≈ one tab inside a context
-
-    Also owns a process-wide :class:`_PageBudget` capping simultaneously-open
-    pages across all tools that share this manager.
-
-    The agent runtime owns the process-wide default. Construct directly only
-    for tests or non-default lifecycle needs.
-    """
-
-    def __init__(self, headless: bool = True, max_pages: int | None = None) -> None:
-        self._headless = headless
-        self._playwright: Playwright | None = None
-        self._browser: Browser | None = None
-        self._shared_context: BrowserContext | None = None
-        self._lock = asyncio.Lock()
-        self._page_budget = _PageBudget(max_pages)
-
-    async def acquire_page(self, *, block: bool) -> bool:
-        """Take a page permit. See :class:`_PageBudget` for the ``block`` policy."""
-        return await self._page_budget.acquire(block=block)
-
-    async def release_page(self) -> None:
-        """Return a page permit taken by :meth:`acquire_page`."""
-        await self._page_budget.release()
-
-    async def shared_context(self) -> "BrowserContext":
-        """Return the shared BrowserContext, launching the browser if needed."""
-        if self._shared_context is not None:
-            return self._shared_context
-        async with self._lock:
-            if self._shared_context is None:
-                browser = await self._ensure_browser_locked()
-                self._shared_context = await browser.new_context(
-                    user_agent=_USER_AGENT,
-                    accept_downloads=False,
-                )
-            return self._shared_context
-
-    async def new_isolated_context(self) -> "BrowserContext":
-        """Create a fresh private BrowserContext for tools that need isolation."""
-        async with self._lock:
-            browser = await self._ensure_browser_locked()
-        return await browser.new_context(
-            user_agent=_USER_AGENT,
-            accept_downloads=False,
-        )
-
-    async def close(self) -> None:
-        """Tear down the shared context, browser, and Playwright runtime."""
-        async with self._lock:
-            if self._shared_context is not None:
-                try:
-                    await self._shared_context.close()
-                except Exception:
-                    pass
-                self._shared_context = None
-            if self._browser is not None:
-                try:
-                    await self._browser.close()
-                except Exception:
-                    pass
-                self._browser = None
-            if self._playwright is not None:
-                try:
-                    await self._playwright.stop()
-                except Exception:
-                    pass
-                self._playwright = None
-
-    # internals ---------------------------------------------------------------
-
-    async def _ensure_browser_locked(self) -> "Browser":
-        """Launch Chromium if not already running. Caller must hold ``self._lock``."""
-        if self._browser is not None and self._browser.is_connected():
-            return self._browser
-        try:
-            from playwright.async_api import async_playwright
-        except ImportError as e:
-            raise RuntimeError(
-                "playwright is not installed. Install with: uv add playwright && uv run playwright install chromium"
-            ) from e
-        self._playwright = await async_playwright().start()
-        if not self._headless:
-            logger.info("Launching Chromium in headed mode")
-        self._browser = await self._playwright.chromium.launch(headless=self._headless)
-        return self._browser
 
 
 # ---------------------------------------------------------------------------

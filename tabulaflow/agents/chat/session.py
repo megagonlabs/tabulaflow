@@ -23,7 +23,7 @@ from tabulaflow.agents.tools.message_store import (
     ScopedMessageStore,
     make_snippet,
 )
-from tabulaflow.agents.tools.web_browser import (
+from tabulaflow.agents.tools.browser.tool import (
     BROWSER_TOOL_NAMES,
     SNAPSHOT_SNIPPET_THRESHOLD_CHARS,
     snapshot_snippet,
@@ -207,7 +207,7 @@ class ChatSession:
         from tabulaflow.agents.tools.render_map import RenderMapTool
         from tabulaflow.agents.tools.run_subagent_for_each_row import RunSubagentForEachRowTool
         from tabulaflow.agents.tools.show_artifacts import ShowArtifactsTool
-        from tabulaflow.agents.tools.web_browser import WebBrowserTool
+        from tabulaflow.agents.tools.browser.tool import WebBrowserTool
 
         # The fan-out tools operate on the workspace only: sub-tasks are laid out
         # as workspace tables and results written back there (user data reaches

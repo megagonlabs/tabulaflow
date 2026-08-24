@@ -1,7 +1,7 @@
 """Tests for the aria-YAML → markdown renderer."""
 
-import tabulaflow.agents.tools.engines.aria_to_markdown as a2m
-from tabulaflow.agents.tools.engines.aria_to_markdown import render_aria_markdown
+import tabulaflow.agents.tools.browser.aria as a2m
+from tabulaflow.agents.tools.browser.aria import render_aria_markdown
 
 
 def md(yaml: str) -> str:

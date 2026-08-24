@@ -12,7 +12,7 @@ from aiolimiter import AsyncLimiter
 from tabulaflow.agents.config import AgentRuntimeConfig
 
 if TYPE_CHECKING:
-    from tabulaflow.agents.tools.web_browser import WebBrowserManager
+    from tabulaflow.agents.tools.browser.manager import WebBrowserManager
 
 _ModelT = TypeVar("_ModelT")
 _ThrottlePair = tuple[asyncio.Semaphore | None, AsyncLimiter | None]
@@ -52,7 +52,7 @@ class _AgentRuntime:
         if self._browser_manager is None:
             with self._resource_lock:
                 if self._browser_manager is None:
-                    from tabulaflow.agents.tools.web_browser import WebBrowserManager
+                    from tabulaflow.agents.tools.browser.manager import WebBrowserManager
 
                     self._browser_manager = WebBrowserManager(
                         headless=self.config.browser_headless,

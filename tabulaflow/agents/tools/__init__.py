@@ -33,7 +33,8 @@ if TYPE_CHECKING:
     from tabulaflow.agents.tools.run_query import RunQueryTool
     from tabulaflow.agents.tools.run_subagent_for_each_row import RunSubagentForEachRowTool
     from tabulaflow.agents.tools.show_artifacts import ArtifactBundle, ArtifactRef, ShowArtifactsTool
-    from tabulaflow.agents.tools.web_browser import WebBrowserManager, WebBrowserTool
+    from tabulaflow.agents.tools.browser.manager import WebBrowserManager
+    from tabulaflow.agents.tools.browser.tool import WebBrowserTool
 
 _LAZY_EXPORTS = {
     "AddCanonicalNameTool": ("tabulaflow.agents.tools.add_canonical_name", "AddCanonicalNameTool"),
@@ -92,8 +93,8 @@ _LAZY_EXPORTS = {
     "ShowArtifactsTool": ("tabulaflow.agents.tools.show_artifacts", "ShowArtifactsTool"),
     "ToolCallOutcome": ("tabulaflow.agents.tools.base", "ToolCallOutcome"),
     "ToolProgressUpdate": ("tabulaflow.agents.tools.base", "ToolProgressUpdate"),
-    "WebBrowserManager": ("tabulaflow.agents.tools.web_browser", "WebBrowserManager"),
-    "WebBrowserTool": ("tabulaflow.agents.tools.web_browser", "WebBrowserTool"),
+    "WebBrowserManager": ("tabulaflow.agents.tools.browser.manager", "WebBrowserManager"),
+    "WebBrowserTool": ("tabulaflow.agents.tools.browser.tool", "WebBrowserTool"),
 }
 
 __all__ = [

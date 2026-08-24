@@ -19,7 +19,7 @@ def test_layer_package_imports_are_lightweight() -> None:
     assert "tabulaflow.core.schema" not in modules
     assert "tabulaflow.data.sql" not in modules
     assert "tabulaflow.output.formatting.sql_ddl" not in modules
-    assert "tabulaflow.agents.tools.web_browser" not in modules
+    assert "tabulaflow.agents.tools.browser.tool" not in modules
     assert "tabulaflow.agents.modules.schema_preprocessor" not in modules
 
 
@@ -34,7 +34,7 @@ def test_lazy_public_exports_load_only_their_owners() -> None:
     assert "tabulaflow.data.sql" not in modules
     assert "tabulaflow.data.neo4j" not in modules
     assert "tabulaflow.agents.tools.base" in modules
-    assert "tabulaflow.agents.tools.web_browser" not in modules
+    assert "tabulaflow.agents.tools.browser.tool" not in modules
     assert "tabulaflow.output.formatting._core" in modules
     assert "tabulaflow.output.formatting.sql_ddl" not in modules
 

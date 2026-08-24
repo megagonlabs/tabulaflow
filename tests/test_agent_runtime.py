@@ -78,7 +78,7 @@ def test_runtime_separates_resources_between_event_loops() -> None:
 
 
 async def test_runtime_owns_the_default_browser_manager() -> None:
-    from tabulaflow.agents.tools.web_browser import WebBrowserTool
+    from tabulaflow.agents.tools.browser.tool import WebBrowserTool
 
     initialize_agent_runtime(AgentRuntimeConfig(browser_headless=False, browser_max_tabs=4))
     runtime = _get_agent_runtime()
