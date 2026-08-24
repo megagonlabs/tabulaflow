@@ -21,12 +21,12 @@ from tabulaflow.research.tools import SearchKeywordsTool, FinishTool
 from tabulaflow.output.formatting import SQLSchemaFormatter, schema_formatter_registry
 from tabulaflow.research.agenthub.base import agent_registry, BaseAgentConfig
 from tabulaflow.research.agenthub.utils import (
+    extract_code,
     get_max_steps_processor,
     instrument,
     BasicAgentConfig,
     TaskRunContext,
 )
-from tabulaflow.agents.response_parsing import extract_code
 from tabulaflow.research.utils import extract_all_source_columns
 from tabulaflow.research.agenthub._erd import ERDiagram, ERDiagramSynthesizer, MermaidERDiagramFormatter
 from tabulaflow.agents.llm import make_agent

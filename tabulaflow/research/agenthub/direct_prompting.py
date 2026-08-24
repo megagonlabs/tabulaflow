@@ -14,10 +14,10 @@ from tabulaflow.output.formatting import (
 )
 from tabulaflow.research.agenthub.base import agent_registry, BaseAgentConfig
 from tabulaflow.research.agenthub.utils import (
+    extract_code,
     instrument,
     BasicAgentConfig,
 )
-from tabulaflow.agents.response_parsing import extract_code
 from tabulaflow.agents.llm import make_agent
 
 

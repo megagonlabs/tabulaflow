@@ -5,7 +5,6 @@ import jinja2
 import logging
 import asyncio
 from typing import Any, ClassVar, cast
-from tabulaflow.agents.response_parsing import extract_code
 from tabulaflow.output.formatting import (
     PropertyGraphSchemaFormatter,
     SQLSchemaFormatter,
@@ -16,7 +15,7 @@ from tabulaflow.agents.trace import Trajectory, SystemMessage, UserMessage, Assi
 from tabulaflow.research.types import PredQuery
 from tabulaflow.research.types import SimpleNL2QTask, SimpleNL2QTaskOutput
 from tabulaflow.research.agenthub.base import agent_registry, BaseAgentConfig
-from tabulaflow.research.agenthub.utils import instrument, BasicAgentConfig
+from tabulaflow.research.agenthub.utils import BasicAgentConfig, extract_code, instrument
 
 SYSTEM_PROMPT = """
 You are a database expert responsible for translating natural language questions into {{language}} queries.

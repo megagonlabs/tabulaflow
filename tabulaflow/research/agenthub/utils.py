@@ -1,6 +1,7 @@
 from typing import Any, Callable, Literal
 from functools import partial, wraps
 from dataclasses import dataclass
+import re
 
 from opentelemetry import trace
 from pydantic_ai import RunContext
@@ -13,6 +14,11 @@ from tabulaflow.data import DBConnector
 from tabulaflow.agents.llm import make_model_settings
 from tabulaflow.agents.tools import BaseTool
 from tabulaflow.output.formatting import SQLSchemaFormatter
+
+
+def extract_code(response: str) -> str:
+    match = re.search(r"```(?:([\w+-]+))?\n([\s\S]*?)\n```", response)
+    return match.group(2).strip() if match else response.strip()
 
 
 def max_steps_processor(
