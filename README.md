@@ -533,10 +533,26 @@ Aug 17
 - [x] core layer cleanup
 - [x] configuraion migration design and cleanup
 
+Aug 18 - 19
+- data layer and output layer cleanup
+  - [x] graph extraction
+  - [x] schema and query cache
+  - [x] column stats profiling
+  - [x] simplify artifact normalization api
+  - [x] backend and langauge fields
+  - [x] shared query concurrency configuration
+- [x] parametrized graphs and maps
+
+Aug 23
+- [x] data layer and output layer cleanup
+  - [x] schema compression
+
+
 - [ ] Fix flicker when change selection in answer controls
 - [ ] Shell messed up after ssh disconnect
 - [ ] Check if uv tool install install browser
 
+- [ ] Issue: schema introspection silently fail for structual failure
 - [ ] Bug: parallel tool call in a turn keep spinning until last tool finish?
 - [ ] Review data flow architecture and RAM complexity
 - [ ] Fix `/clear`
