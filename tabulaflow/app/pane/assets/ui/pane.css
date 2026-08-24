@@ -210,16 +210,62 @@ body { margin: 0; background: var(--bg); color: var(--text); display: flex; flex
     appearance: none; border: 1px solid rgba(154, 164, 178, 0.24); border-radius: 999px;
     background: rgba(255, 255, 255, 0.03); color: var(--text-muted); cursor: pointer;
     padding: 5px 11px; font: 600 12px/1.25 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    transition: color 120ms ease, background-color 120ms ease, border-color 120ms ease, transform 80ms ease;
 }
-.answer-control-option:hover:not(:disabled) { color: var(--text); background: rgba(255, 255, 255, 0.06); }
+.answer-control-option:hover:not(.active):not(:disabled) { color: var(--text); background: rgba(255, 255, 255, 0.06); }
 .answer-control-option.active { color: #08130f; background: var(--accent); border-color: var(--accent); }
+.answer-control-option.active:hover { background: #49c092; border-color: #49c092; }
+.answer-control-option:active:not(:disabled) { transform: translateY(1px); }
 .answer-control-option:disabled { cursor: default; opacity: 0.62; }
 .answer-control-number { display: flex; align-items: center; gap: 10px; }
-.answer-control-number-input { accent-color: var(--accent); }
-.answer-control-number-input[type="range"] { flex: 1 1 180px; min-width: 160px; }
+.answer-control-number-input[type="range"] {
+    --answer-control-progress: 0%;
+    appearance: none; flex: 1 1 180px; min-width: 160px; height: 20px; margin: 0;
+    background: transparent; cursor: pointer;
+}
+.answer-control-number-input::-webkit-slider-runnable-track {
+    height: 4px; border-radius: 999px;
+    background: linear-gradient(to right, var(--accent) 0 var(--answer-control-progress),
+                                rgba(154, 164, 178, 0.24) var(--answer-control-progress) 100%);
+}
+.answer-control-number-input::-webkit-slider-thumb {
+    appearance: none; width: 16px; height: 16px; margin-top: -6px; border: 2px solid #193f31;
+    border-radius: 50%; background: var(--accent); box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+    transition: transform 100ms ease, box-shadow 100ms ease;
+}
+.answer-control-number-input::-moz-range-track {
+    height: 4px; border: 0; border-radius: 999px; background: rgba(154, 164, 178, 0.24);
+}
+.answer-control-number-input::-moz-range-progress {
+    height: 4px; border-radius: 999px; background: var(--accent);
+}
+.answer-control-number-input::-moz-range-thumb {
+    width: 14px; height: 14px; border: 2px solid #193f31; border-radius: 50%;
+    background: var(--accent); box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+    transition: transform 100ms ease, box-shadow 100ms ease;
+}
+.answer-control-number-input:hover::-webkit-slider-thumb { transform: scale(1.08); }
+.answer-control-number-input:hover::-moz-range-thumb { transform: scale(1.08); }
+.answer-control-number-input:active::-webkit-slider-thumb { transform: scale(0.96); }
+.answer-control-number-input:active::-moz-range-thumb { transform: scale(0.96); }
+.answer-control-number-input:focus-visible { outline: none; }
+.answer-control-number-input:focus-visible::-webkit-slider-thumb {
+    box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.38), 0 1px 3px rgba(0, 0, 0, 0.4);
+}
+.answer-control-number-input:focus-visible::-moz-range-thumb {
+    box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.38), 0 1px 3px rgba(0, 0, 0, 0.4);
+}
 .answer-control-number-input:disabled { opacity: 0.62; }
-.answer-control-number-value { min-width: 48px; color: var(--text); font: 600 12px/1.25 ui-monospace, monospace; }
-.answer-control-status { min-height: 1.3em; color: var(--text-dim); font: 12px/1.3 ui-monospace, monospace; }
+.answer-control-number-value {
+    display: inline-flex; min-width: 48px; justify-content: center; padding: 4px 8px;
+    border: 1px solid rgba(154, 164, 178, 0.18); border-radius: 6px;
+    background: rgba(255, 255, 255, 0.03); color: var(--text);
+    font: 600 12px/1.25 ui-monospace, monospace; font-variant-numeric: tabular-nums; white-space: nowrap;
+}
+.answer-control-status {
+    min-height: 1.3em; margin-top: -6px; color: var(--text-dim);
+    font: 12px/1.3 ui-monospace, monospace;
+}
 .answer-control-status:empty { visibility: hidden; }
 .answer-control-status.error { color: #ff8a8a; }
 .artifacts-region { transition: opacity 120ms ease-out; }

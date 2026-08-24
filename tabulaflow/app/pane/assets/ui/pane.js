@@ -126,6 +126,14 @@ function formatNumberControlValue(control, value) {
   return control.unit ? text + ' ' + control.unit : text;
 }
 
+function updateNumberControl(input, value) {
+  var control = input._tfControl;
+  var progress = 100 * (value - control.min) / (control.max - control.min);
+  input.value = String(value);
+  input.style.setProperty('--answer-control-progress', progress + '%');
+  input._tfValueLabel.textContent = formatNumberControlValue(control, value);
+}
+
 function updateAnswerControls(panel, state) {
   panel.querySelectorAll('.answer-control-option').forEach(function (btn) {
     var active = String(state.selection[btn._tfControlId]) === String(btn._tfChoiceId);
@@ -135,8 +143,7 @@ function updateAnswerControls(panel, state) {
   panel.querySelectorAll('.answer-control-number-input').forEach(function (input) {
     if (document.activeElement === input) return;
     var value = controlNumberValue(input._tfControl, state.selection);
-    input.value = String(value);
-    input._tfValueLabel.textContent = formatNumberControlValue(input._tfControl, value);
+    updateNumberControl(input, value);
   });
   if (state.resolving) panel.setAttribute('aria-busy', 'true');
   else panel.removeAttribute('aria-busy');
@@ -183,7 +190,7 @@ function resolveTurnSelection(turn, index, selection) {
     state.resolving = true;
     refreshActiveTurnControls(index);
     setActiveTurnArtifactsLoading(index, true);
-  }, LOADING_DELAY_MS);
+  }, ANSWER_LOADING_DELAY_MS);
   fetch('resolve', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -245,22 +252,21 @@ function buildAnswerControls(turn, state, index) {
       input.min = String(control.min);
       input.max = String(control.max);
       input.step = String(control.step);
+      input.setAttribute('aria-label', control.label || control.id);
       var value = controlNumberValue(control, state.selection);
-      input.value = String(value);
-      var valueLabel = el('span', 'answer-control-number-value');
-      valueLabel.textContent = formatNumberControlValue(control, value);
+      var valueLabel = el('output', 'answer-control-number-value');
       input._tfControl = control;
       input._tfValueLabel = valueLabel;
+      updateNumberControl(input, value);
       input.oninput = function () {
         var live = Number(input.value);
-        if (Number.isFinite(live)) valueLabel.textContent = formatNumberControlValue(control, live);
+        if (Number.isFinite(live)) updateNumberControl(input, live);
       };
       input.onchange = function () {
         var nextValue = Number(input.value);
         if (!Number.isFinite(nextValue)) return;
         nextValue = Math.min(control.max, Math.max(control.min, nextValue));
-        input.value = String(nextValue);
-        valueLabel.textContent = formatNumberControlValue(control, nextValue);
+        updateNumberControl(input, nextValue);
         applyControlSelection(turn, state, index, control.id, nextValue);
       };
       input.onkeydown = function (event) {
@@ -532,6 +538,7 @@ var navState = {};
 var lru = [];
 var CACHE_WEIGHT_LIMIT = 24;
 var LOADING_DELAY_MS = 120;
+var ANSWER_LOADING_DELAY_MS = 220;
 var suppressScrollMemory = false;
 var scrollRestoreVersion = 0;
 var activeTurnTransition = null;

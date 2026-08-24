@@ -1008,8 +1008,14 @@ def test_answer_controls_render_choice_and_number_inputs() -> None:
     assert "input.type = 'range';" in pane_js
     assert "applyControlSelection(turn, state, index, control.id, nextValue);" in pane_js
     assert "function updateAnswerControls(panel, state)" in pane_js
+    assert "function updateNumberControl(input, value)" in pane_js
+    assert "ANSWER_LOADING_DELAY_MS = 220" in pane_js
     assert "current.replaceWith(next)" not in pane_js
     assert "btn.disabled = !!state.resolving" not in pane_js
+    assert ".answer-control-option:hover:not(.active):not(:disabled)" in pane_css
+    assert "--answer-control-progress" in pane_css
+    assert ".answer-control-number-input::-webkit-slider-thumb" in pane_css
+    assert ".answer-control-number-input::-moz-range-thumb" in pane_css
     assert ".answer-control-status:empty" in pane_css
     assert ".answer-control-number" in pane_css
 
