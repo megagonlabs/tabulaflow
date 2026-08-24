@@ -1,5 +1,6 @@
 from collections.abc import Mapping
 
+from jinja2.exceptions import SecurityError
 import pandas as pd
 import pytest
 
@@ -241,6 +242,11 @@ def test_parameterized_query_can_declare_not_applicable() -> None:
             "{% if metric != 'revenue' %}{{ not_applicable('only applies to revenue') }}{% endif %} SELECT 1",
             {"metric": "orders"},
         )
+
+
+def test_parameterized_query_blocks_unsafe_attribute_access() -> None:
+    with pytest.raises(SecurityError, match="unsafe"):
+        render_parameterized_query("{{ cycler.__init__.__globals__ }}", {})
 
 
 @pytest.mark.asyncio

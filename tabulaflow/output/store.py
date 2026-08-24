@@ -10,6 +10,7 @@ import math
 from typing import TYPE_CHECKING, Literal, NoReturn
 
 import jinja2
+from jinja2.sandbox import SandboxedEnvironment
 import pandas as pd
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -84,7 +85,7 @@ def _not_applicable(reason: object = "not applicable") -> NoReturn:
     raise SourceNotApplicable(str(reason))
 
 
-_JINJA_ENV = jinja2.Environment(undefined=jinja2.StrictUndefined, trim_blocks=True, lstrip_blocks=True)
+_JINJA_ENV = SandboxedEnvironment(undefined=jinja2.StrictUndefined, trim_blocks=True, lstrip_blocks=True)
 _JINJA_ENV.globals["not_applicable"] = _not_applicable
 
 
