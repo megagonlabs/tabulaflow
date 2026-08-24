@@ -10,6 +10,7 @@ from tabulaflow.data.protocols import DBConnector
 from tabulaflow.data.registry import DBRegistry
 from tabulaflow.output.formatting.cypher import CypherSchemaFormatter
 from tabulaflow.output.formatting.sql_ddl import SQLDDLSchemaFormatter
+from tabulaflow.agents.tools.base import _omit_tool_parameters
 
 _MAX_CHARS = 50000
 
@@ -122,27 +123,6 @@ class RegistryGetDBDocumentTool:
         self._metrics.truncated += 1
         return text[:_MAX_CHARS] + "\n\n(document truncated)"
 
-    async def _with_refresh(self, db_alias: str, refresh: bool = False) -> str:
-        """Get a connector-aware database document.
-
-        Args:
-            db_alias: Alias of the target database.
-            refresh: If True, re-introspect the schema and rebuild the
-                document. Use only when the schema changed externally (e.g.
-                another process ran DDL). Triggers a full schema rebuild and
-                LLM re-summarization — be conservative on large cloud
-                warehouses (e.g. Snowflake).
-        """
-        return await self.execute(db_alias, refresh)
-
-    async def _no_refresh(self, db_alias: str) -> str:
-        """Get a connector-aware database document.
-
-        Args:
-            db_alias: Alias of the target database.
-        """
-        return await self.execute(db_alias, False)
-
     async def execute(self, db_alias: str, refresh: bool = False) -> str:
         """Render a registered database document as agent-facing text."""
 
@@ -176,8 +156,8 @@ class RegistryGetDBDocumentTool:
         return await self.execute(db_alias, refresh if self.enable_refresh else False)
 
     def as_pydantic_ai_tool(self) -> Tool:
-        fn = self._with_refresh if self.enable_refresh else self._no_refresh
-        return Tool(fn, name=self.name)
+        omitted = () if self.enable_refresh else ("refresh",)
+        return Tool(self.__call__, name=self.name, prepare=_omit_tool_parameters(*omitted))
 
     def metrics(self) -> RegistryGetDBDocumentToolMetrics:
         return self._metrics

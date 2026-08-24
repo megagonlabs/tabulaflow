@@ -7,6 +7,7 @@ from tabulaflow.data.protocols import SQLConnectorProtocol
 from tabulaflow.core.schema import SQLColumnSchema, TableRef
 from tabulaflow.output.formatting.schema import SQLSchemaFormatter
 from tabulaflow.agents.tools._sql import find_table
+from tabulaflow.agents.tools.base import _omit_tool_parameters
 
 
 class GetTableSchemaToolMetrics(BaseModel):
@@ -82,73 +83,6 @@ class GetTableSchemaTool:
             if column_limit is not None:
                 columns = columns[:column_limit]
         return columns
-
-    async def _with_refresh(
-        self,
-        schema_name: str | None,
-        table_name: str,
-        refresh: bool = False,
-        column_offset: int = 0,
-        column_limit: int | None = None,
-        column_regex_filter: str | None = None,
-    ) -> str:
-        """Get the full schema of a table, with optional column filtering and pagination for very large tables.
-
-        Args:
-            schema_name: The name of the schema to which the table belongs,
-                or None if schema is not applicable.
-            table_name: The name of the table.
-            refresh: If True, re-introspect this table from the live database
-                before returning. Use when a table was newly created or
-                altered by DDL or dbt run.
-            column_offset: Number of columns to skip from the beginning. Only provide if the table is too large.
-            column_limit: Maximum number of columns to return. Only provide if the table is too large.
-            column_regex_filter: Regex pattern to filter columns by name (case-insensitive).
-                Only columns whose names match the pattern are returned.
-                Can be combined with column_offset/column_limit to paginate within filtered results.
-                Only provide if the table is too large.
-        """
-        return (
-            await self.execute(
-                schema_name,
-                table_name,
-                refresh=refresh,
-                column_regex_filter=column_regex_filter,
-                column_offset=column_offset,
-                column_limit=column_limit,
-            )
-        ).output
-
-    async def _no_refresh(
-        self,
-        schema_name: str | None,
-        table_name: str,
-        column_offset: int = 0,
-        column_limit: int | None = None,
-        column_regex_filter: str | None = None,
-    ) -> str:
-        """Get the full schema of a table, with optional column filtering and pagination for very large tables.
-
-        Args:
-            schema_name: The name of the schema to which the table belongs,
-                or None if schema is not applicable.
-            table_name: The name of the table.
-            column_offset: Number of columns to skip from the beginning. Only provide if the table is too large.
-            column_limit: Maximum number of columns to return. Only provide if the table is too large.
-            column_regex_filter: Regex pattern to filter columns by name (case-insensitive).
-                Only columns whose names match the pattern are returned.
-                Can be combined with column_offset/column_limit to paginate within filtered results.
-                Only provide if the table is too large.
-        """
-        return (
-            await self.execute(
-                schema_name,
-                table_name,
-                column_regex_filter=column_regex_filter,
-                column_offset=column_offset,
-                column_limit=column_limit,
-            )
-        ).output
 
     async def execute(
         self,
@@ -246,6 +180,18 @@ class GetTableSchemaTool:
         column_limit: int | None = None,
         column_regex_filter: str | None = None,
     ) -> str:
+        """Get a table schema with optional column filtering and pagination.
+
+        Args:
+            schema_name: Schema containing the table, or ``None`` when schemas
+                are not applicable.
+            table_name: Name of the table.
+            refresh: Whether to re-introspect the table before returning. Exposed
+                only when schema refresh is enabled.
+            column_offset: Number of columns to skip.
+            column_limit: Maximum number of columns to return.
+            column_regex_filter: Case-insensitive regex used to select columns.
+        """
         execution = await self.execute(
             schema_name,
             table_name,
@@ -257,8 +203,8 @@ class GetTableSchemaTool:
         return execution.output
 
     def as_pydantic_ai_tool(self) -> Tool:
-        fn = self._with_refresh if self._enable_refresh else self._no_refresh
-        return Tool(fn, name=self.name)
+        omitted = () if self._enable_refresh else ("refresh",)
+        return Tool(self.__call__, name=self.name, prepare=_omit_tool_parameters(*omitted))
 
     def metrics(self) -> GetTableSchemaToolMetrics:
         return self._metrics

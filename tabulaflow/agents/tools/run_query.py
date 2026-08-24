@@ -7,6 +7,7 @@ from tabulaflow.core.results import ExecResult, GraphResult
 from tabulaflow.data.protocols import DBConnector, SQLConnectorProtocol
 from tabulaflow.output.formatting._core import format_dataframe
 from tabulaflow.agents.tools._sql import format_sqlalchemy_error_msg
+from tabulaflow.agents.tools.base import _omit_tool_parameters
 
 _UNSET = object()
 
@@ -128,102 +129,6 @@ class RunQueryTool:
         self._metrics = RunQueryToolMetrics()
         self._last_execution: QueryExecution | None = None
 
-    async def _run_with_params_with_refresh(
-        self, query: str, parameters: list[LLMParameter] | None = None, refresh: bool = False
-    ) -> str:
-        """Execute a query against the database and return the results.
-
-        Returning large result sets is safe — the display is automatically truncated,
-        and full execution results are always recorded.
-        Neo4j/Cypher results returning native nodes, relationships, or paths
-        automatically show a Graph view when cited.
-
-        Procedural / anonymous blocks (e.g. ``DECLARE … BEGIN … END``,
-        ``EXECUTE IMMEDIATE``) are supported for SQL dialects.
-
-        Example:
-        ```python
-        run_query(
-            query="SELECT * FROM student WHERE gpa > :gpa_threshold",
-            parameters=[{"parameter_name": "gpa_threshold", "parameter_value": 3.5}],
-        )
-        ```
-
-        Args:
-            query: The query to execute.
-            parameters: The parameters to use in the query. A list of dictionaries,
-                each containing a `parameter_name` and a `parameter_value` field.
-            refresh: If True, re-introspect the connector's schema after
-                the query. Use only when the query changes the schema (DDL:
-                ``CREATE`` / ``DROP`` / ``ALTER``). Triggers a full schema
-                rebuild — be conservative on large cloud warehouses (e.g.
-                Snowflake).
-        """
-        return (await self.execute(query, parameters, refresh)).output
-
-    async def _run_with_params(self, query: str, parameters: list[LLMParameter] | None = None) -> str:
-        """Execute a query against the database and return the results.
-
-        Returning large result sets is safe — the display is automatically truncated,
-        and full execution results are always recorded.
-        Neo4j/Cypher results returning native nodes, relationships, or paths
-        automatically show a Graph view when cited.
-
-        Procedural / anonymous blocks (e.g. ``DECLARE … BEGIN … END``,
-        ``EXECUTE IMMEDIATE``) are supported for SQL dialects.
-
-        Example:
-        ```python
-        run_query(
-            query="SELECT * FROM student WHERE gpa > :gpa_threshold",
-            parameters=[{"parameter_name": "gpa_threshold", "parameter_value": 3.5}],
-        )
-        ```
-
-        Args:
-            query: The query to execute.
-            parameters: The parameters to use in the query. A list of dictionaries,
-                each containing a `parameter_name` and a `parameter_value` field.
-        """
-        return (await self.execute(query, parameters, False)).output
-
-    async def _run_no_params_with_refresh(self, query: str, refresh: bool = False) -> str:
-        """Execute a query against the database and return the results.
-
-        Returning large result sets is safe — the display is automatically truncated,
-        and full execution results are always recorded.
-        Neo4j/Cypher results returning native nodes, relationships, or paths
-        automatically show a Graph view when cited.
-
-        Procedural / anonymous blocks (e.g. ``DECLARE … BEGIN … END``,
-        ``EXECUTE IMMEDIATE``) are supported for SQL dialects.
-
-        Args:
-            query: The query to execute.
-            refresh: If True, re-introspect the connector's schema after
-                the query. Use only when the query changes the schema (DDL:
-                ``CREATE`` / ``DROP`` / ``ALTER``). Triggers a full schema
-                rebuild — be conservative on large cloud warehouses (e.g.
-                Snowflake).
-        """
-        return (await self.execute(query, [], refresh)).output
-
-    async def _run_no_params(self, query: str) -> str:
-        """Execute a query against the database and return the results.
-
-        Returning large result sets is safe — the display is automatically truncated,
-        and full execution results are always recorded.
-        Neo4j/Cypher results returning native nodes, relationships, or paths
-        automatically show a Graph view when cited.
-
-        Procedural / anonymous blocks (e.g. ``DECLARE … BEGIN … END``,
-        ``EXECUTE IMMEDIATE``) are supported for SQL dialects.
-
-        Args:
-            query: The query to execute.
-        """
-        return (await self.execute(query, [], False)).output
-
     async def execute(
         self, query: str, parameters: list[LLMParameter] | None = None, refresh: bool = False
     ) -> QueryExecution:
@@ -305,15 +210,27 @@ class RunQueryTool:
         parameters: list[LLMParameter] | None = None,
         refresh: bool = False,
     ) -> str:
+        """Execute a query against the database and return formatted results.
+
+        Returning large result sets is safe: displayed output is truncated while
+        the complete execution result remains available to the host.
+
+        Args:
+            query: The SQL or Cypher query to execute.
+            parameters: Values for named query placeholders. Exposed only when
+                parameterized queries are enabled.
+            refresh: Whether to refresh connector schema after execution. Exposed
+                only when schema refresh is enabled.
+        """
         return (await self.execute(query, parameters, refresh and self.enable_refresh)).output
 
     def as_pydantic_ai_tool(self) -> Tool:
-        fn: Any
-        if self.enable_params:
-            fn = self._run_with_params_with_refresh if self.enable_refresh else self._run_with_params
-        else:
-            fn = self._run_no_params_with_refresh if self.enable_refresh else self._run_no_params
-        return Tool(fn, name=self.name)
+        omitted = []
+        if not self.enable_params:
+            omitted.append("parameters")
+        if not self.enable_refresh:
+            omitted.append("refresh")
+        return Tool(self.__call__, name=self.name, prepare=_omit_tool_parameters(*omitted))
 
     def metrics(self) -> RunQueryToolMetrics:
         return self._metrics

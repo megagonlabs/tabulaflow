@@ -8,6 +8,7 @@ from pydantic_ai import Tool
 from tabulaflow.data.registry import DBRegistry
 from tabulaflow.output.formatting.cypher import CypherSchemaFormatter
 from tabulaflow.output.formatting.sql_ddl import SQLDDLSchemaFormatter
+from tabulaflow.agents.tools.base import _omit_tool_parameters
 
 _DEFAULT_MAX_CHARS = 50000
 
@@ -61,24 +62,6 @@ class RegistryGetSchemaTool:
             + "\n\n(schema truncated — for SQL databases, use get_table_schema to inspect individual tables)"
         )
 
-    async def _with_refresh(self, db_alias: str, refresh: bool = False) -> str:
-        """Get the full schema of a registered database.
-
-        Args:
-            db_alias: Alias of the target database (see ``list_databases``).
-            refresh: If True, re-introspect the schema from the live database
-                before returning.
-        """
-        return await self.execute(db_alias, refresh)
-
-    async def _no_refresh(self, db_alias: str) -> str:
-        """Get the full schema of a registered database.
-
-        Args:
-            db_alias: Alias of the target database (see ``list_databases``).
-        """
-        return await self.execute(db_alias, False)
-
     async def execute(self, db_alias: str, refresh: bool = False) -> str:
         """Render a registered database schema as agent-facing text."""
 
@@ -105,11 +88,18 @@ class RegistryGetSchemaTool:
         return self._truncate(result)
 
     async def __call__(self, db_alias: str, refresh: bool = False) -> str:
+        """Get the full schema of a registered database.
+
+        Args:
+            db_alias: Alias of the target database.
+            refresh: Whether to refresh connector schema before rendering.
+                Exposed only when schema refresh is enabled.
+        """
         return await self.execute(db_alias, refresh if self.enable_refresh else False)
 
     def as_pydantic_ai_tool(self) -> Tool:
-        fn = self._with_refresh if self.enable_refresh else self._no_refresh
-        return Tool(fn, name=self.name)
+        omitted = () if self.enable_refresh else ("refresh",)
+        return Tool(self.__call__, name=self.name, prepare=_omit_tool_parameters(*omitted))
 
     def metrics(self) -> RegistryGetSchemaToolMetrics:
         return self._metrics

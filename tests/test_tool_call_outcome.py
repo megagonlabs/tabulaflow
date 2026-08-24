@@ -38,20 +38,20 @@ async def registry(tmp_path: Path) -> DBRegistry:
 class TestRunQueryOutcome:
     @pytest.mark.asyncio
     async def test_success_reports_rows(self, registry: DBRegistry) -> None:
-        result = await RegistryRunQueryTool(registry)._run_no_params("mydb", "SELECT * FROM t")
+        result = await RegistryRunQueryTool(registry)("mydb", "SELECT * FROM t")
         assert isinstance(result, ToolReturn)
         assert isinstance(result.return_value, str) and result.return_value.startswith("[source_id=")
         assert result.metadata == ToolCallOutcome(count=3, unit="rows")
 
     @pytest.mark.asyncio
     async def test_query_error_reports_error(self, registry: DBRegistry) -> None:
-        result = await RegistryRunQueryTool(registry)._run_no_params("mydb", "SELECT * FROM missing")
+        result = await RegistryRunQueryTool(registry)("mydb", "SELECT * FROM missing")
         assert isinstance(result, ToolReturn)
         assert result.metadata == ToolCallOutcome(error=True)
 
     @pytest.mark.asyncio
     async def test_unknown_alias_reports_error(self, registry: DBRegistry) -> None:
-        result = await RegistryRunQueryTool(registry)._run_no_params("nope", "SELECT 1")
+        result = await RegistryRunQueryTool(registry)("nope", "SELECT 1")
         assert isinstance(result, ToolReturn)
         assert result.metadata == ToolCallOutcome(error=True)
 
@@ -66,14 +66,14 @@ class TestGetTableSchemaOutcome:
     @pytest.mark.asyncio
     async def test_success_reports_columns(self, registry: DBRegistry) -> None:
         tool = RegistryGetTableSchemaTool(registry, SQLDDLSchemaFormatter())
-        result = await tool._no_refresh("mydb", None, "t")
+        result = await tool("mydb", None, "t")
         assert isinstance(result, ToolReturn)
         assert result.metadata == ToolCallOutcome(count=2, unit="columns")
 
     @pytest.mark.asyncio
     async def test_missing_table_reports_no_count(self, registry: DBRegistry) -> None:
         tool = RegistryGetTableSchemaTool(registry, SQLDDLSchemaFormatter())
-        result = await tool._no_refresh("mydb", None, "missing")
+        result = await tool("mydb", None, "missing")
         assert isinstance(result, ToolReturn)
         assert result.metadata is None
 

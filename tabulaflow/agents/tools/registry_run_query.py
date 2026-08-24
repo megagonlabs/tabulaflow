@@ -8,7 +8,7 @@ from pydantic_ai import Tool, ToolReturn
 
 from tabulaflow.data.protocols import DBConnector
 from tabulaflow.data.registry import DBRegistry
-from tabulaflow.agents.tools.base import ToolCallOutcome, sum_tool_metrics
+from tabulaflow.agents.tools.base import ToolCallOutcome, _omit_tool_parameters, sum_tool_metrics
 from tabulaflow.output.store import OutputStore
 from tabulaflow.agents.tools.run_query import LLMParameter, RunQueryTool, RunQueryToolMetrics
 
@@ -86,79 +86,6 @@ class RegistryRunQueryTool:
         self._tools[db_alias] = (connector, tool)
         return tool
 
-    async def _run_with_params_with_refresh(
-        self,
-        db_alias: str,
-        query: str,
-        parameters: list[LLMParameter] | None = None,
-        refresh: bool = False,
-    ) -> ToolReturn:
-        """Execute a query against a registered database and return the results.
-
-        Returning large result sets is safe — the display is automatically
-        truncated, and full execution results are always recorded.
-
-        Args:
-            db_alias: Alias of the target database (see ``list_databases``).
-            query: The query to execute.
-            parameters: Query parameters.  A list of dictionaries, each
-                containing a ``parameter_name`` and a ``parameter_value`` field.
-            refresh: If True, re-introspect the connector's schema after
-                the query. Use only when the query changes the schema (DDL:
-                ``CREATE`` / ``DROP`` / ``ALTER``). Triggers a full schema
-                rebuild — be conservative on large cloud warehouses (e.g.
-                Snowflake).
-        """
-        return await self(db_alias, query, parameters, refresh)
-
-    async def _run_with_params(
-        self,
-        db_alias: str,
-        query: str,
-        parameters: list[LLMParameter] | None = None,
-    ) -> ToolReturn:
-        """Execute a query against a registered database and return the results.
-
-        Returning large result sets is safe — the display is automatically
-        truncated, and full execution results are always recorded.
-
-        Args:
-            db_alias: Alias of the target database (see ``list_databases``).
-            query: The query to execute.
-            parameters: Query parameters.  A list of dictionaries, each
-                containing a ``parameter_name`` and a ``parameter_value`` field.
-        """
-        return await self(db_alias, query, parameters, False)
-
-    async def _run_no_params_with_refresh(self, db_alias: str, query: str, refresh: bool = False) -> ToolReturn:
-        """Execute a query against a registered database and return the results.
-
-        Returning large result sets is safe — the display is automatically
-        truncated, and full execution results are always recorded.
-
-        Args:
-            db_alias: Alias of the target database (see ``list_databases``).
-            query: The query to execute.
-            refresh: If True, re-introspect the connector's schema after
-                the query. Use only when the query changes the schema (DDL:
-                ``CREATE`` / ``DROP`` / ``ALTER``). Triggers a full schema
-                rebuild — be conservative on large cloud warehouses (e.g.
-                Snowflake).
-        """
-        return await self(db_alias, query, [], refresh)
-
-    async def _run_no_params(self, db_alias: str, query: str) -> ToolReturn:
-        """Execute a query against a registered database and return the results.
-
-        Returning large result sets is safe — the display is automatically
-        truncated, and full execution results are always recorded.
-
-        Args:
-            db_alias: Alias of the target database (see ``list_databases``).
-            query: The query to execute.
-        """
-        return await self(db_alias, query, [], False)
-
     async def __call__(
         self,
         db_alias: str,
@@ -166,6 +93,16 @@ class RegistryRunQueryTool:
         parameters: list[LLMParameter] | None = None,
         refresh: bool = False,
     ) -> ToolReturn:
+        """Execute a query against a registered database.
+
+        Args:
+            db_alias: Alias of the target database.
+            query: The SQL or Cypher query to execute.
+            parameters: Values for named query placeholders. Exposed only when
+                parameterized queries are enabled.
+            refresh: Whether to refresh connector schema after execution. Exposed
+                only when schema refresh is enabled.
+        """
         try:
             tool = self._get_tool(db_alias)
         except ValueError:
@@ -190,12 +127,12 @@ class RegistryRunQueryTool:
         return ToolReturn(return_value=f"[source_id={source.id}]\n{execution.output}", metadata=outcome)
 
     def as_pydantic_ai_tool(self) -> Tool:
-        fn: Any
-        if self.enable_params:
-            fn = self._run_with_params_with_refresh if self.enable_refresh else self._run_with_params
-        else:
-            fn = self._run_no_params_with_refresh if self.enable_refresh else self._run_no_params
-        return Tool(fn, name=self.name)
+        omitted = []
+        if not self.enable_params:
+            omitted.append("parameters")
+        if not self.enable_refresh:
+            omitted.append("refresh")
+        return Tool(self.__call__, name=self.name, prepare=_omit_tool_parameters(*omitted))
 
     def metrics(self) -> RunQueryToolMetrics:
         """Return aggregated metrics across all aliases."""

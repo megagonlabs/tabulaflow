@@ -284,9 +284,8 @@ async def test_run_query_refresh_disabled_ignores_flag(db_connector: SQLConnecto
 
 
 def test_run_query_pydantic_tool_signatures() -> None:
-    """as_pydantic_ai_tool should select the variant matching the enabled flags."""
-    import inspect
-
+    """The prepared schema should contain only enabled model-facing fields."""
+    from pydantic_ai.tools import ToolDefinition
     from tabulaflow.agents.tools.run_query import RunQueryTool
 
     class _StubConnector:
@@ -303,9 +302,14 @@ def test_run_query_pydantic_tool_signatures() -> None:
     ]
     for enable_params, enable_refresh, expected in matrix:
         tool = RunQueryTool(stub, enable_params=enable_params, enable_refresh=enable_refresh, timeout=None)
-        fn = tool.as_pydantic_ai_tool().function
-        params = set(inspect.signature(fn).parameters) - {"self"}
-        assert params == expected, (enable_params, enable_refresh, params)
+        pai_tool = tool.as_pydantic_ai_tool()
+        tool_def = pai_tool.tool_def
+        if pai_tool.prepare is not None:
+            prepared = pai_tool.prepare(None, tool_def)  # type: ignore[arg-type]
+            assert isinstance(prepared, ToolDefinition)
+            tool_def = prepared
+        fields = set((tool_def.parameters_json_schema.get("properties") or {}).keys())
+        assert fields == expected, (enable_params, enable_refresh, fields)
 
 
 @pytest.mark.asyncio
