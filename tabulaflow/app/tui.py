@@ -1039,10 +1039,10 @@ class TabulaflowApp(App[None]):
             if spinner is not None:
                 await spinner.remove()
 
-        self._show_command_result(result, session, chat_log)
+        await self._show_command_result(result, session, chat_log)
         self._refresh_bottom_status()
 
-    def _show_command_result(
+    async def _show_command_result(
         self,
         result: object,
         session: AppState,
@@ -1057,8 +1057,9 @@ class TabulaflowApp(App[None]):
             return
 
         if result.should_clear:
-            chat_log.remove_children()
-            chat_log.mount(self._banner_for_preset(session.llm_preset))
+            await chat_log.remove_children()
+            await chat_log.mount(self._banner_for_preset(session.llm_preset))
+            self._refresh_esc_hint()
             return
 
         if result.should_open_config:
@@ -1072,7 +1073,7 @@ class TabulaflowApp(App[None]):
 
         if result.output is not None:
             msg = SystemMessage(result.output)
-            chat_log.mount(msg)
+            await chat_log.mount(msg)
             chat_log.scroll_end(animate=False)
 
     def _on_config_closed(self, selection: ResolvedLLMSelection | None) -> None:

@@ -141,6 +141,11 @@ class AppState:
         if self._chat_session is not None:
             self._chat_session.note_event(description)
 
+    def reset_conversation(self) -> None:
+        """Reset LLM conversation state while preserving data sources and workspace state."""
+        if self._chat_session is not None:
+            self._chat_session.reset_conversation()
+
     def find_alias_by_source(self, key: object) -> str | None:
         """Return the alias registered for ``key``, or None."""
         return self._sources.get(key)

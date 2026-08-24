@@ -140,6 +140,7 @@ async def _cmd_exit(args: list[str], session: AppState) -> CommandResult:
 
 
 async def _cmd_clear(args: list[str], session: AppState) -> CommandResult:
+    session.reset_conversation()
     return CommandResult(should_clear=True)
 
 
@@ -374,7 +375,7 @@ async def _cmd_config(args: list[str], session: AppState) -> CommandResult:
 _COMMAND_HELP: dict[str, tuple[object, str]] = {
     "/help": (_cmd_help, "Show this help message"),
     "/exit": (_cmd_exit, "Exit the chat"),
-    "/clear": (_cmd_clear, "Clear the screen"),
+    "/clear": (_cmd_clear, "Start a new conversation"),
     "/config": (_cmd_config, "Open the config panel"),
     "/connect": (_cmd_connect, "Connect to a database: /connect <url> \\[alias]"),
     "/disconnect": (_cmd_disconnect, "Disconnect: /disconnect \\[alias]"),

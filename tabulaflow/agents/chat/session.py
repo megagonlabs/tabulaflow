@@ -168,8 +168,7 @@ class ChatSession:
             self._message_store.attach_connector(self.workspace)
             self._tools.add_canonical_name.attach_connector(self.workspace)
         self._system_prompt = self._compose_system_prompt()
-        self.note_event(f"the model powering this conversation is {model_display_name(self.model)}.")
-        self._note_initial_registry()
+        self._seed_conversation_context()
         self._pydantic_ai_agent = self._make_agent(self.model)
 
     def _compose_system_prompt(self) -> str:
@@ -524,6 +523,18 @@ class ChatSession:
 
         if entries:
             self.note_event("the following data sources are already registered: " + ", ".join(entries) + ".")
+
+    def _seed_conversation_context(self) -> None:
+        self.note_event(f"the model powering this conversation is {model_display_name(self.model)}.")
+        self._note_initial_registry()
+
+    def reset_conversation(self) -> None:
+        """Start a fresh conversation while preserving the session environment."""
+        if self._running:
+            raise RuntimeError("cannot reset conversation while a turn is running")
+        self._message_history.clear()
+        self.last_usage = None
+        self._seed_conversation_context()
 
     async def aclose(self) -> None:
         """Release session-scoped resources — currently the persistent shell session."""

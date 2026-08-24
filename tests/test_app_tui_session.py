@@ -68,6 +68,29 @@ def _activate_selected(session: AppState) -> ChatSession:
     return agent
 
 
+def test_reset_conversation_preserves_session_environment(tmp_path: Path) -> None:
+    session = AppState(
+        llm_preset=_preset(),
+        trajectories_dir=tmp_path / "trajectories",
+        data_dir=tmp_path / "data",
+        workspace=None,
+    )
+    agent = _activate_selected(session)
+    initial_history = list(agent._message_history)
+    output_store = agent.output_store
+    agent.note_event("old conversation detail")
+
+    session.reset_conversation()
+
+    assert session.active_chat_session is agent
+    assert len(agent._message_history) == len(initial_history)
+    reset_part: Any = agent._message_history[0].parts[0]
+    initial_part: Any = initial_history[0].parts[0]
+    assert reset_part.content == initial_part.content
+    assert agent.output_store is output_store
+    assert agent.registry is session.registry
+
+
 def test_text_selection_failure_is_contained(
     caplog: pytest.LogCaptureFixture,
     monkeypatch: pytest.MonkeyPatch,

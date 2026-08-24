@@ -19,6 +19,7 @@ class _FakeSession:
     def __init__(self) -> None:
         self.registry = _FakeRegistry()
         self.source_key: object | None = None
+        self.conversation_reset = False
 
     def find_alias_by_source(self, _key: object) -> str | None:
         return None
@@ -28,6 +29,9 @@ class _FakeSession:
 
     def note_event(self, _description: str) -> None:
         pass
+
+    def reset_conversation(self) -> None:
+        self.conversation_reset = True
 
 
 @pytest.mark.asyncio
@@ -65,6 +69,16 @@ async def test_handle_command_escapes_unknown_command_markup() -> None:
 
     assert isinstance(result.output, Text)
     assert result.output.plain == "Unknown command: /[/]. Type /help for available commands."
+
+
+@pytest.mark.asyncio
+async def test_clear_starts_a_new_conversation() -> None:
+    session = _FakeSession()
+
+    result = await handle_command("/clear", cast(AppState, session))
+
+    assert result.should_clear is True
+    assert session.conversation_reset is True
 
 
 @pytest.mark.asyncio
