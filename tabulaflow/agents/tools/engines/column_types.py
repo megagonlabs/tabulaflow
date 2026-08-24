@@ -13,7 +13,8 @@ from __future__ import annotations
 from datetime import date, datetime
 from typing import TypeAlias
 
-from tabulaflow.core import SQLSchema, SQLTableSchema
+from tabulaflow.core import SQLSchema
+from tabulaflow.agents.tools.engines.sql import find_table
 
 # The Python types a structured-output model can emit for a column. Restricted to
 # what an LLM produces and pydantic can put in a JSON schema: JSON scalars plus
@@ -69,21 +70,6 @@ def python_type_for_dtype(dtype: str) -> ColumnType:
     if token == "DATETIME" or token.startswith("TIMESTAMP"):
         return datetime
     return str
-
-
-def find_table(schema: SQLSchema, schema_name: str | None, table_name: str) -> SQLTableSchema | None:
-    """Locate a table in ``schema`` by name, tolerating schema-label mismatches.
-
-    A caller-supplied ``schema_name`` constrains the match; ``None`` matches on table
-    name alone (the common unqualified case, where the in-memory schema may record the
-    table under a resolved default label like DuckDB's ``main``). Returns ``None`` when
-    no table or more than one matches, so type resolution degrades to all-string rather
-    than guessing.
-    """
-    matches = [
-        t for t in schema.tables if t.name == table_name and (schema_name is None or t.schema_name == schema_name)
-    ]
-    return matches[0] if len(matches) == 1 else None
 
 
 def resolve_column_types(

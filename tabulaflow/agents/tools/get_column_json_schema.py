@@ -6,7 +6,7 @@ from pydantic_ai import Tool
 
 from tabulaflow.output.formatting import format_json_schema_type
 from tabulaflow.core import SQLSchema
-from tabulaflow.agents.tools.engines.sql import equals_ci
+from tabulaflow.agents.tools.engines.sql import find_column, find_table
 
 _DEFAULT_MAX_EXAMPLE_CHARS = 1000
 _DEFAULT_OVERVIEW_MAX_FIELDS = 20
@@ -200,33 +200,12 @@ class GetColumnJsonSchemaTool:
         """
         self._metrics.num_calls += 1
 
-        # If there is only a single schema, use it regardless of what the agent specified
-        all_schema_names = [t.schema_name for t in self.schema.tables]
-        if len(set(all_schema_names)) == 1:
-            schema_name = all_schema_names[0]
-
-        # Remove the quote characters from the column name if they exist
-        for quote_char in '"`':
-            if column_name.startswith(quote_char) and column_name.endswith(quote_char):
-                column_name = column_name[1:-1]
-                break
-
-        table = None
-        for t in self.schema.tables:
-            if (schema_name is None or equals_ci(t.schema_name, schema_name)) and t.name.lower() == table_name.lower():
-                table = t
-                break
-
+        table = find_table(self.schema, schema_name, table_name)
         if table is None:
             self._metrics.error_table_not_found += 1
             return f"(error: table {table_name} in schema {schema_name} not found)"
 
-        column = None
-        for c in table.columns:
-            if c.name.lower() == column_name.lower():
-                column = c
-                break
-
+        column = find_column(table, column_name)
         if column is None:
             self._metrics.error_column_not_found += 1
             return f"(error: column {column_name} not found in table {table_name} in schema {schema_name})"

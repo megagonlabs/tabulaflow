@@ -5,7 +5,7 @@ from sqlalchemy import select
 from pydantic import BaseModel
 from pydantic_ai import Tool
 from tabulaflow.data import SQLConnectorProtocol
-from tabulaflow.agents.tools.engines.sql import equals_ci
+from tabulaflow.agents.tools.engines.sql import find_column, find_table
 
 
 class SearchKeywordsToolMetrics(BaseModel):
@@ -36,48 +36,35 @@ class SearchKeywordsTool:
         self._metrics.num_calls += 1
         db_connector = self.db_connector
 
-        # If there is only a single schema, use it regardless of what the agent specified
-        all_schema_names = [t.schema_name for t in self.db_connector.schema.tables]
-        if len(set(all_schema_names)) == 1:
-            schema_name = all_schema_names[0]
-
-        # Remove the quote characters from the column name if they exist
-        for quote_char in '"`':
-            if column_name.startswith(quote_char) and column_name.endswith(quote_char):
-                column_name = column_name[1:-1]
-                break
-
-        table = None
-        for t in self.db_connector.schema.tables:
-            if equals_ci(t.schema_name, schema_name) and t.name.lower() == table_name.lower():
-                table = t
-                break
-
+        table = find_table(db_connector.schema, schema_name, table_name)
         if table is None:
             self._metrics.error_table_not_found += 1
             return f"(table {table_name} in schema {schema_name} not found)"
 
-        column = None
-        for c in table.columns:
-            if c.name.lower() == column_name.lower():
-                if c.dtype not in ("VARCHAR", "TEXT", "STRING"):
-                    self._metrics.error_column_not_string += 1
-                    return f"(column {column_name} is not a string)"
-                column = c
-                break
-
+        column = find_column(table, column_name)
         if column is None:
             self._metrics.error_column_not_found += 1
             return f"(column {column_name} not found in table {table_name} in schema {schema_name})"
 
-        column_name = quoted_name(column_name, quote=True)
+        if column.dtype not in ("VARCHAR", "TEXT", "STRING"):
+            self._metrics.error_column_not_string += 1
+            return f"(column {column_name} is not a string)"
+
+        physical_column_name = quoted_name(column.name, quote=True)
         matches = []
         for keyword in keywords:
             keyword = keyword.lower()
             sql_table = sqlalchemy.Table(
-                table_name, sqlalchemy.MetaData(), sqlalchemy.Column(column_name, sqlalchemy.String), schema=schema_name
+                table.name,
+                sqlalchemy.MetaData(),
+                sqlalchemy.Column(physical_column_name, sqlalchemy.String),
+                schema=table.schema_name,
             )
-            stmt = select(sql_table.c[column_name]).distinct().where(sql_table.c[column_name].ilike(f"%{keyword}%"))
+            stmt = (
+                select(sql_table.c[physical_column_name])
+                .distinct()
+                .where(sql_table.c[physical_column_name].ilike(f"%{keyword}%"))
+            )
             exec_result = await db_connector.run_query_async(stmt, timeout=None)
             if exec_result.df is None:
                 raise ValueError(f"Query {stmt} failed: {exec_result.error}")

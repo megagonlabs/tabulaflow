@@ -3,16 +3,39 @@ from typing import Any
 
 import sqlalchemy
 
+from tabulaflow.core import SQLColumnSchema, SQLSchema, SQLTableSchema
 
-def equals_ci(a: str | None, b: str | None) -> bool:
-    """
-    Compare two strings case-insensitively, treating None == None.
-    """
-    if a is None and b is None:
-        return True
-    if a is None or b is None:
-        return False
-    return a.lower() == b.lower()
+
+def _unquote_identifier(identifier: str) -> str:
+    if len(identifier) >= 2 and identifier[0] == identifier[-1] and identifier[0] in {'"', "`"}:
+        return identifier[1:-1]
+    return identifier
+
+
+def _identifiers_equal(left: str | None, right: str | None) -> bool:
+    if left is None or right is None:
+        return left is right
+    return left.casefold() == right.casefold()
+
+
+def find_table(schema: SQLSchema, schema_name: str | None, table_name: str) -> SQLTableSchema | None:
+    """Find one table using forgiving agent-facing identifier matching."""
+    requested_schema = _unquote_identifier(schema_name) if schema_name is not None else None
+    requested_table = _unquote_identifier(table_name)
+
+    name_matches = [table for table in schema.tables if _identifiers_equal(table.name, requested_table)]
+    if len({table.schema_name for table in schema.tables}) == 1 or requested_schema is None:
+        return name_matches[0] if len(name_matches) == 1 else None
+
+    qualified_matches = [table for table in name_matches if _identifiers_equal(table.schema_name, requested_schema)]
+    return qualified_matches[0] if len(qualified_matches) == 1 else None
+
+
+def find_column(table: SQLTableSchema, column_name: str) -> SQLColumnSchema | None:
+    """Find one column using forgiving agent-facing identifier matching."""
+    requested_column = _unquote_identifier(column_name)
+    matches = [column for column in table.columns if _identifiers_equal(column.name, requested_column)]
+    return matches[0] if len(matches) == 1 else None
 
 
 def format_sqlalchemy_error_msg(error_msg: str) -> str:

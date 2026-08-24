@@ -5,8 +5,8 @@ from pydantic_ai import Tool
 from pydantic import BaseModel
 from tabulaflow.data.protocols import SQLConnectorProtocol
 from tabulaflow.output.formatting import SQLSchemaFormatter
-from tabulaflow.core import SQLColumnSchema, SQLSchema, SQLTableSchema, TableRef
-from tabulaflow.agents.tools.engines.sql import equals_ci
+from tabulaflow.core import SQLColumnSchema, TableRef
+from tabulaflow.agents.tools.engines.sql import find_table
 
 
 class GetTableSchemaToolMetrics(BaseModel):
@@ -65,26 +65,6 @@ class GetTableSchemaTool:
         self._enable_refresh = enable_refresh
         self._metrics = GetTableSchemaToolMetrics()
 
-    @property
-    def schema(self) -> SQLSchema:
-        """Return the connector's physical schema."""
-        return self.db_connector.schema
-
-    def _find_table(self, schema_name: str | None, table_name: str) -> SQLTableSchema | None:
-        """Find a table by schema name and table name (case-insensitive).
-
-        If the schema contains only a single schema name, that schema is used
-        regardless of *schema_name*.
-        """
-        all_schema_names = [t.schema_name for t in self.schema.tables]
-        if len(set[str | None](all_schema_names)) == 1:
-            schema_name = all_schema_names[0]
-
-        for t in self.schema.tables:
-            if (schema_name is None or equals_ci(t.schema_name, schema_name)) and t.name.lower() == table_name.lower():
-                return t
-        return None
-
     @staticmethod
     def _filter_columns(
         columns: list[SQLColumnSchema],
@@ -129,7 +109,14 @@ class GetTableSchemaTool:
                 Only provide if the table is too large.
         """
         return (
-            await self.execute(schema_name, table_name, refresh, column_regex_filter, column_offset, column_limit)
+            await self.execute(
+                schema_name,
+                table_name,
+                refresh=refresh,
+                column_regex_filter=column_regex_filter,
+                column_offset=column_offset,
+                column_limit=column_limit,
+            )
         ).output
 
     async def _no_refresh(
@@ -154,30 +141,42 @@ class GetTableSchemaTool:
                 Only provide if the table is too large.
         """
         return (
-            await self.execute(schema_name, table_name, False, column_regex_filter, column_offset, column_limit)
+            await self.execute(
+                schema_name,
+                table_name,
+                column_regex_filter=column_regex_filter,
+                column_offset=column_offset,
+                column_limit=column_limit,
+            )
         ).output
 
     async def execute(
         self,
         schema_name: str | None,
         table_name: str,
-        refresh: bool,
-        column_regex_filter: str | None,
-        column_offset: int,
-        column_limit: int | None,
+        *,
+        refresh: bool = False,
+        column_regex_filter: str | None = None,
+        column_offset: int = 0,
+        column_limit: int | None = None,
     ) -> TableSchemaExecution:
         """Render the table schema and return output plus the selected-column count."""
         self._metrics.num_calls += 1
 
-        table = self._find_table(schema_name, table_name)
+        schema = self.db_connector.schema
+        table = find_table(schema, schema_name, table_name)
         if refresh:
+            table_ref = (
+                TableRef(schema_name=table.schema_name, table_name=table.name)
+                if table is not None
+                else TableRef(schema_name=schema_name, table_name=table_name)
+            )
             try:
-                await self.db_connector.refresh_schema_async([TableRef(schema_name=schema_name, table_name=table_name)])
-                table = self._find_table(schema_name, table_name)
+                await self.db_connector.refresh_schema_async([table_ref])
             except Exception as e:
-                if table is None:
-                    self._metrics.error_table_not_found += 1
-                    return TableSchemaExecution(output=f"(error: {e})", n_columns=None)
+                return TableSchemaExecution(output=f"(error: {e})", n_columns=None)
+            schema = self.db_connector.schema
+            table = find_table(schema, schema_name, table_name)
         if table is None:
             self._metrics.error_table_not_found += 1
             return TableSchemaExecution(
@@ -229,7 +228,7 @@ class GetTableSchemaTool:
             res += f"(showing {len(selected_columns)} of {total_columns} total columns, {', '.join(parts)})\n\n"
         res += self.formatter.format_table(
             selected_table,
-            dialect=self.schema.dialect,
+            dialect=schema.dialect,
             include_descriptions=self.include_descriptions,
         )
 
@@ -250,10 +249,10 @@ class GetTableSchemaTool:
         execution = await self.execute(
             schema_name,
             table_name,
-            refresh if self._enable_refresh else False,
-            column_regex_filter,
-            column_offset,
-            column_limit,
+            refresh=refresh if self._enable_refresh else False,
+            column_regex_filter=column_regex_filter,
+            column_offset=column_offset,
+            column_limit=column_limit,
         )
         return execution.output
 

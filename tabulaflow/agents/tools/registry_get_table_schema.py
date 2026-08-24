@@ -138,10 +138,10 @@ class RegistryGetTableSchemaTool:
         execution = await tool.execute(
             schema_name,
             table_name,
-            refresh if self.enable_refresh else False,
-            column_regex_filter,
-            column_offset,
-            column_limit,
+            refresh=refresh if self.enable_refresh else False,
+            column_regex_filter=column_regex_filter,
+            column_offset=column_offset,
+            column_limit=column_limit,
         )
         outcome = (
             ToolCallOutcome(count=execution.n_columns, unit="columns") if execution.n_columns is not None else None
