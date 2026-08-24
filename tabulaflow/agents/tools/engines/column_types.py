@@ -13,7 +13,7 @@ from __future__ import annotations
 from datetime import date, datetime
 from typing import TypeAlias
 
-from tabulaflow.core import SQLSchema
+from tabulaflow.core.schema import SQLSchema
 from tabulaflow.agents.tools.engines.sql import find_table
 
 # The Python types a structured-output model can emit for a column. Restricted to

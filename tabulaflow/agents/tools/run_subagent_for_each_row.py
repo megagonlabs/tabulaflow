@@ -22,7 +22,7 @@ from pydantic_ai.settings import ModelSettings
 from tabulaflow.data.protocols import SQLConnectorProtocol
 from tabulaflow.data.registry import DBRegistry
 from tabulaflow.data.sql import SQLConnector
-from tabulaflow.core import SQLDialect
+from tabulaflow.core.schema import SQLDialect
 from tabulaflow.agents.trace import Trajectory
 from tabulaflow.agents.tools.add_canonical_name import AddCanonicalNameTool
 from tabulaflow.agents.tools.base import ToolProgressUpdate

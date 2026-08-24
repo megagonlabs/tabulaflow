@@ -99,14 +99,13 @@ from sqlalchemy.exc import DBAPIError, SAWarning
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncEngine
 from sqlalchemy.engine.url import URL as SQLAlchemyURL
 from sqlalchemy import create_engine, event, select, func, distinct, inspect, text
-from tabulaflow.core import (
-    ErrorInfo,
+from tabulaflow.core.results import ErrorInfo, ExecResult
+from tabulaflow.core.schema import (
     SQLDialect,
     SQLSchema,
     SQLColumnSchema,
     SQLTableSchema,
     ForeignKeySchema,
-    ExecResult,
     TableRef,
 )
 

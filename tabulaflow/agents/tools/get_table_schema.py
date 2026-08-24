@@ -4,8 +4,8 @@ from typing import ClassVar
 from pydantic_ai import Tool
 from pydantic import BaseModel
 from tabulaflow.data.protocols import SQLConnectorProtocol
-from tabulaflow.output.formatting import SQLSchemaFormatter
-from tabulaflow.core import SQLColumnSchema, TableRef
+from tabulaflow.core.schema import SQLColumnSchema, TableRef
+from tabulaflow.output.formatting.schema import SQLSchemaFormatter
 from tabulaflow.agents.tools.engines.sql import find_table
 
 

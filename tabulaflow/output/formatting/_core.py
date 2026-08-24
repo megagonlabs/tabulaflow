@@ -6,7 +6,7 @@ from typing import Any
 import pandas as pd
 from tabulate import tabulate
 
-from tabulaflow.core import ExecResult
+from tabulaflow.core.results import ExecResult
 from tabulaflow.data.protocols import DBConnector
 
 

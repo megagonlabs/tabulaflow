@@ -3,9 +3,9 @@ from typing import Any, ClassVar, cast
 import pandas as pd
 from pydantic_ai import Tool
 from pydantic import BaseModel, Field
-from tabulaflow.data import DBConnector, SQLConnectorProtocol
-from tabulaflow.core import ExecResult, GraphResult
-from tabulaflow.output.formatting import format_dataframe
+from tabulaflow.core.results import ExecResult, GraphResult
+from tabulaflow.data.protocols import DBConnector, SQLConnectorProtocol
+from tabulaflow.output.formatting._core import format_dataframe
 from tabulaflow.agents.tools.engines.sql import format_sqlalchemy_error_msg
 
 _UNSET = object()

@@ -1,22 +1,48 @@
 """Stable schema, result, and registry primitives."""
 
-from tabulaflow.core.registry import ClassRegistry
-from tabulaflow.core.results import ErrorInfo, ExecResult, GraphResult, GraphResultEdge, GraphResultNode
-from tabulaflow.core.schema import (
-    ColumnRef,
-    ForeignKeySchema,
-    GraphPropertySchema,
-    NodeSchema,
-    GraphQueryLanguage,
-    PropertyGraphSchema,
-    RelationshipEndpoint,
-    RelationshipSchema,
-    SQLColumnSchema,
-    SQLDialect,
-    SQLSchema,
-    SQLTableSchema,
-    TableRef,
-)
+from importlib import import_module
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from tabulaflow.core.registry import ClassRegistry
+    from tabulaflow.core.results import ErrorInfo, ExecResult, GraphResult, GraphResultEdge, GraphResultNode
+    from tabulaflow.core.schema import (
+        ColumnRef,
+        ForeignKeySchema,
+        GraphPropertySchema,
+        GraphQueryLanguage,
+        NodeSchema,
+        PropertyGraphSchema,
+        RelationshipEndpoint,
+        RelationshipSchema,
+        SQLColumnSchema,
+        SQLDialect,
+        SQLSchema,
+        SQLTableSchema,
+        TableRef,
+    )
+
+_LAZY_EXPORTS = {
+    "ClassRegistry": ("tabulaflow.core.registry", "ClassRegistry"),
+    "ColumnRef": ("tabulaflow.core.schema", "ColumnRef"),
+    "ErrorInfo": ("tabulaflow.core.results", "ErrorInfo"),
+    "ExecResult": ("tabulaflow.core.results", "ExecResult"),
+    "ForeignKeySchema": ("tabulaflow.core.schema", "ForeignKeySchema"),
+    "GraphPropertySchema": ("tabulaflow.core.schema", "GraphPropertySchema"),
+    "GraphQueryLanguage": ("tabulaflow.core.schema", "GraphQueryLanguage"),
+    "GraphResult": ("tabulaflow.core.results", "GraphResult"),
+    "GraphResultEdge": ("tabulaflow.core.results", "GraphResultEdge"),
+    "GraphResultNode": ("tabulaflow.core.results", "GraphResultNode"),
+    "NodeSchema": ("tabulaflow.core.schema", "NodeSchema"),
+    "PropertyGraphSchema": ("tabulaflow.core.schema", "PropertyGraphSchema"),
+    "RelationshipEndpoint": ("tabulaflow.core.schema", "RelationshipEndpoint"),
+    "RelationshipSchema": ("tabulaflow.core.schema", "RelationshipSchema"),
+    "SQLColumnSchema": ("tabulaflow.core.schema", "SQLColumnSchema"),
+    "SQLDialect": ("tabulaflow.core.schema", "SQLDialect"),
+    "SQLSchema": ("tabulaflow.core.schema", "SQLSchema"),
+    "SQLTableSchema": ("tabulaflow.core.schema", "SQLTableSchema"),
+    "TableRef": ("tabulaflow.core.schema", "TableRef"),
+}
 
 __all__ = [
     "ClassRegistry",
@@ -25,11 +51,11 @@ __all__ = [
     "ExecResult",
     "ForeignKeySchema",
     "GraphPropertySchema",
+    "GraphQueryLanguage",
     "GraphResult",
     "GraphResultEdge",
     "GraphResultNode",
     "NodeSchema",
-    "GraphQueryLanguage",
     "PropertyGraphSchema",
     "RelationshipEndpoint",
     "RelationshipSchema",
@@ -39,3 +65,16 @@ __all__ = [
     "SQLTableSchema",
     "TableRef",
 ]
+
+
+def __getattr__(name: str) -> Any:
+    if name not in _LAZY_EXPORTS:
+        raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+    module_name, attr_name = _LAZY_EXPORTS[name]
+    value = getattr(import_module(module_name), attr_name)
+    globals()[name] = value
+    return value
+
+
+def __dir__() -> list[str]:
+    return sorted({*globals(), *_LAZY_EXPORTS})

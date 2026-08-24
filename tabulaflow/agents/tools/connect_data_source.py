@@ -9,7 +9,8 @@ from typing import TYPE_CHECKING, ClassVar
 
 from pydantic_ai import Tool
 
-from tabulaflow.data import DBRegistry, connect_url
+from tabulaflow.data.registry import DBRegistry
+from tabulaflow.data.url import connect_url
 from tabulaflow.data.url import is_database_file_path
 
 if TYPE_CHECKING:

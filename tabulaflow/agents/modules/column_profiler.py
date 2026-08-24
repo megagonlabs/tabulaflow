@@ -4,10 +4,10 @@ import json
 import jinja2
 from pydantic import BaseModel
 from pydantic_ai.settings import ModelSettings
-from tabulaflow.core import SQLSchema, ColumnRef
+from tabulaflow.core.schema import ColumnRef, SQLSchema
 from tabulaflow.agents.trace import Usage
-from tabulaflow.data import SQLConnectorProtocol
-from tabulaflow.output.formatting import SQLDDLSchemaFormatter
+from tabulaflow.data.protocols import SQLConnectorProtocol
+from tabulaflow.output.formatting.sql_ddl import SQLDDLSchemaFormatter
 from tabulaflow.agents.llm import make_agent
 
 COLUMN_PROFILER_SYSTEM_PROMPT = """

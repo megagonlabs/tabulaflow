@@ -34,7 +34,7 @@ from tabulaflow.output.specs import (
     default_selection,
     validate_parameter_value,
 )
-from tabulaflow.core import ExecResult, GraphResult
+from tabulaflow.core.results import ExecResult, GraphResult
 
 if TYPE_CHECKING:
     from tabulaflow.data.registry import DBRegistry

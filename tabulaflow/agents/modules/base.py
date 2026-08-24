@@ -4,7 +4,7 @@ import numpy.typing as npt
 import asyncio
 import collections
 import os
-from tabulaflow.data import DBConnector
+from tabulaflow.data.protocols import DBConnector
 from tabulaflow.agents.runtime import _get_agent_runtime
 from pydantic import BaseModel
 from tabulaflow.agents.trace import Usage

@@ -6,7 +6,7 @@ import datetime
 import re
 from typing import Hashable, Literal
 
-from tabulaflow.core import SQLSchema, SQLTableSchema
+from tabulaflow.core.schema import SQLSchema, SQLTableSchema
 
 
 _MAX_LISTED_VALUES = 20

@@ -7,26 +7,24 @@ from dataclasses import dataclass, fields
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    from tabulaflow.agents.tools import (
-        AddCanonicalNameTool,
-        ApplyPatchTool,
-        ConnectDataSourceTool,
-        CreateParameterizedSourceTool,
-        ExecuteBashTool,
-        ExtractRowsFromDocumentsTool,
-        FileEditorTool,
-        RegistryGetColumnJsonSchemaTool,
-        RegistryGetDBDocumentTool,
-        RegistryGetTableSchemaTool,
-        RegistryRunQueryTool,
-        RegistryTransferSourceTableTool,
-        RenderChartTool,
-        RenderGraphTool,
-        RenderMapTool,
-        RunSubagentForEachRowTool,
-        ShowArtifactsTool,
-        WebBrowserTool,
-    )
+    from tabulaflow.agents.tools.add_canonical_name import AddCanonicalNameTool
+    from tabulaflow.agents.tools.apply_patch import ApplyPatchTool
+    from tabulaflow.agents.tools.connect_data_source import ConnectDataSourceTool
+    from tabulaflow.agents.tools.create_parameterized_source import CreateParameterizedSourceTool
+    from tabulaflow.agents.tools.execute_bash import ExecuteBashTool
+    from tabulaflow.agents.tools.extract_rows_from_documents import ExtractRowsFromDocumentsTool
+    from tabulaflow.agents.tools.file_editor import FileEditorTool
+    from tabulaflow.agents.tools.registry_get_column_json_schema import RegistryGetColumnJsonSchemaTool
+    from tabulaflow.agents.tools.registry_get_db_document import RegistryGetDBDocumentTool
+    from tabulaflow.agents.tools.registry_get_table_schema import RegistryGetTableSchemaTool
+    from tabulaflow.agents.tools.registry_run_query import RegistryRunQueryTool
+    from tabulaflow.agents.tools.registry_transfer_source_table import RegistryTransferSourceTableTool
+    from tabulaflow.agents.tools.render_chart import RenderChartTool
+    from tabulaflow.agents.tools.render_graph import RenderGraphTool
+    from tabulaflow.agents.tools.render_map import RenderMapTool
+    from tabulaflow.agents.tools.run_subagent_for_each_row import RunSubagentForEachRowTool
+    from tabulaflow.agents.tools.show_artifacts import ShowArtifactsTool
+    from tabulaflow.agents.tools.web_browser import WebBrowserTool
 
 
 @dataclass

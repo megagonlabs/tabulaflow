@@ -4,11 +4,11 @@ import json
 import jinja2
 from pydantic import BaseModel
 from pydantic_ai.settings import ModelSettings
-from tabulaflow.core import SQLSchema, ForeignKeySchema, TableRef
+from tabulaflow.core.schema import ForeignKeySchema, SQLSchema, TableRef
 from tabulaflow.agents.trace import Usage
-from tabulaflow.data import SQLConnectorProtocol
+from tabulaflow.data.protocols import SQLConnectorProtocol
 from tabulaflow.agents.tools.run_query import RunQueryTool
-from tabulaflow.output.formatting import SQLDDLSchemaFormatter
+from tabulaflow.output.formatting.sql_ddl import SQLDDLSchemaFormatter
 from tabulaflow.agents.llm import make_agent
 
 FK_PREDICTOR_SYSTEM_PROMPT = """

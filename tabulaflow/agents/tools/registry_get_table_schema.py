@@ -6,7 +6,7 @@ from pydantic_ai import Tool, ToolReturn
 
 from tabulaflow.data.protocols import DBConnector
 from tabulaflow.data.registry import DBRegistry
-from tabulaflow.output.formatting import SQLSchemaFormatter
+from tabulaflow.output.formatting.schema import SQLSchemaFormatter
 from tabulaflow.agents.tools.base import ToolCallOutcome, sum_tool_metrics
 from tabulaflow.agents.tools.get_table_schema import GetTableSchemaTool, GetTableSchemaToolMetrics
 

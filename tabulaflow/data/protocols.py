@@ -7,7 +7,8 @@ from typing import Any, ClassVar, Literal, Protocol, TypeAlias
 import pandas as pd
 from sqlalchemy.sql import Executable
 
-from tabulaflow.core import ExecResult, GraphQueryLanguage, PropertyGraphSchema, SQLDialect, SQLSchema, TableRef
+from tabulaflow.core.results import ExecResult
+from tabulaflow.core.schema import GraphQueryLanguage, PropertyGraphSchema, SQLDialect, SQLSchema, TableRef
 
 _GLOBAL_ID_PATTERN = re.compile(r"[A-Za-z0-9][A-Za-z0-9._+-]{0,179}")
 

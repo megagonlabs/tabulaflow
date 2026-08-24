@@ -28,7 +28,7 @@ from tabulaflow.agents.tools.web_browser import (
     SNAPSHOT_SNIPPET_THRESHOLD_CHARS,
     snapshot_snippet,
 )
-from tabulaflow.output.formatting import format_connector_summary
+from tabulaflow.output.formatting._core import format_connector_summary
 from tabulaflow.agents.llm import make_agent, make_model_settings, model_display_name
 from tabulaflow.output.specs import (
     ArtifactSpec,
@@ -59,11 +59,9 @@ if TYPE_CHECKING:
     from tabulaflow.data.registry import DBRegistry
     from tabulaflow.data.sql import SQLConnector
     from tabulaflow.agents.trace import Usage
-    from tabulaflow.agents.tools import (
-        ArtifactBundle,
-        ExecuteBashTool,
-        ToolProgressUpdate,
-    )
+    from tabulaflow.agents.tools.base import ToolProgressUpdate
+    from tabulaflow.agents.tools.execute_bash import ExecuteBashTool
+    from tabulaflow.agents.tools.show_artifacts import ArtifactBundle
     from tabulaflow.output.store import OutputStore
 
 logger = logging.getLogger(__name__)
@@ -153,7 +151,7 @@ class ChatSession:
     _active_emit: Callable[[ChatEvent], None] | None = field(init=False, default=None)
 
     def __post_init__(self) -> None:
-        from tabulaflow.agents.tools import ProgressReportingTool
+        from tabulaflow.agents.tools.base import ProgressReportingTool
         from tabulaflow.output.store import OutputStore
 
         self._output_store = OutputStore(spill_connector=self.workspace, registry=self.registry)
@@ -191,27 +189,25 @@ class ChatSession:
     def _build_tools(self, subagent_dir: Path | None) -> ChatToolset:
         """Construct the agent's toolset, wiring in the shared output store and
         message store. ``subagent_dir`` (if set) is where subagent trajectories land."""
-        from tabulaflow.output.formatting import SQLDDLSchemaFormatter
+        from tabulaflow.output.formatting.sql_ddl import SQLDDLSchemaFormatter
         from tabulaflow.agents.modules.db_summarizer import DBSummarizer
-        from tabulaflow.agents.tools import (
-            AddCanonicalNameTool,
-            ApplyPatchTool,
-            ConnectDataSourceTool,
-            ExtractRowsFromDocumentsTool,
-            FileEditorTool,
-            RegistryGetColumnJsonSchemaTool,
-            RegistryGetDBDocumentTool,
-            RegistryGetTableSchemaTool,
-            RegistryRunQueryTool,
-            RegistryTransferSourceTableTool,
-            RenderChartTool,
-            RenderGraphTool,
-            RenderMapTool,
-            RunSubagentForEachRowTool,
-            ShowArtifactsTool,
-            WebBrowserTool,
-            CreateParameterizedSourceTool,
-        )
+        from tabulaflow.agents.tools.add_canonical_name import AddCanonicalNameTool
+        from tabulaflow.agents.tools.apply_patch import ApplyPatchTool
+        from tabulaflow.agents.tools.connect_data_source import ConnectDataSourceTool
+        from tabulaflow.agents.tools.create_parameterized_source import CreateParameterizedSourceTool
+        from tabulaflow.agents.tools.extract_rows_from_documents import ExtractRowsFromDocumentsTool
+        from tabulaflow.agents.tools.file_editor import FileEditorTool
+        from tabulaflow.agents.tools.registry_get_column_json_schema import RegistryGetColumnJsonSchemaTool
+        from tabulaflow.agents.tools.registry_get_db_document import RegistryGetDBDocumentTool
+        from tabulaflow.agents.tools.registry_get_table_schema import RegistryGetTableSchemaTool
+        from tabulaflow.agents.tools.registry_run_query import RegistryRunQueryTool
+        from tabulaflow.agents.tools.registry_transfer_source_table import RegistryTransferSourceTableTool
+        from tabulaflow.agents.tools.render_chart import RenderChartTool
+        from tabulaflow.agents.tools.render_graph import RenderGraphTool
+        from tabulaflow.agents.tools.render_map import RenderMapTool
+        from tabulaflow.agents.tools.run_subagent_for_each_row import RunSubagentForEachRowTool
+        from tabulaflow.agents.tools.show_artifacts import ShowArtifactsTool
+        from tabulaflow.agents.tools.web_browser import WebBrowserTool
 
         # The fan-out tools operate on the workspace only: sub-tasks are laid out
         # as workspace tables and results written back there (user data reaches
@@ -309,7 +305,7 @@ class ChatSession:
                 "relative-path resolution would diverge between the shell tool and run_query."
             )
 
-        from tabulaflow.agents.tools import ExecuteBashTool
+        from tabulaflow.agents.tools.execute_bash import ExecuteBashTool
         from tabulaflow.agents.tools.engines.shell_guard import dangerous_command_reason
 
         return ExecuteBashTool(
@@ -404,7 +400,7 @@ class ChatSession:
 
     def _apply_subagent_profile(self, *, model: str, reasoning_effort: str) -> None:
         """Update the tools whose internal helper LLM follows the app subagent profile."""
-        from tabulaflow.agents.tools import LLMProfileTool
+        from tabulaflow.agents.tools.base import LLMProfileTool
 
         model_settings = self._subagent_model_settings(model=model, reasoning_effort=reasoning_effort)
         for tool in self._tools:
@@ -794,7 +790,7 @@ def _artifact_from_ref(ref_id: str, label: str | None, output_store: OutputStore
 
 def _declared_bundle(completed_results: dict[str, ToolReturnPart]) -> "ArtifactBundle | None":
     """The bundle from the turn's last successful ``show_artifacts`` call, if any."""
-    from tabulaflow.agents.tools import ArtifactBundle, ShowArtifactsTool
+    from tabulaflow.agents.tools.show_artifacts import ArtifactBundle, ShowArtifactsTool
 
     for part in reversed(list(completed_results.values())):
         if part.tool_name == ShowArtifactsTool.name and isinstance(part.metadata, ArtifactBundle):
@@ -942,7 +938,7 @@ async def _emit_stream_event(
         )
 
     elif isinstance(event, FunctionToolResultEvent):
-        from tabulaflow.agents.tools import ToolCallOutcome
+        from tabulaflow.agents.tools.base import ToolCallOutcome
 
         tool_name = (event.part.tool_name if event.part is not None else "") or ""
         result_part = event.part if isinstance(event.part, ToolReturnPart) else None

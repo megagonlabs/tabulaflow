@@ -2,7 +2,7 @@
 
 from typing import ClassVar, Protocol, TypeAlias
 
-from tabulaflow.core import PropertyGraphSchema, SQLDialect, SQLSchema, SQLTableSchema
+from tabulaflow.core.schema import PropertyGraphSchema, SQLDialect, SQLSchema, SQLTableSchema
 from tabulaflow.core.registry import ClassRegistry
 
 

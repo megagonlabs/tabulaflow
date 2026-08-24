@@ -12,13 +12,9 @@ import pandas as pd
 from pydantic import ValidationError
 
 from tabulaflow.data.config import Neo4jConnectorConfig
-from tabulaflow.core import (
-    ErrorInfo,
-    ExecResult,
+from tabulaflow.core.results import ErrorInfo, ExecResult, GraphResult, GraphResultEdge, GraphResultNode
+from tabulaflow.core.schema import (
     GraphPropertySchema,
-    GraphResult,
-    GraphResultEdge,
-    GraphResultNode,
     NodeSchema,
     GraphQueryLanguage,
     PropertyGraphSchema,

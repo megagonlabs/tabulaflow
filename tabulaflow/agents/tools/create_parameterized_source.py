@@ -22,8 +22,8 @@ from tabulaflow.output.specs import (
     Selection,
     default_selection,
 )
-from tabulaflow.core import ErrorInfo, ExecResult
-from tabulaflow.output.formatting import format_dataframe, format_single_line_text
+from tabulaflow.core.results import ErrorInfo, ExecResult
+from tabulaflow.output.formatting._core import format_dataframe, format_single_line_text
 from tabulaflow.agents.tools.base import ToolCallOutcome
 from tabulaflow.agents.tools.engines.sql import format_sqlalchemy_error_msg
 from tabulaflow.output.store import OutputStore, SourceNotApplicable, render_parameterized_query

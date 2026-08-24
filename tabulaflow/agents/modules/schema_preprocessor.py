@@ -1,8 +1,8 @@
 from typing import ClassVar, Literal
 from pydantic_ai.settings import ModelSettings
-from tabulaflow.core import SQLSchema
+from tabulaflow.core.schema import SQLSchema
 from tabulaflow.agents.trace import Usage
-from tabulaflow.data import SQLConnectorProtocol
+from tabulaflow.data.protocols import SQLConnectorProtocol
 from tabulaflow.agents.modules.column_profiler import ColumnProfiler
 from tabulaflow.agents.modules.fk_predictor import ForeignKeyPredictor
 from tabulaflow.agents.modules.base import (

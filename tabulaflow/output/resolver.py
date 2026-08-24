@@ -28,7 +28,7 @@ from tabulaflow.output.specs import (
     artifact_source_ids,
     validate_parameter_value,
 )
-from tabulaflow.core import GraphResult
+from tabulaflow.core.results import GraphResult
 from tabulaflow.output.charts import validate_chart_spec
 from tabulaflow.output.store import OutputStore, ResultPayload, SourceNotApplicable, SourceResolutionError
 

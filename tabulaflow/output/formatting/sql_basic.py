@@ -3,7 +3,7 @@
 from dataclasses import dataclass
 from typing import ClassVar
 
-from tabulaflow.core import ForeignKeySchema, SQLColumnSchema, SQLDialect, SQLSchema, SQLTableSchema
+from tabulaflow.core.schema import ForeignKeySchema, SQLColumnSchema, SQLDialect, SQLSchema, SQLTableSchema
 from tabulaflow.output.formatting._core import format_single_line_text
 from tabulaflow.output.formatting._sql import (
     _PreparedTable,

@@ -4,8 +4,9 @@ from pydantic_ai.settings import ModelSettings
 
 from typing import Any, ClassVar, Literal
 
-from tabulaflow.data import DBConnector
-from tabulaflow.output.formatting import CypherSchemaFormatter, SQLDDLSchemaFormatter
+from tabulaflow.data.protocols import DBConnector
+from tabulaflow.output.formatting.cypher import CypherSchemaFormatter
+from tabulaflow.output.formatting.sql_ddl import SQLDDLSchemaFormatter
 from tabulaflow.agents.modules.base import CachedPreprocessorMixin, CacheableResult, preprocessor_registry
 from tabulaflow.agents.trace import Usage
 from tabulaflow.agents.llm import make_agent, make_model_settings

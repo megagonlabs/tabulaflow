@@ -13,7 +13,7 @@ import re
 import tempfile
 from typing import TYPE_CHECKING
 
-from tabulaflow.core import SQLSchema
+from tabulaflow.core.schema import SQLSchema
 from tabulaflow.data.config import SQLConnectorConfig
 
 if TYPE_CHECKING:

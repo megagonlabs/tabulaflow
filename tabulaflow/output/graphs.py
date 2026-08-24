@@ -11,7 +11,7 @@ from typing import Any, Literal
 import pandas as pd
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator
 
-from tabulaflow.core import GraphResult, GraphResultEdge, GraphResultNode
+from tabulaflow.core.results import GraphResult, GraphResultEdge, GraphResultNode
 from tabulaflow.core.serialization import json_ready
 from tabulaflow.output.specs import ArtifactSpecError
 

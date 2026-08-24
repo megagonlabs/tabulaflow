@@ -2,7 +2,7 @@
 
 from dataclasses import dataclass
 
-from tabulaflow.core import SQLColumnSchema, SQLDialect, SQLSchema, SQLTableSchema
+from tabulaflow.core.schema import SQLColumnSchema, SQLDialect, SQLSchema, SQLTableSchema
 from tabulaflow.output.formatting._table_grouping import _TableRenderGroup, group_tables_for_formatting
 
 

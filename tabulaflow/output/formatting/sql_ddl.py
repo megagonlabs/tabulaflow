@@ -2,7 +2,7 @@
 
 from typing import ClassVar
 from dataclasses import dataclass
-from tabulaflow.core import ForeignKeySchema, SQLDialect, SQLSchema, SQLTableSchema, SQLColumnSchema
+from tabulaflow.core.schema import ForeignKeySchema, SQLColumnSchema, SQLDialect, SQLSchema, SQLTableSchema
 from tabulaflow.output.formatting.schema import schema_formatter_registry
 from tabulaflow.output.formatting._core import (
     format_dataframe,

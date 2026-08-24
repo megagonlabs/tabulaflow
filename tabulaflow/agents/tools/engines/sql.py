@@ -3,7 +3,7 @@ from typing import Any
 
 import sqlalchemy
 
-from tabulaflow.core import SQLColumnSchema, SQLSchema, SQLTableSchema
+from tabulaflow.core.schema import SQLColumnSchema, SQLSchema, SQLTableSchema
 
 
 def _unquote_identifier(identifier: str) -> str:
