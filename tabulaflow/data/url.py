@@ -145,7 +145,8 @@ async def connect_url(
         source: A database URL (``postgresql://user:pass@…``, ``bigquery://…``,
             ``neo4j://user:pass@…``, …) or a local database-file path (``.sqlite`` / ``.duckdb``).
         db_name: Display name for the connector.
-        read_only: Block write statements.
+        read_only: Request backend-appropriate read-only behavior. SQL callers
+            still need read-only credentials or IAM for enforced security.
         global_id: Stable id for schema caching; derived from the URL if omitted.
         config: Backend-appropriate immutable connector configuration.
 

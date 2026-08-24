@@ -395,7 +395,8 @@ class Neo4jConnector:
                 Auto-detected from the server if not provided.
             schema: Pre-loaded schema.  If ``None``, the schema is
                 introspected automatically.
-            read_only: Block write statements when ``True``.
+            read_only: Use Neo4j's server-enforced read access mode when
+                ``True``.
             config: Immutable connector execution and cache policy. Environment
                 values and built-in defaults are used when omitted.
             **driver_kwargs: Extra keyword arguments for

@@ -36,9 +36,10 @@ on demand via :meth:`SQLConnector.refresh_schema_async` or
 automatically after writes.
 
 **Read-only safety guard.**  ``SQLConnector(read_only=True)`` blocks
-DML/DDL/DCL/stored-proc invocations and surfaces a
-``ReadOnlyViolationError`` in :class:`ExecResult`.  Statement
-classification is sqlparse-based and dialect-agnostic.
+recognized write statements and surfaces a ``ReadOnlyViolationError`` in
+:class:`ExecResult`. This is defense against accidental writes, not an
+authorization boundary; use read-only database credentials or IAM for enforced
+security. Native read-only file modes are used where supported.
 
 **Query result caching.**  Optional disk cache keyed by
 query, parameters, and timeout. Configured via
@@ -2185,7 +2186,8 @@ class SQLConnector:
         backend: Concrete SQLAlchemy database backend.
         language: SQL dialect reported by the schema.
         config: Resolved immutable connector configuration.
-        read_only: Whether write statements are blocked.
+        read_only: Whether read-only behavior was requested. This is a
+            client-side safety guard unless the backend enforces it natively.
     """
 
     connector_type: ClassVar[Literal["sql"]] = "sql"
@@ -2259,8 +2261,9 @@ class SQLConnector:
                 database connection and its caches. Derived from the
                 credential-free URL when omitted.
             read_only: If ``True`` (the default), write statements (INSERT,
-                UPDATE, DELETE, DROP, etc.) are rejected before reaching the
-                database, returning an :class:`ExecResult` with an error.
+                UPDATE, DELETE, DROP, etc.) recognized by the client guard are
+                rejected before reaching the database. This is not a security
+                boundary; use read-only credentials or IAM for enforcement.
             config: Immutable connector execution and cache policy. Environment
                 values and built-in defaults are used when omitted.
             schema: A pre-loaded :class:`SQLSchema`.  When ``None`` the schema
