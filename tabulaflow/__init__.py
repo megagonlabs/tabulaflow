@@ -31,10 +31,8 @@ def configure(**kwargs: object) -> None:
 
     logger.debug("TABULAFLOW Configuration: %s", tabulaflow_config)
 
-    # Process-global LLM setup (custom prices + BigQuery-tracing suppression) is
-    # deferred: it imports litellm (~1s), so it would block startup before the first
-    # banner. ``agents.llm.make_agent`` runs it once, lazily, when the first agent is
-    # built (in the background session worker for the TUI). See llm.ensure_global_setup.
+    # Custom model-price registration is deferred because importing litellm would
+    # block startup before the first banner. ``agents.llm.make_agent`` runs it lazily.
 
     if tabulaflow_config.instrument_enabled:
         if os.getenv("PHOENIX_COLLECTOR_ENDPOINT"):

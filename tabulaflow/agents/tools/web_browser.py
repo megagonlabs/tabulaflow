@@ -403,9 +403,8 @@ class WebBrowserManager:
     Also owns a process-wide :class:`_PageBudget` capping simultaneously-open
     pages across all tools that share this manager.
 
-    Get the process-wide default via the module-level ``default_manager()``
-    accessor; construct directly only for tests or non-default lifecycle
-    needs.
+    The agent runtime owns the process-wide default. Construct directly only
+    for tests or non-default lifecycle needs.
     """
 
     def __init__(self, headless: bool = True, max_pages: int | None = None) -> None:
@@ -485,43 +484,6 @@ class WebBrowserManager:
             logger.info("Launching Chromium in headed mode")
         self._browser = await self._playwright.chromium.launch(headless=self._headless)
         return self._browser
-
-
-# ---------------------------------------------------------------------------
-# Default manager (process-wide singleton accessor)
-# ---------------------------------------------------------------------------
-
-_default_manager: WebBrowserManager | None = None
-_default_manager_lock = asyncio.Lock()
-
-
-async def default_manager(headless: bool = True) -> WebBrowserManager:
-    """Return the process-wide default manager, lazily creating it.
-
-    ``headless`` is honored only on the first call; subsequent calls
-    return the existing manager regardless of the value passed.
-    """
-    global _default_manager
-    if _default_manager is not None:
-        return _default_manager
-    async with _default_manager_lock:
-        if _default_manager is None:
-            from tabulaflow.config import tabulaflow_config
-
-            _default_manager = WebBrowserManager(headless=headless, max_pages=tabulaflow_config.max_browser_tabs)
-        return _default_manager
-
-
-async def reset_default_manager() -> None:
-    """Close and discard the process-wide default manager.
-
-    Mainly useful for tests that need a fresh browser between runs.
-    """
-    global _default_manager
-    async with _default_manager_lock:
-        if _default_manager is not None:
-            await _default_manager.close()
-            _default_manager = None
 
 
 # ---------------------------------------------------------------------------
@@ -697,7 +659,6 @@ class WebBrowserTool:
         manager: WebBrowserManager | None = None,
         isolated: bool = False,
         max_tabs: int = 10,
-        headless: bool | None = None,
     ) -> None:
         """Initialize the tool.
 
@@ -711,20 +672,10 @@ class WebBrowserTool:
             max_tabs: Cap on simultaneously-open tabs for this tool.
                 Returns an error if exceeded; idle tabs auto-close at
                 the next turn boundary.
-            headless: Run Chromium headless. None (default) reads from
-                ``tabulaflow_config.browser_headless`` so every tool in the
-                process — including subagent-spawned ones — shares the
-                same setting. Honored only on first manager construction;
-                subsequent tools share the existing browser regardless.
         """
-        if headless is None:
-            from tabulaflow.config import tabulaflow_config
-
-            headless = tabulaflow_config.browser_headless
         self._manager = manager
         self._isolated = isolated
         self._max_tabs = max_tabs
-        self._headless = headless
         self._owned_context: BrowserContext | None = None
         self._tabs: dict[str, _TabState] = {}
         self._next_tab_seq = 1
@@ -1405,7 +1356,9 @@ class WebBrowserTool:
 
     async def _ensure_manager(self) -> WebBrowserManager:
         if self._manager is None:
-            self._manager = await default_manager(headless=self._headless)
+            from tabulaflow.agents.runtime import _get_agent_runtime
+
+            self._manager = _get_agent_runtime().get_browser_manager()
         return self._manager
 
     async def _ensure_context(self) -> "BrowserContext":

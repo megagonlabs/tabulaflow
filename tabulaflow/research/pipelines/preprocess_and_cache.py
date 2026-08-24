@@ -6,7 +6,7 @@ import logging
 from typing import Any
 from tqdm.asyncio import tqdm_asyncio
 from tabulaflow.research.benchmarks.base import dataset_registry
-import tabulaflow
+from tabulaflow.agents import AgentRuntimeConfig, initialize_agent_runtime
 import tabulaflow.research.agenthub._erd  # noqa: F401 — register the SQL-agent ERD preprocessor
 from tabulaflow.agents.modules.base import NL2QPreprocessor, preprocessor_registry
 from tabulaflow.research.types import NL2QDataset
@@ -88,11 +88,7 @@ async def main_async() -> None:
     print(args)
     print()
 
-    tabulaflow.configure(
-        preprocessor_cache_enabled=True,
-        preprocessor_cache_required=False,
-        preprocessor_cache_overwrite=args.overwrite,
-    )
+    initialize_agent_runtime(AgentRuntimeConfig(preprocessor_cache_mode="refresh" if args.overwrite else "read_write"))
 
     t0 = time.time()
     dataset_loader = dataset_registry.get_class(args.dataset)()

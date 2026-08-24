@@ -5,7 +5,7 @@ import asyncio
 import collections
 import os
 from tabulaflow.data import DBConnector
-from tabulaflow.config import tabulaflow_config
+from tabulaflow.agents.runtime import _get_agent_runtime
 from pydantic import BaseModel
 from tabulaflow.agents.trace import Usage
 from tabulaflow.core.registry import ClassRegistry
@@ -149,8 +149,11 @@ class CachedPreprocessorMixin(Generic[OutputT]):
         return all(os.path.exists(path) for path in cache_paths)
 
     async def preprocess_async(self, input_data: Any) -> OutputT:
-        cache_dir = os.path.join(tabulaflow_config.cache_dir, "preprocessors", self.name)
-        os.makedirs(cache_dir, exist_ok=True)
+        config = _get_agent_runtime().config
+        cache_mode = config.preprocessor_cache_mode
+        cache_dir = os.path.join(config.cache_dir, "preprocessors", self.name)
+        if cache_mode != "off":
+            os.makedirs(cache_dir, exist_ok=True)
 
         cache_id = self._get_cache_id(input_data)
         cache_paths = self._get_cache_paths(cache_dir, cache_id)
@@ -158,22 +161,18 @@ class CachedPreprocessorMixin(Generic[OutputT]):
         cache_key = tuple(cache_paths)
         lock = _cache_locks[cache_id]
         async with lock:
-            if (
-                tabulaflow_config.preprocessor_cache_enabled
-                and not tabulaflow_config.preprocessor_cache_overwrite
-                and self._cache_exists(cache_paths)
-            ):
+            if cache_mode in ("read_write", "cache_only") and self._cache_exists(cache_paths):
                 if cache_key in _memory_cache:
                     return _memory_cache[cache_key]  # type: ignore[return-value]
                 result = self._load_from_cache(cache_paths)
                 _memory_cache[cache_key] = result
                 return result  # type: ignore[return-value]
 
-            if tabulaflow_config.preprocessor_cache_required:
+            if cache_mode == "cache_only":
                 raise FileNotFoundError(f"Preprocessor cache required but not found at {cache_paths}")
 
             result = await self._preprocess_impl_async(input_data)
-            if tabulaflow_config.preprocessor_cache_enabled:
+            if cache_mode in ("read_write", "refresh"):
                 self._save_to_cache(cache_paths, result)
                 _memory_cache[cache_key] = result
             return result

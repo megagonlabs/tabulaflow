@@ -34,7 +34,6 @@ class Settings(BaseSettings):
     query_cache_mode: QueryCacheMode = "successful_only"
     instrument_enabled: bool = True
     instrument_prefix: str = "exp"
-    disable_bigquery_tracing: bool = True
     max_result_rows: int | None = 100000
     max_llm_concurrency: int | None = 64
     max_llm_requests_per_minute: int | None = 600

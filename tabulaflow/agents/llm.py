@@ -32,7 +32,7 @@ from pydantic_ai.profiles.anthropic import (
 )
 from pydantic_ai.settings import ModelSettings
 
-from tabulaflow.config import tabulaflow_config
+from tabulaflow.agents.runtime import _get_agent_runtime
 
 # Multi-step agents must not hit pydantic-ai's default 50-request cap. Pass this
 # to ``agent.run(..., usage_limits=DEFAULT_USAGE_LIMITS)``.
@@ -160,35 +160,16 @@ def _service_tier_model_settings(service_tier: str | None, *, model: str) -> Mod
 
 
 # ---------------------------------------------------------------------------
-# Throttling — concurrency + requests-per-minute, read from config at request
-# time, keyed by event loop so a fresh ``asyncio.run()`` gets fresh primitives.
-# (Same logic that used to monkey-patch ``Model.request``, now in a WrapperModel.)
+# Throttling — concurrency + requests-per-minute, with per-event-loop primitives
+# owned by the process-wide agent runtime.
 # ---------------------------------------------------------------------------
-
-_llm_throttle_cache: dict[int, tuple[asyncio.Semaphore | None, AsyncLimiter | None]] = {}
-_embedding_throttle_cache: dict[int, tuple[asyncio.Semaphore | None, AsyncLimiter | None]] = {}
-
-
-def _get_throttles(
-    cache: dict[int, tuple[asyncio.Semaphore | None, AsyncLimiter | None]],
-    max_concurrency: int | None,
-    max_requests_per_minute: int | None,
-) -> tuple[asyncio.Semaphore | None, AsyncLimiter | None]:
-    loop_id = id(asyncio.get_running_loop())
-    if loop_id not in cache:
-        sem = asyncio.Semaphore(max_concurrency) if max_concurrency is not None else None
-        limiter = AsyncLimiter(max_requests_per_minute, 60) if max_requests_per_minute is not None else None
-        cache[loop_id] = (sem, limiter)
-    return cache[loop_id]
 
 
 @asynccontextmanager
 async def _throttle(
-    cache: dict[int, tuple[asyncio.Semaphore | None, AsyncLimiter | None]],
-    max_concurrency: int | None,
-    max_rpm: int | None,
+    throttles: tuple[asyncio.Semaphore | None, AsyncLimiter | None],
 ) -> AsyncIterator[None]:
-    sem, limiter = _get_throttles(cache, max_concurrency, max_rpm)
+    sem, limiter = throttles
     async with AsyncExitStack() as stack:
         if sem is not None:
             await stack.enter_async_context(sem)
@@ -200,11 +181,7 @@ async def _throttle(
 @asynccontextmanager
 async def embedding_throttle() -> AsyncIterator[None]:
     """Throttle an embedding call (concurrency + RPM from config)."""
-    async with _throttle(
-        _embedding_throttle_cache,
-        tabulaflow_config.max_embedding_concurrency,
-        tabulaflow_config.max_embedding_requests_per_minute,
-    ):
+    async with _throttle(_get_agent_runtime().embedding_throttles()):
         yield
 
 
@@ -217,11 +194,7 @@ class _ThrottledModel(WrapperModel):
         model_settings: ModelSettings | None,
         model_request_parameters: ModelRequestParameters,
     ) -> ModelResponse:
-        async with _throttle(
-            _llm_throttle_cache,
-            tabulaflow_config.max_llm_concurrency,
-            tabulaflow_config.max_llm_requests_per_minute,
-        ):
+        async with _throttle(_get_agent_runtime().llm_throttles()):
             return await self.wrapped.request(messages, model_settings, model_request_parameters)
 
     @asynccontextmanager
@@ -232,11 +205,7 @@ class _ThrottledModel(WrapperModel):
         model_request_parameters: ModelRequestParameters,
         run_context: Any | None = None,
     ) -> AsyncIterator[Any]:
-        async with _throttle(
-            _llm_throttle_cache,
-            tabulaflow_config.max_llm_concurrency,
-            tabulaflow_config.max_llm_requests_per_minute,
-        ):
+        async with _throttle(_get_agent_runtime().llm_throttles()):
             async with self.wrapped.request_stream(
                 messages, model_settings, model_request_parameters, run_context
             ) as stream:
@@ -301,28 +270,22 @@ def _build_base(llm: str) -> Model:
     return infer_model(llm)
 
 
-# Resolved base models, cached per event loop (like the throttle caches above). A
+# Resolved base models are cached per event loop by the agent runtime. A
 # base model owns its provider's ``httpx.AsyncClient`` (connection pool), so reusing
 # it means every agent for the same model shares one client instead of leaking a
 # fresh, never-closed one per ``make_agent`` call — which otherwise exhausts file
 # descriptors under fan-out. Keyed by loop so a client is reused only within the
 # loop it is bound to; the per-loop dict maps the model identifier to its base model.
-_base_model_cache: dict[int, dict[str, Model]] = {}
-
-
 def _resolve_base(llm: str | Model) -> Model:
     if isinstance(llm, Model):
         return llm
     try:
-        loop_id = id(asyncio.get_running_loop())
+        asyncio.get_running_loop()
     except RuntimeError:
         # Resolved outside a running loop (e.g. sync agent construction): no loop
         # to key on, so build a fresh client and let it bind to its first caller's loop.
         return _build_base(llm)
-    per_loop = _base_model_cache.setdefault(loop_id, {})
-    if llm not in per_loop:
-        per_loop[llm] = _build_base(llm)
-    return per_loop[llm]
+    return _get_agent_runtime().get_base_model(llm, lambda: _build_base(llm))
 
 
 def _make_model(llm: str | Model) -> Model:
@@ -416,7 +379,7 @@ def make_agent(
     keyword accepted by :class:`pydantic_ai.Agent` (e.g. ``capabilities``,
     ``deps_type``) flows through ``**kwargs``.
     """
-    ensure_global_setup()
+    _ensure_custom_model_prices_registered()
     if history_processors is not None:
         # pydantic-ai ≥1.107 deprecates Agent(history_processors=...) in favor of
         # ProcessHistory capabilities; adapt here so callers keep the stable kwarg.
@@ -459,33 +422,12 @@ def register_custom_model_prices() -> None:
             litellm.model_cost[model] = info
 
 
-def disable_bigquery_tracing() -> None:
-    """Disable BigQuery's built-in OpenTelemetry tracing (noisy in our traces)."""
-    try:
-        from google.cloud.bigquery import opentelemetry_tracing
-
-        opentelemetry_tracing.HAS_OPENTELEMETRY = False
-    except ImportError:
-        pass
+_custom_model_prices_registered = False
 
 
-_global_setup_done = False
-
-
-def ensure_global_setup() -> None:
-    """Run process-global LLM setup (custom model prices + optional BigQuery-tracing
-    suppression) exactly once.
-
-    Deferred out of ``configure()`` and invoked lazily by ``make_agent``: registering
-    prices imports litellm (~1s), so doing it eagerly at ``configure()`` blocked app
-    startup before the first banner. It now runs when the first agent is built —
-    which for the TUI is in the background session worker, off the UI thread."""
-    global _global_setup_done
-    if _global_setup_done:
+def _ensure_custom_model_prices_registered() -> None:
+    global _custom_model_prices_registered
+    if _custom_model_prices_registered:
         return
-    _global_setup_done = True
+    _custom_model_prices_registered = True
     register_custom_model_prices()
-    from tabulaflow.config import tabulaflow_config
-
-    if tabulaflow_config.disable_bigquery_tracing:
-        disable_bigquery_tracing()

@@ -30,8 +30,6 @@ from tabulaflow.agents.tools.show_artifacts import ArtifactBundle, ArtifactRef, 
 from tabulaflow.agents.tools.web_browser import (
     WebBrowserManager,
     WebBrowserTool,
-    default_manager,
-    reset_default_manager,
 )
 
 __all__ = [
@@ -69,6 +67,4 @@ __all__ = [
     "ShowArtifactsTool",
     "WebBrowserManager",
     "WebBrowserTool",
-    "default_manager",
-    "reset_default_manager",
 ]

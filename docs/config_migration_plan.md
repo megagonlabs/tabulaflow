@@ -403,7 +403,7 @@ Delete `disable_bigquery_tracing` and the monkey patch that sets BigQuery's `HAS
 
 Connector-specific constructor booleans that duplicate config policy, such as `enable_schema_caching` and `enable_query_caching`, should be removed. Special connectors use explicit config objects, for example workspace caching modes set to `off`.
 
-### Phase 3: process-wide agent runtime
+### Phase 3: process-wide agent runtime — complete
 
 1. Implement private `_AgentRuntime` and `_get_agent_runtime()`.
 2. Add public one-time `initialize_agent_runtime(config)`.
