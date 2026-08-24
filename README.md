@@ -549,6 +549,7 @@ Aug 23
   - [x] find_table and find_column
   - [x] close_async and release_connections_async
   - [x] preserve schema description across refresh
+- [x] Fix /clear semantics
 
 
 - [ ] Fix flicker when change selection in answer controls
