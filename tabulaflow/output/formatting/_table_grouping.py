@@ -208,41 +208,35 @@ def group_tables_for_formatting(schema: SQLSchema) -> list[_TableRenderGroup]:
         for table in schema.tables
         for foreign_key in table.foreign_keys
     }
-    variations: list[_ParsedTableName | None] = []
-    keys: list[Hashable | None] = []
-    grouped_indices: dict[Hashable, list[int]] = defaultdict(list)
+    group_keys: list[Hashable | None] = []
+    candidates_by_key: dict[Hashable, list[tuple[SQLTableSchema, _ParsedTableName]]] = defaultdict(list)
 
-    for index, table in enumerate(schema.tables):
-        variation = _parse_name(table.name)
-        variations.append(variation)
+    for table in schema.tables:
+        parsed_name = _parse_name(table.name)
         table_key = (table.schema_name, table.name)
         # Keep concrete FK targets visible because grouped rendering does not rewrite relationships.
-        if variation is None or table_key in referenced_table_keys:
-            keys.append(None)
+        if parsed_name is None or table_key in referenced_table_keys:
+            group_keys.append(None)
             continue
-        candidate_key = (table.schema_name, variation.pattern, _structural_signature(table))
-        keys.append(candidate_key)
-        grouped_indices[candidate_key].append(index)
+        candidate_group_key = (table.schema_name, parsed_name.pattern, _structural_signature(table))
+        group_keys.append(candidate_group_key)
+        candidates_by_key[candidate_group_key].append((table, parsed_name))
 
-    result: list[_TableRenderGroup] = []
-    emitted: set[Hashable] = set()
-    for index, table in enumerate(schema.tables):
-        current_key = keys[index]
-        if current_key is None or len(grouped_indices[current_key]) < 2:
-            result.append(_TableRenderGroup.from_table(table))
+    render_groups: list[_TableRenderGroup] = []
+    emitted_keys: set[Hashable] = set()
+    for table, group_key in zip(schema.tables, group_keys, strict=True):
+        if group_key is None or len(candidates_by_key[group_key]) < 2:
+            render_groups.append(_TableRenderGroup.from_table(table))
             continue
-        if current_key in emitted:
+        if group_key in emitted_keys:
             continue
-        emitted.add(current_key)
-        indices = grouped_indices[current_key]
-        group_variations = [variations[i] for i in indices]
-        assert all(variation is not None for variation in group_variations)
-        parsed_variations = [variation for variation in group_variations if variation is not None]
-        result.append(
+        emitted_keys.add(group_key)
+        candidates = candidates_by_key[group_key]
+        render_groups.append(
             _TableRenderGroup(
-                members=tuple(schema.tables[i] for i in indices),
-                display_name=parsed_variations[0].pattern,
-                member_summary=_summarize_members(parsed_variations),
+                members=tuple(member for member, _ in candidates),
+                display_name=candidates[0][1].pattern,
+                member_summary=_summarize_members([parsed_name for _, parsed_name in candidates]),
             )
         )
-    return result
+    return render_groups
