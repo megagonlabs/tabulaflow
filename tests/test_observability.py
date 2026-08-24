@@ -10,6 +10,12 @@ import tabulaflow.agents.observability as agent_observability
 import tabulaflow.research.observability as research_observability
 
 
+def test_instrument_agents_is_available_from_agents_package() -> None:
+    from tabulaflow.agents import instrument_agents
+
+    assert instrument_agents is agent_observability.instrument_agents
+
+
 def test_agent_instrumentation_is_idempotent(monkeypatch: pytest.MonkeyPatch) -> None:
     instrument_all = Mock()
     monkeypatch.setattr(Agent, "instrument_all", instrument_all)

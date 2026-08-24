@@ -31,6 +31,50 @@ make sync
 
 `make sync` also installs Playwright's Chromium browser.
 
+## Library configuration
+
+Agent runtime configuration is optional. Default values and `TABULAFLOW_*`
+environment variables are resolved lazily on first use:
+
+```python
+from tabulaflow.agents import ChatSession
+from tabulaflow.data import DBRegistry
+
+session = ChatSession(
+    registry=DBRegistry(),
+    model="openai-responses:gpt-5",
+    reasoning_effort="medium",
+)
+```
+
+For programmatic runtime overrides, initialize once before creating agents:
+
+```python
+from tabulaflow.agents import AgentRuntimeConfig, initialize_agent_runtime
+
+initialize_agent_runtime(
+    AgentRuntimeConfig(
+        max_llm_concurrency=8,
+        browser_max_tabs=10,
+    )
+)
+```
+
+Logging and tracing are explicit application concerns:
+
+```python
+import logging
+
+from tabulaflow.agents import instrument_agents
+
+logging.basicConfig(level=logging.INFO)
+# Configure an OpenTelemetry provider and exporter here if tracing is desired.
+instrument_agents()
+```
+
+Each of these setup steps is independent: ordinary use requires no initializer,
+and `instrument_agents()` is only needed when agent traces should be emitted.
+
 
 Paste this after launch to a quick smoke teset:
 

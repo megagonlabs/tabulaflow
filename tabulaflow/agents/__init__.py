@@ -7,6 +7,7 @@ from tabulaflow.agents.runtime import initialize_agent_runtime
 
 if TYPE_CHECKING:
     from tabulaflow.agents.chat import ChatSession
+    from tabulaflow.agents.observability import instrument_agents
 
 
 def __getattr__(name: str) -> object:
@@ -14,7 +15,11 @@ def __getattr__(name: str) -> object:
         from tabulaflow.agents.chat import ChatSession
 
         return ChatSession
+    if name == "instrument_agents":
+        from tabulaflow.agents.observability import instrument_agents
+
+        return instrument_agents
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 
-__all__ = ["AgentRuntimeConfig", "ChatSession", "initialize_agent_runtime"]
+__all__ = ["AgentRuntimeConfig", "ChatSession", "initialize_agent_runtime", "instrument_agents"]
