@@ -15,7 +15,6 @@ if TYPE_CHECKING:
     )
     from tabulaflow.agents.tools.connect_data_source import ConnectDataSourceTool
     from tabulaflow.agents.tools.create_parameterized_source import CreateParameterizedSourceTool
-    from tabulaflow.agents.tools.entity_extractor import EntityExtractor
     from tabulaflow.agents.tools.execute_bash import BashToolMetrics, ExecuteBashTool
     from tabulaflow.agents.tools.extract_rows_from_documents import ExtractRowsFromDocumentsTool
     from tabulaflow.agents.tools.file_editor import FileEditorRoot, FileEditorTool, FileEditorToolMetrics
@@ -48,7 +47,6 @@ _LAZY_EXPORTS = {
         "tabulaflow.agents.tools.create_parameterized_source",
         "CreateParameterizedSourceTool",
     ),
-    "EntityExtractor": ("tabulaflow.agents.tools.entity_extractor", "EntityExtractor"),
     "ExecuteBashTool": ("tabulaflow.agents.tools.execute_bash", "ExecuteBashTool"),
     "ExtractRowsFromDocumentsTool": (
         "tabulaflow.agents.tools.extract_rows_from_documents",
@@ -106,7 +104,6 @@ __all__ = [
     "BashToolMetrics",
     "ConnectDataSourceTool",
     "CreateParameterizedSourceTool",
-    "EntityExtractor",
     "ExecuteBashTool",
     "ExtractRowsFromDocumentsTool",
     "FileEditorRoot",

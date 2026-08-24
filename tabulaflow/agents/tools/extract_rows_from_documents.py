@@ -19,10 +19,10 @@ from pydantic_ai.settings import ModelSettings
 
 from tabulaflow.data.sql import SQLConnector
 from tabulaflow.agents.tools.base import ToolProgressUpdate
-from tabulaflow.agents.tools.engines.column_types import resolve_column_types
+from tabulaflow.agents.extraction.column_types import resolve_column_types
+from tabulaflow.agents.extraction.entity import EntityExtractor
+from tabulaflow.agents.extraction.markdown import DEFAULT_MAX_CHARS, DEFAULT_TARGET_CHARS
 from tabulaflow.agents.tools.engines.sql import qualified_table
-from tabulaflow.agents.tools.entity_extractor import EntityExtractor
-from tabulaflow.agents.tools.engines.markdown_splitter import DEFAULT_MAX_CHARS, DEFAULT_TARGET_CHARS
 
 logger = logging.getLogger(__name__)
 

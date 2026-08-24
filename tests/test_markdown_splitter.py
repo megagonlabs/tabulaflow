@@ -1,6 +1,6 @@
 """Tests for the structure-aware markdown splitter."""
 
-from tabulaflow.agents.tools.engines.markdown_splitter import (
+from tabulaflow.agents.extraction.markdown import (
     DEFAULT_MAX_CHARS,
     DEFAULT_TARGET_CHARS,
     split_markdown,
