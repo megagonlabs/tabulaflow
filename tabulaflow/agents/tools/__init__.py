@@ -5,7 +5,8 @@ from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from tabulaflow.agents.tools.add_canonical_name import AddCanonicalNameTool
-    from tabulaflow.agents.tools.apply_patch import ApplyPatchTool
+    from tabulaflow.agents.tools.filesystem.editor import FileEditorRoot, FileEditorTool, FileEditorToolMetrics
+    from tabulaflow.agents.tools.filesystem.patch import ApplyPatchTool
     from tabulaflow.agents.tools.base import (
         BaseTool,
         LLMProfileTool,
@@ -15,9 +16,8 @@ if TYPE_CHECKING:
     )
     from tabulaflow.agents.tools.connect_data_source import ConnectDataSourceTool
     from tabulaflow.agents.tools.create_parameterized_source import CreateParameterizedSourceTool
-    from tabulaflow.agents.tools.execute_bash import BashToolMetrics, ExecuteBashTool
     from tabulaflow.agents.tools.extract_rows_from_documents import ExtractRowsFromDocumentsTool
-    from tabulaflow.agents.tools.file_editor import FileEditorRoot, FileEditorTool, FileEditorToolMetrics
+    from tabulaflow.agents.tools.shell.tool import BashToolMetrics, ExecuteBashTool
     from tabulaflow.agents.tools.get_column_json_schema import GetColumnJsonSchemaTool
     from tabulaflow.agents.tools.get_table_schema import GetTableSchemaTool
     from tabulaflow.agents.tools.registry_get_column_json_schema import RegistryGetColumnJsonSchemaTool
@@ -37,24 +37,24 @@ if TYPE_CHECKING:
 
 _LAZY_EXPORTS = {
     "AddCanonicalNameTool": ("tabulaflow.agents.tools.add_canonical_name", "AddCanonicalNameTool"),
-    "ApplyPatchTool": ("tabulaflow.agents.tools.apply_patch", "ApplyPatchTool"),
+    "ApplyPatchTool": ("tabulaflow.agents.tools.filesystem.patch", "ApplyPatchTool"),
     "ArtifactBundle": ("tabulaflow.agents.tools.show_artifacts", "ArtifactBundle"),
     "ArtifactRef": ("tabulaflow.agents.tools.show_artifacts", "ArtifactRef"),
     "BaseTool": ("tabulaflow.agents.tools.base", "BaseTool"),
-    "BashToolMetrics": ("tabulaflow.agents.tools.execute_bash", "BashToolMetrics"),
+    "BashToolMetrics": ("tabulaflow.agents.tools.shell.tool", "BashToolMetrics"),
     "ConnectDataSourceTool": ("tabulaflow.agents.tools.connect_data_source", "ConnectDataSourceTool"),
     "CreateParameterizedSourceTool": (
         "tabulaflow.agents.tools.create_parameterized_source",
         "CreateParameterizedSourceTool",
     ),
-    "ExecuteBashTool": ("tabulaflow.agents.tools.execute_bash", "ExecuteBashTool"),
+    "ExecuteBashTool": ("tabulaflow.agents.tools.shell.tool", "ExecuteBashTool"),
     "ExtractRowsFromDocumentsTool": (
         "tabulaflow.agents.tools.extract_rows_from_documents",
         "ExtractRowsFromDocumentsTool",
     ),
-    "FileEditorRoot": ("tabulaflow.agents.tools.file_editor", "FileEditorRoot"),
-    "FileEditorTool": ("tabulaflow.agents.tools.file_editor", "FileEditorTool"),
-    "FileEditorToolMetrics": ("tabulaflow.agents.tools.file_editor", "FileEditorToolMetrics"),
+    "FileEditorRoot": ("tabulaflow.agents.tools.filesystem.editor", "FileEditorRoot"),
+    "FileEditorTool": ("tabulaflow.agents.tools.filesystem.editor", "FileEditorTool"),
+    "FileEditorToolMetrics": ("tabulaflow.agents.tools.filesystem.editor", "FileEditorToolMetrics"),
     "GetColumnJsonSchemaTool": (
         "tabulaflow.agents.tools.get_column_json_schema",
         "GetColumnJsonSchemaTool",

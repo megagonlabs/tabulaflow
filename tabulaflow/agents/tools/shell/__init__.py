@@ -1,0 +1,1 @@
+"""Persistent shell tool implementation."""

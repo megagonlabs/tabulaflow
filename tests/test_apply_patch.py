@@ -4,8 +4,8 @@ from pathlib import Path
 
 import pytest
 
-from tabulaflow.agents.tools.apply_patch import ApplyPatchTool
-from tabulaflow.agents.tools.engines.patch_engine import ActionType, Commit, DiffError, process_patch
+from tabulaflow.agents.tools.filesystem.patch import ApplyPatchTool
+from tabulaflow.agents.tools.filesystem.patch_engine import ActionType, Commit, DiffError, process_patch
 
 
 class FakeIO:

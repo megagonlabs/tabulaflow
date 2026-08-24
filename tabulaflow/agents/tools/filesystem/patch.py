@@ -9,7 +9,7 @@ from typing import ClassVar
 from pydantic import BaseModel
 from pydantic_ai import Tool
 
-from tabulaflow.agents.tools.engines.file_access import (
+from tabulaflow.agents.tools.filesystem.access import (
     _DEFAULT_ALLOWED_ROOTS,
     _DefaultAllowedRoots,
     _ResolvedFileEditorRoot,
@@ -17,7 +17,7 @@ from tabulaflow.agents.tools.engines.file_access import (
     _resolve_roots,
     FileEditorRoot,
 )
-from tabulaflow.agents.tools.engines.patch_engine import (
+from tabulaflow.agents.tools.filesystem.patch_engine import (
     ActionType,
     Commit,
     DiffError,

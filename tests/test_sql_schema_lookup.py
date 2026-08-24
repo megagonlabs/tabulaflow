@@ -1,4 +1,4 @@
-from tabulaflow.agents.tools.engines.sql import find_column, find_table
+from tabulaflow.agents.tools._sql import find_column, find_table
 from tabulaflow.core import SQLColumnSchema, SQLSchema, SQLTableSchema
 
 

@@ -5,7 +5,7 @@ from sqlalchemy import select
 from pydantic import BaseModel
 from pydantic_ai import Tool
 from tabulaflow.data import SQLConnectorProtocol
-from tabulaflow.agents.tools.engines.sql import find_column, find_table
+from tabulaflow.agents.tools._sql import find_column, find_table
 
 
 class SearchKeywordsToolMetrics(BaseModel):

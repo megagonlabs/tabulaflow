@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from tabulaflow.agents.tools.execute_bash import ExecuteBashTool
+from tabulaflow.agents.tools.shell.tool import ExecuteBashTool
 
 
 @pytest.fixture

@@ -14,7 +14,7 @@ from datetime import date, datetime
 from typing import TypeAlias
 
 from tabulaflow.core.schema import SQLSchema
-from tabulaflow.agents.tools.engines.sql import find_table
+from tabulaflow.agents.tools._sql import find_table
 
 # The Python types a structured-output model can emit for a column. Restricted to
 # what an LLM produces and pydantic can put in a JSON schema: JSON scalars plus

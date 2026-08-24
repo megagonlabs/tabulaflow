@@ -6,7 +6,7 @@ from pydantic_ai import Tool
 
 from tabulaflow.core.schema import SQLSchema
 from tabulaflow.output.formatting._core import format_json_schema_type
-from tabulaflow.agents.tools.engines.sql import find_column, find_table
+from tabulaflow.agents.tools._sql import find_column, find_table
 
 _DEFAULT_MAX_EXAMPLE_CHARS = 1000
 _DEFAULT_OVERVIEW_MAX_FIELDS = 20

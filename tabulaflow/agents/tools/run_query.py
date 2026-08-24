@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field
 from tabulaflow.core.results import ExecResult, GraphResult
 from tabulaflow.data.protocols import DBConnector, SQLConnectorProtocol
 from tabulaflow.output.formatting._core import format_dataframe
-from tabulaflow.agents.tools.engines.sql import format_sqlalchemy_error_msg
+from tabulaflow.agents.tools._sql import format_sqlalchemy_error_msg
 
 _UNSET = object()
 

@@ -18,7 +18,7 @@ from typing import ClassVar, Literal
 from pydantic import BaseModel
 from pydantic_ai import Tool
 
-from tabulaflow.agents.tools.engines.file_access import (
+from tabulaflow.agents.tools.filesystem.access import (
     _DEFAULT_ALLOWED_ROOTS,
     _DefaultAllowedRoots,
     _ResolvedFileEditorRoot,

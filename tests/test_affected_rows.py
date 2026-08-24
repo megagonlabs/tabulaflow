@@ -50,7 +50,7 @@ class TestAsyncEngineDML:
         # (it returns no rows); regression for "This result object does not return rows".
         import sqlalchemy
 
-        from tabulaflow.agents.tools.engines.sql import sa_table
+        from tabulaflow.agents.tools._sql import sa_table
 
         await sqlite_conn.run_query_async("CREATE TABLE t(id INTEGER, v INTEGER)")
         await sqlite_conn.run_query_async("INSERT INTO t VALUES (1,0),(2,0),(3,0)")

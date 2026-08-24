@@ -22,7 +22,7 @@ from tabulaflow.agents.tools.base import ToolProgressUpdate
 from tabulaflow.agents.extraction.column_types import resolve_column_types
 from tabulaflow.agents.extraction.entity import EntityExtractor
 from tabulaflow.agents.extraction.markdown import DEFAULT_MAX_CHARS, DEFAULT_TARGET_CHARS
-from tabulaflow.agents.tools.engines.sql import qualified_table
+from tabulaflow.agents.tools._sql import qualified_table
 
 logger = logging.getLogger(__name__)
 

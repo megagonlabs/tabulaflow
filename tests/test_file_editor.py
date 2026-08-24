@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from tabulaflow.agents.tools.file_editor import FileEditorRoot, FileEditorTool
+from tabulaflow.agents.tools.filesystem.editor import FileEditorRoot, FileEditorTool
 
 
 @pytest.fixture

@@ -20,7 +20,7 @@ from pydantic_ai.settings import ModelSettings
 from tabulaflow.data.sql import SQLConnector
 from tabulaflow.agents.trace import Trajectory
 from tabulaflow.agents.tools.base import ToolProgressUpdate
-from tabulaflow.agents.tools.engines.sql import qualified_table, sa_table
+from tabulaflow.agents.tools._sql import qualified_table, sa_table
 from tabulaflow.agents.tools.run_query import RunQueryTool
 from tabulaflow.agents.llm import make_agent
 

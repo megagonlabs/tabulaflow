@@ -6,7 +6,7 @@ from pydantic import BaseModel
 from tabulaflow.data.protocols import SQLConnectorProtocol
 from tabulaflow.core.schema import SQLColumnSchema, TableRef
 from tabulaflow.output.formatting.schema import SQLSchemaFormatter
-from tabulaflow.agents.tools.engines.sql import find_table
+from tabulaflow.agents.tools._sql import find_table
 
 
 class GetTableSchemaToolMetrics(BaseModel):

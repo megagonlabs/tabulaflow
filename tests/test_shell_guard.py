@@ -2,7 +2,7 @@
 
 import pytest
 
-from tabulaflow.agents.tools.engines.shell_guard import dangerous_command_reason
+from tabulaflow.agents.tools.shell.guard import dangerous_command_reason
 
 BLOCKED = [
     "rm -rf /",
