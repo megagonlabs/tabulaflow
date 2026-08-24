@@ -12,7 +12,7 @@ from opentelemetry.sdk.trace.sampling import ALWAYS_ON, Decision, ParentBased, S
 from opentelemetry.trace import Link, SpanKind, TraceState
 from opentelemetry.util.types import AttributeValue
 
-from tabulaflow.agents.observability import instrument_agents
+from tabulaflow.agents import instrument_agents
 
 logger = logging.getLogger(__name__)
 

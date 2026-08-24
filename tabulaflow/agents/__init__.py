@@ -6,14 +6,14 @@ from typing import TYPE_CHECKING, Any
 if TYPE_CHECKING:
     from tabulaflow.agents.chat.session import ChatSession
     from tabulaflow.agents.config import AgentRuntimeConfig
-    from tabulaflow.agents.observability import instrument_agents
     from tabulaflow.agents.runtime import initialize_agent_runtime
+    from tabulaflow.agents.trace import instrument_agents
 
 _LAZY_EXPORTS = {
     "AgentRuntimeConfig": ("tabulaflow.agents.config", "AgentRuntimeConfig"),
     "ChatSession": ("tabulaflow.agents.chat", "ChatSession"),
     "initialize_agent_runtime": ("tabulaflow.agents.runtime", "initialize_agent_runtime"),
-    "instrument_agents": ("tabulaflow.agents.observability", "instrument_agents"),
+    "instrument_agents": ("tabulaflow.agents.trace", "instrument_agents"),
 }
 
 __all__ = ["AgentRuntimeConfig", "ChatSession", "initialize_agent_runtime", "instrument_agents"]

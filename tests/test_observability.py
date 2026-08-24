@@ -6,23 +6,23 @@ import pytest
 from opentelemetry.sdk.trace.sampling import Decision
 from pydantic_ai import Agent
 
-import tabulaflow.agents.observability as agent_observability
+import tabulaflow.agents.trace as agent_trace
 import tabulaflow.research.observability as research_observability
 
 
 def test_instrument_agents_is_available_from_agents_package() -> None:
     from tabulaflow.agents import instrument_agents
 
-    assert instrument_agents is agent_observability.instrument_agents
+    assert instrument_agents is agent_trace.instrument_agents
 
 
 def test_agent_instrumentation_is_idempotent(monkeypatch: pytest.MonkeyPatch) -> None:
     instrument_all = Mock()
     monkeypatch.setattr(Agent, "instrument_all", instrument_all)
-    monkeypatch.setattr(agent_observability, "_instrumented", False)
+    monkeypatch.setattr(agent_trace, "_instrumented", False)
 
-    agent_observability.instrument_agents()
-    agent_observability.instrument_agents()
+    agent_trace.instrument_agents()
+    agent_trace.instrument_agents()
 
     instrument_all.assert_called_once_with()
 

@@ -1,11 +1,28 @@
 from decimal import Decimal
 import json
+import threading
 from typing import TYPE_CHECKING, Any, Annotated, Literal, Union
 
 from pydantic import BaseModel, Field
 
 if TYPE_CHECKING:
     import pydantic_ai
+
+_instrumented = False
+_instrument_lock = threading.Lock()
+
+
+def instrument_agents() -> None:
+    """Enable Pydantic AI instrumentation once for this process."""
+    from pydantic_ai import Agent
+
+    global _instrumented
+    if _instrumented:
+        return
+    with _instrument_lock:
+        if not _instrumented:
+            Agent.instrument_all()
+            _instrumented = True
 
 
 class SystemMessage(BaseModel):
