@@ -2187,10 +2187,10 @@ class SQLConnector:
     _schema_introspection: _SchemaIntrospectionOptions = dataclasses.field(default_factory=_SchemaIntrospectionOptions)
     # Optional cleanup the loader registers (e.g. "delete the DuckDB
     # cache file I generated for this connector").  Called from
-    # ``disconnect_async`` after the engine is closed.  Lets loaders own
+    # ``close_async`` after the engine is closed.  Lets loaders own
     # their resource lifecycle without leaking loader-specific
     # vocabulary into ``SQLConnector``.
-    _on_disconnect: Callable[[], None] | None = None
+    _on_close: Callable[[], None] | None = None
     _schema_lock: asyncio.Lock = dataclasses.field(default_factory=asyncio.Lock)
     _closed: bool = dataclasses.field(default=False, init=False)
 
@@ -2327,8 +2327,8 @@ class SQLConnector:
                 logger.debug("aclose during construction failed", exc_info=True)
             raise
 
-    def _set_disconnect_hook(self, callback: Callable[[], None]) -> None:
-        self._on_disconnect = callback
+    def _set_close_hook(self, callback: Callable[[], None]) -> None:
+        self._on_close = callback
 
     def _check_open(self) -> None:
         if self._closed:
@@ -2339,7 +2339,7 @@ class SQLConnector:
         self._check_open()
         await self._t_eng.aclose()
 
-    async def disconnect_async(self) -> None:
+    async def close_async(self) -> None:
         """Permanently close the connector and release its resources.
 
         For read-write DuckDB connectors, this releases the file-level
@@ -2353,12 +2353,12 @@ class SQLConnector:
             return
         await self._t_eng.aclose()
         self._closed = True
-        if self._on_disconnect is not None:
+        if self._on_close is not None:
             try:
-                self._on_disconnect()
+                self._on_close()
             except Exception:
-                logger.debug("disconnect callback failed", exc_info=True)
-            self._on_disconnect = None
+                logger.debug("close callback failed", exc_info=True)
+            self._on_close = None
 
     async def refresh_schema_async(
         self,

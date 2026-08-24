@@ -19,7 +19,7 @@ class FakeSQLConnector:
     async def run_query_async(self, *_args: Any, **_kwargs: Any) -> None:
         raise NotImplementedError
 
-    async def disconnect_async(self) -> None:
+    async def close_async(self) -> None:
         pass
 
     async def refresh_schema_async(self) -> object:
@@ -45,7 +45,7 @@ class FakeGraphConnector:
     async def run_query_async(self, *_args: Any, **_kwargs: Any) -> None:
         raise NotImplementedError
 
-    async def disconnect_async(self) -> None:
+    async def close_async(self) -> None:
         pass
 
     async def refresh_schema_async(self) -> object:

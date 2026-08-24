@@ -59,7 +59,7 @@ async def test_cancel_then_retry_mixed_config(duckdb_with_tables: str) -> None:
         config=SQLConnectorConfig(schema_cache_mode="off", query_cache_mode="off"),
     )
     assert len(connector.schema.tables) == 30
-    await connector.disconnect_async()
+    await connector.close_async()
 
 
 async def test_aclose_is_safe_with_nothing_in_flight(tmp_path: Path) -> None:
@@ -118,7 +118,7 @@ async def test_load_files_cancel_then_retry(tmp_path: Path) -> None:
     )
     result = await connector.run_query_async("SELECT COUNT(*) FROM data")
     assert result.df is not None and result.df.iloc[0, 0] == 800000
-    await connector.disconnect_async()
+    await connector.close_async()
 
 
 async def test_write_dataframe_cancel_rolls_back(tmp_path: Path) -> None:
@@ -150,7 +150,7 @@ async def test_write_dataframe_cancel_rolls_back(tmp_path: Path) -> None:
             "SELECT COUNT(*) FROM information_schema.tables WHERE table_name = 'mytbl' AND table_schema = 'main'"
         )
         assert r.df is not None and r.df.iloc[0, 0] == 0
-        await connector.disconnect_async()
+        await connector.close_async()
 
     # Bound the test: a regression that leaves the cancelled write's
     # connection wedged would otherwise stall ``aclose``'s 5s drain loop
@@ -197,7 +197,7 @@ async def test_cancel_isolates_to_one_query(tmp_path: Path) -> None:
         assert "kept_table" in tables
         assert "cancelled_table" not in tables
 
-        await connector.disconnect_async()
+        await connector.close_async()
 
     await asyncio.wait_for(body(), timeout=20)
 
@@ -258,7 +258,7 @@ async def test_aiosqlite_cancel_aborts_query(tmp_path: Path) -> None:
             with pytest.raises(asyncio.CancelledError):
                 await task
         finally:
-            await connector.disconnect_async()
+            await connector.close_async()
 
     await asyncio.wait_for(body(), timeout=20)
 
@@ -278,7 +278,7 @@ async def test_aiosqlite_timeout_aborts_query(tmp_path: Path) -> None:
             assert result.error is not None
             assert result.error.exc_type == "TimeoutError"
         finally:
-            await connector.disconnect_async()
+            await connector.close_async()
 
     # Outer cap well above the inner timeout to leave room for cleanup.
     await asyncio.wait_for(body(), timeout=20)

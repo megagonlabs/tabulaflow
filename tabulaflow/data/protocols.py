@@ -55,7 +55,7 @@ class SQLConnectorProtocol(Protocol):
         """Execute a SQL statement and return rows or an error as data."""
         ...
 
-    async def disconnect_async(self) -> None:
+    async def close_async(self) -> None:
         """Permanently close the connector and release held resources."""
         ...
 
@@ -107,7 +107,7 @@ class PropertyGraphConnectorProtocol(Protocol):
         """Execute a graph query and return tabular/graph data or an error."""
         ...
 
-    async def disconnect_async(self) -> None:
+    async def close_async(self) -> None:
         """Permanently close the connector and release held resources."""
         ...
 

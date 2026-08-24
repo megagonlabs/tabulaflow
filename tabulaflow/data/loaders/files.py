@@ -106,7 +106,7 @@ async def load_files(
     deleted before the load** — the DB is always (re)built from
     scratch.  Don't point ``data_dir``+``db_name`` at a file you want to
     preserve.  When ``data_dir`` is None the temp file is also deleted
-    by :meth:`SQLConnector.disconnect_async`.
+    by :meth:`SQLConnector.close_async`.
 
     Concurrency precondition: the caller must ensure ``(data_dir,
     db_name)`` is unique across live :class:`SQLConnector` instances in
@@ -136,7 +136,7 @@ async def load_files(
             file's stem.
         data_dir: Directory to store the DuckDB file.  If ``None``, a
             system temp directory is used and the file is unlinked on
-            disconnect.
+            close.
         read_only: If True, block write statements at the SQLConnector
             layer.  The underlying DuckDB connection is always opened
             read-write so the loader can issue CREATE TABLE statements.
@@ -217,7 +217,7 @@ async def load_files(
                 raise RuntimeError(f"Failed to load {file_path}: {result.error.message}")
         await connector.refresh_schema_async()
     except BaseException:
-        await connector.disconnect_async()
+        await connector.close_async()
         if os.path.exists(db_path):
             try:
                 os.unlink(db_path)
@@ -230,7 +230,7 @@ async def load_files(
 
     # The DuckDB cache file is loader-owned: the source CSV/parquet/Excel
     # files are the truth; this file is regenerable.  Delete it on
-    # disconnect so ``data_dir`` directories don't accumulate stale caches.
+    # close so ``data_dir`` directories don't accumulate stale caches.
     cache_path = db_path
 
     def _cleanup_cache() -> None:
@@ -239,7 +239,7 @@ async def load_files(
         except OSError:
             pass
 
-    connector._set_disconnect_hook(_cleanup_cache)
+    connector._set_close_hook(_cleanup_cache)
 
     for table in connector.schema.tables:
         source_file = table_file_map.get(table.name)

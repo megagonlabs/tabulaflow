@@ -81,7 +81,7 @@ async def test_connector_derives_global_id_from_url(tmp_path: Path) -> None:
         assert connector.backend == "sqlite"
         assert connector.language == "sqlite"
     finally:
-        await connector.disconnect_async()
+        await connector.close_async()
 
 
 async def test_pool_size_override_is_rejected(tmp_path: Path) -> None:
@@ -135,7 +135,7 @@ async def test_table_without_column_stats_uses_one_bounded_sample(
         assert column.examples == [1, 2]
         assert table.sampled_df is not None
     finally:
-        await connector.disconnect_async()
+        await connector.close_async()
 
     assert len(table_queries) == 1
     assert "LIMIT" in table_queries[0][0]
@@ -190,7 +190,7 @@ async def test_view_profiling_uses_one_bounded_sample(
         assert view.sampled_df is not None
         assert view.sampled_df["value"].tolist() == [1, 2, 2]
     finally:
-        await connector.disconnect_async()
+        await connector.close_async()
 
     assert len(view_queries) == 1
     assert "LIMIT" in view_queries[0][0]
@@ -234,7 +234,7 @@ async def test_view_sample_timeout_preserves_structural_schema(
         assert view.sampled_df is None
         assert view.columns[0].examples == []
     finally:
-        await connector.disconnect_async()
+        await connector.close_async()
 
     assert "Could not sample relation" in caplog.text
     assert "None.item_view" not in caplog.text
@@ -258,7 +258,7 @@ async def test_date_partition_schema_reuse_is_explicit_and_structural(tmp_path: 
         exact_types = {table.name: table.columns[0].dtype for table in exact.schema.tables}
         assert exact_types == {"events_20240101": "INTEGER", "events_20240102": "VARCHAR"}
     finally:
-        await exact.disconnect_async()
+        await exact.close_async()
 
     reused = await SQLConnector.from_url_async(
         global_id="partitions-reused",
@@ -278,7 +278,7 @@ async def test_date_partition_schema_reuse_is_explicit_and_structural(tmp_path: 
         assert copied.columns[0].num_unique is None
         assert copied.columns[0].examples == []
     finally:
-        await reused.disconnect_async()
+        await reused.close_async()
 
 
 async def test_schema_scope_is_part_of_cache_identity(tmp_path: Path) -> None:
@@ -301,7 +301,7 @@ async def test_schema_scope_is_part_of_cache_identity(tmp_path: Path) -> None:
     try:
         assert {(table.schema_name, table.name) for table in first.schema.tables} == {("first", "items")}
     finally:
-        await first.disconnect_async()
+        await first.close_async()
 
     second = await SQLConnector.from_url_async(
         global_id="scoped-cache",
@@ -313,7 +313,7 @@ async def test_schema_scope_is_part_of_cache_identity(tmp_path: Path) -> None:
     try:
         assert {(table.schema_name, table.name) for table in second.schema.tables} == {("second", "items")}
     finally:
-        await second.disconnect_async()
+        await second.close_async()
 
     assert len(list((config.cache_dir / "schemas").glob("*.json"))) == 2
 
@@ -376,7 +376,7 @@ async def test_duckdb_list_and_struct_dtype_resolved(tmp_path: Path) -> None:
         assert cols["info"].json_schema is not None
         assert cols["info"].json_schema["type"] == "object"
     finally:
-        await sql_conn.disconnect_async()
+        await sql_conn.close_async()
 
 
 @pytest.mark.asyncio

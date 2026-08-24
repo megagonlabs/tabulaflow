@@ -474,7 +474,7 @@ class Neo4jConnector:
                 latency_seconds=time.time() - t0,
             )
 
-    async def disconnect_async(self) -> None:
+    async def close_async(self) -> None:
         """Close the Neo4j driver and all pooled connections."""
         if self._closed:
             return

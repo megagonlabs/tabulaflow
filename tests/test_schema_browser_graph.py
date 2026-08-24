@@ -53,7 +53,7 @@ class FakeGraphConnector:
     ) -> ExecResult:
         return ExecResult()
 
-    async def disconnect_async(self) -> None:
+    async def close_async(self) -> None:
         pass
 
     async def refresh_schema_async(self) -> PropertyGraphSchema:

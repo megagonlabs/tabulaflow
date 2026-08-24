@@ -42,7 +42,7 @@ async def test_schema_cache_modes(tmp_path: Path) -> None:
         schema_cache_mode="read_write",
     )
     connector = await _connector(tmp_path, global_id="cached", config=read_write)
-    await connector.disconnect_async()
+    await connector.close_async()
 
     cache_path = _sql_schema_cache_path(read_write, "cached")
     assert cache_path.is_file()
@@ -54,7 +54,7 @@ async def test_schema_cache_modes(tmp_path: Path) -> None:
     try:
         assert connector.schema.name == "from-cache"
     finally:
-        await connector.disconnect_async()
+        await connector.close_async()
 
     refresh = SQLConnectorConfig(
         cache_dir=cache_dir,
@@ -64,21 +64,21 @@ async def test_schema_cache_modes(tmp_path: Path) -> None:
     try:
         assert connector.schema.name == "cached"
     finally:
-        await connector.disconnect_async()
+        await connector.close_async()
 
     cache_path.write_text("not json")
     connector = await _connector(tmp_path, global_id="cached", config=read_write)
     try:
         assert connector.schema.name == "cached"
     finally:
-        await connector.disconnect_async()
+        await connector.close_async()
 
     off = SQLConnectorConfig(
         cache_dir=tmp_path / "off-cache",
         schema_cache_mode="off",
     )
     connector = await _connector(tmp_path, global_id="uncached", config=off)
-    await connector.disconnect_async()
+    await connector.close_async()
     assert not off.cache_dir.exists()
 
     cache_only = SQLConnectorConfig(
@@ -114,7 +114,7 @@ async def test_column_stats_are_exact_when_enabled(tmp_path: Path) -> None:
         assert column.num_unique == 2
         assert column.unique_ratio == 0.5
     finally:
-        await connector.disconnect_async()
+        await connector.close_async()
 
 
 async def test_exact_stats_complete_low_cardinality_text_values(tmp_path: Path) -> None:
@@ -134,7 +134,7 @@ async def test_exact_stats_complete_low_cardinality_text_values(tmp_path: Path) 
         assert column.num_unique == 2
         assert set(column.examples) == {"common", "rare"}
     finally:
-        await connector.disconnect_async()
+        await connector.close_async()
 
 
 async def test_column_stats_timeout_preserves_and_caches_schema(
@@ -189,7 +189,7 @@ async def test_column_stats_timeout_preserves_and_caches_schema(
         assert column.num_unique is None
         assert column.unique_ratio is None
     finally:
-        await connector.disconnect_async()
+        await connector.close_async()
 
     assert captured_timeouts == [7]
     assert "Could not collect distinct count" in caplog.text
@@ -233,7 +233,7 @@ async def test_connector_timeout_uses_config_unless_explicitly_overridden(
         await connector.run_query_async("SELECT 1", timeout=None)
         await connector.run_query_async("SELECT 1", timeout=5)
     finally:
-        await connector.disconnect_async()
+        await connector.close_async()
 
     assert captured == [17, None, 5]
 
@@ -251,10 +251,10 @@ async def test_connector_uses_configured_query_concurrency(tmp_path: Path) -> No
         assert connector._t_eng.db_semaphore is not None
         assert connector._t_eng.db_semaphore._value == 3
     finally:
-        await connector.disconnect_async()
+        await connector.close_async()
 
 
-async def test_release_connections_keeps_connector_usable_but_disconnect_is_terminal(tmp_path: Path) -> None:
+async def test_release_connections_keeps_connector_usable_but_close_is_terminal(tmp_path: Path) -> None:
     connector = await _connector(
         tmp_path,
         global_id="lifecycle",
@@ -264,8 +264,8 @@ async def test_release_connections_keeps_connector_usable_but_disconnect_is_term
     await connector.release_connections_async()
     assert (await connector.run_query_async("SELECT 1")).error is None
 
-    await connector.disconnect_async()
-    await connector.disconnect_async()
+    await connector.close_async()
+    await connector.close_async()
 
     with pytest.raises(RuntimeError, match="SQLConnector is closed"):
         await connector.run_query_async("SELECT 1")
@@ -298,7 +298,7 @@ async def test_query_cache_mode_controls_reuse(tmp_path: Path, monkeypatch: pyte
     try:
         second = await connector.run_query_async("SELECT 1 AS value")
     finally:
-        await connector.disconnect_async()
+        await connector.close_async()
 
     assert second.df is not None
     assert second.df.to_dict(orient="records") == [{"value": 1}]
@@ -339,7 +339,7 @@ async def test_invalid_query_cache_entry_is_rebuilt(tmp_path: Path) -> None:
     try:
         result = await connector.run_query_async("SELECT 1 AS value")
     finally:
-        await connector.disconnect_async()
+        await connector.close_async()
 
     assert result.error is None
     assert (await read_cached_model(path, type(result))).df is not None
@@ -380,7 +380,7 @@ async def test_query_cache_coalesces_concurrent_identical_queries(
             connector.run_query_async("SELECT 1 AS value"),
         )
     finally:
-        await connector.disconnect_async()
+        await connector.close_async()
 
     assert executions == 1
     assert sum(result.latency_seconds is None for result in results) == 1
@@ -414,7 +414,7 @@ async def test_query_cache_does_not_store_successful_no_result_statements(
         first = await connector.run_query_async("SET some_session_option = 1")
         second = await connector.run_query_async("SET some_session_option = 1")
     finally:
-        await connector.disconnect_async()
+        await connector.close_async()
 
     assert first.df is None and first.error is None
     assert second.df is None and second.error is None
@@ -450,7 +450,7 @@ async def test_query_cache_does_not_store_errors(
         first = await connector.run_query_async("SELECT broken")
         second = await connector.run_query_async("SELECT broken")
     finally:
-        await connector.disconnect_async()
+        await connector.close_async()
 
     assert first.error is not None
     assert second.error is not None

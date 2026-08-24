@@ -70,7 +70,7 @@ async def async_connector(tmp_path: Path) -> AsyncGenerator[SQLConnector, None]:
     try:
         yield connector
     finally:
-        await connector.disconnect_async()
+        await connector.close_async()
 
 
 @pytest.mark.asyncio
@@ -124,7 +124,7 @@ async def test_none_disables_connector_result_limit(
     try:
         result = await connector.run_query_async("SELECT 1 AS n UNION ALL SELECT 2 UNION ALL SELECT 3")
     finally:
-        await connector.disconnect_async()
+        await connector.close_async()
 
     assert result.df is not None
     assert len(result.df) == 3

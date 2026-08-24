@@ -44,20 +44,20 @@ class DBRegistry:
             raise ValueError(f"Database alias already registered: {alias}")
         self._connectors[alias] = connector
 
-    async def disconnect_async(self, alias: str) -> bool:
-        """Remove and disconnect the connector registered for ``alias``."""
+    async def close_async(self, alias: str) -> bool:
+        """Remove and close the connector registered for ``alias``."""
         connector = self._connectors.pop(alias, None)
         if connector is None:
             return False
-        await connector.disconnect_async()
+        await connector.close_async()
         return True
 
     def list_aliases(self) -> list[str]:
         """Return the registered connector aliases."""
         return list(self._connectors.keys())
 
-    async def disconnect_all_async(self) -> None:
-        """Disconnect all registered connectors and clear the registry."""
+    async def close_all_async(self) -> None:
+        """Close all registered connectors and clear the registry."""
         for connector in self._connectors.values():
-            await connector.disconnect_async()
+            await connector.close_async()
         self._connectors.clear()

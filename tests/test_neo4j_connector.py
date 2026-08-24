@@ -97,10 +97,10 @@ async def test_query_concurrency_configures_semaphore_and_driver_pool(monkeypatc
         assert connector.backend == "neo4j"
         assert connector.language == "cypher"
     finally:
-        await connector.disconnect_async()
+        await connector.close_async()
 
 
-async def test_disconnect_is_terminal_and_idempotent(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_close_is_terminal_and_idempotent(monkeypatch: pytest.MonkeyPatch) -> None:
     driver = _Driver()
     monkeypatch.setattr(neo4j.AsyncGraphDatabase, "driver", lambda *_args, **_kwargs: driver)
     connector = await Neo4jConnector.from_url_async(
@@ -110,8 +110,8 @@ async def test_disconnect_is_terminal_and_idempotent(monkeypatch: pytest.MonkeyP
     )
     assert connector.global_id.startswith("url+")
 
-    await connector.disconnect_async()
-    await connector.disconnect_async()
+    await connector.close_async()
+    await connector.close_async()
 
     with pytest.raises(RuntimeError, match="Neo4jConnector is closed"):
         await connector.run_query_async("RETURN 1")

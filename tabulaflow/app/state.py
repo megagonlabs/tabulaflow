@@ -162,4 +162,4 @@ class AppState:
         """Release session-owned runtime resources."""
         if self._chat_session is not None:
             await self._chat_session.aclose()
-        await self.registry.disconnect_all_async()
+        await self.registry.close_all_async()

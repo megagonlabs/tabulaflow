@@ -437,4 +437,4 @@ async def test_subagent_profile_wires_tools(tmp_path: Path, monkeypatch: pytest.
         assert settings["openai_reasoning_summary"] == "detailed"
         assert settings["openai_service_tier"] == "priority"
     finally:
-        await workspace.disconnect_async()
+        await workspace.close_async()
