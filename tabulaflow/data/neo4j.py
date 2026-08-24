@@ -289,6 +289,34 @@ def _parse_type_labels(raw: str) -> list[str]:
     return [p.strip().lstrip(":").strip("`").strip() for p in parts if p.strip().strip(":`")]
 
 
+def _preserve_graph_descriptions(previous: PropertyGraphSchema, refreshed: PropertyGraphSchema) -> None:
+    refreshed.description = refreshed.description or previous.description
+
+    previous_nodes = {node.label: node for node in previous.nodes}
+    for node in refreshed.nodes:
+        previous_node = previous_nodes.get(node.label)
+        if previous_node is None:
+            continue
+        node.description = node.description or previous_node.description
+        previous_properties = {prop.name: prop for prop in previous_node.properties}
+        for prop in node.properties:
+            previous_property = previous_properties.get(prop.name)
+            if previous_property is not None:
+                prop.description = prop.description or previous_property.description
+
+    previous_relationships = {relationship.label: relationship for relationship in previous.relationships}
+    for relationship in refreshed.relationships:
+        previous_relationship = previous_relationships.get(relationship.label)
+        if previous_relationship is None:
+            continue
+        relationship.description = relationship.description or previous_relationship.description
+        previous_properties = {prop.name: prop for prop in previous_relationship.properties}
+        for prop in relationship.properties:
+            previous_property = previous_properties.get(prop.name)
+            if previous_property is not None:
+                prop.description = prop.description or previous_property.description
+
+
 @dataclass
 class Neo4jConnector:
     """Property-graph connector for Neo4j databases.
@@ -522,7 +550,9 @@ class Neo4jConnector:
         async with self._schema_lock:
             cache_path = self._schema_cache_path()
             async with cache_lock(cache_path):
-                self.schema = await self._build_schema()
+                refreshed = await self._build_schema()
+                _preserve_graph_descriptions(self.schema, refreshed)
+                self.schema = refreshed
 
                 if self.config.schema_cache_mode in ("read_write", "refresh"):
                     await write_cached_model(cache_path, self.schema)

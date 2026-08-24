@@ -6,7 +6,13 @@ import neo4j
 import pandas as pd
 import pytest
 
-from tabulaflow.core import PropertyGraphSchema
+from tabulaflow.core import (
+    GraphPropertySchema,
+    NodeSchema,
+    PropertyGraphSchema,
+    RelationshipEndpoint,
+    RelationshipSchema,
+)
 from tabulaflow.data import Neo4jConnector, Neo4jConnectorConfig
 from tabulaflow.data.neo4j import (
     _FAST_NODE_PROPERTIES_QUERY,
@@ -290,3 +296,60 @@ def test_schema_cache_is_scoped_by_introspection_mode(tmp_path: Path) -> None:
     connector.config = Neo4jConnectorConfig(cache_dir=tmp_path, schema_introspection_mode="full_scan")
 
     assert fast_path != connector._schema_cache_path()
+
+
+async def test_schema_refresh_preserves_descriptions_and_replaces_structure(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    previous = PropertyGraphSchema(
+        name="movies",
+        description="database description",
+        nodes=[
+            NodeSchema(
+                label="Person",
+                description="node description",
+                properties=[GraphPropertySchema(name="id", types=["STRING"], description="property description")],
+            )
+        ],
+        relationships=[
+            RelationshipSchema(
+                label="KNOWS",
+                endpoints=[RelationshipEndpoint(source_label="Person", target_label="Person")],
+                description="relationship description",
+                properties=[GraphPropertySchema(name="since", types=["INTEGER"], description="since description")],
+            )
+        ],
+    )
+    refreshed = PropertyGraphSchema(
+        name="movies",
+        nodes=[NodeSchema(label="Person", properties=[GraphPropertySchema(name="id", types=["INTEGER"])])],
+        relationships=[
+            RelationshipSchema(
+                label="KNOWS",
+                endpoints=[RelationshipEndpoint(source_label="Person", target_label="Company")],
+                properties=[GraphPropertySchema(name="since", types=["FLOAT"])],
+            )
+        ],
+    )
+    connector = object.__new__(Neo4jConnector)
+    connector.global_id = "neo4j+descriptions"
+    connector.schema = previous
+    connector.config = Neo4jConnectorConfig(cache_dir=tmp_path, schema_cache_mode="off")
+    connector._schema_lock = asyncio.Lock()
+    connector._closed = False
+
+    async def build_schema() -> PropertyGraphSchema:
+        return refreshed
+
+    monkeypatch.setattr(connector, "_build_schema", build_schema)
+    result = await connector.refresh_schema_async()
+
+    assert result.description == "database description"
+    assert result.nodes[0].description == "node description"
+    assert result.nodes[0].properties[0].description == "property description"
+    assert result.nodes[0].properties[0].types == ["INTEGER"]
+    assert result.relationships[0].description == "relationship description"
+    assert result.relationships[0].properties[0].description == "since description"
+    assert result.relationships[0].properties[0].types == ["FLOAT"]
+    assert result.relationships[0].endpoints[0].target_label == "Company"

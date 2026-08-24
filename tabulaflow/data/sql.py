@@ -2137,6 +2137,21 @@ async def _build_schema_async(
     return SQLSchema(name=db_name, dialect=dialect, tables=tables)
 
 
+def _preserve_sql_descriptions(previous: SQLSchema, refreshed: SQLSchema) -> None:
+    refreshed.description = refreshed.description or previous.description
+    previous_tables = {(table.schema_name, table.name): table for table in previous.tables}
+    for table in refreshed.tables:
+        previous_table = previous_tables.get((table.schema_name, table.name))
+        if previous_table is None:
+            continue
+        table.description = table.description or previous_table.description
+        previous_columns = {column.name: column for column in previous_table.columns}
+        for column in table.columns:
+            previous_column = previous_columns.get(column.name)
+            if previous_column is not None:
+                column.description = column.description or previous_column.description
+
+
 @dataclass
 class SQLConnector:
     """Schema-aware async SQL database client.
@@ -2385,6 +2400,7 @@ class SQLConnector:
             if not tables:
                 return self.schema
         async with self._schema_lock:
+            previous = self.schema
             if tables is not None:
                 async_inspector = AsyncInspector(self._t_eng)
                 view_names_by_schema: dict[str | None, set[str]] = {}
@@ -2413,13 +2429,13 @@ class SQLConnector:
                     if t is not None:
                         kept.append(t)
 
-                self.schema = SQLSchema(
+                refreshed = SQLSchema(
                     name=self.schema.name,
                     dialect=self.schema.dialect,
                     tables=kept,
                 )
             else:
-                self.schema = await _build_schema_async(
+                refreshed = await _build_schema_async(
                     self._t_eng,
                     self.schema.name,
                     self.schema.dialect,  # type: ignore[arg-type]
@@ -2428,6 +2444,8 @@ class SQLConnector:
                     query_timeout_seconds=self.config.query_timeout_seconds,
                 )
 
+            _preserve_sql_descriptions(previous, refreshed)
+            self.schema = refreshed
             await self._save_schema_cache_async()
 
             logger.info(f"Schema refreshed for {self.global_id}: {len(self.schema.tables)} tables")

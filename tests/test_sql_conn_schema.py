@@ -406,3 +406,36 @@ async def test_exclude_schema_names_keeps_a_schema_out_of_introspection(tmp_path
 
     await connector.refresh_schema_async()
     assert [t.name for t in connector.schema.tables] == ["visible"]
+
+
+async def test_schema_refresh_preserves_descriptions_but_rebuilds_profiles(tmp_path: Path) -> None:
+    db_path = tmp_path / "descriptions.sqlite"
+    with sqlite3.connect(db_path) as connection:
+        connection.execute("CREATE TABLE items (value INTEGER)")
+        connection.execute("INSERT INTO items VALUES (1)")
+
+    connector = await SQLConnector.from_url_async(
+        f"sqlite+aiosqlite:///{db_path}",
+        db_name="descriptions",
+        config=SQLConnectorConfig(schema_cache_mode="off"),
+    )
+    connector.schema.description = "database description"
+    connector.schema.tables[0].description = "table description"
+    connector.schema.tables[0].columns[0].description = "column description"
+    connector.schema.tables[0].columns[0].examples = ["stale"]
+
+    try:
+        await connector.refresh_schema_async()
+        table = connector.schema.tables[0]
+        assert connector.schema.description == "database description"
+        assert table.description == "table description"
+        assert table.columns[0].description == "column description"
+        assert table.columns[0].examples == [1]
+
+        await connector.refresh_schema_async([TableRef(schema_name=None, table_name="items")])
+        table = connector.schema.tables[0]
+        assert connector.schema.description == "database description"
+        assert table.description == "table description"
+        assert table.columns[0].description == "column description"
+    finally:
+        await connector.close_async()
