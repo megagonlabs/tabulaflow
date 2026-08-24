@@ -1007,6 +1007,10 @@ def test_answer_controls_render_choice_and_number_inputs() -> None:
     assert "control.kind === 'number'" in pane_js
     assert "input.type = 'range';" in pane_js
     assert "applyControlSelection(turn, state, index, control.id, nextValue);" in pane_js
+    assert "function updateAnswerControls(panel, state)" in pane_js
+    assert "current.replaceWith(next)" not in pane_js
+    assert "btn.disabled = !!state.resolving" not in pane_js
+    assert ".answer-control-status:empty" in pane_css
     assert ".answer-control-number" in pane_css
 
 

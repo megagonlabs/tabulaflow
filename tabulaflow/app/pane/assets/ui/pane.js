@@ -126,6 +126,25 @@ function formatNumberControlValue(control, value) {
   return control.unit ? text + ' ' + control.unit : text;
 }
 
+function updateAnswerControls(panel, state) {
+  panel.querySelectorAll('.answer-control-option').forEach(function (btn) {
+    var active = String(state.selection[btn._tfControlId]) === String(btn._tfChoiceId);
+    btn.classList.toggle('active', active);
+    btn.setAttribute('aria-pressed', active ? 'true' : 'false');
+  });
+  panel.querySelectorAll('.answer-control-number-input').forEach(function (input) {
+    if (document.activeElement === input) return;
+    var value = controlNumberValue(input._tfControl, state.selection);
+    input.value = String(value);
+    input._tfValueLabel.textContent = formatNumberControlValue(input._tfControl, value);
+  });
+  if (state.resolving) panel.setAttribute('aria-busy', 'true');
+  else panel.removeAttribute('aria-busy');
+  var status = panel.querySelector('.answer-control-status');
+  status.classList.toggle('error', !!state.resolveError);
+  status.textContent = state.resolving ? 'Updating results…' : (state.resolveError || '');
+}
+
 function applyControlSelection(turn, state, index, id, value) {
   var next = Object.assign({}, state.selection);
   if (String(next[id]) === String(value)) return;
@@ -209,11 +228,10 @@ function buildAnswerControls(turn, state, index) {
         btn.type = 'button';
         btn.className = 'answer-control-option';
         btn.textContent = choice.label || choice.id;
-        var active = String(state.selection[control.id]) === String(choice.id);
-        btn.classList.toggle('active', active);
-        btn.disabled = !!state.resolving;
+        btn._tfControlId = control.id;
+        btn._tfChoiceId = choice.id;
         btn.onclick = function () {
-          if (active) return;
+          if (String(state.selection[control.id]) === String(choice.id)) return;
           applyControlSelection(turn, state, index, control.id, choice.id);
         };
         opts.appendChild(btn);
@@ -229,9 +247,10 @@ function buildAnswerControls(turn, state, index) {
       input.step = String(control.step);
       var value = controlNumberValue(control, state.selection);
       input.value = String(value);
-      input.disabled = !!state.resolving;
       var valueLabel = el('span', 'answer-control-number-value');
       valueLabel.textContent = formatNumberControlValue(control, value);
+      input._tfControl = control;
+      input._tfValueLabel = valueLabel;
       input.oninput = function () {
         var live = Number(input.value);
         if (Number.isFinite(live)) valueLabel.textContent = formatNumberControlValue(control, live);
@@ -253,15 +272,11 @@ function buildAnswerControls(turn, state, index) {
     }
     panel.appendChild(group);
   });
-  if (state.resolving) {
-    var loading = el('div', 'answer-control-status');
-    loading.textContent = 'Updating results…';
-    panel.appendChild(loading);
-  } else if (state.resolveError) {
-    var error = el('div', 'answer-control-status error');
-    error.textContent = state.resolveError;
-    panel.appendChild(error);
-  }
+  var status = el('div', 'answer-control-status');
+  status.setAttribute('role', 'status');
+  status.setAttribute('aria-live', 'polite');
+  panel.appendChild(status);
+  updateAnswerControls(panel, state);
   return panel;
 }
 
@@ -277,10 +292,13 @@ function refreshActiveTurnControls(index) {
   var turn = turns[index];
   var state = getTurnState(turn, index);
   var current = turnView.querySelector('.answer-controls');
+  if (current) {
+    if (answerControls(turn).length) updateAnswerControls(current, state);
+    else current.remove();
+    return;
+  }
   var next = buildAnswerControls(turn, state, index);
-  if (current && next) current.replaceWith(next);
-  else if (current) current.remove();
-  else if (next) {
+  if (next) {
     var artifacts = turnView.querySelector('.artifacts-region');
     if (artifacts) turnView.insertBefore(next, artifacts);
     else turnView.appendChild(next);
