@@ -469,6 +469,10 @@ body { margin: 0; background: var(--bg); color: var(--text); display: flex; flex
     scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
     scrollbar-width: thin;
 }
+.tf-table-view .tabulator .tabulator-placeholder .tabulator-placeholder-contents {
+    padding: 28px 12px; color: var(--text-dim);
+    font: 12px/1.4 ui-monospace, monospace; font-weight: 400;
+}
 .tf-table-view .tabulator .tabulator-tableholder::-webkit-scrollbar { width: 10px; height: 10px; }
 .tf-table-view .tabulator .tabulator-tableholder::-webkit-scrollbar-track { background: var(--scrollbar-track); }
 .tf-table-view .tabulator .tabulator-tableholder::-webkit-scrollbar-thumb {
@@ -542,12 +546,21 @@ body { margin: 0; background: var(--bg); color: var(--text); display: flex; flex
 .tf-vis-stage { position: relative; background: var(--card); }
 .tf-vis-stage { display: flex; align-items: flex-start; justify-content: center; padding: 20px 24px; box-sizing: border-box; }
 .tf-vis-stage.empty { min-height: 220px; }
-.tf-chart-empty {
-    position: absolute; inset: 0; display: none; place-items: center; padding: 24px;
-    box-sizing: border-box; background: var(--card); color: var(--text-dim);
-    font: 13px/1.4 ui-monospace, monospace; text-align: center;
+.tf-empty-state {
+    position: absolute; inset: 0; display: grid; place-content: center; justify-items: center; gap: 7px;
+    padding: 24px; box-sizing: border-box; background: var(--artifact-bg); visibility: hidden; opacity: 0;
+    pointer-events: none; text-align: center; transition: opacity 120ms ease-out;
 }
-.tf-chart-empty.show { display: grid; }
+.tf-empty-state.show { visibility: visible; opacity: 1; pointer-events: auto; }
+.tf-empty-state-icon {
+    width: 24px; height: 24px; margin-bottom: 2px; fill: none; stroke: var(--text-dim);
+    stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round;
+}
+.tf-empty-state-title { color: var(--text); font: 600 14px/1.3 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+.tf-empty-state-copy { color: var(--text-dim); font: 12px/1.4 ui-monospace, monospace; }
+@media (prefers-reduced-motion: reduce) {
+    .tf-empty-state { transition: none; }
+}
 .tf-vis-wrap { width: 100%; max-width: 720px; box-sizing: border-box; }
 .tf-vis-wrap.fill { height: var(--chart-fill-height); }
 .tf-vis-wrap.fill .tf-vis,
@@ -699,12 +712,7 @@ body { margin: 0; background: var(--bg); color: var(--text); display: flex; flex
 .tf-graph-view { --artifact-bg: #19212c; }
 .tf-graph-stage { position: relative; height: var(--graph-frame-height); background: #19212c; }
 .tf-graph { width: 100%; height: 100%; background: #19212c; outline: none; }
-.tf-graph-empty {
-    position: absolute; inset: 0; display: none; place-items: center; padding: 24px;
-    box-sizing: border-box; background: rgba(26, 33, 44, 0.92); color: var(--text-dim);
-    font: 13px/1.4 ui-monospace, monospace; text-align: center; z-index: 10;
-}
-.tf-graph-empty.show { display: grid; }
+.tf-graph-empty { z-index: 10; }
 .tf-graph-detail {
     position: absolute; display: none; z-index: 20; min-width: 220px; max-width: min(420px, 72vw);
     max-height: min(360px, calc(100% - 20px));

@@ -1001,16 +1001,22 @@ def test_visual_renderers_own_their_empty_states() -> None:
     chart_js = _pane_asset_text("render/chart.js")
     map_js = _pane_asset_text("render/map.js")
     graph_js = _pane_asset_text("render/graph.js")
+    table_js = _pane_asset_text("render/table.js")
 
-    assert "No chart data for this selection." in chart_js
-    assert ".tf-chart-empty.show" in pane_css
+    assert "No rows match this selection." in chart_js
+    assert 'role="status" aria-live="polite"' in chart_js
+    assert ".tf-empty-state.show" in pane_css
+    assert ".tf-empty-state-title" in pane_css
+    assert ".tf-empty-state-copy" in pane_css
     assert "No locations for this selection." in map_js
     assert "if (event && event.originalEvent) userMovedMap = true;" in map_js
     assert ".tf-map-empty.show { display: block; }" in pane_css
     assert "pointer-events: none;" in pane_css
     assert ".tf-map-error.show { display: grid; }" in pane_css
-    assert "No graph data for this selection." in graph_js
+    assert "No nodes match this selection." in graph_js
     assert "Graph needs at least one node and one edge." not in graph_js
+    assert "placeholder: 'No rows match this selection.'" in table_js
+    assert ".tabulator-placeholder-contents" in pane_css
 
 
 def test_empty_graph_builds_a_normal_graph_payload() -> None:

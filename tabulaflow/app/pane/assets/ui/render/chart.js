@@ -5,6 +5,11 @@ import { clone, cssVar, deepMerge, escapeAttr } from './shared.js';
 const vegaEmbed = window.vegaEmbed;
 const vega = window.vega;
 const DATASET_NAME = '__tf_data';
+const EMPTY_STATE_HTML = '<div class="tf-empty-state tf-chart-empty" role="status" aria-live="polite" aria-hidden="true">'
+  + '<svg class="tf-empty-state-icon" viewBox="0 0 24 24" aria-hidden="true">'
+  + '<path d="M4 5v14h16"/><path d="M8 16v-3M12 16v-6M16 16V7"/>'
+  + '</svg><div class="tf-empty-state-title">No data</div>'
+  + '<div class="tf-empty-state-copy">No rows match this selection.</div></div>';
 
 function vegaDarkConfig() {
   var accent = cssVar('--accent', '#3EB489');
@@ -61,7 +66,7 @@ export function renderChart(container, cardData) {
   spec.data = { name: DATASET_NAME, values: rows };
   container.className = 'tf-view tf-chart-view';
   container.innerHTML = '<div class="tf-vis-stage"><div class="tf-vis-wrap '
-    + escapeAttr(wrapClass) + '"><div class="tf-vis"></div></div><div class="tf-chart-empty"></div></div>';
+    + escapeAttr(wrapClass) + '"><div class="tf-vis"></div></div>' + EMPTY_STATE_HTML + '</div>';
   var target = container.querySelector('.tf-vis');
   var stage = container.querySelector('.tf-vis-stage');
   var empty = container.querySelector('.tf-chart-empty');
@@ -75,7 +80,7 @@ export function renderChart(container, cardData) {
     var isEmpty = rows.length === 0;
     stage.classList.toggle('empty', isEmpty);
     empty.classList.toggle('show', isEmpty);
-    empty.textContent = isEmpty ? 'No chart data for this selection.' : '';
+    empty.setAttribute('aria-hidden', isEmpty ? 'false' : 'true');
   }
 
   syncEmpty();

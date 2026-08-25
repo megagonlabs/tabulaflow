@@ -14,6 +14,12 @@ const GRAPH_NODE_LABEL_SMALL_FONT_SIZE = 9;
 const GRAPH_DETAIL_MAX_CHARS = 280;
 const GRAPH_DETAIL_MAX_HEIGHT = 360;
 const GRAPH_DETAIL_MIN_HEIGHT = 120;
+const EMPTY_STATE_HTML = '<div class="tf-empty-state tf-graph-empty" role="status" aria-live="polite" aria-hidden="true">'
+  + '<svg class="tf-empty-state-icon" viewBox="0 0 24 24" aria-hidden="true">'
+  + '<circle cx="6" cy="7" r="2"/><circle cx="18" cy="7" r="2"/><circle cx="12" cy="18" r="2"/>'
+  + '<path d="M8 8l3 7M16 8l-3 7M8 7h8"/></svg>'
+  + '<div class="tf-empty-state-title">No data</div>'
+  + '<div class="tf-empty-state-copy">No nodes match this selection.</div></div>';
 
 function normalizeHexColor(color) {
   if (typeof color !== 'string') return null;
@@ -502,7 +508,8 @@ export function renderGraph(container, cardData) {
   var graphData = cardData.graph || {};
   var elements = graphElements(graphData);
   container.className = 'tf-view tf-graph-view';
-  container.innerHTML = '<div class="tf-graph-stage"><div class="tf-graph"></div><div class="tf-graph-empty"></div><div class="tf-graph-detail"></div></div>';
+  container.innerHTML = '<div class="tf-graph-stage"><div class="tf-graph"></div>'
+    + EMPTY_STATE_HTML + '<div class="tf-graph-detail"></div></div>';
   var stageNode = container.querySelector('.tf-graph-stage');
   var graphNode = container.querySelector('.tf-graph');
   var emptyNode = container.querySelector('.tf-graph-empty');
@@ -529,8 +536,8 @@ export function renderGraph(container, cardData) {
 
   function syncEmpty() {
     var isEmpty = elements.nodes.length === 0;
-    emptyNode.textContent = isEmpty ? 'No graph data for this selection.' : '';
     emptyNode.classList.toggle('show', isEmpty);
+    emptyNode.setAttribute('aria-hidden', isEmpty ? 'false' : 'true');
   }
 
   syncEmpty();

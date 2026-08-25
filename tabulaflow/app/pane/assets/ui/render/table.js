@@ -182,6 +182,7 @@ export function renderTable(container, cardData) {
     clipboardCopyStyled: false,
     clipboardCopyRowRange: 'range',
     clipboardCopyConfig: { rowHeaders: false, columnHeaders: false },
+    placeholder: 'No rows match this selection.',
     rowHeader: {
       resizable: false,
       frozen: true,
