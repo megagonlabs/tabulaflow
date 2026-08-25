@@ -89,7 +89,7 @@ def test_reset_conversation_preserves_session_environment(tmp_path: Path) -> Non
     initial_part: Any = initial_history[0].parts[0]
     assert reset_part.content == initial_part.content
     assert agent.output_store is output_store
-    assert agent.registry is session.registry
+    assert agent._registry is session.registry
 
 
 def test_text_selection_failure_is_contained(

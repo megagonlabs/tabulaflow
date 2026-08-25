@@ -10,7 +10,6 @@ from importlib.resources import files
 import logging
 from pathlib import Path
 import sys
-from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Final
 
 from pydantic_ai.settings import ModelSettings
@@ -19,7 +18,6 @@ from tabulaflow.agents.message_store import (
     MESSAGE_THRESHOLD_CHARS,
     MessageStore,
     MessageStoreCapability,
-    ScopedMessageStore,
     make_snippet,
 )
 from tabulaflow.agents.tools.browser.tool import (
@@ -77,98 +75,100 @@ SUBAGENT_REQUEST_TIMEOUT: Final = 120.0
 MAIN_REQUEST_TIMEOUT: Final = 180.0
 
 
-@dataclass
 class ChatSession:
-    """Streaming agent for interactive database chat."""
+    """Streaming agent for one interactive database conversation."""
 
-    registry: DBRegistry
-    model: str
-    # Reasoning effort for the interactive agent — a unified thinking level
-    # (low | medium | high | xhigh) translated per provider by pydantic-ai
-    # (OpenAI reasoning_effort, Anthropic thinking budgets / native effort, Gemini
-    # thinking_level). Required — callers pass a fully resolved app/research
-    # profile rather than relying on ChatSession defaults. Mutable at runtime via
-    # ``activate_llm_profile``.
-    reasoning_effort: str
-    # Session-wide service tier for providers that expose one. Applied to both the
-    # root agent and helper LLM calls; ignored by providers without service tiers.
-    service_tier: str | None = "priority"
-    # Model profile for internal fan-out / extraction subagents. This is separate
-    # from the interactive agent: the root conversation may want a large model while
-    # hundreds of parallel row/document workers run on a cheaper one.
-    subagent_model: str = DEFAULT_SUBAGENT_MODEL
-    subagent_reasoning_effort: str = DEFAULT_SUBAGENT_REASONING_EFFORT
-    enable_apply_patch: bool = False
-    # Host-supplied instructions appended to the baseline prompt — a persona, domain
-    # guidance, or frontend-specific phrasing (e.g. slash-command vocabulary). ``None``
-    # (default) uses the baseline alone. Composed between the static prefix and the
-    # session tail (see ``_compose_system_prompt``), so the large prefix still
-    # prompt-caches; keep it stable across a session's turns. A full prompt replacement
-    # is intentionally not offered: the baseline ``_SYSTEM_PROMPT`` is half of a contract
-    # with this module's tools and answer-marker router, so callers extend rather than swap it.
-    extra_instructions: str | None = None
-    # Where to persist conversation + subagent trajectories. ``None`` (default)
-    # disables all trajectory persistence — set a dir to enable it. Servers leave it
-    # off (avoids per-turn disk I/O and cross-conversation clobbering of the single
-    # ``trajectory.md``); a single interactive session passes a dir.
-    trajectory_log_dir: Path | None = None
-    # The session workspace — a SQL scratch DB used to spill query-result DataFrames,
-    # offload long messages, and back canonical-name resolution. ``None`` (default)
-    # runs in-memory with those persistence features off.
-    workspace: SQLConnector | None = None
-    # The directory the app was launched from (the user's project, where source data
-    # lives) and the agent's transient working area for staging intermediate files.
-    # ``None`` (default, e.g. server contexts) disables the host-facing shell/dataset
-    # tools that depend on them. Wired in by the app from ``RuntimePaths``.
-    project_dir: Path | None = None
-    scratch_dir: Path | None = None
-    # Directory where ``connect_data_source`` materializes connected sources. ``None``
-    # (default, e.g. server contexts) omits that tool. Wired in by the app.
-    data_dir: Path | None = None
-    last_usage: Usage | None = None
-    _message_history: list[ModelMessage] = field(init=False, default_factory=list)
-    _system_prompt: str = field(init=False, default=_SYSTEM_PROMPT)
-    _pydantic_ai_agent: Agent[None, str] | None = field(init=False, default=None)
-    _output_store: OutputStore = field(init=False)
-    _message_store: MessageStore = field(init=False)
-    _main_scope: ScopedMessageStore = field(init=False)
-    _tools: _ChatTools = field(init=False)
-    _running: bool = field(init=False, default=False)
-    # The active turn's event sink; ``None`` between turns (progress ticks are
-    # dropped). Set/cleared by ``run_stream`` alongside ``_running``.
-    _active_emit: Callable[[ChatEvent], None] | None = field(init=False, default=None)
+    def __init__(
+        self,
+        registry: DBRegistry,
+        *,
+        model: str,
+        reasoning_effort: str,
+        service_tier: str | None = "priority",
+        subagent_model: str = DEFAULT_SUBAGENT_MODEL,
+        subagent_reasoning_effort: str = DEFAULT_SUBAGENT_REASONING_EFFORT,
+        enable_apply_patch: bool = False,
+        extra_instructions: str | None = None,
+        trajectory_log_dir: Path | None = None,
+        workspace: SQLConnector | None = None,
+        project_dir: Path | None = None,
+        scratch_dir: Path | None = None,
+        data_dir: Path | None = None,
+    ) -> None:
+        self._registry = registry
+        self._model = model
+        self._reasoning_effort = reasoning_effort
+        self._service_tier = service_tier
+        self._subagent_model = subagent_model
+        self._subagent_reasoning_effort = subagent_reasoning_effort
+        self._enable_apply_patch = enable_apply_patch
+        self._extra_instructions = extra_instructions
+        self._trajectory_log_dir = trajectory_log_dir
+        self._workspace = workspace
+        self._project_dir = project_dir
+        self._scratch_dir = scratch_dir
+        self._data_dir = data_dir
+        self._last_usage: Usage | None = None
+        self._message_history: list[ModelMessage] = []
+        self._system_prompt = _SYSTEM_PROMPT
+        self._pydantic_ai_agent: Agent[None, str] | None = None
+        self._running = False
+        self._active_emit: Callable[[ChatEvent], None] | None = None
 
-    def __post_init__(self) -> None:
         from tabulaflow.agents.tools.protocols import ProgressReportingTool
         from tabulaflow.output.store import OutputStore
 
-        self._output_store = OutputStore(spill_connector=self.workspace, registry=self.registry)
+        self._output_store: OutputStore = OutputStore(spill_connector=workspace, registry=registry)
         self._message_store = MessageStore()
         self._main_scope = self._message_store.scoped("main")
-        subagent_dir = self.trajectory_log_dir / "subagents" if self.trajectory_log_dir is not None else None
+        subagent_dir = trajectory_log_dir / "subagents" if trajectory_log_dir is not None else None
         self._tools = self._build_tools(subagent_dir)
         for tool in self._tools:
             if isinstance(tool, ProgressReportingTool):
                 tool.on_progress = self._emit_progress
-        if self.workspace is not None:
-            self._message_store.attach_connector(self.workspace)
-            self._tools.add_canonical_name.attach_connector(self.workspace)
+        if workspace is not None:
+            self._message_store.attach_connector(workspace)
+            self._tools.add_canonical_name.attach_connector(workspace)
         self._system_prompt = self._compose_system_prompt()
         self._seed_conversation_context()
-        self._pydantic_ai_agent = self._make_agent(self.model)
+        self._pydantic_ai_agent = self._make_agent(model)
+
+    @property
+    def model(self) -> str:
+        return self._model
+
+    @property
+    def reasoning_effort(self) -> str:
+        return self._reasoning_effort
+
+    @property
+    def subagent_model(self) -> str:
+        return self._subagent_model
+
+    @property
+    def subagent_reasoning_effort(self) -> str:
+        return self._subagent_reasoning_effort
+
+    @property
+    def enable_apply_patch(self) -> bool:
+        return self._enable_apply_patch
+
+    @property
+    def last_usage(self) -> Usage | None:
+        return self._last_usage
 
     def _compose_system_prompt(self) -> str:
         """Assemble the agent's instructions: the baseline ``_SYSTEM_PROMPT``, then any
         host ``extra_instructions``, then the ``## Session`` tail. The ordering keeps
         the large static prefix first so it prompt-caches, and the session facts last."""
         parts = [_SYSTEM_PROMPT]
-        if self.extra_instructions:
-            parts.append(self.extra_instructions.strip())
+        if self._extra_instructions:
+            parts.append(self._extra_instructions.strip())
         session_lines = []
-        if self.project_dir is not None:
-            session_lines.append(f"- Project directory: {self.project_dir}")
-        if self.scratch_dir is not None:
-            session_lines.append(f"- Scratch directory: {self.scratch_dir}")
+        if self._project_dir is not None:
+            session_lines.append(f"- Project directory: {self._project_dir}")
+        if self._scratch_dir is not None:
+            session_lines.append(f"- Scratch directory: {self._scratch_dir}")
         session_lines.append(f"- Platform: {sys.platform}")
         session_lines.append(f"- Today's date: {date.today().isoformat()}")
         parts.append("## Session\n\n" + "\n".join(session_lines))
@@ -202,10 +202,10 @@ class ChatSession:
         # them via transfer_source_table). Without a workspace they are disabled.
         run_subagent_for_each_row = None
         extract_rows_from_documents = None
-        if self.workspace is not None:
+        if self._workspace is not None:
             run_subagent_for_each_row = RunSubagentForEachRowTool(
-                self.workspace,
-                registry=self.registry,
+                self._workspace,
+                registry=self._registry,
                 message_store=self._message_store,
                 subagent_llm=self.subagent_model,
                 model_settings=self._subagent_model_settings(),
@@ -213,46 +213,46 @@ class ChatSession:
                 trajectory_log_dir=subagent_dir,
             )
             extract_rows_from_documents = ExtractRowsFromDocumentsTool(
-                self.workspace,
+                self._workspace,
                 subagent_llm=self.subagent_model,
                 model_settings=self._subagent_model_settings(),
                 trajectory_log_dir=subagent_dir,
             )
 
         return _ChatTools(
-            run_query=RegistryRunQueryTool(self.registry, output_store=self._output_store, enable_refresh=True),
-            create_parameterized_source=CreateParameterizedSourceTool(self.registry, output_store=self._output_store),
+            run_query=RegistryRunQueryTool(self._registry, output_store=self._output_store, enable_refresh=True),
+            create_parameterized_source=CreateParameterizedSourceTool(self._registry, output_store=self._output_store),
             get_db_document=RegistryGetDBDocumentTool(
-                self.registry,
+                self._registry,
                 db_summarizer_cls=DBSummarizer,
                 db_summarizer_llm=self.subagent_model,
                 model_settings=self._subagent_model_settings(),
                 enable_refresh=True,
             ),
-            get_table_schema=RegistryGetTableSchemaTool(self.registry, SQLDDLSchemaFormatter(), enable_refresh=True),
-            get_column_json_schema=RegistryGetColumnJsonSchemaTool(self.registry),
-            transfer_source_table=TransferSourceTableTool(self.registry, self._output_store),
+            get_table_schema=RegistryGetTableSchemaTool(self._registry, SQLDDLSchemaFormatter(), enable_refresh=True),
+            get_column_json_schema=RegistryGetColumnJsonSchemaTool(self._registry),
+            transfer_source_table=TransferSourceTableTool(self._registry, self._output_store),
             run_subagent_for_each_row=run_subagent_for_each_row,
             extract_rows_from_documents=extract_rows_from_documents,
             connect_data_source=(
-                ConnectDataSourceTool(self.registry, self.data_dir) if self.data_dir is not None else None
+                ConnectDataSourceTool(self._registry, self._data_dir) if self._data_dir is not None else None
             ),
             bash=self._build_bash_tool(),
             file_editor=(
                 FileEditorTool(
-                    str(self.project_dir),
+                    str(self._project_dir),
                     message_store=self._main_scope,
                     allowed_roots=None,
                 )
-                if self.project_dir is not None
+                if self._project_dir is not None
                 else None
             ),
             apply_patch=(
                 ApplyPatchTool(
-                    str(self.project_dir),
+                    str(self._project_dir),
                     allowed_roots=None,
                 )
-                if self.project_dir is not None
+                if self._project_dir is not None
                 else None
             ),
             add_canonical_name=AddCanonicalNameTool(
@@ -272,7 +272,7 @@ class ChatSession:
 
         Runs commands in the user's project dir, exposes the session scratch dir as
         ``$SCRATCH``, and guards against catastrophic commands via the denylist."""
-        if self.project_dir is None or self.scratch_dir is None:
+        if self._project_dir is None or self._scratch_dir is None:
             return None
         import os
         import shlex
@@ -287,9 +287,9 @@ class ChatSession:
         # resolve relative paths against the live process cwd. The "relative = project
         # dir" design requires these to be equal — assert it loudly rather than silently
         # reading/writing the wrong files if something ever changed cwd.
-        if os.path.realpath(os.getcwd()) != os.path.realpath(self.project_dir):
+        if os.path.realpath(os.getcwd()) != os.path.realpath(self._project_dir):
             raise RuntimeError(
-                f"process cwd ({os.getcwd()!r}) != project_dir ({str(self.project_dir)!r}); "
+                f"process cwd ({os.getcwd()!r}) != project_dir ({str(self._project_dir)!r}); "
                 "relative-path resolution would diverge between the shell tool and run_query."
             )
 
@@ -297,8 +297,8 @@ class ChatSession:
         from tabulaflow.agents.tools.shell.tool import ExecuteBashTool
 
         return ExecuteBashTool(
-            working_dir=str(self.project_dir),
-            init_commands=[f"export SCRATCH={shlex.quote(str(self.scratch_dir))}"],
+            working_dir=str(self._project_dir),
+            init_commands=[f"export SCRATCH={shlex.quote(str(self._scratch_dir))}"],
             command_filter=dangerous_command_reason,
         )
 
@@ -366,7 +366,7 @@ class ChatSession:
         return make_model_settings(
             model=model or self.subagent_model,
             reasoning_effort=reasoning_effort or self.subagent_reasoning_effort,
-            service_tier=self.service_tier,
+            service_tier=self._service_tier,
             timeout=SUBAGENT_REQUEST_TIMEOUT,
         )
 
@@ -449,11 +449,11 @@ class ChatSession:
                 reasoning_effort=previous_subagent_effort,
             )
             raise
-        self.model = model
-        self.reasoning_effort = reasoning_effort
-        self.subagent_model = subagent_model
-        self.subagent_reasoning_effort = subagent_reasoning_effort
-        self.enable_apply_patch = enable_apply_patch
+        self._model = model
+        self._reasoning_effort = reasoning_effort
+        self._subagent_model = subagent_model
+        self._subagent_reasoning_effort = subagent_reasoning_effort
+        self._enable_apply_patch = enable_apply_patch
         self._pydantic_ai_agent = runtime_agent
         if model != previous_model or enable_apply_patch != previous_enable_apply_patch:
             self._note_profile_change(
@@ -502,14 +502,14 @@ class ChatSession:
             self.note_event("; ".join(parts) + ".")
 
     def _note_initial_registry(self) -> None:
-        aliases = self.registry.list_aliases()
+        aliases = self._registry.list_aliases()
         if not aliases:
             return
 
         entries = []
         for alias in aliases:
             try:
-                connector = self.registry.get(alias)
+                connector = self._registry.get(alias)
             except ValueError:
                 continue
             entries.append(f"`{alias}` ({format_connector_summary(connector)})")
@@ -526,7 +526,7 @@ class ChatSession:
         if self._running:
             raise RuntimeError("cannot reset conversation while a turn is running")
         self._message_history.clear()
-        self.last_usage = None
+        self._last_usage = None
         self._seed_conversation_context()
 
     async def aclose(self) -> None:
@@ -567,7 +567,7 @@ class ChatSession:
             instructions=self._system_prompt,
             # Thinking is deliberately absent: effort is passed per request in
             # ``run_stream`` so effort changes need no agent rebuild.
-            model_settings=make_model_settings(model=model, service_tier=self.service_tier),
+            model_settings=make_model_settings(model=model, service_tier=self._service_tier),
         )
 
     async def run_stream(self, question: str) -> AsyncIterator[ChatEvent]:
@@ -687,7 +687,7 @@ class ChatSession:
                             self._message_history = _patch_incomplete_messages(
                                 partial_messages, completed_results, interrupted=interrupted
                             )
-                        self.last_usage = final_usage
+                        self._last_usage = final_usage
                         if agent_run.result is not None:
                             answer_text = agent_run.result.output
             finally:
@@ -706,14 +706,14 @@ class ChatSession:
     def _save_trajectory_for_debug(self) -> None:
         """Persist the latest conversation trajectory to disk, when a
         ``trajectory_log_dir`` was provided (otherwise a no-op)."""
-        if self.trajectory_log_dir is None or not self._message_history:
+        if self._trajectory_log_dir is None or not self._message_history:
             return
         try:
             from tabulaflow.agents.trace import Trajectory
 
             trajectory = Trajectory.from_pydantic_ai_messages(self._message_history, id="TRJY-CHAT")
-            self.trajectory_log_dir.mkdir(parents=True, exist_ok=True)
-            path = self.trajectory_log_dir / "trajectory.md"
+            self._trajectory_log_dir.mkdir(parents=True, exist_ok=True)
+            path = self._trajectory_log_dir / "trajectory.md"
             path.write_text(trajectory.to_markdown(), encoding="utf-8")
         except Exception:
             logger.exception("Failed to persist trajectory debug file")

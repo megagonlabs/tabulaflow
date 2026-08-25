@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import inspect
 from typing import Any, cast
 
 import pytest
@@ -9,6 +10,16 @@ from tabulaflow.app.state import create_workspace_connector
 from tabulaflow.agents.chat import ChatSession
 from tabulaflow.agents.chat.session import MAIN_REQUEST_TIMEOUT, SUBAGENT_REQUEST_TIMEOUT
 from tabulaflow.data.registry import DBRegistry
+
+
+def test_chat_session_constructor_is_keyword_only_and_state_is_read_only() -> None:
+    signature = inspect.signature(ChatSession)
+    assert signature.parameters["model"].kind is inspect.Parameter.KEYWORD_ONLY
+    assert "last_usage" not in signature.parameters
+
+    agent = ChatSession(registry=DBRegistry(), model="test", reasoning_effort="medium")
+    with pytest.raises(AttributeError):
+        agent.model = "other"  # type: ignore[misc]
 
 
 def test_activate_llm_profile_failure_is_transactional(monkeypatch: pytest.MonkeyPatch) -> None:
