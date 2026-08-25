@@ -85,6 +85,31 @@ instrument_agents()
 Each of these setup steps is independent: ordinary use requires no initializer,
 and `instrument_agents()` is only needed when agent traces should be emitted.
 
+### Output API
+
+The output layer separates declarations from runtime state:
+
+```text
+OutputSpec + selection -> OutputResolver -> ResolvedOutput
+                         ^
+                         OutputStore
+```
+
+Import its APIs from the module that owns them:
+
+```python
+from tabulaflow.output.specs import OutputSpec
+from tabulaflow.output.store import OutputStore
+from tabulaflow.output.resolver import OutputResolver
+from tabulaflow.output.formatting import format_dataframe
+```
+
+`specs` contains serializable parameters, sources, and artifacts. `OutputStore`
+owns materialized results and parameterized-source caches; `OutputResolver`
+applies a selection and returns display-ready table, chart, map, or graph
+artifacts. Artifact grammar and validation live in `charts`, `maps`, and
+`graphs`.
+
 
 Paste this after launch to a quick smoke teset:
 

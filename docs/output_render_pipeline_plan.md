@@ -1,5 +1,9 @@
 # App-layer output render pipeline — plan
 
+> **Stale implementation plan.** Names, paths, and examples below are retained
+> as design history and do not document the current public API. Use the
+> ``tabulaflow.output`` package documentation and source docstrings instead.
+
 Status: target architecture, implemented for the clean output data model.
 
 ## Goal

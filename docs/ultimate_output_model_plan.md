@@ -1,5 +1,9 @@
 # Ultimate Output Model Plan
 
+> **Stale implementation plan.** Names, paths, and examples below are retained
+> as design history and do not document the current public API. Use the
+> ``tabulaflow.output`` package documentation and source docstrings instead.
+
 Status: target architecture, implemented as the clean output data model.
 
 ## Core idea

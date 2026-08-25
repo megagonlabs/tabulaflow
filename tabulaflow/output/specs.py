@@ -186,7 +186,12 @@ ArtifactSpec: TypeAlias = Annotated[
 
 
 class OutputSpec(BaseModel):
-    """Complete declarative contract for an interactive output."""
+    """Complete declarative contract for an interactive output.
+
+    Parameter, source, and artifact ids must be unique, and all references must
+    resolve within the declaration. Missing parameter defaults are derived from
+    their definitions and merged into ``default_selection`` during validation.
+    """
 
     model_config = ConfigDict(extra="forbid")
 

@@ -199,6 +199,13 @@ class OutputStore:
 
     Args:
         max_in_memory: Number of result DataFrames to keep in RAM.
+        spill_connector: Writable workspace used to persist result DataFrames.
+            Without one, frames remain in memory.
+        registry: Data-source registry used to materialize parameterized sources
+            on cache misses.
+
+    Raises:
+        ValueError: If ``max_in_memory`` is less than one.
     """
 
     def __init__(

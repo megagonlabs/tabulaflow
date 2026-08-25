@@ -425,8 +425,8 @@ def normalize_map_spec(
 ) -> dict[str, Any]:
     """Validate and normalize a raw or parsed spec against source DataFrames.
 
-    Each column/geojson layer is resolved against ``sources[layer.source_id]`` and
-    tagged with its ``source`` id; inline layers need no source.
+    Each column/geojson layer is resolved against ``sources[layer.source_id]``;
+    inline layers need no source.
     """
     if isinstance(spec, MapSpec):
         parsed = spec
