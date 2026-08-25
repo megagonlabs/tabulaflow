@@ -1040,6 +1040,8 @@ def test_visual_renderers_own_their_empty_states() -> None:
     assert "validRows.map(function (item) { return item.row; })" in map_js
     assert "Math.round(2 * scale.radiusValue(value))" in map_js
     assert ".tf-map-legend-swatch-size" in pane_css
+    assert "max-height: min(320px, 55vh); overflow: auto;" in pane_css
+    assert "overscroll-behavior: contain;" in pane_css
     assert ".tf-map-legend-section-size { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));" in pane_css
     assert "function circlePaint(radius)" in map_js
     assert "'circle-opacity': 0.62" in map_js
