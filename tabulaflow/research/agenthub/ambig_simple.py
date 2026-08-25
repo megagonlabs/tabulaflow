@@ -7,6 +7,7 @@ from tabulaflow.agents.trace import Usage, Trajectory
 from tabulaflow.research.types import PredQuery
 from tabulaflow.research.types import AmbigNL2QTask, SimpleAmbigNL2QTaskOutput
 from tabulaflow.agents.tools import BaseTool, RunQueryTool
+from tabulaflow.agents.tools.run_query import latest_query_execution
 from tabulaflow.research.tools import (
     SearchKeywordsTool,
     FinishTool,
@@ -105,7 +106,7 @@ class AmbigSimpleSQLAgent:
         )
 
         result = await agent.run(task.question)
-        pred_query: PredQuery = PredQuery.from_execution(tools["run_query"].last_execution())  # type: ignore
+        pred_query = PredQuery.from_execution(latest_query_execution(result.all_messages()))
         trajectory = Trajectory.from_pydantic_ai_messages(result.all_messages())
 
         metrics = {}

@@ -11,6 +11,7 @@ from tabulaflow.agents.trace import Usage, Trajectory
 from tabulaflow.research.types import PredQuery
 from tabulaflow.research.types import AmbigNL2QTask, FlatAmbigNL2QTaskOutput, PredAmbiguityPointInfinite
 from tabulaflow.agents.tools import BaseTool, RunQueryTool
+from tabulaflow.agents.tools.run_query import latest_query_execution
 from tabulaflow.research.tools import SearchKeywordsTool, FinishTool, GetSchemaTool, GetColumnDescriptionTool
 from tabulaflow.research.agenthub.base import (
     agent_registry,
@@ -212,7 +213,7 @@ class AmbigFlatSQLAgent:
         )
         params_str = f"You can use any of the following parameters as placeholders in the query:\n{params_str}"
         result = await sql_agent.run(f"{ctx.task.question} {interpretation}\n{params_str}")
-        pred_query: PredQuery = PredQuery.from_execution(ctx.tools["run_query"].last_execution())  # type: ignore
+        pred_query = PredQuery.from_execution(latest_query_execution(result.all_messages()))
         pred_query.id = query_id
         ctx.trajectories.append(
             Trajectory.from_pydantic_ai_messages(result.all_messages(), id=f"TRJY-GEN-SQL-{query_id}")

@@ -18,6 +18,10 @@ from tabulaflow.agents.tools.run_query import RunQueryTool
 from tabulaflow.agents.tools.run_subagent_for_each_row import RunSubagentForEachRowTool
 
 
+async def _run(tool: RunQueryTool, query: str) -> str:
+    return (await tool.execute(query)).output
+
+
 @pytest.fixture
 async def conn(tmp_path: Path) -> AsyncGenerator[SQLConnector, None]:
     connector = await SQLConnector.from_url_async(
@@ -118,23 +122,25 @@ class TestRunQueryMessaging:
     @pytest.mark.asyncio
     async def test_dml_reports_affected(self, conn: SQLConnector) -> None:
         tool = self._tool(conn)
-        await tool("CREATE TABLE t(id INT, v INT)")
-        await tool("INSERT INTO t VALUES (1,1),(2,2),(3,3)")
+        await _run(tool, "CREATE TABLE t(id INT, v INT)")
+        await _run(tool, "INSERT INTO t VALUES (1,1),(2,2),(3,3)")
 
-        assert "2 rows affected" in await tool("UPDATE t SET v=9 WHERE id<=2")
-        assert "1 row affected" in await tool("DELETE FROM t WHERE id=3")
+        assert "2 rows affected" in await _run(tool, "UPDATE t SET v=9 WHERE id<=2")
+        assert "1 row affected" in await _run(tool, "DELETE FROM t WHERE id=3")
 
     @pytest.mark.asyncio
     async def test_zero_affected_nudges_where_clause(self, conn: SQLConnector) -> None:
         tool = self._tool(conn)
-        await tool("CREATE TABLE t(id INT, v INT)")
-        await tool("INSERT INTO t VALUES (1,1)")
-        msg = await tool("UPDATE t SET v=9 WHERE id=999")
+        await _run(tool, "CREATE TABLE t(id INT, v INT)")
+        await _run(tool, "INSERT INTO t VALUES (1,1)")
+        msg = await _run(tool, "UPDATE t SET v=9 WHERE id=999")
         assert "0 rows were affected" in msg and "WHERE" in msg
 
     @pytest.mark.asyncio
     async def test_ddl_plain_success(self, conn: SQLConnector) -> None:
-        msg = await self._tool(conn)("CREATE TABLE t(id INT)")
+        tool_return = await self._tool(conn)("CREATE TABLE t(id INT)")
+        assert isinstance(tool_return.return_value, str)
+        msg = tool_return.return_value
         assert msg.startswith("(statement executed successfully)")
         assert "affected" not in msg  # plain DDL success carries no row-count clause
 

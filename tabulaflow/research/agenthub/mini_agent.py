@@ -8,6 +8,7 @@ from tabulaflow.agents.trace import Usage, Trajectory
 from tabulaflow.research.types import PredQuery
 from tabulaflow.research.types import SimpleNL2QTask, SimpleNL2QTaskOutput
 from tabulaflow.agents.tools import BaseTool, RunQueryTool
+from tabulaflow.agents.tools.run_query import latest_query_execution
 from tabulaflow.research.tools import FinishTool
 from tabulaflow.output.formatting import (
     PropertyGraphSchemaFormatter,
@@ -131,7 +132,7 @@ class MiniAgent:
             model_settings=self.config.to_model_settings(),
         )
         result = await agent.run(format_question(task))
-        pred_query: PredQuery = PredQuery.from_execution(tools["run_query"].last_execution())  # type: ignore
+        pred_query = PredQuery.from_execution(latest_query_execution(result.all_messages()))
         usage = Usage.from_pydantic_ai_usage(result.usage, self.config.llm)
         trajectory = Trajectory.from_pydantic_ai_messages(result.all_messages(), id="TRJY-GEN-QUERY")
 

@@ -6,8 +6,17 @@ import sqlalchemy
 import os
 from typing import AsyncGenerator, Any
 import pandas as pd
+from pydantic_ai import Agent, ToolReturn
+from pydantic_ai.messages import ModelMessage, ModelRequest, ModelResponse, TextPart, ToolCallPart, ToolReturnPart
+from pydantic_ai.models.function import AgentInfo, FunctionModel
 from tabulaflow.data.config import SQLConnectorConfig
-from tabulaflow.agents.tools.run_query import RunQueryTool, LLMParameter, _format_latency
+from tabulaflow.agents.tools.run_query import (
+    LLMParameter,
+    QueryExecution,
+    RunQueryTool,
+    _format_latency,
+    latest_query_execution,
+)
 from tabulaflow.core import ExecResult, GraphResult, GraphResultEdge, GraphResultNode
 from tabulaflow.data.sql import SQLConnector, _contains_ddl_statement, _contains_write_statement
 from sqlalchemy.ext.asyncio import create_async_engine
@@ -46,11 +55,20 @@ async def db_connector(sql_engine: Any) -> SQLConnector:
     )
 
 
+async def _run(
+    tool: RunQueryTool,
+    query: str,
+    parameters: list[LLMParameter] | None = None,
+    refresh: bool = False,
+) -> str:
+    return (await tool.execute(query, parameters, refresh)).output
+
+
 @pytest.mark.asyncio
 async def test_run_query_successful(db_connector: SQLConnector) -> None:
     """Test a successful query execution."""
     tool = RunQueryTool(db_connector, enable_params=True, timeout=10)
-    result: str = await tool("SELECT * FROM users ORDER BY id")
+    result: str = await _run(tool, "SELECT * FROM users ORDER BY id")
 
     assert "(warning:" not in result.lower()
     assert "(query failed:" not in result.lower()
@@ -60,6 +78,44 @@ async def test_run_query_successful(db_connector: SQLConnector) -> None:
     assert tool.metrics().num_calls == 1
     assert tool.metrics().error_query_failed == 0
     assert tool.metrics().error_timeout == 0
+
+
+async def test_agent_call_attaches_query_execution(db_connector: SQLConnector) -> None:
+    result = await RunQueryTool(db_connector)("SELECT 1 AS value")
+
+    assert isinstance(result, ToolReturn)
+    assert isinstance(result.metadata, QueryExecution)
+    messages = [
+        ModelRequest(
+            parts=[
+                ToolReturnPart(
+                    tool_name="run_query",
+                    content=result.return_value,
+                    tool_call_id="call-1",
+                    metadata=result.metadata,
+                )
+            ]
+        )
+    ]
+    assert latest_query_execution(messages) is result.metadata
+
+
+async def test_agent_result_carries_query_execution(db_connector: SQLConnector) -> None:
+    calls = 0
+
+    def model(_messages: list[ModelMessage], _info: AgentInfo) -> ModelResponse:
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            return ModelResponse(parts=[ToolCallPart(tool_name="run_query", args={"query": "SELECT 42 AS value"})])
+        return ModelResponse(parts=[TextPart("done")])
+
+    agent = Agent(FunctionModel(model), tools=[RunQueryTool(db_connector).as_pydantic_ai_tool()])
+    result = await agent.run("run a query")
+
+    execution = latest_query_execution(result.all_messages())
+    assert execution.query == "SELECT 42 AS value"
+    assert execution.exec_result.df is not None
 
 
 def test_format_latency() -> None:
@@ -74,7 +130,7 @@ def test_format_latency() -> None:
 async def test_run_query_reports_latency(db_connector: SQLConnector) -> None:
     """A successful query surfaces the connector-measured latency in its response."""
     tool = RunQueryTool(db_connector, enable_params=True, timeout=10)
-    result: str = await tool("SELECT * FROM users ORDER BY id")
+    result: str = await _run(tool, "SELECT * FROM users ORDER BY id")
     assert "(latency:" in result
 
 
@@ -96,7 +152,8 @@ def test_format_exec_result_reports_graph_result(db_connector: SQLConnector) -> 
 async def test_run_query_with_parameters(db_connector: SQLConnector) -> None:
     """Test query execution with parameters."""
     tool = RunQueryTool(db_connector, enable_params=True, timeout=10)
-    result: str = await tool(
+    result: str = await _run(
+        tool,
         "SELECT * FROM users WHERE age > :min_age ORDER BY id",
         parameters=[LLMParameter(parameter_name="min_age", parameter_value=25)],
     )
@@ -110,7 +167,7 @@ async def test_run_query_with_parameters(db_connector: SQLConnector) -> None:
 async def test_run_query_empty_result(db_connector: SQLConnector) -> None:
     """Test query that returns empty results."""
     tool = RunQueryTool(db_connector, enable_params=True, timeout=10)
-    result: str = await tool("SELECT * FROM users WHERE age > 100")
+    result: str = await _run(tool, "SELECT * FROM users WHERE age > 100")
 
     assert "query executed successfully, but results are empty" in result
     assert tool.metrics().num_calls == 1
@@ -121,7 +178,7 @@ async def test_run_query_ddl_statement_success(db_connector: SQLConnector) -> No
     """A non-row-returning statement (DDL) reports success, not empty results."""
     db_connector.read_only = False
     tool = RunQueryTool(db_connector, enable_params=True, timeout=10)
-    result: str = await tool("CREATE TABLE doohickeys (id INTEGER PRIMARY KEY)")
+    result: str = await _run(tool, "CREATE TABLE doohickeys (id INTEGER PRIMARY KEY)")
 
     assert "statement executed successfully" in result
     assert "results are empty" not in result
@@ -131,7 +188,7 @@ async def test_run_query_ddl_statement_success(db_connector: SQLConnector) -> No
 async def test_run_query_with_null_column(db_connector: SQLConnector) -> None:
     """Test query that returns a column with all null values."""
     tool = RunQueryTool(db_connector, enable_params=True, timeout=10)
-    result: str = await tool("SELECT NULL as all_null FROM users")
+    result: str = await _run(tool, "SELECT NULL as all_null FROM users")
 
     assert "all_null" in result
     assert "[NULL]" in result
@@ -142,7 +199,7 @@ async def test_run_query_with_null_column(db_connector: SQLConnector) -> None:
 async def test_run_query_failed(db_connector: SQLConnector) -> None:
     """Test query that fails due to SQL error."""
     tool = RunQueryTool(db_connector, enable_params=True, timeout=10)
-    result: str = await tool("SELECT * FROM nonexistent_table")
+    result: str = await _run(tool, "SELECT * FROM nonexistent_table")
 
     # print(result)
 
@@ -160,7 +217,8 @@ async def test_run_query_timeout(db_connector: SQLConnector) -> None:
 
     # Create a query that takes a long time
     # For SQLite, we can simulate a long query by doing many cross joins
-    result: str = await tool(
+    result: str = await _run(
+        tool,
         """
         WITH RECURSIVE cnt(x) AS (
             SELECT 1
@@ -169,7 +227,7 @@ async def test_run_query_timeout(db_connector: SQLConnector) -> None:
             LIMIT 10000000
         )
         SELECT COUNT(*) FROM cnt
-        """
+        """,
     )
 
     # The query should timeout
@@ -261,11 +319,11 @@ async def test_run_query_refresh_updates_schema(db_connector: SQLConnector) -> N
     assert "widgets" not in table_names_before
 
     # Without refresh: schema is stale.
-    await tool("CREATE TABLE widgets (id INTEGER PRIMARY KEY, name TEXT)", refresh=False)
+    await _run(tool, "CREATE TABLE widgets (id INTEGER PRIMARY KEY, name TEXT)", refresh=False)
     assert "widgets" not in {t.name for t in db_connector.schema.tables}
 
     # With refresh: schema reflects the new table.
-    result = await tool("CREATE TABLE gadgets (id INTEGER PRIMARY KEY, label TEXT)", refresh=True)
+    result = await _run(tool, "CREATE TABLE gadgets (id INTEGER PRIMARY KEY, label TEXT)", refresh=True)
     assert "schema refreshed" in result
     table_names_after = {t.name for t in db_connector.schema.tables}
     assert "widgets" in table_names_after
@@ -278,7 +336,9 @@ async def test_run_query_refresh_disabled_ignores_flag(db_connector: SQLConnecto
     db_connector.read_only = False
     tool = RunQueryTool(db_connector, enable_params=True, enable_refresh=False, timeout=10)
 
-    result = await tool("CREATE TABLE thingamajigs (id INTEGER PRIMARY KEY)", refresh=True)
+    tool_return = await tool("CREATE TABLE thingamajigs (id INTEGER PRIMARY KEY)", refresh=True)
+    assert isinstance(tool_return.return_value, str)
+    result = tool_return.return_value
     assert "schema refreshed" not in result
     assert "thingamajigs" not in {t.name for t in db_connector.schema.tables}
 

@@ -18,6 +18,7 @@ from tabulaflow.research.types import (
     StructuredAmbigNL2QTaskOutput,
 )
 from tabulaflow.agents.tools import BaseTool, RunQueryTool
+from tabulaflow.agents.tools.run_query import latest_query_execution
 from tabulaflow.research.tools import SearchKeywordsTool, FinishTool, GetSchemaTool, GetColumnDescriptionTool
 from tabulaflow.research.agenthub.base import (
     agent_registry,
@@ -242,7 +243,7 @@ class AmbigStructuredSQLAgent:
             prompt += f"\nYou can use any of the following parameters as placeholders in the query:\n{json.dumps(params, indent=2, default=str)}"
         result = await sql_agent.run(prompt)
         query_id = "PQRY" + "".join(f"-{ap.id}.{idx}" for ap, idx in zip(finite_aps, finite_interpretation_indexes))
-        pred_query: PredQuery = PredQuery.from_execution(ctx.tools["run_query"].last_execution())  # type: ignore
+        pred_query = PredQuery.from_execution(latest_query_execution(result.all_messages()))
         pred_query.id = query_id
         ctx.trajectories.append(
             Trajectory.from_pydantic_ai_messages(result.all_messages(), id=f"TRJY-GEN-SQL-{query_id}")

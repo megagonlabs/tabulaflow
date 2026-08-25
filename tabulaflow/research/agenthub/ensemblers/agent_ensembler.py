@@ -16,6 +16,7 @@ from tabulaflow.agents.modules import DBSummarizer
 from tabulaflow.agents.trace import Trajectory, Usage
 from tabulaflow.research.types import PredQuery, SimpleNL2QTask, SimpleNL2QTaskOutput
 from tabulaflow.agents.tools import BaseTool, GetColumnJsonSchemaTool, GetTableSchemaTool, RunQueryTool
+from tabulaflow.agents.tools.run_query import latest_query_execution
 from tabulaflow.agents.llm import make_agent
 
 
@@ -286,7 +287,7 @@ class AgentEnsembler:
             pred_query = best_output.pred_query
         else:
             # Agent wrote a new/revised query
-            pred_query = PredQuery.from_execution(run_query_tool.last_execution())
+            pred_query = PredQuery.from_execution(latest_query_execution(result.all_messages()))
 
         metrics: dict[str, Any] = {}
         metrics["latency_seconds"] = time.time() - t0

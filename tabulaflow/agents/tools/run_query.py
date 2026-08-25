@@ -1,7 +1,9 @@
+from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Any, ClassVar, cast
 import pandas as pd
-from pydantic_ai import Tool
+from pydantic_ai import Tool, ToolReturn
+from pydantic_ai.messages import ModelMessage, ModelRequest, ToolReturnPart
 from pydantic import BaseModel, Field
 from tabulaflow.core.results import ExecResult, GraphResult
 from tabulaflow.data.protocols import DBConnector, SQLConnectorProtocol
@@ -73,6 +75,16 @@ class QueryExecution:
     exec_result: ExecResult
 
 
+def latest_query_execution(messages: Sequence[ModelMessage]) -> QueryExecution:
+    """Return the latest per-call query execution attached to agent messages."""
+    for message in reversed(messages):
+        if isinstance(message, ModelRequest):
+            for part in reversed(message.parts):
+                if isinstance(part, ToolReturnPart) and isinstance(part.metadata, QueryExecution):
+                    return part.metadata
+    raise ValueError("No run_query execution found in the agent result")
+
+
 class RunQueryTool:
     """Execute a query against the database and return formatted results.
 
@@ -127,7 +139,6 @@ class RunQueryTool:
         self.floatfmt = floatfmt
         self._release_connections_on_finish = release_connections_on_finish
         self._metrics = RunQueryToolMetrics()
-        self._last_execution: QueryExecution | None = None
 
     async def execute(
         self, query: str, parameters: list[LLMParameter] | None = None, refresh: bool = False
@@ -154,7 +165,6 @@ class RunQueryTool:
                 except Exception as e:
                     res += f"\n(warning: schema refresh failed: {type(e).__name__}: {e})"
             execution = QueryExecution(output=res, query=query, parameter_values=param_dict, exec_result=exec_result)
-            self._last_execution = execution
             return execution
         finally:
             if self._release_connections_on_finish:
@@ -209,7 +219,7 @@ class RunQueryTool:
         query: str,
         parameters: list[LLMParameter] | None = None,
         refresh: bool = False,
-    ) -> str:
+    ) -> ToolReturn:
         """Execute a query against the database and return formatted results.
 
         Returning large result sets is safe: displayed output is truncated while
@@ -222,7 +232,8 @@ class RunQueryTool:
             refresh: Whether to refresh connector schema after execution. Exposed
                 only when schema refresh is enabled.
         """
-        return (await self.execute(query, parameters, refresh and self.enable_refresh)).output
+        execution = await self.execute(query, parameters, refresh and self.enable_refresh)
+        return ToolReturn(return_value=execution.output, metadata=execution)
 
     def as_pydantic_ai_tool(self) -> Tool:
         omitted = []
@@ -234,8 +245,3 @@ class RunQueryTool:
 
     def metrics(self) -> RunQueryToolMetrics:
         return self._metrics
-
-    def last_execution(self) -> QueryExecution:
-        if self._last_execution is None:
-            raise ValueError("No query has been executed")
-        return self._last_execution

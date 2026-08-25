@@ -17,6 +17,7 @@ from tabulaflow.research.types import ExtraPredInfo, NL2QDataset, SimpleNL2QTask
 from tabulaflow.agents.modules import SchemaPreprocessor
 from tabulaflow.research.question_embedder import QuestionEmbedder
 from tabulaflow.agents.tools import BaseTool, RunQueryTool
+from tabulaflow.agents.tools.run_query import latest_query_execution
 from tabulaflow.research.tools import SearchKeywordsTool, FinishTool
 from tabulaflow.output.formatting import SQLSchemaFormatter, schema_formatter_registry
 from tabulaflow.research.agenthub.base import agent_registry, BaseAgentConfig
@@ -209,7 +210,7 @@ class SchemaLinker:
             model_settings=self.config.to_model_settings(),
         )
         result = await agent.run(format_question(task))
-        pred_query: PredQuery = PredQuery.from_execution(tools["run_query"].last_execution())  # type: ignore
+        pred_query = PredQuery.from_execution(latest_query_execution(result.all_messages()))
         ctx.usage += Usage.from_pydantic_ai_usage(result.usage, self.config.llm)
         trajectory = Trajectory.from_pydantic_ai_messages(result.all_messages(), id="TRJY-SCHEMA-LINK-SQL")
         ctx.trajectories.append(trajectory)
@@ -525,7 +526,7 @@ class SQLAgent:
             model_settings=self.config.to_model_settings(),
         )
         result = await agent.run(format_question(task))
-        raw_pred_query: PredQuery = PredQuery.from_execution(tools["run_query"].last_execution())  # type: ignore
+        raw_pred_query = PredQuery.from_execution(latest_query_execution(result.all_messages()))
         ctx.usage += Usage.from_pydantic_ai_usage(result.usage, self.config.llm)
         trajectory = Trajectory.from_pydantic_ai_messages(result.all_messages(), id="TRJY-GEN-SQL")
         ctx.trajectories.append(trajectory)
