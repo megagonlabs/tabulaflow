@@ -2,15 +2,17 @@ from __future__ import annotations
 
 from pydantic_ai.settings import ModelSettings
 
-from tabulaflow.agents.modules.column_profiler import ColumnProfiler
-from tabulaflow.agents.modules.db_summarizer import DBSummarizer
+from tabulaflow.research.preprocessing.column_profiler import ColumnProfiler
+from tabulaflow.agents.summarization import DBSummarizer
 from tabulaflow.research.agenthub._erd import ERDiagramSynthesizer
-from tabulaflow.agents.modules.fk_predictor import ForeignKeyPredictor
-from tabulaflow.agents.modules.schema_preprocessor import SchemaPreprocessor
-from tabulaflow.agents.modules.text_summarizer import TextSummarizer
+from tabulaflow.research.preprocessing.fk_predictor import ForeignKeyPredictor
+from tabulaflow.research.preprocessing.schema import SchemaPreprocessor
+from tabulaflow.agents.summarization import TextSummarizer
+from tabulaflow.research.preprocessing import preprocessor_registry
+from tabulaflow.research.question_embedder import QuestionEmbedder
 
 
-def test_modulehub_llm_components_accept_model_settings() -> None:
+def test_agent_capabilities_accept_model_settings() -> None:
     settings = ModelSettings(temperature=0)
 
     column_profiler = ColumnProfiler(model_settings=settings)
@@ -41,3 +43,13 @@ def test_schema_preprocessor_passes_model_settings_to_llm_submodules() -> None:
     assert preprocessor.foreign_key_predictor is not None
     assert preprocessor.column_profiler.model_settings is column_settings
     assert preprocessor.foreign_key_predictor.model_settings is fk_settings
+
+
+def test_research_preprocessor_registry_owns_default_preprocessors() -> None:
+    assert QuestionEmbedder.name == "question_embedder"
+    assert set(preprocessor_registry.list_names()) == {
+        "db_summarizer",
+        "er_diagram_synthesizer",
+        "question_embedder",
+        "schema_preprocessor",
+    }

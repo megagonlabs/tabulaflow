@@ -14,7 +14,7 @@ from tabulaflow.research.agenthub.base import agent_registry, BaseAgentConfig
 from tabulaflow.research.agenthub.utils import BasicAgentConfig, get_max_steps_processor, instrument
 from tabulaflow.data import SQLConnectorProtocol
 from tabulaflow.output.formatting import SQLSchemaFormatter, schema_formatter_registry
-from tabulaflow.agents.modules import DBSummarizer
+from tabulaflow.agents.summarization import DBSummarizer
 from tabulaflow.agents.trace import Usage, Trajectory
 from tabulaflow.research.types import DbtTask, DbtTaskOutput
 from tabulaflow.agents.tools import GetTableSchemaTool, RunQueryTool
@@ -125,7 +125,7 @@ class DbtAgent:
         working_dir: str = task.working_dir
 
         db_summarizer = DBSummarizer(llm=self.config.db_summarizer_llm)
-        db_summary = await db_summarizer.preprocess_async(db_connector)
+        db_summary = await db_summarizer.summarize(db_connector)
         db_document = db_summary.db_summary_markdown
 
         file_editor = FileEditorTool(working_dir)

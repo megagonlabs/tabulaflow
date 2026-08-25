@@ -6,7 +6,7 @@ from tabulaflow.data import DBConnector
 from tabulaflow.agents.trace import Usage, Trajectory
 from tabulaflow.research.types import PredQuery
 from tabulaflow.research.types import SimpleNL2QTask, SimpleNL2QTaskOutput
-from tabulaflow.agents.modules import DBSummarizer
+from tabulaflow.agents.summarization import DBSummarizer
 from tabulaflow.agents.tools import BaseTool, GetColumnJsonSchemaTool, GetTableSchemaTool, RunQueryTool
 from tabulaflow.agents.tools.run_query import latest_query_execution
 from tabulaflow.research.tools import FinishTool
@@ -112,7 +112,7 @@ class TabulaflowAgent:
 
         db_summarizer = DBSummarizer(llm=self.config.db_summarizer_llm)
 
-        db_summary = await db_summarizer.preprocess_async(db_connector)
+        db_summary = await db_summarizer.summarize(db_connector)
         system_prompt = jinja2.Template(TABULAFLOW_AGENT_SYSTEM_PROMPT).render(
             language=db_connector.language,
             dataset_instructions=task.dataset_instructions,

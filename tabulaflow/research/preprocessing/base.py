@@ -1,0 +1,31 @@
+"""Research-only preprocessor protocol and registry."""
+
+from typing import Any, ClassVar, Literal, Protocol
+
+from tabulaflow.agents.summarization import DBSummarizer, DBSummary
+from tabulaflow.agents.trace import Usage
+from tabulaflow.core.registry import ClassRegistry
+from tabulaflow.data.protocols import DBConnector
+
+
+class ResearchPreprocessor(Protocol):
+    name: ClassVar[str]
+    input_type: ClassVar[Literal["db_connector", "dataset"]]
+
+    def usage(self) -> Usage | None: ...
+
+    async def preprocess_async(self, input_data: Any) -> object: ...
+
+
+preprocessor_registry = ClassRegistry[Any]("preprocessor")
+
+
+@preprocessor_registry.register
+class DBSummaryPreprocessor(DBSummarizer):
+    """Research registry adapter for the reusable database summarizer."""
+
+    name: ClassVar[str] = "db_summarizer"
+    input_type: ClassVar[Literal["db_connector"]] = "db_connector"
+
+    async def preprocess_async(self, input_data: DBConnector) -> DBSummary:
+        return await self.summarize(input_data)

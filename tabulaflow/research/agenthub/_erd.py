@@ -3,19 +3,23 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from pathlib import Path
 from typing import ClassVar, Literal
 
 import jinja2
 from pydantic import BaseModel, Field
 from pydantic_ai.settings import ModelSettings
 
+from tabulaflow.agents._cache import load_or_compute_model
 from tabulaflow.agents.llm import make_agent
-from tabulaflow.agents.modules.base import CacheableResult, CachedPreprocessorMixin, preprocessor_registry
+from tabulaflow.agents.runtime import _get_agent_runtime
 from tabulaflow.agents.tools.run_query import RunQueryTool
 from tabulaflow.agents.trace import Usage
+from tabulaflow.core._cache import stable_cache_key
 from tabulaflow.core import SQLSchema, TableRef
 from tabulaflow.data import SQLConnectorProtocol
 from tabulaflow.output.formatting import SQLDDLSchemaFormatter, SQLSchemaFormatter
+from tabulaflow.research.preprocessing.base import preprocessor_registry
 
 
 class EntitySourceTable(BaseModel):
@@ -256,10 +260,9 @@ def format_user_prompt(schema: SQLSchema, formatter: SQLSchemaFormatter) -> str:
 
 
 @preprocessor_registry.register
-class ERDiagramSynthesizer(CachedPreprocessorMixin[ERDiagram]):
+class ERDiagramSynthesizer:
     name: ClassVar[str] = "er_diagram_synthesizer"
     input_type: ClassVar[Literal["db_connector"]] = "db_connector"
-    output_type: ClassVar[type[CacheableResult]] = ERDiagram
 
     def __init__(
         self,
@@ -274,10 +277,28 @@ class ERDiagramSynthesizer(CachedPreprocessorMixin[ERDiagram]):
     def usage(self) -> Usage:
         return self._usage
 
-    def _get_cache_id_suffix(self) -> str:
-        return "_table-families-v2"
+    def _cache_path(self, cache_dir: Path, connector: SQLConnectorProtocol) -> Path:
+        key = stable_cache_key(
+            {
+                "version": "v1",
+                "global_id": connector.global_id,
+                "schema": connector.schema.model_dump(mode="json"),
+                "llm": self.llm,
+                "model_settings": self.model_settings,
+            }
+        )
+        return cache_dir / "agent" / "er_diagrams" / f"v1@{key}.json"
 
-    async def _preprocess_impl_async(self, db_connector: SQLConnectorProtocol) -> ERDiagram:
+    async def preprocess_async(self, connector: SQLConnectorProtocol) -> ERDiagram:
+        config = _get_agent_runtime().config
+        return await load_or_compute_model(
+            path=self._cache_path(config.cache_dir, connector),
+            mode=config.preprocessor_cache_mode,
+            model_type=ERDiagram,
+            compute=lambda: self._synthesize(connector),
+        )
+
+    async def _synthesize(self, db_connector: SQLConnectorProtocol) -> ERDiagram:
         schema = db_connector.schema
 
         system_prompt = jinja2.Template(ER_DIAGRAM_SYNTHESIS_PROMPT).render()

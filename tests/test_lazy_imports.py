@@ -13,7 +13,7 @@ def test_layer_package_imports_are_lightweight() -> None:
     modules = _loaded_modules(
         "import tabulaflow.core, tabulaflow.data, tabulaflow.output, "
         "tabulaflow.output.formatting, tabulaflow.agents, tabulaflow.agents.extraction, "
-        "tabulaflow.agents.tools, tabulaflow.agents.modules"
+        "tabulaflow.agents.tools"
     )
 
     assert "tabulaflow.core.schema" not in modules
@@ -21,7 +21,6 @@ def test_layer_package_imports_are_lightweight() -> None:
     assert "tabulaflow.output.formatting.sql_ddl" not in modules
     assert "tabulaflow.agents.tools.browser.tool" not in modules
     assert "tabulaflow.agents.extraction.entity" not in modules
-    assert "tabulaflow.agents.modules.schema_preprocessor" not in modules
 
 
 def test_lazy_public_exports_load_only_their_owners() -> None:
@@ -51,7 +50,6 @@ packages = (
     "tabulaflow.agents",
     "tabulaflow.agents.chat",
     "tabulaflow.agents.extraction",
-    "tabulaflow.agents.modules",
     "tabulaflow.agents.tools",
 )
 for package in packages:

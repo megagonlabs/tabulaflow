@@ -1,4 +1,4 @@
-"""Immutable configuration for agent runtimes and modules."""
+"""Immutable configuration for agent runtime capabilities."""
 
 from pathlib import Path
 from typing import Literal

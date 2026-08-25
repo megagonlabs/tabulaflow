@@ -8,7 +8,7 @@ from tqdm.asyncio import tqdm_asyncio
 from tabulaflow.research.benchmarks.base import dataset_registry
 from tabulaflow.agents import AgentRuntimeConfig, initialize_agent_runtime
 import tabulaflow.research.agenthub._erd  # noqa: F401 — register the SQL-agent ERD preprocessor
-from tabulaflow.agents.modules.base import NL2QPreprocessor, preprocessor_registry
+from tabulaflow.research.preprocessing.base import ResearchPreprocessor, preprocessor_registry
 from tabulaflow.research.observability import configure_research_observability
 from tabulaflow.research.types import NL2QDataset
 
@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 async def preprocess_and_cache_async(
     dataset: NL2QDataset,
-    preprocessors: list[NL2QPreprocessor],
+    preprocessors: list[ResearchPreprocessor],
     verbose: bool = True,
 ) -> None:
     for preprocessor in preprocessors:

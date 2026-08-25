@@ -70,7 +70,7 @@ async def test_failed_atomic_replace_preserves_existing_cache(
     def fail_replace(_source: Path, _target: Path) -> None:
         raise OSError("replace failed")
 
-    monkeypatch.setattr("tabulaflow.data._cache.os.replace", fail_replace)
+    monkeypatch.setattr("tabulaflow.core._cache.os.replace", fail_replace)
 
     with pytest.raises(OSError, match="replace failed"):
         await write_cached_model(path, SQLSchema(name="replacement", dialect="sqlite", tables=[]))

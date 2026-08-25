@@ -311,7 +311,7 @@ async def _connect_hf_dataset(args: list[str], session: AppState) -> CommandResu
         )
 
     try:
-        from tabulaflow.agents.modules.text_summarizer import TextSummarizer
+        from tabulaflow.agents.summarization import TextSummarizer
 
         connector = await load_hf_dataset(
             url,

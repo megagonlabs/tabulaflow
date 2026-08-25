@@ -1,7 +1,7 @@
 import argparse
 import os
 from tabulaflow.agents import AgentRuntimeConfig
-from tabulaflow.agents.modules.db_summarizer import DBSummary
+from tabulaflow.agents.summarization import DBSummary
 from tabulaflow.core import SQLSchema
 from tabulaflow.output.formatting import SQLDDLSchemaFormatter
 from tabulaflow.research.agenthub._erd import ERDiagram, MermaidERDiagramFormatter
@@ -32,8 +32,8 @@ def main() -> None:
         exported += 1
     print(f"Exported {exported} schemas to {output_dir}")
 
-    input_dir = os.path.join(cache_dir, "preprocessors", "db_summarizer")
-    output_dir = os.path.join(args.output_dir, "preprocessors", "db_summarizer")
+    input_dir = os.path.join(cache_dir, "agent", "db_summaries")
+    output_dir = os.path.join(args.output_dir, "agent", "db_summaries")
     os.makedirs(output_dir, exist_ok=True)
     for f in os.listdir(input_dir):
         output_path = os.path.join(output_dir, f.replace(".json", ".md"))
@@ -44,8 +44,8 @@ def main() -> None:
             f.write(summary.db_summary_markdown)
     print(f"Exported {len(os.listdir(input_dir))} DB summaries to {output_dir}")
 
-    input_dir = os.path.join(cache_dir, "preprocessors", "schema_preprocessor")
-    output_dir = os.path.join(args.output_dir, "preprocessors", "schema_preprocessor")
+    input_dir = os.path.join(cache_dir, "agent", "schema_preprocessing")
+    output_dir = os.path.join(args.output_dir, "agent", "schema_preprocessing")
     os.makedirs(output_dir, exist_ok=True)
     for f in os.listdir(input_dir):
         output_path = os.path.join(output_dir, f.replace(".json", ".md"))
@@ -57,8 +57,8 @@ def main() -> None:
             f.write(schema_str)
     print(f"Exported {len(os.listdir(input_dir))} preprocessed schemas to {output_dir}")
 
-    input_dir = os.path.join(cache_dir, "preprocessors", "er_diagram_synthesizer")
-    output_dir = os.path.join(args.output_dir, "preprocessors", "er_diagram_synthesizer")
+    input_dir = os.path.join(cache_dir, "agent", "er_diagrams")
+    output_dir = os.path.join(args.output_dir, "agent", "er_diagrams")
     os.makedirs(output_dir, exist_ok=True)
     for f in os.listdir(input_dir):
         output_path = os.path.join(output_dir, f.replace(".json", ".md"))

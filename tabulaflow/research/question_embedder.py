@@ -1,12 +1,17 @@
+from pathlib import Path
 from typing import ClassVar, Literal, Any
 import asyncio
+import io
 import jinja2
 import numpy as np
 import numpy.typing as npt
 from pydantic import BaseModel
 from pydantic_ai import Embedder
-from tabulaflow.agents.modules.base import CachedPreprocessorMixin, preprocessor_registry, CacheableResult
+from tabulaflow.agents._cache import InvalidCacheEntry, load_or_compute
 from tabulaflow.agents.trace import Usage
+from tabulaflow.agents.runtime import _get_agent_runtime
+from tabulaflow.core._cache import atomic_write_bytes, read_bytes, stable_cache_key
+from tabulaflow.research.preprocessing.base import preprocessor_registry
 from tabulaflow.research.types import NL2QDataset, NL2QTask
 from tabulaflow.agents.llm import make_agent, embedding_throttle
 
@@ -58,10 +63,9 @@ class QuestionEmbedderOutput(BaseModel):
 
 
 @preprocessor_registry.register
-class QuestionEmbedder(CachedPreprocessorMixin[tuple[npt.NDArray[Any], QuestionEmbedderOutput]]):
+class QuestionEmbedder:
     name: ClassVar[str] = "question_embedder"
     input_type: ClassVar[Literal["dataset"]] = "dataset"
-    output_type: ClassVar[type[CacheableResult]] = tuple[npt.NDArray[Any], QuestionEmbedderOutput]
 
     def __init__(
         self,
@@ -79,15 +83,48 @@ class QuestionEmbedder(CachedPreprocessorMixin[tuple[npt.NDArray[Any], QuestionE
     def usage(self) -> Usage:
         return self._usage
 
-    def _get_cache_id_suffix(self) -> str:
-        return "_" + self.embedding_llm.replace(":", "--")
+    def _cache_path(self, cache_dir: Path, dataset: NL2QDataset) -> Path:
+        key = stable_cache_key(
+            {
+                "version": "v1",
+                "dataset": dataset.name,
+                "split": dataset.split,
+                "databases": dataset.databases,
+                "tasks": [{"qid": task.qid, "question": task.question} for task in dataset.tasks],
+                "embedding_llm": self.embedding_llm,
+                "preprocessing_llm": self.preprocessing_llm,
+                "disable_preprocessing": self.disable_preprocessing,
+            }
+        )
+        return cache_dir / "agent" / "question_embeddings" / f"v1@{key}.npz"
 
-    def _get_cache_id(self, input_data: NL2QDataset) -> str:
-        """Key the cache off the dataset identity (this preprocessor's input is a dataset)."""
-        cache_id = f"{input_data.name}_{input_data.split}"
-        if input_data.databases is not None:
-            cache_id += "".join(f"_{db}" for db in input_data.databases)
-        return cache_id + self._get_cache_id_suffix()
+    async def _load_cache(self, path: Path) -> tuple[npt.NDArray[Any], QuestionEmbedderOutput]:
+        data = await read_bytes(path)
+
+        def decode() -> tuple[npt.NDArray[Any], QuestionEmbedderOutput]:
+            try:
+                with np.load(io.BytesIO(data), allow_pickle=False) as archive:
+                    embeddings = archive["embeddings"]
+                    metadata = QuestionEmbedderOutput.model_validate_json(str(archive["metadata"].item()))
+                return embeddings, metadata
+            except Exception as exc:
+                raise InvalidCacheEntry(f"Invalid cache entry: {path}") from exc
+
+        return await asyncio.to_thread(decode)
+
+    async def _store_cache(
+        self,
+        path: Path,
+        value: tuple[npt.NDArray[Any], QuestionEmbedderOutput],
+    ) -> None:
+        embeddings, metadata = value
+
+        def encode() -> bytes:
+            buffer = io.BytesIO()
+            np.savez_compressed(buffer, embeddings=embeddings, metadata=metadata.model_dump_json())
+            return buffer.getvalue()
+
+        await atomic_write_bytes(path, await asyncio.to_thread(encode))
 
     async def _get_skeleton_async(self, question: str) -> str:
         system_prompt = jinja2.Template(PREPROCESSING_SYSTEM_PROMPT).render()
@@ -108,7 +145,17 @@ class QuestionEmbedder(CachedPreprocessorMixin[tuple[npt.NDArray[Any], QuestionE
         self._usage += Usage.from_pydantic_ai_usage(result.usage, self.embedding_llm)
         return np.array(result.embeddings[0]), QuestionSkeleton(qid=task.qid, question=question, skeleton=skeleton)
 
-    async def _preprocess_impl_async(self, dataset: NL2QDataset) -> tuple[npt.NDArray[Any], QuestionEmbedderOutput]:
+    async def preprocess_async(self, dataset: NL2QDataset) -> tuple[npt.NDArray[Any], QuestionEmbedderOutput]:
+        config = _get_agent_runtime().config
+        return await load_or_compute(
+            path=self._cache_path(config.cache_dir, dataset),
+            mode=config.preprocessor_cache_mode,
+            load=self._load_cache,
+            compute=lambda: self._embed_dataset(dataset),
+            store=self._store_cache,
+        )
+
+    async def _embed_dataset(self, dataset: NL2QDataset) -> tuple[npt.NDArray[Any], QuestionEmbedderOutput]:
         all_results = await asyncio.gather(*[self.embed_task_async(task) for task in dataset.tasks])
         return np.stack([result[0] for result in all_results]), QuestionEmbedderOutput(
             question_skeletons=[result[1] for result in all_results]

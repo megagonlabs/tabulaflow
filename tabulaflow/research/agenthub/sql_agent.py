@@ -14,7 +14,7 @@ from tabulaflow.core import SQLSchema, SQLTableSchema, ColumnRef
 from tabulaflow.agents.trace import Usage, Trajectory
 from tabulaflow.research.types import PredQuery
 from tabulaflow.research.types import ExtraPredInfo, NL2QDataset, SimpleNL2QTask, SimpleNL2QTaskOutput
-from tabulaflow.agents.modules import SchemaPreprocessor
+from tabulaflow.research.preprocessing import SchemaPreprocessor
 from tabulaflow.research.question_embedder import QuestionEmbedder
 from tabulaflow.agents.tools import BaseTool, RunQueryTool
 from tabulaflow.agents.tools.run_query import latest_query_execution

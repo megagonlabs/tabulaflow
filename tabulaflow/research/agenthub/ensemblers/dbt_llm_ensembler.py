@@ -15,7 +15,7 @@ from tabulaflow.research.agenthub.base import BaseAgentConfig
 from tabulaflow.research.agenthub.utils import instrument
 from tabulaflow.data import SQLConnectorProtocol
 from tabulaflow.output.formatting import SQLDDLSchemaFormatter
-from tabulaflow.agents.modules import DBSummarizer
+from tabulaflow.agents.summarization import DBSummarizer
 from tabulaflow.agents.llm import make_model_settings
 from tabulaflow.agents.trace import Usage, Trajectory
 from tabulaflow.research.types import DbtTask, DbtTaskOutput
@@ -154,7 +154,7 @@ class DbtLLMEnsembler:
 
         # Get db summary for context
         db_summarizer = DBSummarizer(llm=self.config.db_summarizer_llm)
-        db_summary = await db_summarizer.preprocess_async(db_connector)
+        db_summary = await db_summarizer.summarize(db_connector)
 
         # Build candidate descriptions
         candidate_strs: list[str] = []

@@ -1,13 +1,16 @@
 import asyncio
 from pathlib import Path
 from types import SimpleNamespace
-from typing import Any, AsyncIterator, ClassVar, Literal
+from typing import Any, AsyncIterator, Literal, cast
 
 import pytest
 from pydantic import BaseModel
 
 from tabulaflow.agents import AgentRuntimeConfig, initialize_agent_runtime
-from tabulaflow.agents.modules import CachedPreprocessorMixin
+from tabulaflow.agents._cache import InvalidCacheEntry, load_or_compute_model
+from tabulaflow.agents.summarization import DBSummarizer
+from tabulaflow.core._cache import write_cached_model
+from tabulaflow.core.schema import SQLSchema
 from tabulaflow.agents.runtime import _get_agent_runtime, _reset_agent_runtime_for_tests
 
 
@@ -95,19 +98,6 @@ class _CachedValue(BaseModel):
     value: int
 
 
-class _Preprocessor(CachedPreprocessorMixin[_CachedValue]):
-    name: ClassVar = "test"
-    input_type: ClassVar = "db_connector"
-    output_type: ClassVar = _CachedValue
-
-    def __init__(self) -> None:
-        self.calls = 0
-
-    async def _preprocess_impl_async(self, input_data: Any) -> _CachedValue:
-        self.calls += 1
-        return _CachedValue(value=self.calls)
-
-
 @pytest.mark.parametrize(
     ("mode", "expected_calls", "writes_cache"),
     [
@@ -116,38 +106,99 @@ class _Preprocessor(CachedPreprocessorMixin[_CachedValue]):
         ("refresh", 2, True),
     ],
 )
-async def test_preprocessor_cache_modes(
+async def test_agent_cache_modes(
     tmp_path: Path,
     mode: Literal["off", "read_write", "refresh", "cache_only"],
     expected_calls: int,
     writes_cache: bool,
 ) -> None:
-    initialize_agent_runtime(AgentRuntimeConfig(cache_dir=tmp_path, preprocessor_cache_mode=mode))
-    preprocessor = _Preprocessor()
-    input_data = SimpleNamespace(global_id="db")
+    path = tmp_path / "value.json"
+    calls = 0
 
-    await preprocessor.preprocess_async(input_data)
-    await preprocessor.preprocess_async(input_data)
+    async def compute() -> _CachedValue:
+        nonlocal calls
+        calls += 1
+        return _CachedValue(value=calls)
 
-    assert preprocessor.calls == expected_calls
-    assert (tmp_path / "preprocessors" / "test" / "db.json").exists() is writes_cache
+    await load_or_compute_model(path=path, mode=mode, model_type=_CachedValue, compute=compute)
+    await load_or_compute_model(path=path, mode=mode, model_type=_CachedValue, compute=compute)
+
+    assert calls == expected_calls
+    assert path.exists() is writes_cache
 
 
-async def test_preprocessor_cache_only_reads_existing_cache(tmp_path: Path) -> None:
-    cache_dir = tmp_path / "preprocessors" / "test"
-    cache_dir.mkdir(parents=True)
-    (cache_dir / "db.json").write_text('{"value": 42}')
-    initialize_agent_runtime(AgentRuntimeConfig(cache_dir=tmp_path, preprocessor_cache_mode="cache_only"))
-    preprocessor = _Preprocessor()
+async def test_agent_cache_only_reads_existing_cache(tmp_path: Path) -> None:
+    path = tmp_path / "value.json"
+    await write_cached_model(path, _CachedValue(value=42))
 
-    result = await preprocessor.preprocess_async(SimpleNamespace(global_id="db"))
+    async def compute() -> _CachedValue:
+        raise AssertionError("cache-only mode must not compute")
+
+    result = await load_or_compute_model(
+        path=path,
+        mode="cache_only",
+        model_type=_CachedValue,
+        compute=compute,
+    )
 
     assert result == _CachedValue(value=42)
-    assert preprocessor.calls == 0
 
 
-async def test_preprocessor_cache_only_fails_on_miss(tmp_path: Path) -> None:
-    initialize_agent_runtime(AgentRuntimeConfig(cache_dir=tmp_path, preprocessor_cache_mode="cache_only"))
+async def test_agent_cache_only_fails_on_miss(tmp_path: Path) -> None:
+    async def compute() -> _CachedValue:
+        raise AssertionError("cache-only mode must not compute")
 
-    with pytest.raises(FileNotFoundError, match="Preprocessor cache required"):
-        await _Preprocessor().preprocess_async(SimpleNamespace(global_id="db"))
+    with pytest.raises(FileNotFoundError, match="Cache entry not found"):
+        await load_or_compute_model(
+            path=tmp_path / "missing.json",
+            mode="cache_only",
+            model_type=_CachedValue,
+            compute=compute,
+        )
+
+
+async def test_agent_cache_recomputes_invalid_entry_unless_cache_only(tmp_path: Path) -> None:
+    path = tmp_path / "invalid.json"
+    path.write_text("not json")
+
+    async def compute() -> _CachedValue:
+        return _CachedValue(value=7)
+
+    result = await load_or_compute_model(
+        path=path,
+        mode="read_write",
+        model_type=_CachedValue,
+        compute=compute,
+    )
+    assert result == _CachedValue(value=7)
+
+    path.write_text("not json")
+    with pytest.raises(InvalidCacheEntry):
+        await load_or_compute_model(
+            path=path,
+            mode="cache_only",
+            model_type=_CachedValue,
+            compute=compute,
+        )
+
+
+async def test_database_summarizer_owns_versioned_semantic_cache_key(tmp_path: Path) -> None:
+    initialize_agent_runtime(AgentRuntimeConfig(cache_dir=tmp_path, preprocessor_cache_mode="read_write"))
+    connector = cast(
+        Any,
+        SimpleNamespace(
+            connector_type="sql",
+            global_id="empty-db",
+            schema=SQLSchema(name="empty", dialect="sqlite", tables=[]),
+        ),
+    )
+    summarizer = DBSummarizer(max_summary_words=100)
+
+    summary = await summarizer.summarize(connector)
+    cached = await summarizer.summarize(connector)
+
+    assert summary == cached
+    assert len(list((tmp_path / "agent" / "db_summaries").glob("v1@*.json"))) == 1
+    changed = DBSummarizer(max_summary_words=200)
+    await changed.summarize(connector)
+    assert len(list((tmp_path / "agent" / "db_summaries").glob("v1@*.json"))) == 2

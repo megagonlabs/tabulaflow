@@ -190,7 +190,7 @@ class ChatSession:
         """Construct the agent's toolset, wiring in the shared output store and
         message store. ``subagent_dir`` (if set) is where subagent trajectories land."""
         from tabulaflow.output.formatting.sql_ddl import SQLDDLSchemaFormatter
-        from tabulaflow.agents.modules.db_summarizer import DBSummarizer
+        from tabulaflow.agents.summarization import DBSummarizer
         from tabulaflow.agents.tools.add_canonical_name import AddCanonicalNameTool
         from tabulaflow.agents.tools.filesystem.patch import ApplyPatchTool
         from tabulaflow.agents.tools.connect_data_source import ConnectDataSourceTool

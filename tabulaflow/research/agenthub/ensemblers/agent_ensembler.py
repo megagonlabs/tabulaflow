@@ -12,7 +12,7 @@ from tabulaflow.research.agenthub.utils import BasicAgentConfig, get_max_steps_p
 from tabulaflow.data import SQLConnectorProtocol
 from tabulaflow.output.formatting import SQLSchemaFormatter, format_dataframe, schema_formatter_registry
 from tabulaflow.research.pipelines.populate_exec_results import populate_task_async
-from tabulaflow.agents.modules import DBSummarizer
+from tabulaflow.agents.summarization import DBSummarizer
 from tabulaflow.agents.trace import Trajectory, Usage
 from tabulaflow.research.types import PredQuery, SimpleNL2QTask, SimpleNL2QTaskOutput
 from tabulaflow.agents.tools import BaseTool, GetColumnJsonSchemaTool, GetTableSchemaTool, RunQueryTool
@@ -197,7 +197,7 @@ class AgentEnsembler:
 
         # Get db summary for context
         db_summarizer = DBSummarizer(llm=self.config.db_summarizer_llm)
-        db_summary = await db_summarizer.preprocess_async(db_connector)
+        db_summary = await db_summarizer.summarize(db_connector)
 
         # Build candidate descriptions
         candidate_strs: list[str] = []
