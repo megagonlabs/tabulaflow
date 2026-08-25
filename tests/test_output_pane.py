@@ -1049,6 +1049,8 @@ def test_visual_renderers_own_their_empty_states() -> None:
     assert "__tfStrokeColor: circleStrokeColor(color)" in map_js
     assert "if (event && event.originalEvent) userMovedMap = true;" in map_js
     assert ".tf-map-empty.show { display: block; }" in pane_css
+    assert "--map-overlay-bg: rgba(255, 255, 255, 0.78);" in pane_css
+    assert "background: var(--map-overlay-bg); color: var(--map-overlay-text);" in pane_css
     assert "pointer-events: none;" in pane_css
     assert ".tf-map-error.show { display: grid; }" in pane_css
     assert "No nodes match this selection." in graph_js
@@ -2485,10 +2487,10 @@ def test_pane_map_view_is_maplibre_based() -> None:
     assert "/assets/leaflet" not in map_js
     assert "L.marker" not in map_js
     assert "function formatNumber(value)" in shared_js
-    assert ".tf-map-stage { position: relative; height: var(--map-frame-height);" in _PANE_HTML
+    assert "position: relative; height: var(--map-frame-height); background: var(--card);" in _PANE_HTML
     assert ".tf-map-view .maplibregl-map { background: var(--card);" in _PANE_HTML
     assert ".tf-map-legend {\n    position: absolute; top: 12px; right: 12px; z-index: 5;" in _PANE_HTML
-    assert "background: rgba(255, 255, 255, 0.62); color: #111827;" in _PANE_HTML
+    assert "background: var(--map-overlay-bg); color: #111827;" in _PANE_HTML
     assert ".tf-map-legend-swatch-pin::before" in _PANE_HTML
     assert ".tf-map-legend-swatch-line" in _PANE_HTML
     assert ".tf-map-legend-swatch-polygon" in _PANE_HTML
