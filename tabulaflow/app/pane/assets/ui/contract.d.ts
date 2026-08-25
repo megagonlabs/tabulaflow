@@ -157,5 +157,6 @@ declare global {
   interface HTMLElement {
     _tfViewEntry?: ViewCacheEntry;
     _tfCy?: any;
+    _tfMap?: any;
   }
 }

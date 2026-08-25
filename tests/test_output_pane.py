@@ -1005,6 +1005,10 @@ def test_visual_renderers_own_their_empty_states() -> None:
     assert "No chart data for this selection." in chart_js
     assert ".tf-chart-empty.show" in pane_css
     assert "No locations for this selection." in map_js
+    assert "if (event && event.originalEvent) userMovedMap = true;" in map_js
+    assert ".tf-map-empty.show { display: block; }" in pane_css
+    assert "pointer-events: none;" in pane_css
+    assert ".tf-map-error.show { display: grid; }" in pane_css
     assert "No graph data for this selection." in graph_js
     assert "Graph needs at least one node and one edge." not in graph_js
 

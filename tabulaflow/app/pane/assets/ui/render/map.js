@@ -734,33 +734,49 @@ export function renderMap(container, cardData) {
   }
 
   container.className = 'tf-view tf-map-view';
-  container.innerHTML = '<div class="tf-map-stage"><div class="tf-map"></div><div class="tf-map-empty"></div></div>';
+  container.innerHTML = '<div class="tf-map-stage"><div class="tf-map"></div>'
+    + '<div class="tf-map-empty" role="status" aria-live="polite"></div>'
+    + '<div class="tf-map-error" role="alert"></div></div>';
   var mapNode = container.querySelector('.tf-map');
   var emptyNode = container.querySelector('.tf-map-empty');
+  var errorNode = container.querySelector('.tf-map-error');
   var stageNode = container.querySelector('.tf-map-stage');
 
-  function showEmpty(message) {
+  function showDataEmpty(message) {
     emptyNode.textContent = message;
     emptyNode.classList.add('show');
   }
 
-  function hideEmpty() {
+  function hideDataEmpty() {
     emptyNode.textContent = '';
     emptyNode.classList.remove('show');
   }
 
+  function showFatal(message) {
+    hideDataEmpty();
+    errorNode.textContent = message;
+    errorNode.classList.add('show');
+  }
+
+  function hideFatal() {
+    errorNode.textContent = '';
+    errorNode.classList.remove('show');
+  }
+
   if (!window.maplibregl) {
-    showEmpty('MapLibre GL is not available.');
+    showFatal('MapLibre GL is not available.');
     return { destroy: function () { container.innerHTML = ''; } };
   }
   if (!layers.length) {
-    showEmpty('Map needs at least one layer.');
+    showFatal('Map needs at least one layer.');
     return { destroy: function () { container.innerHTML = ''; } };
   }
 
   var map = null;
   var mapLoaded = false;
   var mapInitToken = 0;
+  var hasShownData = false;
+  var userMovedMap = false;
   var resolveReady;
   var ready = new Promise(function (resolve) { resolveReady = resolve; });
   var markers = [];
@@ -875,7 +891,8 @@ export function renderMap(container, cardData) {
       } else {
         map.fitBounds(dataBounds, { padding: 24, maxZoom: numberOr(view.maxZoom, 14), duration: 0 });
       }
-      hideEmpty();
+      hideDataEmpty();
+      hasShownData = true;
       return;
     }
     var center = Array.isArray(view.center) ? view.center : null;
@@ -884,12 +901,22 @@ export function renderMap(container, cardData) {
     if (centerLat != null && centerLng != null) {
       map.setCenter([centerLng, centerLat]);
       map.setZoom(numberOr(view.zoom, 10));
-      hideEmpty();
+      if (dataBounds && !dataBounds.isEmpty()) {
+        hideDataEmpty();
+        hasShownData = true;
+      } else {
+        showDataEmpty('No locations for this selection.');
+      }
+      return;
+    }
+    if (dataBounds && !dataBounds.isEmpty()) {
+      hideDataEmpty();
+      hasShownData = true;
       return;
     }
     map.setCenter([0, 0]);
     map.setZoom(2);
-    showEmpty('No locations for this selection.');
+    showDataEmpty('No locations for this selection.');
   }
 
   function destroyMap() {
@@ -912,6 +939,7 @@ export function renderMap(container, cardData) {
     legendSections = [];
     if (map) map.remove();
     map = null;
+    container._tfMap = null;
     mapLoaded = false;
     mapInitToken += 1;
     dataBounds = null;
@@ -920,7 +948,8 @@ export function renderMap(container, cardData) {
   function initMap() {
     if (map) return;
     var initToken = ++mapInitToken;
-    hideEmpty();
+    hideDataEmpty();
+    hideFatal();
     fetch(mapStyleUrl).then(function (response) {
       if (!response.ok) throw new Error('Failed to load map style.');
       return response.json();
@@ -937,8 +966,14 @@ export function renderMap(container, cardData) {
         zoom: 2,
         attributionControl: false
       });
+      container._tfMap = map;
       map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-left');
       map.addControl(new maplibregl.AttributionControl({ compact: false }), 'bottom-right');
+      ['dragstart', 'zoomstart', 'rotatestart', 'pitchstart'].forEach(function (eventName) {
+        map.on(eventName, function (event) {
+          if (event && event.originalEvent) userMovedMap = true;
+        });
+      });
       map.once('load', function () {
         if (!map) return;
         mapLoaded = true;
@@ -947,11 +982,11 @@ export function renderMap(container, cardData) {
         requestAnimationFrame(resolveReady);
       });
       map.on('error', function (event) {
-        if (event && event.error) showEmpty('Map error: ' + String(event.error.message || event.error));
+        if (event && event.error) showFatal('Map error: ' + String(event.error.message || event.error));
       });
     }).catch(function (error) {
       if (initToken !== mapInitToken) return;
-      showEmpty('Map error: ' + String(error && error.message ? error.message : error));
+      showFatal('Map error: ' + String(error && error.message ? error.message : error));
       resolveReady();
     });
   }
@@ -977,8 +1012,15 @@ export function renderMap(container, cardData) {
       if (popupState.click) popupState.click.remove();
       popupState.click = null;
       syncDataLayers(false);
-      if (dataBounds) hideEmpty();
-      else showEmpty('No locations for this selection.');
+      if (dataBounds) {
+        if (!hasShownData && !userMovedMap) syncView();
+        else {
+          hideDataEmpty();
+          hasShownData = true;
+        }
+      } else {
+        showDataEmpty('No locations for this selection.');
+      }
       return new Promise(function (resolve) { requestAnimationFrame(resolve); });
     },
     destroy: function () {
