@@ -52,6 +52,12 @@ def test_result_metadata_owns_query_provenance() -> None:
     assert metadata.affected_rows == 3
 
 
+@pytest.mark.asyncio
+async def test_missing_result_raises_domain_error() -> None:
+    with pytest.raises(SourceResolutionError, match="No result with id R9"):
+        await OutputStore().get_payload("R9")
+
+
 def test_map_and_graph_artifacts_accept_parameterized_sources() -> None:
     output_store = OutputStore()
     source = output_store.add_parameterized_source("workspace", [], "SELECT 1")

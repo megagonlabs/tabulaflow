@@ -35,6 +35,7 @@ from textual.widgets._markdown import MarkdownFence, MarkdownTable, MarkdownTabl
 
 from tabulaflow.app.display import DATA_PREVIEW_MAX_ROWS, build_resolved_output_card_views
 from tabulaflow.output.specs import ChoiceParameter, NumberParameter, SelectionValue
+from tabulaflow.output.store import SourceResolutionError
 from tabulaflow.app.theme import (
     ACCENT,
     ACCENT_DIM,
@@ -2372,7 +2373,7 @@ class AgentResultWidget(Widget):
         try:
             payload = await self._turn_output.output_store.get_payload(result_id)
             return payload.df
-        except (KeyError, ValueError):
+        except (SourceResolutionError, ValueError):
             return None
 
 

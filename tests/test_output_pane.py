@@ -47,7 +47,7 @@ from tabulaflow.output.specs import (
     TableArtifactSpec,
 )
 from tabulaflow.output.store import OutputStore, ResultMetadata, ResultPayload
-from tabulaflow.output.resolver import ResolvedOutput, UnavailableArtifact
+from tabulaflow.output.resolver import ResolvedOutput, ResolvedTableArtifact, UnavailableArtifact
 
 
 @contextlib.contextmanager
@@ -1126,6 +1126,38 @@ async def test_no_result_artifact_renders_info_message_view(tmp_path: Path) -> N
     payload = json.loads((tmp_path / f"{cards[0]['id']}.data.json").read_text())
     assert cards[0]["views"] == ["message"]
     assert payload == {"message": {"status": "no_result", "text": "No result set"}}
+
+
+@pytest.mark.asyncio
+async def test_pane_preparation_failure_renders_safe_error_card(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    from tabulaflow.app.pane import cards as pane_cards
+
+    artifact = ResolvedTableArtifact(
+        artifact_id="S1",
+        source_id="S1",
+        label="orders",
+        payload=ResultPayload(
+            metadata=ResultMetadata(id="R1", db_alias="workspace", query="SELECT * FROM orders"),
+            df=pd.DataFrame({"id": [1]}),
+        ),
+    )
+
+    def fail_render(*_args: object, **_kwargs: object) -> None:
+        raise RuntimeError("internal detail")
+
+    monkeypatch.setattr(pane_cards, "render_result_data", fail_render)
+
+    cards = await render_resolved_output(ResolvedOutput(selection={}, artifacts=[artifact]), tmp_path)
+
+    assert cards == [{"id": cards[0]["id"], "artifact_id": "S1", "label": "orders", "views": ["message"]}]
+    payload = json.loads((tmp_path / f"{cards[0]['id']}.data.json").read_text())
+    assert payload == {"message": {"status": "error", "text": "Could not prepare this artifact for display."}}
+    assert "preparing pane card for artifact S1 failed" in caplog.text
+    assert "internal detail" not in payload["message"]["text"]
 
 
 def test_live_view_survives_rapid_browser_replay_and_switches_atomically(tmp_path: Path) -> None:

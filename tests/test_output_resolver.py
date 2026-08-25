@@ -295,6 +295,22 @@ async def test_parameterized_source_not_applicable_is_not_an_error() -> None:
 
 
 @pytest.mark.asyncio
+async def test_missing_materialized_result_becomes_artifact_error() -> None:
+    output_store = OutputStore()
+    output = OutputSpec(
+        sources=[FixedResultSource(id="missing", result_id="R9")],
+        artifacts=[TableArtifactSpec(id="table", source_id="missing")],
+    )
+
+    resolved = await OutputResolver(output_store).resolve(output)
+
+    artifact = resolved.artifacts[0]
+    assert isinstance(artifact, UnavailableArtifact)
+    assert artifact.status == "error"
+    assert artifact.reason == "No result with id R9"
+
+
+@pytest.mark.asyncio
 async def test_table_artifact_without_displayable_payload_is_unavailable() -> None:
     output_store = OutputStore()
     await output_store.add_fixed_result_source(

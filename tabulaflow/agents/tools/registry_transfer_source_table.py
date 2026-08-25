@@ -10,7 +10,7 @@ from tabulaflow.data.registry import DBRegistry
 from tabulaflow.data.sql import SQLConnector
 from tabulaflow.output.specs import FixedResultSource
 
-from tabulaflow.output.store import OutputStore
+from tabulaflow.output.store import OutputStore, SourceResolutionError
 
 
 class RegistryTransferSourceTableTool:
@@ -63,6 +63,8 @@ class RegistryTransferSourceTableTool:
             payload = await self._output_store.get_payload(source.result_id)
         except KeyError:
             return f"(error: unknown source_id {source_id!r})"
+        except SourceResolutionError as e:
+            return f"(error: {e})"
 
         try:
             df = payload.df

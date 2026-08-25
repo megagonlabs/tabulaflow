@@ -78,7 +78,7 @@ class SourceNotApplicable(Exception):
 
 
 class SourceResolutionError(RuntimeError):
-    """A query-backed source could not be materialized."""
+    """A source or stored result could not be resolved to a materialized payload."""
 
 
 def _not_applicable(reason: object = "not applicable") -> NoReturn:
@@ -399,7 +399,7 @@ class OutputStore:
         try:
             return self._results_by_id[result_id]
         except KeyError:
-            raise KeyError(f"No result with id {result_id}") from None
+            raise SourceResolutionError(f"No result with id {result_id}") from None
 
     async def _get_dataframe(self, result_id: str) -> pd.DataFrame:
         """Return the DataFrame for a tabular query result."""

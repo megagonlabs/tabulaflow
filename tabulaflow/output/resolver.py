@@ -140,7 +140,7 @@ class OutputResolver:
         """
         active_selection = _normalize_selection(output, selection)
         sources = {source.id: source for source in output.sources}
-        source_outcomes: dict[SourceId, ResultPayload | SourceNotApplicable | SourceResolutionError | KeyError] = {}
+        source_outcomes: dict[SourceId, ResultPayload | SourceNotApplicable | SourceResolutionError] = {}
         artifacts: list[ResolvedArtifact] = []
         for artifact in output.artifacts:
             try:
@@ -152,7 +152,7 @@ class OutputResolver:
                     if source_id not in source_outcomes:
                         try:
                             source_outcomes[source_id] = await self._resolve_source(source, active_selection)
-                        except (SourceNotApplicable, SourceResolutionError, KeyError) as exc:
+                        except (SourceNotApplicable, SourceResolutionError) as exc:
                             source_outcomes[source_id] = exc
                     outcome = source_outcomes[source_id]
                     if isinstance(outcome, Exception):
@@ -170,7 +170,7 @@ class OutputResolver:
                         status="not_applicable",
                     )
                 )
-            except (ArtifactSpecError, SourceResolutionError, KeyError) as exc:
+            except (ArtifactSpecError, SourceResolutionError) as exc:
                 artifacts.append(UnavailableArtifact(artifact_id=artifact.id, label=artifact.label, reason=str(exc)))
         return ResolvedOutput(selection=active_selection, artifacts=artifacts)
 

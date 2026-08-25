@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import secrets
+import logging
 from dataclasses import dataclass
 from pathlib import Path
 from collections.abc import Mapping
@@ -38,6 +39,8 @@ from tabulaflow.output.resolver import (
     ResolvedTableArtifact,
     UnavailableArtifact,
 )
+
+logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     import pandas as pd
@@ -278,7 +281,17 @@ async def render_resolved_output(resolved_output: ResolvedOutput, pane_dir: Path
             else:
                 card = None
         except Exception:
+            logger.exception("preparing pane card for artifact %s failed", artifact.artifact_id)
             card = None
-        if card is not None:
-            cards.append(card)
+        if card is None:
+            card = render_message_data(
+                MessageCardInput(
+                    label=artifact.label,
+                    text="Could not prepare this artifact for display.",
+                    status="error",
+                ),
+                pane_dir,
+                artifact_id=artifact.artifact_id,
+            )
+        cards.append(card)
     return cards
