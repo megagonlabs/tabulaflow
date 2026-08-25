@@ -597,12 +597,18 @@ Aug 23
 
 Aug 24
 - [ ] agents layer cleanup
-  - [x] Remove engines/
+  - [x] runtime.py
+  - [x] remove engines/
   - [x] standardize `execute` vs `__call__`
+  - [x] remove modules/ and fix preprocssing caching
+  - [ ] Standardize base.py vs protocols.py
 - [x] Standardize imports
-- [x] Fix startup rendering
-- [x] New artifact browser pane life cycle to fix flicker when change selection in answer controls
-- [x] Fix artifact with empty df display
+- [ ] app
+  - [x] Fix startup rendering
+  - [x] New artifact browser pane life cycle to fix flicker when change selection in answer controls
+  - [x] Fix artifact with empty df display
+  - [x] Improve empty df artifact display
+  - [x] Improve map markers and marker size legend
 
 
 - [ ] Shell messed up after ssh disconnect
