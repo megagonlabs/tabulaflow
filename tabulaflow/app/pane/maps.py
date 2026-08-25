@@ -55,20 +55,6 @@ def _literal_field_encoding(value: object) -> object:
     return out if isinstance(out.get("field"), str) else None
 
 
-def _size_encoding(value: object, field_by_column: Mapping[str, str]) -> object:
-    if not isinstance(value, Mapping):
-        return None
-    field = _field_name(value.get("field"), field_by_column)
-    return {"field": field} if field is not None else None
-
-
-def _literal_size_encoding(value: object) -> object:
-    if not isinstance(value, Mapping):
-        return None
-    field = value.get("field")
-    return {"field": field} if isinstance(field, str) else None
-
-
 def _normalize_points_layer(
     layer: Mapping[str, object],
     field_by_column: Mapping[str, str],
@@ -93,7 +79,7 @@ def _normalize_points_layer(
         color = _literal_field_encoding(layer.get("color"))
         if color is not None:
             inline_out["color"] = color
-        size = _literal_size_encoding(layer.get("size"))
+        size = _literal_field_encoding(layer.get("size"))
         if size is not None:
             inline_out["size"] = size
         return inline_out
@@ -119,7 +105,7 @@ def _normalize_points_layer(
     color = _field_encoding(layer.get("color"), field_by_column)
     if color is not None:
         out["color"] = color
-    size = _size_encoding(layer.get("size"), field_by_column)
+    size = _field_encoding(layer.get("size"), field_by_column)
     if size is not None:
         out["size"] = size
     return out

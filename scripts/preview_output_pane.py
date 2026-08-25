@@ -528,7 +528,7 @@ def _push_controls_turn(pane: pane_mod.OutputPane, pane_dir: Path) -> None:
                                 "label": "customer",
                                 "tooltip": ["period", "metric", "value"],
                                 "color": {"field": "metric"},
-                                "size": {"field": "value"},
+                                "size": {"field": "value", "domain": [0, 140]},
                             }
                         ],
                     },

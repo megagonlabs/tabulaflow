@@ -204,6 +204,17 @@ class TestNormalizeMapSpec:
                     }
                 ]
             },
+            {
+                "layers": [
+                    {
+                        "type": "points",
+                        "source_id": "S1",
+                        "lat": "value",
+                        "lng": "value",
+                        "size": {"field": "value", "domain": [10, 5]},
+                    }
+                ]
+            },
             {"layers": [{"type": "points", "source_id": "S1", "lat": "value", "lng": "value", "size": 12}]},
             {
                 "layers": [
@@ -231,7 +242,7 @@ class TestNormalizeMapSpec:
                     "lat": "lat",
                     "lng": "lng",
                     "color": {"field": "status", "domain": ["open", "closed"]},
-                    "size": {"field": "value"},
+                    "size": {"field": "value", "domain": [0, 100]},
                 }
             ]
         }
@@ -243,7 +254,7 @@ class TestNormalizeMapSpec:
                     "lat": "lat",
                     "lng": "lng",
                     "color": {"field": "status", "domain": ["open", "closed"]},
-                    "size": {"field": "value"},
+                    "size": {"field": "value", "domain": [0.0, 100.0]},
                 }
             ]
         }

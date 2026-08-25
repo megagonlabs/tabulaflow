@@ -8,7 +8,16 @@ from collections.abc import Callable, Mapping, Sequence
 from typing import Annotated, Any, Literal, TypeAlias
 
 import pandas as pd
-from pydantic import AliasChoices, BaseModel, ConfigDict, Field, ValidationError, field_validator, model_validator
+from pydantic import (
+    AliasChoices,
+    BaseModel,
+    ConfigDict,
+    Field,
+    FiniteFloat,
+    ValidationError,
+    field_validator,
+    model_validator,
+)
 
 from tabulaflow.output.specs import ArtifactSpecError
 
@@ -66,6 +75,13 @@ class SizeEncodingSpec(_StrictModel):
     """Marker-size encoding driven by a source field."""
 
     field: str
+    domain: Annotated[list[FiniteFloat], Field(min_length=2, max_length=2)] | None = None
+
+    @model_validator(mode="after")
+    def validate_domain(self) -> SizeEncodingSpec:
+        if self.domain is not None and self.domain[1] <= self.domain[0]:
+            raise ValueError("size domain maximum must be greater than minimum")
+        return self
 
 
 class MarkerSpec(_StrictModel):

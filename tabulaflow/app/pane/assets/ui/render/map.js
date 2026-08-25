@@ -270,6 +270,32 @@ function buildLegendSection(layer, items, labels, swatchType, fallbackColor) {
   };
 }
 
+function sizeDomain(encoding, rows, field) {
+  if (Array.isArray(encoding.domain) && encoding.domain.length === 2) {
+    var domainMin = numberValue(encoding.domain[0]);
+    var domainMax = numberValue(encoding.domain[1]);
+    if (domainMin != null && domainMax != null && domainMax > domainMin) return [domainMin, domainMax];
+  }
+  var values = rows.map(function (row) { return numberValue(fieldValue(row, field)); })
+    .filter(function (value) { return value != null; });
+  if (!values.length) return null;
+  return [Math.min.apply(Math, values), Math.max.apply(Math, values)];
+}
+
+function buildSizeLegendSection(layer, rows, labels) {
+  var encoding = layer && layer.size;
+  var field = encodingField(encoding);
+  if (!field) return null;
+  var domain = sizeDomain(encoding, rows, field);
+  if (!domain || domain[0] === domain[1]) return null;
+  var entries = domain.map(function (value) {
+    var row = {};
+    row[field] = value;
+    return { label: displayValue(value), size: Math.round(sizeFor(encoding, row, rows, 6)) };
+  });
+  return { title: labels[field] || field, swatchType: 'size', entries: entries };
+}
+
 function clearLegend(container) {
   if (!container) return;
   container.querySelectorAll('.tf-map-legend').forEach(function (node) { node.remove(); });
@@ -283,8 +309,11 @@ function renderLegend(container, sections) {
     html += '<section class="tf-map-legend-section"><div class="tf-map-legend-title">'
       + escapeHtml(section.title) + '</div>';
     section.entries.forEach(function (entry) {
+      var style = section.swatchType === 'size'
+        ? '--legend-size:' + escapeHtml(entry.size) + 'px'
+        : '--legend-color:' + escapeHtml(entry.color);
       var swatch = '<span class="tf-map-legend-swatch tf-map-legend-swatch-' + section.swatchType
-        + '" style="--legend-color:' + escapeHtml(entry.color) + '"></span>';
+        + '" style="' + style + '"></span>';
       html += '<div class="tf-map-legend-item">' + swatch + '<span class="tf-map-legend-label">'
         + escapeHtml(entry.label) + '</span></div>';
     });
@@ -304,13 +333,10 @@ function sizeFor(encoding, row, rows, fallback) {
   if (value == null) return fallback;
   var minSize = 5;
   var maxSize = 18;
-  var values = rows.map(function (r) { return numberValue(fieldValue(r, field)); })
-    .filter(function (v) { return v != null; });
-  if (!values.length) return fallback;
-  var min = Math.min.apply(Math, values);
-  var max = Math.max.apply(Math, values);
-  if (max === min) return (minSize + maxSize) / 2;
-  return minSize + ((value - min) / (max - min)) * (maxSize - minSize);
+  var domain = sizeDomain(encoding, rows, field);
+  if (!domain || domain[0] === domain[1]) return fallback;
+  var normalized = Math.max(0, Math.min(1, (value - domain[0]) / (domain[1] - domain[0])));
+  return Math.sqrt(minSize * minSize + normalized * (maxSize * maxSize - minSize * minSize));
 }
 
 function parseGeoJson(value) {
@@ -423,7 +449,9 @@ function buildPointFeatures(layer, rows, labels) {
   var latField = Array.isArray(layer.points) ? 'lat' : String(layer.lat || '');
   var lngField = Array.isArray(layer.points) ? 'lng' : String(layer.lng || '');
   var labelField = String(layer.label || '');
-  var markerType = layer.marker && layer.marker.type === 'circle' ? 'circle' : 'pin';
+  var markerType = layer.marker && layer.marker.type
+    ? layer.marker.type
+    : (layer.size ? 'circle' : 'pin');
   var features = [];
   if (!latField || !lngField) return { features: features, markerType: markerType, rows: pointRows };
   pointRows.forEach(function (row) {
@@ -841,6 +869,8 @@ export function renderMap(container, cardData) {
           pointData.markerType === 'pin' ? mapPinDefaultColor : mapDefaultColor
         );
         if (pointLegend) legendSections.push(pointLegend);
+        var sizeLegend = buildSizeLegendSection(layer || {}, pointData.rows, labels);
+        if (sizeLegend) legendSections.push(sizeLegend);
         return;
       }
       if (layer.type === 'geojson') {

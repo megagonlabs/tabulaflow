@@ -662,6 +662,11 @@ body { margin: 0; background: var(--bg); color: var(--text); display: flex; flex
     width: 12px; height: 12px; border-radius: 3px; background: var(--legend-color);
     border: 1px solid rgba(17, 24, 39, 0.24);
 }
+.tf-map-legend-swatch-size {
+    width: var(--legend-size); height: var(--legend-size); border-radius: 50%;
+    background: var(--map-default); border: 1px solid #fff;
+    box-shadow: 0 0 0 1px rgba(17, 24, 39, 0.22);
+}
 .tf-map-legend-swatch-pin {
     width: 12px; height: 17px; position: relative; transform: translateY(-1px);
 }

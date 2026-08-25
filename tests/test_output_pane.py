@@ -363,6 +363,30 @@ def test_map_card_preserves_blank_coordinate_strings_for_map_renderer(tmp_path: 
     assert payload["datasets"]["Q1"]["rows"][0]["c2"] == ""
 
 
+def test_map_card_preserves_size_domain_and_circle_marker(tmp_path: Path) -> None:
+    df = pd.DataFrame({"lat": [1.0], "lng": [2.0], "value": [50]})
+    card = _map_card(
+        {
+            "layers": [
+                {
+                    "type": "points",
+                    "source_id": "Q1",
+                    "lat": "lat",
+                    "lng": "lng",
+                    "size": {"field": "value", "domain": [0, 100]},
+                    "marker": {"type": "circle"},
+                }
+            ]
+        },
+        {"Q1": df},
+        tmp_path,
+    )
+
+    payload = json.loads((tmp_path / f"{card['id']}.data.json").read_text())
+    assert payload["map"]["layers"][0]["size"] == {"field": "c2", "domain": [0, 100]}
+    assert payload["map"]["layers"][0]["marker"] == {"type": "circle"}
+
+
 def test_map_card_writes_layered_single_source_payload(tmp_path: Path) -> None:
     df = pd.DataFrame(
         {
@@ -1009,6 +1033,10 @@ def test_visual_renderers_own_their_empty_states() -> None:
     assert ".tf-empty-state-title" in pane_css
     assert ".tf-empty-state-copy" in pane_css
     assert "No locations for this selection." in map_js
+    assert ": (layer.size ? 'circle' : 'pin');" in map_js
+    assert "Math.sqrt(minSize * minSize + normalized * (maxSize * maxSize - minSize * minSize))" in map_js
+    assert "function buildSizeLegendSection(layer, rows, labels)" in map_js
+    assert ".tf-map-legend-swatch-size" in pane_css
     assert "if (event && event.originalEvent) userMovedMap = true;" in map_js
     assert ".tf-map-empty.show { display: block; }" in pane_css
     assert "pointer-events: none;" in pane_css
