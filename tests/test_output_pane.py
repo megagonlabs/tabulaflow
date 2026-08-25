@@ -1035,7 +1035,10 @@ def test_visual_renderers_own_their_empty_states() -> None:
     assert "No locations for this selection." in map_js
     assert ": (layer.size ? 'circle' : 'pin');" in map_js
     assert "Math.sqrt(minSize * minSize + normalized * (maxSize * maxSize - minSize * minSize))" in map_js
-    assert "function buildSizeLegendSection(layer, rows, labels)" in map_js
+    assert "function buildSizeScale(encoding, rows, fallback)" in map_js
+    assert "function buildSizeLegendSection(scale, labels)" in map_js
+    assert "validRows.map(function (item) { return item.row; })" in map_js
+    assert "Math.round(2 * scale.radiusValue(value))" in map_js
     assert ".tf-map-legend-swatch-size" in pane_css
     assert "if (event && event.originalEvent) userMovedMap = true;" in map_js
     assert ".tf-map-empty.show { display: block; }" in pane_css

@@ -282,18 +282,32 @@ function sizeDomain(encoding, rows, field) {
   return [Math.min.apply(Math, values), Math.max.apply(Math, values)];
 }
 
-function buildSizeLegendSection(layer, rows, labels) {
-  var encoding = layer && layer.size;
+function buildSizeScale(encoding, rows, fallback) {
   var field = encodingField(encoding);
-  if (!field) return null;
-  var domain = sizeDomain(encoding, rows, field);
-  if (!domain || domain[0] === domain[1]) return null;
-  var entries = domain.map(function (value) {
-    var row = {};
-    row[field] = value;
-    return { label: displayValue(value), size: Math.round(sizeFor(encoding, row, rows, 6)) };
+  var domain = field ? sizeDomain(encoding, rows, field) : null;
+  var scalable = domain && domain[1] > domain[0];
+  function radiusValue(value) {
+    value = numberValue(value);
+    if (value == null || !scalable) return fallback;
+    var minSize = 5;
+    var maxSize = 18;
+    var normalized = Math.max(0, Math.min(1, (value - domain[0]) / (domain[1] - domain[0])));
+    return Math.sqrt(minSize * minSize + normalized * (maxSize * maxSize - minSize * minSize));
+  }
+  return {
+    field: field,
+    domain: scalable ? domain : null,
+    radius: function (row) { return field ? radiusValue(fieldValue(row, field)) : fallback; },
+    radiusValue: radiusValue
+  };
+}
+
+function buildSizeLegendSection(scale, labels) {
+  if (!scale.field || !scale.domain) return null;
+  var entries = scale.domain.map(function (value) {
+    return { label: displayValue(value), size: Math.round(2 * scale.radiusValue(value)) };
   });
-  return { title: labels[field] || field, swatchType: 'size', entries: entries };
+  return { title: labels[scale.field] || scale.field, swatchType: 'size', entries: entries };
 }
 
 function clearLegend(container) {
@@ -306,7 +320,8 @@ function renderLegend(container, sections) {
   if (!sections.length) return;
   var html = '';
   sections.forEach(function (section) {
-    html += '<section class="tf-map-legend-section"><div class="tf-map-legend-title">'
+    html += '<section class="tf-map-legend-section tf-map-legend-section-' + section.swatchType
+      + '"><div class="tf-map-legend-title">'
       + escapeHtml(section.title) + '</div>';
     section.entries.forEach(function (entry) {
       var style = section.swatchType === 'size'
@@ -323,20 +338,6 @@ function renderLegend(container, sections) {
   node.className = 'tf-map-legend';
   node.innerHTML = html;
   container.appendChild(node);
-}
-
-function sizeFor(encoding, row, rows, fallback) {
-  if (!encoding || typeof encoding !== 'object' || Array.isArray(encoding)) return fallback;
-  var field = encodingField(encoding);
-  if (!field) return fallback;
-  var value = numberValue(fieldValue(row, field));
-  if (value == null) return fallback;
-  var minSize = 5;
-  var maxSize = 18;
-  var domain = sizeDomain(encoding, rows, field);
-  if (!domain || domain[0] === domain[1]) return fallback;
-  var normalized = Math.max(0, Math.min(1, (value - domain[0]) / (domain[1] - domain[0])));
-  return Math.sqrt(minSize * minSize + normalized * (maxSize * maxSize - minSize * minSize));
 }
 
 function parseGeoJson(value) {
@@ -452,17 +453,24 @@ function buildPointFeatures(layer, rows, labels) {
   var markerType = layer.marker && layer.marker.type
     ? layer.marker.type
     : (layer.size ? 'circle' : 'pin');
-  var features = [];
-  if (!latField || !lngField) return { features: features, markerType: markerType, rows: pointRows };
+  var validRows = [];
   pointRows.forEach(function (row) {
     var lat = numberValue(fieldValue(row, latField));
     var lng = numberValue(fieldValue(row, lngField));
-    if (lat == null || lng == null) return;
-    if (lat < -90 || lat > 90 || lng < -180 || lng > 180) return;
+    if (lat == null || lng == null || lat < -90 || lat > 90 || lng < -180 || lng > 180) return;
+    validRows.push({ row: row, lat: lat, lng: lng });
+  });
+  var sizeScale = buildSizeScale(layer.size, validRows.map(function (item) { return item.row; }), 6);
+  var features = [];
+  if (!latField || !lngField) return { features: features, markerType: markerType, sizeScale: sizeScale };
+  validRows.forEach(function (item) {
+    var row = item.row;
+    var lat = item.lat;
+    var lng = item.lng;
     var label = fieldValue(row, labelField);
     var popup = detailHtml(row, layer.tooltip, labels, label);
     var color = colorFor(layer.color, row, markerType === 'pin' ? mapPinDefaultColor : mapDefaultColor);
-    var radius = sizeFor(layer.size, row, pointRows, 6);
+    var radius = sizeScale.radius(row);
     var pinScale = Math.max(0.8, Math.min(1.45, radius / 6));
     features.push({
       type: 'Feature',
@@ -480,7 +488,7 @@ function buildPointFeatures(layer, rows, labels) {
       })
     });
   });
-  return { features: features, markerType: markerType, rows: pointRows };
+  return { features: features, markerType: markerType, sizeScale: sizeScale };
 }
 
 function buildGeoJsonFeatures(layer, rows, labels) {
@@ -869,7 +877,7 @@ export function renderMap(container, cardData) {
           pointData.markerType === 'pin' ? mapPinDefaultColor : mapDefaultColor
         );
         if (pointLegend) legendSections.push(pointLegend);
-        var sizeLegend = buildSizeLegendSection(layer || {}, pointData.rows, labels);
+        var sizeLegend = buildSizeLegendSection(pointData.sizeScale, labels);
         if (sizeLegend) legendSections.push(sizeLegend);
         return;
       }

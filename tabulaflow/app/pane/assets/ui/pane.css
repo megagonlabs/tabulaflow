@@ -644,6 +644,7 @@ body { margin: 0; background: var(--bg); color: var(--text); display: flex; flex
 .tf-map-legend-section + .tf-map-legend-section { margin-top: 10px; padding-top: 8px; border-top: 1px solid rgba(17, 24, 39, 0.12); }
 .tf-map-legend-title { margin: 0 0 6px; font-weight: 700; color: #111827; overflow-wrap: anywhere; }
 .tf-map-legend-item { display: grid; grid-template-columns: 18px minmax(0, 1fr); gap: 7px; align-items: center; min-height: 20px; }
+.tf-map-legend-section-size .tf-map-legend-item { grid-template-columns: 38px minmax(0, 1fr); min-height: 38px; }
 .tf-map-legend-item + .tf-map-legend-item { margin-top: 4px; }
 .tf-map-legend-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #374151; }
 .tf-map-legend-swatch { --legend-color: var(--map-default); display: inline-block; justify-self: center; flex: 0 0 auto; box-sizing: border-box; }
