@@ -15,7 +15,7 @@ from textual.containers import VerticalScroll
 
 from tabulaflow.app.theme import FOCUS_SURFACE
 from tabulaflow.app.widgets import AgentProgressWidget
-from tabulaflow.agents.chat import AnswerDelta, Finished
+from tabulaflow.agents.chat import AnswerDelta, TurnFinished
 from tabulaflow.agents.chat import ChatResult
 
 
@@ -121,7 +121,7 @@ class TuiMarkdownPreview(App[None]):
         midpoint = len(MARKDOWN) // 2
         await progress.apply(AnswerDelta(content=MARKDOWN[:midpoint]))
         await progress.apply(AnswerDelta(content=MARKDOWN[midpoint:]))
-        await progress.apply(Finished(result=ChatResult(text=MARKDOWN)))
+        await progress.apply(TurnFinished(result=ChatResult(text=MARKDOWN)))
 
 
 if __name__ == "__main__":

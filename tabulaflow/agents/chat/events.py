@@ -14,7 +14,7 @@ wire (de)serialization:
     raw = event.model_dump_json()                       # produce (server)
     event = TypeAdapter(ChatEvent).validate_json(raw)    # consume (client)
 
-The stream ends with exactly one ``Finished`` (carrying the result) on normal
+The stream ends with exactly one ``TurnFinished`` (carrying the result) on normal
 completion. Failures propagate as exceptions; an interrupted run raises
 ``CancelledError`` and the agent's message history / usage reflect the partial run.
 """
@@ -78,7 +78,7 @@ class ToolStarted(_ChatEvent):
 class ToolFinished(_ChatEvent):
     """A tool call returned. ``outcome`` is structured so a frontend can reword it;
     ``None`` means plain completion with no suffix-worthy fact. The full result
-    (if any) arrives later in ``Finished.result``."""
+    (if any) arrives later in ``TurnFinished.result``."""
 
     kind: Literal["tool_finished"] = "tool_finished"
     tool_call_id: str
@@ -124,11 +124,11 @@ class ChatResult(BaseModel):
     usage: Usage | None = None
 
 
-class Finished(_ChatEvent):
+class TurnFinished(_ChatEvent):
     """The turn completed normally; carries the full result. The only terminal
     event — failures and interrupts surface as exceptions on the iterator, not here."""
 
-    kind: Literal["finished"] = "finished"
+    kind: Literal["turn_finished"] = "turn_finished"
     result: ChatResult
 
 
@@ -141,7 +141,7 @@ ChatEvent: TypeAlias = Annotated[
         ToolFinished,
         ToolProgress,
         UsageUpdated,
-        Finished,
+        TurnFinished,
     ],
     Field(discriminator="kind"),
 ]

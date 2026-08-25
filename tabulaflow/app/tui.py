@@ -1103,7 +1103,7 @@ class TabulaflowApp(App[None]):
     ) -> None:
         import asyncio
 
-        from tabulaflow.agents.chat import Finished
+        from tabulaflow.agents.chat import TurnFinished
 
         progress = AgentProgressWidget()
         await chat_log.mount(progress)
@@ -1113,7 +1113,7 @@ class TabulaflowApp(App[None]):
         try:
             async for event in chat_session.run_stream(question):
                 await progress.apply(event)
-                if isinstance(event, Finished):
+                if isinstance(event, TurnFinished):
                     result = event.result
         except asyncio.CancelledError:
             # Freeze the partial progress widget; ChatSession's message history and
@@ -1133,7 +1133,7 @@ class TabulaflowApp(App[None]):
             chat_log.scroll_end(animate=False)
             return
         if result is None:
-            return  # normal completion always yields a terminal Finished
+            return  # normal completion always yields a terminal TurnFinished
 
         turn_output = TurnOutput(result.output, chat_session.output_store)
         resolved_output = await turn_output.resolve()

@@ -6,6 +6,7 @@ import pytest
 from pydantic_ai.messages import ToolReturnPart
 
 from tabulaflow.data.config import SQLConnectorConfig
+from tabulaflow.agents.chat import ChatResult, TurnFinished
 from tabulaflow.agents.chat.turn import _TextStreamRouter, _build_chat_result, _declared_bundle, _strip_answer_marker
 from tabulaflow.data.registry import DBRegistry
 from tabulaflow.data.sql import SQLConnector
@@ -19,6 +20,12 @@ from tabulaflow.agents.tools import (
 )
 from tabulaflow.output.resolver import OutputResolver, ResolvedChartArtifact, ResolvedTableArtifact
 from tabulaflow.output.store import OutputStore
+
+
+def test_turn_finished_uses_explicit_wire_kind() -> None:
+    event = TurnFinished(result=ChatResult(text="done"))
+
+    assert event.model_dump()["kind"] == "turn_finished"
 
 
 def _result_id(artifact: object, source_id: str | None = None) -> str:

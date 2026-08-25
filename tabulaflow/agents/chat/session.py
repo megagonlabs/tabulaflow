@@ -32,11 +32,11 @@ from tabulaflow.agents.llm import make_agent, make_model_settings, model_display
 from tabulaflow.agents.chat.events import (
     ChatEvent,
     ChatResult,
-    Finished,
+    TurnFinished,
     ToolProgress,
     UsageUpdated,
 )
-from tabulaflow.agents.chat.toolset import ChatToolset
+from tabulaflow.agents.chat.tools import _ChatTools
 from tabulaflow.agents.chat.turn import (
     _TextStreamRouter,
     _build_chat_result,
@@ -131,7 +131,7 @@ class ChatSession:
     _output_store: OutputStore = field(init=False)
     _message_store: MessageStore = field(init=False)
     _main_scope: ScopedMessageStore = field(init=False)
-    _tools: ChatToolset = field(init=False)
+    _tools: _ChatTools = field(init=False)
     _running: bool = field(init=False, default=False)
     # The active turn's event sink; ``None`` between turns (progress ticks are
     # dropped). Set/cleared by ``run_stream`` alongside ``_running``.
@@ -173,7 +173,7 @@ class ChatSession:
         parts.append("## Session\n\n" + "\n".join(session_lines))
         return "\n\n".join(parts)
 
-    def _build_tools(self, subagent_dir: Path | None) -> ChatToolset:
+    def _build_tools(self, subagent_dir: Path | None) -> _ChatTools:
         """Construct the agent's toolset, wiring in the shared output store and
         message store. ``subagent_dir`` (if set) is where subagent trajectories land."""
         from tabulaflow.output.formatting.sql_ddl import SQLDDLSchemaFormatter
@@ -218,7 +218,7 @@ class ChatSession:
                 trajectory_log_dir=subagent_dir,
             )
 
-        return ChatToolset(
+        return _ChatTools(
             run_query=RegistryRunQueryTool(self.registry, output_store=self._output_store, enable_refresh=True),
             create_parameterized_source=CreateParameterizedSourceTool(self.registry, output_store=self._output_store),
             get_db_document=RegistryGetDBDocumentTool(
@@ -546,7 +546,7 @@ class ChatSession:
     async def run_stream(self, question: str) -> AsyncIterator[ChatEvent]:
         """Run the agent on a user question, yielding progress as ``ChatEvent``s.
 
-        The stream ends with exactly one ``Finished`` (carrying the ``ChatResult``)
+        The stream ends with exactly one ``TurnFinished`` (carrying the ``ChatResult``)
         on normal completion. Failures propagate as exceptions. To interrupt, cancel
         the task iterating this generator: it raises ``CancelledError`` and the
         agent's message history / ``last_usage`` are left reflecting the partial run.
@@ -585,14 +585,14 @@ class ChatSession:
     async def run(self, question: str) -> ChatResult:
         """Non-streaming convenience: run a turn and return its ``ChatResult``.
 
-        Equivalent to draining ``run_stream`` and taking the terminal ``Finished``
+        Equivalent to draining ``run_stream`` and taking the terminal ``TurnFinished``
         payload — for callers (tests, batch jobs) that want the result, not the live
         events. Cancellation and the one-turn-at-a-time guard behave as in
         ``run_stream``."""
         async for event in self.run_stream(question):
-            if isinstance(event, Finished):
+            if isinstance(event, TurnFinished):
                 return event.result
-        raise RuntimeError("run_stream ended without a Finished event")
+        raise RuntimeError("run_stream ended without a TurnFinished event")
 
     async def _run_to_queue(self, question: str, queue: asyncio.Queue[ChatEvent | None]) -> None:
         """Run the agent loop in the background task, pushing events onto ``queue``
@@ -672,7 +672,7 @@ class ChatSession:
                 emit(UsageUpdated(usage=final_usage))
             result = await _build_chat_result(answer_text, _declared_bundle(completed_results), self._output_store)
             result.usage = final_usage
-            emit(Finished(result=result))
+            emit(TurnFinished(result=result))
         finally:
             queue.put_nowait(None)  # sentinel: stream exhausted (success, error, or cancel)
 

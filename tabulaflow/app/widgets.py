@@ -53,7 +53,7 @@ from tabulaflow.app.turn import TurnOutput
 from tabulaflow.agents.chat import (
     AnswerDelta,
     ChatEvent,
-    Finished,
+    TurnFinished,
     ToolCallOutcome,
     ToolFinished,
     ToolProgress,
@@ -1296,12 +1296,12 @@ class AgentProgressWidget(Widget):
             await self._on_answer_delta(event.content)
         elif isinstance(event, UsageUpdated):
             self._on_usage(event.usage)
-        elif isinstance(event, Finished):
+        elif isinstance(event, TurnFinished):
             await self._on_finished(event.result)
 
     async def _on_finished(self, result: ChatResult) -> None:
         # Reconcile the live-streamed prose with the authoritative final text
-        # (the terminal Finished event carries the full ChatResult), then freeze.
+        # (the terminal TurnFinished event carries the full ChatResult), then freeze.
         final_text = result.text or self._streaming_text
         if self._text_block is not None:
             if final_text:
@@ -1322,7 +1322,7 @@ class AgentProgressWidget(Widget):
 
     async def mark_interrupted(self, usage: Usage | None = None) -> None:
         """Freeze the widget after a cancelled run (the consumer calls this on
-        ``CancelledError``; no terminal ``Finished`` arrives for an interrupt)."""
+        ``CancelledError``; no terminal ``TurnFinished`` arrives for an interrupt)."""
         if usage is not None:
             self._usage = usage
         self._interrupted = True
@@ -1331,7 +1331,7 @@ class AgentProgressWidget(Widget):
     async def mark_failed(self) -> None:
         """Freeze the widget after an errored agent turn, preserving the tool steps
         rendered so far (the consumer calls this on a non-cancellation exception; no
-        terminal ``Finished`` arrives). Mirrors ``mark_interrupted``."""
+        terminal ``TurnFinished`` arrives). Mirrors ``mark_interrupted``."""
         await self._freeze_partial()
 
     async def _freeze_partial(self) -> None:

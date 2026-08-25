@@ -28,7 +28,7 @@ if TYPE_CHECKING:
 
 
 @dataclass
-class ChatToolset:
+class _ChatTools:
     run_query: RegistryRunQueryTool
     create_parameterized_source: CreateParameterizedSourceTool
     get_db_document: RegistryGetDBDocumentTool
