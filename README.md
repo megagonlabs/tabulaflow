@@ -37,14 +37,24 @@ Agent runtime configuration is optional. Default values and `TABULAFLOW_*`
 environment variables are resolved lazily on first use:
 
 ```python
+import asyncio
+
 from tabulaflow.agents import ChatSession
 from tabulaflow.data import DBRegistry
 
-session = ChatSession(
-    registry=DBRegistry(),
-    model="openai-responses:gpt-5",
-    reasoning_effort="medium",
-)
+async def main() -> None:
+    session = ChatSession(
+        registry=DBRegistry(),
+        model="openai-responses:gpt-5",
+        reasoning_effort="medium",
+    )
+    try:
+        result = await session.run("Which tables contain customer data?")
+        print(result.text)
+    finally:
+        await session.aclose()
+
+asyncio.run(main())
 ```
 
 For programmatic runtime overrides, initialize once before creating agents:
@@ -596,21 +606,30 @@ Aug 23
 - [x] Fix /clear semantics
 
 Aug 24
-- [ ] agents layer cleanup
+- agents layer cleanup
   - [x] runtime.py
   - [x] remove engines/
   - [x] standardize `execute` vs `__call__`
   - [x] remove modules/ and fix preprocssing caching
-  - [ ] summarization.py
-  - [ ] chat/
+  - [x] summarization.py
 - [x] Standardize imports
 - [x] Standardize to protocols.py and registry.py, no base.py
-- [ ] app
+- app
   - [x] Fix startup rendering
   - [x] New artifact browser pane life cycle to fix flicker when change selection in answer controls
   - [x] Fix artifact with empty df display
   - [x] Improve empty df artifact display
   - [x] Improve map markers and marker size legend
+  - [x] Fix map popup scrolling
+
+Aug 25
+- [ ] agents layer cleanup
+  - [ ] chat/
+  - [ ] bash tool
+- app
+  - [x] align to browser pane column width
+  - [x] map artifact no data box
+  - [x] control panel UI
 
 
 - [ ] Shell messed up after ssh disconnect

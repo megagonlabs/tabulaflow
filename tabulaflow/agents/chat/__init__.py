@@ -1,4 +1,9 @@
-"""Interactive TabulaFlow agent public API."""
+"""Stateful chat sessions and their semantic event stream.
+
+Use :meth:`ChatSession.run` for a final result or :meth:`ChatSession.run_stream`
+for live events ending in :class:`TurnFinished`. Close each session with
+``await session.aclose()``.
+"""
 
 from importlib import import_module
 from typing import TYPE_CHECKING, Any

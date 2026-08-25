@@ -76,7 +76,26 @@ MAIN_REQUEST_TIMEOUT: Final = 180.0
 
 
 class ChatSession:
-    """Streaming agent for one interactive database conversation."""
+    """Stateful runtime for one interactive database conversation.
+
+    A session owns conversation history, tools, outputs, and model state and runs
+    one turn at a time. Call :meth:`aclose` when the session is no longer needed.
+
+    Args:
+        registry: Data sources available to the conversation.
+        model: Provider-qualified model identifier for the interactive agent.
+        reasoning_effort: Provider-neutral reasoning level for the main model.
+        service_tier: Optional provider service tier.
+        subagent_model: Model used by fan-out and extraction helpers.
+        subagent_reasoning_effort: Reasoning level for helper models.
+        enable_apply_patch: Expose ``apply_patch`` when ``project_dir`` is set.
+        extra_instructions: Instructions appended to the fixed baseline prompt.
+        trajectory_log_dir: Optional directory for conversation trajectories.
+        workspace: Writable SQL scratch database for derived data and message spill.
+        project_dir: Host project directory; enables filesystem tools.
+        scratch_dir: Transient directory exposed to shell workflows.
+        data_dir: Directory where connected file sources are materialized.
+    """
 
     def __init__(
         self,
@@ -135,26 +154,32 @@ class ChatSession:
 
     @property
     def model(self) -> str:
+        """Active interactive model; change it through :meth:`activate_llm_profile`."""
         return self._model
 
     @property
     def reasoning_effort(self) -> str:
+        """Active reasoning level for the interactive model."""
         return self._reasoning_effort
 
     @property
     def subagent_model(self) -> str:
+        """Active model for fan-out and extraction helpers."""
         return self._subagent_model
 
     @property
     def subagent_reasoning_effort(self) -> str:
+        """Active reasoning level for helper models."""
         return self._subagent_reasoning_effort
 
     @property
     def enable_apply_patch(self) -> bool:
+        """Whether the active profile exposes ``apply_patch`` when files are enabled."""
         return self._enable_apply_patch
 
     @property
     def last_usage(self) -> Usage | None:
+        """Latest turn usage, including partial usage after interruption, or ``None``."""
         return self._last_usage
 
     def _compose_system_prompt(self) -> str:
@@ -337,7 +362,8 @@ class ChatSession:
         The main key comes from the live client. The subagent provider is
         constructed locally because subagents have no persistent client.
         Provider construction errors propagate so callers can treat the whole
-        profile as one readiness boundary. No network request is made.
+        profile as one readiness boundary. No network request is made. Returned
+        values are raw credentials for trusted host integration and must not be logged.
         """
         return (
             self._api_key_from_model(self._unwrapped_model()),
@@ -412,6 +438,19 @@ class ChatSession:
         usable. A main-model change is recorded in the conversation history
         (see ``_note_profile_change``). Returns the API keys resolved during
         preparation.
+
+        Args:
+            model: New interactive model identifier.
+            reasoning_effort: New interactive reasoning level.
+            subagent_model: New helper model identifier.
+            subagent_reasoning_effort: New helper reasoning level.
+            enable_apply_patch: Whether the profile may expose ``apply_patch``.
+
+        Returns:
+            Raw main and subagent API keys, when their resolved clients use keys.
+
+        Raises:
+            RuntimeError: If a turn is active.
         """
         if self._running:
             raise RuntimeError("cannot change the LLM profile during an active turn")
