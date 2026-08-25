@@ -1,6 +1,6 @@
 """Get-db-document tool backed by a DBRegistry."""
 
-from typing import Any, Callable, ClassVar
+from typing import Any, Callable, ClassVar, cast
 
 from pydantic import BaseModel
 from pydantic_ai import Tool, ToolReturn
@@ -106,10 +106,9 @@ class RegistryGetDBDocumentTool:
 
         if use_summarizer:
             db_summarizer = self._db_summarizer_cls(
-                llm=self.db_summarizer_llm, max_summary_words=self.summary_max_words, model_settings=self.model_settings
+                llm=self.db_summarizer_llm, max_words=self.summary_max_words, model_settings=self.model_settings
             )
-            db_summary = await db_summarizer.summarize(connector)
-            document: str = db_summary.db_summary_markdown
+            document = cast(str, await db_summarizer.summarize(connector))
         else:
             schema_doc = self._format_direct_document(db_alias)
             document = f"<db_schema>\n{schema_doc}\n</db_schema>"

@@ -192,13 +192,13 @@ async def test_database_summarizer_owns_versioned_semantic_cache_key(tmp_path: P
             schema=SQLSchema(name="empty", dialect="sqlite", tables=[]),
         ),
     )
-    summarizer = DBSummarizer(max_summary_words=100)
+    summarizer = DBSummarizer(max_words=100)
 
     summary = await summarizer.summarize(connector)
     cached = await summarizer.summarize(connector)
 
     assert summary == cached
-    assert len(list((tmp_path / "agent" / "db_summaries").glob("v1@*.json"))) == 1
-    changed = DBSummarizer(max_summary_words=200)
+    assert len(list((tmp_path / "agent" / "db_summaries").glob("v2@*.md"))) == 1
+    changed = DBSummarizer(max_words=200)
     await changed.summarize(connector)
-    assert len(list((tmp_path / "agent" / "db_summaries").glob("v1@*.json"))) == 2
+    assert len(list((tmp_path / "agent" / "db_summaries").glob("v2@*.md"))) == 2

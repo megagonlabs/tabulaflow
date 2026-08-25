@@ -190,7 +190,7 @@ class LLMEnsembler:
 
         system_prompt = jinja2.Template(LLM_ENSEMBLE_SYSTEM_PROMPT).render(
             dataset_instructions=task.dataset_instructions,
-            db_document=db_summary.db_summary_markdown,
+            db_document=db_summary,
             task_document=task.document,
         )
 

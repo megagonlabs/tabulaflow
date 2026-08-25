@@ -116,7 +116,7 @@ class TabulaflowAgent:
         system_prompt = jinja2.Template(TABULAFLOW_AGENT_SYSTEM_PROMPT).render(
             language=db_connector.language,
             dataset_instructions=task.dataset_instructions,
-            db_document=db_summary.db_summary_markdown,
+            db_document=db_summary,
             task_document=task.document,
         )
         tools: dict[str, AgentTool] = {

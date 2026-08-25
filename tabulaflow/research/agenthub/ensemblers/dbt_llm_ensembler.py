@@ -169,7 +169,7 @@ class DbtLLMEnsembler:
 
         system_prompt = jinja2.Template(DBT_LLM_ENSEMBLE_SYSTEM_PROMPT).render(
             dataset_instructions=task.dataset_instructions,
-            db_document=db_summary.db_summary_markdown,
+            db_document=db_summary,
         )
 
         user_prompt = jinja2.Template(DBT_USER_PROMPT_TEMPLATE).render(

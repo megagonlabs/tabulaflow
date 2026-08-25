@@ -24,7 +24,7 @@ def test_agent_capabilities_accept_model_settings() -> None:
     assert column_profiler.model_settings is settings
     assert fk_predictor.model_settings is settings
     assert er_synthesizer.model_settings is settings
-    assert db_summarizer.extra_model_settings is settings
+    assert db_summarizer.model_settings is settings
     assert text_summarizer.model_settings is settings
 
 

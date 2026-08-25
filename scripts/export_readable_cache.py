@@ -1,7 +1,6 @@
 import argparse
 import os
 from tabulaflow.agents import AgentRuntimeConfig
-from tabulaflow.agents.summarization import DBSummary
 from tabulaflow.core import SQLSchema
 from tabulaflow.output.formatting import SQLDDLSchemaFormatter
 from tabulaflow.research.agenthub._erd import ERDiagram, MermaidERDiagramFormatter
@@ -35,13 +34,12 @@ def main() -> None:
     input_dir = os.path.join(cache_dir, "agent", "db_summaries")
     output_dir = os.path.join(args.output_dir, "agent", "db_summaries")
     os.makedirs(output_dir, exist_ok=True)
-    for f in os.listdir(input_dir):
-        output_path = os.path.join(output_dir, f.replace(".json", ".md"))
+    for filename in os.listdir(input_dir):
+        output_path = os.path.join(output_dir, filename)
         if args.skip_exists and os.path.exists(output_path):
             continue
-        summary = DBSummary.model_validate_json(open(os.path.join(input_dir, f)).read())
-        with open(output_path, "w") as f:
-            f.write(summary.db_summary_markdown)
+        with open(output_path, "w") as output_file:
+            output_file.write(open(os.path.join(input_dir, filename)).read())
     print(f"Exported {len(os.listdir(input_dir))} DB summaries to {output_dir}")
 
     input_dir = os.path.join(cache_dir, "agent", "schema_preprocessing")

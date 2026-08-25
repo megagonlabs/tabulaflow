@@ -5,27 +5,25 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, Literal
 
-import jinja2
-from pydantic import BaseModel
 from pydantic_ai.settings import ModelSettings
 
-from tabulaflow.agents._cache import load_or_compute_model
+from tabulaflow.agents._cache import InvalidCacheEntry, load_or_compute
 from tabulaflow.agents.llm import make_agent, make_model_settings
 from tabulaflow.agents.runtime import _get_agent_runtime
 from tabulaflow.agents.trace import Usage
-from tabulaflow.core._cache import stable_cache_key
+from tabulaflow.core._cache import atomic_write_bytes, read_bytes, stable_cache_key
 from tabulaflow.data.protocols import DBConnector
 from tabulaflow.output.formatting.cypher import CypherSchemaFormatter
 from tabulaflow.output.formatting.sql_ddl import SQLDDLSchemaFormatter
 
-_DB_SUMMARY_CACHE_VERSION = "v1"
+_DB_SUMMARY_CACHE_VERSION = "v2"
 _DB_SUMMARIZATION_PROMPT = """
 You are an AI database expert tasked with producing a summary for a database.
 The purpose of the summary is to help database experts explore the database and write database queries efficiently and accurately.
 
 <requirements>
 - The summary should be in markdown format.
-- The summary should be up to {{ max_summary_words }} words. Use fewer words for simple databases and more words only when complexity justifies it.
+- The summary should be up to {max_words} words. Use fewer words for simple databases and more words only when complexity justifies it.
 - The title should be in the format "Database: `<database_name>`".
 - Your output should contain only the summary without further suggestions or explanations. Do not append "end of summary" at the end.
 - Keep the content clear, precise, and concise.
@@ -39,10 +37,6 @@ You are a technical writer that summarizes the given text concisely.
 - Preserve key information and omit unimportant details.
 - Target {max_words} words or fewer.
 """
-
-
-class DBSummary(BaseModel):
-    db_summary_markdown: str
 
 
 def _database_user_prompt(formatted_schema: str) -> str:
@@ -64,15 +58,15 @@ class DBSummarizer:
         self,
         llm: str = "openai-responses:gpt-5.4",
         reasoning_effort: Literal["none", "minimal", "low", "medium", "high", "xhigh"] | None = "high",
-        max_summary_words: int = 4000,
+        max_words: int = 4000,
         model_settings: ModelSettings | None = None,
     ) -> None:
         self.llm = llm
-        self.sql_formatter = SQLDDLSchemaFormatter(max_total_columns=200, compact_table_families=True)
-        self.graph_formatter = CypherSchemaFormatter()
         self.reasoning_effort = reasoning_effort
-        self.max_summary_words = max_summary_words
-        self.extra_model_settings = model_settings
+        self.max_words = max_words
+        self.model_settings = model_settings
+        self._sql_formatter = SQLDDLSchemaFormatter(max_total_columns=200, compact_table_families=True)
+        self._graph_formatter = CypherSchemaFormatter()
         self._usage = Usage.create(llm=llm)
 
     def usage(self) -> Usage:
@@ -86,50 +80,58 @@ class DBSummarizer:
                 "schema": connector.schema.model_dump(mode="json"),
                 "llm": self.llm,
                 "reasoning_effort": self.reasoning_effort,
-                "max_summary_words": self.max_summary_words,
-                "model_settings": self.extra_model_settings,
+                "max_words": self.max_words,
+                "model_settings": self.model_settings,
             }
         )
-        return cache_dir / "agent" / "db_summaries" / f"{_DB_SUMMARY_CACHE_VERSION}@{key}.json"
+        return cache_dir / "agent" / "db_summaries" / f"{_DB_SUMMARY_CACHE_VERSION}@{key}.md"
 
-    async def summarize(self, connector: DBConnector) -> DBSummary:
+    @staticmethod
+    async def _load_cache(path: Path) -> str:
+        try:
+            return (await read_bytes(path)).decode()
+        except UnicodeDecodeError as exc:
+            raise InvalidCacheEntry(f"Invalid cache entry: {path}") from exc
+
+    @staticmethod
+    async def _store_cache(path: Path, value: str) -> None:
+        await atomic_write_bytes(path, value.encode())
+
+    async def summarize(self, connector: DBConnector) -> str:
         config = _get_agent_runtime().config
-        return await load_or_compute_model(
+        return await load_or_compute(
             path=self._cache_path(config.cache_dir, connector),
             mode=config.preprocessing_cache_mode,
-            model_type=DBSummary,
+            load=self._load_cache,
             compute=lambda: self._summarize(connector),
+            store=self._store_cache,
         )
 
-    async def _summarize(self, connector: DBConnector) -> DBSummary:
+    async def _summarize(self, connector: DBConnector) -> str:
         from tabulaflow.agents.tools.run_query import RunQueryTool
 
-        system_prompt = jinja2.Template(_DB_SUMMARIZATION_PROMPT).render(max_summary_words=self.max_summary_words)
+        system_prompt = _DB_SUMMARIZATION_PROMPT.format(max_words=self.max_words)
         if connector.connector_type == "sql":
             sql_schema = connector.schema
             if not sql_schema.tables:
-                return DBSummary(db_summary_markdown=f"# Database: `{sql_schema.name}`\n\nThis database has no tables.")
-            user_prompt = _database_user_prompt(self.sql_formatter.format(sql_schema, include_descriptions=True))
+                return f"# Database: `{sql_schema.name}`\n\nThis database has no tables."
+            user_prompt = _database_user_prompt(self._sql_formatter.format(sql_schema, include_descriptions=True))
         elif connector.connector_type == "property_graph":
             graph_schema = connector.schema
             if not graph_schema.nodes and not graph_schema.relationships:
-                return DBSummary(
-                    db_summary_markdown=f"# Database: `{graph_schema.name}`\n\nThis graph database has no nodes or relationships."
-                )
-            user_prompt = _database_user_prompt(self.graph_formatter.format(graph_schema))
+                return f"# Database: `{graph_schema.name}`\n\nThis graph database has no nodes or relationships."
+            user_prompt = _database_user_prompt(self._graph_formatter.format(graph_schema))
         else:
             raise TypeError(f"Unsupported connector type for DBSummarizer: {connector.connector_type!r}")
 
-        model_settings: dict[str, Any] = dict(
-            make_model_settings(model=self.llm, reasoning_effort=self.reasoning_effort)
-        )
-        model_settings.update(self.extra_model_settings or {})
+        settings: dict[str, Any] = dict(make_model_settings(model=self.llm, reasoning_effort=self.reasoning_effort))
+        settings.update(self.model_settings or {})
         agent = make_agent(
             self.llm,
-            output_type=DBSummary,
+            output_type=str,
             instructions=system_prompt,
             tools=[RunQueryTool(connector).as_pydantic_ai_tool()],
-            model_settings=model_settings,
+            model_settings=settings,
         )
         result = await agent.run(_truncate_database_prompt(user_prompt))
         self._usage += Usage.from_pydantic_ai_usage(result.usage, self.llm)

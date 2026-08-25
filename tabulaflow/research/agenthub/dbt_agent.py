@@ -125,8 +125,7 @@ class DbtAgent:
         working_dir: str = task.working_dir
 
         db_summarizer = DBSummarizer(llm=self.config.db_summarizer_llm)
-        db_summary = await db_summarizer.summarize(db_connector)
-        db_document = db_summary.db_summary_markdown
+        db_document = await db_summarizer.summarize(db_connector)
 
         file_editor = FileEditorTool(working_dir)
 
