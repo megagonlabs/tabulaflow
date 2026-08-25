@@ -17,7 +17,7 @@ if TYPE_CHECKING:
         ToolStarted,
         UsageUpdated,
     )
-    from tabulaflow.agents.chat.session import SYSTEM_PROMPT, ChatSession
+    from tabulaflow.agents.chat.session import ChatSession
 
 _LAZY_EXPORTS = {
     "AnswerDelta": ("tabulaflow.agents.chat.events", "AnswerDelta"),
@@ -26,7 +26,6 @@ _LAZY_EXPORTS = {
     "ChatSession": ("tabulaflow.agents.chat.session", "ChatSession"),
     "Finished": ("tabulaflow.agents.chat.events", "Finished"),
     "NarrationDelta": ("tabulaflow.agents.chat.events", "NarrationDelta"),
-    "SYSTEM_PROMPT": ("tabulaflow.agents.chat.session", "SYSTEM_PROMPT"),
     "ThinkingDelta": ("tabulaflow.agents.chat.events", "ThinkingDelta"),
     "ToolCallOutcome": ("tabulaflow.agents.chat.events", "ToolCallOutcome"),
     "ToolFinished": ("tabulaflow.agents.chat.events", "ToolFinished"),
@@ -42,7 +41,6 @@ __all__ = [
     "ChatSession",
     "Finished",
     "NarrationDelta",
-    "SYSTEM_PROMPT",
     "ThinkingDelta",
     "ToolCallOutcome",
     "ToolFinished",

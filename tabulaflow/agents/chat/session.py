@@ -7,7 +7,6 @@ from collections.abc import AsyncIterator, Callable
 from contextlib import suppress
 from datetime import date
 from importlib.resources import files
-import json
 import logging
 from pathlib import Path
 import sys
@@ -30,27 +29,21 @@ from tabulaflow.agents.tools.browser.tool import (
 )
 from tabulaflow.output.formatting._core import format_connector_summary
 from tabulaflow.agents.llm import make_agent, make_model_settings, model_display_name
-from tabulaflow.output.specs import (
-    ArtifactSpec,
-    OutputSpec,
-    ParameterSpec,
-    SourceSpec,
-    TableArtifactSpec,
-    artifact_source_ids,
-)
 from tabulaflow.agents.chat.events import (
     ChatEvent,
     ChatResult,
-    AnswerDelta,
     Finished,
-    NarrationDelta,
-    ThinkingDelta,
-    ToolFinished,
     ToolProgress,
-    ToolStarted,
     UsageUpdated,
 )
 from tabulaflow.agents.chat.toolset import ChatToolset
+from tabulaflow.agents.chat.turn import (
+    _TextStreamRouter,
+    _build_chat_result,
+    _declared_bundle,
+    _emit_stream_event,
+    _patch_incomplete_messages,
+)
 
 if TYPE_CHECKING:
     from pydantic_ai import Agent
@@ -61,13 +54,12 @@ if TYPE_CHECKING:
     from tabulaflow.agents.trace import Usage
     from tabulaflow.agents.tools.protocols import ToolProgressUpdate
     from tabulaflow.agents.tools.shell.tool import ExecuteBashTool
-    from tabulaflow.agents.tools.show_artifacts import ArtifactBundle
     from tabulaflow.output.store import OutputStore
 
 logger = logging.getLogger(__name__)
 
 
-SYSTEM_PROMPT = files("tabulaflow.agents.chat").joinpath("system_prompt.md").read_text(encoding="utf-8").strip()
+_SYSTEM_PROMPT = files("tabulaflow.agents.chat").joinpath("system_prompt.md").read_text(encoding="utf-8").strip()
 
 
 DEFAULT_SUBAGENT_MODEL: Final = "openai-responses:gpt-5.4-mini"
@@ -83,11 +75,6 @@ SUBAGENT_REQUEST_TIMEOUT: Final = 120.0
 # retried by the SDK — it fails the turn — and the worst legitimate silence
 # (cold prefill of a very long history) can exceed a minute.
 MAIN_REQUEST_TIMEOUT: Final = 180.0
-
-
-def _model_supports_apply_patch(model: str) -> bool:
-    provider, _, model_name = model.partition(":")
-    return provider == "openai-responses" and model_name.startswith("gpt-5")
 
 
 @dataclass
@@ -116,7 +103,7 @@ class ChatSession:
     # (default) uses the baseline alone. Composed between the static prefix and the
     # session tail (see ``_compose_system_prompt``), so the large prefix still
     # prompt-caches; keep it stable across a session's turns. A full prompt replacement
-    # is intentionally not offered: the baseline ``SYSTEM_PROMPT`` is half of a contract
+    # is intentionally not offered: the baseline ``_SYSTEM_PROMPT`` is half of a contract
     # with this module's tools and answer-marker router, so callers extend rather than swap it.
     extra_instructions: str | None = None
     # Where to persist conversation + subagent trajectories. ``None`` (default)
@@ -139,7 +126,7 @@ class ChatSession:
     data_dir: Path | None = None
     last_usage: Usage | None = None
     _message_history: list[ModelMessage] = field(init=False, default_factory=list)
-    _system_prompt: str = field(init=False, default=SYSTEM_PROMPT)
+    _system_prompt: str = field(init=False, default=_SYSTEM_PROMPT)
     _pydantic_ai_agent: Agent[None, str] | None = field(init=False, default=None)
     _output_store: OutputStore = field(init=False)
     _message_store: MessageStore = field(init=False)
@@ -170,10 +157,10 @@ class ChatSession:
         self._pydantic_ai_agent = self._make_agent(self.model)
 
     def _compose_system_prompt(self) -> str:
-        """Assemble the agent's instructions: the baseline ``SYSTEM_PROMPT``, then any
+        """Assemble the agent's instructions: the baseline ``_SYSTEM_PROMPT``, then any
         host ``extra_instructions``, then the ``## Session`` tail. The ordering keeps
         the large static prefix first so it prompt-caches, and the session facts last."""
-        parts = [SYSTEM_PROMPT]
+        parts = [_SYSTEM_PROMPT]
         if self.extra_instructions:
             parts.append(self.extra_instructions.strip())
         session_lines = []
@@ -484,24 +471,11 @@ class ChatSession:
         self._message_history.append(ModelRequest(parts=[UserPromptPart(content=f"[system: {description}]")]))
 
     def _note_model_change(self, previous: str, current: str) -> None:
-        """Record a main-model switch in the conversation so the incoming model
-        doesn't blindly imitate the tool-use patterns in history when its own
-        toolset differs. The edit-tool preference rides on the "now available"
-        delta because the static tool description alone is weak against
-        in-context precedent; a later switch note supersedes it, so it never
-        dangles. No symmetric phrase on removal — file_editor is then the only
-        edit tool, leaving nothing to prefer."""
+        """Record a main-model switch in the conversation history."""
         description = (
             "the model powering this conversation changed from "
             f"{model_display_name(previous)} to {model_display_name(current)}"
         )
-        if self._tools.apply_patch is not None:
-            had = _model_supports_apply_patch(previous)
-            has = _model_supports_apply_patch(current)
-            if has and not had:
-                description += "; the apply_patch tool is now available; prefer it for file edits"
-            elif had and not has:
-                description += "; the apply_patch tool is no longer available"
         self.note_event(description + ".")
 
     def _note_initial_registry(self) -> None:
@@ -543,8 +517,6 @@ class ChatSession:
 
         tools: list[Any] = []
         for tool in self._tools:
-            if tool is self._tools.apply_patch and not _model_supports_apply_patch(model):
-                continue
             if tool is self._tools.web_browser:
                 tools.extend(tool.as_pydantic_ai_tools())
             else:
@@ -718,264 +690,3 @@ class ChatSession:
             path.write_text(trajectory.to_markdown(), encoding="utf-8")
         except Exception:
             logger.exception("Failed to persist trajectory debug file")
-
-
-async def _build_chat_result(
-    answer_text: str,
-    bundle: ArtifactBundle | None,
-    output_store: OutputStore,
-) -> ChatResult:
-    output = _output_spec_from_bundle(bundle, output_store) if bundle is not None else OutputSpec()
-    return ChatResult(
-        text=_strip_answer_marker(answer_text),
-        output=output,
-    )
-
-
-def _output_spec_from_bundle(bundle: "ArtifactBundle", output_store: OutputStore) -> OutputSpec:
-    sources: dict[str, SourceSpec] = {}
-    artifacts: list[ArtifactSpec] = []
-    parameters: dict[str, ParameterSpec] = {}
-
-    def ensure_source(source_id: str) -> None:
-        if source_id in sources:
-            return
-        if source_id.startswith("S"):
-            sources[source_id] = output_store.get_source(source_id)
-        else:
-            raise KeyError(f"No source with id {source_id}")
-
-    for ref in bundle.artifacts:
-        artifact = _artifact_from_ref(ref.id, ref.label, output_store)
-        if artifact is None:
-            continue
-        for source_id in artifact_source_ids(artifact):
-            ensure_source(source_id)
-        artifacts.append(artifact)
-
-    for source in sources.values():
-        for parameter in output_store.source_parameters(source.id):
-            parameters.setdefault(parameter.id, parameter)
-
-    return OutputSpec(parameters=list(parameters.values()), sources=list(sources.values()), artifacts=artifacts)
-
-
-def _artifact_from_ref(ref_id: str, label: str | None, output_store: OutputStore) -> ArtifactSpec | None:
-    if ref_id.startswith("CHART"):
-        try:
-            chart = output_store.get_artifact(ref_id)
-        except (KeyError, ValueError):
-            return None
-        return chart.model_copy(update={"label": label})
-    if ref_id.startswith("MAP"):
-        try:
-            stored_map = output_store.get_artifact(ref_id)
-        except (KeyError, ValueError):
-            return None
-        return stored_map.model_copy(update={"label": label})
-    if ref_id.startswith("GRAPH"):
-        try:
-            graph = output_store.get_artifact(ref_id)
-        except (KeyError, ValueError):
-            return None
-        return graph.model_copy(update={"label": label})
-    if ref_id.startswith("S"):
-        try:
-            output_store.get_source(ref_id)
-        except (KeyError, ValueError):
-            return None
-        return TableArtifactSpec(id=ref_id, label=label, source_id=ref_id)
-    return None
-
-
-def _declared_bundle(completed_results: dict[str, ToolReturnPart]) -> "ArtifactBundle | None":
-    """The bundle from the turn's last successful ``show_artifacts`` call, if any."""
-    from tabulaflow.agents.tools.show_artifacts import ArtifactBundle, ShowArtifactsTool
-
-    for part in reversed(list(completed_results.values())):
-        if part.tool_name == ShowArtifactsTool.name and isinstance(part.metadata, ArtifactBundle):
-            return part.metadata
-    return None
-
-
-def _patch_incomplete_messages(
-    messages: list[ModelMessage],
-    completed_results: dict[str, ToolReturnPart],
-    *,
-    interrupted: bool,
-) -> list[ModelMessage]:
-    """Make ``messages`` valid as ``message_history`` for the next agent run.
-
-    A run that ends before completing — the user interrupts it, or it raises
-    (an LLM API failure, a tool error) — leaves the trailing ``ModelResponse``
-    with unanswered ``ToolCallPart``s, because pydantic-ai's ``CallToolsNode``
-    only appends the aggregated tool-return ``ModelRequest`` once all tools
-    finish. Every provider rejects a tool call with no matching result, so each
-    pending call must be answered: with its real ``ToolReturnPart`` if the result
-    event reached us before the break, otherwise a synthetic placeholder. A
-    trailing system turn records why the run stopped. ``interrupted`` selects
-    the wording (user cancel vs. error).
-    """
-    from pydantic_ai.messages import ModelRequest, ModelResponse, ToolCallPart, ToolReturnPart, UserPromptPart
-
-    cause = "was interrupted by the user" if interrupted else "failed with an error"
-
-    out = list(messages)
-    last = out[-1] if out else None
-    pending = [p for p in last.parts if isinstance(p, ToolCallPart)] if isinstance(last, ModelResponse) else []
-
-    if pending:
-        out.append(
-            ModelRequest(
-                parts=[
-                    completed_results.get(p.tool_call_id)
-                    or ToolReturnPart(
-                        tool_name=p.tool_name,
-                        tool_call_id=p.tool_call_id,
-                        content=(
-                            f"[system: the run {cause} before this result was captured. "
-                            "The tool may have completed first — any side effects "
-                            "(e.g. writes) may or may not have taken effect.]"
-                        ),
-                    )
-                    for p in pending
-                ]
-            )
-        )
-    out.append(ModelRequest(parts=[UserPromptPart(content=f"[system: the previous run {cause}.]")]))
-    return out
-
-
-_ANSWER_OPEN = "<answer>"
-
-
-def _strip_answer_marker(text: str) -> str:
-    """Drop the leading ``<answer>`` marker from a final answer."""
-    stripped = text.lstrip()
-    return stripped[len(_ANSWER_OPEN) :].strip() if stripped.startswith(_ANSWER_OPEN) else stripped
-
-
-class _TextStreamRouter:
-    """Routes a streamed text run into the final answer vs. mid-turn narration.
-
-    A run opening with ``<answer>`` is the **answer**: held back only until that
-    marker is complete, then streamed without it. Any other run is **narration** and
-    streams live. After the first chunk that yields text, :attr:`is_answer` says which
-    it is. Reset via :meth:`reset` per text part.
-
-    Kept here (not the frontend) so the marker convention — owned by this agent's
-    prompt — never crosses the layer boundary.
-    """
-
-    def __init__(self) -> None:
-        self.reset()
-
-    def reset(self) -> None:
-        self._raw = ""
-        self._open = False  # True once text has begun streaming
-        self.is_answer = False  # whether the opened run is the final answer
-
-    def feed(self, chunk: str) -> str:
-        """Accumulate ``chunk``; return its newly emittable text (``""`` until known).
-        Once non-empty, :attr:`is_answer` is set for the run."""
-        self._raw += chunk
-        if self._open:
-            return chunk
-
-        stripped = self._raw.lstrip()
-        if stripped.startswith(_ANSWER_OPEN):
-            answer = stripped[len(_ANSWER_OPEN) :].lstrip("\n")
-            if not answer:
-                return ""  # marker complete but the answer hasn't started yet
-            self._open = True
-            self.is_answer = True
-            return answer
-        if _ANSWER_OPEN.startswith(stripped):
-            return ""  # could still become the marker
-        if stripped:
-            self._open = True
-            self.is_answer = False
-            return self._raw  # narration (or an answer the model failed to mark)
-        return ""
-
-
-# ---------------------------------------------------------------------------
-# Stream event handlers
-# ---------------------------------------------------------------------------
-
-
-async def _emit_stream_event(
-    event: object,
-    emit: Callable[[ChatEvent], None],
-    text_router: "_TextStreamRouter",
-) -> None:
-    """Map one pydantic-ai stream event to ``ChatEvent``s and emit them.
-
-    Events carry structured data only: ``ToolStarted.args`` is the raw call args
-    (a frontend renders them); ``ToolFinished.outcome`` is the typed
-    ``ToolCallOutcome`` from the finished call's own return part, or ``None``
-    for plain completion.
-
-    Text and reasoning each arrive as a ``PartStartEvent`` (the first chunk — its
-    content is non-empty on content-bearing streaming providers) followed by
-    ``PartDeltaEvent``s. Both points must be handled or the first chunk is dropped.
-    """
-    from pydantic_ai.messages import (
-        FunctionToolCallEvent,
-        FunctionToolResultEvent,
-        PartDeltaEvent,
-        PartStartEvent,
-        TextPart,
-        TextPartDelta,
-        ThinkingPart,
-        ThinkingPartDelta,
-        ToolReturnPart,
-    )
-
-    if isinstance(event, FunctionToolCallEvent):
-        emit(
-            ToolStarted(tool_call_id=event.tool_call_id, name=event.part.tool_name, args=_coerce_args(event.part.args))
-        )
-
-    elif isinstance(event, FunctionToolResultEvent):
-        from tabulaflow.agents.tools.protocols import ToolCallOutcome
-
-        tool_name = (event.part.tool_name if event.part is not None else "") or ""
-        result_part = event.part if isinstance(event.part, ToolReturnPart) else None
-        outcome = result_part.metadata if result_part is not None else None
-        if not isinstance(outcome, ToolCallOutcome):
-            outcome = None
-        if outcome is None:
-            content = result_part.content if result_part is not None else None
-            if isinstance(content, str) and content.startswith("(error:"):
-                outcome = ToolCallOutcome(error=True)
-        emit(ToolFinished(tool_call_id=event.tool_call_id, name=tool_name, outcome=outcome))
-
-    elif isinstance(event, PartStartEvent):
-        part = event.part
-        if isinstance(part, ThinkingPart) and part.content:
-            emit(ThinkingDelta(content=part.content))
-        elif isinstance(part, TextPart):
-            text_router.reset()  # a new text part begins a fresh run
-            visible = text_router.feed(part.content) if part.content else ""
-            if visible:
-                emit((AnswerDelta if text_router.is_answer else NarrationDelta)(content=visible))
-
-    elif isinstance(event, PartDeltaEvent):
-        delta = event.delta
-        if isinstance(delta, ThinkingPartDelta) and delta.content_delta:
-            emit(ThinkingDelta(content=delta.content_delta))
-        elif isinstance(delta, TextPartDelta) and delta.content_delta:
-            visible = text_router.feed(delta.content_delta)
-            if visible:
-                emit((AnswerDelta if text_router.is_answer else NarrationDelta)(content=visible))
-
-
-def _coerce_args(args: object) -> dict[str, Any]:
-    """Normalize a tool call's ``args`` (pydantic-ai gives a JSON string or dict) to a dict."""
-    if isinstance(args, str):
-        try:
-            args = json.loads(args)
-        except (json.JSONDecodeError, TypeError):
-            return {}
-    return args if isinstance(args, dict) else {}

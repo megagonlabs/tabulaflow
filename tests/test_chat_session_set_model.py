@@ -155,7 +155,7 @@ def test_chat_session_file_editing_tools_follow_project_dir(tmp_path: Path) -> N
     assert with_project._tools.apply_patch is not None
 
 
-def test_chat_session_tool_list_gates_apply_patch_to_gpt_models(
+def test_chat_session_tool_list_includes_file_tools_for_every_model(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setenv("OPENAI_API_KEY", "sk-test123456789ab4x")
@@ -193,14 +193,14 @@ def test_chat_session_tool_list_gates_apply_patch_to_gpt_models(
     assert "file_editor" not in without_tools
     assert "apply_patch" not in without_tools
     assert "file_editor" in non_gpt_tools
-    assert "apply_patch" not in non_gpt_tools
+    assert "apply_patch" in non_gpt_tools
     assert "file_editor" in openai_non_responses_gpt_tools
-    assert "apply_patch" not in openai_non_responses_gpt_tools
+    assert "apply_patch" in openai_non_responses_gpt_tools
     assert "file_editor" in gpt_tools
     assert "apply_patch" in gpt_tools
 
 
-def test_chat_session_apply_patch_tool_list_updates_on_model_switch(
+def test_chat_session_file_tool_list_is_stable_across_model_switch(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setenv("OPENAI_API_KEY", "sk-test123456789ab4x")
@@ -215,7 +215,7 @@ def test_chat_session_apply_patch_tool_list_updates_on_model_switch(
 
     initial_tools = cast(Any, agent._pydantic_ai_agent)._function_toolset.tools
     assert "file_editor" in initial_tools
-    assert "apply_patch" not in initial_tools
+    assert "apply_patch" in initial_tools
 
     agent.activate_llm_profile(
         model="openai-responses:gpt-5",
@@ -235,7 +235,7 @@ def test_chat_session_apply_patch_tool_list_updates_on_model_switch(
     )
     non_gpt_tools = cast(Any, agent._pydantic_ai_agent)._function_toolset.tools
     assert "file_editor" in non_gpt_tools
-    assert "apply_patch" not in non_gpt_tools
+    assert "apply_patch" in non_gpt_tools
 
 
 def _last_note(agent: ChatSession) -> str:
@@ -265,10 +265,7 @@ def test_activate_llm_profile_notes_model_change(tmp_path: Path, monkeypatch: py
         subagent_model=agent.subagent_model,
         subagent_reasoning_effort=agent.subagent_reasoning_effort,
     )
-    assert _last_note(agent) == (
-        "[system: the model powering this conversation changed from Test to GPT 5; "
-        "the apply_patch tool is now available; prefer it for file edits.]"
-    )
+    assert _last_note(agent) == "[system: the model powering this conversation changed from Test to GPT 5.]"
 
     agent.activate_llm_profile(
         model="test",
@@ -276,10 +273,7 @@ def test_activate_llm_profile_notes_model_change(tmp_path: Path, monkeypatch: py
         subagent_model=agent.subagent_model,
         subagent_reasoning_effort=agent.subagent_reasoning_effort,
     )
-    assert _last_note(agent) == (
-        "[system: the model powering this conversation changed from GPT 5 to Test; "
-        "the apply_patch tool is no longer available.]"
-    )
+    assert _last_note(agent) == "[system: the model powering this conversation changed from GPT 5 to Test.]"
 
     # Effort- or subagent-only changes don't alter the main agent's context: no note.
     history_len = len(agent._message_history)
@@ -292,7 +286,7 @@ def test_activate_llm_profile_notes_model_change(tmp_path: Path, monkeypatch: py
     assert len(agent._message_history) == history_len
 
 
-def test_model_change_note_omits_apply_patch_without_file_tools(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_model_change_note_without_file_tools(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("OPENAI_API_KEY", "sk-test123456789ab4x")
     agent = ChatSession(registry=DBRegistry(), model="test", reasoning_effort="medium")
 

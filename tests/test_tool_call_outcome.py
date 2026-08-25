@@ -8,7 +8,7 @@ from pydantic_ai import ToolReturn
 from pydantic_ai.messages import FunctionToolResultEvent, ToolReturnPart
 from sqlalchemy.ext.asyncio import create_async_engine
 
-from tabulaflow.agents.chat.session import _TextStreamRouter, _emit_stream_event
+from tabulaflow.agents.chat.turn import _TextStreamRouter, _emit_stream_event
 from tabulaflow.agents.chat.events import ChatEvent, ToolFinished
 from tabulaflow.data.registry import DBRegistry
 from tabulaflow.data.sql import SQLConnector

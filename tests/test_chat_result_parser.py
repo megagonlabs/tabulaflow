@@ -6,7 +6,7 @@ import pytest
 from pydantic_ai.messages import ToolReturnPart
 
 from tabulaflow.data.config import SQLConnectorConfig
-from tabulaflow.agents.chat.session import _build_chat_result, _declared_bundle, _TextStreamRouter, _strip_answer_marker
+from tabulaflow.agents.chat.turn import _TextStreamRouter, _build_chat_result, _declared_bundle, _strip_answer_marker
 from tabulaflow.data.registry import DBRegistry
 from tabulaflow.data.sql import SQLConnector
 from tabulaflow.output.specs import ChoiceOption, ChoiceParameter
