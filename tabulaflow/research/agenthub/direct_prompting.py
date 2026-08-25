@@ -12,7 +12,7 @@ from tabulaflow.output.formatting import (
     SQLSchemaFormatter,
     schema_formatter_registry,
 )
-from tabulaflow.research.agenthub.base import agent_registry, BaseAgentConfig
+from tabulaflow.research.agenthub.registry import agent_registry, AgentConfig
 from tabulaflow.research.agenthub.utils import (
     extract_code,
     instrument,
@@ -66,7 +66,7 @@ class DirectPrompting:
     name: ClassVar = "direct_prompting"
     task_type: ClassVar = "simple"
     output_type: ClassVar = "simple"
-    config_cls: ClassVar[type[BaseAgentConfig]] = BasicAgentConfig
+    config_cls: ClassVar[type[AgentConfig]] = BasicAgentConfig
 
     def __init__(
         self,

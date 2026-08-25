@@ -9,7 +9,7 @@ import traceback
 from functools import reduce
 from typing import Any
 
-from tabulaflow.research.benchmarks.base import dataset_registry
+from tabulaflow.research.benchmarks.registry import dataset_registry
 from tabulaflow.research.observability import configure_research_observability
 from tabulaflow.research.agenthub.ensemblers.majority_ensembler import MajorityEnsembler, MajorityEnsemblerConfig
 from tabulaflow.research.agenthub.ensemblers.llm_ensembler import LLMEnsembler, LLMEnsemblerConfig

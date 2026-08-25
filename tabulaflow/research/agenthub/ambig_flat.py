@@ -10,13 +10,13 @@ from tabulaflow.output.formatting import schema_formatter_registry, SQLSchemaFor
 from tabulaflow.agents.trace import Usage, Trajectory
 from tabulaflow.research.types import PredQuery
 from tabulaflow.research.types import AmbigNL2QTask, FlatAmbigNL2QTaskOutput, PredAmbiguityPointInfinite
-from tabulaflow.agents.tools import BaseTool, RunQueryTool
+from tabulaflow.agents.tools import AgentTool, RunQueryTool
 from tabulaflow.agents.tools.run_query import latest_query_execution
 from tabulaflow.research.tools import SearchKeywordsTool, FinishTool, GetSchemaTool, GetColumnDescriptionTool
-from tabulaflow.research.agenthub.base import (
+from tabulaflow.research.agenthub.registry import (
     agent_registry,
-    BaseAgentConfig,
-    BaseUserSimulator,
+    AgentConfig,
+    UserSimulatorProtocol,
     UserMultipleChoiceQuestion,
     UserValueQuestion,
 )
@@ -105,7 +105,7 @@ class AmbigFlatSQLAgent:
     name: ClassVar = "ambig_flat_sql_agent"
     task_type: ClassVar = "ambig"
     output_type: ClassVar = "ambig-flat"
-    config_cls: ClassVar[type[BaseAgentConfig]] = AmbigFlatSQLAgentConfig
+    config_cls: ClassVar[type[AgentConfig]] = AmbigFlatSQLAgentConfig
 
     def __init__(
         self,
@@ -226,7 +226,7 @@ class AmbigFlatSQLAgent:
         question: str,
         interpretations: list[str],
         params: list[PredAmbiguityPointInfinite],
-        user_simulator: BaseUserSimulator,
+        user_simulator: UserSimulatorProtocol,
     ) -> int:
         responses = await asyncio.gather(
             *[
@@ -268,9 +268,9 @@ class AmbigFlatSQLAgent:
                     )
                     pred_query.parameter_values[ap.parameter_name] = ap.intended_parameter_value
 
-    async def _get_tools(self, db_connector: SQLConnectorProtocol) -> dict[str, BaseTool]:
+    async def _get_tools(self, db_connector: SQLConnectorProtocol) -> dict[str, AgentTool]:
         schema = db_connector.schema
-        tools: dict[str, BaseTool] = {}
+        tools: dict[str, AgentTool] = {}
         tools["get_schema"] = GetSchemaTool(schema, self.formatter)
         if self.config.use_column_descriptions:
             tools["get_column_description"] = GetColumnDescriptionTool(schema)
@@ -281,7 +281,7 @@ class AmbigFlatSQLAgent:
 
     @instrument
     async def predict_async(
-        self, task: AmbigNL2QTask, db_connector: SQLConnectorProtocol, user_simulator: BaseUserSimulator
+        self, task: AmbigNL2QTask, db_connector: SQLConnectorProtocol, user_simulator: UserSimulatorProtocol
     ) -> FlatAmbigNL2QTaskOutput:
         t0 = time.time()
 

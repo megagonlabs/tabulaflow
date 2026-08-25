@@ -4,7 +4,7 @@ import logging
 from typing import Any, ClassVar
 import pandas as pd
 from pydantic import BaseModel
-from tabulaflow.research.agenthub.base import BaseAgentConfig
+from tabulaflow.research.agenthub.registry import AgentConfig
 from tabulaflow.research.agenthub.utils import instrument
 from tabulaflow.research.types import SimpleNL2QTask, SimpleNL2QTaskOutput
 from tabulaflow.data import SQLConnectorProtocol
@@ -37,7 +37,7 @@ class MajorityEnsembler:
     name: ClassVar = "majority_ensembler"
     task_type: ClassVar = "simple"
     output_type: ClassVar = "simple"
-    config_cls: ClassVar[type[BaseAgentConfig]] = MajorityEnsemblerConfig
+    config_cls: ClassVar[type[AgentConfig]] = MajorityEnsemblerConfig
 
     def __init__(self, config: MajorityEnsemblerConfig):
         self.config = config

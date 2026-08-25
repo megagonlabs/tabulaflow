@@ -25,7 +25,7 @@ from tabulaflow.data.sql import SQLConnector
 from tabulaflow.core.schema import SQLDialect
 from tabulaflow.agents.trace import Trajectory
 from tabulaflow.agents.tools.add_canonical_name import AddCanonicalNameTool
-from tabulaflow.agents.tools.base import ToolProgressUpdate
+from tabulaflow.agents.tools.protocols import ToolProgressUpdate
 from tabulaflow.agents.extraction.column_types import resolve_column_types
 from tabulaflow.agents.tools.extract_rows_from_documents import ExtractRowsFromDocumentsTool
 from tabulaflow.agents.tools._sql import qualified_table, sa_table

@@ -18,7 +18,7 @@ from pydantic_ai.models import Model
 from pydantic_ai.settings import ModelSettings
 
 from tabulaflow.data.sql import SQLConnector
-from tabulaflow.agents.tools.base import ToolProgressUpdate
+from tabulaflow.agents.tools.protocols import ToolProgressUpdate
 from tabulaflow.agents.extraction.column_types import resolve_column_types
 from tabulaflow.agents.extraction.entity import EntityExtractor
 from tabulaflow.agents.extraction.markdown import DEFAULT_MAX_CHARS, DEFAULT_TARGET_CHARS

@@ -6,7 +6,7 @@ from tabulaflow.output.formatting import schema_formatter_registry, SQLSchemaFor
 from tabulaflow.agents.trace import Usage, Trajectory
 from tabulaflow.research.types import PredQuery
 from tabulaflow.research.types import AmbigNL2QTask, SimpleAmbigNL2QTaskOutput
-from tabulaflow.agents.tools import BaseTool, RunQueryTool
+from tabulaflow.agents.tools import AgentTool, RunQueryTool
 from tabulaflow.agents.tools.run_query import latest_query_execution
 from tabulaflow.research.tools import (
     SearchKeywordsTool,
@@ -15,7 +15,7 @@ from tabulaflow.research.tools import (
     GetSchemaTool,
     GetColumnDescriptionTool,
 )
-from tabulaflow.research.agenthub.base import agent_registry, BaseUserSimulator, BaseAgentConfig
+from tabulaflow.research.agenthub.registry import agent_registry, UserSimulatorProtocol, AgentConfig
 from tabulaflow.research.agenthub.utils import get_max_steps_processor, instrument, BasicAgentConfig
 from tabulaflow.agents.llm import make_agent
 
@@ -55,7 +55,7 @@ class AmbigSimpleSQLAgent:
     name: ClassVar = "ambig_simple_sql_agent"
     task_type: ClassVar = "ambig"
     output_type: ClassVar = "ambig-simple"
-    config_cls: ClassVar[type[BaseAgentConfig]] = AmbigSimpleSQLAgentConfig
+    config_cls: ClassVar[type[AgentConfig]] = AmbigSimpleSQLAgentConfig
 
     def __init__(
         self,
@@ -73,7 +73,7 @@ class AmbigSimpleSQLAgent:
 
     @instrument
     async def predict_async(
-        self, task: AmbigNL2QTask, db_connector: SQLConnectorProtocol, user_simulator: BaseUserSimulator
+        self, task: AmbigNL2QTask, db_connector: SQLConnectorProtocol, user_simulator: UserSimulatorProtocol
     ) -> SimpleAmbigNL2QTaskOutput:
         t0 = time.time()
 
@@ -83,7 +83,7 @@ class AmbigSimpleSQLAgent:
             user_patience = self.config.user_patience  # type: ignore
 
         schema = db_connector.schema
-        tools: dict[str, BaseTool] = {}
+        tools: dict[str, AgentTool] = {}
         tools["get_schema"] = GetSchemaTool(schema, self.formatter)
         if self.config.use_column_descriptions:
             tools["get_column_description"] = GetColumnDescriptionTool(schema)

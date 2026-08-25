@@ -9,13 +9,13 @@ import asyncio
 import logging
 import litellm
 import traceback
-from tabulaflow.research.agenthub.base import agent_registry
-from tabulaflow.research.benchmarks.base import dataset_registry
-from tabulaflow.research.metrics import BaseMetricAggregator, SimpleInferenceMetricsAggregator
+from tabulaflow.research.agenthub.registry import agent_registry
+from tabulaflow.research.benchmarks.registry import dataset_registry
+from tabulaflow.research.metrics import MetricAggregator, SimpleInferenceMetricsAggregator
 from tabulaflow.research.utils import pprint_dict, tqdm_gather_with_exceptions
 from tabulaflow.research.observability import configure_research_observability
 from tabulaflow.research.pipelines.utils import bool_flag
-from tabulaflow.research.agenthub import NL2QAgent, BaseAgentConfig
+from tabulaflow.research.agenthub import NL2QAgent, AgentConfig
 from tabulaflow.research.agenthub.user_simulator import UserSimulator
 from tabulaflow.research.benchmarks.spider2_dbt import prepare_working_env_async
 from tabulaflow.agents.trace import Usage
@@ -111,12 +111,12 @@ def get_empty_output(agent_cls: type[NL2QAgent], task: NL2QTask) -> NL2QTaskOutp
 
 async def run_agent_async(
     agent_cls: type[NL2QAgent],
-    agent_config: BaseAgentConfig,
+    agent_config: AgentConfig,
     dataset: NL2QDataset,
     few_shot_dataset: NL2QDataset | None,
     batch_size: int,
     result_dir: str = "output/test/",
-    metric_aggregators: list[BaseMetricAggregator] = [SimpleInferenceMetricsAggregator()],
+    metric_aggregators: list[MetricAggregator] = [SimpleInferenceMetricsAggregator()],
     sleep_between_batches: float = 0.0,
     verbose: bool = True,
 ) -> NL2QRunResult:
@@ -209,7 +209,7 @@ async def run_agent_async(
     return res
 
 
-def parse_agent_config(agent_cls: type[NL2QAgent], args: argparse.Namespace) -> BaseAgentConfig:
+def parse_agent_config(agent_cls: type[NL2QAgent], args: argparse.Namespace) -> AgentConfig:
     kwargs: dict[str, Any] = {
         "schema_formatter": args.schema_formatter,
     }

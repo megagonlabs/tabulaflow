@@ -633,7 +633,7 @@ class ExecuteBashTool:
                     "Send empty command with is_input=true to check, or C-c to interrupt."
                 )
 
-    # -- BaseTool protocol -----------------------------------------------------
+    # -- AgentTool protocol -----------------------------------------------------
 
     async def execute(
         self,

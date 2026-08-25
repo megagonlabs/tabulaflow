@@ -21,7 +21,7 @@ import sqlalchemy
 from tabulaflow.data.config import SQLConnectorConfig
 from tabulaflow.data.registry import DBRegistry
 from tabulaflow.data.sql import SQLConnector
-from tabulaflow.agents.tools.base import ToolProgressUpdate
+from tabulaflow.agents.tools.protocols import ToolProgressUpdate
 from tabulaflow.agents.tools.run_subagent_for_each_row import RunSubagentForEachRowTool
 
 logger = logging.getLogger(__name__)

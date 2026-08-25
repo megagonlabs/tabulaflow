@@ -1,8 +1,7 @@
-from tabulaflow.research.metrics.base import (
-    BaseNL2QMetric,
+from tabulaflow.research.metrics.registry import (
     NL2QMetric,
     metric_registry,
-    BaseMetricAggregator,
+    MetricAggregator,
 )
 from tabulaflow.research.metrics.aggregators import (
     SimpleAverageAggregator,
@@ -30,9 +29,8 @@ from tabulaflow.research.metrics.cypherbench_ex import CypherBenchEx
 from tabulaflow.research.metrics.spider2_duckdb_match import Spider2DuckdbMatch
 
 __all__ = [
-    "BaseNL2QMetric",
     "NL2QMetric",
-    "BaseMetricAggregator",
+    "MetricAggregator",
     "SimpleAverageAggregator",
     "RealScoreAggregator",
     "SimpleInferenceMetricsAggregator",

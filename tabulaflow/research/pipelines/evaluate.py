@@ -4,11 +4,11 @@ import logging
 import os
 import time
 from tqdm.asyncio import tqdm_asyncio
-from tabulaflow.research.benchmarks.base import dataset_registry
-from tabulaflow.research.metrics.base import metric_registry
+from tabulaflow.research.benchmarks.registry import dataset_registry
+from tabulaflow.research.metrics.registry import metric_registry
 from tabulaflow.research.types import NL2QTaskOutput, NL2QRunResult, NL2QDataset
 from tabulaflow.data import DBConnector
-from tabulaflow.research.metrics import NL2QMetric, BaseMetricAggregator
+from tabulaflow.research.metrics import NL2QMetric, MetricAggregator
 from tabulaflow.research.metrics.aggregators import (
     ByAmbrosiaTaxonomyTypeAggregator,
     SimpleAverageAggregator,
@@ -38,7 +38,7 @@ async def evaluate_async(
     dataset: NL2QDataset,
     metrics: list[NL2QMetric],
     batch_size: int,
-    metric_aggregators: list[BaseMetricAggregator],
+    metric_aggregators: list[MetricAggregator],
     verbose: bool = True,
 ) -> NL2QRunResult:
     for i in range(0, len(result.tasks), batch_size):
@@ -92,7 +92,7 @@ async def main_async() -> None:
                 continue
         metrics.append(metric_cls())
 
-    metric_aggregators: list[BaseMetricAggregator] = [
+    metric_aggregators: list[MetricAggregator] = [
         SimpleAverageAggregator(),
         RealScoreAggregator(),
         ByDBAggregator(),

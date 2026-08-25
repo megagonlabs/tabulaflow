@@ -915,7 +915,7 @@ UserQuestion: TypeAlias = Annotated[
 UserAnswer: TypeAlias = Union[UserFreeTextAnswer, UserMultipleChoiceAnswer, UserValueAnswer]
 
 
-class BaseUserSimulator(Protocol):
+class UserSimulatorProtocol(Protocol):
     @overload
     async def ask_async(self, question: UserFreeTextQuestion) -> UserFreeTextAnswer | None: ...
     @overload

@@ -16,7 +16,7 @@ import duckdb
 import pandas as pd
 
 from tabulaflow.data import DBConnector
-from tabulaflow.research.metrics.base import metric_registry
+from tabulaflow.research.metrics.registry import metric_registry
 from tabulaflow.research.types import DbtTaskOutput, NL2QTaskOutput, NumericOrNull
 
 logger = logging.getLogger(__name__)

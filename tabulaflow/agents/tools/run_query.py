@@ -9,7 +9,7 @@ from tabulaflow.core.results import ExecResult, GraphResult
 from tabulaflow.data.protocols import DBConnector, SQLConnectorProtocol
 from tabulaflow.output.formatting._core import format_dataframe
 from tabulaflow.agents.tools._sql import format_sqlalchemy_error_msg
-from tabulaflow.agents.tools.base import _omit_tool_parameters
+from tabulaflow.agents.tools.protocols import _omit_tool_parameters
 
 _UNSET = object()
 

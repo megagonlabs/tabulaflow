@@ -7,11 +7,11 @@ from tabulaflow.agents.trace import Usage, Trajectory
 from tabulaflow.research.types import PredQuery
 from tabulaflow.research.types import SimpleNL2QTask, SimpleNL2QTaskOutput
 from tabulaflow.agents.summarization import DBSummarizer
-from tabulaflow.agents.tools import BaseTool, GetColumnJsonSchemaTool, GetTableSchemaTool, RunQueryTool
+from tabulaflow.agents.tools import AgentTool, GetColumnJsonSchemaTool, GetTableSchemaTool, RunQueryTool
 from tabulaflow.agents.tools.run_query import latest_query_execution
 from tabulaflow.research.tools import FinishTool
 from tabulaflow.output.formatting import schema_formatter_registry, SQLSchemaFormatter
-from tabulaflow.research.agenthub.base import agent_registry, BaseAgentConfig
+from tabulaflow.research.agenthub.registry import agent_registry, AgentConfig
 from tabulaflow.research.agenthub.utils import (
     get_max_steps_processor,
     instrument,
@@ -88,7 +88,7 @@ class TabulaflowAgent:
     name: ClassVar = "tabulaflow_agent"
     task_type: ClassVar = "simple"
     output_type: ClassVar = "simple"
-    config_cls: ClassVar[type[BaseAgentConfig]] = TabulaflowAgentConfig
+    config_cls: ClassVar[type[AgentConfig]] = TabulaflowAgentConfig
 
     def __init__(
         self,
@@ -119,7 +119,7 @@ class TabulaflowAgent:
             db_document=db_summary.db_summary_markdown,
             task_document=task.document,
         )
-        tools: dict[str, BaseTool] = {
+        tools: dict[str, AgentTool] = {
             "get_table_schema": GetTableSchemaTool(
                 db_connector,
                 self.formatter,

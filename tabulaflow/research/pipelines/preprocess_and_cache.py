@@ -5,10 +5,10 @@ import asyncio
 import logging
 from typing import Any
 from tqdm.asyncio import tqdm_asyncio
-from tabulaflow.research.benchmarks.base import dataset_registry
+from tabulaflow.research.benchmarks.registry import dataset_registry
 from tabulaflow.agents import AgentRuntimeConfig, initialize_agent_runtime
 import tabulaflow.research.agenthub._erd  # noqa: F401 — register the SQL-agent ERD preprocessor
-from tabulaflow.research.preprocessing.base import ResearchPreprocessor, preprocessor_registry
+from tabulaflow.research.preprocessing.registry import ResearchPreprocessor, preprocessor_registry
 from tabulaflow.research.observability import configure_research_observability
 from tabulaflow.research.types import NL2QDataset
 

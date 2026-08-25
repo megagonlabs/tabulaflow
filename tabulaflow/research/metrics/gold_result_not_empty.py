@@ -1,7 +1,7 @@
 from typing import ClassVar
 from tabulaflow.research.types import NL2QTaskOutput
 from tabulaflow.data import DBConnector
-from tabulaflow.research.metrics.base import metric_registry
+from tabulaflow.research.metrics.registry import metric_registry
 from tabulaflow.research.metrics.utils import get_final_gold_query
 
 

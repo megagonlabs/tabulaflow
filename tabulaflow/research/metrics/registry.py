@@ -4,7 +4,7 @@ from tabulaflow.data import DBConnector
 from tabulaflow.core.registry import ClassRegistry
 
 
-class BaseNL2QMetric(Protocol):
+class NL2QMetric(Protocol):
     name: ClassVar[str]
     compatible_output_types: ClassVar[list[str]]
 
@@ -13,10 +13,8 @@ class BaseNL2QMetric(Protocol):
     ) -> NumericOrNull | dict[str, NumericOrNull]: ...
 
 
-class BaseMetricAggregator(Protocol):
+class MetricAggregator(Protocol):
     def aggregate(self, result: NL2QRunResult) -> dict[str, Any]: ...
 
-
-NL2QMetric = BaseNL2QMetric
 
 metric_registry = ClassRegistry[NL2QMetric]("metric")

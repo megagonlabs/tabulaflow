@@ -14,7 +14,7 @@ from tabulaflow.data import DBConnector
 from tabulaflow.agents.trace import Trajectory, SystemMessage, UserMessage, AssistantMessage, Usage
 from tabulaflow.research.types import PredQuery
 from tabulaflow.research.types import SimpleNL2QTask, SimpleNL2QTaskOutput
-from tabulaflow.research.agenthub.base import agent_registry, BaseAgentConfig
+from tabulaflow.research.agenthub.registry import agent_registry, AgentConfig
 from tabulaflow.research.agenthub.utils import BasicAgentConfig, extract_code, instrument
 
 SYSTEM_PROMPT = """
@@ -61,7 +61,7 @@ class SimpleZeroShotNL2Q:
     name: ClassVar = "simple_zero_shot"
     task_type: ClassVar = "simple"
     output_type: ClassVar = "simple"
-    config_cls: ClassVar[type[BaseAgentConfig]] = SimpleZeroShotNL2QConfig
+    config_cls: ClassVar[type[AgentConfig]] = SimpleZeroShotNL2QConfig
 
     def __init__(
         self,

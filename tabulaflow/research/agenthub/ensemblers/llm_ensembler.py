@@ -6,7 +6,7 @@ import jinja2
 from pydantic import BaseModel
 from pydantic_ai import ToolOutput
 
-from tabulaflow.research.agenthub.base import BaseAgentConfig
+from tabulaflow.research.agenthub.registry import AgentConfig
 from tabulaflow.research.agenthub.ensemblers.majority_ensembler import _normalize_value
 from tabulaflow.research.agenthub.utils import instrument
 from tabulaflow.data import SQLConnectorProtocol
@@ -103,7 +103,7 @@ class LLMEnsembler:
     name: ClassVar = "llm_ensembler"
     task_type: ClassVar = "simple"
     output_type: ClassVar = "simple"
-    config_cls: ClassVar[type[BaseAgentConfig]] = LLMEnsemblerConfig
+    config_cls: ClassVar[type[AgentConfig]] = LLMEnsemblerConfig
 
     def __init__(self, config: LLMEnsemblerConfig):
         self.config = config

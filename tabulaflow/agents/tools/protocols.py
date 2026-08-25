@@ -9,7 +9,7 @@ from pydantic_ai.settings import ModelSettings
 from pydantic_ai.tools import ToolDefinition, ToolPrepareFunc
 
 
-BaseToolMetrics: TypeAlias = BaseModel
+ToolMetrics: TypeAlias = BaseModel
 
 _M = TypeVar("_M", bound=BaseModel)
 
@@ -50,7 +50,7 @@ def sum_tool_metrics(metrics_iter: Iterable[_M], cls: type[_M]) -> _M:
     return cls(**totals)
 
 
-class BaseTool(Protocol):
+class AgentTool(Protocol):
     """Protocol for single-action agent tools.
 
     Attributes:
@@ -63,7 +63,7 @@ class BaseTool(Protocol):
 
     def as_pydantic_ai_tool(self) -> Tool | ToolOutput[Any]: ...
 
-    def metrics(self) -> BaseToolMetrics: ...
+    def metrics(self) -> ToolMetrics: ...
 
 
 @runtime_checkable

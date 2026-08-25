@@ -10,7 +10,7 @@ from typing import Any, ClassVar, cast
 
 import jinja2
 
-from tabulaflow.research.agenthub.base import agent_registry, BaseAgentConfig
+from tabulaflow.research.agenthub.registry import agent_registry, AgentConfig
 from tabulaflow.research.agenthub.utils import BasicAgentConfig, get_max_steps_processor, instrument
 from tabulaflow.data import SQLConnectorProtocol
 from tabulaflow.output.formatting import SQLSchemaFormatter, schema_formatter_registry
@@ -105,7 +105,7 @@ class DbtAgent:
     name: ClassVar = "dbt_agent"
     task_type: ClassVar = "dbt"
     output_type: ClassVar = "dbt"
-    config_cls: ClassVar[type[BaseAgentConfig]] = DbtAgentConfig
+    config_cls: ClassVar[type[AgentConfig]] = DbtAgentConfig
 
     def __init__(self, config: DbtAgentConfig):
         self.config = config

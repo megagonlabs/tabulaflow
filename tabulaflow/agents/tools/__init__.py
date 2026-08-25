@@ -7,8 +7,8 @@ if TYPE_CHECKING:
     from tabulaflow.agents.tools.add_canonical_name import AddCanonicalNameTool
     from tabulaflow.agents.tools.filesystem.editor import FileEditorRoot, FileEditorTool, FileEditorToolMetrics
     from tabulaflow.agents.tools.filesystem.patch import ApplyPatchTool
-    from tabulaflow.agents.tools.base import (
-        BaseTool,
+    from tabulaflow.agents.tools.protocols import (
+        AgentTool,
         LLMProfileTool,
         ProgressReportingTool,
         ToolCallOutcome,
@@ -40,7 +40,7 @@ _LAZY_EXPORTS = {
     "ApplyPatchTool": ("tabulaflow.agents.tools.filesystem.patch", "ApplyPatchTool"),
     "ArtifactBundle": ("tabulaflow.agents.tools.show_artifacts", "ArtifactBundle"),
     "ArtifactRef": ("tabulaflow.agents.tools.show_artifacts", "ArtifactRef"),
-    "BaseTool": ("tabulaflow.agents.tools.base", "BaseTool"),
+    "AgentTool": ("tabulaflow.agents.tools.protocols", "AgentTool"),
     "BashToolMetrics": ("tabulaflow.agents.tools.shell.tool", "BashToolMetrics"),
     "ConnectDataSourceTool": ("tabulaflow.agents.tools.connect_data_source", "ConnectDataSourceTool"),
     "CreateParameterizedSourceTool": (
@@ -60,8 +60,8 @@ _LAZY_EXPORTS = {
         "GetColumnJsonSchemaTool",
     ),
     "GetTableSchemaTool": ("tabulaflow.agents.tools.get_table_schema", "GetTableSchemaTool"),
-    "LLMProfileTool": ("tabulaflow.agents.tools.base", "LLMProfileTool"),
-    "ProgressReportingTool": ("tabulaflow.agents.tools.base", "ProgressReportingTool"),
+    "LLMProfileTool": ("tabulaflow.agents.tools.protocols", "LLMProfileTool"),
+    "ProgressReportingTool": ("tabulaflow.agents.tools.protocols", "ProgressReportingTool"),
     "RegistryGetColumnJsonSchemaTool": (
         "tabulaflow.agents.tools.registry.get_column_json_schema",
         "RegistryGetColumnJsonSchemaTool",
@@ -89,8 +89,8 @@ _LAZY_EXPORTS = {
         "RunSubagentForEachRowTool",
     ),
     "ShowArtifactsTool": ("tabulaflow.agents.tools.show_artifacts", "ShowArtifactsTool"),
-    "ToolCallOutcome": ("tabulaflow.agents.tools.base", "ToolCallOutcome"),
-    "ToolProgressUpdate": ("tabulaflow.agents.tools.base", "ToolProgressUpdate"),
+    "ToolCallOutcome": ("tabulaflow.agents.tools.protocols", "ToolCallOutcome"),
+    "ToolProgressUpdate": ("tabulaflow.agents.tools.protocols", "ToolProgressUpdate"),
     "WebBrowserManager": ("tabulaflow.agents.tools.browser.manager", "WebBrowserManager"),
     "WebBrowserTool": ("tabulaflow.agents.tools.browser.tool", "WebBrowserTool"),
 }
@@ -100,7 +100,7 @@ __all__ = [
     "ApplyPatchTool",
     "ArtifactBundle",
     "ArtifactRef",
-    "BaseTool",
+    "AgentTool",
     "BashToolMetrics",
     "ConnectDataSourceTool",
     "CreateParameterizedSourceTool",

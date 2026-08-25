@@ -27,7 +27,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from tabulaflow.output.specs import OutputSpec
 from tabulaflow.agents.trace import Usage
-from tabulaflow.agents.tools.base import ToolCallOutcome as ToolCallOutcome
+from tabulaflow.agents.tools.protocols import ToolCallOutcome as ToolCallOutcome
 
 
 # ---------------------------------------------------------------------------

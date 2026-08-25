@@ -11,7 +11,7 @@ from tabulaflow.data.sql import SQLConnector
 from tabulaflow.output.specs import FixedResultSource
 
 from tabulaflow.output.store import OutputStore, SourceResolutionError
-from tabulaflow.agents.tools.base import ToolCallOutcome
+from tabulaflow.agents.tools.protocols import ToolCallOutcome
 
 
 class TransferSourceTableTool:

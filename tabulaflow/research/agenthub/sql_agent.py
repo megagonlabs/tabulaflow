@@ -16,11 +16,11 @@ from tabulaflow.research.types import PredQuery
 from tabulaflow.research.types import ExtraPredInfo, NL2QDataset, SimpleNL2QTask, SimpleNL2QTaskOutput
 from tabulaflow.research.preprocessing import SchemaPreprocessor
 from tabulaflow.research.question_embedder import QuestionEmbedder
-from tabulaflow.agents.tools import BaseTool, RunQueryTool
+from tabulaflow.agents.tools import AgentTool, RunQueryTool
 from tabulaflow.agents.tools.run_query import latest_query_execution
 from tabulaflow.research.tools import SearchKeywordsTool, FinishTool
 from tabulaflow.output.formatting import SQLSchemaFormatter, schema_formatter_registry
-from tabulaflow.research.agenthub.base import agent_registry, BaseAgentConfig
+from tabulaflow.research.agenthub.registry import agent_registry, AgentConfig
 from tabulaflow.research.agenthub.utils import (
     extract_code,
     get_max_steps_processor,
@@ -183,7 +183,7 @@ class SchemaLinker:
     async def _generate_sql_async(self, ctx: SQLAgentContext, task: SimpleNL2QTask) -> PredQuery:
         db_connector = ctx.db_connector
 
-        tools: dict[str, BaseTool] = {
+        tools: dict[str, AgentTool] = {
             # "get_schema": GetSchemaTool(ctx.preprocessed_schema, ctx.schema_formatter),
             # "get_column_description": GetColumnDescriptionTool(ctx.preprocessed_schema),
             "search_keywords": SearchKeywordsTool(db_connector),
@@ -390,7 +390,7 @@ class SQLAgent:
     name: ClassVar = "sql_agent"
     task_type: ClassVar = "simple"
     output_type: ClassVar = "simple"
-    config_cls: ClassVar[type[BaseAgentConfig]] = SQLAgentConfig
+    config_cls: ClassVar[type[AgentConfig]] = SQLAgentConfig
 
     def __init__(
         self,
@@ -501,7 +501,7 @@ class SQLAgent:
             linked_schema = ctx.preprocessed_schema
         linked_er_diagram = ctx.er_diagram.trim(linked_schema.table_refs(), case_insensitive=True)  # type: ignore
 
-        tools: dict[str, BaseTool] = {
+        tools: dict[str, AgentTool] = {
             # "get_schema": GetSchemaTool(linked_schema, self.formatter),
             # "get_column_description": GetColumnDescriptionTool(linked_schema),
             "search_keywords": SearchKeywordsTool(db_connector),

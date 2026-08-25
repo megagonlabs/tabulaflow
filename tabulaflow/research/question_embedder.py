@@ -11,7 +11,7 @@ from tabulaflow.agents._cache import InvalidCacheEntry, load_or_compute
 from tabulaflow.agents.trace import Usage
 from tabulaflow.agents.runtime import _get_agent_runtime
 from tabulaflow.core._cache import atomic_write_bytes, read_bytes, stable_cache_key
-from tabulaflow.research.preprocessing.base import preprocessor_registry
+from tabulaflow.research.preprocessing.registry import preprocessor_registry
 from tabulaflow.research.types import NL2QDataset, NL2QTask
 from tabulaflow.agents.llm import make_agent, embedding_throttle
 

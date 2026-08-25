@@ -1,8 +1,8 @@
-from tabulaflow.research.agenthub.base import (
-    BaseAgentConfig,
-    BaseSimpleSQLAgent,
-    BaseAmbigSQLAgent,
-    BaseDbtAgent,
+from tabulaflow.research.agenthub.registry import (
+    AgentConfig,
+    SimpleSQLAgentProtocol,
+    AmbigSQLAgentProtocol,
+    DbtAgentProtocol,
     NL2QAgent,
     agent_registry,
 )
@@ -18,11 +18,11 @@ from tabulaflow.research.agenthub.dbt_agent import DbtAgent
 from tabulaflow.research.agenthub.utils import BasicAgentConfig
 
 __all__ = [
-    "BaseSimpleSQLAgent",
-    "BaseAmbigSQLAgent",
-    "BaseDbtAgent",
+    "SimpleSQLAgentProtocol",
+    "AmbigSQLAgentProtocol",
+    "DbtAgentProtocol",
     "NL2QAgent",
-    "BaseAgentConfig",
+    "AgentConfig",
     "BasicAgentConfig",
     "SimpleZeroShotNL2Q",
     "SimpleZeroShotNL2QConfig",

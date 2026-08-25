@@ -5,7 +5,7 @@ from pydantic_ai import Agent, ToolOutput
 import asyncio
 import jinja2
 from litellm import token_counter
-from tabulaflow.research.agenthub.base import (
+from tabulaflow.research.agenthub.registry import (
     UserQuestion,
     UserAnswer,
     UserFreeTextQuestion,

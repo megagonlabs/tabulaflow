@@ -1,10 +1,10 @@
-from typing import Protocol, ClassVar, Sequence, Mapping, TypeAlias
+from typing import Protocol, ClassVar, Sequence, Mapping
 from tabulaflow.research.types import NL2QDataset, NL2QTask
 from tabulaflow.data import DBConnector
 from tabulaflow.core.registry import ClassRegistry
 
 
-class BaseNL2QDatasetLoader(Protocol):
+class NL2QDatasetLoader(Protocol):
     """Protocol for NL2Q dataset loaders.
 
     Implementations provide access to benchmark tasks, database connectors,
@@ -40,9 +40,6 @@ class BaseNL2QDatasetLoader(Protocol):
     ) -> NL2QDataset:
         """Loads a complete dataset split (tasks + connectors)."""
         ...
-
-
-NL2QDatasetLoader: TypeAlias = BaseNL2QDatasetLoader
 
 
 dataset_registry = ClassRegistry[NL2QDatasetLoader]("dataset")

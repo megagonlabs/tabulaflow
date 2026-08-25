@@ -8,7 +8,7 @@ from pydantic_ai import Tool, ToolReturn
 
 from tabulaflow.data.protocols import DBConnector
 from tabulaflow.data.registry import DBRegistry
-from tabulaflow.agents.tools.base import ToolCallOutcome, _omit_tool_parameters, sum_tool_metrics
+from tabulaflow.agents.tools.protocols import ToolCallOutcome, _omit_tool_parameters, sum_tool_metrics
 from tabulaflow.output.store import OutputStore
 from tabulaflow.agents.tools.run_query import LLMParameter, RunQueryTool, RunQueryToolMetrics
 

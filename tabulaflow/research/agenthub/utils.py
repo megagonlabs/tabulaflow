@@ -12,7 +12,7 @@ from tabulaflow.agents.trace import Usage, Trajectory
 from tabulaflow.research.types import NL2QTask
 from tabulaflow.data import DBConnector
 from tabulaflow.agents.llm import make_model_settings
-from tabulaflow.agents.tools import BaseTool
+from tabulaflow.agents.tools import AgentTool
 from tabulaflow.output.formatting import SQLSchemaFormatter
 
 
@@ -70,7 +70,7 @@ class TaskRunContext:
     preprocessed_schema: SQLSchema
     schema_formatter: SQLSchemaFormatter
     usage: Usage
-    tools: dict[str, BaseTool]
+    tools: dict[str, AgentTool]
     trajectories: list[Trajectory]
 
 

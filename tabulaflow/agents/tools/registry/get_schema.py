@@ -8,7 +8,7 @@ from pydantic_ai import Tool, ToolReturn
 from tabulaflow.data.registry import DBRegistry
 from tabulaflow.output.formatting.cypher import CypherSchemaFormatter
 from tabulaflow.output.formatting.sql_ddl import SQLDDLSchemaFormatter
-from tabulaflow.agents.tools.base import ToolCallOutcome, _omit_tool_parameters
+from tabulaflow.agents.tools.protocols import ToolCallOutcome, _omit_tool_parameters
 
 _DEFAULT_MAX_CHARS = 50000
 

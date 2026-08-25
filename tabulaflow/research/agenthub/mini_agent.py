@@ -7,7 +7,7 @@ from tabulaflow.data import DBConnector
 from tabulaflow.agents.trace import Usage, Trajectory
 from tabulaflow.research.types import PredQuery
 from tabulaflow.research.types import SimpleNL2QTask, SimpleNL2QTaskOutput
-from tabulaflow.agents.tools import BaseTool, RunQueryTool
+from tabulaflow.agents.tools import AgentTool, RunQueryTool
 from tabulaflow.agents.tools.run_query import latest_query_execution
 from tabulaflow.research.tools import FinishTool
 from tabulaflow.output.formatting import (
@@ -15,7 +15,7 @@ from tabulaflow.output.formatting import (
     SQLSchemaFormatter,
     schema_formatter_registry,
 )
-from tabulaflow.research.agenthub.base import agent_registry, BaseAgentConfig
+from tabulaflow.research.agenthub.registry import agent_registry, AgentConfig
 from tabulaflow.research.agenthub.utils import (
     get_max_steps_processor,
     instrument,
@@ -77,7 +77,7 @@ class MiniAgent:
     name: ClassVar = "mini_agent"
     task_type: ClassVar = "simple"
     output_type: ClassVar = "simple"
-    config_cls: ClassVar[type[BaseAgentConfig]] = BasicAgentConfig
+    config_cls: ClassVar[type[AgentConfig]] = BasicAgentConfig
 
     def __init__(
         self,
@@ -118,7 +118,7 @@ class MiniAgent:
             document=task.document,
         )
 
-        tools: dict[str, BaseTool] = {
+        tools: dict[str, AgentTool] = {
             "run_query": RunQueryTool(db_connector),
             "finish": FinishTool(),
         }

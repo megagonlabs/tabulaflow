@@ -7,7 +7,7 @@ from tabulaflow.data.protocols import SQLConnectorProtocol
 from tabulaflow.core.schema import SQLColumnSchema, TableRef
 from tabulaflow.output.formatting.schema import SQLSchemaFormatter
 from tabulaflow.agents.tools._sql import find_table
-from tabulaflow.agents.tools.base import _omit_tool_parameters
+from tabulaflow.agents.tools.protocols import _omit_tool_parameters
 
 
 class GetTableSchemaToolMetrics(BaseModel):

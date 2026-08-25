@@ -1,4 +1,4 @@
-from tabulaflow.research.benchmarks.base import BaseNL2QDatasetLoader, NL2QDatasetLoader, dataset_registry
+from tabulaflow.research.benchmarks.registry import NL2QDatasetLoader, dataset_registry
 from tabulaflow.research.benchmarks.bird_sql import BirdSQLDatasetLoader
 from tabulaflow.research.benchmarks.spider2_snow import Spider2SnowDatasetLoader
 from tabulaflow.research.benchmarks.spider2_lite import Spider2LiteDatasetLoader
@@ -10,7 +10,6 @@ from tabulaflow.research.benchmarks.cypherbench import CypherBenchDatasetLoader
 
 
 __all__ = [
-    "BaseNL2QDatasetLoader",
     "NL2QDatasetLoader",
     "BirdSQLDatasetLoader",
     "Spider2SnowDatasetLoader",

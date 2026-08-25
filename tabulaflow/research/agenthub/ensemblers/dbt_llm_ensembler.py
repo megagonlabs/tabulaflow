@@ -11,7 +11,7 @@ import jinja2
 from pydantic import BaseModel
 from pydantic_ai import ToolOutput
 
-from tabulaflow.research.agenthub.base import BaseAgentConfig
+from tabulaflow.research.agenthub.registry import AgentConfig
 from tabulaflow.research.agenthub.utils import instrument
 from tabulaflow.data import SQLConnectorProtocol
 from tabulaflow.output.formatting import SQLDDLSchemaFormatter
@@ -98,7 +98,7 @@ class DbtLLMEnsembler:
     name: ClassVar = "dbt_llm_ensembler"
     task_type: ClassVar = "dbt"
     output_type: ClassVar = "dbt"
-    config_cls: ClassVar[type[BaseAgentConfig]] = DbtLLMEnsemblerConfig
+    config_cls: ClassVar[type[AgentConfig]] = DbtLLMEnsemblerConfig
 
     def __init__(self, config: DbtLLMEnsemblerConfig):
         self.config = config

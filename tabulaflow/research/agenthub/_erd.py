@@ -19,7 +19,7 @@ from tabulaflow.core._cache import stable_cache_key
 from tabulaflow.core import SQLSchema, TableRef
 from tabulaflow.data import SQLConnectorProtocol
 from tabulaflow.output.formatting import SQLDDLSchemaFormatter, SQLSchemaFormatter
-from tabulaflow.research.preprocessing.base import preprocessor_registry
+from tabulaflow.research.preprocessing.registry import preprocessor_registry
 
 
 class EntitySourceTable(BaseModel):

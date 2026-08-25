@@ -1,7 +1,7 @@
 from typing import ClassVar
 from pydantic_ai import Tool, RunContext, ToolDefinition
 from pydantic import BaseModel
-from tabulaflow.research.types import BaseUserSimulator, UserFreeTextQuestion
+from tabulaflow.research.types import UserSimulatorProtocol, UserFreeTextQuestion
 
 
 class AskUserToolMetrics(BaseModel):
@@ -12,7 +12,7 @@ class AskUserToolMetrics(BaseModel):
 class AskUserTool:
     name: ClassVar = "ask_user"
 
-    def __init__(self, user_simulator: BaseUserSimulator, patience: int | None = None):
+    def __init__(self, user_simulator: UserSimulatorProtocol, patience: int | None = None):
         self.user_simulator = user_simulator
         self.patience = patience
         self._metrics = AskUserToolMetrics()

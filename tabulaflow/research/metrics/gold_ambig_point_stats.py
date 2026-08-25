@@ -7,7 +7,7 @@ from tabulaflow.research.types import (
     NumericOrNull,
 )
 from tabulaflow.data import DBConnector
-from tabulaflow.research.metrics.base import metric_registry
+from tabulaflow.research.metrics.registry import metric_registry
 
 AmbigTaskOutput = SimpleAmbigNL2QTaskOutput | FlatAmbigNL2QTaskOutput | StructuredAmbigNL2QTaskOutput
 

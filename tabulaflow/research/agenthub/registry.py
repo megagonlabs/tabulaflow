@@ -9,7 +9,7 @@ from tabulaflow.research.types import (
     FlatAmbigNL2QTaskOutput,
     StructuredAmbigNL2QTaskOutput,
     DbtTaskOutput,
-    BaseUserSimulator,
+    UserSimulatorProtocol,
     UserFreeTextQuestion,
     UserMultipleChoiceQuestion,
     UserValueQuestion,
@@ -23,13 +23,13 @@ from tabulaflow.data import SQLConnectorProtocol, DBConnector
 from tabulaflow.core.registry import ClassRegistry
 
 __all__ = [
-    "BaseAgentConfig",
-    "BaseSimpleSQLAgent",
-    "BaseAmbigSQLAgent",
-    "BaseDbtAgent",
+    "AgentConfig",
+    "SimpleSQLAgentProtocol",
+    "AmbigSQLAgentProtocol",
+    "DbtAgentProtocol",
     "NL2QAgent",
     "agent_registry",
-    "BaseUserSimulator",
+    "UserSimulatorProtocol",
     "UserFreeTextQuestion",
     "UserMultipleChoiceQuestion",
     "UserValueQuestion",
@@ -40,39 +40,39 @@ __all__ = [
     "UserAnswer",
 ]
 
-BaseAgentConfig: TypeAlias = BaseModel
+AgentConfig: TypeAlias = BaseModel
 
 
-class BaseSimpleSQLAgent(Protocol):
+class SimpleSQLAgentProtocol(Protocol):
     name: ClassVar[str]
     task_type: ClassVar[str]
     output_type: ClassVar[str]
-    config_cls: ClassVar[type[BaseAgentConfig]]
+    config_cls: ClassVar[type[AgentConfig]]
 
     async def predict_async(self, task: SimpleNL2QTask, db_connector: DBConnector) -> SimpleNL2QTaskOutput: ...
 
 
-class BaseAmbigSQLAgent(Protocol):
+class AmbigSQLAgentProtocol(Protocol):
     name: ClassVar[str]
     task_type: ClassVar[str]
     output_type: ClassVar[str]
-    config_cls: ClassVar[type[BaseAgentConfig]]
+    config_cls: ClassVar[type[AgentConfig]]
 
     async def predict_async(
-        self, task: AmbigNL2QTask, db_connector: SQLConnectorProtocol, user_simulator: BaseUserSimulator
+        self, task: AmbigNL2QTask, db_connector: SQLConnectorProtocol, user_simulator: UserSimulatorProtocol
     ) -> SimpleAmbigNL2QTaskOutput | FlatAmbigNL2QTaskOutput | StructuredAmbigNL2QTaskOutput: ...
 
 
-class BaseDbtAgent(Protocol):
+class DbtAgentProtocol(Protocol):
     name: ClassVar[str]
     task_type: ClassVar[str]
     output_type: ClassVar[str]
-    config_cls: ClassVar[type[BaseAgentConfig]]
+    config_cls: ClassVar[type[AgentConfig]]
 
     async def predict_async(self, task: DbtTask, db_connector: SQLConnectorProtocol) -> DbtTaskOutput: ...
 
 
-NL2QAgent: TypeAlias = Union[BaseSimpleSQLAgent, BaseAmbigSQLAgent, BaseDbtAgent]
+NL2QAgent: TypeAlias = Union[SimpleSQLAgentProtocol, AmbigSQLAgentProtocol, DbtAgentProtocol]
 
 
 agent_registry = ClassRegistry[NL2QAgent]("agent")

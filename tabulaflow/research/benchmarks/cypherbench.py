@@ -13,7 +13,7 @@ import os
 import random
 from typing import Any, ClassVar, Mapping
 
-from tabulaflow.research.benchmarks.base import dataset_registry
+from tabulaflow.research.benchmarks.registry import dataset_registry
 from tabulaflow.data import Neo4jConnector, Neo4jConnectorConfig
 from tabulaflow.research.types import GoldQuery
 from tabulaflow.research.types import NL2QDataset, SimpleNL2QTask

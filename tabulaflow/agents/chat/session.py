@@ -59,7 +59,7 @@ if TYPE_CHECKING:
     from tabulaflow.data.registry import DBRegistry
     from tabulaflow.data.sql import SQLConnector
     from tabulaflow.agents.trace import Usage
-    from tabulaflow.agents.tools.base import ToolProgressUpdate
+    from tabulaflow.agents.tools.protocols import ToolProgressUpdate
     from tabulaflow.agents.tools.shell.tool import ExecuteBashTool
     from tabulaflow.agents.tools.show_artifacts import ArtifactBundle
     from tabulaflow.output.store import OutputStore
@@ -151,7 +151,7 @@ class ChatSession:
     _active_emit: Callable[[ChatEvent], None] | None = field(init=False, default=None)
 
     def __post_init__(self) -> None:
-        from tabulaflow.agents.tools.base import ProgressReportingTool
+        from tabulaflow.agents.tools.protocols import ProgressReportingTool
         from tabulaflow.output.store import OutputStore
 
         self._output_store = OutputStore(spill_connector=self.workspace, registry=self.registry)
@@ -400,7 +400,7 @@ class ChatSession:
 
     def _apply_subagent_profile(self, *, model: str, reasoning_effort: str) -> None:
         """Update the tools whose internal helper LLM follows the app subagent profile."""
-        from tabulaflow.agents.tools.base import LLMProfileTool
+        from tabulaflow.agents.tools.protocols import LLMProfileTool
 
         model_settings = self._subagent_model_settings(model=model, reasoning_effort=reasoning_effort)
         for tool in self._tools:
@@ -938,7 +938,7 @@ async def _emit_stream_event(
         )
 
     elif isinstance(event, FunctionToolResultEvent):
-        from tabulaflow.agents.tools.base import ToolCallOutcome
+        from tabulaflow.agents.tools.protocols import ToolCallOutcome
 
         tool_name = (event.part.tool_name if event.part is not None else "") or ""
         result_part = event.part if isinstance(event.part, ToolReturnPart) else None

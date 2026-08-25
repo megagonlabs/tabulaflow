@@ -11,7 +11,7 @@ from tabulaflow.agents.trace import Usage
 from tabulaflow.core._cache import stable_cache_key
 from tabulaflow.core.schema import SQLSchema
 from tabulaflow.data.protocols import SQLConnectorProtocol
-from tabulaflow.research.preprocessing.base import preprocessor_registry
+from tabulaflow.research.preprocessing.registry import preprocessor_registry
 from tabulaflow.research.preprocessing.column_profiler import ColumnProfiler
 from tabulaflow.research.preprocessing.fk_predictor import ForeignKeyPredictor
 

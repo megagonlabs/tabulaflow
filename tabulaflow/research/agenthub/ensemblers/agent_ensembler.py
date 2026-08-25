@@ -6,7 +6,7 @@ from typing import Any, ClassVar, cast
 import jinja2
 from pydantic_ai import ModelRetry, RunContext, ToolOutput
 
-from tabulaflow.research.agenthub.base import BaseAgentConfig
+from tabulaflow.research.agenthub.registry import AgentConfig
 from tabulaflow.research.agenthub.ensemblers.majority_ensembler import _normalize_value
 from tabulaflow.research.agenthub.utils import BasicAgentConfig, get_max_steps_processor, instrument
 from tabulaflow.data import SQLConnectorProtocol
@@ -15,7 +15,7 @@ from tabulaflow.research.pipelines.populate_exec_results import populate_task_as
 from tabulaflow.agents.summarization import DBSummarizer
 from tabulaflow.agents.trace import Trajectory, Usage
 from tabulaflow.research.types import PredQuery, SimpleNL2QTask, SimpleNL2QTaskOutput
-from tabulaflow.agents.tools import BaseTool, GetColumnJsonSchemaTool, GetTableSchemaTool, RunQueryTool
+from tabulaflow.agents.tools import AgentTool, GetColumnJsonSchemaTool, GetTableSchemaTool, RunQueryTool
 from tabulaflow.agents.tools.run_query import latest_query_execution
 from tabulaflow.agents.llm import make_agent
 
@@ -119,7 +119,7 @@ class AgentEnsembler:
     name: ClassVar = "agent_ensembler"
     task_type: ClassVar = "simple"
     output_type: ClassVar = "simple"
-    config_cls: ClassVar[type[BaseAgentConfig]] = AgentEnsemblerConfig
+    config_cls: ClassVar[type[AgentConfig]] = AgentEnsemblerConfig
 
     def __init__(self, config: AgentEnsemblerConfig):
         self.config = config
@@ -224,7 +224,7 @@ class AgentEnsembler:
         )
 
         run_query_tool = RunQueryTool(db_connector)
-        tools: dict[str, BaseTool] = {
+        tools: dict[str, AgentTool] = {
             "get_table_schema": GetTableSchemaTool(
                 db_connector,
                 self.formatter,

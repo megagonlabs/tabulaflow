@@ -7,7 +7,7 @@ from tabulaflow.research.types import (
     NumericOrNull,
 )
 from tabulaflow.data import DBConnector
-from tabulaflow.research.metrics.base import metric_registry
+from tabulaflow.research.metrics.registry import metric_registry
 from tabulaflow.research.metrics.utils import get_final_pred_query
 from tabulaflow.research.metrics.simple_ex import SimpleEx
 

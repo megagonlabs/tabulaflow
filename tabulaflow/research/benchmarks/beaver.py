@@ -6,7 +6,7 @@ from typing import Any, ClassVar
 from tabulaflow.research.types import GoldQuery
 from tabulaflow.research.types import SimpleNL2QTask, NL2QDataset
 from tabulaflow.data import SQLConnector, SQLConnectorConfig
-from tabulaflow.research.benchmarks.base import dataset_registry
+from tabulaflow.research.benchmarks.registry import dataset_registry
 
 
 @dataset_registry.register
