@@ -16,10 +16,11 @@ from tabulaflow.output.specs import (
     ParameterizedSource,
     TableArtifactSpec,
 )
-from tabulaflow.core import ExecResult
+from tabulaflow.core import ExecResult, GraphResult
 from tabulaflow.output.resolver import (
     OutputResolutionError,
     OutputResolver,
+    ResolvedChartArtifact,
     ResolvedGraphArtifact,
     ResolvedMapArtifact,
     ResolvedTableArtifact,
@@ -27,6 +28,7 @@ from tabulaflow.output.resolver import (
 )
 from tabulaflow.output.store import (
     OutputStore,
+    ResultMetadata,
     ResultPayload,
     SourceNotApplicable,
     SourceResolutionError,
@@ -60,6 +62,14 @@ def _parameters() -> list[ChoiceParameter | NumberParameter]:
         ),
         NumberParameter(id="min_spend", label="Minimum spend", min=0, max=100_000, step=5_000, default=10_000),
     ]
+
+
+def test_result_payload_rejects_graph_without_dataframe() -> None:
+    with pytest.raises(ValueError, match="graph result requires a tabular result"):
+        ResultPayload(
+            metadata=ResultMetadata(id="R1", db_alias="workspace", query="MATCH (n) RETURN n"),
+            graph=GraphResult(nodes=[], edges=[]),
+        )
 
 
 @pytest.mark.asyncio
@@ -302,7 +312,7 @@ async def test_table_artifact_without_displayable_payload_is_unavailable() -> No
 
     artifact = resolved.artifacts[0]
     assert isinstance(artifact, UnavailableArtifact)
-    assert artifact.status == "no_data"
+    assert artifact.status == "no_result"
     assert artifact.reason == "Statement executed successfully but returned no displayable data"
 
 
@@ -324,7 +334,7 @@ async def test_table_artifact_without_displayable_payload_reports_affected_rows(
 
     artifact = resolved.artifacts[0]
     assert isinstance(artifact, UnavailableArtifact)
-    assert artifact.status == "no_data"
+    assert artifact.status == "no_result"
     assert artifact.reason == "Statement executed successfully, affected 3 rows, and returned no displayable data"
 
 
@@ -346,8 +356,97 @@ async def test_chart_artifact_without_dataframe_is_unavailable() -> None:
 
     artifact = resolved.artifacts[0]
     assert isinstance(artifact, UnavailableArtifact)
-    assert artifact.status == "no_data"
-    assert artifact.reason == "Source returned no tabular data"
+    assert artifact.status == "no_result"
+    assert artifact.reason == "Source returned no result set"
+
+
+@pytest.mark.asyncio
+async def test_empty_visualization_sources_resolve_as_normal_artifacts() -> None:
+    output_store = OutputStore()
+    await output_store.add_fixed_result_source(
+        "workspace",
+        "sql",
+        "SELECT id, lat, lng, target, value FROM places WHERE false",
+        ExecResult(
+            df=pd.DataFrame(
+                {
+                    "id": pd.Series(dtype="object"),
+                    "lat": pd.Series(dtype="float64"),
+                    "lng": pd.Series(dtype="float64"),
+                    "target": pd.Series(dtype="object"),
+                    "value": pd.Series(dtype="float64"),
+                }
+            )
+        ),
+    )
+    source = FixedResultSource(id="fixed", result_id="R1")
+    output = OutputSpec(
+        sources=[source],
+        artifacts=[
+            ChartArtifactSpec(
+                id="chart",
+                source_id=source.id,
+                spec={"mark": "bar", "encoding": {"x": {"field": "id"}, "y": {"field": "value"}}},
+            ),
+            MapArtifactSpec(
+                id="map",
+                source_ids=[source.id],
+                spec={"layers": [{"type": "points", "source_id": source.id, "lat": "lat", "lng": "lng"}]},
+            ),
+            GraphArtifactSpec(
+                id="graph",
+                source_ids=[source.id],
+                spec={
+                    "nodes": [{"source_id": source.id, "id": "id"}],
+                    "edges": [{"source_id": source.id, "source": "id", "target": "target"}],
+                },
+            ),
+        ],
+    )
+
+    resolved = await OutputResolver(output_store).resolve(output)
+
+    chart, map_artifact, graph = resolved.artifacts
+    assert isinstance(chart, ResolvedChartArtifact)
+    assert chart.payload.df is not None and chart.payload.df.empty
+    assert isinstance(map_artifact, ResolvedMapArtifact)
+    map_df = map_artifact.payload_by_source[source.id].df
+    assert map_df is not None and map_df.empty
+    assert isinstance(graph, ResolvedGraphArtifact)
+    assert graph.graph.nodes == []
+    assert graph.graph.edges == []
+
+
+@pytest.mark.asyncio
+async def test_nonempty_graph_with_invalid_node_ids_is_an_error() -> None:
+    output_store = OutputStore()
+    await output_store.add_fixed_result_source(
+        "workspace",
+        "sql",
+        "SELECT id, target FROM invalid_nodes",
+        ExecResult(df=pd.DataFrame({"id": [None], "target": [None]})),
+    )
+    source = FixedResultSource(id="fixed", result_id="R1")
+    output = OutputSpec(
+        sources=[source],
+        artifacts=[
+            GraphArtifactSpec(
+                id="graph",
+                source_ids=[source.id],
+                spec={
+                    "nodes": [{"source_id": source.id, "id": "id"}],
+                    "edges": [{"source_id": source.id, "source": "id", "target": "target"}],
+                },
+            )
+        ],
+    )
+
+    resolved = await OutputResolver(output_store).resolve(output)
+
+    artifact = resolved.artifacts[0]
+    assert isinstance(artifact, UnavailableArtifact)
+    assert artifact.status == "error"
+    assert artifact.reason == "graph has no valid nodes"
 
 
 @pytest.mark.asyncio

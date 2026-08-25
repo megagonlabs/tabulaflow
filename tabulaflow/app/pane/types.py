@@ -11,7 +11,7 @@ VIEW_KINDS: tuple[ViewKind, ...] = ("message", "map", "chart", "data", "query", 
 CARD_ID_PREFIX = "card_"
 PaneSource = Literal["manual"]
 ColumnRole = Literal["text", "number", "bool", "media"]
-MessageTone = Literal["info", "error"]
+MessageStatus = Literal["error", "not_applicable", "no_result"]
 
 
 class PaneCard(TypedDict):
@@ -111,7 +111,7 @@ class GraphData(TypedDict, total=False):
 
 
 class MessageData(TypedDict):
-    tone: MessageTone
+    status: MessageStatus
     text: str
 
 

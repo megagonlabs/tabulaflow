@@ -539,8 +539,15 @@ body { margin: 0; background: var(--bg); color: var(--text); display: flex; flex
 
 /* Direct chart rendering. */
 .tf-chart-view { --artifact-bg: var(--card); }
-.tf-vis-stage { background: var(--card); }
+.tf-vis-stage { position: relative; background: var(--card); }
 .tf-vis-stage { display: flex; align-items: flex-start; justify-content: center; padding: 20px 24px; box-sizing: border-box; }
+.tf-vis-stage.empty { min-height: 220px; }
+.tf-chart-empty {
+    position: absolute; inset: 0; display: none; place-items: center; padding: 24px;
+    box-sizing: border-box; background: var(--card); color: var(--text-dim);
+    font: 13px/1.4 ui-monospace, monospace; text-align: center;
+}
+.tf-chart-empty.show { display: grid; }
 .tf-vis-wrap { width: 100%; max-width: 720px; box-sizing: border-box; }
 .tf-vis-wrap.fill { height: var(--chart-fill-height); }
 .tf-vis-wrap.fill .tf-vis,

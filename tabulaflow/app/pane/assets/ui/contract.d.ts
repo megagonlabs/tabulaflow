@@ -98,10 +98,10 @@ export interface GraphData {
   meta?: Record<string, unknown>;
 }
 
-export type MessageTone = "info" | "error";
+export type MessageStatus = "error" | "not_applicable" | "no_result";
 
 export interface MessageData {
-  tone: MessageTone;
+  status: MessageStatus;
   text: string;
 }
 

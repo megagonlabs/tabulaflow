@@ -305,7 +305,7 @@ def _normalize_points_layer(df: pd.DataFrame | None, layer: PointsLayerSpec, ind
         assert df is not None  # column mode implies a resolved source df
         lat = _field(df, layer.lat or layer.latitude, path=f"layers[{index}].lat")
         lng = _field(df, layer.lng or layer.lon or layer.longitude, path=f"layers[{index}].lng")
-        if not _has_valid_point(df, lat, lng):
+        if not df.empty and not _has_valid_point(df, lat, lng):
             raise MapSpecError(f"layers[{index}] has no valid latitude/longitude rows")
         out = {"type": "points", "source_id": layer.source_id, "lat": lat, "lng": lng}
 
@@ -358,7 +358,7 @@ def _normalize_geojson_layer(df: pd.DataFrame | None, layer: GeoJsonLayerSpec, i
     if isinstance(geojson, str):
         assert df is not None  # column mode implies a resolved source df
         geojson_value: object = _field(df, geojson, path=f"layers[{index}].geojson")
-        if not _has_geojson_value(df, str(geojson_value)):
+        if not df.empty and not _has_geojson_value(df, str(geojson_value)):
             raise MapSpecError(f"layers[{index}].geojson has no valid GeoJSON sample values")
     elif _is_geojson_object(geojson):
         geojson_value = copy.deepcopy(geojson)

@@ -110,6 +110,10 @@ class ResultPayload:
     df: pd.DataFrame | None = None
     graph: GraphResult | None = None
 
+    def __post_init__(self) -> None:
+        if self.graph is not None and self.df is None:
+            raise ValueError("a graph result requires a tabular result")
+
 
 class _ResultFrameStore:
     """DuckDB-backed store for tabular query results, with a small memory cache."""

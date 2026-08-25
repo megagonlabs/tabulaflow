@@ -61,13 +61,24 @@ export function renderChart(container, cardData) {
   spec.data = { name: DATASET_NAME, values: rows };
   container.className = 'tf-view tf-chart-view';
   container.innerHTML = '<div class="tf-vis-stage"><div class="tf-vis-wrap '
-    + escapeAttr(wrapClass) + '"><div class="tf-vis"></div></div></div>';
+    + escapeAttr(wrapClass) + '"><div class="tf-vis"></div></div><div class="tf-chart-empty"></div></div>';
   var target = container.querySelector('.tf-vis');
+  var stage = container.querySelector('.tf-vis-stage');
+  var empty = container.querySelector('.tf-chart-empty');
   var view = null;
   var disposed = false;
   var renderStarted = false;
   var resolveReady;
   var ready = new Promise(function (resolve) { resolveReady = resolve; });
+
+  function syncEmpty() {
+    var isEmpty = rows.length === 0;
+    stage.classList.toggle('empty', isEmpty);
+    empty.classList.toggle('show', isEmpty);
+    empty.textContent = isEmpty ? 'No chart data for this selection.' : '';
+  }
+
+  syncEmpty();
 
   function showError(err) {
     if (disposed) return;
@@ -110,8 +121,9 @@ export function renderChart(container, cardData) {
       return !!view && !!vega && JSON.stringify(nextData.chart || {}) === JSON.stringify(chartData);
     },
     update: function (nextData) {
-      var nextRows = (nextData.dataset && nextData.dataset.rows) || [];
-      var changes = vega.changeset().remove(function () { return true; }).insert(nextRows);
+      rows = (nextData.dataset && nextData.dataset.rows) || [];
+      syncEmpty();
+      var changes = vega.changeset().remove(function () { return true; }).insert(rows);
       return view.change(DATASET_NAME, changes).runAsync();
     },
     destroy: function () {

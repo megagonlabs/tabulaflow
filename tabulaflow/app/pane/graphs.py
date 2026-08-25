@@ -51,8 +51,6 @@ def _graph_card_data_from_rows(
     *,
     layout: str = "force",
 ) -> GraphCardData | None:
-    if not nodes:
-        return None
     if len(nodes) > GRAPH_MAX_NODES or len(edges) > GRAPH_MAX_EDGES:
         return None
 

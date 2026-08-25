@@ -889,7 +889,7 @@ export function renderMap(container, cardData) {
     }
     map.setCenter([0, 0]);
     map.setZoom(2);
-    showEmpty('No valid coordinates in this result.');
+    showEmpty('No locations for this selection.');
   }
 
   function destroyMap() {
@@ -978,7 +978,7 @@ export function renderMap(container, cardData) {
       popupState.click = null;
       syncDataLayers(false);
       if (dataBounds) hideEmpty();
-      else showEmpty('No valid coordinates in this result.');
+      else showEmpty('No locations for this selection.');
       return new Promise(function (resolve) { requestAnimationFrame(resolve); });
     },
     destroy: function () {

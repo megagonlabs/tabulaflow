@@ -77,8 +77,6 @@ def validate_chart_spec(
     field_refs, has_transform = _spec_field_refs(spec)
     errors: list[str] = []
     for label, df in sources.items():
-        if df.empty:
-            errors.append(f"{label} — result is empty")
         if len(df) > _CHART_MAX_ROWS:
             errors.append(f"{label} — {len(df):,} rows is too large to chart; max {_CHART_MAX_ROWS:,} rows")
         if not has_transform:

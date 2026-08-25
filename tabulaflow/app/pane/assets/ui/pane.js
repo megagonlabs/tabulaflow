@@ -727,11 +727,12 @@ function renderKind(node, kind, data) {
 
 function renderMessage(node, data) {
   var message = data && data.message && typeof data.message === 'object' ? data.message : {};
-  var tone = message.tone === 'error' ? 'error' : 'info';
+  var status = ['error', 'not_applicable', 'no_result'].indexOf(message.status) === -1 ? 'error' : message.status;
+  var tone = status === 'error' ? 'error' : 'info';
   node.className = 'tf-view tf-message-view tone-' + tone;
   var box = el('div', 'tf-message-card');
   var label = el('div', 'tf-message-label');
-  label.textContent = tone === 'error' ? 'Could not render artifact' : 'Not applicable';
+  label.textContent = status === 'error' ? 'Could not render artifact' : (status === 'no_result' ? 'No result' : 'Not applicable');
   var text = el('div', 'tf-message-text');
   text.textContent = typeof message.text === 'string' && message.text ? message.text : 'No message available.';
   box.appendChild(label);

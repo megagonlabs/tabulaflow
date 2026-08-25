@@ -344,6 +344,7 @@ def _properties(
 def materialize_graph_result(graph_spec: Mapping[str, object], sources: Mapping[str, pd.DataFrame]) -> GraphResult:
     """Materialize a normalized graph spec into the typed graph-view data contract."""
     nodes_by_id: dict[str, GraphResultNode] = {}
+    node_rows_seen = 0
     raw_nodes = graph_spec.get("nodes")
     for raw_source in raw_nodes if isinstance(raw_nodes, list) else []:
         if not isinstance(raw_source, Mapping):
@@ -353,6 +354,7 @@ def materialize_graph_result(graph_spec: Mapping[str, object], sources: Mapping[
         group_field = raw_source.get("group")
         constant_group = _constant_value(group_field)
         for row in _source_rows(raw_source, sources):
+            node_rows_seen += 1
             node_id = _node_id(_row_value(row, id_field))
             if node_id is None or node_id in nodes_by_id:
                 continue
@@ -404,6 +406,9 @@ def materialize_graph_result(graph_spec: Mapping[str, object], sources: Mapping[
             "declare a node source covering every endpoint column"
         )
 
+    if not nodes_by_id and node_rows_seen:
+        raise GraphSpecError("graph has no valid nodes")
+
     return GraphResult(
         nodes=sorted(nodes_by_id.values(), key=lambda node: node.id),
         edges=edges,
@@ -419,8 +424,6 @@ def graph_size(graph: GraphResult) -> GraphSize:
 
 def validate_graph_size(size: GraphSize) -> None:
     """Reject graph payloads that are too large for an interactive node-link view."""
-    if size.nodes == 0:
-        raise GraphSpecError("graph has no valid nodes")
     if size.nodes > GRAPH_MAX_NODES:
         raise GraphSpecError(
             f"graph has {size.nodes:,} nodes — too large to render directly; filter, aggregate, or take top-N first; "

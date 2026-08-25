@@ -60,7 +60,7 @@ def _debug_cards(payloads: list[DebugTablePayload], width: int) -> list[CardGrou
                         artifact_id=payload.chart_id,
                         label=payload.label,
                         reason="Source returned no tabular data",
-                        status="no_data",
+                        status="no_result",
                     )
                 )
                 continue
@@ -80,7 +80,7 @@ def _debug_cards(payloads: list[DebugTablePayload], width: int) -> list[CardGrou
                         artifact_id=payload.result_id,
                         label=payload.label,
                         reason="Statement executed successfully but returned no displayable data",
-                        status="no_data",
+                        status="no_result",
                     )
                 )
                 continue

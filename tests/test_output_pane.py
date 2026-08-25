@@ -38,6 +38,7 @@ from tabulaflow.output.graphs import materialize_graph_result, normalize_graph_s
 from tabulaflow.app.tui import TabulaflowApp
 from tabulaflow.app.turn import TurnOutput
 from tabulaflow.agents.chat import ChatResult
+from tabulaflow.core import GraphResult
 from tabulaflow.output.specs import (
     ChoiceOption,
     ChoiceParameter,
@@ -291,15 +292,15 @@ def test_result_card_renders_empty_dataframe_as_data_view(tmp_path: Path) -> Non
     assert payload["table"]["meta"] == "0 rows · 2 columns"
 
 
-def test_empty_chart_result_skips_chart_but_keeps_data_view(tmp_path: Path) -> None:
+def test_empty_chart_result_keeps_chart_and_data_views(tmp_path: Path) -> None:
     df = pd.DataFrame({"customer": pd.Series(dtype="object"), "value": pd.Series(dtype="int64")})
     spec = {"mark": "bar", "encoding": {"x": {"field": "customer"}, "y": {"field": "value"}}}
     card = render_result_data(ResultCardInput(df=df, label="empty chart", chart_spec=spec), tmp_path)
 
     assert card is not None
-    assert card["views"] == ["data"]
+    assert card["views"] == ["chart", "data"]
     payload = json.loads((tmp_path / f"{card['id']}.data.json").read_text())
-    assert "chart" not in payload
+    assert payload["chart"]["spec"]["mark"] == "bar"
     assert payload["table"]["meta"] == "0 rows · 2 columns"
 
 
@@ -995,6 +996,26 @@ def test_parameterized_artifacts_update_in_place_with_staged_fallback() -> None:
     assert "cy.batch(function ()" in graph_js
 
 
+def test_visual_renderers_own_their_empty_states() -> None:
+    pane_css = _pane_asset_text("pane.css")
+    chart_js = _pane_asset_text("render/chart.js")
+    map_js = _pane_asset_text("render/map.js")
+    graph_js = _pane_asset_text("render/graph.js")
+
+    assert "No chart data for this selection." in chart_js
+    assert ".tf-chart-empty.show" in pane_css
+    assert "No locations for this selection." in map_js
+    assert "No graph data for this selection." in graph_js
+    assert "Graph needs at least one node and one edge." not in graph_js
+
+
+def test_empty_graph_builds_a_normal_graph_payload() -> None:
+    payload = build_graph_result_data(GraphResult(nodes=[], edges=[]))
+
+    assert payload is not None
+    assert payload["graph"]["elements"] == {"nodes": [], "edges": []}
+
+
 def test_pane_sets_fixed_favicon_and_result_ready_title() -> None:
     pane_js = _pane_asset_text("pane.js")
     assert '<rect width="64" height="64" fill="#283629"/>' in pane_js
@@ -1057,6 +1078,7 @@ def test_message_view_has_browser_contract_and_renderer() -> None:
     assert "message?: MessageData;" in contract
     assert "if (kind === 'message') return renderMessage(node, data);" in pane_js
     assert "function renderMessage(node, data)" in pane_js
+    assert "status === 'no_result' ? 'No result' : 'Not applicable'" in pane_js
     assert ".tf-message-view" in pane_css
 
 
@@ -1075,7 +1097,7 @@ async def test_unavailable_artifact_renders_message_view(tmp_path: Path) -> None
 
     assert cards == [{"id": cards[0]["id"], "artifact_id": "S1", "label": "detail", "views": ["message"]}]
     payload = json.loads((tmp_path / f"{cards[0]['id']}.data.json").read_text())
-    assert payload == {"message": {"tone": "info", "text": "Only applies to revenue"}}
+    assert payload == {"message": {"status": "not_applicable", "text": "Only applies to revenue"}}
 
 
 @pytest.mark.asyncio
@@ -1089,21 +1111,21 @@ async def test_error_artifact_renders_error_message_view(tmp_path: Path) -> None
 
     payload = json.loads((tmp_path / f"{cards[0]['id']}.data.json").read_text())
     assert cards[0]["views"] == ["message"]
-    assert payload == {"message": {"tone": "error", "text": "boom"}}
+    assert payload == {"message": {"status": "error", "text": "boom"}}
 
 
 @pytest.mark.asyncio
-async def test_no_data_artifact_renders_info_message_view(tmp_path: Path) -> None:
+async def test_no_result_artifact_renders_info_message_view(tmp_path: Path) -> None:
     resolved = ResolvedOutput(
         selection={},
-        artifacts=[UnavailableArtifact(artifact_id="S1", label="detail", reason="No tabular data", status="no_data")],
+        artifacts=[UnavailableArtifact(artifact_id="S1", label="detail", reason="No result set", status="no_result")],
     )
 
     cards = await render_resolved_output(resolved, tmp_path)
 
     payload = json.loads((tmp_path / f"{cards[0]['id']}.data.json").read_text())
     assert cards[0]["views"] == ["message"]
-    assert payload == {"message": {"tone": "info", "text": "No tabular data"}}
+    assert payload == {"message": {"status": "no_result", "text": "No result set"}}
 
 
 def test_live_view_survives_rapid_browser_replay_and_switches_atomically(tmp_path: Path) -> None:
@@ -1270,7 +1292,7 @@ def test_pane_view_shell_is_layout_only() -> None:
     assert ".tf-table-view,\n.tf-chart-view,\n.tf-map-view,\n.tf-graph-view,\n.tf-message-view {" in _PANE_HTML
     assert "--artifact-outline: inset 0 0 0 1px rgba(255, 255, 255, 0.03);" in _PANE_HTML
     assert ".tf-chart-view { --artifact-bg: var(--card); }" in _PANE_HTML
-    assert ".tf-vis-stage { background: var(--card); }" in _PANE_HTML
+    assert ".tf-vis-stage { position: relative; background: var(--card); }" in _PANE_HTML
 
 
 def test_pane_chart_theme_is_client_side() -> None:

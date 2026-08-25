@@ -517,18 +517,23 @@ export function renderGraph(container, cardData) {
     showEmpty('Cytoscape.js is not available.');
     return { destroy: function () { container.innerHTML = ''; } };
   }
-  if (!elements.nodes.length || !elements.edges.length) {
-    showEmpty('Graph needs at least one node and one edge.');
-    return { destroy: function () { container.innerHTML = ''; } };
-  }
-
   var cy = null;
   var livePhysics = null;
   var detailMode = null;
   var autoFitEnabled = true;
+  var hasAutoFit = false;
   var autoFitTimer = null;
+  var positionCache = new Map();
   var resolveReady;
   var ready = new Promise(function (resolve) { resolveReady = resolve; });
+
+  function syncEmpty() {
+    var isEmpty = elements.nodes.length === 0;
+    emptyNode.textContent = isEmpty ? 'No graph data for this selection.' : '';
+    emptyNode.classList.toggle('show', isEmpty);
+  }
+
+  syncEmpty();
 
   function hideDetail(force) {
     if (!force && detailMode === 'pinned') return;
@@ -538,7 +543,7 @@ export function renderGraph(container, cardData) {
   }
 
   function startLivePhysics() {
-    if (!cy || livePhysics) return;
+    if (!cy || livePhysics || !cy.nodes().length) return;
     livePhysics = createLivePhysics(cy);
   }
 
@@ -555,8 +560,9 @@ export function renderGraph(container, cardData) {
 
   function runAutoFit() {
     autoFitTimer = null;
-    if (!autoFitEnabled || !cy) return;
+    if (!autoFitEnabled || !cy || !cy.elements().length) return;
     fitGraph(cy, graphNode);
+    hasAutoFit = true;
   }
 
   function scheduleAutoFit() {
@@ -663,22 +669,48 @@ export function renderGraph(container, cardData) {
     resize: function () {
       if (!cy) return;
       cy.resize();
-      scheduleAutoFit();
+      if (!hasAutoFit) scheduleAutoFit();
     },
     canUpdate: function (nextData) {
-      return !!cy && graphStructure(nextData.graph || {}) === graphStructure(graphData);
+      var nextGraph = nextData.graph || {};
+      return !!cy && (nextGraph.layout || 'force') === (graphData.layout || 'force');
     },
     update: function (nextData) {
+      var previousStructure = graphStructure(graphData);
+      var wasEmpty = elements.nodes.length === 0;
       graphData = nextData.graph || {};
       elements = graphElements(graphData);
+      var initialized = graphInitElements(elements, graphData.layout);
+      var nextById = new Map();
+      initialized.nodes.concat(initialized.edges).forEach(function (element) {
+        var data = element && element.data ? element.data : {};
+        nextById.set(String(data.id || ''), element);
+      });
       hideDetail(true);
       cy.batch(function () {
-        elements.nodes.concat(elements.edges).forEach(function (element) {
+        cy.elements().forEach(function (element) {
+          if (element.isNode && element.isNode()) positionCache.set(element.id(), element.position());
+          if (!nextById.has(element.id())) element.remove();
+        });
+        initialized.nodes.concat(initialized.edges).forEach(function (element) {
           var data = element && element.data ? element.data : {};
           var current = cy.getElementById(String(data.id || ''));
-          if (current && current.length) current.data(data);
+          if (current && current.length) {
+            current.data(data);
+            return;
+          }
+          var added = cy.add(element);
+          var cachedPosition = positionCache.get(String(data.id || ''));
+          if (cachedPosition && added.isNode && added.isNode()) added.position(cachedPosition);
         });
       });
+      syncEmpty();
+      if (previousStructure !== graphStructure(graphData)) {
+        if (livePhysics) livePhysics.destroy();
+        livePhysics = null;
+        startLivePhysics();
+      }
+      if (wasEmpty && elements.nodes.length && autoFitEnabled) scheduleAutoFit();
       return new Promise(function (resolve) { requestAnimationFrame(resolve); });
     },
     destroy: function () {

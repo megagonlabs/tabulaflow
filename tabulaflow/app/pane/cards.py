@@ -6,7 +6,7 @@ import secrets
 from dataclasses import dataclass
 from pathlib import Path
 from collections.abc import Mapping
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING
 
 import pandas as pd
 from pygments import highlight
@@ -18,7 +18,7 @@ from pygments.util import ClassNotFound
 from tabulaflow.app.pane.types import (
     CARD_ID_PREFIX,
     CodeData,
-    MessageTone,
+    MessageStatus,
     PaneCard,
     QueryCardData,
     ViewKind,
@@ -109,7 +109,7 @@ class MessageCardInput:
 
     label: str | None
     text: str
-    tone: MessageTone = "info"
+    status: MessageStatus = "not_applicable"
 
 
 def build_query_data(sql: str, *, lexer: str = "sql") -> QueryCardData:
@@ -141,7 +141,7 @@ def render_result_data(metadata: ResultCardInput, pane_dir: Path, *, artifact_id
             max_height=PANE_TABLE_MAX_HEIGHT,
         )
         card_data.update(table_build.data)
-        if metadata.chart_spec is not None and not df.empty:
+        if metadata.chart_spec is not None:
             card_data.update(
                 build_chart_data(df, dict(metadata.chart_spec), field_by_column=table_build.field_by_column)
             )
@@ -167,7 +167,7 @@ def render_map_data(map_artifact: MapCardInput, pane_dir: Path, *, artifact_id: 
     card_id = f"{CARD_ID_PREFIX}{secrets.token_hex(6)}"
     sources_payload: dict[str, dict[str, object]] = {}
     for source_id, df in map_artifact.sources.items():
-        if df is None or df.empty:
+        if df is None:
             continue
         table_build = _build_table_data(
             df,
@@ -210,7 +210,10 @@ def render_message_data(message: MessageCardInput, pane_dir: Path, *, artifact_i
     """Render a standalone message card's payload to JSON; return a pane manifest."""
     card_id = f"{CARD_ID_PREFIX}{secrets.token_hex(6)}"
     pane_dir.mkdir(parents=True, exist_ok=True)
-    _write_strict_json(pane_dir / f"{card_id}.data.json", {"message": {"tone": message.tone, "text": message.text}})
+    _write_strict_json(
+        pane_dir / f"{card_id}.data.json",
+        {"message": {"status": message.status, "text": message.text}},
+    )
     return card_payload(card_id=card_id, artifact_id=artifact_id, label=message.label, views=["message"])
 
 
@@ -219,10 +222,9 @@ async def render_resolved_output(resolved_output: ResolvedOutput, pane_dir: Path
     cards: list[PaneCard] = []
     for artifact in resolved_output.artifacts:
         if isinstance(artifact, UnavailableArtifact):
-            tone: Literal["info", "error"] = "error" if artifact.status == "error" else "info"
             cards.append(
                 render_message_data(
-                    MessageCardInput(label=artifact.label, text=artifact.reason, tone=tone),
+                    MessageCardInput(label=artifact.label, text=artifact.reason, status=artifact.status),
                     pane_dir,
                     artifact_id=artifact.artifact_id,
                 )

@@ -97,7 +97,7 @@ class UnavailableArtifact:
     artifact_id: ArtifactId
     reason: str = "unavailable"
     label: str | None = None
-    status: Literal["error", "not_applicable", "no_data"] = "error"
+    status: Literal["error", "not_applicable", "no_result"] = "error"
 
 
 ResolvedArtifact: TypeAlias = (
@@ -213,7 +213,7 @@ def _resolved_artifact(artifact: ArtifactSpec, payload_by_source: dict[SourceId,
                 artifact_id=artifact.id,
                 label=artifact.label,
                 reason=_no_displayable_data_reason(payload),
-                status="no_data",
+                status="no_result",
             )
         return ResolvedTableArtifact(
             artifact_id=artifact.id,
@@ -222,14 +222,11 @@ def _resolved_artifact(artifact: ArtifactSpec, payload_by_source: dict[SourceId,
             payload=payload,
         )
     if isinstance(artifact, ChartArtifactSpec):
+        unavailable = _no_result_if_missing_dataframe(artifact, payload_by_source)
+        if unavailable is not None:
+            return unavailable
         payload = payload_by_source[artifact.source_id]
-        if payload.df is None:
-            return UnavailableArtifact(
-                artifact_id=artifact.id,
-                label=artifact.label,
-                reason="Source returned no tabular data",
-                status="no_data",
-            )
+        assert payload.df is not None
         validate_chart_spec(artifact.spec, {artifact.source_id: payload.df})
         return ResolvedChartArtifact(
             artifact_id=artifact.id,
@@ -239,6 +236,9 @@ def _resolved_artifact(artifact: ArtifactSpec, payload_by_source: dict[SourceId,
             spec=artifact.spec,
         )
     if isinstance(artifact, MapArtifactSpec):
+        unavailable = _no_result_if_missing_dataframe(artifact, payload_by_source)
+        if unavailable is not None:
+            return unavailable
         parsed_map = maps.parse_map_spec(artifact.spec)
         _validate_artifact_source_ids(artifact.id, artifact.source_ids, maps.referenced_source_ids(parsed_map))
         sources = _dataframes_by_source(payload_by_source)
@@ -249,6 +249,9 @@ def _resolved_artifact(artifact: ArtifactSpec, payload_by_source: dict[SourceId,
             payload_by_source=payload_by_source,
         )
     if isinstance(artifact, GraphArtifactSpec):
+        unavailable = _no_result_if_missing_dataframe(artifact, payload_by_source)
+        if unavailable is not None:
+            return unavailable
         parsed_graph = graphs.parse_graph_spec(artifact.spec)
         _validate_artifact_source_ids(artifact.id, artifact.source_ids, graphs.referenced_source_ids(parsed_graph))
         sources = _dataframes_by_source(payload_by_source)
@@ -273,12 +276,21 @@ def _validate_artifact_source_ids(artifact_id: str, declared: list[SourceId], re
 
 
 def _dataframes_by_source(payload_by_source: Mapping[SourceId, ResultPayload]) -> dict[SourceId, pd.DataFrame]:
-    sources = {}
-    for source_id, payload in payload_by_source.items():
-        if payload.df is None:
-            raise ArtifactSpecError(f"source {source_id!r} returned no data")
-        sources[source_id] = payload.df
-    return sources
+    return {source_id: payload.df for source_id, payload in payload_by_source.items() if payload.df is not None}
+
+
+def _no_result_if_missing_dataframe(
+    artifact: ArtifactSpec,
+    payload_by_source: Mapping[SourceId, ResultPayload],
+) -> UnavailableArtifact | None:
+    if all(payload.df is not None for payload in payload_by_source.values()):
+        return None
+    return UnavailableArtifact(
+        artifact_id=artifact.id,
+        label=artifact.label,
+        reason="Source returned no result set",
+        status="no_result",
+    )
 
 
 def _no_displayable_data_reason(payload: ResultPayload) -> str:
