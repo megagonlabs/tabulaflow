@@ -1110,6 +1110,7 @@ def test_answer_controls_render_choice_and_number_inputs() -> None:
     assert "btn.disabled = !!state.resolving" not in pane_js
     assert ".answer-control-option:hover:not(.active):not(:disabled)" in pane_css
     assert "--answer-control-progress" in pane_css
+    assert "flex: 1 1 320px; min-width: 160px; max-width: 620px;" in pane_css
     assert ".answer-control-number-input::-webkit-slider-thumb" in pane_css
     assert ".answer-control-number-input::-moz-range-thumb" in pane_css
     assert ".answer-control-number-input:focus-visible::-webkit-slider-thumb" in pane_css
@@ -1122,6 +1123,7 @@ def test_answer_controls_render_choice_and_number_inputs() -> None:
     assert "position: absolute; width: 1px; height: 1px;" in pane_css
     assert ".answer-control-status.error" in pane_css
     assert ".answer-control-number" in pane_css
+    assert ".answer-control-number { display: flex; align-items: center; gap: 6px; }" in pane_css
 
 
 def test_message_view_has_browser_contract_and_renderer() -> None:

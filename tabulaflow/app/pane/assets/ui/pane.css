@@ -232,10 +232,10 @@ body { margin: 0; background: var(--bg); color: var(--text); display: flex; flex
 .answer-control-option.active:hover { background: #49c092; border-color: #49c092; }
 .answer-control-option:active:not(:disabled) { transform: translateY(1px); }
 .answer-control-option:disabled { cursor: default; opacity: 0.62; }
-.answer-control-number { display: flex; align-items: center; gap: 10px; }
+.answer-control-number { display: flex; align-items: center; gap: 6px; }
 .answer-control-number-input[type="range"] {
     --answer-control-progress: 0%;
-    appearance: none; flex: 1 1 180px; min-width: 160px; height: 24px; margin: 0;
+    appearance: none; flex: 1 1 320px; min-width: 160px; max-width: 620px; height: 24px; margin: 0;
     background: transparent; cursor: pointer;
 }
 .answer-control-number-input::-webkit-slider-runnable-track {
