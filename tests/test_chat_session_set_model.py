@@ -21,6 +21,7 @@ def test_activate_llm_profile_failure_is_transactional(monkeypatch: pytest.Monke
             reasoning_effort="high",
             subagent_model=agent.subagent_model,
             subagent_reasoning_effort=agent.subagent_reasoning_effort,
+            enable_apply_patch=agent.enable_apply_patch,
         )
     # The failed switch left everything intact.
     assert agent.model == "test"
@@ -46,6 +47,7 @@ def test_subagent_failure_does_not_partially_switch_main_profile(monkeypatch: py
             reasoning_effort="high",
             subagent_model="anthropic:claude-sonnet-4-5-20250929",
             subagent_reasoning_effort="medium",
+            enable_apply_patch=agent.enable_apply_patch,
         )
 
     assert agent.model == "openai-responses:gpt-5"
@@ -75,6 +77,7 @@ def test_activate_llm_profile_preserves_conversation_state(monkeypatch: pytest.M
         reasoning_effort="high",
         subagent_model="openai-responses:gpt-5-mini",
         subagent_reasoning_effort="medium",
+        enable_apply_patch=agent.enable_apply_patch,
     )
 
     assert agent._message_history is message_history
@@ -172,18 +175,21 @@ def test_chat_session_tool_list_includes_file_tools_for_every_model(
         model="test",
         reasoning_effort="medium",
         project_dir=project,
+        enable_apply_patch=True,
     )
     openai_non_responses_gpt = ChatSession(
         registry=DBRegistry(),
         model="openai-chat:gpt-5",
         reasoning_effort="medium",
         project_dir=project,
+        enable_apply_patch=True,
     )
     gpt = ChatSession(
         registry=DBRegistry(),
         model="openai-responses:gpt-5",
         reasoning_effort="medium",
         project_dir=project,
+        enable_apply_patch=True,
     )
 
     without_tools = cast(Any, without_project._pydantic_ai_agent)._function_toolset.tools
@@ -211,6 +217,7 @@ def test_chat_session_file_tool_list_is_stable_across_model_switch(
         model="test",
         reasoning_effort="medium",
         project_dir=project,
+        enable_apply_patch=True,
     )
 
     initial_tools = cast(Any, agent._pydantic_ai_agent)._function_toolset.tools
@@ -222,6 +229,7 @@ def test_chat_session_file_tool_list_is_stable_across_model_switch(
         reasoning_effort="medium",
         subagent_model=agent.subagent_model,
         subagent_reasoning_effort=agent.subagent_reasoning_effort,
+        enable_apply_patch=agent.enable_apply_patch,
     )
     gpt_tools = cast(Any, agent._pydantic_ai_agent)._function_toolset.tools
     assert "file_editor" in gpt_tools
@@ -232,10 +240,48 @@ def test_chat_session_file_tool_list_is_stable_across_model_switch(
         reasoning_effort="medium",
         subagent_model=agent.subagent_model,
         subagent_reasoning_effort=agent.subagent_reasoning_effort,
+        enable_apply_patch=agent.enable_apply_patch,
     )
     non_gpt_tools = cast(Any, agent._pydantic_ai_agent)._function_toolset.tools
     assert "file_editor" in non_gpt_tools
     assert "apply_patch" in non_gpt_tools
+
+
+def test_apply_patch_capability_controls_tool_schema(tmp_path: Path) -> None:
+    project = tmp_path / "project"
+    project.mkdir()
+    agent = ChatSession(
+        registry=DBRegistry(),
+        model="test",
+        reasoning_effort="medium",
+        project_dir=project,
+    )
+
+    initial_tools = cast(Any, agent._pydantic_ai_agent)._function_toolset.tools
+    assert "file_editor" in initial_tools
+    assert "apply_patch" not in initial_tools
+
+    agent.activate_llm_profile(
+        model="test",
+        reasoning_effort="medium",
+        subagent_model=agent.subagent_model,
+        subagent_reasoning_effort=agent.subagent_reasoning_effort,
+        enable_apply_patch=True,
+    )
+    enabled_tools = cast(Any, agent._pydantic_ai_agent)._function_toolset.tools
+    assert "apply_patch" in enabled_tools
+    assert _last_note(agent) == "[system: the apply_patch tool is now available; prefer it for file edits.]"
+
+    agent.activate_llm_profile(
+        model="test",
+        reasoning_effort="medium",
+        subagent_model=agent.subagent_model,
+        subagent_reasoning_effort=agent.subagent_reasoning_effort,
+        enable_apply_patch=False,
+    )
+    disabled_tools = cast(Any, agent._pydantic_ai_agent)._function_toolset.tools
+    assert "apply_patch" not in disabled_tools
+    assert _last_note(agent) == "[system: the apply_patch tool is no longer available.]"
 
 
 def _last_note(agent: ChatSession) -> str:
@@ -264,6 +310,7 @@ def test_activate_llm_profile_notes_model_change(tmp_path: Path, monkeypatch: py
         reasoning_effort="medium",
         subagent_model=agent.subagent_model,
         subagent_reasoning_effort=agent.subagent_reasoning_effort,
+        enable_apply_patch=agent.enable_apply_patch,
     )
     assert _last_note(agent) == "[system: the model powering this conversation changed from Test to GPT 5.]"
 
@@ -272,6 +319,7 @@ def test_activate_llm_profile_notes_model_change(tmp_path: Path, monkeypatch: py
         reasoning_effort="medium",
         subagent_model=agent.subagent_model,
         subagent_reasoning_effort=agent.subagent_reasoning_effort,
+        enable_apply_patch=agent.enable_apply_patch,
     )
     assert _last_note(agent) == "[system: the model powering this conversation changed from GPT 5 to Test.]"
 
@@ -282,6 +330,7 @@ def test_activate_llm_profile_notes_model_change(tmp_path: Path, monkeypatch: py
         reasoning_effort="high",
         subagent_model="openai-responses:gpt-5.4-mini",
         subagent_reasoning_effort="high",
+        enable_apply_patch=agent.enable_apply_patch,
     )
     assert len(agent._message_history) == history_len
 
@@ -295,6 +344,7 @@ def test_model_change_note_without_file_tools(monkeypatch: pytest.MonkeyPatch) -
         reasoning_effort="medium",
         subagent_model=agent.subagent_model,
         subagent_reasoning_effort=agent.subagent_reasoning_effort,
+        enable_apply_patch=agent.enable_apply_patch,
     )
     assert _last_note(agent) == "[system: the model powering this conversation changed from Test to GPT 5.]"
 
@@ -407,6 +457,7 @@ async def test_subagent_profile_wires_tools(tmp_path: Path, monkeypatch: pytest.
             reasoning_effort=agent.reasoning_effort,
             subagent_model="openai-responses:gpt-5.4-mini",
             subagent_reasoning_effort="high",
+            enable_apply_patch=agent.enable_apply_patch,
         )
         assert agent._tools.get_db_document._document_cache == {}
         assert agent._tools.run_subagent_for_each_row.subagent_llm == "openai-responses:gpt-5.4-mini"

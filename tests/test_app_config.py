@@ -37,11 +37,13 @@ def test_load_missing_file_returns_defaults(tmp_path: Path) -> None:
     assert openai_budget.main.reasoning_effort == "medium"
     assert openai_budget.subagent.model == "openai-responses:gpt-5-mini"
     assert openai_budget.subagent.reasoning_effort == "medium"
+    assert openai_budget.enable_apply_patch is True
     anthropic_balanced = next(preset for preset in DEFAULT_LLM_PRESETS if preset.label == "Anthropic balanced")
     assert anthropic_balanced.main.model == "anthropic:claude-opus-5"
     assert anthropic_balanced.main.reasoning_effort == "high"
     assert anthropic_balanced.subagent.model == "anthropic:claude-sonnet-4-5-20250929"
     assert anthropic_balanced.subagent.reasoning_effort == "medium"
+    assert anthropic_balanced.enable_apply_patch is False
     planning_hybrid = next(preset for preset in DEFAULT_LLM_PRESETS if preset.label == "Planning hybrid")
     assert planning_hybrid.main.model == "anthropic:claude-opus-4-8"
     assert planning_hybrid.main.reasoning_effort == "high"

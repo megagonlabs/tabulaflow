@@ -98,6 +98,7 @@ class ChatSession:
     # hundreds of parallel row/document workers run on a cheaper one.
     subagent_model: str = DEFAULT_SUBAGENT_MODEL
     subagent_reasoning_effort: str = DEFAULT_SUBAGENT_REASONING_EFFORT
+    enable_apply_patch: bool = False
     # Host-supplied instructions appended to the baseline prompt — a persona, domain
     # guidance, or frontend-specific phrasing (e.g. slash-command vocabulary). ``None``
     # (default) uses the baseline alone. Composed between the static prefix and the
@@ -401,6 +402,7 @@ class ChatSession:
         reasoning_effort: str,
         subagent_model: str,
         subagent_reasoning_effort: str,
+        enable_apply_patch: bool,
     ) -> tuple[str | None, str | None]:
         """Atomically activate main and subagent LLM profiles.
 
@@ -408,7 +410,7 @@ class ChatSession:
         this ``ChatSession``. Provider runtimes are prepared before the live
         profile is changed, so a construction failure leaves the old profile
         usable. A main-model change is recorded in the conversation history
-        (see ``_note_model_change``). Returns the API keys resolved during
+        (see ``_note_profile_change``). Returns the API keys resolved during
         preparation.
         """
         if self._running:
@@ -418,11 +420,12 @@ class ChatSession:
             and self.reasoning_effort == reasoning_effort
             and self.subagent_model == subagent_model
             and self.subagent_reasoning_effort == subagent_reasoning_effort
+            and self.enable_apply_patch == enable_apply_patch
         )
 
         runtime_agent = self._pydantic_ai_agent
-        if self.model != model:
-            runtime_agent = self._make_agent(model)
+        if self.model != model or self.enable_apply_patch != enable_apply_patch:
+            runtime_agent = self._make_agent(model, enable_apply_patch=enable_apply_patch)
         subagent_provider_model = self._subagent_provider_model(subagent_model)
         keys = (
             self._api_key_from_model(self._unwrap_model(runtime_agent.model) if runtime_agent is not None else None),
@@ -432,6 +435,7 @@ class ChatSession:
             return keys
 
         previous_model = self.model
+        previous_enable_apply_patch = self.enable_apply_patch
         previous_subagent_model = self.subagent_model
         previous_subagent_effort = self.subagent_reasoning_effort
         try:
@@ -449,9 +453,15 @@ class ChatSession:
         self.reasoning_effort = reasoning_effort
         self.subagent_model = subagent_model
         self.subagent_reasoning_effort = subagent_reasoning_effort
+        self.enable_apply_patch = enable_apply_patch
         self._pydantic_ai_agent = runtime_agent
-        if model != previous_model:
-            self._note_model_change(previous_model, model)
+        if model != previous_model or enable_apply_patch != previous_enable_apply_patch:
+            self._note_profile_change(
+                previous_model,
+                model,
+                previous_enable_apply_patch=previous_enable_apply_patch,
+                enable_apply_patch=enable_apply_patch,
+            )
         return keys
 
     def note_event(self, description: str) -> None:
@@ -470,13 +480,26 @@ class ChatSession:
 
         self._message_history.append(ModelRequest(parts=[UserPromptPart(content=f"[system: {description}]")]))
 
-    def _note_model_change(self, previous: str, current: str) -> None:
-        """Record a main-model switch in the conversation history."""
-        description = (
-            "the model powering this conversation changed from "
-            f"{model_display_name(previous)} to {model_display_name(current)}"
-        )
-        self.note_event(description + ".")
+    def _note_profile_change(
+        self,
+        previous_model: str,
+        model: str,
+        *,
+        previous_enable_apply_patch: bool,
+        enable_apply_patch: bool,
+    ) -> None:
+        """Record model and tool-capability changes in conversation history."""
+        parts = []
+        if model != previous_model:
+            parts.append(
+                "the model powering this conversation changed from "
+                f"{model_display_name(previous_model)} to {model_display_name(model)}"
+            )
+        if self._tools.apply_patch is not None and enable_apply_patch != previous_enable_apply_patch:
+            state = "now available; prefer it for file edits" if enable_apply_patch else "no longer available"
+            parts.append(f"the apply_patch tool is {state}")
+        if parts:
+            self.note_event("; ".join(parts) + ".")
 
     def _note_initial_registry(self) -> None:
         aliases = self.registry.list_aliases()
@@ -511,12 +534,16 @@ class ChatSession:
         if self._tools.bash is not None:
             await self._tools.bash.close()
 
-    def _make_agent(self, model: str) -> Agent[None, str]:
+    def _make_agent(self, model: str, *, enable_apply_patch: bool | None = None) -> Agent[None, str]:
         """Construct the model-specific runtime around the session's live tools."""
         from tabulaflow.agents.tools.run_subagent_for_each_row import ReleaseBrowserBeforeFanout
 
+        if enable_apply_patch is None:
+            enable_apply_patch = self.enable_apply_patch
         tools: list[Any] = []
         for tool in self._tools:
+            if tool is self._tools.apply_patch and not enable_apply_patch:
+                continue
             if tool is self._tools.web_browser:
                 tools.extend(tool.as_pydantic_ai_tools())
             else:

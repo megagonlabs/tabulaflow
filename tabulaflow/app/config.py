@@ -74,6 +74,7 @@ class LLMPreset(BaseModel):
     label: str
     main: LLMRoleConfig
     subagent: LLMRoleConfig
+    enable_apply_patch: bool = False
 
     @field_validator("label")
     @classmethod
@@ -98,6 +99,7 @@ _DEFAULT_LLM_PRESETS_DATA = (
             "model": "openai-responses:gpt-5.4-mini",
             "reasoning_effort": "medium",
         },
+        "enable_apply_patch": True,
     },
     {
         "label": "OpenAI budget",
@@ -109,6 +111,7 @@ _DEFAULT_LLM_PRESETS_DATA = (
             "model": "openai-responses:gpt-5-mini",
             "reasoning_effort": "medium",
         },
+        "enable_apply_patch": True,
     },
     {
         "label": "Anthropic balanced",
