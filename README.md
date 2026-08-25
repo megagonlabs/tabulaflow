@@ -595,8 +595,16 @@ Aug 23
   - [x] preserve schema description across refresh
 - [x] Fix /clear semantics
 
+Aug 24
+- [ ] agents layer cleanup
+  - [x] Remove engines/
+  - [x] standardize `execute` vs `__call__`
+- [x] Standardize imports
+- [x] Fix startup rendering
+- [x] New artifact browser pane life cycle to fix flicker when change selection in answer controls
+- [x] Fix artifact with empty df display
 
-- [ ] Fix flicker when change selection in answer controls
+
 - [ ] Shell messed up after ssh disconnect
 - [ ] Check if uv tool install install browser
 
