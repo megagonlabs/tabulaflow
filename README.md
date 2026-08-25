@@ -601,8 +601,10 @@ Aug 24
   - [x] remove engines/
   - [x] standardize `execute` vs `__call__`
   - [x] remove modules/ and fix preprocssing caching
-  - [ ] Standardize base.py vs protocols.py
+  - [ ] summarization.py
+  - [ ] chat/
 - [x] Standardize imports
+- [x] Standardize to protocols.py and registry.py, no base.py
 - [ ] app
   - [x] Fix startup rendering
   - [x] New artifact browser pane life cycle to fix flicker when change selection in answer controls
