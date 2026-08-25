@@ -38,7 +38,7 @@ async def _build_chat_result(
 ) -> ChatResult:
     output = _output_spec_from_bundle(bundle, output_store) if bundle is not None else OutputSpec()
     return ChatResult(
-        text=_strip_answer_marker(answer_text),
+        text=_strip_answer_prefix(answer_text),
         output=output,
     )
 
@@ -157,24 +157,24 @@ def _patch_incomplete_messages(
     return out
 
 
-_ANSWER_OPEN = "<answer>"
+_ANSWER_PREFIX = "ANSWER:"
 
 
-def _strip_answer_marker(text: str) -> str:
-    """Drop the leading ``<answer>`` marker from a final answer."""
+def _strip_answer_prefix(text: str) -> str:
+    """Drop the leading answer prefix from a final answer."""
     stripped = text.lstrip()
-    return stripped[len(_ANSWER_OPEN) :].strip() if stripped.startswith(_ANSWER_OPEN) else stripped
+    return stripped[len(_ANSWER_PREFIX) :].strip() if stripped.startswith(_ANSWER_PREFIX) else stripped
 
 
 class _TextStreamRouter:
     """Routes a streamed text run into the final answer vs. mid-turn narration.
 
-    A run opening with ``<answer>`` is the **answer**: held back only until that
-    marker is complete, then streamed without it. Any other run is **narration** and
+    A run opening with ``ANSWER:`` is the **answer**: held back only until that
+    prefix is complete, then streamed without it. Any other run is **narration** and
     streams live. After the first chunk that yields text, :attr:`is_answer` says which
     it is. Reset via :meth:`reset` per text part.
 
-    Kept here (not the frontend) so the marker convention — owned by this agent's
+    Kept here (not the frontend) so the prefix convention — owned by this agent's
     prompt — never crosses the layer boundary.
     """
 
@@ -194,15 +194,15 @@ class _TextStreamRouter:
             return chunk
 
         stripped = self._raw.lstrip()
-        if stripped.startswith(_ANSWER_OPEN):
-            answer = stripped[len(_ANSWER_OPEN) :].lstrip("\n")
+        if stripped.startswith(_ANSWER_PREFIX):
+            answer = stripped[len(_ANSWER_PREFIX) :].lstrip("\n")
             if not answer:
-                return ""  # marker complete but the answer hasn't started yet
+                return ""  # prefix complete but the answer hasn't started yet
             self._open = True
             self.is_answer = True
             return answer
-        if _ANSWER_OPEN.startswith(stripped):
-            return ""  # could still become the marker
+        if _ANSWER_PREFIX.startswith(stripped):
+            return ""  # could still become the prefix
         if stripped:
             self._open = True
             self.is_answer = False

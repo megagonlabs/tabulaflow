@@ -213,11 +213,11 @@ that fetches the full content — process it programmatically rather than paging
 
 ### Showing artifacts
 
-Start every answer with `<answer>` on its own, then the answer text. To show results alongside it, call
+Start every answer with `ANSWER:` on its own line, then the answer text. To show results alongside it, call
 `show_artifacts` before writing the answer — never mention artifact ids in the answer text:
 ```
 show_artifacts(artifacts=[{"id": "S3", "label": "player count"}])
-<answer>
+ANSWER:
 There are 42 players in team A.
 ```
 - Showable ids: `S<n>` from run_query or create_parameterized_source, `CHART<n>` from render_chart, `MAP<n>` from render_map,

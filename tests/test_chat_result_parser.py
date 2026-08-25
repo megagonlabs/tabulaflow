@@ -7,7 +7,7 @@ from pydantic_ai.messages import ToolReturnPart
 
 from tabulaflow.data.config import SQLConnectorConfig
 from tabulaflow.agents.chat import ChatResult, TurnFinished
-from tabulaflow.agents.chat.turn import _TextStreamRouter, _build_chat_result, _declared_bundle, _strip_answer_marker
+from tabulaflow.agents.chat.turn import _TextStreamRouter, _build_chat_result, _declared_bundle, _strip_answer_prefix
 from tabulaflow.data.registry import DBRegistry
 from tabulaflow.data.sql import SQLConnector
 from tabulaflow.output.specs import ChoiceOption, ChoiceParameter
@@ -35,21 +35,21 @@ def _result_id(artifact: object, source_id: str | None = None) -> str:
     return artifact.payload.metadata.id
 
 
-def test_strip_answer_marker_removes_the_marker() -> None:
-    assert _strip_answer_marker("<answer>\nThere are 3 rows.") == "There are 3 rows."
+def test_strip_answer_prefix_removes_the_prefix() -> None:
+    assert _strip_answer_prefix("ANSWER:\nThere are 3 rows.") == "There are 3 rows."
 
 
-def test_strip_answer_marker_leaves_unmarked_text_alone() -> None:
+def test_strip_answer_prefix_leaves_unmarked_text_alone() -> None:
     text = "I'm tabulaflow, an interactive data assistant.\n\n---\nAsk me anything about your data."
 
-    assert _strip_answer_marker(text) == text
+    assert _strip_answer_prefix(text) == text
 
 
-def test_text_stream_router_waits_for_the_answer_marker() -> None:
+def test_text_stream_router_waits_for_the_answer_prefix() -> None:
     router = _TextStreamRouter()
 
-    assert router.feed("<ans") == ""
-    assert router.feed("wer>") == ""
+    assert router.feed("ANS") == ""
+    assert router.feed("WER:") == ""
     assert router.feed("\nThere") == "There"
     assert router.is_answer
     assert router.feed(" are 3 rows.") == " are 3 rows."
@@ -68,7 +68,7 @@ def test_text_stream_router_resets_between_runs() -> None:
     assert router.feed("Looking at the schema.") == "Looking at the schema."
     assert not router.is_answer
     router.reset()
-    assert router.feed("<answer>Done.") == "Done."
+    assert router.feed("ANSWER:\nDone.") == "Done."
     assert router.is_answer
 
 
@@ -101,13 +101,13 @@ async def test_build_chat_result_resolves_the_declared_bundle() -> None:
     await output_store.add_fixed_result_source("workspace", "sql", "SELECT 1", ExecResult(df=pd.DataFrame({"a": [1]})))
     bundle = ArtifactBundle(artifacts=(ArtifactRef(id="S1", label="row count"),))
 
-    result = await _build_chat_result("<answer>\nThere is 1 row.", bundle, output_store)
+    result = await _build_chat_result("ANSWER:\nThere is 1 row.", bundle, output_store)
 
     assert result.text == "There is 1 row."
     assert [artifact.id for artifact in result.output.artifacts] == ["S1"]
     assert result.output.sources[0].kind == "fixed"
 
-    without = await _build_chat_result("<answer>\nNothing to show.", None, output_store)
+    without = await _build_chat_result("ANSWER:\nNothing to show.", None, output_store)
     assert without.output.artifacts == []
 
 
@@ -162,7 +162,7 @@ async def test_build_chat_result_resolves_a_panel(tmp_path: Path) -> None:
         artifacts=(ArtifactRef(id="S1", label="top customers"), ArtifactRef(id="S2", label="order count")),
     )
 
-    result = await _build_chat_result("<answer>\nAcme leads.", bundle, output_store)
+    result = await _build_chat_result("ANSWER:\nAcme leads.", bundle, output_store)
 
     assert result.output.default_selection == {"ranking": "net", "period": "q2"}
     resolved_output = await OutputResolver(output_store).resolve(result.output, {"ranking": "count", "period": "q3"})
@@ -208,7 +208,7 @@ async def test_build_chat_result_resolves_source_backed_chart_in_panel(tmp_path:
     await RenderChartTool(output_store=output_store)(source_id="S1", vegalite_spec=json.dumps(spec))
     bundle = ArtifactBundle(artifacts=(ArtifactRef(id="CHART1", label="top customers"),))
 
-    result = await _build_chat_result("<answer>\nChart shown.", bundle, output_store)
+    result = await _build_chat_result("ANSWER:\nChart shown.", bundle, output_store)
 
     assert result.output.artifacts[0].kind == "chart"
     resolved_output = await OutputResolver(output_store).resolve(result.output, {"period": "q3"})
@@ -244,7 +244,7 @@ async def test_build_chat_result_placeholders_a_partially_covered_card(tmp_path:
     )
     bundle = ArtifactBundle(artifacts=(ArtifactRef(id="S1", label="net revenue"),))
 
-    result = await _build_chat_result("<answer>\n17 in the last quarter.", bundle, output_store)
+    result = await _build_chat_result("ANSWER:\n17 in the last quarter.", bundle, output_store)
 
     assert result.output.default_selection == {"period": "q2"}
     with pytest.raises(Exception, match="not a valid choice"):
