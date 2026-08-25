@@ -332,7 +332,7 @@ body { margin: 0; background: var(--bg); color: var(--text); display: flex; flex
           transition: color 120ms ease, background-color 120ms ease, border-color 120ms ease; }
 .rectab:hover { color: var(--text); background: rgba(255, 255, 255, 0.04); }
 .rectab.active {
-    color: var(--accent); background: var(--card); border-color: rgba(154, 164, 178, 0.12); font-weight: 600;
+    color: var(--accent); background: var(--card); border-color: rgba(154, 164, 178, 0.12); font-weight: 500;
 }
 .panesbox { position: relative; }
 .cardpane { width: 100%; }

@@ -1427,6 +1427,7 @@ def test_artifact_tabs_use_flat_navigation() -> None:
 
     assert "border-radius: 6px 6px 0 0;" in pane_css
     assert "color: var(--accent); background: var(--card);" in pane_css
+    assert "border-color: rgba(154, 164, 178, 0.12); font-weight: 500;" in pane_css
     assert ".rectab.active::after" not in pane_css
     assert ".cardlabel::after" not in pane_css
     assert "background-image: repeating-linear-gradient(to bottom" in pane_css
