@@ -649,12 +649,14 @@ Aug 24
 
 Aug 25
 - [ ] agents layer cleanup
-  - [ ] chat/
+  - [x] chat/
+  - [x] `<answer>` -> `ANSWER:`
   - [ ] bash tool
 - app
   - [x] align to browser pane column width
   - [x] map artifact no data box
   - [x] control panel UI
+  - [ ] artifact tab menu
 
 
 - [ ] Shell messed up after ssh disconnect
