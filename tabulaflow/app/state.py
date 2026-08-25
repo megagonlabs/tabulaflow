@@ -6,7 +6,7 @@ import os
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from tabulaflow.app.config import LLMPreset
+from tabulaflow.app.config import LLMPreset, model_supports_apply_patch
 
 if TYPE_CHECKING:
     from tabulaflow.agents.chat import ChatSession
@@ -92,7 +92,7 @@ class AppState:
             and agent.reasoning_effort == preset.main.reasoning_effort
             and agent.subagent_model == preset.subagent.model
             and agent.subagent_reasoning_effort == preset.subagent.reasoning_effort
-            and agent.enable_apply_patch == preset.enable_apply_patch
+            and agent.enable_apply_patch == model_supports_apply_patch(preset.main.model)
         )
 
     def _build_chat_session(
@@ -114,7 +114,7 @@ class AppState:
             project_dir=self.project_dir,
             scratch_dir=self.scratch_dir,
             data_dir=self.data_dir,
-            enable_apply_patch=preset.enable_apply_patch,
+            enable_apply_patch=model_supports_apply_patch(preset.main.model),
         )
 
     def activate_llm_preset(self, preset: LLMPreset) -> tuple[str | None, str | None]:
@@ -135,7 +135,7 @@ class AppState:
                 reasoning_effort=preset.main.reasoning_effort,
                 subagent_model=preset.subagent.model,
                 subagent_reasoning_effort=preset.subagent.reasoning_effort,
-                enable_apply_patch=preset.enable_apply_patch,
+                enable_apply_patch=model_supports_apply_patch(preset.main.model),
             )
         return self._chat_session.resolve_api_keys()
 

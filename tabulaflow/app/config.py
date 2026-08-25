@@ -30,6 +30,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 from dataclasses import dataclass
 from typing import Any, Literal
 
@@ -50,6 +51,16 @@ _INFERRED_PRESET_BY_API_KEY = (
     (PROVIDER_API_KEY_ENV["openai"], "OpenAI balanced"),
     (PROVIDER_API_KEY_ENV["anthropic"], "Anthropic balanced"),
 )
+
+
+def model_supports_apply_patch(model: str) -> bool:
+    """Whether the app should expose the GPT-trained patch tool."""
+    provider, _, model_name = model.partition(":")
+    if provider != "openai-responses":
+        return False
+    version_match = re.match(r"^gpt-(\d+)(?:[.-]|$)", model_name)
+    return version_match is not None and int(version_match.group(1)) >= 5
+
 
 ReasoningEffort = Literal["low", "medium", "high", "xhigh"]
 """Unified thinking level, translated per provider by pydantic-ai (budget tokens
@@ -74,7 +85,6 @@ class LLMPreset(BaseModel):
     label: str
     main: LLMRoleConfig
     subagent: LLMRoleConfig
-    enable_apply_patch: bool = False
 
     @field_validator("label")
     @classmethod
@@ -99,7 +109,6 @@ _DEFAULT_LLM_PRESETS_DATA = (
             "model": "openai-responses:gpt-5.4-mini",
             "reasoning_effort": "medium",
         },
-        "enable_apply_patch": True,
     },
     {
         "label": "OpenAI budget",
@@ -111,7 +120,6 @@ _DEFAULT_LLM_PRESETS_DATA = (
             "model": "openai-responses:gpt-5-mini",
             "reasoning_effort": "medium",
         },
-        "enable_apply_patch": True,
     },
     {
         "label": "Anthropic balanced",

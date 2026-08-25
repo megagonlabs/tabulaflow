@@ -13,6 +13,7 @@ from tabulaflow.app.config import (
     LLMPreset,
     ResolvedLLMSelection,
     load_app_config,
+    model_supports_apply_patch,
     resolve_llm_selection,
     save_app_config,
     update_app_config,
@@ -37,13 +38,21 @@ def test_load_missing_file_returns_defaults(tmp_path: Path) -> None:
     assert openai_budget.main.reasoning_effort == "medium"
     assert openai_budget.subagent.model == "openai-responses:gpt-5-mini"
     assert openai_budget.subagent.reasoning_effort == "medium"
-    assert openai_budget.enable_apply_patch is True
+    assert model_supports_apply_patch(openai_budget.main.model)
     anthropic_balanced = next(preset for preset in DEFAULT_LLM_PRESETS if preset.label == "Anthropic balanced")
     assert anthropic_balanced.main.model == "anthropic:claude-opus-5"
     assert anthropic_balanced.main.reasoning_effort == "high"
     assert anthropic_balanced.subagent.model == "anthropic:claude-sonnet-4-5-20250929"
     assert anthropic_balanced.subagent.reasoning_effort == "medium"
-    assert anthropic_balanced.enable_apply_patch is False
+    assert not model_supports_apply_patch(anthropic_balanced.main.model)
+
+
+def test_apply_patch_support_is_inferred_for_custom_gpt_models() -> None:
+    assert not model_supports_apply_patch("openai-responses:gpt-4.1")
+    assert model_supports_apply_patch("openai-responses:gpt-5.6-sol")
+    assert model_supports_apply_patch("openai-responses:gpt-6")
+    assert not model_supports_apply_patch("openai-chat:gpt-5.6-sol")
+    assert not model_supports_apply_patch("anthropic:claude-opus-5")
     planning_hybrid = next(preset for preset in DEFAULT_LLM_PRESETS if preset.label == "Planning hybrid")
     assert planning_hybrid.main.model == "anthropic:claude-opus-4-8"
     assert planning_hybrid.main.reasoning_effort == "high"
