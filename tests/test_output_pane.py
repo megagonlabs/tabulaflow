@@ -1116,7 +1116,7 @@ def test_answer_controls_render_choice_and_number_inputs() -> None:
     assert ".answer-control-number-input:focus-visible::-moz-range-thumb" in pane_css
     assert "box-shadow: 0 0 0 2px var(--control-surface), 0 0 0 4px var(--focus-ring)" in pane_css
     assert '.answer-controls[aria-busy="true"]::after' in pane_css
-    assert "--control-surface: #24272d;" in pane_css
+    assert "--control-surface: #282d35;" in pane_css
     assert "box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.035);" in pane_css
     assert ".answer-control-label {" in pane_css
     assert "position: absolute; width: 1px; height: 1px;" in pane_css
