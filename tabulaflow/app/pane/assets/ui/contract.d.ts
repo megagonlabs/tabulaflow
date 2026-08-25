@@ -120,6 +120,8 @@ export interface ViewHandle {
   requires?: { width?: boolean; height?: boolean };
   mount?: () => void;
   resize?: () => void;
+  canUpdate?: (data: CardData) => boolean;
+  update?: (data: CardData) => void | Promise<void>;
   destroy?: () => void;
 }
 
@@ -132,6 +134,12 @@ export interface ViewCacheEntry {
   mounted?: boolean;
   observer?: ResizeObserver | null;
   gateFrame?: number | null;
+  revision?: string;
+  pendingRevision?: string | null;
+  pendingGeneration?: number | null;
+  replaces?: ViewCacheEntry | null;
+  queuedRevision?: { card: PaneCard; kind: ViewKind; shell: HTMLElement; key: string; state: Record<string, any> } | null;
+  queuedRevisionScheduled?: boolean;
 }
 
 declare global {
@@ -141,6 +149,7 @@ declare global {
     markdownit?: any;
     texmath?: any;
     maplibregl?: any;
+    vega?: any;
     vegaEmbed?: any;
     cytoscape?: any;
   }

@@ -312,11 +312,14 @@ function refreshActiveTurnControls(index) {
 }
 
 function renderArtifactsInto(region, turn, state) {
-  deactivateViewTree(region);
+  deactivateViewTree(region, true);
   region.replaceChildren();
-  region.classList.remove('resolving');
+  region.removeAttribute('aria-busy');
   var cards = turn.cards || [];
-  if (!cards.length) return;
+  if (!cards.length) {
+    trimCache();
+    return;
+  }
   if (cards.length <= 1) {
     region.appendChild(buildCard(cards[0], { state: state, cardIndex: 0 }));
     return;
@@ -339,7 +342,9 @@ function setActiveTurnArtifactsLoading(index, loading) {
   var turnView = activeTurnView(index);
   if (!turnView) return;
   var region = turnView.querySelector('.artifacts-region');
-  if (region) region.classList.toggle('resolving', loading);
+  if (!region) return;
+  if (loading) region.setAttribute('aria-busy', 'true');
+  else region.removeAttribute('aria-busy');
 }
 
 function isManualPreview(turn) {
@@ -550,12 +555,16 @@ function turnStateKey(turn, index) {
 
 function getTurnState(turn, index) {
   var key = turnStateKey(turn, index);
-  if (!navState[key]) navState[key] = { activeCard: 0, views: {}, scrollTop: 0 };
+  if (!navState[key]) navState[key] = { key: key, activeCard: 0, views: {}, scrollTop: 0 };
   return navState[key];
 }
 
 function cardStateKey(card, cardIndex) {
   return card.artifact_id || card.id || String(cardIndex);
+}
+
+function viewStateKey(state, card, cardIndex, kind) {
+  return state.key + ':' + cardStateKey(card, cardIndex) + ':' + kind;
 }
 
 function savedViewKind(state, card, cardIndex, views) {
@@ -800,7 +809,7 @@ function releaseEntry(entry) {
   entry.ownerShell = null;
 }
 
-function deactivateViewTree(root) {
+function deactivateViewTree(root, deferTrim) {
   if (!root) return;
   root.querySelectorAll('.view-shell').forEach(function (shell) {
     cancelShellLoading(shell);
@@ -810,7 +819,7 @@ function deactivateViewTree(root) {
     gateDeactivate(node._tfViewEntry);
     releaseEntry(node._tfViewEntry);
   });
-  trimCache();
+  if (!deferTrim) trimCache();
 }
 
 function setActiveShellView(shell, activeNode) {
@@ -884,6 +893,7 @@ function stageShellEntry(shell, entry) {
   gateActivate(entry);
   trimCache();
   shell.setAttribute('aria-busy', 'true');
+  if (entry.replaces && activeNode) return;
   if (!activeNode || loadingVisible) {
     revealShellLoading(shell, entry);
   } else if (!samePendingEntry) {
@@ -903,6 +913,14 @@ function commitShellView(shell, entry) {
   shell.className = 'view-shell view-' + entry.kind;
   shell.removeAttribute('aria-busy');
   shell._tfMeta.textContent = entry.metaText || '';
+  var replaced = entry.replaces;
+  entry.replaces = null;
+  if (replaced) {
+    gateDeactivate(replaced);
+    releaseEntry(replaced);
+    if (replaced.handle && replaced.handle.destroy) replaced.handle.destroy();
+    if (replaced.node.parentNode) replaced.node.parentNode.removeChild(replaced.node);
+  }
 }
 
 function hideViewNode(node) {
@@ -927,7 +945,7 @@ function isActiveShellView(shell, key) {
   return shell.dataset.activeViewKey === key;
 }
 
-function createViewEntry(kind, data) {
+function createViewEntry(kind, data, revision) {
   var node = el('div', 'tf-view');
   var entry = {
     node: node,
@@ -937,7 +955,13 @@ function createViewEntry(kind, data) {
     handle: null,
     readyPromise: null,
     metaText: '',
-    ownerShell: null
+    ownerShell: null,
+    revision: revision,
+    pendingRevision: null,
+    pendingGeneration: null,
+    replaces: null,
+    queuedRevision: null,
+    queuedRevisionScheduled: false
   };
   node._tfViewEntry = entry;
   return entry;
@@ -958,6 +982,21 @@ function failViewEntry(entry, error) {
   entry.status = 'error';
 }
 
+function restoreReplacedView(shell, key, entry) {
+  var previous = entry.replaces;
+  entry.replaces = null;
+  if (!previous) return false;
+  gateDeactivate(entry);
+  releaseEntry(entry);
+  if (entry.handle && entry.handle.destroy) entry.handle.destroy();
+  if (entry.node.parentNode) entry.node.parentNode.removeChild(entry.node);
+  viewCache[key] = previous;
+  claimEntry(previous, shell);
+  cacheTouch(key);
+  commitShellView(shell, previous);
+  return true;
+}
+
 function prepareShellView(shell, key, entry) {
   stageShellEntry(shell, entry);
   if (!entry.readyPromise) {
@@ -969,7 +1008,9 @@ function prepareShellView(shell, key, entry) {
     }
     entry.readyPromise = Promise.resolve(rendererReady).then(
       function () { entry.status = 'ready'; },
-      function (error) { failViewEntry(entry, error); }
+      function (error) {
+        if (!restoreReplacedView(shell, key, entry)) failViewEntry(entry, error);
+      }
     );
   }
   entry.readyPromise.then(function () {
@@ -987,8 +1028,81 @@ function currentOwner(entry, key) {
   return shell && isActiveShellView(shell, key) ? shell : null;
 }
 
-function mountView(card, kind, shell, meta) {
-  var key = card.id + ':' + kind;
+function stageViewReplacement(card, kind, shell, key, previous, data) {
+  var entry = createViewEntry(kind, data, card.id);
+  entry.replaces = previous;
+  claimEntry(entry, shell);
+  viewCache[key] = entry;
+  cacheTouch(key);
+  try {
+    renderLoadedView(entry);
+    prepareShellView(shell, key, entry);
+  } catch (error) {
+    if (!restoreReplacedView(shell, key, entry)) failViewEntry(entry, error);
+  }
+}
+
+function applyViewRevision(card, kind, shell, key, entry, state, generation, data) {
+  if (viewCache[key] !== entry || entry.pendingRevision !== card.id || state.resolveSeq !== generation) return;
+  entry.pendingRevision = null;
+  entry.pendingGeneration = null;
+  var handle = entry.handle;
+  if (!handle || !handle.canUpdate || !handle.update || !handle.canUpdate(data)) {
+    stageViewReplacement(card, kind, shell, key, entry, data);
+    return;
+  }
+  Promise.resolve(handle.update(data)).then(function () {
+    if (viewCache[key] !== entry) return;
+    entry.data = data;
+    entry.revision = card.id;
+    entry.metaText = kind === 'data' && data.table ? data.table.meta || '' : '';
+    shell.removeAttribute('aria-busy');
+    shell._tfMeta.textContent = entry.metaText;
+  }).catch(function () {
+    if (viewCache[key] === entry) stageViewReplacement(card, kind, shell, key, entry, data);
+  });
+}
+
+function updateViewRevision(card, kind, shell, key, entry, state) {
+  if (entry.pendingRevision === card.id) return;
+  entry.pendingRevision = card.id;
+  entry.pendingGeneration = state.resolveSeq;
+  var generation = state.resolveSeq;
+  shell.setAttribute('aria-busy', 'true');
+  var cachedData = getCachedCardData(card);
+  if (cachedData) {
+    applyViewRevision(card, kind, shell, key, entry, state, generation, cachedData);
+    return;
+  }
+  fetchCardData(card).then(function (data) {
+    applyViewRevision(card, kind, shell, key, entry, state, generation, data);
+  }).catch(function () {
+    if (viewCache[key] !== entry || entry.pendingRevision !== card.id || entry.pendingGeneration !== generation) return;
+    entry.pendingRevision = null;
+    entry.pendingGeneration = null;
+    shell.removeAttribute('aria-busy');
+  });
+}
+
+function flushQueuedViewRevision(entry) {
+  if (!entry.readyPromise || entry.queuedRevisionScheduled) return;
+  entry.queuedRevisionScheduled = true;
+  entry.readyPromise.then(function () {
+    entry.queuedRevisionScheduled = false;
+    var queued = entry.queuedRevision;
+    entry.queuedRevision = null;
+    if (!queued || viewCache[queued.key] !== entry || entry.revision === queued.card.id) return;
+    updateViewRevision(queued.card, queued.kind, queued.shell, queued.key, entry, queued.state);
+  });
+}
+
+function queueViewRevision(card, kind, shell, key, entry, state) {
+  entry.queuedRevision = { card: card, kind: kind, shell: shell, key: key, state: state };
+  flushQueuedViewRevision(entry);
+}
+
+function mountView(card, kind, shell, meta, state, cardIndex) {
+  var key = viewStateKey(state, card, cardIndex, kind);
   var entry = viewCache[key];
   shell.dataset.activeViewKey = key;
   shell._tfMeta = meta;
@@ -997,17 +1111,20 @@ function mountView(card, kind, shell, meta) {
     cacheTouch(key);
     if (entry.status === 'ready' || entry.status === 'error') {
       commitShellView(shell, entry);
+      if (entry.revision !== card.id) updateViewRevision(card, kind, shell, key, entry, state);
       return;
     }
     if (entry.status === 'fetching') {
       stageShellEntry(shell, entry);
+      if (entry.revision !== card.id) queueViewRevision(card, kind, shell, key, entry, state);
       return;
     }
     if (entry.status === 'loaded') renderLoadedView(entry);
     prepareShellView(shell, key, entry);
+    if (entry.revision !== card.id) queueViewRevision(card, kind, shell, key, entry, state);
     return;
   }
-  entry = createViewEntry(kind, null);
+  entry = createViewEntry(kind, null, card.id);
   claimEntry(entry, shell);
   viewCache[key] = entry;
   cacheTouch(key);
@@ -1028,6 +1145,7 @@ function mountView(card, kind, shell, meta) {
     if (ownerShell) {
       renderLoadedView(entry);
       prepareShellView(ownerShell, key, entry);
+      flushQueuedViewRevision(entry);
     }
   }).catch(function (err) {
     if (viewCache[key] !== entry) return;
@@ -1059,7 +1177,7 @@ function buildCard(card, opts) {
         moveThumb(switcher.thumb, opt);
       }
     }
-    mountView(card, kind, shell, meta);
+    mountView(card, kind, shell, meta, state, cardIndex);
     if (!initial && state) restoreTurnScroll(state);
   }
 
@@ -1107,7 +1225,7 @@ function buildMultiCard(cards, state) {
         moveThumb(switcher.thumb, opt);
       }
     }
-    mountView(card, kind, shell, meta);
+    mountView(card, kind, shell, meta, state, activeCard);
     if (!initial) restoreTurnScroll(state);
   }
 

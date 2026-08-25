@@ -210,5 +210,27 @@ export function renderTable(container, cardData) {
   if (tableData.hasMedia) {
     window.setTimeout(function () { table.redraw(true); }, 0);
   }
-  return { ready: ready, destroy: function () { table.destroy(); closeModal(); } };
+  return {
+    ready: ready,
+    canUpdate: function (nextData) {
+      var nextTable = nextData.table || {};
+      var nextRows = (nextData.dataset && nextData.dataset.rows) || [];
+      var nextEstimatedHeight = 38 + nextRows.length * 29;
+      var nextConstrained = panelHeight > 0 || nextRows.length > 100
+        || (fixedMax != null && nextEstimatedHeight > viewportCap);
+      return JSON.stringify(nextTable.columns || []) === JSON.stringify(tableData.columns || [])
+        && nextConstrained === shouldConstrainHeight
+        && nextTable.maxHeight === tableData.maxHeight
+        && nextTable.displayCap === tableData.displayCap
+        && !!nextTable.hasMedia === !!tableData.hasMedia;
+    },
+    update: function (nextData) {
+      tableData = nextData.table || {};
+      rows = (nextData.dataset && nextData.dataset.rows) || [];
+      var wrapper = container.querySelector('.tf-table-wrap');
+      if (wrapper) wrapper.classList.toggle('pane-short', rows.length <= 12);
+      return table.replaceData(rows);
+    },
+    destroy: function () { table.destroy(); closeModal(); }
+  };
 }

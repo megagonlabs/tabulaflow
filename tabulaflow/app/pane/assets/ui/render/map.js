@@ -604,9 +604,12 @@ function setClickPopup(map, lngLat, html, popupState) {
 }
 
 function bindLayerDetails(map, layerIds, popupState) {
-  if (!layerIds.length) return;
+  function currentLayerIds() {
+    return typeof layerIds === 'function' ? layerIds() : layerIds;
+  }
   map.on('mousemove', function (event) {
-    var feature = firstPopupFeature(map.queryRenderedFeatures(event.point, { layers: layerIds }));
+    var ids = currentLayerIds();
+    var feature = ids.length ? firstPopupFeature(map.queryRenderedFeatures(event.point, { layers: ids })) : null;
     var html = mapFeaturePopup(feature);
     if (!html) {
       scheduleHoverPopupClose(map, popupState);
@@ -618,7 +621,8 @@ function bindLayerDetails(map, layerIds, popupState) {
     scheduleHoverPopupClose(map, popupState);
   });
   map.on('click', function (event) {
-    var feature = firstPopupFeature(map.queryRenderedFeatures(event.point, { layers: layerIds }));
+    var ids = currentLayerIds();
+    var feature = ids.length ? firstPopupFeature(map.queryRenderedFeatures(event.point, { layers: ids })) : null;
     var html = mapFeaturePopup(feature);
     if (!html) return;
     setClickPopup(map, mapFeatureAnchor(feature, event.lngLat), html, popupState);
@@ -773,11 +777,13 @@ export function renderMap(container, cardData) {
   var detailLayerIds = [];
   var legendSections = [];
 
-  function addDataLayers() {
+  function syncDataLayers(initial) {
     dataBounds = new maplibregl.LngLatBounds();
     detailLayerIds = [];
     legendSections = [];
     clearLegend(stageNode);
+    markers.forEach(function (marker) { marker.remove(); });
+    markers = [];
     var hasBounds = false;
     layers.forEach(function (layer, index) {
       var rows = rowsFor(layer);
@@ -785,19 +791,21 @@ export function renderMap(container, cardData) {
       layer = withDerivedColorDomain(layer, rows);
       if (!layer || layer.type === 'points') {
         var pointData = buildPointFeatures(layer || {}, rows, labels);
-        if (!pointData.features.length) return;
         var sourceId = 'tf-points-' + index;
-        map.addSource(sourceId, { type: 'geojson', data: featureCollection(pointData.features) });
+        var pointSource = map.getSource(sourceId);
+        if (pointSource) pointSource.setData(featureCollection(pointData.features));
+        if (!pointData.features.length) return;
+        if (!pointSource) map.addSource(sourceId, { type: 'geojson', data: featureCollection(pointData.features) });
         pointData.features.forEach(function (feature) {
           if (extendFeatureBounds(dataBounds, feature)) hasBounds = true;
         });
         if (pointData.markerType === 'circle') {
           var circleId = sourceId + '-circle';
-          addCircleLayer(map, circleId, sourceId);
+          if (!map.getLayer(circleId)) addCircleLayer(map, circleId, sourceId);
           detailLayerIds.push(circleId);
         } else {
           var pinHitId = sourceId + '-pin-hit';
-          addPinHitLayer(map, pinHitId, sourceId);
+          if (!map.getLayer(pinHitId)) addPinHitLayer(map, pinHitId, sourceId);
           detailLayerIds.push(pinHitId);
           pointData.features.forEach(function (feature) {
             var props = feature.properties || {};
@@ -821,13 +829,18 @@ export function renderMap(container, cardData) {
       }
       if (layer.type === 'geojson') {
         var features = buildGeoJsonFeatures(layer, rows, labels);
-        if (!features.length) return;
         var geoSourceId = 'tf-geojson-' + index;
-        map.addSource(geoSourceId, { type: 'geojson', data: featureCollection(features) });
+        var geoSource = map.getSource(geoSourceId);
+        if (geoSource) geoSource.setData(featureCollection(features));
+        if (!features.length) return;
+        if (!geoSource) map.addSource(geoSourceId, { type: 'geojson', data: featureCollection(features) });
         features.forEach(function (feature) {
           if (extendFeatureBounds(dataBounds, feature)) hasBounds = true;
         });
-        addGeoJsonLayers(map, geoSourceId, geoSourceId).forEach(function (layerId) {
+        var geoLayerIds = map.getLayer(geoSourceId + '-fill')
+          ? [geoSourceId + '-fill', geoSourceId + '-outline', geoSourceId + '-line', geoSourceId + '-point']
+          : addGeoJsonLayers(map, geoSourceId, geoSourceId);
+        geoLayerIds.forEach(function (layerId) {
           detailLayerIds.push(layerId);
         });
         var geoLegend = buildLegendSection(
@@ -840,7 +853,7 @@ export function renderMap(container, cardData) {
         if (geoLegend) legendSections.push(geoLegend);
       }
     });
-    bindLayerDetails(map, detailLayerIds, popupState);
+    if (initial) bindLayerDetails(map, function () { return detailLayerIds; }, popupState);
     renderLegend(stageNode, legendSections);
     if (!hasBounds) dataBounds = null;
   }
@@ -929,7 +942,7 @@ export function renderMap(container, cardData) {
       map.once('load', function () {
         if (!map) return;
         mapLoaded = true;
-        addDataLayers();
+        syncDataLayers(true);
         syncView();
         requestAnimationFrame(resolveReady);
       });
@@ -949,6 +962,24 @@ export function renderMap(container, cardData) {
     mount: initMap,
     resize: function () {
       if (map) map.resize();
+    },
+    canUpdate: function (nextData) {
+      return !!mapLoaded && JSON.stringify(nextData.map || {}) === JSON.stringify(mapData);
+    },
+    update: function (nextData) {
+      mapData = nextData.map || {};
+      datasets = nextData.datasets || {};
+      fallbackRows = (nextData.dataset && nextData.dataset.rows) || [];
+      fallbackLabels = fieldLabels(nextData);
+      labelsCache = {};
+      layers = mapLayers(mapData);
+      clearHoverPopup(map, popupState);
+      if (popupState.click) popupState.click.remove();
+      popupState.click = null;
+      syncDataLayers(false);
+      if (dataBounds) hideEmpty();
+      else showEmpty('No valid coordinates in this result.');
+      return new Promise(function (resolve) { requestAnimationFrame(resolve); });
     },
     destroy: function () {
       destroyMap();

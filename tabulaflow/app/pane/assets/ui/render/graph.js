@@ -108,6 +108,18 @@ function graphElements(graphData) {
   };
 }
 
+function graphStructure(graphData) {
+  var elements = graphData.elements || {};
+  var nodes = (elements.nodes || []).map(function (node) {
+    return String(node && node.data ? node.data.id || '' : '');
+  }).sort();
+  var edges = (elements.edges || []).map(function (edge) {
+    var data = edge && edge.data ? edge.data : {};
+    return [String(data.id || ''), String(data.source || ''), String(data.target || '')].join('\u0000');
+  }).sort();
+  return JSON.stringify({ layout: graphData.layout || 'force', nodes: nodes, edges: edges });
+}
+
 function seededForceNodes(nodes) {
   var count = nodes.length;
   if (!count) return [];
@@ -652,6 +664,22 @@ export function renderGraph(container, cardData) {
       if (!cy) return;
       cy.resize();
       scheduleAutoFit();
+    },
+    canUpdate: function (nextData) {
+      return !!cy && graphStructure(nextData.graph || {}) === graphStructure(graphData);
+    },
+    update: function (nextData) {
+      graphData = nextData.graph || {};
+      elements = graphElements(graphData);
+      hideDetail(true);
+      cy.batch(function () {
+        elements.nodes.concat(elements.edges).forEach(function (element) {
+          var data = element && element.data ? element.data : {};
+          var current = cy.getElementById(String(data.id || ''));
+          if (current && current.length) current.data(data);
+        });
+      });
+      return new Promise(function (resolve) { requestAnimationFrame(resolve); });
     },
     destroy: function () {
       destroyGraph();

@@ -963,11 +963,36 @@ def test_cached_views_are_destroyed_only_on_eviction() -> None:
     assert "unmount" not in contract
     assert "handle.unmount" not in pane_js
     assert "entry.mounted = false;" not in pane_js
-    assert "function deactivateViewTree(root)" in pane_js
+    assert "function deactivateViewTree(root, deferTrim)" in pane_js
     assert "deactivateViewTree(inner);\n  inner.replaceChildren();" in pane_js
     assert "unmount:" not in graph_js
     assert "unmount:" not in map_js
     assert "unmount:" not in chart_js
+
+
+def test_parameterized_artifacts_update_in_place_with_staged_fallback() -> None:
+    pane_js = _pane_asset_text("pane.js")
+    pane_css = _pane_asset_text("pane.css")
+    contract = _pane_asset_text("contract.d.ts")
+    map_js = _pane_asset_text("render/map.js")
+    table_js = _pane_asset_text("render/table.js")
+    chart_js = _pane_asset_text("render/chart.js")
+    graph_js = _pane_asset_text("render/graph.js")
+
+    assert "function viewStateKey(state, card, cardIndex, kind)" in pane_js
+    assert "function stageViewReplacement(card, kind, shell, key, previous, data)" in pane_js
+    assert "if (entry.replaces && activeNode) return;" in pane_js
+    assert "function restoreReplacedView(shell, key, entry)" in pane_js
+    assert "handle.canUpdate(data)" in pane_js
+    assert "handle.update(data)" in pane_js
+    assert ".artifacts-region.resolving" not in pane_css
+    assert "canUpdate?: (data: CardData) => boolean;" in contract
+    assert "update?: (data: CardData) => void | Promise<void>;" in contract
+    assert "pointSource.setData(featureCollection(pointData.features))" in map_js
+    assert "geoSource.setData(featureCollection(features))" in map_js
+    assert "return table.replaceData(rows);" in table_js
+    assert "view.change(DATASET_NAME, changes).runAsync()" in chart_js
+    assert "cy.batch(function ()" in graph_js
 
 
 def test_pane_sets_fixed_favicon_and_result_ready_title() -> None:

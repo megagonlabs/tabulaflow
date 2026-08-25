@@ -3,6 +3,8 @@
 import { clone, cssVar, deepMerge, escapeAttr } from './shared.js';
 
 const vegaEmbed = window.vegaEmbed;
+const vega = window.vega;
+const DATASET_NAME = '__tf_data';
 
 function vegaDarkConfig() {
   var accent = cssVar('--accent', '#3EB489');
@@ -56,7 +58,7 @@ export function renderChart(container, cardData) {
   var spec = clone(chartData.spec || {});
   var wrapClass = chartData.wrapClass || 'content';
   spec.config = deepMerge(vegaDarkConfig(), spec.config || {});
-  spec.data = { values: rows };
+  spec.data = { name: DATASET_NAME, values: rows };
   container.className = 'tf-view tf-chart-view';
   container.innerHTML = '<div class="tf-vis-stage"><div class="tf-vis-wrap '
     + escapeAttr(wrapClass) + '"><div class="tf-vis"></div></div></div>';
@@ -104,6 +106,14 @@ export function renderChart(container, cardData) {
       else mountView();
     },
     resize: resizeView,
+    canUpdate: function (nextData) {
+      return !!view && !!vega && JSON.stringify(nextData.chart || {}) === JSON.stringify(chartData);
+    },
+    update: function (nextData) {
+      var nextRows = (nextData.dataset && nextData.dataset.rows) || [];
+      var changes = vega.changeset().remove(function () { return true; }).insert(nextRows);
+      return view.change(DATASET_NAME, changes).runAsync();
+    },
     destroy: function () {
       disposed = true;
       resolveReady();
