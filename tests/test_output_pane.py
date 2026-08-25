@@ -1420,6 +1420,15 @@ def test_pane_sidebar_meta_uses_artifact_icons() -> None:
     assert "idx.classList.add('manual-turnindex');" in pane_js
     assert "var displayIndex = isManualPreview(turn) ? null : ++agentTurnCount;" in pane_js
     assert ".turnmeta-item + .turnmeta-item::before" in _PANE_HTML
+
+
+def test_artifact_tabs_use_flat_navigation() -> None:
+    pane_css = _pane_asset_text("pane.css")
+
+    assert ".rectab.active { color: var(--text); background: transparent; font-weight: 600; }" in pane_css
+    assert "background-image: repeating-linear-gradient(to bottom" in pane_css
+    assert "height: 35px; padding: 6px 2px 9px;" in pane_css
+    assert "background: var(--rail-bg)" not in pane_css
     assert ".manual-turnindex svg" in _PANE_HTML
 
 

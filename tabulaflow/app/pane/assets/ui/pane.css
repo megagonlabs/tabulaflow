@@ -319,15 +319,19 @@ body { margin: 0; background: var(--bg); color: var(--text); display: flex; flex
 @media (max-width: 640px) {
   .message.user .message-body { max-width: 92%; }
 }
-.rectabs { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px;
-           margin-right: auto; min-height: 32px; padding: 4px; border-radius: 6px;
-           background: var(--rail-bg); }
-.rectab { position: relative; background: transparent; border: 0; border-radius: 4px; color: var(--text-muted); cursor: pointer;
-          padding: 5px 8px 7px; white-space: nowrap;
-          font: 500 13px/1.25 ui-monospace, monospace; }
-.rectab:hover { color: var(--text); background: #1a1f2a; }
-.rectab.active { color: var(--text); background: var(--stripe); font-weight: 700; }
-.rectab.active::after { content: ""; position: absolute; left: 8px; right: 8px; bottom: 2px;
+.rectabs { display: flex; flex-wrap: wrap; align-items: center; gap: 0 18px;
+           margin-right: auto; min-height: 35px; padding: 0 8px; border-radius: 6px 6px 0 0;
+           background-color: rgba(255, 255, 255, 0.025);
+           background-image: repeating-linear-gradient(to bottom, transparent 0, transparent 34px,
+                                                        rgba(154, 164, 178, 0.18) 34px,
+                                                        rgba(154, 164, 178, 0.18) 35px); }
+.rectab { position: relative; background: transparent; border: 0; border-radius: 0; color: var(--text-muted); cursor: pointer;
+          height: 35px; padding: 6px 2px 9px; box-sizing: border-box; white-space: nowrap;
+          font: 500 13px/1.25 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+          transition: color 120ms ease; }
+.rectab:hover { color: var(--text); background: transparent; }
+.rectab.active { color: var(--text); background: transparent; font-weight: 600; }
+.rectab.active::after { content: ""; position: absolute; left: 2px; right: 2px; bottom: 0;
                         height: 2px; border-radius: 999px; background: var(--accent); }
 .panesbox { position: relative; }
 .cardpane { width: 100%; }
@@ -340,10 +344,10 @@ body { margin: 0; background: var(--bg); color: var(--text); display: flex; flex
 .cardbar.multi-card.stacked { flex-direction: column; align-items: stretch; gap: 10px; }
 .cardbar.multi-card.stacked .rectabs { width: 100%; margin-right: 0; flex-wrap: wrap; overflow: visible; }
 .cardbar.multi-card.stacked .seg { align-self: flex-end; }
-.cardlabel { position: relative; display: inline-flex; margin-right: auto; padding: 5px 8px 7px; white-space: nowrap;
-             color: var(--text); background: var(--panel); border-radius: 4px;
-             font: 700 13px/1.25 ui-monospace, monospace; }
-.cardlabel::after { content: ""; position: absolute; left: 8px; right: 8px; bottom: 2px;
+.cardlabel { position: relative; display: inline-flex; margin-right: auto; padding: 6px 2px 9px; white-space: nowrap;
+             color: var(--text); background: transparent;
+             font: 600 13px/1.25 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+.cardlabel::after { content: ""; position: absolute; left: 2px; right: 2px; bottom: 3px;
                     height: 2px; border-radius: 999px; background: var(--accent); }
 .viewmeta { width: 100%; margin: 0 auto; box-sizing: border-box;
             min-height: 15px; padding: 8px 4px 0; color: var(--text-dim); white-space: nowrap; text-align: left;
