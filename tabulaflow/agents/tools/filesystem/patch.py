@@ -57,10 +57,6 @@ class ApplyPatchTool:
         )
         self._metrics = ApplyPatchToolMetrics()
 
-    def _error(self, msg: str) -> str:
-        self._metrics.error_count += 1
-        return f"(error: {msg})"
-
     def _resolve(self, path: str, *, for_write: bool = False) -> Path:
         return _resolve(
             path,
@@ -151,15 +147,22 @@ class ApplyPatchTool:
             patch: Patch text containing one or more add, update, delete, or
                 move operations.
         """
-        return await self.execute(patch)
+        try:
+            return await self.execute(patch)
+        except (ValueError, OSError) as exc:
+            return f"(error: {exc})"
 
     async def execute(self, patch: str) -> str:
         """Apply one V4A patch."""
         self._metrics.num_apply_patch += 1
         try:
             fuzz, commit = self._process_patch(patch)
-        except (DiffError, ValueError, OSError) as exc:
-            return self._error(str(exc))
+        except DiffError as exc:
+            self._metrics.error_count += 1
+            raise ValueError(str(exc)) from exc
+        except (ValueError, OSError):
+            self._metrics.error_count += 1
+            raise
         return self._format_result(commit, fuzz)
 
     def as_pydantic_ai_tool(self) -> Tool:

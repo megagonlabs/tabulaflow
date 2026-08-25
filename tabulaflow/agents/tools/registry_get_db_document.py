@@ -133,17 +133,16 @@ class RegistryGetDBDocumentTool:
         except ValueError:
             self._metrics.error_unknown_alias += 1
             available = ", ".join(self.registry.list_aliases()) or "(none)"
-            return f"(error: unknown db_alias: {db_alias!r}; available: {available})"
+            raise ValueError(f"unknown db_alias: {db_alias!r}; available: {available}") from None
 
         if refresh:
-            await connector.refresh_schema_async()
+            try:
+                await connector.refresh_schema_async()
+            except Exception as exc:
+                raise RuntimeError(f"schema refresh failed: {exc}") from exc
             self._document_cache.pop(db_alias, None)
 
-        try:
-            result = await self._get_document(db_alias)
-        except TypeError as e:
-            return f"(error: {e})"
-
+        result = await self._get_document(db_alias)
         return self._truncate(result)
 
     async def __call__(self, db_alias: str, refresh: bool = False) -> str:
@@ -153,7 +152,10 @@ class RegistryGetDBDocumentTool:
             db_alias: Alias of the target database.
             refresh: Whether to refresh connector schema before rendering.
         """
-        return await self.execute(db_alias, refresh if self.enable_refresh else False)
+        try:
+            return await self.execute(db_alias, refresh if self.enable_refresh else False)
+        except (ValueError, TypeError, RuntimeError) as exc:
+            return f"(error: {exc})"
 
     def as_pydantic_ai_tool(self) -> Tool:
         omitted = () if self.enable_refresh else ("refresh",)

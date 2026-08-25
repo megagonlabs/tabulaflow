@@ -164,9 +164,8 @@ class TestPathSafety:
         (sibling / "secret.txt").write_text("secret")
 
         tool = FileEditorTool(str(project))
-        out = await tool.execute("view", "../project_secret/secret.txt")
-
-        assert "(error" in out and "outside the allowed roots" in out
+        with pytest.raises(ValueError, match="outside the allowed roots"):
+            await tool.execute("view", "../project_secret/secret.txt")
 
 
 class TestAllowedRoots:

@@ -292,15 +292,18 @@ class AddCanonicalNameTool:
                 copy first if needed. Only set when ``input_column`` identifies the
                 row's own entity; never on a foreign attribute.
         """
-        return await self.execute(
-            schema_name,
-            table_name,
-            canonical_column=canonical_column,
-            instruction=instruction,
-            input_column=input_column,
-            merge_duplicates=merge_duplicates,
-            tool_call_id=ctx.tool_call_id,
-        )
+        try:
+            return await self.execute(
+                schema_name,
+                table_name,
+                canonical_column=canonical_column,
+                instruction=instruction,
+                input_column=input_column,
+                merge_duplicates=merge_duplicates,
+                tool_call_id=ctx.tool_call_id,
+            )
+        except (ValueError, TypeError, RuntimeError) as exc:
+            return f"(error: {exc})"
 
     async def execute(
         self,
@@ -315,17 +318,17 @@ class AddCanonicalNameTool:
     ) -> str:
         """Canonicalize one table column without requiring an agent run context."""
         if self._db_connector is None:
-            return "(error: no workspace database connected)"
+            raise RuntimeError("no workspace database connected")
 
         # Shared setup: distinct source values + ensure canonical_column exists.
         distinct_values, error = await self._fetch_distinct_values(schema_name, table_name, input_column)
         if error is not None:
-            return error
+            raise RuntimeError(error)
         if not distinct_values:
             return f"(no values to canonicalize in {qualified_table(schema_name, table_name)}.{input_column})"
         error = await self._check_canonical_column(schema_name, table_name, input_column, canonical_column)
         if error is not None:
-            return error
+            raise RuntimeError(error)
 
         # Per-call trajectory directory. Best-effort: log failures and disable.
         call_id = uuid.uuid4().hex[:12]
@@ -342,7 +345,7 @@ class AddCanonicalNameTool:
             distinct_values, instruction, schema_name, table_name, input_column, traj_dir, tool_call_id
         )
         if cluster_error is not None:
-            return cluster_error
+            raise RuntimeError(cluster_error)
 
         # Apply value → canonical mapping in one UPDATE.
         update_error = await self._apply_mapping(
@@ -353,9 +356,9 @@ class AddCanonicalNameTool:
             mapping=mapping,
         )
         if update_error is not None:
-            return (
-                f"(error: failed to write canonical_column {canonical_column} to "
-                f"{qualified_table(schema_name, table_name)}: {update_error})"
+            raise RuntimeError(
+                f"failed to write canonical_column {canonical_column} to "
+                f"{qualified_table(schema_name, table_name)}: {update_error}"
             )
 
         # Optional post-step: collapse rows sharing a canonical into one (in place).
@@ -365,7 +368,7 @@ class AddCanonicalNameTool:
                 schema_name, table_name, canonical_column
             )
             if merge_error is not None:
-                return merge_error
+                raise RuntimeError(merge_error)
 
         # Summary.
         qualified_target = qualified_table(schema_name, table_name)
@@ -400,7 +403,7 @@ class AddCanonicalNameTool:
         )
         if distinct_res.error is not None or distinct_res.df is None:
             detail = distinct_res.error.message if distinct_res.error else "no dataframe"
-            return [], f"(error: failed to read distinct values from {qualified}.{input_column}: {detail})"
+            return [], f"failed to read distinct values from {qualified}.{input_column}: {detail}"
         # Positional access; the result column name may be case-folded by some dialects.
         return [str(v) for v in distinct_res.df.iloc[:, 0].dropna().tolist()], None
 
@@ -416,11 +419,11 @@ class AddCanonicalNameTool:
         )
         if cols_res.error is not None or cols_res.df is None:
             detail = cols_res.error.message if cols_res.error else "no dataframe"
-            return f"(error: failed to inspect {qualified}: {detail})"
+            return f"failed to inspect {qualified}: {detail}"
         if canonical_column not in [str(c) for c in cols_res.df.columns]:
             return (
-                f"(error: canonical_column {canonical_column!r} does not exist on {qualified}; "
-                f"create it first — e.g. ALTER TABLE {qualified} ADD COLUMN {canonical_column} TEXT)"
+                f"canonical_column {canonical_column!r} does not exist on {qualified}; "
+                f"create it first — e.g. ALTER TABLE {qualified} ADD COLUMN {canonical_column} TEXT"
             )
         return None
 
@@ -660,11 +663,11 @@ class AddCanonicalNameTool:
                 )
                 if new_names is None:
                     return resolved, (
-                        f"(error: could not produce distinct canonical names for cluster group "
+                        f"could not produce distinct canonical names for cluster group "
                         f"{canonical!r} (batch {batch_idx + 1}/{n_batches}) after "
                         f"{_MAX_DISAMBIGUATE_RETRIES} retries. Consider providing a more "
                         f"discriminating input_column or richer instruction context so the LLM "
-                        f"can distinguish the {len(idxs)} colliding clusters.)"
+                        f"can distinguish the {len(idxs)} colliding clusters."
                     )
                 for cluster_idx, name in zip(batch_idxs, new_names):
                     resolved[cluster_idx] = name
@@ -872,12 +875,12 @@ class AddCanonicalNameTool:
         res = await self._db_connector.run_query_async(select_stmt)
         if res.error is not None or res.df is None:
             detail = res.error.message if res.error else "no dataframe"
-            return None, f"(error: failed to read {qualified} for merge_duplicates: {detail})"
+            return None, f"failed to read {qualified} for merge_duplicates: {detail}"
         df = res.df
         if df.empty:
             return (0, 0), None
         if canonical_column not in df.columns:
-            return None, f"(error: canonical_column {canonical_column!r} not found in {qualified})"
+            return None, f"canonical_column {canonical_column!r} not found in {qualified}"
 
         rows_before = len(df)
         other_cols = [c for c in df.columns if c != canonical_column]
@@ -900,7 +903,7 @@ class AddCanonicalNameTool:
                 df=merged, table_name=table_name, schema_name=schema_name, mode="replace"
             )
         except ValueError as e:
-            return None, f"(error: failed to write merged {qualified}: {e})"
+            return None, f"failed to write merged {qualified}: {e}"
         return (rows_before, rows_after), None
 
     def as_pydantic_ai_tool(self) -> Tool:

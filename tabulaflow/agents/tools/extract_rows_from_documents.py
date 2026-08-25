@@ -159,14 +159,17 @@ class ExtractRowsFromDocumentsTool:
                 ``JSON`` columns work too). Array, struct, map, and binary columns are
                 not valid targets.
         """
-        return await self.execute(
-            schema_name,
-            table_name,
-            task_query=task_query,
-            task_instruction=task_instruction,
-            output_columns=output_columns,
-            tool_call_id=ctx.tool_call_id,
-        )
+        try:
+            return await self.execute(
+                schema_name,
+                table_name,
+                task_query=task_query,
+                task_instruction=task_instruction,
+                output_columns=output_columns,
+                tool_call_id=ctx.tool_call_id,
+            )
+        except (ValueError, TypeError, RuntimeError) as exc:
+            return f"(error: {exc})"
 
     async def execute(
         self,
@@ -180,27 +183,27 @@ class ExtractRowsFromDocumentsTool:
     ) -> str:
         """Extract and append document rows without requiring an agent run context."""
         if not output_columns:
-            return "(error: output_columns must be non-empty)"
+            raise ValueError("output_columns must be non-empty")
 
         select_result = await self.db_connector.run_query_async(task_query)
         if select_result.error is not None or select_result.df is None:
             detail = select_result.error.message if select_result.error is not None else "no dataframe returned"
-            return f"(error: failed to evaluate task_query: {detail})"
+            raise RuntimeError(f"failed to evaluate task_query: {detail}")
 
         df = select_result.df
         source_columns = [str(c) for c in df.columns]
         if not source_columns:
-            return "(error: task_query returned no columns)"
+            raise ValueError("task_query returned no columns")
 
         content_col = "content"
         if content_col not in source_columns:
-            return (
-                "(error: task_query must project the document text as a column named 'content' "
-                "(e.g. SELECT body AS content, url FROM ...))"
+            raise ValueError(
+                "task_query must project the document text as a column named 'content' "
+                "(e.g. SELECT body AS content, url FROM ...)"
             )
         var_cols = [c for c in source_columns if c != content_col]
         if not (pdt.is_object_dtype(df[content_col]) or pdt.is_string_dtype(df[content_col])):
-            return f"(error: the 'content' column must hold document text, but has dtype {df[content_col].dtype})"
+            raise TypeError(f"the 'content' column must hold document text, but has dtype {df[content_col].dtype}")
 
         # Compile the template. Reject {{ content }} upfront (it is the source the
         # entities are extracted from, not a template variable), and require every
@@ -210,18 +213,18 @@ class ExtractRowsFromDocumentsTool:
         try:
             parsed = _JINJA_ENV.parse(task_instruction)
         except jinja2.TemplateSyntaxError as e:
-            return f"(error: invalid Jinja2 syntax in task_instruction: {e})"
+            raise ValueError(f"invalid Jinja2 syntax in task_instruction: {e}") from e
         referenced = jinja2.meta.find_undeclared_variables(parsed)
         if content_col in referenced:
-            return (
-                f"(error: task_instruction may not reference {content_col!r}; "
-                f"it is the document text entities are extracted from, not interpolated into the instruction)"
+            raise ValueError(
+                f"task_instruction may not reference {content_col!r}; "
+                "it is the document text entities are extracted from, not interpolated into the instruction"
             )
         unknown = sorted(referenced - set(var_cols))
         if unknown:
-            return (
-                f"(error: task_instruction references placeholders not in the task_query result: {unknown}; "
-                f"available columns (excluding 'content'): {var_cols})"
+            raise ValueError(
+                f"task_instruction references placeholders not in the task_query result: {unknown}; "
+                f"available columns (excluding 'content'): {var_cols}"
             )
         task_template = _JINJA_ENV.from_string(task_instruction)
 
@@ -234,11 +237,11 @@ class ExtractRowsFromDocumentsTool:
                 if table_columns_result.error is not None
                 else "no dataframe returned"
             )
-            return f"(error: failed to inspect target table {qualified_target}: {detail})"
+            raise RuntimeError(f"failed to inspect target table {qualified_target}: {detail}")
         table_columns = [str(c) for c in table_columns_result.df.columns]
         missing = [c for c in output_columns if c not in table_columns]
         if missing:
-            return f"(error: output_columns not found in table {qualified_target}: {missing})"
+            raise ValueError(f"output_columns not found in table {qualified_target}: {missing}")
 
         # Resolve each output column's target type so the LLM emits a native value
         # (int/float/bool/date) instead of a string the database must coerce on INSERT —
@@ -248,29 +251,26 @@ class ExtractRowsFromDocumentsTool:
             self.db_connector.schema, schema_name, table_name, output_columns
         )
         if unsupported:
-            return (
-                f"(error: cannot extract into non-scalar columns {unsupported} in {qualified_target}; "
+            raise TypeError(
+                f"cannot extract into non-scalar columns {unsupported} in {qualified_target}; "
                 "target scalar, text, or date columns — for list/nested values, use a text column "
-                "holding a JSON string)"
+                "holding a JSON string"
             )
 
         # Per-execution trajectory directory, shared across documents;
         # EntityExtractor creates it lazily on first write.
         traj_dir = self.trajectory_log_dir / uuid.uuid4().hex[:12] if self.trajectory_log_dir is not None else None
 
-        try:
-            extractor = EntityExtractor(
-                output_columns,
-                column_types=column_types,
-                llm=self.subagent_llm,
-                model_settings=self.model_settings,
-                max_concurrency=self.max_concurrency,
-                chunk_target=self.chunk_target,
-                chunk_max=self.chunk_max,
-                trajectory_log_dir=traj_dir,
-            )
-        except ValueError as e:
-            return f"(error: {e})"
+        extractor = EntityExtractor(
+            output_columns,
+            column_types=column_types,
+            llm=self.subagent_llm,
+            model_settings=self.model_settings,
+            max_concurrency=self.max_concurrency,
+            chunk_target=self.chunk_target,
+            chunk_max=self.chunk_max,
+            trajectory_log_dir=traj_dir,
+        )
 
         rows = df.to_dict(orient="records")
         total_docs = len(rows)
@@ -324,7 +324,7 @@ class ExtractRowsFromDocumentsTool:
                     mode="append",
                 )
             except ValueError as e:
-                return f"(error: failed to append extracted rows to {qualified_target}: {e})"
+                raise RuntimeError(f"failed to append extracted rows to {qualified_target}: {e}") from e
 
         summary = f"Extracted {written} entities from {total_docs} documents; appended to {qualified_target}."
         if errors:

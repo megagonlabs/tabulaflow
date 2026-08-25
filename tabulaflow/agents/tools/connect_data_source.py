@@ -46,23 +46,26 @@ class ConnectDataSourceTool:
             alias: The name to register the source under, used verbatim — letters, digits,
                 and underscores only, and not already in use by another source.
         """
-        return await self.execute(source, alias)
+        try:
+            return await self.execute(source, alias)
+        except (ValueError, OSError, RuntimeError) as exc:
+            return f"(error: {exc})"
 
     async def execute(self, source: str, alias: str) -> str:
         """Connect and register one external data source."""
-        from tabulaflow.data.loaders import is_hf_dataset_url, load_files, load_hf_dataset
-
         if not _VALID_NAME.fullmatch(alias):
-            return f"(error: invalid alias {alias!r}: use only letters, digits, and underscores)"
+            raise ValueError(f"invalid alias {alias!r}: use only letters, digits, and underscores")
         if self._registry.has(alias):
-            return f"(error: alias {alias!r} is already in use; choose a different one)"
+            raise ValueError(f"alias {alias!r} is already in use; choose a different one")
+
+        from tabulaflow.data.loaders import is_hf_dataset_url, load_files, load_hf_dataset
 
         is_hf = is_hf_dataset_url(source)
         is_url = not is_hf and "://" in source
         path = os.path.expanduser(source)
 
         if not is_hf and not is_url and not os.path.isfile(path):
-            return f"(error: no such file: {source!r}; pass a local file path or a HuggingFace dataset URL)"
+            raise FileNotFoundError(f"no such file: {source!r}; pass a local file path or a HuggingFace dataset URL")
         try:
             if is_hf:
                 connector: DBConnector = await load_hf_dataset(source, db_name=alias, read_only=True)
@@ -80,7 +83,7 @@ class ConnectDataSourceTool:
                 )
         except Exception as e:
             hint = f" If it needs credentials, ask the user to connect it with /connect {source}" if is_url else ""
-            return f"(error: failed to connect {source!r}: {type(e).__name__}: {e}.{hint})"
+            raise RuntimeError(f"failed to connect {source!r}: {type(e).__name__}: {e}.{hint}") from e
 
         self._registry.register(alias, connector)
         lang = connector.language

@@ -99,14 +99,17 @@ class RegistryGetTableSchemaTool:
             )
         except TypeError as e:
             return ToolReturn(return_value=f"(error: {e})", metadata=ToolCallOutcome(error=True))
-        execution = await tool.execute(
-            schema_name,
-            table_name,
-            refresh=refresh if self.enable_refresh else False,
-            column_regex_filter=column_regex_filter,
-            column_offset=column_offset,
-            column_limit=column_limit,
-        )
+        try:
+            execution = await tool.execute(
+                schema_name,
+                table_name,
+                refresh=refresh if self.enable_refresh else False,
+                column_regex_filter=column_regex_filter,
+                column_offset=column_offset,
+                column_limit=column_limit,
+            )
+        except (ValueError, RuntimeError) as e:
+            return ToolReturn(return_value=f"(error: {e})", metadata=ToolCallOutcome(error=True))
         outcome = (
             ToolCallOutcome(count=execution.n_columns, unit="columns") if execution.n_columns is not None else None
         )

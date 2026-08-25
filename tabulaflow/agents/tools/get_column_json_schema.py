@@ -198,7 +198,10 @@ class GetColumnJsonSchemaTool:
                 provided, returns the full details of that sub-path instead of
                 a shallow overview of the entire schema.
         """
-        return await self.execute(schema_name, table_name, column_name, path)
+        try:
+            return await self.execute(schema_name, table_name, column_name, path)
+        except ValueError as exc:
+            return f"(error: {exc})"
 
     async def execute(self, schema_name: str | None, table_name: str, column_name: str, path: str | None = None) -> str:
         """Resolve and render one column's JSON schema."""
@@ -207,22 +210,22 @@ class GetColumnJsonSchemaTool:
         table = find_table(self.schema, schema_name, table_name)
         if table is None:
             self._metrics.error_table_not_found += 1
-            return f"(error: table {table_name} in schema {schema_name} not found)"
+            raise ValueError(f"table {table_name} in schema {schema_name} not found")
 
         column = find_column(table, column_name)
         if column is None:
             self._metrics.error_column_not_found += 1
-            return f"(error: column {column_name} not found in table {table_name} in schema {schema_name})"
+            raise ValueError(f"column {column_name} not found in table {table_name} in schema {schema_name}")
 
         if not column.json_schema:
             self._metrics.error_no_json_schema += 1
-            return f"(error: column {column_name} in table {table_name} in schema {schema_name} has no JSON schema)"
+            raise ValueError(f"column {column_name} in table {table_name} in schema {schema_name} has no JSON schema")
 
         if path:
             target_schema = _resolve_json_schema_path(column.json_schema, path)
             if target_schema is None:
                 self._metrics.error_path_not_found += 1
-                return f"(error: path '{path}' not found in JSON schema of column {column_name})"
+                raise ValueError(f"path {path!r} not found in JSON schema of column {column_name}")
             result = format_json_schema_type(target_schema, max_depth=None, max_fields=None)
             if self.include_examples and column.examples:
                 sub_examples = _extract_examples_at_path(_parse_json_examples(column.examples), path)

@@ -573,11 +573,11 @@ class TestApplyPatchTool:
 *** End Patch
 """
         )
-        err = await tool.execute("not a patch")
+        with pytest.raises(ValueError):
+            await tool.execute("not a patch")
 
         metrics = tool.metrics()
         assert ok == "M a.txt"
-        assert "(error:" in err
         assert metrics.num_apply_patch == 2
         assert metrics.error_count == 1
 

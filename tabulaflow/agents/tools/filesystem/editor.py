@@ -13,7 +13,7 @@ from collections.abc import Sequence
 import os
 import re
 from pathlib import Path
-from typing import ClassVar, Literal
+from typing import ClassVar, Literal, NoReturn
 
 from pydantic import BaseModel
 from pydantic_ai import Tool
@@ -113,28 +113,28 @@ class FileEditorTool:
 
     # -- commands -------------------------------------------------------------
 
-    def _error(self, msg: str) -> str:
+    def _error(self, msg: str) -> NoReturn:
         self._metrics.error_count += 1
-        return f"(error: {msg})"
+        raise ValueError(msg)
 
-    def _parse_range(self, view_range: list[int] | None, total: int) -> tuple[int, int] | str:
+    def _parse_range(self, view_range: list[int] | None, total: int) -> tuple[int, int]:
         """Parse and validate a 1-indexed [start, end] range.
 
-        Returns (start, end) as 0-indexed inclusive bounds, or an error string.
+        Returns (start, end) as 0-indexed inclusive bounds.
         """
         if not view_range:
             return (0, total - 1)
         if len(view_range) != 2:
-            return self._error("view_range must be a list of two integers [start, end].")
+            self._error("view_range must be a list of two integers [start, end].")
         start, end = view_range
         if start < 1:
-            return self._error(f"start must be >= 1, got {start}.")
+            self._error(f"start must be >= 1, got {start}.")
         if start > total:
-            return self._error(f"start ({start}) is past the end (only {total} available).")
+            self._error(f"start ({start}) is past the end (only {total} available).")
         if end > total:
             end = total  # clamp an over-long end to what's available
         if end < start:
-            return self._error(f"end ({end}) must be >= start ({start}).")
+            self._error(f"end ({end}) must be >= start ({start}).")
         return (start - 1, end - 1)
 
     def _view_dir(self, resolved: Path, path: str, view_range: list[int] | None) -> str:
@@ -155,10 +155,7 @@ class FileEditorTool:
                     entries.append(os.path.join(rel, f))
 
         total = len(entries)
-        result = self._parse_range(view_range, total)
-        if isinstance(result, str):
-            return result
-        lo, hi = result
+        lo, hi = self._parse_range(view_range, total)
 
         selected = entries[lo : hi + 1]
         label = path or "."
@@ -182,10 +179,7 @@ class FileEditorTool:
         num_lines = len(lines) - (1 if content.endswith("\n") else 0)
         header = f"File: {path}\n"
 
-        result = self._parse_range(view_range, num_lines)
-        if isinstance(result, str):
-            return result
-        lo, hi = result
+        lo, hi = self._parse_range(view_range, num_lines)
 
         if not view_range and num_lines > MAX_RESPONSE_LINES:
             selected = lines[:MAX_RESPONSE_LINES]
@@ -353,7 +347,10 @@ class FileEditorTool:
                 For files, selects a line range; for directories, an entry
                 range for pagination. Not used for PDFs.
         """
-        return await self.execute(command, path, file_text, old_str, new_str, replace_all, view_range)
+        try:
+            return await self.execute(command, path, file_text, old_str, new_str, replace_all, view_range)
+        except (ValueError, OSError) as exc:
+            return f"(error: {exc})"
 
     async def execute(
         self,
@@ -366,10 +363,7 @@ class FileEditorTool:
         view_range: list[int] | None = None,
     ) -> str:
         """Execute one filesystem editor command."""
-        try:
-            resolved = self._resolve(path, for_write=command in ("write_file", "str_replace"))
-        except ValueError as e:
-            return self._error(str(e))
+        resolved = self._resolve(path, for_write=command in ("write_file", "str_replace"))
 
         if command in ("write_file", "str_replace") and self._is_pdf(resolved):
             return self._error(f"{path} is a PDF — PDFs are read-only; use the view command.")

@@ -375,18 +375,21 @@ class RunSubagentForEachRowTool:
                   auxiliary tables for context, or writes to other tables
                   (INSERTs, DDL).
         """
-        return await self.execute(
-            schema_name,
-            table_name,
-            task_query=task_query,
-            task_instruction=task_instruction,
-            key_columns=key_columns,
-            output_columns=output_columns,
-            enable_browser_tools=enable_browser_tools,
-            enable_nested_subagents=enable_nested_subagents,
-            enable_run_query_tool=enable_run_query_tool,
-            tool_call_id=ctx.tool_call_id,
-        )
+        try:
+            return await self.execute(
+                schema_name,
+                table_name,
+                task_query=task_query,
+                task_instruction=task_instruction,
+                key_columns=key_columns,
+                output_columns=output_columns,
+                enable_browser_tools=enable_browser_tools,
+                enable_nested_subagents=enable_nested_subagents,
+                enable_run_query_tool=enable_run_query_tool,
+                tool_call_id=ctx.tool_call_id,
+            )
+        except (ValueError, TypeError, RuntimeError) as exc:
+            return f"(error: {exc})"
 
     async def execute(
         self,
@@ -404,24 +407,24 @@ class RunSubagentForEachRowTool:
     ) -> str:
         """Run row-wise subagents without requiring an agent run context."""
         if not output_columns:
-            return "(error: output_columns must be a non-empty list)"
+            raise ValueError("output_columns must be a non-empty list")
 
         if not key_columns:
-            return "(error: key_columns must be a non-empty list naming a unique key of the target table)"
+            raise ValueError("key_columns must be a non-empty list naming a unique key of the target table")
 
         select_result = await self.db_connector.run_query_async(task_query)
         if select_result.error is not None or select_result.df is None:
             detail = select_result.error.message if select_result.error is not None else "no dataframe returned"
-            return f"(error: failed to evaluate task_query: {detail})"
+            raise RuntimeError(f"failed to evaluate task_query: {detail}")
 
         df = select_result.df
         all_columns = [str(c) for c in df.columns]
         if not all_columns:
-            return "(error: task_query returned no columns)"
+            raise ValueError("task_query returned no columns")
 
         missing_id = [c for c in key_columns if c not in all_columns]
         if missing_id:
-            return f"(error: key_columns not found in task_query result: {missing_id})"
+            raise ValueError(f"key_columns not found in task_query result: {missing_id}")
 
         # Look up the target table's actual columns to validate output_columns and
         # decide whether to ALTER for _subagent_* columns. task_query may project
@@ -434,12 +437,12 @@ class RunSubagentForEachRowTool:
                 if table_columns_result.error is not None
                 else "no dataframe returned"
             )
-            return f"(error: failed to inspect target table {qualified_target}: {detail})"
+            raise RuntimeError(f"failed to inspect target table {qualified_target}: {detail}")
         table_columns = [str(c) for c in table_columns_result.df.columns]
 
         missing_output = [c for c in output_columns if c not in table_columns]
         if missing_output:
-            return f"(error: output_columns not found in table {qualified_target}: {missing_output})"
+            raise ValueError(f"output_columns not found in table {qualified_target}: {missing_output}")
 
         # Resolve each output column's type so the subagent emits a native value
         # (int/float/bool/date) instead of a string the database must coerce on write —
@@ -450,10 +453,10 @@ class RunSubagentForEachRowTool:
             self.db_connector.schema, schema_name, table_name, output_columns
         )
         if unsupported:
-            return (
-                f"(error: cannot write into non-scalar columns {unsupported} in {qualified_target}; "
+            raise TypeError(
+                f"cannot write into non-scalar columns {unsupported} in {qualified_target}; "
                 "target scalar, text, or date columns — for list/nested values, use a text column "
-                "holding a JSON string)"
+                "holding a JSON string"
             )
         try:
             answer_model = create_model(
@@ -461,7 +464,7 @@ class RunSubagentForEachRowTool:
                 **{c: (column_types.get(c, str) | None, None) for c in output_columns},  # type: ignore[call-overload]
             )
         except Exception as e:
-            return f"(error: cannot build an output schema from output_columns {output_columns}: {e})"
+            raise ValueError(f"cannot build an output schema from output_columns {output_columns}: {e}") from e
 
         # Validate that each key_column can address exactly one target row on
         # write-back (UPDATE ... WHERE key = value). A key that is not a real
@@ -471,21 +474,21 @@ class RunSubagentForEachRowTool:
         # silently corrupts or no-ops, so reject them up front.
         key_not_in_table = [c for c in key_columns if c not in table_columns]
         if key_not_in_table:
-            return (
-                f"(error: key_columns must be columns of {qualified_target} for write-back, "
-                f"but these are not present there: {key_not_in_table})"
+            raise ValueError(
+                f"key_columns must be columns of {qualified_target} for write-back, "
+                f"but these are not present there: {key_not_in_table}"
             )
         key_df = df[key_columns]
         if bool(key_df.isnull().to_numpy().any()):
-            return (
-                "(error: key_columns contain NULL values; a NULL key cannot locate its row "
-                "for write-back. Use a non-null unique key.)"
+            raise ValueError(
+                "key_columns contain NULL values; a NULL key cannot locate its row "
+                "for write-back. Use a non-null unique key."
             )
         if bool(key_df.duplicated().any()):
-            return (
-                "(error: key_columns are not unique across task_query rows; one subagent output "
+            raise ValueError(
+                "key_columns are not unique across task_query rows; one subagent output "
                 "would overwrite multiple rows. Project a unique key — e.g. the table's primary "
-                "key, or add a row-id column before fan-out.)"
+                "key, or add a row-id column before fan-out."
             )
 
         # Compile the task instruction as a Jinja2 template, and require every
@@ -496,12 +499,12 @@ class RunSubagentForEachRowTool:
         try:
             parsed = _JINJA_ENV.parse(task_instruction)
         except jinja2.TemplateSyntaxError as e:
-            return f"(error: invalid Jinja2 syntax in task_instruction: {e})"
+            raise ValueError(f"invalid Jinja2 syntax in task_instruction: {e}") from e
         unknown = sorted(jinja2.meta.find_undeclared_variables(parsed) - set(all_columns))
         if unknown:
-            return (
-                f"(error: task_instruction references placeholders not in the task_query result: {unknown}; "
-                f"available columns: {all_columns})"
+            raise ValueError(
+                f"task_instruction references placeholders not in the task_query result: {unknown}; "
+                f"available columns: {all_columns}"
             )
         task_template = _JINJA_ENV.from_string(task_instruction)
 
@@ -558,7 +561,7 @@ class RunSubagentForEachRowTool:
             canonical_pa_tool = canonical_tool.as_pydantic_ai_tool()
 
         if enable_run_query_tool and self.registry is None:
-            return "(error: enable_run_query_tool=True but no registry was provided to RunSubagentForEachRowTool)"
+            raise ValueError("enable_run_query_tool=True but no registry was provided to RunSubagentForEachRowTool")
 
         # Browser tool returns (the ``tool_allowlist`` below) are mirrored to the
         # message store and tagged with a ``[message_id=M<n>]`` marker whenever a

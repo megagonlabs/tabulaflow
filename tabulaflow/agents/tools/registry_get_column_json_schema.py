@@ -87,7 +87,10 @@ class RegistryGetColumnJsonSchemaTool:
             return f"(error: unknown db_alias: {db_alias!r}; available: {available})"
         except TypeError as e:
             return f"(error: {e})"
-        return await tool.execute(schema_name, table_name, column_name, path)
+        try:
+            return await tool.execute(schema_name, table_name, column_name, path)
+        except ValueError as e:
+            return f"(error: {e})"
 
     def as_pydantic_ai_tool(self) -> Tool:
         return Tool(self.__call__, name=self.name)

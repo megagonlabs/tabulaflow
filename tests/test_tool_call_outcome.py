@@ -75,7 +75,7 @@ class TestGetTableSchemaOutcome:
         tool = RegistryGetTableSchemaTool(registry, SQLDDLSchemaFormatter())
         result = await tool("mydb", None, "missing")
         assert isinstance(result, ToolReturn)
-        assert result.metadata is None
+        assert result.metadata == ToolCallOutcome(error=True)
 
 
 class TestChatOutcomeNormalization:

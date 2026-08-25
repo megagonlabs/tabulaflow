@@ -388,6 +388,9 @@ class TestGetColumnJsonSchemaTool:
         assert "not found" in result
         assert tool.metrics().error_path_not_found == 1
 
+        with pytest.raises(ValueError, match="not found"):
+            await tool.execute("test_schema", "test_table", "data_col", path="nonexistent")
+
     @pytest.mark.asyncio
     async def test_no_json_schema(self) -> None:
         tool = GetColumnJsonSchemaTool(_make_schema(json_schema=None))

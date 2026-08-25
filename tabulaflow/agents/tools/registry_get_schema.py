@@ -72,18 +72,24 @@ class RegistryGetSchemaTool:
         except ValueError:
             self._metrics.error_unknown_alias += 1
             available = ", ".join(self.registry.list_aliases()) or "(none)"
-            return f"(error: unknown db_alias: {db_alias!r}; available: {available})"
+            raise ValueError(f"unknown db_alias: {db_alias!r}; available: {available}") from None
 
         if connector.connector_type == "sql":
             if refresh:
-                await connector.refresh_schema_async()
+                try:
+                    await connector.refresh_schema_async()
+                except Exception as exc:
+                    raise RuntimeError(f"schema refresh failed: {exc}") from exc
             result = self._sql_formatter.format(connector.schema, include_descriptions=True)
         elif connector.connector_type == "property_graph":
             if refresh:
-                await connector.refresh_schema_async()
+                try:
+                    await connector.refresh_schema_async()
+                except Exception as exc:
+                    raise RuntimeError(f"schema refresh failed: {exc}") from exc
             result = self._graph_formatter.format(connector.schema)
         else:
-            return f"(error: unsupported connector type: {connector.connector_type!r})"
+            raise TypeError(f"unsupported connector type: {connector.connector_type!r}")
 
         return self._truncate(result)
 
@@ -95,7 +101,10 @@ class RegistryGetSchemaTool:
             refresh: Whether to refresh connector schema before rendering.
                 Exposed only when schema refresh is enabled.
         """
-        return await self.execute(db_alias, refresh if self.enable_refresh else False)
+        try:
+            return await self.execute(db_alias, refresh if self.enable_refresh else False)
+        except (ValueError, TypeError, RuntimeError) as exc:
+            return f"(error: {exc})"
 
     def as_pydantic_ai_tool(self) -> Tool:
         omitted = () if self.enable_refresh else ("refresh",)
