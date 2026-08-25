@@ -197,11 +197,11 @@ class ChatSession:
         from tabulaflow.agents.tools.create_parameterized_source import CreateParameterizedSourceTool
         from tabulaflow.agents.tools.extract_rows_from_documents import ExtractRowsFromDocumentsTool
         from tabulaflow.agents.tools.filesystem.editor import FileEditorTool
-        from tabulaflow.agents.tools.registry_get_column_json_schema import RegistryGetColumnJsonSchemaTool
-        from tabulaflow.agents.tools.registry_get_db_document import RegistryGetDBDocumentTool
-        from tabulaflow.agents.tools.registry_get_table_schema import RegistryGetTableSchemaTool
-        from tabulaflow.agents.tools.registry_run_query import RegistryRunQueryTool
-        from tabulaflow.agents.tools.registry_transfer_source_table import RegistryTransferSourceTableTool
+        from tabulaflow.agents.tools.registry.get_column_json_schema import RegistryGetColumnJsonSchemaTool
+        from tabulaflow.agents.tools.registry.get_db_document import RegistryGetDBDocumentTool
+        from tabulaflow.agents.tools.registry.get_table_schema import RegistryGetTableSchemaTool
+        from tabulaflow.agents.tools.registry.run_query import RegistryRunQueryTool
+        from tabulaflow.agents.tools.registry.transfer_source_table import TransferSourceTableTool
         from tabulaflow.agents.tools.render_chart import RenderChartTool
         from tabulaflow.agents.tools.render_graph import RenderGraphTool
         from tabulaflow.agents.tools.render_map import RenderMapTool
@@ -243,7 +243,7 @@ class ChatSession:
             ),
             get_table_schema=RegistryGetTableSchemaTool(self.registry, SQLDDLSchemaFormatter(), enable_refresh=True),
             get_column_json_schema=RegistryGetColumnJsonSchemaTool(self.registry),
-            transfer_source_table=RegistryTransferSourceTableTool(self.registry, self._output_store),
+            transfer_source_table=TransferSourceTableTool(self.registry, self._output_store),
             run_subagent_for_each_row=run_subagent_for_each_row,
             extract_rows_from_documents=extract_rows_from_documents,
             connect_data_source=(

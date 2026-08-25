@@ -12,8 +12,9 @@ from sqlalchemy.ext.asyncio import create_async_engine
 
 from tabulaflow.data.registry import DBRegistry
 from tabulaflow.data.sql import SQLConnector
-from tabulaflow.core import ExecResult
-from tabulaflow.agents.tools.registry_run_query import RegistryRunQueryTool
+from tabulaflow.core import ExecResult, SQLSchema
+from tabulaflow.agents.tools.registry.get_column_json_schema import RegistryGetColumnJsonSchemaTool
+from tabulaflow.agents.tools.registry.run_query import RegistryRunQueryTool
 
 
 def _text(result: ToolReturn) -> str:
@@ -72,7 +73,7 @@ class RefreshBlockingConnector:
     connector_type: ClassVar[Literal["sql"]] = "sql"
     global_id = "refresh_blocking"
     language = "sqlite"
-    schema = None
+    schema: Any = None
 
     def __init__(self) -> None:
         self.refresh_started = asyncio.Event()
@@ -88,6 +89,21 @@ class RefreshBlockingConnector:
 
     async def close_async(self) -> None:
         pass
+
+
+def test_column_json_schema_tool_rebuilds_when_schema_is_replaced() -> None:
+    connector = RefreshBlockingConnector()
+    connector.schema = SQLSchema(name="first", dialect="sqlite", tables=[])
+    registry = DBRegistry()
+    registry.register("mydb", cast(Any, connector))
+    tool = RegistryGetColumnJsonSchemaTool(registry)
+
+    first = tool._get_tool("mydb")  # noqa: SLF001
+    connector.schema = SQLSchema(name="second", dialect="sqlite", tables=[])
+    second = tool._get_tool("mydb")  # noqa: SLF001
+
+    assert first is not second
+    assert second.schema is connector.schema
 
 
 @pytest.mark.asyncio

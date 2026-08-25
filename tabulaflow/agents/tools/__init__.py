@@ -20,12 +20,12 @@ if TYPE_CHECKING:
     from tabulaflow.agents.tools.shell.tool import BashToolMetrics, ExecuteBashTool
     from tabulaflow.agents.tools.get_column_json_schema import GetColumnJsonSchemaTool
     from tabulaflow.agents.tools.get_table_schema import GetTableSchemaTool
-    from tabulaflow.agents.tools.registry_get_column_json_schema import RegistryGetColumnJsonSchemaTool
-    from tabulaflow.agents.tools.registry_get_db_document import RegistryGetDBDocumentTool
-    from tabulaflow.agents.tools.registry_get_schema import RegistryGetSchemaTool
-    from tabulaflow.agents.tools.registry_get_table_schema import RegistryGetTableSchemaTool
-    from tabulaflow.agents.tools.registry_run_query import RegistryRunQueryTool
-    from tabulaflow.agents.tools.registry_transfer_source_table import RegistryTransferSourceTableTool
+    from tabulaflow.agents.tools.registry.get_column_json_schema import RegistryGetColumnJsonSchemaTool
+    from tabulaflow.agents.tools.registry.get_db_document import RegistryGetDBDocumentTool
+    from tabulaflow.agents.tools.registry.get_schema import RegistryGetSchemaTool
+    from tabulaflow.agents.tools.registry.get_table_schema import RegistryGetTableSchemaTool
+    from tabulaflow.agents.tools.registry.run_query import RegistryRunQueryTool
+    from tabulaflow.agents.tools.registry.transfer_source_table import TransferSourceTableTool
     from tabulaflow.agents.tools.render_chart import RenderChartTool
     from tabulaflow.agents.tools.render_graph import RenderGraphTool
     from tabulaflow.agents.tools.render_map import RenderMapTool
@@ -63,22 +63,22 @@ _LAZY_EXPORTS = {
     "LLMProfileTool": ("tabulaflow.agents.tools.base", "LLMProfileTool"),
     "ProgressReportingTool": ("tabulaflow.agents.tools.base", "ProgressReportingTool"),
     "RegistryGetColumnJsonSchemaTool": (
-        "tabulaflow.agents.tools.registry_get_column_json_schema",
+        "tabulaflow.agents.tools.registry.get_column_json_schema",
         "RegistryGetColumnJsonSchemaTool",
     ),
     "RegistryGetDBDocumentTool": (
-        "tabulaflow.agents.tools.registry_get_db_document",
+        "tabulaflow.agents.tools.registry.get_db_document",
         "RegistryGetDBDocumentTool",
     ),
-    "RegistryGetSchemaTool": ("tabulaflow.agents.tools.registry_get_schema", "RegistryGetSchemaTool"),
+    "RegistryGetSchemaTool": ("tabulaflow.agents.tools.registry.get_schema", "RegistryGetSchemaTool"),
     "RegistryGetTableSchemaTool": (
-        "tabulaflow.agents.tools.registry_get_table_schema",
+        "tabulaflow.agents.tools.registry.get_table_schema",
         "RegistryGetTableSchemaTool",
     ),
-    "RegistryRunQueryTool": ("tabulaflow.agents.tools.registry_run_query", "RegistryRunQueryTool"),
-    "RegistryTransferSourceTableTool": (
-        "tabulaflow.agents.tools.registry_transfer_source_table",
-        "RegistryTransferSourceTableTool",
+    "RegistryRunQueryTool": ("tabulaflow.agents.tools.registry.run_query", "RegistryRunQueryTool"),
+    "TransferSourceTableTool": (
+        "tabulaflow.agents.tools.registry.transfer_source_table",
+        "TransferSourceTableTool",
     ),
     "RenderChartTool": ("tabulaflow.agents.tools.render_chart", "RenderChartTool"),
     "RenderGraphTool": ("tabulaflow.agents.tools.render_graph", "RenderGraphTool"),
@@ -118,7 +118,7 @@ __all__ = [
     "RegistryGetSchemaTool",
     "RegistryGetTableSchemaTool",
     "RegistryRunQueryTool",
-    "RegistryTransferSourceTableTool",
+    "TransferSourceTableTool",
     "RenderChartTool",
     "RenderGraphTool",
     "RenderMapTool",

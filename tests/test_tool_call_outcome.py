@@ -13,7 +13,16 @@ from tabulaflow.agents.chat.events import ChatEvent, ToolFinished
 from tabulaflow.data.registry import DBRegistry
 from tabulaflow.data.sql import SQLConnector
 from tabulaflow.output.formatting import SQLDDLSchemaFormatter
-from tabulaflow.agents.tools import RegistryGetTableSchemaTool, RegistryRunQueryTool, ToolCallOutcome
+from tabulaflow.output.store import OutputStore
+from tabulaflow.agents.tools import (
+    RegistryGetColumnJsonSchemaTool,
+    RegistryGetDBDocumentTool,
+    RegistryGetSchemaTool,
+    RegistryGetTableSchemaTool,
+    RegistryRunQueryTool,
+    TransferSourceTableTool,
+    ToolCallOutcome,
+)
 
 
 async def _make_connector(tmp_path: Path) -> SQLConnector:
@@ -75,6 +84,29 @@ class TestGetTableSchemaOutcome:
         tool = RegistryGetTableSchemaTool(registry, SQLDDLSchemaFormatter())
         result = await tool("mydb", None, "missing")
         assert isinstance(result, ToolReturn)
+        assert result.metadata == ToolCallOutcome(error=True)
+
+
+class TestRegistryToolErrorOutcomes:
+    @pytest.mark.asyncio
+    async def test_column_json_schema_error_has_metadata(self) -> None:
+        result = await RegistryGetColumnJsonSchemaTool(DBRegistry())("missing", None, "t", "payload")
+        assert result.metadata == ToolCallOutcome(error=True)
+
+    @pytest.mark.asyncio
+    async def test_db_document_error_has_metadata(self) -> None:
+        tool = RegistryGetDBDocumentTool(DBRegistry(), db_summarizer_cls=lambda **_: None)
+        result = await tool("missing")
+        assert result.metadata == ToolCallOutcome(error=True)
+
+    @pytest.mark.asyncio
+    async def test_schema_error_has_metadata(self) -> None:
+        result = await RegistryGetSchemaTool(DBRegistry())("missing")
+        assert result.metadata == ToolCallOutcome(error=True)
+
+    @pytest.mark.asyncio
+    async def test_transfer_error_has_metadata(self) -> None:
+        result = await TransferSourceTableTool(DBRegistry(), OutputStore())("S1", "workspace", None, "target")
         assert result.metadata == ToolCallOutcome(error=True)
 
 

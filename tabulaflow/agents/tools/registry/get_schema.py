@@ -3,12 +3,12 @@
 from typing import ClassVar
 
 from pydantic import BaseModel
-from pydantic_ai import Tool
+from pydantic_ai import Tool, ToolReturn
 
 from tabulaflow.data.registry import DBRegistry
 from tabulaflow.output.formatting.cypher import CypherSchemaFormatter
 from tabulaflow.output.formatting.sql_ddl import SQLDDLSchemaFormatter
-from tabulaflow.agents.tools.base import _omit_tool_parameters
+from tabulaflow.agents.tools.base import ToolCallOutcome, _omit_tool_parameters
 
 _DEFAULT_MAX_CHARS = 50000
 
@@ -93,7 +93,7 @@ class RegistryGetSchemaTool:
 
         return self._truncate(result)
 
-    async def __call__(self, db_alias: str, refresh: bool = False) -> str:
+    async def __call__(self, db_alias: str, refresh: bool = False) -> ToolReturn:
         """Get the full schema of a registered database.
 
         Args:
@@ -102,9 +102,10 @@ class RegistryGetSchemaTool:
                 Exposed only when schema refresh is enabled.
         """
         try:
-            return await self.execute(db_alias, refresh if self.enable_refresh else False)
+            result = await self.execute(db_alias, refresh if self.enable_refresh else False)
         except (ValueError, TypeError, RuntimeError) as exc:
-            return f"(error: {exc})"
+            return ToolReturn(return_value=f"(error: {exc})", metadata=ToolCallOutcome(error=True))
+        return ToolReturn(return_value=result)
 
     def as_pydantic_ai_tool(self) -> Tool:
         omitted = () if self.enable_refresh else ("refresh",)

@@ -14,11 +14,11 @@ if TYPE_CHECKING:
     from tabulaflow.agents.tools.shell.tool import ExecuteBashTool
     from tabulaflow.agents.tools.extract_rows_from_documents import ExtractRowsFromDocumentsTool
     from tabulaflow.agents.tools.filesystem.editor import FileEditorTool
-    from tabulaflow.agents.tools.registry_get_column_json_schema import RegistryGetColumnJsonSchemaTool
-    from tabulaflow.agents.tools.registry_get_db_document import RegistryGetDBDocumentTool
-    from tabulaflow.agents.tools.registry_get_table_schema import RegistryGetTableSchemaTool
-    from tabulaflow.agents.tools.registry_run_query import RegistryRunQueryTool
-    from tabulaflow.agents.tools.registry_transfer_source_table import RegistryTransferSourceTableTool
+    from tabulaflow.agents.tools.registry.get_column_json_schema import RegistryGetColumnJsonSchemaTool
+    from tabulaflow.agents.tools.registry.get_db_document import RegistryGetDBDocumentTool
+    from tabulaflow.agents.tools.registry.get_table_schema import RegistryGetTableSchemaTool
+    from tabulaflow.agents.tools.registry.run_query import RegistryRunQueryTool
+    from tabulaflow.agents.tools.registry.transfer_source_table import TransferSourceTableTool
     from tabulaflow.agents.tools.render_chart import RenderChartTool
     from tabulaflow.agents.tools.render_graph import RenderGraphTool
     from tabulaflow.agents.tools.render_map import RenderMapTool
@@ -34,7 +34,7 @@ class ChatToolset:
     get_db_document: RegistryGetDBDocumentTool
     get_table_schema: RegistryGetTableSchemaTool
     get_column_json_schema: RegistryGetColumnJsonSchemaTool
-    transfer_source_table: RegistryTransferSourceTableTool
+    transfer_source_table: TransferSourceTableTool
     run_subagent_for_each_row: RunSubagentForEachRowTool | None
     extract_rows_from_documents: ExtractRowsFromDocumentsTool | None
     connect_data_source: ConnectDataSourceTool | None

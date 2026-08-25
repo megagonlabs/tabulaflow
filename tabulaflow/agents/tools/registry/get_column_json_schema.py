@@ -2,11 +2,12 @@
 
 from typing import ClassVar
 
-from pydantic_ai import Tool
+from pydantic_ai import Tool, ToolReturn
 
+from tabulaflow.core.schema import SQLSchema
 from tabulaflow.data.protocols import DBConnector
 from tabulaflow.data.registry import DBRegistry
-from tabulaflow.agents.tools.base import sum_tool_metrics
+from tabulaflow.agents.tools.base import ToolCallOutcome, sum_tool_metrics
 from tabulaflow.agents.tools.get_column_json_schema import GetColumnJsonSchemaTool, GetColumnJsonSchemaToolMetrics
 
 
@@ -37,14 +38,14 @@ class RegistryGetColumnJsonSchemaTool:
         self.registry = registry
         self.include_examples = include_examples
         self.max_example_chars = max_example_chars
-        self._tools: dict[str, tuple[DBConnector, GetColumnJsonSchemaTool]] = {}
+        self._tools: dict[str, tuple[DBConnector, SQLSchema, GetColumnJsonSchemaTool]] = {}
 
     def _get_tool(self, db_alias: str) -> GetColumnJsonSchemaTool:
         """Return a cached ``GetColumnJsonSchemaTool`` for ``db_alias``, rebuilding it if the alias was re-bound."""
         connector = self.registry.get(db_alias)
         entry = self._tools.get(db_alias)
-        if entry is not None and entry[0] is connector:
-            return entry[1]
+        if entry is not None and entry[0] is connector and entry[1] is connector.schema:
+            return entry[2]
         if connector.connector_type != "sql":
             raise TypeError(
                 f"get_column_json_schema is only supported for SQL connectors, not {connector.connector_type!r}"
@@ -54,7 +55,7 @@ class RegistryGetColumnJsonSchemaTool:
             include_examples=self.include_examples,
             max_example_chars=self.max_example_chars,
         )
-        self._tools[db_alias] = (connector, tool)
+        self._tools[db_alias] = (connector, connector.schema, tool)
         return tool
 
     async def __call__(
@@ -64,7 +65,7 @@ class RegistryGetColumnJsonSchemaTool:
         table_name: str,
         column_name: str,
         path: str | None = None,
-    ) -> str:
+    ) -> ToolReturn:
         """Get the JSON schema of a column, describing its internal structure.
 
         Useful for semi-structured column types such as VARIANT, OBJECT, ARRAY,
@@ -84,17 +85,21 @@ class RegistryGetColumnJsonSchemaTool:
             tool = self._get_tool(db_alias)
         except ValueError:
             available = ", ".join(self.registry.list_aliases()) or "(none)"
-            return f"(error: unknown db_alias: {db_alias!r}; available: {available})"
+            return ToolReturn(
+                return_value=f"(error: unknown db_alias: {db_alias!r}; available: {available})",
+                metadata=ToolCallOutcome(error=True),
+            )
         except TypeError as e:
-            return f"(error: {e})"
+            return ToolReturn(return_value=f"(error: {e})", metadata=ToolCallOutcome(error=True))
         try:
-            return await tool.execute(schema_name, table_name, column_name, path)
+            result = await tool.execute(schema_name, table_name, column_name, path)
         except ValueError as e:
-            return f"(error: {e})"
+            return ToolReturn(return_value=f"(error: {e})", metadata=ToolCallOutcome(error=True))
+        return ToolReturn(return_value=result)
 
     def as_pydantic_ai_tool(self) -> Tool:
         return Tool(self.__call__, name=self.name)
 
     def metrics(self) -> GetColumnJsonSchemaToolMetrics:
         """Return aggregated metrics across all aliases."""
-        return sum_tool_metrics((t.metrics() for _, t in self._tools.values()), GetColumnJsonSchemaToolMetrics)
+        return sum_tool_metrics((t.metrics() for _, _, t in self._tools.values()), GetColumnJsonSchemaToolMetrics)

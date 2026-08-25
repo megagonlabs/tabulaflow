@@ -6,10 +6,10 @@ from pydantic_ai import Tool
 from pydantic_ai.tools import ToolDefinition
 
 from tabulaflow.agents.tools.get_table_schema import GetTableSchemaTool
-from tabulaflow.agents.tools.registry_get_db_document import RegistryGetDBDocumentTool
-from tabulaflow.agents.tools.registry_get_schema import RegistryGetSchemaTool
-from tabulaflow.agents.tools.registry_get_table_schema import RegistryGetTableSchemaTool
-from tabulaflow.agents.tools.registry_run_query import RegistryRunQueryTool
+from tabulaflow.agents.tools.registry.get_db_document import RegistryGetDBDocumentTool
+from tabulaflow.agents.tools.registry.get_schema import RegistryGetSchemaTool
+from tabulaflow.agents.tools.registry.get_table_schema import RegistryGetTableSchemaTool
+from tabulaflow.agents.tools.registry.run_query import RegistryRunQueryTool
 from tabulaflow.data.registry import DBRegistry
 
 
