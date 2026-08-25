@@ -1040,6 +1040,10 @@ def test_visual_renderers_own_their_empty_states() -> None:
     assert "validRows.map(function (item) { return item.row; })" in map_js
     assert "Math.round(2 * scale.radiusValue(value))" in map_js
     assert ".tf-map-legend-swatch-size" in pane_css
+    assert "function circlePaint(radius)" in map_js
+    assert "'circle-opacity': 0.62" in map_js
+    assert "'circle-stroke-width': 1.5" in map_js
+    assert "__tfStrokeColor: circleStrokeColor(color)" in map_js
     assert "if (event && event.originalEvent) userMovedMap = true;" in map_js
     assert ".tf-map-empty.show { display: block; }" in pane_css
     assert "pointer-events: none;" in pane_css

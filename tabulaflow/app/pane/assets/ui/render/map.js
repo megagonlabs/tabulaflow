@@ -22,6 +22,7 @@ var mapPinBottom = cssVar('--map-pin-bottom', '#d93025');
 var mapPinOutline = cssVar('--map-pin-outline', '#a52714');
 var mapPinHole = cssVar('--map-pin-hole', '#f8fafc');
 var mapPinInner = cssVar('--map-pin-inner', '#fff4f2');
+var mapCircleStroke = mixHex(mapDefaultColor, '#000000', 0.26);
 var mapStyleUrl = '/assets/vendor/maplibre/shortbread-light.json';
 var mapStyleSpriteUrl = '/assets/vendor/maplibre/osm-bright-sprite';
 var mapStyleRouteSpriteUrl = '/assets/vendor/maplibre/tf-route-sprite';
@@ -59,6 +60,10 @@ function mixHex(a, b, amount) {
     + hexChannel(left.r + (right.r - left.r) * amount)
     + hexChannel(left.g + (right.g - left.g) * amount)
     + hexChannel(left.b + (right.b - left.b) * amount);
+}
+
+function circleStrokeColor(color) {
+  return mixHex(color, '#000000', 0.26);
 }
 
 function pinColorRamp(color) {
@@ -477,6 +482,7 @@ function buildPointFeatures(layer, rows, labels) {
       geometry: { type: 'Point', coordinates: [lng, lat] },
       properties: Object.assign({}, row || {}, {
         __tfColor: color,
+        __tfStrokeColor: circleStrokeColor(color),
         __tfSize: radius,
         __tfPinScale: pinScale,
         __tfPinHitRadius: Math.max(24, 26 * pinScale),
@@ -513,6 +519,7 @@ function buildGeoJsonFeatures(layer, rows, labels) {
       geometry: feature.geometry,
       properties: Object.assign({}, props, {
         __tfColor: color,
+        __tfStrokeColor: circleStrokeColor(color),
         __tfLineWidth: line ? 5 : 2,
         __tfPopup: popup,
         __tfAnchorLng: anchor ? anchor[0] : null,
@@ -670,15 +677,19 @@ function addCircleLayer(map, id, sourceId) {
     id: id,
     type: 'circle',
     source: sourceId,
-    paint: {
-      'circle-radius': ['coalesce', ['get', '__tfSize'], 6],
-      'circle-color': ['coalesce', ['get', '__tfColor'], mapDefaultColor],
-      'circle-opacity': 0.86,
-      'circle-stroke-color': '#ffffff',
-      'circle-stroke-width': 1.2,
-      'circle-stroke-opacity': 0.9
-    }
+    paint: circlePaint(['coalesce', ['get', '__tfSize'], 6])
   });
+}
+
+function circlePaint(radius) {
+  return {
+    'circle-radius': radius,
+    'circle-color': ['coalesce', ['get', '__tfColor'], mapDefaultColor],
+    'circle-opacity': 0.62,
+    'circle-stroke-color': ['coalesce', ['get', '__tfStrokeColor'], mapCircleStroke],
+    'circle-stroke-width': 1.5,
+    'circle-stroke-opacity': 0.9
+  };
 }
 
 function addPinHitLayer(map, id, sourceId) {
@@ -735,13 +746,7 @@ function addGeoJsonLayers(map, id, sourceId) {
     type: 'circle',
     source: sourceId,
     filter: ['match', ['geometry-type'], ['Point', 'MultiPoint'], true, false],
-    paint: {
-      'circle-radius': 6,
-      'circle-color': ['coalesce', ['get', '__tfColor'], mapDefaultColor],
-      'circle-opacity': 0.86,
-      'circle-stroke-color': '#ffffff',
-      'circle-stroke-width': 1.2
-    }
+    paint: circlePaint(6)
   });
   return [id + '-fill', id + '-outline', id + '-line', id + '-point'];
 }

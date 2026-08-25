@@ -649,8 +649,9 @@ body { margin: 0; background: var(--bg); color: var(--text); display: flex; flex
 .tf-map-legend-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #374151; }
 .tf-map-legend-swatch { --legend-color: var(--map-default); display: inline-block; justify-self: center; flex: 0 0 auto; box-sizing: border-box; }
 .tf-map-legend-swatch-circle {
-    width: 11px; height: 11px; border-radius: 50%; background: var(--legend-color);
-    border: 1px solid #fff; box-shadow: 0 0 0 1px rgba(17, 24, 39, 0.22);
+    width: 11px; height: 11px; border-radius: 50%;
+    background: color-mix(in srgb, var(--legend-color) 62%, transparent);
+    border: 1.5px solid color-mix(in srgb, var(--legend-color) 74%, #000);
 }
 .tf-map-legend-swatch-polygon {
     width: 13px; height: 13px; border-radius: 3px; background: color-mix(in srgb, var(--legend-color) 38%, transparent);
@@ -665,8 +666,8 @@ body { margin: 0; background: var(--bg); color: var(--text); display: flex; flex
 }
 .tf-map-legend-swatch-size {
     width: var(--legend-size); height: var(--legend-size); border-radius: 50%;
-    background: var(--map-default); border: 1px solid #fff;
-    box-shadow: 0 0 0 1px rgba(17, 24, 39, 0.22);
+    background: color-mix(in srgb, var(--map-default) 62%, transparent);
+    border: 1.5px solid color-mix(in srgb, var(--map-default) 74%, #000);
 }
 .tf-map-legend-swatch-pin {
     width: 12px; height: 17px; position: relative; transform: translateY(-1px);
