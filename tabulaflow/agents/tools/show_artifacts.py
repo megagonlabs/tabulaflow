@@ -13,6 +13,8 @@ from tabulaflow.output.store import OutputStore
 
 
 class ArtifactRef(BaseModel):
+    """User-facing label for one source or rendered artifact identifier."""
+
     id: str = Field(min_length=1, description="Id of a source or artifact to show: S*, CHART*, MAP* or GRAPH*.")
     label: str = Field(min_length=1, description="Short human-readable name for the card, never the id itself.")
 

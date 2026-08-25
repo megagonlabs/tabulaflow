@@ -70,12 +70,15 @@ class WebBrowserManager:
         self._page_budget = _PageBudget(max_pages)
 
     async def acquire_page(self, *, block: bool) -> bool:
+        """Acquire a page permit, optionally waiting for capacity."""
         return await self._page_budget.acquire(block=block)
 
     async def release_page(self) -> None:
+        """Release one previously acquired page permit."""
         await self._page_budget.release()
 
     async def shared_context(self) -> BrowserContext:
+        """Return the lazily created process-wide browser context."""
         if self._shared_context is not None:
             return self._shared_context
         async with self._lock:
@@ -88,6 +91,7 @@ class WebBrowserManager:
             return self._shared_context
 
     async def new_isolated_context(self) -> BrowserContext:
+        """Create a browser context with isolated cookies and storage."""
         async with self._lock:
             browser = await self._ensure_browser_locked()
         return await browser.new_context(
@@ -96,6 +100,7 @@ class WebBrowserManager:
         )
 
     async def close(self) -> None:
+        """Close the context, Chromium process, and Playwright runtime."""
         async with self._lock:
             if self._shared_context is not None:
                 try:

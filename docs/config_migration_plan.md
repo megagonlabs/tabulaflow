@@ -1,5 +1,8 @@
 # Configuration Migration Plan
 
+> Historical implementation plan. The status is complete; migration-era names
+> and examples below are retained as design history rather than current API docs.
+
 ## Status
 
 The migration is complete:

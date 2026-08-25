@@ -1,3 +1,5 @@
+"""Shared protocols and host-facing value objects for agent tools."""
+
 import copy
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass, replace

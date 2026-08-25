@@ -12,7 +12,21 @@ AgentCacheMode: TypeAlias = Literal["off", "read_write", "refresh", "cache_only"
 
 
 class AgentRuntimeConfig(BaseSettings):
-    """Immutable process-wide policy for agent caches, provider limits, and the shared browser runtime."""
+    """Immutable process-wide policy for shared agent resources.
+
+    Explicit values override ``TABULAFLOW_*`` environment variables, which
+    override defaults. Optional limits use ``None`` for unlimited capacity.
+
+    Attributes:
+        cache_dir: Root for persistent preprocessing caches.
+        preprocessing_cache_mode: Read/write policy for derived agent inputs.
+        max_llm_concurrency: Maximum simultaneous model requests.
+        max_llm_requests_per_minute: Process-wide model request rate.
+        max_embedding_concurrency: Maximum simultaneous embedding requests.
+        max_embedding_requests_per_minute: Process-wide embedding request rate.
+        browser_max_tabs: Process-wide open-page limit.
+        browser_headless: Whether the shared Chromium process is headless.
+    """
 
     model_config = SettingsConfigDict(
         env_prefix="TABULAFLOW_",

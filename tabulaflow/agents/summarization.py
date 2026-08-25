@@ -52,7 +52,14 @@ def _truncate_database_prompt(user_prompt: str, max_chars: int = _DB_USER_PROMPT
 
 
 class DBSummarizer:
-    """Produce a cached, human-readable database summary."""
+    """Produce schema-sensitive, cached Markdown summaries for data connectors.
+
+    Args:
+        llm: Model used to generate non-trivial summaries.
+        reasoning_effort: Provider-neutral reasoning level.
+        max_words: Requested summary length ceiling.
+        model_settings: Additional Pydantic AI model settings.
+    """
 
     def __init__(
         self,
@@ -70,6 +77,7 @@ class DBSummarizer:
         self._usage = Usage.create(llm=llm)
 
     def usage(self) -> Usage:
+        """Return model usage accumulated by uncached summary generation."""
         return self._usage
 
     def _cache_path(self, cache_dir: Path, connector: DBConnector) -> Path:
@@ -98,6 +106,7 @@ class DBSummarizer:
         await atomic_write_bytes(path, value.encode())
 
     async def summarize(self, connector: DBConnector) -> str:
+        """Return a Markdown summary, loading or writing the semantic disk cache."""
         config = _get_agent_runtime().config
         return await load_or_compute(
             path=self._cache_path(config.cache_dir, connector),
@@ -139,7 +148,13 @@ class DBSummarizer:
 
 
 class TextSummarizer:
-    """Summarize long text using an LLM."""
+    """Summarize long text using an LLM.
+
+    Args:
+        llm: Model used for summarization.
+        max_words: Requested summary length ceiling.
+        model_settings: Additional Pydantic AI model settings.
+    """
 
     def __init__(
         self,
@@ -152,6 +167,7 @@ class TextSummarizer:
         self.model_settings = model_settings
 
     async def summarize(self, text: str) -> str:
+        """Return a concise summary of ``text``."""
         settings: dict[str, object] = dict(make_model_settings(model=self.llm, reasoning_effort="low"))
         if self.model_settings:
             settings.update(self.model_settings)

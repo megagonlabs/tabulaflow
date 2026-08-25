@@ -1,5 +1,8 @@
 # Core Layer Refactor Plan
 
+> Historical implementation plan. Paths and examples describe migration-time
+> architecture; the current source tree and `AGENTS.md` are authoritative.
+
 ## Implementation status
 
 Implemented on the `refactor/ultimate-layer-architecture` branch. The legacy

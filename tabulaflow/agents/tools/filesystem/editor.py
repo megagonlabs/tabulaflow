@@ -41,6 +41,8 @@ MAX_DIR_ENTRIES = 200
 
 
 class FileEditorToolMetrics(BaseModel):
+    """Command and error counters for the filesystem editor tool."""
+
     num_view: int = 0
     num_write_file: int = 0
     num_str_replace: int = 0

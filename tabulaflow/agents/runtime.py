@@ -87,7 +87,15 @@ _runtime_lock = threading.Lock()
 
 
 def initialize_agent_runtime(config: AgentRuntimeConfig) -> None:
-    """Initialize the process-wide agent runtime before its first use."""
+    """Initialize the process-wide runtime before any agent capability uses it.
+
+    Initialization is optional; otherwise defaults and environment values resolve
+    lazily. A second initialization, including after lazy creation, raises
+    ``RuntimeError``.
+
+    Args:
+        config: Fully resolved immutable runtime policy.
+    """
     global _runtime
     with _runtime_lock:
         if _runtime is not None:

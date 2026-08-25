@@ -1,3 +1,5 @@
+"""Shared SQL lookup, quoting, and error-formatting helpers for agent tools."""
+
 import re
 from typing import Any
 

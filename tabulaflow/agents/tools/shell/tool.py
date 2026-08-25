@@ -98,6 +98,8 @@ def _parse_ps1_metadata(match: re.Match[str]) -> dict[str, str | int]:
 
 
 class BashToolMetrics(BaseModel):
+    """Execution, timeout, and error counters for the shell tool."""
+
     num_calls: int = 0
     num_input_calls: int = 0
     num_timeouts: int = 0

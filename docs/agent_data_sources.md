@@ -1,5 +1,8 @@
 # Agent-Driven Data Sources — Design & Implementation Plan
 
+> Historical implementation plan. The current tools and app behavior are
+> authoritative.
+
 ## Goal
 
 Today, in the TUI app a user can only connect to a data source **manually** via the

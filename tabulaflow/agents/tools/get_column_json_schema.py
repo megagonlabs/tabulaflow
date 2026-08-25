@@ -1,3 +1,5 @@
+"""Inspect inferred structure inside a semi-structured SQL column."""
+
 import json
 from typing import Any, ClassVar
 
@@ -145,6 +147,8 @@ def _format_examples(examples: list[Any], max_chars: int) -> str:
 
 
 class GetColumnJsonSchemaToolMetrics(BaseModel):
+    """Lookup and path-resolution counters for JSON-schema inspection."""
+
     num_calls: int = 0
     error_table_not_found: int = 0
     error_column_not_found: int = 0

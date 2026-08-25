@@ -129,6 +129,8 @@ BROWSER_TOOL_NAMES: frozenset[str] = frozenset(
 
 
 class WebBrowserToolMetrics(BaseModel):
+    """Browser action, error, and lifecycle counters."""
+
     num_navigates: int = 0
     num_clicks: int = 0
     num_types: int = 0
@@ -154,6 +156,8 @@ class WebBrowserToolMetrics(BaseModel):
 
 @dataclass
 class PageSnapshot:
+    """Accessible page content and the interaction refs it defines."""
+
     url: str
     title: str
     markdown_content: str = ""

@@ -1,3 +1,5 @@
+"""Agent trajectories, usage accounting, cost estimation, and instrumentation."""
+
 from decimal import Decimal
 import json
 import threading
@@ -26,16 +28,22 @@ def instrument_agents() -> None:
 
 
 class SystemMessage(BaseModel):
+    """Normalized system message in a saved trajectory."""
+
     role: Literal["system"] = "system"
     content: str
 
 
 class UserMessage(BaseModel):
+    """Normalized user message in a saved trajectory."""
+
     role: Literal["user"] = "user"
     content: str
 
 
 class ToolCall(BaseModel):
+    """Normalized assistant tool call and its decoded arguments."""
+
     tool_call_id: str
     name: str
     arguments: dict[str, Any] | None
@@ -43,6 +51,8 @@ class ToolCall(BaseModel):
 
 
 class AssistantMessage(BaseModel):
+    """Normalized assistant text, thinking, and tool calls."""
+
     role: Literal["assistant"] = "assistant"
     thinking: str | None = None
     content: str
@@ -50,6 +60,8 @@ class AssistantMessage(BaseModel):
 
 
 class ToolResponse(BaseModel):
+    """Normalized tool result or automatic retry prompt."""
+
     role: Literal["tool"] = "tool"
     tool_call_id: str
     response: str
@@ -64,6 +76,8 @@ Message = Annotated[
 
 
 class Trajectory(BaseModel):
+    """Serializable, provider-neutral record of one agent conversation or run."""
+
     id: str = "TRJY"
     messages: list[Message]
 
@@ -71,6 +85,7 @@ class Trajectory(BaseModel):
     def from_pydantic_ai_messages(
         cls, messages: "list[pydantic_ai.messages.ModelMessage]", id: str = "TRJY"
     ) -> "Trajectory":
+        """Normalize Pydantic AI request/response messages into a trajectory."""
         trajectory = cls(messages=[], id=id)
         if not messages:
             return trajectory
@@ -133,6 +148,7 @@ class Trajectory(BaseModel):
         return cls.model_validate(trajectory.model_dump())
 
     def to_markdown(self) -> str:
+        """Render the complete trajectory as navigable Markdown."""
         lines = [f"### Trajectory `{self.id}`"]
 
         index_lines = ["\n**Preview:**"]
@@ -208,12 +224,14 @@ PROVIDER_MAPPINGS = {
 
 
 def pydantic_ai_model_to_litellm_model(llm: str) -> str:
+    """Translate a Pydantic AI model identifier for LiteLLM cost lookup."""
     provider, model = llm.split(":")
     provider = PROVIDER_MAPPINGS.get(provider, provider)
     return f"{provider}/{model}"
 
 
 def compute_api_cost(llm: str, input_tokens: int, output_tokens: int, api_requests: int = 1) -> Decimal:
+    """Estimate token cost, returning zero when the model has no known price."""
     import litellm
 
     # Note: We found litellm to be more accurate than genai-prices
@@ -246,6 +264,11 @@ def compute_api_cost(llm: str, input_tokens: int, output_tokens: int, api_reques
 
 
 class Usage(BaseModel):
+    """Aggregated model requests, tokens, and estimated API cost.
+
+    Adding usage from different models sets ``llm`` to ``"MULTI"``.
+    """
+
     llm: str | Literal["MULTI"] | None
     api_requests: int
     input_tokens: int
@@ -279,6 +302,7 @@ class Usage(BaseModel):
         output_tokens: int = 0,
         api_cost_usd: float | Decimal | None = None,
     ) -> "Usage":
+        """Build usage, calculating cost when it is not supplied."""
         if api_cost_usd is None:
             if api_requests == 0:
                 api_cost_usd = Decimal(0)
@@ -300,6 +324,7 @@ class Usage(BaseModel):
     def from_pydantic_ai_usage(
         cls, usage: "pydantic_ai.usage.RunUsage | pydantic_ai.usage.RequestUsage", llm: str
     ) -> "Usage":
+        """Convert Pydantic AI run or request usage for one model."""
         import pydantic_ai
 
         if isinstance(usage, pydantic_ai.usage.RunUsage):

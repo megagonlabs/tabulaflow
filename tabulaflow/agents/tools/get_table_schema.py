@@ -1,3 +1,5 @@
+"""Connector-local table-schema inspection with filtering and pagination."""
+
 import re
 from dataclasses import dataclass
 from typing import ClassVar
@@ -11,6 +13,8 @@ from tabulaflow.agents.tools.protocols import _omit_tool_parameters
 
 
 class GetTableSchemaToolMetrics(BaseModel):
+    """Table-schema lookup, filtering, and limit counters."""
+
     num_calls: int = 0
     max_columns_exceeded: int = 0
     error_invalid_column_regex_filter: int = 0

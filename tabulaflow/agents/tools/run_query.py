@@ -1,3 +1,5 @@
+"""Connector-local query execution and model-facing result formatting."""
+
 from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Any, ClassVar, cast
@@ -52,6 +54,8 @@ def _format_graph_result(graph: GraphResult | None) -> str:
 
 
 class RunQueryToolMetrics(BaseModel):
+    """Query call and failure counters."""
+
     num_calls: int = 0
     error_timeout: int = 0
     error_query_failed: int = 0
@@ -59,6 +63,8 @@ class RunQueryToolMetrics(BaseModel):
 
 
 class LLMParameter(BaseModel):
+    """Named query parameter supplied through a model tool call."""
+
     parameter_name: str = Field(
         description="The parameter name that corresponds to the placeholder in the query (e.g. :name in SQL, $name in Cypher)."
     )

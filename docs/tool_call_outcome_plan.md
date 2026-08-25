@@ -1,5 +1,8 @@
 # Structured per-call tool outcomes — implementation plan
 
+> Historical implementation plan. The current tool, chat, and app APIs are
+> authoritative.
+
 Finish the migration of tool-outcome display facts (the `→ 42 rows` / `→ error`
 suffixes on tool steps) to a single typed fact that rides each tool call's own
 return, end to end: toolhub states facts, chat transports them, the app words

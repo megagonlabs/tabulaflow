@@ -41,6 +41,8 @@ _UNSET = object()
 
 @dataclass(frozen=True)
 class CreatedParameterizedSource:
+    """Created source metadata returned by programmatic execution."""
+
     output: str
     source: ParameterizedSource
 

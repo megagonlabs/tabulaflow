@@ -14,6 +14,8 @@ _DEFAULT_MAX_CHARS = 50000
 
 
 class RegistryGetSchemaToolMetrics(BaseModel):
+    """Registry schema lookup and truncation counters."""
+
     num_calls: int = 0
     error_unknown_alias: int = 0
     truncated: int = 0
