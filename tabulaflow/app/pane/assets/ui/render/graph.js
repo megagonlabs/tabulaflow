@@ -1,6 +1,6 @@
 // @ts-check
 
-import { asUrls, clone, cssVar, displayValue, escapeAttr, escapeHtml, tooltipLink } from './shared.js';
+import { artifactIconMarkup, asUrls, clone, cssVar, displayValue, escapeAttr, escapeHtml, tooltipLink } from './shared.js';
 
 const cytoscape = window.cytoscape;
 const GRAPH_FIT_PADDING = 64;
@@ -15,9 +15,7 @@ const GRAPH_DETAIL_MAX_CHARS = 280;
 const GRAPH_DETAIL_MAX_HEIGHT = 360;
 const GRAPH_DETAIL_MIN_HEIGHT = 120;
 const EMPTY_STATE_HTML = '<div class="tf-empty-state tf-graph-empty" role="status" aria-live="polite" aria-hidden="true">'
-  + '<svg class="tf-empty-state-icon" viewBox="0 0 24 24" aria-hidden="true">'
-  + '<circle cx="6" cy="7" r="2"/><circle cx="18" cy="7" r="2"/><circle cx="12" cy="18" r="2"/>'
-  + '<path d="M8 8l3 7M16 8l-3 7M8 7h8"/></svg>'
+  + artifactIconMarkup('graph', 'tf-empty-state-icon')
   + '<div class="tf-empty-state-title">No data</div>'
   + '<div class="tf-empty-state-copy">No nodes match this selection.</div></div>';
 

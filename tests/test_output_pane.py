@@ -1352,8 +1352,12 @@ def test_pane_chart_theme_is_client_side() -> None:
 
 def test_pane_sidebar_meta_uses_artifact_icons() -> None:
     pane_js = _pane_asset_text("pane.js")
+    shared_js = _pane_asset_text("render/shared.js")
 
-    assert "var META_ICONS = {" in pane_js
+    assert "var artifactIconSpecs = {" in shared_js
+    assert "function artifactIconMarkup(kind, className)" in shared_js
+    assert "import { artifactIconSpecs } from './render/shared.js';" in pane_js
+    assert "META_ICONS" not in pane_js
     assert "function artifactCounts(turn)" in pane_js
     assert "return { counts: counts, order: order };" in pane_js
     assert "function buildTurnMeta(metaData)" in pane_js

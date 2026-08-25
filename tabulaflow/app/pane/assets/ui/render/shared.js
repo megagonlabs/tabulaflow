@@ -24,6 +24,46 @@ var fileIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strok
   + '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>'
   + '<polyline points="14 2 14 8 20 8"/></svg>';
 
+var artifactIconSpecs = {
+  map: [
+    ['path', { d: 'M9 18l-6 3V6l6-3 6 3 6-3v15l-6 3-6-3z' }],
+    ['path', { d: 'M9 3v15' }],
+    ['path', { d: 'M15 6v15' }]
+  ],
+  graph: [
+    ['circle', { cx: '6', cy: '7', r: '2' }],
+    ['circle', { cx: '18', cy: '7', r: '2' }],
+    ['circle', { cx: '12', cy: '18', r: '2' }],
+    ['path', { d: 'M8 8l3 7' }],
+    ['path', { d: 'M16 8l-3 7' }],
+    ['path', { d: 'M8 7h8' }]
+  ],
+  chart: [
+    ['path', { d: 'M4 19V5' }],
+    ['path', { d: 'M4 19h16' }],
+    ['path', { d: 'M8 16v-4' }],
+    ['path', { d: 'M12 16V8' }],
+    ['path', { d: 'M16 16v-7' }]
+  ],
+  table: [
+    ['path', { d: 'M5 5h14v14H5z' }],
+    ['path', { d: 'M5 10h14' }],
+    ['path', { d: 'M10 5v14' }]
+  ]
+};
+
+function artifactIconMarkup(kind, className) {
+  var specs = artifactIconSpecs[kind] || [];
+  var cls = className ? ' class="' + escapeAttr(className) + '"' : '';
+  var body = specs.map(function (spec) {
+    var attrs = Object.keys(spec[1]).map(function (key) {
+      return ' ' + key + '="' + escapeAttr(spec[1][key]) + '"';
+    }).join('');
+    return '<' + spec[0] + attrs + '/>';
+  }).join('');
+  return '<svg' + cls + ' viewBox="0 0 24 24" aria-hidden="true">' + body + '</svg>';
+}
+
 function fileLink(src, label, size, newTab) {
   var target = newTab ? ' target="_blank" rel="noopener"' : '';
   return '<a class="file-link" href="' + escapeAttr(src) + '"' + target + '>'
@@ -158,6 +198,8 @@ function deepMerge(base, override) {
 }
 
 export {
+  artifactIconSpecs,
+  artifactIconMarkup,
   escapeHtml,
   escapeAttr,
   clone,

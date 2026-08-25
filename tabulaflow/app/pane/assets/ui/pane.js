@@ -6,6 +6,7 @@ import { renderMap } from './render/map.js';
 import { renderGraph } from './render/graph.js';
 import { renderQuery } from './render/query.js';
 import { renderMarkdown } from './render/markdown.js';
+import { artifactIconSpecs } from './render/shared.js';
 
 function el(tag, cls) {
   var e = document.createElement(tag);
@@ -357,34 +358,6 @@ function buildManualArtifactTitle(turn) {
   return title;
 }
 
-var META_ICONS = {
-  map: [
-    ['path', { d: 'M9 18l-6 3V6l6-3 6 3 6-3v15l-6 3-6-3z' }],
-    ['path', { d: 'M9 3v15' }],
-    ['path', { d: 'M15 6v15' }]
-  ],
-  graph: [
-    ['circle', { cx: '6', cy: '7', r: '2' }],
-    ['circle', { cx: '18', cy: '7', r: '2' }],
-    ['circle', { cx: '12', cy: '18', r: '2' }],
-    ['path', { d: 'M8 8l3 7' }],
-    ['path', { d: 'M16 8l-3 7' }],
-    ['path', { d: 'M8 7h8' }]
-  ],
-  chart: [
-    ['path', { d: 'M4 19V5' }],
-    ['path', { d: 'M4 19h16' }],
-    ['path', { d: 'M8 16v-4' }],
-    ['path', { d: 'M12 16V8' }],
-    ['path', { d: 'M16 16v-7' }]
-  ],
-  table: [
-    ['path', { d: 'M5 5h14v14H5z' }],
-    ['path', { d: 'M5 10h14' }],
-    ['path', { d: 'M10 5v14' }]
-  ]
-};
-
 var MANUAL_TURN_ICON = [
   ['circle', { cx: '12', cy: '8', r: '3' }],
   ['path', { d: 'M6 19c.7-3.2 2.8-5 6-5s5.3 1.8 6 5' }]
@@ -428,7 +401,7 @@ function buildMetaIcon(kind) {
   var svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
   svg.setAttribute('viewBox', '0 0 24 24');
   svg.setAttribute('aria-hidden', 'true');
-  (META_ICONS[kind] || []).forEach(function (spec) {
+  (artifactIconSpecs[kind] || []).forEach(function (spec) {
     var node = document.createElementNS('http://www.w3.org/2000/svg', spec[0]);
     Object.keys(spec[1]).forEach(function (key) { node.setAttribute(key, spec[1][key]); });
     svg.appendChild(node);

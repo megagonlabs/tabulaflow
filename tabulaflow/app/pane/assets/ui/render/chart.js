@@ -1,14 +1,13 @@
 // @ts-check
 
-import { clone, cssVar, deepMerge, escapeAttr } from './shared.js';
+import { artifactIconMarkup, clone, cssVar, deepMerge, escapeAttr } from './shared.js';
 
 const vegaEmbed = window.vegaEmbed;
 const vega = window.vega;
 const DATASET_NAME = '__tf_data';
 const EMPTY_STATE_HTML = '<div class="tf-empty-state tf-chart-empty" role="status" aria-live="polite" aria-hidden="true">'
-  + '<svg class="tf-empty-state-icon" viewBox="0 0 24 24" aria-hidden="true">'
-  + '<path d="M4 5v14h16"/><path d="M8 16v-3M12 16v-6M16 16V7"/>'
-  + '</svg><div class="tf-empty-state-title">No data</div>'
+  + artifactIconMarkup('chart', 'tf-empty-state-icon')
+  + '<div class="tf-empty-state-title">No data</div>'
   + '<div class="tf-empty-state-copy">No rows match this selection.</div></div>';
 
 function vegaDarkConfig() {
