@@ -149,7 +149,7 @@ class QuestionEmbedder:
         config = _get_agent_runtime().config
         return await load_or_compute(
             path=self._cache_path(config.cache_dir, dataset),
-            mode=config.preprocessor_cache_mode,
+            mode=config.preprocessing_cache_mode,
             load=self._load_cache,
             compute=lambda: self._embed_dataset(dataset),
             store=self._store_cache,

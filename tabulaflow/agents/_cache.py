@@ -4,13 +4,13 @@ from __future__ import annotations
 
 from collections.abc import Awaitable, Callable
 from pathlib import Path
-from typing import Literal, TypeVar
+from typing import TypeVar
 
 from pydantic import BaseModel, ValidationError
 
+from tabulaflow.agents.config import AgentCacheMode
 from tabulaflow.core._cache import cache_lock, read_cached_model, remove_cached_file, write_cached_model
 
-CacheMode = Literal["off", "read_write", "refresh", "cache_only"]
 _T = TypeVar("_T")
 _ModelT = TypeVar("_ModelT", bound=BaseModel)
 
@@ -22,7 +22,7 @@ class InvalidCacheEntry(ValueError):
 async def load_or_compute(
     *,
     path: Path,
-    mode: CacheMode,
+    mode: AgentCacheMode,
     load: Callable[[Path], Awaitable[_T]],
     compute: Callable[[], Awaitable[_T]],
     store: Callable[[Path, _T], Awaitable[None]],
@@ -52,7 +52,7 @@ async def load_or_compute(
 async def load_or_compute_model(
     *,
     path: Path,
-    mode: CacheMode,
+    mode: AgentCacheMode,
     model_type: type[_ModelT],
     compute: Callable[[], Awaitable[_ModelT]],
 ) -> _ModelT:

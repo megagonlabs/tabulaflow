@@ -6,7 +6,7 @@ from typing import Literal
 from pydantic import PositiveInt
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-DEFAULT_CACHE_DIR = Path.home() / ".tabulaflow" / "cache"
+from tabulaflow.core._cache import DEFAULT_CACHE_DIR
 
 
 class _ConnectorConfig(BaseSettings):

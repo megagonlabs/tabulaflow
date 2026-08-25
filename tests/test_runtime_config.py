@@ -110,14 +110,14 @@ def test_unknown_explicit_field_is_rejected() -> None:
         AgentRuntimeConfig(unknown_setting=True)  # type: ignore[call-arg]
 
 
-def test_agent_config_includes_preprocessor_cache_policy(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv("TABULAFLOW_PREPROCESSOR_CACHE_MODE", "cache_only")
+def test_agent_config_includes_preprocessing_cache_policy(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("TABULAFLOW_PREPROCESSING_CACHE_MODE", "cache_only")
     monkeypatch.setenv("TABULAFLOW_CACHE_DIR", "/tmp/tabulaflow-cache")
 
     config = AgentRuntimeConfig()
 
-    assert config.preprocessor_cache_mode == "cache_only"
+    assert config.preprocessing_cache_mode == "cache_only"
     assert config.cache_dir == Path("/tmp/tabulaflow-cache")
 
-    overridden = AgentRuntimeConfig(preprocessor_cache_mode="off")
-    assert overridden.preprocessor_cache_mode == "off"
+    overridden = AgentRuntimeConfig(preprocessing_cache_mode="off")
+    assert overridden.preprocessing_cache_mode == "off"

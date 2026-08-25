@@ -17,6 +17,7 @@ from tabulaflow.core.serialization import json_ready
 
 _ModelT = TypeVar("_ModelT", bound=BaseModel)
 _locks: weakref.WeakKeyDictionary[asyncio.AbstractEventLoop, dict[Path, asyncio.Lock]] = weakref.WeakKeyDictionary()
+DEFAULT_CACHE_DIR = Path.home() / ".tabulaflow" / "cache"
 
 
 def cache_lock(path: Path) -> asyncio.Lock:

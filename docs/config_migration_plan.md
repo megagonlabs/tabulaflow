@@ -112,7 +112,7 @@ Cache literals remain inline because each defines one field.
 
 ```python
 cache_dir: Path = Path.home() / ".tabulaflow" / "cache"
-preprocessor_cache_mode: Literal[
+preprocessing_cache_mode: Literal[
     "off",
     "read_write",
     "refresh",
@@ -162,7 +162,7 @@ Agent variables:
 
 ```text
 TABULAFLOW_CACHE_DIR
-TABULAFLOW_PREPROCESSOR_CACHE_MODE
+TABULAFLOW_PREPROCESSING_CACHE_MODE
 TABULAFLOW_MAX_LLM_CONCURRENCY
 TABULAFLOW_MAX_LLM_REQUESTS_PER_MINUTE
 TABULAFLOW_MAX_EMBEDDING_CONCURRENCY
@@ -185,7 +185,7 @@ Credentials and external observability configuration retain their established en
 
 ## Cache mode semantics
 
-Schema and preprocessor caches support four modes:
+Schema and preprocessing caches support four modes:
 
 | Mode | Read existing cache | Compute on miss | Write result |
 |---|---:|---:|---:|
@@ -270,7 +270,7 @@ Central infrastructure uses it:
 - `make_agent()` obtains model/client caches and LLM throttles from it.
 - `embedding_throttle()` obtains embedding throttles from it.
 - the default browser manager is owned by it.
-- cached preprocessors read `cache_dir` and `preprocessor_cache_mode` from its immutable snapshot.
+- cached preprocessors read `cache_dir` and `preprocessing_cache_mode` from its immutable snapshot.
 
 No runtime argument is added across `core`, `data`, `output`, app state, chat sessions, research agent protocols, or individual LLM helpers.
 
@@ -413,7 +413,7 @@ Connector-specific constructor booleans that duplicate config policy, such as `e
 4. Move shared base model/client caches into the runtime.
 5. Move the process-wide browser manager into the runtime.
 6. Make `make_agent()`, `embedding_throttle()`, and browser defaults use the runtime.
-7. Make cached preprocessors use runtime `cache_dir` and `preprocessor_cache_mode`.
+7. Make cached preprocessors use runtime `cache_dir` and `preprocessing_cache_mode`.
 8. Replace preprocessor cache booleans with the four cache modes.
 9. Make agent query tools delegate timeout defaults to connectors.
 10. Remove all agent-layer imports of `tabulaflow.config`.
@@ -443,7 +443,7 @@ mechanically replace `tabulaflow.configure()` with another general initializer.
 | App startup sets `instrument_enabled=False` | Delete it; the app simply does not call `instrument_agents()`. |
 | App startup sets `log_level="WARNING"` | Configure standard Python logging in the app entry point. |
 | Schema-cache scripts set enabled/required/overwrite flags | Construct `SQLConnectorConfig` with `schema_cache_mode="read_write"`, `"refresh"`, `"cache_only"`, or `"off"` and pass it to the loader/connector workflow. |
-| Preprocessing scripts set preprocessor enabled/required/overwrite flags | Initialize the agent runtime once with the corresponding `preprocessor_cache_mode`. |
+| Preprocessing scripts set preprocessor enabled/required/overwrite flags | Initialize the agent runtime once with the corresponding `preprocessing_cache_mode`. |
 | Result-population pipeline enables or disables query caching | Construct connector configs with `query_cache_mode="read_write"` or `"off"`; keep `--timeout` as an operation override. |
 | Utility scripts disable schema caching | Pass connector config with `schema_cache_mode="off"`. |
 

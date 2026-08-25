@@ -183,7 +183,7 @@ async def test_agent_cache_recomputes_invalid_entry_unless_cache_only(tmp_path: 
 
 
 async def test_database_summarizer_owns_versioned_semantic_cache_key(tmp_path: Path) -> None:
-    initialize_agent_runtime(AgentRuntimeConfig(cache_dir=tmp_path, preprocessor_cache_mode="read_write"))
+    initialize_agent_runtime(AgentRuntimeConfig(cache_dir=tmp_path, preprocessing_cache_mode="read_write"))
     connector = cast(
         Any,
         SimpleNamespace(

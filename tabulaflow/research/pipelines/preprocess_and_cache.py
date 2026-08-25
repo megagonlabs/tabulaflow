@@ -89,7 +89,7 @@ async def main_async() -> None:
     print(args)
     print()
 
-    initialize_agent_runtime(AgentRuntimeConfig(preprocessor_cache_mode="refresh" if args.overwrite else "read_write"))
+    initialize_agent_runtime(AgentRuntimeConfig(preprocessing_cache_mode="refresh" if args.overwrite else "read_write"))
     logging.basicConfig(level=logging.DEBUG if args.debug else logging.WARNING)
     configure_research_observability()
 

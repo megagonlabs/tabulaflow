@@ -1,16 +1,18 @@
 """Immutable configuration for agent runtime capabilities."""
 
 from pathlib import Path
-from typing import Literal
+from typing import Literal, TypeAlias
 
 from pydantic import PositiveInt
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-DEFAULT_CACHE_DIR = Path.home() / ".tabulaflow" / "cache"
+from tabulaflow.core._cache import DEFAULT_CACHE_DIR
+
+AgentCacheMode: TypeAlias = Literal["off", "read_write", "refresh", "cache_only"]
 
 
 class AgentRuntimeConfig(BaseSettings):
-    """Operational policy shared by the process-wide agent runtime."""
+    """Immutable process-wide policy for agent caches, provider limits, and the shared browser runtime."""
 
     model_config = SettingsConfigDict(
         env_prefix="TABULAFLOW_",
@@ -20,7 +22,7 @@ class AgentRuntimeConfig(BaseSettings):
     )
 
     cache_dir: Path = DEFAULT_CACHE_DIR
-    preprocessor_cache_mode: Literal["off", "read_write", "refresh", "cache_only"] = "read_write"
+    preprocessing_cache_mode: AgentCacheMode = "read_write"
     max_llm_concurrency: PositiveInt | None = 64
     max_llm_requests_per_minute: PositiveInt | None = 600
     max_embedding_concurrency: PositiveInt | None = 16

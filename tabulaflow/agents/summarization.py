@@ -96,7 +96,7 @@ class DBSummarizer:
         config = _get_agent_runtime().config
         return await load_or_compute_model(
             path=self._cache_path(config.cache_dir, connector),
-            mode=config.preprocessor_cache_mode,
+            mode=config.preprocessing_cache_mode,
             model_type=DBSummary,
             compute=lambda: self._summarize(connector),
         )
