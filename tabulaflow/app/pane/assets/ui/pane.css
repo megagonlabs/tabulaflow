@@ -323,7 +323,7 @@ body { margin: 0; background: var(--bg); color: var(--text); display: flex; flex
              font: 700 13px/1.25 ui-monospace, monospace; }
 .cardlabel::after { content: ""; position: absolute; left: 8px; right: 8px; bottom: 2px;
                     height: 2px; border-radius: 999px; background: var(--accent); }
-.viewmeta { width: min(800px, 100%); margin: 0 auto; box-sizing: border-box;
+.viewmeta { width: 100%; margin: 0 auto; box-sizing: border-box;
             min-height: 15px; padding: 8px 4px 0; color: var(--text-dim); white-space: nowrap; text-align: left;
             font: 12px/1.25 ui-monospace, monospace; }
 .seg { position: relative; display: inline-flex; padding: 2px; border-radius: 999px;
@@ -337,7 +337,7 @@ body { margin: 0; background: var(--bg); color: var(--text); display: flex; flex
              background: #262c36; }
 .seg-thumb.ready { transition: transform 0.22s ease, width 0.22s ease; }
 .manual-preview .cardpane { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
-.view-shell { position: relative; width: min(800px, 100%); margin: 0 auto;
+.view-shell { position: relative; width: 100%; margin: 0 auto;
               background: transparent; border-radius: 0; overflow: visible; box-shadow: none; }
 .view-shell::after { content: none; }
 .view-shell > .tf-view.view-hidden {

@@ -1366,7 +1366,8 @@ def test_pane_table_layout_css_is_loaded() -> None:
 
 
 def test_pane_view_shell_is_layout_only() -> None:
-    assert ".view-shell { position: relative; width: min(800px, 100%); margin: 0 auto;" in _PANE_HTML
+    assert ".view-shell { position: relative; width: 100%; margin: 0 auto;" in _PANE_HTML
+    assert ".viewmeta { width: 100%; margin: 0 auto;" in _PANE_HTML
     assert "background: transparent; border-radius: 0; overflow: visible; box-shadow: none;" in _PANE_HTML
     assert ".view-shell::after { content: none; }" in _PANE_HTML
     assert ".tf-table-view,\n.tf-chart-view,\n.tf-map-view,\n.tf-graph-view,\n.tf-message-view {" in _PANE_HTML
