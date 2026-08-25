@@ -46,6 +46,10 @@ class ConnectDataSourceTool:
             alias: The name to register the source under, used verbatim — letters, digits,
                 and underscores only, and not already in use by another source.
         """
+        return await self.execute(source, alias)
+
+    async def execute(self, source: str, alias: str) -> str:
+        """Connect and register one external data source."""
         from tabulaflow.data.loaders import is_hf_dataset_url, load_files, load_hf_dataset
 
         if not _VALID_NAME.fullmatch(alias):

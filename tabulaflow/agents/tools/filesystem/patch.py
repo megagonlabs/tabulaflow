@@ -151,6 +151,10 @@ class ApplyPatchTool:
             patch: Patch text containing one or more add, update, delete, or
                 move operations.
         """
+        return await self.execute(patch)
+
+    async def execute(self, patch: str) -> str:
+        """Apply one V4A patch."""
         self._metrics.num_apply_patch += 1
         try:
             fuzz, commit = self._process_patch(patch)

@@ -292,6 +292,28 @@ class AddCanonicalNameTool:
                 copy first if needed. Only set when ``input_column`` identifies the
                 row's own entity; never on a foreign attribute.
         """
+        return await self.execute(
+            schema_name,
+            table_name,
+            canonical_column=canonical_column,
+            instruction=instruction,
+            input_column=input_column,
+            merge_duplicates=merge_duplicates,
+            tool_call_id=ctx.tool_call_id,
+        )
+
+    async def execute(
+        self,
+        schema_name: str | None,
+        table_name: str,
+        *,
+        canonical_column: str,
+        instruction: str,
+        input_column: str,
+        merge_duplicates: bool = False,
+        tool_call_id: str | None = None,
+    ) -> str:
+        """Canonicalize one table column without requiring an agent run context."""
         if self._db_connector is None:
             return "(error: no workspace database connected)"
 
@@ -317,7 +339,7 @@ class AddCanonicalNameTool:
                 traj_dir = None
 
         mapping, n_errors, n_clusters, cluster_error = await self._cluster_and_canonicalize(
-            distinct_values, instruction, schema_name, table_name, input_column, traj_dir, ctx.tool_call_id
+            distinct_values, instruction, schema_name, table_name, input_column, traj_dir, tool_call_id
         )
         if cluster_error is not None:
             return cluster_error

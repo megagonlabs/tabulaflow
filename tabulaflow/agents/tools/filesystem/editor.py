@@ -353,6 +353,19 @@ class FileEditorTool:
                 For files, selects a line range; for directories, an entry
                 range for pagination. Not used for PDFs.
         """
+        return await self.execute(command, path, file_text, old_str, new_str, replace_all, view_range)
+
+    async def execute(
+        self,
+        command: Literal["view", "write_file", "str_replace"],
+        path: str = ".",
+        file_text: str | None = None,
+        old_str: str | None = None,
+        new_str: str | None = None,
+        replace_all: bool = False,
+        view_range: list[int] | None = None,
+    ) -> str:
+        """Execute one filesystem editor command."""
         try:
             resolved = self._resolve(path, for_write=command in ("write_file", "str_replace"))
         except ValueError as e:

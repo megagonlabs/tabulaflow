@@ -573,7 +573,7 @@ class TestApplyPatchTool:
 *** End Patch
 """
         )
-        err = await tool("not a patch")
+        err = await tool.execute("not a patch")
 
         metrics = tool.metrics()
         assert ok == "M a.txt"

@@ -147,14 +147,13 @@ async def test_tool_resolves_types_and_appends_typed_rows(tmp_path: Path, monkey
     monkeypatch.setattr(mod, "EntityExtractor", FakeExtractor)
 
     tool = ExtractRowsFromDocumentsTool(conn)
-    ctx = SimpleNamespace(tool_call_id="call-1")
-    summary = await tool(
-        ctx,  # type: ignore[arg-type]
+    summary = await tool.execute(
         None,
         "products",
         task_query="SELECT 'irrelevant doc text' AS content",
         task_instruction="Extract each product.",
         output_columns=["name", "qty", "price", "active", "launched"],
+        tool_call_id="call-1",
     )
 
     assert "Extracted 2 entities" in summary

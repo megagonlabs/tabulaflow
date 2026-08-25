@@ -159,6 +159,26 @@ class ExtractRowsFromDocumentsTool:
                 ``JSON`` columns work too). Array, struct, map, and binary columns are
                 not valid targets.
         """
+        return await self.execute(
+            schema_name,
+            table_name,
+            task_query=task_query,
+            task_instruction=task_instruction,
+            output_columns=output_columns,
+            tool_call_id=ctx.tool_call_id,
+        )
+
+    async def execute(
+        self,
+        schema_name: str | None,
+        table_name: str,
+        *,
+        task_query: str,
+        task_instruction: str,
+        output_columns: list[str],
+        tool_call_id: str | None = None,
+    ) -> str:
+        """Extract and append document rows without requiring an agent run context."""
         if not output_columns:
             return "(error: output_columns must be non-empty)"
 
@@ -234,7 +254,7 @@ class ExtractRowsFromDocumentsTool:
                 "holding a JSON string)"
             )
 
-        # Per-call trajectory directory (one per __call__, shared across documents);
+        # Per-execution trajectory directory, shared across documents;
         # EntityExtractor creates it lazily on first write.
         traj_dir = self.trajectory_log_dir / uuid.uuid4().hex[:12] if self.trajectory_log_dir is not None else None
 
@@ -255,7 +275,6 @@ class ExtractRowsFromDocumentsTool:
         rows = df.to_dict(orient="records")
         total_docs = len(rows)
         extracted_count = 0
-        tool_call_id = ctx.tool_call_id
         if self.on_progress is not None and total_docs > 0:
             self.on_progress(ToolProgressUpdate(completed=0, unit="rows", tool_call_id=tool_call_id))
 

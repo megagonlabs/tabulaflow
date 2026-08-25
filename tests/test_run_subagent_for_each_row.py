@@ -122,8 +122,7 @@ class TestHappyPath:
             return ModelResponse(parts=[ToolCallPart(tool_name="submit_answer", args=emit)])
 
         tool = RunSubagentForEachRowTool(conn, subagent_llm=FunctionModel(stub))
-        summary = await tool.__call__(
-            _ctx(),
+        summary = await tool.execute(
             None,
             "t",
             task_query="SELECT * FROM t",

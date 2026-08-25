@@ -198,6 +198,10 @@ class GetColumnJsonSchemaTool:
                 provided, returns the full details of that sub-path instead of
                 a shallow overview of the entire schema.
         """
+        return await self.execute(schema_name, table_name, column_name, path)
+
+    async def execute(self, schema_name: str | None, table_name: str, column_name: str, path: str | None = None) -> str:
+        """Resolve and render one column's JSON schema."""
         self._metrics.num_calls += 1
 
         table = find_table(self.schema, schema_name, table_name)

@@ -375,6 +375,34 @@ class RunSubagentForEachRowTool:
                   auxiliary tables for context, or writes to other tables
                   (INSERTs, DDL).
         """
+        return await self.execute(
+            schema_name,
+            table_name,
+            task_query=task_query,
+            task_instruction=task_instruction,
+            key_columns=key_columns,
+            output_columns=output_columns,
+            enable_browser_tools=enable_browser_tools,
+            enable_nested_subagents=enable_nested_subagents,
+            enable_run_query_tool=enable_run_query_tool,
+            tool_call_id=ctx.tool_call_id,
+        )
+
+    async def execute(
+        self,
+        schema_name: str | None,
+        table_name: str,
+        *,
+        task_query: str,
+        task_instruction: str,
+        key_columns: list[str],
+        output_columns: list[str],
+        enable_browser_tools: bool = False,
+        enable_nested_subagents: bool = False,
+        enable_run_query_tool: bool = False,
+        tool_call_id: str | None = None,
+    ) -> str:
+        """Run row-wise subagents without requiring an agent run context."""
         if not output_columns:
             return "(error: output_columns must be a non-empty list)"
 
@@ -489,7 +517,7 @@ class RunSubagentForEachRowTool:
         # If nesting is enabled, construct one fresh tool instance to share across
         # all rows. Fresh (not ``self``) so its ``on_progress`` stays None and
         # nested progress doesn't bleed into the parent's TUI callback. One per
-        # outer ``__call__`` (not per row) — per-call state lives in the frame.
+        # outer execution (not per row) — per-call state lives in the frame.
         nested_pa_tool: Tool | None = None
         if enable_nested_subagents:
             nested_tool = RunSubagentForEachRowTool(
@@ -550,7 +578,6 @@ class RunSubagentForEachRowTool:
             run_query_pa_tool = RegistryRunQueryTool(self.registry).as_pydantic_ai_tool()
 
         completed = 0
-        tool_call_id = ctx.tool_call_id
 
         # Build a SQLAlchemy table with all columns referenced in SET clauses.
         sa_col_names: set[str] = set(key_columns) | set(output_columns)
