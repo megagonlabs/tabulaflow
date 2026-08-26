@@ -118,6 +118,7 @@ export interface CardData {
 
 export interface ViewHandle {
   requires?: { width?: boolean; height?: boolean };
+  copy?: { text: () => string; label: string; copiedLabel: string };
   mount?: () => void;
   resize?: () => void;
   canUpdate?: (data: CardData) => boolean;

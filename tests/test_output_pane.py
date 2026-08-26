@@ -816,6 +816,50 @@ process.stdout.write(JSON.stringify({{ html: container.innerHTML, copied, reset 
     assert rendered["reset"] == {"classes": [], "label": "Copy query", "title": "Copy query"}
 
 
+def test_table_copy_serializes_complete_values_as_tsv(tmp_path: Path) -> None:
+    node = shutil.which("node")
+    if node is None:
+        pytest.skip("node is required to execute the table renderer")
+
+    assets = files("tabulaflow.app.pane.assets").joinpath("ui").joinpath("render")
+    module_dir = tmp_path / "modules"
+    module_dir.mkdir()
+    for rel in ("shared.js", "table.js"):
+        module_dir.joinpath(rel).write_text(assets.joinpath(rel).read_text(encoding="utf-8"), encoding="utf-8")
+    module_dir.joinpath("package.json").write_text('{"type":"module"}', encoding="utf-8")
+    renderer_path = str(module_dir / "table.js")
+    script = f"""
+import {{ pathToFileURL }} from 'node:url';
+globalThis.window = {{ Tabulator: {{}} }};
+const moduleUrl = pathToFileURL({json.dumps(renderer_path)}).href;
+const {{ tableToTsv }} = await import(moduleUrl);
+const columns = [
+  {{ title: 'Name', field: 'name' }},
+  {{ title: 'Notes', field: 'notes' }},
+  {{ title: 'Meta', field: 'meta' }},
+  {{ title: 'Media', field: 'media' }},
+];
+const rows = [
+  {{ name: 'Alice', notes: 'one\\ttwo', meta: {{ a: 1 }}, media: {{ kind: 'media', src: 'https://example.com/a.png' }} }},
+  {{ name: 'Bob', notes: 'line\\n"quoted"', meta: null, media: null }},
+];
+process.stdout.write(JSON.stringify(tableToTsv(columns, rows)));
+"""
+    result = subprocess.run(
+        [node, "--input-type=module"],
+        input=script,
+        text=True,
+        capture_output=True,
+        check=True,
+    )
+
+    assert json.loads(result.stdout) == (
+        "Name\tNotes\tMeta\tMedia\n"
+        'Alice\t"one\ttwo"\t"{""a"":1}"\thttps://example.com/a.png\n'
+        'Bob\t"line\n""quoted"""\t\t'
+    )
+
+
 def test_output_pane_push_highlights_assistant_markdown_code_blocks(tmp_path: Path) -> None:
     pane = OutputPane(tmp_path)
     pane.push(
@@ -1383,7 +1427,7 @@ def test_pane_table_layout_css_is_loaded() -> None:
 
 def test_pane_view_shell_is_layout_only() -> None:
     assert ".view-shell { position: relative; width: 100%; margin: 0 auto;" in _PANE_HTML
-    assert ".viewmeta { width: 100%; margin: 0 auto;" in _PANE_HTML
+    assert ".viewmeta { display: flex; align-items: center; width: 100%; margin: 0 auto;" in _PANE_HTML
     assert "background: transparent; border-radius: 0; overflow: visible; box-shadow: none;" in _PANE_HTML
     assert ".view-shell::after { content: none; }" in _PANE_HTML
     assert ".tf-table-view,\n.tf-chart-view,\n.tf-map-view,\n.tf-graph-view,\n.tf-message-view {" in _PANE_HTML
@@ -1411,7 +1455,7 @@ def test_pane_sidebar_meta_uses_artifact_icons() -> None:
 
     assert "var artifactIconSpecs = {" in shared_js
     assert "function artifactIconMarkup(kind, className)" in shared_js
-    assert "import { artifactIconSpecs } from './render/shared.js';" in pane_js
+    assert "import { artifactIconSpecs, wireCopyButton } from './render/shared.js';" in pane_js
     assert "META_ICONS" not in pane_js
     assert "function artifactCounts(turn)" in pane_js
     assert "return { counts: counts, order: order };" in pane_js

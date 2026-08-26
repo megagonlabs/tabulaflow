@@ -346,9 +346,10 @@ body { margin: 0; background: var(--bg); color: var(--text); display: flex; flex
 .cardbar.multi-card.stacked { flex-direction: column; align-items: stretch; gap: 10px; }
 .cardbar.multi-card.stacked .rectabs { width: 100%; margin-right: 0; flex-wrap: wrap; overflow: visible; }
 .cardbar.multi-card.stacked .seg { align-self: flex-end; }
-.viewmeta { width: 100%; margin: 0 auto; box-sizing: border-box;
-            min-height: 15px; padding: 8px 4px 0; color: var(--text-dim); white-space: nowrap; text-align: left;
+.viewmeta { display: flex; align-items: center; width: 100%; margin: 0 auto; box-sizing: border-box;
+            min-height: 38px; padding: 6px 4px 0; color: var(--text-dim); white-space: nowrap; text-align: left;
             font: 12px/1.25 ui-monospace, monospace; }
+.viewmeta-copy { --copy-icon-bg: var(--bg); position: relative; top: 2px; right: -4px; margin-left: auto; }
 .seg { position: relative; display: inline-flex; padding: 2px; border-radius: 999px;
        box-shadow: inset 0 0 0 1px var(--border); }
 .seg-opt { position: relative; z-index: 1; background: transparent; border: 0; cursor: pointer;
@@ -792,7 +793,7 @@ body { margin: 0; background: var(--bg); color: var(--text); display: flex; flex
 .copy-icon::before, .copy-icon::after { content: ""; position: absolute; width: 10px; height: 10px;
                                         border: 1.5px solid currentColor; border-radius: 3px; box-sizing: border-box; }
 .copy-icon::before { left: 2px; top: 5px; }
-.copy-icon::after { left: 5px; top: 1px; background: var(--query-bg); }
+.copy-icon::after { left: 5px; top: 1px; background: var(--copy-icon-bg, var(--query-bg)); }
 .query-copy.copied .copy-icon { color: var(--text); }
 .query-copy.copied .copy-icon::before { left: 5px; top: 1px; width: 7px; height: 12px; opacity: 1;
                                         border-width: 0 1.75px 1.75px 0; border-radius: 0;

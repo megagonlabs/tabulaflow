@@ -4,6 +4,29 @@ import { asUrls, escapeHtml, formatNumber, link, maybeFormatJson, renderMedia } 
 
 const Tabulator = window.Tabulator;
 
+function copyValue(value) {
+  if (value == null) return '';
+  if (typeof value === 'object') {
+    if (value.kind === 'media') return String(value.src || '');
+    return JSON.stringify(value);
+  }
+  return String(value);
+}
+
+function tsvCell(value) {
+  var text = copyValue(value);
+  if (!/[\t\r\n"]/.test(text)) return text;
+  return '"' + text.replace(/"/g, '""') + '"';
+}
+
+export function tableToTsv(columns, rows) {
+  var lines = [columns.map(function (column) { return tsvCell(column.title || column.field || ''); }).join('\t')];
+  rows.forEach(function (row) {
+    lines.push(columns.map(function (column) { return tsvCell(row[column.field]); }).join('\t'));
+  });
+  return lines.join('\n');
+}
+
 /** @param {HTMLElement} container @param {import('../contract').CardData} cardData */
 export function renderTable(container, cardData) {
   var tableData = cardData.table || {};
@@ -205,6 +228,11 @@ export function renderTable(container, cardData) {
   }
   return {
     ready: ready,
+    copy: {
+      text: function () { return tableToTsv(tableData.columns || [], rows); },
+      label: 'Copy table',
+      copiedLabel: 'Copied table'
+    },
     canUpdate: function (nextData) {
       var nextTable = nextData.table || {};
       var nextRows = (nextData.dataset && nextData.dataset.rows) || [];

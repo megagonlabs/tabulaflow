@@ -6,7 +6,7 @@ import { renderMap } from './render/map.js';
 import { renderGraph } from './render/graph.js';
 import { renderQuery } from './render/query.js';
 import { renderMarkdown } from './render/markdown.js';
-import { artifactIconSpecs } from './render/shared.js';
+import { artifactIconSpecs, wireCopyButton } from './render/shared.js';
 
 function el(tag, cls) {
   var e = document.createElement(tag);
@@ -845,7 +845,7 @@ function revealShellLoading(shell, entry) {
   state.textContent = 'Loading ' + entry.kind + '\u2026';
   state.hidden = false;
   shell.className = 'view-shell view-' + entry.kind + ' view-loading';
-  shell._tfMeta.textContent = '';
+  renderViewMeta(shell._tfMeta, null);
 }
 
 function stageShellEntry(shell, entry) {
@@ -886,7 +886,7 @@ function commitShellView(shell, entry) {
   shellLoadingState(shell).hidden = true;
   shell.className = 'view-shell view-' + entry.kind;
   shell.removeAttribute('aria-busy');
-  shell._tfMeta.textContent = entry.metaText || '';
+  renderViewMeta(shell._tfMeta, entry);
   var replaced = entry.replaces;
   entry.replaces = null;
   if (replaced) {
@@ -948,6 +948,25 @@ function renderLoadedView(entry) {
   entry.node._tfViewEntry = entry;
   entry.metaText = entry.kind === 'data' && entry.data.table ? entry.data.table.meta || '' : '';
   entry.status = 'rendering';
+}
+
+function renderViewMeta(meta, entry) {
+  meta.replaceChildren();
+  if (!entry) return;
+  if (entry.metaText) {
+    var text = el('span', 'viewmeta-text');
+    text.textContent = entry.metaText;
+    meta.appendChild(text);
+  }
+  var copy = entry.handle && entry.handle.copy;
+  if (!copy) return;
+  var button = el('button', 'query-copy viewmeta-copy');
+  button.type = 'button';
+  button.setAttribute('aria-label', copy.label);
+  button.title = copy.label;
+  button.innerHTML = '<span class="copy-icon" aria-hidden="true"></span>';
+  wireCopyButton(button, copy.text, { copy: copy.label, copied: copy.copiedLabel });
+  meta.appendChild(button);
 }
 
 function failViewEntry(entry, error) {
@@ -1031,7 +1050,7 @@ function applyViewRevision(card, kind, shell, key, entry, state, generation, dat
     entry.revision = card.id;
     entry.metaText = kind === 'data' && data.table ? data.table.meta || '' : '';
     shell.removeAttribute('aria-busy');
-    shell._tfMeta.textContent = entry.metaText;
+    renderViewMeta(shell._tfMeta, entry);
   }).catch(function () {
     if (viewCache[key] === entry) stageViewReplacement(card, kind, shell, key, entry, data);
   });
