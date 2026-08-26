@@ -664,7 +664,7 @@ Aug 25
 - [x] Share updates to #mintq and Hongjie
 
 Aug 26
-- [ ] bash tool
+- [x] bash tool
 - [ ] model price tracking
 - [ ] artifact menu layout
 
