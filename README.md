@@ -650,16 +650,20 @@ Aug 24
   - [x] Fix map popup scrolling
 
 Aug 25
-- [ ] agents layer cleanup
+- [x] agents layer cleanup
   - [x] chat/
   - [x] `<answer>` -> `ANSWER:`
-  - [ ] bash tool
 - app
   - [x] align to browser pane column width
   - [x] map artifact no data box
   - [x] control panel UI
-  - [ ] artifact tab menu
+  - [x] redesign artifact tab menu
+  - [x] subgraph title color
+  - [x] disable range selection for table copy table button
+- [x] Share updates to #mintq and Hongjie
 
+Aug 26
+- [ ] bash tool
 
 - [ ] Shell messed up after ssh disconnect
 - [ ] Check if uv tool install install browser
