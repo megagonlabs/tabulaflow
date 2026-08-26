@@ -300,10 +300,9 @@ class ChatSession:
         if self._project_dir is None or self._scratch_dir is None:
             return None
         import os
-        import shlex
 
         if os.name != "posix":
-            # The shell tool is POSIX-only (PTY-based). Omit it so the rest of the app
+            # The shell tool is POSIX-only. Omit it so the rest of the app
             # still runs on Windows; the agent just loses shell-based gather/transform.
             logger.warning("execute_bash is unavailable on this platform; the agent runs without a shell tool")
             return None
@@ -323,7 +322,8 @@ class ChatSession:
 
         return ExecuteBashTool(
             working_dir=str(self._project_dir),
-            init_commands=[f"export SCRATCH={shlex.quote(str(self._scratch_dir))}"],
+            job_dir=self._scratch_dir / "bash-jobs",
+            env_overrides={"SCRATCH": str(self._scratch_dir)},
             command_filter=dangerous_command_reason,
         )
 
@@ -569,7 +569,7 @@ class ChatSession:
         self._seed_conversation_context()
 
     async def aclose(self) -> None:
-        """Release session-scoped resources — currently the persistent shell session."""
+        """Release session-scoped resources, including active shell jobs."""
         if self._tools.bash is not None:
             await self._tools.bash.close()
 

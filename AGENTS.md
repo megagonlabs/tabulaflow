@@ -163,6 +163,8 @@ Dark-app feel, mint accent, modern data-app references (Linear, Stripe, GitHub).
 ## Toolhub Development Principles
 
 - Keep `__call__` as the LLM-facing adapter; put reusable logic in `execute(...)`.
+- Reusable `execute(...)` methods raise expected validation/runtime errors;
+  `__call__` catches them and returns the model-facing `(error: ...)` string.
 - Use structured result dataclasses only when fields have real consumers; otherwise return the output string.
 - Do not bridge awaited calls with shared `last_*` state; return per-call data from `execute(...)`.
 - Registry tools resolve aliases, call the underlying `execute(...)`, and convert results to `ToolReturn` metadata.

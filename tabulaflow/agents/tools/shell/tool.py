@@ -1,705 +1,393 @@
-"""Persistent PTY-backed bash shell tool.
+"""Concurrent non-PTY Bash jobs with bounded scratch logs."""
 
-One long-lived ``bash --noediting -i`` runs in a pseudo-terminal: commands are
-written to it and completion is read back from a PS1 sentinel, so shell state
-(cwd, env, exported vars) persists across calls. This follows the OpenHands
-terminal pattern, with a few deliberate differences:
-
-**Robust input, no pacing.**  A blocking ``write_all`` on a blocking master fd,
-drained by a dedicated reader thread, plus ``--noediting`` to disable readline's
-line editor.  OpenHands instead paces multi-line input with a per-line sleep to
-mask readline corruption and a non-blocking partial-write that silently drops
-bytes; neither failure mode exists here, so large heredocs go through at full
-speed.
-
-**Forgery-proof completion.**  The PS1 sentinel carries a per-session random
-nonce, so command output cannot reproduce the marker to fake a prompt or exit
-code (static-marker schemes can be spoofed by a command that prints them).
-
-**Event-driven, eviction-proof detection.**  The reader signals new output so
-the poll loop wakes immediately rather than on a fixed tick (no per-command
-latency floor), and the buffer is cleared before each command so "completed" is
-just "a prompt is present" — no prompt-counting or output diffing.
-
-Unlike Codex's shell, which runs each command as a fresh ``bash -lc`` with no
-cross-call state, this keeps a single persistent session.
-"""
+from __future__ import annotations
 
 import asyncio
 import codecs
-import json
-import logging
+import math
 import os
-import re
-import secrets
-import shlex
+from pathlib import Path
 import shutil
 import signal
-import subprocess
 import tempfile
-import threading
-import time
-from collections import deque
-from collections.abc import Callable
-from typing import ClassVar
+from collections.abc import Callable, Mapping
+from dataclasses import dataclass, field
+from typing import Annotated, ClassVar, Literal, TypeAlias
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from pydantic_ai import Tool
 
-# pty/termios are POSIX-only. Guard the import so this module (and therefore the
-# whole tools package) still loads on Windows; the tool raises a clear error at
-# construction there instead of a cryptic ImportError. See ``ExecuteBashTool.__init__``.
-try:
-    import pty
-    import termios
+_DEFAULT_WAIT_TIMEOUT = 30.0
+_MAX_OUTPUT_CHARS = 30_000
+_ACTIVE_JOB_WARNING_THRESHOLD = 8
+_TERMINATION_GRACE_SECONDS = 1.0
+_READ_CHUNK_BYTES = 4096
+_LOG_FLUSH_BYTES = 64 * 1024
 
-    _POSIX = True
-except ImportError:  # pragma: no cover - Windows only
-    _POSIX = False
-
-logger = logging.getLogger(__name__)
-
-_ANSI_ESCAPE = re.compile(
-    r"\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)"  # OSC: ESC ] ... terminated by BEL or ST
-    r"|\x1b[\[\]][0-9;?]*[a-zA-Z]"  # CSI: ESC [ ... final letter
-    r"|\x1b[()][A-Za-z0-9]"  # charset designation: ESC ( / ESC ) X
-    r"|\x1b[0-9A-Za-z=><]"  # single-final escapes: ESC 7/8/c/=/> etc.
-)
-_MAX_OUTPUT_CHARS = 30000
-_NO_CHANGE_TIMEOUT = 30
-_POLL_INTERVAL = 0.5
-_HISTORY_LIMIT = 10000
-# Upper bound on how long a blocking write_all of the command may take. A
-# normal write finishes in milliseconds; hitting this means the shell is not
-# draining stdin (e.g. a foreground process ignoring input), so we reset.
-_WRITE_TIMEOUT = 10.0
-_PAGER_ENV_DEFAULTS = {
-    "PAGER": "cat",
-    "GIT_PAGER": "cat",
-    "GH_PAGER": "cat",
-    "DELTA_PAGER": "cat",
-    "BAT_PAGER": "cat",
-    "SYSTEMD_PAGER": "cat",
-    "MANPAGER": "cat",
-    "LESS": "-FRX",
-}
-
-
-def _parse_ps1_metadata(match: re.Match[str]) -> dict[str, str | int]:
-    """Extract exit code and cwd from a PS1 metadata match."""
-    try:
-        data = json.loads(match.group(1))
-        return {
-            "exit_code": int(data.get("exit_code", -1)),
-            "cwd": data.get("cwd", ""),
-        }
-    except (json.JSONDecodeError, ValueError, TypeError):
-        return {"exit_code": -1, "cwd": ""}
+BashMode: TypeAlias = Literal["kill_on_timeout", "detach_on_timeout", "background"]
+WaitTimeout: TypeAlias = Annotated[float, Field(gt=0, allow_inf_nan=False)]
 
 
 class BashToolMetrics(BaseModel):
-    """Execution, timeout, and error counters for the shell tool."""
+    """Execution and lifecycle counters for the shell tool."""
 
     num_calls: int = 0
-    num_input_calls: int = 0
+    num_background_calls: int = 0
+    num_detached_calls: int = 0
     num_timeouts: int = 0
     num_errors: int = 0
 
 
+class _BoundedText:
+    """Bounded head-and-tail text accumulated from a stream."""
+
+    def __init__(self, max_chars: int) -> None:
+        self._max_chars = max_chars
+        self._head_limit = (max_chars + 1) // 2
+        self._tail_limit = max_chars - self._head_limit
+        self._head = ""
+        self._tail = ""
+        self._total_chars = 0
+
+    def append(self, text: str) -> None:
+        if not text:
+            return
+        self._total_chars += len(text)
+        head_room = self._head_limit - len(self._head)
+        if head_room > 0:
+            self._head += text[:head_room]
+            text = text[head_room:]
+        if text and self._tail_limit:
+            self._tail = (self._tail + text)[-self._tail_limit :]
+
+    def render(self) -> str:
+        if self._total_chars <= self._max_chars:
+            return self._head + self._tail
+        return (
+            self._head
+            + f"\n\n... (output truncated: {self._total_chars} chars total) ...\n\n"
+            + self._tail
+        )
+
+    @property
+    def is_truncated(self) -> bool:
+        return self._total_chars > self._max_chars
+
+
+@dataclass(slots=True)
+class _BashJob:
+    id: str
+    process: asyncio.subprocess.Process
+    log_path: Path
+    output: _BoundedText
+    done: asyncio.Event = field(default_factory=asyncio.Event)
+    termination_lock: asyncio.Lock = field(default_factory=asyncio.Lock)
+    collector_task: asyncio.Task[None] | None = None
+    error: str | None = None
+
+    @property
+    def process_group(self) -> int:
+        return self.process.pid
+
+
 class ExecuteBashTool:
-    """Execute bash commands in a persistent PTY-based shell session."""
+    """Run independent Bash jobs concurrently."""
 
     name: ClassVar = "execute_bash"
 
     def __init__(
         self,
-        working_dir: str | None = None,
-        no_change_timeout: int = _NO_CHANGE_TIMEOUT,
+        working_dir: str | os.PathLike[str] | None = None,
+        *,
+        job_dir: str | os.PathLike[str] | None = None,
+        wait_timeout: float = _DEFAULT_WAIT_TIMEOUT,
         max_output_chars: int = _MAX_OUTPUT_CHARS,
-        init_commands: list[str] | None = None,
+        env_overrides: Mapping[str, str] | None = None,
         command_filter: Callable[[str], str | None] | None = None,
     ) -> None:
-        """Initialize the bash tool.
+        """Initialize the Bash job runner.
 
         Args:
-            working_dir: Initial working directory for the shell session.
-            no_change_timeout: Seconds with no new output before returning.
-            max_output_chars: Maximum characters in returned output.
-            init_commands: Commands to run at session startup (e.g. PATH setup).
-            command_filter: Optional guard function. Called with each new command
-                string before execution. Return ``None`` to allow it, or a short
-                reason string to block it (surfaced to the caller).
+            working_dir: Directory in which every command starts.
+            job_dir: Scratch directory for bounded job logs. A private temporary
+                directory is created when omitted.
+            wait_timeout: Default wall-clock wait budget for waiting modes.
+            max_output_chars: Maximum retained command-output characters per job.
+            env_overrides: Values merged over a snapshot of the launch environment.
+            command_filter: Optional guard returning an error reason for blocked
+                commands and ``None`` for allowed commands.
         """
-        if not _POSIX:
-            raise RuntimeError("ExecuteBashTool requires macOS or Linux; the shell tool is not supported on Windows.")
-        self._working_dir = working_dir or os.getcwd()
-        self._no_change_timeout = no_change_timeout
+        if os.name != "posix":
+            raise RuntimeError("ExecuteBashTool requires a POSIX platform.")
+        if not math.isfinite(wait_timeout) or wait_timeout <= 0:
+            raise ValueError("wait_timeout must be a positive finite number")
+        if max_output_chars < 1:
+            raise ValueError("max_output_chars must be positive")
+
+        self._working_dir = Path(working_dir or os.getcwd()).resolve()
+        if not self._working_dir.is_dir():
+            raise ValueError(f"working_dir is not a directory: {self._working_dir}")
+        self._default_wait_timeout = float(wait_timeout)
         self._max_output_chars = max_output_chars
-        self._init_commands = init_commands or []
         self._command_filter = command_filter
-        self._metrics = BashToolMetrics()
-
-        # The completion sentinel carries a per-session random nonce so a child
-        # command cannot forge a prompt by printing the marker bytes in its output
-        # (the tool reads stdout in-band and otherwise cannot tell them apart).
-        nonce = secrets.token_hex(16)
-        self._ps1_begin = f"\n###PS1JSON_{nonce}###\n"
-        self._ps1_end = f"\n###PS1END_{nonce}###"
-        self._ps1_regex = re.compile(
-            rf"^{re.escape(self._ps1_begin.strip())}"
-            rf"((?:(?!{re.escape(self._ps1_begin.strip())}).)*?)"
-            rf"{re.escape(self._ps1_end.strip())}",
-            re.DOTALL | re.MULTILINE,
-        )
-
-        self._process: subprocess.Popen[bytes] | None = None
-        self._pty_fd: int | None = None
-        self._buf: deque[str] = deque(maxlen=_HISTORY_LIMIT + 50)
-        self._buf_lock = threading.Lock()
-        self._dropped_lines = 0
-        self._reader_thread: threading.Thread | None = None
-        # Signalled (cross-thread) by the reader whenever new output lands, so the
-        # poll loop wakes immediately on output instead of sleeping a fixed tick.
-        self._data_event: asyncio.Event | None = None
-        # Streaming UTF-8 decoder: a multibyte char split across two PTY reads
-        # must not be decoded as two invalid fragments. Recreated per session.
-        self._decoder = codecs.getincrementaldecoder("utf-8")(errors="replace")
-        self._loop: asyncio.AbstractEventLoop | None = None
-        # Serializes _execute: one PTY/session is single-tenant, so concurrent
-        # calls would interleave bytes and steal each other's output/exit codes.
-        self._lock = asyncio.Lock()
-        # Reusable temp file (system temp dir) for staging multi-line commands; see
-        # _stage_multiline. Created lazily, overwritten per call, removed on close.
-        self._cmd_file: str | None = None
-        self._initialized = False
-        self._closed = False
-
-        self._prev_status: str | None = None
-
-    def _build_ps1(self) -> str:
-        """Build a PS1 prompt that emits nonce-tagged JSON metadata each display."""
-        json_str = json.dumps({"exit_code": "$?", "cwd": "$(pwd)"}, indent=2)
-        return self._ps1_begin + json_str.replace('"', r"\"") + self._ps1_end + "\n"
-
-    def _find_ps1_matches(self, text: str) -> list[re.Match[str]]:
-        """Find all valid PS1 JSON metadata blocks in terminal output."""
-        matches: list[re.Match[str]] = []
-        for m in self._ps1_regex.finditer(text):
-            try:
-                json.loads(m.group(1).strip())
-                matches.append(m)
-            except json.JSONDecodeError:
-                pass
-        return matches
-
-    # -- session lifecycle -----------------------------------------------------
-
-    async def _initialize(self) -> None:
-        """Create PTY, spawn interactive bash, configure PS1."""
-        if self._initialized:
-            return
-
-        bash_path = shutil.which("bash")
+        self._env = os.environ.copy()
+        self._env.update(env_overrides or {})
+        bash_path = shutil.which("bash", path=self._env.get("PATH"))
         if bash_path is None:
             raise RuntimeError("Could not find bash in PATH")
+        self._bash_path = bash_path
 
-        ps1 = self._build_ps1()
-        self._decoder = codecs.getincrementaldecoder("utf-8")(errors="replace")
-        env = os.environ.copy()
-        env.update(_PAGER_ENV_DEFAULTS)
-        env["PS1"] = ps1
-        env["PS2"] = ""
-        env["TERM"] = "xterm-256color"
+        self._owns_job_dir = job_dir is None
+        self._job_dir = Path(job_dir) if job_dir is not None else Path(tempfile.mkdtemp(prefix="tabulaflow-bash-jobs-"))
+        self._job_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
+        os.chmod(self._job_dir, 0o700)
 
-        master_fd, slave_fd = pty.openpty()
-        # Disable terminal ECHO. We feed commands ourselves and only read program
-        # output back, so echoing input is pure noise that we strip anyway — and a
-        # fast bulk command makes the tty echo it faster than the reader drains,
-        # overflowing the ~1 KB echo queue and silently dropping a chunk, which
-        # garbles the captured (not the executed) command text.
-        attrs = termios.tcgetattr(slave_fd)
-        attrs[3] &= ~(termios.ECHO | termios.ECHONL)  # c_lflag
-        termios.tcsetattr(slave_fd, termios.TCSANOW, attrs)
-        try:
-            # --noediting disables readline's interactive line editor. We feed
-            # commands programmatically, so its history/cursor handling is unused
-            # and its redisplay interleaves bytes when a large multi-line command
-            # arrives faster than it can process — corrupting the input. We keep
-            # interactive mode (-i) for job control and PS1 prompts.
-            self._process = subprocess.Popen(
-                [bash_path, "--noediting", "-i"],
-                stdin=slave_fd,
-                stdout=slave_fd,
-                stderr=slave_fd,
-                cwd=self._working_dir,
-                env=env,
-                text=False,
-                bufsize=0,
-                preexec_fn=os.setsid,
-                close_fds=True,
-            )
-        finally:
-            os.close(slave_fd)
-
-        self._pty_fd = master_fd
+        self._next_job_id = 1
+        self._active_jobs: dict[str, _BashJob] = {}
+        self._registry_lock = asyncio.Lock()
+        self._metrics = BashToolMetrics()
         self._closed = False
 
-        self._loop = asyncio.get_running_loop()
-        self._data_event = asyncio.Event()
-        # Keep the master fd BLOCKING and drain it on a dedicated thread. Reading
-        # output concurrently with writing input is what lets a blocking write_all
-        # of the command always complete: bash never stalls on a full stdout buffer,
-        # so it keeps consuming stdin and the kernel input buffer keeps draining.
-        self._reader_thread = threading.Thread(target=self._read_loop, args=(master_fd,), daemon=True)
-        self._reader_thread.start()
-        self._initialized = True
-
-        init_cmd = f'set +H; export PROMPT_COMMAND=\'export PS1="{ps1}"\'; export PS2=""'
-        self._write_pty(init_cmd.encode() + b"\n")
-        await self._wait_for_prompt(timeout=5.0)
-        self._clear_screen()
-
-        # Re-apply working directory after bash init (e.g. direnv may override cwd)
-        abs_wd = os.path.abspath(self._working_dir)
-        self._write_pty(f"cd {abs_wd!r}\n".encode())
-        await self._wait_for_prompt(timeout=5.0)
-        self._clear_screen()
-
-        for cmd in self._init_commands:
-            self._write_pty(cmd.encode() + b"\n")
-            await self._wait_for_prompt(timeout=10.0)
-            self._clear_screen()
-
-        # Let the reader thread drain any remaining PTY output, then clear
-        await asyncio.sleep(0.1)
-        with self._buf_lock:
-            self._reset_buf()
-
-    async def _ensure_session(self) -> None:
-        """Restart the session if the process died."""
-        if not self._initialized or self._closed or (self._process and self._process.poll() is not None):
-            await self._close_internal()
-            await self._initialize()
-
-    async def _close_internal(self) -> None:
-        """Tear down PTY, process, and event loop reader."""
-        if self._closed and not self._initialized:
-            return
-        try:
-            if self._process:
-                try:
-                    self._write_pty(b"exit\n")
-                except Exception:
-                    pass
-                deadline = time.time() + 2
-                while self._process.poll() is None and time.time() < deadline:
-                    await asyncio.sleep(0.1)
-                if self._process.poll() is None:
-                    try:
-                        os.killpg(os.getpgid(self._process.pid), signal.SIGTERM)
-                    except (ProcessLookupError, PermissionError):
-                        pass
-                    deadline = time.time() + 1
-                    while self._process.poll() is None and time.time() < deadline:
-                        await asyncio.sleep(0.1)
-                    if self._process.poll() is None:
-                        try:
-                            os.killpg(os.getpgid(self._process.pid), signal.SIGKILL)
-                        except (ProcessLookupError, PermissionError):
-                            pass
-        except Exception:
-            pass
-        finally:
-            if self._pty_fd is not None:
-                # Closing the master fd makes the reader thread's blocking os.read
-                # return/raise, so it can exit and be joined below.
-                try:
-                    os.close(self._pty_fd)
-                except Exception:
-                    pass
-                self._pty_fd = None
-            if self._reader_thread is not None:
-                self._reader_thread.join(timeout=1)
-                self._reader_thread = None
-            self._loop = None
-            self._process = None
-            self._initialized = False
-            self._closed = True
-            self._data_event = None
-            with self._buf_lock:
-                self._reset_buf()
-            self._prev_status = None
-
-    # -- low-level I/O ---------------------------------------------------------
-
-    def _write_pty(self, data: bytes) -> None:
-        """Write all bytes to the PTY, blocking until the kernel accepts them.
-
-        The master fd is blocking, so when its input buffer fills this parks
-        (on a worker thread) until the reader thread drains bash's output and
-        bash consumes more stdin — rather than dropping the unwritten tail, the
-        failure mode of a single non-blocking ``os.write`` that ignores its
-        return count.
-        """
-        fd = self._pty_fd
-        if fd is None:
-            raise RuntimeError("PTY not initialized")
-        view = memoryview(data)
-        while view:
-            n = os.write(fd, view)
-            view = view[n:]
-
-    def _read_loop(self, fd: int) -> None:
-        """Drain the PTY master on a background thread until the fd closes (EOF)."""
+    def _allocate_log(self) -> tuple[str, Path]:
         while True:
+            job_id = f"J{self._next_job_id}"
+            self._next_job_id += 1
+            path = self._job_dir / f"{job_id}.log"
             try:
-                chunk = os.read(fd, 4096)
-            except OSError:
-                break
-            if not chunk:
-                break
-            # Stateful decode: a multibyte char split across reads is held until
-            # its continuation bytes arrive, instead of producing two U+FFFD.
-            text = self._decoder.decode(chunk)
-            with self._buf_lock:
-                self._buf_append(text)
-            loop, ev = self._loop, self._data_event
-            if loop is not None and ev is not None:
-                try:
-                    loop.call_soon_threadsafe(ev.set)
-                except RuntimeError:  # loop already closed during teardown
-                    pass
-
-    def _buf_append(self, text: str) -> None:
-        """Append text to the buffer, keeping one line per deque entry."""
-        if self._buf and not self._buf[-1].endswith("\n"):
-            text = self._buf.pop() + text
-        lines = text.split("\n")
-        for line in lines[:-1]:
-            self._append_line(line + "\n")
-        if lines[-1]:
-            self._append_line(lines[-1])
-
-    def _append_line(self, item: str) -> None:
-        """Append one entry, counting any maxlen-eviction so loss is reportable."""
-        if len(self._buf) == self._buf.maxlen:
-            self._dropped_lines += 1
-        self._buf.append(item)
-
-    def _reset_buf(self) -> None:
-        """Clear the buffer and eviction counter. Caller must hold ``_buf_lock``."""
-        self._buf.clear()
-        self._dropped_lines = 0
-
-    def _read_screen(self) -> str:
-        """Snapshot the current buffer, stripping ANSI escapes and \\r."""
-        with self._buf_lock:
-            raw = "".join(self._buf)
-        return _ANSI_ESCAPE.sub("", raw.replace("\r", ""))
-
-    def _clear_screen(self) -> None:
-        """Truncate the buffer to the last PS1 block."""
-        with self._buf_lock:
-            if not self._buf:
-                return
-            data = "".join(self._buf)
-            begin = data.rfind(self._ps1_begin.strip())
-            end = data.rfind(self._ps1_end.strip())
-            self._reset_buf()
-            if begin != -1 and end != -1 and end >= begin:
-                self._buf.append(data[begin:])
-
-    async def _wait_for_prompt(self, timeout: float = 5.0) -> bool:
-        """Wait until the PS1 end marker appears in the buffer."""
-        pat = re.compile(re.escape(self._ps1_end.strip()) + r"\s*$")
-        deadline = time.time() + timeout
-        while time.time() < deadline:
-            with self._buf_lock:
-                tail = "".join(self._buf)[-4096:]
-            if pat.search(tail):
-                return True
-            await asyncio.sleep(0.05)
-        return False
-
-    def _send_keys(self, text: str, enter: bool = True) -> None:
-        """Send keystrokes to the PTY, with Ctrl-sequence support."""
-        upper = text.upper().strip()
-        if upper.startswith("C-") and len(upper) == 3:
-            key = upper[-1]
-            if "A" <= key <= "Z":
-                self._write_pty(bytes([ord(key) & 0x1F]))
-                return
-        payload = text.encode("utf-8", "ignore")
-        if enter:
-            payload += b"\n"
-        self._write_pty(payload)
-
-    def _stage_multiline(self, command: str) -> str:
-        """Stage a multi-line command to a temp file and return a ``source`` call.
-
-        Interactive bash prints a PS1 prompt between each newline-separated
-        top-level command, which breaks our one-prompt completion detection (we
-        would stop at the first). Running the whole thing as a single sourced
-        script yields exactly one prompt; ``source`` runs it in the current shell
-        so cwd/env still persist. The file lives in the system temp dir (not the
-        project or scratch dir) and is owner-only.
-        """
-        if self._cmd_file is None:
-            fd, path = tempfile.mkstemp(prefix="tabulaflow-bash-", suffix=".sh")
+                fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+            except FileExistsError:
+                continue
             os.close(fd)
-            self._cmd_file = path
-        with open(self._cmd_file, "w", encoding="utf-8") as f:
-            f.write(command)
-            f.write("\n")
-        return f"source {shlex.quote(self._cmd_file)}"
+            return job_id, path
 
-    async def _send_command(self, command: str) -> str | None:
-        """Write a command to the PTY on a worker thread (blocking write_all).
-
-        The reader thread keeps draining output so the write completes even for
-        large multi-line input. Returns ``None`` on success, or an ``(error: …)``
-        string if the PTY is gone (e.g. EIO after the process died), after marking
-        the session dead so the next call restarts it.
-        """
-        loop = self._loop
-        assert loop is not None
-        try:
-            await asyncio.wait_for(
-                loop.run_in_executor(None, self._send_keys, command, not self._is_special_key(command)),
-                timeout=_WRITE_TIMEOUT,
+    async def _start_job(self, command: str) -> _BashJob:
+        async with self._registry_lock:
+            if self._closed:
+                raise RuntimeError("ExecuteBashTool is closed")
+            job_id, log_path = self._allocate_log()
+            try:
+                process = await asyncio.create_subprocess_exec(
+                    self._bash_path,
+                    "-c",
+                    command,
+                    cwd=self._working_dir,
+                    env=self._env,
+                    stdin=asyncio.subprocess.DEVNULL,
+                    stdout=asyncio.subprocess.PIPE,
+                    stderr=asyncio.subprocess.STDOUT,
+                    start_new_session=True,
+                )
+            except BaseException:
+                log_path.unlink(missing_ok=True)
+                raise
+            job = _BashJob(
+                id=job_id,
+                process=process,
+                log_path=log_path,
+                output=_BoundedText(self._max_output_chars),
             )
-        except (TimeoutError, asyncio.TimeoutError):
-            self._metrics.num_errors += 1
-            # Closing the fd unblocks the worker thread stuck in os.write so the
-            # session can be torn down without _close_internal's exit-write hanging.
-            if self._pty_fd is not None:
-                try:
-                    os.close(self._pty_fd)
-                except OSError:
-                    pass
-                self._pty_fd = None
-            await self._close_internal()
-            return "(error: timed out writing command to shell; session reset.)"
-        except OSError as e:
-            self._metrics.num_errors += 1
-            await self._close_internal()
-            return f"(error: shell session is gone: {e})"
-        return None
+            self._active_jobs[job_id] = job
+            job.collector_task = asyncio.create_task(self._collect_job(job))
+            return job
 
-    # -- output helpers --------------------------------------------------------
+    def _write_log(self, job: _BashJob, footer: str | None = None) -> None:
+        text = job.output.render()
+        if footer is not None:
+            text = text.rstrip("\n") + ("\n" if text else "") + footer + "\n"
+        temp_path = job.log_path.with_name(f".{job.log_path.name}.tmp")
+        fd = os.open(temp_path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+        try:
+            with os.fdopen(fd, "w", encoding="utf-8") as file:
+                file.write(text)
+            os.replace(temp_path, job.log_path)
+        except BaseException:
+            temp_path.unlink(missing_ok=True)
+            raise
+
+    async def _collect_job(self, job: _BashJob) -> None:
+        decoder = codecs.getincrementaldecoder("utf-8")(errors="replace")
+        bytes_since_flush = 0
+        try:
+            assert job.process.stdout is not None
+            while chunk := await job.process.stdout.read(_READ_CHUNK_BYTES):
+                was_truncated = job.output.is_truncated
+                job.output.append(decoder.decode(chunk))
+                bytes_since_flush += len(chunk)
+                if not job.output.is_truncated or not was_truncated or bytes_since_flush >= _LOG_FLUSH_BYTES:
+                    self._write_log(job)
+                    bytes_since_flush = 0
+            job.output.append(decoder.decode(b"", final=True))
+            returncode = await job.process.wait()
+            if returncode < 0:
+                footer = f"[tabulaflow_job: {job.id}, state: killed, signal: {-returncode}]"
+            else:
+                footer = f"[tabulaflow_job: {job.id}, state: exited, exit_code: {returncode}]"
+            self._write_log(job, footer)
+        except Exception as exc:
+            job.error = str(exc)
+            self._metrics.num_errors += 1
+            try:
+                os.killpg(job.process_group, signal.SIGKILL)
+            except ProcessLookupError:
+                pass
+            await job.process.wait()
+        finally:
+            async with self._registry_lock:
+                self._active_jobs.pop(job.id, None)
+            job.done.set()
+
+    async def _terminate_job(self, job: _BashJob) -> None:
+        async with job.termination_lock:
+            if job.done.is_set():
+                return
+            try:
+                os.killpg(job.process_group, signal.SIGTERM)
+            except ProcessLookupError:
+                pass
+            try:
+                await asyncio.wait_for(job.done.wait(), timeout=_TERMINATION_GRACE_SECONDS)
+                return
+            except TimeoutError:
+                pass
+            try:
+                os.killpg(job.process_group, signal.SIGKILL)
+            except ProcessLookupError:
+                pass
+            try:
+                await asyncio.wait_for(job.done.wait(), timeout=_TERMINATION_GRACE_SECONDS)
+            except TimeoutError:
+                pass
+
+    async def _active_warning(self) -> str:
+        async with self._registry_lock:
+            ids = list(self._active_jobs)
+        if len(ids) <= _ACTIVE_JOB_WARNING_THRESHOLD:
+            return ""
+        return f"[warning: {len(ids)} shell jobs are currently running: {', '.join(ids)}]"
 
     @staticmethod
-    def _is_special_key(cmd: str) -> bool:
-        c = cmd.strip()
-        return len(c) == 3 and c.startswith("C-")
+    def _join_parts(*parts: str) -> str:
+        return "\n\n".join(part for part in parts if part)
 
-    @staticmethod
-    def _strip_command_echo(output: str, command: str) -> str:
-        return output.lstrip().removeprefix(command.strip()).lstrip()
-
-    def _truncate(self, text: str) -> str:
-        if len(text) <= self._max_output_chars:
-            return text
-        half = self._max_output_chars // 2
-        return text[:half] + f"\n\n... (output truncated: {len(text)} chars total) ...\n\n" + text[-half:]
-
-    def _consume_output(self, body: str, command: str) -> str:
-        """Strip the command echo, truncate, and clear the consumed buffer.
-
-        Clearing here is what makes the next poll/command start from a clean
-        slate: the buffer always holds only output produced since the last
-        return, so completion is simply "a prompt is present" — no diffing a
-        prior snapshot against a bounded buffer that may have evicted it.
-        """
-        out = self._truncate(self._strip_command_echo(body, command).rstrip())
-        with self._buf_lock:
-            dropped = self._dropped_lines
-            self._reset_buf()
-        if dropped:
-            out = f"... ({dropped} earlier lines dropped) ...\n{out}"
-        return out
-
-    async def _wait_for_output(self, start: float, last_change: float, timeout: float | None) -> None:
-        """Block until new output arrives or the next timeout check is due.
-
-        Wakes immediately when the reader signals fresh bytes (no fixed-tick
-        latency floor) but never sleeps past the active timeout boundary.
-        """
-        now = time.time()
-        remaining = (
-            (timeout - (now - start)) if timeout is not None else (self._no_change_timeout - (now - last_change))
+    async def _format_running(self, job: _BashJob) -> str:
+        warning = await self._active_warning()
+        metadata = "\n".join(
+            [
+                "Command is still running.",
+                f"[job_id: {job.id}]",
+                f"[process_group: {job.process_group}]",
+                f"[log: {job.log_path}]",
+            ]
         )
-        budget = min(_POLL_INTERVAL, remaining)
-        if budget <= 0:
-            return
-        ev = self._data_event
-        if ev is None:
-            await asyncio.sleep(budget)
-            return
-        try:
-            await asyncio.wait_for(ev.wait(), budget)
-        except (TimeoutError, asyncio.TimeoutError):
-            pass
-        ev.clear()
+        return self._join_parts(job.output.render().rstrip(), metadata, warning)
 
-    # -- main execution loop ---------------------------------------------------
-
-    async def _run_in_session(self, command: str, is_input: bool, timeout: float | None) -> str:
-        await self._ensure_session()
-        # is_input is raw stdin for a running process — never strip it, or
-        # whitespace-sensitive input (indented REPL lines, passwords) is corrupted.
-        command = command if is_input else command.strip()
-
-        if command and not is_input and self._command_filter is not None:
-            reason = self._command_filter(command)
-            if reason is not None:
-                self._metrics.num_errors += 1
-                return f"(error: command blocked: {reason})"
-
-        running = self._prev_status in ("no_change_timeout", "hard_timeout")
-
-        if not running:
-            if is_input:
-                self._metrics.num_errors += 1
-                if not command:
-                    return "(error: no running command to retrieve output from.)"
-                return "(error: no running command to interact with.)"
-        elif not is_input and command:
-            self._metrics.num_errors += 1
-            return (
-                "(error: previous command is still running. Use is_input=true to interact, or send C-c to interrupt.)"
-            )
-
-        # A fresh command starts from a clean buffer so that any prompt we later
-        # see is unambiguously this command's. Resume polls (is_input) keep the
-        # buffer, returning only output produced since the previous poll.
-        if command and not is_input:
-            with self._buf_lock:
-                self._reset_buf()
-
-        # Multi-line commands are run as one sourced script: interactive bash
-        # prints a prompt between newline-separated statements, which would make
-        # us stop at the first. (is_input is raw stdin, not a new command.)
-        sent = self._stage_multiline(command) if (command and not is_input and "\n" in command) else command
-
-        if command:
-            error = await self._send_command(sent)
-            if error is not None:
-                return error
-
-        start = time.time()
-        last_change = start
-        last_screen = self._read_screen()
-
-        while True:
-            await self._wait_for_output(start, last_change, timeout)
-
-            screen = self._read_screen()
-            ps1s = self._find_ps1_matches(screen)
-
-            if screen != last_screen:
-                last_screen = screen
-                last_change = time.time()
-
-            # 1) Completed — our prompt reappeared (only this command's prompt
-            #    can be in the freshly-cleared buffer).
-            if ps1s:
-                meta = _parse_ps1_metadata(ps1s[0])
-                out = self._consume_output(screen[: ps1s[0].start()], sent)
-                self._prev_status = "completed"
-                result = f"{out}\n[exit_code: {meta['exit_code']}]"
-                if meta["cwd"]:
-                    result += f"\n[Current working directory: {meta['cwd']}]"
-                return result
-
-            # 2) No-change timeout (skipped when per-call timeout is set,
-            #    since the caller explicitly chose to wait longer)
-            if timeout is None and (time.time() - last_change >= self._no_change_timeout):
-                out = self._consume_output(screen, sent)
-                self._prev_status = "no_change_timeout"
-                self._metrics.num_timeouts += 1
-                return (
-                    f"{out}\n\n"
-                    f"[No new output for {self._no_change_timeout}s. exit_code: -1]\n"
-                    "Send empty command with is_input=true to check, or C-c to interrupt."
-                )
-
-            # 3) Hard timeout (only when per-call timeout is set)
-            if timeout is not None and time.time() - start >= timeout:
-                out = self._consume_output(screen, sent)
-                self._prev_status = "hard_timeout"
-                self._metrics.num_timeouts += 1
-                return (
-                    f"{out}\n\n"
-                    f"[Command timed out after {timeout}s. exit_code: -1]\n"
-                    "Send empty command with is_input=true to check, or C-c to interrupt."
-                )
-
-    # -- AgentTool protocol -----------------------------------------------------
+    async def _format_completed(self, job: _BashJob) -> str:
+        warning = await self._active_warning()
+        if job.error is not None:
+            return self._join_parts(f"(error: shell job {job.id} failed: {job.error})", warning)
+        returncode = job.process.returncode if job.process.returncode is not None else -1
+        footer = f"[exit_code: {returncode}]"
+        return self._join_parts(job.output.render().rstrip(), footer, warning)
 
     async def execute(
         self,
         command: str,
-        is_input: bool = False,
-        timeout: float | None = None,
-        reset: bool = False,
+        mode: BashMode = "detach_on_timeout",
+        wait_timeout: WaitTimeout | None = None,
     ) -> str:
-        """Execute a bash command and return agent-facing output text."""
+        """Execute a Bash command and return agent-facing output text."""
+        self._metrics.num_calls += 1
+        command = command.strip()
+        try:
+            if not command:
+                raise ValueError("command must not be empty")
+            if mode not in {"kill_on_timeout", "detach_on_timeout", "background"}:
+                raise ValueError(f"unsupported mode {mode!r}")
+            if mode == "background" and wait_timeout is not None:
+                raise ValueError("wait_timeout does not apply in background mode")
+            if wait_timeout is not None and (not math.isfinite(wait_timeout) or wait_timeout <= 0):
+                raise ValueError("wait_timeout must be a positive finite number")
+            if self._command_filter is not None:
+                reason = self._command_filter(command)
+                if reason is not None:
+                    raise ValueError(f"command blocked: {reason}")
+            job = await self._start_job(command)
+        except (ValueError, OSError, RuntimeError):
+            self._metrics.num_errors += 1
+            raise
 
-        async with self._lock:
-            if reset:
-                await self._close_internal()
-            if is_input:
-                self._metrics.num_input_calls += 1
-            else:
-                self._metrics.num_calls += 1
-            return await self._run_in_session(command, is_input, timeout)
+        if mode == "background":
+            self._metrics.num_background_calls += 1
+            return await self._format_running(job)
+
+        timeout = self._default_wait_timeout if wait_timeout is None else float(wait_timeout)
+        try:
+            await asyncio.wait_for(job.done.wait(), timeout=timeout)
+        except asyncio.CancelledError:
+            await asyncio.shield(self._terminate_job(job))
+            raise
+        except TimeoutError:
+            self._metrics.num_timeouts += 1
+            if job.done.is_set():
+                return await self._format_completed(job)
+            if mode == "detach_on_timeout":
+                self._metrics.num_detached_calls += 1
+                return await self._format_running(job)
+            await self._terminate_job(job)
+            body = job.output.render().rstrip()
+            timeout_text = f"Command timed out after {timeout:g}s; process group terminated.\n[exit_code: -1]"
+            return self._join_parts(body, timeout_text, await self._active_warning())
+        return await self._format_completed(job)
 
     async def __call__(
         self,
         command: str,
-        is_input: bool = False,
-        timeout: float | None = None,
-        reset: bool = False,
+        mode: BashMode = "detach_on_timeout",
+        wait_timeout: WaitTimeout | None = None,
     ) -> str:
-        """Execute a bash command in a persistent PTY-backed shell session.
+        """Run a Bash command as an independent non-PTY job.
 
-        Environment variables, working directory, and shell state persist
-        between calls, and the session has network access. Because the shell is
-        attached to a terminal-like PTY, interactive commands can be driven with
-        ``is_input``; common pagers are disabled by default so commands like
-        ``git log`` print and exit. The result ends with ``[exit_code: N]``; ``N`` is ``-1``
-        when the command is still running (it produced no new output for a
-        while, or hit ``timeout``), in which case poll or interact with
-        ``is_input``. Long-running commands can be backgrounded, e.g.
-        ``python3 app.py > server.log 2>&1 &``.
+        Calls may execute concurrently. Every command starts in the configured
+        project directory with a snapshot of TabulaFlow's launch environment;
+        shell state such as ``cd`` and ``export`` does not persist across calls.
+
+        Waiting commands use a wall-clock budget. ``detach_on_timeout`` preserves
+        work and returns its job id, process-group id, and bounded scratch log when
+        that budget expires. ``kill_on_timeout`` terminates the whole process group
+        instead. ``background`` returns the same job metadata immediately and does
+        not accept ``wait_timeout``. Detached jobs remain owned by this session and
+        are terminated when it closes.
+
+        Inspect a running job with ``tail <log>``. Stop it gracefully with
+        ``kill -TERM -- -<process_group>``; signal only process-group ids returned
+        by this tool. The final line of a completed log records its exit status.
 
         Args:
-            command: The bash command to run. When ``is_input`` is True this is
-                instead sent to the running command: empty polls it for more
-                output, or it may be a key — ``C-c`` (interrupt), ``C-d`` (EOF),
-                ``C-z`` (suspend), or any ``C-<letter>``.
-            is_input: If True, send ``command`` to the running command's stdin
-                instead of starting a new command. Only valid while a command is
-                still running (its result ended with ``exit_code: -1``).
-            timeout: Hard timeout in seconds. When set, the command may run this
-                long; when unset, it returns after no new output for the
-                no-change interval. Use a higher value for slow commands.
-            reset: If True, restart the shell first, losing all session state
-                (env vars, cwd, background processes). For an unresponsive
-                session; cannot be combined with ``is_input``.
+            command: Bash source to execute.
+            mode: Whether a waiting timeout kills or detaches the job, or whether
+                to return it immediately in the background.
+            wait_timeout: Wall-clock seconds to wait. Omit to use the session
+                default. Not valid in ``background`` mode.
         """
-        return await self.execute(command, is_input, timeout, reset)
+        try:
+            return await self.execute(command, mode, wait_timeout)
+        except (ValueError, OSError, RuntimeError) as exc:
+            return f"(error: {exc})"
 
     async def close(self) -> None:
-        """Terminate the bash session and clean up resources."""
-        await self._close_internal()
-        if self._cmd_file is not None:
-            try:
-                os.unlink(self._cmd_file)
-            except OSError:
-                pass
-            self._cmd_file = None
+        """Terminate all active jobs and release tool-owned resources."""
+        async with self._registry_lock:
+            if self._closed:
+                return
+            self._closed = True
+            jobs = list(self._active_jobs.values())
+        await asyncio.gather(*(self._terminate_job(job) for job in jobs), return_exceptions=True)
+        await asyncio.gather(
+            *(job.collector_task for job in jobs if job.collector_task is not None),
+            return_exceptions=True,
+        )
+        if self._owns_job_dir:
+            shutil.rmtree(self._job_dir, ignore_errors=True)
 
     def as_pydantic_ai_tool(self) -> Tool:
         return Tool(self.__call__, name=self.name)

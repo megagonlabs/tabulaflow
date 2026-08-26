@@ -1,1 +1,1 @@
-"""Persistent shell tool implementation."""
+"""Concurrent Bash job execution."""

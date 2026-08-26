@@ -162,9 +162,11 @@ class DbtAgent:
                     "Install dbt or activate the correct virtualenv."
                 )
             dbt_bin_dir = str(Path(dbt_path).parent)
+            inherited_path = os.environ.get("PATH")
+            shell_path = dbt_bin_dir if not inherited_path else os.pathsep.join([dbt_bin_dir, inherited_path])
             run_tool: ExecuteBashTool | RunDbtTool = ExecuteBashTool(
                 working_dir=working_dir,
-                init_commands=[f'export PATH="{dbt_bin_dir}:$PATH"'],
+                env_overrides={"PATH": shell_path},
             )
         else:
             run_tool = RunDbtTool(working_dir, pre_run_hook=_pre_run_hook)
@@ -190,9 +192,13 @@ class DbtAgent:
 
         await db_connector.release_connections_async()
 
-        result = await agent.run(
-            f"Complete the dbt project by writing the missing SQL model files and running `dbt run` successfully:\n{task.question}"
-        )
+        try:
+            result = await agent.run(
+                f"Complete the dbt project by writing the missing SQL model files and running `dbt run` successfully:\n{task.question}"
+            )
+        finally:
+            if isinstance(run_tool, ExecuteBashTool):
+                await run_tool.close()
         usage = Usage.from_pydantic_ai_usage(result.usage, self.config.llm)
         trajectory = Trajectory.from_pydantic_ai_messages(result.all_messages(), id="TRJY-DBT-AGENT")
 

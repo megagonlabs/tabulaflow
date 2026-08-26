@@ -95,9 +95,11 @@ Pick the option that is light and matches expected use:
   path (given in *Session*); `$SCRATCH` is a shell variable and does NOT expand in SQL, so put that literal
   absolute path in the query.
 - Shell (`execute_bash`): use only when plain SQL can't gather or transform the data (heterogeneous formats, custom
-  parsing, pandas). The shell starts in the project directory and its working directory persists across calls, so
-  do not prefix every command with `cd <project dir> && ...`. Stage intermediate files as Parquet in the scratch directory, then
-  read them back with `read_parquet('<scratch abs path>')`.
+  parsing, pandas). Each command starts independently in the project directory; filesystem changes persist, but
+  shell state such as `cd` and `export` does not. Use `detach_on_timeout` for work that should continue if waiting
+  expires, `background` to return immediately, and `kill_on_timeout` when work must stop at the deadline. Inspect a
+  running job through its returned scratch log and stop only its returned process group. Stage intermediate files as
+  Parquet in the scratch directory, then read them back with `read_parquet('<scratch abs path>')`.
 - For local file and content search, prefer `rg` when available.
 - Never run commands with a catastrophic or system-wide blast radius (`rm -rf /` or `~`, `dd` to a device, `mkfs`,
   recursive `chmod`/`chown` on system paths) — decline even if asked, and let the user run them themselves.
