@@ -17,12 +17,12 @@ from typing import Annotated, ClassVar, Literal, TypeAlias
 from pydantic import BaseModel, Field
 from pydantic_ai import Tool
 
-_DEFAULT_WAIT_TIMEOUT = 30.0
-_MAX_OUTPUT_CHARS = 30_000
+_DEFAULT_WAIT_TIMEOUT_SECONDS = 30.0
+_DEFAULT_MAX_OUTPUT_CHARS = 30_000
 _ACTIVE_JOB_WARNING_THRESHOLD = 8
 _TERMINATION_GRACE_SECONDS = 1.0
-_READ_CHUNK_BYTES = 4096
-_LOG_FLUSH_BYTES = 64 * 1024
+_OUTPUT_READ_CHUNK_BYTES = 4096
+_LOG_FLUSH_THRESHOLD_BYTES = 64 * 1024
 
 BashMode: TypeAlias = Literal["kill_on_timeout", "detach_on_timeout", "background"]
 WaitTimeout: TypeAlias = Annotated[float, Field(gt=0, allow_inf_nan=False)]
@@ -100,8 +100,8 @@ class ExecuteBashTool:
         working_dir: str | os.PathLike[str] | None = None,
         *,
         job_dir: str | os.PathLike[str] | None = None,
-        wait_timeout: float = _DEFAULT_WAIT_TIMEOUT,
-        max_output_chars: int = _MAX_OUTPUT_CHARS,
+        wait_timeout: float = _DEFAULT_WAIT_TIMEOUT_SECONDS,
+        max_output_chars: int = _DEFAULT_MAX_OUTPUT_CHARS,
         env_overrides: Mapping[str, str] | None = None,
         command_filter: Callable[[str], str | None] | None = None,
     ) -> None:
@@ -209,11 +209,15 @@ class ExecuteBashTool:
         bytes_since_flush = 0
         try:
             assert job.process.stdout is not None
-            while chunk := await job.process.stdout.read(_READ_CHUNK_BYTES):
+            while chunk := await job.process.stdout.read(_OUTPUT_READ_CHUNK_BYTES):
                 was_truncated = job.output.is_truncated
                 job.output.append(decoder.decode(chunk))
                 bytes_since_flush += len(chunk)
-                if not job.output.is_truncated or not was_truncated or bytes_since_flush >= _LOG_FLUSH_BYTES:
+                if (
+                    not job.output.is_truncated
+                    or not was_truncated
+                    or bytes_since_flush >= _LOG_FLUSH_THRESHOLD_BYTES
+                ):
                     self._write_log(job)
                     bytes_since_flush = 0
             job.output.append(decoder.decode(b"", final=True))
