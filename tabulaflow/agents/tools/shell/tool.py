@@ -1,4 +1,29 @@
-"""Concurrent non-PTY Bash jobs with bounded scratch logs."""
+"""Concurrent non-PTY Bash jobs for agent workflows.
+
+Each call starts an independent ``bash -c`` process in the configured working
+directory, so commands do not share cwd, environment, stdin, or output buffers.
+
+Key properties
+==============
+
+**True concurrency.** Independent jobs run simultaneously rather than queuing
+behind one shared shell session.
+
+**Explicit job lifetime.** Commands may be killed when waiting expires,
+detached on timeout, or returned immediately in the background. Each job owns a
+process group so lifecycle operations include its descendants.
+
+**Bounded observable output.** Each job continuously drains merged stdout and
+stderr into a bounded head-and-tail snapshot under the scratch job directory.
+Detached jobs return the log path and process-group id for later inspection.
+
+**Predictable environment.** Jobs inherit a construction-time snapshot of the
+launch environment plus explicit caller overrides. Shell state does not persist
+between calls.
+
+Interactive terminal behavior is intentionally outside this tool. Commands
+that require a TTY can invoke Python's ``pty`` module or tmux explicitly.
+"""
 
 from __future__ import annotations
 
