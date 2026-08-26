@@ -135,13 +135,13 @@ execution.
 When the process ends, append one manager-generated final non-empty line:
 
 ```text
-[tabulaflow_job: J1, state: exited, exit_code: 0]
+[bash_job: J1, state: exited, exit_code: 0]
 ```
 
 or:
 
 ```text
-[tabulaflow_job: J1, state: killed, signal: 15]
+[bash_job: J1, state: killed, signal: 15]
 ```
 
 Absence of the footer means the job is still running. The in-memory registry,

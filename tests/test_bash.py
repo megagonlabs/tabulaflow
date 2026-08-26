@@ -34,7 +34,7 @@ async def _wait_for_footer(log_path: Path, timeout: float = 3) -> str:
     deadline = asyncio.get_running_loop().time() + timeout
     while asyncio.get_running_loop().time() < deadline:
         text = log_path.read_text() if log_path.exists() else ""
-        if "[tabulaflow_job:" in text:
+        if "[bash_job:" in text:
             return text
         await asyncio.sleep(0.02)
     raise AssertionError(f"job did not finish; log={log_path.read_text()!r}")
@@ -152,7 +152,7 @@ class TestLogs:
             assert "1000" in result
             log = (tmp_path / "jobs" / "J1.log").read_text()
             assert "output truncated" in log
-            assert "[tabulaflow_job: J1, state: exited, exit_code: 0]" in log
+            assert "[bash_job: J1, state: exited, exit_code: 0]" in log
             assert len(log) < 400
         finally:
             await tool.close()
@@ -163,7 +163,7 @@ class TestLogs:
         await asyncio.sleep(0.25)
         text = log_path.read_text()
         assert "first" in text and "second" in text
-        assert "[tabulaflow_job:" not in text
+        assert "[bash_job:" not in text
 
     async def test_utf8_split_across_reads_is_not_corrupted(self, tmp_path: Path) -> None:
         tool = ExecuteBashTool(working_dir=tmp_path, job_dir=tmp_path / "jobs", max_output_chars=500_000)

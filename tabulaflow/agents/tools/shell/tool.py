@@ -138,7 +138,7 @@ class ExecuteBashTool:
         self._bash_path = bash_path
 
         self._owns_job_dir = job_dir is None
-        self._job_dir = Path(job_dir) if job_dir is not None else Path(tempfile.mkdtemp(prefix="tabulaflow-bash-jobs-"))
+        self._job_dir = Path(job_dir) if job_dir is not None else Path(tempfile.mkdtemp(prefix="bash-jobs-"))
         self._job_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
         os.chmod(self._job_dir, 0o700)
 
@@ -219,9 +219,9 @@ class ExecuteBashTool:
             job.output.append(decoder.decode(b"", final=True))
             returncode = await job.process.wait()
             if returncode < 0:
-                footer = f"[tabulaflow_job: {job.id}, state: killed, signal: {-returncode}]"
+                footer = f"[bash_job: {job.id}, state: killed, signal: {-returncode}]"
             else:
-                footer = f"[tabulaflow_job: {job.id}, state: exited, exit_code: {returncode}]"
+                footer = f"[bash_job: {job.id}, state: exited, exit_code: {returncode}]"
             self._write_log(job, footer)
         except Exception as exc:
             job.error = str(exc)
