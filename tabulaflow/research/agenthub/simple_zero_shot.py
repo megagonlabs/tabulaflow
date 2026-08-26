@@ -1,17 +1,17 @@
-import litellm
 import time
 import collections
 import jinja2
 import logging
 import asyncio
-from typing import Any, ClassVar, cast
+from typing import ClassVar, cast
+from tabulaflow.agents.llm import make_agent
 from tabulaflow.output.formatting import (
     PropertyGraphSchemaFormatter,
     SQLSchemaFormatter,
     schema_formatter_registry,
 )
 from tabulaflow.data import DBConnector
-from tabulaflow.agents.trace import Trajectory, SystemMessage, UserMessage, AssistantMessage, Usage
+from tabulaflow.agents.trace import Trajectory, Usage
 from tabulaflow.research.types import PredQuery
 from tabulaflow.research.types import SimpleNL2QTask, SimpleNL2QTaskOutput
 from tabulaflow.research.agenthub.registry import agent_registry, AgentConfig
@@ -53,7 +53,6 @@ logger = logging.getLogger(__name__)
 
 class SimpleZeroShotNL2QConfig(BasicAgentConfig):
     num_candidates: int = 1
-    litellm_kwargs: dict[str, Any] = {}
 
 
 @agent_registry.register
@@ -103,43 +102,25 @@ class SimpleZeroShotNL2Q:
         )
 
         # Text-to-SQL generation by LLM
-        responses = await asyncio.gather(
-            *[
-                litellm.acompletion(
-                    model=self.config.llm.replace(":", "/"),
-                    messages=[{"role": "system", "content": system_prompt}, {"role": "user", "content": user_prompt}],
-                    temperature=self.config.temperature,
-                    **self.config.litellm_kwargs,
-                )
-                for _ in range(self.config.num_candidates)
-            ]
+        agent = make_agent(
+            self.config.llm,
+            instructions=system_prompt,
+            model_settings=self.config.to_model_settings(),
         )
+        responses = await asyncio.gather(*(agent.run(user_prompt) for _ in range(self.config.num_candidates)))
 
-        for r in responses:
-            if isinstance(r, litellm.BadRequestError):  # type: ignore
-                raise ValueError(f"{r}")
-
-        raw_outputs = [r["choices"][0]["message"]["content"] for r in responses]
+        raw_outputs = [response.output for response in responses]
         queries = [extract_code(q) for q in raw_outputs]
         # Select the best query using self-consistency voting
         best_query_idx = await self.select_best_query_async(queries, db_connector)
         pred_query = PredQuery(query=queries[best_query_idx])
 
         # Re-construct the trajectory of the best query
-        trajectory = Trajectory(
-            messages=[
-                SystemMessage(content=system_prompt),
-                UserMessage(content=user_prompt),
-                AssistantMessage(content=raw_outputs[best_query_idx], tool_calls=[]),
-            ]
-        )
+        trajectory = Trajectory.from_pydantic_ai_messages(responses[best_query_idx].all_messages(), id="TRJY-GEN-QUERY")
 
-        usage = Usage.create(
-            llm=self.config.llm,
-            api_requests=len(responses),
-            input_tokens=sum(r["usage"]["prompt_tokens"] for r in responses),
-            output_tokens=sum(r["usage"]["completion_tokens"] for r in responses),
-        )
+        usage = Usage.create(llm=self.config.llm)
+        for response in responses:
+            usage += Usage.from_pydantic_ai_usage(response.usage, self.config.llm)
 
         # Compute metrics
         metrics = {}

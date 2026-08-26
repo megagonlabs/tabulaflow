@@ -379,7 +379,6 @@ def make_agent(
     keyword accepted by :class:`pydantic_ai.Agent` (e.g. ``capabilities``,
     ``deps_type``) flows through ``**kwargs``.
     """
-    _ensure_custom_model_prices_registered()
     if history_processors is not None:
         # pydantic-ai ≥1.107 deprecates Agent(history_processors=...) in favor of
         # ProcessHistory capabilities; adapt here so callers keep the stable kwarg.
@@ -395,39 +394,3 @@ def make_agent(
         retries=retries,
         **kwargs,
     )
-
-
-# ---------------------------------------------------------------------------
-# Process-global setup (was patches.setup(); invoked once from configure()).
-# ---------------------------------------------------------------------------
-
-
-def register_custom_model_prices() -> None:
-    """Register pricing for models not yet in litellm's bundled data."""
-    import litellm
-
-    custom_prices = {
-        "gpt-5.4-mini": {
-            "input_cost_per_token": 7.5e-07,
-            "output_cost_per_token": 4.5e-06,
-            "max_input_tokens": 400000,
-            "max_output_tokens": 128000,
-            "max_tokens": 128000,
-            "litellm_provider": "openai",
-            "mode": "chat",
-        },
-    }
-    for model, info in custom_prices.items():
-        if model not in litellm.model_cost:
-            litellm.model_cost[model] = info
-
-
-_custom_model_prices_registered = False
-
-
-def _ensure_custom_model_prices_registered() -> None:
-    global _custom_model_prices_registered
-    if _custom_model_prices_registered:
-        return
-    _custom_model_prices_registered = True
-    register_custom_model_prices()

@@ -511,8 +511,6 @@ class TabulaflowApp(App[None]):
         logging.captureWarnings(True)
 
         for name in (
-            "LiteLLM",
-            "litellm",
             "httpx",
             "httpcore",
             "urllib3",

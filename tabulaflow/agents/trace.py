@@ -1,5 +1,6 @@
 """Agent trajectories, usage accounting, cost estimation, and instrumentation."""
 
+from dataclasses import dataclass
 from decimal import Decimal
 import json
 import threading
@@ -214,36 +215,57 @@ class Trajectory(BaseModel):
         return "\n".join(lines)
 
 
-PROVIDER_MAPPINGS = {
+_GENAI_PRICES_PROVIDER_MAPPINGS = {
     "openai-responses": "openai",
-    "fireworks": "fireworks_ai",
-    "google-vertex": "vertex_ai",
-    "together": "together_ai",
+    "google-vertex": "google",
 }
 
 
-def pydantic_ai_model_to_litellm_model(llm: str) -> str:
-    """Translate a Pydantic AI model identifier for LiteLLM cost lookup."""
-    provider, model = llm.split(":")
-    provider = PROVIDER_MAPPINGS.get(provider, provider)
-    return f"{provider}/{model}"
+@dataclass(frozen=True)
+class _TokenPrice:
+    """Custom token prices in USD per million tokens."""
+
+    input_usd_per_million: Decimal
+    output_usd_per_million: Decimal
+
+
+_CUSTOM_MODEL_PRICES = {
+    "fireworks:accounts/fireworks/models/qwen3-235b-a22b-thinking-2507": _TokenPrice(
+        input_usd_per_million=Decimal("0.22"),
+        output_usd_per_million=Decimal("0.88"),
+    ),
+    "fireworks:accounts/fireworks/models/llama-v3p1-405b-instruct": _TokenPrice(
+        input_usd_per_million=Decimal("3"),
+        output_usd_per_million=Decimal("3"),
+    ),
+    "fireworks:accounts/fireworks/models/kimi-k2-instruct": _TokenPrice(
+        input_usd_per_million=Decimal("0.6"),
+        output_usd_per_million=Decimal("2.5"),
+    ),
+}
 
 
 def compute_api_cost(llm: str, input_tokens: int, output_tokens: int) -> Decimal:
     """Estimate token cost, returning zero when the model has no known price."""
-    import litellm
+    from genai_prices import Usage as GenAIUsage
+    from genai_prices import calc_price
+
+    if custom_price := _CUSTOM_MODEL_PRICES.get(llm):
+        return (
+            custom_price.input_usd_per_million * input_tokens + custom_price.output_usd_per_million * output_tokens
+        ) / 1_000_000
+
+    provider, model = llm.split(":", 1)
+    provider = _GENAI_PRICES_PROVIDER_MAPPINGS.get(provider, provider)
 
     try:
-        input_cost, output_cost = litellm.cost_per_token(
-            model=pydantic_ai_model_to_litellm_model(llm),
-            prompt_tokens=input_tokens,
-            completion_tokens=output_tokens,
-        )
-        return Decimal(round(input_cost + output_cost, 8))
-    except Exception:
-        pass
-
-    return Decimal(0)
+        return calc_price(
+            GenAIUsage(input_tokens=input_tokens, output_tokens=output_tokens),
+            model_ref=model,
+            provider_id=provider,
+        ).total_price
+    except LookupError:
+        return Decimal(0)
 
 
 class Usage(BaseModel):
@@ -290,11 +312,12 @@ class Usage(BaseModel):
             if api_requests == 0:
                 api_cost_usd = Decimal(0)
             else:
-                assert llm is not None, "llm is required to when api_requests > 0"
+                if llm is None:
+                    raise ValueError("llm is required when api_requests > 0")
                 api_cost_usd = compute_api_cost(llm, input_tokens, output_tokens)
 
         elif isinstance(api_cost_usd, float):
-            api_cost_usd = Decimal(api_cost_usd)
+            api_cost_usd = Decimal(str(api_cost_usd))
         return cls(
             api_requests=api_requests,
             input_tokens=input_tokens,

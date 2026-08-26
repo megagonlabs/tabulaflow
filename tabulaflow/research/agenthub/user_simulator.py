@@ -4,7 +4,7 @@ import pydantic_ai
 from pydantic_ai import Agent, ToolOutput
 import asyncio
 import jinja2
-from litellm import token_counter
+import tiktoken
 from tabulaflow.research.agenthub.registry import (
     UserQuestion,
     UserAnswer,
@@ -70,6 +70,8 @@ For "value" questions, you need to select a value as well as an operator from th
 - The data type of the value should be consistent with the one specified in the question.
 - If no valid value or no valid operator is correct, or cannot be determined using the provided information, set both fields to null.
 """.strip()
+
+_TOKENIZER = tiktoken.get_encoding("cl100k_base")
 
 
 class NLAmbigPoint(BaseModel):
@@ -188,9 +190,9 @@ class UserSimulator:
         return relevant_ambig_points
 
     def _compute_user_effort(self, question_str: str, answer: BaseModel | None) -> float:
-        input_effort = token_counter(text=question_str)
+        input_effort = len(_TOKENIZER.encode(question_str))
         if answer is not None:
-            output_effort = sum([token_counter(text=str(v)) for v in answer.model_dump().values()])
+            output_effort = sum(len(_TOKENIZER.encode(str(value))) for value in answer.model_dump().values())
         else:
             output_effort = 1  # output_effort = 1 when the question is rejected
 

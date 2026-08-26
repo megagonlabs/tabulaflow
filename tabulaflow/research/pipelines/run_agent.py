@@ -7,7 +7,6 @@ from typing import Any
 import datetime
 import asyncio
 import logging
-import litellm
 import traceback
 from tabulaflow.research.agenthub.registry import agent_registry
 from tabulaflow.research.benchmarks.registry import dataset_registry
@@ -300,7 +299,6 @@ async def main_async() -> None:
     parser.add_argument("--result_dir", default="output/test/")
     parser.add_argument("--overwrite", action="store_true")
     parser.add_argument("--debug", action="store_true")
-    parser.add_argument("--debug_litellm", action="store_true")
 
     ##### Remove #####
     parser.add_argument("--TMP_resume_exp_for_postprocessor", default=None)
@@ -339,9 +337,6 @@ async def main_async() -> None:
         is_a199_flag = True
         args.split = "dev"
     ##################
-
-    if args.debug_litellm:
-        litellm._turn_on_debug()  # type: ignore
 
     if os.path.exists(args.result_dir):
         if not args.overwrite:
