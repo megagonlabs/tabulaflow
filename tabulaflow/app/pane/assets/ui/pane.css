@@ -321,7 +321,7 @@ body { margin: 0; background: var(--bg); color: var(--text); display: flex; flex
 }
 .rectabs { display: flex; flex-wrap: wrap; align-items: center; gap: 0 4px;
            margin-right: auto; min-height: 35px; padding: 0 8px; border-radius: 6px 6px 0 0;
-           background-color: transparent;
+           background-color: transparent; background-clip: content-box;
            background-image: repeating-linear-gradient(to bottom, transparent 0, transparent 34px,
                                                         rgba(154, 164, 178, 0.18) 34px,
                                                         rgba(154, 164, 178, 0.18) 35px); }
@@ -342,10 +342,17 @@ body { margin: 0; background: var(--bg); color: var(--text); display: flex; flex
 .cardbar > .seg:only-child { margin-left: auto; }
 .cardbar.multi-card .rectabs { flex: 0 1 auto; min-width: 0; max-width: 100%; box-sizing: border-box;
                                  flex-wrap: nowrap; overflow: hidden; }
-.cardbar.multi-card.no-view-menu .rectabs { width: 100%; flex-wrap: wrap; overflow: visible; }
+.cardbar.multi-card.no-view-menu .rectabs { width: fit-content; flex-wrap: wrap; overflow: visible; }
 .cardbar.multi-card.stacked { flex-direction: column; align-items: stretch; gap: 10px; }
-.cardbar.multi-card.stacked .rectabs { width: 100%; margin-right: 0; flex-wrap: wrap; overflow: visible; }
-.cardbar.multi-card.stacked .seg { align-self: flex-end; }
+.cardbar.multi-card.stacked .rectabs { width: fit-content; margin-right: 0; flex-wrap: wrap; overflow: visible; }
+.view-slot { display: grid; flex: 0 0 auto; }
+.view-slot > .seg { grid-area: 1 / 1; justify-self: end; }
+.view-slot-measure { visibility: hidden; pointer-events: none; }
+.view-slot.empty { position: absolute; visibility: hidden; pointer-events: none; }
+.cardbar.multi-card.stacked .view-slot { align-self: flex-end; }
+.cardbar.multi-card.full-width-tabs { padding-left: 0; padding-right: 0; }
+.cardbar.multi-card.full-width-tabs .rectabs { width: 100%; padding-left: 0; padding-right: 0; }
+.cardbar.multi-card.full-width-tabs .view-slot { margin-right: 4px; }
 .viewmeta { display: flex; align-items: center; width: 100%; margin: 0 auto; box-sizing: border-box;
             min-height: 38px; padding: 6px 4px 0; color: var(--text-dim); white-space: nowrap; text-align: left;
             font: 12px/1.25 ui-monospace, monospace; }

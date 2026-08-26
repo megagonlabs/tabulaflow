@@ -1486,13 +1486,24 @@ def test_artifact_tabs_use_flat_navigation() -> None:
     assert "var label = el('span', 'cardlabel');" not in pane_js
     assert ".cardbar > .seg:only-child { margin-left: auto; }" in pane_css
     assert "background-image: repeating-linear-gradient(to bottom" in pane_css
+    assert "background-color: transparent; background-clip: content-box;" in pane_css
     assert "height: 35px; padding: 6px 10px 9px;" in pane_css
     assert "background: var(--rail-bg)" not in pane_css
     assert ".manual-turnindex svg" in _PANE_HTML
     assert "function balancedTabRows(widths, available, gap)" in pane_js
-    assert "function justifyWrappedTabs(tabs)" in pane_js
+    assert "function layoutTabs(tabs, forceFullWidth)" in pane_js
     assert "if (rowCount === 1) return null;" in pane_js
+    assert "tabs.parentElement.classList.add('full-width-tabs');" in pane_js
     assert "items[i].style.flex = '0 0 ' + (widths[i] + extra) + 'px';" in pane_js
+    assert "function buildViewSlot(cards)" in pane_js
+    assert "var required = tabs.scrollWidth + slot.offsetWidth + gap;" in pane_js
+    assert "if (bar.classList.contains('stacked')) layoutTabs(tabs, true);" in pane_js
+    assert "viewSlot.classList.toggle('empty', views.length <= 1);" in pane_js
+    assert ".view-slot > .seg { grid-area: 1 / 1; justify-self: end; }" in pane_css
+    assert ".view-slot.empty { position: absolute; visibility: hidden; pointer-events: none; }" in pane_css
+    assert ".cardbar.multi-card.full-width-tabs { padding-left: 0; padding-right: 0; }" in pane_css
+    assert ".cardbar.multi-card.stacked .rectabs { width: fit-content;" in pane_css
+    assert ".cardbar.multi-card.full-width-tabs .rectabs { width: 100%;" in pane_css
 
 
 def test_pane_map_view_is_maplibre_based() -> None:

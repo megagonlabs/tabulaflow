@@ -110,9 +110,11 @@ function balancedTabRows(widths, available, gap) {
 
 function resetTabWidths(tabs) {
   tabs.querySelectorAll('.rectab').forEach(function (item) { item.style.removeProperty('flex'); });
+  tabs.classList.remove('full-width');
+  tabs.parentElement.classList.remove('full-width-tabs');
 }
 
-function justifyWrappedTabs(tabs) {
+function layoutTabs(tabs, forceFullWidth) {
   var items = Array.from(tabs.querySelectorAll('.rectab'));
   resetTabWidths(tabs);
   if (items.length < 2) return;
@@ -122,7 +124,12 @@ function justifyWrappedTabs(tabs) {
   var gap = parseFloat(style.columnGap) || 0;
   var widths = items.map(function (item) { return item.getBoundingClientRect().width; });
   var rows = balancedTabRows(widths, available, gap);
-  if (!rows) return;
+  if (!forceFullWidth && !rows) return;
+
+  tabs.classList.add('full-width');
+  tabs.parentElement.classList.add('full-width-tabs');
+  available = tabs.clientWidth;
+  rows = balancedTabRows(widths, available, gap) || [[0, items.length]];
 
   rows.forEach(function (bounds) {
     var count = bounds[1] - bounds[0];
@@ -137,20 +144,20 @@ function justifyWrappedTabs(tabs) {
 function syncCardHeader(bar) {
   if (!bar || !bar.classList.contains('multi-card') || !bar.offsetWidth) return;
   var tabs = bar.querySelector('.rectabs');
-  var seg = bar.querySelector('.seg');
+  var slot = bar.querySelector('.view-slot');
   if (!tabs) return;
   resetTabWidths(tabs);
-  if (!seg) {
+  if (!slot) {
     bar.classList.remove('stacked');
-    justifyWrappedTabs(tabs);
+    layoutTabs(tabs, false);
     return;
   }
   bar.classList.remove('stacked');
   var gap = parseFloat(getComputedStyle(bar).columnGap || getComputedStyle(bar).gap || '0') || 0;
-  var required = tabs.scrollWidth + seg.offsetWidth + gap;
+  var required = tabs.scrollWidth + slot.offsetWidth + gap;
   if (required > bar.clientWidth + 1) bar.classList.add('stacked');
-  if (bar.classList.contains('stacked')) justifyWrappedTabs(tabs);
-  syncSegment(seg);
+  if (bar.classList.contains('stacked')) layoutTabs(tabs, true);
+  syncSegment(slot.querySelector('.seg:not(.view-slot-measure)'));
 }
 
 window.addEventListener('resize', function () {
@@ -576,6 +583,25 @@ function buildViewSwitcher(views, activeKind, showView) {
     requestAnimationFrame(function () { thumb.classList.add('ready'); });
   });
   return { seg: seg, thumb: thumb, opts: opts };
+}
+
+function buildViewSlot(cards) {
+  var slot = el('div', 'view-slot');
+  var menus = new Map();
+  cards.forEach(function (card) {
+    var views = card.views || [];
+    if (views.length > 1) menus.set(views.join('\u0000'), views);
+  });
+  menus.forEach(function (views) {
+    var measure = el('div', 'seg view-slot-measure');
+    views.forEach(function (kind) {
+      var opt = el('span', 'seg-opt');
+      opt.textContent = kind;
+      measure.appendChild(opt);
+    });
+    slot.appendChild(measure);
+  });
+  return menus.size ? slot : null;
 }
 
 function viewOptionForKind(switcher, kind) {
@@ -1267,6 +1293,7 @@ function buildCard(card, opts) {
 function buildMultiCard(cards, state) {
   var pane = el('div', 'cardpane');
   var bar = el('div', 'cardbar multi-card');
+  var viewSlot = buildViewSlot(cards);
   var shell = el('div', 'view-shell');
   var meta = el('div', 'viewmeta');
   var activeCard = Math.min(Math.max(state.activeCard || 0, 0), cards.length - 1);
@@ -1298,10 +1325,10 @@ function buildMultiCard(cards, state) {
   function rebuildViewSwitcher(views, activeKind) {
     if (switcher && switcher.seg.parentNode) switcher.seg.parentNode.removeChild(switcher.seg);
     switcher = null;
-    bar.classList.toggle('no-view-menu', views.length <= 1);
-    if (views.length > 1) {
+    if (viewSlot) viewSlot.classList.toggle('empty', views.length <= 1);
+    if (views.length > 1 && viewSlot) {
       switcher = buildViewSwitcher(views, activeKind, showView);
-      bar.appendChild(switcher.seg);
+      viewSlot.appendChild(switcher.seg);
     }
     requestAnimationFrame(function () { syncCardHeader(bar); });
   }
@@ -1319,6 +1346,8 @@ function buildMultiCard(cards, state) {
   }
 
   bar.appendChild(buildCardTabs(cards, activeCard, function (i) { showCard(i, false); }));
+  bar.classList.toggle('no-view-menu', !viewSlot);
+  if (viewSlot) bar.appendChild(viewSlot);
   pane.appendChild(bar);
   pane.appendChild(shell);
   pane.appendChild(meta);
