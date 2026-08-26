@@ -1059,6 +1059,13 @@ def test_visual_renderers_own_their_empty_states() -> None:
     assert ".tabulator-placeholder-contents" in pane_css
 
 
+def test_tables_allow_native_text_selection() -> None:
+    table_js = _pane_asset_text("render/table.js")
+
+    assert "selectableRange" not in table_js
+    assert "clipboardCopyRowRange" not in table_js
+
+
 def test_empty_graph_builds_a_normal_graph_payload() -> None:
     payload = build_graph_result_data(GraphResult(nodes=[], edges=[]))
 
