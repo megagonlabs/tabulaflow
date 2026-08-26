@@ -664,6 +664,7 @@ Aug 25
 
 Aug 26
 - [ ] bash tool
+- [ ] model price tracking
 
 - [ ] Shell messed up after ssh disconnect
 - [ ] Check if uv tool install install browser
