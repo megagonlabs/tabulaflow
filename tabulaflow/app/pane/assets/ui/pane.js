@@ -1155,11 +1155,6 @@ function buildCard(card, opts) {
     if (!initial && state) restoreTurnScroll(state);
   }
 
-  if (card.label) {
-    var label = el('span', 'cardlabel');
-    label.textContent = card.label;
-    bar.appendChild(label);
-  }
   if (views.length > 1) {
     switcher = buildViewSwitcher(views, activeKind, showView);
     bar.appendChild(switcher.seg);
