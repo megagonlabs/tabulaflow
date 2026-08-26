@@ -238,11 +238,14 @@ function updateAnswerControls(panel, state) {
   status.textContent = state.resolving ? 'Updating results…' : (state.resolveError || '');
 }
 
-function applyControlSelection(turn, state, index, id, value) {
+function applyControlSelection(turn, state, index, id, value, anchor) {
   var next = Object.assign({}, state.selection);
   if (String(next[id]) === String(value)) return;
   next[id] = value;
   state.selection = next;
+  var turnView = activeTurnView(index);
+  var region = turnView && turnView.querySelector('.artifacts-region');
+  state.layoutStability = beginLayoutStability(anchor, region);
   resolveTurnSelection(turn, index, Object.assign({}, state.selection));
 }
 
@@ -293,6 +296,7 @@ function resolveTurnSelection(turn, index, selection) {
     state.resolving = false;
     refreshActiveTurnControls(index);
     refreshActiveTurnArtifacts(index);
+    settleLayoutStability(state.layoutStability);
   }).catch(function () {
     if (state.resolveSeq !== seq) return;
     if (state.resolveTimer) window.clearTimeout(state.resolveTimer);
@@ -301,6 +305,7 @@ function resolveTurnSelection(turn, index, selection) {
     state.resolveError = 'Could not update results for this selection.';
     refreshActiveTurnControls(index);
     setActiveTurnArtifactsLoading(index, false);
+    settleLayoutStability(state.layoutStability);
   });
 }
 
@@ -325,7 +330,7 @@ function buildAnswerControls(turn, state, index) {
         btn._tfChoiceId = choice.id;
         btn.onclick = function () {
           if (String(state.selection[control.id]) === String(choice.id)) return;
-          applyControlSelection(turn, state, index, control.id, choice.id);
+          applyControlSelection(turn, state, index, control.id, choice.id, btn);
         };
         opts.appendChild(btn);
       });
@@ -353,7 +358,7 @@ function buildAnswerControls(turn, state, index) {
         if (!Number.isFinite(nextValue)) return;
         nextValue = Math.min(control.max, Math.max(control.min, nextValue));
         updateNumberControl(input, nextValue);
-        applyControlSelection(turn, state, index, control.id, nextValue);
+        applyControlSelection(turn, state, index, control.id, nextValue, input);
       };
       input.onkeydown = function (event) {
         if (event.key === 'Enter') input.dispatchEvent(new Event('change'));
@@ -558,7 +563,7 @@ function buildCardTabs(cards, activeIndex, onSelect) {
     tab.textContent = card.label || ('result ' + (i + 1));
     tab.title = tab.textContent;
     tab.classList.toggle('active', i === activeIndex);
-    tab.onclick = function () { onSelect(i); };
+    tab.onclick = function () { onSelect(i, tab); };
     tabs.appendChild(tab);
   });
   return tabs;
@@ -664,37 +669,6 @@ function rememberTurnScroll(state) {
   state.scrollTop = scroller.scrollTop;
 }
 
-function restoreTurnScroll(state) {
-  var version = ++scrollRestoreVersion;
-  var scroller = contentScroller();
-  if (!state || !scroller) {
-    suppressScrollMemory = false;
-    return Promise.resolve();
-  }
-  var scrollTop = state.scrollTop || 0;
-  suppressScrollMemory = true;
-  return new Promise(function (resolve) {
-    requestAnimationFrame(function () {
-      if (version !== scrollRestoreVersion) {
-        resolve();
-        return;
-      }
-      scroller.scrollTop = scrollTop;
-      requestAnimationFrame(function () {
-        if (version !== scrollRestoreVersion) {
-          resolve();
-          return;
-        }
-        scroller.scrollTop = scrollTop;
-        requestAnimationFrame(function () {
-          if (version === scrollRestoreVersion) suppressScrollMemory = false;
-          resolve();
-        });
-      });
-    });
-  });
-}
-
 function restoreTurnScrollImmediately(state) {
   var version = ++scrollRestoreVersion;
   var scroller = contentScroller();
@@ -707,6 +681,63 @@ function restoreTurnScrollImmediately(state) {
   queueMicrotask(function () {
     if (version === scrollRestoreVersion) suppressScrollMemory = false;
   });
+}
+
+function correctLayoutAnchor(transaction) {
+  if (!transaction.anchor.isConnected) return;
+  transaction.scroller.scrollTop += transaction.anchor.getBoundingClientRect().top - transaction.anchorTop;
+}
+
+function finishLayoutStability(transaction, preserveAnchor) {
+  if (!transaction || transaction.done) return;
+  transaction.done = true;
+  if (transaction.observer) transaction.observer.disconnect();
+  transaction.controller.abort();
+  if (transaction.region._tfLayoutStability === transaction) transaction.region._tfLayoutStability = null;
+  if (preserveAnchor) correctLayoutAnchor(transaction);
+  transaction.region.style.removeProperty('min-height');
+  if (preserveAnchor) correctLayoutAnchor(transaction);
+}
+
+function beginLayoutStability(anchor, region) {
+  var scroller = contentScroller();
+  if (!anchor || !region || !scroller) return null;
+  if (region._tfLayoutStability) finishLayoutStability(region._tfLayoutStability, false);
+  var controller = new AbortController();
+  var transaction = {
+    anchor: anchor,
+    anchorTop: anchor.getBoundingClientRect().top,
+    controller: controller,
+    done: false,
+    observer: null,
+    region: region,
+    scroller: scroller
+  };
+  region._tfLayoutStability = transaction;
+  region.style.minHeight = region.getBoundingClientRect().height + 'px';
+  var cancel = function () { finishLayoutStability(transaction, false); };
+  scroller.addEventListener('wheel', cancel, { passive: true, signal: controller.signal });
+  scroller.addEventListener('touchmove', cancel, { passive: true, signal: controller.signal });
+  scroller.addEventListener('pointerdown', cancel, { signal: controller.signal });
+  document.addEventListener('keydown', function (event) {
+    if (['ArrowUp', 'ArrowDown', 'PageUp', 'PageDown', 'Home', 'End', ' '].indexOf(event.key) !== -1) cancel();
+  }, { signal: controller.signal });
+  return transaction;
+}
+
+function settleLayoutStability(transaction) {
+  if (!transaction || transaction.done) return;
+  var region = transaction.region;
+  var isBusy = function () {
+    return region.getAttribute('aria-busy') === 'true' || !!region.querySelector('[aria-busy="true"]');
+  };
+  var settle = function () {
+    if (transaction.done || isBusy()) return;
+    finishLayoutStability(transaction, true);
+  };
+  transaction.observer = new MutationObserver(settle);
+  transaction.observer.observe(region, { attributes: true, childList: true, subtree: true });
+  settle();
 }
 
 function rememberActiveContentScroll() {
@@ -1265,6 +1296,7 @@ function buildCard(card, opts) {
   var switcher = null;
 
   function showView(kind, opt, initial) {
+    var stability = initial ? null : beginLayoutStability(opt, shell);
     activeKind = kind;
     if (state) rememberViewKind(state, card, cardIndex, kind);
     if (switcher) {
@@ -1275,7 +1307,7 @@ function buildCard(card, opts) {
       }
     }
     mountView(card, kind, shell, meta, state, cardIndex);
-    if (!initial && state) restoreTurnScroll(state);
+    settleLayoutStability(stability);
   }
 
   if (views.length > 1) {
@@ -1308,7 +1340,8 @@ function buildMultiCard(cards, state) {
     return cards[activeCard];
   }
 
-  function showView(kind, opt, initial) {
+  function showView(kind, opt, initial, stability) {
+    if (!initial && !stability) stability = beginLayoutStability(opt, shell);
     var card = currentCard();
     rememberViewKind(state, card, activeCard, kind);
     if (switcher) {
@@ -1319,7 +1352,7 @@ function buildMultiCard(cards, state) {
       }
     }
     mountView(card, kind, shell, meta, state, activeCard);
-    if (!initial) restoreTurnScroll(state);
+    settleLayoutStability(stability);
   }
 
   function rebuildViewSwitcher(views, activeKind) {
@@ -1333,7 +1366,8 @@ function buildMultiCard(cards, state) {
     requestAnimationFrame(function () { syncCardHeader(bar); });
   }
 
-  function showCard(index, initial) {
+  function showCard(index, initial, anchor) {
+    var stability = initial ? null : beginLayoutStability(anchor, pane);
     activeCard = Math.min(Math.max(index, 0), cards.length - 1);
     state.activeCard = activeCard;
     updateCardTabs();
@@ -1341,11 +1375,11 @@ function buildMultiCard(cards, state) {
     var views = card.views || [];
     var activeKind = savedViewKind(state, card, activeCard, views);
     rebuildViewSwitcher(views, activeKind);
-    if (views.length) showView(activeKind, viewOptionForKind(switcher, activeKind), initial);
-    else if (!initial) restoreTurnScroll(state);
+    if (views.length) showView(activeKind, viewOptionForKind(switcher, activeKind), initial, stability);
+    else settleLayoutStability(stability);
   }
 
-  bar.appendChild(buildCardTabs(cards, activeCard, function (i) { showCard(i, false); }));
+  bar.appendChild(buildCardTabs(cards, activeCard, function (i, tab) { showCard(i, false, tab); }));
   bar.classList.toggle('no-view-menu', !viewSlot);
   if (viewSlot) bar.appendChild(viewSlot);
   pane.appendChild(bar);

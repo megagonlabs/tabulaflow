@@ -1153,7 +1153,11 @@ def test_answer_controls_render_choice_and_number_inputs() -> None:
     assert "function answerControls(turn)" in pane_js
     assert "control.kind === 'number'" in pane_js
     assert "input.type = 'range';" in pane_js
-    assert "applyControlSelection(turn, state, index, control.id, nextValue);" in pane_js
+    assert "applyControlSelection(turn, state, index, control.id, nextValue, input);" in pane_js
+    assert "state.layoutStability = beginLayoutStability(anchor, region);" in pane_js
+    assert "function settleLayoutStability(transaction)" in pane_js
+    assert "region.style.minHeight = region.getBoundingClientRect().height + 'px';" in pane_js
+    assert "finishLayoutStability(transaction, false)" in pane_js
     assert "function updateAnswerControls(panel, state)" in pane_js
     assert "function updateNumberControl(input, value)" in pane_js
     assert "ANSWER_LOADING_DELAY_MS = 220" in pane_js
@@ -1365,9 +1369,10 @@ def test_live_view_survives_rapid_browser_replay_and_switches_atomically(tmp_pat
                       };
                     }""",
                 )
-                assert delayed_loading == {"height": 220, "text": "Loading data…"}
+                assert delayed_loading == {"height": 520, "text": "Loading data…"}
                 page.wait_for_selector(".view-shell .view-active.tf-table-view")
                 assert page.locator(".view-shell").get_attribute("aria-busy") is None
+                page.wait_for_function("document.querySelector('.view-shell').style.minHeight === ''")
                 committed = page.eval_on_selector(
                     ".view-shell",
                     """shell => {
