@@ -59,19 +59,97 @@ function syncSegment(seg) {
   if (thumb && opt) { moveThumb(thumb, opt); }
 }
 
+function balancedTabRows(widths, available, gap) {
+  var rowCount = 1;
+  var used = 0;
+  for (var i = 0; i < widths.length; i++) {
+    if (widths[i] > available) return null;
+    var next = used ? used + gap + widths[i] : widths[i];
+    if (used && next > available + 0.5) {
+      rowCount++;
+      used = widths[i];
+    } else {
+      used = next;
+    }
+  }
+  if (rowCount === 1) return null;
+
+  var costs = Array.from({ length: rowCount + 1 }, function () {
+    return Array(widths.length + 1).fill(Infinity);
+  });
+  var breaks = Array.from({ length: rowCount + 1 }, function () {
+    return Array(widths.length + 1).fill(-1);
+  });
+  costs[0][0] = 0;
+  for (var row = 1; row <= rowCount; row++) {
+    for (var end = row; end <= widths.length; end++) {
+      used = 0;
+      for (var start = end - 1; start >= row - 1; start--) {
+        used = widths[start] + (used ? gap + used : 0);
+        if (used > available + 0.5) break;
+        var remainder = available - used;
+        var cost = costs[row - 1][start] + remainder * remainder;
+        if (cost < costs[row][end]) {
+          costs[row][end] = cost;
+          breaks[row][end] = start;
+        }
+      }
+    }
+  }
+
+  var rows = [];
+  var end = widths.length;
+  for (row = rowCount; row > 0; row--) {
+    var start = breaks[row][end];
+    if (start < 0) return null;
+    rows.unshift([start, end]);
+    end = start;
+  }
+  return rows;
+}
+
+function resetTabWidths(tabs) {
+  tabs.querySelectorAll('.rectab').forEach(function (item) { item.style.removeProperty('flex'); });
+}
+
+function justifyWrappedTabs(tabs) {
+  var items = Array.from(tabs.querySelectorAll('.rectab'));
+  resetTabWidths(tabs);
+  if (items.length < 2) return;
+
+  var style = getComputedStyle(tabs);
+  var available = tabs.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
+  var gap = parseFloat(style.columnGap) || 0;
+  var widths = items.map(function (item) { return item.getBoundingClientRect().width; });
+  var rows = balancedTabRows(widths, available, gap);
+  if (!rows) return;
+
+  rows.forEach(function (bounds) {
+    var count = bounds[1] - bounds[0];
+    var used = widths.slice(bounds[0], bounds[1]).reduce(function (sum, width) { return sum + width; }, 0);
+    var extra = (available - used - gap * (count - 1)) / count;
+    for (var i = bounds[0]; i < bounds[1]; i++) {
+      items[i].style.flex = '0 0 ' + (widths[i] + extra) + 'px';
+    }
+  });
+}
+
 function syncCardHeader(bar) {
   if (!bar || !bar.classList.contains('multi-card') || !bar.offsetWidth) return;
   var tabs = bar.querySelector('.rectabs');
   var seg = bar.querySelector('.seg');
   if (!tabs) return;
+  resetTabWidths(tabs);
   if (!seg) {
     bar.classList.remove('stacked');
+    justifyWrappedTabs(tabs);
     return;
   }
   bar.classList.remove('stacked');
   var gap = parseFloat(getComputedStyle(bar).columnGap || getComputedStyle(bar).gap || '0') || 0;
   var required = tabs.scrollWidth + seg.offsetWidth + gap;
   if (required > bar.clientWidth + 1) bar.classList.add('stacked');
+  if (bar.classList.contains('stacked')) justifyWrappedTabs(tabs);
   syncSegment(seg);
 }
 

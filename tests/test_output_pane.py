@@ -1489,6 +1489,10 @@ def test_artifact_tabs_use_flat_navigation() -> None:
     assert "height: 35px; padding: 6px 10px 9px;" in pane_css
     assert "background: var(--rail-bg)" not in pane_css
     assert ".manual-turnindex svg" in _PANE_HTML
+    assert "function balancedTabRows(widths, available, gap)" in pane_js
+    assert "function justifyWrappedTabs(tabs)" in pane_js
+    assert "if (rowCount === 1) return null;" in pane_js
+    assert "items[i].style.flex = '0 0 ' + (widths[i] + extra) + 'px';" in pane_js
 
 
 def test_pane_map_view_is_maplibre_based() -> None:
