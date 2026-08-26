@@ -362,9 +362,9 @@ class ExecuteBashTool:
         not accept ``wait_timeout``. Detached jobs remain owned by this session and
         are terminated when it closes.
 
-        Inspect a running job with ``tail <log>``. Stop it gracefully with
-        ``kill -TERM -- -<process_group>``; signal only process-group ids returned
-        by this tool. The final line of a completed log records its exit status.
+        Inspect a running job with ``tail <log>``. Stop it with
+        ``kill -TERM -- -<process_group>``. The final line of a completed log
+        records its exit status.
 
         Args:
             command: Bash source to execute.
