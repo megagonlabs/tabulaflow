@@ -1447,6 +1447,7 @@ def test_pane_chart_theme_is_client_side() -> None:
     assert "mount: function ()" in chart_js
     assert "function renderWhenReady()" not in chart_js
     assert "vegaEmbed(target, spec" in chart_js
+    assert "header: { labelColor: text, titleColor: text, labelFontSize: 13, titleFontSize: 14 }" in chart_js
 
 
 def test_pane_sidebar_meta_uses_artifact_icons() -> None:

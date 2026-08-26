@@ -33,6 +33,7 @@ function vegaDarkConfig() {
       labelLimit: 160
     },
     legend: { labelColor: muted, titleColor: text, labelFontSize: 12, titleFontSize: 13 },
+    header: { labelColor: text, titleColor: text, labelFontSize: 13, titleFontSize: 14 },
     range: {
       category: [
         cssVar('--chart-category-0', accent),
