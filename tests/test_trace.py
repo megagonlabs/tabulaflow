@@ -8,16 +8,6 @@ import pytest
 from tabulaflow.agents.trace import Usage, compute_api_cost
 
 
-def test_compute_api_cost_uses_custom_model_price() -> None:
-    cost = compute_api_cost(
-        "fireworks:accounts/fireworks/models/qwen3-235b-a22b-thinking-2507",
-        input_tokens=1_000_000,
-        output_tokens=1_000_000,
-    )
-
-    assert cost == Decimal("1.10")
-
-
 def test_compute_api_cost_uses_genai_prices(monkeypatch: pytest.MonkeyPatch) -> None:
     calc_price = Mock(return_value=SimpleNamespace(total_price=Decimal("1.23")))
     monkeypatch.setattr(genai_prices, "calc_price", calc_price)

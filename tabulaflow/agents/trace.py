@@ -1,6 +1,5 @@
 """Agent trajectories, usage accounting, cost estimation, and instrumentation."""
 
-from dataclasses import dataclass
 from decimal import Decimal
 import json
 import threading
@@ -221,39 +220,10 @@ _GENAI_PRICES_PROVIDER_MAPPINGS = {
 }
 
 
-@dataclass(frozen=True)
-class _TokenPrice:
-    """Custom token prices in USD per million tokens."""
-
-    input_usd_per_million: Decimal
-    output_usd_per_million: Decimal
-
-
-_CUSTOM_MODEL_PRICES = {
-    "fireworks:accounts/fireworks/models/qwen3-235b-a22b-thinking-2507": _TokenPrice(
-        input_usd_per_million=Decimal("0.22"),
-        output_usd_per_million=Decimal("0.88"),
-    ),
-    "fireworks:accounts/fireworks/models/llama-v3p1-405b-instruct": _TokenPrice(
-        input_usd_per_million=Decimal("3"),
-        output_usd_per_million=Decimal("3"),
-    ),
-    "fireworks:accounts/fireworks/models/kimi-k2-instruct": _TokenPrice(
-        input_usd_per_million=Decimal("0.6"),
-        output_usd_per_million=Decimal("2.5"),
-    ),
-}
-
-
 def compute_api_cost(llm: str, input_tokens: int, output_tokens: int) -> Decimal:
     """Estimate token cost, returning zero when the model has no known price."""
     from genai_prices import Usage as GenAIUsage
     from genai_prices import calc_price
-
-    if custom_price := _CUSTOM_MODEL_PRICES.get(llm):
-        return (
-            custom_price.input_usd_per_million * input_tokens + custom_price.output_usd_per_million * output_tokens
-        ) / 1_000_000
 
     provider, model = llm.split(":", 1)
     provider = _GENAI_PRICES_PROVIDER_MAPPINGS.get(provider, provider)
