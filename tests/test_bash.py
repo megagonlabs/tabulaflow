@@ -132,6 +132,21 @@ class TestJobModes:
 
 
 class TestLogs:
+    async def test_csi_sequences_are_removed_from_output_and_log(self, bash: ExecuteBashTool) -> None:
+        result = await bash(r"printf '\033[31mred\033[0m\rnext'")
+        log = (bash._job_dir / "J1.log").read_text()
+        assert "red\nnext" in result
+        assert "red\nnext" in log
+        assert "\x1b" not in result and "\x1b" not in log
+        assert "[31m" not in result and "[31m" not in log
+
+    async def test_osc_and_unsafe_controls_are_removed(self, bash: ExecuteBashTool) -> None:
+        result = await bash(r"printf '\033]0;owned\ahello\b!'")
+        log = (bash._job_dir / "J1.log").read_text()
+        assert "hello!" in result and "hello!" in log
+        assert "owned" not in result and "owned" not in log
+        assert not any(control in result or control in log for control in ("\x1b", "\a", "\b"))
+
     async def test_log_names_are_sequential_and_private(self, bash: ExecuteBashTool) -> None:
         first, second = await asyncio.gather(
             bash("sleep 0.2", mode="background"),
@@ -191,8 +206,16 @@ class TestLifecycle:
         tool = ExecuteBashTool(working_dir=tmp_path, job_dir=tmp_path / "jobs")
         try:
             results = [await tool("sleep 60", mode="background") for _ in range(9)]
-            assert "warning: 9 shell jobs" in results[-1]
+            assert "warning: 9 detached shell jobs" in results[-1]
             assert "J1" in results[-1] and "J9" in results[-1]
+        finally:
+            await tool.close()
+
+    async def test_parallel_foreground_jobs_do_not_warn(self, tmp_path: Path) -> None:
+        tool = ExecuteBashTool(working_dir=tmp_path, job_dir=tmp_path / "jobs")
+        try:
+            results = await asyncio.gather(*(tool("sleep 0.1; echo done") for _ in range(12)))
+            assert all("warning:" not in result for result in results)
         finally:
             await tool.close()
 

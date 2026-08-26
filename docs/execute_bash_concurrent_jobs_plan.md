@@ -192,10 +192,6 @@ group does not stop after a grace period, the agent may use `SIGKILL`:
 kill -KILL -- -12345
 ```
 
-The tool description should tell the agent to signal only process-group IDs
-returned by `execute_bash` and to check the log footer before killing, since OS
-IDs can eventually be reused.
-
 ## Timeout, cancellation, and close
 
 For `kill_on_timeout`, send `SIGTERM` to the process group, wait briefly, then
@@ -220,11 +216,12 @@ Do not enforce a hard active-job limit initially. A hard limit would need a
 separate control lane so the agent could still run `tail` or `kill` commands
 after capacity was reached.
 
-Instead, define a soft warning threshold, initially eight active jobs. Calls
-continue to run, but results include a concise warning and active job IDs:
+Instead, define a soft warning threshold, initially eight jobs returned as
+running. Calls continue to run, but detached/background results include a
+concise warning and reported-running job IDs:
 
 ```text
-[warning: 9 shell jobs are currently running: J1, J2, J4, J5, J6, J7, J8, J9, J10]
+[warning: 9 detached shell jobs are currently running: J1, J2, J4, J5, J6, J7, J8, J9, J10]
 ```
 
 Remove completed jobs from the active set immediately and update the registry
@@ -236,14 +233,16 @@ be added later if real usage shows runaway accumulation.
 
 Keep the existing command filter and apply it before job creation. Continue to
 run only on POSIX systems with Bash available. Never include the complete
-inherited environment in tool output or logs.
+inherited environment in tool output or logs. Strip ANSI/OSC sequences and
+unsafe terminal controls from rendered tool output and logs while preserving
+newlines and tabs; commands that need raw bytes can redirect them explicitly.
 
 The new runner intentionally drops these persistent-PTY behaviors:
 
 - cross-call cwd and environment mutation;
 - raw stdin interaction and control-key forwarding;
 - prompt-sentinel parsing;
-- terminal echo and ANSI cleanup required specifically by a PTY;
+- terminal echo handling required specifically by a PTY;
 - multiline command staging;
 - shell reset and recovery state.
 

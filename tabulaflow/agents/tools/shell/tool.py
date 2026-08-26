@@ -32,6 +32,7 @@ import codecs
 import math
 import os
 from pathlib import Path
+import re
 import shutil
 import signal
 import tempfile
@@ -48,9 +49,24 @@ _ACTIVE_JOB_WARNING_THRESHOLD = 8
 _TERMINATION_GRACE_SECONDS = 1.0
 _OUTPUT_READ_CHUNK_BYTES = 4096
 _LOG_FLUSH_THRESHOLD_BYTES = 64 * 1024
+_TERMINAL_ESCAPE = re.compile(
+    r"\x1b(?:"
+    r"\][^\x07\x1b]*(?:\x07|\x1b\\)"  # OSC
+    r"|\[[0-?]*[ -/]*[@-~]"  # CSI
+    r"|[PX^_][^\x1b]*(?:\x1b\\)"  # DCS, SOS, PM, APC
+    r"|[ -/]*[@-~]"  # two-character escape
+    r")"
+)
+_UNSAFE_CONTROL = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\x9f]")
 
 BashMode: TypeAlias = Literal["kill_on_timeout", "detach_on_timeout", "background"]
 WaitTimeout: TypeAlias = Annotated[float, Field(gt=0, allow_inf_nan=False)]
+
+
+def _sanitize_terminal_text(text: str) -> str:
+    """Remove terminal control sequences while preserving readable structure."""
+    text = _TERMINAL_ESCAPE.sub("", text.replace("\r", "\n"))
+    return _UNSAFE_CONTROL.sub("", text)
 
 
 class BashToolMetrics(BaseModel):
@@ -109,6 +125,7 @@ class _BashJob:
     termination_lock: asyncio.Lock = field(default_factory=asyncio.Lock)
     collector_task: asyncio.Task[None] | None = None
     error: str | None = None
+    reported_running: bool = False
 
     @property
     def process_group(self) -> int:
@@ -216,7 +233,7 @@ class ExecuteBashTool:
             return job
 
     def _write_log(self, job: _BashJob, footer: str | None = None) -> None:
-        text = job.output.render()
+        text = _sanitize_terminal_text(job.output.render())
         if footer is not None:
             text = text.rstrip("\n") + ("\n" if text else "") + footer + "\n"
         temp_path = job.log_path.with_name(f".{job.log_path.name}.tmp")
@@ -289,16 +306,17 @@ class ExecuteBashTool:
 
     async def _active_warning(self) -> str:
         async with self._registry_lock:
-            ids = list(self._active_jobs)
+            ids = [job.id for job in self._active_jobs.values() if job.reported_running]
         if len(ids) <= _ACTIVE_JOB_WARNING_THRESHOLD:
             return ""
-        return f"[warning: {len(ids)} shell jobs are currently running: {', '.join(ids)}]"
+        return f"[warning: {len(ids)} detached shell jobs are currently running: {', '.join(ids)}]"
 
     @staticmethod
     def _join_parts(*parts: str) -> str:
         return "\n\n".join(part for part in parts if part)
 
     async def _format_running(self, job: _BashJob) -> str:
+        job.reported_running = True
         warning = await self._active_warning()
         metadata = "\n".join(
             [
@@ -308,15 +326,14 @@ class ExecuteBashTool:
                 f"[log: {job.log_path}]",
             ]
         )
-        return self._join_parts(job.output.render().rstrip(), metadata, warning)
+        return self._join_parts(_sanitize_terminal_text(job.output.render()).rstrip(), metadata, warning)
 
     async def _format_completed(self, job: _BashJob) -> str:
-        warning = await self._active_warning()
         if job.error is not None:
-            return self._join_parts(f"(error: shell job {job.id} failed: {job.error})", warning)
+            return f"(error: shell job {job.id} failed: {job.error})"
         returncode = job.process.returncode if job.process.returncode is not None else -1
         footer = f"[exit_code: {returncode}]"
-        return self._join_parts(job.output.render().rstrip(), footer, warning)
+        return self._join_parts(_sanitize_terminal_text(job.output.render()).rstrip(), footer)
 
     async def execute(
         self,
@@ -363,9 +380,9 @@ class ExecuteBashTool:
                 self._metrics.num_detached_calls += 1
                 return await self._format_running(job)
             await self._terminate_job(job)
-            body = job.output.render().rstrip()
+            body = _sanitize_terminal_text(job.output.render()).rstrip()
             timeout_text = f"Command timed out after {timeout:g}s; process group terminated.\n[exit_code: -1]"
-            return self._join_parts(body, timeout_text, await self._active_warning())
+            return self._join_parts(body, timeout_text)
         return await self._format_completed(job)
 
     async def __call__(
