@@ -666,7 +666,9 @@ Aug 25
 Aug 26
 - [x] bash tool
 - [ ] model price tracking
-- [ ] artifact menu layout
+- app
+  - [x] redesign artifact menu layout
+  - [ ] fix scrolling when switching artifact/view
 
 - [ ] Shell messed up after ssh disconnect
 - [ ] Check if uv tool install install browser
