@@ -636,6 +636,7 @@ Aug 24
 - agents layer cleanup
   - [x] runtime.py
   - [x] remove engines/
+  - [x] omit params
   - [x] standardize `execute` vs `__call__`
   - [x] remove modules/ and fix preprocssing caching
   - [x] summarization.py
@@ -659,12 +660,13 @@ Aug 25
   - [x] control panel UI
   - [x] redesign artifact tab menu
   - [x] subgraph title color
-  - [x] disable range selection for table copy table button
+  - [x] disable range selection, add table copy table button
 - [x] Share updates to #mintq and Hongjie
 
 Aug 26
 - [ ] bash tool
 - [ ] model price tracking
+- [ ] artifact menu layout
 
 - [ ] Shell messed up after ssh disconnect
 - [ ] Check if uv tool install install browser
