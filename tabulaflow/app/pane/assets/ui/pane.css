@@ -787,14 +787,13 @@ body { margin: 0; background: var(--bg); color: var(--text); display: flex; flex
               border: 0; border-radius: 6px; background: transparent; color: var(--text-muted); cursor: pointer;
               transition: color 0.14s ease, background 0.14s ease; }
 .query-copy:hover { color: var(--text); background: var(--query-hover); }
-.query-copy.copied { color: var(--text); background: rgba(255, 255, 255, 0.08); }
+.query-copy.copied { color: var(--text); }
 .query-copy.copy-failed { color: var(--text-muted); background: rgba(255, 255, 255, 0.06); }
 .copy-icon { position: relative; width: 16px; height: 16px; flex: 0 0 auto; }
 .copy-icon::before, .copy-icon::after { content: ""; position: absolute; width: 10px; height: 10px;
                                         border: 1.5px solid currentColor; border-radius: 3px; box-sizing: border-box; }
 .copy-icon::before { left: 2px; top: 5px; }
 .copy-icon::after { left: 5px; top: 1px; background: var(--copy-icon-bg, var(--query-bg)); }
-.query-copy.copied .copy-icon { color: var(--text); }
 .query-copy.copied .copy-icon::before { left: 5px; top: 1px; width: 7px; height: 12px; opacity: 1;
                                         border-width: 0 1.75px 1.75px 0; border-radius: 0;
                                         transform: rotate(45deg); transform-origin: center; }
