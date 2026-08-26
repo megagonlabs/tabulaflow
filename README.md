@@ -651,7 +651,7 @@ Aug 24
   - [x] Fix map popup scrolling
 
 Aug 25
-- [x] agents layer cleanup
+- agents layer cleanup
   - [x] chat/
   - [x] `<answer>` -> `ANSWER:`
 - app
@@ -664,8 +664,10 @@ Aug 25
 - [x] Share updates to #mintq and Hongjie
 
 Aug 26
-- [x] bash tool
-- [ ] model price tracking
+- [x] agents layer cleanup
+  - [x] bash tool
+  - [ ] model price tracking
+  - [ ] message store
 - app
   - [x] redesign artifact menu layout
   - [ ] fix scrolling when switching artifact/view
