@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 import re
-from typing import TypedDict
+from typing import TYPE_CHECKING, TypedDict, cast
 
 from pathlib import Path
 
@@ -14,6 +14,9 @@ from textual.suggester import Suggester
 from textual.widgets import Input
 
 from tabulaflow.app.tui.commands import SLASH_COMMANDS
+
+if TYPE_CHECKING:
+    from tabulaflow.app.tui.app import TabulaflowApp
 
 _CONNECTABLE_EXTENSIONS = frozenset(
     {".csv", ".tsv", ".xlsx", ".xls", ".parquet", ".json", ".jsonl", ".ndjson", ".sqlite", ".sqlite3", ".db", ".duckdb"}
@@ -151,14 +154,19 @@ class HistoryInput(Input):
 
     def action_open_data_explorer(self) -> None:
         """Push the schema browser. Delegates to the app's action."""
-        self.app.action_open_data_explorer()  # type: ignore[attr-defined]
+        cast("TabulaflowApp", self.app).action_open_data_explorer()
 
-    def __init__(self, history_path: Path, **kwargs: object) -> None:
+    def __init__(self, history_path: Path, *, placeholder: str = "", id: str | None = None) -> None:
         # ``select_on_focus=False`` so regaining focus (e.g. via the app's
         # typeahead handler after the user types a letter while a result
         # is focused) doesn't replace the in-progress composition with the
         # next keystroke.
-        super().__init__(suggester=TabulaflowSuggester(), select_on_focus=False, **kwargs)  # type: ignore[arg-type]
+        super().__init__(
+            placeholder=placeholder,
+            id=id,
+            suggester=TabulaflowSuggester(),
+            select_on_focus=False,
+        )
         self._history_path = history_path
         self._history: list[str] = []
         self._history_index: int = -1
@@ -262,7 +270,7 @@ class HistoryInput(Input):
         """Forward Ctrl+D to the app-level quit-only handler when focused."""
         # Input consumes Ctrl+D by default; forward explicitly so the app can
         # apply its double-press quit logic.
-        self.app.action_quit_only()  # type: ignore[attr-defined]
+        cast("TabulaflowApp", self.app).action_quit_only()
 
     def _on_paste(self, event: events.Paste) -> None:
         """Intercept bracketed-paste events with newlines and stash them.

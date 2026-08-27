@@ -39,6 +39,7 @@ if TYPE_CHECKING:
     from collections.abc import Iterator
     from typing import Any
 
+    from tabulaflow.data.registry import DBRegistry
     from tabulaflow.data.protocols import PropertyGraphConnectorProtocol
 
 
@@ -184,15 +185,12 @@ class SchemaBrowserScreen(Screen[None]):
     def __init__(
         self,
         *,
-        registry: object,
+        registry: DBRegistry,
         alias: str | None = None,
         state: ExplorerState | None = None,
     ) -> None:
         super().__init__()
-        from tabulaflow.data.registry import DBRegistry
-
-        assert isinstance(registry, DBRegistry)
-        self._registry: DBRegistry = registry
+        self._registry = registry
         self._filter_alias = alias
         self._state = state if state is not None else ExplorerState()
         self._refreshing = False
