@@ -11,7 +11,7 @@ from tabulaflow.research.agents.ensemblers.majority_ensembler import _normalize_
 from tabulaflow.research.agents.utils import BasicAgentConfig, get_max_steps_capability, instrument
 from tabulaflow.data import SQLConnectorProtocol
 from tabulaflow.output.formatting import SQLSchemaFormatter, format_dataframe, schema_formatter_registry
-from tabulaflow.research.execution import populate_task_exec_results
+from tabulaflow.research.query_execution import populate_task_exec_results
 from tabulaflow.agents.summarization import DBSummarizer
 from tabulaflow.agents.trace import Trajectory, Usage
 from tabulaflow.research.types import PredQuery, SimpleNL2QTask, SimpleNL2QTaskOutput

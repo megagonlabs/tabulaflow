@@ -8,7 +8,7 @@ from tabulaflow.research.agents.registry import AgentConfig
 from tabulaflow.research.agents.utils import instrument
 from tabulaflow.research.types import SimpleNL2QTask, SimpleNL2QTaskOutput
 from tabulaflow.data import SQLConnectorProtocol
-from tabulaflow.research.execution import populate_task_exec_results
+from tabulaflow.research.query_execution import populate_task_exec_results
 
 
 logger = logging.getLogger(__name__)

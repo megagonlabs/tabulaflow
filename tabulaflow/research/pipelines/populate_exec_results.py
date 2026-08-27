@@ -6,7 +6,7 @@ import os
 from typing import Literal
 from tqdm.asyncio import tqdm_asyncio
 from tabulaflow.research.benchmarks.registry import dataset_registry
-from tabulaflow.research.execution import populate_task_exec_results
+from tabulaflow.research.query_execution import populate_task_exec_results
 from tabulaflow.research.types import NL2QRunResult, NL2QDataset
 from tabulaflow.data import Neo4jConnectorConfig, SQLConnectorConfig
 

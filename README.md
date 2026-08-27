@@ -901,7 +901,7 @@ tabulaflow/research
 ├── pipelines/              # experiment orchestration and CLIs
 ├── types.py                # research data models
 ├── reporting.py            # readable reports and persisted outputs
-├── execution.py            # execution of research query objects
+├── query_execution.py            # execution of research query objects
 ├── query_analysis.py       # static query analysis
 └── ambiguity.py            # ambiguity ordering and identifiers
 ```

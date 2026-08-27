@@ -160,7 +160,7 @@ source_modules = [
     "tabulaflow.research.preprocessing",
     "tabulaflow.research.tools",
     "tabulaflow.research.ambiguity",
-    "tabulaflow.research.execution",
+    "tabulaflow.research.query_execution",
     "tabulaflow.research.query_analysis",
     "tabulaflow.research.reporting",
     "tabulaflow.research.types",
