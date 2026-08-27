@@ -246,7 +246,6 @@ class TabulaflowApp(App[None]):
         # resolve relative paths against the *live* process cwd; the "relative = project
         # dir" design holds only while those two stay equal, i.e. cwd never changes.
         self._project_dir = Path(os.getcwd())
-        ensure_pane_dir(self._runtime_paths.pane_dir)
         self._session: AppSession | None = None
         self._pane: OutputPane | None = None
         self._session_lock = asyncio.Lock()
@@ -579,16 +578,20 @@ class TabulaflowApp(App[None]):
         and DuckDB file locks are always released cleanly.
         """
         if self._session is None:
-            self._cleanup_runtime_paths()
+            self._close_pane()
             self.exit()
             return
         self.run_worker(self._shutdown_then_exit(), exclusive=False, group="shutdown")
 
-    def _cleanup_runtime_paths(self) -> None:
-        """Stop presentation services owned by the TUI."""
+    def _close_pane(self, *, remove_artifacts: bool = False) -> None:
+        """Stop the browser pane and optionally remove its session files."""
         if self._pane is not None:
             self._pane.stop()
             self._pane = None
+        if remove_artifacts:
+            import shutil
+
+            shutil.rmtree(self._runtime_paths.pane_dir, ignore_errors=True)
 
     async def _shutdown_then_exit(self) -> None:
         assert self._session is not None
@@ -597,7 +600,7 @@ class TabulaflowApp(App[None]):
         except Exception:
             logger.debug("session close failed during exit", exc_info=True)
         finally:
-            self._cleanup_runtime_paths()
+            self._close_pane()
             self.exit()
 
     def _ensure_pane(self) -> "OutputPane | None":
@@ -1141,4 +1144,5 @@ async def run_tui(
     try:
         await app.run_async(mouse=True)
     finally:
+        app._close_pane(remove_artifacts=True)
         _restore_terminal_modes()

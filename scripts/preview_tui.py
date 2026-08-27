@@ -26,6 +26,7 @@ async def run() -> None:
     try:
         await app.run_async(mouse=True)
     finally:
+        app._close_pane(remove_artifacts=True)  # noqa: SLF001
         _restore_terminal_modes()
 
 

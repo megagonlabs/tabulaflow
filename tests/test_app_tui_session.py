@@ -127,6 +127,27 @@ def test_text_selection_failure_is_contained(
     assert "copying selected text failed" in caplog.text
 
 
+def test_close_pane_removes_session_artifacts(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("HOME", str(tmp_path))
+    app = _app(None)
+    pane_dir = app._runtime_paths.pane_dir
+    pane_dir.mkdir(parents=True)
+    (pane_dir / "card_test.data.json").write_text("{}")
+    stopped: list[bool] = []
+
+    class FakePane:
+        def stop(self) -> None:
+            stopped.append(True)
+
+    app._pane = FakePane()  # type: ignore[assignment]
+
+    app._close_pane(remove_artifacts=True)
+
+    assert stopped == [True]
+    assert app._pane is None
+    assert not pane_dir.exists()
+
+
 @pytest.mark.asyncio
 async def test_ensure_session_creates_app_session(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     project_dir = tmp_path / "project"
@@ -912,6 +933,7 @@ class _FakeStdout:
 class _FakeRunTuiApp:
     error: BaseException | None = None
     run_mouse: bool | None = None
+    pane_close_args: list[bool] = []
 
     def __init__(self, **_kwargs: object) -> None:
         pass
@@ -922,12 +944,16 @@ class _FakeRunTuiApp:
         if error is not None:
             raise error
 
+    def _close_pane(self, *, remove_artifacts: bool = False) -> None:
+        type(self).pane_close_args.append(remove_artifacts)
+
 
 @pytest.mark.asyncio
 async def test_run_tui_restores_terminal_modes_after_normal_exit(monkeypatch: pytest.MonkeyPatch) -> None:
     stdout = _FakeStdout()
     _FakeRunTuiApp.error = None
     _FakeRunTuiApp.run_mouse = None
+    _FakeRunTuiApp.pane_close_args = []
 
     monkeypatch.setattr(sys, "__stdout__", stdout)
     monkeypatch.setattr(tui, "TabulaflowApp", _FakeRunTuiApp)
@@ -935,6 +961,7 @@ async def test_run_tui_restores_terminal_modes_after_normal_exit(monkeypatch: py
     await tui.run_tui(_selection(None))
 
     assert _FakeRunTuiApp.run_mouse is True
+    assert _FakeRunTuiApp.pane_close_args == [True]
     assert stdout.value == tui._TERMINAL_MODE_RESTORE_SEQUENCE
     assert stdout.flushed is True
 
@@ -945,6 +972,7 @@ async def test_run_tui_restores_terminal_modes_after_exception(monkeypatch: pyte
     error = RuntimeError("boom")
     _FakeRunTuiApp.error = error
     _FakeRunTuiApp.run_mouse = None
+    _FakeRunTuiApp.pane_close_args = []
 
     monkeypatch.setattr(sys, "__stdout__", stdout)
     monkeypatch.setattr(tui, "TabulaflowApp", _FakeRunTuiApp)
@@ -953,5 +981,6 @@ async def test_run_tui_restores_terminal_modes_after_exception(monkeypatch: pyte
         await tui.run_tui(_selection(None))
 
     assert _FakeRunTuiApp.run_mouse is True
+    assert _FakeRunTuiApp.pane_close_args == [True]
     assert stdout.value == tui._TERMINAL_MODE_RESTORE_SEQUENCE
     assert stdout.flushed is True

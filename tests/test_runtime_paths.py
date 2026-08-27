@@ -27,7 +27,7 @@ def test_create_runtime_paths_retries_id_collision(tmp_path: Path, monkeypatch: 
     assert paths.pane_dir.parent.is_dir()
 
 
-def test_pane_dir_is_durable_under_session() -> None:
+def test_pane_dir_is_scoped_to_session() -> None:
     paths = RuntimePaths.for_session("sess-123")
     assert paths.pane_dir.name == "pane"
     assert paths.pane_dir.parent.name == "sess-123"
