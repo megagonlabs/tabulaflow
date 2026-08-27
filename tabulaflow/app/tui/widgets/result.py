@@ -25,7 +25,7 @@ from tabulaflow.app.theme import (
     KEY_HINT,
     KEY_HINT_DIM,
 )
-from tabulaflow.app.screens import ChartBrowserScreen, DataBrowserScreen, QueryBrowserScreen
+from tabulaflow.app.tui.screens.results import ChartBrowserScreen, DataBrowserScreen, QueryBrowserScreen
 from tabulaflow.app.turn import TurnOutput
 
 if TYPE_CHECKING:

@@ -43,6 +43,8 @@ from tabulaflow.app.tui.widgets.progress import AgentProgressWidget
 from tabulaflow.app.tui.widgets.result import AgentResultWidget
 
 if TYPE_CHECKING:
+    import pandas as pd
+
     from tabulaflow.app.pane import OutputPane
     from tabulaflow.agents.chat import ChatResult
     from tabulaflow.output.resolver import ResolvedOutput
@@ -260,9 +262,9 @@ class TabulaflowApp(App[None]):
         # The same instance is passed to every SchemaBrowserScreen, which
         # mutates it on close so reopening lands the user where they left
         # off.
-        from tabulaflow.app.screens import _ExplorerState
+        from tabulaflow.app.tui.screens.schema import ExplorerState
 
-        self._explorer_state = _ExplorerState()
+        self._explorer_state = ExplorerState()
 
     def compose(self) -> ComposeResult:
         initialization_spinner = self._initialization_spinner
@@ -401,7 +403,7 @@ class TabulaflowApp(App[None]):
         workspace is ready it silently does nothing (the button keeps its normal
         look); once ready it falls back to a system message if nothing is connected.
         """
-        from tabulaflow.app.screens import SchemaBrowserScreen
+        from tabulaflow.app.tui.screens.schema import SchemaBrowserScreen
         from tabulaflow.app.tui.widgets.chat import SystemMessage
 
         if self._session is None:
@@ -629,6 +631,17 @@ class TabulaflowApp(App[None]):
             return False
         pane.push(manual_card_turn(card, title=title))
         return True
+
+    def show_table_in_pane(self, df: pd.DataFrame, *, title: str) -> bool:
+        """Render and show a table from a TUI screen in the browser pane."""
+        from tabulaflow.app.pane import ResultCardInput, render_result_data
+
+        try:
+            card = render_result_data(ResultCardInput(df=df, label=None), self._runtime_paths.pane_dir)
+        except Exception:
+            logger.debug("preparing manual table for output pane failed", exc_info=True)
+            return False
+        return card is not None and self.view_card_in_pane(card, title=title or "Table preview")
 
     def _refresh_bottom_status(self) -> None:
         """Show model status and the persistent pane URL below the input row."""
@@ -1006,7 +1019,7 @@ class TabulaflowApp(App[None]):
             return
 
         if result.should_open_config:
-            from tabulaflow.app.screens import ConfigScreen
+            from tabulaflow.app.tui.screens.config import ConfigScreen
 
             self.push_screen(
                 ConfigScreen(self._llm_selection),

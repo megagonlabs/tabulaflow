@@ -33,7 +33,6 @@ from tabulaflow.app.pane.cards import (
 from tabulaflow.app.theme import CODE_TEXT
 from tabulaflow.app.pane import CARD_ID_PREFIX, OutputPane, OutputPanePortError, _PANE_HTML
 from tabulaflow.app.pane import PaneCard, PanePanel, PaneTurn, turn_payload
-from tabulaflow.app.screens import send_table_to_output_pane
 from tabulaflow.output.graphs import materialize_graph_result, normalize_graph_spec
 from tabulaflow.app.tui import TabulaflowApp
 from tabulaflow.app.turn import TurnOutput
@@ -534,25 +533,26 @@ def test_map_card_writes_inline_point_layer(tmp_path: Path) -> None:
 
 
 def test_manual_table_send_includes_data_view_meta(tmp_path: Path) -> None:
-    calls: list[tuple[Path, dict[str, object]]] = []
-    statuses: list[object] = []
+    pushed: list[PaneTurn] = []
 
-    class FakeApp:
-        _runtime_paths = SimpleNamespace(pane_dir=tmp_path)
+    class FakePane:
+        url = "http://127.0.0.1:61111/"
 
-        def view_card_in_pane(self, card: object, **kwargs: object) -> bool:
-            calls.append((Path(f"{card['id']}.data.json"), kwargs))  # type: ignore[index]
-            return True
+        def push(self, turn: PaneTurn) -> None:
+            pushed.append(turn)
 
     df = pd.DataFrame({"sample_id": ["ex-0001", "ex-0002"], "answer": ["A", "B"]})
-    path = send_table_to_output_pane(df, "manual_table", FakeApp(), status=statuses.append)
+    app = TabulaflowApp(llm_selection=ResolvedLLMSelection(LLM_OFF, None))
+    app._runtime_paths = SimpleNamespace(pane_dir=tmp_path)  # type: ignore[assignment]  # noqa: SLF001
+    app._pane = FakePane()  # type: ignore[assignment]  # noqa: SLF001
 
-    assert path is not None
-    assert path.exists()
+    assert app.show_table_in_pane(df, title="manual_table")
+
+    path = next(tmp_path.glob("card_*.data.json"))
     payload = json.loads(path.read_text())
     assert payload["table"]["meta"] == "2 rows · 2 columns"
-    assert calls == [(Path(path.name), {"title": "manual_table"})]
-    assert str(statuses[-1]) == "sent to output pane"
+    assert pushed[0]["title"] == "manual_table"
+    assert pushed[0]["source"] == "manual"
 
 
 def test_pane_loads_shell_as_native_module() -> None:

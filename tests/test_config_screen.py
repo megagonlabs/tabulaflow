@@ -12,7 +12,7 @@ from tabulaflow.app.config import (
     ReasoningEffort,
     ResolvedLLMSelection,
 )
-from tabulaflow.app.screens import ConfigScreen
+from tabulaflow.app.tui.screens.config import ConfigScreen
 
 _PRESETS = [
     LLMPreset(
@@ -69,7 +69,7 @@ def _patch_config_io(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("OPENAI_API_KEY", raising=False)
     monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
     monkeypatch.setattr(
-        "tabulaflow.app.screens.load_app_config",
+        "tabulaflow.app.tui.screens.config.load_app_config",
         lambda: AppConfig(custom_llm_presets=list(_PRESETS)),
     )
 
@@ -121,7 +121,7 @@ async def test_preset_label_truncates_by_display_width_and_models_wrap_in_their_
 ) -> None:
     long_label_preset = _PRESETS[0].model_copy(update={"label": "分析プリセットの長い名前"})
     monkeypatch.setattr(
-        "tabulaflow.app.screens.load_app_config",
+        "tabulaflow.app.tui.screens.config.load_app_config",
         lambda: AppConfig(custom_llm_presets=[long_label_preset]),
     )
     screen = ConfigScreen(_explicit(long_label_preset))
