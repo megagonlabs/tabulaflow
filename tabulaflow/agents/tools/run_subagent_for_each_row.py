@@ -713,7 +713,7 @@ class RunSubagentForEachRowTool:
                 # for truncate-enabled subagents, left untouched otherwise.
                 if subagent_scope is not None and truncate_enabled:
                     message_id = await subagent_scope.add(kind="user_prompt", content=prompt)
-                    if len(prompt) > MESSAGE_THRESHOLD_CHARS:
+                    if message_id is not None and len(prompt) > MESSAGE_THRESHOLD_CHARS:
                         prompt = make_snippet(message_id, prompt)
                 result = await subagent.run(prompt)
                 traj = Trajectory.from_pydantic_ai_messages(result.all_messages())

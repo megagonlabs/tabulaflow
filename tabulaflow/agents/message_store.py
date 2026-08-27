@@ -1,11 +1,17 @@
-"""Persistent store for user messages and tool responses, with overflow truncation.
+"""Lossless offloading for content that may exceed an agent's context window.
 
-Every user prompt and tool response is mirrored into ``workspace._internal.messages``
-as a single row. Every model-visible response carries a leading ``[message_id=M<n>]``
-marker so the agent can dereference it programmatically. When content exceeds
-``MESSAGE_THRESHOLD_CHARS``, the body is additionally replaced with a head + tail
-snippet that points back at the stored row; the agent retrieves the full text via SQL
-on the workspace database.
+User prompts and string tool results can be stored in
+``workspace._internal.messages`` and represented to the model by a short
+``[message_id=M<n>]`` marker. Large values are reduced to a head-and-tail snippet
+that includes the exact ``run_query`` call needed to retrieve the stored body. This
+keeps prompts bounded without preventing the agent, document extractors, or nested
+subagents from accessing the complete content later.
+
+Storage is best-effort and fail-open. An id is returned only after its row has been
+written successfully; without a workspace or after a write failure, callers keep the
+original content unchanged. ``MessageStoreCapability`` applies this policy to
+allowlisted string tool results, while user prompts opt in directly through a scoped
+store. Scopes add agent provenance but do not restrict access.
 """
 
 from __future__ import annotations
@@ -17,6 +23,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import TYPE_CHECKING, Any, Literal
 
+import sqlalchemy
 from pydantic_ai.capabilities.abstract import AbstractCapability
 from pydantic_ai.messages import ToolReturn
 
@@ -42,12 +49,20 @@ MESSAGE_THRESHOLD_CHARS = MESSAGE_HEAD_CHARS + MESSAGE_TAIL_CHARS + _SNIPPET_SLA
 _SCHEMA = "_internal"
 _TABLE = "messages"
 _QUALIFIED = f'"{_SCHEMA}"."{_TABLE}"'
+_MESSAGE_TABLE = sqlalchemy.table(
+    _TABLE,
+    sqlalchemy.column("message_id"),
+    sqlalchemy.column("agent_id"),
+    sqlalchemy.column("kind"),
+    sqlalchemy.column("tool_name"),
+    sqlalchemy.column("tool_call_id"),
+    sqlalchemy.column("created_at"),
+    sqlalchemy.column("char_len"),
+    sqlalchemy.column("content"),
+    schema=_SCHEMA,
+)
 
 MessageKind = Literal["user_prompt", "tool_return"]
-
-
-def _utcnow() -> datetime:
-    return datetime.now(timezone.utc)
 
 
 def id_marker(message_id: str) -> str:
@@ -95,22 +110,15 @@ def make_snippet(message_id: str, content: str) -> str:
 class MessageStore:
     """Append-only mirror of user prompts and tool responses in workspace DuckDB.
 
-    The store assigns sequential ``M1``, ``M2``, ... ids and persists every entry
-    even when it is below the truncation threshold so the agent can SQL-introspect
-    the conversation. The model-visible truncation logic lives separately
-    (``ChatSession.run_stream`` for user prompts; ``MessageStoreCapability`` for tool returns).
+    Successfully stored entries receive sequential ``M1``, ``M2``, ... ids. Model-
+    visible marking and truncation remain the caller's responsibility.
     """
 
-    def __init__(self, *, spill_connector: SQLConnector | None = None) -> None:
-        self._spill_connector = spill_connector
+    def __init__(self, connector: SQLConnector | None = None) -> None:
+        self._connector = connector
         self._next_id = 1
         self._table_created = False
         self._lock = asyncio.Lock()
-
-    def attach_connector(self, connector: SQLConnector) -> None:
-        """Bind a workspace connector after construction (mirrors OutputStore)."""
-        self._spill_connector = connector
-        self._table_created = False
 
     async def add(
         self,
@@ -120,91 +128,70 @@ class MessageStore:
         tool_name: str | None = None,
         tool_call_id: str | None = None,
         agent_id: str | None = None,
-    ) -> str:
-        """Persist one message and return its assigned id (e.g. ``"M7"``).
+    ) -> str | None:
+        """Persist one message and return its id, or ``None`` if storage is unavailable.
 
         ``agent_id`` is a provenance tag (e.g. ``"main"``, ``"subagent:<call>:<row>"``)
         — not an access scope. Use :meth:`scoped` to bind it once and avoid threading
         the value through every call site.
         """
+        connector = self._connector
+        if connector is None:
+            return None
         async with self._lock:
             message_id = f"M{self._next_id}"
             self._next_id += 1
-        if self._spill_connector is None:
-            return message_id
         try:
-            await self._ensure_table()
-            await self._insert_row(
-                message_id=message_id,
-                agent_id=agent_id,
-                kind=kind,
-                tool_name=tool_name,
-                tool_call_id=tool_call_id,
-                created_at=_utcnow(),
-                char_len=len(content),
-                content=content,
+            await self._ensure_table(connector)
+            result = await connector.run_query_async(
+                sqlalchemy.insert(_MESSAGE_TABLE).values(
+                    message_id=message_id,
+                    agent_id=agent_id,
+                    kind=kind,
+                    tool_name=tool_name,
+                    tool_call_id=tool_call_id,
+                    created_at=datetime.now(timezone.utc),
+                    char_len=len(content),
+                    content=content,
+                )
             )
+            if result.error is not None:
+                raise RuntimeError(result.error.message)
         except Exception:
             logger.warning("Failed to persist message %s to workspace", message_id, exc_info=True)
+            return None
         return message_id
 
     def scoped(self, agent_id: str) -> ScopedMessageStore:
         """Return a thin handle that pins ``agent_id`` on every ``add`` call."""
         return ScopedMessageStore(_store=self, agent_id=agent_id)
 
-    async def _ensure_table(self) -> None:
-        if self._table_created or self._spill_connector is None:
+    async def _ensure_table(self, connector: SQLConnector) -> None:
+        if self._table_created:
             return
-        await self._spill_connector.run_query_async(f'CREATE SCHEMA IF NOT EXISTS "{_SCHEMA}"')
-        await self._spill_connector.run_query_async(
+        statements = [
+            f'CREATE SCHEMA IF NOT EXISTS "{_SCHEMA}"',
             f"""
-            CREATE TABLE IF NOT EXISTS {_QUALIFIED} (
-                message_id   TEXT PRIMARY KEY,
-                agent_id     TEXT,
-                kind         TEXT NOT NULL,
-                tool_name    TEXT,
-                tool_call_id TEXT,
-                created_at   TIMESTAMP NOT NULL,
-                char_len     INTEGER NOT NULL,
-                content      TEXT NOT NULL
-            )
-            """.strip()
-        )
+                CREATE TABLE IF NOT EXISTS {_QUALIFIED} (
+                    message_id   TEXT PRIMARY KEY,
+                    agent_id     TEXT,
+                    kind         TEXT NOT NULL,
+                    tool_name    TEXT,
+                    tool_call_id TEXT,
+                    created_at   TIMESTAMP NOT NULL,
+                    char_len     INTEGER NOT NULL,
+                    content      TEXT NOT NULL
+                )
+            """.strip(),
+        ]
+        for statement in statements:
+            result = await connector.run_query_async(statement)
+            if result.error is not None:
+                raise RuntimeError(result.error.message)
         self._table_created = True
 
-    async def _insert_row(
-        self,
-        *,
-        message_id: str,
-        agent_id: str | None,
-        kind: MessageKind,
-        tool_name: str | None,
-        tool_call_id: str | None,
-        created_at: datetime,
-        char_len: int,
-        content: str,
-    ) -> None:
-        import pandas as pd
 
-        assert self._spill_connector is not None
-        df = pd.DataFrame(
-            [
-                {
-                    "message_id": message_id,
-                    "agent_id": agent_id,
-                    "kind": kind,
-                    "tool_name": tool_name,
-                    "tool_call_id": tool_call_id,
-                    "created_at": created_at,
-                    "char_len": char_len,
-                    "content": content,
-                }
-            ]
-        )
-        await self._spill_connector.write_dataframe_async(df=df, table_name=_TABLE, schema_name=_SCHEMA, mode="append")
-
-
-@dataclass
+@dataclass(frozen=True)
 class ScopedMessageStore:
     """A thin handle over :class:`MessageStore` that pins ``agent_id`` on writes.
 
@@ -222,7 +209,7 @@ class ScopedMessageStore:
         content: str,
         tool_name: str | None = None,
         tool_call_id: str | None = None,
-    ) -> str:
+    ) -> str | None:
         return await self._store.add(
             kind=kind,
             content=content,
@@ -234,24 +221,11 @@ class ScopedMessageStore:
 
 @dataclass
 class MessageStoreCapability(AbstractCapability[Any]):
-    """Mirror tool responses into the message store; tag every one and (optionally) truncate overflow.
+    """Store and mark allowlisted string tool results.
 
-    Only tools whose names appear in ``tool_allowlist`` are subject to the flow. Each
-    allowlisted string response is persisted and returned with a ``[message_id=M<n>]``
-    marker (plus ``message_id``/``char_len`` metadata). When ``truncate`` is True,
-    responses over ``threshold_chars`` additionally have their body replaced with a head
-    + tail snippet pointing back at the stored row; when ``truncate`` is False the full
-    body is always returned (still tagged) — for subagents that have no ``run_query``
-    deref path and would otherwise be stranded from the snippet's content. Tools outside
-    the allowlist (e.g. ``run_query``, which the agent uses to read back stored messages)
-    pass through untouched — crucial to avoid re-truncation cycles when the agent fetches
-    a stored message.
-
-    ``snippet_fn`` selects the overflow view; the default head+tail
-    (:func:`make_snippet`) is content-agnostic. Allowlists with structure worth
-    preserving override it — e.g. browser snapshots inject a ref-aware snippet that
-    keeps interactive ``[ref=eN]`` handles the head+tail window would drop. The full
-    body is always persisted regardless, so the deref path stays lossless.
+    Results are changed only after successful persistence: short results receive an id
+    marker and oversized results are replaced by ``snippet_fn`` when truncation is
+    enabled. Other tools, non-string results, and storage failures pass through unchanged.
     """
 
     store: ScopedMessageStore
@@ -279,6 +253,8 @@ class MessageStoreCapability(AbstractCapability[Any]):
             tool_name=tool_def.name,
             tool_call_id=call.tool_call_id,
         )
+        if message_id is None:
+            return result
         if not self.truncate or len(result) <= self.threshold_chars:
             return_value = make_marked(message_id, result)
         else:

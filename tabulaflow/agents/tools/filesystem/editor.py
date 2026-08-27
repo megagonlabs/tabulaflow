@@ -257,6 +257,8 @@ class FileEditorTool:
         if self._message_store is None:
             return text
         message_id = await self._message_store.add(kind="tool_return", content=text, tool_name=self.name)
+        if message_id is None:
+            return text
         if len(text) <= MESSAGE_THRESHOLD_CHARS:
             return make_marked(message_id, text)
         return make_snippet(message_id, text)

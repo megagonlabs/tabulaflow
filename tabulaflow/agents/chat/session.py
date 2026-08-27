@@ -138,7 +138,7 @@ class ChatSession:
         from tabulaflow.output.store import OutputStore
 
         self._output_store: OutputStore = OutputStore(spill_connector=workspace, registry=registry)
-        self._message_store = MessageStore()
+        self._message_store = MessageStore(workspace)
         self._main_scope = self._message_store.scoped("main")
         subagent_dir = trajectory_log_dir / "subagents" if trajectory_log_dir is not None else None
         self._tools = self._build_tools(subagent_dir)
@@ -146,7 +146,6 @@ class ChatSession:
             if isinstance(tool, ProgressReportingTool):
                 tool.on_progress = self._emit_progress
         if workspace is not None:
-            self._message_store.attach_connector(workspace)
             self._tools.add_canonical_name.attach_connector(workspace)
         self._system_prompt = self._compose_system_prompt()
         self._seed_conversation_context()
@@ -675,7 +674,7 @@ class ChatSession:
         assert self._pydantic_ai_agent is not None
 
         message_id = await self._main_scope.add(kind="user_prompt", content=question)
-        if len(question) > MESSAGE_THRESHOLD_CHARS:
+        if message_id is not None and len(question) > MESSAGE_THRESHOLD_CHARS:
             question = make_snippet(message_id, question)
 
         answer_text = ""

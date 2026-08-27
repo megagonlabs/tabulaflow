@@ -280,14 +280,14 @@ class TestPdf:
         out = await editor("view", "bad.pdf")
         assert "(error" in out
 
-    async def test_pdf_view_offloaded_with_store(self, tmp_path: Path) -> None:
+    async def test_pdf_view_stays_inline_without_storage(self, tmp_path: Path) -> None:
         from tabulaflow.agents.message_store import MessageStore
 
         tool = FileEditorTool(str(tmp_path), message_store=MessageStore().scoped("test"))
         (tmp_path / "doc.pdf").write_bytes(_make_pdf("OFFLOAD_ME"))
         out = await tool("view", "doc.pdf")
-        assert "[message_id=M1]" in out  # mirrored to the store
-        assert "OFFLOAD_ME" in out  # small PDF -> full content kept (make_marked)
+        assert "message_id" not in out
+        assert "OFFLOAD_ME" in out
 
     async def test_non_pdf_view_not_offloaded(self, tmp_path: Path) -> None:
         from tabulaflow.agents.message_store import MessageStore
