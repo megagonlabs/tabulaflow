@@ -1,26 +1,27 @@
 """Data models for research queries, tasks, datasets, and experiment results."""
 
 import datetime
-from enum import Enum
-import re
-from pydantic import BaseModel, Field, model_validator, AfterValidator, ConfigDict
-from pydantic.types import StringConstraints
-from typing import TYPE_CHECKING, Any, Literal, Annotated, Protocol, TypeAlias, Union, overload
-import logging
-import math
 import itertools
+import math
+import re
+from enum import Enum
+from typing import TYPE_CHECKING, Any, Literal, Annotated, Protocol, TypeAlias, Union, overload
+
+from pydantic import AfterValidator, BaseModel, ConfigDict, Field, model_validator
+from pydantic.types import StringConstraints
+
 from tabulaflow.agents.trace import Trajectory, Usage
 from tabulaflow.core import ColumnRef, ExecResult, SQLSchema
 
 if TYPE_CHECKING:
     from tabulaflow.agents.tools.run_query import QueryExecution
 
-logger = logging.getLogger(__name__)
-
 NumericOrNull: TypeAlias = Union[float, int, None]
 
 
 class PredQuery(BaseModel):
+    """A query predicted by a research agent, optionally with its execution result."""
+
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     id: str = "PQRY"
@@ -57,6 +58,8 @@ def is_id_unique(objs: list[Any]) -> list[Any]:
 
 
 class GoldQuery(BaseModel):
+    """A reference query and accepted result variants for benchmark evaluation."""
+
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     id: str = "GQRY"
@@ -86,6 +89,8 @@ class GoldQuery(BaseModel):
 
 
 class CSVSummaryRow(BaseModel):
+    """One flattened task row in an experiment summary CSV."""
+
     qid: str
     db: str
     question: str
@@ -104,6 +109,8 @@ class CSVSummaryRow(BaseModel):
 
 
 class SimpleNL2QTask(BaseModel):
+    """An unambiguous natural-language-to-query benchmark task."""
+
     task_type: Literal["simple"] = "simple"
     qid: str
     db: str
@@ -114,7 +121,7 @@ class SimpleNL2QTask(BaseModel):
     """Instructions (e.g. for formatting) that apply to all questions in the dataset."""
     document: str | None = None
     gold_query: GoldQuery
-    extra_info: dict[str, Any] = {}
+    extra_info: dict[str, Any] = Field(default_factory=dict)
 
     def to_directory(self, directory: str) -> None:
         from tabulaflow.research.reporting import task_to_directory
@@ -128,6 +135,8 @@ class SimpleNL2QTask(BaseModel):
 
 
 class ExtraPredInfo(BaseModel):
+    """Optional intermediate artifacts produced while predicting a query."""
+
     linked_schema: list[ColumnRef] | None = None
     raw_pred_query: PredQuery | None = None
     """If your method includes a postprocessing step, this field can store the raw predicted query before postprocessing to analyze its impact. The raw_pred_*_ex metrics evaluate these raw predictions."""
@@ -135,6 +144,8 @@ class ExtraPredInfo(BaseModel):
 
 
 class SimpleNL2QTaskOutput(SimpleNL2QTask):
+    """Prediction and run metadata for a simple task."""
+
     output_type: Literal["simple"] = "simple"
     pred_query: PredQuery | None
     trajectory: Trajectory | list[Trajectory] | None = None
@@ -162,6 +173,8 @@ class SimpleNL2QTaskOutput(SimpleNL2QTask):
 
 
 class ARCSAmbiguityType(str, Enum):
+    """ARCS ambiguity taxonomy labels."""
+
     semantic_column = "semantic_column"
     semantic_table = "semantic_table"
     semantic_value = "semantic_value"
@@ -173,6 +186,8 @@ class ARCSAmbiguityType(str, Enum):
 
 
 class GoldAmbiguityPointFinite(BaseModel):
+    """A finite ambiguity with an enumerated set of interpretations."""
+
     id: Annotated[str, StringConstraints(pattern=r"^[A-Z]$")]
     """A, B, C, etc."""
     phrase: str
@@ -192,6 +207,8 @@ class GoldAmbiguityPointFinite(BaseModel):
 
 
 class GoldAmbiguityPointInfinite(BaseModel):
+    """An open-ended ambiguity represented by a typed query parameter."""
+
     id: Annotated[str, StringConstraints(pattern=r"^[A-Z]+$")]
     """A, B, C, etc."""
     phrase: str
@@ -209,6 +226,8 @@ GoldAmbiguityPoint = Annotated[Union[GoldAmbiguityPointFinite, GoldAmbiguityPoin
 
 
 class AmbigNL2QTask(BaseModel):
+    """A benchmark task with explicit ambiguity points and resolution queries."""
+
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     qid: str
@@ -257,7 +276,8 @@ class AmbigNL2QTask(BaseModel):
     def validate_gold_queries(self) -> "AmbigNL2QTask":
         # Gold query ID must match the pattern "GQRY(-[A-Z]+\.[0-9]+)*" (e.g. "GQRY-A.2-B.0")
         pattern = r"^GQRY(-[A-Z]+\.[0-9]+)*$"
-        assert all(re.match(pattern, gq.id) for gq in self.gold_queries)
+        if not all(re.match(pattern, gq.id) for gq in self.gold_queries):
+            raise ValueError(f"qid {self.qid}: invalid gold query id")
 
         finite_aps = sorted([ap for ap in self.gold_ambiguity_points if ap.type == "finite"], key=lambda x: x.id)
         required_ids = [
@@ -275,40 +295,44 @@ class AmbigNL2QTask(BaseModel):
                 raise ValueError(
                     f"qid {self.qid}: Gold query {required_id} is not found. Only {gold_query_ids} are found."
                 )
-        assert len(self.gold_queries) == len(required_ids) == math.prod(len(ap.interpretations) for ap in finite_aps)
         return self
 
     @model_validator(mode="after")
     def validate_has_intended_resolution(self) -> "AmbigNL2QTask":
         if self.has_intended_resolution:
-            assert self.gold_intended_query_id is not None
-            assert all(
+            if self.gold_intended_query_id is None:
+                raise ValueError("gold_intended_query_id is required when has_intended_resolution is true")
+            if not all(
                 ap.intended_interpretation_idx is not None for ap in self.gold_ambiguity_points if ap.type == "finite"
-            )
-            assert all(
+            ):
+                raise ValueError("finite ambiguity points require an intended interpretation")
+            if not all(
                 ap.intended_parameter_value is not None for ap in self.gold_ambiguity_points if ap.type == "infinite"
-            )
+            ):
+                raise ValueError("infinite ambiguity points require an intended parameter value")
         else:
-            assert self.gold_intended_query_id is None
-            assert all(
+            if self.gold_intended_query_id is not None:
+                raise ValueError("gold_intended_query_id requires has_intended_resolution")
+            if not all(
                 ap.intended_interpretation_idx is None for ap in self.gold_ambiguity_points if ap.type == "finite"
-            )
-            assert all(
+            ):
+                raise ValueError("finite ambiguity points cannot have an intended interpretation")
+            if not all(
                 ap.intended_parameter_value is None for ap in self.gold_ambiguity_points if ap.type == "infinite"
-            )
+            ):
+                raise ValueError("infinite ambiguity points cannot have an intended parameter value")
         return self
 
     @model_validator(mode="after")
     def validate_id_reference(self) -> "AmbigNL2QTask":
         gold_query_ids = set(gq.id for gq in self.gold_queries)
-        assert self.gold_intended_query_id is None or self.gold_intended_query_id in gold_query_ids
+        if self.gold_intended_query_id is not None and self.gold_intended_query_id not in gold_query_ids:
+            raise ValueError(f"gold query {self.gold_intended_query_id!r} does not exist")
         return self
 
 
 class SimpleAmbigNL2QTaskOutput(AmbigNL2QTask):
-    """
-    The model only predicts the final disambiguated query
-    """
+    """An ambiguity-aware prediction containing only the resolved final query."""
 
     output_type: Literal["ambig-simple"] = "ambig-simple"
     pred_intended_query: PredQuery | None
@@ -338,6 +362,8 @@ class SimpleAmbigNL2QTaskOutput(AmbigNL2QTask):
 
 
 class PredAmbiguityPointFinite(BaseModel):
+    """A predicted finite ambiguity and its candidate interpretations."""
+
     id: Annotated[str, StringConstraints(pattern=r"^[A-Z]+$")]
     """A, B, C, etc."""
     phrase: str
@@ -348,6 +374,8 @@ class PredAmbiguityPointFinite(BaseModel):
 
 
 class PredAmbiguityPointInfinite(BaseModel):
+    """A predicted open-ended ambiguity represented by a typed parameter."""
+
     id: Annotated[str, StringConstraints(pattern=r"^[A-Z]+$")]
     """A, B, C, etc."""
     phrase: str
@@ -366,10 +394,7 @@ PredAmbiguityPoint = Annotated[Union[PredAmbiguityPointFinite, PredAmbiguityPoin
 
 
 class FlatAmbigNL2QTaskOutput(AmbigNL2QTask):
-    """
-    The model predicts a list of interpretations, the SQL for each interpretation, and the final disambiguated query
-    (e.g. the "Disambiguate First Parse Later" paper https://arxiv.org/pdf/2502.18448)
-    """
+    """Flat interpretations, their queries, and the resolved final query."""
 
     output_type: Literal["ambig-flat"] = "ambig-flat"
     interpretations: list[str]
@@ -384,11 +409,6 @@ class FlatAmbigNL2QTaskOutput(AmbigNL2QTask):
     eval_metrics: dict[str, Any] = Field(default_factory=dict)
     """Metrics produced during evaluation, e.g. accuracy, etc."""
     extra_pred_info: ExtraPredInfo = Field(default_factory=ExtraPredInfo)
-
-    # @model_validator(mode="after")
-    # def validate_interpretations(self) -> "FlatAmbigNL2QTaskOutput":
-    #     assert len(self.interpretations) == len(self.pred_queries)
-    #     return self
 
     @property
     def pred_intended_query(self) -> PredQuery | None:
@@ -414,9 +434,7 @@ class FlatAmbigNL2QTaskOutput(AmbigNL2QTask):
 
 
 class StructuredAmbigNL2QTaskOutput(AmbigNL2QTask):
-    """
-    The model predicts all the ambiguity points, their interpretations, the SQL for each interpretation combination, as well as the final disambiguated query
-    """
+    """Predicted ambiguity structure, interpretation queries, and final resolution."""
 
     output_type: Literal["ambig-structured"] = "ambig-structured"
     pred_ambiguity_points: Annotated[list[PredAmbiguityPoint], AfterValidator(is_id_unique)]
@@ -454,31 +472,20 @@ class StructuredAmbigNL2QTaskOutput(AmbigNL2QTask):
     def validate_pred_queries(self) -> "StructuredAmbigNL2QTaskOutput":
         # Pred query ID must match the pattern "PQRY(-[A-Z]+\.[0-9]+)*" (e.g. "PQRY-A.2-B.0")
         pattern = r"^PQRY(-[A-Z]+\.[0-9]+)*$"
-        assert all(re.match(pattern, pq.id) for pq in self.pred_queries)
+        if not all(re.match(pattern, pq.id) for pq in self.pred_queries):
+            raise ValueError(f"qid {self.qid}: invalid predicted query id")
 
+        if not self.pred_ambiguity_points and len(self.pred_queries) > 1:
+            raise ValueError("at most one predicted query is allowed without predicted ambiguity points")
         if not self.pred_ambiguity_points:
-            assert len(self.pred_queries) == 0 or len(self.pred_queries) == 1
             return self
-
-        # finite_aps = sorted([ap for ap in self.pred_ambiguity_points if ap.type == "finite"], key=lambda x: x.id)
-        # required_ids = [
-        #     "PQRY" + "".join(f"-{ap.id}.{idx}" for ap, idx in zip(finite_aps, indexes))
-        #     for indexes in itertools.product(*[range(len(ap.interpretations)) for ap in finite_aps])
-        # ]
-        # pred_query_ids = set(pq.id for pq in self.pred_queries)
-        # for pq_id in pred_query_ids:
-        #     if pq_id not in required_ids:
-        #         raise ValueError(f"qid {self.qid}: Pred query {pq_id} is not required.")
-        # for required_id in required_ids:
-        #     if required_id not in pred_query_ids:
-        #         raise ValueError(f"qid {self.qid}: Pred query {required_id} is not found.")
-        # assert len(self.pred_queries) == len(required_ids) == math.prod(len(ap.interpretations) for ap in finite_aps)
         return self
 
     @model_validator(mode="after")
     def validate_pred_id_reference(self) -> "StructuredAmbigNL2QTaskOutput":
         pred_query_ids = set(pq.id for pq in self.pred_queries)
-        assert self.pred_intended_query_id is None or self.pred_intended_query_id in pred_query_ids
+        if self.pred_intended_query_id is not None and self.pred_intended_query_id not in pred_query_ids:
+            raise ValueError(f"predicted query {self.pred_intended_query_id!r} does not exist")
         return self
 
     def to_directory(self, directory: str) -> None:
@@ -592,6 +599,8 @@ NL2QTaskOutput = Annotated[
 
 
 class NL2QDataset(BaseModel):
+    """A benchmark split with tasks and connectors keyed by database name."""
+
     name: str
     split: str
     databases: list[str] | None = None  # None means all databases
@@ -609,6 +618,8 @@ class NL2QDataset(BaseModel):
 
 
 class NL2QRunResult(BaseModel):
+    """Configuration, outputs, usage, and aggregate metrics for one experiment run."""
+
     start_time: datetime.datetime
     end_time: datetime.datetime
     dataset: str
@@ -642,17 +653,23 @@ class NL2QRunResult(BaseModel):
 
 
 class UserFreeTextQuestion(BaseModel):
+    """A clarification question answered with free text."""
+
     type: Literal["free_text"] = "free_text"
     question: str
 
 
 class UserMultipleChoiceQuestion(BaseModel):
+    """A clarification question answered by selecting one option."""
+
     type: Literal["multiple_choice"] = "multiple_choice"
     question: str
     options: list[str]
 
 
 class UserValueQuestion(BaseModel):
+    """A clarification question answered with a typed comparison value."""
+
     type: Literal["value"] = "value"
     question: str
     value_dtype: Literal["int", "float", "str"]
@@ -660,14 +677,20 @@ class UserValueQuestion(BaseModel):
 
 
 class UserFreeTextAnswer(BaseModel):
+    """Free-text clarification answer."""
+
     answer_free_text: str
 
 
 class UserMultipleChoiceAnswer(BaseModel):
+    """Selected option index for a multiple-choice clarification."""
+
     answer_index: int
 
 
 class UserValueAnswer(BaseModel):
+    """Comparison operator and value supplied for a clarification."""
+
     operator: Literal["<", ">", "<=", ">=", "=", "<>"]
     value: int | float | str
 
@@ -679,6 +702,8 @@ UserAnswer: TypeAlias = Union[UserFreeTextAnswer, UserMultipleChoiceAnswer, User
 
 
 class UserSimulatorProtocol(Protocol):
+    """Interface used by ambiguity-aware agents to request clarifications."""
+
     @overload
     async def ask_async(self, question: UserFreeTextQuestion) -> UserFreeTextAnswer | None: ...
     @overload

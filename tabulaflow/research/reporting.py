@@ -2,7 +2,7 @@
 
 import logging
 import os
-from typing import Any, Literal, TypeAlias, get_args
+from typing import Any, Literal, get_args
 
 import pandas as pd
 
@@ -87,12 +87,12 @@ def gold_query_to_markdown(query: GoldQuery, heading_level: int = 2) -> str:
     return "\n".join(lines)
 
 
-def _get_query_fields(task: NL2QTask | NL2QTaskOutput, t: TypeAlias) -> list[str]:
-    res = []
+def _get_query_fields(task: NL2QTask | NL2QTaskOutput, query_type: type[GoldQuery] | type[PredQuery]) -> list[str]:
+    fields = []
     for key, value in type(task).model_fields.items():
-        if value.annotation == t or t in get_args(value.annotation):
-            res.append(key)
-    return res
+        if value.annotation == query_type or query_type in get_args(value.annotation):
+            fields.append(key)
+    return fields
 
 
 def _save_trajectories(trajectory: Trajectory | list[Trajectory], directory: str) -> None:
