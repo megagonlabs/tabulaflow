@@ -10,7 +10,7 @@ from sqlalchemy import (
 )
 import os
 from tabulaflow.data import SQLConnector, SQLConnectorConfig
-from tabulaflow.research.agenthub.simple_zero_shot import SimpleZeroShotNL2Q, SimpleZeroShotNL2QConfig
+from tabulaflow.research.agents.simple_zero_shot import SimpleZeroShotNL2Q, SimpleZeroShotNL2QConfig
 from tabulaflow.research.types import GoldQuery
 from tabulaflow.research.types import SimpleNL2QTask
 

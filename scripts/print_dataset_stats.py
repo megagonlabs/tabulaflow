@@ -7,7 +7,7 @@ from tabulaflow.research.benchmarks import dataset_registry
 from tabulaflow.data import Neo4jConnectorConfig, SQLConnectorConfig
 from tabulaflow.research.preprocessing.schema import SchemaPreprocessor
 from tabulaflow.research.types import NL2QDataset
-from tabulaflow.research.utils import dict_to_df
+from tabulaflow.research.reporting import dict_to_df
 
 
 MAX_DBS_TO_PRINT = 12

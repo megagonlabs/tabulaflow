@@ -810,7 +810,7 @@ A **Min**imalist **T**ext-to-**Q**uery Library that offers:
 
 🔍 **Type-safe**: Every method is type-hinted and checked with static type checker mypy.
 
-🧩 **Modular**: Core components like [database connectors](tabulaflow/db_connector/base.py), [dataloaders](tabulaflow/datahub/base.py), [agents](tabulaflow/agenthub/base.py), [tools](tabulaflow/toolhub/base.py), [metrics](tabulaflow/metrics/base.py) follow the interfaces defined in the base.py files.
+🧩 **Modular**: Stable platform layers cover data, outputs, and reusable agents, while the research layer contains benchmark adapters, research strategies, and evaluation metrics.
 
 🔌 **Extensible**: Intefaces are designed to be minimal and flexible, without heavy abstractions. You are free to use any agent library to build your own text-to-query agent.
 
@@ -839,10 +839,10 @@ First, follow the [Development](#-development) section to install the library. N
 
 ```python
 import asyncio
-from tabulaflow.agenthub import SQLAgent, BasicAgentConfig
-from tabulaflow.datahub import BirdSQLDatasetLoader
-from tabulaflow.metrics import BirdSQLEx
-from tabulaflow.pipelines import run_agent_async, populate_exec_results_async, evaluate_async
+from tabulaflow.research.agents import SQLAgent, BasicAgentConfig
+from tabulaflow.research.benchmarks import BirdSQLDatasetLoader
+from tabulaflow.research.metrics import BirdSQLEx
+from tabulaflow.research.pipelines import run_agent_async, populate_exec_results_async, evaluate_async
 
 
 async def main() -> None:
@@ -884,51 +884,26 @@ if __name__ == "__main__":
 We also provide the [run_model.py](tabulaflow/run_model.py) and [evaluate.py](tabulaflow/evaluate.py) scripts for convenience:
 
 ```bash
-uv run tabulaflow/pipelines/run_agent.py --agent sql_agent --dataset bird-sql --llm "openai:gpt-4o-mini" --result_dir output/test/ --debug
-uv run tabulaflow/pipelines/populate_exec_results.py --result_dir output/test/
-uv run tabulaflow/pipelines/evaluate.py --result_dir output/test/
+uv run tabulaflow/research/pipelines/run_agent.py --agent sql_agent --dataset bird-sql --llm "openai:gpt-4o-mini" --result_dir output/test/ --debug
+uv run tabulaflow/research/pipelines/populate_exec_results.py --result_dir output/test/
+uv run tabulaflow/research/pipelines/evaluate.py --result_dir output/test/
 ```
 
 ## Project Structure
 
 ```
-tabulaflow
-├── agenthub/               # text-to-query methods
-│   ├── simple_zero_shot.py
-│   ├── sql_agent.py
-│   └── ...
-├── toolhub/                # tools used by agents
-│   ├── search_keywords.py
-│   ├── run_query.py
-│   ├── finish.py
-│   ├── ask_user.py
-│   ├── get_schema.py
-│   └── ...
-├── datahub/                # text-to-query datasets
-│   ├── bird_sql.py
-│   ├── spider2_snow.py
-│   ├── beaver.py
-│   ├── arcs.py
-│   └── ...
-├── db_connector/           # database connectors
-│   ├── sql_conn.py
-│   └── ...
-├── metrics/                 # evaluation metrics
-│   ├── bird_sql_ex.py
-│   ├── executable.py
-│   └── ...
-├── formatters/       # database schema formatters
-│   ├── sql.py
-│   └── ...
-├── pipelines/              # pipelines
-│   ├── run_agent.py
-│   ├── populate_exec_results.py
-│   ├── evaluate.py
-│   └── ...
-├── schema.py               # data structures used in the project
-├── config.py
-├── registry.py
-└── utils.py                # utility functions
+tabulaflow/research
+├── agents/                 # text-to-query research strategies
+├── benchmarks/             # benchmark dataset adapters
+├── metrics/                # evaluation metrics and aggregators
+├── preprocessing/          # schema and question preprocessing
+├── tools/                  # research-only agent tools
+├── pipelines/              # experiment orchestration and CLIs
+├── types.py                # research data models
+├── reporting.py            # readable reports and persisted outputs
+├── execution.py            # execution of research query objects
+├── query_analysis.py       # static query analysis
+└── ambiguity.py            # ambiguity ordering and identifiers
 ```
 
 ## 📚 Dataset Setup

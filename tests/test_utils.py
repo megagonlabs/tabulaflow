@@ -7,7 +7,7 @@ import pandas as pd
 import pytest
 
 from tabulaflow.core.serialization import dumps_strict_json, json_ready
-from tabulaflow.research.agenthub.utils import extract_code, get_max_steps_capability
+from tabulaflow.research.agents.utils import extract_code, get_max_steps_capability
 
 
 @pytest.mark.asyncio

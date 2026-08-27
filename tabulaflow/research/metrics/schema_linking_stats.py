@@ -2,7 +2,7 @@ from typing import ClassVar
 from tabulaflow.core import SQLSchema
 from tabulaflow.research.types import NL2QTaskOutput, NumericOrNull
 from tabulaflow.research.metrics.registry import metric_registry
-from tabulaflow.research.utils import extract_all_source_columns
+from tabulaflow.research.query_analysis import extract_all_source_columns
 from tabulaflow.data import DBConnector
 from tabulaflow.research.metrics.utils import get_final_gold_query
 

@@ -115,7 +115,8 @@ asyncio_mode = "auto"
 # Architecture contract for the layered package (see AGENTS.md "Project Structure").
 # Product/platform layers, lowest first: core < data < output < agents < app.
 # Research is a separate leaf consumer: it may import core/data/output/agents,
-# but neither app nor platform layers may import research, and research must not import app.
+# but neither app nor platform layers may import research, research must not import app,
+# and its pipelines remain the outermost research orchestration layer.
 # Run: make lint-arch
 [tool.importlinter]
 root_package = "tabulaflow"
@@ -148,6 +149,23 @@ name = "Research does not import app"
 type = "forbidden"
 source_modules = ["tabulaflow.research"]
 forbidden_modules = ["tabulaflow.app"]
+
+[[tool.importlinter.contracts]]
+name = "Research internals do not import pipelines"
+type = "forbidden"
+source_modules = [
+    "tabulaflow.research.agents",
+    "tabulaflow.research.benchmarks",
+    "tabulaflow.research.metrics",
+    "tabulaflow.research.preprocessing",
+    "tabulaflow.research.tools",
+    "tabulaflow.research.ambiguity",
+    "tabulaflow.research.execution",
+    "tabulaflow.research.query_analysis",
+    "tabulaflow.research.reporting",
+    "tabulaflow.research.types",
+]
+forbidden_modules = ["tabulaflow.research.pipelines"]
 
 [[tool.importlinter.contracts]]
 name = "Browser pane does not import TUI"

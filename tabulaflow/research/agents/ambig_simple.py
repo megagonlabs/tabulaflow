@@ -15,8 +15,8 @@ from tabulaflow.research.tools import (
     GetSchemaTool,
     GetColumnDescriptionTool,
 )
-from tabulaflow.research.agenthub.registry import agent_registry, UserSimulatorProtocol, AgentConfig
-from tabulaflow.research.agenthub.utils import get_max_steps_capability, instrument, BasicAgentConfig
+from tabulaflow.research.agents.registry import agent_registry, UserSimulatorProtocol, AgentConfig
+from tabulaflow.research.agents.utils import get_max_steps_capability, instrument, BasicAgentConfig
 from tabulaflow.agents.llm import make_agent
 
 

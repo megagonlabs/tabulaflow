@@ -4,11 +4,11 @@ import logging
 from typing import Any, ClassVar
 import pandas as pd
 from pydantic import BaseModel
-from tabulaflow.research.agenthub.registry import AgentConfig
-from tabulaflow.research.agenthub.utils import instrument
+from tabulaflow.research.agents.registry import AgentConfig
+from tabulaflow.research.agents.utils import instrument
 from tabulaflow.research.types import SimpleNL2QTask, SimpleNL2QTaskOutput
 from tabulaflow.data import SQLConnectorProtocol
-from tabulaflow.research.pipelines.populate_exec_results import populate_task_async
+from tabulaflow.research.execution import populate_task_exec_results
 
 
 logger = logging.getLogger(__name__)
@@ -57,7 +57,7 @@ class MajorityEnsembler:
             return task_outputs[0]
 
         # Populate exec results for all candidates (skips queries that already have results)
-        await asyncio.gather(*[populate_task_async(output, db_connector) for output in candidates])
+        await asyncio.gather(*[populate_task_exec_results(output, db_connector) for output in candidates])
 
         # Filter out candidates with execution errors
         candidates = [

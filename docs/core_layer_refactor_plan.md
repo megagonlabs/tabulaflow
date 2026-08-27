@@ -494,30 +494,28 @@ Dependency decisions:
 
 ## Final research layer decision
 
-Keep the research layer mostly as-is for this refactor:
+The later research-layer cleanup retained the same domains while clarifying their
+ownership:
 
 ```text
 research/
-  agenthub/
+  agents/
   benchmarks/
   metrics/
   tools/
   pipelines/
   types.py
-  visualization.py
-  question_embedder.py
-  utils.py
+  reporting.py
+  execution.py
+  query_analysis.py
+  ambiguity.py
 ```
 
 Research is a leaf consumer of `core`, `data`, `output`, and `agents`. Nothing in the platform layers should import `research`.
 
-Scope decision:
-
-- Preserve existing research names and structure for now.
-- Do not rename `research/agenthub` to `research/agents` in this refactor.
-- Do not split `research/types.py` in this refactor.
-- Keep research registries (`agent_registry`, `dataset_registry`, `metric_registry`) as research concepts.
-- Only perform boundary cleanup that prevents research concepts from leaking into platform layers.
+The cohesive research schema remains in `types.py`; reporting and query execution
+live separately. Research registries (`agent_registry`, `dataset_registry`, and
+`metric_registry`) remain research concepts, and pipelines are the outermost layer.
 
 Necessary move:
 
@@ -627,7 +625,7 @@ Do not keep in core unless it becomes a truly central primitive.
 
 Recommended homes:
 
-- `research/agenthub/_erd.py` while it remains an implementation detail of the research SQL agent
+- `research/agents/_erd.py` while it remains an implementation detail of the research SQL agent
 
 ## Core import policy
 

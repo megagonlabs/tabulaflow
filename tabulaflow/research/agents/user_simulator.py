@@ -5,7 +5,7 @@ from pydantic_ai import Agent, ToolOutput
 import asyncio
 import jinja2
 import tiktoken
-from tabulaflow.research.agenthub.registry import (
+from tabulaflow.research.agents.registry import (
     UserQuestion,
     UserAnswer,
     UserFreeTextQuestion,

@@ -20,15 +20,15 @@ from tabulaflow.research.types import (
 from tabulaflow.agents.tools import AgentTool, RunQueryTool
 from tabulaflow.agents.tools.run_query import latest_query_execution
 from tabulaflow.research.tools import SearchKeywordsTool, FinishTool, GetSchemaTool, GetColumnDescriptionTool
-from tabulaflow.research.agenthub.registry import (
+from tabulaflow.research.agents.registry import (
     agent_registry,
     UserSimulatorProtocol,
     UserMultipleChoiceQuestion,
     UserValueQuestion,
     AgentConfig,
 )
-from tabulaflow.research.agenthub.utils import get_max_steps_capability, instrument, TaskRunContext, BasicAgentConfig
-from tabulaflow.research.utils import int_to_letter
+from tabulaflow.research.agents.utils import get_max_steps_capability, instrument, TaskRunContext, BasicAgentConfig
+from tabulaflow.research.ambiguity import int_to_letter
 from tabulaflow.agents.llm import make_agent
 
 

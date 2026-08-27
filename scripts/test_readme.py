@@ -1,6 +1,6 @@
 import asyncio
-from tabulaflow.research.observability import configure_research_observability
-from tabulaflow.research.agenthub import SQLAgent, BasicAgentConfig
+from tabulaflow.research.pipelines.observability import configure_research_observability
+from tabulaflow.research.agents import SQLAgent, BasicAgentConfig
 from tabulaflow.research.benchmarks import BirdSQLDatasetLoader
 from tabulaflow.research.metrics import BirdSQLEx
 from tabulaflow.research.pipelines import run_agent_async, populate_exec_results_async, evaluate_async

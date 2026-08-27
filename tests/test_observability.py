@@ -7,7 +7,7 @@ from opentelemetry.sdk.trace.sampling import Decision
 from pydantic_ai import Agent
 
 import tabulaflow.agents.trace as agent_trace
-import tabulaflow.research.observability as research_observability
+import tabulaflow.research.pipelines.observability as research_observability
 
 
 def test_instrument_agents_is_available_from_agents_package() -> None:

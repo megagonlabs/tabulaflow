@@ -17,7 +17,7 @@ from tabulaflow.research.metrics.aggregators import (
     ByAmbigPointNumAggregator,
     ByBirdSQLDifficultyAggregator,
 )
-from tabulaflow.research.utils import pprint_dict
+from tabulaflow.research.pipelines.utils import pprint_dict
 
 
 async def compute_metrics_async(

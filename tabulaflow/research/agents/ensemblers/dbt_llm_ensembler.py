@@ -11,8 +11,8 @@ import jinja2
 from pydantic import BaseModel
 from pydantic_ai import ToolOutput
 
-from tabulaflow.research.agenthub.registry import AgentConfig
-from tabulaflow.research.agenthub.utils import instrument
+from tabulaflow.research.agents.registry import AgentConfig
+from tabulaflow.research.agents.utils import instrument
 from tabulaflow.data import SQLConnectorProtocol
 from tabulaflow.output.formatting import SQLDDLSchemaFormatter
 from tabulaflow.agents.summarization import DBSummarizer

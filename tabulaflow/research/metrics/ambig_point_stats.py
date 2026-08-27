@@ -13,7 +13,7 @@ from tabulaflow.research.types import (
 from tabulaflow.data import DBConnector
 from tabulaflow.research.metrics.registry import metric_registry
 from tabulaflow.research.types import PredAmbiguityPoint, GoldAmbiguityPoint
-from tabulaflow.research.utils import int_to_letter
+from tabulaflow.research.ambiguity import int_to_letter
 from tabulaflow.agents.llm import make_agent
 
 AmbigTaskOutput = SimpleAmbigNL2QTaskOutput | FlatAmbigNL2QTaskOutput | StructuredAmbigNL2QTaskOutput

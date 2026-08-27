@@ -1,3 +1,6 @@
+"""Outermost orchestration for running and evaluating experiments."""
+
+
 def __getattr__(name: str) -> object:
     if name == "run_agent_async":
         from tabulaflow.research.pipelines.run_agent import run_agent_async

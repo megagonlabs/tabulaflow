@@ -1,3 +1,5 @@
+"""Research evaluation metrics, aggregators, and registry."""
+
 from tabulaflow.research.metrics.registry import (
     NL2QMetric,
     metric_registry,

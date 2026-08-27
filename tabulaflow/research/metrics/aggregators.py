@@ -1,6 +1,43 @@
-from typing import Any, Literal
-from tabulaflow.research.types import AmbigNL2QTask, NL2QRunResult
-from tabulaflow.research.utils import aggregate_metrics
+import statistics
+from typing import Any, Literal, cast
+
+from tabulaflow.research.types import AmbigNL2QTask, NL2QRunResult, NumericOrNull
+
+
+def _enforce_same_schema(metrics: list[dict[str, Any]]) -> None:
+    if not all(metric.keys() == metrics[0].keys() for metric in metrics):
+        raise ValueError("All metrics to aggregate must have the same schema.")
+    for key in metrics[0]:
+        if isinstance(metrics[0][key], dict):
+            _enforce_same_schema([metric[key] for metric in metrics])
+
+
+def aggregate_metrics(
+    metrics: list[NumericOrNull] | list[dict[str, Any]],
+    ops: list[Literal["avg", "sum", "max", "min"]] = ["avg", "sum", "max", "min"],
+    decimals: int = 4,
+) -> dict[str, Any]:
+    """Aggregate scalar or consistently nested metric values."""
+    if not metrics:
+        return {op: None for op in ops}
+    if isinstance(metrics[0], dict):
+        _enforce_same_schema(metrics)  # type: ignore[arg-type]
+        return {key: aggregate_metrics([metric[key] for metric in metrics], ops, decimals) for key in metrics[0]}  # type: ignore[index]
+    values = [metric for metric in cast(list[NumericOrNull], metrics) if metric is not None]
+    if not values:
+        return {op: None for op in ops}
+    result: dict[str, Any] = {}
+    for op in ops:
+        if op == "avg":
+            value = statistics.mean(values)
+        elif op == "sum":
+            value = sum(values)
+        elif op == "max":
+            value = max(values)
+        else:
+            value = min(values)
+        result[op] = round(value, decimals)
+    return result
 
 
 class RealScoreAggregator:

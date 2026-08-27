@@ -11,8 +11,8 @@ from tabulaflow.agents.tools import AgentTool, GetColumnJsonSchemaTool, GetTable
 from tabulaflow.agents.tools.run_query import latest_query_execution
 from tabulaflow.research.tools import FinishTool
 from tabulaflow.output.formatting import schema_formatter_registry, SQLSchemaFormatter
-from tabulaflow.research.agenthub.registry import agent_registry, AgentConfig
-from tabulaflow.research.agenthub.utils import (
+from tabulaflow.research.agents.registry import agent_registry, AgentConfig
+from tabulaflow.research.agents.utils import (
     get_max_steps_capability,
     instrument,
     BasicAgentConfig,

@@ -6,41 +6,9 @@ import os
 from typing import Literal
 from tqdm.asyncio import tqdm_asyncio
 from tabulaflow.research.benchmarks.registry import dataset_registry
-from tabulaflow.research.types import NL2QTask, NL2QTaskOutput, NL2QRunResult, NL2QDataset
-from tabulaflow.data import DBConnector, Neo4jConnectorConfig, SQLConnectorConfig
-
-
-async def populate_task_async(
-    task: NL2QTask | NL2QTaskOutput,
-    db_connector: DBConnector,
-    timeout: int | None = None,
-    force: bool = False,
-) -> None:
-    if task.task_type == "dbt":
-        return
-
-    for prefix in ["gold", "pred"]:
-        all_queries = []
-        if getattr(task, f"{prefix}_query", None):
-            all_queries.append(getattr(task, f"{prefix}_query"))
-        if getattr(task, f"{prefix}_intended_query", None):
-            all_queries.append(getattr(task, f"{prefix}_intended_query"))
-        if getattr(task, f"{prefix}_queries", None):
-            all_queries += getattr(task, f"{prefix}_queries")
-        queries_to_populate = [q for q in all_queries if force or not q.exec_result]
-        if timeout is None:
-            results = await asyncio.gather(
-                *(db_connector.run_query_async(q.query, parameters=q.parameter_values) for q in queries_to_populate)
-            )
-        else:
-            results = await asyncio.gather(
-                *(
-                    db_connector.run_query_async(q.query, parameters=q.parameter_values, timeout=timeout)
-                    for q in queries_to_populate
-                )
-            )
-        for q, exec_result in zip(queries_to_populate, results):
-            q.exec_result = exec_result
+from tabulaflow.research.execution import populate_task_exec_results
+from tabulaflow.research.types import NL2QRunResult, NL2QDataset
+from tabulaflow.data import Neo4jConnectorConfig, SQLConnectorConfig
 
 
 async def populate_exec_results_async(
@@ -55,7 +23,7 @@ async def populate_exec_results_async(
         j = min(i + batch_size, len(result.tasks))
         batch = result.tasks[i:j]
         await tqdm_asyncio.gather(
-            *[populate_task_async(task, dataset.db_connectors[task.db], timeout, force) for task in batch],
+            *[populate_task_exec_results(task, dataset.db_connectors[task.db], timeout, force) for task in batch],
             disable=not verbose,
         )
         if verbose:

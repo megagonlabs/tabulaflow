@@ -3,9 +3,9 @@ from __future__ import annotations
 import pytest
 
 from tabulaflow.agents.llm import make_model_settings
-from tabulaflow.research.agenthub.ensemblers.dbt_llm_ensembler import DbtLLMEnsemblerConfig
-from tabulaflow.research.agenthub.ensemblers.llm_ensembler import LLMEnsemblerConfig
-from tabulaflow.research.agenthub.utils import BasicAgentConfig
+from tabulaflow.research.agents.ensemblers.dbt_llm_ensembler import DbtLLMEnsemblerConfig
+from tabulaflow.research.agents.ensemblers.llm_ensembler import LLMEnsemblerConfig
+from tabulaflow.research.agents.utils import BasicAgentConfig
 
 
 def test_make_model_settings_maps_legacy_none_to_false() -> None:

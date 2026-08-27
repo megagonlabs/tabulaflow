@@ -1,7 +1,7 @@
 # mypy: ignore-errors
 import asyncio
-from tabulaflow.research.observability import configure_research_observability
-from tabulaflow.research.agenthub.user_simulator import UserSimulator, UserFreeTextQuestion
+from tabulaflow.research.pipelines.observability import configure_research_observability
+from tabulaflow.research.agents.user_simulator import UserSimulator, UserFreeTextQuestion
 from tabulaflow.research.benchmarks import dataset_registry
 
 

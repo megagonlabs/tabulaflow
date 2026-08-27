@@ -12,8 +12,8 @@ from tabulaflow.output.formatting import (
     SQLSchemaFormatter,
     schema_formatter_registry,
 )
-from tabulaflow.research.agenthub.registry import agent_registry, AgentConfig
-from tabulaflow.research.agenthub.utils import (
+from tabulaflow.research.agents.registry import agent_registry, AgentConfig
+from tabulaflow.research.agents.utils import (
     extract_code,
     instrument,
     BasicAgentConfig,

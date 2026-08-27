@@ -1,4 +1,4 @@
-from tabulaflow.research.utils import _sqlglot_dialect, extract_all_source_columns
+from tabulaflow.research.query_analysis import _sqlglot_dialect, extract_all_source_columns
 
 
 def test_postgresql_language_maps_to_sqlglot_postgres_dialect() -> None:

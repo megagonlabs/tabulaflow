@@ -8,14 +8,14 @@ import datetime
 import asyncio
 import logging
 import traceback
-from tabulaflow.research.agenthub.registry import agent_registry
+from tabulaflow.research.agents.registry import agent_registry
 from tabulaflow.research.benchmarks.registry import dataset_registry
 from tabulaflow.research.metrics import MetricAggregator, SimpleInferenceMetricsAggregator
-from tabulaflow.research.utils import pprint_dict, tqdm_gather_with_exceptions
-from tabulaflow.research.observability import configure_research_observability
+from tabulaflow.research.pipelines.utils import pprint_dict, tqdm_gather_with_exceptions
+from tabulaflow.research.pipelines.observability import configure_research_observability
 from tabulaflow.research.pipelines.utils import bool_flag
-from tabulaflow.research.agenthub import NL2QAgent, AgentConfig
-from tabulaflow.research.agenthub.user_simulator import UserSimulator
+from tabulaflow.research.agents import NL2QAgent, AgentConfig
+from tabulaflow.research.agents.user_simulator import UserSimulator
 from tabulaflow.research.benchmarks.spider2_dbt import prepare_working_env_async
 from tabulaflow.agents.trace import Usage
 from tabulaflow.research.types import (

@@ -1,3 +1,5 @@
+"""Model-facing tools used only by research agents."""
+
 from tabulaflow.research.tools.ask_user import AskUserTool, AskUserToolMetrics
 from tabulaflow.research.tools.run_dbt import RunDbtTool, RunDbtToolMetrics
 from tabulaflow.agents.tools.filesystem.editor import FileEditorRoot, FileEditorTool, FileEditorToolMetrics

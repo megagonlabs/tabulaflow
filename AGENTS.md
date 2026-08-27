@@ -54,9 +54,9 @@ tabulaflow/
 │   ├── extraction/  #   reusable structured document extraction
 │   └── tools/       #   model-facing tools grouped by implementation domain
 ├── research/        # NL2SQL research — a leaf consumer of the platform layers
-│   ├── agenthub/  benchmarks/  metrics/  pipelines/  preprocessing/
+│   ├── agents/  benchmarks/  metrics/  pipelines/  preprocessing/
 │   ├── tools/       #   research-only tools (ask_user, run_dbt, finish, get_schema, ...)
-│   └── types.py utils.py question_embedder.py   # NL2QTask/NL2QDataset/GoldQuery, dataset-level analysis
+│   └── types.py reporting.py execution.py query_analysis.py ambiguity.py
 └── app/             # end-user TUI and browser output pane
 tests/               # pytest tests
 scripts/             # utility scripts

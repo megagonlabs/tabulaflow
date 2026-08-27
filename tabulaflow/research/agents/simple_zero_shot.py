@@ -14,8 +14,8 @@ from tabulaflow.data import DBConnector
 from tabulaflow.agents.trace import Trajectory, Usage
 from tabulaflow.research.types import PredQuery
 from tabulaflow.research.types import SimpleNL2QTask, SimpleNL2QTaskOutput
-from tabulaflow.research.agenthub.registry import agent_registry, AgentConfig
-from tabulaflow.research.agenthub.utils import BasicAgentConfig, extract_code, instrument
+from tabulaflow.research.agents.registry import agent_registry, AgentConfig
+from tabulaflow.research.agents.utils import BasicAgentConfig, extract_code, instrument
 
 SYSTEM_PROMPT = """
 You are a database expert responsible for translating natural language questions into {{language}} queries.

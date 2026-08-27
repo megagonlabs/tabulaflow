@@ -1,3 +1,5 @@
+"""Benchmark dataset loaders and registry."""
+
 from tabulaflow.research.benchmarks.registry import NL2QDatasetLoader, dataset_registry
 from tabulaflow.research.benchmarks.bird_sql import BirdSQLDatasetLoader
 from tabulaflow.research.benchmarks.spider2_snow import Spider2SnowDatasetLoader

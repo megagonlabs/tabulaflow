@@ -4,12 +4,12 @@ from pydantic_ai.settings import ModelSettings
 
 from tabulaflow.research.preprocessing.column_profiler import ColumnProfiler
 from tabulaflow.agents.summarization import DBSummarizer
-from tabulaflow.research.agenthub._erd import ERDiagramSynthesizer
+from tabulaflow.research.agents._erd import ERDiagramSynthesizer
 from tabulaflow.research.preprocessing.fk_predictor import ForeignKeyPredictor
 from tabulaflow.research.preprocessing.schema import SchemaPreprocessor
 from tabulaflow.agents.summarization import TextSummarizer
 from tabulaflow.research.preprocessing import preprocessor_registry
-from tabulaflow.research.question_embedder import QuestionEmbedder
+from tabulaflow.research.preprocessing.question_embedding import QuestionEmbedder
 
 
 def test_agent_capabilities_accept_model_settings() -> None:

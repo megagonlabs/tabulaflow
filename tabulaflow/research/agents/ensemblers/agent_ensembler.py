@@ -6,12 +6,12 @@ from typing import Any, ClassVar, cast
 import jinja2
 from pydantic_ai import ModelRetry, RunContext, ToolOutput
 
-from tabulaflow.research.agenthub.registry import AgentConfig
-from tabulaflow.research.agenthub.ensemblers.majority_ensembler import _normalize_value
-from tabulaflow.research.agenthub.utils import BasicAgentConfig, get_max_steps_capability, instrument
+from tabulaflow.research.agents.registry import AgentConfig
+from tabulaflow.research.agents.ensemblers.majority_ensembler import _normalize_value
+from tabulaflow.research.agents.utils import BasicAgentConfig, get_max_steps_capability, instrument
 from tabulaflow.data import SQLConnectorProtocol
 from tabulaflow.output.formatting import SQLSchemaFormatter, format_dataframe, schema_formatter_registry
-from tabulaflow.research.pipelines.populate_exec_results import populate_task_async
+from tabulaflow.research.execution import populate_task_exec_results
 from tabulaflow.agents.summarization import DBSummarizer
 from tabulaflow.agents.trace import Trajectory, Usage
 from tabulaflow.research.types import PredQuery, SimpleNL2QTask, SimpleNL2QTaskOutput
@@ -160,7 +160,7 @@ class AgentEnsembler:
             return task_outputs[0]
 
         # Populate exec results for all candidates (skips queries that already have results)
-        await asyncio.gather(*[populate_task_async(output, db_connector) for output in candidates])
+        await asyncio.gather(*[populate_task_exec_results(output, db_connector) for output in candidates])
 
         # Filter out candidates with execution errors
         candidates = [

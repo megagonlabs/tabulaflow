@@ -11,7 +11,7 @@ import jinja2
 from tabulaflow.agents.llm import make_agent, make_model_settings
 from tabulaflow.agents.trace import Usage
 from tabulaflow.research.types import NL2QRunResult, NL2QTaskOutput
-from tabulaflow.research.observability import configure_research_observability
+from tabulaflow.research.pipelines.observability import configure_research_observability
 from tabulaflow.research.pipelines.utils import bool_flag
 
 

@@ -4,7 +4,7 @@ import asyncio
 import os
 from tabulate import tabulate
 from tabulaflow.research.types import NL2QRunResult, StructuredAmbigNL2QTaskOutput
-from tabulaflow.research.utils import dict_to_df
+from tabulaflow.research.reporting import dict_to_df
 
 
 def print_ambig_stats(tasks: list[StructuredAmbigNL2QTaskOutput]) -> None:

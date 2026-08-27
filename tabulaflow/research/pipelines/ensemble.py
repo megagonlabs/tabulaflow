@@ -10,15 +10,15 @@ from functools import reduce
 from typing import Any
 
 from tabulaflow.research.benchmarks.registry import dataset_registry
-from tabulaflow.research.observability import configure_research_observability
-from tabulaflow.research.agenthub.ensemblers.majority_ensembler import MajorityEnsembler, MajorityEnsemblerConfig
-from tabulaflow.research.agenthub.ensemblers.llm_ensembler import LLMEnsembler, LLMEnsemblerConfig
-from tabulaflow.research.agenthub.ensemblers.agent_ensembler import AgentEnsembler, AgentEnsemblerConfig
-from tabulaflow.research.agenthub.ensemblers.dbt_llm_ensembler import DbtLLMEnsembler, DbtLLMEnsemblerConfig
+from tabulaflow.research.pipelines.observability import configure_research_observability
+from tabulaflow.research.agents.ensemblers.majority_ensembler import MajorityEnsembler, MajorityEnsemblerConfig
+from tabulaflow.research.agents.ensemblers.llm_ensembler import LLMEnsembler, LLMEnsemblerConfig
+from tabulaflow.research.agents.ensemblers.agent_ensembler import AgentEnsembler, AgentEnsemblerConfig
+from tabulaflow.research.agents.ensemblers.dbt_llm_ensembler import DbtLLMEnsembler, DbtLLMEnsemblerConfig
 from tabulaflow.research.metrics import SimpleInferenceMetricsAggregator
 from tabulaflow.research.types import NL2QRunResult, NL2QDataset, NL2QTaskOutput
 from tabulaflow.research.pipelines.utils import bool_flag
-from tabulaflow.research.utils import tqdm_gather_with_exceptions
+from tabulaflow.research.pipelines.utils import tqdm_gather_with_exceptions
 
 Ensembler = MajorityEnsembler | LLMEnsembler | AgentEnsembler | DbtLLMEnsembler
 
