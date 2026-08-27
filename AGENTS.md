@@ -150,7 +150,7 @@ Dark-app feel, mint accent, modern data-app references (Linear, Stripe, GitHub).
 - Take the principled approach, not the one based on heuristics.
 - Before writing code, always assess whether the idea aligns with common practice and if not, stop and provide such feedback to the user.
 - Use Google style for all Python docstrings.
-- This is a research library, do not over-abstract.
+- Keep code clean, minimal and intuitive. Do not over-engineer or over-abstract.
 - Do not write comments if the code is self-explanatory. Only write comments for complicated or tricky logic.
 - For large changes with multiple design decisions or multiple alternative implementations, discuss with me first.
 - Be honest when what I say has flaws or does not make sense.
