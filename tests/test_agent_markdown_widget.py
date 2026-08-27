@@ -18,8 +18,8 @@ from tabulaflow.app.theme import (
     CODE_NUMBER,
     CODE_STRING,
     CODE_TEXT,
-    TabulaflowCodeHighlightTheme,
 )
+from tabulaflow.app.tui.theme import TabulaflowCodeHighlightTheme
 from tabulaflow.app.tui.widgets.markdown import (
     AgentMarkdownFence,
     AgentTextBlock,

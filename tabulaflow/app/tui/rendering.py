@@ -19,14 +19,16 @@ from rich.theme import Theme
 
 from tabulaflow.app.theme import (
     ACCENT,
+    CODE_TEXT,
+    normalize_query_lexer,
+)
+from tabulaflow.app.tui.theme import (
     ACCENT_BOLD,
     ACCENT_DIM,
     ACCENT_RGB,
-    CODE_TEXT,
     ERROR,
     KEY_HINT,
     TABULAFLOW_RICH_SYNTAX_THEME,
-    normalize_query_lexer,
 )
 from tabulaflow.output.resolver import (
     ResolvedChartArtifact,

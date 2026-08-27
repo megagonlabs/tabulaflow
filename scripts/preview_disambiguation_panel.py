@@ -17,7 +17,8 @@ from textual.widget import Widget
 from textual.widgets import Static
 
 from tabulaflow.app.tui.rendering import build_query, build_table
-from tabulaflow.app.theme import ACCENT, ACCENT_DIM, FOCUS_SURFACE, KEY_HINT, KEY_HINT_DIM
+from tabulaflow.app.theme import ACCENT
+from tabulaflow.app.tui.theme import ACCENT_DIM, FOCUS_SURFACE, KEY_HINT, KEY_HINT_DIM
 
 
 @dataclass(frozen=True)

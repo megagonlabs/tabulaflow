@@ -23,8 +23,8 @@ from textual.widgets._markdown import MarkdownFence, MarkdownTable, MarkdownTabl
 from tabulaflow.app.theme import (
     CODE_FUNCTION,
     CODE_TEXT,
-    TabulaflowCodeHighlightTheme,
 )
+from tabulaflow.app.tui.theme import TabulaflowCodeHighlightTheme
 
 if TYPE_CHECKING:
     from textual.selection import Selection

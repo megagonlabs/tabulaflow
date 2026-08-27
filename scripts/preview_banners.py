@@ -20,7 +20,7 @@ from rich.panel import Panel
 from rich.rule import Rule
 from rich.text import Text
 
-from tabulaflow.app.theme import ACCENT_DIM, ACCENT_RGB
+from tabulaflow.app.tui.theme import ACCENT_DIM, ACCENT_RGB
 
 MODEL = "openai-responses:gpt-5"
 TAGLINE = "AI that outputs tables"

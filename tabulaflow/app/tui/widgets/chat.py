@@ -11,10 +11,8 @@ from textual.app import ComposeResult
 from textual.widget import Widget
 from textual.widgets import Static
 
-from tabulaflow.app.theme import (
-    ACCENT,
-    MESSAGE_SURFACE,
-)
+from tabulaflow.app.theme import ACCENT
+from tabulaflow.app.tui.theme import MESSAGE_SURFACE
 
 if TYPE_CHECKING:
     from rich.console import RenderableType

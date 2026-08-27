@@ -13,7 +13,7 @@ from pathlib import Path
 from textual.app import App, ComposeResult
 from textual.containers import VerticalScroll
 
-from tabulaflow.app.theme import FOCUS_SURFACE
+from tabulaflow.app.tui.theme import FOCUS_SURFACE
 from tabulaflow.app.tui.widgets.progress import AgentProgressWidget
 from tabulaflow.agents.chat import AnswerDelta, TurnFinished
 from tabulaflow.agents.chat import ChatResult

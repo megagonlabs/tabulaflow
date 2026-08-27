@@ -35,7 +35,7 @@ from tabulaflow.app.runtime_paths import RuntimePaths, ensure_pane_dir
 from tabulaflow.app.session import AppSession
 from tabulaflow.app.turn import TurnOutput
 from tabulaflow.agents.llm import model_display_name
-from tabulaflow.app.theme import ERROR, FOCUS_SURFACE, KEY_HINT
+from tabulaflow.app.tui.theme import ERROR, FOCUS_SURFACE, KEY_HINT
 from tabulaflow.app.tui.widgets.chat import BannerWidget, SpinnerWidget, SystemMessage, UserMessage
 from tabulaflow.app.tui.widgets.input import HistoryInput
 from tabulaflow.app.tui.widgets.progress import AgentProgressWidget

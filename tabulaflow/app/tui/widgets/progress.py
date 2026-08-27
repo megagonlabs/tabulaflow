@@ -17,7 +17,7 @@ from rich.text import Text
 from textual.timer import Timer
 from textual.widget import Widget
 
-from tabulaflow.app.theme import (
+from tabulaflow.app.tui.theme import (
     DIFF_ADDED,
     DIFF_REMOVED,
 )

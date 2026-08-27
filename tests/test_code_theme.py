@@ -14,11 +14,13 @@ from tabulaflow.app.theme import (
     CODE_STRING,
     CODE_TEXT,
     CODE_TYPE,
+    TabulaflowPygmentsStyle,
+    normalize_query_lexer,
+)
+from tabulaflow.app.tui.theme import (
     TABULAFLOW_CODE_TEXT_AREA_THEME,
     TabulaflowCodeHighlightTheme,
-    TabulaflowPygmentsStyle,
     configure_code_text_area,
-    normalize_query_lexer,
 )
 
 

@@ -12,7 +12,7 @@ from rich.console import RenderableType
 from rich.markup import escape
 from rich.text import Text
 
-from tabulaflow.app.theme import ERROR
+from tabulaflow.app.tui.theme import ERROR
 from tabulaflow.app.session import WORKSPACE_ALIAS, AppSession
 from tabulaflow.data import connect_url
 from tabulaflow.data.url import (

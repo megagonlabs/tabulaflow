@@ -19,8 +19,8 @@ from textual.widgets import Static
 from tabulaflow.app.tui.rendering import DATA_PREVIEW_MAX_ROWS, build_resolved_output_card_views
 from tabulaflow.output.specs import ChoiceParameter, NumberParameter, SelectionValue
 from tabulaflow.output.store import SourceResolutionError
-from tabulaflow.app.theme import (
-    ACCENT,
+from tabulaflow.app.theme import ACCENT
+from tabulaflow.app.tui.theme import (
     ACCENT_DIM,
     KEY_HINT,
     KEY_HINT_DIM,

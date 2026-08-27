@@ -14,10 +14,12 @@ from textual.widgets import DataTable, Static, TextArea
 
 from tabulaflow.app.theme import (
     ACCENT,
+    normalize_query_lexer,
+)
+from tabulaflow.app.tui.theme import (
     ERROR,
     KEY_HINT,
     configure_code_text_area,
-    normalize_query_lexer,
 )
 
 

@@ -22,8 +22,8 @@ from textual.widgets import Label, Static, TextArea
 
 from tabulaflow.app.tui.rendering import build_query
 from tabulaflow.app.pane.cards import PANE_CODE_TEXT, build_query_data
-from tabulaflow.app.theme import (
-    CODE_TEXT,
+from tabulaflow.app.theme import CODE_TEXT
+from tabulaflow.app.tui.theme import (
     FOCUS_SURFACE,
     KEY_HINT,
     configure_code_text_area,

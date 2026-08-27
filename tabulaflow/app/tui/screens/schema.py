@@ -10,7 +10,7 @@ from textual.binding import Binding
 from textual.screen import Screen
 from textual.widgets import Static
 
-from tabulaflow.app.theme import (
+from tabulaflow.app.tui.theme import (
     ERROR,
     FK_MARKER,
     KEY_HINT,

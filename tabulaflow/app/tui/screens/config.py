@@ -19,11 +19,8 @@ from tabulaflow.app.config import (
     load_app_config,
 )
 from tabulaflow.agents.llm import model_display_name
-from tabulaflow.app.theme import (
-    ACCENT,
-    ACCENT_BOLD,
-    KEY_HINT,
-)
+from tabulaflow.app.theme import ACCENT
+from tabulaflow.app.tui.theme import ACCENT_BOLD, KEY_HINT
 
 _CURRENT_CUSTOM_PRESET_LABEL = "Current custom"
 _LLM_OPTION_LABEL_WIDTH = 20

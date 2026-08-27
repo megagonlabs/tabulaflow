@@ -25,7 +25,8 @@ from textual.app import App, ComposeResult
 from textual.containers import VerticalScroll
 from textual.widgets import Input, Static
 
-from tabulaflow.app.theme import ACCENT, ACCENT_DIM, FOCUS_SURFACE, KEY_HINT, KEY_HINT_DIM
+from tabulaflow.app.theme import ACCENT
+from tabulaflow.app.tui.theme import ACCENT_DIM, FOCUS_SURFACE, KEY_HINT, KEY_HINT_DIM
 from tabulaflow.output.specs import (
     ChoiceOption,
     ChoiceParameter,
