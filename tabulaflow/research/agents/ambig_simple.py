@@ -4,6 +4,7 @@ from typing import ClassVar, Literal, cast
 from tabulaflow.data import SQLConnectorProtocol
 from tabulaflow.output.formatting import schema_formatter_registry, SQLSchemaFormatter
 from tabulaflow.agents.trace import Usage, Trajectory
+from tabulaflow.research.observability import trace_prediction
 from tabulaflow.research.types import PredQuery
 from tabulaflow.research.types import AmbigNL2QTask, SimpleAmbigNL2QTaskOutput
 from tabulaflow.agents.tools import AgentTool, RunQueryTool
@@ -16,7 +17,7 @@ from tabulaflow.research.tools import (
     GetColumnDescriptionTool,
 )
 from tabulaflow.research.agents.registry import agent_registry, UserSimulatorProtocol, AgentConfig
-from tabulaflow.research.agents.utils import get_max_steps_capability, instrument, BasicAgentConfig
+from tabulaflow.research.agents.utils import get_max_steps_capability, BasicAgentConfig
 from tabulaflow.agents.llm import make_agent
 
 
@@ -71,7 +72,7 @@ class AmbigSimpleSQLAgent:
     async def from_config_async(cls, config: AmbigSimpleSQLAgentConfig) -> "AmbigSimpleSQLAgent":
         return cls(config)
 
-    @instrument
+    @trace_prediction
     async def predict_async(
         self, task: AmbigNL2QTask, db_connector: SQLConnectorProtocol, user_simulator: UserSimulatorProtocol
     ) -> SimpleAmbigNL2QTaskOutput:

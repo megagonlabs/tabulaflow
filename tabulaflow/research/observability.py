@@ -1,18 +1,22 @@
-"""Observability policy for TabulaFlow research pipelines."""
+"""Tracing policy and instrumentation for TabulaFlow research runs."""
 
 from __future__ import annotations
 
 import logging
 import os
 import threading
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
+from functools import wraps
+from typing import Any
 
+from opentelemetry import trace
 from opentelemetry.context import Context
 from opentelemetry.sdk.trace.sampling import ALWAYS_ON, Decision, ParentBased, Sampler, SamplingResult
 from opentelemetry.trace import Link, SpanKind, TraceState
 from opentelemetry.util.types import AttributeValue
 
 from tabulaflow.agents import instrument_agents
+from tabulaflow.research.types import NL2QTask
 
 logger = logging.getLogger(__name__)
 
@@ -45,6 +49,23 @@ class _ResearchSampler(Sampler):
         return "ResearchSampler"
 
 
+def trace_prediction(predict_async_fn: Callable[..., Any]) -> Callable[..., Any]:
+    """Trace a top-level research prediction without nesting duplicate spans."""
+
+    @wraps(predict_async_fn)
+    async def wrapper(self: Any, task: NL2QTask, *args: Any, **kwargs: Any) -> Any:
+        from tabulaflow import __version__
+
+        tracer = trace.get_tracer_provider().get_tracer("tabulaflow", __version__)
+        current_span = trace.get_current_span()
+        if current_span.get_span_context().is_valid:
+            return await predict_async_fn(self, task, *args, **kwargs)
+        with tracer.start_as_current_span(f"qid={task.qid}"):
+            return await predict_async_fn(self, task, *args, **kwargs)
+
+    return wrapper
+
+
 def configure_research_observability() -> None:
     """Configure research tracing and enable agent instrumentation once."""
     global _configured
@@ -72,4 +93,4 @@ def configure_research_observability() -> None:
         _configured = True
 
 
-__all__ = ["configure_research_observability"]
+__all__ = ["configure_research_observability", "trace_prediction"]

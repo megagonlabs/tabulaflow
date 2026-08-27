@@ -5,6 +5,7 @@ import logging
 
 from tabulaflow.data import DBConnector
 from tabulaflow.agents.trace import Usage, Trajectory
+from tabulaflow.research.observability import trace_prediction
 from tabulaflow.research.types import PredQuery
 from tabulaflow.research.types import SimpleNL2QTask, SimpleNL2QTaskOutput
 from tabulaflow.agents.tools import AgentTool, RunQueryTool
@@ -18,7 +19,6 @@ from tabulaflow.output.formatting import (
 from tabulaflow.research.agents.registry import agent_registry, AgentConfig
 from tabulaflow.research.agents.utils import (
     get_max_steps_capability,
-    instrument,
     BasicAgentConfig,
 )
 from tabulaflow.agents.llm import make_agent
@@ -105,7 +105,7 @@ class MiniAgent:
             return graph_formatter.format(db_connector.schema)
         raise TypeError(f"Unsupported connector type for MiniAgent: {db_connector.connector_type!r}")
 
-    @instrument
+    @trace_prediction
     async def predict_async(self, task: SimpleNL2QTask, db_connector: DBConnector) -> SimpleNL2QTaskOutput:
         t0 = time.time()
 

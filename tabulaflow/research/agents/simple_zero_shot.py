@@ -12,10 +12,11 @@ from tabulaflow.output.formatting import (
 )
 from tabulaflow.data import DBConnector
 from tabulaflow.agents.trace import Trajectory, Usage
+from tabulaflow.research.observability import trace_prediction
 from tabulaflow.research.types import PredQuery
 from tabulaflow.research.types import SimpleNL2QTask, SimpleNL2QTaskOutput
 from tabulaflow.research.agents.registry import agent_registry, AgentConfig
-from tabulaflow.research.agents.utils import BasicAgentConfig, extract_code, instrument
+from tabulaflow.research.agents.utils import BasicAgentConfig, extract_code
 
 SYSTEM_PROMPT = """
 You are a database expert responsible for translating natural language questions into {{language}} queries.
@@ -73,7 +74,7 @@ class SimpleZeroShotNL2Q:
     async def from_config_async(cls, config: SimpleZeroShotNL2QConfig) -> "SimpleZeroShotNL2Q":
         return cls(config)
 
-    @instrument
+    @trace_prediction
     async def predict_async(self, task: SimpleNL2QTask, db_connector: DBConnector) -> SimpleNL2QTaskOutput:
         t0 = time.time()
 

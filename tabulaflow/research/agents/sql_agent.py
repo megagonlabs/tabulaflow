@@ -12,6 +12,7 @@ import logging
 from tabulaflow.data import DBConnector, SQLConnectorProtocol
 from tabulaflow.core import SQLSchema, SQLTableSchema, ColumnRef
 from tabulaflow.agents.trace import Usage, Trajectory
+from tabulaflow.research.observability import trace_prediction
 from tabulaflow.research.types import PredQuery
 from tabulaflow.research.types import ExtraPredInfo, NL2QDataset, SimpleNL2QTask, SimpleNL2QTaskOutput
 from tabulaflow.research.preprocessing import QuestionEmbedder, SchemaPreprocessor
@@ -23,7 +24,6 @@ from tabulaflow.research.agents.registry import agent_registry, AgentConfig
 from tabulaflow.research.agents.utils import (
     extract_code,
     get_max_steps_capability,
-    instrument,
     BasicAgentConfig,
     TaskRunContext,
 )
@@ -437,7 +437,7 @@ class SQLAgent:
         preprocessed_schema.tables.sort(key=get_table_sort_key)
         return preprocessed_schema
 
-    @instrument
+    @trace_prediction
     async def predict_async(self, task: SimpleNL2QTask, db_connector: DBConnector) -> SimpleNL2QTaskOutput:
         if db_connector.connector_type != "sql":
             raise TypeError(f"SQLAgent requires a SQL db connector, got {type(db_connector)!r}")

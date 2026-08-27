@@ -9,7 +9,7 @@ from tabulaflow.research.benchmarks.registry import dataset_registry
 from tabulaflow.agents import AgentRuntimeConfig, initialize_agent_runtime
 import tabulaflow.research.agents._erd  # noqa: F401 — register the SQL-agent ERD preprocessor
 from tabulaflow.research.preprocessing.registry import ResearchPreprocessor, preprocessor_registry
-from tabulaflow.research.pipelines.observability import configure_research_observability
+from tabulaflow.research.observability import configure_research_observability
 from tabulaflow.research.types import NL2QDataset
 
 logger = logging.getLogger(__name__)

@@ -1,5 +1,5 @@
 import asyncio
-from tabulaflow.research.pipelines.observability import configure_research_observability
+from tabulaflow.research.observability import configure_research_observability
 from tabulaflow.research.agents import SQLAgent, BasicAgentConfig
 from tabulaflow.research.benchmarks import BirdSQLDatasetLoader
 from tabulaflow.research.metrics import BirdSQLEx

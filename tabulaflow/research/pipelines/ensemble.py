@@ -10,7 +10,7 @@ from functools import reduce
 from typing import Any
 
 from tabulaflow.research.benchmarks.registry import dataset_registry
-from tabulaflow.research.pipelines.observability import configure_research_observability
+from tabulaflow.research.observability import configure_research_observability
 from tabulaflow.research.agents.ensemblers.majority_ensembler import MajorityEnsembler, MajorityEnsemblerConfig
 from tabulaflow.research.agents.ensemblers.llm_ensembler import LLMEnsembler, LLMEnsemblerConfig
 from tabulaflow.research.agents.ensemblers.agent_ensembler import AgentEnsembler, AgentEnsemblerConfig

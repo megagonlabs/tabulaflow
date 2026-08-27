@@ -11,8 +11,8 @@ import jinja2
 from pydantic import BaseModel
 from pydantic_ai import ToolOutput
 
+from tabulaflow.research.observability import trace_prediction
 from tabulaflow.research.agents.registry import AgentConfig
-from tabulaflow.research.agents.utils import instrument
 from tabulaflow.data import SQLConnectorProtocol
 from tabulaflow.output.formatting import SQLDDLSchemaFormatter
 from tabulaflow.agents.summarization import DBSummarizer
@@ -119,7 +119,7 @@ class DbtLLMEnsembler:
                 deduped.append(output)
         return deduped
 
-    @instrument
+    @trace_prediction
     async def ensemble_async(
         self,
         task: DbtTask,

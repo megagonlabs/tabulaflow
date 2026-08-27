@@ -509,6 +509,7 @@ research/
   query_execution.py
   query_analysis.py
   ambiguity.py
+  observability.py
 ```
 
 Research is a leaf consumer of `core`, `data`, `output`, and `agents`. Nothing in the platform layers should import `research`.

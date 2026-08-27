@@ -6,9 +6,10 @@ from typing import Any, ClassVar, cast
 import jinja2
 from pydantic_ai import ModelRetry, RunContext, ToolOutput
 
+from tabulaflow.research.observability import trace_prediction
 from tabulaflow.research.agents.registry import AgentConfig
 from tabulaflow.research.agents.ensemblers.majority_ensembler import _normalize_value
-from tabulaflow.research.agents.utils import BasicAgentConfig, get_max_steps_capability, instrument
+from tabulaflow.research.agents.utils import BasicAgentConfig, get_max_steps_capability
 from tabulaflow.data import SQLConnectorProtocol
 from tabulaflow.output.formatting import SQLSchemaFormatter, format_dataframe, schema_formatter_registry
 from tabulaflow.research.query_execution import populate_query_exec_result
@@ -144,7 +145,7 @@ class AgentEnsembler:
         preview += f"\n({len(df)} rows)"
         return preview
 
-    @instrument
+    @trace_prediction
     async def ensemble_async(
         self,
         task: SimpleNL2QTask,

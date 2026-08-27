@@ -907,7 +907,8 @@ tabulaflow/research
 ├── reporting.py            # readable reports and persisted outputs
 ├── query_execution.py            # execution of research query objects
 ├── query_analysis.py       # static query analysis
-└── ambiguity.py            # ambiguity ordering and identifiers
+├── ambiguity.py            # ambiguity ordering and identifiers
+└── observability.py        # research tracing policy and instrumentation
 ```
 
 ## 📚 Dataset Setup

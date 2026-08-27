@@ -6,9 +6,9 @@ import jinja2
 from pydantic import BaseModel
 from pydantic_ai import ToolOutput
 
+from tabulaflow.research.observability import trace_prediction
 from tabulaflow.research.agents.registry import AgentConfig
 from tabulaflow.research.agents.ensemblers.majority_ensembler import _normalize_value
-from tabulaflow.research.agents.utils import instrument
 from tabulaflow.data import SQLConnectorProtocol
 from tabulaflow.output.formatting import format_dataframe
 from tabulaflow.research.query_execution import populate_query_exec_result
@@ -124,7 +124,7 @@ class LLMEnsembler:
         preview += f"\n({len(df)} rows)"
         return preview
 
-    @instrument
+    @trace_prediction
     async def ensemble_async(
         self,
         task: SimpleNL2QTask,

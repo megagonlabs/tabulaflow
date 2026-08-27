@@ -4,8 +4,8 @@ import logging
 from typing import Any, ClassVar
 import pandas as pd
 from pydantic import BaseModel
+from tabulaflow.research.observability import trace_prediction
 from tabulaflow.research.agents.registry import AgentConfig
-from tabulaflow.research.agents.utils import instrument
 from tabulaflow.research.types import SimpleNL2QTask, SimpleNL2QTaskOutput
 from tabulaflow.data import SQLConnectorProtocol
 from tabulaflow.research.query_execution import populate_query_exec_result
@@ -46,7 +46,7 @@ class MajorityEnsembler:
     async def from_config_async(cls, config: MajorityEnsemblerConfig) -> "MajorityEnsembler":
         return cls(config)
 
-    @instrument
+    @trace_prediction
     async def ensemble_async(
         self, task: SimpleNL2QTask, db_connector: SQLConnectorProtocol, task_outputs: list[SimpleNL2QTaskOutput]
     ) -> SimpleNL2QTaskOutput:

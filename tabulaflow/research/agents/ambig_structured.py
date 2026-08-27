@@ -9,6 +9,7 @@ from pydantic_ai import Agent, ToolOutput
 from tabulaflow.data import SQLConnectorProtocol
 from tabulaflow.output.formatting import schema_formatter_registry, SQLSchemaFormatter
 from tabulaflow.agents.trace import Usage, Trajectory
+from tabulaflow.research.observability import trace_prediction
 from tabulaflow.research.types import PredQuery
 from tabulaflow.research.types import (
     AmbigNL2QTask,
@@ -27,7 +28,7 @@ from tabulaflow.research.agents.registry import (
     UserValueQuestion,
     AgentConfig,
 )
-from tabulaflow.research.agents.utils import get_max_steps_capability, instrument, TaskRunContext, BasicAgentConfig
+from tabulaflow.research.agents.utils import get_max_steps_capability, TaskRunContext, BasicAgentConfig
 from tabulaflow.research.ambiguity import int_to_letter
 from tabulaflow.agents.llm import make_agent
 
@@ -311,7 +312,7 @@ class AmbigStructuredSQLAgent:
         tools["finish"] = FinishTool()
         return tools
 
-    @instrument
+    @trace_prediction
     async def predict_async(
         self, task: AmbigNL2QTask, db_connector: SQLConnectorProtocol, user_simulator: UserSimulatorProtocol
     ) -> StructuredAmbigNL2QTaskOutput:

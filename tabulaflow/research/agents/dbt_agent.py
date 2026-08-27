@@ -10,8 +10,9 @@ from typing import Any, ClassVar, cast
 
 import jinja2
 
+from tabulaflow.research.observability import trace_prediction
 from tabulaflow.research.agents.registry import agent_registry, AgentConfig
-from tabulaflow.research.agents.utils import BasicAgentConfig, get_max_steps_capability, instrument
+from tabulaflow.research.agents.utils import BasicAgentConfig, get_max_steps_capability
 from tabulaflow.data import SQLConnectorProtocol
 from tabulaflow.output.formatting import SQLSchemaFormatter, schema_formatter_registry
 from tabulaflow.agents.summarization import DBSummarizer
@@ -118,7 +119,7 @@ class DbtAgent:
     async def from_config_async(cls, config: DbtAgentConfig) -> "DbtAgent":
         return cls(config)
 
-    @instrument
+    @trace_prediction
     async def predict_async(self, task: DbtTask, db_connector: SQLConnectorProtocol) -> DbtTaskOutput:
         t0 = time.time()
         assert task.working_dir is not None, "working_dir must be set before calling predict_async"

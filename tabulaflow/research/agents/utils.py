@@ -1,9 +1,10 @@
-from typing import Any, Callable, Literal
-from functools import partial, wraps
+"""Shared configuration, context, and helpers for research agents."""
+
+from typing import Any, Literal
+from functools import partial
 from dataclasses import dataclass
 import re
 
-from opentelemetry import trace
 from pydantic_ai import RunContext
 from pydantic_ai.capabilities import ProcessHistory
 from pydantic_ai.messages import ModelMessage, ModelRequest, UserPromptPart
@@ -43,26 +44,6 @@ def get_max_steps_capability(max_steps: int) -> ProcessHistory[Any]:
     if max_steps < 1:
         raise ValueError("max_steps must be at least 1")
     return ProcessHistory(partial(max_steps_processor, max_steps=max_steps))
-
-
-def instrument(predict_async_fn: Callable[..., Any]) -> Callable[..., Any]:
-    @wraps(predict_async_fn)
-    async def wrapper(self: Any, task: NL2QTask, *args: Any, **kwargs: Any) -> Any:
-        from tabulaflow import __version__
-
-        tracer_provider = trace.get_tracer_provider()
-        tracer = tracer_provider.get_tracer("tabulaflow", __version__)
-
-        current_span = trace.get_current_span()
-
-        if current_span and current_span.get_span_context().is_valid:
-            # Already inside a span, do not start a new span
-            return await predict_async_fn(self, task, *args, **kwargs)
-
-        with tracer.start_as_current_span(f"qid={task.qid}"):
-            return await predict_async_fn(self, task, *args, **kwargs)
-
-    return wrapper
 
 
 @dataclass

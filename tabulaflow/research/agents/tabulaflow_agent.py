@@ -4,6 +4,7 @@ from typing import ClassVar, cast
 import logging
 from tabulaflow.data import DBConnector
 from tabulaflow.agents.trace import Usage, Trajectory
+from tabulaflow.research.observability import trace_prediction
 from tabulaflow.research.types import PredQuery
 from tabulaflow.research.types import SimpleNL2QTask, SimpleNL2QTaskOutput
 from tabulaflow.agents.summarization import DBSummarizer
@@ -14,7 +15,6 @@ from tabulaflow.output.formatting import schema_formatter_registry, SQLSchemaFor
 from tabulaflow.research.agents.registry import agent_registry, AgentConfig
 from tabulaflow.research.agents.utils import (
     get_max_steps_capability,
-    instrument,
     BasicAgentConfig,
 )
 from tabulaflow.agents.llm import make_agent
@@ -104,7 +104,7 @@ class TabulaflowAgent:
     async def from_config_async(cls, config: TabulaflowAgentConfig) -> "TabulaflowAgent":
         return cls(config)
 
-    @instrument
+    @trace_prediction
     async def predict_async(self, task: SimpleNL2QTask, db_connector: DBConnector) -> SimpleNL2QTaskOutput:
         if db_connector.connector_type != "sql":
             raise TypeError(f"TabulaflowAgent requires a SQL db connector, got {type(db_connector)!r}")
