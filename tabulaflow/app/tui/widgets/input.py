@@ -13,7 +13,7 @@ from textual.binding import Binding
 from textual.suggester import Suggester
 from textual.widgets import Input
 
-_SLASH_COMMANDS = sorted(["/help", "/exit", "/clear", "/config", "/connect", "/disconnect"])
+from tabulaflow.app.tui.commands import SLASH_COMMANDS
 
 _CONNECTABLE_EXTENSIONS = frozenset(
     {".csv", ".tsv", ".xlsx", ".xls", ".parquet", ".json", ".jsonl", ".ndjson", ".sqlite", ".sqlite3", ".db", ".duckdb"}
@@ -44,7 +44,7 @@ class TabulaflowSuggester(Suggester):
         # Only complete the command portion (first word)
         parts = value.split(" ", 1)
         prefix = parts[0]
-        for cmd in _SLASH_COMMANDS:
+        for cmd in SLASH_COMMANDS:
             if cmd.startswith(prefix) and cmd != prefix:
                 # Return just the command if user hasn't typed args yet
                 if len(parts) == 1:

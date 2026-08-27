@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, cast
+from typing import cast
 
 import pytest
 from rich.text import Text
@@ -54,7 +54,7 @@ async def test_handle_command_dispatches_valid_shell_quoted_command(monkeypatch:
         seen_args = args
         return CommandResult()
 
-    monkeypatch.setitem(cast(Any, commands.COMMANDS), "/fake", fake_handler)
+    monkeypatch.setitem(commands._COMMANDS, "/fake", (fake_handler, "Fake command"))
 
     result = await handle_command("/fake 'path with spaces.csv' alias", cast(AppSession, object()))
 
@@ -76,7 +76,7 @@ async def test_clear_starts_a_new_conversation() -> None:
 
     result = await handle_command("/clear", cast(AppSession, session))
 
-    assert result.should_clear is True
+    assert result.action == "clear"
     assert session.conversation_reset is True
 
 

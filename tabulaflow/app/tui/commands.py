@@ -5,7 +5,9 @@ from __future__ import annotations
 import os
 import re
 import shlex
-from typing import TYPE_CHECKING
+from collections.abc import Awaitable, Callable
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, Literal
 from urllib.parse import urlparse
 
 from rich.console import RenderableType
@@ -27,21 +29,18 @@ if TYPE_CHECKING:
 COMMAND_PREFIX = "/"
 
 
+CommandAction = Literal["quit", "clear", "open_config"]
+
+
+@dataclass(frozen=True)
 class CommandResult:
     """Result of a slash command execution."""
 
-    def __init__(
-        self,
-        *,
-        output: RenderableType | None = None,
-        should_quit: bool = False,
-        should_clear: bool = False,
-        should_open_config: bool = False,
-    ) -> None:
-        self.output = output
-        self.should_quit = should_quit
-        self.should_clear = should_clear
-        self.should_open_config = should_open_config
+    output: RenderableType | None = None
+    action: CommandAction | None = None
+
+
+CommandHandler = Callable[[list[str], AppSession], Awaitable[CommandResult]]
 
 
 def _announce_connect(session: AppSession, alias: str, connector: DBConnector) -> str:
@@ -100,18 +99,19 @@ async def handle_command(text: str, session: AppSession) -> CommandResult:
     cmd = parts[0].lower()
     args = parts[1:]
 
-    handler = COMMANDS.get(cmd)
-    if handler is None:
+    command = _COMMANDS.get(cmd)
+    if command is None:
         return CommandResult(
             output=Text.from_markup(f"[{ERROR}]Unknown command:[/] {escape(cmd)}. Type /help for available commands.")
         )
 
-    return await handler(args, session)  # type: ignore[operator, no-any-return]
+    handler, _ = command
+    return await handler(args, session)
 
 
 async def _cmd_help(args: list[str], session: AppSession) -> CommandResult:
     lines = Text()
-    for cmd, (_, description) in _COMMAND_HELP.items():
+    for cmd, (_, description) in _COMMANDS.items():
         lines.append(f"  {cmd}\n", style="bold")
         lines.append(f"    {description}\n", style="dim")
     return CommandResult(output=lines)
@@ -121,12 +121,12 @@ async def _cmd_exit(args: list[str], session: AppSession) -> CommandResult:
     # Disconnect happens in the TUI's exit path so all quit triggers
     # (slash command, idle Ctrl+C / Ctrl+D double-press, …) share one
     # cleanup site.  See ``TabulaflowApp._request_exit``.
-    return CommandResult(should_quit=True)
+    return CommandResult(action="quit")
 
 
 async def _cmd_clear(args: list[str], session: AppSession) -> CommandResult:
     session.reset_conversation()
-    return CommandResult(should_clear=True)
+    return CommandResult(action="clear")
 
 
 async def _cmd_connect(args: list[str], session: AppSession) -> CommandResult:
@@ -313,10 +313,10 @@ async def _cmd_disconnect(args: list[str], session: AppSession) -> CommandResult
 
 
 async def _cmd_config(args: list[str], session: AppSession) -> CommandResult:
-    return CommandResult(should_open_config=True)
+    return CommandResult(action="open_config")
 
 
-_COMMAND_HELP: dict[str, tuple[object, str]] = {
+_COMMANDS: dict[str, tuple[CommandHandler, str]] = {
     "/help": (_cmd_help, "Show this help message"),
     "/exit": (_cmd_exit, "Exit the chat"),
     "/clear": (_cmd_clear, "Start a new conversation"),
@@ -325,4 +325,4 @@ _COMMAND_HELP: dict[str, tuple[object, str]] = {
     "/disconnect": (_cmd_disconnect, "Disconnect: /disconnect \\[alias]"),
 }
 
-COMMANDS: dict[str, object] = {cmd: handler for cmd, (handler, _) in _COMMAND_HELP.items()}
+SLASH_COMMANDS = tuple(_COMMANDS)

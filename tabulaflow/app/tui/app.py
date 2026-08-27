@@ -15,7 +15,7 @@ from textual.containers import Horizontal, Vertical, VerticalScroll
 from textual.worker import Worker
 from textual.widgets import Button, Input, Static
 
-from tabulaflow.app.tui.commands import COMMAND_PREFIX, handle_command
+from tabulaflow.app.tui.commands import COMMAND_PREFIX, CommandResult, handle_command
 from tabulaflow.app.config import (
     PROVIDER_API_KEY_ENV,
     LLMPreset,
@@ -1000,25 +1000,21 @@ class TabulaflowApp(App[None]):
 
     async def _show_command_result(
         self,
-        result: object,
+        result: CommandResult,
         session: AppSession,
         chat_log: VerticalScroll,
     ) -> None:
-        from tabulaflow.app.tui.commands import CommandResult
-
-        assert isinstance(result, CommandResult)
-
-        if result.should_quit:
+        if result.action == "quit":
             self._request_exit()
             return
 
-        if result.should_clear:
+        if result.action == "clear":
             await chat_log.remove_children()
             await chat_log.mount(self._banner_for_preset(self._llm_selection.preset))
             self._refresh_esc_hint()
             return
 
-        if result.should_open_config:
+        if result.action == "open_config":
             from tabulaflow.app.tui.screens.config import ConfigScreen
 
             self.push_screen(
