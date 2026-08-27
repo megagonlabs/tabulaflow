@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from typing import cast
 
-from tabulaflow.app.pane.types import ColumnDesc, DatasetData, MapCardData, MapData
+from tabulaflow.app.pane.contract import ColumnDesc, DatasetData, MapCardData, MapData
 
 
 def _as_str(value: object) -> str | None:

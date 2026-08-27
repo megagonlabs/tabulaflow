@@ -28,12 +28,12 @@ import pandas as pd
 
 from tabulaflow.app import pane as pane_mod
 from preview_fixtures import debug_chart_fixtures
-from tabulaflow.app.pane import (
+from tabulaflow.app.pane.cards import render_resolved_output
+from tabulaflow.app.pane.contract import (
     PaneCard,
     PaneSource,
     card_payload,
     pane_panel_for_output,
-    render_resolved_output,
     turn_payload,
 )
 from tabulaflow.app.pane.cards import (
@@ -44,7 +44,7 @@ from tabulaflow.app.pane.cards import (
     render_map_data,
     render_result_data,
 )
-from tabulaflow.app.pane import server as pane_server
+import tabulaflow.app.pane.server as pane_server
 from tabulaflow.app.runtime_paths import generate_session_id
 from tabulaflow.app.turn import TurnOutput
 from tabulaflow.agents.chat import ChatResult

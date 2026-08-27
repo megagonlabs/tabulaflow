@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from tabulaflow.app.media import sniff_binary, try_decode_base64
-from tabulaflow.app.pane.types import ColumnDesc, TableCardData, TableData
+from tabulaflow.app.pane.contract import ColumnDesc, TableCardData, TableData
 
 if TYPE_CHECKING:
     import pandas as pd

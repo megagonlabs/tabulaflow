@@ -16,7 +16,7 @@ from pygments.lexers import get_lexer_by_name
 from pygments.style import Style as PygmentsStyle
 from pygments.util import ClassNotFound
 
-from tabulaflow.app.pane.types import (
+from tabulaflow.app.pane.contract import (
     CARD_ID_PREFIX,
     CodeData,
     MessageStatus,

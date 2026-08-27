@@ -10,10 +10,8 @@ import pandas as pd
 import pytest
 
 from tabulaflow.app.media import sniff_binary, try_decode_base64
-from tabulaflow.app.pane import (
-    TableCardData,
-    build_table_data,
-)
+from tabulaflow.app.pane.contract import TableCardData
+from tabulaflow.app.pane.tables import build_table_data
 
 
 PNG_MAGIC = b"\x89PNG\r\n\x1a\n" + b"\x00" * 32

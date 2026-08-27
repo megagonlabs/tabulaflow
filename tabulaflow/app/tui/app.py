@@ -23,12 +23,12 @@ from tabulaflow.app.config import (
     update_app_config,
 )
 from tabulaflow.app.tui.rendering import build_resolved_output_card_views
-from tabulaflow.app.pane import (
+from tabulaflow.app.pane.cards import render_resolved_output
+from tabulaflow.app.pane.contract import (
     PaneCard,
     PanePanel,
     manual_card_turn,
     pane_panel_for_output,
-    render_resolved_output,
     turn_payload,
 )
 from tabulaflow.app.runtime_paths import RuntimePaths, ensure_pane_dir
@@ -44,7 +44,7 @@ from tabulaflow.app.tui.widgets.result import AgentResultWidget
 if TYPE_CHECKING:
     import pandas as pd
 
-    from tabulaflow.app.pane import OutputPane
+    from tabulaflow.app.pane.server import OutputPane
     from tabulaflow.agents.chat import ChatResult
     from tabulaflow.output.resolver import ResolvedOutput
 
@@ -606,7 +606,7 @@ class TabulaflowApp(App[None]):
     def _ensure_pane(self) -> "OutputPane | None":
         """Start the output pane if needed; return it, or None if it couldn't start."""
         if self._pane is None:
-            from tabulaflow.app.pane import OutputPane
+            from tabulaflow.app.pane.server import OutputPane
 
             try:
                 ensure_pane_dir(self._runtime_paths.pane_dir)
@@ -634,7 +634,7 @@ class TabulaflowApp(App[None]):
 
     def show_table_in_pane(self, df: pd.DataFrame, *, title: str) -> bool:
         """Render and show a table from a TUI screen in the browser pane."""
-        from tabulaflow.app.pane import ResultCardInput, render_result_data
+        from tabulaflow.app.pane.cards import ResultCardInput, render_result_data
 
         try:
             card = render_result_data(ResultCardInput(df=df, label=None), self._runtime_paths.pane_dir)

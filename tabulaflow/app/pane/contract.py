@@ -1,4 +1,4 @@
-"""Typed payload helpers for the browser output pane."""
+"""Python side of the browser output-pane wire contract."""
 
 from __future__ import annotations
 

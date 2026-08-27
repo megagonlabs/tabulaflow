@@ -1,4 +1,4 @@
-from tabulaflow.app.pane import pane_panel_for_output
+from tabulaflow.app.pane.contract import pane_panel_for_output
 from tabulaflow.output.specs import ChoiceOption, ChoiceParameter, NumberParameter, OutputSpec
 
 

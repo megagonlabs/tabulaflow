@@ -7,7 +7,7 @@ from typing import Any, cast
 
 import pandas as pd
 
-from tabulaflow.app.pane import CARD_ID_PREFIX, VIEW_KINDS, CardData, PaneCard
+from tabulaflow.app.pane.contract import CARD_ID_PREFIX, VIEW_KINDS, CardData, PaneCard
 from tabulaflow.app.pane.cards import (
     GraphCardInput,
     MapCardInput,

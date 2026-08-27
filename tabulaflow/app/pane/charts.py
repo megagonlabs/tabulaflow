@@ -5,7 +5,7 @@ from __future__ import annotations
 import copy
 from typing import TYPE_CHECKING
 
-from tabulaflow.app.pane.types import ChartCardData
+from tabulaflow.app.pane.contract import ChartCardData
 
 if TYPE_CHECKING:
     import pandas as pd

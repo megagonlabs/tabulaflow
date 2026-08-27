@@ -8,7 +8,7 @@ from typing import Any, cast
 import pandas as pd
 import pytest
 
-from tabulaflow.app.pane import _add_line_hover, build_chart_data
+from tabulaflow.app.pane.charts import _add_line_hover, build_chart_data
 from tabulaflow.output.specs import ChartArtifactSpec, ChoiceOption, ChoiceParameter
 from tabulaflow.core import ExecResult
 from tabulaflow.output.charts import chart_type_label, validate_chart_spec

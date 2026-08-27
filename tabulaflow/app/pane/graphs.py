@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import cast
 
-from tabulaflow.app.pane.types import GraphCardData
+from tabulaflow.app.pane.contract import GraphCardData
 from tabulaflow.output.graphs import GRAPH_MAX_EDGES, GRAPH_MAX_NODES
 
 _DEFAULT_NODE_COLOR = "#3eb489"

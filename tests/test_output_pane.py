@@ -31,8 +31,8 @@ from tabulaflow.app.pane.cards import (
     render_result_data,
 )
 from tabulaflow.app.theme import CODE_TEXT
-from tabulaflow.app.pane import CARD_ID_PREFIX, OutputPane, OutputPanePortError, _PANE_HTML
-from tabulaflow.app.pane import PaneCard, PanePanel, PaneTurn, turn_payload
+from tabulaflow.app.pane.contract import CARD_ID_PREFIX, PaneCard, PanePanel, PaneTurn, turn_payload
+from tabulaflow.app.pane.server import OutputPane, OutputPanePortError, _PANE_HTML
 from tabulaflow.output.graphs import materialize_graph_result, normalize_graph_spec
 from tabulaflow.app.tui import TabulaflowApp
 from tabulaflow.app.turn import TurnOutput
@@ -1240,7 +1240,7 @@ async def test_pane_preparation_failure_renders_safe_error_card(
     monkeypatch: pytest.MonkeyPatch,
     caplog: pytest.LogCaptureFixture,
 ) -> None:
-    from tabulaflow.app.pane import cards as pane_cards
+    import tabulaflow.app.pane.cards as pane_cards
 
     artifact = ResolvedTableArtifact(
         artifact_id="S1",

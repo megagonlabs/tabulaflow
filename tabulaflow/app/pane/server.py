@@ -31,7 +31,7 @@ from urllib.parse import unquote, urlsplit, urlunsplit
 from markdown_it import MarkdownIt
 
 from tabulaflow.app.pane.cards import build_code_data, render_resolved_output
-from tabulaflow.app.pane.types import CARD_ID_PREFIX, CodeData, PaneCard, PaneTurn
+from tabulaflow.app.pane.contract import CARD_ID_PREFIX, CodeData, PaneCard, PaneTurn
 from tabulaflow.app.runtime_paths import generate_session_id
 from tabulaflow.app.theme import GITHUB_SLUG, GITHUB_URL
 from tabulaflow.app.turn import TurnOutput
