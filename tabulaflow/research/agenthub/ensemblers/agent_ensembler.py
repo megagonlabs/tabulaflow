@@ -8,7 +8,7 @@ from pydantic_ai import ModelRetry, RunContext, ToolOutput
 
 from tabulaflow.research.agenthub.registry import AgentConfig
 from tabulaflow.research.agenthub.ensemblers.majority_ensembler import _normalize_value
-from tabulaflow.research.agenthub.utils import BasicAgentConfig, get_max_steps_processor, instrument
+from tabulaflow.research.agenthub.utils import BasicAgentConfig, get_max_steps_capability, instrument
 from tabulaflow.data import SQLConnectorProtocol
 from tabulaflow.output.formatting import SQLSchemaFormatter, format_dataframe, schema_formatter_registry
 from tabulaflow.research.pipelines.populate_exec_results import populate_task_async
@@ -272,7 +272,7 @@ class AgentEnsembler:
             tools=[tool.as_pydantic_ai_tool() for tool in tools.values()],
             output_type=ToolOutput(finish, name="finish"),
             instructions=system_prompt,
-            history_processors=[get_max_steps_processor(self.config.max_steps)],
+            capabilities=[get_max_steps_capability(self.config.max_steps)],
             model_settings=self.config.to_model_settings(),
         )
 

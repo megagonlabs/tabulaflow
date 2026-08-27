@@ -13,7 +13,7 @@ from tabulaflow.research.tools import FinishTool
 from tabulaflow.output.formatting import schema_formatter_registry, SQLSchemaFormatter
 from tabulaflow.research.agenthub.registry import agent_registry, AgentConfig
 from tabulaflow.research.agenthub.utils import (
-    get_max_steps_processor,
+    get_max_steps_capability,
     instrument,
     BasicAgentConfig,
 )
@@ -135,7 +135,7 @@ class TabulaflowAgent:
             tools=[tool.as_pydantic_ai_tool() for key, tool in tools.items() if key != "finish"],
             output_type=tools["finish"].as_pydantic_ai_tool(),
             instructions=system_prompt,
-            history_processors=[get_max_steps_processor(self.config.max_steps)],
+            capabilities=[get_max_steps_capability(self.config.max_steps)],
             model_settings=self.config.to_model_settings(),
         )
         result = await agent.run(format_question(task))

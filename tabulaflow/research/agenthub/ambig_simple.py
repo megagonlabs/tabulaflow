@@ -16,7 +16,7 @@ from tabulaflow.research.tools import (
     GetColumnDescriptionTool,
 )
 from tabulaflow.research.agenthub.registry import agent_registry, UserSimulatorProtocol, AgentConfig
-from tabulaflow.research.agenthub.utils import get_max_steps_processor, instrument, BasicAgentConfig
+from tabulaflow.research.agenthub.utils import get_max_steps_capability, instrument, BasicAgentConfig
 from tabulaflow.agents.llm import make_agent
 
 
@@ -101,7 +101,7 @@ class AmbigSimpleSQLAgent:
                 dataset_instructions=task.dataset_instructions,
                 user_patience=user_patience,
             ),
-            history_processors=[get_max_steps_processor(self.config.max_steps)],
+            capabilities=[get_max_steps_capability(self.config.max_steps)],
             model_settings=self.config.to_model_settings(),
         )
 

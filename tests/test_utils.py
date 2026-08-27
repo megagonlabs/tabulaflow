@@ -7,7 +7,7 @@ import pandas as pd
 import pytest
 
 from tabulaflow.core.serialization import dumps_strict_json, json_ready
-from tabulaflow.research.agenthub.utils import extract_code
+from tabulaflow.research.agenthub.utils import extract_code, get_max_steps_capability
 
 
 @pytest.mark.asyncio
@@ -26,6 +26,11 @@ async def test_extract_code() -> None:
     for response in responses:
         code = extract_code(response)
         assert code == "SELECT * FROM users"
+
+
+def test_max_steps_capability_rejects_nonpositive_limit() -> None:
+    with pytest.raises(ValueError, match="max_steps must be at least 1"):
+        get_max_steps_capability(0)
 
 
 def test_json_ready_normalizes_missing_and_non_finite_values() -> None:

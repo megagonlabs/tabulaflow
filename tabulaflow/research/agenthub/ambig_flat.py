@@ -20,7 +20,7 @@ from tabulaflow.research.agenthub.registry import (
     UserMultipleChoiceQuestion,
     UserValueQuestion,
 )
-from tabulaflow.research.agenthub.utils import get_max_steps_processor, instrument, TaskRunContext, BasicAgentConfig
+from tabulaflow.research.agenthub.utils import get_max_steps_capability, instrument, TaskRunContext, BasicAgentConfig
 from tabulaflow.research.utils import int_to_letter
 from tabulaflow.agents.llm import make_agent
 
@@ -133,7 +133,7 @@ class AmbigFlatSQLAgent:
             tools=[ctx.tools[t].as_pydantic_ai_tool() for t in tool_keys],
             output_type=output_type,
             instructions=system_prompt,
-            history_processors=[get_max_steps_processor(self.config.max_steps)],
+            capabilities=[get_max_steps_capability(self.config.max_steps)],
             model_settings=self.config.to_model_settings(),
         )
 

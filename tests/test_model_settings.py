@@ -80,6 +80,7 @@ def test_make_model_settings_translates_service_tier_for_openai() -> None:
 
 def test_make_model_settings_skips_service_tier_for_other_providers() -> None:
     assert make_model_settings(model="anthropic:claude-sonnet-4-5-20250929", service_tier="priority") == {}
+    assert make_model_settings(model="openai-compatible:model", service_tier="priority") == {}
 
 
 def test_make_model_settings_combines_reasoning_and_service_tier() -> None:

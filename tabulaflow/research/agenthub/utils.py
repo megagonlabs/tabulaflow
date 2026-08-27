@@ -5,6 +5,7 @@ import re
 
 from opentelemetry import trace
 from pydantic_ai import RunContext
+from pydantic_ai.capabilities import ProcessHistory
 from pydantic_ai.messages import ModelMessage, ModelRequest, UserPromptPart
 from pydantic import BaseModel
 from tabulaflow.core import SQLSchema
@@ -38,9 +39,10 @@ def max_steps_processor(
     return messages
 
 
-def get_max_steps_processor(max_steps: int) -> Any:
-    assert max_steps >= 1
-    return partial(max_steps_processor, max_steps=max_steps)
+def get_max_steps_capability(max_steps: int) -> ProcessHistory[Any]:
+    if max_steps < 1:
+        raise ValueError("max_steps must be at least 1")
+    return ProcessHistory(partial(max_steps_processor, max_steps=max_steps))
 
 
 def instrument(predict_async_fn: Callable[..., Any]) -> Callable[..., Any]:

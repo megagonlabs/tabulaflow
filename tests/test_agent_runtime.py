@@ -5,9 +5,12 @@ from typing import Any, AsyncIterator, Literal, cast
 
 import pytest
 from pydantic import BaseModel
+from pydantic_ai import Agent, UsageLimits
+from pydantic_ai.models.test import TestModel
 
 from tabulaflow.agents import AgentRuntimeConfig, initialize_agent_runtime
 from tabulaflow.agents._cache import InvalidCacheEntry, load_or_compute_model
+from tabulaflow.agents.llm import make_agent
 from tabulaflow.agents.summarization import DBSummarizer
 from tabulaflow.core._cache import write_cached_model
 from tabulaflow.core.schema import SQLSchema
@@ -65,6 +68,23 @@ async def test_runtime_shares_loop_bound_resources() -> None:
     assert runtime.embedding_throttles() is runtime.embedding_throttles()
     assert runtime.get_base_model("model", build) is runtime.get_base_model("model", build)
     assert builds == 1
+
+
+async def test_agents_default_to_unlimited_requests(monkeypatch: pytest.MonkeyPatch) -> None:
+    captured_limits: list[UsageLimits] = []
+
+    async def run(_self: Agent[Any, Any], *_args: Any, **kwargs: Any) -> None:
+        captured_limits.append(kwargs["usage_limits"])
+
+    monkeypatch.setattr(Agent, "run", run)
+    agent = make_agent(TestModel())
+
+    await agent.run("test", usage_limits=None)
+    finite_limit = UsageLimits(request_limit=3)
+    await agent.run("test", usage_limits=finite_limit)
+
+    assert captured_limits[0].request_limit is None
+    assert captured_limits[1] is finite_limit
 
 
 def test_runtime_separates_resources_between_event_loops() -> None:

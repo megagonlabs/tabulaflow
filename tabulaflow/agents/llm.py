@@ -150,7 +150,7 @@ def _anthropic_token_settings(reasoning_effort: str | bool | None, *, model: str
 
 def _service_tier_model_settings(service_tier: str | None, *, model: str) -> ModelSettings:
     """Return provider-specific model settings for a provider-neutral service tier."""
-    if service_tier is None or not model.startswith("openai"):
+    if service_tier is None or not model.startswith(("openai:", "openai-responses:")):
         return ModelSettings()
     return cast(ModelSettings, {"openai_service_tier": service_tier})
 
@@ -257,23 +257,26 @@ def _make_model(llm: str | Model) -> Model:
 
 
 class _Agent(Agent):
-    """``pydantic_ai.Agent`` that defaults ``usage_limits`` to lift the 50-request
-    cap, so ``max_steps`` is the sole governor. Constructed via :func:`make_agent`."""
+    """``pydantic_ai.Agent`` configured for unlimited multi-step runs."""
 
     async def run(self, *args: Any, **kwargs: Any) -> Any:
-        kwargs.setdefault("usage_limits", _DEFAULT_USAGE_LIMITS)
+        if kwargs.get("usage_limits") is None:
+            kwargs["usage_limits"] = _DEFAULT_USAGE_LIMITS
         return await super().run(*args, **kwargs)
 
     def run_sync(self, *args: Any, **kwargs: Any) -> Any:
-        kwargs.setdefault("usage_limits", _DEFAULT_USAGE_LIMITS)
+        if kwargs.get("usage_limits") is None:
+            kwargs["usage_limits"] = _DEFAULT_USAGE_LIMITS
         return super().run_sync(*args, **kwargs)
 
     def run_stream(self, *args: Any, **kwargs: Any) -> Any:
-        kwargs.setdefault("usage_limits", _DEFAULT_USAGE_LIMITS)
+        if kwargs.get("usage_limits") is None:
+            kwargs["usage_limits"] = _DEFAULT_USAGE_LIMITS
         return super().run_stream(*args, **kwargs)
 
     def iter(self, *args: Any, **kwargs: Any) -> Any:
-        kwargs.setdefault("usage_limits", _DEFAULT_USAGE_LIMITS)
+        if kwargs.get("usage_limits") is None:
+            kwargs["usage_limits"] = _DEFAULT_USAGE_LIMITS
         return super().iter(*args, **kwargs)
 
 
@@ -292,7 +295,6 @@ def make_agent(
     instructions: str | None = None,
     tools: Sequence[Any] = (),
     model_settings: Any = None,
-    history_processors: Sequence[Any] | None = None,
     retries: int = 1,
     **kwargs: Any,
 ) -> Agent[None, _OutputT]: ...
@@ -304,7 +306,6 @@ def make_agent(
     instructions: str | None = None,
     tools: Sequence[Any] = (),
     model_settings: Any = None,
-    history_processors: Sequence[Any] | None = None,
     retries: int = 1,
     **kwargs: Any,
 ) -> Agent[None, _OutputT]: ...
@@ -315,7 +316,6 @@ def make_agent(
     instructions: str | None = None,
     tools: Sequence[Any] = (),
     model_settings: Any = None,
-    history_processors: Sequence[Any] | None = None,
     retries: int = 1,
     **kwargs: Any,
 ) -> Agent[None, str]: ...
@@ -326,7 +326,6 @@ def make_agent(
     instructions: str | None = None,
     tools: Sequence[Any] = (),
     model_settings: Any = None,
-    history_processors: Sequence[Any] | None = None,
     retries: int = 1,
     **kwargs: Any,
 ) -> Agent[Any, Any]:
@@ -339,12 +338,6 @@ def make_agent(
     by :class:`pydantic_ai.Agent` (e.g. ``capabilities``, ``deps_type``) flows
     through ``**kwargs``.
     """
-    if history_processors is not None:
-        # pydantic-ai ≥1.107 deprecates Agent(history_processors=...) in favor of
-        # ProcessHistory capabilities; adapt here so callers keep the stable kwarg.
-        from pydantic_ai.capabilities import ProcessHistory
-
-        kwargs["capabilities"] = [*kwargs.get("capabilities", ()), *(ProcessHistory(p) for p in history_processors)]
     return _Agent(
         _make_model(model),
         output_type=output_type,

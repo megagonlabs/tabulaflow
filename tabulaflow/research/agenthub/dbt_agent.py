@@ -11,7 +11,7 @@ from typing import Any, ClassVar, cast
 import jinja2
 
 from tabulaflow.research.agenthub.registry import agent_registry, AgentConfig
-from tabulaflow.research.agenthub.utils import BasicAgentConfig, get_max_steps_processor, instrument
+from tabulaflow.research.agenthub.utils import BasicAgentConfig, get_max_steps_capability, instrument
 from tabulaflow.data import SQLConnectorProtocol
 from tabulaflow.output.formatting import SQLSchemaFormatter, schema_formatter_registry
 from tabulaflow.agents.summarization import DBSummarizer
@@ -186,7 +186,7 @@ class DbtAgent:
                 get_table_schema.as_pydantic_ai_tool(),
             ],
             instructions=system_prompt,
-            history_processors=[get_max_steps_processor(self.config.max_steps)],
+            capabilities=[get_max_steps_capability(self.config.max_steps)],
             model_settings=self.config.to_model_settings(),
         )
 
