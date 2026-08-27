@@ -665,12 +665,15 @@ Aug 25
 
 Aug 26
 - [x] agents layer cleanup
-  - [x] bash tool
-  - [ ] model price tracking
-  - [ ] message store
+  - [x] redesign bash tool
+  - [x] model price tracking, move to genai-pricing
+  - [x] trace.py and llm.py
+  - [x] message store
+- [ ] app layer cleanup
+- [ ] research layer cleanup
 - app
   - [x] redesign artifact menu layout
-  - [ ] fix scrolling when switching artifact/view
+  - [x] fix scrolling when switching artifact/view
 
 - [ ] Shell messed up after ssh disconnect
 - [ ] Check if uv tool install install browser
