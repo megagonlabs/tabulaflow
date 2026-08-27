@@ -13,7 +13,7 @@ from rich.markup import escape
 from rich.text import Text
 
 from tabulaflow.app.theme import ERROR
-from tabulaflow.app.state import WORKSPACE_ALIAS, AppState
+from tabulaflow.app.session import WORKSPACE_ALIAS, AppSession
 from tabulaflow.data import connect_url
 from tabulaflow.data.url import (
     is_database_file_path,
@@ -54,7 +54,7 @@ class CommandResult:
 # ---------------------------------------------------------------------------
 
 
-def _announce_connect(session: AppState, alias: str, connector: DBConnector) -> str:
+def _announce_connect(session: AppSession, alias: str, connector: DBConnector) -> str:
     """Tell the agent the user just connected ``alias`` (so it gains temporal
     awareness of the new source) and return the connector's display summary."""
     info = format_connector_summary(connector)
@@ -105,7 +105,7 @@ def _alias_from_url(url: str) -> str:
 # ---------------------------------------------------------------------------
 
 
-async def handle_command(text: str, session: AppState) -> CommandResult:
+async def handle_command(text: str, session: AppSession) -> CommandResult:
     """Dispatch a slash command. Returns a CommandResult."""
     try:
         parts = shlex.split(text)
@@ -124,7 +124,7 @@ async def handle_command(text: str, session: AppState) -> CommandResult:
     return await handler(args, session)  # type: ignore[operator, no-any-return]
 
 
-async def _cmd_help(args: list[str], session: AppState) -> CommandResult:
+async def _cmd_help(args: list[str], session: AppSession) -> CommandResult:
     lines = Text()
     for cmd, (_, description) in _COMMAND_HELP.items():
         lines.append(f"  {cmd}\n", style="bold")
@@ -132,19 +132,19 @@ async def _cmd_help(args: list[str], session: AppState) -> CommandResult:
     return CommandResult(output=lines)
 
 
-async def _cmd_exit(args: list[str], session: AppState) -> CommandResult:
+async def _cmd_exit(args: list[str], session: AppSession) -> CommandResult:
     # Disconnect happens in the TUI's exit path so all quit triggers
     # (slash command, idle Ctrl+C / Ctrl+D double-press, …) share one
     # cleanup site.  See ``TabulaflowApp._request_exit``.
     return CommandResult(should_quit=True)
 
 
-async def _cmd_clear(args: list[str], session: AppState) -> CommandResult:
+async def _cmd_clear(args: list[str], session: AppSession) -> CommandResult:
     session.reset_conversation()
     return CommandResult(should_clear=True)
 
 
-async def _cmd_connect(args: list[str], session: AppState) -> CommandResult:
+async def _cmd_connect(args: list[str], session: AppSession) -> CommandResult:
     if not args:
         return CommandResult(
             output=Text.from_markup(
@@ -279,7 +279,7 @@ async def _cmd_connect(args: list[str], session: AppState) -> CommandResult:
     return await _execute_connect(url, alias, session)
 
 
-async def _connect_hf_dataset(args: list[str], session: AppState) -> CommandResult:
+async def _connect_hf_dataset(args: list[str], session: AppSession) -> CommandResult:
     """Handle /connect for HuggingFace dataset URLs."""
     from tabulaflow.data.loaders import load_hf_dataset, parse_hf_dataset_url
 
@@ -327,7 +327,7 @@ async def _connect_hf_dataset(args: list[str], session: AppState) -> CommandResu
     return CommandResult(output=Text(f"✓ Loaded {dataset_id} as {alias} ({info})", style="dim"))
 
 
-async def _execute_connect(url: str, alias: str, session: AppState) -> CommandResult:
+async def _execute_connect(url: str, alias: str, session: AppSession) -> CommandResult:
     """Execute the actual database connection."""
     try:
         connector = await connect_url(url, db_name=alias, read_only=True)
@@ -339,7 +339,7 @@ async def _execute_connect(url: str, alias: str, session: AppState) -> CommandRe
     return CommandResult(output=Text(f"✓ Connected to {alias} ({info})", style="dim"))
 
 
-async def _cmd_disconnect(args: list[str], session: AppState) -> CommandResult:
+async def _cmd_disconnect(args: list[str], session: AppSession) -> CommandResult:
     if len(args) > 1:
         return CommandResult(output=Text.from_markup(f"[{ERROR}]Usage:[/] /disconnect <alias>"))
 
@@ -360,15 +360,13 @@ async def _cmd_disconnect(args: list[str], session: AppState) -> CommandResult:
             )
         )
 
-    if await session.registry.close_async(alias):
-        session.unregister_alias_sources(alias)
-        session.note_event(f"the user disconnected the data source `{alias}`; it is no longer available.")
+    if await session.disconnect_db(alias):
         return CommandResult(output=Text(f"✓ Disconnected from {alias}", style="dim"))
     else:
         return CommandResult(output=Text.from_markup(f"[{ERROR}]No connection named:[/] {escape(alias)}"))
 
 
-async def _cmd_config(args: list[str], session: AppState) -> CommandResult:
+async def _cmd_config(args: list[str], session: AppSession) -> CommandResult:
     return CommandResult(should_open_config=True)
 
 

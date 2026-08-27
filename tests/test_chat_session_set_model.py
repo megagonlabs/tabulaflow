@@ -6,7 +6,7 @@ from typing import Any, cast
 
 import pytest
 
-from tabulaflow.app.state import create_workspace_connector
+from tabulaflow.app.session import _create_workspace_connector
 from tabulaflow.agents.chat import ChatSession
 from tabulaflow.agents.chat.session import MAIN_REQUEST_TIMEOUT, SUBAGENT_REQUEST_TIMEOUT
 from tabulaflow.data.registry import DBRegistry
@@ -442,7 +442,7 @@ def test_subagent_settings_budget_era_claude_raise_max_tokens() -> None:
 
 async def test_subagent_profile_wires_tools(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("OPENAI_API_KEY", "sk-test123456789ab4x")
-    workspace = await create_workspace_connector(tmp_path / "workspace.duckdb")
+    workspace = await _create_workspace_connector(tmp_path / "workspace.duckdb")
     try:
         agent = ChatSession(
             registry=DBRegistry(),

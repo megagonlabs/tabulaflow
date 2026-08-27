@@ -17,10 +17,10 @@ from importlib.resources import as_file, files
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from tabulaflow.app.state import WORKSPACE_ALIAS
+from tabulaflow.app.session import WORKSPACE_ALIAS
 
 if TYPE_CHECKING:
-    from tabulaflow.app.state import AppState
+    from tabulaflow.app.session import AppSession
 
 SAMPLE_ALIAS = "sample_data"
 SAMPLE_TABLES = ("bank_transactions", "product_reviews", "model_eval_results", "nyc_taxi_zones")
@@ -48,12 +48,12 @@ def materialize_sample_db() -> Path:
     return dest
 
 
-def has_user_data(session: AppState) -> bool:
+def has_user_data(session: AppSession) -> bool:
     """Whether any database besides the built-in workspace is connected."""
     return any(alias != WORKSPACE_ALIAS for alias in session.registry.list_aliases())
 
 
-async def autoconnect_sample(session: AppState) -> bool:
+async def autoconnect_sample(session: AppSession) -> bool:
     """Connect the bundled sample DB under ``SAMPLE_ALIAS`` when no user data exists.
 
     Returns True if it was connected, False if skipped (user data already present
@@ -76,8 +76,7 @@ async def autoconnect_sample(session: AppState) -> bool:
         # stale schema for no speed benefit.
         config=SQLConnectorConfig(schema_cache_mode="off", query_cache_mode="off"),
     )
-    session.registry.register(SAMPLE_ALIAS, connector)
-    session.register_source(("sample", _FILENAME), SAMPLE_ALIAS)
+    session.register_db(SAMPLE_ALIAS, connector, ("sample", _FILENAME))
     session.note_event(
         f"sample data is connected as `{SAMPLE_ALIAS}` so the welcome examples are runnable "
         f"(tables: {', '.join(SAMPLE_TABLES)}). It includes bundled demo data and public sample data; "

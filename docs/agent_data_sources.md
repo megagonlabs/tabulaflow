@@ -34,8 +34,8 @@ In all cases the user must still **see the auto-connected sources in the data ex
   (`load_files` / `SQLConnector.from_url_async`) → `registry.register(alias, connector)`
   → `_register_user_db` (dedup bookkeeping via `session._sources`, remove the bundled
   `sample_data`, `chat_agent.note_event(...)`).
-- **The workspace** is a per-session **writable DuckDB** connector
-  (`create_workspace_connector`, `read_only=False`) registered under alias `workspace`.
+- **The workspace** is a per-session **writable DuckDB** connector created by
+  `AppSession.create` and registered under alias `workspace`.
   It is the agent's *internal scratch* (result spill, message offload, canonical names) —
   **not** a user-facing deliverable.
 - **`run_query` (`RegistryRunQueryTool`)** executes SQL against a registered connector by
@@ -132,7 +132,7 @@ then add more later"). A read-only `load_files` snapshot cannot grow. So:
 
 - A dataset is a **named writable DuckDB** at `data/<alias>.duckdb` (`read_only=False`),
   registered as its own source — distinct from the internal `workspace`. Generalizes
-  `create_workspace_connector`.
+  the same DuckDB connector configuration used by `AppSession.create`.
 - **"Add more later" = append** (`INSERT`/`COPY`/`CREATE TABLE`) into the same dataset
   via `run_query` — no reconnect, no replace.
 - **No cross-session persistence** (decided). Datasets live in the per-session dir and die

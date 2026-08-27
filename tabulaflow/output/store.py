@@ -53,7 +53,7 @@ __all__ = [
 ]
 
 # Schema this module spills result DataFrames into — one table per result. Kept out
-# of the workspace connector's introspected schema (see ``create_workspace_connector``).
+# of the workspace connector's introspected schema (see ``AppSession.create``).
 OUTPUT_STORE_SCHEMA = "_output_store"
 
 

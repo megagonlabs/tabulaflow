@@ -33,7 +33,7 @@ from tabulaflow.app.pane import (
     turn_payload,
 )
 from tabulaflow.app.runtime_paths import RuntimePaths, ensure_pane_dir
-from tabulaflow.app.state import LLM_UNAVAILABLE_MESSAGE, AppState
+from tabulaflow.app.session import AppSession
 from tabulaflow.app.turn import TurnOutput
 from tabulaflow.agents.llm import model_display_name
 from tabulaflow.app.theme import ERROR, FOCUS_SURFACE, KEY_HINT
@@ -49,13 +49,14 @@ from tabulaflow.app.widgets import (
 
 if TYPE_CHECKING:
     from tabulaflow.app.pane import OutputPane
-    from tabulaflow.agents.chat import ChatSession, ChatResult
+    from tabulaflow.agents.chat import ChatResult
     from tabulaflow.output.resolver import ResolvedOutput
 
 logger = logging.getLogger(__name__)
 
 _REQUIRED_LLM_SETTINGS = frozenset({"GOOGLE_CLOUD_LOCATION", "GOOGLE_CLOUD_PROJECT"})
 _MAX_ERROR_MESSAGE_LENGTH = 300
+LLM_UNAVAILABLE_MESSAGE = "Select a preset in /config. /connect and browsing remain available."
 _TERMINAL_MODE_RESTORE_SEQUENCE = (
     "\x1b[?2004l"  # bracketed paste off
     "\x1b[?7h"  # line wrap on
@@ -182,17 +183,6 @@ def _llm_preset_success_message(
     return message
 
 
-def _warm_session_imports() -> None:
-    """Import the workspace connector's sqlalchemy/duckdb stack off the UI thread.
-
-    ``create_workspace_connector`` runs on the main event loop (the async engine is
-    loop-bound), so its first import of this stack (~0.7s cold) would briefly freeze
-    the UI during the background session build. Warming it in the executor first keeps
-    the UI responsive. The agent's other heavy imports happen in the executor-thread
-    ``AppState`` construction, so they need no warming here."""
-    import tabulaflow.data.sql  # noqa: F401
-
-
 def _focused_has_binding_for(widget: object, key: str) -> bool:
     """True if ``widget`` (or any base class) declares a ``BINDINGS`` entry
     matching ``key``.
@@ -261,7 +251,7 @@ class TabulaflowApp(App[None]):
         # dir" design holds only while those two stay equal, i.e. cwd never changes.
         self._project_dir = Path(os.getcwd())
         ensure_pane_dir(self._runtime_paths.pane_dir)
-        self._session: AppState | None = None
+        self._session: AppSession | None = None
         self._pane: OutputPane | None = None
         self._session_lock = asyncio.Lock()
         self._llm_activation_in_progress = False
@@ -601,13 +591,10 @@ class TabulaflowApp(App[None]):
         self.run_worker(self._shutdown_then_exit(), exclusive=False, group="shutdown")
 
     def _cleanup_runtime_paths(self) -> None:
-        """Stop session-local services and remove transient runtime files."""
-        import shutil
-
+        """Stop presentation services owned by the TUI."""
         if self._pane is not None:
             self._pane.stop()
             self._pane = None
-        shutil.rmtree(self._runtime_paths.scratch_dir, ignore_errors=True)
 
     async def _shutdown_then_exit(self) -> None:
         assert self._session is not None
@@ -656,10 +643,7 @@ class TabulaflowApp(App[None]):
         except Exception:
             return
         url = self._pane.url if self._pane is not None else None
-        if self._session is not None and self._session.llm_preset is not None:
-            profile = self._session.llm_preset.main
-            model_label = model_display_name(profile.model, profile.reasoning_effort)
-        elif self._session is None and self._llm_selection.preset is not None:
+        if self._llm_selection.preset is not None:
             model_label = model_display_name(
                 self._llm_selection.preset.main.model,
                 self._llm_selection.preset.main.reasoning_effort,
@@ -693,6 +677,7 @@ class TabulaflowApp(App[None]):
             await self._report_session_initialization_failure(error)
             return
         if preset is None:
+            session.activate_llm_preset(None)
             if selection.selection is None:
                 status = "✓ LLM off · no supported API key detected. Choose a preset in /config."
             else:
@@ -703,19 +688,12 @@ class TabulaflowApp(App[None]):
             return
         await self._show_initialization_spinner("Initializing agent...")
         try:
-            keys = await asyncio.to_thread(self._initialize_llm_runtime, session, preset)
+            keys = await asyncio.to_thread(session.activate_llm_preset, preset)
         except Exception as error:
             logger.debug("LLM preset initialization failed", exc_info=True)
             await self._finish_llm_activation(selection, result=error)
             return
         await self._finish_llm_activation(selection, result=keys)
-
-    @staticmethod
-    def _initialize_llm_runtime(
-        session: AppState,
-        preset: LLMPreset,
-    ) -> tuple[str | None, str | None]:
-        return session.activate_llm_preset(preset)
 
     async def _show_initialization_spinner(self, label: str) -> None:
         if self._initialization_spinner is not None:
@@ -868,40 +846,19 @@ class TabulaflowApp(App[None]):
         else:
             inp.focus()
 
-    async def _ensure_session(self) -> AppState:
-        """Get or create the session, initializing in a thread to avoid blocking the UI."""
+    async def _ensure_session(self) -> AppSession:
+        """Return the session, creating its non-visual runtime once."""
         if self._session is not None:
             return self._session
-        import asyncio
-
-        from tabulaflow.app.state import create_workspace_connector
 
         async with self._session_lock:
             if self._session is not None:
                 return self._session
-            loop = asyncio.get_running_loop()
-            # The workspace connector must be built on this (main) event loop, but its
-            # first import pulls in the heavy sqlalchemy/duckdb/agent stack (~3s cold) —
-            # which would freeze the UI. Warm that import off the UI thread first, so
-            # both the workspace creation and the construction below stay responsive.
-            await loop.run_in_executor(None, _warm_session_imports)
-            self._runtime_paths.scratch_dir.mkdir(parents=True, exist_ok=True)
-            workspace = await create_workspace_connector(self._runtime_paths.workspace_db_path)
-            from functools import partial
-
-            session = await loop.run_in_executor(
-                None,
-                partial(
-                    AppState,
-                    llm_preset=self._llm_selection.preset,
-                    trajectories_dir=self._runtime_paths.trajectories_dir,
-                    data_dir=self._runtime_paths.data_dir,
-                    workspace=workspace,
-                    project_dir=self._project_dir,
-                    scratch_dir=self._runtime_paths.scratch_dir,
-                ),
+            session = await AppSession.create(
+                llm_preset=self._llm_selection.preset,
+                runtime_paths=self._runtime_paths,
+                project_dir=self._project_dir,
             )
-            await self._maybe_autoconnect_sample(session)
             self._enable_explorer_button()
             # Publish the session only once it is fully ready (sample autoconnected,
             # explorer enabled). The early-return guards above key off ``self._session``,
@@ -929,15 +886,6 @@ class TabulaflowApp(App[None]):
             btn.disabled = False
         except Exception:
             pass
-
-    async def _maybe_autoconnect_sample(self, session: AppState) -> None:
-        """Silently load the bundled sample DB when the user connected nothing of their own."""
-        from tabulaflow.app.sample_data import autoconnect_sample
-
-        try:
-            await autoconnect_sample(session)
-        except Exception:
-            pass  # the sample is a convenience; never block startup on it
 
     async def on_input_submitted(self, event: Input.Submitted) -> None:
         display_text = event.value.strip()
@@ -983,8 +931,7 @@ class TabulaflowApp(App[None]):
                 chat_log.scroll_end(animate=False)
                 return
 
-            chat_session = session.active_chat_session
-            if chat_session is None:
+            if not session.llm_available:
                 error_text = Text.from_markup(f"[{ERROR}]LLM unavailable:[/] ")
                 error_text.append(self._llm_unavailable_message())
                 await chat_log.mount(SystemMessage(error_text))
@@ -992,7 +939,7 @@ class TabulaflowApp(App[None]):
                 self._refresh_bottom_status()
                 return
 
-            await self._run_agent(text, chat_session, chat_log, display_text)
+            await self._run_agent(text, session, chat_log, display_text)
         except asyncio.CancelledError:
             if is_command and user_msg.is_mounted:
                 await user_msg.remove()
@@ -1046,7 +993,7 @@ class TabulaflowApp(App[None]):
     async def _show_command_result(
         self,
         result: object,
-        session: AppState,
+        session: AppSession,
         chat_log: VerticalScroll,
     ) -> None:
         from tabulaflow.app.commands import CommandResult
@@ -1059,7 +1006,7 @@ class TabulaflowApp(App[None]):
 
         if result.should_clear:
             await chat_log.remove_children()
-            await chat_log.mount(self._banner_for_preset(session.llm_preset))
+            await chat_log.mount(self._banner_for_preset(self._llm_selection.preset))
             self._refresh_esc_hint()
             return
 
@@ -1085,8 +1032,7 @@ class TabulaflowApp(App[None]):
         session = self._session
         if session is None:
             raise RuntimeError("Config closed before the session was initialized.")
-        preset = selection.preset
-        session.llm_preset = preset
+        session.select_llm_preset(selection.preset)
         self._llm_selection = selection
         update_app_config(llm_preset=selection.selection)
         self._refresh_bottom_status()
@@ -1095,7 +1041,7 @@ class TabulaflowApp(App[None]):
     async def _run_agent(
         self,
         question: str,
-        chat_session: ChatSession,
+        session: AppSession,
         chat_log: VerticalScroll,
         display_text: str,
     ) -> None:
@@ -1109,14 +1055,14 @@ class TabulaflowApp(App[None]):
 
         result: ChatResult | None = None
         try:
-            async for event in chat_session.run_stream(question):
+            async for event in session.run_stream(question):
                 await progress.apply(event)
                 if isinstance(event, TurnFinished):
                     result = event.result
         except asyncio.CancelledError:
             # Freeze the partial progress widget; ChatSession's message history and
             # last_usage already reflect the interrupted run.
-            await progress.mark_interrupted(chat_session.last_usage)
+            await progress.mark_interrupted(session.last_usage)
             raise
         except Exception as e:
             # Freeze the partial progress widget (mirrors the interrupt path) so the
@@ -1133,7 +1079,7 @@ class TabulaflowApp(App[None]):
         if result is None:
             return  # normal completion always yields a terminal TurnFinished
 
-        turn_output = TurnOutput(result.output, chat_session.output_store)
+        turn_output = session.turn_output(result.output)
         resolved_output = await turn_output.resolve()
         await self._push_turn_to_pane(
             result,
