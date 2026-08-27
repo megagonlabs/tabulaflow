@@ -16,7 +16,7 @@ from textual.reactive import reactive
 from textual.widget import Widget
 from textual.widgets import Static
 
-from tabulaflow.app.display import build_query, build_table
+from tabulaflow.app.tui.rendering import build_query, build_table
 from tabulaflow.app.theme import ACCENT, ACCENT_DIM, FOCUS_SURFACE, KEY_HINT, KEY_HINT_DIM
 
 
@@ -477,7 +477,7 @@ LIMIT 5
 
 
 class DisambiguationPanelPreviewApp(App[None]):
-    CSS_PATH = Path(__file__).resolve().parents[1] / "tabulaflow" / "app" / "tui.tcss"
+    CSS_PATH = Path(__file__).resolve().parents[1] / "tabulaflow" / "app" / "tui" / "tui.tcss"
     BINDINGS = [Binding("q", "quit", "Quit")]
 
     def get_css_variables(self) -> dict[str, str]:

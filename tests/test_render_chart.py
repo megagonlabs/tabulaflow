@@ -421,7 +421,7 @@ class TestBuildChartFallback:
         # not a red "Chart error" line.
         from rich.panel import Panel
 
-        from tabulaflow.app.display import build_chart
+        from tabulaflow.app.tui.rendering import build_chart
 
         df = pd.DataFrame({"x": ["a", "b"], "y": ["c", "d"]})
         spec: dict[str, object] = {"mark": "bar", "encoding": {"x": {"field": "x"}, "y": {"field": "y"}}}
@@ -430,7 +430,7 @@ class TestBuildChartFallback:
     def test_too_many_bars_degrades_to_card(self) -> None:
         from rich.panel import Panel
 
-        from tabulaflow.app.display import build_chart
+        from tabulaflow.app.tui.rendering import build_chart
 
         df = pd.DataFrame({"cat": [f"c{i}" for i in range(60)], "val": list(range(60))})
         spec: dict[str, object] = {"mark": "bar", "encoding": {"x": {"field": "cat"}, "y": {"field": "val"}}}

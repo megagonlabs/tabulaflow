@@ -11,13 +11,14 @@ from textual.containers import VerticalScroll
 from textual.widgets import Button, Input, Static
 
 from tabulaflow.app import session as session_module
-from tabulaflow.app import tui
-from tabulaflow.app.commands import CommandResult
+from tabulaflow.app.tui import app as tui
+from tabulaflow.app.tui.commands import CommandResult
 from tabulaflow.app.config import LLM_OFF, LLMRoleConfig, LLMPreset, ReasoningEffort, ResolvedLLMSelection
 from tabulaflow.app.runtime_paths import RuntimePaths
 from tabulaflow.app.session import AppSession
 from tabulaflow.app.tui import TabulaflowApp
-from tabulaflow.app.widgets import BannerWidget, HistoryInput, SpinnerWidget, SystemMessage, UserMessage
+from tabulaflow.app.tui.widgets.chat import BannerWidget, SpinnerWidget, SystemMessage, UserMessage
+from tabulaflow.app.tui.widgets.input import HistoryInput
 
 if TYPE_CHECKING:
     from tabulaflow.agents.chat import ChatSession

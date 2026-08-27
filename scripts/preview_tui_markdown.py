@@ -14,7 +14,7 @@ from textual.app import App, ComposeResult
 from textual.containers import VerticalScroll
 
 from tabulaflow.app.theme import FOCUS_SURFACE
-from tabulaflow.app.widgets import AgentProgressWidget
+from tabulaflow.app.tui.widgets.progress import AgentProgressWidget
 from tabulaflow.agents.chat import AnswerDelta, TurnFinished
 from tabulaflow.agents.chat import ChatResult
 
@@ -106,7 +106,7 @@ Bare URL should stay plain: https://example.com
 
 
 class TuiMarkdownPreview(App[None]):
-    CSS_PATH = Path(__file__).resolve().parents[1] / "tabulaflow" / "app" / "tui.tcss"
+    CSS_PATH = Path(__file__).resolve().parents[1] / "tabulaflow" / "app" / "tui" / "tui.tcss"
 
     def get_css_variables(self) -> dict[str, str]:
         variables = super().get_css_variables()

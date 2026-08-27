@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from tabulaflow.app.tui import LLM_UNAVAILABLE_MESSAGE
+from tabulaflow.app.tui.app import LLM_UNAVAILABLE_MESSAGE
 from tabulaflow.agents.llm import model_display_name
 
 

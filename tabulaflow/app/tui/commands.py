@@ -27,10 +27,6 @@ if TYPE_CHECKING:
 
 COMMAND_PREFIX = "/"
 
-# ---------------------------------------------------------------------------
-# Command result
-# ---------------------------------------------------------------------------
-
 
 class CommandResult:
     """Result of a slash command execution."""
@@ -47,11 +43,6 @@ class CommandResult:
         self.should_quit = should_quit
         self.should_clear = should_clear
         self.should_open_config = should_open_config
-
-
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
 
 
 def _announce_connect(session: AppSession, alias: str, connector: DBConnector) -> str:
@@ -98,11 +89,6 @@ def _alias_from_url(url: str) -> str:
     if parsed.hostname:
         return _sanitize_alias(parsed.hostname)
     return _sanitize_alias(url)
-
-
-# ---------------------------------------------------------------------------
-# Command dispatch
-# ---------------------------------------------------------------------------
 
 
 async def handle_command(text: str, session: AppSession) -> CommandResult:
@@ -163,8 +149,6 @@ async def _cmd_connect(args: list[str], session: AppSession) -> CommandResult:
                 "  /connect https://huggingface.co/datasets/nyu-mll/glue/viewer/mrpc/train[/dim]"
             )
         )
-
-    # --- Data file connections ---
     file_args = [a for a in args if _is_data_file(a)]
     if file_args:
         non_file_args = [a for a in args if not _is_data_file(a)]
@@ -235,8 +219,6 @@ async def _cmd_connect(args: list[str], session: AppSession) -> CommandResult:
         session.register_db(alias, connector, source_key)
         info = _announce_connect(session, alias, connector)
         return CommandResult(output=Text(f"✓ Loaded {file_label} as {alias} ({info})", style="dim"))
-
-    # --- HuggingFace dataset connections ---
     from tabulaflow.data.loaders import is_hf_dataset_url
 
     if len(args) > 2:
@@ -252,8 +234,6 @@ async def _cmd_connect(args: list[str], session: AppSession) -> CommandResult:
                 "[dim]Expected: https://huggingface.co/datasets/\\<owner>/\\<dataset>\\[/viewer/\\<subset>\\[/\\<split>\\]\\][/dim]"
             )
         )
-
-    # --- URL / database-file connections ---
     raw = args[0]
     url = normalize_connection_url(raw)
     alias = _sanitize_alias(args[1]) if len(args) > 1 else _alias_from_url(url)

@@ -4,8 +4,8 @@ import pandas as pd
 from textual.app import App, ComposeResult
 from textual.containers import VerticalScroll
 
-from tabulaflow.app.display import VIEW_KIND_DATA, VIEW_KIND_QUERY, build_resolved_output_card_views
-from tabulaflow.app.widgets import AgentResultWidget
+from tabulaflow.app.tui.rendering import VIEW_KIND_DATA, VIEW_KIND_QUERY, build_resolved_output_card_views
+from tabulaflow.app.tui.widgets.result import AgentResultWidget
 from tabulaflow.agents.chat import ChatResult
 from tabulaflow.output.specs import NumberParameter, OutputSpec
 from tabulaflow.output.resolver import ResolvedArtifact, ResolvedOutput, ResolvedTableArtifact

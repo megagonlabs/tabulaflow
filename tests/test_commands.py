@@ -5,8 +5,8 @@ from typing import Any, cast
 import pytest
 from rich.text import Text
 
-import tabulaflow.app.commands as commands
-from tabulaflow.app.commands import CommandResult, handle_command
+import tabulaflow.app.tui.commands as commands
+from tabulaflow.app.tui.commands import CommandResult, handle_command
 from tabulaflow.app.session import AppSession
 
 

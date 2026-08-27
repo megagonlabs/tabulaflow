@@ -20,7 +20,7 @@ from textual.app import App, ComposeResult
 from textual.containers import Vertical, VerticalScroll
 from textual.widgets import Label, Static, TextArea
 
-from tabulaflow.app.display import build_query
+from tabulaflow.app.tui.rendering import build_query
 from tabulaflow.app.pane.cards import PANE_CODE_TEXT, build_query_data
 from tabulaflow.app.theme import (
     CODE_TEXT,
@@ -28,7 +28,7 @@ from tabulaflow.app.theme import (
     KEY_HINT,
     configure_code_text_area,
 )
-from tabulaflow.app.widgets import AgentTextBlock
+from tabulaflow.app.tui.widgets.markdown import AgentTextBlock
 
 
 class CodeSample(TypedDict):
@@ -373,7 +373,7 @@ def _rich_preview(sample: CodeSample) -> RenderableType:
 
 
 class CodeHighlightingPathsPreview(App[None]):
-    CSS_PATH = Path(__file__).resolve().parents[1] / "tabulaflow" / "app" / "tui.tcss"
+    CSS_PATH = Path(__file__).resolve().parents[1] / "tabulaflow" / "app" / "tui" / "tui.tcss"
 
     CSS = """
     CodeHighlightingPathsPreview {

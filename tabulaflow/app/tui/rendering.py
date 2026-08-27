@@ -283,11 +283,6 @@ def build_chart(
         return Text.from_markup(f"[{ERROR}]Chart error:[/] {e}")
 
 
-# ---------------------------------------------------------------------------
-# Result view building — used by TUI widgets
-# ---------------------------------------------------------------------------
-
-
 VIEW_KIND_CHART = "Chart"
 VIEW_KIND_DATA = "Data"
 VIEW_KIND_QUERY = "Query"

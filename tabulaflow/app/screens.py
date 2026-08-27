@@ -72,11 +72,6 @@ def _normalize_json_like(value: object) -> object:
     return value
 
 
-# ---------------------------------------------------------------------------
-# Output-pane helpers for manual table previews
-# ---------------------------------------------------------------------------
-
-
 def _show_path(
     card: object,
     app: object,
@@ -130,11 +125,6 @@ def send_table_to_output_pane(
         return None
     _show_path(card, app, status=status, title=title or "Table preview")
     return pane_dir / f"{card['id']}.data.json"
-
-
-# ---------------------------------------------------------------------------
-# Data browser screen
-# ---------------------------------------------------------------------------
 
 
 class DataBrowserScreen(Screen[None]):
@@ -555,11 +545,6 @@ class DataBrowserScreen(Screen[None]):
         return Text(s)
 
 
-# ---------------------------------------------------------------------------
-# Cell value browser screen
-# ---------------------------------------------------------------------------
-
-
 class CellBrowserScreen(Screen[None]):
     """Full-screen viewer for inspecting a single cell value."""
 
@@ -788,11 +773,6 @@ class CellBrowserScreen(Screen[None]):
         self.dismiss()
 
 
-# ---------------------------------------------------------------------------
-# Query browser screen
-# ---------------------------------------------------------------------------
-
-
 class QueryBrowserScreen(Screen[None]):
     """Full-screen viewer for inspecting a query with scrolling."""
 
@@ -887,11 +867,6 @@ class QueryBrowserScreen(Screen[None]):
         self.dismiss()
 
 
-# ---------------------------------------------------------------------------
-# Chart browser screen
-# ---------------------------------------------------------------------------
-
-
 class ChartBrowserScreen(Screen[None]):
     """Full-screen viewer for inspecting a chart at terminal size."""
 
@@ -944,7 +919,7 @@ class ChartBrowserScreen(Screen[None]):
         self.dismiss()
 
     def _render_chart(self) -> None:
-        from tabulaflow.app.display import build_chart
+        from tabulaflow.app.tui.rendering import build_chart
 
         content_width = max(20, self._content.size.width - 4)
         content_height = max(10, self._content.size.height)
@@ -1247,8 +1222,6 @@ class SchemaBrowserScreen(Screen[None]):
         tree.move_cursor(target)
         tree.scroll_to_node(target)
 
-    # -- event handlers: keep ``_state`` current as the user navigates ----
-
     def on_tree_node_expanded(self, event: "Any") -> None:
         path = self._node_path(event.node.data)
         if path is not None:
@@ -1258,8 +1231,6 @@ class SchemaBrowserScreen(Screen[None]):
         path = self._node_path(event.node.data)
         if path is not None:
             self._state.expansion[path] = False
-
-    # -- tree construction ---------------------------------------------------
 
     def _visible_aliases(self) -> list[str]:
         """Sorted aliases the tree shows: all registered, or just the filter."""
@@ -1505,8 +1476,6 @@ class SchemaBrowserScreen(Screen[None]):
                 ),
             )
 
-    # -- actions --------------------------------------------------------------
-
     async def action_open_preview(self) -> None:
         """Open DataBrowserScreen for the table under the cursor.
 
@@ -1567,8 +1536,6 @@ class SchemaBrowserScreen(Screen[None]):
             else f"{node_data.alias}: {node_data.table_name} {suffix}"
         )
         self.app.push_screen(DataBrowserScreen(title=title, df=df))
-
-    # -- actions & hints -----------------------------------------------------
 
     def action_close_browser(self) -> None:
         self.dismiss()
@@ -1746,11 +1713,6 @@ class SchemaBrowserScreen(Screen[None]):
         hint.append("R", style=KEY_HINT)
         hint.append(" Refresh", style=hint_fg)
         self._hint.update(hint)
-
-
-# ---------------------------------------------------------------------------
-# Config screen
-# ---------------------------------------------------------------------------
 
 
 _CURRENT_CUSTOM_PRESET_LABEL = "Current custom"

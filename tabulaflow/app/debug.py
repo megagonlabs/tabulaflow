@@ -10,8 +10,8 @@ import os
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
-from tabulaflow.app.display import CardGroup, build_resolved_output_card_views
-from tabulaflow.app.widgets import AgentResultWidget
+from tabulaflow.app.tui.rendering import CardGroup, build_resolved_output_card_views
+from tabulaflow.app.tui.widgets.result import AgentResultWidget
 from tabulaflow.output.resolver import (
     ResolvedArtifact,
     ResolvedChartArtifact,

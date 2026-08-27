@@ -6,10 +6,6 @@ import base64
 import binascii
 import re
 
-# ---------------------------------------------------------------------------
-# Magic-byte sniffing
-# ---------------------------------------------------------------------------
-
 
 def sniff_binary(raw: bytes) -> tuple[str, str] | None:
     """Return ``(suffix, mime)`` for recognized media signatures, else ``None``.
@@ -53,10 +49,6 @@ def sniff_binary(raw: bytes) -> tuple[str, str] | None:
         return ".svg", "image/svg+xml"
     return None
 
-
-# ---------------------------------------------------------------------------
-# Base64 detection
-# ---------------------------------------------------------------------------
 
 _DATA_URI_RE = re.compile(r"^data:(?P<mime>[^;,]+)?(?:;[^,]*)*,(?P<payload>.*)$", re.DOTALL)
 _BASE64_CHARS_RE = re.compile(r"^[A-Za-z0-9+/=\s]+$")

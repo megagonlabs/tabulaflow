@@ -20,14 +20,14 @@ from tabulaflow.app.theme import (
     CODE_TEXT,
     TabulaflowCodeHighlightTheme,
 )
-from tabulaflow.app.widgets import (
+from tabulaflow.app.tui.widgets.markdown import (
     AgentMarkdownFence,
-    AgentProgressWidget,
     AgentTextBlock,
     FrozenAgentTextBlock,
     _make_agent_markdown_parser,
     _strips_to_text,
 )
+from tabulaflow.app.tui.widgets.progress import AgentProgressWidget
 from tabulaflow.agents.chat import AnswerDelta
 
 

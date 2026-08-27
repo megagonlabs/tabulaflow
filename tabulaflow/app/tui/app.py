@@ -15,7 +15,7 @@ from textual.containers import Horizontal, Vertical, VerticalScroll
 from textual.worker import Worker
 from textual.widgets import Button, Input, Static
 
-from tabulaflow.app.commands import COMMAND_PREFIX, handle_command
+from tabulaflow.app.tui.commands import COMMAND_PREFIX, handle_command
 from tabulaflow.app.config import (
     PROVIDER_API_KEY_ENV,
     LLMPreset,
@@ -23,7 +23,7 @@ from tabulaflow.app.config import (
     update_app_config,
 )
 from tabulaflow.app.debug import debug_enabled, mount_debug_widgets
-from tabulaflow.app.display import build_resolved_output_card_views
+from tabulaflow.app.tui.rendering import build_resolved_output_card_views
 from tabulaflow.app.pane import (
     PaneCard,
     PanePanel,
@@ -37,15 +37,10 @@ from tabulaflow.app.session import AppSession
 from tabulaflow.app.turn import TurnOutput
 from tabulaflow.agents.llm import model_display_name
 from tabulaflow.app.theme import ERROR, FOCUS_SURFACE, KEY_HINT
-from tabulaflow.app.widgets import (
-    AgentProgressWidget,
-    AgentResultWidget,
-    BannerWidget,
-    HistoryInput,
-    SpinnerWidget,
-    SystemMessage,
-    UserMessage,
-)
+from tabulaflow.app.tui.widgets.chat import BannerWidget, SpinnerWidget, SystemMessage, UserMessage
+from tabulaflow.app.tui.widgets.input import HistoryInput
+from tabulaflow.app.tui.widgets.progress import AgentProgressWidget
+from tabulaflow.app.tui.widgets.result import AgentResultWidget
 
 if TYPE_CHECKING:
     from tabulaflow.app.pane import OutputPane
@@ -407,7 +402,7 @@ class TabulaflowApp(App[None]):
         look); once ready it falls back to a system message if nothing is connected.
         """
         from tabulaflow.app.screens import SchemaBrowserScreen
-        from tabulaflow.app.widgets import SystemMessage
+        from tabulaflow.app.tui.widgets.chat import SystemMessage
 
         if self._session is None:
             return  # workspace not ready yet — do nothing
@@ -996,7 +991,7 @@ class TabulaflowApp(App[None]):
         session: AppSession,
         chat_log: VerticalScroll,
     ) -> None:
-        from tabulaflow.app.commands import CommandResult
+        from tabulaflow.app.tui.commands import CommandResult
 
         assert isinstance(result, CommandResult)
 

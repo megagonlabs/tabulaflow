@@ -3,7 +3,7 @@
 from pathlib import Path
 
 from tabulaflow.app.theme import DIFF_ADDED, DIFF_REMOVED
-from tabulaflow.app.widgets import (
+from tabulaflow.app.tui.widgets.progress import (
     AgentProgressWidget,
     _line_diffstat,
     _styled_label,

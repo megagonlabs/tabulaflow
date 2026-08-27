@@ -7,7 +7,7 @@ from typing import Literal
 import pandas as pd
 from rich.console import Console
 
-from tabulaflow.app.display import (
+from tabulaflow.app.tui.rendering import (
     CardGroup,
     VIEW_KIND_INFO,
     VIEW_KIND_CHART,
@@ -17,7 +17,7 @@ from tabulaflow.app.display import (
     VIEW_KIND_QUERY,
     build_resolved_output_card_views,
 )
-from tabulaflow.app.widgets import AgentResultWidget
+from tabulaflow.app.tui.widgets.result import AgentResultWidget
 from tabulaflow.agents.chat import ChatResult
 from tabulaflow.output.specs import (
     ChoiceOption,
