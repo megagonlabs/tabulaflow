@@ -17,7 +17,6 @@ if TYPE_CHECKING:
     from tabulaflow.agents.chat import ChatEvent, ChatSession
     from tabulaflow.agents.trace import Usage
     from tabulaflow.app.turn import TurnOutput
-    from tabulaflow.data.protocols import DBConnector
     from tabulaflow.data.sql import SQLConnector
     from tabulaflow.output.specs import OutputSpec
 
@@ -120,11 +119,6 @@ class AppSession:
         self._chat_session: ChatSession | None = None
         self._activation_lock = threading.Lock()
         self._closed = False
-        # Maps a "what's this connection's source" key (frozenset of file
-        # paths, normalized URL, etc.) to the alias under which it is
-        # registered.  Used by ``/connect`` to detect duplicate sources
-        # being registered under different aliases.
-        self._sources: dict[object, str] = {}
 
     @property
     def selected_preset(self) -> LLMPreset | None:
@@ -230,26 +224,10 @@ class AppSession:
 
         return TurnOutput(output, self._chat_session.output_store)
 
-    def find_alias_by_source(self, key: object) -> str | None:
-        """Return the alias registered for ``key``, or None."""
-        return self._sources.get(key)
-
-    def _register_source(self, key: object, alias: str) -> None:
-        self._sources[key] = alias
-
-    def _unregister_alias_sources(self, alias: str) -> None:
-        self._sources = {k: v for k, v in self._sources.items() if v != alias}
-
-    def register_db(self, alias: str, connector: DBConnector, source_key: object) -> None:
-        """Register a user-connected database."""
-        self.registry.register(alias, connector)
-        self._register_source(source_key, alias)
-
     async def disconnect_db(self, alias: str) -> bool:
-        """Disconnect ``alias`` and remove its source identity."""
+        """Disconnect ``alias`` and notify the active conversation."""
         if not await self.registry.close_async(alias):
             return False
-        self._unregister_alias_sources(alias)
         self.note_event(f"the user disconnected the data source `{alias}`; it is no longer available.")
         return True
 

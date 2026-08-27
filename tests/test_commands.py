@@ -11,21 +11,20 @@ from tabulaflow.app.session import AppSession
 
 
 class _FakeRegistry:
-    def has(self, _alias: str) -> bool:
-        return False
+    def __init__(self) -> None:
+        self.connectors: dict[str, object] = {}
+
+    def has(self, alias: str) -> bool:
+        return alias in self.connectors
+
+    def register(self, alias: str, connector: object) -> None:
+        self.connectors[alias] = connector
 
 
 class _FakeSession:
     def __init__(self) -> None:
         self.registry = _FakeRegistry()
-        self.source_key: object | None = None
         self.conversation_reset = False
-
-    def find_alias_by_source(self, _key: object) -> str | None:
-        return None
-
-    def register_db(self, _alias: str, _connector: object, source_key: object) -> None:
-        self.source_key = source_key
 
     def note_event(self, _description: str) -> None:
         pass
@@ -106,11 +105,12 @@ async def test_disconnect_rejects_extra_args() -> None:
 
 
 @pytest.mark.asyncio
-async def test_connect_source_key_strips_credentials(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_connect_registers_alias(monkeypatch: pytest.MonkeyPatch) -> None:
     session = _FakeSession()
+    connector = object()
 
     async def fake_connect_url(_url: str, **_kwargs: object) -> object:
-        return object()
+        return connector
 
     monkeypatch.setattr(commands, "connect_url", fake_connect_url)
     monkeypatch.setattr(commands, "format_connector_summary", lambda _connector: "test connector")
@@ -122,4 +122,28 @@ async def test_connect_source_key_strips_credentials(monkeypatch: pytest.MonkeyP
 
     assert isinstance(result.output, Text)
     assert result.output.plain == "✓ Connected to sales (test connector)"
-    assert session.source_key == ("url", "postgresql+asyncpg://example.com:5432/app")
+    assert session.registry.connectors == {"sales": connector}
+
+
+@pytest.mark.asyncio
+async def test_connect_allows_same_source_under_distinct_aliases(monkeypatch: pytest.MonkeyPatch) -> None:
+    session = _FakeSession()
+
+    async def fake_connect_url(_url: str, **_kwargs: object) -> object:
+        return object()
+
+    monkeypatch.setattr(commands, "connect_url", fake_connect_url)
+    monkeypatch.setattr(commands, "format_connector_summary", lambda _connector: "test connector")
+
+    first = await handle_command(
+        "/connect postgres://example.com/app primary",
+        cast(AppSession, session),
+    )
+    second = await handle_command(
+        "/connect postgres://example.com/app reference",
+        cast(AppSession, session),
+    )
+
+    assert isinstance(first.output, Text)
+    assert isinstance(second.output, Text)
+    assert set(session.registry.connectors) == {"primary", "reference"}

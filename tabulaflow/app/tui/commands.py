@@ -18,7 +18,6 @@ from tabulaflow.data import connect_url
 from tabulaflow.data.url import (
     is_database_file_path,
     normalize_connection_url,
-    strip_url_credentials,
 )
 from tabulaflow.output.formatting import format_connector_summary
 
@@ -163,19 +162,6 @@ async def _cmd_connect(args: list[str], session: AppSession) -> CommandResult:
                 )
             )
 
-        # Source-identity dedup: reject if the same set of files is
-        # already loaded under another alias (regardless of what alias
-        # was requested this time).
-        source_key = ("files", frozenset(os.path.abspath(os.path.expanduser(f)) for f in file_args))
-        existing = session.find_alias_by_source(source_key)
-        if existing is not None:
-            return CommandResult(
-                output=Text.from_markup(
-                    f"[{ERROR}]Already loaded as[/] {escape(existing)}. "
-                    f"Use that alias, or [dim]/disconnect {escape(existing)}[/dim] first to reload."
-                )
-            )
-
         alias_args = [a for a in non_file_args if not _is_db_file(a)]
         if len(alias_args) > 1:
             return CommandResult(output=Text.from_markup(f"[{ERROR}]Usage:[/] /connect <file...> \\[alias]"))
@@ -216,7 +202,7 @@ async def _cmd_connect(args: list[str], session: AppSession) -> CommandResult:
         except Exception as e:
             return CommandResult(output=Text.from_markup(f"[{ERROR}]Failed to load files:[/] {escape(str(e))}"))
 
-        session.register_db(alias, connector, source_key)
+        session.registry.register(alias, connector)
         info = _announce_connect(session, alias, connector)
         return CommandResult(output=Text(f"✓ Loaded {file_label} as {alias} ({info})", style="dim"))
     from tabulaflow.data.loaders import is_hf_dataset_url
@@ -238,16 +224,6 @@ async def _cmd_connect(args: list[str], session: AppSession) -> CommandResult:
     url = normalize_connection_url(raw)
     alias = _sanitize_alias(args[1]) if len(args) > 1 else _alias_from_url(url)
 
-    url_source_key = ("url", strip_url_credentials(url))
-    existing = session.find_alias_by_source(url_source_key)
-    if existing is not None:
-        return CommandResult(
-            output=Text.from_markup(
-                f"[{ERROR}]Already connected as[/] {escape(existing)}. "
-                f"Use that alias, or [dim]/disconnect {escape(existing)}[/dim] first to reconnect."
-            )
-        )
-
     if session.registry.has(alias):
         return CommandResult(
             output=Text.from_markup(
@@ -268,16 +244,6 @@ async def _connect_hf_dataset(args: list[str], session: AppSession) -> CommandRe
         dataset_id, _, _ = parse_hf_dataset_url(url)
     except ValueError as e:
         return CommandResult(output=Text.from_markup(f"[{ERROR}]{escape(str(e))}[/]"))
-
-    source_key = ("hf", url)
-    existing = session.find_alias_by_source(source_key)
-    if existing is not None:
-        return CommandResult(
-            output=Text.from_markup(
-                f"[{ERROR}]Already loaded as[/] {escape(existing)}. "
-                f"Use that alias, or [dim]/disconnect {escape(existing)}[/dim] first to reload."
-            )
-        )
 
     default_alias = _sanitize_alias(dataset_id.split("/")[-1])
     alias = _sanitize_alias(args[1]) if len(args) > 1 else default_alias
@@ -302,7 +268,7 @@ async def _connect_hf_dataset(args: list[str], session: AppSession) -> CommandRe
     except Exception as e:
         return CommandResult(output=Text.from_markup(f"[{ERROR}]Failed to load HF dataset:[/] {escape(str(e))}"))
 
-    session.register_db(alias, connector, source_key)
+    session.registry.register(alias, connector)
     info = _announce_connect(session, alias, connector)
     return CommandResult(output=Text(f"✓ Loaded {dataset_id} as {alias} ({info})", style="dim"))
 
@@ -314,7 +280,7 @@ async def _execute_connect(url: str, alias: str, session: AppSession) -> Command
     except Exception as e:
         return CommandResult(output=Text.from_markup(f"[{ERROR}]Connection failed:[/] {escape(str(e))}"))
 
-    session.register_db(alias, connector, ("url", strip_url_credentials(url)))
+    session.registry.register(alias, connector)
     info = _announce_connect(session, alias, connector)
     return CommandResult(output=Text(f"✓ Connected to {alias} ({info})", style="dim"))
 

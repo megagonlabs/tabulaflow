@@ -24,27 +24,23 @@ In all cases the user must still **see the auto-connected sources in the data ex
 ## Key architectural facts (current state)
 
 - **One shared object is the source of truth: `session.registry` (`DBRegistry`).**
-  The chat agent (`ChatAgent.registry`) and the data explorer
+  The chat session and the data explorer
   (`SchemaBrowserScreen`) both hold a reference to the *same* instance. Anything
   registered there is queryable by the agent and visible in the explorer.
 - **The explorer is pull-based** — it reads `registry.list_aliases()` each time it is
   opened (`Ctrl+O`). No subscription/refresh machinery exists. So a new source shows up
   on the next open with no extra plumbing.
-- **`/connect` flow** (`tabulaflow/app/commands.py`): resolve source → build connector
-  (`load_files` / `SQLConnector.from_url_async`) → `registry.register(alias, connector)`
-  → `_register_user_db` (dedup bookkeeping via `session._sources`, remove the bundled
-  `sample_data`, `chat_agent.note_event(...)`).
+- **`/connect` flow** (`tabulaflow/app/tui/commands.py`): resolve source → build connector
+  → `registry.register(alias, connector)` → notify the active conversation. Aliases are
+  unique; the same physical source may be connected under distinct aliases.
 - **The workspace** is a per-session **writable DuckDB** connector created by
   `AppSession.create` and registered under alias `workspace`.
-  It is the agent's *internal scratch* (result spill, message offload, canonical names) —
-  **not** a user-facing deliverable.
+  It holds both user-visible derived tables and hidden runtime schemas. The file remains
+  recoverable after exit; data intended as a durable deliverable should still be exported.
 - **`run_query` (`RegistryRunQueryTool`)** executes SQL against a registered connector by
-  alias. The agent has no shell/code-execution tool and no way to connect/create sources.
+  alias. The agent can also connect existing sources and use guarded shell/file tools.
 - **Layering** (enforced by import-linter):
-  `core < datasources < toolhub < modulehub < {chat | research} < app`.
-  `toolhub` may import `datasources`/`core`. `toolhub` may **not** import `app`. So
-  app-owned registration policy must reach agent tools via **injected callbacks**, not
-  imports.
+  `core < data < output < agents < app`; `research` is a separate leaf consumer.
 - **Session paths** (`RuntimePaths.for_session`): `~/.tabulaflow/sessions/<id>/` holds
   `data/` (materialized connector DBs), `trajectories/`, `logs/`, `workspace.duckdb`.
   The TUI process `cwd` is the **project dir** where the user launched the app (where
@@ -326,10 +322,10 @@ ingests it by absolute path into a dataset.
 
 **Self-contained, twin to `create_dataset` — no app callback.** `datasources < toolhub`,
 so the tool calls `load_files`/`load_hf_dataset` directly; the only pull toward the app was
-*session policy* (`note_event`, `_sources` dedup, sample-removal), and — as with
+*session policy* (`note_event`, physical-source dedup, sample-removal), and — as with
 `create_dataset` — none of it is essential for the agent path:
 - `note_event` is redundant (the agent initiates the connect and gets the alias back);
-- source dedup is best-effort via alias collision (skip the `_sources` map);
+- physical-source dedup is omitted; alias uniqueness is the registry invariant;
 - sample-removal is dropped from the agent path (consistent with `create_dataset`; the
   prompt already steers to real data). A uniform app-level cleanup can be revisited later.
 

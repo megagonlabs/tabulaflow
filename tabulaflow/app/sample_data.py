@@ -76,7 +76,7 @@ async def autoconnect_sample(session: AppSession) -> bool:
         # stale schema for no speed benefit.
         config=SQLConnectorConfig(schema_cache_mode="off", query_cache_mode="off"),
     )
-    session.register_db(SAMPLE_ALIAS, connector, ("sample", _FILENAME))
+    session.registry.register(SAMPLE_ALIAS, connector)
     session.note_event(
         f"sample data is connected as `{SAMPLE_ALIAS}` so the welcome examples are runnable "
         f"(tables: {', '.join(SAMPLE_TABLES)}). It includes bundled demo data and public sample data; "
