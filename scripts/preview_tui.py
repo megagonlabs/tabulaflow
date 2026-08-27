@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+from pathlib import Path
 
 from textual.containers import VerticalScroll
 
@@ -13,6 +14,8 @@ from tabulaflow.app.tui.app import _restore_terminal_modes
 
 
 class PreviewApp(TabulaflowApp):
+    CSS_PATH = str(Path(__file__).resolve().parents[1] / "tabulaflow" / "app" / "tui" / "tui.tcss")
+
     def on_mount(self) -> None:
         super().on_mount()
         mount_preview_widgets(self, self.query_one("#chat-log", VerticalScroll))
