@@ -108,22 +108,16 @@ def test_output_pane_serves_text_only_turn(tmp_path: Path) -> None:
         pane.stop()
 
 
-def test_output_pane_replays_persisted_turns(tmp_path: Path) -> None:
-    port = _unused_loopback_port()
-    first = OutputPane(tmp_path, port=port)
-    first.start()
+def test_output_pane_replays_only_missed_turns(tmp_path: Path) -> None:
+    pane = OutputPane(tmp_path)
+    pane.start()
     try:
-        first.push(turn_payload(title="persisted", cards=[]))
-        manifest = tmp_path / "turns.jsonl"
-        assert manifest.exists()
-    finally:
-        first.stop()
+        pane.push(turn_payload(title="first", cards=[]))
+        pane.push(turn_payload(title="second", cards=[]))
 
-    second = OutputPane(tmp_path, port=port)
-    second.start()
-    try:
-        assert second.url is not None
-        with urllib.request.urlopen(f"{second.url}events", timeout=2) as response:
+        assert pane.url is not None
+        request = urllib.request.Request(f"{pane.url}events", headers={"Last-Event-ID": "0"})
+        with urllib.request.urlopen(request, timeout=2) as response:
             data_line = ""
             for raw_line in response:
                 line = raw_line.decode("utf-8").strip()
@@ -131,9 +125,9 @@ def test_output_pane_replays_persisted_turns(tmp_path: Path) -> None:
                     data_line = line[len("data: ") :]
                     break
 
-        assert json.loads(data_line) == {"id": 0, "title": "persisted", "cards": []}
+        assert json.loads(data_line) == {"id": 1, "title": "second", "cards": []}
     finally:
-        second.stop()
+        pane.stop()
 
 
 def test_output_pane_uses_first_available_port_in_range(tmp_path: Path) -> None:
@@ -870,7 +864,7 @@ def test_output_pane_push_highlights_assistant_markdown_code_blocks(tmp_path: Pa
         )
     )
 
-    turn = pane._results[0]  # noqa: SLF001
+    turn = pane._wait_for_turns(-1, timeout=0)[0]  # noqa: SLF001
     blocks = turn["assistantCodeBlocks"]
     assert blocks[0]["code"] == "print('hi')\n"
     assert [block["lexer"] for block in blocks] == ["python", "text"]

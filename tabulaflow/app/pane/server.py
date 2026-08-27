@@ -1,8 +1,8 @@
 """Embedded HTTP server that mirrors the agent's cited results in a live browser pane.
 
 A stdlib ``http.server`` running in a daemon thread serves the single-page pane,
-structured card-data files written to the session dumps dir, and a Server-Sent
-Events stream of turn manifests. Session data routes are protected by a
+structured card-data files written to the session pane dir, and a Server-Sent
+Events stream of turns. Session data routes are protected by a
 per-session URL token; bundled assets are public and cacheable.
 
 The pane is an *additive, output-only* surface: the TUI remains the primary
@@ -265,15 +265,9 @@ class _Handler(http.server.SimpleHTTPRequestHandler):
         self.send_header("Connection", "keep-alive")
         self.end_headers()
         while True:
-            heartbeat = False
-            with pane._cond:
-                pending = [turn for turn in pane._results if int(turn.get("id", -1)) > last_id]
-                if not pending:
-                    pane._cond.wait(timeout=15)
-                    pending = [turn for turn in pane._results if int(turn.get("id", -1)) > last_id]
-                    heartbeat = not pending
+            pending = pane._wait_for_turns(last_id, timeout=15)
             try:
-                if heartbeat:
+                if not pending:
                     self.wfile.write(b": ping\n\n")
                     self.wfile.flush()
                     continue
@@ -412,7 +406,6 @@ class OutputPane:
         session_id: str | None = None,
     ) -> None:
         self._pane_dir = pane_dir
-        self._manifest_path = pane_dir / "turns.jsonl"
         self._session_id = (session_id or _derive_session_id(pane_dir)).strip() or "unknown"
         self._host = host.strip()
         if not self._host:
@@ -433,12 +426,10 @@ class OutputPane:
             raise ValueError("Output pane token cannot be empty.")
         self._port_config = port
         self._port_range = tuple(port_range)
-        self._results: list[PaneTurn] = []
-        self._live_results: dict[int, TurnOutput] = {}
-        self._lock = threading.Lock()
-        self._cond = threading.Condition(self._lock)
-        self._next_id = 0
-        self._loaded = False
+        self._turns: list[PaneTurn] = []
+        self._live_outputs: dict[int, TurnOutput] = {}
+        self._condition = threading.Condition()
+        self._next_turn_id = 0
         self._server: _PaneServer | None = None
         self._loop: asyncio.AbstractEventLoop | None = None
         self._port: int | None = None
@@ -450,8 +441,6 @@ class OutputPane:
         With no explicit port, the pane takes the first available port from the
         stable default range. An explicit port is strict and fails if occupied.
         """
-        with self._cond:
-            self._load_manifest_locked()
         try:
             self._loop = asyncio.get_running_loop()
         except RuntimeError:
@@ -535,26 +524,33 @@ class OutputPane:
         *,
         turn_output: TurnOutput | None = None,
     ) -> None:
-        """Store a turn ({"cards": [{"label", "views": [...]}, ...]}) for the pane."""
-        with self._cond:
-            self._load_manifest_locked()
+        """Publish a turn to connected and future browser clients."""
+        with self._condition:
             assigned = cast(PaneTurn, dict(turn))
             assistant = assigned.get("assistant")
             if isinstance(assistant, str) and assistant.strip() and "assistantCodeBlocks" not in assigned:
                 code_blocks = _markdown_code_blocks(assistant)
                 if code_blocks:
                     assigned["assistantCodeBlocks"] = code_blocks
-            assigned["id"] = self._next_id
-            self._next_id += 1
+            assigned["id"] = self._next_turn_id
+            self._next_turn_id += 1
             if turn_output is not None:
-                self._live_results[int(assigned["id"])] = turn_output
-            self._results.append(assigned)
-            self._append_manifest_locked(assigned)
-            self._cond.notify_all()
+                self._live_outputs[int(assigned["id"])] = turn_output
+            self._turns.append(assigned)
+            self._condition.notify_all()
+
+    def _wait_for_turns(self, last_id: int, *, timeout: float) -> list[PaneTurn]:
+        """Return turns after ``last_id``, waiting briefly when none are available."""
+        with self._condition:
+            pending = [turn for turn in self._turns if int(turn.get("id", -1)) > last_id]
+            if pending:
+                return pending
+            self._condition.wait(timeout)
+            return [turn for turn in self._turns if int(turn.get("id", -1)) > last_id]
 
     async def resolve_turn(self, turn_id: int, selection: dict[str, object]) -> list[PaneCard]:
-        with self._lock:
-            live = self._live_results.get(turn_id)
+        with self._condition:
+            live = self._live_outputs.get(turn_id)
         if live is None:
             raise KeyError(turn_id)
         resolved_output = await live.resolve(selection)
@@ -570,47 +566,6 @@ class OutputPane:
         except concurrent.futures.TimeoutError:
             future.cancel()
             raise TimeoutError from None
-
-    def _load_manifest_locked(self) -> None:
-        """Load persisted pane turns once. Caller must hold ``_cond``."""
-        if self._loaded:
-            return
-        self._loaded = True
-        max_id = -1
-        try:
-            lines = self._manifest_path.read_text(encoding="utf-8").splitlines()
-        except FileNotFoundError:
-            return
-        except OSError:
-            return
-        results: list[PaneTurn] = []
-        for line in lines:
-            if not line.strip():
-                continue
-            try:
-                raw = json.loads(line)
-            except json.JSONDecodeError:
-                continue
-            if not isinstance(raw, dict):
-                continue
-            turn = cast(PaneTurn, raw)
-            turn_id = turn.get("id")
-            if not isinstance(turn_id, int):
-                turn_id = max_id + 1
-                turn["id"] = turn_id
-            max_id = max(max_id, turn_id)
-            results.append(turn)
-        self._results = results
-        self._next_id = max_id + 1
-
-    def _append_manifest_locked(self, turn: PaneTurn) -> None:
-        """Persist one turn manifest. Caller must hold ``_cond``."""
-        try:
-            self._manifest_path.parent.mkdir(parents=True, exist_ok=True)
-            with self._manifest_path.open("a", encoding="utf-8") as fh:
-                fh.write(json.dumps(turn, ensure_ascii=False) + "\n")
-        except OSError:
-            logger.debug("output pane manifest write failed", exc_info=True)
 
     def open_browser(self, *, force: bool = False) -> None:
         """Open the pane in the system browser (once unless ``force``; no-op if headless)."""
