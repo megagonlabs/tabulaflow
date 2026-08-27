@@ -267,6 +267,7 @@ class AppSession:
             finally:
                 if self.scratch_dir is not None:
                     shutil.rmtree(self.scratch_dir, ignore_errors=True)
+                shutil.rmtree(self.data_dir, ignore_errors=True)
 
 
 def _warm_connector_imports() -> None:

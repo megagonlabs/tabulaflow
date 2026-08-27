@@ -56,8 +56,21 @@ async def test_app_session_owns_runtime_creation_and_cleanup(tmp_path: Path, mon
     assert sample_sessions == [session]
     assert paths.scratch_dir.is_dir()
 
+    paths.scratch_dir.joinpath("intermediate.parquet").write_text("scratch")
+    paths.data_dir.mkdir()
+    paths.data_dir.joinpath("sales.duckdb").write_text("cache")
+    paths.workspace_db_path.write_text("workspace")
+    paths.logs_dir.mkdir()
+    paths.logs_dir.joinpath("cli.log").write_text("log")
+    paths.trajectories_dir.mkdir()
+    paths.trajectories_dir.joinpath("trajectory.md").write_text("trajectory")
+
     await session.close()
     await session.close()
 
     assert workspace.close_count == 1
     assert not paths.scratch_dir.exists()
+    assert not paths.data_dir.exists()
+    assert paths.workspace_db_path.read_text() == "workspace"
+    assert paths.cli_log_path.read_text() == "log"
+    assert paths.trajectories_dir.joinpath("trajectory.md").read_text() == "trajectory"
