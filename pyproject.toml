@@ -70,7 +70,6 @@ include = ["tabulaflow*"]
 tabulaflow = [
     "agents/chat/*.md",
     "app/tui/*.tcss",
-    "app/assets/debug/*",
     "app/assets/samples/*",
     "app/pane/assets/ui/*",
     "app/pane/assets/ui/render/*",

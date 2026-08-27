@@ -22,13 +22,12 @@ import threading
 import time
 from base64 import b64encode
 from collections.abc import Sequence
-from importlib.resources import files as resource_files
 from pathlib import Path
 
 import pandas as pd
 
 from tabulaflow.app import pane as pane_mod
-from tabulaflow.app.debug import debug_chart_fixtures
+from preview_fixtures import debug_chart_fixtures
 from tabulaflow.app.pane import (
     PaneCard,
     PaneSource,
@@ -1618,7 +1617,7 @@ def _wav_bytes(freq_hz: float, seconds: float = 0.4, rate: int = 8000) -> bytes:
 
 def _media_table_result() -> ResultCardInput:
     names = ["red", "green", "blue", "amber", "violet"]
-    assets = resource_files("tabulaflow.app.assets.debug")
+    assets = Path(__file__).parent / "fixtures" / "media"
     jpeg = [assets.joinpath(f"jpeg_{i}.jpg").read_bytes() for i in range(5)]
     gif = [assets.joinpath(f"gif_{i}.gif").read_bytes() for i in range(5)]
     pdf = [assets.joinpath(f"pdf_{i}.pdf").read_bytes() for i in range(5)]

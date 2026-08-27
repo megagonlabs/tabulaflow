@@ -22,7 +22,6 @@ from tabulaflow.app.config import (
     ResolvedLLMSelection,
     update_app_config,
 )
-from tabulaflow.app.debug import debug_enabled, mount_debug_widgets
 from tabulaflow.app.tui.rendering import build_resolved_output_card_views
 from tabulaflow.app.pane import (
     PaneCard,
@@ -300,8 +299,6 @@ class TabulaflowApp(App[None]):
     def on_mount(self) -> None:
         self._setup_logging()
         chat_log = self.query_one("#chat-log", VerticalScroll)
-        if debug_enabled():
-            mount_debug_widgets(self, chat_log)
         self.query_one("#input-bar", Input).focus()
         chat_log.scroll_end(animate=False)
         self._refresh_esc_hint()

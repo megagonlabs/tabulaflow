@@ -1,13 +1,9 @@
-"""Debug visual fixtures — sample result widgets for exercising the UI.
-
-Only used when the ``DEBUG`` env var is set (see ``debug_enabled``). Kept out of
-``tui.py`` so the production ``TabulaflowApp`` carries no demo scaffolding.
-"""
+"""Representative result fixtures for local UI previews."""
 
 from __future__ import annotations
 
-import os
 from dataclasses import dataclass
+from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from tabulaflow.app.tui.rendering import CardGroup, build_resolved_output_card_views
@@ -101,13 +97,6 @@ if TYPE_CHECKING:
 
     from tabulaflow.app.tui import TabulaflowApp
     from tabulaflow.core import GraphResult
-
-
-def debug_enabled() -> bool:
-    raw = os.getenv("DEBUG")
-    if raw is None:
-        return False
-    return raw.strip().lower() not in {"", "0", "false", "no", "off"}
 
 
 def _build_debug_result_widget(app: TabulaflowApp) -> AgentResultWidget:
@@ -620,29 +609,23 @@ def _build_debug_media_result_widget(app: TabulaflowApp) -> AgentResultWidget:
     notes = [262.0, 294.0, 330.0, 349.0, 392.0]  # C D E F G
 
     names = [name for _, name in colors]
-    from importlib.resources import files as _debug_files
+    media_dir = Path(__file__).parent / "fixtures" / "media"
 
     # Real photos (5 vendored JPEGs from picsum.photos at varied aspect
     # ratios) — exercises non-square sources and verifies that the cell
     # box hugs each image's natural dimensions.
-    jpeg = [
-        _debug_files("tabulaflow.app.assets.debug").joinpath(f"jpeg_{i}.jpg").read_bytes() for i in range(len(colors))
-    ]
+    jpeg = [media_dir.joinpath(f"jpeg_{i}.jpg").read_bytes() for i in range(len(colors))]
     # Five real animated GIFs at varied sizes — exercises both inline
     # (small ones) and sibling-file spill (large ones >256 KB).
-    gif = [
-        _debug_files("tabulaflow.app.assets.debug").joinpath(f"gif_{i}.gif").read_bytes() for i in range(len(colors))
-    ]
+    gif = [media_dir.joinpath(f"gif_{i}.gif").read_bytes() for i in range(len(colors))]
     # Five real public-domain PDFs vendored under assets/debug —
     # exercises the PDF anchor renderer and click-to-open in new tab.
-    pdf = [
-        _debug_files("tabulaflow.app.assets.debug").joinpath(f"pdf_{i}.pdf").read_bytes() for i in range(len(colors))
-    ]
+    pdf = [media_dir.joinpath(f"pdf_{i}.pdf").read_bytes() for i in range(len(colors))]
     wav = [wav_bytes(f) for f in notes]
 
     # MP4 is annoying to encode at runtime (needs ffmpeg). One short clip
     # is vendored as a static asset; every row reuses it.
-    mp4_bytes = _debug_files("tabulaflow.app.assets.debug").joinpath("sample.mp4").read_bytes()
+    mp4_bytes = media_dir.joinpath("sample.mp4").read_bytes()
     mp4 = [mp4_bytes for _ in colors]
 
     # Base64-encoded JPEG variants exercise the base64-string path
@@ -1300,8 +1283,8 @@ def _build_debug_chart_result_widget(app: TabulaflowApp) -> AgentResultWidget:
     )
 
 
-def mount_debug_widgets(app: TabulaflowApp, chat_log: VerticalScroll) -> None:
-    """Mount the sample result widgets (called from ``on_mount`` when DEBUG is set).
+def mount_preview_widgets(app: TabulaflowApp, chat_log: VerticalScroll) -> None:
+    """Mount representative result widgets for visual inspection.
 
     Each fixture is built independently and a failure is logged and skipped
     rather than aborting the whole debug mount — e.g. the media fixture needs
@@ -1321,4 +1304,4 @@ def mount_debug_widgets(app: TabulaflowApp, chat_log: VerticalScroll) -> None:
         try:
             chat_log.mount(build(app))
         except Exception as exc:  # noqa: BLE001 — debug-only; one bad fixture shouldn't blank the rest
-            app.log(f"debug fixture {build.__name__} skipped: {exc!r}")
+            app.log(f"preview fixture {build.__name__} skipped: {exc!r}")

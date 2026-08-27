@@ -1,8 +1,7 @@
-# Debug fixture assets
+# Preview media assets
 
-Files in this directory are loaded by `_build_debug_media_result_widget`
-when `DEBUG=1` is set. They are runtime-loaded via `importlib.resources`,
-so they ship with the wheel.
+These files support the local TUI and browser-pane preview scripts. They are
+loaded directly from this directory and are not included in the package.
 
 ## sample.mp4
 
@@ -18,7 +17,7 @@ Attribution: © 2008 Blender Foundation | <https://www.bigbuckbunny.org/>
 Real-photo samples at varied aspect ratios (landscape, portrait, square,
 widescreen, tall) sourced from <https://picsum.photos/> with deterministic
 seeds. Backed by Unsplash, photographer-attributed at picsum.photos.
-Used by the `jpeg` column in the debug-media fixture to exercise the
+Used by the `jpeg` column in the preview media fixture to exercise the
 table's handling of non-uniform image aspects.
 
 ## gif_0.gif … gif_4.gif
