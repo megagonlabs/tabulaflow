@@ -664,6 +664,9 @@ Aug 25
 - [x] Share updates to #mintq and Hongjie
 
 Aug 26
+- app
+  - [x] redesign artifact menu layout
+  - [x] fix scrolling when switching artifact/view
 - [x] agents layer cleanup
   - [x] redesign bash tool
   - [x] model price tracking, move to genai-pricing
@@ -671,12 +674,13 @@ Aug 26
   - [x] message store
 - [ ] app layer cleanup
 - [ ] research layer cleanup
-- app
-  - [x] redesign artifact menu layout
-  - [x] fix scrolling when switching artifact/view
+
+- [ ] Check whether dataclasses should be normal class (e.g. SQLConenctor)
+
 
 - [ ] Shell messed up after ssh disconnect
 - [ ] Check if uv tool install install browser
+
 
 - [ ] Issue: schema introspection silently fail for structual failure
 - [ ] Bug: parallel tool call in a turn keep spinning until last tool finish?
