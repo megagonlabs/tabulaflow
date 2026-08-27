@@ -151,12 +151,11 @@ class ReleaseBrowserBeforeFanout(AbstractCapability[Any]):
 
 
 class RunSubagentForEachRowTool:
-    """Run an LLM subagent for each row of a table and write its text output back.
+    """Run an LLM subagent for each row and write structured output back.
 
-    The per-row subagent has no database tools; it produces a single text value
-    that this tool writes to the configured output column. Optional capabilities
-    (``enable_browser_tools``, ``enable_nested_subagents``) extend the subagent's
-    reach without changing the output contract.
+    Each subagent emits one value per configured output column. By default it has no
+    tools; optional browser, database, and nested-subagent capabilities extend its
+    reach without changing the row-wise write-back contract.
     """
 
     name: ClassVar[str] = "run_subagent_for_each_row"

@@ -56,6 +56,8 @@ async def load_or_compute_model(
     model_type: type[_ModelT],
     compute: Callable[[], Awaitable[_ModelT]],
 ) -> _ModelT:
+    """Load or compute a Pydantic model under the configured cache policy."""
+
     async def load(cache_path: Path) -> _ModelT:
         try:
             return await read_cached_model(cache_path, model_type)

@@ -46,6 +46,8 @@ class DiffError(ValueError):
 
 
 class ActionType(str, Enum):
+    """Supported filesystem change types."""
+
     ADD = "add"
     DELETE = "delete"
     UPDATE = "update"
@@ -53,6 +55,8 @@ class ActionType(str, Enum):
 
 @dataclass
 class FileChange:
+    """Resolved content change for one file."""
+
     type: ActionType
     old_content: str | None = None
     new_content: str | None = None
@@ -61,11 +65,15 @@ class FileChange:
 
 @dataclass
 class Commit:
+    """Resolved filesystem changes keyed by source path."""
+
     changes: dict[str, FileChange] = field(default_factory=dict)
 
 
 @dataclass
 class Chunk:
+    """One localized deletion and insertion within an existing file."""
+
     orig_index: int = -1
     del_lines: list[str] = field(default_factory=list)
     ins_lines: list[str] = field(default_factory=list)
@@ -73,6 +81,8 @@ class Chunk:
 
 @dataclass
 class PatchAction:
+    """Parsed add, delete, update, or move instruction for one path."""
+
     type: ActionType
     new_file: str | None = None
     chunks: list[Chunk] = field(default_factory=list)
@@ -81,6 +91,8 @@ class PatchAction:
 
 @dataclass
 class Patch:
+    """Parsed patch actions keyed by source path."""
+
     actions: dict[str, PatchAction] = field(default_factory=dict)
 
 
@@ -94,6 +106,8 @@ class _Section:
 
 @dataclass
 class Parser:
+    """Stateful parser for an OpenAI V4A patch envelope."""
+
     current_files: dict[str, str]
     lines: list[str]
     index: int = 0
@@ -224,6 +238,8 @@ class Parser:
 
 
 def assemble_changes(orig: dict[str, str | None], dest: dict[str, str | None]) -> Commit:
+    """Build a commit from before-and-after file contents."""
+
     commit = Commit()
     for path in sorted(set(orig.keys()).union(dest.keys())):
         old_content = orig.get(path)
@@ -248,6 +264,8 @@ def _normalize_unicode_context(line: str) -> str:
 
 
 def find_context_core(lines: list[str], context: list[str], start: int, *, stop: int | None = None) -> tuple[int, int]:
+    """Locate patch context and return its index and match-fuzz score."""
+
     if not context:
         return start, 0
     if len(context) > len(lines):
@@ -279,6 +297,8 @@ def find_context_core(lines: list[str], context: list[str], start: int, *, stop:
 
 
 def find_context(lines: list[str], context: list[str], start: int, eof: bool) -> tuple[int, int]:
+    """Locate context from ``start``, optionally requiring an end-of-file match."""
+
     if eof:
         content_len = len(lines)
         if lines and lines[-1] == "" and (not context or context[-1] != ""):
@@ -289,6 +309,8 @@ def find_context(lines: list[str], context: list[str], start: int, eof: bool) ->
 
 
 def peek_next_section(lines: list[str], index: int) -> _Section:
+    """Parse one update section without advancing external parser state."""
+
     old: list[str] = []
     del_lines: list[str] = []
     ins_lines: list[str] = []
@@ -356,6 +378,8 @@ def _patch_lines(text: str) -> list[str]:
 
 
 def text_to_patch(text: str, orig: dict[str, str]) -> tuple[Patch, int]:
+    """Parse patch text against current files and return the patch and fuzz score."""
+
     lines = _patch_lines(text)
     if not lines or lines[0] != "*** Begin Patch":
         raise DiffError("line 1: Invalid patch text: first line must be '*** Begin Patch'")
@@ -368,6 +392,8 @@ def text_to_patch(text: str, orig: dict[str, str]) -> tuple[Patch, int]:
 
 
 def identify_files_needed(text: str) -> list[str]:
+    """Return existing files whose contents are required to parse a patch."""
+
     result: set[str] = set()
     for line in _patch_lines(text):
         if line.startswith("*** Update File: "):
@@ -408,6 +434,8 @@ def _get_updated_file(text: str, action: PatchAction, path: str) -> str:
 
 
 def patch_to_commit(patch: Patch, orig: dict[str, str]) -> Commit:
+    """Resolve parsed patch actions into concrete file-content changes."""
+
     commit = Commit()
     for path, action in patch.actions.items():
         if action.type == ActionType.DELETE:
@@ -430,10 +458,14 @@ def patch_to_commit(patch: Patch, orig: dict[str, str]) -> Commit:
 
 
 def normalize_trailing_newline(text: str) -> str:
+    """Return text with exactly one trailing newline."""
+
     return text.rstrip("\n") + "\n"
 
 
 def load_files(paths: list[str], open_fn: Callable[[str], str]) -> dict[str, str]:
+    """Load required files, translating missing paths into ``DiffError``."""
+
     orig: dict[str, str] = {}
     for path in paths:
         try:
@@ -444,6 +476,8 @@ def load_files(paths: list[str], open_fn: Callable[[str], str]) -> dict[str, str
 
 
 def validate_add_paths(patch: Patch, exists_fn: Callable[[str], bool] | None) -> None:
+    """Reject add actions whose destination paths already exist."""
+
     if exists_fn is None:
         return
     for path, action in patch.actions.items():
@@ -456,6 +490,8 @@ def apply_commit(
     write_fn: Callable[[str, str], None],
     remove_fn: Callable[[str], None],
 ) -> None:
+    """Apply resolved changes through caller-provided filesystem operations."""
+
     for path, change in commit.changes.items():
         if change.type == ActionType.DELETE:
             remove_fn(path)

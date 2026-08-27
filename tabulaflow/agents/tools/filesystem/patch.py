@@ -32,6 +32,8 @@ from tabulaflow.agents.tools.filesystem.patch_engine import (
 
 
 class ApplyPatchToolMetrics(BaseModel):
+    """Invocation and error counts for the apply-patch tool."""
+
     num_apply_patch: int = 0
     error_count: int = 0
 

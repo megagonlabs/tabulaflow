@@ -41,6 +41,8 @@ def find_column(table: SQLTableSchema, column_name: str) -> SQLColumnSchema | No
 
 
 def format_sqlalchemy_error_msg(error_msg: str) -> str:
+    """Remove generated SQL, parameters, and help links from a SQLAlchemy error."""
+
     error_msg = re.sub(r"\[SQL:.*\]", "", error_msg, flags=re.DOTALL)
     error_msg = re.sub(r"\[parameters:.*\]", "", error_msg, flags=re.DOTALL)
     error_msg = re.sub(r"\(Background on this error at: https://sqlalche\.me/e/\S+\)", "", error_msg, flags=re.DOTALL)

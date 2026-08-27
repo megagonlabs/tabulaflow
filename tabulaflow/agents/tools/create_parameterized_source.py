@@ -169,6 +169,21 @@ class CreateParameterizedSourceTool:
         query_template: str,
         max_warm_variants: int | None = None,
     ) -> CreatedParameterizedSource:
+        """Validate, create, and warm a parameterized result source.
+
+        Args:
+            db_alias: Alias of the database that executes rendered queries.
+            parameters: Parameters referenced by ``query_template``.
+            query_template: Jinja query template rendered for each warmed selection.
+            max_warm_variants: Maximum finite choice combinations to precompute.
+
+        Returns:
+            The created source and a model-facing summary of its warmed results.
+
+        Raises:
+            ValueError: If configuration is invalid or a warmed query fails.
+        """
+
         if max_warm_variants is None:
             max_warm_variants = self._default_max_warm_variants
         if max_warm_variants < 1:

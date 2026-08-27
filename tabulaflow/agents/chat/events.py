@@ -1,14 +1,14 @@
 """The chat ⇄ frontend event contract.
 
 ``ChatSession.run_stream()`` yields a stream of these events; any frontend (the TUI, a
-future webapp, a CLI logger, a test harness) consumes the stream and decides how
+browser client, a CLI logger, a test harness) consumes the stream and decides how
 to render each one. Events are **semantic** — they carry the data of what the
 agent did, never pre-rendered presentation — so a frontend renders / words /
 truncates however it wants. Rendering is deliberately the frontend's job; this
 module ships no summarizers.
 
 They're pydantic models forming a **discriminated union** on ``kind`` (consistent
-with the rest of the data layer), which gives a frontend free, robust, two-way
+with the other serialized schema models), which gives a frontend free, robust, two-way
 wire (de)serialization:
 
     raw = event.model_dump_json()                       # produce (server)
