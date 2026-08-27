@@ -1,27 +1,25 @@
 """LLM model factory.
 
-Every pydantic-ai ``Agent`` in tabulaflow takes its model from :func:`make_model`,
-so concurrency/RPM throttling, ``<tool_call>`` parsing, and Claude-on-Vertex
-resolution apply *by construction*. This replaces the global monkey-patches that
-used to live in ``patches.py`` (which hijacked ``pydantic_ai.models.infer_model``
-and ``Model.request`` process-wide). Importing this module has no side effects.
+Every pydantic-ai ``Agent`` in tabulaflow is built through :func:`make_agent`,
+so concurrency/RPM throttling and Claude-on-Vertex resolution apply *by
+construction*. This replaces the global monkey-patches that used to live in
+``patches.py`` (which hijacked ``pydantic_ai.models.infer_model`` and
+``Model.request`` process-wide). Importing this module has no side effects.
 
-Run agents with ``usage_limits=DEFAULT_USAGE_LIMITS`` to lift pydantic-ai's
-default 50-request cap (multi-step tool loops need it).
+Agents built through :func:`make_agent` lift pydantic-ai's default 50-request
+cap so multi-step tool loops can continue.
 """
 
 from __future__ import annotations
 
 import asyncio
-import json
-import re
 from collections.abc import Sequence
 from contextlib import AsyncExitStack, asynccontextmanager
 from typing import Any, AsyncIterator, Literal, TypeVar, cast, overload
 
 from aiolimiter import AsyncLimiter
 from pydantic_ai import Agent, ToolOutput, UsageLimits
-from pydantic_ai.messages import ModelMessage, ModelResponse, ToolCallPart
+from pydantic_ai.messages import ModelMessage, ModelResponse
 from pydantic_ai.models import Model, ModelRequestParameters, infer_model
 from pydantic_ai.models.wrapper import WrapperModel
 from pydantic_ai.profiles.anthropic import (
@@ -34,9 +32,7 @@ from pydantic_ai.settings import ModelSettings
 
 from tabulaflow.agents.runtime import _get_agent_runtime
 
-# Multi-step agents must not hit pydantic-ai's default 50-request cap. Pass this
-# to ``agent.run(..., usage_limits=DEFAULT_USAGE_LIMITS)``.
-DEFAULT_USAGE_LIMITS = UsageLimits(request_limit=None)
+_DEFAULT_USAGE_LIMITS = UsageLimits(request_limit=None)
 
 _ANTHROPIC_ANSWER_TOKEN_HEADROOM = 8192
 _AnthropicEffort = Literal["minimal", "low", "medium", "high", "xhigh"]
@@ -213,39 +209,6 @@ class _ThrottledModel(WrapperModel):
 
 
 # ---------------------------------------------------------------------------
-# <tool_call> parsing — for OpenAI-compatible models (qwen3-coder etc.) that
-# emit tool calls as text. Workaround for pydantic-ai issue #2033.
-# ---------------------------------------------------------------------------
-
-_TOOL_CALL_RE = re.compile(r"<tool_call>(.*?)</tool_call>", re.DOTALL)
-
-
-class _ToolCallParsingModel(WrapperModel):
-    async def request(
-        self,
-        messages: list[ModelMessage],
-        model_settings: ModelSettings | None,
-        model_request_parameters: ModelRequestParameters,
-    ) -> ModelResponse:
-        response = await self.wrapped.request(messages, model_settings, model_request_parameters)
-        new_parts: list[Any] = []
-        for part in response.parts:
-            if part.part_kind == "text":
-                matches = list(_TOOL_CALL_RE.finditer(part.content))
-                if matches:
-                    try:
-                        for match in matches:
-                            payload = json.loads(match.group(1).strip())
-                            new_parts.append(ToolCallPart(tool_name=payload["name"], args=payload["arguments"]))
-                        continue
-                    except json.JSONDecodeError:
-                        pass
-            new_parts.append(part)
-        response.parts = new_parts
-        return response
-
-
-# ---------------------------------------------------------------------------
 # Base model resolution (incl. Claude on Google Vertex) + the public factory.
 # ---------------------------------------------------------------------------
 
@@ -289,11 +252,8 @@ def _resolve_base(llm: str | Model) -> Model:
 
 
 def _make_model(llm: str | Model) -> Model:
-    """Wrap a model identifier in tabulaflow's throttle + tool-call parsing."""
-    model = _resolve_base(llm)
-    if type(model).__name__ == "OpenAIChatModel":  # innermost: post-process the real response
-        model = _ToolCallParsingModel(model)
-    return _ThrottledModel(model)
+    """Wrap a model identifier in tabulaflow's request throttling."""
+    return _ThrottledModel(_resolve_base(llm))
 
 
 class _Agent(Agent):
@@ -301,19 +261,19 @@ class _Agent(Agent):
     cap, so ``max_steps`` is the sole governor. Constructed via :func:`make_agent`."""
 
     async def run(self, *args: Any, **kwargs: Any) -> Any:
-        kwargs.setdefault("usage_limits", DEFAULT_USAGE_LIMITS)
+        kwargs.setdefault("usage_limits", _DEFAULT_USAGE_LIMITS)
         return await super().run(*args, **kwargs)
 
     def run_sync(self, *args: Any, **kwargs: Any) -> Any:
-        kwargs.setdefault("usage_limits", DEFAULT_USAGE_LIMITS)
+        kwargs.setdefault("usage_limits", _DEFAULT_USAGE_LIMITS)
         return super().run_sync(*args, **kwargs)
 
     def run_stream(self, *args: Any, **kwargs: Any) -> Any:
-        kwargs.setdefault("usage_limits", DEFAULT_USAGE_LIMITS)
+        kwargs.setdefault("usage_limits", _DEFAULT_USAGE_LIMITS)
         return super().run_stream(*args, **kwargs)
 
     def iter(self, *args: Any, **kwargs: Any) -> Any:
-        kwargs.setdefault("usage_limits", DEFAULT_USAGE_LIMITS)
+        kwargs.setdefault("usage_limits", _DEFAULT_USAGE_LIMITS)
         return super().iter(*args, **kwargs)
 
 
@@ -372,12 +332,12 @@ def make_agent(
 ) -> Agent[Any, Any]:
     """Build a pydantic-ai Agent wired with tabulaflow's defaults.
 
-    The model is wrapped with throttling / ``<tool_call>`` parsing / vertex-claude
-    resolution, and runs default to ``usage_limits=DEFAULT_USAGE_LIMITS`` (no
-    50-request cap). Every tabulaflow ``Agent`` should be built via this. The named
-    params are the commonly-used ones (for discovery + type-checking); any other
-    keyword accepted by :class:`pydantic_ai.Agent` (e.g. ``capabilities``,
-    ``deps_type``) flows through ``**kwargs``.
+    The model is wrapped with throttling and vertex-claude resolution, and runs
+    default to no request limit. Every
+    tabulaflow ``Agent`` should be built via this. The named params are the
+    commonly-used ones (for discovery + type-checking); any other keyword accepted
+    by :class:`pydantic_ai.Agent` (e.g. ``capabilities``, ``deps_type``) flows
+    through ``**kwargs``.
     """
     if history_processors is not None:
         # pydantic-ai ≥1.107 deprecates Agent(history_processors=...) in favor of
