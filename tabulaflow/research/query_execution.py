@@ -3,7 +3,29 @@
 import asyncio
 
 from tabulaflow.data import DBConnector
-from tabulaflow.research.types import NL2QTask, NL2QTaskOutput
+from tabulaflow.research.types import GoldQuery, NL2QTask, NL2QTaskOutput, PredQuery
+
+
+async def populate_query_exec_result(
+    query: GoldQuery | PredQuery,
+    db_connector: DBConnector,
+    timeout: int | None = None,
+    force: bool = False,
+) -> None:
+    """Execute a query and attach its result unless one is already present."""
+    if query.exec_result is not None and not force:
+        return
+    if timeout is None:
+        query.exec_result = await db_connector.run_query_async(
+            query.query,  # type: ignore[arg-type]
+            parameters=query.parameter_values,
+        )
+    else:
+        query.exec_result = await db_connector.run_query_async(
+            query.query,  # type: ignore[arg-type]
+            parameters=query.parameter_values,
+            timeout=timeout,
+        )
 
 
 async def populate_task_exec_results(
@@ -25,21 +47,4 @@ async def populate_task_exec_results(
         if query_list := getattr(task, f"{prefix}_queries", None):
             queries.extend(query_list)
 
-        pending = [query for query in queries if force or not query.exec_result]
-        if timeout is None:
-            results = await asyncio.gather(
-                *(db_connector.run_query_async(query.query, parameters=query.parameter_values) for query in pending)
-            )
-        else:
-            results = await asyncio.gather(
-                *(
-                    db_connector.run_query_async(
-                        query.query,
-                        parameters=query.parameter_values,
-                        timeout=timeout,
-                    )
-                    for query in pending
-                )
-            )
-        for query, exec_result in zip(pending, results):
-            query.exec_result = exec_result
+        await asyncio.gather(*(populate_query_exec_result(query, db_connector, timeout, force) for query in queries))

@@ -8,7 +8,7 @@ from tabulaflow.research.agents.registry import AgentConfig
 from tabulaflow.research.agents.utils import instrument
 from tabulaflow.research.types import SimpleNL2QTask, SimpleNL2QTaskOutput
 from tabulaflow.data import SQLConnectorProtocol
-from tabulaflow.research.query_execution import populate_task_exec_results
+from tabulaflow.research.query_execution import populate_query_exec_result
 
 
 logger = logging.getLogger(__name__)
@@ -56,8 +56,13 @@ class MajorityEnsembler:
         if not candidates:
             return task_outputs[0]
 
-        # Populate exec results for all candidates (skips queries that already have results)
-        await asyncio.gather(*[populate_task_exec_results(output, db_connector) for output in candidates])
+        await asyncio.gather(
+            *(
+                populate_query_exec_result(output.pred_query, db_connector)
+                for output in candidates
+                if output.pred_query is not None
+            )
+        )
 
         # Filter out candidates with execution errors
         candidates = [

@@ -11,7 +11,7 @@ from tabulaflow.research.agents.ensemblers.majority_ensembler import _normalize_
 from tabulaflow.research.agents.utils import BasicAgentConfig, get_max_steps_capability, instrument
 from tabulaflow.data import SQLConnectorProtocol
 from tabulaflow.output.formatting import SQLSchemaFormatter, format_dataframe, schema_formatter_registry
-from tabulaflow.research.query_execution import populate_task_exec_results
+from tabulaflow.research.query_execution import populate_query_exec_result
 from tabulaflow.agents.summarization import DBSummarizer
 from tabulaflow.agents.trace import Trajectory, Usage
 from tabulaflow.research.types import PredQuery, SimpleNL2QTask, SimpleNL2QTaskOutput
@@ -159,8 +159,13 @@ class AgentEnsembler:
         if not candidates:
             return task_outputs[0]
 
-        # Populate exec results for all candidates (skips queries that already have results)
-        await asyncio.gather(*[populate_task_exec_results(output, db_connector) for output in candidates])
+        await asyncio.gather(
+            *(
+                populate_query_exec_result(output.pred_query, db_connector)
+                for output in candidates
+                if output.pred_query is not None
+            )
+        )
 
         # Filter out candidates with execution errors
         candidates = [
