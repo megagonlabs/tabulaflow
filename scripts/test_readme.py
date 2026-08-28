@@ -1,6 +1,6 @@
 import asyncio
 from tabulaflow.research.observability import configure_research_observability
-from tabulaflow.research.agents import SQLAgent, BasicAgentConfig
+from tabulaflow.research.agents import SchemaLinkingAgent, BasicAgentConfig
 from tabulaflow.research.benchmarks import BirdSQLDatasetLoader
 from tabulaflow.research.metrics import BirdSQLEx
 from tabulaflow.research.pipelines import run_agent_async, populate_exec_results_async, evaluate_async
@@ -17,7 +17,7 @@ async def main() -> None:
     # the `run_model` function below uses this to construct a separate model instance for each sample to avoid race condition
     config = BasicAgentConfig(llm="openai:gpt-4.1-mini", schema_formatter="sql_basic")
     # run the model on the dataset using async coroutines
-    result = await run_agent_async(SQLAgent, config, dataset, batch_size=2)
+    result = await run_agent_async(SchemaLinkingAgent, config, dataset, batch_size=2)
     print(result.tasks[0].pred_query.query)
     # SELECT MAX(CASE WHEN "Enrollment (K-12)" > 0 THEN "Free Meal Count (K-12)" / "Enrollment (K-12)" ELSE NULL END) AS Highest_Eligible_Free_Rate
     # FROM frpm

@@ -21,9 +21,9 @@ make sync          # sync uv dependencies
 
 Key experiment targets (see Makefile for full list):
 ```bash
-make test-bird-agent           # bird-sql with sql_agent
+make test-bird-schema-linking           # bird-sql with schema_linking
 make test-arcs-structured      # arcs with ambig_structured_sql_agent
-make test-spider2-agent        # spider2-snow with sql_agent
+make test-spider2-schema-linking        # spider2-snow with schema_linking
 make test-spider2-dbt-agent    # spider2-dbt with dbt_agent
 ```
 

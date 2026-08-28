@@ -844,7 +844,7 @@ First, follow the [Development](#-development) section to install the library. N
 
 ```python
 import asyncio
-from tabulaflow.research.agents import SQLAgent, BasicAgentConfig
+from tabulaflow.research.agents import SchemaLinkingAgent, BasicAgentConfig
 from tabulaflow.research.benchmarks import BirdSQLDatasetLoader
 from tabulaflow.research.metrics import BirdSQLEx
 from tabulaflow.research.pipelines import run_agent_async, populate_exec_results_async, evaluate_async
@@ -860,7 +860,7 @@ async def main() -> None:
     # the `run_model` function below uses this to construct a separate model instance for each sample to avoid race condition
     config = BasicAgentConfig(llm="openai:gpt-4.1-mini", schema_formatter="sql_basic")
     # run the model on the dataset using async coroutines
-    result = await run_agent_async(SQLAgent, config, dataset, batch_size=2)
+    result = await run_agent_async(SchemaLinkingAgent, config, dataset, batch_size=2)
     print(result.tasks[0].pred_query.query)
     # SELECT MAX(CASE WHEN "Enrollment (K-12)" > 0 THEN "Free Meal Count (K-12)" / "Enrollment (K-12)" ELSE NULL END) AS Highest_Eligible_Free_Rate
     # FROM frpm
@@ -889,7 +889,7 @@ if __name__ == "__main__":
 We also provide the [run_model.py](tabulaflow/run_model.py) and [evaluate.py](tabulaflow/evaluate.py) scripts for convenience:
 
 ```bash
-uv run tabulaflow/research/pipelines/run_agent.py --agent sql_agent --dataset bird-sql --llm "openai:gpt-4o-mini" --result_dir output/test/ --debug
+uv run tabulaflow/research/pipelines/run_agent.py --agent schema_linking --dataset bird-sql --llm "openai:gpt-4o-mini" --result_dir output/test/ --debug
 uv run tabulaflow/research/pipelines/populate_exec_results.py --result_dir output/test/
 uv run tabulaflow/research/pipelines/evaluate.py --result_dir output/test/
 ```
@@ -1078,7 +1078,7 @@ We use `make` to manage a few common commands we frequently use (see [`Makefile`
 ```bash
 make format      # format and lint
 make mypy        # type check with mypy
-make test-agent  # test sql_agent_table_names_only
+make test-schema-linking  # test schema_linking
 make sync        # sync the dependencies in pyproject.toml into the venv (e.g. when others have updated the dependencies)
 ```
 
@@ -1099,7 +1099,7 @@ make sync        # sync the dependencies in pyproject.toml into the venv (e.g. w
   - [ ] Quoting identifiers for snowflake?
   - [ ] Check not executable queries (both spider2-snow and spider2-lite)
 - [ ] Revise db_summarizer prompt - "used for efficient navigation and SQL writing by SQL experts"
-- [ ] schema linking for tabulaflow_agent
+- [ ] schema linking for schema_discovery
 - [ ] Code edit tool for editting complex queries
 - [ ] non-empty ratio
 - [ ] partial trajectories on error

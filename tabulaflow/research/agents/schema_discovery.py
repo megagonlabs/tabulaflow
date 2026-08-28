@@ -20,11 +20,11 @@ from tabulaflow.research.agents.utils import (
 from tabulaflow.agents.llm import make_agent
 
 
-class TabulaflowAgentConfig(BasicAgentConfig):
+class SchemaDiscoveryAgentConfig(BasicAgentConfig):
     db_summarizer_llm: str = "openai-responses:gpt-5.4"
 
 
-TABULAFLOW_AGENT_SYSTEM_PROMPT = """
+SCHEMA_DISCOVERY_SYSTEM_PROMPT = """
 You a helpful AI database expert that writes {{language}} queries given a user question.
 
 You are an agent - please keep going until the database query is fully constructed and the execution result is correct, before finishing. Only finish your turn when you are sure that the problem is solved. Autonomously resolve the task to the best of your ability.
@@ -74,15 +74,15 @@ Writing the task query:
 
 
 @agent_registry.register
-class TabulaflowAgent:
-    name: ClassVar = "tabulaflow_agent"
+class SchemaDiscoveryAgent:
+    name: ClassVar = "schema_discovery"
     task_type: ClassVar = "simple"
     output_type: ClassVar = "simple"
-    config_cls: ClassVar[type[AgentConfig]] = TabulaflowAgentConfig
+    config_cls: ClassVar[type[AgentConfig]] = SchemaDiscoveryAgentConfig
 
     def __init__(
         self,
-        config: TabulaflowAgentConfig,
+        config: SchemaDiscoveryAgentConfig,
     ):
         self.config = config
         self.formatter = cast(
@@ -91,19 +91,19 @@ class TabulaflowAgent:
         )
 
     @classmethod
-    async def from_config_async(cls, config: TabulaflowAgentConfig) -> "TabulaflowAgent":
+    async def from_config_async(cls, config: SchemaDiscoveryAgentConfig) -> "SchemaDiscoveryAgent":
         return cls(config)
 
     @trace_prediction
     async def predict_async(self, task: SimpleNL2QTask, db_connector: DBConnector) -> SimpleNL2QTaskOutput:
         if db_connector.connector_type != "sql":
-            raise TypeError(f"TabulaflowAgent requires a SQL db connector, got {type(db_connector)!r}")
+            raise TypeError(f"SchemaDiscoveryAgent requires a SQL db connector, got {type(db_connector)!r}")
         t0 = time.time()
 
         db_summarizer = DBSummarizer(llm=self.config.db_summarizer_llm)
 
         db_summary = await db_summarizer.summarize(db_connector)
-        system_prompt = jinja2.Template(TABULAFLOW_AGENT_SYSTEM_PROMPT).render(
+        system_prompt = jinja2.Template(SCHEMA_DISCOVERY_SYSTEM_PROMPT).render(
             language=db_connector.language,
             dataset_instructions=task.dataset_instructions,
             db_document=db_summary,

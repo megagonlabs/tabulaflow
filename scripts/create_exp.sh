@@ -11,10 +11,10 @@ model=$1
 dataset=$2
 llm=${3:-"openai/gpt-4o"}
 
-# if model="agent", set model to "sql_agent"
+# if model="agent", set model to "schema_linking"
 # if model="zero", set model to "direct_prompting"
 if [ "$model" = "agent" ]; then
-    model="sql_agent"
+    model="schema_linking"
 elif [ "$model" = "zero" ]; then
     model="direct_prompting"
 fi

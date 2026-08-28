@@ -160,7 +160,7 @@ def parse_agent_config(agent_cls: type[NL2QAgent], args: argparse.Namespace) -> 
     }
     if args.llm is not None:
         kwargs["llm"] = args.llm
-    if agent_cls.name == "sql_agent":
+    if agent_cls.name == "schema_linking":
         if args.do_schema_linking is not None:
             kwargs["do_schema_linking"] = args.do_schema_linking
         if args.do_postprocessing is not None:
@@ -169,7 +169,7 @@ def parse_agent_config(agent_cls: type[NL2QAgent], args: argparse.Namespace) -> 
             kwargs["num_few_shot_examples"] = args.num_few_shot_examples
         if args.question_embedder_embedding_llm is not None:
             kwargs["question_embedder_embedding_llm"] = args.question_embedder_embedding_llm
-    if agent_cls.name in ("tabulaflow_agent", "dbt_agent"):
+    if agent_cls.name in ("schema_discovery", "dbt_agent"):
         if args.db_summarizer_llm is not None:
             kwargs["db_summarizer_llm"] = args.db_summarizer_llm
     if agent_cls.name == "dbt_agent":
@@ -198,7 +198,7 @@ def parse_agent_config(agent_cls: type[NL2QAgent], args: argparse.Namespace) -> 
 
 async def main_async() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--agent", default="sql_agent")
+    parser.add_argument("--agent", default="schema_linking")
     parser.add_argument("-s", "--schema_formatter", default=None)
     parser.add_argument("--llm", default=None)
     parser.add_argument("--temperature", default=None, type=float)
@@ -206,14 +206,14 @@ async def main_async() -> None:
     parser.add_argument("--reasoning_effort", default=None)
     parser.add_argument("--service_tier", default=None)
     parser.add_argument("--use_column_descriptions", type=bool_flag, nargs="?", const=True, default=None)
-    # sql agent
+    # schema-linking agent
     parser.add_argument("--do_schema_linking", type=bool_flag, nargs="?", const=True, default=None)
     parser.add_argument("--do_postprocessing", type=bool_flag, nargs="?", const=True, default=None)
     parser.add_argument("--num_few_shot_examples", default=None, type=int)
     parser.add_argument("--few_shot_dataset", default="bird-sql")
     parser.add_argument("--few_shot_split", default="train")
 
-    # tabulaflow/dbt agent
+    # schema-discovery/dbt agents
     parser.add_argument("--db_summarizer_llm", default=None)
     parser.add_argument("--use_bash_tool", type=bool_flag, nargs="?", const=True, default=None)
 
@@ -257,7 +257,7 @@ async def main_async() -> None:
         "spider2-dbt",
         "cypherbench",
     }:
-        args.num_few_shot_examples = 5 if args.dataset == "bird-sql" and args.agent == "sql_agent" else 0
+        args.num_few_shot_examples = 5 if args.dataset == "bird-sql" and args.agent == "schema_linking" else 0
 
     if args.debug:
         if args.batch_size is None:

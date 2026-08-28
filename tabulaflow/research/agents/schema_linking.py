@@ -36,7 +36,7 @@ from tabulaflow.agents.llm import make_agent
 logger = logging.getLogger(__name__)
 
 
-class SQLAgentConfig(BasicAgentConfig):
+class SchemaLinkingAgentConfig(BasicAgentConfig):
     min_columns_for_schema_linking: int = 20
     num_few_shot_examples: int = 0
     do_schema_linking: bool = True
@@ -45,7 +45,7 @@ class SQLAgentConfig(BasicAgentConfig):
 
 
 @dataclass
-class SQLAgentContext(TaskRunContext):
+class SchemaLinkingContext(TaskRunContext):
     db_connector: SQLConnectorProtocol
     er_diagram: ERDiagram | None = None
     er_diagram_formatter: MermaidERDiagramFormatter | None = None
@@ -66,7 +66,7 @@ class SQLAgentContext(TaskRunContext):
 # </resolving_ambiguity>
 
 
-SQL_AGENT_SYSTEM_PROMPT = """
+SCHEMA_LINKING_SYSTEM_PROMPT = """
 You a helpful AI database expert that writes {{language}} queries given a user question.
 
 You are an agent - please keep going until the database query is fully constructed and the execution result is correct, before finishing. Only finish your turn when you are sure that the problem is solved. Autonomously resolve the task to the best of your ability.
@@ -170,10 +170,10 @@ Your output:
 
 
 class SchemaLinker:
-    def __init__(self, config: SQLAgentConfig):
+    def __init__(self, config: SchemaLinkingAgentConfig):
         self.config = config
 
-    async def _generate_sql_async(self, ctx: SQLAgentContext, task: SimpleNL2QTask) -> PredQuery:
+    async def _generate_sql_async(self, ctx: SchemaLinkingContext, task: SimpleNL2QTask) -> PredQuery:
         db_connector = ctx.db_connector
 
         tools: dict[str, AgentTool] = {
@@ -183,7 +183,7 @@ class SchemaLinker:
             "run_query": RunQueryTool(db_connector),
             "finish": FinishTool(),
         }
-        system_prompt = jinja2.Template(SQL_AGENT_SYSTEM_PROMPT).render(
+        system_prompt = jinja2.Template(SCHEMA_LINKING_SYSTEM_PROMPT).render(
             language=ctx.db_connector.language,
             dataset_instructions=task.dataset_instructions,
             schema=ctx.schema_formatter.format(
@@ -210,7 +210,7 @@ class SchemaLinker:
         return pred_query
 
     async def expand_schema_async(
-        self, ctx: SQLAgentContext, schema_to_expand: SQLSchema, task: SimpleNL2QTask, batch_size: int = 5
+        self, ctx: SchemaLinkingContext, schema_to_expand: SQLSchema, task: SimpleNL2QTask, batch_size: int = 5
     ) -> SQLSchema:
         class ColumnWithAlternatives(BaseModel):
             original_column: ColumnRef
@@ -259,7 +259,7 @@ class SchemaLinker:
         )
         return linked_schema
 
-    async def link_schema_async(self, ctx: SQLAgentContext, task: SimpleNL2QTask) -> SQLSchema:
+    async def link_schema_async(self, ctx: SchemaLinkingContext, task: SimpleNL2QTask) -> SQLSchema:
         if (
             sum(len(table.columns) for table in ctx.preprocessed_schema.tables)
             < self.config.min_columns_for_schema_linking
@@ -338,10 +338,12 @@ Your revised {{language}} query:
 
 
 class Postprocessor:
-    def __init__(self, config: SQLAgentConfig):
+    def __init__(self, config: SchemaLinkingAgentConfig):
         self.config = config
 
-    async def postprocess_async(self, ctx: SQLAgentContext, task: SimpleNL2QTask, pred_query: PredQuery) -> PredQuery:
+    async def postprocess_async(
+        self, ctx: SchemaLinkingContext, task: SimpleNL2QTask, pred_query: PredQuery
+    ) -> PredQuery:
         # if not task.dataset_instructions:
         #     return pred_query
 
@@ -379,15 +381,15 @@ class Postprocessor:
 
 
 @agent_registry.register
-class SQLAgent:
-    name: ClassVar = "sql_agent"
+class SchemaLinkingAgent:
+    name: ClassVar = "schema_linking"
     task_type: ClassVar = "simple"
     output_type: ClassVar = "simple"
-    config_cls: ClassVar[type[AgentConfig]] = SQLAgentConfig
+    config_cls: ClassVar[type[AgentConfig]] = SchemaLinkingAgentConfig
 
     def __init__(
         self,
-        config: SQLAgentConfig,
+        config: SchemaLinkingAgentConfig,
         few_shot_dataset: NL2QDataset | None = None,
         few_shot_embeddings: npt.NDArray[Any] | None = None,
     ):
@@ -403,7 +405,9 @@ class SQLAgent:
         self.postprocessor = Postprocessor(config) if config.do_postprocessing else None
 
     @classmethod
-    async def from_config_async(cls, config: SQLAgentConfig, few_shot_dataset: NL2QDataset | None = None) -> "SQLAgent":
+    async def from_config_async(
+        cls, config: SchemaLinkingAgentConfig, few_shot_dataset: NL2QDataset | None = None
+    ) -> "SchemaLinkingAgent":
         if config.num_few_shot_examples > 0:
             if few_shot_dataset is None:
                 raise ValueError("few_shot_dataset is required when num_few_shot_examples is greater than 0")
@@ -434,7 +438,7 @@ class SQLAgent:
     @trace_prediction
     async def predict_async(self, task: SimpleNL2QTask, db_connector: DBConnector) -> SimpleNL2QTaskOutput:
         if db_connector.connector_type != "sql":
-            raise TypeError(f"SQLAgent requires a SQL db connector, got {type(db_connector)!r}")
+            raise TypeError(f"SchemaLinkingAgent requires a SQL db connector, got {type(db_connector)!r}")
         t0 = time.time()
 
         schema_preprocessor = SchemaPreprocessor()
@@ -459,7 +463,7 @@ class SQLAgent:
             top_k_indices = np.argsort(similarities)[::-1][: self.config.num_few_shot_examples]
             examples = [self.few_shot_dataset.tasks[i] for i in top_k_indices]  # type: ignore
 
-        ctx = SQLAgentContext(
+        ctx = SchemaLinkingContext(
             task=task,
             db_connector=db_connector,
             preprocessed_schema=preprocessed_schema,
@@ -501,7 +505,7 @@ class SQLAgent:
             "run_query": RunQueryTool(db_connector),
             "finish": FinishTool(),
         }
-        system_prompt = jinja2.Template(SQL_AGENT_SYSTEM_PROMPT).render(
+        system_prompt = jinja2.Template(SCHEMA_LINKING_SYSTEM_PROMPT).render(
             language=db_connector.language,
             dataset_instructions=task.dataset_instructions,
             schema=self.formatter.format(linked_schema, include_descriptions=self.config.use_column_descriptions),

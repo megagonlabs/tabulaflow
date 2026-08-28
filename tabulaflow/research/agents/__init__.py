@@ -8,10 +8,10 @@ from tabulaflow.research.agents.registry import (
     NL2QAgent,
     agent_registry,
 )
-from tabulaflow.research.agents.direct_prompting import DirectPrompting
-from tabulaflow.research.agents.mini_agent import MiniAgent
-from tabulaflow.research.agents.sql_agent import SQLAgent
-from tabulaflow.research.agents.tabulaflow_agent import TabulaflowAgent
+from tabulaflow.research.agents.direct_prompt import DirectPromptAgent
+from tabulaflow.research.agents.full_schema import FullSchemaAgent
+from tabulaflow.research.agents.schema_linking import SchemaLinkingAgent
+from tabulaflow.research.agents.schema_discovery import SchemaDiscoveryAgent
 from tabulaflow.research.agents.ambig_simple import AmbigSimpleSQLAgent
 from tabulaflow.research.agents.ambig_flat import AmbigFlatSQLAgent
 from tabulaflow.research.agents.ambig_structured import AmbigStructuredSQLAgent
@@ -25,10 +25,10 @@ __all__ = [
     "NL2QAgent",
     "AgentConfig",
     "BasicAgentConfig",
-    "DirectPrompting",
-    "MiniAgent",
-    "SQLAgent",
-    "TabulaflowAgent",
+    "DirectPromptAgent",
+    "FullSchemaAgent",
+    "SchemaLinkingAgent",
+    "SchemaDiscoveryAgent",
     "AmbigSimpleSQLAgent",
     "AmbigFlatSQLAgent",
     "AmbigStructuredSQLAgent",
