@@ -94,7 +94,7 @@ Managed via `direnv` (`.envrc` file, not committed):
 
 | Key | Description |
 |-----|-------------|
-| `bird-sql` | BIRD-SQL (splits: `dev_20240627`, `dev_20251106`, `a199`, `train`) |
+| `bird-sql` | BIRD-SQL (splits: `dev_20240627`, `dev_20251106`, `train`) |
 | `spider2-snow` | Spider 2.0 Snowflake |
 | `beaver` | Beaver MySQL |
 | `arcs` | ARCS ambiguous NL2SQL |

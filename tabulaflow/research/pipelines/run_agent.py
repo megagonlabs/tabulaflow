@@ -33,62 +33,6 @@ from tabulaflow.research.types import (
 logger = logging.getLogger(__name__)
 
 
-A199_QIDS = [
-    "bird-sql_dev_17",
-    "bird-sql_dev_30",
-    "bird-sql_dev_33",
-    "bird-sql_dev_36",
-    "bird-sql_dev_49",
-    "bird-sql_dev_164",
-    "bird-sql_dev_199",
-    "bird-sql_dev_225",
-    "bird-sql_dev_237",
-    "bird-sql_dev_239",
-    "bird-sql_dev_267",
-    "bird-sql_dev_275",
-    "bird-sql_dev_352",
-    "bird-sql_dev_378",
-    "bird-sql_dev_384",
-    "bird-sql_dev_403",
-    "bird-sql_dev_407",
-    "bird-sql_dev_447",
-    "bird-sql_dev_469",
-    "bird-sql_dev_473",
-    "bird-sql_dev_500",
-    "bird-sql_dev_560",
-    "bird-sql_dev_565",
-    "bird-sql_dev_586",
-    "bird-sql_dev_587",
-    "bird-sql_dev_805",
-    "bird-sql_dev_837",
-    "bird-sql_dev_860",
-    "bird-sql_dev_861",
-    "bird-sql_dev_878",
-    "bird-sql_dev_881",
-    "bird-sql_dev_929",
-    "bird-sql_dev_985",
-    "bird-sql_dev_998",
-    "bird-sql_dev_1004",
-    "bird-sql_dev_1011",
-    # "bird-sql_dev_1026",
-    # "bird-sql_dev_1028",
-    # "bird-sql_dev_1085",
-    # "bird-sql_dev_1144",
-    # "bird-sql_dev_1174",
-    "bird-sql_dev_1196",
-    "bird-sql_dev_1277",
-    # "bird-sql_dev_1297",
-    "bird-sql_dev_1360",
-    "bird-sql_dev_1370",
-    "bird-sql_dev_1421",
-    "bird-sql_dev_1433",
-    "bird-sql_dev_1458",
-    "bird-sql_dev_1498",
-    # "bird-sql_dev_1520",
-    "bird-sql_dev_1529",
-]
-
-
 def get_empty_output(agent_cls: type[NL2QAgent], task: NL2QTask) -> NL2QTaskOutput:
     if agent_cls.output_type == "simple":
         return SimpleNL2QTaskOutput(**task.model_dump(), pred_query=None)
@@ -115,10 +59,12 @@ async def run_agent_async(
     few_shot_dataset: NL2QDataset | None,
     batch_size: int,
     result_dir: str = "output/test/",
-    metric_aggregators: list[MetricAggregator] = [SimpleInferenceMetricsAggregator()],
+    metric_aggregators: list[MetricAggregator] | None = None,
     sleep_between_batches: float = 0.0,
     verbose: bool = True,
 ) -> NL2QRunResult:
+    if metric_aggregators is None:
+        metric_aggregators = [SimpleInferenceMetricsAggregator()]
     if hasattr(agent_config, "llm") and Usage.create(agent_config.llm, 1, 1000000, 1000000).api_cost_usd == 0:
         logger.warning("API cost for %s is 0.0. Cost calculation might not be supported.", agent_config.llm)
 
@@ -130,7 +76,7 @@ async def run_agent_async(
     num_failed = 0
     for i in range(0, len(dataset.tasks), batch_size):
         if sleep_between_batches > 0:
-            time.sleep(sleep_between_batches)
+            await asyncio.sleep(sleep_between_batches)
 
         j = min(i + batch_size, len(dataset.tasks))
         batch = dataset.tasks[i:j]
@@ -256,7 +202,7 @@ def parse_agent_config(agent_cls: type[NL2QAgent], args: argparse.Namespace) -> 
 async def main_async() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--agent", default="sql_agent")
-    parser.add_argument("-s", "--schema_formatter", default="sql_ddl")
+    parser.add_argument("-s", "--schema_formatter", default=None)
     parser.add_argument("--llm", default=None)
     parser.add_argument("--temperature", default=None, type=float)
     parser.add_argument("--max_steps", default=None, type=int)
@@ -287,56 +233,54 @@ async def main_async() -> None:
 
     # dataset
     parser.add_argument("--dataset", default="bird-sql")
-    parser.add_argument("--split", default="dev")
+    parser.add_argument("--split", default=None)
     parser.add_argument("--databases", default=None, nargs="+")
     parser.add_argument("--qids", default=None, nargs="+")
     parser.add_argument("--subsample_size", default=None, type=int)
     parser.add_argument("--difficulty", default=None, choices=["simple", "moderate", "challenging"])
     parser.add_argument("--include_taxonomy", action="store_true")
 
-    parser.add_argument("--batch_size", default=8, type=int)
+    parser.add_argument("--batch_size", default=None, type=int)
     parser.add_argument("--sleep_between_batches", default=0.0, type=float)
     parser.add_argument("--result_dir", default="output/test/")
     parser.add_argument("--overwrite", action="store_true")
     parser.add_argument("--debug", action="store_true")
 
-    ##### Remove #####
-    parser.add_argument("--TMP_resume_exp_for_postprocessor", default=None)
-    ##################
-
     args = parser.parse_args()
-    if args.dataset == "bird-sql":
-        parser.set_defaults(split="dev", num_few_shot_examples=5 if args.agent == "sql_agent" else 0)
-    elif args.dataset == "spider2-snow":
-        parser.set_defaults(split="test", num_few_shot_examples=0)
-    elif args.dataset == "spider2-dbt":
-        parser.set_defaults(split="test", num_few_shot_examples=0)
-    elif args.dataset == "arcs":
-        parser.set_defaults(split="test", schema_formatter="sql_basic")
-    elif args.dataset == "cypherbench":
-        parser.set_defaults(split="test", num_few_shot_examples=0, schema_formatter="cypher")
+    if args.split is None:
+        args.split = "test" if args.dataset in {"spider2-snow", "spider2-dbt", "arcs", "cypherbench"} else "dev"
+    if args.schema_formatter is None:
+        if args.dataset == "arcs":
+            args.schema_formatter = "sql_basic"
+        elif args.dataset == "cypherbench":
+            args.schema_formatter = "cypher"
+        else:
+            args.schema_formatter = "sql_ddl"
+    if args.num_few_shot_examples is None and args.dataset in {
+        "bird-sql",
+        "spider2-snow",
+        "spider2-dbt",
+        "cypherbench",
+    }:
+        args.num_few_shot_examples = 5 if args.dataset == "bird-sql" and args.agent == "sql_agent" else 0
 
     if args.debug:
-        parser.set_defaults(batch_size=2, overwrite=True, result_dir="output/test/")
+        if args.batch_size is None:
+            args.batch_size = 2
+        args.overwrite = True
         if args.dataset == "spider2-snow" and not args.qids:
-            parser.set_defaults(databases=["AIRLINES"])
+            args.databases = ["AIRLINES"]
         elif args.dataset == "spider2-dbt" and not args.qids:
-            parser.set_defaults(databases=["zuora001"])
+            args.databases = ["zuora001"]
         elif args.dataset == "cypherbench" and not args.qids:
-            parser.set_defaults(databases=["nba"])
-    args = parser.parse_args()
+            args.databases = ["nba"]
+    if args.batch_size is None:
+        args.batch_size = 8
     print(args)
     print()
 
     logging.basicConfig(level=logging.DEBUG if args.debug else logging.WARNING)
     configure_research_observability()
-
-    ##### Remove #####
-    is_a199_flag = False
-    if args.split == "a199":
-        is_a199_flag = True
-        args.split = "dev"
-    ##################
 
     if os.path.exists(args.result_dir):
         if not args.overwrite:
@@ -360,21 +304,8 @@ async def main_async() -> None:
     )
     if args.qids is not None:
         dataset.tasks = [task for task in dataset.tasks if task.qid in args.qids]
-    ##### Remove #####
-    elif is_a199_flag:
-        dataset.tasks = [task for task in dataset.tasks if task.qid in A199_QIDS]
-    elif args.TMP_resume_exp_for_postprocessor is not None:
-        with open(os.path.join(args.TMP_resume_exp_for_postprocessor, "result.json"), "r") as f:
-            result = NL2QRunResult.model_validate_json(f.read())
-            dataset.tasks = [
-                task
-                for task in result.tasks
-                if task.eval_metrics["raw_pred_simple_ex"] == 1.0 and task.eval_metrics["raw_pred_bird_sql_ex"] == 0.0
-            ]
-    ##################
     elif args.debug:
         if args.dataset == "arcs":
-            # dataset.tasks = dataset.tasks[10:13]
             dataset.tasks = [
                 task
                 for task in dataset.tasks
@@ -415,6 +346,7 @@ async def main_async() -> None:
         few_shot_dataset=few_shot_dataset,
         batch_size=args.batch_size,
         result_dir=args.result_dir,
+        sleep_between_batches=args.sleep_between_batches,
         verbose=True,
     )
     print()

@@ -145,21 +145,6 @@ test-bird-agent:
 	uv run tabulaflow/research/pipelines/evaluate.py --debug
 	uv run tabulaflow/research/pipelines/analyze_errors.py --debug
 
-.PHONY: test-bird-a199-agent
-test-bird-a199-agent:
-	uv run tabulaflow/research/pipelines/run_agent.py --num_few_shot_examples 0 --do_schema_linking 0 --do_postprocessing 0 --agent sql_agent --dataset bird-sql --split a199 --debug --llm openai-responses:gpt-5-mini --openai_reasoning_effort medium --batch_size 50 --log_level INFO
-	uv run tabulaflow/research/pipelines/populate_exec_results.py --debug
-	uv run tabulaflow/research/pipelines/evaluate.py --debug
-	uv run tabulaflow/research/pipelines/analyze_errors.py --debug
-
-
-.PHONY: test-bird-postprocessor
-test-bird-postprocessor:
-	uv run tabulaflow/research/pipelines/run_agent.py --overwrite --num_few_shot_examples 0 --TMP_resume_exp_for_postprocessor output/206_gpt-5-mini-medium-percentage/ --agent sql_agent --dataset bird-sql --split dev_20240627 --llm openai-responses:gpt-5-mini --openai_reasoning_effort medium --batch_size 50 --log_level INFO
-	uv run tabulaflow/research/pipelines/populate_exec_results.py --debug
-	uv run tabulaflow/research/pipelines/evaluate.py --debug
-	uv run tabulaflow/research/pipelines/analyze_errors.py --debug
-
 .PHONY: test-bird-agent-qids
 test-bird-agent-qids:
 	uv run tabulaflow/research/pipelines/run_agent.py --agent sql_agent --dataset bird-sql --debug --qids $(QIDS) --llm openai-responses:gpt-5-mini --openai_reasoning_effort medium --batch_size 50
