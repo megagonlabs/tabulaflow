@@ -33,7 +33,6 @@ Pipeline scripts (used directly):
 uv run tabulaflow/research/pipelines/run_agent.py --agent <agent> --dataset <dataset> --debug
 uv run tabulaflow/research/pipelines/populate_exec_results.py --debug
 uv run tabulaflow/research/pipelines/evaluate.py --debug
-uv run tabulaflow/research/pipelines/analyze_errors.py --debug
 ```
 
 ## Project Structure
