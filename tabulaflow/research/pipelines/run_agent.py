@@ -56,8 +56,8 @@ async def run_agent_async(
     agent_cls: type[NL2QAgent],
     agent_config: AgentConfig,
     dataset: NL2QDataset,
-    few_shot_dataset: NL2QDataset | None,
     batch_size: int,
+    few_shot_dataset: NL2QDataset | None = None,
     result_dir: str = "output/test/",
     metric_aggregators: list[MetricAggregator] | None = None,
     sleep_between_batches: float = 0.0,
@@ -305,17 +305,12 @@ async def main_async() -> None:
     if args.qids is not None:
         dataset.tasks = [task for task in dataset.tasks if task.qid in args.qids]
     elif args.debug:
-        if args.dataset == "arcs":
-            dataset.tasks = [
-                task
-                for task in dataset.tasks
-                if task.qid in ["040-0", "001-0", "001-1", "001-2", "001-3", "001-4", "046-5"]
-            ]
-        else:
-            dataset.tasks = dataset.tasks[:5]
-            dataset.db_connectors = {
-                k: v for k, v in dataset.db_connectors.items() if any(k == t.db for t in dataset.tasks)
-            }
+        dataset.tasks = dataset.tasks[:5]
+        dataset.db_connectors = {
+            key: connector
+            for key, connector in dataset.db_connectors.items()
+            if any(key == task.db for task in dataset.tasks)
+        }
 
     print(
         f"Loaded {len(dataset.tasks)} tasks and {len(dataset.db_connectors)} databases from {args.dataset} ({args.split}) in {time.time() - t0:.2f} seconds."
