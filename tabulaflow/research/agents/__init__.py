@@ -15,7 +15,7 @@ from tabulaflow.research.agents.schema_discovery import SchemaDiscoveryAgent
 from tabulaflow.research.agents.ambig_simple import AmbigSimpleSQLAgent
 from tabulaflow.research.agents.ambig_flat import AmbigFlatSQLAgent
 from tabulaflow.research.agents.ambig_structured import AmbigStructuredSQLAgent
-from tabulaflow.research.agents.dbt_agent import DbtAgent
+from tabulaflow.research.agents.dbt import DbtAgent
 from tabulaflow.research.agents.utils import BasicAgentConfig
 
 __all__ = [
