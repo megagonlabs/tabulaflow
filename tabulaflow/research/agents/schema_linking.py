@@ -20,7 +20,7 @@ from tabulaflow.agents.tools import AgentTool, RunQueryTool
 from tabulaflow.agents.tools.run_query import latest_query_execution
 from tabulaflow.research.tools import SearchKeywordsTool, FinishTool
 from tabulaflow.output.formatting import SQLSchemaFormatter, schema_formatter_registry
-from tabulaflow.research.agents.registry import agent_registry, AgentConfig
+from tabulaflow.research.agents.registry import agent_registry
 from tabulaflow.research.agents.utils import (
     format_question,
     extract_code,
@@ -385,7 +385,7 @@ class SchemaLinkingAgent:
     name: ClassVar = "schema_linking"
     task_type: ClassVar = "simple"
     output_type: ClassVar = "simple"
-    config_cls: ClassVar[type[AgentConfig]] = SchemaLinkingAgentConfig
+    config_cls = SchemaLinkingAgentConfig
 
     def __init__(
         self,

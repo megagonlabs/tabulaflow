@@ -1,9 +1,9 @@
 """Research evaluation metrics, aggregators, and registry."""
 
 from tabulaflow.research.metrics.registry import (
-    NL2QMetric,
+    MetricProtocol,
     metric_registry,
-    MetricAggregator,
+    MetricAggregatorProtocol,
 )
 from tabulaflow.research.metrics.aggregators import (
     SimpleAverageAggregator,
@@ -31,8 +31,8 @@ from tabulaflow.research.metrics.cypherbench_ex import CypherBenchEx
 from tabulaflow.research.metrics.spider2_duckdb_match import Spider2DuckdbMatch
 
 __all__ = [
-    "NL2QMetric",
-    "MetricAggregator",
+    "MetricProtocol",
+    "MetricAggregatorProtocol",
     "SimpleAverageAggregator",
     "RealScoreAggregator",
     "SimpleInferenceMetricsAggregator",

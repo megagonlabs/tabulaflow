@@ -16,7 +16,7 @@ from tabulaflow.research.tools import (
     GetSchemaTool,
     GetColumnDescriptionTool,
 )
-from tabulaflow.research.agents.registry import agent_registry, AgentConfig
+from tabulaflow.research.agents.registry import agent_registry
 from tabulaflow.research.agents.utils import get_max_steps_capability, BasicAgentConfig
 from tabulaflow.agents.llm import make_agent
 
@@ -56,7 +56,7 @@ class AmbigSimpleSQLAgent:
     name: ClassVar = "ambig_simple_sql_agent"
     task_type: ClassVar = "ambig"
     output_type: ClassVar = "ambig-simple"
-    config_cls: ClassVar[type[AgentConfig]] = AmbigSimpleSQLAgentConfig
+    config_cls = AmbigSimpleSQLAgentConfig
 
     def __init__(
         self,

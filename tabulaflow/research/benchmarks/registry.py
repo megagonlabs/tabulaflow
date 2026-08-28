@@ -1,11 +1,13 @@
+"""Extension contract and registry for benchmark dataset loaders."""
+
 from typing import Protocol, ClassVar, Sequence, Mapping
 from tabulaflow.research.types import NL2QDataset, NL2QTask
 from tabulaflow.data import DBConnector
 from tabulaflow.core.registry import ClassRegistry
 
 
-class NL2QDatasetLoader(Protocol):
-    """Protocol for NL2Q dataset loaders.
+class DatasetLoaderProtocol(Protocol):
+    """Loader for one registered NL2Q benchmark.
 
     Implementations provide access to benchmark tasks, database connectors,
     and the evaluation metrics appropriate for the dataset.
@@ -42,4 +44,6 @@ class NL2QDatasetLoader(Protocol):
         ...
 
 
-dataset_registry = ClassRegistry[NL2QDatasetLoader]("dataset")
+dataset_registry = ClassRegistry[DatasetLoaderProtocol]("dataset")
+
+__all__ = ["DatasetLoaderProtocol", "dataset_registry"]

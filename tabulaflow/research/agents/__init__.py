@@ -1,11 +1,9 @@
 """Research agent strategies, protocols, and registry."""
 
 from tabulaflow.research.agents.registry import (
-    AgentConfig,
-    SimpleSQLAgentProtocol,
+    SimpleAgentProtocol,
     AmbigSQLAgentProtocol,
     DbtAgentProtocol,
-    NL2QAgent,
     agent_registry,
 )
 from tabulaflow.research.agents.direct_prompt import DirectPromptAgent
@@ -19,11 +17,9 @@ from tabulaflow.research.agents.dbt import DbtAgent
 from tabulaflow.research.agents.utils import BasicAgentConfig
 
 __all__ = [
-    "SimpleSQLAgentProtocol",
+    "SimpleAgentProtocol",
     "AmbigSQLAgentProtocol",
     "DbtAgentProtocol",
-    "NL2QAgent",
-    "AgentConfig",
     "BasicAgentConfig",
     "DirectPromptAgent",
     "FullSchemaAgent",

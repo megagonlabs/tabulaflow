@@ -7,7 +7,6 @@ from pydantic import BaseModel
 from pydantic_ai import ToolOutput
 
 from tabulaflow.research.observability import trace_prediction
-from tabulaflow.research.agents.registry import AgentConfig
 from tabulaflow.research.agents.ensemblers.majority_ensembler import _normalize_value
 from tabulaflow.data import SQLConnectorProtocol
 from tabulaflow.output.formatting import format_dataframe
@@ -103,7 +102,7 @@ class LLMEnsembler:
     name: ClassVar = "llm_ensembler"
     task_type: ClassVar = "simple"
     output_type: ClassVar = "simple"
-    config_cls: ClassVar[type[AgentConfig]] = LLMEnsemblerConfig
+    config_cls = LLMEnsemblerConfig
 
     def __init__(self, config: LLMEnsemblerConfig):
         self.config = config

@@ -6,7 +6,6 @@ import jinja2
 from pydantic_ai import ModelRetry, RunContext, ToolOutput
 
 from tabulaflow.research.observability import trace_prediction
-from tabulaflow.research.agents.registry import AgentConfig
 from tabulaflow.research.agents.ensemblers.majority_ensembler import _normalize_value
 from tabulaflow.research.agents.utils import BasicAgentConfig, get_max_steps_capability
 from tabulaflow.data import SQLConnectorProtocol
@@ -117,7 +116,7 @@ class AgentEnsembler:
     name: ClassVar = "agent_ensembler"
     task_type: ClassVar = "simple"
     output_type: ClassVar = "simple"
-    config_cls: ClassVar[type[AgentConfig]] = AgentEnsemblerConfig
+    config_cls = AgentEnsemblerConfig
 
     def __init__(self, config: AgentEnsemblerConfig):
         self.config = config

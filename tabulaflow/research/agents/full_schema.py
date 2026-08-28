@@ -15,7 +15,7 @@ from tabulaflow.output.formatting import (
     SQLSchemaFormatter,
     schema_formatter_registry,
 )
-from tabulaflow.research.agents.registry import agent_registry, AgentConfig
+from tabulaflow.research.agents.registry import agent_registry
 from tabulaflow.research.agents.utils import (
     format_question,
     get_max_steps_capability,
@@ -67,7 +67,7 @@ class FullSchemaAgent:
     name: ClassVar = "full_schema"
     task_type: ClassVar = "simple"
     output_type: ClassVar = "simple"
-    config_cls: ClassVar[type[AgentConfig]] = BasicAgentConfig
+    config_cls = BasicAgentConfig
 
     def __init__(
         self,

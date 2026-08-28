@@ -8,7 +8,7 @@ from tabulaflow.research.benchmarks.registry import dataset_registry
 from tabulaflow.research.metrics.registry import metric_registry
 from tabulaflow.research.types import NL2QTaskOutput, NL2QRunResult, NL2QDataset
 from tabulaflow.data import DBConnector
-from tabulaflow.research.metrics import NL2QMetric, MetricAggregator
+from tabulaflow.research.metrics import MetricProtocol, MetricAggregatorProtocol
 from tabulaflow.research.metrics.aggregators import (
     ByAmbrosiaTaxonomyTypeAggregator,
     SimpleAverageAggregator,
@@ -21,7 +21,7 @@ from tabulaflow.research.pipelines.utils import pprint_dict
 
 
 async def compute_metrics_async(
-    task: NL2QTaskOutput, metrics: list[NL2QMetric], db_connector: DBConnector | None
+    task: NL2QTaskOutput, metrics: list[MetricProtocol], db_connector: DBConnector | None
 ) -> NL2QTaskOutput:
     results = await asyncio.gather(*[m.compute_async(task, db_connector) for m in metrics])
     task.eval_metrics = {}
@@ -36,9 +36,9 @@ async def compute_metrics_async(
 async def evaluate_async(
     result: NL2QRunResult,
     dataset: NL2QDataset,
-    metrics: list[NL2QMetric],
+    metrics: list[MetricProtocol],
     batch_size: int,
-    metric_aggregators: list[MetricAggregator],
+    metric_aggregators: list[MetricAggregatorProtocol],
     verbose: bool = True,
 ) -> NL2QRunResult:
     for i in range(0, len(result.tasks), batch_size):
@@ -92,7 +92,7 @@ async def main_async() -> None:
                 continue
         metrics.append(metric_cls())
 
-    metric_aggregators: list[MetricAggregator] = [
+    metric_aggregators: list[MetricAggregatorProtocol] = [
         SimpleAverageAggregator(),
         RealScoreAggregator(),
         ByDBAggregator(),

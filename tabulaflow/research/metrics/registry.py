@@ -1,10 +1,14 @@
+"""Extension contracts and registry for research metrics."""
+
 from typing import Protocol, ClassVar, Any
 from tabulaflow.research.types import NL2QRunResult, NL2QTaskOutput, NumericOrNull
 from tabulaflow.data import DBConnector
 from tabulaflow.core.registry import ClassRegistry
 
 
-class NL2QMetric(Protocol):
+class MetricProtocol(Protocol):
+    """Task-level evaluation metric registered by name."""
+
     name: ClassVar[str]
     compatible_output_types: ClassVar[list[str]]
 
@@ -13,8 +17,12 @@ class NL2QMetric(Protocol):
     ) -> NumericOrNull | dict[str, NumericOrNull]: ...
 
 
-class MetricAggregator(Protocol):
+class MetricAggregatorProtocol(Protocol):
+    """Aggregation policy over the task outputs in one run."""
+
     def aggregate(self, result: NL2QRunResult) -> dict[str, Any]: ...
 
 
-metric_registry = ClassRegistry[NL2QMetric]("metric")
+metric_registry = ClassRegistry[MetricProtocol]("metric")
+
+__all__ = ["MetricAggregatorProtocol", "MetricProtocol", "metric_registry"]

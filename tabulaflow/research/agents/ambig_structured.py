@@ -26,7 +26,6 @@ from tabulaflow.agents.tools.run_query import latest_query_execution
 from tabulaflow.research.tools import SearchKeywordsTool, FinishTool, GetSchemaTool, GetColumnDescriptionTool
 from tabulaflow.research.agents.registry import (
     agent_registry,
-    AgentConfig,
 )
 from tabulaflow.research.agents.utils import get_max_steps_capability, TaskRunContext, BasicAgentConfig
 from tabulaflow.research.ambiguity import int_to_letter
@@ -128,7 +127,7 @@ class AmbigStructuredSQLAgent:
     name: ClassVar = "ambig_structured_sql_agent"
     task_type: ClassVar = "ambig"
     output_type: ClassVar = "ambig-structured"
-    config_cls: ClassVar[type[AgentConfig]] = AmbigStructuredSQLAgentConfig
+    config_cls = AmbigStructuredSQLAgentConfig
 
     def __init__(
         self,

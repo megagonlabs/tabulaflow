@@ -11,7 +11,7 @@ from tabulaflow.agents.tools import AgentTool, GetColumnJsonSchemaTool, GetTable
 from tabulaflow.agents.tools.run_query import latest_query_execution
 from tabulaflow.research.tools import FinishTool
 from tabulaflow.output.formatting import schema_formatter_registry, SQLSchemaFormatter
-from tabulaflow.research.agents.registry import agent_registry, AgentConfig
+from tabulaflow.research.agents.registry import agent_registry
 from tabulaflow.research.agents.utils import (
     format_question,
     get_max_steps_capability,
@@ -78,7 +78,7 @@ class SchemaDiscoveryAgent:
     name: ClassVar = "schema_discovery"
     task_type: ClassVar = "simple"
     output_type: ClassVar = "simple"
-    config_cls: ClassVar[type[AgentConfig]] = SchemaDiscoveryAgentConfig
+    config_cls = SchemaDiscoveryAgentConfig
 
     def __init__(
         self,

@@ -12,7 +12,6 @@ from pydantic import BaseModel
 from pydantic_ai import ToolOutput
 
 from tabulaflow.research.observability import trace_prediction
-from tabulaflow.research.agents.registry import AgentConfig
 from tabulaflow.data import SQLConnectorProtocol
 from tabulaflow.output.formatting import SQLDDLSchemaFormatter
 from tabulaflow.agents.summarization import DBSummarizer
@@ -98,7 +97,7 @@ class DbtLLMEnsembler:
     name: ClassVar = "dbt_llm_ensembler"
     task_type: ClassVar = "dbt"
     output_type: ClassVar = "dbt"
-    config_cls: ClassVar[type[AgentConfig]] = DbtLLMEnsemblerConfig
+    config_cls = DbtLLMEnsemblerConfig
 
     def __init__(self, config: DbtLLMEnsemblerConfig):
         self.config = config

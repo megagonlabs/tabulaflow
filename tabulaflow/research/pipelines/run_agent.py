@@ -3,18 +3,18 @@ import os
 import shutil
 import time
 from functools import reduce
-from typing import Any
+from typing import Any, cast
 import datetime
 import asyncio
 import logging
 import traceback
+from pydantic import BaseModel
 from tabulaflow.research.agents.registry import agent_registry
 from tabulaflow.research.benchmarks.registry import dataset_registry
-from tabulaflow.research.metrics import MetricAggregator, SimpleInferenceMetricsAggregator
+from tabulaflow.research.metrics import MetricAggregatorProtocol, SimpleInferenceMetricsAggregator
 from tabulaflow.research.pipelines.utils import pprint_dict, tqdm_gather_with_exceptions
 from tabulaflow.research.observability import configure_research_observability
 from tabulaflow.research.pipelines.utils import bool_flag
-from tabulaflow.research.agents import NL2QAgent, AgentConfig
 from tabulaflow.research.agents.user_simulator import UserSimulator
 from tabulaflow.research.benchmarks.spider2_dbt import prepare_working_env_async
 from tabulaflow.agents.trace import Usage
@@ -33,7 +33,7 @@ from tabulaflow.research.types import (
 logger = logging.getLogger(__name__)
 
 
-def get_empty_output(agent_cls: type[NL2QAgent], task: NL2QTask) -> NL2QTaskOutput:
+def get_empty_output(agent_cls: type[Any], task: NL2QTask) -> NL2QTaskOutput:
     if agent_cls.output_type == "simple":
         return SimpleNL2QTaskOutput(**task.model_dump(), pred_query=None)
     elif agent_cls.output_type == "ambig-simple":
@@ -53,13 +53,13 @@ def get_empty_output(agent_cls: type[NL2QAgent], task: NL2QTask) -> NL2QTaskOutp
 
 
 async def run_agent_async(
-    agent_cls: type[NL2QAgent],
-    agent_config: AgentConfig,
+    agent_cls: type[Any],
+    agent_config: BaseModel,
     dataset: NL2QDataset,
     batch_size: int,
     few_shot_dataset: NL2QDataset | None = None,
     result_dir: str = "output/test/",
-    metric_aggregators: list[MetricAggregator] | None = None,
+    metric_aggregators: list[MetricAggregatorProtocol] | None = None,
     sleep_between_batches: float = 0.0,
     verbose: bool = True,
 ) -> NL2QRunResult:
@@ -84,8 +84,8 @@ async def run_agent_async(
         agent_kwargs = {}
         if few_shot_dataset is not None:
             agent_kwargs["few_shot_dataset"] = few_shot_dataset
-        agents: list[NL2QAgent] = await asyncio.gather(
-            *[agent_cls.from_config_async(agent_config, **agent_kwargs) for _ in batch]  # type: ignore
+        agents: list[Any] = await asyncio.gather(
+            *(agent_cls.from_config_async(agent_config, **agent_kwargs) for _ in batch)
         )
 
         batch_kwargs: list[dict[str, Any]] = []
@@ -107,7 +107,7 @@ async def run_agent_async(
 
         batch_outputs = await tqdm_gather_with_exceptions(
             *[
-                agent.predict_async(task, dataset.db_connectors[task.db], **kwargs)  # type: ignore
+                agent.predict_async(task, dataset.db_connectors[task.db], **kwargs)
                 for agent, task, kwargs in zip(agents, batch, batch_kwargs)
             ],
             return_exceptions=True,
@@ -154,7 +154,7 @@ async def run_agent_async(
     return res
 
 
-def parse_agent_config(agent_cls: type[NL2QAgent], args: argparse.Namespace) -> AgentConfig:
+def parse_agent_config(agent_cls: type[Any], args: argparse.Namespace) -> BaseModel:
     kwargs: dict[str, Any] = {
         "schema_formatter": args.schema_formatter,
     }
@@ -193,7 +193,7 @@ def parse_agent_config(agent_cls: type[NL2QAgent], args: argparse.Namespace) -> 
         kwargs["reasoning_effort"] = args.reasoning_effort
     if args.service_tier is not None:
         kwargs["service_tier"] = args.service_tier
-    return agent_cls.config_cls(**kwargs)
+    return cast(BaseModel, agent_cls.config_cls(**kwargs))
 
 
 async def main_async() -> None:

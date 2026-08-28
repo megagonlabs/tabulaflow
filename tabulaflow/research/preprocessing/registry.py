@@ -1,4 +1,4 @@
-"""Research-only preprocessor protocol and registry."""
+"""Extension contract and registry for research preprocessing."""
 
 from typing import Any, ClassVar, Literal, Protocol
 
@@ -8,7 +8,9 @@ from tabulaflow.core.registry import ClassRegistry
 from tabulaflow.data.protocols import DBConnector
 
 
-class ResearchPreprocessor(Protocol):
+class PreprocessorProtocol(Protocol):
+    """Named preprocessing step with usage accounting."""
+
     name: ClassVar[str]
     input_type: ClassVar[Literal["db_connector", "dataset"]]
 
@@ -29,3 +31,6 @@ class DBSummaryPreprocessor(DBSummarizer):
 
     async def preprocess_async(self, input_data: DBConnector) -> str:
         return await self.summarize(input_data)
+
+
+__all__ = ["DBSummaryPreprocessor", "PreprocessorProtocol", "preprocessor_registry"]

@@ -2,7 +2,7 @@
 
 from tabulaflow.research.preprocessing.registry import (
     DBSummaryPreprocessor,
-    ResearchPreprocessor,
+    PreprocessorProtocol,
     preprocessor_registry,
 )
 from tabulaflow.research.preprocessing.column_profiler import ColumnProfiler
@@ -15,7 +15,7 @@ __all__ = [
     "DBSummaryPreprocessor",
     "ForeignKeyPredictor",
     "QuestionEmbedder",
-    "ResearchPreprocessor",
+    "PreprocessorProtocol",
     "SchemaPreprocessor",
     "preprocessor_registry",
 ]
