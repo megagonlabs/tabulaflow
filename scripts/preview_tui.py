@@ -9,6 +9,7 @@ from textual.containers import VerticalScroll
 
 from preview_fixtures import mount_preview_widgets
 from tabulaflow.app.config import LLM_OFF, ResolvedLLMSelection
+from tabulaflow.app.runtime_paths import RuntimePaths
 from tabulaflow.app.tui import TabulaflowApp
 from tabulaflow.app.tui.app import _restore_terminal_modes
 
@@ -22,7 +23,11 @@ class PreviewApp(TabulaflowApp):
 
 
 async def run() -> None:
-    app = PreviewApp(llm_selection=ResolvedLLMSelection(LLM_OFF, None))
+    app = PreviewApp(
+        llm_selection=ResolvedLLMSelection(LLM_OFF, None),
+        runtime_paths=RuntimePaths.create(),
+        project_dir=Path.cwd(),
+    )
     try:
         await app.run_async(mouse=True)
     finally:

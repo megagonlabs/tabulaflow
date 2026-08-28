@@ -67,8 +67,26 @@ def _selection(
     return ResolvedLLMSelection(selection, preset, detected_api_key_env)
 
 
-def _app(preset: LLMPreset | None) -> TabulaflowApp:
-    return TabulaflowApp(llm_selection=_selection(preset))
+def _app_for_selection(
+    selection: ResolvedLLMSelection,
+    *,
+    runtime_paths: RuntimePaths | None = None,
+    project_dir: Path | None = None,
+) -> TabulaflowApp:
+    return TabulaflowApp(
+        llm_selection=selection,
+        runtime_paths=runtime_paths or RuntimePaths.for_session("test-session"),
+        project_dir=project_dir or Path.cwd(),
+    )
+
+
+def _app(
+    preset: LLMPreset | None,
+    *,
+    runtime_paths: RuntimePaths | None = None,
+    project_dir: Path | None = None,
+) -> TabulaflowApp:
+    return _app_for_selection(_selection(preset), runtime_paths=runtime_paths, project_dir=project_dir)
 
 
 def _activate_selected(session: AppSession) -> ChatSession:
@@ -129,7 +147,7 @@ def test_text_selection_failure_is_contained(
 
 def test_close_pane_removes_session_artifacts(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("HOME", str(tmp_path))
-    app = _app(None)
+    app = _app(None, runtime_paths=RuntimePaths.for_session("test-session"))
     pane_dir = app._runtime_paths.pane_dir
     pane_dir.mkdir(parents=True)
     (pane_dir / "card_test.data.json").write_text("{}")
@@ -158,9 +176,8 @@ async def test_ensure_session_creates_app_session(tmp_path: Path, monkeypatch: p
     monkeypatch.chdir(project_dir)
 
     preset = _preset(model="test:model", subagent_model="test:subagent")
-    app = _app(preset)
     runtime_paths = RuntimePaths.for_session("test-session")
-    app._runtime_paths = runtime_paths
+    app = _app(preset, runtime_paths=runtime_paths, project_dir=project_dir)
 
     session = object()
     captured: dict[str, Any] = {}
@@ -190,8 +207,7 @@ def test_bottom_status_shows_selected_model_before_agent_is_ready(
         reasoning_effort="high",
         subagent_model="anthropic:claude-sonnet-4-5-20250929",
     )
-    app = _app(preset)
-    app._project_dir = tmp_path
+    app = _app(preset, project_dir=tmp_path)
     session = AppSession(
         llm_preset=preset,
         trajectories_dir=tmp_path / "trajectories",
@@ -220,9 +236,9 @@ def test_bottom_status_shows_startup_model_before_session_is_ready(
             model="anthropic:claude-opus-4-8",
             reasoning_effort="high",
             subagent_model="anthropic:claude-sonnet-4-5-20250929",
-        )
+        ),
+        project_dir=tmp_path,
     )
-    app._project_dir = tmp_path
     model_status = _StatusCapture()
     url_status = _StatusCapture()
 
@@ -239,8 +255,7 @@ def test_bottom_status_shows_startup_model_before_session_is_ready(
 def test_bottom_status_shows_llm_off_before_session_when_no_profile(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    app = _app(None)
-    app._project_dir = tmp_path
+    app = _app(None, project_dir=tmp_path)
     model_status = _StatusCapture()
     url_status = _StatusCapture()
 
@@ -647,7 +662,7 @@ async def test_startup_paints_banner_before_starting_initialization(
 async def test_unconfigured_without_detected_key_explains_why_llm_is_off(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    app = TabulaflowApp(llm_selection=_selection(None, inferred=True))
+    app = _app_for_selection(_selection(None, inferred=True))
 
     async def fake_ensure_session() -> object:
         return _InactiveSession()
@@ -674,7 +689,7 @@ async def test_inferred_startup_reports_masked_api_key_in_chat_log(
         subagent_model="openai-responses:gpt-5-mini",
         subagent_reasoning_effort="medium",
     )
-    app = TabulaflowApp(llm_selection=_selection(preset, inferred=True, detected_api_key_env="OPENAI_API_KEY"))
+    app = _app_for_selection(_selection(preset, inferred=True, detected_api_key_env="OPENAI_API_KEY"))
 
     class FakeSession:
         def activate_llm_preset(self, selected: LLMPreset) -> tuple[str | None, str | None]:

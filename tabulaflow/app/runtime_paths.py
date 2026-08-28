@@ -29,6 +29,16 @@ class RuntimePaths:
     cli_log_path: Path
     pane_dir: Path
 
+    @property
+    def session_dir(self) -> Path:
+        """Root directory for this session's files."""
+        return self.workspace_db_path.parent
+
+    @property
+    def session_id(self) -> str:
+        """Identifier of this session."""
+        return self.session_dir.name
+
     @classmethod
     def create(cls) -> RuntimePaths:
         """Atomically reserve runtime paths for a new session."""
@@ -36,9 +46,8 @@ class RuntimePaths:
         sessions_dir.mkdir(parents=True, exist_ok=True)
         while True:
             paths = cls.for_session(generate_session_id())
-            session_dir = paths.pane_dir.parent
             try:
-                session_dir.mkdir(mode=0o700)
+                paths.session_dir.mkdir(mode=0o700)
             except FileExistsError:
                 continue
             return paths

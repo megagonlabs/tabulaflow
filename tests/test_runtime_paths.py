@@ -18,17 +18,19 @@ def test_create_runtime_paths_retries_id_collision(tmp_path: Path, monkeypatch: 
     monkeypatch.setenv("HOME", str(tmp_path))
     ids = iter(("k3x9qe", "p07mzt"))
     monkeypatch.setattr(runtime_paths, "generate_session_id", lambda: next(ids))
-    existing = RuntimePaths.for_session("k3x9qe").pane_dir.parent
+    existing = RuntimePaths.for_session("k3x9qe").session_dir
     existing.mkdir(parents=True)
 
     paths = RuntimePaths.create()
 
-    assert paths.pane_dir.parent.name == "p07mzt"
-    assert paths.pane_dir.parent.is_dir()
+    assert paths.session_id == "p07mzt"
+    assert paths.session_dir.is_dir()
 
 
 def test_pane_dir_is_scoped_to_session() -> None:
     paths = RuntimePaths.for_session("sess-123")
+    assert paths.session_id == "sess-123"
+    assert paths.session_dir == paths.workspace_db_path.parent
     assert paths.pane_dir.name == "pane"
     assert paths.pane_dir.parent.name == "sess-123"
     assert paths.pane_dir.parent.parent.name == "sessions"

@@ -20,7 +20,6 @@ import http.server
 import json
 import logging
 import posixpath
-import re
 import secrets
 import threading
 from collections.abc import Callable, Sequence
@@ -45,7 +44,6 @@ DEFAULT_OUTPUT_PANE_HOST = "127.0.0.1"
 _OUTPUT_PANE_TOKEN_BYTES = 6
 _RESOLVE_TIMEOUT_SECONDS = 30
 _SESSION_ID_PLACEHOLDER = "__SESSION_ID__"
-_SESSION_ID_RE = re.compile(r"[0-9a-z]{6}")
 _MARKDOWN_CODE_PARSER = MarkdownIt("commonmark", {"html": False}).enable(["table"])
 
 _GITHUB_SVG = (
@@ -118,13 +116,6 @@ _INVALID_PANE_URL_HTML = (
     "<p>Open the full URL shown in the tabulaflow terminal.</p>"
     "</main></body></html>"
 )
-
-
-def _derive_session_id(pane_dir: Path) -> str:
-    """Return the runtime session id represented by a pane artifact directory."""
-    if pane_dir.name == "pane" and _SESSION_ID_RE.fullmatch(pane_dir.parent.name):
-        return pane_dir.parent.name
-    return generate_session_id()
 
 
 def _markdown_code_blocks(markdown: str) -> list[CodeData]:
@@ -406,7 +397,7 @@ class OutputPane:
         session_id: str | None = None,
     ) -> None:
         self._pane_dir = pane_dir
-        self._session_id = (session_id or _derive_session_id(pane_dir)).strip() or "unknown"
+        self._session_id = (session_id or generate_session_id()).strip() or "unknown"
         self._host = host.strip()
         if not self._host:
             raise ValueError("Output pane host cannot be empty.")

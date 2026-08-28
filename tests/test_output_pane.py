@@ -13,7 +13,6 @@ import urllib.request
 from collections.abc import Iterator
 from importlib.resources import files
 from pathlib import Path
-from types import SimpleNamespace
 from typing import Any, cast
 
 import pandas as pd
@@ -33,6 +32,7 @@ from tabulaflow.app.pane.cards import (
 from tabulaflow.app.theme import CODE_TEXT
 from tabulaflow.app.pane.contract import CARD_ID_PREFIX, PaneCard, PanePanel, PaneTurn, turn_payload
 from tabulaflow.app.pane.server import OutputPane, OutputPanePortError, _PANE_HTML
+from tabulaflow.app.runtime_paths import RuntimePaths
 from tabulaflow.output.graphs import materialize_graph_result, normalize_graph_spec
 from tabulaflow.app.tui import TabulaflowApp
 from tabulaflow.app.turn import TurnOutput
@@ -72,6 +72,19 @@ def _origin_url(url: str) -> str:
 
 def _pane_asset_text(rel: str) -> str:
     return files("tabulaflow.app.pane.assets.ui").joinpath(rel).read_text(encoding="utf-8")
+
+
+def _runtime_paths(root: Path) -> RuntimePaths:
+    return RuntimePaths(
+        logs_dir=root / "logs",
+        trajectories_dir=root / "trajectories",
+        data_dir=root / "data",
+        scratch_dir=root / "scratch",
+        workspace_db_path=root / "workspace.duckdb",
+        history_path=root / "history.jsonl",
+        cli_log_path=root / "logs" / "cli.log",
+        pane_dir=root,
+    )
 
 
 def test_output_pane_serves_text_only_turn(tmp_path: Path) -> None:
@@ -154,7 +167,7 @@ def test_output_pane_fallback_session_id_uses_cli_format(tmp_path: Path) -> None
 
 
 def test_output_pane_page_displays_runtime_session_id(tmp_path: Path) -> None:
-    pane = OutputPane(tmp_path / "sessions" / "k3x9qe" / "pane")
+    pane = OutputPane(tmp_path, session_id="k3x9qe")
     assert pane.session_id == "k3x9qe"
 
     pane.start()
@@ -536,8 +549,11 @@ def test_manual_table_send_includes_data_view_meta(tmp_path: Path) -> None:
             pushed.append(turn)
 
     df = pd.DataFrame({"sample_id": ["ex-0001", "ex-0002"], "answer": ["A", "B"]})
-    app = TabulaflowApp(llm_selection=ResolvedLLMSelection(LLM_OFF, None))
-    app._runtime_paths = SimpleNamespace(pane_dir=tmp_path)  # type: ignore[assignment]  # noqa: SLF001
+    app = TabulaflowApp(
+        llm_selection=ResolvedLLMSelection(LLM_OFF, None),
+        runtime_paths=_runtime_paths(tmp_path),
+        project_dir=tmp_path,
+    )
     app._pane = FakePane()  # type: ignore[assignment]  # noqa: SLF001
 
     assert app.show_table_in_pane(df, title="manual_table")
@@ -2647,7 +2663,11 @@ def test_view_card_in_pane_marks_turn_as_manual(tmp_path: Path) -> None:
         def push(self, turn: PaneTurn) -> None:
             pushed.append(turn)
 
-    app = TabulaflowApp(llm_selection=ResolvedLLMSelection(LLM_OFF, None))
+    app = TabulaflowApp(
+        llm_selection=ResolvedLLMSelection(LLM_OFF, None),
+        runtime_paths=_runtime_paths(tmp_path),
+        project_dir=tmp_path,
+    )
     app._pane = FakePane()  # type: ignore[assignment]  # noqa: SLF001
 
     card: PaneCard = {"id": "card_orders", "artifact_id": "orders", "label": None, "views": ["data"]}

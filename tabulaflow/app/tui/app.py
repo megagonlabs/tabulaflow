@@ -227,6 +227,8 @@ class TabulaflowApp(App[None]):
         self,
         *,
         llm_selection: ResolvedLLMSelection,
+        runtime_paths: RuntimePaths,
+        project_dir: Path,
         output_pane_host: str = "127.0.0.1",
         output_pane_port: int | None = None,
         output_pane_public_url: str | None = None,
@@ -238,14 +240,8 @@ class TabulaflowApp(App[None]):
         self._output_pane_host = output_pane_host
         self._output_pane_port = output_pane_port
         self._output_pane_public_url = output_pane_public_url
-        self._runtime_paths = RuntimePaths.create()
-        # The directory the app was launched from — the user's project, where source
-        # data lives and what relative paths resolve against. Captured once at startup.
-        # INVARIANT: the process must never chdir. The shell tool uses this captured
-        # value as its cwd, while in-process run_query/DuckDB (COPY, read_csv_auto, …)
-        # resolve relative paths against the *live* process cwd; the "relative = project
-        # dir" design holds only while those two stay equal, i.e. cwd never changes.
-        self._project_dir = Path(os.getcwd())
+        self._runtime_paths = runtime_paths
+        self._project_dir = project_dir
         self._session: AppSession | None = None
         self._pane: OutputPane | None = None
         self._session_lock = asyncio.Lock()
@@ -615,6 +611,7 @@ class TabulaflowApp(App[None]):
                     host=self._output_pane_host,
                     port=self._output_pane_port,
                     public_url=self._output_pane_public_url,
+                    session_id=self._runtime_paths.session_id,
                 )
                 self._pane.start()
                 self._refresh_bottom_status()
@@ -1133,6 +1130,8 @@ async def run_tui(
     """Launch the Textual TUI app."""
     app = TabulaflowApp(
         llm_selection=llm_selection,
+        runtime_paths=RuntimePaths.create(),
+        project_dir=Path.cwd(),
         output_pane_host=output_pane_host,
         output_pane_port=output_pane_port,
         output_pane_public_url=output_pane_public_url,
