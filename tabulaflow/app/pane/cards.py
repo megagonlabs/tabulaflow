@@ -121,7 +121,7 @@ def build_query_data(sql: str, *, lexer: str = "sql") -> QueryCardData:
 
 
 def render_result_data(metadata: ResultCardInput, pane_dir: Path, *, artifact_id: str | None = None) -> PaneCard | None:
-    """Render a result or chart artifact's payload to JSON; return a pane manifest.
+    """Render a result or chart artifact's payload to JSON; return its card descriptor.
 
     The descriptor is ordered chart -> data -> query, including only the views
     the artifact has, or ``None`` when it has nothing displayable.
@@ -161,7 +161,7 @@ def render_result_data(metadata: ResultCardInput, pane_dir: Path, *, artifact_id
 
 
 def render_map_data(map_artifact: MapCardInput, pane_dir: Path, *, artifact_id: str | None = None) -> PaneCard | None:
-    """Render a standalone map card's payload to JSON; return a pane manifest.
+    """Render a standalone map card's payload to JSON; return its card descriptor.
 
     A map-only card (no chart/data/query views) assembled from one or more query
     results: each source DataFrame becomes a bundled dataset, and each layer reads
@@ -196,7 +196,7 @@ def render_map_data(map_artifact: MapCardInput, pane_dir: Path, *, artifact_id: 
 def render_graph_data(
     graph_artifact: GraphCardInput, pane_dir: Path, *, artifact_id: str | None = None
 ) -> PaneCard | None:
-    """Render a standalone graph card's payload to JSON; return a pane manifest."""
+    """Render a standalone graph card's payload to JSON; return its card descriptor."""
     card_id = f"{CARD_ID_PREFIX}{secrets.token_hex(6)}"
     graph_data = build_graph_result_data(graph_artifact.graph)
     if graph_data is None:
@@ -210,7 +210,7 @@ def render_graph_data(
 
 
 def render_message_data(message: MessageCardInput, pane_dir: Path, *, artifact_id: str | None = None) -> PaneCard:
-    """Render a standalone message card's payload to JSON; return a pane manifest."""
+    """Render a standalone message card's payload to JSON; return its card descriptor."""
     card_id = f"{CARD_ID_PREFIX}{secrets.token_hex(6)}"
     pane_dir.mkdir(parents=True, exist_ok=True)
     _write_strict_json(

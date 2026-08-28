@@ -424,7 +424,7 @@ class TabulaflowApp(App[None]):
             event.stop()
 
     def on_click(self, event: events.Click) -> None:
-        """Reopen the output pane when the persistent pane URL row is clicked."""
+        """Reopen the output pane when its URL row is clicked."""
         if getattr(event.widget, "id", None) != "bottom-status-url":
             return
         pane = self._pane
@@ -641,7 +641,7 @@ class TabulaflowApp(App[None]):
         return card is not None and self.view_card_in_pane(card, title=title or "Table preview")
 
     def _refresh_bottom_status(self) -> None:
-        """Show model status and the persistent pane URL below the input row."""
+        """Show model status and the pane URL below the input row."""
         try:
             model_status = self.query_one("#bottom-status-model", Static)
             url_status = self.query_one("#bottom-status-url", Static)

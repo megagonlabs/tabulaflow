@@ -406,7 +406,7 @@ class AgentProgressWidget(Widget):
     into sibling ``AgentTextBlock`` widgets.
 
     Driven by ``apply(event)`` over the ``ChatSession.run_stream`` event stream; the
-    consumer (``tui._run_agent``) calls ``mark_interrupted`` on cancellation."""
+    consumer (``TabulaflowApp._run_agent``) calls ``mark_interrupted`` on cancellation."""
 
     DEFAULT_CSS = """
     AgentProgressWidget {

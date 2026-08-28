@@ -1,7 +1,7 @@
 """Persistent app-level configuration for interactive LLM presets.
 
-Distinct from the process-level library config in ``tabulaflow.config``:
-this holds durable preferences for the interactive app only, persisted at
+Distinct from lower-layer connector and agent runtime configuration, this
+holds durable preferences for the interactive app only, persisted at
 ``~/.tabulaflow/app_config.json``. The config stores an LLM preset selection
 plus optional user-defined presets. CLI flags are runtime overrides and are not
 persisted here.

@@ -56,7 +56,7 @@ class AppSession:
         project_dir: Path,
         service_tier: str | None = "priority",
     ) -> AppSession:
-        """Create a ready session with its workspace and bundled sample data."""
+        """Create a ready session with its workspace and optional sample data."""
         import asyncio
 
         await asyncio.to_thread(_warm_connector_imports)
