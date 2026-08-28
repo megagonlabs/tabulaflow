@@ -675,6 +675,10 @@ Aug 26
 - [ ] app layer cleanup
 - [ ] research layer cleanup
 
+Aug 27
+- [x] app layer cleanup
+- [ ] research layer cleanup
+
 - [ ] Check whether dataclasses should be normal class (e.g. SQLConenctor)
 
 
