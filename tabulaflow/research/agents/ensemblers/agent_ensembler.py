@@ -1,5 +1,4 @@
 import asyncio
-import logging
 import time
 from typing import Any, ClassVar, cast
 
@@ -20,8 +19,6 @@ from tabulaflow.agents.tools import AgentTool, GetColumnJsonSchemaTool, GetTable
 from tabulaflow.agents.tools.run_query import latest_query_execution
 from tabulaflow.agents.llm import make_agent
 
-
-logger = logging.getLogger(__name__)
 
 _DF_PREVIEW_MAX_ROWS = 10
 

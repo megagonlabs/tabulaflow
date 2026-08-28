@@ -5,7 +5,8 @@ from pydantic_ai import Agent, ToolOutput
 import asyncio
 import jinja2
 import tiktoken
-from tabulaflow.research.agents.registry import (
+from tabulaflow.research.types import (
+    AmbigNL2QTask,
     UserQuestion,
     UserAnswer,
     UserFreeTextQuestion,
@@ -16,7 +17,6 @@ from tabulaflow.research.agents.registry import (
     UserValueAnswer,
 )
 from tabulaflow.agents.trace import Usage, Trajectory
-from tabulaflow.research.types import AmbigNL2QTask
 from tabulaflow.agents.llm import make_agent
 
 CONTROL_AGENT_SYSTEM_PROMPT = """

@@ -1,7 +1,6 @@
 import jinja2
 import time
 from typing import ClassVar, cast
-import logging
 
 from tabulaflow.data import DBConnector
 from tabulaflow.agents.trace import Usage, Trajectory
@@ -15,20 +14,11 @@ from tabulaflow.output.formatting import (
 )
 from tabulaflow.research.agents.registry import agent_registry, AgentConfig
 from tabulaflow.research.agents.utils import (
+    format_question,
     extract_code,
     BasicAgentConfig,
 )
 from tabulaflow.agents.llm import make_agent
-
-
-logger = logging.getLogger(__name__)
-
-
-def format_question(task: SimpleNL2QTask) -> str:
-    res = task.question
-    if task.question_instructions:
-        res += "\n" + task.question_instructions
-    return res
 
 
 SQL_AGENT_SYSTEM_PROMPT = """

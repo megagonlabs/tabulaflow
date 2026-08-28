@@ -1,6 +1,5 @@
 """Dbt agent that uses file_editor and run_dbt tools."""
 
-import logging
 import os
 import shutil
 import sys
@@ -21,8 +20,6 @@ from tabulaflow.research.types import DbtTask, DbtTaskOutput
 from tabulaflow.agents.tools import GetTableSchemaTool, RunQueryTool
 from tabulaflow.research.tools import ExecuteBashTool, FileEditorTool, RunDbtTool
 from tabulaflow.agents.llm import make_agent
-
-logger = logging.getLogger(__name__)
 
 
 class DbtAgentConfig(BasicAgentConfig):

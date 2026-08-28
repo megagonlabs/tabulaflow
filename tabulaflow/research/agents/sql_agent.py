@@ -22,6 +22,7 @@ from tabulaflow.research.tools import SearchKeywordsTool, FinishTool
 from tabulaflow.output.formatting import SQLSchemaFormatter, schema_formatter_registry
 from tabulaflow.research.agents.registry import agent_registry, AgentConfig
 from tabulaflow.research.agents.utils import (
+    format_question,
     extract_code,
     get_max_steps_capability,
     BasicAgentConfig,
@@ -41,13 +42,6 @@ class SQLAgentConfig(BasicAgentConfig):
     do_schema_linking: bool = True
     do_postprocessing: bool = True
     question_embedder_embedding_llm: str = "openai:text-embedding-3-small"
-
-
-def format_question(task: SimpleNL2QTask) -> str:
-    res = task.question
-    if task.question_instructions:
-        res += "\n" + task.question_instructions
-    return res
 
 
 @dataclass

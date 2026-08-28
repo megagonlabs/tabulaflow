@@ -4,6 +4,7 @@ import jinja2
 import logging
 import asyncio
 from typing import ClassVar, cast
+from pydantic import Field
 from tabulaflow.agents.llm import make_agent
 from tabulaflow.output.formatting import (
     PropertyGraphSchemaFormatter,
@@ -16,7 +17,7 @@ from tabulaflow.research.observability import trace_prediction
 from tabulaflow.research.types import PredQuery
 from tabulaflow.research.types import SimpleNL2QTask, SimpleNL2QTaskOutput
 from tabulaflow.research.agents.registry import agent_registry, AgentConfig
-from tabulaflow.research.agents.utils import BasicAgentConfig, extract_code
+from tabulaflow.research.agents.utils import BasicAgentConfig, extract_code, format_question
 
 SYSTEM_PROMPT = """
 You are a database expert responsible for translating natural language questions into {{language}} queries.
@@ -27,7 +28,6 @@ You are a database expert responsible for translating natural language questions
   - Similarly, if the question only ask for the student with the highest score but not the score, the final query should not fetch the score.
   - If the question asks for the list of objects (e.g. students), fetch the IDs of the objects.
 - The final output should only include the SQL query, without explanation or any other text.
-- Before returning the final output, always execute the query and check if the results match the question.
 {% if language == "snowflake" %}
 - For Snowflake SQL, the column names must be quoted with double quotes (e.g. SELECT ORDER."product_id").
 {% endif %}
@@ -53,7 +53,7 @@ logger = logging.getLogger(__name__)
 
 
 class SimpleZeroShotNL2QConfig(BasicAgentConfig):
-    num_candidates: int = 1
+    num_candidates: int = Field(default=1, ge=1)
 
 
 @agent_registry.register
@@ -98,7 +98,7 @@ class SimpleZeroShotNL2Q:
         user_prompt = jinja2.Template(TASK_PROMPT).render(
             schema=schema_str,
             hints=task.document,
-            question=task.question,
+            question=format_question(task),
             language=db_connector.language,
         )
 
@@ -123,12 +123,9 @@ class SimpleZeroShotNL2Q:
         for response in responses:
             usage += Usage.from_pydantic_ai_usage(response.usage, self.config.llm)
 
-        # Compute metrics
         metrics = {}
         metrics["latency_seconds"] = time.time() - t0
         metrics["steps"] = 1
-
-        print(metrics)
 
         return SimpleNL2QTaskOutput(
             **task.model_dump(),
@@ -150,9 +147,10 @@ class SimpleZeroShotNL2Q:
                 if isinstance(result, (KeyboardInterrupt, SystemExit)):
                     raise result
                 continue
-            if not result:
+            if result.error is not None or result.df is None or result.df.empty:
                 continue
-            hashable = tuple(sorted(set(result), key=lambda row: tuple((x is None, x) for x in row)))
+            rows = result.df.itertuples(index=False, name=None)
+            hashable = tuple(sorted(set(rows), key=lambda row: tuple((value is None, value) for value in row)))
             result2idx[hashable].append(idx)
 
         if not result2idx:

@@ -1,3 +1,5 @@
+"""Protocols and registry for research agent strategies."""
+
 from typing import Protocol, ClassVar, TypeAlias, Union
 from pydantic import BaseModel
 from tabulaflow.research.types import (
@@ -10,14 +12,6 @@ from tabulaflow.research.types import (
     StructuredAmbigNL2QTaskOutput,
     DbtTaskOutput,
     UserSimulatorProtocol,
-    UserFreeTextQuestion,
-    UserMultipleChoiceQuestion,
-    UserValueQuestion,
-    UserFreeTextAnswer,
-    UserMultipleChoiceAnswer,
-    UserValueAnswer,
-    UserQuestion,
-    UserAnswer,
 )
 from tabulaflow.data import SQLConnectorProtocol, DBConnector
 from tabulaflow.core.registry import ClassRegistry
@@ -29,21 +23,14 @@ __all__ = [
     "DbtAgentProtocol",
     "NL2QAgent",
     "agent_registry",
-    "UserSimulatorProtocol",
-    "UserFreeTextQuestion",
-    "UserMultipleChoiceQuestion",
-    "UserValueQuestion",
-    "UserFreeTextAnswer",
-    "UserMultipleChoiceAnswer",
-    "UserValueAnswer",
-    "UserQuestion",
-    "UserAnswer",
 ]
 
 AgentConfig: TypeAlias = BaseModel
 
 
 class SimpleSQLAgentProtocol(Protocol):
+    """Strategy that predicts one query for a simple task."""
+
     name: ClassVar[str]
     task_type: ClassVar[str]
     output_type: ClassVar[str]
@@ -53,6 +40,8 @@ class SimpleSQLAgentProtocol(Protocol):
 
 
 class AmbigSQLAgentProtocol(Protocol):
+    """Strategy that resolves and predicts queries for an ambiguous task."""
+
     name: ClassVar[str]
     task_type: ClassVar[str]
     output_type: ClassVar[str]
@@ -64,6 +53,8 @@ class AmbigSQLAgentProtocol(Protocol):
 
 
 class DbtAgentProtocol(Protocol):
+    """Strategy that produces a transformed dbt project."""
+
     name: ClassVar[str]
     task_type: ClassVar[str]
     output_type: ClassVar[str]

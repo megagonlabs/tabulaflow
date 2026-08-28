@@ -6,7 +6,7 @@ from tabulaflow.output.formatting import schema_formatter_registry, SQLSchemaFor
 from tabulaflow.agents.trace import Usage, Trajectory
 from tabulaflow.research.observability import trace_prediction
 from tabulaflow.research.types import PredQuery
-from tabulaflow.research.types import AmbigNL2QTask, SimpleAmbigNL2QTaskOutput
+from tabulaflow.research.types import AmbigNL2QTask, SimpleAmbigNL2QTaskOutput, UserSimulatorProtocol
 from tabulaflow.agents.tools import AgentTool, RunQueryTool
 from tabulaflow.agents.tools.run_query import latest_query_execution
 from tabulaflow.research.tools import (
@@ -16,13 +16,13 @@ from tabulaflow.research.tools import (
     GetSchemaTool,
     GetColumnDescriptionTool,
 )
-from tabulaflow.research.agents.registry import agent_registry, UserSimulatorProtocol, AgentConfig
+from tabulaflow.research.agents.registry import agent_registry, AgentConfig
 from tabulaflow.research.agents.utils import get_max_steps_capability, BasicAgentConfig
 from tabulaflow.agents.llm import make_agent
 
 
 SYSTEM_PROMPT = """
-You are MintQ agent, a helpful AI database expert that can translate natural language questions into {{language}} queries by leveraging the given tools.
+You are a TabulaFlow agent, a helpful AI database expert that can translate natural language questions into {{language}} queries by leveraging the given tools.
 
 - The question has one or multiple ambiguity points and you will need to ask the user to resolve the ambiguity.
 - Do not repeat the question if user refused to answer it.

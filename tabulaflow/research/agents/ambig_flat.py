@@ -10,16 +10,20 @@ from tabulaflow.output.formatting import schema_formatter_registry, SQLSchemaFor
 from tabulaflow.agents.trace import Usage, Trajectory
 from tabulaflow.research.observability import trace_prediction
 from tabulaflow.research.types import PredQuery
-from tabulaflow.research.types import AmbigNL2QTask, FlatAmbigNL2QTaskOutput, PredAmbiguityPointInfinite
+from tabulaflow.research.types import (
+    AmbigNL2QTask,
+    FlatAmbigNL2QTaskOutput,
+    PredAmbiguityPointInfinite,
+    UserMultipleChoiceQuestion,
+    UserSimulatorProtocol,
+    UserValueQuestion,
+)
 from tabulaflow.agents.tools import AgentTool, RunQueryTool
 from tabulaflow.agents.tools.run_query import latest_query_execution
 from tabulaflow.research.tools import SearchKeywordsTool, FinishTool, GetSchemaTool, GetColumnDescriptionTool
 from tabulaflow.research.agents.registry import (
     agent_registry,
     AgentConfig,
-    UserSimulatorProtocol,
-    UserMultipleChoiceQuestion,
-    UserValueQuestion,
 )
 from tabulaflow.research.agents.utils import get_max_steps_capability, TaskRunContext, BasicAgentConfig
 from tabulaflow.research.ambiguity import int_to_letter

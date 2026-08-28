@@ -1,6 +1,5 @@
 import asyncio
 import collections
-import logging
 from typing import Any, ClassVar
 import pandas as pd
 from pydantic import BaseModel
@@ -10,8 +9,6 @@ from tabulaflow.research.types import SimpleNL2QTask, SimpleNL2QTaskOutput
 from tabulaflow.data import SQLConnectorProtocol
 from tabulaflow.research.query_execution import populate_query_exec_result
 
-
-logger = logging.getLogger(__name__)
 
 _FLOAT_ROUND_DIGITS = 6
 

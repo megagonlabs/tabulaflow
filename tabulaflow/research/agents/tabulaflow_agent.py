@@ -1,7 +1,6 @@
 import jinja2
 import time
 from typing import ClassVar, cast
-import logging
 from tabulaflow.data import DBConnector
 from tabulaflow.agents.trace import Usage, Trajectory
 from tabulaflow.research.observability import trace_prediction
@@ -14,24 +13,15 @@ from tabulaflow.research.tools import FinishTool
 from tabulaflow.output.formatting import schema_formatter_registry, SQLSchemaFormatter
 from tabulaflow.research.agents.registry import agent_registry, AgentConfig
 from tabulaflow.research.agents.utils import (
+    format_question,
     get_max_steps_capability,
     BasicAgentConfig,
 )
 from tabulaflow.agents.llm import make_agent
 
 
-logger = logging.getLogger(__name__)
-
-
 class TabulaflowAgentConfig(BasicAgentConfig):
     db_summarizer_llm: str = "openai-responses:gpt-5.4"
-
-
-def format_question(task: SimpleNL2QTask) -> str:
-    res = task.question
-    if task.question_instructions:
-        res += "\n" + task.question_instructions
-    return res
 
 
 TABULAFLOW_AGENT_SYSTEM_PROMPT = """
@@ -141,6 +131,9 @@ class TabulaflowAgent:
         result = await agent.run(format_question(task))
         pred_query = PredQuery.from_execution(latest_query_execution(result.all_messages()))
         usage = Usage.from_pydantic_ai_usage(result.usage, self.config.llm)
+        summary_usage = db_summarizer.usage()
+        if summary_usage.api_requests:
+            usage += summary_usage
         trajectory = Trajectory.from_pydantic_ai_messages(result.all_messages(), id="TRJY-GEN-SQL")
 
         metrics = {}
