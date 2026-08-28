@@ -17,6 +17,7 @@ from importlib.resources import as_file, files
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from tabulaflow._paths import DEFAULT_HOME_DIR
 from tabulaflow.app.session import WORKSPACE_ALIAS
 
 if TYPE_CHECKING:
@@ -27,7 +28,7 @@ SAMPLE_TABLES = ("bank_transactions", "product_reviews", "model_eval_results", "
 _RESOURCE = "tabulaflow.app.assets.samples"
 _FILENAME = "sample.sqlite"
 # Shared per-user location (not per-session): copy once, reuse across sessions.
-_SHARED_DIR = Path.home() / ".tabulaflow" / "sample_data"
+_SHARED_DIR = DEFAULT_HOME_DIR / "sample_data"
 
 
 def materialize_sample_db() -> Path:

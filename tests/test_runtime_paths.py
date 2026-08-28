@@ -15,25 +15,30 @@ def test_generate_session_id_is_short_lowercase_base36() -> None:
 
 
 def test_create_runtime_paths_retries_id_collision(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv("HOME", str(tmp_path))
     ids = iter(("k3x9qe", "p07mzt"))
     monkeypatch.setattr(runtime_paths, "generate_session_id", lambda: next(ids))
-    existing = RuntimePaths.for_session("k3x9qe").session_dir
+    home_dir = tmp_path / ".tabulaflow"
+    existing = RuntimePaths.for_session("k3x9qe", home_dir=home_dir).session_dir
     existing.mkdir(parents=True)
 
-    paths = RuntimePaths.create()
+    paths = RuntimePaths.create(home_dir=home_dir)
 
     assert paths.session_id == "p07mzt"
     assert paths.session_dir.is_dir()
 
 
-def test_pane_dir_is_scoped_to_session() -> None:
-    paths = RuntimePaths.for_session("sess-123")
+def test_runtime_paths_are_derived_from_app_and_session(tmp_path: Path) -> None:
+    paths = RuntimePaths.for_session("sess-123", home_dir=tmp_path)
     assert paths.session_id == "sess-123"
-    assert paths.session_dir == paths.workspace_db_path.parent
-    assert paths.pane_dir.name == "pane"
-    assert paths.pane_dir.parent.name == "sess-123"
-    assert paths.pane_dir.parent.parent.name == "sessions"
+    assert paths.session_dir == tmp_path / "sessions" / "sess-123"
+    assert paths.logs_dir == paths.session_dir / "logs"
+    assert paths.trajectories_dir == paths.session_dir / "trajectories"
+    assert paths.data_dir == paths.session_dir / "data"
+    assert paths.scratch_dir == paths.session_dir / "scratch"
+    assert paths.workspace_db_path == paths.session_dir / "workspace.duckdb"
+    assert paths.pane_dir == paths.session_dir / "pane"
+    assert paths.history_path == tmp_path / "history.jsonl"
+    assert paths.cli_log_path == paths.logs_dir / "cli.log"
 
 
 @pytest.mark.skipif(not hasattr(os, "getuid"), reason="POSIX directory permissions only")

@@ -13,11 +13,12 @@ from typing import TypeVar
 
 from pydantic import BaseModel
 
+from tabulaflow._paths import DEFAULT_HOME_DIR
 from tabulaflow.core.serialization import json_ready
 
 _ModelT = TypeVar("_ModelT", bound=BaseModel)
 _locks: weakref.WeakKeyDictionary[asyncio.AbstractEventLoop, dict[Path, asyncio.Lock]] = weakref.WeakKeyDictionary()
-DEFAULT_CACHE_DIR = Path.home() / ".tabulaflow" / "cache"
+DEFAULT_CACHE_DIR = DEFAULT_HOME_DIR / "cache"
 
 
 def cache_lock(path: Path) -> asyncio.Lock:

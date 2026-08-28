@@ -36,7 +36,9 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator, model_validator
 
-APP_CONFIG_PATH = os.path.join(os.path.expanduser("~"), ".tabulaflow", "app_config.json")
+from tabulaflow._paths import DEFAULT_HOME_DIR
+
+APP_CONFIG_PATH = str(DEFAULT_HOME_DIR / "app_config.json")
 LLM_OFF = "off"
 LLM_OFF_LABEL = "Off"
 PROVIDER_API_KEY_ENV = {

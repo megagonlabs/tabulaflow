@@ -75,16 +75,7 @@ def _pane_asset_text(rel: str) -> str:
 
 
 def _runtime_paths(root: Path) -> RuntimePaths:
-    return RuntimePaths(
-        logs_dir=root / "logs",
-        trajectories_dir=root / "trajectories",
-        data_dir=root / "data",
-        scratch_dir=root / "scratch",
-        workspace_db_path=root / "workspace.duckdb",
-        history_path=root / "history.jsonl",
-        cli_log_path=root / "logs" / "cli.log",
-        pane_dir=root,
-    )
+    return RuntimePaths.for_session("test-session", home_dir=root)
 
 
 def test_output_pane_serves_text_only_turn(tmp_path: Path) -> None:
@@ -549,16 +540,17 @@ def test_manual_table_send_includes_data_view_meta(tmp_path: Path) -> None:
             pushed.append(turn)
 
     df = pd.DataFrame({"sample_id": ["ex-0001", "ex-0002"], "answer": ["A", "B"]})
+    runtime_paths = _runtime_paths(tmp_path)
     app = TabulaflowApp(
         llm_selection=ResolvedLLMSelection(LLM_OFF, None),
-        runtime_paths=_runtime_paths(tmp_path),
+        runtime_paths=runtime_paths,
         project_dir=tmp_path,
     )
     app._pane = FakePane()  # type: ignore[assignment]  # noqa: SLF001
 
     assert app.show_table_in_pane(df, title="manual_table")
 
-    path = next(tmp_path.glob("card_*.data.json"))
+    path = next(runtime_paths.pane_dir.glob("card_*.data.json"))
     payload = json.loads(path.read_text())
     assert payload["table"]["meta"] == "2 rows · 2 columns"
     assert pushed[0]["title"] == "manual_table"

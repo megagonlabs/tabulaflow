@@ -23,16 +23,7 @@ class _Workspace:
 
 @pytest.mark.asyncio
 async def test_app_session_owns_runtime_creation_and_cleanup(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    paths = RuntimePaths(
-        logs_dir=tmp_path / "logs",
-        trajectories_dir=tmp_path / "trajectories",
-        data_dir=tmp_path / "data",
-        scratch_dir=tmp_path / "scratch",
-        workspace_db_path=tmp_path / "workspace.duckdb",
-        history_path=tmp_path / "history.jsonl",
-        cli_log_path=tmp_path / "logs" / "cli.log",
-        pane_dir=tmp_path / "pane",
-    )
+    paths = RuntimePaths.for_session("test-session", home_dir=tmp_path)
     workspace = _Workspace()
     created_paths: list[Path] = []
     sample_sessions: list[AppSession] = []

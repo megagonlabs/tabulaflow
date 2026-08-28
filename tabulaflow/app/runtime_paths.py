@@ -7,6 +7,8 @@ from pathlib import Path
 import secrets
 import string
 
+from tabulaflow._paths import DEFAULT_HOME_DIR
+
 _SESSION_ID_ALPHABET = string.digits + string.ascii_lowercase
 _SESSION_ID_LENGTH = 6
 
@@ -20,32 +22,62 @@ def generate_session_id() -> str:
 class RuntimePaths:
     """Derived runtime paths for a single CLI session."""
 
-    logs_dir: Path
-    trajectories_dir: Path
-    data_dir: Path
-    scratch_dir: Path
-    workspace_db_path: Path
-    history_path: Path
-    cli_log_path: Path
-    pane_dir: Path
+    home_dir: Path
+    session_id: str
 
     @property
     def session_dir(self) -> Path:
         """Root directory for this session's files."""
-        return self.workspace_db_path.parent
+        return self.home_dir / "sessions" / self.session_id
 
     @property
-    def session_id(self) -> str:
-        """Identifier of this session."""
-        return self.session_dir.name
+    def logs_dir(self) -> Path:
+        """Directory for session logs."""
+        return self.session_dir / "logs"
+
+    @property
+    def trajectories_dir(self) -> Path:
+        """Directory for agent trajectory records."""
+        return self.session_dir / "trajectories"
+
+    @property
+    def data_dir(self) -> Path:
+        """Directory for session-local data caches."""
+        return self.session_dir / "data"
+
+    @property
+    def scratch_dir(self) -> Path:
+        """Directory for transient agent files."""
+        return self.session_dir / "scratch"
+
+    @property
+    def workspace_db_path(self) -> Path:
+        """Path to the writable workspace database."""
+        return self.session_dir / "workspace.duckdb"
+
+    @property
+    def history_path(self) -> Path:
+        """Path to the global TUI input history."""
+        return self.home_dir / "history.jsonl"
+
+    @property
+    def cli_log_path(self) -> Path:
+        """Path to this session's CLI log."""
+        return self.logs_dir / "cli.log"
+
+    @property
+    def pane_dir(self) -> Path:
+        """Directory for ephemeral browser-pane artifacts."""
+        return self.session_dir / "pane"
 
     @classmethod
-    def create(cls) -> RuntimePaths:
+    def create(cls, *, home_dir: Path | None = None) -> RuntimePaths:
         """Atomically reserve runtime paths for a new session."""
-        sessions_dir = Path.home() / ".tabulaflow" / "sessions"
+        home_dir = home_dir if home_dir is not None else DEFAULT_HOME_DIR
+        sessions_dir = home_dir / "sessions"
         sessions_dir.mkdir(parents=True, exist_ok=True)
         while True:
-            paths = cls.for_session(generate_session_id())
+            paths = cls(home_dir=home_dir, session_id=generate_session_id())
             try:
                 paths.session_dir.mkdir(mode=0o700)
             except FileExistsError:
@@ -53,29 +85,11 @@ class RuntimePaths:
             return paths
 
     @classmethod
-    def for_session(cls, session_id: str) -> RuntimePaths:
+    def for_session(cls, session_id: str, *, home_dir: Path | None = None) -> RuntimePaths:
         """Build runtime paths for the provided session id."""
-        root = Path.home() / ".tabulaflow"
-        session_dir = root / "sessions" / session_id
-        logs_dir = session_dir / "logs"
-        trajectories_dir = session_dir / "trajectories"
-        data_dir = session_dir / "data"
-        # Agent working area: transient files (e.g. parquet staged by the shell
-        # tool before in-process ingestion) and any other intermediate work for
-        # the session. Sibling of ``data/`` (which holds live connector DBs) so
-        # transient blobs never mix with materialized datasets. Wiped on exit.
-        scratch_dir = session_dir / "scratch"
-        # Card data and spilled media served by the browser pane during this session.
-        pane_dir = session_dir / "pane"
         return cls(
-            logs_dir=logs_dir,
-            trajectories_dir=trajectories_dir,
-            data_dir=data_dir,
-            scratch_dir=scratch_dir,
-            workspace_db_path=session_dir / "workspace.duckdb",
-            history_path=root / "history.jsonl",
-            cli_log_path=logs_dir / "cli.log",
-            pane_dir=pane_dir,
+            home_dir=home_dir if home_dir is not None else DEFAULT_HOME_DIR,
+            session_id=session_id,
         )
 
 
