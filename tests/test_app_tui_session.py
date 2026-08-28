@@ -89,6 +89,14 @@ def _app(
     return _app_for_selection(_selection(preset), runtime_paths=runtime_paths, project_dir=project_dir)
 
 
+def _session(*, llm_preset: LLMPreset | None, tmp_path: Path) -> AppSession:
+    return AppSession(
+        llm_preset=llm_preset,
+        runtime_paths=RuntimePaths.for_session("test-session", home_dir=tmp_path),
+        workspace=None,
+    )
+
+
 def _activate_selected(session: AppSession) -> ChatSession:
     assert session.selected_preset is not None
     session.activate_llm_preset(session.selected_preset)
@@ -98,11 +106,9 @@ def _activate_selected(session: AppSession) -> ChatSession:
 
 
 def test_reset_conversation_preserves_session_environment(tmp_path: Path) -> None:
-    session = AppSession(
+    session = _session(
         llm_preset=_preset(),
-        trajectories_dir=tmp_path / "trajectories",
-        data_dir=tmp_path / "data",
-        workspace=None,
+        tmp_path=tmp_path,
     )
     agent = _activate_selected(session)
     initial_history = list(agent._message_history)
@@ -208,11 +214,9 @@ def test_bottom_status_shows_selected_model_before_agent_is_ready(
         subagent_model="anthropic:claude-sonnet-4-5-20250929",
     )
     app = _app(preset, project_dir=tmp_path)
-    session = AppSession(
+    session = _session(
         llm_preset=preset,
-        trajectories_dir=tmp_path / "trajectories",
-        data_dir=tmp_path / "data",
-        workspace=None,
+        tmp_path=tmp_path,
     )
     app._session = session
     model_status = _StatusCapture()
@@ -272,16 +276,14 @@ def test_bottom_status_shows_llm_off_before_session_when_no_profile(
 def test_session_starts_with_unverified_llm_preset(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
 
-    session = AppSession(
+    session = _session(
         llm_preset=_preset(
             model="anthropic:claude-sonnet-4-5-20250929",
             reasoning_effort="medium",
             subagent_model="anthropic:claude-haiku-4-5-20251001",
             subagent_reasoning_effort="medium",
         ),
-        trajectories_dir=tmp_path / "trajectories",
-        data_dir=tmp_path / "data",
-        workspace=None,
+        tmp_path=tmp_path,
     )
 
     assert session.active_chat_session is None
@@ -297,14 +299,12 @@ def test_session_starts_with_unverified_llm_preset(tmp_path: Path, monkeypatch: 
 
 def test_initial_activation_requires_subagent_provider(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
-    session = AppSession(
+    session = _session(
         llm_preset=_preset(
             model="test",
             subagent_model="anthropic:claude-haiku-4-5-20251001",
         ),
-        trajectories_dir=tmp_path / "trajectories",
-        data_dir=tmp_path / "data",
-        workspace=None,
+        tmp_path=tmp_path,
     )
 
     with pytest.raises(Exception, match="ANTHROPIC_API_KEY"):
@@ -313,11 +313,9 @@ def test_initial_activation_requires_subagent_provider(tmp_path: Path, monkeypat
 
 
 def test_session_starts_without_llm_preset(tmp_path: Path) -> None:
-    session = AppSession(
+    session = _session(
         llm_preset=None,
-        trajectories_dir=tmp_path / "trajectories",
-        data_dir=tmp_path / "data",
-        workspace=None,
+        tmp_path=tmp_path,
     )
 
     assert session.selected_preset is None
@@ -326,11 +324,9 @@ def test_session_starts_without_llm_preset(tmp_path: Path) -> None:
 
 def test_llm_off_keeps_initialized_agent_dormant(tmp_path: Path) -> None:
     preset = _preset()
-    session = AppSession(
+    session = _session(
         llm_preset=preset,
-        trajectories_dir=tmp_path / "trajectories",
-        data_dir=tmp_path / "data",
-        workspace=None,
+        tmp_path=tmp_path,
     )
     agent = _activate_selected(session)
 
@@ -346,16 +342,14 @@ def test_unverified_session_can_select_and_then_build_valid_llm(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
-    session = AppSession(
+    session = _session(
         llm_preset=_preset(
             model="anthropic:claude-sonnet-4-5-20250929",
             reasoning_effort="medium",
             subagent_model="anthropic:claude-haiku-4-5-20251001",
             subagent_reasoning_effort="medium",
         ),
-        trajectories_dir=tmp_path / "trajectories",
-        data_dir=tmp_path / "data",
-        workspace=None,
+        tmp_path=tmp_path,
     )
 
     session.select_llm_preset(_preset())
@@ -369,11 +363,9 @@ def test_selecting_unusable_preset_defers_error_until_agent_build(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
-    session = AppSession(
+    session = _session(
         llm_preset=_preset(),
-        trajectories_dir=tmp_path / "trajectories",
-        data_dir=tmp_path / "data",
-        workspace=None,
+        tmp_path=tmp_path,
     )
     old_agent = _activate_selected(session)
     old_model = old_agent.model
@@ -396,16 +388,14 @@ def test_selecting_unusable_preset_defers_error_until_agent_build(
 
 def test_switching_preset_preserves_live_chat_session_state(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("OPENAI_API_KEY", "sk-test123456789ab4x")
-    session = AppSession(
+    session = _session(
         llm_preset=_preset(
             model="openai-responses:gpt-5",
             reasoning_effort="medium",
             subagent_model="openai-responses:gpt-5-mini",
             subagent_reasoning_effort="low",
         ),
-        trajectories_dir=tmp_path / "trajectories",
-        data_dir=tmp_path / "data",
-        workspace=None,
+        tmp_path=tmp_path,
     )
     agent = _activate_selected(session)
     agent.note_event("remember this")

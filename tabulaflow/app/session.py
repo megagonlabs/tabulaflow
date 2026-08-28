@@ -66,12 +66,10 @@ class AppSession:
             workspace = await _create_workspace_connector(runtime_paths.workspace_db_path)
             session = cls(
                 llm_preset=llm_preset,
-                trajectories_dir=runtime_paths.trajectories_dir,
-                data_dir=runtime_paths.data_dir,
+                runtime_paths=runtime_paths,
                 workspace=workspace,
                 service_tier=service_tier,
                 project_dir=project_dir,
-                scratch_dir=runtime_paths.scratch_dir,
             )
         except BaseException:
             if workspace is not None:
@@ -93,32 +91,29 @@ class AppSession:
     def __init__(
         self,
         llm_preset: LLMPreset | None,
-        trajectories_dir: Path,
-        data_dir: Path,
+        runtime_paths: RuntimePaths,
         workspace: SQLConnector | None,
         service_tier: str | None = "priority",
         project_dir: Path | None = None,
-        scratch_dir: Path | None = None,
     ) -> None:
         from tabulaflow.data.registry import DBRegistry
 
-        self.data_dir = data_dir
+        self._runtime_paths = runtime_paths
         self._selected_preset = llm_preset
         self._service_tier = service_tier
-        self._trajectory_log_dir = trajectories_dir
         self._workspace = workspace
-        # The directory the app was launched from (where the user's source data
-        # lives) and the agent's transient working area. Handed to the agent so its
-        # forthcoming shell/dataset tools resolve source reads against the project and
-        # stage intermediates under scratch.
         self.project_dir = project_dir
-        self.scratch_dir = scratch_dir
         self.registry: DBRegistry = DBRegistry()
         if workspace is not None:
             self.registry.register(WORKSPACE_ALIAS, workspace)
         self._chat_session: ChatSession | None = None
         self._activation_lock = threading.Lock()
         self._closed = False
+
+    @property
+    def data_dir(self) -> Path:
+        """Directory for session-local data caches."""
+        return self._runtime_paths.data_dir
 
     @property
     def selected_preset(self) -> LLMPreset | None:
@@ -161,11 +156,11 @@ class AppSession:
             reasoning_effort=preset.main.reasoning_effort,
             service_tier=self._service_tier,
             workspace=self._workspace,
-            trajectory_log_dir=self._trajectory_log_dir,
+            trajectory_log_dir=self._runtime_paths.trajectories_dir,
             subagent_model=preset.subagent.model,
             subagent_reasoning_effort=preset.subagent.reasoning_effort,
             project_dir=self.project_dir,
-            scratch_dir=self.scratch_dir,
+            scratch_dir=self._runtime_paths.scratch_dir,
             data_dir=self.data_dir,
             enable_apply_patch=model_supports_apply_patch(preset.main.model),
         )
@@ -243,8 +238,7 @@ class AppSession:
             try:
                 await self.registry.close_all_async()
             finally:
-                if self.scratch_dir is not None:
-                    shutil.rmtree(self.scratch_dir, ignore_errors=True)
+                shutil.rmtree(self._runtime_paths.scratch_dir, ignore_errors=True)
                 shutil.rmtree(self.data_dir, ignore_errors=True)
 
 
