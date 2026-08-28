@@ -104,15 +104,15 @@ class _Section:
     eof: bool
 
 
-@dataclass
 class Parser:
     """Stateful parser for an OpenAI V4A patch envelope."""
 
-    current_files: dict[str, str]
-    lines: list[str]
-    index: int = 0
-    patch: Patch = field(default_factory=Patch)
-    fuzz: int = 0
+    def __init__(self, current_files: dict[str, str], lines: list[str], index: int = 0) -> None:
+        self.current_files = current_files
+        self.lines = lines
+        self.index = index
+        self.patch = Patch()
+        self.fuzz = 0
 
     def is_done(self, prefixes: tuple[str, ...] | None = None) -> bool:
         if self.index >= len(self.lines):

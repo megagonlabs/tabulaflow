@@ -83,7 +83,6 @@ import warnings
 import sqlparse
 from sqlparse.lexer import Lexer as SQLLexer
 from typing import Any, Callable, ClassVar, Coroutine, Sequence, Mapping, Literal, AsyncGenerator, TypeVar
-import dataclasses
 from dataclasses import dataclass
 import collections
 import pandas as pd
@@ -942,7 +941,6 @@ _ASYNC_CANCEL_STRATEGIES: dict[str, type[_CancelStrategy]] = {
 }
 
 
-@dataclass
 class ThrottledEngine:
     """Execute SQL across sync and async SQLAlchemy engines.
 
@@ -951,24 +949,22 @@ class ThrottledEngine:
     cancel mechanisms. Most callers should use :class:`SQLConnector`.
     """
 
-    engine_type: Literal["async", "sync"]
-    engine: AsyncEngine | sqlalchemy.engine.Engine
-    dbms_semaphore: asyncio.Semaphore | None
-    db_semaphore: asyncio.Semaphore | None
-    _ddl_lock: asyncio.Lock | None = dataclasses.field(default=None, init=False)
-    # Track in-flight sync-driver raw DBAPI connections so we can abort
-    # queries on cancellation.  Sync-driver queries run in a thread-pool
-    # executor and cannot be cancelled via ``asyncio`` alone — we need to
-    # call the dialect's cancel primitive (see ``_CANCEL_STRATEGIES``) from
-    # a separate thread, then wait for the executor thread to return the
-    # connection before disposing the pool.
-    _inflight_sync_conns: set[Any] = dataclasses.field(default_factory=set, init=False)
-    _inflight_sync_lock: threading.Lock = dataclasses.field(default_factory=threading.Lock, init=False)
-    _cancel_strategy: _CancelStrategy | None = dataclasses.field(default=None, init=False)
+    def __init__(
+        self,
+        engine_type: Literal["async", "sync"],
+        engine: AsyncEngine | sqlalchemy.engine.Engine,
+        dbms_semaphore: asyncio.Semaphore | None,
+        db_semaphore: asyncio.Semaphore | None,
+    ) -> None:
+        self.engine_type = engine_type
+        self.engine = engine
+        self.dbms_semaphore = dbms_semaphore
+        self.db_semaphore = db_semaphore
+        self._ddl_lock = asyncio.Lock() if engine.dialect.name in _DDL_SERIAL_DIALECTS else None
+        self._inflight_sync_conns: set[Any] = set()
+        self._inflight_sync_lock = threading.Lock()
+        self._cancel_strategy: _CancelStrategy | None = None
 
-    def __post_init__(self) -> None:
-        if self.engine.dialect.name in _DDL_SERIAL_DIALECTS:
-            self._ddl_lock = asyncio.Lock()
         # Pick a cancel strategy from the appropriate registry for this
         # engine type.  Sync engines need help cancelling executor-thread
         # queries; async engines may also need help if their driver
@@ -1443,7 +1439,6 @@ class ThrottledEngine:
         await self._cancel_strategy.acancel_all()
 
 
-@dataclass
 class AsyncInspector:
     """Async wrapper around a SQLAlchemy ``Inspector``.
 
@@ -1455,7 +1450,8 @@ class AsyncInspector:
     wrapper.
     """
 
-    t_eng: ThrottledEngine
+    def __init__(self, t_eng: ThrottledEngine) -> None:
+        self.t_eng = t_eng
 
     def __getattr__(self, method: str) -> Any:
         async def _stub_async(*args: Any, **kwargs: Any) -> Any:
@@ -2152,7 +2148,6 @@ def _preserve_sql_descriptions(previous: SQLSchema, refreshed: SQLSchema) -> Non
                 column.description = column.description or previous_column.description
 
 
-@dataclass
 class SQLConnector:
     """Schema-aware async SQL database client.
 
@@ -2190,25 +2185,26 @@ class SQLConnector:
     """
 
     connector_type: ClassVar[Literal["sql"]] = "sql"
-    global_id: str
-    # ``schema`` is *live state*: ``refresh_schema_async`` and
-    # ``write_dataframe_async`` replace this attribute with a fresh
-    # :class:`SQLSchema` object.  External code holding a reference to
-    # the old object will see stale data — re-read ``connector.schema``
-    # after any operation that may mutate the database.
-    schema: SQLSchema
-    _t_eng: ThrottledEngine
-    config: SQLConnectorConfig = dataclasses.field(default_factory=SQLConnectorConfig)
-    read_only: bool = True
-    _schema_introspection: _SchemaIntrospectionOptions = dataclasses.field(default_factory=_SchemaIntrospectionOptions)
-    # Optional cleanup the loader registers (e.g. "delete the DuckDB
-    # cache file I generated for this connector").  Called from
-    # ``close_async`` after the engine is closed.  Lets loaders own
-    # their resource lifecycle without leaking loader-specific
-    # vocabulary into ``SQLConnector``.
-    _on_close: Callable[[], None] | None = None
-    _schema_lock: asyncio.Lock = dataclasses.field(default_factory=asyncio.Lock)
-    _closed: bool = dataclasses.field(default=False, init=False)
+
+    def __init__(
+        self,
+        global_id: str,
+        schema: SQLSchema,
+        _t_eng: ThrottledEngine,
+        *,
+        config: SQLConnectorConfig,
+        read_only: bool,
+        _schema_introspection: _SchemaIntrospectionOptions,
+    ) -> None:
+        self.global_id = global_id
+        self.schema = schema
+        self._t_eng = _t_eng
+        self.config = config
+        self.read_only = read_only
+        self._schema_introspection = _schema_introspection
+        self._on_close: Callable[[], None] | None = None
+        self._schema_lock = asyncio.Lock()
+        self._closed = False
 
     @property
     def backend(self) -> str:

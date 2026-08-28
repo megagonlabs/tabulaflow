@@ -1,14 +1,12 @@
 """Property-graph schema formatting in Text2Cypher form."""
 
 from typing import ClassVar
-from dataclasses import dataclass
 
 from tabulaflow.output.formatting.schema import schema_formatter_registry
 from tabulaflow.core.schema import GraphPropertySchema, NodeSchema, PropertyGraphSchema, RelationshipSchema
 
 
 @schema_formatter_registry.register
-@dataclass
 class CypherSchemaFormatter:
     """Formats a property-graph schema using the Neo4j-standard Text2Cypher representation.
 

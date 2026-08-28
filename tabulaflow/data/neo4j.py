@@ -3,7 +3,6 @@ import logging
 import numbers
 import time
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, ClassVar, Literal
 
@@ -313,7 +312,6 @@ def _preserve_graph_descriptions(previous: PropertyGraphSchema, refreshed: Prope
                 prop.description = prop.description or previous_property.description
 
 
-@dataclass
 class Neo4jConnector:
     """Property-graph connector for Neo4j databases.
 
@@ -333,19 +331,28 @@ class Neo4jConnector:
     connector_type: ClassVar[Literal["property_graph"]] = "property_graph"
     backend: ClassVar[Literal["neo4j"]] = "neo4j"
     language: ClassVar[GraphQueryLanguage] = "cypher"
-    global_id: str
-    schema: PropertyGraphSchema
-    _driver: neo4j.AsyncDriver
-    _database: str | None
-    _schema_name: str
-    config: Neo4jConnectorConfig
-    read_only: bool = True
-    _schema_lock: asyncio.Lock = field(default_factory=asyncio.Lock)
-    _query_semaphore: asyncio.Semaphore = field(init=False)
-    _closed: bool = field(default=False, init=False)
 
-    def __post_init__(self) -> None:
-        self._query_semaphore = asyncio.Semaphore(self.config.max_query_concurrency)
+    def __init__(
+        self,
+        global_id: str,
+        schema: PropertyGraphSchema,
+        _driver: neo4j.AsyncDriver,
+        *,
+        _database: str | None,
+        _schema_name: str,
+        config: Neo4jConnectorConfig,
+        read_only: bool,
+    ) -> None:
+        self.global_id = global_id
+        self.schema = schema
+        self._driver = _driver
+        self._database = _database
+        self._schema_name = _schema_name
+        self.config = config
+        self.read_only = read_only
+        self._schema_lock = asyncio.Lock()
+        self._query_semaphore = asyncio.Semaphore(config.max_query_concurrency)
+        self._closed = False
 
     @staticmethod
     async def _fetch_default_db_name(driver: neo4j.AsyncDriver) -> str | None:

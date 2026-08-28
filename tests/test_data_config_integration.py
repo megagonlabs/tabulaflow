@@ -461,6 +461,7 @@ async def test_query_cache_does_not_store_errors(
 async def test_neo4j_uses_configured_timeout_and_result_limit(monkeypatch: pytest.MonkeyPatch) -> None:
     connector = object.__new__(Neo4jConnector)
     connector.read_only = False
+    connector._closed = False
     connector.config = Neo4jConnectorConfig(
         max_result_rows=2,
         query_timeout_seconds=17,
