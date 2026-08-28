@@ -160,9 +160,6 @@ def parse_agent_config(agent_cls: type[NL2QAgent], args: argparse.Namespace) -> 
     }
     if args.llm is not None:
         kwargs["llm"] = args.llm
-    if agent_cls.name == "simple_zero_shot":
-        if args.num_majority_voting_candidates is not None:
-            kwargs["num_candidates"] = args.num_majority_voting_candidates
     if agent_cls.name == "sql_agent":
         if args.do_schema_linking is not None:
             kwargs["do_schema_linking"] = args.do_schema_linking
@@ -209,8 +206,6 @@ async def main_async() -> None:
     parser.add_argument("--reasoning_effort", default=None)
     parser.add_argument("--service_tier", default=None)
     parser.add_argument("--use_column_descriptions", type=bool_flag, nargs="?", const=True, default=None)
-    parser.add_argument("-n", "--num_majority_voting_candidates", default=None, type=int)
-
     # sql agent
     parser.add_argument("--do_schema_linking", type=bool_flag, nargs="?", const=True, default=None)
     parser.add_argument("--do_postprocessing", type=bool_flag, nargs="?", const=True, default=None)

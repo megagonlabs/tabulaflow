@@ -12,11 +12,11 @@ dataset=$2
 llm=${3:-"openai/gpt-4o"}
 
 # if model="agent", set model to "sql_agent"
-# if model="zero", set model to "simple_zero_shot"
+# if model="zero", set model to "direct_prompting"
 if [ "$model" = "agent" ]; then
     model="sql_agent"
 elif [ "$model" = "zero" ]; then
-    model="simple_zero_shot"
+    model="direct_prompting"
 fi
 
 # First list all .sh scripts under exp/ and find the one with the highest number

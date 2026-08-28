@@ -41,15 +41,6 @@ test-all-python:
 exp:
 	uv run scripts/arcs/print_exp.py 2>&1 | tee log/exp.out
 
-.PHONY: test-simple
-test-simple:
-	set -e; \
-	for dataset in bird-sql spider2-snow beaver; do \
-		uv run tabulaflow/research/pipelines/run_agent.py --agent simple_zero_shot --debug --dataset $$dataset; \
-		uv run tabulaflow/research/pipelines/populate_exec_results.py --debug; \
-		uv run tabulaflow/research/pipelines/evaluate.py --debug; \
-	done
-
 .PHONY: test-agent
 test-agent:
 	set -e; \

@@ -678,7 +678,6 @@ Aug 26
 Aug 27
 - [x] app layer cleanup
 - [ ] research layer cleanup
-
 - [ ] Check whether dataclasses should be normal class (e.g. SQLConenctor)
 
 
@@ -688,8 +687,6 @@ Aug 27
 
 - [ ] Issue: schema introspection silently fail for structual failure
 - [ ] Bug: parallel tool call in a turn keep spinning until last tool finish?
-- [ ] Review data flow architecture and RAM complexity
-- [ ] Fix `/clear`
 - [ ] Scrolling and typing slow in long conversation (50+ turns)
 - [ ] Data provenance
 - [ ] "result" -> "response", Escape go to last viewed response
@@ -1081,7 +1078,6 @@ We use `make` to manage a few common commands we frequently use (see [`Makefile`
 ```bash
 make format      # format and lint
 make mypy        # type check with mypy
-make test-simple # test simple_zero_shot
 make test-agent  # test sql_agent_table_names_only
 make sync        # sync the dependencies in pyproject.toml into the venv (e.g. when others have updated the dependencies)
 ```

@@ -8,7 +8,6 @@ from tabulaflow.research.agents.registry import (
     NL2QAgent,
     agent_registry,
 )
-from tabulaflow.research.agents.simple_zero_shot import SimpleZeroShotNL2Q, SimpleZeroShotNL2QConfig
 from tabulaflow.research.agents.direct_prompting import DirectPrompting
 from tabulaflow.research.agents.mini_agent import MiniAgent
 from tabulaflow.research.agents.sql_agent import SQLAgent
@@ -26,8 +25,6 @@ __all__ = [
     "NL2QAgent",
     "AgentConfig",
     "BasicAgentConfig",
-    "SimpleZeroShotNL2Q",
-    "SimpleZeroShotNL2QConfig",
     "DirectPrompting",
     "MiniAgent",
     "SQLAgent",
