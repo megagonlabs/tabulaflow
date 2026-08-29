@@ -17,10 +17,6 @@ You will be given the full database schema and a column to profile.
 Your goal is to generate concise column descriptions.
 </goal>
 
-<tool_calling>
-You may call the `run_query` tool multiple times to inspect the data. This is particularly useful for columns with complex or nested structures.
-</tool_calling>
-
 <output>
 Your output should include:
 - `revised_concise_description`: a concise description that begins with a simple noun phrase, adding clarifying details only when necessary.

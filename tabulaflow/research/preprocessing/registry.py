@@ -5,18 +5,30 @@ from typing import Any, ClassVar, Literal, Protocol
 from tabulaflow.agents.summarization import DBSummarizer
 from tabulaflow.agents.trace import Usage
 from tabulaflow.core.registry import ClassRegistry
-from tabulaflow.data.protocols import DBConnector
+from tabulaflow.data.protocols import DBConnector, SQLConnectorProtocol
+from tabulaflow.research.types import NL2QDataset
 
 
-class PreprocessorProtocol(Protocol):
-    """Named preprocessing step with usage accounting."""
+class ConnectorPreprocessorProtocol(Protocol):
+    """Named preprocessing step applied to each SQL database connector."""
 
     name: ClassVar[str]
-    input_type: ClassVar[Literal["db_connector", "dataset"]]
+    input_type: ClassVar[Literal["db_connector"]]
 
     def usage(self) -> Usage | None: ...
 
-    async def preprocess_async(self, input_data: Any) -> object: ...
+    async def preprocess_async(self, input_data: SQLConnectorProtocol) -> object: ...
+
+
+class DatasetPreprocessorProtocol(Protocol):
+    """Named preprocessing step applied once to a complete dataset."""
+
+    name: ClassVar[str]
+    input_type: ClassVar[Literal["dataset"]]
+
+    def usage(self) -> Usage | None: ...
+
+    async def preprocess_async(self, input_data: NL2QDataset) -> object: ...
 
 
 preprocessor_registry = ClassRegistry[Any]("preprocessor")
@@ -33,4 +45,9 @@ class DBSummaryPreprocessor(DBSummarizer):
         return await self.summarize(input_data)
 
 
-__all__ = ["DBSummaryPreprocessor", "PreprocessorProtocol", "preprocessor_registry"]
+__all__ = [
+    "ConnectorPreprocessorProtocol",
+    "DBSummaryPreprocessor",
+    "DatasetPreprocessorProtocol",
+    "preprocessor_registry",
+]

@@ -1,5 +1,5 @@
 from tabulaflow.core import TableRef
-from tabulaflow.research.agents._erd import (
+from tabulaflow.research.preprocessing.erd import (
     ERDConceptualEntity,
     ERDRelationship,
     ERDRelationshipParticipant,

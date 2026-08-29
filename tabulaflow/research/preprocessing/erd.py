@@ -1,4 +1,4 @@
-"""Conceptual ER-diagram synthesis for the research SQL agent."""
+"""Conceptual ER-diagram synthesis for research preprocessing."""
 
 from __future__ import annotations
 

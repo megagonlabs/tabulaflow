@@ -3,7 +3,7 @@ import os
 from tabulaflow.agents import AgentRuntimeConfig
 from tabulaflow.core import SQLSchema
 from tabulaflow.output.formatting import SQLDDLSchemaFormatter
-from tabulaflow.research.agents._erd import ERDiagram, MermaidERDiagramFormatter
+from tabulaflow.research.preprocessing.erd import ERDiagram, MermaidERDiagramFormatter
 
 
 def main() -> None:

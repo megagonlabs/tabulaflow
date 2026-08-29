@@ -4,11 +4,15 @@ from pydantic_ai.settings import ModelSettings
 
 from tabulaflow.research.preprocessing.column_profiler import ColumnProfiler
 from tabulaflow.agents.summarization import DBSummarizer
-from tabulaflow.research.agents._erd import ERDiagramSynthesizer
+from tabulaflow.research.preprocessing.erd import ERDiagramSynthesizer
 from tabulaflow.research.preprocessing.fk_predictor import ForeignKeyPredictor
 from tabulaflow.research.preprocessing.schema import SchemaPreprocessor
 from tabulaflow.agents.summarization import TextSummarizer
-from tabulaflow.research.preprocessing import preprocessor_registry
+from tabulaflow.research.preprocessing import (
+    ConnectorPreprocessorProtocol,
+    DatasetPreprocessorProtocol,
+    preprocessor_registry,
+)
 from tabulaflow.research.preprocessing.question_embedding import QuestionEmbedder
 
 
@@ -53,3 +57,11 @@ def test_research_preprocessor_registry_owns_default_preprocessors() -> None:
         "question_embedder",
         "schema_preprocessor",
     }
+
+
+def test_preprocessors_satisfy_their_extension_protocols() -> None:
+    connector_preprocessor: ConnectorPreprocessorProtocol = SchemaPreprocessor()
+    dataset_preprocessor: DatasetPreprocessorProtocol = QuestionEmbedder(disable_preprocessing=True)
+
+    assert connector_preprocessor.input_type == "db_connector"
+    assert dataset_preprocessor.input_type == "dataset"

@@ -29,7 +29,7 @@ from tabulaflow.research.agents.utils import (
     TaskRunContext,
 )
 from tabulaflow.research.query_analysis import extract_all_source_columns
-from tabulaflow.research.agents._erd import ERDiagram, ERDiagramSynthesizer, MermaidERDiagramFormatter
+from tabulaflow.research.preprocessing.erd import ERDiagram, ERDiagramSynthesizer, MermaidERDiagramFormatter
 from tabulaflow.agents.llm import make_agent
 
 

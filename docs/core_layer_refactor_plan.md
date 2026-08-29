@@ -626,7 +626,7 @@ Do not keep in core unless it becomes a truly central primitive.
 
 Recommended homes:
 
-- `research/agents/_erd.py` while it remains an implementation detail of the research SQL agent
+- `research/preprocessing/erd.py` for conceptual ER-diagram synthesis
 
 ## Core import policy
 

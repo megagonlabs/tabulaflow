@@ -7,17 +7,14 @@ from typing import Any
 from tqdm.asyncio import tqdm_asyncio
 from tabulaflow.research.benchmarks.registry import dataset_registry
 from tabulaflow.agents import AgentRuntimeConfig, initialize_agent_runtime
-import tabulaflow.research.agents._erd  # noqa: F401 — register the SQL-agent ERD preprocessor
-from tabulaflow.research.preprocessing.registry import PreprocessorProtocol, preprocessor_registry
+from tabulaflow.research.preprocessing.registry import preprocessor_registry
 from tabulaflow.research.observability import configure_research_observability
 from tabulaflow.research.types import NL2QDataset
-
-logger = logging.getLogger(__name__)
 
 
 async def preprocess_and_cache_async(
     dataset: NL2QDataset,
-    preprocessors: list[PreprocessorProtocol],
+    preprocessors: list[Any],
     verbose: bool = True,
 ) -> None:
     for preprocessor in preprocessors:
@@ -60,7 +57,7 @@ async def main_async() -> None:
 
     # dataset
     parser.add_argument("--dataset", default="bird-sql")
-    parser.add_argument("--split", default="dev")
+    parser.add_argument("--split", default=None)
     parser.add_argument("--databases", default=None, nargs="+")
 
     # preprocessor configs
@@ -72,20 +69,10 @@ async def main_async() -> None:
     parser.add_argument("--overwrite", action="store_true")
     parser.add_argument("--debug", action="store_true")
     args = parser.parse_args()
-
-    if args.dataset == "bird-sql":
-        parser.set_defaults(
-            split="dev", preprocessors=["schema_preprocessor", "er_diagram_synthesizer", "db_summarizer"]
-        )
-    elif args.dataset == "spider2-snow":
-        parser.set_defaults(
-            split="test", preprocessors=["schema_preprocessor", "er_diagram_synthesizer", "db_summarizer"]
-        )
-
-    if args.debug:
-        parser.set_defaults(databases=["california_schools"])
-
-    args = parser.parse_args()
+    if args.split is None:
+        args.split = "test" if args.dataset == "spider2-snow" else "dev"
+    if args.debug and args.databases is None:
+        args.databases = ["california_schools"]
     print(args)
     print()
 
