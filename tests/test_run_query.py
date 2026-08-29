@@ -64,7 +64,6 @@ async def _run(
     return (await tool.execute(query, parameters, refresh)).output
 
 
-@pytest.mark.asyncio
 async def test_run_query_successful(db_connector: SQLConnector) -> None:
     """Test a successful query execution."""
     tool = RunQueryTool(db_connector, enable_params=True, timeout=10)
@@ -126,7 +125,6 @@ def test_format_latency() -> None:
     assert _format_latency(12.345) == "12.35s"
 
 
-@pytest.mark.asyncio
 async def test_run_query_reports_latency(db_connector: SQLConnector) -> None:
     """A successful query surfaces the connector-measured latency in its response."""
     tool = RunQueryTool(db_connector, enable_params=True, timeout=10)
@@ -148,7 +146,6 @@ def test_format_exec_result_reports_graph_result(db_connector: SQLConnector) -> 
     assert "(Graph view: 2 nodes, 1 edge)" in result
 
 
-@pytest.mark.asyncio
 async def test_run_query_with_parameters(db_connector: SQLConnector) -> None:
     """Test query execution with parameters."""
     tool = RunQueryTool(db_connector, enable_params=True, timeout=10)
@@ -163,7 +160,6 @@ async def test_run_query_with_parameters(db_connector: SQLConnector) -> None:
     assert tool.metrics().num_calls == 1
 
 
-@pytest.mark.asyncio
 async def test_run_query_empty_result(db_connector: SQLConnector) -> None:
     """Test query that returns empty results."""
     tool = RunQueryTool(db_connector, enable_params=True, timeout=10)
@@ -173,7 +169,6 @@ async def test_run_query_empty_result(db_connector: SQLConnector) -> None:
     assert tool.metrics().num_calls == 1
 
 
-@pytest.mark.asyncio
 async def test_run_query_ddl_statement_success(db_connector: SQLConnector) -> None:
     """A non-row-returning statement (DDL) reports success, not empty results."""
     db_connector.read_only = False
@@ -184,7 +179,6 @@ async def test_run_query_ddl_statement_success(db_connector: SQLConnector) -> No
     assert "results are empty" not in result
 
 
-@pytest.mark.asyncio
 async def test_run_query_with_null_column(db_connector: SQLConnector) -> None:
     """Test query that returns a column with all null values."""
     tool = RunQueryTool(db_connector, enable_params=True, timeout=10)
@@ -195,7 +189,6 @@ async def test_run_query_with_null_column(db_connector: SQLConnector) -> None:
     assert tool.metrics().num_calls == 1
 
 
-@pytest.mark.asyncio
 async def test_run_query_failed(db_connector: SQLConnector) -> None:
     """Test query that fails due to SQL error."""
     tool = RunQueryTool(db_connector, enable_params=True, timeout=10)
@@ -210,7 +203,6 @@ async def test_run_query_failed(db_connector: SQLConnector) -> None:
     assert tool.metrics().error_query_failed == 1
 
 
-@pytest.mark.asyncio
 async def test_run_query_timeout(db_connector: SQLConnector) -> None:
     """Test query timeout."""
     tool = RunQueryTool(db_connector, enable_params=True, timeout=1)
@@ -309,7 +301,6 @@ def test_contains_write_statement(query: str, expected: str | None) -> None:
     assert _contains_write_statement(query) == expected
 
 
-@pytest.mark.asyncio
 async def test_run_query_refresh_updates_schema(db_connector: SQLConnector) -> None:
     """DDL via run_query with refresh=True should update the connector's cached schema."""
     db_connector.read_only = False
@@ -330,7 +321,6 @@ async def test_run_query_refresh_updates_schema(db_connector: SQLConnector) -> N
     assert "gadgets" in table_names_after
 
 
-@pytest.mark.asyncio
 async def test_run_query_refresh_disabled_ignores_flag(db_connector: SQLConnector) -> None:
     """When enable_refresh=False, refresh=True passed to __call__ is ignored."""
     db_connector.read_only = False
@@ -372,7 +362,6 @@ def test_run_query_pydantic_tool_signatures() -> None:
         assert fields == expected, (enable_params, enable_refresh, fields)
 
 
-@pytest.mark.asyncio
 async def test_concurrent_ddl_serialized(db_connector: SQLConnector) -> None:
     """Concurrent ALTER TABLE statements should succeed thanks to DDL lock."""
     db_connector.read_only = False

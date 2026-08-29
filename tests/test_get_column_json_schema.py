@@ -345,7 +345,6 @@ def _make_schema(json_schema: dict[str, Any] | None = None, examples: list[Any] 
 
 
 class TestGetColumnJsonSchemaTool:
-    @pytest.mark.asyncio
     async def test_overview_without_path(self) -> None:
         """Without path, should return a shallow overview."""
         tool = GetColumnJsonSchemaTool(_make_schema(ARRAY_OF_OBJECTS_SCHEMA))
@@ -355,7 +354,6 @@ class TestGetColumnJsonSchemaTool:
         assert "product" in result
         assert "transaction" in result
 
-    @pytest.mark.asyncio
     async def test_overview_is_shallow(self) -> None:
         """Overview should truncate deeply nested fields."""
         tool = GetColumnJsonSchemaTool(_make_schema(ARRAY_OF_OBJECTS_SCHEMA))
@@ -366,7 +364,6 @@ class TestGetColumnJsonSchemaTool:
         assert isinstance(result, str)
         assert len(result) > 0
 
-    @pytest.mark.asyncio
     async def test_path_drills_into_subschema(self) -> None:
         tool = GetColumnJsonSchemaTool(_make_schema(ARRAY_OF_OBJECTS_SCHEMA))
         result = await tool("test_schema", "test_table", "data_col", path="transaction")
@@ -375,13 +372,11 @@ class TestGetColumnJsonSchemaTool:
         # Should NOT contain unrelated top-level fields
         assert "hitNumber" not in result
 
-    @pytest.mark.asyncio
     async def test_path_to_leaf(self) -> None:
         tool = GetColumnJsonSchemaTool(_make_schema(ARRAY_OF_OBJECTS_SCHEMA))
         result = await tool("test_schema", "test_table", "data_col", path="product.v2ProductName")
         assert result == "string"
 
-    @pytest.mark.asyncio
     async def test_path_not_found(self) -> None:
         tool = GetColumnJsonSchemaTool(_make_schema(ARRAY_OF_OBJECTS_SCHEMA))
         result = await tool("test_schema", "test_table", "data_col", path="nonexistent")
@@ -391,20 +386,17 @@ class TestGetColumnJsonSchemaTool:
         with pytest.raises(ValueError, match="not found"):
             await tool.execute("test_schema", "test_table", "data_col", path="nonexistent")
 
-    @pytest.mark.asyncio
     async def test_no_json_schema(self) -> None:
         tool = GetColumnJsonSchemaTool(_make_schema(json_schema=None))
         result = await tool("test_schema", "test_table", "data_col")
         assert "has no JSON schema" in result
         assert tool.metrics().error_no_json_schema == 1
 
-    @pytest.mark.asyncio
     async def test_overview_includes_examples(self) -> None:
         tool = GetColumnJsonSchemaTool(_make_schema(SIMPLE_OBJECT_SCHEMA, examples=[{"name": "Alice", "age": 30}]))
         result = await tool("test_schema", "test_table", "data_col")
         assert "Alice" in result
 
-    @pytest.mark.asyncio
     async def test_path_includes_sub_examples(self) -> None:
         """When path is given, examples are extracted at that sub-path."""
         tool = GetColumnJsonSchemaTool(
@@ -416,7 +408,6 @@ class TestGetColumnJsonSchemaTool:
         # Should NOT contain the full object
         assert "age" not in result
 
-    @pytest.mark.asyncio
     async def test_path_no_matching_examples(self) -> None:
         """When examples don't contain the path, no examples section is appended."""
         tool = GetColumnJsonSchemaTool(_make_schema(SIMPLE_OBJECT_SCHEMA, examples=[{"name": "Alice"}]))

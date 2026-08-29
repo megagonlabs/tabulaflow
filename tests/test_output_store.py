@@ -52,7 +52,6 @@ def test_result_metadata_owns_query_provenance() -> None:
     assert metadata.affected_rows == 3
 
 
-@pytest.mark.asyncio
 async def test_missing_result_raises_domain_error() -> None:
     with pytest.raises(SourceResolutionError, match="No result with id R9"):
         await OutputStore().get_payload("R9")
@@ -88,7 +87,6 @@ class TestNoConnector:
         with pytest.raises(ValueError, match="max_in_memory must be >= 1"):
             OutputStore(max_in_memory=0)
 
-    @pytest.mark.asyncio
     async def test_no_eviction(self) -> None:
         h = OutputStore(max_in_memory=2)
         for _ in range(5):
@@ -96,7 +94,6 @@ class TestNoConnector:
         assert h._results.in_memory_count == 5
         assert all(h._results.has_in_memory(r.metadata.id) for r in h._results_by_id.values())
 
-    @pytest.mark.asyncio
     async def test_get(self) -> None:
         h = OutputStore()
         await h.add_fixed_result_source("db", "sql", *_make_execution(n_rows=3))
@@ -106,7 +103,6 @@ class TestNoConnector:
         assert q2_df is not None
         assert len(q2_df) == 7
 
-    @pytest.mark.asyncio
     async def test_get_payload(self) -> None:
         h = OutputStore()
         await h.add_fixed_result_source("db", "sql", *_make_execution(n_rows=3))
@@ -118,7 +114,6 @@ class TestNoConnector:
         assert payload.df is not None
         assert len(payload.df) == 3
 
-    @pytest.mark.asyncio
     async def test_result_metadata_records_affected_rows(self) -> None:
         h = OutputStore()
         await h.add_fixed_result_source(
@@ -148,14 +143,12 @@ class TestWithConnector:
         )
         yield connector
 
-    @pytest.mark.asyncio
     async def test_no_spill_within_limit(self, workspace: SQLConnector) -> None:
         h = OutputStore(max_in_memory=5, spill_connector=workspace)
         for _ in range(5):
             await h.add_fixed_result_source("db", "sql", *_make_execution())
         assert h._results.in_memory_count == 5
 
-    @pytest.mark.asyncio
     async def test_evicts_oldest(self, workspace: SQLConnector) -> None:
         h = OutputStore(max_in_memory=3, spill_connector=workspace)
         for _ in range(5):
@@ -168,7 +161,6 @@ class TestWithConnector:
         assert h._results.is_persisted("R1")
         assert h._results_by_id["R1"].has_dataframe
 
-    @pytest.mark.asyncio
     async def test_eviction_does_not_mutate_caller_owned_pred_query(self, workspace: SQLConnector) -> None:
         h = OutputStore(max_in_memory=1, spill_connector=workspace)
         query, exec_result = _make_execution(n_rows=10)
@@ -180,7 +172,6 @@ class TestWithConnector:
         assert not h._results.has_in_memory("R1")
         assert h._results_by_id["R1"].has_dataframe
 
-    @pytest.mark.asyncio
     async def test_get_dataframe_loads_evicted_result(self, workspace: SQLConnector) -> None:
         h = OutputStore(max_in_memory=2, spill_connector=workspace)
         await h.add_fixed_result_source("db", "sql", *_make_execution(n_rows=10))
@@ -194,7 +185,6 @@ class TestWithConnector:
         assert h._results.has_in_memory("R1")
         assert not h._results.has_in_memory("R2")
 
-    @pytest.mark.asyncio
     async def test_persist_failure_keeps_result_in_memory(
         self, workspace: SQLConnector, monkeypatch: pytest.MonkeyPatch
     ) -> None:
@@ -217,7 +207,6 @@ class TestWithConnector:
         assert df is not None
         assert len(df) == 10
 
-    @pytest.mark.asyncio
     async def test_error_results_not_tracked(self, workspace: SQLConnector) -> None:
         h = OutputStore(max_in_memory=2, spill_connector=workspace)
         with pytest.raises(SourceResolutionError, match="syntax error"):
@@ -225,7 +214,6 @@ class TestWithConnector:
         await h.add_fixed_result_source("db", "sql", *_make_execution())
         assert h._results.in_memory_count == 1
 
-    @pytest.mark.asyncio
     async def test_roundtrip_preserves_data(self, workspace: SQLConnector) -> None:
         h = OutputStore(max_in_memory=1, spill_connector=workspace)
         df_original = pd.DataFrame(
@@ -247,7 +235,6 @@ class TestWithConnector:
         # round-trip, dtypes don't.
         pd.testing.assert_frame_equal(df_loaded, df_original, check_dtype=False)
 
-    @pytest.mark.asyncio
     async def test_add_chart_does_not_hydrate(self, workspace: SQLConnector) -> None:
         h = OutputStore(max_in_memory=1, spill_connector=workspace)
         await h.add_fixed_result_source("db", "sql", *_make_execution())
@@ -263,7 +250,6 @@ class TestWithConnector:
         with pytest.raises(KeyError):
             h.get_artifact("CHART9")
 
-    @pytest.mark.asyncio
     async def test_add_map_stores_standalone_artifact(self, workspace: SQLConnector) -> None:
         h = OutputStore(spill_connector=workspace)
         await h.add_fixed_result_source("db", "sql", *_make_execution())
@@ -277,7 +263,6 @@ class TestWithConnector:
         with pytest.raises(KeyError):
             h.get_artifact("MAP9")
 
-    @pytest.mark.asyncio
     async def test_add_graph_stores_standalone_artifact(self, workspace: SQLConnector) -> None:
         h = OutputStore(spill_connector=workspace)
         graph_spec = {

@@ -3,7 +3,6 @@
 import json
 
 import pandas as pd
-import pytest
 
 from tabulaflow.research.metrics.cypherbench_ex import (
     _df_to_tuples,
@@ -159,14 +158,12 @@ def _make_task(
     )
 
 
-@pytest.mark.asyncio
 async def test_cypherbench_ex_exact_match() -> None:
     df = pd.DataFrame({"name": ["Alice", "Bob"]})
     task = _make_task(df, df)
     assert await CypherBenchEx().compute_async(task) == 1.0
 
 
-@pytest.mark.asyncio
 async def test_cypherbench_ex_row_reorder_unordered() -> None:
     pred = pd.DataFrame({"name": ["Bob", "Alice"]})
     gold = pd.DataFrame({"name": ["Alice", "Bob"]})
@@ -174,7 +171,6 @@ async def test_cypherbench_ex_row_reorder_unordered() -> None:
     assert await CypherBenchEx().compute_async(task) == 1.0
 
 
-@pytest.mark.asyncio
 async def test_cypherbench_ex_row_reorder_ordered() -> None:
     pred = pd.DataFrame({"name": ["Bob", "Alice"]})
     gold = pd.DataFrame({"name": ["Alice", "Bob"]})
@@ -182,7 +178,6 @@ async def test_cypherbench_ex_row_reorder_ordered() -> None:
     assert await CypherBenchEx().compute_async(task) == 0.0
 
 
-@pytest.mark.asyncio
 async def test_cypherbench_ex_column_permutation() -> None:
     pred = pd.DataFrame({"x": [1, 2], "y": ["a", "b"]})
     gold = pd.DataFrame({"a": ["a", "b"], "b": [1, 2]})
@@ -190,7 +185,6 @@ async def test_cypherbench_ex_column_permutation() -> None:
     assert await CypherBenchEx().compute_async(task) == 1.0
 
 
-@pytest.mark.asyncio
 async def test_cypherbench_ex_different_col_count() -> None:
     pred = pd.DataFrame({"x": [1], "y": [2]})
     gold = pd.DataFrame({"a": [1]})
@@ -198,7 +192,6 @@ async def test_cypherbench_ex_different_col_count() -> None:
     assert await CypherBenchEx().compute_async(task) == 0.0
 
 
-@pytest.mark.asyncio
 async def test_cypherbench_ex_both_empty() -> None:
     pred = pd.DataFrame()
     gold = pd.DataFrame()
@@ -206,7 +199,6 @@ async def test_cypherbench_ex_both_empty() -> None:
     assert await CypherBenchEx().compute_async(task) == 1.0
 
 
-@pytest.mark.asyncio
 async def test_cypherbench_ex_pred_empty_gold_not() -> None:
     pred = pd.DataFrame()
     gold = pd.DataFrame({"name": ["Alice"]})
@@ -214,14 +206,12 @@ async def test_cypherbench_ex_pred_empty_gold_not() -> None:
     assert await CypherBenchEx().compute_async(task) == 0.0
 
 
-@pytest.mark.asyncio
 async def test_cypherbench_ex_no_pred() -> None:
     gold = pd.DataFrame({"name": ["Alice"]})
     task = _make_task(None, gold)
     assert await CypherBenchEx().compute_async(task) == 0.0
 
 
-@pytest.mark.asyncio
 async def test_cypherbench_ex_multiset_strict() -> None:
     """Duplicate rows must match exactly (no dedup)."""
     pred = pd.DataFrame({"name": ["Alice", "Alice", "Bob"]})

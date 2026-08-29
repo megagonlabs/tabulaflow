@@ -107,7 +107,6 @@ def test_entity_extractor_rejects_unsupported_column_type() -> None:
         EntityExtractor(["amt"], column_types={"amt": Decimal})  # type: ignore[dict-item]
 
 
-@pytest.mark.asyncio
 async def test_tool_resolves_types_and_appends_typed_rows(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """The tool resolves output-column types from the schema and appends native values.
 
@@ -175,7 +174,6 @@ async def test_tool_resolves_types_and_appends_typed_rows(tmp_path: Path, monkey
     assert back["qty"].isna().sum() == 1 and back["price"].isna().sum() == 1
 
 
-@pytest.mark.asyncio
 async def test_tool_rejects_non_scalar_output_column(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """A non-scalar (array/json/...) output column is rejected up front, not stringified."""
     db_path = str(tmp_path / "docs.duckdb")
@@ -208,7 +206,6 @@ async def test_tool_rejects_non_scalar_output_column(tmp_path: Path, monkeypatch
     assert "non-scalar" in summary and "tags" in summary and "ARRAY" in summary
 
 
-@pytest.mark.asyncio
 async def test_unknown_placeholder_rejected(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """A task_instruction placeholder that is not a task_query column is rejected up front."""
     db_path = str(tmp_path / "docs.duckdb")

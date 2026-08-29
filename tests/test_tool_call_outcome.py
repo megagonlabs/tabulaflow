@@ -45,26 +45,22 @@ async def registry(tmp_path: Path) -> DBRegistry:
 
 
 class TestRunQueryOutcome:
-    @pytest.mark.asyncio
     async def test_success_reports_rows(self, registry: DBRegistry) -> None:
         result = await RegistryRunQueryTool(registry)("mydb", "SELECT * FROM t")
         assert isinstance(result, ToolReturn)
         assert isinstance(result.return_value, str) and result.return_value.startswith("[source_id=")
         assert result.metadata == ToolCallOutcome(count=3, unit="rows")
 
-    @pytest.mark.asyncio
     async def test_query_error_reports_error(self, registry: DBRegistry) -> None:
         result = await RegistryRunQueryTool(registry)("mydb", "SELECT * FROM missing")
         assert isinstance(result, ToolReturn)
         assert result.metadata == ToolCallOutcome(error=True)
 
-    @pytest.mark.asyncio
     async def test_unknown_alias_reports_error(self, registry: DBRegistry) -> None:
         result = await RegistryRunQueryTool(registry)("nope", "SELECT 1")
         assert isinstance(result, ToolReturn)
         assert result.metadata == ToolCallOutcome(error=True)
 
-    @pytest.mark.asyncio
     async def test_programmatic_call_returns_text(self, registry: DBRegistry) -> None:
         result = await RegistryRunQueryTool(registry)("mydb", "SELECT * FROM t")
         assert isinstance(result, ToolReturn)
@@ -72,14 +68,12 @@ class TestRunQueryOutcome:
 
 
 class TestGetTableSchemaOutcome:
-    @pytest.mark.asyncio
     async def test_success_reports_columns(self, registry: DBRegistry) -> None:
         tool = RegistryGetTableSchemaTool(registry, SQLDDLSchemaFormatter())
         result = await tool("mydb", None, "t")
         assert isinstance(result, ToolReturn)
         assert result.metadata == ToolCallOutcome(count=2, unit="columns")
 
-    @pytest.mark.asyncio
     async def test_missing_table_reports_no_count(self, registry: DBRegistry) -> None:
         tool = RegistryGetTableSchemaTool(registry, SQLDDLSchemaFormatter())
         result = await tool("mydb", None, "missing")
@@ -88,23 +82,19 @@ class TestGetTableSchemaOutcome:
 
 
 class TestRegistryToolErrorOutcomes:
-    @pytest.mark.asyncio
     async def test_column_json_schema_error_has_metadata(self) -> None:
         result = await RegistryGetColumnJsonSchemaTool(DBRegistry())("missing", None, "t", "payload")
         assert result.metadata == ToolCallOutcome(error=True)
 
-    @pytest.mark.asyncio
     async def test_db_document_error_has_metadata(self) -> None:
         tool = RegistryGetDBDocumentTool(DBRegistry(), db_summarizer_cls=lambda **_: None)
         result = await tool("missing")
         assert result.metadata == ToolCallOutcome(error=True)
 
-    @pytest.mark.asyncio
     async def test_schema_error_has_metadata(self) -> None:
         result = await RegistryGetSchemaTool(DBRegistry())("missing")
         assert result.metadata == ToolCallOutcome(error=True)
 
-    @pytest.mark.asyncio
     async def test_transfer_error_has_metadata(self) -> None:
         result = await TransferSourceTableTool(DBRegistry(), OutputStore())("S1", "workspace", None, "target")
         assert result.metadata == ToolCallOutcome(error=True)
@@ -120,18 +110,15 @@ class TestChatOutcomeNormalization:
         assert isinstance(event, ToolFinished)
         return event
 
-    @pytest.mark.asyncio
     async def test_passes_metadata_through(self) -> None:
         outcome = ToolCallOutcome(count=3, unit="rows")
         event = await self._finish_event("ok", outcome)
         assert event.outcome == outcome
 
-    @pytest.mark.asyncio
     async def test_falls_back_to_content_error_convention(self) -> None:
         event = await self._finish_event("(error: boom)")
         assert event.outcome == ToolCallOutcome(error=True)
 
-    @pytest.mark.asyncio
     async def test_plain_completion_has_no_outcome(self) -> None:
         event = await self._finish_event("ok")
         assert event.outcome is None

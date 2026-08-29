@@ -21,7 +21,6 @@ class _Workspace:
         self.close_count += 1
 
 
-@pytest.mark.asyncio
 async def test_app_session_owns_runtime_creation_and_cleanup(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     paths = RuntimePaths.for_session("test-session", home_dir=tmp_path)
     workspace = _Workspace()

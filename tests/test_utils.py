@@ -10,7 +10,6 @@ from tabulaflow.core.serialization import dumps_strict_json, json_ready
 from tabulaflow.research.agents.utils import extract_code, get_max_steps_capability
 
 
-@pytest.mark.asyncio
 async def test_extract_code() -> None:
     responses = [
         "SELECT * FROM users",

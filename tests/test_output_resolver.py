@@ -72,7 +72,6 @@ def test_result_payload_rejects_graph_without_dataframe() -> None:
         )
 
 
-@pytest.mark.asyncio
 async def test_fixed_source_resolves_output_artifact() -> None:
     output_store = await _output_store_with_results()
     resolver = OutputResolver(output_store)
@@ -94,7 +93,6 @@ async def test_fixed_source_resolves_output_artifact() -> None:
     assert metadata.columns == ["a"]
 
 
-@pytest.mark.asyncio
 async def test_parameterized_source_resolves_by_projected_selection() -> None:
     output_store = OutputStore()
     source = output_store.add_parameterized_source(
@@ -139,7 +137,6 @@ async def test_parameterized_source_resolves_by_projected_selection() -> None:
     assert isinstance(output.sources[0], ParameterizedSource)
 
 
-@pytest.mark.asyncio
 async def test_parameterized_source_rejects_invalid_choice() -> None:
     output_store = await _output_store_with_results()
     resolver = OutputResolver(output_store)
@@ -164,7 +161,6 @@ async def test_parameterized_source_rejects_invalid_choice() -> None:
         await resolver.resolve(output, {"metric": "count"})
 
 
-@pytest.mark.asyncio
 async def test_parameterized_source_reports_unavailable_selection() -> None:
     output_store = await _output_store_with_results()
     resolver = OutputResolver(output_store)
@@ -192,7 +188,6 @@ async def test_parameterized_source_reports_unavailable_selection() -> None:
     assert "has no result" in artifact.reason
 
 
-@pytest.mark.asyncio
 async def test_parameterized_source_without_cache_errors_until_materialization_exists() -> None:
     output_store = await _output_store_with_results()
     resolver = OutputResolver(output_store)
@@ -214,7 +209,6 @@ async def test_parameterized_source_without_cache_errors_until_materialization_e
     assert "has no result" in artifact.reason
 
 
-@pytest.mark.asyncio
 async def test_unavailable_artifact_does_not_hide_siblings() -> None:
     output_store = await _output_store_with_results()
     missing = output_store.add_parameterized_source(
@@ -259,7 +253,6 @@ def test_parameterized_query_blocks_unsafe_attribute_access() -> None:
         render_parameterized_query("{{ cycler.__init__.__globals__ }}", {})
 
 
-@pytest.mark.asyncio
 async def test_parameterized_source_not_applicable_is_not_an_error() -> None:
     output_store = OutputStore()
     source = output_store.add_parameterized_source(
@@ -294,7 +287,6 @@ async def test_parameterized_source_not_applicable_is_not_an_error() -> None:
     assert artifact.reason == "only applies to revenue"
 
 
-@pytest.mark.asyncio
 async def test_missing_materialized_result_becomes_artifact_error() -> None:
     output_store = OutputStore()
     output = OutputSpec(
@@ -310,7 +302,6 @@ async def test_missing_materialized_result_becomes_artifact_error() -> None:
     assert artifact.reason == "No result with id R9"
 
 
-@pytest.mark.asyncio
 async def test_table_artifact_without_displayable_payload_is_unavailable() -> None:
     output_store = OutputStore()
     await output_store.add_fixed_result_source(
@@ -332,7 +323,6 @@ async def test_table_artifact_without_displayable_payload_is_unavailable() -> No
     assert artifact.reason == "Statement executed successfully but returned no displayable data"
 
 
-@pytest.mark.asyncio
 async def test_table_artifact_without_displayable_payload_reports_affected_rows() -> None:
     output_store = OutputStore()
     await output_store.add_fixed_result_source(
@@ -354,7 +344,6 @@ async def test_table_artifact_without_displayable_payload_reports_affected_rows(
     assert artifact.reason == "Statement executed successfully, affected 3 rows, and returned no displayable data"
 
 
-@pytest.mark.asyncio
 async def test_chart_artifact_without_dataframe_is_unavailable() -> None:
     output_store = OutputStore()
     await output_store.add_fixed_result_source(
@@ -376,7 +365,6 @@ async def test_chart_artifact_without_dataframe_is_unavailable() -> None:
     assert artifact.reason == "Source returned no result set"
 
 
-@pytest.mark.asyncio
 async def test_empty_visualization_sources_resolve_as_normal_artifacts() -> None:
     output_store = OutputStore()
     await output_store.add_fixed_result_source(
@@ -433,7 +421,6 @@ async def test_empty_visualization_sources_resolve_as_normal_artifacts() -> None
     assert graph.graph.edges == []
 
 
-@pytest.mark.asyncio
 async def test_nonempty_graph_with_invalid_node_ids_is_an_error() -> None:
     output_store = OutputStore()
     await output_store.add_fixed_result_source(
@@ -465,7 +452,6 @@ async def test_nonempty_graph_with_invalid_node_ids_is_an_error() -> None:
     assert artifact.reason == "graph has no valid nodes"
 
 
-@pytest.mark.asyncio
 async def test_invalid_artifact_specs_do_not_abort_other_artifacts() -> None:
     output_store = OutputStore()
     await output_store.add_fixed_result_source(
@@ -510,7 +496,6 @@ async def test_invalid_artifact_specs_do_not_abort_other_artifacts() -> None:
     ]
 
 
-@pytest.mark.asyncio
 async def test_map_and_graph_specs_resolve_against_source_data() -> None:
     output_store = OutputStore()
     await output_store.add_fixed_result_source(
@@ -548,7 +533,6 @@ async def test_map_and_graph_specs_resolve_against_source_data() -> None:
     assert [node.id for node in graph_artifact.graph.nodes] == ["a"]
 
 
-@pytest.mark.asyncio
 async def test_map_and_graph_resolve_parameterized_selection() -> None:
     output_store = OutputStore()
     parameter = ChoiceParameter(
@@ -591,7 +575,6 @@ async def test_map_and_graph_resolve_parameterized_selection() -> None:
     assert [node.id for node in graph_artifact.graph.nodes] == ["b"]
 
 
-@pytest.mark.asyncio
 async def test_artifact_wrapper_and_nested_source_ids_must_match() -> None:
     output_store = OutputStore()
     await output_store.add_fixed_result_source(
@@ -621,7 +604,6 @@ async def test_artifact_wrapper_and_nested_source_ids_must_match() -> None:
         await OutputResolver(output_store).resolve(output)
 
 
-@pytest.mark.asyncio
 async def test_source_failure_is_reused_across_artifacts() -> None:
     class FailingOutputStore(OutputStore):
         def __init__(self) -> None:
@@ -648,7 +630,6 @@ async def test_source_failure_is_reused_across_artifacts() -> None:
     assert all(isinstance(artifact, UnavailableArtifact) for artifact in resolved.artifacts)
 
 
-@pytest.mark.asyncio
 async def test_unexpected_source_value_error_is_not_hidden() -> None:
     class BrokenOutputStore(OutputStore):
         async def resolve_source(self, source_id: str, selection: Mapping[str, object] | None = None) -> ResultPayload:

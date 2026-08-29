@@ -318,7 +318,6 @@ async def test_schema_scope_is_part_of_cache_identity(tmp_path: Path) -> None:
     assert len(list((config.cache_dir / "schemas").glob("*.json"))) == 2
 
 
-@pytest.mark.asyncio
 async def test_duckdb_list_and_struct_dtype_resolved(tmp_path: Path) -> None:
     """duckdb_engine returns NullType for LIST/STRUCT columns; the
     information_schema fallback should recover a usable dtype, populate
@@ -379,7 +378,6 @@ async def test_duckdb_list_and_struct_dtype_resolved(tmp_path: Path) -> None:
         await sql_conn.close_async()
 
 
-@pytest.mark.asyncio
 async def test_exclude_schema_names_keeps_a_schema_out_of_introspection(tmp_path: Path) -> None:
     """An excluded schema stays out of the schema on both refresh paths."""
     db_path = str(tmp_path / "excluded.duckdb")

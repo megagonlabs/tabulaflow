@@ -120,7 +120,6 @@ class TestNeo4jGlobalId:
         )
 
 
-@pytest.mark.asyncio
 async def test_connect_url_rejects_unsupported_bare_source() -> None:
     from tabulaflow.data.url import connect_url
 
@@ -128,7 +127,6 @@ async def test_connect_url_rejects_unsupported_bare_source() -> None:
         await connect_url("not-a-database", db_name="test")
 
 
-@pytest.mark.asyncio
 async def test_connect_url_leaves_bigquery_configuration_to_driver(monkeypatch: pytest.MonkeyPatch) -> None:
     from tabulaflow.data.sql import SQLConnector
     from tabulaflow.data.url import connect_url

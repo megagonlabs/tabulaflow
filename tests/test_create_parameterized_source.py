@@ -39,7 +39,6 @@ async def registry(tmp_path: Path) -> DBRegistry:
     return r
 
 
-@pytest.mark.asyncio
 async def test_create_parameterized_source_registers_parameters_and_warms_choice_grid(registry: DBRegistry) -> None:
     output_store = OutputStore(registry=registry)
     result = await CreateParameterizedSourceTool(registry, output_store)(
@@ -84,7 +83,6 @@ async def test_create_parameterized_source_registers_parameters_and_warms_choice
     assert payload.df.to_dict("records") == [{"value": 21}]
 
 
-@pytest.mark.asyncio
 async def test_create_parameterized_source_reports_empty_parameters(registry: DBRegistry) -> None:
     output_store = OutputStore(registry=registry)
 
@@ -93,7 +91,6 @@ async def test_create_parameterized_source_reports_empty_parameters(registry: DB
     assert _text(result) == "(error: parameters must not be empty)"
 
 
-@pytest.mark.asyncio
 async def test_create_parameterized_source_batches_warm_errors_and_registers_nothing(registry: DBRegistry) -> None:
     output_store = OutputStore(registry=registry)
 
@@ -119,7 +116,6 @@ async def test_create_parameterized_source_batches_warm_errors_and_registers_not
         output_store.get_source("S1")
 
 
-@pytest.mark.asyncio
 async def test_number_parameter_materializes_lazy_selection(registry: DBRegistry) -> None:
     output_store = OutputStore(registry=registry)
     result = await CreateParameterizedSourceTool(registry, output_store)(
@@ -147,7 +143,6 @@ async def test_number_parameter_materializes_lazy_selection(registry: DBRegistry
     assert payload.df.to_dict("records") == [{"customer": "Acme"}, {"customer": "Globex"}]
 
 
-@pytest.mark.asyncio
 async def test_mixed_choice_and_number_warms_choice_grid_at_number_default(registry: DBRegistry) -> None:
     output_store = OutputStore(registry=registry)
     result = await CreateParameterizedSourceTool(registry, output_store)(
@@ -178,7 +173,6 @@ async def test_mixed_choice_and_number_warms_choice_grid_at_number_default(regis
     assert payload.df.to_dict("records") == [{"value": 21}]
 
 
-@pytest.mark.asyncio
 async def test_create_parameterized_source_warms_not_applicable_selection(registry: DBRegistry) -> None:
     output_store = OutputStore(registry=registry)
     result = await CreateParameterizedSourceTool(registry, output_store)(

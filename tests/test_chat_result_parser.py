@@ -95,7 +95,6 @@ def test_declared_bundle_skips_failed_calls_and_takes_the_last() -> None:
     assert _declared_bundle({"b": completed["b"]}) is None
 
 
-@pytest.mark.asyncio
 async def test_build_chat_result_resolves_the_declared_bundle() -> None:
     output_store = OutputStore()
     await output_store.add_fixed_result_source("workspace", "sql", "SELECT 1", ExecResult(df=pd.DataFrame({"a": [1]})))
@@ -111,7 +110,6 @@ async def test_build_chat_result_resolves_the_declared_bundle() -> None:
     assert without.output.artifacts == []
 
 
-@pytest.mark.asyncio
 async def test_build_chat_result_resolves_a_panel(tmp_path: Path) -> None:
     """Each card resolves at the dimensions its own query ran; the rest broadcast."""
     connector = await SQLConnector.from_url_async(
@@ -179,7 +177,6 @@ async def test_build_chat_result_resolves_a_panel(tmp_path: Path) -> None:
     assert [_result_id(a) for a in count_q3.artifacts] == ["R4", "R6"]
 
 
-@pytest.mark.asyncio
 async def test_build_chat_result_resolves_source_backed_chart_in_panel(tmp_path: Path) -> None:
     connector = await SQLConnector.from_url_async(
         global_id="test-chat-chart-panel",
@@ -223,7 +220,6 @@ async def test_build_chat_result_resolves_source_backed_chart_in_panel(tmp_path:
     assert chart_ids == ["R1", "R2"]
 
 
-@pytest.mark.asyncio
 async def test_build_chat_result_placeholders_a_partially_covered_card(tmp_path: Path) -> None:
     connector = await SQLConnector.from_url_async(
         global_id="test-chat-partial",

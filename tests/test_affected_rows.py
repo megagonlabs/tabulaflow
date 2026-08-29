@@ -48,7 +48,6 @@ async def sqlite_conn(tmp_path: Path) -> AsyncGenerator[SQLConnector, None]:
 
 
 class TestAsyncEngineDML:
-    @pytest.mark.asyncio
     async def test_sqlalchemy_dml_executable_on_async_engine(self, sqlite_conn: SQLConnector) -> None:
         # A SQLAlchemy update() Executable on an async engine must not be streamed
         # (it returns no rows); regression for "This result object does not return rows".
@@ -72,7 +71,6 @@ class TestAsyncEngineDML:
 
 
 class TestConnectorAffectedRows:
-    @pytest.mark.asyncio
     async def test_counts_by_statement_kind(self, conn: SQLConnector) -> None:
         async def run(sql: str) -> Any:
             return await conn.run_query_async(sql)
@@ -95,7 +93,6 @@ class TestConnectorAffectedRows:
         r = await run("DELETE FROM t WHERE id=3")
         assert r.affected_rows == 1 and r.df is None
 
-    @pytest.mark.asyncio
     async def test_select_has_no_count_and_count_alias_not_misread(self, conn: SQLConnector) -> None:
         await conn.run_query_async("CREATE TABLE t(id INT)")
         await conn.run_query_async("INSERT INTO t VALUES (1),(2)")
@@ -109,7 +106,6 @@ class TestConnectorAffectedRows:
         assert r.affected_rows is None and r.df is not None
         assert r.df.to_dict("records") == [{"Count": 2}]
 
-    @pytest.mark.asyncio
     async def test_error_has_no_df(self, conn: SQLConnector) -> None:
         r = await conn.run_query_async("SELECT * FROM does_not_exist")
         assert r.error is not None and r.df is None
@@ -119,7 +115,6 @@ class TestRunQueryMessaging:
     def _tool(self, conn: SQLConnector) -> RunQueryTool:
         return RunQueryTool(conn, timeout=10)
 
-    @pytest.mark.asyncio
     async def test_dml_reports_affected(self, conn: SQLConnector) -> None:
         tool = self._tool(conn)
         await _run(tool, "CREATE TABLE t(id INT, v INT)")
@@ -128,7 +123,6 @@ class TestRunQueryMessaging:
         assert "2 rows affected" in await _run(tool, "UPDATE t SET v=9 WHERE id<=2")
         assert "1 row affected" in await _run(tool, "DELETE FROM t WHERE id=3")
 
-    @pytest.mark.asyncio
     async def test_zero_affected_nudges_where_clause(self, conn: SQLConnector) -> None:
         tool = self._tool(conn)
         await _run(tool, "CREATE TABLE t(id INT, v INT)")
@@ -136,7 +130,6 @@ class TestRunQueryMessaging:
         msg = await _run(tool, "UPDATE t SET v=9 WHERE id=999")
         assert "0 rows were affected" in msg and "WHERE" in msg
 
-    @pytest.mark.asyncio
     async def test_ddl_plain_success(self, conn: SQLConnector) -> None:
         tool_return = await self._tool(conn)("CREATE TABLE t(id INT)")
         assert isinstance(tool_return.return_value, str)
@@ -161,7 +154,6 @@ def _emit_const(value: object) -> Callable[[list[ModelMessage], AgentInfo], Mode
 
 
 class TestSubagentZeroMatchGuard:
-    @pytest.mark.asyncio
     async def test_nanosecond_timestamp_key_zero_match_is_reported(self, conn: SQLConnector) -> None:
         # A nanosecond-precision timestamp key round-trips through pandas as a
         # microsecond value, so the write-back WHERE matches 0 rows. This is a

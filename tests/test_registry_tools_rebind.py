@@ -5,7 +5,6 @@ from typing import Any, ClassVar, Literal, cast
 
 import asyncio
 import pandas as pd
-import pytest
 import sqlalchemy
 from pydantic_ai import ToolReturn
 from sqlalchemy.ext.asyncio import create_async_engine
@@ -38,7 +37,6 @@ async def _make_connector(tmp_path: Path, name: str, value: str) -> SQLConnector
     )
 
 
-@pytest.mark.asyncio
 async def test_run_query_fails_after_disconnect(tmp_path: Path) -> None:
     """After disconnecting an alias, a previously used run_query tool must reject it."""
     registry = DBRegistry()
@@ -53,7 +51,6 @@ async def test_run_query_fails_after_disconnect(tmp_path: Path) -> None:
     assert "alpha" not in result_text
 
 
-@pytest.mark.asyncio
 async def test_run_query_uses_new_connector_after_rebind(tmp_path: Path) -> None:
     """Re-binding an alias to a different connector must not serve the old one from cache."""
     registry = DBRegistry()
@@ -106,7 +103,6 @@ def test_column_json_schema_tool_rebuilds_when_schema_is_replaced() -> None:
     assert second.schema is connector.schema
 
 
-@pytest.mark.asyncio
 async def test_concurrent_run_query_records_each_invocation_query() -> None:
     """Registry recording must not read a shared last-query slot after another call overwrites it."""
     connector = RefreshBlockingConnector()

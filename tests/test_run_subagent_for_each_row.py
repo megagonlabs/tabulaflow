@@ -82,7 +82,6 @@ def _tool(conn: SQLConnector, value: object = "OUT", *, store_metadata: bool = F
 
 
 class TestHappyPath:
-    @pytest.mark.asyncio
     async def test_writes_each_row(self, conn: SQLConnector) -> None:
         await conn.run_query_async("CREATE TABLE t(id INTEGER, label VARCHAR)")
         await conn.run_query_async("INSERT INTO t VALUES (1,NULL),(2,NULL),(3,NULL)")
@@ -99,7 +98,6 @@ class TestHappyPath:
         assert "succeeded for 3 rows, failed for 0 rows" in summary
         assert [r["label"] for r in await _rows(conn, "SELECT label FROM t")] == ["DONE", "DONE", "DONE"]
 
-    @pytest.mark.asyncio
     async def test_writes_multiple_typed_columns_across_types(self, conn: SQLConnector) -> None:
         # Cover the full scalar type matrix in one multi-column UPDATE: text, the three
         # integer widths (SMALLINT/INTEGER/BIGINT — note BIGINT/SMALLINT introspect to
@@ -144,7 +142,6 @@ class TestHappyPath:
         assert row["ts"] == datetime.datetime(2024, 3, 15, 10, 30, 0)
         assert row["nul"] is None
 
-    @pytest.mark.asyncio
     async def test_anthropic_uses_native_output_with_thinking(self, conn: SQLConnector) -> None:
         await conn.run_query_async("CREATE TABLE t(id INTEGER, label VARCHAR)")
         await conn.run_query_async("INSERT INTO t VALUES (1,NULL)")
@@ -164,7 +161,6 @@ class TestHappyPath:
         assert "succeeded for 1 rows, failed for 0 rows" in summary
         assert await _rows(conn, "SELECT label FROM t") == [{"label": "DONE"}]
 
-    @pytest.mark.asyncio
     async def test_anthropic_native_abort_is_recorded(self, conn: SQLConnector) -> None:
         await conn.run_query_async("CREATE TABLE t(id INTEGER, label VARCHAR)")
         await conn.run_query_async("INSERT INTO t VALUES (1,NULL)")
@@ -192,7 +188,6 @@ class TestHappyPath:
 
 
 class TestWriteBackErrorSurfaced:
-    @pytest.mark.asyncio
     async def test_integer_output_column_rejects_text_and_is_reported(self, conn: SQLConnector) -> None:
         # Real-world failure: an all-NULL untyped column from VALUES is inferred
         # INTEGER, so writing the subagent's text output fails. The error must be
@@ -220,7 +215,6 @@ class TestWriteBackErrorSurfaced:
 
 
 class TestKeyValidation:
-    @pytest.mark.asyncio
     async def test_empty_key_rejected(self, conn: SQLConnector) -> None:
         await conn.run_query_async("CREATE TABLE t(id INTEGER, label VARCHAR)")
         await conn.run_query_async("INSERT INTO t VALUES (1,NULL)")
@@ -235,7 +229,6 @@ class TestKeyValidation:
         )
         assert summary.startswith("(error:") and "non-empty" in summary
 
-    @pytest.mark.asyncio
     async def test_non_unique_key_rejected(self, conn: SQLConnector) -> None:
         await conn.run_query_async("CREATE TABLE t(grp VARCHAR, label VARCHAR)")
         await conn.run_query_async("INSERT INTO t VALUES ('a',NULL),('a',NULL),('b',NULL)")
@@ -252,7 +245,6 @@ class TestKeyValidation:
         # Nothing written — rejected before fan-out.
         assert all(r["label"] is None for r in await _rows(conn, "SELECT label FROM t"))
 
-    @pytest.mark.asyncio
     async def test_null_key_rejected(self, conn: SQLConnector) -> None:
         await conn.run_query_async("CREATE TABLE t(id INTEGER, label VARCHAR)")
         await conn.run_query_async("INSERT INTO t VALUES (1,NULL),(NULL,NULL)")
@@ -267,7 +259,6 @@ class TestKeyValidation:
         )
         assert summary.startswith("(error:") and "NULL" in summary
 
-    @pytest.mark.asyncio
     async def test_key_not_a_table_column_rejected(self, conn: SQLConnector) -> None:
         # A key projected from a joined table (not a column of the target) can't
         # address target rows on write-back.
@@ -288,7 +279,6 @@ class TestKeyValidation:
 
 
 class TestTemplateValidation:
-    @pytest.mark.asyncio
     async def test_unknown_placeholder_rejected_up_front(self, conn: SQLConnector) -> None:
         await conn.run_query_async("CREATE TABLE t(id INTEGER, txt VARCHAR, label VARCHAR)")
         await conn.run_query_async("INSERT INTO t VALUES (1,'a',NULL)")
@@ -307,7 +297,6 @@ class TestTemplateValidation:
             assert summary.startswith("(error:") and "not in the task_query result" in summary
         assert all(r["label"] is None for r in await _rows(conn, "SELECT label FROM t"))
 
-    @pytest.mark.asyncio
     async def test_valid_placeholder_accepted(self, conn: SQLConnector) -> None:
         await conn.run_query_async("CREATE TABLE t(id INTEGER, txt VARCHAR, label VARCHAR)")
         await conn.run_query_async("INSERT INTO t VALUES (1,'a',NULL)")

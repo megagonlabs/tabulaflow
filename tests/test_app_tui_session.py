@@ -172,7 +172,6 @@ def test_close_pane_removes_session_artifacts(tmp_path: Path, monkeypatch: pytes
     assert not pane_dir.exists()
 
 
-@pytest.mark.asyncio
 async def test_ensure_session_creates_app_session(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     project_dir = tmp_path / "project"
     project_dir.mkdir()
@@ -417,7 +416,6 @@ def test_switching_preset_preserves_live_chat_session_state(tmp_path: Path, monk
     assert agent.output_store is output_store
 
 
-@pytest.mark.asyncio
 async def test_startup_llm_activation_reports_session_then_agent_progress(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -550,7 +548,6 @@ def test_llm_activation_error_normalization_is_actionable_and_bounded(
     assert len(bounded) < 400
 
 
-@pytest.mark.asyncio
 async def test_session_failure_does_not_enter_llm_error_path(monkeypatch: pytest.MonkeyPatch) -> None:
     preset = _preset()
     app = _app(preset)
@@ -580,7 +577,6 @@ async def test_session_failure_does_not_enter_llm_error_path(monkeypatch: pytest
     assert app._llm_activation_error is None
 
 
-@pytest.mark.asyncio
 async def test_starting_llm_off_reports_available_tools(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -625,7 +621,6 @@ async def test_starting_llm_off_reports_available_tools(
         ]
 
 
-@pytest.mark.asyncio
 async def test_startup_paints_banner_before_starting_initialization(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -648,7 +643,6 @@ async def test_startup_paints_banner_before_starting_initialization(
         assert started == [True]
 
 
-@pytest.mark.asyncio
 async def test_unconfigured_without_detected_key_explains_why_llm_is_off(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -669,7 +663,6 @@ async def test_unconfigured_without_detected_key_explains_why_llm_is_off(
         assert messages == ["✓ LLM off · no supported API key detected. Choose a preset in /config."]
 
 
-@pytest.mark.asyncio
 async def test_inferred_startup_reports_masked_api_key_in_chat_log(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -702,7 +695,6 @@ async def test_inferred_startup_reports_masked_api_key_in_chat_log(
         assert not app.query_one("#input-bar", Input).disabled
 
 
-@pytest.mark.asyncio
 async def test_failed_startup_activation_reports_error_and_unblocks_input(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -736,7 +728,6 @@ async def test_failed_startup_activation_reports_error_and_unblocks_input(
         assert not app.query_one("#input-bar", Input).disabled
 
 
-@pytest.mark.asyncio
 async def test_llm_activation_preserves_blocked_submissions(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -773,7 +764,6 @@ async def test_llm_activation_preserves_blocked_submissions(
         assert len(app.query(UserMessage)) == 0
 
 
-@pytest.mark.asyncio
 async def test_submission_worker_blocks_input_until_completion(monkeypatch: pytest.MonkeyPatch) -> None:
     app = _app(None)
     command_started = asyncio.Event()
@@ -815,7 +805,6 @@ async def test_submission_worker_blocks_input_until_completion(monkeypatch: pyte
         assert app._submission_worker is None
 
 
-@pytest.mark.asyncio
 async def test_submission_worker_covers_and_can_cancel_session_preflight(monkeypatch: pytest.MonkeyPatch) -> None:
     app = _app(None)
     preflight_started = asyncio.Event()
@@ -861,7 +850,6 @@ async def test_submission_worker_covers_and_can_cancel_session_preflight(monkeyp
         assert messages[-1] == "Interrupted"
 
 
-@pytest.mark.asyncio
 async def test_config_selection_persists_and_starts_one_activation(monkeypatch: pytest.MonkeyPatch) -> None:
     app = _app(None)
     session = _InactiveSession()
@@ -892,7 +880,6 @@ async def test_config_selection_persists_and_starts_one_activation(monkeypatch: 
         assert activations == [selection]
 
 
-@pytest.mark.asyncio
 async def test_closing_config_restores_input_focus(monkeypatch: pytest.MonkeyPatch) -> None:
     app = _app(None)
 
@@ -953,7 +940,6 @@ class _FakeRunTuiApp:
         type(self).pane_close_args.append(remove_artifacts)
 
 
-@pytest.mark.asyncio
 async def test_run_tui_restores_terminal_modes_after_normal_exit(monkeypatch: pytest.MonkeyPatch) -> None:
     stdout = _FakeStdout()
     _FakeRunTuiApp.error = None
@@ -971,7 +957,6 @@ async def test_run_tui_restores_terminal_modes_after_normal_exit(monkeypatch: py
     assert stdout.flushed is True
 
 
-@pytest.mark.asyncio
 async def test_run_tui_restores_terminal_modes_after_exception(monkeypatch: pytest.MonkeyPatch) -> None:
     stdout = _FakeStdout()
     error = RuntimeError("boom")

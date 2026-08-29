@@ -73,7 +73,6 @@ async def async_connector(tmp_path: Path) -> AsyncGenerator[SQLConnector, None]:
         await connector.close_async()
 
 
-@pytest.mark.asyncio
 async def test_throttled_engine_rejects_more_than_max_rows() -> None:
     engine = ThrottledEngine.from_url("duckdb:///:memory:", read_only=False)
     try:
@@ -91,7 +90,6 @@ async def test_throttled_engine_rejects_more_than_max_rows() -> None:
         await engine.aclose()
 
 
-@pytest.mark.asyncio
 async def test_connector_returns_error_for_oversized_result(
     async_connector: SQLConnector,
 ) -> None:
@@ -106,7 +104,6 @@ async def test_connector_returns_error_for_oversized_result(
     assert str(oversized.error.message) == ("Query returned more than 2 rows; add a LIMIT, filter, or aggregation")
 
 
-@pytest.mark.asyncio
 async def test_none_disables_connector_result_limit(
     tmp_path: Path,
 ) -> None:
@@ -130,7 +127,6 @@ async def test_none_disables_connector_result_limit(
     assert len(result.df) == 3
 
 
-@pytest.mark.asyncio
 async def test_neo4j_fetch_is_bounded_before_dataframe_materialization() -> None:
     result = _FakeNeo4jResult([1, 2, 3])
     connector = object.__new__(Neo4jConnector)

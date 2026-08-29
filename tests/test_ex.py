@@ -119,7 +119,6 @@ def examples() -> list[ExampleCase]:
     ]
 
 
-@pytest.mark.asyncio
 async def test_spider2_ex(examples: list[ExampleCase]) -> None:
     spider2_ex = Spider2Ex()
     for example in examples:
@@ -127,7 +126,6 @@ async def test_spider2_ex(examples: list[ExampleCase]) -> None:
         assert score == example.spider2_ex_expected_score
 
 
-@pytest.mark.asyncio
 async def test_simple_ex(examples: list[ExampleCase]) -> None:
     simple_ex = SimpleEx()
     for example in examples:

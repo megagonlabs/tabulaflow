@@ -33,7 +33,6 @@ class _FakeSession:
         self.conversation_reset = True
 
 
-@pytest.mark.asyncio
 async def test_handle_command_reports_unclosed_quote_as_user_error() -> None:
     result = await handle_command(
         "/connect 'neo4j+s://recommendations:recommendations@demo.neo4jlabs.com?database=recommendations",
@@ -45,7 +44,6 @@ async def test_handle_command_reports_unclosed_quote_as_user_error() -> None:
     assert result.output.plain == "Invalid command syntax: No closing quotation"
 
 
-@pytest.mark.asyncio
 async def test_handle_command_dispatches_valid_shell_quoted_command(monkeypatch: pytest.MonkeyPatch) -> None:
     seen_args: list[str] | None = None
 
@@ -62,7 +60,6 @@ async def test_handle_command_dispatches_valid_shell_quoted_command(monkeypatch:
     assert seen_args == ["path with spaces.csv", "alias"]
 
 
-@pytest.mark.asyncio
 async def test_handle_command_escapes_unknown_command_markup() -> None:
     result = await handle_command("/[/]", cast(AppSession, object()))
 
@@ -70,7 +67,6 @@ async def test_handle_command_escapes_unknown_command_markup() -> None:
     assert result.output.plain == "Unknown command: /[/]. Type /help for available commands."
 
 
-@pytest.mark.asyncio
 async def test_clear_starts_a_new_conversation() -> None:
     session = _FakeSession()
 
@@ -80,7 +76,6 @@ async def test_clear_starts_a_new_conversation() -> None:
     assert session.conversation_reset is True
 
 
-@pytest.mark.asyncio
 async def test_connect_rejects_extra_url_args() -> None:
     result = await handle_command("/connect duckdb:///tmp/a.duckdb alias extra", cast(AppSession, object()))
 
@@ -88,7 +83,6 @@ async def test_connect_rejects_extra_url_args() -> None:
     assert result.output.plain == "Usage: /connect <url_or_path> [alias]"
 
 
-@pytest.mark.asyncio
 async def test_connect_rejects_extra_file_aliases() -> None:
     result = await handle_command("/connect ./sales.csv alias extra", cast(AppSession, _FakeSession()))
 
@@ -96,7 +90,6 @@ async def test_connect_rejects_extra_file_aliases() -> None:
     assert result.output.plain == "Usage: /connect <file...> [alias]"
 
 
-@pytest.mark.asyncio
 async def test_disconnect_rejects_extra_args() -> None:
     result = await handle_command("/disconnect sales extra", cast(AppSession, object()))
 
@@ -104,7 +97,6 @@ async def test_disconnect_rejects_extra_args() -> None:
     assert result.output.plain == "Usage: /disconnect <alias>"
 
 
-@pytest.mark.asyncio
 async def test_connect_registers_alias(monkeypatch: pytest.MonkeyPatch) -> None:
     session = _FakeSession()
     connector = object()
@@ -125,7 +117,6 @@ async def test_connect_registers_alias(monkeypatch: pytest.MonkeyPatch) -> None:
     assert session.registry.connectors == {"sales": connector}
 
 
-@pytest.mark.asyncio
 async def test_connect_allows_same_source_under_distinct_aliases(monkeypatch: pytest.MonkeyPatch) -> None:
     session = _FakeSession()
 

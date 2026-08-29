@@ -41,7 +41,6 @@ async def _query_df(eng: ThrottledEngine, sql: str) -> pd.DataFrame:
     return result
 
 
-@pytest.mark.asyncio
 async def test_integer_with_null_returns_int64(duckdb_eng: ThrottledEngine) -> None:
     df = await _query_df(
         duckdb_eng,
@@ -53,7 +52,6 @@ async def test_integer_with_null_returns_int64(duckdb_eng: ThrottledEngine) -> N
     assert df["x"].iloc[2] is pd.NA
 
 
-@pytest.mark.asyncio
 async def test_bigint_within_int64_range_returns_int64(duckdb_eng: ThrottledEngine) -> None:
     df = await _query_df(
         duckdb_eng,
@@ -62,7 +60,6 @@ async def test_bigint_within_int64_range_returns_int64(duckdb_eng: ThrottledEngi
     assert str(df["x"].dtype) == "Int64"
 
 
-@pytest.mark.asyncio
 async def test_hugeint_overflowing_int64_stays_object(duckdb_eng: ThrottledEngine) -> None:
     """HUGEINT values outside C-long range can't be cast to ``Int64``;
     they must stay ``object`` so ``_sanitize_df_strings`` can stringify
@@ -76,7 +73,6 @@ async def test_hugeint_overflowing_int64_stays_object(duckdb_eng: ThrottledEngin
     assert df["x"].iloc[0] == 2**100
 
 
-@pytest.mark.asyncio
 async def test_double_with_null_returns_float64(duckdb_eng: ThrottledEngine) -> None:
     df = await _query_df(
         duckdb_eng,
@@ -85,7 +81,6 @@ async def test_double_with_null_returns_float64(duckdb_eng: ThrottledEngine) -> 
     assert str(df["x"].dtype) == "Float64"
 
 
-@pytest.mark.asyncio
 async def test_whole_number_doubles_stay_float64(duckdb_eng: ThrottledEngine) -> None:
     """Regression: ``convert_dtypes`` would demote a DOUBLE column whose
     values happen to all be whole numbers to ``Int64``, hiding the
@@ -97,7 +92,6 @@ async def test_whole_number_doubles_stay_float64(duckdb_eng: ThrottledEngine) ->
     assert str(df["x"].dtype) == "Float64"
 
 
-@pytest.mark.asyncio
 async def test_boolean_with_null_returns_boolean(duckdb_eng: ThrottledEngine) -> None:
     df = await _query_df(
         duckdb_eng,
@@ -106,7 +100,6 @@ async def test_boolean_with_null_returns_boolean(duckdb_eng: ThrottledEngine) ->
     assert str(df["x"].dtype) == "boolean"
 
 
-@pytest.mark.asyncio
 async def test_varchar_with_null_returns_string(duckdb_eng: ThrottledEngine) -> None:
     df = await _query_df(
         duckdb_eng,
@@ -115,7 +108,6 @@ async def test_varchar_with_null_returns_string(duckdb_eng: ThrottledEngine) -> 
     assert str(df["x"].dtype) == "string"
 
 
-@pytest.mark.asyncio
 async def test_decimal_stays_object(duckdb_eng: ThrottledEngine) -> None:
     """``Decimal`` has no nullable extension dtype in the numpy_nullable
     backend, so the column stays ``object`` with Python ``Decimal``
@@ -130,7 +122,6 @@ async def test_decimal_stays_object(duckdb_eng: ThrottledEngine) -> None:
     assert df["x"].iloc[0] == decimal.Decimal("1.50")
 
 
-@pytest.mark.asyncio
 async def test_blob_stays_object(duckdb_eng: ThrottledEngine) -> None:
     """BLOB / VARBINARY columns return Python ``bytes``; no nullable
     extension dtype exists so they stay ``object``."""
@@ -141,7 +132,6 @@ async def test_blob_stays_object(duckdb_eng: ThrottledEngine) -> None:
     assert str(df["x"].dtype) == "object"
 
 
-@pytest.mark.asyncio
 async def test_all_null_column_stays_object(duckdb_eng: ThrottledEngine) -> None:
     df = await _query_df(
         duckdb_eng,
@@ -150,7 +140,6 @@ async def test_all_null_column_stays_object(duckdb_eng: ThrottledEngine) -> None
     assert str(df["x"].dtype) == "object"
 
 
-@pytest.mark.asyncio
 async def test_empty_result_set(duckdb_eng: ThrottledEngine) -> None:
     df = await _query_df(
         duckdb_eng,
@@ -160,7 +149,6 @@ async def test_empty_result_set(duckdb_eng: ThrottledEngine) -> None:
     assert list(df.columns) == ["x"]
 
 
-@pytest.mark.asyncio
 async def test_multiple_columns_independent_inference(duckdb_eng: ThrottledEngine) -> None:
     df = await _query_df(
         duckdb_eng,
