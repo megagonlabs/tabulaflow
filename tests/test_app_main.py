@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+import sys
+
 import pytest
 import typer
 
-from tabulaflow.app.config import LLM_OFF, AppConfig, LLMRoleConfig, LLMPreset
+from tabulaflow.app.config import LLM_OFF, AppConfig, LLMRoleConfig, LLMPreset, ResolvedLLMSelection
 from tabulaflow.app.main import _resolve_startup_llm_selection
+from tabulaflow.app.tui import app as tui
 
 
 def _test_config() -> AppConfig:
@@ -102,3 +105,64 @@ def test_resolve_startup_llm_selection_returns_unverified_saved_preset(
     resolved = _resolve_startup_llm_selection(llm_preset=None)
 
     assert resolved.preset == _test_config().preset_by_label("Test")
+
+
+class _FakeStdout:
+    def __init__(self, *, tty: bool = True) -> None:
+        self.tty = tty
+        self.value = ""
+        self.flushed = False
+
+    def isatty(self) -> bool:
+        return self.tty
+
+    def write(self, value: str) -> int:
+        self.value += value
+        return len(value)
+
+    def flush(self) -> None:
+        self.flushed = True
+
+
+class _FakeRunTuiApp:
+    error: BaseException | None = None
+    run_mouse: bool | None = None
+    pane_close_args: list[bool] = []
+
+    def __init__(self, **_kwargs: object) -> None:
+        pass
+
+    async def run_async(self, *, mouse: bool = True) -> None:
+        type(self).run_mouse = mouse
+        error = type(self).error
+        if error is not None:
+            raise error
+
+    def _close_pane(self, *, remove_artifacts: bool = False) -> None:
+        type(self).pane_close_args.append(remove_artifacts)
+
+
+@pytest.mark.parametrize("error", [None, RuntimeError("boom")], ids=["normal", "error"])
+async def test_run_tui_restores_terminal_modes(
+    error: RuntimeError | None,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    stdout = _FakeStdout()
+    _FakeRunTuiApp.error = error
+    _FakeRunTuiApp.run_mouse = None
+    _FakeRunTuiApp.pane_close_args = []
+
+    monkeypatch.setattr(sys, "__stdout__", stdout)
+    monkeypatch.setattr(tui, "TabulaflowApp", _FakeRunTuiApp)
+
+    selection = ResolvedLLMSelection(LLM_OFF, None)
+    if error is None:
+        await tui.run_tui(selection)
+    else:
+        with pytest.raises(RuntimeError, match="boom"):
+            await tui.run_tui(selection)
+
+    assert _FakeRunTuiApp.run_mouse is True
+    assert _FakeRunTuiApp.pane_close_args == [True]
+    assert stdout.value == tui._TERMINAL_MODE_RESTORE_SEQUENCE
+    assert stdout.flushed is True

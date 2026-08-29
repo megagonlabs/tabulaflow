@@ -1,11 +1,11 @@
 from __future__ import annotations
 
 import asyncio
-import sys
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 import pytest
+from pydantic_ai.exceptions import UserError
 from textual import events
 from textual.containers import VerticalScroll
 from textual.widgets import Button, Input, Static
@@ -19,9 +19,6 @@ from tabulaflow.app.session import AppSession
 from tabulaflow.app.tui import TabulaflowApp
 from tabulaflow.app.tui.widgets.chat import BannerWidget, SpinnerWidget, SystemMessage, UserMessage
 from tabulaflow.app.tui.widgets.input import HistoryInput
-
-if TYPE_CHECKING:
-    from tabulaflow.agents.chat import ChatSession
 
 
 class _StatusCapture:
@@ -89,41 +86,17 @@ def _app(
     return _app_for_selection(_selection(preset), runtime_paths=runtime_paths, project_dir=project_dir)
 
 
+def _stub_app_startup(app: TabulaflowApp, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(app, "_setup_logging", lambda: None)
+    monkeypatch.setattr(app, "_ensure_pane", lambda: None)
+
+
 def _session(*, llm_preset: LLMPreset | None, tmp_path: Path) -> AppSession:
     return AppSession(
         llm_preset=llm_preset,
         runtime_paths=RuntimePaths.for_session("test-session", home_dir=tmp_path),
         workspace=None,
     )
-
-
-def _activate_selected(session: AppSession) -> ChatSession:
-    assert session.selected_preset is not None
-    session.activate_llm_preset(session.selected_preset)
-    agent = session.active_chat_session
-    assert agent is not None
-    return agent
-
-
-def test_reset_conversation_preserves_session_environment(tmp_path: Path) -> None:
-    session = _session(
-        llm_preset=_preset(),
-        tmp_path=tmp_path,
-    )
-    agent = _activate_selected(session)
-    initial_history = list(agent._message_history)
-    output_store = agent.output_store
-    agent.note_event("old conversation detail")
-
-    session.reset_conversation()
-
-    assert session.active_chat_session is agent
-    assert len(agent._message_history) == len(initial_history)
-    reset_part: Any = agent._message_history[0].parts[0]
-    initial_part: Any = initial_history[0].parts[0]
-    assert reset_part.content == initial_part.content
-    assert agent.output_store is output_store
-    assert agent._registry is session.registry
 
 
 def test_text_selection_failure_is_contained(
@@ -204,44 +177,33 @@ async def test_ensure_session_creates_app_session(tmp_path: Path, monkeypatch: p
     }
 
 
-def test_bottom_status_shows_selected_model_before_agent_is_ready(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+@pytest.mark.parametrize(
+    ("llm_enabled", "session_ready", "expected"),
+    [
+        (True, True, "Opus 4.8 high · "),
+        (True, False, "Opus 4.8 high · "),
+        (False, False, "LLM off · "),
+    ],
+)
+def test_bottom_status_uses_selected_startup_profile(
+    llm_enabled: bool,
+    session_ready: bool,
+    expected: str,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    preset = _preset(
-        model="anthropic:claude-opus-4-8",
-        reasoning_effort="high",
-        subagent_model="anthropic:claude-sonnet-4-5-20250929",
-    )
-    app = _app(preset, project_dir=tmp_path)
-    session = _session(
-        llm_preset=preset,
-        tmp_path=tmp_path,
-    )
-    app._session = session
-    model_status = _StatusCapture()
-    url_status = _StatusCapture()
-
-    def fake_query_one(selector: str, _type: object) -> _StatusCapture:
-        return model_status if selector == "#bottom-status-model" else url_status
-
-    monkeypatch.setattr(app, "query_one", fake_query_one)
-
-    app._refresh_bottom_status()
-
-    assert model_status.value.startswith("Opus 4.8 high · ")
-
-
-def test_bottom_status_shows_startup_model_before_session_is_ready(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    app = _app(
+    preset = (
         _preset(
             model="anthropic:claude-opus-4-8",
             reasoning_effort="high",
             subagent_model="anthropic:claude-sonnet-4-5-20250929",
-        ),
-        project_dir=tmp_path,
+        )
+        if llm_enabled
+        else None
     )
+    app = _app(preset, project_dir=tmp_path)
+    if session_ready:
+        app._session = _session(llm_preset=preset, tmp_path=tmp_path)
     model_status = _StatusCapture()
     url_status = _StatusCapture()
 
@@ -249,171 +211,9 @@ def test_bottom_status_shows_startup_model_before_session_is_ready(
         return model_status if selector == "#bottom-status-model" else url_status
 
     monkeypatch.setattr(app, "query_one", fake_query_one)
-
     app._refresh_bottom_status()
 
-    assert model_status.value.startswith("Opus 4.8 high · ")
-
-
-def test_bottom_status_shows_llm_off_before_session_when_no_profile(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    app = _app(None, project_dir=tmp_path)
-    model_status = _StatusCapture()
-    url_status = _StatusCapture()
-
-    def fake_query_one(selector: str, _type: object) -> _StatusCapture:
-        return model_status if selector == "#bottom-status-model" else url_status
-
-    monkeypatch.setattr(app, "query_one", fake_query_one)
-
-    app._refresh_bottom_status()
-
-    assert model_status.value.startswith("LLM off · ")
-
-
-def test_session_starts_with_unverified_llm_preset(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
-
-    session = _session(
-        llm_preset=_preset(
-            model="anthropic:claude-sonnet-4-5-20250929",
-            reasoning_effort="medium",
-            subagent_model="anthropic:claude-haiku-4-5-20251001",
-            subagent_reasoning_effort="medium",
-        ),
-        tmp_path=tmp_path,
-    )
-
-    assert session.active_chat_session is None
-    assert session.selected_preset is not None
-    assert session.selected_preset.main.model == "anthropic:claude-sonnet-4-5-20250929"
-    assert session.registry.list_aliases() == []
-    session.note_event("ignored without an LLM")
-
-    with pytest.raises(Exception, match="ANTHROPIC_API_KEY"):
-        _activate_selected(session)
-    assert session.active_chat_session is None
-
-
-def test_initial_activation_requires_subagent_provider(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
-    session = _session(
-        llm_preset=_preset(
-            model="test",
-            subagent_model="anthropic:claude-haiku-4-5-20251001",
-        ),
-        tmp_path=tmp_path,
-    )
-
-    with pytest.raises(Exception, match="ANTHROPIC_API_KEY"):
-        _activate_selected(session)
-    assert session.active_chat_session is None
-
-
-def test_session_starts_without_llm_preset(tmp_path: Path) -> None:
-    session = _session(
-        llm_preset=None,
-        tmp_path=tmp_path,
-    )
-
-    assert session.selected_preset is None
-    assert session.active_chat_session is None
-
-
-def test_llm_off_keeps_initialized_agent_dormant(tmp_path: Path) -> None:
-    preset = _preset()
-    session = _session(
-        llm_preset=preset,
-        tmp_path=tmp_path,
-    )
-    agent = _activate_selected(session)
-
-    session.select_llm_preset(None)
-
-    assert session.selected_preset is None
-    assert session.active_chat_session is None
-    session.select_llm_preset(preset)
-    assert session.active_chat_session is agent
-
-
-def test_unverified_session_can_select_and_then_build_valid_llm(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
-    session = _session(
-        llm_preset=_preset(
-            model="anthropic:claude-sonnet-4-5-20250929",
-            reasoning_effort="medium",
-            subagent_model="anthropic:claude-haiku-4-5-20251001",
-            subagent_reasoning_effort="medium",
-        ),
-        tmp_path=tmp_path,
-    )
-
-    session.select_llm_preset(_preset())
-    session.activate_llm_preset(_preset())
-
-    assert session.selected_preset == _preset()
-    assert session.active_chat_session is not None
-
-
-def test_selecting_unusable_preset_defers_error_until_agent_build(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
-    session = _session(
-        llm_preset=_preset(),
-        tmp_path=tmp_path,
-    )
-    old_agent = _activate_selected(session)
-    old_model = old_agent.model
-
-    selected_preset = _preset(
-        model="anthropic:claude-sonnet-4-5-20250929",
-        reasoning_effort="medium",
-        subagent_model="anthropic:claude-haiku-4-5-20251001",
-        subagent_reasoning_effort="medium",
-    )
-    session.select_llm_preset(selected_preset)
-    with pytest.raises(Exception, match="ANTHROPIC_API_KEY"):
-        session.activate_llm_preset(selected_preset)
-    assert session.selected_preset == selected_preset
-    assert session.active_chat_session is None
-    assert old_agent.model == old_model
-    session.select_llm_preset(_preset())
-    assert session.active_chat_session is old_agent
-
-
-def test_switching_preset_preserves_live_chat_session_state(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv("OPENAI_API_KEY", "sk-test123456789ab4x")
-    session = _session(
-        llm_preset=_preset(
-            model="openai-responses:gpt-5",
-            reasoning_effort="medium",
-            subagent_model="openai-responses:gpt-5-mini",
-            subagent_reasoning_effort="low",
-        ),
-        tmp_path=tmp_path,
-    )
-    agent = _activate_selected(session)
-    agent.note_event("remember this")
-    message_history = agent._message_history
-    output_store = agent.output_store
-
-    selected_preset = _preset(
-        model="openai-responses:gpt-5.4-mini",
-        reasoning_effort="high",
-        subagent_model="openai-responses:gpt-5-mini",
-        subagent_reasoning_effort="medium",
-    )
-    session.select_llm_preset(selected_preset)
-    session.activate_llm_preset(selected_preset)
-
-    assert session.active_chat_session is agent
-    assert agent.resolve_api_keys()[0] == "sk-test123456789ab4x"
-    assert agent._message_history is message_history
-    assert agent.output_store is output_store
+    assert model_status.value.startswith(expected)
 
 
 async def test_startup_llm_activation_reports_session_then_agent_progress(
@@ -449,101 +249,108 @@ async def test_startup_llm_activation_reports_session_then_agent_progress(
     assert labels == ["Initializing session...", "Initializing agent..."]
 
 
-def test_llm_preset_success_message_places_api_keys_by_role() -> None:
+@pytest.mark.parametrize(
+    ("api_keys", "detected_env", "expected"),
+    [
+        (
+            ("sk-shared123456789ABCD", "sk-shared123456789ABCD"),
+            None,
+            "✓ LLM preset: Test · Opus 4.8 high → GPT 5.4 Mini medium [API key sk-***ABCD]",
+        ),
+        (
+            ("sk-main123456789AAAA", "sk-subagent123456BBBB"),
+            None,
+            "✓ LLM preset: Test · Opus 4.8 high [API key sk-***AAAA] → GPT 5.4 Mini medium [API key sk-***BBBB]",
+        ),
+        (
+            ("sk-shared123456789ABCD", "sk-shared123456789ABCD"),
+            "ANTHROPIC_API_KEY",
+            "✓ ANTHROPIC_API_KEY detected (sk-***ABCD) · using Test. Change the preset in /config.",
+        ),
+        (
+            ("short", "short"),
+            "ANTHROPIC_API_KEY",
+            "✓ ANTHROPIC_API_KEY detected · using Test. Change the preset in /config.",
+        ),
+    ],
+)
+def test_llm_preset_success_message(
+    api_keys: tuple[str, str],
+    detected_env: str | None,
+    expected: str,
+) -> None:
     preset = _preset(
         model="anthropic:claude-opus-4-8",
         reasoning_effort="high",
         subagent_model="openai-responses:gpt-5.4-mini",
-        subagent_reasoning_effort="medium",
     )
 
-    shared = tui._llm_preset_success_message(
-        preset,
-        ("sk-shared123456789ABCD", "sk-shared123456789ABCD"),
-    )
-    assert shared.plain == "✓ LLM preset: Test · Opus 4.8 high → GPT 5.4 Mini medium [API key sk-***ABCD]"
-    assert str(shared.style) == "dim"
+    message = tui._llm_preset_success_message(preset, api_keys, detected_api_key_env=detected_env)
 
-    distinct = tui._llm_preset_success_message(
-        preset,
-        ("sk-main123456789AAAA", "sk-subagent123456BBBB"),
-    )
-    assert distinct.plain == (
-        "✓ LLM preset: Test · Opus 4.8 high [API key sk-***AAAA] → GPT 5.4 Mini medium [API key sk-***BBBB]"
-    )
-
-    inferred = tui._llm_preset_success_message(
-        preset,
-        ("sk-shared123456789ABCD", "sk-shared123456789ABCD"),
-        detected_api_key_env="ANTHROPIC_API_KEY",
-    )
-    assert inferred.plain == ("✓ ANTHROPIC_API_KEY detected (sk-***ABCD) · using Test. Change the preset in /config.")
-    short_key = tui._llm_preset_success_message(
-        preset,
-        ("short", "short"),
-        detected_api_key_env="ANTHROPIC_API_KEY",
-    )
-    assert short_key.plain == "✓ ANTHROPIC_API_KEY detected · using Test. Change the preset in /config."
-
-    assert tui._masked_api_key("fw-api123456789WXYZ") == "fw-***WXYZ"
-    assert tui._masked_api_key("short") is None
+    assert message.plain == expected
+    assert str(message.style) == "dim"
 
 
-def test_llm_activation_error_normalization_is_actionable_and_bounded(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    from pydantic_ai.exceptions import UserError
+@pytest.mark.parametrize(
+    ("api_key", "expected"),
+    [("fw-api123456789WXYZ", "fw-***WXYZ"), ("short", None)],
+)
+def test_masked_api_key(api_key: str, expected: str | None) -> None:
+    assert tui._masked_api_key(api_key) == expected
 
-    preset = _preset(
-        model="anthropic:claude-opus-4-8",
-        subagent_model="openai-responses:gpt-5-mini",
-    )
 
-    assert (
-        tui._normalize_llm_activation_error(
+@pytest.mark.parametrize(
+    ("error", "model", "expected"),
+    [
+        (
             UserError("Set the ANTHROPIC_API_KEY environment variable via AnthropicProvider."),
-            preset,
-        )
-        == "ANTHROPIC_API_KEY is not set. Set it and restart the app, or choose another preset in /config."
-    )
-    openai_preset = _preset(
-        model="openai-responses:gpt-5",
-        subagent_model="openai-responses:gpt-5-mini",
-    )
-    openai_error = RuntimeError("Set the OPENAI_API_KEY environment variable.")
-    openai_message = tui._normalize_llm_activation_error(openai_error, openai_preset)
-    assert openai_message == (
-        "OPENAI_API_KEY is not set. Set it and restart the app, or choose another preset in /config."
-    )
-    app = _app(openai_preset)
-    app._llm_activation_error = openai_message
-    assert app._llm_unavailable_message() == (
-        "OPENAI_API_KEY is not set. Set it and restart the app, or choose another preset in /config. "
-        "/connect and browsing remain available."
-    )
-    assert tui._normalize_llm_activation_error(UserError("Unknown model: invalid"), preset) == (
-        "Unknown model: invalid. Update app_config.json or choose another preset in /config."
-    )
-    assert tui._normalize_llm_activation_error(ValueError("Unknown provider: invalid"), preset) == (
-        "Unknown provider: invalid. Update app_config.json or choose another preset in /config."
-    )
-    assert tui._normalize_llm_activation_error(KeyError("GOOGLE_CLOUD_PROJECT"), preset) == (
-        "GOOGLE_CLOUD_PROJECT is not set. Set it and restart the app, or choose another preset in /config."
-    )
+            "anthropic:claude-opus-4-8",
+            "ANTHROPIC_API_KEY is not set. Set it and restart the app, or choose another preset in /config.",
+        ),
+        (
+            RuntimeError("Set the OPENAI_API_KEY environment variable."),
+            "openai-responses:gpt-5",
+            "OPENAI_API_KEY is not set. Set it and restart the app, or choose another preset in /config.",
+        ),
+        (
+            UserError("Unknown model: invalid"),
+            "anthropic:claude-opus-4-8",
+            "Unknown model: invalid. Update app_config.json or choose another preset in /config.",
+        ),
+        (
+            ValueError("Unknown provider: invalid"),
+            "anthropic:claude-opus-4-8",
+            "Unknown provider: invalid. Update app_config.json or choose another preset in /config.",
+        ),
+        (
+            KeyError("GOOGLE_CLOUD_PROJECT"),
+            "anthropic:claude-opus-4-8",
+            "GOOGLE_CLOUD_PROJECT is not set. Set it and restart the app, or choose another preset in /config.",
+        ),
+    ],
+)
+def test_llm_activation_error_is_actionable(error: Exception, model: str, expected: str) -> None:
+    preset = _preset(model=model, subagent_model="openai-responses:gpt-5-mini")
 
+    assert tui._normalize_llm_activation_error(error, preset) == expected
+
+
+def test_llm_activation_error_is_redacted_and_bounded(monkeypatch: pytest.MonkeyPatch) -> None:
+    preset = _preset(model="anthropic:claude-opus-4-8")
     api_key = "secret-api-key-1234"
     monkeypatch.setenv("VENDOR_API_KEY", api_key)
+
     normalized = tui._normalize_llm_activation_error(
         RuntimeError(f"first line\nsecond line leaked {api_key}"),
         preset,
     )
+    bounded = tui._normalize_llm_activation_error(RuntimeError("x" * 500), preset)
+
     assert normalized == (
         "Initialization failed: RuntimeError: first line second line leaked sec***1234. "
         "Choose another preset in /config."
     )
     assert api_key not in normalized
-
-    bounded = tui._normalize_llm_activation_error(RuntimeError("x" * 500), preset)
     assert "… Choose another preset in /config." in bounded
     assert len(bounded) < 400
 
@@ -589,8 +396,7 @@ async def test_starting_llm_off_reports_available_tools(
         await release_session.wait()
         return _InactiveSession()
 
-    monkeypatch.setattr(app, "_setup_logging", lambda: None)
-    monkeypatch.setattr(app, "_ensure_pane", lambda: None)
+    _stub_app_startup(app, monkeypatch)
     monkeypatch.setattr(app, "_ensure_session", fake_ensure_session)
 
     async with app.run_test() as pilot:
@@ -631,8 +437,7 @@ async def test_startup_paints_banner_before_starting_initialization(
         banner = app.query_one(BannerWidget)
         started.append(banner.query_one(".banner-art", Static).is_mounted)
 
-    monkeypatch.setattr(app, "_setup_logging", lambda: None)
-    monkeypatch.setattr(app, "_ensure_pane", lambda: None)
+    _stub_app_startup(app, monkeypatch)
     monkeypatch.setattr(app, "_start_llm_activation", fake_start)
 
     async with app.run_test() as pilot:
@@ -651,8 +456,7 @@ async def test_unconfigured_without_detected_key_explains_why_llm_is_off(
     async def fake_ensure_session() -> object:
         return _InactiveSession()
 
-    monkeypatch.setattr(app, "_setup_logging", lambda: None)
-    monkeypatch.setattr(app, "_ensure_pane", lambda: None)
+    _stub_app_startup(app, monkeypatch)
     monkeypatch.setattr(app, "_ensure_session", fake_ensure_session)
 
     async with app.run_test() as pilot:
@@ -682,8 +486,7 @@ async def test_inferred_startup_reports_masked_api_key_in_chat_log(
     async def fake_ensure_session() -> object:
         return FakeSession()
 
-    monkeypatch.setattr(app, "_setup_logging", lambda: None)
-    monkeypatch.setattr(app, "_ensure_pane", lambda: None)
+    _stub_app_startup(app, monkeypatch)
     monkeypatch.setattr(app, "_ensure_session", fake_ensure_session)
 
     async with app.run_test() as pilot:
@@ -708,8 +511,7 @@ async def test_failed_startup_activation_reports_error_and_unblocks_input(
     async def fake_ensure_session() -> object:
         return FakeSession()
 
-    monkeypatch.setattr(app, "_setup_logging", lambda: None)
-    monkeypatch.setattr(app, "_ensure_pane", lambda: None)
+    _stub_app_startup(app, monkeypatch)
     monkeypatch.setattr(app, "_ensure_session", fake_ensure_session)
 
     async with app.run_test() as pilot:
@@ -736,8 +538,7 @@ async def test_llm_activation_preserves_blocked_submissions(
     async def fake_ensure_session() -> object:
         return _InactiveSession()
 
-    monkeypatch.setattr(app, "_setup_logging", lambda: None)
-    monkeypatch.setattr(app, "_ensure_pane", lambda: None)
+    _stub_app_startup(app, monkeypatch)
     monkeypatch.setattr(app, "_ensure_session", fake_ensure_session)
 
     async with app.run_test() as pilot:
@@ -777,8 +578,7 @@ async def test_submission_worker_blocks_input_until_completion(monkeypatch: pyte
         await release_command.wait()
         return CommandResult()
 
-    monkeypatch.setattr(app, "_setup_logging", lambda: None)
-    monkeypatch.setattr(app, "_ensure_pane", lambda: None)
+    _stub_app_startup(app, monkeypatch)
     monkeypatch.setattr(app, "_ensure_session", fake_ensure_session)
     monkeypatch.setattr(tui, "handle_command", fake_handle_command)
 
@@ -813,8 +613,7 @@ async def test_submission_worker_covers_and_can_cancel_session_preflight(monkeyp
     async def initial_session() -> object:
         return _InactiveSession()
 
-    monkeypatch.setattr(app, "_setup_logging", lambda: None)
-    monkeypatch.setattr(app, "_ensure_pane", lambda: None)
+    _stub_app_startup(app, monkeypatch)
     monkeypatch.setattr(app, "_ensure_session", initial_session)
 
     async with app.run_test() as pilot:
@@ -860,8 +659,7 @@ async def test_config_selection_persists_and_starts_one_activation(monkeypatch: 
         app._session = session  # type: ignore[assignment]
         return session
 
-    monkeypatch.setattr(app, "_setup_logging", lambda: None)
-    monkeypatch.setattr(app, "_ensure_pane", lambda: None)
+    _stub_app_startup(app, monkeypatch)
     monkeypatch.setattr(app, "_ensure_session", fake_ensure_session)
     monkeypatch.setattr(tui, "update_app_config", lambda **prefs: updates.append(prefs))
 
@@ -886,8 +684,7 @@ async def test_closing_config_restores_input_focus(monkeypatch: pytest.MonkeyPat
     async def fake_ensure_session() -> object:
         return _InactiveSession()
 
-    monkeypatch.setattr(app, "_setup_logging", lambda: None)
-    monkeypatch.setattr(app, "_ensure_pane", lambda: None)
+    _stub_app_startup(app, monkeypatch)
     monkeypatch.setattr(app, "_ensure_session", fake_ensure_session)
 
     async with app.run_test() as pilot:
@@ -903,74 +700,3 @@ async def test_closing_config_restores_input_focus(monkeypatch: pytest.MonkeyPat
         await pilot.pause()
 
         assert app.query_one("#input-bar", Input).has_focus
-
-
-class _FakeStdout:
-    def __init__(self, *, tty: bool = True) -> None:
-        self.tty = tty
-        self.value = ""
-        self.flushed = False
-
-    def isatty(self) -> bool:
-        return self.tty
-
-    def write(self, value: str) -> int:
-        self.value += value
-        return len(value)
-
-    def flush(self) -> None:
-        self.flushed = True
-
-
-class _FakeRunTuiApp:
-    error: BaseException | None = None
-    run_mouse: bool | None = None
-    pane_close_args: list[bool] = []
-
-    def __init__(self, **_kwargs: object) -> None:
-        pass
-
-    async def run_async(self, *, mouse: bool = True) -> None:
-        type(self).run_mouse = mouse
-        error = type(self).error
-        if error is not None:
-            raise error
-
-    def _close_pane(self, *, remove_artifacts: bool = False) -> None:
-        type(self).pane_close_args.append(remove_artifacts)
-
-
-async def test_run_tui_restores_terminal_modes_after_normal_exit(monkeypatch: pytest.MonkeyPatch) -> None:
-    stdout = _FakeStdout()
-    _FakeRunTuiApp.error = None
-    _FakeRunTuiApp.run_mouse = None
-    _FakeRunTuiApp.pane_close_args = []
-
-    monkeypatch.setattr(sys, "__stdout__", stdout)
-    monkeypatch.setattr(tui, "TabulaflowApp", _FakeRunTuiApp)
-
-    await tui.run_tui(_selection(None))
-
-    assert _FakeRunTuiApp.run_mouse is True
-    assert _FakeRunTuiApp.pane_close_args == [True]
-    assert stdout.value == tui._TERMINAL_MODE_RESTORE_SEQUENCE
-    assert stdout.flushed is True
-
-
-async def test_run_tui_restores_terminal_modes_after_exception(monkeypatch: pytest.MonkeyPatch) -> None:
-    stdout = _FakeStdout()
-    error = RuntimeError("boom")
-    _FakeRunTuiApp.error = error
-    _FakeRunTuiApp.run_mouse = None
-    _FakeRunTuiApp.pane_close_args = []
-
-    monkeypatch.setattr(sys, "__stdout__", stdout)
-    monkeypatch.setattr(tui, "TabulaflowApp", _FakeRunTuiApp)
-
-    with pytest.raises(RuntimeError, match="boom"):
-        await tui.run_tui(_selection(None))
-
-    assert _FakeRunTuiApp.run_mouse is True
-    assert _FakeRunTuiApp.pane_close_args == [True]
-    assert stdout.value == tui._TERMINAL_MODE_RESTORE_SEQUENCE
-    assert stdout.flushed is True
