@@ -678,53 +678,47 @@ Aug 26
 Aug 27
 - [x] app layer cleanup
 - [ ] research layer cleanup
-- [ ] dataclasses cleanup
+- [x] dataclasses cleanup
 
 Aug 28
 - [ ] research layer cleanup
 - [ ] tests cleanup
 
 
+- Multimodal
+  - [ ] Pasting images
+  - [ ] Media in tables
+
+- [ ] Context percentage and Context compaction
+- [ ] Inline artifact citation
+- [ ] code diff rendering
+- [ ] IMPORTANT: decouple data and rendered format (show unit "cm" while still enabling sorting by value)
+- [ ] Subagent reuse
+- [ ] TUI
+  - [ ] Do not auto-scroll when browsing old turns
+  - [ ] Onboarding - browser install
+- [ ] Bump pydantic-ai to 2.0 and type llm.py
+- [ ] Show pending turns in output pane
+
 - [ ] Shell messed up after ssh disconnect
 - [ ] Check if uv tool install install browser
 
-
 - [ ] Issue: schema introspection silently fail for structual failure
-- [ ] Bug: parallel tool call in a turn keep spinning until last tool finish?
-- [ ] Scrolling and typing slow in long conversation (50+ turns)
 - [ ] Data provenance
 - [ ] "result" -> "response", Escape go to last viewed response
 - [ ] Fix copy icon checkmark bg
 - [ ] Bell icon when finished
-- [ ] Context compaction
-- Multimodal
-  - [ ] Pasting images
-  - [ ] Media in tables
-- [ ] Line number for TUI code block? sublime theme?
-- [ ] Include Cypher
-- [ ] code diff rendering
-- [ ] Inline artifact citation
-- [ ] IMPORTANT: decouple data and rendered format (show unit "cm" while still enabling sorting by value)
-- [ ] Subagent reuse
+
 - [ ] Debug /Users/yanlinf/.tabulaflow/sessions/20260716T222109Z-be2c/trajectories/trajectory.md
 
-- [ ] Other config options - concurrency
 - [ ] Gemini levels - no xhigh
 - [ ] Fireworks preset
 - [ ] Kushan: better error message for /connect failure
 - [ ] put removed stale tables in workspace in a user-invisible schema rather than deleting
 - [ ] Schema browser for very large db (1000+ tables/columns)
-
 - [ ] View menu location?
-
-
-- [ ] TUI
-  - [ ] Do not auto-scroll when browsing old turns
-  - [ ] Onboarding - browser install
-
-- [x] Image rendering in output pane -> defered
 - [ ] web_fetch tool for static html
-- [ ] Bump pydantic-ai to 2.0 and type llm.py
+
 
 - [ ] Context compaction
 
@@ -745,13 +739,9 @@ Aug 28
 - [ ] Auto-close old tab on re-navigate
 - [ ] Handle records with empty results or zero-row results
 - [ ] One-time subagent tool
-
 - [ ] Bash tool
 - [ ] Partial trajectory when exeption during agent turn
 - [ ] Captcha
-- [ ] View stepper - dont switch other record's view
-- [ ] Subagent context re-use!
-
 - General
   - [ ] Table readiblity: small table -> readible (e.g. KB, MB, GB), large table -> normalized
   - [ ] Improve transfer_record?
@@ -893,9 +883,9 @@ if __name__ == "__main__":
 We also provide the [run_model.py](tabulaflow/run_model.py) and [evaluate.py](tabulaflow/evaluate.py) scripts for convenience:
 
 ```bash
-uv run tabulaflow/research/pipelines/run_agent.py --agent schema_linking --dataset bird-sql --llm "openai:gpt-4o-mini" --result_dir output/test/ --debug
-uv run tabulaflow/research/pipelines/populate_exec_results.py --result_dir output/test/
-uv run tabulaflow/research/pipelines/evaluate.py --result_dir output/test/
+uv run tabulaflow/research/pipelines/run_agent.py --agent schema_linking --dataset bird-sql --llm "openai:gpt-4o-mini" --output-dir output/test/ --debug
+uv run tabulaflow/research/pipelines/populate_exec_results.py output/test/
+uv run tabulaflow/research/pipelines/evaluate.py output/test/
 ```
 
 ## Project Structure
