@@ -1,10 +1,10 @@
 import argparse
 import os
-from tabulaflow.research.metrics.utils import get_default_metric
+from tabulaflow.research.benchmarks import dataset_registry
 from tabulaflow.research.types import NL2QRunResult
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("result_dir_a")
     parser.add_argument("result_dir_b")
@@ -18,7 +18,7 @@ def main():
     with open(os.path.join(args.result_dir_b, "result.json"), "r") as f:
         result_b = NL2QRunResult.model_validate_json(f.read())
 
-    metric = args.metric or get_default_metric(result_a.dataset)
+    metric = args.metric or dataset_registry.get_class(result_a.dataset).default_metrics[0]
 
     a_better = []
     b_better = []

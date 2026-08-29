@@ -4,12 +4,15 @@ from typing import Any, ClassVar
 from tabulaflow.research.types import NL2QTaskOutput
 from tabulaflow.data import DBConnector
 from tabulaflow.research.metrics.registry import metric_registry
-from tabulaflow.research.metrics.utils import get_final_pred_query, get_final_gold_query
+from tabulaflow.research.metrics.utils import get_final_gold_query, get_final_pred_query
 
 
 # Borrowed from https://github.com/xlang-ai/Spider2/blob/main/spider2-snow/evaluation_suite/evaluate.py
 def compare_multi_pandas_table(
-    pred: pd.DataFrame, multi_gold: list[pd.DataFrame], multi_condition_cols: Any = [], ignore_order: bool = False
+    pred: pd.DataFrame,
+    multi_gold: list[pd.DataFrame],
+    multi_condition_cols: Any = None,
+    ignore_order: bool = False,
 ) -> float:
     if (
         multi_condition_cols == []
@@ -30,16 +33,18 @@ def compare_multi_pandas_table(
 
 # Borrowed from https://github.com/xlang-ai/Spider2/blob/main/spider2-snow/evaluation_suite/evaluate.py
 def compare_pandas_table(
-    pred: pd.DataFrame, gold: pd.DataFrame, condition_cols: list[int] = [], ignore_order: bool = False
+    pred: pd.DataFrame,
+    gold: pd.DataFrame,
+    condition_cols: list[int] | None = None,
+    ignore_order: bool = False,
 ) -> float:
-    """_summary_
+    """Return whether predicted columns match the required gold columns.
 
     Args:
-        pred (Dataframe): _description_
-        gold (Dataframe): _description_
-        condition_cols (list, optional): _description_. Defaults to [].
-        ignore_order (bool, optional): _description_. Defaults to False.
-
+        pred: Predicted query result.
+        gold: Gold query result.
+        condition_cols: Gold column indices that must be matched. ``None`` means all.
+        ignore_order: Whether row order should be ignored.
     """
     tolerance = 1e-2
 
@@ -61,7 +66,7 @@ def compare_pandas_table(
                 return False
         return True
 
-    if condition_cols != []:
+    if condition_cols:
         gold_cols = gold.iloc[:, condition_cols]
     else:
         gold_cols = gold
@@ -88,12 +93,15 @@ class Spider2Ex:
         if pred_query is None:
             return 0.0
 
-        if pred_query.exec_result.df is None:  # type: ignore
+        assert pred_query.exec_result is not None and gold_query.exec_result is not None
+        pred_df = pred_query.exec_result.df
+        if pred_df is None:
             return 0.0
 
-        pred_df = pred_query.exec_result.df  # type: ignore
-
-        gold_dfs = [gold_query.exec_result.df]  # type: ignore
+        gold_df = gold_query.exec_result.df
+        if gold_df is None:
+            return 0.0
+        gold_dfs = [gold_df]
         condition_cols = [gold_query.required_columns or []]
         for alt_result in gold_query.alternative_results:
             gold_dfs.append(alt_result.df)

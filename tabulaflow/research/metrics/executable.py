@@ -15,4 +15,5 @@ class Executable:
         if pred_query is None:
             return 0.0
 
-        return float(pred_query.exec_result.df is not None)  # type: ignore
+        assert pred_query.exec_result is not None
+        return float(pred_query.exec_result.df is not None)

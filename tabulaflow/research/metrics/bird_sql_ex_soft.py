@@ -4,7 +4,7 @@ from itertools import combinations
 from tabulaflow.research.types import NL2QTaskOutput
 from tabulaflow.data import DBConnector
 from tabulaflow.research.metrics.registry import metric_registry
-from tabulaflow.research.metrics.utils import get_final_pred_query, get_final_gold_query
+from tabulaflow.research.metrics.utils import get_final_gold_query, get_final_pred_query
 
 _MAX_COLUMN_COMBINATIONS = 1000
 
@@ -51,11 +51,14 @@ class BirdSQLExSoft:
         if pred_query is None:
             return 0.0
 
-        if pred_query.exec_result.df is None or gold_query.exec_result.df is None:  # type: ignore
+        assert pred_query.exec_result is not None and gold_query.exec_result is not None
+        pred_df = pred_query.exec_result.df
+        gold_df = gold_query.exec_result.df
+        if pred_df is None or gold_df is None:
             return 0.0
 
-        pred_executed = [row for row in pred_query.exec_result.df.itertuples(index=False, name=None)]  # type: ignore
-        gold_executed = [row for row in gold_query.exec_result.df.itertuples(index=False, name=None)]  # type: ignore
+        pred_executed = list(pred_df.itertuples(index=False, name=None))
+        gold_executed = list(gold_df.itertuples(index=False, name=None))
         if self._compare(pred_executed, gold_executed) == 1.0:
             return 1.0
         return 0.0

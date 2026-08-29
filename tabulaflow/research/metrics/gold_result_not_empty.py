@@ -12,4 +12,6 @@ class GoldResultNotEmpty:
 
     async def compute_async(self, task: NL2QTaskOutput, db_connector: DBConnector | None = None) -> float:
         gold_query = get_final_gold_query(task)
-        return float(gold_query.exec_result.df is not None and len(gold_query.exec_result.df) > 0)  # type: ignore
+        assert gold_query.exec_result is not None
+        df = gold_query.exec_result.df
+        return float(df is not None and not df.empty)

@@ -4,7 +4,7 @@ from typing import Any, ClassVar
 from tabulaflow.research.types import NL2QTaskOutput
 from tabulaflow.data import DBConnector
 from tabulaflow.research.metrics.registry import metric_registry
-from tabulaflow.research.metrics.utils import get_final_pred_query, get_final_gold_query
+from tabulaflow.research.metrics.utils import get_final_gold_query, get_final_pred_query
 
 
 @metric_registry.register
@@ -111,14 +111,15 @@ class SimpleEx:
         if pred_query is None:
             return 0.0
 
-        if pred_query.exec_result.df is None:  # type: ignore
+        assert pred_query.exec_result is not None and gold_query.exec_result is not None
+        pred_df = pred_query.exec_result.df
+        gold_df = gold_query.exec_result.df
+        if pred_df is None or gold_df is None:
             return 0.0
-
-        pred_df = pred_query.exec_result.df  # type: ignore
 
         if self._compare_df(
             pred_df,
-            gold_query.exec_result.df,  # type: ignore
+            gold_df,
             required_columns=gold_query.required_columns,
             required_sorted=gold_query.required_sorted,
         ):
