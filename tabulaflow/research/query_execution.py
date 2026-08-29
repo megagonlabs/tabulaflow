@@ -3,7 +3,36 @@
 import asyncio
 
 from tabulaflow.data import DBConnector
-from tabulaflow.research.types import GoldQuery, NL2QTask, NL2QTaskOutput, PredQuery
+from tabulaflow.research.types import (
+    AmbigNL2QTask,
+    FlatAmbigNL2QTaskOutput,
+    GoldQuery,
+    NL2QTask,
+    NL2QTaskOutput,
+    PredQuery,
+    SimpleAmbigNL2QTaskOutput,
+    SimpleNL2QTask,
+    SimpleNL2QTaskOutput,
+    StructuredAmbigNL2QTaskOutput,
+)
+
+
+def _task_queries(task: NL2QTask | NL2QTaskOutput) -> list[GoldQuery | PredQuery]:
+    if isinstance(task, SimpleNL2QTask):
+        queries: list[GoldQuery | PredQuery] = [task.gold_query]
+        if isinstance(task, SimpleNL2QTaskOutput) and task.pred_query is not None:
+            queries.append(task.pred_query)
+        return queries
+
+    if isinstance(task, AmbigNL2QTask):
+        queries = list(task.gold_queries)
+        if isinstance(task, SimpleAmbigNL2QTaskOutput) and task.pred_intended_query is not None:
+            queries.append(task.pred_intended_query)
+        elif isinstance(task, (FlatAmbigNL2QTaskOutput, StructuredAmbigNL2QTaskOutput)):
+            queries.extend(task.pred_queries)
+        return queries
+
+    return []
 
 
 async def populate_query_exec_result(
@@ -13,16 +42,18 @@ async def populate_query_exec_result(
     force: bool = False,
 ) -> None:
     """Execute a query and attach its result unless one is already present."""
+    if query.query is None:
+        return
     if query.exec_result is not None and not force:
         return
     if timeout is None:
         query.exec_result = await db_connector.run_query_async(
-            query.query,  # type: ignore[arg-type]
+            query.query,
             parameters=query.parameter_values,
         )
     else:
         query.exec_result = await db_connector.run_query_async(
-            query.query,  # type: ignore[arg-type]
+            query.query,
             parameters=query.parameter_values,
             timeout=timeout,
         )
@@ -35,16 +66,6 @@ async def populate_task_exec_results(
     force: bool = False,
 ) -> None:
     """Execute missing gold and predicted queries attached to one task."""
-    if task.task_type == "dbt":
-        return
-
-    for prefix in ("gold", "pred"):
-        queries = []
-        if query := getattr(task, f"{prefix}_query", None):
-            queries.append(query)
-        if intended_query := getattr(task, f"{prefix}_intended_query", None):
-            queries.append(intended_query)
-        if query_list := getattr(task, f"{prefix}_queries", None):
-            queries.extend(query_list)
-
-        await asyncio.gather(*(populate_query_exec_result(query, db_connector, timeout, force) for query in queries))
+    await asyncio.gather(
+        *(populate_query_exec_result(query, db_connector, timeout, force) for query in _task_queries(task))
+    )
