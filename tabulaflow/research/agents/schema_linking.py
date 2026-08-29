@@ -52,20 +52,6 @@ class SchemaLinkingContext(TaskRunContext):
     few_shot_examples: list[SimpleNL2QTask] = field(default_factory=list)
 
 
-# <resolving_ambiguity>
-# Always try to identify the ambiguities in the question before writing queries:
-# - If a term or phrase is ambiguous, explicitly reason about all possible interpretations and select the most likely one.
-# - You may execute multiple alternative queries and choose the most reasonable one based on the execution results.
-# - Do not ask the user clarification questions. Proceed using the information provided and resolve the ambiguity yourself.
-# - The most common forms of ambiguity are:
-#   - Column Ambiguity: A term in the question can map to multiple possible columns.
-#   - Table Ambiguity: A referenced entity can map to more than one table.
-#   - Value Ambiguity: Query terms can match multiple values in a column, or describe vague concepts without clear boundaries.
-#   - Computation Ambiguity: Required operations or metrics can be computed in multiple legitimate ways, producing distinct results.
-# - If there is no ambiguity, acknowledge in your reasoning that the question is unambiguous.
-# </resolving_ambiguity>
-
-
 SCHEMA_LINKING_SYSTEM_PROMPT = """
 You a helpful AI database expert that writes {{language}} queries given a user question.
 
@@ -177,8 +163,6 @@ class SchemaLinker:
         db_connector = ctx.db_connector
 
         tools: dict[str, AgentTool] = {
-            # "get_schema": GetSchemaTool(ctx.preprocessed_schema, ctx.schema_formatter),
-            # "get_column_description": GetColumnDescriptionTool(ctx.preprocessed_schema),
             "search_keywords": SearchKeywordsTool(db_connector),
             "run_query": RunQueryTool(db_connector),
             "finish": FinishTool(),
@@ -267,7 +251,6 @@ class SchemaLinker:
             return ctx.preprocessed_schema
 
         pred_query = await self._generate_sql_async(ctx, task)
-        # pred_query = ctx.task.gold_query
 
         source_columns = set(
             (c[0].lower(), c[1].lower())
@@ -479,19 +462,6 @@ class SchemaLinkingAgent:
         ctx.usage += schema_preprocessor.usage()
         ctx.usage += question_embedder.usage()
 
-        ##### Remove #####
-        # if hasattr(task, "pred_query") and task.pred_query is not None:
-        #     from tabulaflow.research.benchmarks.bird_sql import BIRD_DATASET_INSTRUCTIONS
-
-        #     task.dataset_instructions = BIRD_DATASET_INSTRUCTIONS
-        #     postprocessed_pred_query = await self.postprocessor.postprocess_async(
-        #         ctx, task, task.extra_pred_info.raw_pred_query
-        #     )
-        #     task.pred_query = postprocessed_pred_query
-        #     task.trajectory = ctx.trajectories
-        #     return task
-        ##################
-
         if self.schema_linker is not None:
             linked_schema = await self.schema_linker.link_schema_async(ctx, task)
         else:
@@ -499,8 +469,6 @@ class SchemaLinkingAgent:
         linked_er_diagram = ctx.er_diagram.trim(linked_schema.table_refs(), case_insensitive=True)  # type: ignore
 
         tools: dict[str, AgentTool] = {
-            # "get_schema": GetSchemaTool(linked_schema, self.formatter),
-            # "get_column_description": GetColumnDescriptionTool(linked_schema),
             "search_keywords": SearchKeywordsTool(db_connector),
             "run_query": RunQueryTool(db_connector),
             "finish": FinishTool(),

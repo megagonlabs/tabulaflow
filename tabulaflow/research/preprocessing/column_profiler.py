@@ -59,7 +59,6 @@ class ColumnProfiler:
         system_prompt = jinja2.Template(COLUMN_PROFILER_SYSTEM_PROMPT).render(
             schema=self.formatter.format(schema, include_descriptions=True)
         )
-        # run_query_tool = RunQueryNoParamsTool(db_connector)
         agent = make_agent(
             self.llm,
             output_type=LLMOutput,
