@@ -2,7 +2,6 @@ import argparse
 import collections
 import time
 import asyncio
-import logging
 from typing import Any
 from tqdm.asyncio import tqdm_asyncio
 from tabulaflow.research.benchmarks.registry import dataset_registry
@@ -66,7 +65,6 @@ async def main_async() -> None:
     parser.add_argument("--db-summarizer-llm", default=None)
 
     parser.add_argument("--overwrite", action="store_true")
-    parser.add_argument("--debug", action="store_true")
     args = parser.parse_args()
     if args.split is None:
         args.split = "test" if args.dataset == "spider2-snow" else "dev"
@@ -74,7 +72,6 @@ async def main_async() -> None:
     print()
 
     initialize_agent_runtime(AgentRuntimeConfig(preprocessing_cache_mode="refresh" if args.overwrite else "read_write"))
-    logging.basicConfig(level=logging.DEBUG if args.debug else logging.WARNING)
     configure_research_observability()
 
     t0 = time.time()

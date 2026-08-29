@@ -1,6 +1,5 @@
 import argparse
 import asyncio
-import logging
 import os
 import time
 from tqdm.asyncio import tqdm_asyncio
@@ -60,13 +59,10 @@ async def main_async() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("result_dir", nargs="?", default="output/test/")
     parser.add_argument("--batch-size", type=int, default=8)
-    parser.add_argument("--debug", action="store_true")
     parser.add_argument("--metrics", nargs="+", default=None)
     args = parser.parse_args()
     print(args)
     print()
-
-    logging.basicConfig(level=logging.DEBUG if args.debug else logging.WARNING)
 
     with open(os.path.join(args.result_dir, "result.json"), "r") as f:
         result = NL2QRunResult.model_validate_json(f.read())

@@ -1,5 +1,4 @@
 import argparse
-import logging
 import time
 import asyncio
 import os
@@ -38,12 +37,9 @@ async def main_async() -> None:
     parser.add_argument("--timeout", type=int, default=None)
     parser.add_argument("--force", action="store_true")
     parser.add_argument("--no-query-cache", action="store_true", help="Disable query result cache for this run")
-    parser.add_argument("--debug", action="store_true")
     args = parser.parse_args()
     print(args)
     print()
-
-    logging.basicConfig(level=logging.DEBUG if args.debug else logging.WARNING)
 
     with open(os.path.join(args.result_dir, "result.json"), "r") as f:
         result = NL2QRunResult.model_validate_json(f.read())

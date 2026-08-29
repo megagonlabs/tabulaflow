@@ -58,7 +58,7 @@ async def run_agent_async(
     dataset: NL2QDataset,
     batch_size: int,
     few_shot_dataset: NL2QDataset | None = None,
-    result_dir: str = "output/test/",
+    output_dir: str = "output/test/",
     metric_aggregators: list[MetricAggregatorProtocol] | None = None,
     verbose: bool = True,
 ) -> NL2QRunResult:
@@ -68,7 +68,7 @@ async def run_agent_async(
         logger.warning("API cost for %s is 0.0. Cost calculation might not be supported.", agent_config.llm)
 
     if dataset.name == "spider2-dbt":
-        await prepare_working_env_async(dataset, result_dir)
+        await prepare_working_env_async(dataset, output_dir)
 
     start_time = datetime.datetime.now()
     task_outputs = []
@@ -199,7 +199,6 @@ async def main_async() -> None:
     general.add_argument("--batch-size", type=int, default=8)
     general.add_argument("--output-dir", default="output/test/")
     general.add_argument("--overwrite", action="store_true")
-    general.add_argument("--debug", action="store_true")
 
     dataset_options = parser.add_argument_group("dataset selection")
     dataset_options.add_argument("--dataset", default="bird-sql")
@@ -258,7 +257,6 @@ async def main_async() -> None:
     print(args)
     print()
 
-    logging.basicConfig(level=logging.DEBUG if args.debug else logging.WARNING)
     configure_research_observability()
 
     if os.path.exists(args.output_dir):
@@ -283,13 +281,6 @@ async def main_async() -> None:
     )
     if args.qids is not None:
         dataset.tasks = [task for task in dataset.tasks if task.qid in args.qids]
-    elif args.debug:
-        dataset.tasks = dataset.tasks[:5]
-        dataset.db_connectors = {
-            key: connector
-            for key, connector in dataset.db_connectors.items()
-            if any(key == task.db for task in dataset.tasks)
-        }
 
     print(
         f"Loaded {len(dataset.tasks)} tasks and {len(dataset.db_connectors)} databases from {args.dataset} ({args.split}) in {time.time() - t0:.2f} seconds."
@@ -319,7 +310,7 @@ async def main_async() -> None:
         dataset=dataset,
         few_shot_dataset=few_shot_dataset,
         batch_size=args.batch_size,
-        result_dir=args.output_dir,
+        output_dir=args.output_dir,
         verbose=True,
     )
     print()

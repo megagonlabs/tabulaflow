@@ -182,12 +182,10 @@ async def main_async() -> None:
     parser.add_argument("--max-steps", type=int, default=None, help="Maximum agent steps (agent ensembler only).")
     parser.add_argument("--batch-size", type=int, default=8)
     parser.add_argument("--overwrite", action="store_true")
-    parser.add_argument("--debug", action="store_true")
     args = parser.parse_args()
     print(args)
     print()
 
-    logging.basicConfig(level=logging.DEBUG if args.debug else logging.WARNING)
     configure_research_observability()
 
     if os.path.exists(args.output_dir):
