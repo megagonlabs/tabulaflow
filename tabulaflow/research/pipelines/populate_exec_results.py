@@ -1,4 +1,5 @@
 import argparse
+import logging
 import time
 import asyncio
 import os
@@ -37,7 +38,9 @@ async def main_async() -> None:
     parser.add_argument("--timeout", type=int, default=None)
     parser.add_argument("--force", action="store_true")
     parser.add_argument("--no-query-cache", action="store_true", help="Disable query result cache for this run")
+    parser.add_argument("--log-level", type=str.upper, choices=["DEBUG", "INFO", "WARNING", "ERROR"], default="WARNING")
     args = parser.parse_args()
+    logging.basicConfig(level=args.log_level)
     print(args)
     print()
 

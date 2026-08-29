@@ -182,7 +182,9 @@ async def main_async() -> None:
     parser.add_argument("--max-steps", type=int, default=None, help="Maximum agent steps (agent ensembler only).")
     parser.add_argument("--batch-size", type=int, default=8)
     parser.add_argument("--overwrite", action="store_true")
+    parser.add_argument("--log-level", type=str.upper, choices=["DEBUG", "INFO", "WARNING", "ERROR"], default="WARNING")
     args = parser.parse_args()
+    logging.basicConfig(level=args.log_level)
     print(args)
     print()
 

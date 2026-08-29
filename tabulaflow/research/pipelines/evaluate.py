@@ -1,5 +1,6 @@
 import argparse
 import asyncio
+import logging
 import os
 import time
 from tqdm.asyncio import tqdm_asyncio
@@ -60,7 +61,9 @@ async def main_async() -> None:
     parser.add_argument("result_dir", nargs="?", default="output/test/")
     parser.add_argument("--batch-size", type=int, default=8)
     parser.add_argument("--metrics", nargs="+", default=None)
+    parser.add_argument("--log-level", type=str.upper, choices=["DEBUG", "INFO", "WARNING", "ERROR"], default="WARNING")
     args = parser.parse_args()
+    logging.basicConfig(level=args.log_level)
     print(args)
     print()
 

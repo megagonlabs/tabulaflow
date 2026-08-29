@@ -199,6 +199,9 @@ async def main_async() -> None:
     general.add_argument("--batch-size", type=int, default=8)
     general.add_argument("--output-dir", default="output/test/")
     general.add_argument("--overwrite", action="store_true")
+    general.add_argument(
+        "--log-level", type=str.upper, choices=["DEBUG", "INFO", "WARNING", "ERROR"], default="WARNING"
+    )
 
     dataset_options = parser.add_argument_group("dataset selection")
     dataset_options.add_argument("--dataset", default="bird-sql")
@@ -237,6 +240,7 @@ async def main_async() -> None:
     ambiguity.add_argument("--user-patience", default=None)
 
     args = parser.parse_args()
+    logging.basicConfig(level=args.log_level)
     if args.split is None:
         args.split = "test" if args.dataset in {"spider2-snow", "spider2-dbt", "arcs", "cypherbench"} else "dev"
     if args.schema_formatter is None:

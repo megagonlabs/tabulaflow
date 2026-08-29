@@ -2,6 +2,7 @@ import argparse
 import collections
 import time
 import asyncio
+import logging
 from typing import Any
 from tqdm.asyncio import tqdm_asyncio
 from tabulaflow.research.benchmarks.registry import dataset_registry
@@ -65,7 +66,9 @@ async def main_async() -> None:
     parser.add_argument("--db-summarizer-llm", default=None)
 
     parser.add_argument("--overwrite", action="store_true")
+    parser.add_argument("--log-level", type=str.upper, choices=["DEBUG", "INFO", "WARNING", "ERROR"], default="WARNING")
     args = parser.parse_args()
+    logging.basicConfig(level=args.log_level)
     if args.split is None:
         args.split = "test" if args.dataset == "spider2-snow" else "dev"
     print(args)
