@@ -161,9 +161,6 @@ class Spider2LiteDatasetLoader:
             raise ValueError(f"Split {split} not supported, only {self.splits} are supported for {self.name}")
 
         jsonl_path = os.path.join(self.directory, "spider2-lite.jsonl")
-        if not os.path.exists(jsonl_path):
-            return []
-
         with open(jsonl_path, "r") as f:
             dbs = list(dict.fromkeys([json.loads(line)["db"] for line in f]))
             dbs = [db for db in dbs if db not in EXCLUDE_DBS]
@@ -175,23 +172,19 @@ class Spider2LiteDatasetLoader:
 
         databases = databases or self.get_databases(split)
         jsonl_path = os.path.join(self.directory, "spider2-lite.jsonl")
-        if not os.path.exists(jsonl_path):
-            return []
-
         eval_dir = os.path.join(self.directory, "evaluation_suite", "gold")
         exec_result_dir = os.path.join(eval_dir, "exec_result")
-        all_gold_exec_result_files = os.listdir(exec_result_dir) if os.path.isdir(exec_result_dir) else []
+        all_gold_exec_result_files = os.listdir(exec_result_dir)
 
         eval_standard_file = os.path.join(eval_dir, "spider2lite_eval.jsonl")
         eval_standard: dict[str, Any] = {}
-        if os.path.exists(eval_standard_file):
-            with open(eval_standard_file, "r") as f:
-                for line in f:
-                    eval_item = json.loads(line)
-                    qid = eval_item.pop("instance_id")
-                    if qid in EVAL_STANDARD_PATCHES:
-                        eval_item.update(EVAL_STANDARD_PATCHES[qid])
-                    eval_standard[qid] = eval_item
+        with open(eval_standard_file, "r") as f:
+            for line in f:
+                eval_item = json.loads(line)
+                qid = eval_item.pop("instance_id")
+                if qid in EVAL_STANDARD_PATCHES:
+                    eval_item.update(EVAL_STANDARD_PATCHES[qid])
+                eval_standard[qid] = eval_item
 
         tasks = []
         with open(jsonl_path, "r") as f:
@@ -220,6 +213,10 @@ class Spider2LiteDatasetLoader:
                 pattern = re.compile(rf"^{re.escape(item['instance_id'])}(_[a-z])?\.csv$")
                 gold_exec_result_files = [f for f in all_gold_exec_result_files if re.match(pattern, f)]
                 gold_exec_result_files = sorted(gold_exec_result_files)
+                if not gold_exec_result_files:
+                    raise FileNotFoundError(
+                        f"No gold execution result found for {item['instance_id']} in {exec_result_dir}"
+                    )
                 gold_exec_results = []
                 for file in gold_exec_result_files:
                     with open(os.path.join(exec_result_dir, file), "r") as rf:
@@ -229,30 +226,25 @@ class Spider2LiteDatasetLoader:
                 if not condition_cols or not isinstance(condition_cols[0] if condition_cols else None, list):
                     condition_cols = [condition_cols for _ in range(max(1, len(gold_exec_results)))]
 
-                if gold_exec_results:
-                    if len(condition_cols) != len(gold_exec_results):
-                        raise ValueError(
-                            f"Length of condition_cols and number of CSV files do not match for {item['instance_id']}"
-                        )
-                    # Primary: use full DataFrame (no condition_cols at load).
-                    # required_columns = condition_cols[0] so spider2_ex applies it at eval time.
-                    primary = ExecResult(df=gold_exec_results[0])
-                    primary_required_columns = condition_cols[0] if condition_cols[0] else None
-                    filtered_alternatives = []
-                    for df, cols in zip(gold_exec_results[1:], condition_cols[1:]):
-                        if cols:
-                            if any(c >= len(df.columns) for c in cols):
-                                raise ValueError(
-                                    f"A column index in condition_cols is out of range for {item['instance_id']}"
-                                )
-                            filtered_alternatives.append(df.iloc[:, cols])
-                        else:
-                            filtered_alternatives.append(df)
-                    alternatives = [ExecResult(df=df) for df in filtered_alternatives]
-                else:
-                    primary = ExecResult(df=pd.DataFrame())
-                    alternatives = []
-                    primary_required_columns = None
+                if len(condition_cols) != len(gold_exec_results):
+                    raise ValueError(
+                        f"Length of condition_cols and number of CSV files do not match for {item['instance_id']}"
+                    )
+                # Primary: use full DataFrame (no condition_cols at load).
+                # required_columns = condition_cols[0] so spider2_ex applies it at eval time.
+                primary = ExecResult(df=gold_exec_results[0])
+                primary_required_columns = condition_cols[0] if condition_cols[0] else None
+                filtered_alternatives = []
+                for df, cols in zip(gold_exec_results[1:], condition_cols[1:]):
+                    if cols:
+                        if any(c >= len(df.columns) for c in cols):
+                            raise ValueError(
+                                f"A column index in condition_cols is out of range for {item['instance_id']}"
+                            )
+                        filtered_alternatives.append(df.iloc[:, cols])
+                    else:
+                        filtered_alternatives.append(df)
+                alternatives = [ExecResult(df=df) for df in filtered_alternatives]
 
                 ignore_order = eval_standard.get(item["instance_id"], {}).get("ignore_order", False)
 

@@ -192,9 +192,6 @@ class Spider2DbtDatasetLoader:
             raise ValueError(f"Split {split} not supported, only {self.splits} are supported for {self.name}")
 
         jsonl_path = self._jsonl_path()
-        if not os.path.exists(jsonl_path):
-            return []
-
         with open(jsonl_path, "r") as f:
             dbs = list(dict.fromkeys(json.loads(line)["instance_id"] for line in f))
             return [db for db in dbs if db not in EXCLUDE_INSTANCES]
@@ -203,11 +200,10 @@ class Spider2DbtDatasetLoader:
         """Load evaluation specifications keyed by instance_id."""
         eval_path = self._eval_jsonl_path()
         specs: dict[str, dict[str, Any]] = {}
-        if os.path.exists(eval_path):
-            with open(eval_path, "r") as f:
-                for line in f:
-                    item = json.loads(line)
-                    specs[item["instance_id"]] = item.get("evaluation", {})
+        with open(eval_path, "r") as f:
+            for line in f:
+                item = json.loads(line)
+                specs[item["instance_id"]] = item.get("evaluation", {})
         return specs
 
     async def get_tasks_async(self, split: str, databases: list[str] | None = None) -> list[DbtTask]:
@@ -218,9 +214,6 @@ class Spider2DbtDatasetLoader:
         eval_specs = self._load_eval_spec()
 
         jsonl_path = self._jsonl_path()
-        if not os.path.exists(jsonl_path):
-            return []
-
         tasks: list[DbtTask] = []
         with open(jsonl_path, "r") as f:
             for line in f:
