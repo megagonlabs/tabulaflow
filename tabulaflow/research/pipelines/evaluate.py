@@ -105,6 +105,21 @@ async def main_async() -> None:
     print("Aggregated metrics:")
     print(pprint_dict(result.aggregated_eval_metrics))
 
+    print()
+    print("Task preview:")
+    primary_metric = metrics[0].name if metrics else None
+    for task in result.tasks[:10]:
+        path = os.path.join(args.result_dir, "readable", task.qid, "task_readable.md")
+        metric = (
+            f"  {primary_metric}: {task.eval_metrics[primary_metric]}"
+            if primary_metric is not None and primary_metric in task.eval_metrics
+            else ""
+        )
+        print(f"{path}{metric}")
+    remaining = len(result.tasks) - 10
+    if remaining > 0:
+        print(f"{remaining:,} more tasks are available in result_summary.csv, readable/, and result.json")
+
 
 if __name__ == "__main__":
     asyncio.run(main_async())
