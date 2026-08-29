@@ -681,9 +681,10 @@ Aug 27
 - [x] dataclasses cleanup
 
 Aug 28
-- [ ] research layer cleanup
-- [ ] tests cleanup
+- [x] research layer cleanup
+- [x] tests cleanup
 
+- [ ] Speedup tests
 - [ ] Benchmark download
 - Multimodal
   - [ ] Pasting images
