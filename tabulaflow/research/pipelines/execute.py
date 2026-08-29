@@ -11,7 +11,7 @@ from tabulaflow.research.types import NL2QRunResult, NL2QDataset
 from tabulaflow.data import Neo4jConnectorConfig, SQLConnectorConfig
 
 
-async def populate_exec_results_async(
+async def execute_async(
     result: NL2QRunResult,
     dataset: NL2QDataset,
     batch_size: int,
@@ -79,7 +79,7 @@ async def main_async() -> None:
     print(
         f"Loaded {len(dataset.db_connectors)} databases from {result.dataset} {result.split} in {time.time() - t0:.2f} seconds."
     )
-    result = await populate_exec_results_async(result, dataset, args.batch_size, args.timeout, args.force, verbose=True)
+    result = await execute_async(result, dataset, args.batch_size, args.timeout, args.force, verbose=True)
     result.to_directory(args.result_dir)
     print(f"Saved populated exec results to {args.result_dir}")
 

@@ -12,7 +12,7 @@ from tabulaflow.research.observability import configure_research_observability
 from tabulaflow.research.types import NL2QDataset
 
 
-async def preprocess_and_cache_async(
+async def preprocess_async(
     dataset: NL2QDataset,
     preprocessors: list[Any],
     verbose: bool = True,
@@ -88,7 +88,7 @@ async def main_async() -> None:
     ]
 
     t0 = time.time()
-    await preprocess_and_cache_async(dataset, preprocessors)
+    await preprocess_async(dataset, preprocessors)
     print(f"Finished preprocess and cache in {time.time() - t0:.2f} seconds.")
 
     print()

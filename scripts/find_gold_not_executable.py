@@ -3,7 +3,7 @@ import argparse
 import time
 from tqdm.asyncio import tqdm_asyncio
 from tabulaflow.research.benchmarks import dataset_registry
-from tabulaflow.research.pipelines.populate_exec_results import populate_task_async
+from tabulaflow.research.query_execution import populate_task_exec_results
 
 
 async def main() -> None:
@@ -25,7 +25,7 @@ async def main() -> None:
         j = min(i + args.batch_size, len(dataset.tasks))
         batch = dataset.tasks[i:j]
         await tqdm_asyncio.gather(
-            *[populate_task_async(task, dataset.db_connectors[task.db], force=True) for task in batch]
+            *[populate_task_exec_results(task, dataset.db_connectors[task.db], force=True) for task in batch]
         )
         print(f"{j}/{len(dataset.tasks)} tasks populated.")
 

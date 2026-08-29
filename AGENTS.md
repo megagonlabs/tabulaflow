@@ -29,8 +29,8 @@ make test-spider2-dbt-agent    # spider2-dbt with dbt_agent
 
 Pipeline scripts (used directly):
 ```bash
-uv run tabulaflow/research/pipelines/run_agent.py --agent <agent> --dataset <dataset> --output-dir output/test
-uv run tabulaflow/research/pipelines/populate_exec_results.py output/test
+uv run tabulaflow/research/pipelines/predict.py --agent <agent> --dataset <dataset> --output-dir output/test
+uv run tabulaflow/research/pipelines/execute.py output/test
 uv run tabulaflow/research/pipelines/evaluate.py output/test
 ```
 

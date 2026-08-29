@@ -1,24 +1,34 @@
-"""Outermost orchestration for running and evaluating experiments."""
+"""Outermost orchestration for research experiment stages."""
 
 
 def __getattr__(name: str) -> object:
-    if name == "run_agent_async":
-        from tabulaflow.research.pipelines.run_agent import run_agent_async
+    if name == "predict_async":
+        from tabulaflow.research.pipelines.predict import predict_async
 
-        return run_agent_async
-    if name == "populate_exec_results_async":
-        from tabulaflow.research.pipelines.populate_exec_results import populate_exec_results_async
+        return predict_async
+    if name == "execute_async":
+        from tabulaflow.research.pipelines.execute import execute_async
 
-        return populate_exec_results_async
+        return execute_async
     if name == "evaluate_async":
         from tabulaflow.research.pipelines.evaluate import evaluate_async
 
         return evaluate_async
+    if name == "ensemble_async":
+        from tabulaflow.research.pipelines.ensemble import ensemble_async
+
+        return ensemble_async
+    if name == "preprocess_async":
+        from tabulaflow.research.pipelines.preprocess import preprocess_async
+
+        return preprocess_async
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 
 __all__ = [
-    "run_agent_async",
-    "populate_exec_results_async",
+    "predict_async",
+    "execute_async",
     "evaluate_async",
+    "ensemble_async",
+    "preprocess_async",
 ]

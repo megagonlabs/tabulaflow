@@ -52,7 +52,7 @@ def get_empty_output(agent_cls: type[Any], task: NL2QTask) -> NL2QTaskOutput:
         raise ValueError(f"Unknown agent output type: {agent_cls.output_type}")
 
 
-async def run_agent_async(
+async def predict_async(
     agent_cls: type[Any],
     agent_config: BaseModel,
     dataset: NL2QDataset,
@@ -354,7 +354,7 @@ async def main_async() -> None:
     print(agent_config.model_dump_json(indent=2))
 
     t0 = time.time()
-    result = await run_agent_async(
+    result = await predict_async(
         agent_cls=agent_class,
         agent_config=agent_config,
         dataset=dataset,
