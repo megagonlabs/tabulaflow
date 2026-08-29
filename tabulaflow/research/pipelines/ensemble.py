@@ -160,7 +160,7 @@ def parse_ensembler(args: argparse.Namespace) -> Ensembler:
 async def main_async() -> None:
     parser = argparse.ArgumentParser(description="Ensemble multiple result directories.")
     parser.add_argument("result_dirs", nargs="+", help="Paths to result directories to ensemble.")
-    parser.add_argument("--output_dir", required=True, help="Path to save ensembled result.")
+    parser.add_argument("--output-dir", required=True, help="Path to save ensembled result.")
     parser.add_argument(
         "--ensembler",
         choices=["majority", "llm", "agent", "dbt_llm"],
@@ -169,18 +169,18 @@ async def main_async() -> None:
     )
     parser.add_argument("--llm", type=str, default=None, help="LLM model identifier (for llm/agent ensembler).")
     parser.add_argument("--temperature", type=float, default=None, help="Temperature for llm/agent ensembler.")
-    parser.add_argument("--reasoning_effort", default=None, help="Reasoning effort for llm/agent ensembler.")
-    parser.add_argument("--service_tier", default=None, help="Provider-neutral service tier for llm/agent ensembler.")
+    parser.add_argument("--reasoning-effort", default=None, help="Reasoning effort for llm/agent ensembler.")
+    parser.add_argument("--service-tier", default=None, help="Provider-neutral service tier for llm/agent ensembler.")
     parser.add_argument(
-        "--deduplicate_results",
+        "--deduplicate-results",
         type=bool_flag,
         nargs="?",
         const=True,
         default=True,
         help="Deduplicate candidates with identical results (llm/agent ensembler, default true).",
     )
-    parser.add_argument("--max_steps", type=int, default=None, help="Maximum agent steps (agent ensembler only).")
-    parser.add_argument("--batch_size", type=int, default=8)
+    parser.add_argument("--max-steps", type=int, default=None, help="Maximum agent steps (agent ensembler only).")
+    parser.add_argument("--batch-size", type=int, default=8)
     parser.add_argument("--overwrite", action="store_true")
     parser.add_argument("--debug", action="store_true")
     args = parser.parse_args()

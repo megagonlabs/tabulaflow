@@ -50,7 +50,6 @@ def parse_preprocessor_args(args: argparse.Namespace) -> dict[str, dict[str, Any
 
 async def main_async() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--no_preprocessing", action="store_true")
     parser.add_argument(
         "--preprocessors", nargs="+", default=["schema_preprocessor", "er_diagram_synthesizer", "db_summarizer"]
     )
@@ -61,18 +60,16 @@ async def main_async() -> None:
     parser.add_argument("--databases", default=None, nargs="+")
 
     # preprocessor configs
-    parser.add_argument("--schema_preprocessor_column_profiler_llm", default=None)
-    parser.add_argument("--schema_preprocessor_foreign_key_predictor_llm", default=None)
-    parser.add_argument("--question_embedder_embedding_llm", default=None)
-    parser.add_argument("--db_summarizer_llm", default=None)
+    parser.add_argument("--schema-preprocessor-column-profiler-llm", default=None)
+    parser.add_argument("--schema-preprocessor-foreign-key-predictor-llm", default=None)
+    parser.add_argument("--question-embedder-embedding-llm", default=None)
+    parser.add_argument("--db-summarizer-llm", default=None)
 
     parser.add_argument("--overwrite", action="store_true")
     parser.add_argument("--debug", action="store_true")
     args = parser.parse_args()
     if args.split is None:
         args.split = "test" if args.dataset == "spider2-snow" else "dev"
-    if args.debug and args.databases is None:
-        args.databases = ["california_schools"]
     print(args)
     print()
 
@@ -86,10 +83,6 @@ async def main_async() -> None:
     print(
         f"Loaded {len(dataset.tasks)} tasks and {len(dataset.db_connectors)} databases from {args.dataset} ({args.split}) in {time.time() - t0:.2f} seconds."
     )
-
-    if args.no_preprocessing:
-        print("Skipping preprocessing and caching because --no_preprocessing was set.")
-        return
 
     preprocessor_names = args.preprocessors or preprocessor_registry.list_names()
     all_preprocessor_args = parse_preprocessor_args(args)

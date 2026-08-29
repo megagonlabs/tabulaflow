@@ -58,8 +58,8 @@ async def evaluate_async(
 
 async def main_async() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--result_dir", default="output/test/")
-    parser.add_argument("--batch_size", type=int, default=8)
+    parser.add_argument("result_dir", nargs="?", default="output/test/")
+    parser.add_argument("--batch-size", type=int, default=8)
     parser.add_argument("--debug", action="store_true")
     parser.add_argument("--metrics", nargs="+", default=None)
     args = parser.parse_args()
@@ -108,17 +108,6 @@ async def main_async() -> None:
     print()
     print("Aggregated metrics:")
     print(pprint_dict(result.aggregated_eval_metrics))
-
-    if args.debug:
-        print()
-        print("=== DEBUG MODE === ")
-        primary_metric = metrics[0].name if metrics else None
-        for task in result.tasks:
-            md_path = os.path.join(args.result_dir, "readable", task.qid, "task_readable.md")
-            if primary_metric and primary_metric in task.eval_metrics:
-                print(f"{md_path}  {primary_metric}: {task.eval_metrics[primary_metric]:.4f}")
-            else:
-                print(md_path)
 
 
 if __name__ == "__main__":

@@ -37,55 +37,57 @@ test-all-python:
 	uv run --python $$(cat .python-version) python --version; \
 	echo "=== All Python versions passed ==="
 
+SMOKE_ARGS := --overwrite --output-dir output/test
+
 .PHONY: test-bird-direct-prompting
 test-bird-direct-prompting:
-	uv run tabulaflow/research/pipelines/run_agent.py --agent direct_prompting --dataset bird-sql --debug
-	uv run tabulaflow/research/pipelines/populate_exec_results.py --debug
-	uv run tabulaflow/research/pipelines/evaluate.py --debug
+	uv run tabulaflow/research/pipelines/run_agent.py --agent direct_prompting --dataset bird-sql --debug --subsample-size 5 $(SMOKE_ARGS)
+	uv run tabulaflow/research/pipelines/populate_exec_results.py output/test --debug
+	uv run tabulaflow/research/pipelines/evaluate.py output/test --debug
 
 .PHONY: test-cypherbench-full-schema
 test-cypherbench-full-schema:
-	uv run tabulaflow/research/pipelines/run_agent.py --agent full_schema --dataset cypherbench --debug
-	uv run tabulaflow/research/pipelines/populate_exec_results.py --debug
-	uv run tabulaflow/research/pipelines/evaluate.py --debug
+	uv run tabulaflow/research/pipelines/run_agent.py --agent full_schema --dataset cypherbench --debug --databases nba --subsample-size 5 $(SMOKE_ARGS)
+	uv run tabulaflow/research/pipelines/populate_exec_results.py output/test --debug
+	uv run tabulaflow/research/pipelines/evaluate.py output/test --debug
 
 .PHONY: test-spider2-schema-discovery
 test-spider2-schema-discovery:
-	uv run tabulaflow/research/pipelines/run_agent.py --agent schema_discovery --dataset spider2-snow --debug
-	uv run tabulaflow/research/pipelines/populate_exec_results.py --debug
-	uv run tabulaflow/research/pipelines/evaluate.py --debug
+	uv run tabulaflow/research/pipelines/run_agent.py --agent schema_discovery --dataset spider2-snow --debug --databases AIRLINES --subsample-size 5 $(SMOKE_ARGS)
+	uv run tabulaflow/research/pipelines/populate_exec_results.py output/test --debug
+	uv run tabulaflow/research/pipelines/evaluate.py output/test --debug
 
 .PHONY: test-bird-schema-linking
 test-bird-schema-linking:
-	uv run tabulaflow/research/pipelines/run_agent.py --agent schema_linking --dataset bird-sql --debug
-	uv run tabulaflow/research/pipelines/populate_exec_results.py --debug
-	uv run tabulaflow/research/pipelines/evaluate.py --debug
+	uv run tabulaflow/research/pipelines/run_agent.py --agent schema_linking --dataset bird-sql --debug --subsample-size 5 $(SMOKE_ARGS)
+	uv run tabulaflow/research/pipelines/populate_exec_results.py output/test --debug
+	uv run tabulaflow/research/pipelines/evaluate.py output/test --debug
 
 .PHONY: test-spider2-schema-linking
 test-spider2-schema-linking:
-	uv run tabulaflow/research/pipelines/run_agent.py --agent schema_linking --dataset spider2-snow --debug
-	uv run tabulaflow/research/pipelines/populate_exec_results.py --debug
-	uv run tabulaflow/research/pipelines/evaluate.py --debug
+	uv run tabulaflow/research/pipelines/run_agent.py --agent schema_linking --dataset spider2-snow --debug --databases AIRLINES --subsample-size 5 $(SMOKE_ARGS)
+	uv run tabulaflow/research/pipelines/populate_exec_results.py output/test --debug
+	uv run tabulaflow/research/pipelines/evaluate.py output/test --debug
 
 .PHONY: test-arcs-simple
 test-arcs-simple:
-	uv run tabulaflow/research/pipelines/run_agent.py --agent ambig_simple_sql_agent --dataset arcs --debug
-	uv run tabulaflow/research/pipelines/populate_exec_results.py --debug
-	uv run tabulaflow/research/pipelines/evaluate.py --debug
+	uv run tabulaflow/research/pipelines/run_agent.py --agent ambig_simple_sql_agent --dataset arcs --debug --subsample-size 5 $(SMOKE_ARGS)
+	uv run tabulaflow/research/pipelines/populate_exec_results.py output/test --debug
+	uv run tabulaflow/research/pipelines/evaluate.py output/test --debug
 
 .PHONY: test-arcs-flat
 test-arcs-flat:
-	uv run tabulaflow/research/pipelines/run_agent.py --agent ambig_flat_sql_agent --dataset arcs --debug
-	uv run tabulaflow/research/pipelines/populate_exec_results.py --debug
-	uv run tabulaflow/research/pipelines/evaluate.py --debug
+	uv run tabulaflow/research/pipelines/run_agent.py --agent ambig_flat_sql_agent --dataset arcs --debug --subsample-size 5 $(SMOKE_ARGS)
+	uv run tabulaflow/research/pipelines/populate_exec_results.py output/test --debug
+	uv run tabulaflow/research/pipelines/evaluate.py output/test --debug
 
 .PHONY: test-arcs-structured
 test-arcs-structured:
-	uv run tabulaflow/research/pipelines/run_agent.py --agent ambig_structured_sql_agent --dataset arcs --debug
-	uv run tabulaflow/research/pipelines/populate_exec_results.py --debug
-	uv run tabulaflow/research/pipelines/evaluate.py --debug
+	uv run tabulaflow/research/pipelines/run_agent.py --agent ambig_structured_sql_agent --dataset arcs --debug --subsample-size 5 $(SMOKE_ARGS)
+	uv run tabulaflow/research/pipelines/populate_exec_results.py output/test --debug
+	uv run tabulaflow/research/pipelines/evaluate.py output/test --debug
 
 .PHONY: test-spider2-dbt-agent
 test-spider2-dbt-agent:
-	uv run tabulaflow/research/pipelines/run_agent.py --agent dbt_agent --dataset spider2-dbt --debug
-	uv run tabulaflow/research/pipelines/evaluate.py --debug
+	uv run tabulaflow/research/pipelines/run_agent.py --agent dbt_agent --dataset spider2-dbt --debug --databases zuora001 $(SMOKE_ARGS)
+	uv run tabulaflow/research/pipelines/evaluate.py output/test --debug

@@ -33,8 +33,8 @@ async def populate_exec_results_async(
 
 async def main_async() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--result_dir", default="output/test/")
-    parser.add_argument("--batch_size", type=int, default=8)
+    parser.add_argument("result_dir", nargs="?", default="output/test/")
+    parser.add_argument("--batch-size", type=int, default=8)
     parser.add_argument("--timeout", type=int, default=None)
     parser.add_argument("--force", action="store_true")
     parser.add_argument("--no-query-cache", action="store_true", help="Disable query result cache for this run")

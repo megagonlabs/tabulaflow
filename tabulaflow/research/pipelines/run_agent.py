@@ -60,7 +60,6 @@ async def run_agent_async(
     few_shot_dataset: NL2QDataset | None = None,
     result_dir: str = "output/test/",
     metric_aggregators: list[MetricAggregatorProtocol] | None = None,
-    sleep_between_batches: float = 0.0,
     verbose: bool = True,
 ) -> NL2QRunResult:
     if metric_aggregators is None:
@@ -75,9 +74,6 @@ async def run_agent_async(
     task_outputs = []
     num_failed = 0
     for i in range(0, len(dataset.tasks), batch_size):
-        if sleep_between_batches > 0:
-            await asyncio.sleep(sleep_between_batches)
-
         j = min(i + batch_size, len(dataset.tasks))
         batch = dataset.tasks[i:j]
 
@@ -181,8 +177,8 @@ def parse_agent_config(agent_cls: type[Any], args: argparse.Namespace) -> BaseMo
         kwargs["max_steps"] = args.max_steps
     if args.use_column_descriptions is not None:
         kwargs["use_column_descriptions"] = args.use_column_descriptions
-    if args.no_query_for_intended_only:
-        kwargs["query_for_intended_only"] = False
+    if args.query_for_intended_only is not None:
+        kwargs["query_for_intended_only"] = args.query_for_intended_only
     if args.use_gold_phrases:
         kwargs["use_gold_phrases"] = True
     if args.use_gold_ambiguity_points:
@@ -198,48 +194,48 @@ def parse_agent_config(agent_cls: type[Any], args: argparse.Namespace) -> BaseMo
 
 async def main_async() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--agent", default="schema_linking")
-    parser.add_argument("-s", "--schema_formatter", default=None)
-    parser.add_argument("--llm", default=None)
-    parser.add_argument("--temperature", default=None, type=float)
-    parser.add_argument("--max_steps", default=None, type=int)
-    parser.add_argument("--reasoning_effort", default=None)
-    parser.add_argument("--service_tier", default=None)
-    parser.add_argument("--use_column_descriptions", type=bool_flag, nargs="?", const=True, default=None)
-    # schema-linking agent
-    parser.add_argument("--do_schema_linking", type=bool_flag, nargs="?", const=True, default=None)
-    parser.add_argument("--do_postprocessing", type=bool_flag, nargs="?", const=True, default=None)
-    parser.add_argument("--num_few_shot_examples", default=None, type=int)
-    parser.add_argument("--few_shot_dataset", default="bird-sql")
-    parser.add_argument("--few_shot_split", default="train")
+    general = parser.add_argument_group("general")
+    general.add_argument("--agent", default="schema_linking")
+    general.add_argument("--batch-size", type=int, default=8)
+    general.add_argument("--output-dir", default="output/test/")
+    general.add_argument("--overwrite", action="store_true")
+    general.add_argument("--debug", action="store_true")
 
-    # schema-discovery/dbt agents
-    parser.add_argument("--db_summarizer_llm", default=None)
-    parser.add_argument("--use_bash_tool", type=bool_flag, nargs="?", const=True, default=None)
+    dataset_options = parser.add_argument_group("dataset selection")
+    dataset_options.add_argument("--dataset", default="bird-sql")
+    dataset_options.add_argument("--split", default=None)
+    dataset_options.add_argument("--databases", nargs="+", default=None)
+    dataset_options.add_argument("--qids", nargs="+", default=None)
+    dataset_options.add_argument("--subsample-size", type=int, default=None)
+    dataset_options.add_argument("--difficulty", choices=["simple", "moderate", "challenging"], default=None)
+    dataset_options.add_argument("--include-taxonomy", action="store_true")
 
-    # question embedder
-    parser.add_argument("--question_embedder_embedding_llm", default=None)
+    model = parser.add_argument_group("model settings")
+    model.add_argument("--llm", default=None)
+    model.add_argument("--temperature", type=float, default=None)
+    model.add_argument("--max-steps", type=int, default=None)
+    model.add_argument("--reasoning-effort", default=None)
+    model.add_argument("--service-tier", default=None)
+    model.add_argument("--use-column-descriptions", type=bool_flag, nargs="?", const=True, default=None)
+    model.add_argument("-s", "--schema-formatter", default=None)
 
-    # ambig agents
-    parser.add_argument("--no_query_for_intended_only", action="store_true")
-    parser.add_argument("--use_gold_phrases", action="store_true")
-    parser.add_argument("--use_gold_ambiguity_points", action="store_true")
-    parser.add_argument("--user_patience", default=None)
+    schema_linking = parser.add_argument_group("schema-linking agent")
+    schema_linking.add_argument("--do-schema-linking", type=bool_flag, nargs="?", const=True, default=None)
+    schema_linking.add_argument("--do-postprocessing", type=bool_flag, nargs="?", const=True, default=None)
+    schema_linking.add_argument("--num-few-shot-examples", type=int, default=None)
+    schema_linking.add_argument("--few-shot-dataset", default="bird-sql")
+    schema_linking.add_argument("--few-shot-split", default="train")
+    schema_linking.add_argument("--question-embedder-embedding-llm", default=None)
 
-    # dataset
-    parser.add_argument("--dataset", default="bird-sql")
-    parser.add_argument("--split", default=None)
-    parser.add_argument("--databases", default=None, nargs="+")
-    parser.add_argument("--qids", default=None, nargs="+")
-    parser.add_argument("--subsample_size", default=None, type=int)
-    parser.add_argument("--difficulty", default=None, choices=["simple", "moderate", "challenging"])
-    parser.add_argument("--include_taxonomy", action="store_true")
+    tool_agents = parser.add_argument_group("schema-discovery and DBT agents")
+    tool_agents.add_argument("--db-summarizer-llm", default=None)
+    tool_agents.add_argument("--use-bash-tool", type=bool_flag, nargs="?", const=True, default=None)
 
-    parser.add_argument("--batch_size", default=None, type=int)
-    parser.add_argument("--sleep_between_batches", default=0.0, type=float)
-    parser.add_argument("--result_dir", default="output/test/")
-    parser.add_argument("--overwrite", action="store_true")
-    parser.add_argument("--debug", action="store_true")
+    ambiguity = parser.add_argument_group("ambiguity agents")
+    ambiguity.add_argument("--query-for-intended-only", type=bool_flag, nargs="?", const=True, default=None)
+    ambiguity.add_argument("--use-gold-phrases", action="store_true")
+    ambiguity.add_argument("--use-gold-ambiguity-points", action="store_true")
+    ambiguity.add_argument("--user-patience", default=None)
 
     args = parser.parse_args()
     if args.split is None:
@@ -259,31 +255,19 @@ async def main_async() -> None:
     }:
         args.num_few_shot_examples = 5 if args.dataset == "bird-sql" and args.agent == "schema_linking" else 0
 
-    if args.debug:
-        if args.batch_size is None:
-            args.batch_size = 2
-        args.overwrite = True
-        if args.dataset == "spider2-snow" and not args.qids:
-            args.databases = ["AIRLINES"]
-        elif args.dataset == "spider2-dbt" and not args.qids:
-            args.databases = ["zuora001"]
-        elif args.dataset == "cypherbench" and not args.qids:
-            args.databases = ["nba"]
-    if args.batch_size is None:
-        args.batch_size = 8
     print(args)
     print()
 
     logging.basicConfig(level=logging.DEBUG if args.debug else logging.WARNING)
     configure_research_observability()
 
-    if os.path.exists(args.result_dir):
+    if os.path.exists(args.output_dir):
         if not args.overwrite:
-            print(f"{args.result_dir} already exists. Use --overwrite to overwrite the directory.")
+            print(f"{args.output_dir} already exists. Use --overwrite to overwrite the directory.")
             return
         else:
-            shutil.rmtree(args.result_dir)
-    os.makedirs(args.result_dir)
+            shutil.rmtree(args.output_dir)
+    os.makedirs(args.output_dir)
 
     t0 = time.time()
     kwargs = {}
@@ -335,8 +319,7 @@ async def main_async() -> None:
         dataset=dataset,
         few_shot_dataset=few_shot_dataset,
         batch_size=args.batch_size,
-        result_dir=args.result_dir,
-        sleep_between_batches=args.sleep_between_batches,
+        result_dir=args.output_dir,
         verbose=True,
     )
     print()
@@ -351,9 +334,9 @@ async def main_async() -> None:
         user_effort = result.aggregated_inference_metrics["user_effort"]["avg"]
         print(f"Avg user effort: {user_effort:.2f}")
 
-    result.to_directory(args.result_dir)
+    result.to_directory(args.output_dir)
     print()
-    print(f"Saved result to {args.result_dir}")
+    print(f"Saved result to {args.output_dir}")
 
     print()
     print("Aggregated inference metrics:")
