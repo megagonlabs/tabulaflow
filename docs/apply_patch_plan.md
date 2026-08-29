@@ -72,7 +72,7 @@ Additional requirements:
   return them as tool errors: bad envelope, unknown line, missing/duplicate file,
   context not found, overlapping chunks.
 
-**Tests** (`tests/test_apply_patch.py`), engine-level, driven through
+**Tests** (`tests/agents/tools/test_apply_patch.py`), engine-level, driven through
 `process_patch` with dict-backed fake I/O:
 - Add / Update / Delete / Move-to, single- and multi-file patches.
 - Update with `@@` context headers, bare `@@`, and no header for the first chunk.
@@ -87,7 +87,7 @@ Additional requirements:
 - Empty body line without leading space treated as empty context line.
 
 **Checkpoint**: user reviews the faithful port and tests. Run
-`uv run pytest tests/test_apply_patch.py`, `make lint`, `make mypy` (scope any
+`uv run pytest tests/agents/tools/test_apply_patch.py`, `make lint`, `make mypy` (scope any
 formatting to changed files only).
 
 ## Phase 1B — Codex-inspired engine hardening
@@ -121,7 +121,7 @@ Additional requirements:
 - Error cases must all raise `DiffError` (never assert) so the tool layer can
   return them as tool errors, including add-over-existing and misplaced EOF section.
 
-**Tests** (extend `tests/test_apply_patch.py`):
+**Tests** (extend `tests/agents/tools/test_apply_patch.py`):
 - Unicode quotes/dashes mismatch applies, reports fuzz > 0, and preserves original
   context lines byte-for-byte.
 - `*** End of File` matching at end works; the same section not at file end raises.
@@ -130,7 +130,7 @@ Additional requirements:
 - Atomicity: a two-file patch whose second file fails leaves the first untouched.
 
 **Checkpoint**: user reviews hardening semantics + tests. Run
-`uv run pytest tests/test_apply_patch.py`, `make lint`, `make mypy` (scope any
+`uv run pytest tests/agents/tools/test_apply_patch.py`, `make lint`, `make mypy` (scope any
 formatting to changed files only).
 
 ## Phase 2 — `ApplyPatchTool` (toolhub tool class)
@@ -164,11 +164,11 @@ conventions in `tabulaflow/toolhub/file_editor.py` (class with `name: ClassVar =
   is not needed — a simple extension check is fine here; patches are text-only).
 - Export `ApplyPatchTool` from `tabulaflow/toolhub/__init__.py` only.
 
-**Tests** (extend `tests/test_apply_patch.py`): tool-level round trips on a tmp
+**Tests** (extend `tests/agents/tools/test_apply_patch.py`): tool-level round trips on a tmp
 dir; path escape rejected (`../outside.txt`, absolute path outside root); atomicity
 (a two-file patch whose second file fails leaves the first untouched); result
 formatting; metrics counts; missing parent directories are created for adds/moves;
-existing `tests/test_file_editor.py` still passes after the `file_access.py`
+existing `tests/agents/tools/test_file_editor.py` still passes after the `file_access.py`
 extraction.
 
 **Checkpoint**: user reviews tool API, the `file_access` extraction diff, and result

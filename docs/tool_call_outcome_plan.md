@@ -83,9 +83,9 @@ An intermediate version of this design is already implemented and verified
 - `chat/events.py`: `RowsReturned` / `ColumnsReturned` / `Failed` / `Completed`
   / `_Outcome` / `ToolOutcome` union, plus a tool→outcome comment table.
 - `app/widgets.py`: `summarize_outcome` isinstance-chain over the union.
-- Tests: `tests/test_tool_call_outcome.py` (asserts old field names),
-  `tests/test_registry_tools_rebind.py` (two direct `await tool(...)` calls
-  asserting on `str`), `tests/test_tool_labels.py` (`summarize_outcome` cases).
+- Tests: `tests/agents/chat/test_tool_call_outcome.py` (asserts old field names),
+  `tests/agents/tools/test_registry_tools_rebind.py` (two direct `await tool(...)` calls
+  asserting on `str`), `tests/app/tui/test_tool_labels.py` (`summarize_outcome` cases).
 
 ## Changes
 
@@ -184,7 +184,7 @@ emit(ToolFinished(tool_call_id=event.tool_call_id, name=tool_name, outcome=outco
 
 ### 7. Tests
 
-- `tests/test_tool_call_outcome.py`: switch assertions to `count`/`unit`
+- `tests/agents/chat/test_tool_call_outcome.py`: switch assertions to `count`/`unit`
   fields; `__call__` now returns `ToolReturn`, so rework
   `test_programmatic_call_returns_text` to assert `ToolReturn` +
   `.return_value` prefix.
@@ -195,9 +195,9 @@ emit(ToolFinished(tool_call_id=event.tool_call_id, name=tool_name, outcome=outco
   `_TextStreamRouter`) and assert the emitted `ToolFinished.outcome` for three
   cases — metadata passthrough, `"(error:"` content fallback, and plain
   completion (`outcome is None`).
-- `tests/test_registry_tools_rebind.py`: the two direct calls now return
+- `tests/agents/tools/test_registry_tools_rebind.py`: the two direct calls now return
   `ToolReturn`; assert against `.return_value`.
-- `tests/test_tool_labels.py`: `summarize_outcome` cases use
+- `tests/app/tui/test_tool_labels.py`: `summarize_outcome` cases use
   `ToolCallOutcome(count=42, unit="rows")` etc., and `None` → `""`.
 - Stale-reference sweep with targeted patterns (a bare `Failed`/`Completed`
   grep drowns in unrelated strings and vendored assets):

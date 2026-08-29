@@ -56,7 +56,7 @@ tabulaflow/
 │   ├── tools/       #   research-only tools (ask_user, run_dbt, finish, get_schema, ...)
 │   └── types.py reporting.py query_execution.py query_analysis.py ambiguity.py observability.py
 └── app/             # end-user TUI and browser output pane
-tests/               # pytest tests
+tests/               # pytest tests, organized by the same package layers
 scripts/             # utility scripts
 output/              # experiment results
 cache/               # schema and preprocessing cache

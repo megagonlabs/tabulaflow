@@ -127,7 +127,7 @@ Each render module starts with `// @ts-check` and imports its helpers from
 
 ## 6. Test fallout (important — plan for it)
 
-`tests/test_output_pane.py` still has source-string assertions that snapshot the
+`tests/app/pane/test_output_pane.py` still has source-string assertions that snapshot the
 JS: `assert "…" in _PANE_HTML` (the inlined page) and `assert "…" in renderer`
 (the `pane-render.js` blob). **The split invalidates both**: `pane.js` is no longer
 inlined into `_PANE_HTML`, and `pane-render.js`/`renderer` ceases to exist as one

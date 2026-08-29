@@ -4,32 +4,8 @@ import math
 
 import numpy as np
 import pandas as pd
-import pytest
 
 from tabulaflow.core.serialization import dumps_strict_json, json_ready
-from tabulaflow.research.agents.utils import extract_code, get_max_steps_capability
-
-
-async def test_extract_code() -> None:
-    responses = [
-        "SELECT * FROM users",
-        "```\nSELECT * FROM users\n```",
-        "```python\nSELECT * FROM users\n```",
-        "```sql\nSELECT * FROM users\n```",
-        "```sql\nSELECT * FROM users\n```\n",
-        "```\nSELECT * FROM users\n```",
-        "```\n\nSELECT * FROM users\n```",
-        "This is the SQL code:\n```sql\nSELECT * FROM users\n```",
-        "This is the SQL code:\n```sql\nSELECT * FROM users\n```. This is another SQL code:\n```sql\nSELECT * FROM products\n```",
-    ]
-    for response in responses:
-        code = extract_code(response)
-        assert code == "SELECT * FROM users"
-
-
-def test_max_steps_capability_rejects_nonpositive_limit() -> None:
-    with pytest.raises(ValueError, match="max_steps must be at least 1"):
-        get_max_steps_capability(0)
 
 
 def test_json_ready_normalizes_missing_and_non_finite_values() -> None:

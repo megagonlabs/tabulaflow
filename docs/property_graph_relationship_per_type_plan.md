@@ -281,7 +281,7 @@ by iterating endpoints, but the group count now reflects **types**.
 
 ## 7. Tests
 
-- `tests/test_schema_browser_graph.py:38-45`: update the fixture construction to
+- `tests/app/tui/test_schema_browser_graph.py:38-45`: update the fixture construction to
   the new shape:
 
   ```python
@@ -330,7 +330,7 @@ by iterating endpoints, but the group count now reflects **types**.
 make format
 make lint          # includes import-linter (lint-arch) — no layer changes here
 make mypy
-make test          # or: uv run pytest tests/test_schema_browser_graph.py -q
+make test          # or: uv run pytest tests/app/tui/test_schema_browser_graph.py -q
 ```
 
 Manual smoke (optional, needs a running Neo4j / cypherbench graph): connect,
@@ -346,7 +346,7 @@ call the schema formatter, confirm `The relationships:` lists every pattern and
 | `core/db_connector/neo4j_conn.py:18,245-308` | Key rels by type; collect endpoints; drop property fan-out; import `RelationshipEndpoint` |
 | `core/formatters/cypher.py:31-80` | Iterate patterns for connectivity; drop dedup in property section; `format_relationship`→`format_pattern` |
 | `app/screens.py:1360-1393` | Iterate `(type, endpoint)`; pattern count vs type count |
-| `tests/test_schema_browser_graph.py` | Fixture to `endpoints=[...]`; add multi-endpoint formatter test |
+| `tests/app/tui/test_schema_browser_graph.py` | Fixture to `endpoints=[...]`; add multi-endpoint formatter test |
 
 ## 10. Out of scope
 

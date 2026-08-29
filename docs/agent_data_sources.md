@@ -306,7 +306,7 @@ sibling of `chat`, so the chat agent couldn't import it.
   (return a block reason, surfaced to the agent; `None` allows).
 - **`toolhub/shell_guard.py`** — `dangerous_command_reason(cmd)`: small high-signal
   denylist (rm -rf of root/home/cwd, fork bomb, mkfs/dd, device/system writes, curl|sh,
-  destructive git, shutdown, sudo). Guardrail, not a sandbox. Covered by `tests/test_shell_guard.py`.
+  destructive git, shutdown, sudo). Guardrail, not a sandbox. Covered by `tests/agents/tools/test_shell_guard.py`.
 - **Wire into `ChatAgent`** (built only when `project_dir`/`scratch_dir` are set):
   `working_dir=project_dir`, `init_commands=["export SCRATCH=<abs scratch>"]` (persists in
   the session shell), `command_filter=dangerous_command_reason`. Full env, network on.

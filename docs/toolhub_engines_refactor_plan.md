@@ -99,5 +99,5 @@ Stop at the end of each phase for user inspection before starting the next.
   (`Parser`, `Patch`, `Chunk`, `PatchAction`, `Commit`, `DiffError`, apply logic)
   with `ApplyPatchTool`. Engine → `engines/patch_engine.py`; the tool stays in
   `apply_patch.py` — the same pattern `file_editor`/`file_access` already follows.
-  Update `tests/test_apply_patch.py` imports accordingly.
+  Update `tests/agents/tools/test_apply_patch.py` imports accordingly.
 - Verify: same commands as Phase 1.

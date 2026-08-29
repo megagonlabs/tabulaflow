@@ -570,7 +570,7 @@ linked selection, and graph exports beyond the existing pane/export path.
 - `tabulaflow/app/pane/assets/pane/pane-render.js` (`renderGraph`, `window.TF`)
 - pane CSS (`.tf-graph-view`, `.tf-graph-detail-*`)
 - `pyproject.toml` (`package-data`: add `cytoscape/` assets glob)
-- `tests/` (new tool + `build_graph_data` tests; update `tests/test_result_views.py`,
-  `tests/test_pane_contract.py`, `tests/test_tool_labels.py` for the new view kind,
+- `tests/` (new tool + `build_graph_data` tests; update `tests/app/tui/test_result_views.py`,
+  `tests/app/pane/test_pane_contract.py`, `tests/app/tui/test_tool_labels.py` for the new view kind,
   artifact, and tool)
 - graph fixture in the debug HTML gallery
