@@ -99,6 +99,24 @@ class TestTryDecodeBase64:
 
 
 class TestBuildTableData:
+    def test_serializes_rows_nulls_and_metadata(self, tmp_path: Path) -> None:
+        df = pd.DataFrame({"name": ["valid", None], "score": [10.0, None]})
+
+        payload = build_table_data(df, asset_stem="card_table", output_dir=tmp_path)
+
+        assert _payload_rows(payload) == [{"c0": "valid", "c1": 10.0}, {"c0": None, "c1": None}]
+        table = _payload_table(payload)
+        assert table["meta"] == "2 rows · 2 columns"
+        assert table["columns"][1]["role"] == "number"
+
+    def test_serializes_empty_table(self, tmp_path: Path) -> None:
+        df = pd.DataFrame({"customer": pd.Series(dtype="object"), "value": pd.Series(dtype="int64")})
+
+        payload = build_table_data(df, asset_stem="card_empty", output_dir=tmp_path)
+
+        assert _payload_rows(payload) == []
+        assert _payload_table(payload)["meta"] == "0 rows · 2 columns"
+
     def test_renders_image_column_inline(self, tmp_path: Path) -> None:
         df = pd.DataFrame({"img": [PNG_MAGIC, PNG_MAGIC], "name": ["a", "b"]})
         payload = build_table_data(df, asset_stem="card_abc", output_dir=tmp_path)
