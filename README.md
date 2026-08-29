@@ -684,11 +684,10 @@ Aug 28
 - [ ] research layer cleanup
 - [ ] tests cleanup
 
-
+- [ ] Benchmark download
 - Multimodal
   - [ ] Pasting images
   - [ ] Media in tables
-
 - [ ] Context percentage and Context compaction
 - [ ] Inline artifact citation
 - [ ] code diff rendering
@@ -883,7 +882,7 @@ if __name__ == "__main__":
 We also provide the [run_model.py](tabulaflow/run_model.py) and [evaluate.py](tabulaflow/evaluate.py) scripts for convenience:
 
 ```bash
-uv run tabulaflow/research/pipelines/run_agent.py --agent schema_linking --dataset bird-sql --llm "openai:gpt-4o-mini" --output-dir output/test/ --debug
+uv run tabulaflow/research/pipelines/run_agent.py --agent schema_linking --dataset bird-sql --llm "openai:gpt-4o-mini" --output-dir output/test/
 uv run tabulaflow/research/pipelines/populate_exec_results.py output/test/
 uv run tabulaflow/research/pipelines/evaluate.py output/test/
 ```
