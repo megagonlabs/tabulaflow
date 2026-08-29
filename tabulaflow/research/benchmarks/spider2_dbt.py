@@ -66,25 +66,25 @@ def _db_name_from_profiles(project_dir: str) -> str:
     raise FileNotFoundError(f"Cannot determine DuckDB filename from {profiles_path}")
 
 
-async def prepare_working_env_async(dataset: NL2QDataset, result_dir: str) -> None:
+async def prepare_working_env_async(dataset: NL2QDataset, output_dir: str) -> None:
     """Copy each dbt project to a working directory and rewire db_connectors.
 
     For each ``DbtTask`` in *dataset*, this function:
-    1. Copies ``project_dir`` → ``<result_dir>/working/<qid>``
+    1. Copies ``project_dir`` → ``<output_dir>/working/<qid>``
     2. Sets ``task.working_dir`` to the copy
     3. Creates an empty DuckDB if the project has none yet
-    4. Replaces ``dataset.db_connectors[task.db]`` with a read/write
+    4. Replaces ``dataset.db_connectors[task.db]`` with a read-only
        ``SQLConnector`` pointing to the duckdb file inside the copy
 
     Args:
         dataset: The dataset returned by
             :meth:`Spider2DbtDatasetLoader.get_split_async`.
-        result_dir: Root output directory for the experiment run.
+        output_dir: Root output directory for the experiment run.
     """
     for task in dataset.tasks:
         if not isinstance(task, DbtTask):
             continue
-        working_dir = os.path.join(result_dir, "working", task.qid)
+        working_dir = os.path.join(output_dir, "working", task.qid)
         if os.path.exists(working_dir):
             shutil.rmtree(working_dir)
         shutil.copytree(task.project_dir, working_dir)
