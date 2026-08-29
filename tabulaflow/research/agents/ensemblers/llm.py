@@ -1,10 +1,9 @@
 import asyncio
-import logging
 from typing import Any, ClassVar
 
 import jinja2
 from pydantic import BaseModel
-from pydantic_ai import ToolOutput
+from pydantic_ai import ModelRetry, ToolOutput
 
 from tabulaflow.research.observability import trace_prediction
 from tabulaflow.research.agents.ensemblers.utils import execution_result_key, format_execution_result
@@ -15,8 +14,6 @@ from tabulaflow.agents.trace import Usage, Trajectory
 from tabulaflow.research.types import SimpleNL2QTask, SimpleNL2QTaskOutput
 from tabulaflow.agents.llm import make_agent, make_model_settings
 
-
-logger = logging.getLogger(__name__)
 
 LLM_ENSEMBLE_SYSTEM_PROMPT = """
 You are a helpful AI database expert.
@@ -188,10 +185,7 @@ class LLMEnsembler:
                 number: The number of the best candidate.
             """
             if number < 1 or number > num_candidates:
-                logger.warning(
-                    f"LLM returned out-of-range number {number} for {num_candidates} candidates; falling back to 1."
-                )
-                return 0
+                raise ModelRetry(f"Number must be between 1 and {num_candidates}.")
             return number - 1
 
         agent = make_agent(

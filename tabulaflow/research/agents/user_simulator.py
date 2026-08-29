@@ -1,7 +1,7 @@
 from typing import Any, Literal
 from pydantic import BaseModel
 import pydantic_ai
-from pydantic_ai import Agent, ToolOutput
+from pydantic_ai import Agent, ModelRetry, ToolOutput
 import asyncio
 import jinja2
 import tiktoken
@@ -156,11 +156,15 @@ class UserSimulator:
         return cls(config)
 
     async def _get_relevant_ambig_points_async(self, question_str: str) -> list[NLAmbigPoint]:
+        ambig_points = {ap.id: ap for ap in self.config.ambig_points}
+
         def identify(relevant_ambig_point_id: str | None) -> str | None:
             """
             Args:
                 relevant_ambig_point_id: The id (e.g. "A", "B", etc.) of the ambiguity point that the question is asking about. If there is no match, set this to null.
             """
+            if relevant_ambig_point_id is not None and relevant_ambig_point_id not in ambig_points:
+                raise ModelRetry(f"Unknown ambiguity point ID: {relevant_ambig_point_id}")
             return relevant_ambig_point_id
 
         def identify_multiple(relevant_ambig_point_ids: list[str]) -> list[str]:
@@ -168,6 +172,9 @@ class UserSimulator:
             Args:
                 relevant_ambig_point_ids: The ids (e.g. "A", "B", etc.) of the ambiguity points that the question is asking about. If there is no match, set this to an empty list.
             """
+            unknown = set(relevant_ambig_point_ids) - ambig_points.keys()
+            if unknown:
+                raise ModelRetry(f"Unknown ambiguity point IDs: {sorted(unknown)}")
             return relevant_ambig_point_ids
 
         result = await self.control_agent.run(  # type: ignore
@@ -185,8 +192,7 @@ class UserSimulator:
         if not result.output:
             return []
         relevant_ambig_point_ids = [result.output] if not isinstance(result.output, list) else result.output
-        ambig_points = {ap.id: ap for ap in self.config.ambig_points}
-        relevant_ambig_points = [ambig_points[ap_id] for ap_id in relevant_ambig_point_ids if ap_id in ambig_points]
+        relevant_ambig_points = [ambig_points[ap_id] for ap_id in relevant_ambig_point_ids]
         return relevant_ambig_points
 
     def _compute_user_effort(self, question_str: str, answer: BaseModel | None) -> float:
@@ -232,8 +238,10 @@ class UserSimulator:
             Args:
                 number: The number of the selected option. If none of the options are correct, set this to null.
             """
-            if number is None or number < 1 or number > len(question.options):
+            if number is None:
                 return None
+            if number < 1 or number > len(question.options):
+                raise ModelRetry(f"Number must be between 1 and {len(question.options)}, or null.")
             return UserMultipleChoiceAnswer(answer_index=number - 1)
 
         question_str = question.question + "".join([f"\n[{i + 1}] {o}" for i, o in enumerate(question.options)])

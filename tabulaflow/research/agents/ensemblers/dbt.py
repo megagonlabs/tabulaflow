@@ -4,12 +4,11 @@ Presents candidate model files, build status, and output table schemas
 to an LLM and asks it to select the best candidate.
 """
 
-import logging
 from typing import Any, ClassVar
 
 import jinja2
 from pydantic import BaseModel
-from pydantic_ai import ToolOutput
+from pydantic_ai import ModelRetry, ToolOutput
 
 from tabulaflow.research.observability import trace_prediction
 from tabulaflow.data import SQLConnectorProtocol
@@ -19,8 +18,6 @@ from tabulaflow.agents.llm import make_model_settings
 from tabulaflow.agents.trace import Usage, Trajectory
 from tabulaflow.research.types import DbtTask, DbtTaskOutput
 from tabulaflow.agents.llm import make_agent
-
-logger = logging.getLogger(__name__)
 
 DBT_LLM_ENSEMBLE_SYSTEM_PROMPT = """
 You are a helpful AI data engineering expert proficient in dbt (data build tool) and SQL.
@@ -34,10 +31,17 @@ The correct implementation should faithfully reflect the instruction and dataset
 {{ dataset_instructions }}
 </dataset_instructions>
 {%- endif %}
+{%- if db_document %}
+
+<db_document>
+{{ db_document }}
+</db_document>
+{%- endif %}
 """.strip()
 
 DBT_CANDIDATE_TEMPLATE = """
 <candidate number="{{ number }}">
+<dbt_run_success>{{ dbt_run_success }}</dbt_run_success>
 <model_files>
 {%- for path, content in model_files.items() %}
 <file path="{{ path }}">
@@ -154,6 +158,7 @@ class DbtLLMEnsembler:
             output_schema = self.formatter.format(output.pred_db_schema) if output.pred_db_schema else ""
             candidate_str = jinja2.Template(DBT_CANDIDATE_TEMPLATE).render(
                 number=i + 1,
+                dbt_run_success=("unknown" if output.dbt_run_success is None else str(output.dbt_run_success).lower()),
                 model_files=output.pred_model_files,
                 output_schema=output_schema,
             )
@@ -179,10 +184,7 @@ class DbtLLMEnsembler:
                 number: The number of the best candidate.
             """
             if number < 1 or number > num_candidates:
-                logger.warning(
-                    f"LLM returned out-of-range number {number} for {num_candidates} candidates; falling back to 1."
-                )
-                return 0
+                raise ModelRetry(f"Number must be between 1 and {num_candidates}.")
             return number - 1
 
         agent = make_agent(

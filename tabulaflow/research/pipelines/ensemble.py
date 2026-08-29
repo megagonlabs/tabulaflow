@@ -25,6 +25,24 @@ Ensembler = MajorityEnsembler | LLMEnsembler | AgentEnsembler | DbtLLMEnsembler
 logger = logging.getLogger(__name__)
 
 
+def _validate_results(results: list[NL2QRunResult]) -> NL2QRunResult:
+    """Validate ensemble inputs and return the reference run."""
+    if not results:
+        raise ValueError("At least one result is required")
+
+    reference = results[0]
+    reference_qids = {task.qid for task in reference.tasks}
+    for result in results:
+        if (result.dataset, result.split) != (reference.dataset, reference.split):
+            raise ValueError("All results must use the same dataset and split")
+        qids = [task.qid for task in result.tasks]
+        if len(qids) != len(set(qids)):
+            raise ValueError(f"Result for agent {result.agent!r} contains duplicate QIDs")
+        if set(qids) != reference_qids:
+            raise ValueError("All results must contain the same QIDs")
+    return reference
+
+
 async def _ensemble_tasks_async(
     ensembler: Ensembler,
     results: list[NL2QRunResult],
@@ -32,7 +50,7 @@ async def _ensemble_tasks_async(
     batch_size: int,
     verbose: bool = True,
 ) -> tuple[list[NL2QTaskOutput], int]:
-    """Ensemble NL2Q tasks. Returns (outputs, num_failed)."""
+    """Ensemble every task, falling back to the first candidate on failure."""
     qid_to_outputs: dict[str, list[NL2QTaskOutput]] = collections.defaultdict(list)
     for result in results:
         for task_output in result.tasks:
@@ -48,7 +66,7 @@ async def _ensemble_tasks_async(
         task_output_groups.append(outputs)
 
     ensembled_outputs: list[NL2QTaskOutput] = []
-    num_failed = 0
+    fallback_count = 0
     for i in range(0, len(tasks), batch_size):
         j = min(i + batch_size, len(tasks))
         batch_tasks = tasks[i:j]
@@ -65,19 +83,29 @@ async def _ensemble_tasks_async(
 
         for task, group, output in zip(batch_tasks, batch_groups, batch_results):
             if isinstance(output, Exception):
-                tb_str = "".join(traceback.format_exception(type(output), output, output.__traceback__))
-                logger.error(f"Error ensembling task {task.qid}: {tb_str}")
-                ensembled_outputs.append(group[0])
-                num_failed += 1
+                logger.error(
+                    "Error ensembling task %s:\n%s",
+                    task.qid,
+                    "".join(traceback.format_exception(type(output), output, output.__traceback__)),
+                )
+                fallback = group[0].model_copy(deep=True)
+                fallback.usage = None
+                fallback.trajectory = None
+                fallback.inference_metrics = {}
+                fallback.eval_metrics = {}
+                if hasattr(fallback, "user_simulator_usage"):
+                    fallback.user_simulator_usage = None
+                ensembled_outputs.append(fallback)
+                fallback_count += 1
             elif isinstance(output, BaseException):
                 raise output
             else:
                 ensembled_outputs.append(output)
 
         if verbose:
-            print(f"{j}/{len(tasks)} tasks ensembled ({num_failed} failed)")
+            print(f"{j}/{len(tasks)} tasks ensembled ({fallback_count} fallbacks)")
 
-    return ensembled_outputs, num_failed
+    return ensembled_outputs, fallback_count
 
 
 async def ensemble_async(
@@ -99,9 +127,12 @@ async def ensemble_async(
     Returns:
         A new NL2QRunResult with ensembled predictions.
     """
+    reference = _validate_results(results)
+    if {task.qid for task in dataset.tasks} != {task.qid for task in reference.tasks}:
+        raise ValueError("Dataset tasks must match the result QIDs")
     start_time = datetime.datetime.now()
 
-    ensembled_outputs, num_failed = await _ensemble_tasks_async(ensembler, results, dataset, batch_size, verbose)
+    ensembled_outputs, fallback_count = await _ensemble_tasks_async(ensembler, results, dataset, batch_size, verbose)
 
     end_time = datetime.datetime.now()
 
@@ -110,11 +141,11 @@ async def ensemble_async(
     res = NL2QRunResult(
         start_time=start_time,
         end_time=end_time,
-        dataset=results[0].dataset,
-        split=results[0].split,
-        databases=results[0].databases,
-        subsample_size=results[0].subsample_size,
-        dataset_extra_kwargs=results[0].dataset_extra_kwargs,
+        dataset=reference.dataset,
+        split=reference.split,
+        databases=reference.databases,
+        subsample_size=reference.subsample_size,
+        dataset_extra_kwargs=reference.dataset_extra_kwargs,
         agent=ensembler.name,
         agent_config=ensembler.config.model_dump(),
         total_usage=reduce(lambda x, y: x + y, usages) if usages else None,
@@ -123,6 +154,7 @@ async def ensemble_async(
     )
     for aggregator in [SimpleInferenceMetricsAggregator()]:
         res.aggregated_inference_metrics.update(aggregator.aggregate(res))
+    res.aggregated_inference_metrics["fallback_count"] = fallback_count
     return res
 
 
@@ -205,14 +237,9 @@ async def main_async() -> None:
             results.append(NL2QRunResult.model_validate_json(f.read()))
     print(f"Loaded {len(results)} results.")
 
-    # Validate that all results are from the same dataset/split
-    datasets = set((r.dataset, r.split) for r in results)
-    if len(datasets) > 1:
-        raise ValueError(f"All results must be from the same dataset/split, got: {datasets}")
-
     # Load dataset for db connectors
     t0 = time.time()
-    ref = results[0]
+    ref = _validate_results(results)
     dataset_loader = dataset_registry.get_class(ref.dataset)()
     dataset = await dataset_loader.get_split_async(
         ref.split,
