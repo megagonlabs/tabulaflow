@@ -19,6 +19,19 @@ async def populate_exec_results_async(
     force: bool = False,
     verbose: bool = True,
 ) -> NL2QRunResult:
+    """Populate missing query results in an experiment run.
+
+    Args:
+        result: Run result to update in place.
+        dataset: Dataset providing database connectors.
+        batch_size: Maximum tasks processed concurrently.
+        timeout: Optional timeout for each query.
+        force: Whether to replace existing execution results.
+        verbose: Whether to display progress.
+
+    Returns:
+        The updated run result.
+    """
     for i in range(0, len(result.tasks), batch_size):
         j = min(i + batch_size, len(result.tasks))
         batch = result.tasks[i:j]

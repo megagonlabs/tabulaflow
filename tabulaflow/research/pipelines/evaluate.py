@@ -41,6 +41,19 @@ async def evaluate_async(
     metric_aggregators: list[MetricAggregatorProtocol],
     verbose: bool = True,
 ) -> NL2QRunResult:
+    """Evaluate task outputs and aggregate their metrics.
+
+    Args:
+        result: Run result to update in place.
+        dataset: Dataset providing database connectors.
+        metrics: Task-level metrics to compute.
+        batch_size: Maximum tasks evaluated concurrently.
+        metric_aggregators: Policies for aggregating task metrics.
+        verbose: Whether to display progress.
+
+    Returns:
+        The evaluated run result.
+    """
     for i in range(0, len(result.tasks), batch_size):
         j = min(i + batch_size, len(result.tasks))
         batch = result.tasks[i:j]

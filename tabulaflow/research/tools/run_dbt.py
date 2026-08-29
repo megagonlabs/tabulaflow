@@ -1,7 +1,7 @@
 """Run-dbt tool for dbt agents.
 
 Provides a controlled interface to execute dbt CLI commands (``run``,
-``build``, ``test``, ``compile``, ``debug``, ``ls``) scoped to a working
+``build``, ``test``, ``compile``, ``debug``, ``ls``, ``deps``) scoped to a working
 directory.  The tool auto-injects ``--project-dir`` and ``--profiles-dir``
 and prevents arbitrary shell execution.
 """

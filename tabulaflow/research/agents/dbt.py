@@ -1,4 +1,4 @@
-"""Dbt agent that uses file_editor and run_dbt tools."""
+"""Research agent that completes and executes DBT projects."""
 
 import os
 import shutil

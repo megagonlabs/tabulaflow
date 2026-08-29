@@ -127,7 +127,9 @@ async def ensemble_async(
         verbose: Whether to print progress.
 
     Returns:
-        A new NL2QRunResult with ensembled predictions.
+        A new run result with ensembled predictions. Task-level failures fall
+        back to the first candidate, clear its source-run metadata, and
+        increment ``fallback_count`` in the aggregate inference metrics.
     """
     output_type = "dbt" if ensembler.name == "dbt_llm" else "simple"
     reference = _validate_results(results, output_type)

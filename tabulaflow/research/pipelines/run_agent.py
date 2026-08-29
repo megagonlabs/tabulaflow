@@ -62,6 +62,24 @@ async def run_agent_async(
     metric_aggregators: list[MetricAggregatorProtocol] | None = None,
     verbose: bool = True,
 ) -> NL2QRunResult:
+    """Run one agent instance per task and collect an experiment result.
+
+    Task failures are logged and represented by empty outputs so the remaining
+    batch can complete.
+
+    Args:
+        agent_cls: Registered agent implementation.
+        agent_config: Configuration passed to each agent instance.
+        dataset: Tasks and their database connectors.
+        batch_size: Maximum tasks processed concurrently.
+        few_shot_dataset: Optional examples supplied to compatible agents.
+        output_dir: Working directory used by DBT tasks.
+        metric_aggregators: Inference-metric aggregators, or the default.
+        verbose: Whether to display progress.
+
+    Returns:
+        The collected task outputs, usage, and inference metrics.
+    """
     if metric_aggregators is None:
         metric_aggregators = [SimpleInferenceMetricsAggregator()]
     if hasattr(agent_config, "llm") and Usage.create(agent_config.llm, 1, 1000000, 1000000).api_cost_usd == 0:

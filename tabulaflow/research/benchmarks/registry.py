@@ -78,7 +78,11 @@ class DatasetLoaderProtocol(Protocol):
         subsample_size: int | None = None,
         qids: list[str] | None = None,
     ) -> NL2QDataset:
-        """Loads a complete dataset split (tasks + connectors)."""
+        """Load selected tasks and the connectors they require.
+
+        QID filtering precedes deterministic sampling. Unknown QIDs and invalid
+        sample sizes raise ``ValueError``.
+        """
         ...
 
 
