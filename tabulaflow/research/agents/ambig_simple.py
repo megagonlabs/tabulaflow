@@ -53,10 +53,10 @@ class AmbigSimpleSQLAgentConfig(BasicAgentConfig):
 
 @agent_registry.register
 class AmbigSimpleSQLAgent:
-    name: ClassVar = "ambig_simple_sql_agent"
-    task_type: ClassVar = "ambig"
-    output_type: ClassVar = "ambig-simple"
-    config_cls = AmbigSimpleSQLAgentConfig
+    name: ClassVar[str] = "ambig_simple_sql_agent"
+    task_type: ClassVar[str] = "ambig"
+    output_type: ClassVar[str] = "ambig-simple"
+    config_cls: ClassVar[type[AmbigSimpleSQLAgentConfig]] = AmbigSimpleSQLAgentConfig
 
     def __init__(
         self,

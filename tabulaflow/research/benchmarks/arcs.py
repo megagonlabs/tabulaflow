@@ -108,9 +108,9 @@ ARCS_TAXONOMY = """
 
 @dataset_registry.register
 class ARCSDatasetLoader:
-    name: ClassVar = "arcs"
-    splits: ClassVar = ["test", "test_unsampled"]
-    default_metrics: ClassVar = [
+    name: ClassVar[str] = "arcs"
+    splits: ClassVar[list[str]] = ["test", "test_unsampled"]
+    default_metrics: ClassVar[list[str]] = [
         "simple_ex",
         "executable",
         "gold_executable",

@@ -94,10 +94,10 @@ class DbtLLMEnsemblerConfig(BaseModel):
 
 
 class DbtLLMEnsembler:
-    name: ClassVar = "dbt_llm_ensembler"
-    task_type: ClassVar = "dbt"
-    output_type: ClassVar = "dbt"
-    config_cls = DbtLLMEnsemblerConfig
+    name: ClassVar[str] = "dbt_llm_ensembler"
+    task_type: ClassVar[str] = "dbt"
+    output_type: ClassVar[str] = "dbt"
+    config_cls: ClassVar[type[DbtLLMEnsemblerConfig]] = DbtLLMEnsemblerConfig
 
     def __init__(self, config: DbtLLMEnsemblerConfig):
         self.config = config

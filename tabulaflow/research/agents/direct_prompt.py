@@ -53,10 +53,10 @@ You a helpful AI database expert that writes {{language}} queries given a user q
 
 @agent_registry.register
 class DirectPromptAgent:
-    name: ClassVar = "direct_prompting"
-    task_type: ClassVar = "simple"
-    output_type: ClassVar = "simple"
-    config_cls = BasicAgentConfig
+    name: ClassVar[str] = "direct_prompting"
+    task_type: ClassVar[str] = "simple"
+    output_type: ClassVar[str] = "simple"
+    config_cls: ClassVar[type[BasicAgentConfig]] = BasicAgentConfig
 
     def __init__(
         self,

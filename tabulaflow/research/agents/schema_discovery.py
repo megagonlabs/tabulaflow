@@ -75,10 +75,10 @@ Writing the task query:
 
 @agent_registry.register
 class SchemaDiscoveryAgent:
-    name: ClassVar = "schema_discovery"
-    task_type: ClassVar = "simple"
-    output_type: ClassVar = "simple"
-    config_cls = SchemaDiscoveryAgentConfig
+    name: ClassVar[str] = "schema_discovery"
+    task_type: ClassVar[str] = "simple"
+    output_type: ClassVar[str] = "simple"
+    config_cls: ClassVar[type[SchemaDiscoveryAgentConfig]] = SchemaDiscoveryAgentConfig
 
     def __init__(
         self,

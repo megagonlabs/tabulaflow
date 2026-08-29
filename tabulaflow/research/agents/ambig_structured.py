@@ -124,10 +124,10 @@ class AmbigStructuredSQLAgentConfig(BasicAgentConfig):
 
 @agent_registry.register
 class AmbigStructuredSQLAgent:
-    name: ClassVar = "ambig_structured_sql_agent"
-    task_type: ClassVar = "ambig"
-    output_type: ClassVar = "ambig-structured"
-    config_cls = AmbigStructuredSQLAgentConfig
+    name: ClassVar[str] = "ambig_structured_sql_agent"
+    task_type: ClassVar[str] = "ambig"
+    output_type: ClassVar[str] = "ambig-structured"
+    config_cls: ClassVar[type[AmbigStructuredSQLAgentConfig]] = AmbigStructuredSQLAgentConfig
 
     def __init__(
         self,

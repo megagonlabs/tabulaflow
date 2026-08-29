@@ -382,10 +382,10 @@ class Postprocessor:
 
 @agent_registry.register
 class SchemaLinkingAgent:
-    name: ClassVar = "schema_linking"
-    task_type: ClassVar = "simple"
-    output_type: ClassVar = "simple"
-    config_cls = SchemaLinkingAgentConfig
+    name: ClassVar[str] = "schema_linking"
+    task_type: ClassVar[str] = "simple"
+    output_type: ClassVar[str] = "simple"
+    config_cls: ClassVar[type[SchemaLinkingAgentConfig]] = SchemaLinkingAgentConfig
 
     def __init__(
         self,

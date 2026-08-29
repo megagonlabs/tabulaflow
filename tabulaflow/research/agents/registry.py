@@ -6,9 +6,7 @@ the prediction protocol for its task family. Construction stays dynamic because
 families accept different optional inputs.
 """
 
-from typing import Any, ClassVar, Literal, Protocol
-
-from pydantic import BaseModel
+from typing import Any, ClassVar, Protocol
 
 from tabulaflow.core.registry import ClassRegistry
 from tabulaflow.data import DBConnector, SQLConnectorProtocol
@@ -29,9 +27,9 @@ class SimpleAgentProtocol(Protocol):
     """Strategy that predicts one query for a simple task."""
 
     name: ClassVar[str]
-    task_type: ClassVar[Literal["simple"]]
-    output_type: ClassVar[Literal["simple"]]
-    config_cls: ClassVar[type[BaseModel]]
+    task_type: ClassVar[str]
+    output_type: ClassVar[str]
+    config_cls: ClassVar[Any]
 
     async def predict_async(self, task: SimpleNL2QTask, db_connector: DBConnector) -> SimpleNL2QTaskOutput: ...
 
@@ -40,9 +38,9 @@ class AmbigSQLAgentProtocol(Protocol):
     """Strategy that resolves and predicts queries for an ambiguous SQL task."""
 
     name: ClassVar[str]
-    task_type: ClassVar[Literal["ambig"]]
-    output_type: ClassVar[Literal["ambig-simple", "ambig-flat", "ambig-structured"]]
-    config_cls: ClassVar[type[BaseModel]]
+    task_type: ClassVar[str]
+    output_type: ClassVar[str]
+    config_cls: ClassVar[Any]
 
     async def predict_async(
         self,
@@ -56,9 +54,9 @@ class DbtAgentProtocol(Protocol):
     """Strategy that produces a transformed dbt project."""
 
     name: ClassVar[str]
-    task_type: ClassVar[Literal["dbt"]]
-    output_type: ClassVar[Literal["dbt"]]
-    config_cls: ClassVar[type[BaseModel]]
+    task_type: ClassVar[str]
+    output_type: ClassVar[str]
+    config_cls: ClassVar[Any]
 
     async def predict_async(self, task: DbtTask, db_connector: SQLConnectorProtocol) -> DbtTaskOutput: ...
 

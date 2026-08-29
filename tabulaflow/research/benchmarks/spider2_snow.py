@@ -83,9 +83,9 @@ EXCLUDE_DBS = ["AMAZON_VENDOR_ANALYTICS__SAMPLE_DATASET", "NETHERLANDS_OPEN_MAP_
 class Spider2SnowDatasetLoader:
     """Loader for Spider 2.0 Snowflake."""
 
-    name: ClassVar = "spider2-snow"
-    splits: ClassVar = ["test"]
-    default_metrics: ClassVar = [
+    name: ClassVar[str] = "spider2-snow"
+    splits: ClassVar[list[str]] = ["test"]
+    default_metrics: ClassVar[list[str]] = [
         "spider2_ex",
         "simple_ex",
         "executable",

@@ -60,9 +60,9 @@ CYPHERBENCH_DATASET_INSTRUCTIONS = """
 class CypherBenchDatasetLoader:
     """Loader for CypherBench (text-to-Cypher over Neo4j property graphs)."""
 
-    name: ClassVar = "cypherbench"
-    splits: ClassVar = ["test", "train"]
-    default_metrics: ClassVar = [
+    name: ClassVar[str] = "cypherbench"
+    splits: ClassVar[list[str]] = ["test", "train"]
+    default_metrics: ClassVar[list[str]] = [
         "cypherbench_ex",
         "simple_ex",
         "psjs",

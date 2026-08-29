@@ -81,9 +81,9 @@ SPIDER2_LITE_DATASET_INSTRUCTIONS = """
 class Spider2LiteDatasetLoader:
     """Loader for Spider 2.0-Lite (BigQuery, Snowflake, SQLite)."""
 
-    name: ClassVar = "spider2-lite"
-    splits: ClassVar = ["test"]
-    default_metrics: ClassVar = [
+    name: ClassVar[str] = "spider2-lite"
+    splits: ClassVar[list[str]] = ["test"]
+    default_metrics: ClassVar[list[str]] = [
         "spider2_ex",
         "simple_ex",
         "executable",

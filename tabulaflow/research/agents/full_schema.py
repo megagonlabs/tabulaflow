@@ -64,10 +64,10 @@ You are an agent - please keep going until the database query is fully construct
 
 @agent_registry.register
 class FullSchemaAgent:
-    name: ClassVar = "full_schema"
-    task_type: ClassVar = "simple"
-    output_type: ClassVar = "simple"
-    config_cls = BasicAgentConfig
+    name: ClassVar[str] = "full_schema"
+    task_type: ClassVar[str] = "simple"
+    output_type: ClassVar[str] = "simple"
+    config_cls: ClassVar[type[BasicAgentConfig]] = BasicAgentConfig
 
     def __init__(
         self,

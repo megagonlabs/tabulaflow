@@ -49,9 +49,9 @@ AMBROSIA_DATASET_INSTRUCTIONS = """
 
 @dataset_registry.register
 class AmbrosiaSDatasetLoader:
-    name: ClassVar = "ambrosia-s"
-    splits: ClassVar = ["test", "few_shot_examples"]
-    default_metrics: ClassVar = [
+    name: ClassVar[str] = "ambrosia-s"
+    splits: ClassVar[list[str]] = ["test", "few_shot_examples"]
+    default_metrics: ClassVar[list[str]] = [
         "simple_ex",
         "executable",
         "gold_executable",

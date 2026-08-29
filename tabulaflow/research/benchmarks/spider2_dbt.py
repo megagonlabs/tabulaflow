@@ -125,9 +125,9 @@ EXCLUDE_INSTANCES = ["airbnb002", "biketheft001", "google_ads001", "gitcoin001"]
 class Spider2DbtDatasetLoader:
     """Loader for Spider 2.0-DBT (DuckDB dbt transformation tasks)."""
 
-    name: ClassVar = "spider2-dbt"
-    splits: ClassVar = ["test"]
-    default_metrics: ClassVar = [
+    name: ClassVar[str] = "spider2-dbt"
+    splits: ClassVar[list[str]] = ["test"]
+    default_metrics: ClassVar[list[str]] = [
         "spider2_duckdb_match",
         "executable",
         "pred_success",

@@ -113,10 +113,10 @@ class AgentEnsemblerConfig(BasicAgentConfig):
 
 
 class AgentEnsembler:
-    name: ClassVar = "agent_ensembler"
-    task_type: ClassVar = "simple"
-    output_type: ClassVar = "simple"
-    config_cls = AgentEnsemblerConfig
+    name: ClassVar[str] = "agent_ensembler"
+    task_type: ClassVar[str] = "simple"
+    output_type: ClassVar[str] = "simple"
+    config_cls: ClassVar[type[AgentEnsemblerConfig]] = AgentEnsemblerConfig
 
     def __init__(self, config: AgentEnsemblerConfig):
         self.config = config

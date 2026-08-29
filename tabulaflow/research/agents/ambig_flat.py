@@ -106,10 +106,10 @@ class AmbigFlatSQLAgentConfig(BasicAgentConfig):
 
 @agent_registry.register
 class AmbigFlatSQLAgent:
-    name: ClassVar = "ambig_flat_sql_agent"
-    task_type: ClassVar = "ambig"
-    output_type: ClassVar = "ambig-flat"
-    config_cls = AmbigFlatSQLAgentConfig
+    name: ClassVar[str] = "ambig_flat_sql_agent"
+    task_type: ClassVar[str] = "ambig"
+    output_type: ClassVar[str] = "ambig-flat"
+    config_cls: ClassVar[type[AmbigFlatSQLAgentConfig]] = AmbigFlatSQLAgentConfig
 
     def __init__(
         self,

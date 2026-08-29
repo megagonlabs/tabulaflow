@@ -68,9 +68,9 @@ BIRD_DATASET_INSTRUCTIONS = """
 
 @dataset_registry.register
 class BirdSQLDatasetLoader:
-    name: ClassVar = "bird-sql"
-    splits: ClassVar = ["train", "dev", "dev_20251106"]
-    default_metrics: ClassVar = [
+    name: ClassVar[str] = "bird-sql"
+    splits: ClassVar[list[str]] = ["train", "dev", "dev_20251106"]
+    default_metrics: ClassVar[list[str]] = [
         "bird_sql_ex",
         "simple_ex",
         "bird_sql_ex_soft",

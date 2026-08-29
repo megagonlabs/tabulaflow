@@ -100,10 +100,10 @@ Writing model SQL:
 
 @agent_registry.register
 class DbtAgent:
-    name: ClassVar = "dbt_agent"
-    task_type: ClassVar = "dbt"
-    output_type: ClassVar = "dbt"
-    config_cls = DbtAgentConfig
+    name: ClassVar[str] = "dbt_agent"
+    task_type: ClassVar[str] = "dbt"
+    output_type: ClassVar[str] = "dbt"
+    config_cls: ClassVar[type[DbtAgentConfig]] = DbtAgentConfig
 
     def __init__(self, config: DbtAgentConfig):
         self.config = config

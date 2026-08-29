@@ -11,9 +11,9 @@ from tabulaflow.research.benchmarks.registry import dataset_registry
 
 @dataset_registry.register
 class BeaverDatasetLoader:
-    name: ClassVar = "beaver"
-    splits: ClassVar = ["test"]
-    default_metrics: ClassVar = [
+    name: ClassVar[str] = "beaver"
+    splits: ClassVar[list[str]] = ["test"]
+    default_metrics: ClassVar[list[str]] = [
         "simple_ex",
         "executable",
         "gold_executable",

@@ -30,10 +30,10 @@ class MajorityEnsemblerConfig(BaseModel):
 
 
 class MajorityEnsembler:
-    name: ClassVar = "majority_ensembler"
-    task_type: ClassVar = "simple"
-    output_type: ClassVar = "simple"
-    config_cls = MajorityEnsemblerConfig
+    name: ClassVar[str] = "majority_ensembler"
+    task_type: ClassVar[str] = "simple"
+    output_type: ClassVar[str] = "simple"
+    config_cls: ClassVar[type[MajorityEnsemblerConfig]] = MajorityEnsemblerConfig
 
     def __init__(self, config: MajorityEnsemblerConfig):
         self.config = config
