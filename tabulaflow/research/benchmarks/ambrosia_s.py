@@ -1,6 +1,5 @@
 import os
 import asyncio
-import random
 import json
 from typing import ClassVar
 
@@ -8,7 +7,7 @@ import pandas as pd
 
 from tabulaflow.research.types import AmbigNL2QTask, NL2QDataset
 from tabulaflow.data import SQLConnector, SQLConnectorConfig
-from tabulaflow.research.benchmarks.registry import dataset_registry
+from tabulaflow.research.benchmarks.registry import dataset_registry, select_tasks, selected_databases
 
 
 AMBROSIA_TAXONOMY = """
@@ -105,7 +104,7 @@ class AmbrosiaSDatasetLoader:
         if self.include_taxonomy:
             dataset_instructions += "\n" + AMBROSIA_TAXONOMY
 
-        databases = databases or self.get_databases(split)
+        databases = self.get_databases(split) if databases is None else databases
         with open(os.path.join(self.directory, f"ambrosia_{split}_processed.json"), "r") as f:
             data = []
             for task_idx, task in enumerate(json.load(f)):
@@ -133,8 +132,7 @@ class AmbrosiaSDatasetLoader:
                             "latency_seconds": None,
                         }
 
-                if self.include_taxonomy:
-                    task["dataset_instructions"] = dataset_instructions
+                task["dataset_instructions"] = dataset_instructions
                 data.append(task)
 
             tasks = [AmbigNL2QTask.model_validate(dic) for dic in data]
@@ -144,7 +142,7 @@ class AmbrosiaSDatasetLoader:
         if split not in self.splits:
             raise ValueError(f"Split {split} not supported, only {self.splits} are supported for {self.name}")
 
-        databases = databases or self.get_databases(split)
+        databases = self.get_databases(split) if databases is None else databases
         db_connectors = await asyncio.gather(
             *[
                 SQLConnector.from_url_async(
@@ -162,11 +160,14 @@ class AmbrosiaSDatasetLoader:
         return {name: conn for name, conn in zip(databases, db_connectors)}
 
     async def get_split_async(
-        self, split: str, databases: list[str] | None = None, subsample_size: int | None = None
+        self,
+        split: str,
+        databases: list[str] | None = None,
+        subsample_size: int | None = None,
+        qids: list[str] | None = None,
     ) -> NL2QDataset:
-        tasks = await self.get_tasks_async(split, databases)
-        if subsample_size:
-            tasks = random.Random(42).sample(tasks, subsample_size)
+        tasks = select_tasks(await self.get_tasks_async(split, databases), qids, subsample_size)
+        databases = selected_databases(tasks)
         db_connectors = await self.get_db_connectors_async(split, databases)
         return NL2QDataset(
             name=self.name,

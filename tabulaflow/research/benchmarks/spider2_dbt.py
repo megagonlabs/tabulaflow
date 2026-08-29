@@ -11,14 +11,13 @@ import asyncio
 import json
 import logging
 import os
-import random
 import re
 import shutil
 from typing import Any, ClassVar
 
 import duckdb
 
-from tabulaflow.research.benchmarks.registry import dataset_registry
+from tabulaflow.research.benchmarks.registry import dataset_registry, select_tasks, selected_databases
 from tabulaflow.data import SQLConnector, SQLConnectorConfig, SQLConnectorProtocol
 from tabulaflow.research.types import DbtTask, DbtGoldTable, NL2QDataset
 
@@ -277,7 +276,7 @@ class Spider2DbtDatasetLoader:
         if split not in self.splits:
             raise ValueError(f"Split {split} not supported, only {self.splits} are supported for {self.name}")
 
-        databases = databases or self.get_databases(split)
+        databases = self.get_databases(split) if databases is None else databases
         connectors: dict[str, SQLConnectorProtocol] = {}
 
         for instance_id in databases:
@@ -303,11 +302,14 @@ class Spider2DbtDatasetLoader:
         return connectors
 
     async def get_split_async(
-        self, split: str, databases: list[str] | None = None, subsample_size: int | None = None
+        self,
+        split: str,
+        databases: list[str] | None = None,
+        subsample_size: int | None = None,
+        qids: list[str] | None = None,
     ) -> NL2QDataset:
-        tasks = await self.get_tasks_async(split, databases)
-        if subsample_size:
-            tasks = random.Random(42).sample(tasks, subsample_size)
+        tasks = select_tasks(await self.get_tasks_async(split, databases), qids, subsample_size)
+        databases = selected_databases(tasks)
         db_connectors = await self.get_db_connectors_async(split, databases)
         return NL2QDataset(
             name=self.name,

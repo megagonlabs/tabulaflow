@@ -911,10 +911,14 @@ Currently, the following datasets are supported:
 
 | Dataset | Key | Splits |
 |---------|-----|------------------|
-| BIRD-SQL | `bird-sql` | `train`, `dev` |
-| Spider 2.0-snow | `spider2-snow` | `dev`|
-| Spider 2.0-simple (from Aaron) | `spider2-simple` | `dev` |
-| Beaver | `beaver` | `dev` |
+| BIRD-SQL | `bird-sql` | `dev`, `dev_20251106`, `train` |
+| Spider 2.0 Snow | `spider2-snow` | `test` |
+| Spider 2.0 Lite | `spider2-lite` | `test` |
+| Spider 2.0 DBT | `spider2-dbt` | `test` |
+| Beaver | `beaver` | `test` |
+| ARCS | `arcs` | `test`, `test_unsampled` |
+| AMBROSIA-S | `ambrosia-s` | `test`, `few_shot_examples` |
+| CypherBench | `cypherbench` | `test`, `train` |
 
 ### BIRD-SQL
 

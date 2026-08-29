@@ -10,10 +10,9 @@ Bolt host ports and ``neo4j`` / ``cypherbench`` credentials match those files.
 import asyncio
 import json
 import os
-import random
 from typing import Any, ClassVar, Mapping
 
-from tabulaflow.research.benchmarks.registry import dataset_registry
+from tabulaflow.research.benchmarks.registry import dataset_registry, select_tasks, selected_databases
 from tabulaflow.data import Neo4jConnector, Neo4jConnectorConfig
 from tabulaflow.research.types import GoldQuery
 from tabulaflow.research.types import NL2QDataset, SimpleNL2QTask
@@ -116,7 +115,7 @@ class CypherBenchDatasetLoader:
                 f"{self.directory!r} (or pass directory=... to the loader)."
             )
 
-        databases = databases or self.get_databases(split)
+        databases = self.get_databases(split) if databases is None else databases
         allowed = set(databases)
         with open(path, encoding="utf-8") as f:
             raw: list[dict[str, Any]] = json.load(f)
@@ -146,7 +145,7 @@ class CypherBenchDatasetLoader:
         if split not in self.splits:
             raise ValueError(f"Split {split} not supported, only {self.splits} are supported for {self.name}")
 
-        databases = databases or self.get_databases(split)
+        databases = self.get_databases(split) if databases is None else databases
         auth = (self.neo4j_user, self.neo4j_password)
 
         async def connect(graph: str) -> Neo4jConnector:
@@ -171,17 +170,18 @@ class CypherBenchDatasetLoader:
         return dict(zip(databases, connectors, strict=True))
 
     async def get_split_async(
-        self, split: str, databases: list[str] | None = None, subsample_size: int | None = None
+        self,
+        split: str,
+        databases: list[str] | None = None,
+        subsample_size: int | None = None,
+        qids: list[str] | None = None,
     ) -> NL2QDataset:
         if split not in self.splits:
             raise ValueError(f"Split {split} not supported, only {self.splits} are supported for {self.name}")
 
-        dbs = databases or list(CYPHERBENCH_SPLIT_GRAPHS[split])
-        tasks = await self.get_tasks_async(split, dbs)
-        if subsample_size:
-            k = min(subsample_size, len(tasks))
-            tasks = random.Random(42).sample(tasks, k)
-            dbs = sorted({t.db for t in tasks})
+        dbs = list(CYPHERBENCH_SPLIT_GRAPHS[split]) if databases is None else databases
+        tasks = select_tasks(await self.get_tasks_async(split, dbs), qids, subsample_size)
+        dbs = selected_databases(tasks)
         db_connectors = await self.get_db_connectors_async(split, dbs)
         return NL2QDataset(
             name=self.name,

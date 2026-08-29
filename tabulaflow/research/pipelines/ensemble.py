@@ -215,7 +215,10 @@ async def main_async() -> None:
     ref = results[0]
     dataset_loader = dataset_registry.get_class(ref.dataset)()
     dataset = await dataset_loader.get_split_async(
-        ref.split, databases=ref.databases, subsample_size=ref.subsample_size
+        ref.split,
+        databases=ref.databases,
+        subsample_size=ref.subsample_size,
+        qids=[task.qid for task in ref.tasks],
     )
     print(
         f"Loaded {len(dataset.db_connectors)} databases from {ref.dataset} {ref.split} in {time.time() - t0:.2f} seconds."

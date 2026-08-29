@@ -1,12 +1,11 @@
 import os
 import asyncio
-import random
 import json
 import copy
 from typing import ClassVar
 from tabulaflow.research.types import AmbigNL2QTask, NL2QDataset
 from tabulaflow.data import SQLConnector, SQLConnectorConfig
-from tabulaflow.research.benchmarks.registry import dataset_registry
+from tabulaflow.research.benchmarks.registry import dataset_registry, select_tasks, selected_databases
 
 ARCS_DATASET_INSTRUCTIONS = """
 - Follow these requirements when writing SQL. When disambiguating, do not consider these as ambiguities:
@@ -176,7 +175,7 @@ class ARCSDatasetLoader:
         else:
             dataset_instructions = ARCS_DATASET_INSTRUCTIONS
 
-        databases = databases or self.get_databases(split)
+        databases = self.get_databases(split) if databases is None else databases
         with open(os.path.join(self.directory, "tasks", "tasks_unsampled.json"), "r") as f:
             tasks = [
                 AmbigNL2QTask.model_validate(dict(**dic, dataset_instructions=dataset_instructions))
@@ -191,7 +190,7 @@ class ARCSDatasetLoader:
         if split not in self.splits:
             raise ValueError(f"Split {split} not supported, only {self.splits} are supported for {self.name}")
 
-        databases = databases or self.get_databases(split)
+        databases = self.get_databases(split) if databases is None else databases
         db_connectors = await asyncio.gather(
             *[
                 SQLConnector.from_url_async(
@@ -216,11 +215,14 @@ class ARCSDatasetLoader:
         return {name: conn for name, conn in zip(databases, db_connectors)}
 
     async def get_split_async(
-        self, split: str, databases: list[str] | None = None, subsample_size: int | None = None
+        self,
+        split: str,
+        databases: list[str] | None = None,
+        subsample_size: int | None = None,
+        qids: list[str] | None = None,
     ) -> NL2QDataset:
-        tasks = await self.get_tasks_async(split, databases)
-        if subsample_size:
-            tasks = random.Random(42).sample(tasks, subsample_size)
+        tasks = select_tasks(await self.get_tasks_async(split, databases), qids, subsample_size)
+        databases = selected_databases(tasks)
         db_connectors = await self.get_db_connectors_async(split, databases)
         return NL2QDataset(
             name=self.name,

@@ -1,12 +1,11 @@
 import os
 import json
-import random
 import asyncio
 from typing import Any, ClassVar
 from tabulaflow.research.types import GoldQuery
 from tabulaflow.research.types import SimpleNL2QTask, NL2QDataset
 from tabulaflow.data import SQLConnector, SQLConnectorConfig
-from tabulaflow.research.benchmarks.registry import dataset_registry
+from tabulaflow.research.benchmarks.registry import dataset_registry, select_tasks, selected_databases
 
 
 @dataset_registry.register
@@ -51,9 +50,10 @@ class BeaverDatasetLoader:
         if split not in self.splits:
             raise ValueError(f"Split {split} not supported, only {self.splits} are supported for {self.name}")
 
-        databases = databases or self.get_databases(split)
+        databases = self.get_databases(split) if databases is None else databases
         tasks = []
         for file in ["dev_dw.json", "dev_nw.json"]:
+            source = file.removesuffix(".json")
             with open(os.path.join(self.directory, file), "r") as f:
                 data = json.load(f)
 
@@ -61,7 +61,7 @@ class BeaverDatasetLoader:
                 if item["db_id"] in databases:
                     tasks.append(
                         SimpleNL2QTask(
-                            qid=f"{self.name}_{split}_{i}",
+                            qid=f"{self.name}_{split}_{source}_{i}",
                             db=item["db_id"],
                             question=item["question"],
                             document=None,
@@ -74,7 +74,7 @@ class BeaverDatasetLoader:
         if split not in self.splits:
             raise ValueError(f"Split {split} not supported, only {self.splits} are supported for {self.name}")
 
-        databases = databases or self.get_databases(split)
+        databases = self.get_databases(split) if databases is None else databases
         urls = {
             db: f"mysql+asyncmy://root:root@localhost:{self.dw_dbms_port if db == 'dw' else self.nw_dbms_port}/{db}"
             for db in databases
@@ -93,11 +93,14 @@ class BeaverDatasetLoader:
         return {name: conn for name, conn in zip(databases, db_connectors)}
 
     async def get_split_async(
-        self, split: str, databases: list[str] | None = None, subsample_size: int | None = None
+        self,
+        split: str,
+        databases: list[str] | None = None,
+        subsample_size: int | None = None,
+        qids: list[str] | None = None,
     ) -> NL2QDataset:
-        tasks = await self.get_tasks_async(split, databases)
-        if subsample_size:
-            tasks = random.Random(42).sample(tasks, subsample_size)
+        tasks = select_tasks(await self.get_tasks_async(split, databases), qids, subsample_size)
+        databases = selected_databases(tasks)
         db_connectors = await self.get_db_connectors_async(split, databases)
         return NL2QDataset(
             name=self.name,

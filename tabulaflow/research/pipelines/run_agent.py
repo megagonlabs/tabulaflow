@@ -241,8 +241,15 @@ async def main_async() -> None:
 
     args = parser.parse_args()
     logging.basicConfig(level=args.log_level)
+    if args.difficulty is not None and args.dataset != "bird-sql":
+        parser.error("--difficulty is only supported for bird-sql")
+    if args.include_taxonomy and args.dataset not in {"arcs", "ambrosia-s"}:
+        parser.error("--include-taxonomy is only supported for arcs and ambrosia-s")
+
+    loader_kwargs = {"include_taxonomy": True} if args.include_taxonomy else {}
+    dataset_loader = dataset_registry.get_class(args.dataset)(**loader_kwargs)
     if args.split is None:
-        args.split = "test" if args.dataset in {"spider2-snow", "spider2-dbt", "arcs", "cypherbench"} else "dev"
+        args.split = dataset_loader.splits[0]
     if args.schema_formatter is None:
         if args.dataset == "arcs":
             args.schema_formatter = "sql_basic"
@@ -273,18 +280,15 @@ async def main_async() -> None:
 
     t0 = time.time()
     kwargs = {}
-    if args.include_taxonomy:
-        kwargs["include_taxonomy"] = True
-    dataset_loader = dataset_registry.get_class(args.dataset)(**kwargs)
-
-    kwargs = {}
     if args.difficulty is not None:
         kwargs["difficulty"] = args.difficulty
     dataset = await dataset_loader.get_split_async(
-        args.split, databases=args.databases, subsample_size=args.subsample_size, **kwargs
+        args.split,
+        databases=args.databases,
+        subsample_size=args.subsample_size,
+        qids=args.qids,
+        **kwargs,
     )
-    if args.qids is not None:
-        dataset.tasks = [task for task in dataset.tasks if task.qid in args.qids]
 
     print(
         f"Loaded {len(dataset.tasks)} tasks and {len(dataset.db_connectors)} databases from {args.dataset} ({args.split}) in {time.time() - t0:.2f} seconds."

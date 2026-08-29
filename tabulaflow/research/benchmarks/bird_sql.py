@@ -1,13 +1,12 @@
 import os
 import json
 import asyncio
-import random
 from typing import ClassVar, Literal
 from datasets import load_dataset
 from tabulaflow.research.types import GoldQuery
 from tabulaflow.research.types import SimpleNL2QTask, NL2QDataset
 from tabulaflow.data import SQLConnector, SQLConnectorConfig
-from tabulaflow.research.benchmarks.registry import dataset_registry
+from tabulaflow.research.benchmarks.registry import dataset_registry, select_tasks, selected_databases
 
 
 BIRD_DATASET_INSTRUCTIONS = """
@@ -69,7 +68,7 @@ BIRD_DATASET_INSTRUCTIONS = """
 @dataset_registry.register
 class BirdSQLDatasetLoader:
     name: ClassVar[str] = "bird-sql"
-    splits: ClassVar[list[str]] = ["train", "dev", "dev_20251106"]
+    splits: ClassVar[list[str]] = ["dev", "dev_20251106", "train"]
     default_metrics: ClassVar[list[str]] = [
         "bird_sql_ex",
         "simple_ex",
@@ -178,7 +177,7 @@ WHERE c.name = 'Italy';"""
         if split not in self.splits:
             raise ValueError(f"Split {split} not supported, only {self.splits} are supported for {self.name}")
 
-        databases = databases or self.get_databases(split)
+        databases = self.get_databases(split) if databases is None else databases
         tasks = []
         with open(self._task_files[split], "r") as f:
             for i, item in enumerate(json.load(f)):
@@ -203,7 +202,7 @@ WHERE c.name = 'Italy';"""
         if split not in self.splits:
             raise ValueError(f"Split {split} not supported, only {self.splits} are supported for {self.name}")
 
-        databases = databases or self.get_databases(split)
+        databases = self.get_databases(split) if databases is None else databases
         db_dir = self._db_dirs[split]
         db_connectors = await asyncio.gather(
             *[
@@ -241,14 +240,18 @@ WHERE c.name = 'Italy';"""
         split: str,
         databases: list[str] | None = None,
         subsample_size: int | None = None,
+        qids: list[str] | None = None,
         difficulty: str | Literal["simple", "moderate", "challenging"] | None = None,
     ) -> NL2QDataset:
         if split == "dev_20251106":
             self._ensure_dev_20251106_downloaded()
 
-        tasks = await self.get_tasks_async(split, databases, difficulty=difficulty)
-        if subsample_size:
-            tasks = random.Random(42).sample(tasks, subsample_size)
+        tasks = select_tasks(
+            await self.get_tasks_async(split, databases, difficulty=difficulty),
+            qids,
+            subsample_size,
+        )
+        databases = selected_databases(tasks)
         db_connectors = await self.get_db_connectors_async(split, databases)
         return NL2QDataset(
             name=self.name,

@@ -50,9 +50,7 @@ def parse_preprocessor_args(args: argparse.Namespace) -> dict[str, dict[str, Any
 
 async def main_async() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "--preprocessors", nargs="+", default=["schema_preprocessor", "er_diagram_synthesizer", "db_summarizer"]
-    )
+    parser.add_argument("--preprocessors", nargs="+", default=["db_summarizer"])
 
     # dataset
     parser.add_argument("--dataset", default="bird-sql")
@@ -69,8 +67,9 @@ async def main_async() -> None:
     parser.add_argument("--log-level", type=str.upper, choices=["DEBUG", "INFO", "WARNING", "ERROR"], default="WARNING")
     args = parser.parse_args()
     logging.basicConfig(level=args.log_level)
+    dataset_loader = dataset_registry.get_class(args.dataset)()
     if args.split is None:
-        args.split = "test" if args.dataset == "spider2-snow" else "dev"
+        args.split = dataset_loader.splits[0]
     print(args)
     print()
 
@@ -78,16 +77,14 @@ async def main_async() -> None:
     configure_research_observability()
 
     t0 = time.time()
-    dataset_loader = dataset_registry.get_class(args.dataset)()
     dataset = await dataset_loader.get_split_async(args.split, databases=args.databases)
     print(
         f"Loaded {len(dataset.tasks)} tasks and {len(dataset.db_connectors)} databases from {args.dataset} ({args.split}) in {time.time() - t0:.2f} seconds."
     )
 
-    preprocessor_names = args.preprocessors or preprocessor_registry.list_names()
     all_preprocessor_args = parse_preprocessor_args(args)
     preprocessors = [
-        preprocessor_registry.get_class(name)(**all_preprocessor_args.get(name, {})) for name in preprocessor_names
+        preprocessor_registry.get_class(name)(**all_preprocessor_args.get(name, {})) for name in args.preprocessors
     ]
 
     t0 = time.time()
