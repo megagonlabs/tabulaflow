@@ -18,7 +18,7 @@ from tabulaflow.agents.llm import make_agent, embedding_throttle
 
 # Revised based on https://github.com/antgroup/Agentar-Scale-SQL/blob/main/ScaleSQL/prompts/nlu.yaml
 PREPROCESSING_SYSTEM_PROMPT = """
-You are a AI database expert that is excellent in analysing text-to-query questions.
+You are an AI database expert that is excellent at analyzing text-to-query questions.
 You need to:
 1. Identifying the database literals appeared in the question.
 2. Generating a question skeleton. The question skeleton contains the question structure while ignoring the detailed database information (entity names, column names).

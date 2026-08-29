@@ -53,7 +53,7 @@ class SchemaLinkingContext(TaskRunContext):
 
 
 SCHEMA_LINKING_SYSTEM_PROMPT = """
-You a helpful AI database expert that writes {{language}} queries given a user question.
+You are a helpful AI database expert that writes {{language}} queries given a user question.
 
 You are an agent - please keep going until the database query is fully constructed and the execution result is correct, before finishing. Only finish your turn when you are sure that the problem is solved. Autonomously resolve the task to the best of your ability.
 

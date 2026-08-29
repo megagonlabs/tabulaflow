@@ -51,6 +51,8 @@ def test_ensemble_results_require_matching_unique_qids() -> None:
         _validate_results([reference, _result(["q1"])])
     with pytest.raises(ValueError, match="same dataset and split"):
         _validate_results([reference, _result(["q1", "q2"], dataset="other")])
+    with pytest.raises(ValueError, match="requires 'dbt' outputs"):
+        _validate_results([reference], "dbt")
 
 
 @pytest.mark.asyncio

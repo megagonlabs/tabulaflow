@@ -117,8 +117,10 @@ async def prepare_working_env_async(dataset: NL2QDataset, output_dir: str) -> No
         dataset.db_connectors[task.db] = conn
 
 
+# The manifest and official evaluation contain 68 instances. These four lack
+# local gold DuckDBs, so the loader returns 64 and the official-split score,
+# whose denominator remains 68, currently has a maximum of 64/68.
 EXCLUDE_INSTANCES = ["airbnb002", "biketheft001", "google_ads001", "gitcoin001"]
-"""Instances without gold DuckDB in the evaluation suite."""
 
 
 @dataset_registry.register

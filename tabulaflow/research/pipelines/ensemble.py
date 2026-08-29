@@ -25,7 +25,7 @@ Ensembler = MajorityEnsembler | LLMEnsembler | AgentEnsembler | DbtLLMEnsembler
 logger = logging.getLogger(__name__)
 
 
-def _validate_results(results: list[NL2QRunResult]) -> NL2QRunResult:
+def _validate_results(results: list[NL2QRunResult], output_type: str | None = None) -> NL2QRunResult:
     """Validate ensemble inputs and return the reference run."""
     if not results:
         raise ValueError("At least one result is required")
@@ -40,6 +40,8 @@ def _validate_results(results: list[NL2QRunResult]) -> NL2QRunResult:
             raise ValueError(f"Result for agent {result.agent!r} contains duplicate QIDs")
         if set(qids) != reference_qids:
             raise ValueError("All results must contain the same QIDs")
+        if output_type is not None and any(task.output_type != output_type for task in result.tasks):
+            raise ValueError(f"Ensembler requires {output_type!r} outputs")
     return reference
 
 
@@ -127,7 +129,8 @@ async def ensemble_async(
     Returns:
         A new NL2QRunResult with ensembled predictions.
     """
-    reference = _validate_results(results)
+    output_type = "dbt" if ensembler.name == "dbt_llm" else "simple"
+    reference = _validate_results(results, output_type)
     if {task.qid for task in dataset.tasks} != {task.qid for task in reference.tasks}:
         raise ValueError("Dataset tasks must match the result QIDs")
     start_time = datetime.datetime.now()
@@ -199,17 +202,17 @@ async def main_async() -> None:
         default="majority",
         help="Ensembler strategy.",
     )
-    parser.add_argument("--llm", type=str, default=None, help="LLM model identifier (for llm/agent ensembler).")
-    parser.add_argument("--temperature", type=float, default=None, help="Temperature for llm/agent ensembler.")
-    parser.add_argument("--reasoning-effort", default=None, help="Reasoning effort for llm/agent ensembler.")
-    parser.add_argument("--service-tier", default=None, help="Provider-neutral service tier for llm/agent ensembler.")
+    parser.add_argument("--llm", type=str, default=None, help="LLM model identifier for model-based ensemblers.")
+    parser.add_argument("--temperature", type=float, default=None, help="Temperature for model-based ensemblers.")
+    parser.add_argument("--reasoning-effort", default=None, help="Reasoning effort for model-based ensemblers.")
+    parser.add_argument("--service-tier", default=None, help="Service tier for model-based ensemblers.")
     parser.add_argument(
         "--deduplicate-results",
         type=bool_flag,
         nargs="?",
         const=True,
-        default=True,
-        help="Deduplicate candidates with identical results (llm/agent ensembler, default true).",
+        default=None,
+        help="Deduplicate candidates with identical results (LLM ensemblers, default true).",
     )
     parser.add_argument("--max-steps", type=int, default=None, help="Maximum agent steps (agent ensembler only).")
     parser.add_argument("--batch-size", type=int, default=8)
@@ -217,6 +220,20 @@ async def main_async() -> None:
     parser.add_argument("--log-level", type=str.upper, choices=["DEBUG", "INFO", "WARNING", "ERROR"], default="WARNING")
     args = parser.parse_args()
     logging.basicConfig(level=args.log_level)
+    if args.ensembler == "majority" and any(
+        value is not None
+        for value in (
+            args.llm,
+            args.temperature,
+            args.reasoning_effort,
+            args.service_tier,
+            args.deduplicate_results,
+            args.max_steps,
+        )
+    ):
+        parser.error("model options are not supported by the majority ensembler")
+    if args.max_steps is not None and args.ensembler != "agent":
+        parser.error("--max-steps requires --ensembler agent")
     print(args)
     print()
 
@@ -237,9 +254,12 @@ async def main_async() -> None:
             results.append(NL2QRunResult.model_validate_json(f.read()))
     print(f"Loaded {len(results)} results.")
 
+    ensembler = parse_ensembler(args)
+
     # Load dataset for db connectors
     t0 = time.time()
-    ref = _validate_results(results)
+    output_type = "dbt" if ensembler.name == "dbt_llm" else "simple"
+    ref = _validate_results(results, output_type)
     dataset_loader = dataset_registry.get_class(ref.dataset)()
     dataset = await dataset_loader.get_split_async(
         ref.split,
@@ -250,8 +270,6 @@ async def main_async() -> None:
     print(
         f"Loaded {len(dataset.db_connectors)} databases from {ref.dataset} {ref.split} in {time.time() - t0:.2f} seconds."
     )
-
-    ensembler = parse_ensembler(args)
 
     t0 = time.time()
     result = await ensemble_async(ensembler, results, dataset, args.batch_size)

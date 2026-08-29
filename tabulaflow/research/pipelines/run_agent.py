@@ -225,8 +225,8 @@ async def main_async() -> None:
     schema_linking.add_argument("--do-schema-linking", type=bool_flag, nargs="?", const=True, default=None)
     schema_linking.add_argument("--do-postprocessing", type=bool_flag, nargs="?", const=True, default=None)
     schema_linking.add_argument("--num-few-shot-examples", type=int, default=None)
-    schema_linking.add_argument("--few-shot-dataset", default="bird-sql")
-    schema_linking.add_argument("--few-shot-split", default="train")
+    schema_linking.add_argument("--few-shot-dataset", default=None)
+    schema_linking.add_argument("--few-shot-split", default=None)
     schema_linking.add_argument("--question-embedder-embedding-llm", default=None)
 
     tool_agents = parser.add_argument_group("schema-discovery and DBT agents")
@@ -245,6 +245,35 @@ async def main_async() -> None:
         parser.error("--difficulty is only supported for bird-sql")
     if args.include_taxonomy and args.dataset not in {"arcs", "ambrosia-s"}:
         parser.error("--include-taxonomy is only supported for arcs and ambrosia-s")
+    if args.agent != "schema_linking" and any(
+        value is not None
+        for value in (
+            args.do_schema_linking,
+            args.do_postprocessing,
+            args.num_few_shot_examples,
+            args.few_shot_dataset,
+            args.few_shot_split,
+            args.question_embedder_embedding_llm,
+        )
+    ):
+        parser.error("schema-linking options require --agent schema_linking")
+    if args.db_summarizer_llm is not None and args.agent not in {"schema_discovery", "dbt_agent"}:
+        parser.error("--db-summarizer-llm requires --agent schema_discovery or dbt_agent")
+    if args.use_bash_tool is not None and args.agent != "dbt_agent":
+        parser.error("--use-bash-tool requires --agent dbt_agent")
+    if args.query_for_intended_only is not None and args.agent not in {
+        "ambig_flat_sql_agent",
+        "ambig_structured_sql_agent",
+    }:
+        parser.error("--query-for-intended-only requires a flat or structured ambiguity agent")
+    if (args.use_gold_phrases or args.use_gold_ambiguity_points) and args.agent != "ambig_structured_sql_agent":
+        parser.error("gold ambiguity options require --agent ambig_structured_sql_agent")
+    if args.user_patience is not None and args.agent != "ambig_simple_sql_agent":
+        parser.error("--user-patience requires --agent ambig_simple_sql_agent")
+
+    if args.agent == "schema_linking":
+        args.few_shot_dataset = args.few_shot_dataset or "bird-sql"
+        args.few_shot_split = args.few_shot_split or "train"
 
     loader_kwargs = {"include_taxonomy": True} if args.include_taxonomy else {}
     dataset_loader = dataset_registry.get_class(args.dataset)(**loader_kwargs)
@@ -257,13 +286,8 @@ async def main_async() -> None:
             args.schema_formatter = "cypher"
         else:
             args.schema_formatter = "sql_ddl"
-    if args.num_few_shot_examples is None and args.dataset in {
-        "bird-sql",
-        "spider2-snow",
-        "spider2-dbt",
-        "cypherbench",
-    }:
-        args.num_few_shot_examples = 5 if args.dataset == "bird-sql" and args.agent == "schema_linking" else 0
+    if args.agent == "schema_linking" and args.num_few_shot_examples is None:
+        args.num_few_shot_examples = 5 if args.dataset == "bird-sql" else 0
 
     print(args)
     print()
