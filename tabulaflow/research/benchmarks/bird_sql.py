@@ -183,8 +183,11 @@ WHERE c.name = 'Italy';"""
             for i, item in enumerate(json.load(f)):
                 if item["db_id"] not in databases:
                     continue
-                if difficulty is not None and item["difficulty"] != difficulty:
-                    continue
+                if difficulty is not None:
+                    if "difficulty" not in item:
+                        raise ValueError(f"BIRD-SQL split {split!r} does not provide difficulty labels")
+                    if item["difficulty"] != difficulty:
+                        continue
                 tasks.append(
                     SimpleNL2QTask(
                         qid=f"{self.name}_{split}_{i}",
@@ -193,7 +196,7 @@ WHERE c.name = 'Italy';"""
                         question_instructions=item["evidence"],
                         gold_query=GoldQuery(query=self._fix_gold_query(item["SQL"])),
                         dataset_instructions=BIRD_DATASET_INSTRUCTIONS,
-                        extra_info={} if split == "train" else {"bird_sql": {"difficulty": item["difficulty"]}},
+                        extra_info={"bird_sql": {"difficulty": item["difficulty"]}} if "difficulty" in item else {},
                     )
                 )
         return tasks

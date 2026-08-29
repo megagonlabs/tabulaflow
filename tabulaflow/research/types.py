@@ -4,6 +4,7 @@ import datetime
 import itertools
 import math
 import re
+from collections.abc import Sequence
 from enum import Enum
 from typing import TYPE_CHECKING, Any, Literal, Annotated, Protocol, TypeAlias, Union, overload
 
@@ -166,7 +167,7 @@ class SimpleNL2QTaskOutput(SimpleNL2QTask):
 
         return task_to_markdown(self, heading_level)
 
-    def to_summary(self, eval_metrics: list[str] = []) -> CSVSummaryRow:
+    def to_summary(self, eval_metrics: Sequence[str] = ()) -> CSVSummaryRow:
         from tabulaflow.research.reporting import task_to_summary
 
         return task_to_summary(self, eval_metrics)
@@ -355,7 +356,7 @@ class SimpleAmbigNL2QTaskOutput(AmbigNL2QTask):
 
         return task_to_markdown(self, heading_level)
 
-    def to_summary(self, eval_metrics: list[str] = []) -> CSVSummaryRow:
+    def to_summary(self, eval_metrics: Sequence[str] = ()) -> CSVSummaryRow:
         from tabulaflow.research.reporting import task_to_summary
 
         return task_to_summary(self, eval_metrics)
@@ -427,7 +428,7 @@ class FlatAmbigNL2QTaskOutput(AmbigNL2QTask):
 
         return task_to_markdown(self, heading_level)
 
-    def to_summary(self, eval_metrics: list[str] = []) -> CSVSummaryRow:
+    def to_summary(self, eval_metrics: Sequence[str] = ()) -> CSVSummaryRow:
         from tabulaflow.research.reporting import task_to_summary
 
         return task_to_summary(self, eval_metrics)
@@ -498,7 +499,7 @@ class StructuredAmbigNL2QTaskOutput(AmbigNL2QTask):
 
         return task_to_markdown(self, heading_level)
 
-    def to_summary(self, eval_metrics: list[str] = []) -> CSVSummaryRow:
+    def to_summary(self, eval_metrics: Sequence[str] = ()) -> CSVSummaryRow:
         from tabulaflow.research.reporting import task_to_summary
 
         return task_to_summary(self, eval_metrics)
@@ -579,7 +580,7 @@ class DbtTaskOutput(DbtTask):
 
         return task_to_markdown(self, heading_level)
 
-    def to_summary(self, eval_metrics: list[str] = []) -> CSVSummaryRow:
+    def to_summary(self, eval_metrics: Sequence[str] = ()) -> CSVSummaryRow:
         from tabulaflow.research.reporting import task_to_summary
 
         return task_to_summary(self, eval_metrics)
@@ -636,12 +637,12 @@ class NL2QRunResult(BaseModel):
     aggregated_eval_metrics: dict[str, Any] = Field(default_factory=dict)
     tasks: list[NL2QTaskOutput]
 
-    def to_directory(self, directory: str, eval_metrics_in_summary: list[str] = []) -> None:
+    def to_directory(self, directory: str, eval_metrics_in_summary: Sequence[str] = ()) -> None:
         from tabulaflow.research.reporting import run_result_to_directory
 
         run_result_to_directory(self, directory, eval_metrics_in_summary)
 
-    def to_csv(self, path: str, eval_metrics: list[str] = []) -> None:
+    def to_csv(self, path: str, eval_metrics: Sequence[str] = ()) -> None:
         from tabulaflow.research.reporting import run_result_to_csv
 
         run_result_to_csv(self, path, eval_metrics)

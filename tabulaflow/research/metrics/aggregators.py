@@ -1,10 +1,14 @@
 import statistics
-from typing import Any, Literal, cast
+from collections.abc import Sequence
+from typing import Any, Literal, TypeAlias, cast
 
 from tabulaflow.research.types import AmbigNL2QTask, NL2QRunResult, NumericOrNull
 
+AggregationOp: TypeAlias = Literal["avg", "sum", "max", "min"]
+MetricValue: TypeAlias = NumericOrNull | dict[str, Any]
 
-def _enforce_same_schema(metrics: list[dict[str, Any]]) -> None:
+
+def _enforce_same_schema(metrics: Sequence[dict[str, Any]]) -> None:
     if not all(metric.keys() == metrics[0].keys() for metric in metrics):
         raise ValueError("All metrics to aggregate must have the same schema.")
     for key in metrics[0]:
@@ -13,17 +17,18 @@ def _enforce_same_schema(metrics: list[dict[str, Any]]) -> None:
 
 
 def aggregate_metrics(
-    metrics: list[NumericOrNull] | list[dict[str, Any]],
-    ops: list[Literal["avg", "sum", "max", "min"]] = ["avg", "sum", "max", "min"],
+    metrics: Sequence[MetricValue],
+    ops: Sequence[AggregationOp] = ("avg", "sum", "max", "min"),
     decimals: int = 4,
 ) -> dict[str, Any]:
     """Aggregate scalar or consistently nested metric values."""
     if not metrics:
         return {op: None for op in ops}
     if isinstance(metrics[0], dict):
-        _enforce_same_schema(metrics)  # type: ignore[arg-type]
-        return {key: aggregate_metrics([metric[key] for metric in metrics], ops, decimals) for key in metrics[0]}  # type: ignore[index]
-    values = [metric for metric in cast(list[NumericOrNull], metrics) if metric is not None]
+        mappings = cast(Sequence[dict[str, Any]], metrics)
+        _enforce_same_schema(mappings)
+        return {key: aggregate_metrics([metric[key] for metric in mappings], ops, decimals) for key in mappings[0]}
+    values = [metric for metric in cast(Sequence[NumericOrNull], metrics) if metric is not None]
     if not values:
         return {op: None for op in ops}
     result: dict[str, Any] = {}
@@ -54,6 +59,8 @@ class RealScoreAggregator:
         ("bird-sql", "train"): (9428, "bird_sql_ex"),
         ("spider2-snow", "test"): (547, "spider2_ex"),
         ("spider2-lite", "test"): (547, "spider2_ex"),
+        # The official evaluation specification has 68 instances. Locally
+        # unavailable gold databases remain failures in the official score.
         ("spider2-dbt", "test"): (68, "spider2_duckdb_match"),
         ("beaver", "test"): (209, "simple_ex"),
         ("arcs", "test"): (331, "simple_ex"),
@@ -67,40 +74,41 @@ class RealScoreAggregator:
         if config is None:
             return {}
         total_tasks, metric_key = config
-        if all(metric_key not in task.eval_metrics for task in result.tasks):
+        values = [task.eval_metrics[metric_key] for task in result.tasks if metric_key in task.eval_metrics]
+        if not values:
             return {}
-        values = [task.eval_metrics[metric_key] for task in result.tasks]
         total = sum(v for v in values if v is not None)
         return {f"{metric_key}_real": round(total / total_tasks, 4)}
 
 
 class SimpleInferenceMetricsAggregator:
-    def __init__(self, ops: list[Literal["avg", "sum", "max", "min"]] = ["avg", "sum", "max"]):
-        self.ops = ops
+    def __init__(self, ops: Sequence[AggregationOp] = ("avg", "sum", "max")):
+        self.ops = tuple(ops)
 
     def aggregate(self, result: NL2QRunResult) -> dict[str, Any]:
-        return aggregate_metrics(
-            [task.inference_metrics for task in result.tasks if task.inference_metrics], ops=self.ops, decimals=4
-        )
+        metrics = [task.inference_metrics for task in result.tasks if task.inference_metrics]
+        return aggregate_metrics(metrics, ops=self.ops, decimals=4) if metrics else {}
 
 
 class SimpleAverageAggregator:
-    def __init__(self, ops: list[Literal["avg", "sum", "max", "min"]] = ["avg"]):
-        self.ops = ops
+    def __init__(self, ops: Sequence[AggregationOp] = ("avg",)):
+        self.ops = tuple(ops)
 
     def aggregate(self, result: NL2QRunResult) -> dict[str, Any]:
+        if not result.tasks:
+            return {}
         return aggregate_metrics([task.eval_metrics for task in result.tasks], ops=self.ops, decimals=4)
 
 
 class ByDBAggregator:
     def __init__(
         self,
-        ops: list[Literal["avg", "sum", "max", "min"]] = ["avg"],
-        metric_keys: list[str] = ["simple_ex", "perfect_linked_schema_r"],
+        ops: Sequence[AggregationOp] = ("avg",),
+        metric_keys: Sequence[str] = ("simple_ex", "perfect_linked_schema_r"),
         max_dbs: int = 200,
     ):
-        self.ops = ops
-        self.metric_keys = metric_keys
+        self.ops = tuple(ops)
+        self.metric_keys = tuple(metric_keys)
         self.max_dbs = max_dbs
 
     def aggregate(self, result: NL2QRunResult) -> dict[str, Any]:
@@ -111,24 +119,28 @@ class ByDBAggregator:
 
         res = {}
         for metric_key in self.metric_keys:
-            if metric_key not in result.tasks[0].eval_metrics:
+            if not any(metric_key in task.eval_metrics for task in result.tasks):
                 continue
 
             metrics = {}
             for db in databases:
                 metrics[db] = aggregate_metrics(
-                    [task.eval_metrics[metric_key] for task in result.tasks if task.db == db], ops=self.ops, decimals=4
+                    [
+                        task.eval_metrics[metric_key]
+                        for task in result.tasks
+                        if task.db == db and metric_key in task.eval_metrics
+                    ],
+                    ops=self.ops,
+                    decimals=4,
                 )
             res[f"{metric_key}_by_db"] = metrics
         return res
 
 
 class ByAmbigPointNumAggregator:
-    def __init__(
-        self, ops: list[Literal["avg", "sum", "max", "min"]] = ["avg"], metric_keys: list[str] = ["simple_ex"]
-    ):
-        self.ops = ops
-        self.metric_keys = metric_keys
+    def __init__(self, ops: Sequence[AggregationOp] = ("avg",), metric_keys: Sequence[str] = ("simple_ex",)):
+        self.ops = tuple(ops)
+        self.metric_keys = tuple(metric_keys)
 
     def _num_aps(self, task: AmbigNL2QTask, finite_only: bool = False) -> int:
         return len([ap for ap in task.gold_ambiguity_points if not finite_only or ap.type == "finite"])
@@ -140,19 +152,33 @@ class ByAmbigPointNumAggregator:
 
         res = {}
         for metric_key in self.metric_keys:
+            if not any(metric_key in task.eval_metrics for task in ambig_tasks):
+                continue
             metrics = {}
             metrics["1AP"] = aggregate_metrics(
-                [task.eval_metrics[metric_key] for task in ambig_tasks if self._num_aps(task) == 1],
+                [
+                    task.eval_metrics[metric_key]
+                    for task in ambig_tasks
+                    if self._num_aps(task) == 1 and metric_key in task.eval_metrics
+                ],
                 ops=self.ops,
                 decimals=4,
             )
             metrics["2AP"] = aggregate_metrics(
-                [task.eval_metrics[metric_key] for task in ambig_tasks if self._num_aps(task) == 2],
+                [
+                    task.eval_metrics[metric_key]
+                    for task in ambig_tasks
+                    if self._num_aps(task) == 2 and metric_key in task.eval_metrics
+                ],
                 ops=self.ops,
                 decimals=4,
             )
             metrics["3+AP"] = aggregate_metrics(
-                [task.eval_metrics[metric_key] for task in ambig_tasks if self._num_aps(task) >= 3],
+                [
+                    task.eval_metrics[metric_key]
+                    for task in ambig_tasks
+                    if self._num_aps(task) >= 3 and metric_key in task.eval_metrics
+                ],
                 ops=self.ops,
                 decimals=4,
             )
@@ -161,11 +187,9 @@ class ByAmbigPointNumAggregator:
 
 
 class ByAmbrosiaTaxonomyTypeAggregator:
-    def __init__(
-        self, ops: list[Literal["avg", "sum", "max", "min"]] = ["avg"], metric_keys: list[str] = ["simple_ex"]
-    ):
-        self.ops = ops
-        self.metric_keys = metric_keys
+    def __init__(self, ops: Sequence[AggregationOp] = ("avg",), metric_keys: Sequence[str] = ("simple_ex",)):
+        self.ops = tuple(ops)
+        self.metric_keys = tuple(metric_keys)
 
     def aggregate(self, result: NL2QRunResult) -> dict[str, Any]:
         if result.dataset != "ambrosia-s":
@@ -174,13 +198,16 @@ class ByAmbrosiaTaxonomyTypeAggregator:
         all_types = ["scope", "attachment", "vague"]
         res = {}
         for metric_key in self.metric_keys:
+            if not any(metric_key in task.eval_metrics for task in result.tasks):
+                continue
             metrics = {}
             for t in all_types:
                 metrics[t] = aggregate_metrics(
                     [
                         task.eval_metrics[metric_key]
                         for task in result.tasks
-                        if task.extra_info["ambrosia"]["ambig_type"] == t
+                        if metric_key in task.eval_metrics
+                        and task.extra_info.get("ambrosia", {}).get("ambig_type") == t
                     ],
                     ops=self.ops,
                     decimals=4,
@@ -192,11 +219,11 @@ class ByAmbrosiaTaxonomyTypeAggregator:
 class ByBirdSQLDifficultyAggregator:
     def __init__(
         self,
-        ops: list[Literal["avg", "sum", "max", "min"]] = ["avg"],
-        metric_keys: list[str] = ["bird_sql_ex", "simple_ex", "perfect_linked_schema_r"],
+        ops: Sequence[AggregationOp] = ("avg",),
+        metric_keys: Sequence[str] = ("bird_sql_ex", "simple_ex", "perfect_linked_schema_r"),
     ):
-        self.ops = ops
-        self.metric_keys = metric_keys
+        self.ops = tuple(ops)
+        self.metric_keys = tuple(metric_keys)
 
     def aggregate(self, result: NL2QRunResult) -> dict[str, Any]:
         if result.dataset != "bird-sql":
@@ -205,13 +232,16 @@ class ByBirdSQLDifficultyAggregator:
         all_levels = ["simple", "moderate", "challenging"]
         res = {}
         for metric_key in self.metric_keys:
+            if not any(metric_key in task.eval_metrics for task in result.tasks):
+                continue
             metrics = {}
             for level in all_levels:
                 metrics[level] = aggregate_metrics(
                     [
                         task.eval_metrics[metric_key]
                         for task in result.tasks
-                        if task.extra_info["bird_sql"]["difficulty"] == level
+                        if metric_key in task.eval_metrics
+                        and task.extra_info.get("bird_sql", {}).get("difficulty") == level
                     ],
                     ops=self.ops,
                     decimals=4,

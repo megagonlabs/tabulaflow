@@ -5,6 +5,7 @@ import pandas as pd
 import pytest
 from pydantic import ValidationError
 
+from tabulaflow.research.reporting import dict_to_df
 from tabulaflow.research.types import (
     ARCSAmbiguityType,
     AmbigNL2QTask,
@@ -53,6 +54,46 @@ def test_run_result_directory_layout(tmp_path: Path) -> None:
     summary = pd.read_csv(tmp_path / "result_summary.csv")
     assert summary.loc[0, "qid"] == "q1"
     assert summary.loc[0, "accuracy"] == 1
+
+
+def test_empty_run_writes_summary_headers(tmp_path: Path) -> None:
+    result = NL2QRunResult(
+        start_time=datetime.datetime(2026, 1, 1),
+        end_time=datetime.datetime(2026, 1, 1),
+        dataset="test",
+        split="test",
+        databases=[],
+        subsample_size=None,
+        agent="test",
+        agent_config={},
+        tasks=[],
+    )
+
+    result.to_csv(str(tmp_path / "summary.csv"), eval_metrics=["accuracy"])
+
+    assert list(pd.read_csv(tmp_path / "summary.csv").columns) == [
+        "qid",
+        "db",
+        "question",
+        "question_instructions",
+        "gold_query",
+        "pred_query",
+        "gold_exec_result",
+        "pred_exec_result",
+        "accuracy",
+    ]
+
+
+def test_dict_to_df_handles_empty_input_and_forwards_total_column_only() -> None:
+    assert dict_to_df({}).empty
+
+    result = dict_to_df(
+        {"first": {"a": 1, "b": 2}, "second": {"a": 3, "b": 4}},
+        column_level="inner",
+        total_column_only=True,
+    )
+
+    assert list(result.columns) == ["Total"]
 
 
 def test_dbt_markdown_delegates_to_reporting() -> None:

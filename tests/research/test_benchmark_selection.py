@@ -19,6 +19,21 @@ def test_first_split_is_the_default() -> None:
     assert BirdSQLDatasetLoader.splits[0] == "dev"
 
 
+@pytest.mark.asyncio
+async def test_bird_difficulty_is_optional_metadata(tmp_path: Path) -> None:
+    train_dir = tmp_path / "train"
+    train_dir.mkdir()
+    item = {"db_id": "db", "question": "Question", "evidence": "", "SQL": "SELECT 1"}
+    (train_dir / "train.json").write_text(json.dumps([item]))
+    loader = BirdSQLDatasetLoader(directory=str(tmp_path))
+
+    tasks = await loader.get_tasks_async("train", databases=["db"])
+
+    assert tasks[0].extra_info == {}
+    with pytest.raises(ValueError, match="does not provide difficulty labels"):
+        await loader.get_tasks_async("train", databases=["db"], difficulty="simple")
+
+
 def test_task_selection_filters_before_sampling() -> None:
     tasks = [_task("q1"), _task("q2"), _task("q3")]
 

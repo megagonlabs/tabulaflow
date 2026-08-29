@@ -2,6 +2,7 @@
 
 import logging
 import os
+from collections.abc import Sequence
 from typing import Any, Literal, get_args
 
 import pandas as pd
@@ -33,15 +34,17 @@ def dict_to_df(
     add_total_column: bool = True,
     add_total_row: bool = True,
     total_column_only: bool = False,
-) -> Any:
+) -> pd.DataFrame:
     """Convert a nested result mapping to a table with optional totals."""
+    if not data:
+        return pd.DataFrame()
     outer_keys = list(data)
     inner_keys = list(data[outer_keys[0]])
     if not all(set(inner_keys) == set(data[outer]) for outer in outer_keys):
         raise ValueError("All inner keys must be the same.")
     if column_level == "inner":
         transposed = {inner: {outer: data[outer][inner] for outer in outer_keys} for inner in inner_keys}
-        return dict_to_df(transposed, "outer", add_total_column, add_total_row)
+        return dict_to_df(transposed, "outer", add_total_column, add_total_row, total_column_only)
     df = pd.DataFrame(
         [[data[column][row] for column in outer_keys] for row in inner_keys],
         columns=outer_keys,
@@ -226,7 +229,7 @@ def task_to_markdown(task: NL2QTask | NL2QTaskOutput, heading_level: int = 1) ->
     return "\n".join(lines)
 
 
-def task_to_summary(task: NL2QTask | NL2QTaskOutput, eval_metrics: list[str] = []) -> CSVSummaryRow:
+def task_to_summary(task: NL2QTask | NL2QTaskOutput, eval_metrics: Sequence[str] = ()) -> CSVSummaryRow:
     if isinstance(task, (DbtTask, DbtTaskOutput)):
         return _dbt_task_to_summary(task, eval_metrics)
 
@@ -333,7 +336,7 @@ def _dbt_task_to_markdown(task: DbtTask | DbtTaskOutput, heading_level: int = 1)
     return "\n".join(lines)
 
 
-def _dbt_task_to_summary(task: DbtTask | DbtTaskOutput, eval_metrics: list[str] = []) -> CSVSummaryRow:
+def _dbt_task_to_summary(task: DbtTask | DbtTaskOutput, eval_metrics: Sequence[str] = ()) -> CSVSummaryRow:
     return CSVSummaryRow(
         qid=task.qid,
         db=task.db,
@@ -343,7 +346,7 @@ def _dbt_task_to_summary(task: DbtTask | DbtTaskOutput, eval_metrics: list[str] 
 
 
 def run_result_to_directory(
-    result: NL2QRunResult, directory: str, eval_metrics_in_summary: list[str] | None = None
+    result: NL2QRunResult, directory: str, eval_metrics_in_summary: Sequence[str] | None = None
 ) -> None:
     """Persist a run result, summary CSV, and readable task reports."""
     os.makedirs(directory, exist_ok=True)
@@ -354,8 +357,10 @@ def run_result_to_directory(
         task_to_directory(task, os.path.join(directory, "readable", task.qid))
 
 
-def run_result_to_csv(result: NL2QRunResult, path: str, eval_metrics: list[str] | None = None) -> None:
+def run_result_to_csv(result: NL2QRunResult, path: str, eval_metrics: Sequence[str] | None = None) -> None:
     """Write one summary row per task in a run result."""
-    summaries = [task_to_summary(task, eval_metrics or []) for task in result.tasks]
-    df = pd.DataFrame([summary.data() for summary in summaries], columns=summaries[0].fields())
+    metric_names = list(eval_metrics or ())
+    summaries = [task_to_summary(task, metric_names) for task in result.tasks]
+    columns = summaries[0].fields() if summaries else list(CSVSummaryRow.model_fields)[:-1] + metric_names
+    df = pd.DataFrame([summary.data() for summary in summaries], columns=columns)
     df.to_csv(path, index=False)

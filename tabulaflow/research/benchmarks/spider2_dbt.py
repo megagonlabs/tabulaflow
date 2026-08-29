@@ -1,8 +1,9 @@
 """Spider 2.0-DBT dataset loader.
 
-Spider 2.0-DBT provides 67 DuckDB data-transformation projects evaluated via
-``duckdb_match``.  Each example consists of a dbt project directory, a natural-
-language instruction, and a gold DuckDB database for evaluation.
+Spider 2.0-DBT provides 69 DuckDB data-transformation projects, 68 of which are
+covered by the official evaluation specification. Each example consists of a
+dbt project directory, a natural-language instruction, and a gold DuckDB
+database for evaluation.
 
 See ``data/Spider2/spider2-dbt/README.md`` for setup instructions.
 """
