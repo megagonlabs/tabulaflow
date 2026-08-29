@@ -1082,7 +1082,7 @@ We use `make` to manage a few common commands we frequently use (see [`Makefile`
 ```bash
 make format      # format and lint
 make mypy        # type check with mypy
-make test-schema-linking  # test schema_linking
+make test-bird-schema-linking  # test schema_linking
 make sync        # sync the dependencies in pyproject.toml into the venv (e.g. when others have updated the dependencies)
 ```
 
