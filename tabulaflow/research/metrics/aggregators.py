@@ -45,11 +45,11 @@ def aggregate_metrics(
     return result
 
 
-class RealScoreAggregator:
-    """Aggregator that divides by total dataset size, treating missing tasks as 0.
+class OfficialSplitScoreAggregator:
+    """Divide by the official split size, treating missing tasks as zero.
 
     Unlike SimpleAverageAggregator which divides by the number of evaluated
-    tasks, this divides by the known dataset size so that unevaluated/missing
+    tasks, this divides by the known split size so that unevaluated or missing
     predictions are implicitly counted as failures.
     """
 
@@ -78,7 +78,7 @@ class RealScoreAggregator:
         if not values:
             return {}
         total = sum(v for v in values if v is not None)
-        return {f"{metric_key}_real": round(total / total_tasks, 4)}
+        return {f"{metric_key}_official_split": round(total / total_tasks, 4)}
 
 
 class SimpleInferenceMetricsAggregator:

@@ -12,7 +12,7 @@ from tabulaflow.research.metrics import MetricProtocol, MetricAggregatorProtocol
 from tabulaflow.research.metrics.aggregators import (
     ByAmbrosiaTaxonomyTypeAggregator,
     SimpleAverageAggregator,
-    RealScoreAggregator,
+    OfficialSplitScoreAggregator,
     ByDBAggregator,
     ByAmbigPointNumAggregator,
     ByBirdSQLDifficultyAggregator,
@@ -96,7 +96,7 @@ async def main_async() -> None:
 
     metric_aggregators: list[MetricAggregatorProtocol] = [
         SimpleAverageAggregator(),
-        RealScoreAggregator(),
+        OfficialSplitScoreAggregator(),
         ByDBAggregator(),
         ByAmbigPointNumAggregator(),
         ByAmbrosiaTaxonomyTypeAggregator(),

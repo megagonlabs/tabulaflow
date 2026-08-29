@@ -5,7 +5,7 @@ from tabulaflow.research.metrics.aggregators import (
     ByAmbrosiaTaxonomyTypeAggregator,
     ByBirdSQLDifficultyAggregator,
     ByDBAggregator,
-    RealScoreAggregator,
+    OfficialSplitScoreAggregator,
     SimpleAverageAggregator,
 )
 from tabulaflow.research.types import (
@@ -93,8 +93,11 @@ def test_empty_run_has_no_average_metrics() -> None:
 def test_real_score_allows_partially_missing_metrics() -> None:
     result = _result([_simple_task("q1", {"simple_ex": 1.0}), _simple_task("q2")], dataset="beaver")
 
-    assert RealScoreAggregator().aggregate(result) == {"simple_ex_real": round(1 / 209, 4)}
+    assert OfficialSplitScoreAggregator().aggregate(result) == {"simple_ex_official_split": round(1 / 209, 4)}
 
 
 def test_spider2_dbt_real_score_uses_the_official_evaluation_size() -> None:
-    assert RealScoreAggregator.DATASET_CONFIGS[("spider2-dbt", "test")] == (68, "spider2_duckdb_match")
+    assert OfficialSplitScoreAggregator.DATASET_CONFIGS[("spider2-dbt", "test")] == (
+        68,
+        "spider2_duckdb_match",
+    )

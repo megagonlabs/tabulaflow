@@ -7,7 +7,7 @@ from tabulaflow.research.metrics.registry import (
 )
 from tabulaflow.research.metrics.aggregators import (
     SimpleAverageAggregator,
-    RealScoreAggregator,
+    OfficialSplitScoreAggregator,
     ByDBAggregator,
     ByAmbigPointNumAggregator,
     SimpleInferenceMetricsAggregator,
@@ -34,7 +34,7 @@ __all__ = [
     "MetricProtocol",
     "MetricAggregatorProtocol",
     "SimpleAverageAggregator",
-    "RealScoreAggregator",
+    "OfficialSplitScoreAggregator",
     "SimpleInferenceMetricsAggregator",
     "ByDBAggregator",
     "ByAmbigPointNumAggregator",
