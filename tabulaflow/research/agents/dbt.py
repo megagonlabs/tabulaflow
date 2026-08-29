@@ -24,15 +24,14 @@ from tabulaflow.agents.llm import make_agent
 
 class DbtAgentConfig(BasicAgentConfig):
     db_summarizer_llm: str = "openai-responses:gpt-5.4"
-    refresh_schema_on_finish: bool = False
     use_bash_tool: bool = False
 
 
 def _find_duckdb_file(directory: str) -> str | None:
-    """Return the path of the first ``.duckdb`` file in *directory*, or ``None``."""
-    for f in os.listdir(directory):
-        if f.endswith(".duckdb"):
-            return os.path.join(directory, f)
+    """Return the first ``.duckdb`` file in lexicographic order, or ``None``."""
+    for path in sorted(Path(directory).glob("*.duckdb")):
+        if path.is_file():
+            return str(path)
     return None
 
 
@@ -119,8 +118,9 @@ class DbtAgent:
     @trace_prediction
     async def predict_async(self, task: DbtTask, db_connector: SQLConnectorProtocol) -> DbtTaskOutput:
         t0 = time.time()
-        assert task.working_dir is not None, "working_dir must be set before calling predict_async"
-        working_dir: str = task.working_dir
+        if task.working_dir is None:
+            raise ValueError("working_dir must be set before calling predict_async")
+        working_dir = task.working_dir
 
         db_summarizer = DBSummarizer(llm=self.config.db_summarizer_llm)
         db_document = await db_summarizer.summarize(db_connector)
@@ -198,26 +198,22 @@ class DbtAgent:
             if isinstance(run_tool, ExecuteBashTool):
                 await run_tool.close()
         usage = Usage.from_pydantic_ai_usage(result.usage, self.config.llm)
+        summary_usage = db_summarizer.usage()
+        if summary_usage.api_requests:
+            usage += summary_usage
         trajectory = Trajectory.from_pydantic_ai_messages(result.all_messages(), id="TRJY-DBT-AGENT")
 
-        pred_db_path = _find_duckdb_file(task.working_dir)
+        pred_db_path = _find_duckdb_file(working_dir)
 
-        if self.config.refresh_schema_on_finish:
-            await db_connector.refresh_schema_async()
+        await db_connector.refresh_schema_async()
         pred_db_schema = db_connector.schema
 
         pred_model_files: dict[str, str] = {}
-        models_dir = os.path.join(task.working_dir, "models")
-        if os.path.isdir(models_dir):
-            for root, _dirs, files in os.walk(models_dir):
-                for f in files:
-                    if f.endswith(".sql"):
-                        full = os.path.join(root, f)
-                        rel = os.path.relpath(full, task.working_dir)
-                        try:
-                            pred_model_files[rel] = open(full).read()
-                        except OSError:
-                            pass
+        working_path = Path(working_dir)
+        models_dir = working_path / "models"
+        if models_dir.is_dir():
+            for path in sorted(models_dir.rglob("*.sql")):
+                pred_model_files[str(path.relative_to(working_path))] = path.read_text()
 
         metrics: dict[str, Any] = {}
         metrics["latency_seconds"] = time.time() - t0
