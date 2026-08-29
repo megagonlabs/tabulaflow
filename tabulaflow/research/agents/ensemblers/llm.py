@@ -7,9 +7,8 @@ from pydantic import BaseModel
 from pydantic_ai import ToolOutput
 
 from tabulaflow.research.observability import trace_prediction
-from tabulaflow.research.agents.ensemblers.majority_ensembler import _normalize_value
+from tabulaflow.research.agents.ensemblers.utils import execution_result_key, format_execution_result
 from tabulaflow.data import SQLConnectorProtocol
-from tabulaflow.output.formatting import format_dataframe
 from tabulaflow.research.query_execution import populate_query_exec_result
 from tabulaflow.agents.summarization import DBSummarizer
 from tabulaflow.agents.trace import Usage, Trajectory
@@ -18,8 +17,6 @@ from tabulaflow.agents.llm import make_agent, make_model_settings
 
 
 logger = logging.getLogger(__name__)
-
-_DF_PREVIEW_MAX_ROWS = 10
 
 LLM_ENSEMBLE_SYSTEM_PROMPT = """
 You are a helpful AI database expert.
@@ -85,43 +82,24 @@ class LLMEnsemblerConfig(BaseModel):
     service_tier: str | None = None
 
     def to_model_settings(self) -> dict[str, Any]:
-        res: dict[str, Any] = {}
+        settings: dict[str, Any] = {}
         if self.temperature is not None:
-            res["temperature"] = self.temperature
-        res.update(
+            settings["temperature"] = self.temperature
+        settings.update(
             make_model_settings(
                 model=self.llm,
                 reasoning_effort=self.reasoning_effort,
                 service_tier=self.service_tier,
             )
         )
-        return res
+        return settings
 
 
 class LLMEnsembler:
-    name: ClassVar[str] = "llm_ensembler"
-    task_type: ClassVar[str] = "simple"
-    output_type: ClassVar[str] = "simple"
-    config_cls: ClassVar[type[LLMEnsemblerConfig]] = LLMEnsemblerConfig
+    name: ClassVar[str] = "llm"
 
     def __init__(self, config: LLMEnsemblerConfig):
         self.config = config
-
-    @classmethod
-    async def from_config_async(cls, config: LLMEnsemblerConfig) -> "LLMEnsembler":
-        return cls(config)
-
-    def _format_exec_result(self, output: SimpleNL2QTaskOutput) -> str:
-        """Format the execution result of a candidate for the LLM prompt."""
-        assert output.pred_query is not None and output.pred_query.exec_result is not None
-        exec_result = output.pred_query.exec_result
-        assert exec_result.df is not None
-        if exec_result.df.empty:
-            return "(empty result)"
-        df = exec_result.df
-        preview = format_dataframe(df, max_visible_rows=_DF_PREVIEW_MAX_ROWS)
-        preview += f"\n({len(df)} rows)"
-        return preview
 
     @trace_prediction
     async def ensemble_async(
@@ -165,11 +143,9 @@ class LLMEnsembler:
             for output in candidates:
                 df = output.pred_query.exec_result.df  # type: ignore[union-attr]
                 assert df is not None
-                df = df.reindex(sorted(df.columns), axis=1)
-                rows = [tuple(_normalize_value(v) for v in row) for row in df.itertuples(index=False, name=None)]
-                hashable = tuple(sorted(set(rows)))
-                if hashable not in seen:
-                    seen.add(hashable)
+                result_key = execution_result_key(df)
+                if result_key not in seen:
+                    seen.add(result_key)
                     deduped.append(output)
             candidates = deduped
 
@@ -188,7 +164,7 @@ class LLMEnsembler:
             candidate_str = jinja2.Template(CANDIDATE_TEMPLATE).render(
                 number=i + 1,
                 sql=output.pred_query.query,
-                exec_result=self._format_exec_result(output),
+                exec_result=format_execution_result(output.pred_query.exec_result.df),  # type: ignore[union-attr]
             )
             candidate_strs.append(candidate_str)
 
@@ -226,6 +202,9 @@ class LLMEnsembler:
         )
         result = await agent.run(user_prompt)
         usage = Usage.from_pydantic_ai_usage(result.usage, self.config.llm)
+        summary_usage = db_summarizer.usage()
+        if summary_usage.api_requests:
+            usage += summary_usage
         trajectory = Trajectory.from_pydantic_ai_messages(result.all_messages(), id="TRJY-ENSEMBLE")
 
         best_output = candidates[result.output]

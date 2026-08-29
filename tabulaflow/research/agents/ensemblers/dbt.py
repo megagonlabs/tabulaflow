@@ -80,32 +80,25 @@ class DbtLLMEnsemblerConfig(BaseModel):
     service_tier: str | None = None
 
     def to_model_settings(self) -> dict[str, Any]:
-        res: dict[str, Any] = {}
+        settings: dict[str, Any] = {}
         if self.temperature is not None:
-            res["temperature"] = self.temperature
-        res.update(
+            settings["temperature"] = self.temperature
+        settings.update(
             make_model_settings(
                 model=self.llm,
                 reasoning_effort=self.reasoning_effort,
                 service_tier=self.service_tier,
             )
         )
-        return res
+        return settings
 
 
 class DbtLLMEnsembler:
-    name: ClassVar[str] = "dbt_llm_ensembler"
-    task_type: ClassVar[str] = "dbt"
-    output_type: ClassVar[str] = "dbt"
-    config_cls: ClassVar[type[DbtLLMEnsemblerConfig]] = DbtLLMEnsemblerConfig
+    name: ClassVar[str] = "dbt_llm"
 
     def __init__(self, config: DbtLLMEnsemblerConfig):
         self.config = config
         self.formatter = SQLDDLSchemaFormatter()
-
-    @classmethod
-    async def from_config_async(cls, config: DbtLLMEnsemblerConfig) -> "DbtLLMEnsembler":
-        return cls(config)
 
     def _deduplicate_candidates(self, candidates: list[DbtTaskOutput]) -> list[DbtTaskOutput]:
         """Deduplicate candidates with identical model file contents."""
@@ -200,6 +193,9 @@ class DbtLLMEnsembler:
         )
         result = await agent.run(user_prompt)
         usage = Usage.from_pydantic_ai_usage(result.usage, self.config.llm)
+        summary_usage = db_summarizer.usage()
+        if summary_usage.api_requests:
+            usage += summary_usage
         trajectory = Trajectory.from_pydantic_ai_messages(result.all_messages(), id="TRJY-DBT-ENSEMBLE")
 
         best_output = candidates[result.output]

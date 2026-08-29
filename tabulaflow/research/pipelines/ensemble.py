@@ -11,10 +11,10 @@ from typing import Any
 
 from tabulaflow.research.benchmarks.registry import dataset_registry
 from tabulaflow.research.observability import configure_research_observability
-from tabulaflow.research.agents.ensemblers.majority_ensembler import MajorityEnsembler, MajorityEnsemblerConfig
-from tabulaflow.research.agents.ensemblers.llm_ensembler import LLMEnsembler, LLMEnsemblerConfig
-from tabulaflow.research.agents.ensemblers.agent_ensembler import AgentEnsembler, AgentEnsemblerConfig
-from tabulaflow.research.agents.ensemblers.dbt_llm_ensembler import DbtLLMEnsembler, DbtLLMEnsemblerConfig
+from tabulaflow.research.agents.ensemblers.majority import MajorityEnsembler, MajorityEnsemblerConfig
+from tabulaflow.research.agents.ensemblers.llm import LLMEnsembler, LLMEnsemblerConfig
+from tabulaflow.research.agents.ensemblers.agent import AgentEnsembler, AgentEnsemblerConfig
+from tabulaflow.research.agents.ensemblers.dbt import DbtLLMEnsembler, DbtLLMEnsemblerConfig
 from tabulaflow.research.metrics import SimpleInferenceMetricsAggregator
 from tabulaflow.research.types import NL2QRunResult, NL2QDataset, NL2QTaskOutput
 from tabulaflow.research.pipelines.utils import bool_flag
@@ -144,14 +144,14 @@ def _build_llm_kwargs(args: argparse.Namespace) -> dict[str, Any]:
 
 def parse_ensembler(args: argparse.Namespace) -> Ensembler:
     """Build an ensembler instance from parsed CLI arguments."""
-    if args.ensembler == "llm_ensembler":
+    if args.ensembler == "llm":
         return LLMEnsembler(LLMEnsemblerConfig(**_build_llm_kwargs(args)))
-    elif args.ensembler == "agent_ensembler":
+    elif args.ensembler == "agent":
         kwargs = _build_llm_kwargs(args)
         if args.max_steps is not None:
             kwargs["max_steps"] = args.max_steps
         return AgentEnsembler(AgentEnsemblerConfig(**kwargs))
-    elif args.ensembler == "dbt_llm_ensembler":
+    elif args.ensembler == "dbt_llm":
         return DbtLLMEnsembler(DbtLLMEnsemblerConfig(**_build_llm_kwargs(args)))
     else:
         return MajorityEnsembler(MajorityEnsemblerConfig(result_dirs=args.result_dirs))
@@ -163,8 +163,8 @@ async def main_async() -> None:
     parser.add_argument("--output_dir", required=True, help="Path to save ensembled result.")
     parser.add_argument(
         "--ensembler",
-        choices=["majority_ensembler", "llm_ensembler", "agent_ensembler", "dbt_llm_ensembler"],
-        default="majority_ensembler",
+        choices=["majority", "llm", "agent", "dbt_llm"],
+        default="majority",
         help="Ensembler strategy.",
     )
     parser.add_argument("--llm", type=str, default=None, help="LLM model identifier (for llm/agent ensembler).")

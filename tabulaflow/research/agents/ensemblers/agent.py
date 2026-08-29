@@ -6,10 +6,10 @@ import jinja2
 from pydantic_ai import ModelRetry, RunContext, ToolOutput
 
 from tabulaflow.research.observability import trace_prediction
-from tabulaflow.research.agents.ensemblers.majority_ensembler import _normalize_value
+from tabulaflow.research.agents.ensemblers.utils import execution_result_key, format_execution_result
 from tabulaflow.research.agents.utils import BasicAgentConfig, get_max_steps_capability
 from tabulaflow.data import SQLConnectorProtocol
-from tabulaflow.output.formatting import SQLSchemaFormatter, format_dataframe, schema_formatter_registry
+from tabulaflow.output.formatting import SQLSchemaFormatter, schema_formatter_registry
 from tabulaflow.research.query_execution import populate_query_exec_result
 from tabulaflow.agents.summarization import DBSummarizer
 from tabulaflow.agents.trace import Trajectory, Usage
@@ -18,8 +18,6 @@ from tabulaflow.agents.tools import AgentTool, GetColumnJsonSchemaTool, GetTable
 from tabulaflow.agents.tools.run_query import latest_query_execution
 from tabulaflow.agents.llm import make_agent
 
-
-_DF_PREVIEW_MAX_ROWS = 10
 
 AGENT_ENSEMBLE_SYSTEM_PROMPT = """
 You are a helpful AI database expert that writes {{language}} queries given a user question.
@@ -113,10 +111,7 @@ class AgentEnsemblerConfig(BasicAgentConfig):
 
 
 class AgentEnsembler:
-    name: ClassVar[str] = "agent_ensembler"
-    task_type: ClassVar[str] = "simple"
-    output_type: ClassVar[str] = "simple"
-    config_cls: ClassVar[type[AgentEnsemblerConfig]] = AgentEnsemblerConfig
+    name: ClassVar[str] = "agent"
 
     def __init__(self, config: AgentEnsemblerConfig):
         self.config = config
@@ -124,22 +119,6 @@ class AgentEnsembler:
             SQLSchemaFormatter,
             schema_formatter_registry.get_class(config.schema_formatter)(**config.to_formatter_kwargs()),
         )
-
-    @classmethod
-    async def from_config_async(cls, config: AgentEnsemblerConfig) -> "AgentEnsembler":
-        return cls(config)
-
-    def _format_exec_result(self, output: SimpleNL2QTaskOutput) -> str:
-        """Format the execution result of a candidate for the prompt."""
-        assert output.pred_query is not None and output.pred_query.exec_result is not None
-        exec_result = output.pred_query.exec_result
-        assert exec_result.df is not None
-        if exec_result.df.empty:
-            return "(empty result)"
-        df = exec_result.df
-        preview = format_dataframe(df, max_visible_rows=_DF_PREVIEW_MAX_ROWS)
-        preview += f"\n({len(df)} rows)"
-        return preview
 
     @trace_prediction
     async def ensemble_async(
@@ -185,11 +164,9 @@ class AgentEnsembler:
             for output in candidates:
                 df = output.pred_query.exec_result.df  # type: ignore[union-attr]
                 assert df is not None
-                df = df.reindex(sorted(df.columns), axis=1)
-                rows = [tuple(_normalize_value(v) for v in row) for row in df.itertuples(index=False, name=None)]
-                hashable = tuple(sorted(set(rows)))
-                if hashable not in seen:
-                    seen.add(hashable)
+                result_key = execution_result_key(df)
+                if result_key not in seen:
+                    seen.add(result_key)
                     deduped.append(output)
             candidates = deduped
 
@@ -208,7 +185,7 @@ class AgentEnsembler:
             candidate_str = jinja2.Template(CANDIDATE_TEMPLATE).render(
                 number=i + 1,
                 sql=output.pred_query.query,
-                exec_result=self._format_exec_result(output),
+                exec_result=format_execution_result(output.pred_query.exec_result.df),  # type: ignore[union-attr]
             )
             candidate_strs.append(candidate_str)
 
@@ -280,6 +257,9 @@ class AgentEnsembler:
 
         result = await agent.run(user_prompt)
         usage = Usage.from_pydantic_ai_usage(result.usage, self.config.llm)
+        summary_usage = db_summarizer.usage()
+        if summary_usage.api_requests:
+            usage += summary_usage
         trajectory = Trajectory.from_pydantic_ai_messages(result.all_messages(), id="TRJY-ENSEMBLE")
 
         chosen = result.output

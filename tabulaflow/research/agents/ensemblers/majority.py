@@ -1,27 +1,12 @@
 import asyncio
 import collections
-from typing import Any, ClassVar
-import pandas as pd
+from typing import ClassVar
 from pydantic import BaseModel
 from tabulaflow.research.observability import trace_prediction
+from tabulaflow.research.agents.ensemblers.utils import execution_result_key
 from tabulaflow.research.types import SimpleNL2QTask, SimpleNL2QTaskOutput
 from tabulaflow.data import SQLConnectorProtocol
 from tabulaflow.research.query_execution import populate_query_exec_result
-
-
-_FLOAT_ROUND_DIGITS = 6
-
-
-def _normalize_value(v: Any) -> str:
-    """Convert a single cell value to a stable, comparable string.
-
-    Handles NULL variants, float precision, and arbitrary types.
-    """
-    if v is None or pd.isna(v):
-        return "<NULL>"
-    if isinstance(v, float):
-        return str(round(v, _FLOAT_ROUND_DIGITS))
-    return str(v)
 
 
 class MajorityEnsemblerConfig(BaseModel):
@@ -30,17 +15,10 @@ class MajorityEnsemblerConfig(BaseModel):
 
 
 class MajorityEnsembler:
-    name: ClassVar[str] = "majority_ensembler"
-    task_type: ClassVar[str] = "simple"
-    output_type: ClassVar[str] = "simple"
-    config_cls: ClassVar[type[MajorityEnsemblerConfig]] = MajorityEnsemblerConfig
+    name: ClassVar[str] = "majority"
 
     def __init__(self, config: MajorityEnsemblerConfig):
         self.config = config
-
-    @classmethod
-    async def from_config_async(cls, config: MajorityEnsemblerConfig) -> "MajorityEnsembler":
-        return cls(config)
 
     @trace_prediction
     async def ensemble_async(
@@ -84,10 +62,7 @@ class MajorityEnsembler:
             assert output.pred_query is not None and output.pred_query.exec_result is not None
             df = output.pred_query.exec_result.df
             assert df is not None
-            df = df.reindex(sorted(df.columns), axis=1)
-            rows = [tuple(_normalize_value(v) for v in row) for row in df.itertuples(index=False, name=None)]
-            hashable = tuple(sorted(set(rows)))
-            result2candidates[hashable].append(output)
+            result2candidates[execution_result_key(df)].append(output)
 
         # Select the best output via majority voting
         majority_group = max(result2candidates.values(), key=len)
