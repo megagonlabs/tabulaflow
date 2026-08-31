@@ -684,12 +684,15 @@ Aug 28
 - [x] research layer cleanup
 - [x] tests cleanup
 
-- [ ] Speedup tests
+Aug 29
+- [ ] priority
+- [ ] Context percentage and Context compaction
 - [ ] Benchmark download
 - Multimodal
   - [ ] Pasting images
   - [ ] Media in tables
-- [ ] Context percentage and Context compaction
+
+- [ ] Speedup tests
 - [ ] Inline artifact citation
 - [ ] code diff rendering
 - [ ] IMPORTANT: decouple data and rendered format (show unit "cm" while still enabling sorting by value)
