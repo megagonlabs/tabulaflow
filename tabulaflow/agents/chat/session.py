@@ -130,7 +130,7 @@ class ChatSession:
         self._last_usage: Usage | None = None
         self._message_history: list[ModelMessage] = []
         self._system_prompt = _SYSTEM_PROMPT
-        self._pydantic_ai_agent: Agent[None, str] | None = None
+        self._pydantic_ai_agent: Agent[object, str] | None = None
         self._running = False
         self._active_emit: Callable[[ChatEvent], None] | None = None
 
@@ -572,7 +572,7 @@ class ChatSession:
         if self._tools.bash is not None:
             await self._tools.bash.close()
 
-    def _make_agent(self, model: str, *, enable_apply_patch: bool | None = None) -> Agent[None, str]:
+    def _make_agent(self, model: str, *, enable_apply_patch: bool | None = None) -> Agent[object, str]:
         """Construct the model-specific runtime around the session's live tools."""
         from tabulaflow.agents.tools.run_subagent_for_each_row import ReleaseBrowserBeforeFanout
 
@@ -701,9 +701,9 @@ class ChatSession:
                             async with node.stream(agent_run.ctx) as stream:
                                 async for event in stream:
                                     if isinstance(event, FunctionToolResultEvent) and isinstance(
-                                        event.result, ToolReturnPart
+                                        event.part, ToolReturnPart
                                     ):
-                                        completed_results[event.tool_call_id] = event.result
+                                        completed_results[event.tool_call_id] = event.part
                                     await _emit_stream_event(event, emit, text_router)
                                     await asyncio.sleep(0)
                             emit(UsageUpdated(usage=Usage.from_pydantic_ai_usage(agent_run.usage, self.model)))

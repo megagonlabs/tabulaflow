@@ -149,7 +149,7 @@ class AmbigStructuredSQLAgent:
         system_prompt: str,
         output_type: type[BaseModel] | ToolOutput[PredQuery],
         tool_keys: list[str],
-    ) -> Agent[None, Any]:
+    ) -> Agent[object, Any]:
         return make_agent(
             self.config.llm,
             tools=[ctx.tools[t].as_pydantic_ai_tool() for t in tool_keys],
@@ -176,7 +176,7 @@ class AmbigStructuredSQLAgent:
             finite_ambiguity_points: list[LLMPredAmbiguityPointFinite]
             parameter_ambiguity_points: list[LLMPredAmbiguityPointInfinite]
 
-        disamb_agent: Agent[None, LLMOutput] = self._get_agent(
+        disamb_agent: Agent[object, LLMOutput] = self._get_agent(
             ctx,
             system_prompt=jinja2.Template(DISAMBIGUATION_PROMPT).render(
                 language=ctx.db_connector.language, dataset_instructions=ctx.task.dataset_instructions
@@ -218,7 +218,7 @@ class AmbigStructuredSQLAgent:
     ) -> PredQuery:
         assert len(finite_aps) == len(finite_interpretation_indexes)
 
-        sql_agent: Agent[None, None] = self._get_agent(
+        sql_agent: Agent[object, None] = self._get_agent(
             ctx,
             system_prompt=jinja2.Template(TEXT2SQL_PROMPT).render(
                 language=ctx.db_connector.language, dataset_instructions=ctx.task.dataset_instructions

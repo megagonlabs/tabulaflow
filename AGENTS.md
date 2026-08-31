@@ -84,7 +84,7 @@ Managed via `direnv` (`.envrc` file, not committed):
 
 - OpenAI: `openai-responses:gpt-5-mini`, `openai-responses:gpt-5`
 - Anthropic: `anthropic:claude-sonnet-4-5-20250929`
-- Google: `google-vertex:gemini-2.0-flash`, `google-vertex:gemini-2.5-flash`
+- Google: `google-cloud:gemini-2.0-flash`, `google-cloud:gemini-2.5-flash`
 - Fireworks: `fireworks:accounts/fireworks/models/<model-name>`
 - Together: `together:<org>/<model>`
 

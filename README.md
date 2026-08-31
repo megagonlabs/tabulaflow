@@ -725,7 +725,7 @@ Aug 29
 - [ ] TUI
   - [ ] Do not auto-scroll when browsing old turns
   - [ ] Onboarding - browser install
-- [ ] Bump pydantic-ai to 2.0 and type llm.py
+- [x] Bump pydantic-ai to 2.x and type llm.py
 - [ ] Show pending turns in output pane
 
 - [ ] Shell messed up after ssh disconnect
@@ -880,7 +880,7 @@ async def main() -> None:
 
     # define the model arguments
     # the `run_model` function below uses this to construct a separate model instance for each sample to avoid race condition
-    config = BasicAgentConfig(llm="openai:gpt-4.1-mini", schema_formatter="sql_basic")
+    config = BasicAgentConfig(llm="openai-responses:gpt-4.1-mini", schema_formatter="sql_basic")
     # run the model on the dataset using async coroutines
     result = await run_agent_async(SchemaLinkingAgent, config, dataset, batch_size=2)
     print(result.tasks[0].pred_query.query)
@@ -911,7 +911,7 @@ if __name__ == "__main__":
 We also provide the [run_model.py](tabulaflow/run_model.py) and [evaluate.py](tabulaflow/evaluate.py) scripts for convenience:
 
 ```bash
-uv run tabulaflow/research/pipelines/run_agent.py --agent schema_linking --dataset bird-sql --llm "openai:gpt-4o-mini" --output-dir output/test/
+uv run tabulaflow/research/pipelines/run_agent.py --agent schema_linking --dataset bird-sql --llm "openai-responses:gpt-4o-mini" --output-dir output/test/
 uv run tabulaflow/research/pipelines/populate_exec_results.py output/test/
 uv run tabulaflow/research/pipelines/evaluate.py output/test/
 ```

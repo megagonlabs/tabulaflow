@@ -48,7 +48,7 @@ def test_budget_thinking_claude_reserves_answer_tokens(effort: ReasoningEffort, 
 
 def test_budget_thinking_claude_on_vertex_reserves_answer_tokens() -> None:
     settings = make_model_settings(
-        model="google-vertex:claude-sonnet-4-5@20250929",
+        model="google-cloud:claude-sonnet-4-5@20250929",
         reasoning="medium",
     )
     assert settings == {"thinking": "medium", "max_tokens": 18192}
@@ -59,14 +59,9 @@ def test_adaptive_thinking_claude_does_not_set_max_tokens() -> None:
     assert settings == {"thinking": "high"}
 
 
-def test_opus_5_uses_adaptive_thinking_override() -> None:
+def test_opus_5_uses_upstream_adaptive_profile() -> None:
     settings = make_model_settings(model="anthropic:claude-opus-5", reasoning="high")
-    assert settings == {
-        "thinking": "high",
-        "anthropic_thinking": {"type": "adaptive"},
-        "anthropic_effort": "high",
-        "max_tokens": 24576,
-    }
+    assert settings == {"thinking": "high"}
 
 
 def test_make_model_settings_uses_cross_provider_service_tier() -> None:

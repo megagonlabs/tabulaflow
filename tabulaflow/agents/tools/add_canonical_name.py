@@ -721,7 +721,7 @@ class AddCanonicalNameTool:
             input_column=input_column,
             seen_list=_relevant_seen(collided, seen, _DISAMBIGUATE_SEEN_SHOWN),
         )
-        subagent: Agent[None, _DisambiguationOutput] = make_agent(
+        subagent: Agent[object, _DisambiguationOutput] = make_agent(
             self.subagent_llm,
             tools=[run_query_pa_tool],
             output_type=_DisambiguationOutput,

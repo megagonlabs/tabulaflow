@@ -215,7 +215,7 @@ class UserSimulator:
                 task=self.config.task,
                 ambig_points=[ap.model_dump() for ap in relevant_ambig_points],
             )
-            answer_agent: Agent[None, UserAnswer | None] = make_agent(
+            answer_agent: Agent[object, UserAnswer | None] = make_agent(
                 self.config.llm,
                 instructions=answer_agent_system_prompt,
                 output_type=ToolOutput(output_type_or_func, name="answer"),

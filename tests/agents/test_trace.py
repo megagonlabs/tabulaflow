@@ -12,7 +12,7 @@ def test_compute_api_cost_uses_genai_prices(monkeypatch: pytest.MonkeyPatch) -> 
     calc_price = Mock(return_value=SimpleNamespace(total_price=Decimal("1.23")))
     monkeypatch.setattr(genai_prices, "calc_price", calc_price)
 
-    cost = compute_api_cost("google-vertex:gemini-test", input_tokens=10, output_tokens=20)
+    cost = compute_api_cost("google-cloud:gemini-test", input_tokens=10, output_tokens=20)
 
     assert cost == Decimal("1.23")
     usage = calc_price.call_args.args[0]

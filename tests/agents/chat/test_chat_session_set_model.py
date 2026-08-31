@@ -440,16 +440,10 @@ def test_thinking_settings_adaptive_claude_no_max_tokens(monkeypatch: pytest.Mon
     assert agent._thinking_settings() == {"thinking": "high", "timeout": MAIN_REQUEST_TIMEOUT}
 
 
-def test_thinking_settings_opus_5_uses_adaptive_override(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_thinking_settings_opus_5_uses_upstream_adaptive_profile(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-fake")
     agent = ChatSession(registry=DBRegistry(), model="anthropic:claude-opus-5", reasoning="high")
-    assert agent._thinking_settings() == {
-        "thinking": "high",
-        "anthropic_thinking": {"type": "adaptive"},
-        "anthropic_effort": "high",
-        "max_tokens": 24576,
-        "timeout": MAIN_REQUEST_TIMEOUT,
-    }
+    assert agent._thinking_settings() == {"thinking": "high", "timeout": MAIN_REQUEST_TIMEOUT}
 
 
 def test_subagent_settings_budget_era_claude_raise_max_tokens() -> None:

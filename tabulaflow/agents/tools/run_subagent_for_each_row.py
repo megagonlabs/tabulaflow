@@ -80,16 +80,16 @@ class AbortTask(BaseModel):
 def _terminal_output_type(llm: str | Model, answer_model: type[BaseModel]) -> object:
     """Build the provider-compatible success/abort output contract."""
     if isinstance(llm, str):
-        is_anthropic = llm.startswith("anthropic:") or llm.startswith("google-vertex:claude")
+        is_anthropic = llm.startswith("anthropic:") or llm.startswith("google-cloud:claude")
         supports_native = False
         if is_anthropic:
             from pydantic_ai.profiles.anthropic import anthropic_model_profile
 
             profile = anthropic_model_profile(llm.split(":", 1)[1])
-            supports_native = bool(profile and profile.supports_json_schema_output)
+            supports_native = bool(profile and profile.get("supports_json_schema_output", False))
     else:
         is_anthropic = llm.system == "anthropic"
-        supports_native = llm.profile.supports_json_schema_output
+        supports_native = bool(llm.profile and llm.profile.get("supports_json_schema_output", False))
 
     outputs: list[Any] = [answer_model, AbortTask]
     if is_anthropic:

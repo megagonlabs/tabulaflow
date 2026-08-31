@@ -216,7 +216,7 @@ class Trajectory(BaseModel):
 
 _GENAI_PRICES_PROVIDER_MAPPINGS = {
     "openai-responses": "openai",
-    "google-vertex": "google",
+    "google-cloud": "google",
 }
 
 

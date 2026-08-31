@@ -15,7 +15,7 @@ from __future__ import annotations
 import asyncio
 from collections.abc import Sequence
 from contextlib import AsyncExitStack, asynccontextmanager
-from typing import Any, AsyncIterator, Literal, TypeVar, cast, overload
+from typing import Any, AsyncIterator, TypeVar, cast, overload
 
 from aiolimiter import AsyncLimiter
 from pydantic_ai import Agent, ToolOutput, UsageLimits
@@ -24,9 +24,7 @@ from pydantic_ai.models import Model, ModelRequestParameters, infer_model
 from pydantic_ai.models.wrapper import WrapperModel
 from pydantic_ai.profiles.anthropic import (
     ANTHROPIC_THINKING_BUDGET_MAP,
-    AnthropicModelProfile,
     anthropic_model_profile,
-    resolve_anthropic_effort,
 )
 from pydantic_ai.settings import (
     ModelSettings,
@@ -50,15 +48,6 @@ __all__ = [
 _DEFAULT_USAGE_LIMITS = UsageLimits(request_limit=None)
 
 _ANTHROPIC_ANSWER_TOKEN_HEADROOM = 8192
-_AnthropicEffort = Literal["minimal", "low", "medium", "high", "xhigh"]
-
-
-def _anthropic_effort(reasoning: ReasoningLevel | None) -> _AnthropicEffort | None:
-    if reasoning in {"minimal", "low", "medium", "high", "xhigh"}:
-        return cast(_AnthropicEffort, reasoning)
-    return None
-
-
 def model_display_name(model: str, reasoning: ReasoningLevel | None = None) -> str:
     """Return a human-readable display name for an LLM model identifier,
     with the reasoning effort appended when given.
@@ -116,14 +105,6 @@ def make_model_settings(
         ModelSettings,
         {
             **_reasoning_model_settings(reasoning, model=model),
-            **(
-                {
-                    "anthropic_thinking": {"type": "adaptive"},
-                    "anthropic_effort": resolve_anthropic_effort(effort, supports_xhigh=True),
-                }
-                if model.startswith("anthropic:claude-opus-5") and (effort := _anthropic_effort(reasoning)) is not None
-                else {}
-            ),
             **_anthropic_token_settings(reasoning, model=model),
             **({} if service_tier is None else {"service_tier": service_tier}),
             **({} if timeout is None else {"timeout": timeout}),
@@ -150,13 +131,13 @@ def _anthropic_token_settings(reasoning: ReasoningLevel | None, *, model: str) -
     """Give budget-thinking Claude models enough output tokens for thinking and an answer."""
     if reasoning is None or reasoning is False:
         return ModelSettings()
-    if model.startswith("anthropic:") or model.startswith("google-vertex:claude"):
+    if model.startswith("anthropic:") or model.startswith("google-cloud:claude"):
         model_name = model.split(":", 1)[1]
     else:
         return ModelSettings()
 
-    profile = AnthropicModelProfile.from_profile(anthropic_model_profile(model_name))
-    if profile.anthropic_supports_adaptive_thinking:
+    profile = anthropic_model_profile(model_name)
+    if profile is not None and profile.get("anthropic_supports_adaptive_thinking", False):
         return ModelSettings()
     budget = ANTHROPIC_THINKING_BUDGET_MAP.get(cast(Any, reasoning))
     if budget is None:
@@ -223,7 +204,7 @@ class _ThrottledModel(WrapperModel):
 
 
 def _build_base(llm: str) -> Model:
-    if llm.startswith("google-vertex:claude"):
+    if llm.startswith("google-cloud:claude"):
         import os
 
         from anthropic import AsyncAnthropicVertex
@@ -306,7 +287,7 @@ def make_agent(
     model_settings: Any = None,
     retries: int = 1,
     **kwargs: Any,
-) -> Agent[None, _OutputT]: ...
+) -> Agent[object, _OutputT]: ...
 @overload
 def make_agent(
     model: str | Model,
@@ -317,7 +298,7 @@ def make_agent(
     model_settings: Any = None,
     retries: int = 1,
     **kwargs: Any,
-) -> Agent[None, _OutputT]: ...
+) -> Agent[object, _OutputT]: ...
 @overload
 def make_agent(
     model: str | Model,
@@ -327,7 +308,7 @@ def make_agent(
     model_settings: Any = None,
     retries: int = 1,
     **kwargs: Any,
-) -> Agent[None, str]: ...
+) -> Agent[object, str]: ...
 def make_agent(
     model: str | Model,
     *,
