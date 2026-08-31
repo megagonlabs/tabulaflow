@@ -20,7 +20,7 @@ def main() -> None:
     agent = ChatSession(
         registry=DBRegistry(),
         model="openai-responses:gpt-5",
-        reasoning_effort="medium",
+        reasoning="medium",
         project_dir=Path(os.getcwd()),
         scratch_dir=Path(tempfile.gettempdir()) / "tabulaflow-scratch",
     )

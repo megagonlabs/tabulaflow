@@ -17,6 +17,13 @@ export OPENAI_API_KEY=sk-...
 tabulaflow
 ```
 
+The app uses the provider's standard service tier by default. Priority processing
+is a launch-only option and may incur premium API pricing:
+
+```bash
+tabulaflow --service-tier priority
+```
+
 tabulaflow uses the launch directory as its project directory, so local file
 paths and shell commands resolve relative to `/path/to/your/project` in the
 example above.
@@ -59,7 +66,8 @@ async def main() -> None:
     session = ChatSession(
         registry=DBRegistry(),
         model="openai-responses:gpt-5",
-        reasoning_effort="medium",
+        reasoning="medium",
+        service_tier="priority",
     )
     try:
         result = await session.run("Which tables contain customer data?")
@@ -68,6 +76,23 @@ async def main() -> None:
         await session.aclose()
 
 asyncio.run(main())
+```
+
+Lower-level LLM consumers accept `model_settings`; use the shared types and
+helper so reasoning and service tiers retain their cross-provider semantics.
+For `reasoning`, `None` leaves the setting unspecified, `False` disables it,
+`True` uses the provider default, and a named level requests that effort:
+
+```python
+from tabulaflow.agents.llm import ReasoningLevel, ServiceTier, make_model_settings
+
+reasoning: ReasoningLevel = "low"
+service_tier: ServiceTier = "priority"
+model_settings = make_model_settings(
+    model="openai-responses:gpt-5-mini",
+    reasoning=reasoning,
+    service_tier=service_tier,
+)
 ```
 
 For programmatic runtime overrides, initialize once before creating agents:

@@ -12,7 +12,7 @@ from tabulaflow.research.query_execution import populate_query_exec_result
 from tabulaflow.agents.summarization import DBSummarizer
 from tabulaflow.agents.trace import Usage, Trajectory
 from tabulaflow.research.types import SimpleNL2QTask, SimpleNL2QTaskOutput
-from tabulaflow.agents.llm import make_agent, make_model_settings
+from tabulaflow.agents.llm import ReasoningLevel, ServiceTier, make_agent, make_model_settings
 
 
 LLM_ENSEMBLE_SYSTEM_PROMPT = """
@@ -75,8 +75,8 @@ class LLMEnsemblerConfig(BaseModel):
     skip_empty_results: bool = True
     deduplicate_results: bool = True
     temperature: float | None = None
-    reasoning_effort: str | None = None
-    service_tier: str | None = None
+    reasoning: ReasoningLevel | None = None
+    service_tier: ServiceTier | None = None
 
     def to_model_settings(self) -> dict[str, Any]:
         settings: dict[str, Any] = {}
@@ -85,7 +85,7 @@ class LLMEnsemblerConfig(BaseModel):
         settings.update(
             make_model_settings(
                 model=self.llm,
-                reasoning_effort=self.reasoning_effort,
+                reasoning=self.reasoning,
                 service_tier=self.service_tier,
             )
         )

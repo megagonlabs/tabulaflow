@@ -15,11 +15,11 @@ Example config with an explicitly selected custom preset::
           "label": "My research stack",
           "main": {
             "model": "openai-responses:gpt-5.6-sol",
-            "reasoning_effort": "high"
+            "reasoning": "high"
           },
           "subagent": {
             "model": "anthropic:claude-sonnet-4-5-20250929",
-            "reasoning_effort": "medium"
+            "reasoning": "medium"
           }
         }
       ]
@@ -32,11 +32,12 @@ import json
 import os
 import re
 from dataclasses import dataclass
-from typing import Any, Literal
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator, model_validator
 
 from tabulaflow._paths import DEFAULT_HOME_DIR
+from tabulaflow.agents.llm import ReasoningLevel
 
 APP_CONFIG_PATH = str(DEFAULT_HOME_DIR / "app_config.json")
 LLM_OFF = "off"
@@ -64,25 +65,19 @@ def model_supports_apply_patch(model: str) -> bool:
     return version_match is not None and int(version_match.group(1)) >= 5
 
 
-ReasoningEffort = Literal["low", "medium", "high", "xhigh"]
-"""Unified thinking level, translated per provider by pydantic-ai (budget tokens
-for older Claude, native effort for newer, ``thinking_level`` for Gemini 3+).
-Levels a provider lacks saturate to its nearest supported value."""
-
-
 class LLMRoleConfig(BaseModel):
     """Model settings for one role in an LLM preset."""
 
-    model_config = ConfigDict(validate_assignment=True, protected_namespaces=())
+    model_config = ConfigDict(validate_assignment=True, protected_namespaces=(), extra="forbid")
 
     model: str
-    reasoning_effort: ReasoningEffort = "medium"
+    reasoning: ReasoningLevel = "medium"
 
 
 class LLMPreset(BaseModel):
     """A named pair of main/subagent LLM settings."""
 
-    model_config = ConfigDict(validate_assignment=True, protected_namespaces=())
+    model_config = ConfigDict(validate_assignment=True, protected_namespaces=(), extra="forbid")
 
     label: str
     main: LLMRoleConfig
@@ -105,44 +100,44 @@ _DEFAULT_LLM_PRESETS_DATA = (
         "label": "OpenAI balanced",
         "main": {
             "model": "openai-responses:gpt-5.6-sol",
-            "reasoning_effort": "medium",
+            "reasoning": "medium",
         },
         "subagent": {
             "model": "openai-responses:gpt-5.4-mini",
-            "reasoning_effort": "medium",
+            "reasoning": "medium",
         },
     },
     {
         "label": "OpenAI budget",
         "main": {
             "model": "openai-responses:gpt-5.4-mini",
-            "reasoning_effort": "medium",
+            "reasoning": "medium",
         },
         "subagent": {
             "model": "openai-responses:gpt-5-mini",
-            "reasoning_effort": "medium",
+            "reasoning": "medium",
         },
     },
     {
         "label": "Anthropic balanced",
         "main": {
             "model": "anthropic:claude-opus-5",
-            "reasoning_effort": "high",
+            "reasoning": "high",
         },
         "subagent": {
             "model": "anthropic:claude-sonnet-4-5-20250929",
-            "reasoning_effort": "medium",
+            "reasoning": "medium",
         },
     },
     {
         "label": "Planning hybrid",
         "main": {
             "model": "anthropic:claude-opus-4-8",
-            "reasoning_effort": "high",
+            "reasoning": "high",
         },
         "subagent": {
             "model": "openai-responses:gpt-5.4-mini",
-            "reasoning_effort": "medium",
+            "reasoning": "medium",
         },
     },
 )

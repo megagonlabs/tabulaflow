@@ -37,16 +37,11 @@ class BannerWidget(Widget):
     }
     """
 
-    def __init__(self, *, model: str | None, reasoning_effort: str | None) -> None:
-        super().__init__()
-        self._model = model
-        self._reasoning_effort = reasoning_effort
-
     def compose(self) -> ComposeResult:
         from tabulaflow.app.tui.banner import build_banner_text
 
         yield Static(classes="banner-art")
-        yield Static(build_banner_text(model=self._model, reasoning_effort=self._reasoning_effort))
+        yield Static(build_banner_text())
 
     def on_mount(self) -> None:
         from tabulaflow.app.tui.banner import build_wordmark

@@ -26,7 +26,7 @@ from tabulaflow.agents.tools.browser.tool import (
     snapshot_snippet,
 )
 from tabulaflow.output.formatting._core import format_connector_summary
-from tabulaflow.agents.llm import make_agent, make_model_settings, model_display_name
+from tabulaflow.agents.llm import ReasoningLevel, ServiceTier, make_agent, make_model_settings, model_display_name
 from tabulaflow.agents.chat.events import (
     ChatEvent,
     ChatResult,
@@ -61,7 +61,7 @@ _SYSTEM_PROMPT = files("tabulaflow.agents.chat").joinpath("system_prompt.md").re
 
 
 DEFAULT_SUBAGENT_MODEL: Final = "openai-responses:gpt-5.4-mini"
-DEFAULT_SUBAGENT_REASONING_EFFORT: Final = "medium"
+DEFAULT_SUBAGENT_REASONING: Final[ReasoningLevel] = "medium"
 # Non-streaming subagent requests occasionally stall server-side for many
 # minutes (a fan-out visibly stuck at "28/30" rows), while a re-sent identical
 # request completes in seconds. The provider SDK retries timed-out requests
@@ -84,10 +84,10 @@ class ChatSession:
     Args:
         registry: Data sources available to the conversation.
         model: Provider-qualified model identifier for the interactive agent.
-        reasoning_effort: Provider-neutral reasoning level for the main model.
+        reasoning: Provider-neutral reasoning level for the main model.
         service_tier: Optional provider service tier.
         subagent_model: Model used by fan-out and extraction helpers.
-        subagent_reasoning_effort: Reasoning level for helper models.
+        subagent_reasoning: Reasoning level for helper models.
         enable_apply_patch: Expose ``apply_patch`` when ``project_dir`` is set.
         extra_instructions: Instructions appended to the fixed baseline prompt.
         trajectory_log_dir: Optional directory for conversation trajectories.
@@ -102,10 +102,10 @@ class ChatSession:
         registry: DBRegistry,
         *,
         model: str,
-        reasoning_effort: str,
-        service_tier: str | None = "priority",
+        reasoning: ReasoningLevel,
+        service_tier: ServiceTier | None = None,
         subagent_model: str = DEFAULT_SUBAGENT_MODEL,
-        subagent_reasoning_effort: str = DEFAULT_SUBAGENT_REASONING_EFFORT,
+        subagent_reasoning: ReasoningLevel = DEFAULT_SUBAGENT_REASONING,
         enable_apply_patch: bool = False,
         extra_instructions: str | None = None,
         trajectory_log_dir: Path | None = None,
@@ -116,10 +116,10 @@ class ChatSession:
     ) -> None:
         self._registry = registry
         self._model = model
-        self._reasoning_effort = reasoning_effort
+        self._reasoning = reasoning
         self._service_tier = service_tier
         self._subagent_model = subagent_model
-        self._subagent_reasoning_effort = subagent_reasoning_effort
+        self._subagent_reasoning = subagent_reasoning
         self._enable_apply_patch = enable_apply_patch
         self._extra_instructions = extra_instructions
         self._trajectory_log_dir = trajectory_log_dir
@@ -157,9 +157,9 @@ class ChatSession:
         return self._model
 
     @property
-    def reasoning_effort(self) -> str:
+    def reasoning(self) -> ReasoningLevel:
         """Active reasoning level for the interactive model."""
-        return self._reasoning_effort
+        return self._reasoning
 
     @property
     def subagent_model(self) -> str:
@@ -167,9 +167,9 @@ class ChatSession:
         return self._subagent_model
 
     @property
-    def subagent_reasoning_effort(self) -> str:
+    def subagent_reasoning(self) -> ReasoningLevel:
         """Active reasoning level for helper models."""
-        return self._subagent_reasoning_effort
+        return self._subagent_reasoning
 
     @property
     def enable_apply_patch(self) -> bool:
@@ -373,7 +373,7 @@ class ChatSession:
         """Return the shared provider-specific settings for the interactive model."""
         return make_model_settings(
             model=self.model,
-            reasoning_effort=self.reasoning_effort,
+            reasoning=self.reasoning,
             timeout=MAIN_REQUEST_TIMEOUT,
         )
 
@@ -381,7 +381,7 @@ class ChatSession:
         self,
         *,
         model: str | None = None,
-        reasoning_effort: str | None = None,
+        reasoning: ReasoningLevel | None = None,
     ) -> ModelSettings:
         """Model settings for subagent-backed tools.
 
@@ -390,7 +390,7 @@ class ChatSession:
         """
         return make_model_settings(
             model=model or self.subagent_model,
-            reasoning_effort=reasoning_effort or self.subagent_reasoning_effort,
+            reasoning=self.subagent_reasoning if reasoning is None else reasoning,
             service_tier=self._service_tier,
             timeout=SUBAGENT_REQUEST_TIMEOUT,
         )
@@ -411,11 +411,11 @@ class ChatSession:
                 )
             )
 
-    def _apply_subagent_profile(self, *, model: str, reasoning_effort: str) -> None:
+    def _apply_subagent_profile(self, *, model: str, reasoning: ReasoningLevel) -> None:
         """Update the tools whose internal helper LLM follows the app subagent profile."""
         from tabulaflow.agents.tools.protocols import LLMProfileTool
 
-        model_settings = self._subagent_model_settings(model=model, reasoning_effort=reasoning_effort)
+        model_settings = self._subagent_model_settings(model=model, reasoning=reasoning)
         for tool in self._tools:
             if isinstance(tool, LLMProfileTool):
                 tool.apply_llm_profile(llm=model, model_settings=model_settings)
@@ -424,9 +424,9 @@ class ChatSession:
         self,
         *,
         model: str,
-        reasoning_effort: str,
+        reasoning: ReasoningLevel,
         subagent_model: str,
-        subagent_reasoning_effort: str,
+        subagent_reasoning: ReasoningLevel,
         enable_apply_patch: bool,
     ) -> tuple[str | None, str | None]:
         """Atomically activate main and subagent LLM profiles.
@@ -440,9 +440,9 @@ class ChatSession:
 
         Args:
             model: New interactive model identifier.
-            reasoning_effort: New interactive reasoning level.
+            reasoning: New interactive reasoning level.
             subagent_model: New helper model identifier.
-            subagent_reasoning_effort: New helper reasoning level.
+            subagent_reasoning: New helper reasoning level.
             enable_apply_patch: Whether the profile may expose ``apply_patch``.
 
         Returns:
@@ -455,9 +455,9 @@ class ChatSession:
             raise RuntimeError("cannot change the LLM profile during an active turn")
         unchanged = (
             self.model == model
-            and self.reasoning_effort == reasoning_effort
+            and self.reasoning == reasoning
             and self.subagent_model == subagent_model
-            and self.subagent_reasoning_effort == subagent_reasoning_effort
+            and self.subagent_reasoning == subagent_reasoning
             and self.enable_apply_patch == enable_apply_patch
         )
 
@@ -475,22 +475,22 @@ class ChatSession:
         previous_model = self.model
         previous_enable_apply_patch = self.enable_apply_patch
         previous_subagent_model = self.subagent_model
-        previous_subagent_effort = self.subagent_reasoning_effort
+        previous_subagent_effort = self.subagent_reasoning
         try:
             self._apply_subagent_profile(
                 model=subagent_model,
-                reasoning_effort=subagent_reasoning_effort,
+                reasoning=subagent_reasoning,
             )
         except Exception:
             self._apply_subagent_profile(
                 model=previous_subagent_model,
-                reasoning_effort=previous_subagent_effort,
+                reasoning=previous_subagent_effort,
             )
             raise
         self._model = model
-        self._reasoning_effort = reasoning_effort
+        self._reasoning = reasoning
         self._subagent_model = subagent_model
-        self._subagent_reasoning_effort = subagent_reasoning_effort
+        self._subagent_reasoning = subagent_reasoning
         self._enable_apply_patch = enable_apply_patch
         self._pydantic_ai_agent = runtime_agent
         if model != previous_model or enable_apply_patch != previous_enable_apply_patch:

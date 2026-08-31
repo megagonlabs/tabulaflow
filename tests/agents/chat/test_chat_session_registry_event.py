@@ -62,7 +62,7 @@ def test_chat_session_notes_pre_registered_sources(monkeypatch: pytest.MonkeyPat
     registry.register("sales", cast(Any, FakeSQLConnector()))
     registry.register("graph", cast(Any, FakeGraphConnector()))
 
-    agent = ChatSession(registry=registry, model="test:model", reasoning_effort="low")
+    agent = ChatSession(registry=registry, model="test:model", reasoning="low")
 
     assert len(agent._message_history) == 2
     assert str(cast(Any, agent._message_history[0].parts[0]).content) == (

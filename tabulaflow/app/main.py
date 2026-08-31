@@ -1,5 +1,7 @@
 """Entry point for the tabulaflow CLI."""
 
+from enum import StrEnum
+
 import typer
 
 from tabulaflow.app.config import ResolvedLLMSelection
@@ -10,6 +12,13 @@ app = typer.Typer(
     no_args_is_help=True,
     rich_markup_mode="rich",
 )
+
+
+class AppServiceTier(StrEnum):
+    """Service tiers intentionally exposed by the interactive app."""
+
+    DEFAULT = "default"
+    PRIORITY = "priority"
 
 
 def _resolve_startup_llm_selection(*, llm_preset: str | None) -> ResolvedLLMSelection:
@@ -28,6 +37,11 @@ def chat(
         "--llm-preset",
         "-p",
         help="LLM preset label or 'off' for this launch. Overrides the saved selection without persisting.",
+    ),
+    service_tier: AppServiceTier = typer.Option(
+        AppServiceTier.DEFAULT,
+        "--service-tier",
+        help="LLM request service tier for this launch. Priority may incur premium API pricing.",
     ),
     output_pane_port: int | None = typer.Option(
         None,
@@ -58,6 +72,7 @@ def chat(
     asyncio.run(
         run_tui(
             llm_selection=startup_llm,
+            service_tier=service_tier.value,
             output_pane_host=output_pane_host,
             output_pane_port=output_pane_port,
             output_pane_public_url=output_pane_public_url,

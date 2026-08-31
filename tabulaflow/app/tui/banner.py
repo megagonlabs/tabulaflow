@@ -201,15 +201,13 @@ def build_wordmark(surface: str | None = None) -> RenderableType:
     return Group(*_wordmark(surface or COLOR_PAGE))
 
 
-def build_banner_text(*, model: str | None, reasoning_effort: str | None = None) -> Text:
+def build_banner_text() -> Text:
     """Build the banner's text block — version, project URL, and starter examples.
 
     Returned as a single ``Text`` (rows joined with newlines) rather than a
     ``Group`` so the widget rendering it is selectable: Textual only extracts
     selection text from widgets whose render is a ``Text``/``Content``.
 
-    ``model`` and ``reasoning_effort`` are accepted so callers don't need a
-    separate code path when the bottom status owns the model display.
     """
     # The scheme is dropped from the displayed URL (modern app convention).
     # Rendered as plain text, NOT an OSC-8

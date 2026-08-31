@@ -167,8 +167,8 @@ class ConfigScreen(Screen[ResolvedLLMSelection | None]):
         else:
             assert preset is not None
             models = Text(
-                f"{model_display_name(preset.main.model, preset.main.reasoning_effort)}"
-                f" → {model_display_name(preset.subagent.model, preset.subagent.reasoning_effort)}",
+                f"{model_display_name(preset.main.model, preset.main.reasoning)}"
+                f" → {model_display_name(preset.subagent.model, preset.subagent.reasoning)}",
                 style="dim",
             )
         return markers, label, models

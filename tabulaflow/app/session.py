@@ -15,6 +15,7 @@ from tabulaflow.app.runtime_paths import RuntimePaths
 
 if TYPE_CHECKING:
     from tabulaflow.agents.chat import ChatEvent, ChatSession
+    from tabulaflow.agents.llm import ServiceTier
     from tabulaflow.agents.trace import Usage
     from tabulaflow.app.turn import TurnOutput
     from tabulaflow.data.sql import SQLConnector
@@ -54,7 +55,7 @@ class AppSession:
         llm_preset: LLMPreset | None,
         runtime_paths: RuntimePaths,
         project_dir: Path,
-        service_tier: str | None = "priority",
+        service_tier: ServiceTier = "default",
     ) -> AppSession:
         """Create a ready session with its workspace and optional sample data."""
         import asyncio
@@ -93,7 +94,7 @@ class AppSession:
         llm_preset: LLMPreset | None,
         runtime_paths: RuntimePaths,
         workspace: SQLConnector | None,
-        service_tier: str | None = "priority",
+        service_tier: ServiceTier = "default",
         project_dir: Path | None = None,
     ) -> None:
         from tabulaflow.data.registry import DBRegistry
@@ -137,9 +138,9 @@ class AppSession:
         return (
             agent is not None
             and agent.model == preset.main.model
-            and agent.reasoning_effort == preset.main.reasoning_effort
+            and agent.reasoning == preset.main.reasoning
             and agent.subagent_model == preset.subagent.model
-            and agent.subagent_reasoning_effort == preset.subagent.reasoning_effort
+            and agent.subagent_reasoning == preset.subagent.reasoning
             and agent.enable_apply_patch == model_supports_apply_patch(preset.main.model)
         )
 
@@ -153,12 +154,12 @@ class AppSession:
         return ChatSession(
             registry=self.registry,
             model=preset.main.model,
-            reasoning_effort=preset.main.reasoning_effort,
+            reasoning=preset.main.reasoning,
             service_tier=self._service_tier,
             workspace=self._workspace,
             trajectory_log_dir=self._runtime_paths.trajectories_dir,
             subagent_model=preset.subagent.model,
-            subagent_reasoning_effort=preset.subagent.reasoning_effort,
+            subagent_reasoning=preset.subagent.reasoning,
             project_dir=self.project_dir,
             scratch_dir=self._runtime_paths.scratch_dir,
             data_dir=self.data_dir,
@@ -182,9 +183,9 @@ class AppSession:
             if not self._chat_session_matches_preset(preset):
                 return self._chat_session.activate_llm_profile(
                     model=preset.main.model,
-                    reasoning_effort=preset.main.reasoning_effort,
+                    reasoning=preset.main.reasoning,
                     subagent_model=preset.subagent.model,
-                    subagent_reasoning_effort=preset.subagent.reasoning_effort,
+                    subagent_reasoning=preset.subagent.reasoning,
                     enable_apply_patch=model_supports_apply_patch(preset.main.model),
                 )
             return self._chat_session.resolve_api_keys()

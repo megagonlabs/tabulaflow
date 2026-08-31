@@ -17,3 +17,5 @@ def test_model_display_name_matches_config_panel_labels() -> None:
     assert model_display_name("anthropic:claude-opus-5", "high") == "Opus 5 high"
     assert model_display_name("anthropic:claude-sonnet-4-5-20250929", "medium") == "Sonnet 4.5 medium"
     assert model_display_name("openai-responses:gpt-5.4-mini", "medium") == "GPT 5.4 Mini medium"
+    assert model_display_name("openai-responses:gpt-5.4-mini", True) == "GPT 5.4 Mini reasoning"
+    assert model_display_name("openai-responses:gpt-5.4-mini", False) == "GPT 5.4 Mini no reasoning"

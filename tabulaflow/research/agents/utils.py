@@ -1,6 +1,6 @@
 """Shared configuration, context, and helpers for research agents."""
 
-from typing import Any, Literal
+from typing import Any
 from functools import partial
 from dataclasses import dataclass
 import re
@@ -13,7 +13,7 @@ from tabulaflow.core import SQLSchema
 from tabulaflow.agents.trace import Usage, Trajectory
 from tabulaflow.research.types import NL2QTask, SimpleNL2QTask
 from tabulaflow.data import DBConnector
-from tabulaflow.agents.llm import make_model_settings
+from tabulaflow.agents.llm import ReasoningLevel, ServiceTier, make_model_settings
 from tabulaflow.agents.tools import AgentTool
 from tabulaflow.output.formatting import SQLSchemaFormatter
 
@@ -72,8 +72,8 @@ class BasicAgentConfig(BaseModel):
     max_steps: int = Field(default=50, ge=1)
     formatter_max_total_columns: int | None = 5000
     use_column_descriptions: bool = True
-    reasoning_effort: Literal["none", "minimal", "low", "medium", "high", "xhigh"] | None = None
-    service_tier: Literal["auto", "default", "flex", "priority"] | None = None
+    reasoning: ReasoningLevel | None = None
+    service_tier: ServiceTier | None = None
 
     def to_formatter_kwargs(self) -> dict[str, Any]:
         if self.schema_formatter == "cypher":
@@ -90,7 +90,7 @@ class BasicAgentConfig(BaseModel):
         res.update(
             make_model_settings(
                 model=self.llm,
-                reasoning_effort=self.reasoning_effort,
+                reasoning=self.reasoning,
                 service_tier=self.service_tier,
             )
         )

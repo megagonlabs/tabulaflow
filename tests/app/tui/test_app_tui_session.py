@@ -11,9 +11,10 @@ from textual.containers import VerticalScroll
 from textual.widgets import Button, Input, Static
 
 from tabulaflow.app import session as session_module
+from tabulaflow.agents.llm import ReasoningLevel
 from tabulaflow.app.tui import app as tui
 from tabulaflow.app.tui.commands import CommandResult
-from tabulaflow.app.config import LLM_OFF, LLMRoleConfig, LLMPreset, ReasoningEffort, ResolvedLLMSelection
+from tabulaflow.app.config import LLM_OFF, LLMRoleConfig, LLMPreset, ResolvedLLMSelection
 from tabulaflow.app.runtime_paths import RuntimePaths
 from tabulaflow.app.session import AppSession
 from tabulaflow.app.tui import TabulaflowApp
@@ -43,14 +44,14 @@ def _preset(
     *,
     label: str = "Test",
     model: str = "test",
-    reasoning_effort: ReasoningEffort = "low",
+    reasoning: ReasoningLevel = "low",
     subagent_model: str = "test",
-    subagent_reasoning_effort: ReasoningEffort = "medium",
+    subagent_reasoning: ReasoningLevel = "medium",
 ) -> LLMPreset:
     return LLMPreset(
         label=label,
-        main=LLMRoleConfig(model=model, reasoning_effort=reasoning_effort),
-        subagent=LLMRoleConfig(model=subagent_model, reasoning_effort=subagent_reasoning_effort),
+        main=LLMRoleConfig(model=model, reasoning=reasoning),
+        subagent=LLMRoleConfig(model=subagent_model, reasoning=subagent_reasoning),
     )
 
 
@@ -69,11 +70,17 @@ def _app_for_selection(
     *,
     runtime_paths: RuntimePaths | None = None,
     project_dir: Path | None = None,
+    service_tier: str = "default",
 ) -> TabulaflowApp:
+    from typing import cast
+
+    from tabulaflow.agents.llm import ServiceTier
+
     return TabulaflowApp(
         llm_selection=selection,
         runtime_paths=runtime_paths or RuntimePaths.for_session("test-session"),
         project_dir=project_dir or Path.cwd(),
+        service_tier=cast(ServiceTier, service_tier),
     )
 
 
@@ -174,6 +181,7 @@ async def test_ensure_session_creates_app_session(tmp_path: Path, monkeypatch: p
         "llm_preset": preset,
         "runtime_paths": runtime_paths,
         "project_dir": project_dir,
+        "service_tier": "default",
     }
 
 
@@ -195,7 +203,7 @@ def test_bottom_status_uses_selected_startup_profile(
     preset = (
         _preset(
             model="anthropic:claude-opus-4-8",
-            reasoning_effort="high",
+            reasoning="high",
             subagent_model="anthropic:claude-sonnet-4-5-20250929",
         )
         if llm_enabled
@@ -214,6 +222,21 @@ def test_bottom_status_uses_selected_startup_profile(
     app._refresh_bottom_status()
 
     assert model_status.value.startswith(expected)
+
+
+def test_bottom_status_discloses_priority_service_tier(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    preset = _preset(model="openai-responses:gpt-5.6-sol")
+    app = _app_for_selection(_selection(preset), project_dir=tmp_path, service_tier="priority")
+    model_status = _StatusCapture()
+    url_status = _StatusCapture()
+
+    def fake_query_one(selector: str, _type: object) -> _StatusCapture:
+        return model_status if selector == "#bottom-status-model" else url_status
+
+    monkeypatch.setattr(app, "query_one", fake_query_one)
+    app._refresh_bottom_status()
+
+    assert model_status.value.startswith("GPT 5.6 Sol low · Priority · ")
 
 
 async def test_startup_llm_activation_reports_session_then_agent_progress(
@@ -281,7 +304,7 @@ def test_llm_preset_success_message(
 ) -> None:
     preset = _preset(
         model="anthropic:claude-opus-4-8",
-        reasoning_effort="high",
+        reasoning="high",
         subagent_model="openai-responses:gpt-5.4-mini",
     )
 
@@ -472,9 +495,9 @@ async def test_inferred_startup_reports_masked_api_key_in_chat_log(
 ) -> None:
     preset = _preset(
         model="openai-responses:gpt-5",
-        reasoning_effort="medium",
+        reasoning="medium",
         subagent_model="openai-responses:gpt-5-mini",
-        subagent_reasoning_effort="medium",
+        subagent_reasoning="medium",
     )
     app = _app_for_selection(_selection(preset, inferred=True, detected_api_key_env="OPENAI_API_KEY"))
 
@@ -501,7 +524,7 @@ async def test_inferred_startup_reports_masked_api_key_in_chat_log(
 async def test_failed_startup_activation_reports_error_and_unblocks_input(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    preset = _preset(model="anthropic:claude-opus-4-8", reasoning_effort="high")
+    preset = _preset(model="anthropic:claude-opus-4-8", reasoning="high")
     app = _app(preset)
 
     class FakeSession:

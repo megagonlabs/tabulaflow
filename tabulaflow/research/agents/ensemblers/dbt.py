@@ -14,7 +14,7 @@ from tabulaflow.research.observability import trace_prediction
 from tabulaflow.data import SQLConnectorProtocol
 from tabulaflow.output.formatting import SQLDDLSchemaFormatter
 from tabulaflow.agents.summarization import DBSummarizer
-from tabulaflow.agents.llm import make_model_settings
+from tabulaflow.agents.llm import ReasoningLevel, ServiceTier, make_model_settings
 from tabulaflow.agents.trace import Usage, Trajectory
 from tabulaflow.research.types import DbtTask, DbtTaskOutput
 from tabulaflow.agents.llm import make_agent
@@ -80,8 +80,8 @@ class DbtLLMEnsemblerConfig(BaseModel):
     skip_failed_runs: bool = True
     deduplicate_results: bool = True
     temperature: float | None = None
-    reasoning_effort: str | None = None
-    service_tier: str | None = None
+    reasoning: ReasoningLevel | None = None
+    service_tier: ServiceTier | None = None
 
     def to_model_settings(self) -> dict[str, Any]:
         settings: dict[str, Any] = {}
@@ -90,7 +90,7 @@ class DbtLLMEnsemblerConfig(BaseModel):
         settings.update(
             make_model_settings(
                 model=self.llm,
-                reasoning_effort=self.reasoning_effort,
+                reasoning=self.reasoning,
                 service_tier=self.service_tier,
             )
         )

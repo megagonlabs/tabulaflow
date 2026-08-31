@@ -6,7 +6,8 @@ from typing import TYPE_CHECKING, Any, cast
 import pytest
 
 from tabulaflow.app import sample_data, session as session_module
-from tabulaflow.app.config import LLMRoleConfig, LLMPreset, ReasoningEffort
+from tabulaflow.agents.llm import ReasoningLevel
+from tabulaflow.app.config import LLMRoleConfig, LLMPreset
 from tabulaflow.app.runtime_paths import RuntimePaths
 from tabulaflow.app.session import AppSession
 from tabulaflow.data.sql import SQLConnector
@@ -28,14 +29,14 @@ class _Workspace:
 def _preset(
     *,
     model: str = "test",
-    reasoning_effort: ReasoningEffort = "low",
+    reasoning: ReasoningLevel = "low",
     subagent_model: str = "test",
-    subagent_reasoning_effort: ReasoningEffort = "medium",
+    subagent_reasoning: ReasoningLevel = "medium",
 ) -> LLMPreset:
     return LLMPreset(
         label="Test",
-        main=LLMRoleConfig(model=model, reasoning_effort=reasoning_effort),
-        subagent=LLMRoleConfig(model=subagent_model, reasoning_effort=subagent_reasoning_effort),
+        main=LLMRoleConfig(model=model, reasoning=reasoning),
+        subagent=LLMRoleConfig(model=subagent_model, reasoning=subagent_reasoning),
     )
 
 
@@ -127,9 +128,9 @@ def test_session_starts_with_unverified_llm_preset(tmp_path: Path, monkeypatch: 
     session = _session(
         llm_preset=_preset(
             model="anthropic:claude-sonnet-4-5-20250929",
-            reasoning_effort="medium",
+            reasoning="medium",
             subagent_model="anthropic:claude-haiku-4-5-20251001",
-            subagent_reasoning_effort="medium",
+            subagent_reasoning="medium",
         ),
         tmp_path=tmp_path,
     )
@@ -193,9 +194,9 @@ def test_unverified_session_can_select_and_then_build_valid_llm(
     session = _session(
         llm_preset=_preset(
             model="anthropic:claude-sonnet-4-5-20250929",
-            reasoning_effort="medium",
+            reasoning="medium",
             subagent_model="anthropic:claude-haiku-4-5-20251001",
-            subagent_reasoning_effort="medium",
+            subagent_reasoning="medium",
         ),
         tmp_path=tmp_path,
     )
@@ -220,9 +221,9 @@ def test_selecting_unusable_preset_defers_error_until_agent_build(
 
     selected_preset = _preset(
         model="anthropic:claude-sonnet-4-5-20250929",
-        reasoning_effort="medium",
+        reasoning="medium",
         subagent_model="anthropic:claude-haiku-4-5-20251001",
-        subagent_reasoning_effort="medium",
+        subagent_reasoning="medium",
     )
     session.select_llm_preset(selected_preset)
     with pytest.raises(Exception, match="ANTHROPIC_API_KEY"):
@@ -239,9 +240,9 @@ def test_switching_preset_preserves_live_chat_session_state(tmp_path: Path, monk
     session = _session(
         llm_preset=_preset(
             model="openai-responses:gpt-5",
-            reasoning_effort="medium",
+            reasoning="medium",
             subagent_model="openai-responses:gpt-5-mini",
-            subagent_reasoning_effort="low",
+            subagent_reasoning="low",
         ),
         tmp_path=tmp_path,
     )
@@ -252,9 +253,9 @@ def test_switching_preset_preserves_live_chat_session_state(tmp_path: Path, monk
 
     selected_preset = _preset(
         model="openai-responses:gpt-5.4-mini",
-        reasoning_effort="high",
+        reasoning="high",
         subagent_model="openai-responses:gpt-5-mini",
-        subagent_reasoning_effort="medium",
+        subagent_reasoning="medium",
     )
     session.select_llm_preset(selected_preset)
     session.activate_llm_preset(selected_preset)

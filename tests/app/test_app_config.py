@@ -5,6 +5,7 @@ from pathlib import Path
 
 import pytest
 
+from tabulaflow.agents.llm import ReasoningLevel
 from tabulaflow.app.config import (
     DEFAULT_LLM_PRESETS,
     LLM_OFF,
@@ -23,8 +24,8 @@ from tabulaflow.app.config import (
 def _custom_preset(label: str = "My stack") -> LLMPreset:
     return LLMPreset(
         label=label,
-        main=LLMRoleConfig(model="together:my/model", reasoning_effort="low"),
-        subagent=LLMRoleConfig(model="together:my/fast-model", reasoning_effort="medium"),
+        main=LLMRoleConfig(model="together:my/model", reasoning="low"),
+        subagent=LLMRoleConfig(model="together:my/fast-model", reasoning="medium"),
     )
 
 
@@ -35,15 +36,15 @@ def test_load_missing_file_returns_defaults(tmp_path: Path) -> None:
     assert config.llm_preset is None
     openai_budget = next(preset for preset in DEFAULT_LLM_PRESETS if preset.label == "OpenAI budget")
     assert openai_budget.main.model == "openai-responses:gpt-5.4-mini"
-    assert openai_budget.main.reasoning_effort == "medium"
+    assert openai_budget.main.reasoning == "medium"
     assert openai_budget.subagent.model == "openai-responses:gpt-5-mini"
-    assert openai_budget.subagent.reasoning_effort == "medium"
+    assert openai_budget.subagent.reasoning == "medium"
     assert model_supports_apply_patch(openai_budget.main.model)
     anthropic_balanced = next(preset for preset in DEFAULT_LLM_PRESETS if preset.label == "Anthropic balanced")
     assert anthropic_balanced.main.model == "anthropic:claude-opus-5"
-    assert anthropic_balanced.main.reasoning_effort == "high"
+    assert anthropic_balanced.main.reasoning == "high"
     assert anthropic_balanced.subagent.model == "anthropic:claude-sonnet-4-5-20250929"
-    assert anthropic_balanced.subagent.reasoning_effort == "medium"
+    assert anthropic_balanced.subagent.reasoning == "medium"
     assert not model_supports_apply_patch(anthropic_balanced.main.model)
 
 
@@ -55,9 +56,9 @@ def test_apply_patch_support_is_inferred_for_custom_gpt_models() -> None:
     assert not model_supports_apply_patch("anthropic:claude-opus-5")
     planning_hybrid = next(preset for preset in DEFAULT_LLM_PRESETS if preset.label == "Planning hybrid")
     assert planning_hybrid.main.model == "anthropic:claude-opus-4-8"
-    assert planning_hybrid.main.reasoning_effort == "high"
+    assert planning_hybrid.main.reasoning == "high"
     assert planning_hybrid.subagent.model == "openai-responses:gpt-5.4-mini"
-    assert planning_hybrid.subagent.reasoning_effort == "medium"
+    assert planning_hybrid.subagent.reasoning == "medium"
 
 
 def test_save_load_roundtrip(tmp_path: Path) -> None:
@@ -81,7 +82,7 @@ def test_load_malformed_json_raises(tmp_path: Path) -> None:
         load_app_config(str(path))
 
 
-def test_load_invalid_effort_raises(tmp_path: Path) -> None:
+def test_load_invalid_reasoning_raises(tmp_path: Path) -> None:
     path = tmp_path / "app_config.json"
     path.write_text(
         json.dumps(
@@ -89,14 +90,34 @@ def test_load_invalid_effort_raises(tmp_path: Path) -> None:
                 "custom_llm_presets": [
                     {
                         "label": "Bad",
-                        "main": {"model": "test:main", "reasoning_effort": "minimal"},
-                        "subagent": {"model": "test:subagent", "reasoning_effort": "medium"},
+                        "main": {"model": "test:main", "reasoning": "ultra"},
+                        "subagent": {"model": "test:subagent", "reasoning": "medium"},
                     }
                 ]
             }
         )
     )
     with pytest.raises(ValueError, match=str(path)):
+        load_app_config(str(path))
+
+
+def test_load_legacy_reasoning_effort_field_raises(tmp_path: Path) -> None:
+    path = tmp_path / "app_config.json"
+    path.write_text(
+        json.dumps(
+            {
+                "custom_llm_presets": [
+                    {
+                        "label": "Legacy",
+                        "main": {"model": "test:main", "reasoning_effort": "high"},
+                        "subagent": {"model": "test:subagent", "reasoning": "medium"},
+                    }
+                ]
+            }
+        )
+    )
+
+    with pytest.raises(ValueError, match="reasoning_effort"):
         load_app_config(str(path))
 
 
@@ -185,7 +206,12 @@ def test_resolved_selection_rejects_impossible_states() -> None:
 def test_assignment_validates() -> None:
     role = LLMRoleConfig(model="test:model")
     with pytest.raises(ValueError):
-        role.reasoning_effort = "ultra"  # type: ignore[assignment]
+        role.reasoning = "ultra"  # type: ignore[assignment]
+
+
+@pytest.mark.parametrize("reasoning", [False, True, "minimal", "low", "medium", "high", "xhigh"])
+def test_role_accepts_shared_reasoning_levels(reasoning: ReasoningLevel) -> None:
+    assert LLMRoleConfig(model="test:model", reasoning=reasoning).reasoning == reasoning
 
 
 def test_defaults_not_written_to_file(tmp_path: Path) -> None:
@@ -206,8 +232,8 @@ def test_custom_presets_appended_to_defaults(tmp_path: Path) -> None:
 def test_custom_preset_overrides_matching_default_in_place() -> None:
     override = LLMPreset(
         label=DEFAULT_LLM_PRESETS[0].label,
-        main=LLMRoleConfig(model="openai-responses:gpt-5.6-sol", reasoning_effort="high"),
-        subagent=LLMRoleConfig(model="openai-responses:gpt-5.4-mini", reasoning_effort="low"),
+        main=LLMRoleConfig(model="openai-responses:gpt-5.6-sol", reasoning="high"),
+        subagent=LLMRoleConfig(model="openai-responses:gpt-5.4-mini", reasoning="low"),
     )
     catalog = AppConfig(custom_llm_presets=[override]).llm_presets
     assert catalog[0] == override

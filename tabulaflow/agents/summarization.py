@@ -3,12 +3,12 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any
 
 from pydantic_ai.settings import ModelSettings
 
 from tabulaflow.agents._cache import InvalidCacheEntry, load_or_compute
-from tabulaflow.agents.llm import make_agent, make_model_settings
+from tabulaflow.agents.llm import ReasoningLevel, make_agent, make_model_settings
 from tabulaflow.agents.runtime import _get_agent_runtime
 from tabulaflow.agents.trace import Usage
 from tabulaflow.core._cache import atomic_write_bytes, read_bytes, stable_cache_key
@@ -56,7 +56,7 @@ class DBSummarizer:
 
     Args:
         llm: Model used to generate non-trivial summaries.
-        reasoning_effort: Provider-neutral reasoning level.
+        reasoning: Provider-neutral reasoning level.
         max_words: Requested summary length ceiling.
         model_settings: Additional Pydantic AI model settings.
     """
@@ -64,12 +64,12 @@ class DBSummarizer:
     def __init__(
         self,
         llm: str = "openai-responses:gpt-5.4",
-        reasoning_effort: Literal["none", "minimal", "low", "medium", "high", "xhigh"] | None = "high",
+        reasoning: ReasoningLevel | None = "high",
         max_words: int = 4000,
         model_settings: ModelSettings | None = None,
     ) -> None:
         self.llm = llm
-        self.reasoning_effort = reasoning_effort
+        self.reasoning = reasoning
         self.max_words = max_words
         self.model_settings = model_settings
         self._sql_formatter = SQLDDLSchemaFormatter(max_total_columns=200, compact_table_families=True)
@@ -87,7 +87,7 @@ class DBSummarizer:
                 "global_id": connector.global_id,
                 "schema": connector.schema.model_dump(mode="json"),
                 "llm": self.llm,
-                "reasoning_effort": self.reasoning_effort,
+                "reasoning": self.reasoning,
                 "max_words": self.max_words,
                 "model_settings": self.model_settings,
             }
@@ -133,7 +133,7 @@ class DBSummarizer:
         else:
             raise TypeError(f"Unsupported connector type for DBSummarizer: {connector.connector_type!r}")
 
-        settings: dict[str, Any] = dict(make_model_settings(model=self.llm, reasoning_effort=self.reasoning_effort))
+        settings: dict[str, Any] = dict(make_model_settings(model=self.llm, reasoning=self.reasoning))
         settings.update(self.model_settings or {})
         agent = make_agent(
             self.llm,
@@ -168,7 +168,7 @@ class TextSummarizer:
 
     async def summarize(self, text: str) -> str:
         """Return a concise summary of ``text``."""
-        settings: dict[str, object] = dict(make_model_settings(model=self.llm, reasoning_effort="low"))
+        settings: dict[str, object] = dict(make_model_settings(model=self.llm, reasoning="low"))
         if self.model_settings:
             settings.update(self.model_settings)
         agent = make_agent(

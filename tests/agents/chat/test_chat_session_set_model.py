@@ -17,26 +17,26 @@ def test_chat_session_constructor_is_keyword_only_and_state_is_read_only() -> No
     assert signature.parameters["model"].kind is inspect.Parameter.KEYWORD_ONLY
     assert "last_usage" not in signature.parameters
 
-    agent = ChatSession(registry=DBRegistry(), model="test", reasoning_effort="medium")
+    agent = ChatSession(registry=DBRegistry(), model="test", reasoning="medium")
     with pytest.raises(AttributeError):
         agent.model = "other"  # type: ignore[misc]
 
 
 def test_activate_llm_profile_failure_is_transactional(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
-    agent = ChatSession(registry=DBRegistry(), model="test", reasoning_effort="medium")
+    agent = ChatSession(registry=DBRegistry(), model="test", reasoning="medium")
     runtime_agent = agent._pydantic_ai_agent
     with pytest.raises(Exception, match="ANTHROPIC_API_KEY"):
         agent.activate_llm_profile(
             model="anthropic:claude-sonnet-4-5-20250929",
-            reasoning_effort="high",
+            reasoning="high",
             subagent_model=agent.subagent_model,
-            subagent_reasoning_effort=agent.subagent_reasoning_effort,
+            subagent_reasoning=agent.subagent_reasoning,
             enable_apply_patch=agent.enable_apply_patch,
         )
     # The failed switch left everything intact.
     assert agent.model == "test"
-    assert agent.reasoning_effort == "medium"
+    assert agent.reasoning == "medium"
     assert agent._pydantic_ai_agent is runtime_agent
 
 
@@ -46,25 +46,25 @@ def test_subagent_failure_does_not_partially_switch_main_profile(monkeypatch: py
     agent = ChatSession(
         registry=DBRegistry(),
         model="openai-responses:gpt-5",
-        reasoning_effort="medium",
+        reasoning="medium",
         subagent_model="openai-responses:gpt-5-mini",
-        subagent_reasoning_effort="low",
+        subagent_reasoning="low",
     )
     runtime_agent = agent._pydantic_ai_agent
 
     with pytest.raises(Exception, match="ANTHROPIC_API_KEY"):
         agent.activate_llm_profile(
             model="openai-responses:gpt-5.4-mini",
-            reasoning_effort="high",
+            reasoning="high",
             subagent_model="anthropic:claude-sonnet-4-5-20250929",
-            subagent_reasoning_effort="medium",
+            subagent_reasoning="medium",
             enable_apply_patch=agent.enable_apply_patch,
         )
 
     assert agent.model == "openai-responses:gpt-5"
-    assert agent.reasoning_effort == "medium"
+    assert agent.reasoning == "medium"
     assert agent.subagent_model == "openai-responses:gpt-5-mini"
-    assert agent.subagent_reasoning_effort == "low"
+    assert agent.subagent_reasoning == "low"
     assert agent._pydantic_ai_agent is runtime_agent
 
 
@@ -73,9 +73,9 @@ def test_activate_llm_profile_preserves_conversation_state(monkeypatch: pytest.M
     agent = ChatSession(
         registry=DBRegistry(),
         model="openai-responses:gpt-5",
-        reasoning_effort="medium",
+        reasoning="medium",
         subagent_model="openai-responses:gpt-5-mini",
-        subagent_reasoning_effort="low",
+        subagent_reasoning="low",
     )
     agent.note_event("remember this")
     message_history = agent._message_history
@@ -85,9 +85,9 @@ def test_activate_llm_profile_preserves_conversation_state(monkeypatch: pytest.M
 
     keys = agent.activate_llm_profile(
         model="openai-responses:gpt-5.4-mini",
-        reasoning_effort="high",
+        reasoning="high",
         subagent_model="openai-responses:gpt-5-mini",
-        subagent_reasoning_effort="medium",
+        subagent_reasoning="medium",
         enable_apply_patch=agent.enable_apply_patch,
     )
 
@@ -96,14 +96,14 @@ def test_activate_llm_profile_preserves_conversation_state(monkeypatch: pytest.M
     assert agent._tools is tools
     assert agent._pydantic_ai_agent is not runtime_agent
     assert agent.model == "openai-responses:gpt-5.4-mini"
-    assert agent.reasoning_effort == "high"
-    assert agent.subagent_reasoning_effort == "medium"
+    assert agent.reasoning == "high"
+    assert agent.subagent_reasoning == "medium"
     assert keys == ("sk-test123456789ab4x", "sk-test123456789ab4x")
 
 
 def test_api_key_read_from_live_client(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("OPENAI_API_KEY", "sk-test123456789ab4x")
-    agent = ChatSession(registry=DBRegistry(), model="openai-responses:gpt-5", reasoning_effort="medium")
+    agent = ChatSession(registry=DBRegistry(), model="openai-responses:gpt-5", reasoning="medium")
     assert agent.resolve_api_keys() == ("sk-test123456789ab4x", "sk-test123456789ab4x")
 
 
@@ -111,7 +111,7 @@ def test_api_key_none_for_keyless_model() -> None:
     agent = ChatSession(
         registry=DBRegistry(),
         model="test",
-        reasoning_effort="medium",
+        reasoning="medium",
         subagent_model="test",
     )
     assert agent.resolve_api_keys() == (None, None)
@@ -129,7 +129,7 @@ async def test_chat_session_file_editor_is_unrestricted(tmp_path: Path, monkeypa
     agent = ChatSession(
         registry=DBRegistry(),
         model="test",
-        reasoning_effort="medium",
+        reasoning="medium",
         project_dir=project,
         scratch_dir=tmp_path / "scratch",
     )
@@ -155,11 +155,11 @@ def test_chat_session_file_editing_tools_follow_project_dir(tmp_path: Path) -> N
     project = tmp_path / "project"
     project.mkdir()
 
-    without_project = ChatSession(registry=DBRegistry(), model="test", reasoning_effort="medium")
+    without_project = ChatSession(registry=DBRegistry(), model="test", reasoning="medium")
     with_project = ChatSession(
         registry=DBRegistry(),
         model="test",
-        reasoning_effort="medium",
+        reasoning="medium",
         project_dir=project,
     )
 
@@ -179,26 +179,26 @@ def test_chat_session_tool_list_includes_file_tools_for_every_model(
     without_project = ChatSession(
         registry=DBRegistry(),
         model="openai-responses:gpt-5",
-        reasoning_effort="medium",
+        reasoning="medium",
     )
     non_gpt = ChatSession(
         registry=DBRegistry(),
         model="test",
-        reasoning_effort="medium",
+        reasoning="medium",
         project_dir=project,
         enable_apply_patch=True,
     )
     openai_non_responses_gpt = ChatSession(
         registry=DBRegistry(),
         model="openai-chat:gpt-5",
-        reasoning_effort="medium",
+        reasoning="medium",
         project_dir=project,
         enable_apply_patch=True,
     )
     gpt = ChatSession(
         registry=DBRegistry(),
         model="openai-responses:gpt-5",
-        reasoning_effort="medium",
+        reasoning="medium",
         project_dir=project,
         enable_apply_patch=True,
     )
@@ -226,7 +226,7 @@ def test_chat_session_file_tool_list_is_stable_across_model_switch(
     agent = ChatSession(
         registry=DBRegistry(),
         model="test",
-        reasoning_effort="medium",
+        reasoning="medium",
         project_dir=project,
         enable_apply_patch=True,
     )
@@ -237,9 +237,9 @@ def test_chat_session_file_tool_list_is_stable_across_model_switch(
 
     agent.activate_llm_profile(
         model="openai-responses:gpt-5",
-        reasoning_effort="medium",
+        reasoning="medium",
         subagent_model=agent.subagent_model,
-        subagent_reasoning_effort=agent.subagent_reasoning_effort,
+        subagent_reasoning=agent.subagent_reasoning,
         enable_apply_patch=agent.enable_apply_patch,
     )
     gpt_tools = cast(Any, agent._pydantic_ai_agent)._function_toolset.tools
@@ -248,9 +248,9 @@ def test_chat_session_file_tool_list_is_stable_across_model_switch(
 
     agent.activate_llm_profile(
         model="test",
-        reasoning_effort="medium",
+        reasoning="medium",
         subagent_model=agent.subagent_model,
-        subagent_reasoning_effort=agent.subagent_reasoning_effort,
+        subagent_reasoning=agent.subagent_reasoning,
         enable_apply_patch=agent.enable_apply_patch,
     )
     non_gpt_tools = cast(Any, agent._pydantic_ai_agent)._function_toolset.tools
@@ -264,7 +264,7 @@ def test_apply_patch_capability_controls_tool_schema(tmp_path: Path) -> None:
     agent = ChatSession(
         registry=DBRegistry(),
         model="test",
-        reasoning_effort="medium",
+        reasoning="medium",
         project_dir=project,
     )
 
@@ -274,9 +274,9 @@ def test_apply_patch_capability_controls_tool_schema(tmp_path: Path) -> None:
 
     agent.activate_llm_profile(
         model="test",
-        reasoning_effort="medium",
+        reasoning="medium",
         subagent_model=agent.subagent_model,
-        subagent_reasoning_effort=agent.subagent_reasoning_effort,
+        subagent_reasoning=agent.subagent_reasoning,
         enable_apply_patch=True,
     )
     enabled_tools = cast(Any, agent._pydantic_ai_agent)._function_toolset.tools
@@ -285,9 +285,9 @@ def test_apply_patch_capability_controls_tool_schema(tmp_path: Path) -> None:
 
     agent.activate_llm_profile(
         model="test",
-        reasoning_effort="medium",
+        reasoning="medium",
         subagent_model=agent.subagent_model,
-        subagent_reasoning_effort=agent.subagent_reasoning_effort,
+        subagent_reasoning=agent.subagent_reasoning,
         enable_apply_patch=False,
     )
     disabled_tools = cast(Any, agent._pydantic_ai_agent)._function_toolset.tools
@@ -300,7 +300,7 @@ def _last_note(agent: ChatSession) -> str:
 
 
 def test_startup_note_states_model() -> None:
-    agent = ChatSession(registry=DBRegistry(), model="test", reasoning_effort="medium")
+    agent = ChatSession(registry=DBRegistry(), model="test", reasoning="medium")
     assert len(agent._message_history) == 1
     assert _last_note(agent) == "[system: the model powering this conversation is Test.]"
 
@@ -312,24 +312,24 @@ def test_activate_llm_profile_notes_model_change(tmp_path: Path, monkeypatch: py
     agent = ChatSession(
         registry=DBRegistry(),
         model="test",
-        reasoning_effort="medium",
+        reasoning="medium",
         project_dir=project,
     )
 
     agent.activate_llm_profile(
         model="openai-responses:gpt-5",
-        reasoning_effort="medium",
+        reasoning="medium",
         subagent_model=agent.subagent_model,
-        subagent_reasoning_effort=agent.subagent_reasoning_effort,
+        subagent_reasoning=agent.subagent_reasoning,
         enable_apply_patch=agent.enable_apply_patch,
     )
     assert _last_note(agent) == "[system: the model powering this conversation changed from Test to GPT 5.]"
 
     agent.activate_llm_profile(
         model="test",
-        reasoning_effort="medium",
+        reasoning="medium",
         subagent_model=agent.subagent_model,
-        subagent_reasoning_effort=agent.subagent_reasoning_effort,
+        subagent_reasoning=agent.subagent_reasoning,
         enable_apply_patch=agent.enable_apply_patch,
     )
     assert _last_note(agent) == "[system: the model powering this conversation changed from GPT 5 to Test.]"
@@ -338,9 +338,9 @@ def test_activate_llm_profile_notes_model_change(tmp_path: Path, monkeypatch: py
     history_len = len(agent._message_history)
     agent.activate_llm_profile(
         model="test",
-        reasoning_effort="high",
+        reasoning="high",
         subagent_model="openai-responses:gpt-5.4-mini",
-        subagent_reasoning_effort="high",
+        subagent_reasoning="high",
         enable_apply_patch=agent.enable_apply_patch,
     )
     assert len(agent._message_history) == history_len
@@ -348,13 +348,13 @@ def test_activate_llm_profile_notes_model_change(tmp_path: Path, monkeypatch: py
 
 def test_model_change_note_without_file_tools(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("OPENAI_API_KEY", "sk-test123456789ab4x")
-    agent = ChatSession(registry=DBRegistry(), model="test", reasoning_effort="medium")
+    agent = ChatSession(registry=DBRegistry(), model="test", reasoning="medium")
 
     agent.activate_llm_profile(
         model="openai-responses:gpt-5",
-        reasoning_effort="medium",
+        reasoning="medium",
         subagent_model=agent.subagent_model,
-        subagent_reasoning_effort=agent.subagent_reasoning_effort,
+        subagent_reasoning=agent.subagent_reasoning,
         enable_apply_patch=agent.enable_apply_patch,
     )
     assert _last_note(agent) == "[system: the model powering this conversation changed from Test to GPT 5.]"
@@ -365,7 +365,7 @@ def test_resolve_subagent_api_key(monkeypatch: pytest.MonkeyPatch) -> None:
     agent = ChatSession(
         registry=DBRegistry(),
         model="test",
-        reasoning_effort="medium",
+        reasoning="medium",
         subagent_model="openai-responses:gpt-5.4-mini",
     )
     assert agent.resolve_api_keys() == (None, "sk-sub123456789cd9y")
@@ -373,7 +373,7 @@ def test_resolve_subagent_api_key(monkeypatch: pytest.MonkeyPatch) -> None:
 
 def test_thinking_settings_openai(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("OPENAI_API_KEY", "sk-test123456789ab4x")
-    agent = ChatSession(registry=DBRegistry(), model="openai-responses:gpt-5", reasoning_effort="high")
+    agent = ChatSession(registry=DBRegistry(), model="openai-responses:gpt-5", reasoning="high")
     # Unified level plus OpenAI's reasoning summary; no max_tokens override for non-Anthropic models.
     assert agent._thinking_settings() == {
         "thinking": "high",
@@ -382,23 +382,50 @@ def test_thinking_settings_openai(monkeypatch: pytest.MonkeyPatch) -> None:
     }
 
 
-def test_service_tier_can_be_disabled_for_openai(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_service_tier_is_omitted_by_default(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("OPENAI_API_KEY", "sk-test123456789ab4x")
     agent = ChatSession(
         registry=DBRegistry(),
         model="openai-responses:gpt-5",
-        reasoning_effort="medium",
-        service_tier=None,
+        reasoning="medium",
         subagent_model="openai-responses:gpt-5.4-mini",
     )
     assert agent._pydantic_ai_agent is not None
     assert agent._pydantic_ai_agent.model_settings == {}
-    assert "openai_service_tier" not in agent._subagent_model_settings()
+    assert "service_tier" not in agent._subagent_model_settings()
+
+
+def test_service_tier_applies_to_main_and_subagent_requests(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("OPENAI_API_KEY", "sk-test123456789ab4x")
+    agent = ChatSession(
+        registry=DBRegistry(),
+        model="openai-responses:gpt-5",
+        reasoning="medium",
+        service_tier="priority",
+        subagent_model="openai-responses:gpt-5.4-mini",
+    )
+
+    assert agent._pydantic_ai_agent is not None
+    assert agent._pydantic_ai_agent.model_settings == {"service_tier": "priority"}
+    assert agent._subagent_model_settings()["service_tier"] == "priority"
+
+
+def test_false_explicitly_disables_main_and_subagent_reasoning() -> None:
+    agent = ChatSession(
+        registry=DBRegistry(),
+        model="test",
+        reasoning=False,
+        subagent_model="test",
+        subagent_reasoning=False,
+    )
+
+    assert agent._thinking_settings()["thinking"] is False
+    assert agent._subagent_model_settings()["thinking"] is False
 
 
 def test_thinking_settings_budget_era_claude_raises_max_tokens(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-fake")
-    agent = ChatSession(registry=DBRegistry(), model="anthropic:claude-sonnet-4-5-20250929", reasoning_effort="high")
+    agent = ChatSession(registry=DBRegistry(), model="anthropic:claude-sonnet-4-5-20250929", reasoning="high")
     settings = agent._thinking_settings()
     assert settings["thinking"] == "high"
     # sonnet-4-5 translates levels to budget_tokens (16384 for high); the API
@@ -408,14 +435,14 @@ def test_thinking_settings_budget_era_claude_raises_max_tokens(monkeypatch: pyte
 
 def test_thinking_settings_adaptive_claude_no_max_tokens(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-fake")
-    agent = ChatSession(registry=DBRegistry(), model="anthropic:claude-opus-4-8", reasoning_effort="high")
+    agent = ChatSession(registry=DBRegistry(), model="anthropic:claude-opus-4-8", reasoning="high")
     # Adaptive-thinking models never use budgets — no max_tokens override.
     assert agent._thinking_settings() == {"thinking": "high", "timeout": MAIN_REQUEST_TIMEOUT}
 
 
 def test_thinking_settings_opus_5_uses_adaptive_override(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-fake")
-    agent = ChatSession(registry=DBRegistry(), model="anthropic:claude-opus-5", reasoning_effort="high")
+    agent = ChatSession(registry=DBRegistry(), model="anthropic:claude-opus-5", reasoning="high")
     assert agent._thinking_settings() == {
         "thinking": "high",
         "anthropic_thinking": {"type": "adaptive"},
@@ -429,9 +456,9 @@ def test_subagent_settings_budget_era_claude_raise_max_tokens() -> None:
     agent = ChatSession(
         registry=DBRegistry(),
         model="test",
-        reasoning_effort="low",
+        reasoning="low",
         subagent_model="anthropic:claude-sonnet-4-5-20250929",
-        subagent_reasoning_effort="high",
+        subagent_reasoning="high",
     )
     assert agent._subagent_model_settings() == {
         "thinking": "high",
@@ -447,10 +474,10 @@ async def test_subagent_profile_wires_tools(tmp_path: Path, monkeypatch: pytest.
         agent = ChatSession(
             registry=DBRegistry(),
             model="test",
-            reasoning_effort="medium",
+            reasoning="medium",
             workspace=workspace,
             subagent_model="anthropic:claude-opus-4-8",
-            subagent_reasoning_effort="low",
+            subagent_reasoning="low",
         )
         assert agent._tools.run_subagent_for_each_row is not None
         assert agent._tools.extract_rows_from_documents is not None
@@ -465,9 +492,9 @@ async def test_subagent_profile_wires_tools(tmp_path: Path, monkeypatch: pytest.
         agent._tools.get_db_document._document_cache["cached"] = cast(Any, (workspace, "old summary"))
         agent.activate_llm_profile(
             model=agent.model,
-            reasoning_effort=agent.reasoning_effort,
+            reasoning=agent.reasoning,
             subagent_model="openai-responses:gpt-5.4-mini",
-            subagent_reasoning_effort="high",
+            subagent_reasoning="high",
             enable_apply_patch=agent.enable_apply_patch,
         )
         assert agent._tools.get_db_document._document_cache == {}
@@ -479,18 +506,18 @@ async def test_subagent_profile_wires_tools(tmp_path: Path, monkeypatch: pytest.
         assert settings is not None
         assert settings["thinking"] == "high"
         assert settings["openai_reasoning_summary"] == "detailed"
-        assert settings["openai_service_tier"] == "priority"
+        assert "service_tier" not in settings
         settings = cast(dict[str, Any], agent._tools.extract_rows_from_documents.model_settings)
         assert settings["thinking"] == "high"
         assert settings["openai_reasoning_summary"] == "detailed"
-        assert settings["openai_service_tier"] == "priority"
+        assert "service_tier" not in settings
         settings = cast(dict[str, Any], agent._tools.add_canonical_name.model_settings)
         assert settings["thinking"] == "high"
         assert settings["openai_reasoning_summary"] == "detailed"
-        assert settings["openai_service_tier"] == "priority"
+        assert "service_tier" not in settings
         settings = cast(dict[str, Any], agent._tools.get_db_document.model_settings)
         assert settings["thinking"] == "high"
         assert settings["openai_reasoning_summary"] == "detailed"
-        assert settings["openai_service_tier"] == "priority"
+        assert "service_tier" not in settings
     finally:
         await workspace.close_async()

@@ -13,8 +13,8 @@ from tabulaflow.app.tui import app as tui
 def _test_config() -> AppConfig:
     preset = LLMPreset(
         label="Test",
-        main=LLMRoleConfig(model="test", reasoning_effort="medium"),
-        subagent=LLMRoleConfig(model="test", reasoning_effort="low"),
+        main=LLMRoleConfig(model="test", reasoning="medium"),
+        subagent=LLMRoleConfig(model="test", reasoning="low"),
     )
     return AppConfig(llm_preset=preset.label, custom_llm_presets=[preset])
 
@@ -30,8 +30,8 @@ def test_resolve_startup_llm_selection_uses_saved_preset(monkeypatch: pytest.Mon
     assert resolved.selection == "Test"
     assert preset is not None
     assert preset.label == "Test"
-    assert preset.main == LLMRoleConfig(model="test", reasoning_effort="medium")
-    assert preset.subagent == LLMRoleConfig(model="test", reasoning_effort="low")
+    assert preset.main == LLMRoleConfig(model="test", reasoning="medium")
+    assert preset.subagent == LLMRoleConfig(model="test", reasoning="low")
 
 
 def test_resolve_startup_llm_selection_auto_turns_off_without_keys(
@@ -56,8 +56,8 @@ def test_resolve_startup_llm_selection_cli_preset_overrides_saved_preset(
 
     cli_preset = LLMPreset(
         label="CLI",
-        main=LLMRoleConfig(model="cli-main", reasoning_effort="high"),
-        subagent=LLMRoleConfig(model="cli-subagent", reasoning_effort="medium"),
+        main=LLMRoleConfig(model="cli-main", reasoning="high"),
+        subagent=LLMRoleConfig(model="cli-subagent", reasoning="medium"),
     )
 
     def config() -> AppConfig:

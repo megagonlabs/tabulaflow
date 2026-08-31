@@ -4,12 +4,12 @@ import pytest
 from textual.app import App
 from textual.widgets import Static
 
+from tabulaflow.agents.llm import ReasoningLevel
 from tabulaflow.app.config import (
     LLM_OFF,
     AppConfig,
     LLMRoleConfig,
     LLMPreset,
-    ReasoningEffort,
     ResolvedLLMSelection,
 )
 from tabulaflow.app.tui.screens.config import ConfigScreen
@@ -17,23 +17,23 @@ from tabulaflow.app.tui.screens.config import ConfigScreen
 _PRESETS = [
     LLMPreset(
         label="OpenAI balanced",
-        main=LLMRoleConfig(model="openai-responses:gpt-5.6-sol", reasoning_effort="medium"),
-        subagent=LLMRoleConfig(model="openai-responses:gpt-5.4-mini", reasoning_effort="medium"),
+        main=LLMRoleConfig(model="openai-responses:gpt-5.6-sol", reasoning="medium"),
+        subagent=LLMRoleConfig(model="openai-responses:gpt-5.4-mini", reasoning="medium"),
     ),
     LLMPreset(
         label="OpenAI budget",
-        main=LLMRoleConfig(model="openai-responses:gpt-5.4-mini", reasoning_effort="medium"),
-        subagent=LLMRoleConfig(model="openai-responses:gpt-5-mini", reasoning_effort="medium"),
+        main=LLMRoleConfig(model="openai-responses:gpt-5.4-mini", reasoning="medium"),
+        subagent=LLMRoleConfig(model="openai-responses:gpt-5-mini", reasoning="medium"),
     ),
     LLMPreset(
         label="Anthropic balanced",
-        main=LLMRoleConfig(model="anthropic:claude-opus-5", reasoning_effort="high"),
-        subagent=LLMRoleConfig(model="anthropic:claude-sonnet-4-5-20250929", reasoning_effort="high"),
+        main=LLMRoleConfig(model="anthropic:claude-opus-5", reasoning="high"),
+        subagent=LLMRoleConfig(model="anthropic:claude-sonnet-4-5-20250929", reasoning="high"),
     ),
     LLMPreset(
         label="Planning hybrid",
-        main=LLMRoleConfig(model="anthropic:claude-opus-4-8", reasoning_effort="high"),
-        subagent=LLMRoleConfig(model="openai-responses:gpt-5.4-mini", reasoning_effort="medium"),
+        main=LLMRoleConfig(model="anthropic:claude-opus-4-8", reasoning="high"),
+        subagent=LLMRoleConfig(model="openai-responses:gpt-5.4-mini", reasoning="medium"),
     ),
 ]
 
@@ -43,14 +43,14 @@ class _StubSession:
         self,
         label: str = "OpenAI balanced",
         model: str = "openai-responses:gpt-5.6-sol",
-        reasoning_effort: ReasoningEffort = "medium",
+        reasoning: ReasoningLevel = "medium",
         subagent_model: str = "openai-responses:gpt-5.4-mini",
-        subagent_reasoning_effort: ReasoningEffort = "medium",
+        subagent_reasoning: ReasoningLevel = "medium",
     ) -> None:
         self.llm_preset: LLMPreset | None = LLMPreset(
             label=label,
-            main=LLMRoleConfig(model=model, reasoning_effort=reasoning_effort),
-            subagent=LLMRoleConfig(model=subagent_model, reasoning_effort=subagent_reasoning_effort),
+            main=LLMRoleConfig(model=model, reasoning=reasoning),
+            subagent=LLMRoleConfig(model=subagent_model, reasoning=subagent_reasoning),
         )
 
 
@@ -229,9 +229,9 @@ async def test_unverified_selected_preset_has_active_dot_without_error() -> None
     session = _StubSession(
         label="Anthropic balanced",
         model="anthropic:claude-opus-5",
-        reasoning_effort="high",
+        reasoning="high",
         subagent_model="anthropic:claude-sonnet-4-5-20250929",
-        subagent_reasoning_effort="high",
+        subagent_reasoning="high",
     )
     screen = ConfigScreen(_explicit(session.llm_preset))
     async with _App(screen).run_test() as pilot:
@@ -250,9 +250,9 @@ async def test_current_custom_row_for_unmatched_runtime_profile() -> None:
     session = _StubSession(
         label="Test",
         model="openai-responses:gpt-5.6-sol",
-        reasoning_effort="high",
+        reasoning="high",
         subagent_model="anthropic:claude-sonnet-4-5-20250929",
-        subagent_reasoning_effort="medium",
+        subagent_reasoning="medium",
     )
     screen = ConfigScreen(_explicit(session.llm_preset))
     app = _App(screen)

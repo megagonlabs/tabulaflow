@@ -170,8 +170,8 @@ def _build_llm_kwargs(args: argparse.Namespace) -> dict[str, Any]:
         kwargs["llm"] = args.llm
     if args.temperature is not None:
         kwargs["temperature"] = args.temperature
-    if args.reasoning_effort is not None:
-        kwargs["reasoning_effort"] = args.reasoning_effort
+    if args.reasoning is not None:
+        kwargs["reasoning"] = args.reasoning
     if args.service_tier is not None:
         kwargs["service_tier"] = args.service_tier
     if args.deduplicate_results is not None:
@@ -206,7 +206,7 @@ async def main_async() -> None:
     )
     parser.add_argument("--llm", type=str, default=None, help="LLM model identifier for model-based ensemblers.")
     parser.add_argument("--temperature", type=float, default=None, help="Temperature for model-based ensemblers.")
-    parser.add_argument("--reasoning-effort", default=None, help="Reasoning effort for model-based ensemblers.")
+    parser.add_argument("--reasoning", default=None, help="Reasoning effort for model-based ensemblers.")
     parser.add_argument("--service-tier", default=None, help="Service tier for model-based ensemblers.")
     parser.add_argument(
         "--deduplicate-results",
@@ -227,7 +227,7 @@ async def main_async() -> None:
         for value in (
             args.llm,
             args.temperature,
-            args.reasoning_effort,
+            args.reasoning,
             args.service_tier,
             args.deduplicate_results,
             args.max_steps,

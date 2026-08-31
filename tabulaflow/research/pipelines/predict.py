@@ -203,8 +203,8 @@ def parse_agent_config(agent_cls: type[Any], args: argparse.Namespace) -> BaseMo
         kwargs["use_gold_ambiguity_points"] = True
     if args.user_patience is not None:
         kwargs["user_patience"] = args.user_patience
-    if args.reasoning_effort is not None:
-        kwargs["reasoning_effort"] = args.reasoning_effort
+    if args.reasoning is not None:
+        kwargs["reasoning"] = args.reasoning
     if args.service_tier is not None:
         kwargs["service_tier"] = args.service_tier
     return cast(BaseModel, agent_cls.config_cls(**kwargs))
@@ -234,7 +234,7 @@ async def main_async() -> None:
     model.add_argument("--llm", default=None)
     model.add_argument("--temperature", type=float, default=None)
     model.add_argument("--max-steps", type=int, default=None)
-    model.add_argument("--reasoning-effort", default=None)
+    model.add_argument("--reasoning", default=None)
     model.add_argument("--service-tier", default=None)
     model.add_argument("--use-column-descriptions", type=bool_flag, nargs="?", const=True, default=None)
     model.add_argument("-s", "--schema-formatter", default=None)

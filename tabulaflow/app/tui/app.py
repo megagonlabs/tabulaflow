@@ -46,6 +46,7 @@ if TYPE_CHECKING:
 
     from tabulaflow.app.pane.server import OutputPane
     from tabulaflow.agents.chat import ChatResult
+    from tabulaflow.agents.llm import ServiceTier
     from tabulaflow.output.resolver import ResolvedOutput
 
 logger = logging.getLogger(__name__)
@@ -167,11 +168,11 @@ def _llm_preset_success_message(
         )
 
     message = Text(f"✓ LLM preset: {preset.label} · ", style="dim")
-    message.append(model_display_name(preset.main.model, preset.main.reasoning_effort))
+    message.append(model_display_name(preset.main.model, preset.main.reasoning))
     if main_mask is not None and not shared_key:
         message.append(f" [API key {main_mask}]")
     message.append(" → ")
-    message.append(model_display_name(preset.subagent.model, preset.subagent.reasoning_effort))
+    message.append(model_display_name(preset.subagent.model, preset.subagent.reasoning))
     if subagent_mask is not None and not shared_key:
         message.append(f" [API key {subagent_mask}]")
     if shared_key and main_mask is not None:
@@ -229,6 +230,7 @@ class TabulaflowApp(App[None]):
         llm_selection: ResolvedLLMSelection,
         runtime_paths: RuntimePaths,
         project_dir: Path,
+        service_tier: ServiceTier = "default",
         output_pane_host: str = "127.0.0.1",
         output_pane_port: int | None = None,
         output_pane_public_url: str | None = None,
@@ -237,6 +239,7 @@ class TabulaflowApp(App[None]):
 
         super().__init__()
         self._llm_selection = llm_selection
+        self._service_tier = service_tier
         self._output_pane_host = output_pane_host
         self._output_pane_port = output_pane_port
         self._output_pane_public_url = output_pane_public_url
@@ -264,7 +267,7 @@ class TabulaflowApp(App[None]):
         initialization_spinner = self._initialization_spinner
         assert initialization_spinner is not None
         with VerticalScroll(id="chat-log"):
-            yield self._banner_for_preset(self._llm_selection.preset)
+            yield self._banner()
             yield initialization_spinner
         with Vertical(id="bottom-bar"):
             yield BottomSeparator(classes="bottom-sep")
@@ -651,10 +654,12 @@ class TabulaflowApp(App[None]):
         if self._llm_selection.preset is not None:
             model_label = model_display_name(
                 self._llm_selection.preset.main.model,
-                self._llm_selection.preset.main.reasoning_effort,
+                self._llm_selection.preset.main.reasoning,
             )
         else:
             model_label = "LLM off"
+        if self._service_tier == "priority" and self._llm_selection.preset is not None:
+            model_label = f"{model_label} · Priority"
         model_status.update(Text(f"{model_label} · {_compact_project_dir(self._project_dir)}", style="dim"))
         url_status.update(Text(f"View output in browser: {url}" if url else "", style="dim"))
 
@@ -863,6 +868,7 @@ class TabulaflowApp(App[None]):
                 llm_preset=self._llm_selection.preset,
                 runtime_paths=self._runtime_paths,
                 project_dir=self._project_dir,
+                service_tier=self._service_tier,
             )
             self._enable_explorer_button()
             # Publish the session only once it is fully ready (sample autoconnected,
@@ -1007,7 +1013,7 @@ class TabulaflowApp(App[None]):
 
         if result.action == "clear":
             await chat_log.remove_children()
-            await chat_log.mount(self._banner_for_preset(self._llm_selection.preset))
+            await chat_log.mount(self._banner())
             self._refresh_esc_hint()
             return
 
@@ -1113,16 +1119,14 @@ class TabulaflowApp(App[None]):
         self.call_after_refresh(chat_log.scroll_end, animate=False)
 
     @staticmethod
-    def _banner_for_preset(preset: LLMPreset | None) -> BannerWidget:
-        return BannerWidget(
-            model=preset.main.model if preset is not None else None,
-            reasoning_effort=preset.main.reasoning_effort if preset is not None else None,
-        )
+    def _banner() -> BannerWidget:
+        return BannerWidget()
 
 
 async def run_tui(
     llm_selection: ResolvedLLMSelection,
     *,
+    service_tier: ServiceTier = "default",
     output_pane_host: str = "127.0.0.1",
     output_pane_port: int | None = None,
     output_pane_public_url: str | None = None,
@@ -1132,6 +1136,7 @@ async def run_tui(
         llm_selection=llm_selection,
         runtime_paths=RuntimePaths.create(),
         project_dir=Path.cwd(),
+        service_tier=service_tier,
         output_pane_host=output_pane_host,
         output_pane_port=output_pane_port,
         output_pane_public_url=output_pane_public_url,

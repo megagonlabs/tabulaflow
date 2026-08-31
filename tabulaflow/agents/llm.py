@@ -28,9 +28,24 @@ from pydantic_ai.profiles.anthropic import (
     anthropic_model_profile,
     resolve_anthropic_effort,
 )
-from pydantic_ai.settings import ModelSettings
+from pydantic_ai.settings import (
+    ModelSettings,
+    ServiceTier as ServiceTier,
+    ThinkingEffort as ReasoningEffort,
+    ThinkingLevel as ReasoningLevel,
+)
 
 from tabulaflow.agents.runtime import _get_agent_runtime
+
+__all__ = [
+    "ReasoningEffort",
+    "ReasoningLevel",
+    "ServiceTier",
+    "embedding_throttle",
+    "make_agent",
+    "make_model_settings",
+    "model_display_name",
+]
 
 _DEFAULT_USAGE_LIMITS = UsageLimits(request_limit=None)
 
@@ -38,13 +53,13 @@ _ANTHROPIC_ANSWER_TOKEN_HEADROOM = 8192
 _AnthropicEffort = Literal["minimal", "low", "medium", "high", "xhigh"]
 
 
-def _anthropic_effort(reasoning_effort: str | bool | None) -> _AnthropicEffort | None:
-    if reasoning_effort in {"minimal", "low", "medium", "high", "xhigh"}:
-        return cast(_AnthropicEffort, reasoning_effort)
+def _anthropic_effort(reasoning: ReasoningLevel | None) -> _AnthropicEffort | None:
+    if reasoning in {"minimal", "low", "medium", "high", "xhigh"}:
+        return cast(_AnthropicEffort, reasoning)
     return None
 
 
-def model_display_name(model: str, reasoning_effort: str | None = None) -> str:
+def model_display_name(model: str, reasoning: ReasoningLevel | None = None) -> str:
     """Return a human-readable display name for an LLM model identifier,
     with the reasoning effort appended when given.
 
@@ -73,21 +88,25 @@ def model_display_name(model: str, reasoning_effort: str | None = None) -> str:
         else:
             parts.append(tok)
     name = " ".join(parts)
-    return f"{name} {reasoning_effort}" if reasoning_effort else name
+    if reasoning is True:
+        return f"{name} reasoning"
+    if reasoning is False:
+        return f"{name} no reasoning"
+    return f"{name} {reasoning}" if reasoning else name
 
 
 def make_model_settings(
     *,
     model: str,
-    reasoning_effort: str | bool | None = None,
-    service_tier: str | None = None,
+    reasoning: ReasoningLevel | None = None,
+    service_tier: ServiceTier | None = None,
     timeout: float | None = None,
 ) -> ModelSettings:
     """Build pydantic-ai model settings from provider-neutral LLM config.
 
     Args:
         model: Provider-qualified model identifier (e.g. ``anthropic:claude-...``).
-        reasoning_effort: Unified thinking level, translated per provider.
+        reasoning: Unified thinking level, translated per provider.
         service_tier: Provider service tier, for providers that expose one.
         timeout: Per-request timeout in seconds. On timeout the provider SDK
             retries the request automatically, so this doubles as a hang
@@ -96,43 +115,40 @@ def make_model_settings(
     return cast(
         ModelSettings,
         {
-            **_reasoning_model_settings(reasoning_effort, model=model),
+            **_reasoning_model_settings(reasoning, model=model),
             **(
                 {
                     "anthropic_thinking": {"type": "adaptive"},
                     "anthropic_effort": resolve_anthropic_effort(effort, supports_xhigh=True),
                 }
-                if model.startswith("anthropic:claude-opus-5")
-                and (effort := _anthropic_effort(reasoning_effort)) is not None
+                if model.startswith("anthropic:claude-opus-5") and (effort := _anthropic_effort(reasoning)) is not None
                 else {}
             ),
-            **_anthropic_token_settings(reasoning_effort, model=model),
-            **_service_tier_model_settings(service_tier, model=model),
+            **_anthropic_token_settings(reasoning, model=model),
+            **({} if service_tier is None else {"service_tier": service_tier}),
             **({} if timeout is None else {"timeout": timeout}),
         },
     )
 
 
-def _reasoning_model_settings(reasoning_effort: str | bool | None, *, model: str) -> ModelSettings:
+def _reasoning_model_settings(reasoning: ReasoningLevel | None, *, model: str) -> ModelSettings:
     """Return provider-specific reasoning settings.
 
     ``pydantic-ai`` uses ``thinking`` as the provider-neutral reasoning knob.
-    The legacy OpenAI-specific value ``"none"`` maps to ``False``. OpenAI
-    Responses models get detailed reasoning summaries whenever thinking is
-    enabled.
+    OpenAI Responses models get detailed reasoning summaries whenever thinking
+    is enabled.
     """
-    if reasoning_effort is None:
+    if reasoning is None:
         return ModelSettings()
-    thinking: object = False if reasoning_effort == "none" else reasoning_effort
-    settings = ModelSettings(thinking=cast(Any, thinking))
-    if thinking is not False and model.startswith("openai-responses:"):
+    settings = ModelSettings(thinking=reasoning)
+    if reasoning is not False and model.startswith("openai-responses:"):
         settings = cast(ModelSettings, {**settings, "openai_reasoning_summary": "detailed"})
     return settings
 
 
-def _anthropic_token_settings(reasoning_effort: str | bool | None, *, model: str) -> ModelSettings:
+def _anthropic_token_settings(reasoning: ReasoningLevel | None, *, model: str) -> ModelSettings:
     """Give budget-thinking Claude models enough output tokens for thinking and an answer."""
-    if reasoning_effort is None or reasoning_effort is False or reasoning_effort == "none":
+    if reasoning is None or reasoning is False:
         return ModelSettings()
     if model.startswith("anthropic:") or model.startswith("google-vertex:claude"):
         model_name = model.split(":", 1)[1]
@@ -142,17 +158,10 @@ def _anthropic_token_settings(reasoning_effort: str | bool | None, *, model: str
     profile = AnthropicModelProfile.from_profile(anthropic_model_profile(model_name))
     if profile.anthropic_supports_adaptive_thinking:
         return ModelSettings()
-    budget = ANTHROPIC_THINKING_BUDGET_MAP.get(cast(Any, reasoning_effort))
+    budget = ANTHROPIC_THINKING_BUDGET_MAP.get(cast(Any, reasoning))
     if budget is None:
         return ModelSettings()
     return ModelSettings(max_tokens=budget + _ANTHROPIC_ANSWER_TOKEN_HEADROOM)
-
-
-def _service_tier_model_settings(service_tier: str | None, *, model: str) -> ModelSettings:
-    """Return provider-specific model settings for a provider-neutral service tier."""
-    if service_tier is None or not model.startswith(("openai:", "openai-responses:")):
-        return ModelSettings()
-    return cast(ModelSettings, {"openai_service_tier": service_tier})
 
 
 # ---------------------------------------------------------------------------
