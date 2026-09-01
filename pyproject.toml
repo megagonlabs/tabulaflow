@@ -91,15 +91,13 @@ dev = [
     "types-pyyaml>=6.0.12.20260518",
     "import-linter>=2.11",
     "matplotlib",
-    "mcp[cli]>=1.9.4",
     "pillow>=11.3.0",
 ]
-streamlit = ["streamlit>=1.50.0"]
 
 [tool.mypy]
 strict = true
 ignore_missing_imports = true
-exclude = ["scripts/test_readme.py", "scripts/mcp_client.py"]
+exclude = ["scripts/test_readme.py"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
