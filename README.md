@@ -710,12 +710,15 @@ Aug 28
 - [x] tests cleanup
 
 Aug 29
-- [ ] priority
-- [ ] Context percentage and Context compaction
+- [x] Unify reasoning and service priority configuration
+- [x] Bump pydantic-ai to 2.x and type llm.py
+- [x] Simplify dependencies
 - [ ] Benchmark download
+- [ ] Context percentage and Context compaction
 - Multimodal
   - [ ] Pasting images
   - [ ] Media in tables
+
 
 - [ ] Speedup tests
 - [ ] Inline artifact citation
@@ -725,7 +728,6 @@ Aug 29
 - [ ] TUI
   - [ ] Do not auto-scroll when browsing old turns
   - [ ] Onboarding - browser install
-- [x] Bump pydantic-ai to 2.x and type llm.py
 - [ ] Show pending turns in output pane
 
 - [ ] Shell messed up after ssh disconnect
