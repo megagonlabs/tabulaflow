@@ -8,21 +8,21 @@ from tabulaflow.app.main import AppServiceTier
 from tabulaflow.research.cli import console
 
 
-def test_root_cli_exposes_app_and_research_commands() -> None:
+def test_root_cli_exposes_chat_options_and_research_commands() -> None:
     result = CliRunner().invoke(app, ["--help"])
 
     assert result.exit_code == 0
-    assert "chat" in result.stdout
+    assert "--service-tier" in result.stdout
     assert "benchmark" in result.stdout
 
 
 def test_root_cli_starts_chat_by_default(monkeypatch: MonkeyPatch) -> None:
     received: dict[str, object] = {}
 
-    def fake_chat(**kwargs: object) -> None:
+    def fake_run_chat(**kwargs: object) -> None:
         received.update(kwargs)
 
-    monkeypatch.setattr(cli, "chat", fake_chat)
+    monkeypatch.setattr(cli, "run_chat", fake_run_chat)
 
     result = CliRunner().invoke(
         app,

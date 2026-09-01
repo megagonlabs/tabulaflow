@@ -2,7 +2,7 @@
 
 import typer
 
-from tabulaflow.app.main import AppServiceTier, chat
+from tabulaflow.app.main import AppServiceTier, run_chat
 from tabulaflow.research.cli import benchmark_app
 
 app = typer.Typer(
@@ -11,7 +11,6 @@ app = typer.Typer(
     no_args_is_help=False,
     rich_markup_mode="rich",
 )
-app.command()(chat)
 app.add_typer(benchmark_app, name="benchmark")
 
 
@@ -46,15 +45,14 @@ def root(
     ),
 ) -> None:
     """Start an interactive chat by default or run a subcommand."""
-    if ctx.invoked_subcommand is not None:
-        return
-    chat(
-        llm_preset=llm_preset,
-        service_tier=service_tier,
-        output_pane_port=output_pane_port,
-        output_pane_host=output_pane_host,
-        output_pane_public_url=output_pane_public_url,
-    )
+    if ctx.invoked_subcommand is None:
+        run_chat(
+            llm_preset=llm_preset,
+            service_tier=service_tier,
+            output_pane_port=output_pane_port,
+            output_pane_host=output_pane_host,
+            output_pane_public_url=output_pane_public_url,
+        )
 
 
 def main() -> None:

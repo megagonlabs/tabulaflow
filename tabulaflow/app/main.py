@@ -1,17 +1,10 @@
-"""Entry point for the tabulaflow CLI."""
+"""Interactive app launcher."""
 
 from enum import StrEnum
 
 import typer
 
 from tabulaflow.app.config import ResolvedLLMSelection
-
-app = typer.Typer(
-    name="tabulaflow",
-    help="Minimalist Text-to-Query toolkit — interactive SQL / Cypher chat.",
-    no_args_is_help=True,
-    rich_markup_mode="rich",
-)
 
 
 class AppServiceTier(StrEnum):
@@ -30,36 +23,15 @@ def _resolve_startup_llm_selection(*, llm_preset: str | None) -> ResolvedLLMSele
         raise typer.BadParameter(str(e), param_hint="--llm-preset") from None
 
 
-@app.command()
-def chat(
-    llm_preset: str | None = typer.Option(
-        None,
-        "--llm-preset",
-        "-p",
-        help="LLM preset label or 'off' for this launch. Overrides the saved selection without persisting.",
-    ),
-    service_tier: AppServiceTier = typer.Option(
-        AppServiceTier.DEFAULT,
-        "--service-tier",
-        help="LLM request service tier for this launch. Priority may incur premium API pricing.",
-    ),
-    output_pane_port: int | None = typer.Option(
-        None,
-        "--output-pane-port",
-        help="Strict port for the browser output pane. Defaults to the first free port in 61111-61130.",
-    ),
-    output_pane_host: str = typer.Option(
-        "127.0.0.1",
-        "--output-pane-host",
-        help="Bind host for the browser output pane.",
-    ),
-    output_pane_public_url: str | None = typer.Option(
-        None,
-        "--output-pane-public-url",
-        help="Browser-facing base URL for the output pane. The session token is appended automatically.",
-    ),
+def run_chat(
+    *,
+    llm_preset: str | None = None,
+    service_tier: AppServiceTier = AppServiceTier.DEFAULT,
+    output_pane_port: int | None = None,
+    output_pane_host: str = "127.0.0.1",
+    output_pane_public_url: str | None = None,
 ) -> None:
-    """Start an interactive database chat session (SQL or Neo4j Cypher)."""
+    """Start an interactive database chat session."""
     import asyncio
     import logging
 
@@ -78,7 +50,3 @@ def chat(
             output_pane_public_url=output_pane_public_url,
         )
     )
-
-
-def main() -> None:
-    app()
