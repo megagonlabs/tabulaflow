@@ -87,7 +87,6 @@ dev = [
     "pytest-asyncio>=1.0.0",
     "ipython",
     "types-tabulate>=0.9.0",
-    "types-aiofiles>=24.1.0.20250516",
     "types-pyyaml>=6.0.12.20260518",
     "import-linter>=2.11",
     "matplotlib",
@@ -97,7 +96,6 @@ dev = [
 [tool.mypy]
 strict = true
 ignore_missing_imports = true
-exclude = ["scripts/test_readme.py"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
