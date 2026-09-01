@@ -15,7 +15,7 @@ Use `uv` for all Python operations:
 make test          # pytest with all caching disabled
 make format        # ruff format + ruff check --fix
 make lint          # ruff check
-make mypy          # mypy tabulaflow/ tests/
+make mypy          # mypy tabulaflow/ tests/ scripts/
 make sync          # sync uv dependencies
 ```
 

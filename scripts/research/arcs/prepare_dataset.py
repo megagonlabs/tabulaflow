@@ -1,20 +1,29 @@
 import argparse
-import os
+import asyncio
+import itertools
 import json
 import random
 import re
 import shutil
-import itertools
+import tempfile
 import time
+from pathlib import Path
+from typing import Literal, cast
+
 import sqlparse
-import asyncio
 from pydantic import TypeAdapter
 from tabulate import tabulate
-from tabulaflow.research.types import GoldQuery
-from tabulaflow.research.types import AmbigNL2QTask, GoldAmbiguityPointFinite, GoldAmbiguityPointInfinite
-from tabulaflow.research.benchmarks import dataset_registry
+
 from tabulaflow.data import SQLConnector
 from tabulaflow.research.ambiguity import sort_ambiguity_points
+from tabulaflow.research.benchmarks.arcs import ARCSDatasetLoader
+from tabulaflow.research.types import (
+    AmbigNL2QTask,
+    GoldAmbiguityPoint,
+    GoldAmbiguityPointFinite,
+    GoldAmbiguityPointInfinite,
+    GoldQuery,
+)
 
 AMBIGUITY_POINT_IDS = list("ABCDEFGHIJKLMNOPQRSTUVWXYZ")
 
@@ -32,20 +41,19 @@ def clean_sql(sql: str) -> str:
     return "\n".join(res)
 
 
-def parse_task(sql_path: str, db: str) -> AmbigNL2QTask:
-    with open(sql_path, "r") as f:
-        content = f.read()
+def parse_task(sql_path: Path, database: str, rng: random.Random) -> AmbigNL2QTask:
+    content = sql_path.read_text()
 
-    # Extract the first block of comment wrapped in /* */
-    comments = re.search(r"/\*([\s\S]*?)\*/", content).group(1)
+    match = re.search(r"/\*([\s\S]*?)\*/", content)
+    if match is None:
+        raise ValueError(f"Missing metadata comment in {sql_path}")
+    comments = match.group(1)
     data = json.loads(comments)
 
-    # Extract the list of SQL queries from the .sql file
     sqls = [str(stmt).strip() for stmt in sqlparse.parse(content) if str(stmt).strip()]
-    # Remove comments in SQL
     sqls = [clean_sql(sql) for sql in sqls]
 
-    gold_ambiguity_points = []
+    gold_ambiguity_points: list[GoldAmbiguityPoint] = []
     for ap_idx, ap in enumerate(data["ambiguity_points"]):
         if ap["type"] == "finite":
             gold_ambiguity_points.append(
@@ -55,7 +63,7 @@ def parse_task(sql_path: str, db: str) -> AmbigNL2QTask:
                     phrase=ap["phrase"],
                     type="finite",
                     interpretations=ap["interpretations"],
-                    intended_interpretation_idx=random.choice(range(len(ap["interpretations"]))),
+                    intended_interpretation_idx=rng.randrange(len(ap["interpretations"])),
                 )
             )
         elif ap["type"] == "infinite":
@@ -70,7 +78,7 @@ def parse_task(sql_path: str, db: str) -> AmbigNL2QTask:
                     raise ValueError(f"substring {s} not found in SQL {i}")
 
             if all(isinstance(val, int) for val in ap["parameter_sample_values"]):
-                parameter_dtype = "int"
+                parameter_dtype: Literal["int", "float", "str"] = "int"
             elif all(isinstance(val, float) for val in ap["parameter_sample_values"]):
                 parameter_dtype = "float"
             elif all(isinstance(val, str) for val in ap["parameter_sample_values"]):
@@ -79,7 +87,7 @@ def parse_task(sql_path: str, db: str) -> AmbigNL2QTask:
                 raise ValueError(f"Unknown parameter dtype: {ap['parameter_sample_values']}")
 
             if ap["parameter_operator"] in (">", ">="):
-                parameter_sample_operators = [">", ">="]
+                parameter_sample_operators: list[Literal["<", ">", "<=", ">=", "=", "<>"]] = [">", ">="]
             elif ap["parameter_operator"] in ("<", "<="):
                 parameter_sample_operators = ["<", "<="]
             else:
@@ -104,28 +112,31 @@ def parse_task(sql_path: str, db: str) -> AmbigNL2QTask:
 
     finite_aps = [ap for ap in gold_ambiguity_points if ap.type == "finite"]
     all_indexes = list(itertools.product(*[range(len(ap.interpretations)) for ap in finite_aps]))
-    assert len(all_indexes) == len(sqls)
+    if len(all_indexes) != len(sqls):
+        raise ValueError(f"Expected {len(all_indexes)} SQL variants in {sql_path}, found {len(sqls)}")
 
-    # all_parameter_names = [ap.parameter_name for ap in gold_ambiguity_points if ap.type == "infinite"]
     all_parameter_values = {
         ap.parameter_name: ap.intended_parameter_value for ap in gold_ambiguity_points if ap.type == "infinite"
     }
 
     required_columns = data.get("required_columns")
     if required_columns is not None:
-        assert len(required_columns) > 0
+        if not required_columns:
+            raise ValueError(f"required_columns is empty in {sql_path}")
         if isinstance(required_columns[0], list):
-            assert len(required_columns) == len(sqls)
-            assert all(len(cols) > 0 for cols in required_columns)
+            if len(required_columns) != len(sqls) or any(not columns for columns in required_columns):
+                raise ValueError(f"Invalid per-query required_columns in {sql_path}")
 
     gold_queries = []
-    for i, (indexes, sql) in enumerate(zip(all_indexes, sqls)):
-        id = "GQRY" + "".join(f"-{ap.id}.{idx}" for ap, idx in zip(finite_aps, indexes))
+    for i, (indexes, sql) in enumerate(zip(all_indexes, sqls, strict=True)):
+        query_id = "GQRY" + "".join(f"-{ap.id}.{idx}" for ap, idx in zip(finite_aps, indexes, strict=True))
         parameter_names = re.findall(r":([\w_]+)", sql)
-        assert all(param_name in all_parameter_values for param_name in parameter_names)
+        unknown_parameters = set(parameter_names) - all_parameter_values.keys()
+        if unknown_parameters:
+            raise ValueError(f"Unknown SQL parameters in {sql_path}: {sorted(unknown_parameters)}")
 
         ambiguity_resolution = {
-            f"[{ap.id}] {ap.phrase}": ap.interpretations[idx] for ap, idx in zip(finite_aps, indexes)
+            f"[{ap.id}] {ap.phrase}": ap.interpretations[idx] for ap, idx in zip(finite_aps, indexes, strict=True)
         }
         ambiguity_resolution.update(
             {f"[{ap.id}] {ap.phrase}": f":{ap.parameter_name}" for ap in gold_ambiguity_points if ap.type == "infinite"}
@@ -134,7 +145,7 @@ def parse_task(sql_path: str, db: str) -> AmbigNL2QTask:
 
         gold_queries.append(
             GoldQuery(
-                id=id,
+                id=query_id,
                 query=sql,
                 parameter_names=parameter_names,
                 parameter_values={k: all_parameter_values[k] for k in parameter_names},
@@ -146,18 +157,18 @@ def parse_task(sql_path: str, db: str) -> AmbigNL2QTask:
             )
         )
 
-    gold_intended_query_idx = all_indexes.index(tuple(ap.intended_interpretation_idx for ap in finite_aps))
+    intended_indexes = tuple(cast(int, ap.intended_interpretation_idx) for ap in finite_aps)
+    gold_intended_query_idx = all_indexes.index(intended_indexes)
     gold_intended_query_id = gold_queries[gold_intended_query_idx].id
 
-    filename = os.path.basename(sql_path)
-    assert data["qid"] == filename.replace(".sql", ""), f"QID mismatch: {data['qid']} != {filename.replace('.sql', '')}"
-
-    assert data["generated_task"][-1] in (".", "?"), "Generated task must end with '.' or '?'"
+    if data["qid"] != sql_path.stem:
+        raise ValueError(f"QID mismatch in {sql_path}: {data['qid']} != {sql_path.stem}")
+    if not data["generated_task"].endswith((".", "?")):
+        raise ValueError(f"Generated task must end with punctuation in {sql_path}")
 
     task = AmbigNL2QTask(
         qid=data["qid"],
-        language="SQLite",
-        db=db,
+        db=database,
         question=data["generated_task"],
         gold_ambiguity_points=gold_ambiguity_points,
         gold_queries=gold_queries,
@@ -189,18 +200,21 @@ def sort_tasks_and_reindex(tasks: list[AmbigNL2QTask], seed: int = 42) -> list[A
         if task.db in DB_NAME_MAPPING:
             task.db = DB_NAME_MAPPING[task.db]
 
-    res = []
+    unknown_databases = {task.db for task in tasks} - set(DB_ORDER)
+    if unknown_databases:
+        raise ValueError(f"Unknown databases: {sorted(unknown_databases)}")
+
+    res: list[AmbigNL2QTask] = []
     for db in DB_ORDER:
         qid2task = {task.qid: task for task in tasks if task.db == db}
         for qid in PICKED_SAMPLES[db]:
             task = qid2task.pop(qid)
-            task.qid = f"{len(res) + 1:03d}"  # 3-digit number padded with zeros
+            task.qid = f"{len(res) + 1:03d}"
             res.append(task)
-        # shuffle the remaining tasks
         remaining_tasks = list(qid2task.values())
         sampler.shuffle(remaining_tasks)
         for task in remaining_tasks:
-            task.qid = f"{len(res) + 1:03d}"  # 3-digit number padded with zeros
+            task.qid = f"{len(res) + 1:03d}"
             res.append(task)
 
     return res
@@ -211,103 +225,53 @@ TIMEOUT_SECONDS = 120
 
 async def populate_gold_exec_results(task: AmbigNL2QTask, db_connector: SQLConnector) -> AmbigNL2QTask | None:
     has_error = False
+    if any(query.query is None for query in task.gold_queries):
+        raise ValueError(f"Task {task.qid} contains a gold query without SQL")
 
     exec_results = await asyncio.gather(
         *[
-            db_connector.run_query_async(gq.query, parameters=gq.parameter_values, timeout=TIMEOUT_SECONDS)
+            db_connector.run_query_async(
+                cast(str, gq.query),
+                parameters=gq.parameter_values,
+                timeout=TIMEOUT_SECONDS,
+            )
             for gq in task.gold_queries
         ],
         return_exceptions=True,
     )
     for gq, exec_result in zip(task.gold_queries, exec_results):
-        if isinstance(exec_result, Exception):
+        if isinstance(exec_result, BaseException):
             print(f"[ERROR] Error executing gold_query for QID {task.qid} (db: {task.db}): {exec_result}")
             has_error = True
-    if not has_error and all(exec_result.df.empty for exec_result in exec_results):
+    successful_results = [result for result in exec_results if not isinstance(result, BaseException)]
+    if not has_error and all(result.df is None or result.df.empty for result in successful_results):
         print(f"[ERROR] All gold_queries return empty result for QID {task.qid} (db: {task.db})")
         has_error = True
     if has_error:
         return None
-    for gq, exec_result in zip(task.gold_queries, exec_results):
+    for gq, exec_result in zip(task.gold_queries, successful_results, strict=True):
         gq.exec_result = exec_result
     print(f"{task.qid} done")
     return AmbigNL2QTask.model_validate(task.model_dump())
 
 
-async def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--input_dir", default="../ambig-text2sql/dataset_v1_filtered/")
-    parser.add_argument("--output_dir", default="data/ARCS/tasks/")
-    parser.add_argument("--seed", type=int, default=42)
-    parser.add_argument("--batch_size", type=int, default=10)
-    parser.add_argument("--no_exec", action="store_true")
-    parser.add_argument("--max_concurrency", type=int, default=1)
-    parser.add_argument("--overwrite", action="store_true")
-    args = parser.parse_args()
-    print(args)
-    print()
+def load_tasks(input_dir: Path, rng: random.Random) -> list[AmbigNL2QTask]:
+    tasks = []
+    for database_dir in sorted(path for path in input_dir.iterdir() if path.is_dir()):
+        sql_dir = database_dir / "sql"
+        if not sql_dir.is_dir():
+            raise FileNotFoundError(f"SQL directory not found: {sql_dir}")
+        for sql_path in sorted(sql_dir.glob("*.sql")):
+            tasks.append(parse_task(sql_path, database_dir.name, rng))
 
-    # If output_dir exists and is not empty, exit
-    if os.path.exists(args.output_dir) and os.listdir(args.output_dir):
-        if not args.overwrite:
-            print(f"{args.output_dir} already exists and is not empty")
-            return
-        else:
-            shutil.rmtree(args.output_dir)
-    os.makedirs(args.output_dir, exist_ok=True)
+    qids = [task.qid for task in tasks]
+    if len(qids) != len(set(qids)):
+        raise ValueError("Duplicate QIDs found")
+    return tasks
 
-    random.seed(args.seed)
 
-    t0 = time.time()
-    if not args.no_exec:
-        dataset_loader = dataset_registry.get_class("arcs")()
-        db_connectors = await dataset_loader.get_db_connectors_async("dev")
-        print(f"Loaded {len(db_connectors)} databases from ARCS dev set in {time.time() - t0:.2f} seconds.")
-        dbms_semaphore = asyncio.Semaphore(args.max_concurrency)
-        for db_connector in db_connectors.values():
-            db_connector._t_eng.db_semaphore = asyncio.Semaphore(args.max_concurrency)
-            db_connector._t_eng.dbms_semaphore = dbms_semaphore
-
-    # task_061 = parse_task(os.path.join(args.input_dir, "financial", "sql", "1101.sql"), "financial")  # 1227
-    # task_061 = await populate_gold_exec_results(task_061, dataset.db_connectors["financial"])
-    # print(task_061.model_dump())
-    # task_061.to_directory("output/tmp/061/")
-    # task_061 = AmbigNL2QTask.from_directory("output/tmp/061/")
-    # print(task_061.gold_queries[0].exec_result.df)
-    # exit(9)
-
-    all_data = []
-    for db in os.listdir(args.input_dir):
-        errors = {}
-        input_sql_dir = os.path.join(args.input_dir, db, "sql")
-        qids = [fname.replace(".sql", "") for fname in os.listdir(input_sql_dir) if fname.endswith(".sql")]
-        for qid in qids:
-            try:
-                task = parse_task(os.path.join(input_sql_dir, f"{qid}.sql"), db)
-                all_data.append(task)
-            except Exception as e:
-                import traceback
-
-                print(traceback.format_exc())
-                errors[qid] = str(e)
-        print("-" * 100)
-        print(f"Database: {db}")
-        print(f"Error in {len(errors)} tasks:")
-        for qid, error in errors.items():
-            print(f"  {qid}: {error}")
-        print()
-
-    qids = [task.qid for task in all_data]
-    assert len(qids) == len(set(qids)), "Duplicate QIDs found"
-    print(f"Total number of tasks: {len(all_data)}")
-
-    all_data = sort_tasks_and_reindex(all_data, args.seed)
-    print(f"Total number of tasks after sorting and reindexing: {len(all_data)}")
-
-    # all_data = all_data[1:4]
-
-    # Print stats for ambiguity types
-    domains = sorted(set([task.db for task in all_data]))
+def print_task_stats(tasks: list[AmbigNL2QTask]) -> None:
+    domains = sorted({task.db for task in tasks})
     ambiguities = [
         "semantic_column",
         "semantic_table",
@@ -318,66 +282,124 @@ async def main():
         "syntactic_value",
         "syntactic_computation",
     ]
-    db2counts = {db: {amb: 0 for amb in ambiguities} for db in domains}
-    for task in all_data:
-        db = task.db
-        unique_ambs = list(set([ap.ambiguity_type for ap in task.gold_ambiguity_points]))
-        for amb in unique_ambs:
-            db2counts[db][amb] += 1
-    df = []
-    for amb in ambiguities:
-        counts = [db2counts[db][amb] for db in domains]
-        df.append((amb.replace("_ambiguity", ""), *counts, sum(counts)))
-    df.append(("#Tasks", *[len([task for task in all_data if task.db == db]) for db in domains], len(all_data)))
-    print()
-    print(tabulate(df, headers=["Ambiguity"] + domains + ["Total"], tablefmt="github"))
+    counts = {database: {ambiguity: 0 for ambiguity in ambiguities} for database in domains}
+    for task in tasks:
+        for ambiguity in {point.ambiguity_type for point in task.gold_ambiguity_points}:
+            counts[task.db][ambiguity] += 1
 
-    # Print stats for number of ambiguity points
-    header = ["Number of AP"] + domains + ["Total"]
-    max_ap = max([len(task.gold_ambiguity_points) for task in all_data])
-    df = []
-    for i in range(1, max_ap + 1):
-        row = (
-            [f"AP{i}"]
-            + [
-                sum([1 for task in all_data if len(task.gold_ambiguity_points) == i and task.db == db])
-                for db in domains
-            ]
-            + [sum([1 for task in all_data if len(task.gold_ambiguity_points) == i])]
+    rows = [
+        (
+            ambiguity,
+            *(counts[database][ambiguity] for database in domains),
+            sum(counts[db][ambiguity] for db in domains),
         )
-        df.append(row)
-    print()
-    print(tabulate(df, headers=header, tablefmt="github"))
+        for ambiguity in ambiguities
+    ]
+    rows.append(("#Tasks", *(sum(task.db == database for task in tasks) for database in domains), len(tasks)))
+    print(tabulate(rows, headers=["Ambiguity", *domains, "Total"], tablefmt="github"))
 
-    if args.no_exec:
-        output_path = os.path.join(args.output_dir, "all_data.json")
-        with open(output_path, "w") as f:
-            json.dump([task.model_dump() for task in all_data], f, indent=2)
-        print(f"{len(all_data)} tasks saved to {output_path}")
-        print("Checking only. Exiting...")
+    max_points = max(len(task.gold_ambiguity_points) for task in tasks)
+    point_rows = [
+        [
+            f"AP{count}",
+            *(
+                sum(len(task.gold_ambiguity_points) == count and task.db == database for task in tasks)
+                for database in domains
+            ),
+            sum(len(task.gold_ambiguity_points) == count for task in tasks),
+        ]
+        for count in range(1, max_points + 1)
+    ]
+    print()
+    print(tabulate(point_rows, headers=["Number of AP", *domains, "Total"], tablefmt="github"))
+
+
+def validate_output_directory(output_dir: Path, overwrite: bool) -> None:
+    if output_dir.exists() and not output_dir.is_dir():
+        raise NotADirectoryError(output_dir)
+    if output_dir.exists() and any(output_dir.iterdir()) and not overwrite:
+        raise FileExistsError(f"Output directory is not empty: {output_dir}; pass --overwrite to replace it")
+
+
+def staging_directory(output_dir: Path) -> Path:
+    output_dir.parent.mkdir(parents=True, exist_ok=True)
+    return Path(tempfile.mkdtemp(prefix=f".{output_dir.name}-", dir=output_dir.parent))
+
+
+def publish_directory(staging_dir: Path, output_dir: Path) -> None:
+    if not output_dir.exists():
+        staging_dir.replace(output_dir)
         return
 
-    # qids = ["1159"]
-    # all_data = [task for task in all_data if task.qid in qids]
+    backup_dir = Path(tempfile.mkdtemp(prefix=f".{output_dir.name}-backup-", dir=output_dir.parent))
+    backup_dir.rmdir()
+    output_dir.replace(backup_dir)
+    try:
+        staging_dir.replace(output_dir)
+    except BaseException:
+        backup_dir.replace(output_dir)
+        raise
+    shutil.rmtree(backup_dir)
 
-    print("Executing the queries...")
-    res = []
-    for i in range(0, len(all_data), args.batch_size):
-        batch = all_data[i : i + args.batch_size]
-        tasks = await asyncio.gather(*[populate_gold_exec_results(task, db_connectors[task.db]) for task in batch])
-        res += [task for task in tasks if task is not None]
 
-    print("Please fix the errors and run the script again.")
+async def main() -> None:
+    parser = argparse.ArgumentParser(description="Build the ARCS benchmark dataset from annotated SQL files.")
+    parser.add_argument("--input-dir", type=Path, default=Path("../ambig-text2sql/dataset_v1_filtered"))
+    parser.add_argument("--output-dir", type=Path, default=Path("data/ARCS/tasks"))
+    parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument("--batch-size", type=int, default=10)
+    parser.add_argument("--no-exec", action="store_true")
+    parser.add_argument("--max-concurrency", type=int, default=1)
+    parser.add_argument("--overwrite", action="store_true")
+    args = parser.parse_args()
+    if args.batch_size < 1:
+        parser.error("--batch-size must be positive")
+    if args.max_concurrency < 1:
+        parser.error("--max-concurrency must be positive")
+    validate_output_directory(args.output_dir, args.overwrite)
 
-    output_path = os.path.join(args.output_dir, "all_tasks.json")
-    with open(output_path, "w") as f:
-        f.write(TypeAdapter(list[AmbigNL2QTask]).dump_json(res, indent=2).decode())
+    started_at = time.perf_counter()
+    tasks = sort_tasks_and_reindex(load_tasks(args.input_dir, random.Random(args.seed)), args.seed)
+    print(f"Loaded and reindexed {len(tasks)} tasks")
+    print_task_stats(tasks)
 
-    for task in res:
-        task.to_directory(os.path.join(args.output_dir, "readable", task.qid))
+    if args.no_exec:
+        staging_dir = staging_directory(args.output_dir)
+        try:
+            (staging_dir / "all_data.json").write_text(
+                json.dumps([task.model_dump() for task in tasks], indent=2) + "\n"
+            )
+            publish_directory(staging_dir, args.output_dir)
+        except BaseException:
+            shutil.rmtree(staging_dir, ignore_errors=True)
+            raise
+        print(f"Wrote {len(tasks)} tasks to {args.output_dir / 'all_data.json'}")
+        return
 
-    print(f"{len(res)} tasks saved to {output_path}")
-    print(f"Finished in {time.time() - t0:.2f} seconds.")
+    dataset_loader = ARCSDatasetLoader(max_concurrency=args.max_concurrency)
+    db_connectors = await dataset_loader.get_db_connectors_async("test_unsampled")
+
+    print("Executing gold queries")
+    completed: list[AmbigNL2QTask] = []
+    for start in range(0, len(tasks), args.batch_size):
+        batch = tasks[start : start + args.batch_size]
+        results = await asyncio.gather(*(populate_gold_exec_results(task, db_connectors[task.db]) for task in batch))
+        completed.extend(task for task in results if task is not None)
+    if len(completed) != len(tasks):
+        raise RuntimeError(f"Gold-query execution failed for {len(tasks) - len(completed)} tasks")
+
+    staging_dir = staging_directory(args.output_dir)
+    try:
+        (staging_dir / "all_tasks.json").write_bytes(TypeAdapter(list[AmbigNL2QTask]).dump_json(completed, indent=2))
+        for task in completed:
+            task.to_directory(str(staging_dir / "readable" / task.qid))
+        publish_directory(staging_dir, args.output_dir)
+    except BaseException:
+        shutil.rmtree(staging_dir, ignore_errors=True)
+        raise
+
+    print(f"Wrote {len(completed)} tasks to {args.output_dir / 'all_tasks.json'}")
+    print(f"Finished in {time.perf_counter() - started_at:.2f} seconds")
 
 
 if __name__ == "__main__":

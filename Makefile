@@ -5,7 +5,7 @@ sync:
 
 .PHONY: mypy
 mypy:
-	uv run mypy tabulaflow/ tests/
+	uv run mypy tabulaflow/ tests/ scripts/
 
 .PHONY: format
 format:

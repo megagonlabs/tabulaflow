@@ -22,7 +22,7 @@ Output is deterministic (seeded), so regenerating produces a byte-identical file
 The generated ``sample.sqlite`` is committed and shipped via package-data; this
 script is the source of truth — run it to regenerate / audit.
 
-    uv run scripts/app/gen_sample_db.py
+    uv run scripts/app/generate_sample_database.py
 """
 
 from __future__ import annotations
@@ -32,6 +32,7 @@ import random
 import sqlite3
 import string
 from pathlib import Path
+from typing import cast
 
 _SAMPLE_DIR = Path(__file__).resolve().parents[2] / "tabulaflow" / "app" / "assets" / "samples"
 _OUT = _SAMPLE_DIR / "sample.sqlite"
@@ -145,12 +146,12 @@ def _money(rng: random.Random, mean: float, spread: float) -> float:
 
 def _account(rng: random.Random) -> str:
     names, weights = zip(*_ACCOUNTS)
-    return rng.choices(names, weights=weights)[0]
+    return cast(str, rng.choices(names, weights=weights)[0])
 
 
-def _gen_transactions(rng: random.Random) -> list[tuple]:
+def _gen_transactions(rng: random.Random) -> list[tuple[object, ...]]:
     cat_weights = [c[4] for c in _CATS]
-    rows: list[tuple] = []
+    rows: list[tuple[object, ...]] = []
     for month in range(1, 7):  # Jan–Jun
         days = _MONTH_DAYS[month]
         for merchant, amount, day in _SUBS:
@@ -170,7 +171,7 @@ def _gen_transactions(rng: random.Random) -> list[tuple]:
             merchant = rng.choice(merchants) + " REFUND"
             rows.append((f"{_YEAR}-{month:02d}-{day:02d}", merchant, -_money(rng, mean, spread), _account(rng)))
     rng.shuffle(rows)
-    rows.sort(key=lambda r: r[0])
+    rows.sort(key=lambda row: cast(str, row[0]))
     seen: set[str] = set()
     return [(_uid(rng, "TXN", 9, seen), *r) for r in rows]
 
@@ -232,8 +233,8 @@ _REVIEWERS = [
 ]
 
 
-def _gen_reviews(rng: random.Random) -> list[tuple]:
-    rows: list[tuple] = []
+def _gen_reviews(rng: random.Random) -> list[tuple[object, ...]]:
+    rows: list[tuple[object, ...]] = []
     seen: set[str] = set()
     for _ in range(30):
         review_id = _uid(rng, "R", 10, seen)  # Amazon-style review id
@@ -300,8 +301,8 @@ _RETRIEVAL = [
 ]
 
 
-def _gen_eval(rng: random.Random) -> list[tuple]:
-    rows: list[tuple] = []
+def _gen_eval(rng: random.Random) -> list[tuple[object, ...]]:
+    rows: list[tuple[object, ...]] = []
     for i in range(40):
         sample_id = f"ex-{i + 1:04d}"  # eval-dataset style sample id
         domain, question, expected, reasoning_wrong = rng.choice(_QA)
@@ -326,7 +327,7 @@ def _gen_eval(rng: random.Random) -> list[tuple]:
 # ---------------------------------------------------------------------------
 
 
-def _gen_nyc_taxi_zones() -> list[tuple]:
+def _gen_nyc_taxi_zones() -> list[tuple[object, ...]]:
     rows = json.loads(_NYC_TAXI_ZONES_JSON.read_text(encoding="utf-8"))
     rows.sort(key=lambda r: int(r["locationid"]))
     return [
@@ -381,7 +382,7 @@ def main() -> None:
     tables = ("bank_transactions", "product_reviews", "model_eval_results", "nyc_taxi_zones")
     counts = {t: cur.execute(f"SELECT COUNT(*) FROM {t}").fetchone()[0] for t in tables}
     conn.close()
-    print(f"wrote {_OUT.relative_to(Path.cwd())}  ({_OUT.stat().st_size // 1024} KB)")
+    print(f"wrote {_OUT}  ({_OUT.stat().st_size // 1024} KB)")
     print("  tables:", ", ".join(f"{t}={n}" for t, n in counts.items()))
 
 

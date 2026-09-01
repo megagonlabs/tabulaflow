@@ -7,7 +7,7 @@ from pathlib import Path
 
 from textual.containers import VerticalScroll
 
-from preview_fixtures import mount_preview_widgets
+from _preview_fixtures import mount_preview_widgets
 from tabulaflow.app.config import LLM_OFF, ResolvedLLMSelection
 from tabulaflow.app.runtime_paths import RuntimePaths
 from tabulaflow.app.tui import TabulaflowApp

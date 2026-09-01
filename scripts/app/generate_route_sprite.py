@@ -1,11 +1,11 @@
 from __future__ import annotations
 
 import json
-import tempfile
+from io import BytesIO
 from pathlib import Path
 
 from PIL import Image
-from playwright.sync_api import sync_playwright
+from playwright.sync_api import Page, sync_playwright
 
 
 ASSET_DIR = Path(__file__).resolve().parents[2] / "tabulaflow" / "app" / "assets" / "maplibre"
@@ -34,7 +34,7 @@ def _symbol_svg(defs: str, symbol_id: str, width: int, height: int) -> str:
 """
 
 
-def _render_svg(page, svg: str, width: int, height: int, pixel_ratio: int) -> Image.Image:
+def _render_svg(page: Page, svg: str, width: int, height: int, pixel_ratio: int) -> Image.Image:
     render_width = width * pixel_ratio
     render_height = height * pixel_ratio
     page.set_viewport_size({"width": render_width, "height": render_height})
@@ -59,10 +59,8 @@ def _render_svg(page, svg: str, width: int, height: int, pixel_ratio: int) -> Im
 </html>""",
     )
     locator = page.locator("svg")
-    with tempfile.NamedTemporaryFile(suffix=".png") as screenshot:
-        locator.screenshot(path=screenshot.name, omit_background=True)
-        image = Image.open(screenshot.name).convert("RGBA")
-        return image.copy()
+    screenshot = locator.screenshot(omit_background=True)
+    return Image.open(BytesIO(screenshot)).convert("RGBA")
 
 
 def _build_sprite(pixel_ratio: int) -> None:

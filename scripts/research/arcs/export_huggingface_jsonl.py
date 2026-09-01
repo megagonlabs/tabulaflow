@@ -13,7 +13,7 @@ are always preserved so the dataset remains useful for evaluation.
 Rows are shuffled with a fixed seed before writing.
 
 Usage:
-    uv run scripts/research/arcs/flatten_for_hf.py --output data/ARCS/tasks.jsonl
+    uv run scripts/research/arcs/export_huggingface_jsonl.py --output data/ARCS/tasks.jsonl
 """
 
 import argparse
@@ -21,11 +21,9 @@ import asyncio
 import json
 import random
 from pathlib import Path
+from typing import Any
 
 from tabulaflow.research.benchmarks.arcs import ARCSDatasetLoader
-
-
-SHUFFLE_SEED = 42
 
 
 def _original_qid(qid: str) -> str:
@@ -34,10 +32,11 @@ def _original_qid(qid: str) -> str:
 
 
 async def main() -> None:
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--directory", default="data/ARCS/", help="ARCS data directory")
-    parser.add_argument("--output", default="data/ARCS/tasks.jsonl", help="Output JSONL path")
+    parser = argparse.ArgumentParser(description="Export ARCS tasks as Hugging Face JSONL.")
+    parser.add_argument("--input-dir", type=Path, default=Path("data/ARCS"), help="ARCS data directory")
+    parser.add_argument("--output", type=Path, default=Path("data/ARCS/tasks.jsonl"), help="Output JSONL path")
     parser.add_argument("--split", default="test", choices=["test", "test_unsampled"])
+    parser.add_argument("--seed", type=int, default=42)
     parser.add_argument(
         "--gold-sql",
         choices=["sample", "all", "none"],
@@ -53,8 +52,10 @@ async def main() -> None:
         help="Number of unique original qids per db to keep gold SQL for (sample mode)",
     )
     args = parser.parse_args()
+    if args.sample_per_db < 0:
+        parser.error("--sample-per-db cannot be negative")
 
-    loader = ARCSDatasetLoader(directory=args.directory)
+    loader = ARCSDatasetLoader(directory=str(args.input_dir))
     tasks = await loader.get_tasks_async(args.split)
     print(f"Loaded {len(tasks)} tasks from split '{args.split}'")
 
@@ -72,7 +73,7 @@ async def main() -> None:
             f"({args.sample_per_db} per db across {len(seen_per_db)} dbs)"
         )
 
-    rows: list[dict] = []
+    rows: list[dict[str, Any]] = []
     kept_rows = 0
     for task in tasks:
         row = task.model_dump(mode="json")
@@ -91,7 +92,7 @@ async def main() -> None:
 
         rows.append(row)
 
-    rng = random.Random(SHUFFLE_SEED)
+    rng = random.Random(args.seed)
 
     # Pin one row per db at the top: a randomly chosen upsample sibling of the
     # first-seen original qid in that db (e.g. "001-3" for retails). Gives the
@@ -100,7 +101,7 @@ async def main() -> None:
     for task in tasks:
         first_qid_per_db.setdefault(task.db, _original_qid(task.qid))
 
-    pinned_rows: list[dict] = []
+    pinned_rows: list[dict[str, Any]] = []
     pinned_indices: set[int] = set()
     for db, oqid in first_qid_per_db.items():
         candidates = [(i, r) for i, r in enumerate(rows) if r["db"] == db and _original_qid(r["qid"]) == oqid]
@@ -113,15 +114,14 @@ async def main() -> None:
     rows = pinned_rows + rest
     print(f"Pinned {len(pinned_rows)} intro rows: {[r['qid'] for r in pinned_rows]}")
 
-    output_path = Path(args.output)
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    with output_path.open("w") as f:
+    args.output.parent.mkdir(parents=True, exist_ok=True)
+    with args.output.open("w") as f:
         for row in rows:
             f.write(json.dumps(row) + "\n")
 
-    size_mb = output_path.stat().st_size / 1024 / 1024
+    size_mb = args.output.stat().st_size / 1024 / 1024
     print(
-        f"Wrote {len(rows)} shuffled rows (seed={SHUFFLE_SEED}) to {output_path} "
+        f"Wrote {len(rows)} shuffled rows (seed={args.seed}) to {args.output} "
         f"({size_mb:.1f} MB); {kept_rows} rows retain gold SQL"
     )
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Measure TUI startup latency: from launching ``uv run tabulaflow chat`` to the
+"""Measure TUI startup latency: from launching ``uv run tabulaflow`` to the
 moment the banner is actually rendered on screen.
 
 Runs the real command inside a pseudo-terminal (so Textual renders as it would in
@@ -9,7 +9,7 @@ much is launcher/interpreter overhead vs. the app itself.
 
 Run with the *system* python (NOT ``uv run``), so it can time the uv subprocess:
 
-    python3 scripts/app/measure_startup.py [runs]
+    python3 scripts/app/measure_tui_startup.py [runs]
 
 The first run is cold (compiles .pyc); later runs reflect steady-state launches.
 Version-agnostic — measures whatever is currently checked out, so you can compare
@@ -19,20 +19,18 @@ branches/stashes by re-running.
 from __future__ import annotations
 
 import fcntl
+import argparse
 import os
 import pty
 import re
 import select
 import struct
 import subprocess
-import sys
 import termios
 import time
 
 # The launch command a user types. ``tabulaflow`` is a single-command typer app
 # (no subcommand); passing ``-m`` avoids the no-args help screen.
-CMD = ["uv", "run", "tabulaflow", "-m", "openai-responses:gpt-5.4"]
-# Baseline: uv + interpreter startup with no app work, to separate launcher overhead.
 BASELINE_CMD = ["uv", "run", "python", "-c", "pass"]
 
 # The banner panel renders "Type /help for commands, /exit to exit". Match that
@@ -48,14 +46,14 @@ def _strip_ansi(b: bytes) -> bytes:
     return _ANSI_RE.sub(b"", b)
 
 
-def measure_to_banner() -> tuple[float | None, bytes]:
+def measure_to_banner(command: list[str]) -> tuple[float | None, bytes]:
     """Spawn the TUI in a pty; return (seconds-to-banner | None, captured output)."""
     master, slave = pty.openpty()
     fcntl.ioctl(slave, termios.TIOCSWINSZ, struct.pack("HHHH", 40, 140, 0, 0))
     env = {**os.environ, "TERM": "xterm-256color"}
 
     t0 = time.perf_counter()
-    proc = subprocess.Popen(CMD, stdin=slave, stdout=slave, stderr=slave, env=env, close_fds=True)
+    proc = subprocess.Popen(command, stdin=slave, stdout=slave, stderr=slave, env=env, close_fds=True)
     os.close(slave)
 
     buf = b""
@@ -95,16 +93,23 @@ def measure_baseline() -> float:
 
 
 def main() -> None:
-    runs = int(sys.argv[1]) if len(sys.argv) > 1 else 4
-    print(f"command: {' '.join(CMD)}")
+    parser = argparse.ArgumentParser(description="Measure time from TUI launch until the welcome banner appears.")
+    parser.add_argument("runs", type=int, nargs="?", default=4)
+    parser.add_argument("--model", default="openai-responses:gpt-5.4")
+    args = parser.parse_args()
+    if args.runs < 1:
+        parser.error("runs must be positive")
+
+    command = ["uv", "run", "tabulaflow", "-m", args.model]
+    print(f"command: {' '.join(command)}")
 
     base = measure_baseline()  # warm baseline (after this, uv env is resolved/cached)
     base = measure_baseline()
     print(f"baseline (uv run python -c pass): {base:.2f}s  [launcher + interpreter overhead]\n")
 
     warm: list[float] = []
-    for i in range(runs):
-        elapsed, buf = measure_to_banner()
+    for i in range(args.runs):
+        elapsed, buf = measure_to_banner(command)
         label = "cold" if i == 0 else "warm"
         if elapsed is None:
             tail = _strip_ansi(buf)[-400:].decode("utf-8", "replace").strip()

@@ -107,9 +107,7 @@ def _build_debug_result_widget(app: TabulaflowApp) -> AgentResultWidget:
     import datetime
     import json
     import math
-    import random
 
-    random.seed(42)
     rows = 4000
 
     regions = ["Northeast", "Southeast", "Midwest", "West", "Southwest"]

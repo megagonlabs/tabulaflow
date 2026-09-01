@@ -6,7 +6,7 @@ tables — ``bank_transactions``, ``product_reviews``, ``model_eval_results``, a
 auto-connects when the app launches with no user data, so a first-time user can
 run the examples without supplying anything.
 
-Regenerate the file with ``scripts/app/gen_sample_db.py``.
+Regenerate the file with ``scripts/app/generate_sample_database.py``.
 """
 
 from __future__ import annotations

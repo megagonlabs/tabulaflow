@@ -111,6 +111,12 @@ def print_table(name: str, headers: list[str], rows: list[list[Any]], table_form
     print()
 
 
+def average_cost(result: NL2QRunResult) -> float:
+    if result.total_usage is None:
+        raise ValueError(f"Run result for {result.agent} has no usage data")
+    return float(result.total_usage.api_cost_usd / len(result.tasks))
+
+
 def print_agent_architecture_table(
     exp_names: Iterable[str], exp_results: dict[str, NL2QRunResult], table_format: str
 ) -> None:
@@ -127,7 +133,7 @@ def print_agent_architecture_table(
                 result.aggregated_eval_metrics["simple_ex_by_ambig_point_num"]["3+AP"]["avg"],
                 result.aggregated_inference_metrics["user_effort"]["avg"],
                 result.aggregated_inference_metrics["latency_seconds"]["avg"],
-                round_cost(result.total_usage.api_cost_usd / len(result.tasks)),
+                round_cost(average_cost(result)),
             ]
         )
     print_table("Agent Architecture Table", headers, rows, table_format)
@@ -164,7 +170,7 @@ def print_fine_grained_table(
                 result.aggregated_eval_metrics["simple_ex"]["avg"],
                 result.aggregated_eval_metrics["perfect_disambiguation_r"]["avg"],
                 result.aggregated_eval_metrics["perfect_disambiguation_f1"]["avg"],
-                round_cost(result.total_usage.api_cost_usd / len(result.tasks)),
+                round_cost(average_cost(result)),
                 result.aggregated_inference_metrics["latency_seconds"]["avg"],
                 result.aggregated_eval_metrics["ambig_point_p"]["avg"],
                 result.aggregated_eval_metrics["ambig_point_r"]["avg"],
@@ -199,7 +205,7 @@ def print_main_table(exp_names: Iterable[str], exp_results: dict[str, NL2QRunRes
         rows.append(
             [
                 exp_name,
-                round_cost(result.total_usage.api_cost_usd / len(result.tasks)),
+                round_cost(average_cost(result)),
                 result.aggregated_eval_metrics["perfect_disambiguation_r"]["avg"],
                 result.aggregated_eval_metrics["perfect_disambiguation_f1"]["avg"],
                 sql_ex,
@@ -207,7 +213,7 @@ def print_main_table(exp_names: Iterable[str], exp_results: dict[str, NL2QRunRes
                 result.aggregated_eval_metrics["simple_ex"]["avg"] - sql_ex,
             ]
         )
-    print_table("Fine-grained Table", headers, rows, table_format)
+    print_table("Main Results", headers, rows, table_format)
 
 
 AMBIGUITY_TYPES = [
@@ -295,9 +301,9 @@ def print_arcs_ambrosia_table(
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(description="Print the ARCS paper experiment tables.")
     parser.add_argument("--results-dir", type=Path, default=Path("output/paper"))
-    parser.add_argument("--table-format", default="github")
+    parser.add_argument("--table-format", default="github", help="tabulate output format")
     args = parser.parse_args()
 
     exp_results = load_results(args.results_dir)
