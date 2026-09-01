@@ -1,6 +1,8 @@
 from typer.testing import CliRunner
+from rich.highlighter import NullHighlighter
 
 from tabulaflow.cli import app
+from tabulaflow.research.cli import console
 
 
 def test_root_cli_exposes_app_and_research_commands() -> None:
@@ -9,6 +11,10 @@ def test_root_cli_exposes_app_and_research_commands() -> None:
     assert result.exit_code == 0
     assert "chat" in result.stdout
     assert "benchmark" in result.stdout
+
+
+def test_benchmark_cli_only_uses_explicit_colors() -> None:
+    assert isinstance(console.highlighter, NullHighlighter)
 
 
 def test_benchmark_download_has_no_split_option() -> None:

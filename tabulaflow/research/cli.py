@@ -7,13 +7,14 @@ import httpx
 import typer
 from rich.console import Console
 from rich.table import Table
+from rich.text import Text
 
 from tabulaflow.research.benchmarks.installation import BenchmarkInstallationError
 from tabulaflow.research.benchmarks.registry import DatasetLoaderProtocol, dataset_registry
 from tabulaflow.research.benchmarks.runtime import BenchmarkRuntime, BenchmarkRuntimeError
 
 benchmark_app = typer.Typer(help="Download and manage research benchmarks.", no_args_is_help=True)
-console = Console()
+console = Console(highlighter=None)
 
 
 def _get_benchmark(name: str) -> type[DatasetLoaderProtocol]:
@@ -42,7 +43,7 @@ def list_benchmarks() -> None:
     table.add_column("Status")
     for name in dataset_registry.list_names():
         benchmark = dataset_registry.get_class(name).installation
-        status = "downloaded" if benchmark.is_installed else "not downloaded"
+        status = Text("installed", style="green") if benchmark.is_installed else Text("not installed", style="dim")
         table.add_row(name, status)
     console.print(table)
 
@@ -56,12 +57,13 @@ def download(
     benchmark = _get_benchmark(name).installation
 
     if benchmark.is_installed and not force:
-        console.print(f"{name} is already downloaded at {benchmark.directory}")
+        console.print("[green]Installed:[/green]", name)
+        console.print("Location:", benchmark.directory)
         return
     if force and benchmark.fetch is not None and benchmark.directory.exists():
         typer.confirm(f"Replace {benchmark.directory}?", abort=True)
 
-    console.print(f"Downloading {name} to {benchmark.directory}")
+    console.print("Downloading", name, "to", benchmark.directory)
     try:
         path = asyncio.run(benchmark.install(force=force, progress=_progress))
     except BenchmarkInstallationError as error:
@@ -70,7 +72,8 @@ def download(
     except httpx.HTTPError as error:
         console.print(f"[red]Download failed:[/red] {error}")
         raise typer.Exit(1) from None
-    console.print(f"{name} downloaded to {path}")
+    console.print("[green]Installed:[/green]", name)
+    console.print("Location:", path)
 
 
 @benchmark_app.command()
@@ -82,7 +85,7 @@ def start(
     benchmark = _get_benchmark(name)
     runtime = _get_runtime(name)
     if not benchmark.installation.is_installed:
-        console.print(f"Downloading {name} to {benchmark.installation.directory}")
+        console.print("Downloading", name, "to", benchmark.installation.directory)
 
     async def start_runtime() -> None:
         await benchmark.installation.install(progress=_progress)
@@ -93,7 +96,9 @@ def start(
     except (BenchmarkInstallationError, BenchmarkRuntimeError, httpx.HTTPError) as error:
         console.print(f"[red]Error:[/red] {error}")
         raise typer.Exit(1) from None
-    console.print(f"{name} databases started")
+    resolved_split = runtime.resolve_split(split)
+    target = f"{name} {resolved_split}" if resolved_split else name
+    console.print("[green]Started:[/green]", f"{target} databases")
 
 
 @benchmark_app.command()
@@ -110,7 +115,9 @@ def stop(
     except (FileNotFoundError, BenchmarkRuntimeError) as error:
         console.print(f"[red]Error:[/red] {error}")
         raise typer.Exit(1) from None
-    console.print(f"{name} databases stopped")
+    resolved_split = runtime.resolve_split(split)
+    target = f"{name} {resolved_split}" if resolved_split else name
+    console.print("[green]Stopped:[/green]", f"{target} databases")
 
 
 __all__ = ["benchmark_app"]
