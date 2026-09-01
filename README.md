@@ -3,7 +3,7 @@
 ## Quick Start
 
 ```bash
-git clone git@github.com:megagon-internal/tabulaflow.git
+git clone https://github.com/megagonlabs/tabulaflow.git
 cd tabulaflow
 uv tool install --editable .
 uv tool run --from playwright playwright install chromium

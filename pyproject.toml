@@ -1,14 +1,24 @@
 [build-system]
-requires = ["setuptools>=61.0"]
+requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "tabulaflow"
-authors = [{ name = "Yanlin Feng", email = "yanlinf23@gmail.com" }]
+authors = [{ name = "Megagon Labs" }]
 version = "0.1.0"
-description = "Minimalist Text to Query Toolkit"
+description = "A data agent and text-to-query toolkit for databases, files, and the web"
 readme = "README.md"
 requires-python = ">=3.11"
+license = "BSD-3-Clause"
+license-files = ["LICENSE"]
+keywords = ["data-agent", "database", "nl2sql", "text-to-query", "text-to-sql"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.11",
+    "Topic :: Database",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
 dependencies = [
     "aiolimiter>=1.2.1",
     "aiosqlite>=0.21.0",
@@ -54,6 +64,11 @@ dependencies = [
 
 [project.scripts]
 tabulaflow = "tabulaflow.app.main:main"
+
+[project.urls]
+Homepage = "https://www.megagon.ai"
+Repository = "https://github.com/megagonlabs/tabulaflow"
+Issues = "https://github.com/megagonlabs/tabulaflow/issues"
 
 [tool.setuptools.packages.find]
 include = ["tabulaflow*"]
