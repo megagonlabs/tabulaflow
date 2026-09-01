@@ -1,6 +1,6 @@
 # Interpretation Panel Design Notes
 
-Status: design in progress; UI preview prototype exists in `scripts/preview_disambiguation_panel.py`.
+Status: implemented through output parameter controls in the TUI and browser pane.
 
 ## Goal
 
@@ -19,13 +19,7 @@ The desired user mental model is:
 - When the user changes interpretation, the UI should preserve the currently selected artifact by stable role when possible.
 - Comparison across interpretations should be a separate explicit mode later, not the default interaction.
 
-## Current UI prototype
-
-The standalone preview script is:
-
-```bash
-uv run scripts/preview_disambiguation_panel.py
-```
+## Current UI
 
 Current interaction model:
 
