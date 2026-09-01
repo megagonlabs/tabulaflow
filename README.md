@@ -713,7 +713,7 @@ Aug 29
 - [x] Unify reasoning and service priority configuration
 - [x] Bump pydantic-ai to 2.x and type llm.py
 - [x] pyprojec.toml, simplify dependencies, package metadata
-- [ ] Benchmark download
+- [x] Benchmark download cli
 - [ ] scripts cleanup
 
 - [ ] Context percentage and Context compaction
@@ -950,7 +950,8 @@ tabulaflow benchmark download cypherbench
 
 Loading a missing benchmark fails with the exact download command instead of
 starting network activity inside an experiment. Downloads are verified and
-installed atomically.
+installed atomically. Large downloads show byte progress and resume from the
+hidden staging directory after interruption.
 
 Currently, the following datasets are supported:
 

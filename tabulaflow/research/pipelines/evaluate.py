@@ -4,7 +4,7 @@ import logging
 import os
 import time
 from tqdm.asyncio import tqdm_asyncio
-from tabulaflow.research.benchmarks.registry import dataset_registry
+from tabulaflow.research.benchmarks.registry import dataset_registry, preflight_benchmark
 from tabulaflow.research.metrics.registry import metric_registry
 from tabulaflow.research.types import NL2QTaskOutput, NL2QRunResult, NL2QDataset
 from tabulaflow.data import DBConnector
@@ -84,6 +84,7 @@ async def main_async() -> None:
         result = NL2QRunResult.model_validate_json(f.read())
 
     t0 = time.time()
+    await preflight_benchmark(result.dataset, result.split)
     dataset_loader = dataset_registry.get_class(result.dataset)()
     dataset = await dataset_loader.get_split_async(
         result.split,

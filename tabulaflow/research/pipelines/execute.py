@@ -5,7 +5,7 @@ import asyncio
 import os
 from typing import Literal
 from tqdm.asyncio import tqdm_asyncio
-from tabulaflow.research.benchmarks.registry import dataset_registry
+from tabulaflow.research.benchmarks.registry import dataset_registry, preflight_benchmark
 from tabulaflow.research.query_execution import populate_task_exec_results
 from tabulaflow.research.types import NL2QRunResult, NL2QDataset
 from tabulaflow.data import Neo4jConnectorConfig, SQLConnectorConfig
@@ -67,6 +67,7 @@ async def main_async() -> None:
         if result.dataset == "cypherbench"
         else SQLConnectorConfig(query_cache_mode=query_cache_mode)
     )
+    await preflight_benchmark(result.dataset, result.split)
     dataset_loader = dataset_registry.get_class(result.dataset)(  # type: ignore[call-arg]
         connector_config=connector_config
     )

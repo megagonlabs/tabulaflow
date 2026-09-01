@@ -10,7 +10,7 @@ import logging
 import traceback
 from pydantic import BaseModel
 from tabulaflow.research.agents.registry import agent_registry
-from tabulaflow.research.benchmarks.registry import dataset_registry
+from tabulaflow.research.benchmarks.registry import dataset_registry, preflight_benchmark
 from tabulaflow.research.metrics import MetricAggregatorProtocol, SimpleInferenceMetricsAggregator
 from tabulaflow.research.pipelines.utils import pprint_dict, tqdm_gather_with_exceptions
 from tabulaflow.research.observability import configure_research_observability
@@ -297,6 +297,7 @@ async def main_async() -> None:
     dataset_loader = dataset_registry.get_class(args.dataset)(**loader_kwargs)
     if args.split is None:
         args.split = dataset_loader.splits[0]
+    await preflight_benchmark(args.dataset, args.split)
     if args.schema_formatter is None:
         if args.dataset == "arcs":
             args.schema_formatter = "sql_basic"

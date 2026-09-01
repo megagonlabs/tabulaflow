@@ -98,7 +98,9 @@ CYPHERBENCH_INSTALLATION = BenchmarkInstallation(
 )
 
 
-async def _cypherbench_ready(split: str) -> bool:
+async def _cypherbench_ready(split: str | None) -> bool:
+    assert split is not None
+
     async def graph_ready(graph: str) -> bool:
         driver = AsyncGraphDatabase.driver(
             f"neo4j://localhost:{CYPHERBENCH_DEFAULT_GRAPH_PORTS[graph]}",
@@ -119,6 +121,7 @@ async def _cypherbench_ready(split: str) -> bool:
 async def _start_cypherbench(split: str | None, progress: ProgressCallback) -> None:
     assert split is not None
     await ensure_docker()
+    await run_command("docker", "compose", "version")
     progress(f"Starting CypherBench {split} databases")
     docker_dir = CYPHERBENCH_INSTALLATION.directory / "docker"
     await run_command(
@@ -141,6 +144,7 @@ async def _start_cypherbench(split: str | None, progress: ProgressCallback) -> N
 async def _stop_cypherbench(split: str | None, progress: ProgressCallback) -> None:
     assert split is not None
     await ensure_docker()
+    await run_command("docker", "compose", "version")
     progress(f"Stopping CypherBench {split} databases")
     await run_command(
         "docker",
@@ -159,6 +163,7 @@ async def _stop_cypherbench(split: str | None, progress: ProgressCallback) -> No
 CYPHERBENCH_RUNTIME = BenchmarkRuntime(
     start_action=_start_cypherbench,
     stop_action=_stop_cypherbench,
+    ready_action=_cypherbench_ready,
     splits=("test", "train"),
     default_split="test",
 )

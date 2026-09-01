@@ -5,7 +5,7 @@ import asyncio
 import logging
 from typing import Any
 from tqdm.asyncio import tqdm_asyncio
-from tabulaflow.research.benchmarks.registry import dataset_registry
+from tabulaflow.research.benchmarks.registry import dataset_registry, preflight_benchmark
 from tabulaflow.agents import AgentRuntimeConfig, initialize_agent_runtime
 from tabulaflow.research.preprocessing.registry import preprocessor_registry
 from tabulaflow.research.observability import configure_research_observability
@@ -70,6 +70,7 @@ async def main_async() -> None:
     dataset_loader = dataset_registry.get_class(args.dataset)()
     if args.split is None:
         args.split = dataset_loader.splits[0]
+    await preflight_benchmark(args.dataset, args.split)
     print(args)
     print()
 

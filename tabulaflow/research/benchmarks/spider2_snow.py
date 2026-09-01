@@ -275,9 +275,17 @@ class Spider2SnowDatasetLoader:
 
     async def _build_snowflake_connector(self, db_name: str) -> SQLConnector:
         """Build a Snowflake SQLConnector for a spider2-snow database."""
-        sf_user = self.sf_user or os.environ["SF_USER"]
-        sf_password = self.sf_password or os.environ["SF_PASSWORD"]
-        sf_account = self.sf_account or os.environ["SF_ACCOUNT"]
+        sf_user = self.sf_user or os.environ.get("SF_USER")
+        sf_password = self.sf_password or os.environ.get("SF_PASSWORD")
+        sf_account = self.sf_account or os.environ.get("SF_ACCOUNT")
+        missing = [
+            name
+            for name, value in (("SF_USER", sf_user), ("SF_PASSWORD", sf_password), ("SF_ACCOUNT", sf_account))
+            if not value
+        ]
+        if missing:
+            raise ValueError(f"Spider 2.0 Snowflake credentials missing: {', '.join(missing)}")
+        assert sf_user is not None and sf_password is not None and sf_account is not None
         base_url = f"snowflake://{quote_plus(sf_user)}:{quote_plus(sf_password)}@{sf_account}"
         connect_args = {
             "disable_ocsp_checks": True,

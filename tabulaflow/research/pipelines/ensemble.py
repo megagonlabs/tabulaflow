@@ -9,7 +9,7 @@ import traceback
 from functools import reduce
 from typing import Any
 
-from tabulaflow.research.benchmarks.registry import dataset_registry
+from tabulaflow.research.benchmarks.registry import dataset_registry, preflight_benchmark
 from tabulaflow.research.observability import configure_research_observability
 from tabulaflow.research.agents.ensemblers.majority import MajorityEnsembler, MajorityEnsemblerConfig
 from tabulaflow.research.agents.ensemblers.llm import LLMEnsembler, LLMEnsemblerConfig
@@ -262,6 +262,7 @@ async def main_async() -> None:
     t0 = time.time()
     output_type = "dbt" if ensembler.name == "dbt_llm" else "simple"
     ref = _validate_results(results, output_type)
+    await preflight_benchmark(ref.dataset, ref.split)
     dataset_loader = dataset_registry.get_class(ref.dataset)()
     dataset = await dataset_loader.get_split_async(
         ref.split,

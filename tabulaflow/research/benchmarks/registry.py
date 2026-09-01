@@ -2,12 +2,13 @@
 
 import importlib
 import random
-from typing import ClassVar, Mapping, Protocol, Sequence, TypeVar
+from typing import ClassVar, Mapping, Protocol, Sequence, TypeVar, cast
 
 from tabulaflow.research.types import NL2QDataset, NL2QTask
 from tabulaflow.data import DBConnector
 from tabulaflow.core.registry import ClassRegistry
 from tabulaflow.research.benchmarks.installation import BenchmarkInstallation
+from tabulaflow.research.benchmarks.runtime import BenchmarkRuntime
 
 TaskT = TypeVar("TaskT", bound=NL2QTask)
 
@@ -125,4 +126,21 @@ class DatasetRegistry(ClassRegistry[DatasetLoaderProtocol]):
 
 dataset_registry = DatasetRegistry()
 
-__all__ = ["DatasetLoaderProtocol", "DatasetRegistry", "dataset_registry", "select_tasks", "selected_databases"]
+
+async def preflight_benchmark(name: str, split: str) -> None:
+    """Validate local data and managed runtime readiness for a benchmark."""
+    benchmark = dataset_registry.get_class(name)
+    benchmark.installation.require()
+    runtime = cast(BenchmarkRuntime | None, getattr(benchmark, "runtime", None))
+    if runtime is not None:
+        await runtime.require_ready(name, split)
+
+
+__all__ = [
+    "DatasetLoaderProtocol",
+    "DatasetRegistry",
+    "dataset_registry",
+    "preflight_benchmark",
+    "select_tasks",
+    "selected_databases",
+]

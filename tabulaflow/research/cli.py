@@ -42,7 +42,7 @@ def list_benchmarks() -> None:
     table.add_column("Status")
     for name in dataset_registry.list_names():
         benchmark = dataset_registry.get_class(name).installation
-        status = "downloaded" if benchmark.is_downloaded else "not downloaded"
+        status = "downloaded" if benchmark.is_installed else "not downloaded"
         table.add_row(name, status)
     console.print(table)
 
@@ -55,12 +55,13 @@ def download(
     """Download and verify a complete benchmark."""
     benchmark = _get_benchmark(name).installation
 
-    if benchmark.is_downloaded and not force:
+    if benchmark.is_installed and not force:
         console.print(f"{name} is already downloaded at {benchmark.directory}")
         return
     if force and benchmark.fetch is not None and benchmark.directory.exists():
         typer.confirm(f"Replace {benchmark.directory}?", abort=True)
 
+    console.print(f"Downloading {name} to {benchmark.directory}")
     try:
         path = asyncio.run(benchmark.install(force=force, progress=_progress))
     except BenchmarkInstallationError as error:
@@ -80,6 +81,8 @@ def start(
     """Download a benchmark if needed and start its managed databases."""
     benchmark = _get_benchmark(name)
     runtime = _get_runtime(name)
+    if not benchmark.installation.is_installed:
+        console.print(f"Downloading {name} to {benchmark.installation.directory}")
 
     async def start_runtime() -> None:
         await benchmark.installation.install(progress=_progress)

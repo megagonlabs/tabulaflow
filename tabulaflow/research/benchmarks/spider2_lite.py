@@ -15,6 +15,8 @@ from pathlib import Path
 from urllib.parse import quote_plus
 from typing import Any, ClassVar, Literal, Optional
 import pandas as pd
+from google.auth import default as google_auth_default
+from google.auth.exceptions import DefaultCredentialsError
 from tabulaflow.core import ExecResult
 from tabulaflow.research.types import GoldQuery
 from tabulaflow.research.types import SimpleNL2QTask, NL2QDataset
@@ -358,12 +360,23 @@ class Spider2LiteDatasetLoader:
         multi-dataset dbs because the inspector accepts an explicit
         ``schema`` argument that overrides the default dataset.
         """
-        google_cloud_project = self.google_cloud_project or os.environ.get("GOOGLE_CLOUD_PROJECT")
-        if not google_cloud_project:
-            raise ValueError("BigQuery billing project required: set google_cloud_project or GOOGLE_CLOUD_PROJECT")
         google_application_credentials = self.google_application_credentials or os.environ.get(
             "GOOGLE_APPLICATION_CREDENTIALS"
         )
+        default_project = None
+        if google_application_credentials:
+            if not os.path.isfile(google_application_credentials):
+                raise ValueError(f"Google application credentials not found: {google_application_credentials}")
+        else:
+            try:
+                _, default_project = await asyncio.to_thread(google_auth_default)
+            except DefaultCredentialsError:
+                raise ValueError(
+                    "BigQuery credentials missing: set GOOGLE_APPLICATION_CREDENTIALS or configure application-default credentials"
+                ) from None
+        google_cloud_project = self.google_cloud_project or os.environ.get("GOOGLE_CLOUD_PROJECT") or default_project
+        if not google_cloud_project:
+            raise ValueError("BigQuery billing project required: set google_cloud_project or GOOGLE_CLOUD_PROJECT")
 
         projects = set(p for p, d in db_info.bq_project_datasets)
         if len(projects) > 1:
@@ -391,9 +404,17 @@ class Spider2LiteDatasetLoader:
 
     async def _build_snowflake_connector(self, db_name: str) -> SQLConnector:
         """Build a Snowflake SQLConnector for a spider2-lite database."""
-        sf_user = self.sf_user or os.environ["SF_USER"]
-        sf_password = self.sf_password or os.environ["SF_PASSWORD"]
-        sf_account = self.sf_account or os.environ["SF_ACCOUNT"]
+        sf_user = self.sf_user or os.environ.get("SF_USER")
+        sf_password = self.sf_password or os.environ.get("SF_PASSWORD")
+        sf_account = self.sf_account or os.environ.get("SF_ACCOUNT")
+        missing = [
+            name
+            for name, value in (("SF_USER", sf_user), ("SF_PASSWORD", sf_password), ("SF_ACCOUNT", sf_account))
+            if not value
+        ]
+        if missing:
+            raise ValueError(f"Spider 2.0 Snowflake credentials missing: {', '.join(missing)}")
+        assert sf_user is not None and sf_password is not None and sf_account is not None
         base_url = f"snowflake://{quote_plus(sf_user)}:{quote_plus(sf_password)}@{sf_account}"
         connect_args = {
             "disable_ocsp_checks": True,

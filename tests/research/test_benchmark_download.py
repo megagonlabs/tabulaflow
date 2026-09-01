@@ -3,6 +3,7 @@ import zipfile
 from collections.abc import Callable
 from io import BytesIO
 
+import httpx
 import pandas as pd
 import pytest
 
@@ -41,7 +42,7 @@ async def test_download_is_atomic_and_idempotent(tmp_path: Path, monkeypatch: py
 
     assert calls == 1
     assert messages == ["fetching"]
-    assert benchmark.is_downloaded
+    assert benchmark.is_installed
 
 
 @pytest.mark.asyncio
@@ -61,7 +62,7 @@ async def test_download_does_not_install_invalid_data(tmp_path: Path, monkeypatc
         await benchmark.install()
 
     assert not benchmark.directory.exists()
-    assert not benchmark.is_downloaded
+    assert not benchmark.is_installed
 
 
 @pytest.mark.asyncio
@@ -85,17 +86,17 @@ async def test_failed_installation_resumes_from_staging(tmp_path: Path, monkeypa
         await benchmark.install()
     await benchmark.install()
 
-    assert benchmark.is_downloaded
+    assert benchmark.is_installed
 
 
 def test_manual_download_is_detected_from_required_files(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(installation, "DEFAULT_BENCHMARK_DIR", tmp_path)
     benchmark = BenchmarkInstallation(name="example", required_paths=("tasks.json",))
 
-    assert not benchmark.is_downloaded
+    assert not benchmark.is_installed
     benchmark.directory.mkdir()
     (benchmark.directory / "tasks.json").write_text("[]")
-    assert benchmark.is_downloaded
+    assert benchmark.is_installed
 
 
 @pytest.mark.asyncio
@@ -152,6 +153,14 @@ def test_zip_extraction_rejects_path_traversal(tmp_path: Path) -> None:
 
     with pytest.raises(BenchmarkInstallationError, match="unsafe path"):
         extract_zip(archive, tmp_path / "output")
+
+
+def test_download_size_uses_response_headers() -> None:
+    complete = httpx.Response(200, headers={"Content-Length": "100"})
+    resumed = httpx.Response(206, headers={"Content-Range": "bytes 40-99/100", "Content-Length": "60"})
+
+    assert installation._download_size(complete, 0) == 100
+    assert installation._download_size(resumed, 40) == 100
 
 
 @pytest.mark.asyncio

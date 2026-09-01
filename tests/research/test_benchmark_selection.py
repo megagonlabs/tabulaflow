@@ -7,6 +7,8 @@ from tabulaflow.research.benchmarks.beaver import BeaverDatasetLoader
 from tabulaflow.research.benchmarks.ambrosia_s import AMBROSIA_DATASET_INSTRUCTIONS, AmbrosiaSDatasetLoader
 from tabulaflow.research.benchmarks.bird_sql import BirdSQLDatasetLoader
 from tabulaflow.research.benchmarks.registry import select_tasks, selected_databases
+from tabulaflow.research.benchmarks import spider2_lite
+from tabulaflow.research.benchmarks.spider2_lite import Spider2LiteDatasetLoader, _DBInfo
 from tabulaflow.research.benchmarks.spider2_snow import Spider2SnowDatasetLoader
 from tabulaflow.research.types import GoldQuery, SimpleNL2QTask
 
@@ -103,3 +105,30 @@ async def test_spider2_snow_requires_a_gold_execution_result(tmp_path: Path) -> 
     loader = Spider2SnowDatasetLoader(directory=str(tmp_path))
     with pytest.raises(FileNotFoundError, match="No gold execution result found for q1"):
         await loader.get_tasks_async("test", databases=["DB"])
+
+
+@pytest.mark.asyncio
+async def test_spider2_reports_missing_snowflake_credentials(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    for name in ("SF_USER", "SF_PASSWORD", "SF_ACCOUNT"):
+        monkeypatch.delenv(name, raising=False)
+
+    loader = Spider2SnowDatasetLoader(directory=str(tmp_path))
+
+    with pytest.raises(ValueError, match="SF_USER, SF_PASSWORD, SF_ACCOUNT"):
+        await loader._build_snowflake_connector("DB")
+
+
+@pytest.mark.asyncio
+async def test_spider2_reports_missing_bigquery_credentials(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    from google.auth.exceptions import DefaultCredentialsError
+
+    def missing_credentials() -> None:
+        raise DefaultCredentialsError("missing")  # type: ignore[no-untyped-call]
+
+    monkeypatch.delenv("GOOGLE_APPLICATION_CREDENTIALS", raising=False)
+    monkeypatch.setattr(spider2_lite, "google_auth_default", missing_credentials)
+    loader = Spider2LiteDatasetLoader(directory=str(tmp_path), google_cloud_project="billing")
+    db_info = _DBInfo(backend="bigquery", bq_project_datasets=[("data-project", "dataset")])
+
+    with pytest.raises(ValueError, match="BigQuery credentials missing"):
+        await loader._build_bigquery_connector("DB", db_info)
