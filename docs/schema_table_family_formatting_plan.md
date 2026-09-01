@@ -270,7 +270,6 @@ Enable `group_partitioned_tables` when constructing formatters in:
 ### Utility scripts
 
 - `print_schema.py`: replace `--no-compress` with `--no-group-partitions`.
-- `export_readable_cache.py`: group through the formatter.
 - `print_dataset_stats.py`: remove `tables_compressed` or compute a presentation-only family count without exposing it as a platform API.
 
 ## Core Cleanup
