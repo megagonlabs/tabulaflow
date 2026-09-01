@@ -709,18 +709,19 @@ Aug 28
 - [x] research layer cleanup
 - [x] tests cleanup
 
-Aug 29
+Aug 31
 - [x] Unify reasoning and service priority configuration
 - [x] Bump pydantic-ai to 2.x and type llm.py
 - [x] pyprojec.toml, simplify dependencies, package metadata
 - [x] Benchmark download cli
-- [ ] scripts cleanup
+- [x] scripts cleanup
 
+Sep 1
 - [ ] Context percentage and Context compaction
 - Multimodal
   - [ ] Pasting images
   - [ ] Media in tables
-
+- [ ] Show pending turns in output pane
 
 - [ ] Speedup tests
 - [ ] Inline artifact citation
@@ -730,11 +731,12 @@ Aug 29
 - [ ] TUI
   - [ ] Do not auto-scroll when browsing old turns
   - [ ] Onboarding - browser install
-- [ ] Show pending turns in output pane
+
 
 - [ ] Shell messed up after ssh disconnect
 - [ ] Check if uv tool install install browser
 
+- [ ] Waiting spinner before Thinking to indicate latency due to low service tier
 - [ ] Issue: schema introspection silently fail for structual failure
 - [ ] Data provenance
 - [ ] "result" -> "response", Escape go to last viewed response
