@@ -995,14 +995,11 @@ BigQuery-backed tasks require the standard Google Cloud application credentials.
 
 ```bash
 tabulaflow benchmark download beaver
+tabulaflow benchmark start beaver
 ```
 
-Until managed runtime commands are added, start the MySQL databases with:
-
-```bash
-docker run -d --name beaver-dw -p 3311:3306 -e MYSQL_ROOT_PASSWORD=root -v "$HOME/.tabulaflow/benchmarks/beaver/dw:/docker-entrypoint-initdb.d" mysql:8.0 --lower-case-table-names=1
-docker run -d --name beaver-nw -p 3312:3306 -e MYSQL_ROOT_PASSWORD=root -v "$HOME/.tabulaflow/benchmarks/beaver/nw:/docker-entrypoint-initdb.d" mysql:8.0 --lower-case-table-names=1
-```
+`tabulaflow benchmark stop beaver` stops both MySQL containers without deleting
+their initialized databases.
 
 ### AMBROSIA-S
 
@@ -1014,7 +1011,13 @@ tabulaflow benchmark download ambrosia-s
 
 ```bash
 tabulaflow benchmark download cypherbench
+tabulaflow benchmark start cypherbench
+tabulaflow benchmark start cypherbench --split train
 ```
+
+`tabulaflow benchmark stop cypherbench` stops the test databases without
+deleting their imported graph data. Pass `--split train` to stop the train
+databases instead.
 
 ### ARCS
 

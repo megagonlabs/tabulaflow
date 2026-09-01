@@ -15,6 +15,16 @@ from tabulaflow.research.benchmarks.installation import (
     download_google_drive,
     extract_zip,
 )
+from tabulaflow.research.benchmarks.runtime import (
+    BenchmarkRuntime,
+    BenchmarkRuntimeError,
+    container_exists,
+    ensure_docker,
+    run_command,
+    start_containers,
+    stop_containers,
+    wait_until_ready,
+)
 
 BEAVER_REVISION = "bccdeb664d27b89ac296133b46553b8113912454"
 BEAVER_DATABASES = {
@@ -49,15 +59,74 @@ async def _fetch_beaver(destination: Path, progress: ProgressCallback) -> None:
         archive.unlink()
 
 
+BEAVER_INSTALLATION = BenchmarkInstallation(
+    name="beaver",
+    required_paths=("dev_dw.json", "dev_nw.json", "dw", "nw"),
+    fetch=_fetch_beaver,
+)
+BEAVER_CONTAINERS = {
+    "dw": ("tabulaflow-beaver-dw", 3311),
+    "nw": ("tabulaflow-beaver-nw", 3312),
+}
+
+
+async def _beaver_ready() -> bool:
+    async def database_ready(container: str) -> bool:
+        try:
+            await run_command("docker", "exec", container, "mysqladmin", "ping", "-uroot", "-proot", "--silent")
+            return True
+        except BenchmarkRuntimeError:
+            return False
+
+    return all(await asyncio.gather(*(database_ready(container) for container, _ in BEAVER_CONTAINERS.values())))
+
+
+async def _start_beaver(split: str | None, progress: ProgressCallback) -> None:
+    await ensure_docker()
+    progress("Starting Beaver databases")
+    existing = []
+    for name, (container, port) in BEAVER_CONTAINERS.items():
+        if await container_exists(container):
+            existing.append(container)
+            continue
+        await run_command(
+            "docker",
+            "run",
+            "-d",
+            "--name",
+            container,
+            "-p",
+            f"{port}:3306",
+            "-e",
+            "MYSQL_ROOT_PASSWORD=root",
+            "-v",
+            f"tabulaflow-beaver-{name}:/var/lib/mysql",
+            "-v",
+            f"{BEAVER_INSTALLATION.directory / name}:/docker-entrypoint-initdb.d:ro",
+            "mysql:8.0",
+            "--lower-case-table-names=1",
+        )
+    if existing:
+        await start_containers(existing)
+    progress("Waiting for MySQL")
+    await wait_until_ready(_beaver_ready, "Beaver databases")
+
+
+async def _stop_beaver(split: str | None, progress: ProgressCallback) -> None:
+    await ensure_docker()
+    progress("Stopping Beaver databases")
+    await stop_containers([container for container, _ in BEAVER_CONTAINERS.values()])
+
+
+BEAVER_RUNTIME = BenchmarkRuntime(start_action=_start_beaver, stop_action=_stop_beaver)
+
+
 @dataset_registry.register
 class BeaverDatasetLoader:
     name: ClassVar[str] = "beaver"
     splits: ClassVar[list[str]] = ["test"]
-    installation: ClassVar[BenchmarkInstallation] = BenchmarkInstallation(
-        name=name,
-        required_paths=("dev_dw.json", "dev_nw.json", "dw", "nw"),
-        fetch=_fetch_beaver,
-    )
+    installation: ClassVar[BenchmarkInstallation] = BEAVER_INSTALLATION
+    runtime: ClassVar[BenchmarkRuntime] = BEAVER_RUNTIME
     default_metrics: ClassVar[list[str]] = [
         "simple_ex",
         "executable",

@@ -16,3 +16,15 @@ def test_benchmark_download_has_no_split_option() -> None:
 
     assert result.exit_code == 0
     assert "--split" not in result.stdout
+
+
+def test_benchmark_runtime_commands_support_split_selection() -> None:
+    runner = CliRunner()
+
+    start = runner.invoke(app, ["benchmark", "start", "--help"])
+    stop = runner.invoke(app, ["benchmark", "stop", "--help"])
+
+    assert start.exit_code == 0
+    assert stop.exit_code == 0
+    assert "--split" in start.stdout
+    assert "--split" in stop.stdout

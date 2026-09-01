@@ -12,9 +12,17 @@ from pathlib import Path
 from typing import Any, ClassVar, Mapping
 
 from huggingface_hub import snapshot_download
+from neo4j import AsyncGraphDatabase
+from neo4j.exceptions import Neo4jError
 
 from tabulaflow.research.benchmarks.registry import dataset_registry, select_tasks, selected_databases
 from tabulaflow.research.benchmarks.installation import BenchmarkInstallation, ProgressCallback, download_file
+from tabulaflow.research.benchmarks.runtime import (
+    BenchmarkRuntime,
+    ensure_docker,
+    run_command,
+    wait_until_ready,
+)
 from tabulaflow.data import Neo4jConnector, Neo4jConnectorConfig
 from tabulaflow.research.types import GoldQuery
 from tabulaflow.research.types import NL2QDataset, SimpleNL2QTask
@@ -76,6 +84,86 @@ async def _fetch_cypherbench(destination: Path, progress: ProgressCallback) -> N
         path.write_text(path.read_text().replace("../benchmark/graphs/", "../graphs/"))
 
 
+CYPHERBENCH_INSTALLATION = BenchmarkInstallation(
+    name="cypherbench",
+    required_paths=(
+        "test.json",
+        "train.json",
+        *(f"graphs/simplekg/{graph}_simplekg.json" for graph in CYPHERBENCH_DEFAULT_GRAPH_PORTS),
+        "docker/.env",
+        "docker/docker-compose-test.yml",
+        "docker/docker-compose-train.yml",
+    ),
+    fetch=_fetch_cypherbench,
+)
+
+
+async def _cypherbench_ready(split: str) -> bool:
+    async def graph_ready(graph: str) -> bool:
+        driver = AsyncGraphDatabase.driver(
+            f"neo4j://localhost:{CYPHERBENCH_DEFAULT_GRAPH_PORTS[graph]}",
+            auth=("neo4j", "cypherbench"),
+            connection_timeout=2,
+        )
+        try:
+            await driver.verify_connectivity()
+            return True
+        except (Neo4jError, OSError, asyncio.TimeoutError):
+            return False
+        finally:
+            await driver.close()
+
+    return all(await asyncio.gather(*(graph_ready(graph) for graph in CYPHERBENCH_SPLIT_GRAPHS[split])))
+
+
+async def _start_cypherbench(split: str | None, progress: ProgressCallback) -> None:
+    assert split is not None
+    await ensure_docker()
+    progress(f"Starting CypherBench {split} databases")
+    docker_dir = CYPHERBENCH_INSTALLATION.directory / "docker"
+    await run_command(
+        "docker",
+        "compose",
+        "--project-name",
+        f"tabulaflow-cypherbench-{split}",
+        "--env-file",
+        ".env",
+        "-f",
+        f"docker-compose-{split}.yml",
+        "up",
+        "-d",
+        cwd=docker_dir,
+    )
+    progress("Waiting for Neo4j")
+    await wait_until_ready(lambda: _cypherbench_ready(split), f"CypherBench {split} databases")
+
+
+async def _stop_cypherbench(split: str | None, progress: ProgressCallback) -> None:
+    assert split is not None
+    await ensure_docker()
+    progress(f"Stopping CypherBench {split} databases")
+    await run_command(
+        "docker",
+        "compose",
+        "--project-name",
+        f"tabulaflow-cypherbench-{split}",
+        "--env-file",
+        ".env",
+        "-f",
+        f"docker-compose-{split}.yml",
+        "stop",
+        cwd=CYPHERBENCH_INSTALLATION.directory / "docker",
+    )
+
+
+CYPHERBENCH_RUNTIME = BenchmarkRuntime(
+    start_action=_start_cypherbench,
+    stop_action=_stop_cypherbench,
+    splits=("test", "train"),
+    default_split="test",
+)
+
+
 # Mirrors CypherBench baseline ``NL2CYPHER_PROMPT_DEFAULT`` (``cypherbench/baseline/zero_shot_nl2cypher.py``).
 CYPHERBENCH_DATASET_INSTRUCTIONS = """
 - Translate the question to a **Cypher** query for the Neo4j property graph named in each task, using only the provided schema.
@@ -92,18 +180,8 @@ class CypherBenchDatasetLoader:
 
     name: ClassVar[str] = "cypherbench"
     splits: ClassVar[list[str]] = ["test", "train"]
-    installation: ClassVar[BenchmarkInstallation] = BenchmarkInstallation(
-        name=name,
-        required_paths=(
-            "test.json",
-            "train.json",
-            *(f"graphs/simplekg/{graph}_simplekg.json" for graph in CYPHERBENCH_DEFAULT_GRAPH_PORTS),
-            "docker/.env",
-            "docker/docker-compose-test.yml",
-            "docker/docker-compose-train.yml",
-        ),
-        fetch=_fetch_cypherbench,
-    )
+    installation: ClassVar[BenchmarkInstallation] = CYPHERBENCH_INSTALLATION
+    runtime: ClassVar[BenchmarkRuntime] = CYPHERBENCH_RUNTIME
     default_metrics: ClassVar[list[str]] = [
         "cypherbench_ex",
         "simple_ex",
