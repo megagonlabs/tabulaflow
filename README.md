@@ -714,6 +714,8 @@ Aug 29
 - [x] Bump pydantic-ai to 2.x and type llm.py
 - [x] pyprojec.toml, simplify dependencies, package metadata
 - [ ] Benchmark download
+- [ ] scripts cleanup
+
 - [ ] Context percentage and Context compaction
 - Multimodal
   - [ ] Pasting images
@@ -947,9 +949,8 @@ tabulaflow benchmark download cypherbench
 ```
 
 Loading a missing benchmark fails with the exact download command instead of
-starting network activity inside an experiment. Downloads are pinned, verified,
-and installed atomically. Benchmarks whose upstream distribution still requires
-manual access report the authoritative setup URL from the same command.
+starting network activity inside an experiment. Downloads are verified and
+installed atomically.
 
 Currently, the following datasets are supported:
 
@@ -966,115 +967,59 @@ Currently, the following datasets are supported:
 
 ### BIRD-SQL
 
-Run `tabulaflow benchmark download bird-sql` for the authoritative download URL.
-
-The dataset should be stored in `~/.tabulaflow/benchmarks/bird-sql` and organized as follows:
-
-```
-~/.tabulaflow/benchmarks/bird-sql/
-├── train/
-│   └── ...
-├── dev_20240627/
-│   ├── dev_databases/
-│   ├── dev.json
-│   └── ...
-└── column_meaning/
-    └── ...
+```bash
+tabulaflow benchmark download bird-sql
 ```
 
 ### Spider 2.0
 
-First, follow the guidelines [here](https://github.com/xlang-ai/Spider2/blob/main/assets/Snowflake_Guideline.md) to request a Snowflake account.
+Download the static benchmark data and local databases:
 
-Configure the credentials using environment variables:
+```bash
+tabulaflow benchmark download spider2-lite
+tabulaflow benchmark download spider2-snow
+tabulaflow benchmark download spider2-dbt
+```
+
+Snowflake-backed tasks require a Spider 2.0 Snowflake account. Configure it with:
 
 ```bash
 export SF_USER="your_username"
 export SF_PASSWORD="your_password"
-export SF_ACCOUNT="RSRSBDK-YDB67606"
+export SF_ACCOUNT="your_account"
 ```
 
-Next, clone the Spider2 repository and install the benchmark directories:
-
-```bash
-git clone https://github.com/xlang-ai/Spider2.git /tmp/Spider2
-mkdir -p ~/.tabulaflow/benchmarks
-mv /tmp/Spider2/spider2-lite ~/.tabulaflow/benchmarks/spider2-lite
-mv /tmp/Spider2/spider2-snow ~/.tabulaflow/benchmarks/spider2-snow
-mv /tmp/Spider2/spider2-dbt ~/.tabulaflow/benchmarks/spider2-dbt
-```
-
-To run the simplied Spider 2.0 snow dataset, export the Google spreadsheet as a CSV file and save it as `data/spider2-simple/spider2-simple-v1.csv`. Then, run the run_model.py and evaluate.py scripts as shown in the Quick Start section. The results will be available in the `result_with_metrics.csv` file which you can then import into Google spreadsheet.
+BigQuery-backed tasks require the standard Google Cloud application credentials.
 
 ### Beaver
 
-Run `tabulaflow benchmark download beaver` for the authoritative download URL.
-
-The dataset should be stored in `~/.tabulaflow/benchmarks/beaver` and organized as follows:
-
-```
-~/.tabulaflow/benchmarks/beaver/
-├── dw/
-│   └── new_dw_indexed.sql
-├── nw/
-│   ├── keystone.sql
-│   ├── csail_stata_neutron.sql
-│   └── ...
-├── dev_dw.json
-├── dev_nw.json
-├── test_dw.json
-└── test_nw.json
+```bash
+tabulaflow benchmark download beaver
 ```
 
-Run the following command to start the MySQL databases:
+Until managed runtime commands are added, start the MySQL databases with:
 
 ```bash
 docker run -d --name beaver-dw -p 3311:3306 -e MYSQL_ROOT_PASSWORD=root -v "$HOME/.tabulaflow/benchmarks/beaver/dw:/docker-entrypoint-initdb.d" mysql:8.0 --lower-case-table-names=1
-```
-
-```bash
 docker run -d --name beaver-nw -p 3312:3306 -e MYSQL_ROOT_PASSWORD=root -v "$HOME/.tabulaflow/benchmarks/beaver/nw:/docker-entrypoint-initdb.d" mysql:8.0 --lower-case-table-names=1
 ```
 
-## AMBROSIA-S (Structured)
-
-**Original Data**
-
-Download the AMBROSIA dataset (`data.zip`) from [here](https://ambrosia-benchmark.github.io/).
-
-Unzip the archive into `~/.tabulaflow/benchmarks/ambrosia-s`:
+### AMBROSIA-S
 
 ```bash
-unzip data.zip && mkdir -p ~/.tabulaflow/benchmarks/ambrosia-s && mv data ~/.tabulaflow/benchmarks/ambrosia-s/ambrosia
+tabulaflow benchmark download ambrosia-s
 ```
 
-Next, download the structured disambiguation annotations from Google Drive:
-
-```bash
-uvx gdown "https://drive.google.com/uc?id=1Zqx4sVuQGWZuyuT91OY3tnARC6Tz6EQp" -O ~/.tabulaflow/benchmarks/ambrosia-s/ambrosia_few_shot_examples.json
-uvx gdown "https://drive.google.com/uc?id=1cYftWIdRQfOVaHSVuSjOA4XjfcOvodk2" -O ~/.tabulaflow/benchmarks/ambrosia-s/ambrosia_test.json
-```
-
-Finally, run the following scripts to add question texts and gold queries to the annotations:
+### CypherBench
 
 ```bash
-uv run python scripts/ambrosia-s/add_values_to_annotations.py --csv ~/.tabulaflow/benchmarks/ambrosia-s/ambrosia/ambrosia.csv --input ~/.tabulaflow/benchmarks/ambrosia-s/ambrosia_few_shot_examples.json --output ~/.tabulaflow/benchmarks/ambrosia-s/ambrosia_few_shot_examples_processed.json
-uv run python scripts/ambrosia-s/add_values_to_annotations.py --csv ~/.tabulaflow/benchmarks/ambrosia-s/ambrosia/ambrosia.csv --input ~/.tabulaflow/benchmarks/ambrosia-s/ambrosia_test.json --output ~/.tabulaflow/benchmarks/ambrosia-s/ambrosia_test_processed.json
+tabulaflow benchmark download cypherbench
 ```
 
-```
-~/.tabulaflow/benchmarks/ambrosia-s
-├── ambrosia_few_shot_examples_processed.json  # processed annotations from the "few_shot_examples" split
-├── ambrosia_few_shot_examples.json  # structured disambiguation annotations from the "few_shot_examples" split
-├── ambrosia_test_processed.json  # processed annotations from the "test" split
-├── ambrosia_test.json  # structured disambiguation annotations from the "test" split
-├── ambrosia
-│   ├── ambrosia.csv  # main csv file
-│   ├── attachment    # DB files for "attachment" ambiguity type
-│   ├── scope  # DB files for "scope" ambiguity type
-│   └── vague  # DB Files for "vague" ambiguity type
-├── ...
-```
+### ARCS
+
+ARCS does not yet have a canonical downloadable artifact. Running
+`tabulaflow benchmark download arcs` shows the required local layout.
 
 
 ## 💻 Development
