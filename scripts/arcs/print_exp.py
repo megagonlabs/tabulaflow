@@ -5,7 +5,6 @@ from tabulaflow.research.types import AmbigNL2QTask, NL2QRunResult
 from decimal import Decimal
 from tabulate import tabulate
 import time
-import pickle
 
 
 # OLD_CORE_EXP_DIRS = {
@@ -98,18 +97,10 @@ print("All result files found")
 
 t0 = time.time()
 
-if os.path.exists("cache/exp_results.pickle"):
-    with open("cache/exp_results.pickle", "rb") as f:
-        EXP_RESULTS = pickle.load(f)
-else:
-    EXP_RESULTS: dict[str, NL2QRunResult] = {}
-
-    for exp in EXPS:
-        with open(os.path.join("output", "paper", exp, "result.json"), "r") as f:
-            EXP_RESULTS[exp] = NL2QRunResult.model_validate_json(f.read())
-
-    with open("cache/exp_results.pickle", "wb") as f:
-        pickle.dump(EXP_RESULTS, f)
+EXP_RESULTS: dict[str, NL2QRunResult] = {}
+for exp in EXPS:
+    with open(os.path.join("output", "paper", exp, "result.json"), "r") as f:
+        EXP_RESULTS[exp] = NL2QRunResult.model_validate_json(f.read())
 
 print()
 print(f"Loaded {len(EXP_RESULTS)} results in {time.time() - t0:.2f} seconds")
