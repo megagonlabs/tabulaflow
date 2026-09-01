@@ -712,7 +712,7 @@ Aug 28
 Aug 29
 - [x] Unify reasoning and service priority configuration
 - [x] Bump pydantic-ai to 2.x and type llm.py
-- [x] Simplify dependencies
+- [x] pyprojec.toml, simplify dependencies, package metadata
 - [ ] Benchmark download
 - [ ] Context percentage and Context compaction
 - Multimodal
