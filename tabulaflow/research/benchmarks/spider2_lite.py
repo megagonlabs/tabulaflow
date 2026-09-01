@@ -10,6 +10,8 @@ import json
 import logging
 import re
 import asyncio
+import shutil
+from pathlib import Path
 from urllib.parse import quote_plus
 from typing import Any, ClassVar, Literal, Optional
 import pandas as pd
@@ -18,7 +20,38 @@ from tabulaflow.research.types import GoldQuery
 from tabulaflow.research.types import SimpleNL2QTask, NL2QDataset
 from tabulaflow.data import SQLConnector, SQLConnectorConfig, SQLConnectorProtocol
 from tabulaflow.research.benchmarks.registry import dataset_registry, select_tasks, selected_databases
-from tabulaflow.research.benchmarks.installation import DEFAULT_BENCHMARK_DIR, require_benchmark_downloaded
+from tabulaflow.research.benchmarks.installation import (
+    BenchmarkInstallation,
+    ProgressCallback,
+    download_github_directory,
+    download_google_drive,
+    extract_zip,
+)
+
+SPIDER2_REVISION = "cafb867313aab4e674652054198f383cf4018943"
+SPIDER2_LOCAL_DATABASES_URL = "https://drive.google.com/uc?id=1coEVsCZq-Xvj9p2TnhBFoFTsY-UoYGmG"
+
+
+async def _fetch_spider2_lite(destination: Path, progress: ProgressCallback) -> None:
+    progress("Downloading Spider 2.0 Lite")
+    await download_github_directory("xlang-ai/Spider2", SPIDER2_REVISION, "spider2-lite", destination)
+    database_dir = destination / "resource" / "databases" / "spider2-localdb"
+    if any(database_dir.glob("*.sqlite")):
+        return
+    progress("Downloading Spider 2.0 local databases")
+    archive = destination / ".spider2-localdb.zip"
+    extracted = destination / ".spider2-localdb"
+    archive.unlink(missing_ok=True)
+    await download_google_drive(SPIDER2_LOCAL_DATABASES_URL, archive)
+    if extracted.exists():
+        shutil.rmtree(extracted)
+    await asyncio.to_thread(extract_zip, archive, extracted)
+    database_dir.mkdir(parents=True, exist_ok=True)
+    for path in extracted.rglob("*.sqlite"):
+        shutil.copy2(path, database_dir / path.name)
+    archive.unlink()
+    shutil.rmtree(extracted)
+
 
 logger = logging.getLogger(__name__)
 
@@ -83,6 +116,15 @@ class Spider2LiteDatasetLoader:
 
     name: ClassVar[str] = "spider2-lite"
     splits: ClassVar[list[str]] = ["test"]
+    installation: ClassVar[BenchmarkInstallation] = BenchmarkInstallation(
+        name=name,
+        required_paths=(
+            "spider2-lite.jsonl",
+            "evaluation_suite/gold/exec_result",
+            "resource/databases/spider2-localdb",
+        ),
+        fetch=_fetch_spider2_lite,
+    )
     default_metrics: ClassVar[list[str]] = [
         "spider2_ex",
         "simple_ex",
@@ -117,8 +159,8 @@ class Spider2LiteDatasetLoader:
                 key file. Falls back to ``GOOGLE_APPLICATION_CREDENTIALS`` env var.
         """
         if directory is None:
-            require_benchmark_downloaded(self.name)
-        self.directory = str(DEFAULT_BENCHMARK_DIR / self.name if directory is None else directory)
+            self.installation.require()
+        self.directory = str(self.installation.directory if directory is None else directory)
         self.sf_user = sf_user
         self.sf_password = sf_password
         self.sf_account = sf_account

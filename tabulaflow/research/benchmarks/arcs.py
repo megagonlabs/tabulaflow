@@ -6,7 +6,7 @@ from typing import ClassVar
 from tabulaflow.research.types import AmbigNL2QTask, NL2QDataset
 from tabulaflow.data import SQLConnector, SQLConnectorConfig
 from tabulaflow.research.benchmarks.registry import dataset_registry, select_tasks, selected_databases
-from tabulaflow.research.benchmarks.installation import DEFAULT_BENCHMARK_DIR, require_benchmark_downloaded
+from tabulaflow.research.benchmarks.installation import BenchmarkInstallation
 
 ARCS_DATASET_INSTRUCTIONS = """
 - Follow these requirements when writing SQL. When disambiguating, do not consider these as ambiguities:
@@ -110,6 +110,15 @@ ARCS_TAXONOMY = """
 class ARCSDatasetLoader:
     name: ClassVar[str] = "arcs"
     splits: ClassVar[list[str]] = ["test", "test_unsampled"]
+    installation: ClassVar[BenchmarkInstallation] = BenchmarkInstallation(
+        name=name,
+        required_paths=(
+            "tasks/tasks_unsampled.json",
+            "tasks/tasks_gold_intended_query_ids.json",
+            "databases/sqlite",
+            "databases/column_meanings.json",
+        ),
+    )
     default_metrics: ClassVar[list[str]] = [
         "simple_ex",
         "executable",
@@ -129,8 +138,8 @@ class ARCSDatasetLoader:
         connector_config: SQLConnectorConfig | None = None,
     ):
         if directory is None:
-            require_benchmark_downloaded(self.name)
-        self.directory = str(DEFAULT_BENCHMARK_DIR / self.name if directory is None else directory)
+            self.installation.require()
+        self.directory = str(self.installation.directory if directory is None else directory)
         self.max_concurrency = max_concurrency
         self.include_taxonomy = include_taxonomy
         self.connector_config = SQLConnectorConfig() if connector_config is None else connector_config

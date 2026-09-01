@@ -1,12 +1,93 @@
 import os
 import json
 import asyncio
+import shutil
+from pathlib import Path
 from typing import ClassVar, Literal
+
+from datasets import load_dataset
+
 from tabulaflow.research.types import GoldQuery
 from tabulaflow.research.types import SimpleNL2QTask, NL2QDataset
 from tabulaflow.data import SQLConnector, SQLConnectorConfig
 from tabulaflow.research.benchmarks.registry import dataset_registry, select_tasks, selected_databases
-from tabulaflow.research.benchmarks.installation import DEFAULT_BENCHMARK_DIR, require_benchmark_downloaded
+from tabulaflow.research.benchmarks.installation import (
+    BenchmarkInstallation,
+    BenchmarkInstallationError,
+    ProgressCallback,
+    copy_directory_contents,
+    download_file,
+    download_zip,
+    extract_zip,
+)
+
+BIRD_TRAIN_URL = "https://bird-bench.oss-cn-beijing.aliyuncs.com/train.zip"
+BIRD_DEV_URL = "https://bird-bench.oss-cn-beijing.aliyuncs.com/dev.zip"
+BIRD_UPDATED_DEV_REVISION = "3c11fb193e5439b338e23677fa0aae11e8b85db9"
+BIRD_COLUMN_MEANING_REVISION = "80f82b32ce6a7b80a21b9ad705c2539549ddd431"
+BIRD_COLUMN_MEANING_URLS = {
+    "dev_column_meaning.json": (
+        f"https://raw.githubusercontent.com/quge2023/TA-SQL/{BIRD_COLUMN_MEANING_REVISION}/outputs/column_meaning.json"
+    ),
+    "train_column_meaning.json": (
+        "https://raw.githubusercontent.com/quge2023/TA-SQL/"
+        f"{BIRD_COLUMN_MEANING_REVISION}/data/train_column_meaning.json"
+    ),
+}
+
+
+async def _fetch_bird_archive(destination: Path, name: str, url: str, task_file: str, database_dir: str) -> None:
+    target = destination / name
+    if (target / task_file).is_file() and (target / database_dir).is_dir():
+        return
+    archive = destination / f".{name}.zip"
+    extracted = destination / f".{name}"
+    await download_zip(url, archive)
+    if extracted.exists():
+        shutil.rmtree(extracted)
+    await asyncio.to_thread(extract_zip, archive, extracted)
+    matches = [
+        path.parent
+        for path in extracted.rglob(task_file)
+        if (path.parent / database_dir).is_dir() or (path.parent / f"{database_dir}.zip").is_file()
+    ]
+    if len(matches) != 1:
+        raise BenchmarkInstallationError(f"could not find one {task_file} and {database_dir} pair in {archive}")
+    await asyncio.to_thread(copy_directory_contents, matches[0], target)
+    database_archive = target / f"{database_dir}.zip"
+    if database_archive.is_file():
+        await asyncio.to_thread(extract_zip, database_archive, target / database_dir)
+        database_archive.unlink()
+        nested_database_dir = target / database_dir / database_dir
+        if nested_database_dir.is_dir():
+            await asyncio.to_thread(copy_directory_contents, nested_database_dir, target / database_dir)
+            shutil.rmtree(nested_database_dir)
+    archive.unlink()
+    shutil.rmtree(extracted)
+
+
+async def _fetch_bird_sql(destination: Path, progress: ProgressCallback) -> None:
+    progress("Downloading BIRD-SQL train data")
+    await _fetch_bird_archive(destination, "train", BIRD_TRAIN_URL, "train.json", "train_databases")
+    progress("Downloading BIRD-SQL development data")
+    await _fetch_bird_archive(destination, "dev_20240627", BIRD_DEV_URL, "dev.json", "dev_databases")
+    progress("Downloading updated development annotations")
+
+    def download_updated_dev() -> None:
+        path = destination / "dev_20251106" / "dev.json"
+        if path.is_file():
+            return
+        dataset = load_dataset("birdsql/bird_sql_dev_20251106", revision=BIRD_UPDATED_DEV_REVISION)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        dataset["dev_20251106"].to_pandas().to_json(path, orient="records", indent=2)
+
+    await asyncio.to_thread(download_updated_dev)
+    progress("Downloading column descriptions")
+    column_meaning_dir = destination / "column_meaning"
+    column_meaning_dir.mkdir(exist_ok=True)
+    await asyncio.gather(
+        *[download_file(url, column_meaning_dir / name) for name, url in BIRD_COLUMN_MEANING_URLS.items()]
+    )
 
 
 BIRD_DATASET_INSTRUCTIONS = """
@@ -69,6 +150,19 @@ BIRD_DATASET_INSTRUCTIONS = """
 class BirdSQLDatasetLoader:
     name: ClassVar[str] = "bird-sql"
     splits: ClassVar[list[str]] = ["dev", "dev_20251106", "train"]
+    installation: ClassVar[BenchmarkInstallation] = BenchmarkInstallation(
+        name=name,
+        required_paths=(
+            "dev_20240627/dev.json",
+            "dev_20240627/dev_databases",
+            "dev_20251106/dev.json",
+            "train/train.json",
+            "train/train_databases",
+            "column_meaning/dev_column_meaning.json",
+            "column_meaning/train_column_meaning.json",
+        ),
+        fetch=_fetch_bird_sql,
+    )
     default_metrics: ClassVar[list[str]] = [
         "bird_sql_ex",
         "simple_ex",
@@ -90,8 +184,8 @@ class BirdSQLDatasetLoader:
         connector_config: SQLConnectorConfig | None = None,
     ):
         if directory is None:
-            require_benchmark_downloaded(self.name)
-        default_directory = DEFAULT_BENCHMARK_DIR / self.name
+            self.installation.require()
+        default_directory = self.installation.directory
         self.directory = str(default_directory if directory is None else directory)
         self.column_meaning_directory = str(
             default_directory / "column_meaning" if column_meaning_directory is None else column_meaning_directory

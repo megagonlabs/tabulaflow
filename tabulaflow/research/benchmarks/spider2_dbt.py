@@ -5,7 +5,7 @@ covered by the official evaluation specification. Each example consists of a
 dbt project directory, a natural-language instruction, and a gold DuckDB
 database for evaluation.
 
-See ``data/Spider2/spider2-dbt/README.md`` for setup instructions.
+Install it with ``tabulaflow benchmark download spider2-dbt``.
 """
 
 import asyncio
@@ -14,14 +14,58 @@ import logging
 import os
 import re
 import shutil
+from pathlib import Path
 from typing import Any, ClassVar
 
 import duckdb
 
-from tabulaflow.research.benchmarks.registry import dataset_registry, select_tasks, selected_databases
-from tabulaflow.research.benchmarks.installation import DEFAULT_BENCHMARK_DIR, require_benchmark_downloaded
 from tabulaflow.data import SQLConnector, SQLConnectorConfig, SQLConnectorProtocol
-from tabulaflow.research.types import DbtTask, DbtGoldTable, NL2QDataset
+from tabulaflow.research.benchmarks.registry import dataset_registry, select_tasks, selected_databases
+from tabulaflow.research.benchmarks.installation import (
+    BenchmarkInstallation,
+    ProgressCallback,
+    download_github_directory,
+    download_google_drive,
+    extract_zip,
+)
+from tabulaflow.research.types import DbtGoldTable, DbtTask, NL2QDataset
+
+SPIDER2_REVISION = "cafb867313aab4e674652054198f383cf4018943"
+SPIDER2_DBT_DATABASE_URL = "https://drive.google.com/uc?id=1N3f7BSWC4foj-V-1C9n8M2XmgV7FOcqL"
+SPIDER2_DBT_GOLD_URL = "https://drive.google.com/uc?id=1s0USV_iQLo4oe05QqAMnhGGp5jeejCzp"
+
+
+def _install_dbt_databases(archive: Path, destination: Path) -> None:
+    extracted = archive.with_suffix("")
+    if extracted.exists():
+        shutil.rmtree(extracted)
+    extract_zip(archive, extracted)
+    for directory in extracted.iterdir():
+        if not directory.is_dir() or directory.name == "__MACOSX":
+            continue
+        for database in directory.rglob("*.duckdb"):
+            target = destination / directory.name
+            target.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(database, target / database.name)
+    shutil.rmtree(extracted)
+
+
+async def _fetch_spider2_dbt(destination: Path, progress: ProgressCallback) -> None:
+    progress("Downloading Spider 2.0 DBT")
+    await download_github_directory("xlang-ai/Spider2", SPIDER2_REVISION, "spider2-dbt", destination)
+    downloads = (
+        (SPIDER2_DBT_DATABASE_URL, destination / ".dbt-start.zip", destination / "examples"),
+        (SPIDER2_DBT_GOLD_URL, destination / ".dbt-gold.zip", destination / "evaluation_suite" / "gold"),
+    )
+    for url, archive, target in downloads:
+        if any(target.rglob("*.duckdb")) and not archive.exists():
+            continue
+        progress(f"Downloading {archive.stem.removeprefix('.')} databases")
+        if not archive.exists():
+            await download_google_drive(url, archive)
+        await asyncio.to_thread(_install_dbt_databases, archive, target)
+        archive.unlink()
+
 
 logger = logging.getLogger(__name__)
 
@@ -130,6 +174,11 @@ class Spider2DbtDatasetLoader:
 
     name: ClassVar[str] = "spider2-dbt"
     splits: ClassVar[list[str]] = ["test"]
+    installation: ClassVar[BenchmarkInstallation] = BenchmarkInstallation(
+        name=name,
+        required_paths=("examples/spider2-dbt.jsonl", "examples", "evaluation_suite/gold"),
+        fetch=_fetch_spider2_dbt,
+    )
     default_metrics: ClassVar[list[str]] = [
         "spider2_duckdb_match",
         "executable",
@@ -149,8 +198,8 @@ class Spider2DbtDatasetLoader:
             max_concurrency: Maximum concurrent DuckDB connections.
         """
         if directory is None:
-            require_benchmark_downloaded(self.name)
-        self.directory = str(DEFAULT_BENCHMARK_DIR / self.name if directory is None else directory)
+            self.installation.require()
+        self.directory = str(self.installation.directory if directory is None else directory)
         self.max_concurrency = max_concurrency
         self.connector_config = SQLConnectorConfig() if connector_config is None else connector_config
         self._dbms_semaphore = asyncio.Semaphore(max_concurrency)

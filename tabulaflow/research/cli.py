@@ -7,11 +7,8 @@ import typer
 from rich.console import Console
 from rich.table import Table
 
-from tabulaflow.research.benchmarks.installation import (
-    BENCHMARK_INSTALLATIONS,
-    BenchmarkInstallationError,
-    get_benchmark_installation,
-)
+from tabulaflow.research.benchmarks.installation import BenchmarkInstallationError
+from tabulaflow.research.benchmarks.registry import dataset_registry
 
 benchmark_app = typer.Typer(help="Download and manage research benchmarks.", no_args_is_help=True)
 console = Console()
@@ -23,7 +20,8 @@ def list_benchmarks() -> None:
     table = Table(box=None)
     table.add_column("Benchmark")
     table.add_column("Status")
-    for name, benchmark in BENCHMARK_INSTALLATIONS.items():
+    for name in dataset_registry.list_names():
+        benchmark = dataset_registry.get_class(name).installation
         status = "downloaded" if benchmark.is_downloaded else "not downloaded"
         table.add_row(name, status)
     console.print(table)
@@ -36,7 +34,7 @@ def download(
 ) -> None:
     """Download and verify a complete benchmark."""
     try:
-        benchmark = get_benchmark_installation(name)
+        benchmark = dataset_registry.get_class(name).installation
     except ValueError as error:
         raise typer.BadParameter(str(error), param_hint="name") from None
 

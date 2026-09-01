@@ -9,6 +9,7 @@ import json
 import logging
 import re
 import asyncio
+from pathlib import Path
 from urllib.parse import quote_plus
 from typing import Optional, ClassVar
 import pandas as pd
@@ -17,7 +18,19 @@ from tabulaflow.research.types import GoldQuery
 from tabulaflow.research.types import SimpleNL2QTask, NL2QDataset
 from tabulaflow.data import SQLConnector, SQLConnectorConfig, SQLConnectorProtocol
 from tabulaflow.research.benchmarks.registry import dataset_registry, select_tasks, selected_databases
-from tabulaflow.research.benchmarks.installation import DEFAULT_BENCHMARK_DIR, require_benchmark_downloaded
+from tabulaflow.research.benchmarks.installation import (
+    BenchmarkInstallation,
+    ProgressCallback,
+    download_github_directory,
+)
+
+SPIDER2_REVISION = "cafb867313aab4e674652054198f383cf4018943"
+
+
+async def _fetch_spider2_snow(destination: Path, progress: ProgressCallback) -> None:
+    progress("Downloading Spider 2.0 Snow")
+    await download_github_directory("xlang-ai/Spider2", SPIDER2_REVISION, "spider2-snow", destination)
+
 
 logger = logging.getLogger(__name__)
 
@@ -85,6 +98,11 @@ class Spider2SnowDatasetLoader:
 
     name: ClassVar[str] = "spider2-snow"
     splits: ClassVar[list[str]] = ["test"]
+    installation: ClassVar[BenchmarkInstallation] = BenchmarkInstallation(
+        name=name,
+        required_paths=("spider2-snow.jsonl", "evaluation_suite/gold/exec_result", "resource/databases"),
+        fetch=_fetch_spider2_snow,
+    )
     default_metrics: ClassVar[list[str]] = [
         "spider2_ex",
         "simple_ex",
@@ -113,8 +131,8 @@ class Spider2SnowDatasetLoader:
                 env var.
         """
         if directory is None:
-            require_benchmark_downloaded(self.name)
-        self.directory = str(DEFAULT_BENCHMARK_DIR / self.name if directory is None else directory)
+            self.installation.require()
+        self.directory = str(self.installation.directory if directory is None else directory)
         self.sf_user = sf_user
         self.sf_password = sf_password
         self.sf_account = sf_account

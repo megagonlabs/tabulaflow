@@ -1,14 +1,105 @@
 import os
 import asyncio
 import json
+import re
+import shutil
+from pathlib import Path
 from typing import ClassVar
 
+import httpx
 import pandas as pd
 
 from tabulaflow.research.types import AmbigNL2QTask, NL2QDataset
 from tabulaflow.data import SQLConnector, SQLConnectorConfig
 from tabulaflow.research.benchmarks.registry import dataset_registry, select_tasks, selected_databases
-from tabulaflow.research.benchmarks.installation import DEFAULT_BENCHMARK_DIR, require_benchmark_downloaded
+from tabulaflow.research.benchmarks.installation import (
+    BenchmarkInstallation,
+    BenchmarkInstallationError,
+    ProgressCallback,
+    copy_directory_contents,
+    download_google_drive,
+    download_zip,
+    extract_zip,
+)
+
+AMBROSIA_DATA_URL = "https://datasync.ed.ac.uk/public.php/webdav/"
+AMBROSIA_DATA_PASSWORD = "AM8R0S1A"
+AMBROSIA_ANNOTATIONS = {
+    "few_shot_examples": "https://drive.google.com/uc?id=1Zqx4sVuQGWZuyuT91OY3tnARC6Tz6EQp",
+    "test": "https://drive.google.com/uc?id=1cYftWIdRQfOVaHSVuSjOA4XjfcOvodk2",
+}
+
+
+def _ambrosia_csv_lookup(path: Path) -> dict[str, tuple[str, list[str]]]:
+    lookup = {}
+    for index, row in pd.read_csv(path).iterrows():
+        parts = re.split(r"\n\nselect", row["gold_queries"].strip(), flags=re.IGNORECASE)
+        queries = [re.sub(r"\n\n+", "\n", parts[0].strip())]
+        queries.extend("SELECT " + re.sub(r"\n\n+", "\n", part.strip()) for part in parts[1:])
+        lookup[str(index)] = (row["question"].strip(), queries)
+    return lookup
+
+
+def _prepare_ambrosia_annotations(destination: Path, split: str) -> None:
+    lookup = _ambrosia_csv_lookup(destination / "ambrosia" / "ambrosia.csv")
+    entries = json.loads((destination / f"ambrosia_{split}.json").read_text())
+    for entry in entries:
+        qid = entry["qid"]
+        if qid not in lookup:
+            raise BenchmarkInstallationError(f"AMBROSIA qid {qid} is missing from ambrosia.csv")
+        question, queries = lookup[qid]
+        results = entry.pop("gold_exec_results", [])
+        if len(queries) != len(results):
+            raise BenchmarkInstallationError(
+                f"AMBROSIA qid {qid} has {len(queries)} queries but {len(results)} execution results"
+            )
+        entry["question"] = question
+        entry["gold_queries"] = [
+            {
+                "id": f"GQRY-A.{index}",
+                "query": query,
+                "parameter_names": [],
+                "parameter_values": {},
+                "exec_result": result,
+                "other_exec_results": [],
+                "required_columns": None,
+                "required_sorted": False,
+                "extra_info": {},
+            }
+            for index, (query, result) in enumerate(zip(queries, results, strict=True))
+        ]
+    (destination / f"ambrosia_{split}_processed.json").write_text(json.dumps(entries, indent=2, ensure_ascii=False))
+
+
+async def _fetch_ambrosia(destination: Path, progress: ProgressCallback) -> None:
+    data_dir = destination / "ambrosia"
+    if not (data_dir / "ambrosia.csv").is_file():
+        progress("Downloading AMBROSIA data")
+        archive = destination / ".ambrosia.zip"
+        extracted = destination / ".ambrosia"
+        await download_zip(AMBROSIA_DATA_URL, archive, auth=httpx.BasicAuth("pOk0Kfrn1oq96UR", AMBROSIA_DATA_PASSWORD))
+        if extracted.exists():
+            shutil.rmtree(extracted)
+        await asyncio.to_thread(extract_zip, archive, extracted)
+        matches = list(extracted.rglob("ambrosia.csv"))
+        if len(matches) != 1:
+            raise BenchmarkInstallationError("ambrosia.csv not found in the AMBROSIA archive")
+        await asyncio.to_thread(copy_directory_contents, matches[0].parent, data_dir)
+        archive.unlink()
+        shutil.rmtree(extracted)
+
+    sqlite_files = sorted(data_dir.rglob("*.sqlite"))
+    (destination / "db_list.txt").write_text(
+        "\n".join(str(path.relative_to(data_dir).with_suffix("")) for path in sqlite_files) + "\n"
+    )
+    for split, url in AMBROSIA_ANNOTATIONS.items():
+        input_path = destination / f"ambrosia_{split}.json"
+        output_path = destination / f"ambrosia_{split}_processed.json"
+        if output_path.is_file():
+            continue
+        progress(f"Downloading AMBROSIA {split} annotations")
+        await download_google_drive(url, input_path)
+        await asyncio.to_thread(_prepare_ambrosia_annotations, destination, split)
 
 
 AMBROSIA_TAXONOMY = """
@@ -51,6 +142,16 @@ AMBROSIA_DATASET_INSTRUCTIONS = """
 class AmbrosiaSDatasetLoader:
     name: ClassVar[str] = "ambrosia-s"
     splits: ClassVar[list[str]] = ["test", "few_shot_examples"]
+    installation: ClassVar[BenchmarkInstallation] = BenchmarkInstallation(
+        name=name,
+        required_paths=(
+            "ambrosia/ambrosia.csv",
+            "db_list.txt",
+            "ambrosia_test_processed.json",
+            "ambrosia_few_shot_examples_processed.json",
+        ),
+        fetch=_fetch_ambrosia,
+    )
     default_metrics: ClassVar[list[str]] = [
         "simple_ex",
         "executable",
@@ -70,8 +171,8 @@ class AmbrosiaSDatasetLoader:
         connector_config: SQLConnectorConfig | None = None,
     ):
         if directory is None:
-            require_benchmark_downloaded(self.name)
-        self.directory = str(DEFAULT_BENCHMARK_DIR / self.name if directory is None else directory)
+            self.installation.require()
+        self.directory = str(self.installation.directory if directory is None else directory)
         self.max_concurrency = max_concurrency
         self.include_taxonomy = include_taxonomy
         self.connector_config = SQLConnectorConfig() if connector_config is None else connector_config

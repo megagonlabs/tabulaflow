@@ -8,10 +8,13 @@ the installed official Docker Compose files; default Bolt host ports and
 import asyncio
 import json
 import os
+from pathlib import Path
 from typing import Any, ClassVar, Mapping
 
+from huggingface_hub import snapshot_download
+
 from tabulaflow.research.benchmarks.registry import dataset_registry, select_tasks, selected_databases
-from tabulaflow.research.benchmarks.installation import DEFAULT_BENCHMARK_DIR, require_benchmark_downloaded
+from tabulaflow.research.benchmarks.installation import BenchmarkInstallation, ProgressCallback, download_file
 from tabulaflow.data import Neo4jConnector, Neo4jConnectorConfig
 from tabulaflow.research.types import GoldQuery
 from tabulaflow.research.types import NL2QDataset, SimpleNL2QTask
@@ -43,6 +46,35 @@ CYPHERBENCH_SPLIT_GRAPHS: dict[str, list[str]] = {
     ],
     "train": ["art", "biology", "soccer", "terrorist_attack"],
 }
+CYPHERBENCH_DATA_REVISION = "efdfde14c04fe174b4960544c1b1001530e2a178"
+CYPHERBENCH_RUNTIME_REVISION = "94605181d12d9bc837f737a37b9d46471c2f3eff"
+
+
+async def _fetch_cypherbench(destination: Path, progress: ProgressCallback) -> None:
+    progress("Downloading benchmark data")
+    await asyncio.to_thread(
+        snapshot_download,
+        repo_id="megagonlabs/cypherbench",
+        repo_type="dataset",
+        revision=CYPHERBENCH_DATA_REVISION,
+        local_dir=destination,
+    )
+    runtime_files = (".env", "docker-compose-test.yml", "docker-compose-train.yml")
+    progress("Downloading database runtime")
+    await asyncio.gather(
+        *[
+            download_file(
+                "https://raw.githubusercontent.com/megagonlabs/cypherbench/"
+                f"{CYPHERBENCH_RUNTIME_REVISION}/docker/{filename}",
+                destination / "docker" / filename,
+            )
+            for filename in runtime_files
+        ]
+    )
+    for filename in runtime_files[1:]:
+        path = destination / "docker" / filename
+        path.write_text(path.read_text().replace("../benchmark/graphs/", "../graphs/"))
+
 
 # Mirrors CypherBench baseline ``NL2CYPHER_PROMPT_DEFAULT`` (``cypherbench/baseline/zero_shot_nl2cypher.py``).
 CYPHERBENCH_DATASET_INSTRUCTIONS = """
@@ -60,6 +92,18 @@ class CypherBenchDatasetLoader:
 
     name: ClassVar[str] = "cypherbench"
     splits: ClassVar[list[str]] = ["test", "train"]
+    installation: ClassVar[BenchmarkInstallation] = BenchmarkInstallation(
+        name=name,
+        required_paths=(
+            "test.json",
+            "train.json",
+            *(f"graphs/simplekg/{graph}_simplekg.json" for graph in CYPHERBENCH_DEFAULT_GRAPH_PORTS),
+            "docker/.env",
+            "docker/docker-compose-test.yml",
+            "docker/docker-compose-train.yml",
+        ),
+        fetch=_fetch_cypherbench,
+    )
     default_metrics: ClassVar[list[str]] = [
         "cypherbench_ex",
         "simple_ex",
@@ -89,8 +133,8 @@ class CypherBenchDatasetLoader:
             graph_ports: Optional overrides for graph name -> host Bolt port.
         """
         if directory is None:
-            require_benchmark_downloaded(self.name)
-        self.directory = str(DEFAULT_BENCHMARK_DIR / self.name if directory is None else directory)
+            self.installation.require()
+        self.directory = str(self.installation.directory if directory is None else directory)
         self.neo4j_host = neo4j_host
         self.neo4j_user = neo4j_user
         self.neo4j_password = neo4j_password

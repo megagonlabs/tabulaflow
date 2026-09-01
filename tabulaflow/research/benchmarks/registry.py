@@ -7,6 +7,7 @@ from typing import ClassVar, Mapping, Protocol, Sequence, TypeVar
 from tabulaflow.research.types import NL2QDataset, NL2QTask
 from tabulaflow.data import DBConnector
 from tabulaflow.core.registry import ClassRegistry
+from tabulaflow.research.benchmarks.installation import BenchmarkInstallation
 
 TaskT = TypeVar("TaskT", bound=NL2QTask)
 
@@ -57,6 +58,7 @@ class DatasetLoaderProtocol(Protocol):
     name: ClassVar[str]
     splits: ClassVar[list[str]]
     default_metrics: ClassVar[list[str]]
+    installation: ClassVar[BenchmarkInstallation]
 
     def get_databases(self, split: str) -> list[str]:
         """Returns the list of database names available in the given split."""
@@ -90,35 +92,35 @@ class DatasetLoaderProtocol(Protocol):
 class DatasetRegistry(ClassRegistry[DatasetLoaderProtocol]):
     """Lazily populated registry of benchmark loaders."""
 
-    _modules = (
-        "ambrosia_s",
-        "arcs",
-        "beaver",
-        "bird_sql",
-        "cypherbench",
-        "spider2_dbt",
-        "spider2_lite",
-        "spider2_snow",
-    )
+    _modules = {
+        "ambrosia-s": "ambrosia_s",
+        "arcs": "arcs",
+        "beaver": "beaver",
+        "bird-sql": "bird_sql",
+        "cypherbench": "cypherbench",
+        "spider2-dbt": "spider2_dbt",
+        "spider2-lite": "spider2_lite",
+        "spider2-snow": "spider2_snow",
+    }
 
     def __init__(self) -> None:
         super().__init__("dataset")
-        self._loaded = False
 
-    def _load(self) -> None:
-        if self._loaded:
+    def _load(self, name: str) -> None:
+        if name in self._classes:
             return
-        self._loaded = True
-        for module in self._modules:
-            importlib.import_module(f"{__package__}.{module}")
+        try:
+            module = self._modules[name]
+        except KeyError:
+            return
+        importlib.import_module(f"{__package__}.{module}")
 
     def get_class(self, name: str) -> type[DatasetLoaderProtocol]:
-        self._load()
+        self._load(name)
         return super().get_class(name)
 
     def list_names(self) -> list[str]:
-        self._load()
-        return super().list_names()
+        return list(self._modules)
 
 
 dataset_registry = DatasetRegistry()
