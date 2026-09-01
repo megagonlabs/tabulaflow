@@ -22,7 +22,7 @@ Output is deterministic (seeded), so regenerating produces a byte-identical file
 The generated ``sample.sqlite`` is committed and shipped via package-data; this
 script is the source of truth — run it to regenerate / audit.
 
-    uv run scripts/gen_sample_db.py
+    uv run scripts/app/gen_sample_db.py
 """
 
 from __future__ import annotations
@@ -33,7 +33,7 @@ import sqlite3
 import string
 from pathlib import Path
 
-_SAMPLE_DIR = Path(__file__).resolve().parent.parent / "tabulaflow" / "app" / "assets" / "samples"
+_SAMPLE_DIR = Path(__file__).resolve().parents[2] / "tabulaflow" / "app" / "assets" / "samples"
 _OUT = _SAMPLE_DIR / "sample.sqlite"
 _NYC_TAXI_ZONES_JSON = _SAMPLE_DIR / "nyc_taxi_zones.json"
 _SEED = 7

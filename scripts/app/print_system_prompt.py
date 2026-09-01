@@ -1,6 +1,6 @@
 """Print the composed system prompt exactly as the chat agent sends it.
 
-    uv run scripts/print_system_prompt.py
+    uv run scripts/app/print_system_prompt.py
 
 Builds a real ``ChatSession`` (empty registry, cwd as project dir) so the output
 includes the runtime ``## Session`` tail, not just the static prompt file.

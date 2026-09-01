@@ -17,4 +17,4 @@ Design:
 - The airport icon display size is 20x20 CSS px.
 - The @2x sprite is generated at double pixel dimensions with pixelRatio 2.
 - Shield colors are tuned for the light map theme: red #f25f6b, blue #5f72d6.
-- Regenerate with: uv run scripts/generate_route_sprite.py
+- Regenerate with: uv run scripts/app/generate_route_sprite.py

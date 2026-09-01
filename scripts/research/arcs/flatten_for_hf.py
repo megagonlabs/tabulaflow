@@ -13,7 +13,7 @@ are always preserved so the dataset remains useful for evaluation.
 Rows are shuffled with a fixed seed before writing.
 
 Usage:
-    uv run scripts/arcs/flatten_for_hf.py --output data/ARCS/tasks.jsonl
+    uv run scripts/research/arcs/flatten_for_hf.py --output data/ARCS/tasks.jsonl
 """
 
 import argparse

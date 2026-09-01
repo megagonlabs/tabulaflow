@@ -2,7 +2,7 @@
 set -euo pipefail
 
 if (( $# != 3 )); then
-    echo "Usage: bash scripts/start_vllm_docker.sh <model_name> <cuda_devices> <port>" >&2
+    echo "Usage: bash scripts/research/start_vllm_docker.sh <model_name> <cuda_devices> <port>" >&2
     exit 1
 fi
 

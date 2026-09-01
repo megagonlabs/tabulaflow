@@ -524,7 +524,7 @@ Non-fatal (skip + count): dangling edge endpoints → `meta.unmatchedNodes`.
 - Unit-test the tool and `build_graph_data` mirroring the existing render_map /
   `build_map_data` tests (`tests/`): spec validation, column resolution, node
   dedup, dangling-endpoint counting, multi-source merge, each layout.
-- Preview fixtures live: `uv run scripts/preview_output_pane.py --port 61211`
+- Preview fixtures live: `uv run scripts/app/preview_output_pane.py --port 61211`
   (add a graph fixture). For layout/theming iteration, serve the live debug pane
   and inspect DOM geometry via the browser tool.
 - Because this is a **canvas** renderer, a browser smoke test is worth it: after

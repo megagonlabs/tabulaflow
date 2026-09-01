@@ -15,7 +15,7 @@ from tabulaflow.app.tui.app import _restore_terminal_modes
 
 
 class PreviewApp(TabulaflowApp):
-    CSS_PATH = str(Path(__file__).resolve().parents[1] / "tabulaflow" / "app" / "tui" / "tui.tcss")
+    CSS_PATH = str(Path(__file__).resolve().parents[2] / "tabulaflow" / "app" / "tui" / "tui.tcss")
 
     def on_mount(self) -> None:
         super().on_mount()

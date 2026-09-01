@@ -9,7 +9,7 @@ much is launcher/interpreter overhead vs. the app itself.
 
 Run with the *system* python (NOT ``uv run``), so it can time the uv subprocess:
 
-    python3 scripts/measure_startup.py [runs]
+    python3 scripts/app/measure_startup.py [runs]
 
 The first run is cold (compiles .pyc); later runs reflect steady-state launches.
 Version-agnostic — measures whatever is currently checked out, so you can compare

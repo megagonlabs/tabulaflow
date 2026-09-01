@@ -1,7 +1,7 @@
 """Run a local output-pane preview server with representative result fixtures.
 
-    uv run scripts/preview_output_pane.py --port 61211
-    uv run scripts/preview_output_pane.py --port 61211 --full
+    uv run scripts/app/preview_output_pane.py --port 61211
+    uv run scripts/app/preview_output_pane.py --port 61211 --full
 
 The script reuses the production pane server, index shape, and card renderers,
 but pushes synthetic turns directly. It is intended for browser inspection while

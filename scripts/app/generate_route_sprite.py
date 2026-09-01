@@ -8,7 +8,7 @@ from PIL import Image
 from playwright.sync_api import sync_playwright
 
 
-ASSET_DIR = Path(__file__).resolve().parents[1] / "tabulaflow" / "app" / "assets" / "maplibre"
+ASSET_DIR = Path(__file__).resolve().parents[2] / "tabulaflow" / "app" / "assets" / "maplibre"
 SVG_SOURCE = ASSET_DIR / "tf-interstate-shield-draft.svg"
 AIRPORT_SVG_SOURCE = ASSET_DIR / "tf-airport-icon-draft.svg"
 SPRITE_NAME = "tf-route-sprite"

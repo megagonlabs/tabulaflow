@@ -183,7 +183,7 @@ re-parse and re-render per delta), and it definitely breaks selection.
   `test_output_pane.py` for assertions pinned to `index.html` script tags or
   the module-hash list; extend rather than re-pin JS source strings.
   `node --check` on `render/markdown.js` and `pane.js`. Preview smoke
-  (`uv run scripts/preview_output_pane.py --port 61211`) with a fixture answer
+  (`uv run scripts/app/preview_output_pane.py --port 61211`) with a fixture answer
   exercising headings, bold, GFM table, fenced code, links, and a raw
   `<script>alert(1)</script>` line — the latter must render as escaped text
   (the `html: false` guarantee).

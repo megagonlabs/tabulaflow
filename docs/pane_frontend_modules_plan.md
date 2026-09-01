@@ -153,7 +153,7 @@ brittleness). Instead:
 - Optional: `npx tsc --noEmit --checkJs --allowJs` over `assets/ui/` to exercise
   `contract.d.ts` + `// @ts-check` (no install needed if `tsc` is available; skip if
   not — it's a bonus, not a gate).
-- **Preview smoke (the real gate):** `uv run scripts/preview_output_pane.py
+- **Preview smoke (the real gate):** `uv run scripts/app/preview_output_pane.py
   --port 61211`, then confirm the module + each `render/*.js` serve **200** under
   `/assets/ui/…`, and eyeball that table/chart/map/graph/query cards render (the
   `type="module"` + relative-import + nested-path change is exactly what silently
