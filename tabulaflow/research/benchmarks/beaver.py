@@ -6,6 +6,7 @@ from tabulaflow.research.types import GoldQuery
 from tabulaflow.research.types import SimpleNL2QTask, NL2QDataset
 from tabulaflow.data import SQLConnector, SQLConnectorConfig
 from tabulaflow.research.benchmarks.registry import dataset_registry, select_tasks, selected_databases
+from tabulaflow.research.benchmarks.installation import DEFAULT_BENCHMARK_DIR, require_benchmark_downloaded
 
 
 @dataset_registry.register
@@ -22,12 +23,14 @@ class BeaverDatasetLoader:
 
     def __init__(
         self,
-        directory: str = "data/beaver",
+        directory: str | None = None,
         dw_port: int = 3311,
         nw_port: int = 3312,
         connector_config: SQLConnectorConfig | None = None,
     ):
-        self.directory = directory
+        if directory is None:
+            require_benchmark_downloaded(self.name)
+        self.directory = str(DEFAULT_BENCHMARK_DIR / self.name if directory is None else directory)
         self.dw_dbms_port = dw_port
         self.nw_dbms_port = nw_port
         self.connector_config = SQLConnectorConfig() if connector_config is None else connector_config

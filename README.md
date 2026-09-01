@@ -938,6 +938,19 @@ tabulaflow/research
 
 ## 📚 Dataset Setup
 
+Benchmark data is installed once for all splits under
+`~/.tabulaflow/benchmarks`:
+
+```bash
+tabulaflow benchmark list
+tabulaflow benchmark download cypherbench
+```
+
+Loading a missing benchmark fails with the exact download command instead of
+starting network activity inside an experiment. Downloads are pinned, verified,
+and installed atomically. Benchmarks whose upstream distribution still requires
+manual access report the authoritative setup URL from the same command.
+
 Currently, the following datasets are supported:
 
 | Dataset | Key | Splits |
@@ -953,20 +966,20 @@ Currently, the following datasets are supported:
 
 ### BIRD-SQL
 
-Download the BIRD-SQL dataset from [here](https://bird-bench.github.io/).
+Run `tabulaflow benchmark download bird-sql` for the authoritative download URL.
 
-The dataset should be stored in the `data/bird-sql` directory and organized as follows:
+The dataset should be stored in `~/.tabulaflow/benchmarks/bird-sql` and organized as follows:
 
 ```
-data/
-├── BIRD-SQL/
-│   ├── train/
-│   |   └── ...
-│   └── dev_20240627/
-│       ├── dev_databases/
-│       ├── dev.json
-│       └── ...
-└── ...
+~/.tabulaflow/benchmarks/bird-sql/
+├── train/
+│   └── ...
+├── dev_20240627/
+│   ├── dev_databases/
+│   ├── dev.json
+│   └── ...
+└── column_meaning/
+    └── ...
 ```
 
 ### Spider 2.0
@@ -981,44 +994,46 @@ export SF_PASSWORD="your_password"
 export SF_ACCOUNT="RSRSBDK-YDB67606"
 ```
 
-Next, clone the Spider2 repository and save it as `data/Spider2`:
+Next, clone the Spider2 repository and install the benchmark directories:
 
 ```bash
-git clone https://github.com/xlang-ai/Spider2.git data/Spider2
+git clone https://github.com/xlang-ai/Spider2.git /tmp/Spider2
+mkdir -p ~/.tabulaflow/benchmarks
+mv /tmp/Spider2/spider2-lite ~/.tabulaflow/benchmarks/spider2-lite
+mv /tmp/Spider2/spider2-snow ~/.tabulaflow/benchmarks/spider2-snow
+mv /tmp/Spider2/spider2-dbt ~/.tabulaflow/benchmarks/spider2-dbt
 ```
 
 To run the simplied Spider 2.0 snow dataset, export the Google spreadsheet as a CSV file and save it as `data/spider2-simple/spider2-simple-v1.csv`. Then, run the run_model.py and evaluate.py scripts as shown in the Quick Start section. The results will be available in the `result_with_metrics.csv` file which you can then import into Google spreadsheet.
 
 ### Beaver
 
-Download the Beaver dataset from [here](https://github.com/peterbaile/beaver).
+Run `tabulaflow benchmark download beaver` for the authoritative download URL.
 
-The dataset should be stored in the `data/beaver` directory and organized as follows:
+The dataset should be stored in `~/.tabulaflow/benchmarks/beaver` and organized as follows:
 
 ```
-data/
-├── beaver/
-│   ├── dw/
-│   │   └── new_dw_indexed.sql
-│   ├── nw/
-│   │   ├── keystone.sql
-│   │   ├── csail_stata_neutron.sql
-│   │   └── ...
-│   ├── dev_dw.json
-│   ├── dev_nw.json
-│   ├── test_dw.json
-│   └── test_nw.json
-└── ...
+~/.tabulaflow/benchmarks/beaver/
+├── dw/
+│   └── new_dw_indexed.sql
+├── nw/
+│   ├── keystone.sql
+│   ├── csail_stata_neutron.sql
+│   └── ...
+├── dev_dw.json
+├── dev_nw.json
+├── test_dw.json
+└── test_nw.json
 ```
 
 Run the following command to start the MySQL databases:
 
 ```bash
-docker run -d --name beaver-dw -p 3311:3306 -e MYSQL_ROOT_PASSWORD=root -v $(pwd)/data/beaver/dw:/docker-entrypoint-initdb.d mysql:8.0 --lower-case-table-names=1
+docker run -d --name beaver-dw -p 3311:3306 -e MYSQL_ROOT_PASSWORD=root -v "$HOME/.tabulaflow/benchmarks/beaver/dw:/docker-entrypoint-initdb.d" mysql:8.0 --lower-case-table-names=1
 ```
 
 ```bash
-docker run -d --name beaver-nw -p 3312:3306 -e MYSQL_ROOT_PASSWORD=root -v $(pwd)/data/beaver/nw:/docker-entrypoint-initdb.d mysql:8.0 --lower-case-table-names=1
+docker run -d --name beaver-nw -p 3312:3306 -e MYSQL_ROOT_PASSWORD=root -v "$HOME/.tabulaflow/benchmarks/beaver/nw:/docker-entrypoint-initdb.d" mysql:8.0 --lower-case-table-names=1
 ```
 
 ## AMBROSIA-S (Structured)
@@ -1027,28 +1042,28 @@ docker run -d --name beaver-nw -p 3312:3306 -e MYSQL_ROOT_PASSWORD=root -v $(pwd
 
 Download the AMBROSIA dataset (`data.zip`) from [here](https://ambrosia-benchmark.github.io/).
 
-Unzip the archive and move its contents into `data/ambrosia-s/`:
+Unzip the archive into `~/.tabulaflow/benchmarks/ambrosia-s`:
 
 ```bash
-unzip data.zip && mv data data/ambrosia-s/ambrosia
+unzip data.zip && mkdir -p ~/.tabulaflow/benchmarks/ambrosia-s && mv data ~/.tabulaflow/benchmarks/ambrosia-s/ambrosia
 ```
 
 Next, download the structured disambiguation annotations from Google Drive:
 
 ```bash
-uvx gdown "https://drive.google.com/uc?id=1Zqx4sVuQGWZuyuT91OY3tnARC6Tz6EQp" -O data/ambrosia-s/ambrosia_few_shot_examples.json
-uvx gdown "https://drive.google.com/uc?id=1cYftWIdRQfOVaHSVuSjOA4XjfcOvodk2" -O data/ambrosia-s/ambrosia_test.json
+uvx gdown "https://drive.google.com/uc?id=1Zqx4sVuQGWZuyuT91OY3tnARC6Tz6EQp" -O ~/.tabulaflow/benchmarks/ambrosia-s/ambrosia_few_shot_examples.json
+uvx gdown "https://drive.google.com/uc?id=1cYftWIdRQfOVaHSVuSjOA4XjfcOvodk2" -O ~/.tabulaflow/benchmarks/ambrosia-s/ambrosia_test.json
 ```
 
 Finally, run the following scripts to add question texts and gold queries to the annotations:
 
 ```bash
-uv run python scripts/ambrosia-s/add_values_to_annotations.py --csv data/ambrosia-s/ambrosia/ambrosia.csv --input data/ambrosia-s/ambrosia_few_shot_examples.json --output data/ambrosia-s/ambrosia_few_shot_examples_processed.json
-uv run python scripts/ambrosia-s/add_values_to_annotations.py --csv data/ambrosia-s/ambrosia/ambrosia.csv --input data/ambrosia-s/ambrosia_test.json --output data/ambrosia-s/ambrosia_test_processed.json
+uv run python scripts/ambrosia-s/add_values_to_annotations.py --csv ~/.tabulaflow/benchmarks/ambrosia-s/ambrosia/ambrosia.csv --input ~/.tabulaflow/benchmarks/ambrosia-s/ambrosia_few_shot_examples.json --output ~/.tabulaflow/benchmarks/ambrosia-s/ambrosia_few_shot_examples_processed.json
+uv run python scripts/ambrosia-s/add_values_to_annotations.py --csv ~/.tabulaflow/benchmarks/ambrosia-s/ambrosia/ambrosia.csv --input ~/.tabulaflow/benchmarks/ambrosia-s/ambrosia_test.json --output ~/.tabulaflow/benchmarks/ambrosia-s/ambrosia_test_processed.json
 ```
 
 ```
-data/ambrosia-s
+~/.tabulaflow/benchmarks/ambrosia-s
 ├── ambrosia_few_shot_examples_processed.json  # processed annotations from the "few_shot_examples" split
 ├── ambrosia_few_shot_examples.json  # structured disambiguation annotations from the "few_shot_examples" split
 ├── ambrosia_test_processed.json  # processed annotations from the "test" split

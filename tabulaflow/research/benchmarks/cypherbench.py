@@ -1,10 +1,8 @@
 """CypherBench text-to-Cypher benchmark (Neo4j property graphs).
 
-See https://huggingface.co/datasets/megagonlabs/cypherbench for the dataset.
-Clone it into ``data/cypherbench`` (``train.json``, ``test.json``). Deploy graphs
-with the official Docker Compose files in the CypherBench repo
-(``docker/docker-compose-train.yml``, ``docker/docker-compose-test.yml``); default
-Bolt host ports and ``neo4j`` / ``cypherbench`` credentials match those files.
+Install it with ``tabulaflow benchmark download cypherbench``. Deploy graphs with
+the installed official Docker Compose files; default Bolt host ports and
+``neo4j`` / ``cypherbench`` credentials match those files.
 """
 
 import asyncio
@@ -13,6 +11,7 @@ import os
 from typing import Any, ClassVar, Mapping
 
 from tabulaflow.research.benchmarks.registry import dataset_registry, select_tasks, selected_databases
+from tabulaflow.research.benchmarks.installation import DEFAULT_BENCHMARK_DIR, require_benchmark_downloaded
 from tabulaflow.data import Neo4jConnector, Neo4jConnectorConfig
 from tabulaflow.research.types import GoldQuery
 from tabulaflow.research.types import NL2QDataset, SimpleNL2QTask
@@ -73,7 +72,7 @@ class CypherBenchDatasetLoader:
 
     def __init__(
         self,
-        directory: str = "data/cypherbench",
+        directory: str | None = None,
         neo4j_host: str = "localhost",
         neo4j_user: str = "neo4j",
         neo4j_password: str = "cypherbench",
@@ -89,7 +88,9 @@ class CypherBenchDatasetLoader:
             neo4j_password: Neo4j password.
             graph_ports: Optional overrides for graph name -> host Bolt port.
         """
-        self.directory = directory
+        if directory is None:
+            require_benchmark_downloaded(self.name)
+        self.directory = str(DEFAULT_BENCHMARK_DIR / self.name if directory is None else directory)
         self.neo4j_host = neo4j_host
         self.neo4j_user = neo4j_user
         self.neo4j_password = neo4j_password
@@ -111,8 +112,7 @@ class CypherBenchDatasetLoader:
         if not os.path.isfile(path):
             raise FileNotFoundError(
                 f"CypherBench tasks not found at {path!r}. "
-                "Clone https://huggingface.co/datasets/megagonlabs/cypherbench into "
-                f"{self.directory!r} (or pass directory=... to the loader)."
+                "Run `tabulaflow benchmark download cypherbench` or pass a valid directory to the loader."
             )
 
         databases = self.get_databases(split) if databases is None else databases

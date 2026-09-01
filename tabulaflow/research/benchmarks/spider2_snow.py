@@ -17,6 +17,7 @@ from tabulaflow.research.types import GoldQuery
 from tabulaflow.research.types import SimpleNL2QTask, NL2QDataset
 from tabulaflow.data import SQLConnector, SQLConnectorConfig, SQLConnectorProtocol
 from tabulaflow.research.benchmarks.registry import dataset_registry, select_tasks, selected_databases
+from tabulaflow.research.benchmarks.installation import DEFAULT_BENCHMARK_DIR, require_benchmark_downloaded
 
 logger = logging.getLogger(__name__)
 
@@ -96,7 +97,7 @@ class Spider2SnowDatasetLoader:
 
     def __init__(
         self,
-        directory: str = "data/Spider2/spider2-snow",
+        directory: str | None = None,
         sf_user: Optional[str] = None,
         sf_password: Optional[str] = None,
         sf_account: Optional[str] = None,
@@ -111,7 +112,9 @@ class Spider2SnowDatasetLoader:
             sf_account: Snowflake account identifier. Falls back to ``SF_ACCOUNT``
                 env var.
         """
-        self.directory = directory
+        if directory is None:
+            require_benchmark_downloaded(self.name)
+        self.directory = str(DEFAULT_BENCHMARK_DIR / self.name if directory is None else directory)
         self.sf_user = sf_user
         self.sf_password = sf_password
         self.sf_account = sf_account

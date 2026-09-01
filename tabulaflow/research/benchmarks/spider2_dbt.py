@@ -19,6 +19,7 @@ from typing import Any, ClassVar
 import duckdb
 
 from tabulaflow.research.benchmarks.registry import dataset_registry, select_tasks, selected_databases
+from tabulaflow.research.benchmarks.installation import DEFAULT_BENCHMARK_DIR, require_benchmark_downloaded
 from tabulaflow.data import SQLConnector, SQLConnectorConfig, SQLConnectorProtocol
 from tabulaflow.research.types import DbtTask, DbtGoldTable, NL2QDataset
 
@@ -137,7 +138,7 @@ class Spider2DbtDatasetLoader:
 
     def __init__(
         self,
-        directory: str = "data/Spider2/spider2-dbt",
+        directory: str | None = None,
         max_concurrency: int = 16,
         connector_config: SQLConnectorConfig | None = None,
     ):
@@ -147,7 +148,9 @@ class Spider2DbtDatasetLoader:
             directory: Path to the spider2-dbt data directory.
             max_concurrency: Maximum concurrent DuckDB connections.
         """
-        self.directory = directory
+        if directory is None:
+            require_benchmark_downloaded(self.name)
+        self.directory = str(DEFAULT_BENCHMARK_DIR / self.name if directory is None else directory)
         self.max_concurrency = max_concurrency
         self.connector_config = SQLConnectorConfig() if connector_config is None else connector_config
         self._dbms_semaphore = asyncio.Semaphore(max_concurrency)

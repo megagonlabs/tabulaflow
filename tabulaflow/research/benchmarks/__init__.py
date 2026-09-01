@@ -1,14 +1,27 @@
 """Benchmark dataset loaders and registry."""
 
+import importlib
+
 from tabulaflow.research.benchmarks.registry import DatasetLoaderProtocol, dataset_registry
-from tabulaflow.research.benchmarks.bird_sql import BirdSQLDatasetLoader
-from tabulaflow.research.benchmarks.spider2_snow import Spider2SnowDatasetLoader
-from tabulaflow.research.benchmarks.spider2_lite import Spider2LiteDatasetLoader
-from tabulaflow.research.benchmarks.spider2_dbt import Spider2DbtDatasetLoader
-from tabulaflow.research.benchmarks.beaver import BeaverDatasetLoader
-from tabulaflow.research.benchmarks.arcs import ARCSDatasetLoader
-from tabulaflow.research.benchmarks.ambrosia_s import AmbrosiaSDatasetLoader
-from tabulaflow.research.benchmarks.cypherbench import CypherBenchDatasetLoader
+
+_LOADERS = {
+    "AmbrosiaSDatasetLoader": "ambrosia_s",
+    "ARCSDatasetLoader": "arcs",
+    "BeaverDatasetLoader": "beaver",
+    "BirdSQLDatasetLoader": "bird_sql",
+    "CypherBenchDatasetLoader": "cypherbench",
+    "Spider2DbtDatasetLoader": "spider2_dbt",
+    "Spider2LiteDatasetLoader": "spider2_lite",
+    "Spider2SnowDatasetLoader": "spider2_snow",
+}
+
+
+def __getattr__(name: str) -> object:
+    try:
+        module_name = _LOADERS[name]
+    except KeyError:
+        raise AttributeError(f"module {__name__!r} has no attribute {name!r}") from None
+    return getattr(importlib.import_module(f"{__name__}.{module_name}"), name)
 
 
 __all__ = [

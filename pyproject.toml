@@ -26,6 +26,7 @@ dependencies = [
     "asyncmy>=0.2.11",
     "asyncpg>=0.30.0",
     "datasets>=4.4.2",
+    "huggingface-hub>=0.36.0",
     "genai-prices>=0.1.4,<0.2",
     "httpx>=0.28.1",
     "jinja2>=3.1.6",
@@ -63,7 +64,7 @@ dependencies = [
 ]
 
 [project.scripts]
-tabulaflow = "tabulaflow.app.main:main"
+tabulaflow = "tabulaflow.cli:main"
 
 [project.urls]
 Homepage = "https://www.megagon.ai"
@@ -119,9 +120,10 @@ asyncio_mode = "auto"
 
 # Architecture contract for the layered package (see AGENTS.md "Project Structure").
 # Product/platform layers, lowest first: core < data < output < agents < app.
-# Research is a separate leaf consumer: it may import core/data/output/agents,
-# but neither app nor platform layers may import research, research must not import app,
-# and its pipelines remain the outermost research orchestration layer.
+# App and research are sibling leaf consumers composed only by tabulaflow.cli.
+# Research may import core/data/output/agents, but neither app nor platform layers
+# may import research, research must not import app, and its pipelines remain the
+# outermost research orchestration layer.
 # Run: make lint-arch
 [tool.importlinter]
 root_package = "tabulaflow"

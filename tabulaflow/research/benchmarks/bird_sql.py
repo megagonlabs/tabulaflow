@@ -2,11 +2,11 @@ import os
 import json
 import asyncio
 from typing import ClassVar, Literal
-from datasets import load_dataset
 from tabulaflow.research.types import GoldQuery
 from tabulaflow.research.types import SimpleNL2QTask, NL2QDataset
 from tabulaflow.data import SQLConnector, SQLConnectorConfig
 from tabulaflow.research.benchmarks.registry import dataset_registry, select_tasks, selected_databases
+from tabulaflow.research.benchmarks.installation import DEFAULT_BENCHMARK_DIR, require_benchmark_downloaded
 
 
 BIRD_DATASET_INSTRUCTIONS = """
@@ -84,13 +84,18 @@ class BirdSQLDatasetLoader:
 
     def __init__(
         self,
-        directory: str = "data/BIRD-SQL",
-        column_meaning_directory: str = "data/BIRD-SQL_column_meaning",
+        directory: str | None = None,
+        column_meaning_directory: str | None = None,
         max_concurrency: int = 16,
         connector_config: SQLConnectorConfig | None = None,
     ):
-        self.directory = directory
-        self.column_meaning_directory = column_meaning_directory
+        if directory is None:
+            require_benchmark_downloaded(self.name)
+        default_directory = DEFAULT_BENCHMARK_DIR / self.name
+        self.directory = str(default_directory if directory is None else directory)
+        self.column_meaning_directory = str(
+            default_directory / "column_meaning" if column_meaning_directory is None else column_meaning_directory
+        )
         self.max_concurrency = max_concurrency
         self.connector_config = SQLConnectorConfig() if connector_config is None else connector_config
         self._dbms_semaphore = asyncio.Semaphore(max_concurrency)
@@ -230,14 +235,6 @@ WHERE c.name = 'Italy';"""
                     column.description = column_descriptions.get(f"{conn.schema.name}|{table.name}|{column.name}", None)
         return {name: conn for name, conn in zip(databases, db_connectors)}
 
-    def _ensure_dev_20251106_downloaded(self) -> None:
-        path = os.path.join(self.directory, "dev_20251106")
-        if not os.path.exists(path):
-            os.makedirs(path)
-            dataset = load_dataset("birdsql/bird_sql_dev_20251106")
-            df = dataset["dev_20251106"].to_pandas()
-            df.to_json(os.path.join(path, "dev.json"), orient="records", indent=2)
-
     async def get_split_async(
         self,
         split: str,
@@ -246,9 +243,6 @@ WHERE c.name = 'Italy';"""
         qids: list[str] | None = None,
         difficulty: str | Literal["simple", "moderate", "challenging"] | None = None,
     ) -> NL2QDataset:
-        if split == "dev_20251106":
-            self._ensure_dev_20251106_downloaded()
-
         tasks = select_tasks(
             await self.get_tasks_async(split, databases, difficulty=difficulty),
             qids,

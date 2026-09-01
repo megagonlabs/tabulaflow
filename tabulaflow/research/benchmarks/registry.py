@@ -1,5 +1,6 @@
 """Extension contract, selection helpers, and registry for benchmark loaders."""
 
+import importlib
 import random
 from typing import ClassVar, Mapping, Protocol, Sequence, TypeVar
 
@@ -86,6 +87,40 @@ class DatasetLoaderProtocol(Protocol):
         ...
 
 
-dataset_registry = ClassRegistry[DatasetLoaderProtocol]("dataset")
+class DatasetRegistry(ClassRegistry[DatasetLoaderProtocol]):
+    """Lazily populated registry of benchmark loaders."""
 
-__all__ = ["DatasetLoaderProtocol", "dataset_registry", "select_tasks", "selected_databases"]
+    _modules = (
+        "ambrosia_s",
+        "arcs",
+        "beaver",
+        "bird_sql",
+        "cypherbench",
+        "spider2_dbt",
+        "spider2_lite",
+        "spider2_snow",
+    )
+
+    def __init__(self) -> None:
+        super().__init__("dataset")
+        self._loaded = False
+
+    def _load(self) -> None:
+        if self._loaded:
+            return
+        self._loaded = True
+        for module in self._modules:
+            importlib.import_module(f"{__package__}.{module}")
+
+    def get_class(self, name: str) -> type[DatasetLoaderProtocol]:
+        self._load()
+        return super().get_class(name)
+
+    def list_names(self) -> list[str]:
+        self._load()
+        return super().list_names()
+
+
+dataset_registry = DatasetRegistry()
+
+__all__ = ["DatasetLoaderProtocol", "DatasetRegistry", "dataset_registry", "select_tasks", "selected_databases"]

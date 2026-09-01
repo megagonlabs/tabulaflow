@@ -8,6 +8,7 @@ import pandas as pd
 from tabulaflow.research.types import AmbigNL2QTask, NL2QDataset
 from tabulaflow.data import SQLConnector, SQLConnectorConfig
 from tabulaflow.research.benchmarks.registry import dataset_registry, select_tasks, selected_databases
+from tabulaflow.research.benchmarks.installation import DEFAULT_BENCHMARK_DIR, require_benchmark_downloaded
 
 
 AMBROSIA_TAXONOMY = """
@@ -63,21 +64,22 @@ class AmbrosiaSDatasetLoader:
 
     def __init__(
         self,
-        directory: str = "data/ambrosia-s/",
+        directory: str | None = None,
         max_concurrency: int = 16,
         include_taxonomy: bool = False,
         connector_config: SQLConnectorConfig | None = None,
     ):
-        self.directory = directory
+        if directory is None:
+            require_benchmark_downloaded(self.name)
+        self.directory = str(DEFAULT_BENCHMARK_DIR / self.name if directory is None else directory)
         self.max_concurrency = max_concurrency
         self.include_taxonomy = include_taxonomy
         self.connector_config = SQLConnectorConfig() if connector_config is None else connector_config
 
         self._dbms_semaphore = asyncio.Semaphore(max_concurrency)
 
-        # Actual DB (.sqlite) location: data/ambrosia-s/ambrosia/<db_name>.sqlite
         self.db_list: list[str] = []
-        with open(directory + "/db_list.txt", "r") as f:
+        with open(os.path.join(self.directory, "db_list.txt"), "r") as f:
             self.db_list = [line.strip() for line in f.readlines() if line.strip()]
 
     def get_databases(self, split: str) -> list[str]:

@@ -6,6 +6,7 @@ from typing import ClassVar
 from tabulaflow.research.types import AmbigNL2QTask, NL2QDataset
 from tabulaflow.data import SQLConnector, SQLConnectorConfig
 from tabulaflow.research.benchmarks.registry import dataset_registry, select_tasks, selected_databases
+from tabulaflow.research.benchmarks.installation import DEFAULT_BENCHMARK_DIR, require_benchmark_downloaded
 
 ARCS_DATASET_INSTRUCTIONS = """
 - Follow these requirements when writing SQL. When disambiguating, do not consider these as ambiguities:
@@ -122,14 +123,14 @@ class ARCSDatasetLoader:
 
     def __init__(
         self,
-        directory: str = "data/ARCS/",
-        column_meaning_directory: str = "data/BIRD-SQL_column_meaning",
+        directory: str | None = None,
         max_concurrency: int = 16,
         include_taxonomy: bool = False,
         connector_config: SQLConnectorConfig | None = None,
     ):
-        self.directory = directory
-        self.column_meaning_directory = column_meaning_directory
+        if directory is None:
+            require_benchmark_downloaded(self.name)
+        self.directory = str(DEFAULT_BENCHMARK_DIR / self.name if directory is None else directory)
         self.max_concurrency = max_concurrency
         self.include_taxonomy = include_taxonomy
         self.connector_config = SQLConnectorConfig() if connector_config is None else connector_config
