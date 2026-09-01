@@ -1,40 +1,47 @@
-#!/bin/bash
+#!/usr/bin/env bash
+set -euo pipefail
 
-# Check if the first argument is provided
-if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ]; then
-    echo "Usage: bash scripts/start_vllm.sh <model_name> <cuda_devices> <port>"
+if (( $# != 3 )); then
+    echo "Usage: bash scripts/start_vllm_docker.sh <model_name> <cuda_devices> <port>" >&2
     exit 1
 fi
 
-model_name=$1
-model_name="${model_name%/}" # remove the trailing slash
-
+model_name=${1%/}
 cuda_devices=$2
-
 port=$3
 
-# Count the number of GPUs
-comma_count=$(grep -o "," <<<"$cuda_devices" | wc -l)
-num_gpu=$(($comma_count + 1))
+IFS=',' read -r -a gpu_ids <<< "$cuda_devices"
+num_gpus=${#gpu_ids[@]}
 
-echo "Serving $model_name with vllm"
-echo "CUDA_VISIBLE_DEVICES: $cuda_devices"
-echo "Number of GPUs: $num_gpu"
-echo "device=$cuda_devices"
+hf_home=${HF_HOME:-$HOME/.cache/huggingface}
+mkdir -p "$hf_home"
 
-docker run -d --runtime nvidia \
-    -e "NVIDIA_VISIBLE_DEVICES=$cuda_devices" \
-    -v ~/vllm_cache/huggingface:/root/.cache/huggingface \
-    --env "HUGGING_FACE_HUB_TOKEN=$HUGGING_FACE_HUB_TOKEN" \
-    -p $port:$port \
-    --ipc=host \
-    vllm/vllm-openai:v0.7.3 \
-    --model $model_name \
-    --gpu-memory-utilization 0.9 \
-    --port $port \
-    --tensor-parallel-size $num_gpu \
-    --enable-auto-tool-choice \
+echo "Serving $model_name with vLLM"
+echo "CUDA devices: $cuda_devices"
+echo "Tensor parallel size: $num_gpus"
+
+docker_args=(
+    run
+    -d
+    --runtime nvidia
+    -e "NVIDIA_VISIBLE_DEVICES=$cuda_devices"
+    -v "$hf_home:/root/.cache/huggingface"
+    -p "$port:$port"
+    --ipc=host
+)
+
+if [[ -n ${HF_TOKEN:-} ]]; then
+    docker_args+=(--env HF_TOKEN)
+fi
+
+docker_args+=(
+    vllm/vllm-openai:v0.7.3
+    --model "$model_name"
+    --gpu-memory-utilization 0.9
+    --port "$port"
+    --tensor-parallel-size "$num_gpus"
+    --enable-auto-tool-choice
     --tool-call-parser llama3_json
+)
 
-# Commands
-#    bash scripts/start_vllm_docker.sh meta-llama/Llama-3.1-8B-Instruct 1 11620
+docker "${docker_args[@]}"

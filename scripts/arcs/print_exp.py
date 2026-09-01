@@ -1,19 +1,15 @@
+import argparse
 import math
-import os
-from typing import Any
-from tabulaflow.research.types import AmbigNL2QTask, NL2QRunResult
-from decimal import Decimal
-from tabulate import tabulate
 import time
+from collections.abc import Iterable
+from decimal import Decimal
+from pathlib import Path
+from typing import Any
 
+from tabulate import tabulate
 
-# OLD_CORE_EXP_DIRS = {
-#     "o4-mini-medium_simple": "output/130_o4-mini-medium-simple/",
-#     "o4-mini-medium_flat": "output/130_o4-mini-medium-flat/",
-#     "o4-mini-low_structured": "output/131_o4-mini-low_structured/",
-#     "o4-mini-medium_structured": "output/130_o4-mini-medium_structured/",
-#     "o4-mini-high_structured": "output/131_o4-mini-high_structured/",
-# }
+from tabulaflow.research.types import NL2QRunResult
+
 EXPS = [
     "gpt-4.1_simple_1patience",
     "gpt-4.1_simple_3patience",
@@ -88,33 +84,25 @@ EXPS = [
 ]
 
 
-TALBE_FMT = "github"
+def load_results(results_dir: Path) -> dict[str, NL2QRunResult]:
+    paths = {exp: results_dir / exp / "result.json" for exp in EXPS}
+    missing = [path for path in paths.values() if not path.is_file()]
+    if missing:
+        raise FileNotFoundError(f"Result file not found: {missing[0]}")
+
+    print("All result files found")
+    started_at = time.perf_counter()
+    results = {exp: NL2QRunResult.model_validate_json(path.read_text()) for exp, path in paths.items()}
+    print()
+    print(f"Loaded {len(results)} results in {time.perf_counter() - started_at:.2f} seconds")
+    print()
+    return results
 
 
-for exp in EXPS:
-    assert os.path.exists(os.path.join("output", "paper", exp, "result.json")), f"Result file not found for {exp}"
-print("All result files found")
-
-t0 = time.time()
-
-EXP_RESULTS: dict[str, NL2QRunResult] = {}
-for exp in EXPS:
-    with open(os.path.join("output", "paper", exp, "result.json"), "r") as f:
-        EXP_RESULTS[exp] = NL2QRunResult.model_validate_json(f.read())
-
-print()
-print(f"Loaded {len(EXP_RESULTS)} results in {time.time() - t0:.2f} seconds")
-print()
-
-
-def calc_average(values: list[float]) -> float:
-    return round(sum(values) / len(values), 4)
-
-
-def print_table(name: str, headers: list[str], rows: list[list[Any]]):
+def print_table(name: str, headers: list[str], rows: list[list[Any]], table_format: str) -> None:
     print(f"### {name}")
-    if TALBE_FMT != "tab":
-        print(tabulate(rows, headers=headers, tablefmt=TALBE_FMT))
+    if table_format != "tab":
+        print(tabulate(rows, headers=headers, tablefmt=table_format))
     else:
         print("\t".join(headers))
         for row in rows:
@@ -123,15 +111,13 @@ def print_table(name: str, headers: list[str], rows: list[list[Any]]):
     print()
 
 
-def num_aps(task: AmbigNL2QTask, finite_only: bool = False) -> int:
-    return len([ap for ap in task.gold_ambiguity_points if not finite_only or ap.type == "finite"])
-
-
-def print_agent_architecture_table(exp_names: list[str]):
+def print_agent_architecture_table(
+    exp_names: Iterable[str], exp_results: dict[str, NL2QRunResult], table_format: str
+) -> None:
     headers = ["Method", "EX", "EX_1AP", "EX_2AP", "EX_3+AP", "User Effort", "Latency", "Cost"]
     rows = []
     for exp_name in exp_names:
-        result = EXP_RESULTS[exp_name]
+        result = exp_results[exp_name]
         rows.append(
             [
                 exp_name,
@@ -144,32 +130,12 @@ def print_agent_architecture_table(exp_names: list[str]):
                 round_cost(result.total_usage.api_cost_usd / len(result.tasks)),
             ]
         )
-    print_table("Agent Architecture Table", headers, rows)
+    print_table("Agent Architecture Table", headers, rows, table_format)
 
 
-def print_agent_architecture_table_finite_ap(exp_names: list[str]):
-    headers = ["Method", "EX", "EX_1AP", "EX_2AP", "EX_3+AP", "User Effort", "Latency", "Cost"]
-    rows = []
-    for exp_name in exp_names:
-        result = EXP_RESULTS[exp_name]
-        ex = result.aggregated_eval_metrics["simple_ex"]["avg"]
-        ex_1ap = calc_average(
-            [task.eval_metrics["simple_ex"] for task in result.tasks if num_aps(task, finite_only=True) == 1]
-        )
-        ex_2ap = calc_average(
-            [task.eval_metrics["simple_ex"] for task in result.tasks if num_aps(task, finite_only=True) == 2]
-        )
-        ex_3plusap = calc_average(
-            [task.eval_metrics["simple_ex"] for task in result.tasks if num_aps(task, finite_only=True) >= 3]
-        )
-        user_effort = result.total_user_simulator_usage.output_tokens / len(result.tasks)
-        latency = result.aggregated_inference_metrics["latency_seconds"]["avg"]
-        cost = result.total_usage.api_cost_usd / len(result.tasks)
-        rows.append([exp_name, ex, ex_1ap, ex_2ap, ex_3plusap, user_effort, latency, cost])
-    print_table("Agent Architecture Table (Finite AP)", headers, rows)
-
-
-def print_fine_grained_table(exp_names: list[str]):
+def print_fine_grained_table(
+    exp_names: Iterable[str], exp_results: dict[str, NL2QRunResult], table_format: str
+) -> None:
     headers = [
         "Method",
         "EX",
@@ -187,9 +153,9 @@ def print_fine_grained_table(exp_names: list[str]):
     ]
     rows = []
     for exp_name in exp_names:
-        result = EXP_RESULTS[exp_name]
-        if f"{exp_name}_gold-ap" in EXP_RESULTS:
-            sql_ex = EXP_RESULTS[f"{exp_name}_gold-ap"].aggregated_eval_metrics["simple_ex"]["avg"]
+        result = exp_results[exp_name]
+        if f"{exp_name}_gold-ap" in exp_results:
+            sql_ex = exp_results[f"{exp_name}_gold-ap"].aggregated_eval_metrics["simple_ex"]["avg"]
         else:
             sql_ex = math.nan
         rows.append(
@@ -209,7 +175,7 @@ def print_fine_grained_table(exp_names: list[str]):
                 sql_ex,
             ]
         )
-    print_table("Fine-grained Table", headers, rows)
+    print_table("Fine-grained Table", headers, rows, table_format)
 
 
 def round_cost(cost: float) -> float:
@@ -221,13 +187,13 @@ def round_cost(cost: float) -> float:
         return round(cost, 2)
 
 
-def print_main_table(exp_names: list[str]):
+def print_main_table(exp_names: Iterable[str], exp_results: dict[str, NL2QRunResult], table_format: str) -> None:
     headers = ["Method", "Cost", "Perfect_R", "Perfect_F1", "SQL_EX", "EX", "Delta_EX"]
     rows = []
     for exp_name in exp_names:
-        result = EXP_RESULTS[exp_name]
-        if f"{exp_name}_gold-ap" in EXP_RESULTS:
-            sql_ex = EXP_RESULTS[f"{exp_name}_gold-ap"].aggregated_eval_metrics["simple_ex"]["avg"]
+        result = exp_results[exp_name]
+        if f"{exp_name}_gold-ap" in exp_results:
+            sql_ex = exp_results[f"{exp_name}_gold-ap"].aggregated_eval_metrics["simple_ex"]["avg"]
         else:
             sql_ex = math.nan
         rows.append(
@@ -241,23 +207,10 @@ def print_main_table(exp_names: list[str]):
                 result.aggregated_eval_metrics["simple_ex"]["avg"] - sql_ex,
             ]
         )
-    print_table("Fine-grained Table", headers, rows)
+    print_table("Fine-grained Table", headers, rows, table_format)
 
 
-# def print_user_effort_table(exp_names: list[str]):
-#     headers = ["Method", "Num Requests", "User Input Tokens", "User Output Tokens", "User Cost"]
-#     rows = []
-#     for exp_name in exp_names:
-#         result = EXP_RESULTS[exp_name]
-#         num_requests = result.total_user_simulator_usage.api_requests / len(result.tasks)
-#         user_input_tokens = result.total_user_simulator_usage.input_tokens / len(result.tasks)
-#         user_output_tokens = result.total_user_simulator_usage.output_tokens / len(result.tasks)
-#         user_cost = result.total_user_simulator_usage.api_cost_usd / len(result.tasks)
-#         rows.append([exp_name, num_requests, user_input_tokens, user_output_tokens, user_cost])
-#     print_table("User Effort Table", headers, rows)
-
-
-ambiguity_types = [
+AMBIGUITY_TYPES = [
     "semantic_column",
     "semantic_table",
     "semantic_value",
@@ -269,23 +222,27 @@ ambiguity_types = [
 ]
 
 
-def print_result_by_ambiguity_type(exp_names: list[str]):
-    headers = ["Method", *ambiguity_types]
+def print_result_by_ambiguity_type(
+    exp_names: Iterable[str], exp_results: dict[str, NL2QRunResult], table_format: str
+) -> None:
+    headers = ["Method", *AMBIGUITY_TYPES]
     rows = []
     for exp_name in exp_names:
-        result = EXP_RESULTS[exp_name]
+        result = exp_results[exp_name]
         row = [exp_name]
-        for ambiguity_type in ambiguity_types:
+        for ambiguity_type in AMBIGUITY_TYPES:
             row.append(result.aggregated_eval_metrics[f"{ambiguity_type}_ambig_point_r"]["avg"])
         rows.append(row)
-    print_table("Result by Ambiguity Type", headers, rows)
+    print_table("Result by Ambiguity Type", headers, rows, table_format)
 
 
-def print_error_distribution(exp_names: list[str]):
+def print_error_distribution(
+    exp_names: Iterable[str], exp_results: dict[str, NL2QRunResult], table_format: str
+) -> None:
     headers = ["Method", "Invalid Output", "Not Executable", "Executable but Match None", "Match One", "Correct"]
     rows = []
     for exp_name in exp_names:
-        result = EXP_RESULTS[exp_name]
+        result = exp_results[exp_name]
         invalid_output = 0
         not_executable = 0
         executable_but_match_none = 0
@@ -312,17 +269,19 @@ def print_error_distribution(exp_names: list[str]):
                 round(correct / len(result.tasks), 4),
             ]
         )
-    print_table("Error Distribution", headers, rows)
+    print_table("Error Distribution", headers, rows, table_format)
 
 
-def print_arcs_ambrosia_table(exp_names: list[str]):
+def print_arcs_ambrosia_table(
+    exp_names: Iterable[str], exp_results: dict[str, NL2QRunResult], table_format: str
+) -> None:
     headers = ["Method", "EX_ARCS", "EX_Ambrosia", "EX_ARCS_with_taxonomy", "EX_Ambrosia_with_taxonomy"]
     rows = []
     for exp_name in exp_names:
-        arcs_result = EXP_RESULTS[exp_name]
-        ambrosia_result = EXP_RESULTS[f"ambrosia_{exp_name}"]
-        arcs_with_taxonomy_result = EXP_RESULTS[f"{exp_name}_taxonomy"]
-        ambrosia_with_taxonomy_result = EXP_RESULTS[f"ambrosia_{exp_name}_taxonomy"]
+        arcs_result = exp_results[exp_name]
+        ambrosia_result = exp_results[f"ambrosia_{exp_name}"]
+        arcs_with_taxonomy_result = exp_results[f"{exp_name}_taxonomy"]
+        ambrosia_with_taxonomy_result = exp_results[f"ambrosia_{exp_name}_taxonomy"]
         rows.append(
             [
                 exp_name,
@@ -332,17 +291,24 @@ def print_arcs_ambrosia_table(exp_names: list[str]):
                 ambrosia_with_taxonomy_result.aggregated_eval_metrics["simple_ex"]["avg"],
             ]
         )
-    print_table("ARCS vs. Ambrosia Table", headers, rows)
+    print_table("ARCS vs. Ambrosia Table", headers, rows, table_format)
 
 
-def main():
+def main() -> None:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--results-dir", type=Path, default=Path("output/paper"))
+    parser.add_argument("--table-format", default="github")
+    args = parser.parse_args()
+
+    exp_results = load_results(args.results_dir)
     all_exps = [
         exp
-        for exp in EXP_RESULTS.keys()
+        for exp in exp_results
         if not exp.endswith("gold-ap") and not exp.startswith("ambrosia_") and not exp.endswith("_taxonomy")
     ]
-    print_main_table(exp for exp in all_exps if EXP_RESULTS[exp].tasks[0].output_type == "ambig-structured")
-    print_fine_grained_table([exp for exp in all_exps if EXP_RESULTS[exp].tasks[0].output_type == "ambig-structured"])
+    structured_exps = [exp for exp in all_exps if exp_results[exp].tasks[0].output_type == "ambig-structured"]
+    print_main_table(structured_exps, exp_results, args.table_format)
+    print_fine_grained_table(structured_exps, exp_results, args.table_format)
     print_agent_architecture_table(
         [
             "gpt-4.1_simple_1patience",
@@ -356,16 +322,24 @@ def main():
             "o4-mini-medium_simple",
             "o4-mini-medium_flat",
             "o4-mini-medium_structured",
-        ]
+        ],
+        exp_results,
+        args.table_format,
     )
-    print_result_by_ambiguity_type([exp for exp in all_exps if EXP_RESULTS[exp].tasks[0].output_type != "ambig-flat"])
-    print_error_distribution(all_exps)
+    print_result_by_ambiguity_type(
+        [exp for exp in all_exps if exp_results[exp].tasks[0].output_type != "ambig-flat"],
+        exp_results,
+        args.table_format,
+    )
+    print_error_distribution(all_exps, exp_results, args.table_format)
     print_arcs_ambrosia_table(
         [
             "gpt-4.1-nano_structured",
             "gpt-4.1_structured",
             "o4-mini-medium_structured",
-        ]
+        ],
+        exp_results,
+        args.table_format,
     )
 
 
