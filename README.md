@@ -1091,8 +1091,11 @@ export SF_PASSWORD="your_snowflake_password"
 export SF_ACCOUNT="RSRSBDK-YDB67606"
 
 # for tracing (optional)
-export OTEL_EXPORTER_OTLP_ENDPOINT="your_opentelemetry_endpoint"
-export LOGFIRE_TOKEN="your_logfire_token"
+export PHOENIX_COLLECTOR_ENDPOINT="your_phoenix_collector_endpoint"
+export PHOENIX_API_KEY="your_phoenix_api_key"
+export LANGFUSE_HOST="your_langfuse_host"
+export LANGFUSE_PUBLIC_KEY="your_langfuse_public_key"
+export LANGFUSE_SECRET_KEY="your_langfuse_secret_key"
 ```
 
 Then, run `direnv allow` to load the environment variables. In the future, the env vars will be loaded automatically when you enter the directory.
