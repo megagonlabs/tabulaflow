@@ -1,7 +1,10 @@
 from typer.testing import CliRunner
+from pytest import MonkeyPatch
 from rich.highlighter import NullHighlighter
 
+import tabulaflow.cli as cli
 from tabulaflow.cli import app
+from tabulaflow.app.main import AppServiceTier
 from tabulaflow.research.cli import console
 
 
@@ -11,6 +14,40 @@ def test_root_cli_exposes_app_and_research_commands() -> None:
     assert result.exit_code == 0
     assert "chat" in result.stdout
     assert "benchmark" in result.stdout
+
+
+def test_root_cli_starts_chat_by_default(monkeypatch: MonkeyPatch) -> None:
+    received: dict[str, object] = {}
+
+    def fake_chat(**kwargs: object) -> None:
+        received.update(kwargs)
+
+    monkeypatch.setattr(cli, "chat", fake_chat)
+
+    result = CliRunner().invoke(
+        app,
+        [
+            "--llm-preset",
+            "off",
+            "--service-tier",
+            "priority",
+            "--output-pane-port",
+            "61211",
+            "--output-pane-host",
+            "0.0.0.0",
+            "--output-pane-public-url",
+            "https://example.test/output",
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert received == {
+        "llm_preset": "off",
+        "service_tier": AppServiceTier.PRIORITY,
+        "output_pane_port": 61211,
+        "output_pane_host": "0.0.0.0",
+        "output_pane_public_url": "https://example.test/output",
+    }
 
 
 def test_benchmark_cli_only_uses_explicit_colors() -> None:
