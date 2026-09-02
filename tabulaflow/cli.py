@@ -9,6 +9,7 @@ app = typer.Typer(
     name="tabulaflow",
     help="Minimalist Text-to-Query toolkit.",
     no_args_is_help=False,
+    add_completion=False,
     rich_markup_mode="rich",
 )
 app.add_typer(benchmark_app, name="benchmark")

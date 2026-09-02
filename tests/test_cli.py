@@ -13,6 +13,8 @@ def test_root_cli_exposes_chat_options_and_research_commands() -> None:
 
     assert result.exit_code == 0
     assert "--service-tier" in result.stdout
+    assert "--install-completion" not in result.stdout
+    assert "--show-completion" not in result.stdout
     assert "benchmark" in result.stdout
 
 
