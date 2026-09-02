@@ -71,12 +71,8 @@ class CompactionConfig:
     keep_recent_turns: int = 10
 
     def __post_init__(self) -> None:
-        if self.trigger_tokens < 1:
-            raise ValueError("trigger_tokens must be positive")
-        if self.target_tokens < 1:
-            raise ValueError("target_tokens must be positive")
-        if self.target_tokens >= self.trigger_tokens:
-            raise ValueError("target_tokens must be less than trigger_tokens")
+        if not 0 < self.target_tokens < self.trigger_tokens:
+            raise ValueError("expected 0 < target_tokens < trigger_tokens")
         if self.keep_recent_turns < 0:
             raise ValueError("keep_recent_turns must be non-negative")
 
