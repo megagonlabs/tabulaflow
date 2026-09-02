@@ -107,15 +107,15 @@ def test_reset_conversation_preserves_session_environment(tmp_path: Path) -> Non
         tmp_path=tmp_path,
     )
     agent = _activate_selected(session)
-    initial_history = list(agent._message_history)
+    initial_history = list(agent._context_messages)
     output_store = agent.output_store
     agent.note_event("old conversation detail")
 
     session.reset_conversation()
 
     assert session.active_chat_session is agent
-    assert len(agent._message_history) == len(initial_history)
-    reset_part: Any = agent._message_history[0].parts[0]
+    assert len(agent._context_messages) == len(initial_history)
+    reset_part: Any = agent._context_messages[0].parts[0]
     initial_part: Any = initial_history[0].parts[0]
     assert reset_part.content == initial_part.content
     assert agent.output_store is output_store
@@ -248,7 +248,7 @@ def test_switching_preset_preserves_live_chat_session_state(tmp_path: Path, monk
     )
     agent = _activate_selected(session)
     agent.note_event("remember this")
-    message_history = agent._message_history
+    message_history = agent._context_messages
     output_store = agent.output_store
 
     selected_preset = _preset(
@@ -262,5 +262,5 @@ def test_switching_preset_preserves_live_chat_session_state(tmp_path: Path, monk
 
     assert session.active_chat_session is agent
     assert agent.resolve_api_keys()[0] == "sk-test123456789ab4x"
-    assert agent._message_history is message_history
+    assert agent._context_messages is message_history
     assert agent.output_store is output_store

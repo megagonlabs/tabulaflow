@@ -78,7 +78,7 @@ def test_activate_llm_profile_preserves_conversation_state(monkeypatch: pytest.M
         subagent_reasoning="low",
     )
     agent.note_event("remember this")
-    message_history = agent._message_history
+    message_history = agent._context_messages
     output_store = agent.output_store
     tools = agent._tools
     runtime_agent = agent._pydantic_ai_agent
@@ -91,7 +91,7 @@ def test_activate_llm_profile_preserves_conversation_state(monkeypatch: pytest.M
         enable_apply_patch=agent.enable_apply_patch,
     )
 
-    assert agent._message_history is message_history
+    assert agent._context_messages is message_history
     assert agent.output_store is output_store
     assert agent._tools is tools
     assert agent._pydantic_ai_agent is not runtime_agent
@@ -296,12 +296,12 @@ def test_apply_patch_capability_controls_tool_schema(tmp_path: Path) -> None:
 
 
 def _last_note(agent: ChatSession) -> str:
-    return cast(str, cast(Any, agent._message_history[-1]).parts[0].content)
+    return cast(str, cast(Any, agent._context_messages[-1]).parts[0].content)
 
 
 def test_startup_note_states_model() -> None:
     agent = ChatSession(registry=DBRegistry(), model="test", reasoning="medium")
-    assert len(agent._message_history) == 1
+    assert len(agent._context_messages) == 1
     assert _last_note(agent) == "[system: the model powering this conversation is Test.]"
 
 
@@ -335,7 +335,7 @@ def test_activate_llm_profile_notes_model_change(tmp_path: Path, monkeypatch: py
     assert _last_note(agent) == "[system: the model powering this conversation changed from GPT 5 to Test.]"
 
     # Effort- or subagent-only changes don't alter the main agent's context: no note.
-    history_len = len(agent._message_history)
+    history_len = len(agent._context_messages)
     agent.activate_llm_profile(
         model="test",
         reasoning="high",
@@ -343,7 +343,7 @@ def test_activate_llm_profile_notes_model_change(tmp_path: Path, monkeypatch: py
         subagent_reasoning="high",
         enable_apply_patch=agent.enable_apply_patch,
     )
-    assert len(agent._message_history) == history_len
+    assert len(agent._context_messages) == history_len
 
 
 def test_model_change_note_without_file_tools(monkeypatch: pytest.MonkeyPatch) -> None:

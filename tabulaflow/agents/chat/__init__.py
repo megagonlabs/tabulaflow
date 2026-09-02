@@ -9,6 +9,7 @@ from importlib import import_module
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
+    from tabulaflow.agents.chat.compaction import CompactionConfig
     from tabulaflow.agents.chat.events import (
         AnswerDelta,
         ChatEvent,
@@ -29,6 +30,7 @@ _LAZY_EXPORTS = {
     "ChatEvent": ("tabulaflow.agents.chat.events", "ChatEvent"),
     "ChatResult": ("tabulaflow.agents.chat.events", "ChatResult"),
     "ChatSession": ("tabulaflow.agents.chat.session", "ChatSession"),
+    "CompactionConfig": ("tabulaflow.agents.chat.compaction", "CompactionConfig"),
     "TurnFinished": ("tabulaflow.agents.chat.events", "TurnFinished"),
     "NarrationDelta": ("tabulaflow.agents.chat.events", "NarrationDelta"),
     "ThinkingDelta": ("tabulaflow.agents.chat.events", "ThinkingDelta"),
@@ -44,6 +46,7 @@ __all__ = [
     "ChatEvent",
     "ChatResult",
     "ChatSession",
+    "CompactionConfig",
     "TurnFinished",
     "NarrationDelta",
     "ThinkingDelta",

@@ -64,11 +64,11 @@ def test_chat_session_notes_pre_registered_sources(monkeypatch: pytest.MonkeyPat
 
     agent = ChatSession(registry=registry, model="test:model", reasoning="low")
 
-    assert len(agent._message_history) == 2
-    assert str(cast(Any, agent._message_history[0].parts[0]).content) == (
+    assert len(agent._context_messages) == 2
+    assert str(cast(Any, agent._context_messages[0].parts[0]).content) == (
         "[system: the model powering this conversation is Model.]"
     )
-    message = agent._message_history[1]
+    message = agent._context_messages[1]
     event = str(cast(Any, message.parts[0]).content)
     assert event.startswith("[system: the following data sources are already registered:")
     assert "`sales` (sqlite, 2 tables)" in event

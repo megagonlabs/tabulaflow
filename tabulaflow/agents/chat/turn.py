@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING, Any
 
 from pydantic_ai.messages import ModelMessage, ToolReturnPart
 
+from tabulaflow.agents.chat.compaction import HOST_EVENT_METADATA_KEY
 from tabulaflow.agents.chat.events import (
     AnswerDelta,
     ChatEvent,
@@ -153,7 +154,12 @@ def _patch_incomplete_messages(
                 ]
             )
         )
-    out.append(ModelRequest(parts=[UserPromptPart(content=f"[system: the previous run {cause}.]")]))
+    out.append(
+        ModelRequest(
+            parts=[UserPromptPart(content=f"[system: the previous run {cause}.]")],
+            metadata={HOST_EVENT_METADATA_KEY: True},
+        )
+    )
     return out
 
 

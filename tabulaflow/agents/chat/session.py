@@ -13,6 +13,7 @@ import sys
 from typing import TYPE_CHECKING, Any, Final
 
 from pydantic_ai.settings import ModelSettings
+from pydantic_ai.usage import RunUsage
 
 from tabulaflow.agents.message_store import (
     MESSAGE_THRESHOLD_CHARS,
@@ -34,6 +35,14 @@ from tabulaflow.agents.chat.events import (
     ToolProgress,
     UsageUpdated,
 )
+from tabulaflow.agents.chat.compaction import (
+    CompactionConfig,
+    HOST_EVENT_METADATA_KEY,
+    checkpoint_prompt,
+    compact_history,
+    effective_trigger_tokens,
+    estimate_context_tokens,
+)
 from tabulaflow.agents.chat.tools import _ChatTools
 from tabulaflow.agents.chat.turn import (
     _TextStreamRouter,
@@ -41,6 +50,7 @@ from tabulaflow.agents.chat.turn import (
     _declared_bundle,
     _emit_stream_event,
     _patch_incomplete_messages,
+    _strip_answer_prefix,
 )
 
 if TYPE_CHECKING:
@@ -95,6 +105,7 @@ class ChatSession:
         project_dir: Host project directory; enables filesystem tools.
         scratch_dir: Transient directory exposed to shell workflows.
         data_dir: Directory where connected file sources are materialized.
+        compaction: Automatic context-compaction policy, or ``None`` to disable it.
     """
 
     def __init__(
@@ -113,6 +124,7 @@ class ChatSession:
         project_dir: Path | None = None,
         scratch_dir: Path | None = None,
         data_dir: Path | None = None,
+        compaction: CompactionConfig | None = CompactionConfig(),
     ) -> None:
         self._registry = registry
         self._model = model
@@ -127,8 +139,10 @@ class ChatSession:
         self._project_dir = project_dir
         self._scratch_dir = scratch_dir
         self._data_dir = data_dir
+        self._compaction = compaction
         self._last_usage: Usage | None = None
-        self._message_history: list[ModelMessage] = []
+        self._context_messages: list[ModelMessage] = []
+        self._transcript_messages: list[ModelMessage] = []
         self._system_prompt = _SYSTEM_PROMPT
         self._pydantic_ai_agent: Agent[object, str] | None = None
         self._running = False
@@ -516,7 +530,12 @@ class ChatSession:
         knows the event *just* happened)."""
         from pydantic_ai.messages import ModelRequest, UserPromptPart
 
-        self._message_history.append(ModelRequest(parts=[UserPromptPart(content=f"[system: {description}]")]))
+        message = ModelRequest(
+            parts=[UserPromptPart(content=f"[system: {description}]")],
+            metadata={HOST_EVENT_METADATA_KEY: True},
+        )
+        self._context_messages.append(message)
+        self._transcript_messages.append(message)
 
     def _note_profile_change(
         self,
@@ -563,7 +582,8 @@ class ChatSession:
         """Start a fresh conversation while preserving the session environment."""
         if self._running:
             raise RuntimeError("cannot reset conversation while a turn is running")
-        self._message_history.clear()
+        self._context_messages.clear()
+        self._transcript_messages.clear()
         self._last_usage = None
         self._seed_conversation_context()
 
@@ -683,16 +703,19 @@ class ChatSession:
         completed_normally = False
         completed_results: dict[str, ToolReturnPart] = {}
         text_router = _TextStreamRouter()
+        turn_usage = RunUsage()
 
         try:
             try:
+                await self._compact_before_turn(question, turn_usage)
                 async with self._pydantic_ai_agent.iter(
                     question,
-                    message_history=self._message_history or None,
+                    message_history=self._context_messages or None,
                     # Merged over the agent's construction-time settings (per-key,
                     # run level wins). Passed here rather than baked into the agent
                     # so effort-only profile changes never trigger a rebuild.
                     model_settings=self._thinking_settings(),
+                    usage=turn_usage,
                 ) as agent_run:
                     try:
                         async for node in agent_run:
@@ -714,16 +737,21 @@ class ChatSession:
                     finally:
                         final_usage = Usage.from_pydantic_ai_usage(agent_run.usage, self.model)
                         partial_messages = list(agent_run.all_messages())
+                        new_messages = list(agent_run.new_messages())
                         # Any abnormal exit — user interrupt or an error (LLM API
                         # failure, a tool raising) — can leave the trailing
                         # ModelResponse with unanswered ToolCallParts, which every
                         # provider rejects on the next turn. Patch them either way;
                         # only a clean finish keeps the history verbatim.
                         if completed_normally:
-                            self._message_history = partial_messages
+                            self._context_messages = partial_messages
+                            self._transcript_messages.extend(new_messages)
                         else:
-                            self._message_history = _patch_incomplete_messages(
+                            self._context_messages = _patch_incomplete_messages(
                                 partial_messages, completed_results, interrupted=interrupted
+                            )
+                            self._transcript_messages.extend(
+                                _patch_incomplete_messages(new_messages, completed_results, interrupted=interrupted)
                             )
                         self._last_usage = final_usage
                         if agent_run.result is not None:
@@ -741,15 +769,56 @@ class ChatSession:
         finally:
             queue.put_nowait(None)  # sentinel: stream exhausted (success, error, or cancel)
 
+    async def _compact_before_turn(self, question: str, usage: RunUsage) -> None:
+        """Checkpoint completed history before a new prompt would exceed its budget."""
+        config = self._compaction
+        if config is None or not self._context_messages:
+            return
+        trigger = effective_trigger_tokens(config, self.model)
+        if estimate_context_tokens(self._context_messages, question) <= trigger:
+            return
+
+        assert self._pydantic_ai_agent is not None
+        checkpoint_request = checkpoint_prompt(config)
+        try:
+            result = await self._pydantic_ai_agent.run(
+                checkpoint_request,
+                message_history=self._context_messages,
+                model_settings=self._thinking_settings(),
+                usage=usage,
+            )
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            logger.warning("Conversation checkpoint failed; continuing with original history", exc_info=True)
+            return
+
+        checkpoint_text = _strip_answer_prefix(result.output)
+        response = next(
+            (message for message in reversed(result.new_messages()) if message.kind == "response"),
+            None,
+        )
+        if not checkpoint_text or response is None or response.finish_reason == "length":
+            logger.warning("Conversation checkpoint was empty or truncated; keeping original history")
+            return
+
+        self._transcript_messages.extend(result.new_messages())
+        self._context_messages = compact_history(
+            self._context_messages,
+            checkpoint_request=checkpoint_request,
+            checkpoint_text=checkpoint_text,
+            config=config,
+        )
+
     def _save_trajectory_for_debug(self) -> None:
         """Persist the latest conversation trajectory to disk, when a
         ``trajectory_log_dir`` was provided (otherwise a no-op)."""
-        if self._trajectory_log_dir is None or not self._message_history:
+        if self._trajectory_log_dir is None or not self._transcript_messages:
             return
         try:
             from tabulaflow.agents.trace import Trajectory
 
-            trajectory = Trajectory.from_pydantic_ai_messages(self._message_history, id="TRJY-CHAT")
+            trajectory = Trajectory.from_pydantic_ai_messages(self._transcript_messages, id="TRJY-CHAT")
             self._trajectory_log_dir.mkdir(parents=True, exist_ok=True)
             path = self._trajectory_log_dir / "trajectory.md"
             path.write_text(trajectory.to_markdown(), encoding="utf-8")
