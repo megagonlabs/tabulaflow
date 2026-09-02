@@ -734,7 +734,7 @@ Sep 1
   - [ ] Do not auto-scroll when browsing old turns
   - [ ] Onboarding - browser install
 
-
+- [ ] Allowed roots policy
 - [ ] Shell messed up after ssh disconnect
 - [ ] Check if uv tool install install browser
 
