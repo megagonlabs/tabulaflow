@@ -718,7 +718,8 @@ Aug 31
 
 Sep 1
 - [x] cli
-- [x] Context percentage and Context compaction
+- [x] context compaction
+- [x] bash command display
 - Multimodal
   - [ ] Pasting images
   - [ ] Media in tables
