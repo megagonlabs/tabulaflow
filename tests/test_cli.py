@@ -15,6 +15,7 @@ def test_root_cli_exposes_chat_options_and_research_commands() -> None:
     result = CliRunner().invoke(app, ["--help"])
 
     assert result.exit_code == 0
+    assert "A data agent for databases, files, and the web." in result.stdout
     assert "--service-tier" in result.stdout
     assert "--install-completion" not in result.stdout
     assert "--show-completion" not in result.stdout

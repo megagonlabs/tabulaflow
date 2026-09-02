@@ -27,7 +27,7 @@ _configure_help_theme()
 
 app = typer.Typer(
     name="tabulaflow",
-    help="Minimalist Text-to-Query toolkit.",
+    help="A data agent for databases, files, and the web.",
     no_args_is_help=False,
     add_completion=False,
     rich_markup_mode="rich",
