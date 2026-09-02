@@ -45,6 +45,7 @@ if TYPE_CHECKING:
 _NOISE_ARG_KEYS = frozenset({"db_alias", "refresh", "tab", "tool_call_id"})
 _DIFFSTAT_TOKEN_RE = re.compile(r"(?<=\s)([+-]\d+)")
 _UNLISTED_TOOL = "show_artifacts"
+_BASH_FIRST_LINE_LIMIT = 180
 
 
 def _fmt_arg_value(value: object, limit: int = 40) -> str:
@@ -242,6 +243,17 @@ def _summarize_apply_patch(args: Mapping[str, object]) -> str:
     return "Edit " + ", ".join(parts)
 
 
+def _summarize_bash(args: Mapping[str, object]) -> str:
+    lines = [" ".join(line.split()) for line in str(args.get("command", "")).splitlines() if line.strip()]
+    if not lines:
+        return "Run"
+
+    first_line = _truncate_middle(lines[0], _BASH_FIRST_LINE_LIMIT)
+    if len(lines) == 1:
+        return f"Run {first_line}"
+    return f"Run {first_line} … (+{len(lines) - 1} lines)"
+
+
 def summarize_tool_args(name: str, args: Mapping[str, object]) -> str:
     """Render a tool call as a compact, verb-led one-line label for the TUI.
 
@@ -352,7 +364,7 @@ def summarize_tool_args(name: str, args: Mapping[str, object]) -> str:
         label = _fmt_path_value(source, 60) if _looks_like_local_path(source) else _fmt_arg_value(source, 60)
         return f"Connect {label}".rstrip()
     if name == "execute_bash":
-        return f"Run {_fmt_arg_value(args.get('command', ''), 60)}".rstrip()
+        return _summarize_bash(args)
     if name == "file_editor":
         return _summarize_file_editor(args)
     if name == "apply_patch":
