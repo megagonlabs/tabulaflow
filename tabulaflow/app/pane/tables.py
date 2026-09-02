@@ -9,31 +9,14 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from tabulaflow.app.media import sniff_binary, try_decode_base64
 from tabulaflow.app.pane.contract import ColumnDesc, TableCardData, TableData
+from tabulaflow.core.media import DetectedMedia, detect_media, extract_media_bytes
 
 if TYPE_CHECKING:
     import pandas as pd
 
 
-def _extract_blob(value: object) -> bytes | None:
-    """Coerce a cell value into bytes if possible.
-
-    Handles raw bytes, HuggingFace Image/Audio structs, and base64 strings.
-    Returns ``None`` if no recognizable blob is present.
-    """
-    if isinstance(value, (bytes, bytearray, memoryview)):
-        return bytes(value)
-    if isinstance(value, dict):
-        inner = value.get("bytes")
-        if isinstance(inner, (bytes, bytearray, memoryview)):
-            return bytes(inner)
-    if isinstance(value, str):
-        return try_decode_base64(value)
-    return None
-
-
-def _sniff_column(series: "pd.Series", *, sample_n: int = 5, threshold: float = 0.6) -> tuple[str, str] | None:
+def _sniff_column(series: "pd.Series", *, sample_n: int = 5, threshold: float = 0.6) -> DetectedMedia | None:
     """Vote on a column's MIME type from its first ``sample_n`` non-null values.
 
     Returns the winning ``(suffix, mime)`` if at least ``threshold`` of the
@@ -42,12 +25,12 @@ def _sniff_column(series: "pd.Series", *, sample_n: int = 5, threshold: float = 
     sample = series.dropna().head(sample_n)
     if sample.empty:
         return None
-    votes: dict[tuple[str, str], int] = {}
+    votes: dict[DetectedMedia, int] = {}
     for val in sample:
-        blob = _extract_blob(val)
+        blob = extract_media_bytes(val, decode_base64=True)
         if blob is None:
             continue
-        sniffed = sniff_binary(blob)
+        sniffed = detect_media(blob)
         if sniffed is not None:
             votes[sniffed] = votes.get(sniffed, 0) + 1
     if not votes:
@@ -161,7 +144,7 @@ def _build_table_data(
     truncated_rows = max(0, len(df) - max_rows)
     view = df.head(max_rows)
 
-    col_types: dict[str, tuple[str, str]] = {}
+    col_types: dict[str, DetectedMedia] = {}
     for col in view.columns:
         sniffed = _sniff_column(view[col])
         if sniffed is not None:
@@ -221,8 +204,9 @@ def _build_table_data(
             col_name = str(view.columns[col_idx])
             val = view.iloc[row_idx, col_idx]
             if mode == "media":
-                blob = _extract_blob(val)
-                ext, mime = col_types[col_name]
+                blob = extract_media_bytes(val, decode_base64=True)
+                detected = col_types[col_name]
+                ext, mime = detected.suffix, detected.media_type
                 if blob is None:
                     row_data[field] = None
                     continue

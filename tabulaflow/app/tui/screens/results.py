@@ -21,6 +21,7 @@ from tabulaflow.app.tui.theme import (
     KEY_HINT,
     configure_code_text_area,
 )
+from tabulaflow.core.media import detect_media, extract_media_bytes
 
 
 if TYPE_CHECKING:
@@ -619,27 +620,11 @@ class CellBrowserScreen(Screen[None]):
         except (TypeError, ValueError):
             pass
 
-        if isinstance(value, (bytes, bytearray, memoryview)):
-            from tabulaflow.app.media import sniff_binary
-
-            raw = bytes(value)
-            sniffed = sniff_binary(raw)
-            label = sniffed[1] if sniffed else "binary"
+        if (raw := extract_media_bytes(value)) is not None:
+            detected = detect_media(raw)
+            label = detected.media_type if detected else "binary"
             preview = raw[:32].hex(" ")
             return f"<{label}: {len(raw):,} bytes>\n{preview} ...", None
-
-        # HuggingFace Image/Audio struct: surface the blob preview rather
-        # than the JSON tree of ``{"bytes": ..., "path": ...}``.
-        if isinstance(value, dict):
-            inner = value.get("bytes")
-            if isinstance(inner, (bytes, bytearray, memoryview)):
-                from tabulaflow.app.media import sniff_binary
-
-                raw = bytes(inner)
-                sniffed = sniff_binary(raw)
-                label = sniffed[1] if sniffed else "binary"
-                preview = raw[:32].hex(" ")
-                return f"<{label}: {len(raw):,} bytes>\n{preview} ...", None
 
         json_str = CellBrowserScreen._try_as_json(value)
         if json_str is not None:

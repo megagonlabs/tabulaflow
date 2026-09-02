@@ -4,6 +4,7 @@ from importlib import import_module
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
+    from tabulaflow.core.media import DetectedMedia
     from tabulaflow.core.registry import ClassRegistry
     from tabulaflow.core.results import ErrorInfo, ExecResult, GraphResult, GraphResultEdge, GraphResultNode
     from tabulaflow.core.schema import (
@@ -25,6 +26,7 @@ if TYPE_CHECKING:
 _LAZY_EXPORTS = {
     "ClassRegistry": ("tabulaflow.core.registry", "ClassRegistry"),
     "ColumnRef": ("tabulaflow.core.schema", "ColumnRef"),
+    "DetectedMedia": ("tabulaflow.core.media", "DetectedMedia"),
     "ErrorInfo": ("tabulaflow.core.results", "ErrorInfo"),
     "ExecResult": ("tabulaflow.core.results", "ExecResult"),
     "ForeignKeySchema": ("tabulaflow.core.schema", "ForeignKeySchema"),
@@ -47,6 +49,7 @@ _LAZY_EXPORTS = {
 __all__ = [
     "ClassRegistry",
     "ColumnRef",
+    "DetectedMedia",
     "ErrorInfo",
     "ExecResult",
     "ForeignKeySchema",

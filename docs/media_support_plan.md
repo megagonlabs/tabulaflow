@@ -2,9 +2,10 @@
 
 ## Status
 
-Proposed. This plan covers model-visible media supplied by the user or discovered
-through TabulaFlow's existing filesystem, browser, database, and bulk-processing
-workflows. Existing media rendering in the browser output pane remains intact.
+Phase 1 is implemented; Phases 2–7 are proposed. This plan covers model-visible
+media supplied by the user or discovered through TabulaFlow's existing
+filesystem, browser, database, and bulk-processing workflows. Existing media
+rendering in the browser output pane remains intact.
 
 ## Goals
 
@@ -78,35 +79,35 @@ user paste / ChatSession API / filesystem / browser / database cell
 Layer ownership:
 
 - `tabulaflow/core/media.py`: pure, provider-independent helpers for signature
-  detection, base64/data-URI decoding, media descriptors, and extraction of raw
-  bytes from common values such as Hugging Face media structs. It must not depend
-  on pandas, Pydantic AI, or the app.
-- `tabulaflow/agents/media.py`: safe local loading, request limits, optional
-  format conversion, and conversion into Pydantic AI media types.
+  detection and extraction of raw bytes from base64/data URIs and common values
+  such as Hugging Face media structs. It must not depend on pandas, Pydantic AI,
+  or the app.
+- `tabulaflow/agents/media.py`: request limits, optional format conversion, and
+  conversion into Pydantic AI media types.
 - `tabulaflow/agents/chat/input.py`: the public text-plus-media chat-input
   contract.
 - `tabulaflow/app`: clipboard integration, `[Image #N]` presentation, and
   existing output rendering.
 
-The generic logic currently in `tabulaflow/app/media.py` and
-`tabulaflow/app/pane/tables.py` should move down rather than be duplicated. The
-app should consume the shared detector while retaining browser-specific payload
-and asset-spill behavior.
+The generic logic previously in `tabulaflow/app/media.py` and
+`tabulaflow/app/pane/tables.py` has moved down rather than being duplicated. The
+app consumes the shared detector while retaining browser-specific payload and
+asset-spill behavior.
 
 ## Media normalization rules
 
 Resolve a value in this order:
 
-1. Trusted explicit MIME metadata, when present.
-2. Actual byte signature, when bytes are available.
+1. Actual byte signature, when bytes are available.
+2. Trusted explicit MIME metadata, when present.
 3. A structured dataset declaration, such as a Hugging Face Image/Audio value.
 4. A filename or URL extension as a fallback.
 5. Generic binary when the type remains unknown; do not guess.
 
-When explicit metadata and the byte signature disagree, reject the value or use
-the verified signature with a visible warning. Plain strings must not be treated
-as base64, paths, or URLs without a strong signal: accept data URIs, explicitly
-selected media columns, and values whose role is supplied by the caller.
+When explicit metadata and the byte signature disagree, the verified signature
+wins. Plain strings must not be treated as base64, paths, or URLs without a
+strong signal: accept data URIs, explicitly selected media columns, and values
+whose role is supplied by the caller.
 
 Pydantic AI already handles provider serialization, supported URL download
 paths, SSRF protection for its own downloads, and a 50 MiB URL ceiling. It does
@@ -119,13 +120,12 @@ manage TabulaFlow's histories and trajectories.
 Create the shared core and agents media modules.
 
 - Move and extend the existing tested media-signature and base64 helpers.
-- Define a small immutable descriptor containing media kind, MIME type,
-  identifier, optional filename, and byte size.
+- Represent detected formats with a small immutable MIME type and suffix value;
+  use Pydantic AI's own content classes rather than duplicating them.
 - Normalize raw bytes, `bytearray`, `memoryview`, Hugging Face
-  `{"bytes": ..., "path": ...}` values, explicit data URIs, and trusted URLs.
-- Add central limits for per-item bytes, item count, and aggregate request bytes.
-- Enforce the existing project/scratch/data root policy before reading a local
-  file.
+  `{"bytes": ..., "path": ...}` values, and explicit data URIs.
+- Add a central per-item byte limit. Item-count and aggregate request limits are
+  part of the multimodal chat contract in Phase 2.
 - Use Pydantic AI types as the final model-facing representation.
 - Use Pillow for image validation and only the conversions concretely needed by
   supported models. Avoid a native `libmagic` dependency; consider a pure-Python

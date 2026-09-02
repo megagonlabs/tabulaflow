@@ -1,4 +1,4 @@
-"""Tests for media helpers and browser-pane table payloads."""
+"""Tests for browser-pane table payloads."""
 
 from __future__ import annotations
 
@@ -7,29 +7,12 @@ from pathlib import Path
 from typing import Any, cast
 
 import pandas as pd
-import pytest
 
-from tabulaflow.app.media import sniff_binary, try_decode_base64
 from tabulaflow.app.pane.contract import TableCardData
 from tabulaflow.app.pane.tables import build_table_data
 
 
 PNG_MAGIC = b"\x89PNG\r\n\x1a\n" + b"\x00" * 32
-JPEG_MAGIC = b"\xff\xd8\xff\xe0" + b"\x00" * 16
-GIF_MAGIC = b"GIF89a" + b"\x00" * 16
-WEBP_MAGIC = b"RIFF\x00\x00\x00\x00WEBP" + b"\x00" * 8
-WAV_MAGIC = b"RIFF\x00\x00\x00\x00WAVE" + b"\x00" * 8
-BMP_MAGIC = b"BM" + b"\x00" * 30
-TIFF_LE = b"II*\x00" + b"\x00" * 28
-TIFF_BE = b"MM\x00*" + b"\x00" * 28
-PDF_MAGIC = b"%PDF-1.4\n" + b"\x00" * 16
-MP3_ID3 = b"ID3\x03\x00" + b"\x00" * 16
-MP3_FRAME = b"\xff\xfb\x90\x00" + b"\x00" * 16
-OGG_MAGIC = b"OggS" + b"\x00" * 16
-FLAC_MAGIC = b"fLaC" + b"\x00" * 16
-MP4_MAGIC = b"\x00\x00\x00 ftypisom" + b"\x00" * 16
-WEBM_MAGIC = b"\x1a\x45\xdf\xa3" + b"\x00" * 16
-SVG_BYTES = b"<svg xmlns='http://www.w3.org/2000/svg'></svg>"
 
 
 def _payload_rows(payload: TableCardData) -> list[dict[str, Any]]:
@@ -39,63 +22,6 @@ def _payload_rows(payload: TableCardData) -> list[dict[str, Any]]:
 
 def _payload_table(payload: TableCardData) -> dict[str, Any]:
     return cast(dict[str, Any], payload["table"])
-
-
-class TestSniffBinary:
-    @pytest.mark.parametrize(
-        "raw,expected_ext,expected_mime",
-        [
-            (PNG_MAGIC, ".png", "image/png"),
-            (JPEG_MAGIC, ".jpg", "image/jpeg"),
-            (GIF_MAGIC, ".gif", "image/gif"),
-            (WEBP_MAGIC, ".webp", "image/webp"),
-            (WAV_MAGIC, ".wav", "audio/wav"),
-            (BMP_MAGIC, ".bmp", "image/bmp"),
-            (TIFF_LE, ".tif", "image/tiff"),
-            (TIFF_BE, ".tif", "image/tiff"),
-            (PDF_MAGIC, ".pdf", "application/pdf"),
-            (MP3_ID3, ".mp3", "audio/mpeg"),
-            (MP3_FRAME, ".mp3", "audio/mpeg"),
-            (OGG_MAGIC, ".ogg", "audio/ogg"),
-            (FLAC_MAGIC, ".flac", "audio/flac"),
-            (MP4_MAGIC, ".mp4", "video/mp4"),
-            (WEBM_MAGIC, ".webm", "video/webm"),
-            (SVG_BYTES, ".svg", "image/svg+xml"),
-        ],
-    )
-    def test_known_magic(self, raw: bytes, expected_ext: str, expected_mime: str) -> None:
-        assert sniff_binary(raw) == (expected_ext, expected_mime)
-
-    def test_unknown_returns_none(self) -> None:
-        assert sniff_binary(b"\x00\x01\x02\x03\x04\x05") is None
-
-    def test_too_short(self) -> None:
-        assert sniff_binary(b"\x89") is None
-
-
-class TestTryDecodeBase64:
-    def test_plain_base64(self) -> None:
-        png_b64 = base64.b64encode(PNG_MAGIC).decode("ascii")
-        # Pad to be long enough to clear the min-length gate.
-        padded = png_b64 + "A" * max(0, 64 - len(png_b64))
-        # Use exact base64 of a longer payload to avoid garbage padding.
-        payload = base64.b64encode(PNG_MAGIC + b"\x00" * 64).decode("ascii")
-        assert try_decode_base64(payload) is not None
-        # And the short string path returns None.
-        del padded
-
-    def test_data_uri(self) -> None:
-        png_b64 = base64.b64encode(PNG_MAGIC + b"\x00" * 64).decode("ascii")
-        data_uri = f"data:image/png;base64,{png_b64}"
-        decoded = try_decode_base64(data_uri)
-        assert decoded is not None
-        assert decoded.startswith(b"\x89PNG\r\n\x1a\n")
-
-    def test_short_string_rejected(self) -> None:
-        assert try_decode_base64("YWJj") is None  # "abc"
-
-    def test_garbage_rejected(self) -> None:
-        assert try_decode_base64("not base64 at all !!! " * 5) is None
 
 
 class TestBuildTableData:
