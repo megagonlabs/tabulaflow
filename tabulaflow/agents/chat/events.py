@@ -111,6 +111,18 @@ class UsageUpdated(_ChatEvent):
     usage: Usage
 
 
+class CompactionStarted(_ChatEvent):
+    """The session started compacting context before the pending user turn."""
+
+    kind: Literal["compaction_started"] = "compaction_started"
+
+
+class CompactionFinished(_ChatEvent):
+    """Context compaction ended and normal processing is resuming."""
+
+    kind: Literal["compaction_finished"] = "compaction_finished"
+
+
 # ---------------------------------------------------------------------------
 # Terminal event (ends the stream on normal completion)
 # ---------------------------------------------------------------------------
@@ -141,6 +153,8 @@ ChatEvent: TypeAlias = Annotated[
         ToolFinished,
         ToolProgress,
         UsageUpdated,
+        CompactionStarted,
+        CompactionFinished,
         TurnFinished,
     ],
     Field(discriminator="kind"),

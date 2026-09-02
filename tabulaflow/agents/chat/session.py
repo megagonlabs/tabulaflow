@@ -31,6 +31,8 @@ from tabulaflow.agents.llm import ReasoningLevel, ServiceTier, make_agent, make_
 from tabulaflow.agents.chat.events import (
     ChatEvent,
     ChatResult,
+    CompactionFinished,
+    CompactionStarted,
     TurnFinished,
     ToolProgress,
     UsageUpdated,
@@ -780,35 +782,42 @@ class ChatSession:
 
         assert self._pydantic_ai_agent is not None
         checkpoint_request = checkpoint_prompt(config)
+        emit = self._active_emit
+        if emit is not None:
+            emit(CompactionStarted())
         try:
-            result = await self._pydantic_ai_agent.run(
-                checkpoint_request,
-                message_history=self._context_messages,
-                model_settings=self._thinking_settings(),
-                usage=usage,
+            try:
+                result = await self._pydantic_ai_agent.run(
+                    checkpoint_request,
+                    message_history=self._context_messages,
+                    model_settings=self._thinking_settings(),
+                    usage=usage,
+                )
+            except asyncio.CancelledError:
+                raise
+            except Exception:
+                logger.warning("Conversation checkpoint failed; continuing with original history", exc_info=True)
+                return
+
+            checkpoint_text = _strip_answer_prefix(result.output)
+            response = next(
+                (message for message in reversed(result.new_messages()) if message.kind == "response"),
+                None,
             )
-        except asyncio.CancelledError:
-            raise
-        except Exception:
-            logger.warning("Conversation checkpoint failed; continuing with original history", exc_info=True)
-            return
+            if not checkpoint_text or response is None or response.finish_reason == "length":
+                logger.warning("Conversation checkpoint was empty or truncated; keeping original history")
+                return
 
-        checkpoint_text = _strip_answer_prefix(result.output)
-        response = next(
-            (message for message in reversed(result.new_messages()) if message.kind == "response"),
-            None,
-        )
-        if not checkpoint_text or response is None or response.finish_reason == "length":
-            logger.warning("Conversation checkpoint was empty or truncated; keeping original history")
-            return
-
-        self._transcript_messages.extend(result.new_messages())
-        self._context_messages = compact_history(
-            self._context_messages,
-            checkpoint_request=checkpoint_request,
-            checkpoint_text=checkpoint_text,
-            config=config,
-        )
+            self._transcript_messages.extend(result.new_messages())
+            self._context_messages = compact_history(
+                self._context_messages,
+                checkpoint_request=checkpoint_request,
+                checkpoint_text=checkpoint_text,
+                config=config,
+            )
+        finally:
+            if emit is not None:
+                emit(CompactionFinished())
 
     def _save_trajectory_for_debug(self) -> None:
         """Persist the latest conversation trajectory to disk, when a

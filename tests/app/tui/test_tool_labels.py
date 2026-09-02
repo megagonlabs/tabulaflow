@@ -10,7 +10,17 @@ from tabulaflow.app.tui.widgets.progress import (
     summarize_outcome,
     summarize_tool_args,
 )
-from tabulaflow.agents.chat.events import ToolCallOutcome
+from tabulaflow.agents.chat.events import CompactionFinished, CompactionStarted, ToolCallOutcome
+
+
+async def test_compaction_events_update_the_status_spinner() -> None:
+    widget = AgentProgressWidget()
+
+    await widget.apply(CompactionStarted())
+    assert widget._status_text == "Compacting context..."
+
+    await widget.apply(CompactionFinished())
+    assert widget._status_text == "Thinking..."
 
 
 class TestLineDiffstat:

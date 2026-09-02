@@ -24,6 +24,8 @@ from tabulaflow.app.tui.theme import (
 from tabulaflow.agents.chat import (
     AnswerDelta,
     ChatEvent,
+    CompactionFinished,
+    CompactionStarted,
     TurnFinished,
     ToolCallOutcome,
     ToolFinished,
@@ -494,6 +496,12 @@ class AgentProgressWidget(Widget):
             self._on_tool_end(event.tool_call_id, event.name, summarize_outcome(event.outcome))
         elif isinstance(event, ToolProgress):
             self._on_tool_progress(event.completed, event.total, event.stage, event.unit, event.tool_call_id)
+        elif isinstance(event, CompactionStarted):
+            self._status_text = "Compacting context..."
+            self._refresh()
+        elif isinstance(event, CompactionFinished):
+            self._status_text = "Thinking..."
+            self._refresh()
         elif isinstance(event, AnswerDelta):
             await self._on_answer_delta(event.content)
         elif isinstance(event, UsageUpdated):

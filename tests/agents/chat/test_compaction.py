@@ -19,6 +19,7 @@ from tabulaflow.agents.chat.compaction import (
     compact_history,
     estimate_context_tokens,
 )
+from tabulaflow.agents.chat.events import ChatEvent, CompactionFinished, CompactionStarted
 from tabulaflow.agents.chat.session import ChatSession
 from tabulaflow.data.registry import DBRegistry
 
@@ -173,9 +174,13 @@ async def test_chat_session_compacts_before_pending_question() -> None:
 
     session._pydantic_ai_agent = cast(Any, StubAgent())
 
+    events: list[ChatEvent] = []
+    session._active_emit = events.append
+
     await session._compact_before_turn("pending question", RunUsage())
 
     assert session._context_messages is not old_history
     assert isinstance(session._context_messages[-1], ModelResponse)
     assert session._context_messages[-1].parts[0].content == "checkpoint"  # type: ignore[union-attr]
     assert session._transcript_messages[-2:] == checkpoint_messages
+    assert [type(event) for event in events] == [CompactionStarted, CompactionFinished]
