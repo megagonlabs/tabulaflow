@@ -1,9 +1,29 @@
 """Top-level command-line composition root."""
 
 import typer
+from typer import rich_utils
 
 from tabulaflow.app.main import AppServiceTier, run_chat
+from tabulaflow.app.theme import ACCENT
 from tabulaflow.research.cli import benchmark_app
+
+
+def _configure_help_theme() -> None:
+    rich_utils.STYLE_USAGE = ""
+    rich_utils.STYLE_OPTION = f"bold {ACCENT}"
+    rich_utils.STYLE_SWITCH = "bold"
+    rich_utils.STYLE_NEGATIVE_OPTION = "bold"
+    rich_utils.STYLE_NEGATIVE_SWITCH = "bold"
+    setattr(rich_utils, "STYLE_METAVAR", "")
+    setattr(rich_utils, "STYLE_TYPES", "")
+    rich_utils.STYLE_OPTION_ENVVAR = "dim"
+    rich_utils.STYLE_REQUIRED_LONG = "dim"
+    rich_utils.STYLE_REQUIRED_SHORT = ""
+    rich_utils.STYLE_DEPRECATED = ""
+    rich_utils.STYLE_COMMANDS_TABLE_FIRST_COLUMN = f"bold {ACCENT}"
+
+
+_configure_help_theme()
 
 app = typer.Typer(
     name="tabulaflow",
