@@ -717,7 +717,8 @@ Aug 31
 - [x] scripts cleanup
 
 Sep 1
-- [ ] Context percentage and Context compaction
+- [x] cli
+- [x] Context percentage and Context compaction
 - Multimodal
   - [ ] Pasting images
   - [ ] Media in tables
