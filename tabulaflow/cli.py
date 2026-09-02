@@ -11,7 +11,7 @@ from tabulaflow.research.cli import benchmark_app
 def _configure_help_theme() -> None:
     rich_utils.STYLE_USAGE = ""
     rich_utils.STYLE_OPTION = f"bold {ACCENT}"
-    rich_utils.STYLE_SWITCH = "bold"
+    rich_utils.STYLE_SWITCH = f"bold {ACCENT}"
     rich_utils.STYLE_NEGATIVE_OPTION = "bold"
     rich_utils.STYLE_NEGATIVE_SWITCH = "bold"
     setattr(rich_utils, "STYLE_METAVAR", "")

@@ -32,6 +32,7 @@ def test_root_cli_help_only_uses_mint(monkeypatch: MonkeyPatch) -> None:
     assert result.exit_code == 0
     color_codes = set(re.findall(r"\x1b\[[0-9;]*?(?:3[0-9]|9[0-9]|38)[0-9;]*m", result.stdout))
     assert color_codes == {"\x1b[1;38;2;62;180;137m"}
+    assert "\x1b[1;38;2;62;180;137m-p" in result.stdout
     assert not re.search(r"\x1b\[[0-9;]*m(?:TEXT|INTEGER)", result.stdout)
 
 
