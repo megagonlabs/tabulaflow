@@ -45,7 +45,7 @@ if TYPE_CHECKING:
 _NOISE_ARG_KEYS = frozenset({"db_alias", "refresh", "tab", "tool_call_id"})
 _DIFFSTAT_TOKEN_RE = re.compile(r"(?<=\s)([+-]\d+)")
 _UNLISTED_TOOL = "show_artifacts"
-_BASH_FIRST_LINE_LIMIT = 180
+_BASH_COMMAND_PREVIEW_LIMIT = 180
 
 
 def _fmt_arg_value(value: object, limit: int = 40) -> str:
@@ -244,14 +244,14 @@ def _summarize_apply_patch(args: Mapping[str, object]) -> str:
 
 
 def _summarize_bash(args: Mapping[str, object]) -> str:
-    lines = [" ".join(line.split()) for line in str(args.get("command", "")).splitlines() if line.strip()]
+    command = str(args.get("command", ""))
+    lines = [line for line in command.splitlines() if line.strip()]
     if not lines:
         return "Run"
 
-    first_line = _truncate_middle(lines[0], _BASH_FIRST_LINE_LIMIT)
-    if len(lines) == 1:
-        return f"Run {first_line}"
-    return f"Run {first_line} … (+{len(lines) - 1} lines)"
+    preview = _fmt_arg_value(command, _BASH_COMMAND_PREVIEW_LIMIT)
+    line_count = f" ({len(lines)} lines)" if len(lines) > 1 else ""
+    return f"Run {preview}{line_count}"
 
 
 def summarize_tool_args(name: str, args: Mapping[str, object]) -> str:

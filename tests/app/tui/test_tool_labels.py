@@ -303,18 +303,26 @@ class TestVerbLedLabels:
     def test_execute_bash(self) -> None:
         assert summarize_tool_args("execute_bash", {"command": "pytest tests/"}) == "Run pytest tests/"
 
-    def test_execute_bash_shows_first_nonempty_line_and_remaining_line_count(self) -> None:
+    def test_execute_bash_previews_the_whole_normalized_command(self) -> None:
         command = "\n  uv   run pytest tests/app  \n\n --disable-warnings\nmake lint\n"
-        assert summarize_tool_args("execute_bash", {"command": command}) == ("Run uv run pytest tests/app … (+2 lines)")
+        assert summarize_tool_args("execute_bash", {"command": command}) == (
+            "Run uv run pytest tests/app --disable-warnings make lint (3 lines)"
+        )
 
-    def test_execute_bash_truncates_only_very_long_first_line(self) -> None:
+    def test_execute_bash_heredoc_preview_reaches_the_body(self) -> None:
+        command = "python3 - <<'PY'\nfrom pathlib import Path\nprint(Path('data.csv').read_text())\nPY"
+        assert summarize_tool_args("execute_bash", {"command": command}) == (
+            "Run python3 - <<'PY' from pathlib import Path print(Path('data.csv').read_text()) PY (4 lines)"
+        )
+
+    def test_execute_bash_truncates_long_command_from_the_end(self) -> None:
         command = f"python {'x' * 200} target.py\necho done"
         label = summarize_tool_args("execute_bash", {"command": command})
 
         assert label.startswith("Run python ")
-        assert "…" in label.removesuffix(" … (+1 lines)")
-        assert "target.py … (+1 lines)" in label
-        assert len(label.removeprefix("Run ").removesuffix(" … (+1 lines)")) == 180
+        assert label.endswith("… (2 lines)")
+        assert "target.py" not in label
+        assert len(label.removeprefix("Run ").removesuffix(" (2 lines)")) == 180
 
     def test_chart(self) -> None:
         spec = '{"mark": "bar", "title": "Revenue"}'
