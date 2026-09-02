@@ -10,9 +10,6 @@ from pydantic_ai.messages import BinaryContent
 
 from tabulaflow.core.media import detect_media, extract_media_bytes
 
-_MAX_MEDIA_BYTES = 20 * 1024 * 1024
-_MAX_IMAGE_PIXELS = 50_000_000
-
 _MODEL_IMAGE_TYPES = {"image/gif", "image/jpeg", "image/png", "image/webp"}
 _CONVERTIBLE_IMAGE_TYPES = {"image/bmp", "image/tiff"}
 
@@ -21,7 +18,6 @@ def to_binary_content(
     value: object,
     *,
     media_type: str | None = None,
-    max_bytes: int = _MAX_MEDIA_BYTES,
     decode_base64: bool = False,
 ) -> BinaryContent:
     """Convert a binary-like value into validated Pydantic AI content."""
@@ -37,7 +33,6 @@ def to_binary_content(
         data = extract_media_bytes(value, decode_base64=decode_base64)
     if data is None:
         raise ValueError("value does not contain media bytes")
-    _check_size(len(data), max_bytes)
 
     detected = detect_media(data)
     resolved_type = detected.media_type if detected is not None else media_type
@@ -46,18 +41,10 @@ def to_binary_content(
 
     if resolved_type.startswith("image/"):
         data, resolved_type = _normalize_image(data, resolved_type)
-        _check_size(len(data), max_bytes)
 
     content = BinaryContent.narrow_type(BinaryContent(data=data, media_type=resolved_type))
     _validate_format(content)
     return content
-
-
-def _check_size(size: int, max_bytes: int) -> None:
-    if max_bytes <= 0:
-        raise ValueError("max_bytes must be positive")
-    if size > max_bytes:
-        raise ValueError(f"media is {size:,} bytes; maximum is {max_bytes:,} bytes")
 
 
 def _validate_format(content: BinaryContent) -> None:
@@ -74,10 +61,6 @@ def _normalize_image(data: bytes, media_type: str) -> tuple[bytes, str]:
         with warnings.catch_warnings():
             warnings.simplefilter("error", Image.DecompressionBombWarning)
             with Image.open(io.BytesIO(data)) as image:
-                if image.width * image.height > _MAX_IMAGE_PIXELS:
-                    raise ValueError(
-                        f"image has {image.width * image.height:,} pixels; maximum is {_MAX_IMAGE_PIXELS:,}"
-                    )
                 image.verify()
             if media_type in _CONVERTIBLE_IMAGE_TYPES:
                 with Image.open(io.BytesIO(data)) as image:

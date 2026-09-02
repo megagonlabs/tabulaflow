@@ -48,10 +48,16 @@ def test_to_binary_content_converts_supported_images_to_png(format: str) -> None
     assert content.data.startswith(b"\x89PNG\r\n\x1a\n")
 
 
-def test_to_binary_content_rejects_unknown_and_oversized_values() -> None:
+def test_to_binary_content_rejects_unknown_values() -> None:
     with pytest.raises(ValueError, match="could not be determined"):
         to_binary_content(b"unknown")
-    with pytest.raises(ValueError, match="maximum"):
-        to_binary_content(_image_bytes("PNG"), max_bytes=1)
     with pytest.raises(ValueError, match="unsupported media type"):
         to_binary_content(b"unknown", media_type="application/zip")
+
+
+def test_to_binary_content_rejects_decompression_bombs(monkeypatch: pytest.MonkeyPatch) -> None:
+    data = _image_bytes("PNG")
+    monkeypatch.setattr(Image, "MAX_IMAGE_PIXELS", 4)
+
+    with pytest.raises(ValueError, match="invalid image/png image"):
+        to_binary_content(data)

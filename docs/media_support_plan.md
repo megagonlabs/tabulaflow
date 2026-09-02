@@ -82,8 +82,8 @@ Layer ownership:
   detection and extraction of raw bytes from base64/data URIs and common values
   such as Hugging Face media structs. It must not depend on pandas, Pydantic AI,
   or the app.
-- `tabulaflow/agents/media.py`: request limits, optional format conversion, and
-  conversion into Pydantic AI media types.
+- `tabulaflow/agents/media.py`: optional format conversion and conversion into
+  Pydantic AI media types.
 - `tabulaflow/agents/chat/input.py`: the public text-plus-media chat-input
   contract.
 - `tabulaflow/app`: clipboard integration, `[Image #N]` presentation, and
@@ -124,8 +124,6 @@ Create the shared core and agents media modules.
   use Pydantic AI's own content classes rather than duplicating them.
 - Normalize raw bytes, `bytearray`, `memoryview`, Hugging Face
   `{"bytes": ..., "path": ...}` values, and explicit data URIs.
-- Add a central per-item byte limit. Item-count and aggregate request limits are
-  part of the multimodal chat contract in Phase 2.
 - Use Pydantic AI types as the final model-facing representation.
 - Use Pillow for image validation and only the conversions concretely needed by
   supported models. Avoid a native `libmagic` dependency; consider a pure-Python
