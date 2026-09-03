@@ -6,11 +6,11 @@ conversation. This preserves recent tool context, keeps provider-carried reasoni
 state available, reuses the existing prompt prefix for the checkpoint request, and
 avoids a second model configuration.
 
-The remaining rewrite is deterministic: split history into user turns, reduce old
-turns to bounded dialogue, replace recent tool-result payloads, append the checkpoint,
-then progressively remove execution details and assistant dialogue before evicting
-oldest user prompts. Tool structure is removed as a whole, preserving provider-valid
-pairing while keeping the user's recent requests for as long as the budget permits.
+The remaining rewrite is deterministic: retain only turns after the previous
+checkpoint, replace tool-result payloads, append the new checkpoint, then progressively
+remove execution details and assistant dialogue before evicting oldest user prompts.
+Tool structure is removed as a whole, preserving provider-valid pairing while keeping
+the user's recent requests for as long as the budget permits.
 
 The checkpoint and latest user request are never silently truncated. If those alone
 cannot fit, compaction fails explicitly.
@@ -41,10 +41,8 @@ from tabulaflow.agents.chat.input import ChatInput, describe_chat_input
 _CHARS_PER_TOKEN = 4
 _MESSAGE_OVERHEAD_CHARS = 16
 _PART_OVERHEAD_CHARS = 8
-_OLD_MESSAGE_TOKENS = 100
 _CONTEXT_RESERVE_TOKENS = 32_000
 _CHECKPOINT_TOKEN_LIMIT = 4_000
-_TRUNCATION_MARKER = "\n[... older message truncated ...]\n"
 _TOOL_RESULT_PLACEHOLDER = "[tool result omitted after execution during context compaction]"
 # Marks synthetic checkpoint messages so a later compaction replaces, rather than
 # summarizes and retains, the previous checkpoint exchange.
@@ -67,20 +65,16 @@ _CHECKPOINT_PROMPT = (
 class CompactionConfig:
     """User-facing controls for automatic conversation compaction.
 
-    ``trigger_tokens`` starts checkpointing, ``target_tokens`` bounds the rewritten
-    history, and ``keep_recent_turns`` controls how many newest turns initially retain
-    their tool-call structure. Hard eviction may retain fewer turns to meet the target.
+    ``trigger_tokens`` starts checkpointing and ``target_tokens`` bounds the rewritten
+    history.
     """
 
     trigger_tokens: int = 240_000
     target_tokens: int = 32_000
-    keep_recent_turns: int = 10
 
     def __post_init__(self) -> None:
         if not 0 < self.target_tokens < self.trigger_tokens:
             raise ValueError("expected 0 < target_tokens < trigger_tokens")
-        if self.keep_recent_turns < 0:
-            raise ValueError("keep_recent_turns must be non-negative")
 
 
 def checkpoint_prompt(config: CompactionConfig) -> str:
@@ -131,17 +125,13 @@ def compact_history(
 ) -> list[ModelMessage]:
     """Return provider-valid history bounded by ``config.target_tokens``.
 
-    Old turns retain clamped user prompts and final assistant text. Recent turns keep
-    their native messages so tool-use behavior remains visible, but tool-result
-    payloads are replaced. If the result is too large, recent turns degrade to
-    dialogue-only, then all turns degrade to user-only, before oldest turns are evicted.
+    The previous checkpoint supersedes every raw turn before it. Newer turns initially
+    retain their native messages with tool-result payloads replaced. If the result is
+    too large, turns degrade oldest-first to dialogue-only and then user-only before
+    oldest turns are evicted.
     """
-    turns = _split_turns(messages)
-    recent_start = max(0, len(turns) - config.keep_recent_turns)
-    compacted = [
-        _project_execution(turn) if index >= recent_start else _project_dialogue(turn, clamp=True)
-        for index, turn in enumerate(turns)
-    ]
+    turns = _group_turns_since_checkpoint(messages)
+    compacted = [_project_execution(turn) for turn in turns]
     compacted = [turn for turn in compacted if turn]
 
     checkpoint_exchange: list[ModelMessage] = [
@@ -155,15 +145,15 @@ def compact_history(
         ),
     ]
 
-    for index in range(recent_start, len(compacted)):
+    for index in range(len(compacted)):
         if _estimate_turns(compacted, checkpoint_exchange) <= config.target_tokens:
             break
-        compacted[index] = _project_dialogue(turns[index], clamp=False)
+        compacted[index] = _project_dialogue(turns[index])
 
     for index in range(len(compacted)):
         if _estimate_turns(compacted, checkpoint_exchange) <= config.target_tokens:
             break
-        compacted[index] = _project_user(turns[index], clamp=index < recent_start)
+        compacted[index] = _project_user(turns[index])
 
     while len(compacted) > 1 and _estimate_turns(compacted, checkpoint_exchange) > config.target_tokens:
         compacted.pop(0)
@@ -174,16 +164,23 @@ def compact_history(
     return rewritten
 
 
-def _split_turns(messages: list[ModelMessage]) -> list[list[ModelMessage]]:
-    """Group messages from each real user request up to the next user request.
+def _group_turns_since_checkpoint(messages: list[ModelMessage]) -> list[list[ModelMessage]]:
+    """Group real user turns completed after the previous checkpoint.
 
-    Host notifications do not open turns, and old synthetic checkpoints are discarded
-    because the newly generated checkpoint supersedes them.
+    The new checkpoint summarizes the whole supplied context, so the previous checkpoint
+    and every raw turn it already covered are superseded. Host notifications do not open
+    turns.
     """
+    start = max(
+        (
+            index + 1
+            for index, message in enumerate(messages)
+            if message.metadata and message.metadata.get(_CHECKPOINT_METADATA)
+        ),
+        default=0,
+    )
     turns: list[list[ModelMessage]] = []
-    for message in messages:
-        if message.metadata and message.metadata.get(_CHECKPOINT_METADATA):
-            continue
+    for message in messages[start:]:
         if _is_user_request(message):
             turns.append([message])
         elif turns:
@@ -215,7 +212,7 @@ def _project_execution(turn: list[ModelMessage]) -> list[ModelMessage]:
     return compacted
 
 
-def _project_dialogue(turn: list[ModelMessage], *, clamp: bool) -> list[ModelMessage]:
+def _project_dialogue(turn: list[ModelMessage]) -> list[ModelMessage]:
     """Project a turn to user prompts and final assistant text only.
 
     Responses containing tool calls are execution steps, not final answers. Rebuilt
@@ -229,41 +226,23 @@ def _project_dialogue(turn: list[ModelMessage], *, clamp: bool) -> list[ModelMes
                 continue
             parts = [part for part in message.parts if isinstance(part, UserPromptPart)]
             if parts:
-                dialogue.append(
-                    replace(message, parts=[_clamp_user_prompt(part) for part in parts] if clamp else parts)
-                )
+                dialogue.append(replace(message, parts=parts))
             continue
         if any(isinstance(part, ToolCallPart) for part in message.parts):
             continue
         text = "".join(part.content for part in message.parts if isinstance(part, TextPart))
         if text:
-            dialogue.append(_text_response(message, _clamp_text(text) if clamp else text))
+            dialogue.append(_text_response(message, text))
     return dialogue
 
 
-def _project_user(turn: list[ModelMessage], *, clamp: bool) -> list[ModelMessage]:
-    """Project a turn to its user request, optionally clamping its content."""
+def _project_user(turn: list[ModelMessage]) -> list[ModelMessage]:
+    """Project a turn to its user request."""
     for message in turn:
         if isinstance(message, ModelRequest) and _is_user_request(message):
             parts = [part for part in message.parts if isinstance(part, UserPromptPart)]
-            if clamp:
-                parts = [_clamp_user_prompt(part) for part in parts]
             return [replace(message, parts=parts)]
     return []
-
-
-def _clamp_user_prompt(part: UserPromptPart) -> UserPromptPart:
-    return replace(part, content=_clamp_text(describe_chat_input(cast(ChatInput, part.content))))
-
-
-def _clamp_text(text: str) -> str:
-    """Bound old dialogue to 100 estimated tokens while retaining head and tail."""
-    max_chars = _OLD_MESSAGE_TOKENS * _CHARS_PER_TOKEN
-    if len(text) <= max_chars:
-        return text
-    available = max_chars - len(_TRUNCATION_MARKER)
-    head = available * 7 // 10
-    return text[:head] + _TRUNCATION_MARKER + text[-(available - head) :]
 
 
 def _tool_result_placeholder(part: ToolReturnPart) -> str:

@@ -98,7 +98,7 @@ def test_estimate_context_tokens_counts_tool_arguments_and_reasoning_signatures(
     assert estimate_context_tokens(large) > estimate_context_tokens(small) + 400
 
 
-def test_compact_history_keeps_recent_dialogue_and_pairs_recent_tools() -> None:
+def test_compact_history_keeps_execution_and_pairs_tools_when_it_fits() -> None:
     messages: list[ModelMessage] = [
         ModelRequest(parts=[UserPromptPart(content="a" * 1_000)]),
         ModelResponse(parts=[TextPart(content="b" * 1_000)]),
@@ -112,13 +112,12 @@ def test_compact_history_keeps_recent_dialogue_and_pairs_recent_tools() -> None:
         messages,
         checkpoint_request="make checkpoint",
         checkpoint_text="checkpoint text",
-        config=CompactionConfig(trigger_tokens=10_000, target_tokens=2_000, keep_recent_turns=1),
+        config=CompactionConfig(trigger_tokens=10_000, target_tokens=2_000),
     )
 
     first_part = compacted[0].parts[0]
     assert isinstance(first_part, UserPromptPart)
-    assert isinstance(first_part.content, str)
-    assert "older message truncated" in first_part.content
+    assert first_part.content == "a" * 1_000
     calls = [
         part
         for message in compacted
@@ -154,7 +153,7 @@ def test_compact_history_drops_oldest_dialogue_to_fit_budget() -> None:
         messages,
         checkpoint_request="checkpoint request",
         checkpoint_text="checkpoint response",
-        config=CompactionConfig(trigger_tokens=1_000, target_tokens=500, keep_recent_turns=1),
+        config=CompactionConfig(trigger_tokens=1_000, target_tokens=500),
     )
 
     contents = [part.content for message in compacted for part in message.parts if isinstance(part, UserPromptPart)]
@@ -163,26 +162,44 @@ def test_compact_history_drops_oldest_dialogue_to_fit_budget() -> None:
     assert contents[-1] == "checkpoint request"
 
 
-def test_compact_history_replaces_old_media_with_a_descriptor() -> None:
+def test_compact_history_drops_raw_turns_before_previous_checkpoint() -> None:
     media = BinaryContent(b"secret payload", media_type="image/png")
-    messages: list[ModelMessage] = [
+    original: list[ModelMessage] = [
         ModelRequest(parts=[UserPromptPart(content=["old question", media])]),
         ModelResponse(parts=[TextPart(content="old answer")]),
-        ModelRequest(parts=[UserPromptPart(content="recent question")]),
     ]
-
-    compacted = compact_history(
-        messages,
-        checkpoint_request="checkpoint request",
-        checkpoint_text="checkpoint response",
-        config=CompactionConfig(trigger_tokens=2_000, target_tokens=1_000, keep_recent_turns=1),
+    first_generation = compact_history(
+        original,
+        checkpoint_request="first checkpoint request",
+        checkpoint_text="first checkpoint response",
+        config=CompactionConfig(trigger_tokens=2_000, target_tokens=1_000),
+    )
+    first_generation.extend(
+        [
+            ModelRequest(parts=[UserPromptPart(content="recent question")]),
+            ModelResponse(parts=[TextPart(content="recent answer")]),
+        ]
     )
 
-    old_prompt = compacted[0].parts[0]
-    assert isinstance(old_prompt, UserPromptPart)
-    assert isinstance(old_prompt.content, str)
-    assert "[Image: image/png" in old_prompt.content
-    assert "secret payload" not in old_prompt.content
+    second_generation = compact_history(
+        first_generation,
+        checkpoint_request="second checkpoint request",
+        checkpoint_text="second checkpoint response",
+        config=CompactionConfig(trigger_tokens=2_000, target_tokens=1_000),
+    )
+
+    user_contents = [
+        part.content for message in second_generation for part in message.parts if isinstance(part, UserPromptPart)
+    ]
+    assert user_contents == ["recent question", "second checkpoint request"]
+    assert not any(
+        isinstance(item, BinaryContent)
+        for message in second_generation
+        for request_part in message.parts
+        if isinstance(request_part, UserPromptPart)
+        if not isinstance(request_part.content, str)
+        for item in request_part.content
+    )
 
 
 def test_compact_history_drops_recent_tools_when_they_exceed_budget() -> None:
@@ -197,7 +214,7 @@ def test_compact_history_drops_recent_tools_when_they_exceed_budget() -> None:
         messages,
         checkpoint_request="checkpoint request",
         checkpoint_text="checkpoint response",
-        config=CompactionConfig(trigger_tokens=2_000, target_tokens=700, keep_recent_turns=10),
+        config=CompactionConfig(trigger_tokens=2_000, target_tokens=700),
     )
 
     assert not any(isinstance(part, (ToolCallPart, ToolReturnPart)) for message in compacted for part in message.parts)
@@ -224,7 +241,7 @@ def test_compact_history_keeps_user_prompts_before_evicting_turns() -> None:
         messages,
         checkpoint_request="checkpoint request",
         checkpoint_text="checkpoint response",
-        config=CompactionConfig(trigger_tokens=3_000, target_tokens=700, keep_recent_turns=3),
+        config=CompactionConfig(trigger_tokens=3_000, target_tokens=700),
     )
 
     user_prompts = [
@@ -244,7 +261,7 @@ async def test_chat_session_compacts_before_pending_question() -> None:
         registry=DBRegistry(),
         model="test",
         reasoning="medium",
-        compaction=CompactionConfig(trigger_tokens=1_000, target_tokens=800, keep_recent_turns=1),
+        compaction=CompactionConfig(trigger_tokens=1_000, target_tokens=800),
     )
     old_history: list[ModelMessage] = [
         ModelRequest(parts=[UserPromptPart(content="old question")]),
