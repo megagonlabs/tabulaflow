@@ -87,6 +87,13 @@ async def test_agents_default_to_unlimited_requests(monkeypatch: pytest.MonkeyPa
     assert captured_limits[1] is finite_limit
 
 
+def test_agents_default_to_three_retries() -> None:
+    agent = make_agent(TestModel())
+
+    assert agent._max_tool_retries == 3
+    assert agent._max_output_retries == 3
+
+
 def test_runtime_separates_resources_between_event_loops() -> None:
     runtime = _get_agent_runtime()
 

@@ -285,7 +285,7 @@ def make_agent(
     instructions: str | None = None,
     tools: Sequence[Any] = (),
     model_settings: Any = None,
-    retries: int = 1,
+    retries: int = 3,
     **kwargs: Any,
 ) -> Agent[object, _OutputT]: ...
 @overload
@@ -296,7 +296,7 @@ def make_agent(
     instructions: str | None = None,
     tools: Sequence[Any] = (),
     model_settings: Any = None,
-    retries: int = 1,
+    retries: int = 3,
     **kwargs: Any,
 ) -> Agent[object, _OutputT]: ...
 @overload
@@ -306,7 +306,7 @@ def make_agent(
     instructions: str | None = None,
     tools: Sequence[Any] = (),
     model_settings: Any = None,
-    retries: int = 1,
+    retries: int = 3,
     **kwargs: Any,
 ) -> Agent[object, str]: ...
 def make_agent(
@@ -316,7 +316,7 @@ def make_agent(
     instructions: str | None = None,
     tools: Sequence[Any] = (),
     model_settings: Any = None,
-    retries: int = 1,
+    retries: int = 3,
     **kwargs: Any,
 ) -> Agent[Any, Any]:
     """Build a pydantic-ai Agent wired with tabulaflow's defaults.
