@@ -8,9 +8,9 @@ avoids a second model configuration.
 
 The remaining rewrite is deterministic: split history into user turns, reduce old
 turns to bounded dialogue, replace recent tool-result payloads, append the checkpoint,
-and remove oldest whole turns until the target is met. This single policy is easier to
-understand than a tiered strategy pipeline, while whole-turn eviction preserves tool
-pairing and makes the resulting context predictable across providers.
+then progressively remove execution details and assistant dialogue before evicting
+oldest user prompts. Tool structure is removed as a whole, preserving provider-valid
+pairing while keeping the user's recent requests for as long as the budget permits.
 
 The checkpoint and latest user request are never silently truncated. If those alone
 cannot fit, compaction fails explicitly.
@@ -130,13 +130,13 @@ def compact_history(
 
     Old turns retain clamped user prompts and final assistant text. Recent turns keep
     their native messages so tool-use behavior remains visible, but tool-result
-    payloads are replaced. If those turns are still too large, whole oldest turns are
-    removed; the final turn then degrades to dialogue-only and finally latest-user-only.
+    payloads are replaced. If the result is too large, recent turns degrade to
+    dialogue-only, then all turns degrade to user-only, before oldest turns are evicted.
     """
     turns = _split_turns(messages)
     recent_start = max(0, len(turns) - config.keep_recent_turns)
     compacted = [
-        _compact_recent_turn(turn) if index >= recent_start else _dialogue_only(turn, clamp=True)
+        _project_execution(turn) if index >= recent_start else _project_dialogue(turn, clamp=True)
         for index, turn in enumerate(turns)
     ]
     compacted = [turn for turn in compacted if turn]
@@ -152,13 +152,18 @@ def compact_history(
         ),
     ]
 
+    for index in range(recent_start, len(compacted)):
+        if _estimate_turns(compacted, checkpoint_exchange) <= config.target_tokens:
+            break
+        compacted[index] = _project_dialogue(turns[index], clamp=False)
+
+    for index in range(len(compacted)):
+        if _estimate_turns(compacted, checkpoint_exchange) <= config.target_tokens:
+            break
+        compacted[index] = _project_user(turns[index], clamp=index < recent_start)
+
     while len(compacted) > 1 and _estimate_turns(compacted, checkpoint_exchange) > config.target_tokens:
         compacted.pop(0)
-
-    if compacted and _estimate_turns(compacted, checkpoint_exchange) > config.target_tokens:
-        compacted[-1] = _dialogue_only(turns[-1], clamp=False)
-    if compacted and _estimate_turns(compacted, checkpoint_exchange) > config.target_tokens:
-        compacted[-1] = _latest_user_only(turns[-1])
 
     rewritten = [message for turn in compacted for message in turn] + checkpoint_exchange
     if _estimate_messages_tokens(rewritten) > config.target_tokens:
@@ -192,8 +197,8 @@ def _is_user_request(message: ModelMessage) -> bool:
     )
 
 
-def _compact_recent_turn(turn: list[ModelMessage]) -> list[ModelMessage]:
-    """Keep a recent turn intact except for replaceable tool-result payloads."""
+def _project_execution(turn: list[ModelMessage]) -> list[ModelMessage]:
+    """Keep a turn's execution structure while replacing tool-result payloads."""
     compacted: list[ModelMessage] = []
     for message in turn:
         if not isinstance(message, ModelRequest):
@@ -207,7 +212,7 @@ def _compact_recent_turn(turn: list[ModelMessage]) -> list[ModelMessage]:
     return compacted
 
 
-def _dialogue_only(turn: list[ModelMessage], *, clamp: bool) -> list[ModelMessage]:
+def _project_dialogue(turn: list[ModelMessage], *, clamp: bool) -> list[ModelMessage]:
     """Project a turn to user prompts and final assistant text only.
 
     Responses containing tool calls are execution steps, not final answers. Rebuilt
@@ -233,11 +238,13 @@ def _dialogue_only(turn: list[ModelMessage], *, clamp: bool) -> list[ModelMessag
     return dialogue
 
 
-def _latest_user_only(turn: list[ModelMessage]) -> list[ModelMessage]:
-    """Return the turn's user request as the last-resort protected context."""
+def _project_user(turn: list[ModelMessage], *, clamp: bool) -> list[ModelMessage]:
+    """Project a turn to its user request, optionally clamping its content."""
     for message in turn:
         if isinstance(message, ModelRequest) and _is_user_request(message):
             parts = [part for part in message.parts if isinstance(part, UserPromptPart)]
+            if clamp:
+                parts = [_clamp_user_prompt(part) for part in parts]
             return [replace(message, parts=parts)]
     return []
 

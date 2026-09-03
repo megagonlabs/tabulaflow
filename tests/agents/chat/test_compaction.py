@@ -169,6 +169,39 @@ def test_compact_history_drops_recent_tools_when_they_exceed_budget() -> None:
     )
 
 
+def test_compact_history_keeps_user_prompts_before_evicting_turns() -> None:
+    messages: list[ModelMessage] = []
+    for index in range(3):
+        messages.extend(
+            [
+                ModelRequest(parts=[UserPromptPart(content=f"user-{index}")]),
+                ModelResponse(parts=[ToolCallPart("run_query", {"query": "x" * 2_000}, f"call-{index}")]),
+                ModelRequest(parts=[ToolReturnPart("run_query", "result", f"call-{index}")]),
+                ModelResponse(parts=[TextPart(content="answer" * 300)]),
+            ]
+        )
+
+    compacted = compact_history(
+        messages,
+        checkpoint_request="checkpoint request",
+        checkpoint_text="checkpoint response",
+        config=CompactionConfig(trigger_tokens=3_000, target_tokens=700, keep_recent_turns=3),
+    )
+
+    user_prompts = [
+        part.content
+        for message in compacted
+        for part in message.parts
+        if isinstance(part, UserPromptPart) and not message.metadata
+    ]
+    assert user_prompts == ["user-0", "user-1", "user-2"]
+    assert not any(
+        isinstance(part, (TextPart, ToolCallPart, ToolReturnPart))
+        for message in compacted[:-2]
+        for part in message.parts
+    )
+
+
 async def test_chat_session_compacts_before_pending_question() -> None:
     session = ChatSession(
         registry=DBRegistry(),
