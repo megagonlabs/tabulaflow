@@ -2,7 +2,7 @@
 
 ## Status
 
-Phases 1–2 are implemented; Phases 3–7 are proposed. This plan covers
+Phases 1–3 are implemented; Phases 4–7 are proposed. This plan covers
 model-visible media supplied by the user or discovered through TabulaFlow's
 existing filesystem, browser, database, and bulk-processing workflows. Existing
 media rendering in the browser output pane remains intact.
@@ -161,21 +161,26 @@ without losing history validity or leaking bytes.
 
 ## Phase 3 — Minimal TUI image paste
 
-Implement pasted images as the only initial attachment UX.
+Pasted images are the initial attachment UX.
 
-- Read image clipboard data through a platform adapter.
+- Read image clipboard data through Pillow's cross-platform `ImageGrab` support.
 - Insert `[Image #1]`, `[Image #2]`, and so on at the input position.
 - Keep the image payload out of the visible text while retaining ordered backing
   media state.
-- Allow normal deletion/backspace behavior to remove a pending image.
-- Clear pending images only after the submission is accepted.
-- Show a concise preflight error for unsupported formats or size limits.
+- Highlight active image references with the inline-code color; markers recalled
+  from history remain unstyled plain text.
+- Keep cursor and selection endpoints outside active references, and treat the
+  references atomically for backspace and delete.
+- Preserve markers, but never payloads, in command history and never reuse their
+  displayed ids.
+- Clear pending images after a completed submission while retaining them when a
+  submission is interrupted and restored.
+- Show a concise error for an image that cannot be normalized.
 - Preserve ordinary text paste and existing paste-token behavior.
 
-Implement and test adapters independently for macOS, Windows, Wayland, and X11;
-unsupported environments should leave text input unaffected and explain that the
-user can save or drag the image path instead. Do not add a permanent attach
-button or attachment pane.
+Pillow handles macOS and Windows directly and uses `wl-paste` or `xclip` on
+Linux. Unsupported environments leave text paste unaffected. No permanent
+attach button or attachment pane is added.
 
 **Exit criteria:** pasting one or several images produces placeholders, submits
 text and images in order, supports removal, and degrades cleanly where binary

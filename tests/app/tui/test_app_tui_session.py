@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+from pydantic_ai.messages import BinaryContent
 from pydantic_ai.exceptions import UserError
 from textual import events
 from textual.containers import VerticalScroll
@@ -588,6 +589,32 @@ async def test_llm_activation_preserves_blocked_submissions(
         assert len(app.query(UserMessage)) == 0
 
 
+async def test_submission_builds_ordered_multimodal_input(monkeypatch: pytest.MonkeyPatch) -> None:
+    app = _app(None)
+    captured: list[tuple[object, str]] = []
+
+    async def fake_run_submission(question: object, display_text: str, input_bar: HistoryInput | None) -> None:
+        captured.append((question, display_text))
+
+    _stub_app_startup(app, monkeypatch)
+    monkeypatch.setattr(app, "_run_submission", fake_run_submission)
+
+    async with app.run_test() as pilot:
+        for _ in range(3):
+            await pilot.pause()
+        input_bar = app.query_one("#input-bar", HistoryInput)
+        image = BinaryContent(b"image", media_type="image/png")
+        input_bar._pending_images[1] = image
+        input_bar._image_counter = 1
+        input_bar.value = "inspect [Image #1] now"
+
+        await pilot.press("enter")
+        for _ in range(2):
+            await pilot.pause()
+
+    assert captured == [(["inspect [Image #1]", image, " now"], "inspect [Image #1] now")]
+
+
 async def test_submission_worker_blocks_input_until_completion(monkeypatch: pytest.MonkeyPatch) -> None:
     app = _app(None)
     command_started = asyncio.Event()
@@ -650,7 +677,10 @@ async def test_submission_worker_covers_and_can_cancel_session_preflight(monkeyp
 
         monkeypatch.setattr(app, "_ensure_session", blocking_session)
         input_bar = app.query_one("#input-bar", HistoryInput)
-        input_bar.value = "show recent orders"
+        image = BinaryContent(b"image", media_type="image/png")
+        input_bar._pending_images[1] = image
+        input_bar._image_counter = 1
+        input_bar.value = "show [Image #1]"
         await pilot.press("enter")
         await asyncio.wait_for(preflight_started.wait(), timeout=2)
 
@@ -667,7 +697,8 @@ async def test_submission_worker_covers_and_can_cancel_session_preflight(monkeyp
             await pilot.pause()
 
         assert app._submission_worker is None
-        assert input_bar.value == "show recent orders"
+        assert input_bar.value == "show [Image #1]"
+        assert input_bar._pending_images == {1: image}
         messages = [str(message.render()) for message in app.query(SystemMessage)]
         assert messages[-1] == "Interrupted"
 

@@ -44,9 +44,9 @@ from tabulaflow.app.tui.widgets.result import AgentResultWidget
 if TYPE_CHECKING:
     import pandas as pd
 
-    from tabulaflow.app.pane.server import OutputPane
-    from tabulaflow.agents.chat import ChatResult
+    from tabulaflow.agents.chat import ChatInput, ChatResult
     from tabulaflow.agents.llm import ServiceTier
+    from tabulaflow.app.pane.server import OutputPane
     from tabulaflow.output.resolver import ResolvedOutput
 
 logger = logging.getLogger(__name__)
@@ -908,31 +908,41 @@ class TabulaflowApp(App[None]):
             inp.focus()
             return
 
-        text = inp.expand_paste_tokens(display_text) if isinstance(inp, HistoryInput) else display_text
+        question = inp.build_chat_input(display_text) if isinstance(inp, HistoryInput) else display_text
+        if not isinstance(question, str) and display_text.startswith(COMMAND_PREFIX):
+            inp.notify("Images cannot be attached to slash commands", severity="error")
+            return
 
         if isinstance(inp, HistoryInput):
             inp.record_submission(display_text)
         event.input.clear()
 
         self._submission_worker = self.run_worker(
-            self._run_submission(text, display_text),
+            self._run_submission(question, display_text, inp if isinstance(inp, HistoryInput) else None),
             exclusive=True,
             group="submission",
         )
 
-    async def _run_submission(self, text: str, display_text: str) -> None:
+    async def _run_submission(
+        self,
+        question: "ChatInput",
+        display_text: str,
+        input_bar: HistoryInput | None,
+    ) -> None:
         """Process one accepted input as the active submission."""
         import asyncio
 
         chat_log = self.query_one("#chat-log", VerticalScroll)
-        user_msg = UserMessage(text)
-        is_command = text.startswith(COMMAND_PREFIX)
+        user_msg = UserMessage(question if isinstance(question, str) else display_text)
+        is_command = isinstance(question, str) and question.startswith(COMMAND_PREFIX)
+        interrupted = False
         try:
             await chat_log.mount(user_msg)
             chat_log.scroll_end(animate=False)
 
             if is_command:
-                await self._handle_slash_command(text, chat_log)
+                assert isinstance(question, str)
+                await self._handle_slash_command(question, chat_log)
                 return
 
             session = await self._ensure_session()
@@ -950,8 +960,9 @@ class TabulaflowApp(App[None]):
                 self._refresh_bottom_status()
                 return
 
-            await self._run_agent(text, session, chat_log, display_text)
+            await self._run_agent(question, session, chat_log, display_text)
         except asyncio.CancelledError:
+            interrupted = True
             if is_command and user_msg.is_mounted:
                 await user_msg.remove()
             await chat_log.mount(SystemMessage("[dim]Interrupted[/dim]"))
@@ -959,6 +970,8 @@ class TabulaflowApp(App[None]):
             self._restore_input_text(display_text)
             raise
         finally:
+            if not interrupted and input_bar is not None:
+                input_bar.discard_images(display_text)
             self._submission_worker = None
 
     @staticmethod
@@ -1047,7 +1060,7 @@ class TabulaflowApp(App[None]):
 
     async def _run_agent(
         self,
-        question: str,
+        question: "ChatInput",
         session: AppSession,
         chat_log: VerticalScroll,
         display_text: str,

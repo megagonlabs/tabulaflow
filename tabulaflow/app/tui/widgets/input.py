@@ -4,18 +4,26 @@ from __future__ import annotations
 
 import json
 import re
+from collections.abc import Mapping
 from typing import TYPE_CHECKING, TypedDict, cast
 
 from pathlib import Path
 
+from pydantic_ai.messages import BinaryContent
+from rich.highlighter import Highlighter
+from rich.text import Text
 from textual import events
 from textual.binding import Binding
 from textual.suggester import Suggester
 from textual.widgets import Input
+from textual.widgets._input import Selection
 
+from tabulaflow.app.theme import CODE_FUNCTION
 from tabulaflow.app.tui.commands import SLASH_COMMANDS
+from tabulaflow.app.tui.clipboard import read_clipboard_image
 
 if TYPE_CHECKING:
+    from tabulaflow.agents.chat import ChatInput
     from tabulaflow.app.tui.app import TabulaflowApp
 
 _CONNECTABLE_EXTENSIONS = frozenset(
@@ -101,6 +109,18 @@ class TabulaflowSuggester(Suggester):
 _MAX_HISTORY_ENTRIES = 500
 
 _PASTE_TOKEN_PATTERN = re.compile(r"\[Pasted text #(\d+) \+(\d+) lines\]")
+_IMAGE_TOKEN_PATTERN = re.compile(r"\[Image #(\d+)\]")
+_CONTENT_TOKEN_PATTERN = re.compile(r"\[Pasted text #(?P<paste_id>\d+) \+\d+ lines\]|\[Image #(?P<image_id>\d+)\]")
+
+
+class _ImageReferenceHighlighter(Highlighter):
+    def __init__(self, images: Mapping[int, BinaryContent]) -> None:
+        self._images = images
+
+    def highlight(self, text: Text) -> None:
+        for match in _IMAGE_TOKEN_PATTERN.finditer(text.plain):
+            if int(match.group(1)) in self._images:
+                text.stylize(CODE_FUNCTION, match.start(), match.end())
 
 
 class _PasteRecord(TypedDict):
@@ -125,9 +145,9 @@ class HistoryInput(Input):
 
     Multi-line pastes (text containing a newline) are stashed in an in-memory
     registry and replaced with a compact ``[Pasted text #N +M lines]`` token
-    so the input bar stays single-line. Submitted text is expanded back to
-    the original via :meth:`expand_paste_tokens` before being handed to the
-    agent or slash-command handler.
+    so the input bar stays single-line. Images use highlighted ``[Image #N]``
+    references backed only for the active composition. :meth:`build_chat_input`
+    expands both forms before submission.
     """
 
     BINDINGS = [
@@ -161,9 +181,12 @@ class HistoryInput(Input):
         # typeahead handler after the user types a letter while a result
         # is focused) doesn't replace the in-progress composition with the
         # next keystroke.
+        self._pending_images: dict[int, BinaryContent] = {}
+        self._image_counter = 0
         super().__init__(
             placeholder=placeholder,
             id=id,
+            highlighter=_ImageReferenceHighlighter(self._pending_images),
             suggester=TabulaflowSuggester(),
             select_on_focus=False,
         )
@@ -194,6 +217,10 @@ class HistoryInput(Input):
                 continue
             record = json.loads(raw)
             display: str = record["display"]
+            self._image_counter = max(
+                self._image_counter,
+                max((int(match.group(1)) for match in _IMAGE_TOKEN_PATTERN.finditer(display)), default=0),
+            )
             pasted: dict[str, _PasteRecord] = record.get("pastedContents") or {}
 
             id_remap = {int(old): self._register_paste(rec["content"]) for old, rec in pasted.items()}
@@ -295,6 +322,14 @@ class HistoryInput(Input):
     def action_paste(self) -> None:
         """Override Ctrl+V so pastes from Textual's clipboard route through
         the same multi-line stash logic as terminal bracketed paste."""
+        try:
+            image = read_clipboard_image()
+        except (OSError, ValueError) as exc:
+            self.notify(str(exc), severity="error")
+            return
+        if image is not None:
+            self._insert_image_token(image)
+            return
         clipboard = getattr(self.app, "clipboard", "") or ""
         if _has_newline(clipboard):
             self._insert_paste_token(_normalize_newlines(clipboard))
@@ -311,15 +346,106 @@ class HistoryInput(Input):
         else:
             self.replace(token, *selection)
 
-    def expand_paste_tokens(self, text: str) -> str:
-        """Replace every ``[Pasted text #N +M lines]`` token with the original
-        pasted text. Unknown indices are left untouched so users can still
-        type the literal token if they really mean to."""
-        if not self._pasted_contents:
-            return text
+    def _insert_image_token(self, image: BinaryContent) -> None:
+        self._image_counter += 1
+        image_id = self._image_counter
+        self._pending_images[image_id] = image
+        token = f"[Image #{image_id}]"
+        selection = self.selection
+        if selection.is_empty:
+            self.insert_text_at_cursor(token)
+        else:
+            self.replace(token, *selection)
+        self._discard_unreferenced_images()
+        self.refresh()
 
-        def repl(m: re.Match[str]) -> str:
-            rec = self._pasted_contents.get(int(m.group(1)))
-            return m.group(0) if rec is None else rec["content"]
+    def action_delete_left(self) -> None:
+        if self._delete_active_image(left=True):
+            return
+        super().action_delete_left()
+        self._discard_unreferenced_images()
 
-        return _PASTE_TOKEN_PATTERN.sub(repl, text)
+    def action_delete_right(self) -> None:
+        if self._delete_active_image(left=False):
+            return
+        super().action_delete_right()
+        self._discard_unreferenced_images()
+
+    def _delete_active_image(self, *, left: bool) -> bool:
+        if not self.selection.is_empty:
+            return False
+        cursor = self.cursor_position
+        for match in _IMAGE_TOKEN_PATTERN.finditer(self.value):
+            if int(match.group(1)) not in self._pending_images:
+                continue
+            adjacent = match.end() == cursor if left else match.start() == cursor
+            if adjacent:
+                self.delete(match.start(), match.end())
+                self._pending_images.pop(int(match.group(1)), None)
+                self.refresh()
+                return True
+        return False
+
+    def validate_selection(self, selection: Selection) -> Selection:
+        selection = super().validate_selection(selection)
+        previous = self.selection.end
+        return Selection(
+            self._snap_to_image_boundary(selection.start, previous),
+            self._snap_to_image_boundary(selection.end, previous),
+        )
+
+    def _snap_to_image_boundary(self, position: int, previous: int) -> int:
+        for match in _IMAGE_TOKEN_PATTERN.finditer(self.value):
+            if int(match.group(1)) not in self._pending_images or not match.start() < position < match.end():
+                continue
+            if position != previous:
+                return match.end() if position > previous else match.start()
+            return match.start() if position - match.start() <= match.end() - position else match.end()
+        return position
+
+    def build_chat_input(self, text: str) -> ChatInput:
+        """Expand visible paste and image references into ordered model input."""
+        self._discard_unreferenced_images(text)
+        content: list[str | BinaryContent] = []
+
+        def append_text(value: str) -> None:
+            if not value:
+                return
+            if content and isinstance(content[-1], str):
+                content[-1] += value
+            else:
+                content.append(value)
+
+        position = 0
+        for match in _CONTENT_TOKEN_PATTERN.finditer(text):
+            append_text(text[position : match.start()])
+            if paste_id := match.group("paste_id"):
+                record = self._pasted_contents.get(int(paste_id))
+                append_text(record["content"] if record is not None else match.group(0))
+            elif image_id := match.group("image_id"):
+                image = self._pending_images.get(int(image_id))
+                if image is None:
+                    append_text(match.group(0))
+                else:
+                    append_text(match.group(0))
+                    content.append(image)
+            position = match.end()
+        append_text(text[position:])
+        return (
+            content
+            if any(isinstance(item, BinaryContent) for item in content)
+            else "".join(item for item in content if isinstance(item, str))
+        )
+
+    def discard_images(self, text: str) -> None:
+        """Forget images referenced by a completed submission."""
+        for match in _IMAGE_TOKEN_PATTERN.finditer(text):
+            self._pending_images.pop(int(match.group(1)), None)
+        self.refresh()
+
+    def _discard_unreferenced_images(self, text: str | None = None) -> None:
+        referenced = {
+            int(match.group(1)) for match in _IMAGE_TOKEN_PATTERN.finditer(self.value if text is None else text)
+        }
+        for image_id in self._pending_images.keys() - referenced:
+            del self._pending_images[image_id]
