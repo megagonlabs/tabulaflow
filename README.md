@@ -725,8 +725,14 @@ Sep 2
 - [x] new compaction algorithm
 - [x] Set model retry limit to 3
 - Multimodal
-  - [ ] Pasting images
-  - [ ] Media in tables
+  - [x] infra
+  - [x] pasting images
+  - [x] media in files and web
+
+Sep 3
+- [ ] Multimodal
+  - [ ] media in database
+- [ ] split file_editor tool
 - [ ] Include multimodal data in sample_data
 - [ ] Show pending turns in output pane
 - [ ] Speedup tests
