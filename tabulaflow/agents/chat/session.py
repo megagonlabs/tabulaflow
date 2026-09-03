@@ -13,6 +13,7 @@ import sys
 from typing import TYPE_CHECKING, Any, Final
 
 from pydantic_ai.settings import ModelSettings
+from pydantic_ai.messages import BinaryContent
 from pydantic_ai.usage import RunUsage
 
 from tabulaflow.agents.message_store import (
@@ -37,6 +38,7 @@ from tabulaflow.agents.chat.events import (
     ToolProgress,
     UsageUpdated,
 )
+from tabulaflow.agents.chat.input import ChatInput, describe_chat_input
 from tabulaflow.agents.chat.compaction import (
     CompactionConfig,
     HOST_EVENT_METADATA_KEY,
@@ -85,6 +87,19 @@ SUBAGENT_REQUEST_TIMEOUT: Final = 120.0
 # retried by the SDK — it fails the turn — and the worst legitimate silence
 # (cold prefill of a very long history) can exceed a minute.
 MAIN_REQUEST_TIMEOUT: Final = 180.0
+
+
+def _shorten_stored_input(value: str | list[str | BinaryContent], message_id: str) -> str | list[str | BinaryContent]:
+    if isinstance(value, str):
+        return make_snippet(message_id, value) if len(value) > MESSAGE_THRESHOLD_CHARS else value
+
+    shortened: list[str | BinaryContent] = []
+    for item in value:
+        if isinstance(item, str) and len(item) > MESSAGE_THRESHOLD_CHARS:
+            shortened.append(make_snippet(message_id, item))
+        else:
+            shortened.append(item)
+    return shortened
 
 
 class ChatSession:
@@ -630,7 +645,7 @@ class ChatSession:
             model_settings=make_model_settings(model=model, service_tier=self._service_tier),
         )
 
-    async def run_stream(self, question: str) -> AsyncIterator[ChatEvent]:
+    async def run_stream(self, question: ChatInput) -> AsyncIterator[ChatEvent]:
         """Run the agent on a user question, yielding progress as ``ChatEvent``s.
 
         The stream ends with exactly one ``TurnFinished`` (carrying the ``ChatResult``)
@@ -669,19 +684,22 @@ class ChatSession:
             self._active_emit = None
             self._running = False
 
-    async def run(self, question: str) -> ChatResult:
+    async def run(self, question: ChatInput) -> ChatResult:
         """Non-streaming convenience: run a turn and return its ``ChatResult``.
 
         Equivalent to draining ``run_stream`` and taking the terminal ``TurnFinished``
         payload — for callers (tests, batch jobs) that want the result, not the live
         events. Cancellation and the one-turn-at-a-time guard behave as in
         ``run_stream``."""
+        result: ChatResult | None = None
         async for event in self.run_stream(question):
             if isinstance(event, TurnFinished):
-                return event.result
+                result = event.result
+        if result is not None:
+            return result
         raise RuntimeError("run_stream ended without a TurnFinished event")
 
-    async def _run_to_queue(self, question: str, queue: asyncio.Queue[ChatEvent | None]) -> None:
+    async def _run_to_queue(self, question: ChatInput, queue: asyncio.Queue[ChatEvent | None]) -> None:
         """Run the agent loop in the background task, pushing events onto ``queue``
         and a terminating ``None`` sentinel. Uses ``agent.iter()`` so that on
         cancellation we can still snapshot the partial trajectory and accumulated
@@ -695,9 +713,11 @@ class ChatSession:
 
         assert self._pydantic_ai_agent is not None
 
-        message_id = await self._main_scope.add(kind="user_prompt", content=question)
-        if message_id is not None and len(question) > MESSAGE_THRESHOLD_CHARS:
-            question = make_snippet(message_id, question)
+        question = question if isinstance(question, str) else list(question)
+        stored_question = describe_chat_input(question)
+        message_id = await self._main_scope.add(kind="user_prompt", content=stored_question)
+        if message_id is not None:
+            question = _shorten_stored_input(question, message_id)
 
         answer_text = ""
         final_usage: Usage | None = None
@@ -771,7 +791,7 @@ class ChatSession:
         finally:
             queue.put_nowait(None)  # sentinel: stream exhausted (success, error, or cancel)
 
-    async def _compact_before_turn(self, question: str, usage: RunUsage) -> None:
+    async def _compact_before_turn(self, question: ChatInput, usage: RunUsage) -> None:
         """Checkpoint completed history before a new prompt would exceed its budget."""
         config = self._compaction
         if config is None or not self._context_messages:

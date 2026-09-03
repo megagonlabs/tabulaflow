@@ -4,8 +4,9 @@ from unittest.mock import Mock
 
 import genai_prices
 import pytest
+from pydantic_ai.messages import BinaryContent, ModelRequest, UserPromptPart
 
-from tabulaflow.agents.trace import Usage, compute_api_cost
+from tabulaflow.agents.trace import Trajectory, Usage, compute_api_cost
 
 
 def test_compute_api_cost_uses_genai_prices(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -36,3 +37,18 @@ def test_usage_create_preserves_decimal_value_of_float() -> None:
 def test_usage_create_requires_model_for_requests() -> None:
     with pytest.raises(ValueError, match="llm is required"):
         Usage.create(api_requests=1)
+
+
+def test_trajectory_describes_media_without_serializing_bytes() -> None:
+    trajectory = Trajectory.from_pydantic_ai_messages(
+        [
+            ModelRequest(
+                parts=[UserPromptPart(content=["inspect", BinaryContent(b"secret payload", media_type="image/png")])]
+            )
+        ]
+    )
+
+    content = trajectory.messages[0].content  # type: ignore[union-attr]
+    assert "inspect" in content
+    assert "[Image: image/png" in content
+    assert "secret payload" not in content

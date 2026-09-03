@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass, replace
+from typing import cast
 
 import genai_prices
 from pydantic_ai.messages import (
@@ -32,6 +33,8 @@ from pydantic_ai.messages import (
     ToolReturnPart,
     UserPromptPart,
 )
+
+from tabulaflow.agents.chat.input import ChatInput, describe_chat_input
 
 
 _CHARS_PER_TOKEN = 4
@@ -94,16 +97,16 @@ def effective_trigger_tokens(config: CompactionConfig, model: str) -> int:
     return min(config.trigger_tokens, max(1, context_window - _CONTEXT_RESERVE_TOKENS))
 
 
-def estimate_context_tokens(messages: list[ModelMessage], additional_text: str = "") -> int:
+def estimate_context_tokens(messages: list[ModelMessage], additional_content: ChatInput = "") -> int:
     """Estimate a prospective request from its latest provider-usage anchor.
 
     The latest uncompacted response's provider-reported input plus output usage is
     ground truth for history through that response. Only later messages and pending
-    text use the four-characters-per-token estimate. A checkpoint is a rewrite
+    content use the four-characters-per-token estimate. A checkpoint is a rewrite
     boundary, so estimates after one start from the compacted messages instead of an
     obsolete pre-compaction usage anchor.
     """
-    additional = _estimate_text_tokens(additional_text)
+    additional = _estimate_text_tokens(describe_chat_input(additional_content))
     for index in range(len(messages) - 1, -1, -1):
         message = messages[index]
         if not isinstance(message, ModelResponse):
@@ -240,9 +243,7 @@ def _latest_user_only(turn: list[ModelMessage]) -> list[ModelMessage]:
 
 
 def _clamp_user_prompt(part: UserPromptPart) -> UserPromptPart:
-    if not isinstance(part.content, str):
-        return part
-    return replace(part, content=_clamp_text(part.content))
+    return replace(part, content=_clamp_text(describe_chat_input(cast(ChatInput, part.content))))
 
 
 def _clamp_text(text: str) -> str:
@@ -279,10 +280,23 @@ def _estimate_turns(turns: list[list[ModelMessage]], checkpoint: list[ModelMessa
 
 
 def _estimate_messages_tokens(messages: list[ModelMessage]) -> int:
-    """Estimate serialized message size at four characters per token."""
+    """Estimate serialized message size without serializing binary payloads."""
     if not messages:
         return 0
-    return _estimate_text_tokens(ModelMessagesTypeAdapter.dump_json(messages).decode())
+    safe_messages = [_describe_user_prompts(message) for message in messages]
+    return _estimate_text_tokens(ModelMessagesTypeAdapter.dump_json(safe_messages).decode())
+
+
+def _describe_user_prompts(message: ModelMessage) -> ModelMessage:
+    if not isinstance(message, ModelRequest):
+        return message
+    parts = [
+        replace(part, content=describe_chat_input(cast(ChatInput, part.content)))
+        if isinstance(part, UserPromptPart)
+        else part
+        for part in message.parts
+    ]
+    return replace(message, parts=parts)
 
 
 def _estimate_text_tokens(text: str) -> int:

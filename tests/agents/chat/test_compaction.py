@@ -4,6 +4,7 @@ from typing import Any, cast
 
 from pydantic_ai import RunUsage
 from pydantic_ai.messages import (
+    BinaryContent,
     ModelMessage,
     ModelRequest,
     ModelResponse,
@@ -48,6 +49,14 @@ def test_estimate_context_tokens_does_not_reuse_anchor_before_checkpoint() -> No
     )
 
     assert estimate_context_tokens(compacted) < 1_000
+
+
+def test_estimate_context_tokens_does_not_serialize_media_bytes() -> None:
+    messages: list[ModelMessage] = [
+        ModelRequest(parts=[UserPromptPart(content=["inspect", BinaryContent(b"x" * 100_000, media_type="image/png")])])
+    ]
+
+    assert estimate_context_tokens(messages) < 200
 
 
 def test_compact_history_keeps_recent_dialogue_and_pairs_recent_tools() -> None:
@@ -113,6 +122,28 @@ def test_compact_history_drops_oldest_dialogue_to_fit_budget() -> None:
     assert "old-0-" not in "\n".join(str(content) for content in contents)
     assert "latest user" in contents
     assert contents[-1] == "checkpoint request"
+
+
+def test_compact_history_replaces_old_media_with_a_descriptor() -> None:
+    media = BinaryContent(b"secret payload", media_type="image/png")
+    messages: list[ModelMessage] = [
+        ModelRequest(parts=[UserPromptPart(content=["old question", media])]),
+        ModelResponse(parts=[TextPart(content="old answer")]),
+        ModelRequest(parts=[UserPromptPart(content="recent question")]),
+    ]
+
+    compacted = compact_history(
+        messages,
+        checkpoint_request="checkpoint request",
+        checkpoint_text="checkpoint response",
+        config=CompactionConfig(trigger_tokens=2_000, target_tokens=1_000, keep_recent_turns=1),
+    )
+
+    old_prompt = compacted[0].parts[0]
+    assert isinstance(old_prompt, UserPromptPart)
+    assert isinstance(old_prompt.content, str)
+    assert "[Image: image/png" in old_prompt.content
+    assert "secret payload" not in old_prompt.content
 
 
 def test_compact_history_drops_recent_tools_when_they_exceed_budget() -> None:

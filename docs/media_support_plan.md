@@ -2,10 +2,10 @@
 
 ## Status
 
-Phase 1 is implemented; Phases 2–7 are proposed. This plan covers model-visible
-media supplied by the user or discovered through TabulaFlow's existing
-filesystem, browser, database, and bulk-processing workflows. Existing media
-rendering in the browser output pane remains intact.
+Phases 1–2 are implemented; Phases 3–7 are proposed. This plan covers
+model-visible media supplied by the user or discovered through TabulaFlow's
+existing filesystem, browser, database, and bulk-processing workflows. Existing
+media rendering in the browser output pane remains intact.
 
 ## Goals
 
@@ -84,8 +84,8 @@ Layer ownership:
   or the app.
 - `tabulaflow/agents/media.py`: optional format conversion and conversion into
   Pydantic AI media types.
-- `tabulaflow/agents/chat/input.py`: the public text-plus-media chat-input
-  contract.
+- `tabulaflow/agents/chat/input.py`: the public alias for Pydantic AI's ordered
+  text-plus-media input and safe descriptor rendering.
 - `tabulaflow/app`: clipboard integration, `[Image #N]` presentation, and
   existing output rendering.
 
@@ -131,31 +131,29 @@ Create the shared core and agents media modules.
   burdensome.
 
 **Exit criteria:** existing output-pane media tests pass through the shared
-normalizer, and unit tests cover valid, malformed, spoofed, oversized, and
-unknown media values.
+normalizer, and unit tests cover valid, malformed, spoofed, decompression-bomb,
+and unknown media values.
 
 ## Phase 2 — Multimodal chat contract and history
 
-Add a public `ChatInput` carrying text and ordered media items while retaining
-plain `str` as a convenience input.
+Expose `ChatInput` as `str | Sequence[str | BinaryContent]`, retaining plain
+strings as the convenient common case and accepting only the bytes-backed media
+contract TabulaFlow currently uses.
 
 Update `ChatSession.run_stream`, `ChatSession.run`, and the internal turn path to
-pass a Pydantic AI `Sequence[UserContent]` at the model boundary. Propagate the
-same contract through `AppSession`.
+pass plain text or Pydantic AI `BinaryContent` directly to the model boundary.
+Propagate the same contract through `AppSession`.
 
-Update lifecycle behavior:
+Lifecycle behavior:
 
 - Store only prompt text and attachment descriptors in `_internal.messages`.
-- Keep raw content in native in-memory history or a session-scoped,
-  content-addressed media cache when a durable local reference is required.
-- Record descriptors, identifiers, sizes, and hashes in trajectories, never raw
-  bytes or base64.
+- Keep raw content only in native in-memory model history.
+- Record descriptors and sizes in trajectories, never raw bytes or base64.
 - Preserve media in the active and configured recent turns during compaction;
-  replace older media with omission descriptors after checkpointing.
-- Estimate pending media separately rather than estimating serialized base64 as
-  ordinary text.
-- Preserve attachment ordering and include a textual identifier so the model can
-  refer to each item unambiguously.
+  replace older media with descriptors after checkpointing.
+- Estimate history from safe descriptors rather than serialized base64; actual
+  provider usage remains the anchor after each completed request.
+- Preserve content ordering and native media objects.
 
 **Exit criteria:** a library caller can submit each supported modality, continue
 the conversation, trigger compaction, switch models, and save a trajectory

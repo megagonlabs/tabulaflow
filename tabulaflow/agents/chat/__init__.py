@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from tabulaflow.agents.chat.compaction import CompactionConfig
+    from tabulaflow.agents.chat.input import ChatInput
     from tabulaflow.agents.chat.events import (
         AnswerDelta,
         ChatEvent,
@@ -34,6 +35,7 @@ _LAZY_EXPORTS = {
     "CompactionFinished": ("tabulaflow.agents.chat.events", "CompactionFinished"),
     "CompactionStarted": ("tabulaflow.agents.chat.events", "CompactionStarted"),
     "ChatSession": ("tabulaflow.agents.chat.session", "ChatSession"),
+    "ChatInput": ("tabulaflow.agents.chat.input", "ChatInput"),
     "CompactionConfig": ("tabulaflow.agents.chat.compaction", "CompactionConfig"),
     "TurnFinished": ("tabulaflow.agents.chat.events", "TurnFinished"),
     "NarrationDelta": ("tabulaflow.agents.chat.events", "NarrationDelta"),
@@ -52,6 +54,7 @@ __all__ = [
     "CompactionFinished",
     "CompactionStarted",
     "ChatSession",
+    "ChatInput",
     "CompactionConfig",
     "TurnFinished",
     "NarrationDelta",

@@ -3,9 +3,11 @@
 from decimal import Decimal
 import json
 import threading
-from typing import TYPE_CHECKING, Any, Annotated, Literal, Union
+from typing import TYPE_CHECKING, Any, Annotated, Literal, Union, cast
 
 from pydantic import BaseModel, Field
+
+from tabulaflow.agents.chat.input import ChatInput, describe_chat_input
 
 if TYPE_CHECKING:
     import pydantic_ai
@@ -104,9 +106,9 @@ class Trajectory(BaseModel):
                     if part.part_kind == "system-prompt":
                         trajectory.messages.append(SystemMessage(content=part.content))
                     elif part.part_kind == "user-prompt":
-                        if not isinstance(part.content, str):
-                            raise ValueError(f"Only string is supported for user prompt, got {type(part.content)}")
-                        trajectory.messages.append(UserMessage(content=part.content))
+                        trajectory.messages.append(
+                            UserMessage(content=describe_chat_input(cast(ChatInput, part.content)))
+                        )
                     elif part.part_kind == "tool-return":
                         if not isinstance(part.content, str):
                             raise ValueError(f"Tool return is not a string: {part.content}")

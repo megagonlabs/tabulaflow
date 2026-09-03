@@ -14,7 +14,7 @@ from tabulaflow.app.config import LLMPreset, model_supports_apply_patch
 from tabulaflow.app.runtime_paths import RuntimePaths
 
 if TYPE_CHECKING:
-    from tabulaflow.agents.chat import ChatEvent, ChatSession
+    from tabulaflow.agents.chat import ChatEvent, ChatInput, ChatSession
     from tabulaflow.agents.llm import ServiceTier
     from tabulaflow.agents.trace import Usage
     from tabulaflow.app.turn import TurnOutput
@@ -200,7 +200,7 @@ class AppSession:
         if self._chat_session is not None:
             self._chat_session.reset_conversation()
 
-    def run_stream(self, question: str) -> AsyncIterator[ChatEvent]:
+    def run_stream(self, question: "ChatInput") -> AsyncIterator[ChatEvent]:
         """Run one agent turn with the active LLM preset."""
         chat_session = self.active_chat_session
         if chat_session is None:
