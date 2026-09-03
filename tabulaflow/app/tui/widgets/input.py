@@ -108,28 +108,45 @@ class TabulaflowSuggester(Suggester):
 
 _MAX_HISTORY_ENTRIES = 500
 
-_PASTE_TOKEN_PATTERN = re.compile(r"\[Pasted text #(\d+) \+(\d+) lines\]")
-_IMAGE_TOKEN_PATTERN = re.compile(r"\[Image #(\d+)\]")
-_CONTENT_TOKEN_PATTERN = re.compile(r"\[Pasted text #(?P<paste_id>\d+) \+\d+ lines\]|\[Image #(?P<image_id>\d+)\]")
-
-
-class _ImageReferenceHighlighter(Highlighter):
-    def __init__(self, images: Mapping[int, BinaryContent]) -> None:
-        self._images = images
-
-    def highlight(self, text: Text) -> None:
-        for match in _IMAGE_TOKEN_PATTERN.finditer(text.plain):
-            if int(match.group(1)) in self._images:
-                text.stylize(CODE_FUNCTION, match.start(), match.end())
+_PASTE_REFERENCE_PATTERN = re.compile(r"\[Pasted text #(\d+) \+(\d+) lines\]")
+_IMAGE_REFERENCE_PATTERN = re.compile(r"\[Image #(\d+)\]")
+_REFERENCE_PATTERN = re.compile(r"\[Pasted text #(?P<paste_id>\d+) \+\d+ lines\]|\[Image #(?P<image_id>\d+)\]")
 
 
 class _PasteRecord(TypedDict):
     """In-memory shape mirrors the on-disk ``pastedContents`` value so save
     and load are trivial mirror operations."""
 
-    id: int  # redundant with the dict key, kept to match Claude Code's on-disk format
-    type: str  # always "text" today; extension point for "image" / "file" without a format break
+    id: int
+    type: str
     content: str
+
+
+def _is_active_reference(
+    match: re.Match[str],
+    pasted_contents: Mapping[int, _PasteRecord],
+    images: Mapping[int, BinaryContent],
+) -> bool:
+    paste_id = match.group("paste_id")
+    image_id = match.group("image_id")
+    return (paste_id is not None and int(paste_id) in pasted_contents) or (
+        image_id is not None and int(image_id) in images
+    )
+
+
+class _ReferenceHighlighter(Highlighter):
+    def __init__(
+        self,
+        pasted_contents: Mapping[int, _PasteRecord],
+        images: Mapping[int, BinaryContent],
+    ) -> None:
+        self._pasted_contents = pasted_contents
+        self._images = images
+
+    def highlight(self, text: Text) -> None:
+        for match in _REFERENCE_PATTERN.finditer(text.plain):
+            if _is_active_reference(match, self._pasted_contents, self._images):
+                text.stylize(CODE_FUNCTION, match.start(), match.end())
 
 
 def _has_newline(text: str) -> bool:
@@ -144,7 +161,7 @@ class HistoryInput(Input):
     """Input widget with file-backed command history (Up/Down arrows).
 
     Multi-line pastes (text containing a newline) are stashed in an in-memory
-    registry and replaced with a compact ``[Pasted text #N +M lines]`` token
+    registry and replaced with a compact ``[Pasted text #N +M lines]`` reference
     so the input bar stays single-line. Images use highlighted ``[Image #N]``
     references backed only for the active composition. :meth:`build_chat_input`
     expands both forms before submission.
@@ -181,12 +198,13 @@ class HistoryInput(Input):
         # typeahead handler after the user types a letter while a result
         # is focused) doesn't replace the in-progress composition with the
         # next keystroke.
-        self._pending_images: dict[int, BinaryContent] = {}
+        self._pasted_contents: dict[int, _PasteRecord] = {}
+        self._active_images: dict[int, BinaryContent] = {}
         self._image_counter = 0
         super().__init__(
             placeholder=placeholder,
             id=id,
-            highlighter=_ImageReferenceHighlighter(self._pending_images),
+            highlighter=_ReferenceHighlighter(self._pasted_contents, self._active_images),
             suggester=TabulaflowSuggester(),
             select_on_focus=False,
         )
@@ -194,7 +212,6 @@ class HistoryInput(Input):
         self._history: list[str] = []
         self._history_index: int = -1
         self._saved_input: str = ""
-        self._pasted_contents: dict[int, _PasteRecord] = {}
         self._paste_counter: int = 0
         self._load_history()
 
@@ -219,7 +236,7 @@ class HistoryInput(Input):
             display: str = record["display"]
             self._image_counter = max(
                 self._image_counter,
-                max((int(match.group(1)) for match in _IMAGE_TOKEN_PATTERN.finditer(display)), default=0),
+                max((int(match.group(1)) for match in _IMAGE_REFERENCE_PATTERN.finditer(display)), default=0),
             )
             pasted: dict[str, _PasteRecord] = record.get("pastedContents") or {}
 
@@ -229,7 +246,7 @@ class HistoryInput(Input):
                 new = id_remap.get(int(m.group(1)))
                 return m.group(0) if new is None else f"[Pasted text #{new} +{m.group(2)} lines]"
 
-            loaded.append(_PASTE_TOKEN_PATTERN.sub(remap, display))
+            loaded.append(_PASTE_REFERENCE_PATTERN.sub(remap, display))
         self._history = loaded
 
     def _save_history(self) -> None:
@@ -245,7 +262,7 @@ class HistoryInput(Input):
 
     def _build_history_record(self, placeholder_text: str) -> dict[str, object]:
         pasted: dict[str, _PasteRecord] = {}
-        for m in _PASTE_TOKEN_PATTERN.finditer(placeholder_text):
+        for m in _PASTE_REFERENCE_PATTERN.finditer(placeholder_text):
             rec = self._pasted_contents.get(int(m.group(1)))
             if rec is not None:
                 pasted[str(rec["id"])] = rec
@@ -315,73 +332,69 @@ class HistoryInput(Input):
         text = event.text
         if not text or not _has_newline(text):
             return
-        self._insert_paste_token(_normalize_newlines(text))
+        self._insert_paste_reference(_normalize_newlines(text))
         event.prevent_default()
         event.stop()
 
     def action_paste(self) -> None:
-        """Override Ctrl+V so pastes from Textual's clipboard route through
-        the same multi-line stash logic as terminal bracketed paste."""
+        """Paste an image reference or text from the clipboard."""
         try:
             image = read_clipboard_image()
         except (OSError, ValueError) as exc:
             self.notify(str(exc), severity="error")
             return
         if image is not None:
-            self._insert_image_token(image)
+            self._insert_image_reference(image)
             return
         clipboard = getattr(self.app, "clipboard", "") or ""
         if _has_newline(clipboard):
-            self._insert_paste_token(_normalize_newlines(clipboard))
+            self._insert_paste_reference(_normalize_newlines(clipboard))
             return
         super().action_paste()
 
-    def _insert_paste_token(self, text: str) -> None:
+    def _insert_paste_reference(self, text: str) -> None:
         pid = self._register_paste(text)
         line_count = text.count("\n") + 1
-        token = f"[Pasted text #{pid} +{line_count} lines]"
-        selection = self.selection
-        if selection.is_empty:
-            self.insert_text_at_cursor(token)
-        else:
-            self.replace(token, *selection)
+        self._insert_reference(f"[Pasted text #{pid} +{line_count} lines]")
 
-    def _insert_image_token(self, image: BinaryContent) -> None:
+    def _insert_image_reference(self, image: BinaryContent) -> None:
         self._image_counter += 1
         image_id = self._image_counter
-        self._pending_images[image_id] = image
-        token = f"[Image #{image_id}]"
+        self._active_images[image_id] = image
+        self._insert_reference(f"[Image #{image_id}]")
+
+    def _insert_reference(self, reference: str) -> None:
         selection = self.selection
         if selection.is_empty:
-            self.insert_text_at_cursor(token)
+            self.insert_text_at_cursor(reference)
         else:
-            self.replace(token, *selection)
-        self._discard_unreferenced_images()
+            self.replace(reference, *selection)
+        self._prune_unreferenced_images()
         self.refresh()
 
     def action_delete_left(self) -> None:
-        if self._delete_active_image(left=True):
+        if self._delete_adjacent_reference(before_cursor=True):
             return
         super().action_delete_left()
-        self._discard_unreferenced_images()
+        self._prune_unreferenced_images()
 
     def action_delete_right(self) -> None:
-        if self._delete_active_image(left=False):
+        if self._delete_adjacent_reference(before_cursor=False):
             return
         super().action_delete_right()
-        self._discard_unreferenced_images()
+        self._prune_unreferenced_images()
 
-    def _delete_active_image(self, *, left: bool) -> bool:
+    def _delete_adjacent_reference(self, *, before_cursor: bool) -> bool:
         if not self.selection.is_empty:
             return False
         cursor = self.cursor_position
-        for match in _IMAGE_TOKEN_PATTERN.finditer(self.value):
-            if int(match.group(1)) not in self._pending_images:
+        for match in _REFERENCE_PATTERN.finditer(self.value):
+            if not self._is_active_reference(match):
                 continue
-            adjacent = match.end() == cursor if left else match.start() == cursor
+            adjacent = match.end() == cursor if before_cursor else match.start() == cursor
             if adjacent:
                 self.delete(match.start(), match.end())
-                self._pending_images.pop(int(match.group(1)), None)
+                self._prune_unreferenced_images()
                 self.refresh()
                 return True
         return False
@@ -390,13 +403,13 @@ class HistoryInput(Input):
         selection = super().validate_selection(selection)
         previous = self.selection.end
         return Selection(
-            self._snap_to_image_boundary(selection.start, previous),
-            self._snap_to_image_boundary(selection.end, previous),
+            self._snap_to_reference_boundary(selection.start, previous),
+            self._snap_to_reference_boundary(selection.end, previous),
         )
 
-    def _snap_to_image_boundary(self, position: int, previous: int) -> int:
-        for match in _IMAGE_TOKEN_PATTERN.finditer(self.value):
-            if int(match.group(1)) not in self._pending_images or not match.start() < position < match.end():
+    def _snap_to_reference_boundary(self, position: int, previous: int) -> int:
+        for match in _REFERENCE_PATTERN.finditer(self.value):
+            if not self._is_active_reference(match) or not match.start() < position < match.end():
                 continue
             if position != previous:
                 return match.end() if position > previous else match.start()
@@ -405,7 +418,7 @@ class HistoryInput(Input):
 
     def build_chat_input(self, text: str) -> ChatInput:
         """Expand visible paste and image references into ordered model input."""
-        self._discard_unreferenced_images(text)
+        self._prune_unreferenced_images(text)
         content: list[str | BinaryContent] = []
 
         def append_text(value: str) -> None:
@@ -417,13 +430,13 @@ class HistoryInput(Input):
                 content.append(value)
 
         position = 0
-        for match in _CONTENT_TOKEN_PATTERN.finditer(text):
+        for match in _REFERENCE_PATTERN.finditer(text):
             append_text(text[position : match.start()])
             if paste_id := match.group("paste_id"):
                 record = self._pasted_contents.get(int(paste_id))
                 append_text(record["content"] if record is not None else match.group(0))
             elif image_id := match.group("image_id"):
-                image = self._pending_images.get(int(image_id))
+                image = self._active_images.get(int(image_id))
                 if image is None:
                     append_text(match.group(0))
                 else:
@@ -437,15 +450,18 @@ class HistoryInput(Input):
             else "".join(item for item in content if isinstance(item, str))
         )
 
-    def discard_images(self, text: str) -> None:
+    def release_submission_images(self, text: str) -> None:
         """Forget images referenced by a completed submission."""
-        for match in _IMAGE_TOKEN_PATTERN.finditer(text):
-            self._pending_images.pop(int(match.group(1)), None)
+        for match in _IMAGE_REFERENCE_PATTERN.finditer(text):
+            self._active_images.pop(int(match.group(1)), None)
         self.refresh()
 
-    def _discard_unreferenced_images(self, text: str | None = None) -> None:
+    def _prune_unreferenced_images(self, text: str | None = None) -> None:
         referenced = {
-            int(match.group(1)) for match in _IMAGE_TOKEN_PATTERN.finditer(self.value if text is None else text)
+            int(match.group(1)) for match in _IMAGE_REFERENCE_PATTERN.finditer(self.value if text is None else text)
         }
-        for image_id in self._pending_images.keys() - referenced:
-            del self._pending_images[image_id]
+        for image_id in self._active_images.keys() - referenced:
+            del self._active_images[image_id]
+
+    def _is_active_reference(self, match: re.Match[str]) -> bool:
+        return _is_active_reference(match, self._pasted_contents, self._active_images)

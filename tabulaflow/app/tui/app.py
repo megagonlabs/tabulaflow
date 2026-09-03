@@ -971,7 +971,7 @@ class TabulaflowApp(App[None]):
             raise
         finally:
             if not interrupted and input_bar is not None:
-                input_bar.discard_images(display_text)
+                input_bar.release_submission_images(display_text)
             self._submission_worker = None
 
     @staticmethod

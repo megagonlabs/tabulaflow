@@ -604,7 +604,7 @@ async def test_submission_builds_ordered_multimodal_input(monkeypatch: pytest.Mo
             await pilot.pause()
         input_bar = app.query_one("#input-bar", HistoryInput)
         image = BinaryContent(b"image", media_type="image/png")
-        input_bar._pending_images[1] = image
+        input_bar._active_images[1] = image
         input_bar._image_counter = 1
         input_bar.value = "inspect [Image #1] now"
 
@@ -678,7 +678,7 @@ async def test_submission_worker_covers_and_can_cancel_session_preflight(monkeyp
         monkeypatch.setattr(app, "_ensure_session", blocking_session)
         input_bar = app.query_one("#input-bar", HistoryInput)
         image = BinaryContent(b"image", media_type="image/png")
-        input_bar._pending_images[1] = image
+        input_bar._active_images[1] = image
         input_bar._image_counter = 1
         input_bar.value = "show [Image #1]"
         await pilot.press("enter")
@@ -698,7 +698,7 @@ async def test_submission_worker_covers_and_can_cancel_session_preflight(monkeyp
 
         assert app._submission_worker is None
         assert input_bar.value == "show [Image #1]"
-        assert input_bar._pending_images == {1: image}
+        assert input_bar._active_images == {1: image}
         messages = [str(message.render()) for message in app.query(SystemMessage)]
         assert messages[-1] == "Interrupted"
 
