@@ -740,6 +740,8 @@ Sep 2
   - [ ] Onboarding - browser install
 
 - [ ] Allowed roots policy
+- [ ] image/pdf detail level
+- [ ] divide file_editor tool
 - [ ] Shell messed up after ssh disconnect
 - [ ] Check if uv tool install install browser
 
