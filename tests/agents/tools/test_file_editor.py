@@ -1,5 +1,6 @@
 """Tests for the file editor tool (view / write_file / str_replace)."""
 
+import io
 from pathlib import Path
 from typing import Any, cast
 
@@ -7,6 +8,7 @@ from PIL import Image
 import pytest
 from pydantic_ai import ToolReturn
 from pydantic_ai.messages import BinaryContent
+from pypdf import PdfReader, PdfWriter
 
 from tabulaflow.agents.tools.filesystem.editor import FileEditorRoot, FileEditorTool
 
@@ -27,28 +29,24 @@ async def _view(
     return result
 
 
-def _make_pdf(text: str) -> bytes:
-    """Build a minimal valid single-page PDF with the given text in a content stream."""
-    stream = f"BT /F1 24 Tf 20 100 Td ({text}) Tj ET".encode()
-    objs = [
-        b"<< /Type /Catalog /Pages 2 0 R >>",
-        b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
-        b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 300 200] /Contents 4 0 R "
-        b"/Resources << /Font << /F1 5 0 R >> >> >>",
-        b"<< /Length %d >>\nstream\n%s\nendstream" % (len(stream), stream),
-        b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>",
-    ]
-    out = bytearray(b"%PDF-1.4\n")
-    offsets = []
-    for i, body in enumerate(objs, 1):
-        offsets.append(len(out))
-        out += b"%d 0 obj\n%s\nendobj\n" % (i, body)
-    xref_off = len(out)
-    out += b"xref\n0 %d\n0000000000 65535 f \n" % (len(objs) + 1)
-    for off in offsets:
-        out += b"%010d 00000 n \n" % off
-    out += b"trailer\n<< /Size %d /Root 1 0 R >>\nstartxref\n%d\n%%%%EOF" % (len(objs) + 1, xref_off)
-    return bytes(out)
+def _make_pdf(pages: int = 1) -> bytes:
+    writer = PdfWriter()
+    for _ in range(pages):
+        writer.add_blank_page(width=300, height=200)
+    output = io.BytesIO()
+    writer.write(output)
+    return output.getvalue()
+
+
+def _media_result(result: str | ToolReturn, media_type: str) -> tuple[str, BinaryContent]:
+    assert isinstance(result, ToolReturn)
+    assert isinstance(result.return_value, str)
+    assert result.content is not None
+    assert len(result.content) == 1
+    content = result.content[0]
+    assert isinstance(content, BinaryContent)
+    assert content.media_type == media_type
+    return result.return_value, content
 
 
 class TestView:
@@ -101,14 +99,8 @@ class TestView:
 
         result = await editor("view", path.name)
 
-        assert isinstance(result, ToolReturn)
-        assert isinstance(result.return_value, str)
-        assert result.return_value.startswith("Image: image.bin (image/png,")
-        assert result.content is not None
-        assert len(result.content) == 1
-        image = result.content[0]
-        assert isinstance(image, BinaryContent)
-        assert image.media_type == "image/png"
+        description, _ = _media_result(result, "image/png")
+        assert description.startswith("Image: image.bin (image/png,")
 
     async def test_view_image_rejects_view_range(self, editor: FileEditorTool, tmp_path: Path) -> None:
         path = tmp_path / "image.png"
@@ -129,7 +121,7 @@ class TestView:
 
         path = tmp_path / "image.png"
         Image.new("RGB", (2, 3), "red").save(path)
-        monkeypatch.setattr(editor_module, "MAX_LOCAL_IMAGE_BYTES", 10)
+        monkeypatch.setattr(editor_module, "MAX_LOCAL_MEDIA_BYTES", 10)
 
         result = await editor("view", path.name)
 
@@ -292,66 +284,65 @@ class TestAllowedRoots:
 
 
 class TestPdf:
-    async def test_view_pdf_extracts_text(self, editor: FileEditorTool, tmp_path: Path) -> None:
-        (tmp_path / "doc.pdf").write_bytes(_make_pdf("HELLO_PDF_TEST"))
-        out = await _view(editor, "doc.pdf")
-        assert "(error" not in out
-        assert "PDF: doc.pdf" in out
-        assert "--- Page 1 ---" in out
-        assert "HELLO_PDF_TEST" in out
+    async def test_view_pdf_returns_native_content(self, editor: FileEditorTool, tmp_path: Path) -> None:
+        (tmp_path / "doc.pdf").write_bytes(_make_pdf(3))
+
+        result = await editor("view", "doc.pdf")
+
+        description, content = _media_result(result, "application/pdf")
+        assert description.startswith("PDF: doc.pdf (3 pages, application/pdf,")
+        assert len(PdfReader(io.BytesIO(content.data)).pages) == 3
 
     async def test_view_pdf_detected_by_magic_bytes(self, editor: FileEditorTool, tmp_path: Path) -> None:
-        (tmp_path / "doc.bin").write_bytes(_make_pdf("MAGIC_DETECTED"))
-        out = await _view(editor, "doc.bin")
-        assert "MAGIC_DETECTED" in out
+        (tmp_path / "doc.bin").write_bytes(_make_pdf())
 
-    async def test_view_pdf_returns_full_text(self, editor: FileEditorTool, tmp_path: Path) -> None:
-        (tmp_path / "doc.pdf").write_bytes(_make_pdf("ONLY_PAGE"))
-        out = await _view(editor, "doc.pdf")
-        assert "(error" not in out
-        assert "1 page(s) with text" in out and "ONLY_PAGE" in out
+        result = await editor("view", "doc.bin")
 
-    async def test_view_pdf_view_range_rejected(self, editor: FileEditorTool, tmp_path: Path) -> None:
-        (tmp_path / "doc.pdf").write_bytes(_make_pdf("ONLY_PAGE"))
-        out = await _view(editor, "doc.pdf", view_range=[1, 2])
-        assert "(error" in out and "not supported for PDFs" in out
+        _media_result(result, "application/pdf")
+
+    async def test_view_pdf_selects_page_range(self, editor: FileEditorTool, tmp_path: Path) -> None:
+        (tmp_path / "doc.pdf").write_bytes(_make_pdf(5))
+
+        result = await editor("view", "doc.pdf", view_range=[2, 4])
+
+        description, content = _media_result(result, "application/pdf")
+        assert description.startswith("PDF: doc.pdf (pages 2-4 of 5, application/pdf,")
+        assert len(PdfReader(io.BytesIO(content.data)).pages) == 3
+
+    async def test_view_pdf_clamps_range_end(self, editor: FileEditorTool, tmp_path: Path) -> None:
+        (tmp_path / "doc.pdf").write_bytes(_make_pdf(3))
+
+        result = await editor("view", "doc.pdf", view_range=[2, 99])
+
+        description, _ = _media_result(result, "application/pdf")
+        assert description.startswith("PDF: doc.pdf (pages 2-3 of 3, application/pdf,")
+
+    async def test_view_pdf_rejects_invalid_range(self, editor: FileEditorTool, tmp_path: Path) -> None:
+        (tmp_path / "doc.pdf").write_bytes(_make_pdf(3))
+
+        past_end = await editor("view", "doc.pdf", view_range=[4, 5])
+        reversed_range = await editor("view", "doc.pdf", view_range=[3, 2])
+
+        assert isinstance(past_end, str) and "past the end" in past_end
+        assert isinstance(reversed_range, str) and "must be >= start" in reversed_range
 
     async def test_write_pdf_rejected(self, editor: FileEditorTool, tmp_path: Path) -> None:
-        (tmp_path / "doc.pdf").write_bytes(_make_pdf("X"))
+        (tmp_path / "doc.pdf").write_bytes(_make_pdf())
         out = await editor("write_file", "doc.pdf", file_text="hi")
         assert "(error" in out and "read-only" in out
 
     async def test_str_replace_pdf_rejected(self, editor: FileEditorTool, tmp_path: Path) -> None:
-        (tmp_path / "doc.pdf").write_bytes(_make_pdf("X"))
+        (tmp_path / "doc.pdf").write_bytes(_make_pdf())
         out = await editor("str_replace", "doc.pdf", old_str="a", new_str="b")
         assert "(error" in out and "read-only" in out
 
-    async def test_no_text_layer_notice(self, editor: FileEditorTool, tmp_path: Path) -> None:
-        (tmp_path / "blank.pdf").write_bytes(_make_pdf(""))
-        out = await _view(editor, "blank.pdf")
-        assert "(error" in out and "no extractable text" in out
-
     async def test_malformed_pdf(self, editor: FileEditorTool, tmp_path: Path) -> None:
         (tmp_path / "bad.pdf").write_bytes(b"%PDF-1.4\nnot a real pdf")
-        out = await _view(editor, "bad.pdf")
-        assert "(error" in out
 
-    async def test_pdf_view_stays_inline_without_storage(self, tmp_path: Path) -> None:
-        from tabulaflow.agents.message_store import MessageStore
+        result = await editor("view", "bad.pdf")
 
-        tool = FileEditorTool(str(tmp_path), message_store=MessageStore().scoped("test"))
-        (tmp_path / "doc.pdf").write_bytes(_make_pdf("OFFLOAD_ME"))
-        out = await _view(tool, "doc.pdf")
-        assert "message_id" not in out
-        assert "OFFLOAD_ME" in out
-
-    async def test_non_pdf_view_not_offloaded(self, tmp_path: Path) -> None:
-        from tabulaflow.agents.message_store import MessageStore
-
-        tool = FileEditorTool(str(tmp_path), message_store=MessageStore().scoped("test"))
-        (tmp_path / "f.txt").write_text("plain text\n")
-        out = await _view(tool, "f.txt")
-        assert "message_id" not in out  # only PDFs are mirrored
+        assert isinstance(result, str)
+        assert result == "(error: invalid PDF)"
 
 
 class TestUnknownCommand:

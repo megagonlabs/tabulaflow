@@ -47,8 +47,9 @@ from urllib.parse import urlparse
 
 from pydantic import BaseModel
 from pydantic_ai import Tool, ToolReturn
+from pydantic_ai.messages import BinaryContent
 
-from tabulaflow.agents.media import to_binary_content
+from tabulaflow.agents.media import select_pdf_pages, to_binary_content
 from tabulaflow.core.media import detect_media
 from .aria import (
     extract_refs,
@@ -58,7 +59,6 @@ from tabulaflow.agents.message_store import (
     deref_call,
     id_marker,
 )
-from ...extraction.pdf import extract_pdf_text
 from .manager import WebBrowserManager
 
 if TYPE_CHECKING:
@@ -79,7 +79,7 @@ logger = logging.getLogger(__name__)
 
 _NAV_TIMEOUT_MS = 30_000
 _SETTLE_TIMEOUT_MS = 10_000
-_MAX_BROWSER_IMAGE_BYTES = 20 * 1024 * 1024
+_MAX_BROWSER_MEDIA_BYTES = 50 * 1024 * 1024
 
 # After ``load`` fires we wait for ``networkidle`` to give SPAs time to
 # render their JS-injected content. Capped because chatty SPAs (Google Flights,
@@ -420,11 +420,6 @@ class _TabState:
     last_snapshot: PageSnapshot | None = None
     popup_notice: str | None = None
     op_lock: asyncio.Lock = field(default_factory=asyncio.Lock)
-    # Set when a navigation resolved to a PDF: the extracted text becomes the
-    # tab's content and ``last_snapshot`` carries empty refs (no interactive
-    # elements). While set, ``format_tab_response`` renders this instead of an
-    # aria snapshot, so every action on the tab returns the static document.
-    pdf_text: str | None = None
 
 
 def _compose_tab_response(
@@ -458,6 +453,14 @@ def _compose_tab_response(
     return "\n".join(parts)
 
 
+def _media_response(state: _TabState, url: str, description: str, content: BinaryContent) -> ToolReturn:
+    state.last_snapshot = PageSnapshot(url=url, title="", markdown_content=description, refs=[])
+    return ToolReturn(
+        return_value=_compose_tab_response(state, url=url, title="", body=description),
+        content=[content],
+    )
+
+
 async def format_tab_response(state: _TabState) -> str:
     """Build the LLM-facing response for a tab state.
 
@@ -466,20 +469,7 @@ async def format_tab_response(state: _TabState) -> str:
     parent automatically — so no cross-check or auxiliary list is needed.
     Mutates ``state.last_snapshot`` and consumes any pending popup notice.
 
-    PDF tabs short-circuit: ``state.last_snapshot`` was populated by
-    ``_render_pdf_bytes`` with the extracted text and empty refs, so we render
-    that directly rather than walking a (nonexistent) aria tree.
     """
-    if state.pdf_text is not None:
-        snapshot = state.last_snapshot
-        return _compose_tab_response(
-            state,
-            url=snapshot.url if snapshot else "",
-            title=snapshot.title if snapshot else "",
-            annotation="[PDF document — extracted text, no interactive elements]",
-            body=state.pdf_text or "(PDF has no extractable text layer — likely scanned/image-only)",
-        )
-
     snapshot = await take_snapshot(state.page)
     state.last_snapshot = snapshot
     return _compose_tab_response(
@@ -582,9 +572,8 @@ class WebBrowserTool:
         turn.
 
         Issue multiple navigates in parallel within one turn to scan
-        several URLs concurrently. If ``url`` is a PDF, the response is its
-        extracted text rather than a page snapshot. A direct image response is
-        returned as native image content.
+        several URLs concurrently. Direct image and PDF responses are returned
+        as native model content.
 
         Args:
             url: An ``http://`` or ``https://`` URL.
@@ -614,7 +603,6 @@ class WebBrowserTool:
         # agent is actively re-navigating can be auto-closed at the next turn.
         state.last_touched_turn = self._turn_counter
         async with state.op_lock:
-            state.pdf_text = None  # clear any prior PDF content on in-place nav
             try:
                 response = await self._goto(state.page, url)
             except Exception as e:
@@ -625,11 +613,9 @@ class WebBrowserTool:
                 # download.
                 if self._is_download_error(e):
                     result = await self._load_download(state, url)
-                    if result is not None:
-                        if isinstance(result, str) and is_new:
-                            await self._discard_tab(state)
-                        return result
-                    return await format_tab_response(state)
+                    if isinstance(result, str) and is_new:
+                        await self._discard_tab(state)
+                    return result
                 if is_new:
                     await self._discard_tab(state)
                 return self._format_error(f"navigation failed: {self._error_message(e)}")
@@ -653,10 +639,9 @@ class WebBrowserTool:
                 return result
             if "application/pdf" in ctype:
                 result = await self._load_download(state, url)
-                if result is not None:
-                    if isinstance(result, str) and is_new:
-                        await self._discard_tab(state)
-                    return result
+                if isinstance(result, str) and is_new:
+                    await self._discard_tab(state)
+                return result
             return await format_tab_response(state)
 
     @staticmethod
@@ -664,11 +649,10 @@ class WebBrowserTool:
         msg = str(e)
         return "Download is starting" in msg or "ERR_ABORTED" in msg
 
-    async def _load_download(self, state: "_TabState", url: str) -> str | ToolReturn | None:
+    async def _load_download(self, state: "_TabState", url: str) -> str | ToolReturn:
         """Fetch an aborted-navigation URL and render a recognized image or PDF.
 
-        Returns native image content, ``None`` after loading a PDF onto the tab,
-        or an error string.
+        Returns native media content or an error string.
         """
         try:
             ctx = await self._ensure_context()
@@ -678,9 +662,7 @@ class WebBrowserTool:
         except Exception as e:
             return self._format_error(f"navigation failed: {self._error_message(e)}")
         detected = detect_media(body)
-        if content_type.startswith("image/") or (
-            detected is not None and detected.media_type.startswith("image/")
-        ):
+        if content_type.startswith("image/") or (detected is not None and detected.media_type.startswith("image/")):
             media_type = detected.media_type if detected is not None else content_type.split(";", 1)[0]
             return await self._render_image_bytes(state, url, body, media_type)
         return await self._render_pdf_bytes(state, url, body, content_type)
@@ -692,50 +674,48 @@ class WebBrowserTool:
         body: bytes,
         media_type: str,
     ) -> str | ToolReturn:
-        if len(body) > _MAX_BROWSER_IMAGE_BYTES:
+        if len(body) > _MAX_BROWSER_MEDIA_BYTES:
             return self._format_error(
-                f"image is too large to process "
-                f"({len(body)} bytes; limit {_MAX_BROWSER_IMAGE_BYTES} bytes)"
+                f"image is too large to process ({len(body)} bytes; limit {_MAX_BROWSER_MEDIA_BYTES} bytes)"
             )
         try:
             image = await asyncio.to_thread(to_binary_content, body, media_type=media_type)
         except ValueError as e:
             return self._format_error(f"failed to read image: {e}")
-        if len(image.data) > _MAX_BROWSER_IMAGE_BYTES:
+        if len(image.data) > _MAX_BROWSER_MEDIA_BYTES:
             return self._format_error(
                 f"normalized image is too large to process "
-                f"({len(image.data)} bytes; limit {_MAX_BROWSER_IMAGE_BYTES} bytes)"
+                f"({len(image.data)} bytes; limit {_MAX_BROWSER_MEDIA_BYTES} bytes)"
             )
 
         description = f"Image: {url} ({image.media_type}, {len(image.data)} bytes)"
-        state.last_snapshot = PageSnapshot(url=url, title="", markdown_content=description, refs=[])
-        return ToolReturn(
-            return_value=_compose_tab_response(state, url=url, title="", body=description),
-            content=[image],
-        )
+        return _media_response(state, url, description, image)
 
-    async def _render_pdf_bytes(self, state: "_TabState", url: str, body: bytes, content_type: str) -> str | None:
-        """Detect and extract a PDF from raw bytes onto ``state``.
-
-        Returns ``None`` on success (``state.pdf_text`` and ``state.last_snapshot``
-        are populated, ready for ``format_tab_response``), or an error/notice
-        string when the bytes aren't a PDF we can render. The bytes are dropped
-        as soon as extraction finishes so they don't linger in memory under
-        parallel fan-out.
-        """
+    async def _render_pdf_bytes(
+        self,
+        state: "_TabState",
+        url: str,
+        body: bytes,
+        content_type: str,
+    ) -> str | ToolReturn:
         is_pdf = "application/pdf" in content_type or body[:5] == b"%PDF-"
         if not is_pdf:
             kind = content_type.split(";")[0] or "unknown type"
-            return self._format_error(f"navigation triggered a download ({kind}); only PDFs can be read as text")
+            return self._format_error(f"navigation triggered an unsupported download ({kind})")
+        if len(body) > _MAX_BROWSER_MEDIA_BYTES:
+            return self._format_error(
+                f"PDF is too large to process ({len(body)} bytes; limit {_MAX_BROWSER_MEDIA_BYTES} bytes)"
+            )
 
         try:
-            title, text = await asyncio.to_thread(extract_pdf_text, body)
-        except Exception as e:
+            pdf = await asyncio.to_thread(select_pdf_pages, body)
+            content = to_binary_content(pdf.data, media_type="application/pdf")
+        except ValueError as e:
             return self._format_error(f"failed to read PDF: {self._error_message(e)}")
 
-        state.pdf_text = text
-        state.last_snapshot = PageSnapshot(url=url, title=title, markdown_content=text, refs=[])
-        return None
+        pages = f"{pdf.total_pages} {'page' if pdf.total_pages == 1 else 'pages'}"
+        description = f"PDF: {url} ({pages}, {content.media_type}, {len(content.data)} bytes)"
+        return _media_response(state, url, description, content)
 
     async def _goto(self, page: "Page", url: str) -> "Response | None":
         """Two-phase wait: ``load`` for the navigation guarantee, then a bounded
@@ -746,8 +726,7 @@ class WebBrowserTool:
         finish computing accessible names on sites that never reach networkidle.
 
         Returns the main navigation ``Response`` (``None`` for same-document
-        navigations) so the caller can inspect the content-type — an inline PDF
-        loads successfully but needs text extraction, not an aria snapshot.
+        navigations) so the caller can inspect the content type.
         """
         response = await page.goto(url, wait_until="load", timeout=_NAV_TIMEOUT_MS)
         try:
@@ -846,10 +825,9 @@ class WebBrowserTool:
             except Exception as e:
                 return self._format_error(f"screenshot failed: {self._error_message(e)}")
 
-        if len(data) > _MAX_BROWSER_IMAGE_BYTES:
+        if len(data) > _MAX_BROWSER_MEDIA_BYTES:
             return self._format_error(
-                f"screenshot is too large to process "
-                f"({len(data)} bytes; limit {_MAX_BROWSER_IMAGE_BYTES} bytes)"
+                f"screenshot is too large to process ({len(data)} bytes; limit {_MAX_BROWSER_MEDIA_BYTES} bytes)"
             )
         image = await asyncio.to_thread(to_binary_content, data, media_type="image/png")
         description = f"[tab={tab}]\nURL: {state.page.url}\nScreenshot: {target} ({len(image.data)} bytes)"

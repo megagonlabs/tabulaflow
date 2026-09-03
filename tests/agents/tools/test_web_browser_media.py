@@ -1,18 +1,27 @@
+import io
 from typing import Any, cast
 
 from PIL import Image
 from pydantic_ai import ToolReturn
 from pydantic_ai.messages import BinaryContent
 import pytest
+from pypdf import PdfWriter
 
 from tabulaflow.agents.tools.browser.tool import PageSnapshot, _TabState, WebBrowserTool
 
 
 def _png_bytes() -> bytes:
-    import io
-
     output = io.BytesIO()
     Image.new("RGB", (2, 3), "red").save(output, format="PNG")
+    return output.getvalue()
+
+
+def _pdf_bytes(pages: int = 1) -> bytes:
+    writer = PdfWriter()
+    for _ in range(pages):
+        writer.add_blank_page(width=300, height=200)
+    output = io.BytesIO()
+    writer.write(output)
     return output.getvalue()
 
 
@@ -49,13 +58,14 @@ class _FakeResponse:
         return self._data
 
 
-def _assert_png_result(result: str | ToolReturn) -> None:
+def _assert_media_result(result: str | ToolReturn, media_type: str) -> BinaryContent:
     assert isinstance(result, ToolReturn)
     assert result.content is not None
     assert len(result.content) == 1
-    image = result.content[0]
-    assert isinstance(image, BinaryContent)
-    assert image.media_type == "image/png"
+    content = result.content[0]
+    assert isinstance(content, BinaryContent)
+    assert content.media_type == media_type
+    return content
 
 
 async def test_browser_screenshot_captures_viewport_and_ref() -> None:
@@ -73,8 +83,8 @@ async def test_browser_screenshot_captures_viewport_and_ref() -> None:
     viewport = await browser.browser_screenshot("t1")
     element = await browser.browser_screenshot("t1", "e1")
 
-    _assert_png_result(viewport)
-    _assert_png_result(element)
+    _assert_media_result(viewport, "image/png")
+    _assert_media_result(element, "image/png")
     assert isinstance(viewport, ToolReturn)
     assert isinstance(viewport.return_value, str)
     assert "Screenshot: current viewport" in viewport.return_value
@@ -122,10 +132,30 @@ async def test_browser_navigate_returns_direct_image(
 
     result = await browser.browser_navigate("https://example.com/image.png")
 
-    _assert_png_result(result)
+    _assert_media_result(result, "image/png")
     assert isinstance(result, ToolReturn)
     assert isinstance(result.return_value, str)
     assert "Image: https://example.com/image.png" in result.return_value
+    assert state.last_snapshot is not None
+    assert state.last_snapshot.refs == []
+
+
+async def test_browser_returns_native_pdf() -> None:
+    page = _FakePage(_png_bytes())
+    state = _TabState(tab_id="t1", page=cast(Any, page), last_touched_turn=0)
+    browser = WebBrowserTool()
+
+    result = await browser._render_pdf_bytes(
+        state,
+        "https://example.com/report.pdf",
+        _pdf_bytes(3),
+        "application/pdf",
+    )
+
+    _assert_media_result(result, "application/pdf")
+    assert isinstance(result, ToolReturn)
+    assert isinstance(result.return_value, str)
+    assert "PDF: https://example.com/report.pdf (3 pages" in result.return_value
     assert state.last_snapshot is not None
     assert state.last_snapshot.refs == []
 

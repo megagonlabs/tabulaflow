@@ -4,14 +4,59 @@ from __future__ import annotations
 
 import io
 import warnings
+from dataclasses import dataclass
 
 from PIL import Image, UnidentifiedImageError
 from pydantic_ai.messages import BinaryContent
+from pypdf import PdfReader, PdfWriter
 
 from tabulaflow.core.media import detect_media, extract_media_bytes
 
 _MODEL_IMAGE_TYPES = {"image/gif", "image/jpeg", "image/png", "image/webp"}
 _CONVERTIBLE_IMAGE_TYPES = {"image/bmp", "image/tiff"}
+
+
+@dataclass(frozen=True)
+class PdfSelection:
+    """A validated PDF containing a selected range of physical pages."""
+
+    data: bytes
+    first_page: int
+    last_page: int
+    total_pages: int
+
+
+def select_pdf_pages(data: bytes, page_range: tuple[int, int] | None = None) -> PdfSelection:
+    """Validate a PDF and optionally select a 1-indexed inclusive page range."""
+    try:
+        reader = PdfReader(io.BytesIO(data))
+        if reader.is_encrypted:
+            raise ValueError("encrypted PDFs are not supported")
+        total = len(reader.pages)
+    except ValueError:
+        raise
+    except Exception as exc:
+        raise ValueError("invalid PDF") from exc
+    if total == 0:
+        raise ValueError("PDF has no pages")
+
+    first, last = page_range or (1, total)
+    if first < 1:
+        raise ValueError(f"start must be >= 1, got {first}")
+    if first > total:
+        raise ValueError(f"start ({first}) is past the end (only {total} available)")
+    last = min(last, total)
+    if last < first:
+        raise ValueError(f"end ({last}) must be >= start ({first})")
+    if first == 1 and last == total:
+        return PdfSelection(data, first, last, total)
+
+    writer = PdfWriter()
+    for page in reader.pages[first - 1 : last]:
+        writer.add_page(page)
+    output = io.BytesIO()
+    writer.write(output)
+    return PdfSelection(output.getvalue(), first, last, total)
 
 
 def to_binary_content(
@@ -73,5 +118,7 @@ def _normalize_image(data: bytes, media_type: str) -> tuple[bytes, str]:
 
 
 __all__ = [
+    "PdfSelection",
+    "select_pdf_pages",
     "to_binary_content",
 ]

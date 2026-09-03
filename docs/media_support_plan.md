@@ -2,7 +2,7 @@
 
 ## Status
 
-Phases 1–3 and Phase 4A are implemented; Phases 4B–7 are proposed. This plan covers
+Phases 1–4B are implemented; Phases 4C–7 are proposed. This plan covers
 model-visible media supplied by the user or discovered through TabulaFlow's
 existing filesystem, browser, database, and bulk-processing workflows. Existing
 media rendering in the browser output pane remains intact.
@@ -82,8 +82,8 @@ Layer ownership:
   detection and extraction of raw bytes from base64/data URIs and common values
   such as Hugging Face media structs. It must not depend on pandas, Pydantic AI,
   or the app.
-- `tabulaflow/agents/media.py`: optional format conversion and conversion into
-  Pydantic AI media types.
+- `tabulaflow/agents/media.py`: media validation, optional format conversion,
+  PDF page selection, and conversion into Pydantic AI media types.
 - `tabulaflow/agents/chat/input.py`: the public alias for Pydantic AI's ordered
   text-plus-media input and safe descriptor rendering.
 - `tabulaflow/app`: clipboard integration, `[Image #N]` presentation, and
@@ -199,16 +199,29 @@ Implemented:
 - Each acquisition path enforces its own byte limit and returns a concise text
   descriptor alongside the image.
 
-### Phase 4B — Documents, audio, and video
+### Phase 4B — Native PDFs
+
+Implemented:
+
+- `file_editor view` returns PDFs as native model content without local text
+  extraction or message-store offloading.
+- `view_range` selects an inclusive, 1-indexed physical page range and returns
+  a new native PDF containing those pages.
+- `browser_navigate` returns direct PDF responses as native model content.
+- PDFs are validated and page-counted with `pypdf`; pages are not rendered
+  locally and extracted text is not duplicated alongside the document.
+- Local and browser acquisition paths enforce their own media byte limits and
+  return concise descriptors.
+
+### Phase 4C — Audio and video
 
 ### `file_editor`
 
 Extend only `view`:
 
 - Continue returning text for text files.
-- Return recognized audio, video, and documents as native model content.
-- For PDFs, retain extracted text when useful and make the original document or
-  rendered pages available when the PDF is scanned.
+- Return recognized audio and video as native model content where the active
+  provider supports them.
 - Keep `write_file` and `str_replace` text-only.
 - Return a concise descriptor as the ordinary tool result so trajectories and
   progress output remain readable.
@@ -219,7 +232,6 @@ Extend only `view`:
   layouts, and images without useful accessibility text.
 - Keep accessibility snapshots as the default and never attach screenshots
   automatically.
-- Handle scanned PDFs through document input or bounded rendered pages.
 
 **Exit criteria:** the agent can inspect a local image, a scanned local PDF, a
 direct image URL, an embedded page image, and a canvas-rendered visualization.

@@ -296,7 +296,6 @@ class ChatSession:
             file_editor=(
                 FileEditorTool(
                     str(self._project_dir),
-                    message_store=self._main_scope,
                     allowed_roots=None,
                 )
                 if self._project_dir is not None

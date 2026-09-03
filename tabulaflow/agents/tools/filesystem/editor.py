@@ -20,7 +20,7 @@ from pydantic import BaseModel
 from pydantic_ai import Tool, ToolReturn
 from pydantic_ai.messages import BinaryContent
 
-from tabulaflow.agents.media import to_binary_content
+from tabulaflow.agents.media import select_pdf_pages, to_binary_content
 from tabulaflow.agents.tools.filesystem.access import (
     _DEFAULT_ALLOWED_ROOTS,
     _DefaultAllowedRoots,
@@ -30,23 +30,17 @@ from tabulaflow.agents.tools.filesystem.access import (
     FileEditorRoot as FileEditorRoot,
 )
 from tabulaflow.core.media import detect_media
-from tabulaflow.agents.message_store import (
-    MESSAGE_THRESHOLD_CHARS,
-    ScopedMessageStore,
-    make_marked,
-    make_snippet,
-)
 
 
 SNIPPET_CONTEXT_LINES = 4
 MAX_RESPONSE_LINES = 200
 MAX_RESPONSE_CHARS = 40000
 MAX_DIR_ENTRIES = 200
-MAX_LOCAL_IMAGE_BYTES = 100 * 1024 * 1024
+MAX_LOCAL_MEDIA_BYTES = 100 * 1024 * 1024
 
 
 @dataclass(frozen=True)
-class _ViewedImage:
+class _ViewedMedia:
     description: str
     content: BinaryContent
 
@@ -74,7 +68,6 @@ class FileEditorTool:
     def __init__(
         self,
         working_dir: str,
-        message_store: ScopedMessageStore | None = None,
         allowed_roots: Sequence[FileEditorRoot] | None | _DefaultAllowedRoots = _DEFAULT_ALLOWED_ROOTS,
     ) -> None:
         self._working_dir = Path(working_dir).resolve()
@@ -86,10 +79,6 @@ class FileEditorTool:
         self._allowed_roots: tuple[_ResolvedFileEditorRoot, ...] = (
             () if allowed_roots is None else _resolve_roots(allowed_roots)
         )
-        # When present, a viewed PDF's extracted text is mirrored to the message store
-        # so the agent can run extraction tools on its message_id (PDFs only — other
-        # returns are not mirrored).
-        self._message_store = message_store
         self._metrics = FileEditorToolMetrics()
 
     def _resolve(self, path: str, *, for_write: bool = False) -> Path:
@@ -218,7 +207,7 @@ class FileEditorTool:
             return self._error(f"{path} does not exist.")
         return self._view_file(resolved, path, view_range)
 
-    async def _view_image(self, resolved: Path, path: str, view_range: list[int] | None) -> _ViewedImage | None:
+    async def _view_image(self, resolved: Path, path: str, view_range: list[int] | None) -> _ViewedMedia | None:
         if not resolved.is_file():
             return None
         with resolved.open("rb") as file:
@@ -229,20 +218,19 @@ class FileEditorTool:
             return self._error("view_range is not supported for images.")
 
         size = resolved.stat().st_size
-        if size > MAX_LOCAL_IMAGE_BYTES:
+        if size > MAX_LOCAL_MEDIA_BYTES:
             return self._error(
-                f"{path} is too large to read as an image "
-                f"({size} bytes; limit {MAX_LOCAL_IMAGE_BYTES} bytes)."
+                f"{path} is too large to read as an image ({size} bytes; limit {MAX_LOCAL_MEDIA_BYTES} bytes)."
             )
         data = await asyncio.to_thread(resolved.read_bytes)
         content = await asyncio.to_thread(to_binary_content, data, media_type=detected.media_type)
-        if len(content.data) > MAX_LOCAL_IMAGE_BYTES:
+        if len(content.data) > MAX_LOCAL_MEDIA_BYTES:
             return self._error(
                 f"{path} is too large after normalization "
-                f"({len(content.data)} bytes; limit {MAX_LOCAL_IMAGE_BYTES} bytes)."
+                f"({len(content.data)} bytes; limit {MAX_LOCAL_MEDIA_BYTES} bytes)."
             )
         description = f"Image: {path} ({content.media_type}, {len(content.data)} bytes)"
-        return _ViewedImage(description, content)
+        return _ViewedMedia(description, content)
 
     @staticmethod
     def _is_pdf(resolved: Path) -> bool:
@@ -255,50 +243,34 @@ class FileEditorTool:
         except OSError:
             return False
 
-    async def _view_pdf(self, resolved: Path, path: str, view_range: list[int] | None) -> str:
-        """View a PDF as its full extracted text (pypdf), the same way the web browser does.
-
-        Returns the whole document (page-marked) untruncated: when offloaded to the
-        message store it lands in ``_internal.messages`` so the agent can run
-        ``extract_rows_from_documents`` / ``run_subagent_for_each_row`` over it.
-        Text-layer extraction only — scanned/image-only PDFs return a clear notice.
-        ``view_range`` does not apply (the full document is returned).
-        """
-        from tabulaflow.agents.extraction.pdf import extract_pdf_text
-
-        if view_range is not None:
-            return self._error(
-                "view_range is not supported for PDFs — view returns the full document text. "
-                "Re-run view without view_range."
-            )
+    async def _view_pdf(self, resolved: Path, path: str, view_range: list[int] | None) -> _ViewedMedia:
         if not resolved.is_file():
             return self._error(f"{path} does not exist.")
-        try:
-            data = resolved.read_bytes()
-        except OSError as e:
-            return self._error(f"could not read {path}: {e}")
+        size = resolved.stat().st_size
+        if size > MAX_LOCAL_MEDIA_BYTES:
+            return self._error(
+                f"{path} is too large to read as a PDF ({size} bytes; limit {MAX_LOCAL_MEDIA_BYTES} bytes)."
+            )
+        if view_range and len(view_range) != 2:
+            return self._error("view_range must be a list of two integers [start, end].")
 
-        try:
-            _, body = await asyncio.to_thread(extract_pdf_text, data)
-        except Exception as e:
-            return self._error(f"could not parse {path} as a PDF: {e}")
-        if not body:
-            return self._error(f"{path} has no extractable text layer (likely scanned or image-only).")
-
-        npages = len(re.findall(r"--- Page \d+ ---", body))
-        text = f"PDF: {path} ({npages} page(s) with text)\n{body}"
-
-        # Mirror to the message store (PDFs only) so the agent can extract over the
-        # full document by message_id; long output is replaced with a head+tail
-        # snippet pointing back at the stored row.
-        if self._message_store is None:
-            return text
-        message_id = await self._message_store.add(kind="tool_return", content=text, tool_name=self.name)
-        if message_id is None:
-            return text
-        if len(text) <= MESSAGE_THRESHOLD_CHARS:
-            return make_marked(message_id, text)
-        return make_snippet(message_id, text)
+        data = await asyncio.to_thread(resolved.read_bytes)
+        page_range = (view_range[0], view_range[1]) if view_range else None
+        pdf = await asyncio.to_thread(select_pdf_pages, data, page_range)
+        if len(pdf.data) > MAX_LOCAL_MEDIA_BYTES:
+            return self._error(
+                f"{path} is too large after page selection "
+                f"({len(pdf.data)} bytes; limit {MAX_LOCAL_MEDIA_BYTES} bytes)."
+            )
+        content = to_binary_content(pdf.data, media_type="application/pdf")
+        if pdf.first_page == 1 and pdf.last_page == pdf.total_pages:
+            pages = f"{pdf.total_pages} {'page' if pdf.total_pages == 1 else 'pages'}"
+        else:
+            pages = f"pages {pdf.first_page}-{pdf.last_page} of {pdf.total_pages}"
+        return _ViewedMedia(
+            f"PDF: {path} ({pages}, {content.media_type}, {len(content.data)} bytes)",
+            content,
+        )
 
     def _write_file(self, resolved: Path, path: str, file_text: str) -> str:
         is_new = not resolved.exists()
@@ -388,9 +360,9 @@ class FileEditorTool:
 
         Commands:
         - ``view``: View a file (with optional line range) or list a directory (up to 2 levels deep).
-          Images are returned as native model content. A PDF is shown as its full extracted text
-          (text-layer only — a scanned/image-only PDF returns a no-text notice). Images and PDFs
-          are read-only and do not accept ``view_range``.
+          Images and PDFs are returned as native model content. For PDFs,
+          ``view_range`` selects an inclusive 1-indexed page range. Images are
+          read-only and do not accept ``view_range``.
         - ``write_file``: Create or overwrite a file with the given content.
         - ``str_replace``: Replace an exact occurrence of ``old_str`` with ``new_str``.
           ``old_str`` must match exactly (whitespace included) and be unique, unless
@@ -411,13 +383,13 @@ class FileEditorTool:
                 requiring ``old_str`` to be unique.
             view_range: Optional ``[start, end]`` for ``view`` (1-indexed).
                 For files, selects a line range; for directories, an entry
-                range for pagination. Not used for PDFs.
+                range for pagination; for PDFs, a physical page range.
         """
         try:
             result = await self.execute(command, path, file_text, old_str, new_str, replace_all, view_range)
         except (ValueError, OSError) as exc:
             return f"(error: {exc})"
-        if isinstance(result, _ViewedImage):
+        if isinstance(result, _ViewedMedia):
             return ToolReturn(return_value=result.description, content=[result.content])
         return result
 
@@ -430,7 +402,7 @@ class FileEditorTool:
         new_str: str | None = None,
         replace_all: bool = False,
         view_range: list[int] | None = None,
-    ) -> str | _ViewedImage:
+    ) -> str | _ViewedMedia:
         """Execute one filesystem editor command."""
         resolved = self._resolve(path, for_write=command in ("write_file", "str_replace"))
 
@@ -439,11 +411,11 @@ class FileEditorTool:
 
         if command == "view":
             self._metrics.num_view += 1
-            if self._is_pdf(resolved):
-                return await self._view_pdf(resolved, path, view_range)
             image = await self._view_image(resolved, path, view_range)
             if image is not None:
                 return image
+            if self._is_pdf(resolved):
+                return await self._view_pdf(resolved, path, view_range)
             return self._view(resolved, path, view_range)
         elif command == "write_file":
             if file_text is None:
