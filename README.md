@@ -723,6 +723,7 @@ Sep 1
 
 Sep 2
 - [x] new compaction algorithm
+- [x] Set model retry limit to 3
 - Multimodal
   - [ ] Pasting images
   - [ ] Media in tables
