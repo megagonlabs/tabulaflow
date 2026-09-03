@@ -46,8 +46,10 @@ from typing import TYPE_CHECKING, Any, ClassVar, Literal
 from urllib.parse import urlparse
 
 from pydantic import BaseModel
-from pydantic_ai import Tool
+from pydantic_ai import Tool, ToolReturn
 
+from tabulaflow.agents.media import to_binary_content
+from tabulaflow.core.media import detect_media
 from .aria import (
     extract_refs,
     render_aria_markdown,
@@ -77,6 +79,7 @@ logger = logging.getLogger(__name__)
 
 _NAV_TIMEOUT_MS = 30_000
 _SETTLE_TIMEOUT_MS = 10_000
+_MAX_BROWSER_IMAGE_BYTES = 20 * 1024 * 1024
 
 # After ``load`` fires we wait for ``networkidle`` to give SPAs time to
 # render their JS-injected content. Capped because chatty SPAs (Google Flights,
@@ -112,6 +115,7 @@ _POST_LOAD_SETTLE_MS = 1_000
 BROWSER_TOOL_NAMES: frozenset[str] = frozenset(
     {
         "browser_navigate",
+        "browser_screenshot",
         "browser_click",
         "browser_type",
         "browser_scroll",
@@ -132,6 +136,7 @@ class WebBrowserToolMetrics(BaseModel):
     """Browser action, error, and lifecycle counters."""
 
     num_navigates: int = 0
+    num_screenshots: int = 0
     num_clicks: int = 0
     num_types: int = 0
     num_scrolls: int = 0
@@ -543,7 +548,7 @@ class WebBrowserTool:
 
     # === LLM-facing tool methods ============================================
 
-    async def browser_navigate(self, url: str, tab: str | None = None) -> str:
+    async def browser_navigate(self, url: str, tab: str | None = None) -> str | ToolReturn:
         """Navigate to ``url`` and return the post-load snapshot.
 
         By default (``tab=None``) opens a NEW tab. Pass an existing ``tab``
@@ -578,8 +583,8 @@ class WebBrowserTool:
 
         Issue multiple navigates in parallel within one turn to scan
         several URLs concurrently. If ``url`` is a PDF, the response is its
-        extracted text rather than a page snapshot — so navigate to a PDF
-        link's URL instead of clicking it.
+        extracted text rather than a page snapshot. A direct image response is
+        returned as native image content.
 
         Args:
             url: An ``http://`` or ``https://`` URL.
@@ -616,14 +621,14 @@ class WebBrowserTool:
                 # A URL that serves a downloadable file (PDF, zip, …) aborts the
                 # navigation instead of returning a Response, because the shared
                 # context sets accept_downloads=False. Fetch the bytes out of
-                # band to see if it's a PDF we can extract; anything else is a
-                # non-browsable download.
+                # band to handle images and PDFs; anything else is a non-browsable
+                # download.
                 if self._is_download_error(e):
-                    err = await self._load_download(state, url)
-                    if err is not None:
-                        if is_new:
+                    result = await self._load_download(state, url)
+                    if result is not None:
+                        if isinstance(result, str) and is_new:
                             await self._discard_tab(state)
-                        return err
+                        return result
                     return await format_tab_response(state)
                 if is_new:
                     await self._discard_tab(state)
@@ -635,12 +640,23 @@ class WebBrowserTool:
             # viewer consumes the stream and returns its HTML shell instead — so
             # re-fetch the raw bytes out of band, the same path downloads take.
             ctype = (response.headers.get("content-type") or "").lower() if response else ""
-            if "application/pdf" in ctype:
-                err = await self._load_download(state, url)
-                if err is not None:
+            if ctype.startswith("image/"):
+                try:
+                    body = await response.body() if response is not None else b""
+                except Exception as e:
                     if is_new:
                         await self._discard_tab(state)
-                    return err
+                    return self._format_error(f"failed to read image: {self._error_message(e)}")
+                result = await self._render_image_bytes(state, url, body, ctype.split(";", 1)[0])
+                if isinstance(result, str) and is_new:
+                    await self._discard_tab(state)
+                return result
+            if "application/pdf" in ctype:
+                result = await self._load_download(state, url)
+                if result is not None:
+                    if isinstance(result, str) and is_new:
+                        await self._discard_tab(state)
+                    return result
             return await format_tab_response(state)
 
     @staticmethod
@@ -648,11 +664,11 @@ class WebBrowserTool:
         msg = str(e)
         return "Download is starting" in msg or "ERR_ABORTED" in msg
 
-    async def _load_download(self, state: "_TabState", url: str) -> str | None:
-        """Fetch an aborted-navigation URL out of band and render it via
-        :meth:`_render_pdf_bytes`.
+    async def _load_download(self, state: "_TabState", url: str) -> str | ToolReturn | None:
+        """Fetch an aborted-navigation URL and render a recognized image or PDF.
 
-        Returns ``None`` on success or an error/notice string for the LLM.
+        Returns native image content, ``None`` after loading a PDF onto the tab,
+        or an error string.
         """
         try:
             ctx = await self._ensure_context()
@@ -661,7 +677,42 @@ class WebBrowserTool:
             body = await resp.body()
         except Exception as e:
             return self._format_error(f"navigation failed: {self._error_message(e)}")
+        detected = detect_media(body)
+        if content_type.startswith("image/") or (
+            detected is not None and detected.media_type.startswith("image/")
+        ):
+            media_type = detected.media_type if detected is not None else content_type.split(";", 1)[0]
+            return await self._render_image_bytes(state, url, body, media_type)
         return await self._render_pdf_bytes(state, url, body, content_type)
+
+    async def _render_image_bytes(
+        self,
+        state: "_TabState",
+        url: str,
+        body: bytes,
+        media_type: str,
+    ) -> str | ToolReturn:
+        if len(body) > _MAX_BROWSER_IMAGE_BYTES:
+            return self._format_error(
+                f"image is too large to process "
+                f"({len(body)} bytes; limit {_MAX_BROWSER_IMAGE_BYTES} bytes)"
+            )
+        try:
+            image = await asyncio.to_thread(to_binary_content, body, media_type=media_type)
+        except ValueError as e:
+            return self._format_error(f"failed to read image: {e}")
+        if len(image.data) > _MAX_BROWSER_IMAGE_BYTES:
+            return self._format_error(
+                f"normalized image is too large to process "
+                f"({len(image.data)} bytes; limit {_MAX_BROWSER_IMAGE_BYTES} bytes)"
+            )
+
+        description = f"Image: {url} ({image.media_type}, {len(image.data)} bytes)"
+        state.last_snapshot = PageSnapshot(url=url, title="", markdown_content=description, refs=[])
+        return ToolReturn(
+            return_value=_compose_tab_response(state, url=url, title="", body=description),
+            content=[image],
+        )
 
     async def _render_pdf_bytes(self, state: "_TabState", url: str, body: bytes, content_type: str) -> str | None:
         """Detect and extract a PDF from raw bytes onto ``state``.
@@ -767,6 +818,42 @@ class WebBrowserTool:
             pass
         if self._manager is not None:
             await self._manager.release_page()
+
+    async def browser_screenshot(self, tab: str, ref: str | None = None) -> str | ToolReturn:
+        """Capture the current viewport or one referenced element as an image.
+
+        Args:
+            tab: The id of the tab to capture, e.g. ``"t1"``.
+            ref: An optional ref from the tab's most recent snapshot. When
+                omitted, captures the current viewport.
+        """
+        self._metrics.num_screenshots += 1
+        state = self._tabs.get(tab)
+        if state is None:
+            return self._format_error(self._unknown_tab(tab))
+        state.last_touched_turn = self._turn_counter
+        async with state.op_lock:
+            try:
+                if ref is None:
+                    data = await state.page.screenshot(type="png")
+                    target = "current viewport"
+                else:
+                    locator = self._resolve_ref(state, ref)
+                    data = await locator.screenshot(type="png")
+                    target = f"element {ref}"
+            except _RefError as e:
+                return self._format_error(str(e))
+            except Exception as e:
+                return self._format_error(f"screenshot failed: {self._error_message(e)}")
+
+        if len(data) > _MAX_BROWSER_IMAGE_BYTES:
+            return self._format_error(
+                f"screenshot is too large to process "
+                f"({len(data)} bytes; limit {_MAX_BROWSER_IMAGE_BYTES} bytes)"
+            )
+        image = await asyncio.to_thread(to_binary_content, data, media_type="image/png")
+        description = f"[tab={tab}]\nURL: {state.page.url}\nScreenshot: {target} ({len(image.data)} bytes)"
+        return ToolReturn(return_value=description, content=[image])
 
     async def browser_click(self, tab: str, ref: str) -> str:
         """Click an interactive element on a specific tab.
@@ -1167,6 +1254,7 @@ class WebBrowserTool:
         """
         return [
             Tool(self.browser_navigate, name="browser_navigate"),
+            Tool(self.browser_screenshot, name="browser_screenshot"),
             Tool(self.browser_click, name="browser_click"),
             Tool(self.browser_type, name="browser_type"),
             Tool(self.browser_scroll, name="browser_scroll"),

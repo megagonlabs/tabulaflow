@@ -1,8 +1,12 @@
 """Tests for the file editor tool (view / write_file / str_replace)."""
 
 from pathlib import Path
+from typing import Any, cast
 
+from PIL import Image
 import pytest
+from pydantic_ai import ToolReturn
+from pydantic_ai.messages import BinaryContent
 
 from tabulaflow.agents.tools.filesystem.editor import FileEditorRoot, FileEditorTool
 
@@ -10,6 +14,17 @@ from tabulaflow.agents.tools.filesystem.editor import FileEditorRoot, FileEditor
 @pytest.fixture
 def editor(tmp_path: Path) -> FileEditorTool:
     return FileEditorTool(str(tmp_path))
+
+
+async def _view(
+    editor: FileEditorTool,
+    path: str = ".",
+    *,
+    view_range: list[int] | None = None,
+) -> str:
+    result = await editor("view", path, view_range=view_range)
+    assert isinstance(result, str)
+    return result
 
 
 def _make_pdf(text: str) -> bytes:
@@ -39,46 +54,87 @@ def _make_pdf(text: str) -> bytes:
 class TestView:
     async def test_view_file(self, editor: FileEditorTool, tmp_path: Path) -> None:
         (tmp_path / "a.txt").write_text("alpha\nbeta\ngamma\n")
-        out = await editor("view", "a.txt")
+        out = await _view(editor, "a.txt")
         assert "alpha" in out and "gamma" in out
         assert "(error" not in out
 
     async def test_view_range(self, editor: FileEditorTool, tmp_path: Path) -> None:
         (tmp_path / "a.txt").write_text("L1\nL2\nL3\nL4\n")
-        out = await editor("view", "a.txt", view_range=[2, 3])
+        out = await _view(editor, "a.txt", view_range=[2, 3])
         assert "L2" in out and "L3" in out
         assert "L1" not in out and "L4" not in out
 
     async def test_view_directory(self, editor: FileEditorTool, tmp_path: Path) -> None:
         (tmp_path / "sub").mkdir()
         (tmp_path / "sub" / "f.txt").write_text("x")
-        out = await editor("view", ".")
+        out = await _view(editor, ".")
         assert "sub" in out and "f.txt" in out
 
     async def test_view_range_start_past_end_errors(self, editor: FileEditorTool, tmp_path: Path) -> None:
         (tmp_path / "a.txt").write_text("a\nb\nc\n")
-        out = await editor("view", "a.txt", view_range=[10, 20])
+        out = await _view(editor, "a.txt", view_range=[10, 20])
         assert "(error" in out and "past the end" in out
 
     async def test_view_range_end_clamped(self, editor: FileEditorTool, tmp_path: Path) -> None:
         (tmp_path / "a.txt").write_text("L1\nL2\nL3\n")
-        out = await editor("view", "a.txt", view_range=[2, 999])  # end clamped to 3
+        out = await _view(editor, "a.txt", view_range=[2, 999])  # end clamped to 3
         assert "(error" not in out
         assert "L2" in out and "L3" in out and "L1" not in out
 
     async def test_view_range_negative_end_errors(self, editor: FileEditorTool, tmp_path: Path) -> None:
         (tmp_path / "a.txt").write_text("L1\nL2\nL3\n")
-        out = await editor("view", "a.txt", view_range=[2, -1])
+        out = await _view(editor, "a.txt", view_range=[2, -1])
         assert "(error" in out and "end (-1) must be >= start (2)" in out
 
     async def test_view_missing(self, editor: FileEditorTool) -> None:
-        out = await editor("view", "nope.txt")
+        out = await _view(editor, "nope.txt")
         assert "(error" in out and "does not exist" in out
 
     async def test_view_binary_rejected(self, editor: FileEditorTool, tmp_path: Path) -> None:
         (tmp_path / "b.bin").write_bytes(b"\xff\xfe\x00\x01")
-        out = await editor("view", "b.bin")
+        out = await _view(editor, "b.bin")
         assert "(error" in out and "binary" in out
+
+    async def test_view_image_returns_native_content(self, editor: FileEditorTool, tmp_path: Path) -> None:
+        path = tmp_path / "image.bin"
+        Image.new("RGB", (2, 3), "red").save(path, format="PNG")
+
+        result = await editor("view", path.name)
+
+        assert isinstance(result, ToolReturn)
+        assert isinstance(result.return_value, str)
+        assert result.return_value.startswith("Image: image.bin (image/png,")
+        assert result.content is not None
+        assert len(result.content) == 1
+        image = result.content[0]
+        assert isinstance(image, BinaryContent)
+        assert image.media_type == "image/png"
+
+    async def test_view_image_rejects_view_range(self, editor: FileEditorTool, tmp_path: Path) -> None:
+        path = tmp_path / "image.png"
+        Image.new("RGB", (2, 3), "red").save(path)
+
+        result = await editor("view", path.name, view_range=[1, 1])
+
+        assert isinstance(result, str)
+        assert result == "(error: view_range is not supported for images.)"
+
+    async def test_view_image_rejects_oversized_file(
+        self,
+        editor: FileEditorTool,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        from tabulaflow.agents.tools.filesystem import editor as editor_module
+
+        path = tmp_path / "image.png"
+        Image.new("RGB", (2, 3), "red").save(path)
+        monkeypatch.setattr(editor_module, "MAX_LOCAL_IMAGE_BYTES", 10)
+
+        result = await editor("view", path.name)
+
+        assert isinstance(result, str)
+        assert "too large to read as an image" in result
 
 
 class TestWriteFile:
@@ -144,11 +200,11 @@ class TestStrReplace:
 
 class TestPathSafety:
     async def test_absolute_path_rejected(self, editor: FileEditorTool) -> None:
-        out = await editor("view", "/etc/passwd")
+        out = await _view(editor, "/etc/passwd")
         assert "(error" in out and "absolute" in out
 
     async def test_traversal_escape_rejected(self, editor: FileEditorTool) -> None:
-        out = await editor("view", "../../etc/passwd")
+        out = await _view(editor, "../../etc/passwd")
         assert "(error" in out and "outside the allowed roots" in out
 
     async def test_write_outside_rejected(self, editor: FileEditorTool, tmp_path: Path) -> None:
@@ -183,7 +239,7 @@ class TestAllowedRoots:
             ],
         )
 
-        view = await tool("view", "../scratch/existing.txt")
+        view = await _view(tool, "../scratch/existing.txt")
         write = await tool("write_file", "../scratch/new.txt", file_text="new")
 
         assert "old" in view
@@ -204,7 +260,7 @@ class TestAllowedRoots:
             ],
         )
 
-        view = await tool("view", "../data/source.csv")
+        view = await _view(tool, "../data/source.csv")
         write = await tool("write_file", "../data/source.csv", file_text="y\n")
 
         assert "x" in view
@@ -220,7 +276,7 @@ class TestAllowedRoots:
         target.write_text("outside")
         tool = FileEditorTool(str(project), allowed_roots=None)
 
-        out = await tool("view", str(target))
+        out = await _view(tool, str(target))
 
         assert "outside" in out
 
@@ -230,7 +286,7 @@ class TestAllowedRoots:
         (project / "relative.txt").write_text("relative")
         tool = FileEditorTool(str(project), allowed_roots=None)
 
-        out = await tool("view", "relative.txt")
+        out = await _view(tool, "relative.txt")
 
         assert "relative" in out
 
@@ -238,7 +294,7 @@ class TestAllowedRoots:
 class TestPdf:
     async def test_view_pdf_extracts_text(self, editor: FileEditorTool, tmp_path: Path) -> None:
         (tmp_path / "doc.pdf").write_bytes(_make_pdf("HELLO_PDF_TEST"))
-        out = await editor("view", "doc.pdf")
+        out = await _view(editor, "doc.pdf")
         assert "(error" not in out
         assert "PDF: doc.pdf" in out
         assert "--- Page 1 ---" in out
@@ -246,18 +302,18 @@ class TestPdf:
 
     async def test_view_pdf_detected_by_magic_bytes(self, editor: FileEditorTool, tmp_path: Path) -> None:
         (tmp_path / "doc.bin").write_bytes(_make_pdf("MAGIC_DETECTED"))
-        out = await editor("view", "doc.bin")
+        out = await _view(editor, "doc.bin")
         assert "MAGIC_DETECTED" in out
 
     async def test_view_pdf_returns_full_text(self, editor: FileEditorTool, tmp_path: Path) -> None:
         (tmp_path / "doc.pdf").write_bytes(_make_pdf("ONLY_PAGE"))
-        out = await editor("view", "doc.pdf")
+        out = await _view(editor, "doc.pdf")
         assert "(error" not in out
         assert "1 page(s) with text" in out and "ONLY_PAGE" in out
 
     async def test_view_pdf_view_range_rejected(self, editor: FileEditorTool, tmp_path: Path) -> None:
         (tmp_path / "doc.pdf").write_bytes(_make_pdf("ONLY_PAGE"))
-        out = await editor("view", "doc.pdf", view_range=[1, 2])
+        out = await _view(editor, "doc.pdf", view_range=[1, 2])
         assert "(error" in out and "not supported for PDFs" in out
 
     async def test_write_pdf_rejected(self, editor: FileEditorTool, tmp_path: Path) -> None:
@@ -272,12 +328,12 @@ class TestPdf:
 
     async def test_no_text_layer_notice(self, editor: FileEditorTool, tmp_path: Path) -> None:
         (tmp_path / "blank.pdf").write_bytes(_make_pdf(""))
-        out = await editor("view", "blank.pdf")
+        out = await _view(editor, "blank.pdf")
         assert "(error" in out and "no extractable text" in out
 
     async def test_malformed_pdf(self, editor: FileEditorTool, tmp_path: Path) -> None:
         (tmp_path / "bad.pdf").write_bytes(b"%PDF-1.4\nnot a real pdf")
-        out = await editor("view", "bad.pdf")
+        out = await _view(editor, "bad.pdf")
         assert "(error" in out
 
     async def test_pdf_view_stays_inline_without_storage(self, tmp_path: Path) -> None:
@@ -285,7 +341,7 @@ class TestPdf:
 
         tool = FileEditorTool(str(tmp_path), message_store=MessageStore().scoped("test"))
         (tmp_path / "doc.pdf").write_bytes(_make_pdf("OFFLOAD_ME"))
-        out = await tool("view", "doc.pdf")
+        out = await _view(tool, "doc.pdf")
         assert "message_id" not in out
         assert "OFFLOAD_ME" in out
 
@@ -294,11 +350,12 @@ class TestPdf:
 
         tool = FileEditorTool(str(tmp_path), message_store=MessageStore().scoped("test"))
         (tmp_path / "f.txt").write_text("plain text\n")
-        out = await tool("view", "f.txt")
+        out = await _view(tool, "f.txt")
         assert "message_id" not in out  # only PDFs are mirrored
 
 
 class TestUnknownCommand:
     async def test_unknown_command(self, editor: FileEditorTool) -> None:
-        out = await editor("frobnicate", "f.txt")  # type: ignore[arg-type]
+        out = await editor(cast(Any, "frobnicate"), "f.txt")
+        assert isinstance(out, str)
         assert "(error" in out

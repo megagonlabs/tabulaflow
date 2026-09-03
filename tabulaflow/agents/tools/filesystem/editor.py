@@ -10,14 +10,17 @@ Adapted from the Anthropic/OpenHands ``str_replace_editor`` pattern.
 
 import asyncio
 from collections.abc import Sequence
+from dataclasses import dataclass
 import os
 import re
 from pathlib import Path
-from typing import ClassVar, Literal, NoReturn
+from typing import ClassVar, Literal, NoReturn, overload
 
 from pydantic import BaseModel
-from pydantic_ai import Tool
+from pydantic_ai import Tool, ToolReturn
+from pydantic_ai.messages import BinaryContent
 
+from tabulaflow.agents.media import to_binary_content
 from tabulaflow.agents.tools.filesystem.access import (
     _DEFAULT_ALLOWED_ROOTS,
     _DefaultAllowedRoots,
@@ -26,6 +29,7 @@ from tabulaflow.agents.tools.filesystem.access import (
     _resolve_roots,
     FileEditorRoot as FileEditorRoot,
 )
+from tabulaflow.core.media import detect_media
 from tabulaflow.agents.message_store import (
     MESSAGE_THRESHOLD_CHARS,
     ScopedMessageStore,
@@ -38,6 +42,13 @@ SNIPPET_CONTEXT_LINES = 4
 MAX_RESPONSE_LINES = 200
 MAX_RESPONSE_CHARS = 40000
 MAX_DIR_ENTRIES = 200
+MAX_LOCAL_IMAGE_BYTES = 100 * 1024 * 1024
+
+
+@dataclass(frozen=True)
+class _ViewedImage:
+    description: str
+    content: BinaryContent
 
 
 class FileEditorToolMetrics(BaseModel):
@@ -207,6 +218,32 @@ class FileEditorTool:
             return self._error(f"{path} does not exist.")
         return self._view_file(resolved, path, view_range)
 
+    async def _view_image(self, resolved: Path, path: str, view_range: list[int] | None) -> _ViewedImage | None:
+        if not resolved.is_file():
+            return None
+        with resolved.open("rb") as file:
+            detected = detect_media(file.read(256))
+        if detected is None or not detected.media_type.startswith("image/"):
+            return None
+        if view_range is not None:
+            return self._error("view_range is not supported for images.")
+
+        size = resolved.stat().st_size
+        if size > MAX_LOCAL_IMAGE_BYTES:
+            return self._error(
+                f"{path} is too large to read as an image "
+                f"({size} bytes; limit {MAX_LOCAL_IMAGE_BYTES} bytes)."
+            )
+        data = await asyncio.to_thread(resolved.read_bytes)
+        content = await asyncio.to_thread(to_binary_content, data, media_type=detected.media_type)
+        if len(content.data) > MAX_LOCAL_IMAGE_BYTES:
+            return self._error(
+                f"{path} is too large after normalization "
+                f"({len(content.data)} bytes; limit {MAX_LOCAL_IMAGE_BYTES} bytes)."
+            )
+        description = f"Image: {path} ({content.media_type}, {len(content.data)} bytes)"
+        return _ViewedImage(description, content)
+
     @staticmethod
     def _is_pdf(resolved: Path) -> bool:
         """Detect a PDF by extension or ``%PDF-`` magic bytes."""
@@ -313,6 +350,30 @@ class FileEditorTool:
 
     # -- main entry point -----------------------------------------------------
 
+    @overload
+    async def __call__(
+        self,
+        command: Literal["view"],
+        path: str = ".",
+        file_text: str | None = None,
+        old_str: str | None = None,
+        new_str: str | None = None,
+        replace_all: bool = False,
+        view_range: list[int] | None = None,
+    ) -> str | ToolReturn: ...
+
+    @overload
+    async def __call__(
+        self,
+        command: Literal["write_file", "str_replace"],
+        path: str = ".",
+        file_text: str | None = None,
+        old_str: str | None = None,
+        new_str: str | None = None,
+        replace_all: bool = False,
+        view_range: list[int] | None = None,
+    ) -> str: ...
+
     async def __call__(
         self,
         command: Literal["view", "write_file", "str_replace"],
@@ -322,13 +383,14 @@ class FileEditorTool:
         new_str: str | None = None,
         replace_all: bool = False,
         view_range: list[int] | None = None,
-    ) -> str:
+    ) -> str | ToolReturn:
         """View and edit text files in the project directory.
 
         Commands:
         - ``view``: View a file (with optional line range) or list a directory (up to 2 levels deep).
-          A PDF is shown as its full extracted text (text-layer only — a scanned/image-only PDF
-          returns a no-text notice). PDFs are read-only and ignore ``view_range``.
+          Images are returned as native model content. A PDF is shown as its full extracted text
+          (text-layer only — a scanned/image-only PDF returns a no-text notice). Images and PDFs
+          are read-only and do not accept ``view_range``.
         - ``write_file``: Create or overwrite a file with the given content.
         - ``str_replace``: Replace an exact occurrence of ``old_str`` with ``new_str``.
           ``old_str`` must match exactly (whitespace included) and be unique, unless
@@ -352,9 +414,12 @@ class FileEditorTool:
                 range for pagination. Not used for PDFs.
         """
         try:
-            return await self.execute(command, path, file_text, old_str, new_str, replace_all, view_range)
+            result = await self.execute(command, path, file_text, old_str, new_str, replace_all, view_range)
         except (ValueError, OSError) as exc:
             return f"(error: {exc})"
+        if isinstance(result, _ViewedImage):
+            return ToolReturn(return_value=result.description, content=[result.content])
+        return result
 
     async def execute(
         self,
@@ -365,7 +430,7 @@ class FileEditorTool:
         new_str: str | None = None,
         replace_all: bool = False,
         view_range: list[int] | None = None,
-    ) -> str:
+    ) -> str | _ViewedImage:
         """Execute one filesystem editor command."""
         resolved = self._resolve(path, for_write=command in ("write_file", "str_replace"))
 
@@ -376,6 +441,9 @@ class FileEditorTool:
             self._metrics.num_view += 1
             if self._is_pdf(resolved):
                 return await self._view_pdf(resolved, path, view_range)
+            image = await self._view_image(resolved, path, view_range)
+            if image is not None:
+                return image
             return self._view(resolved, path, view_range)
         elif command == "write_file":
             if file_text is None:

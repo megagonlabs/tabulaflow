@@ -136,6 +136,7 @@ async def test_chat_session_file_editor_is_unrestricted(tmp_path: Path, monkeypa
 
     assert agent._tools.file_editor is not None
     out = await agent._tools.file_editor("view", str(target))
+    assert isinstance(out, str)
     assert "outside content" in out
     assert agent._tools.apply_patch is not None
     patch_out = await agent._tools.apply_patch(

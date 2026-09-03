@@ -2,7 +2,7 @@
 
 ## Status
 
-Phases 1–3 are implemented; Phases 4–7 are proposed. This plan covers
+Phases 1–3 and Phase 4A are implemented; Phases 4B–7 are proposed. This plan covers
 model-visible media supplied by the user or discovered through TabulaFlow's
 existing filesystem, browser, database, and bulk-processing workflows. Existing
 media rendering in the browser output pane remains intact.
@@ -188,12 +188,25 @@ clipboard access is unavailable.
 
 ## Phase 4 — Media on disk and the web
 
+### Phase 4A — Images
+
+Implemented:
+
+- `file_editor view` returns recognized local images as native model content.
+- `browser_screenshot(tab, ref=None)` captures the current viewport or one
+  referenced element.
+- `browser_navigate` returns direct image responses as native model content.
+- Each acquisition path enforces its own byte limit and returns a concise text
+  descriptor alongside the image.
+
+### Phase 4B — Documents, audio, and video
+
 ### `file_editor`
 
 Extend only `view`:
 
 - Continue returning text for text files.
-- Return recognized images, audio, video, and documents as native model content.
+- Return recognized audio, video, and documents as native model content.
 - For PDFs, retain extracted text when useful and make the original document or
   rendered pages available when the PDF is scanned.
 - Keep `write_file` and `str_replace` text-only.
@@ -202,10 +215,6 @@ Extend only `view`:
 
 ### Browser
 
-- Add `browser_screenshot(tab, ref=None)` to capture the current viewport or one
-  referenced element/region.
-- Make `browser_navigate` recognize direct image responses and expose them as
-  native model content.
 - Use screenshot inspection explicitly for canvases, maps, charts, visual-only
   layouts, and images without useful accessibility text.
 - Keep accessibility snapshots as the default and never attach screenshots
