@@ -722,6 +722,7 @@ Sep 1
 - [x] bash command display
 
 Sep 2
+- [x] new compaction algorithm
 - Multimodal
   - [ ] Pasting images
   - [ ] Media in tables
