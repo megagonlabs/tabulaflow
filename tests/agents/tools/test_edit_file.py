@@ -38,7 +38,7 @@ class TestReplace:
     async def test_unique_replace(self, edit_file: EditFileTool, tmp_path: Path) -> None:
         (tmp_path / "f.txt").write_text("a\nUNIQUE_TARGET\nc\n")
         out = await edit_file("replace", "f.txt", "REPLACED", old_text="UNIQUE_TARGET")
-        assert "(error" not in out
+        assert out == "Edited f.txt (line 2)"
         assert (tmp_path / "f.txt").read_text() == "a\nREPLACED\nc\n"
 
     async def test_requires_old_text(self, edit_file: EditFileTool) -> None:
@@ -66,8 +66,16 @@ class TestReplace:
     async def test_replace_all(self, edit_file: EditFileTool, tmp_path: Path) -> None:
         (tmp_path / "f.txt").write_text("dup\ndup\ndup\n")
         out = await edit_file("replace", "f.txt", "x", old_text="dup", replace_all=True)
-        assert "3 occurrences" in out
+        assert out == "Edited f.txt (3 occurrences replaced)"
         assert (tmp_path / "f.txt").read_text() == "x\nx\nx\n"
+
+    async def test_large_replacement_returns_only_metadata(self, edit_file: EditFileTool, tmp_path: Path) -> None:
+        (tmp_path / "f.txt").write_text("before\ntarget\nafter\n")
+        replacement = "x\n" * 10_000
+
+        out = await edit_file("replace", "f.txt", replacement, old_text="target")
+
+        assert out == "Edited f.txt (line 2)"
 
     async def test_identical_old_new_errors(self, edit_file: EditFileTool, tmp_path: Path) -> None:
         (tmp_path / "f.txt").write_text("same\n")

@@ -18,10 +18,6 @@ from tabulaflow.agents.tools.filesystem.access import (
 )
 
 
-SNIPPET_CONTEXT_LINES = 4
-MAX_RESPONSE_CHARS = 40000
-
-
 class EditFileToolMetrics(BaseModel):
     """Command and error counters for structured file editing."""
 
@@ -72,21 +68,6 @@ class EditFileTool:
         except OSError:
             pass
 
-    @staticmethod
-    def _numbered(content: str, start_line: int) -> str:
-        lines = content.split("\n")
-        per_line = MAX_RESPONSE_CHARS // max(len(lines), 1)
-        numbered = []
-        for index, line in enumerate(lines, start_line):
-            if len(line) > per_line:
-                half = per_line // 2
-                if half == 0:
-                    line = f"...({len(line)} chars)..."
-                else:
-                    line = line[:half] + f"...({len(line)} chars)..." + line[-half:]
-            numbered.append(f"{index:6}\t{line}")
-        return "\n".join(numbered)
-
     def _write(self, resolved: Path, path: str, new_text: str) -> str:
         is_new = not resolved.exists()
         resolved.parent.mkdir(parents=True, exist_ok=True)
@@ -127,11 +108,9 @@ class EditFileTool:
         new_content = content.replace(old_text, new_text)
         resolved.write_text(new_content)
         replacement_line = content.count("\n", 0, content.find(old_text)) + 1
-        start = max(1, replacement_line - SNIPPET_CONTEXT_LINES)
-        end = replacement_line + SNIPPET_CONTEXT_LINES + new_text.count("\n")
-        snippet = self._numbered("\n".join(new_content.split("\n")[start - 1 : end]), start)
-        label = f"Edited {path}" + (f" ({count} occurrences replaced)" if replace_all and count > 1 else "")
-        return f"{label}. Snippet:\n{snippet}"
+        if count == 1:
+            return f"Edited {path} (line {replacement_line})"
+        return f"Edited {path} ({count} occurrences replaced)"
 
     async def __call__(
         self,

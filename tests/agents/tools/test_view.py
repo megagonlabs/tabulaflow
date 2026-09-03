@@ -93,6 +93,15 @@ class TestView:
         out = await _view(view, "b.bin")
         assert "(error" in out and "binary" in out
 
+    async def test_long_line_has_fixed_width_limit(self, view: ViewTool, tmp_path: Path) -> None:
+        (tmp_path / "long.txt").write_text("x" * 100_000)
+
+        out = await _view(view, "long.txt")
+        displayed_line = out.splitlines()[1].split("\t", 1)[1]
+
+        assert len(displayed_line) == 200
+        assert "...(100000 chars)..." in displayed_line
+
     async def test_view_image_returns_native_content(self, view: ViewTool, tmp_path: Path) -> None:
         path = tmp_path / "image.bin"
         Image.new("RGB", (2, 3), "red").save(path, format="PNG")
