@@ -18,14 +18,15 @@ cannot fit, compaction fails explicitly.
 
 from __future__ import annotations
 
+import json
 import math
 from dataclasses import dataclass, replace
-from typing import cast
+from typing import Any, cast
 
 import genai_prices
 from pydantic_ai.messages import (
+    BinaryContent,
     ModelMessage,
-    ModelMessagesTypeAdapter,
     ModelRequest,
     ModelResponse,
     TextPart,
@@ -38,6 +39,8 @@ from tabulaflow.agents.chat.input import ChatInput, describe_chat_input
 
 
 _CHARS_PER_TOKEN = 4
+_MESSAGE_OVERHEAD_CHARS = 16
+_PART_OVERHEAD_CHARS = 8
 _OLD_MESSAGE_TOKENS = 100
 _CONTEXT_RESERVE_TOKENS = 32_000
 _CHECKPOINT_TOKEN_LIMIT = 4_000
@@ -287,23 +290,30 @@ def _estimate_turns(turns: list[list[ModelMessage]], checkpoint: list[ModelMessa
 
 
 def _estimate_messages_tokens(messages: list[ModelMessage]) -> int:
-    """Estimate serialized message size without serializing binary payloads."""
-    if not messages:
+    """Estimate model-visible content without counting internal bookkeeping."""
+    chars = 0
+    for message in messages:
+        chars += _MESSAGE_OVERHEAD_CHARS
+        if isinstance(message, ModelRequest) and message.instructions:
+            chars += len(message.instructions)
+        for part in message.parts:
+            chars += _PART_OVERHEAD_CHARS
+            if isinstance(part, UserPromptPart):
+                chars += len(describe_chat_input(cast(ChatInput, part.content)))
+                continue
+            for field in ("tool_name", "args", "content", "transcript", "signature", "tools_added"):
+                chars += _estimate_value_chars(getattr(part, field, None))
+    return math.ceil(chars / _CHARS_PER_TOKEN)
+
+
+def _estimate_value_chars(value: Any) -> int:
+    if value is None:
         return 0
-    safe_messages = [_describe_user_prompts(message) for message in messages]
-    return _estimate_text_tokens(ModelMessagesTypeAdapter.dump_json(safe_messages).decode())
-
-
-def _describe_user_prompts(message: ModelMessage) -> ModelMessage:
-    if not isinstance(message, ModelRequest):
-        return message
-    parts = [
-        replace(part, content=describe_chat_input(cast(ChatInput, part.content)))
-        if isinstance(part, UserPromptPart)
-        else part
-        for part in message.parts
-    ]
-    return replace(message, parts=parts)
+    if isinstance(value, str):
+        return len(value)
+    if isinstance(value, BinaryContent):
+        return len(describe_chat_input([value]))
+    return len(json.dumps(value, ensure_ascii=False, separators=(",", ":"), default=str))
 
 
 def _estimate_text_tokens(text: str) -> int:

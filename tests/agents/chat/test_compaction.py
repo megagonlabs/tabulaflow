@@ -9,6 +9,7 @@ from pydantic_ai.messages import (
     ModelRequest,
     ModelResponse,
     TextPart,
+    ThinkingPart,
     ToolCallPart,
     ToolReturnPart,
     UserPromptPart,
@@ -57,6 +58,44 @@ def test_estimate_context_tokens_does_not_serialize_media_bytes() -> None:
     ]
 
     assert estimate_context_tokens(messages) < 200
+
+
+def test_estimate_context_tokens_ignores_message_bookkeeping() -> None:
+    plain: list[ModelMessage] = [ModelResponse(parts=[TextPart(content="answer")])]
+    decorated: list[ModelMessage] = [
+        ModelResponse(
+            parts=[TextPart(content="answer", provider_details={"diagnostic": "x" * 10_000})],
+            usage=RequestUsage(input_tokens=0, details={"diagnostic": 10_000}),
+            provider_details={"diagnostic": "x" * 10_000},
+            provider_response_id="response-123",
+            run_id="run-123",
+            conversation_id="conversation-123",
+            metadata={"diagnostic": "x" * 10_000},
+        )
+    ]
+
+    assert estimate_context_tokens(decorated) == estimate_context_tokens(plain)
+
+
+def test_estimate_context_tokens_counts_tool_arguments_and_reasoning_signatures() -> None:
+    small: list[ModelMessage] = [
+        ModelResponse(
+            parts=[
+                ThinkingPart(content="thinking", signature="signature"),
+                ToolCallPart("run_query", {"query": "select 1"}, "call-1"),
+            ]
+        )
+    ]
+    large: list[ModelMessage] = [
+        ModelResponse(
+            parts=[
+                ThinkingPart(content="thinking", signature="x" * 1_000),
+                ToolCallPart("run_query", {"query": "x" * 1_000}, "call-1"),
+            ]
+        )
+    ]
+
+    assert estimate_context_tokens(large) > estimate_context_tokens(small) + 400
 
 
 def test_compact_history_keeps_recent_dialogue_and_pairs_recent_tools() -> None:
@@ -196,9 +235,7 @@ def test_compact_history_keeps_user_prompts_before_evicting_turns() -> None:
     ]
     assert user_prompts == ["user-0", "user-1", "user-2"]
     assert not any(
-        isinstance(part, (TextPart, ToolCallPart, ToolReturnPart))
-        for message in compacted[:-2]
-        for part in message.parts
+        isinstance(part, (ToolCallPart, ToolReturnPart)) for message in compacted[:-2] for part in message.parts
     )
 
 
