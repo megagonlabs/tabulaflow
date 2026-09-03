@@ -343,6 +343,11 @@ def summarize_tool_args(name: str, args: Mapping[str, object]) -> str:
         return f"Canonicalize {db_prefix}{'.'.join(parts)}"
     if name == "browser_navigate":
         return f"Navigate {_fmt_arg_value(args.get('url', ''), 60)}".rstrip()
+    if name == "browser_screenshot":
+        target = _fmt_arg_value(args.get("tab", ""))
+        if args.get("ref"):
+            target += f" {_fmt_arg_value(args['ref'])}"
+        return f"Capture {target}".rstrip()
     if name == "browser_click":
         return f"Click {_fmt_arg_value(args.get('ref', ''))}".rstrip()
     if name == "browser_type":

@@ -292,6 +292,10 @@ class TestVerbLedLabels:
     def test_browser_navigate(self) -> None:
         assert summarize_tool_args("browser_navigate", {"url": "stripe.com"}) == "Navigate stripe.com"
 
+    def test_browser_screenshot(self) -> None:
+        assert summarize_tool_args("browser_screenshot", {"tab": "t1"}) == "Capture t1"
+        assert summarize_tool_args("browser_screenshot", {"tab": "t1", "ref": "e4"}) == "Capture t1 e4"
+
     def test_connect_data_source_shortens_local_path(self) -> None:
         path = Path.home() / "data" / "source.csv"
         assert summarize_tool_args("connect_data_source", {"source": str(path)}) == "Connect ~/data/source.csv"
