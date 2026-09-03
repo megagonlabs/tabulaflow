@@ -615,6 +615,31 @@ async def test_submission_builds_ordered_multimodal_input(monkeypatch: pytest.Mo
     assert captured == [(["inspect [Image #1]", image, " now"], "inspect [Image #1] now")]
 
 
+async def test_submission_displays_compact_paste_reference(monkeypatch: pytest.MonkeyPatch) -> None:
+    app = _app(None)
+
+    class _EmptyRegistry:
+        def list_aliases(self) -> list[str]:
+            return []
+
+    class _Session:
+        registry = _EmptyRegistry()
+
+    async def fake_ensure_session() -> _Session:
+        return _Session()
+
+    _stub_app_startup(app, monkeypatch)
+    monkeypatch.setattr(app, "_ensure_session", fake_ensure_session)
+
+    async with app.run_test():
+        input_bar = app.query_one("#input-bar", HistoryInput)
+        display_text = "inspect [Pasted text #1 +2 lines]"
+        await app._run_submission("inspect pasted\ntext", display_text, input_bar)
+
+        user_message = app.query_one(UserMessage)
+        assert str(user_message.render()) == display_text
+
+
 async def test_submission_worker_blocks_input_until_completion(monkeypatch: pytest.MonkeyPatch) -> None:
     app = _app(None)
     command_started = asyncio.Event()

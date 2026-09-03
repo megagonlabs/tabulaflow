@@ -933,7 +933,7 @@ class TabulaflowApp(App[None]):
         import asyncio
 
         chat_log = self.query_one("#chat-log", VerticalScroll)
-        user_msg = UserMessage(question if isinstance(question, str) else display_text)
+        user_msg = UserMessage(display_text)
         is_command = isinstance(question, str) and question.startswith(COMMAND_PREFIX)
         interrupted = False
         try:
