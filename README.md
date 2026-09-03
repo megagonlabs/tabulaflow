@@ -720,12 +720,15 @@ Sep 1
 - [x] cli
 - [x] context compaction
 - [x] bash command display
+
+Sep 2
 - Multimodal
   - [ ] Pasting images
   - [ ] Media in tables
+- [ ] Include multimodal data in sample_data
 - [ ] Show pending turns in output pane
-
 - [ ] Speedup tests
+
 - [ ] Inline artifact citation
 - [ ] code diff rendering
 - [ ] IMPORTANT: decouple data and rendered format (show unit "cm" while still enabling sorting by value)
@@ -764,18 +767,13 @@ Sep 1
 - [ ] Bug: Warning sign emoji display width
 - [ ] sample_data disconnect policy
 - [ ] Banner - /connect pre-built data sources as most important use case
-- [ ] Include multimodal data in sample_data
+
 - [ ] Guard against long messages and context overflow
 - [ ] Context for canonicalization (e.g. pool vs swimming)
 - [ ] Offload truncated cell + read_message tool
 - [ ] Inlucde table schema for add_canonical_name tool
-- [ ] extraction tool display
-- [ ] Remove registry variant of extraction and run_subagent_for_each_row tools
-- [ ] subagent prompt - ensure output consistency but don't limit the approach
-- [ ] Auto-close old tab on re-navigate
 - [ ] Handle records with empty results or zero-row results
 - [ ] One-time subagent tool
-- [ ] Bash tool
 - [ ] Partial trajectory when exeption during agent turn
 - [ ] Captcha
 - General
