@@ -12,10 +12,10 @@ from pydantic_ai import Tool
 from tabulaflow.agents.tools.filesystem.access import (
     _DEFAULT_ALLOWED_ROOTS,
     _DefaultAllowedRoots,
-    _ResolvedFileEditorRoot,
+    _ResolvedFilesystemRoot,
     _resolve,
     _resolve_roots,
-    FileEditorRoot,
+    FilesystemRoot,
 )
 from tabulaflow.agents.tools.filesystem.patch_engine import (
     ActionType,
@@ -46,15 +46,15 @@ class ApplyPatchTool:
     def __init__(
         self,
         working_dir: str,
-        allowed_roots: Sequence[FileEditorRoot] | None | _DefaultAllowedRoots = _DEFAULT_ALLOWED_ROOTS,
+        allowed_roots: Sequence[FilesystemRoot] | None | _DefaultAllowedRoots = _DEFAULT_ALLOWED_ROOTS,
     ) -> None:
         self._working_dir = Path(working_dir).resolve()
         if not self._working_dir.is_dir():
             raise ValueError(f"working_dir is not a directory: {working_dir}")
         self._unrestricted = allowed_roots is None
         if isinstance(allowed_roots, _DefaultAllowedRoots):
-            allowed_roots = [FileEditorRoot("working_dir", self._working_dir)]
-        self._allowed_roots: tuple[_ResolvedFileEditorRoot, ...] = (
+            allowed_roots = [FilesystemRoot("working_dir", self._working_dir)]
+        self._allowed_roots: tuple[_ResolvedFilesystemRoot, ...] = (
             () if allowed_roots is None else _resolve_roots(allowed_roots)
         )
         self._metrics = ApplyPatchToolMetrics()

@@ -38,74 +38,72 @@ class TestLineDiffstat:
         assert _line_diffstat("a\nb\n", "a\nb\n") == (0, 0)
 
 
-class TestFileEditorLabel:
+class TestFilesystemToolLabels:
     def test_str_replace_diffstat(self) -> None:
         label = summarize_tool_args(
-            "file_editor",
-            {"command": "str_replace", "path": "models/x.sql", "old_str": "a\nb", "new_str": "a\nB\nc"},
+            "edit_file",
+            {"command": "replace", "path": "models/x.sql", "old_text": "a\nb", "new_text": "a\nB\nc"},
         )
         assert label == "Edit models/x.sql +2 -1"
 
     def test_absolute_home_path_is_shortened(self) -> None:
         path = Path.home() / "projects" / "mintq" / "models" / "x.sql"
         label = summarize_tool_args(
-            "file_editor",
-            {"command": "str_replace", "path": str(path), "old_str": "a", "new_str": "a\nb"},
+            "edit_file",
+            {"command": "replace", "path": str(path), "old_text": "a", "new_text": "a\nb"},
         )
         assert label == "Edit ~/projects/mintq/models/x.sql +1"
 
     def test_long_absolute_home_path_preserves_filename(self) -> None:
         path = Path.home() / ".tabulaflow" / "sessions" / "vtyp8l" / "scratch" / "result_patch.sql"
         label = summarize_tool_args(
-            "file_editor",
-            {"command": "str_replace", "path": str(path), "old_str": "a", "new_str": "a\nb"},
+            "edit_file",
+            {"command": "replace", "path": str(path), "old_text": "a", "new_text": "a\nb"},
         )
         assert label == "Edit ~/.tabulaflow/sessions/vtyp8l/…/result_patch.sql +1"
 
     def test_str_replace_added_only_omits_zero_removed(self) -> None:
         label = summarize_tool_args(
-            "file_editor",
-            {"command": "str_replace", "path": "models/x.sql", "old_str": "a", "new_str": "a\nb"},
+            "edit_file",
+            {"command": "replace", "path": "models/x.sql", "old_text": "a", "new_text": "a\nb"},
         )
         assert label == "Edit models/x.sql +1"
 
     def test_str_replace_removed_only_omits_zero_added(self) -> None:
         label = summarize_tool_args(
-            "file_editor",
-            {"command": "str_replace", "path": "models/x.sql", "old_str": "a\nb", "new_str": "a"},
+            "edit_file",
+            {"command": "replace", "path": "models/x.sql", "old_text": "a\nb", "new_text": "a"},
         )
         assert label == "Edit models/x.sql -1"
 
     def test_str_replace_no_change_omits_diffstat(self) -> None:
         label = summarize_tool_args(
-            "file_editor",
-            {"command": "str_replace", "path": "models/x.sql", "old_str": "a", "new_str": "a"},
+            "edit_file",
+            {"command": "replace", "path": "models/x.sql", "old_text": "a", "new_text": "a"},
         )
         assert label == "Edit models/x.sql"
 
     def test_write_file_added_only(self) -> None:
-        label = summarize_tool_args("file_editor", {"command": "write_file", "path": "s.py", "file_text": "l1\nl2\nl3"})
+        label = summarize_tool_args("edit_file", {"command": "write", "path": "s.py", "new_text": "l1\nl2\nl3"})
         assert label == "Write s.py +3"
 
     def test_write_file_empty_omits_zero_added(self) -> None:
-        label = summarize_tool_args("file_editor", {"command": "write_file", "path": "s.py", "file_text": ""})
+        label = summarize_tool_args("edit_file", {"command": "write", "path": "s.py", "new_text": ""})
         assert label == "Write s.py"
 
     def test_view(self) -> None:
-        assert summarize_tool_args("file_editor", {"command": "view", "path": "."}) == "View ."
+        assert summarize_tool_args("view", {"path": "."}) == "View ."
 
     def test_view_range_includes_line_span(self) -> None:
-        label = summarize_tool_args(
-            "file_editor", {"command": "view", "path": "tabulaflow/app/widgets.py", "view_range": [541, 554]}
-        )
+        label = summarize_tool_args("view", {"path": "tabulaflow/app/widgets.py", "view_range": [541, 554]})
         assert label == "View tabulaflow/app/widgets.py:541-554"
 
     def test_view_single_line_range_uses_single_line_number(self) -> None:
-        label = summarize_tool_args("file_editor", {"command": "view", "path": "x.py", "view_range": [12, 12]})
+        label = summarize_tool_args("view", {"path": "x.py", "view_range": [12, 12]})
         assert label == "View x.py:12"
 
     def test_view_invalid_range_omits_line_span(self) -> None:
-        label = summarize_tool_args("file_editor", {"command": "view", "path": "x.py", "view_range": [12, -1]})
+        label = summarize_tool_args("view", {"path": "x.py", "view_range": [12, -1]})
         assert label == "View x.py"
 
 
@@ -348,7 +346,7 @@ class TestVerbLedLabels:
 
 class TestStyledLabel:
     def test_diffstat_colored(self) -> None:
-        text = _styled_label("file_editor", "Edit x.sql +2 -1")
+        text = _styled_label("edit_file", "Edit x.sql +2 -1")
         styled = {text.plain[s.start : s.end]: s.style for s in text.spans}
         assert styled["Edit"] == "bold dim"
         assert styled["+2"] == DIFF_ADDED  # added: green
@@ -386,7 +384,7 @@ class TestStyledLabel:
 
     def test_path_dash_not_reddened(self) -> None:
         # a hyphen-number in a path must not be mistaken for a removed-line count
-        text = _styled_label("file_editor", "View model-2.sql")
+        text = _styled_label("view", "View model-2.sql")
         styled = {text.plain[s.start : s.end]: s.style for s in text.spans}
         assert styled["View"] == "bold dim"
         assert styled[" model-2.sql"] == "dim"

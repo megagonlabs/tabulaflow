@@ -160,19 +160,17 @@ def _format_file_view_range(view_range: object) -> str:
     return f":{start}-{end}"
 
 
-def _summarize_file_editor(args: Mapping[str, object]) -> str:
-    """A verb-led label for the file editor: ``Edit foo.sql +5 -2`` (git diffstat)."""
+def _summarize_edit_file(args: Mapping[str, object]) -> str:
+    """A verb-led label for structured file editing."""
     command = str(args.get("command", ""))
     path = _fmt_path_value(args.get("path", "."), 48)
-    if command == "str_replace":
-        added, removed = _line_diffstat(str(args.get("old_str", "")), str(args.get("new_str", "")))
+    if command == "replace":
+        added, removed = _line_diffstat(str(args.get("old_text", "")), str(args.get("new_text", "")))
         return f"Edit {path}{_format_diffstat(added, removed)}"
-    if command == "write_file":
-        text = str(args.get("file_text", ""))
+    if command == "write":
+        text = str(args.get("new_text", ""))
         added = text.count("\n") + (1 if text and not text.endswith("\n") else 0)
         return f"Write {path}{_format_diffstat(added, 0)}"
-    if command == "view":
-        return f"View {path}{_format_file_view_range(args.get('view_range'))}"
     return f"{command} {path}".strip()
 
 
@@ -370,8 +368,11 @@ def summarize_tool_args(name: str, args: Mapping[str, object]) -> str:
         return f"Connect {label}".rstrip()
     if name == "execute_bash":
         return _summarize_bash(args)
-    if name == "file_editor":
-        return _summarize_file_editor(args)
+    if name == "view":
+        path = _fmt_path_value(args.get("path", "."), 48)
+        return f"View {path}{_format_file_view_range(args.get('view_range'))}"
+    if name == "edit_file":
+        return _summarize_edit_file(args)
     if name == "apply_patch":
         return _summarize_apply_patch(args)
     return f"{name.replace('_', ' ').capitalize()} {_summarize_generic_args(args)}".rstrip()
@@ -393,8 +394,8 @@ def summarize_outcome(outcome: ToolCallOutcome | None) -> str:
 def _styled_label(name: str, label: str, *, color_diffstat: bool = True) -> Text:
     """Render a step label with a bold-dim verb and dim details.
 
-    File-editor git diffstat tokens keep their add/remove colors. That coloring is
-    scoped to the file editor so arithmetic in a SQL snippet (``SELECT -1``) is never
+    File-edit git diffstat tokens keep their add/remove colors. That coloring is
+    scoped to file mutation tools so arithmetic in a SQL snippet (``SELECT -1``) is never
     mistaken for a removed-line count. Tool failures are not reddened — the ``error``
     outcome stays dim like the rest of the label.
     """
@@ -407,7 +408,7 @@ def _styled_label(name: str, label: str, *, color_diffstat: bool = True) -> Text
     text.append(label[:verb_end], style="bold dim")
     pos = 0
     rest = label[verb_end:]
-    if not color_diffstat or name not in {"file_editor", "apply_patch"} or not _DIFFSTAT_TOKEN_RE.search(rest):
+    if not color_diffstat or name not in {"edit_file", "apply_patch"} or not _DIFFSTAT_TOKEN_RE.search(rest):
         text.append(rest, style="dim")
         return text
 

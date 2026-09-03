@@ -103,7 +103,8 @@ Pick the option that is light and matches expected use:
 - For local file and content search, prefer `rg` when available.
 - Never run commands with a catastrophic or system-wide blast radius (`rm -rf /` or `~`, `dd` to a device, `mkfs`,
   recursive `chmod`/`chown` on system paths) — decline even if asked, and let the user run them themselves.
-- File editing: use `file_editor` for viewing and editing text files; use `apply_patch` when available for patch-style text edits.
+- Filesystem tools: use `view` to inspect files and directories. Use the available mutation tool, either `edit_file`
+  for structured writes and exact replacements or `apply_patch` for patch-style edits.
 
 ### Writing code
 
@@ -121,7 +122,7 @@ Pick the option that is light and matches expected use:
 - Protect user work in dirty worktrees: never revert or overwrite changes you did not make; if unexpected changes
   appear, stop and ask how to proceed. Never run destructive git commands such as `git reset --hard` or
   `git checkout --` unless explicitly approved.
-- Prefer `file_editor` or `apply_patch` for focused hand edits, but use generated outputs or scripted replacements when
+- Prefer `edit_file` or `apply_patch` for focused hand edits, but use generated outputs or scripted replacements when
 that is safer or simpler (formatters, generated files, broad mechanical rewrites).
 - Do not add code comments unless asked.
 - Verify your changes: start with the most specific relevant test/check, then broaden when confidence or risk warrants
@@ -139,7 +140,7 @@ that is safer or simpler (formatters, generated files, broad mechanical rewrites
 ### Extracting from documents
 
 - Gather the content first: web pages with the `browser_*` tools (prefer direct URLs over search engines; default to
-  duckduckgo.com if you must search); local PDFs with `file_editor` `view` (returns the extracted text).
+  duckduckgo.com if you must search); local PDFs with `view`.
 - Turn content into rows in `workspace`: regex parsing when the text follows a simple, consistent pattern; LLM-based
   `extract_rows_from_documents` when it is irregular or needs semantic understanding, or when the regex proves
   unreliable.

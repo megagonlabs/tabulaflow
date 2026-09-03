@@ -5,7 +5,9 @@ from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from tabulaflow.agents.tools.add_canonical_name import AddCanonicalNameTool
-    from tabulaflow.agents.tools.filesystem.editor import FileEditorRoot, FileEditorTool, FileEditorToolMetrics
+    from tabulaflow.agents.tools.filesystem.access import FilesystemRoot
+    from tabulaflow.agents.tools.filesystem.edit import EditFileTool, EditFileToolMetrics
+    from tabulaflow.agents.tools.filesystem.view import ViewTool, ViewToolMetrics
     from tabulaflow.agents.tools.filesystem.patch import ApplyPatchTool
     from tabulaflow.agents.tools.protocols import (
         AgentTool,
@@ -52,9 +54,9 @@ _LAZY_EXPORTS = {
         "tabulaflow.agents.tools.extract_rows_from_documents",
         "ExtractRowsFromDocumentsTool",
     ),
-    "FileEditorRoot": ("tabulaflow.agents.tools.filesystem.editor", "FileEditorRoot"),
-    "FileEditorTool": ("tabulaflow.agents.tools.filesystem.editor", "FileEditorTool"),
-    "FileEditorToolMetrics": ("tabulaflow.agents.tools.filesystem.editor", "FileEditorToolMetrics"),
+    "EditFileTool": ("tabulaflow.agents.tools.filesystem.edit", "EditFileTool"),
+    "EditFileToolMetrics": ("tabulaflow.agents.tools.filesystem.edit", "EditFileToolMetrics"),
+    "FilesystemRoot": ("tabulaflow.agents.tools.filesystem.access", "FilesystemRoot"),
     "GetColumnJsonSchemaTool": (
         "tabulaflow.agents.tools.get_column_json_schema",
         "GetColumnJsonSchemaTool",
@@ -93,6 +95,8 @@ _LAZY_EXPORTS = {
     "ToolProgressUpdate": ("tabulaflow.agents.tools.protocols", "ToolProgressUpdate"),
     "WebBrowserManager": ("tabulaflow.agents.tools.browser.manager", "WebBrowserManager"),
     "WebBrowserTool": ("tabulaflow.agents.tools.browser.tool", "WebBrowserTool"),
+    "ViewTool": ("tabulaflow.agents.tools.filesystem.view", "ViewTool"),
+    "ViewToolMetrics": ("tabulaflow.agents.tools.filesystem.view", "ViewToolMetrics"),
 }
 
 __all__ = [
@@ -106,9 +110,9 @@ __all__ = [
     "CreateParameterizedSourceTool",
     "ExecuteBashTool",
     "ExtractRowsFromDocumentsTool",
-    "FileEditorRoot",
-    "FileEditorTool",
-    "FileEditorToolMetrics",
+    "EditFileTool",
+    "EditFileToolMetrics",
+    "FilesystemRoot",
     "GetColumnJsonSchemaTool",
     "GetTableSchemaTool",
     "LLMProfileTool",
@@ -129,6 +133,8 @@ __all__ = [
     "ToolProgressUpdate",
     "WebBrowserManager",
     "WebBrowserTool",
+    "ViewTool",
+    "ViewToolMetrics",
 ]
 
 

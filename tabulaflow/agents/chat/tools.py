@@ -13,7 +13,8 @@ if TYPE_CHECKING:
     from tabulaflow.agents.tools.create_parameterized_source import CreateParameterizedSourceTool
     from tabulaflow.agents.tools.shell.tool import ExecuteBashTool
     from tabulaflow.agents.tools.extract_rows_from_documents import ExtractRowsFromDocumentsTool
-    from tabulaflow.agents.tools.filesystem.editor import FileEditorTool
+    from tabulaflow.agents.tools.filesystem.edit import EditFileTool
+    from tabulaflow.agents.tools.filesystem.view import ViewTool
     from tabulaflow.agents.tools.registry.get_column_json_schema import RegistryGetColumnJsonSchemaTool
     from tabulaflow.agents.tools.registry.get_db_document import RegistryGetDBDocumentTool
     from tabulaflow.agents.tools.registry.get_table_schema import RegistryGetTableSchemaTool
@@ -39,7 +40,8 @@ class _ChatTools:
     extract_rows_from_documents: ExtractRowsFromDocumentsTool | None
     connect_data_source: ConnectDataSourceTool | None
     bash: ExecuteBashTool | None
-    file_editor: FileEditorTool | None
+    view: ViewTool | None
+    edit_file: EditFileTool | None
     apply_patch: ApplyPatchTool | None
     add_canonical_name: AddCanonicalNameTool
     render_chart: RenderChartTool

@@ -18,7 +18,7 @@ from tabulaflow.agents.summarization import DBSummarizer
 from tabulaflow.agents.trace import Usage, Trajectory
 from tabulaflow.research.types import DbtTask, DbtTaskOutput
 from tabulaflow.agents.tools import GetTableSchemaTool, RunQueryTool
-from tabulaflow.research.tools import ExecuteBashTool, FileEditorTool, RunDbtTool
+from tabulaflow.research.tools import EditFileTool, ExecuteBashTool, RunDbtTool, ViewTool
 from tabulaflow.agents.llm import make_agent
 
 
@@ -54,10 +54,10 @@ You are an agent - please keep going until the project builds successfully, befo
 
 <tool_calling>
 Gathering information:
-- Use the `file_editor` tool to browse the project directory, read YAML and SQL files, and understand the project structure before making changes.
+- Use `view` to browse the project directory, read YAML and SQL files, and understand the project structure before making changes.
 - Use `get_table_schema` to inspect the schema of source tables in the data warehouse.
 - Use `run_query` to run exploratory SQL queries against the source database (e.g. to check row counts, date ranges, or compare overlapping data sources before choosing one).
-- Batch multiple `file_editor` view calls in a single step.
+- Batch multiple `view` calls in a single step.
 {%- if use_bash_tool %}
 - You may use `execute_bash` to run shell commands such as `dbt list`, `dbt compile`, or `dbt run`.
 - The shell starts in the project directory. Do NOT navigate outside of it.
@@ -68,7 +68,7 @@ Gathering information:
 Writing model SQL:
 - Read ALL existing SQL model files carefully and follow their patterns exactly in your new models.
 - Column names in your output MUST match the YAML schema definitions exactly.
-- Use the `file_editor` tool to create new SQL model files or edit existing ones.
+- Use `edit_file` to create new SQL model files or edit existing ones.
 {%- if use_bash_tool %}
 - Before the first `dbt run`, back up all database files (e.g. `cp *.duckdb *.duckdb.bak`).
   Before each subsequent `dbt run`, restore from the backup (e.g. `cp *.duckdb.bak *.duckdb`) so that every run starts from a clean state.
@@ -125,7 +125,8 @@ class DbtAgent:
         db_summarizer = DBSummarizer(llm=self.config.db_summarizer_llm)
         db_document = await db_summarizer.summarize(db_connector)
 
-        file_editor = FileEditorTool(working_dir)
+        view = ViewTool(working_dir)
+        edit_file = EditFileTool(working_dir)
 
         async def _pre_run_hook() -> None:
             await db_connector.release_connections_async()
@@ -178,7 +179,8 @@ class DbtAgent:
         agent = make_agent(
             self.config.llm,
             tools=[
-                file_editor.as_pydantic_ai_tool(),
+                view.as_pydantic_ai_tool(),
+                edit_file.as_pydantic_ai_tool(),
                 run_query.as_pydantic_ai_tool(),
                 run_tool.as_pydantic_ai_tool(),
                 get_table_schema.as_pydantic_ai_tool(),
@@ -220,7 +222,8 @@ class DbtAgent:
         metrics["steps"] = sum(1 for msg in trajectory.messages if msg.role == "assistant")
         metrics["retry_prompt"] = sum(1 for msg in trajectory.messages if msg.role == "tool" and msg.is_retry_prompt)
         metrics["tools"] = {
-            "file_editor": file_editor.metrics().model_dump(),
+            "view": view.metrics().model_dump(),
+            "edit_file": edit_file.metrics().model_dump(),
             run_tool.name: run_tool.metrics().model_dump(),
             "get_table_schema": get_table_schema.metrics().model_dump(),
             "run_query": run_query.metrics().model_dump(),

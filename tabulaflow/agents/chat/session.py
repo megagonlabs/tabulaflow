@@ -115,7 +115,7 @@ class ChatSession:
         service_tier: Optional provider service tier.
         subagent_model: Model used by fan-out and extraction helpers.
         subagent_reasoning: Reasoning level for helper models.
-        enable_apply_patch: Expose ``apply_patch`` when ``project_dir`` is set.
+        use_apply_patch: Use ``apply_patch`` instead of ``edit_file`` when filesystem tools are available.
         extra_instructions: Instructions appended to the fixed baseline prompt.
         trajectory_log_dir: Optional directory for conversation trajectories.
         workspace: Writable SQL scratch database for derived data and message spill.
@@ -134,7 +134,7 @@ class ChatSession:
         service_tier: ServiceTier | None = None,
         subagent_model: str = DEFAULT_SUBAGENT_MODEL,
         subagent_reasoning: ReasoningLevel = DEFAULT_SUBAGENT_REASONING,
-        enable_apply_patch: bool = False,
+        use_apply_patch: bool = False,
         extra_instructions: str | None = None,
         trajectory_log_dir: Path | None = None,
         workspace: SQLConnector | None = None,
@@ -149,7 +149,7 @@ class ChatSession:
         self._service_tier = service_tier
         self._subagent_model = subagent_model
         self._subagent_reasoning = subagent_reasoning
-        self._enable_apply_patch = enable_apply_patch
+        self._use_apply_patch = use_apply_patch
         self._extra_instructions = extra_instructions
         self._trajectory_log_dir = trajectory_log_dir
         self._workspace = workspace
@@ -203,9 +203,9 @@ class ChatSession:
         return self._subagent_reasoning
 
     @property
-    def enable_apply_patch(self) -> bool:
-        """Whether the active profile exposes ``apply_patch`` when files are enabled."""
-        return self._enable_apply_patch
+    def use_apply_patch(self) -> bool:
+        """Whether the active profile uses ``apply_patch`` instead of ``edit_file``."""
+        return self._use_apply_patch
 
     @property
     def last_usage(self) -> Usage | None:
@@ -239,7 +239,8 @@ class ChatSession:
         from tabulaflow.agents.tools.connect_data_source import ConnectDataSourceTool
         from tabulaflow.agents.tools.create_parameterized_source import CreateParameterizedSourceTool
         from tabulaflow.agents.tools.extract_rows_from_documents import ExtractRowsFromDocumentsTool
-        from tabulaflow.agents.tools.filesystem.editor import FileEditorTool
+        from tabulaflow.agents.tools.filesystem.edit import EditFileTool
+        from tabulaflow.agents.tools.filesystem.view import ViewTool
         from tabulaflow.agents.tools.registry.get_column_json_schema import RegistryGetColumnJsonSchemaTool
         from tabulaflow.agents.tools.registry.get_db_document import RegistryGetDBDocumentTool
         from tabulaflow.agents.tools.registry.get_table_schema import RegistryGetTableSchemaTool
@@ -293,8 +294,16 @@ class ChatSession:
                 ConnectDataSourceTool(self._registry, self._data_dir) if self._data_dir is not None else None
             ),
             bash=self._build_bash_tool(),
-            file_editor=(
-                FileEditorTool(
+            view=(
+                ViewTool(
+                    str(self._project_dir),
+                    allowed_roots=None,
+                )
+                if self._project_dir is not None
+                else None
+            ),
+            edit_file=(
+                EditFileTool(
                     str(self._project_dir),
                     allowed_roots=None,
                 )
@@ -457,7 +466,7 @@ class ChatSession:
         reasoning: ReasoningLevel,
         subagent_model: str,
         subagent_reasoning: ReasoningLevel,
-        enable_apply_patch: bool,
+        use_apply_patch: bool,
     ) -> tuple[str | None, str | None]:
         """Atomically activate main and subagent LLM profiles.
 
@@ -473,7 +482,7 @@ class ChatSession:
             reasoning: New interactive reasoning level.
             subagent_model: New helper model identifier.
             subagent_reasoning: New helper reasoning level.
-            enable_apply_patch: Whether the profile may expose ``apply_patch``.
+            use_apply_patch: Whether to use ``apply_patch`` instead of ``edit_file``.
 
         Returns:
             Raw main and subagent API keys, when their resolved clients use keys.
@@ -488,12 +497,12 @@ class ChatSession:
             and self.reasoning == reasoning
             and self.subagent_model == subagent_model
             and self.subagent_reasoning == subagent_reasoning
-            and self.enable_apply_patch == enable_apply_patch
+            and self.use_apply_patch == use_apply_patch
         )
 
         runtime_agent = self._pydantic_ai_agent
-        if self.model != model or self.enable_apply_patch != enable_apply_patch:
-            runtime_agent = self._make_agent(model, enable_apply_patch=enable_apply_patch)
+        if self.model != model or self.use_apply_patch != use_apply_patch:
+            runtime_agent = self._make_agent(model, use_apply_patch=use_apply_patch)
         subagent_provider_model = self._subagent_provider_model(subagent_model)
         keys = (
             self._api_key_from_model(self._unwrap_model(runtime_agent.model) if runtime_agent is not None else None),
@@ -503,7 +512,7 @@ class ChatSession:
             return keys
 
         previous_model = self.model
-        previous_enable_apply_patch = self.enable_apply_patch
+        previous_use_apply_patch = self.use_apply_patch
         previous_subagent_model = self.subagent_model
         previous_subagent_effort = self.subagent_reasoning
         try:
@@ -521,14 +530,14 @@ class ChatSession:
         self._reasoning = reasoning
         self._subagent_model = subagent_model
         self._subagent_reasoning = subagent_reasoning
-        self._enable_apply_patch = enable_apply_patch
+        self._use_apply_patch = use_apply_patch
         self._pydantic_ai_agent = runtime_agent
-        if model != previous_model or enable_apply_patch != previous_enable_apply_patch:
+        if model != previous_model or use_apply_patch != previous_use_apply_patch:
             self._note_profile_change(
                 previous_model,
                 model,
-                previous_enable_apply_patch=previous_enable_apply_patch,
-                enable_apply_patch=enable_apply_patch,
+                previous_use_apply_patch=previous_use_apply_patch,
+                use_apply_patch=use_apply_patch,
             )
         return keys
 
@@ -558,8 +567,8 @@ class ChatSession:
         previous_model: str,
         model: str,
         *,
-        previous_enable_apply_patch: bool,
-        enable_apply_patch: bool,
+        previous_use_apply_patch: bool,
+        use_apply_patch: bool,
     ) -> None:
         """Record model and tool-capability changes in conversation history."""
         parts = []
@@ -568,9 +577,11 @@ class ChatSession:
                 "the model powering this conversation changed from "
                 f"{model_display_name(previous_model)} to {model_display_name(model)}"
             )
-        if self._tools.apply_patch is not None and enable_apply_patch != previous_enable_apply_patch:
-            state = "now available; prefer it for file edits" if enable_apply_patch else "no longer available"
-            parts.append(f"the apply_patch tool is {state}")
+        if self._tools.apply_patch is not None and use_apply_patch != previous_use_apply_patch:
+            if use_apply_patch:
+                parts.append("apply_patch is now available and replaces edit_file")
+            else:
+                parts.append("edit_file is now available and replaces apply_patch")
         if parts:
             self.note_event("; ".join(parts) + ".")
 
@@ -608,15 +619,17 @@ class ChatSession:
         if self._tools.bash is not None:
             await self._tools.bash.close()
 
-    def _make_agent(self, model: str, *, enable_apply_patch: bool | None = None) -> Agent[object, str]:
+    def _make_agent(self, model: str, *, use_apply_patch: bool | None = None) -> Agent[object, str]:
         """Construct the model-specific runtime around the session's live tools."""
         from tabulaflow.agents.tools.run_subagent_for_each_row import ReleaseBrowserBeforeFanout
 
-        if enable_apply_patch is None:
-            enable_apply_patch = self.enable_apply_patch
+        if use_apply_patch is None:
+            use_apply_patch = self.use_apply_patch
         tools: list[Any] = []
         for tool in self._tools:
-            if tool is self._tools.apply_patch and not enable_apply_patch:
+            if tool is self._tools.apply_patch and not use_apply_patch:
+                continue
+            if tool is self._tools.edit_file and use_apply_patch:
                 continue
             if tool is self._tools.web_browser:
                 tools.extend(tool.as_pydantic_ai_tools())

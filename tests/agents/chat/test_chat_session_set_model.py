@@ -32,7 +32,7 @@ def test_activate_llm_profile_failure_is_transactional(monkeypatch: pytest.Monke
             reasoning="high",
             subagent_model=agent.subagent_model,
             subagent_reasoning=agent.subagent_reasoning,
-            enable_apply_patch=agent.enable_apply_patch,
+            use_apply_patch=agent.use_apply_patch,
         )
     # The failed switch left everything intact.
     assert agent.model == "test"
@@ -58,7 +58,7 @@ def test_subagent_failure_does_not_partially_switch_main_profile(monkeypatch: py
             reasoning="high",
             subagent_model="anthropic:claude-sonnet-4-5-20250929",
             subagent_reasoning="medium",
-            enable_apply_patch=agent.enable_apply_patch,
+            use_apply_patch=agent.use_apply_patch,
         )
 
     assert agent.model == "openai-responses:gpt-5"
@@ -88,7 +88,7 @@ def test_activate_llm_profile_preserves_conversation_state(monkeypatch: pytest.M
         reasoning="high",
         subagent_model="openai-responses:gpt-5-mini",
         subagent_reasoning="medium",
-        enable_apply_patch=agent.enable_apply_patch,
+        use_apply_patch=agent.use_apply_patch,
     )
 
     assert agent._context_messages is message_history
@@ -117,7 +117,7 @@ def test_api_key_none_for_keyless_model() -> None:
     assert agent.resolve_api_keys() == (None, None)
 
 
-async def test_chat_session_file_editor_is_unrestricted(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_chat_session_file_tools_are_unrestricted(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     project = tmp_path / "project"
     outside = tmp_path / "outside"
     project.mkdir()
@@ -134,8 +134,8 @@ async def test_chat_session_file_editor_is_unrestricted(tmp_path: Path, monkeypa
         scratch_dir=tmp_path / "scratch",
     )
 
-    assert agent._tools.file_editor is not None
-    out = await agent._tools.file_editor("view", str(target))
+    assert agent._tools.view is not None
+    out = await agent._tools.view(str(target))
     assert isinstance(out, str)
     assert "outside content" in out
     assert agent._tools.apply_patch is not None
@@ -164,9 +164,11 @@ def test_chat_session_file_editing_tools_follow_project_dir(tmp_path: Path) -> N
         project_dir=project,
     )
 
-    assert without_project._tools.file_editor is None
+    assert without_project._tools.view is None
+    assert without_project._tools.edit_file is None
     assert without_project._tools.apply_patch is None
-    assert with_project._tools.file_editor is not None
+    assert with_project._tools.view is not None
+    assert with_project._tools.edit_file is not None
     assert with_project._tools.apply_patch is not None
 
 
@@ -187,34 +189,38 @@ def test_chat_session_tool_list_includes_file_tools_for_every_model(
         model="test",
         reasoning="medium",
         project_dir=project,
-        enable_apply_patch=True,
+        use_apply_patch=True,
     )
     openai_non_responses_gpt = ChatSession(
         registry=DBRegistry(),
         model="openai-chat:gpt-5",
         reasoning="medium",
         project_dir=project,
-        enable_apply_patch=True,
+        use_apply_patch=True,
     )
     gpt = ChatSession(
         registry=DBRegistry(),
         model="openai-responses:gpt-5",
         reasoning="medium",
         project_dir=project,
-        enable_apply_patch=True,
+        use_apply_patch=True,
     )
 
     without_tools = cast(Any, without_project._pydantic_ai_agent)._function_toolset.tools
     non_gpt_tools = cast(Any, non_gpt._pydantic_ai_agent)._function_toolset.tools
     openai_non_responses_gpt_tools = cast(Any, openai_non_responses_gpt._pydantic_ai_agent)._function_toolset.tools
     gpt_tools = cast(Any, gpt._pydantic_ai_agent)._function_toolset.tools
-    assert "file_editor" not in without_tools
+    assert "view" not in without_tools
+    assert "edit_file" not in without_tools
     assert "apply_patch" not in without_tools
-    assert "file_editor" in non_gpt_tools
+    assert "view" in non_gpt_tools
+    assert "edit_file" not in non_gpt_tools
     assert "apply_patch" in non_gpt_tools
-    assert "file_editor" in openai_non_responses_gpt_tools
+    assert "view" in openai_non_responses_gpt_tools
+    assert "edit_file" not in openai_non_responses_gpt_tools
     assert "apply_patch" in openai_non_responses_gpt_tools
-    assert "file_editor" in gpt_tools
+    assert "view" in gpt_tools
+    assert "edit_file" not in gpt_tools
     assert "apply_patch" in gpt_tools
 
 
@@ -229,11 +235,12 @@ def test_chat_session_file_tool_list_is_stable_across_model_switch(
         model="test",
         reasoning="medium",
         project_dir=project,
-        enable_apply_patch=True,
+        use_apply_patch=True,
     )
 
     initial_tools = cast(Any, agent._pydantic_ai_agent)._function_toolset.tools
-    assert "file_editor" in initial_tools
+    assert "view" in initial_tools
+    assert "edit_file" not in initial_tools
     assert "apply_patch" in initial_tools
 
     agent.activate_llm_profile(
@@ -241,10 +248,11 @@ def test_chat_session_file_tool_list_is_stable_across_model_switch(
         reasoning="medium",
         subagent_model=agent.subagent_model,
         subagent_reasoning=agent.subagent_reasoning,
-        enable_apply_patch=agent.enable_apply_patch,
+        use_apply_patch=agent.use_apply_patch,
     )
     gpt_tools = cast(Any, agent._pydantic_ai_agent)._function_toolset.tools
-    assert "file_editor" in gpt_tools
+    assert "view" in gpt_tools
+    assert "edit_file" not in gpt_tools
     assert "apply_patch" in gpt_tools
 
     agent.activate_llm_profile(
@@ -252,10 +260,11 @@ def test_chat_session_file_tool_list_is_stable_across_model_switch(
         reasoning="medium",
         subagent_model=agent.subagent_model,
         subagent_reasoning=agent.subagent_reasoning,
-        enable_apply_patch=agent.enable_apply_patch,
+        use_apply_patch=agent.use_apply_patch,
     )
     non_gpt_tools = cast(Any, agent._pydantic_ai_agent)._function_toolset.tools
-    assert "file_editor" in non_gpt_tools
+    assert "view" in non_gpt_tools
+    assert "edit_file" not in non_gpt_tools
     assert "apply_patch" in non_gpt_tools
 
 
@@ -270,7 +279,8 @@ def test_apply_patch_capability_controls_tool_schema(tmp_path: Path) -> None:
     )
 
     initial_tools = cast(Any, agent._pydantic_ai_agent)._function_toolset.tools
-    assert "file_editor" in initial_tools
+    assert "view" in initial_tools
+    assert "edit_file" in initial_tools
     assert "apply_patch" not in initial_tools
 
     agent.activate_llm_profile(
@@ -278,22 +288,24 @@ def test_apply_patch_capability_controls_tool_schema(tmp_path: Path) -> None:
         reasoning="medium",
         subagent_model=agent.subagent_model,
         subagent_reasoning=agent.subagent_reasoning,
-        enable_apply_patch=True,
+        use_apply_patch=True,
     )
     enabled_tools = cast(Any, agent._pydantic_ai_agent)._function_toolset.tools
     assert "apply_patch" in enabled_tools
-    assert _last_note(agent) == "[system: the apply_patch tool is now available; prefer it for file edits.]"
+    assert "edit_file" not in enabled_tools
+    assert _last_note(agent) == "[system: apply_patch is now available and replaces edit_file.]"
 
     agent.activate_llm_profile(
         model="test",
         reasoning="medium",
         subagent_model=agent.subagent_model,
         subagent_reasoning=agent.subagent_reasoning,
-        enable_apply_patch=False,
+        use_apply_patch=False,
     )
     disabled_tools = cast(Any, agent._pydantic_ai_agent)._function_toolset.tools
     assert "apply_patch" not in disabled_tools
-    assert _last_note(agent) == "[system: the apply_patch tool is no longer available.]"
+    assert "edit_file" in disabled_tools
+    assert _last_note(agent) == "[system: edit_file is now available and replaces apply_patch.]"
 
 
 def _last_note(agent: ChatSession) -> str:
@@ -322,7 +334,7 @@ def test_activate_llm_profile_notes_model_change(tmp_path: Path, monkeypatch: py
         reasoning="medium",
         subagent_model=agent.subagent_model,
         subagent_reasoning=agent.subagent_reasoning,
-        enable_apply_patch=agent.enable_apply_patch,
+        use_apply_patch=agent.use_apply_patch,
     )
     assert _last_note(agent) == "[system: the model powering this conversation changed from Test to GPT 5.]"
 
@@ -331,7 +343,7 @@ def test_activate_llm_profile_notes_model_change(tmp_path: Path, monkeypatch: py
         reasoning="medium",
         subagent_model=agent.subagent_model,
         subagent_reasoning=agent.subagent_reasoning,
-        enable_apply_patch=agent.enable_apply_patch,
+        use_apply_patch=agent.use_apply_patch,
     )
     assert _last_note(agent) == "[system: the model powering this conversation changed from GPT 5 to Test.]"
 
@@ -342,7 +354,7 @@ def test_activate_llm_profile_notes_model_change(tmp_path: Path, monkeypatch: py
         reasoning="high",
         subagent_model="openai-responses:gpt-5.4-mini",
         subagent_reasoning="high",
-        enable_apply_patch=agent.enable_apply_patch,
+        use_apply_patch=agent.use_apply_patch,
     )
     assert len(agent._context_messages) == history_len
 
@@ -356,7 +368,7 @@ def test_model_change_note_without_file_tools(monkeypatch: pytest.MonkeyPatch) -
         reasoning="medium",
         subagent_model=agent.subagent_model,
         subagent_reasoning=agent.subagent_reasoning,
-        enable_apply_patch=agent.enable_apply_patch,
+        use_apply_patch=agent.use_apply_patch,
     )
     assert _last_note(agent) == "[system: the model powering this conversation changed from Test to GPT 5.]"
 
@@ -490,7 +502,7 @@ async def test_subagent_profile_wires_tools(tmp_path: Path, monkeypatch: pytest.
             reasoning=agent.reasoning,
             subagent_model="openai-responses:gpt-5.4-mini",
             subagent_reasoning="high",
-            enable_apply_patch=agent.enable_apply_patch,
+            use_apply_patch=agent.use_apply_patch,
         )
         assert agent._tools.get_db_document._document_cache == {}
         assert agent._tools.run_subagent_for_each_row.subagent_llm == "openai-responses:gpt-5.4-mini"

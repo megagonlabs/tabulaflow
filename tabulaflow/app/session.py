@@ -141,7 +141,7 @@ class AppSession:
             and agent.reasoning == preset.main.reasoning
             and agent.subagent_model == preset.subagent.model
             and agent.subagent_reasoning == preset.subagent.reasoning
-            and agent.enable_apply_patch == model_supports_apply_patch(preset.main.model)
+            and agent.use_apply_patch == model_supports_apply_patch(preset.main.model)
         )
 
     def _build_chat_session(
@@ -163,7 +163,7 @@ class AppSession:
             project_dir=self.project_dir,
             scratch_dir=self._runtime_paths.scratch_dir,
             data_dir=self.data_dir,
-            enable_apply_patch=model_supports_apply_patch(preset.main.model),
+            use_apply_patch=model_supports_apply_patch(preset.main.model),
         )
 
     def select_llm_preset(self, preset: LLMPreset | None) -> None:
@@ -186,7 +186,7 @@ class AppSession:
                     reasoning=preset.main.reasoning,
                     subagent_model=preset.subagent.model,
                     subagent_reasoning=preset.subagent.reasoning,
-                    enable_apply_patch=model_supports_apply_patch(preset.main.model),
+                    use_apply_patch=model_supports_apply_patch(preset.main.model),
                 )
             return self._chat_session.resolve_api_keys()
 
