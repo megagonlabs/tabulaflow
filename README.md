@@ -737,8 +737,11 @@ Sep 3
   - [x] sample data
 - [x] Split file_editor tool
 - [x] Rewrite write_dataframe_async and write_result_table
-- [ ] Show pending turns in output pane
 
+- [ ] Test huggingface multimodal datasets
+- [ ] Audio/Video support
+- [ ] Show pending turns in output pane
+- [ ] Copy table with media in output pane
 - [ ] Inline artifact citation
 - [ ] code diff rendering
 - [ ] IMPORTANT: decouple data and rendered format (show unit "cm" while still enabling sorting by value)
