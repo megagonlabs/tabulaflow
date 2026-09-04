@@ -302,23 +302,29 @@ def _inferred_object_array(series: pd.Series) -> pa.Array | None:
     return None
 
 
+def _arrow_array_without_fallback(series: pd.Series, column: str) -> pa.Array | None:
+    """Encode a column natively, returning None when tagged fallback is required."""
+    if series.dtype != object:
+        return _native_arrow_array(series, column)
+    return _inferred_object_array(series)
+
+
+def _database_arrow_array(series: pd.Series, column: str) -> pa.Array:
+    """Encode a database-bound column as one Arrow type without coercion."""
+    if series.dtype == object:
+        values = [value for value in series if not _is_missing(value)]
+        if values and all(isinstance(value, UUID) for value in values):
+            return pa.array([None if _is_missing(value) else value.bytes for value in series], type=pa.uuid())
+    array = _arrow_array_without_fallback(series, column)
+    if array is None:
+        raise ValueError(f"column {column!r} cannot be represented as one Arrow type without coercion")
+    return array
+
+
 def dataframe_to_arrow(df: pd.DataFrame) -> pa.Table:
     """Convert a DataFrame to Arrow without coercing heterogeneous values."""
     normalized = normalize_dataframe(df)
-    arrays: list[pa.Array] = []
-    for column in normalized.columns:
-        series = normalized[column]
-        if series.dtype != object:
-            arrays.append(_native_arrow_array(series, str(column)))
-            continue
-        values = [value for value in series if not _is_missing(value)]
-        if values and all(isinstance(value, UUID) for value in values):
-            arrays.append(pa.array([None if _is_missing(value) else value.bytes for value in series], type=pa.uuid()))
-            continue
-        array = _inferred_object_array(series)
-        if array is None:
-            raise ValueError(f"column {str(column)!r} cannot be represented as one Arrow type without coercion")
-        arrays.append(array)
+    arrays = [_database_arrow_array(normalized[column], str(column)) for column in normalized.columns]
     return pa.Table.from_arrays(arrays, names=[str(column) for column in normalized.columns])
 
 
@@ -334,10 +340,7 @@ def _fallback_arrow_array(series: pd.Series, column: str) -> tuple[pa.Array, pa.
 
 def _arrow_column(series: pd.Series, column: str) -> tuple[pa.Array, pa.Field]:
     """Select native or fallback Arrow storage for one column."""
-    if series.dtype != object:
-        array = _native_arrow_array(series, column)
-        return array, pa.field(column, array.type)
-    array = _inferred_object_array(series)
+    array = _arrow_array_without_fallback(series, column)
     if array is not None:
         return array, pa.field(column, array.type)
     return _fallback_arrow_array(series, column)
@@ -468,4 +471,10 @@ SerializableDataFrame: TypeAlias = Annotated[
 ]
 
 
-__all__ = ["SerializableDataFrame", "deserialize_dataframe", "serialize_dataframe"]
+__all__ = [
+    "SerializableDataFrame",
+    "dataframe_to_arrow",
+    "deserialize_dataframe",
+    "normalize_dataframe",
+    "serialize_dataframe",
+]

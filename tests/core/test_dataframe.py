@@ -1,15 +1,17 @@
 import base64
 from decimal import Decimal
 import io
+from uuid import UUID
 
 import numpy as np
 import pandas as pd
 from pandas.testing import assert_frame_equal
+import pyarrow as pa
 import pyarrow.parquet as pq
 import pytest
 
 from tabulaflow.core import ExecResult
-from tabulaflow.core.dataframe import deserialize_dataframe, serialize_dataframe
+from tabulaflow.core.dataframe import dataframe_to_arrow, deserialize_dataframe, serialize_dataframe
 
 
 def test_dataframe_round_trip_uses_parquet_and_discards_index() -> None:
@@ -83,6 +85,17 @@ def test_dataframe_round_trip_preserves_native_list_column() -> None:
 
     assert table.schema.field("items").metadata is None
     assert loaded["items"].tolist() == values
+
+
+def test_dataframe_uuid_uses_native_arrow_only_for_database_writes() -> None:
+    value = UUID("12345678-1234-5678-1234-567812345678")
+    df = pd.DataFrame({"identifier": [value, None]})
+
+    table = dataframe_to_arrow(df)
+    loaded = deserialize_dataframe(serialize_dataframe(df))
+
+    assert table.schema.field("identifier").type == pa.uuid()
+    assert loaded["identifier"].tolist() == [value, None]
 
 
 def test_dataframe_round_trip_preserves_native_hf_media_struct() -> None:
