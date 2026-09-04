@@ -2494,8 +2494,8 @@ class SQLConnector:
             table_name: Destination table name.
             schema_name: Optional destination schema name.
             mode: Write mode. ``create`` creates a new table, ``append`` adds
-                rows, ``overwrite`` replaces rows while preserving the table
-                definition, and ``replace`` recreates the table.
+                rows, ``replace_rows`` replaces rows while preserving the table
+                definition, and ``replace_table`` recreates the table.
 
         Returns:
             Number of rows written.
@@ -2512,7 +2512,7 @@ class SQLConnector:
             raise TypeError(f"df must be a pandas DataFrame, got {type(df).__name__}")
         if not table_name.strip():
             raise ValueError("table_name must be non-empty")
-        if mode not in {"create", "append", "overwrite", "replace"}:
+        if mode not in {"create", "append", "replace_rows", "replace_table"}:
             raise ValueError(f"Unsupported mode: {mode!r}")
         if len(df.columns) == 0:
             raise ValueError("df must contain at least one column")
@@ -2524,15 +2524,17 @@ class SQLConnector:
             table_exists = inspect(conn).has_table(table_name, schema=schema_name)
             if mode == "create" and table_exists:
                 raise ValueError(f"cannot create table {table_name!r}: table already exists")
-            if mode in {"append", "overwrite"} and not table_exists:
-                raise ValueError(f"cannot {mode} missing table {table_name!r}")
+            if mode == "append" and not table_exists:
+                raise ValueError(f"cannot append to missing table {table_name!r}")
+            if mode == "replace_rows" and not table_exists:
+                raise ValueError(f"cannot replace rows in missing table {table_name!r}")
             preparer = conn.dialect.identifier_preparer
             target = preparer.quote(table_name)
             if schema_name is not None:
                 target = f"{preparer.quote_schema(schema_name)}.{target}"
             if self.language == "duckdb":
                 arrow_table = dataframe_to_arrow(df)
-                if mode in {"create", "replace"}:
+                if mode in {"create", "replace_table"}:
                     ambiguous = [field.name for field in arrow_table.schema if pa.types.is_null(field.type)]
                     if ambiguous:
                         raise ValueError(f"cannot infer types for all-NULL columns: {ambiguous}")
@@ -2547,7 +2549,7 @@ class SQLConnector:
                         conn.exec_driver_sql(f"CREATE TABLE {target} AS SELECT * FROM {relation}")
                     elif mode == "append":
                         conn.exec_driver_sql(f"INSERT INTO {target} BY NAME SELECT * FROM {relation}")
-                    elif mode == "overwrite":
+                    elif mode == "replace_rows":
                         conn.exec_driver_sql(f"DELETE FROM {target}")
                         conn.exec_driver_sql(f"INSERT INTO {target} BY NAME SELECT * FROM {relation}")
                     else:
@@ -2557,13 +2559,13 @@ class SQLConnector:
                 return
 
             normalized = normalize_dataframe(df)
-            if mode == "overwrite":
+            if mode == "replace_rows":
                 conn.exec_driver_sql(f"DELETE FROM {target}")
                 if_exists: Literal["fail", "append", "replace"] = "append"
             elif mode == "create":
                 if_exists = "fail"
             else:
-                if_exists = mode
+                if_exists = "replace" if mode == "replace_table" else "append"
             normalized.to_sql(
                 name=table_name,
                 con=conn,
@@ -2573,7 +2575,7 @@ class SQLConnector:
                 method="multi",
             )
 
-        await self._t_eng.run_with_conn_async(write, ddl=mode in {"create", "replace"})
+        await self._t_eng.run_with_conn_async(write, ddl=mode in {"create", "replace_table"})
 
         # Resolve None to the schema the live DB actually wrote into, so the
         # in-memory schema label matches a full re-introspection (avoids a

@@ -140,7 +140,7 @@ async def test_write_dataframe_cancel_rolls_back(tmp_path: Path) -> None:
         )
         df = pd.DataFrame({"x": range(2_000_000), "y": range(2_000_000)})
 
-        task = asyncio.create_task(connector.write_dataframe_async(df, "mytbl", mode="replace"))
+        task = asyncio.create_task(connector.write_dataframe_async(df, "mytbl", mode="replace_table"))
         await asyncio.sleep(0.01)
         task.cancel()
         with pytest.raises(asyncio.CancelledError):

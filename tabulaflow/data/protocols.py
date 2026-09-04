@@ -10,7 +10,7 @@ from sqlalchemy.sql import Executable
 from tabulaflow.core.results import ExecResult
 from tabulaflow.core.schema import GraphQueryLanguage, PropertyGraphSchema, SQLDialect, SQLSchema, TableRef
 
-DataFrameWriteMode: TypeAlias = Literal["create", "append", "overwrite", "replace"]
+DataFrameWriteMode: TypeAlias = Literal["create", "append", "replace_rows", "replace_table"]
 
 _GLOBAL_ID_PATTERN = re.compile(r"[A-Za-z0-9][A-Za-z0-9._+-]{0,179}")
 

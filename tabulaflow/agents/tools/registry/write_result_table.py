@@ -54,8 +54,8 @@ class WriteResultTableTool:
             target_schema: Optional destination schema name.
             target_table: Destination table name.
             mode: ``create`` to create a new table, ``append`` to add rows,
-                ``overwrite`` to replace rows while preserving the table
-                definition, or ``replace`` to recreate the table.
+                ``replace_rows`` to replace rows while preserving the table
+                definition, or ``replace_table`` to recreate the table.
         """
         try:
             result = await self.execute(source_id, target_alias, target_schema, target_table, mode)

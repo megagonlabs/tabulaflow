@@ -900,7 +900,7 @@ class AddCanonicalNameTool:
         # Write back in place — schema and table go to write_dataframe_async separately.
         try:
             await self._db_connector.write_dataframe_async(
-                df=merged, table_name=table_name, schema_name=schema_name, mode="overwrite"
+                df=merged, table_name=table_name, schema_name=schema_name, mode="replace_rows"
             )
         except ValueError as e:
             return None, f"failed to write merged {qualified}: {e}"

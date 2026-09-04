@@ -93,13 +93,13 @@ async def test_dataframe_write_modes_are_distinct(tmp_path: Path) -> None:
         {"id": 2, "label": "second"},
     ]
 
-    await connector.write_dataframe_async(pd.DataFrame({"replacement": [True]}), "items", mode="replace")
+    await connector.write_dataframe_async(pd.DataFrame({"replacement": [True]}), "items", mode="replace_table")
     replaced = await connector.run_query_async("SELECT * FROM items")
     assert replaced.error is None and replaced.df is not None
     assert replaced.df.to_dict(orient="records") == [{"replacement": True}]
 
 
-async def test_duckdb_overwrite_preserves_table_definition_and_rolls_back(tmp_path: Path) -> None:
+async def test_duckdb_replace_rows_preserves_table_definition_and_rolls_back(tmp_path: Path) -> None:
     connector = await _connector(tmp_path)
     created = await connector.run_query_async(
         """
@@ -116,7 +116,7 @@ async def test_duckdb_overwrite_preserves_table_definition_and_rolls_back(tmp_pa
     await connector.write_dataframe_async(
         pd.DataFrame({"id": [2]}),
         "items",
-        mode="overwrite",
+        mode="replace_rows",
     )
 
     schema = await connector.run_query_async("DESCRIBE items")
@@ -138,7 +138,7 @@ async def test_duckdb_overwrite_preserves_table_definition_and_rolls_back(tmp_pa
     assert indexes.df["index_name"].tolist() == ["items_label_idx"]
 
     with pytest.raises(IntegrityError):
-        await connector.write_dataframe_async(pd.DataFrame({"id": [3, 3]}), "items", mode="overwrite")
+        await connector.write_dataframe_async(pd.DataFrame({"id": [3, 3]}), "items", mode="replace_rows")
 
     rows = await connector.run_query_async("SELECT * FROM items")
     assert rows.error is None and rows.df is not None
@@ -171,13 +171,13 @@ async def test_dataframe_write_modes_apply_to_pandas_fallback(tmp_path: Path) ->
     with pytest.raises(ValueError, match="missing table"):
         await connector.write_dataframe_async(pd.DataFrame({"value": [2]}), "missing", mode="append")
     with pytest.raises(ValueError, match="missing table"):
-        await connector.write_dataframe_async(pd.DataFrame({"value": [2]}), "missing", mode="overwrite")
+        await connector.write_dataframe_async(pd.DataFrame({"value": [2]}), "missing", mode="replace_rows")
 
     created = await connector.run_query_async("CREATE TABLE preserved (value INTEGER PRIMARY KEY)")
     assert created.error is None
     inserted = await connector.run_query_async("INSERT INTO preserved VALUES (1)")
     assert inserted.error is None
-    await connector.write_dataframe_async(pd.DataFrame({"value": [2]}), "preserved", mode="overwrite")
+    await connector.write_dataframe_async(pd.DataFrame({"value": [2]}), "preserved", mode="replace_rows")
     schema = await connector.run_query_async("PRAGMA table_info(preserved)")
     assert schema.error is None and schema.df is not None
     assert schema.df[["name", "type", "notnull", "pk"]].to_dict(orient="records") == [
