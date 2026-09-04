@@ -132,6 +132,20 @@ async def test_run_query_accepts_data_uri_media_without_exposing_base64() -> Non
     assert returned.content is not None
 
 
+async def test_run_query_counts_data_uri_padding_correctly(monkeypatch: pytest.MonkeyPatch) -> None:
+    image = _png()
+    monkeypatch.setattr(run_query_module, "_MAX_MEDIA_BYTES", len(image))
+    uri = f"data:image/png;base64,{base64.b64encode(image).decode()}"
+    result = ExecResult(df=pd.DataFrame({"image": [uri]}))
+
+    returned = await RunQueryTool(cast(Any, _ResultConnector(result)), enable_media=True)(
+        "SELECT image", include_media=True
+    )
+
+    assert returned.content is not None
+    assert "[Media #1: image/png" in _text(returned)
+
+
 async def test_run_query_omits_unsupported_and_invalid_media() -> None:
     result = ExecResult(
         df=pd.DataFrame(
@@ -150,8 +164,8 @@ async def test_run_query_omits_unsupported_and_invalid_media() -> None:
     )
 
     text = _text(returned)
-    assert "[media omitted: unsupported audio/wav]" in text
-    assert "[media omitted: invalid image/png]" in text
+    assert "[media omitted: invalid or unsupported audio/wav]" in text
+    assert "[media omitted: invalid or unsupported image/png]" in text
     assert "[media omitted: invalid or unavailable inline bytes]" in text
     assert "/tmp/image.png" in text
     assert "https://example.com/image.png" in text
@@ -200,10 +214,10 @@ async def test_run_query_omits_single_value_over_media_budget(monkeypatch: pytes
 async def test_run_query_does_not_decode_oversized_data_uri(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(run_query_module, "_MAX_MEDIA_BYTES", 4)
 
-    def fail_decode(_value: object) -> None:
+    def fail_decode(*_args: object, **_kwargs: object) -> None:
         raise AssertionError("oversized data URI was decoded")
 
-    monkeypatch.setattr(run_query_module, "extract_media_bytes", fail_decode)
+    monkeypatch.setattr(run_query_module, "to_binary_content", fail_decode)
     result = ExecResult(df=pd.DataFrame({"image": ["data:image/png;base64,MTIzNDU="]}))
 
     returned = await RunQueryTool(cast(Any, _ResultConnector(result)), enable_media=True)(
@@ -223,7 +237,7 @@ async def test_run_query_checks_budget_after_image_normalization(monkeypatch: py
         "SELECT image", include_media=True
     )
 
-    assert "[media omitted: normalized image/bmp exceeds" in _text(returned)
+    assert "[media omitted: normalized image/png exceeds" in _text(returned)
     assert returned.content is None
 
 
