@@ -733,11 +733,11 @@ Sep 3
 - [x] Rewrite df serialization
 - [ ] Multimodal
   - [x] run_query
-  - [ ] subagents
+  - [x] run_subagent and extract_rows
+  - [ ] sample data
 - [x] Split file_editor tool
 - [ ] Include multimodal data in sample_data
 - [ ] Show pending turns in output pane
-- [ ] Speedup tests
 
 - [ ] Inline artifact citation
 - [ ] code diff rendering
