@@ -1,8 +1,9 @@
 """Bundled sample database.
 
 A single SQLite file (``app/assets/samples/sample.sqlite``) with bundled example
-tables — ``bank_transactions``, ``product_reviews``, ``model_eval_results``, and
-``nyc_taxi_zones`` — backing the welcome-banner examples and map demos. It
+tables — ``bank_transactions``, ``product_reviews``, ``model_eval_results``,
+``expense_documents``, and ``nyc_taxi_zones`` — backing the welcome-banner
+examples and map demos. It
 auto-connects when the app launches with no user data, so a first-time user can
 run the examples without supplying anything.
 
@@ -24,7 +25,13 @@ if TYPE_CHECKING:
     from tabulaflow.app.session import AppSession
 
 SAMPLE_ALIAS = "sample_data"
-SAMPLE_TABLES = ("bank_transactions", "product_reviews", "model_eval_results", "nyc_taxi_zones")
+SAMPLE_TABLES = (
+    "bank_transactions",
+    "product_reviews",
+    "model_eval_results",
+    "expense_documents",
+    "nyc_taxi_zones",
+)
 _RESOURCE = "tabulaflow.app.assets.samples"
 _FILENAME = "sample.sqlite"
 # Shared per-user location (not per-session): copy once, reuse across sessions.

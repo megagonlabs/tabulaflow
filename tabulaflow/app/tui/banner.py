@@ -63,6 +63,7 @@ _EXAMPLES: list[tuple[str, list[str]]] = [
         [
             "Tag each review's sentiment and flag any mentioning a refund",
             "Label each failed sample's error pattern as retrieval, reasoning, or output formatting, then visualize the distribution",
+            "Extract the vendor, date, and total from each sample expense document",
         ],
     ),
     (

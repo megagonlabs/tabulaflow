@@ -731,12 +731,12 @@ Sep 2
 
 Sep 3
 - [x] Rewrite df serialization
-- [ ] Multimodal
+- [x] Multimodal
   - [x] run_query
   - [x] run_subagent and extract_rows
-  - [ ] sample data
+  - [x] sample data
 - [x] Split file_editor tool
-- [ ] Include multimodal data in sample_data
+- [x] Include multimodal data in sample_data
 - [ ] Show pending turns in output pane
 
 - [ ] Inline artifact citation

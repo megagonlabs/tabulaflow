@@ -1,6 +1,6 @@
 """Generate the bundled sample SQLite database shipped with tabulaflow.
 
-One database, four tables — three synthetic banner-example domains plus one raw
+One database, five tables — four synthetic banner-example domains plus one raw
 map dataset:
 
 * ``bank_transactions`` — personal spending (Analysis: "Analyze and visualize my
@@ -14,6 +14,8 @@ map dataset:
   sample's error pattern as retrieval, reasoning, or output formatting"). Each
   row is one QA sample with a pass/fail flag; the failures are crafted to look
   like retrieval / reasoning / formatting errors so the labeling has real signal.
+* ``expense_documents`` — realistic synthetic receipt images and scanned invoice
+  PDFs for multimodal query, transformation, and extraction examples.
 * ``nyc_taxi_zones`` — raw NYC Open Data taxi zone polygons. Preserves the source
   columns from the ``8meu-9t5y`` export: ``the_geom``, ``shape_leng``,
   ``shape_area``, ``zone``, ``locationid``, and ``borough``.
@@ -28,11 +30,14 @@ script is the source of truth — run it to regenerate / audit.
 from __future__ import annotations
 
 import json
+import io
 import random
 import sqlite3
 import string
 from pathlib import Path
 from typing import cast
+
+from PIL import Image, ImageDraw, ImageFont
 
 _SAMPLE_DIR = Path(__file__).resolve().parents[2] / "tabulaflow" / "app" / "assets" / "samples"
 _OUT = _SAMPLE_DIR / "sample.sqlite"
@@ -323,6 +328,276 @@ def _gen_eval(rng: random.Random) -> list[tuple[object, ...]]:
 
 
 # ---------------------------------------------------------------------------
+# expense documents
+# ---------------------------------------------------------------------------
+
+_INK = "#172033"
+_MUTED = "#657083"
+_MINT = "#2f9e78"
+_PAPER = "#fffdf8"
+
+
+def _font(size: int) -> ImageFont.FreeTypeFont | ImageFont.ImageFont:
+    return ImageFont.load_default(size=size)
+
+
+def _text(
+    draw: ImageDraw.ImageDraw,
+    xy: tuple[int, int],
+    value: str,
+    *,
+    size: int,
+    fill: str = _INK,
+    anchor: str | None = None,
+    bold: bool = False,
+) -> None:
+    draw.text(xy, value, font=_font(size), fill=fill, anchor=anchor, stroke_width=1 if bold else 0)
+
+
+def _receipt_png(
+    merchant: str,
+    subtitle: str,
+    receipt_no: str,
+    date: str,
+    items: list[tuple[str, str]],
+    subtotal: str,
+    tax: str,
+    total: str,
+    card: str,
+    accent: str,
+) -> bytes:
+    image = Image.new("RGB", (1000, 1500), "#e8edf1")
+    draw = ImageDraw.Draw(image)
+    draw.rounded_rectangle((94, 66, 922, 1450), radius=22, fill="#c8cfd5")
+    draw.rounded_rectangle((78, 50, 906, 1434), radius=22, fill=_PAPER)
+    draw.rounded_rectangle((126, 100, 858, 112), radius=6, fill=accent)
+
+    _text(draw, (492, 174), merchant, size=48, anchor="mm", bold=True)
+    _text(draw, (492, 228), subtitle, size=23, fill=_MUTED, anchor="mm")
+    _text(draw, (492, 260), "San Francisco, CA 94107", size=21, fill=_MUTED, anchor="mm")
+    draw.line((126, 315, 858, 315), fill="#d8dde3", width=2)
+
+    _text(draw, (126, 354), f"RECEIPT  {receipt_no}", size=24, bold=True)
+    _text(draw, (858, 354), date, size=24, anchor="ra")
+    _text(draw, (126, 422), "ITEM", size=20, fill=_MUTED, bold=True)
+    _text(draw, (858, 422), "AMOUNT", size=20, fill=_MUTED, anchor="ra", bold=True)
+
+    y = 476
+    for name, amount in items:
+        _text(draw, (126, y), name, size=25)
+        _text(draw, (858, y), amount, size=25, anchor="ra")
+        y += 64
+    draw.line((126, y + 4, 858, y + 4), fill="#d8dde3", width=2)
+    y += 60
+    for label, amount in (("Subtotal", subtotal), ("Sales tax", tax)):
+        _text(draw, (570, y), label, size=24, fill=_MUTED)
+        _text(draw, (858, y), amount, size=24, anchor="ra")
+        y += 54
+    draw.rounded_rectangle((540, y - 8, 858, y + 66), radius=10, fill=accent)
+    _text(draw, (566, y + 29), "TOTAL", size=28, fill="white", anchor="lm", bold=True)
+    _text(draw, (832, y + 29), total, size=31, fill="white", anchor="rm", bold=True)
+
+    y += 130
+    _text(draw, (126, y), f"VISA {card}", size=23)
+    _text(draw, (858, y), "APPROVED", size=21, fill=accent, anchor="ra", bold=True)
+    _text(draw, (126, y + 48), "Auth code  842193", size=19, fill=_MUTED)
+    draw.line((126, 1300, 858, 1300), fill="#d8dde3", width=2)
+    _text(draw, (492, 1350), "Thank you — we appreciate your business.", size=22, fill=_MUTED, anchor="mm")
+    _text(draw, (492, 1385), "Questions? hello@example.test", size=18, fill=_MUTED, anchor="mm")
+
+    output = io.BytesIO()
+    image.save(output, format="PNG", optimize=False)
+    return output.getvalue()
+
+
+def _invoice_page(
+    company: str,
+    tagline: str,
+    invoice_no: str,
+    issued: str,
+    due: str,
+    client: tuple[str, str, str],
+    lines: list[tuple[str, str, str, str]],
+    subtotal: str,
+    tax: str,
+    total: str,
+    accent: str,
+) -> Image.Image:
+    image = Image.new("RGB", (1275, 1650), "white")
+    draw = ImageDraw.Draw(image)
+    draw.rectangle((0, 0, 1275, 18), fill=accent)
+    draw.rounded_rectangle((78, 74, 154, 150), radius=18, fill=accent)
+    _text(draw, (116, 112), company[0], size=42, fill="white", anchor="mm", bold=True)
+    _text(draw, (182, 91), company, size=42, bold=True)
+    _text(draw, (182, 137), tagline, size=20, fill=_MUTED)
+    _text(draw, (1195, 99), "INVOICE", size=46, fill=accent, anchor="ra", bold=True)
+    _text(draw, (1195, 147), invoice_no, size=23, fill=_MUTED, anchor="ra")
+
+    draw.rounded_rectangle((78, 224, 1197, 390), radius=18, fill="#f4f7f8")
+    _text(draw, (112, 264), "BILL TO", size=18, fill=_MUTED, bold=True)
+    _text(draw, (112, 305), client[0], size=27, bold=True)
+    _text(draw, (112, 344), client[1], size=21, fill=_MUTED)
+    _text(draw, (112, 374), client[2], size=21, fill=_MUTED)
+    _text(draw, (820, 266), "ISSUED", size=18, fill=_MUTED, bold=True)
+    _text(draw, (1160, 266), issued, size=21, anchor="ra")
+    _text(draw, (820, 320), "DUE", size=18, fill=_MUTED, bold=True)
+    _text(draw, (1160, 320), due, size=21, anchor="ra", bold=True)
+
+    y = 474
+    draw.rounded_rectangle((78, y, 1197, y + 58), radius=8, fill=_INK)
+    for x, value, anchor in (
+        (104, "DESCRIPTION", None),
+        (790, "QTY", "ra"),
+        (960, "RATE", "ra"),
+        (1170, "AMOUNT", "ra"),
+    ):
+        _text(draw, (x, y + 29), value, size=18, fill="white", anchor=anchor or "lm", bold=True)
+    y += 92
+    for description, qty, rate, amount in lines:
+        _text(draw, (104, y), description, size=22)
+        _text(draw, (790, y), qty, size=22, anchor="ra")
+        _text(draw, (960, y), rate, size=22, anchor="ra")
+        _text(draw, (1170, y), amount, size=22, anchor="ra")
+        draw.line((96, y + 42, 1178, y + 42), fill="#e2e7eb", width=2)
+        y += 82
+
+    y = max(y + 24, 960)
+    for label, amount in (("Subtotal", subtotal), ("Tax", tax)):
+        _text(draw, (870, y), label, size=22, fill=_MUTED)
+        _text(draw, (1170, y), amount, size=22, anchor="ra")
+        y += 54
+    draw.rounded_rectangle((824, y - 12, 1197, y + 72), radius=12, fill=accent)
+    _text(draw, (854, y + 30), "TOTAL DUE", size=24, fill="white", anchor="lm", bold=True)
+    _text(draw, (1168, y + 30), total, size=29, fill="white", anchor="rm", bold=True)
+
+    draw.line((78, 1420, 1197, 1420), fill="#dce2e6", width=2)
+    _text(draw, (78, 1470), "PAYMENT DETAILS", size=18, fill=_MUTED, bold=True)
+    _text(draw, (78, 1510), "ACH · Routing 021000021 · Account ending 7742", size=20)
+    _text(draw, (78, 1560), "Please include the invoice number with your payment.", size=19, fill=_MUTED)
+    _text(draw, (1197, 1560), "billing@example.test", size=19, fill=_MUTED, anchor="ra")
+    return image
+
+
+def _scanned_pdf(page: Image.Image, title: str) -> bytes:
+    output = io.BytesIO()
+    page.save(
+        output,
+        format="PDF",
+        resolution=150,
+        title=title,
+        author="TabulaFlow Sample Data",
+        creator="TabulaFlow",
+        creationDate="D:20250101000000Z",
+        modDate="D:20250101000000Z",
+    )
+    return output.getvalue()
+
+
+def _gen_expense_documents() -> list[tuple[str, str, bytes]]:
+    receipts = [
+        (
+            "doc-001",
+            "harbor-and-pine-receipt.png",
+            _receipt_png(
+                "HARBOR & PINE",
+                "Coffee Roasters · 88 Townsend Street",
+                "HP-10482",
+                "2025-05-14  08:42 AM",
+                [("2  Oat milk latte", "$11.50"), ("1  Almond croissant", "$4.75"), ("1  House granola", "$8.25")],
+                "$24.50",
+                "$2.07",
+                "$26.57",
+                "•••• 4821",
+                _MINT,
+            ),
+        ),
+        (
+            "doc-002",
+            "northstar-office-supply-receipt.png",
+            _receipt_png(
+                "NORTHSTAR SUPPLY",
+                "Office & Studio · 241 Brannan Street",
+                "NS-77519",
+                "2025-06-03  02:17 PM",
+                [("2  Grid notebooks", "$25.00"), ("1  Archival pen set", "$18.50"), ("1  USB-C hub", "$42.00")],
+                "$85.50",
+                "$7.22",
+                "$92.72",
+                "•••• 1009",
+                "#4f6fca",
+            ),
+        ),
+        (
+            "doc-003",
+            "mission-bay-cab-receipt.png",
+            _receipt_png(
+                "MISSION BAY CAB",
+                "Ride receipt · Permit A-2917",
+                "MB-39014",
+                "2025-06-18  07:26 PM",
+                [("Metered fare", "$28.40"), ("Airport surcharge", "$5.50"), ("Driver gratuity", "$6.78")],
+                "$40.68",
+                "$0.00",
+                "$40.68",
+                "•••• 4821",
+                "#d26a3f",
+            ),
+        ),
+    ]
+    invoices = [
+        (
+            "doc-004",
+            "luma-studio-invoice.pdf",
+            _scanned_pdf(
+                _invoice_page(
+                    "Luma Studio",
+                    "Brand and digital design",
+                    "LS-2025-0418",
+                    "April 18, 2025",
+                    "May 18, 2025",
+                    ("Alder & Finch LLC", "Attn: Morgan Lee", "155 Montgomery St · San Francisco, CA"),
+                    [
+                        ("Product launch art direction", "12 hr", "$165.00", "$1,980.00"),
+                        ("Landing page design", "1", "$2,400.00", "$2,400.00"),
+                        ("Social media asset kit", "1", "$850.00", "$850.00"),
+                    ],
+                    "$5,230.00",
+                    "$444.55",
+                    "$5,674.55",
+                    _MINT,
+                ),
+                "Luma Studio Invoice LS-2025-0418",
+            ),
+        ),
+        (
+            "doc-005",
+            "cloudline-energy-statement.pdf",
+            _scanned_pdf(
+                _invoice_page(
+                    "Cloudline Energy",
+                    "Commercial renewable power",
+                    "CE-883104",
+                    "June 1, 2025",
+                    "June 21, 2025",
+                    ("Juniper Workshop", "Account 0048-1930", "600 Illinois St · San Francisco, CA"),
+                    [
+                        ("Renewable electricity · 1,840 kWh", "1", "$0.184/kWh", "$338.56"),
+                        ("Grid delivery", "1", "$96.20", "$96.20"),
+                        ("Clean-energy credit", "1", "-$24.00", "-$24.00"),
+                    ],
+                    "$410.76",
+                    "$0.00",
+                    "$410.76",
+                    "#4f6fca",
+                ),
+                "Cloudline Energy Statement CE-883104",
+            ),
+        ),
+    ]
+    return receipts + invoices
+
+
+# ---------------------------------------------------------------------------
 # NYC taxi zones
 # ---------------------------------------------------------------------------
 
@@ -372,6 +647,9 @@ def main() -> None:
     )
     cur.executemany("INSERT INTO model_eval_results VALUES (?, ?, ?, ?, ?, ?)", _gen_eval(rng))
 
+    cur.execute("CREATE TABLE expense_documents (document_id TEXT PRIMARY KEY, filename TEXT, content BLOB)")
+    cur.executemany("INSERT INTO expense_documents VALUES (?, ?, ?)", _gen_expense_documents())
+
     cur.execute(
         "CREATE TABLE nyc_taxi_zones (the_geom TEXT, shape_leng REAL, shape_area REAL, zone TEXT, "
         "locationid INTEGER, borough TEXT)"
@@ -379,7 +657,7 @@ def main() -> None:
     cur.executemany("INSERT INTO nyc_taxi_zones VALUES (?, ?, ?, ?, ?, ?)", _gen_nyc_taxi_zones())
 
     conn.commit()
-    tables = ("bank_transactions", "product_reviews", "model_eval_results", "nyc_taxi_zones")
+    tables = ("bank_transactions", "product_reviews", "model_eval_results", "expense_documents", "nyc_taxi_zones")
     counts = {t: cur.execute(f"SELECT COUNT(*) FROM {t}").fetchone()[0] for t in tables}
     conn.close()
     print(f"wrote {_OUT}  ({_OUT.stat().st_size // 1024} KB)")
