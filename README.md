@@ -736,7 +736,7 @@ Sep 3
   - [x] run_subagent and extract_rows
   - [x] sample data
 - [x] Split file_editor tool
-- [x] Rewrite write_dataframe_async and transfer_source_table
+- [x] Rewrite write_dataframe_async and write_result_table
 - [ ] Show pending turns in output pane
 
 - [ ] Inline artifact citation

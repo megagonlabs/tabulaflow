@@ -111,7 +111,7 @@ from tabulaflow.core.schema import (
 )
 
 from tabulaflow.data.config import SQLConnectorConfig
-from tabulaflow.data.protocols import ResultTooLargeError, validate_global_id
+from tabulaflow.data.protocols import DataFrameWriteMode, ResultTooLargeError, validate_global_id
 from tabulaflow.data._cache import (
     cache_lock,
     query_cache_key,
@@ -2480,7 +2480,7 @@ class SQLConnector:
         df: pd.DataFrame,
         table_name: str,
         schema_name: str | None = None,
-        mode: Literal["create", "append", "replace"] = "create",
+        mode: DataFrameWriteMode = "create",
     ) -> int:
         """Write a DataFrame into a database table.
 
@@ -2493,9 +2493,9 @@ class SQLConnector:
             df: DataFrame to persist.
             table_name: Destination table name.
             schema_name: Optional destination schema name.
-            mode: Write mode. ``create`` creates a new table and fails if it
-                exists. ``append`` requires an existing table. ``replace``
-                recreates the table.
+            mode: Write mode. ``create`` creates a new table, ``append`` adds
+                rows, ``overwrite`` replaces rows while preserving the table
+                definition, and ``replace`` recreates the table.
 
         Returns:
             Number of rows written.
@@ -2512,7 +2512,7 @@ class SQLConnector:
             raise TypeError(f"df must be a pandas DataFrame, got {type(df).__name__}")
         if not table_name.strip():
             raise ValueError("table_name must be non-empty")
-        if mode not in {"create", "append", "replace"}:
+        if mode not in {"create", "append", "overwrite", "replace"}:
             raise ValueError(f"Unsupported mode: {mode!r}")
         if len(df.columns) == 0:
             raise ValueError("df must contain at least one column")
@@ -2524,18 +2524,18 @@ class SQLConnector:
             table_exists = inspect(conn).has_table(table_name, schema=schema_name)
             if mode == "create" and table_exists:
                 raise ValueError(f"cannot create table {table_name!r}: table already exists")
-            if mode == "append" and not table_exists:
-                raise ValueError(f"cannot append to missing table {table_name!r}")
+            if mode in {"append", "overwrite"} and not table_exists:
+                raise ValueError(f"cannot {mode} missing table {table_name!r}")
+            preparer = conn.dialect.identifier_preparer
+            target = preparer.quote(table_name)
+            if schema_name is not None:
+                target = f"{preparer.quote_schema(schema_name)}.{target}"
             if self.language == "duckdb":
                 arrow_table = dataframe_to_arrow(df)
-                if mode != "append":
+                if mode in {"create", "replace"}:
                     ambiguous = [field.name for field in arrow_table.schema if pa.types.is_null(field.type)]
                     if ambiguous:
                         raise ValueError(f"cannot infer types for all-NULL columns: {ambiguous}")
-                preparer = conn.dialect.identifier_preparer
-                target = preparer.quote(table_name)
-                if schema_name is not None:
-                    target = f"{preparer.quote_schema(schema_name)}.{target}"
                 relation_name = f"_tabulaflow_df_{threading.get_ident():x}_{id(arrow_table):x}"
                 relation = preparer.quote(relation_name)
                 raw = conn.connection.driver_connection
@@ -2547,6 +2547,9 @@ class SQLConnector:
                         conn.exec_driver_sql(f"CREATE TABLE {target} AS SELECT * FROM {relation}")
                     elif mode == "append":
                         conn.exec_driver_sql(f"INSERT INTO {target} BY NAME SELECT * FROM {relation}")
+                    elif mode == "overwrite":
+                        conn.exec_driver_sql(f"DELETE FROM {target}")
+                        conn.exec_driver_sql(f"INSERT INTO {target} BY NAME SELECT * FROM {relation}")
                     else:
                         conn.exec_driver_sql(f"CREATE OR REPLACE TABLE {target} AS SELECT * FROM {relation}")
                 finally:
@@ -2554,7 +2557,13 @@ class SQLConnector:
                 return
 
             normalized = normalize_dataframe(df)
-            if_exists: Literal["fail", "append", "replace"] = "fail" if mode == "create" else mode
+            if mode == "overwrite":
+                conn.exec_driver_sql(f"DELETE FROM {target}")
+                if_exists: Literal["fail", "append", "replace"] = "append"
+            elif mode == "create":
+                if_exists = "fail"
+            else:
+                if_exists = mode
             normalized.to_sql(
                 name=table_name,
                 con=conn,
@@ -2564,7 +2573,7 @@ class SQLConnector:
                 method="multi",
             )
 
-        await self._t_eng.run_with_conn_async(write, ddl=mode != "append")
+        await self._t_eng.run_with_conn_async(write, ddl=mode in {"create", "replace"})
 
         # Resolve None to the schema the live DB actually wrote into, so the
         # in-memory schema label matches a full re-introspection (avoids a

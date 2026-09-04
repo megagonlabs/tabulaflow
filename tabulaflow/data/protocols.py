@@ -10,6 +10,8 @@ from sqlalchemy.sql import Executable
 from tabulaflow.core.results import ExecResult
 from tabulaflow.core.schema import GraphQueryLanguage, PropertyGraphSchema, SQLDialect, SQLSchema, TableRef
 
+DataFrameWriteMode: TypeAlias = Literal["create", "append", "overwrite", "replace"]
+
 _GLOBAL_ID_PATTERN = re.compile(r"[A-Za-z0-9][A-Za-z0-9._+-]{0,179}")
 
 
@@ -76,9 +78,9 @@ class SQLConnectorProtocol(Protocol):
         df: pd.DataFrame,
         table_name: str,
         schema_name: str | None = None,
-        mode: Literal["create", "append", "replace"] = "create",
+        mode: DataFrameWriteMode = "create",
     ) -> int:
-        """Create, append, or replace a table and return the number of rows written."""
+        """Write rows according to ``mode`` and return the number written."""
         ...
 
 

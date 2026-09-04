@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
-from typing import ClassVar, Literal
+from typing import ClassVar
 
 from pydantic_ai import Tool, ToolReturn
 
 from tabulaflow.agents.tools.protocols import ToolCallOutcome
+from tabulaflow.data.protocols import DataFrameWriteMode
 from tabulaflow.data.registry import DBRegistry
 from tabulaflow.output.specs import FixedResultSource
 from tabulaflow.output.store import OutputStore, SourceResolutionError
@@ -41,7 +42,7 @@ class WriteResultTableTool:
         target_alias: str,
         target_schema: str | None,
         target_table: str,
-        mode: Literal["create", "append", "replace"] = "create",
+        mode: DataFrameWriteMode = "create",
     ) -> ToolReturn:
         """Write a fixed ``run_query`` result into a SQL target table.
 
@@ -52,8 +53,9 @@ class WriteResultTableTool:
             target_alias: Destination database alias.
             target_schema: Optional destination schema name.
             target_table: Destination table name.
-            mode: ``create`` to create a new table, ``append`` to insert into an
-                existing table, or ``replace`` to recreate the table.
+            mode: ``create`` to create a new table, ``append`` to add rows,
+                ``overwrite`` to replace rows while preserving the table
+                definition, or ``replace`` to recreate the table.
         """
         try:
             result = await self.execute(source_id, target_alias, target_schema, target_table, mode)
@@ -67,7 +69,7 @@ class WriteResultTableTool:
         target_alias: str,
         target_schema: str | None,
         target_table: str,
-        mode: Literal["create", "append", "replace"] = "create",
+        mode: DataFrameWriteMode = "create",
     ) -> str:
         """Write one fixed query result into a registered SQL target."""
         try:

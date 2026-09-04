@@ -333,7 +333,7 @@ The following may preserve, reference, or present media but should not interpret
 it for the model:
 
 - `connect_data_source`
-- `transfer_source_table`
+- `write_result_table`
 - `create_parameterized_source`
 - `get_db_document`
 - `get_table_schema`

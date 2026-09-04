@@ -826,7 +826,7 @@ class AddCanonicalNameTool:
         mapping_table_name = f"_canonical_mapping_{uuid.uuid4().hex[:12]}"
         try:
             mapping_df = pd.DataFrame(list(mapping.items()), columns=["input_val", "canonical_val"])
-            await self._db_connector.write_dataframe_async(df=mapping_df, table_name=mapping_table_name, mode="replace")
+            await self._db_connector.write_dataframe_async(df=mapping_df, table_name=mapping_table_name)
 
             target = sa_table(schema_name, table_name, input_column, canonical_column)
             map_t = sa_table(None, mapping_table_name, "input_val", "canonical_val")
@@ -900,7 +900,7 @@ class AddCanonicalNameTool:
         # Write back in place — schema and table go to write_dataframe_async separately.
         try:
             await self._db_connector.write_dataframe_async(
-                df=merged, table_name=table_name, schema_name=schema_name, mode="replace"
+                df=merged, table_name=table_name, schema_name=schema_name, mode="overwrite"
             )
         except ValueError as e:
             return None, f"failed to write merged {qualified}: {e}"

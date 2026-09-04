@@ -143,7 +143,7 @@ rule:
 
 > **The shell subprocess never opens a `.duckdb` file.** It only reads/writes flat files
 > (parquet) in scratch. **All** DB mutation goes through the in-process connector
-> (`run_query` / `transfer_source_table`).
+> (`run_query` / `write_result_table`).
 
 This is exactly how the existing workspace already works. Within one process, DuckDB's
 MVCC handles concurrent connections fine.
