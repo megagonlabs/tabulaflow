@@ -1,4 +1,4 @@
-"""Transfer-source-table tool backed by a DBRegistry."""
+"""Write-result-table tool backed by a DBRegistry."""
 
 from __future__ import annotations
 
@@ -6,23 +6,20 @@ from typing import ClassVar, Literal
 
 from pydantic_ai import Tool, ToolReturn
 
-from tabulaflow.data.registry import DBRegistry
-from tabulaflow.data.sql import SQLConnector
-from tabulaflow.output.specs import FixedResultSource
-
-from tabulaflow.output.store import OutputStore, SourceResolutionError
 from tabulaflow.agents.tools.protocols import ToolCallOutcome
+from tabulaflow.data.registry import DBRegistry
+from tabulaflow.output.specs import FixedResultSource
+from tabulaflow.output.store import OutputStore, SourceResolutionError
 
 
-class TransferSourceTableTool:
-    """Persist a fixed output source into a target SQL table.
+class WriteResultTableTool:
+    """Write a fixed query result into a target SQL table.
 
-    This tool resolves a prior ``run_query`` output source and writes that DataFrame into a
-    target table. The target can be the session workspace DB or any writable
-    SQL connector registered in the runtime.
+    This tool resolves a prior ``run_query`` result and writes its DataFrame into
+    the session workspace or another writable registered SQL database.
     """
 
-    name: ClassVar = "transfer_source_table"
+    name: ClassVar = "write_result_table"
 
     def __init__(
         self,
@@ -46,12 +43,12 @@ class TransferSourceTableTool:
         target_table: str,
         mode: Literal["create", "append", "replace"] = "create",
     ) -> ToolReturn:
-        """Transfer a fixed source's table into a SQL target table.
+        """Write a fixed ``run_query`` result into a SQL target table.
 
         Args:
             source_id: Source ID from ``run_query`` (for example ``S3``).
-                To transfer a complete table, first run ``SELECT * FROM <table>``
-                without ``LIMIT``, then transfer that source.
+                To write a complete table, first run ``SELECT * FROM <table>``
+                without ``LIMIT``, then write that result.
             target_alias: Destination database alias.
             target_schema: Optional destination schema name.
             target_table: Destination table name.
@@ -72,7 +69,7 @@ class TransferSourceTableTool:
         target_table: str,
         mode: Literal["create", "append", "replace"] = "create",
     ) -> str:
-        """Transfer one fixed source into a registered SQL target."""
+        """Write one fixed query result into a registered SQL target."""
         try:
             source = self._output_store.get_source(source_id)
             if not isinstance(source, FixedResultSource):
@@ -95,11 +92,8 @@ class TransferSourceTableTool:
 
         if connector.connector_type != "sql":
             raise TypeError(
-                "transfer_source_table currently supports SQL targets only; "
-                f"got connector_type={connector.connector_type!r}"
+                f"write_result_table supports SQL targets only; got connector_type={connector.connector_type!r}"
             )
-        if not isinstance(connector, SQLConnector):
-            raise TypeError("unsupported SQL connector implementation for transfer_source_table")
 
         rows_written = await connector.write_dataframe_async(
             df=df,
@@ -110,7 +104,7 @@ class TransferSourceTableTool:
 
         target_name = f"{target_schema}.{target_table}" if target_schema else target_table
         return (
-            f"Transferred {rows_written} rows from {source_id} "
+            f"Wrote {rows_written} rows from {source_id} "
             f"({payload.metadata.db_alias}) to alias={target_alias}, table={target_name} (mode={mode})"
         )
 

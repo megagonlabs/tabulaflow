@@ -27,7 +27,7 @@ if TYPE_CHECKING:
     from tabulaflow.agents.tools.registry.get_schema import RegistryGetSchemaTool
     from tabulaflow.agents.tools.registry.get_table_schema import RegistryGetTableSchemaTool
     from tabulaflow.agents.tools.registry.run_query import RegistryRunQueryTool
-    from tabulaflow.agents.tools.registry.transfer_source_table import TransferSourceTableTool
+    from tabulaflow.agents.tools.registry.write_result_table import WriteResultTableTool
     from tabulaflow.agents.tools.render_chart import RenderChartTool
     from tabulaflow.agents.tools.render_graph import RenderGraphTool
     from tabulaflow.agents.tools.render_map import RenderMapTool
@@ -78,9 +78,9 @@ _LAZY_EXPORTS = {
         "RegistryGetTableSchemaTool",
     ),
     "RegistryRunQueryTool": ("tabulaflow.agents.tools.registry.run_query", "RegistryRunQueryTool"),
-    "TransferSourceTableTool": (
-        "tabulaflow.agents.tools.registry.transfer_source_table",
-        "TransferSourceTableTool",
+    "WriteResultTableTool": (
+        "tabulaflow.agents.tools.registry.write_result_table",
+        "WriteResultTableTool",
     ),
     "RenderChartTool": ("tabulaflow.agents.tools.render_chart", "RenderChartTool"),
     "RenderGraphTool": ("tabulaflow.agents.tools.render_graph", "RenderGraphTool"),
@@ -122,7 +122,7 @@ __all__ = [
     "RegistryGetSchemaTool",
     "RegistryGetTableSchemaTool",
     "RegistryRunQueryTool",
-    "TransferSourceTableTool",
+    "WriteResultTableTool",
     "RenderChartTool",
     "RenderGraphTool",
     "RenderMapTool",

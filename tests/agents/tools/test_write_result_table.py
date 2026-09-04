@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from tabulaflow.agents.tools.registry.transfer_source_table import TransferSourceTableTool
+from tabulaflow.agents.tools.registry.write_result_table import WriteResultTableTool
 from tabulaflow.core.results import ExecResult
 from tabulaflow.data.config import SQLConnectorConfig
 from tabulaflow.data.registry import DBRegistry
@@ -12,7 +12,7 @@ from tabulaflow.data.sql import SQLConnector
 from tabulaflow.output.store import OutputStore
 
 
-async def test_transfer_source_table_preserves_blobs_and_creates_by_default(tmp_path: Path) -> None:
+async def test_write_result_table_preserves_blobs_and_creates_by_default(tmp_path: Path) -> None:
     workspace = await SQLConnector.from_url_async(
         global_id="test_transfer_workspace",
         url=f"duckdb:///{tmp_path / 'workspace.duckdb'}",
@@ -31,7 +31,7 @@ async def test_transfer_source_table_preserves_blobs_and_creates_by_default(tmp_
         ExecResult(df=pd.DataFrame({"id": [1, 2], "content": payloads})),
     )
 
-    summary = await TransferSourceTableTool(registry, output_store).execute(
+    summary = await WriteResultTableTool(registry, output_store).execute(
         source.id,
         "workspace",
         None,

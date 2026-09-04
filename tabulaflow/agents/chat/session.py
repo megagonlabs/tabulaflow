@@ -248,7 +248,7 @@ class ChatSession:
         from tabulaflow.agents.tools.registry.get_db_document import RegistryGetDBDocumentTool
         from tabulaflow.agents.tools.registry.get_table_schema import RegistryGetTableSchemaTool
         from tabulaflow.agents.tools.registry.run_query import RegistryRunQueryTool
-        from tabulaflow.agents.tools.registry.transfer_source_table import TransferSourceTableTool
+        from tabulaflow.agents.tools.registry.write_result_table import WriteResultTableTool
         from tabulaflow.agents.tools.render_chart import RenderChartTool
         from tabulaflow.agents.tools.render_graph import RenderGraphTool
         from tabulaflow.agents.tools.render_map import RenderMapTool
@@ -258,7 +258,7 @@ class ChatSession:
 
         # The fan-out tools operate on the workspace only: sub-tasks are laid out
         # as workspace tables and results written back there (user data reaches
-        # them via transfer_source_table). Without a workspace they are disabled.
+        # them via write_result_table). Without a workspace they are disabled.
         run_subagent_for_each_row = None
         extract_rows_from_documents = None
         if self._workspace is not None:
@@ -295,7 +295,7 @@ class ChatSession:
             ),
             get_table_schema=RegistryGetTableSchemaTool(self._registry, SQLDDLSchemaFormatter(), enable_refresh=True),
             get_column_json_schema=RegistryGetColumnJsonSchemaTool(self._registry),
-            transfer_source_table=TransferSourceTableTool(self._registry, self._output_store),
+            write_result_table=WriteResultTableTool(self._registry, self._output_store),
             run_subagent_for_each_row=run_subagent_for_each_row,
             extract_rows_from_documents=extract_rows_from_documents,
             connect_data_source=(

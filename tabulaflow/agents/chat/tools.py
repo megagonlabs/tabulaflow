@@ -19,7 +19,7 @@ if TYPE_CHECKING:
     from tabulaflow.agents.tools.registry.get_db_document import RegistryGetDBDocumentTool
     from tabulaflow.agents.tools.registry.get_table_schema import RegistryGetTableSchemaTool
     from tabulaflow.agents.tools.registry.run_query import RegistryRunQueryTool
-    from tabulaflow.agents.tools.registry.transfer_source_table import TransferSourceTableTool
+    from tabulaflow.agents.tools.registry.write_result_table import WriteResultTableTool
     from tabulaflow.agents.tools.render_chart import RenderChartTool
     from tabulaflow.agents.tools.render_graph import RenderGraphTool
     from tabulaflow.agents.tools.render_map import RenderMapTool
@@ -35,7 +35,7 @@ class _ChatTools:
     get_db_document: RegistryGetDBDocumentTool
     get_table_schema: RegistryGetTableSchemaTool
     get_column_json_schema: RegistryGetColumnJsonSchemaTool
-    transfer_source_table: TransferSourceTableTool
+    write_result_table: WriteResultTableTool
     run_subagent_for_each_row: RunSubagentForEachRowTool | None
     extract_rows_from_documents: ExtractRowsFromDocumentsTool | None
     connect_data_source: ConnectDataSourceTool | None

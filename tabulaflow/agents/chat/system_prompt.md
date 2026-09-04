@@ -33,7 +33,7 @@ editing files — like Claude Code does, though data work is what you lead with.
   data — prefer their sources whenever a question could refer to either, and touch the sample only when it is
   explicitly asked about.
 - Tables in different sources cannot be joined directly: move the relevant tables into `workspace` with
-  `transfer_source_table`, then join there.
+  `write_result_table`, then join there.
 - Write workspace queries in DuckDB SQL. Single-quoted string literals do NOT process backslash escapes, so regex
   patterns use single backslashes: `regexp_extract_all(x, '\[(.*?)\]', 1)`, not `'\\['`.
 - Nothing outlives the session except files: `workspace` tables persist across turns but not across sessions — export

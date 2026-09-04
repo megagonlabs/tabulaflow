@@ -319,14 +319,14 @@ def summarize_tool_args(name: str, args: Mapping[str, object]) -> str:
         except (json.JSONDecodeError, TypeError):
             target = "graph"
         return f"Render Graph {target}".rstrip()
-    if name == "transfer_source_table":
+    if name == "write_result_table":
         source_id = str(args.get("source_id", ""))
         target_alias = str(args.get("target_alias", ""))
         target_schema = str(args.get("target_schema", "")) if args.get("target_schema") else ""
         target_table = str(args.get("target_table", ""))
         mode = str(args.get("mode", "create"))
         target = f"{target_schema}.{target_table}" if target_schema else target_table
-        return f"Transfer {source_id} to [{target_alias}] {target} ({mode})"
+        return f"Write {source_id} to [{target_alias}] {target} ({mode})"
     if name == "run_subagent_for_each_row":
         return f"Subagent {db_prefix}{args.get('table_name', '')}"
     if name == "extract_rows_from_documents":

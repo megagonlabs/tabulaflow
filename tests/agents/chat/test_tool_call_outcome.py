@@ -20,7 +20,7 @@ from tabulaflow.agents.tools import (
     RegistryGetSchemaTool,
     RegistryGetTableSchemaTool,
     RegistryRunQueryTool,
-    TransferSourceTableTool,
+    WriteResultTableTool,
     ToolCallOutcome,
 )
 
@@ -114,7 +114,7 @@ class TestRegistryToolErrorOutcomes:
         assert result.metadata == ToolCallOutcome(error=True)
 
     async def test_transfer_error_has_metadata(self) -> None:
-        result = await TransferSourceTableTool(DBRegistry(), OutputStore())("S1", "workspace", None, "target")
+        result = await WriteResultTableTool(DBRegistry(), OutputStore())("S1", "workspace", None, "target")
         assert result.metadata == ToolCallOutcome(error=True)
 
 
