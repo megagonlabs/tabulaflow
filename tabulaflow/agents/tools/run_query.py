@@ -3,10 +3,14 @@
 from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Any, ClassVar, cast
+
 import pandas as pd
-from pydantic_ai import Tool, ToolReturn
-from pydantic_ai.messages import ModelMessage, ModelRequest, ToolReturnPart
 from pydantic import BaseModel, Field
+from pydantic_ai import Tool, ToolReturn
+from pydantic_ai.messages import ModelMessage, ModelRequest, ToolReturnPart, UserContent
+
+from tabulaflow.agents.media import select_pdf_pages, to_binary_content
+from tabulaflow.core.media import detect_media, extract_media_bytes
 from tabulaflow.core.results import ExecResult, GraphResult
 from tabulaflow.data.protocols import DBConnector, SQLConnectorProtocol
 from tabulaflow.output.formatting._core import format_dataframe
@@ -14,6 +18,120 @@ from tabulaflow.agents.tools._sql import format_sqlalchemy_error_msg
 from tabulaflow.agents.tools.protocols import _omit_tool_parameters
 
 _UNSET = object()
+_MAX_MEDIA_ITEMS = 10
+_MAX_MEDIA_BYTES = 25 * 1024 * 1024
+
+
+@dataclass(frozen=True)
+class _MediaCell:
+    data: bytes | None
+    media_type: str | None
+    size: int | None
+
+
+def _inspect_media_cell(value: object, *, materialize: bool) -> _MediaCell | None:
+    if isinstance(value, (bytes, bytearray, memoryview)):
+        size = value.nbytes if isinstance(value, memoryview) else len(value)
+        return _MediaCell(bytes(value) if materialize else None, None, size)
+
+    if isinstance(value, dict) and "bytes" in value:
+        raw = value.get("bytes")
+        media_type = value.get("media_type") or value.get("mime_type")
+        resolved_type = media_type.split(";", 1)[0].strip().lower() if isinstance(media_type, str) else None
+        if isinstance(raw, (bytes, bytearray, memoryview)):
+            size = raw.nbytes if isinstance(raw, memoryview) else len(raw)
+            return _MediaCell(bytes(raw) if materialize else None, resolved_type, size)
+        return _MediaCell(None, resolved_type, None)
+
+    if not isinstance(value, str):
+        return None
+    stripped = value.strip()
+    if not stripped.startswith("data:"):
+        return None
+    header, marker, payload = stripped.partition(";base64,")
+    media_type = header[5:].split(";", 1)[0].strip().lower() or None
+    if not marker:
+        return _MediaCell(None, media_type, None)
+    compact_length = len("".join(payload.split()))
+    estimated_size = compact_length * 3 // 4
+    if not materialize or estimated_size > _MAX_MEDIA_BYTES:
+        return _MediaCell(None, media_type, estimated_size)
+    decoded = extract_media_bytes(stripped)
+    return _MediaCell(decoded, media_type, len(decoded) if decoded is not None else estimated_size)
+
+
+def _binary_descriptor(cell: _MediaCell) -> str:
+    if cell.size is None:
+        return "[binary media: unavailable inline bytes]"
+    return f"[binary: {cell.size} bytes]"
+
+
+def _prepare_result_media(
+    df: pd.DataFrame,
+    *,
+    include_media: bool,
+) -> tuple[pd.DataFrame, tuple[UserContent, ...]]:
+    rendered = df.astype(object)
+    content: list[UserContent] = []
+    attached = 0
+    total_bytes = 0
+    for row in range(len(df)):
+        for column in range(len(df.columns)):
+            value = df.iat[row, column]
+            cell = _inspect_media_cell(value, materialize=False)
+            if cell is None:
+                continue
+            if not include_media:
+                rendered.iat[row, column] = _binary_descriptor(cell)
+                continue
+            if attached >= _MAX_MEDIA_ITEMS:
+                rendered.iat[row, column] = f"[media omitted: {_MAX_MEDIA_ITEMS}-item limit reached]"
+                continue
+            if cell.size is None:
+                rendered.iat[row, column] = "[media omitted: invalid or unavailable inline bytes]"
+                continue
+            if cell.size > _MAX_MEDIA_BYTES:
+                rendered.iat[row, column] = f"[media omitted: {cell.size} bytes exceeds {_MAX_MEDIA_BYTES}-byte limit]"
+                continue
+
+            cell = _inspect_media_cell(value, materialize=True)
+            if cell is None or cell.data is None:
+                rendered.iat[row, column] = "[media omitted: invalid or unavailable inline bytes]"
+                continue
+            detected = detect_media(cell.data)
+            media_type = detected.media_type if detected is not None else cell.media_type
+            if media_type is None:
+                rendered.iat[row, column] = _binary_descriptor(cell)
+                continue
+            if not (media_type.startswith("image/") or media_type == "application/pdf"):
+                rendered.iat[row, column] = f"[media omitted: unsupported {media_type}]"
+                continue
+            try:
+                data = select_pdf_pages(cell.data).data if media_type == "application/pdf" else cell.data
+                binary = to_binary_content(data, media_type=media_type)
+            except ValueError as exc:
+                status = "unsupported" if str(exc).startswith("unsupported") else "invalid"
+                rendered.iat[row, column] = f"[media omitted: {status} {media_type}]"
+                continue
+            if len(binary.data) > _MAX_MEDIA_BYTES:
+                rendered.iat[row, column] = (
+                    f"[media omitted: normalized {media_type} exceeds {_MAX_MEDIA_BYTES}-byte limit]"
+                )
+                continue
+            if total_bytes + len(binary.data) > _MAX_MEDIA_BYTES:
+                rendered.iat[row, column] = f"[media omitted: {_MAX_MEDIA_BYTES}-byte total limit reached]"
+                continue
+
+            attached += 1
+            total_bytes += len(binary.data)
+            rendered.iat[row, column] = f"[Media #{attached}: {binary.media_type}, {len(binary.data)} bytes]"
+            content.extend(
+                (
+                    f"Media #{attached} from result row {row + 1}, column {df.columns[column]}:",
+                    binary,
+                )
+            )
+    return rendered, tuple(content)
 
 
 def _format_latency(seconds: float | None) -> str:
@@ -79,6 +197,7 @@ class QueryExecution:
     query: str
     parameter_values: dict[str, Any]
     exec_result: ExecResult
+    media_content: tuple[UserContent, ...] = ()
 
 
 def latest_query_execution(messages: Sequence[ModelMessage]) -> QueryExecution:
@@ -99,7 +218,7 @@ class RunQueryTool:
 
     When ``enable_params=True``, the tool schema exposed to the LLM includes
     a ``parameters`` argument for parameterized queries.
-    When ``False`` (the default), only the ``query`` argument is exposed.
+    When ``False`` (the default), the argument is omitted.
 
     When ``enable_refresh=True``, the tool schema also includes a ``refresh``
     flag that, when set by the LLM, re-introspects the connector's schema
@@ -111,6 +230,7 @@ class RunQueryTool:
         db_connector: Database connector to execute queries against.
         enable_params: Whether to expose the ``parameters`` argument to the LLM.
         enable_refresh: Whether to expose the ``refresh`` argument to the LLM.
+        enable_media: Whether to expose inline result-cell media inspection.
         timeout: Query timeout in seconds. When omitted, use the connector default;
             ``None`` explicitly disables the timeout.
         max_visible_rows: Maximum rows shown in the formatted output.
@@ -128,6 +248,7 @@ class RunQueryTool:
         *,
         enable_params: bool = False,
         enable_refresh: bool = False,
+        enable_media: bool = False,
         timeout: int | None | object = _UNSET,
         max_visible_rows: int = 20,
         max_cell_width: int = 200,
@@ -139,6 +260,7 @@ class RunQueryTool:
         self.db_connector = db_connector
         self.enable_params = enable_params
         self.enable_refresh = enable_refresh
+        self.enable_media = enable_media
         self.timeout = timeout
         self.max_visible_rows = max_visible_rows
         self.max_cell_width = max_cell_width
@@ -147,7 +269,12 @@ class RunQueryTool:
         self._metrics = RunQueryToolMetrics()
 
     async def execute(
-        self, query: str, parameters: list[LLMParameter] | None = None, refresh: bool = False
+        self,
+        query: str,
+        parameters: list[LLMParameter] | None = None,
+        refresh: bool = False,
+        *,
+        include_media: bool = False,
     ) -> QueryExecution:
         """Execute one query and return both agent-facing output and recorded query data."""
 
@@ -163,20 +290,33 @@ class RunQueryTool:
                     parameters=param_dict,
                     timeout=self.timeout,  # type: ignore[arg-type]
                 )
-            res = self._format_exec_result(exec_result)
+            media_content: tuple[UserContent, ...] = ()
+            display_df = exec_result.df
+            if display_df is not None:
+                display_df, media_content = _prepare_result_media(
+                    display_df,
+                    include_media=include_media,
+                )
+            res = self._format_exec_result(exec_result, display_df=display_df)
             if refresh:
                 try:
                     await self.db_connector.refresh_schema_async()
                     res += "\n(schema refreshed from live database)"
                 except Exception as e:
                     res += f"\n(warning: schema refresh failed: {type(e).__name__}: {e})"
-            execution = QueryExecution(output=res, query=query, parameter_values=param_dict, exec_result=exec_result)
+            execution = QueryExecution(
+                output=res,
+                query=query,
+                parameter_values=param_dict,
+                exec_result=exec_result,
+                media_content=media_content,
+            )
             return execution
         finally:
             if self._release_connections_on_finish:
                 await cast(SQLConnectorProtocol, self.db_connector).release_connections_async()
 
-    def _format_exec_result(self, exec_result: ExecResult) -> str:
+    def _format_exec_result(self, exec_result: ExecResult, *, display_df: pd.DataFrame | None = None) -> str:
         if exec_result.error is not None:
             if exec_result.error.exc_type == "ReadOnlyViolationError":
                 self._metrics.error_read_only_violation += 1
@@ -205,7 +345,8 @@ class RunQueryTool:
                 return f"(statement executed successfully, but 0 rows were affected — check the WHERE clause){lat_line}{graph_line}"
             return f"(statement executed successfully, {affected} row{'s' if affected != 1 else ''} affected){lat_line}{graph_line}"
 
-        df = exec_result.df
+        df = display_df if display_df is not None else exec_result.df
+        assert df is not None
         if df.empty:
             return f"(query executed successfully, but results are empty){lat_line}{graph_line}"
 
@@ -225,6 +366,7 @@ class RunQueryTool:
         query: str,
         parameters: list[LLMParameter] | None = None,
         refresh: bool = False,
+        include_media: bool = False,
     ) -> ToolReturn:
         """Execute a query against the database and return formatted results.
 
@@ -237,9 +379,21 @@ class RunQueryTool:
                 parameterized queries are enabled.
             refresh: Whether to refresh connector schema after execution. Exposed
                 only when schema refresh is enabled.
+            include_media: Whether to attach supported inline media values returned
+                directly in result cells. Does not fetch paths, URLs, or object-store
+                URIs. Exposed only when media inspection is enabled.
         """
-        execution = await self.execute(query, parameters, refresh and self.enable_refresh)
-        return ToolReturn(return_value=execution.output, metadata=execution)
+        execution = await self.execute(
+            query,
+            parameters,
+            refresh and self.enable_refresh,
+            include_media=include_media and self.enable_media,
+        )
+        return ToolReturn(
+            return_value=execution.output,
+            content=execution.media_content or None,
+            metadata=execution,
+        )
 
     def as_pydantic_ai_tool(self) -> Tool:
         omitted = []
@@ -247,6 +401,8 @@ class RunQueryTool:
             omitted.append("parameters")
         if not self.enable_refresh:
             omitted.append("refresh")
+        if not self.enable_media:
+            omitted.append("include_media")
         return Tool(self.__call__, name=self.name, prepare=_omit_tool_parameters(*omitted))
 
     def metrics(self) -> RunQueryToolMetrics:

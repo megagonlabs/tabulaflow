@@ -279,7 +279,12 @@ class ChatSession:
             )
 
         return _ChatTools(
-            run_query=RegistryRunQueryTool(self._registry, output_store=self._output_store, enable_refresh=True),
+            run_query=RegistryRunQueryTool(
+                self._registry,
+                output_store=self._output_store,
+                enable_refresh=True,
+                enable_media=True,
+            ),
             create_parameterized_source=CreateParameterizedSourceTool(self._registry, output_store=self._output_store),
             get_db_document=RegistryGetDBDocumentTool(
                 self._registry,

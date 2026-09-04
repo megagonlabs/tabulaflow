@@ -2,7 +2,7 @@
 
 ## Status
 
-Phases 1–4B are implemented; Phases 4C–7 are proposed. This plan covers
+Phases 1–4B and 5 are implemented; Phases 4C, 6, and 7 are proposed. This plan covers
 model-visible media supplied by the user or discovered through TabulaFlow's
 existing filesystem, browser, database, and bulk-processing workflows. Existing
 media rendering in the browser output pane remains intact.
@@ -43,8 +43,8 @@ media rendering in the browser output pane remains intact.
 3. **The TUI stays minimalist.** Pasting an image creates an inline
    `[Image #N]` placeholder that can be removed before submission. No permanent
    attachment UI is added.
-4. **Disk access stays with `file_editor`.** A user can also mention or drag a
-   file path into the prompt and let the agent inspect it through `view`.
+4. **Disk access stays with `view`.** A user can also mention or drag a file
+   path into the prompt and let the agent inspect it directly.
 5. **The browser gets one visual action.** Add `browser_screenshot(tab,
    ref=None)`; do not add a separate `browser_view_image` tool. Direct image URLs
    are handled by `browser_navigate`.
@@ -192,7 +192,7 @@ clipboard access is unavailable.
 
 Implemented:
 
-- `file_editor view` returns recognized local images as native model content.
+- `view` returns recognized local images as native model content.
 - `browser_screenshot(tab, ref=None)` captures the current viewport or one
   referenced element.
 - `browser_navigate` returns direct image responses as native model content.
@@ -203,7 +203,7 @@ Implemented:
 
 Implemented:
 
-- `file_editor view` returns PDFs as native model content without local text
+- `view` returns PDFs as native model content without local text
   extraction or message-store offloading.
 - `view_range` selects an inclusive, 1-indexed physical page range and returns
   a new native PDF containing those pages.
@@ -215,14 +215,14 @@ Implemented:
 
 ### Phase 4C — Audio and video
 
-### `file_editor`
+### `view`
 
 Extend only `view`:
 
 - Continue returning text for text files.
 - Return recognized audio and video as native model content where the active
   provider supports them.
-- Keep `write_file` and `str_replace` text-only.
+- Keep `edit_file` text-only.
 - Return a concise descriptor as the ordinary tool result so trajectories and
   progress output remain readable.
 
@@ -238,20 +238,29 @@ direct image URL, an embedded page image, and a canvas-rendered visualization.
 
 ## Phase 5 — Media in database query results
 
-Add `include_media: bool = false` to the model-facing `run_query` variants.
-Normal query execution and output storage remain unchanged.
+Implemented: `include_media: bool = false` is available on both model-facing
+`run_query` variants when their constructor's `enable_media` flag is set. It
+attaches only inline result-cell values; paths, URLs, and object-store URIs are
+not fetched. Query execution remains unchanged, binary cells use safe
+descriptors in ordinary query output, and stored DataFrames round-trip through one
+lossless Parquet codec.
 
 With `include_media=true`:
 
 - Examine only values already returned in `ExecResult.df`.
-- Require a deliberately narrow result and enforce strict cell-count and byte
-  limits.
+- Attach at most 10 items and 25 MiB in total.
 - Recognize actual binary values, declared media structs, and explicit data URIs.
-- Return normal textual rows plus native media content for accepted cells.
+- Return normal textual rows plus native image and PDF content for accepted
+  cells. Audio and video remain unsupported pending portable provider capability
+  checks.
 - Describe omitted, unknown, oversized, or unsupported cells without including
   their raw representation.
-- Do not automatically dereference path or URL strings; paths belong to
-  `file_editor`, and URLs belong to browser/media URL handling.
+- Preserve binary and byte-bearing structured values through query-cache
+  serialization and output-store spill/reload.
+- Spill output-store DataFrames as atomic, self-describing Parquet files in session
+  scratch space rather than mirroring result columns through SQL type inference.
+- Do not automatically dereference path or URL strings; paths belong to `view`,
+  and URLs belong to browser/media URL handling.
 - Do not execute extra SQL, write temporary files through the DBMS, or use
   database-specific export syntax.
 

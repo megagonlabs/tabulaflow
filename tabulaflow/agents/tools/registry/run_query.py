@@ -31,6 +31,7 @@ class RegistryRunQueryTool:
         *,
         enable_params: bool = False,
         enable_refresh: bool = False,
+        enable_media: bool = False,
         timeout: int | None | object = _UNSET,
         max_visible_rows: int = 20,
         max_cell_width: int = 200,
@@ -46,6 +47,7 @@ class RegistryRunQueryTool:
             enable_refresh: Whether to expose the ``refresh`` argument to
                 the LLM.  When True, the agent can request a connector
                 schema refresh after DDL.
+            enable_media: Whether to expose inline result-cell media inspection.
             timeout: Query timeout in seconds. When omitted, use each connector's
                 default; ``None`` explicitly disables the timeout.
             max_visible_rows: Maximum rows shown in the formatted output.
@@ -58,6 +60,7 @@ class RegistryRunQueryTool:
         self.registry = registry
         self.enable_params = enable_params
         self.enable_refresh = enable_refresh
+        self.enable_media = enable_media
         self.timeout = timeout
         self.max_visible_rows = max_visible_rows
         self.max_cell_width = max_cell_width
@@ -78,6 +81,7 @@ class RegistryRunQueryTool:
             connector,
             enable_params=self.enable_params,
             enable_refresh=self.enable_refresh,
+            enable_media=self.enable_media,
             max_visible_rows=self.max_visible_rows,
             max_cell_width=self.max_cell_width,
             floatfmt=self.floatfmt,
@@ -92,6 +96,7 @@ class RegistryRunQueryTool:
         query: str,
         parameters: list[LLMParameter] | None = None,
         refresh: bool = False,
+        include_media: bool = False,
     ) -> ToolReturn:
         """Execute a query against a registered database.
 
@@ -102,6 +107,9 @@ class RegistryRunQueryTool:
                 parameterized queries are enabled.
             refresh: Whether to refresh connector schema after execution. Exposed
                 only when schema refresh is enabled.
+            include_media: Whether to attach supported inline media values returned
+                directly in result cells. Does not fetch paths, URLs, or object-store
+                URIs. Exposed only when media inspection is enabled.
         """
         try:
             tool = self._get_tool(db_alias)
@@ -111,7 +119,12 @@ class RegistryRunQueryTool:
                 return_value=f"(error: unknown db_alias: {db_alias!r}; available: {available})",
                 metadata=ToolCallOutcome(error=True),
             )
-        execution = await tool.execute(query, parameters, refresh and self.enable_refresh)
+        execution = await tool.execute(
+            query,
+            parameters,
+            refresh and self.enable_refresh,
+            include_media=include_media and self.enable_media,
+        )
         exec_result = execution.exec_result
         if exec_result.error is not None:
             return ToolReturn(return_value=execution.output, metadata=ToolCallOutcome(error=True))
@@ -124,7 +137,11 @@ class RegistryRunQueryTool:
             query=execution.query,
             exec_result=exec_result,
         )
-        return ToolReturn(return_value=f"[source_id={source.id}]\n{execution.output}", metadata=outcome)
+        return ToolReturn(
+            return_value=f"[source_id={source.id}]\n{execution.output}",
+            content=execution.media_content or None,
+            metadata=outcome,
+        )
 
     def as_pydantic_ai_tool(self) -> Tool:
         omitted = []
@@ -132,6 +149,8 @@ class RegistryRunQueryTool:
             omitted.append("parameters")
         if not self.enable_refresh:
             omitted.append("refresh")
+        if not self.enable_media:
+            omitted.append("include_media")
         return Tool(self.__call__, name=self.name, prepare=_omit_tool_parameters(*omitted))
 
     def metrics(self) -> RunQueryToolMetrics:

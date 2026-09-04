@@ -1,4 +1,5 @@
 import asyncio
+import base64
 
 import pytest
 import tempfile
@@ -7,7 +8,15 @@ import os
 from typing import AsyncGenerator, Any
 import pandas as pd
 from pydantic_ai import Agent, ToolReturn
-from pydantic_ai.messages import ModelMessage, ModelRequest, ModelResponse, TextPart, ToolCallPart, ToolReturnPart
+from pydantic_ai.messages import (
+    BinaryContent,
+    ModelMessage,
+    ModelRequest,
+    ModelResponse,
+    TextPart,
+    ToolCallPart,
+    ToolReturnPart,
+)
 from pydantic_ai.models.function import AgentInfo, FunctionModel
 from tabulaflow.data.config import SQLConnectorConfig
 from tabulaflow.agents.tools.run_query import (
@@ -77,6 +86,21 @@ async def test_run_query_successful(db_connector: SQLConnector) -> None:
     assert tool.metrics().num_calls == 1
     assert tool.metrics().error_query_failed == 0
     assert tool.metrics().error_timeout == 0
+
+
+async def test_run_query_returns_sqlite_blob_as_native_media(db_connector: SQLConnector) -> None:
+    image = base64.b64decode(
+        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII="
+    )
+
+    result = await RunQueryTool(db_connector, enable_media=True)(
+        f"SELECT X'{image.hex()}' AS image", include_media=True
+    )
+
+    assert result.content is not None
+    media = [item for item in result.content if isinstance(item, BinaryContent)]
+    assert len(media) == 1
+    assert media[0].media_type == "image/png"
 
 
 async def test_agent_call_attaches_query_execution(db_connector: SQLConnector) -> None:
@@ -345,13 +369,20 @@ def test_run_query_pydantic_tool_signatures() -> None:
     stub: Any = _StubConnector()
 
     matrix = [
-        (False, False, {"query"}),
-        (True, False, {"query", "parameters"}),
-        (False, True, {"query", "refresh"}),
-        (True, True, {"query", "parameters", "refresh"}),
+        (False, False, False, {"query"}),
+        (True, False, False, {"query", "parameters"}),
+        (False, True, False, {"query", "refresh"}),
+        (False, False, True, {"query", "include_media"}),
+        (True, True, True, {"query", "parameters", "refresh", "include_media"}),
     ]
-    for enable_params, enable_refresh, expected in matrix:
-        tool = RunQueryTool(stub, enable_params=enable_params, enable_refresh=enable_refresh, timeout=None)
+    for enable_params, enable_refresh, enable_media, expected in matrix:
+        tool = RunQueryTool(
+            stub,
+            enable_params=enable_params,
+            enable_refresh=enable_refresh,
+            enable_media=enable_media,
+            timeout=None,
+        )
         pai_tool = tool.as_pydantic_ai_tool()
         tool_def = pai_tool.tool_def
         if pai_tool.prepare is not None:
@@ -359,7 +390,7 @@ def test_run_query_pydantic_tool_signatures() -> None:
             assert isinstance(prepared, ToolDefinition)
             tool_def = prepared
         fields = set((tool_def.parameters_json_schema.get("properties") or {}).keys())
-        assert fields == expected, (enable_params, enable_refresh, fields)
+        assert fields == expected, (enable_params, enable_refresh, enable_media, fields)
 
 
 async def test_concurrent_ddl_serialized(db_connector: SQLConnector) -> None:
