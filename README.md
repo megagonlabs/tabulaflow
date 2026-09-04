@@ -730,15 +730,16 @@ Sep 2
   - [x] media in files and web
 
 Sep 3
-- [x] Rewrite df serialization and spill connector
+- [x] Split file_editor tool
 - [x] Multimodal
   - [x] run_query
   - [x] run_subagent and extract_rows
   - [x] sample data
-- [x] Split file_editor tool
+- [x] Rewrite df serialization and spill connector
 - [x] Rewrite write_dataframe_async and write_result_table
 
 - [ ] Test huggingface multimodal datasets
+- [ ] Map region color for parametrized source
 - [ ] Audio/Video support
 - [ ] Show pending turns in output pane
 - [ ] Copy table with media in output pane
