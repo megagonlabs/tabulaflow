@@ -26,6 +26,73 @@ class PdfSelection:
     total_pages: int
 
 
+@dataclass(frozen=True)
+class InlineMediaCandidate:
+    """A binary-like value inspected without decoding its contents."""
+
+    value: object
+    declared_type: str | None
+    estimated_size: int | None
+
+
+class UnrecognizedMediaError(ValueError):
+    """Raised when an inline binary value has no identifiable media type."""
+
+
+def inspect_inline_media(value: object) -> InlineMediaCandidate | None:
+    """Inspect an inline binary value without decoding a Data URI."""
+    if isinstance(value, (bytes, bytearray, memoryview)):
+        size = value.nbytes if isinstance(value, memoryview) else len(value)
+        return InlineMediaCandidate(value, None, size)
+
+    if isinstance(value, dict) and "bytes" in value:
+        raw = value.get("bytes")
+        media_type = value.get("media_type") or value.get("mime_type")
+        declared_type = media_type.split(";", 1)[0].strip().lower() if isinstance(media_type, str) else None
+        if isinstance(raw, (bytes, bytearray, memoryview)):
+            size = raw.nbytes if isinstance(raw, memoryview) else len(raw)
+            return InlineMediaCandidate(value, declared_type, size)
+        return InlineMediaCandidate(value, declared_type, None)
+
+    if not isinstance(value, str):
+        return None
+    stripped = value.strip()
+    if not stripped.startswith("data:"):
+        return None
+    header, marker, payload = stripped.partition(";base64,")
+    declared_type = header[5:].split(";", 1)[0].strip().lower() or None
+    if not marker:
+        return InlineMediaCandidate(stripped, declared_type, None)
+    compact = "".join(payload.split())
+    padding = len(compact) - len(compact.rstrip("="))
+    estimated_size = max(0, len(compact) * 3 // 4 - padding)
+    return InlineMediaCandidate(stripped, declared_type, estimated_size)
+
+
+def materialize_inline_media(candidate: InlineMediaCandidate, *, max_bytes: int) -> BinaryContent:
+    """Convert a bounded inline candidate into a validated image or PDF."""
+    if candidate.estimated_size is None:
+        raise ValueError("invalid or unavailable inline bytes")
+    if candidate.estimated_size > max_bytes:
+        raise ValueError(f"{candidate.estimated_size} bytes exceeds {max_bytes}-byte limit")
+    try:
+        content = to_binary_content(candidate.value, media_type=candidate.declared_type)
+    except ValueError as exc:
+        if candidate.declared_type is None:
+            raise UnrecognizedMediaError("media type could not be determined") from exc
+        raise ValueError(f"invalid or unsupported {candidate.declared_type}") from exc
+    if not (content.media_type.startswith("image/") or content.media_type == "application/pdf"):
+        raise ValueError(f"invalid or unsupported {content.media_type}")
+    if content.media_type == "application/pdf":
+        try:
+            select_pdf_pages(content.data)
+        except ValueError as exc:
+            raise ValueError(f"invalid or unsupported {content.media_type}") from exc
+    if len(content.data) > max_bytes:
+        raise ValueError(f"normalized {content.media_type} exceeds {max_bytes}-byte limit")
+    return content
+
+
 def select_pdf_pages(data: bytes, page_range: tuple[int, int] | None = None) -> PdfSelection:
     """Validate a PDF and optionally select a 1-indexed inclusive page range."""
     try:
@@ -118,7 +185,11 @@ def _normalize_image(data: bytes, media_type: str) -> tuple[bytes, str]:
 
 
 __all__ = [
+    "InlineMediaCandidate",
     "PdfSelection",
+    "UnrecognizedMediaError",
+    "inspect_inline_media",
+    "materialize_inline_media",
     "select_pdf_pages",
     "to_binary_content",
 ]

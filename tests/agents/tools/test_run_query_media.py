@@ -217,7 +217,7 @@ async def test_run_query_does_not_decode_oversized_data_uri(monkeypatch: pytest.
     def fail_decode(*_args: object, **_kwargs: object) -> None:
         raise AssertionError("oversized data URI was decoded")
 
-    monkeypatch.setattr(run_query_module, "to_binary_content", fail_decode)
+    monkeypatch.setattr("tabulaflow.agents.media.to_binary_content", fail_decode)
     result = ExecResult(df=pd.DataFrame({"image": ["data:image/png;base64,MTIzNDU="]}))
 
     returned = await RunQueryTool(cast(Any, _ResultConnector(result)), enable_media=True)(

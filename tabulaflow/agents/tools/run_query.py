@@ -7,9 +7,14 @@ from typing import Any, ClassVar, cast
 import pandas as pd
 from pydantic import BaseModel, Field
 from pydantic_ai import Tool, ToolReturn
-from pydantic_ai.messages import BinaryContent, ModelMessage, ModelRequest, ToolReturnPart, UserContent
+from pydantic_ai.messages import ModelMessage, ModelRequest, ToolReturnPart, UserContent
 
-from tabulaflow.agents.media import select_pdf_pages, to_binary_content
+from tabulaflow.agents.media import (
+    InlineMediaCandidate,
+    UnrecognizedMediaError,
+    inspect_inline_media,
+    materialize_inline_media,
+)
 from tabulaflow.core.results import ExecResult, GraphResult
 from tabulaflow.data.protocols import DBConnector, SQLConnectorProtocol
 from tabulaflow.output.formatting._core import format_dataframe
@@ -21,61 +26,10 @@ _MAX_MEDIA_ITEMS = 10
 _MAX_MEDIA_BYTES = 25 * 1024 * 1024
 
 
-@dataclass(frozen=True)
-class _MediaCandidate:
-    value: object
-    declared_type: str | None
-    size: int | None
-
-
-def _inspect_media_candidate(value: object) -> _MediaCandidate | None:
-    if isinstance(value, (bytes, bytearray, memoryview)):
-        size = value.nbytes if isinstance(value, memoryview) else len(value)
-        return _MediaCandidate(value, None, size)
-
-    if isinstance(value, dict) and "bytes" in value:
-        raw = value.get("bytes")
-        media_type = value.get("media_type") or value.get("mime_type")
-        declared_type = media_type.split(";", 1)[0].strip().lower() if isinstance(media_type, str) else None
-        if isinstance(raw, (bytes, bytearray, memoryview)):
-            size = raw.nbytes if isinstance(raw, memoryview) else len(raw)
-            return _MediaCandidate(value, declared_type, size)
-        return _MediaCandidate(value, declared_type, None)
-
-    if not isinstance(value, str):
-        return None
-    stripped = value.strip()
-    if not stripped.startswith("data:"):
-        return None
-    header, marker, payload = stripped.partition(";base64,")
-    declared_type = header[5:].split(";", 1)[0].strip().lower() or None
-    if not marker:
-        return _MediaCandidate(stripped, declared_type, None)
-    compact = "".join(payload.split())
-    padding = len(compact) - len(compact.rstrip("="))
-    estimated_size = max(0, len(compact) * 3 // 4 - padding)
-    return _MediaCandidate(stripped, declared_type, estimated_size)
-
-
-def _binary_descriptor(candidate: _MediaCandidate) -> str:
-    if candidate.size is None:
+def _binary_descriptor(candidate: InlineMediaCandidate) -> str:
+    if candidate.estimated_size is None:
         return "[binary media: unavailable inline bytes]"
-    return f"[binary: {candidate.size} bytes]"
-
-
-def _convert_media_candidate(candidate: _MediaCandidate) -> tuple[BinaryContent | None, str | None]:
-    try:
-        content = to_binary_content(candidate.value, media_type=candidate.declared_type)
-    except ValueError:
-        return None, candidate.declared_type
-    if not (content.media_type.startswith("image/") or content.media_type == "application/pdf"):
-        return None, content.media_type
-    if content.media_type == "application/pdf":
-        try:
-            select_pdf_pages(content.data)
-        except ValueError:
-            return None, content.media_type
-    return content, content.media_type
+    return f"[binary: {candidate.estimated_size} bytes]"
 
 
 def _prepare_result_media(
@@ -90,7 +44,7 @@ def _prepare_result_media(
     for row in range(len(df)):
         for column in range(len(df.columns)):
             value = df.iat[row, column]
-            candidate = _inspect_media_candidate(value)
+            candidate = inspect_inline_media(value)
             if candidate is None:
                 continue
             if not include_media:
@@ -99,26 +53,13 @@ def _prepare_result_media(
             if attached >= _MAX_MEDIA_ITEMS:
                 rendered.iat[row, column] = f"[media omitted: {_MAX_MEDIA_ITEMS}-item limit reached]"
                 continue
-            if candidate.size is None:
-                rendered.iat[row, column] = "[media omitted: invalid or unavailable inline bytes]"
-                continue
-            if candidate.size > _MAX_MEDIA_BYTES:
-                rendered.iat[row, column] = (
-                    f"[media omitted: {candidate.size} bytes exceeds {_MAX_MEDIA_BYTES}-byte limit]"
-                )
-                continue
-
-            binary, media_type = _convert_media_candidate(candidate)
-            if media_type is None:
+            try:
+                binary = materialize_inline_media(candidate, max_bytes=_MAX_MEDIA_BYTES)
+            except UnrecognizedMediaError:
                 rendered.iat[row, column] = _binary_descriptor(candidate)
                 continue
-            if binary is None:
-                rendered.iat[row, column] = f"[media omitted: invalid or unsupported {media_type}]"
-                continue
-            if len(binary.data) > _MAX_MEDIA_BYTES:
-                rendered.iat[row, column] = (
-                    f"[media omitted: normalized {media_type} exceeds {_MAX_MEDIA_BYTES}-byte limit]"
-                )
+            except ValueError as exc:
+                rendered.iat[row, column] = f"[media omitted: {exc}]"
                 continue
             if total_bytes + len(binary.data) > _MAX_MEDIA_BYTES:
                 rendered.iat[row, column] = f"[media omitted: {_MAX_MEDIA_BYTES}-byte total limit reached]"

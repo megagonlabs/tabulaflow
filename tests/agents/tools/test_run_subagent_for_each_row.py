@@ -8,6 +8,8 @@ behavior.
 
 from __future__ import annotations
 
+import base64
+import io
 import json
 from pathlib import Path
 from types import SimpleNamespace
@@ -15,9 +17,19 @@ from collections.abc import Callable
 from typing import Any, AsyncGenerator
 
 import pytest
-from pydantic_ai.messages import ModelMessage, ModelResponse, TextPart, ToolCallPart
+from PIL import Image
+from pydantic_ai.messages import (
+    BinaryContent,
+    ModelMessage,
+    ModelRequest,
+    ModelResponse,
+    TextPart,
+    ToolCallPart,
+    UserPromptPart,
+)
 from pydantic_ai.models.function import AgentInfo, FunctionModel
 
+import tabulaflow.agents.tools.run_subagent_for_each_row as run_subagent_module
 from tabulaflow.data.config import SQLConnectorConfig
 from tabulaflow.data.sql import SQLConnector
 from tabulaflow.agents.tools.run_subagent_for_each_row import RunSubagentForEachRowTool
@@ -36,6 +48,12 @@ def _emit_const(value: object) -> Callable[[list[ModelMessage], AgentInfo], Mode
 
 def _ctx() -> Any:
     return SimpleNamespace(tool_call_id="test-call")
+
+
+def _png() -> bytes:
+    output = io.BytesIO()
+    Image.new("RGB", (1, 1), "red").save(output, format="PNG")
+    return output.getvalue()
 
 
 class _AnthropicFunctionModel(FunctionModel):
@@ -185,6 +203,118 @@ class TestHappyPath:
         assert "succeeded for 0 rows, failed for 1 rows" in summary
         rows = await _rows(conn, "SELECT label, _subagent_exception FROM t")
         assert rows == [{"label": None, "_subagent_exception": "AbortTask: missing source"}]
+
+
+class TestMediaInput:
+    async def test_attaches_detected_media_and_renders_a_descriptor(self, conn: SQLConnector) -> None:
+        image = _png()
+        await conn.run_query_async("CREATE TABLE t(id INTEGER, image BLOB, label VARCHAR)")
+        await conn.run_query_async("INSERT INTO t VALUES (1, ?, NULL)", (image,))
+
+        def stub(messages: list[ModelMessage], info: AgentInfo) -> ModelResponse:
+            request = next(message for message in reversed(messages) if isinstance(message, ModelRequest))
+            prompt = next(part for part in request.parts if isinstance(part, UserPromptPart))
+            assert isinstance(prompt.content, list)
+            assert isinstance(prompt.content[0], str)
+            assert "classify [Media #1: image/png" in prompt.content[0]
+            assert prompt.content[1] == "Media #1 from column image:"
+            assert isinstance(prompt.content[2], BinaryContent)
+            assert prompt.content[2].data == image
+            emit = next(tool for tool in info.output_tools if tool.name == "submit_answer")
+            return ModelResponse(parts=[ToolCallPart(tool_name=emit.name, args={"label": "image"})])
+
+        summary = await RunSubagentForEachRowTool(conn, subagent_llm=FunctionModel(stub)).execute(
+            None,
+            "t",
+            task_query="SELECT id, image FROM t",
+            task_instruction="classify {{ image }}",
+            key_columns=["id"],
+            output_columns=["label"],
+        )
+
+        assert "succeeded for 1 rows" in summary
+        assert await _rows(conn, "SELECT label FROM t") == [{"label": "image"}]
+
+    async def test_accepts_data_uri_media(self, conn: SQLConnector) -> None:
+        image = _png()
+        uri = f"data:image/png;base64,{base64.b64encode(image).decode()}"
+        await conn.run_query_async("CREATE TABLE t(id INTEGER, image VARCHAR, label VARCHAR)")
+        await conn.run_query_async("INSERT INTO t VALUES (1, ?, NULL)", (uri,))
+        seen_media = False
+
+        def stub(messages: list[ModelMessage], info: AgentInfo) -> ModelResponse:
+            nonlocal seen_media
+            seen_media = any(
+                isinstance(item, BinaryContent)
+                for message in messages
+                if isinstance(message, ModelRequest)
+                for part in message.parts
+                if isinstance(part, UserPromptPart) and isinstance(part.content, list)
+                for item in part.content
+            )
+            return ModelResponse(parts=[ToolCallPart(tool_name="submit_answer", args={"label": "image"})])
+
+        summary = await RunSubagentForEachRowTool(conn, subagent_llm=FunctionModel(stub)).execute(
+            None,
+            "t",
+            task_query="SELECT id, image FROM t",
+            task_instruction="classify the image",
+            key_columns=["id"],
+            output_columns=["label"],
+        )
+
+        assert "succeeded for 1 rows" in summary
+        assert seen_media
+
+    async def test_unknown_binary_fails_before_fanout(self, conn: SQLConnector) -> None:
+        await conn.run_query_async("CREATE TABLE t(id INTEGER, payload BLOB, label VARCHAR)")
+        await conn.run_query_async("INSERT INTO t VALUES (1, 'not media'::BLOB, NULL)")
+        calls = 0
+
+        def stub(_messages: list[ModelMessage], _info: AgentInfo) -> ModelResponse:
+            nonlocal calls
+            calls += 1
+            raise AssertionError("subagent should not run")
+
+        summary = await RunSubagentForEachRowTool(conn, subagent_llm=FunctionModel(stub)).__call__(
+            _ctx(),
+            None,
+            "t",
+            task_query="SELECT id, payload FROM t",
+            task_instruction="inspect the payload",
+            key_columns=["id"],
+            output_columns=["label"],
+        )
+
+        assert summary.startswith("(error:")
+        assert "row 1, column 'payload'" in summary
+        assert "textual representation" in summary
+        assert calls == 0
+        assert await _rows(conn, "SELECT label FROM t") == [{"label": None}]
+
+    async def test_oversized_data_uri_is_rejected_without_decoding(
+        self, conn: SQLConnector, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        await conn.run_query_async("CREATE TABLE t(id INTEGER, image VARCHAR, label VARCHAR)")
+        await conn.run_query_async("INSERT INTO t VALUES (1, 'data:image/png;base64,MTIzNDU=', NULL)")
+        monkeypatch.setattr(run_subagent_module, "_MAX_MEDIA_BYTES_PER_ROW", 4)
+
+        def fail_decode(*_args: object, **_kwargs: object) -> None:
+            raise AssertionError("oversized Data URI was decoded")
+
+        monkeypatch.setattr("tabulaflow.agents.media.to_binary_content", fail_decode)
+        summary = await _tool(conn).__call__(
+            _ctx(),
+            None,
+            "t",
+            task_query="SELECT id, image FROM t",
+            task_instruction="inspect the image",
+            key_columns=["id"],
+            output_columns=["label"],
+        )
+
+        assert summary.startswith("(error:")
+        assert "5 bytes exceeds 4-byte limit" in summary
 
 
 class TestWriteBackErrorSurfaced:

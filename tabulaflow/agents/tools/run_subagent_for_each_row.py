@@ -16,6 +16,7 @@ import sqlalchemy
 from pydantic import BaseModel, Field, create_model
 from pydantic_ai import NativeOutput, PromptedOutput, RunContext, Tool, ToolOutput
 from pydantic_ai.capabilities.abstract import AbstractCapability
+from pydantic_ai.messages import UserContent
 from pydantic_ai.models import Model
 from pydantic_ai.settings import ModelSettings
 
@@ -43,11 +44,14 @@ from tabulaflow.agents.tools.browser.tool import (
     snapshot_snippet,
 )
 from tabulaflow.agents.llm import make_agent
+from tabulaflow.agents.media import inspect_inline_media, materialize_inline_media
 
 
 _COL_EXCEPTION = "_subagent_exception"
 _COL_TRAJECTORY = "_subagent_trajectory"
 _INTERNAL_COLUMNS = [_COL_EXCEPTION, _COL_TRAJECTORY]
+_MAX_MEDIA_ITEMS_PER_ROW = 10
+_MAX_MEDIA_BYTES_PER_ROW = 25 * 1024 * 1024
 
 # Dialects that support a native JSON column type and the SQL type name to use.
 _JSON_TYPE_FOR_DIALECT: dict[SQLDialect, str] = {
@@ -67,6 +71,40 @@ _JINJA_ENV = jinja2.Environment(undefined=jinja2.StrictUndefined)
 
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass(frozen=True)
+class _TaskRow:
+    values: dict[str, object]
+    prompt_values: dict[str, object]
+    media: tuple[UserContent, ...]
+
+
+def _prepare_task_row(row_idx: int, row: dict[str, object]) -> _TaskRow:
+    prompt_values = dict(row)
+    media: list[UserContent] = []
+    attached = 0
+    total_bytes = 0
+    for column, value in row.items():
+        candidate = inspect_inline_media(value)
+        if candidate is None:
+            continue
+        if attached >= _MAX_MEDIA_ITEMS_PER_ROW:
+            raise ValueError(f"task_query returned more than {_MAX_MEDIA_ITEMS_PER_ROW} media items in row {row_idx}")
+        try:
+            content = materialize_inline_media(candidate, max_bytes=_MAX_MEDIA_BYTES_PER_ROW)
+        except ValueError as exc:
+            raise ValueError(
+                f"task_query returned unusable binary data in row {row_idx}, column {column!r}: {exc}; "
+                "remove the column or convert it to hex, base64, JSON, or another textual representation"
+            ) from exc
+        if total_bytes + len(content.data) > _MAX_MEDIA_BYTES_PER_ROW:
+            raise ValueError(f"media in row {row_idx} exceeds the {_MAX_MEDIA_BYTES_PER_ROW}-byte total per-row limit")
+        attached += 1
+        total_bytes += len(content.data)
+        prompt_values[column] = f"[Media #{attached}: {content.media_type}, {len(content.data)} bytes]"
+        media.extend((f"Media #{attached} from column {column}:", content))
+    return _TaskRow(values=row, prompt_values=prompt_values, media=tuple(media))
 
 
 class AbortTask(BaseModel):
@@ -261,6 +299,10 @@ class RunSubagentForEachRowTool:
         give the subagent this same tool so it can fan out its own row-wise sub-tasks;
         this does not propagate — each deeper level must set the flag again to nest
         further.
+
+        Images and PDFs returned by ``task_query`` are attached to that row's prompt
+        automatically. Other binary values are rejected before any subagents run;
+        remove those columns or convert them to a textual representation in SQL.
 
         Safe to call multiple times in parallel in one turn.
 
@@ -507,6 +549,9 @@ class RunSubagentForEachRowTool:
             )
         task_template = _JINJA_ENV.from_string(task_instruction)
 
+        rows = [_prepare_task_row(row_idx, row) for row_idx, row in enumerate(df.to_dict(orient="records"), start=1)]
+        total = len(rows)
+
         # Ensure _subagent_* columns exist on the target table.
         dialect = self.db_connector.language
         trajectory_dtype = _JSON_TYPE_FOR_DIALECT.get(dialect, "TEXT")
@@ -656,7 +701,7 @@ class RunSubagentForEachRowTool:
             except Exception:
                 logger.exception("Failed to write subagent trajectory file: %s", path)
 
-        async def _process_one_row(row_idx: int, row: dict[str, object]) -> str | None:
+        async def _process_one_row(row_idx: int, task_row: _TaskRow) -> str | None:
             nonlocal completed
             tools: list[Tool] = []
             browser_tool: WebBrowserTool | None = None
@@ -701,12 +746,12 @@ class RunSubagentForEachRowTool:
                 output_type=_terminal_output_type(self.subagent_llm, answer_model),
                 model_settings=self.model_settings,
             )
-            key_payload = {col: row.get(col) for col in key_columns}
+            key_payload = {col: task_row.values.get(col) for col in key_columns}
             error_msg: str | None = None
             metadata: tuple[str | None, str | None] | None = None
             cancelled = False
             try:
-                prompt = task_template.render(row)
+                prompt = task_template.render(task_row.prompt_values)
                 # The prompt is not an allowlisted tool return, so it follows the
                 # truncation path only: stored and snippet-replaced when oversized
                 # for truncate-enabled subagents, left untouched otherwise.
@@ -714,7 +759,8 @@ class RunSubagentForEachRowTool:
                     message_id = await subagent_scope.add(kind="user_prompt", content=prompt)
                     if message_id is not None and len(prompt) > MESSAGE_THRESHOLD_CHARS:
                         prompt = make_snippet(message_id, prompt)
-                result = await subagent.run(prompt)
+                user_prompt: str | list[UserContent] = [prompt, *task_row.media] if task_row.media else prompt
+                result = await subagent.run(user_prompt)
                 traj = Trajectory.from_pydantic_ai_messages(result.all_messages())
                 _write_trajectory_file(row_idx, traj)
                 if isinstance(result.output, AbortTask):
@@ -750,15 +796,13 @@ class RunSubagentForEachRowTool:
                         await asyncio.sleep(0)
             return error_msg
 
-        rows = df.to_dict(orient="records")
-        total = len(rows)
         semaphore = asyncio.Semaphore(self.max_concurrency)
         # Emit a 0/total tick up front so the UI shows the counter immediately
         # rather than sitting empty until the first row finishes (often seconds).
         if self.on_progress is not None and total > 0:
             self.on_progress(ToolProgressUpdate(completed=0, total=total, tool_call_id=tool_call_id))
 
-        async def _throttled(row_idx: int, row: dict[str, object]) -> str | None:
+        async def _throttled(row_idx: int, row: _TaskRow) -> str | None:
             async with semaphore:
                 return await _process_one_row(row_idx, row)
 
