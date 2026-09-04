@@ -1,4 +1,4 @@
-"""DB-free engine that extracts structured entities from document text via an LLM.
+"""DB-free engine that extracts structured entities from documents via an LLM.
 
 Usable standalone, without any database or workspace::
 
@@ -14,14 +14,16 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from pathlib import Path
 from typing import Any
 
 from pydantic import create_model
+from pydantic_ai.messages import BinaryContent, UserContent
 from pydantic_ai.models import Model
 from pydantic_ai.settings import ModelSettings
 from tabulaflow.agents.llm import make_agent
+from tabulaflow.agents.media import select_pdf_pages
 from tabulaflow.agents.trace import Trajectory
 from tabulaflow.agents.extraction.column_types import ALLOWED_COLUMN_TYPES, ColumnType
 from tabulaflow.agents.extraction.markdown import (
@@ -33,11 +35,13 @@ from tabulaflow.agents.extraction.markdown import (
 
 logger = logging.getLogger(__name__)
 
+_PDF_PAGES_PER_CHUNK = 20
+
 # Worded as "records" deliberately: more generic than "entity" for the model, so it
 # does not narrow extraction to named real-world things (covers line items, events,
 # facts, etc.).
 _EXTRACTION_SYSTEM_PROMPT = (
-    "You extract structured records from a document excerpt. Extract every record "
+    "You extract structured records from a document excerpt supplied as text or attached media. Extract every record "
     "that matches the user's instruction and is supported by the excerpt, using only "
     "information present in it — do not infer or invent values. The excerpt may be a "
     "fragment of a larger document; extract whatever is present. "
@@ -69,8 +73,42 @@ def _render_excerpt(chunk: Chunk, doc_context: str | None) -> str:
     return prefix + chunk.body
 
 
+def _media_prompts(
+    content: BinaryContent,
+    instruction: str,
+    doc_context: str | None,
+) -> list[list[UserContent]]:
+    chunks: list[tuple[BinaryContent, str]] = []
+    if content.media_type.startswith("image/"):
+        chunks.append((content, "Image document"))
+    elif content.media_type == "application/pdf":
+        pdf = select_pdf_pages(content.data)
+        for first_page in range(1, pdf.total_pages + 1, _PDF_PAGES_PER_CHUNK):
+            last_page = min(first_page + _PDF_PAGES_PER_CHUNK - 1, pdf.total_pages)
+            selected = select_pdf_pages(content.data, (first_page, last_page))
+            chunks.append(
+                (
+                    BinaryContent(data=selected.data, media_type="application/pdf"),
+                    f"PDF pages {first_page}-{last_page} of {pdf.total_pages}",
+                )
+            )
+    else:
+        raise ValueError(f"unsupported document media type: {content.media_type}")
+
+    prompts: list[list[UserContent]] = []
+    for media, chunk_context in chunks:
+        context = "\n".join(part for part in (doc_context, chunk_context) if part)
+        prompts.append(
+            [
+                f"{instruction}\n\n<context>\n{context}\n</context>\n\nThe document excerpt is attached.",
+                media,
+            ]
+        )
+    return prompts
+
+
 class EntityExtractor:
-    """Extract structured entities from document text by chunking and LLM extraction.
+    """Extract structured entities from document text or media with an LLM.
 
     A single document is split into non-overlapping, structure-aware chunks (see
     :func:`tabulaflow.agents.extraction.markdown.split_markdown`); a leaf subagent
@@ -174,7 +212,7 @@ class EntityExtractor:
 
     async def extract(
         self,
-        text: str,
+        content: str | BinaryContent,
         *,
         instruction: str,
         doc_context: str | None = None,
@@ -184,7 +222,7 @@ class EntityExtractor:
         """Extract entities from one document.
 
         Args:
-            text: The document text to extract from.
+            content: Document text, a validated image, or a validated PDF.
             instruction: Natural-language description of what one entity is and how
                 to populate ``output_columns``.
             doc_context: Optional document-level context (e.g. ``"Source: <title> (<url>)"``)
@@ -201,25 +239,30 @@ class EntityExtractor:
             One dict per extracted entity, keyed by ``output_columns``. Empty if the
             document is blank or contains no matching entities.
         """
-        if not text.strip():
-            return []
-        chunks = split_markdown(text, max_chars=self.chunk_max, target=self.chunk_target)
-        prompts = [
-            f"{instruction}\n\n<document_excerpt>\n{_render_excerpt(c, doc_context)}\n</document_excerpt>"
-            for c in chunks
-        ]
+        prompts: Sequence[str | Sequence[UserContent]]
+        if isinstance(content, str):
+            if not content.strip():
+                return []
+            chunks = split_markdown(content, max_chars=self.chunk_max, target=self.chunk_target)
+            prompts = [
+                f"{instruction}\n\n<document_excerpt>\n{_render_excerpt(c, doc_context)}\n</document_excerpt>"
+                for c in chunks
+            ]
+        else:
+            prompts = _media_prompts(content, instruction, doc_context)
+
         prefix = f"{trajectory_label}-" if trajectory_label else ""
 
-        async def _run(chunk_idx: int, prompt: str) -> list[dict[str, Any]]:
+        async def _run(chunk_idx: int, prompt: str | Sequence[UserContent]) -> list[dict[str, Any]]:
             entities = await self._extract_chunk(prompt, f"{prefix}chunk-{chunk_idx}")
             if on_chunk_complete is not None:
                 on_chunk_complete(len(entities))
             return entities
 
-        chunk_results = await asyncio.gather(*(_run(i, p) for i, p in enumerate(prompts, start=1)))
+        chunk_results = await asyncio.gather(*(_run(i, prompt) for i, prompt in enumerate(prompts, start=1)))
         return [entity for chunk in chunk_results for entity in chunk]
 
-    async def _extract_chunk(self, prompt: str, traj_name: str) -> list[dict[str, Any]]:
+    async def _extract_chunk(self, prompt: str | Sequence[UserContent], traj_name: str) -> list[dict[str, Any]]:
         async with self._semaphore:
             result = await self._agent.run(prompt)
         self._write_trajectory(traj_name, result)

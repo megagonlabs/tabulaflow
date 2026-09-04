@@ -7,19 +7,41 @@ append. These tests cover the type resolution and wiring without invoking an LLM
 """
 
 from datetime import date, datetime
+import io
 from pathlib import Path
 from types import SimpleNamespace
+from collections.abc import Sequence
+from typing import Any
 
 import duckdb
+from PIL import Image
 import pytest
+from pydantic_ai.messages import BinaryContent, UserContent
 from pydantic_ai.settings import ModelSettings
+from pypdf import PdfWriter
 
 import tabulaflow.agents.tools.extract_rows_from_documents as mod
 from tabulaflow.data.config import SQLConnectorConfig
 from tabulaflow.data.sql import SQLConnector
 from tabulaflow.agents.extraction import EntityExtractor
 from tabulaflow.agents.extraction.column_types import python_type_for_dtype
+from tabulaflow.agents.media import select_pdf_pages
 from tabulaflow.agents.tools.extract_rows_from_documents import ExtractRowsFromDocumentsTool
+
+
+def _png() -> bytes:
+    output = io.BytesIO()
+    Image.new("RGB", (1, 1), "red").save(output, format="PNG")
+    return output.getvalue()
+
+
+def _pdf(pages: int) -> bytes:
+    output = io.BytesIO()
+    writer = PdfWriter()
+    for _ in range(pages):
+        writer.add_blank_page(width=10, height=10)
+    writer.write(output)
+    return output.getvalue()
 
 
 def test_python_type_for_dtype() -> None:
@@ -107,6 +129,36 @@ def test_entity_extractor_rejects_unsupported_column_type() -> None:
         EntityExtractor(["amt"], column_types={"amt": Decimal})  # type: ignore[dict-item]
 
 
+def test_document_content_validation_rejects_unknown_values_and_accepts_null() -> None:
+    assert mod._prepare_document_content(1, None) is None  # noqa: SLF001
+    with pytest.raises(TypeError, match="unsupported content in row 2"):
+        mod._prepare_document_content(2, {"unexpected": "value"})  # noqa: SLF001
+
+
+async def test_entity_extractor_splits_pdfs_into_page_batches(monkeypatch: pytest.MonkeyPatch) -> None:
+    extractor = EntityExtractor(["name"])
+    prompts: list[list[UserContent]] = []
+
+    async def capture(prompt: str | Sequence[UserContent], _trajectory: str) -> list[dict[str, Any]]:
+        assert not isinstance(prompt, str)
+        prompts.append(list(prompt))
+        return []
+
+    monkeypatch.setattr(extractor, "_extract_chunk", capture)
+
+    await extractor.extract(
+        BinaryContent(data=_pdf(41), media_type="application/pdf"),
+        instruction="Extract every name.",
+    )
+
+    assert len(prompts) == 3
+    media = [prompt[1] for prompt in prompts]
+    assert all(isinstance(item, BinaryContent) for item in media)
+    assert [select_pdf_pages(item.data).total_pages for item in media if isinstance(item, BinaryContent)] == [20, 20, 1]
+    assert "PDF pages 1-20 of 41" in str(prompts[0][0])
+    assert "PDF pages 41-41 of 41" in str(prompts[2][0])
+
+
 async def test_tool_resolves_types_and_appends_typed_rows(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """The tool resolves output-column types from the schema and appends native values.
 
@@ -172,6 +224,82 @@ async def test_tool_resolves_types_and_appends_typed_rows(tmp_path: Path, monkey
     # The missing numerics land as SQL NULL rather than a batch-aborting junk string.
     assert gadget["name"] == "Gadget"
     assert back["qty"].isna().sum() == 1 and back["price"].isna().sum() == 1
+
+
+async def test_tool_extracts_rows_from_inline_image(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    db_path = str(tmp_path / "images.duckdb")
+    raw = duckdb.connect(db_path)
+    raw.execute("CREATE TABLE source (content BLOB)")
+    raw.execute("INSERT INTO source VALUES (?)", [_png()])
+    raw.execute("CREATE TABLE products (name VARCHAR)")
+    raw.close()
+
+    conn = await SQLConnector.from_url_async(
+        global_id="test+extract_image_rows",
+        url=f"duckdb:///{db_path}",
+        db_name="images",
+        read_only=False,
+        config=SQLConnectorConfig(schema_cache_mode="off", query_cache_mode="off"),
+    )
+    conn.read_only = False
+    captured: list[BinaryContent] = []
+
+    class FakeExtractor:
+        def __init__(self, *_: object, **__: object) -> None:
+            pass
+
+        async def extract(self, content: str | BinaryContent, **_: object) -> list[dict[str, object]]:
+            assert isinstance(content, BinaryContent)
+            captured.append(content)
+            return [{"name": "Widget"}]
+
+    monkeypatch.setattr(mod, "EntityExtractor", FakeExtractor)
+
+    summary = await ExtractRowsFromDocumentsTool(conn).execute(
+        None,
+        "products",
+        task_query="SELECT content FROM source",
+        task_instruction="Extract every product.",
+        output_columns=["name"],
+    )
+
+    assert "Extracted 1 entities" in summary
+    assert len(captured) == 1 and captured[0].media_type == "image/png"
+    assert (await conn.run_query_async("SELECT name FROM products")).df.iloc[0, 0] == "Widget"  # type: ignore[union-attr]
+
+
+async def test_tool_rejects_unknown_binary_before_extraction(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    db_path = str(tmp_path / "unknown-binary.duckdb")
+    raw = duckdb.connect(db_path)
+    raw.execute("CREATE TABLE source (content BLOB)")
+    raw.execute("INSERT INTO source VALUES ('not media'::BLOB)")
+    raw.execute("CREATE TABLE products (name VARCHAR)")
+    raw.close()
+
+    conn = await SQLConnector.from_url_async(
+        global_id="test+extract_unknown_binary",
+        url=f"duckdb:///{db_path}",
+        db_name="unknown_binary",
+        read_only=False,
+        config=SQLConnectorConfig(schema_cache_mode="off", query_cache_mode="off"),
+    )
+    conn.read_only = False
+
+    def fail(*_: object, **__: object) -> object:
+        raise AssertionError("extractor should not be constructed")
+
+    monkeypatch.setattr(mod, "EntityExtractor", fail)
+    summary = await ExtractRowsFromDocumentsTool(conn)(
+        SimpleNamespace(tool_call_id="call-1"),  # type: ignore[arg-type]
+        None,
+        "products",
+        task_query="SELECT content FROM source",
+        task_instruction="Extract every product.",
+        output_columns=["name"],
+    )
+
+    assert summary.startswith("(error:")
+    assert "unusable content in row 1" in summary
 
 
 async def test_tool_rejects_non_scalar_output_column(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

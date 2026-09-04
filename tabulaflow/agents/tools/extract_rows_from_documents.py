@@ -14,6 +14,7 @@ import jinja2.meta
 import pandas as pd
 from pandas.api import types as pdt
 from pydantic_ai import RunContext, Tool
+from pydantic_ai.messages import BinaryContent
 from pydantic_ai.models import Model
 from pydantic_ai.settings import ModelSettings
 
@@ -22,11 +23,30 @@ from tabulaflow.agents.tools.protocols import ToolProgressUpdate
 from tabulaflow.agents.extraction.column_types import resolve_column_types
 from tabulaflow.agents.extraction.entity import EntityExtractor
 from tabulaflow.agents.extraction.markdown import DEFAULT_MAX_CHARS, DEFAULT_TARGET_CHARS
+from tabulaflow.agents.media import inspect_inline_media, materialize_inline_media
 from tabulaflow.agents.tools._sql import qualified_table
 
 logger = logging.getLogger(__name__)
 
 _JINJA_ENV = jinja2.Environment(undefined=jinja2.StrictUndefined)
+_MAX_MEDIA_BYTES = 25 * 1024 * 1024
+
+
+def _prepare_document_content(row_idx: int, value: object) -> str | BinaryContent | None:
+    candidate = inspect_inline_media(value)
+    if candidate is not None:
+        try:
+            return materialize_inline_media(candidate, max_bytes=_MAX_MEDIA_BYTES)
+        except ValueError as exc:
+            raise ValueError(f"task_query returned unusable content in row {row_idx}: {exc}") from exc
+    if isinstance(value, str):
+        return value
+    if pdt.is_scalar(value) and bool(pd.isna(value)):
+        return None
+    raise TypeError(
+        f"task_query returned unsupported content in row {row_idx}; "
+        "the 'content' column must hold document text, an inline image/PDF, or NULL"
+    )
 
 
 class ExtractRowsFromDocumentsTool:
@@ -34,10 +54,10 @@ class ExtractRowsFromDocumentsTool:
 
     This is the row-expansion dual of ``run_subagent_for_each_row`` (which expands
     columns): one source document in, many entity rows out. ``task_query`` yields
-    one row per document — its first column is the document text, the remaining
+    one row per document — its ``content`` column holds text, an image, or a PDF, and the remaining
     columns feed the ``task_instruction`` Jinja template. ``task_query`` must project
-    the document text as a column named ``content``; any other columns feed the
-    template. Each document is chunked and a leaf subagent extracts entities from each
+    the document as a column named ``content``; any other columns feed the
+    template. Text and PDFs are chunked, while each image is one excerpt; a leaf subagent extracts entities from each
     chunk; every chunk's rows are appended to ``table_name``. Deduplication is
     intentionally out of scope (handle it downstream with full semantic context).
 
@@ -110,14 +130,13 @@ class ExtractRowsFromDocumentsTool:
         requires semantic understanding to extract, or when regex parsing is
         unreliable.
 
-        Internally, each document is split into structure-aware chunks — each carrying
-        its section path and any spanning table's header as context so a cut doesn't
-        strip the surrounding structure — and a subagent extracts entities from every
-        chunk concurrently; every chunk's rows are appended (no dedup), so documents far
-        larger than one LLM context are handled.
+        Internally, text is split into structure-aware chunks, PDFs into bounded page
+        ranges, and each image is treated as one excerpt. A subagent extracts entities
+        from every excerpt concurrently; every excerpt's rows are appended (no dedup),
+        so documents far larger than one LLM context are handled.
 
         ``task_query`` selects the source documents: one result row per document, with
-        the document text projected as a column named **``content``**; any other
+        its text, image, or PDF projected as a column named **``content``**; any other
         columns are available to ``task_instruction``. The common case is a page the
         agent already browsed, which was offloaded to ``_internal.messages`` (already
         has a ``content`` column)::
@@ -141,14 +160,14 @@ class ExtractRowsFromDocumentsTool:
                 ``output_columns`` must already exist on it; other columns are
                 left NULL/default.
             task_query: SELECT producing one row per source document. Must project
-                the document text as a column named ``content`` (alias it if needed,
+                the document text or inline image/PDF as a column named ``content`` (alias it if needed,
                 e.g. ``SELECT body AS content, url FROM ...``); any other columns are
                 variables available to ``task_instruction`` (``content`` itself is NOT
                 available to the template). Column order does not matter.
             task_instruction: A Jinja2 template rendered once per source document
                 describing what one entity is and how to populate ``output_columns``.
                 It may reference any column of ``task_query`` other than ``content``
-                (e.g. ``{{ url }}``); the document text itself is not available to the
+                (e.g. ``{{ url }}``); the document content itself is not available to the
                 template. Example: ``"Extract every product mentioned. For each,
                 capture name and price_usd."``
             output_columns: Columns each extracted entity populates. Must be
@@ -198,13 +217,10 @@ class ExtractRowsFromDocumentsTool:
         content_col = "content"
         if content_col not in source_columns:
             raise ValueError(
-                "task_query must project the document text as a column named 'content' "
+                "task_query must project the document text or inline image/PDF as a column named 'content' "
                 "(e.g. SELECT body AS content, url FROM ...)"
             )
         var_cols = [c for c in source_columns if c != content_col]
-        if not (pdt.is_object_dtype(df[content_col]) or pdt.is_string_dtype(df[content_col])):
-            raise TypeError(f"the 'content' column must hold document text, but has dtype {df[content_col].dtype}")
-
         # Compile the template. Reject {{ content }} upfront (it is the source the
         # entities are extracted from, not a template variable), and require every
         # other placeholder to be a task_query column — catching the mismatch here
@@ -218,7 +234,7 @@ class ExtractRowsFromDocumentsTool:
         if content_col in referenced:
             raise ValueError(
                 f"task_instruction may not reference {content_col!r}; "
-                "it is the document text entities are extracted from, not interpolated into the instruction"
+                "it is the document payload entities are extracted from, not interpolated into the instruction"
             )
         unknown = sorted(referenced - set(var_cols))
         if unknown:
@@ -227,6 +243,9 @@ class ExtractRowsFromDocumentsTool:
                 f"available columns (excluding 'content'): {var_cols}"
             )
         task_template = _JINJA_ENV.from_string(task_instruction)
+
+        rows = df.to_dict(orient="records")
+        documents = [_prepare_document_content(i, row.get(content_col)) for i, row in enumerate(rows, start=1)]
 
         # output_columns must already exist on the target table.
         qualified_target = qualified_table(schema_name, table_name)
@@ -272,7 +291,6 @@ class ExtractRowsFromDocumentsTool:
             trajectory_log_dir=traj_dir,
         )
 
-        rows = df.to_dict(orient="records")
         total_docs = len(rows)
         extracted_count = 0
         if self.on_progress is not None and total_docs > 0:
@@ -284,12 +302,15 @@ class ExtractRowsFromDocumentsTool:
             if self.on_progress is not None:
                 self.on_progress(ToolProgressUpdate(completed=extracted_count, unit="rows", tool_call_id=tool_call_id))
 
-        async def _process_document(doc_idx: int, row: dict[str, Any]) -> tuple[list[dict[str, Any]], str | None]:
-            content = row.get(content_col)
+        async def _process_document(
+            doc_idx: int,
+            row: dict[str, Any],
+            content: str | BinaryContent | None,
+        ) -> tuple[list[dict[str, Any]], str | None]:
             error: str | None = None
             entities: list[dict[str, Any]] = []
             try:
-                if not isinstance(content, str):
+                if content is None:
                     return [], None
                 instruction = task_template.render({c: row.get(c) for c in var_cols})
                 entities = await extractor.extract(
@@ -304,7 +325,9 @@ class ExtractRowsFromDocumentsTool:
                 error = f"document {doc_idx}: {type(e).__name__}: {e}"
             return entities, error
 
-        results = await asyncio.gather(*(_process_document(i, row) for i, row in enumerate(rows, start=1)))
+        results = await asyncio.gather(
+            *(_process_document(i, row, content) for i, (row, content) in enumerate(zip(rows, documents), start=1))
+        )
 
         all_entities: list[dict[str, Any]] = []
         errors: list[str] = []
