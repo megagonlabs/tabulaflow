@@ -276,6 +276,53 @@ def test_manual_table_send_includes_data_view_meta(tmp_path: Path) -> None:
     assert pushed[0]["source"] == "manual"
 
 
+def test_large_manual_table_scrolls_inside_viewport(tmp_path: Path) -> None:
+    from playwright.sync_api import Error as PlaywrightError
+    from playwright.sync_api import sync_playwright
+
+    card = render_result_data(
+        ResultCardInput(df=pd.DataFrame({"row_id": range(1_000), "value": range(1_000)}), label="manual"),
+        tmp_path,
+    )
+    assert card is not None
+    pane = OutputPane(tmp_path)
+    pane.start()
+    try:
+        assert pane.url is not None
+        with sync_playwright() as playwright:
+            try:
+                browser = playwright.chromium.launch(headless=True)
+            except PlaywrightError as exc:
+                pytest.skip(f"Playwright Chromium is unavailable: {exc}")
+            try:
+                page = browser.new_page(viewport={"width": 1_280, "height": 720})
+                page.goto(pane.url, wait_until="domcontentloaded")
+                pane.push(turn_payload(title="manual", source="manual", cards=[card]))
+                page.wait_for_selector(".manual-preview .tabulator-tableholder")
+                page.wait_for_function(
+                    "document.querySelector('.manual-preview .tabulator-tableholder').scrollHeight > "
+                    "document.querySelector('.manual-preview .tabulator-tableholder').clientHeight"
+                )
+                dimensions = page.evaluate(
+                    """() => {
+                      const content = document.querySelector('#content');
+                      const holder = document.querySelector('.manual-preview .tabulator-tableholder');
+                      return {
+                        contentClientHeight: content.clientHeight,
+                        contentScrollHeight: content.scrollHeight,
+                        holderClientHeight: holder.clientHeight,
+                        holderScrollHeight: holder.scrollHeight,
+                      };
+                    }"""
+                )
+                assert dimensions["contentScrollHeight"] == dimensions["contentClientHeight"]
+                assert dimensions["holderScrollHeight"] > dimensions["holderClientHeight"]
+            finally:
+                browser.close()
+    finally:
+        pane.stop()
+
+
 def test_pane_markdown_renderer_formats_safe_markdown(tmp_path: Path) -> None:
     assets = files("tabulaflow.app.pane.assets")
     vendor_path = str(assets.joinpath("vendor").joinpath("markdown-it").joinpath("markdown-it.min.js"))

@@ -367,6 +367,7 @@ body { margin: 0; background: var(--bg); color: var(--text); display: flex; flex
 .seg-thumb { position: absolute; top: 2px; bottom: 2px; left: 0; width: 0; border-radius: 999px;
              background: #262c36; }
 .seg-thumb.ready { transition: transform 0.22s ease, width 0.22s ease; }
+.manual-preview .artifacts-region { flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; }
 .manual-preview .cardpane { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
 .view-shell { position: relative; width: 100%; margin: 0 auto;
               background: transparent; border-radius: 0; overflow: visible; box-shadow: none; }
