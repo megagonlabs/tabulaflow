@@ -303,7 +303,7 @@ async def test_query_cache_mode_controls_reuse(tmp_path: Path, monkeypatch: pyte
     assert second.df is not None
     assert second.df.to_dict(orient="records") == [{"value": 1}]
     assert second.latency_seconds is None
-    assert list((config.cache_dir / "query_results").glob("v1@query-cache@*.json"))
+    assert list((config.cache_dir / "query_results").glob("v2@query-cache@*.json"))
 
 
 async def test_query_cache_rejects_writable_connector(tmp_path: Path) -> None:

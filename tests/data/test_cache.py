@@ -17,7 +17,7 @@ def test_schema_cache_path_is_flat_versioned_and_filename_safe(tmp_path: Path) -
     path = schema_cache_path(tmp_path, "neo4j+movies", variant="fast")
 
     assert path.parent == tmp_path / "schemas"
-    assert path.name == "v1@fast@neo4j+movies.json"
+    assert path.name == "v2@fast@neo4j+movies.json"
 
     with pytest.raises(ValueError, match="Invalid schema cache variant"):
         schema_cache_path(tmp_path, "neo4j+movies", variant="../fast")
@@ -40,7 +40,7 @@ def test_query_cache_key_includes_positional_and_named_parameters() -> None:
 def test_query_cache_path_is_flat_and_versioned(tmp_path: Path) -> None:
     key = query_cache_key("SELECT 1", [], 30, 100)
 
-    assert query_cache_path(tmp_path, "sql+shop", key) == tmp_path / "query_results" / f"v1@sql+shop@{key}.json"
+    assert query_cache_path(tmp_path, "sql+shop", key) == tmp_path / "query_results" / f"v2@sql+shop@{key}.json"
 
 
 async def test_schema_cache_roundtrip(tmp_path: Path) -> None:

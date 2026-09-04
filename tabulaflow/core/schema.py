@@ -5,7 +5,7 @@ from typing import Any, Literal, TypeAlias
 import pandas as pd
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from tabulaflow.core.serialization import SerializableDataFrame
+from tabulaflow.core.dataframe import SerializableDataFrame
 
 # Canonical TabulaFlow names; integrations translate library-specific aliases.
 SQLDialect: TypeAlias = Literal[

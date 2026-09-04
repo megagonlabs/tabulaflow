@@ -1,12 +1,15 @@
-"""Session-level output store with LRU DataFrame spill to a workspace DuckDB."""
+"""Session-level output store with LRU DataFrame spill to Parquet."""
 
 from __future__ import annotations
 
+import asyncio
 import logging
+import tempfile
 from collections import OrderedDict
 from collections.abc import Mapping
 from dataclasses import dataclass
 import math
+from pathlib import Path
 from typing import TYPE_CHECKING, Literal, NoReturn
 
 import jinja2
@@ -35,15 +38,14 @@ from tabulaflow.output.specs import (
     validate_parameter_value,
 )
 from tabulaflow.core.results import ExecResult, GraphResult
+from tabulaflow.core.dataframe import deserialize_dataframe, serialize_dataframe
 
 if TYPE_CHECKING:
     from tabulaflow.data.registry import DBRegistry
-    from tabulaflow.data.sql import SQLConnector
 
 logger = logging.getLogger(__name__)
 
 __all__ = [
-    "OUTPUT_STORE_SCHEMA",
     "OutputStore",
     "ResultMetadata",
     "ResultPayload",
@@ -51,10 +53,6 @@ __all__ = [
     "SourceNotApplicable",
     "render_parameterized_query",
 ]
-
-# Schema this module spills result DataFrames into — one table per result. Kept out
-# of the workspace connector's introspected schema (see ``AppSession.create``).
-OUTPUT_STORE_SCHEMA = "_output_store"
 
 
 class ResultMetadata(BaseModel):
@@ -115,18 +113,18 @@ class ResultPayload:
             raise ValueError("a graph result requires a tabular result")
 
 
-class _ResultFrameStore:
-    """DuckDB-backed store for tabular query results, with a small memory cache."""
+class _ResultDataFrameStore:
+    """Parquet-backed store for tabular query results, with a small memory cache."""
 
-    def __init__(self, *, max_in_memory: int, spill_connector: SQLConnector | None = None) -> None:
+    def __init__(self, *, max_in_memory: int, spill_dir: Path | None = None) -> None:
         self._max_in_memory = max_in_memory
-        self._spill_connector = spill_connector
-        self._schema_created = False
+        self._spill_dir = spill_dir
         self._cache: OrderedDict[str, pd.DataFrame] = OrderedDict()
         self._persisted: set[str] = set()
 
     async def put_dataframe(self, storage_key: str, df: pd.DataFrame) -> str:
-        if self._spill_connector is not None and await self._persist(storage_key, df):
+        if self._spill_dir is not None:
+            await self._persist(storage_key, df)
             self._persisted.add(storage_key)
         self._cache[storage_key] = df
         self._cache.move_to_end(storage_key)
@@ -137,15 +135,17 @@ class _ResultFrameStore:
         if storage_key in self._cache:
             self._cache.move_to_end(storage_key)
             return self._cache[storage_key]
-        if storage_key not in self._persisted or self._spill_connector is None:
+        if storage_key not in self._persisted or self._spill_dir is None:
             raise KeyError(f"No stored result for {storage_key}")
-        result = await self._spill_connector.run_query_async(f'SELECT * FROM "{OUTPUT_STORE_SCHEMA}"."{storage_key}"')
-        if result.df is None:
+        try:
+            df = await asyncio.to_thread(self._read, self._path(storage_key))
+        except (OSError, ValueError):
+            logger.warning("Failed to load persisted result %s", storage_key, exc_info=True)
             raise KeyError(f"No stored result for {storage_key}")
-        self._cache[storage_key] = result.df
+        self._cache[storage_key] = df
         self._cache.move_to_end(storage_key)
         self._evict()
-        return result.df
+        return df
 
     def has_in_memory(self, storage_key: str) -> bool:
         return storage_key in self._cache
@@ -157,30 +157,31 @@ class _ResultFrameStore:
     def in_memory_count(self) -> int:
         return len(self._cache)
 
-    async def _ensure_schema(self) -> None:
-        if self._schema_created or self._spill_connector is None:
-            return
-        await self._spill_connector.run_query_async(f'CREATE SCHEMA IF NOT EXISTS "{OUTPUT_STORE_SCHEMA}"')
-        self._schema_created = True
+    def _path(self, storage_key: str) -> Path:
+        assert self._spill_dir is not None
+        return self._spill_dir / f"{storage_key}.parquet"
 
-    async def _persist(self, storage_key: str, df: pd.DataFrame) -> bool:
-        if self._spill_connector is None:
-            return False
+    @staticmethod
+    def _read(path: Path) -> pd.DataFrame:
+        return deserialize_dataframe(path.read_bytes())
+
+    @staticmethod
+    def _write(path: Path, df: pd.DataFrame) -> None:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        payload = serialize_dataframe(df)
+        with tempfile.NamedTemporaryFile(dir=path.parent, prefix=f".{path.name}.", delete=False) as file:
+            temporary = Path(file.name)
+            file.write(payload)
         try:
-            await self._ensure_schema()
-            await self._spill_connector.write_dataframe_async(
-                df=df,
-                table_name=storage_key,
-                schema_name=OUTPUT_STORE_SCHEMA,
-                mode="replace",
-            )
-            return True
-        except Exception:
-            logger.warning("Failed to persist %s to workspace", storage_key, exc_info=True)
-            return False
+            temporary.replace(path)
+        finally:
+            temporary.unlink(missing_ok=True)
+
+    async def _persist(self, storage_key: str, df: pd.DataFrame) -> None:
+        await asyncio.to_thread(self._write, self._path(storage_key), df)
 
     def _evict(self) -> None:
-        if self._spill_connector is None:
+        if self._spill_dir is None:
             return
         while len(self._cache) > self._max_in_memory:
             evictable = next((storage_key for storage_key in self._cache if storage_key in self._persisted), None)
@@ -190,17 +191,17 @@ class _ResultFrameStore:
 
 
 class OutputStore:
-    """Output store with write-through result storage in a workspace DuckDB.
+    """Output store with write-through Parquet result storage.
 
-    Every successful result DataFrame is persisted to the workspace
-    connector (when set). The most recent ``max_in_memory`` DataFrames are
-    cached in RAM; older cached frames are reloaded explicitly through
+    Every successful result DataFrame is persisted under ``spill_dir`` when
+    configured. The most recent ``max_in_memory`` DataFrames are
+    cached in RAM; older cached DataFrames are reloaded explicitly through
     ``get_payload()``.
 
     Args:
         max_in_memory: Number of result DataFrames to keep in RAM.
-        spill_connector: Writable workspace used to persist result DataFrames.
-            Without one, frames remain in memory.
+        spill_dir: Directory used to persist result DataFrames as Parquet files.
+            Without one, DataFrames remain in memory.
         registry: Data-source registry used to materialize parameterized sources
             on cache misses.
 
@@ -212,7 +213,7 @@ class OutputStore:
         self,
         *,
         max_in_memory: int = 5,
-        spill_connector: SQLConnector | None = None,
+        spill_dir: Path | None = None,
         registry: DBRegistry | None = None,
     ) -> None:
         if max_in_memory < 1:
@@ -225,7 +226,7 @@ class OutputStore:
         self._next_result_id = 1
         self._next_source_id = 1
         self._next_artifact_ids: dict[str, int] = {}
-        self._results = _ResultFrameStore(max_in_memory=max_in_memory, spill_connector=spill_connector)
+        self._results = _ResultDataFrameStore(max_in_memory=max_in_memory, spill_dir=spill_dir)
         self._registry = registry
 
     async def add_fixed_result_source(

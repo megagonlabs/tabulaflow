@@ -1,13 +1,10 @@
-"""Tests for OutputStore LRU spill to workspace DuckDB."""
+"""Tests for OutputStore LRU spill to Parquet."""
 
 from pathlib import Path
-from typing import AsyncGenerator
 
 import pandas as pd
 import pytest
 
-from tabulaflow.data.config import SQLConnectorConfig
-from tabulaflow.data.sql import SQLConnector
 from tabulaflow.output.specs import ArtifactSpecError, ChartArtifactSpec, GraphArtifactSpec, MapArtifactSpec
 from tabulaflow.core import ExecResult
 from tabulaflow.output.store import OutputStore, ResultMetadata, SourceResolutionError
@@ -80,8 +77,8 @@ def _make_error_execution() -> tuple[str, ExecResult]:
     return "SELECT bad", ExecResult(error=ErrorInfo(exc_type="ProgrammingError", message="syntax error"))
 
 
-class TestNoConnector:
-    """Without a spill connector, everything stays in memory."""
+class TestNoSpillDirectory:
+    """Without a spill directory, everything stays in memory."""
 
     def test_rejects_zero_max_in_memory(self) -> None:
         with pytest.raises(ValueError, match="max_in_memory must be >= 1"):
@@ -128,29 +125,21 @@ class TestNoConnector:
         assert payload.metadata.affected_rows == 2
 
 
-class TestWithConnector:
-    """With a workspace connector, old DFs are evicted from RAM."""
+class TestWithSpillDirectory:
+    """With a spill directory, old DataFrames are evicted from RAM."""
 
     @pytest.fixture
-    async def workspace(self, tmp_path: Path) -> AsyncGenerator[SQLConnector, None]:
-        db_path = tmp_path / "workspace.duckdb"
-        connector = await SQLConnector.from_url_async(
-            global_id="test-workspace",
-            url=f"duckdb:///{db_path}",
-            db_name="workspace",
-            read_only=False,
-            config=SQLConnectorConfig(schema_cache_mode="off", query_cache_mode="off"),
-        )
-        yield connector
+    def spill_dir(self, tmp_path: Path) -> Path:
+        return tmp_path / "dataframes"
 
-    async def test_no_spill_within_limit(self, workspace: SQLConnector) -> None:
-        h = OutputStore(max_in_memory=5, spill_connector=workspace)
+    async def test_keeps_recent_results_in_memory(self, spill_dir: Path) -> None:
+        h = OutputStore(max_in_memory=5, spill_dir=spill_dir)
         for _ in range(5):
             await h.add_fixed_result_source("db", "sql", *_make_execution())
         assert h._results.in_memory_count == 5
 
-    async def test_evicts_oldest(self, workspace: SQLConnector) -> None:
-        h = OutputStore(max_in_memory=3, spill_connector=workspace)
+    async def test_evicts_oldest(self, spill_dir: Path) -> None:
+        h = OutputStore(max_in_memory=3, spill_dir=spill_dir)
         for _ in range(5):
             await h.add_fixed_result_source("db", "sql", *_make_execution())
 
@@ -159,10 +148,11 @@ class TestWithConnector:
         assert not h._results.has_in_memory("R2")
         assert h._results.has_in_memory("R3")
         assert h._results.is_persisted("R1")
+        assert (spill_dir / "R1.parquet").is_file()
         assert h._results_by_id["R1"].has_dataframe
 
-    async def test_eviction_does_not_mutate_caller_owned_pred_query(self, workspace: SQLConnector) -> None:
-        h = OutputStore(max_in_memory=1, spill_connector=workspace)
+    async def test_eviction_does_not_mutate_caller_owned_pred_query(self, spill_dir: Path) -> None:
+        h = OutputStore(max_in_memory=1, spill_dir=spill_dir)
         query, exec_result = _make_execution(n_rows=10)
 
         await h.add_fixed_result_source("db", "sql", query, exec_result)
@@ -172,8 +162,8 @@ class TestWithConnector:
         assert not h._results.has_in_memory("R1")
         assert h._results_by_id["R1"].has_dataframe
 
-    async def test_get_dataframe_loads_evicted_result(self, workspace: SQLConnector) -> None:
-        h = OutputStore(max_in_memory=2, spill_connector=workspace)
+    async def test_get_dataframe_loads_evicted_result(self, spill_dir: Path) -> None:
+        h = OutputStore(max_in_memory=2, spill_dir=spill_dir)
         await h.add_fixed_result_source("db", "sql", *_make_execution(n_rows=10))
         await h.add_fixed_result_source("db", "sql", *_make_execution(n_rows=20))
         await h.add_fixed_result_source("db", "sql", *_make_execution(n_rows=30))
@@ -185,37 +175,49 @@ class TestWithConnector:
         assert h._results.has_in_memory("R1")
         assert not h._results.has_in_memory("R2")
 
-    async def test_persist_failure_keeps_result_in_memory(
-        self, workspace: SQLConnector, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        h = OutputStore(max_in_memory=1, spill_connector=workspace)
+    async def test_media_survives_parquet_spill_and_reload(self, spill_dir: Path) -> None:
+        image = b"\x89PNG\r\n\x1a\n" + b"payload"
+        df = pd.DataFrame(
+            {
+                "blob": [image, None],
+                "media": [
+                    {"bytes": image, "path": None},
+                    {"bytes": None, "path": "external.png"},
+                ],
+            }
+        )
+        h = OutputStore(max_in_memory=1, spill_dir=spill_dir)
+        await h.add_fixed_result_source("db", "sql", "SELECT media", ExecResult(df=df))
+        await h.add_fixed_result_source("db", "sql", *_make_execution())
 
-        async def fake_persist(storage_key: str, df: pd.DataFrame) -> bool:
-            return storage_key != "R1"
+        payload = await h.get_payload("R1")
+
+        assert payload.df is not None
+        assert payload.df.at[0, "blob"] == image
+        assert pd.isna(payload.df.at[1, "blob"])
+        assert payload.df.at[0, "media"] == {"bytes": image, "path": None}
+        assert payload.df.at[1, "media"] == {"bytes": None, "path": "external.png"}
+
+    async def test_persist_failure_surfaces(self, spill_dir: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        h = OutputStore(max_in_memory=1, spill_dir=spill_dir)
+
+        async def fake_persist(storage_key: str, df: pd.DataFrame) -> None:
+            raise OSError("disk full")
 
         monkeypatch.setattr(h._results, "_persist", fake_persist)
 
-        await h.add_fixed_result_source("db", "sql", *_make_execution(n_rows=10))
-        await h.add_fixed_result_source("db", "sql", *_make_execution(n_rows=20))
-        await h.add_fixed_result_source("db", "sql", *_make_execution(n_rows=30))
+        with pytest.raises(OSError, match="disk full"):
+            await h.add_fixed_result_source("db", "sql", *_make_execution(n_rows=10))
 
-        assert h._results.has_in_memory("R1")
-        assert not h._results.is_persisted("R1")
-        assert not h._results.has_in_memory("R2")
-
-        df = (await h.get_payload("R1")).df
-        assert df is not None
-        assert len(df) == 10
-
-    async def test_error_results_not_tracked(self, workspace: SQLConnector) -> None:
-        h = OutputStore(max_in_memory=2, spill_connector=workspace)
+    async def test_error_results_not_tracked(self, spill_dir: Path) -> None:
+        h = OutputStore(max_in_memory=2, spill_dir=spill_dir)
         with pytest.raises(SourceResolutionError, match="syntax error"):
             await h.add_fixed_result_source("db", "sql", *_make_error_execution())
         await h.add_fixed_result_source("db", "sql", *_make_execution())
         assert h._results.in_memory_count == 1
 
-    async def test_roundtrip_preserves_data(self, workspace: SQLConnector) -> None:
-        h = OutputStore(max_in_memory=1, spill_connector=workspace)
+    async def test_roundtrip_preserves_data(self, spill_dir: Path) -> None:
+        h = OutputStore(max_in_memory=1, spill_dir=spill_dir)
         df_original = pd.DataFrame(
             {
                 "int_col": [1, 2, 3],
@@ -230,13 +232,10 @@ class TestWithConnector:
 
         df_loaded = (await h.get_payload("R1")).df
         assert df_loaded is not None
-        # Hydration goes through the connector read path, which upgrades
-        # to nullable extension dtypes (Int64 / Float64 / string).  Values
-        # round-trip, dtypes don't.
-        pd.testing.assert_frame_equal(df_loaded, df_original, check_dtype=False)
+        pd.testing.assert_frame_equal(df_loaded, df_original)
 
-    async def test_add_chart_does_not_hydrate(self, workspace: SQLConnector) -> None:
-        h = OutputStore(max_in_memory=1, spill_connector=workspace)
+    async def test_add_chart_does_not_hydrate(self, spill_dir: Path) -> None:
+        h = OutputStore(max_in_memory=1, spill_dir=spill_dir)
         await h.add_fixed_result_source("db", "sql", *_make_execution())
         await h.add_fixed_result_source("db", "sql", *_make_execution())
         assert not h._results.has_in_memory("R1")
@@ -250,8 +249,8 @@ class TestWithConnector:
         with pytest.raises(KeyError):
             h.get_artifact("CHART9")
 
-    async def test_add_map_stores_standalone_artifact(self, workspace: SQLConnector) -> None:
-        h = OutputStore(spill_connector=workspace)
+    async def test_add_map_stores_standalone_artifact(self, spill_dir: Path) -> None:
+        h = OutputStore(spill_dir=spill_dir)
         await h.add_fixed_result_source("db", "sql", *_make_execution())
         spec = {"layers": [{"type": "points", "source_id": "S1", "lat": "lat", "lng": "lng"}]}
         with pytest.raises(ArtifactSpecError, match="do not match"):
@@ -263,8 +262,8 @@ class TestWithConnector:
         with pytest.raises(KeyError):
             h.get_artifact("MAP9")
 
-    async def test_add_graph_stores_standalone_artifact(self, workspace: SQLConnector) -> None:
-        h = OutputStore(spill_connector=workspace)
+    async def test_add_graph_stores_standalone_artifact(self, spill_dir: Path) -> None:
+        h = OutputStore(spill_dir=spill_dir)
         graph_spec = {
             "layout": "force",
             "nodes": [{"data": [{"id": "a"}, {"id": "b"}], "id": "id"}],

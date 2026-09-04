@@ -168,7 +168,10 @@ class ChatSession:
         from tabulaflow.agents.tools.protocols import ProgressReportingTool
         from tabulaflow.output.store import OutputStore
 
-        self._output_store: OutputStore = OutputStore(spill_connector=workspace, registry=registry)
+        self._output_store: OutputStore = OutputStore(
+            spill_dir=scratch_dir / "result_dataframes" if scratch_dir is not None else None,
+            registry=registry,
+        )
         self._message_store = MessageStore(workspace)
         self._main_scope = self._message_store.scoped("main")
         subagent_dir = trajectory_log_dir / "subagents" if trajectory_log_dir is not None else None

@@ -62,7 +62,7 @@ async def test_bigint_within_int64_range_returns_int64(duckdb_eng: ThrottledEngi
 
 async def test_hugeint_overflowing_int64_stays_object(duckdb_eng: ThrottledEngine) -> None:
     """HUGEINT values outside C-long range can't be cast to ``Int64``;
-    they must stay ``object`` so ``_sanitize_df_strings`` can stringify
+    they must stay ``object`` so the DataFrame fallback codec can preserve
     them downstream."""
     df = await _query_df(
         duckdb_eng,

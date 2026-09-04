@@ -29,7 +29,6 @@ async def _create_workspace_connector(workspace_db_path: Path) -> SQLConnector:
     """Create the session's writable DuckDB connector."""
     from tabulaflow.data.sql import SQLConnector
     from tabulaflow.data.config import SQLConnectorConfig
-    from tabulaflow.output.store import OUTPUT_STORE_SCHEMA
 
     workspace_db_path.parent.mkdir(parents=True, exist_ok=True)
     abspath = os.path.abspath(workspace_db_path)
@@ -39,9 +38,6 @@ async def _create_workspace_connector(workspace_db_path: Path) -> SQLConnector:
         db_name=WORKSPACE_ALIAS,
         read_only=False,
         config=SQLConnectorConfig(schema_cache_mode="off", query_cache_mode="off"),
-        # The agent spills every query result here, one table per materialized result. Excluding it
-        # keeps the data explorer and schema tools showing data rather than bookkeeping.
-        exclude_schema_names=[OUTPUT_STORE_SCHEMA],
     )
 
 

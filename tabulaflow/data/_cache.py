@@ -18,8 +18,8 @@ from tabulaflow.core._cache import (
 from tabulaflow.core.serialization import json_ready
 from tabulaflow.data.protocols import validate_global_id
 
-_SCHEMA_CACHE_VERSION = "v1"
-_QUERY_CACHE_VERSION = "v1"
+_SCHEMA_CACHE_VERSION = "v2"
+_QUERY_CACHE_VERSION = "v2"
 
 
 def schema_cache_path(cache_dir: Path, global_id: str, *, variant: str | None = None) -> Path:

@@ -365,10 +365,8 @@ def _rows_to_df(rows: Sequence[Any], keys: Any) -> pd.DataFrame:
     matching nullable dtype directly:
 
     * ``int`` (within signed int64 range) → ``Int64``
-    * ``int`` (outside int64 range)       → stays ``object`` — Arrow /
-      Parquet can't represent C-long-overflowing ints, and the
-      downstream ``_sanitize_df_strings`` stringifies these columns
-      before serialization
+    * ``int`` (outside int64 range)       → stays ``object`` for the
+      lossless DataFrame fallback codec
     * ``float`` / mixed ``int+float`` → ``Float64``
     * ``bool``        → ``boolean``
     * ``str``         → ``string``
@@ -397,8 +395,7 @@ def _rows_to_df(rows: Sequence[Any], keys: Any) -> pd.DataFrame:
             # ``astype("Int64")`` raises OverflowError on values outside
             # the signed int64 range (Snowflake NUMBER(38), BigQuery
             # BIGNUMERIC, Postgres unbounded NUMERIC, DuckDB HUGEINT).
-            # Leave those columns as object so ``_sanitize_df_strings``
-            # can stringify them for Arrow/Parquet compatibility.
+            # Leave those columns as object for the lossless DataFrame fallback codec.
             if all(_INT64_MIN <= v <= _INT64_MAX for v in non_null):
                 df[col] = df[col].astype("Int64")
         elif types <= {int, float}:

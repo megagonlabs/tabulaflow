@@ -4,6 +4,7 @@ from importlib import import_module
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
+    from tabulaflow.core.dataframe import deserialize_dataframe, serialize_dataframe
     from tabulaflow.core.media import DetectedMedia
     from tabulaflow.core.registry import ClassRegistry
     from tabulaflow.core.results import ErrorInfo, ExecResult, GraphResult, GraphResultEdge, GraphResultNode
@@ -27,6 +28,7 @@ _LAZY_EXPORTS = {
     "ClassRegistry": ("tabulaflow.core.registry", "ClassRegistry"),
     "ColumnRef": ("tabulaflow.core.schema", "ColumnRef"),
     "DetectedMedia": ("tabulaflow.core.media", "DetectedMedia"),
+    "deserialize_dataframe": ("tabulaflow.core.dataframe", "deserialize_dataframe"),
     "ErrorInfo": ("tabulaflow.core.results", "ErrorInfo"),
     "ExecResult": ("tabulaflow.core.results", "ExecResult"),
     "ForeignKeySchema": ("tabulaflow.core.schema", "ForeignKeySchema"),
@@ -43,6 +45,7 @@ _LAZY_EXPORTS = {
     "SQLDialect": ("tabulaflow.core.schema", "SQLDialect"),
     "SQLSchema": ("tabulaflow.core.schema", "SQLSchema"),
     "SQLTableSchema": ("tabulaflow.core.schema", "SQLTableSchema"),
+    "serialize_dataframe": ("tabulaflow.core.dataframe", "serialize_dataframe"),
     "TableRef": ("tabulaflow.core.schema", "TableRef"),
 }
 
@@ -50,6 +53,7 @@ __all__ = [
     "ClassRegistry",
     "ColumnRef",
     "DetectedMedia",
+    "deserialize_dataframe",
     "ErrorInfo",
     "ExecResult",
     "ForeignKeySchema",
@@ -66,6 +70,7 @@ __all__ = [
     "SQLDialect",
     "SQLSchema",
     "SQLTableSchema",
+    "serialize_dataframe",
     "TableRef",
 ]
 

@@ -4,7 +4,7 @@ from typing import Any, Self
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from tabulaflow.core.serialization import SerializableDataFrame
+from tabulaflow.core.dataframe import SerializableDataFrame
 
 
 class ErrorInfo(BaseModel):
