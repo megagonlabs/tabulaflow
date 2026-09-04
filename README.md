@@ -749,7 +749,11 @@ Sep 3
 - [ ] TUI
   - [ ] Do not auto-scroll when browsing old turns
   - [ ] Onboarding - browser install
-
+- [ ] Public data sources
+  - [ ] Huggingface, analyze, preprocessing (replace jupyter notebook)
+  - [ ] Wikidata
+  - [ ] Government/academic data
+  
 - [ ] Allowed roots policy
 - [ ] image/pdf detail level
 - [ ] divide file_editor tool
