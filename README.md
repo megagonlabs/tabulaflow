@@ -730,9 +730,11 @@ Sep 2
   - [x] media in files and web
 
 Sep 3
+- [x] Rewrite df serialization
 - [ ] Multimodal
-  - [ ] media in database
-- [ ] split file_editor tool
+  - [x] run_query
+  - [ ] subagents
+- [x] Split file_editor tool
 - [ ] Include multimodal data in sample_data
 - [ ] Show pending turns in output pane
 - [ ] Speedup tests
