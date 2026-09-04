@@ -730,13 +730,14 @@ Sep 2
   - [x] media in files and web
 
 Sep 3
-- [x] Rewrite df serialization
+- [x] Rewrite df serialization and spill connector
 - [x] Multimodal
   - [x] run_query
   - [x] run_subagent and extract_rows
   - [x] sample data
 - [x] Split file_editor tool
-- [x] Include multimodal data in sample_data
+- [x] Rewrite write_dataframe_async
+- [ ] transfer_source_table
 - [ ] Show pending turns in output pane
 
 - [ ] Inline artifact citation
