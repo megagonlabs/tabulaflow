@@ -206,7 +206,9 @@ class TestWithSpillDirectory:
 
         monkeypatch.setattr(h._results, "_persist", fake_persist)
 
-        with pytest.raises(OSError, match="disk full"):
+        with pytest.raises(
+            SourceResolutionError, match="query succeeded, but its result could not be stored: disk full"
+        ):
             await h.add_fixed_result_source("db", "sql", *_make_execution(n_rows=10))
 
     async def test_error_results_not_tracked(self, spill_dir: Path) -> None:

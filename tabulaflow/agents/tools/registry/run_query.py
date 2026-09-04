@@ -9,7 +9,7 @@ from pydantic_ai import Tool, ToolReturn
 from tabulaflow.data.protocols import DBConnector
 from tabulaflow.data.registry import DBRegistry
 from tabulaflow.agents.tools.protocols import ToolCallOutcome, _omit_tool_parameters, sum_tool_metrics
-from tabulaflow.output.store import OutputStore
+from tabulaflow.output.store import OutputStore, SourceResolutionError
 from tabulaflow.agents.tools.run_query import LLMParameter, RunQueryTool, RunQueryToolMetrics
 
 _UNSET = object()
@@ -131,12 +131,15 @@ class RegistryRunQueryTool:
         outcome = None
         if exec_result.df is not None:
             outcome = ToolCallOutcome(count=len(exec_result.df), unit="rows")
-        source = await self._output_store.add_fixed_result_source(
-            db_alias=db_alias,
-            connector_type=tool.db_connector.connector_type,
-            query=execution.query,
-            exec_result=exec_result,
-        )
+        try:
+            source = await self._output_store.add_fixed_result_source(
+                db_alias=db_alias,
+                connector_type=tool.db_connector.connector_type,
+                query=execution.query,
+                exec_result=exec_result,
+            )
+        except SourceResolutionError as exc:
+            return ToolReturn(return_value=f"(error: {exc})", metadata=ToolCallOutcome(error=True))
         return ToolReturn(
             return_value=f"[source_id={source.id}]\n{execution.output}",
             content=execution.media_content or None,

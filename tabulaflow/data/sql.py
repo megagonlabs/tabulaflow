@@ -2545,13 +2545,13 @@ class SQLConnector:
                 return_df=True,
                 max_rows=self.config.max_result_rows,
             )
+            return ExecResult(
+                df=result.result,
+                latency_seconds=result.latency_seconds,
+                affected_rows=result.affected_rows,
+            )
         except Exception as e:
             return ExecResult(error=ErrorInfo(exc_type=type(e).__name__, message=str(e)))
-        return ExecResult(
-            df=result.result,
-            latency_seconds=result.latency_seconds,
-            affected_rows=result.affected_rows,
-        )
 
     async def run_query_async(
         self,
@@ -2660,6 +2660,10 @@ class SQLConnector:
 
             result = await self._execute_query_async(query, parameters, effective_timeout)
             if result.df is not None:
-                await write_cached_model(path, result)
-                logger.debug("Query cache write: %s", query_str[:80])
+                try:
+                    await write_cached_model(path, result)
+                except Exception:
+                    logger.warning("Failed to write query cache entry: %s", path, exc_info=True)
+                else:
+                    logger.debug("Query cache write: %s", query_str[:80])
             return result

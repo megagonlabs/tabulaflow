@@ -328,7 +328,10 @@ class OutputStore:
             raise SourceResolutionError(exec_result.error.message)
         df = exec_result.df
         if df is not None:
-            await self._results.put_dataframe(result_id, df)
+            try:
+                await self._results.put_dataframe(result_id, df)
+            except (OSError, TypeError, ValueError) as exc:
+                raise SourceResolutionError(f"query succeeded, but its result could not be stored: {exc}") from exc
         row_count = len(df) if df is not None else None
         columns = [str(column) for column in df.columns] if df is not None else None
         metadata = ResultMetadata(

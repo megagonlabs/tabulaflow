@@ -306,6 +306,66 @@ async def test_query_cache_mode_controls_reuse(tmp_path: Path, monkeypatch: pyte
     assert list((config.cache_dir / "query_results").glob("v2@query-cache@*.json"))
 
 
+async def test_query_result_normalization_error_is_returned(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class Unsupported:
+        pass
+
+    connector = await _connector(
+        tmp_path,
+        global_id="unsupported-result",
+        config=SQLConnectorConfig(schema_cache_mode="off", query_cache_mode="off"),
+    )
+
+    async def execute(*_args: object, **_kwargs: object) -> object:
+        return SimpleNamespace(
+            result=pd.DataFrame({"value": [Unsupported()]}),
+            latency_seconds=0.01,
+            affected_rows=None,
+        )
+
+    monkeypatch.setattr(connector._t_eng, "execute_async", execute)
+    try:
+        result = await connector.run_query_async("SELECT value FROM items")
+    finally:
+        await connector.close_async()
+
+    assert result.error is not None
+    assert "unsupported value type Unsupported" in result.error.message
+
+
+async def test_query_cache_write_failure_does_not_fail_query(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    config = SQLConnectorConfig(
+        cache_dir=tmp_path / "cache",
+        schema_cache_mode="off",
+        query_cache_mode="read_write",
+    )
+    connector = await _connector(
+        tmp_path,
+        global_id="cache-write-failure",
+        config=config,
+        read_only=True,
+    )
+
+    async def fail_write(*_args: object, **_kwargs: object) -> None:
+        raise OSError("disk full")
+
+    monkeypatch.setattr("tabulaflow.data.sql.write_cached_model", fail_write)
+    try:
+        result = await connector.run_query_async("SELECT 1 AS value")
+    finally:
+        await connector.close_async()
+
+    assert result.error is None
+    assert result.df is not None
+    assert result.df.to_dict(orient="records") == [{"value": 1}]
+
+
 async def test_query_cache_rejects_writable_connector(tmp_path: Path) -> None:
     config = SQLConnectorConfig(schema_cache_mode="off", query_cache_mode="read_write")
 

@@ -66,6 +66,24 @@ class TestRunQueryOutcome:
         assert isinstance(result, ToolReturn)
         assert isinstance(result.return_value, str) and result.return_value.startswith("[source_id=")
 
+    async def test_storage_failure_reports_error(
+        self,
+        registry: DBRegistry,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        output_store = OutputStore(spill_dir=tmp_path / "results")
+
+        async def fail_persist(*_args: object, **_kwargs: object) -> None:
+            raise OSError("disk full")
+
+        monkeypatch.setattr(output_store._results, "_persist", fail_persist)
+
+        result = await RegistryRunQueryTool(registry, output_store=output_store)("mydb", "SELECT * FROM t")
+
+        assert result.return_value == "(error: query succeeded, but its result could not be stored: disk full)"
+        assert result.metadata == ToolCallOutcome(error=True)
+
 
 class TestGetTableSchemaOutcome:
     async def test_success_reports_columns(self, registry: DBRegistry) -> None:
