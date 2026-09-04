@@ -496,7 +496,8 @@ body { margin: 0; background: var(--bg); color: var(--text); display: flex; flex
 .tf-table-view .tabulator,
 .tf-table-view .tabulator .tabulator-tableholder { width: 100% !important; }
 .tf-table-view .tabulator .tabulator-tableholder {
-    overscroll-behavior: none;
+    overscroll-behavior-x: none;
+    overscroll-behavior-y: auto;
     scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
     scrollbar-width: thin;
 }
