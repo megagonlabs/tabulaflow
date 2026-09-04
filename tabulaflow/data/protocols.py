@@ -76,9 +76,9 @@ class SQLConnectorProtocol(Protocol):
         df: pd.DataFrame,
         table_name: str,
         schema_name: str | None = None,
-        mode: Literal["append", "replace"] = "append",
+        mode: Literal["create", "append", "replace"] = "create",
     ) -> int:
-        """Write a DataFrame and return the number of rows written."""
+        """Create, append, or replace a table and return the number of rows written."""
         ...
 
 

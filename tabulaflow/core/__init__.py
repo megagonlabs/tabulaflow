@@ -4,7 +4,12 @@ from importlib import import_module
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    from tabulaflow.core.dataframe import deserialize_dataframe, serialize_dataframe
+    from tabulaflow.core.dataframe import (
+        dataframe_to_arrow,
+        deserialize_dataframe,
+        normalize_dataframe,
+        serialize_dataframe,
+    )
     from tabulaflow.core.media import DetectedMedia
     from tabulaflow.core.registry import ClassRegistry
     from tabulaflow.core.results import ErrorInfo, ExecResult, GraphResult, GraphResultEdge, GraphResultNode
@@ -28,6 +33,7 @@ _LAZY_EXPORTS = {
     "ClassRegistry": ("tabulaflow.core.registry", "ClassRegistry"),
     "ColumnRef": ("tabulaflow.core.schema", "ColumnRef"),
     "DetectedMedia": ("tabulaflow.core.media", "DetectedMedia"),
+    "dataframe_to_arrow": ("tabulaflow.core.dataframe", "dataframe_to_arrow"),
     "deserialize_dataframe": ("tabulaflow.core.dataframe", "deserialize_dataframe"),
     "ErrorInfo": ("tabulaflow.core.results", "ErrorInfo"),
     "ExecResult": ("tabulaflow.core.results", "ExecResult"),
@@ -37,6 +43,7 @@ _LAZY_EXPORTS = {
     "GraphResult": ("tabulaflow.core.results", "GraphResult"),
     "GraphResultEdge": ("tabulaflow.core.results", "GraphResultEdge"),
     "GraphResultNode": ("tabulaflow.core.results", "GraphResultNode"),
+    "normalize_dataframe": ("tabulaflow.core.dataframe", "normalize_dataframe"),
     "NodeSchema": ("tabulaflow.core.schema", "NodeSchema"),
     "PropertyGraphSchema": ("tabulaflow.core.schema", "PropertyGraphSchema"),
     "RelationshipEndpoint": ("tabulaflow.core.schema", "RelationshipEndpoint"),
@@ -53,6 +60,7 @@ __all__ = [
     "ClassRegistry",
     "ColumnRef",
     "DetectedMedia",
+    "dataframe_to_arrow",
     "deserialize_dataframe",
     "ErrorInfo",
     "ExecResult",
@@ -63,6 +71,7 @@ __all__ = [
     "GraphResultEdge",
     "GraphResultNode",
     "NodeSchema",
+    "normalize_dataframe",
     "PropertyGraphSchema",
     "RelationshipEndpoint",
     "RelationshipSchema",

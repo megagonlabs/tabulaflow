@@ -324,7 +324,7 @@ def summarize_tool_args(name: str, args: Mapping[str, object]) -> str:
         target_alias = str(args.get("target_alias", ""))
         target_schema = str(args.get("target_schema", "")) if args.get("target_schema") else ""
         target_table = str(args.get("target_table", ""))
-        mode = str(args.get("mode", "append"))
+        mode = str(args.get("mode", "create"))
         target = f"{target_schema}.{target_table}" if target_schema else target_table
         return f"Transfer {source_id} to [{target_alias}] {target} ({mode})"
     if name == "run_subagent_for_each_row":

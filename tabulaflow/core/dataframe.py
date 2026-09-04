@@ -7,7 +7,7 @@ values. Normalization always returns a copy.
 
 The core abstractions are:
 
-* ``_normalize_dataframe`` establishes the in-memory contract.
+* ``normalize_dataframe`` establishes the in-memory contract.
 * ``serialize_dataframe`` and ``deserialize_dataframe`` provide a lossless,
   versioned Parquet representation.
 * ``SerializableDataFrame`` applies that representation to Pydantic models.
@@ -115,7 +115,7 @@ def _normalize_value(value: object, path: str) -> object:
     raise ValueError(f"{path} has unsupported value type {type(value).__name__}")
 
 
-def _normalize_dataframe(df: pd.DataFrame) -> pd.DataFrame:
+def normalize_dataframe(df: pd.DataFrame) -> pd.DataFrame:
     """Copy and normalize a query-result DataFrame.
 
     Missing object values become ``None``; NumPy values become portable Python
@@ -302,6 +302,26 @@ def _inferred_object_array(series: pd.Series) -> pa.Array | None:
     return None
 
 
+def dataframe_to_arrow(df: pd.DataFrame) -> pa.Table:
+    """Convert a DataFrame to Arrow without coercing heterogeneous values."""
+    normalized = normalize_dataframe(df)
+    arrays: list[pa.Array] = []
+    for column in normalized.columns:
+        series = normalized[column]
+        if series.dtype != object:
+            arrays.append(_native_arrow_array(series, str(column)))
+            continue
+        values = [value for value in series if not _is_missing(value)]
+        if values and all(isinstance(value, UUID) for value in values):
+            arrays.append(pa.array([None if _is_missing(value) else value.bytes for value in series], type=pa.uuid()))
+            continue
+        array = _inferred_object_array(series)
+        if array is None:
+            raise ValueError(f"column {str(column)!r} cannot be represented as one Arrow type without coercion")
+        arrays.append(array)
+    return pa.Table.from_arrays(arrays, names=[str(column) for column in normalized.columns])
+
+
 def _fallback_arrow_array(series: pd.Series, column: str) -> tuple[pa.Array, pa.Field]:
     """Encode a normalized object column with the tagged JSON codec."""
     encoded = [
@@ -340,7 +360,7 @@ def serialize_dataframe(df: pd.DataFrame) -> bytes:
         TypeError: If ``df`` is not a pandas DataFrame.
         ValueError: If the DataFrame contains unsupported values.
     """
-    normalized = _normalize_dataframe(df)
+    normalized = normalize_dataframe(df)
     arrays: list[pa.Array] = []
     fields: list[pa.Field] = []
     for column in normalized.columns:
@@ -416,12 +436,12 @@ def deserialize_dataframe(payload: bytes) -> pd.DataFrame:
     """
     table = _read_parquet(payload)
     row_count, fallback_columns = _parse_metadata(table)
-    return _normalize_dataframe(_decode_table(table, row_count, fallback_columns))
+    return normalize_dataframe(_decode_table(table, row_count, fallback_columns))
 
 
 def _deserialize_adapter(value: object) -> pd.DataFrame:
     if isinstance(value, pd.DataFrame):
-        return _normalize_dataframe(value)
+        return normalize_dataframe(value)
     if not isinstance(value, dict) or value.get("format") != _DATAFRAME_FORMAT:
         raise ValueError("invalid DataFrame payload")
     encoded = value.get("parquet_base64")

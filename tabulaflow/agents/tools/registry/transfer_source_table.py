@@ -44,7 +44,7 @@ class TransferSourceTableTool:
         target_alias: str,
         target_schema: str | None,
         target_table: str,
-        mode: Literal["append", "replace"] = "append",
+        mode: Literal["create", "append", "replace"] = "create",
     ) -> ToolReturn:
         """Transfer a fixed source's table into a SQL target table.
 
@@ -55,7 +55,8 @@ class TransferSourceTableTool:
             target_alias: Destination database alias.
             target_schema: Optional destination schema name.
             target_table: Destination table name.
-            mode: ``append`` to insert rows, ``replace`` to recreate table.
+            mode: ``create`` to create a new table, ``append`` to insert into an
+                existing table, or ``replace`` to recreate the table.
         """
         try:
             result = await self.execute(source_id, target_alias, target_schema, target_table, mode)
@@ -69,7 +70,7 @@ class TransferSourceTableTool:
         target_alias: str,
         target_schema: str | None,
         target_table: str,
-        mode: Literal["append", "replace"] = "append",
+        mode: Literal["create", "append", "replace"] = "create",
     ) -> str:
         """Transfer one fixed source into a registered SQL target."""
         try:

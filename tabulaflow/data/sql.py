@@ -50,9 +50,9 @@ errors in :class:`ExecResult` rather than raising — except
 ``CancelledError``, which propagates.
 
 **DataFrame writing with rollback.**
-:meth:`SQLConnector.write_dataframe_async` runs ``pandas.to_sql``
-inside the cancel-strategy plumbing, so a cancelled write rolls
-back on transactional dialects.
+:meth:`SQLConnector.write_dataframe_async` uses a native relation for DuckDB
+and ``pandas.to_sql`` elsewhere, inside the cancel-strategy plumbing, so a
+cancelled write rolls back on transactional dialects.
 
 Architecture
 ============
@@ -86,6 +86,7 @@ from typing import Any, Callable, ClassVar, Coroutine, Sequence, Mapping, Litera
 from dataclasses import dataclass
 import collections
 import pandas as pd
+import pyarrow as pa
 import os
 import time
 import asyncio
@@ -98,6 +99,7 @@ from sqlalchemy.exc import DBAPIError, SAWarning
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncEngine
 from sqlalchemy.engine.url import URL as SQLAlchemyURL
 from sqlalchemy import create_engine, event, select, func, distinct, inspect, text
+from tabulaflow.core.dataframe import dataframe_to_arrow, normalize_dataframe
 from tabulaflow.core.results import ErrorInfo, ExecResult
 from tabulaflow.core.schema import (
     SQLDialect,
@@ -2404,19 +2406,21 @@ class SQLConnector:
                         raw_views = await async_inspector.get_view_names(schema=ref.schema_name)
                         view_names_by_schema[ref.schema_name] = {_denorm(self._t_eng, v) for v in raw_views}
 
-                new_tables = await asyncio.gather(
-                    *[
-                        _build_table_async(
-                            self._t_eng,
-                            ref.table_name,
-                            ref.schema_name,
-                            is_view=ref.table_name in view_names_by_schema.get(ref.schema_name, set()),
-                            collect_column_stats=self.config.collect_column_stats,
-                            query_timeout_seconds=self.config.query_timeout_seconds,
-                        )
-                        for ref in tables
-                    ]
-                )
+                with warnings.catch_warnings(record=True):
+                    warnings.filterwarnings("always", message="Did not recognize type", category=SAWarning)
+                    new_tables = await asyncio.gather(
+                        *[
+                            _build_table_async(
+                                self._t_eng,
+                                ref.table_name,
+                                ref.schema_name,
+                                is_view=ref.table_name in view_names_by_schema.get(ref.schema_name, set()),
+                                collect_column_stats=self.config.collect_column_stats,
+                                query_timeout_seconds=self.config.query_timeout_seconds,
+                            )
+                            for ref in tables
+                        ]
+                    )
 
                 requested = {(ref.schema_name, ref.table_name) for ref in tables}
                 kept = [t for t in self.schema.tables if (t.schema_name, t.name) not in requested]
@@ -2476,43 +2480,82 @@ class SQLConnector:
         df: pd.DataFrame,
         table_name: str,
         schema_name: str | None = None,
-        mode: Literal["append", "replace"] = "append",
+        mode: Literal["create", "append", "replace"] = "create",
     ) -> int:
         """Write a DataFrame into a database table.
 
         On success, automatically refreshes ``self.schema`` for the
         target table via :meth:`refresh_schema_async` so the connector
-        reflects the new column types and (for ``mode="replace"``) the
-        new table identity.  This costs one extra round trip per write
-        — callers that batch many writes may prefer to skip per-write
-        refresh and call :meth:`refresh_schema_async` once at the end.
+        reflects the new column types and table identity. DuckDB uses a
+        native registered relation; other dialects use ``pandas.to_sql``.
 
         Args:
             df: DataFrame to persist.
             table_name: Destination table name.
             schema_name: Optional destination schema name.
-            mode: Write mode. ``append`` inserts rows into an existing table
-                (or creates one if missing). ``replace`` recreates the table.
+            mode: Write mode. ``create`` creates a new table and fails if it
+                exists. ``append`` requires an existing table. ``replace``
+                recreates the table.
 
         Returns:
             Number of rows written.
 
         Raises:
-            ValueError: If ``table_name`` is empty, ``mode`` is invalid, or
-                the connector is read-only.
+            TypeError: If ``df`` is not a pandas DataFrame.
+            ValueError: If the connector is read-only, an argument or value is
+                invalid, or the requested mode conflicts with table existence.
         """
         self._check_open()
         if self.read_only:
             raise ValueError("write_dataframe_async is blocked when read_only=True")
+        if not isinstance(df, pd.DataFrame):
+            raise TypeError(f"df must be a pandas DataFrame, got {type(df).__name__}")
         if not table_name.strip():
             raise ValueError("table_name must be non-empty")
-        if mode not in {"append", "replace"}:
+        if mode not in {"create", "append", "replace"}:
             raise ValueError(f"Unsupported mode: {mode!r}")
-
-        if_exists: Literal["append", "replace"] = "replace" if mode == "replace" else "append"
+        if len(df.columns) == 0:
+            raise ValueError("df must contain at least one column")
+        names = [str(column) for column in df.columns]
+        if len(set(names)) != len(names):
+            raise ValueError("df column names must be unique after conversion to strings")
 
         def write(conn: sqlalchemy.engine.Connection) -> None:
-            df.to_sql(
+            table_exists = inspect(conn).has_table(table_name, schema=schema_name)
+            if mode == "create" and table_exists:
+                raise ValueError(f"cannot create table {table_name!r}: table already exists")
+            if mode == "append" and not table_exists:
+                raise ValueError(f"cannot append to missing table {table_name!r}")
+            if self.language == "duckdb":
+                arrow_table = dataframe_to_arrow(df)
+                if mode != "append":
+                    ambiguous = [field.name for field in arrow_table.schema if pa.types.is_null(field.type)]
+                    if ambiguous:
+                        raise ValueError(f"cannot infer types for all-NULL columns: {ambiguous}")
+                preparer = conn.dialect.identifier_preparer
+                target = preparer.quote(table_name)
+                if schema_name is not None:
+                    target = f"{preparer.quote_schema(schema_name)}.{target}"
+                relation_name = f"_tabulaflow_df_{threading.get_ident():x}_{id(arrow_table):x}"
+                relation = preparer.quote(relation_name)
+                raw = conn.connection.driver_connection
+                if raw is None:
+                    raise RuntimeError("DuckDB connection is unavailable")
+                raw.register(relation_name, arrow_table)
+                try:
+                    if mode == "create":
+                        conn.exec_driver_sql(f"CREATE TABLE {target} AS SELECT * FROM {relation}")
+                    elif mode == "append":
+                        conn.exec_driver_sql(f"INSERT INTO {target} BY NAME SELECT * FROM {relation}")
+                    else:
+                        conn.exec_driver_sql(f"CREATE OR REPLACE TABLE {target} AS SELECT * FROM {relation}")
+                finally:
+                    raw.unregister(relation_name)
+                return
+
+            normalized = normalize_dataframe(df)
+            if_exists: Literal["fail", "append", "replace"] = "fail" if mode == "create" else mode
+            normalized.to_sql(
                 name=table_name,
                 con=conn,
                 schema=schema_name,
@@ -2521,7 +2564,7 @@ class SQLConnector:
                 method="multi",
             )
 
-        await self._t_eng.run_with_conn_async(write)
+        await self._t_eng.run_with_conn_async(write, ddl=mode != "append")
 
         # Resolve None to the schema the live DB actually wrote into, so the
         # in-memory schema label matches a full re-introspection (avoids a
