@@ -865,7 +865,16 @@ def _populate_pane(
             pane_dir,
             title="Map result",
             user="Show locations on an interactive map.",
-            assistant="A standalone map card showing every supported geometry type from one query result.",
+            assistant="\n\n".join(
+                [
+                    _long_result_response(
+                        "A standalone map card showing every supported geometry type from one query result. "
+                        "The extended explanation makes this fixture useful for checking page scrolling before "
+                        "the pointer reaches the interactive map."
+                    )
+                ]
+                * 4
+            ),
             cards=[_map_showcase_card(pane_dir)],
         )
         _push_turn(
