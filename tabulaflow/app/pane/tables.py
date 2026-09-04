@@ -10,35 +10,27 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from tabulaflow.app.pane.contract import ColumnDesc, TableCardData, TableData
-from tabulaflow.core.media import DetectedMedia, detect_media, extract_media_bytes
+from tabulaflow.core.media import detect_media, extract_media_bytes
 
 if TYPE_CHECKING:
     import pandas as pd
 
 
-def _sniff_column(series: "pd.Series", *, sample_n: int = 5, threshold: float = 0.6) -> DetectedMedia | None:
-    """Vote on a column's MIME type from its first ``sample_n`` non-null values.
+def _is_media_column(series: "pd.Series", *, sample_n: int = 5, threshold: float = 0.6) -> bool:
+    """Return whether enough sampled values contain recognizable media.
 
-    Returns the winning ``(suffix, mime)`` if at least ``threshold`` of the
-    sample agrees, else ``None``. Avoids misclassifying mixed-type columns.
+    Media formats may differ between cells. The threshold avoids treating an
+    ordinary mixed-value column as media because of an incidental media value.
     """
     sample = series.dropna().head(sample_n)
     if sample.empty:
-        return None
-    votes: dict[DetectedMedia, int] = {}
-    for val in sample:
-        blob = extract_media_bytes(val, decode_base64=True)
-        if blob is None:
-            continue
-        sniffed = detect_media(blob)
-        if sniffed is not None:
-            votes[sniffed] = votes.get(sniffed, 0) + 1
-    if not votes:
-        return None
-    winner, count = max(votes.items(), key=lambda kv: kv[1])
-    if count / len(sample) >= threshold:
-        return winner
-    return None
+        return False
+    recognized = sum(
+        detect_media(blob) is not None
+        for value in sample
+        if (blob := extract_media_bytes(value, decode_base64=True)) is not None
+    )
+    return recognized / len(sample) >= threshold
 
 
 def _safe_col_name(name: str) -> str:
@@ -144,11 +136,10 @@ def _build_table_data(
     truncated_rows = max(0, len(df) - max_rows)
     view = df.head(max_rows)
 
-    col_types: dict[str, DetectedMedia] = {}
+    media_columns: set[str] = set()
     for col in view.columns:
-        sniffed = _sniff_column(view[col])
-        if sniffed is not None:
-            col_types[str(col)] = sniffed
+        if _is_media_column(view[col]):
+            media_columns.add(str(col))
 
     sib_dir = output_dir / asset_stem
     sib_dir_created = False
@@ -160,7 +151,7 @@ def _build_table_data(
         field = f"c{col_idx}"
         title_str = str(col)
         field_by_column[title_str] = field
-        if title_str in col_types:
+        if title_str in media_columns:
             column_defs.append(
                 {
                     "title": title_str,
@@ -205,11 +196,14 @@ def _build_table_data(
             val = view.iloc[row_idx, col_idx]
             if mode == "media":
                 blob = extract_media_bytes(val, decode_base64=True)
-                detected = col_types[col_name]
-                ext, mime = detected.suffix, detected.media_type
                 if blob is None:
-                    row_data[field] = None
+                    row_data[field] = _coerce_text_value(val)
                     continue
+                detected = detect_media(blob)
+                if detected is None:
+                    row_data[field] = _coerce_text_value(val)
+                    continue
+                ext, mime = detected.suffix, detected.media_type
                 if mime != "application/pdf" and len(blob) <= inline_cap:
                     b64 = base64.b64encode(blob).decode("ascii")
                     src = f"data:{mime};base64,{b64}"
@@ -242,7 +236,7 @@ def _build_table_data(
 
     table_payload: TableData = {
         "columns": column_defs,
-        "hasMedia": bool(col_types),
+        "hasMedia": bool(media_columns),
         "maxHeight": max_height,
         "displayCap": _CELL_DISPLAY_CAP,
         "meta": table_view_meta(len(df), len(df.columns), max_rows=max_rows),
