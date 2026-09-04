@@ -266,6 +266,36 @@ class TestMediaInput:
         assert "succeeded for 1 rows" in summary
         assert seen_media
 
+    async def test_attaches_multiple_media_from_one_collection_cell(self, conn: SQLConnector) -> None:
+        images = [_png(), _png()]
+        await conn.run_query_async("CREATE TABLE t(id INTEGER, images BLOB[], label VARCHAR)")
+        await conn.run_query_async("INSERT INTO t VALUES (1, ?, NULL)", (images,))
+
+        def stub(messages: list[ModelMessage], _info: AgentInfo) -> ModelResponse:
+            request = next(message for message in reversed(messages) if isinstance(message, ModelRequest))
+            prompt = next(part for part in request.parts if isinstance(part, UserPromptPart))
+            assert isinstance(prompt.content, list)
+            assert isinstance(prompt.content[0], str)
+            assert "[Media #1: image/png" in prompt.content[0]
+            assert "[Media #2: image/png" in prompt.content[0]
+            assert prompt.content[1] == "Media #1 from column images[0]:"
+            assert isinstance(prompt.content[2], BinaryContent)
+            assert prompt.content[3] == "Media #2 from column images[1]:"
+            assert isinstance(prompt.content[4], BinaryContent)
+            return ModelResponse(parts=[ToolCallPart(tool_name="submit_answer", args={"label": "two images"})])
+
+        summary = await RunSubagentForEachRowTool(conn, subagent_llm=FunctionModel(stub)).execute(
+            None,
+            "t",
+            task_query="SELECT id, images FROM t",
+            task_instruction="classify {{ images }}",
+            key_columns=["id"],
+            output_columns=["label"],
+        )
+
+        assert "succeeded for 1 rows" in summary
+        assert await _rows(conn, "SELECT label FROM t") == [{"label": "two images"}]
+
     async def test_unknown_binary_fails_before_fanout(self, conn: SQLConnector) -> None:
         await conn.run_query_async("CREATE TABLE t(id INTEGER, payload BLOB, label VARCHAR)")
         await conn.run_query_async("INSERT INTO t VALUES (1, 'not media'::BLOB, NULL)")

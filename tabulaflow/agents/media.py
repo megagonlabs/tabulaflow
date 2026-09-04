@@ -4,8 +4,10 @@ from __future__ import annotations
 
 import io
 import warnings
+from collections.abc import Sequence
 from dataclasses import dataclass
 
+import numpy as np
 from PIL import Image, UnidentifiedImageError
 from pydantic_ai.messages import BinaryContent
 from pypdf import PdfReader, PdfWriter
@@ -35,11 +37,19 @@ class InlineMediaCandidate:
     estimated_size: int | None
 
 
+@dataclass(frozen=True)
+class InlineMediaItem:
+    """One scalar item found in an inline media value or collection."""
+
+    candidate: InlineMediaCandidate
+    index: int | None = None
+
+
 class UnrecognizedMediaError(ValueError):
     """Raised when an inline binary value has no identifiable media type."""
 
 
-def inspect_inline_media(value: object) -> InlineMediaCandidate | None:
+def _inspect_inline_media_item(value: object) -> InlineMediaCandidate | None:
     """Inspect an inline binary value without decoding a Data URI."""
     if isinstance(value, (bytes, bytearray, memoryview)):
         size = value.nbytes if isinstance(value, memoryview) else len(value)
@@ -67,6 +77,45 @@ def inspect_inline_media(value: object) -> InlineMediaCandidate | None:
     padding = len(compact) - len(compact.rstrip("="))
     estimated_size = max(0, len(compact) * 3 // 4 - padding)
     return InlineMediaCandidate(stripped, declared_type, estimated_size)
+
+
+def inspect_inline_media(value: object) -> tuple[InlineMediaItem, ...] | None:
+    """Inspect a scalar media value or a top-level collection of media values.
+
+    Collections may mix supported media representations and retain their source
+    order. Arbitrary nested structures are intentionally not traversed.
+    """
+    candidate = _inspect_inline_media_item(value)
+    if candidate is not None:
+        return (InlineMediaItem(candidate),)
+
+    values: Sequence[object]
+    if isinstance(value, np.ndarray):
+        if value.ndim != 1:
+            return None
+        values = value.tolist()
+    elif isinstance(value, (list, tuple)):
+        values = value
+    else:
+        return None
+
+    items: list[InlineMediaItem] = []
+    non_media_indices: list[int] = []
+    for index, item in enumerate(values):
+        if item is None:
+            continue
+        item_candidate = _inspect_inline_media_item(item)
+        if item_candidate is None:
+            non_media_indices.append(index)
+        else:
+            items.append(InlineMediaItem(item_candidate, index))
+
+    if not items:
+        return None
+    if non_media_indices:
+        indices = ", ".join(str(index) for index in non_media_indices)
+        raise ValueError(f"media collection contains non-media values at indices {indices}")
+    return tuple(items)
 
 
 def materialize_inline_media(candidate: InlineMediaCandidate, *, max_bytes: int) -> BinaryContent:
@@ -186,6 +235,7 @@ def _normalize_image(data: bytes, media_type: str) -> tuple[bytes, str]:
 
 __all__ = [
     "InlineMediaCandidate",
+    "InlineMediaItem",
     "PdfSelection",
     "UnrecognizedMediaError",
     "inspect_inline_media",

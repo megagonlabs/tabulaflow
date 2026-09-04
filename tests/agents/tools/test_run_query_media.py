@@ -3,6 +3,7 @@ import io
 from typing import Any, ClassVar, Literal, cast
 
 import pandas as pd
+import numpy as np
 from PIL import Image
 import pytest
 from pydantic_ai import Agent, ToolReturn
@@ -115,6 +116,27 @@ async def test_run_query_attaches_images_and_pdfs_in_cell_order() -> None:
     assert content[2] == "Media #2 from result row 1, column document:"
     assert isinstance(content[3], BinaryContent)
     assert content[3].media_type == "application/pdf"
+
+
+async def test_run_query_attaches_mixed_media_from_one_collection_cell() -> None:
+    image = _png()
+    document = _pdf()
+    media = np.array([image, {"bytes": document, "media_type": "application/pdf"}], dtype=object)
+    result = ExecResult(df=pd.DataFrame({"media": [media]}))
+
+    returned = await RunQueryTool(cast(Any, _ResultConnector(result)), enable_media=True)(
+        "SELECT media", include_media=True
+    )
+
+    text = _text(returned)
+    assert "[Media #1: image/png" in text
+    assert "[Media #2: application/pdf" in text
+    assert returned.content is not None
+    content = list(returned.content)
+    assert content[0] == "Media #1 from result row 1, column media[0]:"
+    assert isinstance(content[1], BinaryContent) and content[1].media_type == "image/png"
+    assert content[2] == "Media #2 from result row 1, column media[1]:"
+    assert isinstance(content[3], BinaryContent) and content[3].media_type == "application/pdf"
 
 
 async def test_run_query_accepts_data_uri_media_without_exposing_base64() -> None:

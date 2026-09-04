@@ -212,7 +212,7 @@ class EntityExtractor:
 
     async def extract(
         self,
-        content: str | BinaryContent,
+        content: str | BinaryContent | Sequence[BinaryContent],
         *,
         instruction: str,
         doc_context: str | None = None,
@@ -222,7 +222,8 @@ class EntityExtractor:
         """Extract entities from one document.
 
         Args:
-            content: Document text, a validated image, or a validated PDF.
+            content: Document text, validated image/PDF media, or an ordered
+                collection of validated image/PDF media.
             instruction: Natural-language description of what one entity is and how
                 to populate ``output_columns``.
             doc_context: Optional document-level context (e.g. ``"Source: <title> (<url>)"``)
@@ -248,8 +249,14 @@ class EntityExtractor:
                 f"{instruction}\n\n<document_excerpt>\n{_render_excerpt(c, doc_context)}\n</document_excerpt>"
                 for c in chunks
             ]
-        else:
+        elif isinstance(content, BinaryContent):
             prompts = _media_prompts(content, instruction, doc_context)
+        else:
+            prompts = []
+            total = len(content)
+            for index, item in enumerate(content, start=1):
+                item_context = "\n".join(part for part in (doc_context, f"Media item {index} of {total}") if part)
+                prompts.extend(_media_prompts(item, instruction, item_context))
 
         prefix = f"{trajectory_label}-" if trajectory_label else ""
 

@@ -2,10 +2,11 @@ import io
 import base64
 
 import pytest
+import numpy as np
 from PIL import Image
 from pydantic_ai.messages import BinaryImage
 
-from tabulaflow.agents.media import to_binary_content
+from tabulaflow.agents.media import inspect_inline_media, to_binary_content
 
 
 def _image_bytes(format: str) -> bytes:
@@ -61,3 +62,26 @@ def test_to_binary_content_rejects_decompression_bombs(monkeypatch: pytest.Monke
 
     with pytest.raises(ValueError, match="invalid image/png image"):
         to_binary_content(data)
+
+
+def test_inspect_inline_media_supports_ordered_mixed_collections() -> None:
+    image = _image_bytes("PNG")
+    values = np.array(
+        [
+            {"bytes": image, "media_type": "image/png"},
+            None,
+            {"bytes": b"pdf", "media_type": "application/pdf"},
+        ],
+        dtype=object,
+    )
+
+    items = inspect_inline_media(values)
+
+    assert items is not None
+    assert [item.index for item in items] == [0, 2]
+    assert [item.candidate.declared_type for item in items] == ["image/png", "application/pdf"]
+
+
+def test_inspect_inline_media_rejects_partially_media_collections() -> None:
+    with pytest.raises(ValueError, match="non-media values at indices 1"):
+        inspect_inline_media([_image_bytes("PNG"), "caption"])

@@ -159,6 +159,36 @@ async def test_entity_extractor_splits_pdfs_into_page_batches(monkeypatch: pytes
     assert "PDF pages 41-41 of 41" in str(prompts[2][0])
 
 
+async def test_entity_extractor_processes_ordered_mixed_media_collection(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    extractor = EntityExtractor(["name"])
+    prompts: list[list[UserContent]] = []
+
+    async def capture(prompt: str | Sequence[UserContent], _trajectory: str) -> list[dict[str, Any]]:
+        assert not isinstance(prompt, str)
+        prompts.append(list(prompt))
+        return []
+
+    monkeypatch.setattr(extractor, "_extract_chunk", capture)
+
+    await extractor.extract(
+        [
+            BinaryContent(data=_png(), media_type="image/png"),
+            BinaryContent(data=_pdf(1), media_type="application/pdf"),
+        ],
+        instruction="Extract every name.",
+    )
+
+    assert len(prompts) == 2
+    assert "Media item 1 of 2" in str(prompts[0][0])
+    assert "Media item 2 of 2" in str(prompts[1][0])
+    assert [prompt[1].media_type for prompt in prompts if isinstance(prompt[1], BinaryContent)] == [
+        "image/png",
+        "application/pdf",
+    ]
+
+
 async def test_tool_resolves_types_and_appends_typed_rows(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """The tool resolves output-column types from the schema and appends native values.
 
@@ -266,6 +296,49 @@ async def test_tool_extracts_rows_from_inline_image(tmp_path: Path, monkeypatch:
     assert "Extracted 1 entities" in summary
     assert len(captured) == 1 and captured[0].media_type == "image/png"
     assert (await conn.run_query_async("SELECT name FROM products")).df.iloc[0, 0] == "Widget"  # type: ignore[union-attr]
+
+
+async def test_tool_extracts_from_mixed_media_collection(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    db_path = str(tmp_path / "mixed-media.duckdb")
+    raw = duckdb.connect(db_path)
+    raw.execute("CREATE TABLE source (content BLOB[])")
+    raw.execute("INSERT INTO source VALUES (?)", [[_png(), _pdf(1)]])
+    raw.execute("CREATE TABLE products (name VARCHAR)")
+    raw.close()
+
+    conn = await SQLConnector.from_url_async(
+        global_id="test+extract_mixed_media_rows",
+        url=f"duckdb:///{db_path}",
+        db_name="mixed_media",
+        read_only=False,
+        config=SQLConnectorConfig(schema_cache_mode="off", query_cache_mode="off"),
+    )
+    conn.read_only = False
+    captured: list[tuple[BinaryContent, ...]] = []
+
+    class FakeExtractor:
+        def __init__(self, *_: object, **__: object) -> None:
+            pass
+
+        async def extract(
+            self, content: str | BinaryContent | Sequence[BinaryContent], **_: object
+        ) -> list[dict[str, object]]:
+            assert not isinstance(content, (str, BinaryContent))
+            captured.append(tuple(content))
+            return [{"name": "Widget"}]
+
+    monkeypatch.setattr(mod, "EntityExtractor", FakeExtractor)
+
+    summary = await ExtractRowsFromDocumentsTool(conn).execute(
+        None,
+        "products",
+        task_query="SELECT content FROM source",
+        task_instruction="Extract every product.",
+        output_columns=["name"],
+    )
+
+    assert "Extracted 1 entities" in summary
+    assert [item.media_type for item in captured[0]] == ["image/png", "application/pdf"]
 
 
 async def test_tool_rejects_unknown_binary_before_extraction(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

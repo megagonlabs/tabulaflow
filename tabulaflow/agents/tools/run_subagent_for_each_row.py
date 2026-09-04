@@ -86,24 +86,36 @@ def _prepare_task_row(row_idx: int, row: dict[str, object]) -> _TaskRow:
     attached = 0
     total_bytes = 0
     for column, value in row.items():
-        candidate = inspect_inline_media(value)
-        if candidate is None:
-            continue
-        if attached >= _MAX_MEDIA_ITEMS_PER_ROW:
-            raise ValueError(f"task_query returned more than {_MAX_MEDIA_ITEMS_PER_ROW} media items in row {row_idx}")
         try:
-            content = materialize_inline_media(candidate, max_bytes=_MAX_MEDIA_BYTES_PER_ROW)
+            items = inspect_inline_media(value)
         except ValueError as exc:
             raise ValueError(
-                f"task_query returned unusable binary data in row {row_idx}, column {column!r}: {exc}; "
-                "remove the column or convert it to hex, base64, JSON, or another textual representation"
+                f"task_query returned an invalid media collection in row {row_idx}, column {column!r}: {exc}"
             ) from exc
-        if total_bytes + len(content.data) > _MAX_MEDIA_BYTES_PER_ROW:
-            raise ValueError(f"media in row {row_idx} exceeds the {_MAX_MEDIA_BYTES_PER_ROW}-byte total per-row limit")
-        attached += 1
-        total_bytes += len(content.data)
-        prompt_values[column] = f"[Media #{attached}: {content.media_type}, {len(content.data)} bytes]"
-        media.extend((f"Media #{attached} from column {column}:", content))
+        if items is None:
+            continue
+        if attached + len(items) > _MAX_MEDIA_ITEMS_PER_ROW:
+            raise ValueError(f"task_query returned more than {_MAX_MEDIA_ITEMS_PER_ROW} media items in row {row_idx}")
+        descriptors: list[str] = []
+        for item in items:
+            try:
+                content = materialize_inline_media(item.candidate, max_bytes=_MAX_MEDIA_BYTES_PER_ROW)
+            except ValueError as exc:
+                source = column if item.index is None else f"{column}[{item.index}]"
+                raise ValueError(
+                    f"task_query returned unusable binary data in row {row_idx}, column {source!r}: {exc}; "
+                    "remove the column or convert it to hex, base64, JSON, or another textual representation"
+                ) from exc
+            if total_bytes + len(content.data) > _MAX_MEDIA_BYTES_PER_ROW:
+                raise ValueError(
+                    f"media in row {row_idx} exceeds the {_MAX_MEDIA_BYTES_PER_ROW}-byte total per-row limit"
+                )
+            attached += 1
+            total_bytes += len(content.data)
+            descriptors.append(f"[Media #{attached}: {content.media_type}, {len(content.data)} bytes]")
+            source = column if item.index is None else f"{column}[{item.index}]"
+            media.extend((f"Media #{attached} from column {source}:", content))
+        prompt_values[column] = descriptors[0] if len(descriptors) == 1 else "[" + ", ".join(descriptors) + "]"
     return _TaskRow(values=row, prompt_values=prompt_values, media=tuple(media))
 
 
@@ -300,8 +312,8 @@ class RunSubagentForEachRowTool:
         this does not propagate — each deeper level must set the flag again to nest
         further.
 
-        Images and PDFs returned by ``task_query`` are attached to that row's prompt
-        automatically. Other binary values are rejected before any subagents run;
+        Images, PDFs, and ordered collections that may mix them are attached to that
+        row's prompt automatically. Other binary values are rejected before any subagents run;
         remove those columns or convert them to a textual representation in SQL.
 
         Safe to call multiple times in parallel in one turn.

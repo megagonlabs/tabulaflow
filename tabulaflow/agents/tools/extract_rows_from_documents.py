@@ -29,23 +29,41 @@ from tabulaflow.agents.tools._sql import qualified_table
 logger = logging.getLogger(__name__)
 
 _JINJA_ENV = jinja2.Environment(undefined=jinja2.StrictUndefined)
+_MAX_MEDIA_ITEMS = 10
 _MAX_MEDIA_BYTES = 25 * 1024 * 1024
 
 
-def _prepare_document_content(row_idx: int, value: object) -> str | BinaryContent | None:
-    candidate = inspect_inline_media(value)
-    if candidate is not None:
-        try:
-            return materialize_inline_media(candidate, max_bytes=_MAX_MEDIA_BYTES)
-        except ValueError as exc:
-            raise ValueError(f"task_query returned unusable content in row {row_idx}: {exc}") from exc
+DocumentContent = str | BinaryContent | tuple[BinaryContent, ...] | None
+
+
+def _prepare_document_content(row_idx: int, value: object) -> DocumentContent:
+    try:
+        items = inspect_inline_media(value)
+    except ValueError as exc:
+        raise ValueError(f"task_query returned an invalid media collection in row {row_idx}: {exc}") from exc
+    if items is not None:
+        if len(items) > _MAX_MEDIA_ITEMS:
+            raise ValueError(f"task_query returned more than {_MAX_MEDIA_ITEMS} media items in row {row_idx}")
+        media: list[BinaryContent] = []
+        total_bytes = 0
+        for item in items:
+            try:
+                content = materialize_inline_media(item.candidate, max_bytes=_MAX_MEDIA_BYTES)
+            except ValueError as exc:
+                location = "" if item.index is None else f", item {item.index}"
+                raise ValueError(f"task_query returned unusable content in row {row_idx}{location}: {exc}") from exc
+            total_bytes += len(content.data)
+            if total_bytes > _MAX_MEDIA_BYTES:
+                raise ValueError(f"media in row {row_idx} exceeds the {_MAX_MEDIA_BYTES}-byte total per-row limit")
+            media.append(content)
+        return media[0] if len(media) == 1 else tuple(media)
     if isinstance(value, str):
         return value
     if pdt.is_scalar(value) and bool(pd.isna(value)):
         return None
     raise TypeError(
         f"task_query returned unsupported content in row {row_idx}; "
-        "the 'content' column must hold document text, an inline image/PDF, or NULL"
+        "the 'content' column must hold document text, inline image/PDF media, a media collection, or NULL"
     )
 
 
@@ -54,7 +72,7 @@ class ExtractRowsFromDocumentsTool:
 
     This is the row-expansion dual of ``run_subagent_for_each_row`` (which expands
     columns): one source document in, many entity rows out. ``task_query`` yields
-    one row per document — its ``content`` column holds text, an image, or a PDF, and the remaining
+    one row per document — its ``content`` column holds text, media, or an ordered media collection, and the remaining
     columns feed the ``task_instruction`` Jinja template. ``task_query`` must project
     the document as a column named ``content``; any other columns feed the
     template. Text and PDFs are chunked, while each image is one excerpt; a leaf subagent extracts entities from each
@@ -131,7 +149,8 @@ class ExtractRowsFromDocumentsTool:
         unreliable.
 
         Internally, text is split into structure-aware chunks, PDFs into bounded page
-        ranges, and each image is treated as one excerpt. A subagent extracts entities
+        ranges, and each image is treated as one excerpt. A media collection may mix
+        images and PDFs and is processed in order. A subagent extracts entities
         from every excerpt concurrently; every excerpt's rows are appended (no dedup),
         so documents far larger than one LLM context are handled.
 
@@ -160,7 +179,7 @@ class ExtractRowsFromDocumentsTool:
                 ``output_columns`` must already exist on it; other columns are
                 left NULL/default.
             task_query: SELECT producing one row per source document. Must project
-                the document text or inline image/PDF as a column named ``content`` (alias it if needed,
+                document text, inline image/PDF media, or a media collection as a column named ``content`` (alias it if needed,
                 e.g. ``SELECT body AS content, url FROM ...``); any other columns are
                 variables available to ``task_instruction`` (``content`` itself is NOT
                 available to the template). Column order does not matter.
@@ -217,7 +236,8 @@ class ExtractRowsFromDocumentsTool:
         content_col = "content"
         if content_col not in source_columns:
             raise ValueError(
-                "task_query must project the document text or inline image/PDF as a column named 'content' "
+                "task_query must project document text, inline image/PDF media, or a media collection as "
+                "a column named 'content' "
                 "(e.g. SELECT body AS content, url FROM ...)"
             )
         var_cols = [c for c in source_columns if c != content_col]
@@ -305,7 +325,7 @@ class ExtractRowsFromDocumentsTool:
         async def _process_document(
             doc_idx: int,
             row: dict[str, Any],
-            content: str | BinaryContent | None,
+            content: DocumentContent,
         ) -> tuple[list[dict[str, Any]], str | None]:
             error: str | None = None
             entities: list[dict[str, Any]] = []

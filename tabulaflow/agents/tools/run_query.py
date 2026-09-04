@@ -32,6 +32,11 @@ def _binary_descriptor(candidate: InlineMediaCandidate) -> str:
     return f"[binary: {candidate.estimated_size} bytes]"
 
 
+def _media_source(column: object, index: int | None) -> str:
+    source = str(column)
+    return source if index is None else f"{source}[{index}]"
+
+
 def _prepare_result_media(
     df: pd.DataFrame,
     *,
@@ -44,36 +49,48 @@ def _prepare_result_media(
     for row in range(len(df)):
         for column in range(len(df.columns)):
             value = df.iat[row, column]
-            candidate = inspect_inline_media(value)
-            if candidate is None:
-                continue
-            if not include_media:
-                rendered.iat[row, column] = _binary_descriptor(candidate)
-                continue
-            if attached >= _MAX_MEDIA_ITEMS:
-                rendered.iat[row, column] = f"[media omitted: {_MAX_MEDIA_ITEMS}-item limit reached]"
-                continue
             try:
-                binary = materialize_inline_media(candidate, max_bytes=_MAX_MEDIA_BYTES)
-            except UnrecognizedMediaError:
-                rendered.iat[row, column] = _binary_descriptor(candidate)
-                continue
+                items = inspect_inline_media(value)
             except ValueError as exc:
                 rendered.iat[row, column] = f"[media omitted: {exc}]"
                 continue
-            if total_bytes + len(binary.data) > _MAX_MEDIA_BYTES:
-                rendered.iat[row, column] = f"[media omitted: {_MAX_MEDIA_BYTES}-byte total limit reached]"
+            if items is None:
                 continue
-
-            attached += 1
-            total_bytes += len(binary.data)
-            rendered.iat[row, column] = f"[Media #{attached}: {binary.media_type}, {len(binary.data)} bytes]"
-            content.extend(
-                (
-                    f"Media #{attached} from result row {row + 1}, column {df.columns[column]}:",
-                    binary,
+            if not include_media:
+                binary_descriptors = [_binary_descriptor(item.candidate) for item in items]
+                rendered.iat[row, column] = (
+                    binary_descriptors[0] if len(binary_descriptors) == 1 else "[" + ", ".join(binary_descriptors) + "]"
                 )
-            )
+                continue
+            descriptors: list[str] = []
+            for item in items:
+                candidate = item.candidate
+                if attached >= _MAX_MEDIA_ITEMS:
+                    descriptors.append(f"[media omitted: {_MAX_MEDIA_ITEMS}-item limit reached]")
+                    continue
+                try:
+                    binary = materialize_inline_media(candidate, max_bytes=_MAX_MEDIA_BYTES)
+                except UnrecognizedMediaError:
+                    descriptors.append(_binary_descriptor(candidate))
+                    continue
+                except ValueError as exc:
+                    descriptors.append(f"[media omitted: {exc}]")
+                    continue
+                if total_bytes + len(binary.data) > _MAX_MEDIA_BYTES:
+                    descriptors.append(f"[media omitted: {_MAX_MEDIA_BYTES}-byte total limit reached]")
+                    continue
+
+                attached += 1
+                total_bytes += len(binary.data)
+                descriptors.append(f"[Media #{attached}: {binary.media_type}, {len(binary.data)} bytes]")
+                source = _media_source(df.columns[column], item.index)
+                content.extend(
+                    (
+                        f"Media #{attached} from result row {row + 1}, column {source}:",
+                        binary,
+                    )
+                )
+            rendered.iat[row, column] = descriptors[0] if len(descriptors) == 1 else "[" + ", ".join(descriptors) + "]"
     return rendered, tuple(content)
 
 
@@ -322,9 +339,9 @@ class RunQueryTool:
                 parameterized queries are enabled.
             refresh: Whether to refresh connector schema after execution. Exposed
                 only when schema refresh is enabled.
-            include_media: Whether to attach supported inline media values returned
-                directly in result cells. Does not fetch paths, URLs, or object-store
-                URIs. Exposed only when media inspection is enabled.
+            include_media: Whether to attach supported inline media values or media
+                collections returned directly in result cells. Does not fetch paths,
+                URLs, or object-store URIs. Exposed only when media inspection is enabled.
         """
         execution = await self.execute(
             query,
