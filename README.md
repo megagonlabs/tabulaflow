@@ -734,15 +734,23 @@ Sep 3
 - [x] Multimodal
   - [x] run_query
   - [x] run_subagent and extract_rows
-  - [x] sample data
+  - [x] sample_data
 - [x] Rewrite df serialization and spill connector
 - [x] Rewrite write_dataframe_async and write_result_table
 
-- [ ] Test huggingface multimodal datasets
-- [ ] Map region color for parametrized source
-- [ ] Audio/Video support
-- [ ] Show pending turns in output pane
-- [ ] Copy table with media in output pane
+Sep 4
+- [x] Multimodal
+  - [x] Test huggingface multimodal datasets
+  - [x] Multi-media-items cell
+  - [ ] Update sample_data
+  - [ ] Audio/Video support
+- app
+  - [x] Fix scrolling
+  - [x] Fix manual table
+  - [ ] Copy table with media in output pane
+  - [ ] Map region color for parametrized source
+  - [ ] Show pending turns in output pane
+
 - [ ] Inline artifact citation
 - [ ] code diff rendering
 - [ ] IMPORTANT: decouple data and rendered format (show unit "cm" while still enabling sorting by value)
@@ -754,6 +762,9 @@ Sep 3
   - [ ] Huggingface, analyze, preprocessing (replace jupyter notebook)
   - [ ] Wikidata
   - [ ] Government/academic data
+
+- v2 features
+  - [ ] Multimodal output
   
 - [ ] Allowed roots policy
 - [ ] image/pdf detail level
