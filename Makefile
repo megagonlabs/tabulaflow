@@ -3,6 +3,10 @@ sync:
 	uv sync --all-extras --all-packages --group dev
 	uv run playwright install chromium
 
+.PHONY: list-trajectories
+list-trajectories:
+	@uv run python -c "from datetime import datetime; from pathlib import Path; paths = sorted((Path.home() / '.tabulaflow').rglob('trajectories/trajectory.md'), key=lambda path: (path.stat().st_mtime, str(path))); print(*(f'{datetime.fromtimestamp(path.stat().st_mtime):%Y-%m-%d %H:%M:%S} {path}' for path in paths), sep='\n')"
+
 .PHONY: mypy
 mypy:
 	uv run mypy tabulaflow/ tests/ scripts/
