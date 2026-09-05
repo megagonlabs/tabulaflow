@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from typing import Any, Literal
 
 import pandas as pd
-from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator
+from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator, model_validator
 
 from tabulaflow.core.results import GraphResult, GraphResultEdge, GraphResultNode
 from tabulaflow.core.serialization import json_ready
@@ -95,8 +95,16 @@ class GraphSpec(_StrictModel):
 
     title: str | None = None
     layout: Literal["force", "layered", "tree"] = "force"
+    group_domain: list[str] | None = Field(default=None, min_length=1)
     nodes: list[GraphNodeSourceSpec] = Field(min_length=1)
     edges: list[GraphEdgeSourceSpec] = Field(default_factory=list)
+
+    @field_validator("group_domain")
+    @classmethod
+    def _validate_group_domain(cls, value: list[str] | None) -> list[str] | None:
+        if value is not None and (any(not group for group in value) or len(value) != len(set(value))):
+            raise ValueError("group_domain values must be non-empty and unique")
+        return value
 
 
 @dataclass(frozen=True)
@@ -268,6 +276,8 @@ def normalize_graph_spec(
     out: dict[str, Any] = {"layout": parsed.layout}
     if parsed.title is not None:
         out["title"] = parsed.title
+    if parsed.group_domain is not None:
+        out["group_domain"] = list(parsed.group_domain)
 
     nodes: list[dict[str, Any]] = []
     edges: list[dict[str, Any]] = []

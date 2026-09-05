@@ -347,6 +347,9 @@ class RenderChartTool:
         A dark theme is applied by the viewer, so leave colors unset unless the
         user asked for specific ones.
 
+        For stable categorical colors across parameter selections, set the
+        complete ordered category list in ``color.scale.domain``.
+
         In a layered spec where any layer is colored by a field, every layer
         must declare a color: ``{"datum": "<series name>"}`` gives an overlay
         (e.g. a total line) its own legend entry and palette color;

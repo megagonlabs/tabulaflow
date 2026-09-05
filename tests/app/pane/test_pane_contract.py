@@ -102,7 +102,6 @@ def _assert_card_payload(card: PaneCard, data: CardData) -> None:
             node_data = node.get("data")
             assert isinstance(node_data, dict)
             assert isinstance(node_data.get("id"), str)
-            assert isinstance(node_data.get("color"), str)
         for edge in elements["edges"]:
             edge_data = edge.get("data")
             assert isinstance(edge_data, dict)
@@ -518,8 +517,21 @@ def test_graph_constant_group_colors_and_edge_label() -> None:
     by_id = {node["data"]["id"]: node["data"] for node in nodes}
     assert by_id["a"]["group"] == "Customer"
     assert by_id["p"]["group"] == "Product"
-    assert by_id["a"]["color"] != by_id["p"]["color"]
     assert edges[0]["data"]["label"] == "PURCHASED"
+
+
+def test_graph_explicit_group_domain_controls_colors() -> None:
+    graph = GraphResult(
+        nodes=[GraphResultNode(id="customer", group="Customer"), GraphResultNode(id="product", group="Product")],
+        edges=[],
+    )
+
+    payload = build_graph_result_data(graph, ["Product", "Customer"])
+
+    assert payload is not None
+    assert payload["graph"]["groupDomain"] == ["Product", "Customer"]
+    nodes = cast("list[dict[str, Any]]", payload["graph"]["elements"]["nodes"])
+    assert all("color" not in node["data"] for node in nodes)
 
 
 def test_empty_graph_builds_a_normal_graph_payload() -> None:

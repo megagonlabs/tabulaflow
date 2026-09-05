@@ -517,6 +517,7 @@ async def test_map_and_graph_specs_resolve_against_source_data() -> None:
                 id="graph",
                 source_ids=[source.id],
                 spec={
+                    "group_domain": ["Primary", "Secondary"],
                     "nodes": [{"source_id": source.id, "id": "id"}],
                     "edges": [{"source_id": source.id, "source": "id", "target": "target"}],
                 },
@@ -531,6 +532,7 @@ async def test_map_and_graph_specs_resolve_against_source_data() -> None:
     assert map_artifact.spec == {"layers": [{"type": "points", "source_id": source.id, "lat": "lat", "lng": "lng"}]}
     assert isinstance(graph_artifact, ResolvedGraphArtifact)
     assert [node.id for node in graph_artifact.graph.nodes] == ["a"]
+    assert graph_artifact.group_domain == ["Primary", "Secondary"]
 
 
 async def test_map_and_graph_resolve_parameterized_selection() -> None:

@@ -71,6 +71,29 @@ class TestNormalizeGraphSpec:
 
         assert isinstance(parsed, GraphSpec)
 
+    def test_group_domain_is_preserved(self) -> None:
+        spec = {
+            "group_domain": ["Customer", "Product"],
+            "nodes": [{"data": [{"id": "a", "type": "Customer"}], "id": "id", "group": "type"}],
+        }
+
+        assert _norm(spec) == {
+            "layout": "force",
+            "group_domain": ["Customer", "Product"],
+            "nodes": [{"data": [{"id": "a", "type": "Customer"}], "id": "id", "group": "type"}],
+            "edges": [],
+        }
+
+    @pytest.mark.parametrize("domain", [[], [""], ["Customer", "Customer"]])
+    def test_group_domain_must_be_nonempty_and_unique(self, domain: list[str]) -> None:
+        with pytest.raises(ValueError, match="group_domain"):
+            parse_graph_spec(
+                {
+                    "group_domain": domain,
+                    "nodes": [{"data": [{"id": "a"}], "id": "id"}],
+                }
+            )
+
     def test_edge_source_resolves_fields_case_insensitively(self) -> None:
         df = pd.DataFrame({"Src": ["a"], "Dst": ["b"], "Rel": ["knows"]})
         spec = {
@@ -310,6 +333,18 @@ class TestRenderGraphTool:
         msg = await RenderGraphTool(output_store=output_store)(graph_spec=json.dumps(spec))
         assert "4 nodes in 2 types, 2 edges" in msg
         assert "one color" not in msg
+
+    async def test_graph_created_preserves_explicit_group_domain(self) -> None:
+        output_store = await _output_store_with(pd.DataFrame({"id": ["a"], "type": ["Customer"]}))
+        spec = {
+            "group_domain": ["Product", "Customer"],
+            "nodes": [{"source_id": "S1", "id": "id", "group": "type"}],
+        }
+
+        msg = await RenderGraphTool(output_store=output_store)(graph_spec=json.dumps(spec))
+
+        assert "GRAPH1" in msg
+        assert _graph_artifact(output_store, "GRAPH1").spec["group_domain"] == ["Product", "Customer"]
 
     async def test_final_node_cap_uses_unique_node_ids(self) -> None:
         df = pd.DataFrame(

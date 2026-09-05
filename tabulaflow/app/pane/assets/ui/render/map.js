@@ -1,6 +1,7 @@
 // @ts-check
 
 import { asUrls, cssVar, displayValue, escapeAttr, escapeHtml, fieldValue, numberOr, numberValue, tooltipLink } from './shared.js';
+import { stableColorDomain } from './color-domains.js';
 
 const maplibregl = window.maplibregl;
 
@@ -182,27 +183,18 @@ function colorFor(encoding, row, fallback) {
   return mapPalette[hash % mapPalette.length];
 }
 
-// When a categorical color encoding has no explicit domain, derive one from the
-// layer's data (first-seen order) so distinct categories get distinct palette
-// slots by index instead of by hash (which can collide). An explicit domain is
-// left untouched.
-function withDerivedColorDomain(layer, rows) {
+function withStableColorDomain(layer, rows, artifactKey, layerIndex) {
   var encoding = layer && layer.color;
-  if (!encoding || typeof encoding !== 'object' || Array.isArray(encoding) || Array.isArray(encoding.domain)) {
+  if (!encoding || typeof encoding !== 'object' || Array.isArray(encoding)) {
     return layer;
   }
   var field = encodingField(encoding);
   if (!field) return layer;
-  var seen = {};
-  var domain = [];
-  rows.forEach(function (row) {
-    var value = fieldValue(row, field);
-    if (value == null) return;
-    var key = String(value);
-    if (seen[key]) return;
-    seen[key] = true;
-    domain.push(value);
-  });
+  var domain = stableColorDomain(
+    artifactKey + ':color:' + layerIndex + ':' + field,
+    Array.isArray(encoding.domain) ? encoding.domain : null,
+    rows.map(function (row) { return fieldValue(row, field); })
+  );
   if (!domain.length) return layer;
   var colorCopy = {};
   for (var ck in encoding) {
@@ -751,7 +743,7 @@ function addGeoJsonLayers(map, id, sourceId) {
   return [id + '-fill', id + '-outline', id + '-line', id + '-point'];
 }
 
-export function renderMap(container, cardData) {
+export function renderMap(container, cardData, artifactKey) {
   var mapData = cardData.map || {};
   var datasets = cardData.datasets || {};
   var fallbackRows = (cardData.dataset && cardData.dataset.rows) || [];
@@ -845,7 +837,7 @@ export function renderMap(container, cardData) {
     layers.forEach(function (layer, index) {
       var rows = rowsFor(layer);
       var labels = labelsFor(layer);
-      layer = withDerivedColorDomain(layer, rows);
+      layer = withStableColorDomain(layer, rows, artifactKey || 'map', index);
       if (!layer || layer.type === 'points') {
         var pointData = buildPointFeatures(layer || {}, rows, labels);
         var sourceId = 'tf-points-' + index;

@@ -87,6 +87,7 @@ class ResolvedGraphArtifact:
     artifact_id: ArtifactId
     graph: GraphResult
     layout: str = "force"
+    group_domain: list[str] | None = None
     label: str | None = None
 
 
@@ -264,6 +265,7 @@ def _resolved_artifact(artifact: ArtifactSpec, payload_by_source: dict[SourceId,
             label=artifact.label,
             graph=graph,
             layout=layout if layout in {"force", "layered", "tree"} else "force",
+            group_domain=normalized.get("group_domain") if isinstance(normalized.get("group_domain"), list) else None,
         )
     raise TypeError(f"unsupported artifact {type(artifact).__name__}")
 

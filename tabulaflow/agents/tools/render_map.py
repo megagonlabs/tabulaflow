@@ -49,7 +49,8 @@ class RenderMapTool:
           render as links.
           ``color``: optional ``{"field":"status"}`` or
           ``{"field":"status","domain":[...]}``; the output pane chooses the
-          palette.
+          palette. An explicit ordered domain keeps category colors fixed across
+          parameter selections.
         - ``points`` layer:
           Column mode: ``{"type":"points","source_id":"S3","lat":"lat","lng":"lng"}``.
           Inline mode:

@@ -822,11 +822,11 @@ function getCachedCardData(card) {
   return cached && cached.data ? cached.data : null;
 }
 
-function renderKind(node, kind, data) {
+function renderKind(node, kind, data, key) {
   if (kind === 'message') return renderMessage(node, data);
-  if (kind === 'map') return renderMap(node, data);
-  if (kind === 'graph') return renderGraph(node, data);
-  if (kind === 'chart') return renderChart(node, data);
+  if (kind === 'map') return renderMap(node, data, key);
+  if (kind === 'graph') return renderGraph(node, data, key);
+  if (kind === 'chart') return renderChart(node, data, key);
   if (kind === 'data') return renderTable(node, data);
   if (kind === 'query') return renderQuery(node, data);
   node.textContent = 'Unknown view: ' + kind;
@@ -1054,11 +1054,12 @@ function isActiveShellView(shell, key) {
   return shell.dataset.activeViewKey === key;
 }
 
-function createViewEntry(kind, data, revision) {
+function createViewEntry(kind, data, revision, key) {
   var node = el('div', 'tf-view');
   var entry = {
     node: node,
     kind: kind,
+    key: key,
     status: data == null ? 'fetching' : 'loaded',
     data: data,
     handle: null,
@@ -1079,7 +1080,7 @@ function createViewEntry(kind, data, revision) {
 function renderLoadedView(entry) {
   gateDeactivate(entry);
   entry.node.textContent = '';
-  entry.handle = renderKind(entry.node, entry.kind, entry.data);
+  entry.handle = renderKind(entry.node, entry.kind, entry.data, entry.key);
   entry.node._tfViewEntry = entry;
   entry.metaText = entry.kind === 'data' && entry.data.table ? entry.data.table.meta || '' : '';
   entry.status = 'rendering';
@@ -1157,7 +1158,7 @@ function currentOwner(entry, key) {
 }
 
 function stageViewReplacement(card, kind, shell, key, previous, data) {
-  var entry = createViewEntry(kind, data, card.id);
+  var entry = createViewEntry(kind, data, card.id, key);
   entry.replaces = previous;
   claimEntry(entry, shell);
   viewCache[key] = entry;
@@ -1252,7 +1253,7 @@ function mountView(card, kind, shell, meta, state, cardIndex) {
     if (entry.revision !== card.id) queueViewRevision(card, kind, shell, key, entry, state);
     return;
   }
-  entry = createViewEntry(kind, null, card.id);
+  entry = createViewEntry(kind, null, card.id, key);
   claimEntry(entry, shell);
   viewCache[key] = entry;
   cacheTouch(key);

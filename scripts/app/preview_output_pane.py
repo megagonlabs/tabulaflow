@@ -445,7 +445,11 @@ def _push_controls_turn(pane: pane_mod.OutputPane, pane_dir: Path) -> None:
                         "encoding": {
                             "x": {"field": "customer", "type": "nominal"},
                             "y": {"field": "value", "type": "quantitative"},
-                            "color": {"field": "customer", "type": "nominal"},
+                            "color": {
+                                "field": "customer",
+                                "type": "nominal",
+                                "scale": {"domain": ["Acme", "Globex", "Initech"]},
+                            },
                         },
                         "title": "Selected customer metric",
                     },
@@ -464,7 +468,7 @@ def _push_controls_turn(pane: pane_mod.OutputPane, pane_dir: Path) -> None:
                                 "lng": "longitude",
                                 "label": "customer",
                                 "tooltip": ["period", "metric", "value"],
-                                "color": {"field": "metric"},
+                                "color": {"field": "metric", "domain": ["Revenue", "Orders"]},
                                 "size": {"field": "value", "domain": [0, 140]},
                             }
                         ],
@@ -476,6 +480,7 @@ def _push_controls_turn(pane: pane_mod.OutputPane, pane_dir: Path) -> None:
                     source_ids=[source.id],
                     spec={
                         "title": "Selected customer metric network",
+                        "group_domain": ["Customer", "Metric"],
                         "nodes": [
                             {
                                 "source_id": source.id,

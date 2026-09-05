@@ -1,6 +1,7 @@
 // @ts-check
 
 import { artifactIconMarkup, asUrls, clone, cssVar, displayValue, escapeAttr, escapeHtml, tooltipLink } from './shared.js';
+import { stableColorDomain } from './color-domains.js';
 
 const cytoscape = window.cytoscape;
 const GRAPH_FIT_PADDING = 64;
@@ -104,10 +105,38 @@ function graphNodeElements(nodes) {
   });
 }
 
-function graphElements(graphData) {
+function graphPalette() {
+  return [
+    cssVar('--chart-category-0', '#3eb489'),
+    cssVar('--chart-category-1', '#5ac8fa'),
+    cssVar('--chart-category-2', '#f5a623'),
+    cssVar('--chart-category-3', '#bd6cf0'),
+    cssVar('--chart-category-4', '#f06292'),
+    cssVar('--chart-category-5', '#4dd0e1'),
+    cssVar('--chart-category-6', '#aed581'),
+    cssVar('--chart-category-7', '#ff8a65')
+  ];
+}
+
+function graphElements(graphData, artifactKey) {
   var elements = graphData.elements || {};
+  var nodes = Array.isArray(elements.nodes) ? clone(elements.nodes) : [];
+  var groups = nodes.map(function (node) {
+    return node && node.data && node.data.group != null ? String(node.data.group) : null;
+  }).filter(function (group) { return group != null; }).sort();
+  var domain = stableColorDomain(
+    (artifactKey || 'graph') + ':group',
+    Array.isArray(graphData.groupDomain) ? graphData.groupDomain : null,
+    groups
+  );
+  var palette = graphPalette();
+  nodes.forEach(function (node) {
+    var group = node && node.data && node.data.group;
+    var index = group == null ? -1 : domain.indexOf(String(group));
+    node.data.color = index >= 0 ? palette[index % palette.length] : palette[0];
+  });
   return {
-    nodes: Array.isArray(elements.nodes) ? graphNodeElements(elements.nodes) : [],
+    nodes: graphNodeElements(nodes),
     edges: Array.isArray(elements.edges) ? elements.edges : []
   };
 }
@@ -502,9 +531,9 @@ function graphDetailPosition(ele) {
   return { x: 0, y: 0 };
 }
 
-export function renderGraph(container, cardData) {
+export function renderGraph(container, cardData, artifactKey) {
   var graphData = cardData.graph || {};
-  var elements = graphElements(graphData);
+  var elements = graphElements(graphData, artifactKey);
   container.className = 'tf-view tf-graph-view';
   container.innerHTML = '<div class="tf-graph-stage"><div class="tf-graph"></div>'
     + EMPTY_STATE_HTML + '<div class="tf-graph-detail"></div></div>';
@@ -684,7 +713,7 @@ export function renderGraph(container, cardData) {
       var previousStructure = graphStructure(graphData);
       var wasEmpty = elements.nodes.length === 0;
       graphData = nextData.graph || {};
-      elements = graphElements(graphData);
+      elements = graphElements(graphData, artifactKey);
       var initialized = graphInitElements(elements, graphData.layout);
       var nextById = new Map();
       initialized.nodes.concat(initialized.edges).forEach(function (element) {

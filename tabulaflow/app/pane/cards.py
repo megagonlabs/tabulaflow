@@ -104,6 +104,7 @@ class GraphCardInput:
     label: str | None
     graph: object
     layout: str = "force"
+    group_domain: list[str] | None = None
 
 
 @dataclass(frozen=True)
@@ -198,7 +199,7 @@ def render_graph_data(
 ) -> PaneCard | None:
     """Render a standalone graph card's payload to JSON; return its card descriptor."""
     card_id = f"{CARD_ID_PREFIX}{secrets.token_hex(6)}"
-    graph_data = build_graph_result_data(graph_artifact.graph)
+    graph_data = build_graph_result_data(graph_artifact.graph, graph_artifact.group_domain)
     if graph_data is None:
         return None
     graph_data["graph"]["layout"] = (
@@ -274,7 +275,12 @@ async def render_resolved_output(resolved_output: ResolvedOutput, pane_dir: Path
                 )
             elif isinstance(artifact, ResolvedGraphArtifact):
                 card = render_graph_data(
-                    GraphCardInput(label=artifact.label, graph=artifact.graph, layout=artifact.layout),
+                    GraphCardInput(
+                        label=artifact.label,
+                        graph=artifact.graph,
+                        layout=artifact.layout,
+                        group_domain=artifact.group_domain,
+                    ),
                     pane_dir,
                     artifact_id=artifact.artifact_id,
                 )

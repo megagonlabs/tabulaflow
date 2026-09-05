@@ -38,6 +38,8 @@ class RenderGraphTool:
         - Top level:
           ``title``: optional string.
           ``layout``: optional ``force``, ``layered``, or ``tree``.
+          ``group_domain``: optional ordered list of all node group values;
+          fixes their colors across parameter selections.
           ``nodes``: required list of node sources.
           ``edges``: optional list of edge sources; omit it for node-only graphs.
         - Node source:

@@ -89,6 +89,29 @@ def _run_node(node: str, script: str) -> Any:
     return json.loads(result.stdout)
 
 
+def test_color_domain_registry_preserves_observed_order_and_explicit_domains(tmp_path: Path) -> None:
+    node, module_path = _renderer_module(tmp_path, "shared.js", "color-domains.js")
+    script = f"""
+import {{ pathToFileURL }} from 'node:url';
+const moduleUrl = pathToFileURL({json.dumps(module_path)}).href;
+const {{ stableColorDomain }} = await import(moduleUrl);
+
+console.log(JSON.stringify({{
+  first: stableColorDomain('artifact:color', null, ['A', 'B']),
+  second: stableColorDomain('artifact:color', null, ['B', 'C']),
+  explicit: stableColorDomain('artifact:explicit', ['C', 'A'], ['A', 'B'])
+}}));
+"""
+
+    result = _run_node(node, script)
+
+    assert result == {
+        "first": ["A", "B"],
+        "second": ["A", "B", "C"],
+        "explicit": ["C", "A"],
+    }
+
+
 def test_output_pane_serves_text_only_turn(tmp_path: Path) -> None:
     pane = OutputPane(tmp_path)
     pane.start()

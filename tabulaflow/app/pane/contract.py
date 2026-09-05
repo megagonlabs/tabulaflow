@@ -108,6 +108,7 @@ class MapData(TypedDict, total=False):
 class GraphData(TypedDict, total=False):
     layout: Required[str]
     elements: Required[dict[str, list[dict[str, object]]]]
+    groupDomain: list[str]
 
 
 class MessageData(TypedDict):

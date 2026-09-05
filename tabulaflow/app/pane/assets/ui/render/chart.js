@@ -1,6 +1,7 @@
 // @ts-check
 
-import { artifactIconMarkup, clone, cssVar, deepMerge, escapeAttr } from './shared.js';
+import { artifactIconMarkup, clone, cssVar, deepMerge, escapeAttr, fieldValue } from './shared.js';
+import { stableColorDomain } from './color-domains.js';
 
 const vegaEmbed = window.vegaEmbed;
 const vega = window.vega;
@@ -57,10 +58,46 @@ function vegaDarkConfig() {
   };
 }
 
-export function renderChart(container, cardData) {
-  var chartData = cardData.chart || {};
+function withStableColorDomains(spec, rows, artifactKey) {
+  function walk(node) {
+    if (!node || typeof node !== 'object') return;
+    if (Array.isArray(node)) {
+      node.forEach(walk);
+      return;
+    }
+    var encoding = node.encoding;
+    var color = encoding && encoding.color;
+    if (color && typeof color === 'object' && !Array.isArray(color) && typeof color.field === 'string') {
+      var scale = color.scale;
+      var explicitDomain = scale && typeof scale === 'object' && Array.isArray(scale.domain) ? scale.domain : null;
+      var canSupplyDomain = explicitDomain || scale === undefined
+        || (scale && typeof scale === 'object' && !Object.prototype.hasOwnProperty.call(scale, 'domain'));
+      if (canSupplyDomain) {
+        var values = rows.map(function (row) { return fieldValue(row, color.field); }).filter(function (value) {
+          return value != null;
+        });
+        var categorical = color.type === 'nominal' || color.type === 'ordinal'
+          || (color.type == null && values.every(function (value) {
+            return typeof value === 'string' || typeof value === 'boolean';
+          }));
+        if (categorical) {
+          var domain = stableColorDomain(artifactKey + ':color:' + color.field, explicitDomain, values);
+          if (domain.length) color.scale = Object.assign({}, scale || {}, { domain: domain });
+        }
+      }
+    }
+    Object.keys(node).forEach(function (key) { walk(node[key]); });
+  }
+  walk(spec);
+  return spec;
+}
+
+export function renderChart(container, cardData, artifactKey) {
+  var chartData = clone(cardData.chart || {});
   var rows = (cardData.dataset && cardData.dataset.rows) || [];
   var spec = clone(chartData.spec || {});
+  withStableColorDomains(spec, rows, artifactKey || 'chart');
+  chartData.spec = spec;
   var wrapClass = chartData.wrapClass || 'content';
   spec.config = deepMerge(vegaDarkConfig(), spec.config || {});
   spec.data = { name: DATASET_NAME, values: rows };
@@ -123,7 +160,10 @@ export function renderChart(container, cardData) {
     },
     resize: resizeView,
     canUpdate: function (nextData) {
-      return !!view && !!vega && JSON.stringify(nextData.chart || {}) === JSON.stringify(chartData);
+      var nextChart = clone(nextData.chart || {});
+      var nextRows = (nextData.dataset && nextData.dataset.rows) || [];
+      nextChart.spec = withStableColorDomains(clone(nextChart.spec || {}), nextRows, artifactKey || 'chart');
+      return !!view && !!vega && JSON.stringify(nextChart) === JSON.stringify(chartData);
     },
     update: function (nextData) {
       rows = (nextData.dataset && nextData.dataset.rows) || [];
