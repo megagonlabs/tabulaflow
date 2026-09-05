@@ -80,48 +80,71 @@ export function renderTable(container, cardData) {
   var wrapClass = rows.length <= 12 ? 'tf-table-wrap pane-short' : 'tf-table-wrap';
   container.className = 'tf-view tf-table-view';
   container.innerHTML = '<div class="' + wrapClass + '"><div class="tf-table"></div></div>'
-    + '<div class="tf-modal" role="dialog" aria-hidden="true">'
+    + '<dialog class="tf-modal">'
     + '<div class="tf-modal-card"><div class="tf-modal-header">'
-    + '<span class="tf-modal-title"></span><button class="tf-modal-close" type="button" aria-label="Close">'
+    + '<span class="tf-modal-title"></span><span class="tf-media-count"></span>'
+    + '<button class="tf-modal-close" type="button" aria-label="Close" autofocus>'
     + '<svg viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg>'
-    + '</button></div><div class="tf-modal-body"></div></div></div>';
+    + '</button></div><div class="tf-modal-body"></div></div></dialog>';
 
   var modal = container.querySelector('.tf-modal');
   var modalBody = container.querySelector('.tf-modal-body');
   var modalTitle = container.querySelector('.tf-modal-title');
+  var mediaCount = container.querySelector('.tf-media-count');
   var closeBtn = container.querySelector('.tf-modal-close');
+  var galleryStep = null;
+  function showModal() {
+    if (!modal.open) modal.showModal();
+  }
   function openModal(title, text) {
+    galleryStep = null;
     modalTitle.textContent = title || '';
+    modal.setAttribute('aria-label', title || 'Table cell detail');
+    mediaCount.textContent = '';
     var pre = document.createElement('pre');
     pre.textContent = maybeFormatJson(text);
     modalBody.innerHTML = '';
     modalBody.appendChild(pre);
-    modal.classList.add('open');
+    showModal();
   }
   function openMediaGallery(title, items, startIndex) {
     var index = Math.max(0, Math.min(startIndex || 0, items.length - 1));
     function showItem() {
-      modalBody.innerHTML = '<div class="tf-media-stage">' + renderMedia(items[index]) + '</div>';
-      if (items.length < 2) return;
-      var nav = document.createElement('div');
-      nav.className = 'tf-media-nav';
-      nav.innerHTML = '<button type="button" aria-label="Previous media item">Previous</button>'
-        + '<span>' + (index + 1) + ' of ' + items.length + '</span>'
-        + '<button type="button" aria-label="Next media item">Next</button>';
-      var buttons = nav.querySelectorAll('button');
-      buttons[0].addEventListener('click', function () { index = (index + items.length - 1) % items.length; showItem(); });
-      buttons[1].addEventListener('click', function () { index = (index + 1) % items.length; showItem(); });
-      modalBody.appendChild(nav);
+      var previous = items.length > 1
+        ? '<button class="tf-media-step" type="button" data-gallery-step="-1" aria-label="Previous media item">&#8249;</button>'
+        : '';
+      var next = items.length > 1
+        ? '<button class="tf-media-step" type="button" data-gallery-step="1" aria-label="Next media item">&#8250;</button>'
+        : '';
+      mediaCount.textContent = items.length > 1 ? (index + 1) + ' of ' + items.length : '';
+      modalBody.innerHTML = '<div class="tf-media-lightbox">' + previous
+        + '<div class="tf-media-stage">' + renderMedia(items[index]) + '</div>' + next + '</div>';
+      modalBody.querySelectorAll('[data-gallery-step]').forEach(function (button) {
+        button.addEventListener('click', function () { galleryStep(Number(button.dataset.galleryStep)); });
+      });
     }
+    galleryStep = function (delta) { index = (index + delta + items.length) % items.length; showItem(); };
     modalTitle.textContent = title || '';
+    modal.setAttribute('aria-label', title || 'Media preview');
     showItem();
-    modal.classList.add('open');
+    showModal();
   }
   function closeModal() {
-    modal.classList.remove('open');
+    if (modal.open) modal.close();
+  }
+  function clearModal() {
+    galleryStep = null;
+    mediaCount.textContent = '';
     modalBody.innerHTML = '';
   }
   modal.addEventListener('click', function (e) { if (e.target === modal) closeModal(); });
+  modal.addEventListener('keydown', function (e) {
+    if (!galleryStep || (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight')) return;
+    if (e.target && /^(AUDIO|VIDEO|INPUT)$/.test(e.target.tagName || '')) return;
+    e.preventDefault();
+    galleryStep(e.key === 'ArrowLeft' ? -1 : 1);
+  });
+  modal.addEventListener('close', clearModal);
   closeBtn.addEventListener('click', closeModal);
 
   var formatters = {

@@ -486,6 +486,7 @@ body { margin: 0; background: var(--bg); color: var(--text); display: flex; flex
 .cell-link { color: var(--accent); text-decoration: none; }
 .cell-link:hover { text-decoration: underline; }
 .tf-table-view img { max-height: 96px; max-width: 200px; display: block; }
+.tf-table-view .tabulator-cell > img { cursor: zoom-in; }
 .tf-table-view audio { max-width: 240px; display: block; filter: invert(0.92) hue-rotate(180deg); }
 .tf-table-view video { width: 240px; height: 160px; object-fit: contain; background: #000; display: block; }
 .tf-media-list { display: flex; align-items: center; gap: 6px; }
@@ -562,15 +563,16 @@ body { margin: 0; background: var(--bg); color: var(--text); display: flex; flex
     background-color: var(--card) !important;
     border-right: 1px solid #3a4352 !important;
 }
-.tf-modal { position: fixed; inset: 0; background: rgba(0,0,0,0.65); display: none;
-            align-items: center; justify-content: center; z-index: 1000; }
-.tf-modal.open { display: flex; }
+.tf-modal { padding: 0; border: 0; background: transparent; color: var(--text); overflow: visible; }
+.tf-modal::backdrop { background: rgba(0, 0, 0, 0.72); }
 .tf-modal-card { background: var(--popover-bg); color: var(--text); border: 1px solid var(--popover-border);
-                 border-radius: 4px; max-width: 80vw; max-height: 80vh; min-width: 480px;
+                 border-radius: 4px; max-width: 90vw; max-height: 90vh; min-width: min(480px, 90vw);
                  display: flex; flex-direction: column; box-shadow: 0 12px 40px rgba(0,0,0,0.6); }
 .tf-modal-header { padding: 8px 14px; border-bottom: 1px solid var(--popover-border);
-                   display: flex; justify-content: space-between; align-items: center; gap: 1rem; }
-.tf-modal-title { font-size: 13px; color: var(--text-muted); font-family: ui-monospace, monospace; }
+                   display: flex; align-items: center; gap: 1rem; }
+.tf-modal-title { min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+                  font-size: 13px; color: var(--text-muted); font-family: ui-monospace, monospace; }
+.tf-media-count { color: var(--text-dim); font: 12px/1 ui-monospace, monospace; }
 .tf-modal-close { display: inline-flex; align-items: center; justify-content: center; cursor: pointer;
                   background: transparent; color: var(--text-muted); border: 1px solid transparent;
                   padding: 5px 6px; border-radius: 4px; }
@@ -580,15 +582,14 @@ body { margin: 0; background: var(--bg); color: var(--text); display: flex; flex
 .tf-modal-body { padding: 12px 14px; overflow: auto; flex: 1; }
 .tf-modal-body pre { margin: 0; font-family: ui-monospace, "SF Mono", Menlo, monospace;
                      font-size: 13px; white-space: pre-wrap; word-break: break-word; color: var(--text); }
-.tf-modal-body img { max-width: 76vw; max-height: 70vh; display: block; margin: 0 auto; }
-.tf-media-stage { min-width: min(560px, 70vw); min-height: 240px; display: grid; place-items: center; }
+.tf-modal-body img { max-width: 78vw; max-height: 76vh; display: block; margin: 0 auto; }
+.tf-media-lightbox { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 12px; }
+.tf-media-stage { min-width: min(680px, calc(90vw - 120px)); min-height: 240px; display: grid; place-items: center; }
 .tf-media-stage audio { width: min(480px, 65vw); }
-.tf-media-stage video { width: min(720px, 70vw); height: min(540px, 60vh); object-fit: contain; background: #000; }
-.tf-media-nav { display: flex; align-items: center; justify-content: center; gap: 16px; margin-top: 12px;
-                color: var(--text-muted); font: 12px/1.2 ui-monospace, monospace; }
-.tf-media-nav button { border: 1px solid var(--popover-border); border-radius: 4px; padding: 5px 9px;
-                       background: transparent; color: var(--text-muted); cursor: pointer; }
-.tf-media-nav button:hover { color: var(--accent); border-color: var(--accent); }
+.tf-media-stage video { width: min(720px, 70vw); height: min(540px, 68vh); object-fit: contain; background: #000; }
+.tf-media-step { width: 34px; height: 46px; padding: 0; border: 1px solid transparent; border-radius: 4px;
+                 background: transparent; color: var(--text-muted); cursor: pointer; font: 30px/1 sans-serif; }
+.tf-media-step:hover { color: var(--accent); border-color: var(--popover-border); background: rgba(255, 255, 255, 0.04); }
 
 /* Direct chart rendering. */
 .tf-chart-view { --artifact-bg: var(--card); }
