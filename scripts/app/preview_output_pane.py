@@ -340,7 +340,7 @@ def _push_turn(
 
 def _push_controls_turn(pane: pane_mod.OutputPane, pane_dir: Path) -> None:
     output_store = OutputStore()
-    parameters: list[ParameterSpec] = [
+    customer_parameters: list[ParameterSpec] = [
         ChoiceParameter(
             id="metric",
             label="Metric",
@@ -360,10 +360,20 @@ def _push_controls_turn(pane: pane_mod.OutputPane, pane_dir: Path) -> None:
             default=60,
         ),
     ]
-    source = output_store.add_parameterized_source("preview", parameters, "-- preview controls fixture")
+    zone_area_parameter = NumberParameter(
+        id="min_zone_area_km2",
+        label="Approx. minimum taxi-zone area",
+        min=0,
+        max=40,
+        step=5,
+        default=5,
+        unit="km²",
+    )
+    parameters = [*customer_parameters, zone_area_parameter]
+    source = output_store.add_parameterized_source("preview", customer_parameters, "-- preview controls fixture")
     revenue_source = output_store.add_parameterized_source(
         "preview",
-        parameters,
+        customer_parameters,
         "{% if metric != 'revenue' %}{{ not_applicable('Revenue detail only applies when Metric is Revenue') }}{% endif %}\n"
         "-- preview revenue-only detail fixture",
     )
@@ -383,6 +393,37 @@ def _push_controls_turn(pane: pane_mod.OutputPane, pane_dir: Path) -> None:
             ExecResult(),
         )
     )
+    taxi_zone_source = output_store.add_parameterized_source(
+        "preview",
+        [zone_area_parameter],
+        "-- preview NYC taxi zones filtered by minimum area",
+    )
+    taxi_zone_rows = json.loads(
+        (Path(__file__).resolve().parents[2] / "tabulaflow/app/assets/samples/nyc_taxi_zones.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    taxi_zones = pd.DataFrame(
+        {
+            "zone": [row["zone"] for row in taxi_zone_rows],
+            "borough": [row["borough"] for row in taxi_zone_rows],
+            "approx_area_km2": [round(float(row["shape_area"]) * 9_400, 2) for row in taxi_zone_rows],
+            "location_id": [int(row["locationid"]) for row in taxi_zone_rows],
+            "geojson": [json.dumps(row["the_geom"], separators=(",", ":")) for row in taxi_zone_rows],
+        }
+    )
+    for min_area in range(0, 41, 5):
+        filtered_zones = taxi_zones[taxi_zones["approx_area_km2"] >= min_area].reset_index(drop=True)
+        for min_selection in (min_area, float(min_area)):
+            asyncio.run(
+                output_store.cache_parameterized_result(
+                    taxi_zone_source.id,
+                    "sql",
+                    {"min_zone_area_km2": min_selection},
+                    f"-- preview NYC taxi zones with approx_area_km2 >= {min_area}",
+                    ExecResult(df=filtered_zones),
+                )
+            )
     values = {
         ("q2", "revenue"): ("Q2", "Revenue", [120, 95, 72]),
         ("q3", "revenue"): ("Q3", "Revenue", [138, 104, 86]),
@@ -428,12 +469,12 @@ def _push_controls_turn(pane: pane_mod.OutputPane, pane_dir: Path) -> None:
                         )
     result = ChatResult(
         text=(
-            "This turn has answer-level controls. Switch the metric/period buttons or drag the minimum-value slider; "
-            "the table, chart, map, and graph resolve through the live preview session instead of a precomputed bundle."
+            "This turn has answer-level controls. Switch the metric/period buttons or drag either slider; the customer "
+            "artifacts and NYC taxi-zone map resolve independently through the live preview session."
         ),
         output=OutputSpec(
             parameters=parameters,
-            sources=[source, revenue_source, empty_source, no_data_source],
+            sources=[source, revenue_source, taxi_zone_source, empty_source, no_data_source],
             artifacts=[
                 TableArtifactSpec(id=source.id, label="top customers", source_id=source.id),
                 ChartArtifactSpec(
@@ -503,6 +544,27 @@ def _push_controls_turn(pane: pane_mod.OutputPane, pane_dir: Path) -> None:
                                 "target": "metric",
                                 "label": "period",
                                 "tooltip": "value",
+                            }
+                        ],
+                    },
+                ),
+                MapArtifactSpec(
+                    id="MAP_PREVIEW_TAXI_ZONES",
+                    label="NYC taxi zones",
+                    source_ids=[taxi_zone_source.id],
+                    spec={
+                        "title": "NYC taxi zones by area",
+                        "layers": [
+                            {
+                                "type": "geojson",
+                                "source_id": taxi_zone_source.id,
+                                "geojson": "geojson",
+                                "label": "zone",
+                                "tooltip": ["borough", "approx_area_km2", "location_id"],
+                                "color": {
+                                    "field": "borough",
+                                    "domain": ["Bronx", "Brooklyn", "EWR", "Manhattan", "Queens", "Staten Island"],
+                                },
                             }
                         ],
                     },
