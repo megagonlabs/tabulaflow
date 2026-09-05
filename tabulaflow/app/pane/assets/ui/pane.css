@@ -611,8 +611,18 @@ body { margin: 0; background: var(--bg); color: var(--text); display: flex; flex
                                   box-shadow: 0 10px 36px rgba(0, 0, 0, 0.38); }
 .tf-media-lightbox { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 10px; }
 .tf-media-stage { min-width: 0; min-height: 240px; display: grid; place-items: center; }
-.tf-media-stage audio { width: min(480px, 65vw); }
+.tf-media-stage audio { width: min(440px, calc(100vw - 96px)); filter: none; color-scheme: dark; }
 .tf-media-stage video { width: min(720px, 70vw); height: min(540px, 68vh); object-fit: contain; background: #000; }
+.tf-lightbox-file { min-width: 180px; padding: 22px 26px; display: flex; flex-direction: column; align-items: center;
+                    gap: 8px; border-radius: 8px; color: rgba(228, 228, 231, 0.72); text-decoration: none;
+                    transition: background-color 120ms ease, color 120ms ease; }
+.tf-lightbox-file:hover { background: rgba(255, 255, 255, 0.08); color: #f4f4f5; }
+.tf-lightbox-file:active { background: rgba(255, 255, 255, 0.13); }
+.tf-lightbox-file:focus-visible { outline: 2px solid rgba(255, 255, 255, 0.72); outline-offset: 3px; }
+.tf-lightbox-file svg { width: 32px; height: 32px; margin-bottom: 2px; }
+.tf-lightbox-file-title { color: #e4e4e7; font: 550 14px/1.3 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+.tf-lightbox-file-meta { color: rgba(228, 228, 231, 0.58); font: 12px/1.3 -apple-system, BlinkMacSystemFont,
+                         "Segoe UI", sans-serif; font-variant-numeric: tabular-nums; }
 .tf-media-step { cursor: pointer; }
 .tf-media-step-placeholder { width: 40px; }
 

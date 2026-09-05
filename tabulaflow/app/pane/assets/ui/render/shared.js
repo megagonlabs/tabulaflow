@@ -71,7 +71,13 @@ function fileLink(src, label, size, newTab) {
     + '<span class="file-size">' + escapeHtml(fmtSize(size || 0)) + '</span></a>';
 }
 
-function renderMedia(v) {
+function lightboxFileLink(src, size) {
+  return '<a class="tf-lightbox-file" href="' + escapeAttr(src) + '" target="_blank" rel="noopener">'
+    + fileIcon + '<span class="tf-lightbox-file-title">PDF document</span>'
+    + '<span class="tf-lightbox-file-meta">' + escapeHtml(fmtSize(size || 0)) + ' &middot; Open PDF</span></a>';
+}
+
+function renderMedia(v, context) {
   if (!v || typeof v !== 'object' || v.kind !== 'media') {
     return v == null ? '' : escapeHtml(v);
   }
@@ -79,9 +85,12 @@ function renderMedia(v) {
   var src = String(v.src || '');
   var size = Number(v.size || 0);
   if (mime.indexOf('image/') === 0) return '<img src="' + escapeAttr(src) + '">';
-  if (mime.indexOf('audio/') === 0) return '<audio controls preload="none" src="' + escapeAttr(src) + '"></audio>';
-  if (mime.indexOf('video/') === 0) return '<video controls preload="none" src="' + escapeAttr(src) + '"></video>';
-  if (mime === 'application/pdf') return fileLink(src, 'PDF', size, true);
+  var preload = context === 'lightbox' ? 'metadata' : 'none';
+  if (mime.indexOf('audio/') === 0) return '<audio controls preload="' + preload + '" src="' + escapeAttr(src) + '"></audio>';
+  if (mime.indexOf('video/') === 0) return '<video controls preload="' + preload + '" src="' + escapeAttr(src) + '"></video>';
+  if (mime === 'application/pdf') {
+    return context === 'lightbox' ? lightboxFileLink(src, size) : fileLink(src, 'PDF', size, true);
+  }
   return fileLink(src, 'binary', size, false);
 }
 

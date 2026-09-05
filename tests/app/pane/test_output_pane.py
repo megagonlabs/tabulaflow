@@ -559,6 +559,30 @@ process.stdout.write(JSON.stringify(tableToTsv(columns, rows)));
     )
 
 
+def test_lightbox_media_uses_context_specific_controls(tmp_path: Path) -> None:
+    node, renderer_path = _renderer_module(tmp_path, "shared.js")
+    script = f"""
+import {{ pathToFileURL }} from 'node:url';
+const moduleUrl = pathToFileURL({json.dumps(renderer_path)}).href;
+const {{ renderMedia }} = await import(moduleUrl);
+const audio = {{ kind: 'media', mime: 'audio/mpeg', src: './audio.mp3', size: 123 }};
+const pdf = {{ kind: 'media', mime: 'application/pdf', src: './file.pdf', size: 2048 }};
+process.stdout.write(JSON.stringify({{
+  tableAudio: renderMedia(audio),
+  lightboxAudio: renderMedia(audio, 'lightbox'),
+  lightboxPdf: renderMedia(pdf, 'lightbox'),
+}}));
+"""
+
+    rendered = _run_node(node, script)
+
+    assert 'preload="none"' in rendered["tableAudio"]
+    assert 'preload="metadata"' in rendered["lightboxAudio"]
+    assert 'class="tf-lightbox-file"' in rendered["lightboxPdf"]
+    assert "PDF document" in rendered["lightboxPdf"]
+    assert "2.0 KB &middot; Open PDF" in rendered["lightboxPdf"]
+
+
 def test_output_pane_push_highlights_assistant_markdown_code_blocks(tmp_path: Path) -> None:
     pane = OutputPane(tmp_path)
     pane.push(

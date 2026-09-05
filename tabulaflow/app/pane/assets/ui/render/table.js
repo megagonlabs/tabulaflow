@@ -131,7 +131,7 @@ export function renderTable(container, cardData) {
         clearMediaCount();
       }
       modalBody.innerHTML = '<div class="tf-media-lightbox">' + previous
-        + '<div class="tf-media-stage">' + renderMedia(items[index]) + '</div>' + next + '</div>';
+        + '<div class="tf-media-stage">' + renderMedia(items[index], 'lightbox') + '</div>' + next + '</div>';
       modalBody.querySelectorAll('[data-gallery-step]').forEach(function (button) {
         button.addEventListener('click', function () { galleryStep(Number(button.dataset.galleryStep)); });
       });
