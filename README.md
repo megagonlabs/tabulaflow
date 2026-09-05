@@ -742,12 +742,12 @@ Sep 4
 - [x] Multimodal
   - [x] Test huggingface multimodal datasets
   - [x] Multi-media-items cell
-  - [ ] Update sample_data
+  - [ ] Multi-media-items cell display
   - [ ] Audio/Video support
 - app
   - [x] Fix scrolling
   - [x] Fix manual table
-  - [ ] Copy table with media in output pane
+  - [x] Copy table with media in output pane
   - [ ] Map region color for parametrized source
   - [ ] Show pending turns in output pane
 
