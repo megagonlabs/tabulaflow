@@ -48,6 +48,16 @@ function startPageStatus() {
   });
 }
 
+function startExclusiveMediaPlayback() {
+  document.addEventListener('play', function (event) {
+    var current = event.target;
+    if (!current || !/^(AUDIO|VIDEO)$/.test(current.tagName || '')) return;
+    document.querySelectorAll('audio, video').forEach(function (media) {
+      if (media !== current && !media.paused) media.pause();
+    });
+  }, true);
+}
+
 function moveThumb(thumb, opt) {
   thumb.style.width = opt.offsetWidth + 'px';
   thumb.style.transform = 'translateX(' + opt.offsetLeft + 'px)';
@@ -1463,5 +1473,6 @@ function startEvents() {
 }
 
 startPageStatus();
+startExclusiveMediaPlayback();
 startEvents();
 watchContentScroll();

@@ -97,6 +97,9 @@ export function renderTable(container, cardData) {
     mediaCount.textContent = '';
     mediaCount.removeAttribute('aria-label');
   }
+  function pauseModalMedia() {
+    modalBody.querySelectorAll('audio, video').forEach(function (media) { media.pause(); });
+  }
   function showModal() {
     if (!modal.open) modal.showModal();
   }
@@ -116,6 +119,7 @@ export function renderTable(container, cardData) {
   function openMediaGallery(title, items, startIndex) {
     var index = Math.max(0, Math.min(startIndex || 0, items.length - 1));
     function showItem() {
+      pauseModalMedia();
       var previous = items.length > 1
         ? '<button class="tf-media-step" type="button" data-gallery-step="-1" aria-label="Previous media item">'
           + '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg></button>'
@@ -148,6 +152,7 @@ export function renderTable(container, cardData) {
     if (modal.open) modal.close();
   }
   function clearModal() {
+    pauseModalMedia();
     galleryStep = null;
     modal.classList.remove('tf-lightbox');
     clearMediaCount();
