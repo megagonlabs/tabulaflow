@@ -27,7 +27,7 @@ from tabulaflow.agents.tools.browser.tool import (
     SNAPSHOT_SNIPPET_THRESHOLD_CHARS,
     snapshot_snippet,
 )
-from tabulaflow.output.formatting._core import format_connector_summary
+from tabulaflow.output.formatting import format_connector_summary
 from tabulaflow.agents.llm import ReasoningLevel, ServiceTier, make_agent, make_model_settings, model_display_name
 from tabulaflow.agents.chat.events import (
     ChatEvent,

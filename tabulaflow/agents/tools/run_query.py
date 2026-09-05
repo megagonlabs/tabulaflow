@@ -12,7 +12,7 @@ from pydantic_ai.messages import ModelMessage, ModelRequest, ToolReturnPart, Use
 from tabulaflow.agents.media import inspect_inline_media, materialize_inline_media
 from tabulaflow.core.results import ExecResult, GraphResult
 from tabulaflow.data.protocols import DBConnector, SQLConnectorProtocol
-from tabulaflow.output.formatting._core import format_dataframe
+from tabulaflow.output.formatting import format_dataframe
 from tabulaflow.agents.tools._sql import format_sqlalchemy_error_msg
 from tabulaflow.agents.tools.protocols import _omit_tool_parameters
 
