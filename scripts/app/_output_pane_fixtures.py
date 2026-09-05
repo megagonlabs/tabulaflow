@@ -957,7 +957,14 @@ def _media_table_result() -> ResultCardInput:
     jpeg = [assets.joinpath(f"jpeg_{i}.jpg").read_bytes() for i in range(5)]
     gif = [assets.joinpath(f"gif_{i}.gif").read_bytes() for i in range(5)]
     pdf = [assets.joinpath(f"pdf_{i}.pdf").read_bytes() for i in range(5)]
-    wav = [_wav_bytes(f) for f in (262.0, 294.0, 330.0, 349.0, 392.0)]
+    wav = [
+        _wav_bytes(frequency, seconds=duration)
+        for frequency, duration in zip(
+            (262.0, 294.0, 330.0, 349.0, 392.0),
+            (32.0, 38.0, 45.0, 52.0, 60.0),
+            strict=True,
+        )
+    ]
     mp4_bytes = assets.joinpath("sample.mp4").read_bytes()
     jpeg_b64 = [b64encode(blob).decode("ascii") for blob in jpeg]
     df = pd.DataFrame(
