@@ -742,6 +742,7 @@ Sep 4
 - [x] Multimodal
   - [x] Test huggingface multimodal datasets
   - [x] Multi-media-items cell
+  - [x] Refactor
   - [ ] Multi-media-items cell display
   - [ ] Audio/Video support
   - [ ] Detail
