@@ -106,8 +106,9 @@ async def test_run_query_attaches_images_and_pdfs_in_cell_order() -> None:
     )
 
     text = _text(returned)
-    assert "[Media #1: image/png" in text
-    assert "[Media #2: application/pdf" in text
+    assert f"[binary: {len(image)} bytes]" in text
+    assert f"[binary: {len(document)} bytes]" in text
+    assert "(2 media items attached)" in text
     assert returned.content is not None
     content = list(returned.content)
     assert content[0] == "Media #1 from result row 1, column image:"
@@ -129,8 +130,9 @@ async def test_run_query_attaches_mixed_media_from_one_collection_cell() -> None
     )
 
     text = _text(returned)
-    assert "[Media #1: image/png" in text
-    assert "[Media #2: application/pdf" in text
+    assert f"[binary: {len(image)} bytes]" in text
+    assert f"[binary: {len(document)} bytes]" in text
+    assert "(2 media items attached)" in text
     assert returned.content is not None
     content = list(returned.content)
     assert content[0] == "Media #1 from result row 1, column media[0]:"
@@ -150,7 +152,8 @@ async def test_run_query_accepts_data_uri_media_without_exposing_base64() -> Non
     )
 
     assert encoded not in _text(returned)
-    assert "[Media #1: image/png" in _text(returned)
+    assert f"[binary: {len(image)} bytes]" in _text(returned)
+    assert "(1 media item attached)" in _text(returned)
     assert returned.content is not None
 
 
@@ -165,10 +168,10 @@ async def test_run_query_counts_data_uri_padding_correctly(monkeypatch: pytest.M
     )
 
     assert returned.content is not None
-    assert "[Media #1: image/png" in _text(returned)
+    assert "(1 media item attached)" in _text(returned)
 
 
-async def test_run_query_omits_unsupported_and_invalid_media() -> None:
+async def test_run_query_preserves_values_for_unsupported_and_invalid_media() -> None:
     result = ExecResult(
         df=pd.DataFrame(
             {
@@ -186,11 +189,44 @@ async def test_run_query_omits_unsupported_and_invalid_media() -> None:
     )
 
     text = _text(returned)
-    assert "[media omitted: invalid or unsupported audio/wav]" in text
-    assert "[media omitted: invalid or unsupported image/png]" in text
-    assert "[media omitted: invalid or unavailable inline bytes]" in text
+    assert "[binary: 20 bytes]" in text
+    assert "'bytes': '[binary: 12 bytes]'" in text
+    assert "'bytes': None, 'path': '/tmp/external.png'" in text
     assert "/tmp/image.png" in text
     assert "https://example.com/image.png" in text
+    assert "media omitted" not in text
+    assert "(0 media items attached; 3 candidates not attached)" in text
+    assert returned.content is None
+
+
+async def test_run_query_preserves_paths_while_redacting_nested_bytes() -> None:
+    result = ExecResult(
+        df=pd.DataFrame(
+            {
+                "images": [
+                    np.array(
+                        [
+                            {"bytes": None, "path": "first.jpg"},
+                            {"bytes": b"not an image", "path": "second.jpg"},
+                        ],
+                        dtype=object,
+                    )
+                ]
+            }
+        )
+    )
+
+    returned = await RunQueryTool(cast(Any, _ResultConnector(result)), enable_media=True)(
+        "SELECT images", include_media=True
+    )
+
+    text = _text(returned)
+    assert "first.jpg" in text
+    assert "second.jpg" in text
+    assert "'bytes': None" in text
+    assert "[binary: 12 bytes]" in text
+    assert "media omitted" not in text
+    assert "(0 media items attached; 2 candidates not attached)" in text
     assert returned.content is None
 
 
@@ -204,7 +240,9 @@ async def test_run_query_enforces_media_item_limit() -> None:
 
     assert returned.content is not None
     assert len(returned.content) == 20
-    assert "[media omitted: 10-item limit reached]" in _text(returned)
+    assert f"[binary: {len(image)} bytes]" in _text(returned)
+    assert "media omitted" not in _text(returned)
+    assert "(10 media items attached; 1 candidate not attached)" in _text(returned)
 
 
 async def test_run_query_enforces_normalized_media_total(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -218,7 +256,9 @@ async def test_run_query_enforces_normalized_media_total(monkeypatch: pytest.Mon
 
     assert returned.content is not None
     assert len(returned.content) == 2
-    assert f"[media omitted: {len(image)}-byte total limit reached]" in _text(returned)
+    assert f"[binary: {len(image)} bytes]" in _text(returned)
+    assert "media omitted" not in _text(returned)
+    assert "(1 media item attached; 1 candidate not attached)" in _text(returned)
 
 
 async def test_run_query_omits_single_value_over_media_budget(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -229,7 +269,8 @@ async def test_run_query_omits_single_value_over_media_budget(monkeypatch: pytes
         "SELECT blob", include_media=True
     )
 
-    assert "[media omitted: 5 bytes exceeds 4-byte limit]" in _text(returned)
+    assert "[binary: 5 bytes]" in _text(returned)
+    assert "(0 media items attached; 1 candidate not attached)" in _text(returned)
     assert returned.content is None
 
 
@@ -246,7 +287,8 @@ async def test_run_query_does_not_decode_oversized_data_uri(monkeypatch: pytest.
         "SELECT image", include_media=True
     )
 
-    assert "exceeds 4-byte limit" in _text(returned)
+    assert "[binary: 5 bytes]" in _text(returned)
+    assert "(0 media items attached; 1 candidate not attached)" in _text(returned)
     assert returned.content is None
 
 
@@ -259,7 +301,8 @@ async def test_run_query_checks_budget_after_image_normalization(monkeypatch: py
         "SELECT image", include_media=True
     )
 
-    assert "[media omitted: normalized image/png exceeds" in _text(returned)
+    assert f"[binary: {len(image)} bytes]" in _text(returned)
+    assert "(0 media items attached; 1 candidate not attached)" in _text(returned)
     assert returned.content is None
 
 

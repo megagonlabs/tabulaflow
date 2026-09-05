@@ -100,12 +100,30 @@ class TestFormatDf:
         assert "NaT" not in result
 
     def test_non_string_truncation_bytes(self) -> None:
-        """Test that long bytes values are truncated."""
+        """Test that bytes values are summarized before formatting."""
         long_bytes = b"x" * 300
         df = pd.DataFrame({"a": [long_bytes]})
         result = format_dataframe(df, max_cell_width=100)
-        assert "..." in result
+        assert "[binary: 300 bytes]" in result
         assert str(long_bytes) not in result
+
+    def test_nested_bytes_are_summarized_without_hiding_sibling_values(self) -> None:
+        value = [
+            {"bytes": None, "path": "first.jpg"},
+            {"bytes": b"not an image", "path": "second.jpg"},
+        ]
+        result = format_dataframe(pd.DataFrame({"images": [value]}))
+
+        assert "first.jpg" in result
+        assert "second.jpg" in result
+        assert "'bytes': None" in result
+        assert "[binary: 12 bytes]" in result
+
+    def test_data_uri_is_summarized_without_decoding(self) -> None:
+        result = format_dataframe(pd.DataFrame({"image": ["data:image/png;base64,MTIzNDU="]}))
+
+        assert "[binary: 5 bytes]" in result
+        assert "MTIzNDU" not in result
 
     def test_non_string_truncation_list(self) -> None:
         """Test that long list values are truncated."""

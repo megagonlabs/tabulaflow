@@ -9,12 +9,7 @@ from pydantic import BaseModel, Field
 from pydantic_ai import Tool, ToolReturn
 from pydantic_ai.messages import ModelMessage, ModelRequest, ToolReturnPart, UserContent
 
-from tabulaflow.agents.media import (
-    InlineMediaCandidate,
-    UnrecognizedMediaError,
-    inspect_inline_media,
-    materialize_inline_media,
-)
+from tabulaflow.agents.media import inspect_inline_media, materialize_inline_media
 from tabulaflow.core.results import ExecResult, GraphResult
 from tabulaflow.data.protocols import DBConnector, SQLConnectorProtocol
 from tabulaflow.output.formatting._core import format_dataframe
@@ -26,24 +21,36 @@ _MAX_MEDIA_ITEMS = 10
 _MAX_MEDIA_BYTES = 25 * 1024 * 1024
 
 
-def _binary_descriptor(candidate: InlineMediaCandidate) -> str:
-    if candidate.estimated_size is None:
-        return "[binary media: unavailable inline bytes]"
-    return f"[binary: {candidate.estimated_size} bytes]"
-
-
 def _media_source(column: object, index: int | None) -> str:
     source = str(column)
     return source if index is None else f"{source}[{index}]"
 
 
+@dataclass(frozen=True)
+class PreparedResultMedia:
+    """Media attachments collected from a query result."""
+
+    content: tuple[UserContent, ...]
+    candidates: int
+    attached: int
+
+
+def _format_media_summary(media: PreparedResultMedia) -> str:
+    if media.candidates == 0:
+        return ""
+    not_attached = media.candidates - media.attached
+    attached_label = "item" if media.attached == 1 else "items"
+    if not_attached == 0:
+        return f"\n({media.attached} media {attached_label} attached)"
+    missing_label = "candidate" if not_attached == 1 else "candidates"
+    return f"\n({media.attached} media {attached_label} attached; {not_attached} {missing_label} not attached)"
+
+
 def _prepare_result_media(
     df: pd.DataFrame,
-    *,
-    include_media: bool,
-) -> tuple[pd.DataFrame, tuple[UserContent, ...]]:
-    rendered = df.astype(object)
+) -> PreparedResultMedia:
     content: list[UserContent] = []
+    candidates = 0
     attached = 0
     total_bytes = 0
     for row in range(len(df)):
@@ -51,38 +58,24 @@ def _prepare_result_media(
             value = df.iat[row, column]
             try:
                 items = inspect_inline_media(value)
-            except ValueError as exc:
-                rendered.iat[row, column] = f"[media omitted: {exc}]"
+            except ValueError:
                 continue
             if items is None:
                 continue
-            if not include_media:
-                binary_descriptors = [_binary_descriptor(item.candidate) for item in items]
-                rendered.iat[row, column] = (
-                    binary_descriptors[0] if len(binary_descriptors) == 1 else "[" + ", ".join(binary_descriptors) + "]"
-                )
-                continue
-            descriptors: list[str] = []
             for item in items:
+                candidates += 1
                 candidate = item.candidate
                 if attached >= _MAX_MEDIA_ITEMS:
-                    descriptors.append(f"[media omitted: {_MAX_MEDIA_ITEMS}-item limit reached]")
                     continue
                 try:
                     binary = materialize_inline_media(candidate, max_bytes=_MAX_MEDIA_BYTES)
-                except UnrecognizedMediaError:
-                    descriptors.append(_binary_descriptor(candidate))
-                    continue
-                except ValueError as exc:
-                    descriptors.append(f"[media omitted: {exc}]")
+                except ValueError:
                     continue
                 if total_bytes + len(binary.data) > _MAX_MEDIA_BYTES:
-                    descriptors.append(f"[media omitted: {_MAX_MEDIA_BYTES}-byte total limit reached]")
                     continue
 
                 attached += 1
                 total_bytes += len(binary.data)
-                descriptors.append(f"[Media #{attached}: {binary.media_type}, {len(binary.data)} bytes]")
                 source = _media_source(df.columns[column], item.index)
                 content.extend(
                     (
@@ -90,8 +83,7 @@ def _prepare_result_media(
                         binary,
                     )
                 )
-            rendered.iat[row, column] = descriptors[0] if len(descriptors) == 1 else "[" + ", ".join(descriptors) + "]"
-    return rendered, tuple(content)
+    return PreparedResultMedia(tuple(content), candidates, attached)
 
 
 def _format_latency(seconds: float | None) -> str:
@@ -250,14 +242,12 @@ class RunQueryTool:
                     parameters=param_dict,
                     timeout=self.timeout,  # type: ignore[arg-type]
                 )
-            media_content: tuple[UserContent, ...] = ()
-            display_df = exec_result.df
-            if display_df is not None:
-                display_df, media_content = _prepare_result_media(
-                    display_df,
-                    include_media=include_media,
-                )
-            res = self._format_exec_result(exec_result, display_df=display_df)
+            prepared_media = PreparedResultMedia((), 0, 0)
+            if include_media and exec_result.df is not None:
+                prepared_media = _prepare_result_media(exec_result.df)
+            res = self._format_exec_result(exec_result)
+            if include_media:
+                res += _format_media_summary(prepared_media)
             if refresh:
                 try:
                     await self.db_connector.refresh_schema_async()
@@ -269,14 +259,14 @@ class RunQueryTool:
                 query=query,
                 parameter_values=param_dict,
                 exec_result=exec_result,
-                media_content=media_content,
+                media_content=prepared_media.content,
             )
             return execution
         finally:
             if self._release_connections_on_finish:
                 await cast(SQLConnectorProtocol, self.db_connector).release_connections_async()
 
-    def _format_exec_result(self, exec_result: ExecResult, *, display_df: pd.DataFrame | None = None) -> str:
+    def _format_exec_result(self, exec_result: ExecResult) -> str:
         if exec_result.error is not None:
             if exec_result.error.exc_type == "ReadOnlyViolationError":
                 self._metrics.error_read_only_violation += 1
@@ -305,8 +295,7 @@ class RunQueryTool:
                 return f"(statement executed successfully, but 0 rows were affected — check the WHERE clause){lat_line}{graph_line}"
             return f"(statement executed successfully, {affected} row{'s' if affected != 1 else ''} affected){lat_line}{graph_line}"
 
-        df = display_df if display_df is not None else exec_result.df
-        assert df is not None
+        df = exec_result.df
         if df.empty:
             return f"(query executed successfully, but results are empty){lat_line}{graph_line}"
 
