@@ -104,7 +104,7 @@ def _prepare_task_row(row_idx: int, row: dict[str, object]) -> _TaskRow:
                 source = column if item.index is None else f"{column}[{item.index}]"
                 raise ValueError(
                     f"task_query returned unusable binary data in row {row_idx}, column {source!r}: {exc}; "
-                    "remove the column or convert it to hex, base64, JSON, or another textual representation"
+                    "provide valid inline image/PDF bytes or omit the column"
                 ) from exc
             if total_bytes + len(content.data) > _MAX_MEDIA_BYTES_PER_ROW:
                 raise ValueError(
@@ -313,8 +313,9 @@ class RunSubagentForEachRowTool:
         further.
 
         Images, PDFs, and ordered collections that may mix them are attached to that
-        row's prompt automatically. Other binary values are rejected before any subagents run;
-        remove those columns or convert them to a textual representation in SQL.
+        row's prompt automatically. Path-backed media is not fetched; download and
+        import its bytes first, or omit the column. Other binary values are rejected
+        before any subagents run.
 
         Safe to call multiple times in parallel in one turn.
 

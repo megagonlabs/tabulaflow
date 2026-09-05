@@ -135,6 +135,23 @@ def test_document_content_validation_rejects_unknown_values_and_accepts_null() -
         mod._prepare_document_content(2, {"unexpected": "value"})  # noqa: SLF001
 
 
+@pytest.mark.parametrize(
+    "value, location",
+    [
+        ({"bytes": None, "path": "one.jpg"}, "row 1"),
+        ([{"bytes": None, "path": "one.jpg"}, {"bytes": None, "path": "two.jpg"}], "row 1, item 0"),
+    ],
+)
+def test_document_content_rejects_path_backed_media_with_guidance(value: object, location: str) -> None:
+    with pytest.raises(ValueError) as exc_info:
+        mod._prepare_document_content(1, value)  # noqa: SLF001
+
+    message = str(exc_info.value)
+    assert location in message
+    assert "path-backed media 'one.jpg' has no inline bytes" in message
+    assert "download the referenced file and import its bytes" in message
+
+
 async def test_entity_extractor_splits_pdfs_into_page_batches(monkeypatch: pytest.MonkeyPatch) -> None:
     extractor = EntityExtractor(["name"])
     prompts: list[list[UserContent]] = []

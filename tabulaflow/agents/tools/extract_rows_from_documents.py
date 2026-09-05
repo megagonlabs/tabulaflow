@@ -155,10 +155,12 @@ class ExtractRowsFromDocumentsTool:
         so documents far larger than one LLM context are handled.
 
         ``task_query`` selects the source documents: one result row per document, with
-        its text, image, or PDF projected as a column named **``content``**; any other
-        columns are available to ``task_instruction``. The common case is a page the
-        agent already browsed, which was offloaded to ``_internal.messages`` (already
-        has a ``content`` column)::
+        its text, inline image/PDF media, or ordered media collection projected as a
+        column named **``content``**; path-backed media is not fetched, so download the
+        referenced file and import its bytes before projecting it as ``content``. Any
+        other columns are available to ``task_instruction``. The common case is a page
+        the agent already browsed, which was offloaded to ``_internal.messages``
+        (already has a ``content`` column)::
 
             SELECT content FROM _internal.messages WHERE message_id = 'M7'
 
@@ -179,10 +181,12 @@ class ExtractRowsFromDocumentsTool:
                 ``output_columns`` must already exist on it; other columns are
                 left NULL/default.
             task_query: SELECT producing one row per source document. Must project
-                document text, inline image/PDF media, or a media collection as a column named ``content`` (alias it if needed,
-                e.g. ``SELECT body AS content, url FROM ...``); any other columns are
-                variables available to ``task_instruction`` (``content`` itself is NOT
-                available to the template). Column order does not matter.
+                document text, inline image/PDF media, or a media collection as a
+                column named ``content`` (alias it if needed, e.g. ``SELECT body AS
+                content, url FROM ...``). Path-backed media is not fetched; import its
+                bytes before projecting it as ``content``. Any other columns are
+                variables available to ``task_instruction`` (``content`` itself is
+                NOT available to the template). Column order does not matter.
             task_instruction: A Jinja2 template rendered once per source document
                 describing what one entity is and how to populate ``output_columns``.
                 It may reference any column of ``task_query`` other than ``content``

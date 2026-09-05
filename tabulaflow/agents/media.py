@@ -121,7 +121,17 @@ def inspect_inline_media(value: object) -> tuple[InlineMediaItem, ...] | None:
 def materialize_inline_media(candidate: InlineMediaCandidate, *, max_bytes: int) -> BinaryContent:
     """Convert a bounded inline candidate into a validated image or PDF."""
     if candidate.estimated_size is None:
-        raise ValueError("invalid or unavailable inline bytes")
+        if isinstance(candidate.value, dict):
+            path = candidate.value.get("path")
+            if isinstance(path, str) and path:
+                raise ValueError(
+                    f"path-backed media {path!r} has no inline bytes; "
+                    "download the referenced file and import its bytes before attaching it"
+                )
+            raise ValueError("inline media value has no usable bytes")
+        if isinstance(candidate.value, str):
+            raise ValueError("invalid inline media data URI")
+        raise ValueError("inline media value has no usable bytes")
     if candidate.estimated_size > max_bytes:
         raise ValueError(f"{candidate.estimated_size} bytes exceeds {max_bytes}-byte limit")
     try:

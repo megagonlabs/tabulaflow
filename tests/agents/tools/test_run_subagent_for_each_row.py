@@ -318,9 +318,26 @@ class TestMediaInput:
 
         assert summary.startswith("(error:")
         assert "row 1, column 'payload'" in summary
-        assert "textual representation" in summary
+        assert "provide valid inline image/PDF bytes or omit the column" in summary
         assert calls == 0
         assert await _rows(conn, "SELECT label FROM t") == [{"label": None}]
+
+    @pytest.mark.parametrize(
+        "value, source",
+        [
+            ({"bytes": None, "path": "one.jpg"}, "images"),
+            ([{"bytes": None, "path": "one.jpg"}, {"bytes": None, "path": "two.jpg"}], "images[0]"),
+        ],
+    )
+    def test_path_backed_media_fails_with_actionable_guidance(self, value: object, source: str) -> None:
+        with pytest.raises(ValueError) as exc_info:
+            run_subagent_module._prepare_task_row(1, {"images": value})  # noqa: SLF001
+
+        message = str(exc_info.value)
+        assert f"column '{source}'" in message
+        assert "path-backed media 'one.jpg' has no inline bytes" in message
+        assert "download the referenced file and import its bytes" in message
+        assert "or omit the column" in message
 
     async def test_oversized_data_uri_is_rejected_without_decoding(
         self, conn: SQLConnector, monkeypatch: pytest.MonkeyPatch

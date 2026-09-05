@@ -6,7 +6,7 @@ import numpy as np
 from PIL import Image
 from pydantic_ai.messages import BinaryImage
 
-from tabulaflow.agents.media import inspect_inline_media, to_binary_content
+from tabulaflow.agents.media import inspect_inline_media, materialize_inline_media, to_binary_content
 
 
 def _image_bytes(format: str) -> bytes:
@@ -85,3 +85,14 @@ def test_inspect_inline_media_supports_ordered_mixed_collections() -> None:
 def test_inspect_inline_media_rejects_partially_media_collections() -> None:
     with pytest.raises(ValueError, match="non-media values at indices 1"):
         inspect_inline_media([_image_bytes("PNG"), "caption"])
+
+
+def test_materialize_inline_media_explains_path_backed_values() -> None:
+    items = inspect_inline_media({"bytes": None, "path": "images/example.jpg"})
+    assert items is not None
+
+    with pytest.raises(
+        ValueError,
+        match="path-backed media 'images/example.jpg' has no inline bytes.*download the referenced file",
+    ):
+        materialize_inline_media(items[0].candidate, max_bytes=1024)
