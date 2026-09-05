@@ -100,6 +100,7 @@ export function renderTable(container, cardData) {
     galleryStep = null;
     modal.classList.remove('tf-lightbox');
     modalTitle.textContent = title || '';
+    modalTitle.hidden = false;
     modal.setAttribute('aria-label', title || 'Table cell detail');
     mediaCount.textContent = '';
     var pre = document.createElement('pre');
@@ -126,7 +127,8 @@ export function renderTable(container, cardData) {
     }
     galleryStep = function (delta) { index = (index + delta + items.length) % items.length; showItem(); };
     modal.classList.add('tf-lightbox');
-    modalTitle.textContent = title || '';
+    modalTitle.textContent = '';
+    modalTitle.hidden = true;
     modal.setAttribute('aria-label', title || 'Media preview');
     showItem();
     showModal();
