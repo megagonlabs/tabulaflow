@@ -754,6 +754,7 @@ Sep 4
 
 - [ ] Fix media cells display in TUI
 - Output pane
+  - [ ] Arrow key automatically focus on close button
   - [ ] Image cramped - https://huggingface.co/datasets/lmms-lab-encoder/DocVQA/viewer/DocVQA
   - [ ] Long text/json cell in output pane
   - [ ] Focus ring of item in media collection in output pane
