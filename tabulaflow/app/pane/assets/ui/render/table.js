@@ -140,7 +140,17 @@ export function renderTable(container, cardData) {
     mediaCount.textContent = '';
     modalBody.innerHTML = '';
   }
-  modal.addEventListener('click', function (e) { if (e.target === modal) closeModal(); });
+  modal.addEventListener('click', function (e) {
+    if (!modal.classList.contains('tf-lightbox')) {
+      if (e.target === modal) closeModal();
+      return;
+    }
+    var target = e.target;
+    var protectedTarget = target && target.closest
+      ? target.closest('.tf-media-stage img, .tf-media-stage audio, .tf-media-stage video, .tf-media-stage a, button')
+      : null;
+    if (!protectedTarget) closeModal();
+  });
   modal.addEventListener('keydown', function (e) {
     if (!galleryStep || (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight')) return;
     if (e.target && /^(AUDIO|VIDEO|INPUT)$/.test(e.target.tagName || '')) return;
