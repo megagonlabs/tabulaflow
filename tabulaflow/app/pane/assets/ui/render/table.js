@@ -7,7 +7,11 @@ const Tabulator = window.Tabulator;
 function copyValue(value) {
   if (value == null) return '';
   if (typeof value === 'object') {
-    if (value.kind === 'media') return String(value.src || '');
+    if (value.kind === 'media') {
+      var mime = String(value.mime || 'binary');
+      var size = value.size == null ? NaN : Number(value.size);
+      return Number.isFinite(size) ? '[Media: ' + mime + ', ' + size + ' bytes]' : '[Media: ' + mime + ']';
+    }
     return JSON.stringify(value);
   }
   return String(value);

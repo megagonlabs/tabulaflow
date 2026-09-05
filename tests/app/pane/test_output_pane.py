@@ -511,17 +511,22 @@ const columns = [
   {{ title: 'Notes', field: 'notes' }},
   {{ title: 'Meta', field: 'meta' }},
   {{ title: 'Media', field: 'media' }},
+  {{ title: 'Media without size', field: 'mediaWithoutSize' }},
 ];
 const rows = [
-  {{ name: 'Alice', notes: 'one\\ttwo', meta: {{ a: 1 }}, media: {{ kind: 'media', src: 'https://example.com/a.png' }} }},
-  {{ name: 'Bob', notes: 'line\\n"quoted"', meta: null, media: null }},
+  {{ name: 'Alice', notes: 'one\\ttwo', meta: {{ a: 1 }},
+     media: {{ kind: 'media', mime: 'image/png', src: 'data:image/png;base64,AAAA', size: 123 }},
+     mediaWithoutSize: {{ kind: 'media', mime: 'audio/mpeg', src: './private/audio.mp3' }} }},
+  {{ name: 'Bob', notes: 'line\\n"quoted"', meta: null,
+     media: {{ kind: 'media', mime: 'application/pdf', src: './private/file.pdf', size: 456 }},
+     mediaWithoutSize: null }},
 ];
 process.stdout.write(JSON.stringify(tableToTsv(columns, rows)));
 """
     assert _run_node(node, script) == (
-        "Name\tNotes\tMeta\tMedia\n"
-        'Alice\t"one\ttwo"\t"{""a"":1}"\thttps://example.com/a.png\n'
-        'Bob\t"line\n""quoted"""\t\t'
+        "Name\tNotes\tMeta\tMedia\tMedia without size\n"
+        'Alice\t"one\ttwo"\t"{""a"":1}"\t[Media: image/png, 123 bytes]\t[Media: audio/mpeg]\n'
+        'Bob\t"line\n""quoted"""\t\t[Media: application/pdf, 456 bytes]\t'
     )
 
 
