@@ -98,6 +98,7 @@ export function renderTable(container, cardData) {
   }
   function openModal(title, text) {
     galleryStep = null;
+    modal.classList.remove('tf-lightbox');
     modalTitle.textContent = title || '';
     modal.setAttribute('aria-label', title || 'Table cell detail');
     mediaCount.textContent = '';
@@ -112,10 +113,10 @@ export function renderTable(container, cardData) {
     function showItem() {
       var previous = items.length > 1
         ? '<button class="tf-media-step" type="button" data-gallery-step="-1" aria-label="Previous media item">&#8249;</button>'
-        : '';
+        : '<span class="tf-media-step-placeholder"></span>';
       var next = items.length > 1
         ? '<button class="tf-media-step" type="button" data-gallery-step="1" aria-label="Next media item">&#8250;</button>'
-        : '';
+        : '<span class="tf-media-step-placeholder"></span>';
       mediaCount.textContent = items.length > 1 ? (index + 1) + ' of ' + items.length : '';
       modalBody.innerHTML = '<div class="tf-media-lightbox">' + previous
         + '<div class="tf-media-stage">' + renderMedia(items[index]) + '</div>' + next + '</div>';
@@ -124,6 +125,7 @@ export function renderTable(container, cardData) {
       });
     }
     galleryStep = function (delta) { index = (index + delta + items.length) % items.length; showItem(); };
+    modal.classList.add('tf-lightbox');
     modalTitle.textContent = title || '';
     modal.setAttribute('aria-label', title || 'Media preview');
     showItem();
@@ -134,6 +136,7 @@ export function renderTable(container, cardData) {
   }
   function clearModal() {
     galleryStep = null;
+    modal.classList.remove('tf-lightbox');
     mediaCount.textContent = '';
     modalBody.innerHTML = '';
   }
