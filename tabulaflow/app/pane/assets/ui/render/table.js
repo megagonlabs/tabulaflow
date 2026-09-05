@@ -82,7 +82,7 @@ export function renderTable(container, cardData) {
   container.innerHTML = '<div class="' + wrapClass + '"><div class="tf-table"></div></div>'
     + '<dialog class="tf-modal">'
     + '<div class="tf-modal-card"><div class="tf-modal-header">'
-    + '<span class="tf-modal-title"></span><span class="tf-media-count"></span>'
+    + '<span class="tf-modal-title"></span><span class="tf-media-count" aria-live="polite"></span>'
     + '<button class="tf-modal-close" type="button" aria-label="Close" autofocus>'
     + '<svg viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg>'
     + '</button></div><div class="tf-modal-body"></div></div></dialog>';
@@ -93,6 +93,10 @@ export function renderTable(container, cardData) {
   var mediaCount = container.querySelector('.tf-media-count');
   var closeBtn = container.querySelector('.tf-modal-close');
   var galleryStep = null;
+  function clearMediaCount() {
+    mediaCount.textContent = '';
+    mediaCount.removeAttribute('aria-label');
+  }
   function showModal() {
     if (!modal.open) modal.showModal();
   }
@@ -102,7 +106,7 @@ export function renderTable(container, cardData) {
     modalTitle.textContent = title || '';
     modalTitle.hidden = false;
     modal.setAttribute('aria-label', title || 'Table cell detail');
-    mediaCount.textContent = '';
+    clearMediaCount();
     var pre = document.createElement('pre');
     pre.textContent = maybeFormatJson(text);
     modalBody.innerHTML = '';
@@ -113,12 +117,19 @@ export function renderTable(container, cardData) {
     var index = Math.max(0, Math.min(startIndex || 0, items.length - 1));
     function showItem() {
       var previous = items.length > 1
-        ? '<button class="tf-media-step" type="button" data-gallery-step="-1" aria-label="Previous media item">&#8249;</button>'
+        ? '<button class="tf-media-step" type="button" data-gallery-step="-1" aria-label="Previous media item">'
+          + '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg></button>'
         : '<span class="tf-media-step-placeholder"></span>';
       var next = items.length > 1
-        ? '<button class="tf-media-step" type="button" data-gallery-step="1" aria-label="Next media item">&#8250;</button>'
+        ? '<button class="tf-media-step" type="button" data-gallery-step="1" aria-label="Next media item">'
+          + '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></button>'
         : '<span class="tf-media-step-placeholder"></span>';
-      mediaCount.textContent = items.length > 1 ? (index + 1) + ' of ' + items.length : '';
+      if (items.length > 1) {
+        mediaCount.textContent = (index + 1) + ' / ' + items.length;
+        mediaCount.setAttribute('aria-label', 'Item ' + (index + 1) + ' of ' + items.length);
+      } else {
+        clearMediaCount();
+      }
       modalBody.innerHTML = '<div class="tf-media-lightbox">' + previous
         + '<div class="tf-media-stage">' + renderMedia(items[index]) + '</div>' + next + '</div>';
       modalBody.querySelectorAll('[data-gallery-step]').forEach(function (button) {
@@ -139,7 +150,7 @@ export function renderTable(container, cardData) {
   function clearModal() {
     galleryStep = null;
     modal.classList.remove('tf-lightbox');
-    mediaCount.textContent = '';
+    clearMediaCount();
     modalBody.innerHTML = '';
   }
   modal.addEventListener('click', function (e) {
