@@ -744,11 +744,12 @@ Sep 4
   - [x] Multi-media-items cell
   - [ ] Multi-media-items cell display
   - [ ] Audio/Video support
+  - [ ] Detail
 - app
   - [x] Fix scrolling
   - [x] Fix manual table
   - [x] Copy table with media in output pane
-  - [ ] Map region color for parametrized source
+  - [x] Stable colors across parameter selection
   - [ ] Show pending turns in output pane
 
 - [ ] Inline artifact citation
@@ -765,6 +766,7 @@ Sep 4
 
 - v2 features
   - [ ] Multimodal output
+  - [ ] hydrate_media tool?
   
 - [ ] Allowed roots policy
 - [ ] image/pdf detail level
