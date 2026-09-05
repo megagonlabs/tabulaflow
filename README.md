@@ -753,7 +753,10 @@ Sep 4
   - [x] Stable colors across parameter selection
 
 - [ ] Fix media cells display in TUI
-- [ ] Image cramped - https://huggingface.co/datasets/lmms-lab-encoder/DocVQA/viewer/DocVQA
+- Output pane
+  - [ ] Image cramped - https://huggingface.co/datasets/lmms-lab-encoder/DocVQA/viewer/DocVQA
+  - [ ] Long text/json cell in output pane
+  - [ ] Focus ring of item in media collection in output pane
 
 - [ ] Show pending turns in output pane
 - [ ] Inline artifact citation
