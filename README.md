@@ -743,16 +743,17 @@ Sep 4
   - [x] Test huggingface multimodal datasets
   - [x] Multi-media-items cell
   - [x] Refactor
-  - [ ] Multi-media-items cell display
-  - [ ] Audio/Video support
-  - [ ] Detail
+  - [x] Multi-media-items cell display
+  - [x] Audio/Video support -> deferred
+  - [x] Detail -> deferred
 - app
   - [x] Fix scrolling
   - [x] Fix manual table
   - [x] Copy table with media in output pane
   - [x] Stable colors across parameter selection
-  - [ ] Show pending turns in output pane
 
+- [ ] Show pending turns in output pane
+- [ ] Image cramped
 - [ ] Inline artifact citation
 - [ ] code diff rendering
 - [ ] IMPORTANT: decouple data and rendered format (show unit "cm" while still enabling sorting by value)
