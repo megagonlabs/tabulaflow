@@ -196,6 +196,10 @@ async def test_run_query_preserves_values_for_unsupported_and_invalid_media() ->
     assert "https://example.com/image.png" in text
     assert "media omitted" not in text
     assert "(0 media items attached; 3 candidates not attached)" in text
+    assert "Media attachment issues:" in text
+    assert "row 1, column audio: invalid or unsupported audio/wav" in text
+    assert "row 1, column invalid: invalid or unsupported image/png" in text
+    assert "row 1, column external: path-backed media '/tmp/external.png' has no inline bytes" in text
     assert returned.content is None
 
 
@@ -227,6 +231,8 @@ async def test_run_query_preserves_paths_while_redacting_nested_bytes() -> None:
     assert "[binary: 12 bytes]" in text
     assert "media omitted" not in text
     assert "(0 media items attached; 2 candidates not attached)" in text
+    assert "row 1, column images[0]: path-backed media 'first.jpg' has no inline bytes" in text
+    assert "row 1, column images[1]: media type could not be determined" in text
     assert returned.content is None
 
 
@@ -243,6 +249,7 @@ async def test_run_query_enforces_media_item_limit() -> None:
     assert f"[binary: {len(image)} bytes]" in _text(returned)
     assert "media omitted" not in _text(returned)
     assert "(10 media items attached; 1 candidate not attached)" in _text(returned)
+    assert "row 1, column image_10: 10-item attachment limit reached" in _text(returned)
 
 
 async def test_run_query_enforces_normalized_media_total(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -259,6 +266,7 @@ async def test_run_query_enforces_normalized_media_total(monkeypatch: pytest.Mon
     assert f"[binary: {len(image)} bytes]" in _text(returned)
     assert "media omitted" not in _text(returned)
     assert "(1 media item attached; 1 candidate not attached)" in _text(returned)
+    assert "total attachment limit reached" in _text(returned)
 
 
 async def test_run_query_omits_single_value_over_media_budget(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -271,6 +279,7 @@ async def test_run_query_omits_single_value_over_media_budget(monkeypatch: pytes
 
     assert "[binary: 5 bytes]" in _text(returned)
     assert "(0 media items attached; 1 candidate not attached)" in _text(returned)
+    assert "row 1, column blob: 5 bytes exceeds 4-byte limit" in _text(returned)
     assert returned.content is None
 
 
@@ -303,7 +312,21 @@ async def test_run_query_checks_budget_after_image_normalization(monkeypatch: py
 
     assert f"[binary: {len(image)} bytes]" in _text(returned)
     assert "(0 media items attached; 1 candidate not attached)" in _text(returned)
+    assert "normalized image/png exceeds" in _text(returned)
     assert returned.content is None
+
+
+async def test_run_query_bounds_media_attachment_issues() -> None:
+    result = ExecResult(df=pd.DataFrame({f"blob_{index}": [b"not media"] for index in range(7)}))
+
+    returned = await RunQueryTool(cast(Any, _ResultConnector(result)), enable_media=True)(
+        "SELECT * FROM assets", include_media=True
+    )
+
+    text = _text(returned)
+    assert "(0 media items attached; 7 candidates not attached)" in text
+    assert text.count("media type could not be determined") == 5
+    assert "- 2 more attachment issues" in text
 
 
 async def test_run_query_allows_many_rows_without_media() -> None:

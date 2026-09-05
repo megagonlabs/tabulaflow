@@ -19,6 +19,7 @@ from tabulaflow.agents.tools.protocols import _omit_tool_parameters
 _UNSET = object()
 _MAX_MEDIA_ITEMS = 10
 _MAX_MEDIA_BYTES = 25 * 1024 * 1024
+_MAX_MEDIA_ISSUES = 5
 
 
 def _media_source(column: object, index: int | None) -> str:
@@ -33,6 +34,7 @@ class PreparedResultMedia:
     content: tuple[UserContent, ...]
     candidates: int
     attached: int
+    issues: tuple[str, ...]
 
 
 def _format_media_summary(media: PreparedResultMedia) -> str:
@@ -43,47 +45,70 @@ def _format_media_summary(media: PreparedResultMedia) -> str:
     if not_attached == 0:
         return f"\n({media.attached} media {attached_label} attached)"
     missing_label = "candidate" if not_attached == 1 else "candidates"
-    return f"\n({media.attached} media {attached_label} attached; {not_attached} {missing_label} not attached)"
+    summary = f"\n({media.attached} media {attached_label} attached; {not_attached} {missing_label} not attached)"
+    if media.issues:
+        summary += "\n\nMedia attachment issues:\n" + "\n".join(f"- {issue}" for issue in media.issues)
+        remaining = not_attached - len(media.issues)
+        if remaining:
+            summary += f"\n- {remaining} more attachment issue{'s' if remaining != 1 else ''}"
+    return summary
 
 
 def _prepare_result_media(
     df: pd.DataFrame,
 ) -> PreparedResultMedia:
     content: list[UserContent] = []
+    issues: list[str] = []
     candidates = 0
     attached = 0
     total_bytes = 0
+
+    def record_issue(row: int, column: object, index: int | None, reason: object) -> None:
+        if len(issues) < _MAX_MEDIA_ISSUES:
+            source = _media_source(column, index)
+            issues.append(f"row {row + 1}, column {source}: {reason}")
+
     for row in range(len(df)):
         for column in range(len(df.columns)):
             value = df.iat[row, column]
             try:
                 items = inspect_inline_media(value)
-            except ValueError:
+            except ValueError as exc:
+                candidates += 1
+                record_issue(row, df.columns[column], None, exc)
                 continue
             if items is None:
                 continue
             for item in items:
                 candidates += 1
                 candidate = item.candidate
+                source = _media_source(df.columns[column], item.index)
                 if attached >= _MAX_MEDIA_ITEMS:
+                    record_issue(row, df.columns[column], item.index, f"{_MAX_MEDIA_ITEMS}-item attachment limit reached")
                     continue
                 try:
                     binary = materialize_inline_media(candidate, max_bytes=_MAX_MEDIA_BYTES)
-                except ValueError:
+                except ValueError as exc:
+                    record_issue(row, df.columns[column], item.index, exc)
                     continue
                 if total_bytes + len(binary.data) > _MAX_MEDIA_BYTES:
+                    record_issue(
+                        row,
+                        df.columns[column],
+                        item.index,
+                        f"{_MAX_MEDIA_BYTES}-byte total attachment limit reached",
+                    )
                     continue
 
                 attached += 1
                 total_bytes += len(binary.data)
-                source = _media_source(df.columns[column], item.index)
                 content.extend(
                     (
                         f"Media #{attached} from result row {row + 1}, column {source}:",
                         binary,
                     )
                 )
-    return PreparedResultMedia(tuple(content), candidates, attached)
+    return PreparedResultMedia(tuple(content), candidates, attached, tuple(issues))
 
 
 def _format_latency(seconds: float | None) -> str:
@@ -242,7 +267,7 @@ class RunQueryTool:
                     parameters=param_dict,
                     timeout=self.timeout,  # type: ignore[arg-type]
                 )
-            prepared_media = PreparedResultMedia((), 0, 0)
+            prepared_media = PreparedResultMedia((), 0, 0, ())
             if include_media and exec_result.df is not None:
                 prepared_media = _prepare_result_media(exec_result.df)
             res = self._format_exec_result(exec_result)
