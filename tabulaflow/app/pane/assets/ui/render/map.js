@@ -13,7 +13,7 @@ var mapPalette = [
   cssVar('--map-category-2', '#fbbc04'),
   cssVar('--map-category-3', '#34a853'),
   cssVar('--map-category-4', '#a142f4'),
-  cssVar('--map-category-5', '#fbbc54'),
+  cssVar('--map-category-5', '#d81b60'),
   cssVar('--map-category-6', '#46bdc6'),
   cssVar('--map-category-7', '#7cb342')
 ];
