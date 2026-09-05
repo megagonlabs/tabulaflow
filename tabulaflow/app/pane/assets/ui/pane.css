@@ -488,6 +488,14 @@ body { margin: 0; background: var(--bg); color: var(--text); display: flex; flex
 .tf-table-view img { max-height: 96px; max-width: 200px; display: block; }
 .tf-table-view audio { max-width: 240px; display: block; filter: invert(0.92) hue-rotate(180deg); }
 .tf-table-view video { width: 240px; height: 160px; object-fit: contain; background: #000; display: block; }
+.tf-media-list { display: flex; align-items: center; gap: 6px; }
+.tf-media-tile { width: 68px; height: 68px; padding: 0; overflow: hidden; cursor: pointer;
+                 display: grid; place-items: center; flex: none; border: 1px solid var(--border);
+                 border-radius: 4px; background: #171d25; color: var(--text-muted); }
+.tf-media-tile:hover { border-color: var(--accent); color: var(--accent); }
+.tf-table-view .tf-media-tile img { width: 100%; height: 100%; max-width: none; max-height: none; object-fit: contain; }
+.tf-media-tile-label { font: 600 11px/1 ui-monospace, monospace; }
+.tf-media-more { font: 600 13px/1 ui-monospace, monospace; }
 .tf-table-view .tabulator,
 .tf-table-view .tabulator .tabulator-tableholder,
 .tf-table-view .tabulator .tabulator-table {
@@ -573,6 +581,14 @@ body { margin: 0; background: var(--bg); color: var(--text); display: flex; flex
 .tf-modal-body pre { margin: 0; font-family: ui-monospace, "SF Mono", Menlo, monospace;
                      font-size: 13px; white-space: pre-wrap; word-break: break-word; color: var(--text); }
 .tf-modal-body img { max-width: 76vw; max-height: 70vh; display: block; margin: 0 auto; }
+.tf-media-stage { min-width: min(560px, 70vw); min-height: 240px; display: grid; place-items: center; }
+.tf-media-stage audio { width: min(480px, 65vw); }
+.tf-media-stage video { width: min(720px, 70vw); height: min(540px, 60vh); object-fit: contain; background: #000; }
+.tf-media-nav { display: flex; align-items: center; justify-content: center; gap: 16px; margin-top: 12px;
+                color: var(--text-muted); font: 12px/1.2 ui-monospace, monospace; }
+.tf-media-nav button { border: 1px solid var(--popover-border); border-radius: 4px; padding: 5px 9px;
+                       background: transparent; color: var(--text-muted); cursor: pointer; }
+.tf-media-nav button:hover { color: var(--accent); border-color: var(--accent); }
 
 /* Direct chart rendering. */
 .tf-chart-view { --artifact-bg: var(--card); }

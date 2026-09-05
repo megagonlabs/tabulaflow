@@ -69,6 +69,18 @@ class ColumnDesc(TypedDict, total=False):
     role: Required[ColumnRole]
 
 
+class MediaCell(TypedDict):
+    kind: Literal["media"]
+    mime: str
+    src: str
+    size: int
+
+
+class MediaListCell(TypedDict):
+    kind: Literal["media-list"]
+    items: list[MediaCell | str]
+
+
 class TableData(TypedDict, total=False):
     columns: Required[list[ColumnDesc]]
     hasMedia: bool

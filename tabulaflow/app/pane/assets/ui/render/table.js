@@ -1,12 +1,28 @@
 // @ts-check
 
-import { asUrls, escapeHtml, formatNumber, link, maybeFormatJson, renderMedia } from './shared.js';
+import { asUrls, escapeAttr, escapeHtml, formatNumber, link, maybeFormatJson, renderMedia } from './shared.js';
 
 const Tabulator = window.Tabulator;
 
 function copyValue(value) {
   if (value == null) return '';
   if (typeof value === 'object') {
+    if (value.kind === 'media-list') {
+      var items = Array.isArray(value.items) ? value.items : [];
+      var counts = {};
+      items.forEach(function (item) {
+        var mime = item && item.kind === 'media' ? String(item.mime || '') : '';
+        var type = mime === 'application/pdf' ? 'PDF' : (mime.split('/', 1)[0] || 'file');
+        counts[type] = (counts[type] || 0) + 1;
+      });
+      var summary = Object.keys(counts).map(function (type) {
+        var count = counts[type];
+        var label = type === 'PDF' ? 'PDF' + (count === 1 ? '' : 's') : type + (count === 1 ? '' : 's');
+        return count + ' ' + label;
+      });
+      return '[' + items.length + ' media item' + (items.length === 1 ? '' : 's')
+        + (summary.length ? ': ' + summary.join(', ') : '') + ']';
+    }
     if (value.kind === 'media') {
       var mime = String(value.mime || 'binary');
       var size = value.size == null ? NaN : Number(value.size);
@@ -15,6 +31,31 @@ function copyValue(value) {
     return JSON.stringify(value);
   }
   return String(value);
+}
+
+function mediaTile(item, index) {
+  var mime = item && item.kind === 'media' ? String(item.mime || '') : '';
+  var label = mime === 'application/pdf' ? 'PDF' : (mime.split('/', 1)[0] || 'File');
+  label = label.charAt(0).toUpperCase() + label.slice(1);
+  var content = mime.indexOf('image/') === 0
+    ? '<img src="' + escapeAttr(String(item.src || '')) + '" alt="">'
+    : '<span class="tf-media-tile-label">' + escapeHtml(label) + '</span>';
+  return '<button class="tf-media-tile" type="button" data-media-index="' + index
+    + '" aria-label="Open ' + escapeAttr(label) + '">' + content + '</button>';
+}
+
+function renderMediaCell(value) {
+  if (!value || value.kind !== 'media-list') return renderMedia(value);
+  var items = Array.isArray(value.items) ? value.items : [];
+  if (items.length === 1) return renderMedia(items[0]);
+  var visibleCount = items.length > 3 ? 2 : items.length;
+  var html = items.slice(0, visibleCount).map(mediaTile).join('');
+  if (visibleCount < items.length) {
+    html += '<button class="tf-media-tile tf-media-more" type="button" data-media-index="' + visibleCount
+      + '" aria-label="Open ' + (items.length - visibleCount) + ' more media items">+'
+      + (items.length - visibleCount) + '</button>';
+  }
+  return '<div class="tf-media-list">' + html + '</div>';
 }
 
 function tsvCell(value) {
@@ -57,12 +98,23 @@ export function renderTable(container, cardData) {
     modalBody.appendChild(pre);
     modal.classList.add('open');
   }
-  function openModalImage(title, src) {
+  function openMediaGallery(title, items, startIndex) {
+    var index = Math.max(0, Math.min(startIndex || 0, items.length - 1));
+    function showItem() {
+      modalBody.innerHTML = '<div class="tf-media-stage">' + renderMedia(items[index]) + '</div>';
+      if (items.length < 2) return;
+      var nav = document.createElement('div');
+      nav.className = 'tf-media-nav';
+      nav.innerHTML = '<button type="button" aria-label="Previous media item">Previous</button>'
+        + '<span>' + (index + 1) + ' of ' + items.length + '</span>'
+        + '<button type="button" aria-label="Next media item">Next</button>';
+      var buttons = nav.querySelectorAll('button');
+      buttons[0].addEventListener('click', function () { index = (index + items.length - 1) % items.length; showItem(); });
+      buttons[1].addEventListener('click', function () { index = (index + 1) % items.length; showItem(); });
+      modalBody.appendChild(nav);
+    }
     modalTitle.textContent = title || '';
-    modalBody.innerHTML = '';
-    var img = document.createElement('img');
-    img.src = src;
-    modalBody.appendChild(img);
+    showItem();
     modal.classList.add('open');
   }
   function closeModal() {
@@ -96,7 +148,7 @@ export function renderTable(container, cardData) {
       if (s.length > displayCap) return '<div class="trunc">' + escapeHtml(head) + '</div>';
       return '<span class="multiline">' + escapeHtml(head) + '</span>';
     },
-    media: function (cell) { return renderMedia(cell.getValue()); },
+    media: function (cell) { return renderMediaCell(cell.getValue()); },
     num: function (cell) {
       var v = cell.getValue();
       return v == null ? '' : escapeHtml(formatNumber(v));
@@ -155,8 +207,22 @@ export function renderTable(container, cardData) {
       out.widthGrow = 1;
       out.cellClick = function (e, cell) {
         var value = cell.getValue();
+        if (value && value.kind === 'media-list' && Array.isArray(value.items) && value.items.length) {
+          var trigger = e.target && e.target.closest ? e.target.closest('[data-media-index]') : null;
+          if (trigger) {
+            openMediaGallery(
+              cell.getColumn().getDefinition().title,
+              value.items,
+              Number(trigger.getAttribute('data-media-index'))
+            );
+          } else if (value.items.length === 1 && value.items[0] && value.items[0].kind === 'media'
+              && String(value.items[0].mime || '').indexOf('image/') === 0) {
+            openMediaGallery(cell.getColumn().getDefinition().title, value.items, 0);
+          }
+          return;
+        }
         if (value && value.kind === 'media' && String(value.mime || '').indexOf('image/') === 0) {
-          openModalImage(cell.getColumn().getDefinition().title, value.src);
+          openMediaGallery(cell.getColumn().getDefinition().title, [value], 0);
         }
       };
     } else if (role === 'bool') {

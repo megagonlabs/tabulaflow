@@ -970,12 +970,19 @@ def _media_table_result() -> ResultCardInput:
             "mp4": [mp4_bytes for _ in names],
             "jpeg_b64": jpeg_b64,
             "jpeg_data_uri": [f"data:image/jpeg;base64,{payload}" for payload in jpeg_b64],
+            "collection": [
+                [jpeg[0], gif[0]],
+                [jpeg[1], pdf[1], wav[1], mp4_bytes],
+                [jpeg[2]],
+                [pdf[3], wav[3]],
+                [jpeg[4], gif[4], pdf[4], wav[4]],
+            ],
             "mixed": [jpeg[0], "plain text", 42, None, "another"],
         }
     )
     return _result_input(
         result_id="QDEBUG_MEDIA",
         label="debug_media",
-        query="-- synthetic media payloads (JPEG/GIF/PDF/WAV/MP4)",
+        query="-- synthetic scalar and collection media payloads (JPEG/GIF/PDF/WAV/MP4)",
         df=df,
     )

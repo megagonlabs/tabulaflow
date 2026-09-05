@@ -56,6 +56,18 @@ export interface ColumnDesc {
   role: ColumnRole;
 }
 
+export interface MediaCell {
+  kind: "media";
+  mime: string;
+  src: string;
+  size: number;
+}
+
+export interface MediaListCell {
+  kind: "media-list";
+  items: (MediaCell | string)[];
+}
+
 export interface TableData {
   columns: ColumnDesc[];
   hasMedia?: boolean;

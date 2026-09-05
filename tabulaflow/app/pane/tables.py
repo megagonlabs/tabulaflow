@@ -9,11 +9,49 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from tabulaflow.app.pane.contract import ColumnDesc, TableCardData, TableData
+from tabulaflow.app.pane.contract import ColumnDesc, MediaCell, MediaListCell, TableCardData, TableData
 from tabulaflow.core.media import detect_media, extract_media_bytes
 
 if TYPE_CHECKING:
     import pandas as pd
+
+
+@dataclass(frozen=True)
+class _CellMedia:
+    blobs: tuple[bytes, ...]
+    collection: bool
+
+
+def _cell_media(value: object) -> _CellMedia | None:
+    """Extract recognized media from one scalar or one-dimensional collection."""
+    import numpy as np
+    import pandas as pd
+
+    if isinstance(value, np.ndarray):
+        if value.ndim != 1:
+            return None
+        values = value.tolist()
+    elif isinstance(value, (list, tuple)):
+        values = list(value)
+    else:
+        values = None
+
+    if values is None:
+        blob = extract_media_bytes(value, decode_base64=True)
+        return _CellMedia((blob,), False) if blob is not None and detect_media(blob) is not None else None
+
+    blobs: list[bytes] = []
+    for item in values:
+        try:
+            if item is None or bool(pd.isna(item)):
+                continue
+        except (TypeError, ValueError):
+            pass
+        blob = extract_media_bytes(item, decode_base64=True)
+        if blob is None or detect_media(blob) is None:
+            return None
+        blobs.append(blob)
+    return _CellMedia(tuple(blobs), True) if blobs else None
 
 
 def _is_media_column(series: "pd.Series", *, sample_n: int = 5, threshold: float = 0.6) -> bool:
@@ -25,11 +63,7 @@ def _is_media_column(series: "pd.Series", *, sample_n: int = 5, threshold: float
     sample = series.dropna().head(sample_n)
     if sample.empty:
         return False
-    recognized = sum(
-        detect_media(blob) is not None
-        for value in sample
-        if (blob := extract_media_bytes(value, decode_base64=True)) is not None
-    )
+    recognized = sum(_cell_media(value) is not None for value in sample)
     return recognized / len(sample) >= threshold
 
 
@@ -123,6 +157,42 @@ def _coerce_text_value(value: object) -> object:
     return s
 
 
+def _serialize_media(
+    blob: bytes,
+    *,
+    row_idx: int,
+    col_name: str,
+    item_idx: int | None,
+    sib_dir: Path,
+    inline_cap: int,
+) -> MediaCell | str:
+    detected = detect_media(blob)
+    if detected is None:
+        return f"<binary: {len(blob):,} bytes>"
+    ext, mime = detected.suffix, detected.media_type
+    if mime != "application/pdf" and len(blob) <= inline_cap:
+        b64 = base64.b64encode(blob).decode("ascii")
+        return {"kind": "media", "mime": mime, "src": f"data:{mime};base64,{b64}", "size": len(blob)}
+
+    try:
+        sib_dir.mkdir(parents=True, exist_ok=True)
+    except OSError:
+        return f"<binary: {len(blob):,} bytes (write failed)>"
+    safe = _safe_col_name(col_name)
+    item_suffix = "" if item_idx is None else f"_i{item_idx}"
+    filename = f"r{row_idx}_c{safe}{item_suffix}{ext}"
+    try:
+        (sib_dir / filename).write_bytes(blob)
+    except OSError:
+        return f"<binary: {len(blob):,} bytes (write failed)>"
+    return {
+        "kind": "media",
+        "mime": mime,
+        "src": f"./{sib_dir.name}/{filename}",
+        "size": len(blob),
+    }
+
+
 def _build_table_data(
     df: "pd.DataFrame",
     *,
@@ -142,8 +212,6 @@ def _build_table_data(
             media_columns.add(str(col))
 
     sib_dir = output_dir / asset_stem
-    sib_dir_created = False
-
     column_defs: list[ColumnDesc] = []
     fields: list[tuple[str, str]] = []
     field_by_column: dict[str, str] = {}
@@ -195,41 +263,22 @@ def _build_table_data(
             col_name = str(view.columns[col_idx])
             val = view.iloc[row_idx, col_idx]
             if mode == "media":
-                blob = extract_media_bytes(val, decode_base64=True)
-                if blob is None:
+                media = _cell_media(val)
+                if media is None:
                     row_data[field] = _coerce_text_value(val)
                     continue
-                detected = detect_media(blob)
-                if detected is None:
-                    row_data[field] = _coerce_text_value(val)
-                    continue
-                ext, mime = detected.suffix, detected.media_type
-                if mime != "application/pdf" and len(blob) <= inline_cap:
-                    b64 = base64.b64encode(blob).decode("ascii")
-                    src = f"data:{mime};base64,{b64}"
-                    row_data[field] = {"kind": "media", "mime": mime, "src": src, "size": len(blob)}
-                    continue
-                if not sib_dir_created:
-                    try:
-                        sib_dir.mkdir(parents=True, exist_ok=True)
-                        sib_dir_created = True
-                    except OSError:
-                        row_data[field] = f"<binary: {len(blob):,} bytes (write failed)>"
-                        continue
-                safe = _safe_col_name(col_name)
-                filename = f"r{row_idx}_c{safe}{ext}"
-                spill_path = sib_dir / filename
-                try:
-                    spill_path.write_bytes(blob)
-                except OSError:
-                    row_data[field] = f"<binary: {len(blob):,} bytes (write failed)>"
-                    continue
-                row_data[field] = {
-                    "kind": "media",
-                    "mime": mime,
-                    "src": f"./{sib_dir.name}/{filename}",
-                    "size": len(blob),
-                }
+                items = [
+                    _serialize_media(
+                        blob,
+                        row_idx=row_idx,
+                        col_name=col_name,
+                        item_idx=item_idx if media.collection else None,
+                        sib_dir=sib_dir,
+                        inline_cap=inline_cap,
+                    )
+                    for item_idx, blob in enumerate(media.blobs)
+                ]
+                row_data[field] = MediaListCell(kind="media-list", items=items) if media.collection else items[0]
             else:
                 row_data[field] = _coerce_text_value(val)
         rows.append(row_data)

@@ -14,6 +14,7 @@ from tabulaflow.app.pane.tables import build_table_data
 
 PNG_MAGIC = b"\x89PNG\r\n\x1a\n" + b"\x00" * 32
 PDF_MAGIC = b"%PDF-1.7\n" + b"\x00" * 32
+AUDIO_MAGIC = b"ID3\x03\x00" + b"\x00" * 32
 
 
 def _payload_rows(payload: TableCardData) -> list[dict[str, Any]]:
@@ -70,6 +71,46 @@ class TestBuildTableData:
         pdf_paths = [tmp_path / row["c0"]["src"] for row in rows[3:]]
         assert all(path.suffix == ".pdf" for path in pdf_paths)
         assert [path.read_bytes() for path in pdf_paths] == [PDF_MAGIC, PDF_MAGIC]
+
+    def test_renders_mixed_media_collection(self, tmp_path: Path) -> None:
+        df = pd.DataFrame(
+            {
+                "content": [
+                    [PNG_MAGIC, PDF_MAGIC, AUDIO_MAGIC],
+                    [PNG_MAGIC, None],
+                ]
+            }
+        )
+
+        payload = build_table_data(df, asset_stem="card_media_list", output_dir=tmp_path)
+
+        rows = _payload_rows(payload)
+        assert _payload_table(payload)["columns"][0]["role"] == "media"
+        assert rows[0]["c0"]["kind"] == "media-list"
+        assert [item["mime"] for item in rows[0]["c0"]["items"]] == [
+            "image/png",
+            "application/pdf",
+            "audio/mpeg",
+        ]
+        assert rows[1]["c0"]["kind"] == "media-list"
+        assert len(rows[1]["c0"]["items"]) == 1
+        pdf_path = tmp_path / rows[0]["c0"]["items"][1]["src"]
+        assert pdf_path.name.endswith("_i1.pdf")
+        assert pdf_path.read_bytes() == PDF_MAGIC
+
+    def test_media_collection_spill_names_include_item_index(self, tmp_path: Path) -> None:
+        big_png = PNG_MAGIC + b"\x00" * (300 * 1024)
+
+        payload = build_table_data(
+            pd.DataFrame({"images": [[big_png, big_png]]}),
+            asset_stem="card_many_images",
+            output_dir=tmp_path,
+        )
+
+        items = _payload_rows(payload)[0]["c0"]["items"]
+        paths = [tmp_path / item["src"] for item in items]
+        assert [path.name for path in paths] == ["r0_cimages_i0.png", "r0_cimages_i1.png"]
+        assert all(path.read_bytes() == big_png for path in paths)
 
     def test_media_column_preserves_non_media_cells(self, tmp_path: Path) -> None:
         df = pd.DataFrame({"content": [PNG_MAGIC, PNG_MAGIC, PNG_MAGIC, "caption", b"unknown"]})

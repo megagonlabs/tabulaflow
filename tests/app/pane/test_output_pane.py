@@ -542,7 +542,12 @@ const rows = [
      mediaWithoutSize: {{ kind: 'media', mime: 'audio/mpeg', src: './private/audio.mp3' }} }},
   {{ name: 'Bob', notes: 'line\\n"quoted"', meta: null,
      media: {{ kind: 'media', mime: 'application/pdf', src: './private/file.pdf', size: 456 }},
-     mediaWithoutSize: null }},
+     mediaWithoutSize: {{ kind: 'media-list', items: [
+       {{ kind: 'media', mime: 'image/png', src: './private/one.png', size: 12 }},
+       {{ kind: 'media', mime: 'image/jpeg', src: './private/two.jpg', size: 34 }},
+       {{ kind: 'media', mime: 'application/pdf', src: './private/file.pdf', size: 456 }},
+       {{ kind: 'media', mime: 'audio/mpeg', src: './private/audio.mp3', size: 78 }}
+     ] }} }},
 ];
 process.stdout.write(JSON.stringify(tableToTsv(columns, rows)));
 """
@@ -550,6 +555,7 @@ process.stdout.write(JSON.stringify(tableToTsv(columns, rows)));
         "Name\tNotes\tMeta\tMedia\tMedia without size\n"
         'Alice\t"one\ttwo"\t"{""a"":1}"\t[Media: image/png, 123 bytes]\t[Media: audio/mpeg]\n'
         'Bob\t"line\n""quoted"""\t\t[Media: application/pdf, 456 bytes]\t'
+        '[4 media items: 2 images, 1 PDF, 1 audio]'
     )
 
 
