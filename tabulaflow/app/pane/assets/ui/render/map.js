@@ -251,7 +251,7 @@ function buildLegendSection(layer, items, labels, swatchType, fallbackColor) {
   var field = encodingField(encoding);
   if (!field) return null;
   var values = legendValues(encoding, items);
-  if (!values || values.length < 2 || values.length > maxLegendEntries) return null;
+  if (!values || values.length === 0 || values.length > maxLegendEntries) return null;
   var entries = values.map(function (value) {
     var row = {};
     row[field] = value;
