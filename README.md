@@ -752,8 +752,10 @@ Sep 4
   - [x] Copy table with media in output pane
   - [x] Stable colors across parameter selection
 
+- [ ] Fix media cells display in TUI
+- [ ] Image cramped - https://huggingface.co/datasets/lmms-lab-encoder/DocVQA/viewer/DocVQA
+
 - [ ] Show pending turns in output pane
-- [ ] Image cramped
 - [ ] Inline artifact citation
 - [ ] code diff rendering
 - [ ] IMPORTANT: decouple data and rendered format (show unit "cm" while still enabling sorting by value)
