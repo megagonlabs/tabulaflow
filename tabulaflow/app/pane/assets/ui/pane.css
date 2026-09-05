@@ -606,7 +606,7 @@ body { margin: 0; background: var(--bg); color: var(--text); display: flex; flex
 .tf-lightbox .tf-media-step svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2;
                                   stroke-linecap: round; stroke-linejoin: round; }
 .tf-lightbox .tf-modal-body { padding: 0; overflow: visible; }
-.tf-lightbox .tf-modal-body img { max-width: calc(92vw - 112px); max-height: 88vh;
+.tf-lightbox .tf-modal-body img { max-width: 100%; max-height: 88vh;
                                   display: block; margin: 0 auto; border-radius: 3px;
                                   box-shadow: 0 10px 36px rgba(0, 0, 0, 0.38); }
 .tf-media-lightbox { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 10px; }
