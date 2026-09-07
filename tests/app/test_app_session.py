@@ -1,15 +1,17 @@
 from __future__ import annotations
 
+from datetime import date
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, cast
 
+import pandas as pd
 import pytest
 
 from tabulaflow.app import sample_data, session as session_module
 from tabulaflow.agents.llm import ReasoningLevel
 from tabulaflow.app.config import LLMRoleConfig, LLMPreset
 from tabulaflow.app.runtime_paths import RuntimePaths
-from tabulaflow.app.session import AppSession
+from tabulaflow.app.session import AppSession, _create_workspace_connector
 from tabulaflow.data.sql import SQLConnector
 
 if TYPE_CHECKING:
@@ -24,6 +26,25 @@ class _Workspace:
 
     async def close_async(self) -> None:
         self.close_count += 1
+
+
+async def test_workspace_uses_utc_for_timezone_aware_timestamps(tmp_path: Path) -> None:
+    workspace = await _create_workspace_connector(tmp_path / "workspace.duckdb")
+    timestamp = pd.Timestamp("1952-03-11T00:00:00Z")
+
+    try:
+        await workspace.write_dataframe_async(pd.DataFrame({"value": [timestamp]}), "events")
+        result = await workspace.run_query_async(
+            "SELECT value, CAST(value AS DATE) AS day, current_setting('TimeZone') AS timezone FROM events"
+        )
+    finally:
+        await workspace.close_async()
+
+    assert result.error is None and result.df is not None
+    row = result.df.iloc[0]
+    assert row["value"] == timestamp
+    assert row["day"] == date(1952, 3, 11)
+    assert row["timezone"] == "UTC"
 
 
 def _preset(
