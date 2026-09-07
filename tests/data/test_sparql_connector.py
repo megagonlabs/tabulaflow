@@ -1,4 +1,5 @@
 import asyncio
+from collections.abc import AsyncIterator
 from datetime import date, datetime, timezone
 from decimal import Decimal
 
@@ -87,11 +88,12 @@ async def test_select_normalizes_rdf_terms_and_request_metadata() -> None:
 
 async def test_typed_literals_use_native_values_when_conversion_is_exact() -> None:
     document = _select(
-        ["boolean", "integer", "decimal", "double", "date", "datetime", "string"],
+        ["boolean", "integer", "unsigned", "decimal", "double", "date", "datetime", "string"],
         [
             {
                 "boolean": {"type": "literal", "value": "true", "datatype": _XSD + "boolean"},
                 "integer": {"type": "literal", "value": "42", "datatype": _XSD + "integer"},
+                "unsigned": {"type": "literal", "value": "255", "datatype": _XSD + "unsignedByte"},
                 "decimal": {"type": "literal", "value": "12.50", "datatype": _XSD + "decimal"},
                 "double": {"type": "literal", "value": "1.5E2", "datatype": _XSD + "double"},
                 "date": {"type": "literal", "value": "2026-09-06", "datatype": _XSD + "date"},
@@ -114,6 +116,7 @@ async def test_typed_literals_use_native_values_when_conversion_is_exact() -> No
     row = result.df.iloc[0]
     assert row["boolean"] is True
     assert row["integer"] == 42
+    assert row["unsigned"] == 255
     assert row["decimal"] == Decimal("12.50")
     assert row["double"] == 150.0
     assert row["date"] == date(2026, 9, 6)
@@ -123,16 +126,26 @@ async def test_typed_literals_use_native_values_when_conversion_is_exact() -> No
 
 async def test_language_unknown_and_invalid_typed_literals_remain_lossless() -> None:
     document = _select(
-        ["language", "custom", "invalid"],
+        ["language", "custom", "invalid", "out_of_range", "zoned_date"],
         [
             {
-                "language": {"type": "literal", "value": 'line\n"two"', "xml:lang": "en-GB"},
+                "language": {
+                    "type": "literal",
+                    "value": 'line\n"two"\t\\\r\x01',
+                    "xml:lang": "en-GB",
+                },
                 "custom": {
                     "type": "typed-literal",
                     "value": "abc",
                     "datatype": "https://example.test/type",
                 },
                 "invalid": {"type": "literal", "value": "truthy", "datatype": _XSD + "boolean"},
+                "out_of_range": {
+                    "type": "literal",
+                    "value": "256",
+                    "datatype": _XSD + "unsignedByte",
+                },
+                "zoned_date": {"type": "literal", "value": "2026-09-06Z", "datatype": _XSD + "date"},
             }
         ],
     )
@@ -145,9 +158,11 @@ async def test_language_unknown_and_invalid_typed_literals_remain_lossless() -> 
     assert result.df is not None
     assert result.df.to_dict("records") == [
         {
-            "language": '"line\\n\\"two\\""@en-GB',
+            "language": r'"line\n\"two\"\t\\\r\u0001"@en-GB',
             "custom": '"abc"^^<https://example.test/type>',
             "invalid": f'"truthy"^^<{_XSD}boolean>',
+            "out_of_range": f'"256"^^<{_XSD}unsignedByte>',
+            "zoned_date": f'"2026-09-06Z"^^<{_XSD}date>',
         }
     ]
 
@@ -168,7 +183,24 @@ async def test_ask_returns_one_boolean_cell() -> None:
     [
         ({"head": {}, "results": {}}, "head.vars"),
         ({"head": {}, "boolean": "true"}, "must contain a boolean"),
-        ({"head": {}, "triples": []}, "only SPARQL SELECT and ASK"),
+        ({"head": {}, "triples": []}, "exactly one of boolean or results"),
+        ({"head": {}, "boolean": True, "results": {"bindings": []}}, "exactly one"),
+        (
+            _select(
+                ["value"],
+                [
+                    {
+                        "value": {
+                            "type": "literal",
+                            "value": "hello",
+                            "xml:lang": "en",
+                            "datatype": _XSD + "string",
+                        }
+                    }
+                ],
+            ),
+            "both language and datatype",
+        ),
     ],
 )
 async def test_malformed_or_unsupported_results_are_errors(document: object, error_text: str) -> None:
@@ -376,6 +408,53 @@ async def test_timeout_and_cancellation_propagate_correctly() -> None:
             await task
     finally:
         release.set()
+        await connector.close_async()
+
+
+class _BlockingResponseStream(httpx.AsyncByteStream):
+    def __init__(self) -> None:
+        self.started = asyncio.Event()
+        self.closed = False
+
+    async def __aiter__(self) -> AsyncIterator[bytes]:
+        yield b'{"head":{"vars":["x"]},"results":{"bindings":['
+        self.started.set()
+        await asyncio.Event().wait()
+
+    async def aclose(self) -> None:
+        self.closed = True
+
+
+async def test_cancellation_closes_response_stream_and_releases_query_slot() -> None:
+    stream = _BlockingResponseStream()
+    query_attempts = 0
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal query_attempts
+        if request.content == b"ASK {}":
+            return _response(_ASK)
+        query_attempts += 1
+        if query_attempts == 1:
+            return httpx.Response(200, stream=stream)
+        return _response(_select(["x"], []))
+
+    connector = await SPARQLConnector.from_url_async(
+        _URL,
+        display_name="example",
+        config=SPARQLConnectorConfig(max_query_concurrency=1, query_timeout_seconds=None),
+        transport=httpx.MockTransport(handler),
+    )
+    try:
+        task = asyncio.create_task(connector.run_query_async("SELECT ?x WHERE {}"))
+        await stream.started.wait()
+        task.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await task
+
+        assert stream.closed is True
+        next_result = await asyncio.wait_for(connector.run_query_async("SELECT ?x WHERE {}"), timeout=1)
+        assert next_result.error is None
+    finally:
         await connector.close_async()
 
 

@@ -6,6 +6,10 @@ serialization, and workspace materialization; language and unfamiliar datatype
 metadata use an N-Triples-compatible string representation, but the table is not
 an RDF round-trip format.
 
+Protocol references:
+https://www.w3.org/TR/sparql11-results-json/ and
+https://www.w3.org/TR/rdf11-concepts/#section-Graph-Literal.
+
 Queries return failures as ``ExecResult.error`` while task cancellation propagates.
 One overall deadline covers concurrency throttling, bounded HTTP 429 retries,
 response streaming, and parsing. Independent row and response-byte limits bound
@@ -227,16 +231,23 @@ def _parse_sparql_json(content: bytes, max_rows: int | None) -> pd.DataFrame:
     if not isinstance(document, dict):
         raise InvalidSPARQLResultError("SPARQL JSON result must be an object")
 
-    if "boolean" in document:
+    has_boolean = "boolean" in document
+    has_results = "results" in document
+    if has_boolean == has_results:
+        raise InvalidSPARQLResultError("SPARQL JSON result must contain exactly one of boolean or results")
+    head = document.get("head")
+    if not isinstance(head, dict):
+        raise InvalidSPARQLResultError("SPARQL JSON result must contain a head object")
+
+    if has_boolean:
         value = document["boolean"]
         if not isinstance(value, bool):
             raise InvalidSPARQLResultError("SPARQL ASK result must contain a boolean")
         return pd.DataFrame({"boolean": pd.Series([value], dtype=object)})
 
-    head = document.get("head")
     results = document.get("results")
-    if not isinstance(head, dict) or not isinstance(results, dict):
-        raise InvalidSPARQLResultError("only SPARQL SELECT and ASK JSON results are supported")
+    if not isinstance(results, dict):
+        raise InvalidSPARQLResultError("SPARQL SELECT results must be an object")
     variables = head.get("vars")
     bindings = results.get("bindings")
     if (
