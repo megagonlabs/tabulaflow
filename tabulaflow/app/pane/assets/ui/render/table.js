@@ -82,13 +82,15 @@ export function renderTable(container, cardData) {
   container.innerHTML = '<div class="' + wrapClass + '"><div class="tf-table"></div></div>'
     + '<dialog class="tf-modal">'
     + '<div class="tf-modal-card"><div class="tf-modal-header">'
+    + '<span class="tf-modal-focus" tabindex="-1" aria-label="Media preview" hidden></span>'
     + '<span class="tf-modal-title"></span><span class="tf-media-count" aria-live="polite"></span>'
-    + '<button class="tf-modal-close" type="button" aria-label="Close" autofocus>'
+    + '<button class="tf-modal-close" type="button" aria-label="Close">'
     + '<svg viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg>'
     + '</button></div><div class="tf-modal-body"></div></div></dialog>';
 
   var modal = container.querySelector('.tf-modal');
   var modalBody = container.querySelector('.tf-modal-body');
+  var modalFocus = container.querySelector('.tf-modal-focus');
   var modalTitle = container.querySelector('.tf-modal-title');
   var mediaCount = container.querySelector('.tf-media-count');
   var closeBtn = container.querySelector('.tf-modal-close');
@@ -102,10 +104,12 @@ export function renderTable(container, cardData) {
   }
   function showModal() {
     if (!modal.open) modal.showModal();
+    if (modal.classList.contains('tf-lightbox')) modalFocus.focus({ preventScroll: true });
   }
   function openModal(title, text) {
     galleryStep = null;
     modal.classList.remove('tf-lightbox');
+    modalFocus.hidden = true;
     modalTitle.textContent = title || '';
     modalTitle.hidden = false;
     modal.setAttribute('aria-label', title || 'Table cell detail');
@@ -142,6 +146,7 @@ export function renderTable(container, cardData) {
     }
     galleryStep = function (delta) { index = (index + delta + items.length) % items.length; showItem(); };
     modal.classList.add('tf-lightbox');
+    modalFocus.hidden = false;
     modalTitle.textContent = '';
     modalTitle.hidden = true;
     modal.setAttribute('aria-label', title || 'Media preview');
@@ -155,6 +160,7 @@ export function renderTable(container, cardData) {
     pauseModalMedia();
     galleryStep = null;
     modal.classList.remove('tf-lightbox');
+    modalFocus.hidden = true;
     clearMediaCount();
     modalBody.innerHTML = '';
   }
