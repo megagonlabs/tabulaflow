@@ -753,7 +753,7 @@ Sep 4
   - [x] Stable colors across parameter selection
 
 Sep 6
-- [ ] Fix media cells display in TUI
+- [x] Fix media cells display in TUI
 - Output pane
   - [ ] Arrow key automatically focus on close button
   - [ ] Image cramped - https://huggingface.co/datasets/lmms-lab-encoder/DocVQA/viewer/DocVQA
@@ -765,7 +765,7 @@ Sep 6
   - [ ] Wikidata
   - [ ] Government/academic data
 
-
+- [ ] Fix input history order
 - [ ] Show pending turns in output pane
 - [ ] Inline artifact citation
 - [ ] code diff rendering
