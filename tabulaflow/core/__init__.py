@@ -10,7 +10,7 @@ if TYPE_CHECKING:
         normalize_dataframe,
         serialize_dataframe,
     )
-    from tabulaflow.core.media import DetectedMedia
+    from tabulaflow.core.media import Base64DataUri, MediaFormat
     from tabulaflow.core.registry import ClassRegistry
     from tabulaflow.core.results import ErrorInfo, ExecResult, GraphResult, GraphResultEdge, GraphResultNode
     from tabulaflow.core.schema import (
@@ -30,9 +30,9 @@ if TYPE_CHECKING:
     )
 
 _LAZY_EXPORTS = {
+    "Base64DataUri": ("tabulaflow.core.media", "Base64DataUri"),
     "ClassRegistry": ("tabulaflow.core.registry", "ClassRegistry"),
     "ColumnRef": ("tabulaflow.core.schema", "ColumnRef"),
-    "DetectedMedia": ("tabulaflow.core.media", "DetectedMedia"),
     "dataframe_to_arrow": ("tabulaflow.core.dataframe", "dataframe_to_arrow"),
     "deserialize_dataframe": ("tabulaflow.core.dataframe", "deserialize_dataframe"),
     "ErrorInfo": ("tabulaflow.core.results", "ErrorInfo"),
@@ -43,6 +43,7 @@ _LAZY_EXPORTS = {
     "GraphResult": ("tabulaflow.core.results", "GraphResult"),
     "GraphResultEdge": ("tabulaflow.core.results", "GraphResultEdge"),
     "GraphResultNode": ("tabulaflow.core.results", "GraphResultNode"),
+    "MediaFormat": ("tabulaflow.core.media", "MediaFormat"),
     "normalize_dataframe": ("tabulaflow.core.dataframe", "normalize_dataframe"),
     "NodeSchema": ("tabulaflow.core.schema", "NodeSchema"),
     "PropertyGraphSchema": ("tabulaflow.core.schema", "PropertyGraphSchema"),
@@ -57,9 +58,9 @@ _LAZY_EXPORTS = {
 }
 
 __all__ = [
+    "Base64DataUri",
     "ClassRegistry",
     "ColumnRef",
-    "DetectedMedia",
     "dataframe_to_arrow",
     "deserialize_dataframe",
     "ErrorInfo",
@@ -70,6 +71,7 @@ __all__ = [
     "GraphResult",
     "GraphResultEdge",
     "GraphResultNode",
+    "MediaFormat",
     "NodeSchema",
     "normalize_dataframe",
     "PropertyGraphSchema",

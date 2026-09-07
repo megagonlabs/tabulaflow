@@ -27,7 +27,7 @@ from tabulaflow.agents.tools.filesystem.access import (
     _resolve_roots,
     FilesystemRoot,
 )
-from tabulaflow.core.media import DetectedMedia, detect_media
+from tabulaflow.core.media import MediaFormat, detect_media
 
 
 MAX_RESPONSE_LINES = 200
@@ -193,7 +193,7 @@ class ViewTool:
         resolved: Path,
         path: str,
         view_range: list[int] | None,
-        media: DetectedMedia,
+        media: MediaFormat,
     ) -> _ViewedMedia:
         if view_range is not None:
             return self._error("view_range is not supported for images.")

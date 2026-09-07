@@ -10,6 +10,7 @@ if TYPE_CHECKING:
         format_exec_result_markdown,
         format_json_schema_type,
         format_single_line_text,
+        summarize_binary_values,
     )
     from tabulaflow.output.formatting.cypher import CypherSchemaFormatter
     from tabulaflow.output.formatting.schema import (
@@ -34,6 +35,7 @@ _LAZY_EXPORTS = {
     "format_exec_result_markdown": ("tabulaflow.output.formatting._core", "format_exec_result_markdown"),
     "format_json_schema_type": ("tabulaflow.output.formatting._core", "format_json_schema_type"),
     "format_single_line_text": ("tabulaflow.output.formatting._core", "format_single_line_text"),
+    "summarize_binary_values": ("tabulaflow.output.formatting._core", "summarize_binary_values"),
     "schema_formatter_registry": ("tabulaflow.output.formatting.schema", "schema_formatter_registry"),
 }
 
@@ -49,6 +51,7 @@ __all__ = [
     "format_json_schema_type",
     "format_single_line_text",
     "schema_formatter_registry",
+    "summarize_binary_values",
 ]
 
 

@@ -21,7 +21,9 @@ from tabulaflow.app.tui.theme import (
     KEY_HINT,
     configure_code_text_area,
 )
-from tabulaflow.core.media import detect_media, extract_media_bytes
+from tabulaflow.app.tui.rendering import format_media_cell
+from tabulaflow.core.media import extract_media_bytes
+from tabulaflow.output.formatting import summarize_binary_values
 
 
 if TYPE_CHECKING:
@@ -434,18 +436,12 @@ class DataBrowserScreen(Screen[None]):
         if isinstance(value, numbers.Real):
             return Text(f"{value:,}", justify="right")
 
-        # Short-circuit binary cells before ``str(value)`` allocates the
-        # full escaped-hex repr. For a single 1 MB BLOB ``str()`` produces
-        # ~5 MB of escaped chars, which then gets truncated to 80 chars —
-        # the work is wasted and stalls page renders on tables with
-        # image / audio / video columns.
+        if media_summary := format_media_cell(value):
+            return Text(media_summary, style="dim italic")
         if isinstance(value, (bytes, bytearray, memoryview)):
             return Text(f"<binary: {len(value):,} bytes>", style="dim italic")
-        # HuggingFace Image/Audio struct: ``{"bytes": <blob>, "path": ...}``
-        if isinstance(value, dict):
-            inner = value.get("bytes")
-            if isinstance(inner, (bytes, bytearray, memoryview)):
-                return Text(f"<binary: {len(inner):,} bytes>", style="dim italic")
+
+        value = summarize_binary_values(value)
 
         if isinstance(value, (np.ndarray, list, dict)):
             try:
@@ -620,12 +616,12 @@ class CellBrowserScreen(Screen[None]):
         except (TypeError, ValueError):
             pass
 
+        if media_summary := format_media_cell(value):
+            return media_summary, None
         if (raw := extract_media_bytes(value)) is not None:
-            detected = detect_media(raw)
-            label = detected.media_type if detected else "binary"
-            preview = raw[:32].hex(" ")
-            return f"<{label}: {len(raw):,} bytes>\n{preview} ...", None
+            return f"<binary: {len(raw):,} bytes>", None
 
+        value = summarize_binary_values(value)
         json_str = CellBrowserScreen._try_as_json(value)
         if json_str is not None:
             return CellBrowserScreen._cap_display(json_str), "json"

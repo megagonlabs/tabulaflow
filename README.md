@@ -766,6 +766,7 @@ Sep 6
   - [ ] Government/academic data
 
 - [ ] Fix input history order
+- [ ] Huggingface connect split selection and better url cleaning
 - [ ] Show pending turns in output pane
 - [ ] Inline artifact citation
 - [ ] code diff rendering

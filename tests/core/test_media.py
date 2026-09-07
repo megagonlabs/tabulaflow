@@ -2,7 +2,14 @@ import base64
 
 import pytest
 
-from tabulaflow.core.media import DetectedMedia, detect_media, extract_media_bytes
+from tabulaflow.core.media import (
+    Base64DataUri,
+    MediaFormat,
+    detect_media,
+    extract_media_bytes,
+    extract_media_items,
+    parse_base64_data_uri,
+)
 
 PNG = b"\x89PNG\r\n\x1a\n" + b"\x00" * 64
 
@@ -29,7 +36,7 @@ PNG = b"\x89PNG\r\n\x1a\n" + b"\x00" * 64
     ],
 )
 def test_detect_media(data: bytes, suffix: str, media_type: str) -> None:
-    assert detect_media(data) == DetectedMedia(suffix, media_type)
+    assert detect_media(data) == MediaFormat(suffix, media_type)
 
 
 def test_detect_media_rejects_unknown_and_short_values() -> None:
@@ -54,9 +61,45 @@ def test_plain_base64_requires_explicit_opt_in() -> None:
     encoded = base64.b64encode(PNG).decode()
 
     assert extract_media_bytes(encoded) is None
-    assert extract_media_bytes(encoded, decode_base64=True) == PNG
+    assert extract_media_bytes(encoded, decode_plain_base64=True) == PNG
 
 
 def test_extract_media_bytes_rejects_malformed_encoding() -> None:
     assert extract_media_bytes("data:image/png;base64,not-valid!") is None
-    assert extract_media_bytes("not base64 at all !!! " * 5, decode_base64=True) is None
+    assert extract_media_bytes("not base64 at all !!! " * 5, decode_plain_base64=True) is None
+
+
+def test_extract_media_items_handles_scalars_and_collections() -> None:
+    pdf = b"%PDF-1.7\n" + b"\x00" * 16
+
+    assert extract_media_items({"bytes": PNG, "path": None}) == (PNG,)
+    assert extract_media_items([PNG, None, pdf]) == (PNG, pdf)
+
+
+def test_extract_media_items_rejects_mixed_and_nested_collections() -> None:
+    assert extract_media_items([PNG, "caption"]) is None
+    assert extract_media_items([[PNG]]) is None
+
+
+def test_parse_base64_data_uri_without_decoding() -> None:
+    encoded = base64.b64encode(PNG).decode()
+
+    assert parse_base64_data_uri(f"data:image/png;charset=utf-8;base64,{encoded}") == Base64DataUri(
+        media_type="image/png",
+        payload=encoded,
+        decoded_size=len(PNG),
+    )
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        "not a data URI",
+        "data:image/png,AAAA",
+        "data:image/png;base64,not-valid!",
+        "data:image/png;base64,AAA",
+        "data:image/png;base64,AA=A",
+    ],
+)
+def test_parse_base64_data_uri_rejects_invalid_values(value: str) -> None:
+    assert parse_base64_data_uri(value) is None

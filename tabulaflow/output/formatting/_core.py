@@ -1,41 +1,33 @@
 """General text formatting for output-facing data and results."""
 
 import json
-import re
 from typing import Any
 
 import numpy as np
 import pandas as pd
 from tabulate import tabulate
 
+from tabulaflow.core.media import parse_base64_data_uri
 from tabulaflow.core.results import ExecResult
 from tabulaflow.data.protocols import DBConnector
 
 
-_DATA_URI_RE = re.compile(r"^data:[^;,]+(?:;[^,]*)*;base64,(?P<payload>.*)$", re.DOTALL)
-_BASE64_RE = re.compile(r"^[A-Za-z0-9+/=\s]+$")
-
-
-def _safe_display_value(value: object) -> object:
+def summarize_binary_values(value: object) -> object:
     """Return a structure-preserving value with binary leaves summarized."""
     if isinstance(value, (bytes, bytearray, memoryview)):
         size = value.nbytes if isinstance(value, memoryview) else len(value)
         return f"[binary: {size} bytes]"
     if isinstance(value, str):
-        match = _DATA_URI_RE.fullmatch(value.strip())
-        if match is None or _BASE64_RE.fullmatch(match.group("payload")) is None:
-            return value
-        compact = "".join(match.group("payload").split())
-        padding = len(compact) - len(compact.rstrip("="))
-        return f"[binary: {max(0, len(compact) * 3 // 4 - padding)} bytes]"
+        data_uri = parse_base64_data_uri(value)
+        return f"[binary: {data_uri.decoded_size} bytes]" if data_uri else value
     if isinstance(value, dict):
-        return {key: _safe_display_value(item) for key, item in value.items()}
+        return {key: summarize_binary_values(item) for key, item in value.items()}
     if isinstance(value, np.ndarray):
-        return [_safe_display_value(item) for item in value.tolist()]
+        return [summarize_binary_values(item) for item in value.tolist()]
     if isinstance(value, list):
-        return [_safe_display_value(item) for item in value]
+        return [summarize_binary_values(item) for item in value]
     if isinstance(value, tuple):
-        return tuple(_safe_display_value(item) for item in value)
+        return tuple(summarize_binary_values(item) for item in value)
     return value
 
 
@@ -112,7 +104,7 @@ def format_dataframe(
         return s
 
     def truncate_cell(val: object) -> object:
-        val = _safe_display_value(val)
+        val = summarize_binary_values(val)
         try:
             if pd.isna(val):
                 return "[NULL]"  # Convert all nulls to string (pandas coerces None back to nan/NaT)

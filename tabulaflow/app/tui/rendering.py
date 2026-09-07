@@ -17,6 +17,8 @@ from rich.table import Table
 from rich.text import Text
 from rich.theme import Theme
 
+from tabulaflow.core.media import detect_media, extract_media_items
+from tabulaflow.output.formatting import summarize_binary_values
 from tabulaflow.app.theme import (
     ACCENT,
     CODE_TEXT,
@@ -189,6 +191,31 @@ def build_table(
 _PREVIEW_CELL_TRUNCATE = 500
 
 
+def format_media_cell(value: object) -> str | None:
+    """Return a concise terminal summary for a recognized media cell."""
+    media_items = extract_media_items(value, decode_plain_base64=True)
+    if media_items is None:
+        return None
+
+    detected = [detect_media(blob) for blob in media_items]
+    if len(media_items) == 1:
+        item = detected[0]
+        assert item is not None
+        return f"<{item.media_type}: {len(media_items[0]):,} bytes>"
+
+    counts: dict[str, int] = {}
+    for item in detected:
+        assert item is not None
+        mime = item.media_type
+        kind = "PDF" if mime == "application/pdf" else mime.split("/", 1)[0]
+        counts[kind] = counts.get(kind, 0) + 1
+    parts = []
+    for kind, count in counts.items():
+        label = f"PDF{'s' if count != 1 else ''}" if kind == "PDF" else f"{kind}{'s' if count != 1 else ''}"
+        parts.append(f"{count} {label}")
+    return f"<{len(media_items)} media items: {', '.join(parts)}>"
+
+
 def _format_table_cell(value: object) -> str:
     """Normalize cell text to a single line; column-level max_width handles truncation.
 
@@ -208,13 +235,11 @@ def _format_table_cell(value: object) -> str:
     per cell. The visible cell is only ~30 chars wide, so anything past
     ``_PREVIEW_CELL_TRUNCATE`` is invisible.
     """
+    if media_summary := format_media_cell(value):
+        return media_summary
     if isinstance(value, (bytes, bytearray, memoryview)):
         return f"<binary: {len(value):,} bytes>"
-    # HuggingFace Image/Audio struct: ``{"bytes": <blob>, "path": ...}``
-    if isinstance(value, dict):
-        inner = value.get("bytes")
-        if isinstance(inner, (bytes, bytearray, memoryview)):
-            return f"<binary: {len(inner):,} bytes>"
+    value = summarize_binary_values(value)
     s = str(value)
     if len(s) > _PREVIEW_CELL_TRUNCATE:
         s = s[:_PREVIEW_CELL_TRUNCATE] + "…"

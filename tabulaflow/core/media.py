@@ -9,56 +9,85 @@ from dataclasses import dataclass
 
 
 @dataclass(frozen=True)
-class DetectedMedia:
-    """A media type identified from a value's contents."""
+class MediaFormat:
+    """File format identified from media contents."""
 
     suffix: str
     media_type: str
 
 
-def detect_media(data: bytes) -> DetectedMedia | None:
+@dataclass(frozen=True)
+class Base64DataUri:
+    """Parsed metadata and payload for a base64 data URI."""
+
+    media_type: str
+    payload: str
+    decoded_size: int
+
+
+def detect_media(data: bytes) -> MediaFormat | None:
     """Identify a common media format from its file signature."""
     if len(data) < 4:
         return None
     head = data[:16]
     if head.startswith(b"\x89PNG\r\n\x1a\n"):
-        return DetectedMedia(".png", "image/png")
+        return MediaFormat(".png", "image/png")
     if head.startswith(b"\xff\xd8\xff"):
-        return DetectedMedia(".jpg", "image/jpeg")
+        return MediaFormat(".jpg", "image/jpeg")
     if head[:6] in (b"GIF87a", b"GIF89a"):
-        return DetectedMedia(".gif", "image/gif")
+        return MediaFormat(".gif", "image/gif")
     if head.startswith(b"RIFF") and head[8:12] == b"WEBP":
-        return DetectedMedia(".webp", "image/webp")
+        return MediaFormat(".webp", "image/webp")
     if head.startswith(b"RIFF") and head[8:12] == b"WAVE":
-        return DetectedMedia(".wav", "audio/wav")
+        return MediaFormat(".wav", "audio/wav")
     if head.startswith(b"BM"):
-        return DetectedMedia(".bmp", "image/bmp")
+        return MediaFormat(".bmp", "image/bmp")
     if head[:4] in (b"II*\x00", b"MM\x00*"):
-        return DetectedMedia(".tif", "image/tiff")
+        return MediaFormat(".tif", "image/tiff")
     if head.startswith(b"%PDF-"):
-        return DetectedMedia(".pdf", "application/pdf")
+        return MediaFormat(".pdf", "application/pdf")
     if head.startswith(b"ID3") or head[:2] in (b"\xff\xfb", b"\xff\xf3", b"\xff\xf2"):
-        return DetectedMedia(".mp3", "audio/mpeg")
+        return MediaFormat(".mp3", "audio/mpeg")
     if head.startswith(b"OggS"):
-        return DetectedMedia(".ogg", "audio/ogg")
+        return MediaFormat(".ogg", "audio/ogg")
     if head.startswith(b"fLaC"):
-        return DetectedMedia(".flac", "audio/flac")
+        return MediaFormat(".flac", "audio/flac")
     if head[4:8] == b"ftyp":
-        return DetectedMedia(".mp4", "video/mp4")
+        return MediaFormat(".mp4", "video/mp4")
     if head.startswith(b"\x1a\x45\xdf\xa3"):
-        return DetectedMedia(".webm", "video/webm")
+        return MediaFormat(".webm", "video/webm")
     head_lower = data[:256].lstrip().lower()
     if head_lower.startswith(b"<svg") or (head_lower.startswith(b"<?xml") and b"<svg" in head_lower):
-        return DetectedMedia(".svg", "image/svg+xml")
+        return MediaFormat(".svg", "image/svg+xml")
     return None
 
 
-_DATA_URI_RE = re.compile(r"^data:[^;,]+(?:;[^,]*)*;base64,(?P<payload>.*)$", re.DOTALL)
-_BASE64_RE = re.compile(r"^[A-Za-z0-9+/=\s]+$")
+_DATA_URI_RE = re.compile(
+    r"^data:(?P<media_type>[^;,]+)(?:;[^,]*)*;base64,(?P<payload>.*)$",
+    re.DOTALL,
+)
+_BASE64_RE = re.compile(r"^[A-Za-z0-9+/]*={0,2}$")
 _BASE64_MIN_CHARS = 64
 
 
-def extract_media_bytes(value: object, *, decode_base64: bool = False) -> bytes | None:
+def _parse_base64(value: str) -> tuple[str, int] | None:
+    payload = "".join(value.split())
+    if len(payload) % 4 or _BASE64_RE.fullmatch(payload) is None:
+        return None
+    padding = len(payload) - len(payload.rstrip("="))
+    return payload, max(0, len(payload) * 3 // 4 - padding)
+
+
+def parse_base64_data_uri(value: str) -> Base64DataUri | None:
+    """Parse a syntactically valid base64 data URI without decoding it."""
+    match = _DATA_URI_RE.fullmatch(value.strip())
+    if match is None or (parsed := _parse_base64(match.group("payload"))) is None:
+        return None
+    payload, decoded_size = parsed
+    return Base64DataUri(match.group("media_type").strip().lower(), payload, decoded_size)
+
+
+def extract_media_bytes(value: object, *, decode_plain_base64: bool = False) -> bytes | None:
     """Extract bytes from a binary value, media struct, or encoded string."""
     if isinstance(value, (bytes, bytearray, memoryview)):
         return bytes(value)
@@ -70,19 +99,56 @@ def extract_media_bytes(value: object, *, decode_base64: bool = False) -> bytes 
     if not isinstance(value, str):
         return None
 
-    match = _DATA_URI_RE.fullmatch(value.strip())
-    if match is not None:
-        return _decode_base64(match.group("payload"))
-    if decode_base64 and len(value) >= _BASE64_MIN_CHARS and _BASE64_RE.fullmatch(value):
-        return _decode_base64(value)
+    if data_uri := parse_base64_data_uri(value):
+        return _decode_base64(data_uri.payload)
+    if decode_plain_base64 and len(value) >= _BASE64_MIN_CHARS and (parsed := _parse_base64(value)) is not None:
+        return _decode_base64(parsed[0])
     return None
+
+
+def extract_media_items(value: object, *, decode_plain_base64: bool = False) -> tuple[bytes, ...] | None:
+    """Extract recognized media from one scalar or one-dimensional collection."""
+    import numpy as np
+    import pandas as pd
+
+    if isinstance(value, np.ndarray):
+        if value.ndim != 1:
+            return None
+        values = value.tolist()
+    elif isinstance(value, (list, tuple)):
+        values = list(value)
+    else:
+        blob = extract_media_bytes(value, decode_plain_base64=decode_plain_base64)
+        if blob is None or detect_media(blob) is None:
+            return None
+        return (blob,)
+
+    blobs: list[bytes] = []
+    for item in values:
+        try:
+            if item is None or bool(pd.isna(item)):
+                continue
+        except (TypeError, ValueError):
+            pass
+        blob = extract_media_bytes(item, decode_plain_base64=decode_plain_base64)
+        if blob is None or detect_media(blob) is None:
+            return None
+        blobs.append(blob)
+    return tuple(blobs) or None
 
 
 def _decode_base64(value: str) -> bytes | None:
     try:
-        return base64.b64decode("".join(value.split()), validate=True)
+        return base64.b64decode(value, validate=True)
     except (binascii.Error, ValueError):
         return None
 
 
-__all__ = ["DetectedMedia", "detect_media", "extract_media_bytes"]
+__all__ = [
+    "Base64DataUri",
+    "MediaFormat",
+    "detect_media",
+    "extract_media_bytes",
+    "extract_media_items",
+    "parse_base64_data_uri",
+]

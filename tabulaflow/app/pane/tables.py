@@ -10,48 +10,10 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from tabulaflow.app.pane.contract import ColumnDesc, MediaCell, MediaListCell, TableCardData, TableData
-from tabulaflow.core.media import detect_media, extract_media_bytes
+from tabulaflow.core.media import detect_media, extract_media_items
 
 if TYPE_CHECKING:
     import pandas as pd
-
-
-@dataclass(frozen=True)
-class _CellMedia:
-    blobs: tuple[bytes, ...]
-    collection: bool
-
-
-def _cell_media(value: object) -> _CellMedia | None:
-    """Extract recognized media from one scalar or one-dimensional collection."""
-    import numpy as np
-    import pandas as pd
-
-    if isinstance(value, np.ndarray):
-        if value.ndim != 1:
-            return None
-        values = value.tolist()
-    elif isinstance(value, (list, tuple)):
-        values = list(value)
-    else:
-        values = None
-
-    if values is None:
-        blob = extract_media_bytes(value, decode_base64=True)
-        return _CellMedia((blob,), False) if blob is not None and detect_media(blob) is not None else None
-
-    blobs: list[bytes] = []
-    for item in values:
-        try:
-            if item is None or bool(pd.isna(item)):
-                continue
-        except (TypeError, ValueError):
-            pass
-        blob = extract_media_bytes(item, decode_base64=True)
-        if blob is None or detect_media(blob) is None:
-            return None
-        blobs.append(blob)
-    return _CellMedia(tuple(blobs), True) if blobs else None
 
 
 def _is_media_column(series: "pd.Series", *, sample_n: int = 5, threshold: float = 0.6) -> bool:
@@ -63,7 +25,7 @@ def _is_media_column(series: "pd.Series", *, sample_n: int = 5, threshold: float
     sample = series.dropna().head(sample_n)
     if sample.empty:
         return False
-    recognized = sum(_cell_media(value) is not None for value in sample)
+    recognized = sum(extract_media_items(value, decode_plain_base64=True) is not None for value in sample)
     return recognized / len(sample) >= threshold
 
 
@@ -263,8 +225,8 @@ def _build_table_data(
             col_name = str(view.columns[col_idx])
             val = view.iloc[row_idx, col_idx]
             if mode == "media":
-                media = _cell_media(val)
-                if media is None:
+                media_items = extract_media_items(val, decode_plain_base64=True)
+                if media_items is None:
                     row_data[field] = _coerce_text_value(val)
                     continue
                 items = [
@@ -272,13 +234,13 @@ def _build_table_data(
                         blob,
                         row_idx=row_idx,
                         col_name=col_name,
-                        item_idx=item_idx if media.collection else None,
+                        item_idx=item_idx if len(media_items) > 1 else None,
                         sib_dir=sib_dir,
                         inline_cap=inline_cap,
                     )
-                    for item_idx, blob in enumerate(media.blobs)
+                    for item_idx, blob in enumerate(media_items)
                 ]
-                row_data[field] = MediaListCell(kind="media-list", items=items) if media.collection else items[0]
+                row_data[field] = MediaListCell(kind="media-list", items=items) if len(items) > 1 else items[0]
             else:
                 row_data[field] = _coerce_text_value(val)
         rows.append(row_data)

@@ -92,8 +92,8 @@ class TestBuildTableData:
             "application/pdf",
             "audio/mpeg",
         ]
-        assert rows[1]["c0"]["kind"] == "media-list"
-        assert len(rows[1]["c0"]["items"]) == 1
+        assert rows[1]["c0"]["kind"] == "media"
+        assert rows[1]["c0"]["mime"] == "image/png"
         pdf_path = tmp_path / rows[0]["c0"]["items"][1]["src"]
         assert pdf_path.name.endswith("_i1.pdf")
         assert pdf_path.read_bytes() == PDF_MAGIC

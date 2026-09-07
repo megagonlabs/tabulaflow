@@ -12,7 +12,7 @@ from PIL import Image, UnidentifiedImageError
 from pydantic_ai.messages import BinaryContent
 from pypdf import PdfReader, PdfWriter
 
-from tabulaflow.core.media import detect_media, extract_media_bytes
+from tabulaflow.core.media import detect_media, extract_media_bytes, parse_base64_data_uri
 
 _MODEL_IMAGE_TYPES = {"image/gif", "image/jpeg", "image/png", "image/webp"}
 _CONVERTIBLE_IMAGE_TYPES = {"image/bmp", "image/tiff"}
@@ -69,14 +69,10 @@ def _inspect_inline_media_item(value: object) -> InlineMediaCandidate | None:
     stripped = value.strip()
     if not stripped.startswith("data:"):
         return None
-    header, marker, payload = stripped.partition(";base64,")
-    declared_type = header[5:].split(";", 1)[0].strip().lower() or None
-    if not marker:
-        return InlineMediaCandidate(stripped, declared_type, None)
-    compact = "".join(payload.split())
-    padding = len(compact) - len(compact.rstrip("="))
-    estimated_size = max(0, len(compact) * 3 // 4 - padding)
-    return InlineMediaCandidate(stripped, declared_type, estimated_size)
+    data_uri = parse_base64_data_uri(stripped)
+    if data_uri is None:
+        return InlineMediaCandidate(stripped, None, None)
+    return InlineMediaCandidate(stripped, data_uri.media_type, data_uri.decoded_size)
 
 
 def inspect_inline_media(value: object) -> tuple[InlineMediaItem, ...] | None:
@@ -189,7 +185,7 @@ def to_binary_content(
     value: object,
     *,
     media_type: str | None = None,
-    decode_base64: bool = False,
+    decode_plain_base64: bool = False,
 ) -> BinaryContent:
     """Convert a binary-like value into validated Pydantic AI content."""
     data: bytes | None
@@ -201,7 +197,7 @@ def to_binary_content(
         data = parsed.data
         media_type = media_type or parsed.media_type
     else:
-        data = extract_media_bytes(value, decode_base64=decode_base64)
+        data = extract_media_bytes(value, decode_plain_base64=decode_plain_base64)
     if data is None:
         raise ValueError("value does not contain media bytes")
 

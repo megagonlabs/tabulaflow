@@ -1,6 +1,7 @@
-import pandas as pd
 import numpy as np
-from tabulaflow.output.formatting import format_dataframe
+import pandas as pd
+
+from tabulaflow.output.formatting import format_dataframe, summarize_binary_values
 
 
 class TestFormatDf:
@@ -118,6 +119,11 @@ class TestFormatDf:
         assert "second.jpg" in result
         assert "'bytes': None" in result
         assert "[binary: 12 bytes]" in result
+
+    def test_binary_summary_is_reusable(self) -> None:
+        value = {"bytes": b"payload", "path": "image.png"}
+
+        assert summarize_binary_values(value) == {"bytes": "[binary: 7 bytes]", "path": "image.png"}
 
     def test_data_uri_is_summarized_without_decoding(self) -> None:
         result = format_dataframe(pd.DataFrame({"image": ["data:image/png;base64,MTIzNDU="]}))
