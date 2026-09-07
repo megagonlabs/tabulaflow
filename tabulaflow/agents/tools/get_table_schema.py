@@ -42,9 +42,6 @@ class GetTableSchemaTool:
         max_columns: If set, reject requests whose resulting columns exceed
             this limit, prompting the agent to use column_offset/column_limit or
             column_regex_filter to narrow down.
-        release_connections_on_finish: If True, release pooled connections after each call to free
-            file locks (e.g. DuckDB). Useful when an external process like
-            ``dbt run`` needs exclusive access to the database file.
         enable_refresh: If True, expose and honour the ``refresh`` parameter
             in the tool schema sent to the LLM.  When False (default), the
             parameter is hidden from the LLM entirely.
@@ -59,14 +56,12 @@ class GetTableSchemaTool:
         *,
         include_descriptions: bool = True,
         max_columns: int | None = 50,
-        release_connections_on_finish: bool = False,
         enable_refresh: bool = False,
     ):
         self.db_connector = db_connector
         self.formatter = formatter
         self.include_descriptions = include_descriptions
         self.max_columns = max_columns
-        self._release_connections_on_finish = release_connections_on_finish
         self._enable_refresh = enable_refresh
         self._metrics = GetTableSchemaToolMetrics()
 
@@ -164,9 +159,6 @@ class GetTableSchemaTool:
             dialect=schema.dialect,
             include_descriptions=self.include_descriptions,
         )
-
-        if self._release_connections_on_finish:
-            await self.db_connector.release_connections_async()
 
         return TableSchemaExecution(output=res, n_columns=len(selected_columns))
 

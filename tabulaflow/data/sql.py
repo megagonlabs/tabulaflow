@@ -82,7 +82,7 @@ import warnings
 
 import sqlparse
 from sqlparse.lexer import Lexer as SQLLexer
-from typing import Any, Callable, Coroutine, Sequence, Mapping, Literal, AsyncGenerator, TypeVar
+from typing import Any, Callable, Coroutine, Sequence, Mapping, Literal, AsyncGenerator, TypeAlias, TypeVar
 from dataclasses import dataclass
 import collections
 import pandas as pd
@@ -111,7 +111,7 @@ from tabulaflow.core.schema import (
 )
 
 from tabulaflow.data.config import SQLConnectorConfig
-from tabulaflow.data.protocols import DataFrameWriteMode, ResultTooLargeError, validate_global_id
+from tabulaflow.data.protocols import ResultTooLargeError, validate_global_id
 from tabulaflow.data._cache import (
     cache_lock,
     query_cache_key,
@@ -125,6 +125,8 @@ from tabulaflow.data.json_schema import infer_json_schema, looks_like_json
 from tabulaflow.data.url import _global_id_from_url
 
 logger = logging.getLogger(__name__)
+
+TableWriteMode: TypeAlias = Literal["create", "append", "replace_rows", "replace_table"]
 
 _T = TypeVar("_T")
 _UNSET = object()
@@ -2478,7 +2480,7 @@ class SQLConnector:
         df: pd.DataFrame,
         table_name: str,
         schema_name: str | None = None,
-        mode: DataFrameWriteMode = "create",
+        mode: TableWriteMode = "create",
     ) -> int:
         """Write a DataFrame into a database table.
 

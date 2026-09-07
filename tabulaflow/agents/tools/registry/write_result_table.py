@@ -7,9 +7,8 @@ from typing import ClassVar
 from pydantic_ai import Tool, ToolReturn
 
 from tabulaflow.agents.tools.protocols import ToolCallOutcome
-from tabulaflow.data.protocols import DataFrameWriteMode
 from tabulaflow.data.registry import DataConnectorRegistry
-from tabulaflow.data.sql import SQLConnector
+from tabulaflow.data.sql import SQLConnector, TableWriteMode
 from tabulaflow.output.specs import FixedArtifactSource
 from tabulaflow.output.store import OutputStore, ArtifactSourceResolutionError
 
@@ -43,7 +42,7 @@ class WriteResultTableTool:
         target_alias: str,
         target_schema: str | None,
         target_table: str,
-        mode: DataFrameWriteMode = "create",
+        mode: TableWriteMode = "create",
     ) -> ToolReturn:
         """Write a fixed ``run_query`` result into a SQL target table.
 
@@ -70,7 +69,7 @@ class WriteResultTableTool:
         target_alias: str,
         target_schema: str | None,
         target_table: str,
-        mode: DataFrameWriteMode = "create",
+        mode: TableWriteMode = "create",
     ) -> str:
         """Write one fixed query result into a registered SQL target."""
         try:

@@ -12,7 +12,7 @@ The final design has:
 - concrete `SQLConnector`, Neo4j/Bolt connector, and `SPARQLConnector`
   implementations;
 - tagged SQL, property-graph, and RDF schema models;
-- narrow optional capabilities for operations that are not universal; and
+- concrete optional operations outside the universal connector contract; and
 - generic agent tools such as `connect_data_source`, `get_db_document`,
   `run_query`, and `write_result_table` rather than Wikidata-specific tools.
 
@@ -190,27 +190,17 @@ class or property enumeration. Schema information may come from SPARQL Service
 Description, SHACL, OWL/RDFS declarations, bounded introspection, or a curated
 endpoint profile.
 
-## Optional capabilities
+## Optional operations
 
 Operations that are not meaningful for every connector must not be placed on
-`DataConnector`.
+`DataConnector`. DataFrame-to-table writing remains concrete `SQLConnector`
+behavior because its schema, table, and replacement semantics are SQL-specific.
+`write_result_table` therefore requires a writable `SQLConnector` directly.
 
-For example, writing a DataFrame is a narrow tabular-destination capability:
-
-```python
-class TableWriter(Protocol):
-    async def write_dataframe(
-        self,
-        df: pd.DataFrame,
-        destination: TableDestination,
-        mode: WriteMode,
-    ) -> int: ...
-```
-
-`write_result_table` should require this capability instead of checking that a
-destination has a SQL connector type. Similar capabilities should only be
-introduced when a real consumer exists, such as bulk RDF writing, incremental
-schema refresh, transactions, or change streams.
+A capability protocol should be introduced only after another real
+implementation and a generic consumer establish shared semantics. Possible
+future examples include bulk RDF writing, transactions, or change streams, but
+none are part of the connector contract preemptively.
 
 ## Generic query and result path
 
@@ -335,10 +325,12 @@ Acceptance:
 - Renderers do not infer query language from schema kind.
 - SQL and Cypher source/result rendering remains unchanged.
 
-### Phase 3 — Extract optional capabilities
+### Phase 3 — Keep optional operations concrete
 
-- Introduce the table-writing capability.
-- Make `write_result_table` capability-based.
+- Keep table writing as concrete `SQLConnector` behavior until another genuine
+  table-writing connector requires a shared capability.
+- Rename `DataFrameWriteMode` to `TableWriteMode` because its values describe
+  target-table behavior.
 - Keep full schema refresh universal and SQL table-specific refresh concrete.
 - Keep reusable connection release as a concrete `SQLConnector` operation for
   workflows such as dbt that must temporarily release a database file lock.
@@ -347,7 +339,8 @@ Acceptance:
 Acceptance:
 
 - `DataConnector` contains only universally meaningful operations.
-- Non-universal operations are not selected by concrete connector type.
+- Non-universal operations remain on the concrete connector that implements
+  their semantics.
 
 ### Phase 4 — Add RDF core and presentation
 
@@ -467,7 +460,7 @@ DataConnector
 ├── SQLConnector
 │   ├── SQL schema with self-contained dialect
 │   ├── SQL dialect
-│   └── optional TableWriter
+│   └── concrete DataFrame-to-table writing
 ├── Neo4j/Bolt connector
 │   ├── property-graph schema
 │   └── Cypher

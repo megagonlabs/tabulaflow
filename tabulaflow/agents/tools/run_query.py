@@ -12,7 +12,6 @@ from pydantic_ai.messages import ModelMessage, ModelRequest, ToolReturnPart, Use
 from tabulaflow.agents.media import inspect_inline_media, materialize_inline_media
 from tabulaflow.core.results import ExecResult, GraphResult
 from tabulaflow.data.protocols import DataConnector
-from tabulaflow.data.sql import SQLConnector
 from tabulaflow.output.formatting import format_dataframe
 from tabulaflow.agents.tools._sql import format_sqlalchemy_error_msg
 from tabulaflow.agents.tools.protocols import _omit_tool_parameters
@@ -216,8 +215,6 @@ class RunQueryTool:
         max_visible_rows: Maximum rows shown in the formatted output.
         max_cell_width: Maximum character width per cell in the formatted output.
         floatfmt: Float format string passed to tabulate.
-        release_connections_on_finish: Whether to release SQL connection-pool
-            resources after each execution while keeping the connector usable.
     """
 
     name: ClassVar = "run_query"
@@ -233,10 +230,7 @@ class RunQueryTool:
         max_visible_rows: int = 20,
         max_cell_width: int = 200,
         floatfmt: str = ".8g",
-        release_connections_on_finish: bool = False,
     ):
-        if release_connections_on_finish and not isinstance(db_connector, SQLConnector):
-            raise ValueError("release_connections_on_finish is only supported for SQL connectors")
         self.db_connector = db_connector
         self.enable_params = enable_params
         self.enable_refresh = enable_refresh
@@ -245,7 +239,6 @@ class RunQueryTool:
         self.max_visible_rows = max_visible_rows
         self.max_cell_width = max_cell_width
         self.floatfmt = floatfmt
-        self._release_connections_on_finish = release_connections_on_finish
         self._metrics = RunQueryToolMetrics()
 
     async def execute(
@@ -261,39 +254,33 @@ class RunQueryTool:
         self._metrics.num_calls += 1
         parameters = parameters or []
         param_dict = {p.parameter_name: p.parameter_value for p in parameters}
-        try:
-            if self.timeout is _UNSET:
-                exec_result = await self.db_connector.run_query_async(query, parameters=param_dict)
-            else:
-                exec_result = await self.db_connector.run_query_async(
-                    query,
-                    parameters=param_dict,
-                    timeout=self.timeout,  # type: ignore[arg-type]
-                )
-            prepared_media = PreparedResultMedia((), 0, 0, ())
-            if include_media and exec_result.df is not None:
-                prepared_media = _prepare_result_media(exec_result.df)
-            res = self._format_exec_result(exec_result)
-            if include_media:
-                res += _format_media_summary(prepared_media)
-            if refresh:
-                try:
-                    await self.db_connector.refresh_schema_async()
-                    res += "\n(schema refreshed from live database)"
-                except Exception as e:
-                    res += f"\n(warning: schema refresh failed: {type(e).__name__}: {e})"
-            execution = QueryExecution(
-                output=res,
-                query=query,
-                parameter_values=param_dict,
-                exec_result=exec_result,
-                media_content=prepared_media.content,
+        if self.timeout is _UNSET:
+            exec_result = await self.db_connector.run_query_async(query, parameters=param_dict)
+        else:
+            exec_result = await self.db_connector.run_query_async(
+                query,
+                parameters=param_dict,
+                timeout=self.timeout,  # type: ignore[arg-type]
             )
-            return execution
-        finally:
-            if self._release_connections_on_finish:
-                assert isinstance(self.db_connector, SQLConnector)
-                await self.db_connector.release_connections_async()
+        prepared_media = PreparedResultMedia((), 0, 0, ())
+        if include_media and exec_result.df is not None:
+            prepared_media = _prepare_result_media(exec_result.df)
+        res = self._format_exec_result(exec_result)
+        if include_media:
+            res += _format_media_summary(prepared_media)
+        if refresh:
+            try:
+                await self.db_connector.refresh_schema_async()
+                res += "\n(schema refreshed from live database)"
+            except Exception as e:
+                res += f"\n(warning: schema refresh failed: {type(e).__name__}: {e})"
+        return QueryExecution(
+            output=res,
+            query=query,
+            parameter_values=param_dict,
+            exec_result=exec_result,
+            media_content=prepared_media.content,
+        )
 
     def _format_exec_result(self, exec_result: ExecResult) -> str:
         if exec_result.error is not None:

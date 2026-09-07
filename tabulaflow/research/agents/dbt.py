@@ -18,6 +18,7 @@ from tabulaflow.agents.summarization import DBSummarizer
 from tabulaflow.agents.trace import Usage, Trajectory
 from tabulaflow.research.types import DbtTask, DbtTaskOutput
 from tabulaflow.agents.tools import GetTableSchemaTool, RunQueryTool
+from tabulaflow.agents.tools.shell.tool import BashMode, WaitTimeout
 from tabulaflow.research.tools import EditFileTool, ExecuteBashTool, RunDbtTool, ViewTool
 from tabulaflow.agents.llm import make_agent
 
@@ -25,6 +26,29 @@ from tabulaflow.agents.llm import make_agent
 class DbtAgentConfig(BasicAgentConfig):
     db_summarizer_llm: str = "openai-responses:gpt-5.4"
     use_bash_tool: bool = False
+
+
+class _DbtBashTool(ExecuteBashTool):
+    """Bash tool that releases the dbt target database before each command."""
+
+    def __init__(
+        self,
+        db_connector: SQLConnector,
+        working_dir: str,
+        *,
+        env_overrides: dict[str, str],
+    ) -> None:
+        super().__init__(working_dir=working_dir, env_overrides=env_overrides)
+        self._db_connector = db_connector
+
+    async def execute(
+        self,
+        command: str,
+        mode: BashMode = "detach_on_timeout",
+        wait_timeout: WaitTimeout | None = None,
+    ) -> str:
+        await self._db_connector.release_connections_async()
+        return await super().execute(command, mode, wait_timeout)
 
 
 def _find_duckdb_file(directory: str) -> str | None:
@@ -143,14 +167,12 @@ class DbtAgent:
             db_connector,
             self.formatter,
             include_descriptions=self.config.use_column_descriptions,
-            release_connections_on_finish=True,
             enable_refresh=True,
         )
         run_query = RunQueryTool(
             db_connector,
             timeout=30,
             max_visible_rows=20,
-            release_connections_on_finish=True,
         )
 
         if self.config.use_bash_tool:
@@ -163,7 +185,8 @@ class DbtAgent:
             dbt_bin_dir = str(Path(dbt_path).parent)
             inherited_path = os.environ.get("PATH")
             shell_path = dbt_bin_dir if not inherited_path else os.pathsep.join([dbt_bin_dir, inherited_path])
-            run_tool: ExecuteBashTool | RunDbtTool = ExecuteBashTool(
+            run_tool: ExecuteBashTool | RunDbtTool = _DbtBashTool(
+                db_connector,
                 working_dir=working_dir,
                 env_overrides={"PATH": shell_path},
             )

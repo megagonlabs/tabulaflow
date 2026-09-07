@@ -8,7 +8,7 @@ if TYPE_CHECKING:
     from tabulaflow.data.neo4j import Neo4jConnector
     from tabulaflow.data.protocols import DataConnector
     from tabulaflow.data.registry import DataConnectorRegistry
-    from tabulaflow.data.sql import SQLConnector
+    from tabulaflow.data.sql import SQLConnector, TableWriteMode
     from tabulaflow.data.url import connect_url
 
 _LAZY_EXPORTS = {
@@ -18,6 +18,7 @@ _LAZY_EXPORTS = {
     "Neo4jConnectorConfig": ("tabulaflow.data.config", "Neo4jConnectorConfig"),
     "SQLConnector": ("tabulaflow.data.sql", "SQLConnector"),
     "SQLConnectorConfig": ("tabulaflow.data.config", "SQLConnectorConfig"),
+    "TableWriteMode": ("tabulaflow.data.sql", "TableWriteMode"),
     "connect_url": ("tabulaflow.data.url", "connect_url"),
 }
 
@@ -28,6 +29,7 @@ __all__ = [
     "Neo4jConnectorConfig",
     "SQLConnector",
     "SQLConnectorConfig",
+    "TableWriteMode",
     "connect_url",
 ]
 
