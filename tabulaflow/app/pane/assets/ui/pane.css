@@ -602,8 +602,7 @@ body { margin: 0; background: var(--bg); color: var(--text); display: flex; flex
 .tf-lightbox .tf-modal-close:active,
 .tf-lightbox .tf-media-step:active { background: rgba(255, 255, 255, 0.16); color: #fff; }
 .tf-lightbox .tf-modal-close:focus-visible,
-.tf-lightbox .tf-media-step:focus-visible { background: rgba(255, 255, 255, 0.1);
-                                            outline: 2px solid rgba(255, 255, 255, 0.72); outline-offset: 2px; }
+.tf-lightbox .tf-media-step:focus-visible { background: rgba(255, 255, 255, 0.1); }
 .tf-lightbox .tf-modal-close svg,
 .tf-lightbox .tf-media-step svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2;
                                   stroke-linecap: round; stroke-linejoin: round; }
@@ -620,7 +619,6 @@ body { margin: 0; background: var(--bg); color: var(--text); display: flex; flex
                     transition: background-color 120ms ease, color 120ms ease; }
 .tf-lightbox-file:hover { background: rgba(255, 255, 255, 0.08); color: #f4f4f5; }
 .tf-lightbox-file:active { background: rgba(255, 255, 255, 0.13); }
-.tf-lightbox-file:focus-visible { outline: 2px solid rgba(255, 255, 255, 0.72); outline-offset: 3px; }
 .tf-lightbox-file svg { width: 32px; height: 32px; margin-bottom: 2px; }
 .tf-lightbox-file-title { color: #e4e4e7; font: 550 14px/1.3 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
 .tf-lightbox-file-meta { color: rgba(228, 228, 231, 0.58); font: 12px/1.3 -apple-system, BlinkMacSystemFont,
