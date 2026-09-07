@@ -18,19 +18,19 @@ from tabulaflow.output.formatting.cypher import CypherSchemaFormatter
 from tabulaflow.output.formatting.sparql import SPARQLSchemaFormatter
 from tabulaflow.output.formatting.sql_ddl import SQLDDLSchemaFormatter
 
-_DB_SUMMARY_CACHE_VERSION = "v2"
+_DB_SUMMARY_CACHE_VERSION = "v4"
 _DB_SUMMARIZATION_PROMPT = """
-You are an AI database expert tasked with producing a summary for a database.
-The purpose of the summary is to help database experts explore the database and write database queries efficiently and accurately.
+You are an AI data expert tasked with producing a summary for a data source.
+The purpose of the summary is to help data experts explore the source and write queries efficiently and accurately.
 
 <requirements>
 - The summary should be in markdown format.
-- The summary should be up to {max_words} words. Use fewer words for simple databases and more words only when complexity justifies it.
-- The title should be in the format "Database: `<database_name>`".
+- The summary should be up to {max_words} words. Use fewer words for simple data sources and more words only when complexity justifies it.
+- The title should be "Data source: `{display_name}`".
 - Your output should contain only the summary without further suggestions or explanations. Do not append "end of summary" at the end.
 - Keep the content clear, precise, and concise.
-- Describe the core entities and the relationships within the database.
-- For SQL databases: when referring to tables, use schema-qualified table names (e.g. `schema.table`) if a schema is present.
+- Describe the core entities and relationships within the data source.
+- For SQL sources: when referring to tables, use schema-qualified table names (e.g. `schema.table`) if a schema is present.
 </requirements>
 """.strip()
 _DB_USER_PROMPT_MAX_CHARS = 400000
@@ -42,7 +42,11 @@ You are a technical writer that summarizes the given text concisely.
 
 
 def _database_user_prompt(formatted_schema: str) -> str:
-    return f"Generate a summary for the following database:\n\n<db_schema>\n{formatted_schema}\n</db_schema>"
+    return f"Generate a summary for the following data source:\n\n<db_schema>\n{formatted_schema}\n</db_schema>"
+
+
+def _database_system_prompt(*, display_name: str, max_words: int) -> str:
+    return _DB_SUMMARIZATION_PROMPT.format(display_name=display_name, max_words=max_words)
 
 
 def _truncate_database_prompt(user_prompt: str, max_chars: int = _DB_USER_PROMPT_MAX_CHARS) -> str:
@@ -122,18 +126,19 @@ class DBSummarizer:
     async def _summarize(self, connector: DataConnector) -> str:
         from tabulaflow.agents.tools.run_query import RunQueryTool
 
-        system_prompt = _DB_SUMMARIZATION_PROMPT.format(max_words=self.max_words)
         schema = connector.schema
+        system_prompt = _database_system_prompt(display_name=schema.display_name, max_words=self.max_words)
         if isinstance(schema, SQLSchema):
             sql_schema = schema
             if not sql_schema.tables:
-                return f"# Database: `{sql_schema.display_name}`\n\nThis database has no tables."
+                return f"# Data source: `{sql_schema.display_name}`\n\nThis data source has no tables."
             user_prompt = _database_user_prompt(self._sql_formatter.format(sql_schema, include_descriptions=True))
         elif isinstance(schema, PropertyGraphSchema):
             graph_schema = schema
             if not graph_schema.nodes and not graph_schema.relationships:
                 return (
-                    f"# Database: `{graph_schema.display_name}`\n\nThis graph database has no nodes or relationships."
+                    f"# Data source: `{graph_schema.display_name}`\n\n"
+                    "This data source has no nodes or relationships."
                 )
             user_prompt = _database_user_prompt(self._graph_formatter.format(graph_schema))
         elif isinstance(schema, RDFSchema):

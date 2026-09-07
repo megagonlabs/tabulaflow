@@ -12,7 +12,7 @@ class CypherSchemaFormatter:
 
     Example output::
 
-        Database: movies (Query Language: cypher)
+        Data source: movies (Query language: cypher)
 
         Node properties:
         Person {name: STRING, born: INTEGER}
@@ -40,7 +40,7 @@ class CypherSchemaFormatter:
         ]
         rel_prop_lines = self._format_relationship_properties(schema.relationships)
 
-        header = f"Database: {schema.display_name} (Query Language: cypher)"
+        header = f"Data source: {schema.display_name} (Query language: cypher)"
         if schema.description:
             header += f"\nDescription: {schema.description}"
 

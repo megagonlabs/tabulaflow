@@ -69,15 +69,14 @@ class SQLDDLSchemaFormatter:
 
     def format(self, schema: SQLSchema, *, include_descriptions: bool = False) -> str:
         quoting = SQLQuoting.from_dialect(schema.dialect)
-        name_label = "Project" if schema.dialect == "bigquery" else "Database"
-        metadata_lines = [f"**{name_label}:** `{schema.display_name}`"]
+        metadata_lines = [f"**Data source:** `{schema.display_name}`"]
         if schema.dialect:
-            metadata_lines.append(f"**SQL Dialect:** `{schema.dialect}`")
+            metadata_lines.append(f"**SQL dialect:** `{schema.dialect}`")
         if include_descriptions and schema.description:
             metadata_lines.append("**Description:**")
             metadata_lines.append(f"```text\n{schema.description}\n```")
         if not schema.tables:
-            metadata_lines.append("_(database has no tables)_")
+            metadata_lines.append("_(no tables)_")
             return "\n".join(metadata_lines)
 
         prepared_tables = prepare_tables_for_formatting(

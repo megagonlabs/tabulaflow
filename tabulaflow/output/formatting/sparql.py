@@ -13,7 +13,7 @@ class SPARQLSchemaFormatter:
     name: ClassVar[str] = "sparql"
 
     def format(self, schema: RDFSchema) -> str:
-        header = f"RDF source: {schema.display_name} (Query Language: sparql)"
+        header = f"Data source: {schema.display_name} (Query language: sparql)"
         if schema.description:
             header += f"\nDescription: {schema.description}"
         return f"{header}\n\nDeclare any required prefixes in the SPARQL query."

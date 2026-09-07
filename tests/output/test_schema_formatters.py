@@ -59,9 +59,21 @@ def test_sparql_formatter_renders_source_description() -> None:
 
     formatted = SPARQLSchemaFormatter().format(schema)
 
-    assert "RDF source: example (Query Language: sparql)" in formatted
+    assert "Data source: example (Query language: sparql)" in formatted
     assert "Description: An example knowledge graph." in formatted
     assert "Declare any required prefixes in the SPARQL query." in formatted
+
+
+def test_sql_formatters_do_not_infer_display_name_kind_from_dialect() -> None:
+    schema = SQLSchema(display_name="analytics", dialect="bigquery", tables=[])
+
+    basic = SQLBasicSchemaFormatter().format(schema)
+    ddl = SQLDDLSchemaFormatter().format(schema)
+
+    assert basic == "Data source: analytics (SQL dialect: bigquery)\n(no tables)"
+    assert ddl == "**Data source:** `analytics`\n**SQL dialect:** `bigquery`\n_(no tables)_"
+    assert "Project" not in basic
+    assert "Project" not in ddl
 
 
 def test_format_column_type_prefers_short_native() -> None:
@@ -233,7 +245,7 @@ def test_complete_primary_and_foreign_key_formatting() -> None:
 
     assert (
         basic
-        == """Database: shop (SQL Dialect: postgresql)
+        == """Data source: shop (SQL dialect: postgresql)
 
 === (SCHEMA: public) TABLE: customers ===
 - "id": INTEGER [PK]
@@ -250,8 +262,8 @@ def test_complete_primary_and_foreign_key_formatting() -> None:
     )
     assert (
         ddl
-        == """**Database:** `shop`
-**SQL Dialect:** `postgresql`
+        == """**Data source:** `shop`
+**SQL dialect:** `postgresql`
 
 ```sql
 /*
@@ -295,7 +307,7 @@ def test_sql_basic_compacted_family_format() -> None:
 
     assert (
         formatted
-        == """Database: warehouse (SQL Dialect: duckdb)
+        == """Data source: warehouse (SQL dialect: duckdb)
 
 === (SCHEMA: analytics) TABLE FAMILY: "events_{YYYYMMDD}" ===
 Partitions: YYYYMMDD from 20240101 to 20240102 (2 total)
@@ -322,8 +334,8 @@ def test_sql_ddl_compacted_family_format() -> None:
 
     assert (
         formatted
-        == """**Database:** `warehouse`
-**SQL Dialect:** `duckdb`
+        == """**Data source:** `warehouse`
+**SQL dialect:** `duckdb`
 
 ```sql
 /*

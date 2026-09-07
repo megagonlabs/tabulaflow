@@ -42,14 +42,13 @@ class SQLBasicSchemaFormatter:
 
     def format(self, schema: SQLSchema, *, include_descriptions: bool = False) -> str:
         quoting = SQLQuoting.from_dialect(schema.dialect)
-        name_label = "Project" if schema.dialect == "bigquery" else "Database"
-        result = f"{name_label}: {schema.display_name}"
+        result = f"Data source: {schema.display_name}"
         if schema.dialect:
-            result += f" (SQL Dialect: {schema.dialect})"
+            result += f" (SQL dialect: {schema.dialect})"
         if include_descriptions and schema.description:
             result += f"\nDescription: {schema.description}"
         if not schema.tables:
-            return f"{result}\n(database has no tables)"
+            return f"{result}\n(no tables)"
 
         tables = [
             self._format_prepared_table(

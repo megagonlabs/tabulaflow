@@ -188,6 +188,7 @@ def test_cypher_formatter_renders_multi_endpoint_relationship_type_once() -> Non
 
     formatted = CypherSchemaFormatter().format(schema)
 
+    assert formatted.startswith("Data source: places (Query language: cypher)")
     assert "(:City)-[:LOCATED_IN]->(:Country)" in formatted
     assert "(:Landmark)-[:LOCATED_IN]->(:Country)" in formatted
     assert formatted.count("LOCATED_IN {since: INTEGER}") == 1
