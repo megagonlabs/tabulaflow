@@ -766,6 +766,7 @@ Sep 6
   - [ ] Government/academic data
 - [ ] Authentication
 
+- [ ] Merge registry tool variants
 - [ ] Fix input history order
 - [ ] Huggingface connect split selection and better url cleaning
 - [ ] Show pending turns in output pane
