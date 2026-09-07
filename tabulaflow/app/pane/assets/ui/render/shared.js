@@ -174,16 +174,16 @@ function fieldValue(row, field) {
   return row[field];
 }
 
-function maybeFormatJson(text) {
-  if (typeof text !== 'string') return text;
+function formatJsonText(text) {
+  if (typeof text !== 'string') return null;
   var trimmed = text.trim();
-  if (trimmed.length < 2) return text;
+  if (trimmed.length < 2) return null;
   var first = trimmed[0];
   var last = trimmed[trimmed.length - 1];
   if ((first === '{' && last === '}') || (first === '[' && last === ']')) {
-    try { return JSON.stringify(JSON.parse(trimmed), null, 2); } catch (e) { return text; }
+    try { return JSON.stringify(JSON.parse(trimmed), null, 2); } catch (e) { return null; }
   }
-  return text;
+  return null;
 }
 
 function deepMerge(base, override) {
@@ -252,7 +252,7 @@ export {
   displayValue,
   numberOr,
   fieldValue,
-  maybeFormatJson,
+  formatJsonText,
   deepMerge,
   wireCopyButton
 };

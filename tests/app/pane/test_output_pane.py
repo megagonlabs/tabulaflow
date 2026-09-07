@@ -583,6 +583,28 @@ process.stdout.write(JSON.stringify({{
     assert "2.0 KB &middot; Open PDF" in rendered["lightboxPdf"]
 
 
+def test_format_json_text_distinguishes_structured_values(tmp_path: Path) -> None:
+    node, renderer_path = _renderer_module(tmp_path, "shared.js")
+    script = f"""
+import {{ pathToFileURL }} from 'node:url';
+const moduleUrl = pathToFileURL({json.dumps(renderer_path)}).href;
+const {{ formatJsonText }} = await import(moduleUrl);
+process.stdout.write(JSON.stringify({{
+  valid: formatJsonText('{{"nested":{{"value":1}}}}'),
+  invalid: formatJsonText('{{not json}}'),
+  plain: formatJsonText('plain text'),
+}}));
+"""
+
+    rendered = _run_node(node, script)
+
+    assert rendered == {
+        "valid": '{\n  "nested": {\n    "value": 1\n  }\n}',
+        "invalid": None,
+        "plain": None,
+    }
+
+
 def test_output_pane_push_highlights_assistant_markdown_code_blocks(tmp_path: Path) -> None:
     pane = OutputPane(tmp_path)
     pane.push(

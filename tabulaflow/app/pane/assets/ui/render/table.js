@@ -1,6 +1,6 @@
 // @ts-check
 
-import { asUrls, escapeAttr, escapeHtml, formatNumber, link, maybeFormatJson, renderMedia } from './shared.js';
+import { asUrls, escapeAttr, escapeHtml, formatJsonText, formatNumber, link, renderMedia, wireCopyButton } from './shared.js';
 
 const Tabulator = window.Tabulator;
 
@@ -84,6 +84,8 @@ export function renderTable(container, cardData) {
     + '<div class="tf-modal-card"><div class="tf-modal-header">'
     + '<span class="tf-modal-focus" tabindex="-1" aria-label="Media preview" hidden></span>'
     + '<span class="tf-modal-title"></span><span class="tf-media-count" aria-live="polite"></span>'
+    + '<button class="tf-modal-copy" type="button" aria-label="Copy value" title="Copy value">'
+    + '<span class="copy-icon" aria-hidden="true"></span></button>'
     + '<button class="tf-modal-close" type="button" aria-label="Close">'
     + '<svg viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg>'
     + '</button></div><div class="tf-modal-body"></div></div></dialog>';
@@ -93,8 +95,11 @@ export function renderTable(container, cardData) {
   var modalFocus = container.querySelector('.tf-modal-focus');
   var modalTitle = container.querySelector('.tf-modal-title');
   var mediaCount = container.querySelector('.tf-media-count');
+  var copyBtn = container.querySelector('.tf-modal-copy');
   var closeBtn = container.querySelector('.tf-modal-close');
   var galleryStep = null;
+  var modalCopyText = '';
+  wireCopyButton(copyBtn, function () { return modalCopyText; }, { copy: 'Copy value', copied: 'Copied value' });
   function clearMediaCount() {
     mediaCount.textContent = '';
     mediaCount.removeAttribute('aria-label');
@@ -109,13 +114,17 @@ export function renderTable(container, cardData) {
   function openModal(title, text) {
     galleryStep = null;
     modal.classList.remove('tf-lightbox');
+    var formattedJson = formatJsonText(text);
+    modal.classList.toggle('tf-json-dialog', formattedJson !== null);
     modalFocus.hidden = true;
     modalTitle.textContent = title || '';
     modalTitle.hidden = false;
+    copyBtn.hidden = false;
     modal.setAttribute('aria-label', title || 'Table cell detail');
     clearMediaCount();
     var pre = document.createElement('pre');
-    pre.textContent = maybeFormatJson(text);
+    pre.textContent = formattedJson === null ? text : formattedJson;
+    modalCopyText = text;
     modalBody.innerHTML = '';
     modalBody.appendChild(pre);
     showModal();
@@ -146,9 +155,11 @@ export function renderTable(container, cardData) {
     }
     galleryStep = function (delta) { index = (index + delta + items.length) % items.length; showItem(); };
     modal.classList.add('tf-lightbox');
+    modal.classList.remove('tf-json-dialog');
     modalFocus.hidden = false;
     modalTitle.textContent = '';
     modalTitle.hidden = true;
+    copyBtn.hidden = true;
     modal.setAttribute('aria-label', title || 'Media preview');
     showItem();
     showModal();
@@ -160,7 +171,9 @@ export function renderTable(container, cardData) {
     pauseModalMedia();
     galleryStep = null;
     modal.classList.remove('tf-lightbox');
+    modal.classList.remove('tf-json-dialog');
     modalFocus.hidden = true;
+    modalCopyText = '';
     clearMediaCount();
     modalBody.innerHTML = '';
   }
