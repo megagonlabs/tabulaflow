@@ -756,6 +756,65 @@ def _large_agent_table_result() -> ResultCardInput:
     )
 
 
+def _long_text_json_result() -> ResultCardInput:
+    paragraph = (
+        "This deliberately long paragraph exercises truncated table cells and the expanded text viewer. "
+        "It should wrap naturally, preserve the complete value when opened, and remain easy to copy. "
+    ) * 6
+    multiline = "\n".join(
+        f"Line {line:02d}: multiline content for dialog scrolling and preserved line breaks."
+        for line in range(1, 25)
+    )
+    nested = {
+        "request": {"id": "req-1042", "source": "preview", "flags": {"reviewed": True, "priority": False}},
+        "items": [
+            {"id": item, "name": f"item-{item:03d}", "tags": ["alpha", "beta"], "score": item / 10}
+            for item in range(12)
+        ],
+    }
+    large = {
+        "metadata": {"fixture": "large-json", "count": 200},
+        "records": [
+            {"id": item, "status": ["ready", "review", "hold"][item % 3], "value": item * 17}
+            for item in range(200)
+        ],
+    }
+    df = pd.DataFrame(
+        {
+            "case": [
+                "short text",
+                "null",
+                "long paragraph",
+                "multiline text",
+                "nested JSON string",
+                "native dictionary",
+                "native list",
+                "wide JSON line",
+                "invalid JSON-looking text",
+                "large JSON document",
+            ],
+            "value": [
+                "Short values should remain inline.",
+                None,
+                paragraph,
+                multiline,
+                json.dumps(nested),
+                nested,
+                ["alpha", 42, {"nested": True, "values": list(range(20))}],
+                json.dumps({"id": 7, "note": "x" * 800, "enabled": True}),
+                '{"broken": true, "message": "' + "invalid content " * 20 + '" trailing}',
+                large,
+            ],
+        }
+    )
+    return _result_input(
+        result_id="QDEBUG_LONG_TEXT_JSON",
+        label="long_text_json",
+        query="SELECT case, value FROM synthetic_text_cells ORDER BY case",
+        df=df,
+    )
+
+
 def _serve_fixed_port(host: str, port: int, pane_dir: Path) -> pane_mod.OutputPane:
     pane = pane_mod.OutputPane(pane_dir, host=host, port=port, session_id=generate_session_id())
     handler = functools.partial(_PreviewHandler, directory=str(pane_dir))
@@ -906,6 +965,17 @@ def _populate_pane(
                 "the compact output-pane table frame and internal scrolling."
             ),
             result_inputs=[_large_agent_table_result()],
+        )
+        _push_turn(
+            pane,
+            pane_dir,
+            title="Long text and JSON cells",
+            user="Show representative long text and structured values in a table.",
+            assistant=(
+                "This table exercises inline truncation and expanded viewing for paragraphs, multiline text, "
+                "JSON strings, native structures, wide lines, malformed JSON, and a larger document."
+            ),
+            result_inputs=[_long_text_json_result()],
         )
         _push_turn(
             pane,
