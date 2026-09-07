@@ -4,7 +4,7 @@ import pytest
 from pydantic import ValidationError
 
 from tabulaflow.agents import AgentRuntimeConfig
-from tabulaflow.data import Neo4jConnectorConfig, SQLConnectorConfig
+from tabulaflow.data import Neo4jConnectorConfig, SPARQLConnectorConfig, SQLConnectorConfig
 
 
 def test_sql_config_uses_defaults() -> None:
@@ -26,6 +26,16 @@ def test_neo4j_config_uses_fast_schema_introspection_by_default() -> None:
     assert config.schema_introspection_mode == "fast"
     assert config.max_graph_result_nodes == 300
     assert config.max_graph_result_edges == 700
+
+
+def test_sparql_config_has_bounded_http_defaults() -> None:
+    config = SPARQLConnectorConfig()
+
+    assert config.max_result_rows == 1_000_000
+    assert config.query_timeout_seconds == 300
+    assert config.max_query_concurrency == 8
+    assert config.max_response_bytes == 50 * 1024 * 1024
+    assert not hasattr(config, "schema_cache_mode")
 
 
 def test_sql_config_resolves_explicit_over_environment_over_default(
@@ -52,6 +62,7 @@ def test_connector_configs_read_query_concurrency_from_environment(monkeypatch: 
 
     assert SQLConnectorConfig().max_query_concurrency == 3
     assert Neo4jConnectorConfig().max_query_concurrency == 3
+    assert SPARQLConnectorConfig().max_query_concurrency == 3
 
 
 def test_connector_configs_share_process_wide_environment_defaults(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -65,6 +76,8 @@ def test_connector_configs_share_process_wide_environment_defaults(monkeypatch: 
     assert Neo4jConnectorConfig().max_result_rows == 250
     assert SQLConnectorConfig().query_timeout_seconds == 120
     assert Neo4jConnectorConfig().query_timeout_seconds == 120
+    assert SPARQLConnectorConfig().max_result_rows == 250
+    assert SPARQLConnectorConfig().query_timeout_seconds == 120
     assert Neo4jConnectorConfig().schema_introspection_mode == "full_scan"
     assert Neo4jConnectorConfig().max_graph_result_nodes == 500
     assert Neo4jConnectorConfig().max_graph_result_edges is None

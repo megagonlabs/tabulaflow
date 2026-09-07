@@ -4,10 +4,11 @@ from importlib import import_module
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    from tabulaflow.data.config import Neo4jConnectorConfig, SQLConnectorConfig
+    from tabulaflow.data.config import Neo4jConnectorConfig, SPARQLConnectorConfig, SQLConnectorConfig
     from tabulaflow.data.neo4j import Neo4jConnector
     from tabulaflow.data.protocols import DataConnector
     from tabulaflow.data.registry import DataConnectorRegistry
+    from tabulaflow.data.sparql import SPARQLConnector
     from tabulaflow.data.sql import SQLConnector, TableWriteMode
     from tabulaflow.data.url import connect_url
 
@@ -16,6 +17,8 @@ _LAZY_EXPORTS = {
     "DataConnectorRegistry": ("tabulaflow.data.registry", "DataConnectorRegistry"),
     "Neo4jConnector": ("tabulaflow.data.neo4j", "Neo4jConnector"),
     "Neo4jConnectorConfig": ("tabulaflow.data.config", "Neo4jConnectorConfig"),
+    "SPARQLConnector": ("tabulaflow.data.sparql", "SPARQLConnector"),
+    "SPARQLConnectorConfig": ("tabulaflow.data.config", "SPARQLConnectorConfig"),
     "SQLConnector": ("tabulaflow.data.sql", "SQLConnector"),
     "SQLConnectorConfig": ("tabulaflow.data.config", "SQLConnectorConfig"),
     "TableWriteMode": ("tabulaflow.data.sql", "TableWriteMode"),
@@ -27,6 +30,8 @@ __all__ = [
     "DataConnectorRegistry",
     "Neo4jConnector",
     "Neo4jConnectorConfig",
+    "SPARQLConnector",
+    "SPARQLConnectorConfig",
     "SQLConnector",
     "SQLConnectorConfig",
     "TableWriteMode",

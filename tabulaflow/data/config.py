@@ -8,9 +8,11 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from tabulaflow.core._cache import DEFAULT_CACHE_DIR
 
+_DEFAULT_MAX_SPARQL_RESPONSE_BYTES = 50 * 1024 * 1024
+
 
 class _ConnectorConfig(BaseSettings):
-    """Common operational policy for a data connector."""
+    """Common query-execution policy for a data connector."""
 
     model_config = SettingsConfigDict(
         env_prefix="TABULAFLOW_",
@@ -19,14 +21,19 @@ class _ConnectorConfig(BaseSettings):
         env_parse_none_str="none",
     )
 
-    cache_dir: Path = DEFAULT_CACHE_DIR
     max_result_rows: PositiveInt | None = 1_000_000
     query_timeout_seconds: PositiveInt | None = 300
     max_query_concurrency: PositiveInt = 8
+
+
+class _CachedSchemaConnectorConfig(_ConnectorConfig):
+    """Query and schema-cache policy for an introspected connector."""
+
+    cache_dir: Path = DEFAULT_CACHE_DIR
     schema_cache_mode: Literal["off", "read_write", "refresh", "cache_only"] = "read_write"
 
 
-class SQLConnectorConfig(_ConnectorConfig):
+class SQLConnectorConfig(_CachedSchemaConnectorConfig):
     """Operational policy for a SQL connector.
 
     Attributes:
@@ -48,7 +55,7 @@ class SQLConnectorConfig(_ConnectorConfig):
     query_cache_mode: Literal["off", "read_write", "refresh"] = "off"
 
 
-class Neo4jConnectorConfig(_ConnectorConfig):
+class Neo4jConnectorConfig(_CachedSchemaConnectorConfig):
     """Operational policy for a Neo4j connector.
 
     Attributes:
@@ -70,7 +77,23 @@ class Neo4jConnectorConfig(_ConnectorConfig):
     max_graph_result_edges: PositiveInt | None = 700
 
 
+class SPARQLConnectorConfig(_ConnectorConfig):
+    """Operational policy for a SPARQL connector.
+
+    Attributes:
+        max_result_rows: Maximum rows materialized by one query, or ``None``
+            for no limit.
+        query_timeout_seconds: Overall query deadline, including throttling and
+            retries, or ``None`` to disable.
+        max_query_concurrency: Maximum in-flight queries per connector.
+        max_response_bytes: Maximum decompressed response bytes buffered.
+    """
+
+    max_response_bytes: PositiveInt = _DEFAULT_MAX_SPARQL_RESPONSE_BYTES
+
+
 __all__ = [
     "Neo4jConnectorConfig",
+    "SPARQLConnectorConfig",
     "SQLConnectorConfig",
 ]

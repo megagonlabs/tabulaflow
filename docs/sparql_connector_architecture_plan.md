@@ -368,14 +368,16 @@ Acceptance:
   - a valid, recognized XSD boolean, integer, decimal, floating-point, date, or
     date-time literal becomes the corresponding native Python value; and
   - a language-tagged literal or unfamiliar/invalid typed literal becomes a
-    lossless N-Triples-compatible lexical string (`"value"@lang` or
+    metadata-preserving N-Triples-compatible lexical string (`"value"@lang` or
     `"value"^^<datatype-iri>`), including the required escaping.
   `ASK` becomes a one-row, one-column boolean DataFrame. This keeps results
   readable and writable as ordinary tables while preserving RDF metadata that
-  cannot be represented safely as a native scalar.
+  cannot be represented safely as a native scalar. The normalized table is not
+  an RDF round-trip format: native conversion intentionally does not preserve
+  lexical or RDF-term distinctions that have no ordinary tabular equivalent.
 - Add cancellation, timeout, concurrency, response-size, and row limits.
 - Respect `429` and `Retry-After` and send a descriptive User-Agent.
-- Keep `refresh_schema_async()` bounded and deterministic by rebuilding the
+- Keep `refresh_schema_async()` bounded and deterministic by returning the
   configured minimal `RDFSchema`; do not scan the endpoint or fetch Service
   Description metadata until the schema model has a concrete consumer for it.
 - Use mocked HTTP transports for ordinary tests.
