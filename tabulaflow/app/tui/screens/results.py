@@ -21,40 +21,12 @@ from tabulaflow.app.tui.theme import (
     KEY_HINT,
     configure_code_text_area,
 )
-from tabulaflow.app.tui.rendering import format_media_cell
+from tabulaflow.app.tui.cells import format_media_cell, normalize_cell_value
 from tabulaflow.core.media import extract_media_bytes
-from tabulaflow.output.formatting import summarize_binary_values
 
 
 if TYPE_CHECKING:
     import pandas as pd
-
-
-def _normalize_json_like(value: object) -> object:
-    """Coerce ``ndarray``/``dict``/``list`` cells into a JSON-ready structure.
-
-    Converts numpy ndarrays to lists and recursively json.loads any string leaf
-    that parses as a dict or list — so HF-style JSON-array columns
-    (``ndarray([str, str, ...])``) render as structured JSON instead of
-    backslash-escaped Python list reprs.
-    """
-    import numpy as np
-
-    if isinstance(value, np.ndarray):
-        value = value.tolist()
-    if isinstance(value, dict):
-        return {k: _normalize_json_like(v) for k, v in value.items()}
-    if isinstance(value, list):
-        return [_normalize_json_like(v) for v in value]
-    if isinstance(value, str):
-        try:
-            parsed = json.loads(value)
-        except (json.JSONDecodeError, ValueError):
-            return value
-        if isinstance(parsed, (dict, list)):
-            return _normalize_json_like(parsed)
-        return value
-    return value
 
 
 class DataBrowserScreen(Screen[None]):
@@ -418,7 +390,6 @@ class DataBrowserScreen(Screen[None]):
     def _format_cell(value: object) -> Text:
         import numbers
 
-        import numpy as np
         import pandas as pd_
 
         try:
@@ -441,11 +412,11 @@ class DataBrowserScreen(Screen[None]):
         if isinstance(value, (bytes, bytearray, memoryview)):
             return Text(f"<binary: {len(value):,} bytes>", style="dim italic")
 
-        value = summarize_binary_values(value)
+        value = normalize_cell_value(value)
 
-        if isinstance(value, (np.ndarray, list, dict)):
+        if isinstance(value, (list, dict)):
             try:
-                s = json.dumps(_normalize_json_like(value), ensure_ascii=False, default=str)
+                s = json.dumps(value, ensure_ascii=False, default=str)
             except (TypeError, ValueError):
                 s = str(value)
         else:
@@ -576,26 +547,19 @@ class CellBrowserScreen(Screen[None]):
         """Try to pretty-print value as JSON. Returns formatted string or None."""
         import ast
 
-        import numpy as np
-
-        obj: object
-        if isinstance(value, np.ndarray):
-            obj = _normalize_json_like(value)
-        elif isinstance(value, (dict, list)):
-            obj = _normalize_json_like(value)
-        elif isinstance(value, str):
-            # Try JSON first, then Python repr
-            for parser in (json.loads, ast.literal_eval):
+        obj = normalize_cell_value(value)
+        if not isinstance(obj, (dict, list)) and isinstance(obj, str):
+            try:
+                parsed = json.loads(obj)
+            except json.JSONDecodeError:
                 try:
-                    parsed = parser(value)
-                    if isinstance(parsed, (dict, list)):
-                        obj = parsed
-                        break
-                except Exception:
-                    continue
-            else:
+                    parsed = ast.literal_eval(obj)
+                except (SyntaxError, ValueError):
+                    return None
+            if not isinstance(parsed, (dict, list)):
                 return None
-        else:
+            obj = normalize_cell_value(parsed)
+        elif not isinstance(obj, (dict, list)):
             return None
         obj = CellBrowserScreen._truncate_json_leaves(obj, CellBrowserScreen._MAX_JSON_LEAF)
         return json.dumps(obj, indent=2, ensure_ascii=False, default=str)
@@ -621,7 +585,6 @@ class CellBrowserScreen(Screen[None]):
         if (raw := extract_media_bytes(value)) is not None:
             return f"<binary: {len(raw):,} bytes>", None
 
-        value = summarize_binary_values(value)
         json_str = CellBrowserScreen._try_as_json(value)
         if json_str is not None:
             return CellBrowserScreen._cap_display(json_str), "json"

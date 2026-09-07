@@ -1,4 +1,8 @@
-from tabulaflow.app.tui.rendering import _format_table_cell, format_media_cell
+import base64
+import json
+
+from tabulaflow.app.tui.cells import format_media_cell, normalize_cell_value
+from tabulaflow.app.tui.rendering import _format_table_cell
 from tabulaflow.app.tui.screens.results import CellBrowserScreen, DataBrowserScreen
 
 PNG = b"\x89PNG\r\n\x1a\n" + b"\x00" * 32
@@ -29,3 +33,16 @@ def test_mixed_collection_summarizes_binary_leaves() -> None:
     assert format_media_cell(value) is None
     assert "[binary: 40 bytes]" in _format_table_cell(value)
     assert "\\x89PNG" not in _format_table_cell(value)
+
+
+def test_json_encoded_media_is_summarized_across_tui_views() -> None:
+    uri = f"data:image/png;base64,{base64.b64encode(PNG).decode()}"
+    value = json.dumps({"name": "x", "media": uri})
+
+    assert normalize_cell_value(value) == {"name": "x", "media": "[binary: 40 bytes]"}
+    assert "data:image" not in _format_table_cell(value)
+    assert "data:image" not in DataBrowserScreen._format_cell(value).plain
+    text, language = CellBrowserScreen._format_value(value)
+    assert "data:image" not in text
+    assert '"media": "[binary: 40 bytes]"' in text
+    assert language == "json"
