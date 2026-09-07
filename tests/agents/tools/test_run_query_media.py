@@ -352,7 +352,7 @@ async def test_registry_run_query_propagates_media_and_stores_original_result() 
 
     assert returned.content is not None
     assert "[source_id=S1]" in _text(returned)
-    payload = await tool._output_store.get_payload("R1")  # noqa: SLF001
+    payload = await tool._output_store.get_result("R1")  # noqa: SLF001
     assert payload.df is not None
     assert payload.df.at[0, "image"] == image
 

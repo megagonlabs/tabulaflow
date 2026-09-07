@@ -314,7 +314,7 @@ class TestRenderGraphTool:
         assert "Network graph GRAPH1 created from S1" in msg
         assert "3 nodes, 2 edges (all nodes one color; set group on node sources to color by type)" in msg
         graph = materialize_graph_result(
-            _graph_artifact(output_store, "GRAPH1").spec, {"S1": (await output_store.get_payload("R1")).df}
+            _graph_artifact(output_store, "GRAPH1").spec, {"S1": (await output_store.get_result("R1")).df}
         )
         assert graph.edges[0].source == "a"
         assert graph.edges[0].target == "b"

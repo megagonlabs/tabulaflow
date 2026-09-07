@@ -40,7 +40,7 @@ from tabulaflow.output.resolver import (
     ResolvedTableArtifact,
     UnavailableArtifact,
 )
-from tabulaflow.output.store import ResultPayload
+from tabulaflow.output.store import MaterializedResult
 
 TABULAFLOW_THEME = Theme(
     {
@@ -369,12 +369,12 @@ def build_resolved_output_card_views(
             )
             continue
         if isinstance(artifact, ResolvedTableArtifact):
-            group = _card_group_from_payload(label, artifact.artifact_id, artifact.payload, width)
+            group = _card_group_from_result(label, artifact.artifact_id, artifact.result, width)
             if group is not None:
                 groups.append(group)
         elif isinstance(artifact, ResolvedChartArtifact):
-            group = _card_group_from_payload(
-                label, artifact.artifact_id, artifact.payload, width, chart_spec=artifact.spec
+            group = _card_group_from_result(
+                label, artifact.artifact_id, artifact.result, width, chart_spec=artifact.spec
             )
             if group is not None:
                 groups.append(group)
@@ -397,42 +397,42 @@ def build_resolved_output_card_views(
     return groups
 
 
-def _card_group_from_payload(
+def _card_group_from_result(
     label: str,
     artifact_id: str,
-    payload: ResultPayload,
+    result: MaterializedResult,
     width: int,
     chart_spec: dict[str, object] | None = None,
 ) -> CardGroup | None:
     views: list[ViewItem] = []
-    if payload.graph is not None:
+    if result.graph is not None:
         views.append(ViewItem(kind=VIEW_KIND_GRAPH, renderable=_build_graph_card()))
-    if chart_spec is not None and payload.df is not None and not payload.df.empty:
+    if chart_spec is not None and result.df is not None and not result.df.empty:
         views.append(
-            ViewItem(kind=VIEW_KIND_CHART, renderable=build_chart(payload.df, chart_spec, width), chart_spec=chart_spec)
+            ViewItem(kind=VIEW_KIND_CHART, renderable=build_chart(result.df, chart_spec, width), chart_spec=chart_spec)
         )
-    if payload.df is not None:
-        renderable, shown_cols = build_table(payload.df, available_width=width, include_footer=False)
+    if result.df is not None:
+        renderable, shown_cols = build_table(result.df, available_width=width, include_footer=False)
         views.append(
             ViewItem(
                 kind=VIEW_KIND_DATA,
                 renderable=renderable,
-                data_shape=(len(payload.df), len(payload.df.columns)),
+                data_shape=(len(result.df), len(result.df.columns)),
                 shown_cols=shown_cols,
             )
         )
-    if payload.metadata.query:
-        lexer = normalize_query_lexer(payload.metadata.query_language)
+    if result.metadata.query:
+        lexer = normalize_query_lexer(result.metadata.query_language)
         views.append(
             ViewItem(
                 kind=VIEW_KIND_QUERY,
-                renderable=build_query(payload.metadata.query, lexer=lexer),
-                query=(payload.metadata.query, lexer),
+                renderable=build_query(result.metadata.query, lexer=lexer),
+                query=(result.metadata.query, lexer),
             )
         )
     if not views:
         return None
-    return CardGroup(label=label, artifact_id=artifact_id, result_id=payload.metadata.id, views=views)
+    return CardGroup(label=label, artifact_id=artifact_id, result_id=result.metadata.id, views=views)
 
 
 def _unique_card_label(base_label: str, used: set[str]) -> str:

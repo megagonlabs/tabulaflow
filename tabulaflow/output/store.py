@@ -49,7 +49,7 @@ logger = logging.getLogger(__name__)
 __all__ = [
     "OutputStore",
     "ResultMetadata",
-    "ResultPayload",
+    "MaterializedResult",
     "ArtifactSourceResolutionError",
     "ArtifactSourceNotApplicable",
     "render_parameterized_query",
@@ -65,7 +65,7 @@ class ResultMetadata(BaseModel):
     connector_alias: str
     query: str
     query_language: QueryLanguage
-    source_selection: Selection = Field(default_factory=dict)
+    parameter_selection: Selection = Field(default_factory=dict)
     row_count: int | None = None
     columns: list[str] | None = None
     affected_rows: int | None = None
@@ -98,8 +98,8 @@ class _StoredResultEntry:
 
 
 @dataclass(frozen=True)
-class ResultPayload:
-    """Runtime payload for a materialized result.
+class MaterializedResult:
+    """Materialized query result with provenance metadata.
 
     Consumers must treat ``df`` as read-only because it may reference the
     session cache directly.
@@ -197,7 +197,7 @@ class OutputStore:
     Every successful result DataFrame is persisted under ``spill_dir`` when
     configured. The most recent ``max_in_memory`` DataFrames are
     cached in RAM; older cached DataFrames are reloaded explicitly through
-    ``get_payload()``.
+    ``get_result()``.
 
     Args:
         max_in_memory: Number of result DataFrames to keep in RAM.
@@ -342,7 +342,7 @@ class OutputStore:
             connector_alias=connector_alias,
             query=query,
             query_language=query_language,
-            source_selection={} if selection is None else dict(selection),
+            parameter_selection={} if selection is None else dict(selection),
             row_count=row_count,
             columns=columns,
             affected_rows=exec_result.affected_rows,
@@ -363,8 +363,8 @@ class OutputStore:
         self,
         source_id: str,
         selection: Mapping[str, object] | None = None,
-    ) -> ResultPayload:
-        """Resolve an artifact source to a materialized payload.
+    ) -> MaterializedResult:
+        """Resolve an artifact source to a materialized result.
 
         Fixed sources return their stored result. Parameterized sources project
         relevant values from ``selection``, fill omitted values from declared
@@ -375,11 +375,11 @@ class OutputStore:
             selection: Global or source-local parameter values.
 
         Returns:
-            The materialized result payload.
+            The materialized result.
         """
         source = self.get_artifact_source(source_id)
         if isinstance(source, FixedArtifactSource):
-            return await self.get_payload(source.result_id)
+            return await self.get_result(source.result_id)
         if not isinstance(source, ParameterizedArtifactSource):
             raise TypeError(f"unsupported source {type(source).__name__}")
         parameters = self.artifact_source_parameters(source.id)
@@ -392,7 +392,7 @@ class OutputStore:
         result_id = self._artifact_source_cache.get((source.id, selection_key))
         if result_id is None:
             result_id = await self._materialize_parameterized_artifact_source(source, projected_selection)
-        return await self.get_payload(result_id)
+        return await self.get_result(result_id)
 
     async def _materialize_parameterized_artifact_source(
         self,
@@ -422,15 +422,15 @@ class OutputStore:
             raise ValueError(f"query {result_id} returned no data")
         return await self._results.get_result_dataframe(result_id)
 
-    async def get_payload(self, result_id: ResultId) -> ResultPayload:
-        """Return clean payload for a materialized result."""
+    async def get_result(self, result_id: ResultId) -> MaterializedResult:
+        """Return a materialized result by ID."""
         entry = await self._get_result_entry(result_id)
         df = None
         try:
             df = await self._get_dataframe(result_id)
         except ValueError:
             pass
-        return ResultPayload(metadata=entry.metadata, df=df, graph=entry.graph)
+        return MaterializedResult(metadata=entry.metadata, df=df, graph=entry.graph)
 
     def add_chart_artifact(
         self, source_id: ArtifactSourceId, spec: Mapping[str, object], label: str | None = None

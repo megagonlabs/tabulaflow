@@ -39,7 +39,7 @@ def test_result_metadata_owns_query_provenance() -> None:
         connector_alias="workspace",
         query="SELECT * FROM customers WHERE total_spend >= 50000",
         query_language="duckdb",
-        source_selection={"min_spend": 50_000},
+        parameter_selection={"min_spend": 50_000},
         affected_rows=3,
         row_count=20,
         columns=["customer", "total_spend"],
@@ -47,13 +47,13 @@ def test_result_metadata_owns_query_provenance() -> None:
 
     assert metadata.connector_alias == "workspace"
     assert metadata.query_language == "duckdb"
-    assert metadata.source_selection == {"min_spend": 50_000}
+    assert metadata.parameter_selection == {"min_spend": 50_000}
     assert metadata.affected_rows == 3
 
 
 async def test_missing_result_raises_domain_error() -> None:
     with pytest.raises(ArtifactSourceResolutionError, match="No result with id R9"):
-        await OutputStore().get_payload("R9")
+        await OutputStore().get_result("R9")
 
 
 def test_map_and_graph_artifacts_accept_parameterized_sources() -> None:
@@ -97,21 +97,21 @@ class TestNoSpillDirectory:
         h = OutputStore()
         await h.add_fixed_artifact_source("db", "duckdb", *_make_execution(n_rows=3))
         await h.add_fixed_artifact_source("db", "duckdb", *_make_execution(n_rows=7))
-        assert (await h.get_payload("R1")).metadata.query == "SELECT 1"
-        q2_df = (await h.get_payload("R2")).df
+        assert (await h.get_result("R1")).metadata.query == "SELECT 1"
+        q2_df = (await h.get_result("R2")).df
         assert q2_df is not None
         assert len(q2_df) == 7
 
-    async def test_get_payload(self) -> None:
+    async def test_get_result(self) -> None:
         h = OutputStore()
         await h.add_fixed_artifact_source("db", "duckdb", *_make_execution(n_rows=3))
 
-        payload = await h.get_payload("R1")
+        result = await h.get_result("R1")
 
-        assert payload.metadata.id == "R1"
-        assert payload.metadata.query == "SELECT 1"
-        assert payload.df is not None
-        assert len(payload.df) == 3
+        assert result.metadata.id == "R1"
+        assert result.metadata.query == "SELECT 1"
+        assert result.df is not None
+        assert len(result.df) == 3
 
     async def test_result_metadata_records_affected_rows(self) -> None:
         h = OutputStore()
@@ -122,9 +122,9 @@ class TestNoSpillDirectory:
             ExecResult(affected_rows=2),
         )
 
-        payload = await h.get_payload("R1")
+        result = await h.get_result("R1")
 
-        assert payload.metadata.affected_rows == 2
+        assert result.metadata.affected_rows == 2
 
 
 class TestWithSpillDirectory:
@@ -171,7 +171,7 @@ class TestWithSpillDirectory:
         await h.add_fixed_artifact_source("db", "duckdb", *_make_execution(n_rows=30))
         assert not h._results.has_in_memory("R1")
 
-        df = (await h.get_payload("R1")).df
+        df = (await h.get_result("R1")).df
         assert df is not None
         assert len(df) == 10
         assert h._results.has_in_memory("R1")
@@ -192,13 +192,13 @@ class TestWithSpillDirectory:
         await h.add_fixed_artifact_source("db", "duckdb", "SELECT media", ExecResult(df=df))
         await h.add_fixed_artifact_source("db", "duckdb", *_make_execution())
 
-        payload = await h.get_payload("R1")
+        result = await h.get_result("R1")
 
-        assert payload.df is not None
-        assert payload.df.at[0, "blob"] == image
-        assert pd.isna(payload.df.at[1, "blob"])
-        assert payload.df.at[0, "media"] == {"bytes": image, "path": None}
-        assert payload.df.at[1, "media"] == {"bytes": None, "path": "external.png"}
+        assert result.df is not None
+        assert result.df.at[0, "blob"] == image
+        assert pd.isna(result.df.at[1, "blob"])
+        assert result.df.at[0, "media"] == {"bytes": image, "path": None}
+        assert result.df.at[1, "media"] == {"bytes": None, "path": "external.png"}
 
     async def test_persist_failure_surfaces(self, spill_dir: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         h = OutputStore(max_in_memory=1, spill_dir=spill_dir)
@@ -234,7 +234,7 @@ class TestWithSpillDirectory:
         await h.add_fixed_artifact_source("db", "duckdb", *_make_execution())  # evicts Q1
         assert not h._results.has_in_memory("R1")
 
-        df_loaded = (await h.get_payload("R1")).df
+        df_loaded = (await h.get_result("R1")).df
         assert df_loaded is not None
         pd.testing.assert_frame_equal(df_loaded, df_original)
 

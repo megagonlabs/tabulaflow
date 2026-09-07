@@ -32,7 +32,7 @@ def _result_id(artifact: object, source_id: str | None = None) -> str:
     assert isinstance(artifact, ResolvedTableArtifact | ResolvedChartArtifact)
     if source_id is not None:
         assert artifact.source_id == source_id
-    return artifact.payload.metadata.id
+    return artifact.result.metadata.id
 
 
 def test_strip_answer_prefix_removes_the_prefix() -> None:

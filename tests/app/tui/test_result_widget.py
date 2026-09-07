@@ -9,7 +9,7 @@ from tabulaflow.app.tui.widgets.result import AgentResultWidget
 from tabulaflow.agents.chat import ChatResult
 from tabulaflow.output.specs import NumberParameter, OutputSpec
 from tabulaflow.output.resolver import ResolvedArtifact, ResolvedOutput, ResolvedTableArtifact
-from tabulaflow.output.store import ResultMetadata, ResultPayload
+from tabulaflow.output.store import ResultMetadata, MaterializedResult
 
 
 def _result(result_id: str, label: str) -> ResolvedTableArtifact:
@@ -17,7 +17,7 @@ def _result(result_id: str, label: str) -> ResolvedTableArtifact:
         artifact_id=result_id,
         source_id=result_id,
         label=label,
-        payload=ResultPayload(
+        result=MaterializedResult(
             metadata=ResultMetadata(
                 id=result_id,
                 connector_alias="debug",

@@ -29,7 +29,7 @@ from tabulaflow.output.resolver import (
 from tabulaflow.output.store import (
     OutputStore,
     ResultMetadata,
-    ResultPayload,
+    MaterializedResult,
     ArtifactSourceNotApplicable,
     ArtifactSourceResolutionError,
     render_parameterized_query,
@@ -64,9 +64,9 @@ def _parameters() -> list[ChoiceParameter | NumberParameter]:
     ]
 
 
-def test_result_payload_rejects_graph_without_dataframe() -> None:
+def test_materialized_result_rejects_graph_without_dataframe() -> None:
     with pytest.raises(ValueError, match="graph result requires a tabular result"):
-        ResultPayload(
+        MaterializedResult(
             metadata=ResultMetadata(
                 id="R1",
                 connector_alias="workspace",
@@ -89,7 +89,7 @@ async def test_fixed_source_resolves_output_artifact() -> None:
 
     artifact = resolved.artifacts[0]
     assert isinstance(artifact, ResolvedTableArtifact)
-    metadata = artifact.payload.metadata
+    metadata = artifact.result.metadata
     assert resolved.selection == {}
     assert metadata.id == "R1"
     assert metadata.connector_alias == "workspace"
@@ -136,7 +136,7 @@ async def test_parameterized_source_resolves_by_projected_selection() -> None:
 
     artifact = resolved.artifacts[0]
     assert isinstance(artifact, ResolvedTableArtifact)
-    metadata = artifact.payload.metadata
+    metadata = artifact.result.metadata
     assert resolved.selection == {"metric": "profit", "min_spend": 10_000}
     assert metadata.id == "R2"
     assert isinstance(output.sources[0], ParameterizedArtifactSource)
@@ -240,7 +240,7 @@ async def test_unavailable_artifact_does_not_hide_siblings() -> None:
 
     first, second = resolved.artifacts
     assert isinstance(first, ResolvedTableArtifact)
-    assert first.payload.metadata.id == "R1"
+    assert first.result.metadata.id == "R1"
     assert isinstance(second, UnavailableArtifact)
     assert "has no result" in second.reason
 
@@ -307,7 +307,7 @@ async def test_missing_materialized_result_becomes_artifact_error() -> None:
     assert artifact.reason == "No result with id R9"
 
 
-async def test_table_artifact_without_displayable_payload_is_unavailable() -> None:
+async def test_table_artifact_without_displayable_result_is_unavailable() -> None:
     output_store = OutputStore()
     await output_store.add_fixed_artifact_source(
         "workspace",
@@ -328,7 +328,7 @@ async def test_table_artifact_without_displayable_payload_is_unavailable() -> No
     assert artifact.reason == "Statement executed successfully but returned no displayable data"
 
 
-async def test_table_artifact_without_displayable_payload_reports_affected_rows() -> None:
+async def test_table_artifact_without_displayable_result_reports_affected_rows() -> None:
     output_store = OutputStore()
     await output_store.add_fixed_artifact_source(
         "workspace",
@@ -417,9 +417,9 @@ async def test_empty_visualization_sources_resolve_as_normal_artifacts() -> None
 
     chart, map_artifact, graph = resolved.artifacts
     assert isinstance(chart, ResolvedChartArtifact)
-    assert chart.payload.df is not None and chart.payload.df.empty
+    assert chart.result.df is not None and chart.result.df.empty
     assert isinstance(map_artifact, ResolvedMapArtifact)
-    map_df = map_artifact.payload_by_source[source.id].df
+    map_df = map_artifact.results_by_source[source.id].df
     assert map_df is not None and map_df.empty
     assert isinstance(graph, ResolvedGraphArtifact)
     assert graph.graph.nodes == []
@@ -577,7 +577,7 @@ async def test_map_and_graph_resolve_parameterized_selection() -> None:
 
     map_artifact, graph_artifact = resolved.artifacts
     assert isinstance(map_artifact, ResolvedMapArtifact)
-    assert map_artifact.payload_by_source[source.id].metadata.source_selection == {"period": "q2"}
+    assert map_artifact.results_by_source[source.id].metadata.parameter_selection == {"period": "q2"}
     assert isinstance(graph_artifact, ResolvedGraphArtifact)
     assert [node.id for node in graph_artifact.graph.nodes] == ["b"]
 
@@ -619,7 +619,7 @@ async def test_source_failure_is_reused_across_artifacts() -> None:
 
         async def resolve_artifact_source(
             self, source_id: str, selection: Mapping[str, object] | None = None
-        ) -> ResultPayload:
+        ) -> MaterializedResult:
             self.resolve_count += 1
             raise ArtifactSourceResolutionError("query failed")
 
@@ -643,7 +643,7 @@ async def test_unexpected_source_value_error_is_not_hidden() -> None:
     class BrokenOutputStore(OutputStore):
         async def resolve_artifact_source(
             self, source_id: str, selection: Mapping[str, object] | None = None
-        ) -> ResultPayload:
+        ) -> MaterializedResult:
             raise ValueError("programming bug")
 
     output_store = BrokenOutputStore()

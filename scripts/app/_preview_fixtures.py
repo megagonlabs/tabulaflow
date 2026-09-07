@@ -15,7 +15,7 @@ from tabulaflow.output.resolver import (
     ResolvedTableArtifact,
     UnavailableArtifact,
 )
-from tabulaflow.output.store import ResultMetadata, ResultPayload
+from tabulaflow.output.store import ResultMetadata, MaterializedResult
 
 
 @dataclass(frozen=True)
@@ -37,7 +37,7 @@ class DebugChartPayload(DebugTablePayload):
 def _debug_cards(payloads: list[DebugTablePayload], width: int) -> list[CardGroup]:
     artifacts: list[ResolvedArtifact] = []
     for payload in payloads:
-        result_payload = ResultPayload(
+        materialized_result = MaterializedResult(
             metadata=ResultMetadata(
                 id=payload.result_id,
                 connector_alias="debug",
@@ -65,7 +65,7 @@ def _debug_cards(payloads: list[DebugTablePayload], width: int) -> list[CardGrou
                     artifact_id=payload.chart_id,
                     label=payload.label,
                     source_id=payload.result_id,
-                    payload=result_payload,
+                    result=materialized_result,
                     spec=payload.chart_spec,
                 )
             )
@@ -85,7 +85,7 @@ def _debug_cards(payloads: list[DebugTablePayload], width: int) -> list[CardGrou
                     artifact_id=payload.result_id,
                     label=payload.label,
                     source_id=payload.result_id,
-                    payload=result_payload,
+                    result=materialized_result,
                 )
             )
     return build_resolved_output_card_views(ResolvedOutput(selection={}, artifacts=artifacts), width)

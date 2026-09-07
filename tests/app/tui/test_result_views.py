@@ -34,7 +34,7 @@ from tabulaflow.output.resolver import (
     ResolvedTableArtifact,
     UnavailableArtifact,
 )
-from tabulaflow.output.store import ResultMetadata, ResultPayload
+from tabulaflow.output.store import ResultMetadata, MaterializedResult
 
 
 def _payload(
@@ -44,8 +44,8 @@ def _payload(
     query: str = "SELECT 1",
     graph: GraphResult | None = None,
     query_language: QueryLanguage = "duckdb",
-) -> ResultPayload:
-    return ResultPayload(
+) -> MaterializedResult:
+    return MaterializedResult(
         metadata=ResultMetadata(
             id=result_id,
             connector_alias="debug",
@@ -64,7 +64,7 @@ def _table(result_id: str, label: str) -> ResolvedTableArtifact:
         artifact_id=result_id,
         source_id=result_id,
         label=label,
-        payload=_payload(result_id, df=pd.DataFrame({"a": [1, 2]})),
+        result=_payload(result_id, df=pd.DataFrame({"a": [1, 2]})),
     )
 
 
@@ -81,7 +81,7 @@ def _chart(chart_id: str, label: str) -> ResolvedChartArtifact:
                 "color": {"field": "region"},
             },
         },
-        payload=_payload("Q1", df=pd.DataFrame({"region": ["north", "south"], "revenue": [10, 20]}), query=""),
+        result=_payload("Q1", df=pd.DataFrame({"region": ["north", "south"], "revenue": [10, 20]}), query=""),
     )
 
 
@@ -93,7 +93,7 @@ def _map(map_id: str, label: str) -> ResolvedMapArtifact:
             "title": "Cities",
             "layers": [{"type": "points", "source_id": "Q1", "lat": "c0", "lng": "c1"}],
         },
-        payload_by_source={"Q1": _payload("Q1", df=pd.DataFrame({"lat": [37.7], "lng": [-122.4]}))},
+        results_by_source={"Q1": _payload("Q1", df=pd.DataFrame({"lat": [37.7], "lng": [-122.4]}))},
     )
 
 
@@ -146,7 +146,7 @@ def test_empty_table_artifact_keeps_data_view() -> None:
         artifact_id="Q1",
         source_id="Q1",
         label="empty",
-        payload=_payload(
+        result=_payload(
             "Q1", df=pd.DataFrame({"customer": pd.Series(dtype="object"), "value": pd.Series(dtype="int64")})
         ),
     )
@@ -164,7 +164,7 @@ def test_empty_chart_artifact_skips_chart_but_keeps_data_view() -> None:
         source_id=card.source_id,
         label=card.label,
         spec=card.spec,
-        payload=_payload(
+        result=_payload(
             "Q1", df=pd.DataFrame({"region": pd.Series(dtype="object"), "revenue": pd.Series(dtype="int64")}), query=""
         ),
     )
@@ -186,7 +186,7 @@ def test_table_artifact_with_graph_has_graph_data_query_views() -> None:
         artifact_id="Q1",
         source_id="Q1",
         label="paths",
-        payload=_payload("Q1", df=pd.DataFrame({"a": [1, 2]}), graph=graph, query_language="cypher"),
+        result=_payload("Q1", df=pd.DataFrame({"a": [1, 2]}), graph=graph, query_language="cypher"),
     )
 
     groups = _groups(card)
@@ -380,7 +380,7 @@ def test_browser_only_chart_placeholder_uses_artifact_caption() -> None:
 def test_map_artifact_payload_survives_terminal_render() -> None:
     artifact = _map("MAP1", "cities")
     _groups(artifact)
-    assert artifact.payload_by_source["Q1"].df is not None
+    assert artifact.results_by_source["Q1"].df is not None
 
 
 def test_graph_artifact_graph_result_survives_terminal_render() -> None:

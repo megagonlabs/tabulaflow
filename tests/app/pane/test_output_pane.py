@@ -36,7 +36,7 @@ from tabulaflow.output.specs import (
     OutputSpec,
     TableArtifactSpec,
 )
-from tabulaflow.output.store import OutputStore, ResultMetadata, ResultPayload
+from tabulaflow.output.store import OutputStore, ResultMetadata, MaterializedResult
 
 
 @contextlib.contextmanager
@@ -705,8 +705,8 @@ def test_view_card_in_pane_marks_turn_as_manual(tmp_path: Path) -> None:
 
 async def test_output_pane_resolves_live_turn_selection(tmp_path: Path) -> None:
     class FakeOutputStore:
-        async def get_payload(self, result_id: str) -> ResultPayload:
-            return ResultPayload(
+        async def get_result(self, result_id: str) -> MaterializedResult:
+            return MaterializedResult(
                 metadata=ResultMetadata(
                     id=result_id,
                     connector_alias="workspace",
@@ -765,9 +765,9 @@ async def test_output_pane_http_resolve_runs_on_app_loop(tmp_path: Path) -> None
     app_loop = asyncio.get_running_loop()
 
     class LoopCheckingOutputStore:
-        async def get_payload(self, result_id: str) -> ResultPayload:
+        async def get_result(self, result_id: str) -> MaterializedResult:
             assert asyncio.get_running_loop() is app_loop
-            return ResultPayload(
+            return MaterializedResult(
                 metadata=ResultMetadata(
                     id=result_id,
                     connector_alias="workspace",

@@ -903,7 +903,7 @@ class AgentResultWidget(Widget):
         if self._turn_output is None or result_id is None:
             return None
         try:
-            payload = await self._turn_output.output_store.get_payload(result_id)
-            return payload.df
+            result = await self._turn_output.output_store.get_result(result_id)
+            return result.df
         except (ArtifactSourceResolutionError, ValueError):
             return None

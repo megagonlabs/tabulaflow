@@ -1,6 +1,6 @@
 """Serializable, side-effect-free declarations for interactive outputs.
 
-Runtime materialization and payload resolution live in ``store`` and
+Runtime materialization and result resolution live in ``store`` and
 ``resolver``.
 """
 

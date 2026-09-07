@@ -77,13 +77,13 @@ class WriteResultTableTool:
             source = self._output_store.get_artifact_source(source_id)
             if not isinstance(source, FixedArtifactSource):
                 raise ValueError(f"source_id {source_id!r} is not a single-result source")
-            payload = await self._output_store.get_payload(source.result_id)
+            result = await self._output_store.get_result(source.result_id)
         except KeyError:
             raise ValueError(f"unknown source_id {source_id!r}") from None
         except ArtifactSourceResolutionError as e:
             raise RuntimeError(str(e)) from e
 
-        df = payload.df
+        df = result.df
         if df is None:
             raise ValueError(f"source_id {source_id!r} returned no data")
 
@@ -106,7 +106,7 @@ class WriteResultTableTool:
         target_name = f"{target_schema}.{target_table}" if target_schema else target_table
         return (
             f"Wrote {rows_written} rows from {source_id} "
-            f"({payload.metadata.connector_alias}) to alias={target_alias}, table={target_name} (mode={mode})"
+            f"({result.metadata.connector_alias}) to alias={target_alias}, table={target_name} (mode={mode})"
         )
 
     def as_pydantic_ai_tool(self) -> Tool:

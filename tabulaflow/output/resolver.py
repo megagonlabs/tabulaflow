@@ -32,7 +32,7 @@ from tabulaflow.core.results import GraphResult
 from tabulaflow.output.charts import validate_chart_spec
 from tabulaflow.output.store import (
     OutputStore,
-    ResultPayload,
+    MaterializedResult,
     ArtifactSourceNotApplicable,
     ArtifactSourceResolutionError,
 )
@@ -56,32 +56,32 @@ class OutputResolutionError(ValueError):
 
 @dataclass(frozen=True)
 class ResolvedTableArtifact:
-    """Resolved table artifact with its source payload attached."""
+    """Resolved table artifact with its materialized result attached."""
 
     artifact_id: ArtifactId
     source_id: ArtifactSourceId
-    payload: ResultPayload
+    result: MaterializedResult
     label: str | None = None
 
 
 @dataclass(frozen=True)
 class ResolvedChartArtifact:
-    """Resolved chart artifact with its source payload and chart spec attached."""
+    """Resolved chart artifact with its materialized result and chart spec."""
 
     artifact_id: ArtifactId
     source_id: ArtifactSourceId
-    payload: ResultPayload
+    result: MaterializedResult
     spec: dict[str, object]
     label: str | None = None
 
 
 @dataclass(frozen=True)
 class ResolvedMapArtifact:
-    """Resolved map artifact with all source payloads attached."""
+    """Resolved map artifact with all source results attached."""
 
     artifact_id: ArtifactId
     spec: dict[str, object]
-    payload_by_source: Mapping[ArtifactSourceId, ResultPayload]
+    results_by_source: Mapping[ArtifactSourceId, MaterializedResult]
     label: str | None = None
 
 
@@ -147,12 +147,12 @@ class OutputResolver:
         active_selection = _normalize_selection(output, selection)
         sources = {source.id: source for source in output.sources}
         source_outcomes: dict[
-            ArtifactSourceId, ResultPayload | ArtifactSourceNotApplicable | ArtifactSourceResolutionError
+            ArtifactSourceId, MaterializedResult | ArtifactSourceNotApplicable | ArtifactSourceResolutionError
         ] = {}
         artifacts: list[ResolvedArtifact] = []
         for artifact in output.artifacts:
             try:
-                payload_by_source: dict[ArtifactSourceId, ResultPayload] = {}
+                results_by_source: dict[ArtifactSourceId, MaterializedResult] = {}
                 for source_id in artifact_source_ids(artifact):
                     source = sources.get(source_id)
                     if source is None:
@@ -165,8 +165,8 @@ class OutputResolver:
                     outcome = source_outcomes[source_id]
                     if isinstance(outcome, Exception):
                         raise outcome
-                    payload_by_source[source_id] = outcome
-                artifacts.append(_resolved_artifact(artifact, payload_by_source))
+                    results_by_source[source_id] = outcome
+                artifacts.append(_resolved_artifact(artifact, results_by_source))
             except OutputResolutionError:
                 raise
             except ArtifactSourceNotApplicable as exc:
@@ -186,9 +186,9 @@ class OutputResolver:
         self,
         source: ArtifactSource,
         selection: Mapping[ParameterId, object],
-    ) -> ResultPayload:
+    ) -> MaterializedResult:
         if isinstance(source, FixedArtifactSource):
-            return await self._output_store.get_payload(source.result_id)
+            return await self._output_store.get_result(source.result_id)
         if isinstance(source, ParameterizedArtifactSource):
             return await self._output_store.resolve_artifact_source(source.id, selection)
         raise TypeError(f"unsupported source {type(source).__name__}")
@@ -214,57 +214,57 @@ def _normalize_selection(
 
 
 def _resolved_artifact(
-    artifact: ArtifactSpec, payload_by_source: dict[ArtifactSourceId, ResultPayload]
+    artifact: ArtifactSpec, results_by_source: dict[ArtifactSourceId, MaterializedResult]
 ) -> ResolvedArtifact:
     if isinstance(artifact, TableArtifactSpec):
-        payload = payload_by_source[artifact.source_id]
-        if payload.df is None and payload.graph is None:
+        result = results_by_source[artifact.source_id]
+        if result.df is None and result.graph is None:
             return UnavailableArtifact(
                 artifact_id=artifact.id,
                 label=artifact.label,
-                reason=_no_displayable_data_reason(payload),
+                reason=_no_displayable_data_reason(result),
                 status="no_result",
             )
         return ResolvedTableArtifact(
             artifact_id=artifact.id,
             label=artifact.label,
             source_id=artifact.source_id,
-            payload=payload,
+            result=result,
         )
     if isinstance(artifact, ChartArtifactSpec):
-        unavailable = _no_result_if_missing_dataframe(artifact, payload_by_source)
+        unavailable = _no_result_if_missing_dataframe(artifact, results_by_source)
         if unavailable is not None:
             return unavailable
-        payload = payload_by_source[artifact.source_id]
-        assert payload.df is not None
-        validate_chart_spec(artifact.spec, {artifact.source_id: payload.df})
+        result = results_by_source[artifact.source_id]
+        assert result.df is not None
+        validate_chart_spec(artifact.spec, {artifact.source_id: result.df})
         return ResolvedChartArtifact(
             artifact_id=artifact.id,
             label=artifact.label,
             source_id=artifact.source_id,
-            payload=payload,
+            result=result,
             spec=artifact.spec,
         )
     if isinstance(artifact, MapArtifactSpec):
-        unavailable = _no_result_if_missing_dataframe(artifact, payload_by_source)
+        unavailable = _no_result_if_missing_dataframe(artifact, results_by_source)
         if unavailable is not None:
             return unavailable
         parsed_map = maps.parse_map_spec(artifact.spec)
         _validate_artifact_source_ids(artifact.id, artifact.source_ids, maps.referenced_source_ids(parsed_map))
-        sources = _dataframes_by_source(payload_by_source)
+        sources = _dataframes_by_source(results_by_source)
         return ResolvedMapArtifact(
             artifact_id=artifact.id,
             label=artifact.label,
             spec=maps.normalize_map_spec(parsed_map, sources),
-            payload_by_source=payload_by_source,
+            results_by_source=results_by_source,
         )
     if isinstance(artifact, GraphArtifactSpec):
-        unavailable = _no_result_if_missing_dataframe(artifact, payload_by_source)
+        unavailable = _no_result_if_missing_dataframe(artifact, results_by_source)
         if unavailable is not None:
             return unavailable
         parsed_graph = graphs.parse_graph_spec(artifact.spec)
         _validate_artifact_source_ids(artifact.id, artifact.source_ids, graphs.referenced_source_ids(parsed_graph))
-        sources = _dataframes_by_source(payload_by_source)
+        sources = _dataframes_by_source(results_by_source)
         normalized = graphs.normalize_graph_spec(parsed_graph, sources)
         graph = graphs.materialize_graph_result(normalized, sources)
         graphs.validate_graph_size(graphs.graph_size(graph))
@@ -289,16 +289,16 @@ def _validate_artifact_source_ids(
 
 
 def _dataframes_by_source(
-    payload_by_source: Mapping[ArtifactSourceId, ResultPayload],
+    results_by_source: Mapping[ArtifactSourceId, MaterializedResult],
 ) -> dict[ArtifactSourceId, pd.DataFrame]:
-    return {source_id: payload.df for source_id, payload in payload_by_source.items() if payload.df is not None}
+    return {source_id: result.df for source_id, result in results_by_source.items() if result.df is not None}
 
 
 def _no_result_if_missing_dataframe(
     artifact: ArtifactSpec,
-    payload_by_source: Mapping[ArtifactSourceId, ResultPayload],
+    results_by_source: Mapping[ArtifactSourceId, MaterializedResult],
 ) -> UnavailableArtifact | None:
-    if all(payload.df is not None for payload in payload_by_source.values()):
+    if all(result.df is not None for result in results_by_source.values()):
         return None
     return UnavailableArtifact(
         artifact_id=artifact.id,
@@ -308,8 +308,8 @@ def _no_result_if_missing_dataframe(
     )
 
 
-def _no_displayable_data_reason(payload: ResultPayload) -> str:
-    affected_rows = payload.metadata.affected_rows
+def _no_displayable_data_reason(result: MaterializedResult) -> str:
+    affected_rows = result.metadata.affected_rows
     if affected_rows is None:
         return "Statement executed successfully but returned no displayable data"
     row_word = "row" if affected_rows == 1 else "rows"

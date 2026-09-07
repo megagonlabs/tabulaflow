@@ -23,7 +23,7 @@ from tabulaflow.app.pane.graphs import build_graph_result_data
 from tabulaflow.core import GraphResult, GraphResultEdge, GraphResultNode
 from tabulaflow.output.graphs import materialize_graph_result, normalize_graph_spec
 from tabulaflow.output.resolver import ResolvedOutput, ResolvedTableArtifact, UnavailableArtifact
-from tabulaflow.output.store import ResultMetadata, ResultPayload
+from tabulaflow.output.store import ResultMetadata, MaterializedResult
 
 
 def _load_card_data(card: PaneCard, pane_dir: Path) -> CardData:
@@ -577,7 +577,7 @@ async def test_pane_preparation_failure_renders_safe_error_card(
         artifact_id="S1",
         source_id="S1",
         label="orders",
-        payload=ResultPayload(
+        result=MaterializedResult(
             metadata=ResultMetadata(
                 id="R1",
                 connector_alias="workspace",

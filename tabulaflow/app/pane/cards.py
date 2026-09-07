@@ -236,38 +236,38 @@ async def render_resolved_output(resolved_output: ResolvedOutput, pane_dir: Path
             continue
         try:
             if isinstance(artifact, ResolvedTableArtifact):
-                payload = artifact.payload
+                result = artifact.result
                 card = render_result_data(
                     ResultCardInput(
-                        df=payload.df,
+                        df=result.df,
                         chart_spec=None,
-                        graph=payload.graph,
-                        query=payload.metadata.query,
+                        graph=result.graph,
+                        query=result.metadata.query,
                         label=artifact.label,
-                        query_lexer=payload.metadata.query_language,
+                        query_lexer=result.metadata.query_language,
                     ),
                     pane_dir,
                     artifact_id=artifact.artifact_id,
                 )
             elif isinstance(artifact, ResolvedChartArtifact):
-                payload = artifact.payload
+                result = artifact.result
                 card = render_result_data(
                     ResultCardInput(
-                        df=payload.df,
+                        df=result.df,
                         chart_spec=artifact.spec,
-                        graph=payload.graph,
-                        query=payload.metadata.query,
+                        graph=result.graph,
+                        query=result.metadata.query,
                         label=artifact.label,
-                        query_lexer=payload.metadata.query_language,
+                        query_lexer=result.metadata.query_language,
                     ),
                     pane_dir,
                     artifact_id=artifact.artifact_id,
                 )
             elif isinstance(artifact, ResolvedMapArtifact):
                 sources = {}
-                for source_id, payload in artifact.payload_by_source.items():
-                    if payload.df is not None:
-                        sources[source_id] = payload.df
+                for source_id, result in artifact.results_by_source.items():
+                    if result.df is not None:
+                        sources[source_id] = result.df
                 card = render_map_data(
                     MapCardInput(label=artifact.label, spec=artifact.spec, sources=sources),
                     pane_dir,

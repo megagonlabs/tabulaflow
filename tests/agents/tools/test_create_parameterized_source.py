@@ -79,8 +79,8 @@ async def test_create_parameterized_source_registers_parameters_and_warms_choice
     )
     artifact = resolved.artifacts[0]
     assert isinstance(artifact, ResolvedTableArtifact)
-    result_id = artifact.payload.metadata.id
-    payload = await output_store.get_payload(result_id)
+    result_id = artifact.result.metadata.id
+    payload = await output_store.get_result(result_id)
     assert payload.df is not None
     assert payload.df.to_dict("records") == [{"value": 21}]
 
@@ -141,8 +141,8 @@ async def test_number_parameter_materializes_lazy_selection(registry: DataConnec
 
     artifact = resolved.artifacts[0]
     assert isinstance(artifact, ResolvedTableArtifact)
-    result_id = artifact.payload.metadata.id
-    payload = await output_store.get_payload(result_id)
+    result_id = artifact.result.metadata.id
+    payload = await output_store.get_result(result_id)
     assert payload.df is not None
     assert payload.df.to_dict("records") == [{"customer": "Acme"}, {"customer": "Globex"}]
 
@@ -172,7 +172,7 @@ async def test_mixed_choice_and_number_warms_choice_grid_at_number_default(regis
     assert "-> R" not in text
     assert "other selections will materialize lazily" not in text
     payload = await output_store.resolve_artifact_source("S1", {"metric": "gross"})
-    assert payload.metadata.source_selection == {"metric": "gross", "min_value": 8}
+    assert payload.metadata.parameter_selection == {"metric": "gross", "min_value": 8}
     assert payload.df is not None
     assert payload.df.to_dict("records") == [{"value": 21}]
 
