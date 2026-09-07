@@ -178,17 +178,15 @@ class RDFSchema(BaseModel):
     kind: Literal["rdf"] = "rdf"
     name: str
     description: str | None = None
-    namespaces: list[RDFNamespace] = []
-    classes: list[RDFClassSchema] = []
-    properties: list[RDFPropertySchema] = []
-    complete: bool = False
 ```
 
-RDF endpoints frequently lack a cheap, complete, enumerable schema. An empty
-or partial class/property list is valid. Connecting must not trigger unbounded
-class or property enumeration. Schema information may come from SPARQL Service
-Description, SHACL, OWL/RDFS declarations, bounded introspection, or a curated
-endpoint profile.
+RDF endpoints frequently lack a cheap, complete, enumerable schema. The initial
+model therefore captures only the source identity and description required by
+generic schema consumers. Prefix declarations belong to SPARQL queries or
+endpoint profiles and cannot be reliably discovered from an endpoint URL.
+Connecting must not trigger unbounded class or property enumeration. Structured
+class/property models should be added only when a concrete ontology, SHACL, or
+bounded-introspection consumer establishes their required shape.
 
 ## Optional operations
 
@@ -348,6 +346,8 @@ Acceptance:
 - Add SPARQL to `QueryLanguage`.
 - Add RDF schema formatting and explorer presentation.
 - Add SPARQL syntax highlighting in terminal and browser output.
+- Keep the initial RDF model minimal; defer structured class and property
+  catalogs until a real discovery consumer requires them.
 - Test with an in-memory mock connector; do not add network behavior yet.
 
 Acceptance:

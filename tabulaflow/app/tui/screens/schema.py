@@ -1,4 +1,4 @@
-"""Connected-database schema explorer."""
+"""Connected-source schema explorer."""
 
 from __future__ import annotations
 
@@ -95,7 +95,7 @@ class ExplorerState:
 
 
 class SchemaBrowserScreen(Screen[None]):
-    """Full-screen tree browser for exploring connected database schemas."""
+    """Full-screen tree browser for exploring connected data-source schemas."""
 
     DEFAULT_CSS = """
     SchemaBrowserScreen {
@@ -349,7 +349,7 @@ class SchemaBrowserScreen(Screen[None]):
     def _build_tree(self) -> None:
         from textual.widgets import Tree
 
-        from tabulaflow.core import PropertyGraphSchema, SQLSchema, SQLTableSchema
+        from tabulaflow.core import PropertyGraphSchema, RDFSchema, SQLSchema, SQLTableSchema
 
         tree = self.query_one("#browse-tree", Tree)
 
@@ -363,6 +363,9 @@ class SchemaBrowserScreen(Screen[None]):
                     connector,
                     schema,
                 )
+                continue
+            if isinstance(schema, RDFSchema):
+                self._add_rdf_db_node(tree.root, alias, connector, schema)
                 continue
             if not isinstance(schema, SQLSchema):
                 continue
@@ -401,6 +404,31 @@ class SchemaBrowserScreen(Screen[None]):
             else:
                 for t in sorted(tables, key=lambda t: t.name):
                     self._add_table_node(db_node, alias, t)
+
+    def _add_rdf_db_node(
+        self,
+        parent: object,
+        alias: str,
+        connector: DataConnector,
+        schema: object,
+    ) -> None:
+        from tabulaflow.core import RDFSchema
+
+        assert isinstance(schema, RDFSchema)
+        parent_node: Any = parent
+
+        db_label = Text()
+        db_label.append(alias, style="bold")
+        db_label.append(f"  {connector.backend}", style="dim")
+        parent_node.add_leaf(
+            db_label,
+            data=_NodeData(
+                kind=_NODE_KIND_DB,
+                alias=alias,
+                path=(alias, None, None, None),
+                status_text=f"{alias}  |  RDF source  |  {connector.language}",
+            ),
+        )
 
     def _add_graph_db_node(
         self,

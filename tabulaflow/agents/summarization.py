@@ -12,9 +12,10 @@ from tabulaflow.agents.llm import ReasoningLevel, make_agent, make_model_setting
 from tabulaflow.agents.runtime import _get_agent_runtime
 from tabulaflow.agents.trace import Usage
 from tabulaflow.core._cache import atomic_write_bytes, read_bytes, stable_cache_key
-from tabulaflow.core.schema import PropertyGraphSchema, SQLSchema
+from tabulaflow.core.schema import PropertyGraphSchema, RDFSchema, SQLSchema
 from tabulaflow.data.protocols import DataConnector
 from tabulaflow.output.formatting.cypher import CypherSchemaFormatter
+from tabulaflow.output.formatting.sparql import SPARQLSchemaFormatter
 from tabulaflow.output.formatting.sql_ddl import SQLDDLSchemaFormatter
 
 _DB_SUMMARY_CACHE_VERSION = "v2"
@@ -75,6 +76,7 @@ class DBSummarizer:
         self.model_settings = model_settings
         self._sql_formatter = SQLDDLSchemaFormatter(max_total_columns=200, compact_table_families=True)
         self._graph_formatter = CypherSchemaFormatter()
+        self._rdf_formatter = SPARQLSchemaFormatter()
         self._usage = Usage.create(llm=llm)
 
     def usage(self) -> Usage:
@@ -132,6 +134,8 @@ class DBSummarizer:
             if not graph_schema.nodes and not graph_schema.relationships:
                 return f"# Database: `{graph_schema.name}`\n\nThis graph database has no nodes or relationships."
             user_prompt = _database_user_prompt(self._graph_formatter.format(graph_schema))
+        elif isinstance(schema, RDFSchema):
+            user_prompt = _database_user_prompt(self._rdf_formatter.format(schema))
         else:
             raise TypeError(f"Unsupported schema type for DBSummarizer: {type(schema)!r}")
 

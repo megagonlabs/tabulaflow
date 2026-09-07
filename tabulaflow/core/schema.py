@@ -1,4 +1,4 @@
-"""Database schema models for SQL and property-graph databases, with optional profiling metadata."""
+"""Schema models for SQL, property-graph, and RDF data sources."""
 
 from typing import Annotated, Any, Literal, TypeAlias
 
@@ -30,7 +30,7 @@ SQLDialect: TypeAlias = Literal[
     "tsql",
 ]
 
-GraphQueryLanguage: TypeAlias = Literal["cypher"]
+GraphQueryLanguage: TypeAlias = Literal["cypher", "sparql"]
 QueryLanguage: TypeAlias = SQLDialect | GraphQueryLanguage
 
 
@@ -84,6 +84,19 @@ class PropertyGraphSchema(BaseModel):
     description: str | None = None
     nodes: list[NodeSchema] = Field(default_factory=list)
     relationships: list[RelationshipSchema] = Field(default_factory=list)
+
+
+# ---------------------------------------------------------------------------
+# RDF schema
+# ---------------------------------------------------------------------------
+
+
+class RDFSchema(BaseModel):
+    """Minimal description of an RDF data source."""
+
+    kind: Literal["rdf"] = "rdf"
+    name: str
+    description: str | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -298,4 +311,4 @@ class SQLSchema(BaseModel):
         return schema
 
 
-DataSourceSchema: TypeAlias = Annotated[SQLSchema | PropertyGraphSchema, Field(discriminator="kind")]
+DataSourceSchema: TypeAlias = Annotated[SQLSchema | PropertyGraphSchema | RDFSchema, Field(discriminator="kind")]

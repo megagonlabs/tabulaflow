@@ -6,6 +6,7 @@ from rich.syntax import PygmentsSyntaxTheme
 from textual.app import App, ComposeResult
 from textual.widgets import TextArea
 
+from tabulaflow.app.pane.cards import build_code_data
 from tabulaflow.app.theme import (
     CODE_COMMENT,
     CODE_FUNCTION,
@@ -73,7 +74,16 @@ def test_query_lexer_normalization_preserves_non_sql_lexers() -> None:
     assert normalize_query_lexer("postgresql") == "sql"
     assert normalize_query_lexer("sqlite3") == "sql"
     assert normalize_query_lexer("cypher") == "cypher"
+    assert normalize_query_lexer("sparql") == "sparql"
     assert normalize_query_lexer("python") == "python"
+
+
+def test_browser_code_highlighting_supports_sparql() -> None:
+    code = build_code_data("SELECT ?item WHERE { ?item ?predicate ?value }", lexer="sparql")
+
+    assert code["lexer"] == "sparql"
+    assert code["language"] == "SPARQL"
+    assert "<span" in code["html"]
 
 
 async def test_code_text_area_sql_numbers_are_not_captured_as_strings() -> None:

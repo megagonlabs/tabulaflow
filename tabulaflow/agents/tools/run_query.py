@@ -192,8 +192,8 @@ def latest_query_execution(messages: Sequence[ModelMessage]) -> QueryExecution:
 class RunQueryTool:
     """Execute a query against the database and return formatted results.
 
-    Supports both SQL connectors (SQLite, Snowflake, MySQL, …) and property
-    graph connectors (Neo4j via Cypher).
+    Supports any registered data connector, including SQL, Cypher, and SPARQL
+    sources.
 
     When ``enable_params=True``, the tool schema exposed to the LLM includes
     a ``parameters`` argument for parameterized queries.

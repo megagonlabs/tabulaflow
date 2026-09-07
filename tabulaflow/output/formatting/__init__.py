@@ -15,11 +15,13 @@ if TYPE_CHECKING:
     from tabulaflow.output.formatting.cypher import CypherSchemaFormatter
     from tabulaflow.output.formatting.schema import (
         PropertyGraphSchemaFormatter,
+        RDFSchemaFormatter,
         SQLSchemaFormatter,
         schema_formatter_registry,
     )
     from tabulaflow.output.formatting.sql_basic import SQLBasicSchemaFormatter
     from tabulaflow.output.formatting.sql_ddl import SQLDDLSchemaFormatter
+    from tabulaflow.output.formatting.sparql import SPARQLSchemaFormatter
 
 _LAZY_EXPORTS = {
     "CypherSchemaFormatter": ("tabulaflow.output.formatting.cypher", "CypherSchemaFormatter"),
@@ -27,9 +29,11 @@ _LAZY_EXPORTS = {
         "tabulaflow.output.formatting.schema",
         "PropertyGraphSchemaFormatter",
     ),
+    "RDFSchemaFormatter": ("tabulaflow.output.formatting.schema", "RDFSchemaFormatter"),
     "SQLBasicSchemaFormatter": ("tabulaflow.output.formatting.sql_basic", "SQLBasicSchemaFormatter"),
     "SQLDDLSchemaFormatter": ("tabulaflow.output.formatting.sql_ddl", "SQLDDLSchemaFormatter"),
     "SQLSchemaFormatter": ("tabulaflow.output.formatting.schema", "SQLSchemaFormatter"),
+    "SPARQLSchemaFormatter": ("tabulaflow.output.formatting.sparql", "SPARQLSchemaFormatter"),
     "format_connector_summary": ("tabulaflow.output.formatting._core", "format_connector_summary"),
     "format_dataframe": ("tabulaflow.output.formatting._core", "format_dataframe"),
     "format_exec_result_markdown": ("tabulaflow.output.formatting._core", "format_exec_result_markdown"),
@@ -42,9 +46,11 @@ _LAZY_EXPORTS = {
 __all__ = [
     "CypherSchemaFormatter",
     "PropertyGraphSchemaFormatter",
+    "RDFSchemaFormatter",
     "SQLBasicSchemaFormatter",
     "SQLDDLSchemaFormatter",
     "SQLSchemaFormatter",
+    "SPARQLSchemaFormatter",
     "format_connector_summary",
     "format_dataframe",
     "format_exec_result_markdown",

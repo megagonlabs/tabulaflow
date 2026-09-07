@@ -2,9 +2,9 @@
 
 import pandas as pd
 
-from tabulaflow.core import ForeignKeySchema, SQLColumnSchema, SQLSchema, SQLTableSchema
+from tabulaflow.core import ForeignKeySchema, RDFSchema, SQLColumnSchema, SQLSchema, SQLTableSchema
 from tabulaflow.output.formatting._sql import format_column_type
-from tabulaflow.output.formatting import SQLBasicSchemaFormatter, SQLDDLSchemaFormatter
+from tabulaflow.output.formatting import SPARQLSchemaFormatter, SQLBasicSchemaFormatter, SQLDDLSchemaFormatter
 
 
 def _col(name: str, dtype: str, native_dtype: str | None, *, nullable: bool = True) -> SQLColumnSchema:
@@ -49,6 +49,19 @@ def _family_table(name: str, example: str, num_rows: int) -> SQLTableSchema:
         foreign_keys=[],
         sampled_df=pd.DataFrame({"event": [example]}),
     )
+
+
+def test_sparql_formatter_renders_source_description() -> None:
+    schema = RDFSchema(
+        name="example",
+        description="An example knowledge graph.",
+    )
+
+    formatted = SPARQLSchemaFormatter().format(schema)
+
+    assert "RDF source: example (Query Language: sparql)" in formatted
+    assert "Description: An example knowledge graph." in formatted
+    assert "Declare any required prefixes in the SPARQL query." in formatted
 
 
 def test_format_column_type_prefers_short_native() -> None:

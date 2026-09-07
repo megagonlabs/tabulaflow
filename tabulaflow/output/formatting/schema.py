@@ -2,7 +2,7 @@
 
 from typing import ClassVar, Protocol, TypeAlias
 
-from tabulaflow.core.schema import PropertyGraphSchema, SQLDialect, SQLSchema, SQLTableSchema
+from tabulaflow.core.schema import PropertyGraphSchema, RDFSchema, SQLDialect, SQLSchema, SQLTableSchema
 from tabulaflow.core.registry import ClassRegistry
 
 
@@ -36,6 +36,16 @@ class PropertyGraphSchemaFormatter(Protocol):
         ...
 
 
-_SchemaFormatter: TypeAlias = SQLSchemaFormatter | PropertyGraphSchemaFormatter
+class RDFSchemaFormatter(Protocol):
+    """Render RDF schema models as readable text."""
+
+    name: ClassVar[str]
+
+    def format(self, schema: RDFSchema) -> str:
+        """Render an RDF source description."""
+        ...
+
+
+_SchemaFormatter: TypeAlias = SQLSchemaFormatter | PropertyGraphSchemaFormatter | RDFSchemaFormatter
 
 schema_formatter_registry = ClassRegistry[_SchemaFormatter]("formatter")

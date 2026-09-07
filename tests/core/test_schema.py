@@ -10,6 +10,7 @@ from tabulaflow.core import (
     GraphPropertySchema,
     PropertyGraphSchema,
     DataSourceSchema,
+    RDFSchema,
     SQLColumnSchema,
     SQLSchema,
     SQLTableSchema,
@@ -21,9 +22,11 @@ def test_source_schema_uses_kind_discriminator() -> None:
 
     sql_schema = adapter.validate_python({"kind": "sql", "name": "db", "dialect": "sqlite", "tables": []})
     graph_schema = adapter.validate_python({"kind": "property_graph", "name": "graph"})
+    rdf_schema = adapter.validate_python({"kind": "rdf", "name": "knowledge-graph"})
 
     assert isinstance(sql_schema, SQLSchema)
     assert isinstance(graph_schema, PropertyGraphSchema)
+    assert isinstance(rdf_schema, RDFSchema)
 
 
 def test_foreign_key_requires_matching_column_counts() -> None:

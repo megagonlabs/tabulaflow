@@ -1,7 +1,7 @@
 from types import SimpleNamespace
 from typing import Any, cast
 
-from tabulaflow.core import NodeSchema, PropertyGraphSchema, RelationshipSchema, SQLSchema, SQLTableSchema
+from tabulaflow.core import NodeSchema, PropertyGraphSchema, RDFSchema, RelationshipSchema, SQLSchema, SQLTableSchema
 from tabulaflow.data.protocols import DataConnector
 from tabulaflow.output.formatting import format_connector_summary
 
@@ -35,3 +35,13 @@ def test_format_graph_connector_summary() -> None:
     )
 
     assert format_connector_summary(connector) == "neo4j, cypher, 1 label, 2 relationship types"
+
+
+def test_format_rdf_connector_summary() -> None:
+    connector: Any = SimpleNamespace(
+        backend="wikidata-query-service",
+        language="sparql",
+        schema=RDFSchema(name="wikidata"),
+    )
+
+    assert format_connector_summary(connector) == "wikidata-query-service, sparql"

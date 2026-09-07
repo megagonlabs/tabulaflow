@@ -9,6 +9,7 @@ from pydantic_ai.settings import ModelSettings
 from tabulaflow.data.protocols import DataConnector
 from tabulaflow.data.registry import DataConnectorRegistry
 from tabulaflow.output.formatting.cypher import CypherSchemaFormatter
+from tabulaflow.output.formatting.sparql import SPARQLSchemaFormatter
 from tabulaflow.output.formatting.sql_ddl import SQLDDLSchemaFormatter
 from tabulaflow.agents.tools.protocols import ToolCallOutcome, _omit_tool_parameters
 
@@ -67,6 +68,7 @@ class RegistryGetDBDocumentTool:
         self.enable_refresh = enable_refresh
         self._sql_formatter = SQLDDLSchemaFormatter(compact_table_families=True)
         self._graph_formatter = CypherSchemaFormatter()
+        self._rdf_formatter = SPARQLSchemaFormatter()
         self._metrics = RegistryGetDBDocumentToolMetrics()
         self._document_cache: dict[str, tuple[DataConnector, str]] = {}
 
@@ -90,7 +92,7 @@ class RegistryGetDBDocumentTool:
         return 0
 
     def _format_direct_document(self, connector_alias: str) -> str:
-        from tabulaflow.core import PropertyGraphSchema, SQLSchema
+        from tabulaflow.core import PropertyGraphSchema, RDFSchema, SQLSchema
 
         connector = self.registry.get(connector_alias)
         schema = connector.schema
@@ -98,6 +100,8 @@ class RegistryGetDBDocumentTool:
             return self._sql_formatter.format(schema, include_descriptions=True)
         if isinstance(schema, PropertyGraphSchema):
             return self._graph_formatter.format(schema)
+        if isinstance(schema, RDFSchema):
+            return self._rdf_formatter.format(schema)
         raise TypeError(f"Unsupported schema type for get_db_document: {type(schema)!r}")
 
     async def _get_document(self, connector_alias: str) -> str:

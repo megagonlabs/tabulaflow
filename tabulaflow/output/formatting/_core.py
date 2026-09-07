@@ -49,6 +49,13 @@ def format_connector_summary(connector: DataConnector) -> str:
             f"{n_relationships} relationship type{'s' if n_relationships != 1 else ''}"
         )
 
+    if schema.kind == "rdf":
+        return (
+            connector.backend
+            if connector.backend == connector.language
+            else f"{connector.backend}, {connector.language}"
+        )
+
     n_tables = len(schema.tables)
     implementation = (
         connector.backend if connector.backend == connector.language else f"{connector.backend}, {connector.language}"

@@ -12,6 +12,7 @@ from tabulaflow.core import (
     GraphPropertySchema,
     NodeSchema,
     PropertyGraphSchema,
+    RDFSchema,
     RelationshipEndpoint,
     RelationshipSchema,
 )
@@ -56,6 +57,30 @@ class FakeGraphConnector:
         pass
 
     async def refresh_schema_async(self) -> PropertyGraphSchema:
+        return self.schema
+
+
+class FakeRDFConnector:
+    backend = "rdf-store"
+    global_id = "test+rdf"
+    language = "sparql"
+    read_only = True
+
+    def __init__(self) -> None:
+        self.schema = RDFSchema(
+            name="knowledge-graph",
+            description="Example RDF data.",
+        )
+
+    async def run_query_async(
+        self, query: str, parameters: object | None = None, timeout: int | None = None
+    ) -> ExecResult:
+        return ExecResult()
+
+    async def close_async(self) -> None:
+        pass
+
+    async def refresh_schema_async(self) -> RDFSchema:
         return self.schema
 
 
@@ -126,6 +151,22 @@ async def test_schema_browser_renders_property_graph_schema() -> None:
         if getattr(node.label, "plain", str(node.label)).strip() == "roles  LIST OF STRING"
     )
     assert roles_node.data.status_text == "neo > Relationship Types > ACTED_IN > roles  |  LIST OF STRING"
+
+
+async def test_schema_browser_renders_rdf_source() -> None:
+    registry = DataConnectorRegistry()
+    registry.register("rdf", FakeRDFConnector())  # type: ignore[arg-type]
+    app = SchemaBrowserTestApp(registry)
+
+    async with app.run_test() as pilot:
+        await pilot.pause()
+        tree = app.query_one("#browse-tree", Tree)
+        labels = _tree_label_text(tree)
+
+    assert "rdf  rdf-store" in labels
+    rdf_node = _tree_node_by_label(tree, "rdf  rdf-store")
+    assert not rdf_node.children
+    assert rdf_node.data.status_text == "rdf  |  RDF source  |  sparql"
 
 
 def test_cypher_formatter_renders_multi_endpoint_relationship_type_once() -> None:

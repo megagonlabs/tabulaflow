@@ -1,4 +1,4 @@
-"""Get-schema tool backed by a DataConnectorRegistry, with auto-dispatch by connector type."""
+"""Get-schema tool backed by a DataConnectorRegistry."""
 
 from typing import ClassVar
 
@@ -7,6 +7,7 @@ from pydantic_ai import Tool, ToolReturn
 
 from tabulaflow.data.registry import DataConnectorRegistry
 from tabulaflow.output.formatting.cypher import CypherSchemaFormatter
+from tabulaflow.output.formatting.sparql import SPARQLSchemaFormatter
 from tabulaflow.output.formatting.sql_ddl import SQLDDLSchemaFormatter
 from tabulaflow.agents.tools.protocols import ToolCallOutcome, _omit_tool_parameters
 
@@ -24,10 +25,8 @@ class RegistryGetSchemaToolMetrics(BaseModel):
 class RegistryGetSchemaTool:
     """Retrieve the full schema of any registered database.
 
-    Automatically dispatches to the appropriate formatter based on the
-    connector type (SQL via ``SQLDDLSchemaFormatter``, property graph via
-    ``CypherSchemaFormatter``).  Large schemas are truncated to
-    ``max_chars``.
+    Automatically dispatches to the appropriate formatter based on the tagged
+    schema model. Large schemas are truncated to ``max_chars``.
     """
 
     name: ClassVar = "get_schema"
@@ -53,6 +52,7 @@ class RegistryGetSchemaTool:
         self.max_chars = max_chars
         self._sql_formatter = SQLDDLSchemaFormatter(compact_table_families=True)
         self._graph_formatter = CypherSchemaFormatter()
+        self._rdf_formatter = SPARQLSchemaFormatter()
         self._metrics = RegistryGetSchemaToolMetrics()
 
     def _truncate(self, text: str) -> str:
@@ -76,23 +76,21 @@ class RegistryGetSchemaTool:
             available = ", ".join(self.registry.list_aliases()) or "(none)"
             raise ValueError(f"unknown connector_alias: {connector_alias!r}; available: {available}") from None
 
-        from tabulaflow.core import PropertyGraphSchema, SQLSchema
+        from tabulaflow.core import PropertyGraphSchema, RDFSchema, SQLSchema
 
         schema = connector.schema
+        if refresh:
+            try:
+                schema = await connector.refresh_schema_async()
+            except Exception as exc:
+                raise RuntimeError(f"schema refresh failed: {exc}") from exc
+
         if isinstance(schema, SQLSchema):
-            if refresh:
-                try:
-                    await connector.refresh_schema_async()
-                except Exception as exc:
-                    raise RuntimeError(f"schema refresh failed: {exc}") from exc
             result = self._sql_formatter.format(schema, include_descriptions=True)
         elif isinstance(schema, PropertyGraphSchema):
-            if refresh:
-                try:
-                    await connector.refresh_schema_async()
-                except Exception as exc:
-                    raise RuntimeError(f"schema refresh failed: {exc}") from exc
             result = self._graph_formatter.format(schema)
+        elif isinstance(schema, RDFSchema):
+            result = self._rdf_formatter.format(schema)
         else:
             raise TypeError(f"unsupported schema type: {type(schema)!r}")
 

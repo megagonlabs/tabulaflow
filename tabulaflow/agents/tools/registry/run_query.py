@@ -102,7 +102,7 @@ class RegistryRunQueryTool:
 
         Args:
             connector_alias: Alias of the target connector.
-            query: The SQL or Cypher query to execute.
+            query: The SQL, Cypher, or SPARQL query to execute.
             parameters: Values for named query placeholders. Exposed only when
                 parameterized queries are enabled.
             refresh: Whether to refresh connector schema after execution. Exposed
