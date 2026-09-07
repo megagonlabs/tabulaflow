@@ -8,7 +8,6 @@ from tabulaflow.output.formatting import format_connector_summary
 
 def test_format_sql_connector_summary() -> None:
     connector = SimpleNamespace(
-        connector_type="sql",
         backend="duckdb",
         language="duckdb",
         schema=SQLSchema(
@@ -26,7 +25,6 @@ def test_format_sql_connector_summary() -> None:
 
 def test_format_graph_connector_summary() -> None:
     connector: Any = SimpleNamespace(
-        connector_type="property_graph",
         backend="neo4j",
         language="cypher",
         schema=PropertyGraphSchema(

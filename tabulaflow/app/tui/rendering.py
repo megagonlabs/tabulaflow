@@ -422,7 +422,7 @@ def _card_group_from_payload(
             )
         )
     if payload.metadata.query:
-        lexer = "cypher" if payload.metadata.connector_type == "property_graph" else "sql"
+        lexer = normalize_query_lexer(payload.metadata.query_language)
         views.append(
             ViewItem(
                 kind=VIEW_KIND_QUERY,

@@ -5,7 +5,7 @@ import re
 from typing import Any, Literal, Protocol, TypeAlias
 
 from tabulaflow.core.results import ExecResult
-from tabulaflow.core.schema import GraphQueryLanguage, PropertyGraphSchema, SQLDialect, SQLSchema
+from tabulaflow.core.schema import QueryLanguage, SourceSchema
 
 DataFrameWriteMode: TypeAlias = Literal["create", "append", "replace_rows", "replace_table"]
 
@@ -33,17 +33,12 @@ class DataConnector(Protocol):
     """Structural interface implemented by every live queryable data source."""
 
     @property
-    def connector_type(self) -> Literal["sql", "property_graph"]:
-        """Return the connector's current schema and result family."""
-        ...
-
-    @property
     def global_id(self) -> str:
         """Return the stable connector identity used by caches."""
         ...
 
     @property
-    def schema(self) -> SQLSchema | PropertyGraphSchema:
+    def schema(self) -> SourceSchema:
         """Return the connector's current source schema."""
         ...
 
@@ -53,7 +48,7 @@ class DataConnector(Protocol):
         ...
 
     @property
-    def language(self) -> SQLDialect | GraphQueryLanguage:
+    def language(self) -> QueryLanguage:
         """Return the query language understood by the connector."""
         ...
 
@@ -75,6 +70,6 @@ class DataConnector(Protocol):
         """Permanently close the connector and release held resources."""
         ...
 
-    async def refresh_schema_async(self) -> SQLSchema | PropertyGraphSchema:
+    async def refresh_schema_async(self) -> SourceSchema:
         """Re-introspect and return the live source schema."""
         ...

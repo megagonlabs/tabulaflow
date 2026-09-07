@@ -14,7 +14,6 @@ from tabulaflow.data import DataConnectorRegistry
 
 
 class FakeSQLConnector:
-    connector_type = "sql"
     backend = "sqlite"
     global_id = "fake+sql"
     schema = SQLSchema(
@@ -41,7 +40,6 @@ class FakeSQLConnector:
 
 
 class FakeGraphConnector:
-    connector_type = "property_graph"
     global_id = "fake+graph"
     schema = PropertyGraphSchema(
         name="test",

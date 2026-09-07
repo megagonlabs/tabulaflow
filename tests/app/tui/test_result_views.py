@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Literal
-
 import pandas as pd
 from rich.console import Console
 
@@ -26,7 +24,7 @@ from tabulaflow.output.specs import (
     OutputSpec,
     ParameterSpec,
 )
-from tabulaflow.core import GraphResult, GraphResultEdge, GraphResultNode
+from tabulaflow.core import GraphResult, GraphResultEdge, GraphResultNode, QueryLanguage
 from tabulaflow.output.resolver import (
     ResolvedChartArtifact,
     ResolvedArtifact,
@@ -45,14 +43,14 @@ def _payload(
     df: pd.DataFrame | None = None,
     query: str = "SELECT 1",
     graph: GraphResult | None = None,
-    connector_type: Literal["sql", "property_graph"] = "sql",
+    query_language: QueryLanguage = "duckdb",
 ) -> ResultPayload:
     return ResultPayload(
         metadata=ResultMetadata(
             id=result_id,
             db_alias="debug",
             query=query,
-            connector_type=connector_type,
+            query_language=query_language,
             row_count=len(df) if df is not None else None,
             columns=[str(column) for column in df.columns] if df is not None else None,
         ),
@@ -188,7 +186,7 @@ def test_table_artifact_with_graph_has_graph_data_query_views() -> None:
         artifact_id="Q1",
         source_id="Q1",
         label="paths",
-        payload=_payload("Q1", df=pd.DataFrame({"a": [1, 2]}), graph=graph, connector_type="property_graph"),
+        payload=_payload("Q1", df=pd.DataFrame({"a": [1, 2]}), graph=graph, query_language="cypher"),
     )
 
     groups = _groups(card)

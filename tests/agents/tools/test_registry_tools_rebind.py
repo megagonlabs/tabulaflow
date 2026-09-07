@@ -1,7 +1,7 @@
 """Registry tools must not serve a stale connector after its alias is unregistered or re-bound."""
 
 from pathlib import Path
-from typing import Any, ClassVar, Literal, cast
+from typing import Any, cast
 
 import asyncio
 import pandas as pd
@@ -67,7 +67,6 @@ async def test_run_query_uses_new_connector_after_rebind(tmp_path: Path) -> None
 
 
 class RefreshBlockingConnector:
-    connector_type: ClassVar[Literal["sql"]] = "sql"
     global_id = "refresh_blocking"
     language = "sqlite"
     schema: Any = None

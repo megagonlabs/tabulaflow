@@ -42,7 +42,7 @@ def _debug_cards(payloads: list[DebugTablePayload], width: int) -> list[CardGrou
                 id=payload.result_id,
                 db_alias="debug",
                 query=payload.query or "",
-                connector_type="property_graph" if payload.query_lexer == "cypher" else "sql",
+                query_language="cypher" if payload.query_lexer == "cypher" else "duckdb",
                 row_count=len(payload.df) if payload.df is not None else None,
                 columns=[str(column) for column in payload.df.columns] if payload.df is not None else None,
             ),

@@ -18,7 +18,6 @@ from tabulaflow.core import (
 
 
 class FakeGraphConnector:
-    connector_type = "property_graph"
     backend = "neo4j"
     global_id = "test+neo"
     language = "cypher"

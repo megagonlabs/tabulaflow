@@ -94,9 +94,7 @@ class WriteResultTableTool:
             raise ValueError(f"unknown target_alias: {target_alias!r}; available: {available}") from None
 
         if not isinstance(connector, SQLConnector):
-            raise TypeError(
-                f"write_result_table supports SQL targets only; got connector_type={connector.connector_type!r}"
-            )
+            raise TypeError(f"write_result_table supports SQL targets only; got schema kind {connector.schema.kind!r}")
 
         rows_written = await connector.write_dataframe_async(
             df=df,

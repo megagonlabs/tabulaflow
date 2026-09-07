@@ -10,7 +10,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 import math
 from pathlib import Path
-from typing import TYPE_CHECKING, Literal, NoReturn
+from typing import TYPE_CHECKING, NoReturn
 
 import jinja2
 from jinja2.sandbox import SandboxedEnvironment
@@ -19,6 +19,9 @@ from pydantic import BaseModel, ConfigDict, Field
 
 import tabulaflow.output.graphs as graphs
 import tabulaflow.output.maps as maps
+from tabulaflow.core.dataframe import deserialize_dataframe, serialize_dataframe
+from tabulaflow.core.results import ExecResult, GraphResult
+from tabulaflow.core.schema import QueryLanguage
 from tabulaflow.output.specs import (
     ArtifactId,
     ArtifactSpec,
@@ -37,9 +40,6 @@ from tabulaflow.output.specs import (
     default_selection,
     validate_parameter_value,
 )
-from tabulaflow.core.results import ExecResult, GraphResult
-from tabulaflow.core.dataframe import deserialize_dataframe, serialize_dataframe
-
 if TYPE_CHECKING:
     from tabulaflow.data.registry import DataConnectorRegistry
 
@@ -63,7 +63,7 @@ class ResultMetadata(BaseModel):
     id: ResultId
     db_alias: str
     query: str
-    connector_type: Literal["sql", "property_graph"] = "sql"
+    query_language: QueryLanguage
     source_selection: Selection = Field(default_factory=dict)
     row_count: int | None = None
     columns: list[str] | None = None
@@ -232,14 +232,14 @@ class OutputStore:
     async def add_fixed_result_source(
         self,
         db_alias: str,
-        connector_type: Literal["sql", "property_graph"],
+        query_language: QueryLanguage,
         query: str,
         exec_result: ExecResult,
     ) -> FixedResultSource:
         """Store a query result and create a fixed source for it."""
         result_id = self._next_result_id_value()
         source_id = self._next_source_id_value()
-        await self._store(result_id, db_alias, connector_type, query, exec_result)
+        await self._store(result_id, db_alias, query_language, query, exec_result)
         source = FixedResultSource(id=source_id, result_id=result_id)
         self._sources[source_id] = source
         return source
@@ -289,7 +289,7 @@ class OutputStore:
     async def cache_parameterized_result(
         self,
         source_id: str,
-        connector_type: Literal["sql", "property_graph"],
+        query_language: QueryLanguage,
         selection: Selection,
         query: str,
         exec_result: ExecResult,
@@ -299,7 +299,7 @@ class OutputStore:
         if not isinstance(source, ParameterizedSource):
             raise ValueError(f"source {source_id!r} is not parameterized")
         result_id = self._next_result_id_value()
-        await self._store(result_id, source.db_alias, connector_type, query, exec_result, selection=selection)
+        await self._store(result_id, source.db_alias, query_language, query, exec_result, selection=selection)
         self._source_cache[(source.id, canonical_selection_key(selection))] = result_id
         return result_id
 
@@ -317,7 +317,7 @@ class OutputStore:
         self,
         result_id: str,
         db_alias: str,
-        connector_type: Literal["sql", "property_graph"],
+        query_language: QueryLanguage,
         query: str,
         exec_result: ExecResult,
         *,
@@ -338,7 +338,7 @@ class OutputStore:
             id=result_id,
             db_alias=db_alias,
             query=query,
-            connector_type=connector_type,
+            query_language=query_language,
             source_selection={} if selection is None else dict(selection),
             row_count=row_count,
             columns=columns,
@@ -403,7 +403,7 @@ class OutputStore:
             )
         connector = self._registry.get(source.db_alias)
         exec_result = await connector.run_query_async(query)
-        return await self.cache_parameterized_result(source.id, connector.connector_type, selection, query, exec_result)
+        return await self.cache_parameterized_result(source.id, connector.language, selection, query, exec_result)
 
     async def _get_result_entry(self, result_id: str) -> _StoredResultEntry:
         """Return the stored entry for a materialized result."""

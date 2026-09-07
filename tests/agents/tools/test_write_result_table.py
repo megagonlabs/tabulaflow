@@ -26,7 +26,7 @@ async def test_write_result_table_preserves_blobs_and_creates_by_default(tmp_pat
     payloads = [b"\x89PNG\r\n\x1a\nimage", b"%PDF-1.7\ndocument"]
     source = await output_store.add_fixed_result_source(
         "sample_data",
-        "sql",
+        "duckdb",
         "SELECT * FROM expense_documents",
         ExecResult(df=pd.DataFrame({"id": [1, 2], "content": payloads})),
     )

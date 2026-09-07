@@ -328,7 +328,6 @@ class Neo4jConnector:
         read_only: Whether sessions use server-enforced read access.
     """
 
-    connector_type: ClassVar[Literal["property_graph"]] = "property_graph"
     backend: ClassVar[Literal["neo4j"]] = "neo4j"
     language: ClassVar[GraphQueryLanguage] = "cypher"
 

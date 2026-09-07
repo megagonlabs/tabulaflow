@@ -578,7 +578,12 @@ async def test_pane_preparation_failure_renders_safe_error_card(
         source_id="S1",
         label="orders",
         payload=ResultPayload(
-            metadata=ResultMetadata(id="R1", db_alias="workspace", query="SELECT * FROM orders"),
+            metadata=ResultMetadata(
+                id="R1",
+                db_alias="workspace",
+                query="SELECT * FROM orders",
+                query_language="duckdb",
+            ),
             df=pd.DataFrame({"id": [1]}),
         ),
     )

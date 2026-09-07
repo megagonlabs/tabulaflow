@@ -363,7 +363,7 @@ def test_run_query_pydantic_tool_signatures() -> None:
     from tabulaflow.agents.tools.run_query import RunQueryTool
 
     class _StubConnector:
-        connector_type = "sql"
+        language = "duckdb"
         global_id = "stub"
 
     stub: Any = _StubConnector()

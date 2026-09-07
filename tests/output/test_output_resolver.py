@@ -40,13 +40,13 @@ async def _output_store_with_results() -> OutputStore:
     output_store = OutputStore()
     await output_store.add_fixed_result_source(
         "workspace",
-        "sql",
+        "duckdb",
         "SELECT 1 AS a",
         ExecResult(df=pd.DataFrame({"a": [1]})),
     )
     await output_store.add_fixed_result_source(
         "workspace",
-        "sql",
+        "duckdb",
         "SELECT 2 AS a",
         ExecResult(df=pd.DataFrame({"a": [2]})),
     )
@@ -67,7 +67,12 @@ def _parameters() -> list[ChoiceParameter | NumberParameter]:
 def test_result_payload_rejects_graph_without_dataframe() -> None:
     with pytest.raises(ValueError, match="graph result requires a tabular result"):
         ResultPayload(
-            metadata=ResultMetadata(id="R1", db_alias="workspace", query="MATCH (n) RETURN n"),
+            metadata=ResultMetadata(
+                id="R1",
+                db_alias="workspace",
+                query="MATCH (n) RETURN n",
+                query_language="cypher",
+            ),
             graph=GraphResult(nodes=[], edges=[]),
         )
 
@@ -108,14 +113,14 @@ async def test_parameterized_source_resolves_by_projected_selection() -> None:
     )
     await output_store.cache_parameterized_result(
         source.id,
-        "sql",
+        "duckdb",
         {"metric": "revenue"},
         "SELECT 1 AS a",
         ExecResult(df=pd.DataFrame({"a": [1]})),
     )
     await output_store.cache_parameterized_result(
         source.id,
-        "sql",
+        "duckdb",
         {"metric": "profit"},
         "SELECT 2 AS a",
         ExecResult(df=pd.DataFrame({"a": [2]})),
@@ -268,7 +273,7 @@ async def test_parameterized_source_not_applicable_is_not_an_error() -> None:
     )
     await output_store.cache_parameterized_result(
         source.id,
-        "sql",
+        "duckdb",
         {"metric": "revenue"},
         "SELECT 1 AS value",
         ExecResult(df=pd.DataFrame({"value": [1]})),
@@ -306,7 +311,7 @@ async def test_table_artifact_without_displayable_payload_is_unavailable() -> No
     output_store = OutputStore()
     await output_store.add_fixed_result_source(
         "workspace",
-        "sql",
+        "duckdb",
         "CREATE TABLE t(a INT)",
         ExecResult(),
     )
@@ -327,7 +332,7 @@ async def test_table_artifact_without_displayable_payload_reports_affected_rows(
     output_store = OutputStore()
     await output_store.add_fixed_result_source(
         "workspace",
-        "sql",
+        "duckdb",
         "UPDATE t SET a = 1",
         ExecResult(affected_rows=3),
     )
@@ -348,7 +353,7 @@ async def test_chart_artifact_without_dataframe_is_unavailable() -> None:
     output_store = OutputStore()
     await output_store.add_fixed_result_source(
         "workspace",
-        "sql",
+        "duckdb",
         "CREATE TABLE t(a INT)",
         ExecResult(),
     )
@@ -369,7 +374,7 @@ async def test_empty_visualization_sources_resolve_as_normal_artifacts() -> None
     output_store = OutputStore()
     await output_store.add_fixed_result_source(
         "workspace",
-        "sql",
+        "duckdb",
         "SELECT id, lat, lng, target, value FROM places WHERE false",
         ExecResult(
             df=pd.DataFrame(
@@ -425,7 +430,7 @@ async def test_nonempty_graph_with_invalid_node_ids_is_an_error() -> None:
     output_store = OutputStore()
     await output_store.add_fixed_result_source(
         "workspace",
-        "sql",
+        "duckdb",
         "SELECT id, target FROM invalid_nodes",
         ExecResult(df=pd.DataFrame({"id": [None], "target": [None]})),
     )
@@ -456,7 +461,7 @@ async def test_invalid_artifact_specs_do_not_abort_other_artifacts() -> None:
     output_store = OutputStore()
     await output_store.add_fixed_result_source(
         "workspace",
-        "sql",
+        "duckdb",
         "SELECT 1 AS value",
         ExecResult(df=pd.DataFrame({"value": [1]})),
     )
@@ -500,7 +505,7 @@ async def test_map_and_graph_specs_resolve_against_source_data() -> None:
     output_store = OutputStore()
     await output_store.add_fixed_result_source(
         "workspace",
-        "sql",
+        "duckdb",
         "SELECT * FROM places",
         ExecResult(df=pd.DataFrame({"id": ["a"], "lat": [1.0], "lng": [2.0], "target": ["a"]})),
     )
@@ -546,7 +551,7 @@ async def test_map_and_graph_resolve_parameterized_selection() -> None:
     for period, node_id, lat in (("q1", "a", 1.0), ("q2", "b", 2.0)):
         await output_store.cache_parameterized_result(
             source.id,
-            "sql",
+            "duckdb",
             {"period": period},
             "SELECT 1",
             ExecResult(df=pd.DataFrame({"id": [node_id], "lat": [lat], "lng": [3.0]})),
@@ -581,13 +586,13 @@ async def test_artifact_wrapper_and_nested_source_ids_must_match() -> None:
     output_store = OutputStore()
     await output_store.add_fixed_result_source(
         "workspace",
-        "sql",
+        "duckdb",
         "SELECT 1 AS value",
         ExecResult(df=pd.DataFrame({"value": [1], "lat": [1], "lng": [2]})),
     )
     await output_store.add_fixed_result_source(
         "workspace",
-        "sql",
+        "duckdb",
         "SELECT 2 AS value",
         ExecResult(df=pd.DataFrame({"value": [2], "lat": [3], "lng": [4]})),
     )

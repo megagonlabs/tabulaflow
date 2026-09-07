@@ -214,7 +214,6 @@ async def test_database_summarizer_owns_versioned_semantic_cache_key(tmp_path: P
     connector = cast(
         Any,
         SimpleNamespace(
-            connector_type="sql",
             global_id="empty-db",
             schema=SQLSchema(name="empty", dialect="sqlite", tables=[]),
         ),

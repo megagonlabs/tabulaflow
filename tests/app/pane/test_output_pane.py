@@ -707,7 +707,12 @@ async def test_output_pane_resolves_live_turn_selection(tmp_path: Path) -> None:
     class FakeOutputStore:
         async def get_payload(self, result_id: str) -> ResultPayload:
             return ResultPayload(
-                metadata=ResultMetadata(id=result_id, db_alias="workspace", query="SELECT 1"),
+                metadata=ResultMetadata(
+                    id=result_id,
+                    db_alias="workspace",
+                    query="SELECT 1",
+                    query_language="duckdb",
+                ),
                 df=pd.DataFrame({"period": ["q3"]}),
             )
 
@@ -763,7 +768,12 @@ async def test_output_pane_http_resolve_runs_on_app_loop(tmp_path: Path) -> None
         async def get_payload(self, result_id: str) -> ResultPayload:
             assert asyncio.get_running_loop() is app_loop
             return ResultPayload(
-                metadata=ResultMetadata(id=result_id, db_alias="workspace", query="SELECT 1"),
+                metadata=ResultMetadata(
+                    id=result_id,
+                    db_alias="workspace",
+                    query="SELECT 1",
+                    query_language="duckdb",
+                ),
                 df=pd.DataFrame({"period": ["q3"]}),
             )
 

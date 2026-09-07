@@ -35,7 +35,7 @@ The shared boundary should therefore be approximately:
 class DataConnector(Protocol):
     global_id: str
     backend: str
-    query_language: QueryLanguage
+    language: QueryLanguage
     schema: SourceSchema
     read_only: bool
 
@@ -323,7 +323,8 @@ Acceptance:
 - Introduce `SourceSchema` and `QueryLanguage` types.
 - Replace `connector_type` branches throughout data, output, agents, app, and
   research code.
-- Store query language and result shape explicitly in result metadata.
+- Store query language explicitly in result metadata; derive presentation from
+  the result payload.
 - Dispatch schema rendering from the tagged schema model.
 - Keep `SQLSchema.dialect` as the source of truth and derive
   `SQLConnector.language` from it.

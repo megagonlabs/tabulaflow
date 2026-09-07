@@ -18,7 +18,12 @@ def _result(result_id: str, label: str) -> ResolvedTableArtifact:
         source_id=result_id,
         label=label,
         payload=ResultPayload(
-            metadata=ResultMetadata(id=result_id, db_alias="debug", query=f"SELECT '{label}' AS label"),
+            metadata=ResultMetadata(
+                id=result_id,
+                db_alias="debug",
+                query=f"SELECT '{label}' AS label",
+                query_language="duckdb",
+            ),
             df=pd.DataFrame({"label": [label], "value": [1]}),
         ),
     )

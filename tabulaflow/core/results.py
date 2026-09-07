@@ -6,7 +6,6 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from tabulaflow.core.dataframe import SerializableDataFrame
 
-
 class ErrorInfo(BaseModel):
     """Exception details returned as part of an execution result."""
 

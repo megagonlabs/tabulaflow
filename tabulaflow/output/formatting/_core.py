@@ -7,7 +7,6 @@ import numpy as np
 import pandas as pd
 from tabulate import tabulate
 
-from tabulaflow.core.schema import PropertyGraphSchema, SQLSchema
 from tabulaflow.core.media import parse_base64_data_uri
 from tabulaflow.core.results import ExecResult
 from tabulaflow.data.protocols import DataConnector
@@ -42,7 +41,7 @@ def format_connector_summary(connector: DataConnector) -> str:
         Human-readable backend, language, and schema-size information.
     """
     schema = connector.schema
-    if isinstance(schema, PropertyGraphSchema):
+    if schema.kind == "property_graph":
         n_labels = len(schema.nodes)
         n_relationships = len(schema.relationships)
         return (
@@ -50,8 +49,6 @@ def format_connector_summary(connector: DataConnector) -> str:
             f"{n_relationships} relationship type{'s' if n_relationships != 1 else ''}"
         )
 
-    if not isinstance(schema, SQLSchema):
-        raise TypeError(f"Unsupported schema type: {type(schema)!r}")
     n_tables = len(schema.tables)
     implementation = (
         connector.backend if connector.backend == connector.language else f"{connector.backend}, {connector.language}"

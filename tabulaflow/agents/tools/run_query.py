@@ -235,7 +235,7 @@ class RunQueryTool:
         floatfmt: str = ".8g",
         release_connections_on_finish: bool = False,
     ):
-        if release_connections_on_finish and db_connector.connector_type != "sql":
+        if release_connections_on_finish and not isinstance(db_connector, SQLConnector):
             raise ValueError("release_connections_on_finish is only supported for SQL connectors")
         self.db_connector = db_connector
         self.enable_params = enable_params

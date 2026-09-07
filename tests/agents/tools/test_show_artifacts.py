@@ -19,7 +19,7 @@ def _text(result: ToolReturn) -> str:
 @pytest.fixture
 async def output_store() -> OutputStore:
     h = OutputStore()
-    await h.add_fixed_result_source("workspace", "sql", "SELECT 1", ExecResult(df=pd.DataFrame({"a": [1]})))
+    await h.add_fixed_result_source("workspace", "duckdb", "SELECT 1", ExecResult(df=pd.DataFrame({"a": [1]})))
     h.add_chart_artifact("S1", {"mark": "bar"})
     return h
 

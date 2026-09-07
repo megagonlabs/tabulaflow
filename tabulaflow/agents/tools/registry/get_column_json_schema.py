@@ -48,9 +48,7 @@ class RegistryGetColumnJsonSchemaTool:
             return entry[2]
         schema = connector.schema
         if not isinstance(schema, SQLSchema):
-            raise TypeError(
-                f"get_column_json_schema is only supported for SQL connectors, not {connector.connector_type!r}"
-            )
+            raise TypeError(f"get_column_json_schema is only supported for SQL connectors, not {schema.kind!r}")
         tool = GetColumnJsonSchemaTool(
             schema,
             include_examples=self.include_examples,

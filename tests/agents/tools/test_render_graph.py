@@ -31,7 +31,7 @@ from tabulaflow.agents.tools.render_graph import RenderGraphTool
 async def _output_store_with(*dfs: pd.DataFrame) -> OutputStore:
     output_store = OutputStore()
     for df in dfs:
-        await output_store.add_fixed_result_source("db", "sql", "SELECT 1", ExecResult(df=df))
+        await output_store.add_fixed_result_source("db", "duckdb", "SELECT 1", ExecResult(df=df))
     return output_store
 
 
@@ -282,7 +282,7 @@ class TestRenderGraphTool:
         )
         await output_store.cache_parameterized_result(
             source.id,
-            "sql",
+            "duckdb",
             {"period": "q1"},
             "SELECT 1",
             ExecResult(df=pd.DataFrame({"id": ["a", "b"]})),

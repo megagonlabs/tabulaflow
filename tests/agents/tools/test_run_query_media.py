@@ -1,6 +1,6 @@
 import base64
 import io
-from typing import Any, ClassVar, Literal, cast
+from typing import Any, cast
 
 import pandas as pd
 import numpy as np
@@ -47,8 +47,8 @@ def _pdf() -> bytes:
 
 
 class _ResultConnector:
-    connector_type: ClassVar[Literal["sql"]] = "sql"
     global_id = "media"
+    language = "duckdb"
 
     def __init__(self, result: ExecResult) -> None:
         self.result = result

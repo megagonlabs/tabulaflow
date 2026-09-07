@@ -97,7 +97,7 @@ def test_declared_bundle_skips_failed_calls_and_takes_the_last() -> None:
 
 async def test_build_chat_result_resolves_the_declared_bundle() -> None:
     output_store = OutputStore()
-    await output_store.add_fixed_result_source("workspace", "sql", "SELECT 1", ExecResult(df=pd.DataFrame({"a": [1]})))
+    await output_store.add_fixed_result_source("workspace", "duckdb", "SELECT 1", ExecResult(df=pd.DataFrame({"a": [1]})))
     bundle = ArtifactBundle(artifacts=(ArtifactRef(id="S1", label="row count"),))
 
     result = await _build_chat_result("ANSWER:\nThere is 1 row.", bundle, output_store)

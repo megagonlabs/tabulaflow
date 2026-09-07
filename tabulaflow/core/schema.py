@@ -1,6 +1,6 @@
 """Database schema models for SQL and property-graph databases, with optional profiling metadata."""
 
-from typing import Any, Literal, TypeAlias
+from typing import Annotated, Any, Literal, TypeAlias
 
 import pandas as pd
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -31,6 +31,7 @@ SQLDialect: TypeAlias = Literal[
 ]
 
 GraphQueryLanguage: TypeAlias = Literal["cypher"]
+QueryLanguage: TypeAlias = SQLDialect | GraphQueryLanguage
 
 
 # ---------------------------------------------------------------------------
@@ -78,6 +79,7 @@ class RelationshipSchema(BaseModel):
 class PropertyGraphSchema(BaseModel):
     """Property-graph schema usable with any graph database."""
 
+    kind: Literal["property_graph"] = "property_graph"
     name: str
     description: str | None = None
     nodes: list[NodeSchema] = Field(default_factory=list)
@@ -230,6 +232,7 @@ class SQLSchema(BaseModel):
         dialect: SQL dialect when known.
     """
 
+    kind: Literal["sql"] = "sql"
     name: str
     dialect: SQLDialect | None = None
     description: str | None = None
@@ -293,3 +296,6 @@ class SQLSchema(BaseModel):
         schema = self.model_copy(deep=False)
         schema.tables = new_tables
         return schema
+
+
+SourceSchema: TypeAlias = Annotated[SQLSchema | PropertyGraphSchema, Field(discriminator="kind")]

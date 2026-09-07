@@ -2,8 +2,28 @@ from __future__ import annotations
 
 import pandas as pd
 import pytest
+from pydantic import TypeAdapter
 
-from tabulaflow.core import ColumnRef, ForeignKeySchema, GraphPropertySchema, SQLColumnSchema, SQLSchema, SQLTableSchema
+from tabulaflow.core import (
+    ColumnRef,
+    ForeignKeySchema,
+    GraphPropertySchema,
+    PropertyGraphSchema,
+    SourceSchema,
+    SQLColumnSchema,
+    SQLSchema,
+    SQLTableSchema,
+)
+
+
+def test_source_schema_uses_kind_discriminator() -> None:
+    adapter: TypeAdapter[SourceSchema] = TypeAdapter(SourceSchema)
+
+    sql_schema = adapter.validate_python({"kind": "sql", "name": "db", "dialect": "sqlite", "tables": []})
+    graph_schema = adapter.validate_python({"kind": "property_graph", "name": "graph"})
+
+    assert isinstance(sql_schema, SQLSchema)
+    assert isinstance(graph_schema, PropertyGraphSchema)
 
 
 def test_foreign_key_requires_matching_column_counts() -> None:

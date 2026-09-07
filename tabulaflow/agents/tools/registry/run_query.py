@@ -134,7 +134,7 @@ class RegistryRunQueryTool:
         try:
             source = await self._output_store.add_fixed_result_source(
                 db_alias=db_alias,
-                connector_type=tool.db_connector.connector_type,
+                query_language=tool.db_connector.language,
                 query=execution.query,
                 exec_result=exec_result,
             )

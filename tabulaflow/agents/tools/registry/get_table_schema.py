@@ -56,7 +56,7 @@ class RegistryGetTableSchemaTool:
         if entry is not None and entry[0] is connector:
             return entry[1]
         if not isinstance(connector, SQLConnector):
-            raise TypeError(f"get_table_schema is only supported for SQL connectors, not {connector.connector_type!r}")
+            raise TypeError(f"get_table_schema is only supported for SQL connectors, not {connector.schema.kind!r}")
         tool = GetTableSchemaTool(
             connector,
             self.formatter,

@@ -228,7 +228,7 @@ class CreateParameterizedSourceTool:
         lines = [f"[source_id={source.id}]", f"created parameterized source {source.id}"]
         for selection, query, exec_result in executions:
             await self._output_store.cache_parameterized_result(
-                source.id, connector.connector_type, selection, query, exec_result
+                source.id, connector.language, selection, query, exec_result
             )
         first_selection, _, first_exec_result = executions[0]
         default_label = _selection_label(default_selection(parameters))

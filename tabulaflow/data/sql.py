@@ -82,7 +82,7 @@ import warnings
 
 import sqlparse
 from sqlparse.lexer import Lexer as SQLLexer
-from typing import Any, Callable, ClassVar, Coroutine, Sequence, Mapping, Literal, AsyncGenerator, TypeVar
+from typing import Any, Callable, Coroutine, Sequence, Mapping, Literal, AsyncGenerator, TypeVar
 from dataclasses import dataclass
 import collections
 import pandas as pd
@@ -2182,8 +2182,6 @@ class SQLConnector:
         read_only: Whether read-only behavior was requested. This is a
             client-side safety guard unless the backend enforces it natively.
     """
-
-    connector_type: ClassVar[Literal["sql"]] = "sql"
 
     def __init__(
         self,

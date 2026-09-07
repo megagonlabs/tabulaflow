@@ -176,7 +176,7 @@ class TestAutoLineHover:
 
 async def _output_store_with(df: pd.DataFrame) -> OutputStore:
     output_store = OutputStore()
-    await output_store.add_fixed_result_source("db", "sql", "SELECT 1", ExecResult(df=df))
+    await output_store.add_fixed_result_source("db", "duckdb", "SELECT 1", ExecResult(df=df))
     return output_store
 
 
@@ -210,14 +210,14 @@ class TestRenderChartTool:
         )
         await output_store.cache_parameterized_result(
             source.id,
-            "sql",
+            "duckdb",
             {"ranking": "net"},
             "SELECT 'net' AS a, 1 AS b",
             ExecResult(df=pd.DataFrame({"a": ["net"], "b": [1]})),
         )
         await output_store.cache_parameterized_result(
             source.id,
-            "sql",
+            "duckdb",
             {"ranking": "count"},
             "SELECT 'count' AS a, 2 AS b",
             ExecResult(df=pd.DataFrame({"a": ["count"], "b": [2]})),
@@ -245,14 +245,14 @@ class TestRenderChartTool:
         )
         await output_store.cache_parameterized_result(
             source.id,
-            "sql",
+            "duckdb",
             {"ranking": "net"},
             "SELECT 'net' AS a",
             ExecResult(df=pd.DataFrame({"a": ["net"]})),
         )
         await output_store.cache_parameterized_result(
             source.id,
-            "sql",
+            "duckdb",
             {"ranking": "count"},
             "SELECT 2 AS c",
             ExecResult(df=pd.DataFrame({"c": [2]})),

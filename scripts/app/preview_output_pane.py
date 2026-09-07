@@ -380,7 +380,7 @@ def _push_controls_turn(pane: pane_mod.OutputPane, pane_dir: Path) -> None:
     empty_source = asyncio.run(
         output_store.add_fixed_result_source(
             "preview",
-            "sql",
+            "duckdb",
             "-- preview empty table fixture",
             ExecResult(df=pd.DataFrame({"customer": pd.Series(dtype="object"), "value": pd.Series(dtype="int64")})),
         )
@@ -388,7 +388,7 @@ def _push_controls_turn(pane: pane_mod.OutputPane, pane_dir: Path) -> None:
     no_data_source = asyncio.run(
         output_store.add_fixed_result_source(
             "preview",
-            "sql",
+            "duckdb",
             "-- preview no tabular data fixture",
             ExecResult(),
         )
@@ -418,7 +418,7 @@ def _push_controls_turn(pane: pane_mod.OutputPane, pane_dir: Path) -> None:
             asyncio.run(
                 output_store.cache_parameterized_result(
                     taxi_zone_source.id,
-                    "sql",
+                    "duckdb",
                     {"min_zone_area_km2": min_selection},
                     f"-- preview NYC taxi zones with approx_area_km2 >= {min_area}",
                     ExecResult(df=filtered_zones),
@@ -450,7 +450,7 @@ def _push_controls_turn(pane: pane_mod.OutputPane, pane_dir: Path) -> None:
                     asyncio.run(
                         output_store.cache_parameterized_result(
                             source.id,
-                            "sql",
+                            "duckdb",
                             selection,
                             f"-- preview fixture for {period_label} {metric_label.lower()}, min_value={min_value}",
                             ExecResult(df=df),
@@ -461,7 +461,7 @@ def _push_controls_turn(pane: pane_mod.OutputPane, pane_dir: Path) -> None:
                         asyncio.run(
                             output_store.cache_parameterized_result(
                                 revenue_source.id,
-                                "sql",
+                                "duckdb",
                                 selection,
                                 f"-- preview revenue-only detail fixture for {period_label}, min_value={min_value}",
                                 ExecResult(df=detail),
