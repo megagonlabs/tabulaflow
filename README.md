@@ -752,12 +752,19 @@ Sep 4
   - [x] Copy table with media in output pane
   - [x] Stable colors across parameter selection
 
+Sep 6
 - [ ] Fix media cells display in TUI
 - Output pane
   - [ ] Arrow key automatically focus on close button
   - [ ] Image cramped - https://huggingface.co/datasets/lmms-lab-encoder/DocVQA/viewer/DocVQA
   - [ ] Long text/json cell in output pane
   - [ ] Focus ring of item in media collection in output pane
+
+- [ ] Public data sources
+  - [ ] Huggingface, analyze, preprocessing (replace jupyter notebook)
+  - [ ] Wikidata
+  - [ ] Government/academic data
+
 
 - [ ] Show pending turns in output pane
 - [ ] Inline artifact citation
@@ -767,10 +774,7 @@ Sep 4
 - [ ] TUI
   - [ ] Do not auto-scroll when browsing old turns
   - [ ] Onboarding - browser install
-- [ ] Public data sources
-  - [ ] Huggingface, analyze, preprocessing (replace jupyter notebook)
-  - [ ] Wikidata
-  - [ ] Government/academic data
+
 
 - v2 features
   - [ ] Multimodal output
@@ -778,7 +782,6 @@ Sep 4
   
 - [ ] Allowed roots policy
 - [ ] image/pdf detail level
-- [ ] divide file_editor tool
 - [ ] Shell messed up after ssh disconnect
 - [ ] Check if uv tool install install browser
 
@@ -799,14 +802,9 @@ Sep 4
 - [ ] View menu location?
 - [ ] web_fetch tool for static html
 
-
-- [ ] Context compaction
-
-- [ ] Tune prompt for non-data tasks
-- [ ] Chrome browser
+- [ ] Chrome browser, browser resolution
 
 - [ ] Bug: Warning sign emoji display width
-- [ ] sample_data disconnect policy
 - [ ] Banner - /connect pre-built data sources as most important use case
 
 - [ ] Guard against long messages and context overflow
