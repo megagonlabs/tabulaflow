@@ -298,4 +298,4 @@ class SQLSchema(BaseModel):
         return schema
 
 
-SourceSchema: TypeAlias = Annotated[SQLSchema | PropertyGraphSchema, Field(discriminator="kind")]
+DataSourceSchema: TypeAlias = Annotated[SQLSchema | PropertyGraphSchema, Field(discriminator="kind")]

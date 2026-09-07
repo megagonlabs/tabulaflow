@@ -27,7 +27,7 @@ if TYPE_CHECKING:
         SQLDialect,
         SQLSchema,
         SQLTableSchema,
-        SourceSchema,
+        DataSourceSchema,
         TableRef,
     )
 
@@ -56,7 +56,7 @@ _LAZY_EXPORTS = {
     "SQLDialect": ("tabulaflow.core.schema", "SQLDialect"),
     "SQLSchema": ("tabulaflow.core.schema", "SQLSchema"),
     "SQLTableSchema": ("tabulaflow.core.schema", "SQLTableSchema"),
-    "SourceSchema": ("tabulaflow.core.schema", "SourceSchema"),
+    "DataSourceSchema": ("tabulaflow.core.schema", "DataSourceSchema"),
     "serialize_dataframe": ("tabulaflow.core.dataframe", "serialize_dataframe"),
     "TableRef": ("tabulaflow.core.schema", "TableRef"),
 }
@@ -86,7 +86,7 @@ __all__ = [
     "SQLDialect",
     "SQLSchema",
     "SQLTableSchema",
-    "SourceSchema",
+    "DataSourceSchema",
     "serialize_dataframe",
     "TableRef",
 ]

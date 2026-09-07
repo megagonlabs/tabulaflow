@@ -5,7 +5,7 @@ import re
 from typing import Any, Protocol
 
 from tabulaflow.core.results import ExecResult
-from tabulaflow.core.schema import QueryLanguage, SourceSchema
+from tabulaflow.core.schema import DataSourceSchema, QueryLanguage
 
 _GLOBAL_ID_PATTERN = re.compile(r"[A-Za-z0-9][A-Za-z0-9._+-]{0,179}")
 
@@ -36,7 +36,7 @@ class DataConnector(Protocol):
         ...
 
     @property
-    def schema(self) -> SourceSchema:
+    def schema(self) -> DataSourceSchema:
         """Return the connector's current source schema."""
         ...
 
@@ -68,6 +68,6 @@ class DataConnector(Protocol):
         """Permanently close the connector and release held resources."""
         ...
 
-    async def refresh_schema_async(self) -> SourceSchema:
+    async def refresh_schema_async(self) -> DataSourceSchema:
         """Re-introspect and return the live source schema."""
         ...

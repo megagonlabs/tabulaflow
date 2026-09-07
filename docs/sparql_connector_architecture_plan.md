@@ -36,7 +36,7 @@ class DataConnector(Protocol):
     global_id: str
     backend: str
     language: QueryLanguage
-    schema: SourceSchema
+    schema: DataSourceSchema
     read_only: bool
 
     async def execute(
@@ -46,7 +46,7 @@ class DataConnector(Protocol):
         timeout: int | None = None,
     ) -> ExecResult: ...
 
-    async def refresh_schema(self) -> SourceSchema: ...
+    async def refresh_schema(self) -> DataSourceSchema: ...
 
     async def close(self) -> None: ...
 ```
@@ -152,7 +152,7 @@ normalization.
 Use a tagged union of self-contained, query-ready schema documents:
 
 ```python
-SourceSchema = Annotated[
+DataSourceSchema = Annotated[
     SQLSchema | PropertyGraphSchema | RDFSchema,
     Field(discriminator="kind"),
 ]
@@ -310,7 +310,7 @@ Acceptance:
 ### Phase 2 — Separate metadata dimensions
 
 - Add discriminators to SQL and property-graph schemas.
-- Introduce `SourceSchema` and `QueryLanguage` types.
+- Introduce `DataSourceSchema` and `QueryLanguage` types.
 - Replace `connector_type` branches throughout data, output, agents, app, and
   research code.
 - Store query language explicitly in result metadata; derive presentation from
@@ -344,7 +344,7 @@ Acceptance:
 
 ### Phase 4 — Add RDF core and presentation
 
-- Add `RDFSchema` and extend `SourceSchema`.
+- Add `RDFSchema` and extend `DataSourceSchema`.
 - Add SPARQL to `QueryLanguage`.
 - Add RDF schema formatting and explorer presentation.
 - Add SPARQL syntax highlighting in terminal and browser output.

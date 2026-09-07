@@ -9,7 +9,7 @@ from tabulaflow.core import (
     ForeignKeySchema,
     GraphPropertySchema,
     PropertyGraphSchema,
-    SourceSchema,
+    DataSourceSchema,
     SQLColumnSchema,
     SQLSchema,
     SQLTableSchema,
@@ -17,7 +17,7 @@ from tabulaflow.core import (
 
 
 def test_source_schema_uses_kind_discriminator() -> None:
-    adapter: TypeAdapter[SourceSchema] = TypeAdapter(SourceSchema)
+    adapter: TypeAdapter[DataSourceSchema] = TypeAdapter(DataSourceSchema)
 
     sql_schema = adapter.validate_python({"kind": "sql", "name": "db", "dialect": "sqlite", "tables": []})
     graph_schema = adapter.validate_python({"kind": "property_graph", "name": "graph"})
