@@ -141,7 +141,7 @@ Dark-app feel, mint accent, modern data-app references (Linear, Stripe, GitHub).
 
 ## Guidelines
 
-- Think from first principles.
+- Always think from first principles and aim for the clean minimal ultimate shape, rather than defaulting to historical constraints.
 - Think out-of-the-box. Find the cleanest and most elegant solution.
 - Fail fast.
 - Fix the root cause, don't just mask the symptom.
