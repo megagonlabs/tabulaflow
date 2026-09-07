@@ -228,7 +228,7 @@ class RunSubagentForEachRowTool:
                 per-row write-back).
             registry: Optional database registry. Required only when callers
                 pass ``enable_run_query_tool=True`` so the per-row subagent
-                can query any registered database. If omitted, that flag is
+                can query any registered data source. If omitted, that flag is
                 unavailable.
             message_store: Optional workspace-backed message store. When
                 provided, every browser tool return is mirrored here and tagged
@@ -306,7 +306,7 @@ class RunSubagentForEachRowTool:
         ``extract_rows_from_documents`` and ``add_canonical_name`` tools, so a row
         that browses can mine pages into structured rows and unify entity variants),
         or ``enable_run_query_tool=True`` to grant a ``run_query`` tool that can query
-        and modify any registered database. Set ``enable_nested_subagents=True`` to
+        and modify any registered data source. Set ``enable_nested_subagents=True`` to
         give the subagent this same tool so it can fan out its own row-wise sub-tasks;
         this does not propagate — each deeper level must set the flag again to nest
         further.
@@ -413,7 +413,7 @@ class RunSubagentForEachRowTool:
                 explicitly.
             enable_run_query_tool: If True, the per-row subagent additionally
                 receives a registry-backed ``run_query`` tool that can query
-                and modify any registered database (the subagent specifies
+                and modify any registered data source (the subagent specifies
                 ``connector_alias`` per call). Enable it for tasks where row-local
                 context isn't enough:
 

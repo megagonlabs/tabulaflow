@@ -16,7 +16,7 @@ _UNSET = object()
 
 
 class RegistryRunQueryTool:
-    """Execute a query against any registered database.
+    """Execute a query against any registered data source.
 
     The agent specifies which connector to target via ``connector_alias``.  The tool
     resolves the alias through a ``DataConnectorRegistry`` and delegates execution to a
@@ -98,7 +98,7 @@ class RegistryRunQueryTool:
         refresh: bool = False,
         include_media: bool = False,
     ) -> ToolReturn:
-        """Execute a query against a registered database.
+        """Execute a query against a registered data source.
 
         Args:
             connector_alias: Alias of the target connector.

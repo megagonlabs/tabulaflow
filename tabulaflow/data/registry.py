@@ -6,7 +6,7 @@ from tabulaflow.data.protocols import DataConnector, validate_global_id
 
 
 class DataConnectorRegistry:
-    """Store named database connectors for a runtime."""
+    """Store named data connectors for a runtime."""
 
     def __init__(self) -> None:
         self._connectors: dict[str, DataConnector] = {}
@@ -26,7 +26,7 @@ class DataConnectorRegistry:
         """
         connector = self._connectors.get(alias)
         if connector is None:
-            raise ValueError(f"Unknown database alias: {alias}")
+            raise ValueError(f"Unknown connector alias: {alias}")
         return connector
 
     def register(self, alias: str, connector: DataConnector) -> None:
@@ -41,7 +41,7 @@ class DataConnectorRegistry:
         """
         validate_global_id(connector.global_id)
         if alias in self._connectors:
-            raise ValueError(f"Database alias already registered: {alias}")
+            raise ValueError(f"Connector alias already registered: {alias}")
         self._connectors[alias] = connector
 
     async def close_async(self, alias: str) -> bool:

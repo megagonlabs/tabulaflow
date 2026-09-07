@@ -23,7 +23,7 @@ class RegistryGetSchemaToolMetrics(BaseModel):
 
 
 class RegistryGetSchemaTool:
-    """Retrieve the full schema of any registered database.
+    """Retrieve the full schema of any registered data source.
 
     Automatically dispatches to the appropriate formatter based on the tagged
     schema model. Large schemas are truncated to ``max_chars``.
@@ -65,7 +65,7 @@ class RegistryGetSchemaTool:
         )
 
     async def execute(self, connector_alias: str, refresh: bool = False) -> str:
-        """Render a registered database schema as agent-facing text."""
+        """Render a registered data-source schema as agent-facing text."""
 
         self._metrics.num_calls += 1
 
@@ -97,7 +97,7 @@ class RegistryGetSchemaTool:
         return self._truncate(result)
 
     async def __call__(self, connector_alias: str, refresh: bool = False) -> ToolReturn:
-        """Get the full schema of a registered database.
+        """Get the full schema of a registered data source.
 
         Args:
             connector_alias: Alias of the target connector.

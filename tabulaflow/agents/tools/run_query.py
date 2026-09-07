@@ -271,7 +271,7 @@ class RunQueryTool:
         if refresh:
             try:
                 await self.db_connector.refresh_schema_async()
-                res += "\n(schema refreshed from live database)"
+                res += "\n(schema refreshed from live data source)"
             except Exception as e:
                 res += f"\n(warning: schema refresh failed: {type(e).__name__}: {e})"
         return QueryExecution(
@@ -339,7 +339,7 @@ class RunQueryTool:
         the complete execution result remains available to the host.
 
         Args:
-            query: The SQL or Cypher query to execute.
+            query: The SQL, Cypher, or SPARQL query to execute.
             parameters: Values for named query placeholders. Exposed only when
                 parameterized queries are enabled.
             refresh: Whether to refresh connector schema after execution. Exposed

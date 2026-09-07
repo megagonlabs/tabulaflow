@@ -25,10 +25,10 @@ class RegistryGetDBDocumentToolMetrics(BaseModel):
 
 
 class RegistryGetDBDocumentTool:
-    """Retrieve a human-readable database document for any registered database.
+    """Retrieve a human-readable source document for any registered data source.
 
-    By default this calls `DBSummarizer` to generate the database document.
-    Optionally, small databases can skip summarization and return a direct
+    By default this calls `DBSummarizer` to generate the source document.
+    Optionally, small sources can skip summarization and return a direct
     formatted schema document.
     """
 
@@ -133,7 +133,7 @@ class RegistryGetDBDocumentTool:
         return text[:_MAX_CHARS] + "\n\n(document truncated)"
 
     async def execute(self, connector_alias: str, refresh: bool = False) -> str:
-        """Render a registered database document as agent-facing text."""
+        """Render a registered data-source document as agent-facing text."""
 
         self._metrics.num_calls += 1
 
@@ -155,7 +155,7 @@ class RegistryGetDBDocumentTool:
         return self._truncate(result)
 
     async def __call__(self, connector_alias: str, refresh: bool = False) -> ToolReturn:
-        """Get a connector-aware database document.
+        """Get a connector-aware data-source document.
 
         Args:
             connector_alias: Alias of the target connector.

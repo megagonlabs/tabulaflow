@@ -82,7 +82,7 @@ Pick the option that is light and matches expected use:
 
 ### Querying databases
 
-- Understand the structure before composing the task query: `get_db_document` for the database overview,
+- Understand the structure before composing the task query: `get_db_document` for the data-source overview,
   `get_table_schema` for the relevant tables, `get_column_json_schema` for semi-structured columns (VARIANT, JSON,
   ARRAY), and exploratory `run_query` to check actual value formats.
 - Build complex queries incrementally with CTEs, formatted for readability — no long one-liners.

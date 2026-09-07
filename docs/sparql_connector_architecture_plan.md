@@ -360,11 +360,24 @@ Acceptance:
 - Implement standards-compatible HTTP execution with the existing async HTTP
   stack.
 - Initially support `SELECT` and `ASK` with SPARQL JSON results.
-- Normalize URIs, nulls, booleans, numerics, dates, language-tagged literals,
-  and unfamiliar datatypes without lossy guesses.
+- Normalize SPARQL JSON bindings using this explicit tabular contract:
+  - an unbound variable becomes `None`;
+  - an IRI becomes its absolute IRI string;
+  - a blank node becomes an `_:`-prefixed identifier;
+  - a plain literal or `xsd:string` becomes a string;
+  - a valid, recognized XSD boolean, integer, decimal, floating-point, date, or
+    date-time literal becomes the corresponding native Python value; and
+  - a language-tagged literal or unfamiliar/invalid typed literal becomes a
+    lossless N-Triples-compatible lexical string (`"value"@lang` or
+    `"value"^^<datatype-iri>`), including the required escaping.
+  `ASK` becomes a one-row, one-column boolean DataFrame. This keeps results
+  readable and writable as ordinary tables while preserving RDF metadata that
+  cannot be represented safely as a native scalar.
 - Add cancellation, timeout, concurrency, response-size, and row limits.
 - Respect `429` and `Retry-After` and send a descriptive User-Agent.
-- Attempt only lightweight service-description discovery.
+- Keep `refresh_schema_async()` bounded and deterministic by rebuilding the
+  configured minimal `RDFSchema`; do not scan the endpoint or fetch Service
+  Description metadata until the schema model has a concrete consumer for it.
 - Use mocked HTTP transports for ordinary tests.
 
 Acceptance:

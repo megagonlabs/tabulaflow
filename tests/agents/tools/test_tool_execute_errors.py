@@ -1,4 +1,5 @@
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any, cast
 
 import pytest
@@ -7,6 +8,7 @@ from tabulaflow.agents.tools.add_canonical_name import AddCanonicalNameTool
 from tabulaflow.agents.tools.connect_data_source import ConnectDataSourceTool
 from tabulaflow.agents.tools.extract_rows_from_documents import ExtractRowsFromDocumentsTool
 from tabulaflow.agents.tools.run_subagent_for_each_row import RunSubagentForEachRowTool
+from tabulaflow.core import RDFSchema
 from tabulaflow.data.registry import DataConnectorRegistry
 
 
@@ -30,6 +32,28 @@ async def test_connect_execute_raises_for_invalid_alias(tmp_path: Path) -> None:
         await tool.execute("missing.csv", "bad-alias")
 
     assert (await tool("missing.csv", "bad-alias")).startswith("(error: invalid alias")
+
+
+async def test_connect_reports_rdf_source_without_calling_it_sql(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    connector = SimpleNamespace(
+        backend="sparql",
+        language="sparql",
+        global_id="test-rdf",
+        schema=RDFSchema(display_name="example"),
+    )
+
+    async def connect_url(*args: object, **kwargs: object) -> object:
+        return connector
+
+    monkeypatch.setattr("tabulaflow.agents.tools.connect_data_source.connect_url", connect_url)
+    tool = ConnectDataSourceTool(DataConnectorRegistry(), tmp_path)
+
+    result = await tool.execute("sparql+https://example.test/query", "example")
+
+    assert result == "Connected 'example' (sparql). Query it using the alias 'example'."
+    assert "SQL" not in result
 
 
 async def test_extraction_execute_raises_for_empty_output_columns() -> None:

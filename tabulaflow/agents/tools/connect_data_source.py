@@ -12,6 +12,7 @@ from pydantic_ai import Tool
 from tabulaflow.data.registry import DataConnectorRegistry
 from tabulaflow.data.url import connect_url
 from tabulaflow.data.url import is_database_file_path
+from tabulaflow.output.formatting import format_connector_summary
 
 if TYPE_CHECKING:
     from tabulaflow.data.protocols import DataConnector
@@ -86,18 +87,8 @@ class ConnectDataSourceTool:
             raise RuntimeError(f"failed to connect {source!r}: {type(e).__name__}: {e}.{hint}") from e
 
         self._registry.register(alias, connector)
-        lang = connector.language
-        label = lang if lang.lower() == "cypher" else f"{lang} SQL"
-        n_tables = self._table_count(connector)
-        suffix = f", {n_tables} table{'s' if n_tables != 1 else ''}" if n_tables else ""
-        return f"Connected '{alias}' ({label}{suffix}). Query it using the alias '{alias}'."
-
-    @staticmethod
-    def _table_count(connector: DataConnector) -> int:
-        try:
-            return len(connector.schema.tables)  # type: ignore[union-attr]
-        except Exception:
-            return 0
+        summary = format_connector_summary(connector)
+        return f"Connected '{alias}' ({summary}). Query it using the alias '{alias}'."
 
     def as_pydantic_ai_tool(self) -> Tool:
         return Tool(self.__call__, name=self.name)
