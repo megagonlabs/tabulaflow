@@ -16,8 +16,9 @@ The final design has:
 - generic agent tools such as `connect_data_source`, `get_db_document`,
   `run_query`, and `write_result_table` rather than Wikidata-specific tools.
 
-Wikidata is a configured use of the generic `SPARQLConnector`, not a separate
-connector implementation.
+Wikidata uses the generic `SPARQLConnector`, not a separate connector
+implementation. Whether it needs endpoint-specific guidance or policy should be
+decided only after testing agent behavior.
 
 ## First-principles model
 
@@ -82,8 +83,8 @@ Neo4jConnector
   query language: cypher
   schema kind: property_graph
 
-SPARQLConnector with Wikidata profile
-  backend: wikidata-query-service
+SPARQLConnector connected to Wikidata Query Service
+  backend: sparql
   query language: sparql
   schema kind: rdf
 ```
@@ -240,9 +241,9 @@ write_result_table
 ```
 
 `run_query` executes both entity/property lookup and data retrieval. Wikidata's
-`SERVICE wikibase:mwapi` supports entity and property search within SPARQL, and
-the Wikidata profile's database document should teach the agent the relevant
-patterns.
+`SERVICE wikibase:mwapi` supports entity and property search within SPARQL. The
+agent may use browser or shell tools to consult current endpoint documentation
+when its built-in knowledge is insufficient.
 
 Browser and shell tools remain fallbacks for documentation, diagnosis, dumps,
 or unsupported bulk workflows. They should not be the primary QID/PID lookup
@@ -268,9 +269,10 @@ sparql+http://localhost:3030/dataset/query
 
 Both `/connect` and `connect_data_source` should resolve this syntax through the
 same data-layer constructor. The official Wikidata endpoint selects the
-Wikidata profile automatically. A future public-source catalog entry named
-Wikidata should resolve to the same connection specification rather than use a
-separate execution path.
+generic SPARQL connector. A future public-source catalog entry named Wikidata
+should resolve to the same connection specification rather than use a separate
+execution path. Endpoint-specific behavior is deferred until agent testing
+demonstrates a concrete need.
 
 ## Phased implementation plan
 
@@ -400,21 +402,24 @@ Acceptance:
 - User and agent connection paths produce the same `SPARQLConnector`.
 - Arbitrary HTTPS resources are not guessed to be SPARQL endpoints.
 
-### Phase 7 — Add endpoint profiles and Wikidata
+### Phase 7 — Test generic Wikidata behavior
 
-- Introduce the minimal profile abstraction with generic and Wikidata profiles.
-- Automatically select the Wikidata profile for the official endpoint.
-- Add Wikidata prefixes, attribution, query guidance, and conservative service
-  settings.
-- Document labels, direct versus full statements, qualifiers, ranks,
-  `wikibase:mwapi`, and geographic services.
+- Connect the official Wikidata endpoint through the generic
+  `SPARQLConnector` with no endpoint profile.
+- Exercise entity and property resolution, labels, direct and full statements,
+  qualifiers, ranks, `wikibase:mwapi`, geographic services, materialization,
+  and joins with user data.
+- Allow the agent to consult current documentation with browser or shell tools
+  when needed.
+- Record recurring failures, unnecessary browsing, stale model knowledge, and
+  service-policy problems before designing endpoint-specific behavior.
 - Keep all querying behind `run_query`.
 
 Acceptance:
 
-- The agent can resolve QIDs and PIDs, retrieve labels and qualifiers, run
-  geographic queries, materialize results, and join them with user data using
-  only the generic connector tools.
+- The user can test representative Wikidata workflows through the generic
+  connector, and any reliability gaps are captured as evidence rather than
+  anticipated in a new abstraction.
 
 ### Phase 8 — Make provenance first-class
 
@@ -430,20 +435,26 @@ Acceptance:
 - Wikidata and generic SPARQL results identify their origin and retrieval time.
 - Materialized tables retain discoverable source metadata.
 
-### Phase 9 — Evaluate agent reliability
+### Phase 9 — Decide whether endpoint-specific support is justified
 
 - Evaluate entity ambiguity, property resolution, qualifiers, labels,
   geography, enrichment, endpoint errors, and broad-query timeouts.
 - Measure valid-SPARQL rate, correct QID/PID selection, retries, timeouts,
   materialization success, and provenance preservation.
-- Improve the source document, examples, and errors before adding tools.
+- Prefer improving generic source documentation, examples, and errors before
+  adding tools or provider-specific behavior.
+- Add the smallest evidence-backed Wikidata guidance directly to its source
+  description if static guidance is sufficient.
+- Introduce an endpoint-profile abstraction only if testing demonstrates a
+  cohesive need for endpoint-specific metadata or execution policy beyond one
+  source description.
 - Add a generic entity-search capability only if evidence shows it is needed.
 
 Acceptance:
 
 - The generic `run_query` workflow is reliable enough for representative
   Wikidata tasks, or there is concrete evidence supporting one narrow generic
-  capability.
+  capability or endpoint-specific addition.
 
 ### Phase 10 — Complete ordinary SPARQL support
 
@@ -465,7 +476,8 @@ Acceptance:
 - Standards-compatible SPARQL endpoints work without provider-specific code.
 - Read-only mode prevents updates.
 - Graph-producing queries return normalized reusable results.
-- Backend profiles remain small and declarative.
+- Any profiles justified by observed incompatibilities remain small and
+  declarative.
 
 ## Final target
 
@@ -481,10 +493,7 @@ DataConnector
 └── SPARQLConnector
     ├── RDF schema
     ├── SPARQL
-    └── endpoint profile
-        ├── generic
-        ├── Wikidata
-        └── other profiles only as justified
+    └── optional endpoint-specific behavior only when justified by testing
 ```
 
 The critical sequencing rule is to complete the common connector and metadata
