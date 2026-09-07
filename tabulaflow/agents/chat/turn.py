@@ -4,9 +4,10 @@ from __future__ import annotations
 
 import json
 from collections.abc import Callable
-from typing import TYPE_CHECKING, Any
+from dataclasses import replace
+from typing import TYPE_CHECKING, Any, cast
 
-from pydantic_ai.messages import ModelMessage, ToolReturnPart
+from pydantic_ai.messages import ModelMessage, ModelResponse, ModelResponsePart, ThinkingPart, ToolReturnPart
 
 from tabulaflow.agents.chat.compaction import HOST_EVENT_METADATA_KEY
 from tabulaflow.agents.chat.events import (
@@ -110,6 +111,29 @@ def _declared_bundle(completed_results: dict[str, ToolReturnPart]) -> "ArtifactB
     return None
 
 
+def _make_incomplete_response_portable(response: ModelResponse) -> ModelResponse:
+    """Remove provider-owned replay state from an incomplete response."""
+    parts: list[ModelResponsePart] = []
+    for part in response.parts:
+        portable_part = cast(
+            ModelResponsePart,
+            replace(cast(Any, part), id=None, provider_name=None, provider_details=None),
+        )
+        if isinstance(portable_part, ThinkingPart):
+            portable_part = replace(portable_part, signature=None)
+        parts.append(portable_part)
+
+    return replace(
+        response,
+        parts=parts,
+        provider_name=None,
+        provider_url=None,
+        provider_details=None,
+        provider_response_id=None,
+        conversation_id=None,
+    )
+
+
 def _patch_incomplete_messages(
     messages: list[ModelMessage],
     completed_results: dict[str, ToolReturnPart],
@@ -134,6 +158,9 @@ def _patch_incomplete_messages(
 
     out = list(messages)
     last = out[-1] if out else None
+    if isinstance(last, ModelResponse):
+        last = _make_incomplete_response_portable(last)
+        out[-1] = last
     pending = [p for p in last.parts if isinstance(p, ToolCallPart)] if isinstance(last, ModelResponse) else []
 
     if pending:
