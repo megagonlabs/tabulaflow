@@ -770,6 +770,7 @@ Sep 7
   - [ ] Image cramped - https://huggingface.co/datasets/lmms-lab-encoder/DocVQA/viewer/DocVQA
 
 - [ ] Authentication
+- [ ] Avoid AGENTS.md CLAUDE.md re-read after compaction
 - [ ] Merge registry tool variants
 - [ ] Fix input history order
 - [ ] Huggingface connect split selection and better url cleaning
