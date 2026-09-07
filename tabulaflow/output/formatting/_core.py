@@ -7,9 +7,10 @@ import numpy as np
 import pandas as pd
 from tabulate import tabulate
 
+from tabulaflow.core.schema import PropertyGraphSchema, SQLSchema
 from tabulaflow.core.media import parse_base64_data_uri
 from tabulaflow.core.results import ExecResult
-from tabulaflow.data.protocols import DBConnector
+from tabulaflow.data.protocols import DataConnector
 
 
 def summarize_binary_values(value: object) -> object:
@@ -31,7 +32,7 @@ def summarize_binary_values(value: object) -> object:
     return value
 
 
-def format_connector_summary(connector: DBConnector) -> str:
+def format_connector_summary(connector: DataConnector) -> str:
     """Format a concise summary of a live data connector.
 
     Args:
@@ -40,15 +41,18 @@ def format_connector_summary(connector: DBConnector) -> str:
     Returns:
         Human-readable backend, language, and schema-size information.
     """
-    if connector.connector_type == "property_graph":
-        n_labels = len(connector.schema.nodes)
-        n_relationships = len(connector.schema.relationships)
+    schema = connector.schema
+    if isinstance(schema, PropertyGraphSchema):
+        n_labels = len(schema.nodes)
+        n_relationships = len(schema.relationships)
         return (
             f"{connector.backend}, {connector.language}, {n_labels} label{'s' if n_labels != 1 else ''}, "
             f"{n_relationships} relationship type{'s' if n_relationships != 1 else ''}"
         )
 
-    n_tables = len(connector.schema.tables)
+    if not isinstance(schema, SQLSchema):
+        raise TypeError(f"Unsupported schema type: {type(schema)!r}")
+    n_tables = len(schema.tables)
     implementation = (
         connector.backend if connector.backend == connector.language else f"{connector.backend}, {connector.language}"
     )

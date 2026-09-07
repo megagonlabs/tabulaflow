@@ -9,12 +9,12 @@ from typing import TYPE_CHECKING, ClassVar
 
 from pydantic_ai import Tool
 
-from tabulaflow.data.registry import DBRegistry
+from tabulaflow.data.registry import DataConnectorRegistry
 from tabulaflow.data.url import connect_url
 from tabulaflow.data.url import is_database_file_path
 
 if TYPE_CHECKING:
-    from tabulaflow.data.protocols import DBConnector
+    from tabulaflow.data.protocols import DataConnector
 
 _VALID_NAME = re.compile(r"[A-Za-z0-9_]+")
 
@@ -24,7 +24,7 @@ class ConnectDataSourceTool:
 
     name: ClassVar = "connect_data_source"
 
-    def __init__(self, registry: DBRegistry, data_dir: Path) -> None:
+    def __init__(self, registry: DataConnectorRegistry, data_dir: Path) -> None:
         self._registry = registry
         self._data_dir = data_dir
 
@@ -68,7 +68,7 @@ class ConnectDataSourceTool:
             raise FileNotFoundError(f"no such file: {source!r}; pass a local file path or a HuggingFace dataset URL")
         try:
             if is_hf:
-                connector: DBConnector = await load_hf_dataset(source, db_name=alias, read_only=True)
+                connector: DataConnector = await load_hf_dataset(source, db_name=alias, read_only=True)
             elif is_url:
                 connector = await connect_url(source, db_name=alias, read_only=True)
             elif is_database_file_path(path):
@@ -93,7 +93,7 @@ class ConnectDataSourceTool:
         return f"Connected '{alias}' ({label}{suffix}). Query it using the alias '{alias}'."
 
     @staticmethod
-    def _table_count(connector: DBConnector) -> int:
+    def _table_count(connector: DataConnector) -> int:
         try:
             return len(connector.schema.tables)  # type: ignore[union-attr]
         except Exception:

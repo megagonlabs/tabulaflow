@@ -10,7 +10,7 @@ from tabulaflow.agents.tools.registry.get_db_document import RegistryGetDBDocume
 from tabulaflow.agents.tools.registry.get_schema import RegistryGetSchemaTool
 from tabulaflow.agents.tools.registry.get_table_schema import RegistryGetTableSchemaTool
 from tabulaflow.agents.tools.registry.run_query import RegistryRunQueryTool
-from tabulaflow.data.registry import DBRegistry
+from tabulaflow.data.registry import DataConnectorRegistry
 
 
 def _fields(tool: Tool[Any]) -> set[str]:
@@ -24,7 +24,7 @@ def _fields(tool: Tool[Any]) -> set[str]:
 
 def _db_document_tool(enable_refresh: bool) -> RegistryGetDBDocumentTool:
     return RegistryGetDBDocumentTool(
-        DBRegistry(),
+        DataConnectorRegistry(),
         db_summarizer_cls=lambda **_: None,
         enable_refresh=enable_refresh,
     )
@@ -32,9 +32,9 @@ def _db_document_tool(enable_refresh: bool) -> RegistryGetDBDocumentTool:
 
 _REFRESH_TOOL_FACTORIES: list[Callable[[bool], Any]] = [
     lambda enabled: GetTableSchemaTool(cast(Any, object()), cast(Any, object()), enable_refresh=enabled),
-    lambda enabled: RegistryGetTableSchemaTool(DBRegistry(), cast(Any, object()), enable_refresh=enabled),
+    lambda enabled: RegistryGetTableSchemaTool(DataConnectorRegistry(), cast(Any, object()), enable_refresh=enabled),
     _db_document_tool,
-    lambda enabled: RegistryGetSchemaTool(DBRegistry(), enable_refresh=enabled),
+    lambda enabled: RegistryGetSchemaTool(DataConnectorRegistry(), enable_refresh=enabled),
 ]
 
 
@@ -64,7 +64,7 @@ def test_registry_run_query_exposes_enabled_parameters(
     expected: set[str],
 ) -> None:
     tool = RegistryRunQueryTool(
-        DBRegistry(),
+        DataConnectorRegistry(),
         enable_params=enable_params,
         enable_refresh=enable_refresh,
         enable_media=enable_media,

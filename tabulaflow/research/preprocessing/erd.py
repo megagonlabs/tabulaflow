@@ -17,7 +17,7 @@ from tabulaflow.agents.tools.run_query import RunQueryTool
 from tabulaflow.agents.trace import Usage
 from tabulaflow.core._cache import stable_cache_key
 from tabulaflow.core import SQLSchema, TableRef
-from tabulaflow.data import SQLConnectorProtocol
+from tabulaflow.data import SQLConnector
 from tabulaflow.output.formatting import SQLDDLSchemaFormatter, SQLSchemaFormatter
 from tabulaflow.research.preprocessing.registry import preprocessor_registry
 
@@ -277,7 +277,7 @@ class ERDiagramSynthesizer:
     def usage(self) -> Usage:
         return self._usage
 
-    def _cache_path(self, cache_dir: Path, connector: SQLConnectorProtocol) -> Path:
+    def _cache_path(self, cache_dir: Path, connector: SQLConnector) -> Path:
         key = stable_cache_key(
             {
                 "version": "v1",
@@ -289,7 +289,7 @@ class ERDiagramSynthesizer:
         )
         return cache_dir / "agent" / "er_diagrams" / f"v1@{key}.json"
 
-    async def preprocess_async(self, connector: SQLConnectorProtocol) -> ERDiagram:
+    async def preprocess_async(self, connector: SQLConnector) -> ERDiagram:
         config = _get_agent_runtime().config
         return await load_or_compute_model(
             path=self._cache_path(config.cache_dir, connector),
@@ -298,7 +298,7 @@ class ERDiagramSynthesizer:
             compute=lambda: self._synthesize(connector),
         )
 
-    async def _synthesize(self, db_connector: SQLConnectorProtocol) -> ERDiagram:
+    async def _synthesize(self, db_connector: SQLConnector) -> ERDiagram:
         schema = db_connector.schema
 
         system_prompt = jinja2.Template(ER_DIAGRAM_SYNTHESIS_PROMPT).render()

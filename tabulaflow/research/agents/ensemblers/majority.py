@@ -5,7 +5,7 @@ from pydantic import BaseModel
 from tabulaflow.research.observability import trace_prediction
 from tabulaflow.research.agents.ensemblers.utils import execution_result_key
 from tabulaflow.research.types import SimpleNL2QTask, SimpleNL2QTaskOutput
-from tabulaflow.data import SQLConnectorProtocol
+from tabulaflow.data import SQLConnector
 from tabulaflow.research.query_execution import populate_query_exec_result
 
 
@@ -22,7 +22,7 @@ class MajorityEnsembler:
 
     @trace_prediction
     async def ensemble_async(
-        self, task: SimpleNL2QTask, db_connector: SQLConnectorProtocol, task_outputs: list[SimpleNL2QTaskOutput]
+        self, task: SimpleNL2QTask, db_connector: SQLConnector, task_outputs: list[SimpleNL2QTaskOutput]
     ) -> SimpleNL2QTaskOutput:
         # Filter to outputs that have a pred_query
         candidates = [output for output in task_outputs if output.pred_query is not None]

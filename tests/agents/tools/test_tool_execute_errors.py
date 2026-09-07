@@ -7,7 +7,7 @@ from tabulaflow.agents.tools.add_canonical_name import AddCanonicalNameTool
 from tabulaflow.agents.tools.connect_data_source import ConnectDataSourceTool
 from tabulaflow.agents.tools.extract_rows_from_documents import ExtractRowsFromDocumentsTool
 from tabulaflow.agents.tools.run_subagent_for_each_row import RunSubagentForEachRowTool
-from tabulaflow.data.registry import DBRegistry
+from tabulaflow.data.registry import DataConnectorRegistry
 
 
 async def test_canonicalization_execute_raises_without_workspace() -> None:
@@ -24,7 +24,7 @@ async def test_canonicalization_execute_raises_without_workspace() -> None:
 
 
 async def test_connect_execute_raises_for_invalid_alias(tmp_path: Path) -> None:
-    tool = ConnectDataSourceTool(DBRegistry(), tmp_path)
+    tool = ConnectDataSourceTool(DataConnectorRegistry(), tmp_path)
 
     with pytest.raises(ValueError, match="invalid alias"):
         await tool.execute("missing.csv", "bad-alias")

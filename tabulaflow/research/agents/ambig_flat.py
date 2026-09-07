@@ -5,7 +5,7 @@ import time
 from typing import ClassVar, Literal, Any, cast
 from pydantic import BaseModel
 from pydantic_ai import Agent, ToolOutput
-from tabulaflow.data import SQLConnectorProtocol
+from tabulaflow.data import SQLConnector
 from tabulaflow.output.formatting import schema_formatter_registry, SQLSchemaFormatter
 from tabulaflow.agents.trace import Usage, Trajectory
 from tabulaflow.research.observability import trace_prediction
@@ -272,7 +272,7 @@ class AmbigFlatSQLAgent:
                     )
                     pred_query.parameter_values[ap.parameter_name] = ap.intended_parameter_value
 
-    async def _get_tools(self, db_connector: SQLConnectorProtocol) -> dict[str, AgentTool]:
+    async def _get_tools(self, db_connector: SQLConnector) -> dict[str, AgentTool]:
         schema = db_connector.schema
         tools: dict[str, AgentTool] = {}
         tools["get_schema"] = GetSchemaTool(schema, self.formatter)
@@ -285,7 +285,7 @@ class AmbigFlatSQLAgent:
 
     @trace_prediction
     async def predict_async(
-        self, task: AmbigNL2QTask, db_connector: SQLConnectorProtocol, user_simulator: UserSimulatorProtocol
+        self, task: AmbigNL2QTask, db_connector: SQLConnector, user_simulator: UserSimulatorProtocol
     ) -> FlatAmbigNL2QTaskOutput:
         t0 = time.time()
 

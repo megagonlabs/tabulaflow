@@ -16,7 +16,7 @@ import pandas as pd
 from tabulaflow.core import ExecResult
 from tabulaflow.research.types import GoldQuery
 from tabulaflow.research.types import SimpleNL2QTask, NL2QDataset
-from tabulaflow.data import SQLConnector, SQLConnectorConfig, SQLConnectorProtocol
+from tabulaflow.data import SQLConnector, SQLConnectorConfig
 from tabulaflow.research.benchmarks.registry import dataset_registry, select_tasks, selected_databases
 from tabulaflow.research.benchmarks.installation import (
     BenchmarkInstallation,
@@ -303,16 +303,14 @@ class Spider2SnowDatasetLoader:
             config=self.connector_config.model_copy(update={"max_query_concurrency": 2}),
         )
 
-    async def get_db_connectors_async(
-        self, split: str, databases: list[str] | None = None
-    ) -> dict[str, SQLConnectorProtocol]:
+    async def get_db_connectors_async(self, split: str, databases: list[str] | None = None) -> dict[str, SQLConnector]:
         if split not in self.splits:
             raise ValueError(f"Split {split} not supported, only {self.splits} are supported for {self.name}")
 
         databases = self.get_databases(split) if databases is None else databases
         column_descriptions = self._load_column_descriptions()
 
-        connectors: dict[str, SQLConnectorProtocol] = {}
+        connectors: dict[str, SQLConnector] = {}
         for db_name in databases:
             conn = await self._build_snowflake_connector(db_name)
 

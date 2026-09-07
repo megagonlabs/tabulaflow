@@ -6,7 +6,7 @@ from textual.app import App, ComposeResult
 from textual.widgets import Tree
 
 from tabulaflow.app.tui.screens.schema import SchemaBrowserScreen
-from tabulaflow.data import DBRegistry
+from tabulaflow.data import DataConnectorRegistry
 from tabulaflow.core import (
     ExecResult,
     GraphPropertySchema,
@@ -61,7 +61,7 @@ class FakeGraphConnector:
 
 
 class SchemaBrowserTestApp(App[None]):
-    def __init__(self, registry: DBRegistry) -> None:
+    def __init__(self, registry: DataConnectorRegistry) -> None:
         super().__init__()
         self.registry = registry
 
@@ -95,7 +95,7 @@ def _tree_node_by_label(tree: Tree[object], label: str) -> Any:
 
 
 async def test_schema_browser_renders_property_graph_schema() -> None:
-    registry = DBRegistry()
+    registry = DataConnectorRegistry()
     registry.register("neo", FakeGraphConnector())  # type: ignore[arg-type]
     app = SchemaBrowserTestApp(registry)
 

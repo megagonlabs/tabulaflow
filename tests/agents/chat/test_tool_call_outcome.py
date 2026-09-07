@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import create_async_engine
 
 from tabulaflow.agents.chat.turn import _TextStreamRouter, _emit_stream_event
 from tabulaflow.agents.chat.events import ChatEvent, ToolFinished
-from tabulaflow.data.registry import DBRegistry
+from tabulaflow.data.registry import DataConnectorRegistry
 from tabulaflow.data.sql import SQLConnector
 from tabulaflow.output.formatting import SQLDDLSchemaFormatter
 from tabulaflow.output.store import OutputStore
@@ -38,37 +38,37 @@ async def _make_connector(tmp_path: Path) -> SQLConnector:
 
 
 @pytest.fixture
-async def registry(tmp_path: Path) -> DBRegistry:
-    r = DBRegistry()
+async def registry(tmp_path: Path) -> DataConnectorRegistry:
+    r = DataConnectorRegistry()
     r.register("mydb", await _make_connector(tmp_path))
     return r
 
 
 class TestRunQueryOutcome:
-    async def test_success_reports_rows(self, registry: DBRegistry) -> None:
+    async def test_success_reports_rows(self, registry: DataConnectorRegistry) -> None:
         result = await RegistryRunQueryTool(registry)("mydb", "SELECT * FROM t")
         assert isinstance(result, ToolReturn)
         assert isinstance(result.return_value, str) and result.return_value.startswith("[source_id=")
         assert result.metadata == ToolCallOutcome(count=3, unit="rows")
 
-    async def test_query_error_reports_error(self, registry: DBRegistry) -> None:
+    async def test_query_error_reports_error(self, registry: DataConnectorRegistry) -> None:
         result = await RegistryRunQueryTool(registry)("mydb", "SELECT * FROM missing")
         assert isinstance(result, ToolReturn)
         assert result.metadata == ToolCallOutcome(error=True)
 
-    async def test_unknown_alias_reports_error(self, registry: DBRegistry) -> None:
+    async def test_unknown_alias_reports_error(self, registry: DataConnectorRegistry) -> None:
         result = await RegistryRunQueryTool(registry)("nope", "SELECT 1")
         assert isinstance(result, ToolReturn)
         assert result.metadata == ToolCallOutcome(error=True)
 
-    async def test_programmatic_call_returns_text(self, registry: DBRegistry) -> None:
+    async def test_programmatic_call_returns_text(self, registry: DataConnectorRegistry) -> None:
         result = await RegistryRunQueryTool(registry)("mydb", "SELECT * FROM t")
         assert isinstance(result, ToolReturn)
         assert isinstance(result.return_value, str) and result.return_value.startswith("[source_id=")
 
     async def test_storage_failure_reports_error(
         self,
-        registry: DBRegistry,
+        registry: DataConnectorRegistry,
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
@@ -86,13 +86,13 @@ class TestRunQueryOutcome:
 
 
 class TestGetTableSchemaOutcome:
-    async def test_success_reports_columns(self, registry: DBRegistry) -> None:
+    async def test_success_reports_columns(self, registry: DataConnectorRegistry) -> None:
         tool = RegistryGetTableSchemaTool(registry, SQLDDLSchemaFormatter())
         result = await tool("mydb", None, "t")
         assert isinstance(result, ToolReturn)
         assert result.metadata == ToolCallOutcome(count=2, unit="columns")
 
-    async def test_missing_table_reports_no_count(self, registry: DBRegistry) -> None:
+    async def test_missing_table_reports_no_count(self, registry: DataConnectorRegistry) -> None:
         tool = RegistryGetTableSchemaTool(registry, SQLDDLSchemaFormatter())
         result = await tool("mydb", None, "missing")
         assert isinstance(result, ToolReturn)
@@ -101,20 +101,20 @@ class TestGetTableSchemaOutcome:
 
 class TestRegistryToolErrorOutcomes:
     async def test_column_json_schema_error_has_metadata(self) -> None:
-        result = await RegistryGetColumnJsonSchemaTool(DBRegistry())("missing", None, "t", "payload")
+        result = await RegistryGetColumnJsonSchemaTool(DataConnectorRegistry())("missing", None, "t", "payload")
         assert result.metadata == ToolCallOutcome(error=True)
 
     async def test_db_document_error_has_metadata(self) -> None:
-        tool = RegistryGetDBDocumentTool(DBRegistry(), db_summarizer_cls=lambda **_: None)
+        tool = RegistryGetDBDocumentTool(DataConnectorRegistry(), db_summarizer_cls=lambda **_: None)
         result = await tool("missing")
         assert result.metadata == ToolCallOutcome(error=True)
 
     async def test_schema_error_has_metadata(self) -> None:
-        result = await RegistryGetSchemaTool(DBRegistry())("missing")
+        result = await RegistryGetSchemaTool(DataConnectorRegistry())("missing")
         assert result.metadata == ToolCallOutcome(error=True)
 
     async def test_transfer_error_has_metadata(self) -> None:
-        result = await WriteResultTableTool(DBRegistry(), OutputStore())("S1", "workspace", None, "target")
+        result = await WriteResultTableTool(DataConnectorRegistry(), OutputStore())("S1", "workspace", None, "target")
         assert result.metadata == ToolCallOutcome(error=True)
 
 

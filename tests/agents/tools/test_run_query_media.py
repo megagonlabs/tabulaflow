@@ -23,7 +23,7 @@ import tabulaflow.agents.tools.run_query as run_query_module
 from tabulaflow.agents.tools.registry.run_query import RegistryRunQueryTool
 from tabulaflow.agents.tools.run_query import RunQueryTool
 from tabulaflow.core import ExecResult
-from tabulaflow.data.registry import DBRegistry
+from tabulaflow.data.registry import DataConnectorRegistry
 
 
 def _png() -> bytes:
@@ -344,7 +344,7 @@ async def test_run_query_allows_many_rows_without_media() -> None:
 async def test_registry_run_query_propagates_media_and_stores_original_result() -> None:
     image = _png()
     result = ExecResult(df=pd.DataFrame({"image": [image]}))
-    registry = DBRegistry()
+    registry = DataConnectorRegistry()
     registry.register("assets", cast(Any, _ResultConnector(result)))
     tool = RegistryRunQueryTool(registry, enable_media=True)
 

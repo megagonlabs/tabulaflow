@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING
 
 from rich.text import Text
 from textual.app import ComposeResult
@@ -39,8 +39,8 @@ if TYPE_CHECKING:
     from collections.abc import Iterator
     from typing import Any
 
-    from tabulaflow.data.registry import DBRegistry
-    from tabulaflow.data.protocols import PropertyGraphConnectorProtocol
+    from tabulaflow.data.registry import DataConnectorRegistry
+    from tabulaflow.data.protocols import DataConnector
 
 
 class _NodeData:
@@ -185,7 +185,7 @@ class SchemaBrowserScreen(Screen[None]):
     def __init__(
         self,
         *,
-        registry: DBRegistry,
+        registry: DataConnectorRegistry,
         alias: str | None = None,
         state: ExplorerState | None = None,
     ) -> None:
@@ -360,7 +360,7 @@ class SchemaBrowserScreen(Screen[None]):
                 self._add_graph_db_node(
                     tree.root,
                     alias,
-                    cast("PropertyGraphConnectorProtocol", connector),
+                    connector,
                     schema,
                 )
                 continue
@@ -406,7 +406,7 @@ class SchemaBrowserScreen(Screen[None]):
         self,
         parent: object,
         alias: str,
-        connector: PropertyGraphConnectorProtocol,
+        connector: DataConnector,
         schema: object,
     ) -> None:
         from tabulaflow.core import PropertyGraphSchema
@@ -588,12 +588,14 @@ class SchemaBrowserScreen(Screen[None]):
             return
 
         connector = self._registry.get(node_data.alias)
+        from tabulaflow.data.sql import SQLConnector
+
+        assert isinstance(connector, SQLConnector)
         schema = connector.schema
         assert isinstance(schema, SQLSchema)
         # SQLSchema implies a SQL connector; the live preview path uses
-        # SQLAlchemy ``Executable`` which only ``SQLConnectorProtocol``
+        # SQLAlchemy ``Executable`` which only ``SQLConnector``
         # accepts.
-        assert connector.connector_type == "sql"
         assert node_data.table_name is not None
         table = next(
             (t for t in schema.tables if t.name == node_data.table_name and t.schema_name == node_data.schema_name),

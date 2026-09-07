@@ -1,14 +1,11 @@
-"""Database connector protocols and shared execution errors."""
+"""Data connector protocol and shared execution errors."""
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping
 import re
-from typing import Any, ClassVar, Literal, Protocol, TypeAlias
-
-import pandas as pd
-from sqlalchemy.sql import Executable
+from typing import Any, Literal, Protocol, TypeAlias
 
 from tabulaflow.core.results import ExecResult
-from tabulaflow.core.schema import GraphQueryLanguage, PropertyGraphSchema, SQLDialect, SQLSchema, TableRef
+from tabulaflow.core.schema import GraphQueryLanguage, PropertyGraphSchema, SQLDialect, SQLSchema
 
 DataFrameWriteMode: TypeAlias = Literal["create", "append", "replace_rows", "replace_table"]
 
@@ -32,92 +29,52 @@ class ResultTooLargeError(RuntimeError):
         super().__init__(f"Query returned more than {max_rows:,} rows; add a LIMIT, filter, or aggregation")
 
 
-class SQLConnectorProtocol(Protocol):
-    """Structural interface implemented by SQL database connectors."""
+class DataConnector(Protocol):
+    """Structural interface implemented by every live queryable data source."""
 
-    connector_type: ClassVar[Literal["sql"]]
-    global_id: str
-    schema: SQLSchema
+    @property
+    def connector_type(self) -> Literal["sql", "property_graph"]:
+        """Return the connector's current schema and result family."""
+        ...
+
+    @property
+    def global_id(self) -> str:
+        """Return the stable connector identity used by caches."""
+        ...
+
+    @property
+    def schema(self) -> SQLSchema | PropertyGraphSchema:
+        """Return the connector's current source schema."""
+        ...
 
     @property
     def backend(self) -> str:
-        """Return the concrete SQL database backend name."""
+        """Return the concrete backend name."""
         ...
 
     @property
-    def language(self) -> SQLDialect:
-        """Return the SQL dialect understood by the connector."""
-        ...
-
-    async def run_query_async(
-        self,
-        query: str | Executable,
-        parameters: Sequence[Any] | Mapping[str, Any] = (),
-        timeout: int | None = ...,
-    ) -> ExecResult:
-        """Execute a SQL statement and return rows or an error as data."""
-        ...
-
-    async def close_async(self) -> None:
-        """Permanently close the connector and release held resources."""
-        ...
-
-    async def release_connections_async(self) -> None:
-        """Release pooled connections while keeping the connector reusable."""
-        ...
-
-    async def refresh_schema_async(
-        self,
-        tables: list[TableRef] | None = None,
-    ) -> SQLSchema:
-        """Re-introspect all or selected tables and return the live schema."""
-        ...
-
-    async def write_dataframe_async(
-        self,
-        df: pd.DataFrame,
-        table_name: str,
-        schema_name: str | None = None,
-        mode: DataFrameWriteMode = "create",
-    ) -> int:
-        """Write rows according to ``mode`` and return the number written."""
-        ...
-
-
-class PropertyGraphConnectorProtocol(Protocol):
-    """Structural interface implemented by property-graph connectors."""
-
-    connector_type: ClassVar[Literal["property_graph"]]
-    global_id: str
-    schema: PropertyGraphSchema
-
-    @property
-    def backend(self) -> str:
-        """Return the graph database backend name."""
-        ...
-
-    @property
-    def language(self) -> GraphQueryLanguage:
+    def language(self) -> SQLDialect | GraphQueryLanguage:
         """Return the query language understood by the connector."""
+        ...
+
+    @property
+    def read_only(self) -> bool:
+        """Return whether mutating operations are blocked."""
         ...
 
     async def run_query_async(
         self,
         query: str,
-        parameters: Mapping[str, Any] | None = None,
+        parameters: Mapping[str, Any] = ...,
         timeout: int | None = ...,
     ) -> ExecResult:
-        """Execute a graph query and return tabular/graph data or an error."""
+        """Execute a query and return rows, graph data, or an error as data."""
         ...
 
     async def close_async(self) -> None:
         """Permanently close the connector and release held resources."""
         ...
 
-    async def refresh_schema_async(self) -> PropertyGraphSchema:
-        """Re-introspect and return the live property-graph schema."""
+    async def refresh_schema_async(self) -> SQLSchema | PropertyGraphSchema:
+        """Re-introspect and return the live source schema."""
         ...
-
-
-DBConnector: TypeAlias = SQLConnectorProtocol | PropertyGraphConnectorProtocol
-"""Any live SQL or property-graph connector."""

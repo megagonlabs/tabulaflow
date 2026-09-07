@@ -16,7 +16,7 @@ from urllib.parse import parse_qsl, unquote, urlencode, urlparse, urlunparse
 from tabulaflow.data.config import Neo4jConnectorConfig, SQLConnectorConfig
 
 if TYPE_CHECKING:
-    from tabulaflow.data.protocols import DBConnector
+    from tabulaflow.data.protocols import DataConnector
 
 # Local database-file extension -> SQLAlchemy scheme.
 _DB_FILE_SCHEMES: dict[str, str] = {
@@ -133,7 +133,7 @@ async def connect_url(
     read_only: bool = True,
     global_id: str | None = None,
     config: SQLConnectorConfig | Neo4jConnectorConfig | None = None,
-) -> DBConnector:
+) -> DataConnector:
     """Build the appropriate connector from a raw database URL or local db-file path.
 
     Normalizes the URL, dispatches to the Neo4j or SQL connector by scheme, and applies

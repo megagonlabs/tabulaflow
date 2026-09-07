@@ -1,11 +1,11 @@
-"""Get-schema tool backed by a DBRegistry, with auto-dispatch by connector type."""
+"""Get-schema tool backed by a DataConnectorRegistry, with auto-dispatch by connector type."""
 
 from typing import ClassVar
 
 from pydantic import BaseModel
 from pydantic_ai import Tool, ToolReturn
 
-from tabulaflow.data.registry import DBRegistry
+from tabulaflow.data.registry import DataConnectorRegistry
 from tabulaflow.output.formatting.cypher import CypherSchemaFormatter
 from tabulaflow.output.formatting.sql_ddl import SQLDDLSchemaFormatter
 from tabulaflow.agents.tools.protocols import ToolCallOutcome, _omit_tool_parameters
@@ -34,7 +34,7 @@ class RegistryGetSchemaTool:
 
     def __init__(
         self,
-        registry: DBRegistry,
+        registry: DataConnectorRegistry,
         *,
         enable_refresh: bool = False,
         max_chars: int = _DEFAULT_MAX_CHARS,
@@ -76,22 +76,25 @@ class RegistryGetSchemaTool:
             available = ", ".join(self.registry.list_aliases()) or "(none)"
             raise ValueError(f"unknown db_alias: {db_alias!r}; available: {available}") from None
 
-        if connector.connector_type == "sql":
+        from tabulaflow.core import PropertyGraphSchema, SQLSchema
+
+        schema = connector.schema
+        if isinstance(schema, SQLSchema):
             if refresh:
                 try:
                     await connector.refresh_schema_async()
                 except Exception as exc:
                     raise RuntimeError(f"schema refresh failed: {exc}") from exc
-            result = self._sql_formatter.format(connector.schema, include_descriptions=True)
-        elif connector.connector_type == "property_graph":
+            result = self._sql_formatter.format(schema, include_descriptions=True)
+        elif isinstance(schema, PropertyGraphSchema):
             if refresh:
                 try:
                     await connector.refresh_schema_async()
                 except Exception as exc:
                     raise RuntimeError(f"schema refresh failed: {exc}") from exc
-            result = self._graph_formatter.format(connector.schema)
+            result = self._graph_formatter.format(schema)
         else:
-            raise TypeError(f"unsupported connector type: {connector.connector_type!r}")
+            raise TypeError(f"unsupported schema type: {type(schema)!r}")
 
         return self._truncate(result)
 

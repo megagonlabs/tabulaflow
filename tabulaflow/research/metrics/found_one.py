@@ -6,7 +6,7 @@ from tabulaflow.research.types import (
     StructuredAmbigNL2QTaskOutput,
     NumericOrNull,
 )
-from tabulaflow.data import DBConnector
+from tabulaflow.data import DataConnector
 from tabulaflow.research.metrics.registry import metric_registry
 from tabulaflow.research.metrics.utils import get_final_pred_query
 from tabulaflow.research.metrics.simple_ex import SimpleEx
@@ -31,7 +31,7 @@ class FoundOne:
     async def compute_async(
         self,
         task: NL2QTaskOutput,
-        db_connector: DBConnector | None = None,
+        db_connector: DataConnector | None = None,
     ) -> NumericOrNull:
         assert isinstance(task, AmbigTaskOutput)
         pred_query = get_final_pred_query(task)

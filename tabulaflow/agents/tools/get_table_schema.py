@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from typing import ClassVar
 from pydantic_ai import Tool
 from pydantic import BaseModel
-from tabulaflow.data.protocols import SQLConnectorProtocol
+from tabulaflow.data import SQLConnector
 from tabulaflow.core.schema import SQLColumnSchema, TableRef
 from tabulaflow.output.formatting.schema import SQLSchemaFormatter
 from tabulaflow.agents.tools._sql import find_table
@@ -54,7 +54,7 @@ class GetTableSchemaTool:
 
     def __init__(
         self,
-        db_connector: SQLConnectorProtocol,
+        db_connector: SQLConnector,
         formatter: SQLSchemaFormatter,
         *,
         include_descriptions: bool = True,

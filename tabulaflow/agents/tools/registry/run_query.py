@@ -1,4 +1,4 @@
-"""Run-query tool backed by a DBRegistry, letting agents target any source."""
+"""Run-query tool backed by a DataConnectorRegistry, letting agents target any source."""
 
 from __future__ import annotations
 
@@ -6,8 +6,8 @@ from typing import Any, ClassVar
 
 from pydantic_ai import Tool, ToolReturn
 
-from tabulaflow.data.protocols import DBConnector
-from tabulaflow.data.registry import DBRegistry
+from tabulaflow.data.protocols import DataConnector
+from tabulaflow.data.registry import DataConnectorRegistry
 from tabulaflow.agents.tools.protocols import ToolCallOutcome, _omit_tool_parameters, sum_tool_metrics
 from tabulaflow.output.store import OutputStore, SourceResolutionError
 from tabulaflow.agents.tools.run_query import LLMParameter, RunQueryTool, RunQueryToolMetrics
@@ -19,7 +19,7 @@ class RegistryRunQueryTool:
     """Execute a query against any registered database.
 
     The agent specifies which database to target via ``db_alias``.  The tool
-    resolves the alias through a ``DBRegistry`` and delegates execution to a
+    resolves the alias through a ``DataConnectorRegistry`` and delegates execution to a
     per-alias ``RunQueryTool`` instance.
     """
 
@@ -27,7 +27,7 @@ class RegistryRunQueryTool:
 
     def __init__(
         self,
-        registry: DBRegistry,
+        registry: DataConnectorRegistry,
         *,
         enable_params: bool = False,
         enable_refresh: bool = False,
@@ -65,7 +65,7 @@ class RegistryRunQueryTool:
         self.max_visible_rows = max_visible_rows
         self.max_cell_width = max_cell_width
         self.floatfmt = floatfmt
-        self._tools: dict[str, tuple[DBConnector, RunQueryTool]] = {}
+        self._tools: dict[str, tuple[DataConnector, RunQueryTool]] = {}
         self._output_store = output_store or OutputStore()
 
     def _get_tool(self, db_alias: str) -> RunQueryTool:

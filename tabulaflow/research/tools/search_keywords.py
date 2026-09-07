@@ -4,7 +4,7 @@ from sqlalchemy.sql import quoted_name
 from sqlalchemy import select
 from pydantic import BaseModel
 from pydantic_ai import Tool
-from tabulaflow.data import SQLConnectorProtocol
+from tabulaflow.data import SQLConnector
 from tabulaflow.agents.tools._sql import find_column, find_table
 
 
@@ -18,7 +18,7 @@ class SearchKeywordsToolMetrics(BaseModel):
 class SearchKeywordsTool:
     name: ClassVar = "search_keywords"
 
-    def __init__(self, db_connector: SQLConnectorProtocol, max_visible_results: int = 40):
+    def __init__(self, db_connector: SQLConnector, max_visible_results: int = 40):
         self.db_connector = db_connector
         self.max_visible_results = max_visible_results
         self._metrics = SearchKeywordsToolMetrics()

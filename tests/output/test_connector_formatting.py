@@ -1,7 +1,8 @@
 from types import SimpleNamespace
 from typing import Any, cast
 
-from tabulaflow.data.protocols import DBConnector
+from tabulaflow.core import NodeSchema, PropertyGraphSchema, RelationshipSchema, SQLSchema, SQLTableSchema
+from tabulaflow.data.protocols import DataConnector
 from tabulaflow.output.formatting import format_connector_summary
 
 
@@ -10,10 +11,17 @@ def test_format_sql_connector_summary() -> None:
         connector_type="sql",
         backend="duckdb",
         language="duckdb",
-        schema=SimpleNamespace(dialect="duckdb", tables=[object(), object()]),
+        schema=SQLSchema(
+            name="test",
+            dialect="duckdb",
+            tables=[
+                SQLTableSchema(name="a", is_view=False, columns=[], primary_key=[], foreign_keys=[]),
+                SQLTableSchema(name="b", is_view=False, columns=[], primary_key=[], foreign_keys=[]),
+            ],
+        ),
     )
 
-    assert format_connector_summary(cast(DBConnector, connector)) == "duckdb, 2 tables"
+    assert format_connector_summary(cast(DataConnector, connector)) == "duckdb, 2 tables"
 
 
 def test_format_graph_connector_summary() -> None:
@@ -21,7 +29,11 @@ def test_format_graph_connector_summary() -> None:
         connector_type="property_graph",
         backend="neo4j",
         language="cypher",
-        schema=SimpleNamespace(nodes=[object()], relationships=[object(), object()]),
+        schema=PropertyGraphSchema(
+            name="test",
+            nodes=[NodeSchema(label="Person")],
+            relationships=[RelationshipSchema(label="KNOWS"), RelationshipSchema(label="WORKS_AT")],
+        ),
     )
 
     assert format_connector_summary(connector) == "neo4j, cypher, 1 label, 2 relationship types"

@@ -9,7 +9,7 @@ families accept different optional inputs.
 from typing import Any, ClassVar, Protocol
 
 from tabulaflow.core.registry import ClassRegistry
-from tabulaflow.data import DBConnector, SQLConnectorProtocol
+from tabulaflow.data import DataConnector, SQLConnector
 from tabulaflow.research.types import (
     AmbigNL2QTask,
     DbtTask,
@@ -31,7 +31,7 @@ class SimpleAgentProtocol(Protocol):
     output_type: ClassVar[str]
     config_cls: ClassVar[Any]
 
-    async def predict_async(self, task: SimpleNL2QTask, db_connector: DBConnector) -> SimpleNL2QTaskOutput: ...
+    async def predict_async(self, task: SimpleNL2QTask, db_connector: DataConnector) -> SimpleNL2QTaskOutput: ...
 
 
 class AmbigSQLAgentProtocol(Protocol):
@@ -45,7 +45,7 @@ class AmbigSQLAgentProtocol(Protocol):
     async def predict_async(
         self,
         task: AmbigNL2QTask,
-        db_connector: SQLConnectorProtocol,
+        db_connector: SQLConnector,
         user_simulator: UserSimulatorProtocol,
     ) -> SimpleAmbigNL2QTaskOutput | FlatAmbigNL2QTaskOutput | StructuredAmbigNL2QTaskOutput: ...
 
@@ -58,7 +58,7 @@ class DbtAgentProtocol(Protocol):
     output_type: ClassVar[str]
     config_cls: ClassVar[Any]
 
-    async def predict_async(self, task: DbtTask, db_connector: SQLConnectorProtocol) -> DbtTaskOutput: ...
+    async def predict_async(self, task: DbtTask, db_connector: SQLConnector) -> DbtTaskOutput: ...
 
 
 agent_registry = ClassRegistry[Any]("agent")

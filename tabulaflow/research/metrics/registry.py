@@ -2,7 +2,7 @@
 
 from typing import Protocol, ClassVar, Any
 from tabulaflow.research.types import NL2QRunResult, NL2QTaskOutput, NumericOrNull
-from tabulaflow.data import DBConnector
+from tabulaflow.data import DataConnector
 from tabulaflow.core.registry import ClassRegistry
 
 
@@ -13,7 +13,7 @@ class MetricProtocol(Protocol):
     compatible_output_types: ClassVar[list[str]]
 
     async def compute_async(
-        self, task: NL2QTaskOutput, db_connector: DBConnector | None = None
+        self, task: NL2QTaskOutput, db_connector: DataConnector | None = None
     ) -> NumericOrNull | dict[str, NumericOrNull]: ...
 
 

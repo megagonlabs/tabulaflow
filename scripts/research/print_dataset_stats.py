@@ -5,7 +5,7 @@ from typing import Any, Literal, cast
 
 from tabulate import tabulate
 
-from tabulaflow.data import Neo4jConnectorConfig, SQLConnectorConfig, SQLConnectorProtocol
+from tabulaflow.data import Neo4jConnectorConfig, SQLConnectorConfig, SQLConnector
 from tabulaflow.research.benchmarks import dataset_registry
 from tabulaflow.research.preprocessing.schema import SchemaPreprocessor
 from tabulaflow.research.reporting import dict_to_df
@@ -160,7 +160,7 @@ async def print_preprocessed_schema_stats(dataset: NL2QDataset, table_format: st
     for database in sorted(dataset.db_connectors):
         connector = dataset.db_connectors[database]
         schema = connector.schema
-        sql_connector = cast(SQLConnectorProtocol, connector)
+        sql_connector = cast(SQLConnector, connector)
         processed = await preprocessor.preprocess_async(sql_connector)
         rows.append(
             [

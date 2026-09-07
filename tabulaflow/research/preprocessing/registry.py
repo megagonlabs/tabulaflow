@@ -5,7 +5,7 @@ from typing import Any, ClassVar, Literal, Protocol
 from tabulaflow.agents.summarization import DBSummarizer
 from tabulaflow.agents.trace import Usage
 from tabulaflow.core.registry import ClassRegistry
-from tabulaflow.data.protocols import DBConnector, SQLConnectorProtocol
+from tabulaflow.data import DataConnector, SQLConnector
 from tabulaflow.research.types import NL2QDataset
 
 
@@ -17,7 +17,7 @@ class ConnectorPreprocessorProtocol(Protocol):
 
     def usage(self) -> Usage | None: ...
 
-    async def preprocess_async(self, input_data: SQLConnectorProtocol) -> object: ...
+    async def preprocess_async(self, input_data: SQLConnector) -> object: ...
 
 
 class DatasetPreprocessorProtocol(Protocol):
@@ -41,7 +41,7 @@ class DBSummaryPreprocessor(DBSummarizer):
     name: ClassVar[str] = "db_summarizer"
     input_type: ClassVar[Literal["db_connector"]] = "db_connector"
 
-    async def preprocess_async(self, input_data: DBConnector) -> str:
+    async def preprocess_async(self, input_data: DataConnector) -> str:
         return await self.summarize(input_data)
 
 

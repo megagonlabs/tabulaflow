@@ -1,4 +1,4 @@
-"""Write-result-table tool backed by a DBRegistry."""
+"""Write-result-table tool backed by a DataConnectorRegistry."""
 
 from __future__ import annotations
 
@@ -8,7 +8,8 @@ from pydantic_ai import Tool, ToolReturn
 
 from tabulaflow.agents.tools.protocols import ToolCallOutcome
 from tabulaflow.data.protocols import DataFrameWriteMode
-from tabulaflow.data.registry import DBRegistry
+from tabulaflow.data.registry import DataConnectorRegistry
+from tabulaflow.data.sql import SQLConnector
 from tabulaflow.output.specs import FixedResultSource
 from tabulaflow.output.store import OutputStore, SourceResolutionError
 
@@ -24,7 +25,7 @@ class WriteResultTableTool:
 
     def __init__(
         self,
-        registry: DBRegistry,
+        registry: DataConnectorRegistry,
         output_store: OutputStore,
     ) -> None:
         """Initialize the tool.
@@ -92,7 +93,7 @@ class WriteResultTableTool:
             available = ", ".join(self.registry.list_aliases()) or "(none)"
             raise ValueError(f"unknown target_alias: {target_alias!r}; available: {available}") from None
 
-        if connector.connector_type != "sql":
+        if not isinstance(connector, SQLConnector):
             raise TypeError(
                 f"write_result_table supports SQL targets only; got connector_type={connector.connector_type!r}"
             )

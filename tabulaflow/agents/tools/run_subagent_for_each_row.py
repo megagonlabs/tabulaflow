@@ -20,8 +20,7 @@ from pydantic_ai.messages import UserContent
 from pydantic_ai.models import Model
 from pydantic_ai.settings import ModelSettings
 
-from tabulaflow.data.protocols import SQLConnectorProtocol
-from tabulaflow.data.registry import DBRegistry
+from tabulaflow.data.registry import DataConnectorRegistry
 from tabulaflow.data.sql import SQLConnector
 from tabulaflow.core.schema import SQLDialect
 from tabulaflow.agents.trace import Trajectory
@@ -212,9 +211,9 @@ class RunSubagentForEachRowTool:
 
     def __init__(
         self,
-        db_connector: SQLConnectorProtocol,
+        db_connector: SQLConnector,
         *,
-        registry: DBRegistry | None = None,
+        registry: DataConnectorRegistry | None = None,
         message_store: MessageStore | None = None,
         subagent_llm: str | Model = "openai-responses:gpt-5-mini",
         model_settings: ModelSettings | None = None,

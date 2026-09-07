@@ -11,7 +11,7 @@ from pydantic import BaseModel
 from pydantic_ai import ModelRetry, ToolOutput
 
 from tabulaflow.research.observability import trace_prediction
-from tabulaflow.data import SQLConnectorProtocol
+from tabulaflow.data import SQLConnector
 from tabulaflow.output.formatting import SQLDDLSchemaFormatter
 from tabulaflow.agents.summarization import DBSummarizer
 from tabulaflow.agents.llm import ReasoningLevel, ServiceTier, make_model_settings
@@ -119,7 +119,7 @@ class DbtLLMEnsembler:
     async def ensemble_async(
         self,
         task: DbtTask,
-        db_connector: SQLConnectorProtocol,
+        db_connector: SQLConnector,
         task_outputs: list[DbtTaskOutput],
     ) -> DbtTaskOutput:
         candidates = list(task_outputs)

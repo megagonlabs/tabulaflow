@@ -1,7 +1,7 @@
 import copy
 from typing import ClassVar
 from tabulaflow.research.types import NL2QTaskOutput, NumericOrNull, SimpleNL2QTaskOutput
-from tabulaflow.data import DBConnector
+from tabulaflow.data import DataConnector
 from tabulaflow.research.metrics.registry import metric_registry
 from tabulaflow.research.metrics.simple_ex import SimpleEx
 
@@ -15,7 +15,7 @@ class RawPredSimpleEx:
         self.abs_tol = abs_tol
         self.ignore_repetitions = ignore_repetitions
 
-    async def compute_async(self, task: NL2QTaskOutput, db_connector: DBConnector | None = None) -> NumericOrNull:
+    async def compute_async(self, task: NL2QTaskOutput, db_connector: DataConnector | None = None) -> NumericOrNull:
         assert isinstance(task, SimpleNL2QTaskOutput)
         task = copy.deepcopy(task)
         task.pred_query = task.extra_pred_info.raw_pred_query

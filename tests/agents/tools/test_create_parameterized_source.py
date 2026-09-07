@@ -7,7 +7,7 @@ import pytest
 from pydantic_ai import ToolReturn
 
 from tabulaflow.data.config import SQLConnectorConfig
-from tabulaflow.data.registry import DBRegistry
+from tabulaflow.data.registry import DataConnectorRegistry
 from tabulaflow.data.sql import SQLConnector
 from tabulaflow.output.specs import ChoiceOption, ChoiceParameter, NumberParameter, OutputSpec, TableArtifactSpec
 from tabulaflow.agents.tools import (
@@ -24,7 +24,7 @@ def _text(result: ToolReturn) -> str:
 
 
 @pytest.fixture
-async def registry(tmp_path: Path) -> DBRegistry:
+async def registry(tmp_path: Path) -> DataConnectorRegistry:
     connector = await SQLConnector.from_url_async(
         global_id="test-create-parameterized-source",
         url=f"duckdb:///{tmp_path / 'w.duckdb'}",
@@ -34,12 +34,14 @@ async def registry(tmp_path: Path) -> DBRegistry:
     )
     await connector.run_query_async("CREATE TABLE orders(customer TEXT, net INT, gross INT)")
     await connector.run_query_async("INSERT INTO orders VALUES ('Acme', 10, 12), ('Globex', 7, 9)")
-    r = DBRegistry()
+    r = DataConnectorRegistry()
     r.register("workspace", connector)
     return r
 
 
-async def test_create_parameterized_source_registers_parameters_and_warms_choice_grid(registry: DBRegistry) -> None:
+async def test_create_parameterized_source_registers_parameters_and_warms_choice_grid(
+    registry: DataConnectorRegistry,
+) -> None:
     output_store = OutputStore(registry=registry)
     result = await CreateParameterizedSourceTool(registry, output_store)(
         "workspace",
@@ -83,7 +85,7 @@ async def test_create_parameterized_source_registers_parameters_and_warms_choice
     assert payload.df.to_dict("records") == [{"value": 21}]
 
 
-async def test_create_parameterized_source_reports_empty_parameters(registry: DBRegistry) -> None:
+async def test_create_parameterized_source_reports_empty_parameters(registry: DataConnectorRegistry) -> None:
     output_store = OutputStore(registry=registry)
 
     result = await CreateParameterizedSourceTool(registry, output_store)("workspace", [], "SELECT 1")
@@ -91,7 +93,9 @@ async def test_create_parameterized_source_reports_empty_parameters(registry: DB
     assert _text(result) == "(error: parameters must not be empty)"
 
 
-async def test_create_parameterized_source_batches_warm_errors_and_registers_nothing(registry: DBRegistry) -> None:
+async def test_create_parameterized_source_batches_warm_errors_and_registers_nothing(
+    registry: DataConnectorRegistry,
+) -> None:
     output_store = OutputStore(registry=registry)
 
     result = await CreateParameterizedSourceTool(registry, output_store)(
@@ -116,7 +120,7 @@ async def test_create_parameterized_source_batches_warm_errors_and_registers_not
         output_store.get_source("S1")
 
 
-async def test_number_parameter_materializes_lazy_selection(registry: DBRegistry) -> None:
+async def test_number_parameter_materializes_lazy_selection(registry: DataConnectorRegistry) -> None:
     output_store = OutputStore(registry=registry)
     result = await CreateParameterizedSourceTool(registry, output_store)(
         "workspace",
@@ -143,7 +147,7 @@ async def test_number_parameter_materializes_lazy_selection(registry: DBRegistry
     assert payload.df.to_dict("records") == [{"customer": "Acme"}, {"customer": "Globex"}]
 
 
-async def test_mixed_choice_and_number_warms_choice_grid_at_number_default(registry: DBRegistry) -> None:
+async def test_mixed_choice_and_number_warms_choice_grid_at_number_default(registry: DataConnectorRegistry) -> None:
     output_store = OutputStore(registry=registry)
     result = await CreateParameterizedSourceTool(registry, output_store)(
         "workspace",
@@ -173,7 +177,7 @@ async def test_mixed_choice_and_number_warms_choice_grid_at_number_default(regis
     assert payload.df.to_dict("records") == [{"value": 21}]
 
 
-async def test_create_parameterized_source_warms_not_applicable_selection(registry: DBRegistry) -> None:
+async def test_create_parameterized_source_warms_not_applicable_selection(registry: DataConnectorRegistry) -> None:
     output_store = OutputStore(registry=registry)
     result = await CreateParameterizedSourceTool(registry, output_store)(
         "workspace",

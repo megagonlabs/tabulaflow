@@ -13,12 +13,12 @@ import tempfile
 from pathlib import Path
 
 from tabulaflow.agents.chat.session import ChatSession
-from tabulaflow.data.registry import DBRegistry
+from tabulaflow.data.registry import DataConnectorRegistry
 
 
 def main() -> None:
     agent = ChatSession(
-        registry=DBRegistry(),
+        registry=DataConnectorRegistry(),
         model="openai-responses:gpt-5",
         reasoning="medium",
         project_dir=Path(os.getcwd()),

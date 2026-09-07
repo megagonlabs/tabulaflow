@@ -8,7 +8,7 @@ from pydantic_ai.models.test import TestModel
 from tabulaflow.agents.chat import ChatSession
 from tabulaflow.agents.chat.input import describe_chat_input
 from tabulaflow.agents.message_store import MESSAGE_THRESHOLD_CHARS
-from tabulaflow.data.registry import DBRegistry
+from tabulaflow.data.registry import DataConnectorRegistry
 
 
 def test_describe_chat_input_preserves_order_without_media_payloads() -> None:
@@ -31,7 +31,7 @@ async def test_chat_session_passes_ordered_multimodal_input_to_pydantic_ai(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setattr("tabulaflow.agents.trace.compute_api_cost", lambda *args, **kwargs: 0)
-    session = ChatSession(registry=DBRegistry(), model="test", reasoning="medium", compaction=None)
+    session = ChatSession(registry=DataConnectorRegistry(), model="test", reasoning="medium", compaction=None)
     session._pydantic_ai_agent = cast(
         Any,
         Agent(TestModel(custom_output_text="ANSWER:\nok"), output_type=str),

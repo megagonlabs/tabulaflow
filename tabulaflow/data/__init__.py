@@ -6,32 +6,28 @@ from typing import TYPE_CHECKING, Any
 if TYPE_CHECKING:
     from tabulaflow.data.config import Neo4jConnectorConfig, SQLConnectorConfig
     from tabulaflow.data.neo4j import Neo4jConnector
-    from tabulaflow.data.protocols import DBConnector, PropertyGraphConnectorProtocol, SQLConnectorProtocol
-    from tabulaflow.data.registry import DBRegistry
+    from tabulaflow.data.protocols import DataConnector
+    from tabulaflow.data.registry import DataConnectorRegistry
     from tabulaflow.data.sql import SQLConnector
     from tabulaflow.data.url import connect_url
 
 _LAZY_EXPORTS = {
-    "DBConnector": ("tabulaflow.data.protocols", "DBConnector"),
-    "DBRegistry": ("tabulaflow.data.registry", "DBRegistry"),
+    "DataConnector": ("tabulaflow.data.protocols", "DataConnector"),
+    "DataConnectorRegistry": ("tabulaflow.data.registry", "DataConnectorRegistry"),
     "Neo4jConnector": ("tabulaflow.data.neo4j", "Neo4jConnector"),
     "Neo4jConnectorConfig": ("tabulaflow.data.config", "Neo4jConnectorConfig"),
-    "PropertyGraphConnectorProtocol": ("tabulaflow.data.protocols", "PropertyGraphConnectorProtocol"),
     "SQLConnector": ("tabulaflow.data.sql", "SQLConnector"),
     "SQLConnectorConfig": ("tabulaflow.data.config", "SQLConnectorConfig"),
-    "SQLConnectorProtocol": ("tabulaflow.data.protocols", "SQLConnectorProtocol"),
     "connect_url": ("tabulaflow.data.url", "connect_url"),
 }
 
 __all__ = [
-    "DBConnector",
-    "DBRegistry",
+    "DataConnector",
+    "DataConnectorRegistry",
     "Neo4jConnector",
     "Neo4jConnectorConfig",
-    "PropertyGraphConnectorProtocol",
     "SQLConnector",
     "SQLConnectorConfig",
-    "SQLConnectorProtocol",
     "connect_url",
 ]
 

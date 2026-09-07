@@ -12,7 +12,7 @@ import jinja2
 from tabulaflow.research.observability import trace_prediction
 from tabulaflow.research.agents.registry import agent_registry
 from tabulaflow.research.agents.utils import BasicAgentConfig, get_max_steps_capability
-from tabulaflow.data import SQLConnectorProtocol
+from tabulaflow.data import SQLConnector
 from tabulaflow.output.formatting import SQLSchemaFormatter, schema_formatter_registry
 from tabulaflow.agents.summarization import DBSummarizer
 from tabulaflow.agents.trace import Usage, Trajectory
@@ -116,7 +116,7 @@ class DbtAgent:
         return cls(config)
 
     @trace_prediction
-    async def predict_async(self, task: DbtTask, db_connector: SQLConnectorProtocol) -> DbtTaskOutput:
+    async def predict_async(self, task: DbtTask, db_connector: SQLConnector) -> DbtTaskOutput:
         t0 = time.time()
         if task.working_dir is None:
             raise ValueError("working_dir must be set before calling predict_async")

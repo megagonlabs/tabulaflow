@@ -6,7 +6,7 @@ from pydantic import BaseModel
 from pydantic_ai.settings import ModelSettings
 from tabulaflow.core.schema import ForeignKeySchema, SQLSchema, TableRef
 from tabulaflow.agents.trace import Usage
-from tabulaflow.data.protocols import SQLConnectorProtocol
+from tabulaflow.data import SQLConnector
 from tabulaflow.agents.tools.run_query import RunQueryTool
 from tabulaflow.output.formatting.sql_ddl import SQLDDLSchemaFormatter
 from tabulaflow.agents.llm import make_agent
@@ -60,7 +60,7 @@ class ForeignKeyPredictor:
         return self._usage
 
     async def run_table_async(
-        self, db_connector: SQLConnectorProtocol, schema: SQLSchema, table_ref: TableRef
+        self, db_connector: SQLConnector, schema: SQLSchema, table_ref: TableRef
     ) -> list[ForeignKeySchema]:
         system_prompt = jinja2.Template(FK_PREDICTOR_SYSTEM_PROMPT).render(
             schema=self.formatter.format(schema, include_descriptions=True)
@@ -78,7 +78,7 @@ class ForeignKeyPredictor:
         self._usage += Usage.from_pydantic_ai_usage(result.usage, self.llm)
         return result.output.missing_foreign_keys
 
-    async def run_async(self, db_connector: SQLConnectorProtocol, schema: SQLSchema) -> SQLSchema:
+    async def run_async(self, db_connector: SQLConnector, schema: SQLSchema) -> SQLSchema:
         table_refs = schema.table_refs()
         all_results = await asyncio.gather(
             *[self.run_table_async(db_connector, schema, table_ref) for table_ref in table_refs]

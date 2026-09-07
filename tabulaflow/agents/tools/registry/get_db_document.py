@@ -1,4 +1,4 @@
-"""Get-db-document tool backed by a DBRegistry."""
+"""Get-db-document tool backed by a DataConnectorRegistry."""
 
 from typing import Any, Callable, ClassVar, cast
 
@@ -6,8 +6,8 @@ from pydantic import BaseModel
 from pydantic_ai import Tool, ToolReturn
 from pydantic_ai.settings import ModelSettings
 
-from tabulaflow.data.protocols import DBConnector
-from tabulaflow.data.registry import DBRegistry
+from tabulaflow.data.protocols import DataConnector
+from tabulaflow.data.registry import DataConnectorRegistry
 from tabulaflow.output.formatting.cypher import CypherSchemaFormatter
 from tabulaflow.output.formatting.sql_ddl import SQLDDLSchemaFormatter
 from tabulaflow.agents.tools.protocols import ToolCallOutcome, _omit_tool_parameters
@@ -35,7 +35,7 @@ class RegistryGetDBDocumentTool:
 
     def __init__(
         self,
-        registry: DBRegistry,
+        registry: DataConnectorRegistry,
         *,
         db_summarizer_cls: Callable[..., Any],
         db_summarizer_llm: str = "openai-responses:gpt-5.4",
@@ -68,7 +68,7 @@ class RegistryGetDBDocumentTool:
         self._sql_formatter = SQLDDLSchemaFormatter(compact_table_families=True)
         self._graph_formatter = CypherSchemaFormatter()
         self._metrics = RegistryGetDBDocumentToolMetrics()
-        self._document_cache: dict[str, tuple[DBConnector, str]] = {}
+        self._document_cache: dict[str, tuple[DataConnector, str]] = {}
 
     def apply_llm_profile(self, *, llm: str, model_settings: ModelSettings | None) -> None:
         """Apply the LLM profile used by generated database summaries."""
@@ -78,21 +78,27 @@ class RegistryGetDBDocumentTool:
             self._document_cache.clear()
 
     def _schema_item_count(self, db_alias: str) -> int:
+        from tabulaflow.core import PropertyGraphSchema, SQLSchema
+
         connector = self.registry.get(db_alias)
-        if connector.connector_type == "sql":
-            return len(connector.schema.tables)
-        if connector.connector_type == "property_graph":
-            pattern_count = sum(len(rel.endpoints) for rel in connector.schema.relationships)
-            return len(connector.schema.nodes) + len(connector.schema.relationships) + pattern_count
+        schema = connector.schema
+        if isinstance(schema, SQLSchema):
+            return len(schema.tables)
+        if isinstance(schema, PropertyGraphSchema):
+            pattern_count = sum(len(rel.endpoints) for rel in schema.relationships)
+            return len(schema.nodes) + len(schema.relationships) + pattern_count
         return 0
 
     def _format_direct_document(self, db_alias: str) -> str:
+        from tabulaflow.core import PropertyGraphSchema, SQLSchema
+
         connector = self.registry.get(db_alias)
-        if connector.connector_type == "sql":
-            return self._sql_formatter.format(connector.schema, include_descriptions=True)
-        if connector.connector_type == "property_graph":
-            return self._graph_formatter.format(connector.schema)
-        raise TypeError(f"Unsupported connector type for get_db_document: {connector.connector_type!r}")
+        schema = connector.schema
+        if isinstance(schema, SQLSchema):
+            return self._sql_formatter.format(schema, include_descriptions=True)
+        if isinstance(schema, PropertyGraphSchema):
+            return self._graph_formatter.format(schema)
+        raise TypeError(f"Unsupported schema type for get_db_document: {type(schema)!r}")
 
     async def _get_document(self, db_alias: str) -> str:
         connector = self.registry.get(db_alias)

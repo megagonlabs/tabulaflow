@@ -9,7 +9,7 @@ import numpy as np
 import numpy.typing as npt
 from pydantic import BaseModel
 import logging
-from tabulaflow.data import DBConnector, SQLConnectorProtocol
+from tabulaflow.data import DataConnector, SQLConnector
 from tabulaflow.core import SQLSchema, SQLTableSchema, ColumnRef
 from tabulaflow.agents.trace import Usage, Trajectory
 from tabulaflow.research.observability import trace_prediction
@@ -46,7 +46,7 @@ class SchemaLinkingAgentConfig(BasicAgentConfig):
 
 @dataclass
 class SchemaLinkingContext(TaskRunContext):
-    db_connector: SQLConnectorProtocol
+    db_connector: SQLConnector
     er_diagram: ERDiagram | None = None
     er_diagram_formatter: MermaidERDiagramFormatter | None = None
     few_shot_examples: list[SimpleNL2QTask] = field(default_factory=list)
@@ -419,8 +419,8 @@ class SchemaLinkingAgent:
         return preprocessed_schema
 
     @trace_prediction
-    async def predict_async(self, task: SimpleNL2QTask, db_connector: DBConnector) -> SimpleNL2QTaskOutput:
-        if db_connector.connector_type != "sql":
+    async def predict_async(self, task: SimpleNL2QTask, db_connector: DataConnector) -> SimpleNL2QTaskOutput:
+        if not isinstance(db_connector, SQLConnector):
             raise TypeError(f"SchemaLinkingAgent requires a SQL db connector, got {type(db_connector)!r}")
         t0 = time.time()
 

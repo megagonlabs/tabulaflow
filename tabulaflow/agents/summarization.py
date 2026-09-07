@@ -12,7 +12,8 @@ from tabulaflow.agents.llm import ReasoningLevel, make_agent, make_model_setting
 from tabulaflow.agents.runtime import _get_agent_runtime
 from tabulaflow.agents.trace import Usage
 from tabulaflow.core._cache import atomic_write_bytes, read_bytes, stable_cache_key
-from tabulaflow.data.protocols import DBConnector
+from tabulaflow.core.schema import PropertyGraphSchema, SQLSchema
+from tabulaflow.data.protocols import DataConnector
 from tabulaflow.output.formatting.cypher import CypherSchemaFormatter
 from tabulaflow.output.formatting.sql_ddl import SQLDDLSchemaFormatter
 
@@ -80,7 +81,7 @@ class DBSummarizer:
         """Return model usage accumulated by uncached summary generation."""
         return self._usage
 
-    def _cache_path(self, cache_dir: Path, connector: DBConnector) -> Path:
+    def _cache_path(self, cache_dir: Path, connector: DataConnector) -> Path:
         key = stable_cache_key(
             {
                 "version": _DB_SUMMARY_CACHE_VERSION,
@@ -105,7 +106,7 @@ class DBSummarizer:
     async def _store_cache(path: Path, value: str) -> None:
         await atomic_write_bytes(path, value.encode())
 
-    async def summarize(self, connector: DBConnector) -> str:
+    async def summarize(self, connector: DataConnector) -> str:
         """Return a Markdown summary, loading or writing the semantic disk cache."""
         config = _get_agent_runtime().config
         return await load_or_compute(
@@ -116,22 +117,23 @@ class DBSummarizer:
             store=self._store_cache,
         )
 
-    async def _summarize(self, connector: DBConnector) -> str:
+    async def _summarize(self, connector: DataConnector) -> str:
         from tabulaflow.agents.tools.run_query import RunQueryTool
 
         system_prompt = _DB_SUMMARIZATION_PROMPT.format(max_words=self.max_words)
-        if connector.connector_type == "sql":
-            sql_schema = connector.schema
+        schema = connector.schema
+        if isinstance(schema, SQLSchema):
+            sql_schema = schema
             if not sql_schema.tables:
                 return f"# Database: `{sql_schema.name}`\n\nThis database has no tables."
             user_prompt = _database_user_prompt(self._sql_formatter.format(sql_schema, include_descriptions=True))
-        elif connector.connector_type == "property_graph":
-            graph_schema = connector.schema
+        elif isinstance(schema, PropertyGraphSchema):
+            graph_schema = schema
             if not graph_schema.nodes and not graph_schema.relationships:
                 return f"# Database: `{graph_schema.name}`\n\nThis graph database has no nodes or relationships."
             user_prompt = _database_user_prompt(self._graph_formatter.format(graph_schema))
         else:
-            raise TypeError(f"Unsupported connector type for DBSummarizer: {connector.connector_type!r}")
+            raise TypeError(f"Unsupported schema type for DBSummarizer: {type(schema)!r}")
 
         settings: dict[str, Any] = dict(make_model_settings(model=self.llm, reasoning=self.reasoning))
         settings.update(self.model_settings or {})

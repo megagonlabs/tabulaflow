@@ -5,7 +5,7 @@ import random
 from typing import ClassVar, Mapping, Protocol, Sequence, TypeVar, cast
 
 from tabulaflow.research.types import NL2QDataset, NL2QTask
-from tabulaflow.data import DBConnector
+from tabulaflow.data import DataConnector
 from tabulaflow.core.registry import ClassRegistry
 from tabulaflow.research.benchmarks.installation import BenchmarkInstallation
 from tabulaflow.research.benchmarks.runtime import BenchmarkRuntime
@@ -71,7 +71,7 @@ class DatasetLoaderProtocol(Protocol):
 
     async def get_db_connectors_async(
         self, split: str, databases: list[str] | None = None
-    ) -> Mapping[str, DBConnector]:
+    ) -> Mapping[str, DataConnector]:
         """Creates database connectors keyed by database name."""
         ...
 

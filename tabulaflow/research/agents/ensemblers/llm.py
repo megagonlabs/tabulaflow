@@ -7,7 +7,7 @@ from pydantic_ai import ModelRetry, ToolOutput
 
 from tabulaflow.research.observability import trace_prediction
 from tabulaflow.research.agents.ensemblers.utils import execution_result_key, format_execution_result
-from tabulaflow.data import SQLConnectorProtocol
+from tabulaflow.data import SQLConnector
 from tabulaflow.research.query_execution import populate_query_exec_result
 from tabulaflow.agents.summarization import DBSummarizer
 from tabulaflow.agents.trace import Usage, Trajectory
@@ -102,7 +102,7 @@ class LLMEnsembler:
     async def ensemble_async(
         self,
         task: SimpleNL2QTask,
-        db_connector: SQLConnectorProtocol,
+        db_connector: SQLConnector,
         task_outputs: list[SimpleNL2QTaskOutput],
     ) -> SimpleNL2QTaskOutput:
         # Filter to outputs that have a pred_query

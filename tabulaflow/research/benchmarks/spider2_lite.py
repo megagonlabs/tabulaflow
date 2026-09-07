@@ -20,7 +20,7 @@ from google.auth.exceptions import DefaultCredentialsError
 from tabulaflow.core import ExecResult
 from tabulaflow.research.types import GoldQuery
 from tabulaflow.research.types import SimpleNL2QTask, NL2QDataset
-from tabulaflow.data import SQLConnector, SQLConnectorConfig, SQLConnectorProtocol
+from tabulaflow.data import SQLConnector, SQLConnectorConfig
 from tabulaflow.research.benchmarks.registry import dataset_registry, select_tasks, selected_databases
 from tabulaflow.research.benchmarks.installation import (
     BenchmarkInstallation,
@@ -448,9 +448,7 @@ class Spider2LiteDatasetLoader:
             config=self.connector_config.model_copy(update={"max_query_concurrency": 4}),
         )
 
-    async def get_db_connectors_async(
-        self, split: str, databases: list[str] | None = None
-    ) -> dict[str, SQLConnectorProtocol]:
+    async def get_db_connectors_async(self, split: str, databases: list[str] | None = None) -> dict[str, SQLConnector]:
         """Return DB connectors keyed by database name.
 
         Dispatches to BigQuery, Snowflake, or SQLite based on the resource
@@ -462,7 +460,7 @@ class Spider2LiteDatasetLoader:
         databases = self.get_databases(split) if databases is None else databases
         column_descriptions = self._load_column_descriptions()
 
-        connectors: dict[str, SQLConnectorProtocol] = {}
+        connectors: dict[str, SQLConnector] = {}
         for db_name in databases:
             db_info = self._db_info.get(db_name)
             if db_info is None:

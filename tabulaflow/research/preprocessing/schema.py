@@ -10,7 +10,7 @@ from tabulaflow.agents.runtime import _get_agent_runtime
 from tabulaflow.agents.trace import Usage
 from tabulaflow.core._cache import stable_cache_key
 from tabulaflow.core.schema import SQLSchema
-from tabulaflow.data.protocols import SQLConnectorProtocol
+from tabulaflow.data import SQLConnector
 from tabulaflow.research.preprocessing.registry import preprocessor_registry
 from tabulaflow.research.preprocessing.column_profiler import ColumnProfiler
 from tabulaflow.research.preprocessing.fk_predictor import ForeignKeyPredictor
@@ -49,7 +49,7 @@ class SchemaPreprocessor:
     def usage(self) -> Usage:
         return self._usage
 
-    def _cache_path(self, cache_dir: Path, connector: SQLConnectorProtocol) -> Path:
+    def _cache_path(self, cache_dir: Path, connector: SQLConnector) -> Path:
         key = stable_cache_key(
             {
                 "version": _SCHEMA_CACHE_VERSION,
@@ -63,7 +63,7 @@ class SchemaPreprocessor:
         )
         return cache_dir / "agent" / "schema_preprocessing" / f"{_SCHEMA_CACHE_VERSION}@{key}.json"
 
-    async def preprocess_async(self, connector: SQLConnectorProtocol) -> SQLSchema:
+    async def preprocess_async(self, connector: SQLConnector) -> SQLSchema:
         config = _get_agent_runtime().config
         return await load_or_compute_model(
             path=self._cache_path(config.cache_dir, connector),
@@ -72,7 +72,7 @@ class SchemaPreprocessor:
             compute=lambda: self._preprocess(connector),
         )
 
-    async def _preprocess(self, connector: SQLConnectorProtocol) -> SQLSchema:
+    async def _preprocess(self, connector: SQLConnector) -> SQLSchema:
         schema = connector.schema
         if self.foreign_key_predictor is not None:
             schema = await self.foreign_key_predictor.run_async(connector, schema)

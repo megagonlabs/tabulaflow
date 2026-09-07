@@ -3,7 +3,7 @@ from typing import Any, cast
 import pandas as pd
 
 from tabulaflow.core import ExecResult
-from tabulaflow.data import DBConnector
+from tabulaflow.data import DataConnector
 from tabulaflow.research.query_execution import populate_query_exec_result, populate_task_exec_results
 from tabulaflow.research.types import FlatAmbigNL2QTaskOutput, GoldQuery, PredQuery, SimpleNL2QTaskOutput
 
@@ -21,7 +21,7 @@ async def test_populate_query_exec_result_executes_missing_result() -> None:
     connector = _Connector()
     query = PredQuery(query="SELECT :value", parameter_values={"value": 1})
 
-    await populate_query_exec_result(query, cast(DBConnector, connector), timeout=30)
+    await populate_query_exec_result(query, cast(DataConnector, connector), timeout=30)
 
     assert query.exec_result is not None
     assert connector.calls == [("SELECT :value", {"parameters": {"value": 1}, "timeout": 30})]
@@ -32,11 +32,11 @@ async def test_populate_query_exec_result_skips_existing_result_unless_forced() 
     existing = ExecResult(df=pd.DataFrame({"value": [0]}))
     query = PredQuery(query="SELECT 1", exec_result=existing)
 
-    await populate_query_exec_result(query, cast(DBConnector, connector))
+    await populate_query_exec_result(query, cast(DataConnector, connector))
     assert query.exec_result is existing
     assert connector.calls == []
 
-    await populate_query_exec_result(query, cast(DBConnector, connector), force=True)
+    await populate_query_exec_result(query, cast(DataConnector, connector), force=True)
     assert query.exec_result is not existing
     assert connector.calls == [("SELECT 1", {"parameters": {}})]
 
@@ -44,7 +44,7 @@ async def test_populate_query_exec_result_skips_existing_result_unless_forced() 
 async def test_populate_query_exec_result_skips_missing_query_text() -> None:
     connector = _Connector()
 
-    await populate_query_exec_result(GoldQuery(query=None), cast(DBConnector, connector))
+    await populate_query_exec_result(GoldQuery(query=None), cast(DataConnector, connector))
 
     assert connector.calls == []
 
@@ -59,7 +59,7 @@ async def test_populate_task_exec_results_executes_simple_queries_once() -> None
         pred_query=PredQuery(query="pred"),
     )
 
-    await populate_task_exec_results(task, cast(DBConnector, connector))
+    await populate_task_exec_results(task, cast(DataConnector, connector))
 
     assert [query for query, _ in connector.calls] == ["gold", "pred"]
 
@@ -80,6 +80,6 @@ async def test_populate_task_exec_results_does_not_duplicate_ambiguous_intended_
         pred_intended_query_id="PQRY-0",
     )
 
-    await populate_task_exec_results(task, cast(DBConnector, connector))
+    await populate_task_exec_results(task, cast(DataConnector, connector))
 
     assert [query for query, _ in connector.calls] == ["gold", "pred"]

@@ -7,7 +7,7 @@ from tqdm.asyncio import tqdm_asyncio
 from tabulaflow.research.benchmarks.registry import dataset_registry, preflight_benchmark
 from tabulaflow.research.metrics.registry import metric_registry
 from tabulaflow.research.types import NL2QTaskOutput, NL2QRunResult, NL2QDataset
-from tabulaflow.data import DBConnector
+from tabulaflow.data import DataConnector
 from tabulaflow.research.metrics import MetricProtocol, MetricAggregatorProtocol
 from tabulaflow.research.metrics.aggregators import (
     ByAmbrosiaTaxonomyTypeAggregator,
@@ -21,7 +21,7 @@ from tabulaflow.research.pipelines.utils import pprint_dict
 
 
 async def compute_metrics_async(
-    task: NL2QTaskOutput, metrics: list[MetricProtocol], db_connector: DBConnector | None
+    task: NL2QTaskOutput, metrics: list[MetricProtocol], db_connector: DataConnector | None
 ) -> NL2QTaskOutput:
     results = await asyncio.gather(*[m.compute_async(task, db_connector) for m in metrics])
     task.eval_metrics = {}

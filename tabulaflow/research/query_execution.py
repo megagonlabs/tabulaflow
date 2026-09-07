@@ -2,7 +2,7 @@
 
 import asyncio
 
-from tabulaflow.data import DBConnector
+from tabulaflow.data import DataConnector
 from tabulaflow.research.types import (
     AmbigNL2QTask,
     FlatAmbigNL2QTaskOutput,
@@ -37,7 +37,7 @@ def _task_queries(task: NL2QTask | NL2QTaskOutput) -> list[GoldQuery | PredQuery
 
 async def populate_query_exec_result(
     query: GoldQuery | PredQuery,
-    db_connector: DBConnector,
+    db_connector: DataConnector,
     timeout: int | None = None,
     force: bool = False,
 ) -> None:
@@ -61,7 +61,7 @@ async def populate_query_exec_result(
 
 async def populate_task_exec_results(
     task: NL2QTask | NL2QTaskOutput,
-    db_connector: DBConnector,
+    db_connector: DataConnector,
     timeout: int | None = None,
     force: bool = False,
 ) -> None:

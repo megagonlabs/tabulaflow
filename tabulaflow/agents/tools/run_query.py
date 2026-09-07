@@ -2,7 +2,7 @@
 
 from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Any, ClassVar, cast
+from typing import Any, ClassVar
 
 import pandas as pd
 from pydantic import BaseModel, Field
@@ -11,7 +11,8 @@ from pydantic_ai.messages import ModelMessage, ModelRequest, ToolReturnPart, Use
 
 from tabulaflow.agents.media import inspect_inline_media, materialize_inline_media
 from tabulaflow.core.results import ExecResult, GraphResult
-from tabulaflow.data.protocols import DBConnector, SQLConnectorProtocol
+from tabulaflow.data.protocols import DataConnector
+from tabulaflow.data.sql import SQLConnector
 from tabulaflow.output.formatting import format_dataframe
 from tabulaflow.agents.tools._sql import format_sqlalchemy_error_msg
 from tabulaflow.agents.tools.protocols import _omit_tool_parameters
@@ -84,7 +85,9 @@ def _prepare_result_media(
                 candidate = item.candidate
                 source = _media_source(df.columns[column], item.index)
                 if attached >= _MAX_MEDIA_ITEMS:
-                    record_issue(row, df.columns[column], item.index, f"{_MAX_MEDIA_ITEMS}-item attachment limit reached")
+                    record_issue(
+                        row, df.columns[column], item.index, f"{_MAX_MEDIA_ITEMS}-item attachment limit reached"
+                    )
                     continue
                 try:
                     binary = materialize_inline_media(candidate, max_bytes=_MAX_MEDIA_BYTES)
@@ -221,7 +224,7 @@ class RunQueryTool:
 
     def __init__(
         self,
-        db_connector: DBConnector,
+        db_connector: DataConnector,
         *,
         enable_params: bool = False,
         enable_refresh: bool = False,
@@ -289,7 +292,8 @@ class RunQueryTool:
             return execution
         finally:
             if self._release_connections_on_finish:
-                await cast(SQLConnectorProtocol, self.db_connector).release_connections_async()
+                assert isinstance(self.db_connector, SQLConnector)
+                await self.db_connector.release_connections_async()
 
     def _format_exec_result(self, exec_result: ExecResult) -> str:
         if exec_result.error is not None:

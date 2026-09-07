@@ -8,7 +8,7 @@ from pydantic_ai import ModelRetry, RunContext, ToolOutput
 from tabulaflow.research.observability import trace_prediction
 from tabulaflow.research.agents.ensemblers.utils import execution_result_key, format_execution_result
 from tabulaflow.research.agents.utils import BasicAgentConfig, get_max_steps_capability
-from tabulaflow.data import SQLConnectorProtocol
+from tabulaflow.data import SQLConnector
 from tabulaflow.output.formatting import SQLSchemaFormatter, schema_formatter_registry
 from tabulaflow.research.query_execution import populate_query_exec_result
 from tabulaflow.agents.summarization import DBSummarizer
@@ -124,7 +124,7 @@ class AgentEnsembler:
     async def ensemble_async(
         self,
         task: SimpleNL2QTask,
-        db_connector: SQLConnectorProtocol,
+        db_connector: SQLConnector,
         task_outputs: list[SimpleNL2QTaskOutput],
     ) -> SimpleNL2QTaskOutput:
         t0 = time.time()

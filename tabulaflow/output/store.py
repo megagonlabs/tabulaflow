@@ -41,7 +41,7 @@ from tabulaflow.core.results import ExecResult, GraphResult
 from tabulaflow.core.dataframe import deserialize_dataframe, serialize_dataframe
 
 if TYPE_CHECKING:
-    from tabulaflow.data.registry import DBRegistry
+    from tabulaflow.data.registry import DataConnectorRegistry
 
 logger = logging.getLogger(__name__)
 
@@ -214,7 +214,7 @@ class OutputStore:
         *,
         max_in_memory: int = 5,
         spill_dir: Path | None = None,
-        registry: DBRegistry | None = None,
+        registry: DataConnectorRegistry | None = None,
     ) -> None:
         if max_in_memory < 1:
             raise ValueError("max_in_memory must be >= 1")

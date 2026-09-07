@@ -8,7 +8,7 @@ from pydantic_ai.messages import ToolReturnPart
 from tabulaflow.data.config import SQLConnectorConfig
 from tabulaflow.agents.chat import ChatResult, TurnFinished
 from tabulaflow.agents.chat.turn import _TextStreamRouter, _build_chat_result, _declared_bundle, _strip_answer_prefix
-from tabulaflow.data.registry import DBRegistry
+from tabulaflow.data.registry import DataConnectorRegistry
 from tabulaflow.data.sql import SQLConnector
 from tabulaflow.output.specs import ChoiceOption, ChoiceParameter
 from tabulaflow.core import ExecResult
@@ -121,7 +121,7 @@ async def test_build_chat_result_resolves_a_panel(tmp_path: Path) -> None:
     )
     await connector.run_query_async("CREATE TABLE orders(customer TEXT, net INT, quarter TEXT)")
     await connector.run_query_async("INSERT INTO orders VALUES ('Acme', 10, 'q2'), ('Globex', 7, 'q3')")
-    registry = DBRegistry()
+    registry = DataConnectorRegistry()
     registry.register("workspace", connector)
     output_store = OutputStore(registry=registry)
     create_source = CreateParameterizedSourceTool(registry, output_store)
@@ -187,7 +187,7 @@ async def test_build_chat_result_resolves_source_backed_chart_in_panel(tmp_path:
     )
     await connector.run_query_async("CREATE TABLE orders(customer TEXT, net INT, quarter TEXT)")
     await connector.run_query_async("INSERT INTO orders VALUES ('Acme', 10, 'q2'), ('Globex', 7, 'q3')")
-    registry = DBRegistry()
+    registry = DataConnectorRegistry()
     registry.register("workspace", connector)
     output_store = OutputStore(registry=registry)
     await CreateParameterizedSourceTool(registry, output_store)(
@@ -230,7 +230,7 @@ async def test_build_chat_result_placeholders_a_partially_covered_card(tmp_path:
     )
     await connector.run_query_async("CREATE TABLE orders(net INT, quarter TEXT)")
     await connector.run_query_async("INSERT INTO orders VALUES (10, 'q2')")
-    registry = DBRegistry()
+    registry = DataConnectorRegistry()
     registry.register("workspace", connector)
     output_store = OutputStore(registry=registry)
     await CreateParameterizedSourceTool(registry, output_store)(

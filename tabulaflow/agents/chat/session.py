@@ -61,7 +61,7 @@ if TYPE_CHECKING:
     from pydantic_ai import Agent
     from pydantic_ai.messages import ModelMessage, ToolReturnPart
 
-    from tabulaflow.data.registry import DBRegistry
+    from tabulaflow.data.registry import DataConnectorRegistry
     from tabulaflow.data.sql import SQLConnector
     from tabulaflow.agents.trace import Usage
     from tabulaflow.agents.tools.protocols import ToolProgressUpdate
@@ -127,7 +127,7 @@ class ChatSession:
 
     def __init__(
         self,
-        registry: DBRegistry,
+        registry: DataConnectorRegistry,
         *,
         model: str,
         reasoning: ReasoningLevel,

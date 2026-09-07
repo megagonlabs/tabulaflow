@@ -12,7 +12,7 @@ from pydantic import BaseModel, Field
 from tabulaflow.core import SQLSchema
 from tabulaflow.agents.trace import Usage, Trajectory
 from tabulaflow.research.types import NL2QTask, SimpleNL2QTask
-from tabulaflow.data import DBConnector
+from tabulaflow.data import DataConnector
 from tabulaflow.agents.llm import ReasoningLevel, ServiceTier, make_model_settings
 from tabulaflow.agents.tools import AgentTool
 from tabulaflow.output.formatting import SQLSchemaFormatter
@@ -56,7 +56,7 @@ def get_max_steps_capability(max_steps: int) -> ProcessHistory[Any]:
 @dataclass
 class TaskRunContext:
     task: NL2QTask
-    db_connector: DBConnector
+    db_connector: DataConnector
     preprocessed_schema: SQLSchema
     schema_formatter: SQLSchemaFormatter
     usage: Usage

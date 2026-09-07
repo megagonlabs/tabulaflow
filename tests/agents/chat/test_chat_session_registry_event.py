@@ -1,16 +1,30 @@
-from types import SimpleNamespace
 from typing import Any, cast
 
 import pytest
 from tabulaflow.agents.chat.session import ChatSession
-from tabulaflow.data import DBRegistry
+from tabulaflow.core import (
+    NodeSchema,
+    PropertyGraphSchema,
+    RelationshipEndpoint,
+    RelationshipSchema,
+    SQLSchema,
+    SQLTableSchema,
+)
+from tabulaflow.data import DataConnectorRegistry
 
 
 class FakeSQLConnector:
     connector_type = "sql"
     backend = "sqlite"
     global_id = "fake+sql"
-    schema = SimpleNamespace(dialect="sqlite", tables=[object(), object()])
+    schema = SQLSchema(
+        name="test",
+        dialect="sqlite",
+        tables=[
+            SQLTableSchema(name="a", is_view=False, columns=[], primary_key=[], foreign_keys=[]),
+            SQLTableSchema(name="b", is_view=False, columns=[], primary_key=[], foreign_keys=[]),
+        ],
+    )
 
     @property
     def language(self) -> str:
@@ -29,9 +43,18 @@ class FakeSQLConnector:
 class FakeGraphConnector:
     connector_type = "property_graph"
     global_id = "fake+graph"
-    schema = SimpleNamespace(
-        nodes=[object()],
-        relationships=[SimpleNamespace(endpoints=[object(), object()])],
+    schema = PropertyGraphSchema(
+        name="test",
+        nodes=[NodeSchema(label="Person")],
+        relationships=[
+            RelationshipSchema(
+                label="KNOWS",
+                endpoints=[
+                    RelationshipEndpoint(source_label="Person", target_label="Person"),
+                    RelationshipEndpoint(source_label="Person", target_label="Organization"),
+                ],
+            )
+        ],
     )
 
     @property
@@ -58,7 +81,7 @@ def test_chat_session_notes_pre_registered_sources(monkeypatch: pytest.MonkeyPat
 
     monkeypatch.setattr(ChatSession, "_make_agent", skip_agent_build)
 
-    registry = DBRegistry()
+    registry = DataConnectorRegistry()
     registry.register("sales", cast(Any, FakeSQLConnector()))
     registry.register("graph", cast(Any, FakeGraphConnector()))
 

@@ -1,7 +1,7 @@
 import jinja2
 import time
 from typing import ClassVar, cast
-from tabulaflow.data import DBConnector
+from tabulaflow.data import DataConnector, SQLConnector
 from tabulaflow.agents.trace import Usage, Trajectory
 from tabulaflow.research.observability import trace_prediction
 from tabulaflow.research.types import PredQuery
@@ -95,8 +95,8 @@ class SchemaDiscoveryAgent:
         return cls(config)
 
     @trace_prediction
-    async def predict_async(self, task: SimpleNL2QTask, db_connector: DBConnector) -> SimpleNL2QTaskOutput:
-        if db_connector.connector_type != "sql":
+    async def predict_async(self, task: SimpleNL2QTask, db_connector: DataConnector) -> SimpleNL2QTaskOutput:
+        if not isinstance(db_connector, SQLConnector):
             raise TypeError(f"SchemaDiscoveryAgent requires a SQL db connector, got {type(db_connector)!r}")
         t0 = time.time()
 

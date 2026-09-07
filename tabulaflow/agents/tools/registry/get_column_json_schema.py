@@ -1,12 +1,12 @@
-"""Get-column-json-schema tool backed by a DBRegistry."""
+"""Get-column-json-schema tool backed by a DataConnectorRegistry."""
 
 from typing import ClassVar
 
 from pydantic_ai import Tool, ToolReturn
 
 from tabulaflow.core.schema import SQLSchema
-from tabulaflow.data.protocols import DBConnector
-from tabulaflow.data.registry import DBRegistry
+from tabulaflow.data.protocols import DataConnector
+from tabulaflow.data.registry import DataConnectorRegistry
 from tabulaflow.agents.tools.protocols import ToolCallOutcome, sum_tool_metrics
 from tabulaflow.agents.tools.get_column_json_schema import GetColumnJsonSchemaTool, GetColumnJsonSchemaToolMetrics
 
@@ -15,7 +15,7 @@ class RegistryGetColumnJsonSchemaTool:
     """Retrieve the JSON schema of a column from any registered SQL database.
 
     The agent specifies which database to target via ``db_alias``.  The tool
-    resolves the alias through a ``DBRegistry`` and delegates to a per-alias
+    resolves the alias through a ``DataConnectorRegistry`` and delegates to a per-alias
     ``GetColumnJsonSchemaTool`` instance.
     """
 
@@ -23,7 +23,7 @@ class RegistryGetColumnJsonSchemaTool:
 
     def __init__(
         self,
-        registry: DBRegistry,
+        registry: DataConnectorRegistry,
         *,
         include_examples: bool = True,
         max_example_chars: int = 1000,
@@ -38,7 +38,7 @@ class RegistryGetColumnJsonSchemaTool:
         self.registry = registry
         self.include_examples = include_examples
         self.max_example_chars = max_example_chars
-        self._tools: dict[str, tuple[DBConnector, SQLSchema, GetColumnJsonSchemaTool]] = {}
+        self._tools: dict[str, tuple[DataConnector, SQLSchema, GetColumnJsonSchemaTool]] = {}
 
     def _get_tool(self, db_alias: str) -> GetColumnJsonSchemaTool:
         """Return a cached ``GetColumnJsonSchemaTool`` for ``db_alias``, rebuilding it if the alias was re-bound."""
@@ -46,16 +46,17 @@ class RegistryGetColumnJsonSchemaTool:
         entry = self._tools.get(db_alias)
         if entry is not None and entry[0] is connector and entry[1] is connector.schema:
             return entry[2]
-        if connector.connector_type != "sql":
+        schema = connector.schema
+        if not isinstance(schema, SQLSchema):
             raise TypeError(
                 f"get_column_json_schema is only supported for SQL connectors, not {connector.connector_type!r}"
             )
         tool = GetColumnJsonSchemaTool(
-            connector.schema,
+            schema,
             include_examples=self.include_examples,
             max_example_chars=self.max_example_chars,
         )
-        self._tools[db_alias] = (connector, connector.schema, tool)
+        self._tools[db_alias] = (connector, schema, tool)
         return tool
 
     async def __call__(

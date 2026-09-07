@@ -9,7 +9,7 @@ import pytest
 from tabulaflow.app.session import _create_workspace_connector
 from tabulaflow.agents.chat import ChatSession
 from tabulaflow.agents.chat.session import MAIN_REQUEST_TIMEOUT, SUBAGENT_REQUEST_TIMEOUT
-from tabulaflow.data.registry import DBRegistry
+from tabulaflow.data.registry import DataConnectorRegistry
 
 
 def test_chat_session_constructor_is_keyword_only_and_state_is_read_only() -> None:
@@ -17,14 +17,14 @@ def test_chat_session_constructor_is_keyword_only_and_state_is_read_only() -> No
     assert signature.parameters["model"].kind is inspect.Parameter.KEYWORD_ONLY
     assert "last_usage" not in signature.parameters
 
-    agent = ChatSession(registry=DBRegistry(), model="test", reasoning="medium")
+    agent = ChatSession(registry=DataConnectorRegistry(), model="test", reasoning="medium")
     with pytest.raises(AttributeError):
         agent.model = "other"  # type: ignore[misc]
 
 
 def test_activate_llm_profile_failure_is_transactional(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
-    agent = ChatSession(registry=DBRegistry(), model="test", reasoning="medium")
+    agent = ChatSession(registry=DataConnectorRegistry(), model="test", reasoning="medium")
     runtime_agent = agent._pydantic_ai_agent
     with pytest.raises(Exception, match="ANTHROPIC_API_KEY"):
         agent.activate_llm_profile(
@@ -44,7 +44,7 @@ def test_subagent_failure_does_not_partially_switch_main_profile(monkeypatch: py
     monkeypatch.setenv("OPENAI_API_KEY", "sk-test123456789ab4x")
     monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
     agent = ChatSession(
-        registry=DBRegistry(),
+        registry=DataConnectorRegistry(),
         model="openai-responses:gpt-5",
         reasoning="medium",
         subagent_model="openai-responses:gpt-5-mini",
@@ -71,7 +71,7 @@ def test_subagent_failure_does_not_partially_switch_main_profile(monkeypatch: py
 def test_activate_llm_profile_preserves_conversation_state(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("OPENAI_API_KEY", "sk-test123456789ab4x")
     agent = ChatSession(
-        registry=DBRegistry(),
+        registry=DataConnectorRegistry(),
         model="openai-responses:gpt-5",
         reasoning="medium",
         subagent_model="openai-responses:gpt-5-mini",
@@ -103,13 +103,13 @@ def test_activate_llm_profile_preserves_conversation_state(monkeypatch: pytest.M
 
 def test_api_key_read_from_live_client(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("OPENAI_API_KEY", "sk-test123456789ab4x")
-    agent = ChatSession(registry=DBRegistry(), model="openai-responses:gpt-5", reasoning="medium")
+    agent = ChatSession(registry=DataConnectorRegistry(), model="openai-responses:gpt-5", reasoning="medium")
     assert agent.resolve_api_keys() == ("sk-test123456789ab4x", "sk-test123456789ab4x")
 
 
 def test_api_key_none_for_keyless_model() -> None:
     agent = ChatSession(
-        registry=DBRegistry(),
+        registry=DataConnectorRegistry(),
         model="test",
         reasoning="medium",
         subagent_model="test",
@@ -127,7 +127,7 @@ async def test_chat_session_file_tools_are_unrestricted(tmp_path: Path, monkeypa
     monkeypatch.chdir(project)
 
     agent = ChatSession(
-        registry=DBRegistry(),
+        registry=DataConnectorRegistry(),
         model="test",
         reasoning="medium",
         project_dir=project,
@@ -156,9 +156,9 @@ def test_chat_session_file_editing_tools_follow_project_dir(tmp_path: Path) -> N
     project = tmp_path / "project"
     project.mkdir()
 
-    without_project = ChatSession(registry=DBRegistry(), model="test", reasoning="medium")
+    without_project = ChatSession(registry=DataConnectorRegistry(), model="test", reasoning="medium")
     with_project = ChatSession(
-        registry=DBRegistry(),
+        registry=DataConnectorRegistry(),
         model="test",
         reasoning="medium",
         project_dir=project,
@@ -180,26 +180,26 @@ def test_chat_session_tool_list_includes_file_tools_for_every_model(
     project.mkdir()
 
     without_project = ChatSession(
-        registry=DBRegistry(),
+        registry=DataConnectorRegistry(),
         model="openai-responses:gpt-5",
         reasoning="medium",
     )
     non_gpt = ChatSession(
-        registry=DBRegistry(),
+        registry=DataConnectorRegistry(),
         model="test",
         reasoning="medium",
         project_dir=project,
         use_apply_patch=True,
     )
     openai_non_responses_gpt = ChatSession(
-        registry=DBRegistry(),
+        registry=DataConnectorRegistry(),
         model="openai-chat:gpt-5",
         reasoning="medium",
         project_dir=project,
         use_apply_patch=True,
     )
     gpt = ChatSession(
-        registry=DBRegistry(),
+        registry=DataConnectorRegistry(),
         model="openai-responses:gpt-5",
         reasoning="medium",
         project_dir=project,
@@ -231,7 +231,7 @@ def test_chat_session_file_tool_list_is_stable_across_model_switch(
     project = tmp_path / "project"
     project.mkdir()
     agent = ChatSession(
-        registry=DBRegistry(),
+        registry=DataConnectorRegistry(),
         model="test",
         reasoning="medium",
         project_dir=project,
@@ -272,7 +272,7 @@ def test_apply_patch_capability_controls_tool_schema(tmp_path: Path) -> None:
     project = tmp_path / "project"
     project.mkdir()
     agent = ChatSession(
-        registry=DBRegistry(),
+        registry=DataConnectorRegistry(),
         model="test",
         reasoning="medium",
         project_dir=project,
@@ -313,7 +313,7 @@ def _last_note(agent: ChatSession) -> str:
 
 
 def test_startup_note_states_model() -> None:
-    agent = ChatSession(registry=DBRegistry(), model="test", reasoning="medium")
+    agent = ChatSession(registry=DataConnectorRegistry(), model="test", reasoning="medium")
     assert len(agent._context_messages) == 1
     assert _last_note(agent) == "[system: the model powering this conversation is Test.]"
 
@@ -323,7 +323,7 @@ def test_activate_llm_profile_notes_model_change(tmp_path: Path, monkeypatch: py
     project = tmp_path / "project"
     project.mkdir()
     agent = ChatSession(
-        registry=DBRegistry(),
+        registry=DataConnectorRegistry(),
         model="test",
         reasoning="medium",
         project_dir=project,
@@ -361,7 +361,7 @@ def test_activate_llm_profile_notes_model_change(tmp_path: Path, monkeypatch: py
 
 def test_model_change_note_without_file_tools(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("OPENAI_API_KEY", "sk-test123456789ab4x")
-    agent = ChatSession(registry=DBRegistry(), model="test", reasoning="medium")
+    agent = ChatSession(registry=DataConnectorRegistry(), model="test", reasoning="medium")
 
     agent.activate_llm_profile(
         model="openai-responses:gpt-5",
@@ -376,7 +376,7 @@ def test_model_change_note_without_file_tools(monkeypatch: pytest.MonkeyPatch) -
 def test_resolve_subagent_api_key(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("OPENAI_API_KEY", "sk-sub123456789cd9y")
     agent = ChatSession(
-        registry=DBRegistry(),
+        registry=DataConnectorRegistry(),
         model="test",
         reasoning="medium",
         subagent_model="openai-responses:gpt-5.4-mini",
@@ -386,7 +386,7 @@ def test_resolve_subagent_api_key(monkeypatch: pytest.MonkeyPatch) -> None:
 
 def test_thinking_settings_openai(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("OPENAI_API_KEY", "sk-test123456789ab4x")
-    agent = ChatSession(registry=DBRegistry(), model="openai-responses:gpt-5", reasoning="high")
+    agent = ChatSession(registry=DataConnectorRegistry(), model="openai-responses:gpt-5", reasoning="high")
     # Unified level plus OpenAI's reasoning summary; no max_tokens override for non-Anthropic models.
     assert agent._thinking_settings() == {
         "thinking": "high",
@@ -398,7 +398,7 @@ def test_thinking_settings_openai(monkeypatch: pytest.MonkeyPatch) -> None:
 def test_service_tier_is_omitted_by_default(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("OPENAI_API_KEY", "sk-test123456789ab4x")
     agent = ChatSession(
-        registry=DBRegistry(),
+        registry=DataConnectorRegistry(),
         model="openai-responses:gpt-5",
         reasoning="medium",
         subagent_model="openai-responses:gpt-5.4-mini",
@@ -411,7 +411,7 @@ def test_service_tier_is_omitted_by_default(monkeypatch: pytest.MonkeyPatch) -> 
 def test_service_tier_applies_to_main_and_subagent_requests(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("OPENAI_API_KEY", "sk-test123456789ab4x")
     agent = ChatSession(
-        registry=DBRegistry(),
+        registry=DataConnectorRegistry(),
         model="openai-responses:gpt-5",
         reasoning="medium",
         service_tier="priority",
@@ -425,7 +425,7 @@ def test_service_tier_applies_to_main_and_subagent_requests(monkeypatch: pytest.
 
 def test_false_explicitly_disables_main_and_subagent_reasoning() -> None:
     agent = ChatSession(
-        registry=DBRegistry(),
+        registry=DataConnectorRegistry(),
         model="test",
         reasoning=False,
         subagent_model="test",
@@ -438,7 +438,9 @@ def test_false_explicitly_disables_main_and_subagent_reasoning() -> None:
 
 def test_thinking_settings_budget_era_claude_raises_max_tokens(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-fake")
-    agent = ChatSession(registry=DBRegistry(), model="anthropic:claude-sonnet-4-5-20250929", reasoning="high")
+    agent = ChatSession(
+        registry=DataConnectorRegistry(), model="anthropic:claude-sonnet-4-5-20250929", reasoning="high"
+    )
     settings = agent._thinking_settings()
     assert settings["thinking"] == "high"
     # sonnet-4-5 translates levels to budget_tokens (16384 for high); the API
@@ -448,20 +450,20 @@ def test_thinking_settings_budget_era_claude_raises_max_tokens(monkeypatch: pyte
 
 def test_thinking_settings_adaptive_claude_no_max_tokens(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-fake")
-    agent = ChatSession(registry=DBRegistry(), model="anthropic:claude-opus-4-8", reasoning="high")
+    agent = ChatSession(registry=DataConnectorRegistry(), model="anthropic:claude-opus-4-8", reasoning="high")
     # Adaptive-thinking models never use budgets — no max_tokens override.
     assert agent._thinking_settings() == {"thinking": "high", "timeout": MAIN_REQUEST_TIMEOUT}
 
 
 def test_thinking_settings_opus_5_uses_upstream_adaptive_profile(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-fake")
-    agent = ChatSession(registry=DBRegistry(), model="anthropic:claude-opus-5", reasoning="high")
+    agent = ChatSession(registry=DataConnectorRegistry(), model="anthropic:claude-opus-5", reasoning="high")
     assert agent._thinking_settings() == {"thinking": "high", "timeout": MAIN_REQUEST_TIMEOUT}
 
 
 def test_subagent_settings_budget_era_claude_raise_max_tokens() -> None:
     agent = ChatSession(
-        registry=DBRegistry(),
+        registry=DataConnectorRegistry(),
         model="test",
         reasoning="low",
         subagent_model="anthropic:claude-sonnet-4-5-20250929",
@@ -479,7 +481,7 @@ async def test_subagent_profile_wires_tools(tmp_path: Path, monkeypatch: pytest.
     workspace = await _create_workspace_connector(tmp_path / "workspace.duckdb")
     try:
         agent = ChatSession(
-            registry=DBRegistry(),
+            registry=DataConnectorRegistry(),
             model="test",
             reasoning="medium",
             workspace=workspace,

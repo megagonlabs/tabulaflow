@@ -7,7 +7,7 @@ import pandas as pd
 from tabulaflow.agents.tools.registry.write_result_table import WriteResultTableTool
 from tabulaflow.core.results import ExecResult
 from tabulaflow.data.config import SQLConnectorConfig
-from tabulaflow.data.registry import DBRegistry
+from tabulaflow.data.registry import DataConnectorRegistry
 from tabulaflow.data.sql import SQLConnector
 from tabulaflow.output.store import OutputStore
 
@@ -20,7 +20,7 @@ async def test_write_result_table_preserves_blobs_and_creates_by_default(tmp_pat
         read_only=False,
         config=SQLConnectorConfig(schema_cache_mode="off", query_cache_mode="off"),
     )
-    registry = DBRegistry()
+    registry = DataConnectorRegistry()
     registry.register("workspace", workspace)
     output_store = OutputStore()
     payloads = [b"\x89PNG\r\n\x1a\nimage", b"%PDF-1.7\ndocument"]

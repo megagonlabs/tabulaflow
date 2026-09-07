@@ -93,14 +93,14 @@ class AppSession:
         service_tier: ServiceTier = "default",
         project_dir: Path | None = None,
     ) -> None:
-        from tabulaflow.data.registry import DBRegistry
+        from tabulaflow.data.registry import DataConnectorRegistry
 
         self._runtime_paths = runtime_paths
         self._selected_preset = llm_preset
         self._service_tier = service_tier
         self._workspace = workspace
         self.project_dir = project_dir
-        self.registry: DBRegistry = DBRegistry()
+        self.registry: DataConnectorRegistry = DataConnectorRegistry()
         if workspace is not None:
             self.registry.register(WORKSPACE_ALIAS, workspace)
         self._chat_session: ChatSession | None = None

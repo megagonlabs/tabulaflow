@@ -1,7 +1,7 @@
 import jinja2
 import time
 from typing import ClassVar, Literal, cast
-from tabulaflow.data import SQLConnectorProtocol
+from tabulaflow.data import SQLConnector
 from tabulaflow.output.formatting import schema_formatter_registry, SQLSchemaFormatter
 from tabulaflow.agents.trace import Usage, Trajectory
 from tabulaflow.research.observability import trace_prediction
@@ -74,7 +74,7 @@ class AmbigSimpleSQLAgent:
 
     @trace_prediction
     async def predict_async(
-        self, task: AmbigNL2QTask, db_connector: SQLConnectorProtocol, user_simulator: UserSimulatorProtocol
+        self, task: AmbigNL2QTask, db_connector: SQLConnector, user_simulator: UserSimulatorProtocol
     ) -> SimpleAmbigNL2QTaskOutput:
         t0 = time.time()
 

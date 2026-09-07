@@ -23,7 +23,7 @@ from tabulaflow.agents.chat.compaction import (
 )
 from tabulaflow.agents.chat.events import ChatEvent, CompactionFinished, CompactionStarted
 from tabulaflow.agents.chat.session import ChatSession
-from tabulaflow.data.registry import DBRegistry
+from tabulaflow.data.registry import DataConnectorRegistry
 
 
 def test_estimate_context_tokens_uses_latest_usage_anchor() -> None:
@@ -258,7 +258,7 @@ def test_compact_history_keeps_user_prompts_before_evicting_turns() -> None:
 
 async def test_chat_session_compacts_before_pending_question() -> None:
     session = ChatSession(
-        registry=DBRegistry(),
+        registry=DataConnectorRegistry(),
         model="test",
         reasoning="medium",
         compaction=CompactionConfig(trigger_tokens=1_000, target_tokens=800),

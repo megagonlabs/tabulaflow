@@ -6,7 +6,7 @@ from pydantic import BaseModel
 from pydantic_ai.settings import ModelSettings
 from tabulaflow.core.schema import ColumnRef, SQLSchema
 from tabulaflow.agents.trace import Usage
-from tabulaflow.data.protocols import SQLConnectorProtocol
+from tabulaflow.data import SQLConnector
 from tabulaflow.output.formatting.sql_ddl import SQLDDLSchemaFormatter
 from tabulaflow.agents.llm import make_agent
 
@@ -49,9 +49,7 @@ class ColumnProfiler:
     def usage(self) -> Usage:
         return self._usage
 
-    async def run_column_async(
-        self, db_connector: SQLConnectorProtocol, schema: SQLSchema, column_ref: ColumnRef
-    ) -> LLMOutput:
+    async def run_column_async(self, db_connector: SQLConnector, schema: SQLSchema, column_ref: ColumnRef) -> LLMOutput:
         system_prompt = jinja2.Template(COLUMN_PROFILER_SYSTEM_PROMPT).render(
             schema=self.formatter.format(schema, include_descriptions=True)
         )
@@ -66,7 +64,7 @@ class ColumnProfiler:
         self._usage += Usage.from_pydantic_ai_usage(result.usage, self.llm)
         return result.output
 
-    async def run_async(self, db_connector: SQLConnectorProtocol, schema: SQLSchema) -> SQLSchema:
+    async def run_async(self, db_connector: SQLConnector, schema: SQLSchema) -> SQLSchema:
         column_refs = schema.column_refs()
         all_results = await asyncio.gather(
             *[self.run_column_async(db_connector, schema, column_ref) for column_ref in column_refs]

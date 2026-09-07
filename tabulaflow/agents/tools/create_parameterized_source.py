@@ -13,7 +13,7 @@ import jinja2.meta
 import pandas as pd
 from pydantic_ai import Tool, ToolReturn
 
-from tabulaflow.data.registry import DBRegistry
+from tabulaflow.data.registry import DataConnectorRegistry
 from tabulaflow.output.specs import (
     ChoiceParameter,
     NumberParameter,
@@ -54,7 +54,7 @@ class CreateParameterizedSourceTool:
 
     def __init__(
         self,
-        registry: DBRegistry,
+        registry: DataConnectorRegistry,
         output_store: OutputStore,
         *,
         timeout: int | None | object = _UNSET,
