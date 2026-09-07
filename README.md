@@ -753,19 +753,23 @@ Sep 4
   - [x] Stable colors across parameter selection
 
 Sep 6
+- SPARQL
+  - [x] core and data layer clean up
 - [x] Fix media cells display in TUI
 - Output pane
   - [x] Fix arrow key automatically focus on close button
-  - [ ] Image cramped - https://huggingface.co/datasets/lmms-lab-encoder/DocVQA/viewer/DocVQA
-  - [ ] Long text/json cell in output pane
-  - [ ] Focus ring of item in media collection in output pane
+  - [x] Focus ring of item in media collection in output pane
 
-- [ ] Public data sources
-  - [ ] Huggingface, analyze, preprocessing (replace jupyter notebook)
+Sep 7
+- SPARQL
+  - [ ] SPARQL connector
   - [ ] Wikidata
   - [ ] Government/academic data
-- [ ] Authentication
+- Output pane
+  - [ ] Long text/json cell in output pane
+  - [ ] Image cramped - https://huggingface.co/datasets/lmms-lab-encoder/DocVQA/viewer/DocVQA
 
+- [ ] Authentication
 - [ ] Merge registry tool variants
 - [ ] Fix input history order
 - [ ] Huggingface connect split selection and better url cleaning
