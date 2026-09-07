@@ -24,7 +24,7 @@ async def test_write_result_table_preserves_blobs_and_creates_by_default(tmp_pat
     registry.register("workspace", workspace)
     output_store = OutputStore()
     payloads = [b"\x89PNG\r\n\x1a\nimage", b"%PDF-1.7\ndocument"]
-    source = await output_store.add_fixed_result_source(
+    source = await output_store.add_fixed_artifact_source(
         "sample_data",
         "duckdb",
         "SELECT * FROM expense_documents",

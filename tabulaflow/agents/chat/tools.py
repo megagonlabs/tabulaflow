@@ -10,7 +10,7 @@ if TYPE_CHECKING:
     from tabulaflow.agents.tools.add_canonical_name import AddCanonicalNameTool
     from tabulaflow.agents.tools.filesystem.patch import ApplyPatchTool
     from tabulaflow.agents.tools.connect_data_source import ConnectDataSourceTool
-    from tabulaflow.agents.tools.create_parameterized_source import CreateParameterizedSourceTool
+    from tabulaflow.agents.tools.create_parameterized_source import CreateParameterizedArtifactSourceTool
     from tabulaflow.agents.tools.shell.tool import ExecuteBashTool
     from tabulaflow.agents.tools.extract_rows_from_documents import ExtractRowsFromDocumentsTool
     from tabulaflow.agents.tools.filesystem.edit import EditFileTool
@@ -31,7 +31,7 @@ if TYPE_CHECKING:
 @dataclass
 class _ChatTools:
     run_query: RegistryRunQueryTool
-    create_parameterized_source: CreateParameterizedSourceTool
+    create_parameterized_source: CreateParameterizedArtifactSourceTool
     get_db_document: RegistryGetDBDocumentTool
     get_table_schema: RegistryGetTableSchemaTool
     get_column_json_schema: RegistryGetColumnJsonSchemaTool

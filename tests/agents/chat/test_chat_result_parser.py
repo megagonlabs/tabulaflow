@@ -15,7 +15,7 @@ from tabulaflow.core import ExecResult
 from tabulaflow.agents.tools import (
     ArtifactRef,
     ArtifactBundle,
-    CreateParameterizedSourceTool,
+    CreateParameterizedArtifactSourceTool,
     RenderChartTool,
 )
 from tabulaflow.output.resolver import OutputResolver, ResolvedChartArtifact, ResolvedTableArtifact
@@ -97,7 +97,9 @@ def test_declared_bundle_skips_failed_calls_and_takes_the_last() -> None:
 
 async def test_build_chat_result_resolves_the_declared_bundle() -> None:
     output_store = OutputStore()
-    await output_store.add_fixed_result_source("workspace", "duckdb", "SELECT 1", ExecResult(df=pd.DataFrame({"a": [1]})))
+    await output_store.add_fixed_artifact_source(
+        "workspace", "duckdb", "SELECT 1", ExecResult(df=pd.DataFrame({"a": [1]}))
+    )
     bundle = ArtifactBundle(artifacts=(ArtifactRef(id="S1", label="row count"),))
 
     result = await _build_chat_result("ANSWER:\nThere is 1 row.", bundle, output_store)
@@ -124,7 +126,7 @@ async def test_build_chat_result_resolves_a_panel(tmp_path: Path) -> None:
     registry = DataConnectorRegistry()
     registry.register("workspace", connector)
     output_store = OutputStore(registry=registry)
-    create_source = CreateParameterizedSourceTool(registry, output_store)
+    create_source = CreateParameterizedArtifactSourceTool(registry, output_store)
     # S1 varies over both dimensions; S2 only over period.
     await create_source(
         "workspace",
@@ -190,7 +192,7 @@ async def test_build_chat_result_resolves_source_backed_chart_in_panel(tmp_path:
     registry = DataConnectorRegistry()
     registry.register("workspace", connector)
     output_store = OutputStore(registry=registry)
-    await CreateParameterizedSourceTool(registry, output_store)(
+    await CreateParameterizedArtifactSourceTool(registry, output_store)(
         "workspace",
         [
             ChoiceParameter(
@@ -233,7 +235,7 @@ async def test_build_chat_result_placeholders_a_partially_covered_card(tmp_path:
     registry = DataConnectorRegistry()
     registry.register("workspace", connector)
     output_store = OutputStore(registry=registry)
-    await CreateParameterizedSourceTool(registry, output_store)(
+    await CreateParameterizedArtifactSourceTool(registry, output_store)(
         "workspace",
         [ChoiceParameter(id="period", label="Period", choices=[ChoiceOption(id="q2", label="Q2")])],
         "SELECT SUM(net) AS net FROM orders WHERE quarter = '{{ period }}'",

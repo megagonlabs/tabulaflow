@@ -1,4 +1,4 @@
-"""Create declarative parameterized output sources."""
+"""Create declarative parameterized artifact sources."""
 
 from __future__ import annotations
 
@@ -18,7 +18,7 @@ from tabulaflow.output.specs import (
     ChoiceParameter,
     NumberParameter,
     ParameterSpec,
-    ParameterizedSource,
+    ParameterizedArtifactSource,
     Selection,
     default_selection,
 )
@@ -26,7 +26,7 @@ from tabulaflow.core.results import ErrorInfo, ExecResult
 from tabulaflow.output.formatting import format_dataframe, format_single_line_text
 from tabulaflow.agents.tools.protocols import ToolCallOutcome
 from tabulaflow.agents.tools._sql import format_sqlalchemy_error_msg
-from tabulaflow.output.store import OutputStore, SourceNotApplicable, render_parameterized_query
+from tabulaflow.output.store import OutputStore, ArtifactSourceNotApplicable, render_parameterized_query
 
 _JINJA_ENV = jinja2.Environment(undefined=jinja2.StrictUndefined, trim_blocks=True, lstrip_blocks=True)
 _JINJA_ENV.globals["not_applicable"] = lambda reason="not applicable": None
@@ -40,15 +40,15 @@ _UNSET = object()
 
 
 @dataclass(frozen=True)
-class CreatedParameterizedSource:
-    """Created source metadata returned by programmatic execution."""
+class CreatedParameterizedArtifactSource:
+    """Created artifact-source metadata returned by programmatic execution."""
 
     output: str
-    source: ParameterizedSource
+    artifact_source: ParameterizedArtifactSource
 
 
-class CreateParameterizedSourceTool:
-    """Create a source whose query is controlled by declared output parameters."""
+class CreateParameterizedArtifactSourceTool:
+    """Create an artifact source whose query is controlled by output parameters."""
 
     name: ClassVar = "create_parameterized_source"
 
@@ -67,7 +67,7 @@ class CreateParameterizedSourceTool:
 
     async def __call__(
         self,
-        db_alias: str,
+        connector_alias: str,
         parameters: list[ParameterSpec],
         query_template: str,
         max_warm_variants: int | None = None,
@@ -77,7 +77,7 @@ class CreateParameterizedSourceTool:
         Example:
         ```python
         create_parameterized_source(
-            db_alias="workspace",
+            connector_alias="workspace",
             parameters=[
                 {
                     "kind": "choice",
@@ -121,7 +121,7 @@ class CreateParameterizedSourceTool:
         Example:
         ```python
         create_parameterized_source(
-            db_alias="workspace",
+            connector_alias="workspace",
             parameters=[
                 {
                     "kind": "choice",
@@ -146,7 +146,7 @@ class CreateParameterizedSourceTool:
         ```
 
         Args:
-            db_alias: Alias of the target database.
+            connector_alias: Alias of the connector that executes rendered queries.
             parameters: Choice or number parameters referenced by the Jinja query template.
                 For choice parameters, the first choice is the default.
             query_template: Jinja template rendered with validated parameter values.
@@ -157,22 +157,22 @@ class CreateParameterizedSourceTool:
                 defaults while choice combinations are warmed up to this cap.
         """
         try:
-            created = await self.execute(db_alias, parameters, query_template, max_warm_variants)
+            created = await self.execute(connector_alias, parameters, query_template, max_warm_variants)
         except ValueError as exc:
             return ToolReturn(return_value=f"(error: {exc})", metadata=ToolCallOutcome(error=True))
         return ToolReturn(return_value=created.output, metadata=ToolCallOutcome(count=1, unit="source"))
 
     async def execute(
         self,
-        db_alias: str,
+        connector_alias: str,
         parameters: list[ParameterSpec],
         query_template: str,
         max_warm_variants: int | None = None,
-    ) -> CreatedParameterizedSource:
+    ) -> CreatedParameterizedArtifactSource:
         """Validate, create, and warm a parameterized result source.
 
         Args:
-            db_alias: Alias of the database that executes rendered queries.
+            connector_alias: Alias of the connector that executes rendered queries.
             parameters: Parameters referenced by ``query_template``.
             query_template: Jinja query template rendered for each warmed selection.
             max_warm_variants: Maximum finite choice combinations to precompute.
@@ -189,10 +189,10 @@ class CreateParameterizedSourceTool:
         if max_warm_variants < 1:
             raise ValueError("max_warm_variants must be >= 1")
         try:
-            connector = self._registry.get(db_alias)
+            connector = self._registry.get(connector_alias)
         except ValueError:
             available = ", ".join(self._registry.list_aliases()) or "(none)"
-            raise ValueError(f"unknown db_alias: {db_alias!r}; available: {available}") from None
+            raise ValueError(f"unknown connector_alias: {connector_alias!r}; available: {available}") from None
         _validate_parameters(parameters)
         _validate_template(parameters, query_template)
         warm_queries: list[tuple[Selection, str]] = []
@@ -200,7 +200,7 @@ class CreateParameterizedSourceTool:
         for selection in _warm_selections(parameters, max_warm_variants):
             try:
                 warm_queries.append((selection, render_parameterized_query(query_template, selection)))
-            except SourceNotApplicable:
+            except ArtifactSourceNotApplicable:
                 not_applicable_count += 1
         if not warm_queries:
             raise ValueError("all warmed selections were not applicable; source was not created")
@@ -224,7 +224,7 @@ class CreateParameterizedSourceTool:
         if failures:
             raise ValueError(_format_failures(failures, len(warm_queries)))
 
-        source = self._output_store.add_parameterized_source(db_alias, parameters, query_template)
+        source = self._output_store.add_parameterized_artifact_source(connector_alias, parameters, query_template)
         lines = [f"[source_id={source.id}]", f"created parameterized source {source.id}"]
         for selection, query, exec_result in executions:
             await self._output_store.cache_parameterized_result(
@@ -245,7 +245,7 @@ class CreateParameterizedSourceTool:
             lines += ["", "other warmed selections:", *other_lines]
         if len(warm_queries) == 1:
             lines.append("other selections will materialize lazily when selected")
-        return CreatedParameterizedSource(output="\n".join(lines), source=source)
+        return CreatedParameterizedArtifactSource(output="\n".join(lines), artifact_source=source)
 
     def as_pydantic_ai_tool(self) -> Tool:
         return Tool(self.__call__, name=self.name)

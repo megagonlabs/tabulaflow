@@ -27,19 +27,20 @@ from tabulaflow.output.specs import (
     ArtifactSpec,
     ArtifactSpecError,
     ChartArtifactSpec,
-    FixedResultSource,
+    FixedArtifactSource,
     GraphArtifactSpec,
     MapArtifactSpec,
     ParameterSpec,
-    ParameterizedSource,
+    ParameterizedArtifactSource,
     ResultId,
     Selection,
-    SourceSpec,
-    SourceId,
+    ArtifactSource,
+    ArtifactSourceId,
     canonical_selection_key,
     default_selection,
     validate_parameter_value,
 )
+
 if TYPE_CHECKING:
     from tabulaflow.data.registry import DataConnectorRegistry
 
@@ -49,8 +50,8 @@ __all__ = [
     "OutputStore",
     "ResultMetadata",
     "ResultPayload",
-    "SourceResolutionError",
-    "SourceNotApplicable",
+    "ArtifactSourceResolutionError",
+    "ArtifactSourceNotApplicable",
     "render_parameterized_query",
 ]
 
@@ -61,7 +62,7 @@ class ResultMetadata(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     id: ResultId
-    db_alias: str
+    connector_alias: str
     query: str
     query_language: QueryLanguage
     source_selection: Selection = Field(default_factory=dict)
@@ -71,16 +72,16 @@ class ResultMetadata(BaseModel):
     latency_seconds: float | None = None
 
 
-class SourceNotApplicable(Exception):
-    """A parameterized source intentionally does not apply to a selection."""
+class ArtifactSourceNotApplicable(Exception):
+    """A parameterized artifact source does not apply to a selection."""
 
 
-class SourceResolutionError(RuntimeError):
-    """A source or stored result could not be resolved to a materialized payload."""
+class ArtifactSourceResolutionError(RuntimeError):
+    """An artifact source could not be resolved to a materialized result."""
 
 
 def _not_applicable(reason: object = "not applicable") -> NoReturn:
-    raise SourceNotApplicable(str(reason))
+    raise ArtifactSourceNotApplicable(str(reason))
 
 
 _JINJA_ENV = SandboxedEnvironment(undefined=jinja2.StrictUndefined, trim_blocks=True, lstrip_blocks=True)
@@ -202,7 +203,7 @@ class OutputStore:
         max_in_memory: Number of result DataFrames to keep in RAM.
         spill_dir: Directory used to persist result DataFrames as Parquet files.
             Without one, DataFrames remain in memory.
-        registry: Data-source registry used to materialize parameterized sources
+        registry: Connector registry used to materialize parameterized artifact sources
             on cache misses.
 
     Raises:
@@ -220,28 +221,28 @@ class OutputStore:
             raise ValueError("max_in_memory must be >= 1")
         self._results_by_id: dict[str, _StoredResultEntry] = {}
         self._parameters: dict[str, ParameterSpec] = {}
-        self._sources: dict[str, SourceSpec] = {}
-        self._source_cache: dict[tuple[str, str], str] = {}
+        self._artifact_sources: dict[str, ArtifactSource] = {}
+        self._artifact_source_cache: dict[tuple[str, str], str] = {}
         self._artifacts: dict[str, ArtifactSpec] = {}
         self._next_result_id = 1
-        self._next_source_id = 1
+        self._next_artifact_source_id = 1
         self._next_artifact_ids: dict[str, int] = {}
         self._results = _ResultDataFrameStore(max_in_memory=max_in_memory, spill_dir=spill_dir)
         self._registry = registry
 
-    async def add_fixed_result_source(
+    async def add_fixed_artifact_source(
         self,
-        db_alias: str,
+        connector_alias: str,
         query_language: QueryLanguage,
         query: str,
         exec_result: ExecResult,
-    ) -> FixedResultSource:
-        """Store a query result and create a fixed source for it."""
+    ) -> FixedArtifactSource:
+        """Store a query result and create a fixed artifact source for it."""
         result_id = self._next_result_id_value()
-        source_id = self._next_source_id_value()
-        await self._store(result_id, db_alias, query_language, query, exec_result)
-        source = FixedResultSource(id=source_id, result_id=result_id)
-        self._sources[source_id] = source
+        source_id = self._next_artifact_source_id_value()
+        await self._store(result_id, connector_alias, query_language, query, exec_result)
+        source = FixedArtifactSource(id=source_id, result_id=result_id)
+        self._artifact_sources[source_id] = source
         return source
 
     def _register_parameter(self, parameter: ParameterSpec) -> None:
@@ -260,30 +261,30 @@ class OutputStore:
         except KeyError:
             raise KeyError(f"No parameter with id {parameter_id}") from None
 
-    def source_parameters(self, source_id: str) -> list[ParameterSpec]:
+    def artifact_source_parameters(self, source_id: str) -> list[ParameterSpec]:
         """Return the parameter definitions required by ``source_id``."""
-        source = self.get_source(source_id)
-        if not isinstance(source, ParameterizedSource):
+        source = self.get_artifact_source(source_id)
+        if not isinstance(source, ParameterizedArtifactSource):
             return []
         return [self._get_parameter(parameter_id) for parameter_id in source.parameter_ids]
 
-    def add_parameterized_source(
+    def add_parameterized_artifact_source(
         self,
-        db_alias: str,
+        connector_alias: str,
         parameters: list[ParameterSpec],
         query_template: str,
-    ) -> ParameterizedSource:
-        """Create a parameterized source from registered parameters and a query template."""
-        source_id = self._next_source_id_value()
+    ) -> ParameterizedArtifactSource:
+        """Create a parameterized artifact source from parameters and a query template."""
+        source_id = self._next_artifact_source_id_value()
         for parameter in parameters:
             self._register_parameter(parameter)
-        source = ParameterizedSource(
+        source = ParameterizedArtifactSource(
             id=source_id,
             parameter_ids=[parameter.id for parameter in parameters],
-            db_alias=db_alias,
+            connector_alias=connector_alias,
             query_template=query_template,
         )
-        self._sources[source_id] = source
+        self._artifact_sources[source_id] = source
         return source
 
     async def cache_parameterized_result(
@@ -294,13 +295,13 @@ class OutputStore:
         query: str,
         exec_result: ExecResult,
     ) -> ResultId:
-        """Seed or replace one cached materialization for a parameterized source."""
-        source = self.get_source(source_id)
-        if not isinstance(source, ParameterizedSource):
+        """Cache one materialization for a parameterized artifact source."""
+        source = self.get_artifact_source(source_id)
+        if not isinstance(source, ParameterizedArtifactSource):
             raise ValueError(f"source {source_id!r} is not parameterized")
         result_id = self._next_result_id_value()
-        await self._store(result_id, source.db_alias, query_language, query, exec_result, selection=selection)
-        self._source_cache[(source.id, canonical_selection_key(selection))] = result_id
+        await self._store(result_id, source.connector_alias, query_language, query, exec_result, selection=selection)
+        self._artifact_source_cache[(source.id, canonical_selection_key(selection))] = result_id
         return result_id
 
     def _next_result_id_value(self) -> str:
@@ -308,15 +309,15 @@ class OutputStore:
         self._next_result_id += 1
         return result_id
 
-    def _next_source_id_value(self) -> str:
-        source_id = f"S{self._next_source_id}"
-        self._next_source_id += 1
+    def _next_artifact_source_id_value(self) -> str:
+        source_id = f"S{self._next_artifact_source_id}"
+        self._next_artifact_source_id += 1
         return source_id
 
     async def _store(
         self,
         result_id: str,
-        db_alias: str,
+        connector_alias: str,
         query_language: QueryLanguage,
         query: str,
         exec_result: ExecResult,
@@ -325,18 +326,20 @@ class OutputStore:
     ) -> _StoredResultEntry:
         """Register one result under ``result_id``."""
         if exec_result.error is not None:
-            raise SourceResolutionError(exec_result.error.message)
+            raise ArtifactSourceResolutionError(exec_result.error.message)
         df = exec_result.df
         if df is not None:
             try:
                 await self._results.put_dataframe(result_id, df)
             except (OSError, TypeError, ValueError) as exc:
-                raise SourceResolutionError(f"query succeeded, but its result could not be stored: {exc}") from exc
+                raise ArtifactSourceResolutionError(
+                    f"query succeeded, but its result could not be stored: {exc}"
+                ) from exc
         row_count = len(df) if df is not None else None
         columns = [str(column) for column in df.columns] if df is not None else None
         metadata = ResultMetadata(
             id=result_id,
-            db_alias=db_alias,
+            connector_alias=connector_alias,
             query=query,
             query_language=query_language,
             source_selection={} if selection is None else dict(selection),
@@ -349,19 +352,19 @@ class OutputStore:
         self._results_by_id[result_id] = stored
         return stored
 
-    def get_source(self, source_id: str) -> SourceSpec:
-        """Return a previously stored source."""
+    def get_artifact_source(self, source_id: str) -> ArtifactSource:
+        """Return a previously stored artifact source."""
         try:
-            return self._sources[source_id]
+            return self._artifact_sources[source_id]
         except KeyError:
             raise KeyError(f"No source with id {source_id}") from None
 
-    async def resolve_source(
+    async def resolve_artifact_source(
         self,
         source_id: str,
         selection: Mapping[str, object] | None = None,
     ) -> ResultPayload:
-        """Resolve a source to a materialized payload.
+        """Resolve an artifact source to a materialized payload.
 
         Fixed sources return their stored result. Parameterized sources project
         relevant values from ``selection``, fill omitted values from declared
@@ -374,34 +377,34 @@ class OutputStore:
         Returns:
             The materialized result payload.
         """
-        source = self.get_source(source_id)
-        if isinstance(source, FixedResultSource):
+        source = self.get_artifact_source(source_id)
+        if isinstance(source, FixedArtifactSource):
             return await self.get_payload(source.result_id)
-        if not isinstance(source, ParameterizedSource):
+        if not isinstance(source, ParameterizedArtifactSource):
             raise TypeError(f"unsupported source {type(source).__name__}")
-        parameters = self.source_parameters(source.id)
+        parameters = self.artifact_source_parameters(source.id)
         projected_selection = default_selection(parameters)
         if selection is not None:
             for parameter in parameters:
                 if parameter.id in selection:
                     projected_selection[parameter.id] = validate_parameter_value(parameter, selection[parameter.id])
         selection_key = canonical_selection_key(projected_selection)
-        result_id = self._source_cache.get((source.id, selection_key))
+        result_id = self._artifact_source_cache.get((source.id, selection_key))
         if result_id is None:
-            result_id = await self._materialize_parameterized_source(source, projected_selection)
+            result_id = await self._materialize_parameterized_artifact_source(source, projected_selection)
         return await self.get_payload(result_id)
 
-    async def _materialize_parameterized_source(
+    async def _materialize_parameterized_artifact_source(
         self,
-        source: ParameterizedSource,
+        source: ParameterizedArtifactSource,
         selection: Selection,
     ) -> ResultId:
         query = render_parameterized_query(source.query_template, selection)
         if self._registry is None:
-            raise SourceResolutionError(
+            raise ArtifactSourceResolutionError(
                 f"source {source.id!r} has no result for selection {canonical_selection_key(selection)}"
             )
-        connector = self._registry.get(source.db_alias)
+        connector = self._registry.get(source.connector_alias)
         exec_result = await connector.run_query_async(query)
         return await self.cache_parameterized_result(source.id, connector.language, selection, query, exec_result)
 
@@ -410,7 +413,7 @@ class OutputStore:
         try:
             return self._results_by_id[result_id]
         except KeyError:
-            raise SourceResolutionError(f"No result with id {result_id}") from None
+            raise ArtifactSourceResolutionError(f"No result with id {result_id}") from None
 
     async def _get_dataframe(self, result_id: str) -> pd.DataFrame:
         """Return the DataFrame for a tabular query result."""
@@ -430,17 +433,17 @@ class OutputStore:
         return ResultPayload(metadata=entry.metadata, df=df, graph=entry.graph)
 
     def add_chart_artifact(
-        self, source_id: SourceId, spec: Mapping[str, object], label: str | None = None
+        self, source_id: ArtifactSourceId, spec: Mapping[str, object], label: str | None = None
     ) -> ChartArtifactSpec:
         """Store a chart artifact under a ``CHART<n>`` id."""
-        self.get_source(source_id)
+        self.get_artifact_source(source_id)
         artifact_id = self._next_artifact_id("CHART")
         artifact = ChartArtifactSpec(id=artifact_id, label=label, source_id=source_id, spec=dict(spec))
         self._store_artifact(artifact)
         return artifact
 
     def add_map_artifact(
-        self, source_ids: list[SourceId], spec: Mapping[str, object], label: str | None = None
+        self, source_ids: list[ArtifactSourceId], spec: Mapping[str, object], label: str | None = None
     ) -> MapArtifactSpec:
         """Store a map artifact under a ``MAP<n>`` id."""
         self._validate_map_sources(source_ids, spec)
@@ -450,7 +453,7 @@ class OutputStore:
         return artifact
 
     def add_graph_artifact(
-        self, source_ids: list[SourceId], spec: Mapping[str, object], label: str | None = None
+        self, source_ids: list[ArtifactSourceId], spec: Mapping[str, object], label: str | None = None
     ) -> GraphArtifactSpec:
         """Store a graph artifact under a ``GRAPH<n>`` id."""
         self._validate_graph_sources(source_ids, spec)
@@ -470,7 +473,7 @@ class OutputStore:
     def _store_artifact(self, artifact: ArtifactSpec) -> None:
         self._artifacts[artifact.id] = artifact
 
-    def _validate_map_sources(self, source_ids: list[SourceId], spec: Mapping[str, object]) -> None:
+    def _validate_map_sources(self, source_ids: list[ArtifactSourceId], spec: Mapping[str, object]) -> None:
         parsed = maps.parse_map_spec(spec)
         self._validate_artifact_sources(
             kind="map",
@@ -478,7 +481,7 @@ class OutputStore:
             referenced=maps.referenced_source_ids(parsed),
         )
 
-    def _validate_graph_sources(self, source_ids: list[SourceId], spec: Mapping[str, object]) -> None:
+    def _validate_graph_sources(self, source_ids: list[ArtifactSourceId], spec: Mapping[str, object]) -> None:
         parsed = graphs.parse_graph_spec(spec)
         self._validate_artifact_sources(
             kind="graph",
@@ -490,13 +493,13 @@ class OutputStore:
         self,
         *,
         kind: str,
-        declared: list[SourceId],
-        referenced: list[SourceId],
+        declared: list[ArtifactSourceId],
+        referenced: list[ArtifactSourceId],
     ) -> None:
         if len(declared) != len(set(declared)):
             raise ArtifactSpecError(f"{kind} artifact source_ids must be unique")
         for source_id in declared:
-            self.get_source(source_id)
+            self.get_artifact_source(source_id)
         if set(declared) != set(referenced):
             raise ArtifactSpecError(
                 f"{kind} artifact source_ids {declared!r} do not match spec source_ids {referenced!r}"

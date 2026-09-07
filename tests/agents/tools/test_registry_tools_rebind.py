@@ -47,7 +47,7 @@ async def test_run_query_fails_after_disconnect(tmp_path: Path) -> None:
 
     assert await registry.close_async("mydb")
     result_text = _text(await tool("mydb", "SELECT val FROM t"))
-    assert "unknown db_alias" in result_text
+    assert "unknown connector_alias" in result_text
     assert "alpha" not in result_text
 
 

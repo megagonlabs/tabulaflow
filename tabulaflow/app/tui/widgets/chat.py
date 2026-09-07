@@ -114,7 +114,7 @@ class SpinnerWidget(Widget):
 
 
 # Keys handled by the prefix/grouping logic or too noisy to show in a step label.
-_NOISE_ARG_KEYS = frozenset({"db_alias", "refresh", "tab", "tool_call_id"})
+_NOISE_ARG_KEYS = frozenset({"connector_alias", "refresh", "tab", "tool_call_id"})
 
 # A git-style diffstat token (``+5`` / ``-2``) preceded by whitespace, so a path
 # like ``model-2.sql`` is not mistaken for a removed-line count.

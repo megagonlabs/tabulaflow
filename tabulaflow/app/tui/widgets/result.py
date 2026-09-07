@@ -18,7 +18,7 @@ from textual.widgets import Static
 
 from tabulaflow.app.tui.rendering import DATA_PREVIEW_MAX_ROWS, build_resolved_output_card_views
 from tabulaflow.output.specs import ChoiceParameter, NumberParameter, SelectionValue
-from tabulaflow.output.store import SourceResolutionError
+from tabulaflow.output.store import ArtifactSourceResolutionError
 from tabulaflow.app.theme import ACCENT
 from tabulaflow.app.tui.theme import (
     ACCENT_DIM,
@@ -905,5 +905,5 @@ class AgentResultWidget(Widget):
         try:
             payload = await self._turn_output.output_store.get_payload(result_id)
             return payload.df
-        except (SourceResolutionError, ValueError):
+        except (ArtifactSourceResolutionError, ValueError):
             return None

@@ -50,11 +50,11 @@ def test_refresh_parameter_is_exposed_only_when_enabled(factory: Callable[[bool]
 @pytest.mark.parametrize(
     ("enable_params", "enable_refresh", "enable_media", "expected"),
     [
-        (False, False, False, {"db_alias", "query"}),
-        (True, False, False, {"db_alias", "query", "parameters"}),
-        (False, True, False, {"db_alias", "query", "refresh"}),
-        (False, False, True, {"db_alias", "query", "include_media"}),
-        (True, True, True, {"db_alias", "query", "parameters", "refresh", "include_media"}),
+        (False, False, False, {"connector_alias", "query"}),
+        (True, False, False, {"connector_alias", "query", "parameters"}),
+        (False, True, False, {"connector_alias", "query", "refresh"}),
+        (False, False, True, {"connector_alias", "query", "include_media"}),
+        (True, True, True, {"connector_alias", "query", "parameters", "refresh", "include_media"}),
     ],
 )
 def test_registry_run_query_exposes_enabled_parameters(

@@ -580,7 +580,7 @@ async def test_pane_preparation_failure_renders_safe_error_card(
         payload=ResultPayload(
             metadata=ResultMetadata(
                 id="R1",
-                db_alias="workspace",
+                connector_alias="workspace",
                 query="SELECT * FROM orders",
                 query_language="duckdb",
             ),

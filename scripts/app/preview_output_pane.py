@@ -370,15 +370,17 @@ def _push_controls_turn(pane: pane_mod.OutputPane, pane_dir: Path) -> None:
         unit="km²",
     )
     parameters = [*customer_parameters, zone_area_parameter]
-    source = output_store.add_parameterized_source("preview", customer_parameters, "-- preview controls fixture")
-    revenue_source = output_store.add_parameterized_source(
+    source = output_store.add_parameterized_artifact_source(
+        "preview", customer_parameters, "-- preview controls fixture"
+    )
+    revenue_source = output_store.add_parameterized_artifact_source(
         "preview",
         customer_parameters,
         "{% if metric != 'revenue' %}{{ not_applicable('Revenue detail only applies when Metric is Revenue') }}{% endif %}\n"
         "-- preview revenue-only detail fixture",
     )
     empty_source = asyncio.run(
-        output_store.add_fixed_result_source(
+        output_store.add_fixed_artifact_source(
             "preview",
             "duckdb",
             "-- preview empty table fixture",
@@ -386,14 +388,14 @@ def _push_controls_turn(pane: pane_mod.OutputPane, pane_dir: Path) -> None:
         )
     )
     no_data_source = asyncio.run(
-        output_store.add_fixed_result_source(
+        output_store.add_fixed_artifact_source(
             "preview",
             "duckdb",
             "-- preview no tabular data fixture",
             ExecResult(),
         )
     )
-    taxi_zone_source = output_store.add_parameterized_source(
+    taxi_zone_source = output_store.add_parameterized_artifact_source(
         "preview",
         [zone_area_parameter],
         "-- preview NYC taxi zones filtered by minimum area",

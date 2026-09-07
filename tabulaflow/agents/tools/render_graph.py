@@ -14,7 +14,7 @@ from tabulaflow.output.graphs import (
     referenced_source_ids,
     validate_graph_size,
 )
-from tabulaflow.output.store import OutputStore, SourceNotApplicable, SourceResolutionError
+from tabulaflow.output.store import OutputStore, ArtifactSourceNotApplicable, ArtifactSourceResolutionError
 
 
 class RenderGraphTool:
@@ -98,10 +98,10 @@ class RenderGraphTool:
         sources: dict[str, pd.DataFrame] = {}
         for rid in source_ids:
             try:
-                payload = await self._output_store.resolve_source(rid)
+                payload = await self._output_store.resolve_artifact_source(rid)
             except KeyError:
                 return f"(error: unknown source_id {rid!r})"
-            except (SourceNotApplicable, SourceResolutionError) as e:
+            except (ArtifactSourceNotApplicable, ArtifactSourceResolutionError) as e:
                 return f"(error: {e})"
             df = payload.df
             if df is None:

@@ -85,9 +85,7 @@ def deref_call(message_id: str) -> str:
     Shared by every snippet builder so the dereference pointer (workspace alias,
     schema-qualified table) is written in exactly one place.
     """
-    return (
-        f'run_query(db_alias="workspace", "SELECT content FROM {_SCHEMA}.{_TABLE} WHERE message_id=\'{message_id}\'")'
-    )
+    return f'run_query(connector_alias="workspace", "SELECT content FROM {_SCHEMA}.{_TABLE} WHERE message_id=\'{message_id}\'")'
 
 
 def make_snippet(message_id: str, content: str) -> str:

@@ -414,7 +414,7 @@ class RunSubagentForEachRowTool:
             enable_run_query_tool: If True, the per-row subagent additionally
                 receives a registry-backed ``run_query`` tool that can query
                 and modify any registered database (the subagent specifies
-                ``db_alias`` per call). Enable it for tasks where row-local
+                ``connector_alias`` per call). Enable it for tasks where row-local
                 context isn't enough:
 
                 - **Computing a large output via SQL.** When the value is too
@@ -422,7 +422,7 @@ class RunSubagentForEachRowTool:
                   ``UPDATE`` the target column itself with ``run_query``, and set
                   ``output_columns`` to a separate small acknowledgment column for
                   ``submit_answer`` to fill. The ``task_instruction`` must give the
-                  subagent the ``db_alias``, ``table_name``, and key columns for
+                  subagent the ``connector_alias``, ``table_name``, and key columns for
                   its ``WHERE``.
                 - **Reads or writes beyond the row.** The subagent reads
                   auxiliary tables for context, or writes to other tables

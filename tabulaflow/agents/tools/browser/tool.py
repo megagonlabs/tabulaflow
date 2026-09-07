@@ -338,7 +338,7 @@ def _snapshot_marker(total: int, message_id: str, shown: int, total_refs: int) -
     ref_note = ""
     if total_refs:
         ref_note = f"; {shown} of {total_refs} interactive refs from the omitted region shown below"
-    return f"... [truncated, {total} chars total{ref_note} — read full content with {deref_call(message_id)}] ..."
+    return f"... [truncated, {total} chars total{ref_note} — read with {deref_call(message_id)}] ..."
 
 
 # ---------------------------------------------------------------------------

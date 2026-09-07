@@ -48,7 +48,7 @@ def _payload(
     return ResultPayload(
         metadata=ResultMetadata(
             id=result_id,
-            db_alias="debug",
+            connector_alias="debug",
             query=query,
             query_language=query_language,
             row_count=len(df) if df is not None else None,

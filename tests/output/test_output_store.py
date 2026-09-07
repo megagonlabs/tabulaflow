@@ -7,7 +7,7 @@ import pytest
 
 from tabulaflow.output.specs import ArtifactSpecError, ChartArtifactSpec, GraphArtifactSpec, MapArtifactSpec
 from tabulaflow.core import ExecResult
-from tabulaflow.output.store import OutputStore, ResultMetadata, SourceResolutionError
+from tabulaflow.output.store import OutputStore, ResultMetadata, ArtifactSourceResolutionError
 
 
 def _make_execution(n_rows: int = 5) -> tuple[str, ExecResult]:
@@ -36,7 +36,7 @@ def _graph_artifact(output_store: OutputStore, graph_id: str) -> GraphArtifactSp
 def test_result_metadata_owns_query_provenance() -> None:
     metadata = ResultMetadata(
         id="Q2",
-        db_alias="workspace",
+        connector_alias="workspace",
         query="SELECT * FROM customers WHERE total_spend >= 50000",
         query_language="duckdb",
         source_selection={"min_spend": 50_000},
@@ -45,20 +45,20 @@ def test_result_metadata_owns_query_provenance() -> None:
         columns=["customer", "total_spend"],
     )
 
-    assert metadata.db_alias == "workspace"
+    assert metadata.connector_alias == "workspace"
     assert metadata.query_language == "duckdb"
     assert metadata.source_selection == {"min_spend": 50_000}
     assert metadata.affected_rows == 3
 
 
 async def test_missing_result_raises_domain_error() -> None:
-    with pytest.raises(SourceResolutionError, match="No result with id R9"):
+    with pytest.raises(ArtifactSourceResolutionError, match="No result with id R9"):
         await OutputStore().get_payload("R9")
 
 
 def test_map_and_graph_artifacts_accept_parameterized_sources() -> None:
     output_store = OutputStore()
-    source = output_store.add_parameterized_source("workspace", [], "SELECT 1")
+    source = output_store.add_parameterized_artifact_source("workspace", [], "SELECT 1")
 
     map_artifact = output_store.add_map_artifact(
         [source.id],
@@ -89,14 +89,14 @@ class TestNoSpillDirectory:
     async def test_no_eviction(self) -> None:
         h = OutputStore(max_in_memory=2)
         for _ in range(5):
-            await h.add_fixed_result_source("db", "duckdb", *_make_execution())
+            await h.add_fixed_artifact_source("db", "duckdb", *_make_execution())
         assert h._results.in_memory_count == 5
         assert all(h._results.has_in_memory(r.metadata.id) for r in h._results_by_id.values())
 
     async def test_get(self) -> None:
         h = OutputStore()
-        await h.add_fixed_result_source("db", "duckdb", *_make_execution(n_rows=3))
-        await h.add_fixed_result_source("db", "duckdb", *_make_execution(n_rows=7))
+        await h.add_fixed_artifact_source("db", "duckdb", *_make_execution(n_rows=3))
+        await h.add_fixed_artifact_source("db", "duckdb", *_make_execution(n_rows=7))
         assert (await h.get_payload("R1")).metadata.query == "SELECT 1"
         q2_df = (await h.get_payload("R2")).df
         assert q2_df is not None
@@ -104,7 +104,7 @@ class TestNoSpillDirectory:
 
     async def test_get_payload(self) -> None:
         h = OutputStore()
-        await h.add_fixed_result_source("db", "duckdb", *_make_execution(n_rows=3))
+        await h.add_fixed_artifact_source("db", "duckdb", *_make_execution(n_rows=3))
 
         payload = await h.get_payload("R1")
 
@@ -115,7 +115,7 @@ class TestNoSpillDirectory:
 
     async def test_result_metadata_records_affected_rows(self) -> None:
         h = OutputStore()
-        await h.add_fixed_result_source(
+        await h.add_fixed_artifact_source(
             "db",
             "duckdb",
             "UPDATE t SET a = 1",
@@ -137,13 +137,13 @@ class TestWithSpillDirectory:
     async def test_keeps_recent_results_in_memory(self, spill_dir: Path) -> None:
         h = OutputStore(max_in_memory=5, spill_dir=spill_dir)
         for _ in range(5):
-            await h.add_fixed_result_source("db", "duckdb", *_make_execution())
+            await h.add_fixed_artifact_source("db", "duckdb", *_make_execution())
         assert h._results.in_memory_count == 5
 
     async def test_evicts_oldest(self, spill_dir: Path) -> None:
         h = OutputStore(max_in_memory=3, spill_dir=spill_dir)
         for _ in range(5):
-            await h.add_fixed_result_source("db", "duckdb", *_make_execution())
+            await h.add_fixed_artifact_source("db", "duckdb", *_make_execution())
 
         assert h._results.in_memory_count == 3
         assert not h._results.has_in_memory("R1")
@@ -157,8 +157,8 @@ class TestWithSpillDirectory:
         h = OutputStore(max_in_memory=1, spill_dir=spill_dir)
         query, exec_result = _make_execution(n_rows=10)
 
-        await h.add_fixed_result_source("db", "duckdb", query, exec_result)
-        await h.add_fixed_result_source("db", "duckdb", *_make_execution(n_rows=20))
+        await h.add_fixed_artifact_source("db", "duckdb", query, exec_result)
+        await h.add_fixed_artifact_source("db", "duckdb", *_make_execution(n_rows=20))
 
         assert exec_result.df is not None
         assert not h._results.has_in_memory("R1")
@@ -166,9 +166,9 @@ class TestWithSpillDirectory:
 
     async def test_get_dataframe_loads_evicted_result(self, spill_dir: Path) -> None:
         h = OutputStore(max_in_memory=2, spill_dir=spill_dir)
-        await h.add_fixed_result_source("db", "duckdb", *_make_execution(n_rows=10))
-        await h.add_fixed_result_source("db", "duckdb", *_make_execution(n_rows=20))
-        await h.add_fixed_result_source("db", "duckdb", *_make_execution(n_rows=30))
+        await h.add_fixed_artifact_source("db", "duckdb", *_make_execution(n_rows=10))
+        await h.add_fixed_artifact_source("db", "duckdb", *_make_execution(n_rows=20))
+        await h.add_fixed_artifact_source("db", "duckdb", *_make_execution(n_rows=30))
         assert not h._results.has_in_memory("R1")
 
         df = (await h.get_payload("R1")).df
@@ -189,8 +189,8 @@ class TestWithSpillDirectory:
             }
         )
         h = OutputStore(max_in_memory=1, spill_dir=spill_dir)
-        await h.add_fixed_result_source("db", "duckdb", "SELECT media", ExecResult(df=df))
-        await h.add_fixed_result_source("db", "duckdb", *_make_execution())
+        await h.add_fixed_artifact_source("db", "duckdb", "SELECT media", ExecResult(df=df))
+        await h.add_fixed_artifact_source("db", "duckdb", *_make_execution())
 
         payload = await h.get_payload("R1")
 
@@ -209,15 +209,15 @@ class TestWithSpillDirectory:
         monkeypatch.setattr(h._results, "_persist", fake_persist)
 
         with pytest.raises(
-            SourceResolutionError, match="query succeeded, but its result could not be stored: disk full"
+            ArtifactSourceResolutionError, match="query succeeded, but its result could not be stored: disk full"
         ):
-            await h.add_fixed_result_source("db", "duckdb", *_make_execution(n_rows=10))
+            await h.add_fixed_artifact_source("db", "duckdb", *_make_execution(n_rows=10))
 
     async def test_error_results_not_tracked(self, spill_dir: Path) -> None:
         h = OutputStore(max_in_memory=2, spill_dir=spill_dir)
-        with pytest.raises(SourceResolutionError, match="syntax error"):
-            await h.add_fixed_result_source("db", "duckdb", *_make_error_execution())
-        await h.add_fixed_result_source("db", "duckdb", *_make_execution())
+        with pytest.raises(ArtifactSourceResolutionError, match="syntax error"):
+            await h.add_fixed_artifact_source("db", "duckdb", *_make_error_execution())
+        await h.add_fixed_artifact_source("db", "duckdb", *_make_execution())
         assert h._results.in_memory_count == 1
 
     async def test_roundtrip_preserves_data(self, spill_dir: Path) -> None:
@@ -230,8 +230,8 @@ class TestWithSpillDirectory:
             }
         )
         exec_result = ExecResult(df=df_original.copy())
-        await h.add_fixed_result_source("db", "duckdb", "SELECT *", exec_result)
-        await h.add_fixed_result_source("db", "duckdb", *_make_execution())  # evicts Q1
+        await h.add_fixed_artifact_source("db", "duckdb", "SELECT *", exec_result)
+        await h.add_fixed_artifact_source("db", "duckdb", *_make_execution())  # evicts Q1
         assert not h._results.has_in_memory("R1")
 
         df_loaded = (await h.get_payload("R1")).df
@@ -240,8 +240,8 @@ class TestWithSpillDirectory:
 
     async def test_add_chart_does_not_hydrate(self, spill_dir: Path) -> None:
         h = OutputStore(max_in_memory=1, spill_dir=spill_dir)
-        await h.add_fixed_result_source("db", "duckdb", *_make_execution())
-        await h.add_fixed_result_source("db", "duckdb", *_make_execution())
+        await h.add_fixed_artifact_source("db", "duckdb", *_make_execution())
+        await h.add_fixed_artifact_source("db", "duckdb", *_make_execution())
         assert not h._results.has_in_memory("R1")
         with pytest.raises(KeyError):
             h.add_chart_artifact("S9", {"mark": "bar"})
@@ -255,7 +255,7 @@ class TestWithSpillDirectory:
 
     async def test_add_map_stores_standalone_artifact(self, spill_dir: Path) -> None:
         h = OutputStore(spill_dir=spill_dir)
-        await h.add_fixed_result_source("db", "duckdb", *_make_execution())
+        await h.add_fixed_artifact_source("db", "duckdb", *_make_execution())
         spec = {"layers": [{"type": "points", "source_id": "S1", "lat": "lat", "lng": "lng"}]}
         with pytest.raises(ArtifactSpecError, match="do not match"):
             h.add_map_artifact([], spec)

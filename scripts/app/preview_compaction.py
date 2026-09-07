@@ -58,7 +58,7 @@ def _fixture() -> list[ModelMessage]:
                         TextPart(content=f"I will query cohort {index}."),
                         ToolCallPart(
                             "run_query",
-                            {"db_alias": "sales", "query": f"SELECT * FROM cohort_{index}"},
+                            {"connector_alias": "sales", "query": f"SELECT * FROM cohort_{index}"},
                             call_id,
                         ),
                     ]

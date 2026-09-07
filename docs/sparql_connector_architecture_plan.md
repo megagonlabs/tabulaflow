@@ -265,7 +265,7 @@ Do not initially add `query_wikidata` or `search_wikidata`. The former duplicate
 `run_query`; the latter should only be considered after evaluations show that a
 good source document and SPARQL search examples are insufficient. If multiple
 connector families later need equivalent entity search, introduce a generic
-capability and `search_entities(db_alias, ...)` tool rather than a
+capability and `search_entities(connector_alias, ...)` tool rather than a
 Wikidata-specific tool.
 
 ## Connection syntax

@@ -10,8 +10,8 @@ from tabulaflow.agents.tools.protocols import ToolCallOutcome
 from tabulaflow.data.protocols import DataFrameWriteMode
 from tabulaflow.data.registry import DataConnectorRegistry
 from tabulaflow.data.sql import SQLConnector
-from tabulaflow.output.specs import FixedResultSource
-from tabulaflow.output.store import OutputStore, SourceResolutionError
+from tabulaflow.output.specs import FixedArtifactSource
+from tabulaflow.output.store import OutputStore, ArtifactSourceResolutionError
 
 
 class WriteResultTableTool:
@@ -31,7 +31,7 @@ class WriteResultTableTool:
         """Initialize the tool.
 
         Args:
-            registry: The database registry containing available connectors.
+            registry: The connector registry.
             output_store: Shared output store used by ``run_query``.
         """
         self.registry = registry
@@ -74,13 +74,13 @@ class WriteResultTableTool:
     ) -> str:
         """Write one fixed query result into a registered SQL target."""
         try:
-            source = self._output_store.get_source(source_id)
-            if not isinstance(source, FixedResultSource):
+            source = self._output_store.get_artifact_source(source_id)
+            if not isinstance(source, FixedArtifactSource):
                 raise ValueError(f"source_id {source_id!r} is not a single-result source")
             payload = await self._output_store.get_payload(source.result_id)
         except KeyError:
             raise ValueError(f"unknown source_id {source_id!r}") from None
-        except SourceResolutionError as e:
+        except ArtifactSourceResolutionError as e:
             raise RuntimeError(str(e)) from e
 
         df = payload.df
@@ -106,7 +106,7 @@ class WriteResultTableTool:
         target_name = f"{target_schema}.{target_table}" if target_schema else target_table
         return (
             f"Wrote {rows_written} rows from {source_id} "
-            f"({payload.metadata.db_alias}) to alias={target_alias}, table={target_name} (mode={mode})"
+            f"({payload.metadata.connector_alias}) to alias={target_alias}, table={target_name} (mode={mode})"
         )
 
     def as_pydantic_ai_tool(self) -> Tool:

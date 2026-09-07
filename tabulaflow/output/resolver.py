@@ -16,21 +16,26 @@ from tabulaflow.output.specs import (
     ArtifactId,
     ArtifactSpec,
     ChartArtifactSpec,
-    FixedResultSource,
+    FixedArtifactSource,
     GraphArtifactSpec,
     MapArtifactSpec,
     ParameterId,
-    ParameterizedSource,
+    ParameterizedArtifactSource,
     Selection,
-    SourceId,
-    SourceSpec,
+    ArtifactSourceId,
+    ArtifactSource,
     TableArtifactSpec,
     artifact_source_ids,
     validate_parameter_value,
 )
 from tabulaflow.core.results import GraphResult
 from tabulaflow.output.charts import validate_chart_spec
-from tabulaflow.output.store import OutputStore, ResultPayload, SourceNotApplicable, SourceResolutionError
+from tabulaflow.output.store import (
+    OutputStore,
+    ResultPayload,
+    ArtifactSourceNotApplicable,
+    ArtifactSourceResolutionError,
+)
 
 __all__ = [
     "OutputResolutionError",
@@ -54,7 +59,7 @@ class ResolvedTableArtifact:
     """Resolved table artifact with its source payload attached."""
 
     artifact_id: ArtifactId
-    source_id: SourceId
+    source_id: ArtifactSourceId
     payload: ResultPayload
     label: str | None = None
 
@@ -64,7 +69,7 @@ class ResolvedChartArtifact:
     """Resolved chart artifact with its source payload and chart spec attached."""
 
     artifact_id: ArtifactId
-    source_id: SourceId
+    source_id: ArtifactSourceId
     payload: ResultPayload
     spec: dict[str, object]
     label: str | None = None
@@ -76,7 +81,7 @@ class ResolvedMapArtifact:
 
     artifact_id: ArtifactId
     spec: dict[str, object]
-    payload_by_source: Mapping[SourceId, ResultPayload]
+    payload_by_source: Mapping[ArtifactSourceId, ResultPayload]
     label: str | None = None
 
 
@@ -141,19 +146,21 @@ class OutputResolver:
         """
         active_selection = _normalize_selection(output, selection)
         sources = {source.id: source for source in output.sources}
-        source_outcomes: dict[SourceId, ResultPayload | SourceNotApplicable | SourceResolutionError] = {}
+        source_outcomes: dict[
+            ArtifactSourceId, ResultPayload | ArtifactSourceNotApplicable | ArtifactSourceResolutionError
+        ] = {}
         artifacts: list[ResolvedArtifact] = []
         for artifact in output.artifacts:
             try:
-                payload_by_source: dict[SourceId, ResultPayload] = {}
+                payload_by_source: dict[ArtifactSourceId, ResultPayload] = {}
                 for source_id in artifact_source_ids(artifact):
                     source = sources.get(source_id)
                     if source is None:
                         raise OutputResolutionError(f"artifact {artifact.id!r} references unknown source {source_id!r}")
                     if source_id not in source_outcomes:
                         try:
-                            source_outcomes[source_id] = await self._resolve_source(source, active_selection)
-                        except (SourceNotApplicable, SourceResolutionError) as exc:
+                            source_outcomes[source_id] = await self._resolve_artifact_source(source, active_selection)
+                        except (ArtifactSourceNotApplicable, ArtifactSourceResolutionError) as exc:
                             source_outcomes[source_id] = exc
                     outcome = source_outcomes[source_id]
                     if isinstance(outcome, Exception):
@@ -162,7 +169,7 @@ class OutputResolver:
                 artifacts.append(_resolved_artifact(artifact, payload_by_source))
             except OutputResolutionError:
                 raise
-            except SourceNotApplicable as exc:
+            except ArtifactSourceNotApplicable as exc:
                 artifacts.append(
                     UnavailableArtifact(
                         artifact_id=artifact.id,
@@ -171,19 +178,19 @@ class OutputResolver:
                         status="not_applicable",
                     )
                 )
-            except (ArtifactSpecError, SourceResolutionError) as exc:
+            except (ArtifactSpecError, ArtifactSourceResolutionError) as exc:
                 artifacts.append(UnavailableArtifact(artifact_id=artifact.id, label=artifact.label, reason=str(exc)))
         return ResolvedOutput(selection=active_selection, artifacts=artifacts)
 
-    async def _resolve_source(
+    async def _resolve_artifact_source(
         self,
-        source: SourceSpec,
+        source: ArtifactSource,
         selection: Mapping[ParameterId, object],
     ) -> ResultPayload:
-        if isinstance(source, FixedResultSource):
+        if isinstance(source, FixedArtifactSource):
             return await self._output_store.get_payload(source.result_id)
-        if isinstance(source, ParameterizedSource):
-            return await self._output_store.resolve_source(source.id, selection)
+        if isinstance(source, ParameterizedArtifactSource):
+            return await self._output_store.resolve_artifact_source(source.id, selection)
         raise TypeError(f"unsupported source {type(source).__name__}")
 
 
@@ -206,7 +213,9 @@ def _normalize_selection(
         raise OutputResolutionError(str(exc)) from None
 
 
-def _resolved_artifact(artifact: ArtifactSpec, payload_by_source: dict[SourceId, ResultPayload]) -> ResolvedArtifact:
+def _resolved_artifact(
+    artifact: ArtifactSpec, payload_by_source: dict[ArtifactSourceId, ResultPayload]
+) -> ResolvedArtifact:
     if isinstance(artifact, TableArtifactSpec):
         payload = payload_by_source[artifact.source_id]
         if payload.df is None and payload.graph is None:
@@ -270,20 +279,24 @@ def _resolved_artifact(artifact: ArtifactSpec, payload_by_source: dict[SourceId,
     raise TypeError(f"unsupported artifact {type(artifact).__name__}")
 
 
-def _validate_artifact_source_ids(artifact_id: str, declared: list[SourceId], referenced: list[SourceId]) -> None:
+def _validate_artifact_source_ids(
+    artifact_id: str, declared: list[ArtifactSourceId], referenced: list[ArtifactSourceId]
+) -> None:
     if set(declared) != set(referenced):
         raise OutputResolutionError(
             f"artifact {artifact_id!r} source_ids {declared!r} do not match spec source_ids {referenced!r}"
         )
 
 
-def _dataframes_by_source(payload_by_source: Mapping[SourceId, ResultPayload]) -> dict[SourceId, pd.DataFrame]:
+def _dataframes_by_source(
+    payload_by_source: Mapping[ArtifactSourceId, ResultPayload],
+) -> dict[ArtifactSourceId, pd.DataFrame]:
     return {source_id: payload.df for source_id, payload in payload_by_source.items() if payload.df is not None}
 
 
 def _no_result_if_missing_dataframe(
     artifact: ArtifactSpec,
-    payload_by_source: Mapping[SourceId, ResultPayload],
+    payload_by_source: Mapping[ArtifactSourceId, ResultPayload],
 ) -> UnavailableArtifact | None:
     if all(payload.df is not None for payload in payload_by_source.values()):
         return None

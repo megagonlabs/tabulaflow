@@ -8,12 +8,12 @@ from tabulaflow.output.specs import (
     ChoiceOption,
     ChoiceParameter,
     ChartArtifactSpec,
-    FixedResultSource,
+    FixedArtifactSource,
     GraphArtifactSpec,
     MapArtifactSpec,
     NumberParameter,
     OutputSpec,
-    ParameterizedSource,
+    ParameterizedArtifactSource,
     TableArtifactSpec,
 )
 from tabulaflow.core import ExecResult, GraphResult
@@ -30,21 +30,21 @@ from tabulaflow.output.store import (
     OutputStore,
     ResultMetadata,
     ResultPayload,
-    SourceNotApplicable,
-    SourceResolutionError,
+    ArtifactSourceNotApplicable,
+    ArtifactSourceResolutionError,
     render_parameterized_query,
 )
 
 
 async def _output_store_with_results() -> OutputStore:
     output_store = OutputStore()
-    await output_store.add_fixed_result_source(
+    await output_store.add_fixed_artifact_source(
         "workspace",
         "duckdb",
         "SELECT 1 AS a",
         ExecResult(df=pd.DataFrame({"a": [1]})),
     )
-    await output_store.add_fixed_result_source(
+    await output_store.add_fixed_artifact_source(
         "workspace",
         "duckdb",
         "SELECT 2 AS a",
@@ -69,7 +69,7 @@ def test_result_payload_rejects_graph_without_dataframe() -> None:
         ResultPayload(
             metadata=ResultMetadata(
                 id="R1",
-                db_alias="workspace",
+                connector_alias="workspace",
                 query="MATCH (n) RETURN n",
                 query_language="cypher",
             ),
@@ -81,7 +81,7 @@ async def test_fixed_source_resolves_output_artifact() -> None:
     output_store = await _output_store_with_results()
     resolver = OutputResolver(output_store)
     output = OutputSpec(
-        sources=[FixedResultSource(id="fixed", result_id="R1")],
+        sources=[FixedArtifactSource(id="fixed", result_id="R1")],
         artifacts=[TableArtifactSpec(id="table", source_id="fixed")],
     )
 
@@ -92,7 +92,7 @@ async def test_fixed_source_resolves_output_artifact() -> None:
     metadata = artifact.payload.metadata
     assert resolved.selection == {}
     assert metadata.id == "R1"
-    assert metadata.db_alias == "workspace"
+    assert metadata.connector_alias == "workspace"
     assert metadata.query == "SELECT 1 AS a"
     assert metadata.row_count == 1
     assert metadata.columns == ["a"]
@@ -100,7 +100,7 @@ async def test_fixed_source_resolves_output_artifact() -> None:
 
 async def test_parameterized_source_resolves_by_projected_selection() -> None:
     output_store = OutputStore()
-    source = output_store.add_parameterized_source(
+    source = output_store.add_parameterized_artifact_source(
         "workspace",
         [
             ChoiceParameter(
@@ -139,13 +139,13 @@ async def test_parameterized_source_resolves_by_projected_selection() -> None:
     metadata = artifact.payload.metadata
     assert resolved.selection == {"metric": "profit", "min_spend": 10_000}
     assert metadata.id == "R2"
-    assert isinstance(output.sources[0], ParameterizedSource)
+    assert isinstance(output.sources[0], ParameterizedArtifactSource)
 
 
 async def test_parameterized_source_rejects_invalid_choice() -> None:
     output_store = await _output_store_with_results()
     resolver = OutputResolver(output_store)
-    source = output_store.add_parameterized_source(
+    source = output_store.add_parameterized_artifact_source(
         "workspace",
         [
             ChoiceParameter(
@@ -169,7 +169,7 @@ async def test_parameterized_source_rejects_invalid_choice() -> None:
 async def test_parameterized_source_reports_unavailable_selection() -> None:
     output_store = await _output_store_with_results()
     resolver = OutputResolver(output_store)
-    source = output_store.add_parameterized_source(
+    source = output_store.add_parameterized_artifact_source(
         "workspace",
         [
             ChoiceParameter(
@@ -196,7 +196,7 @@ async def test_parameterized_source_reports_unavailable_selection() -> None:
 async def test_parameterized_source_without_cache_errors_until_materialization_exists() -> None:
     output_store = await _output_store_with_results()
     resolver = OutputResolver(output_store)
-    source = output_store.add_parameterized_source(
+    source = output_store.add_parameterized_artifact_source(
         "workspace",
         [NumberParameter(id="min_spend", label="Minimum spend", min=0, max=100_000, step=5_000, default=10_000)],
         "SELECT 1",
@@ -216,7 +216,7 @@ async def test_parameterized_source_without_cache_errors_until_materialization_e
 
 async def test_unavailable_artifact_does_not_hide_siblings() -> None:
     output_store = await _output_store_with_results()
-    missing = output_store.add_parameterized_source(
+    missing = output_store.add_parameterized_artifact_source(
         "workspace",
         [
             ChoiceParameter(
@@ -229,7 +229,7 @@ async def test_unavailable_artifact_does_not_hide_siblings() -> None:
     )
     output = OutputSpec(
         parameters=_parameters(),
-        sources=[FixedResultSource(id="fixed", result_id="R1"), missing],
+        sources=[FixedArtifactSource(id="fixed", result_id="R1"), missing],
         artifacts=[
             TableArtifactSpec(id="fixed", source_id="fixed"),
             TableArtifactSpec(id="missing", source_id=missing.id),
@@ -246,7 +246,7 @@ async def test_unavailable_artifact_does_not_hide_siblings() -> None:
 
 
 def test_parameterized_query_can_declare_not_applicable() -> None:
-    with pytest.raises(SourceNotApplicable, match="only applies to revenue"):
+    with pytest.raises(ArtifactSourceNotApplicable, match="only applies to revenue"):
         render_parameterized_query(
             "{% if metric != 'revenue' %}{{ not_applicable('only applies to revenue') }}{% endif %} SELECT 1",
             {"metric": "orders"},
@@ -260,7 +260,7 @@ def test_parameterized_query_blocks_unsafe_attribute_access() -> None:
 
 async def test_parameterized_source_not_applicable_is_not_an_error() -> None:
     output_store = OutputStore()
-    source = output_store.add_parameterized_source(
+    source = output_store.add_parameterized_artifact_source(
         "workspace",
         [
             ChoiceParameter(
@@ -279,7 +279,7 @@ async def test_parameterized_source_not_applicable_is_not_an_error() -> None:
         ExecResult(df=pd.DataFrame({"value": [1]})),
     )
     output = OutputSpec(
-        parameters=output_store.source_parameters(source.id),
+        parameters=output_store.artifact_source_parameters(source.id),
         sources=[source],
         artifacts=[TableArtifactSpec(id="table", source_id=source.id)],
     )
@@ -295,7 +295,7 @@ async def test_parameterized_source_not_applicable_is_not_an_error() -> None:
 async def test_missing_materialized_result_becomes_artifact_error() -> None:
     output_store = OutputStore()
     output = OutputSpec(
-        sources=[FixedResultSource(id="missing", result_id="R9")],
+        sources=[FixedArtifactSource(id="missing", result_id="R9")],
         artifacts=[TableArtifactSpec(id="table", source_id="missing")],
     )
 
@@ -309,14 +309,14 @@ async def test_missing_materialized_result_becomes_artifact_error() -> None:
 
 async def test_table_artifact_without_displayable_payload_is_unavailable() -> None:
     output_store = OutputStore()
-    await output_store.add_fixed_result_source(
+    await output_store.add_fixed_artifact_source(
         "workspace",
         "duckdb",
         "CREATE TABLE t(a INT)",
         ExecResult(),
     )
     output = OutputSpec(
-        sources=[FixedResultSource(id="fixed", result_id="R1")],
+        sources=[FixedArtifactSource(id="fixed", result_id="R1")],
         artifacts=[TableArtifactSpec(id="table", source_id="fixed")],
     )
 
@@ -330,14 +330,14 @@ async def test_table_artifact_without_displayable_payload_is_unavailable() -> No
 
 async def test_table_artifact_without_displayable_payload_reports_affected_rows() -> None:
     output_store = OutputStore()
-    await output_store.add_fixed_result_source(
+    await output_store.add_fixed_artifact_source(
         "workspace",
         "duckdb",
         "UPDATE t SET a = 1",
         ExecResult(affected_rows=3),
     )
     output = OutputSpec(
-        sources=[FixedResultSource(id="fixed", result_id="R1")],
+        sources=[FixedArtifactSource(id="fixed", result_id="R1")],
         artifacts=[TableArtifactSpec(id="table", source_id="fixed")],
     )
 
@@ -351,14 +351,14 @@ async def test_table_artifact_without_displayable_payload_reports_affected_rows(
 
 async def test_chart_artifact_without_dataframe_is_unavailable() -> None:
     output_store = OutputStore()
-    await output_store.add_fixed_result_source(
+    await output_store.add_fixed_artifact_source(
         "workspace",
         "duckdb",
         "CREATE TABLE t(a INT)",
         ExecResult(),
     )
     output = OutputSpec(
-        sources=[FixedResultSource(id="fixed", result_id="R1")],
+        sources=[FixedArtifactSource(id="fixed", result_id="R1")],
         artifacts=[ChartArtifactSpec(id="chart", source_id="fixed", spec={"mark": "bar"})],
     )
 
@@ -372,7 +372,7 @@ async def test_chart_artifact_without_dataframe_is_unavailable() -> None:
 
 async def test_empty_visualization_sources_resolve_as_normal_artifacts() -> None:
     output_store = OutputStore()
-    await output_store.add_fixed_result_source(
+    await output_store.add_fixed_artifact_source(
         "workspace",
         "duckdb",
         "SELECT id, lat, lng, target, value FROM places WHERE false",
@@ -388,7 +388,7 @@ async def test_empty_visualization_sources_resolve_as_normal_artifacts() -> None
             )
         ),
     )
-    source = FixedResultSource(id="fixed", result_id="R1")
+    source = FixedArtifactSource(id="fixed", result_id="R1")
     output = OutputSpec(
         sources=[source],
         artifacts=[
@@ -428,13 +428,13 @@ async def test_empty_visualization_sources_resolve_as_normal_artifacts() -> None
 
 async def test_nonempty_graph_with_invalid_node_ids_is_an_error() -> None:
     output_store = OutputStore()
-    await output_store.add_fixed_result_source(
+    await output_store.add_fixed_artifact_source(
         "workspace",
         "duckdb",
         "SELECT id, target FROM invalid_nodes",
         ExecResult(df=pd.DataFrame({"id": [None], "target": [None]})),
     )
-    source = FixedResultSource(id="fixed", result_id="R1")
+    source = FixedArtifactSource(id="fixed", result_id="R1")
     output = OutputSpec(
         sources=[source],
         artifacts=[
@@ -459,13 +459,13 @@ async def test_nonempty_graph_with_invalid_node_ids_is_an_error() -> None:
 
 async def test_invalid_artifact_specs_do_not_abort_other_artifacts() -> None:
     output_store = OutputStore()
-    await output_store.add_fixed_result_source(
+    await output_store.add_fixed_artifact_source(
         "workspace",
         "duckdb",
         "SELECT 1 AS value",
         ExecResult(df=pd.DataFrame({"value": [1]})),
     )
-    source = FixedResultSource(id="fixed", result_id="R1")
+    source = FixedArtifactSource(id="fixed", result_id="R1")
     output = OutputSpec(
         sources=[source],
         artifacts=[
@@ -503,13 +503,13 @@ async def test_invalid_artifact_specs_do_not_abort_other_artifacts() -> None:
 
 async def test_map_and_graph_specs_resolve_against_source_data() -> None:
     output_store = OutputStore()
-    await output_store.add_fixed_result_source(
+    await output_store.add_fixed_artifact_source(
         "workspace",
         "duckdb",
         "SELECT * FROM places",
         ExecResult(df=pd.DataFrame({"id": ["a"], "lat": [1.0], "lng": [2.0], "target": ["a"]})),
     )
-    source = FixedResultSource(id="fixed", result_id="R1")
+    source = FixedArtifactSource(id="fixed", result_id="R1")
     output = OutputSpec(
         sources=[source],
         artifacts=[
@@ -547,7 +547,7 @@ async def test_map_and_graph_resolve_parameterized_selection() -> None:
         label="Period",
         choices=[ChoiceOption(id="q1", label="Q1"), ChoiceOption(id="q2", label="Q2")],
     )
-    source = output_store.add_parameterized_source("workspace", [parameter], "SELECT 1")
+    source = output_store.add_parameterized_artifact_source("workspace", [parameter], "SELECT 1")
     for period, node_id, lat in (("q1", "a", 1.0), ("q2", "b", 2.0)):
         await output_store.cache_parameterized_result(
             source.id,
@@ -584,20 +584,20 @@ async def test_map_and_graph_resolve_parameterized_selection() -> None:
 
 async def test_artifact_wrapper_and_nested_source_ids_must_match() -> None:
     output_store = OutputStore()
-    await output_store.add_fixed_result_source(
+    await output_store.add_fixed_artifact_source(
         "workspace",
         "duckdb",
         "SELECT 1 AS value",
         ExecResult(df=pd.DataFrame({"value": [1], "lat": [1], "lng": [2]})),
     )
-    await output_store.add_fixed_result_source(
+    await output_store.add_fixed_artifact_source(
         "workspace",
         "duckdb",
         "SELECT 2 AS value",
         ExecResult(df=pd.DataFrame({"value": [2], "lat": [3], "lng": [4]})),
     )
     output = OutputSpec(
-        sources=[FixedResultSource(id="first", result_id="R1"), FixedResultSource(id="second", result_id="R2")],
+        sources=[FixedArtifactSource(id="first", result_id="R1"), FixedArtifactSource(id="second", result_id="R2")],
         artifacts=[
             MapArtifactSpec(
                 id="map",
@@ -617,12 +617,14 @@ async def test_source_failure_is_reused_across_artifacts() -> None:
             super().__init__()
             self.resolve_count = 0
 
-        async def resolve_source(self, source_id: str, selection: Mapping[str, object] | None = None) -> ResultPayload:
+        async def resolve_artifact_source(
+            self, source_id: str, selection: Mapping[str, object] | None = None
+        ) -> ResultPayload:
             self.resolve_count += 1
-            raise SourceResolutionError("query failed")
+            raise ArtifactSourceResolutionError("query failed")
 
     output_store = FailingOutputStore()
-    source = output_store.add_parameterized_source("workspace", [], "SELECT 1")
+    source = output_store.add_parameterized_artifact_source("workspace", [], "SELECT 1")
     output = OutputSpec(
         sources=[source],
         artifacts=[
@@ -639,11 +641,13 @@ async def test_source_failure_is_reused_across_artifacts() -> None:
 
 async def test_unexpected_source_value_error_is_not_hidden() -> None:
     class BrokenOutputStore(OutputStore):
-        async def resolve_source(self, source_id: str, selection: Mapping[str, object] | None = None) -> ResultPayload:
+        async def resolve_artifact_source(
+            self, source_id: str, selection: Mapping[str, object] | None = None
+        ) -> ResultPayload:
             raise ValueError("programming bug")
 
     output_store = BrokenOutputStore()
-    source = output_store.add_parameterized_source("workspace", [], "SELECT 1")
+    source = output_store.add_parameterized_artifact_source("workspace", [], "SELECT 1")
     output = OutputSpec(sources=[source], artifacts=[TableArtifactSpec(id="table", source_id=source.id)])
 
     with pytest.raises(ValueError, match="programming bug"):

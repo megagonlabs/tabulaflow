@@ -32,7 +32,7 @@ from tabulaflow.agents.chat import ChatResult
 from tabulaflow.output.specs import (
     ChoiceOption,
     ChoiceParameter,
-    FixedResultSource,
+    FixedArtifactSource,
     OutputSpec,
     TableArtifactSpec,
 )
@@ -555,7 +555,7 @@ process.stdout.write(JSON.stringify(tableToTsv(columns, rows)));
         "Name\tNotes\tMeta\tMedia\tMedia without size\n"
         'Alice\t"one\ttwo"\t"{""a"":1}"\t[Media: image/png, 123 bytes]\t[Media: audio/mpeg]\n'
         'Bob\t"line\n""quoted"""\t\t[Media: application/pdf, 456 bytes]\t'
-        '[4 media items: 2 images, 1 PDF, 1 audio]'
+        "[4 media items: 2 images, 1 PDF, 1 audio]"
     )
 
 
@@ -709,7 +709,7 @@ async def test_output_pane_resolves_live_turn_selection(tmp_path: Path) -> None:
             return ResultPayload(
                 metadata=ResultMetadata(
                     id=result_id,
-                    db_alias="workspace",
+                    connector_alias="workspace",
                     query="SELECT 1",
                     query_language="duckdb",
                 ),
@@ -727,7 +727,7 @@ async def test_output_pane_resolves_live_turn_selection(tmp_path: Path) -> None:
                     choices=[ChoiceOption(id="q2", label="Q2"), ChoiceOption(id="q3", label="Q3")],
                 )
             ],
-            sources=[FixedResultSource(id="period_q3", result_id="Q1")],
+            sources=[FixedArtifactSource(id="period_q3", result_id="Q1")],
             artifacts=[TableArtifactSpec(id="period_q3", label="period_q3", source_id="period_q3")],
         ),
     )
@@ -770,7 +770,7 @@ async def test_output_pane_http_resolve_runs_on_app_loop(tmp_path: Path) -> None
             return ResultPayload(
                 metadata=ResultMetadata(
                     id=result_id,
-                    db_alias="workspace",
+                    connector_alias="workspace",
                     query="SELECT 1",
                     query_language="duckdb",
                 ),
@@ -783,7 +783,7 @@ async def test_output_pane_http_resolve_runs_on_app_loop(tmp_path: Path) -> None
         result = ChatResult(
             text="x",
             output=OutputSpec(
-                sources=[FixedResultSource(id="S1", result_id="R1")],
+                sources=[FixedArtifactSource(id="S1", result_id="R1")],
                 artifacts=[TableArtifactSpec(id="S1", label="period_q3", source_id="S1")],
             ),
         )

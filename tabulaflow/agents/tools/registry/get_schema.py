@@ -42,7 +42,7 @@ class RegistryGetSchemaTool:
         """Initialize the tool.
 
         Args:
-            registry: The database registry containing available connectors.
+            registry: The connector registry.
             enable_refresh: If True, expose the ``refresh`` parameter to the
                 LLM.
             max_chars: Maximum characters in the returned schema text.
@@ -64,17 +64,17 @@ class RegistryGetSchemaTool:
             + "\n\n(schema truncated — for SQL databases, use get_table_schema to inspect individual tables)"
         )
 
-    async def execute(self, db_alias: str, refresh: bool = False) -> str:
+    async def execute(self, connector_alias: str, refresh: bool = False) -> str:
         """Render a registered database schema as agent-facing text."""
 
         self._metrics.num_calls += 1
 
         try:
-            connector = self.registry.get(db_alias)
+            connector = self.registry.get(connector_alias)
         except ValueError:
             self._metrics.error_unknown_alias += 1
             available = ", ".join(self.registry.list_aliases()) or "(none)"
-            raise ValueError(f"unknown db_alias: {db_alias!r}; available: {available}") from None
+            raise ValueError(f"unknown connector_alias: {connector_alias!r}; available: {available}") from None
 
         from tabulaflow.core import PropertyGraphSchema, SQLSchema
 
@@ -98,16 +98,16 @@ class RegistryGetSchemaTool:
 
         return self._truncate(result)
 
-    async def __call__(self, db_alias: str, refresh: bool = False) -> ToolReturn:
+    async def __call__(self, connector_alias: str, refresh: bool = False) -> ToolReturn:
         """Get the full schema of a registered database.
 
         Args:
-            db_alias: Alias of the target database.
+            connector_alias: Alias of the target connector.
             refresh: Whether to refresh connector schema before rendering.
                 Exposed only when schema refresh is enabled.
         """
         try:
-            result = await self.execute(db_alias, refresh if self.enable_refresh else False)
+            result = await self.execute(connector_alias, refresh if self.enable_refresh else False)
         except (ValueError, TypeError, RuntimeError) as exc:
             return ToolReturn(return_value=f"(error: {exc})", metadata=ToolCallOutcome(error=True))
         return ToolReturn(return_value=result)

@@ -77,7 +77,7 @@ class ShowArtifactsTool:
                 if not isinstance(artifact_spec, GraphArtifactSpec):
                     return f"unknown artifact id {artifact.id!r}"
             elif artifact.id.startswith("S"):
-                self._output_store.get_source(artifact.id)
+                self._output_store.get_artifact_source(artifact.id)
             else:
                 return f"unknown artifact id {artifact.id!r}"
         except (KeyError, ValueError):

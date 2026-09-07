@@ -268,18 +268,21 @@ class TestApplyPatchLabel:
 
 class TestVerbLedLabels:
     def test_query(self) -> None:
-        assert summarize_tool_args("run_query", {"db_alias": "main", "query": "SELECT 1"}) == "Query [main] SELECT 1"
+        assert (
+            summarize_tool_args("run_query", {"connector_alias": "main", "query": "SELECT 1"})
+            == "Query [main] SELECT 1"
+        )
 
     def test_inspect_database(self) -> None:
         # the whole-db read has no target noun — the db tag carries it
-        assert summarize_tool_args("get_db_document", {"db_alias": "main"}) == "Inspect [main]"
+        assert summarize_tool_args("get_db_document", {"connector_alias": "main"}) == "Inspect [main]"
 
     def test_inspect_table_with_schema(self) -> None:
-        args = {"db_alias": "main", "schema_name": "public", "table_name": "orders"}
+        args = {"connector_alias": "main", "schema_name": "public", "table_name": "orders"}
         assert summarize_tool_args("get_table_schema", args) == "Inspect [main] public.orders"
 
     def test_subagent_bare_noun(self) -> None:
-        args = {"db_alias": "main", "table_name": "customers"}
+        args = {"connector_alias": "main", "table_name": "customers"}
         assert summarize_tool_args("run_subagent_for_each_row", args) == "Subagent [main] customers"
 
     def test_transfer_uses_to_not_arrow(self) -> None:

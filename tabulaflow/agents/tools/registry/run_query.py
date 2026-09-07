@@ -9,7 +9,7 @@ from pydantic_ai import Tool, ToolReturn
 from tabulaflow.data.protocols import DataConnector
 from tabulaflow.data.registry import DataConnectorRegistry
 from tabulaflow.agents.tools.protocols import ToolCallOutcome, _omit_tool_parameters, sum_tool_metrics
-from tabulaflow.output.store import OutputStore, SourceResolutionError
+from tabulaflow.output.store import OutputStore, ArtifactSourceResolutionError
 from tabulaflow.agents.tools.run_query import LLMParameter, RunQueryTool, RunQueryToolMetrics
 
 _UNSET = object()
@@ -18,7 +18,7 @@ _UNSET = object()
 class RegistryRunQueryTool:
     """Execute a query against any registered database.
 
-    The agent specifies which database to target via ``db_alias``.  The tool
+    The agent specifies which connector to target via ``connector_alias``.  The tool
     resolves the alias through a ``DataConnectorRegistry`` and delegates execution to a
     per-alias ``RunQueryTool`` instance.
     """
@@ -41,7 +41,7 @@ class RegistryRunQueryTool:
         """Initialize the tool.
 
         Args:
-            registry: The database registry containing available connectors.
+            registry: The connector registry.
             enable_params: Whether to expose the ``parameters`` argument to
                 the LLM.
             enable_refresh: Whether to expose the ``refresh`` argument to
@@ -68,10 +68,10 @@ class RegistryRunQueryTool:
         self._tools: dict[str, tuple[DataConnector, RunQueryTool]] = {}
         self._output_store = output_store or OutputStore()
 
-    def _get_tool(self, db_alias: str) -> RunQueryTool:
-        """Return a cached ``RunQueryTool`` for ``db_alias``, rebuilding it if the alias was re-bound."""
-        connector = self.registry.get(db_alias)
-        entry = self._tools.get(db_alias)
+    def _get_tool(self, connector_alias: str) -> RunQueryTool:
+        """Return a cached ``RunQueryTool`` for ``connector_alias``, rebuilding it if the alias was re-bound."""
+        connector = self.registry.get(connector_alias)
+        entry = self._tools.get(connector_alias)
         if entry is not None and entry[0] is connector:
             return entry[1]
         kwargs: dict[str, Any] = {}
@@ -87,12 +87,12 @@ class RegistryRunQueryTool:
             floatfmt=self.floatfmt,
             **kwargs,
         )
-        self._tools[db_alias] = (connector, tool)
+        self._tools[connector_alias] = (connector, tool)
         return tool
 
     async def __call__(
         self,
-        db_alias: str,
+        connector_alias: str,
         query: str,
         parameters: list[LLMParameter] | None = None,
         refresh: bool = False,
@@ -101,7 +101,7 @@ class RegistryRunQueryTool:
         """Execute a query against a registered database.
 
         Args:
-            db_alias: Alias of the target database.
+            connector_alias: Alias of the target connector.
             query: The SQL or Cypher query to execute.
             parameters: Values for named query placeholders. Exposed only when
                 parameterized queries are enabled.
@@ -112,11 +112,11 @@ class RegistryRunQueryTool:
                 URIs. Exposed only when media inspection is enabled.
         """
         try:
-            tool = self._get_tool(db_alias)
+            tool = self._get_tool(connector_alias)
         except ValueError:
             available = ", ".join(self.registry.list_aliases()) or "(none)"
             return ToolReturn(
-                return_value=f"(error: unknown db_alias: {db_alias!r}; available: {available})",
+                return_value=f"(error: unknown connector_alias: {connector_alias!r}; available: {available})",
                 metadata=ToolCallOutcome(error=True),
             )
         execution = await tool.execute(
@@ -132,13 +132,13 @@ class RegistryRunQueryTool:
         if exec_result.df is not None:
             outcome = ToolCallOutcome(count=len(exec_result.df), unit="rows")
         try:
-            source = await self._output_store.add_fixed_result_source(
-                db_alias=db_alias,
+            source = await self._output_store.add_fixed_artifact_source(
+                connector_alias=connector_alias,
                 query_language=tool.db_connector.language,
                 query=execution.query,
                 exec_result=exec_result,
             )
-        except SourceResolutionError as exc:
+        except ArtifactSourceResolutionError as exc:
             return ToolReturn(return_value=f"(error: {exc})", metadata=ToolCallOutcome(error=True))
         return ToolReturn(
             return_value=f"[source_id={source.id}]\n{execution.output}",

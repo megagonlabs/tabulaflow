@@ -240,7 +240,7 @@ class ChatSession:
         from tabulaflow.agents.tools.add_canonical_name import AddCanonicalNameTool
         from tabulaflow.agents.tools.filesystem.patch import ApplyPatchTool
         from tabulaflow.agents.tools.connect_data_source import ConnectDataSourceTool
-        from tabulaflow.agents.tools.create_parameterized_source import CreateParameterizedSourceTool
+        from tabulaflow.agents.tools.create_parameterized_source import CreateParameterizedArtifactSourceTool
         from tabulaflow.agents.tools.extract_rows_from_documents import ExtractRowsFromDocumentsTool
         from tabulaflow.agents.tools.filesystem.edit import EditFileTool
         from tabulaflow.agents.tools.filesystem.view import ViewTool
@@ -285,7 +285,9 @@ class ChatSession:
                 enable_refresh=True,
                 enable_media=True,
             ),
-            create_parameterized_source=CreateParameterizedSourceTool(self._registry, output_store=self._output_store),
+            create_parameterized_source=CreateParameterizedArtifactSourceTool(
+                self._registry, output_store=self._output_store
+            ),
             get_db_document=RegistryGetDBDocumentTool(
                 self._registry,
                 db_summarizer_cls=DBSummarizer,

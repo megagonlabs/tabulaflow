@@ -11,7 +11,7 @@ from tabulaflow.data.registry import DataConnectorRegistry
 from tabulaflow.data.sql import SQLConnector
 from tabulaflow.output.specs import ChoiceOption, ChoiceParameter, NumberParameter, OutputSpec, TableArtifactSpec
 from tabulaflow.agents.tools import (
-    CreateParameterizedSourceTool,
+    CreateParameterizedArtifactSourceTool,
 )
 from tabulaflow.output.resolver import OutputResolver, ResolvedTableArtifact, UnavailableArtifact
 from tabulaflow.output.store import OutputStore
@@ -43,7 +43,7 @@ async def test_create_parameterized_source_registers_parameters_and_warms_choice
     registry: DataConnectorRegistry,
 ) -> None:
     output_store = OutputStore(registry=registry)
-    result = await CreateParameterizedSourceTool(registry, output_store)(
+    result = await CreateParameterizedArtifactSourceTool(registry, output_store)(
         "workspace",
         [
             ChoiceParameter(
@@ -66,12 +66,12 @@ async def test_create_parameterized_source_registers_parameters_and_warms_choice
 
         other warmed selections:
           metric=gross (1 row) — first row: value=21""")
-    source = output_store.get_source("S1")
-    assert output_store.source_parameters(source.id)[0].id == "metric"
+    source = output_store.get_artifact_source("S1")
+    assert output_store.artifact_source_parameters(source.id)[0].id == "metric"
 
     resolved = await OutputResolver(output_store).resolve(
         OutputSpec(
-            parameters=output_store.source_parameters(source.id),
+            parameters=output_store.artifact_source_parameters(source.id),
             sources=[source],
             artifacts=[TableArtifactSpec(id="S1", source_id="S1")],
         ),
@@ -88,7 +88,7 @@ async def test_create_parameterized_source_registers_parameters_and_warms_choice
 async def test_create_parameterized_source_reports_empty_parameters(registry: DataConnectorRegistry) -> None:
     output_store = OutputStore(registry=registry)
 
-    result = await CreateParameterizedSourceTool(registry, output_store)("workspace", [], "SELECT 1")
+    result = await CreateParameterizedArtifactSourceTool(registry, output_store)("workspace", [], "SELECT 1")
 
     assert _text(result) == "(error: parameters must not be empty)"
 
@@ -98,7 +98,7 @@ async def test_create_parameterized_source_batches_warm_errors_and_registers_not
 ) -> None:
     output_store = OutputStore(registry=registry)
 
-    result = await CreateParameterizedSourceTool(registry, output_store)(
+    result = await CreateParameterizedArtifactSourceTool(registry, output_store)(
         "workspace",
         [
             ChoiceParameter(
@@ -117,22 +117,22 @@ async def test_create_parameterized_source_batches_warm_errors_and_registers_not
     assert 'Referenced column "missing_b" not found' in text
     assert text.endswith(")")
     with pytest.raises(KeyError):
-        output_store.get_source("S1")
+        output_store.get_artifact_source("S1")
 
 
 async def test_number_parameter_materializes_lazy_selection(registry: DataConnectorRegistry) -> None:
     output_store = OutputStore(registry=registry)
-    result = await CreateParameterizedSourceTool(registry, output_store)(
+    result = await CreateParameterizedArtifactSourceTool(registry, output_store)(
         "workspace",
         [NumberParameter(id="min_net", label="Minimum net", min=0, max=20, step=1, default=8)],
         "SELECT customer FROM orders WHERE net >= {{ min_net }} ORDER BY customer",
     )
     assert "other selections will materialize lazily" in _text(result)
-    source = output_store.get_source("S1")
+    source = output_store.get_artifact_source("S1")
 
     resolved = await OutputResolver(output_store).resolve(
         OutputSpec(
-            parameters=output_store.source_parameters(source.id),
+            parameters=output_store.artifact_source_parameters(source.id),
             sources=[source],
             artifacts=[TableArtifactSpec(id="S1", source_id="S1")],
         ),
@@ -149,7 +149,7 @@ async def test_number_parameter_materializes_lazy_selection(registry: DataConnec
 
 async def test_mixed_choice_and_number_warms_choice_grid_at_number_default(registry: DataConnectorRegistry) -> None:
     output_store = OutputStore(registry=registry)
-    result = await CreateParameterizedSourceTool(registry, output_store)(
+    result = await CreateParameterizedArtifactSourceTool(registry, output_store)(
         "workspace",
         [
             ChoiceParameter(
@@ -171,7 +171,7 @@ async def test_mixed_choice_and_number_warms_choice_grid_at_number_default(regis
     assert "metric=gross;min_value=8 (1 row) — first row: value=21" in text
     assert "-> R" not in text
     assert "other selections will materialize lazily" not in text
-    payload = await output_store.resolve_source("S1", {"metric": "gross"})
+    payload = await output_store.resolve_artifact_source("S1", {"metric": "gross"})
     assert payload.metadata.source_selection == {"metric": "gross", "min_value": 8}
     assert payload.df is not None
     assert payload.df.to_dict("records") == [{"value": 21}]
@@ -179,7 +179,7 @@ async def test_mixed_choice_and_number_warms_choice_grid_at_number_default(regis
 
 async def test_create_parameterized_source_warms_not_applicable_selection(registry: DataConnectorRegistry) -> None:
     output_store = OutputStore(registry=registry)
-    result = await CreateParameterizedSourceTool(registry, output_store)(
+    result = await CreateParameterizedArtifactSourceTool(registry, output_store)(
         "workspace",
         [
             ChoiceParameter(
@@ -197,11 +197,11 @@ async def test_create_parameterized_source_warms_not_applicable_selection(regist
     text = _text(result)
     assert "default metric=net:" in text
     assert "1 warmed selection not applicable" in text
-    source = output_store.get_source("S1")
+    source = output_store.get_artifact_source("S1")
 
     resolved = await OutputResolver(output_store).resolve(
         OutputSpec(
-            parameters=output_store.source_parameters(source.id),
+            parameters=output_store.artifact_source_parameters(source.id),
             sources=[source],
             artifacts=[TableArtifactSpec(id="S1", source_id="S1")],
         ),

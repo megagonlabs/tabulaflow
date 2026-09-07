@@ -4,11 +4,11 @@ from tabulaflow.output.specs import (
     OutputSpec,
     ChoiceOption,
     ChoiceParameter,
-    FixedResultSource,
+    FixedArtifactSource,
     GraphArtifactSpec,
     MapArtifactSpec,
     NumberParameter,
-    ParameterizedSource,
+    ParameterizedArtifactSource,
     TableArtifactSpec,
     canonical_selection_key,
     validate_parameter_value,
@@ -26,10 +26,10 @@ def test_output_spec_fills_default_selection_and_validates_references() -> None:
             NumberParameter(id="min_spend", label="Minimum spend", min=0, max=100_000, step=5_000, default=10_000),
         ],
         sources=[
-            ParameterizedSource(
+            ParameterizedArtifactSource(
                 id="top_customers",
                 parameter_ids=["metric", "min_spend"],
-                db_alias="workspace",
+                connector_alias="workspace",
                 query_template="SELECT 1",
             )
         ],
@@ -97,10 +97,10 @@ def test_canonical_selection_key_is_stable() -> None:
 
 def test_parameterized_source_keeps_query_template() -> None:
     key = canonical_selection_key({"metric": "profit"})
-    source = ParameterizedSource(
+    source = ParameterizedArtifactSource(
         id="top_customers_by_metric",
         parameter_ids=["metric"],
-        db_alias="workspace",
+        connector_alias="workspace",
         query_template="SELECT * FROM customers WHERE metric = {{ metric }}",
     )
 
@@ -109,7 +109,7 @@ def test_parameterized_source_keeps_query_template() -> None:
 
 
 def test_constant_result_source_has_no_inputs() -> None:
-    source = FixedResultSource(id="fixed", result_id="Q1")
+    source = FixedArtifactSource(id="fixed", result_id="Q1")
 
     assert source.result_id == "Q1"
 
@@ -120,7 +120,9 @@ def test_output_spec_rejects_unknown_artifact_source() -> None:
 
 
 def test_map_and_graph_artifacts_accept_parameterized_sources() -> None:
-    source = ParameterizedSource(id="source", parameter_ids=[], db_alias="workspace", query_template="SELECT 1")
+    source = ParameterizedArtifactSource(
+        id="source", parameter_ids=[], connector_alias="workspace", query_template="SELECT 1"
+    )
 
     output = OutputSpec(
         sources=[source],
@@ -135,7 +137,7 @@ def test_map_and_graph_artifacts_accept_parameterized_sources() -> None:
 
 def test_output_spec_serialization_round_trip() -> None:
     spec = OutputSpec(
-        sources=[FixedResultSource(id="fixed", result_id="Q1")],
+        sources=[FixedArtifactSource(id="fixed", result_id="Q1")],
         artifacts=[TableArtifactSpec(id="table", source_id="fixed")],
     )
 

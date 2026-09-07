@@ -14,7 +14,7 @@ from tabulaflow.agents.tools.get_column_json_schema import GetColumnJsonSchemaTo
 class RegistryGetColumnJsonSchemaTool:
     """Retrieve the JSON schema of a column from any registered SQL database.
 
-    The agent specifies which database to target via ``db_alias``.  The tool
+    The agent specifies which connector to target via ``connector_alias``.  The tool
     resolves the alias through a ``DataConnectorRegistry`` and delegates to a per-alias
     ``GetColumnJsonSchemaTool`` instance.
     """
@@ -31,7 +31,7 @@ class RegistryGetColumnJsonSchemaTool:
         """Initialize the tool.
 
         Args:
-            registry: The database registry containing available connectors.
+            registry: The connector registry.
             include_examples: Whether to include example values in the output.
             max_example_chars: Character budget for example values.
         """
@@ -40,10 +40,10 @@ class RegistryGetColumnJsonSchemaTool:
         self.max_example_chars = max_example_chars
         self._tools: dict[str, tuple[DataConnector, SQLSchema, GetColumnJsonSchemaTool]] = {}
 
-    def _get_tool(self, db_alias: str) -> GetColumnJsonSchemaTool:
-        """Return a cached ``GetColumnJsonSchemaTool`` for ``db_alias``, rebuilding it if the alias was re-bound."""
-        connector = self.registry.get(db_alias)
-        entry = self._tools.get(db_alias)
+    def _get_tool(self, connector_alias: str) -> GetColumnJsonSchemaTool:
+        """Return a cached ``GetColumnJsonSchemaTool`` for ``connector_alias``, rebuilding it if the alias was re-bound."""
+        connector = self.registry.get(connector_alias)
+        entry = self._tools.get(connector_alias)
         if entry is not None and entry[0] is connector and entry[1] is connector.schema:
             return entry[2]
         schema = connector.schema
@@ -54,12 +54,12 @@ class RegistryGetColumnJsonSchemaTool:
             include_examples=self.include_examples,
             max_example_chars=self.max_example_chars,
         )
-        self._tools[db_alias] = (connector, schema, tool)
+        self._tools[connector_alias] = (connector, schema, tool)
         return tool
 
     async def __call__(
         self,
-        db_alias: str,
+        connector_alias: str,
         schema_name: str | None,
         table_name: str,
         column_name: str,
@@ -74,18 +74,18 @@ class RegistryGetColumnJsonSchemaTool:
         To drill into a specific sub-structure, provide a dot-separated path.
 
         Args:
-            db_alias: Alias of the target database (see ``list_databases``).
+            connector_alias: Alias of the target connector.
             schema_name: The name of the schema, or None if not applicable.
             table_name: The name of the table.
             column_name: The name of the column.
             path: Optional dot-separated path to a nested sub-schema.
         """
         try:
-            tool = self._get_tool(db_alias)
+            tool = self._get_tool(connector_alias)
         except ValueError:
             available = ", ".join(self.registry.list_aliases()) or "(none)"
             return ToolReturn(
-                return_value=f"(error: unknown db_alias: {db_alias!r}; available: {available})",
+                return_value=f"(error: unknown connector_alias: {connector_alias!r}; available: {available})",
                 metadata=ToolCallOutcome(error=True),
             )
         except TypeError as e:

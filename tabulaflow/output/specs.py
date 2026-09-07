@@ -20,19 +20,19 @@ __all__ = [
     "ChartArtifactSpec",
     "ChoiceOption",
     "ChoiceParameter",
-    "FixedResultSource",
+    "FixedArtifactSource",
     "GraphArtifactSpec",
     "MapArtifactSpec",
     "NumberParameter",
     "OutputSpec",
     "ParameterId",
     "ParameterSpec",
-    "ParameterizedSource",
+    "ParameterizedArtifactSource",
     "ResultId",
     "Selection",
     "SelectionValue",
-    "SourceId",
-    "SourceSpec",
+    "ArtifactSourceId",
+    "ArtifactSource",
     "TableArtifactSpec",
     "artifact_source_ids",
     "canonical_selection_key",
@@ -44,7 +44,7 @@ __all__ = [
 
 SelectionValue: TypeAlias = str | int | float | bool
 ParameterId: TypeAlias = str
-SourceId: TypeAlias = str
+ArtifactSourceId: TypeAlias = str
 ArtifactId: TypeAlias = str
 ResultId: TypeAlias = str
 Selection: TypeAlias = dict[ParameterId, SelectionValue]
@@ -107,29 +107,29 @@ class NumberParameter(BaseModel):
 ParameterSpec: TypeAlias = Annotated[ChoiceParameter | NumberParameter, Field(discriminator="kind")]
 
 
-class FixedResultSource(BaseModel):
-    """Source that always resolves to one materialized result."""
+class FixedArtifactSource(BaseModel):
+    """Artifact source that always resolves to one materialized result."""
 
     model_config = ConfigDict(extra="forbid")
 
     kind: Literal["fixed"] = "fixed"
-    id: SourceId
+    id: ArtifactSourceId
     result_id: ResultId
 
 
-class ParameterizedSource(BaseModel):
-    """Source that materializes and caches results by source-local selection."""
+class ParameterizedArtifactSource(BaseModel):
+    """Artifact source that materializes and caches results by selection."""
 
     model_config = ConfigDict(extra="forbid")
 
     kind: Literal["parameterized"] = "parameterized"
-    id: SourceId
+    id: ArtifactSourceId
     parameter_ids: list[ParameterId]
-    db_alias: str
+    connector_alias: str
     query_template: str
 
 
-SourceSpec: TypeAlias = Annotated[FixedResultSource | ParameterizedSource, Field(discriminator="kind")]
+ArtifactSource: TypeAlias = Annotated[FixedArtifactSource | ParameterizedArtifactSource, Field(discriminator="kind")]
 
 
 class TableArtifactSpec(BaseModel):
@@ -140,7 +140,7 @@ class TableArtifactSpec(BaseModel):
     kind: Literal["table"] = "table"
     id: ArtifactId
     label: str | None = None
-    source_id: SourceId
+    source_id: ArtifactSourceId
 
 
 class ChartArtifactSpec(BaseModel):
@@ -151,7 +151,7 @@ class ChartArtifactSpec(BaseModel):
     kind: Literal["chart"] = "chart"
     id: ArtifactId
     label: str | None = None
-    source_id: SourceId
+    source_id: ArtifactSourceId
     spec: dict[str, Any]
 
 
@@ -163,7 +163,7 @@ class MapArtifactSpec(BaseModel):
     kind: Literal["map"] = "map"
     id: ArtifactId
     label: str | None = None
-    source_ids: list[SourceId]
+    source_ids: list[ArtifactSourceId]
     spec: dict[str, Any]
 
 
@@ -175,7 +175,7 @@ class GraphArtifactSpec(BaseModel):
     kind: Literal["graph"] = "graph"
     id: ArtifactId
     label: str | None = None
-    source_ids: list[SourceId]
+    source_ids: list[ArtifactSourceId]
     spec: dict[str, Any]
 
 
@@ -188,7 +188,7 @@ ArtifactSpec: TypeAlias = Annotated[
 class OutputSpec(BaseModel):
     """Complete declarative contract for an interactive output.
 
-    Parameter, source, and artifact ids must be unique, and all references must
+    Parameter, artifact-source, and artifact ids must be unique, and all references must
     resolve within the declaration. Missing parameter defaults are derived from
     their definitions and merged into ``default_selection`` during validation.
     """
@@ -196,7 +196,7 @@ class OutputSpec(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     parameters: list[ParameterSpec] = Field(default_factory=list)
-    sources: list[SourceSpec] = Field(default_factory=list)
+    sources: list[ArtifactSource] = Field(default_factory=list)
     artifacts: list[ArtifactSpec] = Field(default_factory=list)
     default_selection: Selection = Field(default_factory=dict)
 
@@ -220,7 +220,7 @@ class OutputSpec(BaseModel):
             validate_parameter_value(parameter, value)
 
         for source in self.sources:
-            if isinstance(source, ParameterizedSource):
+            if isinstance(source, ParameterizedArtifactSource):
                 for parameter_id in source.parameter_ids:
                     if parameter_id not in parameter_by_id:
                         raise ValueError(f"source {source.id!r} references unknown parameter {parameter_id!r}")
@@ -282,8 +282,8 @@ def canonical_selection_key(selection: Mapping[str, SelectionValue]) -> str:
     return json.dumps(dict(sorted(selection.items())), separators=(",", ":"), sort_keys=True)
 
 
-def artifact_source_ids(artifact: ArtifactSpec) -> tuple[SourceId, ...]:
-    """Source ids referenced by an artifact."""
+def artifact_source_ids(artifact: ArtifactSpec) -> tuple[ArtifactSourceId, ...]:
+    """Artifact-source ids referenced by an artifact."""
     if isinstance(artifact, TableArtifactSpec | ChartArtifactSpec):
         return (artifact.source_id,)
     if isinstance(artifact, MapArtifactSpec | GraphArtifactSpec):

@@ -17,7 +17,7 @@ if TYPE_CHECKING:
         ToolProgressUpdate,
     )
     from tabulaflow.agents.tools.connect_data_source import ConnectDataSourceTool
-    from tabulaflow.agents.tools.create_parameterized_source import CreateParameterizedSourceTool
+    from tabulaflow.agents.tools.create_parameterized_source import CreateParameterizedArtifactSourceTool
     from tabulaflow.agents.tools.extract_rows_from_documents import ExtractRowsFromDocumentsTool
     from tabulaflow.agents.tools.shell.tool import BashToolMetrics, ExecuteBashTool
     from tabulaflow.agents.tools.get_column_json_schema import GetColumnJsonSchemaTool
@@ -45,9 +45,9 @@ _LAZY_EXPORTS = {
     "AgentTool": ("tabulaflow.agents.tools.protocols", "AgentTool"),
     "BashToolMetrics": ("tabulaflow.agents.tools.shell.tool", "BashToolMetrics"),
     "ConnectDataSourceTool": ("tabulaflow.agents.tools.connect_data_source", "ConnectDataSourceTool"),
-    "CreateParameterizedSourceTool": (
+    "CreateParameterizedArtifactSourceTool": (
         "tabulaflow.agents.tools.create_parameterized_source",
-        "CreateParameterizedSourceTool",
+        "CreateParameterizedArtifactSourceTool",
     ),
     "ExecuteBashTool": ("tabulaflow.agents.tools.shell.tool", "ExecuteBashTool"),
     "ExtractRowsFromDocumentsTool": (
@@ -107,7 +107,7 @@ __all__ = [
     "AgentTool",
     "BashToolMetrics",
     "ConnectDataSourceTool",
-    "CreateParameterizedSourceTool",
+    "CreateParameterizedArtifactSourceTool",
     "ExecuteBashTool",
     "ExtractRowsFromDocumentsTool",
     "EditFileTool",

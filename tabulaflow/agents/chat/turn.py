@@ -22,7 +22,7 @@ from tabulaflow.output.specs import (
     ArtifactSpec,
     OutputSpec,
     ParameterSpec,
-    SourceSpec,
+    ArtifactSource,
     TableArtifactSpec,
     artifact_source_ids,
 )
@@ -45,7 +45,7 @@ async def _build_chat_result(
 
 
 def _output_spec_from_bundle(bundle: "ArtifactBundle", output_store: OutputStore) -> OutputSpec:
-    sources: dict[str, SourceSpec] = {}
+    sources: dict[str, ArtifactSource] = {}
     artifacts: list[ArtifactSpec] = []
     parameters: dict[str, ParameterSpec] = {}
 
@@ -53,7 +53,7 @@ def _output_spec_from_bundle(bundle: "ArtifactBundle", output_store: OutputStore
         if source_id in sources:
             return
         if source_id.startswith("S"):
-            sources[source_id] = output_store.get_source(source_id)
+            sources[source_id] = output_store.get_artifact_source(source_id)
         else:
             raise KeyError(f"No source with id {source_id}")
 
@@ -66,7 +66,7 @@ def _output_spec_from_bundle(bundle: "ArtifactBundle", output_store: OutputStore
         artifacts.append(artifact)
 
     for source in sources.values():
-        for parameter in output_store.source_parameters(source.id):
+        for parameter in output_store.artifact_source_parameters(source.id):
             parameters.setdefault(parameter.id, parameter)
 
     return OutputSpec(parameters=list(parameters.values()), sources=list(sources.values()), artifacts=artifacts)
@@ -93,7 +93,7 @@ def _artifact_from_ref(ref_id: str, label: str | None, output_store: OutputStore
         return graph.model_copy(update={"label": label})
     if ref_id.startswith("S"):
         try:
-            output_store.get_source(ref_id)
+            output_store.get_artifact_source(ref_id)
         except (KeyError, ValueError):
             return None
         return TableArtifactSpec(id=ref_id, label=label, source_id=ref_id)

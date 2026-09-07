@@ -15,7 +15,7 @@ from tabulaflow.agents.tools.get_table_schema import GetTableSchemaTool, GetTabl
 class RegistryGetTableSchemaTool:
     """Retrieve the schema of a table from any registered SQL database.
 
-    The agent specifies which database to target via ``db_alias``.  The tool
+    The agent specifies which connector to target via ``connector_alias``.  The tool
     resolves the alias through a ``DataConnectorRegistry`` and delegates to a per-alias
     ``GetTableSchemaTool`` instance.
     """
@@ -34,7 +34,7 @@ class RegistryGetTableSchemaTool:
         """Initialize the tool.
 
         Args:
-            registry: The database registry containing available connectors.
+            registry: The connector registry.
             formatter: The formatter used to render table schema as text.
             include_descriptions: Whether to include column descriptions in output.
             max_columns: If set, reject requests whose resulting columns
@@ -49,10 +49,10 @@ class RegistryGetTableSchemaTool:
         self.enable_refresh = enable_refresh
         self._tools: dict[str, tuple[DataConnector, GetTableSchemaTool]] = {}
 
-    def _get_tool(self, db_alias: str) -> GetTableSchemaTool:
-        """Return a cached ``GetTableSchemaTool`` for ``db_alias``, rebuilding it if the alias was re-bound."""
-        connector = self.registry.get(db_alias)
-        entry = self._tools.get(db_alias)
+    def _get_tool(self, connector_alias: str) -> GetTableSchemaTool:
+        """Return a cached ``GetTableSchemaTool`` for ``connector_alias``, rebuilding it if the alias was re-bound."""
+        connector = self.registry.get(connector_alias)
+        entry = self._tools.get(connector_alias)
         if entry is not None and entry[0] is connector:
             return entry[1]
         if not isinstance(connector, SQLConnector):
@@ -64,12 +64,12 @@ class RegistryGetTableSchemaTool:
             max_columns=self.max_columns,
             enable_refresh=self.enable_refresh,
         )
-        self._tools[db_alias] = (connector, tool)
+        self._tools[connector_alias] = (connector, tool)
         return tool
 
     async def __call__(
         self,
-        db_alias: str,
+        connector_alias: str,
         schema_name: str | None,
         table_name: str,
         refresh: bool = False,
@@ -80,7 +80,7 @@ class RegistryGetTableSchemaTool:
         """Get a table schema from a registered database.
 
         Args:
-            db_alias: Alias of the target database.
+            connector_alias: Alias of the target connector.
             schema_name: Schema containing the table, or ``None`` when schemas
                 are not applicable.
             table_name: Name of the table.
@@ -91,11 +91,11 @@ class RegistryGetTableSchemaTool:
             column_regex_filter: Case-insensitive regex used to select columns.
         """
         try:
-            tool = self._get_tool(db_alias)
+            tool = self._get_tool(connector_alias)
         except ValueError:
             available = ", ".join(self.registry.list_aliases()) or "(none)"
             return ToolReturn(
-                return_value=f"(error: unknown db_alias: {db_alias!r}; available: {available})",
+                return_value=f"(error: unknown connector_alias: {connector_alias!r}; available: {available})",
                 metadata=ToolCallOutcome(error=True),
             )
         except TypeError as e:

@@ -20,7 +20,7 @@ def _result(result_id: str, label: str) -> ResolvedTableArtifact:
         payload=ResultPayload(
             metadata=ResultMetadata(
                 id=result_id,
-                db_alias="debug",
+                connector_alias="debug",
                 query=f"SELECT '{label}' AS label",
                 query_language="duckdb",
             ),

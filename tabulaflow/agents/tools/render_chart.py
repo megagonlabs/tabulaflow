@@ -18,7 +18,7 @@ from tabulaflow.output.charts import (
     chart_type_label,
     validate_chart_spec,
 )
-from tabulaflow.output.store import OutputStore, SourceNotApplicable, SourceResolutionError
+from tabulaflow.output.store import OutputStore, ArtifactSourceNotApplicable, ArtifactSourceResolutionError
 
 
 # Marks plotext can draw faithfully as a single x/y series, mapped to the
@@ -380,10 +380,10 @@ class RenderChartTool:
             return "(error: spec must be a JSON object)"
 
         try:
-            payload = await self._output_store.resolve_source(source_id)
+            payload = await self._output_store.resolve_artifact_source(source_id)
         except KeyError:
             return f"(error: unknown source_id {source_id!r})"
-        except (SourceNotApplicable, SourceResolutionError) as e:
+        except (ArtifactSourceNotApplicable, ArtifactSourceResolutionError) as e:
             return f"(error: {e})"
         if payload.df is None:
             return f"(error: query {source_id} returned no data)"

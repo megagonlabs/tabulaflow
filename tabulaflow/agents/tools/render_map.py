@@ -12,7 +12,7 @@ from tabulaflow.output.maps import (
     parse_map_spec,
     referenced_source_ids,
 )
-from tabulaflow.output.store import OutputStore, SourceNotApplicable, SourceResolutionError
+from tabulaflow.output.store import OutputStore, ArtifactSourceNotApplicable, ArtifactSourceResolutionError
 
 
 class RenderMapTool:
@@ -110,10 +110,10 @@ class RenderMapTool:
         row_counts: dict[str, int] = {}
         for rid in source_ids:
             try:
-                payload = await self._output_store.resolve_source(rid)
+                payload = await self._output_store.resolve_artifact_source(rid)
             except KeyError:
                 return f"(error: unknown source_id {rid!r})"
-            except (SourceNotApplicable, SourceResolutionError) as e:
+            except (ArtifactSourceNotApplicable, ArtifactSourceResolutionError) as e:
                 return f"(error: {e})"
             df = payload.df
             if df is None:

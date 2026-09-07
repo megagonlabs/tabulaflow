@@ -40,7 +40,7 @@ def _debug_cards(payloads: list[DebugTablePayload], width: int) -> list[CardGrou
         result_payload = ResultPayload(
             metadata=ResultMetadata(
                 id=payload.result_id,
-                db_alias="debug",
+                connector_alias="debug",
                 query=payload.query or "",
                 query_language="cypher" if payload.query_lexer == "cypher" else "duckdb",
                 row_count=len(payload.df) if payload.df is not None else None,

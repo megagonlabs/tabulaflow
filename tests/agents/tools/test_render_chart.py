@@ -176,7 +176,7 @@ class TestAutoLineHover:
 
 async def _output_store_with(df: pd.DataFrame) -> OutputStore:
     output_store = OutputStore()
-    await output_store.add_fixed_result_source("db", "duckdb", "SELECT 1", ExecResult(df=df))
+    await output_store.add_fixed_artifact_source("db", "duckdb", "SELECT 1", ExecResult(df=df))
     return output_store
 
 
@@ -197,7 +197,7 @@ class TestRenderChartTool:
 
     async def test_query_family_source_creates_chart(self) -> None:
         output_store = OutputStore()
-        source = output_store.add_parameterized_source(
+        source = output_store.add_parameterized_artifact_source(
             "db",
             [
                 ChoiceParameter(
@@ -232,7 +232,7 @@ class TestRenderChartTool:
 
     async def test_query_family_validation_uses_default_selection(self) -> None:
         output_store = OutputStore()
-        source = output_store.add_parameterized_source(
+        source = output_store.add_parameterized_artifact_source(
             "db",
             [
                 ChoiceParameter(

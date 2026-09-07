@@ -42,7 +42,7 @@ if TYPE_CHECKING:
     from tabulaflow.agents.trace import Usage
 
 
-_NOISE_ARG_KEYS = frozenset({"db_alias", "refresh", "tab", "tool_call_id"})
+_NOISE_ARG_KEYS = frozenset({"connector_alias", "refresh", "tab", "tool_call_id"})
 _DIFFSTAT_TOKEN_RE = re.compile(r"(?<=\s)([+-]\d+)")
 _UNLISTED_TOOL = "show_artifacts"
 _BASH_COMMAND_PREVIEW_LIMIT = 180
@@ -261,19 +261,19 @@ def summarize_tool_args(name: str, args: Mapping[str, object]) -> str:
     consumer), not in ``chat``: events carry the raw ``args`` dict and each frontend
     renders it as it likes. Untreated / new tools fall back to a title-cased name
     plus a generic ``key=value`` summary. Truncates to keep the step line short."""
-    db_prefix = f"[{args['db_alias']}] " if args.get("db_alias") else ""
+    connector_prefix = f"[{args['connector_alias']}] " if args.get("connector_alias") else ""
 
     if name == "run_query":
         query = " ".join(str(args.get("query", "")).split())
         if len(query) > 40:
             query = query[:37] + "..."
-        return f"Query {db_prefix}{query}"
+        return f"Query {connector_prefix}{query}"
     if name == "get_db_document":
-        return f"Inspect {db_prefix}".rstrip()
+        return f"Inspect {connector_prefix}".rstrip()
     if name == "get_table_schema":
         parts = [str(args["schema_name"])] if args.get("schema_name") else []
         parts.append(str(args.get("table_name", "")))
-        return f"Inspect {db_prefix}{'.'.join(parts)}"
+        return f"Inspect {connector_prefix}{'.'.join(parts)}"
     if name == "get_column_json_schema":
         parts = [str(args["schema_name"])] if args.get("schema_name") else []
         parts.append(str(args.get("table_name", "")))
@@ -281,7 +281,7 @@ def summarize_tool_args(name: str, args: Mapping[str, object]) -> str:
         label = ".".join(parts)
         if args.get("path"):
             label += f", path={args['path']}"
-        return f"Inspect {db_prefix}{label}"
+        return f"Inspect {connector_prefix}{label}"
     if name == "render_chart":
         spec_str = args.get("vegalite_spec", "")
         try:
@@ -328,17 +328,17 @@ def summarize_tool_args(name: str, args: Mapping[str, object]) -> str:
         target = f"{target_schema}.{target_table}" if target_schema else target_table
         return f"Write {source_id} to [{target_alias}] {target} ({mode})"
     if name == "run_subagent_for_each_row":
-        return f"Subagent {db_prefix}{args.get('table_name', '')}"
+        return f"Subagent {connector_prefix}{args.get('table_name', '')}"
     if name == "extract_rows_from_documents":
         parts = [str(args["schema_name"])] if args.get("schema_name") else []
         parts.append(str(args.get("table_name", "")))
-        return f"Extract {db_prefix}{'.'.join(parts)}"
+        return f"Extract {connector_prefix}{'.'.join(parts)}"
     if name == "add_canonical_name":
         parts = [str(args["schema_name"])] if args.get("schema_name") else []
         parts.append(str(args.get("table_name", "")))
         if args.get("input_column"):
             parts.append(str(args["input_column"]))
-        return f"Canonicalize {db_prefix}{'.'.join(parts)}"
+        return f"Canonicalize {connector_prefix}{'.'.join(parts)}"
     if name == "browser_navigate":
         return f"Navigate {_fmt_arg_value(args.get('url', ''), 60)}".rstrip()
     if name == "browser_screenshot":

@@ -77,10 +77,10 @@ class RegistryGetDBDocumentTool:
             self.model_settings = model_settings
             self._document_cache.clear()
 
-    def _schema_item_count(self, db_alias: str) -> int:
+    def _schema_item_count(self, connector_alias: str) -> int:
         from tabulaflow.core import PropertyGraphSchema, SQLSchema
 
-        connector = self.registry.get(db_alias)
+        connector = self.registry.get(connector_alias)
         schema = connector.schema
         if isinstance(schema, SQLSchema):
             return len(schema.tables)
@@ -89,10 +89,10 @@ class RegistryGetDBDocumentTool:
             return len(schema.nodes) + len(schema.relationships) + pattern_count
         return 0
 
-    def _format_direct_document(self, db_alias: str) -> str:
+    def _format_direct_document(self, connector_alias: str) -> str:
         from tabulaflow.core import PropertyGraphSchema, SQLSchema
 
-        connector = self.registry.get(db_alias)
+        connector = self.registry.get(connector_alias)
         schema = connector.schema
         if isinstance(schema, SQLSchema):
             return self._sql_formatter.format(schema, include_descriptions=True)
@@ -100,14 +100,14 @@ class RegistryGetDBDocumentTool:
             return self._graph_formatter.format(schema)
         raise TypeError(f"Unsupported schema type for get_db_document: {type(schema)!r}")
 
-    async def _get_document(self, db_alias: str) -> str:
-        connector = self.registry.get(db_alias)
-        cached = self._document_cache.get(db_alias)
+    async def _get_document(self, connector_alias: str) -> str:
+        connector = self.registry.get(connector_alias)
+        cached = self._document_cache.get(connector_alias)
         if cached is not None and cached[0] is connector:
             return cached[1]
 
         use_summarizer = not (
-            self.min_items_for_summary > 0 and self._schema_item_count(db_alias) < self.min_items_for_summary
+            self.min_items_for_summary > 0 and self._schema_item_count(connector_alias) < self.min_items_for_summary
         )
 
         if use_summarizer:
@@ -116,10 +116,10 @@ class RegistryGetDBDocumentTool:
             )
             document = cast(str, await db_summarizer.summarize(connector))
         else:
-            schema_doc = self._format_direct_document(db_alias)
+            schema_doc = self._format_direct_document(connector_alias)
             document = f"<db_schema>\n{schema_doc}\n</db_schema>"
 
-        self._document_cache[db_alias] = (connector, document)
+        self._document_cache[connector_alias] = (connector, document)
         return document
 
     def _truncate(self, text: str) -> str:
@@ -128,37 +128,37 @@ class RegistryGetDBDocumentTool:
         self._metrics.truncated += 1
         return text[:_MAX_CHARS] + "\n\n(document truncated)"
 
-    async def execute(self, db_alias: str, refresh: bool = False) -> str:
+    async def execute(self, connector_alias: str, refresh: bool = False) -> str:
         """Render a registered database document as agent-facing text."""
 
         self._metrics.num_calls += 1
 
         try:
-            connector = self.registry.get(db_alias)
+            connector = self.registry.get(connector_alias)
         except ValueError:
             self._metrics.error_unknown_alias += 1
             available = ", ".join(self.registry.list_aliases()) or "(none)"
-            raise ValueError(f"unknown db_alias: {db_alias!r}; available: {available}") from None
+            raise ValueError(f"unknown connector_alias: {connector_alias!r}; available: {available}") from None
 
         if refresh:
             try:
                 await connector.refresh_schema_async()
             except Exception as exc:
                 raise RuntimeError(f"schema refresh failed: {exc}") from exc
-            self._document_cache.pop(db_alias, None)
+            self._document_cache.pop(connector_alias, None)
 
-        result = await self._get_document(db_alias)
+        result = await self._get_document(connector_alias)
         return self._truncate(result)
 
-    async def __call__(self, db_alias: str, refresh: bool = False) -> ToolReturn:
+    async def __call__(self, connector_alias: str, refresh: bool = False) -> ToolReturn:
         """Get a connector-aware database document.
 
         Args:
-            db_alias: Alias of the target database.
+            connector_alias: Alias of the target connector.
             refresh: Whether to refresh connector schema before rendering.
         """
         try:
-            result = await self.execute(db_alias, refresh if self.enable_refresh else False)
+            result = await self.execute(connector_alias, refresh if self.enable_refresh else False)
         except (ValueError, TypeError, RuntimeError) as exc:
             return ToolReturn(return_value=f"(error: {exc})", metadata=ToolCallOutcome(error=True))
         return ToolReturn(return_value=result)
