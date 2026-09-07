@@ -755,7 +755,7 @@ Sep 4
 Sep 6
 - [x] Fix media cells display in TUI
 - Output pane
-  - [ ] Arrow key automatically focus on close button
+  - [x] Fix arrow key automatically focus on close button
   - [ ] Image cramped - https://huggingface.co/datasets/lmms-lab-encoder/DocVQA/viewer/DocVQA
   - [ ] Long text/json cell in output pane
   - [ ] Focus ring of item in media collection in output pane
@@ -764,6 +764,7 @@ Sep 6
   - [ ] Huggingface, analyze, preprocessing (replace jupyter notebook)
   - [ ] Wikidata
   - [ ] Government/academic data
+- [ ] Authentication
 
 - [ ] Fix input history order
 - [ ] Huggingface connect split selection and better url cleaning
