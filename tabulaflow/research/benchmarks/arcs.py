@@ -206,7 +206,7 @@ class ARCSDatasetLoader:
                 SQLConnector.from_url_async(
                     global_id=f"arcs+{name}",
                     url=f"sqlite+aiosqlite:///{os.path.join(self.directory, 'databases', 'sqlite', f'{name}.sqlite')}",
-                    db_name=name,
+                    display_name=name,
                     dbms_semaphore=self._dbms_semaphore,
                     config=self.connector_config.model_copy(update={"max_query_concurrency": self.max_concurrency}),
                 )
@@ -218,11 +218,11 @@ class ARCSDatasetLoader:
             column_descriptions = {
                 key: value.strip().strip("#").strip().replace("\n", " ") for key, value in json.load(f).items()
             }
-        for conn in db_connectors:
+        for name, conn in zip(databases, db_connectors, strict=True):
             for table in conn.schema.tables:
                 for column in table.columns:
-                    column.description = column_descriptions.get(f"{conn.schema.name}|{table.name}|{column.name}", None)
-        return {name: conn for name, conn in zip(databases, db_connectors)}
+                    column.description = column_descriptions.get(f"{name}|{table.name}|{column.name}", None)
+        return {name: conn for name, conn in zip(databases, db_connectors, strict=True)}
 
     async def get_split_async(
         self,

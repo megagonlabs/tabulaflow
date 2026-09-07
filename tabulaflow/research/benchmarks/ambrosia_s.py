@@ -251,7 +251,7 @@ class AmbrosiaSDatasetLoader:
                 SQLConnector.from_url_async(
                     global_id=f"ambrosia-s+{name.replace('/', '___')}",
                     url=f"sqlite+aiosqlite:///{os.path.join(self.directory, 'ambrosia', f'{name}.sqlite')}",
-                    db_name=name,
+                    display_name=name,
                     dbms_semaphore=self._dbms_semaphore,
                     # 846 databases are opened concurrently; larger pools exceed the OS file limit.
                     config=self.connector_config.model_copy(update={"max_query_concurrency": 1}),

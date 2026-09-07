@@ -311,7 +311,7 @@ WHERE c.name = 'Italy';"""
                 SQLConnector.from_url_async(
                     global_id=f"bird-sql+{name}",
                     url=f"sqlite+aiosqlite:///{os.path.join(db_dir, name, f'{name}.sqlite')}",
-                    db_name=name,
+                    display_name=name,
                     dbms_semaphore=self._dbms_semaphore,
                     config=self.connector_config.model_copy(update={"max_query_concurrency": self.max_concurrency}),
                 )
@@ -323,10 +323,10 @@ WHERE c.name = 'Italy';"""
             column_descriptions = {
                 key: value.strip().strip("#").strip().replace("\n", " ") for key, value in json.load(f).items()
             }
-        for conn in db_connectors:
+        for name, conn in zip(databases, db_connectors, strict=True):
             for table in conn.schema.tables:
                 for column in table.columns:
-                    column.description = column_descriptions.get(f"{conn.schema.name}|{table.name}|{column.name}", None)
+                    column.description = column_descriptions.get(f"{name}|{table.name}|{column.name}", None)
         return {name: conn for name, conn in zip(databases, db_connectors)}
 
     async def get_split_async(

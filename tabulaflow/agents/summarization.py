@@ -127,12 +127,14 @@ class DBSummarizer:
         if isinstance(schema, SQLSchema):
             sql_schema = schema
             if not sql_schema.tables:
-                return f"# Database: `{sql_schema.name}`\n\nThis database has no tables."
+                return f"# Database: `{sql_schema.display_name}`\n\nThis database has no tables."
             user_prompt = _database_user_prompt(self._sql_formatter.format(sql_schema, include_descriptions=True))
         elif isinstance(schema, PropertyGraphSchema):
             graph_schema = schema
             if not graph_schema.nodes and not graph_schema.relationships:
-                return f"# Database: `{graph_schema.name}`\n\nThis graph database has no nodes or relationships."
+                return (
+                    f"# Database: `{graph_schema.display_name}`\n\nThis graph database has no nodes or relationships."
+                )
             user_prompt = _database_user_prompt(self._graph_formatter.format(graph_schema))
         elif isinstance(schema, RDFSchema):
             user_prompt = _database_user_prompt(self._rdf_formatter.format(schema))

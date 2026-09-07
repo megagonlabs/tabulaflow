@@ -11,7 +11,7 @@ async def test_message_store_persists_and_returns_id(tmp_path: Path) -> None:
     connector = await SQLConnector.from_url_async(
         global_id="test-workspace",
         url=f"duckdb:///{tmp_path / 'workspace.duckdb'}",
-        db_name="workspace",
+        display_name="workspace",
         read_only=False,
         config=SQLConnectorConfig(schema_cache_mode="off", query_cache_mode="off"),
     )

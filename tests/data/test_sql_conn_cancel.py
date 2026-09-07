@@ -40,7 +40,7 @@ async def test_cancel_then_retry_mixed_config(duckdb_with_tables: str) -> None:
         SQLConnector.from_url_async(
             global_id="cancel-target",
             url=url,
-            db_name="t",
+            display_name="t",
             read_only=True,
             config=SQLConnectorConfig(schema_cache_mode="off", query_cache_mode="off"),
         )
@@ -54,7 +54,7 @@ async def test_cancel_then_retry_mixed_config(duckdb_with_tables: str) -> None:
     connector = await SQLConnector.from_url_async(
         global_id="retry",
         url=url,
-        db_name="t",
+        display_name="t",
         read_only=False,
         config=SQLConnectorConfig(schema_cache_mode="off", query_cache_mode="off"),
     )
@@ -95,7 +95,7 @@ async def test_load_files_cancel_then_retry(tmp_path: Path) -> None:
         load_files(
             global_id="cancel-files",
             file_paths=[str(csv)],
-            db_name="mydata",
+            display_name="mydata",
             data_dir=str(tmp_path),
             read_only=True,
             config=SQLConnectorConfig(schema_cache_mode="off", query_cache_mode="off"),
@@ -106,12 +106,12 @@ async def test_load_files_cancel_then_retry(tmp_path: Path) -> None:
     with pytest.raises(asyncio.CancelledError):
         await task
 
-    # Retry — fresh load, same db_name (same on-disk path).  If the
+    # Retry — fresh load, same global_id (same on-disk path).  If the
     # previous subprocess leaked a file lock, this would fail.
     connector = await load_files(
-        global_id="retry-files",
+        global_id="cancel-files",
         file_paths=[str(csv)],
-        db_name="mydata",
+        display_name="mydata",
         data_dir=str(tmp_path),
         read_only=True,
         config=SQLConnectorConfig(schema_cache_mode="off", query_cache_mode="off"),
@@ -119,6 +119,32 @@ async def test_load_files_cancel_then_retry(tmp_path: Path) -> None:
     result = await connector.run_query_async("SELECT COUNT(*) FROM data")
     assert result.df is not None and result.df.iloc[0, 0] == 800000
     await connector.close_async()
+
+
+async def test_load_files_separates_display_name_from_storage_path(tmp_path: Path) -> None:
+    import pandas as pd
+
+    from tabulaflow.data.loaders.files import load_files
+
+    csv = tmp_path / "data.csv"
+    pd.DataFrame({"x": [1]}).to_csv(csv, index=False)
+    data_dir = tmp_path / "loaded"
+
+    connector = await load_files(
+        global_id="file-source",
+        file_paths=[str(csv)],
+        display_name="../human label",
+        data_dir=str(data_dir),
+        config=SQLConnectorConfig(schema_cache_mode="off", query_cache_mode="off"),
+    )
+
+    storage_path = data_dir / "file-source.duckdb"
+    assert connector.schema.display_name == "../human label"
+    assert storage_path.is_file()
+    assert not (tmp_path / "human label.duckdb").exists()
+
+    await connector.close_async()
+    assert not storage_path.exists()
 
 
 async def test_write_dataframe_cancel_rolls_back(tmp_path: Path) -> None:
@@ -134,7 +160,7 @@ async def test_write_dataframe_cancel_rolls_back(tmp_path: Path) -> None:
         connector = await SQLConnector.from_url_async(
             global_id="w",
             url=f"duckdb:///{db_path}",
-            db_name="t",
+            display_name="t",
             read_only=False,
             config=SQLConnectorConfig(schema_cache_mode="off", query_cache_mode="off"),
         )
@@ -171,7 +197,7 @@ async def test_cancel_isolates_to_one_query(tmp_path: Path) -> None:
         connector = await SQLConnector.from_url_async(
             global_id="iso",
             url=f"duckdb:///{db_path}",
-            db_name="t",
+            display_name="t",
             read_only=False,
             config=SQLConnectorConfig(schema_cache_mode="off", query_cache_mode="off"),
         )
@@ -230,7 +256,7 @@ async def _make_async_sqlite_connector(tmp_path: Path) -> SQLConnector:
     return await SQLConnector.from_url_async(
         global_id="async-sqlite",
         url=f"sqlite+aiosqlite:///{db_path}",
-        db_name="t",
+        display_name="t",
         read_only=True,
         config=SQLConnectorConfig(schema_cache_mode="off", query_cache_mode="off"),
     )

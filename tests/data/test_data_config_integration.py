@@ -28,7 +28,7 @@ async def _connector(
     return await SQLConnector.from_url_async(
         global_id=global_id,
         url=f"sqlite+aiosqlite:///{db_path}",
-        db_name=global_id,
+        display_name=global_id,
         schema=schema,
         read_only=read_only,
         config=config,
@@ -47,12 +47,12 @@ async def test_schema_cache_modes(tmp_path: Path) -> None:
     cache_path = _sql_schema_cache_path(read_write, "cached")
     assert cache_path.is_file()
 
-    cached_schema = SQLSchema(name="from-cache", dialect="sqlite", tables=[])
+    cached_schema = SQLSchema(display_name="from-cache", dialect="sqlite", tables=[])
     cache_path.write_text(cached_schema.model_dump_json())
 
     connector = await _connector(tmp_path, global_id="cached", config=read_write)
     try:
-        assert connector.schema.name == "from-cache"
+        assert connector.schema.display_name == "cached"
     finally:
         await connector.close_async()
 
@@ -62,14 +62,14 @@ async def test_schema_cache_modes(tmp_path: Path) -> None:
     )
     connector = await _connector(tmp_path, global_id="cached", config=refresh)
     try:
-        assert connector.schema.name == "cached"
+        assert connector.schema.display_name == "cached"
     finally:
         await connector.close_async()
 
     cache_path.write_text("not json")
     connector = await _connector(tmp_path, global_id="cached", config=read_write)
     try:
-        assert connector.schema.name == "cached"
+        assert connector.schema.display_name == "cached"
     finally:
         await connector.close_async()
 
@@ -105,7 +105,7 @@ async def test_column_stats_are_exact_when_enabled(tmp_path: Path) -> None:
     connector = await SQLConnector.from_url_async(
         global_id="column-stats",
         url=f"sqlite+aiosqlite:///{db_path}",
-        db_name="column-stats",
+        display_name="column-stats",
         config=SQLConnectorConfig(schema_cache_mode="off", collect_column_stats=True),
     )
     try:
@@ -126,7 +126,7 @@ async def test_exact_stats_complete_low_cardinality_text_values(tmp_path: Path) 
     connector = await SQLConnector.from_url_async(
         global_id="categorical-values",
         url=f"sqlite+aiosqlite:///{db_path}",
-        db_name="categorical-values",
+        display_name="categorical-values",
         config=SQLConnectorConfig(schema_cache_mode="off", collect_column_stats=True),
     )
     try:
@@ -180,7 +180,7 @@ async def test_column_stats_timeout_preserves_and_caches_schema(
     connector = await SQLConnector.from_url_async(
         global_id="stats-timeout",
         url=f"sqlite+aiosqlite:///{db_path}",
-        db_name="stats-timeout",
+        display_name="stats-timeout",
         config=config,
     )
     try:
@@ -208,7 +208,7 @@ async def test_connector_timeout_uses_config_unless_explicitly_overridden(
         tmp_path,
         global_id="timeout",
         config=config,
-        schema=SQLSchema(name="timeout", dialect="sqlite", tables=[]),
+        schema=SQLSchema(display_name="timeout", dialect="sqlite", tables=[]),
     )
     captured: list[int | None] = []
 
@@ -285,7 +285,7 @@ async def test_query_cache_mode_controls_reuse(tmp_path: Path, monkeypatch: pyte
         tmp_path,
         global_id="query-cache",
         config=config,
-        schema=SQLSchema(name="query-cache", dialect="sqlite", tables=[]),
+        schema=SQLSchema(display_name="query-cache", dialect="sqlite", tables=[]),
         read_only=True,
     )
     first = await connector.run_query_async("SELECT 1 AS value")
@@ -374,7 +374,7 @@ async def test_query_cache_rejects_writable_connector(tmp_path: Path) -> None:
             tmp_path,
             global_id="writable-query-cache",
             config=config,
-            schema=SQLSchema(name="query-cache", dialect="sqlite", tables=[]),
+            schema=SQLSchema(display_name="query-cache", dialect="sqlite", tables=[]),
         )
 
 
@@ -392,7 +392,7 @@ async def test_invalid_query_cache_entry_is_rebuilt(tmp_path: Path) -> None:
         tmp_path,
         global_id="invalid-query-cache",
         config=config,
-        schema=SQLSchema(name="query-cache", dialect="sqlite", tables=[]),
+        schema=SQLSchema(display_name="query-cache", dialect="sqlite", tables=[]),
         read_only=True,
     )
 
@@ -418,7 +418,7 @@ async def test_query_cache_coalesces_concurrent_identical_queries(
         tmp_path,
         global_id="concurrent-query-cache",
         config=config,
-        schema=SQLSchema(name="query-cache", dialect="sqlite", tables=[]),
+        schema=SQLSchema(display_name="query-cache", dialect="sqlite", tables=[]),
         read_only=True,
     )
     executions = 0
@@ -459,7 +459,7 @@ async def test_query_cache_does_not_store_successful_no_result_statements(
         tmp_path,
         global_id="no-result-query-cache",
         config=config,
-        schema=SQLSchema(name="query-cache", dialect="sqlite", tables=[]),
+        schema=SQLSchema(display_name="query-cache", dialect="sqlite", tables=[]),
         read_only=True,
     )
     executions = 0
@@ -495,7 +495,7 @@ async def test_query_cache_does_not_store_errors(
         tmp_path,
         global_id="error-query-cache",
         config=config,
-        schema=SQLSchema(name="query-cache", dialect="sqlite", tables=[]),
+        schema=SQLSchema(display_name="query-cache", dialect="sqlite", tables=[]),
         read_only=True,
     )
     executions = 0

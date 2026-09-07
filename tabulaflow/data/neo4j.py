@@ -338,7 +338,7 @@ class Neo4jConnector:
         _driver: neo4j.AsyncDriver,
         *,
         _database: str | None,
-        _schema_name: str,
+        _display_name: str,
         config: Neo4jConnectorConfig,
         read_only: bool,
     ) -> None:
@@ -346,7 +346,7 @@ class Neo4jConnector:
         self.schema = schema
         self._driver = _driver
         self._database = _database
-        self._schema_name = _schema_name
+        self._display_name = _display_name
         self.config = config
         self.read_only = read_only
         self._schema_lock = asyncio.Lock()
@@ -377,7 +377,7 @@ class Neo4jConnector:
         global_id: str | None = None,
         auth: tuple[str, str] | neo4j.Auth | None = None,
         database: str | None = None,
-        db_name: str | None = None,
+        display_name: str | None = None,
         schema: PropertyGraphSchema | None = None,
         read_only: bool = True,
         config: Neo4jConnectorConfig | None = None,
@@ -393,7 +393,8 @@ class Neo4jConnector:
                 credential-free URL and database when omitted.
             auth: ``(username, password)`` tuple or ``neo4j.Auth`` object.
             database: Neo4j database name.  ``None`` uses the server default.
-            db_name: Human-readable database name used in ``schema.name``.
+            display_name: Human-readable name used in
+                ``schema.display_name``.
                 Auto-detected from the server if not provided.
             schema: Pre-loaded schema.  If ``None``, the schema is
                 introspected automatically.
@@ -417,14 +418,22 @@ class Neo4jConnector:
         try:
             await driver.verify_connectivity()
 
-            schema_name = db_name or database or await cls._fetch_default_db_name(driver) or "N/A"
+            resolved_display_name = (
+                display_name
+                or (schema.display_name if schema is not None else None)
+                or database
+                or await cls._fetch_default_db_name(driver)
+                or "N/A"
+            )
+            if schema is not None:
+                schema.display_name = resolved_display_name
 
             connector = cls(
                 global_id=global_id,
-                schema=schema or PropertyGraphSchema(name=schema_name),
+                schema=schema or PropertyGraphSchema(display_name=resolved_display_name),
                 _driver=driver,
                 _database=database,
-                _schema_name=schema_name,
+                _display_name=resolved_display_name,
                 config=config,
                 read_only=read_only,
             )
@@ -530,6 +539,7 @@ class Neo4jConnector:
             if self.config.schema_cache_mode in ("read_write", "cache_only") and cache_path.exists():
                 try:
                     self.schema = await read_cached_model(cache_path, PropertyGraphSchema)
+                    self.schema.display_name = self._display_name
                     return self.schema
                 except (ValidationError, UnicodeError) as e:
                     if self.config.schema_cache_mode == "cache_only":
@@ -671,7 +681,7 @@ class Neo4jConnector:
         ]
 
         return PropertyGraphSchema(
-            name=self._schema_name,
+            display_name=self._display_name,
             nodes=sorted_nodes,
             relationships=sorted_rels,
         )

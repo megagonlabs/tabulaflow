@@ -20,9 +20,9 @@ from tabulaflow.core import (
 def test_source_schema_uses_kind_discriminator() -> None:
     adapter: TypeAdapter[DataSourceSchema] = TypeAdapter(DataSourceSchema)
 
-    sql_schema = adapter.validate_python({"kind": "sql", "name": "db", "dialect": "sqlite", "tables": []})
-    graph_schema = adapter.validate_python({"kind": "property_graph", "name": "graph"})
-    rdf_schema = adapter.validate_python({"kind": "rdf", "name": "knowledge-graph"})
+    sql_schema = adapter.validate_python({"kind": "sql", "display_name": "db", "dialect": "sqlite", "tables": []})
+    graph_schema = adapter.validate_python({"kind": "property_graph", "display_name": "graph"})
+    rdf_schema = adapter.validate_python({"kind": "rdf", "display_name": "knowledge-graph"})
 
     assert isinstance(sql_schema, SQLSchema)
     assert isinstance(graph_schema, PropertyGraphSchema)
@@ -100,7 +100,7 @@ def test_table_select_columns_can_return_an_empty_table() -> None:
 
 
 def test_schema_select_columns_drops_unselected_tables() -> None:
-    schema = SQLSchema(name="shop", dialect="postgresql", tables=[_table(), _table("archived_orders")])
+    schema = SQLSchema(display_name="shop", dialect="postgresql", tables=[_table(), _table("archived_orders")])
 
     selected = schema.select_columns(
         [ColumnRef(schema_name="PUBLIC", table_name="ORDERS", column_name="CUSTOMER_ID")],

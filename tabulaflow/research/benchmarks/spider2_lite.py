@@ -394,7 +394,7 @@ class Spider2LiteDatasetLoader:
         return await SQLConnector.from_url_async(
             url,
             global_id=f"spider2-lite+{db_name}",
-            db_name=project,
+            display_name=project,
             dbms_semaphore=self._bq_semaphore,
             include_schema_names=datasets,
             reuse_date_partition_schemas=True,
@@ -423,7 +423,7 @@ class Spider2LiteDatasetLoader:
         return await SQLConnector.from_url_async(
             f"{base_url}/{db_name}",
             global_id=f"spider2-lite+{db_name}",
-            db_name=db_name,
+            display_name=db_name,
             dbms_semaphore=self._sf_semaphore,
             connect_args=connect_args,
             reuse_date_partition_schemas=True,
@@ -444,7 +444,7 @@ class Spider2LiteDatasetLoader:
         return await SQLConnector.from_url_async(
             url,
             global_id=f"spider2-lite+{db_name}",
-            db_name=db_name,
+            display_name=db_name,
             config=self.connector_config.model_copy(update={"max_query_concurrency": 4}),
         )
 

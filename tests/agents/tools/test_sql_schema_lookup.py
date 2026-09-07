@@ -18,7 +18,7 @@ def _table(schema_name: str | None, name: str, *column_names: str) -> SQLTableSc
 
 def test_find_table_normalizes_case_and_quotes() -> None:
     table = _table("analytics", "Events", "Payload")
-    schema = SQLSchema(name="warehouse", tables=[table])
+    schema = SQLSchema(display_name="warehouse", tables=[table])
 
     assert find_table(schema, '"wrong_schema"', "`events`") is table
     assert find_column(table, '"payload"') is table.columns[0]
@@ -26,14 +26,14 @@ def test_find_table_normalizes_case_and_quotes() -> None:
 
 def test_find_table_resolves_unique_unqualified_name_across_schemas() -> None:
     events = _table("analytics", "events", "payload")
-    schema = SQLSchema(name="warehouse", tables=[events, _table("public", "users", "name")])
+    schema = SQLSchema(display_name="warehouse", tables=[events, _table("public", "users", "name")])
 
     assert find_table(schema, None, "events") is events
 
 
 def test_find_table_does_not_guess_ambiguous_unqualified_name() -> None:
     schema = SQLSchema(
-        name="warehouse",
+        display_name="warehouse",
         tables=[_table("analytics", "events", "payload"), _table("public", "events", "payload")],
     )
 

@@ -86,7 +86,7 @@ async def conn(tmp_path: Path) -> AsyncGenerator[SQLConnector, None]:
     connector = await SQLConnector.from_url_async(
         global_id="test-workspace",
         url=f"duckdb:///{db_path}",
-        db_name="workspace",
+        display_name="workspace",
         read_only=False,
         config=SQLConnectorConfig(schema_cache_mode="off", query_cache_mode="off"),
     )

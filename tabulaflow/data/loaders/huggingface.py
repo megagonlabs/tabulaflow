@@ -473,7 +473,7 @@ async def _load_hf_into_duckdb(
 async def load_hf_dataset(
     dataset_url: str,
     *,
-    db_name: str | None = None,
+    display_name: str | None = None,
     read_only: bool = True,
     summarize: Callable[[str], Awaitable[str]] | None = None,
     config: SQLConnectorConfig | None = None,
@@ -486,7 +486,8 @@ async def load_hf_dataset(
 
     Args:
         dataset_url: A HuggingFace dataset URL.
-        db_name: Display name for the database. Defaults to the dataset name.
+        display_name: Display name for the data source. Defaults to the dataset
+            name.
         read_only: If True, block write statements.
         summarize: Optional async function used to shorten long dataset
             descriptions before storing them in the schema.
@@ -502,8 +503,8 @@ async def load_hf_dataset(
 
     dataset_id, subset, split = parse_hf_dataset_url(dataset_url)
 
-    if db_name is None:
-        db_name = dataset_id.split("/")[-1]
+    if display_name is None:
+        display_name = dataset_id.split("/")[-1]
 
     db_path, _ = await _load_hf_into_duckdb(dataset_id, subset, split, config)
 
@@ -526,7 +527,7 @@ async def load_hf_dataset(
     connector = await SQLConnector.from_url_async(
         global_id=global_id,
         url=url,
-        db_name=db_name,
+        display_name=display_name,
         read_only=read_only,
         config=config,
         duckdb_init_sql=["LOAD httpfs"],

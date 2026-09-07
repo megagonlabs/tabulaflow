@@ -215,7 +215,7 @@ async def test_database_summarizer_owns_versioned_semantic_cache_key(tmp_path: P
         Any,
         SimpleNamespace(
             global_id="empty-db",
-            schema=SQLSchema(name="empty", dialect="sqlite", tables=[]),
+            schema=SQLSchema(display_name="empty", dialect="sqlite", tables=[]),
         ),
     )
     summarizer = DBSummarizer(max_words=100)

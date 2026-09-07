@@ -77,7 +77,7 @@ async def autoconnect_sample(session: AppSession) -> bool:
     connector = await SQLConnector.from_url_async(
         global_id=f"cli+{SAMPLE_ALIAS}",
         url=f"sqlite+aiosqlite:///{path}",
-        db_name=SAMPLE_ALIAS,
+        display_name=SAMPLE_ALIAS,
         read_only=True,
         # The sample is tiny (instant to introspect) and its schema can change
         # between versions under the same global_id — caching would risk serving a

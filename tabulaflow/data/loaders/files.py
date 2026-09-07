@@ -15,6 +15,7 @@ from typing import TYPE_CHECKING
 
 from tabulaflow.core.schema import SQLSchema
 from tabulaflow.data.config import SQLConnectorConfig
+from tabulaflow.data.protocols import validate_global_id
 
 if TYPE_CHECKING:
     from tabulaflow.data.sql import SQLConnector
@@ -89,7 +90,7 @@ async def load_files(
     global_id: str,
     file_paths: list[str],
     *,
-    db_name: str | None = None,
+    display_name: str | None = None,
     data_dir: str | None = None,
     read_only: bool = True,
     config: SQLConnectorConfig | None = None,
@@ -101,15 +102,15 @@ async def load_files(
     ``.jsonl``, ``.ndjson``.
 
     File ownership: ``load_files`` claims the path
-    ``<data_dir>/<db_name>.duckdb`` (or a fresh temp file when
+    ``<data_dir>/<global_id>.duckdb`` (or a fresh temp file when
     ``data_dir`` is None).  **Any existing file at that path is silently
     deleted before the load** — the DB is always (re)built from
-    scratch.  Don't point ``data_dir``+``db_name`` at a file you want to
+    scratch.  Don't point ``data_dir``+``global_id`` at a file you want to
     preserve.  When ``data_dir`` is None the temp file is also deleted
     by :meth:`SQLConnector.close_async`.
 
     Concurrency precondition: the caller must ensure ``(data_dir,
-    db_name)`` is unique across live :class:`SQLConnector` instances in
+    global_id)`` is unique across live :class:`SQLConnector` instances in
     the process.  Two simultaneous ``load_files`` calls resolving to the
     same path will corrupt each other (the second's unlink-existing
     step deletes the first's open DB file).  The tabulaflow CLI guarantees
@@ -132,7 +133,7 @@ async def load_files(
         global_id: Globally unique identifier for this connection, also
             used as the cache key when loading the schema.
         file_paths: Paths to data files to load.
-        db_name: Display name for the database. Defaults to the first
+        display_name: Display name for the data source. Defaults to the first
             file's stem.
         data_dir: Directory to store the DuckDB file.  If ``None``, a
             system temp directory is used and the file is unlinked on
@@ -148,6 +149,7 @@ async def load_files(
     """
     from tabulaflow.data.sql import SQLConnector
 
+    global_id = validate_global_id(global_id)
     config = SQLConnectorConfig() if config is None else config
     if not read_only and config.query_cache_mode != "off":
         raise ValueError("Query caching requires read_only=True")
@@ -168,12 +170,12 @@ async def load_files(
     if not resolved:
         raise ValueError("At least one file path is required")
 
-    if db_name is None:
-        db_name = _table_name_from_path(resolved[0])
+    if display_name is None:
+        display_name = _table_name_from_path(resolved[0])
 
     if data_dir is not None:
         os.makedirs(data_dir, exist_ok=True)
-        db_path = os.path.join(data_dir, f"{db_name}.duckdb")
+        db_path = os.path.join(data_dir, f"{global_id}.duckdb")
     else:
         fd, db_path = tempfile.mkstemp(suffix=".duckdb")
         os.close(fd)
@@ -196,8 +198,8 @@ async def load_files(
         connector = await SQLConnector.from_url_async(
             global_id=global_id,
             url=f"duckdb:///{db_path}",
-            db_name=db_name,
-            schema=SQLSchema(name=db_name, dialect="duckdb", tables=[]),
+            display_name=display_name,
+            schema=SQLSchema(display_name=display_name, dialect="duckdb", tables=[]),
             read_only=False,  # need DDL for the load; SQLConnector.read_only set below
             config=loading_config,
             duckdb_init_sql=duckdb_init_sql or (),

@@ -33,7 +33,7 @@ async def _make_connector(tmp_path: Path) -> SQLConnector:
         await conn.execute(sqlalchemy.text("INSERT INTO t VALUES ('x', 1), ('y', 2), ('z', 3);"))
     await engine.dispose()
     return await SQLConnector.from_url_async(
-        global_id="test_outcome", url=f"sqlite+aiosqlite:///{db_path}", db_name="db"
+        global_id="test_outcome", url=f"sqlite+aiosqlite:///{db_path}", display_name="db"
     )
 
 

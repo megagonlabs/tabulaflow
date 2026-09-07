@@ -295,7 +295,7 @@ class Spider2SnowDatasetLoader:
         return await SQLConnector.from_url_async(
             f"{base_url}/{db_name}",
             global_id=f"spider2-snow+{db_name}",
-            db_name=db_name,
+            display_name=db_name,
             dbms_semaphore=self._dbms_semaphore,
             connect_args=connect_args,
             reuse_date_partition_schemas=True,

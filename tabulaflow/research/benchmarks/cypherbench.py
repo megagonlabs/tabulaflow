@@ -288,7 +288,7 @@ class CypherBenchDatasetLoader:
                 url=url,
                 auth=auth,
                 database=None,
-                db_name=graph,
+                display_name=graph,
                 read_only=True,
                 config=self.connector_config,
             )

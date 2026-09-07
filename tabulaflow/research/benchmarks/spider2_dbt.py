@@ -150,7 +150,7 @@ async def prepare_working_env_async(dataset: NL2QDataset, output_dir: str) -> No
         conn = await SQLConnector.from_url_async(
             global_id=original_global_id,
             url=f"duckdb:///{working_db_path}",
-            db_name=task.db,
+            display_name=task.db,
             schema=existing_schema,
             read_only=True,
             config=SQLConnectorConfig(
@@ -345,7 +345,7 @@ class Spider2DbtDatasetLoader:
             conn = await SQLConnector.from_url_async(
                 global_id=f"spider2-dbt+{instance_id}",
                 url=url,
-                db_name=instance_id,
+                display_name=instance_id,
                 dbms_semaphore=self._dbms_semaphore,
                 read_only=True,
                 config=self.connector_config.model_copy(update={"max_query_concurrency": 4}),

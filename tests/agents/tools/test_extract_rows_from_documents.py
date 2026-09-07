@@ -221,7 +221,7 @@ async def test_tool_resolves_types_and_appends_typed_rows(tmp_path: Path, monkey
     conn = await SQLConnector.from_url_async(
         global_id="test+extract_rows",
         url=f"duckdb:///{db_path}",
-        db_name="products",
+        display_name="products",
         read_only=False,
         config=SQLConnectorConfig(schema_cache_mode="off", query_cache_mode="off"),
     )
@@ -284,7 +284,7 @@ async def test_tool_extracts_rows_from_inline_image(tmp_path: Path, monkeypatch:
     conn = await SQLConnector.from_url_async(
         global_id="test+extract_image_rows",
         url=f"duckdb:///{db_path}",
-        db_name="images",
+        display_name="images",
         read_only=False,
         config=SQLConnectorConfig(schema_cache_mode="off", query_cache_mode="off"),
     )
@@ -326,7 +326,7 @@ async def test_tool_extracts_from_mixed_media_collection(tmp_path: Path, monkeyp
     conn = await SQLConnector.from_url_async(
         global_id="test+extract_mixed_media_rows",
         url=f"duckdb:///{db_path}",
-        db_name="mixed_media",
+        display_name="mixed_media",
         read_only=False,
         config=SQLConnectorConfig(schema_cache_mode="off", query_cache_mode="off"),
     )
@@ -369,7 +369,7 @@ async def test_tool_rejects_unknown_binary_before_extraction(tmp_path: Path, mon
     conn = await SQLConnector.from_url_async(
         global_id="test+extract_unknown_binary",
         url=f"duckdb:///{db_path}",
-        db_name="unknown_binary",
+        display_name="unknown_binary",
         read_only=False,
         config=SQLConnectorConfig(schema_cache_mode="off", query_cache_mode="off"),
     )
@@ -402,7 +402,7 @@ async def test_tool_rejects_non_scalar_output_column(tmp_path: Path, monkeypatch
     conn = await SQLConnector.from_url_async(
         global_id="test+extract_rows_reject",
         url=f"duckdb:///{db_path}",
-        db_name="docs",
+        display_name="docs",
         read_only=False,
         config=SQLConnectorConfig(schema_cache_mode="off", query_cache_mode="off"),
     )
@@ -434,7 +434,7 @@ async def test_unknown_placeholder_rejected(tmp_path: Path, monkeypatch: pytest.
     conn = await SQLConnector.from_url_async(
         global_id="test+extract_rows_placeholder",
         url=f"duckdb:///{db_path}",
-        db_name="docs",
+        display_name="docs",
         read_only=False,
         config=SQLConnectorConfig(schema_cache_mode="off", query_cache_mode="off"),
     )

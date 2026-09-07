@@ -35,7 +35,7 @@ async def _create_workspace_connector(workspace_db_path: Path) -> SQLConnector:
     return await SQLConnector.from_url_async(
         global_id=f"cli+{WORKSPACE_ALIAS}",
         url=f"duckdb:///{abspath}",
-        db_name=WORKSPACE_ALIAS,
+        display_name=WORKSPACE_ALIAS,
         read_only=False,
         config=SQLConnectorConfig(schema_cache_mode="off", query_cache_mode="off"),
     )

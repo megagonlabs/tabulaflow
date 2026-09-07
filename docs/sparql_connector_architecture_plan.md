@@ -176,7 +176,7 @@ The RDF schema should support partial descriptions:
 ```python
 class RDFSchema(BaseModel):
     kind: Literal["rdf"] = "rdf"
-    name: str
+    display_name: str
     description: str | None = None
 ```
 

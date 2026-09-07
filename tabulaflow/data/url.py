@@ -129,7 +129,7 @@ def is_database_file_path(path: str) -> bool:
 async def connect_url(
     source: str,
     *,
-    db_name: str,
+    display_name: str,
     read_only: bool = True,
     global_id: str | None = None,
     config: SQLConnectorConfig | Neo4jConnectorConfig | None = None,
@@ -144,7 +144,7 @@ async def connect_url(
     Args:
         source: A database URL (``postgresql://user:pass@…``, ``bigquery://…``,
             ``neo4j://user:pass@…``, …) or a local database-file path (``.sqlite`` / ``.duckdb``).
-        db_name: Display name for the connector.
+        display_name: Human-readable name stored in the connector schema.
         read_only: Request backend-appropriate read-only behavior. SQL callers
             still need read-only credentials or IAM for enforced security.
         global_id: Stable id for schema caching; derived from the URL if omitted.
@@ -173,7 +173,7 @@ async def connect_url(
             url=driver_url,
             global_id=global_id,
             database=database,
-            db_name=db_name,
+            display_name=display_name,
             read_only=read_only,
             auth=auth,
             config=config,
@@ -183,7 +183,7 @@ async def connect_url(
         raise TypeError("SQL URLs require SQLConnectorConfig")
     return await SQLConnector.from_url_async(
         url=url,
-        db_name=db_name,
+        display_name=display_name,
         global_id=global_id,
         read_only=read_only,
         config=config,

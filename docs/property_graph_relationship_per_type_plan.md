@@ -164,7 +164,7 @@ async def _build_schema(self) -> PropertyGraphSchema:
     sorted_rels = sorted(rels.values(), key=lambda r: r.label)
 
     return PropertyGraphSchema(
-        name=self._schema_name,
+        display_name=self._display_name,
         nodes=sorted_nodes,
         relationships=sorted_rels,
     )

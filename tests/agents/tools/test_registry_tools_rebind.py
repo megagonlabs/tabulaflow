@@ -33,7 +33,7 @@ async def _make_connector(tmp_path: Path, name: str, value: str) -> SQLConnector
     return await SQLConnector.from_url_async(
         global_id=f"test_{name}",
         url=f"sqlite+aiosqlite:///{db_path}",
-        db_name=name,
+        display_name=name,
     )
 
 
@@ -89,13 +89,13 @@ class RefreshBlockingConnector:
 
 def test_column_json_schema_tool_rebuilds_when_schema_is_replaced() -> None:
     connector = RefreshBlockingConnector()
-    connector.schema = SQLSchema(name="first", dialect="sqlite", tables=[])
+    connector.schema = SQLSchema(display_name="first", dialect="sqlite", tables=[])
     registry = DataConnectorRegistry()
     registry.register("mydb", cast(Any, connector))
     tool = RegistryGetColumnJsonSchemaTool(registry)
 
     first = tool._get_tool("mydb")  # noqa: SLF001
-    connector.schema = SQLSchema(name="second", dialect="sqlite", tables=[])
+    connector.schema = SQLSchema(display_name="second", dialect="sqlite", tables=[])
     second = tool._get_tool("mydb")  # noqa: SLF001
 
     assert first is not second

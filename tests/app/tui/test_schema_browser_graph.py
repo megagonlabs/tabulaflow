@@ -25,7 +25,7 @@ class FakeGraphConnector:
 
     def __init__(self) -> None:
         self.schema = PropertyGraphSchema(
-            name="neo",
+            display_name="neo",
             nodes=[
                 NodeSchema(
                     label="Movie",
@@ -68,7 +68,7 @@ class FakeRDFConnector:
 
     def __init__(self) -> None:
         self.schema = RDFSchema(
-            name="knowledge-graph",
+            display_name="knowledge-graph",
             description="Example RDF data.",
         )
 
@@ -173,7 +173,7 @@ def test_cypher_formatter_renders_multi_endpoint_relationship_type_once() -> Non
     from tabulaflow.output.formatting import CypherSchemaFormatter
 
     schema = PropertyGraphSchema(
-        name="places",
+        display_name="places",
         relationships=[
             RelationshipSchema(
                 label="LOCATED_IN",

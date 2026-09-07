@@ -124,7 +124,7 @@ async def test_connect_url_rejects_unsupported_bare_source() -> None:
     from tabulaflow.data.url import connect_url
 
     with pytest.raises(ValueError, match="expected a database URL or SQLite/DuckDB file path"):
-        await connect_url("not-a-database", db_name="test")
+        await connect_url("not-a-database", display_name="test")
 
 
 async def test_connect_url_leaves_bigquery_configuration_to_driver(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -141,7 +141,7 @@ async def test_connect_url_leaves_bigquery_configuration_to_driver(monkeypatch: 
     monkeypatch.delenv("GCP_BILLING_PROJECT", raising=False)
     monkeypatch.setattr(SQLConnector, "from_url_async", connect)
 
-    await connect_url("bigquery://project/dataset", db_name="dataset")
+    await connect_url("bigquery://project/dataset", display_name="dataset")
 
     assert "billing_project_id" not in captured
     assert "credentials_path" not in captured

@@ -27,7 +27,7 @@ async def conn(tmp_path: Path) -> AsyncGenerator[SQLConnector, None]:
     connector = await SQLConnector.from_url_async(
         global_id="test-affected",
         url=f"duckdb:///{tmp_path / 'w.duckdb'}",
-        db_name="w",
+        display_name="w",
         read_only=False,
         config=SQLConnectorConfig(schema_cache_mode="off", query_cache_mode="off"),
     )
@@ -40,7 +40,7 @@ async def sqlite_conn(tmp_path: Path) -> AsyncGenerator[SQLConnector, None]:
     connector = await SQLConnector.from_url_async(
         global_id="test-affected-sqlite",
         url=f"sqlite+aiosqlite:///{tmp_path / 't.sqlite'}",
-        db_name="w",
+        display_name="w",
         read_only=False,
         config=SQLConnectorConfig(schema_cache_mode="off", query_cache_mode="off"),
     )

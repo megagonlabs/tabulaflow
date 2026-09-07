@@ -17,7 +17,7 @@ class FakeSQLConnector:
     backend = "sqlite"
     global_id = "fake+sql"
     schema = SQLSchema(
-        name="test",
+        display_name="test",
         dialect="sqlite",
         tables=[
             SQLTableSchema(name="a", is_view=False, columns=[], primary_key=[], foreign_keys=[]),
@@ -42,7 +42,7 @@ class FakeSQLConnector:
 class FakeGraphConnector:
     global_id = "fake+graph"
     schema = PropertyGraphSchema(
-        name="test",
+        display_name="test",
         nodes=[NodeSchema(label="Person")],
         relationships=[
             RelationshipSchema(

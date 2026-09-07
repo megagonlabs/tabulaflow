@@ -68,16 +68,16 @@ class ConnectDataSourceTool:
             raise FileNotFoundError(f"no such file: {source!r}; pass a local file path or a HuggingFace dataset URL")
         try:
             if is_hf:
-                connector: DataConnector = await load_hf_dataset(source, db_name=alias, read_only=True)
+                connector: DataConnector = await load_hf_dataset(source, display_name=alias, read_only=True)
             elif is_url:
-                connector = await connect_url(source, db_name=alias, read_only=True)
+                connector = await connect_url(source, display_name=alias, read_only=True)
             elif is_database_file_path(path):
-                connector = await connect_url(path, db_name=alias, read_only=True)
+                connector = await connect_url(path, display_name=alias, read_only=True)
             else:
                 connector = await load_files(
                     global_id=f"cli+{alias}",
                     file_paths=[path],
-                    db_name=alias,
+                    display_name=alias,
                     data_dir=str(self._data_dir),
                     read_only=True,
                 )

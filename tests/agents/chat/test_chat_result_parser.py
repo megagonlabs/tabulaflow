@@ -117,7 +117,7 @@ async def test_build_chat_result_resolves_a_panel(tmp_path: Path) -> None:
     connector = await SQLConnector.from_url_async(
         global_id="test-chat-panel",
         url=f"duckdb:///{tmp_path / 'w.duckdb'}",
-        db_name="w",
+        display_name="w",
         read_only=False,
         config=SQLConnectorConfig(schema_cache_mode="off", query_cache_mode="off"),
     )
@@ -183,7 +183,7 @@ async def test_build_chat_result_resolves_source_backed_chart_in_panel(tmp_path:
     connector = await SQLConnector.from_url_async(
         global_id="test-chat-chart-panel",
         url=f"duckdb:///{tmp_path / 'w.duckdb'}",
-        db_name="w",
+        display_name="w",
         read_only=False,
         config=SQLConnectorConfig(schema_cache_mode="off", query_cache_mode="off"),
     )
@@ -226,7 +226,7 @@ async def test_build_chat_result_placeholders_a_partially_covered_card(tmp_path:
     connector = await SQLConnector.from_url_async(
         global_id="test-chat-partial",
         url=f"duckdb:///{tmp_path / 'w.duckdb'}",
-        db_name="w",
+        display_name="w",
         read_only=False,
         config=SQLConnectorConfig(schema_cache_mode="off", query_cache_mode="off"),
     )

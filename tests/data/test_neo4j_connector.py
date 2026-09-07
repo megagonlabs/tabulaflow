@@ -93,8 +93,8 @@ async def test_query_concurrency_configures_semaphore_and_driver_pool(monkeypatc
     connector = await Neo4jConnector.from_url_async(
         global_id="neo4j+concurrency",
         url="neo4j://localhost:7687",
-        db_name="test",
-        schema=PropertyGraphSchema(name="test"),
+        display_name="test",
+        schema=PropertyGraphSchema(display_name="test"),
         config=Neo4jConnectorConfig(max_query_concurrency=3),
     )
     try:
@@ -111,8 +111,8 @@ async def test_close_is_terminal_and_idempotent(monkeypatch: pytest.MonkeyPatch)
     monkeypatch.setattr(neo4j.AsyncGraphDatabase, "driver", lambda *_args, **_kwargs: driver)
     connector = await Neo4jConnector.from_url_async(
         "neo4j://localhost:7687",
-        db_name="test",
-        schema=PropertyGraphSchema(name="test"),
+        display_name="test",
+        schema=PropertyGraphSchema(display_name="test"),
     )
     assert connector.global_id.startswith("url+")
 
@@ -172,7 +172,7 @@ async def test_failed_connectivity_verification_closes_driver(monkeypatch: pytes
         await Neo4jConnector.from_url_async(
             global_id="neo4j+test",
             url="neo4j://localhost:7687",
-            db_name="test",
+            display_name="test",
         )
 
     assert driver.closed
@@ -189,7 +189,7 @@ async def test_schema_initialization_failure_closes_driver(
         await Neo4jConnector.from_url_async(
             global_id="neo4j+test",
             url="neo4j://localhost:7687",
-            db_name="test",
+            display_name="test",
             config=Neo4jConnectorConfig(
                 cache_dir=tmp_path,
                 schema_cache_mode="cache_only",
@@ -229,7 +229,7 @@ async def test_fast_schema_introspection_uses_metadata() -> None:
     timeouts: list[int | None] = []
     connector = object.__new__(Neo4jConnector)
     connector.config = Neo4jConnectorConfig(query_timeout_seconds=9, schema_introspection_mode="fast")
-    connector._schema_name = "movies"
+    connector._display_name = "movies"
 
     async def run_cypher(query: str, *, timeout: int | None = None) -> list[dict[str, Any]]:
         timeouts.append(timeout)
@@ -272,7 +272,7 @@ async def test_full_scan_schema_introspection_uses_observed_properties_and_topol
     }
     connector = object.__new__(Neo4jConnector)
     connector.config = Neo4jConnectorConfig(schema_introspection_mode="full_scan")
-    connector._schema_name = "movies"
+    connector._display_name = "movies"
 
     async def run_cypher(query: str, *, timeout: int | None = None) -> list[dict[str, Any]]:
         return responses[query]
@@ -303,7 +303,7 @@ async def test_schema_refresh_preserves_descriptions_and_replaces_structure(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     previous = PropertyGraphSchema(
-        name="movies",
+        display_name="movies",
         description="database description",
         nodes=[
             NodeSchema(
@@ -322,7 +322,7 @@ async def test_schema_refresh_preserves_descriptions_and_replaces_structure(
         ],
     )
     refreshed = PropertyGraphSchema(
-        name="movies",
+        display_name="movies",
         nodes=[NodeSchema(label="Person", properties=[GraphPropertySchema(name="id", types=["INTEGER"])])],
         relationships=[
             RelationshipSchema(

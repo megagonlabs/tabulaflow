@@ -11,7 +11,7 @@ def test_format_sql_connector_summary() -> None:
         backend="duckdb",
         language="duckdb",
         schema=SQLSchema(
-            name="test",
+            display_name="test",
             dialect="duckdb",
             tables=[
                 SQLTableSchema(name="a", is_view=False, columns=[], primary_key=[], foreign_keys=[]),
@@ -28,7 +28,7 @@ def test_format_graph_connector_summary() -> None:
         backend="neo4j",
         language="cypher",
         schema=PropertyGraphSchema(
-            name="test",
+            display_name="test",
             nodes=[NodeSchema(label="Person")],
             relationships=[RelationshipSchema(label="KNOWS"), RelationshipSchema(label="WORKS_AT")],
         ),
@@ -41,7 +41,7 @@ def test_format_rdf_connector_summary() -> None:
     connector: Any = SimpleNamespace(
         backend="wikidata-query-service",
         language="sparql",
-        schema=RDFSchema(name="wikidata"),
+        schema=RDFSchema(display_name="wikidata"),
     )
 
     assert format_connector_summary(connector) == "wikidata-query-service, sparql"

@@ -43,7 +43,7 @@ class _RDFConnector:
 
     def __init__(self) -> None:
         self.schema = RDFSchema(
-            name="example",
+            display_name="example",
             description="Example RDF source.",
         )
 

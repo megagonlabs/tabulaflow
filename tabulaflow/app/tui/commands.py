@@ -194,7 +194,7 @@ async def _cmd_connect(args: list[str], session: AppSession) -> CommandResult:
             connector = await load_files(
                 global_id=global_id,
                 file_paths=file_args,
-                db_name=alias,
+                display_name=alias,
                 data_dir=str(session.data_dir),
                 read_only=True,
                 config=SQLConnectorConfig(schema_cache_mode="off", query_cache_mode="off"),
@@ -261,7 +261,7 @@ async def _connect_hf_dataset(args: list[str], session: AppSession) -> CommandRe
 
         connector = await load_hf_dataset(
             url,
-            db_name=alias,
+            display_name=alias,
             read_only=True,
             summarize=TextSummarizer().summarize,
         )
@@ -276,7 +276,7 @@ async def _connect_hf_dataset(args: list[str], session: AppSession) -> CommandRe
 async def _execute_connect(url: str, alias: str, session: AppSession) -> CommandResult:
     """Execute the actual database connection."""
     try:
-        connector = await connect_url(url, db_name=alias, read_only=True)
+        connector = await connect_url(url, display_name=alias, read_only=True)
     except Exception as e:
         return CommandResult(output=Text.from_markup(f"[{ERROR}]Connection failed:[/] {escape(str(e))}"))
 

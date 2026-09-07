@@ -43,7 +43,7 @@ class SQLBasicSchemaFormatter:
     def format(self, schema: SQLSchema, *, include_descriptions: bool = False) -> str:
         quoting = SQLQuoting.from_dialect(schema.dialect)
         name_label = "Project" if schema.dialect == "bigquery" else "Database"
-        result = f"{name_label}: {schema.name}"
+        result = f"{name_label}: {schema.display_name}"
         if schema.dialect:
             result += f" (SQL Dialect: {schema.dialect})"
         if include_descriptions and schema.description:

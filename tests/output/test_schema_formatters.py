@@ -53,7 +53,7 @@ def _family_table(name: str, example: str, num_rows: int) -> SQLTableSchema:
 
 def test_sparql_formatter_renders_source_description() -> None:
     schema = RDFSchema(
-        name="example",
+        display_name="example",
         description="An example knowledge graph.",
     )
 
@@ -174,7 +174,7 @@ def test_schema_column_limit_prioritizes_complete_key_relationships() -> None:
         primary_key=["id"],
         foreign_keys=[foreign_key],
     )
-    schema = SQLSchema(name="shop", dialect="postgresql", tables=[customers, orders])
+    schema = SQLSchema(display_name="shop", dialect="postgresql", tables=[customers, orders])
 
     formatted = SQLDDLSchemaFormatter(max_total_columns=2).format(schema)
 
@@ -221,7 +221,7 @@ def test_complete_primary_and_foreign_key_formatting() -> None:
             ),
         ],
     )
-    schema = SQLSchema(name="shop", dialect="postgresql", tables=[customers, orders])
+    schema = SQLSchema(display_name="shop", dialect="postgresql", tables=[customers, orders])
 
     basic = SQLBasicSchemaFormatter().format(schema)
     ddl = SQLDDLSchemaFormatter(
@@ -283,7 +283,7 @@ CREATE TABLE public.orders (
 
 def test_sql_basic_compacted_family_format() -> None:
     schema = SQLSchema(
-        name="warehouse",
+        display_name="warehouse",
         dialect="duckdb",
         tables=[
             _family_table("events_20240101", "open", 5),
@@ -310,7 +310,7 @@ Rows: 5
 
 def test_sql_ddl_compacted_family_format() -> None:
     schema = SQLSchema(
-        name="warehouse",
+        display_name="warehouse",
         dialect="duckdb",
         tables=[
             _family_table("events_20240101", "open", 5),

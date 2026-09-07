@@ -322,7 +322,7 @@ class TestResolveJsonSchemaPath:
 def _make_schema(json_schema: dict[str, Any] | None = None, examples: list[Any] | None = None) -> SQLSchema:
     """Build a minimal SQLSchema with one table and one column."""
     return SQLSchema(
-        name="test_db",
+        display_name="test_db",
         tables=[
             SQLTableSchema(
                 name="test_table",

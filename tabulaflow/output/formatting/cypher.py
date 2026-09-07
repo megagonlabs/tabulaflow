@@ -40,7 +40,7 @@ class CypherSchemaFormatter:
         ]
         rel_prop_lines = self._format_relationship_properties(schema.relationships)
 
-        header = f"Database: {schema.name} (Query Language: cypher)"
+        header = f"Database: {schema.display_name} (Query Language: cypher)"
         if schema.description:
             header += f"\nDescription: {schema.description}"
 

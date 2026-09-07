@@ -45,7 +45,7 @@ def _table(
 
 
 def _schema(*tables: SQLTableSchema) -> SQLSchema:
-    return SQLSchema(name="warehouse", dialect="duckdb", tables=list(tables))
+    return SQLSchema(display_name="warehouse", dialect="duckdb", tables=list(tables))
 
 
 def test_dense_date_family_is_grouped_without_mutating_schema() -> None:

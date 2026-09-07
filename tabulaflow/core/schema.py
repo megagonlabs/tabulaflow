@@ -80,7 +80,7 @@ class PropertyGraphSchema(BaseModel):
     """Property-graph schema usable with any graph database."""
 
     kind: Literal["property_graph"] = "property_graph"
-    name: str
+    display_name: str
     description: str | None = None
     nodes: list[NodeSchema] = Field(default_factory=list)
     relationships: list[RelationshipSchema] = Field(default_factory=list)
@@ -95,7 +95,7 @@ class RDFSchema(BaseModel):
     """Minimal description of an RDF data source."""
 
     kind: Literal["rdf"] = "rdf"
-    name: str
+    display_name: str
     description: str | None = None
 
 
@@ -241,12 +241,12 @@ class SQLSchema(BaseModel):
     """A database-level SQL schema document.
 
     Attributes:
-        name: Database name, or project name for BigQuery.
+        display_name: Human-readable name for the data source.
         dialect: SQL dialect when known.
     """
 
     kind: Literal["sql"] = "sql"
-    name: str
+    display_name: str
     dialect: SQLDialect | None = None
     description: str | None = None
     tables: list[SQLTableSchema]

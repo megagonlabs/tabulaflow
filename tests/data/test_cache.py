@@ -17,7 +17,7 @@ def test_schema_cache_path_is_flat_versioned_and_filename_safe(tmp_path: Path) -
     path = schema_cache_path(tmp_path, "neo4j+movies", variant="fast")
 
     assert path.parent == tmp_path / "schemas"
-    assert path.name == "v2@fast@neo4j+movies.json"
+    assert path.name == "v3@fast@neo4j+movies.json"
 
     with pytest.raises(ValueError, match="Invalid schema cache variant"):
         schema_cache_path(tmp_path, "neo4j+movies", variant="../fast")
@@ -45,7 +45,7 @@ def test_query_cache_path_is_flat_and_versioned(tmp_path: Path) -> None:
 
 async def test_schema_cache_roundtrip(tmp_path: Path) -> None:
     path = schema_cache_path(tmp_path, "sql+shop")
-    schema = SQLSchema(name="shop", dialect="sqlite", tables=[])
+    schema = SQLSchema(display_name="shop", dialect="sqlite", tables=[])
 
     await write_cached_model(path, schema)
 
@@ -64,7 +64,7 @@ async def test_failed_atomic_replace_preserves_existing_cache(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     path = schema_cache_path(tmp_path, "sql+shop")
-    original = SQLSchema(name="original", dialect="sqlite", tables=[])
+    original = SQLSchema(display_name="original", dialect="sqlite", tables=[])
     await write_cached_model(path, original)
 
     def fail_replace(_source: Path, _target: Path) -> None:
@@ -73,7 +73,7 @@ async def test_failed_atomic_replace_preserves_existing_cache(
     monkeypatch.setattr("tabulaflow.core._cache.os.replace", fail_replace)
 
     with pytest.raises(OSError, match="replace failed"):
-        await write_cached_model(path, SQLSchema(name="replacement", dialect="sqlite", tables=[]))
+        await write_cached_model(path, SQLSchema(display_name="replacement", dialect="sqlite", tables=[]))
 
     assert await read_cached_model(path, SQLSchema) == original
     assert not list(path.parent.glob(f".{path.name}.*.tmp"))

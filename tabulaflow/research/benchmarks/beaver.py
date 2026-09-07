@@ -209,7 +209,7 @@ class BeaverDatasetLoader:
                 SQLConnector.from_url_async(
                     url,
                     global_id=f"beaver+{name}",
-                    db_name=name,
+                    display_name=name,
                     config=self.connector_config.model_copy(update={"max_query_concurrency": 16}),
                 )
                 for name, url in urls.items()

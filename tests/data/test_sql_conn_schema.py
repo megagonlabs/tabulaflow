@@ -50,8 +50,8 @@ async def test_preloaded_connector_schema_requires_dialect(tmp_path: Path) -> No
         await SQLConnector.from_url_async(
             global_id="missing-dialect",
             url=f"sqlite+aiosqlite:///{tmp_path / 'missing-dialect.sqlite'}",
-            db_name="missing-dialect",
-            schema=SQLSchema(name="missing-dialect", tables=[]),
+            display_name="missing-dialect",
+            schema=SQLSchema(display_name="missing-dialect", tables=[]),
             config=SQLConnectorConfig(schema_cache_mode="off"),
         )
 
@@ -61,7 +61,7 @@ async def test_connector_rejects_unsafe_global_id_before_opening_database(tmp_pa
         await SQLConnector.from_url_async(
             global_id="../unsafe",
             url=f"sqlite+aiosqlite:///{tmp_path / 'unsafe.sqlite'}",
-            db_name="unsafe",
+            display_name="unsafe",
         )
 
     assert not (tmp_path / "unsafe.sqlite").exists()
@@ -73,7 +73,7 @@ async def test_connector_rejects_unsafe_global_id_before_opening_database(tmp_pa
 async def test_connector_derives_global_id_from_url(tmp_path: Path) -> None:
     connector = await SQLConnector.from_url_async(
         f"sqlite+aiosqlite:///{tmp_path / 'derived-id.sqlite'}",
-        db_name="derived-id",
+        display_name="derived-id",
         config=SQLConnectorConfig(schema_cache_mode="off"),
     )
     try:
@@ -88,7 +88,7 @@ async def test_pool_size_override_is_rejected(tmp_path: Path) -> None:
     with pytest.raises(TypeError, match="SQLConnectorConfig.max_query_concurrency"):
         await SQLConnector.from_url_async(
             f"sqlite+aiosqlite:///{tmp_path / 'pool-size.sqlite'}",
-            db_name="pool-size",
+            display_name="pool-size",
             pool_size=4,
         )
 
@@ -122,7 +122,7 @@ async def test_table_without_column_stats_uses_one_bounded_sample(
     connector = await SQLConnector.from_url_async(
         global_id="table-sample",
         url=f"sqlite+aiosqlite:///{db_path}",
-        db_name="table-sample",
+        display_name="table-sample",
         config=SQLConnectorConfig(schema_cache_mode="off", query_timeout_seconds=7),
     )
     try:
@@ -172,7 +172,7 @@ async def test_view_profiling_uses_one_bounded_sample(
     connector = await SQLConnector.from_url_async(
         global_id="view-profile",
         url=f"sqlite+aiosqlite:///{db_path}",
-        db_name="view-profile",
+        display_name="view-profile",
         config=SQLConnectorConfig(
             schema_cache_mode="off",
             collect_column_stats=True,
@@ -225,7 +225,7 @@ async def test_view_sample_timeout_preserves_structural_schema(
     connector = await SQLConnector.from_url_async(
         global_id="view-timeout",
         url=f"sqlite+aiosqlite:///{db_path}",
-        db_name="view-timeout",
+        display_name="view-timeout",
         config=SQLConnectorConfig(schema_cache_mode="off", query_timeout_seconds=7),
     )
     try:
@@ -251,7 +251,7 @@ async def test_date_partition_schema_reuse_is_explicit_and_structural(tmp_path: 
     exact = await SQLConnector.from_url_async(
         global_id="partitions-exact",
         url=f"sqlite+aiosqlite:///{db_path}",
-        db_name="partitions",
+        display_name="partitions",
         config=SQLConnectorConfig(schema_cache_mode="off"),
     )
     try:
@@ -263,7 +263,7 @@ async def test_date_partition_schema_reuse_is_explicit_and_structural(tmp_path: 
     reused = await SQLConnector.from_url_async(
         global_id="partitions-reused",
         url=f"sqlite+aiosqlite:///{db_path}",
-        db_name="partitions",
+        display_name="partitions",
         reuse_date_partition_schemas=True,
         config=SQLConnectorConfig(schema_cache_mode="off", collect_column_stats=True),
     )
@@ -294,7 +294,7 @@ async def test_schema_scope_is_part_of_cache_identity(tmp_path: Path) -> None:
     first = await SQLConnector.from_url_async(
         global_id="scoped-cache",
         url=f"duckdb:///{db_path}",
-        db_name="scoped-cache",
+        display_name="scoped-cache",
         include_schema_names=["first"],
         config=config,
     )
@@ -306,7 +306,7 @@ async def test_schema_scope_is_part_of_cache_identity(tmp_path: Path) -> None:
     second = await SQLConnector.from_url_async(
         global_id="scoped-cache",
         url=f"duckdb:///{db_path}",
-        db_name="scoped-cache",
+        display_name="scoped-cache",
         include_schema_names=["second"],
         config=config,
     )
@@ -341,7 +341,7 @@ async def test_duckdb_list_and_struct_dtype_resolved(tmp_path: Path) -> None:
     sql_conn = await SQLConnector.from_url_async(
         global_id="test+duckdb_composite",
         url=f"duckdb:///{db_path}",
-        db_name="composite",
+        display_name="composite",
         config=SQLConnectorConfig(schema_cache_mode="off", query_cache_mode="off"),
     )
     try:
@@ -390,7 +390,7 @@ async def test_exclude_schema_names_keeps_a_schema_out_of_introspection(tmp_path
     connector = await SQLConnector.from_url_async(
         global_id="excluded-test",
         url=f"duckdb:///{db_path}",
-        db_name="excluded",
+        display_name="excluded",
         read_only=False,
         config=SQLConnectorConfig(schema_cache_mode="off", query_cache_mode="off"),
         exclude_schema_names=["bookkeeping"],
@@ -414,7 +414,7 @@ async def test_schema_refresh_preserves_descriptions_but_rebuilds_profiles(tmp_p
 
     connector = await SQLConnector.from_url_async(
         f"sqlite+aiosqlite:///{db_path}",
-        db_name="descriptions",
+        display_name="descriptions",
         config=SQLConnectorConfig(schema_cache_mode="off"),
     )
     connector.schema.description = "database description"

@@ -28,7 +28,7 @@ async def registry(tmp_path: Path) -> DataConnectorRegistry:
     connector = await SQLConnector.from_url_async(
         global_id="test-create-parameterized-source",
         url=f"duckdb:///{tmp_path / 'w.duckdb'}",
-        db_name="w",
+        display_name="w",
         read_only=False,
         config=SQLConnectorConfig(schema_cache_mode="off", query_cache_mode="off"),
     )

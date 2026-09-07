@@ -59,7 +59,7 @@ async def async_connector(tmp_path: Path) -> AsyncGenerator[SQLConnector, None]:
     connector = await SQLConnector.from_url_async(
         global_id="test-result-limit",
         url=f"sqlite+aiosqlite:///{tmp_path / 'result-limit.sqlite'}",
-        db_name="result-limit",
+        display_name="result-limit",
         read_only=False,
         config=SQLConnectorConfig(
             max_result_rows=2,
@@ -110,7 +110,7 @@ async def test_none_disables_connector_result_limit(
     connector = await SQLConnector.from_url_async(
         global_id="test-unlimited-result",
         url=f"sqlite+aiosqlite:///{tmp_path / 'unlimited-result.sqlite'}",
-        db_name="unlimited-result",
+        display_name="unlimited-result",
         read_only=False,
         config=SQLConnectorConfig(
             max_result_rows=None,

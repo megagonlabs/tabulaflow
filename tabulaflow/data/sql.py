@@ -1552,7 +1552,7 @@ def _sql_dialect_for_backend(backend: str) -> SQLDialect:
 
 async def _load_schema_async(
     global_id: str,
-    db_name: str,
+    display_name: str,
     t_eng: ThrottledEngine,
     config: SQLConnectorConfig,
     options: _SchemaIntrospectionOptions,
@@ -1570,8 +1570,8 @@ async def _load_schema_async(
     Args:
         global_id: Unique identifier used as the cache filename and
             the per-database lock key.
-        db_name: Human-readable database name stored in
-            ``schema.name``.
+        display_name: Human-readable name stored in
+            ``schema.display_name``.
         t_eng: The :class:`ThrottledEngine` whose schema to load.
         config: Connector cache and schema-introspection policy.
         options: Source-specific schema scope and structural reuse assumptions.
@@ -1592,7 +1592,11 @@ async def _load_schema_async(
 
         if config.schema_cache_mode in ("read_write", "cache_only") and cache_path.exists():
             try:
-                return await read_cached_model(cache_path, SQLSchema)
+                schema = await read_cached_model(cache_path, SQLSchema)
+                schema.display_name = display_name
+                if description is not None:
+                    schema.description = description
+                return schema
             except (ValidationError, UnicodeError) as e:
                 if config.schema_cache_mode == "cache_only":
                     raise RuntimeError(f"Required schema cache is invalid: {cache_path}") from e
@@ -1604,7 +1608,7 @@ async def _load_schema_async(
 
         schema = await _build_schema_async(
             t_eng,
-            db_name,
+            display_name,
             dialect,
             options,
             collect_column_stats=config.collect_column_stats,
@@ -2038,14 +2042,14 @@ async def _normalize_duckdb_schema_names(t_eng: ThrottledEngine, schema_names: l
 
 async def _build_schema_async(
     t_eng: ThrottledEngine,
-    db_name: str,
+    display_name: str,
     dialect: SQLDialect,
     options: _SchemaIntrospectionOptions,
     collect_column_stats: bool = False,
     query_timeout_seconds: int | None = 300,
 ) -> SQLSchema:
     t0 = time.time()
-    logger.info(f"Building schema for {db_name}...")
+    logger.info(f"Building schema for {display_name}...")
     async_inspector = AsyncInspector(t_eng)
 
     schema_names: list[str | None]
@@ -2130,8 +2134,8 @@ async def _build_schema_async(
                 col.json_schema = None
             tables.append(copied)
 
-    logger.info(f"Time taken to build schema for {db_name}: {time.time() - t0} seconds")
-    return SQLSchema(name=db_name, dialect=dialect, tables=tables)
+    logger.info(f"Time taken to build schema for {display_name}: {time.time() - t0} seconds")
+    return SQLSchema(display_name=display_name, dialect=dialect, tables=tables)
 
 
 def _preserve_sql_descriptions(previous: SQLSchema, refreshed: SQLSchema) -> None:
@@ -2228,7 +2232,7 @@ class SQLConnector:
         cls,
         url: str | SQLAlchemyURL,
         *,
-        db_name: str,
+        display_name: str,
         global_id: str | None = None,
         read_only: bool = True,
         config: SQLConnectorConfig | None = None,
@@ -2250,7 +2254,8 @@ class SQLConnector:
 
         Args:
             url: The database URL (string or :class:`SQLAlchemyURL`).
-            db_name: Human-readable database name used in ``schema.name``.
+            display_name: Human-readable name used in
+                ``schema.display_name``.
             global_id: Globally unique, filename-safe identifier for this
                 database connection and its caches. Derived from the
                 credential-free URL when omitted.
@@ -2316,12 +2321,13 @@ class SQLConnector:
             if schema is None:
                 schema = await _load_schema_async(
                     global_id,
-                    db_name,
+                    display_name,
                     t_eng,
                     config,
                     introspection,
                     description=description,
                 )
+            schema.display_name = display_name
             if schema.dialect is None:
                 raise ValueError("SQL connector schema must declare its dialect")
             return cls(
@@ -2429,14 +2435,14 @@ class SQLConnector:
                         kept.append(t)
 
                 refreshed = SQLSchema(
-                    name=self.schema.name,
+                    display_name=self.schema.display_name,
                     dialect=self.schema.dialect,
                     tables=kept,
                 )
             else:
                 refreshed = await _build_schema_async(
                     self._t_eng,
-                    self.schema.name,
+                    self.schema.display_name,
                     self.schema.dialect,  # type: ignore[arg-type]
                     self._schema_introspection,
                     collect_column_stats=self.config.collect_column_stats,
