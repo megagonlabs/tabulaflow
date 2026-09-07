@@ -1,8 +1,8 @@
-"""Normalize database connection sources and open live connectors.
+"""Normalize connection sources and open live data connectors.
 
-``connect_url`` accepts a database URL or SQLite/DuckDB path, selects the
-appropriate async driver, derives a credential-free identity, and dispatches to
-SQL or Neo4j. Loading raw files and Hugging Face datasets belongs to loaders.
+``connect_url`` accepts a connector URL or SQLite/DuckDB path, derives a
+credential-free identity, and dispatches to SQL, Neo4j, or SPARQL. Loading raw
+files and Hugging Face datasets belongs to loaders.
 """
 
 from __future__ import annotations
@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 from urllib.parse import parse_qsl, unquote, urlencode, urlparse, urlunparse
 
-from tabulaflow.data.config import Neo4jConnectorConfig, SQLConnectorConfig
+from tabulaflow.data.config import Neo4jConnectorConfig, SPARQLConnectorConfig, SQLConnectorConfig
 
 if TYPE_CHECKING:
     from tabulaflow.data.protocols import DataConnector
@@ -57,17 +57,23 @@ def normalize_connection_url(source: str) -> str:
     return source
 
 
-def strip_url_credentials(url: str) -> str:
-    """Return ``url`` with any username/password removed."""
+def _split_url_credentials(url: str) -> tuple[str, tuple[str, str] | None]:
+    """Return a credential-free URL and decoded username/password, if present."""
     parsed = urlparse(url)
     if parsed.hostname is None:
-        return url
+        return url, None
 
+    auth = (unquote(parsed.username), unquote(parsed.password or "")) if parsed.username else None
     host = parsed.hostname
     if ":" in host and not host.startswith("["):
         host = f"[{host}]"
     netloc = host + (f":{parsed.port}" if parsed.port else "")
-    return urlunparse(parsed._replace(netloc=netloc))
+    return urlunparse(parsed._replace(netloc=netloc)), auth
+
+
+def strip_url_credentials(url: str) -> str:
+    """Return ``url`` with any username/password removed."""
+    return _split_url_credentials(url)[0]
 
 
 def _is_neo4j_bolt_url(url: str) -> bool:
@@ -77,6 +83,23 @@ def _is_neo4j_bolt_url(url: str) -> bool:
     return scheme == "neo4j" or scheme.startswith("neo4j+") or scheme == "bolt" or scheme.startswith("bolt+")
 
 
+def _is_sparql_url(url: str) -> bool:
+    if "://" not in url:
+        return False
+    scheme = url.split("://", 1)[0].lower()
+    return scheme == "sparql" or scheme.startswith("sparql+")
+
+
+def _sparql_endpoint_params(url: str) -> tuple[str, tuple[str, str] | None]:
+    """Split a SPARQL connection URL into its HTTP endpoint and Basic auth."""
+    credentialless_url, auth = _split_url_credentials(url)
+    parsed = urlparse(credentialless_url)
+    if parsed.scheme.lower() not in {"sparql+http", "sparql+https"}:
+        raise ValueError("SPARQL connection URL must use sparql+http or sparql+https")
+    endpoint_scheme = parsed.scheme.lower().removeprefix("sparql+")
+    return urlunparse(parsed._replace(scheme=endpoint_scheme)), auth
+
+
 def _neo4j_driver_params(url: str) -> tuple[str, str | None, tuple[str, str] | None]:
     """Split a neo4j/bolt URL into ``(driver_url, database, auth)``.
 
@@ -84,9 +107,8 @@ def _neo4j_driver_params(url: str) -> tuple[str, str | None, tuple[str, str] | N
     them from the URI, so any ``user:pass`` in the URL is extracted (and stripped from the
     returned driver URL). The ``database`` / ``db`` query parameter is likewise pulled out.
     """
-    parsed = urlparse(url)
-    auth = (unquote(parsed.username), unquote(parsed.password or "")) if parsed.username else None
-    credentialless = urlparse(strip_url_credentials(url))
+    credentialless_url, auth = _split_url_credentials(url)
+    credentialless = urlparse(credentialless_url)
 
     pairs = parse_qsl(credentialless.query, keep_blank_values=True)
     database: str | None = None
@@ -102,7 +124,7 @@ def _neo4j_driver_params(url: str) -> tuple[str, str | None, tuple[str, str] | N
 
 
 def _global_id_from_url(url: str) -> str:
-    """Derive a stable global_id from a database URL, stripping credentials."""
+    """Derive a stable global ID from a connection URL, stripping credentials."""
     parsed = urlparse(strip_url_credentials(url))
     query = urlencode(sorted(parse_qsl(parsed.query, keep_blank_values=True)))
     canonical = urlunparse(parsed._replace(query=query))
@@ -132,26 +154,30 @@ async def connect_url(
     display_name: str,
     read_only: bool = True,
     global_id: str | None = None,
-    config: SQLConnectorConfig | Neo4jConnectorConfig | None = None,
+    config: SQLConnectorConfig | Neo4jConnectorConfig | SPARQLConnectorConfig | None = None,
 ) -> DataConnector:
-    """Build the appropriate connector from a raw database URL or local db-file path.
+    """Build the appropriate connector from a connection URL or local database path.
 
-    Normalizes the URL, dispatches to the Neo4j or SQL connector by scheme, and applies
-    engine kwargs (e.g. BigQuery billing). Credentials come from the URL for every backend
-    (SQLAlchemy reads them inline; for neo4j they are extracted and passed as the driver's
-    ``auth``). Raises on a failed connection or, for BigQuery, a missing billing project.
+    Normalizes the URL, dispatches by explicit connector scheme, and verifies
+    connectivity during connector construction. SQLAlchemy consumes SQL URL
+    credentials inline; Neo4j and SPARQL credentials are extracted and passed
+    separately to their drivers. Raises when the connection cannot be established.
 
     Args:
-        source: A database URL (``postgresql://user:pass@…``, ``bigquery://…``,
-            ``neo4j://user:pass@…``, …) or a local database-file path (``.sqlite`` / ``.duckdb``).
+        source: A SQL, Neo4j, or explicit ``sparql+http(s)`` connection URL,
+            or a local SQLite/DuckDB path. Examples include
+            ``postgresql://user:pass@host/db``, ``bigquery://project/dataset``,
+            ``neo4j://user:pass@host``, ``sparql+https://query.wikidata.org/sparql``,
+            ``data.sqlite``, and ``data.duckdb``.
         display_name: Human-readable name stored in the connector schema.
         read_only: Request backend-appropriate read-only behavior. SQL callers
             still need read-only credentials or IAM for enforced security.
-        global_id: Stable id for schema caching; derived from the URL if omitted.
+        global_id: Stable source identity used for caching and provenance;
+            derived from the credential-free URL when omitted.
         config: Backend-appropriate immutable connector configuration.
 
     Returns:
-        A connected SQL or property-graph connector.
+        A connected SQL, property-graph, or RDF connector.
 
     Raises:
         ValueError: If the source is unsupported or required driver settings
@@ -159,11 +185,27 @@ async def connect_url(
         TypeError: If ``config`` does not match the URL backend.
     """
     from tabulaflow.data.neo4j import Neo4jConnector
+    from tabulaflow.data.sparql import SPARQLConnector
     from tabulaflow.data.sql import SQLConnector
 
     url = normalize_connection_url(source)
     if "://" not in url:
-        raise ValueError(f"Unsupported database source: {source!r}; expected a database URL or SQLite/DuckDB file path")
+        raise ValueError(
+            f"Unsupported connection source: {source!r}; expected a connector URL or SQLite/DuckDB file path"
+        )
+
+    if _is_sparql_url(url):
+        if config is not None and not isinstance(config, SPARQLConnectorConfig):
+            raise TypeError("SPARQL URLs require SPARQLConnectorConfig")
+        endpoint_url, auth = _sparql_endpoint_params(url)
+        return await SPARQLConnector.from_url_async(
+            url=endpoint_url,
+            display_name=display_name,
+            global_id=global_id,
+            read_only=read_only,
+            auth=auth,
+            config=config,
+        )
 
     if _is_neo4j_bolt_url(url):
         if config is not None and not isinstance(config, Neo4jConnectorConfig):
@@ -178,6 +220,9 @@ async def connect_url(
             auth=auth,
             config=config,
         )
+
+    if urlparse(url).scheme.lower() in {"http", "https"}:
+        raise ValueError("HTTP URLs are not inferred to be SPARQL endpoints; use sparql+http:// or sparql+https://")
 
     if config is not None and not isinstance(config, SQLConnectorConfig):
         raise TypeError("SQL URLs require SQLConnectorConfig")

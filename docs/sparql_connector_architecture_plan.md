@@ -263,7 +263,6 @@ SPARQL endpoints:
 
 ```text
 sparql+https://query.wikidata.org/sparql
-sparql+https://dbpedia.org/sparql
 sparql+http://localhost:3030/dataset/query
 ```
 

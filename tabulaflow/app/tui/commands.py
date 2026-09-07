@@ -144,6 +144,7 @@ async def _cmd_connect(args: list[str], session: AppSession) -> CommandResult:
                 "  /connect duckdb:///path/to/db.duckdb\n"
                 "  /connect neo4j://neo4j:password@localhost:7687\n"
                 "  /connect bolt://localhost:7687?database=neo4j myalias\n"
+                "  /connect sparql+https://query.wikidata.org/sparql wikidata\n"
                 "  /connect https://huggingface.co/datasets/stanfordnlp/imdb\n"
                 "  /connect https://huggingface.co/datasets/nyu-mll/glue/viewer/mrpc/train[/dim]"
             )
@@ -274,7 +275,7 @@ async def _connect_hf_dataset(args: list[str], session: AppSession) -> CommandRe
 
 
 async def _execute_connect(url: str, alias: str, session: AppSession) -> CommandResult:
-    """Execute the actual database connection."""
+    """Execute the data-source connection."""
     try:
         connector = await connect_url(url, display_name=alias, read_only=True)
     except Exception as e:
@@ -321,7 +322,7 @@ _COMMANDS: dict[str, tuple[CommandHandler, str]] = {
     "/exit": (_cmd_exit, "Exit the chat"),
     "/clear": (_cmd_clear, "Start a new conversation"),
     "/config": (_cmd_config, "Open the config panel"),
-    "/connect": (_cmd_connect, "Connect to a database: /connect <url> \\[alias]"),
+    "/connect": (_cmd_connect, "Connect a data source: /connect <url> \\[alias]"),
     "/disconnect": (_cmd_disconnect, "Disconnect: /disconnect \\[alias]"),
 }
 

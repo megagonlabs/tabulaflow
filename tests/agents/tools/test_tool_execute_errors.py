@@ -56,6 +56,19 @@ async def test_connect_reports_rdf_source_without_calling_it_sql(
     assert "SQL" not in result
 
 
+async def test_connect_error_does_not_expose_url_credentials(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    async def connect_url(*args: object, **kwargs: object) -> object:
+        raise RuntimeError("connection refused")
+
+    monkeypatch.setattr("tabulaflow.agents.tools.connect_data_source.connect_url", connect_url)
+    tool = ConnectDataSourceTool(DataConnectorRegistry(), tmp_path)
+
+    result = await tool("sparql+https://alice:password@example.test/query", "example")
+
+    assert "password" not in result
+    assert "sparql+https://example.test/query" in result
+
+
 async def test_extraction_execute_raises_for_empty_output_columns() -> None:
     tool = ExtractRowsFromDocumentsTool(cast(Any, object()))
 

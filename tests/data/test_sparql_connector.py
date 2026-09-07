@@ -68,6 +68,7 @@ async def test_select_normalizes_rdf_terms_and_request_metadata() -> None:
         _URL,
         display_name="example",
         global_id="sparql-test",
+        auth=("alice", "password"),
         config=config,
         transport=httpx.MockTransport(handler),
     )
@@ -82,6 +83,7 @@ async def test_select_normalizes_rdf_terms_and_request_metadata() -> None:
         {"iri": "https://example.test/item/1", "blank": "_:node1", "missing": None, "text": "hello"}
     ]
     assert requests[-1].headers["user-agent"].startswith("tabulaflow")
+    assert requests[-1].headers["authorization"] == "Basic YWxpY2U6cGFzc3dvcmQ="
     assert requests[-1].headers["accept"] == "application/sparql-results+json"
     assert requests[-1].headers["content-type"] == "application/sparql-query; charset=utf-8"
 
@@ -260,9 +262,7 @@ async def test_nonempty_parameters_are_rejected_without_http_request() -> None:
 
 
 async def test_row_and_response_size_limits_are_enforced() -> None:
-    rows: list[dict[str, object]] = [
-        {"x": {"type": "literal", "value": str(value)}} for value in range(2)
-    ]
+    rows: list[dict[str, object]] = [{"x": {"type": "literal", "value": str(value)}} for value in range(2)]
     row_limited = await _connector(
         _select(["x"], rows), config=SPARQLConnectorConfig(max_result_rows=1, query_timeout_seconds=None)
     )
@@ -538,6 +538,11 @@ async def test_constructor_failure_closes_http_transport() -> None:
 async def test_endpoint_url_must_be_http(url: str) -> None:
     with pytest.raises(ValueError, match="must use http or https"):
         await SPARQLConnector.from_url_async(url, display_name="example")
+
+
+async def test_endpoint_url_must_not_embed_credentials() -> None:
+    with pytest.raises(ValueError, match="must not contain credentials"):
+        await SPARQLConnector.from_url_async("https://alice:password@example.test/query", display_name="example")
 
 
 async def test_writable_connector_is_not_supported() -> None:

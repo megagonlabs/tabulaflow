@@ -1,4 +1,4 @@
-"""Tool for connecting an existing data source (file, database URL, or HuggingFace)."""
+"""Tool for connecting an existing data source (file, connector URL, or HuggingFace)."""
 
 from __future__ import annotations
 
@@ -12,6 +12,7 @@ from pydantic_ai import Tool
 from tabulaflow.data.registry import DataConnectorRegistry
 from tabulaflow.data.url import connect_url
 from tabulaflow.data.url import is_database_file_path
+from tabulaflow.data.url import strip_url_credentials
 from tabulaflow.output.formatting import format_connector_summary
 
 if TYPE_CHECKING:
@@ -21,7 +22,7 @@ _VALID_NAME = re.compile(r"[A-Za-z0-9_]+")
 
 
 class ConnectDataSourceTool:
-    """Connect an existing file, database URL, or HuggingFace dataset as a read-only source."""
+    """Connect an existing file, connector URL, or HuggingFace dataset as a read-only source."""
 
     name: ClassVar = "connect_data_source"
 
@@ -36,7 +37,8 @@ class ConnectDataSourceTool:
         Accepts one of:
         - Local data file — a path ending in .csv, .tsv, .json, .parquet, .xlsx, or .xls.
         - Local database file — a path ending in .sqlite, .sqlite3, .db, or .duckdb.
-        - Database URL — e.g. postgresql://, mysql://, bigquery://, snowflake://, neo4j://.
+        - Connector URL — e.g. postgresql://, mysql://, bigquery://, snowflake://,
+          neo4j://, or sparql+https://.
           A source needing a password that isn't in the URL is deferred to the user.
         - HuggingFace dataset — a https://huggingface.co/datasets/<owner>/<name> URL. A
           dataset with multiple configs/subsets requires one, named as .../viewer/<subset>
@@ -83,8 +85,9 @@ class ConnectDataSourceTool:
                     read_only=True,
                 )
         except Exception as e:
-            hint = f" If it needs credentials, ask the user to connect it with /connect {source}" if is_url else ""
-            raise RuntimeError(f"failed to connect {source!r}: {type(e).__name__}: {e}.{hint}") from e
+            safe_source = strip_url_credentials(source) if is_url else source
+            hint = " If it needs credentials, ask the user to connect it with /connect." if is_url else ""
+            raise RuntimeError(f"failed to connect {safe_source!r}: {type(e).__name__}: {e}.{hint}") from e
 
         self._registry.register(alias, connector)
         summary = format_connector_summary(connector)

@@ -405,7 +405,7 @@ class TabulaflowApp(App[None]):
             return  # workspace not ready yet — do nothing
         if not self._session.registry.list_aliases():
             chat_log = self.query_one("#chat-log", VerticalScroll)
-            chat_log.mount(SystemMessage(Text("No databases connected. Use /connect first.", style=ERROR)))
+            chat_log.mount(SystemMessage(Text("No data sources connected. Use /connect first.", style=ERROR)))
             chat_log.scroll_end(animate=False)
             return
         self.push_screen(
@@ -947,7 +947,7 @@ class TabulaflowApp(App[None]):
 
             session = await self._ensure_session()
             if not session.registry.list_aliases():
-                msg = SystemMessage(Text.from_markup(f"[{ERROR}]No database connected.[/] Use /connect first."))
+                msg = SystemMessage(Text.from_markup(f"[{ERROR}]No data source connected.[/] Use /connect first."))
                 await chat_log.mount(msg)
                 chat_log.scroll_end(animate=False)
                 return

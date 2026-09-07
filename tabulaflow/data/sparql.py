@@ -321,6 +321,7 @@ class SPARQLConnector:
         display_name: str,
         global_id: str | None = None,
         read_only: bool = True,
+        auth: tuple[str, str] | None = None,
         config: SPARQLConnectorConfig | None = None,
         description: str | None = None,
         transport: httpx.AsyncBaseTransport | None = None,
@@ -333,6 +334,7 @@ class SPARQLConnector:
             global_id: Stable cache and source identifier derived from ``url``
                 when omitted.
             read_only: Must remain true until SPARQL Update is supported.
+            auth: Optional HTTP Basic username and password.
             config: Immutable execution and HTTP policy.
             description: Optional source description stored in the RDF schema.
             transport: Optional HTTPX transport, primarily for custom networking
@@ -348,6 +350,8 @@ class SPARQLConnector:
         parsed = urlparse(url)
         if parsed.scheme not in {"http", "https"} or parsed.hostname is None:
             raise ValueError("SPARQL endpoint URL must use http or https and include a host")
+        if parsed.username is not None or parsed.password is not None:
+            raise ValueError("SPARQL endpoint URL must not contain credentials; pass auth separately")
         if not read_only:
             raise ValueError("SPARQLConnector currently supports read-only query endpoints only")
         resolved_config = SPARQLConnectorConfig() if config is None else config
@@ -359,6 +363,7 @@ class SPARQLConnector:
                 follow_redirects=True,
                 timeout=None,
                 transport=transport,
+                auth=auth,
                 headers={"User-Agent": _USER_AGENT},
             ),
             config=resolved_config,

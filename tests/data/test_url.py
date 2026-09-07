@@ -26,6 +26,7 @@ class TestNormalizeConnectionUrl:
         assert normalize_connection_url("postgresql+asyncpg://h/db") == "postgresql+asyncpg://h/db"
         assert normalize_connection_url("bigquery://proj/ds") == "bigquery://proj/ds"
         assert normalize_connection_url("neo4j://h:7687") == "neo4j://h:7687"
+        assert normalize_connection_url("sparql+https://example.org/query") == "sparql+https://example.org/query"
 
     @pytest.mark.parametrize(
         "raw",
@@ -46,6 +47,20 @@ class TestStripUrlCredentials:
 
     def test_preserves_url_without_credentials(self) -> None:
         assert strip_url_credentials("duckdb:////data/x.duckdb") == "duckdb:////data/x.duckdb"
+
+
+class TestSplitUrlCredentials:
+    def test_extracts_decoded_credentials(self) -> None:
+        from tabulaflow.data.url import _global_id_from_url, _sparql_endpoint_params, _split_url_credentials
+
+        source = "sparql+https://user%40example:p%40ss@example.org/query"
+        other_source = "sparql+https://other:password@example.org/query"
+        url, auth = _split_url_credentials(source)
+
+        assert url == "sparql+https://example.org/query"
+        assert auth == ("user@example", "p@ss")
+        assert _sparql_endpoint_params(url)[0] == "https://example.org/query"
+        assert _global_id_from_url(source) == _global_id_from_url(other_source)
 
 
 def test_is_database_file_path_recognizes_common_extensions() -> None:
@@ -123,8 +138,66 @@ class TestNeo4jGlobalId:
 async def test_connect_url_rejects_unsupported_bare_source() -> None:
     from tabulaflow.data.url import connect_url
 
-    with pytest.raises(ValueError, match="expected a database URL or SQLite/DuckDB file path"):
+    with pytest.raises(ValueError, match="expected a connector URL or SQLite/DuckDB file path"):
         await connect_url("not-a-database", display_name="test")
+
+
+async def test_connect_url_rejects_ambiguous_http_url() -> None:
+    from tabulaflow.data.url import connect_url
+
+    with pytest.raises(ValueError, match=r"use sparql\+http"):
+        await connect_url("https://example.org/query", display_name="test")
+
+
+async def test_connect_url_rejects_unsupported_sparql_transport() -> None:
+    from tabulaflow.data.url import connect_url
+
+    with pytest.raises(ValueError, match=r"must use sparql\+http"):
+        await connect_url("sparql+ftp://example.org/query", display_name="test")
+
+
+async def test_connect_url_dispatches_explicit_sparql_url(monkeypatch: pytest.MonkeyPatch) -> None:
+    from tabulaflow.data import SPARQLConnector, SPARQLConnectorConfig
+    from tabulaflow.data.url import connect_url
+
+    captured: dict[str, object] = {}
+    sentinel = object()
+
+    async def connect(**kwargs: object) -> object:
+        captured.update(kwargs)
+        return sentinel
+
+    monkeypatch.setattr(SPARQLConnector, "from_url_async", connect)
+    config = SPARQLConnectorConfig(max_response_bytes=1024)
+
+    result = await connect_url(
+        "sparql+https://alice:p%40ss@example.org/query?default-graph-uri=urn%3Agraph",
+        display_name="example",
+        global_id="example-sparql",
+        config=config,
+    )
+
+    assert result is sentinel
+    assert captured == {
+        "url": "https://example.org/query?default-graph-uri=urn%3Agraph",
+        "display_name": "example",
+        "global_id": "example-sparql",
+        "read_only": True,
+        "auth": ("alice", "p@ss"),
+        "config": config,
+    }
+
+
+async def test_connect_url_rejects_wrong_config_for_sparql() -> None:
+    from tabulaflow.data import SQLConnectorConfig
+    from tabulaflow.data.url import connect_url
+
+    with pytest.raises(TypeError, match="SPARQLConnectorConfig"):
+        await connect_url(
+            "sparql+https://example.org/query",
+            display_name="example",
+            config=SQLConnectorConfig(),
+        )
 
 
 async def test_connect_url_leaves_bigquery_configuration_to_driver(monkeypatch: pytest.MonkeyPatch) -> None:
