@@ -765,23 +765,25 @@ Sep 7
   - [x] SPARQL connector
   - [x] Data source catalog and `/connect wikidata`
   - [x] Unify data source connection
-  - [ ] Government/academic data
 - Output pane
   - [x] Long text/json cell in output pane
   - [x] Fix images alignment
 - [x] Fix `Agent error: status_code: 404, model_name: gpt-5.6-sol, body: {'message': "Item with id 'rs_06adf3bb2187a080006a9f31a7284887d0be062ed07f3a350a' not found.", 'type': 'invalid_request_error', 'param': 'input', 'code': None}`
 
 
-- [ ] Authentication
-- [ ] Avoid AGENTS.md CLAUDE.md re-read after compaction
-- [ ] Merge registry tool variants
+Sep 8
+- [ ] Finish SPARQL plan
 - [ ] Fix input history order
 - [ ] Huggingface connect split selection and better url cleaning
+- [ ] Authentication
+- [ ] "db" cleanup
+- [ ] Neo4j graph extraction
+- [ ] Avoid AGENTS.md CLAUDE.md re-read after compaction
+- [ ] Merge registry tool variants
+
 - [ ] Show pending turns in output pane
 - [ ] Inline artifact citation
-- [ ] code diff rendering
 - [ ] IMPORTANT: decouple data and rendered format (show unit "cm" while still enabling sorting by value)
-- [ ] Subagent reuse
 - [ ] TUI
   - [ ] Do not auto-scroll when browsing old turns
   - [ ] Onboarding - browser install
@@ -790,6 +792,11 @@ Sep 7
 - v2 features
   - [ ] Multimodal output
   - [ ] hydrate_media tool?
+  - [ ] Government/academic data
+  - [ ] Graph extraction for sparql
+  - [ ] Subagent reuse
+  - [ ] code diff rendering
+
   
 - [ ] Allowed roots policy
 - [ ] image/pdf detail level
