@@ -119,7 +119,6 @@ export function renderTable(container, cardData) {
     modalFocus.hidden = true;
     modalTitle.textContent = title || '';
     modalTitle.hidden = false;
-    copyBtn.hidden = false;
     modal.setAttribute('aria-label', title || 'Table cell detail');
     clearMediaCount();
     var pre = document.createElement('pre');
@@ -159,7 +158,6 @@ export function renderTable(container, cardData) {
     modalFocus.hidden = false;
     modalTitle.textContent = '';
     modalTitle.hidden = true;
-    copyBtn.hidden = true;
     modal.setAttribute('aria-label', title || 'Media preview');
     showItem();
     showModal();

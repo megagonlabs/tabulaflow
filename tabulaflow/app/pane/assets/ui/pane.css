@@ -602,6 +602,7 @@ body { margin: 0; background: var(--bg); color: var(--text); display: flex; flex
                                      white-space: pre; overflow-wrap: normal; }
 .tf-lightbox .tf-modal-card { width: min(1100px, 92vw); max-width: 92vw; max-height: 92vh; min-width: 0;
                               overflow: visible; background: transparent; border: 0; box-shadow: none; }
+.tf-lightbox .tf-modal-copy { display: none; }
 .tf-lightbox .tf-modal-header { padding: 0; border: 0; }
 .tf-lightbox .tf-media-count { position: fixed; top: 28px; left: 50%; transform: translateX(-50%);
                                 color: rgba(228, 228, 231, 0.72); font: 500 12px/1.2 -apple-system,
