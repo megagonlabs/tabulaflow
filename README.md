@@ -800,56 +800,46 @@ Sep 8
     - [ ] Schema browser for very large db (1000+ tables/columns)
     - [ ] Pagination for direct data browsing
     - [ ] Query browser - show language and database
+    - [ ] Support interrupting preview loading
   - Multimodal
     - [ ] hydrate_media tool?
     - [ ] image/pdf detail level
     - [ ] Multimodal output
   - Data
+    - [ ] streaming data support (e.g. auto-updating artifacts like chart for stock price data)
     - [ ] Provenance
     - [ ] Remote files
     - [ ] Government/academic data
     - [ ] Graph extraction for sparql
     - [ ] CONSTRUCT and DESCRIBE support for sparql
     - [ ] Refresh for get_column_json_schema and get_db_document
+    - [ ] Semantic join - cross join
   - Subagent
     - [ ] Subagent context reuse
+    - [ ] One-time subagent tool?
   - Coding
     - [ ] code diff rendering
   - Web browsing
     - [ ] web_fetch tool for static html
     - [ ] Chrome browser, browser resolution
     - [ ] Captcha
-
-  
-- [ ] Allowed roots policy
-- [ ] Shell messed up after ssh disconnect
-- [ ] Check if uv tool install install browser
-
-- [ ] Waiting spinner before Thinking to indicate latency due to low service tier
-- [ ] "result" -> "response", Escape go to last viewed response
-
-
-- [ ] Debug /Users/yanlinf/.tabulaflow/sessions/20260716T222109Z-be2c/trajectories/trajectory.md
-
-
-- [ ] Kushan: better error message for /connect failure
-- [ ] put removed stale tables in workspace in a user-invisible schema rather than deleting
-
-- [ ] View menu location?
+  - Research
+    - [ ] Partial trajectory when exeption during agent turn
+  - TBD
+    - [ ] Debug /Users/yanlinf/.tabulaflow/sessions/20260716T222109Z-be2c/trajectories/trajectory.md
+    - [ ] Context for canonicalization (e.g. pool vs swimming)
+    - [ ] Offload truncated cell + read_message tool
+    - [ ] Inlucde table schema for add_canonical_name tool
+    - [ ] Allowed roots policy
+    - [ ] Shell messed up after ssh disconnect
+    - [ ] Check if uv tool install install browser
+    - [ ] Waiting spinner before Thinking to indicate latency due to low service tier
+    - [ ] "result" -> "response", Escape go to last viewed response
+    - [ ] Kushan: better error message for /connect failure
+    - [ ] put removed stale tables in workspace in a user-invisible schema rather than deleting
+    - [ ] View menu location?
 
 
-- [ ] Context for canonicalization (e.g. pool vs swimming)
-- [ ] Offload truncated cell + read_message tool
-- [ ] Inlucde table schema for add_canonical_name tool
-- [ ] Handle records with empty results or zero-row results
-- [ ] One-time subagent tool
-- [ ] Partial trajectory when exeption during agent turn
-
-- General
-  - [ ] Table readiblity: small table -> readible (e.g. KB, MB, GB), large table -> normalized
-  - [ ] Semantic join - cross join
-  - [ ] Support interrupting preview loading
-  - [ ] Disable compression for small dbs?
   
 
 - Scenarios
@@ -869,7 +859,6 @@ Sep 8
   - [ ] Claude code - tool description in system prompt or tool schema?
   - [ ] OpenClaw
 
-- [ ] v2: streaming data support (e.g. auto-updating artifacts like chart for stock price data)
 
 ---
 
