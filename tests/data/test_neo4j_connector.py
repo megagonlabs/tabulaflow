@@ -29,6 +29,9 @@ class _Result:
     async def to_df(self, *, expand: bool, parse_dates: bool) -> pd.DataFrame:
         return pd.DataFrame({"value": [1]})
 
+    async def graph(self) -> neo4j.graph.Graph:
+        return neo4j.graph.Graph()
+
 
 class _Session:
     def __init__(self) -> None:

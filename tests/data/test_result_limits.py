@@ -4,6 +4,7 @@ from typing import AsyncGenerator
 
 import pandas as pd
 import pytest
+from neo4j.graph import Graph
 
 from tabulaflow.data.config import SQLConnectorConfig
 from tabulaflow.data.protocols import ResultTooLargeError
@@ -23,6 +24,7 @@ class _FakeNeo4jResult:
     def __init__(self, values: list[int]) -> None:
         self._records = [_FakeRecord(value) for value in values]
         self.requested_rows: int | None = None
+        self.graph_requested = False
 
     async def fetch(self, n: int) -> list[_FakeRecord]:
         self.requested_rows = n
@@ -30,6 +32,10 @@ class _FakeNeo4jResult:
 
     def keys(self) -> list[str]:
         return ["value"]
+
+    async def graph(self) -> Graph:
+        self.graph_requested = True
+        return Graph()
 
 
 class _FakeSession:
@@ -140,3 +146,23 @@ async def test_neo4j_fetch_is_bounded_before_dataframe_materialization() -> None
         await connector._run_cypher("RETURN 1", return_df=True, max_rows=2)
 
     assert result.requested_rows == 3
+    assert not result.graph_requested
+
+
+async def test_neo4j_graph_is_collected_after_bounded_fetch() -> None:
+    result = _FakeNeo4jResult([1, 2])
+    connector = object.__new__(Neo4jConnector)
+    connector._driver = _FakeDriver(result)  # type: ignore[assignment]
+    connector._database = None
+    connector.read_only = True
+    connector._query_semaphore = asyncio.Semaphore(1)
+    connector._closed = False
+
+    tabular_result = await connector._run_cypher("RETURN 1", return_df=True, max_rows=2)
+
+    assert isinstance(tabular_result, tuple)
+    df, graph = tabular_result
+    assert len(df) == 2
+    assert isinstance(graph, Graph)
+    assert result.requested_rows == 3
+    assert result.graph_requested
