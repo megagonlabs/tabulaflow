@@ -232,7 +232,8 @@ data/
   __init__.py
   protocols.py
   registry.py
-  url.py
+  catalog.py
+  connect.py
   config.py
   _cache.py
   sql.py
@@ -569,7 +570,8 @@ Target ownership:
 - `Neo4jConnector` → `data/neo4j.py`
 - connector protocols / aliases → `data/protocols.py`
 - `DBRegistry` → `data/registry.py`
-- URL connection helpers / `connect_url` → `data/url.py`
+- curated source definitions → `data/catalog.py`
+- source and URL connection helpers → `data/connect.py`
 - file and HuggingFace loaders → `data/loaders/`
 
 Use `data/neo4j.py`, not `data/graph.py`, because the implementation is Neo4j-specific. Generic graph schema/result primitives stay in `core`; generic graph connector protocols stay in `data/protocols.py`.

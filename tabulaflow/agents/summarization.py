@@ -1,4 +1,4 @@
-"""Reusable LLM-based database and text summarization."""
+"""Reusable LLM-based database summarization."""
 
 from __future__ import annotations
 
@@ -34,11 +34,6 @@ The purpose of the summary is to help data experts explore the source and write 
 </requirements>
 """.strip()
 _DB_USER_PROMPT_MAX_CHARS = 400000
-_TEXT_SUMMARIZATION_PROMPT = """
-You are a technical writer that summarizes the given text concisely.
-- Preserve key information and omit unimportant details.
-- Target {max_words} words or fewer.
-"""
 
 
 def _database_user_prompt(formatted_schema: str) -> str:
@@ -137,8 +132,7 @@ class DBSummarizer:
             graph_schema = schema
             if not graph_schema.nodes and not graph_schema.relationships:
                 return (
-                    f"# Data source: `{graph_schema.display_name}`\n\n"
-                    "This data source has no nodes or relationships."
+                    f"# Data source: `{graph_schema.display_name}`\n\nThis data source has no nodes or relationships."
                 )
             user_prompt = _database_user_prompt(self._graph_formatter.format(graph_schema))
         elif isinstance(schema, RDFSchema):
@@ -157,37 +151,4 @@ class DBSummarizer:
         )
         result = await agent.run(_truncate_database_prompt(user_prompt))
         self._usage += Usage.from_pydantic_ai_usage(result.usage, self.llm)
-        return result.output
-
-
-class TextSummarizer:
-    """Summarize long text using an LLM.
-
-    Args:
-        llm: Model used for summarization.
-        max_words: Requested summary length ceiling.
-        model_settings: Additional Pydantic AI model settings.
-    """
-
-    def __init__(
-        self,
-        llm: str = "openai-responses:gpt-5-mini",
-        max_words: int = 500,
-        model_settings: ModelSettings | None = None,
-    ) -> None:
-        self.llm = llm
-        self.max_words = max_words
-        self.model_settings = model_settings
-
-    async def summarize(self, text: str) -> str:
-        """Return a concise summary of ``text``."""
-        settings: dict[str, object] = dict(make_model_settings(model=self.llm, reasoning="low"))
-        if self.model_settings:
-            settings.update(self.model_settings)
-        agent = make_agent(
-            self.llm,
-            instructions=_TEXT_SUMMARIZATION_PROMPT.format(max_words=self.max_words),
-            model_settings=settings,
-        )
-        result = await agent.run(text)
         return result.output

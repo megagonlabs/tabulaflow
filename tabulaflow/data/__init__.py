@@ -9,12 +9,19 @@ if TYPE_CHECKING:
     from tabulaflow.data.protocols import DataConnector
     from tabulaflow.data.registry import DataConnectorRegistry
     from tabulaflow.data.sparql import SPARQLConnector
+    from tabulaflow.data.catalog import (
+        DEFAULT_DATA_SOURCE_DEFINITIONS,
+        DataSourceDefinition,
+        resolve_data_source_definition,
+    )
+    from tabulaflow.data.connect import connect_data_source
     from tabulaflow.data.sql import SQLConnector, TableWriteMode
-    from tabulaflow.data.url import connect_url
 
 _LAZY_EXPORTS = {
     "DataConnector": ("tabulaflow.data.protocols", "DataConnector"),
     "DataConnectorRegistry": ("tabulaflow.data.registry", "DataConnectorRegistry"),
+    "DataSourceDefinition": ("tabulaflow.data.catalog", "DataSourceDefinition"),
+    "DEFAULT_DATA_SOURCE_DEFINITIONS": ("tabulaflow.data.catalog", "DEFAULT_DATA_SOURCE_DEFINITIONS"),
     "Neo4jConnector": ("tabulaflow.data.neo4j", "Neo4jConnector"),
     "Neo4jConnectorConfig": ("tabulaflow.data.config", "Neo4jConnectorConfig"),
     "SPARQLConnector": ("tabulaflow.data.sparql", "SPARQLConnector"),
@@ -22,12 +29,15 @@ _LAZY_EXPORTS = {
     "SQLConnector": ("tabulaflow.data.sql", "SQLConnector"),
     "SQLConnectorConfig": ("tabulaflow.data.config", "SQLConnectorConfig"),
     "TableWriteMode": ("tabulaflow.data.sql", "TableWriteMode"),
-    "connect_url": ("tabulaflow.data.url", "connect_url"),
+    "connect_data_source": ("tabulaflow.data.connect", "connect_data_source"),
+    "resolve_data_source_definition": ("tabulaflow.data.catalog", "resolve_data_source_definition"),
 }
 
 __all__ = [
     "DataConnector",
     "DataConnectorRegistry",
+    "DataSourceDefinition",
+    "DEFAULT_DATA_SOURCE_DEFINITIONS",
     "Neo4jConnector",
     "Neo4jConnectorConfig",
     "SPARQLConnector",
@@ -35,7 +45,8 @@ __all__ = [
     "SQLConnector",
     "SQLConnectorConfig",
     "TableWriteMode",
-    "connect_url",
+    "connect_data_source",
+    "resolve_data_source_definition",
 ]
 
 

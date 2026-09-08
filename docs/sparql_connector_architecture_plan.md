@@ -267,12 +267,11 @@ sparql+https://query.wikidata.org/sparql
 sparql+http://localhost:3030/dataset/query
 ```
 
-Both `/connect` and `connect_data_source` should resolve this syntax through the
-same data-layer constructor. The official Wikidata endpoint selects the
-generic SPARQL connector. A future public-source catalog entry named Wikidata
-should resolve to the same connection specification rather than use a separate
-execution path. Endpoint-specific behavior is deferred until agent testing
-demonstrates a concrete need.
+The product-facing connection paths use the shared data-layer
+`connect_data_source` function. A curated catalog entry allows users to run
+`/connect wikidata`; the exact official URL resolves to the same entry. Both
+delegate to the generic `connect_url` constructor and `SPARQLConnector`. Direct
+`connect_url` and concrete connector construction remain catalog-independent.
 
 ## Phased implementation plan
 
@@ -404,8 +403,10 @@ Acceptance:
 
 ### Phase 7 — Test generic Wikidata behavior
 
-- Connect the official Wikidata endpoint through the generic
-  `SPARQLConnector` with no endpoint profile.
+- Add Wikidata as a declarative source-catalog entry whose concise prepared
+  description is available through `get_db_document` and when the source connects.
+- Connect the official endpoint through the generic `SPARQLConnector` with no
+  endpoint profile or source-specific execution path.
 - Exercise entity and property resolution, labels, direct and full statements,
   qualifiers, ranks, `wikibase:mwapi`, geographic services, materialization,
   and joins with user data.

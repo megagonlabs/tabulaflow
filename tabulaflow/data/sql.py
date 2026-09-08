@@ -122,7 +122,7 @@ from tabulaflow.data._cache import (
     write_cached_model,
 )
 from tabulaflow.data.json_schema import infer_json_schema, looks_like_json
-from tabulaflow.data.url import _global_id_from_url
+from tabulaflow.data.connect import _global_id_from_url
 
 logger = logging.getLogger(__name__)
 

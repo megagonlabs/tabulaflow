@@ -38,7 +38,7 @@ from tabulaflow.core.results import ErrorInfo, ExecResult
 from tabulaflow.core.schema import GraphQueryLanguage, RDFSchema
 from tabulaflow.data.config import SPARQLConnectorConfig
 from tabulaflow.data.protocols import ResultTooLargeError, validate_global_id
-from tabulaflow.data.url import _global_id_from_url
+from tabulaflow.data.connect import _global_id_from_url
 
 _UNSET = object()
 _MAX_RETRIES = 2

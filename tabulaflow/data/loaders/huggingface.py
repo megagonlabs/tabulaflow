@@ -17,7 +17,6 @@ import logging
 import os
 import re
 import sys
-from collections.abc import Awaitable, Callable
 from typing import TYPE_CHECKING, Any
 
 from tabulaflow.data.config import SQLConnectorConfig
@@ -94,30 +93,6 @@ def _format_size(n_bytes: int) -> str:
             return f"{n_bytes:.0f} {unit}" if unit == "B" else f"{n_bytes:.1f} {unit}"
         n_bytes /= 1024  # type: ignore[assignment]
     return f"{n_bytes:.1f} TB"
-
-
-async def _fetch_hf_description(dataset_id: str) -> str | None:
-    """Fetch the full dataset README from HuggingFace Hub.
-
-    Uses a direct HTTP GET against ``raw/main/README.md`` with a hard
-    timeout, sharing the module-level :func:`_get_hf_client` connection
-    pool.  The previous implementation went through
-    ``huggingface_hub.hf_hub_download``, which has been observed to
-    hang indefinitely on this code path (no top-level timeout, retries
-    inside the local cache machinery).  ``dataset_info()`` is not an
-    option — it truncates descriptions for large dataset cards.
-    """
-    try:
-        client = _get_hf_client()
-        url = f"https://huggingface.co/datasets/{dataset_id}/raw/main/README.md"
-        r = await client.get(url, timeout=15, follow_redirects=True)
-        if r.status_code != 200:
-            return None
-        # Strip YAML frontmatter.
-        content = re.sub(r"^---\n.*?\n---\n", "", r.text, flags=re.DOTALL).strip()
-        return content or None
-    except Exception:
-        return None
 
 
 _hf_client: tuple[httpx.AsyncClient, asyncio.AbstractEventLoop] | None = None
@@ -475,7 +450,6 @@ async def load_hf_dataset(
     *,
     display_name: str | None = None,
     read_only: bool = True,
-    summarize: Callable[[str], Awaitable[str]] | None = None,
     config: SQLConnectorConfig | None = None,
 ) -> SQLConnector:
     """Load a HuggingFace dataset into a DuckDB-backed SQLConnector.
@@ -489,15 +463,13 @@ async def load_hf_dataset(
         display_name: Display name for the data source. Defaults to the dataset
             name.
         read_only: If True, block write statements.
-        summarize: Optional async function used to shorten long dataset
-            descriptions before storing them in the schema.
         config: Immutable connector execution and cache policy. Environment
             values and built-in defaults are used when omitted.
 
     Returns:
         A :class:`SQLConnector` backed by a DuckDB database.
     """
-    from tabulaflow.data.sql import SQLConnector, _sql_schema_cache_path
+    from tabulaflow.data.sql import SQLConnector
 
     config = SQLConnectorConfig() if config is None else config
 
@@ -512,17 +484,6 @@ async def load_hf_dataset(
     # is stable across sessions regardless of the user-chosen alias.
     global_id = f"hf+{os.path.splitext(os.path.basename(db_path))[0]}"
 
-    # Fetch dataset description only on schema cache miss.
-    schema_path = _sql_schema_cache_path(config, global_id)
-    description: str | None = None
-    schema_cache_hit = config.schema_cache_mode in ("read_write", "cache_only") and schema_path.exists()
-    if not schema_cache_hit and config.schema_cache_mode != "cache_only":
-        hf_description = await _fetch_hf_description(dataset_id)
-        if hf_description:
-            if len(hf_description) > 5000 and summarize is not None:
-                hf_description = await summarize(hf_description)
-            description = f"Source: HuggingFace dataset {dataset_url}\n\n<readme>\n{hf_description}\n</readme>"
-
     url = f"duckdb:///{db_path}"
     connector = await SQLConnector.from_url_async(
         global_id=global_id,
@@ -531,7 +492,7 @@ async def load_hf_dataset(
         read_only=read_only,
         config=config,
         duckdb_init_sql=["LOAD httpfs"],
-        description=description,
+        description=f"Source: Hugging Face dataset {dataset_url}",
     )
 
     # Splits over MATERIALIZE_THRESHOLD_BYTES load as a lazy view plus a

@@ -22,7 +22,7 @@ from tabulaflow.core.schema import (
 )
 from tabulaflow.core.serialization import json_ready
 from tabulaflow.data.protocols import ResultTooLargeError, validate_global_id
-from tabulaflow.data.url import _neo4j_global_id
+from tabulaflow.data.connect import _neo4j_global_id
 from tabulaflow.data._cache import (
     cache_lock,
     read_cached_model,

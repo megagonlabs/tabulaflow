@@ -16,10 +16,12 @@ from rich.text import Text
 
 from tabulaflow.app.tui.theme import ERROR
 from tabulaflow.app.session import WORKSPACE_ALIAS, AppSession
-from tabulaflow.data import connect_url
-from tabulaflow.data.url import (
+from tabulaflow.data import connect_data_source
+from tabulaflow.data.catalog import resolve_data_source_definition
+from tabulaflow.data.connect import (
     is_database_file_path,
     normalize_connection_url,
+    strip_url_credentials,
 )
 from tabulaflow.output.formatting import format_connector_summary
 
@@ -40,14 +42,30 @@ class CommandResult:
     action: CommandAction | None = None
 
 
+@dataclass(frozen=True)
+class ConnectCommand:
+    """Parsed arguments for ``/connect``."""
+
+    sources: tuple[str, ...]
+    alias: str | None = None
+
+
 CommandHandler = Callable[[list[str], AppSession], Awaitable[CommandResult]]
 
 
-def _announce_connect(session: AppSession, alias: str, connector: DataConnector) -> str:
+def _announce_connect(
+    session: AppSession,
+    alias: str,
+    connector: DataConnector,
+    guidance: str | None = None,
+) -> str:
     """Tell the agent the user just connected ``alias`` (so it gains temporal
     awareness of the new source) and return the connector's display summary."""
     info = format_connector_summary(connector)
-    session.note_event(f"the user just connected a new data source `{alias}` ({info}).")
+    message = f"the user just connected a new data source `{alias}` ({info})."
+    if guidance:
+        message += f"\n\n{guidance}\n\nUse get_db_document for complete source documentation."
+    session.note_event(message)
     return info
 
 
@@ -70,12 +88,6 @@ def _sanitize_alias(raw: str) -> str:
     return name or "db"
 
 
-def _alias_from_files(file_paths: list[str]) -> str:
-    if len(file_paths) == 1:
-        return _sanitize_alias(file_paths[0])
-    return "local_files"
-
-
 def _alias_from_url(url: str) -> str:
     if ":///" in url:
         path = url.split("///", 1)[-1]
@@ -87,6 +99,56 @@ def _alias_from_url(url: str) -> str:
     if parsed.hostname:
         return _sanitize_alias(parsed.hostname)
     return _sanitize_alias(url)
+
+
+def _parse_connect_args(args: list[str]) -> ConnectCommand:
+    sources: list[str] = []
+    alias: str | None = None
+    index = 0
+    while index < len(args):
+        argument = args[index]
+        if argument in {"--alias", "-a"}:
+            if alias is not None:
+                raise ValueError("--alias may only be provided once")
+            index += 1
+            if index >= len(args):
+                raise ValueError("--alias requires a value")
+            alias = args[index]
+        else:
+            sources.append(argument)
+        index += 1
+    if not sources:
+        raise ValueError("a source is required")
+    if alias is not None and re.fullmatch(r"[A-Za-z0-9_]+", alias) is None:
+        raise ValueError("alias may contain only letters, digits, and underscores")
+    return ConnectCommand(sources=tuple(sources), alias=alias)
+
+
+def _default_connect_alias(command: ConnectCommand, session: AppSession) -> str:
+    if len(command.sources) > 1:
+        return "local_files"
+    source = command.sources[0]
+    definition = resolve_data_source_definition(source, session.data_source_definitions)
+    if definition is not None:
+        return _sanitize_alias(definition.id)
+
+    from tabulaflow.data.loaders import is_hf_dataset_url, parse_hf_dataset_url
+
+    if is_hf_dataset_url(source):
+        dataset_id, _, _ = parse_hf_dataset_url(source)
+        return _sanitize_alias(dataset_id.rsplit("/", 1)[-1])
+    if _is_data_file(source) or _is_db_file(source):
+        return _sanitize_alias(source)
+    return _alias_from_url(normalize_connection_url(source))
+
+
+def _available_alias(base: str, session: AppSession) -> str:
+    alias = base
+    suffix = 2
+    while session.registry.has(alias):
+        alias = f"{base}_{suffix}"
+        suffix += 1
+    return alias
 
 
 async def handle_command(text: str, session: AppSession) -> CommandResult:
@@ -133,156 +195,63 @@ async def _cmd_connect(args: list[str], session: AppSession) -> CommandResult:
     if not args:
         return CommandResult(
             output=Text.from_markup(
-                f"[{ERROR}]Usage:[/] /connect <url_or_path> \\[alias]\n"
-                "[dim]  /connect ./data/schools.sqlite\n"
+                f"[{ERROR}]Usage:[/] /connect <source...> \\[--alias alias]\n"
+                "[dim]  /connect wikidata\n"
+                "  /connect ./data/schools.sqlite\n"
                 "  /connect ./sales.csv\n"
-                "  /connect ./sales.csv ./inventory.csv mydb\n"
+                "  /connect ./sales.csv ./inventory.csv --alias mydb\n"
                 "  /connect ./report.xlsx\n"
                 "  /connect sqlite+aiosqlite:///path/to/db.sqlite\n"
                 "  /connect bigquery://bigquery-public-data/noaa_gsod\n"
                 "  /connect snowflake://user@account/db\n"
                 "  /connect duckdb:///path/to/db.duckdb\n"
                 "  /connect neo4j://neo4j:password@localhost:7687\n"
-                "  /connect bolt://localhost:7687?database=neo4j myalias\n"
-                "  /connect sparql+https://query.wikidata.org/sparql wikidata\n"
+                "  /connect bolt://localhost:7687?database=neo4j --alias myalias\n"
+                "  /connect sparql+https://query.wikidata.org/sparql --alias wikidata\n"
                 "  /connect https://huggingface.co/datasets/stanfordnlp/imdb\n"
                 "  /connect https://huggingface.co/datasets/nyu-mll/glue/viewer/mrpc/train[/dim]"
             )
         )
-    file_args = [a for a in args if _is_data_file(a)]
-    if file_args:
-        non_file_args = [a for a in args if not _is_data_file(a)]
-        db_file_args = [a for a in non_file_args if _is_db_file(a)]
-        if db_file_args:
-            return CommandResult(
-                output=Text.from_markup(
-                    f"[{ERROR}]Cannot mix database files and data files.[/] "
-                    "Connect them separately:\n"
-                    f"[dim]  /connect {escape(db_file_args[0])}\n"
-                    f"  /connect {escape(' '.join(os.path.basename(f) for f in file_args))}[/dim]"
-                )
-            )
-
-        alias_args = [a for a in non_file_args if not _is_db_file(a)]
-        if len(alias_args) > 1:
-            return CommandResult(output=Text.from_markup(f"[{ERROR}]Usage:[/] /connect <file...> \\[alias]"))
-        if alias_args:
-            alias = _sanitize_alias(alias_args[0])
-            if session.registry.has(alias):
-                return CommandResult(
-                    output=Text.from_markup(
-                        f"[{ERROR}]Alias already in use:[/] {alias}. "
-                        "Disconnect first or provide a different alias: /connect <files...> <alias>"
-                    )
-                )
-        else:
-            # Auto-derived alias — suffix on collision so different files
-            # mapping to the same default name don't fight (e.g. /A/data.csv
-            # and /B/data.csv both default to "data").
-            base_alias = _alias_from_files(file_args)
-            alias = base_alias
-            suffix = 2
-            while session.registry.has(alias):
-                alias = f"{base_alias}_{suffix}"
-                suffix += 1
-
-        from tabulaflow.data.loaders.files import load_files
-        from tabulaflow.data.config import SQLConnectorConfig
-
-        global_id = f"cli+{alias}"
-        file_label = ", ".join(os.path.basename(f) for f in file_args)
-        try:
-            connector = await load_files(
-                global_id=global_id,
-                file_paths=file_args,
-                display_name=alias,
-                data_dir=str(session.data_dir),
-                read_only=True,
-                config=SQLConnectorConfig(schema_cache_mode="off", query_cache_mode="off"),
-            )
-        except Exception as e:
-            return CommandResult(output=Text.from_markup(f"[{ERROR}]Failed to load files:[/] {escape(str(e))}"))
-
-        session.registry.register(alias, connector)
-        info = _announce_connect(session, alias, connector)
-        return CommandResult(output=Text(f"✓ Loaded {file_label} as {alias} ({info})", style="dim"))
-    from tabulaflow.data.loaders import is_hf_dataset_url
-
-    if len(args) > 2:
-        return CommandResult(output=Text.from_markup(f"[{ERROR}]Usage:[/] /connect <url_or_path> \\[alias]"))
-
-    if is_hf_dataset_url(args[0]):
-        return await _connect_hf_dataset(args, session)
-
-    if "huggingface.co" in args[0]:
-        return CommandResult(
-            output=Text.from_markup(
-                f"[{ERROR}]Unsupported HuggingFace URL format.[/]\n"
-                "[dim]Expected: https://huggingface.co/datasets/\\<owner>/\\<dataset>\\[/viewer/\\<subset>\\[/\\<split>\\]\\][/dim]"
-            )
-        )
-    raw = args[0]
-    url = normalize_connection_url(raw)
-    alias = _sanitize_alias(args[1]) if len(args) > 1 else _alias_from_url(url)
-
-    if session.registry.has(alias):
-        return CommandResult(
-            output=Text.from_markup(
-                f"[{ERROR}]Alias already in use:[/] {alias}. "
-                "Disconnect first or provide a different alias: /connect <url> <alias>"
-            )
-        )
-
-    return await _execute_connect(url, alias, session)
-
-
-async def _connect_hf_dataset(args: list[str], session: AppSession) -> CommandResult:
-    """Handle /connect for HuggingFace dataset URLs."""
-    from tabulaflow.data.loaders import load_hf_dataset, parse_hf_dataset_url
-
-    url = args[0]
     try:
-        dataset_id, _, _ = parse_hf_dataset_url(url)
+        command = _parse_connect_args(args)
     except ValueError as e:
-        return CommandResult(output=Text.from_markup(f"[{ERROR}]{escape(str(e))}[/]"))
+        return CommandResult(output=Text.from_markup(f"[{ERROR}]Invalid /connect syntax:[/] {escape(str(e))}"))
 
-    default_alias = _sanitize_alias(dataset_id.split("/")[-1])
-    alias = _sanitize_alias(args[1]) if len(args) > 1 else default_alias
-
-    if session.registry.has(alias):
+    alias = command.alias or _available_alias(_default_connect_alias(command, session), session)
+    if command.alias is not None and session.registry.has(alias):
         return CommandResult(
             output=Text.from_markup(
                 f"[{ERROR}]Alias already in use:[/] {alias}. "
-                "Disconnect first or provide a different alias: /connect <url> <alias>"
+                "Disconnect first or provide a different alias with --alias."
             )
         )
 
+    source: str | tuple[str, ...] = command.sources[0] if len(command.sources) == 1 else command.sources
     try:
-        from tabulaflow.agents.summarization import TextSummarizer
-
-        connector = await load_hf_dataset(
-            url,
+        connector = await connect_data_source(
+            source,
             display_name=alias,
+            definitions=session.data_source_definitions,
+            data_dir=session.data_dir,
             read_only=True,
-            summarize=TextSummarizer().summarize,
         )
     except Exception as e:
-        return CommandResult(output=Text.from_markup(f"[{ERROR}]Failed to load HF dataset:[/] {escape(str(e))}"))
+        safe_sources = [strip_url_credentials(item) if "://" in item else item for item in command.sources]
+        source_label = ", ".join(repr(item) for item in safe_sources)
+        return CommandResult(
+            output=Text.from_markup(
+                f"[{ERROR}]Failed to connect {escape(source_label)}:[/] {escape(f'{type(e).__name__}: {e}')}"
+            )
+        )
 
     session.registry.register(alias, connector)
-    info = _announce_connect(session, alias, connector)
-    return CommandResult(output=Text(f"✓ Loaded {dataset_id} as {alias} ({info})", style="dim"))
-
-
-async def _execute_connect(url: str, alias: str, session: AppSession) -> CommandResult:
-    """Execute the data-source connection."""
-    try:
-        connector = await connect_url(url, display_name=alias, read_only=True)
-    except Exception as e:
-        return CommandResult(output=Text.from_markup(f"[{ERROR}]Connection failed:[/] {escape(str(e))}"))
-
-    session.registry.register(alias, connector)
-    info = _announce_connect(session, alias, connector)
+    definition = (
+        resolve_data_source_definition(command.sources[0], session.data_source_definitions)
+        if len(command.sources) == 1
+        else None
+    )
+    guidance = definition.description.strip() if definition is not None else None
+    info = _announce_connect(session, alias, connector, guidance)
     return CommandResult(output=Text(f"✓ Connected to {alias} ({info})", style="dim"))
 
 
@@ -322,7 +291,7 @@ _COMMANDS: dict[str, tuple[CommandHandler, str]] = {
     "/exit": (_cmd_exit, "Exit the chat"),
     "/clear": (_cmd_clear, "Start a new conversation"),
     "/config": (_cmd_config, "Open the config panel"),
-    "/connect": (_cmd_connect, "Connect a data source: /connect <url> \\[alias]"),
+    "/connect": (_cmd_connect, "Connect a data source: /connect <source...> \\[--alias alias]"),
     "/disconnect": (_cmd_disconnect, "Disconnect: /disconnect \\[alias]"),
 }
 

@@ -44,10 +44,10 @@ async def test_connect_reports_rdf_source_without_calling_it_sql(
         schema=RDFSchema(display_name="example"),
     )
 
-    async def connect_url(*args: object, **kwargs: object) -> object:
+    async def connect_data_source(*args: object, **kwargs: object) -> object:
         return connector
 
-    monkeypatch.setattr("tabulaflow.agents.tools.connect_data_source.connect_url", connect_url)
+    monkeypatch.setattr("tabulaflow.agents.tools.connect_data_source.connect_data_source", connect_data_source)
     tool = ConnectDataSourceTool(DataConnectorRegistry(), tmp_path)
 
     result = await tool.execute("sparql+https://example.test/query", "example")
@@ -57,16 +57,36 @@ async def test_connect_reports_rdf_source_without_calling_it_sql(
 
 
 async def test_connect_error_does_not_expose_url_credentials(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    async def connect_url(*args: object, **kwargs: object) -> object:
+    async def connect_data_source(*args: object, **kwargs: object) -> object:
         raise RuntimeError("connection refused")
 
-    monkeypatch.setattr("tabulaflow.agents.tools.connect_data_source.connect_url", connect_url)
+    monkeypatch.setattr("tabulaflow.agents.tools.connect_data_source.connect_data_source", connect_data_source)
     tool = ConnectDataSourceTool(DataConnectorRegistry(), tmp_path)
 
     result = await tool("sparql+https://alice:password@example.test/query", "example")
 
     assert "password" not in result
     assert "sparql+https://example.test/query" in result
+
+
+async def test_connect_catalog_source_returns_curated_guidance(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    connector = SimpleNamespace(
+        backend="sparql",
+        language="sparql",
+        global_id="test-rdf",
+        schema=RDFSchema(display_name="wikidata"),
+    )
+
+    async def connect_data_source(*args: object, **kwargs: object) -> object:
+        return connector
+
+    monkeypatch.setattr("tabulaflow.agents.tools.connect_data_source.connect_data_source", connect_data_source)
+    tool = ConnectDataSourceTool(DataConnectorRegistry(), tmp_path)
+
+    result = await tool.execute("wikidata", "wikidata")
+
+    assert "en,mul" in result
+    assert "get_db_document" in result
 
 
 async def test_extraction_execute_raises_for_empty_output_columns() -> None:

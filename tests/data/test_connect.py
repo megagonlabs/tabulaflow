@@ -2,7 +2,7 @@
 
 import pytest
 
-from tabulaflow.data.url import (
+from tabulaflow.data.connect import (
     is_database_file_path,
     normalize_connection_url,
     strip_url_credentials,
@@ -51,7 +51,7 @@ class TestStripUrlCredentials:
 
 class TestSplitUrlCredentials:
     def test_extracts_decoded_credentials(self) -> None:
-        from tabulaflow.data.url import _global_id_from_url, _sparql_endpoint_params, _split_url_credentials
+        from tabulaflow.data.connect import _global_id_from_url, _sparql_endpoint_params, _split_url_credentials
 
         source = "sparql+https://user%40example:p%40ss@example.org/query"
         other_source = "sparql+https://other:password@example.org/query"
@@ -73,7 +73,7 @@ class TestNeo4jDriverParams:
     """Neo4j creds come from the URL (the driver takes them separately, not in the URI)."""
 
     def test_credentials_extracted_and_stripped(self) -> None:
-        from tabulaflow.data.url import _neo4j_driver_params
+        from tabulaflow.data.connect import _neo4j_driver_params
 
         driver_url, database, auth = _neo4j_driver_params("neo4j://neo4j:cypherbench@localhost:7687")
         assert driver_url == "neo4j://localhost:7687"
@@ -81,7 +81,7 @@ class TestNeo4jDriverParams:
         assert database is None
 
     def test_database_query_param_extracted(self) -> None:
-        from tabulaflow.data.url import _neo4j_driver_params
+        from tabulaflow.data.connect import _neo4j_driver_params
 
         driver_url, database, auth = _neo4j_driver_params("bolt://host:7687?database=graph")
         assert driver_url == "bolt://host:7687"
@@ -89,19 +89,19 @@ class TestNeo4jDriverParams:
         assert auth is None
 
     def test_ipv6_host_is_preserved(self) -> None:
-        from tabulaflow.data.url import _neo4j_driver_params
+        from tabulaflow.data.connect import _neo4j_driver_params
 
         driver_url, _, _ = _neo4j_driver_params("neo4j://[::1]:7687")
         assert driver_url == "neo4j://[::1]:7687"
 
     def test_percent_encoded_credentials_are_decoded(self) -> None:
-        from tabulaflow.data.url import _neo4j_driver_params
+        from tabulaflow.data.connect import _neo4j_driver_params
 
         _, _, auth = _neo4j_driver_params("neo4j://user%40example:p%40ss@host:7687")
         assert auth == ("user@example", "p@ss")
 
     def test_no_credentials(self) -> None:
-        from tabulaflow.data.url import _neo4j_driver_params
+        from tabulaflow.data.connect import _neo4j_driver_params
 
         driver_url, database, auth = _neo4j_driver_params("neo4j://localhost:7687")
         assert driver_url == "neo4j://localhost:7687"
@@ -110,7 +110,7 @@ class TestNeo4jDriverParams:
 
 class TestNeo4jGlobalId:
     def test_db_and_database_params_share_cache_key(self) -> None:
-        from tabulaflow.data.url import _neo4j_driver_params, _neo4j_global_id
+        from tabulaflow.data.connect import _neo4j_driver_params, _neo4j_global_id
 
         driver_url_a, database_a, _ = _neo4j_driver_params("neo4j+s://u:p@demo.neo4jlabs.com?db=companies")
         driver_url_b, database_b, _ = _neo4j_driver_params(
@@ -123,12 +123,12 @@ class TestNeo4jGlobalId:
         assert "demo.neo4jlabs.com" not in global_id
 
     def test_distinct_urls_do_not_collapse_to_same_id(self) -> None:
-        from tabulaflow.data.url import _global_id_from_url
+        from tabulaflow.data.connect import _global_id_from_url
 
         assert _global_id_from_url("postgresql://host-a/db") != _global_id_from_url("postgresql://host_a/db")
 
     def test_query_order_does_not_change_id(self) -> None:
-        from tabulaflow.data.url import _global_id_from_url
+        from tabulaflow.data.connect import _global_id_from_url
 
         assert _global_id_from_url("postgresql://host/db?a=1&b=2") == _global_id_from_url(
             "postgresql://host/db?b=2&a=1"
@@ -136,21 +136,21 @@ class TestNeo4jGlobalId:
 
 
 async def test_connect_url_rejects_unsupported_bare_source() -> None:
-    from tabulaflow.data.url import connect_url
+    from tabulaflow.data.connect import connect_url
 
-    with pytest.raises(ValueError, match="expected a connector URL or SQLite/DuckDB file path"):
+    with pytest.raises(ValueError, match="expected an explicit connection URL"):
         await connect_url("not-a-database", display_name="test")
 
 
 async def test_connect_url_rejects_ambiguous_http_url() -> None:
-    from tabulaflow.data.url import connect_url
+    from tabulaflow.data.connect import connect_url
 
     with pytest.raises(ValueError, match=r"use sparql\+http"):
         await connect_url("https://example.org/query", display_name="test")
 
 
 async def test_connect_url_rejects_unsupported_sparql_transport() -> None:
-    from tabulaflow.data.url import connect_url
+    from tabulaflow.data.connect import connect_url
 
     with pytest.raises(ValueError, match=r"must use sparql\+http"):
         await connect_url("sparql+ftp://example.org/query", display_name="test")
@@ -158,7 +158,7 @@ async def test_connect_url_rejects_unsupported_sparql_transport() -> None:
 
 async def test_connect_url_dispatches_explicit_sparql_url(monkeypatch: pytest.MonkeyPatch) -> None:
     from tabulaflow.data import SPARQLConnector, SPARQLConnectorConfig
-    from tabulaflow.data.url import connect_url
+    from tabulaflow.data.connect import connect_url
 
     captured: dict[str, object] = {}
     sentinel = object()
@@ -190,7 +190,7 @@ async def test_connect_url_dispatches_explicit_sparql_url(monkeypatch: pytest.Mo
 
 async def test_connect_url_rejects_wrong_config_for_sparql() -> None:
     from tabulaflow.data import SQLConnectorConfig
-    from tabulaflow.data.url import connect_url
+    from tabulaflow.data.connect import connect_url
 
     with pytest.raises(TypeError, match="SPARQLConnectorConfig"):
         await connect_url(
@@ -202,7 +202,7 @@ async def test_connect_url_rejects_wrong_config_for_sparql() -> None:
 
 async def test_connect_url_leaves_bigquery_configuration_to_driver(monkeypatch: pytest.MonkeyPatch) -> None:
     from tabulaflow.data.sql import SQLConnector
-    from tabulaflow.data.url import connect_url
+    from tabulaflow.data.connect import connect_url
 
     captured: dict[str, object] = {}
 

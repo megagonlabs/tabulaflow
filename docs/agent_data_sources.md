@@ -320,6 +320,13 @@ ingests it by absolute path into a dataset.
 
 ### Phase 4 — `connect_data_source` (read-only)
 
+> Current implementation note: source classification is now centralized in the
+> data-layer `connect_data_source` function, shared by the agent tool and
+> `/connect`. It resolves curated catalog entries, files, Hugging Face datasets,
+> database paths, and explicit connection URLs; `connect_url` remains the
+> lower-level SQL/Neo4j/SPARQL URL dispatcher. The text below records the
+> original phase decision.
+
 **Self-contained, twin to `create_dataset` — no app callback.** `datasources < toolhub`,
 so the tool calls `load_files`/`load_hf_dataset` directly; the only pull toward the app was
 *session policy* (`note_event`, physical-source dedup, sample-removal), and — as with
@@ -337,7 +344,8 @@ so the tool calls `load_files`/`load_hf_dataset` directly; the only pull toward 
   it is **deferred to the user** through an "ask the user to /connect" hint after
   an actual connection error. The response reports the source's **actual**
   dialect (e.g. `sqlite SQL` / `duckdb SQL` / `cypher`) so the agent writes correct syntax.
-- **URL→connector logic lives in `data/url.py`** — `connect_url`, supported by
+- **Connection logic lives in `data/connect.py`** — `connect_data_source` and
+  `connect_url`, supported by
   `normalize_connection_url` and `is_database_file_path`. It is a smart constructor above the type-specific
   `from_url_async`, shared by `/cmd_connect` and the agent tool.
   `normalize_connection_url` is idempotent.

@@ -7,7 +7,6 @@ from tabulaflow.agents.summarization import DBSummarizer
 from tabulaflow.research.preprocessing.erd import ERDiagramSynthesizer
 from tabulaflow.research.preprocessing.fk_predictor import ForeignKeyPredictor
 from tabulaflow.research.preprocessing.schema import SchemaPreprocessor
-from tabulaflow.agents.summarization import TextSummarizer
 from tabulaflow.research.preprocessing import (
     ConnectorPreprocessorProtocol,
     DatasetPreprocessorProtocol,
@@ -23,13 +22,11 @@ def test_agent_capabilities_accept_model_settings() -> None:
     fk_predictor = ForeignKeyPredictor(model_settings=settings)
     er_synthesizer = ERDiagramSynthesizer(model_settings=settings)
     db_summarizer = DBSummarizer(model_settings=settings)
-    text_summarizer = TextSummarizer(model_settings=settings)
 
     assert column_profiler.model_settings is settings
     assert fk_predictor.model_settings is settings
     assert er_synthesizer.model_settings is settings
     assert db_summarizer.model_settings is settings
-    assert text_summarizer.model_settings is settings
 
 
 def test_schema_preprocessor_passes_model_settings_to_llm_submodules() -> None:

@@ -1,22 +1,20 @@
-"""Normalize connection sources and open live data connectors.
-
-``connect_url`` accepts a connector URL or SQLite/DuckDB path, derives a
-credential-free identity, and dispatches to SQL, Neo4j, or SPARQL. Loading raw
-files and Hugging Face datasets belongs to loaders.
-"""
+"""Resolve user-facing sources and open data connectors."""
 
 from __future__ import annotations
 
 import hashlib
 import os
+from collections.abc import Sequence
 from pathlib import Path
-from typing import TYPE_CHECKING
 from urllib.parse import parse_qsl, unquote, urlencode, urlparse, urlunparse
 
+from tabulaflow.data.catalog import (
+    DEFAULT_DATA_SOURCE_DEFINITIONS,
+    DataSourceDefinition,
+    resolve_data_source_definition,
+)
 from tabulaflow.data.config import Neo4jConnectorConfig, SPARQLConnectorConfig, SQLConnectorConfig
-
-if TYPE_CHECKING:
-    from tabulaflow.data.protocols import DataConnector
+from tabulaflow.data.protocols import DataConnector
 
 # Local database-file extension -> SQLAlchemy scheme.
 _DB_FILE_SCHEMES: dict[str, str] = {
@@ -156,7 +154,7 @@ async def connect_url(
     global_id: str | None = None,
     config: SQLConnectorConfig | Neo4jConnectorConfig | SPARQLConnectorConfig | None = None,
 ) -> DataConnector:
-    """Build the appropriate connector from a connection URL or local database path.
+    """Build the appropriate connector from an explicit connection URL.
 
     Normalizes the URL, dispatches by explicit connector scheme, and verifies
     connectivity during connector construction. SQLAlchemy consumes SQL URL
@@ -164,11 +162,11 @@ async def connect_url(
     separately to their drivers. Raises when the connection cannot be established.
 
     Args:
-        source: A SQL, Neo4j, or explicit ``sparql+http(s)`` connection URL,
-            or a local SQLite/DuckDB path. Examples include
+        source: A SQL, Neo4j, or explicit ``sparql+http(s)`` connection URL.
+            Examples include
             ``postgresql://user:pass@host/db``, ``bigquery://project/dataset``,
             ``neo4j://user:pass@host``, ``sparql+https://query.wikidata.org/sparql``,
-            ``data.sqlite``, and ``data.duckdb``.
+            ``sqlite+aiosqlite:///data.sqlite``, and ``duckdb:///data.duckdb``.
         display_name: Human-readable name stored in the connector schema.
         read_only: Request backend-appropriate read-only behavior. SQL callers
             still need read-only credentials or IAM for enforced security.
@@ -188,11 +186,9 @@ async def connect_url(
     from tabulaflow.data.sparql import SPARQLConnector
     from tabulaflow.data.sql import SQLConnector
 
+    if "://" not in source:
+        raise ValueError(f"Unsupported connection source: {source!r}; expected an explicit connection URL")
     url = normalize_connection_url(source)
-    if "://" not in url:
-        raise ValueError(
-            f"Unsupported connection source: {source!r}; expected a connector URL or SQLite/DuckDB file path"
-        )
 
     if _is_sparql_url(url):
         if config is not None and not isinstance(config, SPARQLConnectorConfig):
@@ -233,3 +229,142 @@ async def connect_url(
         read_only=read_only,
         config=config,
     )
+
+
+def _file_source_global_id(paths: Sequence[str], display_name: str) -> str:
+    canonical = "\0".join([*(os.path.abspath(path) for path in paths), display_name])
+    return f"files+{hashlib.sha256(canonical.encode()).hexdigest()}"
+
+
+def _combine_descriptions(curated: str, discovered: str | None) -> str:
+    if not discovered or discovered.strip() == curated.strip():
+        return curated
+    return f"{curated.rstrip()}\n\n{discovered.lstrip()}"
+
+
+def _is_data_file(path: str) -> bool:
+    from tabulaflow.data.loaders.files import DATA_FILE_EXTENSIONS
+
+    return Path(path).suffix.lower() in DATA_FILE_EXTENSIONS
+
+
+def _require_file(path: str) -> str:
+    expanded = os.path.abspath(os.path.expanduser(path))
+    if not os.path.isfile(expanded):
+        raise FileNotFoundError(f"no such file: {path!r}")
+    return expanded
+
+
+async def _connect_files(
+    paths: Sequence[str],
+    *,
+    display_name: str,
+    data_dir: Path | None,
+    read_only: bool,
+) -> DataConnector:
+    from tabulaflow.data.loaders.files import load_files
+
+    if not paths or not all(_is_data_file(path) for path in paths):
+        raise ValueError("multiple sources are supported only for local data files")
+    resolved = [_require_file(path) for path in paths]
+    return await load_files(
+        global_id=_file_source_global_id(resolved, display_name),
+        file_paths=resolved,
+        display_name=display_name,
+        data_dir=str(data_dir) if data_dir is not None else None,
+        read_only=read_only,
+        config=SQLConnectorConfig(schema_cache_mode="off", query_cache_mode="off"),
+    )
+
+
+async def _connect_single_source(
+    source: str,
+    *,
+    display_name: str,
+    data_dir: Path | None,
+    read_only: bool,
+) -> DataConnector:
+    from tabulaflow.data.loaders.huggingface import is_hf_dataset_url, load_hf_dataset
+
+    if is_hf_dataset_url(source):
+        return await load_hf_dataset(source, display_name=display_name, read_only=read_only)
+    if "huggingface.co" in source:
+        raise ValueError(
+            "unsupported Hugging Face URL; expected "
+            "https://huggingface.co/datasets/<owner>/<dataset>[/viewer/<subset>[/<split>]]"
+        )
+    if _is_data_file(source):
+        return await _connect_files(
+            (source,),
+            display_name=display_name,
+            data_dir=data_dir,
+            read_only=read_only,
+        )
+    if is_database_file_path(source):
+        path = _require_file(source)
+        return await connect_url(
+            normalize_connection_url(path),
+            display_name=display_name,
+            read_only=read_only,
+        )
+    if "://" in source:
+        return await connect_url(source, display_name=display_name, read_only=read_only)
+    if os.path.exists(os.path.expanduser(source)):
+        raise ValueError(f"unsupported local data source: {source!r}")
+    raise ValueError(
+        f"unsupported data source: {source!r}; expected a catalog id, supported file, "
+        "Hugging Face dataset URL, or explicit connection URL"
+    )
+
+
+async def connect_data_source(
+    source: str | Sequence[str],
+    *,
+    display_name: str,
+    definitions: Sequence[DataSourceDefinition] = DEFAULT_DATA_SOURCE_DEFINITIONS,
+    data_dir: Path | None = None,
+    read_only: bool = True,
+) -> DataConnector:
+    """Connect or load a user-facing source into a queryable connector.
+
+    Args:
+        source: Catalog identifier, connection URL, Hugging Face dataset URL,
+            local database path, local data-file path, or a sequence of local
+            data-file paths.
+        display_name: Human-readable name stored in the connector schema.
+        definitions: Curated source definitions used for identifier and exact-locator
+            resolution.
+        data_dir: Directory for loader-owned DuckDB files.
+        read_only: Whether the returned connector blocks write queries.
+
+    Returns:
+        A connected, queryable data connector.
+
+    Raises:
+        FileNotFoundError: If a referenced local file does not exist.
+        ValueError: If the source form is unsupported or incompatible with the
+            other supplied sources.
+    """
+    sources = (source,) if isinstance(source, str) else tuple(source)
+    if not sources:
+        raise ValueError("at least one data source is required")
+    if len(sources) > 1:
+        return await _connect_files(
+            sources,
+            display_name=display_name,
+            data_dir=data_dir,
+            read_only=read_only,
+        )
+
+    raw_source = sources[0]
+    definition = resolve_data_source_definition(raw_source, definitions)
+    effective_source = definition.source if definition is not None else raw_source
+    connector = await _connect_single_source(
+        effective_source,
+        display_name=display_name,
+        data_dir=data_dir,
+        read_only=read_only,
+    )
+    if definition is not None:
+        connector.schema.description = _combine_descriptions(definition.description, connector.schema.description)
+    return connector

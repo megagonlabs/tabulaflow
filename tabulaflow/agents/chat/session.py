@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import asyncio
-from collections.abc import AsyncIterator, Callable
+from collections.abc import AsyncIterator, Callable, Sequence
 from contextlib import suppress
 from datetime import date
 from importlib.resources import files
@@ -62,6 +62,7 @@ if TYPE_CHECKING:
     from pydantic_ai.messages import ModelMessage, ToolReturnPart
 
     from tabulaflow.data.registry import DataConnectorRegistry
+    from tabulaflow.data.catalog import DataSourceDefinition
     from tabulaflow.data.sql import SQLConnector
     from tabulaflow.agents.trace import Usage
     from tabulaflow.agents.tools.protocols import ToolProgressUpdate
@@ -122,6 +123,7 @@ class ChatSession:
         project_dir: Host project directory; enables filesystem tools.
         scratch_dir: Transient directory exposed to shell workflows.
         data_dir: Directory where connected file sources are materialized.
+        data_source_definitions: Curated data sources available to the connection tool.
         compaction: Automatic context-compaction policy, or ``None`` to disable it.
     """
 
@@ -141,6 +143,7 @@ class ChatSession:
         project_dir: Path | None = None,
         scratch_dir: Path | None = None,
         data_dir: Path | None = None,
+        data_source_definitions: Sequence[DataSourceDefinition] | None = None,
         compaction: CompactionConfig | None = CompactionConfig(),
     ) -> None:
         self._registry = registry
@@ -156,6 +159,11 @@ class ChatSession:
         self._project_dir = project_dir
         self._scratch_dir = scratch_dir
         self._data_dir = data_dir
+        if data_source_definitions is None:
+            from tabulaflow.data.catalog import DEFAULT_DATA_SOURCE_DEFINITIONS
+
+            data_source_definitions = DEFAULT_DATA_SOURCE_DEFINITIONS
+        self._data_source_definitions = tuple(data_source_definitions)
         self._compaction = compaction
         self._last_usage: Usage | None = None
         self._context_messages: list[ModelMessage] = []
@@ -301,7 +309,9 @@ class ChatSession:
             run_subagent_for_each_row=run_subagent_for_each_row,
             extract_rows_from_documents=extract_rows_from_documents,
             connect_data_source=(
-                ConnectDataSourceTool(self._registry, self._data_dir) if self._data_dir is not None else None
+                ConnectDataSourceTool(self._registry, self._data_dir, definitions=self._data_source_definitions)
+                if self._data_dir is not None
+                else None
             ),
             bash=self._build_bash_tool(),
             view=(

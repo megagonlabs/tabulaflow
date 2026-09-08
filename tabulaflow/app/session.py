@@ -6,7 +6,7 @@ import logging
 import os
 import shutil
 import threading
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -19,6 +19,7 @@ if TYPE_CHECKING:
     from tabulaflow.agents.trace import Usage
     from tabulaflow.app.turn import TurnOutput
     from tabulaflow.data.sql import SQLConnector
+    from tabulaflow.data.catalog import DataSourceDefinition
     from tabulaflow.output.specs import OutputSpec
 
 WORKSPACE_ALIAS = "workspace"
@@ -53,6 +54,7 @@ class AppSession:
         runtime_paths: RuntimePaths,
         project_dir: Path,
         service_tier: ServiceTier = "default",
+        data_source_definitions: Sequence[DataSourceDefinition] | None = None,
     ) -> AppSession:
         """Create a ready session with its workspace and optional sample data."""
         import asyncio
@@ -68,6 +70,7 @@ class AppSession:
                 workspace=workspace,
                 service_tier=service_tier,
                 project_dir=project_dir,
+                data_source_definitions=data_source_definitions,
             )
         except BaseException:
             if workspace is not None:
@@ -93,14 +96,19 @@ class AppSession:
         workspace: SQLConnector | None,
         service_tier: ServiceTier = "default",
         project_dir: Path | None = None,
+        data_source_definitions: Sequence[DataSourceDefinition] | None = None,
     ) -> None:
         from tabulaflow.data.registry import DataConnectorRegistry
+        from tabulaflow.data.catalog import DEFAULT_DATA_SOURCE_DEFINITIONS
 
         self._runtime_paths = runtime_paths
         self._selected_preset = llm_preset
         self._service_tier = service_tier
         self._workspace = workspace
         self.project_dir = project_dir
+        self.data_source_definitions = tuple(
+            DEFAULT_DATA_SOURCE_DEFINITIONS if data_source_definitions is None else data_source_definitions
+        )
         self.registry: DataConnectorRegistry = DataConnectorRegistry()
         if workspace is not None:
             self.registry.register(WORKSPACE_ALIAS, workspace)
@@ -161,6 +169,7 @@ class AppSession:
             scratch_dir=self._runtime_paths.scratch_dir,
             data_dir=self.data_dir,
             use_apply_patch=model_supports_apply_patch(preset.main.model),
+            data_source_definitions=self.data_source_definitions,
         )
 
     def select_llm_preset(self, preset: LLMPreset | None) -> None:
