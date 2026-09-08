@@ -31,6 +31,7 @@ from _output_pane_fixtures import (
     _graph_network_card,
     _graph_properties_card,
     _graph_tree_card,
+    _jpeg_rows_result,
     _map_overlay_card,
     _map_showcase_card,
     _media_table_result,
@@ -1114,9 +1115,10 @@ def _populate_pane(
             title="Multimedia table",
             user="Render the debug multimedia table.",
             assistant=(
-                "This table exercises image, GIF, PDF, audio, video, base64 image, data URI, and mixed-content cells."
+                "These tables exercise many JPEG-only rows plus image, GIF, PDF, audio, video, base64 image, "
+                "data URI, and mixed-content cells."
             ),
-            result_inputs=[_media_table_result()],
+            result_inputs=[_jpeg_rows_result(), _media_table_result()],
         )
 
     if all_chart_turns:

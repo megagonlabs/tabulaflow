@@ -993,3 +993,14 @@ def _media_table_result() -> ResultCardInput:
         query="-- synthetic scalar and collection media payloads (JPEG/GIF/PDF/WAV/MP4)",
         df=df,
     )
+
+
+def _jpeg_rows_result() -> ResultCardInput:
+    assets = Path(__file__).parent / "fixtures" / "media"
+    jpeg = [assets.joinpath(f"jpeg_{i}.jpg").read_bytes() for i in range(5)]
+    return _result_input(
+        result_id="QDEBUG_JPEG_ROWS",
+        label="jpeg_rows",
+        query="-- 120 synthetic JPEG-only rows",
+        df=pd.DataFrame({"jpg_image": [jpeg[i % len(jpeg)] for i in range(120)]}),
+    )
