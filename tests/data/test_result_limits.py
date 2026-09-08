@@ -16,8 +16,8 @@ class _FakeRecord:
     def __init__(self, value: int) -> None:
         self._value = value
 
-    def values(self) -> list[int]:
-        return [self._value]
+    def data(self) -> dict[str, int]:
+        return {"value": self._value}
 
 
 class _FakeNeo4jResult:

@@ -3,10 +3,10 @@ from pathlib import Path
 from typing import Any
 
 import neo4j
-import pandas as pd
 import pytest
 
 from tabulaflow.core import (
+    ExecResult,
     GraphPropertySchema,
     NodeSchema,
     PropertyGraphSchema,
@@ -22,12 +22,16 @@ from tabulaflow.data.neo4j import (
     _FULL_SCAN_RELATIONSHIPS_QUERY,
     _NODE_LABELS_QUERY,
     _RELATIONSHIP_TYPES_QUERY,
+    _rows_to_df,
 )
 
 
 class _Result:
-    async def to_df(self, *, expand: bool, parse_dates: bool) -> pd.DataFrame:
-        return pd.DataFrame({"value": [1]})
+    async def data(self) -> list[dict[str, int]]:
+        return [{"value": 1}]
+
+    def keys(self) -> list[str]:
+        return ["value"]
 
     async def graph(self) -> neo4j.graph.Graph:
         return neo4j.graph.Graph()
@@ -64,6 +68,21 @@ class _Driver:
 
     async def close(self) -> None:
         self.closed = True
+
+
+def test_native_path_is_materialized_as_tabular_data() -> None:
+    graph = neo4j.graph.Graph()
+    alice = neo4j.graph.Node(graph, "alice", 1, ["Person"], {"name": "Alice"})
+    bob = neo4j.graph.Node(graph, "bob", 2, ["Person"], {"name": "Bob"})
+    relationship = graph.relationship_type("KNOWS")(graph, "knows", 3, {})
+    relationship._start_node = alice
+    relationship._end_node = bob
+    record = neo4j.Record([("p", neo4j.graph.Path(alice, relationship))])  # type: ignore[no-untyped-call]
+
+    result = ExecResult(df=_rows_to_df([record.data()], record.keys()))
+
+    assert result.df is not None
+    assert result.df.at[0, "p"] == [{"name": "Alice"}, "KNOWS", {"name": "Bob"}]
 
 
 @pytest.mark.parametrize(

@@ -92,10 +92,10 @@ ORDER BY relType, source, target, propertyName
 """.strip()
 
 
-def _records_to_df(records: Sequence[neo4j.Record], columns: Sequence[str]) -> pd.DataFrame:
+def _rows_to_df(rows: Sequence[Mapping[str, Any]], columns: Sequence[str]) -> pd.DataFrame:
     from neo4j.time import Date, DateTime
 
-    df = pd.DataFrame([record.values() for record in records], columns=columns)
+    df = pd.DataFrame(rows, columns=columns)
     for column in df.columns:
         values = df[column].dropna()
         if not values.empty and values.map(lambda value: isinstance(value, (Date, DateTime))).all():
@@ -374,12 +374,13 @@ class Neo4jConnector:
                 )
                 if return_df:
                     if max_rows is None:
-                        df = await result.to_df(expand=False, parse_dates=True)
+                        rows = await result.data()
                     else:
                         records = await result.fetch(max_rows + 1)
                         if len(records) > max_rows:
                             raise ResultTooLargeError(max_rows)
-                        df = _records_to_df(records, result.keys())
+                        rows = [record.data() for record in records]
+                    df = _rows_to_df(rows, result.keys())
                     return df, await result.graph()
                 return await result.data()
 
