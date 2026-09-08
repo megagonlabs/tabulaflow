@@ -2,7 +2,7 @@
 
 from typing import Any, ClassVar, Literal, Protocol
 
-from tabulaflow.agents.summarization import DBSummarizer
+from tabulaflow.agents.summarization import DataSourceSummarizer
 from tabulaflow.agents.trace import Usage
 from tabulaflow.core.registry import ClassRegistry
 from tabulaflow.data import DataConnector, SQLConnector
@@ -35,7 +35,7 @@ preprocessor_registry = ClassRegistry[Any]("preprocessor")
 
 
 @preprocessor_registry.register
-class DBSummaryPreprocessor(DBSummarizer):
+class DBSummaryPreprocessor(DataSourceSummarizer):
     """Research registry adapter for the reusable database summarizer."""
 
     name: ClassVar[str] = "db_summarizer"

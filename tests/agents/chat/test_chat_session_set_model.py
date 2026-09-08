@@ -493,12 +493,12 @@ async def test_subagent_profile_wires_tools(tmp_path: Path, monkeypatch: pytest.
         assert agent._tools.run_subagent_for_each_row.subagent_llm == "anthropic:claude-opus-4-8"
         assert agent._tools.extract_rows_from_documents.subagent_llm == "anthropic:claude-opus-4-8"
         assert agent._tools.add_canonical_name.subagent_llm == "anthropic:claude-opus-4-8"
-        assert agent._tools.get_db_document.db_summarizer_llm == "anthropic:claude-opus-4-8"
+        assert agent._tools.get_data_source_document.summarizer_llm == "anthropic:claude-opus-4-8"
         subagent_settings = {"thinking": "low", "timeout": SUBAGENT_REQUEST_TIMEOUT}
         assert agent._tools.run_subagent_for_each_row.model_settings == subagent_settings
-        assert agent._tools.get_db_document.model_settings == subagent_settings
+        assert agent._tools.get_data_source_document.model_settings == subagent_settings
 
-        agent._tools.get_db_document._document_cache["cached"] = cast(Any, (workspace, "old summary"))
+        agent._tools.get_data_source_document._document_cache["cached"] = cast(Any, (workspace, "old summary"))
         agent.activate_llm_profile(
             model=agent.model,
             reasoning=agent.reasoning,
@@ -506,11 +506,11 @@ async def test_subagent_profile_wires_tools(tmp_path: Path, monkeypatch: pytest.
             subagent_reasoning="high",
             use_apply_patch=agent.use_apply_patch,
         )
-        assert agent._tools.get_db_document._document_cache == {}
+        assert agent._tools.get_data_source_document._document_cache == {}
         assert agent._tools.run_subagent_for_each_row.subagent_llm == "openai-responses:gpt-5.4-mini"
         assert agent._tools.extract_rows_from_documents.subagent_llm == "openai-responses:gpt-5.4-mini"
         assert agent._tools.add_canonical_name.subagent_llm == "openai-responses:gpt-5.4-mini"
-        assert agent._tools.get_db_document.db_summarizer_llm == "openai-responses:gpt-5.4-mini"
+        assert agent._tools.get_data_source_document.summarizer_llm == "openai-responses:gpt-5.4-mini"
         settings = cast(dict[str, Any], agent._tools.run_subagent_for_each_row.model_settings)
         assert settings is not None
         assert settings["thinking"] == "high"
@@ -524,7 +524,7 @@ async def test_subagent_profile_wires_tools(tmp_path: Path, monkeypatch: pytest.
         assert settings["thinking"] == "high"
         assert settings["openai_reasoning_summary"] == "detailed"
         assert "service_tier" not in settings
-        settings = cast(dict[str, Any], agent._tools.get_db_document.model_settings)
+        settings = cast(dict[str, Any], agent._tools.get_data_source_document.model_settings)
         assert settings["thinking"] == "high"
         assert settings["openai_reasoning_summary"] == "detailed"
         assert "service_tier" not in settings

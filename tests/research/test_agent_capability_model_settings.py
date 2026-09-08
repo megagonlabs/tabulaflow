@@ -3,7 +3,7 @@ from __future__ import annotations
 from pydantic_ai.settings import ModelSettings
 
 from tabulaflow.research.preprocessing.column_profiler import ColumnProfiler
-from tabulaflow.agents.summarization import DBSummarizer
+from tabulaflow.agents.summarization import DataSourceSummarizer
 from tabulaflow.research.preprocessing.erd import ERDiagramSynthesizer
 from tabulaflow.research.preprocessing.fk_predictor import ForeignKeyPredictor
 from tabulaflow.research.preprocessing.schema import SchemaPreprocessor
@@ -21,7 +21,7 @@ def test_agent_capabilities_accept_model_settings() -> None:
     column_profiler = ColumnProfiler(model_settings=settings)
     fk_predictor = ForeignKeyPredictor(model_settings=settings)
     er_synthesizer = ERDiagramSynthesizer(model_settings=settings)
-    db_summarizer = DBSummarizer(model_settings=settings)
+    db_summarizer = DataSourceSummarizer(model_settings=settings)
 
     assert column_profiler.model_settings is settings
     assert fk_predictor.model_settings is settings

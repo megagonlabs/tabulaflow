@@ -18,7 +18,7 @@ from tabulaflow.app.tui.theme import (
 )
 from tabulaflow.app.tui.screens.results import DataBrowserScreen
 
-_NODE_KIND_DB = "db"
+_NODE_KIND_SOURCE = "source"
 _NODE_KIND_SCHEMA = "schema"
 _NODE_KIND_TABLE = "table"
 _NODE_KIND_COLUMN = "column"
@@ -83,7 +83,7 @@ class ExplorerState:
     Unknown paths fall through to the build-time default. This is what
     distinguishes "user explicitly collapsed" (path → False) from "user
     never saw this node" (path absent → use default), so newly-connected
-    DBs honor their auto-expand default instead of being collapsed by
+    Sources honor their auto-expand default instead of being collapsed by
     a missing entry.
     """
 
@@ -201,7 +201,7 @@ class SchemaBrowserScreen(Screen[None]):
     def compose(self) -> ComposeResult:
         from textual.widgets import Tree
 
-        tree: Tree[_NodeData] = Tree("Databases", id="browse-tree")
+        tree: Tree[_NodeData] = Tree("Data sources", id="browse-tree")
         tree.show_root = False
         tree.guide_depth = 3
         tree.auto_expand = False
@@ -281,7 +281,7 @@ class SchemaBrowserScreen(Screen[None]):
         already put the tree in the user's saved collapse state, and
         overriding that to make a fallback cursor visible would silently
         undo an explicit collapse (e.g., after a disconnect dropped the
-        saved cursor's DB).
+        saved cursor's source).
         """
         if saved is None:
             return
@@ -333,7 +333,7 @@ class SchemaBrowserScreen(Screen[None]):
     @staticmethod
     def _visible_tables(alias: str, schema: object) -> list[Any]:
         """Tables the tree shows for ``alias``. The workspace hides internal/scratch
-        schemas (conventionally ``_``-prefixed); every other DB shows all tables.
+        schemas (conventionally ``_``-prefixed); every other source shows all tables.
 
         Shared by ``_build_tree`` and ``_update_status`` so the status-bar count
         always matches what the tree actually renders.
@@ -357,7 +357,7 @@ class SchemaBrowserScreen(Screen[None]):
             connector = self._registry.get(alias)
             schema = connector.schema
             if isinstance(schema, PropertyGraphSchema):
-                self._add_graph_db_node(
+                self._add_graph_source_node(
                     tree.root,
                     alias,
                     connector,
@@ -365,20 +365,20 @@ class SchemaBrowserScreen(Screen[None]):
                 )
                 continue
             if isinstance(schema, RDFSchema):
-                self._add_rdf_db_node(tree.root, alias, connector, schema)
+                self._add_rdf_source_node(tree.root, alias, connector, schema)
                 continue
             if not isinstance(schema, SQLSchema):
                 continue
 
-            db_label = Text()
-            db_label.append(alias, style="bold")
+            source_label = Text()
+            source_label.append(alias, style="bold")
             dialect = schema.dialect or getattr(connector, "language", None)
             if dialect:
-                db_label.append(f"  {dialect}", style="dim")
+                source_label.append(f"  {dialect}", style="dim")
 
-            db_node = tree.root.add(
-                db_label,
-                data=_NodeData(kind=_NODE_KIND_DB, alias=alias),
+            source_node = tree.root.add(
+                source_label,
+                data=_NodeData(kind=_NODE_KIND_SOURCE, alias=alias),
                 expand=self._expand_for((alias, None, None, None), True),
             )
 
@@ -394,7 +394,7 @@ class SchemaBrowserScreen(Screen[None]):
                     sn_label = Text()
                     sn_label.append(sn or "(default)", style="bold")
                     sn_label.append("  schema", style="dim")
-                    schema_node = db_node.add(
+                    schema_node = source_node.add(
                         sn_label,
                         data=_NodeData(kind=_NODE_KIND_SCHEMA, alias=alias, schema_name=sn),
                         expand=self._expand_for((alias, sn, None, None), True),
@@ -403,9 +403,9 @@ class SchemaBrowserScreen(Screen[None]):
                         self._add_table_node(schema_node, alias, t)
             else:
                 for t in sorted(tables, key=lambda t: t.name):
-                    self._add_table_node(db_node, alias, t)
+                    self._add_table_node(source_node, alias, t)
 
-    def _add_rdf_db_node(
+    def _add_rdf_source_node(
         self,
         parent: object,
         alias: str,
@@ -417,20 +417,20 @@ class SchemaBrowserScreen(Screen[None]):
         assert isinstance(schema, RDFSchema)
         parent_node: Any = parent
 
-        db_label = Text()
-        db_label.append(alias, style="bold")
-        db_label.append(f"  {connector.backend}", style="dim")
+        source_label = Text()
+        source_label.append(alias, style="bold")
+        source_label.append(f"  {connector.backend}", style="dim")
         parent_node.add_leaf(
-            db_label,
+            source_label,
             data=_NodeData(
-                kind=_NODE_KIND_DB,
+                kind=_NODE_KIND_SOURCE,
                 alias=alias,
                 path=(alias, None, None, None),
                 status_text=f"{alias}  |  RDF source  |  {connector.language}",
             ),
         )
 
-    def _add_graph_db_node(
+    def _add_graph_source_node(
         self,
         parent: object,
         alias: str,
@@ -444,14 +444,14 @@ class SchemaBrowserScreen(Screen[None]):
         node_types_label = _GRAPH_GROUP_LABELS[_GRAPH_NODE_TYPES]
         rel_types_label = _GRAPH_GROUP_LABELS[_GRAPH_REL_TYPES]
 
-        db_label = Text()
-        db_label.append(alias, style="bold")
-        db_label.append(f"  {connector.backend}", style="dim")
+        source_label = Text()
+        source_label.append(alias, style="bold")
+        source_label.append(f"  {connector.backend}", style="dim")
 
-        db_node = parent_node.add(
-            db_label,
+        source_node = parent_node.add(
+            source_label,
             data=_NodeData(
-                kind=_NODE_KIND_DB,
+                kind=_NODE_KIND_SOURCE,
                 alias=alias,
                 path=(alias, None, None, None),
                 status_text=(
@@ -462,7 +462,7 @@ class SchemaBrowserScreen(Screen[None]):
             expand=self._expand_for((alias, None, None, None), False),
         )
 
-        nodes = db_node.add(
+        nodes = source_node.add(
             Text(node_types_label, style="bold"),
             data=_NodeData(
                 kind=_NODE_KIND_GRAPH_GROUP,
@@ -493,7 +493,7 @@ class SchemaBrowserScreen(Screen[None]):
                 properties=node.properties,
             )
 
-        relationships = db_node.add(
+        relationships = source_node.add(
             Text(rel_types_label, style="bold"),
             data=_NodeData(
                 kind=_NODE_KIND_GRAPH_GROUP,
@@ -599,7 +599,7 @@ class SchemaBrowserScreen(Screen[None]):
 
         For writable SQL connectors (``read_only=False``), runs a live
         ``SELECT * ... LIMIT 10`` so the preview reflects the current
-        database state.  For read-only or non-SQL connectors, falls back
+        source state. For read-only or non-SQL connectors, falls back
         to the cached ``sampled_df``.
         """
         from textual.widgets import Tree
@@ -661,10 +661,10 @@ class SchemaBrowserScreen(Screen[None]):
         self.dismiss()
 
     async def action_refresh_schema(self) -> None:
-        """Re-introspect the visible database(s) and rebuild the tree in place.
+        """Re-introspect the visible data sources and rebuild the tree in place.
 
         Re-reads each shown connector's schema directly from the live
-        database, so DDL run outside the agent (or by it) shows up here on
+        source, so DDL run outside the agent (or by it) shows up here on
         demand. Cursor and expansion state are preserved across the
         rebuild. Re-introspection can be slow on cloud warehouses, so the
         key is a no-op while a refresh is already in flight.
@@ -787,7 +787,7 @@ class SchemaBrowserScreen(Screen[None]):
             self._status.update(Text(""))
             return
 
-        if node_data.kind == _NODE_KIND_DB:
+        if node_data.kind == _NODE_KIND_SOURCE:
             tables = self._visible_tables(node_data.alias, schema)
             parts.append(node_data.alias)
             parts.append(f"{len(tables):,} tables")

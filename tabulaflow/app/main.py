@@ -31,7 +31,7 @@ def run_chat(
     output_pane_host: str = "127.0.0.1",
     output_pane_public_url: str | None = None,
 ) -> None:
-    """Start an interactive database chat session."""
+    """Start an interactive data session."""
     import asyncio
     import logging
 

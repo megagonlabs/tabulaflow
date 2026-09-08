@@ -11,7 +11,7 @@ from pydantic_ai.models.test import TestModel
 from tabulaflow.agents import AgentRuntimeConfig, initialize_agent_runtime
 from tabulaflow.agents._cache import InvalidCacheEntry, load_or_compute_model
 from tabulaflow.agents.llm import make_agent
-from tabulaflow.agents.summarization import DBSummarizer, _database_system_prompt
+from tabulaflow.agents.summarization import DataSourceSummarizer, _data_source_system_prompt
 from tabulaflow.core._cache import write_cached_model
 from tabulaflow.core.schema import SQLSchema
 from tabulaflow.agents.runtime import _get_agent_runtime, _reset_agent_runtime_for_tests
@@ -24,8 +24,8 @@ async def reset_runtime() -> AsyncIterator[None]:
     await _reset_agent_runtime_for_tests()
 
 
-def test_database_summary_prompt_renders_display_name() -> None:
-    prompt = _database_system_prompt(display_name="analytics", max_words=100)
+def test_data_source_summary_prompt_renders_display_name() -> None:
+    prompt = _data_source_system_prompt(display_name="analytics", max_words=100)
 
     assert 'The title should be "Data source: `analytics`".' in prompt
     assert "<display_name>" not in prompt
@@ -216,22 +216,22 @@ async def test_agent_cache_recomputes_invalid_entry_unless_cache_only(tmp_path: 
         )
 
 
-async def test_database_summarizer_owns_versioned_semantic_cache_key(tmp_path: Path) -> None:
+async def test_data_source_summarizer_owns_versioned_semantic_cache_key(tmp_path: Path) -> None:
     initialize_agent_runtime(AgentRuntimeConfig(cache_dir=tmp_path, preprocessing_cache_mode="read_write"))
     connector = cast(
         Any,
         SimpleNamespace(
-            global_id="empty-db",
+            global_id="empty-source",
             schema=SQLSchema(display_name="empty", dialect="sqlite", tables=[]),
         ),
     )
-    summarizer = DBSummarizer(max_words=100)
+    summarizer = DataSourceSummarizer(max_words=100)
 
     summary = await summarizer.summarize(connector)
     cached = await summarizer.summarize(connector)
 
     assert summary == cached
-    assert len(list((tmp_path / "agent" / "db_summaries").glob("v4@*.md"))) == 1
-    changed = DBSummarizer(max_words=200)
+    assert len(list((tmp_path / "agent" / "data_source_summaries").glob("v4@*.md"))) == 1
+    changed = DataSourceSummarizer(max_words=200)
     await changed.summarize(connector)
-    assert len(list((tmp_path / "agent" / "db_summaries").glob("v4@*.md"))) == 2
+    assert len(list((tmp_path / "agent" / "data_source_summaries").glob("v4@*.md"))) == 2

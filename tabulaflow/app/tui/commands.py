@@ -64,7 +64,7 @@ def _announce_connect(
     info = format_connector_summary(connector)
     message = f"the user just connected a new data source `{alias}` ({info})."
     if guidance:
-        message += f"\n\n{guidance}\n\nUse get_db_document for complete source documentation."
+        message += f"\n\n{guidance}\n\nUse get_data_source_document for complete source documentation."
     session.note_event(message)
     return info
 
@@ -276,7 +276,7 @@ async def _cmd_disconnect(args: list[str], session: AppSession) -> CommandResult
             )
         )
 
-    if await session.disconnect_db(alias):
+    if await session.disconnect_source(alias):
         return CommandResult(output=Text(f"✓ Disconnected from {alias}", style="dim"))
     else:
         return CommandResult(output=Text.from_markup(f"[{ERROR}]No connection named:[/] {escape(alias)}"))

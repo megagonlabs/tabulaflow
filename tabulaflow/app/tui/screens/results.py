@@ -810,7 +810,7 @@ class ChartBrowserScreen(Screen[None]):
 
 
 # Node data stored in Tree nodes to identify what each node represents.
-_NODE_KIND_DB = "db"
+_NODE_KIND_SOURCE = "source"
 _NODE_KIND_SCHEMA = "schema"
 _NODE_KIND_TABLE = "table"
 _NODE_KIND_COLUMN = "column"

@@ -335,7 +335,7 @@ it for the model:
 - `connect_data_source`
 - `write_result_table`
 - `create_parameterized_source`
-- `get_db_document`
+- `get_data_source_document`
 - `get_table_schema`
 - `get_column_json_schema`
 - `get_schema`

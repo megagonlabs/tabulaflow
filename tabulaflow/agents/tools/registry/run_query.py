@@ -134,7 +134,7 @@ class RegistryRunQueryTool:
         try:
             source = await self._output_store.add_fixed_artifact_source(
                 connector_alias=connector_alias,
-                query_language=tool.db_connector.language,
+                query_language=tool.connector.language,
                 query=execution.query,
                 exec_result=exec_result,
             )

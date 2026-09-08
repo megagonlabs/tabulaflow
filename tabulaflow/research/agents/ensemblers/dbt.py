@@ -13,7 +13,7 @@ from pydantic_ai import ModelRetry, ToolOutput
 from tabulaflow.research.observability import trace_prediction
 from tabulaflow.data import SQLConnector
 from tabulaflow.output.formatting import SQLDDLSchemaFormatter
-from tabulaflow.agents.summarization import DBSummarizer
+from tabulaflow.agents.summarization import DataSourceSummarizer
 from tabulaflow.agents.llm import ReasoningLevel, ServiceTier, make_model_settings
 from tabulaflow.agents.trace import Usage, Trajectory
 from tabulaflow.research.types import DbtTask, DbtTaskOutput
@@ -149,7 +149,7 @@ class DbtLLMEnsembler:
             )
 
         # Get db summary for context
-        db_summarizer = DBSummarizer(llm=self.config.db_summarizer_llm)
+        db_summarizer = DataSourceSummarizer(llm=self.config.db_summarizer_llm)
         db_summary = await db_summarizer.summarize(db_connector)
 
         # Build candidate descriptions

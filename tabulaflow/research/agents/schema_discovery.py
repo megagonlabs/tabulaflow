@@ -6,7 +6,7 @@ from tabulaflow.agents.trace import Usage, Trajectory
 from tabulaflow.research.observability import trace_prediction
 from tabulaflow.research.types import PredQuery
 from tabulaflow.research.types import SimpleNL2QTask, SimpleNL2QTaskOutput
-from tabulaflow.agents.summarization import DBSummarizer
+from tabulaflow.agents.summarization import DataSourceSummarizer
 from tabulaflow.agents.tools import AgentTool, GetColumnJsonSchemaTool, GetTableSchemaTool, RunQueryTool
 from tabulaflow.agents.tools.run_query import latest_query_execution
 from tabulaflow.research.tools import FinishTool
@@ -100,7 +100,7 @@ class SchemaDiscoveryAgent:
             raise TypeError(f"SchemaDiscoveryAgent requires a SQL db connector, got {type(db_connector)!r}")
         t0 = time.time()
 
-        db_summarizer = DBSummarizer(llm=self.config.db_summarizer_llm)
+        db_summarizer = DataSourceSummarizer(llm=self.config.db_summarizer_llm)
 
         db_summary = await db_summarizer.summarize(db_connector)
         system_prompt = jinja2.Template(SCHEMA_DISCOVERY_SYSTEM_PROMPT).render(

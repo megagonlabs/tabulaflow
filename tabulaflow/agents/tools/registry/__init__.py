@@ -1,1 +1,1 @@
-"""Tools that resolve database and output aliases at call time."""
+"""Tools that resolve data-source and output aliases at call time."""

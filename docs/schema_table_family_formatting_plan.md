@@ -259,9 +259,9 @@ If preprocessing many partition tables is too expensive, optimize the relevant o
 
 Enable `group_partitioned_tables` when constructing formatters in:
 
-- `DBSummarizer`;
+- `DataSourceSummarizer`;
 - `RegistryGetSchemaTool`;
-- `RegistryGetDBDocumentTool`;
+- `RegistryGetDataSourceDocumentTool`;
 - direct-prompting and mini agents;
 - simple and ambiguous research agents;
 - private ERD synthesis prompts;

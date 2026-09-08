@@ -16,7 +16,7 @@ if TYPE_CHECKING:
     from tabulaflow.agents.tools.filesystem.edit import EditFileTool
     from tabulaflow.agents.tools.filesystem.view import ViewTool
     from tabulaflow.agents.tools.registry.get_column_json_schema import RegistryGetColumnJsonSchemaTool
-    from tabulaflow.agents.tools.registry.get_db_document import RegistryGetDBDocumentTool
+    from tabulaflow.agents.tools.registry.get_data_source_document import RegistryGetDataSourceDocumentTool
     from tabulaflow.agents.tools.registry.get_table_schema import RegistryGetTableSchemaTool
     from tabulaflow.agents.tools.registry.run_query import RegistryRunQueryTool
     from tabulaflow.agents.tools.registry.write_result_table import WriteResultTableTool
@@ -32,7 +32,7 @@ if TYPE_CHECKING:
 class _ChatTools:
     run_query: RegistryRunQueryTool
     create_parameterized_source: CreateParameterizedArtifactSourceTool
-    get_db_document: RegistryGetDBDocumentTool
+    get_data_source_document: RegistryGetDataSourceDocumentTool
     get_table_schema: RegistryGetTableSchemaTool
     get_column_json_schema: RegistryGetColumnJsonSchemaTool
     write_result_table: WriteResultTableTool

@@ -268,7 +268,7 @@ def summarize_tool_args(name: str, args: Mapping[str, object]) -> str:
         if len(query) > 40:
             query = query[:37] + "..."
         return f"Query {connector_prefix}{query}"
-    if name == "get_db_document":
+    if name == "get_data_source_document":
         return f"Inspect {connector_prefix}".rstrip()
     if name == "get_table_schema":
         parts = [str(args["schema_name"])] if args.get("schema_name") else []

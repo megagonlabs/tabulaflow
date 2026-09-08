@@ -104,7 +104,7 @@ def _shorten_stored_input(value: str | list[str | BinaryContent], message_id: st
 
 
 class ChatSession:
-    """Stateful runtime for one interactive database conversation.
+    """Stateful runtime for one interactive data conversation.
 
     A session owns conversation history, tools, outputs, and model state and runs
     one turn at a time. Call :meth:`aclose` when the session is no longer needed.
@@ -244,7 +244,7 @@ class ChatSession:
         """Construct the agent's toolset, wiring in the shared output store and
         message store. ``subagent_dir`` (if set) is where subagent trajectories land."""
         from tabulaflow.output.formatting.sql_ddl import SQLDDLSchemaFormatter
-        from tabulaflow.agents.summarization import DBSummarizer
+        from tabulaflow.agents.summarization import DataSourceSummarizer
         from tabulaflow.agents.tools.add_canonical_name import AddCanonicalNameTool
         from tabulaflow.agents.tools.filesystem.patch import ApplyPatchTool
         from tabulaflow.agents.tools.connect_data_source import ConnectDataSourceTool
@@ -253,7 +253,7 @@ class ChatSession:
         from tabulaflow.agents.tools.filesystem.edit import EditFileTool
         from tabulaflow.agents.tools.filesystem.view import ViewTool
         from tabulaflow.agents.tools.registry.get_column_json_schema import RegistryGetColumnJsonSchemaTool
-        from tabulaflow.agents.tools.registry.get_db_document import RegistryGetDBDocumentTool
+        from tabulaflow.agents.tools.registry.get_data_source_document import RegistryGetDataSourceDocumentTool
         from tabulaflow.agents.tools.registry.get_table_schema import RegistryGetTableSchemaTool
         from tabulaflow.agents.tools.registry.run_query import RegistryRunQueryTool
         from tabulaflow.agents.tools.registry.write_result_table import WriteResultTableTool
@@ -296,10 +296,10 @@ class ChatSession:
             create_parameterized_source=CreateParameterizedArtifactSourceTool(
                 self._registry, output_store=self._output_store
             ),
-            get_db_document=RegistryGetDBDocumentTool(
+            get_data_source_document=RegistryGetDataSourceDocumentTool(
                 self._registry,
-                db_summarizer_cls=DBSummarizer,
-                db_summarizer_llm=self.subagent_model,
+                summarizer_cls=DataSourceSummarizer,
+                summarizer_llm=self.subagent_model,
                 model_settings=self._subagent_model_settings(),
                 enable_refresh=True,
             ),

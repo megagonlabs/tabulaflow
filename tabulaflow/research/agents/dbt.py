@@ -14,7 +14,7 @@ from tabulaflow.research.agents.registry import agent_registry
 from tabulaflow.research.agents.utils import BasicAgentConfig, get_max_steps_capability
 from tabulaflow.data import SQLConnector
 from tabulaflow.output.formatting import SQLSchemaFormatter, schema_formatter_registry
-from tabulaflow.agents.summarization import DBSummarizer
+from tabulaflow.agents.summarization import DataSourceSummarizer
 from tabulaflow.agents.trace import Usage, Trajectory
 from tabulaflow.research.types import DbtTask, DbtTaskOutput
 from tabulaflow.agents.tools import GetTableSchemaTool, RunQueryTool
@@ -146,7 +146,7 @@ class DbtAgent:
             raise ValueError("working_dir must be set before calling predict_async")
         working_dir = task.working_dir
 
-        db_summarizer = DBSummarizer(llm=self.config.db_summarizer_llm)
+        db_summarizer = DataSourceSummarizer(llm=self.config.db_summarizer_llm)
         db_document = await db_summarizer.summarize(db_connector)
 
         view = ViewTool(working_dir)

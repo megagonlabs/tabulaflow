@@ -9,7 +9,7 @@ from tabulaflow.research.observability import trace_prediction
 from tabulaflow.research.agents.ensemblers.utils import execution_result_key, format_execution_result
 from tabulaflow.data import SQLConnector
 from tabulaflow.research.query_execution import populate_query_exec_result
-from tabulaflow.agents.summarization import DBSummarizer
+from tabulaflow.agents.summarization import DataSourceSummarizer
 from tabulaflow.agents.trace import Usage, Trajectory
 from tabulaflow.research.types import SimpleNL2QTask, SimpleNL2QTaskOutput
 from tabulaflow.agents.llm import ReasoningLevel, ServiceTier, make_agent, make_model_settings
@@ -151,7 +151,7 @@ class LLMEnsembler:
             return SimpleNL2QTaskOutput(**task.model_dump(), pred_query=best.pred_query)
 
         # Get db summary for context
-        db_summarizer = DBSummarizer(llm=self.config.db_summarizer_llm)
+        db_summarizer = DataSourceSummarizer(llm=self.config.db_summarizer_llm)
         db_summary = await db_summarizer.summarize(db_connector)
 
         # Build candidate descriptions for the LLM

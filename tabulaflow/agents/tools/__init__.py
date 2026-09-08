@@ -23,7 +23,7 @@ if TYPE_CHECKING:
     from tabulaflow.agents.tools.get_column_json_schema import GetColumnJsonSchemaTool
     from tabulaflow.agents.tools.get_table_schema import GetTableSchemaTool
     from tabulaflow.agents.tools.registry.get_column_json_schema import RegistryGetColumnJsonSchemaTool
-    from tabulaflow.agents.tools.registry.get_db_document import RegistryGetDBDocumentTool
+    from tabulaflow.agents.tools.registry.get_data_source_document import RegistryGetDataSourceDocumentTool
     from tabulaflow.agents.tools.registry.get_schema import RegistryGetSchemaTool
     from tabulaflow.agents.tools.registry.get_table_schema import RegistryGetTableSchemaTool
     from tabulaflow.agents.tools.registry.run_query import RegistryRunQueryTool
@@ -68,9 +68,9 @@ _LAZY_EXPORTS = {
         "tabulaflow.agents.tools.registry.get_column_json_schema",
         "RegistryGetColumnJsonSchemaTool",
     ),
-    "RegistryGetDBDocumentTool": (
-        "tabulaflow.agents.tools.registry.get_db_document",
-        "RegistryGetDBDocumentTool",
+    "RegistryGetDataSourceDocumentTool": (
+        "tabulaflow.agents.tools.registry.get_data_source_document",
+        "RegistryGetDataSourceDocumentTool",
     ),
     "RegistryGetSchemaTool": ("tabulaflow.agents.tools.registry.get_schema", "RegistryGetSchemaTool"),
     "RegistryGetTableSchemaTool": (
@@ -118,7 +118,7 @@ __all__ = [
     "LLMProfileTool",
     "ProgressReportingTool",
     "RegistryGetColumnJsonSchemaTool",
-    "RegistryGetDBDocumentTool",
+    "RegistryGetDataSourceDocumentTool",
     "RegistryGetSchemaTool",
     "RegistryGetTableSchemaTool",
     "RegistryRunQueryTool",

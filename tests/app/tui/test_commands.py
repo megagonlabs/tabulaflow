@@ -166,7 +166,7 @@ async def test_connect_catalog_source_uses_default_alias_and_announces_guidance(
     assert result.output.plain == "✓ Connected to wikidata (sparql)"
     assert session.registry.connectors == {"wikidata": connector}
     assert "en,mul" in session.events[-1]
-    assert "get_db_document" in session.events[-1]
+    assert "get_data_source_document" in session.events[-1]
 
 
 async def test_connect_generated_alias_is_suffixed_on_collision(monkeypatch: pytest.MonkeyPatch) -> None:

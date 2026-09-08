@@ -1,4 +1,4 @@
-"""Reusable LLM-based database summarization."""
+"""Reusable LLM-based data-source summarization."""
 
 from __future__ import annotations
 
@@ -18,8 +18,8 @@ from tabulaflow.output.formatting.cypher import CypherSchemaFormatter
 from tabulaflow.output.formatting.sparql import SPARQLSchemaFormatter
 from tabulaflow.output.formatting.sql_ddl import SQLDDLSchemaFormatter
 
-_DB_SUMMARY_CACHE_VERSION = "v4"
-_DB_SUMMARIZATION_PROMPT = """
+_DATA_SOURCE_SUMMARY_CACHE_VERSION = "v4"
+_DATA_SOURCE_SUMMARIZATION_PROMPT = """
 You are an AI data expert tasked with producing a summary for a data source.
 The purpose of the summary is to help data experts explore the source and write queries efficiently and accurately.
 
@@ -33,18 +33,21 @@ The purpose of the summary is to help data experts explore the source and write 
 - For SQL sources: when referring to tables, use schema-qualified table names (e.g. `schema.table`) if a schema is present.
 </requirements>
 """.strip()
-_DB_USER_PROMPT_MAX_CHARS = 400000
+_DATA_SOURCE_PROMPT_MAX_CHARS = 400000
 
 
-def _database_user_prompt(formatted_schema: str) -> str:
-    return f"Generate a summary for the following data source:\n\n<db_schema>\n{formatted_schema}\n</db_schema>"
+def _data_source_user_prompt(formatted_schema: str) -> str:
+    return (
+        "Generate a summary for the following data source:\n\n"
+        f"<data_source_schema>\n{formatted_schema}\n</data_source_schema>"
+    )
 
 
-def _database_system_prompt(*, display_name: str, max_words: int) -> str:
-    return _DB_SUMMARIZATION_PROMPT.format(display_name=display_name, max_words=max_words)
+def _data_source_system_prompt(*, display_name: str, max_words: int) -> str:
+    return _DATA_SOURCE_SUMMARIZATION_PROMPT.format(display_name=display_name, max_words=max_words)
 
 
-def _truncate_database_prompt(user_prompt: str, max_chars: int = _DB_USER_PROMPT_MAX_CHARS) -> str:
+def _truncate_data_source_prompt(user_prompt: str, max_chars: int = _DATA_SOURCE_PROMPT_MAX_CHARS) -> str:
     if len(user_prompt) <= max_chars:
         return user_prompt
     note = "\n\n[truncated: schema text exceeded prompt budget]"
@@ -52,7 +55,7 @@ def _truncate_database_prompt(user_prompt: str, max_chars: int = _DB_USER_PROMPT
     return note[:max_chars] if cutoff <= 0 else user_prompt[:cutoff] + note
 
 
-class DBSummarizer:
+class DataSourceSummarizer:
     """Produce schema-sensitive, cached Markdown summaries for data connectors.
 
     Args:
@@ -85,7 +88,7 @@ class DBSummarizer:
     def _cache_path(self, cache_dir: Path, connector: DataConnector) -> Path:
         key = stable_cache_key(
             {
-                "version": _DB_SUMMARY_CACHE_VERSION,
+                "version": _DATA_SOURCE_SUMMARY_CACHE_VERSION,
                 "global_id": connector.global_id,
                 "schema": connector.schema.model_dump(mode="json"),
                 "llm": self.llm,
@@ -94,7 +97,7 @@ class DBSummarizer:
                 "model_settings": self.model_settings,
             }
         )
-        return cache_dir / "agent" / "db_summaries" / f"{_DB_SUMMARY_CACHE_VERSION}@{key}.md"
+        return cache_dir / "agent" / "data_source_summaries" / f"{_DATA_SOURCE_SUMMARY_CACHE_VERSION}@{key}.md"
 
     @staticmethod
     async def _load_cache(path: Path) -> str:
@@ -122,23 +125,23 @@ class DBSummarizer:
         from tabulaflow.agents.tools.run_query import RunQueryTool
 
         schema = connector.schema
-        system_prompt = _database_system_prompt(display_name=schema.display_name, max_words=self.max_words)
+        system_prompt = _data_source_system_prompt(display_name=schema.display_name, max_words=self.max_words)
         if isinstance(schema, SQLSchema):
             sql_schema = schema
             if not sql_schema.tables:
                 return f"# Data source: `{sql_schema.display_name}`\n\nThis data source has no tables."
-            user_prompt = _database_user_prompt(self._sql_formatter.format(sql_schema, include_descriptions=True))
+            user_prompt = _data_source_user_prompt(self._sql_formatter.format(sql_schema, include_descriptions=True))
         elif isinstance(schema, PropertyGraphSchema):
             graph_schema = schema
             if not graph_schema.nodes and not graph_schema.relationships:
                 return (
                     f"# Data source: `{graph_schema.display_name}`\n\nThis data source has no nodes or relationships."
                 )
-            user_prompt = _database_user_prompt(self._graph_formatter.format(graph_schema))
+            user_prompt = _data_source_user_prompt(self._graph_formatter.format(graph_schema))
         elif isinstance(schema, RDFSchema):
-            user_prompt = _database_user_prompt(self._rdf_formatter.format(schema))
+            user_prompt = _data_source_user_prompt(self._rdf_formatter.format(schema))
         else:
-            raise TypeError(f"Unsupported schema type for DBSummarizer: {type(schema)!r}")
+            raise TypeError(f"Unsupported schema type for DataSourceSummarizer: {type(schema)!r}")
 
         settings: dict[str, Any] = dict(make_model_settings(model=self.llm, reasoning=self.reasoning))
         settings.update(self.model_settings or {})
@@ -149,6 +152,6 @@ class DBSummarizer:
             tools=[RunQueryTool(connector).as_pydantic_ai_tool()],
             model_settings=settings,
         )
-        result = await agent.run(_truncate_database_prompt(user_prompt))
+        result = await agent.run(_truncate_data_source_prompt(user_prompt))
         self._usage += Usage.from_pydantic_ai_usage(result.usage, self.llm)
         return result.output

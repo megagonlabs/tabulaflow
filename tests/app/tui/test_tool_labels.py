@@ -273,9 +273,9 @@ class TestVerbLedLabels:
             == "Query [main] SELECT 1"
         )
 
-    def test_inspect_database(self) -> None:
-        # the whole-db read has no target noun — the db tag carries it
-        assert summarize_tool_args("get_db_document", {"connector_alias": "main"}) == "Inspect [main]"
+    def test_inspect_data_source(self) -> None:
+        # The whole-source read has no target noun; the alias tag carries it.
+        assert summarize_tool_args("get_data_source_document", {"connector_alias": "main"}) == "Inspect [main]"
 
     def test_inspect_table_with_schema(self) -> None:
         args = {"connector_alias": "main", "schema_name": "public", "table_name": "orders"}

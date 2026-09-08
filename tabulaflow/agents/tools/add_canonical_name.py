@@ -228,7 +228,7 @@ class AddCanonicalNameTool:
         self.model_settings = model_settings
         self.max_concurrency = max_concurrency
         self.trajectory_log_dir = trajectory_log_dir
-        self._db_connector: SQLConnector | None = None
+        self._connector: SQLConnector | None = None
         # Ticks carry a ``stage`` of ``"resolve"``, ``"canonicalize"``, or
         # ``"disambiguate"``. Disambiguate ticks per batch and is only emitted
         # when collisions exist.
@@ -236,7 +236,7 @@ class AddCanonicalNameTool:
 
     def attach_connector(self, connector: SQLConnector) -> None:
         """Bind the workspace connector after construction (mirrors OutputStore)."""
-        self._db_connector = connector
+        self._connector = connector
 
     def apply_llm_profile(self, *, llm: str, model_settings: ModelSettings | None) -> None:
         """Apply the LLM profile used by canonicalization subagents."""
@@ -317,8 +317,8 @@ class AddCanonicalNameTool:
         tool_call_id: str | None = None,
     ) -> str:
         """Canonicalize one table column without requiring an agent run context."""
-        if self._db_connector is None:
-            raise RuntimeError("no workspace database connected")
+        if self._connector is None:
+            raise RuntimeError("no workspace connector attached")
 
         # Shared setup: distinct source values + ensure canonical_column exists.
         distinct_values, error = await self._fetch_distinct_values(schema_name, table_name, input_column)
@@ -393,10 +393,10 @@ class AddCanonicalNameTool:
         self, schema_name: str | None, table_name: str, input_column: str
     ) -> tuple[list[str], str | None]:
         """Return distinct non-null values of ``input_column`` (and an optional error message)."""
-        assert self._db_connector is not None
+        assert self._connector is not None
         sa_input_table = sa_table(schema_name, table_name, input_column)
         qualified = qualified_table(schema_name, table_name)
-        distinct_res = await self._db_connector.run_query_async(
+        distinct_res = await self._connector.run_query_async(
             sqlalchemy.select(sa_input_table.c[input_column])
             .distinct()
             .where(sa_input_table.c[input_column].is_not(None))
@@ -411,10 +411,10 @@ class AddCanonicalNameTool:
         self, schema_name: str | None, table_name: str, input_column: str, canonical_column: str
     ) -> str | None:
         """Verify ``canonical_column`` exists on the target; the tool does not create it."""
-        assert self._db_connector is not None
+        assert self._connector is not None
         qualified = qualified_table(schema_name, table_name)
         target_sa = sa_table(schema_name, table_name)
-        cols_res = await self._db_connector.run_query_async(
+        cols_res = await self._connector.run_query_async(
             sqlalchemy.select(sqlalchemy.text("*")).select_from(target_sa).limit(0)
         )
         if cols_res.error is not None or cols_res.df is None:
@@ -502,8 +502,8 @@ class AddCanonicalNameTool:
         Returns ``(mapping, n_errors, n_clusters, error_message)``. On non-None
         ``error_message`` the caller must skip the SQL UPDATE — the mapping is empty.
         """
-        assert self._db_connector is not None
-        run_query_pa_tool = RunQueryTool(self._db_connector).as_pydantic_ai_tool()
+        assert self._connector is not None
+        run_query_pa_tool = RunQueryTool(self._connector).as_pydantic_ai_tool()
         qualified_target = qualified_table(schema_name, table_name)
         value_to_idx = {v: i for i, v in enumerate(distinct_values)}
 
@@ -818,7 +818,7 @@ class AddCanonicalNameTool:
         """
         import pandas as pd
 
-        assert self._db_connector is not None
+        assert self._connector is not None
         if not mapping:
             return None
 
@@ -826,7 +826,7 @@ class AddCanonicalNameTool:
         mapping_table_name = f"_canonical_mapping_{uuid.uuid4().hex[:12]}"
         try:
             mapping_df = pd.DataFrame(list(mapping.items()), columns=["input_val", "canonical_val"])
-            await self._db_connector.write_dataframe_async(df=mapping_df, table_name=mapping_table_name)
+            await self._connector.write_dataframe_async(df=mapping_df, table_name=mapping_table_name)
 
             target = sa_table(schema_name, table_name, input_column, canonical_column)
             map_t = sa_table(None, mapping_table_name, "input_val", "canonical_val")
@@ -835,7 +835,7 @@ class AddCanonicalNameTool:
                 .values({target.c[canonical_column]: map_t.c.canonical_val})
                 .where(target.c[input_column] == map_t.c.input_val)
             )
-            result = await self._db_connector.run_query_async(stmt)
+            result = await self._connector.run_query_async(stmt)
             if result.error is not None:
                 logger.warning(
                     "UPDATE for canonical_column %s on %s failed: %s",
@@ -848,7 +848,7 @@ class AddCanonicalNameTool:
         finally:
             # Best-effort cleanup of the mapping table.
             try:
-                await self._db_connector.run_query_async(
+                await self._connector.run_query_async(
                     sqlalchemy.text(f'DROP TABLE IF EXISTS "{mapping_table_name}"')
                 )
             except Exception:
@@ -866,13 +866,13 @@ class AddCanonicalNameTool:
         """
         import pandas as pd
 
-        assert self._db_connector is not None
+        assert self._connector is not None
         qualified = qualified_table(schema_name, table_name)
 
         # Read the whole table.
         target_sa = sa_table(schema_name, table_name)
         select_stmt = sqlalchemy.select(sqlalchemy.text("*")).select_from(target_sa)
-        res = await self._db_connector.run_query_async(select_stmt)
+        res = await self._connector.run_query_async(select_stmt)
         if res.error is not None or res.df is None:
             detail = res.error.message if res.error else "no dataframe"
             return None, f"failed to read {qualified} for merge_duplicates: {detail}"
@@ -899,7 +899,7 @@ class AddCanonicalNameTool:
 
         # Write back in place — schema and table go to write_dataframe_async separately.
         try:
-            await self._db_connector.write_dataframe_async(
+            await self._connector.write_dataframe_async(
                 df=merged, table_name=table_name, schema_name=schema_name, mode="replace_rows"
             )
         except ValueError as e:

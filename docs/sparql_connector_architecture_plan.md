@@ -13,7 +13,7 @@ The final design has:
   implementations;
 - tagged SQL, property-graph, and RDF schema models;
 - concrete optional operations outside the universal connector contract; and
-- generic agent tools such as `connect_data_source`, `get_db_document`,
+- generic agent tools such as `connect_data_source`, `get_data_source_document`,
   `run_query`, and `write_result_table` rather than Wikidata-specific tools.
 
 Wikidata uses the generic `SPARQLConnector`, not a separate connector
@@ -235,7 +235,7 @@ The intended Wikidata workflow uses the generic tools:
 
 ```text
 connect_data_source
-get_db_document
+get_data_source_document
 run_query
 write_result_table
 ```
@@ -404,7 +404,7 @@ Acceptance:
 ### Phase 7 — Test generic Wikidata behavior
 
 - Add Wikidata as a declarative source-catalog entry whose concise prepared
-  description is available through `get_db_document` and when the source connects.
+  description is available through `get_data_source_document` and when the source connects.
 - Connect the official endpoint through the generic `SPARQLConnector` with no
   endpoint profile or source-specific execution path.
 - Exercise entity and property resolution, labels, direct and full statements,

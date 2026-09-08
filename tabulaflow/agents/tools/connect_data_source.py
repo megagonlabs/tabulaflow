@@ -89,7 +89,7 @@ class ConnectDataSourceTool:
         if definition is not None:
             return (
                 f"Connected '{alias}' ({summary}). Query it using the alias '{alias}'.\n\n"
-                f"{definition.description.strip()}\n\nUse get_db_document for complete source documentation."
+                f"{definition.description.strip()}\n\nUse get_data_source_document for complete source documentation."
             )
         return f"Connected '{alias}' ({summary}). Query it using the alias '{alias}'."
 

@@ -16,7 +16,7 @@ from tabulaflow.output.formatting import SQLDDLSchemaFormatter
 from tabulaflow.output.store import OutputStore
 from tabulaflow.agents.tools import (
     RegistryGetColumnJsonSchemaTool,
-    RegistryGetDBDocumentTool,
+    RegistryGetDataSourceDocumentTool,
     RegistryGetSchemaTool,
     RegistryGetTableSchemaTool,
     RegistryRunQueryTool,
@@ -105,7 +105,7 @@ class TestRegistryToolErrorOutcomes:
         assert result.metadata == ToolCallOutcome(error=True)
 
     async def test_db_document_error_has_metadata(self) -> None:
-        tool = RegistryGetDBDocumentTool(DataConnectorRegistry(), db_summarizer_cls=lambda **_: None)
+        tool = RegistryGetDataSourceDocumentTool(DataConnectorRegistry(), summarizer_cls=lambda **_: None)
         result = await tool("missing")
         assert result.metadata == ToolCallOutcome(error=True)
 

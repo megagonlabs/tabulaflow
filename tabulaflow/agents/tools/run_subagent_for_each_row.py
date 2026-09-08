@@ -211,7 +211,7 @@ class RunSubagentForEachRowTool:
 
     def __init__(
         self,
-        db_connector: SQLConnector,
+        connector: SQLConnector,
         *,
         registry: DataConnectorRegistry | None = None,
         message_store: MessageStore | None = None,
@@ -224,9 +224,9 @@ class RunSubagentForEachRowTool:
         """Initialize the tool.
 
         Args:
-            db_connector: SQL connector for the table being updated (used for
+            connector: SQL connector for the table being updated (used for
                 per-row write-back).
-            registry: Optional database registry. Required only when callers
+            registry: Optional data-source registry. Required only when callers
                 pass ``enable_run_query_tool=True`` so the per-row subagent
                 can query any registered data source. If omitted, that flag is
                 unavailable.
@@ -258,7 +258,7 @@ class RunSubagentForEachRowTool:
         """
         if max_concurrency <= 0:
             raise ValueError("max_concurrency must be greater than 0")
-        self.db_connector = db_connector
+        self.connector = connector
         self.registry = registry
         self.message_store = message_store
         self.subagent_llm = subagent_llm
@@ -465,7 +465,7 @@ class RunSubagentForEachRowTool:
         if not key_columns:
             raise ValueError("key_columns must be a non-empty list naming a unique key of the target table")
 
-        select_result = await self.db_connector.run_query_async(task_query)
+        select_result = await self.connector.run_query_async(task_query)
         if select_result.error is not None or select_result.df is None:
             detail = select_result.error.message if select_result.error is not None else "no dataframe returned"
             raise RuntimeError(f"failed to evaluate task_query: {detail}")
@@ -483,7 +483,7 @@ class RunSubagentForEachRowTool:
         # decide whether to ALTER for _subagent_* columns. task_query may project
         # arbitrary computed/joined columns that don't correspond to table_name.
         qualified_target = qualified_table(schema_name, table_name)
-        table_columns_result = await self.db_connector.run_query_async(f"SELECT * FROM {qualified_target} LIMIT 0")
+        table_columns_result = await self.connector.run_query_async(f"SELECT * FROM {qualified_target} LIMIT 0")
         if table_columns_result.error is not None or table_columns_result.df is None:
             detail = (
                 table_columns_result.error.message
@@ -503,7 +503,7 @@ class RunSubagentForEachRowTool:
         # the connector's introspected schema; unresolved columns default to str. The
         # subagent's terminal output is one ``submit_answer`` call filling these fields.
         column_types, unsupported = resolve_column_types(
-            self.db_connector.schema, schema_name, table_name, output_columns
+            self.connector.schema, schema_name, table_name, output_columns
         )
         if unsupported:
             raise TypeError(
@@ -565,13 +565,13 @@ class RunSubagentForEachRowTool:
         total = len(rows)
 
         # Ensure _subagent_* columns exist on the target table.
-        dialect = self.db_connector.language
+        dialect = self.connector.language
         trajectory_dtype = _JSON_TYPE_FOR_DIALECT.get(dialect, "TEXT")
         if self.store_metadata:
             for col in _INTERNAL_COLUMNS:
                 if col not in table_columns:
                     dtype = trajectory_dtype if col == _COL_TRAJECTORY else "TEXT"
-                    await self.db_connector.run_query_async(f"ALTER TABLE {qualified_target} ADD COLUMN {col} {dtype}")
+                    await self.connector.run_query_async(f"ALTER TABLE {qualified_target} ADD COLUMN {col} {dtype}")
 
         # If nesting is enabled, construct one fresh tool instance to share across
         # all rows. Fresh (not ``self``) so its ``on_progress`` stays None and
@@ -580,7 +580,7 @@ class RunSubagentForEachRowTool:
         nested_pa_tool: Tool | None = None
         if enable_nested_subagents:
             nested_tool = RunSubagentForEachRowTool(
-                self.db_connector,
+                self.connector,
                 registry=self.registry,
                 message_store=self.message_store,
                 subagent_llm=self.subagent_llm,
@@ -599,9 +599,9 @@ class RunSubagentForEachRowTool:
         # Constructed once per call (like the nested tool) and shared across rows.
         extract_pa_tool: Tool | None = None
         canonical_pa_tool: Tool | None = None
-        if enable_browser_tools and isinstance(self.db_connector, SQLConnector):
+        if enable_browser_tools and isinstance(self.connector, SQLConnector):
             extract_pa_tool = ExtractRowsFromDocumentsTool(
-                self.db_connector,
+                self.connector,
                 subagent_llm=self.subagent_llm,
                 model_settings=self.model_settings,
                 max_concurrency=self.max_concurrency,
@@ -613,7 +613,7 @@ class RunSubagentForEachRowTool:
                 max_concurrency=self.max_concurrency,
                 trajectory_log_dir=self.trajectory_log_dir,
             )
-            canonical_tool.attach_connector(self.db_connector)
+            canonical_tool.attach_connector(self.connector)
             canonical_pa_tool = canonical_tool.as_pydantic_ai_tool()
 
         if enable_run_query_tool and self.registry is None:
@@ -665,7 +665,7 @@ class RunSubagentForEachRowTool:
                     }
                 )
             )
-            res = await self.db_connector.run_query_async(stmt)
+            res = await self.connector.run_query_async(stmt)
             if res.error is not None:
                 logger.warning("Failed to write subagent metadata for %s: %s", key_payload, res.error.message)
 
@@ -684,7 +684,7 @@ class RunSubagentForEachRowTool:
                 .where(_key_where_clause(key_columns, key_payload))
                 .values({sa_target.c[c]: getattr(output, c) for c in output_columns})
             )
-            res = await self.db_connector.run_query_async(stmt)
+            res = await self.connector.run_query_async(stmt)
             if res.error is not None:
                 return res.error.message
             # affected_rows != 1 means the key located the wrong number of rows:
@@ -819,7 +819,7 @@ class RunSubagentForEachRowTool:
                 return await _process_one_row(row_idx, row)
 
         errors = await asyncio.gather(*(_throttled(row_idx, row) for row_idx, row in enumerate(rows, start=1)))
-        await self.db_connector.refresh_schema_async()
+        await self.connector.refresh_schema_async()
 
         error_messages = [e for e in errors if e is not None]
         failed = len(error_messages)

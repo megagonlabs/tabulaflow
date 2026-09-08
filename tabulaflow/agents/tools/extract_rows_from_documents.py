@@ -87,7 +87,7 @@ class ExtractRowsFromDocumentsTool:
 
     def __init__(
         self,
-        db_connector: SQLConnector,
+        connector: SQLConnector,
         *,
         subagent_llm: str | Model = "openai-responses:gpt-5-mini",
         model_settings: ModelSettings | None = None,
@@ -99,7 +99,7 @@ class ExtractRowsFromDocumentsTool:
         """Initialize the tool.
 
         Args:
-            db_connector: SQL connector that both evaluates ``task_query`` and
+            connector: SQL connector that both evaluates ``task_query`` and
                 receives the appended rows (same database).
             subagent_llm: LLM identifier or model object used by per-chunk extraction subagents.
             model_settings: Optional pydantic-ai model settings passed to each
@@ -112,7 +112,7 @@ class ExtractRowsFromDocumentsTool:
                 as ``<dir>/<call_id>/doc-<D>-chunk-<N>.md``. A filesystem sink for
                 local debugging, mirroring ``run_subagent_for_each_row``.
         """
-        self.db_connector = db_connector
+        self.connector = connector
         self.subagent_llm = subagent_llm
         self.model_settings = model_settings
         self.max_concurrency = max_concurrency
@@ -227,7 +227,7 @@ class ExtractRowsFromDocumentsTool:
         if not output_columns:
             raise ValueError("output_columns must be non-empty")
 
-        select_result = await self.db_connector.run_query_async(task_query)
+        select_result = await self.connector.run_query_async(task_query)
         if select_result.error is not None or select_result.df is None:
             detail = select_result.error.message if select_result.error is not None else "no dataframe returned"
             raise RuntimeError(f"failed to evaluate task_query: {detail}")
@@ -273,7 +273,7 @@ class ExtractRowsFromDocumentsTool:
 
         # output_columns must already exist on the target table.
         qualified_target = qualified_table(schema_name, table_name)
-        table_columns_result = await self.db_connector.run_query_async(f"SELECT * FROM {qualified_target} LIMIT 0")
+        table_columns_result = await self.connector.run_query_async(f"SELECT * FROM {qualified_target} LIMIT 0")
         if table_columns_result.error is not None or table_columns_result.df is None:
             detail = (
                 table_columns_result.error.message
@@ -291,7 +291,7 @@ class ExtractRowsFromDocumentsTool:
         # an unparseable string would otherwise abort the whole batch append. Best-effort
         # off the connector's introspected schema; unresolved columns default to str.
         column_types, unsupported = resolve_column_types(
-            self.db_connector.schema, schema_name, table_name, output_columns
+            self.connector.schema, schema_name, table_name, output_columns
         )
         if unsupported:
             raise TypeError(
@@ -364,7 +364,7 @@ class ExtractRowsFromDocumentsTool:
         if all_entities:
             out_df = pd.DataFrame(all_entities, columns=output_columns)
             try:
-                written = await self.db_connector.write_dataframe_async(
+                written = await self.connector.write_dataframe_async(
                     df=out_df,
                     table_name=table_name,
                     schema_name=schema_name,

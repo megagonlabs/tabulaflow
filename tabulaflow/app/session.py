@@ -44,7 +44,7 @@ async def _create_workspace_connector(workspace_db_path: Path) -> SQLConnector:
 
 
 class AppSession:
-    """Owns databases and agent state for one interactive app session."""
+    """Owns data sources and agent state for one interactive app session."""
 
     @classmethod
     async def create(
@@ -226,7 +226,7 @@ class AppSession:
 
         return TurnOutput(output, self._chat_session.output_store)
 
-    async def disconnect_db(self, alias: str) -> bool:
+    async def disconnect_source(self, alias: str) -> bool:
         """Disconnect ``alias`` and notify the active conversation."""
         if not await self.registry.close_async(alias):
             return False

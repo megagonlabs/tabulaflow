@@ -36,7 +36,7 @@ class GetTableSchemaTool:
     schema using the configured formatter.
 
     Attributes:
-        db_connector: Database connector providing live schema access and refresh.
+        connector: SQL connector providing live schema access and refresh.
         formatter: The formatter used to render table schema as text.
         include_descriptions: Whether to include column descriptions in output.
         max_columns: If set, reject requests whose resulting columns exceed
@@ -51,14 +51,14 @@ class GetTableSchemaTool:
 
     def __init__(
         self,
-        db_connector: SQLConnector,
+        connector: SQLConnector,
         formatter: SQLSchemaFormatter,
         *,
         include_descriptions: bool = True,
         max_columns: int | None = 50,
         enable_refresh: bool = False,
     ):
-        self.db_connector = db_connector
+        self.connector = connector
         self.formatter = formatter
         self.include_descriptions = include_descriptions
         self.max_columns = max_columns
@@ -96,7 +96,7 @@ class GetTableSchemaTool:
         """Render the table schema and return output plus the selected-column count."""
         self._metrics.num_calls += 1
 
-        schema = self.db_connector.schema
+        schema = self.connector.schema
         table = find_table(schema, schema_name, table_name)
         if refresh:
             table_ref = (
@@ -105,10 +105,10 @@ class GetTableSchemaTool:
                 else TableRef(schema_name=schema_name, table_name=table_name)
             )
             try:
-                await self.db_connector.refresh_schema_async([table_ref])
+                await self.connector.refresh_schema_async([table_ref])
             except Exception as e:
                 raise RuntimeError(str(e)) from e
-            schema = self.db_connector.schema
+            schema = self.connector.schema
             table = find_table(schema, schema_name, table_name)
         if table is None:
             self._metrics.error_table_not_found += 1

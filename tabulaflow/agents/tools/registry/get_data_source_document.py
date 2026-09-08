@@ -1,4 +1,4 @@
-"""Get-db-document tool backed by a DataConnectorRegistry."""
+"""Get-data-source-document tool backed by a DataConnectorRegistry."""
 
 from typing import Any, Callable, ClassVar, cast
 
@@ -16,30 +16,30 @@ from tabulaflow.agents.tools.protocols import ToolCallOutcome, _omit_tool_parame
 _MAX_CHARS = 50000
 
 
-class RegistryGetDBDocumentToolMetrics(BaseModel):
-    """Metrics for `RegistryGetDBDocumentTool`."""
+class RegistryGetDataSourceDocumentToolMetrics(BaseModel):
+    """Metrics for `RegistryGetDataSourceDocumentTool`."""
 
     num_calls: int = 0
     error_unknown_alias: int = 0
     truncated: int = 0
 
 
-class RegistryGetDBDocumentTool:
+class RegistryGetDataSourceDocumentTool:
     """Retrieve a human-readable source document for any registered data source.
 
-    By default this calls `DBSummarizer` to generate the source document.
+    By default this calls `DataSourceSummarizer` to generate the source document.
     Optionally, small sources can skip summarization and return a direct
     formatted schema document.
     """
 
-    name: ClassVar = "get_db_document"
+    name: ClassVar = "get_data_source_document"
 
     def __init__(
         self,
         registry: DataConnectorRegistry,
         *,
-        db_summarizer_cls: Callable[..., Any],
-        db_summarizer_llm: str = "openai-responses:gpt-5.4",
+        summarizer_cls: Callable[..., Any],
+        summarizer_llm: str = "openai-responses:gpt-5.4",
         summary_max_words: int = 2000,
         min_items_for_summary: int = 10,
         enable_refresh: bool = False,
@@ -49,8 +49,9 @@ class RegistryGetDBDocumentTool:
 
         Args:
             registry: Registry containing available connectors.
-            db_summarizer_llm: LLM ID used by `DBSummarizer` for SQL documents.
-            summary_max_words: Target max words for generated db summary.
+            summarizer_cls: Data-source summarizer implementation.
+            summarizer_llm: LLM ID used for generated source documents.
+            summary_max_words: Target maximum words for generated summaries.
             min_items_for_summary: Minimum number of schema items required to
                 run LLM summarization. SQL uses table count; property-graph uses
                 node-label count + relationship-pattern count. If the count is
@@ -60,8 +61,8 @@ class RegistryGetDBDocumentTool:
                 summarizer agents.
         """
         self.registry = registry
-        self._db_summarizer_cls = db_summarizer_cls
-        self.db_summarizer_llm = db_summarizer_llm
+        self._summarizer_cls = summarizer_cls
+        self.summarizer_llm = summarizer_llm
         self.model_settings = model_settings
         self.summary_max_words = summary_max_words
         self.min_items_for_summary = min_items_for_summary
@@ -69,13 +70,13 @@ class RegistryGetDBDocumentTool:
         self._sql_formatter = SQLDDLSchemaFormatter(compact_table_families=True)
         self._graph_formatter = CypherSchemaFormatter()
         self._rdf_formatter = SPARQLSchemaFormatter()
-        self._metrics = RegistryGetDBDocumentToolMetrics()
+        self._metrics = RegistryGetDataSourceDocumentToolMetrics()
         self._document_cache: dict[str, tuple[DataConnector, str]] = {}
 
     def apply_llm_profile(self, *, llm: str, model_settings: ModelSettings | None) -> None:
-        """Apply the LLM profile used by generated database summaries."""
-        if self.db_summarizer_llm != llm or self.model_settings != model_settings:
-            self.db_summarizer_llm = llm
+        """Apply the LLM profile used by generated source summaries."""
+        if self.summarizer_llm != llm or self.model_settings != model_settings:
+            self.summarizer_llm = llm
             self.model_settings = model_settings
             self._document_cache.clear()
 
@@ -102,7 +103,7 @@ class RegistryGetDBDocumentTool:
             return self._graph_formatter.format(schema)
         if isinstance(schema, RDFSchema):
             return self._rdf_formatter.format(schema)
-        raise TypeError(f"Unsupported schema type for get_db_document: {type(schema)!r}")
+        raise TypeError(f"Unsupported schema type for get_data_source_document: {type(schema)!r}")
 
     async def _get_document(self, connector_alias: str) -> str:
         connector = self.registry.get(connector_alias)
@@ -115,13 +116,13 @@ class RegistryGetDBDocumentTool:
         )
 
         if use_summarizer:
-            db_summarizer = self._db_summarizer_cls(
-                llm=self.db_summarizer_llm, max_words=self.summary_max_words, model_settings=self.model_settings
+            summarizer = self._summarizer_cls(
+                llm=self.summarizer_llm, max_words=self.summary_max_words, model_settings=self.model_settings
             )
-            document = cast(str, await db_summarizer.summarize(connector))
+            document = cast(str, await summarizer.summarize(connector))
         else:
             schema_doc = self._format_direct_document(connector_alias)
-            document = f"<db_schema>\n{schema_doc}\n</db_schema>"
+            document = f"<data_source_schema>\n{schema_doc}\n</data_source_schema>"
 
         self._document_cache[connector_alias] = (connector, document)
         return document
@@ -171,5 +172,5 @@ class RegistryGetDBDocumentTool:
         omitted = () if self.enable_refresh else ("refresh",)
         return Tool(self.__call__, name=self.name, prepare=_omit_tool_parameters(*omitted))
 
-    def metrics(self) -> RegistryGetDBDocumentToolMetrics:
+    def metrics(self) -> RegistryGetDataSourceDocumentToolMetrics:
         return self._metrics

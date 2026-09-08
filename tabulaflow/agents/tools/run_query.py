@@ -206,7 +206,7 @@ class RunQueryTool:
     must reflect the new state for subsequent ``get_table_schema`` calls.
 
     Attributes:
-        db_connector: Database connector to execute queries against.
+        connector: Data connector to execute queries against.
         enable_params: Whether to expose the ``parameters`` argument to the LLM.
         enable_refresh: Whether to expose the ``refresh`` argument to the LLM.
         enable_media: Whether to expose inline result-cell media inspection.
@@ -221,7 +221,7 @@ class RunQueryTool:
 
     def __init__(
         self,
-        db_connector: DataConnector,
+        connector: DataConnector,
         *,
         enable_params: bool = False,
         enable_refresh: bool = False,
@@ -231,7 +231,7 @@ class RunQueryTool:
         max_cell_width: int = 200,
         floatfmt: str = ".8g",
     ):
-        self.db_connector = db_connector
+        self.connector = connector
         self.enable_params = enable_params
         self.enable_refresh = enable_refresh
         self.enable_media = enable_media
@@ -255,9 +255,9 @@ class RunQueryTool:
         parameters = parameters or []
         param_dict = {p.parameter_name: p.parameter_value for p in parameters}
         if self.timeout is _UNSET:
-            exec_result = await self.db_connector.run_query_async(query, parameters=param_dict)
+            exec_result = await self.connector.run_query_async(query, parameters=param_dict)
         else:
-            exec_result = await self.db_connector.run_query_async(
+            exec_result = await self.connector.run_query_async(
                 query,
                 parameters=param_dict,
                 timeout=self.timeout,  # type: ignore[arg-type]
@@ -270,7 +270,7 @@ class RunQueryTool:
             res += _format_media_summary(prepared_media)
         if refresh:
             try:
-                await self.db_connector.refresh_schema_async()
+                await self.connector.refresh_schema_async()
                 res += "\n(schema refreshed from live data source)"
             except Exception as e:
                 res += f"\n(warning: schema refresh failed: {type(e).__name__}: {e})"

@@ -197,7 +197,7 @@ def _focused_has_binding_for(widget: object, key: str) -> bool:
 
 
 class TabulaflowApp(App[None]):
-    """Interactive database chat TUI."""
+    """Interactive data-source chat TUI."""
 
     CSS_PATH = "tui.tcss"
 
@@ -285,7 +285,7 @@ class TabulaflowApp(App[None]):
                 yield Static("│", classes="input-sep")
                 # Disabled until the background session build + sample auto-connect
                 # completes (re-enabled at the end of ``_ensure_session``), so the user
-                # can't open an empty explorer before any database is connected. While
+                # can't open an empty explorer before any data source is connected. While
                 # disabled it shows a "Preparing…" label so the fade reads as a
                 # transient loading state, not a permanently unavailable feature.
                 yield Button(self._explorer_label(ready=False), id="open-explorer-btn", disabled=True)
@@ -573,7 +573,7 @@ class TabulaflowApp(App[None]):
     def _request_exit(self) -> None:
         """Single quit path: disconnect all registered connectors, then
         exit the app.  Every quit trigger (slash command, idle Ctrl+C /
-        Ctrl+D double-press, …) routes through here so DB connections
+        Ctrl+D double-press, …) routes through here so data-source connections
         and DuckDB file locks are always released cleanly.
         """
         if self._session is None:
