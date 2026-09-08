@@ -780,15 +780,13 @@ Sep 8
 - [ ] Authentication
 - [ ] Avoid AGENTS.md CLAUDE.md re-read after compaction
 - [ ] Show pending turns in output pane
-- [ ] Inline artifact citation
-- [ ] IMPORTANT: 
 - [ ] TUI
   - [ ] Do not auto-scroll when browsing old turns
   - [ ] Onboarding - browser install
 - [ ] Open-source LLM (e.g. Fireworks) preset
 
 - v2 features
-  - TUI
+  - app
     - [ ] Bell icon when finished
     - [ ] Bug: Warning sign emoji display width
     - [ ] Session resume
@@ -798,6 +796,7 @@ Sep 8
     - [ ] Pagination for direct data browsing
     - [ ] Query browser - show language and database
     - [ ] Support interrupting preview loading
+    - [ ] Inline artifact citation
   - Multimodal
     - [ ] hydrate_media tool?
     - [ ] image/pdf detail level
