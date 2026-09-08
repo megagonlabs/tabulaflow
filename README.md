@@ -788,7 +788,7 @@ Sep 8
 - [ ] TUI
   - [ ] Do not auto-scroll when browsing old turns
   - [ ] Onboarding - browser install
-
+- [ ] Open-source LLM (e.g. Fireworks) preset
 
 - v2 features
   - TUI
@@ -797,12 +797,14 @@ Sep 8
     - [ ] Session resume
     - [ ] /reconnect
     - [ ] NL tool progress
+    - [ ] Schema browser for very large db (1000+ tables/columns)
   - Multimodal
     - [ ] hydrate_media tool?
     - [ ] image/pdf detail level
     - [ ] Multimodal output
   - Data
     - [ ] Provenance
+    - [ ] Remote files
     - [ ] Government/academic data
     - [ ] Graph extraction for sparql
   - Subagent
@@ -812,6 +814,7 @@ Sep 8
   - Web browsing
     - [ ] web_fetch tool for static html
     - [ ] Chrome browser, browser resolution
+    - [ ] Captcha
 
   
 - [ ] Allowed roots policy
@@ -824,11 +827,10 @@ Sep 8
 
 - [ ] Debug /Users/yanlinf/.tabulaflow/sessions/20260716T222109Z-be2c/trajectories/trajectory.md
 
-- [ ] Gemini levels - no xhigh
-- [ ] Fireworks preset
+
 - [ ] Kushan: better error message for /connect failure
 - [ ] put removed stale tables in workspace in a user-invisible schema rather than deleting
-- [ ] Schema browser for very large db (1000+ tables/columns)
+
 - [ ] View menu location?
 
 
@@ -838,7 +840,7 @@ Sep 8
 - [ ] Handle records with empty results or zero-row results
 - [ ] One-time subagent tool
 - [ ] Partial trajectory when exeption during agent turn
-- [ ] Captcha
+
 - General
   - [ ] Table readiblity: small table -> readible (e.g. KB, MB, GB), large table -> normalized
   - [ ] Semantic join - cross join
