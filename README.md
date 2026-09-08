@@ -772,12 +772,13 @@ Sep 7
 
 
 Sep 8
-- [ ] Finish SPARQL plan
+- [ ] Finish SPARQL and data layer cleanup
+  - [ ] "db" cleanup
+  - [ ] Neo4j graph extraction
 - [ ] Fix input history order
 - [ ] Huggingface connect split selection and better url cleaning
 - [ ] Authentication
-- [ ] "db" cleanup
-- [ ] Neo4j graph extraction
+
 - [ ] Avoid AGENTS.md CLAUDE.md re-read after compaction
 - [ ] Merge registry tool variants
 
