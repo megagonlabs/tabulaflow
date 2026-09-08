@@ -791,25 +791,36 @@ Sep 8
 
 
 - v2 features
-  - [ ] Multimodal output
-  - [ ] hydrate_media tool?
-  - [ ] Government/academic data
-  - [ ] Graph extraction for sparql
-  - [ ] Subagent reuse
-  - [ ] code diff rendering
+  - TUI
+    - [ ] Bell icon when finished
+    - [ ] Bug: Warning sign emoji display width
+    - [ ] Session resume
+    - [ ] /reconnect
+    - [ ] NL tool progress
+  - Multimodal
+    - [ ] hydrate_media tool?
+    - [ ] image/pdf detail level
+    - [ ] Multimodal output
+  - Data
+    - [ ] Provenance
+    - [ ] Government/academic data
+    - [ ] Graph extraction for sparql
+  - Subagent
+    - [ ] Subagent context reuse
+  - Coding
+    - [ ] code diff rendering
+  - Web browsing
+    - [ ] web_fetch tool for static html
+    - [ ] Chrome browser, browser resolution
 
   
 - [ ] Allowed roots policy
-- [ ] image/pdf detail level
 - [ ] Shell messed up after ssh disconnect
 - [ ] Check if uv tool install install browser
 
 - [ ] Waiting spinner before Thinking to indicate latency due to low service tier
-- [ ] Issue: schema introspection silently fail for structual failure
-- [ ] Data provenance
 - [ ] "result" -> "response", Escape go to last viewed response
-- [ ] Fix copy icon checkmark bg
-- [ ] Bell icon when finished
+
 
 - [ ] Debug /Users/yanlinf/.tabulaflow/sessions/20260716T222109Z-be2c/trajectories/trajectory.md
 
@@ -819,14 +830,8 @@ Sep 8
 - [ ] put removed stale tables in workspace in a user-invisible schema rather than deleting
 - [ ] Schema browser for very large db (1000+ tables/columns)
 - [ ] View menu location?
-- [ ] web_fetch tool for static html
 
-- [ ] Chrome browser, browser resolution
 
-- [ ] Bug: Warning sign emoji display width
-- [ ] Banner - /connect pre-built data sources as most important use case
-
-- [ ] Guard against long messages and context overflow
 - [ ] Context for canonicalization (e.g. pool vs swimming)
 - [ ] Offload truncated cell + read_message tool
 - [ ] Inlucde table schema for add_canonical_name tool
@@ -836,16 +841,13 @@ Sep 8
 - [ ] Captcha
 - General
   - [ ] Table readiblity: small table -> readible (e.g. KB, MB, GB), large table -> normalized
-  - [ ] Improve transfer_record?
-  - [ ] /reconnect
-  - [ ] Session resume
   - [ ] Semantic join - cross join
   - [ ] Support interrupting preview loading
   - [ ] Pass db doc on connect for small dbs?
   - [ ] Multimodal data processing in subagent
   - [ ] Disable compression for small dbs?
   - [ ] Enriched with other data in huggingface repo
-  - [ ] NL tool progress
+  
   - [ ] "connect to data" instead of "paste data"
   - [ ] Consider huggingface compatibility when designing export format
   - [ ] Pagination for direct data browsing
@@ -856,12 +858,7 @@ Sep 8
   - [ ] Pagination for cell browser
   - [ ] /export
   - [ ] /import with auto LLM import
-- Delibird
-  - [ ] Building from web
-  - [ ] Building from files
-- Visualization
-  - [ ] Open visualization in browser
-  - [ ] Map visualization
+
 - Scenarios
   - [ ] Data browsing (replace DBeaver)
   - [ ] Multi-source querying on databases
