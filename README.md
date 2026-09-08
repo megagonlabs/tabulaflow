@@ -776,14 +776,14 @@ Sep 8
   - [x] "db" cleanup
   - [x] Neo4j graph extraction
 - [x] Fix input history order
+- [x] Fix TUI auto-scrolling behaviour
 - [ ] Huggingface connect split selection and better url cleaning
 - [ ] Authentication
 - [ ] Avoid AGENTS.md CLAUDE.md re-read after compaction
 - [ ] Show pending turns in output pane
-- [ ] TUI
-  - [ ] Do not auto-scroll when browsing old turns
-  - [ ] Onboarding - browser install
+- [ ] Onboarding - browser install
 - [ ] Open-source LLM (e.g. Fireworks) preset
+- [ ] Fix turns after 152 not shown in output pane
 
 - v2 features
   - app
