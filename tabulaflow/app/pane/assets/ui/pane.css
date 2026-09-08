@@ -129,7 +129,7 @@ body { margin: 0; background: var(--bg); color: var(--text); display: flex; flex
 .turnitem.active .turnindex { color: var(--accent); }
 .turnitem.active .turntitle { color: var(--text); }
 .turnitem.active .turnmeta-item { color: var(--text-muted); }
-.turnitem.pending .turnmeta { color: var(--accent); }
+.turnitem.pending .turnmeta { color: var(--text-dim); }
 .turns-empty { padding: 12px 16px; color: var(--text-dim); font: 12px/1.35 ui-monospace, monospace; }
 #content { flex: 1 1 auto; overflow-y: auto; min-width: 0; display: flex; view-transition-name: turn-content; }
 #content-inner { width: min(850px, 100%); margin: 0 auto; padding: 16px; box-sizing: border-box; }
@@ -169,9 +169,10 @@ body { margin: 0; background: var(--bg); color: var(--text); display: flex; flex
 .message.assistant { justify-content: stretch; }
 .message.assistant .message-body { width: 100%; color: var(--text); }
 .pending-turn { display: flex; align-items: center; gap: 9px; color: var(--text-muted);
-                font: 13px/1.3 ui-monospace, monospace; }
+                font: 14px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
 .pending-turn-spinner { width: 12px; height: 12px; box-sizing: border-box; border-radius: 50%;
-                        border: 2px solid rgba(62, 180, 137, 0.24); border-top-color: var(--accent);
+                        color: var(--text-dim); border: 2px solid rgba(154, 164, 178, 0.18);
+                        border-top-color: currentColor;
                         animation: pending-turn-spin 700ms linear infinite; }
 @keyframes pending-turn-spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .pending-turn-spinner { animation: none; } }
