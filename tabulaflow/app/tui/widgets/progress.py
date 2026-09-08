@@ -581,7 +581,7 @@ class AgentProgressWidget(Widget):
             self._steps.append(("done", "", "__status__", self._status_text))
         self._steps.append(("running", tool_call_id, name, label or name))
         self._status_text = None
-        self._refresh(layout=True, scroll=True)
+        self._refresh(layout=True)
 
     @staticmethod
     def _format_progress(completed: int, total: int | None, stage: str | None, unit: str | None) -> str:
@@ -625,7 +625,7 @@ class AgentProgressWidget(Widget):
         if i is not None:
             base_label = self._steps[i][3].split(" → ")[0]
             self._steps[i] = ("running", self._steps[i][1], self._steps[i][2], f"{base_label} → {suffix}")
-        self._refresh(layout=True, scroll=True)
+        self._refresh(layout=True)
 
     def _on_tool_end(self, tool_call_id: str, name: str, result_summary: str) -> None:
         for i in range(len(self._steps) - 1, -1, -1):
@@ -656,7 +656,7 @@ class AgentProgressWidget(Widget):
         self._tool_spinners.pop(tool_call_id, None)
         self._tool_progress.pop(tool_call_id, None)
         self._status_text = "Thinking..."
-        self._refresh(layout=True, scroll=True)
+        self._refresh(layout=True)
 
     async def _on_answer_delta(self, delta: str) -> None:
         # Only the final answer arrives as ``AnswerDelta`` (refs already stripped by
@@ -664,7 +664,7 @@ class AgentProgressWidget(Widget):
         self._streaming_text += delta
         self._status_text = None
         await self._append_text(delta)
-        self._refresh(layout=True, scroll=True)
+        self._refresh(layout=True)
 
     async def _append_text(self, delta: str) -> None:
         """Append ``delta`` to the answer block, mounting it as a sibling
@@ -711,7 +711,7 @@ class AgentProgressWidget(Widget):
         self._usage = usage
         self._refresh()
 
-    def _refresh(self, *, layout: bool = False, scroll: bool = False) -> None:
+    def _refresh(self, *, layout: bool = False) -> None:
         # Collapse when there's nothing to show (no tool steps, no status spinner)
         # — e.g. while a direct answer streams into its sibling text block. An
         # empty render still occupies a line and blocks margin-collapse between the
@@ -720,7 +720,5 @@ class AgentProgressWidget(Widget):
         self.display = bool(self._steps or self._status_text)
         try:
             self.refresh(layout=layout)
-            if scroll:
-                self.app.query_one("#chat-log").scroll_end(animate=False)
         except Exception:
             pass

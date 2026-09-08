@@ -2,9 +2,10 @@ from __future__ import annotations
 
 import pandas as pd
 from textual.app import App, ComposeResult
-from textual.containers import VerticalScroll
+from textual.widgets import Static
 
 from tabulaflow.app.tui.rendering import VIEW_KIND_DATA, VIEW_KIND_QUERY, build_resolved_output_card_views
+from tabulaflow.app.tui.widgets.chat_log import ChatLog
 from tabulaflow.app.tui.widgets.result import AgentResultWidget
 from tabulaflow.agents.chat import ChatResult
 from tabulaflow.output.specs import NumberParameter, OutputSpec
@@ -49,7 +50,7 @@ class _ResultWidgetApp(App[None]):
         return variables
 
     def compose(self) -> ComposeResult:
-        yield VerticalScroll(self.result_widget, id="chat-log")
+        yield ChatLog(self.result_widget, id="chat-log")
 
     def on_mount(self) -> None:
         self.result_widget.focus()
@@ -75,10 +76,37 @@ class _NumberControlWidgetApp(App[None]):
         return variables
 
     def compose(self) -> ComposeResult:
-        yield VerticalScroll(self.result_widget, id="chat-log")
+        yield ChatLog(self.result_widget, id="chat-log")
 
     def on_mount(self) -> None:
         self.result_widget.focus()
+
+
+class _ScrollableResultWidgetApp(_ResultWidgetApp):
+    def compose(self) -> ComposeResult:
+        with ChatLog(id="chat-log"):
+            for index in range(30):
+                yield Static(f"line {index}")
+            yield self.result_widget
+
+
+async def test_artifact_refresh_preserves_detached_scroll_position() -> None:
+    app = _ScrollableResultWidgetApp()
+
+    async with app.run_test(size=(100, 10)) as pilot:
+        chat_log = app.query_one(ChatLog)
+        chat_log.scroll_end(animate=False)
+        await pilot.pause()
+        chat_log.scroll_page_up(animate=False)
+        await pilot.pause()
+        detached_y = chat_log.scroll_y
+
+        app.result_widget._refresh_all()
+        await pilot.pause()
+        await pilot.pause()
+
+        assert not chat_log.following_tail
+        assert chat_log.scroll_y == detached_y
 
 
 async def test_card_switch_refreshes_displayed_content() -> None:

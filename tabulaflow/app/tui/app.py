@@ -11,7 +11,7 @@ from rich.text import Text
 from textual import events
 from textual.app import App, ComposeResult
 from textual.binding import Binding
-from textual.containers import Horizontal, Vertical, VerticalScroll
+from textual.containers import Horizontal, Vertical
 from textual.worker import Worker
 from textual.widgets import Button, Input, Static
 
@@ -37,6 +37,7 @@ from tabulaflow.app.turn import TurnOutput
 from tabulaflow.agents.llm import model_display_name
 from tabulaflow.app.tui.theme import ERROR, FOCUS_SURFACE, KEY_HINT
 from tabulaflow.app.tui.widgets.chat import BannerWidget, SpinnerWidget, SystemMessage, UserMessage
+from tabulaflow.app.tui.widgets.chat_log import ChatLog
 from tabulaflow.app.tui.widgets.input import HistoryInput
 from tabulaflow.app.tui.widgets.progress import AgentProgressWidget
 from tabulaflow.app.tui.widgets.result import AgentResultWidget
@@ -266,7 +267,7 @@ class TabulaflowApp(App[None]):
     def compose(self) -> ComposeResult:
         initialization_spinner = self._initialization_spinner
         assert initialization_spinner is not None
-        with VerticalScroll(id="chat-log"):
+        with ChatLog(id="chat-log"):
             yield self._banner()
             yield initialization_spinner
         with Vertical(id="bottom-bar"):
@@ -296,9 +297,9 @@ class TabulaflowApp(App[None]):
 
     def on_mount(self) -> None:
         self._setup_logging()
-        chat_log = self.query_one("#chat-log", VerticalScroll)
+        chat_log = self.query_one("#chat-log", ChatLog)
         self.query_one("#input-bar", Input).focus()
-        chat_log.scroll_end(animate=False)
+        chat_log.follow_new_content(force=True)
         self._refresh_esc_hint()
         self._ensure_pane()
         self.call_after_refresh(self._start_llm_activation, self._llm_selection)
@@ -382,7 +383,7 @@ class TabulaflowApp(App[None]):
         if len(self.screen_stack) > 1:
             return
         try:
-            chat_log = self.query_one("#chat-log", VerticalScroll)
+            chat_log = self.query_one("#chat-log", ChatLog)
         except Exception:
             return
         if direction == "pageup":
@@ -404,9 +405,9 @@ class TabulaflowApp(App[None]):
         if self._session is None:
             return  # workspace not ready yet — do nothing
         if not self._session.registry.list_aliases():
-            chat_log = self.query_one("#chat-log", VerticalScroll)
+            chat_log = self.query_one("#chat-log", ChatLog)
             chat_log.mount(SystemMessage(Text("No data sources connected. Use /connect first.", style=ERROR)))
-            chat_log.scroll_end(animate=False)
+            chat_log.follow_new_content(force=True)
             return
         self.push_screen(
             SchemaBrowserScreen(
@@ -711,9 +712,9 @@ class TabulaflowApp(App[None]):
             return
         spinner = SpinnerWidget(label)
         self._initialization_spinner = spinner
-        chat_log = self.query_one("#chat-log", VerticalScroll)
+        chat_log = self.query_one("#chat-log", ChatLog)
         await chat_log.mount(spinner)
-        chat_log.scroll_end(animate=False)
+        chat_log.follow_new_content()
 
     async def _remove_initialization_spinner(self) -> None:
         spinner = self._initialization_spinner
@@ -724,9 +725,9 @@ class TabulaflowApp(App[None]):
     async def _publish_initialization_status(self, message: Text) -> None:
         """Replace the initialization spinner with ``message``."""
         await self._remove_initialization_spinner()
-        chat_log = self.query_one("#chat-log", VerticalScroll)
+        chat_log = self.query_one("#chat-log", ChatLog)
         await chat_log.mount(SystemMessage(message))
-        chat_log.scroll_end(animate=False)
+        chat_log.follow_new_content()
 
     async def _report_session_initialization_failure(self, error: Exception) -> None:
         message = Text.from_markup(f"[{ERROR}]Session initialization failed:[/] ")
@@ -932,13 +933,13 @@ class TabulaflowApp(App[None]):
         """Process one accepted input as the active submission."""
         import asyncio
 
-        chat_log = self.query_one("#chat-log", VerticalScroll)
+        chat_log = self.query_one("#chat-log", ChatLog)
         user_msg = UserMessage(display_text)
         is_command = isinstance(question, str) and question.startswith(COMMAND_PREFIX)
         interrupted = False
         try:
             await chat_log.mount(user_msg)
-            chat_log.scroll_end(animate=False)
+            chat_log.follow_new_content(force=True)
 
             if is_command:
                 assert isinstance(question, str)
@@ -949,14 +950,14 @@ class TabulaflowApp(App[None]):
             if not session.registry.list_aliases():
                 msg = SystemMessage(Text.from_markup(f"[{ERROR}]No data source connected.[/] Use /connect first."))
                 await chat_log.mount(msg)
-                chat_log.scroll_end(animate=False)
+                chat_log.follow_new_content()
                 return
 
             if not session.llm_available:
                 error_text = Text.from_markup(f"[{ERROR}]LLM unavailable:[/] ")
                 error_text.append(self._llm_unavailable_message())
                 await chat_log.mount(SystemMessage(error_text))
-                chat_log.scroll_end(animate=False)
+                chat_log.follow_new_content()
                 self._refresh_bottom_status()
                 return
 
@@ -966,7 +967,7 @@ class TabulaflowApp(App[None]):
             if is_command and user_msg.is_mounted:
                 await user_msg.remove()
             await chat_log.mount(SystemMessage("[dim]Interrupted[/dim]"))
-            chat_log.scroll_end(animate=False)
+            chat_log.follow_new_content()
             self._restore_input_text(display_text)
             raise
         finally:
@@ -982,7 +983,7 @@ class TabulaflowApp(App[None]):
     async def _handle_slash_command(
         self,
         text: str,
-        chat_log: VerticalScroll,
+        chat_log: ChatLog,
     ) -> None:
         parts = text.split()
         cmd = parts[0].lower() if parts else ""
@@ -997,7 +998,7 @@ class TabulaflowApp(App[None]):
             # a chance to process a non-awaited mount before we hit the
             # ``finally`` — leaving the spinner queued-but-not-removed.
             await chat_log.mount(spinner)
-            chat_log.scroll_end(animate=False)
+            chat_log.follow_new_content()
             # Refine label with dataset size info (non-blocking).
             if cmd == "/connect":
                 refined = await self._connect_spinner_label(parts)
@@ -1018,7 +1019,7 @@ class TabulaflowApp(App[None]):
         self,
         result: CommandResult,
         session: AppSession,
-        chat_log: VerticalScroll,
+        chat_log: ChatLog,
     ) -> None:
         if result.action == "quit":
             self._request_exit()
@@ -1042,7 +1043,7 @@ class TabulaflowApp(App[None]):
         if result.output is not None:
             msg = SystemMessage(result.output)
             await chat_log.mount(msg)
-            chat_log.scroll_end(animate=False)
+            chat_log.follow_new_content()
 
     def _on_config_closed(self, selection: ResolvedLLMSelection | None) -> None:
         self.call_after_refresh(self.query_one("#input-bar", Input).focus)
@@ -1062,7 +1063,7 @@ class TabulaflowApp(App[None]):
         self,
         question: "ChatInput",
         session: AppSession,
-        chat_log: VerticalScroll,
+        chat_log: ChatLog,
         display_text: str,
     ) -> None:
         import asyncio
@@ -1071,18 +1072,20 @@ class TabulaflowApp(App[None]):
 
         progress = AgentProgressWidget()
         await chat_log.mount(progress)
-        chat_log.scroll_end(animate=False)
+        chat_log.follow_new_content()
 
         result: ChatResult | None = None
         try:
             async for event in session.run_stream(question):
                 await progress.apply(event)
+                chat_log.follow_new_content()
                 if isinstance(event, TurnFinished):
                     result = event.result
         except asyncio.CancelledError:
             # Freeze the partial progress widget; ChatSession's message history and
             # last_usage already reflect the interrupted run.
             await progress.mark_interrupted(session.last_usage)
+            chat_log.follow_new_content()
             raise
         except Exception as e:
             # Freeze the partial progress widget (mirrors the interrupt path) so the
@@ -1094,7 +1097,7 @@ class TabulaflowApp(App[None]):
             error_text.append(str(e))
             msg = SystemMessage(error_text)
             await chat_log.mount(msg)
-            chat_log.scroll_end(animate=False)
+            chat_log.follow_new_content()
             return
         if result is None:
             return  # normal completion always yields a terminal TurnFinished
@@ -1125,11 +1128,10 @@ class TabulaflowApp(App[None]):
             # when the user is already composing in the input — yanking
             # focus mid-typing would be hostile.
             inp = self.query_one("#input-bar", Input)
-            if not inp.value:
+            if chat_log.following_tail and not inp.value:
                 result_widget.focus()
 
-        # Defer scroll until after layout reflow so the final content height is known.
-        self.call_after_refresh(chat_log.scroll_end, animate=False)
+        chat_log.follow_new_content()
 
     @staticmethod
     def _banner() -> BannerWidget:
