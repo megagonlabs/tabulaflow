@@ -773,18 +773,15 @@ Sep 7
 
 Sep 8
 - [ ] Finish SPARQL and data layer cleanup
-  - [ ] "db" cleanup
+  - [x] "db" cleanup
   - [ ] Neo4j graph extraction
-- [ ] Fix input history order
+- [x] Fix input history order
 - [ ] Huggingface connect split selection and better url cleaning
 - [ ] Authentication
-
 - [ ] Avoid AGENTS.md CLAUDE.md re-read after compaction
-- [ ] Merge registry tool variants
-
 - [ ] Show pending turns in output pane
 - [ ] Inline artifact citation
-- [ ] IMPORTANT: decouple data and rendered format (show unit "cm" while still enabling sorting by value)
+- [ ] IMPORTANT: 
 - [ ] TUI
   - [ ] Do not auto-scroll when browsing old turns
   - [ ] Onboarding - browser install
@@ -806,6 +803,7 @@ Sep 8
     - [ ] image/pdf detail level
     - [ ] Multimodal output
   - Data
+    - [ ] decouple data and rendered format (show unit "cm" while still enabling sorting by value)
     - [ ] streaming data support (e.g. auto-updating artifacts like chart for stock price data)
     - [ ] Provenance
     - [ ] Remote files
