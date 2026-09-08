@@ -30,7 +30,7 @@ from urllib.parse import unquote, urlsplit, urlunsplit
 from markdown_it import MarkdownIt
 
 from tabulaflow.app.pane.cards import build_code_data, render_resolved_output
-from tabulaflow.app.pane.contract import CARD_ID_PREFIX, CodeData, PaneCard, PaneTurn
+from tabulaflow.app.pane.contract import CARD_ID_PREFIX, CodeData, PaneCard, PaneTurn, PendingPaneTurn
 from tabulaflow.app.runtime_paths import generate_session_id
 from tabulaflow.app.theme import GITHUB_SLUG, GITHUB_URL
 from tabulaflow.app.turn import TurnOutput
@@ -256,17 +256,16 @@ class _Handler(http.server.SimpleHTTPRequestHandler):
         self.send_header("Connection", "keep-alive")
         self.end_headers()
         while True:
-            pending = pane._wait_for_turns(last_id, timeout=15)
+            pending = pane._wait_for_events(last_id, timeout=15)
             try:
                 if not pending:
                     self.wfile.write(b": ping\n\n")
                     self.wfile.flush()
                     continue
-                for turn in pending:
-                    turn_id = int(turn["id"])
-                    data = json.dumps(turn, ensure_ascii=False)
-                    self.wfile.write(f"id: {turn_id}\nevent: turn\ndata: {data}\n\n".encode("utf-8"))
-                    last_id = turn_id
+                for event_id, event_name, payload in pending:
+                    data = json.dumps(payload, ensure_ascii=False)
+                    self.wfile.write(f"id: {event_id}\nevent: {event_name}\ndata: {data}\n\n".encode("utf-8"))
+                    last_id = event_id
                 self.wfile.flush()
             except (BrokenPipeError, ConnectionError, OSError):
                 return
@@ -417,10 +416,12 @@ class OutputPane:
             raise ValueError("Output pane token cannot be empty.")
         self._port_config = port
         self._port_range = tuple(port_range)
-        self._turns: list[PaneTurn] = []
+        self._turns: dict[int, PaneTurn | PendingPaneTurn] = {}
+        self._events: list[tuple[int, str, object]] = []
         self._live_outputs: dict[int, TurnOutput] = {}
         self._condition = threading.Condition()
         self._next_turn_id = 0
+        self._next_event_id = 0
         self._server: _PaneServer | None = None
         self._loop: asyncio.AbstractEventLoop | None = None
         self._port: int | None = None
@@ -517,27 +518,75 @@ class OutputPane:
     ) -> None:
         """Publish a turn to connected and future browser clients."""
         with self._condition:
-            assigned = cast(PaneTurn, dict(turn))
-            assistant = assigned.get("assistant")
-            if isinstance(assistant, str) and assistant.strip() and "assistantCodeBlocks" not in assigned:
-                code_blocks = _markdown_code_blocks(assistant)
-                if code_blocks:
-                    assigned["assistantCodeBlocks"] = code_blocks
-            assigned["id"] = self._next_turn_id
+            turn_id = self._next_turn_id
             self._next_turn_id += 1
-            if turn_output is not None:
-                self._live_outputs[int(assigned["id"])] = turn_output
-            self._turns.append(assigned)
-            self._condition.notify_all()
+            self._publish_turn(turn_id, turn, turn_output)
 
-    def _wait_for_turns(self, last_id: int, *, timeout: float) -> list[PaneTurn]:
-        """Return turns after ``last_id``, waiting briefly when none are available."""
+    def begin_turn(self, *, title: str, user: str) -> int:
+        """Publish a pending turn and return its stable turn ID."""
         with self._condition:
-            pending = [turn for turn in self._turns if int(turn.get("id", -1)) > last_id]
+            turn_id = self._next_turn_id
+            self._next_turn_id += 1
+            pending: PendingPaneTurn = {"id": turn_id, "status": "pending", "title": title, "user": user}
+            self._turns[turn_id] = pending
+            self._publish_event("turn", pending)
+            return turn_id
+
+    def complete_turn(
+        self,
+        turn_id: int,
+        turn: PaneTurn,
+        *,
+        turn_output: TurnOutput | None = None,
+    ) -> None:
+        """Replace a pending turn with its completed output."""
+        with self._condition:
+            current = self._turns.get(turn_id)
+            if current is None or current.get("status") != "pending":
+                raise KeyError(turn_id)
+            self._publish_turn(turn_id, turn, turn_output)
+
+    def discard_turn(self, turn_id: int) -> None:
+        """Remove a pending turn that did not produce output."""
+        with self._condition:
+            current = self._turns.get(turn_id)
+            if current is None or current.get("status") != "pending":
+                return
+            del self._turns[turn_id]
+            self._live_outputs.pop(turn_id, None)
+            self._publish_event("turn-remove", {"id": turn_id})
+
+    def _publish_turn(
+        self,
+        turn_id: int,
+        turn: PaneTurn,
+        turn_output: TurnOutput | None,
+    ) -> None:
+        assigned = cast(PaneTurn, dict(turn))
+        assistant = assigned.get("assistant")
+        if isinstance(assistant, str) and assistant.strip() and "assistantCodeBlocks" not in assigned:
+            code_blocks = _markdown_code_blocks(assistant)
+            if code_blocks:
+                assigned["assistantCodeBlocks"] = code_blocks
+        assigned["id"] = turn_id
+        self._turns[turn_id] = assigned
+        if turn_output is not None:
+            self._live_outputs[turn_id] = turn_output
+        self._publish_event("turn", assigned)
+
+    def _publish_event(self, name: str, payload: object) -> None:
+        self._events.append((self._next_event_id, name, payload))
+        self._next_event_id += 1
+        self._condition.notify_all()
+
+    def _wait_for_events(self, last_id: int, *, timeout: float) -> list[tuple[int, str, object]]:
+        """Return pane events after ``last_id``, waiting briefly when none are available."""
+        with self._condition:
+            pending = [event for event in self._events if event[0] > last_id]
             if pending:
                 return pending
             self._condition.wait(timeout)
-            return [turn for turn in self._turns if int(turn.get("id", -1)) > last_id]
+            return [event for event in self._events if event[0] > last_id]
 
     async def resolve_turn(self, turn_id: int, selection: dict[str, object]) -> list[PaneCard]:
         with self._condition:

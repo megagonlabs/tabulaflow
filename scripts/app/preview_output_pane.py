@@ -1142,6 +1142,11 @@ def _populate_pane(
             )
         )
 
+    pane.begin_turn(
+        title="Analyze quarterly revenue and show the results",
+        user="Analyze quarterly revenue and show the results.",
+    )
+
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)

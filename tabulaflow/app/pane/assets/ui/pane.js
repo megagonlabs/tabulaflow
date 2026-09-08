@@ -192,6 +192,15 @@ function buildTranscript(turn) {
   var wrap = el('section', 'transcript');
   if (hasText(turn.user)) wrap.appendChild(buildMessage('user', turn.user));
   if (hasText(turn.assistant)) wrap.appendChild(buildMessage('assistant', turn.assistant, turn.assistantCodeBlocks || []));
+  if (turn.status === 'pending') {
+    var pending = el('div', 'pending-turn');
+    pending.setAttribute('role', 'status');
+    pending.appendChild(el('span', 'pending-turn-spinner'));
+    var label = el('span', 'pending-turn-label');
+    label.textContent = 'Working…';
+    pending.appendChild(label);
+    wrap.appendChild(pending);
+  }
   return wrap.children.length ? wrap : null;
 }
 
@@ -485,6 +494,7 @@ function artifactLabel(kind, count) {
 }
 
 function turnMeta(turn) {
+  if (turn.status === 'pending') return { text: 'working', items: [], label: 'working' };
   var summary = artifactCounts(turn);
   var counts = summary.counts;
   if (turn.source === 'manual' && counts.table === 1 && counts.chart === 0 && counts.map === 0 && counts.graph === 0) {
@@ -545,6 +555,7 @@ function buildTurnMeta(metaData) {
 
 function buildTurnItem(turn, index, displayIndex) {
   var it = el('div', 'turnitem');
+  it.classList.toggle('pending', turn.status === 'pending');
   var idx = el('div', 'turnindex');
   var text = el('div', 'turntext');
   var title = el('div', 'turntitle');
@@ -639,7 +650,6 @@ var ANSWER_LOADING_DELAY_MS = 220;
 var suppressScrollMemory = false;
 var scrollRestoreVersion = 0;
 var activeTurnTransition = null;
-var agentTurnCount = 0;
 
 function turnStateKey(turn, index) {
   return String(turn.id == null ? index : turn.id);
@@ -1410,6 +1420,7 @@ function renderTurn(turn, index) {
   } else if (transcript) {
     view.appendChild(transcript);
   }
+  if (turn.status === 'pending') return view;
   var controls = buildAnswerControls(turn, state, index);
   if (controls) view.appendChild(controls);
   var artifacts = el('section', 'artifacts-region');
@@ -1450,25 +1461,77 @@ function selectTurn(i, animate) {
   transition.finished.then(clearTransition, clearTransition);
 }
 
-function appendTurn(turn) {
+function rebuildTurnList() {
+  var sidebar = document.getElementById('turns');
+  sidebar.replaceChildren();
+  var displayIndex = 0;
+  turns.forEach(function (turn, index) {
+    var number = isManualPreview(turn) ? null : ++displayIndex;
+    var item = buildTurnItem(turn, index, number);
+    item.classList.toggle('active', index === activeTurn);
+    item.onclick = function () { selectTurn(index, true); };
+    sidebar.appendChild(item);
+  });
+}
+
+function findTurnIndex(turnId) {
+  return turns.findIndex(function (turn) { return turn.id === turnId; });
+}
+
+function upsertTurn(turn) {
+  var index = findTurnIndex(turn.id);
+  if (index !== -1) {
+    turns[index] = turn;
+    rebuildTurnList();
+    if (index === activeTurn) updateSelectedTurn(index);
+    return;
+  }
   var wasOnLatest = activeTurn === turns.length - 1;
   turns.push(turn);
+  rebuildTurnList();
+  if (wasOnLatest) updateSelectedTurn(turns.length - 1);
+}
+
+function showEmptyPane() {
   var sidebar = document.getElementById('turns');
-  var sidebarEmpty = sidebar.querySelector('.turns-empty');
-  if (sidebarEmpty) sidebarEmpty.remove();
-  var idx = turns.length - 1;
-  var displayIndex = isManualPreview(turn) ? null : ++agentTurnCount;
-  var it = buildTurnItem(turn, idx, displayIndex);
-  it.onclick = function () { selectTurn(idx, true); };
-  sidebar.appendChild(it);
-  if (wasOnLatest) selectTurn(idx, false);
+  sidebar.innerHTML = '<div class="turns-empty">No output yet</div>';
+  var inner = document.getElementById('content-inner');
+  inner.classList.remove('manual-preview-content');
+  inner.innerHTML = '<div id="empty"><div class="empty-state"><div class="empty-mark" aria-hidden="true">'
+    + '<svg viewBox="0 0 24 24"><path d="M5 8h14"/><path d="M5 12h10"/><path d="M5 16h7"/>'
+    + '<path d="M4 4h16v16H4z"/></svg></div><div class="empty-title">Waiting for output</div>'
+    + '<p class="empty-copy">Results will appear here as the agent works.</p></div></div>';
+}
+
+function removeTurn(turnId) {
+  var index = findTurnIndex(turnId);
+  if (index === -1) return;
+  var wasActive = index === activeTurn;
+  turns.splice(index, 1);
+  if (!turns.length) {
+    activeTurn = -1;
+    showEmptyPane();
+    return;
+  }
+  if (activeTurn > index) activeTurn -= 1;
+  if (wasActive) {
+    activeTurn = Math.min(index, turns.length - 1);
+    rebuildTurnList();
+    updateSelectedTurn(activeTurn);
+  } else {
+    rebuildTurnList();
+  }
 }
 
 function startEvents() {
   var source = new EventSource('events');
   source.addEventListener('turn', function (event) {
-    appendTurn(JSON.parse(event.data));
-    applyPageStatus(document.hasFocus() ? 'idle' : 'ready');
+    var turn = JSON.parse(event.data);
+    upsertTurn(turn);
+    if (turn.status !== 'pending') applyPageStatus(document.hasFocus() ? 'idle' : 'ready');
+  });
+  source.addEventListener('turn-remove', function (event) {
+    removeTurn(JSON.parse(event.data).id);
   });
 }
 

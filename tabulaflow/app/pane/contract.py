@@ -63,6 +63,13 @@ class PaneTurn(TypedDict, total=False):
     panel: PanePanel
 
 
+class PendingPaneTurn(TypedDict):
+    id: int
+    status: Literal["pending"]
+    title: str
+    user: str
+
+
 class ColumnDesc(TypedDict, total=False):
     title: Required[str]
     field: Required[str]

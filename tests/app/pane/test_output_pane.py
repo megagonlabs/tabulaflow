@@ -168,6 +168,85 @@ def test_output_pane_replays_only_missed_turns(tmp_path: Path) -> None:
         pane.stop()
 
 
+def test_output_pane_completes_pending_turn_in_place(tmp_path: Path) -> None:
+    pane = OutputPane(tmp_path)
+
+    turn_id = pane.begin_turn(title="analyze", user="Analyze the data.")
+    pane.complete_turn(
+        turn_id,
+        turn_payload(
+            title="analyze",
+            user="Analyze the data.",
+            assistant="Done.",
+            cards=[],
+        ),
+    )
+
+    events = pane._wait_for_events(-1, timeout=0)  # noqa: SLF001
+    assert events == [
+        (0, "turn", {"id": 0, "status": "pending", "title": "analyze", "user": "Analyze the data."}),
+        (
+            1,
+            "turn",
+            {"id": 0, "title": "analyze", "user": "Analyze the data.", "assistant": "Done.", "cards": []},
+        ),
+    ]
+
+
+def test_output_pane_discards_pending_turn(tmp_path: Path) -> None:
+    pane = OutputPane(tmp_path)
+
+    turn_id = pane.begin_turn(title="analyze", user="Analyze the data.")
+    pane.discard_turn(turn_id)
+
+    assert pane._wait_for_events(0, timeout=0) == [(1, "turn-remove", {"id": turn_id})]  # noqa: SLF001
+
+
+def test_output_pane_replaces_pending_turn_in_browser(tmp_path: Path) -> None:
+    from playwright.sync_api import Error as PlaywrightError
+    from playwright.sync_api import sync_playwright
+
+    pane = OutputPane(tmp_path)
+    pane.start()
+    try:
+        assert pane.url is not None
+        with sync_playwright() as playwright:
+            try:
+                browser = playwright.chromium.launch(headless=True)
+            except PlaywrightError as exc:
+                pytest.skip(f"Playwright Chromium is unavailable: {exc}")
+            try:
+                page = browser.new_page(viewport={"width": 1_280, "height": 720})
+                page.goto(pane.url, wait_until="domcontentloaded")
+                page.evaluate("document.hasFocus = () => false")
+                turn_id = pane.begin_turn(title="analyze", user="Analyze the data.")
+
+                page.wait_for_selector(".pending-turn")
+                assert page.locator(".turnitem").count() == 1
+                assert page.locator(".turnmeta").text_content() == "working"
+                assert page.title() == "tabulaflow"
+
+                pane.complete_turn(
+                    turn_id,
+                    turn_payload(
+                        title="analyze",
+                        user="Analyze the data.",
+                        assistant="Done.",
+                        cards=[],
+                    ),
+                )
+
+                page.wait_for_selector(".message.assistant")
+                assert page.locator(".turnitem").count() == 1
+                assert page.locator(".pending-turn").count() == 0
+                assert page.locator(".message.assistant .message-body").inner_text() == "Done."
+                assert page.title() == "◆ tabulaflow"
+            finally:
+                browser.close()
+    finally:
+        pane.stop()
+
+
 def test_output_pane_uses_first_available_port_in_range(tmp_path: Path) -> None:
     with _bound_loopback_port() as occupied_port:
         available_port = _unused_loopback_port()
@@ -638,7 +717,8 @@ def test_output_pane_push_highlights_assistant_markdown_code_blocks(tmp_path: Pa
         )
     )
 
-    turn = pane._wait_for_turns(-1, timeout=0)[0]  # noqa: SLF001
+    turn = pane._wait_for_events(-1, timeout=0)[0][2]  # noqa: SLF001
+    assert isinstance(turn, dict)
     blocks = turn["assistantCodeBlocks"]
     assert blocks[0]["code"] == "print('hi')\n"
     assert [block["lexer"] for block in blocks] == ["python", "text"]

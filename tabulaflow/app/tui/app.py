@@ -775,6 +775,8 @@ class TabulaflowApp(App[None]):
         *,
         title: str,
         user_text: str,
+        pane: "OutputPane | None" = None,
+        turn_id: int | None = None,
     ) -> None:
         """Render a completed turn and push it to the browser pane.
 
@@ -788,22 +790,31 @@ class TabulaflowApp(App[None]):
         try:
             ensure_pane_dir(pane_dir)
         except Exception:
+            if pane is not None and turn_id is not None:
+                pane.discard_turn(turn_id)
             return
         if not resolved_output.artifacts and not user_text and not result.text:
+            if pane is not None and turn_id is not None:
+                pane.discard_turn(turn_id)
             return
-        pane = self._ensure_pane()
+        pane = pane or self._ensure_pane()
         if pane is None:
             return
 
         panel = _pane_panel(result)
 
         async def render_and_push() -> None:
-            cards = await render_resolved_output(resolved_output, pane_dir)
-            if cards or user_text or result.text:
-                pane.push(
-                    turn_payload(title=title, user=user_text, assistant=result.text, cards=cards, panel=panel),
-                    turn_output=turn_output if panel is not None else None,
-                )
+            try:
+                cards = await render_resolved_output(resolved_output, pane_dir)
+                payload = turn_payload(title=title, user=user_text, assistant=result.text, cards=cards, panel=panel)
+                if turn_id is None:
+                    pane.push(payload, turn_output=turn_output if panel is not None else None)
+                else:
+                    pane.complete_turn(turn_id, payload, turn_output=turn_output if panel is not None else None)
+            except Exception:
+                if turn_id is not None:
+                    pane.discard_turn(turn_id)
+                raise
 
         def log_background_error(task: asyncio.Task[None]) -> None:
             try:
@@ -1070,6 +1081,14 @@ class TabulaflowApp(App[None]):
 
         from tabulaflow.agents.chat import TurnFinished
 
+        pane = self._ensure_pane()
+        pane_turn_id: int | None = None
+        if pane is not None:
+            try:
+                pane_turn_id = pane.begin_turn(title=display_text, user=display_text)
+            except Exception:
+                logger.debug("output pane pending turn failed", exc_info=True)
+
         progress = AgentProgressWidget()
         await chat_log.mount(progress)
         chat_log.follow_new_content()
@@ -1086,6 +1105,8 @@ class TabulaflowApp(App[None]):
             # last_usage already reflect the interrupted run.
             await progress.mark_interrupted(session.last_usage)
             chat_log.follow_new_content()
+            if pane is not None and pane_turn_id is not None:
+                pane.discard_turn(pane_turn_id)
             raise
         except Exception as e:
             # Freeze the partial progress widget (mirrors the interrupt path) so the
@@ -1098,18 +1119,29 @@ class TabulaflowApp(App[None]):
             msg = SystemMessage(error_text)
             await chat_log.mount(msg)
             chat_log.follow_new_content()
+            if pane is not None and pane_turn_id is not None:
+                pane.discard_turn(pane_turn_id)
             return
         if result is None:
+            if pane is not None and pane_turn_id is not None:
+                pane.discard_turn(pane_turn_id)
             return  # normal completion always yields a terminal TurnFinished
 
-        turn_output = session.turn_output(result.output)
-        resolved_output = await turn_output.resolve()
+        try:
+            turn_output = session.turn_output(result.output)
+            resolved_output = await turn_output.resolve()
+        except Exception:
+            if pane is not None and pane_turn_id is not None:
+                pane.discard_turn(pane_turn_id)
+            raise
         await self._push_turn_to_pane(
             result,
             resolved_output,
             turn_output,
             title=display_text,
             user_text=display_text,
+            pane=pane,
+            turn_id=pane_turn_id,
         )
         cards = build_resolved_output_card_views(resolved_output, self.size.width - 11)
         if cards:

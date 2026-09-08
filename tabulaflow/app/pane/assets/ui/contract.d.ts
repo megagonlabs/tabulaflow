@@ -50,6 +50,13 @@ export interface PaneTurn {
   panel?: PanePanel;
 }
 
+export interface PendingPaneTurn {
+  id: number;
+  status: "pending";
+  title: string;
+  user: string;
+}
+
 export interface ColumnDesc {
   title: string;
   field: string;
