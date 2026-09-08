@@ -772,9 +772,9 @@ Sep 7
 
 
 Sep 8
-- [ ] Finish SPARQL and data layer cleanup
+- [x] Finish SPARQL and data layer cleanup
   - [x] "db" cleanup
-  - [ ] Neo4j graph extraction
+  - [x] Neo4j graph extraction
 - [x] Fix input history order
 - [ ] Huggingface connect split selection and better url cleaning
 - [ ] Authentication
@@ -797,6 +797,7 @@ Sep 8
     - [ ] Query browser - show language and database
     - [ ] Support interrupting preview loading
     - [ ] Inline artifact citation
+    - [ ] /clear for clearing output pane?
   - Multimodal
     - [ ] hydrate_media tool?
     - [ ] image/pdf detail level
