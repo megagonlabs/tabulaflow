@@ -763,13 +763,15 @@ Sep 6
 Sep 7
 - SPARQL
   - [x] SPARQL connector
+  - [x] Data source catalog
   - [ ] Wikidata
   - [ ] Government/academic data
 - Output pane
   - [x] Long text/json cell in output pane
-  - [ ] Image cramped - https://huggingface.co/datasets/lmms-lab-encoder/DocVQA/viewer/DocVQA
+  - [x] Fix images alignment
+- [x] Fix Agent error: status_code: 404, model_name: gpt-5.6-sol, body: {'message': "Item with id 'rs_06adf3bb2187a080006a9f31a7284887d0be062ed07f3a350a' not found.", 'type': 'invalid_request_error', 'param': 'input', 'code': None}
 
-- [ ] Agent error: status_code: 404, model_name: gpt-5.6-sol, body: {'message': "Item with id 'rs_06adf3bb2187a080006a9f31a7284887d0be062ed07f3a350a' not found.", 'type': 'invalid_request_error', 'param': 'input', 'code': None}
+
 - [ ] Authentication
 - [ ] Avoid AGENTS.md CLAUDE.md re-read after compaction
 - [ ] Merge registry tool variants
