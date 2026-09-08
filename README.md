@@ -798,6 +798,8 @@ Sep 8
     - [ ] /reconnect
     - [ ] NL tool progress
     - [ ] Schema browser for very large db (1000+ tables/columns)
+    - [ ] Pagination for direct data browsing
+    - [ ] Query browser - show language and database
   - Multimodal
     - [ ] hydrate_media tool?
     - [ ] image/pdf detail level
@@ -807,6 +809,8 @@ Sep 8
     - [ ] Remote files
     - [ ] Government/academic data
     - [ ] Graph extraction for sparql
+    - [ ] CONSTRUCT and DESCRIBE support for sparql
+    - [ ] Refresh for get_column_json_schema and get_db_document
   - Subagent
     - [ ] Subagent context reuse
   - Coding
@@ -845,21 +849,8 @@ Sep 8
   - [ ] Table readiblity: small table -> readible (e.g. KB, MB, GB), large table -> normalized
   - [ ] Semantic join - cross join
   - [ ] Support interrupting preview loading
-  - [ ] Pass db doc on connect for small dbs?
-  - [ ] Multimodal data processing in subagent
   - [ ] Disable compression for small dbs?
-  - [ ] Enriched with other data in huggingface repo
   
-  - [ ] "connect to data" instead of "paste data"
-  - [ ] Consider huggingface compatibility when designing export format
-  - [ ] Pagination for direct data browsing
-- Data/Cell/Query Browser
-  - [ ] Support multi-modal data browsing (images, audio, video, etc.)
-  - [ ] Query browser - show language and database
-  - [ ] Refresh for get_column_json_schema and get_db_document
-  - [ ] Pagination for cell browser
-  - [ ] /export
-  - [ ] /import with auto LLM import
 
 - Scenarios
   - [ ] Data browsing (replace DBeaver)
