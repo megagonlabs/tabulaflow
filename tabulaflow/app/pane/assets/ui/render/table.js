@@ -44,10 +44,23 @@ function mediaTile(item, index) {
     + '" aria-label="Open ' + escapeAttr(label) + '">' + content + '</button>';
 }
 
-function renderMediaCell(value) {
-  if (!value || value.kind !== 'media-list') return renderMedia(value);
+function renderImagePreview(value) {
+  return '<div class="tf-media-preview">' + renderMedia(value) + '</div>';
+}
+
+export function renderMediaCell(value) {
+  if (!value || value.kind !== 'media-list') {
+    return value && value.kind === 'media' && String(value.mime || '').indexOf('image/') === 0
+      ? renderImagePreview(value)
+      : renderMedia(value);
+  }
   var items = Array.isArray(value.items) ? value.items : [];
-  if (items.length === 1) return renderMedia(items[0]);
+  if (items.length === 1) {
+    var item = items[0];
+    return item && item.kind === 'media' && String(item.mime || '').indexOf('image/') === 0
+      ? renderImagePreview(item)
+      : renderMedia(item);
+  }
   var visibleCount = items.length > 3 ? 2 : items.length;
   var html = items.slice(0, visibleCount).map(mediaTile).join('');
   if (visibleCount < items.length) {
@@ -364,9 +377,6 @@ export function renderTable(container, cardData) {
       requestAnimationFrame(fitFixedPanelHeight);
     });
   }
-  if (tableData.hasMedia) {
-    window.setTimeout(function () { table.redraw(true); }, 0);
-  }
   return {
     ready: ready,
     copy: {
@@ -383,8 +393,7 @@ export function renderTable(container, cardData) {
       return JSON.stringify(nextTable.columns || []) === JSON.stringify(tableData.columns || [])
         && nextConstrained === shouldConstrainHeight
         && nextTable.maxHeight === tableData.maxHeight
-        && nextTable.displayCap === tableData.displayCap
-        && !!nextTable.hasMedia === !!tableData.hasMedia;
+        && nextTable.displayCap === tableData.displayCap;
     },
     update: function (nextData) {
       tableData = nextData.table || {};

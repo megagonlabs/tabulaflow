@@ -559,6 +559,29 @@ process.stdout.write(JSON.stringify(tableToTsv(columns, rows)));
     )
 
 
+def test_table_image_cells_reserve_stable_preview_space(tmp_path: Path) -> None:
+    node, renderer_path = _renderer_module(tmp_path, "shared.js", "table.js")
+    script = f"""
+import {{ pathToFileURL }} from 'node:url';
+globalThis.window = {{ Tabulator: {{}} }};
+const moduleUrl = pathToFileURL({json.dumps(renderer_path)}).href;
+const {{ renderMediaCell }} = await import(moduleUrl);
+const image = {{ kind: 'media', mime: 'image/png', src: './image.png', size: 123 }};
+process.stdout.write(JSON.stringify({{
+  scalar: renderMediaCell(image),
+  singleton: renderMediaCell({{ kind: 'media-list', items: [image] }}),
+  collection: renderMediaCell({{ kind: 'media-list', items: [image, image] }}),
+}}));
+"""
+
+    rendered = _run_node(node, script)
+
+    assert rendered["scalar"] == '<div class="tf-media-preview"><img src="./image.png"></div>'
+    assert rendered["singleton"] == rendered["scalar"]
+    assert 'class="tf-media-list"' in rendered["collection"]
+    assert 'class="tf-media-preview"' not in rendered["collection"]
+
+
 def test_lightbox_media_uses_context_specific_controls(tmp_path: Path) -> None:
     node, renderer_path = _renderer_module(tmp_path, "shared.js")
     script = f"""

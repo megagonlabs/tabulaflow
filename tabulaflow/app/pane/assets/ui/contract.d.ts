@@ -70,7 +70,6 @@ export interface MediaListCell {
 
 export interface TableData {
   columns: ColumnDesc[];
-  hasMedia?: boolean;
   maxHeight?: number | null;
   displayCap?: number;
   meta?: string;

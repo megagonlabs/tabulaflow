@@ -83,7 +83,6 @@ class MediaListCell(TypedDict):
 
 class TableData(TypedDict, total=False):
     columns: Required[list[ColumnDesc]]
-    hasMedia: bool
     maxHeight: int | None
     displayCap: int
     meta: str

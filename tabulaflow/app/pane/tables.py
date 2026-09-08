@@ -247,7 +247,6 @@ def _build_table_data(
 
     table_payload: TableData = {
         "columns": column_defs,
-        "hasMedia": bool(media_columns),
         "maxHeight": max_height,
         "displayCap": _CELL_DISPLAY_CAP,
         "meta": table_view_meta(len(df), len(df.columns), max_rows=max_rows),
