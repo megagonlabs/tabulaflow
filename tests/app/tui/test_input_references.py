@@ -1,3 +1,4 @@
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 from pydantic_ai.messages import BinaryContent
@@ -46,6 +47,58 @@ def test_history_restores_text_references_but_not_image_references(tmp_path: Pat
     assert restored.highlighter is not None
     highlighted = restored.highlighter(display)
     assert [(span.start, span.end) for span in highlighted.spans] == [(8, 8 + len("[Pasted text #1 +2 lines]"))]
+
+
+def test_history_appends_without_overwriting_entries_from_another_session(tmp_path: Path) -> None:
+    history_path = tmp_path / "history.jsonl"
+    first = HistoryInput(history_path)
+    second = HistoryInput(history_path)
+
+    first.record_submission("from first")
+    second.record_submission("from second")
+
+    assert HistoryInput(history_path)._history == ["from first", "from second"]
+
+
+def test_history_serializes_concurrent_appends(tmp_path: Path) -> None:
+    history_path = tmp_path / "history.jsonl"
+    inputs = [HistoryInput(history_path) for _ in range(10)]
+
+    with ThreadPoolExecutor() as executor:
+        futures = [executor.submit(input_bar.record_submission, str(index)) for index, input_bar in enumerate(inputs)]
+        for future in futures:
+            future.result()
+
+    assert set(HistoryInput(history_path)._history) == set(map(str, range(10)))
+
+
+def test_history_compaction_retains_newest_complete_entries(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    history_path = tmp_path / "history.jsonl"
+    monkeypatch.setattr(input_module, "_MAX_HISTORY_BYTES", 300)
+    input_bar = HistoryInput(history_path)
+
+    input_bar.record_submission("a" * 100)
+    input_bar.record_submission("b" * 100)
+    input_bar.record_submission("newest")
+
+    restored = HistoryInput(history_path)
+    assert restored._history[-1] == "newest"
+    assert history_path.stat().st_size <= 300
+
+
+def test_history_persistence_failure_does_not_reject_submission(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    input_bar = HistoryInput(tmp_path / "history.jsonl")
+
+    def fail(_entry: str) -> None:
+        raise OSError("disk unavailable")
+
+    monkeypatch.setattr(input_bar, "_append_history", fail)
+
+    input_bar.record_submission("still accepted")
+
+    assert input_bar._history == ["still accepted"]
 
 
 async def test_active_references_are_highlighted_and_deleted_atomically(

@@ -3,12 +3,15 @@
 from __future__ import annotations
 
 import json
+import logging
+import os
 import re
+import uuid
 from collections.abc import Mapping
+from pathlib import Path
 from typing import TYPE_CHECKING, TypedDict, cast
 
-from pathlib import Path
-
+from filelock import FileLock, Timeout as FileLockTimeout
 from pydantic_ai.messages import BinaryContent
 from rich.highlighter import Highlighter
 from rich.text import Text
@@ -106,7 +109,11 @@ class TabulaflowSuggester(Suggester):
         return None
 
 
-_MAX_HISTORY_ENTRIES = 500
+_MAX_HISTORY_BYTES = 10 * 1024 * 1024
+_HISTORY_COMPACTION_RATIO = 0.8
+_HISTORY_LOCK_TIMEOUT_SECONDS = 1
+
+logger = logging.getLogger(__name__)
 
 _PASTE_REFERENCE_PATTERN = re.compile(r"\[Pasted text #(\d+) \+(\d+) lines\]")
 _IMAGE_REFERENCE_PATTERN = re.compile(r"\[Image #(\d+)\]")
@@ -229,11 +236,14 @@ class HistoryInput(Input):
         if not self._history_path.is_file():
             return
         loaded: list[str] = []
-        for raw in self._history_path.read_text(encoding="utf-8").splitlines()[-_MAX_HISTORY_ENTRIES:]:
+        for raw in self._history_path.read_text(encoding="utf-8").splitlines():
             if not raw.strip():
                 continue
-            record = json.loads(raw)
-            display: str = record["display"]
+            try:
+                record = json.loads(raw)
+                display: str = record["display"]
+            except (json.JSONDecodeError, KeyError, TypeError):
+                continue
             self._image_counter = max(
                 self._image_counter,
                 max((int(match.group(1)) for match in _IMAGE_REFERENCE_PATTERN.finditer(display)), default=0),
@@ -249,16 +259,41 @@ class HistoryInput(Input):
             loaded.append(_PASTE_REFERENCE_PATTERN.sub(remap, display))
         self._history = loaded
 
-    def _save_history(self) -> None:
-        """Persist history as JSONL — one ``{display, pastedContents}`` record
-        per line. ``pastedContents`` only includes paste ids actually
-        referenced by that entry."""
+    def _append_history(self, entry: str) -> None:
+        """Append one history entry and compact the file when it grows too large."""
         self._history_path.parent.mkdir(parents=True, exist_ok=True)
-        lines = [
-            json.dumps(self._build_history_record(entry), ensure_ascii=False)
-            for entry in self._history[-_MAX_HISTORY_ENTRIES:]
-        ]
-        self._history_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+        line = (json.dumps(self._build_history_record(entry), ensure_ascii=False) + "\n").encode()
+        lock = FileLock(f"{self._history_path}.lock", timeout=_HISTORY_LOCK_TIMEOUT_SECONDS)
+        with lock:
+            with self._history_path.open("a+b") as file:
+                file.seek(0, os.SEEK_END)
+                if file.tell() > 0:
+                    file.seek(-1, os.SEEK_END)
+                    if file.read(1) != b"\n":
+                        file.write(b"\n")
+                file.write(line)
+                file.flush()
+            if self._history_path.stat().st_size > _MAX_HISTORY_BYTES:
+                self._compact_history()
+
+    def _compact_history(self) -> None:
+        lines = self._history_path.read_bytes().splitlines(keepends=True)
+        target = int(_MAX_HISTORY_BYTES * _HISTORY_COMPACTION_RATIO)
+        retained: list[bytes] = []
+        retained_size = 0
+        for line in reversed(lines):
+            normalized = line if line.endswith(b"\n") else line + b"\n"
+            if retained and retained_size + len(normalized) > target:
+                break
+            retained.append(normalized)
+            retained_size += len(normalized)
+
+        temporary = self._history_path.with_name(f".{self._history_path.name}.{uuid.uuid4().hex}.tmp")
+        try:
+            temporary.write_bytes(b"".join(reversed(retained)))
+            os.replace(temporary, self._history_path)
+        finally:
+            temporary.unlink(missing_ok=True)
 
     def _build_history_record(self, placeholder_text: str) -> dict[str, object]:
         pasted: dict[str, _PasteRecord] = {}
@@ -273,12 +308,13 @@ class HistoryInput(Input):
         stripped = text.strip()
         if not stripped:
             return
-        if self._history and self._history[-1] == stripped:
-            return
         self._history.append(stripped)
         self._history_index = -1
         self._saved_input = ""
-        self._save_history()
+        try:
+            self._append_history(stripped)
+        except (OSError, FileLockTimeout):
+            logger.warning("Input was accepted but could not be saved to command history", exc_info=True)
 
     def action_history_prev(self) -> None:
         if not self._history:
