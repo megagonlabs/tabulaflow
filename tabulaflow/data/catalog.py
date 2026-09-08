@@ -28,17 +28,15 @@ def _normalize_catalog_source(source: str) -> str:
     return source.rstrip("/") if "://" in source else source
 
 
-WIKIDATA_DESCRIPTION = """Wikidata is a collaboratively edited knowledge graph queried with SPARQL. Some English-facing labels, including Q42, use the multilingual `mul` language code: request `en,mul`, not only `en`, with `SERVICE wikibase:label`, and consider both values in direct label filters.
+WIKIDATA_DESCRIPTION = """Wikidata is a collaborative knowledge graph queried with SPARQL.
 
-Critical query guidance:
-- Use `SERVICE wikibase:mwapi` for bounded entity and property discovery instead of scanning labels across the graph.
-- Keep geographic and transitive-path queries selective and bounded before increasing their scope.
+Query notes:
+- Labels: Some English labels, including Q42, are tagged `mul`; use `en,mul` with `SERVICE wikibase:label` and in direct filters.
+- Discovery: Use `SERVICE wikibase:mwapi`; avoid graph-wide label scans.
+- Statements: `wdt:` returns truthy claims. Use `p:`, `ps:`, `pq:`, and `wikibase:rank` for qualifiers or ranks.
+- Dates: Query statement precision and calendar metadata when normalized timestamps are insufficient.
 
-Use `wdt:` for direct truthy claims. Use `p:`, `ps:`, `pq:`, and `wikibase:rank` when statements, qualifiers, or ranks matter. Wikidata dates may carry precision and calendar metadata beyond the normalized timestamp; query that statement metadata when it is material to the answer.
-
-Official documentation:
-- https://www.wikidata.org/wiki/Wikidata:SPARQL_query_service/Wikidata_Query_Help
-- https://www.mediawiki.org/wiki/Wikidata_Query_Service/User_Manual
+Docs: [Query help](https://www.wikidata.org/wiki/Wikidata:SPARQL_query_service/Wikidata_Query_Help) · [User manual](https://www.mediawiki.org/wiki/Wikidata_Query_Service/User_Manual)
 """
 
 WIKIDATA = DataSourceDefinition(
