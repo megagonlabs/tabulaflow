@@ -170,7 +170,7 @@ body { margin: 0; background: var(--bg); color: var(--text); display: flex; flex
 .message.assistant .message-body { width: 100%; color: var(--text); }
 .pending-turn { display: flex; align-items: center; gap: 9px; color: var(--text-muted);
                 font: 14px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
-.pending-turn-spinner { width: 12px; height: 12px; box-sizing: border-box; border-radius: 50%;
+.pending-turn-spinner { width: 14px; height: 14px; flex: 0 0 auto; box-sizing: border-box; border-radius: 50%;
                         color: var(--text-dim); border: 2px solid rgba(154, 164, 178, 0.18);
                         border-top-color: currentColor;
                         animation: pending-turn-spin 700ms linear infinite; }
