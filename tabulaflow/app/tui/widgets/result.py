@@ -20,7 +20,6 @@ from tabulaflow.app.tui.rendering import DATA_PREVIEW_MAX_ROWS, build_resolved_o
 from tabulaflow.output.specs import ChoiceParameter, NumberParameter, SelectionValue
 from tabulaflow.output.store import ArtifactSourceResolutionError
 from tabulaflow.app.theme import ACCENT
-from tabulaflow.app.tui.widgets.chat_log import ChatLog
 from tabulaflow.app.tui.theme import (
     ACCENT_DIM,
     KEY_HINT,
@@ -275,7 +274,6 @@ class AgentResultWidget(Widget):
             self._update_view_stepper()
         if self._bottom_hint_widget is not None:
             self._update_bottom_hint()
-        self.app.query_one("#chat-log", ChatLog).follow_new_content()
 
     def _rebuild_cards_for_selection(self, cards: list["CardGroup"]) -> None:
         old_indices = self._view_indices
