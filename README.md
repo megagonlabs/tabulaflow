@@ -794,6 +794,8 @@ Sep 8
 - [x] Fix Bare "Agent Error:"
 - [ ] Huggingface connect split selection and better url cleaning
 - [x] Only use ctrl+d for exitting
+
+- Release
 - [ ] Onboarding - browser install
 - [ ] Open-source LLM (e.g. Fireworks) preset
 
