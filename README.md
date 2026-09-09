@@ -795,10 +795,12 @@ Sep 8
 - [x] Huggingface connect subset selection and better url cleaning
 - [x] Only use ctrl+d for exitting
 - [x] Fix connect cancellation bug
+- [x] Add `sample_view_rows` param
 
 - Release
-- [ ] Onboarding - browser install
-- [ ] Open-source LLM (e.g. Fireworks) preset
+  - [ ] Run tests and mypy
+  - [ ] Onboarding - browser install
+  - [ ] Open-source LLM (e.g. Fireworks) preset
 
 - v2 features
   - app
