@@ -1456,14 +1456,10 @@ class AsyncInspector:
 
     def __getattr__(self, method: str) -> Any:
         async def _stub_async(*args: Any, **kwargs: Any) -> Any:
-            def call(c: Any) -> Any:
+            def call(c: sqlalchemy.engine.Connection) -> Any:
                 return getattr(inspect(c), method)(*args, **kwargs)
 
-            async with self.t_eng.throttle():
-                if self.t_eng.engine_type == "async":
-                    async with self.t_eng.engine.connect() as conn:  # type: ignore
-                        return await conn.run_sync(call)
-                return await asyncio.to_thread(call, self.t_eng.engine)
+            return await self.t_eng.run_with_conn_async(call)
 
         return _stub_async
 
@@ -2022,11 +2018,10 @@ async def _normalize_duckdb_schema_names(t_eng: ThrottledEngine, schema_names: l
     filters to only schemas belonging to the current database.
     """
 
-    def _get_current_db() -> str | None:
-        with t_eng.engine.connect() as conn:  # type: ignore
-            return conn.execute(sqlalchemy.text("SELECT current_database()")).scalar()
+    def _get_current_db(conn: sqlalchemy.engine.Connection) -> str | None:
+        return conn.execute(sqlalchemy.text("SELECT current_database()")).scalar()
 
-    current_db = await asyncio.to_thread(_get_current_db)
+    current_db = await t_eng.run_with_conn_async(_get_current_db)
 
     result: list[str | None] = []
     for s in schema_names:

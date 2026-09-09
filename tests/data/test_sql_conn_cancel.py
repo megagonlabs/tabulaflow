@@ -9,10 +9,13 @@ configuration than existing connections"``.
 
 import asyncio
 from pathlib import Path
+import threading
+from typing import Any, cast
 
 import duckdb
 import pytest
 
+import tabulaflow.data.sql as sql_module
 from tabulaflow.data.config import SQLConnectorConfig
 from tabulaflow.data.sql import SQLConnector, ThrottledEngine
 
@@ -59,6 +62,65 @@ async def test_cancel_then_retry_mixed_config(duckdb_with_tables: str) -> None:
         config=SQLConnectorConfig(schema_cache_mode="off", query_cache_mode="off"),
     )
     assert len(connector.schema.tables) == 30
+    await connector.close_async()
+
+
+async def test_cancel_during_inspection_then_retry_mixed_config(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Inspector work must release its read-only DuckDB connection before retry."""
+    db_path = tmp_path / "hf_cache.duckdb"
+    duckdb.connect(str(db_path)).execute("CREATE TABLE documents (id INTEGER)").close()
+    url = f"duckdb:///{db_path}"
+    entered_inspection = threading.Event()
+    inspector_abort_called = asyncio.Event()
+    real_inspect = getattr(sql_module, "inspect")
+    real_abort_handle = ThrottledEngine._abort_handle
+
+    async def track_abort(engine: ThrottledEngine, handle: Any) -> None:
+        inspector_abort_called.set()
+        await real_abort_handle(engine, handle)
+
+    class SlowInspector:
+        def __init__(self, bind: Any) -> None:
+            self._bind = bind
+            self._inner = real_inspect(bind)
+
+        def get_schema_names(self) -> list[str]:
+            entered_inspection.set()
+            self._bind.exec_driver_sql("SELECT SUM(sin(i)) FROM range(1000000000)").scalar()
+            return cast(list[str], self._inner.get_schema_names())
+
+        def __getattr__(self, name: str) -> Any:
+            return getattr(self._inner, name)
+
+    monkeypatch.setattr(sql_module, "inspect", SlowInspector)
+    monkeypatch.setattr(ThrottledEngine, "_abort_handle", track_abort)
+    task = asyncio.create_task(
+        SQLConnector.from_url_async(
+            global_id="hf-cancel-target",
+            url=url,
+            display_name="documents",
+            read_only=True,
+            config=SQLConnectorConfig(schema_cache_mode="off", query_cache_mode="off"),
+        )
+    )
+    await asyncio.wait_for(asyncio.to_thread(entered_inspection.wait), timeout=5)
+    task.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await task
+    assert inspector_abort_called.is_set()
+
+    monkeypatch.setattr(sql_module, "inspect", real_inspect)
+    connector = await SQLConnector.from_url_async(
+        global_id="hf-retry",
+        url=url,
+        display_name="documents",
+        read_only=False,
+        config=SQLConnectorConfig(schema_cache_mode="off", query_cache_mode="off"),
+    )
+    assert [table.name for table in connector.schema.tables] == ["documents"]
     await connector.close_async()
 
 
