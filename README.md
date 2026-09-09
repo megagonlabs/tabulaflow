@@ -783,21 +783,19 @@ Sep 7
 
 
 Sep 8
-- [x] Finish SPARQL and data layer cleanup
-  - [x] "db" cleanup
+- [x] "db" cleanup
   - [x] Neo4j graph extraction
 - [x] Fix input history order
 - [x] Fix TUI auto-scrolling behaviour
 - [x] Show pending turns in output pane
 - [x] Fix caching configuration, cache key, add `--enable-schema-cache`
-- [x] Fix neo4j issues
+- [x] Fix neo4j graph extraction, df normalization, url guidance
 - [x] Improve session logging
 - [ ] Huggingface connect split selection and better url cleaning
 - [ ] Authentication
 - [ ] Avoid AGENTS.md CLAUDE.md re-read after compaction
 - [ ] Onboarding - browser install
 - [ ] Open-source LLM (e.g. Fireworks) preset
-- [ ] Fix turns after 152 not shown in output pane
 
 - v2 features
   - app
