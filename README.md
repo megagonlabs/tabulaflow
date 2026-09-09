@@ -784,12 +784,12 @@ Sep 7
 
 Sep 8
 - [x] "db" cleanup
-  - [x] Neo4j graph extraction
 - [x] Fix input history order
 - [x] Fix TUI auto-scrolling behaviour
 - [x] Show pending turns in output pane
 - [x] Fix caching configuration, cache key, add `--enable-schema-cache`
 - [x] Fix neo4j graph extraction, df normalization, url guidance
+- [x] Redact credentials 
 - [x] Improve session logging
 - [x] Fix Bare "Agent Error:"
 - [ ] Huggingface connect split selection and better url cleaning
