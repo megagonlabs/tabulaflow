@@ -137,6 +137,35 @@ async def test_query_session_uses_server_enforced_access_mode(read_only: bool, e
     assert driver.access_modes == [expected_mode]
 
 
+async def test_graph_materialization_failure_preserves_tabular_result(
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    driver = _Driver()
+    monkeypatch.setattr(neo4j.AsyncGraphDatabase, "driver", lambda *_args, **_kwargs: driver)
+    connector = await Neo4jConnector.from_url_async(
+        "neo4j://localhost:7687",
+        display_name="test",
+        schema=PropertyGraphSchema(display_name="test"),
+        config=Neo4jConnectorConfig(max_result_rows=None),
+    )
+
+    def fail_graph_conversion(*_args: object, **_kwargs: object) -> None:
+        raise ValueError("unsupported graph value")
+
+    monkeypatch.setattr("tabulaflow.data.neo4j._convert_neo4j_graph_result", fail_graph_conversion)
+    try:
+        result = await connector.run_query_async("RETURN 1 AS value")
+    finally:
+        await connector.close_async()
+
+    assert result.error is None
+    assert result.df is not None
+    assert result.df.to_dict(orient="records") == [{"value": 1}]
+    assert result.graph is None
+    assert "Failed to materialize optional Neo4j graph result" in caplog.text
+
+
 async def test_query_concurrency_configures_semaphore_and_driver_pool(monkeypatch: pytest.MonkeyPatch) -> None:
     driver = _Driver()
     captured: dict[str, object] = {}

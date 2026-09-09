@@ -424,11 +424,15 @@ class Neo4jConnector:
             )
             assert isinstance(tabular_result, tuple)
             df, neo4j_graph = tabular_result
-            graph = _convert_neo4j_graph_result(
-                neo4j_graph,
-                max_nodes=self.config.max_graph_result_nodes,
-                max_edges=self.config.max_graph_result_edges,
-            )
+            try:
+                graph = _convert_neo4j_graph_result(
+                    neo4j_graph,
+                    max_nodes=self.config.max_graph_result_nodes,
+                    max_edges=self.config.max_graph_result_edges,
+                )
+            except Exception:
+                logger.warning("Failed to materialize optional Neo4j graph result", exc_info=True)
+                graph = None
             latency = time.time() - t0
             return ExecResult(df=df, graph=graph, latency_seconds=latency)
         except Exception as e:
