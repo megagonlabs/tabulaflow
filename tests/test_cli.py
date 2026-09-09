@@ -17,6 +17,7 @@ def test_root_cli_exposes_chat_options_and_research_commands() -> None:
     assert result.exit_code == 0
     assert "A data agent for databases, files, and the web." in result.stdout
     assert "--service-tier" in result.stdout
+    assert "--enable-schema-cache" in result.stdout
     assert "--install-completion" not in result.stdout
     assert "--show-completion" not in result.stdout
     assert "benchmark" in result.stdout
@@ -52,6 +53,7 @@ def test_root_cli_starts_chat_by_default(monkeypatch: MonkeyPatch) -> None:
             "off",
             "--service-tier",
             "priority",
+            "--enable-schema-cache",
             "--output-pane-port",
             "61211",
             "--output-pane-host",
@@ -65,6 +67,7 @@ def test_root_cli_starts_chat_by_default(monkeypatch: MonkeyPatch) -> None:
     assert received == {
         "llm_preset": "off",
         "service_tier": AppServiceTier.PRIORITY,
+        "enable_schema_cache": True,
         "output_pane_port": 61211,
         "output_pane_host": "0.0.0.0",
         "output_pane_public_url": "https://example.test/output",

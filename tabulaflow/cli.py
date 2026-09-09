@@ -49,6 +49,11 @@ def root(
         "--service-tier",
         help="LLM request service tier for this launch. Priority may incur premium API pricing.",
     ),
+    enable_schema_cache: bool = typer.Option(
+        False,
+        "--enable-schema-cache",
+        help="Persist and reuse database schemas to speed up repeated connections, especially to large or remote databases.",
+    ),
     output_pane_port: int | None = typer.Option(
         None,
         "--output-pane-port",
@@ -70,6 +75,7 @@ def root(
         run_chat(
             llm_preset=llm_preset,
             service_tier=service_tier,
+            enable_schema_cache=enable_schema_cache,
             output_pane_port=output_pane_port,
             output_pane_host=output_pane_host,
             output_pane_public_url=output_pane_public_url,

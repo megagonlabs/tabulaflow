@@ -8,7 +8,7 @@ import shutil
 import threading
 from collections.abc import AsyncIterator, Sequence
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
 from tabulaflow.app.config import LLMPreset, model_supports_apply_patch
 from tabulaflow.app.runtime_paths import RuntimePaths
@@ -27,8 +27,8 @@ WORKSPACE_ALIAS = "workspace"
 logger = logging.getLogger(__name__)
 
 
-def _app_connector_configs() -> DataSourceConnectorConfigs:
-    """Return connector policies that keep interactive sessions cache-free."""
+def _app_connector_configs(*, enable_schema_cache: bool = False) -> DataSourceConnectorConfigs:
+    """Return connector policies for an interactive session."""
     from tabulaflow.data.config import (
         DataSourceConnectorConfigs,
         Neo4jConnectorConfig,
@@ -36,9 +36,10 @@ def _app_connector_configs() -> DataSourceConnectorConfigs:
         SQLConnectorConfig,
     )
 
+    schema_cache_mode: Literal["off", "read_write"] = "read_write" if enable_schema_cache else "off"
     return DataSourceConnectorConfigs(
-        sql=SQLConnectorConfig(schema_cache_mode="off", query_cache_mode="off"),
-        neo4j=Neo4jConnectorConfig(schema_cache_mode="off"),
+        sql=SQLConnectorConfig(schema_cache_mode=schema_cache_mode, query_cache_mode="off"),
+        neo4j=Neo4jConnectorConfig(schema_cache_mode=schema_cache_mode),
         sparql=SPARQLConnectorConfig(),
     )
 
@@ -74,13 +75,14 @@ class AppSession:
         project_dir: Path,
         service_tier: ServiceTier = "default",
         data_source_definitions: Sequence[DataSourceDefinition] | None = None,
+        enable_schema_cache: bool = False,
     ) -> AppSession:
         """Create a ready session with its workspace and optional sample data."""
         import asyncio
 
         await asyncio.to_thread(_warm_connector_imports)
         runtime_paths.scratch_dir.mkdir(parents=True, exist_ok=True)
-        connector_configs = _app_connector_configs()
+        connector_configs = _app_connector_configs(enable_schema_cache=enable_schema_cache)
         workspace: SQLConnector | None = None
         try:
             workspace = await _create_workspace_connector(runtime_paths.workspace_db_path, connector_configs.sql)

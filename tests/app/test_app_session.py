@@ -136,6 +136,17 @@ def test_app_disables_persistent_caches_regardless_of_environment(monkeypatch: p
     assert configs.neo4j.schema_cache_mode == "off"
 
 
+def test_app_can_explicitly_enable_schema_cache(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("TABULAFLOW_SCHEMA_CACHE_MODE", "refresh")
+    monkeypatch.setenv("TABULAFLOW_QUERY_CACHE_MODE", "read_write")
+
+    configs = _app_connector_configs(enable_schema_cache=True)
+
+    assert configs.sql.schema_cache_mode == "read_write"
+    assert configs.sql.query_cache_mode == "off"
+    assert configs.neo4j.schema_cache_mode == "read_write"
+
+
 def test_reset_conversation_preserves_session_environment(tmp_path: Path) -> None:
     session = _session(
         llm_preset=_preset(),

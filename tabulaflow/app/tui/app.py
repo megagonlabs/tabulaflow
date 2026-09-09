@@ -232,6 +232,7 @@ class TabulaflowApp(App[None]):
         runtime_paths: RuntimePaths,
         project_dir: Path,
         service_tier: ServiceTier = "default",
+        enable_schema_cache: bool = False,
         output_pane_host: str = "127.0.0.1",
         output_pane_port: int | None = None,
         output_pane_public_url: str | None = None,
@@ -241,6 +242,7 @@ class TabulaflowApp(App[None]):
         super().__init__()
         self._llm_selection = llm_selection
         self._service_tier = service_tier
+        self._enable_schema_cache = enable_schema_cache
         self._output_pane_host = output_pane_host
         self._output_pane_port = output_pane_port
         self._output_pane_public_url = output_pane_public_url
@@ -881,6 +883,7 @@ class TabulaflowApp(App[None]):
                 runtime_paths=self._runtime_paths,
                 project_dir=self._project_dir,
                 service_tier=self._service_tier,
+                enable_schema_cache=self._enable_schema_cache,
             )
             self._enable_explorer_button()
             # Publish the session only once it is fully ready (sample autoconnected,
@@ -1174,6 +1177,7 @@ async def run_tui(
     llm_selection: ResolvedLLMSelection,
     *,
     service_tier: ServiceTier = "default",
+    enable_schema_cache: bool = False,
     output_pane_host: str = "127.0.0.1",
     output_pane_port: int | None = None,
     output_pane_public_url: str | None = None,
@@ -1184,6 +1188,7 @@ async def run_tui(
         runtime_paths=RuntimePaths.create(),
         project_dir=Path.cwd(),
         service_tier=service_tier,
+        enable_schema_cache=enable_schema_cache,
         output_pane_host=output_pane_host,
         output_pane_port=output_pane_port,
         output_pane_public_url=output_pane_public_url,

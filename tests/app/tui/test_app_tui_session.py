@@ -72,6 +72,7 @@ def _app_for_selection(
     runtime_paths: RuntimePaths | None = None,
     project_dir: Path | None = None,
     service_tier: str = "default",
+    enable_schema_cache: bool = False,
 ) -> TabulaflowApp:
     from typing import cast
 
@@ -82,6 +83,7 @@ def _app_for_selection(
         runtime_paths=runtime_paths or RuntimePaths.for_session("test-session"),
         project_dir=project_dir or Path.cwd(),
         service_tier=cast(ServiceTier, service_tier),
+        enable_schema_cache=enable_schema_cache,
     )
 
 
@@ -163,7 +165,12 @@ async def test_ensure_session_creates_app_session(tmp_path: Path, monkeypatch: p
 
     preset = _preset(model="test:model", subagent_model="test:subagent")
     runtime_paths = RuntimePaths.for_session("test-session")
-    app = _app(preset, runtime_paths=runtime_paths, project_dir=project_dir)
+    app = _app_for_selection(
+        _selection(preset),
+        runtime_paths=runtime_paths,
+        project_dir=project_dir,
+        enable_schema_cache=True,
+    )
 
     session = object()
     captured: dict[str, Any] = {}
@@ -183,6 +190,7 @@ async def test_ensure_session_creates_app_session(tmp_path: Path, monkeypatch: p
         "runtime_paths": runtime_paths,
         "project_dir": project_dir,
         "service_tier": "default",
+        "enable_schema_cache": True,
     }
 
 

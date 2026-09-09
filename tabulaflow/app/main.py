@@ -40,6 +40,7 @@ def run_chat(
     *,
     llm_preset: str | None = None,
     service_tier: AppServiceTier = AppServiceTier.DEFAULT,
+    enable_schema_cache: bool = False,
     output_pane_port: int | None = None,
     output_pane_host: str = "127.0.0.1",
     output_pane_public_url: str | None = None,
@@ -60,6 +61,7 @@ def run_chat(
         run_tui(
             llm_selection=startup_llm,
             service_tier=service_tier.value,
+            enable_schema_cache=enable_schema_cache,
             output_pane_host=output_pane_host,
             output_pane_port=output_pane_port,
             output_pane_public_url=output_pane_public_url,
