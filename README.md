@@ -788,10 +788,11 @@ Sep 8
   - [x] Neo4j graph extraction
 - [x] Fix input history order
 - [x] Fix TUI auto-scrolling behaviour
+- [x] Show pending turns in output pane
+- [x] Fix caching, `--enable-schema-cache`
 - [ ] Huggingface connect split selection and better url cleaning
 - [ ] Authentication
 - [ ] Avoid AGENTS.md CLAUDE.md re-read after compaction
-- [ ] Show pending turns in output pane
 - [ ] Onboarding - browser install
 - [ ] Open-source LLM (e.g. Fireworks) preset
 - [ ] Fix turns after 152 not shown in output pane
