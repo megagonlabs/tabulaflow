@@ -21,7 +21,7 @@ The app uses the provider's standard service tier by default. Priority processin
 is a launch-only option and may incur premium API pricing:
 
 ```bash
-tabulaflow --service-tier priority
+tabulaflow --llm-service-tier priority
 ```
 
 tabulaflow uses the launch directory as its project directory, so local file

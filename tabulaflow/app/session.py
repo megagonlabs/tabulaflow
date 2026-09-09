@@ -73,7 +73,7 @@ class AppSession:
         llm_preset: LLMPreset | None,
         runtime_paths: RuntimePaths,
         project_dir: Path,
-        service_tier: ServiceTier = "default",
+        llm_service_tier: ServiceTier = "default",
         data_source_definitions: Sequence[DataSourceDefinition] | None = None,
         enable_schema_cache: bool = False,
     ) -> AppSession:
@@ -90,7 +90,7 @@ class AppSession:
                 llm_preset=llm_preset,
                 runtime_paths=runtime_paths,
                 workspace=workspace,
-                service_tier=service_tier,
+                llm_service_tier=llm_service_tier,
                 project_dir=project_dir,
                 data_source_definitions=data_source_definitions,
                 connector_configs=connector_configs,
@@ -117,7 +117,7 @@ class AppSession:
         llm_preset: LLMPreset | None,
         runtime_paths: RuntimePaths,
         workspace: SQLConnector | None,
-        service_tier: ServiceTier = "default",
+        llm_service_tier: ServiceTier = "default",
         project_dir: Path | None = None,
         data_source_definitions: Sequence[DataSourceDefinition] | None = None,
         connector_configs: DataSourceConnectorConfigs | None = None,
@@ -127,7 +127,7 @@ class AppSession:
 
         self._runtime_paths = runtime_paths
         self._selected_preset = llm_preset
-        self._service_tier = service_tier
+        self._llm_service_tier = llm_service_tier
         self._workspace = workspace
         self.project_dir = project_dir
         self.data_source_definitions = tuple(
@@ -185,7 +185,7 @@ class AppSession:
             registry=self.registry,
             model=preset.main.model,
             reasoning=preset.main.reasoning,
-            service_tier=self._service_tier,
+            service_tier=self._llm_service_tier,
             workspace=self._workspace,
             trajectory_log_dir=self._runtime_paths.trajectories_dir,
             subagent_model=preset.subagent.model,

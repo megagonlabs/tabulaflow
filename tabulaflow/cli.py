@@ -3,7 +3,7 @@
 import typer
 from typer import rich_utils
 
-from tabulaflow.app.main import AppServiceTier, run_chat
+from tabulaflow.app.main import AppLLMServiceTier, run_chat
 from tabulaflow.app.theme import ACCENT
 from tabulaflow.research.cli import benchmark_app
 
@@ -44,9 +44,9 @@ def root(
         "-p",
         help="LLM preset label or 'off' for this launch. Overrides the saved selection without persisting.",
     ),
-    service_tier: AppServiceTier = typer.Option(
-        AppServiceTier.DEFAULT,
-        "--service-tier",
+    llm_service_tier: AppLLMServiceTier = typer.Option(
+        AppLLMServiceTier.DEFAULT,
+        "--llm-service-tier",
         help="LLM request service tier for this launch. Priority may incur premium API pricing.",
     ),
     enable_schema_cache: bool = typer.Option(
@@ -74,7 +74,7 @@ def root(
     if ctx.invoked_subcommand is None:
         run_chat(
             llm_preset=llm_preset,
-            service_tier=service_tier,
+            llm_service_tier=llm_service_tier,
             enable_schema_cache=enable_schema_cache,
             output_pane_port=output_pane_port,
             output_pane_host=output_pane_host,

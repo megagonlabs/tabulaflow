@@ -231,7 +231,7 @@ class TabulaflowApp(App[None]):
         llm_selection: ResolvedLLMSelection,
         runtime_paths: RuntimePaths,
         project_dir: Path,
-        service_tier: ServiceTier = "default",
+        llm_service_tier: ServiceTier = "default",
         enable_schema_cache: bool = False,
         output_pane_host: str = "127.0.0.1",
         output_pane_port: int | None = None,
@@ -241,7 +241,7 @@ class TabulaflowApp(App[None]):
 
         super().__init__()
         self._llm_selection = llm_selection
-        self._service_tier = service_tier
+        self._llm_service_tier = llm_service_tier
         self._enable_schema_cache = enable_schema_cache
         self._output_pane_host = output_pane_host
         self._output_pane_port = output_pane_port
@@ -661,7 +661,7 @@ class TabulaflowApp(App[None]):
             )
         else:
             model_label = "LLM off"
-        if self._service_tier == "priority" and self._llm_selection.preset is not None:
+        if self._llm_service_tier == "priority" and self._llm_selection.preset is not None:
             model_label = f"{model_label} · Priority"
         model_status.update(Text(f"{model_label} · {_compact_project_dir(self._project_dir)}", style="dim"))
         url_status.update(Text(f"View output in browser: {url}" if url else "", style="dim"))
@@ -882,7 +882,7 @@ class TabulaflowApp(App[None]):
                 llm_preset=self._llm_selection.preset,
                 runtime_paths=self._runtime_paths,
                 project_dir=self._project_dir,
-                service_tier=self._service_tier,
+                llm_service_tier=self._llm_service_tier,
                 enable_schema_cache=self._enable_schema_cache,
             )
             self._enable_explorer_button()
@@ -1176,7 +1176,7 @@ class TabulaflowApp(App[None]):
 async def run_tui(
     llm_selection: ResolvedLLMSelection,
     *,
-    service_tier: ServiceTier = "default",
+    llm_service_tier: ServiceTier = "default",
     enable_schema_cache: bool = False,
     output_pane_host: str = "127.0.0.1",
     output_pane_port: int | None = None,
@@ -1187,7 +1187,7 @@ async def run_tui(
         llm_selection=llm_selection,
         runtime_paths=RuntimePaths.create(),
         project_dir=Path.cwd(),
-        service_tier=service_tier,
+        llm_service_tier=llm_service_tier,
         enable_schema_cache=enable_schema_cache,
         output_pane_host=output_pane_host,
         output_pane_port=output_pane_port,

@@ -71,7 +71,7 @@ def _app_for_selection(
     *,
     runtime_paths: RuntimePaths | None = None,
     project_dir: Path | None = None,
-    service_tier: str = "default",
+    llm_service_tier: str = "default",
     enable_schema_cache: bool = False,
 ) -> TabulaflowApp:
     from typing import cast
@@ -82,7 +82,7 @@ def _app_for_selection(
         llm_selection=selection,
         runtime_paths=runtime_paths or RuntimePaths.for_session("test-session"),
         project_dir=project_dir or Path.cwd(),
-        service_tier=cast(ServiceTier, service_tier),
+        llm_service_tier=cast(ServiceTier, llm_service_tier),
         enable_schema_cache=enable_schema_cache,
     )
 
@@ -189,7 +189,7 @@ async def test_ensure_session_creates_app_session(tmp_path: Path, monkeypatch: p
         "llm_preset": preset,
         "runtime_paths": runtime_paths,
         "project_dir": project_dir,
-        "service_tier": "default",
+        "llm_service_tier": "default",
         "enable_schema_cache": True,
     }
 
@@ -233,9 +233,9 @@ def test_bottom_status_uses_selected_startup_profile(
     assert model_status.value.startswith(expected)
 
 
-def test_bottom_status_discloses_priority_service_tier(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_bottom_status_discloses_priority_llm_service_tier(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     preset = _preset(model="openai-responses:gpt-5.6-sol")
-    app = _app_for_selection(_selection(preset), project_dir=tmp_path, service_tier="priority")
+    app = _app_for_selection(_selection(preset), project_dir=tmp_path, llm_service_tier="priority")
     model_status = _StatusCapture()
     url_status = _StatusCapture()
 

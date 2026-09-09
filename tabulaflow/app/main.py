@@ -13,7 +13,7 @@ if TYPE_CHECKING:
     from tabulaflow.agents import AgentRuntimeConfig
 
 
-class AppServiceTier(StrEnum):
+class AppLLMServiceTier(StrEnum):
     """Service tiers intentionally exposed by the interactive app."""
 
     DEFAULT = "default"
@@ -39,7 +39,7 @@ def _resolve_startup_llm_selection(*, llm_preset: str | None) -> ResolvedLLMSele
 def run_chat(
     *,
     llm_preset: str | None = None,
-    service_tier: AppServiceTier = AppServiceTier.DEFAULT,
+    llm_service_tier: AppLLMServiceTier = AppLLMServiceTier.DEFAULT,
     enable_schema_cache: bool = False,
     output_pane_port: int | None = None,
     output_pane_host: str = "127.0.0.1",
@@ -60,7 +60,7 @@ def run_chat(
     asyncio.run(
         run_tui(
             llm_selection=startup_llm,
-            service_tier=service_tier.value,
+            llm_service_tier=llm_service_tier.value,
             enable_schema_cache=enable_schema_cache,
             output_pane_host=output_pane_host,
             output_pane_port=output_pane_port,
