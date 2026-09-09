@@ -30,6 +30,7 @@ PNG = b"\x89PNG\r\n\x1a\n" + b"\x00" * 64
         (b"\xff\xfb\x90\x00" + b"\x00" * 16, ".mp3", "audio/mpeg"),
         (b"OggS" + b"\x00" * 16, ".ogg", "audio/ogg"),
         (b"fLaC" + b"\x00" * 16, ".flac", "audio/flac"),
+        (b"\x00\x00\x00\x1cftypM4A \x00\x00\x02\x00", ".m4a", "audio/mp4"),
         (b"\x00\x00\x00 ftypisom" + b"\x00" * 16, ".mp4", "video/mp4"),
         (b"\x1a\x45\xdf\xa3" + b"\x00" * 16, ".webm", "video/webm"),
         (b"<svg xmlns='http://www.w3.org/2000/svg'></svg>", ".svg", "image/svg+xml"),

@@ -9,7 +9,7 @@ from pydantic import BaseModel, Field
 from pydantic_ai import Tool, ToolReturn
 from pydantic_ai.messages import ModelMessage, ModelRequest, ToolReturnPart, UserContent
 
-from tabulaflow.agents.media import inspect_inline_media, materialize_inline_media
+from tabulaflow.agents.media import UnsupportedModelMediaError, inspect_inline_media, materialize_inline_media
 from tabulaflow.core.results import ExecResult, GraphResult
 from tabulaflow.data.protocols import DataConnector
 from tabulaflow.output.formatting import format_dataframe
@@ -90,6 +90,14 @@ def _prepare_result_media(
                     continue
                 try:
                     binary = materialize_inline_media(candidate, max_bytes=_MAX_MEDIA_BYTES)
+                except UnsupportedModelMediaError as exc:
+                    record_issue(
+                        row,
+                        df.columns[column],
+                        item.index,
+                        f"{exc}; it remains available in the result and can be shown as an artifact",
+                    )
+                    continue
                 except ValueError as exc:
                     record_issue(row, df.columns[column], item.index, exc)
                     continue
@@ -344,9 +352,10 @@ class RunQueryTool:
                 parameterized queries are enabled.
             refresh: Whether to refresh connector schema after execution. Exposed
                 only when schema refresh is enabled.
-            include_media: Whether to attach supported inline media values or media
-                collections returned directly in result cells. Does not fetch paths,
-                URLs, or object-store URIs. Exposed only when media inspection is enabled.
+            include_media: Whether to attach inline images and PDFs from result cells
+                to the model for inspection. Audio and video remain available for
+                artifact display but are not attached to the model. Does not fetch
+                paths, URLs, or object-store URIs.
         """
         execution = await self.execute(
             query,

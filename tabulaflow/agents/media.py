@@ -49,6 +49,10 @@ class UnrecognizedMediaError(ValueError):
     """Raised when an inline binary value has no identifiable media type."""
 
 
+class UnsupportedModelMediaError(ValueError):
+    """Raised when media cannot be attached to the active model."""
+
+
 def _inspect_inline_media_item(value: object) -> InlineMediaCandidate | None:
     """Inspect an inline binary value without decoding a Data URI."""
     if isinstance(value, (bytes, bytearray, memoryview)):
@@ -132,12 +136,14 @@ def materialize_inline_media(candidate: InlineMediaCandidate, *, max_bytes: int)
         raise ValueError(f"{candidate.estimated_size} bytes exceeds {max_bytes}-byte limit")
     try:
         content = to_binary_content(candidate.value, media_type=candidate.declared_type)
+    except UnsupportedModelMediaError:
+        raise
     except ValueError as exc:
         if candidate.declared_type is None:
             raise UnrecognizedMediaError("media type could not be determined") from exc
         raise ValueError(f"invalid or unsupported {candidate.declared_type}") from exc
     if not (content.media_type.startswith("image/") or content.media_type == "application/pdf"):
-        raise ValueError(f"invalid or unsupported {content.media_type}")
+        raise UnsupportedModelMediaError(f"recognized {content.media_type} is not supported as a model attachment")
     if content.media_type == "application/pdf":
         try:
             select_pdf_pages(content.data)
@@ -218,7 +224,7 @@ def _validate_format(content: BinaryContent) -> None:
     try:
         _ = content.format
     except (KeyError, ValueError) as exc:
-        raise ValueError(f"unsupported media type: {content.media_type}") from exc
+        raise UnsupportedModelMediaError(f"{content.media_type} is not supported as a model attachment") from exc
 
 
 def _normalize_image(data: bytes, media_type: str) -> tuple[bytes, str]:
@@ -244,6 +250,7 @@ __all__ = [
     "InlineMediaItem",
     "PdfSelection",
     "UnrecognizedMediaError",
+    "UnsupportedModelMediaError",
     "inspect_inline_media",
     "materialize_inline_media",
     "select_pdf_pages",

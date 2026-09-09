@@ -107,9 +107,10 @@ class RegistryRunQueryTool:
                 parameterized queries are enabled.
             refresh: Whether to refresh connector schema after execution. Exposed
                 only when schema refresh is enabled.
-            include_media: Whether to attach supported inline media values returned
-                directly in result cells. Does not fetch paths, URLs, or object-store
-                URIs. Exposed only when media inspection is enabled.
+            include_media: Whether to attach inline images and PDFs from result cells
+                to the model for inspection. Audio and video remain available for
+                artifact display but are not attached to the model. Does not fetch
+                paths, URLs, or object-store URIs.
         """
         try:
             tool = self._get_tool(connector_alias)

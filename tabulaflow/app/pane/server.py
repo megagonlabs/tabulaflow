@@ -360,6 +360,8 @@ class _Handler(http.server.SimpleHTTPRequestHandler):
             ctype = "audio/wav"
         elif clean.endswith(".mp3"):
             ctype = "audio/mpeg"
+        elif clean.endswith(".m4a"):
+            ctype = "audio/mp4"
         elif clean.endswith(".mp4"):
             ctype = "video/mp4"
         elif clean.endswith(".webm"):

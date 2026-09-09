@@ -52,6 +52,8 @@ def detect_media(data: bytes) -> MediaFormat | None:
         return MediaFormat(".ogg", "audio/ogg")
     if head.startswith(b"fLaC"):
         return MediaFormat(".flac", "audio/flac")
+    if head[4:8] == b"ftyp" and head[8:12] == b"M4A ":
+        return MediaFormat(".m4a", "audio/mp4")
     if head[4:8] == b"ftyp":
         return MediaFormat(".mp4", "video/mp4")
     if head.startswith(b"\x1a\x45\xdf\xa3"):

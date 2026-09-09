@@ -15,6 +15,7 @@ from tabulaflow.app.pane.tables import build_table_data
 PNG_MAGIC = b"\x89PNG\r\n\x1a\n" + b"\x00" * 32
 PDF_MAGIC = b"%PDF-1.7\n" + b"\x00" * 32
 AUDIO_MAGIC = b"ID3\x03\x00" + b"\x00" * 32
+M4A_MAGIC = b"\x00\x00\x00\x1cftypM4A \x00\x00\x02\x00" + b"\x00" * 20
 
 
 def _payload_rows(payload: TableCardData) -> list[dict[str, Any]]:
@@ -97,6 +98,13 @@ class TestBuildTableData:
         pdf_path = tmp_path / rows[0]["c0"]["items"][1]["src"]
         assert pdf_path.name.endswith("_i1.pdf")
         assert pdf_path.read_bytes() == PDF_MAGIC
+
+    def test_renders_m4a_as_audio(self, tmp_path: Path) -> None:
+        payload = build_table_data(pd.DataFrame({"audio": [M4A_MAGIC]}), asset_stem="card_m4a", output_dir=tmp_path)
+
+        cell = _payload_rows(payload)[0]["c0"]
+        assert cell["mime"] == "audio/mp4"
+        assert cell["src"].startswith("data:audio/mp4;base64,")
 
     def test_media_collection_spill_names_include_item_index(self, tmp_path: Path) -> None:
         big_png = PNG_MAGIC + b"\x00" * (300 * 1024)

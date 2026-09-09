@@ -251,8 +251,8 @@ With `include_media=true`:
 - Attach at most 10 items and 25 MiB in total.
 - Recognize actual binary values, declared media structs, and explicit data URIs.
 - Return normal textual rows plus native image and PDF content for accepted
-  cells. Audio and video remain unsupported pending portable provider capability
-  checks.
+  cells. Audio and video remain available for artifact display but are not
+  attached to the model pending portable provider capability checks.
 - Describe omitted, unknown, oversized, or unsupported cells without including
   their raw representation.
 - Preserve binary and byte-bearing structured values through query-cache

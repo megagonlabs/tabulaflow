@@ -197,7 +197,8 @@ async def test_run_query_preserves_values_for_unsupported_and_invalid_media() ->
     assert "media omitted" not in text
     assert "(0 media items attached; 3 candidates not attached)" in text
     assert "Media attachment issues:" in text
-    assert "row 1, column audio: invalid or unsupported audio/wav" in text
+    assert "row 1, column audio: recognized audio/wav is not supported as a model attachment" in text
+    assert "it remains available in the result and can be shown as an artifact" in text
     assert "row 1, column invalid: invalid or unsupported image/png" in text
     assert "row 1, column external: path-backed media '/tmp/external.png' has no inline bytes" in text
     assert returned.content is None

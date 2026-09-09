@@ -6,7 +6,12 @@ import numpy as np
 from PIL import Image
 from pydantic_ai.messages import BinaryImage
 
-from tabulaflow.agents.media import inspect_inline_media, materialize_inline_media, to_binary_content
+from tabulaflow.agents.media import (
+    UnsupportedModelMediaError,
+    inspect_inline_media,
+    materialize_inline_media,
+    to_binary_content,
+)
 
 
 def _image_bytes(format: str) -> bytes:
@@ -52,7 +57,7 @@ def test_to_binary_content_converts_supported_images_to_png(format: str) -> None
 def test_to_binary_content_rejects_unknown_values() -> None:
     with pytest.raises(ValueError, match="could not be determined"):
         to_binary_content(b"unknown")
-    with pytest.raises(ValueError, match="unsupported media type"):
+    with pytest.raises(UnsupportedModelMediaError, match="not supported as a model attachment"):
         to_binary_content(b"unknown", media_type="application/zip")
 
 
@@ -95,4 +100,19 @@ def test_materialize_inline_media_explains_path_backed_values() -> None:
         ValueError,
         match="path-backed media 'images/example.jpg' has no inline bytes.*download the referenced file",
     ):
+        materialize_inline_media(items[0].candidate, max_bytes=1024)
+
+
+@pytest.mark.parametrize(
+    "data",
+    [
+        b"RIFF\x00\x00\x00\x00WAVE" + b"\x00" * 8,
+        b"ID3\x03\x00" + b"\x00" * 16,
+    ],
+)
+def test_materialize_inline_media_distinguishes_unsupported_audio(data: bytes) -> None:
+    items = inspect_inline_media(data)
+    assert items is not None
+
+    with pytest.raises(UnsupportedModelMediaError, match="recognized audio/.+not supported as a model attachment"):
         materialize_inline_media(items[0].candidate, max_bytes=1024)
