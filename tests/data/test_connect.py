@@ -5,6 +5,7 @@ import pytest
 from tabulaflow.data.connect import (
     is_database_file_path,
     normalize_connection_url,
+    redact_url_password,
     strip_url_credentials,
 )
 
@@ -47,6 +48,12 @@ class TestStripUrlCredentials:
 
     def test_preserves_url_without_credentials(self) -> None:
         assert strip_url_credentials("duckdb:////data/x.duckdb") == "duckdb:////data/x.duckdb"
+
+
+def test_redact_url_password_preserves_username_and_endpoint() -> None:
+    source = "neo4j+s://alice:p%40ss@example.com?database=neo4j"
+
+    assert redact_url_password(source) == "neo4j+s://alice:***@example.com?database=neo4j"
 
 
 class TestSplitUrlCredentials:

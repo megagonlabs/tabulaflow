@@ -63,10 +63,10 @@ async def test_connect_error_does_not_expose_url_credentials(tmp_path: Path, mon
     monkeypatch.setattr("tabulaflow.agents.tools.connect_data_source.connect_data_source", connect_data_source)
     tool = ConnectDataSourceTool(DataConnectorRegistry(), tmp_path)
 
-    result = await tool("sparql+https://alice:password@example.test/query", "example")
+    result = await tool("sparql+https://alice:p%40ss@example.test/query", "example")
 
-    assert "password" not in result
-    assert "sparql+https://example.test/query" in result
+    assert "p%40ss" not in result
+    assert "sparql+https://alice:***@example.test/query" in result
     assert "connection refused" in result
     assert "needs credentials" not in result
 

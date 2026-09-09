@@ -1,13 +1,14 @@
 from __future__ import annotations
 
 from pathlib import Path
+import shlex
 from typing import cast
 
 import pytest
 from rich.text import Text
 
 import tabulaflow.app.tui.commands as commands
-from tabulaflow.app.tui.commands import CommandResult, handle_command
+from tabulaflow.app.tui.commands import CommandResult, handle_command, redact_command_credentials
 from tabulaflow.app.session import AppSession
 from tabulaflow.data.catalog import DEFAULT_DATA_SOURCE_DEFINITIONS
 from tabulaflow.data.config import DataSourceConnectorConfigs
@@ -38,6 +39,24 @@ class _FakeSession:
 
     def reset_conversation(self) -> None:
         self.conversation_reset = True
+
+
+def test_redact_connect_command_password_preserves_replayable_structure() -> None:
+    command = "/connect 'neo4j+s://alice:p%40ss@example.com?database=neo4j' --alias graph"
+
+    redacted, contains_credentials = redact_command_credentials(command)
+
+    assert contains_credentials is True
+    assert "p%40ss" not in redacted
+    assert "alice:***@example.com" in redacted
+    assert shlex.split(redacted)[-2:] == ["--alias", "graph"]
+
+
+def test_redact_invalid_connect_command_hides_arguments() -> None:
+    redacted, contains_credentials = redact_command_credentials("/connect 'neo4j://alice:secret@example.com")
+
+    assert redacted == "/connect [invalid arguments hidden]"
+    assert contains_credentials is True
 
 
 async def test_handle_command_reports_unclosed_quote_as_user_error() -> None:
@@ -125,6 +144,23 @@ async def test_connect_registers_alias(monkeypatch: pytest.MonkeyPatch) -> None:
     assert isinstance(result.output, Text)
     assert result.output.plain == "✓ Connected to sales (test connector)"
     assert session.registry.connectors == {"sales": connector}
+
+
+async def test_connect_error_redacts_password_from_source(monkeypatch: pytest.MonkeyPatch) -> None:
+    async def fail(_source: object, **_kwargs: object) -> object:
+        raise RuntimeError("authentication failed")
+
+    monkeypatch.setattr(commands, "connect_data_source", fail)
+
+    result = await handle_command(
+        "/connect 'neo4j+s://alice:p%40ss@example.com' --alias graph",
+        cast(AppSession, _FakeSession()),
+    )
+
+    assert isinstance(result.output, Text)
+    assert "p%40ss" not in result.output.plain
+    assert "neo4j+s://alice:***@example.com" in result.output.plain
+    assert "authentication failed" in result.output.plain
 
 
 async def test_connect_allows_same_source_under_distinct_aliases(monkeypatch: pytest.MonkeyPatch) -> None:

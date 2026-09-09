@@ -80,6 +80,18 @@ def strip_url_credentials(url: str) -> str:
     return _split_url_credentials(url)[0]
 
 
+def redact_url_password(url: str) -> str:
+    """Return ``url`` with its password replaced by a visible placeholder."""
+    parsed = urlparse(url)
+    if parsed.password is None:
+        return url
+    userinfo, separator, host = parsed.netloc.rpartition("@")
+    username, password_separator, _ = userinfo.partition(":")
+    if not separator or not password_separator:
+        return url
+    return urlunparse(parsed._replace(netloc=f"{username}:***@{host}"))
+
+
 def _is_neo4j_bolt_url(url: str) -> bool:
     if "://" not in url:
         return False

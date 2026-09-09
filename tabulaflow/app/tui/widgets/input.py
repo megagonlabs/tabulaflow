@@ -303,7 +303,7 @@ class HistoryInput(Input):
                 pasted[str(rec["id"])] = rec
         return {"display": placeholder_text, "pastedContents": pasted}
 
-    def record_submission(self, text: str) -> None:
+    def record_submission(self, text: str, *, persist: bool = True) -> None:
         """Append an accepted submission to history and persist it."""
         stripped = text.strip()
         if not stripped:
@@ -311,6 +311,8 @@ class HistoryInput(Input):
         self._history.append(stripped)
         self._history_index = -1
         self._saved_input = ""
+        if not persist:
+            return
         try:
             self._append_history(stripped)
         except (OSError, FileLockTimeout):

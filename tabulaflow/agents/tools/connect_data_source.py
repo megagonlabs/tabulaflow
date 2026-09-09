@@ -16,7 +16,7 @@ from tabulaflow.data.catalog import (
     DataSourceDefinition,
     resolve_data_source_definition,
 )
-from tabulaflow.data.connect import connect_data_source, strip_url_credentials
+from tabulaflow.data.connect import connect_data_source, redact_url_password
 from tabulaflow.output.formatting import format_connector_summary
 
 _VALID_NAME = re.compile(r"[A-Za-z0-9_]+")
@@ -85,7 +85,7 @@ class ConnectDataSourceTool:
             )
         except Exception as e:
             is_url = "://" in source
-            safe_source = strip_url_credentials(source) if is_url else source
+            safe_source = redact_url_password(source) if is_url else source
             raise RuntimeError(f"failed to connect {safe_source!r}: {type(e).__name__}: {e}") from e
 
         self._registry.register(alias, connector)

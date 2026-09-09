@@ -21,7 +21,7 @@ from tabulaflow.data.catalog import resolve_data_source_definition
 from tabulaflow.data.connect import (
     is_database_file_path,
     normalize_connection_url,
-    strip_url_credentials,
+    redact_url_password,
 )
 from tabulaflow.output.formatting import format_connector_summary
 
@@ -51,6 +51,22 @@ class ConnectCommand:
 
 
 CommandHandler = Callable[[list[str], AppSession], Awaitable[CommandResult]]
+
+
+def redact_command_credentials(text: str) -> tuple[str, bool]:
+    """Return safe display text and whether a command contains a URL password."""
+    try:
+        parts = shlex.split(text)
+    except ValueError:
+        if text.lstrip().lower().startswith("/connect"):
+            return "/connect [invalid arguments hidden]", True
+        return text, False
+    if not parts or parts[0].lower() != "/connect":
+        return text, False
+
+    redacted = [redact_url_password(part) for part in parts]
+    has_password = redacted != parts
+    return shlex.join(redacted) if has_password else text, has_password
 
 
 def _announce_connect(
@@ -237,7 +253,7 @@ async def _cmd_connect(args: list[str], session: AppSession) -> CommandResult:
             configs=session.connector_configs,
         )
     except Exception as e:
-        safe_sources = [strip_url_credentials(item) if "://" in item else item for item in command.sources]
+        safe_sources = [redact_url_password(item) if "://" in item else item for item in command.sources]
         source_label = ", ".join(repr(item) for item in safe_sources)
         return CommandResult(
             output=Text.from_markup(

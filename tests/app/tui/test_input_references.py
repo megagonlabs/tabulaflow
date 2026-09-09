@@ -60,6 +60,17 @@ def test_history_appends_without_overwriting_entries_from_another_session(tmp_pa
     assert HistoryInput(history_path)._history == ["from first", "from second"]
 
 
+def test_sensitive_history_remains_available_only_in_memory(tmp_path: Path) -> None:
+    history_path = tmp_path / "history.jsonl"
+    input_bar = HistoryInput(history_path)
+    command = "/connect neo4j+s://alice:secret@example.com"
+
+    input_bar.record_submission(command, persist=False)
+
+    assert input_bar._history == [command]
+    assert not history_path.exists()
+
+
 def test_history_serializes_concurrent_appends(tmp_path: Path) -> None:
     history_path = tmp_path / "history.jsonl"
     inputs = [HistoryInput(history_path) for _ in range(10)]

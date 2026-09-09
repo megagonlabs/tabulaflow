@@ -15,7 +15,7 @@ from textual.containers import Horizontal, Vertical
 from textual.worker import Worker
 from textual.widgets import Button, Input, Static
 
-from tabulaflow.app.tui.commands import COMMAND_PREFIX, CommandResult, handle_command
+from tabulaflow.app.tui.commands import COMMAND_PREFIX, CommandResult, handle_command, redact_command_credentials
 from tabulaflow.app.config import (
     PROVIDER_API_KEY_ENV,
     LLMPreset,
@@ -943,7 +943,8 @@ class TabulaflowApp(App[None]):
             return
 
         if isinstance(inp, HistoryInput):
-            inp.record_submission(display_text)
+            _, contains_credentials = redact_command_credentials(display_text)
+            inp.record_submission(display_text, persist=not contains_credentials)
         event.input.clear()
 
         self._submission_worker = self.run_worker(
@@ -962,8 +963,9 @@ class TabulaflowApp(App[None]):
         import asyncio
 
         chat_log = self.query_one("#chat-log", ChatLog)
-        user_msg = UserMessage(display_text)
         is_command = isinstance(question, str) and question.startswith(COMMAND_PREFIX)
+        visible_text = redact_command_credentials(display_text)[0] if is_command else display_text
+        user_msg = UserMessage(visible_text)
         interrupted = False
         try:
             await chat_log.mount(user_msg)
