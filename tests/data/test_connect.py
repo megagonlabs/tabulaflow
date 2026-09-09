@@ -187,7 +187,7 @@ async def test_connect_url_dispatches_explicit_sparql_url(monkeypatch: pytest.Mo
         return sentinel
 
     monkeypatch.setattr(SPARQLConnector, "from_url_async", connect)
-    config = SPARQLConnectorConfig(max_response_bytes=1024)
+    config = SPARQLConnectorConfig(max_sparql_response_bytes=1024)
 
     result = await connect_url(
         "sparql+https://alice:p%40ss@example.org/query?default-graph-uri=urn%3Agraph",

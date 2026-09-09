@@ -74,8 +74,8 @@ schema_cache_mode: Literal[
 SQL-specific fields:
 
 ```python
-collect_column_stats: bool = False
-query_cache_mode: Literal[
+sql_column_stats_enabled: bool = False
+sql_query_cache_mode: Literal[
     "off",
     "read_write",
     "refresh",
@@ -85,7 +85,7 @@ query_cache_mode: Literal[
 Neo4j-specific fields:
 
 ```python
-schema_introspection_mode: Literal["fast", "full_scan"] = "fast"
+graph_schema_introspection_mode: Literal["fast", "full_scan"] = "fast"
 max_graph_result_nodes: PositiveInt | None = 300
 max_graph_result_edges: PositiveInt | None = 700
 ```
@@ -153,12 +153,13 @@ TABULAFLOW_MAX_RESULT_ROWS
 TABULAFLOW_QUERY_TIMEOUT_SECONDS
 TABULAFLOW_SCHEMA_CACHE_MODE
 TABULAFLOW_MAX_QUERY_CONCURRENCY
-TABULAFLOW_COLLECT_COLUMN_STATS
-TABULAFLOW_QUERY_CACHE_MODE
+TABULAFLOW_SQL_COLUMN_STATS_ENABLED
+TABULAFLOW_SQL_QUERY_CACHE_MODE
 TABULAFLOW_QUERY_CACHE_STORE
-TABULAFLOW_SCHEMA_INTROSPECTION_MODE
+TABULAFLOW_GRAPH_SCHEMA_INTROSPECTION_MODE
 TABULAFLOW_MAX_GRAPH_RESULT_NODES
 TABULAFLOW_MAX_GRAPH_RESULT_EDGES
+TABULAFLOW_MAX_SPARQL_RESPONSE_BYTES
 ```
 
 Agent variables:
@@ -213,7 +214,7 @@ Query caching supports only `off`, `read_write`, and `refresh`. It does not expo
 Query cache operation and result eligibility are separate:
 
 ```python
-query_cache_mode="read_write"
+sql_query_cache_mode="read_write"
 ```
 
 ## Public construction behavior
@@ -396,7 +397,7 @@ Delete `disable_bigquery_tracing` and the monkey patch that sets BigQuery's `HAS
 3. Store the immutable config on each connector.
 4. Replace all data-layer `tabulaflow_config` reads with the stored connector config.
 5. Replace schema-cache booleans with `schema_cache_mode` behavior.
-6. Replace SQL query-cache booleans with `query_cache_mode`.
+6. Replace SQL query-cache booleans with `sql_query_cache_mode`.
 7. Cache only successful row-returning query results; never cache errors or no-result statements.
 8. Apply `max_result_rows=1_000_000` by default.
 9. Apply connector-level `query_timeout_seconds` when no operation override is supplied.
@@ -447,7 +448,7 @@ mechanically replace `tabulaflow.configure()` with another general initializer.
 | App startup sets `log_level="WARNING"` | Configure standard Python logging in the app entry point. |
 | Schema-cache scripts set enabled/required/overwrite flags | Construct `SQLConnectorConfig` with `schema_cache_mode="read_write"`, `"refresh"`, `"cache_only"`, or `"off"` and pass it to the loader/connector workflow. |
 | Preprocessing scripts set preprocessor enabled/required/overwrite flags | Initialize the agent runtime once with the corresponding `preprocessing_cache_mode`. |
-| Result-population pipeline enables or disables query caching | Construct connector configs with `query_cache_mode="read_write"` or `"off"`; keep `--timeout` as an operation override. |
+| Result-population pipeline enables or disables query caching | Construct connector configs with `sql_query_cache_mode="read_write"` or `"off"`; keep `--timeout` as an operation override. |
 | Utility scripts disable schema caching | Pass connector config with `schema_cache_mode="off"`. |
 
 This includes app startup, research pipelines, and scripts such as schema caching,

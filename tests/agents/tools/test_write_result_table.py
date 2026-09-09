@@ -18,7 +18,7 @@ async def test_write_result_table_preserves_blobs_and_creates_by_default(tmp_pat
         url=f"duckdb:///{tmp_path / 'workspace.duckdb'}",
         display_name="workspace",
         read_only=False,
-        config=SQLConnectorConfig(schema_cache_mode="off", query_cache_mode="off"),
+        config=SQLConnectorConfig(schema_cache_mode="off", sql_query_cache_mode="off"),
     )
     registry = DataConnectorRegistry()
     registry.register("workspace", workspace)

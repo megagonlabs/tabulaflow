@@ -402,8 +402,8 @@ class SPARQLConnector:
                     response.raise_for_status()
                     content = bytearray()
                     async for chunk in response.aiter_bytes():
-                        if len(content) + len(chunk) > self.config.max_response_bytes:
-                            raise SPARQLResponseTooLargeError(self.config.max_response_bytes)
+                        if len(content) + len(chunk) > self.config.max_sparql_response_bytes:
+                            raise SPARQLResponseTooLargeError(self.config.max_sparql_response_bytes)
                         content.extend(chunk)
                     return bytes(content)
             assert delay is not None

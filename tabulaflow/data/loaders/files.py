@@ -151,9 +151,9 @@ async def load_files(
 
     global_id = validate_global_id(global_id)
     config = SQLConnectorConfig() if config is None else config
-    if not read_only and config.query_cache_mode != "off":
+    if not read_only and config.sql_query_cache_mode != "off":
         raise ValueError("Query caching requires read_only=True")
-    loading_config = config.model_copy(update={"query_cache_mode": "off"})
+    loading_config = config.model_copy(update={"sql_query_cache_mode": "off"})
 
     seen: set[str] = set()
     resolved: list[str] = []

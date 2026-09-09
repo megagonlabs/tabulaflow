@@ -87,7 +87,7 @@ async def test_app_session_owns_runtime_creation_and_cleanup(tmp_path: Path, mon
     async def create_workspace(path: Path, config: SQLConnectorConfig) -> SQLConnector:
         created_paths.append(path)
         assert config.schema_cache_mode == "off"
-        assert config.query_cache_mode == "off"
+        assert config.sql_query_cache_mode == "off"
         return cast(SQLConnector, workspace)
 
     async def connect_sample(session: AppSession) -> bool:
@@ -127,23 +127,23 @@ async def test_app_session_owns_runtime_creation_and_cleanup(tmp_path: Path, mon
 
 def test_app_disables_persistent_caches_regardless_of_environment(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("TABULAFLOW_SCHEMA_CACHE_MODE", "read_write")
-    monkeypatch.setenv("TABULAFLOW_QUERY_CACHE_MODE", "read_write")
+    monkeypatch.setenv("TABULAFLOW_SQL_QUERY_CACHE_MODE", "read_write")
 
     configs = _app_connector_configs()
 
     assert configs.sql.schema_cache_mode == "off"
-    assert configs.sql.query_cache_mode == "off"
+    assert configs.sql.sql_query_cache_mode == "off"
     assert configs.neo4j.schema_cache_mode == "off"
 
 
 def test_app_can_explicitly_enable_schema_cache(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("TABULAFLOW_SCHEMA_CACHE_MODE", "refresh")
-    monkeypatch.setenv("TABULAFLOW_QUERY_CACHE_MODE", "read_write")
+    monkeypatch.setenv("TABULAFLOW_SQL_QUERY_CACHE_MODE", "read_write")
 
     configs = _app_connector_configs(enable_schema_cache=True)
 
     assert configs.sql.schema_cache_mode == "read_write"
-    assert configs.sql.query_cache_mode == "off"
+    assert configs.sql.sql_query_cache_mode == "off"
     assert configs.neo4j.schema_cache_mode == "read_write"
 
 

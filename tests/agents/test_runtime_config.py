@@ -15,15 +15,15 @@ def test_sql_config_uses_defaults() -> None:
     assert config.query_timeout_seconds == 300
     assert config.schema_cache_mode == "off"
     assert config.max_query_concurrency == 8
-    assert config.collect_column_stats is False
-    assert config.query_cache_mode == "off"
+    assert config.sql_column_stats_enabled is False
+    assert config.sql_query_cache_mode == "off"
 
 
 def test_neo4j_config_uses_fast_schema_introspection_by_default() -> None:
     config = Neo4jConnectorConfig()
 
     assert config.max_query_concurrency == 8
-    assert config.schema_introspection_mode == "fast"
+    assert config.graph_schema_introspection_mode == "fast"
     assert config.max_graph_result_nodes == 300
     assert config.max_graph_result_edges == 700
 
@@ -34,7 +34,7 @@ def test_sparql_config_has_bounded_http_defaults() -> None:
     assert config.max_result_rows == 1_000_000
     assert config.query_timeout_seconds == 300
     assert config.max_query_concurrency == 8
-    assert config.max_response_bytes == 50 * 1024 * 1024
+    assert config.max_sparql_response_bytes == 50 * 1024 * 1024
     assert not hasattr(config, "schema_cache_mode")
 
 
@@ -48,13 +48,13 @@ def test_sql_config_resolves_explicit_over_environment_over_default(
 
     assert config.max_result_rows == 50
     assert config.schema_cache_mode == "refresh"
-    assert config.query_cache_mode == "off"
+    assert config.sql_query_cache_mode == "off"
 
 
 def test_sql_config_reads_column_stats_flag_from_environment(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv("TABULAFLOW_COLLECT_COLUMN_STATS", "true")
+    monkeypatch.setenv("TABULAFLOW_SQL_COLUMN_STATS_ENABLED", "true")
 
-    assert SQLConnectorConfig().collect_column_stats is True
+    assert SQLConnectorConfig().sql_column_stats_enabled is True
 
 
 def test_connector_configs_read_query_concurrency_from_environment(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -65,10 +65,16 @@ def test_connector_configs_read_query_concurrency_from_environment(monkeypatch: 
     assert SPARQLConnectorConfig().max_query_concurrency == 3
 
 
+def test_sparql_config_reads_response_limit_from_environment(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("TABULAFLOW_MAX_SPARQL_RESPONSE_BYTES", "1024")
+
+    assert SPARQLConnectorConfig().max_sparql_response_bytes == 1024
+
+
 def test_connector_configs_share_process_wide_environment_defaults(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("TABULAFLOW_MAX_RESULT_ROWS", "250")
     monkeypatch.setenv("TABULAFLOW_QUERY_TIMEOUT_SECONDS", "120")
-    monkeypatch.setenv("TABULAFLOW_SCHEMA_INTROSPECTION_MODE", "full_scan")
+    monkeypatch.setenv("TABULAFLOW_GRAPH_SCHEMA_INTROSPECTION_MODE", "full_scan")
     monkeypatch.setenv("TABULAFLOW_MAX_GRAPH_RESULT_NODES", "500")
     monkeypatch.setenv("TABULAFLOW_MAX_GRAPH_RESULT_EDGES", "none")
 
@@ -78,7 +84,7 @@ def test_connector_configs_share_process_wide_environment_defaults(monkeypatch: 
     assert Neo4jConnectorConfig().query_timeout_seconds == 120
     assert SPARQLConnectorConfig().max_result_rows == 250
     assert SPARQLConnectorConfig().query_timeout_seconds == 120
-    assert Neo4jConnectorConfig().schema_introspection_mode == "full_scan"
+    assert Neo4jConnectorConfig().graph_schema_introspection_mode == "full_scan"
     assert Neo4jConnectorConfig().max_graph_result_nodes == 500
     assert Neo4jConnectorConfig().max_graph_result_edges is None
 

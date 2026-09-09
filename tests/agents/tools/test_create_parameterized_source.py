@@ -30,7 +30,7 @@ async def registry(tmp_path: Path) -> DataConnectorRegistry:
         url=f"duckdb:///{tmp_path / 'w.duckdb'}",
         display_name="w",
         read_only=False,
-        config=SQLConnectorConfig(schema_cache_mode="off", query_cache_mode="off"),
+        config=SQLConnectorConfig(schema_cache_mode="off", sql_query_cache_mode="off"),
     )
     await connector.run_query_async("CREATE TABLE orders(customer TEXT, net INT, gross INT)")
     await connector.run_query_async("INSERT INTO orders VALUES ('Acme', 10, 12), ('Globex', 7, 9)")

@@ -13,7 +13,7 @@ async def test_message_store_persists_and_returns_id(tmp_path: Path) -> None:
         url=f"duckdb:///{tmp_path / 'workspace.duckdb'}",
         display_name="workspace",
         read_only=False,
-        config=SQLConnectorConfig(schema_cache_mode="off", query_cache_mode="off"),
+        config=SQLConnectorConfig(schema_cache_mode="off", sql_query_cache_mode="off"),
     )
     try:
         store = MessageStore(connector).scoped("main")

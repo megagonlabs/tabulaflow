@@ -365,7 +365,7 @@ async def test_fast_schema_introspection_uses_metadata() -> None:
     }
     timeouts: list[int | None] = []
     connector = object.__new__(Neo4jConnector)
-    connector.config = Neo4jConnectorConfig(query_timeout_seconds=9, schema_introspection_mode="fast")
+    connector.config = Neo4jConnectorConfig(query_timeout_seconds=9, graph_schema_introspection_mode="fast")
     connector._display_name = "movies"
 
     async def run_cypher(query: str, *, timeout: int | None = None) -> list[dict[str, Any]]:
@@ -408,7 +408,7 @@ async def test_full_scan_schema_introspection_uses_observed_properties_and_topol
         ],
     }
     connector = object.__new__(Neo4jConnector)
-    connector.config = Neo4jConnectorConfig(schema_introspection_mode="full_scan")
+    connector.config = Neo4jConnectorConfig(graph_schema_introspection_mode="full_scan")
     connector._display_name = "movies"
 
     async def run_cypher(query: str, *, timeout: int | None = None) -> list[dict[str, Any]]:
@@ -428,9 +428,9 @@ async def test_full_scan_schema_introspection_uses_observed_properties_and_topol
 def test_schema_cache_is_scoped_by_introspection_mode(tmp_path: Path) -> None:
     connector = object.__new__(Neo4jConnector)
     connector.global_id = "neo4j+movies"
-    connector.config = Neo4jConnectorConfig(cache_dir=tmp_path, schema_introspection_mode="fast")
+    connector.config = Neo4jConnectorConfig(cache_dir=tmp_path, graph_schema_introspection_mode="fast")
     fast_path = connector._schema_cache_path()
-    connector.config = Neo4jConnectorConfig(cache_dir=tmp_path, schema_introspection_mode="full_scan")
+    connector.config = Neo4jConnectorConfig(cache_dir=tmp_path, graph_schema_introspection_mode="full_scan")
 
     assert fast_path != connector._schema_cache_path()
 

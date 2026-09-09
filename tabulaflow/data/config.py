@@ -9,8 +9,6 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from tabulaflow.core._cache import DEFAULT_CACHE_DIR
 
-_DEFAULT_MAX_SPARQL_RESPONSE_BYTES = 50 * 1024 * 1024
-
 
 class _ConnectorConfig(BaseSettings):
     """Common query-execution policy for a data connector."""
@@ -45,15 +43,15 @@ class SQLConnectorConfig(_CachedSchemaConnectorConfig):
         max_query_concurrency: Maximum in-flight queries and connection-pool
             size per connector.
         schema_cache_mode: Schema cache read/write policy.
-        collect_column_stats: Whether to collect exact row counts and column
+        sql_column_stats_enabled: Whether to collect exact row counts and column
             statistics for physical tables. Tables and views are always
             enriched from one bounded row sample; views are never exhaustively
             profiled.
-        query_cache_mode: Query-result cache read/write policy.
+        sql_query_cache_mode: Query-result cache read/write policy.
     """
 
-    collect_column_stats: bool = False
-    query_cache_mode: Literal["off", "read_write", "refresh"] = "off"
+    sql_column_stats_enabled: bool = False
+    sql_query_cache_mode: Literal["off", "read_write", "refresh"] = "off"
 
 
 class Neo4jConnectorConfig(_CachedSchemaConnectorConfig):
@@ -67,13 +65,13 @@ class Neo4jConnectorConfig(_CachedSchemaConnectorConfig):
         max_query_concurrency: Maximum in-flight queries and connection-pool
             size per connector.
         schema_cache_mode: Schema cache read/write policy.
-        schema_introspection_mode: ``fast`` for metadata procedures or
+        graph_schema_introspection_mode: ``fast`` for metadata procedures or
             ``full_scan`` for observed graph data.
         max_graph_result_nodes: Maximum nodes extracted into a graph result.
         max_graph_result_edges: Maximum edges extracted into a graph result.
     """
 
-    schema_introspection_mode: Literal["fast", "full_scan"] = "fast"
+    graph_schema_introspection_mode: Literal["fast", "full_scan"] = "fast"
     max_graph_result_nodes: PositiveInt | None = 300
     max_graph_result_edges: PositiveInt | None = 700
 
@@ -87,10 +85,11 @@ class SPARQLConnectorConfig(_ConnectorConfig):
         query_timeout_seconds: Overall query deadline, including throttling and
             retries, or ``None`` to disable.
         max_query_concurrency: Maximum in-flight queries per connector.
-        max_response_bytes: Maximum decompressed response bytes buffered.
+        max_sparql_response_bytes: Maximum decompressed SPARQL response bytes
+            buffered.
     """
 
-    max_response_bytes: PositiveInt = _DEFAULT_MAX_SPARQL_RESPONSE_BYTES
+    max_sparql_response_bytes: PositiveInt = 50 * 1024 * 1024
 
 
 @dataclass(frozen=True)

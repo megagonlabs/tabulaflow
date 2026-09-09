@@ -38,7 +38,7 @@ def _app_connector_configs(*, enable_schema_cache: bool = False) -> DataSourceCo
 
     schema_cache_mode: Literal["off", "read_write"] = "read_write" if enable_schema_cache else "off"
     return DataSourceConnectorConfigs(
-        sql=SQLConnectorConfig(schema_cache_mode=schema_cache_mode, query_cache_mode="off"),
+        sql=SQLConnectorConfig(schema_cache_mode=schema_cache_mode, sql_query_cache_mode="off"),
         neo4j=Neo4jConnectorConfig(schema_cache_mode=schema_cache_mode),
         sparql=SPARQLConnectorConfig(),
     )

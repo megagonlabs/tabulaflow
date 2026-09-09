@@ -1535,7 +1535,7 @@ def _sql_schema_cache_path(
     global_id: str,
     options: _SchemaIntrospectionOptions = _SchemaIntrospectionOptions(),
 ) -> Path:
-    stats_policy = "column-stats" if config.collect_column_stats else "no-column-stats"
+    stats_policy = "column-stats" if config.sql_column_stats_enabled else "no-column-stats"
     variant = f"{stats_policy}+{options.cache_fingerprint()}"
     return get_schema_cache_path(config.cache_dir, global_id, variant=variant)
 
@@ -1609,7 +1609,7 @@ async def _load_schema_async(
             display_name,
             dialect,
             options,
-            collect_column_stats=config.collect_column_stats,
+            collect_column_stats=config.sql_column_stats_enabled,
             query_timeout_seconds=config.query_timeout_seconds,
         )
         if t_eng.engine_type == "async":
@@ -2295,7 +2295,7 @@ class SQLConnector:
         """
         global_id = validate_global_id(global_id or _global_id_from_url(str(url)))
         config = SQLConnectorConfig() if config is None else config
-        if not read_only and config.query_cache_mode != "off":
+        if not read_only and config.sql_query_cache_mode != "off":
             raise ValueError("Query caching requires read_only=True")
         if "pool_size" in engine_kwargs:
             raise TypeError("Configure SQL query concurrency through SQLConnectorConfig.max_query_concurrency")
@@ -2432,7 +2432,7 @@ class SQLConnector:
                                     ref.table_name not in view_names_by_schema.get(ref.schema_name, set())
                                     or self._schema_introspection.sample_view_rows
                                 ),
-                                collect_column_stats=self.config.collect_column_stats,
+                                collect_column_stats=self.config.sql_column_stats_enabled,
                                 query_timeout_seconds=self.config.query_timeout_seconds,
                             )
                             for ref in tables
@@ -2456,7 +2456,7 @@ class SQLConnector:
                     self.schema.display_name,
                     self.schema.dialect,  # type: ignore[arg-type]
                     self._schema_introspection,
-                    collect_column_stats=self.config.collect_column_stats,
+                    collect_column_stats=self.config.sql_column_stats_enabled,
                     query_timeout_seconds=self.config.query_timeout_seconds,
                 )
 
@@ -2710,13 +2710,13 @@ class SQLConnector:
                     ),
                 )
 
-        if self.config.query_cache_mode == "off":
+        if self.config.sql_query_cache_mode == "off":
             return await self._execute_query_async(query, parameters, effective_timeout)
 
         key = query_cache_key(query_str, parameters, effective_timeout, self.config.max_result_rows)
         path = query_cache_path(self.config.cache_dir, self.global_id, key)
         async with cache_lock(path):
-            if self.config.query_cache_mode == "read_write" and path.exists():
+            if self.config.sql_query_cache_mode == "read_write" and path.exists():
                 try:
                     cached = await read_cached_model(path, ExecResult)
                 except (ValidationError, UnicodeError):

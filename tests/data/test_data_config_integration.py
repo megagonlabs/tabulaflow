@@ -106,7 +106,7 @@ async def test_column_stats_are_exact_when_enabled(tmp_path: Path) -> None:
         global_id="column-stats",
         url=f"sqlite+aiosqlite:///{db_path}",
         display_name="column-stats",
-        config=SQLConnectorConfig(schema_cache_mode="off", collect_column_stats=True),
+        config=SQLConnectorConfig(schema_cache_mode="off", sql_column_stats_enabled=True),
     )
     try:
         column = connector.schema.tables[0].columns[0]
@@ -127,7 +127,7 @@ async def test_exact_stats_complete_low_cardinality_text_values(tmp_path: Path) 
         global_id="categorical-values",
         url=f"sqlite+aiosqlite:///{db_path}",
         display_name="categorical-values",
-        config=SQLConnectorConfig(schema_cache_mode="off", collect_column_stats=True),
+        config=SQLConnectorConfig(schema_cache_mode="off", sql_column_stats_enabled=True),
     )
     try:
         column = connector.schema.tables[0].columns[0]
@@ -174,7 +174,7 @@ async def test_column_stats_timeout_preserves_and_caches_schema(
     config = SQLConnectorConfig(
         cache_dir=tmp_path / "cache",
         schema_cache_mode="read_write",
-        collect_column_stats=True,
+        sql_column_stats_enabled=True,
         query_timeout_seconds=7,
     )
     connector = await SQLConnector.from_url_async(
@@ -275,11 +275,11 @@ async def test_release_connections_keeps_connector_usable_but_close_is_terminal(
         await connector.write_dataframe_async(pd.DataFrame({"value": [1]}), "closed")
 
 
-async def test_query_cache_mode_controls_reuse(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_sql_query_cache_mode_controls_reuse(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     config = SQLConnectorConfig(
         cache_dir=tmp_path / "cache",
         schema_cache_mode="off",
-        query_cache_mode="read_write",
+        sql_query_cache_mode="read_write",
     )
     connector = await _connector(
         tmp_path,
@@ -316,7 +316,7 @@ async def test_query_result_normalization_error_is_returned(
     connector = await _connector(
         tmp_path,
         global_id="unsupported-result",
-        config=SQLConnectorConfig(schema_cache_mode="off", query_cache_mode="off"),
+        config=SQLConnectorConfig(schema_cache_mode="off", sql_query_cache_mode="off"),
     )
 
     async def execute(*_args: object, **_kwargs: object) -> object:
@@ -343,7 +343,7 @@ async def test_query_cache_write_failure_does_not_fail_query(
     config = SQLConnectorConfig(
         cache_dir=tmp_path / "cache",
         schema_cache_mode="off",
-        query_cache_mode="read_write",
+        sql_query_cache_mode="read_write",
     )
     connector = await _connector(
         tmp_path,
@@ -367,7 +367,7 @@ async def test_query_cache_write_failure_does_not_fail_query(
 
 
 async def test_query_cache_rejects_writable_connector(tmp_path: Path) -> None:
-    config = SQLConnectorConfig(schema_cache_mode="off", query_cache_mode="read_write")
+    config = SQLConnectorConfig(schema_cache_mode="off", sql_query_cache_mode="read_write")
 
     with pytest.raises(ValueError, match="Query caching requires read_only=True"):
         await _connector(
@@ -382,7 +382,7 @@ async def test_invalid_query_cache_entry_is_rebuilt(tmp_path: Path) -> None:
     config = SQLConnectorConfig(
         cache_dir=tmp_path / "cache",
         schema_cache_mode="off",
-        query_cache_mode="read_write",
+        sql_query_cache_mode="read_write",
     )
     key = query_cache_key("SELECT 1 AS value", (), config.query_timeout_seconds, config.max_result_rows)
     path = query_cache_path(config.cache_dir, "invalid-query-cache", key)
@@ -412,7 +412,7 @@ async def test_query_cache_coalesces_concurrent_identical_queries(
     config = SQLConnectorConfig(
         cache_dir=tmp_path / "cache",
         schema_cache_mode="off",
-        query_cache_mode="read_write",
+        sql_query_cache_mode="read_write",
     )
     connector = await _connector(
         tmp_path,
@@ -453,7 +453,7 @@ async def test_query_cache_does_not_store_successful_no_result_statements(
     config = SQLConnectorConfig(
         cache_dir=tmp_path / "cache",
         schema_cache_mode="off",
-        query_cache_mode="read_write",
+        sql_query_cache_mode="read_write",
     )
     connector = await _connector(
         tmp_path,
@@ -489,7 +489,7 @@ async def test_query_cache_does_not_store_errors(
     config = SQLConnectorConfig(
         cache_dir=tmp_path / "cache",
         schema_cache_mode="off",
-        query_cache_mode="read_write",
+        sql_query_cache_mode="read_write",
     )
     connector = await _connector(
         tmp_path,

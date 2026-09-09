@@ -475,7 +475,7 @@ class Neo4jConnector:
         return schema_cache_path(
             self.config.cache_dir,
             self.global_id,
-            variant=self.config.schema_introspection_mode,
+            variant=self.config.graph_schema_introspection_mode,
         )
 
     async def _load_schema_async(self) -> PropertyGraphSchema:
@@ -545,7 +545,7 @@ class Neo4jConnector:
         for record in await query(_RELATIONSHIP_TYPES_QUERY):
             relationship_types.add(str(record["relationshipType"]))
 
-        if self.config.schema_introspection_mode == "fast":
+        if self.config.graph_schema_introspection_mode == "fast":
             node_properties_query = _FAST_NODE_PROPERTIES_QUERY
             relationship_queries: tuple[str, ...] = (
                 _FAST_RELATIONSHIP_PROPERTIES_QUERY,
@@ -562,12 +562,12 @@ class Neo4jConnector:
                 relationship_records.extend(await query(relationship_query))
         except neo4j.exceptions.ClientError as e:
             if (
-                self.config.schema_introspection_mode == "full_scan"
+                self.config.graph_schema_introspection_mode == "full_scan"
                 and "Unknown function" in str(e)
                 and "valueType" in str(e)
             ):
                 raise RuntimeError(
-                    'schema_introspection_mode="full_scan" requires Neo4j with valueType() support'
+                    'graph_schema_introspection_mode="full_scan" requires Neo4j with valueType() support'
                 ) from e
             raise
 

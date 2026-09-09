@@ -82,7 +82,7 @@ async def autoconnect_sample(session: AppSession) -> bool:
         # The sample is tiny (instant to introspect) and its schema can change
         # between versions under the same global_id — caching would risk serving a
         # stale schema for no speed benefit.
-        config=SQLConnectorConfig(schema_cache_mode="off", query_cache_mode="off"),
+        config=SQLConnectorConfig(schema_cache_mode="off", sql_query_cache_mode="off"),
     )
     session.registry.register(SAMPLE_ALIAS, connector)
     session.note_event(

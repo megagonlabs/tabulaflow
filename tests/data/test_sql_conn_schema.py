@@ -175,7 +175,7 @@ async def test_view_profiling_uses_one_bounded_sample(
         display_name="view-profile",
         config=SQLConnectorConfig(
             schema_cache_mode="off",
-            collect_column_stats=True,
+            sql_column_stats_enabled=True,
             query_timeout_seconds=7,
         ),
     )
@@ -290,7 +290,7 @@ async def test_date_partition_schema_reuse_is_explicit_and_structural(tmp_path: 
         url=f"sqlite+aiosqlite:///{db_path}",
         display_name="partitions",
         reuse_date_partition_schemas=True,
-        config=SQLConnectorConfig(schema_cache_mode="off", collect_column_stats=True),
+        config=SQLConnectorConfig(schema_cache_mode="off", sql_column_stats_enabled=True),
     )
     try:
         tables = {table.name: table for table in reused.schema.tables}
@@ -367,7 +367,7 @@ async def test_duckdb_list_and_struct_dtype_resolved(tmp_path: Path) -> None:
         global_id="test+duckdb_composite",
         url=f"duckdb:///{db_path}",
         display_name="composite",
-        config=SQLConnectorConfig(schema_cache_mode="off", query_cache_mode="off"),
+        config=SQLConnectorConfig(schema_cache_mode="off", sql_query_cache_mode="off"),
     )
     try:
         table = sql_conn.schema.tables[0]
@@ -417,7 +417,7 @@ async def test_exclude_schema_names_keeps_a_schema_out_of_introspection(tmp_path
         url=f"duckdb:///{db_path}",
         display_name="excluded",
         read_only=False,
-        config=SQLConnectorConfig(schema_cache_mode="off", query_cache_mode="off"),
+        config=SQLConnectorConfig(schema_cache_mode="off", sql_query_cache_mode="off"),
         exclude_schema_names=["bookkeeping"],
     )
 

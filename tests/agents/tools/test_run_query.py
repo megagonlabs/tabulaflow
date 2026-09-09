@@ -60,7 +60,7 @@ async def db_connector(sql_engine: Any) -> SQLConnector:
         display_name="test_db",
         # Disable the on-disk schema cache: it is keyed by ``global_id`` and would
         # otherwise leak a ``widgets`` table created by one run into the next.
-        config=SQLConnectorConfig(schema_cache_mode="off", query_cache_mode="off"),
+        config=SQLConnectorConfig(schema_cache_mode="off", sql_query_cache_mode="off"),
     )
 
 

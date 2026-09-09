@@ -78,7 +78,7 @@ async def test_schema_worker_releases_cache_before_parent_opens_it(tmp_path: Pat
     config = SQLConnectorConfig(
         cache_dir=tmp_path,
         schema_cache_mode="off",
-        query_cache_mode="off",
+        sql_query_cache_mode="off",
     )
 
     schema = await huggingface._load_hf_schema_in_subprocess(
@@ -112,7 +112,7 @@ async def test_cancelled_schema_worker_releases_cache_before_retry(tmp_path: Pat
     config = SQLConnectorConfig(
         cache_dir=tmp_path,
         schema_cache_mode="off",
-        query_cache_mode="off",
+        sql_query_cache_mode="off",
     )
     task = asyncio.create_task(
         huggingface._load_hf_schema_in_subprocess(

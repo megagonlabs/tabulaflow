@@ -156,7 +156,7 @@ async def prepare_working_env_async(dataset: NL2QDataset, output_dir: str) -> No
             config=SQLConnectorConfig(
                 max_query_concurrency=4,
                 schema_cache_mode="off",
-                query_cache_mode="off",
+                sql_query_cache_mode="off",
             ),
         )
         dataset.db_connectors[task.db] = conn

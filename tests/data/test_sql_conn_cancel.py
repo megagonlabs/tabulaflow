@@ -45,7 +45,7 @@ async def test_cancel_then_retry_mixed_config(duckdb_with_tables: str) -> None:
             url=url,
             display_name="t",
             read_only=True,
-            config=SQLConnectorConfig(schema_cache_mode="off", query_cache_mode="off"),
+            config=SQLConnectorConfig(schema_cache_mode="off", sql_query_cache_mode="off"),
         )
     )
     await asyncio.sleep(0.1)  # land cancel inside schema build
@@ -59,7 +59,7 @@ async def test_cancel_then_retry_mixed_config(duckdb_with_tables: str) -> None:
         url=url,
         display_name="t",
         read_only=False,
-        config=SQLConnectorConfig(schema_cache_mode="off", query_cache_mode="off"),
+        config=SQLConnectorConfig(schema_cache_mode="off", sql_query_cache_mode="off"),
     )
     assert len(connector.schema.tables) == 30
     await connector.close_async()
@@ -103,7 +103,7 @@ async def test_cancel_during_inspection_then_retry_mixed_config(
             url=url,
             display_name="documents",
             read_only=True,
-            config=SQLConnectorConfig(schema_cache_mode="off", query_cache_mode="off"),
+            config=SQLConnectorConfig(schema_cache_mode="off", sql_query_cache_mode="off"),
         )
     )
     await asyncio.wait_for(asyncio.to_thread(entered_inspection.wait), timeout=5)
@@ -118,7 +118,7 @@ async def test_cancel_during_inspection_then_retry_mixed_config(
         url=url,
         display_name="documents",
         read_only=False,
-        config=SQLConnectorConfig(schema_cache_mode="off", query_cache_mode="off"),
+        config=SQLConnectorConfig(schema_cache_mode="off", sql_query_cache_mode="off"),
     )
     assert [table.name for table in connector.schema.tables] == ["documents"]
     await connector.close_async()
@@ -160,7 +160,7 @@ async def test_load_files_cancel_then_retry(tmp_path: Path) -> None:
             display_name="mydata",
             data_dir=str(tmp_path),
             read_only=True,
-            config=SQLConnectorConfig(schema_cache_mode="off", query_cache_mode="off"),
+            config=SQLConnectorConfig(schema_cache_mode="off", sql_query_cache_mode="off"),
         )
     )
     await asyncio.sleep(0.05)
@@ -176,7 +176,7 @@ async def test_load_files_cancel_then_retry(tmp_path: Path) -> None:
         display_name="mydata",
         data_dir=str(tmp_path),
         read_only=True,
-        config=SQLConnectorConfig(schema_cache_mode="off", query_cache_mode="off"),
+        config=SQLConnectorConfig(schema_cache_mode="off", sql_query_cache_mode="off"),
     )
     result = await connector.run_query_async("SELECT COUNT(*) FROM data")
     assert result.df is not None and result.df.iloc[0, 0] == 800000
@@ -197,7 +197,7 @@ async def test_load_files_separates_display_name_from_storage_path(tmp_path: Pat
         file_paths=[str(csv)],
         display_name="../human label",
         data_dir=str(data_dir),
-        config=SQLConnectorConfig(schema_cache_mode="off", query_cache_mode="off"),
+        config=SQLConnectorConfig(schema_cache_mode="off", sql_query_cache_mode="off"),
     )
 
     storage_path = data_dir / "file-source.duckdb"
@@ -224,7 +224,7 @@ async def test_write_dataframe_cancel_rolls_back(tmp_path: Path) -> None:
             url=f"duckdb:///{db_path}",
             display_name="t",
             read_only=False,
-            config=SQLConnectorConfig(schema_cache_mode="off", query_cache_mode="off"),
+            config=SQLConnectorConfig(schema_cache_mode="off", sql_query_cache_mode="off"),
         )
         df = pd.DataFrame({"x": range(2_000_000), "y": range(2_000_000)})
 
@@ -261,7 +261,7 @@ async def test_cancel_isolates_to_one_query(tmp_path: Path) -> None:
             url=f"duckdb:///{db_path}",
             display_name="t",
             read_only=False,
-            config=SQLConnectorConfig(schema_cache_mode="off", query_cache_mode="off"),
+            config=SQLConnectorConfig(schema_cache_mode="off", sql_query_cache_mode="off"),
         )
 
         slow_sql = "CREATE TABLE {name} AS SELECT range AS x, range * 2 AS y FROM range(5_000_000)"
@@ -320,7 +320,7 @@ async def _make_async_sqlite_connector(tmp_path: Path) -> SQLConnector:
         url=f"sqlite+aiosqlite:///{db_path}",
         display_name="t",
         read_only=True,
-        config=SQLConnectorConfig(schema_cache_mode="off", query_cache_mode="off"),
+        config=SQLConnectorConfig(schema_cache_mode="off", sql_query_cache_mode="off"),
     )
 
 

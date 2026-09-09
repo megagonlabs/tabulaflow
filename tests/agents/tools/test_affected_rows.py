@@ -29,7 +29,7 @@ async def conn(tmp_path: Path) -> AsyncGenerator[SQLConnector, None]:
         url=f"duckdb:///{tmp_path / 'w.duckdb'}",
         display_name="w",
         read_only=False,
-        config=SQLConnectorConfig(schema_cache_mode="off", query_cache_mode="off"),
+        config=SQLConnectorConfig(schema_cache_mode="off", sql_query_cache_mode="off"),
     )
     yield connector
 
@@ -42,7 +42,7 @@ async def sqlite_conn(tmp_path: Path) -> AsyncGenerator[SQLConnector, None]:
         url=f"sqlite+aiosqlite:///{tmp_path / 't.sqlite'}",
         display_name="w",
         read_only=False,
-        config=SQLConnectorConfig(schema_cache_mode="off", query_cache_mode="off"),
+        config=SQLConnectorConfig(schema_cache_mode="off", sql_query_cache_mode="off"),
     )
     yield connector
 

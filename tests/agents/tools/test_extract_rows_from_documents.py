@@ -223,7 +223,7 @@ async def test_tool_resolves_types_and_appends_typed_rows(tmp_path: Path, monkey
         url=f"duckdb:///{db_path}",
         display_name="products",
         read_only=False,
-        config=SQLConnectorConfig(schema_cache_mode="off", query_cache_mode="off"),
+        config=SQLConnectorConfig(schema_cache_mode="off", sql_query_cache_mode="off"),
     )
     conn.read_only = False
 
@@ -286,7 +286,7 @@ async def test_tool_extracts_rows_from_inline_image(tmp_path: Path, monkeypatch:
         url=f"duckdb:///{db_path}",
         display_name="images",
         read_only=False,
-        config=SQLConnectorConfig(schema_cache_mode="off", query_cache_mode="off"),
+        config=SQLConnectorConfig(schema_cache_mode="off", sql_query_cache_mode="off"),
     )
     conn.read_only = False
     captured: list[BinaryContent] = []
@@ -328,7 +328,7 @@ async def test_tool_extracts_from_mixed_media_collection(tmp_path: Path, monkeyp
         url=f"duckdb:///{db_path}",
         display_name="mixed_media",
         read_only=False,
-        config=SQLConnectorConfig(schema_cache_mode="off", query_cache_mode="off"),
+        config=SQLConnectorConfig(schema_cache_mode="off", sql_query_cache_mode="off"),
     )
     conn.read_only = False
     captured: list[tuple[BinaryContent, ...]] = []
@@ -371,7 +371,7 @@ async def test_tool_rejects_unknown_binary_before_extraction(tmp_path: Path, mon
         url=f"duckdb:///{db_path}",
         display_name="unknown_binary",
         read_only=False,
-        config=SQLConnectorConfig(schema_cache_mode="off", query_cache_mode="off"),
+        config=SQLConnectorConfig(schema_cache_mode="off", sql_query_cache_mode="off"),
     )
     conn.read_only = False
 
@@ -404,7 +404,7 @@ async def test_tool_rejects_non_scalar_output_column(tmp_path: Path, monkeypatch
         url=f"duckdb:///{db_path}",
         display_name="docs",
         read_only=False,
-        config=SQLConnectorConfig(schema_cache_mode="off", query_cache_mode="off"),
+        config=SQLConnectorConfig(schema_cache_mode="off", sql_query_cache_mode="off"),
     )
     conn.read_only = False
 
@@ -436,7 +436,7 @@ async def test_unknown_placeholder_rejected(tmp_path: Path, monkeypatch: pytest.
         url=f"duckdb:///{db_path}",
         display_name="docs",
         read_only=False,
-        config=SQLConnectorConfig(schema_cache_mode="off", query_cache_mode="off"),
+        config=SQLConnectorConfig(schema_cache_mode="off", sql_query_cache_mode="off"),
     )
     conn.read_only = False
 

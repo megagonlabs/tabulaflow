@@ -276,7 +276,7 @@ async def test_row_and_response_size_limits_are_enforced() -> None:
 
     byte_limited = await _connector(
         _select(["x"], [{"x": {"type": "literal", "value": "x" * 200}}]),
-        config=SPARQLConnectorConfig(max_response_bytes=100, query_timeout_seconds=None),
+        config=SPARQLConnectorConfig(max_sparql_response_bytes=100, query_timeout_seconds=None),
     )
     try:
         byte_result = await byte_limited.run_query_async("SELECT ?x WHERE {}")

@@ -61,11 +61,11 @@ async def main_async() -> None:
         result = NL2QRunResult.model_validate_json(f.read())
 
     t0 = time.time()
-    query_cache_mode: Literal["off", "read_write"] = "off" if args.no_query_cache else "read_write"
+    sql_query_cache_mode: Literal["off", "read_write"] = "off" if args.no_query_cache else "read_write"
     connector_config = (
         Neo4jConnectorConfig(schema_cache_mode="read_write")
         if result.dataset == "cypherbench"
-        else SQLConnectorConfig(schema_cache_mode="read_write", query_cache_mode=query_cache_mode)
+        else SQLConnectorConfig(schema_cache_mode="read_write", sql_query_cache_mode=sql_query_cache_mode)
     )
     await preflight_benchmark(result.dataset, result.split)
     dataset_loader = dataset_registry.get_class(result.dataset)(  # type: ignore[call-arg]

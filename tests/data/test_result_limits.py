@@ -71,7 +71,7 @@ async def async_connector(tmp_path: Path) -> AsyncGenerator[SQLConnector, None]:
         config=SQLConnectorConfig(
             max_result_rows=2,
             schema_cache_mode="off",
-            query_cache_mode="off",
+            sql_query_cache_mode="off",
         ),
     )
     try:
@@ -122,7 +122,7 @@ async def test_none_disables_connector_result_limit(
         config=SQLConnectorConfig(
             max_result_rows=None,
             schema_cache_mode="off",
-            query_cache_mode="off",
+            sql_query_cache_mode="off",
         ),
     )
     try:

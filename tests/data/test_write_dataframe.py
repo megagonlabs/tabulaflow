@@ -19,7 +19,7 @@ async def _connector(tmp_path: Path) -> SQLConnector:
         url=f"duckdb:///{tmp_path / 'workspace.duckdb'}",
         display_name="workspace",
         read_only=False,
-        config=SQLConnectorConfig(schema_cache_mode="off", query_cache_mode="off"),
+        config=SQLConnectorConfig(schema_cache_mode="off", sql_query_cache_mode="off"),
     )
 
 
@@ -162,7 +162,7 @@ async def test_dataframe_write_modes_apply_to_pandas_fallback(tmp_path: Path) ->
         url=f"sqlite+aiosqlite:///{tmp_path / 'fallback.sqlite'}",
         display_name="fallback",
         read_only=False,
-        config=SQLConnectorConfig(schema_cache_mode="off", query_cache_mode="off"),
+        config=SQLConnectorConfig(schema_cache_mode="off", sql_query_cache_mode="off"),
     )
 
     await connector.write_dataframe_async(pd.DataFrame({"value": [1]}), "items")
