@@ -332,7 +332,7 @@ class SPARQLConnector:
             url: Absolute HTTP or HTTPS query-endpoint URL.
             display_name: Human-readable name stored in the RDF schema.
             global_id: Stable cache and source identifier derived from ``url``
-                when omitted.
+                and Basic Auth username when omitted.
             read_only: Must remain true until SPARQL Update is supported.
             auth: Optional HTTP Basic username and password.
             config: Immutable execution and HTTP policy.
@@ -357,7 +357,9 @@ class SPARQLConnector:
         resolved_config = SPARQLConnectorConfig() if config is None else config
         connector = cls(
             endpoint_url=url,
-            global_id=validate_global_id(global_id or _global_id_from_url(url)),
+            global_id=validate_global_id(
+                global_id or _global_id_from_url(url, principal=auth[0] if auth is not None else None)
+            ),
             schema=RDFSchema(display_name=display_name, description=description),
             client=httpx.AsyncClient(
                 follow_redirects=True,

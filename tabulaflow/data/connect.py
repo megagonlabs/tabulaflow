@@ -20,6 +20,7 @@ from tabulaflow.data.config import (
     SQLConnectorConfig,
 )
 from tabulaflow.data.protocols import DataConnector
+from tabulaflow.core._cache import stable_cache_key
 
 # Local database-file extension -> SQLAlchemy scheme.
 _DB_FILE_SCHEMES: dict[str, str] = {
@@ -126,24 +127,27 @@ def _neo4j_driver_params(url: str) -> tuple[str, str | None, tuple[str, str] | N
     return urlunparse(credentialless._replace(query=new_query)), database, auth
 
 
-def _global_id_from_url(url: str) -> str:
-    """Derive a stable global ID from a connection URL, stripping credentials."""
+def _global_id_from_url(url: str, *, principal: str | None = None) -> str:
+    """Derive a stable global ID from a URL and authenticated identity."""
+    source = urlparse(url)
+    if principal is None and source.username is not None:
+        principal = unquote(source.username)
     parsed = urlparse(strip_url_credentials(url))
     query = urlencode(sorted(parse_qsl(parsed.query, keep_blank_values=True)))
     canonical = urlunparse(parsed._replace(query=query))
-    return f"url+{hashlib.sha256(canonical.encode()).hexdigest()}"
+    return f"url+{stable_cache_key({'url': canonical, 'principal': principal})}"
 
 
-def _neo4j_global_id(driver_url: str, database: str | None) -> str:
+def _neo4j_global_id(driver_url: str, database: str | None, *, principal: str | None = None) -> str:
     """Derive a stable cache id from canonical Neo4j driver params."""
     if database is None:
-        return _global_id_from_url(driver_url)
+        return _global_id_from_url(driver_url, principal=principal)
 
     parsed = urlparse(driver_url)
     pairs = parse_qsl(parsed.query, keep_blank_values=True)
     pairs.append(("database", database))
     canonical = urlunparse(parsed._replace(query=urlencode(sorted(pairs))))
-    return _global_id_from_url(canonical)
+    return _global_id_from_url(canonical, principal=principal)
 
 
 def is_database_file_path(path: str) -> bool:
@@ -175,8 +179,9 @@ async def connect_url(
         display_name: Human-readable name stored in the connector schema.
         read_only: Request backend-appropriate read-only behavior. SQL callers
             still need read-only credentials or IAM for enforced security.
-        global_id: Stable source identity used for caching and provenance;
-            derived from the credential-free URL when omitted.
+        global_id: Stable identity of the source and authorization context used
+            for caching and provenance. Derived from the URL and non-secret
+            authenticated identity, such as a username, when omitted.
         config: Backend-appropriate immutable connector configuration.
 
     Returns:

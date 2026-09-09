@@ -2180,7 +2180,8 @@ class SQLConnector:
     ``:identifier`` syntax work unchanged.
 
     Attributes:
-        global_id: Stable, filename-safe identity used by caches.
+        global_id: Stable, filename-safe identity of the source and
+            authorization context used by caches.
         schema: Current introspected SQL schema.
         backend: Concrete SQLAlchemy database backend.
         language: SQL dialect reported by the schema.
@@ -2257,8 +2258,9 @@ class SQLConnector:
             display_name: Human-readable name used in
                 ``schema.display_name``.
             global_id: Globally unique, filename-safe identifier for this
-                database connection and its caches. Derived from the
-                credential-free URL when omitted.
+                database connection and its caches. Derived from the URL and
+                non-secret authenticated identity, such as its username, when
+                omitted.
             read_only: If ``True`` (the default), write statements (INSERT,
                 UPDATE, DELETE, DROP, etc.) recognized by the client guard are
                 rejected before reaching the database. This is not a security

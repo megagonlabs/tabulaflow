@@ -226,7 +226,8 @@ class Neo4jConnector:
     exhaustively derives observed properties and topology from graph data.
 
     Attributes:
-        global_id: Stable, filename-safe identity used by caches.
+        global_id: Stable, filename-safe identity of the source and
+            authorization context used by caches.
         schema: Current introspected property-graph schema.
         backend: Graph database backend name (``neo4j``).
         language: Graph query language (``cypher``).
@@ -295,8 +296,8 @@ class Neo4jConnector:
             url: Neo4j URL (e.g. ``"neo4j://localhost:7687"``,
                 ``"bolt://localhost:7687"``, ``"neo4j+s://host"``).
             global_id: Globally unique, filename-safe identifier for this
-                database connection and its caches. Derived from the
-                credential-free URL and database when omitted.
+                database connection and its caches. Derived from the URL,
+                authenticated identity, and database when omitted.
             auth: ``(username, password)`` tuple or ``neo4j.Auth`` object.
             database: Neo4j database name.  ``None`` uses the server default.
             display_name: Human-readable name used in
@@ -311,7 +312,8 @@ class Neo4jConnector:
             **driver_kwargs: Extra keyword arguments for
                 ``neo4j.AsyncGraphDatabase.driver``.
         """
-        global_id = validate_global_id(global_id or _neo4j_global_id(url, database))
+        principal = auth[0] if isinstance(auth, tuple) else getattr(auth, "principal", None)
+        global_id = validate_global_id(global_id or _neo4j_global_id(url, database, principal=principal))
         config = Neo4jConnectorConfig() if config is None else config
         if "max_connection_pool_size" in driver_kwargs:
             raise TypeError("Configure Neo4j query concurrency through Neo4jConnectorConfig.max_query_concurrency")

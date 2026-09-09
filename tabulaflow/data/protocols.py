@@ -32,7 +32,7 @@ class DataConnector(Protocol):
 
     @property
     def global_id(self) -> str:
-        """Return the stable connector identity used by caches."""
+        """Return the stable source and authorization-context identity used by caches."""
         ...
 
     @property

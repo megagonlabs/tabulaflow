@@ -60,7 +60,10 @@ class TestSplitUrlCredentials:
         assert url == "sparql+https://example.org/query"
         assert auth == ("user@example", "p@ss")
         assert _sparql_endpoint_params(url)[0] == "https://example.org/query"
-        assert _global_id_from_url(source) == _global_id_from_url(other_source)
+        assert _global_id_from_url(source) != _global_id_from_url(other_source)
+        assert _global_id_from_url(source) == _global_id_from_url(
+            "sparql+https://user%40example:rotated@example.org/query"
+        )
 
 
 def test_is_database_file_path_recognizes_common_extensions() -> None:
@@ -109,18 +112,27 @@ class TestNeo4jDriverParams:
 
 
 class TestNeo4jGlobalId:
-    def test_db_and_database_params_share_cache_key(self) -> None:
+    def test_db_and_database_params_share_cache_key_for_same_principal(self) -> None:
         from tabulaflow.data.connect import _neo4j_driver_params, _neo4j_global_id
 
-        driver_url_a, database_a, _ = _neo4j_driver_params("neo4j+s://u:p@demo.neo4jlabs.com?db=companies")
-        driver_url_b, database_b, _ = _neo4j_driver_params(
-            "neo4j+s://other:secret@demo.neo4jlabs.com?database=companies"
+        driver_url_a, database_a, auth_a = _neo4j_driver_params("neo4j+s://u:p@demo.neo4jlabs.com?db=companies")
+        driver_url_b, database_b, auth_b = _neo4j_driver_params(
+            "neo4j+s://u:rotated@demo.neo4jlabs.com?database=companies"
         )
+        assert auth_a is not None and auth_b is not None
 
-        global_id = _neo4j_global_id(driver_url_a, database_a)
-        assert global_id == _neo4j_global_id(driver_url_b, database_b)
+        global_id = _neo4j_global_id(driver_url_a, database_a, principal=auth_a[0])
+        assert global_id == _neo4j_global_id(driver_url_b, database_b, principal=auth_b[0])
         assert global_id.startswith("url+")
         assert "demo.neo4jlabs.com" not in global_id
+
+    def test_principals_on_same_endpoint_have_distinct_cache_ids(self) -> None:
+        from tabulaflow.data.connect import _neo4j_global_id
+
+        movies = _neo4j_global_id("neo4j+s://demo.neo4jlabs.com", None, principal="movies")
+        recommendations = _neo4j_global_id("neo4j+s://demo.neo4jlabs.com", None, principal="recommendations")
+
+        assert movies != recommendations
 
     def test_distinct_urls_do_not_collapse_to_same_id(self) -> None:
         from tabulaflow.data.connect import _global_id_from_url
