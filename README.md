@@ -791,6 +791,7 @@ Sep 8
 - [x] Fix caching configuration, cache key, add `--enable-schema-cache`
 - [x] Fix neo4j graph extraction, df normalization, url guidance
 - [x] Improve session logging
+- [x] Fix Bare "Agent Error:"
 - [ ] Huggingface connect split selection and better url cleaning
 - [ ] Avoid AGENTS.md CLAUDE.md re-read after compaction
 - [ ] Onboarding - browser install
