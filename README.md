@@ -796,6 +796,7 @@ Sep 8
 - [x] Only use ctrl+d for exitting
 - [x] Fix connect cancellation bug
 - [x] Add `sample_view_rows` param
+- [x] Fix media support guidance
 
 - Release
   - [ ] Run tests and mypy
