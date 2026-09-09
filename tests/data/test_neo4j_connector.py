@@ -1,4 +1,5 @@
 import asyncio
+from collections.abc import AsyncIterator
 from datetime import date, datetime
 from pathlib import Path
 from typing import Any
@@ -34,6 +35,12 @@ class _Result:
 
     def keys(self) -> list[str]:
         return ["value"]
+
+    def __aiter__(self) -> AsyncIterator[neo4j.Record]:
+        async def records() -> AsyncIterator[neo4j.Record]:
+            yield neo4j.Record([("value", 1)])  # type: ignore[no-untyped-call]
+
+        return records()
 
     async def graph(self) -> neo4j.graph.Graph:
         return neo4j.graph.Graph()
@@ -72,7 +79,7 @@ class _Driver:
         self.closed = True
 
 
-def test_native_path_is_materialized_as_tabular_data() -> None:
+def test_native_path_is_materialized_without_data_loss() -> None:
     graph = neo4j.graph.Graph()
     alice = neo4j.graph.Node(graph, "alice", 1, ["Person"], {"name": "Alice"})
     bob = neo4j.graph.Node(graph, "bob", 2, ["Person"], {"name": "Bob"})
@@ -81,10 +88,41 @@ def test_native_path_is_materialized_as_tabular_data() -> None:
     relationship._end_node = bob
     record = neo4j.Record([("p", neo4j.graph.Path(alice, relationship))])  # type: ignore[no-untyped-call]
 
-    result = ExecResult(df=_rows_to_df([record.data()], record.keys()))
+    result = ExecResult(df=_rows_to_df([record], record.keys()))
 
     assert result.df is not None
-    assert result.df.at[0, "p"] == [{"name": "Alice"}, "KNOWS", {"name": "Bob"}]
+    assert result.df.at[0, "p"] == [
+        {"id": "alice", "labels": ["Person"], "properties": {"name": "Alice"}},
+        {
+            "id": "knows",
+            "type": "KNOWS",
+            "source": "alice",
+            "target": "bob",
+            "properties": {},
+        },
+        {"id": "bob", "labels": ["Person"], "properties": {"name": "Bob"}},
+    ]
+
+
+def test_native_relationship_is_materialized_without_data_loss() -> None:
+    graph = neo4j.graph.Graph()
+    author = neo4j.graph.Node(graph, "author", 1, ["User"], {})
+    post = neo4j.graph.Node(graph, "post", 2, ["Post"], {})
+    relationship = graph.relationship_type("POSTED")(graph, "posted", 3, {"position": 1})
+    relationship._start_node = author
+    relationship._end_node = post
+    record = neo4j.Record([("r", relationship)])  # type: ignore[no-untyped-call]
+
+    result = ExecResult(df=_rows_to_df([record], record.keys()))
+
+    assert result.df is not None
+    assert result.df.at[0, "r"] == {
+        "id": "posted",
+        "type": "POSTED",
+        "source": "author",
+        "target": "post",
+        "properties": {"position": 1},
+    }
 
 
 def test_native_temporal_path_properties_are_materialized_as_python_values() -> None:
@@ -108,14 +146,28 @@ def test_native_temporal_path_properties_are_materialized_as_python_values() -> 
     relationship._end_node = answer
     record = neo4j.Record([("p", neo4j.graph.Path(question, relationship))])  # type: ignore[no-untyped-call]
 
-    result = ExecResult(df=_rows_to_df([record.data()], record.keys()))
+    result = ExecResult(df=_rows_to_df([record], record.keys()))
     restored = ExecResult.model_validate_json(result.model_dump_json())
 
     assert restored.df is not None
     assert restored.df.at[0, "p"] == [
-        {"createdAt": datetime(2024, 1, 2, 3, 4, 5)},
-        "HAS_ANSWER",
-        {"acceptedOn": date(2024, 1, 3)},
+        {
+            "id": "question",
+            "labels": ["Question"],
+            "properties": {"createdAt": datetime(2024, 1, 2, 3, 4, 5)},
+        },
+        {
+            "id": "has-answer",
+            "type": "HAS_ANSWER",
+            "source": "question",
+            "target": "answer",
+            "properties": {},
+        },
+        {
+            "id": "answer",
+            "labels": ["Answer"],
+            "properties": {"acceptedOn": date(2024, 1, 3)},
+        },
     ]
 
 

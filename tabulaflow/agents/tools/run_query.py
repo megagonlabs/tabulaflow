@@ -319,7 +319,7 @@ class RunQueryTool:
             df, max_visible_rows=self.max_visible_rows, max_cell_width=self.max_cell_width, floatfmt=self.floatfmt
         )
         res += f"\n({len(df)} rows){lat_line}{graph_line}"
-        res += f"\n\n(disaplay configuration: max_visible_rows={self.max_visible_rows}, max_cell_width={self.max_cell_width}, floatfmt='{self.floatfmt}'. Full execution results have been recorded.)"
+        res += f"\n\n(display configuration: max_visible_rows={self.max_visible_rows}, max_cell_width={self.max_cell_width}, floatfmt='{self.floatfmt}'. Full execution results have been recorded.)"
 
         for hint in _detect_result_hints(df):
             res += f"\n({hint})"

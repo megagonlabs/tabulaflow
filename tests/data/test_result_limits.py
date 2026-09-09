@@ -1,4 +1,5 @@
 import asyncio
+from collections.abc import ItemsView
 from pathlib import Path
 from typing import AsyncGenerator
 
@@ -16,8 +17,8 @@ class _FakeRecord:
     def __init__(self, value: int) -> None:
         self._value = value
 
-    def data(self) -> dict[str, int]:
-        return {"value": self._value}
+    def items(self) -> ItemsView[str, int]:
+        return {"value": self._value}.items()
 
 
 class _FakeNeo4jResult:

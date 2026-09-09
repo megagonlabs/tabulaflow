@@ -8,7 +8,7 @@ from typing import Any, ClassVar, Literal
 
 import neo4j
 import pandas as pd
-from neo4j.graph import Graph, Node
+from neo4j.graph import Graph, Node, Path as GraphPath, Relationship
 from neo4j.time import Date, DateTime, Duration, Time
 from pydantic import ValidationError
 
@@ -103,6 +103,25 @@ def _normalize_neo4j_value(value: object) -> object:
         return value.to_native()
     if isinstance(value, Duration):
         return value.iso_format()
+    if isinstance(value, Node):
+        return {
+            "id": value.element_id,
+            "labels": sorted(value.labels),
+            "properties": {str(key): _normalize_neo4j_value(item) for key, item in value.items()},
+        }
+    if isinstance(value, Relationship):
+        return {
+            "id": value.element_id,
+            "type": value.type,
+            "source": value.start_node.element_id if value.start_node is not None else None,
+            "target": value.end_node.element_id if value.end_node is not None else None,
+            "properties": {str(key): _normalize_neo4j_value(item) for key, item in value.items()},
+        }
+    if isinstance(value, GraphPath):
+        parts: list[object] = [_normalize_neo4j_value(value.nodes[0])]
+        for relationship, node in zip(value.relationships, value.nodes[1:], strict=True):
+            parts.extend((_normalize_neo4j_value(relationship), _normalize_neo4j_value(node)))
+        return parts
     if isinstance(value, Mapping):
         return {key: _normalize_neo4j_value(item) for key, item in value.items()}
     if isinstance(value, Sequence) and not isinstance(value, (str, bytes, bytearray)):
@@ -386,12 +405,12 @@ class Neo4jConnector:
                 )
                 if return_df:
                     if max_rows is None:
-                        rows = await result.data()
+                        rows = [record async for record in result]
                     else:
                         records = await result.fetch(max_rows + 1)
                         if len(records) > max_rows:
                             raise ResultTooLargeError(max_rows)
-                        rows = [record.data() for record in records]
+                        rows = records
                     df = _rows_to_df(rows, result.keys())
                     return df, await result.graph()
                 return await result.data()
