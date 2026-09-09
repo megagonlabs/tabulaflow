@@ -787,6 +787,65 @@ async def test_submission_worker_covers_and_can_cancel_session_preflight(monkeyp
         assert messages[-1] == "Interrupted"
 
 
+async def test_ctrl_c_only_interrupts_or_explains_how_to_quit(monkeypatch: pytest.MonkeyPatch) -> None:
+    app = _app(None)
+    exits: list[bool] = []
+    _stub_app_startup(app, monkeypatch)
+    monkeypatch.setattr(app, "_request_exit", lambda: exits.append(True))
+
+    async with app.run_test() as pilot:
+        for _ in range(3):
+            await pilot.pause()
+
+        input_bar = app.query_one("#input-bar", HistoryInput)
+        await pilot.press("ctrl+c", "ctrl+c")
+
+        assert exits == []
+        assert input_bar.placeholder == "Press Ctrl+D twice to quit"
+
+        await pilot.press("ctrl+d")
+
+        assert exits == []
+        assert input_bar.placeholder == "Press Ctrl+D again to quit"
+
+        await pilot.press("ctrl+d")
+
+        assert exits == [True]
+
+
+async def test_ctrl_d_preserves_active_work(monkeypatch: pytest.MonkeyPatch) -> None:
+    app = _app(None)
+    exits: list[bool] = []
+    _stub_app_startup(app, monkeypatch)
+    monkeypatch.setattr(app, "_request_exit", lambda: exits.append(True))
+
+    async with app.run_test() as pilot:
+        for _ in range(3):
+            await pilot.pause()
+
+        input_bar = app.query_one("#input-bar", HistoryInput)
+        input_bar.value = "unfinished draft"
+        await pilot.press("ctrl+d")
+
+        assert input_bar.value == "unfinished draft"
+        assert exits == []
+
+        input_bar.clear()
+        app._submission_worker = object()  # type: ignore[assignment]
+        await pilot.press("ctrl+d")
+
+        assert exits == []
+        app._submission_worker = None
+
+        await pilot.press("ctrl+d")
+        input_bar.value = "changed my mind"
+        input_bar.clear()
+        await pilot.pause()
+        await pilot.press("ctrl+d")
+
+        assert exits == []
+
+
 async def test_config_selection_persists_and_starts_one_activation(monkeypatch: pytest.MonkeyPatch) -> None:
     app = _app(None)
     session = _InactiveSession()

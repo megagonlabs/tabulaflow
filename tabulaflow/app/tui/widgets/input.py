@@ -181,7 +181,7 @@ class HistoryInput(Input):
         # key navigation between result cards.
         Binding("up", "history_prev", "Previous command"),
         Binding("down", "history_next", "Next command"),
-        Binding("ctrl+d", "quit_only", "Quit", show=False, priority=True),
+        Binding("ctrl+d", "confirm_quit", "Quit", show=False, priority=True),
         Binding("tab", "accept_suggestion", "Accept suggestion", show=False),
         Binding("ctrl+o", "open_data_explorer", "Open data explorer"),
         # Option/Alt+Arrow word movement. Textual's Input already binds these
@@ -348,11 +348,11 @@ class HistoryInput(Input):
             self.value = self._suggestion
             self.cursor_position = len(self.value)
 
-    def action_quit_only(self) -> None:
-        """Forward Ctrl+D to the app-level quit-only handler when focused."""
+    def action_confirm_quit(self) -> None:
+        """Forward Ctrl+D to the app-level quit confirmation when focused."""
         # Input consumes Ctrl+D by default; forward explicitly so the app can
         # apply its double-press quit logic.
-        cast("TabulaflowApp", self.app).action_quit_only()
+        cast("TabulaflowApp", self.app).action_confirm_quit()
 
     def _on_paste(self, event: events.Paste) -> None:
         """Intercept bracketed-paste events with newlines and stash them.

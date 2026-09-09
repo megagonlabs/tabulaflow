@@ -12,6 +12,7 @@ from textual import events
 from textual.app import App, ComposeResult
 from textual.binding import Binding
 from textual.containers import Horizontal, Vertical
+from textual.timer import Timer
 from textual.worker import Worker
 from textual.widgets import Button, Input, Static
 
@@ -223,15 +224,15 @@ class TabulaflowApp(App[None]):
         return variables
 
     BINDINGS = [
-        ("ctrl+c", "interrupt_or_quit", "Interrupt / Quit"),
-        ("ctrl+d", "quit_only", "Quit"),
+        ("ctrl+c", "interrupt_or_clear", "Interrupt / Clear"),
+        ("ctrl+d", "confirm_quit", "Quit"),
         ("escape", "toggle_focus", "Toggle focus"),
         ("ctrl+o", "open_data_explorer", "Open data explorer"),
         Binding("pageup", "scroll_log('pageup')", "Scroll up", show=False, priority=True),
         Binding("pagedown", "scroll_log('pagedown')", "Scroll down", show=False, priority=True),
     ]
 
-    _INTERRUPT_DOUBLE_PRESS_WINDOW = 1.0
+    _QUIT_CONFIRMATION_WINDOW = 2.0
 
     def __init__(
         self,
@@ -265,9 +266,9 @@ class TabulaflowApp(App[None]):
         self._llm_activation_error: str | None = None
         self._initialization_spinner: SpinnerWidget | None = SpinnerWidget("Initializing session...")
         self._submission_worker: Worker[None] | None = None
-        self._last_idle_interrupt_ts: float = 0.0
+        self._last_quit_request_ts: float | None = None
         self._saved_input_placeholder: str | None = None
-        self._last_quit_hint_key: str = "Ctrl+C"
+        self._input_hint_timer: Timer | None = None
         # Session-scoped expansion + cursor state for the schema browser.
         # The same instance is passed to every SchemaBrowserScreen, which
         # mutates it on close so reopening lands the user where they left
@@ -526,70 +527,84 @@ class TabulaflowApp(App[None]):
         os.environ.setdefault("GRPC_VERBOSITY", "ERROR")
         os.environ.setdefault("GLOG_minloglevel", "3")
 
-    def action_interrupt_or_quit(self) -> None:
+    def action_interrupt_or_clear(self) -> None:
         """Ctrl+C:
         - If a submission is running: cancel it.
         - Else if the input has text: clear it.
-        - Else (input empty): show the quit hint; a second press within the
-          window quits.
+        - Else: explain how to quit without arming the quit confirmation.
         """
+        self._last_quit_request_ts = None
         if self._submission_worker is not None:
             self._submission_worker.cancel()
-            self._last_idle_interrupt_ts = 0.0
+            self._clear_input_hint()
             return
 
         inp = self.query_one("#input-bar", Input)
         if inp.value:
             inp.value = ""
-            self._last_idle_interrupt_ts = 0.0
+            self._clear_input_hint()
             # Land focus in the now-empty input so the user can compose
             # immediately. Matters when Ctrl+C is pressed while a result
             # widget is focused.
             inp.focus()
             return
 
-        self._confirm_idle_quit("Ctrl+C", inp)
+        self._show_input_hint(inp, "Press Ctrl+D twice to quit")
 
-    def action_quit_only(self) -> None:
+    def on_input_changed(self, event: Input.Changed) -> None:
+        """Disarm quit confirmation as soon as the prompt changes."""
+        if event.input.id != "input-bar":
+            return
+        self._last_quit_request_ts = None
+        if event.value:
+            self._clear_input_hint()
+
+    def action_confirm_quit(self) -> None:
         """Ctrl+D:
-        - Never interrupts a running submission.
-        - Else mirrors idle quit behavior (double press within the window).
+        - Do nothing while a submission or draft is active.
+        - Else quit on a confirmed second press.
         """
         if self._submission_worker is not None:
+            self._last_quit_request_ts = None
+            self._clear_input_hint()
             return
 
         inp = self.query_one("#input-bar", Input)
         if inp.value:
-            inp.value = ""
-            self._last_idle_interrupt_ts = 0.0
-            inp.focus()
+            self._last_quit_request_ts = None
+            self._clear_input_hint()
             return
 
-        self._confirm_idle_quit("Ctrl+D", inp)
+        self._confirm_quit(inp)
 
-    def _confirm_idle_quit(self, key: str, inp: Input) -> None:
-        """Quit only when the same idle quit key is pressed twice."""
+    def _confirm_quit(self, inp: Input) -> None:
+        """Quit only when Ctrl+D is pressed twice on an idle empty prompt."""
         import time
 
         now = time.monotonic()
         if (
-            self._last_quit_hint_key == key
-            and (now - self._last_idle_interrupt_ts) < self._INTERRUPT_DOUBLE_PRESS_WINDOW
+            self._last_quit_request_ts is not None
+            and (now - self._last_quit_request_ts) < self._QUIT_CONFIRMATION_WINDOW
         ):
             self._request_exit()
             return
 
-        self._last_idle_interrupt_ts = now
-        self._last_quit_hint_key = key
+        self._last_quit_request_ts = now
+        self._show_input_hint(inp, "Press Ctrl+D again to quit")
+
+    def _show_input_hint(self, inp: Input, message: str) -> None:
+        """Temporarily replace the empty input's placeholder."""
         if self._saved_input_placeholder is None:
             self._saved_input_placeholder = inp.placeholder
-        inp.placeholder = f"Press {self._last_quit_hint_key} again to quit"
-        self.set_timer(self._INTERRUPT_DOUBLE_PRESS_WINDOW, self._restore_input_placeholder)
+        inp.placeholder = message
+        if self._input_hint_timer is not None:
+            self._input_hint_timer.stop()
+        self._input_hint_timer = self.set_timer(self._QUIT_CONFIRMATION_WINDOW, self._restore_input_placeholder)
 
     def _request_exit(self) -> None:
         """Single quit path: disconnect all registered connectors, then
-        exit the app.  Every quit trigger (slash command, idle Ctrl+C /
-        Ctrl+D double-press, …) routes through here so data-source connections
+        exit the app. Every quit trigger (slash command, idle Ctrl+D
+        double-press, …) routes through here so data-source connections
         and DuckDB file locks are always released cleanly.
         """
         if self._session is None:
@@ -867,10 +882,7 @@ class TabulaflowApp(App[None]):
         inp.focus()
 
     def _restore_input_placeholder(self) -> None:
-        import time
-
-        if (time.monotonic() - self._last_idle_interrupt_ts) < self._INTERRUPT_DOUBLE_PRESS_WINDOW:
-            return
+        self._input_hint_timer = None
         if self._saved_input_placeholder is None:
             return
         try:
@@ -879,6 +891,13 @@ class TabulaflowApp(App[None]):
             return
         inp.placeholder = self._saved_input_placeholder
         self._saved_input_placeholder = None
+
+    def _clear_input_hint(self) -> None:
+        """Restore the normal input placeholder immediately."""
+        if self._input_hint_timer is not None:
+            self._input_hint_timer.stop()
+            self._input_hint_timer = None
+        self._restore_input_placeholder()
 
     def action_toggle_focus(self) -> None:
         """Toggle focus between input bar and result widgets."""
