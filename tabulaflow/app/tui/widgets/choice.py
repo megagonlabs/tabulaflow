@@ -82,7 +82,6 @@ class InlineChoiceSelector(Vertical):
 
     def on_mount(self) -> None:
         self._refresh()
-        self.call_after_refresh(self._refresh)
         self.focus()
 
     def on_resize(self) -> None:

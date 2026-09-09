@@ -183,6 +183,68 @@ async def test_huggingface_subset_selection_connects_inline(monkeypatch: pytest.
         assert "✓ Connected to glue" in [cast(Text, message.render()).plain for message in app.query(SystemMessage)]
 
 
+async def test_huggingface_subset_connection_uses_submission_worker(monkeypatch: pytest.MonkeyPatch) -> None:
+    app = _app(None)
+    _stub_app_startup(app, monkeypatch)
+    monkeypatch.setattr(app, "_start_llm_activation", lambda _selection: None)
+    session = object()
+    app._session = session  # type: ignore[assignment]
+    started = asyncio.Event()
+    cancelled = asyncio.Event()
+    opened_explorer: list[bool] = []
+
+    async def complete_selection(
+        _selection: HuggingFaceSubsetSelection,
+        _subset: str,
+        _session: AppSession,
+    ) -> CommandResult:
+        started.set()
+        try:
+            await asyncio.Event().wait()
+        except asyncio.CancelledError:
+            cancelled.set()
+            raise
+        raise AssertionError("unreachable")
+
+    monkeypatch.setattr(tui, "complete_hf_subset_selection", complete_selection)
+    monkeypatch.setattr(app, "action_open_data_explorer", lambda: opened_explorer.append(True))
+    request = HuggingFaceSubsetSelection(
+        alias="glue",
+        dataset_id="nyu-mll/glue",
+        subsets=("cola", "mnli", "mrpc"),
+    )
+
+    async with app.run_test(size=(100, 36)) as pilot:
+        await pilot.pause()
+        await app._show_command_result(
+            CommandResult(action=request),
+            session,  # type: ignore[arg-type]
+            app.query_one(ChatLog),
+        )
+        await pilot.press("enter")
+        await started.wait()
+
+        input_bar = app.query_one("#input-bar", Input)
+        assert app._submission_worker is not None
+        assert input_bar.has_focus
+        assert not input_bar.disabled
+
+        await pilot.press("n", "e", "x", "t")
+        await pilot.press("ctrl+o")
+        await pilot.pause()
+
+        assert input_bar.value == "next"
+        assert opened_explorer == [True]
+
+        await pilot.press("ctrl+c")
+        await cancelled.wait()
+        await pilot.pause()
+
+        assert app._submission_worker is None
+        assert input_bar.value == "next"
+        assert "Interrupted" in [cast(Text, message.render()).plain for message in app.query(SystemMessage)]
+
+
 def test_close_pane_removes_session_artifacts(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("HOME", str(tmp_path))
     app = _app(None, runtime_paths=RuntimePaths.for_session("test-session"))

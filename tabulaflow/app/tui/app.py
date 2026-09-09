@@ -1130,8 +1130,20 @@ class TabulaflowApp(App[None]):
         if selection is None:
             return
         self._pending_hf_subset_selection = None
-        selector = self.query_one(InlineChoiceSelector)
-        await selector.remove()
+        await self.query_one(InlineChoiceSelector).remove()
+        self._restore_input_after_choice()
+        self._submission_worker = self.run_worker(
+            self._run_hf_subset_connection(selection, event.value),
+            exclusive=True,
+            group="submission",
+        )
+
+    async def _run_hf_subset_connection(
+        self,
+        selection: HuggingFaceSubsetSelection,
+        subset: str,
+    ) -> None:
+        import asyncio
 
         chat_log = self.query_one("#chat-log", ChatLog)
         spinner = SpinnerWidget("Connecting...")
@@ -1139,13 +1151,20 @@ class TabulaflowApp(App[None]):
         chat_log.follow_new_content(force=True)
         try:
             session = await self._ensure_session()
-            result = await complete_hf_subset_selection(selection, event.value, session)
-        finally:
+            result = await complete_hf_subset_selection(selection, subset, session)
             await spinner.remove()
-
-        self._restore_input_after_choice()
-        await self._show_command_result(result, session, chat_log)
-        self._refresh_bottom_status()
+            await self._show_command_result(result, session, chat_log)
+            self._refresh_bottom_status()
+        except asyncio.CancelledError:
+            if spinner.is_mounted:
+                await spinner.remove()
+            await chat_log.mount(SystemMessage(Text("Interrupted", style="dim")))
+            chat_log.follow_new_content()
+            raise
+        finally:
+            if spinner.is_mounted:
+                await spinner.remove()
+            self._submission_worker = None
 
     async def on_inline_choice_selector_cancelled(self, event: InlineChoiceSelector.Cancelled) -> None:
         if self._pending_hf_subset_selection is None:
