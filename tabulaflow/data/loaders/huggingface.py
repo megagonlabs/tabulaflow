@@ -531,6 +531,7 @@ async def load_hf_dataset(
         schema=schema,
         read_only=read_only,
         config=config,
+        sample_view_rows=False,
         duckdb_init_sql=["LOAD httpfs"],
         description=f"Source: Hugging Face dataset {dataset_url}",
     )
@@ -733,6 +734,7 @@ async def _run_schema(payload: dict[str, Any]) -> str:
         display_name=payload["display_name"],
         read_only=True,
         config=config,
+        sample_view_rows=False,
         duckdb_init_sql=["LOAD httpfs"],
         description=f"Source: Hugging Face dataset {payload['dataset_url']}",
     )

@@ -1477,6 +1477,7 @@ class _SchemaIntrospectionOptions:
     exclude_schema_names: frozenset[str] = frozenset()
     reuse_date_partition_schemas: bool = False
     schema_reuse_regexes: tuple[str, ...] = ()
+    sample_view_rows: bool = True
 
     def __post_init__(self) -> None:
         for pattern in self.schema_reuse_regexes:
@@ -1522,6 +1523,7 @@ class _SchemaIntrospectionOptions:
                 "exclude_schema_names": sorted(self.exclude_schema_names),
                 "reuse_date_partition_schemas": self.reuse_date_partition_schemas,
                 "schema_reuse_regexes": self.schema_reuse_regexes,
+                "sample_view_rows": self.sample_view_rows,
             },
             sort_keys=True,
         )
@@ -1914,6 +1916,7 @@ async def _build_table_async(
     table_name: str,
     schema_name: str | None,
     is_view: bool = False,
+    sample_rows: bool = True,
     collect_column_stats: bool = False,
     query_timeout_seconds: int | None = 300,
 ) -> SQLTableSchema | None:
@@ -1944,13 +1947,15 @@ async def _build_table_async(
     )
 
     tbl = sqlalchemy.table(table_name, schema=schema_name)
-    sample_result = await _try_profile_query_async(
-        t_eng,
-        select("*").select_from(tbl).limit(_PROFILE_SAMPLE_ROWS),
-        timeout=query_timeout_seconds,
-        operation=f"sample relation {_qualified_name(schema_name, table_name)}",
-        return_df=True,
-    )
+    sample_result = None
+    if sample_rows:
+        sample_result = await _try_profile_query_async(
+            t_eng,
+            select("*").select_from(tbl).limit(_PROFILE_SAMPLE_ROWS),
+            timeout=query_timeout_seconds,
+            operation=f"sample relation {_qualified_name(schema_name, table_name)}",
+            return_df=True,
+        )
     if sample_result is not None:
         profile_sample = sample_result.result
         assert isinstance(profile_sample, pd.DataFrame)
@@ -2100,6 +2105,7 @@ async def _build_schema_async(
                     group[0],
                     schema_name,
                     is_view=is_view,
+                    sample_rows=not is_view or options.sample_view_rows,
                     collect_column_stats=collect_column_stats,
                     query_timeout_seconds=query_timeout_seconds,
                 )
@@ -2237,6 +2243,7 @@ class SQLConnector:
         exclude_schema_names: Sequence[str] = (),
         reuse_date_partition_schemas: bool = False,
         schema_reuse_regexes: Sequence[str] = (),
+        sample_view_rows: bool = True,
         dbms_semaphore: asyncio.Semaphore | None = None,
         description: str | None = None,
         duckdb_init_sql: Sequence[str] = (),
@@ -2271,6 +2278,8 @@ class SQLConnector:
                 families reuse one representative's structural schema.
             schema_reuse_regexes: Regexes defining additional table families
                 whose members are asserted to share one structural schema.
+            sample_view_rows: Whether to read bounded row samples from views
+                for examples, JSON inference, and previews.
             dbms_semaphore: Optional semaphore shared across connectors to
                 limit aggregate DBMS concurrency.
             description: Optional database description stored in the schema
@@ -2295,6 +2304,7 @@ class SQLConnector:
             exclude_schema_names=frozenset(exclude_schema_names),
             reuse_date_partition_schemas=reuse_date_partition_schemas,
             schema_reuse_regexes=tuple(schema_reuse_regexes),
+            sample_view_rows=sample_view_rows,
         )
         t_eng = ThrottledEngine.from_url(
             url,
@@ -2418,6 +2428,10 @@ class SQLConnector:
                                 ref.table_name,
                                 ref.schema_name,
                                 is_view=ref.table_name in view_names_by_schema.get(ref.schema_name, set()),
+                                sample_rows=(
+                                    ref.table_name not in view_names_by_schema.get(ref.schema_name, set())
+                                    or self._schema_introspection.sample_view_rows
+                                ),
                                 collect_column_stats=self.config.collect_column_stats,
                                 query_timeout_seconds=self.config.query_timeout_seconds,
                             )

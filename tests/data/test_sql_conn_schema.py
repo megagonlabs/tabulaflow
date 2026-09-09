@@ -240,6 +240,31 @@ async def test_view_sample_timeout_preserves_structural_schema(
     assert "None.item_view" not in caplog.text
 
 
+async def test_view_row_sampling_can_be_disabled(tmp_path: Path) -> None:
+    db_path = tmp_path / "view-no-sample.sqlite"
+    with sqlite3.connect(db_path) as connection:
+        connection.execute("CREATE TABLE items (value INTEGER)")
+        connection.executemany("INSERT INTO items VALUES (?)", [(1,), (2,)])
+        connection.execute("CREATE VIEW item_view AS SELECT value FROM items")
+
+    connector = await SQLConnector.from_url_async(
+        global_id="view-no-sample",
+        url=f"sqlite+aiosqlite:///{db_path}",
+        display_name="view-no-sample",
+        sample_view_rows=False,
+        config=SQLConnectorConfig(schema_cache_mode="off"),
+    )
+    try:
+        tables = {table.name: table for table in connector.schema.tables}
+        assert tables["items"].sampled_df is not None
+        assert tables["items"].columns[0].examples == [1, 2]
+        assert tables["item_view"].is_view
+        assert tables["item_view"].sampled_df is None
+        assert tables["item_view"].columns[0].examples == []
+    finally:
+        await connector.close_async()
+
+
 async def test_date_partition_schema_reuse_is_explicit_and_structural(tmp_path: Path) -> None:
     db_path = tmp_path / "partitions.sqlite"
     with sqlite3.connect(db_path) as connection:

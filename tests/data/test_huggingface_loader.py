@@ -71,7 +71,10 @@ async def test_resolve_config_exposes_subset_choices(monkeypatch: pytest.MonkeyP
 
 async def test_schema_worker_releases_cache_before_parent_opens_it(tmp_path: Path) -> None:
     db_path = tmp_path / "hf_cache.duckdb"
-    duckdb.connect(str(db_path)).execute("CREATE TABLE documents (id INTEGER)").close()
+    with duckdb.connect(str(db_path)) as conn:
+        conn.execute("CREATE TABLE documents (id INTEGER)")
+        conn.execute("INSERT INTO documents VALUES (1)")
+        conn.execute("CREATE VIEW remote_documents AS SELECT * FROM documents")
     config = SQLConnectorConfig(
         cache_dir=tmp_path,
         schema_cache_mode="off",
@@ -86,7 +89,11 @@ async def test_schema_worker_releases_cache_before_parent_opens_it(tmp_path: Pat
         config=config,
     )
 
-    assert [table.name for table in schema.tables] == ["documents"]
+    tables = {table.name: table for table in schema.tables}
+    assert tables["documents"].sampled_df is not None
+    assert tables["documents"].columns[0].examples == [1]
+    assert tables["remote_documents"].sampled_df is None
+    assert tables["remote_documents"].columns[0].examples == []
     connector = await sql.SQLConnector.from_url_async(
         global_id="hf-parent",
         url=f"duckdb:///{db_path}",
