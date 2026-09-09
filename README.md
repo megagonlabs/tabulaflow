@@ -792,10 +792,9 @@ Sep 8
 - [x] Redact credentials 
 - [x] Improve session logging
 - [x] Fix Bare "Agent Error:"
-- [ ] Huggingface connect split selection and better url cleaning
+- [x] Huggingface connect subset selection and better url cleaning
 - [x] Only use ctrl+d for exitting
-- [ ] Fix connect cancellation bug 
-- [ ] Fix `show [Image #1]` bug
+- [x] Fix connect cancellation bug
 
 - Release
 - [ ] Onboarding - browser install
