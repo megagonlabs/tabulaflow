@@ -1094,6 +1094,11 @@ class TabulaflowApp(App[None]):
         if result.action == "clear":
             await chat_log.remove_children()
             await chat_log.mount(self._banner())
+            if self._pane is not None:
+                try:
+                    self._pane.clear()
+                except Exception:
+                    logger.warning("clearing output pane failed", exc_info=True)
             self._refresh_esc_hint()
             return
 

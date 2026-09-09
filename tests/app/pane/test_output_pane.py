@@ -202,6 +202,24 @@ def test_output_pane_discards_pending_turn(tmp_path: Path) -> None:
     assert pane._wait_for_events(0, timeout=0) == [(1, "turn-remove", {"id": turn_id})]  # noqa: SLF001
 
 
+def test_output_pane_clear_resets_current_history(tmp_path: Path) -> None:
+    pane = OutputPane(tmp_path)
+    stale_turn_id = pane.begin_turn(title="analyze", user="Analyze the data.")
+    pane.push(turn_payload(title="result", cards=[]))
+
+    pane.clear()
+
+    assert pane._wait_for_events(-1, timeout=0) == [(2, "clear", {})]  # noqa: SLF001
+    with pytest.raises(KeyError):
+        pane.complete_turn(stale_turn_id, turn_payload(title="stale", cards=[]))
+
+    new_turn_id = pane.begin_turn(title="new", user="Start fresh.")
+    assert new_turn_id == 2
+    assert pane._wait_for_events(2, timeout=0) == [
+        (3, "turn", {"id": 2, "status": "pending", "title": "new", "user": "Start fresh."})
+    ]
+
+
 def test_output_pane_replaces_pending_turn_in_browser(tmp_path: Path) -> None:
     from playwright.sync_api import Error as PlaywrightError
     from playwright.sync_api import sync_playwright
@@ -241,6 +259,13 @@ def test_output_pane_replaces_pending_turn_in_browser(tmp_path: Path) -> None:
                 assert page.locator(".pending-turn").count() == 0
                 assert page.locator(".message.assistant .message-body").inner_text() == "Done."
                 assert page.title() == "◆ tabulaflow"
+
+                pane.clear()
+
+                page.wait_for_selector("#empty")
+                assert page.locator(".turnitem").count() == 0
+                assert page.locator(".turns-empty").inner_text() == "No output yet"
+                assert page.title() == "tabulaflow"
             finally:
                 browser.close()
     finally:

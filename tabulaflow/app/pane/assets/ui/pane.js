@@ -1503,6 +1503,26 @@ function showEmptyPane() {
     + '<p class="empty-copy">Results will appear here as the agent works.</p></div></div>';
 }
 
+function clearTurns() {
+  var inner = document.getElementById('content-inner');
+  if (activeTurnTransition) activeTurnTransition.skipTransition();
+  activeTurnTransition = null;
+  deactivateViewTree(inner, true);
+  Object.keys(viewCache).forEach(function (key) {
+    var entry = viewCache[key];
+    gateDeactivate(entry);
+    if (entry.handle && entry.handle.destroy) entry.handle.destroy();
+  });
+  turns = [];
+  activeTurn = -1;
+  cardDataCache = {};
+  viewCache = {};
+  navState = {};
+  lru = [];
+  showEmptyPane();
+  contentScroller().scrollTop = 0;
+}
+
 function removeTurn(turnId) {
   var index = findTurnIndex(turnId);
   if (index === -1) return;
@@ -1532,6 +1552,10 @@ function startEvents() {
   });
   source.addEventListener('turn-remove', function (event) {
     removeTurn(JSON.parse(event.data).id);
+  });
+  source.addEventListener('clear', function () {
+    clearTurns();
+    applyPageStatus('idle');
   });
 }
 

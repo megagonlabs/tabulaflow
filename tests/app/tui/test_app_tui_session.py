@@ -113,6 +113,35 @@ def _session(*, llm_preset: LLMPreset | None, tmp_path: Path) -> AppSession:
     )
 
 
+async def test_clear_resets_tui_and_output_pane(monkeypatch: pytest.MonkeyPatch) -> None:
+    app = _app(None)
+    _stub_app_startup(app, monkeypatch)
+
+    class FakePane:
+        cleared = False
+
+        def clear(self) -> None:
+            self.cleared = True
+
+    pane = FakePane()
+    app._pane = pane  # type: ignore[assignment]
+
+    async with app.run_test(size=(100, 36)) as pilot:
+        await pilot.pause()
+        chat_log = app.query_one(ChatLog)
+        await chat_log.mount(SystemMessage("old conversation"))
+
+        await app._show_command_result(
+            CommandResult(action="clear"),
+            cast(AppSession, object()),
+            chat_log,
+        )
+
+        assert pane.cleared
+        assert len(app.query(SystemMessage)) == 0
+        assert len(app.query(BannerWidget)) == 1
+
+
 def test_text_selection_failure_is_contained(
     caplog: pytest.LogCaptureFixture,
     monkeypatch: pytest.MonkeyPatch,

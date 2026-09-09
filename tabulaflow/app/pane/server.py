@@ -559,6 +559,14 @@ class OutputPane:
             self._live_outputs.pop(turn_id, None)
             self._publish_event("turn-remove", {"id": turn_id})
 
+    def clear(self) -> None:
+        """Clear all turns from connected and future browser clients."""
+        with self._condition:
+            self._turns.clear()
+            self._live_outputs.clear()
+            self._events.clear()
+            self._publish_event("clear", {})
+
     def _publish_turn(
         self,
         turn_id: int,
