@@ -789,7 +789,9 @@ Sep 8
 - [x] Fix input history order
 - [x] Fix TUI auto-scrolling behaviour
 - [x] Show pending turns in output pane
-- [x] Fix caching, `--enable-schema-cache`
+- [x] Fix caching configuration, cache key, add `--enable-schema-cache`
+- [x] Fix neo4j issues
+- [x] Improve session logging
 - [ ] Huggingface connect split selection and better url cleaning
 - [ ] Authentication
 - [ ] Avoid AGENTS.md CLAUDE.md re-read after compaction
