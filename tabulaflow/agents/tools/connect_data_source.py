@@ -49,7 +49,9 @@ class ConnectDataSourceTool:
         - Local data file — a path ending in .csv, .tsv, .json, .parquet, .xlsx, or .xls.
         - Local database file — a path ending in .sqlite, .sqlite3, .db, or .duckdb.
         - Connector URL — e.g. postgresql://, mysql://, bigquery://, snowflake://,
-          neo4j://, or sparql+https://.
+          neo4j+s://, bolt://, or sparql+https://. For Neo4j, preserve the exact
+          deployment-provided scheme because it determines routing, TLS, and
+          certificate verification.
           A source needing a password that isn't in the URL is deferred to the user.
         - HuggingFace dataset — a https://huggingface.co/datasets/<owner>/<name> URL. A
           dataset with multiple configs/subsets requires one, named as .../viewer/<subset>

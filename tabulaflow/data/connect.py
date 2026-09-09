@@ -174,7 +174,7 @@ async def connect_url(
         source: A SQL, Neo4j, or explicit ``sparql+http(s)`` connection URL.
             Examples include
             ``postgresql://user:pass@host/db``, ``bigquery://project/dataset``,
-            ``neo4j://user:pass@host``, ``sparql+https://query.wikidata.org/sparql``,
+            ``neo4j+s://user:pass@host``, ``sparql+https://query.wikidata.org/sparql``,
             ``sqlite+aiosqlite:///data.sqlite``, and ``duckdb:///data.duckdb``.
         display_name: Human-readable name stored in the connector schema.
         read_only: Request backend-appropriate read-only behavior. SQL callers

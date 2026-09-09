@@ -293,8 +293,9 @@ class Neo4jConnector:
         """Create a connector from a Neo4j Bolt URL.
 
         Args:
-            url: Neo4j URL (e.g. ``"neo4j://localhost:7687"``,
-                ``"bolt://localhost:7687"``, ``"neo4j+s://host"``).
+            url: Neo4j URL, such as ``"bolt://localhost:7687"`` for a local
+                direct connection or ``"neo4j+s://host"`` for hosted routing
+                with trusted TLS. Preserve the deployment-provided scheme.
             global_id: Globally unique, filename-safe identifier for this
                 database connection and its caches. Derived from the URL,
                 authenticated identity, and database when omitted.
