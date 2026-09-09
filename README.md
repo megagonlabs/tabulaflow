@@ -793,6 +793,7 @@ Sep 8
 - [x] Improve session logging
 - [x] Fix Bare "Agent Error:"
 - [ ] Huggingface connect split selection and better url cleaning
+- [x] Only use ctrl+d for exitting
 - [ ] Onboarding - browser install
 - [ ] Open-source LLM (e.g. Fireworks) preset
 
