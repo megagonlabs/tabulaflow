@@ -16,7 +16,14 @@ from textual.timer import Timer
 from textual.worker import Worker
 from textual.widgets import Button, Input, Static
 
-from tabulaflow.app.tui.commands import COMMAND_PREFIX, CommandResult, handle_command, redact_command_credentials
+from tabulaflow.app.tui.commands import (
+    COMMAND_PREFIX,
+    CommandResult,
+    HuggingFaceSubsetSelection,
+    complete_hf_subset_selection,
+    handle_command,
+    redact_command_credentials,
+)
 from tabulaflow.app.config import (
     PROVIDER_API_KEY_ENV,
     LLMPreset,
@@ -39,6 +46,7 @@ from tabulaflow.agents.llm import model_display_name
 from tabulaflow.app.tui.theme import ERROR, FOCUS_SURFACE, KEY_HINT
 from tabulaflow.app.tui.widgets.chat import BannerWidget, SpinnerWidget, SystemMessage, UserMessage
 from tabulaflow.app.tui.widgets.chat_log import ChatLog
+from tabulaflow.app.tui.widgets.choice import InlineChoiceSelector
 from tabulaflow.app.tui.widgets.input import HistoryInput
 from tabulaflow.app.tui.widgets.progress import AgentProgressWidget
 from tabulaflow.app.tui.widgets.result import AgentResultWidget
@@ -266,6 +274,7 @@ class TabulaflowApp(App[None]):
         self._llm_activation_error: str | None = None
         self._initialization_spinner: SpinnerWidget | None = SpinnerWidget("Initializing session...")
         self._submission_worker: Worker[None] | None = None
+        self._pending_hf_subset_selection: HuggingFaceSubsetSelection | None = None
         self._last_quit_request_ts: float | None = None
         self._saved_input_placeholder: str | None = None
         self._input_hint_timer: Timer | None = None
@@ -1097,10 +1106,61 @@ class TabulaflowApp(App[None]):
             )
             return
 
+        if isinstance(result.action, HuggingFaceSubsetSelection):
+            selection = result.action
+            self._pending_hf_subset_selection = selection
+            self.query_one("#input-bar", Input).disabled = True
+            await chat_log.mount(
+                InlineChoiceSelector(
+                    "Choose subset",
+                    selection.subsets,
+                    confirm_label="Connect",
+                )
+            )
+            chat_log.follow_new_content(force=True)
+            return
+
         if result.output is not None:
             msg = SystemMessage(result.output)
             await chat_log.mount(msg)
             chat_log.follow_new_content()
+
+    async def on_inline_choice_selector_selected(self, event: InlineChoiceSelector.Selected) -> None:
+        selection = self._pending_hf_subset_selection
+        if selection is None:
+            return
+        self._pending_hf_subset_selection = None
+        selector = self.query_one(InlineChoiceSelector)
+        await selector.remove()
+
+        chat_log = self.query_one("#chat-log", ChatLog)
+        spinner = SpinnerWidget("Connecting...")
+        await chat_log.mount(spinner)
+        chat_log.follow_new_content(force=True)
+        try:
+            session = await self._ensure_session()
+            result = await complete_hf_subset_selection(selection, event.value, session)
+        finally:
+            await spinner.remove()
+
+        self._restore_input_after_choice()
+        await self._show_command_result(result, session, chat_log)
+        self._refresh_bottom_status()
+
+    async def on_inline_choice_selector_cancelled(self, event: InlineChoiceSelector.Cancelled) -> None:
+        if self._pending_hf_subset_selection is None:
+            return
+        self._pending_hf_subset_selection = None
+        await self.query_one(InlineChoiceSelector).remove()
+        chat_log = self.query_one("#chat-log", ChatLog)
+        await chat_log.mount(SystemMessage(Text("Connection cancelled.", style="dim")))
+        chat_log.follow_new_content(force=True)
+        self._restore_input_after_choice()
+
+    def _restore_input_after_choice(self) -> None:
+        input_bar = self.query_one("#input-bar", Input)
+        input_bar.disabled = False
+        input_bar.focus()
 
     def _on_config_closed(self, selection: ResolvedLLMSelection | None) -> None:
         self.call_after_refresh(self.query_one("#input-bar", Input).focus)

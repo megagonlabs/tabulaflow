@@ -23,6 +23,10 @@ from tabulaflow.data.connect import (
     normalize_connection_url,
     redact_url_password,
 )
+from tabulaflow.data.loaders import (
+    HuggingFaceSubsetRequiredError,
+    build_hf_dataset_url,
+)
 from tabulaflow.output.formatting import format_connector_summary
 
 if TYPE_CHECKING:
@@ -35,19 +39,28 @@ CommandAction = Literal["quit", "clear", "open_config"]
 
 
 @dataclass(frozen=True)
-class CommandResult:
-    """Result of a slash command execution."""
-
-    output: RenderableType | None = None
-    action: CommandAction | None = None
-
-
-@dataclass(frozen=True)
 class ConnectCommand:
     """Parsed arguments for ``/connect``."""
 
     sources: tuple[str, ...]
     alias: str | None = None
+
+
+@dataclass(frozen=True)
+class HuggingFaceSubsetSelection:
+    """Pending Hugging Face connection that needs a subset choice."""
+
+    alias: str
+    dataset_id: str
+    subsets: tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class CommandResult:
+    """Result of a slash command execution."""
+
+    output: RenderableType | None = None
+    action: CommandAction | HuggingFaceSubsetSelection | None = None
 
 
 CommandHandler = Callable[[list[str], AppSession], Awaitable[CommandResult]]
@@ -233,8 +246,32 @@ async def _cmd_connect(args: list[str], session: AppSession) -> CommandResult:
     except ValueError as e:
         return CommandResult(output=Text.from_markup(f"[{ERROR}]Invalid /connect syntax:[/] {escape(str(e))}"))
 
-    alias = command.alias or _available_alias(_default_connect_alias(command, session), session)
-    if command.alias is not None and session.registry.has(alias):
+    return await _connect_command(command, session)
+
+
+async def complete_hf_subset_selection(
+    selection: HuggingFaceSubsetSelection,
+    subset: str,
+    session: AppSession,
+) -> CommandResult:
+    """Resume a pending Hugging Face connection with the selected subset."""
+    if subset not in selection.subsets:
+        raise ValueError(f"Unknown Hugging Face subset: {subset!r}")
+    source = build_hf_dataset_url(selection.dataset_id, subset)
+    command = ConnectCommand(sources=(source,))
+    return await _connect_command(command, session, resolved_alias=selection.alias)
+
+
+async def _connect_command(
+    command: ConnectCommand,
+    session: AppSession,
+    *,
+    resolved_alias: str | None = None,
+) -> CommandResult:
+    """Connect a parsed source command, optionally reusing a reserved alias."""
+
+    alias = resolved_alias or command.alias or _available_alias(_default_connect_alias(command, session), session)
+    if (command.alias is not None or resolved_alias is not None) and session.registry.has(alias):
         return CommandResult(
             output=Text.from_markup(
                 f"[{ERROR}]Alias already in use:[/] {alias}. "
@@ -251,6 +288,14 @@ async def _cmd_connect(args: list[str], session: AppSession) -> CommandResult:
             data_dir=session.data_dir,
             read_only=True,
             configs=session.connector_configs,
+        )
+    except HuggingFaceSubsetRequiredError as e:
+        return CommandResult(
+            action=HuggingFaceSubsetSelection(
+                alias=alias,
+                dataset_id=e.dataset_id,
+                subsets=e.subsets,
+            ),
         )
     except Exception as e:
         safe_sources = [redact_url_password(item) if "://" in item else item for item in command.sources]

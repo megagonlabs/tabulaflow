@@ -2,11 +2,12 @@ from __future__ import annotations
 
 import asyncio
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import pytest
 from pydantic_ai.messages import BinaryContent
 from pydantic_ai.exceptions import UserError
+from rich.text import Text
 from textual import events
 from textual.containers import VerticalScroll
 from textual.widgets import Button, Input, Static
@@ -14,13 +15,17 @@ from textual.widgets import Button, Input, Static
 from tabulaflow.app import session as session_module
 from tabulaflow.agents.llm import ReasoningLevel
 from tabulaflow.app.tui import app as tui
-from tabulaflow.app.tui.commands import CommandResult
+from tabulaflow.app.tui.commands import (
+    CommandResult,
+    HuggingFaceSubsetSelection,
+)
 from tabulaflow.app.config import LLM_OFF, LLMRoleConfig, LLMPreset, ResolvedLLMSelection
 from tabulaflow.app.runtime_paths import RuntimePaths
 from tabulaflow.app.session import AppSession
 from tabulaflow.app.tui import TabulaflowApp
 from tabulaflow.app.tui.widgets.chat import BannerWidget, SpinnerWidget, SystemMessage, UserMessage
 from tabulaflow.app.tui.widgets.chat_log import ChatLog
+from tabulaflow.app.tui.widgets.choice import InlineChoiceSelector
 from tabulaflow.app.tui.widgets.input import HistoryInput
 
 
@@ -75,8 +80,6 @@ def _app_for_selection(
     llm_service_tier: str = "default",
     enable_schema_cache: bool = False,
 ) -> TabulaflowApp:
-    from typing import cast
-
     from tabulaflow.agents.llm import ServiceTier
 
     return TabulaflowApp(
@@ -133,6 +136,51 @@ def test_text_selection_failure_is_contained(
 
     assert screen.selection_cleared is True
     assert "copying selected text failed" in caplog.text
+
+
+async def test_huggingface_subset_selection_connects_inline(monkeypatch: pytest.MonkeyPatch) -> None:
+    app = _app(None)
+    _stub_app_startup(app, monkeypatch)
+    monkeypatch.setattr(app, "_start_llm_activation", lambda _selection: None)
+    session = object()
+    app._session = session  # type: ignore[assignment]
+    selected: list[str] = []
+
+    async def complete_selection(
+        _selection: HuggingFaceSubsetSelection,
+        subset: str,
+        _session: AppSession,
+    ) -> CommandResult:
+        selected.append(subset)
+        return CommandResult(output=Text("✓ Connected to glue"))
+
+    monkeypatch.setattr(tui, "complete_hf_subset_selection", complete_selection)
+    request = HuggingFaceSubsetSelection(
+        alias="glue",
+        dataset_id="nyu-mll/glue",
+        subsets=("cola", "mnli", "mrpc"),
+    )
+
+    async with app.run_test(size=(100, 36)) as pilot:
+        await pilot.pause()
+        chat_log = app.query_one(ChatLog)
+        await app._show_command_result(
+            CommandResult(action=request),
+            session,  # type: ignore[arg-type]
+            chat_log,
+        )
+
+        selector = app.query_one(InlineChoiceSelector)
+        assert selector.has_focus
+        assert app.query_one("#input-bar", Input).disabled
+
+        await pilot.press("m", "r", "enter")
+        await pilot.pause()
+
+        assert selected == ["mrpc"]
+        assert len(app.query(InlineChoiceSelector)) == 0
+        assert app.query_one("#input-bar", Input).has_focus
+        assert "✓ Connected to glue" in [cast(Text, message.render()).plain for message in app.query(SystemMessage)]
 
 
 def test_close_pane_removes_session_artifacts(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

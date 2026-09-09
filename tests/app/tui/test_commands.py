@@ -8,10 +8,16 @@ import pytest
 from rich.text import Text
 
 import tabulaflow.app.tui.commands as commands
-from tabulaflow.app.tui.commands import CommandResult, handle_command, redact_command_credentials
+from tabulaflow.app.tui.commands import (
+    CommandResult,
+    complete_hf_subset_selection,
+    handle_command,
+    redact_command_credentials,
+)
 from tabulaflow.app.session import AppSession
 from tabulaflow.data.catalog import DEFAULT_DATA_SOURCE_DEFINITIONS
 from tabulaflow.data.config import DataSourceConnectorConfigs
+from tabulaflow.data.loaders import HuggingFaceSubsetRequiredError
 
 
 class _FakeRegistry:
@@ -144,6 +150,53 @@ async def test_connect_registers_alias(monkeypatch: pytest.MonkeyPatch) -> None:
     assert isinstance(result.output, Text)
     assert result.output.plain == "✓ Connected to sales (test connector)"
     assert session.registry.connectors == {"sales": connector}
+
+
+async def test_connect_requests_a_huggingface_subset_choice(monkeypatch: pytest.MonkeyPatch) -> None:
+    session = _FakeSession()
+
+    async def require_subset(_source: object, **_kwargs: object) -> object:
+        raise HuggingFaceSubsetRequiredError("nyu-mll/glue", ["cola", "mnli", "mrpc"])
+
+    monkeypatch.setattr(commands, "connect_data_source", require_subset)
+
+    result = await handle_command(
+        "/connect https://huggingface.co/datasets/nyu-mll/glue --alias glue",
+        cast(AppSession, session),
+    )
+
+    assert isinstance(result.action, commands.HuggingFaceSubsetSelection)
+    assert result.action.alias == "glue"
+    assert result.action.dataset_id == "nyu-mll/glue"
+    assert result.action.subsets == ("cola", "mnli", "mrpc")
+    assert session.registry.connectors == {}
+
+
+async def test_huggingface_subset_choice_resumes_connection(monkeypatch: pytest.MonkeyPatch) -> None:
+    session = _FakeSession()
+    connector = object()
+    sources: list[object] = []
+
+    async def fake_connect_data_source(source: object, **_kwargs: object) -> object:
+        sources.append(source)
+        if source == "https://huggingface.co/datasets/nyu-mll/glue":
+            raise HuggingFaceSubsetRequiredError("nyu-mll/glue", ["cola", "mnli", "mrpc"])
+        return connector
+
+    monkeypatch.setattr(commands, "connect_data_source", fake_connect_data_source)
+    monkeypatch.setattr(commands, "format_connector_summary", lambda _connector: "test connector")
+    initial = await handle_command(
+        "/connect https://huggingface.co/datasets/nyu-mll/glue --alias glue",
+        cast(AppSession, session),
+    )
+    assert isinstance(initial.action, commands.HuggingFaceSubsetSelection)
+
+    result = await complete_hf_subset_selection(initial.action, "mrpc", cast(AppSession, session))
+
+    assert sources[-1] == "https://huggingface.co/datasets/nyu-mll/glue/viewer/mrpc"
+    assert isinstance(result.output, Text)
+    assert result.output.plain == "✓ Connected to glue (test connector)"
+    assert session.registry.connectors == {"glue": connector}
 
 
 async def test_connect_error_redacts_password_from_source(monkeypatch: pytest.MonkeyPatch) -> None:

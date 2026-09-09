@@ -47,6 +47,25 @@ def test_parse_hf_dataset_url_rejects_unrelated_paths(url: str) -> None:
     assert not huggingface.is_hf_dataset_url(url)
 
 
+def test_build_hf_dataset_url_encodes_viewer_segments() -> None:
+    assert huggingface.build_hf_dataset_url("owner/data set", "en/us", "test split") == (
+        "https://huggingface.co/datasets/owner/data%20set/viewer/en%2Fus/test%20split"
+    )
+
+
+async def test_resolve_config_exposes_subset_choices(monkeypatch: pytest.MonkeyPatch) -> None:
+    async def fake_configs(_dataset_id: str) -> list[str]:
+        return ["cola", "mnli", "mrpc"]
+
+    monkeypatch.setattr(huggingface, "_fetch_configs_from_api", fake_configs)
+
+    with pytest.raises(huggingface.HuggingFaceSubsetRequiredError) as exc_info:
+        await huggingface._resolve_config("nyu-mll/glue", None)
+
+    assert exc_info.value.dataset_id == "nyu-mll/glue"
+    assert exc_info.value.subsets == ("cola", "mnli", "mrpc")
+
+
 async def test_loader_uses_provenance_without_fetching_readme(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,

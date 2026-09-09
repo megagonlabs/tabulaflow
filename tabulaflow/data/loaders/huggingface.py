@@ -12,13 +12,14 @@ Authentication is handled natively by DuckDB via the HuggingFace token at
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Sequence
 import json
 import logging
 import os
 import re
 import sys
 from typing import TYPE_CHECKING, Any
-from urllib.parse import unquote, urlparse
+from urllib.parse import quote, unquote, urlparse
 
 from tabulaflow.data.config import SQLConnectorConfig
 
@@ -32,6 +33,21 @@ logger = logging.getLogger(__name__)
 
 class _DatasetServerUnavailableError(Exception):
     """The HuggingFace datasets-server cannot serve this dataset."""
+
+
+class HuggingFaceSubsetRequiredError(ValueError):
+    """A dataset has multiple subsets and none was specified."""
+
+    def __init__(self, dataset_id: str, subsets: Sequence[str]) -> None:
+        self.dataset_id = dataset_id
+        self.subsets = tuple(subsets)
+        listing = ", ".join(subsets[:20])
+        if len(subsets) > 20:
+            listing += f", ... ({len(subsets)} total)"
+        super().__init__(
+            f"Dataset '{dataset_id}' has {len(subsets)} subsets: {listing}\n"
+            f"Specify one via: https://huggingface.co/datasets/{dataset_id}/viewer/<subset>"
+        )
 
 
 _HF_DATASET_PATH_RE = re.compile(
@@ -86,6 +102,20 @@ def is_hf_dataset_url(url: str) -> bool:
     except ValueError:
         return False
     return True
+
+
+def build_hf_dataset_url(dataset_id: str, subset: str, split: str | None = None) -> str:
+    """Build a canonical Hugging Face viewer URL."""
+    owner, separator, dataset = dataset_id.partition("/")
+    if not separator or not owner or not dataset or "/" in dataset:
+        raise ValueError(f"Invalid Hugging Face dataset id: {dataset_id!r}")
+    url = (
+        f"https://huggingface.co/datasets/{quote(owner, safe='')}/{quote(dataset, safe='')}"
+        f"/viewer/{quote(subset, safe='')}"
+    )
+    if split is not None:
+        url += f"/{quote(split, safe='')}"
+    return url
 
 
 # ---------------------------------------------------------------------------
@@ -203,13 +233,7 @@ async def _resolve_config(dataset_id: str, subset: str | None) -> str:
     if len(configs) == 1:
         return configs[0]
 
-    listing = ", ".join(configs[:20])
-    if len(configs) > 20:
-        listing += f", ... ({len(configs)} total)"
-    raise ValueError(
-        f"Dataset '{dataset_id}' has {len(configs)} subsets: {listing}\n"
-        f"Specify one via: https://huggingface.co/datasets/{dataset_id}/viewer/<subset>"
-    )
+    raise HuggingFaceSubsetRequiredError(dataset_id, configs)
 
 
 async def _discover_splits_and_size(dataset_id: str, config: str) -> dict[str, int]:
