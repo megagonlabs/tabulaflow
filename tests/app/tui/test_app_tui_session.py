@@ -20,6 +20,7 @@ from tabulaflow.app.runtime_paths import RuntimePaths
 from tabulaflow.app.session import AppSession
 from tabulaflow.app.tui import TabulaflowApp
 from tabulaflow.app.tui.widgets.chat import BannerWidget, SpinnerWidget, SystemMessage, UserMessage
+from tabulaflow.app.tui.widgets.chat_log import ChatLog
 from tabulaflow.app.tui.widgets.input import HistoryInput
 
 
@@ -153,6 +154,31 @@ def test_close_pane_removes_session_artifacts(tmp_path: Path, monkeypatch: pytes
     assert stopped == [True]
     assert app._pane is None
     assert not pane_dir.exists()
+
+
+async def test_agent_failure_is_logged_with_traceback(
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    app = _app(None)
+    monkeypatch.setattr(app, "_setup_logging", lambda: None)
+    monkeypatch.setattr(app, "_ensure_pane", lambda: None)
+    monkeypatch.setattr(app, "_start_llm_activation", lambda _selection: None)
+
+    class FailingSession:
+        last_usage = None
+
+        async def run_stream(self, _question: object) -> Any:
+            raise RuntimeError("agent failure detail")
+            yield
+
+    async with app.run_test() as pilot:
+        await pilot.pause()
+        with caplog.at_level("ERROR", logger=tui.__name__):
+            await app._run_agent("question", FailingSession(), app.query_one(ChatLog), "question")  # type: ignore[arg-type]
+
+    assert "agent turn failed (pane_turn_id=None)" in caplog.text
+    assert "RuntimeError: agent failure detail" in caplog.text
 
 
 async def test_ensure_session_creates_app_session(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

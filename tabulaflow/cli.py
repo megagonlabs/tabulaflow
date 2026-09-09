@@ -3,7 +3,7 @@
 import typer
 from typer import rich_utils
 
-from tabulaflow.app.main import AppLLMServiceTier, run_chat
+from tabulaflow.app.main import AppLLMServiceTier, AppLogLevel, run_chat
 from tabulaflow.app.theme import ACCENT
 from tabulaflow.research.cli import benchmark_app
 
@@ -54,6 +54,11 @@ def root(
         "--enable-schema-cache",
         help="Persist and reuse database schemas to speed up repeated connections, especially to large or remote databases.",
     ),
+    log_level: AppLogLevel = typer.Option(
+        AppLogLevel.INFO,
+        "--log-level",
+        help="Operational file-log level for this session.",
+    ),
     output_pane_port: int | None = typer.Option(
         None,
         "--output-pane-port",
@@ -76,6 +81,7 @@ def root(
             llm_preset=llm_preset,
             llm_service_tier=llm_service_tier,
             enable_schema_cache=enable_schema_cache,
+            log_level=log_level,
             output_pane_port=output_pane_port,
             output_pane_host=output_pane_host,
             output_pane_public_url=output_pane_public_url,

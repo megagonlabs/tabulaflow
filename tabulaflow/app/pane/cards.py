@@ -287,7 +287,7 @@ async def render_resolved_output(resolved_output: ResolvedOutput, pane_dir: Path
             else:
                 card = None
         except Exception:
-            logger.exception("preparing pane card for artifact %s failed", artifact.artifact_id)
+            logger.warning("preparing pane card for artifact %s failed", artifact.artifact_id, exc_info=True)
             card = None
         if card is None:
             card = render_message_data(

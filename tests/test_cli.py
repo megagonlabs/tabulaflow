@@ -7,7 +7,7 @@ from typer.testing import CliRunner
 
 import tabulaflow.cli as cli
 from tabulaflow.cli import app
-from tabulaflow.app.main import AppLLMServiceTier
+from tabulaflow.app.main import AppLLMServiceTier, AppLogLevel
 from tabulaflow.research.cli import console
 
 
@@ -18,6 +18,7 @@ def test_root_cli_exposes_chat_options_and_research_commands() -> None:
     assert "A data agent for databases, files, and the web." in result.stdout
     assert "--llm-service-tier" in result.stdout
     assert "--enable-schema-cache" in result.stdout
+    assert "--log-level" in result.stdout
     assert "--install-completion" not in result.stdout
     assert "--show-completion" not in result.stdout
     assert "benchmark" in result.stdout
@@ -54,6 +55,8 @@ def test_root_cli_starts_chat_by_default(monkeypatch: MonkeyPatch) -> None:
             "--llm-service-tier",
             "priority",
             "--enable-schema-cache",
+            "--log-level",
+            "debug",
             "--output-pane-port",
             "61211",
             "--output-pane-host",
@@ -68,6 +71,7 @@ def test_root_cli_starts_chat_by_default(monkeypatch: MonkeyPatch) -> None:
         "llm_preset": "off",
         "llm_service_tier": AppLLMServiceTier.PRIORITY,
         "enable_schema_cache": True,
+        "log_level": AppLogLevel.DEBUG,
         "output_pane_port": 61211,
         "output_pane_host": "0.0.0.0",
         "output_pane_public_url": "https://example.test/output",

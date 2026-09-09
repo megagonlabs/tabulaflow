@@ -201,10 +201,11 @@ class _Handler(http.server.SimpleHTTPRequestHandler):
             self._send_json({"error": "turn is not available for live resolution"}, status=404)
             return
         except TimeoutError:
+            logger.warning("output pane selection resolution timed out (turn_id=%s)", turn_id)
             self._send_json({"error": "selection resolution timed out"}, status=500)
             return
         except Exception:
-            logger.debug("output pane resolve failed", exc_info=True)
+            logger.warning("output pane selection resolution failed (turn_id=%s)", turn_id, exc_info=True)
             self._send_json({"error": "failed to resolve selection"}, status=500)
             return
         self._send_json({"selection": selection, "cards": cards})

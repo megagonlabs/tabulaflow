@@ -233,6 +233,7 @@ class TabulaflowApp(App[None]):
         project_dir: Path,
         llm_service_tier: ServiceTier = "default",
         enable_schema_cache: bool = False,
+        log_level: int = logging.INFO,
         output_pane_host: str = "127.0.0.1",
         output_pane_port: int | None = None,
         output_pane_public_url: str | None = None,
@@ -243,6 +244,7 @@ class TabulaflowApp(App[None]):
         self._llm_selection = llm_selection
         self._llm_service_tier = llm_service_tier
         self._enable_schema_cache = enable_schema_cache
+        self._log_level = log_level
         self._output_pane_host = output_pane_host
         self._output_pane_port = output_pane_port
         self._output_pane_public_url = output_pane_public_url
@@ -489,7 +491,7 @@ class TabulaflowApp(App[None]):
 
         root = logging.getLogger()
         root.handlers.clear()
-        root.setLevel(logging.INFO)
+        root.setLevel(self._log_level)
         file_handler = RotatingFileHandler(log_path, maxBytes=2_000_000, backupCount=3)
         file_handler.setFormatter(logging.Formatter("%(asctime)s | %(levelname)s | %(name)s | %(message)s"))
         root.addHandler(file_handler)
@@ -497,18 +499,21 @@ class TabulaflowApp(App[None]):
 
         for name in (
             "httpx",
+            "httpx2",
             "httpcore",
             "urllib3",
             "grpc",
             "google",
             "google.auth",
             "google.api_core",
+            "openai",
+            "openai._base_client",
             "textual",
         ):
             lg = logging.getLogger(name)
             lg.handlers.clear()
             lg.propagate = True
-            lg.setLevel(logging.CRITICAL)
+            lg.setLevel(logging.WARNING)
 
         os.environ.setdefault("GRPC_VERBOSITY", "ERROR")
         os.environ.setdefault("GLOG_minloglevel", "3")
@@ -600,7 +605,7 @@ class TabulaflowApp(App[None]):
         try:
             await self._session.close()
         except Exception:
-            logger.debug("session close failed during exit", exc_info=True)
+            logger.warning("session close failed during exit", exc_info=True)
         finally:
             self._close_pane()
             self.exit()
@@ -622,7 +627,7 @@ class TabulaflowApp(App[None]):
                 self._pane.start()
                 self._refresh_bottom_status()
             except Exception:
-                logger.debug("output pane failed to start", exc_info=True)
+                logger.warning("output pane failed to start", exc_info=True)
                 self._pane = None
                 self._refresh_bottom_status()
         return self._pane
@@ -632,7 +637,11 @@ class TabulaflowApp(App[None]):
         pane = self._ensure_pane()
         if pane is None or pane.url is None:
             return False
-        pane.push(manual_card_turn(card, title=title))
+        try:
+            pane.push(manual_card_turn(card, title=title))
+        except Exception:
+            logger.warning("publishing manual output pane turn failed", exc_info=True)
+            return False
         return True
 
     def show_table_in_pane(self, df: pd.DataFrame, *, title: str) -> bool:
@@ -642,7 +651,7 @@ class TabulaflowApp(App[None]):
         try:
             card = render_result_data(ResultCardInput(df=df, label=None), self._runtime_paths.pane_dir)
         except Exception:
-            logger.debug("preparing manual table for output pane failed", exc_info=True)
+            logger.warning("preparing manual table for output pane failed", exc_info=True)
             return False
         return card is not None and self.view_card_in_pane(card, title=title or "Table preview")
 
@@ -686,7 +695,7 @@ class TabulaflowApp(App[None]):
         try:
             session = await self._ensure_session()
         except Exception as error:
-            logger.debug("Session initialization failed", exc_info=True)
+            logger.exception("session initialization failed")
             await self._report_session_initialization_failure(error)
             return
         if preset is None:
@@ -703,7 +712,7 @@ class TabulaflowApp(App[None]):
         try:
             keys = await asyncio.to_thread(session.activate_llm_preset, preset)
         except Exception as error:
-            logger.debug("LLM preset initialization failed", exc_info=True)
+            logger.exception("LLM preset initialization failed")
             await self._finish_llm_activation(selection, result=error)
             return
         await self._finish_llm_activation(selection, result=keys)
@@ -792,6 +801,7 @@ class TabulaflowApp(App[None]):
         try:
             ensure_pane_dir(pane_dir)
         except Exception:
+            logger.warning("preparing output pane directory failed (turn_id=%s)", turn_id, exc_info=True)
             if pane is not None and turn_id is not None:
                 pane.discard_turn(turn_id)
             return
@@ -824,7 +834,11 @@ class TabulaflowApp(App[None]):
             except asyncio.CancelledError:
                 return
             if exc is not None:
-                logger.debug("output pane push failed", exc_info=(type(exc), exc, exc.__traceback__))
+                logger.warning(
+                    "output pane finalization failed (turn_id=%s)",
+                    turn_id,
+                    exc_info=(type(exc), exc, exc.__traceback__),
+                )
 
         task = asyncio.create_task(render_and_push())
         task.add_done_callback(log_background_error)
@@ -1090,7 +1104,7 @@ class TabulaflowApp(App[None]):
             try:
                 pane_turn_id = pane.begin_turn(title=display_text, user=display_text)
             except Exception:
-                logger.debug("output pane pending turn failed", exc_info=True)
+                logger.warning("publishing pending output pane turn failed", exc_info=True)
 
         progress = AgentProgressWidget()
         await chat_log.mount(progress)
@@ -1112,6 +1126,7 @@ class TabulaflowApp(App[None]):
                 pane.discard_turn(pane_turn_id)
             raise
         except Exception as e:
+            logger.exception("agent turn failed (pane_turn_id=%s)", pane_turn_id)
             # Freeze the partial progress widget (mirrors the interrupt path) so the
             # tool steps run so far stay visible, then mount the error below it.
             await progress.mark_failed()
@@ -1134,6 +1149,7 @@ class TabulaflowApp(App[None]):
             turn_output = session.turn_output(result.output)
             resolved_output = await turn_output.resolve()
         except Exception:
+            logger.exception("preparing completed turn failed (pane_turn_id=%s)", pane_turn_id)
             if pane is not None and pane_turn_id is not None:
                 pane.discard_turn(pane_turn_id)
             raise
@@ -1178,6 +1194,7 @@ async def run_tui(
     *,
     llm_service_tier: ServiceTier = "default",
     enable_schema_cache: bool = False,
+    log_level: int = logging.INFO,
     output_pane_host: str = "127.0.0.1",
     output_pane_port: int | None = None,
     output_pane_public_url: str | None = None,
@@ -1189,6 +1206,7 @@ async def run_tui(
         project_dir=Path.cwd(),
         llm_service_tier=llm_service_tier,
         enable_schema_cache=enable_schema_cache,
+        log_level=log_level,
         output_pane_host=output_pane_host,
         output_pane_port=output_pane_port,
         output_pane_public_url=output_pane_public_url,

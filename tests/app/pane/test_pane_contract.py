@@ -599,6 +599,7 @@ async def test_pane_preparation_failure_renders_safe_error_card(
     payload = json.loads((tmp_path / f"{cards[0]['id']}.data.json").read_text())
     assert payload == {"message": {"status": "error", "text": "Could not prepare this artifact for display."}}
     assert "preparing pane card for artifact S1 failed" in caplog.text
+    assert caplog.records[-1].levelname == "WARNING"
     assert "internal detail" not in payload["message"]["text"]
 
 
