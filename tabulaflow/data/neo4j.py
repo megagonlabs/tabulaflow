@@ -9,6 +9,7 @@ from typing import Any, ClassVar, Literal
 import neo4j
 import pandas as pd
 from neo4j.graph import Graph, Node
+from neo4j.time import Date, DateTime, Duration, Time
 from pydantic import ValidationError
 
 from tabulaflow.data.config import Neo4jConnectorConfig
@@ -93,14 +94,20 @@ ORDER BY relType, source, target, propertyName
 
 
 def _rows_to_df(rows: Sequence[Mapping[str, Any]], columns: Sequence[str]) -> pd.DataFrame:
-    from neo4j.time import Date, DateTime
+    normalized = [{key: _normalize_neo4j_value(value) for key, value in row.items()} for row in rows]
+    return pd.DataFrame(normalized, columns=columns)
 
-    df = pd.DataFrame(rows, columns=columns)
-    for column in df.columns:
-        values = df[column].dropna()
-        if not values.empty and values.map(lambda value: isinstance(value, (Date, DateTime))).all():
-            df[column] = df[column].map(lambda value: pd.NaT if value is None else pd.Timestamp(value.to_native()))
-    return df
+
+def _normalize_neo4j_value(value: object) -> object:
+    if isinstance(value, (Date, DateTime, Time)):
+        return value.to_native()
+    if isinstance(value, Duration):
+        return value.iso_format()
+    if isinstance(value, Mapping):
+        return {key: _normalize_neo4j_value(item) for key, item in value.items()}
+    if isinstance(value, Sequence) and not isinstance(value, (str, bytes, bytearray)):
+        return [_normalize_neo4j_value(item) for item in value]
+    return value
 
 
 def _safe_scalar(value: object) -> bool:
@@ -108,6 +115,8 @@ def _safe_scalar(value: object) -> bool:
 
 
 def _graph_property_value(value: object, *, depth: int = 0) -> object:
+    if isinstance(value, (Date, DateTime, Duration, Time)):
+        return value.iso_format()
     if _safe_scalar(value):
         return json_ready(value)
     if depth >= 4:

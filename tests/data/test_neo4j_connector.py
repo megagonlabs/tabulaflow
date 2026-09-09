@@ -1,9 +1,11 @@
 import asyncio
+from datetime import date, datetime
 from pathlib import Path
 from typing import Any
 
 import neo4j
 import pytest
+from neo4j.time import Date, DateTime
 
 from tabulaflow.core import (
     ExecResult,
@@ -83,6 +85,38 @@ def test_native_path_is_materialized_as_tabular_data() -> None:
 
     assert result.df is not None
     assert result.df.at[0, "p"] == [{"name": "Alice"}, "KNOWS", {"name": "Bob"}]
+
+
+def test_native_temporal_path_properties_are_materialized_as_python_values() -> None:
+    graph = neo4j.graph.Graph()
+    question = neo4j.graph.Node(
+        graph,
+        "question",
+        1,
+        ["Question"],
+        {"createdAt": DateTime(2024, 1, 2, 3, 4, 5)},
+    )
+    answer = neo4j.graph.Node(
+        graph,
+        "answer",
+        2,
+        ["Answer"],
+        {"acceptedOn": Date(2024, 1, 3)},
+    )
+    relationship = graph.relationship_type("HAS_ANSWER")(graph, "has-answer", 3, {})
+    relationship._start_node = question
+    relationship._end_node = answer
+    record = neo4j.Record([("p", neo4j.graph.Path(question, relationship))])  # type: ignore[no-untyped-call]
+
+    result = ExecResult(df=_rows_to_df([record.data()], record.keys()))
+    restored = ExecResult.model_validate_json(result.model_dump_json())
+
+    assert restored.df is not None
+    assert restored.df.at[0, "p"] == [
+        {"createdAt": datetime(2024, 1, 2, 3, 4, 5)},
+        "HAS_ANSWER",
+        {"acceptedOn": date(2024, 1, 3)},
+    ]
 
 
 @pytest.mark.parametrize(

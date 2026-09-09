@@ -4,6 +4,7 @@ from datetime import date
 import math
 
 from neo4j.graph import Graph, Node, Relationship
+from neo4j.time import Date, DateTime, Duration, Time
 
 from tabulaflow.core import GraphResult
 from tabulaflow.data.neo4j import _convert_neo4j_graph_result
@@ -109,6 +110,33 @@ def test_extracts_non_finite_graph_properties_as_null() -> None:
     assert by_id["movie-id"].properties["imdb_rating"] is None
     assert by_id["actor-id"].properties["score"] is None
     assert result.edges[0].properties["confidence"] is None
+
+
+def test_extracts_temporal_graph_properties_as_iso_text() -> None:
+    graph = Graph()
+    event = Node(
+        graph,
+        "event-id",
+        1,
+        ["Event"],
+        {
+            "day": Date(2024, 1, 2),
+            "created_at": DateTime(2024, 1, 2, 3, 4, 5),
+            "time": Time(3, 4, 5),
+            "duration": Duration(months=1, days=2, seconds=3),
+        },
+    )
+    graph._nodes[event.element_id] = event
+
+    result = _convert(graph)
+
+    assert result is not None
+    assert result.nodes[0].properties == {
+        "day": "2024-01-02",
+        "created_at": "2024-01-02T03:04:05.000000000",
+        "time": "03:04:05.000000000",
+        "duration": "P1M2DT3S",
+    }
 
 
 def test_returns_none_without_graph_objects() -> None:
