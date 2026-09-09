@@ -176,9 +176,34 @@ async def test_agent_failure_is_logged_with_traceback(
         await pilot.pause()
         with caplog.at_level("ERROR", logger=tui.__name__):
             await app._run_agent("question", FailingSession(), app.query_one(ChatLog), "question")  # type: ignore[arg-type]
+        messages = [str(message.render()) for message in app.query(SystemMessage)]
 
     assert "agent turn failed (pane_turn_id=None)" in caplog.text
     assert "RuntimeError: agent failure detail" in caplog.text
+    assert messages == ["Agent turn failed: agent failure detail."]
+
+
+async def test_agent_failure_without_message_shows_exception_type(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    app = _app(None)
+    monkeypatch.setattr(app, "_setup_logging", lambda: None)
+    monkeypatch.setattr(app, "_ensure_pane", lambda: None)
+    monkeypatch.setattr(app, "_start_llm_activation", lambda _selection: None)
+
+    class FailingSession:
+        last_usage = None
+
+        async def run_stream(self, _question: object) -> Any:
+            raise TimeoutError
+            yield
+
+    async with app.run_test() as pilot:
+        await pilot.pause()
+        await app._run_agent("question", FailingSession(), app.query_one(ChatLog), "question")  # type: ignore[arg-type]
+        messages = [str(message.render()) for message in app.query(SystemMessage)]
+
+    assert messages == ["Agent turn failed: TimeoutError."]
 
 
 async def test_ensure_session_creates_app_session(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

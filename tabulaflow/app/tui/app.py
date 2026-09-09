@@ -123,6 +123,14 @@ def _sanitize_exception_message(error: Exception) -> str:
     return message
 
 
+def _format_agent_turn_failure(error: Exception) -> str:
+    """Return a sanitized turn failure message, falling back to its type."""
+    message = _sanitize_exception_message(error)
+    if message:
+        return message
+    return f"{type(error).__name__}."
+
+
 def _normalize_llm_activation_error(error: Exception, preset: LLMPreset) -> str:
     """Return an actionable one-line explanation for an LLM activation error."""
     message = _sanitize_exception_message(error)
@@ -1134,8 +1142,8 @@ class TabulaflowApp(App[None]):
             await progress.mark_failed()
             # Build the detail as plain text (not interpolated into markup) so a
             # ``[...]`` in the exception message can't be parsed as a markup tag.
-            error_text = Text.from_markup(f"[{ERROR}]Agent error:[/] ")
-            error_text.append(str(e))
+            error_text = Text.from_markup(f"[{ERROR}]Agent turn failed:[/] ")
+            error_text.append(_format_agent_turn_failure(e))
             msg = SystemMessage(error_text)
             await chat_log.mount(msg)
             chat_log.follow_new_content()
