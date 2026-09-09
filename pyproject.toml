@@ -6,16 +6,20 @@ build-backend = "setuptools.build_meta"
 name = "tabulaflow"
 authors = [{ name = "Megagon Labs" }]
 version = "0.1.0"
-description = "A data agent and text-to-query toolkit for databases, files, and the web"
+description = "An interactive data agent, Python library, and text-to-query research toolkit"
 readme = "README.md"
 requires-python = ">=3.11"
 license = "BSD-3-Clause"
 license-files = ["LICENSE"]
 keywords = ["data-agent", "database", "nl2sql", "text-to-query", "text-to-sql"]
 classifiers = [
-    "Development Status :: 3 - Alpha",
+    "Development Status :: 4 - Beta",
+    "Operating System :: MacOS",
+    "Operating System :: POSIX :: Linux",
     "Programming Language :: Python :: 3 :: Only",
     "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Topic :: Database",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
 ]
@@ -69,9 +73,10 @@ dependencies = [
 tabulaflow = "tabulaflow.cli:main"
 
 [project.urls]
-Homepage = "https://www.megagon.ai"
+Homepage = "https://github.com/megagonlabs/tabulaflow"
 Repository = "https://github.com/megagonlabs/tabulaflow"
 Issues = "https://github.com/megagonlabs/tabulaflow/issues"
+Changelog = "https://github.com/megagonlabs/tabulaflow/releases"
 
 [tool.setuptools.packages.find]
 include = ["tabulaflow*"]

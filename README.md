@@ -1,60 +1,38 @@
 # TabulaFlow
 
-TabulaFlow is an open-source data agent and text-to-query toolkit for working
-with databases, local files, documents, and the web. It combines an interactive
-terminal application for data work with reusable components for NL2SQL and
-text-to-query research.
+TabulaFlow is an open-source project with three components:
+
+1. **Data Agent** — An interactive app for analyzing, transforming, and
+   visualizing data from databases, files, public datasets, and the web.
+2. **Python Library** — Reusable components for building custom data agents and
+   other data applications.
+3. **Research Toolkit** — Tools for building and evaluating text-to-query agents
+   on established benchmarks.
 
 > [!NOTE]
-> TabulaFlow is currently alpha software. Interfaces and behavior may change
-> before the first stable release.
+> TabulaFlow 0.1.0 is a public beta. Minor `0.x` releases may contain documented
+> breaking changes.
 
-## Features
+## Install
 
-- Query SQL databases, graph databases, SPARQL endpoints, and local data files
-  using natural language.
-- Explore schemas and combine data from multiple sources in a writable local
-  workspace.
-- Build structured datasets from web pages, documents, and collections of
-  independent tasks.
-- Present results as tables, charts, maps, and graphs in a browser output pane.
-- Use reusable async data, output, and agent layers in Python applications.
-- Run and evaluate text-to-query research on BIRD-SQL, Spider 2.0, Beaver,
-  ARCS, AMBROSIA-S, and CypherBench.
-
-## Requirements
-
-- Python 3.11, 3.12, or 3.13
-- macOS or Linux
-- An API key for a supported model provider to use the agent
-- [`uv`](https://docs.astral.sh/uv/) for the recommended installation
-
-Some connectors and research benchmarks require their own database credentials
-or services.
-
-## Installation
-
-Install the command-line application with `uv`:
+TabulaFlow requires Python 3.11 or later and supports macOS and Linux. Install
+the Data Agent with [`uv`](https://docs.astral.sh/uv/):
 
 ```bash
 uv tool install tabulaflow
 uv tool run --from playwright playwright install chromium
 ```
 
-The second command installs the browser used by TabulaFlow's web tools. To
-install the latest source checkout instead of the published package:
+For use as a Python library:
 
 ```bash
-git clone https://github.com/megagonlabs/tabulaflow.git
-cd tabulaflow
-uv tool install --editable .
-uv tool run --from playwright playwright install chromium
+pip install tabulaflow
 ```
 
 ## Quick start
 
-Set a provider API key, move to the project whose files TabulaFlow should be
-able to access, and launch the application:
+Set an OpenAI or Anthropic API key, then launch TabulaFlow from the directory it
+should work in:
 
 ```bash
 export OPENAI_API_KEY="your-api-key"
@@ -62,114 +40,63 @@ cd /path/to/your/project
 tabulaflow
 ```
 
-TabulaFlow treats the launch directory as the project directory. Relative file
-paths and shell commands resolve from that directory.
+TabulaFlow automatically selects a model preset from the available credentials.
+Use `/config` to change it. Without a supported key, the app starts with the LLM
+disabled while data connection and browsing remain available.
 
-The application includes a small sample dataset. Try asking:
+The app includes sample data, so you can start with:
 
 ```text
 Using the sample data, show the five merchants with the highest total spend as
 a bar chart.
 ```
 
-Use `/connect` in the application to connect a CSV, Excel workbook, JSON or
-Parquet file, a Hugging Face dataset, or a supported database. Without a
-configured provider key, TabulaFlow can start with the LLM disabled.
+Use `/connect` to add local files, Hugging Face datasets, Wikidata, or supported
+databases.
 
-Run `tabulaflow --help` to see launch configuration, including model presets,
-schema caching, service tier, logging, and output-pane settings.
+## Capabilities
 
-## What you can do
+- Query SQL databases, Neo4j graphs, SPARQL endpoints, and local data files.
+- Explore schemas and combine sources in a writable local workspace.
+- Gather and structure data from web pages and documents.
+- Transform and enrich datasets with parallel semantic operations.
+- Present results as tables, charts, maps, and graphs.
+- Build on reusable async connectors, agents, tools, and output APIs.
 
-Examples of tasks TabulaFlow is designed to handle include:
-
-- "Analyze monthly revenue in `sales.csv` and chart the trend."
-- "Which tables in this PostgreSQL database contain customer information?"
-- "Compare these two datasets and explain where their coverage differs."
-- "Extract every product and price from these documents into a clean table."
-- "Map the locations in this query result."
-- "Classify each support ticket by topic using parallel subagents."
-
-TabulaFlow can inspect and transform data, browse the web, edit files, and run
-shell commands. Review proposed tasks and outputs carefully when working with
-sensitive data or repositories.
+Supported local formats include CSV, TSV, Excel, Parquet, JSON, JSONL, and
+NDJSON. Packaged database integrations include SQLite, DuckDB, PostgreSQL,
+MySQL, Snowflake, BigQuery, Neo4j, and SPARQL.
 
 ## Research toolkit
 
-TabulaFlow also contains benchmark loaders, research agents, execution tools,
-and evaluation metrics for text-to-query research. Benchmark data is installed
-under `~/.tabulaflow/benchmarks` rather than downloaded during experiments.
+TabulaFlow provides benchmark loaders, research agents, execution pipelines,
+and evaluation metrics for BIRD-SQL, Spider 2.0, Beaver, ARCS, AMBROSIA-S, and
+CypherBench.
 
 ```bash
 tabulaflow benchmark list
 tabulaflow benchmark download cypherbench
-tabulaflow benchmark start cypherbench
 ```
 
-The core experiment pipeline consists of prediction, query execution, and
-evaluation:
+Benchmarks have different prerequisites, including local data, Docker, manual
+dataset setup, or cloud credentials.
 
-```bash
-uv run tabulaflow/research/pipelines/predict.py \
-  --agent schema_linking \
-  --dataset bird-sql \
-  --output-dir output/test
-uv run tabulaflow/research/pipelines/execute.py output/test
-uv run tabulaflow/research/pipelines/evaluate.py output/test
-```
+## Privacy and security
 
-Available benchmark keys include `bird-sql`, `spider2-snow`, `spider2-lite`,
-`spider2-dbt`, `beaver`, `arcs`, `ambrosia-s`, and `cypherbench`. External
-services and credentials are required for some datasets.
+TabulaFlow stores session data locally. Prompts and relevant tool results may be
+sent to the configured model provider. TabulaFlow sends no telemetry to Megagon
+Labs.
 
-## Python package structure
+TabulaFlow is not a sandbox. Its file, shell, and browser tools operate with the
+current user's permissions. Run it in trusted environments and use
+least-privilege credentials. See [SECURITY.md](SECURITY.md) for reporting and
+security guidance.
 
-The package follows an enforced layered architecture:
+## Contributing
 
-```text
-tabulaflow/
-├── core/       Stable result, schema, media, and serialization primitives
-├── data/       Connectors, registries, schema services, and data loaders
-├── output/     Result storage, formatting, and visualization specifications
-├── agents/     Agent runtime, chat sessions, extraction, and tools
-├── app/        Terminal application and browser output pane
-└── research/   Benchmarks, research agents, pipelines, and metrics
-```
-
-The product layers are ordered `core < data < output < agents < app`.
-`research` is a separate consumer of the reusable platform layers.
-
-## Development
-
-Clone the repository and install all development dependencies:
-
-```bash
-git clone https://github.com/megagonlabs/tabulaflow.git
-cd tabulaflow
-make sync
-```
-
-Common checks are:
-
-```bash
-make format       # format and apply safe lint fixes
-make lint         # run Ruff
-make mypy         # run strict type checking
-make lint-arch    # verify package dependency boundaries
-make test         # run the test suite
-```
-
-Use `uv` for Python commands and dependency management. Do not commit API keys,
-database credentials, local benchmark data, caches, or experiment outputs.
-
-## Project status
-
-TabulaFlow is under active development. The `0.x` releases should be treated as
-experimental: configuration, Python APIs, and command behavior may change as
-the project approaches a stable release.
-
-Please use [GitHub Issues](https://github.com/megagonlabs/tabulaflow/issues) to
-report reproducible bugs or request features.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup and contribution
+guidelines. Release notes are published with
+[GitHub Releases](https://github.com/megagonlabs/tabulaflow/releases).
 
 ## License
 
