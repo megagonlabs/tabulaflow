@@ -793,7 +793,6 @@ Sep 8
 - [x] Improve session logging
 - [x] Fix Bare "Agent Error:"
 - [ ] Huggingface connect split selection and better url cleaning
-- [ ] Avoid AGENTS.md CLAUDE.md re-read after compaction
 - [ ] Onboarding - browser install
 - [ ] Open-source LLM (e.g. Fireworks) preset
 
