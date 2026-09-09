@@ -340,10 +340,10 @@ so the tool calls `load_files`/`load_hf_dataset` directly; the only pull toward 
   (local data file) or `load_hf_dataset` (HF URL) with `read_only=True` → `registry.register`.
 - **Scope: any local file + database URL + HuggingFace.** Data files → `load_files`;
   local db files (SQLite/DuckDB) and **database URLs** (Postgres/MySQL/BigQuery/Snowflake/
-  Neo4j) → `connect_url`; HF → `load_hf_dataset`. A URL that needs a password not in
-  it is **deferred to the user** through an "ask the user to /connect" hint after
-  an actual connection error. The response reports the source's **actual**
-  dialect (e.g. `sqlite SQL` / `duckdb SQL` / `cypher`) so the agent writes correct syntax.
+  Neo4j) → `connect_url`; HF → `load_hf_dataset`. Connection failures preserve the
+  underlying driver error without speculating about credentials. The response reports the
+  source's **actual** dialect (e.g. `sqlite SQL` / `duckdb SQL` / `cypher`) so the agent
+  writes correct syntax.
 - **Connection logic lives in `data/connect.py`** — `connect_data_source` and
   `connect_url`, supported by
   `normalize_connection_url` and `is_database_file_path`. It is a smart constructor above the type-specific

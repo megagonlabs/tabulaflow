@@ -86,8 +86,7 @@ class ConnectDataSourceTool:
         except Exception as e:
             is_url = "://" in source
             safe_source = strip_url_credentials(source) if is_url else source
-            hint = " If it needs credentials, ask the user to connect it with /connect." if is_url else ""
-            raise RuntimeError(f"failed to connect {safe_source!r}: {type(e).__name__}: {e}.{hint}") from e
+            raise RuntimeError(f"failed to connect {safe_source!r}: {type(e).__name__}: {e}") from e
 
         self._registry.register(alias, connector)
         summary = format_connector_summary(connector)

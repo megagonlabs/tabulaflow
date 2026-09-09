@@ -67,6 +67,8 @@ async def test_connect_error_does_not_expose_url_credentials(tmp_path: Path, mon
 
     assert "password" not in result
     assert "sparql+https://example.test/query" in result
+    assert "connection refused" in result
+    assert "needs credentials" not in result
 
 
 async def test_connect_catalog_source_returns_curated_guidance(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
