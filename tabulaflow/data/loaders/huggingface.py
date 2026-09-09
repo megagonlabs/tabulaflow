@@ -18,6 +18,7 @@ import os
 import re
 import sys
 from typing import TYPE_CHECKING, Any
+from urllib.parse import unquote, urlparse
 
 from tabulaflow.data.config import SQLConnectorConfig
 
@@ -33,11 +34,11 @@ class _DatasetServerUnavailableError(Exception):
     """The HuggingFace datasets-server cannot serve this dataset."""
 
 
-_HF_DATASET_RE = re.compile(
-    r"^https?://huggingface\.co/datasets/"
-    r"(?P<owner>[^/]+)/(?P<dataset>[^/]+)"
-    r"(?:/viewer/(?P<subset>[^/]+)(?:/(?P<split>[^/]+))?)?"
+_HF_DATASET_PATH_RE = re.compile(
+    r"^/datasets/(?P<owner>[^/]+)/(?P<dataset>[^/]+)"
+    r"(?:(?:/viewer/(?P<subset>[^/]+)(?:/(?P<split>[^/]+))?)|/tree/main)?/?$"
 )
+
 
 # Datasets smaller than this are fully materialized into DuckDB on connect.
 # Larger datasets are exposed as views (lazy, on-demand fetching).
@@ -64,21 +65,27 @@ def parse_hf_dataset_url(url: str) -> tuple[str, str | None, str | None]:
         ValueError: If the URL does not match the expected HuggingFace
             dataset pattern.
     """
-    m = _HF_DATASET_RE.match(url)
-    if not m:
+    parsed = urlparse(url)
+    match = _HF_DATASET_PATH_RE.fullmatch(parsed.path)
+    if parsed.scheme.lower() not in {"http", "https"} or parsed.hostname != "huggingface.co" or match is None:
         raise ValueError(
             f"Not a valid HuggingFace dataset URL: {url}\n"
             "Expected: https://huggingface.co/datasets/<owner>/<dataset>[/viewer/<subset>[/<split>]]"
         )
-    dataset_id = f"{m.group('owner')}/{m.group('dataset')}"
-    subset = m.group("subset")
-    split = m.group("split")
-    return dataset_id, subset, split
+
+    dataset_id = f"{unquote(match.group('owner'))}/{unquote(match.group('dataset'))}"
+    subset = match.group("subset")
+    split = match.group("split")
+    return dataset_id, unquote(subset) if subset else None, unquote(split) if split else None
 
 
 def is_hf_dataset_url(url: str) -> bool:
     """Return True if the URL points to a HuggingFace dataset."""
-    return bool(_HF_DATASET_RE.match(url))
+    try:
+        parse_hf_dataset_url(url)
+    except ValueError:
+        return False
+    return True
 
 
 # ---------------------------------------------------------------------------

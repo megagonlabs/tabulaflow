@@ -8,6 +8,45 @@ import tabulaflow.data.loaders.huggingface as huggingface
 import tabulaflow.data.sql as sql
 
 
+@pytest.mark.parametrize(
+    ("url", "expected"),
+    [
+        ("https://huggingface.co/datasets/owner/dataset/", ("owner/dataset", None, None)),
+        (
+            "https://huggingface.co/datasets/owner/dataset/viewer/config/train?row=10#preview",
+            ("owner/dataset", "config", "train"),
+        ),
+        (
+            "https://huggingface.co/datasets/owner/dataset/viewer/en%2Fus/test%20split",
+            ("owner/dataset", "en/us", "test split"),
+        ),
+        ("https://huggingface.co/datasets/owner/dataset/tree/main?download=true", ("owner/dataset", None, None)),
+    ],
+)
+def test_parse_hf_dataset_url_normalizes_common_urls(
+    url: str,
+    expected: tuple[str, str | None, str | None],
+) -> None:
+    assert huggingface.parse_hf_dataset_url(url) == expected
+    assert huggingface.is_hf_dataset_url(url)
+
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        "https://example.com/datasets/owner/dataset",
+        "https://huggingface.co/owner/dataset",
+        "https://huggingface.co/datasets/owner/dataset/blob/main/data.csv",
+        "https://huggingface.co/datasets/owner/dataset/viewer",
+        "https://huggingface.co/datasets/owner/dataset/viewer/config/train/extra",
+    ],
+)
+def test_parse_hf_dataset_url_rejects_unrelated_paths(url: str) -> None:
+    with pytest.raises(ValueError):
+        huggingface.parse_hf_dataset_url(url)
+    assert not huggingface.is_hf_dataset_url(url)
+
+
 async def test_loader_uses_provenance_without_fetching_readme(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
