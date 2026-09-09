@@ -1,11 +1,14 @@
+import asyncio
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
 
+import duckdb
 import pytest
 
 import tabulaflow.data.loaders.huggingface as huggingface
 import tabulaflow.data.sql as sql
+from tabulaflow.data.config import SQLConnectorConfig
 
 
 @pytest.mark.parametrize(
@@ -66,6 +69,64 @@ async def test_resolve_config_exposes_subset_choices(monkeypatch: pytest.MonkeyP
     assert exc_info.value.subsets == ("cola", "mnli", "mrpc")
 
 
+async def test_schema_worker_releases_cache_before_parent_opens_it(tmp_path: Path) -> None:
+    db_path = tmp_path / "hf_cache.duckdb"
+    duckdb.connect(str(db_path)).execute("CREATE TABLE documents (id INTEGER)").close()
+    config = SQLConnectorConfig(
+        cache_dir=tmp_path,
+        schema_cache_mode="off",
+        query_cache_mode="off",
+    )
+
+    schema = await huggingface._load_hf_schema_in_subprocess(
+        str(db_path),
+        global_id="hf-test",
+        display_name="documents",
+        dataset_url="https://huggingface.co/datasets/owner/documents",
+        config=config,
+    )
+
+    assert [table.name for table in schema.tables] == ["documents"]
+    connector = await sql.SQLConnector.from_url_async(
+        global_id="hf-parent",
+        url=f"duckdb:///{db_path}",
+        display_name="documents",
+        schema=schema,
+        read_only=False,
+        config=config,
+    )
+    await connector.close_async()
+
+
+async def test_cancelled_schema_worker_releases_cache_before_retry(tmp_path: Path) -> None:
+    db_path = tmp_path / "slow_hf_cache.duckdb"
+    with duckdb.connect(str(db_path)) as conn:
+        conn.execute("CREATE VIEW remote_split AS SELECT SUM(sin(i)) AS value FROM range(10000000000) AS t(i)")
+    config = SQLConnectorConfig(
+        cache_dir=tmp_path,
+        schema_cache_mode="off",
+        query_cache_mode="off",
+    )
+    task = asyncio.create_task(
+        huggingface._load_hf_schema_in_subprocess(
+            str(db_path),
+            global_id="hf-cancel",
+            display_name="documents",
+            dataset_url="https://huggingface.co/datasets/owner/documents",
+            config=config,
+        )
+    )
+
+    await asyncio.sleep(0.5)
+    assert not task.done()
+    task.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await asyncio.wait_for(task, timeout=5)
+
+    with duckdb.connect(str(db_path)) as conn:
+        assert conn.execute("SELECT COUNT(*) FROM duckdb_views() WHERE view_name = 'remote_split'").fetchone() == (1,)
+
+
 async def test_loader_uses_provenance_without_fetching_readme(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -75,6 +136,9 @@ async def test_loader_uses_provenance_without_fetching_readme(
     async def fake_load(*_args: Any, **_kwargs: Any) -> tuple[str, list[str]]:
         return str(tmp_path / "dataset.duckdb"), []
 
+    async def fake_schema(*_args: Any, **_kwargs: Any) -> Any:
+        return SimpleNamespace()
+
     class FakeSQLConnector:
         @classmethod
         async def from_url_async(cls, **kwargs: Any) -> Any:
@@ -82,6 +146,7 @@ async def test_loader_uses_provenance_without_fetching_readme(
             return SimpleNamespace(schema=SimpleNamespace(tables=[]))
 
     monkeypatch.setattr(huggingface, "_load_hf_into_duckdb", fake_load)
+    monkeypatch.setattr(huggingface, "_load_hf_schema_in_subprocess", fake_schema)
     monkeypatch.setattr(sql, "SQLConnector", FakeSQLConnector)
 
     dataset_url = "https://huggingface.co/datasets/owner/dataset"

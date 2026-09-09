@@ -22,7 +22,8 @@ async def run_loader_subprocess(
     payload: dict[str, Any],
     *,
     terminate_grace_seconds: float = 2.0,
-) -> None:
+    expect_json_result: bool = False,
+) -> dict[str, Any] | None:
     """Run ``python -m <worker_module>`` in a subprocess, piping ``payload``
     as JSON on stdin, and await its exit.
 
@@ -33,6 +34,10 @@ async def run_loader_subprocess(
         payload: JSON-serialisable payload.
         terminate_grace_seconds: Wait after ``terminate()`` before escalating
             to ``kill()``.
+        expect_json_result: Parse and return a JSON object from stdout.
+
+    Returns:
+        The worker's JSON result, or ``None`` when it produced no output.
 
     Raises:
         RuntimeError: If the subprocess exits with a non-zero status.
@@ -43,6 +48,7 @@ async def run_loader_subprocess(
         "-m",
         worker_module,
         stdin=asyncio.subprocess.PIPE,
+        stdout=asyncio.subprocess.PIPE,
         stderr=asyncio.subprocess.PIPE,
     )
     try:
@@ -58,3 +64,12 @@ async def run_loader_subprocess(
     if proc.returncode != 0:
         msg = stderr_data.decode("utf-8", errors="replace").strip() or "no error output"
         raise RuntimeError(f"{worker_module} subprocess failed: {msg}")
+    if not expect_json_result or not _stdout:
+        return None
+    try:
+        result = json.loads(_stdout)
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise RuntimeError(f"{worker_module} subprocess returned invalid JSON") from exc
+    if not isinstance(result, dict):
+        raise RuntimeError(f"{worker_module} subprocess returned a non-object JSON result")
+    return result

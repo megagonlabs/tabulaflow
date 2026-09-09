@@ -26,6 +26,7 @@ from tabulaflow.data.config import SQLConnectorConfig
 if TYPE_CHECKING:
     import httpx
 
+    from tabulaflow.core import SQLSchema
     from tabulaflow.data.sql import SQLConnector
 
 logger = logging.getLogger(__name__)
@@ -514,12 +515,20 @@ async def load_hf_dataset(
     # Derive global_id from the DuckDB cache path so the schema cache key
     # is stable across sessions regardless of the user-chosen alias.
     global_id = f"hf+{os.path.splitext(os.path.basename(db_path))[0]}"
+    schema = await _load_hf_schema_in_subprocess(
+        db_path,
+        global_id=global_id,
+        display_name=display_name,
+        dataset_url=dataset_url,
+        config=config,
+    )
 
     url = f"duckdb:///{db_path}"
     connector = await SQLConnector.from_url_async(
         global_id=global_id,
         url=url,
         display_name=display_name,
+        schema=schema,
         read_only=read_only,
         config=config,
         duckdb_init_sql=["LOAD httpfs"],
@@ -546,6 +555,35 @@ async def load_hf_dataset(
         else:
             table.description = "Lazy view over the full remote dataset."
     return connector
+
+
+async def _load_hf_schema_in_subprocess(
+    db_path: str,
+    *,
+    global_id: str,
+    display_name: str,
+    dataset_url: str,
+    config: SQLConnectorConfig,
+) -> SQLSchema:
+    """Build the cache schema in a killable subprocess."""
+    from tabulaflow.core import SQLSchema
+    from tabulaflow.data.loaders._runner import run_loader_subprocess
+
+    result = await run_loader_subprocess(
+        "tabulaflow.data.loaders.huggingface",
+        {
+            "mode": "schema",
+            "db_path": db_path,
+            "global_id": global_id,
+            "display_name": display_name,
+            "dataset_url": dataset_url,
+            "config": config.model_dump(mode="json"),
+        },
+        expect_json_result=True,
+    )
+    if result is None or not isinstance(result.get("schema"), str):
+        raise RuntimeError("Hugging Face schema worker returned no schema")
+    return SQLSchema.model_validate_json(result["schema"])
 
 
 # ---------------------------------------------------------------------------
@@ -684,6 +722,26 @@ def _run_datasets_lib(payload: dict[str, Any]) -> None:
             conn.close()
 
 
+async def _run_schema(payload: dict[str, Any]) -> str:
+    """Introspect one completed cache and return its serialized schema."""
+    from tabulaflow.data.sql import SQLConnector
+
+    config = SQLConnectorConfig.model_validate(payload["config"])
+    connector = await SQLConnector.from_url_async(
+        global_id=payload["global_id"],
+        url=f"duckdb:///{payload['db_path']}",
+        display_name=payload["display_name"],
+        read_only=True,
+        config=config,
+        duckdb_init_sql=["LOAD httpfs"],
+        description=f"Source: Hugging Face dataset {payload['dataset_url']}",
+    )
+    try:
+        return connector.schema.model_dump_json()
+    finally:
+        await connector.close_async()
+
+
 def _worker_main() -> int:
     """Subprocess entry point.
 
@@ -696,6 +754,9 @@ def _worker_main() -> int:
     doesn't index.  Imports the (heavy) ``datasets`` library, downloads,
     exports parquet, and materializes into DuckDB — all inside this
     subprocess so a parent terminate kills it cleanly.
+
+    ``"schema"`` — introspects a completed cache and emits its serialized
+    schema. Keeping remote-view inspection here makes cancellation killable.
     """
     payload = json.loads(sys.stdin.read())
     mode = payload.get("mode", "parquet_urls")
@@ -703,6 +764,8 @@ def _worker_main() -> int:
         _run_parquet_urls(payload)
     elif mode == "datasets_lib":
         _run_datasets_lib(payload)
+    elif mode == "schema":
+        print(json.dumps({"schema": asyncio.run(_run_schema(payload))}))
     else:
         raise ValueError(f"unknown worker mode: {mode!r}")
     return 0
