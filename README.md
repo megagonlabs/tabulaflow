@@ -794,6 +794,8 @@ Sep 8
 - [x] Fix Bare "Agent Error:"
 - [ ] Huggingface connect split selection and better url cleaning
 - [x] Only use ctrl+d for exitting
+- [ ] Fix connect cancellation bug 
+- [ ] Fix `show [Image #1]` bug
 
 - Release
 - [ ] Onboarding - browser install
