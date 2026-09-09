@@ -109,7 +109,7 @@ Pick the option that is light and matches expected use:
 ### Writing code
 
 - For every coding-related task — even planning, design, review, or debugging — first read and follow `CLAUDE.md`,
-  `AGENTS.md`, `.cursor/rules`, and relevant nested equivalents before proposing a plan or editing code. Rule files
+  `AGENTS.md` and relevant nested equivalents before proposing a plan or editing code. Rule files
   apply by directory scope; nested instructions override broader ones, while system/developer/user instructions take
   precedence.
 - Match the project's existing conventions: read the surrounding code and imports, and never assume a library is
