@@ -792,13 +792,13 @@ Sep 8
 - [x] Fix neo4j graph extraction, df normalization, url guidance
 - [x] Improve session logging
 - [ ] Huggingface connect split selection and better url cleaning
-- [ ] Authentication
 - [ ] Avoid AGENTS.md CLAUDE.md re-read after compaction
 - [ ] Onboarding - browser install
 - [ ] Open-source LLM (e.g. Fireworks) preset
 
 - v2 features
   - app
+    - [ ] auto-connect startup sources specified in app_config.json
     - [ ] Bell icon when finished
     - [ ] Bug: Warning sign emoji display width
     - [ ] Session resume
@@ -815,6 +815,7 @@ Sep 8
     - [ ] image/pdf detail level
     - [ ] Multimodal output
   - Data
+    - [ ] Prompted authentication
     - [ ] decouple data and rendered format (show unit "cm" while still enabling sorting by value)
     - [ ] streaming data support (e.g. auto-updating artifacts like chart for stock price data)
     - [ ] Provenance
