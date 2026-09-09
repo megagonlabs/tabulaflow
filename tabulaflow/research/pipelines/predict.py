@@ -18,6 +18,7 @@ from tabulaflow.research.pipelines.utils import bool_flag
 from tabulaflow.research.agents.user_simulator import UserSimulator
 from tabulaflow.research.benchmarks.spider2_dbt import prepare_working_env_async
 from tabulaflow.agents.trace import Usage
+from tabulaflow.agents import AgentRuntimeConfig, initialize_agent_runtime
 from tabulaflow.research.types import (
     NL2QDataset,
     NL2QRunResult,
@@ -311,6 +312,7 @@ async def main_async() -> None:
     print(args)
     print()
 
+    initialize_agent_runtime(AgentRuntimeConfig(preprocessing_cache_mode="read_write"))
     configure_research_observability()
 
     if os.path.exists(args.output_dir):

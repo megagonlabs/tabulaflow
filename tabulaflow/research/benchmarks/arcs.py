@@ -142,7 +142,9 @@ class ARCSDatasetLoader:
         self.directory = str(self.installation.directory if directory is None else directory)
         self.max_concurrency = max_concurrency
         self.include_taxonomy = include_taxonomy
-        self.connector_config = SQLConnectorConfig() if connector_config is None else connector_config
+        self.connector_config = (
+            SQLConnectorConfig(schema_cache_mode="read_write") if connector_config is None else connector_config
+        )
 
         self._dbms_semaphore = asyncio.Semaphore(max_concurrency)
 

@@ -108,6 +108,17 @@ initialize_agent_runtime(
 )
 ```
 
+Persistent schema, query-result, and agent preprocessing caches are disabled by
+default. Enable only the caches a workflow needs through its owning config:
+
+```python
+from tabulaflow.agents import AgentRuntimeConfig
+from tabulaflow.data import SQLConnectorConfig
+
+agent_config = AgentRuntimeConfig(preprocessing_cache_mode="read_write")
+connector_config = SQLConnectorConfig(schema_cache_mode="read_write")
+```
+
 Logging and tracing are explicit application concerns:
 
 ```python

@@ -234,6 +234,7 @@ async def _cmd_connect(args: list[str], session: AppSession) -> CommandResult:
             definitions=session.data_source_definitions,
             data_dir=session.data_dir,
             read_only=True,
+            configs=session.connector_configs,
         )
     except Exception as e:
         safe_sources = [strip_url_credentials(item) if "://" in item else item for item in command.sources]

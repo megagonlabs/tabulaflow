@@ -221,7 +221,9 @@ class CypherBenchDatasetLoader:
         self.neo4j_host = neo4j_host
         self.neo4j_user = neo4j_user
         self.neo4j_password = neo4j_password
-        self.connector_config = Neo4jConnectorConfig() if connector_config is None else connector_config
+        self.connector_config = (
+            Neo4jConnectorConfig(schema_cache_mode="read_write") if connector_config is None else connector_config
+        )
         self._graph_ports: dict[str, int] = dict(CYPHERBENCH_DEFAULT_GRAPH_PORTS)
         if graph_ports:
             self._graph_ports.update(dict(graph_ports))

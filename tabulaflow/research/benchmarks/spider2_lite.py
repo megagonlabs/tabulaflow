@@ -168,7 +168,9 @@ class Spider2LiteDatasetLoader:
         self.sf_account = sf_account
         self.google_cloud_project = google_cloud_project
         self.google_application_credentials = google_application_credentials
-        self.connector_config = SQLConnectorConfig() if connector_config is None else connector_config
+        self.connector_config = (
+            SQLConnectorConfig(schema_cache_mode="read_write") if connector_config is None else connector_config
+        )
         self._sf_semaphore = asyncio.Semaphore(16)
         self._bq_semaphore = asyncio.Semaphore(64)
         self._db_info = self._build_db_info()

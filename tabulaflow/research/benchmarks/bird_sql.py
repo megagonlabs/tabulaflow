@@ -191,7 +191,9 @@ class BirdSQLDatasetLoader:
             default_directory / "column_meaning" if column_meaning_directory is None else column_meaning_directory
         )
         self.max_concurrency = max_concurrency
-        self.connector_config = SQLConnectorConfig() if connector_config is None else connector_config
+        self.connector_config = (
+            SQLConnectorConfig(schema_cache_mode="read_write") if connector_config is None else connector_config
+        )
         self._dbms_semaphore = asyncio.Semaphore(max_concurrency)
 
         self._task_files = {

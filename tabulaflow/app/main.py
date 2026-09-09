@@ -1,10 +1,16 @@
 """Interactive app launcher."""
 
+from __future__ import annotations
+
 from enum import StrEnum
+from typing import TYPE_CHECKING
 
 import typer
 
 from tabulaflow.app.config import ResolvedLLMSelection
+
+if TYPE_CHECKING:
+    from tabulaflow.agents import AgentRuntimeConfig
 
 
 class AppServiceTier(StrEnum):
@@ -12,6 +18,13 @@ class AppServiceTier(StrEnum):
 
     DEFAULT = "default"
     PRIORITY = "priority"
+
+
+def _app_agent_runtime_config() -> AgentRuntimeConfig:
+    """Return agent policy that keeps interactive sessions cache-free."""
+    from tabulaflow.agents import AgentRuntimeConfig
+
+    return AgentRuntimeConfig(preprocessing_cache_mode="off")
 
 
 def _resolve_startup_llm_selection(*, llm_preset: str | None) -> ResolvedLLMSelection:
@@ -39,8 +52,10 @@ def run_chat(
 
     logging.basicConfig(level=logging.WARNING)
 
+    from tabulaflow.agents import initialize_agent_runtime
     from tabulaflow.app.tui import run_tui
 
+    initialize_agent_runtime(_app_agent_runtime_config())
     asyncio.run(
         run_tui(
             llm_selection=startup_llm,

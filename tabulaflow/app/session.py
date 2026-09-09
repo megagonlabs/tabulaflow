@@ -20,16 +20,35 @@ if TYPE_CHECKING:
     from tabulaflow.app.turn import TurnOutput
     from tabulaflow.data.sql import SQLConnector
     from tabulaflow.data.catalog import DataSourceDefinition
+    from tabulaflow.data.config import DataSourceConnectorConfigs, SQLConnectorConfig
     from tabulaflow.output.specs import OutputSpec
 
 WORKSPACE_ALIAS = "workspace"
 logger = logging.getLogger(__name__)
 
 
-async def _create_workspace_connector(workspace_db_path: Path) -> SQLConnector:
+def _app_connector_configs() -> DataSourceConnectorConfigs:
+    """Return connector policies that keep interactive sessions cache-free."""
+    from tabulaflow.data.config import (
+        DataSourceConnectorConfigs,
+        Neo4jConnectorConfig,
+        SPARQLConnectorConfig,
+        SQLConnectorConfig,
+    )
+
+    return DataSourceConnectorConfigs(
+        sql=SQLConnectorConfig(schema_cache_mode="off", query_cache_mode="off"),
+        neo4j=Neo4jConnectorConfig(schema_cache_mode="off"),
+        sparql=SPARQLConnectorConfig(),
+    )
+
+
+async def _create_workspace_connector(
+    workspace_db_path: Path,
+    config: SQLConnectorConfig | None = None,
+) -> SQLConnector:
     """Create the session's writable DuckDB connector."""
     from tabulaflow.data.sql import SQLConnector
-    from tabulaflow.data.config import SQLConnectorConfig
 
     workspace_db_path.parent.mkdir(parents=True, exist_ok=True)
     abspath = os.path.abspath(workspace_db_path)
@@ -38,7 +57,7 @@ async def _create_workspace_connector(workspace_db_path: Path) -> SQLConnector:
         url=f"duckdb:///{abspath}",
         display_name=WORKSPACE_ALIAS,
         read_only=False,
-        config=SQLConnectorConfig(schema_cache_mode="off", query_cache_mode="off"),
+        config=_app_connector_configs().sql if config is None else config,
         duckdb_init_sql=["SET TimeZone='UTC'"],
     )
 
@@ -61,9 +80,10 @@ class AppSession:
 
         await asyncio.to_thread(_warm_connector_imports)
         runtime_paths.scratch_dir.mkdir(parents=True, exist_ok=True)
+        connector_configs = _app_connector_configs()
         workspace: SQLConnector | None = None
         try:
-            workspace = await _create_workspace_connector(runtime_paths.workspace_db_path)
+            workspace = await _create_workspace_connector(runtime_paths.workspace_db_path, connector_configs.sql)
             session = cls(
                 llm_preset=llm_preset,
                 runtime_paths=runtime_paths,
@@ -71,6 +91,7 @@ class AppSession:
                 service_tier=service_tier,
                 project_dir=project_dir,
                 data_source_definitions=data_source_definitions,
+                connector_configs=connector_configs,
             )
         except BaseException:
             if workspace is not None:
@@ -97,6 +118,7 @@ class AppSession:
         service_tier: ServiceTier = "default",
         project_dir: Path | None = None,
         data_source_definitions: Sequence[DataSourceDefinition] | None = None,
+        connector_configs: DataSourceConnectorConfigs | None = None,
     ) -> None:
         from tabulaflow.data.registry import DataConnectorRegistry
         from tabulaflow.data.catalog import DEFAULT_DATA_SOURCE_DEFINITIONS
@@ -109,6 +131,7 @@ class AppSession:
         self.data_source_definitions = tuple(
             DEFAULT_DATA_SOURCE_DEFINITIONS if data_source_definitions is None else data_source_definitions
         )
+        self.connector_configs = _app_connector_configs() if connector_configs is None else connector_configs
         self.registry: DataConnectorRegistry = DataConnectorRegistry()
         if workspace is not None:
             self.registry.register(WORKSPACE_ALIAS, workspace)
@@ -170,6 +193,7 @@ class AppSession:
             data_dir=self.data_dir,
             use_apply_patch=model_supports_apply_patch(preset.main.model),
             data_source_definitions=self.data_source_definitions,
+            data_source_connector_configs=self.connector_configs,
         )
 
     def select_llm_preset(self, preset: LLMPreset | None) -> None:

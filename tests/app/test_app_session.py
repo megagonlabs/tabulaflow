@@ -11,7 +11,8 @@ from tabulaflow.app import sample_data, session as session_module
 from tabulaflow.agents.llm import ReasoningLevel
 from tabulaflow.app.config import LLMRoleConfig, LLMPreset
 from tabulaflow.app.runtime_paths import RuntimePaths
-from tabulaflow.app.session import AppSession, _create_workspace_connector
+from tabulaflow.app.session import AppSession, _app_connector_configs, _create_workspace_connector
+from tabulaflow.data.config import SQLConnectorConfig
 from tabulaflow.data.sql import SQLConnector
 
 if TYPE_CHECKING:
@@ -83,8 +84,10 @@ async def test_app_session_owns_runtime_creation_and_cleanup(tmp_path: Path, mon
     created_paths: list[Path] = []
     sample_sessions: list[AppSession] = []
 
-    async def create_workspace(path: Path) -> SQLConnector:
+    async def create_workspace(path: Path, config: SQLConnectorConfig) -> SQLConnector:
         created_paths.append(path)
+        assert config.schema_cache_mode == "off"
+        assert config.query_cache_mode == "off"
         return cast(SQLConnector, workspace)
 
     async def connect_sample(session: AppSession) -> bool:
@@ -120,6 +123,17 @@ async def test_app_session_owns_runtime_creation_and_cleanup(tmp_path: Path, mon
     assert paths.workspace_db_path.read_text() == "workspace"
     assert paths.cli_log_path.read_text() == "log"
     assert paths.trajectories_dir.joinpath("trajectory.md").read_text() == "trajectory"
+
+
+def test_app_disables_persistent_caches_regardless_of_environment(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("TABULAFLOW_SCHEMA_CACHE_MODE", "read_write")
+    monkeypatch.setenv("TABULAFLOW_QUERY_CACHE_MODE", "read_write")
+
+    configs = _app_connector_configs()
+
+    assert configs.sql.schema_cache_mode == "off"
+    assert configs.sql.query_cache_mode == "off"
+    assert configs.neo4j.schema_cache_mode == "off"
 
 
 def test_reset_conversation_preserves_session_environment(tmp_path: Path) -> None:

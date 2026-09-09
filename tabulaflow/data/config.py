@@ -1,5 +1,6 @@
 """Immutable configuration for data connectors."""
 
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Literal
 
@@ -30,7 +31,7 @@ class _CachedSchemaConnectorConfig(_ConnectorConfig):
     """Query and schema-cache policy for an introspected connector."""
 
     cache_dir: Path = DEFAULT_CACHE_DIR
-    schema_cache_mode: Literal["off", "read_write", "refresh", "cache_only"] = "read_write"
+    schema_cache_mode: Literal["off", "read_write", "refresh", "cache_only"] = "off"
 
 
 class SQLConnectorConfig(_CachedSchemaConnectorConfig):
@@ -92,7 +93,17 @@ class SPARQLConnectorConfig(_ConnectorConfig):
     max_response_bytes: PositiveInt = _DEFAULT_MAX_SPARQL_RESPONSE_BYTES
 
 
+@dataclass(frozen=True)
+class DataSourceConnectorConfigs:
+    """Backend-specific policies used when connecting an untyped data source."""
+
+    sql: SQLConnectorConfig = field(default_factory=SQLConnectorConfig)
+    neo4j: Neo4jConnectorConfig = field(default_factory=Neo4jConnectorConfig)
+    sparql: SPARQLConnectorConfig = field(default_factory=SPARQLConnectorConfig)
+
+
 __all__ = [
+    "DataSourceConnectorConfigs",
     "Neo4jConnectorConfig",
     "SPARQLConnectorConfig",
     "SQLConnectorConfig",

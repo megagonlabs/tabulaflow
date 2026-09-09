@@ -63,9 +63,9 @@ async def main_async() -> None:
     t0 = time.time()
     query_cache_mode: Literal["off", "read_write"] = "off" if args.no_query_cache else "read_write"
     connector_config = (
-        Neo4jConnectorConfig()
+        Neo4jConnectorConfig(schema_cache_mode="read_write")
         if result.dataset == "cypherbench"
-        else SQLConnectorConfig(query_cache_mode=query_cache_mode)
+        else SQLConnectorConfig(schema_cache_mode="read_write", query_cache_mode=query_cache_mode)
     )
     await preflight_benchmark(result.dataset, result.split)
     dataset_loader = dataset_registry.get_class(result.dataset)(  # type: ignore[call-arg]

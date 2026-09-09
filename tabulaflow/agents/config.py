@@ -36,7 +36,7 @@ class AgentRuntimeConfig(BaseSettings):
     )
 
     cache_dir: Path = DEFAULT_CACHE_DIR
-    preprocessing_cache_mode: AgentCacheMode = "read_write"
+    preprocessing_cache_mode: AgentCacheMode = "off"
     max_llm_concurrency: PositiveInt | None = 64
     max_llm_requests_per_minute: PositiveInt | None = 600
     max_embedding_concurrency: PositiveInt | None = 16

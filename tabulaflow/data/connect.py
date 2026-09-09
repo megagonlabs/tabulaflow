@@ -13,7 +13,12 @@ from tabulaflow.data.catalog import (
     DataSourceDefinition,
     resolve_data_source_definition,
 )
-from tabulaflow.data.config import Neo4jConnectorConfig, SPARQLConnectorConfig, SQLConnectorConfig
+from tabulaflow.data.config import (
+    DataSourceConnectorConfigs,
+    Neo4jConnectorConfig,
+    SPARQLConnectorConfig,
+    SQLConnectorConfig,
+)
 from tabulaflow.data.protocols import DataConnector
 
 # Local database-file extension -> SQLAlchemy scheme.
@@ -261,6 +266,7 @@ async def _connect_files(
     display_name: str,
     data_dir: Path | None,
     read_only: bool,
+    configs: DataSourceConnectorConfigs | None,
 ) -> DataConnector:
     from tabulaflow.data.loaders.files import load_files
 
@@ -273,7 +279,7 @@ async def _connect_files(
         display_name=display_name,
         data_dir=str(data_dir) if data_dir is not None else None,
         read_only=read_only,
-        config=SQLConnectorConfig(schema_cache_mode="off", query_cache_mode="off"),
+        config=configs.sql if configs is not None else None,
     )
 
 
@@ -283,11 +289,17 @@ async def _connect_single_source(
     display_name: str,
     data_dir: Path | None,
     read_only: bool,
+    configs: DataSourceConnectorConfigs | None,
 ) -> DataConnector:
     from tabulaflow.data.loaders.huggingface import is_hf_dataset_url, load_hf_dataset
 
     if is_hf_dataset_url(source):
-        return await load_hf_dataset(source, display_name=display_name, read_only=read_only)
+        return await load_hf_dataset(
+            source,
+            display_name=display_name,
+            read_only=read_only,
+            config=configs.sql if configs is not None else None,
+        )
     if "huggingface.co" in source:
         raise ValueError(
             "unsupported Hugging Face URL; expected "
@@ -299,6 +311,7 @@ async def _connect_single_source(
             display_name=display_name,
             data_dir=data_dir,
             read_only=read_only,
+            configs=configs,
         )
     if is_database_file_path(source):
         path = _require_file(source)
@@ -306,9 +319,21 @@ async def _connect_single_source(
             normalize_connection_url(path),
             display_name=display_name,
             read_only=read_only,
+            config=configs.sql if configs is not None else None,
         )
     if "://" in source:
-        return await connect_url(source, display_name=display_name, read_only=read_only)
+        config: SQLConnectorConfig | Neo4jConnectorConfig | SPARQLConnectorConfig | None = None
+        if configs is not None:
+            normalized = normalize_connection_url(source)
+            if _is_sparql_url(normalized):
+                config = configs.sparql
+            elif _is_neo4j_bolt_url(normalized):
+                config = configs.neo4j
+            else:
+                config = configs.sql
+        if config is None:
+            return await connect_url(source, display_name=display_name, read_only=read_only)
+        return await connect_url(source, display_name=display_name, read_only=read_only, config=config)
     if os.path.exists(os.path.expanduser(source)):
         raise ValueError(f"unsupported local data source: {source!r}")
     raise ValueError(
@@ -324,6 +349,7 @@ async def connect_data_source(
     definitions: Sequence[DataSourceDefinition] = DEFAULT_DATA_SOURCE_DEFINITIONS,
     data_dir: Path | None = None,
     read_only: bool = True,
+    configs: DataSourceConnectorConfigs | None = None,
 ) -> DataConnector:
     """Connect or load a user-facing source into a queryable connector.
 
@@ -336,6 +362,8 @@ async def connect_data_source(
             resolution.
         data_dir: Directory for loader-owned DuckDB files.
         read_only: Whether the returned connector blocks write queries.
+        configs: Backend-specific connector policies. Connector defaults are
+            used when omitted.
 
     Returns:
         A connected, queryable data connector.
@@ -354,6 +382,7 @@ async def connect_data_source(
             display_name=display_name,
             data_dir=data_dir,
             read_only=read_only,
+            configs=configs,
         )
 
     raw_source = sources[0]
@@ -364,6 +393,7 @@ async def connect_data_source(
         display_name=display_name,
         data_dir=data_dir,
         read_only=read_only,
+        configs=configs,
     )
     if definition is not None:
         connector.schema.description = _combine_descriptions(definition.description, connector.schema.description)

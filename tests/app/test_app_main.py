@@ -6,8 +6,14 @@ import pytest
 import typer
 
 from tabulaflow.app.config import LLM_OFF, AppConfig, LLMRoleConfig, LLMPreset, ResolvedLLMSelection
-from tabulaflow.app.main import _resolve_startup_llm_selection
+from tabulaflow.app.main import _app_agent_runtime_config, _resolve_startup_llm_selection
 from tabulaflow.app.tui import app as tui
+
+
+def test_app_disables_preprocessing_cache_regardless_of_environment(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("TABULAFLOW_PREPROCESSING_CACHE_MODE", "read_write")
+
+    assert _app_agent_runtime_config().preprocessing_cache_mode == "off"
 
 
 def _test_config() -> AppConfig:

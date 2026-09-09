@@ -10,6 +10,7 @@ import tabulaflow.app.tui.commands as commands
 from tabulaflow.app.tui.commands import CommandResult, handle_command
 from tabulaflow.app.session import AppSession
 from tabulaflow.data.catalog import DEFAULT_DATA_SOURCE_DEFINITIONS
+from tabulaflow.data.config import DataSourceConnectorConfigs
 
 
 class _FakeRegistry:
@@ -27,6 +28,7 @@ class _FakeSession:
     def __init__(self) -> None:
         self.registry = _FakeRegistry()
         self.data_source_definitions = DEFAULT_DATA_SOURCE_DEFINITIONS
+        self.connector_configs = DataSourceConnectorConfigs()
         self.data_dir = Path(".")
         self.conversation_reset = False
         self.events: list[str] = []

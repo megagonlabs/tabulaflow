@@ -10,6 +10,7 @@ from typing import ClassVar
 from pydantic_ai import Tool
 
 from tabulaflow.data.registry import DataConnectorRegistry
+from tabulaflow.data.config import DataSourceConnectorConfigs
 from tabulaflow.data.catalog import (
     DEFAULT_DATA_SOURCE_DEFINITIONS,
     DataSourceDefinition,
@@ -32,10 +33,12 @@ class ConnectDataSourceTool:
         data_dir: Path,
         *,
         definitions: Sequence[DataSourceDefinition] = DEFAULT_DATA_SOURCE_DEFINITIONS,
+        configs: DataSourceConnectorConfigs | None = None,
     ) -> None:
         self._registry = registry
         self._data_dir = data_dir
         self._definitions = tuple(definitions)
+        self._configs = configs
 
     async def __call__(self, source: str, alias: str) -> str:
         """Connect an existing data source as a read-only queryable source, for data that
@@ -76,6 +79,7 @@ class ConnectDataSourceTool:
                 definitions=self._definitions,
                 data_dir=self._data_dir,
                 read_only=True,
+                configs=self._configs,
             )
         except Exception as e:
             is_url = "://" in source

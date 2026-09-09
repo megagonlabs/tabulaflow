@@ -155,7 +155,9 @@ class BeaverDatasetLoader:
         self.directory = str(self.installation.directory if directory is None else directory)
         self.dw_dbms_port = dw_port
         self.nw_dbms_port = nw_port
-        self.connector_config = SQLConnectorConfig() if connector_config is None else connector_config
+        self.connector_config = (
+            SQLConnectorConfig(schema_cache_mode="read_write") if connector_config is None else connector_config
+        )
         self._data: dict[Any, NL2QDataset] = {}
 
     def get_databases(self, split: str) -> list[str]:

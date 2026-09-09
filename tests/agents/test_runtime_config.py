@@ -13,7 +13,7 @@ def test_sql_config_uses_defaults() -> None:
     assert config.cache_dir == Path.home() / ".tabulaflow" / "cache"
     assert config.max_result_rows == 1_000_000
     assert config.query_timeout_seconds == 300
-    assert config.schema_cache_mode == "read_write"
+    assert config.schema_cache_mode == "off"
     assert config.max_query_concurrency == 8
     assert config.collect_column_stats is False
     assert config.query_cache_mode == "off"
@@ -134,3 +134,7 @@ def test_agent_config_includes_preprocessing_cache_policy(monkeypatch: pytest.Mo
 
     overridden = AgentRuntimeConfig(preprocessing_cache_mode="off")
     assert overridden.preprocessing_cache_mode == "off"
+
+
+def test_agent_preprocessing_cache_is_off_by_default() -> None:
+    assert AgentRuntimeConfig().preprocessing_cache_mode == "off"

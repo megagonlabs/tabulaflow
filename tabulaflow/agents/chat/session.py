@@ -63,6 +63,7 @@ if TYPE_CHECKING:
 
     from tabulaflow.data.registry import DataConnectorRegistry
     from tabulaflow.data.catalog import DataSourceDefinition
+    from tabulaflow.data.config import DataSourceConnectorConfigs
     from tabulaflow.data.sql import SQLConnector
     from tabulaflow.agents.trace import Usage
     from tabulaflow.agents.tools.protocols import ToolProgressUpdate
@@ -144,6 +145,7 @@ class ChatSession:
         scratch_dir: Path | None = None,
         data_dir: Path | None = None,
         data_source_definitions: Sequence[DataSourceDefinition] | None = None,
+        data_source_connector_configs: DataSourceConnectorConfigs | None = None,
         compaction: CompactionConfig | None = CompactionConfig(),
     ) -> None:
         self._registry = registry
@@ -164,6 +166,7 @@ class ChatSession:
 
             data_source_definitions = DEFAULT_DATA_SOURCE_DEFINITIONS
         self._data_source_definitions = tuple(data_source_definitions)
+        self._data_source_connector_configs = data_source_connector_configs
         self._compaction = compaction
         self._last_usage: Usage | None = None
         self._context_messages: list[ModelMessage] = []
@@ -309,7 +312,12 @@ class ChatSession:
             run_subagent_for_each_row=run_subagent_for_each_row,
             extract_rows_from_documents=extract_rows_from_documents,
             connect_data_source=(
-                ConnectDataSourceTool(self._registry, self._data_dir, definitions=self._data_source_definitions)
+                ConnectDataSourceTool(
+                    self._registry,
+                    self._data_dir,
+                    definitions=self._data_source_definitions,
+                    configs=self._data_source_connector_configs,
+                )
                 if self._data_dir is not None
                 else None
             ),
