@@ -294,6 +294,10 @@ body {
   color: var(--tf-accent);
 }
 
+.md-sidebar--secondary .md-nav__link:not(.md-nav__link--active):hover {
+  color: var(--tf-text);
+}
+
 .md-sidebar__scrollwrap {
   scrollbar-color: var(--tf-text-dim) transparent;
 }
@@ -349,8 +353,8 @@ body {
     background: rgba(255, 255, 255, 0.035);
   }
 
-  .md-sidebar--primary .md-nav--primary > .md-nav__list > .md-nav__item:not(.md-nav__item--section) > .md-nav__link--active,
-  .md-sidebar--primary .md-nav__item--section > .md-nav > .md-nav__list > .md-nav__item > .md-nav__link--active {
+  .md-sidebar--primary .md-nav--primary > .md-nav__list > .md-nav__item:not(.md-nav__item--section) > .md-nav__link.md-nav__link--active,
+  .md-sidebar--primary .md-nav__item--section > .md-nav > .md-nav__list > .md-nav__item > .md-nav__link.md-nav__link--active {
     color: var(--tf-accent);
     background: var(--tf-card);
   }
