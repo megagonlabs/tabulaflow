@@ -5,7 +5,7 @@ Turn questions into data workflows.
 TabulaFlow is an open-source project for analyzing, transforming, and
 visualizing data from databases, files, public datasets, and the web.
 
-[Get started](quick-start.md) · [View on GitHub](https://github.com/megagonlabs/tabulaflow)
+[Get started](data-agent/quick-start.md) · [View on GitHub](https://github.com/megagonlabs/tabulaflow)
 
 ```bash
 uv tool install tabulaflow
@@ -16,21 +16,21 @@ uv tool install tabulaflow
 Connect sources, explore schemas, run analyses, build datasets, and present
 results as tables, charts, maps, and graphs.
 
-[Launch your first workflow →](quick-start.md)
+[Launch your first workflow →](data-agent/quick-start.md)
 
 ## Python Library
 
 Build custom data applications with reusable connectors, agents, tools, and
 structured output primitives.
 
-[Explore the library →](python-library.md)
+[Explore the library →](python-library/index.md)
 
 ## Research Toolkit
 
 Build and evaluate text-to-query agents against established SQL and graph
 query benchmarks.
 
-[Explore the toolkit →](research-toolkit.md)
+[Explore the toolkit →](research-toolkit/index.md)
 
 ## One workspace, many kinds of data
 

@@ -25,4 +25,4 @@ selection.
 ## Local state
 
 Session state is stored beneath `~/.tabulaflow/`. See
-[Security and privacy](security-and-privacy.md) before using sensitive data.
+[Security and privacy](../reference/security-and-privacy.md) before using sensitive data.

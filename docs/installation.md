@@ -34,5 +34,5 @@ tabulaflow --help
 tabulaflow benchmark list
 ```
 
-Continue to the [quick start](quick-start.md) to launch the agent with bundled
+Continue to the [quick start](data-agent/quick-start.md) to launch the agent with bundled
 sample data.

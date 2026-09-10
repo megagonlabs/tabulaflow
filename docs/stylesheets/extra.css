@@ -246,6 +246,40 @@ body {
 }
 
 @media screen and (min-width: 76.25em) {
+  .md-sidebar--primary .md-nav--primary > .md-nav__list > .md-nav__item--section {
+    padding-top: 1.1rem;
+    margin: 1.1rem 0 0;
+    border-top: 1px solid var(--tf-border);
+  }
+
+  .md-sidebar--primary .md-nav__item--section > .md-nav__link {
+    margin-bottom: 0.35rem;
+    color: var(--tf-text);
+    font-weight: 600;
+  }
+
+  .md-sidebar--primary .md-nav--primary > .md-nav__list > .md-nav__item:not(.md-nav__item--section) > .md-nav__link,
+  .md-sidebar--primary .md-nav__item--section > .md-nav > .md-nav__list > .md-nav__item > .md-nav__link {
+    padding: 0.4rem 0.6rem;
+    margin: 0.1rem 0;
+    color: var(--tf-text-muted);
+    border-radius: 999px;
+  }
+
+  .md-sidebar--primary .md-nav--primary > .md-nav__list > .md-nav__item:not(.md-nav__item--section) > .md-nav__link:hover,
+  .md-sidebar--primary .md-nav__item--section > .md-nav > .md-nav__list > .md-nav__item > .md-nav__link:hover {
+    color: var(--tf-text);
+    background: rgba(255, 255, 255, 0.035);
+  }
+
+  .md-sidebar--primary .md-nav--primary > .md-nav__list > .md-nav__item:not(.md-nav__item--section) > .md-nav__link--active,
+  .md-sidebar--primary .md-nav__item--section > .md-nav > .md-nav__list > .md-nav__item > .md-nav__link--active {
+    color: var(--tf-accent);
+    background: var(--tf-card);
+  }
+}
+
+@media screen and (min-width: 76.25em) {
   .md-sidebar--secondary .md-nav {
     font-size: 13px;
   }

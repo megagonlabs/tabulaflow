@@ -11,6 +11,8 @@ theme:
   logo: assets/logo.svg
   favicon: assets/logo.svg
   font: false
+  features:
+    - navigation.sections
   icon:
     repo: fontawesome/brands/github
   palette:
@@ -19,20 +21,28 @@ theme:
     accent: custom
 
 nav:
-  - Home: index.md
-  - Get started:
-      - Installation: installation.md
-      - Quick start: quick-start.md
-  - Guides:
-      - Connecting data: connecting-data.md
-      - Common workflows: common-workflows.md
-      - Configuration: configuration.md
-  - Build:
-      - Python library: python-library.md
-      - Research toolkit: research-toolkit.md
-  - Help:
-      - Security and privacy: security-and-privacy.md
-      - Troubleshooting: troubleshooting.md
+  - Overview: index.md
+  - Installation: installation.md
+  - Data Agent:
+      - Overview: data-agent/index.md
+      - Quick start: data-agent/quick-start.md
+      - Connecting data: data-agent/connecting-data.md
+      - Common workflows: data-agent/common-workflows.md
+      - Configuration: data-agent/configuration.md
+  - Python Library:
+      - Overview: python-library/index.md
+      - Quick start: python-library/quick-start.md
+      - API reference: python-library/api-reference.md
+  - Research Toolkit:
+      - Overview: research-toolkit/index.md
+      - Quick start: research-toolkit/quick-start.md
+      - Benchmarks and datasets: research-toolkit/benchmarks-and-datasets.md
+      - Running experiments: research-toolkit/running-experiments.md
+      - Evaluation: research-toolkit/evaluation.md
+  - Reference:
+      - Security and privacy: reference/security-and-privacy.md
+      - Troubleshooting: reference/troubleshooting.md
+      - Release notes ↗: https://github.com/megagonlabs/tabulaflow/releases
 
 plugins:
   - search
