@@ -36,7 +36,7 @@ nav:
   - Installation: installation.md
   - Quick start: data-agent/quick-start.md
   - Connecting data: data-agent/connecting-data.md
-  - Common workflows: data-agent/common-workflows.md
+  - Examples: data-agent/examples.md
   - Configuration: data-agent/configuration.md
   - TabulaFlow as a Python Library:
       - Overview: python-library/index.md
