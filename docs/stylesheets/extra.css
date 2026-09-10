@@ -156,6 +156,12 @@ body {
   color: var(--tf-accent);
 }
 
+@media screen and (min-width: 76.25em) {
+  .md-sidebar--secondary .md-nav {
+    font-size: 13px;
+  }
+}
+
 .md-tabs {
   background: var(--tf-bg);
   border-bottom: 1px solid var(--tf-border);
