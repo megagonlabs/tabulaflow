@@ -45,6 +45,10 @@
   --md-footer-bg-color--dark: #0b0d12;
 }
 
+html {
+  scrollbar-gutter: stable;
+}
+
 body {
   font-family: var(--md-text-font);
 }
