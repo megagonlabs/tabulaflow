@@ -3,7 +3,7 @@ site_description: An interactive data agent, Python library, and text-to-query r
 site_url: https://megagonlabs.github.io/tabulaflow/
 repo_url: https://github.com/megagonlabs/tabulaflow
 repo_name: megagonlabs/tabulaflow
-copyright: Copyright &copy; Megagon Labs
+copyright: "&copy; 2026 Megagon Labs"
 
 theme:
   name: material
@@ -19,6 +19,9 @@ theme:
     scheme: slate
     primary: custom
     accent: custom
+
+extra:
+  generator: false
 
 nav:
   - Overview: index.md

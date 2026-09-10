@@ -374,6 +374,10 @@ body {
   border-top: 1px solid var(--tf-border);
 }
 
+.md-copyright {
+  font-size: 11px;
+}
+
 * {
   scrollbar-color: #3a4049 #1a1d23;
   scrollbar-width: thin;
