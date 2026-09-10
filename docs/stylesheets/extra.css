@@ -294,8 +294,16 @@ body {
   color: var(--tf-accent);
 }
 
+.md-sidebar--secondary .md-nav__link {
+  color: var(--tf-text-muted);
+}
+
 .md-sidebar--secondary .md-nav__link:not(.md-nav__link--active):hover {
   color: var(--tf-text);
+}
+
+.md-sidebar--secondary .md-nav__link.md-nav__link--active {
+  color: var(--tf-accent);
 }
 
 .md-sidebar__scrollwrap {
