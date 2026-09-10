@@ -275,6 +275,7 @@ def test_apply_patch_capability_controls_tool_schema(tmp_path: Path) -> None:
         registry=DataConnectorRegistry(),
         model="test",
         reasoning="medium",
+        subagent_model="test",
         project_dir=project,
     )
 

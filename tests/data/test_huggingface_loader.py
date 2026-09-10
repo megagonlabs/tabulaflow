@@ -72,6 +72,7 @@ async def test_resolve_config_exposes_subset_choices(monkeypatch: pytest.MonkeyP
 async def test_schema_worker_releases_cache_before_parent_opens_it(tmp_path: Path) -> None:
     db_path = tmp_path / "hf_cache.duckdb"
     with duckdb.connect(str(db_path)) as conn:
+        conn.execute("INSTALL httpfs")
         conn.execute("CREATE TABLE documents (id INTEGER)")
         conn.execute("INSERT INTO documents VALUES (1)")
         conn.execute("CREATE VIEW remote_documents AS SELECT * FROM documents")

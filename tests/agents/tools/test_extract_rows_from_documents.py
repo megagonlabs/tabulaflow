@@ -68,6 +68,7 @@ def test_entity_extractor_builds_typed_model() -> None:
     ex = EntityExtractor(
         ["name", "qty", "price", "active", "day", "at"],
         column_types={"qty": int, "price": float, "active": bool, "day": date, "at": datetime},
+        llm="test",
     )
     entity_model = ex._result_model.model_fields["entities"].annotation.__args__[0]  # type: ignore[union-attr]
     props = entity_model.model_json_schema()["properties"]
@@ -89,9 +90,10 @@ def test_entity_extractor_builds_typed_model() -> None:
     assert json_types("at") == {"string", "null"} and "date-time" in json_formats("at")
 
 
-def test_entity_extractor_rebuilds_agent_when_profile_changes() -> None:
+def test_entity_extractor_rebuilds_agent_when_profile_changes(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("OPENAI_API_KEY", "sk-test123456789ab4x")
     settings = ModelSettings(temperature=0)
-    ex = EntityExtractor(["name"])
+    ex = EntityExtractor(["name"], llm="test")
     original_agent = ex._agent
 
     ex.apply_llm_profile(llm="openai-responses:gpt-5", model_settings=settings)
@@ -106,6 +108,7 @@ def test_typed_model_coerces_and_nulls() -> None:
     ex = EntityExtractor(
         ["qty", "price", "active", "day"],
         column_types={"qty": int, "price": float, "active": bool, "day": date},
+        llm="test",
     )
     entity_model = ex._result_model.model_fields["entities"].annotation.__args__[0]  # type: ignore[union-attr]
 
@@ -153,7 +156,7 @@ def test_document_content_rejects_path_backed_media_with_guidance(value: object,
 
 
 async def test_entity_extractor_splits_pdfs_into_page_batches(monkeypatch: pytest.MonkeyPatch) -> None:
-    extractor = EntityExtractor(["name"])
+    extractor = EntityExtractor(["name"], llm="test")
     prompts: list[list[UserContent]] = []
 
     async def capture(prompt: str | Sequence[UserContent], _trajectory: str) -> list[dict[str, Any]]:
@@ -179,7 +182,7 @@ async def test_entity_extractor_splits_pdfs_into_page_batches(monkeypatch: pytes
 async def test_entity_extractor_processes_ordered_mixed_media_collection(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    extractor = EntityExtractor(["name"])
+    extractor = EntityExtractor(["name"], llm="test")
     prompts: list[list[UserContent]] = []
 
     async def capture(prompt: str | Sequence[UserContent], _trajectory: str) -> list[dict[str, Any]]:
