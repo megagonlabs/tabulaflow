@@ -37,10 +37,6 @@ nav:
       - Benchmarks and datasets: research-toolkit/benchmarks-and-datasets.md
       - Running experiments: research-toolkit/running-experiments.md
       - Evaluation: research-toolkit/evaluation.md
-  - Reference:
-      - Security and privacy: reference/security-and-privacy.md
-      - Troubleshooting: reference/troubleshooting.md
-      - Release notes ↗: https://github.com/megagonlabs/tabulaflow/releases
 
 plugins:
   - search
