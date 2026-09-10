@@ -375,7 +375,11 @@ body {
 }
 
 .md-copyright {
-  font-size: 11px;
+  font-size: 12px;
+}
+
+.md-social__link svg {
+  max-height: 18px;
 }
 
 * {
