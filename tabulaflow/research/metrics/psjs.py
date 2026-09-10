@@ -168,9 +168,11 @@ class PSJS:
 
         try:
             target_records = await db_connector._run_cypher(target_ps_cypher)
+            assert isinstance(target_records, list)
             target_ps = {record["elemId1"] for record in target_records}
 
             pred_records = await db_connector._run_cypher(pred_ps_cypher, timeout=120)
+            assert isinstance(pred_records, list)
             pred_ps = {record["elemId2"] for record in pred_records}
 
             intersection = len(target_ps & pred_ps)
