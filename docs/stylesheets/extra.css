@@ -60,7 +60,24 @@ body {
 }
 
 .md-header__button.md-logo {
-  display: none;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+}
+
+.md-header__button.md-logo img,
+.md-header__button.md-logo svg {
+  width: 32px;
+  height: 32px;
+  border-radius: 7px;
+}
+
+[dir="ltr"] .md-header__title {
+  margin-left: 0.4rem;
+}
+
+.md-header__title {
+  font-size: 1.1rem;
 }
 
 .md-search__form {
@@ -97,11 +114,12 @@ body {
 .md-source {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 7px;
   width: auto;
   height: auto;
   padding: 4px 10px;
   color: var(--tf-text-muted);
+  font-size: 14px;
   border-radius: 4px;
 }
 
@@ -111,14 +129,14 @@ body {
 }
 
 .md-source__icon {
-  flex: 0 0 16px;
-  width: 16px;
-  height: 16px;
+  flex: 0 0 18px;
+  width: 18px;
+  height: 18px;
 }
 
 .md-source .md-source__icon svg {
-  width: 16px;
-  height: 16px;
+  width: 18px;
+  height: 18px;
   margin: 0;
 }
 
