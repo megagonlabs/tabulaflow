@@ -114,6 +114,9 @@ dev = [
     "types-pyyaml>=6.0.12.20260518",
     "import-linter>=2.11",
 ]
+docs = [
+    "mkdocs-material>=9.7.7",
+]
 
 [tool.mypy]
 strict = true
