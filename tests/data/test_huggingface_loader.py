@@ -109,7 +109,17 @@ async def test_schema_worker_releases_cache_before_parent_opens_it(tmp_path: Pat
 async def test_cancelled_schema_worker_releases_cache_before_retry(tmp_path: Path) -> None:
     db_path = tmp_path / "slow_hf_cache.duckdb"
     with duckdb.connect(str(db_path)) as conn:
-        conn.execute("CREATE VIEW remote_split AS SELECT SUM(sin(i)) AS value FROM range(10000000000) AS t(i)")
+        conn.execute(
+            """
+            CREATE VIEW remote_split AS
+            WITH RECURSIVE loop(x) AS (
+                VALUES(0)
+                UNION ALL
+                SELECT (x + 1) % 2 FROM loop
+            )
+            SELECT COUNT(*) AS value FROM loop
+            """
+        )
     config = SQLConnectorConfig(
         cache_dir=tmp_path,
         schema_cache_mode="off",

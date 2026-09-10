@@ -5,7 +5,7 @@ import pytest
 import tempfile
 import sqlalchemy
 import os
-from typing import AsyncGenerator, Any
+from typing import AsyncGenerator, Any, cast
 import pandas as pd
 from pydantic_ai import Agent, ToolReturn
 from pydantic_ai.messages import (
@@ -26,7 +26,7 @@ from tabulaflow.agents.tools.run_query import (
     _format_latency,
     latest_query_execution,
 )
-from tabulaflow.core import ExecResult, GraphResult, GraphResultEdge, GraphResultNode
+from tabulaflow.core import ErrorInfo, ExecResult, GraphResult, GraphResultEdge, GraphResultNode
 from tabulaflow.data.sql import SQLConnector, _contains_ddl_statement, _contains_write_statement
 from sqlalchemy.ext.asyncio import create_async_engine
 
@@ -227,27 +227,26 @@ async def test_run_query_failed(db_connector: SQLConnector) -> None:
     assert tool.metrics().error_query_failed == 1
 
 
-async def test_run_query_timeout(db_connector: SQLConnector) -> None:
-    """Test query timeout."""
-    tool = RunQueryTool(db_connector, enable_params=True, timeout=1)
+async def test_run_query_timeout() -> None:
+    class TimeoutConnector:
+        def __init__(self) -> None:
+            self.calls: list[tuple[str, dict[str, Any], int | None]] = []
 
-    # Create a query that takes a long time
-    # For SQLite, we can simulate a long query by doing many cross joins
-    result: str = await _run(
-        tool,
-        """
-        WITH RECURSIVE cnt(x) AS (
-            SELECT 1
-            UNION ALL
-            SELECT x+1 FROM cnt
-            LIMIT 10000000
-        )
-        SELECT COUNT(*) FROM cnt
-        """,
-    )
+        async def run_query_async(
+            self,
+            query: str,
+            parameters: dict[str, Any],
+            timeout: int | None,
+        ) -> ExecResult:
+            self.calls.append((query, parameters, timeout))
+            return ExecResult(error=ErrorInfo(exc_type="TimeoutError", message="deadline exceeded"))
 
-    # The query should timeout
-    assert "query timed out" in result or "query failed:" in result
+    connector = TimeoutConnector()
+    tool = RunQueryTool(cast(Any, connector), enable_params=True, timeout=1)
+    result = await _run(tool, "SELECT 1")
+
+    assert connector.calls == [("SELECT 1", {}, 1)]
+    assert result == "(error: query timed out)"
     assert tool.metrics().error_timeout == 1
     assert tool.metrics().error_query_failed == 0
     assert tool.metrics().num_calls == 1
