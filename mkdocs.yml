@@ -23,17 +23,15 @@ theme:
 nav:
   - Overview: index.md
   - Installation: installation.md
-  - Data Agent:
-      - Overview: data-agent/index.md
-      - Quick start: data-agent/quick-start.md
-      - Connecting data: data-agent/connecting-data.md
-      - Common workflows: data-agent/common-workflows.md
-      - Configuration: data-agent/configuration.md
-  - Python Library:
+  - Quick start: data-agent/quick-start.md
+  - Connecting data: data-agent/connecting-data.md
+  - Common workflows: data-agent/common-workflows.md
+  - Configuration: data-agent/configuration.md
+  - TabulaFlow as a Python Library:
       - Overview: python-library/index.md
       - Quick start: python-library/quick-start.md
       - API reference: python-library/api-reference.md
-  - Research Toolkit:
+  - TabulaFlow for AI Researchers:
       - Overview: research-toolkit/index.md
       - Quick start: research-toolkit/quick-start.md
       - Benchmarks and datasets: research-toolkit/benchmarks-and-datasets.md
