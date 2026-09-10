@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+
+{% block styles %}
+  <link
+    rel="preload"
+    href="{{ 'assets/fonts/figtree/Figtree-Variable.woff2' | url }}"
+    as="font"
+    type="font/woff2"
+    crossorigin
+  >
+  <link
+    rel="preload"
+    href="{{ 'assets/fonts/space-grotesk/SpaceGrotesk-Variable.woff2' | url }}"
+    as="font"
+    type="font/woff2"
+    crossorigin
+  >
+  {{ super() }}
+{% endblock %}

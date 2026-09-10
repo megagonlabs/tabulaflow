@@ -7,6 +7,12 @@ copyright: Copyright &copy; Megagon Labs
 
 theme:
   name: material
+  custom_dir: docs/overrides
+  font: false
+  palette:
+    scheme: slate
+    primary: custom
+    accent: custom
 
 nav:
   - Home: index.md
@@ -35,3 +41,6 @@ markdown_extensions:
   - pymdownx.superfences
   - pymdownx.tabbed:
       alternate_style: true
+
+extra_css:
+  - stylesheets/extra.css
