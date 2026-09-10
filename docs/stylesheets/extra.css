@@ -260,6 +260,12 @@ body {
 }
 
 @media screen and (min-width: 76.25em) {
+  .md-sidebar--primary .md-nav--primary > .md-nav__title {
+    position: static;
+    margin-bottom: 0.3rem;
+    box-shadow: none;
+  }
+
   .md-sidebar--primary .md-nav--primary > .md-nav__list > .md-nav__item--section {
     padding-top: 0.65rem;
     margin: 0.65rem 0 0;
