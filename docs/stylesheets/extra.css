@@ -80,6 +80,17 @@ body {
   font-size: 1.1rem;
 }
 
+.md-header__title--active .md-header__topic:first-child {
+  z-index: 0;
+  opacity: 1;
+  pointer-events: auto;
+  transform: none;
+}
+
+.md-header__topic[data-md-component="header-topic"] {
+  display: none;
+}
+
 .md-search__form {
   background: rgba(255, 255, 255, 0.025);
   border: 1px solid rgba(154, 164, 178, 0.12);
@@ -260,6 +271,10 @@ body {
 }
 
 @media screen and (min-width: 76.25em) {
+  .md-sidebar {
+    top: calc(57px + 1.4rem) !important;
+  }
+
   .md-sidebar--primary .md-nav--primary > .md-nav__title {
     position: static;
     margin-bottom: 0.3rem;
