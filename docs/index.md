@@ -19,26 +19,31 @@ interactively.
 
 ## How is TabulaFlow different?
 
-General-purpose coding agents (e.g. Claude Code) are built around files, but TabulaFlow treats
-tables as first-class citizens, as its name suggests. We design its table-native
-agent harness for tasks that existing agents are not built to handle.
+General-purpose coding agents such as Claude Code are built around files, but
+TabulaFlow treats tables as first-class citizens, as its name suggests. We
+design its table-native agent harness for tasks that existing agents are not
+built to handle.
 
-Many database-focused data agents (e.g. Chat2DB), translate a question into a SQL query and return an
-answer or chart. TabulaFlow supports broader workflows across databases including graph databases, local
-files, documents, public datasets, and the web.
+Many database-focused data agents, such as Chat2DB, translate a question into
+SQL and return an answer or chart. TabulaFlow supports broader workflows across
+relational and graph databases, local files, documents, public datasets, and
+the web.
 
-- **Interactive visualization.** Create charts, maps, and relationship graphs.
-We further support interactive artifacts backed by queryable, parameterized data, including Neo4j graphs.
-- **Multimodal data browsing** Images and pdfs inside tables are natively supported for agents and human data browsing.
+- **Interactive visualization.** Create charts, maps, and relationship graphs
+  backed by queryable, parameterized data, including graphs from Neo4j.
+- **Multimodal data browsing.** Browse images and PDFs directly inside tables,
+  or ask an agent to analyze them alongside the other data.
 - **Large-scale dataset construction.** Combine multiple sources and turn
-  unstructured web pages, documents into structured, normalized
-  table with thousands of rows.
+  unstructured web pages and documents into structured, normalized tables with
+  thousands of rows.
 - **Parallel semantic operations.** Enrich tables with new columns by
   coordinating thousands of row-wise subagents in parallel.
-- **Parallel browser use.**  Our custom browser harness allow agent to interact with many
-  web pages in parallel, including pages that require clicks and forms.
-- **Customization.** The core of tabulaflow is written in pure Python. You can build your own data application
-using any abstraction level from data connectors to agent tools.
+- **Parallel browser use.** TabulaFlow's browser harness lets agents interact
+  with many web pages in parallel, including pages that require clicks and
+  forms.
+- **Customization.** TabulaFlow's core is written in pure Python. Build your
+  own data application with components at any level, from data connectors to
+  agent tools.
 
 ## What can the Data Agent do?
 
