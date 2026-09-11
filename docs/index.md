@@ -17,9 +17,11 @@ artifacts such as charts and maps.
 We build TabulaFlow not only as an end-user application but also as a Python
 library with clean, minimal building blocks for modern data agents, from data
 connectors to agent tools. You can use them to create agents and applications
-tailored to your needs.
+tailored to your needs. [Explore the library →](python-library/index.md)
+
 TabulaFlow also includes a research toolkit for running experiments and
-evaluating results on text-to-query benchmarks such as Spider 2.0.
+evaluating results on text-to-query benchmarks such as Spider 2.0. [Explore the
+toolkit →](research-toolkit/index.md)
 
 <figure class="media-placeholder media-placeholder--video" aria-label="Placeholder for the TabulaFlow product demo video">
   <div class="media-placeholder__content">
@@ -29,29 +31,6 @@ evaluating results on text-to-query benchmarks such as Spider 2.0.
   </div>
   <figcaption>Production placeholder · Include captions and a text transcript.</figcaption>
 </figure>
-
-## Choose how you use TabulaFlow
-
-### Data Agent
-
-Launch TabulaFlow in your project and ask it to explore data, run analyses,
-build datasets, or create interactive results.
-
-[Launch your first workflow →](data-agent/quick-start.md)
-
-### Python Library
-
-Build your own data applications with reusable connectors, agents, tools, and
-output components.
-
-[Explore the library →](python-library/index.md)
-
-### Research Toolkit
-
-Build and evaluate text-to-query agents on established SQL and graph-query
-benchmarks.
-
-[Explore the toolkit →](research-toolkit/index.md)
 
 ## What the Data Agent can do
 
