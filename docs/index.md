@@ -65,7 +65,7 @@ The diagram below shows how TabulaFlow works, using SQLite as an example. You
 can connect the database with `/connect`, or the agent can connect it through a
 tool call. TabulaFlow registers the connection under an alias and makes the
 schema available to the agent. The agent can then execute queries, save
-intermediate results to a local workspace for row-wise semantic processing, and
+intermediate results to a local workspace for further processing, and
 attach visualization specifications to render charts, maps, and graphs.
 
 <figure class="media-placeholder media-placeholder--diagram" aria-label="Placeholder for a diagram showing how TabulaFlow works, using SQLite as an example">
@@ -83,15 +83,7 @@ directory, so your source data and project directory remain unchanged by
 default. To export results to local files, simply ask the agent in natural
 language.
 
-TabulaFlow may send prompts and relevant tool results to your model provider.
-It sends no telemetry to Megagon Labs. Review your provider's data-handling and
-retention policies before using sensitive data.
-
-!!! warning "Trusted local agent"
-    TabulaFlow is not a sandbox. File, shell, browser, and data tools run with
-    your user permissions. Launch it only in environments you trust and use
-    least-privilege credentials.
-
 !!! note "Public beta"
     TabulaFlow 0.1.0 is a public beta. Patch releases preserve documented
     public APIs; minor `0.x` releases may include documented breaking changes.
+    We welcome your feedback.
