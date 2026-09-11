@@ -35,7 +35,7 @@
   --tf-code-number: #c792ea;
   --tf-code-type: #ffc473;
   --md-text-font: "Figtree", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  --md-code-font: ui-monospace, "SF Mono", Menlo, monospace;
+  --md-code-font: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Monaco, Consolas, monospace;
   --md-primary-fg-color: var(--tf-bg);
   --md-primary-fg-color--light: var(--tf-card);
   --md-primary-fg-color--dark: #0b0d12;
