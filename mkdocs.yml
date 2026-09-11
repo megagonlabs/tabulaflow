@@ -12,6 +12,7 @@ theme:
   favicon: assets/logo.svg
   font: false
   features:
+    - content.code.copy
     - navigation.instant
     - navigation.sections
   icon:
