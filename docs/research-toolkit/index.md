@@ -1,7 +1,7 @@
 # Research toolkit
 
-TabulaFlow includes benchmark loaders, research agents, execution pipelines,
-and evaluation metrics for text-to-query research.
+Use TabulaFlow to load benchmarks, run text-to-query agents, execute their
+predictions, and evaluate the results.
 
 ## See available benchmarks
 
@@ -18,6 +18,6 @@ AMBROSIA-S, and CypherBench.
 tabulaflow benchmark download cypherbench
 ```
 
-Prerequisites differ by benchmark and may include local datasets, Docker,
-manual setup, or cloud credentials. This page will document each supported
-benchmark's exact setup before the beta release.
+Setup differs by benchmark. You may need a local dataset, Docker, or cloud
+credentials. Check [Benchmarks and datasets](benchmarks-and-datasets.md) before
+you begin.

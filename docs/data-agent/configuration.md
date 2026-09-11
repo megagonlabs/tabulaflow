@@ -1,36 +1,33 @@
 # Configuration
 
-The default settings are suitable for local use. Configure TabulaFlow when you
-need to select a model, control resource limits, enable caching, or expose the
-browser output pane through another host.
+The defaults suit local use. Change them to select a model, control resources,
+enable caching, or expose the output pane on another host.
 
 ## Model selection
 
-TabulaFlow supports OpenAI and Anthropic presets in the Data Agent. Provide the
-credential for the provider you use:
+The Data Agent includes OpenAI and Anthropic presets. Set a key for the provider
+you use:
 
 ```bash
 export OPENAI_API_KEY="your-api-key"
 export ANTHROPIC_API_KEY="your-api-key"
 ```
 
-Only one key is required. When no preference has been saved, startup selects a
-balanced preset from the available credentials, checking OpenAI first and then
-Anthropic.
+You need only one key. Without a saved preference, TabulaFlow checks OpenAI
+first, then Anthropic, and selects a balanced preset.
 
-Run `/config` inside the app to inspect the available presets and save a
-selection. Choosing **Off** disables conversational analysis while leaving data
-connection and browsing available.
+Run `/config` to view the presets and save your choice. **Off** disables
+conversational analysis but keeps data connections and browsing available.
 
-Override the saved selection for one launch with `--llm-preset`:
+Override the saved preset for one launch:
 
 ```bash
 tabulaflow --llm-preset "OpenAI budget"
 tabulaflow --llm-preset off
 ```
 
-The interactive selection is stored in `~/.tabulaflow/app_config.json`. API
-keys are read from the environment and are never written to that file.
+TabulaFlow saves your selection in `~/.tabulaflow/app_config.json`. It reads API
+keys from the environment and does not save them.
 
 ## In-app commands
 
@@ -43,12 +40,11 @@ keys are read from the environment and are never written to that file.
 | `/clear` | Start a new conversation in the current session |
 | `/exit` | Close the app |
 
-The input offers command completion as you type. After `/connect`, it also
-completes local file paths.
+Commands autocomplete as you type. `/connect` also completes local paths.
 
 ## Command-line options
 
-Launch options apply only to the current process:
+These options apply to one launch:
 
 | Option | Purpose |
 | --- | --- |
@@ -60,18 +56,17 @@ Launch options apply only to the current process:
 | `--output-pane-host` | Change the bind host from `127.0.0.1` |
 | `--output-pane-public-url` | Set the browser-facing base URL when the bind address is not directly reachable |
 
-Run `tabulaflow --help` for the current command syntax.
+Run `tabulaflow --help` to see the full syntax.
 
 !!! warning "Exposing the output pane"
-    Keep the default loopback host unless remote access is intentional. Output
-    pages can contain query results and other session data. The session token is
-    appended to the configured public URL automatically, but the surrounding
-    network and proxy still need appropriate access controls.
+    Keep the default loopback host unless you need remote access. Output pages
+    may contain session data and query results. TabulaFlow adds a session token
+    to the public URL, but you must still secure the network and proxy.
 
 ## Runtime environment variables
 
-Runtime settings use the `TABULAFLOW_` prefix. Set them before launching the
-app. The value `none` disables limits that allow an unlimited setting.
+Set `TABULAFLOW_` variables before you launch the app. Use `none` for limits
+that support an unlimited value.
 
 ### Query execution
 
@@ -106,9 +101,9 @@ app. The value `none` disables limits that allow an unlimited setting.
 | `TABULAFLOW_PREPROCESSING_CACHE_MODE` | `off` | Agent preprocessing cache mode: `off`, `read_write`, `refresh`, or `cache_only` |
 | `TABULAFLOW_GRAPH_SCHEMA_INTROSPECTION_MODE` | `fast` | Use `fast` metadata inspection or `full_scan` graph inspection |
 
-Caching can return stale metadata or query results when the underlying source
-changes. Prefer the defaults unless repeated remote work justifies persistence;
-use `refresh` when rebuilding a cache deliberately.
+Cached metadata and results can become stale when a source changes. Keep
+caching off unless repeated remote work makes it useful. Use `refresh` to
+rebuild a cache.
 
 ## Local state
 
@@ -122,7 +117,7 @@ TabulaFlow stores local state beneath `~/.tabulaflow/`:
 | `cache/` | Optional persistent schema, query, and preprocessing caches |
 | `sessions/<id>/` | Workspace database, logs, trajectories, temporary files, and browser-pane artifacts |
 
-Session directories are created with user-only permissions where the platform
-supports them. They can still contain prompts, results, and source-derived
-data; review them before sharing or disposing of a machine used with sensitive
-information. See [Security and privacy](../reference/security-and-privacy.md).
+Where supported, session directories use permissions for the current user
+only. They may still contain prompts, results, and source data. Review them
+before sharing or disposing of a machine. See [Security and
+privacy](../reference/security-and-privacy.md).

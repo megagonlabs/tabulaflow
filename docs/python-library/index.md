@@ -1,7 +1,7 @@
 # Python library
 
-TabulaFlow's reusable Python components support custom data agents and data
-applications. The package is organized into dependency layers:
+Use TabulaFlow's Python components to build data agents and applications. The
+package follows these dependency layers:
 
 ```text
 core < data < output < agents < app
@@ -13,6 +13,5 @@ core < data < output < agents < app
 - `tabulaflow.output` provides result storage, specifications, and formatting.
 - `tabulaflow.agents` provides chat runtimes, extraction, and tools.
 
-This initial page will become a curated guide to the documented public API.
-Internal modules that are not documented here should be treated as unstable
-during the public beta.
+During the public beta, treat modules not listed in the API reference as
+internal and subject to change.

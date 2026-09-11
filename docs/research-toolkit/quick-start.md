@@ -1,6 +1,6 @@
 # Quick start
 
-Install the TabulaFlow command with Python 3.11 or later:
+With Python 3.11 or later, install the TabulaFlow command:
 
 ```bash
 uv tool install tabulaflow
@@ -12,6 +12,5 @@ List the registered research benchmarks:
 tabulaflow benchmark list
 ```
 
-Each benchmark has its own data and execution prerequisites. Continue to
-[Benchmarks and datasets](benchmarks-and-datasets.md) before running an
-experiment.
+Before you run an experiment, check its setup in [Benchmarks and
+datasets](benchmarks-and-datasets.md).

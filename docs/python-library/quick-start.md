@@ -1,6 +1,6 @@
 # Quick start
 
-TabulaFlow requires Python 3.11 or later. Add it to your project environment:
+TabulaFlow requires Python 3.11 or later. Add it to your project:
 
 === "uv"
 
@@ -20,9 +20,8 @@ Verify the installation:
 python -c "import tabulaflow; print(tabulaflow.__version__)"
 ```
 
-Stable schema, result, and serialization primitives are exported from
-`tabulaflow.core`. Connectors and agent runtime APIs live in
-`tabulaflow.data` and `tabulaflow.agents` respectively.
+Import schema, result, and serialization primitives from `tabulaflow.core`.
+Connectors live in `tabulaflow.data`; agent runtimes live in
+`tabulaflow.agents`.
 
-Continue to the [API reference](api-reference.md) for the documented public
-surface.
+See the [API reference](api-reference.md) for supported public modules.

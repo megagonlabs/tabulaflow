@@ -3,9 +3,8 @@
 Turn questions into data workflows.
 
 TabulaFlow is an open-source data agent, Python library, and text-to-query
-research toolkit. Connect databases, files, public datasets, and the web; then
-analyze, transform, and present the results through one conversational
-workflow.
+research toolkit. Connect databases, files, public datasets, or the web. Then
+ask TabulaFlow to analyze, transform, and present the data.
 
 [Get started](data-agent/quick-start.md) ·
 [View on GitHub](https://github.com/megagonlabs/tabulaflow)
@@ -27,22 +26,21 @@ uv tool install tabulaflow
 
 ### Data Agent
 
-The primary experience. Launch TabulaFlow in a project directory and ask it to
-connect sources, inspect schemas, run analyses, build datasets, and present
-results as interactive tables, charts, maps, and graphs.
+Launch TabulaFlow in your project and ask it to explore data, run analyses,
+build datasets, or create interactive results.
 
 [Launch your first workflow →](data-agent/quick-start.md)
 
 ### Python Library
 
-Build custom data applications with reusable connectors, agents, tools, and
-structured output primitives.
+Build your own data applications with reusable connectors, agents, tools, and
+output components.
 
 [Explore the library →](python-library/index.md)
 
 ### Research Toolkit
 
-Build and evaluate text-to-query agents against established SQL and graph-query
+Build and evaluate text-to-query agents on established SQL and graph-query
 benchmarks.
 
 [Explore the toolkit →](research-toolkit/index.md)
@@ -50,15 +48,14 @@ benchmarks.
 ## What the Data Agent can do
 
 - Query SQL databases, Neo4j graphs, SPARQL endpoints, and local files.
-- Inspect schemas and representative values before composing an analysis.
+- Inspect schemas and representative values before running an analysis.
 - Combine data from separate sources in a writable local workspace.
 - Gather and structure records from web pages, documents, images, and PDFs.
 - Apply semantic operations such as classification, extraction, and entity
   matching across many rows.
 - Present results as interactive tables, charts, maps, and graphs.
 
-See [Examples](data-agent/examples.md) for complete prompts covering these
-workflows.
+See [Examples](data-agent/examples.md) for prompts you can try or adapt.
 
 ## How data flows
 
@@ -74,10 +71,9 @@ to a session-local DuckDB workspace.
   <figcaption>Production placeholder · Provide an equivalent text description.</figcaption>
 </figure>
 
-Prompts and relevant tool results may be sent to your configured model
-provider. TabulaFlow sends no telemetry to Megagon Labs. Review
-[Security and privacy](reference/security-and-privacy.md) before working with
-sensitive data.
+TabulaFlow may send prompts and relevant tool results to your model provider.
+It sends no telemetry to Megagon Labs. Review [Security and
+privacy](reference/security-and-privacy.md) before using sensitive data.
 
 !!! warning "Trusted local agent"
     TabulaFlow is not a sandbox. File, shell, browser, and data tools run with

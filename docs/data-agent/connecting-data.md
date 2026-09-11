@@ -1,28 +1,27 @@
 # Connecting data
 
-Use `/connect` inside the Data Agent to add a file, database, graph, SPARQL
+Run `/connect` in the Data Agent to add a file, database, graph, SPARQL
 endpoint, or public dataset:
 
 ```text
 /connect <source...> [--alias name]
 ```
 
-Connections are available for the current session. TabulaFlow assigns an alias
-automatically; use `--alias` when you want a short, predictable name to use in
-prompts.
+Connections last for the current session. TabulaFlow creates an alias for each
+source; use `--alias` to choose your own.
 
 ## Local files
 
-Supported tabular formats are CSV, TSV, Excel (`.xlsx` and `.xls`), Parquet,
-JSON, JSONL, and NDJSON.
+You can connect CSV, TSV, Excel (`.xlsx` and `.xls`), Parquet, JSON, JSONL, and
+NDJSON files.
 
 ```text
 /connect ./data/orders.parquet
 ```
 
-Relative paths resolve from the directory where you launched TabulaFlow. Each
-file becomes a table named from its filename. Connect related files together to
-load them as tables in one source:
+Relative paths start from the directory where you launched TabulaFlow. Each
+file becomes a table named after the file. Connect related files together to
+group them under one source:
 
 ```text
 /connect ./data/customers.csv ./data/orders.csv --alias retail
@@ -30,8 +29,8 @@ load them as tables in one source:
 
 ## Local databases
 
-SQLite (`.sqlite`, `.sqlite3`, and `.db`) and DuckDB (`.duckdb`) files can be
-connected by path:
+Connect SQLite (`.sqlite`, `.sqlite3`, or `.db`) and DuckDB (`.duckdb`) files by
+path:
 
 ```text
 /connect ./data/analytics.duckdb --alias analytics
@@ -39,8 +38,8 @@ connected by path:
 
 ## Database and graph servers
 
-Packaged integrations include SQLite, DuckDB, PostgreSQL, MySQL, Snowflake,
-BigQuery, Neo4j, and SPARQL endpoints.
+TabulaFlow includes PostgreSQL, MySQL, Snowflake, BigQuery, Neo4j, and SPARQL
+integrations.
 
 | Source | Example |
 | --- | --- |
@@ -55,34 +54,31 @@ BigQuery, Neo4j, and SPARQL endpoints.
 /connect postgresql://user@localhost/analytics --alias warehouse
 ```
 
-TabulaFlow upgrades standard PostgreSQL, MySQL, and SQLite URLs to their async
-drivers automatically. Preserve the exact `neo4j`, `neo4j+s`, `bolt`, or
-`bolt+s` scheme supplied by your Neo4j deployment because it controls routing
-and transport security.
+TabulaFlow selects async drivers for PostgreSQL, MySQL, and SQLite. For Neo4j,
+keep the exact `neo4j`, `neo4j+s`, `bolt`, or `bolt+s` scheme from your
+deployment; it controls routing and transport security.
 
 ## Public datasets
 
-Connect Wikidata by its catalog name:
+Connect Wikidata by name:
 
 ```text
 /connect wikidata
 ```
 
-Hugging Face dataset URLs are also supported:
+For a Hugging Face dataset, use its URL:
 
 ```text
 /connect https://huggingface.co/datasets/nyu-mll/glue/viewer/sst2/train
 ```
 
-When a dataset has multiple configurations, TabulaFlow asks you to choose one.
-Add `/viewer/<subset>/<split>` to the URL when you want to select both
-explicitly.
+If the dataset has multiple configurations, TabulaFlow asks you to choose one.
+Add `/viewer/<subset>/<split>` to select both in the URL.
 
 ## Source safety and the workspace
 
-Every connected source is read-only. The agent can query it but cannot run
-write statements against it. Derived tables, combined data, and extracted
-records are written to the built-in local DuckDB workspace instead.
+Connected sources are read-only. TabulaFlow writes derived tables, combined
+data, and extracted records to its local DuckDB workspace.
 
 <figure class="media-placeholder media-placeholder--diagram" aria-label="Placeholder for a diagram explaining a cross-source join in the local workspace">
   <div class="media-placeholder__content">
@@ -93,19 +89,19 @@ records are written to the built-in local DuckDB workspace instead.
   <figcaption>Production placeholder · Mark both external sources as read-only and the workspace as writable.</figcaption>
 </figure>
 
-Sources connected under separate aliases cannot be joined directly. Ask the
-agent to combine them in the workspace.
+To join sources with different aliases, ask the agent to combine them in the
+workspace.
 
 ## Credentials
 
-Prefer environment variables, cloud-provider configuration, or your database
-driver's credential mechanism. Avoid putting passwords in shell history,
-committed files, prompts, or issue reports. If a URL must contain credentials,
-percent-encode reserved characters and use a least-privilege read-only account.
+Use environment variables, cloud-provider configuration, or your driver's
+credential store. Keep passwords out of shell history, committed files,
+prompts, and issue reports. If a URL must contain credentials, percent-encode
+reserved characters and use a least-privilege read-only account.
 
-Content needed to answer a prompt may be sent to the configured model provider.
-See [Security and privacy](../reference/security-and-privacy.md) before
-connecting sensitive data.
+TabulaFlow may send content needed for a prompt to your model provider. Review
+[Security and privacy](../reference/security-and-privacy.md) before connecting
+sensitive data.
 
 ## Disconnect a source
 
@@ -113,5 +109,5 @@ connecting sensitive data.
 /disconnect warehouse
 ```
 
-Run `/disconnect` without a name when exactly one user source is connected.
-The built-in workspace cannot be disconnected.
+If only one user source is connected, you can omit its name. You cannot
+disconnect the built-in workspace.

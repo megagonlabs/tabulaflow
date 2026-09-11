@@ -1,13 +1,13 @@
 # Quick start
 
-Install the Data Agent and complete a first workflow with its bundled sample
-data. The setup takes only a few minutes.
+Install the Data Agent, then try your first workflow with the bundled sample
+data.
 
 ## 1. Install TabulaFlow
 
-TabulaFlow requires Python 3.11 or later and supports macOS and Linux.
-[`uv`](https://docs.astral.sh/uv/) is recommended because it installs the
-command in an isolated environment.
+TabulaFlow requires Python 3.11 or later and supports macOS and Linux. We
+recommend [`uv`](https://docs.astral.sh/uv/) because it keeps the command in an
+isolated environment.
 
 === "uv (recommended)"
 
@@ -37,13 +37,12 @@ Install Chromium if you want the agent to browse the web:
     playwright install chromium
     ```
 
-The browser runtime is optional. Database queries, local file analysis, and
-other workflows do not require it.
+Skip this step if you do not need web browsing. Database and local-file
+workflows do not use Chromium.
 
 ## 2. Configure a model provider
 
-Set a key for OpenAI or Anthropic in the shell where you will launch
-TabulaFlow:
+Set an OpenAI or Anthropic key in the shell where you will launch TabulaFlow:
 
 === "OpenAI"
 
@@ -57,38 +56,36 @@ TabulaFlow:
     export ANTHROPIC_API_KEY="your-api-key"
     ```
 
-When no model preference has been saved, TabulaFlow selects a balanced preset
-from the credentials it detects. Use `/config` inside the app to choose a
-different preset or disable the LLM.
+TabulaFlow uses a balanced preset for the first provider it detects. Run
+`/config` in the app to choose another preset or turn the LLM off.
 
-Without a supported key, the app still starts and lets you connect and inspect
-data, but conversational analysis remains unavailable.
+Without a key, you can still connect and inspect data, but you cannot use
+conversational analysis.
 
 ## 3. Launch in your project
 
-Run TabulaFlow from the directory where it should work:
+Open the project directory where you want TabulaFlow to work:
 
 ```bash
 cd /path/to/your/project
 tabulaflow
 ```
 
-Relative file paths and file-tool operations resolve from this directory. The
-Data Agent can also run shell commands there, so use a trusted project and
-review requests before giving it access to sensitive credentials or files.
+TabulaFlow resolves relative paths from this directory and can run shell
+commands there. Use a trusted project and least-privilege credentials.
 
 ## 4. Run the sample workflow
 
-When no user source is connected, TabulaFlow automatically connects a small
-sample database. Ask:
+TabulaFlow connects a small sample database when you have not added a source.
+Ask:
 
 ```text
 Using the sample data, show the five merchants with the highest total spend as
 a bar chart.
 ```
 
-The agent inspects the sample schema, computes the result, and opens an
-interactive chart with the underlying rows and query available behind it.
+The result opens as an interactive chart. You can also inspect its data and
+query.
 
 <figure class="media-placeholder media-placeholder--screenshot" aria-label="Placeholder for an annotated screenshot of the completed sample workflow">
   <div class="media-placeholder__content">
@@ -101,11 +98,10 @@ interactive chart with the underlying rows and query available behind it.
 
 ## Next steps
 
-- Browse [Examples](examples.md) for more analysis, extraction, map, and graph
-  workflows.
-- Use [Connecting data](connecting-data.md) to add a file, database, or public
+- Try more analysis, extraction, map, and graph workflows in
+  [Examples](examples.md).
+- [Connect your data](connecting-data.md) from a file, database, or public
   dataset.
-- Open [Configuration](configuration.md) to select models and tune runtime
-  behavior.
+- Use [Configuration](configuration.md) to select a model or tune the runtime.
 - See [Troubleshooting](../reference/troubleshooting.md) if installation,
   credentials, or browser startup fails.

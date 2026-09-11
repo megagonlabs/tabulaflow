@@ -1,8 +1,7 @@
 # Examples
 
-Start with the bundled sample data or adapt these prompts to your own sources.
-Each example asks for an outcome rather than prescribing individual tool calls;
-the Data Agent inspects the data and chooses the necessary workflow.
+Try these prompts with the bundled sample data, or adapt them to your own
+sources. Describe the result you want; the Data Agent will choose the workflow.
 
 ## Compare spending by merchant
 
@@ -13,8 +12,7 @@ Using the sample data, show the five merchants with the highest total spend as
 a bar chart.
 ```
 
-The result opens as an interactive chart. Its data and generated query remain
-available in the same result card.
+The result card includes the chart, its data, and the generated query.
 
 ## Evaluate model performance
 
@@ -25,7 +23,7 @@ Using the model evaluation results, calculate accuracy by domain, sort from
 highest to lowest, and show the result as a bar chart.
 ```
 
-This combines a grouped accuracy calculation with a presentation-ready result.
+This prompt calculates grouped accuracy and presents the result in one step.
 
 ## Extract data from receipts
 
@@ -37,8 +35,8 @@ receipt in the sample expense documents. Preserve the result as a workspace
 table and show me the completed dataset.
 ```
 
-The agent reads the receipt images, extracts one structured record per
-document, and writes the dataset to the local workspace.
+The agent extracts one record per receipt and saves the dataset in your local
+workspace.
 
 ## Combine multiple sources
 
@@ -49,8 +47,8 @@ Combine the account records in customers.csv with monthly revenue from the
 warehouse and show revenue by customer segment.
 ```
 
-Connected sources remain read-only. TabulaFlow moves the relevant data into its
-local workspace before joining it.
+TabulaFlow keeps both sources read-only and joins the relevant data in your
+local workspace.
 
 ## Build a dataset from the web
 
@@ -61,8 +59,8 @@ Build a table of the speakers on this conference website with their name,
 organization, role, and profile URL. Normalize organization names.
 ```
 
-The agent can browse pages, extract structured records, normalize entity names,
-and preserve the result as workspace tables.
+The agent browses the pages, extracts the records, normalizes organization
+names, and saves the result in your workspace.
 
 ## Map geographic boundaries
 
@@ -73,7 +71,7 @@ Using the NYC taxi zones in the sample data, draw the zone boundaries on a map,
 color them by borough, and include the zone name in the tooltip.
 ```
 
-The Data Agent can render points or WGS84 GeoJSON geometry returned by a query.
+Maps can display points or WGS84 GeoJSON geometry.
 
 ## Explore relationships
 
@@ -84,15 +82,11 @@ Show a graph of customers and the products they purchased. Size customer nodes
 by total spend and include order count in the tooltip.
 ```
 
-TabulaFlow can render explicit entities and relationships from graph databases
-or tabular query results.
+Graphs can use relationships from a graph database or tabular query.
 
 ## Adapt an example
 
-Use `/connect` to add your data, then replace the sample source and field names
-with the concepts in your own dataset. You do not need to know the exact schema
-before asking: tell the agent to inspect the source first when the relevant
-tables or columns are unclear.
+Use `/connect` to add your data, then replace the sample concepts with your
+own. If you do not know the schema, ask the agent to inspect the source first.
 
-Continue to [Connecting data](connecting-data.md) for supported source formats
-and connection syntax.
+See [Connecting data](connecting-data.md) for supported sources and syntax.
