@@ -398,6 +398,13 @@ body {
   background: rgba(255, 255, 255, 0.06);
 }
 
+.md-typeset .highlight:has(.md-code__button:hover)::before,
+.md-typeset .highlight:has(.md-code__button:hover)::after,
+.md-typeset .highlight:has(.md-code__button.focus-visible)::before,
+.md-typeset .highlight:has(.md-code__button.focus-visible)::after {
+  border-color: var(--tf-text);
+}
+
 .md-typeset .highlight:has(.md-code__button:hover)::after,
 .md-typeset .highlight:has(.md-code__button.focus-visible)::after {
   background: var(--tf-code-hover);
@@ -408,7 +415,7 @@ body {
   right: 19px;
   width: 7px;
   height: 12px;
-  border-color: var(--tf-text-dim);
+  border-color: var(--tf-text);
   border-width: 0 1.75px 1.75px 0;
   border-radius: 0;
   transform: rotate(45deg);
