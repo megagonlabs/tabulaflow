@@ -40,9 +40,9 @@ local files, public datasets, and the web.
 - **Parallel browser use.** TabulaFlow's browser harness lets agents interact
   with many web pages in parallel, including pages that require clicks and
   forms.
-- **Customization.** TabulaFlow's core is written in pure Python. Build your
-  own data application with components at any level, from data connectors to
-  agent tools.
+- **Customization.** The core of TabulaFlow is a library written in pure Python.
+  Build your own data application with components at any level, from data connectors
+  to agent tools.
 
 ## Build and research with TabulaFlow
 
