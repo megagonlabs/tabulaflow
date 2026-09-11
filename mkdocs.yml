@@ -67,3 +67,4 @@ extra_css:
 
 extra_javascript:
   - javascripts/toc-selection.js
+  - javascripts/copy-button.js

@@ -346,37 +346,42 @@ body {
   background: transparent;
 }
 
+.md-typeset .highlight::before,
 .md-typeset .highlight::after {
   position: absolute;
-  top: 14px;
-  right: 14px;
-  width: 16px;
-  height: 16px;
+  z-index: 2;
+  box-sizing: border-box;
+  width: 10px;
+  height: 10px;
   content: "";
-  background: var(--tf-text-dim);
-  -webkit-mask: var(--md-code-copy-icon) center / contain no-repeat;
-  mask: var(--md-code-copy-icon) center / contain no-repeat;
+  border: 1.5px solid var(--tf-text-dim);
+  border-radius: 3px;
   pointer-events: none;
+  transition: border-color 140ms ease;
 }
 
-.md-typeset .highlight:has(.md-code__nav)::after {
-  display: none;
+.md-typeset .highlight::before {
+  top: 20px;
+  right: 19px;
+}
+
+.md-typeset .highlight::after {
+  top: 16px;
+  right: 16px;
+  background: var(--tf-code-bg);
 }
 
 .md-typeset .md-code__button {
-  display: grid;
-  place-items: center;
-  width: 28px;
-  height: 28px;
+  position: relative;
+  width: 30px;
+  height: 30px;
   color: var(--tf-text-dim);
   border-radius: 6px;
   transition: color 140ms ease, background-color 140ms ease;
 }
 
 .md-typeset .md-code__button::after {
-  width: 16px;
-  height: 16px;
-  margin: 0;
+  content: none;
 }
 
 .md-typeset .md-code__button:hover,
@@ -387,6 +392,30 @@ body {
 
 .md-typeset .md-code__button--active {
   color: var(--tf-text) !important;
+}
+
+.md-typeset .md-code__button--failed {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.md-typeset .highlight:has(.md-code__button:hover)::after,
+.md-typeset .highlight:has(.md-code__button.focus-visible)::after {
+  background: var(--tf-code-hover);
+}
+
+.md-typeset .highlight:has(.md-code__button--active)::before {
+  top: 16px;
+  right: 19px;
+  width: 7px;
+  height: 12px;
+  border-color: var(--tf-text-dim);
+  border-width: 0 1.75px 1.75px 0;
+  border-radius: 0;
+  transform: rotate(45deg);
+}
+
+.md-typeset .highlight:has(.md-code__button--active)::after {
+  content: none;
 }
 
 .md-typeset .highlight .c,
