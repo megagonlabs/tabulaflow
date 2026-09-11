@@ -90,6 +90,15 @@ a bar chart.
 The agent inspects the sample schema, computes the result, and opens an
 interactive chart with the underlying rows and query available behind it.
 
+<figure class="media-placeholder media-placeholder--screenshot" aria-label="Placeholder for an annotated screenshot of the completed sample workflow">
+  <div class="media-placeholder__content">
+    <span class="media-placeholder__type">Annotated screenshot · 16:10</span>
+    <strong>Your first completed workflow</strong>
+    <span>Show the spending chart in the output pane and identify the Chart, Data, and Query views.</span>
+  </div>
+  <figcaption>Production placeholder · Supply concise alt text for the final image.</figcaption>
+</figure>
+
 ## Next steps
 
 - Browse [Examples](examples.md) for more analysis, extraction, map, and graph

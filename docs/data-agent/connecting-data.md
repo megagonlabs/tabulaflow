@@ -84,9 +84,17 @@ Every connected source is read-only. The agent can query it but cannot run
 write statements against it. Derived tables, combined data, and extracted
 records are written to the built-in local DuckDB workspace instead.
 
+<figure class="media-placeholder media-placeholder--diagram" aria-label="Placeholder for a diagram explaining a cross-source join in the local workspace">
+  <div class="media-placeholder__content">
+    <span class="media-placeholder__type">Diagram · wide</span>
+    <strong>Combine read-only sources in the workspace</strong>
+    <span>Show selected data flowing from customers.csv and a warehouse database into the local workspace, where the agent joins them and creates the result.</span>
+  </div>
+  <figcaption>Production placeholder · Mark both external sources as read-only and the workspace as writable.</figcaption>
+</figure>
+
 Sources connected under separate aliases cannot be joined directly. Ask the
-agent to combine them; it will copy the relevant data into the workspace and
-perform the join there.
+agent to combine them in the workspace.
 
 ## Credentials
 

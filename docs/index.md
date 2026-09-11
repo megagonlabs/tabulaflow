@@ -14,6 +14,15 @@ workflow.
 uv tool install tabulaflow
 ```
 
+<figure class="media-placeholder media-placeholder--video" aria-label="Placeholder for the TabulaFlow product demo video">
+  <div class="media-placeholder__content">
+    <span class="media-placeholder__type">Video · 16:9 · 20–30 seconds</span>
+    <strong>From question to interactive result</strong>
+    <span>Show a user entering a request, the agent working, the completed chart, and the Chart, Data, and Query views.</span>
+  </div>
+  <figcaption>Production placeholder · Include captions and a text transcript.</figcaption>
+</figure>
+
 ## Choose how you use TabulaFlow
 
 ### Data Agent
@@ -53,9 +62,17 @@ workflows.
 
 ## How data flows
 
-Connected sources are read-only. TabulaFlow queries them in place when
-possible, then writes derived or combined data to a session-local DuckDB
-workspace. This keeps source data separate from the tables the agent creates.
+Connected sources remain read-only, while derived and combined data is written
+to a session-local DuckDB workspace.
+
+<figure class="media-placeholder media-placeholder--diagram" aria-label="Placeholder for a diagram explaining how data flows through TabulaFlow">
+  <div class="media-placeholder__content">
+    <span class="media-placeholder__type">Diagram · wide</span>
+    <strong>How data flows through TabulaFlow</strong>
+    <span>Show the user request entering the Data Agent, read-only connections to external sources, writes to the local workspace, optional model-provider context, and table, chart, map, or graph outputs.</span>
+  </div>
+  <figcaption>Production placeholder · Provide an equivalent text description.</figcaption>
+</figure>
 
 Prompts and relevant tool results may be sent to your configured model
 provider. TabulaFlow sends no telemetry to Megagon Labs. Review
