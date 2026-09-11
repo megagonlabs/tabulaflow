@@ -276,6 +276,7 @@ body {
 }
 
 .md-typeset .highlight {
+  position: relative;
   margin: 1em 0;
   overflow: hidden;
   background: var(--tf-code-bg);
@@ -320,6 +321,11 @@ body {
 }
 
 .js .md-typeset .tabbed-set .tabbed-labels::before {
+  display: none;
+}
+
+.js .md-typeset .tabbed-set[style*="--md-indicator-width"] .tabbed-labels::before {
+  display: block;
   background: var(--tf-accent);
 }
 
@@ -333,15 +339,33 @@ body {
   border-radius: 0;
 }
 
-.md-typeset .md-code__nav,
-.md-typeset .highlight:hover .md-code__nav {
+.md-typeset .md-code__nav {
   top: 7px;
   right: 7px;
   padding: 0;
   background: transparent;
 }
 
+.md-typeset .highlight::after {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 16px;
+  height: 16px;
+  content: "";
+  background: var(--tf-text-dim);
+  -webkit-mask: var(--md-code-copy-icon) center / contain no-repeat;
+  mask: var(--md-code-copy-icon) center / contain no-repeat;
+  pointer-events: none;
+}
+
+.md-typeset .highlight:has(.md-code__nav)::after {
+  display: none;
+}
+
 .md-typeset .md-code__button {
+  display: grid;
+  place-items: center;
   width: 28px;
   height: 28px;
   color: var(--tf-text-dim);
@@ -352,6 +376,7 @@ body {
 .md-typeset .md-code__button::after {
   width: 16px;
   height: 16px;
+  margin: 0;
 }
 
 .md-typeset .md-code__button:hover,
@@ -474,15 +499,21 @@ body {
 }
 
 .md-sidebar__scrollwrap {
+  scrollbar-color: transparent transparent;
+}
+
+.md-sidebar__scrollwrap::-webkit-scrollbar-thumb {
+  background-color: transparent;
+}
+
+.md-sidebar__scrollwrap:hover {
   scrollbar-color: var(--tf-text-dim) transparent;
 }
 
-.md-sidebar__scrollwrap:focus-within::-webkit-scrollbar-thumb,
 .md-sidebar__scrollwrap:hover::-webkit-scrollbar-thumb {
   background-color: var(--tf-text-dim);
 }
 
-.md-sidebar__scrollwrap:focus-within::-webkit-scrollbar-thumb:hover,
 .md-sidebar__scrollwrap:hover::-webkit-scrollbar-thumb:hover {
   background-color: var(--tf-text-muted);
 }
