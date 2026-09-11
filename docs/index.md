@@ -19,8 +19,8 @@ library with clean, minimal building blocks for modern data agents, from data
 connectors to agent tools. You can use them to create agents and applications
 tailored to your needs. [Explore the library →](python-library/index.md)
 
-TabulaFlow also includes a research toolkit for running experiments and
-evaluating results on text-to-SQL and text-to-Cypher benchmarks such as Spider
+TabulaFlow also includes a research toolkit for rapid, large-scale
+experimentation on text-to-SQL and text-to-Cypher benchmarks such as Spider
 2.0, CypherBench, and ARCS. [Explore the toolkit →](research-toolkit/index.md)
 
 <figure class="media-placeholder media-placeholder--video" aria-label="Placeholder for the TabulaFlow product demo video">
