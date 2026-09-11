@@ -19,28 +19,26 @@ interactively.
 
 ## How is TabulaFlow different?
 
-General-purpose coding agents are built around files, but TabulaFlow treats
+General-purpose coding agents (e.g. Claude Code) are built around files, but TabulaFlow treats
 tables as first-class citizens, as its name suggests. We design its table-native
 agent harness for tasks that existing agents are not built to handle.
 
-Many database-focused data agents translate a question into a query and return
-an answer or chart. TabulaFlow supports broader workflows across databases,
-local files, documents, public datasets, and the web. It can preserve the
-results as reusable tables instead of stopping at a chat response.
+Many database-focused data agents (e.g. Chat2DB), translate a question into a SQL query and return an
+answer or chart. TabulaFlow supports broader workflows across databases including graph databases, local
+files, documents, public datasets, and the web.
 
+- **Interactive visualization.** Create charts, maps, and relationship graphs.
+We further support interactive artifacts backed by queryable, parameterized data, including Neo4j graphs.
+- **Multimodal data browsing** Images and pdfs inside tables are natively supported for agents and human data browsing.
 - **Large-scale dataset construction.** Combine multiple sources and turn
-  unstructured web pages, documents, and images into structured, normalized
-  datasets with thousands of rows.
-- **Parallel semantic transformations.** Enrich tables with new columns by
+  unstructured web pages, documents into structured, normalized
+  table with thousands of rows.
+- **Parallel semantic operations.** Enrich tables with new columns by
   coordinating thousands of row-wise subagents in parallel.
-- **Parallel browser interaction.** Use a real browser to interact with many
-  web pages in parallel, including pages that require clicks, forms, and other
-  in-page actions rather than static page access.
-- **Interactive visualization.** Create charts, maps, and relationship graphs
-  backed by queryable, parameterized data, including graph exploration for
-  Neo4j results.
-- **Customization.** Build or customize your own data agent with TabulaFlow's
-  clean, minimal Python library, from data connectors to agent tools.
+- **Parallel browser use.**  Our custom browser harness allow agent to interact with many
+  web pages in parallel, including pages that require clicks and forms.
+- **Customization.** The core of tabulaflow is written in pure Python. You can build your own data application
+using any abstraction level from data connectors to agent tools.
 
 ## What can the Data Agent do?
 
