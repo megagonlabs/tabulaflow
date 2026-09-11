@@ -8,6 +8,7 @@
     --text: #e4e4e7;
     --text-muted: #9aa4b2;
     --text-dim: #6a737d;
+    --code-text: #E0E0E0;
     --code-function: #9ABEC7;
     --popover-bg: #14171c;
     --popover-border: #2c3038;
@@ -863,7 +864,7 @@ body { margin: 0; background: var(--bg); color: var(--text); display: flex; flex
 .tf-graph-popup th { color: var(--text-muted); font-weight: 600; white-space: nowrap; }
 
 /* Shared highlighted code card. */
-.query-card { background: var(--query-bg); color: var(--text); }
+.query-card { background: var(--query-bg); color: var(--code-text); }
 .code-card { position: relative; border-radius: 10px; overflow: hidden; background: var(--query-bg); }
 .code-card::after { content: ""; position: absolute; inset: 0; pointer-events: none; border-radius: inherit;
                     box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.03); }
@@ -890,5 +891,6 @@ body { margin: 0; background: var(--bg); color: var(--text); display: flex; flex
 .code-card .highlight { margin: 0; background: var(--query-bg) !important; }
 .code-card .highlight pre { margin: 0; padding: 18px 20px 20px; border: 0; border-radius: 0;
                              white-space: pre-wrap; word-break: break-word; overflow-x: auto;
-                             background: var(--query-bg) !important; font: 13px/1.5 var(--font-mono);
+                             background: var(--query-bg) !important; color: var(--code-text);
+                             font: 13px/1.5 var(--font-mono);
                              line-height: 1.5 !important; }
