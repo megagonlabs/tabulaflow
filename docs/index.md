@@ -4,24 +4,9 @@ TabulaFlow is an open-source data agent built on a modular Python library.
 
 Think of it as Claude Code for data: describe in natural language what you want
 to analyze, transform, or visualize across databases, spreadsheets and other
-local files, public datasets, and the web.
-
-General-purpose coding agents are built around files, but TabulaFlow treats
-tables as first-class citizens, as its name suggests. We design its table-native
-agent harness for tasks that existing agents are not built to handle. It can
-construct structured, normalized datasets with thousands of rows through deep
-research across web pages, enrich tables with new columns by coordinating
-thousands of row-wise subagents in parallel, and create interactive visual
-artifacts such as charts and maps.
-
-We build TabulaFlow not only as an end-user application but also as a Python
-library with clean, minimal building blocks for modern data agents, from data
-connectors to agent tools. You can use them to create agents and applications
-tailored to your needs. [Explore the library →](python-library/index.md)
-
-TabulaFlow also includes a research toolkit for rapid, large-scale
-experimentation on text-to-SQL and text-to-Cypher benchmarks such as Spider
-2.0, CypherBench, and ARCS. [Explore the toolkit →](research-toolkit/index.md)
+local files, public datasets, and the web. Like a general-purpose coding agent,
+it can also write code, work with files, run shell commands, and browse the web
+interactively.
 
 <figure class="media-placeholder media-placeholder--video" aria-label="Placeholder for the TabulaFlow product demo video">
   <div class="media-placeholder__content">
@@ -32,19 +17,60 @@ experimentation on text-to-SQL and text-to-Cypher benchmarks such as Spider
   <figcaption>Production placeholder · Include captions and a text transcript.</figcaption>
 </figure>
 
-## What the Data Agent can do
+## How is TabulaFlow different?
 
-- Query SQL databases, Neo4j graphs, SPARQL endpoints, and local files.
-- Inspect schemas and representative values before running an analysis.
-- Combine data from separate sources in a writable local workspace.
-- Gather and structure records from web pages, documents, images, and PDFs.
-- Apply semantic operations such as classification, extraction, and entity
-  matching across many rows.
-- Present results as interactive tables, charts, maps, and graphs.
+General-purpose coding agents are built around files, but TabulaFlow treats
+tables as first-class citizens, as its name suggests. We design its table-native
+agent harness for tasks that existing agents are not built to handle.
+
+Many database-focused data agents translate a question into a query and return
+an answer or chart. TabulaFlow supports broader workflows across databases,
+local files, documents, public datasets, and the web. It can preserve the
+results as reusable tables instead of stopping at a chat response.
+
+- **Large-scale dataset construction.** Combine multiple sources and turn
+  unstructured web pages, documents, and images into structured, normalized
+  datasets with thousands of rows.
+- **Parallel semantic transformations.** Enrich tables with new columns by
+  coordinating thousands of row-wise subagents in parallel.
+- **Parallel browser interaction.** Use a real browser to interact with many
+  web pages in parallel, including pages that require clicks, forms, and other
+  in-page actions rather than static page access.
+- **Interactive visualization.** Create charts, maps, and relationship graphs
+  backed by queryable, parameterized data, including graph exploration for
+  Neo4j results.
+- **Customization.** Build or customize your own data agent with TabulaFlow's
+  clean, minimal Python library, from data connectors to agent tools.
+
+## What can the Data Agent do?
+
+- Connect and query SQL databases, Neo4j graphs, SPARQL endpoints, public
+  datasets, spreadsheets, and other local files.
+- Inspect schemas, explore representative values, and combine separate sources
+  in a writable local workspace.
+- Analyze and enrich tables with operations such as classification, extraction,
+  and entity matching.
+- Gather records from web pages and documents, then present the results as
+  interactive tables, charts, maps, or graphs.
 
 See [Examples](data-agent/examples.md) for prompts you can try or adapt.
 
-## How data flows
+## Build and research with TabulaFlow
+
+### Python Library
+
+We build TabulaFlow not only as an end-user application but also as a Python
+library with clean, minimal building blocks for modern data agents, from data
+connectors to agent tools. You can use them to create agents and applications
+tailored to your needs. [Explore the library →](python-library/index.md)
+
+### Research Toolkit
+
+TabulaFlow also includes a research toolkit for rapid, large-scale
+experimentation on text-to-SQL and text-to-Cypher benchmarks such as Spider
+2.0, CypherBench, and ARCS. [Explore the toolkit →](research-toolkit/index.md)
+
+## How TabulaFlow handles your data
 
 Connected sources remain read-only, while derived and combined data is written
 to a session-local DuckDB workspace.
