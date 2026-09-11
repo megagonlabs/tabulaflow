@@ -30,28 +30,29 @@ local files, public datasets, and the web.
 
 - **Interactive visualization.** Create charts, maps, and relationship graphs
   backed by queryable, parameterized data, including graphs from Neo4j.
-- **Multimodal data browsing.** Browse images and PDFs directly inside tables,
-  or ask an agent to analyze them alongside the other data.
+- **Multimodal data browsing.** Browse images, PDFs and other media directly
+  inside tables, or ask an agent to analyze them alongside the other data.
 - **Large-scale dataset construction.** Combine multiple sources and turn
   unstructured web pages and documents into structured, normalized tables with
   thousands of rows.
 - **Parallel semantic operations.** Enrich tables with new columns by
   coordinating thousands of row-wise subagents in parallel.
 - **Parallel browser use.** TabulaFlow's browser harness lets agents interact
-  with many web pages in parallel, including pages that require clicks and
-  forms.
-- **Customization.** The core of TabulaFlow is a library written in pure Python.
-  Build your own data application with components at any level, from data connectors
-  to agent tools.
+  with many web pages in parallel for complex deep research tasks, including
+  pages that require clicks and forms.
+- **Async-native Python library.** The core of TabulaFlow is a library written
+  in pure Python. Build your own data application with components at any level,
+  from data connectors to agent tools.
 
 ## Build and research with TabulaFlow
 
 ### Python Library
 
-We build TabulaFlow not only as an end-user application but also as a Python
-library with clean, minimal building blocks for modern data agents, from data
-connectors to agent tools. You can use them to create agents and applications
-tailored to your needs. [Explore the library →](python-library/index.md)
+We build TabulaFlow not only as an end-user application but also as an
+async-native Python library with clean, minimal building blocks for modern data
+agents, from data connectors to agent tools. You can use them to create agents
+and applications tailored to your needs.
+[Explore the library →](python-library/index.md)
 
 ### Research Toolkit
 
