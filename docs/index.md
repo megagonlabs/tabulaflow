@@ -3,7 +3,7 @@
 TabulaFlow is an open-source data agent built on a modular Python library.
 
 Think of it as Claude Code for data: describe in natural language what you want
-to analyze, transform, or visualize across databases, spreadsheets and other
+to analyze, visualize or transform across databases, spreadsheets and other
 local files, public datasets, and the web. Like a general-purpose coding agent,
 it can also write code, work with files, run shell commands, and browse the web
 interactively.
@@ -43,19 +43,6 @@ local files, public datasets, and the web.
 - **Customization.** TabulaFlow's core is written in pure Python. Build your
   own data application with components at any level, from data connectors to
   agent tools.
-
-## What can the Data Agent do?
-
-- Connect and query SQL databases, Neo4j graphs, SPARQL endpoints, public
-  datasets, spreadsheets, and other local files.
-- Inspect schemas, explore representative values, and combine separate sources
-  in a writable local workspace.
-- Analyze and enrich tables with operations such as classification, extraction,
-  and entity matching.
-- Gather records from web pages and documents, then present the results as
-  interactive tables, charts, maps, or graphs.
-
-See [Examples](data-agent/examples.md) for prompts you can try or adapt.
 
 ## Build and research with TabulaFlow
 
