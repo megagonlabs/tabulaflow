@@ -1,17 +1,25 @@
 # What is TabulaFlow?
 
-Turn questions into data workflows.
+TabulaFlow is an open-source data agent built on a modular Python library.
 
-TabulaFlow is an open-source data agent, Python library, and text-to-query
-research toolkit. Connect databases, files, public datasets, or the web. Then
-ask TabulaFlow to analyze, transform, and present the data.
+Think of it as Claude Code for data: describe in natural language what you want
+to analyze, transform, or visualize across databases, spreadsheets and other
+local files, public datasets, and the web.
 
-[Get started](data-agent/quick-start.md) ·
-[View on GitHub](https://github.com/megagonlabs/tabulaflow)
+General-purpose coding agents are built around files, but TabulaFlow treats
+tables as first-class citizens, as its name suggests. We design its table-native
+agent harness for tasks that existing agents are not built to handle. It can
+construct structured, normalized datasets with thousands of rows through deep
+research across web pages, enrich tables with new columns by coordinating
+thousands of row-wise subagents in parallel, and create interactive visual
+artifacts such as charts and maps.
 
-```bash
-uv tool install tabulaflow
-```
+We build TabulaFlow not only as an end-user application but also as a Python
+library with clean, minimal building blocks for modern data agents, from data
+connectors to agent tools. You can use them to create agents and applications
+tailored to your needs.
+TabulaFlow also includes a research toolkit for running experiments and
+evaluating results on text-to-query benchmarks such as Spider 2.0.
 
 <figure class="media-placeholder media-placeholder--video" aria-label="Placeholder for the TabulaFlow product demo video">
   <div class="media-placeholder__content">
