@@ -100,7 +100,7 @@ prompts, and issue reports. If a URL must contain credentials, percent-encode
 reserved characters and use a least-privilege read-only account.
 
 TabulaFlow may send content needed for a prompt to your model provider. Review
-[Security and privacy](../reference/security-and-privacy.md) before connecting
+your provider's data-handling and retention policies before connecting
 sensitive data.
 
 ## Disconnect a source

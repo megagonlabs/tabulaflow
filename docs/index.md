@@ -5,8 +5,7 @@ TabulaFlow is an open-source data agent built on a modular Python library.
 Think of it as Claude Code for data: describe in natural language what you want
 to analyze, visualize, or transform across databases, spreadsheets and other
 local files, public datasets, and the web. Like a general-purpose coding agent,
-it can also write code, work with files, run shell commands, and browse the web
-interactively.
+it can also write code, work with files, run shell commands, and browse the web.
 
 <figure class="media-placeholder media-placeholder--video" aria-label="Placeholder for the TabulaFlow product demo video">
   <div class="media-placeholder__content">
@@ -85,8 +84,8 @@ default. To export results to local files, simply ask the agent in natural
 language.
 
 TabulaFlow may send prompts and relevant tool results to your model provider.
-It sends no telemetry to Megagon Labs. Review [Security and
-privacy](reference/security-and-privacy.md) before using sensitive data.
+It sends no telemetry to Megagon Labs. Review your provider's data-handling and
+retention policies before using sensitive data.
 
 !!! warning "Trusted local agent"
     TabulaFlow is not a sandbox. File, shell, browser, and data tools run with

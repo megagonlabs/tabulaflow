@@ -119,5 +119,4 @@ TabulaFlow stores local state beneath `~/.tabulaflow/`:
 
 Where supported, session directories use permissions for the current user
 only. They may still contain prompts, results, and source data. Review them
-before sharing or disposing of a machine. See [Security and
-privacy](../reference/security-and-privacy.md).
+before sharing or disposing of a machine.

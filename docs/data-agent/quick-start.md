@@ -103,5 +103,3 @@ query.
 - [Connect your data](connecting-data.md) from a file, database, or public
   dataset.
 - Use [Configuration](configuration.md) to select a model or tune the runtime.
-- See [Troubleshooting](../reference/troubleshooting.md) if installation,
-  credentials, or browser startup fails.
