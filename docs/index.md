@@ -60,10 +60,14 @@ TabulaFlow also includes a research toolkit for rapid, large-scale
 experimentation on text-to-SQL and text-to-Cypher benchmarks such as Spider
 2.0, CypherBench, and ARCS. [Explore the toolkit →](research-toolkit/index.md)
 
-## How TabulaFlow handles your data
+## How does TabulaFlow work?
 
-Connected sources remain read-only, while derived and combined data is written
-to a session-local DuckDB workspace.
+The following diagram explains how TabulaFlow works on a SQLite database. 
+First, either the user (through `/connect`) or the agent (through tool calls) connect
+to the database using its url, which becomes registered under our data connector registry with an alias.
+The database schema is automatically introspected and provided to the agent, which the agent use it to write queries 
+to explore the database or fetch results. After results are fetched, agent can further attach a artifact spec (e.g. map spec) to
+the resuls tables, which is rendered to the end user.
 
 <figure class="media-placeholder media-placeholder--diagram" aria-label="Placeholder for a diagram explaining how data flows through TabulaFlow">
   <div class="media-placeholder__content">
