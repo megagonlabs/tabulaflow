@@ -3,7 +3,7 @@
 TabulaFlow is an open-source data agent built on a modular Python library.
 
 Think of it as Claude Code for data: describe in natural language what you want
-to analyze, visualize or transform across databases, spreadsheets and other
+to analyze, visualize, or transform across databases, spreadsheets and other
 local files, public datasets, and the web. Like a general-purpose coding agent,
 it can also write code, work with files, run shell commands, and browse the web
 interactively.
@@ -30,7 +30,7 @@ local files, public datasets, and the web.
 
 - **Interactive visualization.** Create charts, maps, and relationship graphs
   backed by queryable, parameterized data, including graphs from Neo4j.
-- **Multimodal data browsing.** Browse images, PDFs and other media directly
+- **Multimodal data browsing.** Browse images, PDFs, and other media directly
   inside tables, or ask an agent to analyze them alongside the other data.
 - **Large-scale dataset construction.** Combine multiple sources and turn
   unstructured web pages and documents into structured, normalized tables with
@@ -38,7 +38,7 @@ local files, public datasets, and the web.
 - **Parallel semantic operations.** Enrich tables with new columns by
   coordinating thousands of row-wise subagents in parallel.
 - **Parallel browser use.** TabulaFlow's browser harness lets agents interact
-  with many web pages in parallel for complex deep research tasks, including
+  with many web pages in parallel during complex deep research tasks, including
   pages that require clicks and forms.
 - **Async-native Python library.** The core of TabulaFlow is a library written
   in pure Python. Build your own data application with components at any level,
@@ -62,21 +62,23 @@ experimentation on text-to-SQL and text-to-Cypher benchmarks such as Spider
 
 ## How does TabulaFlow work?
 
-The following diagram explains how TabulaFlow works on a SQLite database. 
-First, either the user (through `/connect`) or the agent (through tool calls) connect
-to the database using its url, which becomes registered under our data connector registry with an alias.
-The database schema is automatically introspected and provided to the agent, which the agent use it to write queries 
-to explore the database or fetch results. After results are fetched, agent can further attach a artifact spec (e.g. map spec) to
-the resuls tables, which is rendered to the end user.
+The diagram below shows how TabulaFlow works, using SQLite as an example. You
+can connect the database with `/connect`, or the agent can connect it through a
+tool call. TabulaFlow registers the connection under an alias and makes the
+schema available to the agent. The agent can then execute queries, save
+intermediate results to a local workspace for row-wise semantic processing, and
+attach visualization specifications to render charts, maps and graphs.
 
-<figure class="media-placeholder media-placeholder--diagram" aria-label="Placeholder for a diagram explaining how data flows through TabulaFlow">
+<figure class="media-placeholder media-placeholder--diagram" aria-label="Placeholder for a diagram showing how TabulaFlow works, using SQLite as an example">
   <div class="media-placeholder__content">
     <span class="media-placeholder__type">Diagram · wide</span>
-    <strong>How data flows through TabulaFlow</strong>
-    <span>Show the user request entering the Data Agent, read-only connections to external sources, writes to the local workspace, optional model-provider context, and table, chart, map, or graph outputs.</span>
+    <strong>From database connection to interactive result</strong>
+    <span>Show a user or agent connecting a SQLite URL, registration under an alias, schema introspection, queries against the read-only source, optional derived data in the local workspace, and a result table rendered from a visualization specification.</span>
   </div>
   <figcaption>Production placeholder · Provide an equivalent text description.</figcaption>
 </figure>
+
+By default 
 
 TabulaFlow may send prompts and relevant tool results to your model provider.
 It sends no telemetry to Megagon Labs. Review [Security and
