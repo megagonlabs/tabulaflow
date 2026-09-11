@@ -306,8 +306,10 @@ body {
 .md-typeset .tabbed-set .tabbed-labels > label {
   display: flex;
   align-items: center;
+  justify-content: center;
+  width: 64px;
   height: 36px;
-  padding: 0 16px;
+  padding: 0;
   color: var(--tf-text-muted);
   font-size: 13px;
   line-height: 1.2;
