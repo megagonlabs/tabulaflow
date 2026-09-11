@@ -19,15 +19,14 @@ interactively.
 
 ## How is TabulaFlow different?
 
-General-purpose coding agents such as Claude Code are built around files, but
+General-purpose coding agents (e.g., Claude Code) are built around files, but
 TabulaFlow treats tables as first-class citizens, as its name suggests. We
-design its table-native agent harness for tasks that existing agents are not
-built to handle.
+design TabulaFlow around a table-native agent harness for tasks that existing
+agents are not built to handle.
 
-Many database-focused data agents, such as Chat2DB, translate a question into
-SQL and return an answer or chart. TabulaFlow supports broader workflows across
-relational and graph databases, local files, documents, public datasets, and
-the web.
+Many database-focused data agents (e.g., Chat2DB) focus on SQL generation.
+TabulaFlow supports broader workflows across relational and graph databases,
+local files, public datasets, and the web.
 
 - **Interactive visualization.** Create charts, maps, and relationship graphs
   backed by queryable, parameterized data, including graphs from Neo4j.
