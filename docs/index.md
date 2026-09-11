@@ -67,7 +67,7 @@ can connect the database with `/connect`, or the agent can connect it through a
 tool call. TabulaFlow registers the connection under an alias and makes the
 schema available to the agent. The agent can then execute queries, save
 intermediate results to a local workspace for row-wise semantic processing, and
-attach visualization specifications to render charts, maps and graphs.
+attach visualization specifications to render charts, maps, and graphs.
 
 <figure class="media-placeholder media-placeholder--diagram" aria-label="Placeholder for a diagram showing how TabulaFlow works, using SQLite as an example">
   <div class="media-placeholder__content">
@@ -78,7 +78,11 @@ attach visualization specifications to render charts, maps and graphs.
   <figcaption>Production placeholder · Provide an equivalent text description.</figcaption>
 </figure>
 
-By default 
+Connected sources are read-only. To complete a task, the agent can transform
+tables in a local workspace and keep intermediate files in a temporary scratch
+directory, so your source data and project directory remain unchanged by
+default. To export results to local files, simply ask the agent in natural
+language.
 
 TabulaFlow may send prompts and relevant tool results to your model provider.
 It sends no telemetry to Megagon Labs. Review [Security and
