@@ -123,7 +123,6 @@ tool when security matters.
       <div class="artifact-chart" aria-hidden="true">
         <span></span><span></span><span></span>
       </div>
-      <span class="artifact-caption">Interactive result</span>
     </div>
   </div>
 </figure>

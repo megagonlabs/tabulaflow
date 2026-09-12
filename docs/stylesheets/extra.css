@@ -1163,11 +1163,6 @@ body {
   height: 1.5rem;
 }
 
-.md-typeset .artifact-caption {
-  color: var(--tf-text-dim);
-  font-size: 0.53rem;
-}
-
 .md-typeset table:not([class]) {
   background: var(--tf-card);
   border-color: var(--tf-border);
