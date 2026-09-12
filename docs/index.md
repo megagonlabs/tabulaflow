@@ -72,7 +72,7 @@ This enables a fully in-memory agentic data workflow without exposing a shell
 tool when security matters.
 
 <figure class="workflow-diagram">
-  <img src="assets/tabulaflow-workflow.svg" alt="A user command or agent tool call registers a read-only SQLite database under an alias. The Data Agent uses its schema, executes queries, optionally processes data in a local workspace, attaches a visualization specification to the result table, and renders an interactive output. Intermediate files stay in a scratch directory, and project files are written only when requested.">
+  <img src="assets/tabulaflow-workflow.svg" alt="A user or agent connects a SQLite database to the data connector registry. Executing a query creates a result table, and attaching a visualization specification creates an interactive chart, map, or graph artifact.">
   <figcaption>From a database connection to an interactive result.</figcaption>
 </figure>
 
