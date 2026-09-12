@@ -19,5 +19,5 @@ tabulaflow benchmark download cypherbench
 ```
 
 Setup differs by benchmark. You may need a local dataset, Docker, or cloud
-credentials. Check [Benchmarks and datasets](benchmarks-and-datasets.md) before
+credentials. Check [Benchmarks](benchmarks.md) before
 you begin.

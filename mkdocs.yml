@@ -49,13 +49,20 @@ nav:
   - TabulaFlow as a Python Library:
       - Overview: python-library/index.md
       - Quick start: python-library/quick-start.md
+      - Concepts: python-library/concepts.md
+      - Working with data: python-library/working-with-data.md
+      - Building agents: python-library/building-agents.md
+      - Presenting results: python-library/presenting-results.md
       - API reference: python-library/api-reference.md
   - TabulaFlow for AI Researchers:
       - Overview: research-toolkit/index.md
       - Quick start: research-toolkit/quick-start.md
-      - Benchmarks and datasets: research-toolkit/benchmarks-and-datasets.md
+      - Benchmarks: research-toolkit/benchmarks.md
       - Running experiments: research-toolkit/running-experiments.md
       - Evaluation: research-toolkit/evaluation.md
+      - Custom agents: research-toolkit/custom-agents.md
+      - Custom benchmarks and metrics: research-toolkit/custom-benchmarks-and-metrics.md
+      - API reference: research-toolkit/api-reference.md
 
 plugins:
   - search

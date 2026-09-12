@@ -12,5 +12,4 @@ List the registered research benchmarks:
 tabulaflow benchmark list
 ```
 
-Before you run an experiment, check its setup in [Benchmarks and
-datasets](benchmarks-and-datasets.md).
+Before you run an experiment, check its setup in [Benchmarks](benchmarks.md).
