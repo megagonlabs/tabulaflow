@@ -96,8 +96,11 @@ tool when security matters.
       </div>
     </div>
     <div class="flow-link flow-link--down">
-      <code><span>run_query</span></code>
-      <span class="flow-arrow" aria-hidden="true"><svg viewBox="0 0 100 100" preserveAspectRatio="none"><path d="M50 0V68H100"></path></svg></span>
+      <span class="flow-arrow" aria-hidden="true"><svg viewBox="0 0 100 100" preserveAspectRatio="none"><path d="M40 14V62H92"></path></svg></span>
+      <div class="flow-call" aria-hidden="true">
+        <svg class="agent-icon" viewBox="0 0 24 24"><path d="M12 4V2M9.5 2h5M7 7h10a3 3 0 0 1 3 3v6a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3v-6a3 3 0 0 1 3-3Z"></path><path d="M8.5 12h.01M15.5 12h.01M9 16h6"></path></svg>
+        <code><strong>run_query</strong><span><span class="syntax-keyword">SELECT</span> * <span class="syntax-keyword">FROM</span> <span class="syntax-name">merchant_totals</span></span></code>
+      </div>
     </div>
     <div class="flow-stage table-stage">
       <span class="flow-label">Result table</span>
@@ -109,8 +112,11 @@ tool when security matters.
       </div>
     </div>
     <div class="flow-link flow-link--up">
-      <code><span>render_chart</span></code>
-      <span class="flow-arrow" aria-hidden="true"><svg viewBox="0 0 100 100" preserveAspectRatio="none"><path d="M0 68H50V0"></path></svg></span>
+      <span class="flow-arrow" aria-hidden="true"><svg viewBox="0 0 100 100" preserveAspectRatio="none"><path d="M8 62H60V14"></path></svg></span>
+      <div class="flow-call" aria-hidden="true">
+        <svg class="agent-icon" viewBox="0 0 24 24"><path d="M12 4V2M9.5 2h5M7 7h10a3 3 0 0 1 3 3v6a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3v-6a3 3 0 0 1 3-3Z"></path><path d="M8.5 12h.01M15.5 12h.01M9 16h6"></path></svg>
+        <code><strong>render_chart</strong><span>{</span><span class="json-line"><span class="syntax-key">"mark"</span>: <span class="syntax-string">"bar"</span>,</span><span class="json-line"><span class="syntax-key">"x"</span>: <span class="syntax-string">"merchant"</span>,</span><span class="json-line"><span class="syntax-key">"y"</span>: <span class="syntax-string">"total"</span></span><span>}</span></code>
+      </div>
     </div>
     <div class="flow-stage chart-stage">
       <span class="flow-label">Artifact</span>
