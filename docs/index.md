@@ -76,7 +76,7 @@ This enables a fully in-memory agentic data workflow without exposing a shell
 tool when security matters.
 
 <figure class="process-diagram">
-  <div class="horizontal-flow" role="img" aria-label="The data connector registry contains SQLite, CSV, Hugging Face, and additional sources identified by aliases. The run_query tool executes SELECT * FROM merchant_totals to create a result table, and render_chart creates a bar chart artifact using merchant and total.">
+  <div class="horizontal-flow" role="img" aria-label="The data connector registry contains SQLite, CSV, Hugging Face, and additional sources identified by aliases. The run_query tool counts orders by channel to create a result table, and render_chart creates a donut chart artifact using channel and order count.">
     <div class="flow-stage source-stage">
       <span class="flow-label">Data connector registry</span>
       <div class="connector-list" aria-hidden="true">
@@ -99,29 +99,32 @@ tool when security matters.
       <span class="flow-arrow" aria-hidden="true"><svg viewBox="0 0 100 100" preserveAspectRatio="none"><path d="M40 14V62H92"></path></svg></span>
       <div class="flow-call" aria-hidden="true">
         <svg class="agent-icon" viewBox="0 0 24 24"><path d="M12 4V2M9.5 2h5M7 7h10a3 3 0 0 1 3 3v6a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3v-6a3 3 0 0 1 3-3Z"></path><path d="M8.5 12h.01M15.5 12h.01M9 16h6"></path></svg>
-        <code><strong>run_query</strong><span><span class="syntax-keyword">SELECT</span> * <span class="syntax-keyword">FROM</span> <span class="syntax-name">merchant_totals</span></span></code>
+        <code><strong>run_query</strong><span><span class="syntax-keyword">SELECT</span> channel,</span><span class="sql-line"><span class="syntax-function">COUNT</span>(*) <span class="syntax-keyword">AS</span> orders</span><span><span class="syntax-keyword">FROM</span> <span class="syntax-name">orders</span></span><span><span class="syntax-keyword">GROUP BY</span> channel</span></code>
       </div>
     </div>
     <div class="flow-stage table-stage">
       <span class="flow-label">Result table</span>
       <div class="table-preview" aria-hidden="true">
-        <strong>merchant</strong><strong>total</strong>
-        <span>Acme Market</span><span>$1,240</span>
-        <span>City Cafe</span><span>$860</span>
-        <span>Northstar Books</span><span>$530</span>
+        <strong>channel</strong><strong>orders</strong>
+        <span>Online</span><span>1,240</span>
+        <span>In-store</span><span>860</span>
+        <span>Partner</span><span>530</span>
       </div>
     </div>
     <div class="flow-link flow-link--up">
       <span class="flow-arrow" aria-hidden="true"><svg viewBox="0 0 100 100" preserveAspectRatio="none"><path d="M8 62H60V14"></path></svg></span>
       <div class="flow-call" aria-hidden="true">
         <svg class="agent-icon" viewBox="0 0 24 24"><path d="M12 4V2M9.5 2h5M7 7h10a3 3 0 0 1 3 3v6a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3v-6a3 3 0 0 1 3-3Z"></path><path d="M8.5 12h.01M15.5 12h.01M9 16h6"></path></svg>
-        <code><strong>render_chart</strong><span>{</span><span class="json-line"><span class="syntax-key">"mark"</span>: <span class="syntax-string">"bar"</span>,</span><span class="json-line"><span class="syntax-key">"x"</span>: <span class="syntax-string">"merchant"</span>,</span><span class="json-line"><span class="syntax-key">"y"</span>: <span class="syntax-string">"total"</span></span><span>}</span></code>
+        <code><strong>render_chart</strong><span>{</span><span class="json-line"><span class="syntax-key">"mark"</span>: <span class="syntax-string">"arc"</span>,</span><span class="json-line"><span class="syntax-key">"theta"</span>: <span class="syntax-string">"orders"</span>,</span><span class="json-line"><span class="syntax-key">"color"</span>: <span class="syntax-string">"channel"</span></span><span>}</span></code>
       </div>
     </div>
     <div class="flow-stage chart-stage">
       <span class="flow-label">Artifact</span>
       <div class="artifact-chart" aria-hidden="true">
-        <span></span><span></span><span></span>
+        <div class="donut-plot">
+          <svg viewBox="0 0 42 42"><circle class="donut-track" cx="21" cy="21" r="16"></circle><circle class="donut-segment donut-segment--online" cx="21" cy="21" r="16" pathLength="100"></circle><circle class="donut-segment donut-segment--store" cx="21" cy="21" r="16" pathLength="100"></circle><circle class="donut-segment donut-segment--partner" cx="21" cy="21" r="16" pathLength="100"></circle><line class="donut-separator" x1="33.5" y1="21" x2="40.5" y2="21"></line><line class="donut-separator" x1="8.7" y1="23.3" x2="1.8" y2="24.5"></line><line class="donut-separator" x1="24.7" y1="9.1" x2="26.8" y2="2.4"></line></svg>
+        </div>
+        <div class="donut-legend"><span><i class="donut-swatch donut-swatch--online"></i>Online</span><span><i class="donut-swatch donut-swatch--store"></i>In-store</span><span><i class="donut-swatch donut-swatch--partner"></i>Partner</span></div>
       </div>
     </div>
   </div>
