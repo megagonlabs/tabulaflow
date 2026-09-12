@@ -77,12 +77,12 @@ tool when security matters.
       <span class="flow-label">Data connector registry</span>
       <div class="connector-list" aria-hidden="true">
         <div class="connector-entry">
-          <svg class="connector-icon" viewBox="0 0 24 24"><ellipse cx="12" cy="5.5" rx="7.5" ry="3"></ellipse><path d="M4.5 5.5v6c0 1.7 3.4 3 7.5 3s7.5-1.3 7.5-3v-6"></path><path d="M4.5 11.5v6c0 1.7 3.4 3 7.5 3s7.5-1.3 7.5-3v-6"></path></svg>
-          <span class="connector-copy"><strong>merchants</strong><code>sqlite:///merchants.sqlite</code></span>
+          <svg class="connector-icon" viewBox="0 0 24 24"><path d="M6 3.5h8l4 4v13H6z"></path><path d="M14 3.5v4h4M8.5 11h7M8.5 14.5h7M8.5 18h7M11 11v7"></path></svg>
+          <span class="connector-copy"><strong>merchants</strong><code>project/merchants.csv</code></span>
         </div>
         <div class="connector-entry">
-          <svg class="connector-icon" viewBox="0 0 24 24"><path d="M6 3.5h8l4 4v13H6z"></path><path d="M14 3.5v4h4M8.5 11h7M8.5 14.5h7M8.5 18h7M11 11v7"></path></svg>
-          <span class="connector-copy"><strong>orders</strong><code>project/orders.csv</code></span>
+          <svg class="connector-icon" viewBox="0 0 24 24"><ellipse cx="12" cy="5.5" rx="7.5" ry="3"></ellipse><path d="M4.5 5.5v6c0 1.7 3.4 3 7.5 3s7.5-1.3 7.5-3v-6"></path><path d="M4.5 11.5v6c0 1.7 3.4 3 7.5 3s7.5-1.3 7.5-3v-6"></path></svg>
+          <span class="connector-copy"><strong>orders</strong><code>sqlite:///orders.sqlite</code></span>
         </div>
         <div class="connector-entry">
           <svg class="connector-icon" viewBox="0 0 24 24"><circle cx="12" cy="9.5" r="5.5"></circle><path d="M9.5 9h.01M14.5 9h.01M9.5 12c1.4 1.3 3.6 1.3 5 0M7.3 14c-2.2-.8-4.3.3-5.3 2.3M16.7 14c2.2-.8 4.3.3 5.3 2.3M2 16.3l3.2 3M22 16.3l-3.2 3M5.2 19.3l2.6-2.1M18.8 19.3l-2.6-2.1"></path></svg>
@@ -92,7 +92,7 @@ tool when security matters.
       </div>
     </div>
     <div class="flow-link">
-      <code><span>run_query(</span><span>SELECT * FROM</span><span>merchant_totals)</span></code>
+      <code><span>run_query</span><span>SELECT * FROM</span><span>merchant_totals</span></code>
       <span class="flow-arrow" aria-hidden="true"></span>
     </div>
     <div class="flow-stage table-stage">
@@ -105,7 +105,7 @@ tool when security matters.
       </div>
     </div>
     <div class="flow-link">
-      <code><span>render_chart(</span><span>mark: bar</span><span>x: merchant</span><span>y: total)</span></code>
+      <code><span>render_chart</span><span>mark: bar</span><span>x: merchant</span><span>y: total</span></code>
       <span class="flow-arrow" aria-hidden="true"></span>
     </div>
     <div class="flow-stage chart-stage">
