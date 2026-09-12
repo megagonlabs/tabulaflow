@@ -67,10 +67,11 @@ Just like any coding agent, TabulaFlow is simply an LLM that calls a set of
 tools in a loop. The diagram below shows how TabulaFlow works in a simple
 chat-to-database scenario. You can connect a database with `/connect`, or the
 agent can connect it through a tool call. TabulaFlow registers the connection
-under an alias and makes the schema available to the agent. The agent can then
-execute queries to derive tables and attach visualization specifications to
-render charts, maps, and graphs. Finally, the agent presents one or multiple
-tables or visualization artifacts to the user by referencing their IDs.
+under an alias and constructs the schema so the agent can understand the
+database structure. The agent can then execute queries to derive tables and
+attach visualization specifications to render charts, maps, and graphs.
+Finally, the agent presents one or multiple tables or visualization artifacts
+to the user by referencing their IDs.
 This enables a fully in-memory agentic data workflow without exposing a shell
 tool when security matters.
 
