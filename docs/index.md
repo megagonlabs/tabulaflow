@@ -113,7 +113,7 @@ tool when security matters.
   <figcaption>From a database connection to an interactive result.</figcaption>
 </figure>
 
-Connected sources are read-only. To complete a task, the agent can transform
+Connected sources are read-only. When necessary, the agent can transform
 tables in a local workspace and keep intermediate files in a temporary scratch
 directory, so your source data and project directory remain unchanged by
 default. To export results to local files, simply ask the agent in natural
