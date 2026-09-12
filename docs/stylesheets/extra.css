@@ -570,7 +570,7 @@ body {
 }
 
 .md-typeset .process-diagram {
-  margin: 2rem 0 1.5rem;
+  margin: 1.25rem 0 0.75rem;
 }
 
 .md-typeset .data-pipeline {
@@ -794,23 +794,22 @@ body {
 .md-typeset .horizontal-flow {
   display: grid;
   grid-template-columns:
-    minmax(0, 0.72fr)
-    minmax(0, 1.1fr)
-    minmax(0, 0.72fr)
-    minmax(0, 1.35fr)
-    minmax(0, 0.78fr)
-    minmax(0, 1.1fr);
-  align-items: center;
+    minmax(0, 1.55fr)
+    minmax(0, 0.65fr)
+    minmax(0, 1.55fr)
+    minmax(0, 0.65fr)
+    minmax(0, 0.95fr);
+  align-items: start;
   width: 100%;
   min-width: 0;
-  min-height: 15rem;
-  padding: 1.5rem 0 1rem;
+  padding: 1.1rem 0 1rem;
 }
 
 .md-typeset .flow-link {
   display: flex;
   flex-direction: column;
   gap: 0.7rem;
+  align-self: center;
   justify-content: center;
   min-width: 0;
 }
@@ -869,95 +868,139 @@ body {
 }
 
 .md-typeset .source-stage {
-  position: relative;
-  justify-content: center;
-  height: 9rem;
+  gap: 0.7rem;
+  align-items: stretch;
+  padding-right: 0.35rem;
 }
 
 .md-typeset .source-stage > .flow-label {
-  position: absolute;
-  top: 0;
-  left: 50%;
-  transform: translateX(-50%);
+  display: block;
 }
 
-.md-typeset .source-symbol {
+.md-typeset .connector-list {
   position: relative;
-  width: 3.5rem;
-  height: 3.2rem;
-  border-right: 1.5px solid #526071;
-  border-bottom: 1.5px solid #526071;
-  border-left: 1.5px solid #526071;
-  border-radius: 0 0 50% 50% / 0 0 16% 16%;
+  display: grid;
+  gap: 0.28rem;
 }
 
-.md-typeset .source-symbol::before,
-.md-typeset .source-symbol::after {
+.md-typeset .connector-list::before {
   position: absolute;
-  left: -1.5px;
-  width: 3.5rem;
-  height: 0.78rem;
-  border: 1.5px solid #526071;
-  border-radius: 50%;
+  top: 0.75rem;
+  bottom: 0.75rem;
+  left: 0.66rem;
+  width: 1px;
+  background: #35404d;
   content: "";
 }
 
-.md-typeset .source-symbol::before {
-  top: -0.39rem;
-  background: var(--tf-bg);
+.md-typeset .connector-entry {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1.35rem minmax(0, 1fr);
+  gap: 0.5rem;
+  align-items: center;
+  min-width: 0;
+  padding: 0.16rem 0;
 }
 
-.md-typeset .source-symbol::after {
-  top: 1.15rem;
-  border-top-color: transparent;
-  border-right-color: transparent;
-  border-left-color: transparent;
+.md-typeset .connector-more {
+  width: 1.35rem;
+  color: var(--tf-text-dim);
+  font-size: 0.38rem;
+  letter-spacing: 0.06rem;
+  line-height: 1;
+  text-align: center;
 }
 
-.md-typeset .source-copy {
-  position: absolute;
-  bottom: 0;
-  left: 50%;
+.md-typeset .connector-copy {
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
-  align-items: center;
-  transform: translateX(-50%);
+  gap: 0.04rem;
+  align-items: flex-start;
+  min-width: 0;
+  text-align: left;
 }
 
-.md-typeset .source-copy strong {
-  color: var(--tf-text);
-  font-family: "Space Grotesk", sans-serif;
-  font-size: 0.8rem;
+.md-typeset .connector-copy strong {
+  min-width: 0;
+  color: var(--tf-text-muted);
+  overflow: hidden;
+  font-size: 0.56rem;
+  font-weight: 550;
+  line-height: 1.25;
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.md-typeset .source-copy code {
+.md-typeset .connector-copy code {
+  display: block;
+  min-width: 0;
   padding: 0;
-  color: var(--tf-code-text);
-  font-size: 0.57rem;
+  color: #7f8997;
+  overflow: hidden;
+  font-size: 0.45rem;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   background: transparent;
 }
 
+.md-typeset .connector-icon {
+  display: block;
+  box-sizing: border-box;
+  justify-self: center;
+  width: 1rem;
+  height: 1rem;
+  color: var(--tf-text-dim);
+  fill: none;
+  background: var(--tf-bg);
+  stroke: currentcolor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.35;
+  box-shadow: 0 0 0 0.23rem var(--tf-bg);
+}
+
 .md-typeset .table-stage {
-  gap: 0.55rem;
-  padding: 0 0.45rem;
+  gap: 0.6rem;
+  padding: 0 0.55rem;
 }
 
 .md-typeset .table-preview {
   display: grid;
-  grid-template-columns: 1.6fr 0.8fr;
-  width: 100%;
-  font-size: 0.58rem;
+  grid-template-columns: minmax(0, 1fr) auto;
+  width: min(100%, 7.6rem);
+  margin: 0 auto;
+  overflow: hidden;
+  color: var(--tf-text-muted);
+  font-size: 0.48rem;
+  font-variant-numeric: tabular-nums;
+  background: rgb(26 33 44 / 72%);
+  border: 1px solid #303846;
+  border-radius: 0.38rem;
+  box-shadow: 0 0.35rem 1rem rgb(0 0 0 / 14%);
 }
 
 .md-typeset .table-preview > * {
-  padding: 0.42rem 0.35rem;
-  border-bottom: 1px solid #303846;
+  min-width: 0;
+  padding: 0.24rem 0.3rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  border-bottom: 1px solid rgb(48 56 70 / 62%);
 }
 
 .md-typeset .table-preview > :nth-child(even) {
-  border-left: 1px solid #303846;
+  text-align: right;
+}
+
+.md-typeset .table-preview > :nth-child(odd) {
+  text-align: left;
+}
+
+.md-typeset .table-preview > :nth-child(5),
+.md-typeset .table-preview > :nth-child(6) {
+  background: rgb(35 43 56 / 58%);
 }
 
 .md-typeset .table-preview > :nth-last-child(-n + 2) {
@@ -965,9 +1008,17 @@ body {
 }
 
 .md-typeset .table-preview strong {
+  color: var(--tf-accent);
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Monaco, Consolas, monospace;
+  font-size: 0.46rem;
+  font-weight: 650;
+  letter-spacing: 0.015em;
+  background: rgb(15 17 23 / 38%);
+}
+
+.md-typeset .table-preview span:nth-child(even) {
   color: var(--tf-text);
   font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Monaco, Consolas, monospace;
-  font-size: 0.58rem;
 }
 
 .md-typeset .chart-stage {
@@ -1009,13 +1060,6 @@ body {
 .md-typeset .artifact-caption {
   color: var(--tf-text-dim);
   font-size: 0.53rem;
-}
-
-.md-typeset .process-diagram figcaption {
-  margin-top: 0.55rem;
-  color: var(--tf-text-dim);
-  font-size: 0.72rem;
-  text-align: center;
 }
 
 .md-typeset table:not([class]) {

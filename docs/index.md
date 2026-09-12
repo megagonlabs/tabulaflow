@@ -72,17 +72,23 @@ This enables a fully in-memory agentic data workflow without exposing a shell
 tool when security matters.
 
 <figure class="process-diagram">
-  <div class="horizontal-flow" role="img" aria-label="The command /connect merchants.sqlite adds a SQLite database to the data connector registry. The run_query tool executes SELECT * FROM merchant_totals to create a result table, and render_chart creates a bar chart artifact using merchant and total.">
-    <div class="flow-link">
-      <code><span>/connect</span><span>merchants.sqlite</span></code>
-      <span class="flow-arrow" aria-hidden="true"></span>
-    </div>
+  <div class="horizontal-flow" role="img" aria-label="The data connector registry contains SQLite, CSV, Hugging Face, and additional sources identified by aliases. The run_query tool executes SELECT * FROM merchant_totals to create a result table, and render_chart creates a bar chart artifact using merchant and total.">
     <div class="flow-stage source-stage">
-      <span class="flow-label"><span>Data connector</span><span>registry</span></span>
-      <div class="source-symbol" aria-hidden="true"></div>
-      <div class="source-copy">
-        <strong>merchants.sqlite</strong>
-        <code>alias: merchants</code>
+      <span class="flow-label">Data connector registry</span>
+      <div class="connector-list" aria-hidden="true">
+        <div class="connector-entry">
+          <svg class="connector-icon" viewBox="0 0 24 24"><ellipse cx="12" cy="5.5" rx="7.5" ry="3"></ellipse><path d="M4.5 5.5v6c0 1.7 3.4 3 7.5 3s7.5-1.3 7.5-3v-6"></path><path d="M4.5 11.5v6c0 1.7 3.4 3 7.5 3s7.5-1.3 7.5-3v-6"></path></svg>
+          <span class="connector-copy"><strong>merchants</strong><code>sqlite:///merchants.sqlite</code></span>
+        </div>
+        <div class="connector-entry">
+          <svg class="connector-icon" viewBox="0 0 24 24"><path d="M6 3.5h8l4 4v13H6z"></path><path d="M14 3.5v4h4M8.5 11h7M8.5 14.5h7M8.5 18h7M11 11v7"></path></svg>
+          <span class="connector-copy"><strong>orders</strong><code>project/orders.csv</code></span>
+        </div>
+        <div class="connector-entry">
+          <svg class="connector-icon" viewBox="0 0 24 24"><circle cx="12" cy="9.5" r="5.5"></circle><path d="M9.5 9h.01M14.5 9h.01M9.5 12c1.4 1.3 3.6 1.3 5 0M7.3 14c-2.2-.8-4.3.3-5.3 2.3M16.7 14c2.2-.8 4.3.3 5.3 2.3M2 16.3l3.2 3M22 16.3l-3.2 3M5.2 19.3l2.6-2.1M18.8 19.3l-2.6-2.1"></path></svg>
+          <span class="connector-copy"><strong>reviews</strong><code>https://huggingface.co/datasets/yelp</code></span>
+        </div>
+        <span class="connector-more">•••</span>
       </div>
     </div>
     <div class="flow-link">
@@ -95,6 +101,7 @@ tool when security matters.
         <strong>merchant</strong><strong>total</strong>
         <span>Acme Market</span><span>$1,240</span>
         <span>City Cafe</span><span>$860</span>
+        <span>Northstar Books</span><span>$530</span>
       </div>
     </div>
     <div class="flow-link">
@@ -109,7 +116,6 @@ tool when security matters.
       <span class="artifact-caption">Interactive result</span>
     </div>
   </div>
-  <figcaption>From a database connection to an interactive result.</figcaption>
 </figure>
 
 Connected sources are read-only. When necessary, the agent can transform
