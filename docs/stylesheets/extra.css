@@ -569,6 +569,23 @@ body {
   border-top: 1px solid var(--tf-border);
 }
 
+.md-typeset .workflow-diagram {
+  margin: 1.5rem 0;
+}
+
+.md-typeset .workflow-diagram img {
+  display: block;
+  width: 100%;
+  border-radius: 8px;
+}
+
+.md-typeset .workflow-diagram figcaption {
+  margin-top: 0.55rem;
+  color: var(--tf-text-dim);
+  font-size: 0.72rem;
+  text-align: center;
+}
+
 .md-typeset table:not([class]) {
   background: var(--tf-card);
   border-color: var(--tf-border);

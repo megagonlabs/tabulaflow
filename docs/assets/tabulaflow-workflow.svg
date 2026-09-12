@@ -1,0 +1,100 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="560" viewBox="0 0 1200 560" role="img" aria-labelledby="title description">
+  <title id="title">How TabulaFlow works with a SQLite database</title>
+  <desc id="description">A user command or agent tool call registers a read-only SQLite source under an alias. The Data Agent uses its schema, executes queries, optionally transforms data in a local workspace, attaches a visualization specification to a result table, and renders an interactive chart, map, or graph. Intermediate files stay in a scratch directory and project files are written only when requested.</desc>
+  <defs>
+    <marker id="arrow-mint" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#3eb489"/>
+    </marker>
+    <marker id="arrow-muted" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#6a737d"/>
+    </marker>
+    <style>
+      .panel { fill: #1a212c; stroke: #303846; stroke-width: 1.5; }
+      .panel-accent { fill: #1a212c; stroke: #3eb489; stroke-width: 1.5; }
+      .local-boundary { fill: #151922; stroke: #303846; stroke-width: 1.5; stroke-dasharray: 6 6; }
+      .title { fill: #e4e4e7; font: 600 18px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+      .body { fill: #9aa4b2; font: 14px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+      .small { fill: #6a737d; font: 12px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+      .mono { fill: #e0e0e0; font: 13px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
+      .label { fill: #9aa4b2; font: 12px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+      .badge { fill: #3eb489; font: 700 10px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; letter-spacing: 1px; }
+      .primary-line { fill: none; stroke: #3eb489; stroke-width: 2; marker-end: url(#arrow-mint); }
+      .two-way-line { fill: none; stroke: #3eb489; stroke-width: 2; marker-start: url(#arrow-mint); marker-end: url(#arrow-mint); }
+      .secondary-line { fill: none; stroke: #6a737d; stroke-width: 1.5; stroke-dasharray: 5 5; marker-end: url(#arrow-muted); }
+    </style>
+  </defs>
+
+  <rect width="1200" height="560" rx="12" fill="#151922"/>
+  <rect x="1" y="1" width="1198" height="558" rx="11" fill="none" stroke="#242b36" stroke-width="2"/>
+
+  <text x="40" y="43" class="small">CONNECT</text>
+  <rect x="40" y="65" width="190" height="72" rx="8" class="panel"/>
+  <text x="58" y="91" class="title">User</text>
+  <text x="58" y="117" class="mono">/connect</text>
+  <rect x="40" y="151" width="190" height="72" rx="8" class="panel"/>
+  <text x="58" y="177" class="title">Data Agent</text>
+  <text x="58" y="203" class="body">Connection tool call</text>
+
+  <path d="M 230 101 C 252 101, 248 148, 270 148" class="primary-line"/>
+  <path d="M 230 187 C 252 187, 248 148, 270 148" class="primary-line"/>
+  <text x="239" y="132" class="label">register</text>
+
+  <rect x="270" y="93" width="210" height="110" rx="8" class="panel"/>
+  <text x="288" y="121" class="small">REGISTERED SOURCE</text>
+  <text x="288" y="151" class="title">SQLite database</text>
+  <text x="288" y="178" class="mono">alias: analytics</text>
+  <rect x="397" y="108" width="67" height="20" rx="10" fill="#163a30"/>
+  <text x="409" y="122" class="badge">READ-ONLY</text>
+
+  <path d="M 480 148 L 540 148" class="two-way-line"/>
+  <text x="489" y="126" class="label">schema</text>
+  <text x="489" y="174" class="label">queries · rows</text>
+
+  <rect x="540" y="83" width="210" height="130" rx="8" class="panel-accent"/>
+  <text x="558" y="112" class="small">ORCHESTRATE</text>
+  <text x="558" y="144" class="title">Data Agent</text>
+  <text x="558" y="171" class="body">Inspect schema</text>
+  <text x="558" y="193" class="body">Execute and refine queries</text>
+
+  <path d="M 750 148 L 810 148" class="primary-line"/>
+  <text x="765" y="132" class="label">attach</text>
+
+  <rect x="810" y="83" width="170" height="130" rx="8" class="panel"/>
+  <text x="828" y="112" class="small">DESCRIBE</text>
+  <text x="828" y="144" class="title">Result table</text>
+  <text x="828" y="170" class="body">+</text>
+  <text x="828" y="194" class="body">Visualization spec</text>
+
+  <path d="M 980 148 L 1040 148" class="primary-line"/>
+  <text x="992" y="132" class="label">render</text>
+
+  <rect x="1040" y="83" width="120" height="130" rx="8" class="panel-accent"/>
+  <text x="1058" y="112" class="small">PRESENT</text>
+  <text x="1058" y="144" class="title">Output</text>
+  <text x="1058" y="171" class="body">Chart · Map</text>
+  <text x="1058" y="193" class="body">Graph · Data</text>
+
+  <rect x="510" y="302" width="500" height="190" rx="10" class="local-boundary"/>
+  <text x="532" y="329" class="small">SESSION-LOCAL WORK AREA · OPTIONAL</text>
+
+  <rect x="532" y="350" width="214" height="108" rx="8" class="panel"/>
+  <text x="550" y="380" class="title">Workspace</text>
+  <text x="550" y="406" class="body">Transform tables</text>
+  <text x="550" y="430" class="body">Row-wise processing</text>
+
+  <rect x="774" y="350" width="214" height="108" rx="8" class="panel"/>
+  <text x="792" y="380" class="title">Scratch directory</text>
+  <text x="792" y="406" class="body">Intermediate files</text>
+  <text x="792" y="430" class="body">Removed with the session</text>
+
+  <path d="M 645 213 L 645 350" class="secondary-line"/>
+  <text x="655" y="270" class="label">derive and process</text>
+  <path d="M 746 404 L 774 404" class="secondary-line"/>
+
+  <rect x="1030" y="350" width="140" height="108" rx="8" class="panel"/>
+  <text x="1048" y="380" class="title">Project files</text>
+  <text x="1048" y="407" class="body">Export only</text>
+  <text x="1048" y="431" class="body">when requested</text>
+  <path d="M 895 213 C 895 267, 1100 280, 1100 350" class="secondary-line"/>
+  <text x="997" y="272" class="label">export</text>
+</svg>

@@ -69,13 +69,9 @@ schema available to the agent. The agent can then execute queries, save
 intermediate results to a local workspace for further processing, and
 attach visualization specifications to render charts, maps, and graphs.
 
-<figure class="media-placeholder media-placeholder--diagram" aria-label="Placeholder for a diagram showing how TabulaFlow works, using SQLite as an example">
-  <div class="media-placeholder__content">
-    <span class="media-placeholder__type">Diagram · wide</span>
-    <strong>From database connection to interactive result</strong>
-    <span>Show a user or agent connecting a SQLite URL, registration under an alias, schema introspection, queries against the read-only source, optional derived data in the local workspace, and a result table rendered from a visualization specification.</span>
-  </div>
-  <figcaption>Production placeholder · Provide an equivalent text description.</figcaption>
+<figure class="workflow-diagram">
+  <img src="assets/tabulaflow-workflow.svg" alt="A user command or agent tool call registers a read-only SQLite database under an alias. The Data Agent uses its schema, executes queries, optionally processes data in a local workspace, attaches a visualization specification to the result table, and renders an interactive output. Intermediate files stay in a scratch directory, and project files are written only when requested.">
+  <figcaption>From a database connection to an interactive result.</figcaption>
 </figure>
 
 Connected sources are read-only. To complete a task, the agent can transform
