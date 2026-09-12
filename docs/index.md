@@ -63,11 +63,10 @@ experimentation on text-to-SQL and text-to-Cypher benchmarks such as Spider
 
 ## How does TabulaFlow work?
 
-The diagram below shows how TabulaFlow works, using SQLite as an example. You
-can connect the database with `/connect`, or the agent can connect it through a
-tool call. TabulaFlow registers the connection under an alias and makes the
-schema available to the agent. The agent can then execute queries, save
-intermediate results to a local workspace for further processing, and
+The diagram below shows how TabulaFlow works in a simple scenario. You can
+connect a database with `/connect`, or the agent can connect it through a tool
+call. TabulaFlow registers the connection under an alias and makes the schema
+available to the agent. The agent can then execute queries to derive tables and
 attach visualization specifications to render charts, maps, and graphs.
 This enables a fully in-memory agentic data workflow without exposing a shell
 tool when security matters.
