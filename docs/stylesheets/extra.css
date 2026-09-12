@@ -569,17 +569,449 @@ body {
   border-top: 1px solid var(--tf-border);
 }
 
-.md-typeset .workflow-diagram {
-  margin: 1.5rem 0;
+.md-typeset .process-diagram {
+  margin: 2rem 0 1.5rem;
 }
 
-.md-typeset .workflow-diagram img {
-  display: block;
+.md-typeset .data-pipeline {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   width: 100%;
-  border-radius: 8px;
 }
 
-.md-typeset .workflow-diagram figcaption {
+.md-typeset .pipeline-transition {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  height: 6rem;
+}
+
+.md-typeset .pipeline-transition code {
+  display: flex;
+  flex-direction: column;
+  flex: 0 0 auto;
+  max-width: calc(100% - 2rem);
+  padding: 0;
+  color: var(--tf-code-text);
+  font-size: 0.66rem;
+  line-height: 1.4;
+  text-align: center;
+  white-space: nowrap;
+  background: transparent;
+}
+
+.md-typeset .command-prompt {
+  color: var(--tf-accent);
+}
+
+.md-typeset .pipeline-arrow {
+  position: relative;
+  flex: 1 1 auto;
+  width: 1px;
+  margin-top: 0.7rem;
+  background: var(--tf-text-muted);
+}
+
+.md-typeset .pipeline-arrow::after {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-top: 7px solid var(--tf-text-muted);
+  border-right: 5px solid transparent;
+  border-left: 5px solid transparent;
+  content: "";
+  transform: translate(-50%, 1px);
+}
+
+.md-typeset .pipeline-stage {
+  color: var(--tf-text-muted);
+  font-size: 0.75rem;
+}
+
+.md-typeset .stage-label {
+  color: var(--tf-text-dim);
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.md-typeset .stage-detail {
+  color: var(--tf-text-muted);
+  font-size: 0.72rem;
+}
+
+.md-typeset .registry-stage {
+  display: grid;
+  grid-template-columns: 4.5rem auto;
+  gap: 1.4rem;
+  align-items: center;
+}
+
+.md-typeset .stage-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 0.38rem;
+}
+
+.md-typeset .stage-copy strong {
+  color: var(--tf-text);
+  font-family: "Space Grotesk", sans-serif;
+  font-size: 1.05rem;
+}
+
+.md-typeset .stage-copy code {
+  padding: 0;
+  color: var(--tf-code-text);
+  font-size: 0.72rem;
+  background: transparent;
+}
+
+.md-typeset .database-symbol {
+  position: relative;
+  width: 3.8rem;
+  height: 3.8rem;
+  border-right: 2px solid #526071;
+  border-bottom: 2px solid #526071;
+  border-left: 2px solid #526071;
+  border-radius: 0 0 50% 50% / 0 0 18% 18%;
+}
+
+.md-typeset .database-symbol::before,
+.md-typeset .database-symbol::after {
+  position: absolute;
+  left: -2px;
+  width: 3.8rem;
+  height: 0.9rem;
+  border: 2px solid #526071;
+  border-radius: 50%;
+  content: "";
+}
+
+.md-typeset .database-symbol::before {
+  top: -0.45rem;
+  background: var(--tf-bg);
+}
+
+.md-typeset .database-symbol::after {
+  top: 1.35rem;
+  border-top-color: transparent;
+  border-right-color: transparent;
+  border-left-color: transparent;
+}
+
+.md-typeset .result-stage {
+  width: min(19rem, calc(100% - 2rem));
+}
+
+.md-typeset .result-stage > .stage-label,
+.md-typeset .artifact-stage > .stage-label {
+  display: block;
+  margin-bottom: 0.65rem;
+  text-align: center;
+}
+
+.md-typeset .result-preview {
+  display: grid;
+  grid-template-columns: 1.7fr 0.8fr;
+  font-size: 0.73rem;
+}
+
+.md-typeset .result-preview > * {
+  padding: 0.5rem 0.65rem;
+  border-bottom: 1px solid #303846;
+}
+
+.md-typeset .result-preview > :nth-child(even) {
+  border-left: 1px solid #303846;
+}
+
+.md-typeset .result-preview > :nth-last-child(-n + 2) {
+  border-bottom: 0;
+}
+
+.md-typeset .result-preview strong {
+  color: var(--tf-text);
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Monaco, Consolas, monospace;
+  font-size: 0.73rem;
+}
+
+.md-typeset .artifact-stage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.md-typeset .chart-preview {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  gap: 0.6rem;
+  width: 10.5rem;
+  height: 6.5rem;
+  padding: 0 1rem;
+  border-bottom: 1px solid #303846;
+  border-left: 1px solid #303846;
+  background: repeating-linear-gradient(to top, transparent 0, transparent 2.1rem, rgb(48 56 70 / 35%) 2.1rem, rgb(48 56 70 / 35%) calc(2.1rem + 1px));
+}
+
+.md-typeset .chart-preview span {
+  z-index: 1;
+  width: 1.15rem;
+  height: 1.8rem;
+  background: var(--tf-accent);
+  border-radius: 2px 2px 0 0;
+}
+
+.md-typeset .chart-preview span:nth-child(2) {
+  height: 3.25rem;
+  opacity: 0.86;
+}
+
+.md-typeset .chart-preview span:nth-child(3) {
+  height: 4.65rem;
+  opacity: 0.72;
+}
+
+.md-typeset .chart-preview span:nth-child(4) {
+  height: 5.7rem;
+  opacity: 0.58;
+}
+
+.md-typeset .artifact-stage .stage-detail {
+  margin-top: 0.5rem;
+  color: var(--tf-text-dim);
+}
+
+.md-typeset .process-diagram {
+  overflow-x: visible;
+}
+
+.md-typeset .horizontal-flow {
+  display: grid;
+  grid-template-columns:
+    minmax(0, 0.72fr)
+    minmax(0, 1.1fr)
+    minmax(0, 0.72fr)
+    minmax(0, 1.35fr)
+    minmax(0, 0.78fr)
+    minmax(0, 1.1fr);
+  align-items: center;
+  width: 100%;
+  min-width: 0;
+  min-height: 15rem;
+  padding: 1.5rem 0 1rem;
+}
+
+.md-typeset .flow-link {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  justify-content: center;
+  min-width: 0;
+}
+
+.md-typeset .flow-link code {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0 0.25rem;
+  overflow: visible;
+  color: var(--tf-code-text);
+  font-size: 0.52rem;
+  line-height: 1.35;
+  text-align: center;
+  white-space: nowrap;
+  background: transparent;
+}
+
+.md-typeset .flow-arrow {
+  position: relative;
+  width: 100%;
+  height: 1px;
+  background: var(--tf-text-muted);
+}
+
+.md-typeset .flow-arrow::after {
+  position: absolute;
+  top: 50%;
+  right: 0;
+  width: 0;
+  height: 0;
+  border-top: 5px solid transparent;
+  border-bottom: 5px solid transparent;
+  border-left: 7px solid var(--tf-text-muted);
+  content: "";
+  transform: translate(1px, -50%);
+}
+
+.md-typeset .flow-stage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 0;
+  color: var(--tf-text-muted);
+}
+
+.md-typeset .flow-label {
+  display: flex;
+  flex-direction: column;
+  color: var(--tf-text-dim);
+  font-size: 0.49rem;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.md-typeset .source-stage {
+  position: relative;
+  justify-content: center;
+  height: 9rem;
+}
+
+.md-typeset .source-stage > .flow-label {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.md-typeset .source-symbol {
+  position: relative;
+  width: 3.5rem;
+  height: 3.2rem;
+  border-right: 1.5px solid #526071;
+  border-bottom: 1.5px solid #526071;
+  border-left: 1.5px solid #526071;
+  border-radius: 0 0 50% 50% / 0 0 16% 16%;
+}
+
+.md-typeset .source-symbol::before,
+.md-typeset .source-symbol::after {
+  position: absolute;
+  left: -1.5px;
+  width: 3.5rem;
+  height: 0.78rem;
+  border: 1.5px solid #526071;
+  border-radius: 50%;
+  content: "";
+}
+
+.md-typeset .source-symbol::before {
+  top: -0.39rem;
+  background: var(--tf-bg);
+}
+
+.md-typeset .source-symbol::after {
+  top: 1.15rem;
+  border-top-color: transparent;
+  border-right-color: transparent;
+  border-left-color: transparent;
+}
+
+.md-typeset .source-copy {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  align-items: center;
+  transform: translateX(-50%);
+}
+
+.md-typeset .source-copy strong {
+  color: var(--tf-text);
+  font-family: "Space Grotesk", sans-serif;
+  font-size: 0.8rem;
+  white-space: nowrap;
+}
+
+.md-typeset .source-copy code {
+  padding: 0;
+  color: var(--tf-code-text);
+  font-size: 0.57rem;
+  background: transparent;
+}
+
+.md-typeset .table-stage {
+  gap: 0.55rem;
+  padding: 0 0.45rem;
+}
+
+.md-typeset .table-preview {
+  display: grid;
+  grid-template-columns: 1.6fr 0.8fr;
+  width: 100%;
+  font-size: 0.58rem;
+}
+
+.md-typeset .table-preview > * {
+  padding: 0.42rem 0.35rem;
+  border-bottom: 1px solid #303846;
+}
+
+.md-typeset .table-preview > :nth-child(even) {
+  border-left: 1px solid #303846;
+}
+
+.md-typeset .table-preview > :nth-last-child(-n + 2) {
+  border-bottom: 0;
+}
+
+.md-typeset .table-preview strong {
+  color: var(--tf-text);
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Monaco, Consolas, monospace;
+  font-size: 0.58rem;
+}
+
+.md-typeset .chart-stage {
+  gap: 0.5rem;
+  padding: 0 0.45rem;
+}
+
+.md-typeset .artifact-chart {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.35rem;
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 5.6rem;
+  height: 4.8rem;
+  padding: 0 0.5rem;
+  border-bottom: 1px solid #303846;
+  border-left: 1px solid #303846;
+  background: repeating-linear-gradient(to top, transparent 0, transparent 1.55rem, rgb(48 56 70 / 35%) 1.55rem, rgb(48 56 70 / 35%) calc(1.55rem + 1px));
+}
+
+.md-typeset .artifact-chart span {
+  width: 0.9rem;
+  height: 1.65rem;
+  background: var(--tf-accent);
+  border-radius: 2px 2px 0 0;
+}
+
+.md-typeset .artifact-chart span:nth-child(2) {
+  height: 2.75rem;
+  opacity: 0.8;
+}
+
+.md-typeset .artifact-chart span:nth-child(3) {
+  height: 3.8rem;
+  opacity: 0.62;
+}
+
+.md-typeset .artifact-caption {
+  color: var(--tf-text-dim);
+  font-size: 0.53rem;
+}
+
+.md-typeset .process-diagram figcaption {
   margin-top: 0.55rem;
   color: var(--tf-text-dim);
   font-size: 0.72rem;

@@ -29,8 +29,9 @@ local files, public datasets, and the web.
 
 - **Interactive visualization.** Create charts, maps, and relationship graphs
   backed by queryable, parameterized data, including graphs from Neo4j.
-- **Multimodal data browsing.** Browse images, PDFs, and other media directly
-  inside tables, or ask an agent to analyze them alongside the other data.
+- **Multimodal data browsing.** Browse databases or Hugging Face datasets
+  directly (no LLM needed). View images, PDFs, and other media directly inside
+  tables, or ask an agent to analyze them.
 - **Large-scale dataset construction.** Combine multiple sources and turn
   unstructured web pages and documents into structured, normalized tables with
   thousands of rows.
@@ -71,8 +72,44 @@ attach visualization specifications to render charts, maps, and graphs.
 This enables a fully in-memory agentic data workflow without exposing a shell
 tool when security matters.
 
-<figure class="workflow-diagram">
-  <img src="assets/tabulaflow-workflow.svg" alt="A user or agent connects a SQLite database to the data connector registry. Executing a query creates a result table, and attaching a visualization specification creates an interactive chart, map, or graph artifact.">
+<figure class="process-diagram">
+  <div class="horizontal-flow" role="img" aria-label="The command /connect merchants.sqlite adds a SQLite database to the data connector registry. The run_query tool executes SELECT * FROM merchant_totals to create a result table, and render_chart creates a bar chart artifact using merchant and total.">
+    <div class="flow-link">
+      <code><span>/connect</span><span>merchants.sqlite</span></code>
+      <span class="flow-arrow" aria-hidden="true"></span>
+    </div>
+    <div class="flow-stage source-stage">
+      <span class="flow-label"><span>Data connector</span><span>registry</span></span>
+      <div class="source-symbol" aria-hidden="true"></div>
+      <div class="source-copy">
+        <strong>merchants.sqlite</strong>
+        <code>alias: merchants</code>
+      </div>
+    </div>
+    <div class="flow-link">
+      <code><span>run_query(</span><span>SELECT * FROM</span><span>merchant_totals)</span></code>
+      <span class="flow-arrow" aria-hidden="true"></span>
+    </div>
+    <div class="flow-stage table-stage">
+      <span class="flow-label">Result table</span>
+      <div class="table-preview" aria-hidden="true">
+        <strong>merchant</strong><strong>total</strong>
+        <span>Acme Market</span><span>$1,240</span>
+        <span>City Cafe</span><span>$860</span>
+      </div>
+    </div>
+    <div class="flow-link">
+      <code><span>render_chart(</span><span>mark: bar</span><span>x: merchant</span><span>y: total)</span></code>
+      <span class="flow-arrow" aria-hidden="true"></span>
+    </div>
+    <div class="flow-stage chart-stage">
+      <span class="flow-label">Artifact</span>
+      <div class="artifact-chart" aria-hidden="true">
+        <span></span><span></span><span></span>
+      </div>
+      <span class="artifact-caption">Interactive result</span>
+    </div>
+  </div>
   <figcaption>From a database connection to an interactive result.</figcaption>
 </figure>
 
