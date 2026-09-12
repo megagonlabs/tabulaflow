@@ -63,11 +63,13 @@ experimentation on text-to-SQL and text-to-Cypher benchmarks such as Spider
 
 ## How does TabulaFlow work?
 
-The diagram below shows how TabulaFlow works in a simple scenario. You can
-connect a database with `/connect`, or the agent can connect it through a tool
-call. TabulaFlow registers the connection under an alias and makes the schema
-available to the agent. The agent can then execute queries to derive tables and
-attach visualization specifications to render charts, maps, and graphs.
+Just like any coding agent, TabulaFlow is simply an LLM that calls a set of
+tools in a loop. The diagram below shows how TabulaFlow works in a simple
+chat-to-database scenario. You can connect a database with `/connect`, or the
+agent can connect it through a tool call. TabulaFlow registers the connection
+under an alias and makes the schema available to the agent. The agent can then
+execute queries to derive tables and attach visualization specifications to
+render charts, maps, and graphs.
 This enables a fully in-memory agentic data workflow without exposing a shell
 tool when security matters.
 
@@ -91,9 +93,9 @@ tool when security matters.
         <span class="connector-more">•••</span>
       </div>
     </div>
-    <div class="flow-link">
-      <code><span>run_query</span><span>SELECT * FROM</span><span>merchant_totals</span></code>
-      <span class="flow-arrow" aria-hidden="true"></span>
+    <div class="flow-link flow-link--down">
+      <code><span>run_query</span></code>
+      <span class="flow-arrow" aria-hidden="true"><svg viewBox="0 0 100 100" preserveAspectRatio="none"><path d="M50 0V68H100"></path></svg></span>
     </div>
     <div class="flow-stage table-stage">
       <span class="flow-label">Result table</span>
@@ -104,9 +106,9 @@ tool when security matters.
         <span>Northstar Books</span><span>$530</span>
       </div>
     </div>
-    <div class="flow-link">
-      <code><span>render_chart</span><span>mark: bar</span><span>x: merchant</span><span>y: total</span></code>
-      <span class="flow-arrow" aria-hidden="true"></span>
+    <div class="flow-link flow-link--up">
+      <code><span>render_chart</span></code>
+      <span class="flow-arrow" aria-hidden="true"><svg viewBox="0 0 100 100" preserveAspectRatio="none"><path d="M0 68H50V0"></path></svg></span>
     </div>
     <div class="flow-stage chart-stage">
       <span class="flow-label">Artifact</span>

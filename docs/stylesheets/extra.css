@@ -793,12 +793,10 @@ body {
 
 .md-typeset .horizontal-flow {
   display: grid;
-  grid-template-columns:
-    minmax(0, 1.55fr)
-    minmax(0, 0.65fr)
-    minmax(0, 1.55fr)
-    minmax(0, 0.65fr)
-    minmax(0, 0.95fr);
+  grid-template-rows: auto auto;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr) minmax(0, 1.1fr);
+  column-gap: 2.4rem;
+  row-gap: 2.5rem;
   align-items: start;
   width: 100%;
   min-width: 0;
@@ -806,53 +804,98 @@ body {
 }
 
 .md-typeset .flow-link {
-  display: flex;
-  flex-direction: column;
-  gap: 0.6rem;
-  align-self: center;
-  justify-content: center;
+  position: relative;
+  align-self: stretch;
   min-width: 0;
-  padding: 0 0.14rem;
+  min-height: 4.5rem;
 }
 
 .md-typeset .flow-link code {
+  position: absolute;
+  z-index: 1;
+  top: 58%;
   display: flex;
   flex-direction: column;
   align-items: center;
   padding: 0;
   overflow: visible;
   color: #858f9c;
-  font-size: 0.45rem;
+  font-size: 0.43rem;
   line-height: 1.45;
   text-align: center;
   white-space: nowrap;
   background: transparent;
+  transform: translateY(-100%);
+}
+
+.md-typeset .flow-link--down code {
+  right: 0.3rem;
+}
+
+.md-typeset .flow-link--up code {
+  left: 0.3rem;
+}
+
+.md-typeset .flow-link--down {
+  grid-row: 2;
+  grid-column: 1;
+}
+
+.md-typeset .flow-link--up {
+  grid-row: 2;
+  grid-column: 3;
 }
 
 .md-typeset .flow-link code span:first-child {
-  margin-bottom: 0.08rem;
   color: #c2c8cf;
   font-weight: 550;
 }
 
 .md-typeset .flow-arrow {
-  position: relative;
-  width: calc(100% - 0.3rem);
-  height: 1px;
-  margin: 0 auto;
-  background: #626d7a;
+  position: absolute;
+  top: -2.5rem;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  display: block;
+}
+
+.md-typeset .flow-arrow svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.md-typeset .flow-arrow path {
+  fill: none;
+  stroke: #626d7a;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
 }
 
 .md-typeset .flow-arrow::after {
   position: absolute;
-  top: 50%;
   right: 0;
   width: 0.3rem;
   height: 0.3rem;
   border-top: 1px solid #7d8895;
   border-right: 1px solid #7d8895;
   content: "";
-  transform: translateY(-50%) rotate(45deg);
+  transform: translate(1px, -50%) rotate(45deg);
+}
+
+.md-typeset .flow-link--down .flow-arrow::after {
+  top: 68%;
+}
+
+.md-typeset .flow-link--up .flow-arrow::after {
+  top: 0;
+  right: auto;
+  left: 50%;
+  transform: translate(-50%, -1px) rotate(-45deg);
 }
 
 .md-typeset .flow-stage {
@@ -875,6 +918,8 @@ body {
 }
 
 .md-typeset .source-stage {
+  grid-row: 1;
+  grid-column: 1;
   gap: 0.7rem;
   align-items: stretch;
   padding-right: 0.35rem;
@@ -969,6 +1014,8 @@ body {
 }
 
 .md-typeset .table-stage {
+  grid-row: 2;
+  grid-column: 2;
   gap: 0.6rem;
   padding: 0 0.55rem;
 }
@@ -1029,6 +1076,8 @@ body {
 }
 
 .md-typeset .chart-stage {
+  grid-row: 1;
+  grid-column: 3;
   gap: 0.5rem;
   padding: 0 0.45rem;
 }
