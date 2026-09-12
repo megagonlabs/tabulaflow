@@ -13,6 +13,7 @@ theme:
   font: false
   features:
     - content.code.copy
+    - navigation.indexes
     - navigation.instant
     - navigation.sections
   icon:
@@ -35,7 +36,14 @@ extra:
 nav:
   - Overview: index.md
   - Quick start: data-agent/quick-start.md
-  - Examples: data-agent/examples.md
+  - Examples:
+      - Compare spending by merchant: data-agent/examples/compare-spending.md
+      - Evaluate model performance: data-agent/examples/evaluate-model-performance.md
+      - Extract data from receipts: data-agent/examples/extract-receipts.md
+      - Combine multiple sources: data-agent/examples/combine-sources.md
+      - Build a dataset from the web: data-agent/examples/build-web-dataset.md
+      - Map geographic boundaries: data-agent/examples/map-boundaries.md
+      - Explore relationships: data-agent/examples/explore-relationships.md
   - Connecting data: data-agent/connecting-data.md
   - Configuration: data-agent/configuration.md
   - TabulaFlow as a Python Library:
@@ -54,6 +62,7 @@ plugins:
 
 markdown_extensions:
   - admonition
+  - attr_list
   - pymdownx.highlight:
       anchor_linenums: true
   - pymdownx.inlinehilite

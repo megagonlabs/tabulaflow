@@ -263,6 +263,15 @@ body {
   text-decoration-color: var(--tf-accent);
 }
 
+.md-typeset .inline-cta::after {
+  position: relative;
+  top: 1px;
+  margin-left: 0.15em;
+  font-size: 0.9em;
+  line-height: 1;
+  content: "↗";
+}
+
 .md-typeset code {
   border-radius: 4px;
 }
@@ -1308,7 +1317,8 @@ body {
   }
 
   .md-sidebar--primary .md-nav--primary > .md-nav__list > .md-nav__item:not(.md-nav__item--section) > .md-nav__link,
-  .md-sidebar--primary .md-nav__item--section > .md-nav > .md-nav__list > .md-nav__item > .md-nav__link {
+  .md-sidebar--primary .md-nav__item--section > .md-nav > .md-nav__list > .md-nav__item > .md-nav__link,
+  .md-sidebar--primary .md-nav--primary > .md-nav__list > .md-nav__item:not(.md-nav__item--section) > .md-nav > .md-nav__list > .md-nav__item > .md-nav__link {
     padding: 0.25rem 0.6rem;
     margin: 0.05rem 0;
     color: var(--tf-text-muted);
@@ -1316,15 +1326,25 @@ body {
   }
 
   .md-sidebar--primary .md-nav--primary > .md-nav__list > .md-nav__item:not(.md-nav__item--section) > .md-nav__link:hover,
-  .md-sidebar--primary .md-nav__item--section > .md-nav > .md-nav__list > .md-nav__item > .md-nav__link:hover {
+  .md-sidebar--primary .md-nav__item--section > .md-nav > .md-nav__list > .md-nav__item > .md-nav__link:hover,
+  .md-sidebar--primary .md-nav--primary > .md-nav__list > .md-nav__item:not(.md-nav__item--section) > .md-nav > .md-nav__list > .md-nav__item > .md-nav__link:hover {
     color: var(--tf-text);
     background: rgba(255, 255, 255, 0.035);
   }
 
   .md-sidebar--primary .md-nav--primary > .md-nav__list > .md-nav__item:not(.md-nav__item--section) > .md-nav__link.md-nav__link--active,
-  .md-sidebar--primary .md-nav__item--section > .md-nav > .md-nav__list > .md-nav__item > .md-nav__link.md-nav__link--active {
+  .md-sidebar--primary .md-nav__item--section > .md-nav > .md-nav__list > .md-nav__item > .md-nav__link.md-nav__link--active,
+  .md-sidebar--primary .md-nav--primary > .md-nav__list > .md-nav__item:not(.md-nav__item--section) > .md-nav > .md-nav__list > .md-nav__item > .md-nav__link.md-nav__link--active {
     color: var(--tf-accent);
     background: var(--tf-card);
+  }
+
+  [dir="ltr"] .md-sidebar--primary .md-nav--primary > .md-nav__list > .md-nav__item:not(.md-nav__item--section) > .md-nav > .md-nav__list {
+    margin-left: 0.5rem;
+  }
+
+  [dir="rtl"] .md-sidebar--primary .md-nav--primary > .md-nav__list > .md-nav__item:not(.md-nav__item--section) > .md-nav > .md-nav__list {
+    margin-right: 0.5rem;
   }
 }
 

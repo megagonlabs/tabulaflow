@@ -98,8 +98,8 @@ query.
 
 ## Next steps
 
-- Try more analysis, extraction, map, and graph workflows in
-  [Examples](examples.md).
+- Try more analysis, extraction, map, and graph workflows in the **Examples**
+  section.
 - [Connect your data](connecting-data.md) from a file, database, or public
   dataset.
 - Use [Configuration](configuration.md) to select a model or tune the runtime.

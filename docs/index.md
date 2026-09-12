@@ -29,21 +29,27 @@ local files, public datasets, and the web.
 
 - **Interactive visualization.** Create charts, maps, and relationship graphs
   backed by queryable, parameterized data, including graphs from Neo4j.
+  [View example](data-agent/examples/compare-spending.md){ .inline-cta }
 - **Multimodal data browsing.** Browse databases or Hugging Face datasets
   directly (no LLM needed). View images, PDFs, and other media directly inside
   tables, or ask an agent to analyze them.
+  [View example](data-agent/examples/extract-receipts.md){ .inline-cta }
 - **Large-scale dataset construction.** Combine multiple sources and turn
   unstructured web pages and documents into structured, normalized tables with
   thousands of rows.
+  [View example](data-agent/examples/build-web-dataset.md){ .inline-cta }
 - **Parallel semantic operations.** Enrich tables with new columns by
   coordinating thousands of row-wise subagents in parallel to collect
   information, classify records, and annotate data.
+  [View example](data-agent/examples/extract-receipts.md){ .inline-cta }
 - **Parallel browser use.** TabulaFlow's browser harness lets agents interact
   with many web pages in parallel during complex deep research tasks, including
   pages that require clicks and forms.
+  [View example](data-agent/examples/build-web-dataset.md){ .inline-cta }
 - **Async-native Python library.** The core of TabulaFlow is a library written
   in pure Python. Build your own data application with components at any level,
   from data connectors to agent tools.
+  [View example](python-library/quick-start.md){ .inline-cta }
 
 ## Build and research with TabulaFlow
 
@@ -53,13 +59,14 @@ We build TabulaFlow not only as an end-user application but also as an
 async-native Python library with clean, minimal building blocks for modern data
 agents, from data connectors to agent tools. You can use them to create agents
 and applications tailored to your needs.
-[Explore the library →](python-library/index.md)
+[Explore the library](python-library/index.md){ .inline-cta }
 
 ### Research Toolkit
 
 TabulaFlow also includes a research toolkit for rapid, large-scale
 experimentation on text-to-SQL and text-to-Cypher benchmarks such as Spider
-2.0, CypherBench, and ARCS. [Explore the toolkit →](research-toolkit/index.md)
+2.0, CypherBench, and ARCS.
+[Explore the toolkit](research-toolkit/index.md){ .inline-cta }
 
 ## How does TabulaFlow work?
 
