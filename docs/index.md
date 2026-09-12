@@ -35,7 +35,8 @@ local files, public datasets, and the web.
   unstructured web pages and documents into structured, normalized tables with
   thousands of rows.
 - **Parallel semantic operations.** Enrich tables with new columns by
-  coordinating thousands of row-wise subagents in parallel.
+  coordinating thousands of row-wise subagents in parallel to collect
+  information, classify records, and annotate data.
 - **Parallel browser use.** TabulaFlow's browser harness lets agents interact
   with many web pages in parallel during complex deep research tasks, including
   pages that require clicks and forms.
