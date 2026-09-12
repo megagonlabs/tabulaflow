@@ -68,6 +68,8 @@ tool call. TabulaFlow registers the connection under an alias and makes the
 schema available to the agent. The agent can then execute queries, save
 intermediate results to a local workspace for further processing, and
 attach visualization specifications to render charts, maps, and graphs.
+This enables a fully in-memory agentic data workflow without exposing a shell
+tool when security matters.
 
 <figure class="workflow-diagram">
   <img src="assets/tabulaflow-workflow.svg" alt="A user command or agent tool call registers a read-only SQLite database under an alias. The Data Agent uses its schema, executes queries, optionally processes data in a local workspace, attaches a visualization specification to the result table, and renders an interactive output. Intermediate files stay in a scratch directory, and project files are written only when requested.">
