@@ -1251,6 +1251,20 @@ body {
   color: var(--tf-accent);
 }
 
+.md-typeset .doc-contents table code a,
+.md-typeset .doc-contents table a code {
+  color: var(--tf-code);
+  text-decoration: underline;
+  text-decoration-color: currentColor;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.15em;
+}
+
+.md-typeset .doc-contents table code a:is(:hover, :focus-visible),
+.md-typeset .doc-contents table a:is(:hover, :focus-visible) code {
+  color: var(--tf-accent);
+}
+
 .md-nav {
   font-size: 14px;
 }
