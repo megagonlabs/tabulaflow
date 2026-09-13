@@ -1,14 +1,14 @@
-# Working with data
+# Data connectors
 
 Use connectors to inspect schemas and query SQL databases, Neo4j, and SPARQL
 endpoints directly, without an agent or model call.
 
 If you've used [LiteLLM](https://docs.litellm.ai/docs/) or
-[Pydantic AI](https://pydantic.dev/docs/ai/models/overview/) to work with different model providers,
-TabulaFlow brings a similar approach to databases: a unified async interface
-with structured schemas and query results. Queries stay in SQL, Cypher, or
-SPARQL, so LLMs can draw on their existing training rather than learn a new
-query language.
+[Pydantic AI](https://pydantic.dev/docs/ai/models/overview/) to work with different
+model providers, TabulaFlow brings a similar approach to databases: a unified
+async interface with structured schemas and query results. Queries stay in SQL,
+Cypher, or SPARQL, so LLMs can draw on their existing training rather than learn
+a new query language.
 
 For SQL databases, the same awaited API works with both sync and async drivers.
 Schema inspection gives you tables, columns, relationships, and sample values
@@ -23,7 +23,7 @@ and calculates how many units are needed to reach each product's reorder point.
 --8<-- "examples/working_with_data.py"
 ```
 
-The result contains **8 HDMI cables** and **7 USB-C docks**. `result.df` is a
+The query recommends ordering **8 HDMI cables** and **7 USB-C docks**. `result.df` is a
 DataFrame you can process directly; `format_dataframe(...)` turns it into text.
 `SQLDDLSchemaFormatter` does the same for the schema, ready for inspection or
 an LLM prompt.
@@ -33,16 +33,16 @@ execution metadata. TabulaFlow's `SerializableDataFrame` also preserves nested
 JSON values, binary data, and decimals, without custom encoders or flattening
 complex columns.
 
-Check `result.error` before using the result. A successful statement can have
-no DataFrame, for example when creating a table. Connection setup and DataFrame
-writes can raise exceptions directly; the example closes its connector in
-`finally` even when something fails.
-
 Run the example without a database server or API key:
 
 ```bash
 uv run https://megagonlabs.github.io/tabulaflow/examples/working_with_data.py
 ```
+
+Check `result.error` before using a query result. Successful statements such as
+`CREATE TABLE` can have no DataFrame. Connection setup and DataFrame writes can
+raise exceptions directly; the example closes its connector in `finally` even
+when something fails.
 
 ## Connect your own data
 
@@ -70,7 +70,7 @@ and async drivers, and backend-aware execution controls:
   dialects, these stop the running database query. Timeouts appear in
   `result.error`; task cancellation propagates as `asyncio.CancelledError`.
 - **Concurrency and result limits.** Configure how many queries can run at
-  once and how many rows a result can contain. Share a `dbms_semaphore` across
+  once and reject results that exceed your row limit. Share a `dbms_semaphore` across
   SQL connectors to cap concurrent queries to the same warehouse.
 - **Optional caching.** Cache SQL schemas and query results to avoid repeated
   work. Both caches are off by default; enable them when reusing a snapshot is

@@ -1,8 +1,8 @@
 # Chat sessions
 
-`ChatSession` gives your application a stateful data conversation, including
-tools, structured outputs, and streaming events. Reuse the same session for
-follow-up questions; it keeps the conversation history for you.
+`ChatSession` combines source routing, tools, conversation history, and
+structured outputs. Reuse a session for follow-up questions, and stream
+answers and tool progress as they happen.
 
 ## Example: Ask a follow-up question
 
@@ -27,7 +27,10 @@ uv run https://megagonlabs.github.io/tabulaflow/examples/chat_sessions.py
 This makes paid model calls and sends questions, schema, and relevant query
 results to the provider.
 
-## Consume the stream
+## Stream answers and progress
+
+Use `run(...)` for the final `ChatResult`, or `run_stream(...)` for events
+as the turn runs.
 
 The example handles three event kinds:
 
@@ -37,16 +40,17 @@ The example handles three event kinds:
   artifacts, and usage. It ends a successfully completed turn.
 
 Other [events](api/agents.md#events-and-turn-results) report tool progress,
-narration, and context compaction. Use `run(...)` when you only need the final
-result, or see [Structured outputs](structured-outputs.md) to work with artifacts.
+narration, and context compaction. See [Structured outputs](structured-outputs.md)
+to resolve the tables, charts, and other artifacts returned with an answer.
 
 ## Manage a conversation
 
 - Create one session per conversation and run one turn at a time. Add sources
   to its registry for [multi-source conversations](quick-start.md#example-chat-with-two-data-sources).
 - Set `model`, `reasoning`, and `extra_instructions` when constructing the
-  session. Automatic context compaction is enabled by default for long
-  conversations; pass `compaction=None` to disable it.
+  session. For long conversations, automatic context compaction summarizes
+  conversation context to keep the model input manageable; pass `compaction=None`
+  to disable it.
 - Use `reset_conversation()` to clear the conversation while keeping the
   session environment, including its connectors and stored outputs.
 - Failures propagate as exceptions. To interrupt a turn, cancel and await the
@@ -56,4 +60,4 @@ Close the session with `aclose()` and close your connectors separately. The
 nested `finally` blocks above release both even if a turn fails.
 
 See the [ChatSession reference](api/agents.md#chat-sessions) for configuration,
-or [Tools and custom agents](tools-and-custom-agents.md) to assemble your own workflow.
+or [Agent tools](agent-tools.md) to assemble your own workflow.

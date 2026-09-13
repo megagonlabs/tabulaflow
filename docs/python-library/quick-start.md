@@ -6,7 +6,7 @@ bring individual components into your own workflows.
 
 Choose the building blocks you need:
 
-- [Data connectors](working-with-data.md): inspect schemas and query SQL
+- [Data connectors](data-connectors.md): inspect schemas and query SQL
   databases, Neo4j, SPARQL endpoints, files, and datasets through a unified
   async interface.
 - [Chat sessions](chat-sessions.md): use `ChatSession` to converse
@@ -15,7 +15,7 @@ Choose the building blocks you need:
 - [Structured outputs](structured-outputs.md): let agents produce tables, charts, maps,
   and graphs as structured artifacts, with optional lazy data resolution for
   parameter-driven interaction.
-- [Reusable tools](tools-and-custom-agents.md): use query, visualization, and
+- [Agent tools](agent-tools.md): use query, visualization, and
   document-extraction tools in your own agent workflows without adopting
   `ChatSession`.
 - [Schema and result formatting](api/output.md#formatting): turn structured
@@ -94,7 +94,7 @@ To use TabulaFlow as a library in your own project:
     pip install tabulaflow
     ```
 
-- [Working with data](working-with-data.md): connect sources and query them directly.
+- [Data connectors](data-connectors.md): connect sources and query them directly.
 - [Chat sessions](chat-sessions.md): add follow-up questions and streaming.
 - [Structured outputs](structured-outputs.md): work with data and interactive artifacts.
-- [Tools and custom agents](tools-and-custom-agents.md): build your own agent workflow.
+- [Agent tools](agent-tools.md): reuse tools and add your own agent behavior.

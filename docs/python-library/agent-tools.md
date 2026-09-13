@@ -1,13 +1,13 @@
-# Tools and custom agents
+# Agent tools
 
-Bring TabulaFlow tools into your own agent when you want control over the
-instructions, available actions, and response type. You do not need
-`ChatSession` to use them.
+Give your agent tools for querying data, creating visualizations, and extracting
+information from documents. Reuse them alongside your own Python functions,
+without adopting `ChatSession`.
 
 ## Example: Plan an order in supplier packs
 
-Give a custom agent a query tool and a small Python function for rounding
-orders to whole packs. A Pydantic model makes its final restocking plan
+Combine `RunQueryTool` with a small Python function that rounds orders to whole
+supplier packs. A Pydantic model makes the agent's final restocking plan
 available as typed Python data.
 
 ```python title="custom_agents.py"
@@ -26,10 +26,10 @@ uv run https://megagonlabs.github.io/tabulaflow/examples/custom_agents.py
 ```
 
 This makes paid model calls and sends the schema, question, and query results
-to the provider. The database is disposable; use appropriately restricted
-credentials when connecting an agent to your own data.
+to the provider. The example closes its connector in `finally`. For your own
+data, use [read-only credentials and execution limits](data-connectors.md#control-query-execution).
 
-## Choose what to reuse
+## Reuse tools in your agent
 
 `make_agent(...)` constructs a Pydantic AI agent with TabulaFlow's shared model
 throttling. `as_pydantic_ai_tool()` adapts a TabulaFlow tool for that agent;
@@ -41,18 +41,19 @@ For direct Python use, `await query_tool.execute(query)` returns a
 their own return types and error behavior.
 
 Use [registry-aware tools](api/agents.md#data-tools) when the agent should choose
-among multiple connectors. Add [extraction and enrichment tools](api/agents.md#extraction-and-enrichment-tools)
-or call [extraction services](api/agents.md#extraction-and-summarization) directly
+among multiple connectors. Add [visualization tools](api/agents.md#output-tools)
+for artifacts, or [extraction and enrichment tools](api/agents.md#extraction-and-enrichment-tools)
 for document workflows.
 
 ## Add your own tools
 
 A plain function is enough for a Pydantic AI tool, as above. For a reusable
 TabulaFlow tool, follow the [AgentTool contract](api/agents.md#tool-contracts):
-keep reusable work in `execute(...)`, expose the model-facing adapter through
-`__call__`, and provide `as_pydantic_ai_tool()` and metrics.
+expose `name`, `__call__`, `as_pydantic_ai_tool()`, and `metrics()`. Keep reusable
+work in `execute(...)` and use `__call__` to adapt its result or expected errors
+for the model.
 
-This custom agent returns a `RestockPlan`, not a `ChatResult`. Add
-[structured outputs](structured-outputs.md) explicitly when your application
-needs artifacts, or use [ChatSession](chat-sessions.md) for the integrated
-conversation runtime.
+The example's `RestockPlan` is a typed answer, not an artifact specification.
+Use [structured outputs](structured-outputs.md) for tables and charts with
+resolvable data, or [Chat sessions](chat-sessions.md) for a conversation runtime
+that integrates tools and artifacts.
