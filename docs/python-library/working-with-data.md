@@ -61,8 +61,9 @@ See [opening sources](api/data.md#opening-sources) and
 
 ## Control query execution
 
-`SQLConnector` also handles execution controls that would otherwise need
-backend-specific code:
+`SQLConnector` uses SQLAlchemy for connections and dialect support. TabulaFlow
+adds structured schemas and results, a consistent async interface across sync
+and async drivers, and backend-aware execution controls:
 
 - **Timeouts and cancellation.** Set a deadline with
   `run_query_async(..., timeout=30)` or cancel the awaiting task. On supported
