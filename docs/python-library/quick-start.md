@@ -4,11 +4,29 @@ TabulaFlow is an async-native Python library for building data agents and
 applications. Use its connectors, tools, and structured outputs together, or
 bring individual components into your own workflows.
 
+Choose the building blocks you need:
+
+- [Data connectors](api/data.md): inspect structured schemas and query SQL
+  databases, Neo4j, SPARQL endpoints, files, and datasets through a common
+  async interface.
+- [Source registry](api/data.md#connector-registry): give connectors names with
+  `DataConnectorRegistry`, so an agent can select the appropriate source for
+  each query.
+- [Chat sessions](api/agents.md#chat-sessions): use `ChatSession` to maintain a
+  conversation, run tools, and stream answers and progress.
+- [Structured outputs](api/output.md): describe tables, charts, maps, and graphs
+  with `OutputSpec`, and access their underlying data and queries through
+  `OutputStore`.
+- [Reusable tools](api/agents.md#tool-contracts): use query, visualization, and
+  document-extraction tools in your own agent workflows without adopting
+  `ChatSession`.
+
 ## Chat with two data sources
 
-Compare revenue across regions and find open high-priority support tickets.
-This example creates two small SQLite databases in memory, so you don't need
-a database server or sample files.
+This example connects two in-memory SQLite databases to a chat session to
+compare revenue across regions and find open high-priority support tickets.
+It then inspects the resulting table and chart. No database server or sample
+files are needed.
 
 ```python title="quick_start.py"
 --8<-- "examples/quick_start.py"

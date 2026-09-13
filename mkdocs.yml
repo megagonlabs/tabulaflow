@@ -47,7 +47,6 @@ nav:
   - Connecting data: data-agent/connecting-data.md
   - Configuration: data-agent/configuration.md
   - TabulaFlow as a Python Library:
-      - Overview: python-library/index.md
       - Quick start: python-library/quick-start.md
       - Concepts: python-library/concepts.md
       - Working with data: python-library/working-with-data.md

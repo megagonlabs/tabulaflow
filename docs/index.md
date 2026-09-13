@@ -59,7 +59,7 @@ We build TabulaFlow not only as an end-user application but also as an
 async-native Python library with clean, minimal building blocks for modern data
 agents, from data connectors to agent tools. You can use them to create agents
 and applications tailored to your needs.
-[Explore the library](python-library/index.md){ .inline-cta }
+[Explore the library](python-library/quick-start.md){ .inline-cta }
 
 ### Research Toolkit
 
