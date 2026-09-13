@@ -4,7 +4,7 @@
 tools, structured outputs, and streaming events. Reuse the same session for
 follow-up questions; it keeps the conversation history for you.
 
-## Ask a follow-up question
+## Example: Ask a follow-up question
 
 First identify products that need restocking, then stream a follow-up about
 order quantities. The second question refers to the first answer without

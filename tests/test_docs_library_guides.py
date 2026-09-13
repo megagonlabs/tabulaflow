@@ -92,6 +92,21 @@ async def test_data_example_closes_after_query_failure(
     assert len(closed_connectors) == 1
 
 
+@pytest.mark.parametrize(
+    "script", ["working_with_data.py", "chat_sessions.py", "structured_outputs.py", "custom_agents.py"]
+)
+async def test_examples_close_after_data_preparation_failure(
+    script: str, monkeypatch: pytest.MonkeyPatch, closed_connectors: list[SQLConnector]
+) -> None:
+    async def fail_write(self: SQLConnector, *args: Any, **kwargs: Any) -> None:
+        raise RuntimeError("sample data unavailable")
+
+    monkeypatch.setattr(SQLConnector, "write_dataframe_async", fail_write)
+    with pytest.raises(RuntimeError, match="sample data unavailable"):
+        await runpy.run_path(str(EXAMPLES / script))["main"]()
+    assert len(closed_connectors) == 1
+
+
 async def test_structured_outputs_resolve_lazily_and_reuse_results(
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],

@@ -31,20 +31,24 @@ def order_in_packs(shortfall: int, pack_size: int) -> int:
     return ((shortfall + pack_size - 1) // pack_size) * pack_size
 
 
+async def load_sample_data(stock):
+    await stock.write_dataframe_async(
+        pd.DataFrame(
+            {
+                "product": ["USB-C dock", "Laptop stand", "HDMI cable"],
+                "on_hand": [3, 18, 4],
+                "reorder_point": [10, 8, 12],
+                "pack_size": [4, 1, 5],
+            }
+        ),
+        "inventory",
+    )
+
+
 async def main():
     stock = await SQLConnector.from_url_async("sqlite+aiosqlite:///:memory:", read_only=False)
     try:
-        await stock.write_dataframe_async(
-            pd.DataFrame(
-                {
-                    "product": ["USB-C dock", "Laptop stand", "HDMI cable"],
-                    "on_hand": [3, 18, 4],
-                    "reorder_point": [10, 8, 12],
-                    "pack_size": [4, 1, 5],
-                }
-            ),
-            "inventory",
-        )
+        await load_sample_data(stock)
         query_tool = RunQueryTool(stock)
         agent = make_agent(
             "openai-responses:gpt-5-mini",

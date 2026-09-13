@@ -14,19 +14,23 @@ from tabulaflow.output.specs import ChartArtifactSpec, ChoiceOption, ChoiceParam
 from tabulaflow.output.store import OutputStore
 
 
+async def load_sample_data(sales):
+    await sales.write_dataframe_async(
+        pd.DataFrame(
+            {
+                "region": ["West", "West", "East"],
+                "revenue_usd": [1200, 800, 1500],
+                "profit_usd": [240, 160, 450],
+            }
+        ),
+        "sales",
+    )
+
+
 async def main():
     sales = await SQLConnector.from_url_async("sqlite+aiosqlite:///:memory:", read_only=False)
     try:
-        await sales.write_dataframe_async(
-            pd.DataFrame(
-                {
-                    "region": ["West", "West", "East"],
-                    "revenue_usd": [1200, 800, 1500],
-                    "profit_usd": [240, 160, 450],
-                }
-            ),
-            "sales",
-        )
+        await load_sample_data(sales)
         registry = DataConnectorRegistry()
         registry.register("sales", sales)
         store = OutputStore(registry=registry)

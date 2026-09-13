@@ -11,19 +11,23 @@ from tabulaflow.agents import ChatSession
 from tabulaflow.data import DataConnectorRegistry, SQLConnector
 
 
+async def load_sample_data(stock):
+    await stock.write_dataframe_async(
+        pd.DataFrame(
+            {
+                "product": ["USB-C dock", "Laptop stand", "HDMI cable"],
+                "on_hand": [3, 18, 4],
+                "reorder_point": [10, 8, 12],
+            }
+        ),
+        "inventory",
+    )
+
+
 async def main():
     stock = await SQLConnector.from_url_async("sqlite+aiosqlite:///:memory:", read_only=False)
     try:
-        await stock.write_dataframe_async(
-            pd.DataFrame(
-                {
-                    "product": ["USB-C dock", "Laptop stand", "HDMI cable"],
-                    "on_hand": [3, 18, 4],
-                    "reorder_point": [10, 8, 12],
-                }
-            ),
-            "inventory",
-        )
+        await load_sample_data(stock)
         registry = DataConnectorRegistry()
         registry.register("stock", stock)
         session = ChatSession(registry=registry, model="openai-responses:gpt-5-mini", reasoning="low")

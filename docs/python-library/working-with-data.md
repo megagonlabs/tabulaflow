@@ -1,10 +1,14 @@
 # Working with data
 
-Use connectors to inspect schemas and run queries directly, without an agent
-or model call. SQL databases, Neo4j, and SPARQL endpoints share an async interface
-while keeping their own query languages.
+Use connectors to inspect schemas and query SQL databases, Neo4j, and SPARQL
+endpoints directly, without an agent or model call.
 
-## Find products to restock
+If you've used [LiteLLM](https://docs.litellm.ai/docs/) for model providers,
+TabulaFlow's connectors offer a similar idea for databases: a unified async
+interface with structured schemas and query results. Each backend keeps its
+own query language.
+
+## Example: Find products to restock
 
 This example creates a small inventory database in memory, inspects its schema,
 and calculates how many units are needed to reach each product's reorder point.

@@ -4,7 +4,7 @@ Bring TabulaFlow tools into your own agent when you want control over the
 instructions, available actions, and response type. You do not need
 `ChatSession` to use them.
 
-## Plan an order in supplier packs
+## Example: Plan an order in supplier packs
 
 Give a custom agent a query tool and a small Python function for rounding
 orders to whole packs. A Pydantic model makes its final restocking plan

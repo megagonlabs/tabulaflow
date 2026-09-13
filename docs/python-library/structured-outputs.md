@@ -4,7 +4,7 @@ Work with an agent's results as data, not just text. Tables, charts, maps, and
 graphs have structured specifications that your application can inspect,
 serialize, and render. You can also construct outputs without an agent.
 
-## Switch between revenue and profit
+## Example: Switch between revenue and profit
 
 This example gives a table and chart the same parameterized data source.
 Changing the metric resolves a different query; switching back reuses the

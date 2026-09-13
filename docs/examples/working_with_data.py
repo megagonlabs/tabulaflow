@@ -11,20 +11,23 @@ from tabulaflow.data import SQLConnector
 from tabulaflow.output.formatting import SQLDDLSchemaFormatter, format_dataframe
 
 
+async def load_sample_data(stock):
+    await stock.write_dataframe_async(
+        pd.DataFrame(
+            {
+                "product": ["USB-C dock", "Laptop stand", "HDMI cable"],
+                "on_hand": [3, 18, 4],
+                "reorder_point": [10, 8, 12],
+            }
+        ),
+        "inventory",
+    )
+
+
 async def main():
     stock = await SQLConnector.from_url_async("sqlite+aiosqlite:///:memory:", read_only=False)
     try:
-        await stock.write_dataframe_async(
-            pd.DataFrame(
-                {
-                    "product": ["USB-C dock", "Laptop stand", "HDMI cable"],
-                    "on_hand": [3, 18, 4],
-                    "reorder_point": [10, 8, 12],
-                }
-            ),
-            "inventory",
-        )
-
+        await load_sample_data(stock)
         print("Tables:", [table.name for table in stock.schema.tables])
         print(SQLDDLSchemaFormatter().format(stock.schema))
 
