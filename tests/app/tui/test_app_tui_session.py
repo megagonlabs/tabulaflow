@@ -827,6 +827,7 @@ async def test_submission_displays_compact_paste_reference(monkeypatch: pytest.M
         return _Session()
 
     _stub_app_startup(app, monkeypatch)
+    monkeypatch.setattr(app, "_start_llm_activation", lambda _selection: None)
     monkeypatch.setattr(app, "_ensure_session", fake_ensure_session)
 
     async with app.run_test():
