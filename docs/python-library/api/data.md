@@ -3,24 +3,21 @@
 Use `connect_data_source` to open a source, then query it through the
 `DataConnector` interface. The caller closes each connector when finished.
 
+## Connector interface
+
+Query failures are represented by `ExecResult.error`. `read_only=True`
+requests the connector's read-only behavior; database permissions remain the
+security boundary for SQL connections.
+
+::: tabulaflow.data.protocols.DataConnector
+
 ## Opening sources
+
+Connection setup can raise exceptions directly.
 
 ::: tabulaflow.data.connect.connect_data_source
 
 ::: tabulaflow.data.connect.connect_url
-
-## Connector interface and registry
-
-Query failures are represented by `ExecResult.error`. Connection setup and
-registry validation can raise exceptions directly. `read_only=True` requests
-the connector's read-only behavior; database permissions remain the security
-boundary for SQL connections.
-
-::: tabulaflow.data.protocols.DataConnector
-
-::: tabulaflow.data.registry.DataConnectorRegistry
-
-::: tabulaflow.data.protocols.validate_global_id
 
 ## Connector implementations
 
@@ -43,23 +40,13 @@ a writable database.
     options:
       merge_init_into_class: false
 
-## Execution errors
-
-These errors identify result-size and SPARQL response failures. Query methods
-that return `ExecResult` capture execution failures in `error`; lower-level
-execution APIs may raise directly.
-
-::: tabulaflow.data.protocols.ResultTooLargeError
-
-::: tabulaflow.data.sparql.InvalidSPARQLResultError
-
-::: tabulaflow.data.sparql.SPARQLResponseTooLargeError
-
 ## Configuration
 
 Connector settings use explicit arguments first, then `TABULAFLOW_*`
 environment variables, then defaults. Pass `DataSourceConnectorConfigs` to
 `connect_data_source` when the source's backend is selected at runtime.
+
+::: tabulaflow.data.config.DataSourceConnectorConfigs
 
 ::: tabulaflow.data.config.SQLConnectorConfig
 
@@ -67,15 +54,13 @@ environment variables, then defaults. Pass `DataSourceConnectorConfigs` to
 
 ::: tabulaflow.data.config.SPARQLConnectorConfig
 
-::: tabulaflow.data.config.DataSourceConnectorConfigs
+## Connector registry
 
-## Source catalog
+Registry validation can raise exceptions directly.
 
-::: tabulaflow.data.catalog.DataSourceDefinition
+::: tabulaflow.data.registry.DataConnectorRegistry
 
-::: tabulaflow.data.catalog.DEFAULT_DATA_SOURCE_DEFINITIONS
-
-::: tabulaflow.data.catalog.resolve_data_source_definition
+::: tabulaflow.data.protocols.validate_global_id
 
 ## File and dataset loaders
 
@@ -95,3 +80,29 @@ need loader-specific options.
 ::: tabulaflow.data.loaders.huggingface.parse_hf_dataset_url
 
 ::: tabulaflow.data.loaders.huggingface.is_hf_dataset_url
+
+## Source catalog
+
+Catalog entries are named source definitions, not live connectors.
+`connect_data_source` resolves an entry to its `source`, then dispatches to
+the appropriate loader or connector. An entry can name a local file, a
+Hugging Face dataset, or a connection URL. The connector registry instead
+holds live connector instances.
+
+::: tabulaflow.data.catalog.DataSourceDefinition
+
+::: tabulaflow.data.catalog.DEFAULT_DATA_SOURCE_DEFINITIONS
+
+::: tabulaflow.data.catalog.resolve_data_source_definition
+
+## Execution errors
+
+These errors identify result-size and SPARQL response failures. Query methods
+that return `ExecResult` capture execution failures in `error`; lower-level
+execution APIs may raise directly.
+
+::: tabulaflow.data.protocols.ResultTooLargeError
+
+::: tabulaflow.data.sparql.InvalidSPARQLResultError
+
+::: tabulaflow.data.sparql.SPARQLResponseTooLargeError
