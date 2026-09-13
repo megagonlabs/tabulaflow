@@ -469,6 +469,13 @@ SerializableDataFrame: TypeAlias = Annotated[
     BeforeValidator(_deserialize_adapter),
     PlainSerializer(_serialize_adapter, return_type=dict[str, str], when_used="always"),
 ]
+"""A pandas DataFrame with Pydantic validation and serialization.
+
+Validation accepts a DataFrame or a serialized payload and returns a normalized
+DataFrame. Serialization produces a dictionary with a format identifier and
+base64-encoded Parquet data. Values remain ordinary pandas DataFrames at runtime;
+this annotation does not define a separate DataFrame class.
+"""
 
 
 __all__ = [

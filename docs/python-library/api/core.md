@@ -63,9 +63,14 @@ tabular representation.
 
 ## DataFrame serialization
 
-These functions normalize and serialize result DataFrames, including supported
-binary and nested values. `ExecResult` uses this serialization when exporting
-its DataFrame through Pydantic.
+Import these APIs from `tabulaflow.core.dataframe`. They normalize and serialize
+DataFrames, including supported binary and nested values. `ExecResult.df` and
+`SQLTableSchema.sampled_df` use `SerializableDataFrame` for Pydantic validation
+and serialization.
+
+::: tabulaflow.core.dataframe.SerializableDataFrame
+    options:
+      show_attribute_values: false
 
 ::: tabulaflow.core.dataframe.normalize_dataframe
 
