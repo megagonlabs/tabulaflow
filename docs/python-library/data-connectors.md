@@ -3,9 +3,8 @@
 Use connectors to inspect schemas and query SQL databases, Neo4j, and SPARQL
 endpoints directly, without an agent or model call.
 
-If you've used [LiteLLM](https://docs.litellm.ai/docs/) or
-[Pydantic AI](https://pydantic.dev/docs/ai/models/overview/) to work with different
-model providers, TabulaFlow brings a similar approach to databases: a unified
+If you've used LiteLLM or Pydantic AI to work with different model providers,
+TabulaFlow brings a similar approach to databases: a unified
 async interface with structured schemas and query results. Queries stay in SQL,
 Cypher, or SPARQL, so LLMs can draw on their existing training rather than learn
 a new query language.
