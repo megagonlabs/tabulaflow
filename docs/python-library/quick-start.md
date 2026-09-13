@@ -8,9 +8,10 @@ Choose the building blocks you need:
 
 - [Data connectors](api/data.md): inspect schemas and query SQL
   databases, Neo4j, SPARQL endpoints, files, and datasets through a unified
-  async interface with multi-source support.
-- [Chat sessions](api/agents.md#chat-sessions): use `ChatSession` to maintain a
-  conversation, run tools, and stream answers and progress.
+  async interface.
+- [Chat sessions](api/agents.md#chat-sessions): use `ChatSession` to converse
+  across multiple data sources, run tools, and stream answers and progress,
+  with automatic context compaction for long conversations.
 - [Structured outputs](api/output.md): let agents produce tables, charts, maps,
   and graphs as structured artifacts, with optional lazy data resolution for
   parameter-driven interaction.
