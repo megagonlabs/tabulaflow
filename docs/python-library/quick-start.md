@@ -17,6 +17,9 @@ Choose the building blocks you need:
 - [Reusable tools](api/agents.md#tool-contracts): use query, visualization, and
   document-extraction tools in your own agent workflows without adopting
   `ChatSession`.
+- [Schema and result formatting](api/output.md#formatting): turn structured
+  schemas and query results into readable text for LLM prompts or human
+  inspection.
 
 These building blocks are organized into four layered packages:
 `core <- data <- output <- agents`. See
