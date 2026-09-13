@@ -4,7 +4,12 @@ Connect to SQL databases, Neo4j, SPARQL endpoints, files, and datasets through
 a common async interface. Work with structured schemas and query results
 while keeping each backend's query language.
 
+Import connector classes, `connect_data_source`, and `DataConnectorRegistry`
+from `tabulaflow.data`.
+
 ## Connector interface
+
+Implement `DataConnector` to add a custom backend.
 
 Query failures are represented by `ExecResult.error`. `read_only=True`
 requests the connector's read-only behavior; database permissions remain the

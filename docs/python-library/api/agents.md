@@ -6,6 +6,8 @@ your own workflows.
 
 ## Chat sessions
 
+Import `ChatSession` and `ChatInput` from `tabulaflow.agents`.
+
 A session runs one turn at a time. `run(...)` returns a `ChatResult`;
 `run_stream(...)` yields semantic events and ends with `TurnFinished` on
 normal completion. Failures and cancellation propagate as exceptions.
@@ -178,7 +180,8 @@ the adapters do not all return the same shape.
 
 ## Extraction and summarization
 
-These services can be used directly without a chat session.
+These services can be used directly without a chat session. Import
+`EntityExtractor` and `ColumnType` from `tabulaflow.agents.extraction`.
 
 ::: tabulaflow.agents.extraction.entity.EntityExtractor
 

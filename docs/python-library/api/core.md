@@ -4,6 +4,8 @@ Shared types for describing schemas, query results, and media values, plus
 utilities for serialization. These primitives work independently of a live
 connection, agent, or frontend.
 
+Import shared schema and result types from `tabulaflow.core`.
+
 ## Schema and language unions
 
 ::: tabulaflow.core.schema.DataSourceSchema

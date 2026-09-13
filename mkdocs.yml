@@ -48,7 +48,6 @@ nav:
   - Configuration: data-agent/configuration.md
   - TabulaFlow as a Python Library:
       - Quick start: python-library/quick-start.md
-      - Concepts: python-library/concepts.md
       - Working with data: python-library/working-with-data.md
       - Building agents: python-library/building-agents.md
       - Presenting results: python-library/presenting-results.md

@@ -22,8 +22,8 @@ Choose the building blocks you need:
   inspection.
 
 These building blocks are organized into four layered packages:
-`core <- data <- output <- agents`. See
-[Concepts](concepts.md#how-the-layers-fit) for how they fit together.
+`core <- data <- output <- agents`. See the
+[API reference](api-reference.md) for how they fit together.
 
 ## Chat with two data sources
 
