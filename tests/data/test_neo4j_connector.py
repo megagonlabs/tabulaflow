@@ -3,6 +3,7 @@ from collections.abc import AsyncIterator
 from datetime import date, datetime
 from pathlib import Path
 from typing import Any
+from unittest.mock import AsyncMock
 
 import neo4j
 import pytest
@@ -77,6 +78,40 @@ class _Driver:
 
     async def close(self) -> None:
         self.closed = True
+
+
+@pytest.mark.parametrize(
+    ("display_name", "schema_name", "database", "server_name", "expected"),
+    [
+        ("Explicit", "Schema", "requested", "default", "Explicit"),
+        (None, "Schema", "requested", "default", "Schema"),
+        (None, None, "requested", "default", "requested"),
+        (None, None, None, "default", "default"),
+        (None, None, None, None, "Neo4j"),
+    ],
+)
+async def test_display_name_precedence(
+    monkeypatch: pytest.MonkeyPatch,
+    display_name: str | None,
+    schema_name: str | None,
+    database: str | None,
+    server_name: str | None,
+    expected: str,
+) -> None:
+    driver = _Driver()
+    monkeypatch.setattr(neo4j.AsyncGraphDatabase, "driver", lambda *_args, **_kwargs: driver)
+    monkeypatch.setattr(Neo4jConnector, "_fetch_default_db_name", AsyncMock(return_value=server_name))
+    monkeypatch.setattr(Neo4jConnector, "_load_schema_async", AsyncMock())
+    connector = await Neo4jConnector.from_url_async(
+        "neo4j://localhost:7687",
+        display_name=display_name,
+        schema=PropertyGraphSchema(display_name=schema_name) if schema_name is not None else None,
+        database=database,
+    )
+    try:
+        assert connector.schema.display_name == expected
+    finally:
+        await connector.close_async()
 
 
 def test_native_path_is_materialized_without_data_loss() -> None:

@@ -170,7 +170,7 @@ def is_database_file_path(path: str) -> bool:
 async def connect_url(
     source: str,
     *,
-    display_name: str,
+    display_name: str | None = None,
     read_only: bool = True,
     global_id: str | None = None,
     config: SQLConnectorConfig | Neo4jConnectorConfig | SPARQLConnectorConfig | None = None,
@@ -189,6 +189,7 @@ async def connect_url(
             ``neo4j+s://user:pass@host``, ``sparql+https://query.wikidata.org/sparql``,
             ``sqlite+aiosqlite:///data.sqlite``, and ``duckdb:///data.duckdb``.
         display_name: Human-readable name stored in the connector schema.
+            Inferred by the selected connector when omitted.
         read_only: Request backend-appropriate read-only behavior. SQL callers
             still need read-only credentials or IAM for enforced security.
         global_id: Stable identity of the source and authorization context used

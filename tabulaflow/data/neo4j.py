@@ -330,8 +330,9 @@ class Neo4jConnector:
             auth: ``(username, password)`` tuple or ``neo4j.Auth`` object.
             database: Neo4j database name.  ``None`` uses the server default.
             display_name: Human-readable name used in
-                ``schema.display_name``.
-                Auto-detected from the server if not provided.
+                ``schema.display_name``. Defaults to the supplied schema's
+                name, then the requested or server-default database name,
+                then ``"Neo4j"``.
             schema: Pre-loaded schema.  If ``None``, the schema is
                 introspected automatically.
             read_only: Use Neo4j's server-enforced read access mode when
@@ -360,7 +361,7 @@ class Neo4jConnector:
                 or (schema.display_name if schema is not None else None)
                 or database
                 or await cls._fetch_default_db_name(driver)
-                or "N/A"
+                or "Neo4j"
             )
             if schema is not None:
                 schema.display_name = resolved_display_name

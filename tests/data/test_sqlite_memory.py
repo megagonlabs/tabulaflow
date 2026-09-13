@@ -29,11 +29,11 @@ async def test_memory_database_roundtrip_and_isolation(driver: str, database: st
         for value in (1, 2):
             connector = await SQLConnector.from_url_async(
                 make_url(f"{driver}://" if database is None else f"{driver}:///{database}"),
-                display_name="example",
                 read_only=False,
                 config=config,
             )
             cleanup.push_async_callback(connector.close_async)
+            assert connector.schema.display_name == (database or "sqlite")
             assert connector.schema.tables == []
             assert isinstance(connector._t_eng.engine.pool, StaticPool)
             assert await connector.write_dataframe_async(pd.DataFrame({"value": [value]}), "items") == 1

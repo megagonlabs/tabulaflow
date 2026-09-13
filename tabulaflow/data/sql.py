@@ -461,6 +461,11 @@ def _is_sqlite_memory_url(url: str | SQLAlchemyURL) -> bool:
     return parsed.get_backend_name() == "sqlite" and parsed.database in (None, "", ":memory:")
 
 
+def _default_display_name(url: str | SQLAlchemyURL) -> str:
+    parsed = make_url(url)
+    return parsed.database or parsed.get_backend_name()
+
+
 def _is_async_url(url: str | SQLAlchemyURL) -> bool:
     """Return ``True`` if the URL uses a known async SQLAlchemy driver."""
     driver = str(url).split("://", 1)[0]  # e.g. "sqlite+aiosqlite"
@@ -2253,7 +2258,7 @@ class SQLConnector:
         cls,
         url: str | SQLAlchemyURL,
         *,
-        display_name: str,
+        display_name: str | None = None,
         global_id: str | None = None,
         read_only: bool = True,
         config: SQLConnectorConfig | None = None,
@@ -2277,7 +2282,8 @@ class SQLConnector:
         Args:
             url: The database URL (string or :class:`SQLAlchemyURL`).
             display_name: Human-readable name used in
-                ``schema.display_name``.
+                ``schema.display_name``. Defaults to the supplied schema's
+                name, then the URL's database value, then the backend name.
             global_id: Globally unique, filename-safe identifier for this
                 database connection and its caches. Derived from the URL and
                 non-secret authenticated identity, such as its username, when
@@ -2313,6 +2319,8 @@ class SQLConnector:
             A fully initialised :class:`SQLConnector` instance ready to
             execute queries.
         """
+        if display_name is None:
+            display_name = schema.display_name if schema is not None else _default_display_name(url)
         if global_id is None:
             global_id = f"sqlite-memory+{uuid4().hex}" if _is_sqlite_memory_url(url) else _global_id_from_url(str(url))
         global_id = validate_global_id(global_id)

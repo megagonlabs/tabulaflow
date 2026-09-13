@@ -1,6 +1,7 @@
 """Unit tests for database connection URL helpers."""
 
 import pytest
+from unittest.mock import AsyncMock
 
 from tabulaflow.data.connect import (
     is_database_file_path,
@@ -8,6 +9,27 @@ from tabulaflow.data.connect import (
     redact_url_password,
     strip_url_credentials,
 )
+
+
+@pytest.mark.parametrize(
+    ("source", "connector_class"),
+    [
+        ("sqlite+aiosqlite:///:memory:", "SQLConnector"),
+        ("neo4j://localhost:7687", "Neo4jConnector"),
+        ("sparql+https://example.test/query", "SPARQLConnector"),
+    ],
+)
+async def test_connect_url_leaves_default_naming_to_connector(
+    monkeypatch: pytest.MonkeyPatch, source: str, connector_class: str
+) -> None:
+    import tabulaflow.data
+    from tabulaflow.data.connect import connect_url
+
+    factory = AsyncMock()
+    monkeypatch.setattr(getattr(tabulaflow.data, connector_class), "from_url_async", factory)
+    await connect_url(source)
+    assert factory.await_args is not None
+    assert factory.await_args.kwargs["display_name"] is None
 
 
 class TestNormalizeConnectionUrl:

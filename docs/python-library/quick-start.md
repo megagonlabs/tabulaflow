@@ -72,12 +72,10 @@ async def load_sample_data(sales, support):
 async def main():
     sales = await SQLConnector.from_url_async(
         "sqlite+aiosqlite:///:memory:",
-        display_name="sales",
         read_only=False,
     )
     support = await SQLConnector.from_url_async(
         "sqlite+aiosqlite:///:memory:",
-        display_name="support",
         read_only=False,
     )
     await load_sample_data(sales, support)

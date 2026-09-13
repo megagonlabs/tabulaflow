@@ -13,7 +13,13 @@ import duckdb
 import pytest
 
 from tabulaflow.data.config import SQLConnectorConfig
-from tabulaflow.data.sql import SQLConnector, ThrottledEngine, _canonicalize_dtype, _sql_dialect_for_backend
+from tabulaflow.data.sql import (
+    SQLConnector,
+    ThrottledEngine,
+    _canonicalize_dtype,
+    _default_display_name,
+    _sql_dialect_for_backend,
+)
 from tabulaflow.core import SQLSchema, TableRef
 
 
@@ -91,6 +97,63 @@ async def test_pool_size_override_is_rejected(tmp_path: Path) -> None:
             display_name="pool-size",
             pool_size=4,
         )
+
+
+@pytest.mark.parametrize(
+    ("url", "expected"),
+    [
+        ("sqlite+aiosqlite:///:memory:", ":memory:"),
+        ("sqlite://", "sqlite"),
+        ("sqlite:///", "sqlite"),
+        ("sqlite:////data/sales.sqlite", "/data/sales.sqlite"),
+        ("duckdb:////data/sales.duckdb", "/data/sales.duckdb"),
+        ("duckdb:///:memory:", ":memory:"),
+        ("postgresql://alice:secret@host/warehouse?password=secret", "warehouse"),
+        ("postgresql://alice:secret@host", "postgresql"),
+        ("bigquery://project/dataset", "dataset"),
+    ],
+)
+def test_sql_default_display_name(url: str, expected: str) -> None:
+    assert _default_display_name(url) == expected
+
+
+@pytest.mark.parametrize(
+    ("display_name", "schema_name", "expected"),
+    [(None, None, None), (None, "Existing", "Existing"), ("Sales", "Existing", "Sales")],
+)
+async def test_sql_display_name_precedence(
+    tmp_path: Path, display_name: str | None, schema_name: str | None, expected: str | None
+) -> None:
+    connector = await SQLConnector.from_url_async(
+        f"sqlite+aiosqlite:///{tmp_path / 'sales.sqlite'}",
+        display_name=display_name,
+        schema=SQLSchema(display_name=schema_name, dialect="sqlite", tables=[]) if schema_name is not None else None,
+        config=SQLConnectorConfig(schema_cache_mode="off", sql_query_cache_mode="off"),
+    )
+    try:
+        assert connector.schema.display_name == (expected or str(tmp_path / "sales.sqlite"))
+    finally:
+        await connector.close_async()
+
+
+async def test_sql_display_name_does_not_change_identity_or_follow_registry_alias(tmp_path: Path) -> None:
+    from tabulaflow.data import DataConnectorRegistry
+
+    identities = []
+    for name in (None, "Sales"):
+        connector = await SQLConnector.from_url_async(
+            f"sqlite+aiosqlite:///{tmp_path / 'sales.sqlite'}",
+            display_name=name,
+            config=SQLConnectorConfig(schema_cache_mode="off", sql_query_cache_mode="off"),
+        )
+        try:
+            registry = DataConnectorRegistry()
+            registry.register("regional_sales", connector)
+            assert connector.schema.display_name == (name or str(tmp_path / "sales.sqlite"))
+            identities.append(connector.global_id)
+        finally:
+            await connector.close_async()
+    assert identities[0] == identities[1]
 
 
 async def test_table_without_column_stats_uses_one_bounded_sample(

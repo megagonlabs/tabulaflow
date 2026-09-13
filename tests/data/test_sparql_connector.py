@@ -42,6 +42,19 @@ async def _connector(
     )
 
 
+@pytest.mark.parametrize("display_name", [None, "Knowledge base"])
+async def test_display_name_defaults_to_hostname(display_name: str | None) -> None:
+    connector = await SPARQLConnector.from_url_async(
+        _URL + "?token=secret",
+        display_name=display_name,
+        transport=_transport_for(_ASK),
+    )
+    try:
+        assert connector.schema.display_name == (display_name or "example.test")
+    finally:
+        await connector.close_async()
+
+
 def _select(variables: list[str], bindings: list[dict[str, object]]) -> dict[str, object]:
     return {"head": {"vars": variables}, "results": {"bindings": bindings}}
 
