@@ -99,10 +99,6 @@ the adapters do not all return the same shape.
 
 ::: tabulaflow.agents.tools.protocols.LLMProfileTool
 
-::: tabulaflow.agents.tools.protocols.ToolMetrics
-
-::: tabulaflow.agents.tools.protocols.sum_tool_metrics
-
 ## Data tools
 
 ::: tabulaflow.agents.tools.connect_data_source.ConnectDataSourceTool
@@ -131,6 +127,14 @@ the adapters do not all return the same shape.
 
 ::: tabulaflow.agents.tools.registry.write_result_table.WriteResultTableTool
 
+## Extraction and enrichment tools
+
+::: tabulaflow.agents.tools.run_subagent_for_each_row.RunSubagentForEachRowTool
+
+::: tabulaflow.agents.tools.extract_rows_from_documents.ExtractRowsFromDocumentsTool
+
+::: tabulaflow.agents.tools.add_canonical_name.AddCanonicalNameTool
+
 ## Output tools
 
 ::: tabulaflow.agents.tools.create_parameterized_source.CreateParameterizedArtifactSourceTool
@@ -151,13 +155,29 @@ the adapters do not all return the same shape.
 
 ::: tabulaflow.agents.tools.show_artifacts.Artifacts
 
-## Extraction and enrichment
+## Browser and filesystem tools
 
-::: tabulaflow.agents.tools.run_subagent_for_each_row.RunSubagentForEachRowTool
+::: tabulaflow.agents.tools.browser.tool.WebBrowserTool
 
-::: tabulaflow.agents.tools.extract_rows_from_documents.ExtractRowsFromDocumentsTool
+::: tabulaflow.agents.tools.browser.manager.WebBrowserManager
 
-::: tabulaflow.agents.tools.add_canonical_name.AddCanonicalNameTool
+::: tabulaflow.agents.tools.filesystem.access.FilesystemRoot
+
+::: tabulaflow.agents.tools.filesystem.view.ViewTool
+
+::: tabulaflow.agents.tools.filesystem.edit.EditFileTool
+
+::: tabulaflow.agents.tools.filesystem.patch.ApplyPatchTool
+
+::: tabulaflow.agents.tools.shell.tool.ExecuteBashTool
+
+::: tabulaflow.agents.tools.shell.tool.BashMode
+
+::: tabulaflow.agents.tools.shell.tool.WaitTimeout
+
+## Extraction and summarization
+
+These services can be used directly without a chat session.
 
 ::: tabulaflow.agents.extraction.entity.EntityExtractor
 
@@ -187,51 +207,6 @@ documented in the [Core reference](core.md#media-values).
 ::: tabulaflow.agents.media.UnrecognizedMediaError
 
 ::: tabulaflow.agents.media.UnsupportedModelMediaError
-
-## Browser and filesystem tools
-
-::: tabulaflow.agents.tools.browser.tool.WebBrowserTool
-
-::: tabulaflow.agents.tools.browser.manager.WebBrowserManager
-
-::: tabulaflow.agents.tools.filesystem.access.FilesystemRoot
-
-::: tabulaflow.agents.tools.filesystem.view.ViewTool
-
-::: tabulaflow.agents.tools.filesystem.edit.EditFileTool
-
-::: tabulaflow.agents.tools.filesystem.patch.ApplyPatchTool
-
-::: tabulaflow.agents.tools.shell.tool.ExecuteBashTool
-
-::: tabulaflow.agents.tools.shell.tool.BashMode
-
-::: tabulaflow.agents.tools.shell.tool.WaitTimeout
-
-## Tool metrics
-
-Tool `metrics` properties expose these per-tool counters. Research-specific
-counters are documented with the [research tools](../../research-toolkit/api/agents.md#tool-metrics).
-
-::: tabulaflow.agents.tools.run_query.RunQueryToolMetrics
-
-::: tabulaflow.agents.tools.get_table_schema.GetTableSchemaToolMetrics
-
-::: tabulaflow.agents.tools.get_column_json_schema.GetColumnJsonSchemaToolMetrics
-
-::: tabulaflow.agents.tools.registry.get_schema.RegistryGetSchemaToolMetrics
-
-::: tabulaflow.agents.tools.registry.get_data_source_document.RegistryGetDataSourceDocumentToolMetrics
-
-::: tabulaflow.agents.tools.browser.tool.WebBrowserToolMetrics
-
-::: tabulaflow.agents.tools.filesystem.view.ViewToolMetrics
-
-::: tabulaflow.agents.tools.filesystem.edit.EditFileToolMetrics
-
-::: tabulaflow.agents.tools.filesystem.patch.ApplyPatchToolMetrics
-
-::: tabulaflow.agents.tools.shell.tool.BashToolMetrics
 
 ## Message storage
 
@@ -267,3 +242,32 @@ connector. Scoped stores attach an agent provenance tag to writes.
 ::: tabulaflow.agents.trace.compute_api_cost
 
 ::: tabulaflow.agents.trace.instrument_agents
+
+## Tool metrics
+
+Tool `metrics` properties expose these per-tool counters. Research-specific
+counters are documented with the [research tools](../../research-toolkit/api/agents.md#tool-metrics).
+
+::: tabulaflow.agents.tools.protocols.ToolMetrics
+
+::: tabulaflow.agents.tools.protocols.sum_tool_metrics
+
+::: tabulaflow.agents.tools.run_query.RunQueryToolMetrics
+
+::: tabulaflow.agents.tools.get_table_schema.GetTableSchemaToolMetrics
+
+::: tabulaflow.agents.tools.get_column_json_schema.GetColumnJsonSchemaToolMetrics
+
+::: tabulaflow.agents.tools.registry.get_schema.RegistryGetSchemaToolMetrics
+
+::: tabulaflow.agents.tools.registry.get_data_source_document.RegistryGetDataSourceDocumentToolMetrics
+
+::: tabulaflow.agents.tools.browser.tool.WebBrowserToolMetrics
+
+::: tabulaflow.agents.tools.filesystem.view.ViewToolMetrics
+
+::: tabulaflow.agents.tools.filesystem.edit.EditFileToolMetrics
+
+::: tabulaflow.agents.tools.filesystem.patch.ApplyPatchToolMetrics
+
+::: tabulaflow.agents.tools.shell.tool.BashToolMetrics
