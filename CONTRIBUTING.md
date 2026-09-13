@@ -31,3 +31,22 @@ keys, credentials, private data, caches, or experiment outputs.
 
 Submit changes from a short-lived branch into `main`. Describe the motivation,
 behavioral changes, and verification in the pull request.
+
+## Documentation
+
+Preview the documentation with the optional `docs` dependency group:
+
+```bash
+uv run --group docs mkdocs serve
+```
+
+Check the documentation before submitting changes:
+
+```bash
+uv run --group docs mkdocs build --strict
+```
+
+API references in `docs/python-library/api/` and `docs/research-toolkit/api/`
+select public objects with mkdocstrings directives. Update signatures and
+docstrings in the Python source; keep reference introductions and examples
+in Markdown. Add new reference pages to `mkdocs.yml`.

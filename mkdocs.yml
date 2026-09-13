@@ -53,7 +53,12 @@ nav:
       - Working with data: python-library/working-with-data.md
       - Building agents: python-library/building-agents.md
       - Presenting results: python-library/presenting-results.md
-      - API reference: python-library/api-reference.md
+      - API reference:
+          - Overview: python-library/api-reference.md
+          - Core: python-library/api/core.md
+          - Data: python-library/api/data.md
+          - Output: python-library/api/output.md
+          - Agents: python-library/api/agents.md
   - TabulaFlow for AI Researchers:
       - Overview: research-toolkit/index.md
       - Quick start: research-toolkit/quick-start.md
@@ -62,16 +67,46 @@ nav:
       - Evaluation: research-toolkit/evaluation.md
       - Custom agents: research-toolkit/custom-agents.md
       - Custom benchmarks and metrics: research-toolkit/custom-benchmarks-and-metrics.md
-      - API reference: research-toolkit/api-reference.md
+      - API reference:
+          - Overview: research-toolkit/api-reference.md
+          - Tasks and results: research-toolkit/api/types.md
+          - Benchmarks: research-toolkit/api/benchmarks.md
+          - Agents: research-toolkit/api/agents.md
+          - Metrics: research-toolkit/api/metrics.md
+          - Pipelines and preprocessing: research-toolkit/api/pipelines.md
 
 plugins:
   - search
+  - mkdocstrings:
+      handlers:
+        python:
+          paths: ["."]
+          options:
+            preload_modules: [pydantic_ai.settings]
+            docstring_style: google
+            heading_level: 3
+            show_root_heading: true
+            show_root_full_path: false
+            show_source: false
+            show_if_no_docstring: true
+            show_signature_annotations: true
+            separate_signature: true
+            signature_crossrefs: true
+            merge_init_into_class: true
+            members_order: source
+            inherited_members: true
+            filters:
+              - "!^_"
+              - "^__call__$"
+              - "!^model_config$"
+              - "!^validate_"
 
 markdown_extensions:
   - admonition
   - attr_list
-  - pymdownx.highlight:
-      anchor_linenums: true
+  - toc:
+      toc_depth: 3
+  - pymdownx.highlight
   - pymdownx.inlinehilite
   - pymdownx.superfences
   - pymdownx.tabbed:
