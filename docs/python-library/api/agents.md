@@ -1,7 +1,8 @@
 # Agents
 
-Use `ChatSession` for the reusable conversational runtime, or compose the
-individual tools into your own agent.
+Build stateful chat agents with structured results and streaming events, or
+use individual tools, document extraction, and data-source summarization in
+your own workflows.
 
 ## Chat sessions
 

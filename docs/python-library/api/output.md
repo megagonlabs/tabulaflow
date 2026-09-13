@@ -1,8 +1,8 @@
 # Output
 
-Output APIs separate data storage from presentation. A source supplies data;
-an artifact describes a table or visualization; an `OutputSpec` declares the
-sources, artifacts, and parameters to present together.
+Define tables, charts, maps, and graphs as structured outputs, then resolve
+them into data and specifications for your frontend. These APIs also provide
+result storage and text formatting.
 
 ## Output specifications
 

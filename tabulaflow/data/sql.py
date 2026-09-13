@@ -9,7 +9,7 @@ the underlying driver is sync (psycopg2, snowflake, bigquery, duckdb, ...)
 or async (asyncpg, aiosqlite, asyncmy, ...).
 
 **Unified schema data structure.**  Schema introspection produces a
-single dialect-agnostic :class:`tabulaflow.schema.SQLSchema` shape (tables,
+single dialect-agnostic :class:`tabulaflow.core.schema.SQLSchema` shape (tables,
 columns, types, primary/foreign keys, optional column statistics)
 regardless of whether the source is DuckDB, Snowflake, BigQuery,
 MySQL, etc.  Downstream consumers (agents, BI tools, schema
@@ -30,10 +30,10 @@ billing make a hard cap valuable across an entire eval run, not just
 per database.  Plus a DDL lock for dialects where concurrent
 ``CREATE TABLE`` causes catalog conflicts (DuckDB, SQLite).
 
-**Schema lifecycle.**  :class:`SQLConnector` introspects at
-construction, caches to disk (keyed by ``global_id``), and refreshes
-on demand via :meth:`SQLConnector.refresh_schema_async` or
-automatically after writes.
+**Schema lifecycle.**  :class:`SQLConnector` loads a schema at construction,
+with optional disk caching keyed by ``global_id``. Refresh on demand via
+:meth:`SQLConnector.refresh_schema_async` or automatically after
+:meth:`SQLConnector.write_dataframe_async`.
 
 **Read-only safety guard.**  ``SQLConnector(read_only=True)`` blocks
 recognized write statements and surfaces a ``ReadOnlyViolationError`` in

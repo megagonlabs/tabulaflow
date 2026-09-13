@@ -1,9 +1,8 @@
 # Pipelines and preprocessing
 
-These async functions operate on loaded datasets and run results. Import
-each function from its pipeline module. The command-line entry points also
-handle setup and report writing; the functions below let your program compose
-those steps explicitly.
+Compose preprocessing, prediction, query execution, evaluation, and ensembling
+in Python. Run each stage separately using loaded datasets and experiment
+results.
 
 ## Prediction
 

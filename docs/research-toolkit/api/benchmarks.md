@@ -1,7 +1,7 @@
 # Benchmarks
 
-Loaders provide tasks, their database connectors, and dataset-specific default
-metrics. Use `dataset_registry` to select a loader by its benchmark key.
+Load benchmark tasks, database connectors, and default metrics. Use the
+built-in loaders or register your own benchmark.
 
 ## Loader registry and contract
 

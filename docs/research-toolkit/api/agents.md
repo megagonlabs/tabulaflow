@@ -1,8 +1,8 @@
 # Agents
 
-Research strategies operate on benchmark tasks and return typed task outputs.
-They are separate from the interactive library's
-[`ChatSession`][tabulaflow.agents.chat.session.ChatSession].
+Run built-in research strategies or implement your own against shared task
+and output contracts. These APIs support benchmark prediction rather than
+[interactive chat][tabulaflow.agents.chat.session.ChatSession].
 
 ## Registry and contracts
 

@@ -1,13 +1,16 @@
 # Data
 
-Use `connect_data_source` to open a source, then query it through the
-`DataConnector` interface. The caller closes each connector when finished.
+Connect to SQL databases, Neo4j, SPARQL endpoints, files, and datasets through
+a common async interface. Work with structured schemas and query results
+while keeping each backend's query language.
 
 ## Connector interface
 
 Query failures are represented by `ExecResult.error`. `read_only=True`
 requests the connector's read-only behavior; database permissions remain the
 security boundary for SQL connections.
+
+The caller closes each connector when finished.
 
 ::: tabulaflow.data.protocols.DataConnector
 

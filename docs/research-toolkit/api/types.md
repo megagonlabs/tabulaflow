@@ -1,8 +1,8 @@
 # Tasks and results
 
-Import these models from `tabulaflow.research.types`. Tasks describe benchmark
-inputs; task outputs extend them with predictions and metrics; `NL2QRunResult`
-collects an experiment's outputs and configuration.
+Represent benchmark questions, reference queries, predictions, and experiment
+results with typed models. Task families cover straightforward queries,
+ambiguous questions, and dbt workflows.
 
 ## Queries
 

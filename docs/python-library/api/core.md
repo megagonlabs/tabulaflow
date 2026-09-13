@@ -1,7 +1,8 @@
 # Core
 
-Shared types are available from `tabulaflow.core`. They describe data and
-results independently of a live connection, agent, or frontend.
+Shared types for describing schemas, query results, and media values, plus
+utilities for serialization. These primitives work independently of a live
+connection, agent, or frontend.
 
 ## Schema and language unions
 
