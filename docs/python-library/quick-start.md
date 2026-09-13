@@ -1,10 +1,10 @@
 # Quick start
 
-TabulaFlow is an async-native Python library for building data agents and
-applications. Use its connectors, tools, and structured outputs together, or
-bring individual components into your own workflows.
-
-Choose the building blocks you need:
+We started building TabulaFlow in 2025 first as a async-native Python library  to make it
+easy for building and researching modern data agent. We design a set of minimal abstractions on top of existing
+library like sqlalchemy and pydantic ai to offer unified async interace over databases
+so developer can write agent logic without backend-specific logic. The library is
+fully typed and with layered packages so you can  Choose any building blocks you need:
 
 - [Data connectors](data-connectors.md): inspect schemas and query SQL
   databases, Neo4j, SPARQL endpoints, files, and datasets through a unified
