@@ -36,6 +36,8 @@ use `NL2QRunResult.to_directory(...)` to save the run.
 
 ::: tabulaflow.research.pipelines.evaluate.evaluate_async
 
+::: tabulaflow.research.pipelines.evaluate.compute_metrics_async
+
 ## Ensembling
 
 `ensemble_async(...)` returns a new run from compatible candidate runs. Their
@@ -43,6 +45,8 @@ task QIDs must match the dataset. Individual ensemble failures fall back to
 the first candidate and are counted in `fallback_count`.
 
 ::: tabulaflow.research.pipelines.ensemble.ensemble_async
+
+::: tabulaflow.research.pipelines.ensemble.Ensembler
 
 ::: tabulaflow.research.agents.ensemblers.majority.MajorityEnsembler
 
@@ -89,3 +93,34 @@ running preprocessing when you need persistent caching.
 ::: tabulaflow.research.preprocessing.erd.ERDiagramSynthesizer
 
 ::: tabulaflow.research.preprocessing.registry.DBSummaryPreprocessor
+
+## Preprocessing results
+
+These models describe values returned by the preprocessors and their
+per-column or per-task methods.
+
+::: tabulaflow.research.preprocessing.erd.ERDiagram
+
+::: tabulaflow.research.preprocessing.erd.ERDConceptualEntity
+
+::: tabulaflow.research.preprocessing.erd.EntitySourceTable
+
+::: tabulaflow.research.preprocessing.erd.ERDRelationship
+
+::: tabulaflow.research.preprocessing.erd.ERDRelationshipParticipant
+
+::: tabulaflow.research.preprocessing.erd.MermaidERDiagramFormatter
+
+::: tabulaflow.research.preprocessing.question_embedding.QuestionEmbedderOutput
+
+::: tabulaflow.research.preprocessing.question_embedding.QuestionSkeleton
+
+::: tabulaflow.research.preprocessing.column_profiler.LLMOutput
+    options:
+      show_root_full_path: true
+
+## Observability
+
+::: tabulaflow.research.observability.configure_research_observability
+
+::: tabulaflow.research.observability.trace_prediction

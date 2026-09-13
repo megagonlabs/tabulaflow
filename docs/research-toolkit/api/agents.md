@@ -44,6 +44,19 @@ prediction require credentials for the configured provider.
 
 ::: tabulaflow.research.agents.schema_discovery.SchemaDiscoveryAgentConfig
 
+## Schema-linking components
+
+These components and context types support the schema-linking strategy's
+public linking and postprocessing methods.
+
+::: tabulaflow.research.agents.schema_linking.SchemaLinker
+
+::: tabulaflow.research.agents.schema_linking.Postprocessor
+
+::: tabulaflow.research.agents.schema_linking.SchemaLinkingContext
+
+::: tabulaflow.research.agents.utils.TaskRunContext
+
 ## Ambiguity-aware strategies
 
 ::: tabulaflow.research.agents.ambig_simple.AmbigSimpleSQLAgent
@@ -70,6 +83,8 @@ prediction require credentials for the configured provider.
 
 ::: tabulaflow.research.agents.user_simulator.UserSimulatorConfig
 
+::: tabulaflow.research.agents.user_simulator.NLAmbigPoint
+
 ## Research tools
 
 These tools support benchmark-specific schema inspection, clarification,
@@ -87,3 +102,19 @@ are documented in the [library reference](../../python-library/api/agents.md).
 ::: tabulaflow.research.tools.search_keywords.SearchKeywordsTool
 
 ::: tabulaflow.research.tools.run_dbt.RunDbtTool
+
+::: tabulaflow.research.tools.run_dbt.DbtCommand
+
+## Tool metrics
+
+::: tabulaflow.research.tools.ask_user.AskUserToolMetrics
+
+::: tabulaflow.research.tools.finish.FinishToolMetrics
+
+::: tabulaflow.research.tools.get_schema.GetSchemaToolMetrics
+
+::: tabulaflow.research.tools.get_column_description.GetColumnDescriptionToolMetrics
+
+::: tabulaflow.research.tools.search_keywords.SearchKeywordsToolMetrics
+
+::: tabulaflow.research.tools.run_dbt.RunDbtToolMetrics

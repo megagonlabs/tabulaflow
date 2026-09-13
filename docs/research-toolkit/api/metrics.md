@@ -16,6 +16,8 @@ calling the evaluation API directly.
 
 ::: tabulaflow.research.metrics.registry.MetricAggregatorProtocol
 
+::: tabulaflow.research.types.NumericOrNull
+
 ## Execution comparison
 
 Use the benchmark loader's `default_metrics` to discover its default metric
@@ -77,3 +79,14 @@ explicit list of aggregators with `evaluate_async(...)`.
 ::: tabulaflow.research.metrics.aggregators.ByAmbrosiaTaxonomyTypeAggregator
 
 ::: tabulaflow.research.metrics.aggregators.ByBirdSQLDifficultyAggregator
+
+## Aggregation values and operations
+
+`aggregate_metrics` combines scalar or consistently nested values without
+requiring an `NL2QRunResult`.
+
+::: tabulaflow.research.metrics.aggregators.aggregate_metrics
+
+::: tabulaflow.research.metrics.aggregators.AggregationOp
+
+::: tabulaflow.research.metrics.aggregators.MetricValue

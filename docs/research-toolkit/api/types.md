@@ -42,9 +42,13 @@ interpretations, or explicitly structured ambiguity points.
 
 ::: tabulaflow.research.types.GoldAmbiguityPointInfinite
 
+::: tabulaflow.research.types.GoldAmbiguityPoint
+
 ::: tabulaflow.research.types.PredAmbiguityPointFinite
 
 ::: tabulaflow.research.types.PredAmbiguityPointInfinite
+
+::: tabulaflow.research.types.PredAmbiguityPoint
 
 ## dbt tasks
 

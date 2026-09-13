@@ -88,6 +88,23 @@ Import these helpers from `tabulaflow.core.serialization`.
 
 ::: tabulaflow.core.serialization.dumps_strict_json
 
+## Media values
+
+Import media detection and extraction helpers from `tabulaflow.core.media`.
+These APIs work with bytes and encoded values independently of model providers.
+
+::: tabulaflow.core.media.MediaFormat
+
+::: tabulaflow.core.media.Base64DataUri
+
+::: tabulaflow.core.media.detect_media
+
+::: tabulaflow.core.media.parse_base64_data_uri
+
+::: tabulaflow.core.media.extract_media_bytes
+
+::: tabulaflow.core.media.extract_media_items
+
 ## Class registry
 
 `ClassRegistry` stores named implementation classes. Use

@@ -20,6 +20,8 @@ boundary for SQL connections.
 
 ::: tabulaflow.data.registry.DataConnectorRegistry
 
+::: tabulaflow.data.protocols.validate_global_id
+
 ## Connector implementations
 
 `SQLConnector`, `Neo4jConnector`, and `SPARQLConnector` implement the
@@ -40,6 +42,18 @@ a writable database.
 ::: tabulaflow.data.sparql.SPARQLConnector
     options:
       merge_init_into_class: false
+
+## Execution errors
+
+These errors identify result-size and SPARQL response failures. Query methods
+that return `ExecResult` capture execution failures in `error`; lower-level
+execution APIs may raise directly.
+
+::: tabulaflow.data.protocols.ResultTooLargeError
+
+::: tabulaflow.data.sparql.InvalidSPARQLResultError
+
+::: tabulaflow.data.sparql.SPARQLResponseTooLargeError
 
 ## Configuration
 
@@ -73,3 +87,11 @@ need loader-specific options.
 ::: tabulaflow.data.loaders.huggingface.load_hf_dataset
 
 ::: tabulaflow.data.loaders.huggingface.HuggingFaceSubsetRequiredError
+
+::: tabulaflow.data.loaders.DATA_FILE_EXTENSIONS
+
+::: tabulaflow.data.loaders.huggingface.build_hf_dataset_url
+
+::: tabulaflow.data.loaders.huggingface.parse_hf_dataset_url
+
+::: tabulaflow.data.loaders.huggingface.is_hf_dataset_url
