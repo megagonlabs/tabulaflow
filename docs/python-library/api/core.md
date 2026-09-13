@@ -3,22 +3,15 @@
 Shared types are available from `tabulaflow.core`. They describe data and
 results independently of a live connection, agent, or frontend.
 
-## Execution results
+## Schema and language unions
 
-`ExecResult` represents a successful statement or an execution error. Check
-`error` before consuming a payload. A successful statement can have no
-DataFrame, for example when executing DDL. A graph result also carries its
-tabular representation.
+::: tabulaflow.core.schema.DataSourceSchema
 
-::: tabulaflow.core.results.ExecResult
+::: tabulaflow.core.schema.SQLDialect
 
-::: tabulaflow.core.results.ErrorInfo
+::: tabulaflow.core.schema.GraphQueryLanguage
 
-::: tabulaflow.core.results.GraphResult
-
-::: tabulaflow.core.results.GraphResultNode
-
-::: tabulaflow.core.results.GraphResultEdge
+::: tabulaflow.core.schema.QueryLanguage
 
 ## SQL schemas
 
@@ -51,15 +44,22 @@ parts of a schema without copying their metadata.
 
 ::: tabulaflow.core.schema.RDFSchema
 
-## Schema and language unions
+## Execution results
 
-::: tabulaflow.core.schema.DataSourceSchema
+`ExecResult` represents a successful statement or an execution error. Check
+`error` before consuming a payload. A successful statement can have no
+DataFrame, for example when executing DDL. A graph result also carries its
+tabular representation.
 
-::: tabulaflow.core.schema.SQLDialect
+::: tabulaflow.core.results.ExecResult
 
-::: tabulaflow.core.schema.GraphQueryLanguage
+::: tabulaflow.core.results.ErrorInfo
 
-::: tabulaflow.core.schema.QueryLanguage
+::: tabulaflow.core.results.GraphResult
+
+::: tabulaflow.core.results.GraphResultNode
+
+::: tabulaflow.core.results.GraphResultEdge
 
 ## DataFrame serialization
 
