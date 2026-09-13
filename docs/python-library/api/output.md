@@ -4,24 +4,6 @@ Output APIs separate data storage from presentation. A source supplies data;
 an artifact describes a table or visualization; an `OutputSpec` declares the
 sources, artifacts, and parameters to present together.
 
-## Result storage
-
-`OutputStore` assigns result and source IDs, retains query provenance, and
-materializes parameterized sources. Configure `spill_dir` to persist result
-DataFrames; otherwise they remain in memory.
-
-::: tabulaflow.output.store.OutputStore
-
-::: tabulaflow.output.store.MaterializedResult
-
-::: tabulaflow.output.store.ResultMetadata
-
-::: tabulaflow.output.store.ArtifactSourceResolutionError
-
-::: tabulaflow.output.store.ArtifactSourceNotApplicable
-
-::: tabulaflow.output.store.render_parameterized_query
-
 ## Output specifications
 
 Import specification models from `tabulaflow.output.specs`. Models can be
@@ -50,7 +32,7 @@ serialized with Pydantic's `model_dump_json()` and reconstructed with
 
 ::: tabulaflow.output.specs.artifact_source_ids
 
-## Parameters
+## Parameters and selections
 
 ::: tabulaflow.output.specs.ChoiceOption
 
@@ -72,17 +54,48 @@ serialized with Pydantic's `model_dump_json()` and reconstructed with
 
 ::: tabulaflow.output.specs.ParameterSpec
 
-## Identifiers
+## Result storage
 
-These aliases name the string identifiers used in specifications and stores.
+`OutputStore` assigns result and source IDs, retains query provenance, and
+materializes parameterized sources. Configure `spill_dir` to persist result
+DataFrames; otherwise they remain in memory.
 
-::: tabulaflow.output.specs.ResultId
+::: tabulaflow.output.store.OutputStore
 
-::: tabulaflow.output.specs.ArtifactSourceId
+::: tabulaflow.output.store.MaterializedResult
 
-::: tabulaflow.output.specs.ArtifactId
+::: tabulaflow.output.store.ResultMetadata
 
-::: tabulaflow.output.specs.ParameterId
+::: tabulaflow.output.store.ArtifactSourceResolutionError
+
+::: tabulaflow.output.store.ArtifactSourceNotApplicable
+
+::: tabulaflow.output.store.render_parameterized_query
+
+## Resolving outputs
+
+`OutputResolver.resolve(...)` returns data and specifications for a frontend.
+Invalid output structure raises `OutputResolutionError`; expected failures
+of individual artifacts become `UnavailableArtifact` entries. Browser
+rendering belongs to the application layer.
+
+::: tabulaflow.output.resolver.OutputResolver
+
+::: tabulaflow.output.resolver.ResolvedOutput
+
+::: tabulaflow.output.resolver.ResolvedArtifact
+
+::: tabulaflow.output.resolver.ResolvedTableArtifact
+
+::: tabulaflow.output.resolver.ResolvedChartArtifact
+
+::: tabulaflow.output.resolver.ResolvedMapArtifact
+
+::: tabulaflow.output.resolver.ResolvedGraphArtifact
+
+::: tabulaflow.output.resolver.UnavailableArtifact
+
+::: tabulaflow.output.resolver.OutputResolutionError
 
 ## Chart specifications
 
@@ -161,31 +174,6 @@ can refer to stored data or provide inline node and edge rows.
 
 ::: tabulaflow.output.graphs.GraphSpecError
 
-## Resolving outputs
-
-`OutputResolver.resolve(...)` returns data and specifications for a frontend.
-Invalid output structure raises `OutputResolutionError`; expected failures
-of individual artifacts become `UnavailableArtifact` entries. Browser
-rendering belongs to the application layer.
-
-::: tabulaflow.output.resolver.OutputResolver
-
-::: tabulaflow.output.resolver.ResolvedOutput
-
-::: tabulaflow.output.resolver.ResolvedArtifact
-
-::: tabulaflow.output.resolver.ResolvedTableArtifact
-
-::: tabulaflow.output.resolver.ResolvedChartArtifact
-
-::: tabulaflow.output.resolver.ResolvedMapArtifact
-
-::: tabulaflow.output.resolver.ResolvedGraphArtifact
-
-::: tabulaflow.output.resolver.UnavailableArtifact
-
-::: tabulaflow.output.resolver.OutputResolutionError
-
 ## Formatting
 
 These formatters produce text for people or models. Import them from
@@ -223,3 +211,15 @@ with `schema_formatter_registry`.
 ::: tabulaflow.output.formatting.RDFSchemaFormatter
 
 ::: tabulaflow.output.formatting.schema_formatter_registry
+
+## Identifiers
+
+These aliases name the string identifiers used in specifications and stores.
+
+::: tabulaflow.output.specs.ResultId
+
+::: tabulaflow.output.specs.ArtifactSourceId
+
+::: tabulaflow.output.specs.ArtifactId
+
+::: tabulaflow.output.specs.ParameterId
