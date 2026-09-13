@@ -6,12 +6,9 @@ bring individual components into your own workflows.
 
 Choose the building blocks you need:
 
-- [Data connectors](api/data.md): inspect structured schemas and query SQL
+- [Data connectors](api/data.md): inspect schemas and query SQL
   databases, Neo4j, SPARQL endpoints, files, and datasets through a unified
-  async interface.
-- [Source registry](api/data.md#connector-registry): give connectors names with
-  `DataConnectorRegistry`, so an agent can select the appropriate source for
-  each query.
+  async interface with multi-source support.
 - [Chat sessions](api/agents.md#chat-sessions): use `ChatSession` to maintain a
   conversation, run tools, and stream answers and progress.
 - [Structured outputs](api/output.md): let agents produce tables, charts, maps,
