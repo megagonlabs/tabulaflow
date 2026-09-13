@@ -15,8 +15,8 @@ Choose the building blocks you need:
 - [Chat sessions](api/agents.md#chat-sessions): use `ChatSession` to maintain a
   conversation, run tools, and stream answers and progress.
 - [Structured outputs](api/output.md): let agents produce tables, charts, maps,
-  and graphs as structured artifacts, with access to the underlying data and
-  support for parameter-driven interactive outputs.
+  and graphs as structured artifacts, with optional lazy data resolution for
+  parameter-driven interaction.
 - [Reusable tools](api/agents.md#tool-contracts): use query, visualization, and
   document-extraction tools in your own agent workflows without adopting
   `ChatSession`.
