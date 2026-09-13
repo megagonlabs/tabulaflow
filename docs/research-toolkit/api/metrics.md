@@ -10,13 +10,6 @@ Registered metrics declare `name` and `compatible_output_types`. Their
 of named values. Select metrics compatible with your task output family when
 calling the evaluation API directly.
 
-```python
-from tabulaflow.research.metrics import metric_registry
-
-metric_cls = metric_registry.get_class("simple_ex")
-print(metric_cls.compatible_output_types)
-```
-
 ::: tabulaflow.research.metrics.registry.metric_registry
 
 ::: tabulaflow.research.metrics.registry.MetricProtocol

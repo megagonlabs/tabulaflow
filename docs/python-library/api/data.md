@@ -5,32 +5,6 @@ Use `connect_data_source` to open a source, then query it through the
 
 ## Opening sources
 
-```python
-import asyncio
-from pathlib import Path
-from tempfile import TemporaryDirectory
-
-from tabulaflow.data import connect_data_source
-
-
-async def main():
-    with TemporaryDirectory() as directory:
-        source = Path(directory) / "orders.csv"
-        source.write_text("customer,amount\nAda,42\nLin,18\n", encoding="utf-8")
-        connector = await connect_data_source(str(source), display_name="shop")
-        try:
-            result = await connector.run_query_async("SELECT SUM(amount) AS total FROM orders")
-            if result.error is not None:
-                raise RuntimeError(result.error.message)
-            assert result.df is not None
-            print(result.df)
-        finally:
-            await connector.close_async()
-
-
-asyncio.run(main())
-```
-
 ::: tabulaflow.data.connect.connect_data_source
 
 ::: tabulaflow.data.connect.connect_url

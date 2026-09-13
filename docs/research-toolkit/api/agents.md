@@ -10,15 +10,6 @@ A registered strategy declares `name`, `task_type`, `output_type`, and
 `config_cls`. It provides `from_config_async(...)` and the `predict_async(...)`
 method appropriate for its task family.
 
-```python
-from tabulaflow.research.agents import agent_registry
-
-agent_cls = agent_registry.get_class("full_schema")
-config = agent_cls.config_cls(max_steps=10)
-print(agent_cls.task_type, agent_cls.output_type)
-print(config.model_dump())
-```
-
 Configuration construction does not call a model. Agent construction and
 prediction require credentials for the configured provider.
 

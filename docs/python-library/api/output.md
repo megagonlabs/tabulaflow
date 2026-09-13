@@ -44,17 +44,6 @@ serialized with Pydantic's `model_dump_json()` and reconstructed with
 
 ## Parameters
 
-```python
-from tabulaflow.output.specs import ChoiceOption, ChoiceParameter, default_selection
-
-region = ChoiceParameter(
-    id="region",
-    label="Region",
-    choices=[ChoiceOption(id="west", label="West"), ChoiceOption(id="east", label="East")],
-)
-print(default_selection([region]))
-```
-
 ::: tabulaflow.output.specs.ChoiceOption
 
 ::: tabulaflow.output.specs.ChoiceParameter

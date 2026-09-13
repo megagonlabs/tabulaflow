@@ -10,14 +10,6 @@ results independently of a live connection, agent, or frontend.
 DataFrame, for example when executing DDL. A graph result also carries its
 tabular representation.
 
-```python
-from tabulaflow.core import ErrorInfo, ExecResult
-
-result = ExecResult(error=ErrorInfo(exc_type="ValueError", message="Invalid query"))
-assert result.error is not None
-print(result.error.message)
-```
-
 ::: tabulaflow.core.results.ExecResult
 
 ::: tabulaflow.core.results.ErrorInfo

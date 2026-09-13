@@ -16,23 +16,6 @@ stores an agent prediction. Both can carry an
 
 ## Simple tasks
 
-```python
-from tabulaflow.research.types import GoldQuery, PredQuery, SimpleNL2QTask, SimpleNL2QTaskOutput
-
-task = SimpleNL2QTask(
-    qid="example-1",
-    db="shop",
-    question="How many orders are there?",
-    gold_query=GoldQuery(query="SELECT COUNT(*) FROM orders"),
-)
-output = SimpleNL2QTaskOutput(
-    **task.model_dump(),
-    pred_query=PredQuery(query="SELECT COUNT(*) FROM orders"),
-)
-restored = SimpleNL2QTaskOutput.model_validate_json(output.model_dump_json())
-assert restored.qid == task.qid
-```
-
 ::: tabulaflow.research.types.SimpleNL2QTask
 
 ::: tabulaflow.research.types.SimpleNL2QTaskOutput

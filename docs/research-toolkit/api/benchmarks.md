@@ -5,17 +5,6 @@ metrics. Use `dataset_registry` to select a loader by its benchmark key.
 
 ## Loader registry and contract
 
-This example inspects loader metadata without connecting to a database or
-downloading a benchmark:
-
-```python
-from tabulaflow.research.benchmarks import dataset_registry
-
-loader_cls = dataset_registry.get_class("bird-sql")
-print(loader_cls.splits)
-print(loader_cls.default_metrics)
-```
-
 The registry supports `get_class(name)`, `list_names()`, and the `register`
 decorator inherited from
 [`ClassRegistry`][tabulaflow.core.registry.ClassRegistry]. Construct the
