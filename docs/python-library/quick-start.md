@@ -18,9 +18,9 @@ Choose the building blocks you need:
   document-extraction tools in your own agent workflows without adopting
   `ChatSession`.
 
-These building blocks span four packages: `core <- data <- output <- agents`.
-Each layer can depend on those to its left; see
-[Concepts](concepts.md#how-the-layers-fit) for the architecture.
+These building blocks are organized into four layered packages:
+`core <- data <- output <- agents`. See
+[Concepts](concepts.md#how-the-layers-fit) for how they fit together.
 
 ## Chat with two data sources
 
@@ -76,7 +76,7 @@ setup or manual file creation is needed.
 
 ## Build with TabulaFlow
 
-To use TabulaFlow in your own project:
+To use TabulaFlow as a library in your own project:
 
 === "uv"
 
