@@ -1,7 +1,7 @@
 # /// script
 # requires-python = ">=3.11"
 # dependencies = [
-#     "tabulaflow @ git+https://github.com/megagonlabs/tabulaflow.git@99658735740f261223b5a6926f29a6e5f214e7e0",
+#     "tabulaflow==0.1.0",
 #     "pandas>=2.2.3",
 # ]
 # ///

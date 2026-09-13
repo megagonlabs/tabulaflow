@@ -16,23 +16,24 @@ export OPENAI_API_KEY="your-api-key"
 This example makes paid model calls and sends the questions, schema, and
 relevant query results to the provider.
 
-From the repository root, run:
+Review the example below, then run it directly:
 
 ```bash
-uv run python docs/examples/quick_start.py
+uv run https://megagonlabs.github.io/tabulaflow/examples/quick_start.py
 ```
 
-This uses your checkout. No manual script creation is needed.
+uv downloads the script and prepares Python and its dependencies. No project
+setup or manual file creation is needed.
 
-??? info "Run directly after publication"
+??? info "Run from a source checkout"
+
+    From the repository root:
 
     ```bash
-    uv run https://megagonlabs.github.io/tabulaflow/examples/quick_start.py
+    uv run python docs/examples/quick_start.py
     ```
 
-    Once the documentation and pinned repository revision are public, uv can
-    download the script and prepare its dependencies without a checkout.
-    Review the code below before running it.
+    This uses your checkout instead of the script's pinned package version.
 
 ## The example
 
@@ -54,7 +55,11 @@ In long-running applications, use `try/finally` so cleanup also runs on errors.
 
 ## Next steps
 
-Once TabulaFlow is published, add it to your own project with `uv add tabulaflow`.
+To use TabulaFlow in your own project:
+
+```bash
+uv add tabulaflow
+```
 
 - [Working with data](working-with-data.md): connect your own sources.
 - [Agents API](api/agents.md): explore tools and streaming with `run_stream()`.
