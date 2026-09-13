@@ -1,21 +1,35 @@
 # API reference
 
-The library's public interfaces are grouped by package layer. Signatures,
-fields, and method documentation are generated from the Python source.
+Start with the layer you need, whether you're querying a dataset, presenting
+results, or building an agent.
 
-| Layer | APIs |
+| Layer | Purpose |
 | --- | --- |
-| [Core](api/core.md) | Schemas, execution results, DataFrame serialization, and class registries |
-| [Data](api/data.md) | Connections, connector configuration, source registries, and file loaders |
-| [Output](api/output.md) | Stored results, artifact specifications, parameter resolution, and formatting |
-| [Agents](api/agents.md) | Chat sessions, events, model configuration, reusable tools, and extraction |
+| [Core](api/core.md) | Shared schemas, execution results, and DataFrame serialization. |
+| [Data](api/data.md) | A common connector interface for SQL, Neo4j, SPARQL, files, and datasets. Each backend keeps its query language. |
+| [Output](api/output.md) | Store results and define parameterized tables, charts, maps, and graphs for your frontend. |
+| [Agents](api/agents.md) | Chat sessions with streaming text, tool progress, and usage events, plus reusable tools, extraction, and summarization. |
 
-Import shared schema and result types from `tabulaflow.core`. Connector
-entry points are available from `tabulaflow.data`; output APIs use explicit
-submodules such as `tabulaflow.output.specs` and `tabulaflow.output.store`.
+You can also add your own connectors, tools, and schema formatters through
+the documented protocols and registries.
 
-Benchmark tasks, research strategies, and evaluation contracts are documented
-in the [research API reference](../research-toolkit/api-reference.md).
+## How the layers fit
 
-The APIs listed here form the documented library surface. Other implementation
-details, including modules and members prefixed with `_`, are internal.
+Use connectors without an agent, or build outputs without the application UI.
+
+```text
+Core <- Data <- Output <- Agents
+```
+
+Each layer can depend on layers to its left. Import-linter enforces this
+separation.
+
+## Imports
+
+Import shared types from `tabulaflow.core`, connector entry points from
+`tabulaflow.data`, and `ChatSession` and `ChatInput` from `tabulaflow.agents`.
+For specialized APIs, use submodules such as `tabulaflow.output.specs` or
+`tabulaflow.agents.extraction`.
+
+Working on benchmarks or evaluation? Head to the
+[research API reference](../research-toolkit/api-reference.md).
