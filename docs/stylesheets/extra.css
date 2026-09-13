@@ -303,6 +303,31 @@ body {
   border-radius: 0;
 }
 
+.md-typeset .highlight > .filename {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  margin: 0;
+  padding: 10px 48px 10px 16px;
+  background: var(--tf-card);
+  border-bottom: 1px solid var(--tf-code-border);
+  color: var(--tf-text);
+  font-family: var(--md-code-font);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 20px;
+  overflow-wrap: anywhere;
+}
+
+/* Anchor the copy control to the titled block, not the code beneath it. */
+.md-typeset .highlight > .filename + pre {
+  position: static;
+}
+
+.md-typeset .highlight:has(> .filename)::after {
+  background: var(--tf-card);
+}
+
 .md-typeset .tabbed-set {
   overflow: hidden;
   background: var(--tf-code-bg);
@@ -320,12 +345,14 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 64px;
+  flex: 0 0 auto;
+  min-width: 64px;
   height: 36px;
-  padding: 0;
+  padding: 0 16px;
   color: var(--tf-text-muted);
   font-size: 13px;
   line-height: 1.2;
+  white-space: nowrap;
 }
 
 .md-typeset .tabbed-set .tabbed-labels > label:hover {
