@@ -1,16 +1,13 @@
 # Quick start
 
-Ask one agent about sales and customer support, then get a revenue chart and
-a ticket table in one structured response. The example creates its own
-in-memory databases; no database server or sample-data download is needed.
+Build a chat agent over your data and get structured results your application
+can inspect and render.
 
-[Run this example](#run-the-example)
+## Chat with two data sources
 
-## The example
-
-Load two in-memory databases, inspect the schema, then register them as
-`sales` and `support`. The agent routes its queries and returns separate
-chart and table artifacts; no join or workspace is needed.
+Compare revenue across regions and find open high-priority support tickets.
+This example creates two small SQLite databases in memory, so you don't need
+a database server or sample files.
 
 [Download quick_start.py](../examples/quick_start.py){ download="quick_start.py" }
 
@@ -18,13 +15,15 @@ chart and table artifacts; no join or workspace is needed.
 --8<-- "examples/quick_start.py"
 ```
 
+`result.text` contains the answer; `result.output` contains the structured artifacts.
+
 Expect a chart showing **West: $2,000** and **East: $1,500**, plus a table of
 tickets **201** and **202**. Labels and order may vary. The script prints the
 output structure; it does not open a chart viewer.
 
 In long-running applications, use `try/finally` so cleanup also runs on errors.
 
-## Run the example
+## Try it yourself
 
 Use [uv](https://docs.astral.sh/uv/getting-started/installation/) on macOS or
 Linux. Set your OpenAI API key:
@@ -55,14 +54,22 @@ setup or manual file creation is needed.
 
     This uses your checkout instead of the script's pinned package version.
 
-## Next steps
+## Build with TabulaFlow
 
 To use TabulaFlow in your own project:
 
-```bash
-uv add tabulaflow
-```
+=== "uv"
 
-- [Working with data](working-with-data.md): connect your own sources.
+    ```bash
+    uv add tabulaflow
+    ```
+
+=== "pip"
+
+    ```bash
+    pip install tabulaflow
+    ```
+
+- [Data API](api/data.md): connect your own sources.
 - [Agents API](api/agents.md): explore tools and streaming with `run_stream()`.
 - [Output API](api/output.md#resolving-outputs): resolve artifacts into data and chart specifications.
