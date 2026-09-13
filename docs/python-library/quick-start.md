@@ -7,19 +7,23 @@ bring individual components into your own workflows.
 Choose the building blocks you need:
 
 - [Data connectors](api/data.md): inspect structured schemas and query SQL
-  databases, Neo4j, SPARQL endpoints, files, and datasets through a common
+  databases, Neo4j, SPARQL endpoints, files, and datasets through a unified
   async interface.
 - [Source registry](api/data.md#connector-registry): give connectors names with
   `DataConnectorRegistry`, so an agent can select the appropriate source for
   each query.
 - [Chat sessions](api/agents.md#chat-sessions): use `ChatSession` to maintain a
   conversation, run tools, and stream answers and progress.
-- [Structured outputs](api/output.md): describe tables, charts, maps, and graphs
-  with `OutputSpec`, and access their underlying data and queries through
-  `OutputStore`.
+- [Structured outputs](api/output.md): let agents produce tables, charts, maps,
+  and graphs as structured artifacts, with access to the underlying data and
+  support for parameter-driven interactive outputs.
 - [Reusable tools](api/agents.md#tool-contracts): use query, visualization, and
   document-extraction tools in your own agent workflows without adopting
   `ChatSession`.
+
+These building blocks span four packages: `core <- data <- output <- agents`.
+Each layer can depend on those to its left; see
+[Concepts](concepts.md#how-the-layers-fit) for the architecture.
 
 ## Chat with two data sources
 
