@@ -49,6 +49,11 @@ In long-running applications, use `try/finally` so cleanup also runs on errors.
 
 ## Try it yourself
 
+To try TabulaFlow without an API key, start with the
+[Data connectors](data-connectors.md#example-find-products-to-restock) or
+[Structured outputs](structured-outputs.md#example-switch-between-revenue-and-profit)
+example. Both run locally without model calls.
+
 Use [uv](https://docs.astral.sh/uv/getting-started/installation/) on macOS or
 Linux. Set your OpenAI API key:
 
