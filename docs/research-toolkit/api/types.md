@@ -1,4 +1,4 @@
-# Tasks and results
+# Tasks and runs
 
 Represent benchmark questions, reference queries, predictions, and experiment
 results with typed models. Task families cover straightforward queries,

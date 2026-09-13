@@ -66,7 +66,7 @@ and applications tailored to your needs.
 TabulaFlow also includes a research toolkit for rapid, large-scale
 experimentation on text-to-SQL and text-to-Cypher benchmarks such as Spider
 2.0, CypherBench, and ARCS.
-[Explore the toolkit](research-toolkit/index.md){ .inline-cta }
+[Explore the toolkit](research-toolkit/quick-start.md){ .inline-cta }
 
 ## How does TabulaFlow work?
 

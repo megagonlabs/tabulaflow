@@ -59,16 +59,14 @@ nav:
           - Output: python-library/api/output.md
           - Agents: python-library/api/agents.md
   - TabulaFlow for AI Researchers:
-      - Overview: research-toolkit/index.md
       - Quick start: research-toolkit/quick-start.md
       - Benchmarks: research-toolkit/benchmarks.md
-      - Running experiments: research-toolkit/running-experiments.md
+      - Experiment runs: research-toolkit/running-experiments.md
+      - Research agents: research-toolkit/research-agents.md
       - Evaluation: research-toolkit/evaluation.md
-      - Custom agents: research-toolkit/custom-agents.md
-      - Custom benchmarks and metrics: research-toolkit/custom-benchmarks-and-metrics.md
       - API reference:
           - Overview: research-toolkit/api-reference.md
-          - Tasks and results: research-toolkit/api/types.md
+          - Tasks and runs: research-toolkit/api/types.md
           - Benchmarks: research-toolkit/api/benchmarks.md
           - Agents: research-toolkit/api/agents.md
           - Metrics: research-toolkit/api/metrics.md
