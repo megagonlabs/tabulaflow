@@ -1,15 +1,14 @@
 # Quick start
 
-Build a chat agent over your data and get structured results your application
-can inspect and render.
+TabulaFlow is an async-native Python library for building data agents and
+applications. Use its connectors, tools, and structured outputs together, or
+bring individual components into your own workflows.
 
 ## Chat with two data sources
 
 Compare revenue across regions and find open high-priority support tickets.
 This example creates two small SQLite databases in memory, so you don't need
 a database server or sample files.
-
-[Download quick_start.py](../examples/quick_start.py){ download="quick_start.py" }
 
 ```python title="quick_start.py"
 --8<-- "examples/quick_start.py"
