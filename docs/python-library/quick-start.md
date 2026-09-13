@@ -15,11 +15,13 @@ a database server or sample files.
 --8<-- "examples/quick_start.py"
 ```
 
-`result.text` contains the answer; `result.output` contains the structured artifacts.
+`result.text` contains the answer, and `result.output` describes the artifacts.
+The output store provides their DataFrames and query metadata; chart artifacts
+also carry a Vega-Lite specification.
 
 Expect a chart showing **West: $2,000** and **East: $1,500**, plus a table of
 tickets **201** and **202**. Labels and order may vary. The script prints the
-output structure; it does not open a chart viewer.
+data and Vega-Lite specification; it does not open a chart viewer.
 
 In long-running applications, use `try/finally` so cleanup also runs on errors.
 

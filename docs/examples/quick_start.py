@@ -7,6 +7,7 @@
 # ///
 
 import asyncio
+import json
 
 import pandas as pd
 
@@ -68,11 +69,17 @@ async def main():
         "and the tickets in a table."
     )
     print("Answer:", result.text)
-    print("Data sources:", result.output.sources)
-    print("Artifact count:", len(result.output.artifacts))
+
     for artifact in result.output.artifacts:
-        print("Artifact type:", artifact.kind)
-        print("Label:", artifact.label)
+        if artifact.kind in ("table", "chart"):
+            data = await session.output_store.resolve_artifact_source(artifact.source_id)
+            print("Artifact:", artifact.label)
+            print("Source:", data.metadata.connector_alias)
+            print("SQL:", data.metadata.query)
+            print("DataFrame:\n", data.df)
+
+            if artifact.kind == "chart":
+                print("Vega-Lite:", json.dumps(artifact.spec, indent=2))
 
     await session.aclose()
     await support.close_async()

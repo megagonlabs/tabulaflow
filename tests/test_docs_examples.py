@@ -16,7 +16,10 @@ from tabulaflow.agents.llm import make_agent
 from tabulaflow.output.resolver import OutputResolver, ResolvedChartArtifact, ResolvedTableArtifact
 
 
-async def test_quick_start(monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:
+@pytest.mark.parametrize("reverse_artifacts", [False, True])
+async def test_quick_start(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str], reverse_artifacts: bool
+) -> None:
     script = Path(__file__).resolve().parents[1] / "docs/examples/quick_start.py"
     example = runpy.run_path(str(script))
     chart_spec = {
@@ -81,6 +84,8 @@ async def test_quick_start(monkeypatch: pytest.MonkeyPatch, capsys: pytest.Captu
         assert dict(zip(chart.result.df["region"], chart.result.df["revenue"])) == {"West": 2000, "East": 1500}
         assert table.result.df["ticket_id"].tolist() == [201, 202]
         assert chart.spec["mark"] == "bar"
+        if reverse_artifacts:
+            result.output.artifacts.reverse()
         return result
 
     monkeypatch.setenv("OPENAI_API_KEY", "test-not-a-real-key")
@@ -98,9 +103,19 @@ async def test_quick_start(monkeypatch: pytest.MonkeyPatch, capsys: pytest.Captu
         "Table: sales",
         "Columns: ['order_id', 'region', 'revenue_usd']",
         "Answer:",
-        "Data sources:",
-        "Artifact count: 2",
-        "Artifact type: chart",
-        "Artifact type: table",
+        "Artifact: Revenue by region",
+        "Artifact: Open high-priority tickets",
+        "Source: sales",
+        "Source: support",
+        "SQL: SELECT region, SUM(revenue_usd) AS revenue FROM sales GROUP BY region",
+        "SQL: SELECT * FROM support WHERE priority = 'high' AND status = 'open' ORDER BY ticket_id",
+        "2000",
+        "1500",
+        "201",
+        "202",
     ):
         assert expected in output
+    assert output.count("DataFrame:\n") == 2
+    printed_spec, _ = json.JSONDecoder().raw_decode(output.split("Vega-Lite: ", 1)[1])
+    assert printed_spec == chart_spec
+    assert (output.index("Source: support") < output.index("Source: sales")) == reverse_artifacts
