@@ -79,6 +79,7 @@ import re
 import logging
 import threading
 import warnings
+from uuid import uuid4
 
 import sqlparse
 from sqlparse.lexer import Lexer as SQLLexer
@@ -98,6 +99,8 @@ from pydantic import TypeAdapter, ValidationError
 from sqlalchemy.exc import DBAPIError, SAWarning
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncEngine
 from sqlalchemy.engine.url import URL as SQLAlchemyURL
+from sqlalchemy.engine.url import make_url
+from sqlalchemy.pool import StaticPool
 from sqlalchemy import create_engine, event, select, func, distinct, inspect, text
 from tabulaflow.core.dataframe import dataframe_to_arrow, normalize_dataframe
 from tabulaflow.core.results import ErrorInfo, ExecResult
@@ -451,6 +454,11 @@ _ASYNC_DRIVERS = frozenset(
         "oracledb_async",
     }
 )
+
+
+def _is_sqlite_memory_url(url: str | SQLAlchemyURL) -> bool:
+    parsed = make_url(url)
+    return parsed.get_backend_name() == "sqlite" and parsed.database in (None, "", ":memory:")
 
 
 def _is_async_url(url: str | SQLAlchemyURL) -> bool:
@@ -1021,7 +1029,8 @@ class ThrottledEngine:
                 ``"duckdb:///:memory:"`` or
                 ``"postgresql+asyncpg://..."``).
             max_concurrency_per_db: Cap on concurrent queries against
-                this database.  Also the underlying pool size.
+                this database. Also the underlying pool size, except for
+                in-memory SQLite, which serializes access to one connection.
             dbms_semaphore: Optional semaphore shared across all
                 engines targeting the same DBMS, for global rate
                 shaping.
@@ -1045,11 +1054,21 @@ class ThrottledEngine:
             connect_args.setdefault("read_only", True)
 
         engine_type: Literal["async", "sync"] = "async" if _is_async_url(url) else "sync"
+        if _is_sqlite_memory_url(url):
+            # A private SQLite database lives on one connection, shared by
+            # executor threads and async tasks without overlapping transactions.
+            pool_class = engine_kwargs.setdefault("poolclass", StaticPool)
+            if not issubclass(pool_class, StaticPool):
+                raise ValueError("In-memory SQLite requires StaticPool")
+            engine_kwargs.setdefault("connect_args", {}).setdefault("check_same_thread", False)
+            max_concurrency_per_db = 1
+        else:
+            engine_kwargs["pool_size"] = max_concurrency_per_db
         engine: AsyncEngine | sqlalchemy.engine.Engine
         if engine_type == "async":
-            engine = create_async_engine(url, pool_size=max_concurrency_per_db, **engine_kwargs)
+            engine = create_async_engine(url, **engine_kwargs)
         else:
-            engine = create_engine(url, pool_size=max_concurrency_per_db, **engine_kwargs)
+            engine = create_engine(url, **engine_kwargs)
 
         # DuckDB prints a noisy progress bar to stdout for long-running
         # queries; suppress it so it doesn't pollute pipeline logs.
@@ -2262,7 +2281,8 @@ class SQLConnector:
             global_id: Globally unique, filename-safe identifier for this
                 database connection and its caches. Derived from the URL and
                 non-secret authenticated identity, such as its username, when
-                omitted.
+                omitted. Private in-memory SQLite databases receive a unique
+                ID per connector instead, since the URL does not identify data.
             read_only: If ``True`` (the default), write statements (INSERT,
                 UPDATE, DELETE, DROP, etc.) recognized by the client guard are
                 rejected before reaching the database. This is not a security
@@ -2293,7 +2313,9 @@ class SQLConnector:
             A fully initialised :class:`SQLConnector` instance ready to
             execute queries.
         """
-        global_id = validate_global_id(global_id or _global_id_from_url(str(url)))
+        if global_id is None:
+            global_id = f"sqlite-memory+{uuid4().hex}" if _is_sqlite_memory_url(url) else _global_id_from_url(str(url))
+        global_id = validate_global_id(global_id)
         config = SQLConnectorConfig() if config is None else config
         if not read_only and config.sql_query_cache_mode != "off":
             raise ValueError("Query caching requires read_only=True")
@@ -2360,8 +2382,15 @@ class SQLConnector:
             raise RuntimeError("SQLConnector is closed")
 
     async def release_connections_async(self) -> None:
-        """Release pooled connections while keeping the connector reusable."""
+        """Release pooled connections while keeping the connector reusable.
+
+        Raises:
+            ValueError: The database is private in-memory SQLite, whose data
+                would be destroyed by releasing its connection.
+        """
         self._check_open()
+        if _is_sqlite_memory_url(self._t_eng.engine.url):
+            raise ValueError("Cannot release in-memory SQLite connections without destroying the database")
         await self._t_eng.aclose()
 
     async def close_async(self) -> None:
