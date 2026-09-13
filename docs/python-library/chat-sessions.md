@@ -43,7 +43,7 @@ result, or see [Structured outputs](structured-outputs.md) to work with artifact
 ## Manage a conversation
 
 - Create one session per conversation and run one turn at a time. Add sources
-  to its registry for [multi-source conversations](quick-start.md#chat-with-two-data-sources).
+  to its registry for [multi-source conversations](quick-start.md#example-chat-with-two-data-sources).
 - Set `model`, `reasoning`, and `extra_instructions` when constructing the
   session. Automatic context compaction is enabled by default for long
   conversations; pass `compaction=None` to disable it.

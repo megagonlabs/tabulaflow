@@ -3,10 +3,12 @@
 Use connectors to inspect schemas and query SQL databases, Neo4j, and SPARQL
 endpoints directly, without an agent or model call.
 
-If you've used [LiteLLM](https://docs.litellm.ai/docs/) for model providers,
-TabulaFlow's connectors offer a similar idea for databases: a unified async
-interface with structured schemas and query results. Each backend keeps its
-own query language.
+If you've used [LiteLLM](https://docs.litellm.ai/docs/) or
+[Pydantic AI](https://pydantic.dev/docs/ai/models/overview/) to work with different model providers,
+TabulaFlow brings a similar approach to databases: a unified async interface
+with structured schemas and query results. Queries stay in SQL, Cypher, or
+SPARQL, so LLMs can draw on their existing training rather than learn a new
+query language.
 
 ## Example: Find products to restock
 
@@ -21,6 +23,11 @@ The result contains **8 HDMI cables** and **7 USB-C docks**. `result.df` is a
 DataFrame you can process directly; `format_dataframe(...)` turns it into text.
 `SQLDDLSchemaFormatter` does the same for the schema, ready for inspection or
 an LLM prompt.
+
+The example round-trips the result through JSON, including its DataFrame and
+execution metadata. TabulaFlow's `SerializableDataFrame` also preserves nested
+JSON values, binary data, and decimals, without custom encoders or flattening
+complex columns.
 
 Run the example without a database server or API key:
 

@@ -6,6 +6,7 @@ from pathlib import Path
 import runpy
 from typing import Any
 
+from pandas.testing import assert_frame_equal
 from pydantic_ai import models
 from pydantic_ai.messages import ModelMessage, ModelResponse, ToolCallPart, ToolReturnPart, UserPromptPart
 from pydantic_ai.models.function import AgentInfo, DeltaToolCall, FunctionModel
@@ -60,8 +61,20 @@ def queries(monkeypatch: pytest.MonkeyPatch) -> list[tuple[str, ExecResult]]:
 
 
 async def test_working_with_data(
-    capsys: pytest.CaptureFixture[str], queries: list[tuple[str, ExecResult]], closed_connectors: list[SQLConnector]
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    queries: list[tuple[str, ExecResult]],
+    closed_connectors: list[SQLConnector],
 ) -> None:
+    restored_results: list[ExecResult] = []
+    original_restore = ExecResult.model_validate_json
+
+    def record_restore(cls: type[ExecResult], /, payload: str, **kwargs: Any) -> ExecResult:
+        restored = original_restore(payload, **kwargs)
+        restored_results.append(restored)
+        return restored
+
+    monkeypatch.setattr(ExecResult, "model_validate_json", classmethod(record_restore))
     example = runpy.run_path(str(EXAMPLES / "working_with_data.py"))
     await example["main"]()
 
@@ -73,8 +86,21 @@ async def test_working_with_data(
         {"product": "HDMI cable", "units_to_order": 8},
         {"product": "USB-C dock", "units_to_order": 7},
     ]
+    assert len(restored_results) == 1
+    restored = restored_results[0]
+    assert restored.df is not None
+    # Arrow restores string extension columns as object columns.
+    assert_frame_equal(restored.df, result.df, check_dtype=False)
+    assert restored.model_dump(exclude={"df"}) == result.model_dump(exclude={"df"})
     output = capsys.readouterr().out
-    for expected in ("Tables: ['inventory']", "CREATE TABLE inventory", "DataFrame:", "As text:", "units_to_order"):
+    for expected in (
+        "Tables: ['inventory']",
+        "CREATE TABLE inventory",
+        "DataFrame:",
+        "As text:",
+        "Restored DataFrame:",
+        "units_to_order",
+    ):
         assert expected in output
     assert len(closed_connectors) == 1
 

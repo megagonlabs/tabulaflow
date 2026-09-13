@@ -26,7 +26,7 @@ These building blocks are organized into four layered packages:
 `core <- data <- output <- agents`. See the
 [API reference](api-reference.md) for how they fit together.
 
-## Chat with two data sources
+## Example: Chat with two data sources
 
 This example connects two in-memory SQLite databases to a chat session to
 compare revenue across regions and find open high-priority support tickets.

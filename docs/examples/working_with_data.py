@@ -7,6 +7,7 @@ import asyncio
 
 import pandas as pd
 
+from tabulaflow.core import ExecResult
 from tabulaflow.data import SQLConnector
 from tabulaflow.output.formatting import SQLDDLSchemaFormatter, format_dataframe
 
@@ -40,6 +41,11 @@ async def main():
 
         print("DataFrame:\n", result.df)
         print("As text:\n", format_dataframe(result.df))
+
+        # The DataFrame is included automatically in the JSON payload.
+        payload = result.model_dump_json()
+        restored = ExecResult.model_validate_json(payload)
+        print("Restored DataFrame:\n", restored.df)
     finally:
         await stock.close_async()
 
