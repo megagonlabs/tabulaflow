@@ -6,16 +6,16 @@ bring individual components into your own workflows.
 
 Choose the building blocks you need:
 
-- [Data connectors](api/data.md): inspect schemas and query SQL
+- [Data connectors](working-with-data.md): inspect schemas and query SQL
   databases, Neo4j, SPARQL endpoints, files, and datasets through a unified
   async interface.
-- [Chat sessions](api/agents.md#chat-sessions): use `ChatSession` to converse
+- [Chat sessions](chat-sessions.md): use `ChatSession` to converse
   across multiple data sources, run tools, and stream answers and progress,
   with automatic context compaction for long conversations.
-- [Structured outputs](api/output.md): let agents produce tables, charts, maps,
+- [Structured outputs](structured-outputs.md): let agents produce tables, charts, maps,
   and graphs as structured artifacts, with optional lazy data resolution for
   parameter-driven interaction.
-- [Reusable tools](api/agents.md#tool-contracts): use query, visualization, and
+- [Reusable tools](tools-and-custom-agents.md): use query, visualization, and
   document-extraction tools in your own agent workflows without adopting
   `ChatSession`.
 - [Schema and result formatting](api/output.md#formatting): turn structured
@@ -94,6 +94,7 @@ To use TabulaFlow as a library in your own project:
     pip install tabulaflow
     ```
 
-- [Data API](api/data.md): connect your own sources.
-- [Agents API](api/agents.md): explore tools and streaming with `run_stream()`.
-- [Output API](api/output.md#resolving-outputs): resolve artifacts into data and chart specifications.
+- [Working with data](working-with-data.md): connect sources and query them directly.
+- [Chat sessions](chat-sessions.md): add follow-up questions and streaming.
+- [Structured outputs](structured-outputs.md): work with data and interactive artifacts.
+- [Tools and custom agents](tools-and-custom-agents.md): build your own agent workflow.

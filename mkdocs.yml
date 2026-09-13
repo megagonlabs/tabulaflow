@@ -49,8 +49,9 @@ nav:
   - TabulaFlow as a Python Library:
       - Quick start: python-library/quick-start.md
       - Working with data: python-library/working-with-data.md
-      - Building agents: python-library/building-agents.md
-      - Presenting results: python-library/presenting-results.md
+      - Chat sessions: python-library/chat-sessions.md
+      - Structured outputs: python-library/structured-outputs.md
+      - Tools and custom agents: python-library/tools-and-custom-agents.md
       - API reference:
           - Overview: python-library/api-reference.md
           - Core: python-library/api/core.md
