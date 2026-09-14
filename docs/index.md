@@ -16,16 +16,9 @@ it can also write code, work with files, run shell commands, and browse the web.
   <figcaption>Production placeholder · Include captions and a text transcript.</figcaption>
 </figure>
 
-## How is TabulaFlow different?
+[Try TabulaFlow](data-agent/quick-start.md){ .inline-cta }
 
-General-purpose coding agents (e.g., Claude Code) are built around files, but
-TabulaFlow treats tables as first-class citizens, as its name suggests. We
-design TabulaFlow around a table-native agent harness for tasks that existing
-agents are not built to handle.
-
-Many database-focused data agents (e.g., Chat2DB) focus on SQL generation.
-TabulaFlow supports broader workflows across relational and graph databases,
-local files, public datasets, and the web.
+## What you can do
 
 - **Interactive visualization.** Create charts, maps, and relationship graphs
   backed by queryable, parameterized data, including graphs from Neo4j.
@@ -46,49 +39,20 @@ local files, public datasets, and the web.
   with many web pages in parallel during complex deep research tasks, including
   pages that require clicks and forms.
   [View example](data-agent/examples/build-web-dataset.md){ .inline-cta }
-- **Async-native Python library.** The core of TabulaFlow is a library written
-  in pure Python. Build your own data application with components at any level,
-  from data connectors to agent tools.
-  [View example](python-library/quick-start.md){ .inline-cta }
 
-## Build and research with TabulaFlow
+## How it works
 
-### Python Library
-
-We build TabulaFlow not only as an end-user application but also as an
-async-native Python library with clean, minimal building blocks for modern data
-agents, from data connectors to agent tools. You can use them to create agents
-and applications tailored to your needs.
-[Explore the library](python-library/quick-start.md){ .inline-cta }
-
-### Research Toolkit
-
-TabulaFlow also includes a research toolkit for rapid, large-scale
-experimentation on text-to-SQL and text-to-Cypher benchmarks such as Spider
-2.0, CypherBench, and ARCS.
-[Explore the toolkit](research-toolkit/quick-start.md){ .inline-cta }
-
-## How does TabulaFlow work?
-
-Like a coding agent, TabulaFlow is an LLM that calls tools in a loop. The
-main difference is that we design the tools (i.e., the agent harness)
-to maximize agent and human ergonomics for data tasks.
+Like a coding agent, TabulaFlow is an LLM that calls tools in a loop.
+General-purpose coding agents are built around files; TabulaFlow treats tables
+as first-class citizens. We design its tools (the agent harness) around queries,
+tables, and visualization specifications to maximize agent and human ergonomics
+for data tasks.
 
 The diagram below shows a simple chat-to-database workflow. You can register
 data sources with `/connect`, or the agent can connect them through a tool call.
 The agent runs queries to produce tables, attaches visualization specifications
 to create visual artifacts (e.g., charts), and references one or more artifacts in
-its answer. This design has three benefits:
-
-- **Agent ergonomics.** The agent writes only queries and
-  visualization specifications. TabulaFlow handles the result data and rendering,
-  so the agent never handcrafts data values or HTML to create
-  visual artifacts.
-- **Human ergonomics.** TabulaFlow tracks data provenance: each visualization
-  exposes its underlying data table, and each table exposes the query that
-  produced it. Our UI ensures a consistent look and efficient navigation.
-- **Security.** The data agent remains fully functional for data work even when
-  the shell tool is disabled.
+its answer.
 
 <figure class="process-diagram">
   <div class="horizontal-flow" role="img" aria-label="The data connector registry contains SQLite, CSV, Hugging Face, and additional sources identified by aliases. The run_query tool counts orders by channel to create a result table, and render_chart creates a donut chart artifact using channel and order count.">
@@ -145,11 +109,44 @@ its answer. This design has three benefits:
   </div>
 </figure>
 
+This design has three benefits:
+
+- **Agent ergonomics.** The agent writes only queries and
+  visualization specifications. TabulaFlow handles the result data and rendering,
+  so the agent never handcrafts data values or HTML to create
+  visual artifacts.
+- **Human ergonomics.** TabulaFlow tracks data provenance: each visualization
+  exposes its underlying data table, and each table exposes the query that
+  produced it. Our UI ensures a consistent look and efficient navigation.
+- **Security.** The data agent remains fully functional for data work even when
+  the shell tool is disabled.
+
 Connected sources are read-only. When necessary, the agent can transform
 tables in a local workspace and keep intermediate files in a temporary scratch
 directory, so your source data and project directory remain unchanged by
 default. To export results to local files, simply ask the agent in natural
 language.
+
+## Get started
+
+### Use the data agent
+
+Install TabulaFlow, connect a source, and start exploring your data in natural
+language.
+[Open the quick start](data-agent/quick-start.md){ .inline-cta }
+
+### Build with the Python library
+
+Create your own data agents and applications with an async-native library
+written in pure Python. Reuse its connectors, tools, and structured outputs
+to build workflows tailored to your needs.
+[Explore the library](python-library/quick-start.md){ .inline-cta }
+
+### Run research experiments
+
+Run large-scale experiments on text-to-SQL and text-to-Cypher benchmarks such
+as Spider 2.0, CypherBench, and ARCS with TabulaFlow's research toolkit.
+[Explore the toolkit](research-toolkit/quick-start.md){ .inline-cta }
 
 !!! note "Public beta"
     TabulaFlow 0.1.0 is a public beta. Patch releases preserve documented
