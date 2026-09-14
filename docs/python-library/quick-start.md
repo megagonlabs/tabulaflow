@@ -17,7 +17,7 @@ building blocks you need:
   across multiple data sources, run tools, and stream answers and progress,
   with automatic context compaction for long conversations.
 - [Structured outputs](structured-outputs.md): let agents produce tables, charts, maps,
-  and graphs as structured artifacts, with optional lazy data resolution for
+  and graphs as structured artifacts by defining declarative specifications, with optional lazy data resolution for
   parameter-driven interaction.
 - [Custom agents](custom-agents.md): combine reusable query, visualization, and
   document tools with your own functions and actions, without adopting `ChatSession`.
