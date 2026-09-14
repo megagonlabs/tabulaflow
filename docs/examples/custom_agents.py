@@ -113,7 +113,7 @@ async def run_support_agent(orders, support_dir, customer_id):
         tools=[view.as_pydantic_ai_tool(), find_orders, lookup_order, open_support_ticket],
     )
     result = await agent.run(
-        "My newer USB-C dock still won't charge my laptop, and I can't find the order number. "
+        "The USB-C dock I bought most recently still won't charge my laptop, and I can't find the order number. "
         "I enabled Laptop charging in Dock settings and reconnected the USB-C cable, "
         "but neither helped. Can you open a support ticket?"
     )
