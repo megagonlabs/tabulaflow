@@ -4,11 +4,11 @@ Give your agent tools for querying data, creating visualizations, and extracting
 information from documents. Reuse them alongside your own Python functions,
 without adopting `ChatSession`.
 
-## Example: Plan an order in supplier packs
+## Example: Structured restock plan
 
-Combine `RunQueryTool` with a small Python function that rounds orders to whole
-supplier packs. A Pydantic model makes the agent's final restocking plan
-available as typed Python data.
+Combine `RunQueryTool` with your own ordering logic to produce a typed restock
+plan. A Python function rounds orders to whole supplier packs, and a Pydantic
+model defines the final response.
 
 ```python title="custom_agents.py"
 --8<-- "examples/custom_agents.py"

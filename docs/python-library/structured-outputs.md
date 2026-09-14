@@ -5,7 +5,7 @@ graphs have structured specifications that your application can inspect,
 serialize, and render. Their data can resolve on demand as parameter selections
 change. Use outputs from a chat session or construct them without an agent.
 
-## Example: Explore transfers between warehouses
+## Example: Warehouse transfer graph
 
 Explore monthly warehouse transfers as a table and a relationship graph, both
 backed by the same SQLite query. A minimum-units parameter filters both
