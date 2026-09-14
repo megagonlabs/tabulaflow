@@ -1,10 +1,10 @@
 # Build with TabulaFlow
 
-We originally started TabulaFlow as an async-native Python library for building
-and researching data agents. It provides reusable, typed building blocks for data
-access, agent workflows, and structured outputs. A unified connector interface
-handles backend-specific execution details, so you can focus on your agent's
-logic.
+We started TabulaFlow as an async-native Python library to make it easier to
+build and research data agents. Its reusable, typed building blocks let you
+write tools against a shared connector interface and produce tables, charts,
+maps, and graphs as structured artifacts. Those artifacts can resolve their
+data on demand as parameters change, supporting interactive outputs.
 
 Use the components together or choose the building blocks you need:
 
