@@ -49,6 +49,7 @@ async def main():
     stock = await SQLConnector.from_url_async("sqlite+aiosqlite:///:memory:", read_only=False)
     try:
         await load_sample_data(stock)
+        # Reuse the query tool in your own agent, without a ChatSession.
         query_tool = RunQueryTool(stock)
         agent = make_agent(
             "openai-responses:gpt-5-mini",
@@ -57,9 +58,11 @@ async def main():
                 "Plan restocking from the inventory data. Use order_in_packs to round "
                 "each shortfall to supplier packs.\n" + SQLDDLSchemaFormatter().format(stock.schema)
             ),
+            # Combine the query tool with your own Python function.
             tools=[query_tool.as_pydantic_ai_tool(), order_in_packs],
         )
         result = await agent.run("Which products need restocking, and how many units should I order in total?")
+        # The response is validated as a RestockPlan, ready for application code.
         print("Products:", result.output.products)
         print("Total units:", result.output.total_units)
         print("Query calls:", query_tool.metrics().num_calls)

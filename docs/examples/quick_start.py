@@ -55,6 +55,7 @@ async def main():
     print("Columns:", [column.name for column in table.columns])
     # ['order_id', 'region', 'revenue_usd']
 
+    # Give the agent named sources to choose from for each query.
     registry = DataConnectorRegistry()
     registry.register("sales", sales)
     registry.register("support", support)
@@ -70,6 +71,7 @@ async def main():
     )
     print("Answer:", result.text)
 
+    # Each artifact exposes its underlying data and the query that produced it.
     for artifact in result.output.artifacts:
         if artifact.kind in ("table", "chart"):
             data = await session.output_store.resolve_artifact_source(artifact.source_id)

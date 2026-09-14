@@ -29,6 +29,7 @@ async def main():
     stock = await SQLConnector.from_url_async("sqlite+aiosqlite:///:memory:", read_only=False)
     try:
         await load_sample_data(stock)
+        # Inspect the structured schema directly, or format it as SQL DDL.
         print("Tables:", [table.name for table in stock.schema.tables])
         print(SQLDDLSchemaFormatter().format(stock.schema))
 

@@ -35,6 +35,8 @@ async def main():
             result = await session.run("Which products are below their reorder point?")
             print(result.text)
 
+            # The follow-up retains the first turn's context automatically.
+            # Stream tool activity and answer text, then read the final usage.
             async for event in session.run_stream("How many units of each should I order to reach those levels?"):
                 if event.kind == "tool_started":
                     print("\nTool:", event.name)

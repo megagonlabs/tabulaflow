@@ -34,6 +34,7 @@ async def main():
         registry.register("logistics", logistics)
         store = OutputStore(registry=registry)
 
+        # A frontend can use this parameter definition to build a slider.
         min_units = NumberParameter(
             id="min_units",
             label="Minimum units transferred",
@@ -42,6 +43,7 @@ async def main():
             step=50,
             default=100,
         )
+        # Declare the query now; execute it when an artifact needs data.
         source = store.add_parameterized_artifact_source(
             connector_alias="logistics",
             parameters=[min_units],
@@ -54,6 +56,7 @@ async def main():
             id="transfer_graph",
             source_ids=[source.id],
             spec={
+                # Both endpoint columns supply nodes; matching IDs become one node.
                 "nodes": [
                     {"source_id": source.id, "id": "origin"},
                     {"source_id": source.id, "id": "destination"},
@@ -61,6 +64,7 @@ async def main():
                 "edges": [{"source_id": source.id, "source": "origin", "target": "destination", "label": "units"}],
             },
         )
+        # The table and graph share one query result for each selection.
         output = OutputSpec(
             parameters=[min_units],
             sources=[source],
@@ -68,6 +72,7 @@ async def main():
         )
 
         resolver = OutputResolver(store)
+        # Returning to 100 reuses the first result.
         for threshold in (100, 300, 100):
             resolved = await resolver.resolve(output, {"min_units": threshold})
             print("Selection:", resolved.selection)
@@ -79,6 +84,7 @@ async def main():
                     print("SQL:", artifact.result.metadata.query)
                     print("DataFrame:\n", artifact.result.df)
                 elif isinstance(artifact, ResolvedGraphArtifact):
+                    # Resolution builds the graph's nodes and edges from the SQL result.
                     print("Graph nodes:", [node.id for node in artifact.graph.nodes])
                     print("Graph edges:", [(edge.source, edge.target, edge.label) for edge in artifact.graph.edges])
 
