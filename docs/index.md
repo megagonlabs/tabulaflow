@@ -20,16 +20,15 @@ it can also write code, work with files, run shell commands, and browse the web.
 
 ## What you can do
 
-General-purpose coding agents (e.g., Claude Code) are powerful for coding
-and analyzing simple data. But they underperform on complex data tasks
-that require agentic row-wise operations or ambiguous deep research tasks
-where thousands of structured records need to be extracted from unstructured sources
-like web pages. They also lack UI for such as table browsing and visualization
-for human. 
+General-purpose coding agents (e.g., Claude Code) are powerful tools for
+programming and simple data analysis. TabulaFlow is built on a different
+harness (see [How it works](#how-it-works)) that enables workflows such as
+ambitious deep research and large-scale agentic row-wise operations. It also
+provides a UI for browsing large tables and visualizing data.
 
-On the other hand, many data AI assistants (e.g., Chat2DB) focus on SQL generation for a single database.
-TabulaFlow supports broader general-purpose workflows across relational and graph databases,
-local files, public datasets, and the web.
+Many AI database assistants (e.g., Chat2DB) focus on SQL generation for a
+single database. TabulaFlow supports broader, general-purpose workflows across
+relational and graph databases, local files, public datasets, and the web.
 
 - **Interactive visualization.** Create charts, maps, and relationship graphs
   backed by queryable, parameterized data, including graphs from Neo4j.
@@ -40,9 +39,9 @@ local files, public datasets, and the web.
   [View example](data-agent/examples/extract-receipts.md){ .inline-cta }
 - **Large-scale dataset construction.** Combine multiple sources and turn
   unstructured web pages and documents into structured, normalized tables with
-  thousands of rows.
+  thousands of rows for deep research.
   [View example](data-agent/examples/build-web-dataset.md){ .inline-cta }
-- **Parallel semantic operations.** Enrich tables with new columns by
+- **Agentic row-wise operations.** Enrich tables with new columns by
   coordinating thousands of row-wise subagents in parallel to collect
   information, classify records, and annotate data.
   [View example](data-agent/examples/extract-receipts.md){ .inline-cta }
