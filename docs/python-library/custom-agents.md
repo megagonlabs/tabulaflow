@@ -1,9 +1,9 @@
-# Custom agents
+# Build custom agents
 
 Build an agent around your workflow. Combine TabulaFlow's reusable tools with
 your own queries and actions, without adopting `ChatSession`.
 
-## Build a customer support agent
+## Example: Build a customer support agent
 
 A customer support agent needs to explore a directory of FAQs and product
 guides, including PDFs with screenshots, and run database queries scoped to
