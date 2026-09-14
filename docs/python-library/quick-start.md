@@ -6,8 +6,8 @@ lacked the abstractions we needed. Its typed building blocks allow you to write 
 logic that runs across different database backends and research benchmarks. The same library
 powers the [TabulaFlow data agent](../data-agent/quick-start.md).
 
-You can also use the connectors, formatters, and structured outputs to build
-data applications without an LLM (e.g., interactive dashboards). Choose the
+You can use any of these building blocks to create
+data applications with (e.g. data agents) or without an LLM (e.g., interactive dashboards). Choose the
 building blocks you need:
 
 - [Data connectors](data-connectors.md): inspect schemas and query SQL
