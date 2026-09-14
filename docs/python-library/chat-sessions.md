@@ -17,15 +17,11 @@ repeating the inventory details.
 Expect **8 HDMI cables** and **7 USB-C docks** in the follow-up answer. Wording
 and tool calls may vary.
 
-Set `OPENAI_API_KEY` as shown in the [quick start](quick-start.md#try-it-yourself),
-then run:
+Set [`OPENAI_API_KEY`](quick-start.md#try-it-yourself), then run:
 
 ```bash
 uv run https://megagonlabs.github.io/tabulaflow/examples/chat_sessions.py
 ```
-
-This makes paid model calls and sends questions, schema, and relevant query
-results to the provider.
 
 ## Stream answers and progress
 

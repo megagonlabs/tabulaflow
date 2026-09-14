@@ -18,16 +18,14 @@ The dock shortfall is 7, rounded to **8 units** in packs of 4. The cable
 shortfall is 8, rounded to **10 units** in packs of 5. Expect those two products
 and **18 total units**; product order and query count may vary.
 
-Set `OPENAI_API_KEY` as shown in the [quick start](quick-start.md#try-it-yourself),
-then run:
+Set [`OPENAI_API_KEY`](quick-start.md#try-it-yourself), then run:
 
 ```bash
 uv run https://megagonlabs.github.io/tabulaflow/examples/custom_agents.py
 ```
 
-This makes paid model calls and sends the schema, question, and query results
-to the provider. The example closes its connector in `finally`. For your own
-data, use [read-only credentials and execution limits](data-connectors.md#control-query-execution).
+The example closes its connector in `finally`. For your own data, use
+[read-only credentials and execution limits](data-connectors.md#control-query-execution).
 
 ## Reuse tools in your agent
 
