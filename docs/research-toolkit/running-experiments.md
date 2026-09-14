@@ -6,7 +6,7 @@ stages in Python so each methodological choice remains visible.
 
 ## Run each stage
 
-The [quick-start example](quick-start.md#example-build-and-evaluate-a-custom-agent)
+The [quick-start example](quick-start.md#example-evaluate-a-full-schema-agent)
 uses the complete lifecycle:
 
 ```text

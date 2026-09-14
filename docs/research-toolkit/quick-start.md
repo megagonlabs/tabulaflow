@@ -21,27 +21,20 @@ experiments:
 - **Simple and performant agents.** Simple yet state-of-the-art agent
   implementations provide a performant starting point.
 
-## Example: Build and evaluate a custom agent
+## Example: Evaluate a full-schema agent
 
-This example builds a typed plan-and-query agent from TabulaFlow's model,
-schema, task, tracking, and result primitives. The agent selects relevant tables
-and predicts SQL, then the research pipeline runs it on three BIRD-SQL tasks,
-executes the queries, evaluates the results, and writes a reusable experiment
-run.
+This example loads three BIRD-SQL tasks and runs a full-schema agent on them
+concurrently. The agent receives the complete database schema and can execute
+queries while working. The pipeline then populates any missing execution
+results and evaluates BIRD-SQL execution accuracy.
 
 ```python title="research_quick_start.py"
 --8<-- "examples/research_quick_start.py"
 ```
 
-`PlanAndQueryAgent` is an ordinary Python class that implements the simple task
-contract; it does not modify or fork TabulaFlow. Its structured model output
-keeps the selected tables available for analysis, while `SimpleNL2QTaskOutput`
-records the predicted query and intermediate data.
-
-The script prints a benchmark question, structured schema tables, the custom
-table selection, predicted SQL, query result, and aggregate metric. It shows how
-method-specific data remains available beside the prediction and how query
-results arrive as DataFrames—without parsing nested dictionaries or text.
+The script prints a benchmark question, predicted SQL, its DataFrame result,
+and aggregate accuracy. Tasks, predictions, execution results, and metrics
+remain structured and directly accessible throughout the experiment.
 
 Exact predictions and scores can vary between model calls.
 
