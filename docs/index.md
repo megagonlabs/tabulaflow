@@ -20,13 +20,15 @@ it can also write code, work with files, run shell commands, and browse the web.
 
 ## What you can do
 
-General-purpose coding agents (e.g., Claude Code) are built around files, but
-TabulaFlow treats tables as first-class citizens, as its name suggests. We
-design TabulaFlow around a table-native agent harness for data exploration,
-visualization, and dataset construction.
+General-purpose coding agents (e.g., Claude Code) are powerful for coding
+and analyzing simple data. But they underperform on complex data tasks
+that require agentic row-wise operations or ambiguous deep research tasks
+where thousands of structured records need to be extracted from unstructured sources
+like web pages. They also lack UI for such as table browsing and visualization
+for human. 
 
-Many database-focused AI applications (e.g., Chat2DB) focus on SQL generation.
-TabulaFlow supports broader workflows across relational and graph databases,
+On the other hand, many data AI assistants (e.g., Chat2DB) focus on SQL generation for a single database.
+TabulaFlow supports broader general-purpose workflows across relational and graph databases,
 local files, public datasets, and the web.
 
 - **Interactive visualization.** Create charts, maps, and relationship graphs
