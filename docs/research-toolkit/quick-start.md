@@ -1,20 +1,25 @@
 # Quick start
 
-The tabulaflow research package is an extension library over
-   its main python library for
-   AI researchers who work on text-to-SQL / text-to-Cypher. Its main building blocks include benchmark
-   loaders, research agents evaluation metrics, and experiment pipelines. We design it based on principles that
-   enable flexible, rapid and transparent experiments:
-
+TabulaFlow Research extends the main Python library for AI researchers working
+on text-to-SQL and data agents. Its main building blocks include benchmark
+loaders, research agents, evaluation metrics, and experiment pipelines. It is
+designed around principles that enable flexible, rapid, and transparent
+experiments:
 
 - **Benchmark-ready.** Run BIRD-SQL, Spider 2.0, Beaver, ARCS, AMBROSIA-S, and
   CypherBench with managed setup and official leaderboard metrics.
-- **Transparent and fully typed.**  Work with typed tasks, schemas, predictions rather than
-  black-box dictionaries or schema strings. Write Python intead of YAML.
-- **Async-native for large-scale concurrency.** Task inference, llm calls, database queries are all async and parallelizable with configuration concureency control that can exploit the provider limit.
-- **Modular and extensible.** Use any building blocks you need, or extend by implementing their public protocols.
-- **Built-in tracking.** Record trajectories, token usage, latency for analysis, with optional Langfuse and Phoenix tracing.
-- **Simple and performant agents.** Simple yet state of the art agent implementations as your starting point. 
+- **Transparent and fully typed.** Work with typed tasks, schemas, and
+  predictions rather than black-box dictionaries or schema strings. Write
+  Python instead of YAML.
+- **Async-native for large-scale concurrency.** Task inference, LLM calls, and
+  database queries are async and parallelizable, with configurable concurrency
+  controls that can make full use of provider limits.
+- **Modular and extensible.** Use any building blocks you need, or extend them by
+  implementing their public protocols.
+- **Built-in tracking.** Record trajectories, token usage, and latency for
+  analysis, with optional Langfuse and Phoenix tracing.
+- **Simple and performant agents.** Simple yet state-of-the-art agent
+  implementations provide a performant starting point.
 
 ## Example: Evaluate a schema-linking agent
 
