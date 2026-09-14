@@ -70,17 +70,26 @@ experimentation on text-to-SQL and text-to-Cypher benchmarks such as Spider
 
 ## How does TabulaFlow work?
 
-Just like any coding agent, TabulaFlow is simply an LLM that calls a set of
-tools in a loop. The diagram below shows how TabulaFlow works in a simple
-chat-to-database scenario. You can connect a database with `/connect`, or the
-agent can connect it through a tool call. TabulaFlow registers the connection
-under an alias and constructs the schema so the agent can understand the
-database structure. The agent can then execute queries to derive tables and
-attach visualization specifications to render charts, maps, and graphs.
-Finally, the agent presents one or multiple tables or visualization artifacts
-to the user by referencing their IDs.
-This enables a fully in-memory agentic data workflow without exposing a shell
-tool when security matters.
+
+Like a coding agent, TabulaFlow is an LLM that calls tools in a loop. The
+main difference is that we design the tools (i.e., the harness)
+to maximize agent and human ergonomics for data tasks.
+
+The diagram below shows a simple chat-to-database workflow. You can register
+data sources with `/connect`, or the agent can connect them through a tool call.
+The agent runs queries to produce tables, attaches visualization specifications
+to create charts, maps, and graphs, and references the one or multiple artifacts in
+its answer. This design has three benefits:
+
+- **Agent ergonomics.** The agent only supplies queries and
+  visualization specifications. TabulaFlow handles the result data and rendering,
+  so the agent never handwrite data values or write HTML to create
+  visual artifacts.
+- **Human ergonomics.** TabulaFlow tracks data provenance: each visualization
+  exposes its underlying data table, each table exposes its underlying query that produced it.
+  Our UI ensure consistent visual look and effieicne human navigation.
+- **Security.** the data agent remain fully functional for data work even when
+  the shell tool is disabled.
 
 <figure class="process-diagram">
   <div class="horizontal-flow" role="img" aria-label="The data connector registry contains SQLite, CSV, Hugging Face, and additional sources identified by aliases. The run_query tool counts orders by channel to create a result table, and render_chart creates a donut chart artifact using channel and order count.">
