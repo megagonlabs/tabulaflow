@@ -53,7 +53,7 @@ async def prepare_example(orders, support_dir):
 async def run_support_agent(orders, support_dir, customer_id):
     query_tool = RunQueryTool(orders)
     view = ViewTool(working_dir=support_dir)
-    tickets = {}
+    tickets = []
 
     async def query_order(order_id):
         # The application owns the SQL and customer scope, not the agent.
@@ -85,8 +85,8 @@ async def run_support_agent(orders, support_dir, customer_id):
         execution = await query_order(order_id)
         return ToolReturn(return_value=execution.output, metadata=execution)
 
-    async def open_support_ticket(order_id: int, issue: str) -> dict[str, str | int] | str:
-        """Open a technical-support ticket for a delivered order, reusing any existing ticket."""
+    async def open_support_ticket(order_id: int, issue: str) -> str:
+        """Record a support ticket for the signed-in customer's order and return its ID."""
         if not issue.strip():
             return "(error: issue must not be empty)"
         # Check ownership even if the agent skipped lookup_order.
@@ -96,18 +96,15 @@ async def run_support_agent(orders, support_dir, customer_id):
             return execution.output
         if result.df is None or result.df.empty:
             return "(error: order not found for this customer)"
-        if result.df.iloc[0]["status"] != "delivered":
-            return "(error: technical-support tickets require a delivered order)"
-        return tickets.setdefault(
-            order_id,
-            {"ticket_id": f"SUP-{order_id}", "order_id": order_id, "issue": issue.strip(), "status": "open"},
-        )
+        ticket_id = f"SUP-{len(tickets) + 1}"
+        tickets.append({"ticket_id": ticket_id, "order_id": order_id, "issue": issue.strip()})
+        return ticket_id
 
     agent = make_agent(
         "openai-responses:gpt-5-mini",
         output_type=SupportReply,
         instructions=(
-            "You are a customer support agent. Follow faq.txt for ticket policy, "
+            "You are a customer support agent. Follow faq.txt for support guidance, "
             "and use order search, order lookup, and illustrated guides to help the customer. Cite your sources."
         ),
         tools=[view.as_pydantic_ai_tool(), find_orders, lookup_order, open_support_ticket],
@@ -121,7 +118,7 @@ async def run_support_agent(orders, support_dir, customer_id):
     print("Suggested steps:", result.output.suggested_steps)
     print("References:", result.output.references)
     print("Ticket ID:", result.output.ticket_id)
-    print("Stored tickets:", list(tickets.values()))
+    print("Stored tickets:", tickets)
     print("Query calls:", query_tool.metrics().num_calls)
 
 

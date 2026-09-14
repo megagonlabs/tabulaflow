@@ -12,7 +12,7 @@ without exposing a shell tool.
 
 This example helps a customer find their most recent USB-C dock purchase and
 troubleshoot a charging issue. The agent finds their purchases, consults the
-support documents, and opens a ticket when eligible. Build it by combining a
+support documents, and opens a ticket when requested. Build it by combining a
 reusable document tool with custom database tools and an action:
 
 - Reuse `ViewTool` to browse the support directory and read text, images, and PDFs.
@@ -20,22 +20,20 @@ reusable document tool with custom database tools and an action:
   These custom tools search purchases and retrieve delivery status using
   application-owned SQL scoped to the customer.
 - Add `open_support_ticket`, which reuses the scoped order lookup to check
-  ownership and delivery status before recording the issue.
+  ownership before recording the issue and returning a ticket ID.
 
-The example's policy allows a technical-support ticket only when the customer
-owns a delivered order, requests support, and confirms that the guide's steps
-have not solved the problem. Otherwise, the agent suggests those steps or asks
-what they tried. Asking for a ticket alone is not enough.
+The FAQ guides troubleshooting and explains what to include in a ticket.
+The ticket tool checks that the order belongs to the signed-in customer.
 
 ```python title="custom_agents.py"
 --8<-- "examples/custom_agents.py"
 ```
 
-The search finds two dock purchases. The most recent is order **1001**, and its
-lookup confirms delivery. The customer has already tried the guide's steps,
-so the request qualifies for ticket **SUP-1001**. `SupportReply` separates the
-customer-facing message, suggested next steps, document references, and ticket
-ID. The script also prints the stored ticket so you can inspect the action.
+The search finds two dock purchases. The most recent is order **1001**. The
+customer has already tried the guide's steps and requests further help, so
+the agent opens ticket **SUP-1**. `SupportReply` separates the customer-facing
+message, suggested next steps, document references, and ticket ID. The script
+also prints the stored ticket so you can inspect the action.
 Wording, references, and tool-call order may vary; suggested steps can be empty
 when no further troubleshooting is documented.
 
@@ -63,18 +61,16 @@ The agent calls `find_orders` and `lookup_order`; `RunQueryTool` executes their
 fixed SQL and bound values internally. The agent supplies a product name or
 order ID, while the application supplies the authenticated customer identity
 and includes it in each query's filter. Search returns purchase dates, newest
-first; lookup adds the delivery status needed for the ticket policy. If the
-matches are ambiguous, the agent can ask the customer instead of guessing.
+first; lookup adds the order's delivery status. If the matches are ambiguous,
+the agent can ask the customer instead of guessing.
 
 Both tools return readable results for the model and `QueryExecution` metadata
 for your application, including SQL, bound values, and the result DataFrame
 or error. They reuse formatting and metrics without exposing unrestricted
 queries.
 
-The prompt and FAQ guide escalation based on the customer's account of what
-they tried. The tool independently enforces ownership and delivery status,
-and reuses an existing ticket for the same order. These checks do not depend
-on the agent following its instructions.
+The ticket tool checks ownership each time it is called, even if the agent
+skips the earlier lookup, then records the ticket in memory and returns its ID.
 
 In your application, take the customer identity from authentication and replace
 the in-memory ticket store with your helpdesk API or persistent storage. Use

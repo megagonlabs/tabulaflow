@@ -367,7 +367,7 @@ def support_model(
             "ticket_id",
         }
         assert info.instructions is not None
-        assert "Follow faq.txt for ticket policy" in info.instructions
+        assert "Follow faq.txt for support guidance" in info.instructions
         returns[:] = [part for message in messages for part in message.parts if isinstance(part, ToolReturnPart)]
         media[:] = [
             item
@@ -384,10 +384,9 @@ def support_model(
         references = []
         for part in returns:
             if part.tool_name == "open_support_ticket":
-                if isinstance(part.content, dict):
-                    ticket_id = part.content["ticket_id"]
-                else:
-                    assert isinstance(part.content, str) and part.content.startswith("(error:")
+                assert isinstance(part.content, str)
+                if not part.content.startswith("(error:"):
+                    ticket_id = part.content
             elif part.tool_name == "view" and isinstance(part.content, str):
                 if part.content.startswith("File: faq.txt"):
                     references.append("faq.txt")
@@ -446,17 +445,11 @@ async def test_custom_agent_finds_order_reads_documents_and_opens_ticket(
     for part in returns[:-1]:
         assert isinstance(part.content, str)
         assert "(error:" not in part.content
-    assert returns[-1].content == {
-        "ticket_id": "SUP-1001",
-        "order_id": 1001,
-        "issue": issue,
-        "status": "open",
-    }
+    assert returns[-1].content == "SUP-1"
     assert "faq.txt" in str(returns[0].content)
     assert "dock-guide.pdf" in str(returns[0].content)
-    assert "Opening a ticket does not issue a refund" in str(returns[1].content)
-    assert "A request alone is not enough" in str(returns[1].content)
-    assert "tried but the problem remains" in str(returns[1].content)
+    assert "Consult dock-guide.pdf" in str(returns[1].content)
+    assert "Share the ticket ID for follow-up" in str(returns[1].content)
     search = returns[2].metadata
     assert isinstance(search, QueryExecution)
     assert search.parameter_values == {"product": "dock", "customer_id": 7}
@@ -495,17 +488,16 @@ async def test_custom_agent_finds_order_reads_documents_and_opens_ticket(
     assert queries[0][0] == search.query
     assert all(query == execution.query for query, _ in queries[1:])
     printed = capsys.readouterr().out
-    assert "Reply: The documented steps have not helped. I've opened ticket SUP-1001." in printed
+    assert "Reply: The documented steps have not helped. I've opened ticket SUP-1." in printed
     assert "Suggested steps: []" in printed
     assert "References: ['faq.txt', 'dock-guide.pdf, page 1']" in printed
-    assert "Ticket ID: SUP-1001" in printed
+    assert "Ticket ID: SUP-1" in printed
     tickets = ast.literal_eval(printed.split("Stored tickets: ", 1)[1].splitlines()[0])
     assert tickets == [
         {
-            "ticket_id": "SUP-1001",
+            "ticket_id": "SUP-1",
             "order_id": 1001,
             "issue": issue,
-            "status": "open",
         }
     ]
     assert "Query calls: 3" in printed
@@ -566,7 +558,7 @@ async def test_support_reply_can_return_guidance_without_a_ticket(
     assert "Stored tickets: []" in printed
 
 
-async def test_ticket_action_rejects_an_undelivered_order(
+async def test_ticket_action_accepts_an_owned_undelivered_order(
     support_model: tuple[list[tuple[str, dict[str, Any]]], list[ToolReturnPart], list[BinaryContent]],
     capsys: pytest.CaptureFixture[str],
     queries: list[tuple[str, ExecResult]],
@@ -574,11 +566,12 @@ async def test_ticket_action_rejects_an_undelivered_order(
     steps, returns, _ = support_model
     steps.append(("open_support_ticket", {"order_id": 1003, "issue": "Charging stopped."}))
     await runpy.run_path(str(EXAMPLES / "custom_agents.py"))["main"]()
-    assert returns[0].content == "(error: technical-support tickets require a delivered order)"
+    assert returns[0].content == "SUP-1"
     assert len(queries) == 1
     printed = capsys.readouterr().out
-    assert "Stored tickets: []" in printed
-    assert "Ticket ID: None" in printed
+    tickets = ast.literal_eval(printed.split("Stored tickets: ", 1)[1].splitlines()[0])
+    assert tickets == [{"ticket_id": "SUP-1", "order_id": 1003, "issue": "Charging stopped."}]
+    assert "Ticket ID: SUP-1" in printed
 
 
 async def test_support_workflow_uses_the_supplied_customer_identity(
@@ -685,7 +678,7 @@ async def test_ticket_action_checks_ownership_without_prior_lookup(
     assert "Stored tickets: []" in capsys.readouterr().out
 
 
-async def test_ticket_action_reuses_existing_ticket(
+async def test_ticket_action_records_each_request_with_a_distinct_id(
     support_model: tuple[list[tuple[str, dict[str, Any]]], list[ToolReturnPart], list[BinaryContent]],
     capsys: pytest.CaptureFixture[str],
 ) -> None:
@@ -697,10 +690,14 @@ async def test_ticket_action_reuses_existing_ticket(
         ]
     )
     await runpy.run_path(str(EXAMPLES / "custom_agents.py"))["main"]()
-    assert returns[0].content == returns[1].content
+    assert returns[0].content == "SUP-1"
+    assert returns[1].content == "SUP-2"
     printed = capsys.readouterr().out
     tickets = ast.literal_eval(printed.split("Stored tickets: ", 1)[1].splitlines()[0])
-    assert len(tickets) == 1 and tickets[0]["issue"] == "Charging stopped."
+    assert tickets == [
+        {"ticket_id": "SUP-1", "order_id": 1001, "issue": "Charging stopped."},
+        {"ticket_id": "SUP-2", "order_id": 1001, "issue": "Still not charging."},
+    ]
 
 
 async def test_ticket_action_rejects_blank_issue(

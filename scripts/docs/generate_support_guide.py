@@ -101,7 +101,7 @@ async def main() -> None:
                 <p>Disconnect and reconnect the host USB-C cable after changing the setting.</p>
                 <h2>3. Contact support</h2>
                 <p>If you have tried both steps and charging still fails, request a technical-support
-                ticket for your delivered order. Include the order number and steps already tried.</p>
+                ticket for your order. Include the order number and steps already tried.</p>
                 <footer>This fictional guide is a TabulaFlow documentation fixture, not a real product manual.</footer>
                 </html>
             """)
