@@ -20,6 +20,15 @@ it can also write code, work with files, run shell commands, and browse the web.
 
 ## What you can do
 
+General-purpose coding agents (e.g., Claude Code) are built around files, but
+TabulaFlow treats tables as first-class citizens, as its name suggests. We
+design TabulaFlow around a table-native agent harness for data exploration,
+visualization, and dataset construction.
+
+Many database-focused AI applications (e.g., Chat2DB) focus on SQL generation.
+TabulaFlow supports broader workflows across relational and graph databases,
+local files, public datasets, and the web.
+
 - **Interactive visualization.** Create charts, maps, and relationship graphs
   backed by queryable, parameterized data, including graphs from Neo4j.
   [View example](data-agent/examples/compare-spending.md){ .inline-cta }
@@ -43,10 +52,10 @@ it can also write code, work with files, run shell commands, and browse the web.
 ## How it works
 
 Like a coding agent, TabulaFlow is an LLM that calls tools in a loop.
-General-purpose coding agents are built around files; TabulaFlow treats tables
-as first-class citizens. We design its tools (the agent harness) around queries,
-tables, and visualization specifications to maximize agent and human ergonomics
-for data tasks.
+The main difference is that exiting coding agent harness are built around files and shell,
+while TabulaFlow treats tables as first-class citizens, as its name suggests.
+Our harness is designed to maximize agent and human ergonomics for data tasks, and
+remains fully functional without shell access.
 
 The diagram below shows a simple chat-to-database workflow. You can register
 data sources with `/connect`, or the agent can connect them through a tool call.
