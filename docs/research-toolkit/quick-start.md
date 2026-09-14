@@ -1,8 +1,31 @@
 # Quick start
 
-TabulaFlow provides benchmark loaders, research agents, experiment pipelines,
-and evaluation metrics for text-to-query research. Manage benchmark data with
-the command line, then define experiments in version-controlled Python.
+TabulaFlow Research builds on the Python library with benchmark loaders,
+research agents, experiment pipelines, and evaluation metrics for text-to-query
+research. Manage benchmark data with the command line, then define experiments
+in ordinary, version-controlled Python.
+
+It is designed for experiments that are easy to understand, adapt, and scale:
+
+- **Transparent by default.** Typed Python configuration keeps model, method,
+  execution, and evaluation choices visible—without a framework-specific
+  configuration language.
+- **Structured end to end.** Work with typed tasks, schemas, predictions,
+  execution results, and experiment runs instead of nested dictionaries or
+  schema strings.
+- **Async-native.** Run model calls and database queries concurrently while
+  controlling task and connector limits independently.
+- **Modular and extensible.** Combine the loaders, agents, pipeline stages, and
+  metrics you need, or implement their public protocols in your own project.
+- **Observable.** Track trajectories, token usage, latency, and estimated API
+  cost locally, with optional Phoenix and Langfuse tracing.
+- **Benchmark-ready.** Start with BIRD-SQL, Spider 2.0, Beaver, ARCS,
+  AMBROSIA-S, or CypherBench, including managed setup where available and
+  benchmark-specific evaluation.
+
+Built-in strategies range from direct prompting to schema linking, tool-driven
+schema discovery, ambiguity-aware SQL, and dbt transformations. Use them as
+baselines or as starting points for new methods.
 
 Choose the building blocks you need:
 
