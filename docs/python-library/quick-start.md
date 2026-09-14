@@ -9,7 +9,8 @@ write tools against a shared connector interface and produce tables, charts,
 maps, and graphs as structured artifacts. Those artifacts can resolve their
 data on demand as parameters change, supporting interactive outputs.
 
-Use the components together or choose the building blocks you need:
+You can also use the connectors, formatters, and structured outputs to build
+data applications without an LLM. Choose the building blocks you need:
 
 - [Data connectors](data-connectors.md): inspect schemas and query SQL
   databases, Neo4j, SPARQL endpoints, files, and datasets through a unified
