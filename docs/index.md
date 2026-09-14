@@ -20,6 +20,10 @@ it can also write code, work with files, run shell commands, and browse the web.
 
 ## What you can do
 
+Consider TabulaFlow if you regularly analyze data in Jupyter notebooks, explore
+databases with DBeaver, browse Hugging Face datasets, or conduct deep research
+with structured datasets.
+
 General-purpose coding agents (e.g., Claude Code) are powerful tools for
 programming and simple data analysis. TabulaFlow is built on a different
 harness (see [How it works](#how-it-works)) that enables workflows such as
