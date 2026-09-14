@@ -38,7 +38,7 @@ async def evaluate_async(
     dataset: NL2QDataset,
     metrics: list[MetricProtocol],
     batch_size: int,
-    metric_aggregators: list[MetricAggregatorProtocol],
+    metric_aggregators: list[MetricAggregatorProtocol] | None = None,
     verbose: bool = True,
 ) -> NL2QRunResult:
     """Evaluate task outputs and aggregate their metrics.
@@ -48,12 +48,16 @@ async def evaluate_async(
         dataset: Dataset providing database connectors.
         metrics: Task-level metrics to compute.
         batch_size: Maximum tasks evaluated concurrently.
-        metric_aggregators: Policies for aggregating task metrics.
+        metric_aggregators: Policies for aggregating task metrics. Defaults to
+            ``SimpleAverageAggregator``. Pass an empty list to skip aggregation.
         verbose: Whether to display progress.
 
     Returns:
         The evaluated run result.
     """
+    if metric_aggregators is None:
+        metric_aggregators = [SimpleAverageAggregator()]
+
     for i in range(0, len(result.tasks), batch_size):
         j = min(i + batch_size, len(result.tasks))
         batch = result.tasks[i:j]

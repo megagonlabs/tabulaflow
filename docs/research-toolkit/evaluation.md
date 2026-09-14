@@ -16,13 +16,13 @@ await evaluate_async(
     dataset,
     metrics=[BirdSQLEx(), Executable(), PredSuccess()],
     batch_size=8,
-    metric_aggregators=[SimpleAverageAggregator()],
 )
 ```
 
-`evaluate_async(...)` replaces each task's evaluation metrics and recomputes
-the selected run-level aggregates in place. It does not execute missing queries
-or write reports automatically.
+`evaluate_async(...)` replaces each task's evaluation metrics and averages them
+across the run by default. Pass an explicit aggregator list for another policy,
+or an empty list to skip aggregation. It does not execute missing queries or
+write reports automatically.
 
 ## Choose metrics
 

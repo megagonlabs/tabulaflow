@@ -28,10 +28,10 @@ provide the same operation at smaller scope.
 ## Evaluation
 
 `evaluate_async(...)` recomputes task evaluation metrics and aggregate scores
-in place. Supply metric instances and aggregation policies explicitly. It
-does not automatically execute missing predictions or write report files;
-populate execution results first when the chosen metrics require them, and
-use `NL2QRunResult.to_directory(...)` to save the run.
+in place. Supply metric instances explicitly; aggregation defaults to a simple
+average. It does not automatically execute missing predictions or write report
+files; populate execution results first when the chosen metrics require them,
+and use `NL2QRunResult.to_directory(...)` to save the run.
 
 ::: tabulaflow.research.pipelines.evaluate.evaluate_async
 

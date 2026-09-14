@@ -21,21 +21,38 @@ experiments:
 - **Simple and performant agents.** Simple yet state-of-the-art agent
   implementations provide a performant starting point.
 
-## Example: Evaluate a schema-linking agent
+## Example: Build and evaluate a custom agent
 
-This example selects three BIRD-SQL development tasks, predicts SQL with the
-schema-linking agent, executes each query, evaluates the results, and writes a
-reusable experiment run.
+This example builds a typed plan-and-query agent from TabulaFlow's model,
+schema, task, tracking, and result primitives. The agent selects relevant tables
+and predicts SQL, then the research pipeline runs it on three BIRD-SQL tasks,
+executes the queries, evaluates the results, and writes a reusable experiment
+run.
 
 ```python title="research_quick_start.py"
 --8<-- "examples/research_quick_start.py"
 ```
 
-The script prints a concise summary with aggregate execution accuracy,
-executability, prediction success, estimated cost, and the output path. It also
-writes `result.json`, `result_summary.csv`, and readable per-task reports under
-`runs/bird-schema-linking`. Exact predictions and scores can vary between model
-calls.
+`PlanAndQueryAgent` is an ordinary Python class that implements the simple task
+contract; it does not modify or fork TabulaFlow. Its structured model output
+keeps the selected tables available for analysis, while `SimpleNL2QTaskOutput`
+records the predicted query and intermediate data.
+
+The script prints a benchmark question, structured schema tables, the custom
+table selection, predicted SQL, query result, and aggregate metric. It shows how
+method-specific data remains available beside the prediction and how query
+results arrive as DataFrames—without parsing nested dictionaries or text.
+
+Exact predictions and scores can vary between model calls.
+
+To keep the complete run, including structured JSON, a CSV summary, and
+readable per-task reports, add:
+
+```python
+result.to_directory("runs/plan-and-query")
+```
+
+The quick-start script does not write to your project by default.
 
 ## Try it yourself
 
@@ -68,7 +85,7 @@ uv run python research_quick_start.py
 
 This makes paid model calls and sends benchmark questions, relevant schema, and
 tool results to the configured provider. BIRD-SQL is downloaded locally. The
-script closes every database connector even if a stage fails.
+script closes its database connectors before exiting.
 
 ??? info "Run from a source checkout"
 
