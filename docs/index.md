@@ -70,25 +70,24 @@ experimentation on text-to-SQL and text-to-Cypher benchmarks such as Spider
 
 ## How does TabulaFlow work?
 
-
 Like a coding agent, TabulaFlow is an LLM that calls tools in a loop. The
-main difference is that we design the tools (i.e., the harness)
+main difference is that we design the tools (i.e., the agent harness)
 to maximize agent and human ergonomics for data tasks.
 
 The diagram below shows a simple chat-to-database workflow. You can register
 data sources with `/connect`, or the agent can connect them through a tool call.
 The agent runs queries to produce tables, attaches visualization specifications
-to create charts, maps, and graphs, and references the one or multiple artifacts in
+to create visual artifacts (e.g., charts), and references one or more artifacts in
 its answer. This design has three benefits:
 
-- **Agent ergonomics.** The agent only supplies queries and
+- **Agent ergonomics.** The agent writes only queries and
   visualization specifications. TabulaFlow handles the result data and rendering,
-  so the agent never handwrite data values or write HTML to create
+  so the agent never handcrafts data values or HTML to create
   visual artifacts.
 - **Human ergonomics.** TabulaFlow tracks data provenance: each visualization
-  exposes its underlying data table, each table exposes its underlying query that produced it.
-  Our UI ensure consistent visual look and effieicne human navigation.
-- **Security.** the data agent remain fully functional for data work even when
+  exposes its underlying data table, and each table exposes the query that
+  produced it. Our UI ensures a consistent look and efficient navigation.
+- **Security.** The data agent remains fully functional for data work even when
   the shell tool is disabled.
 
 <figure class="process-diagram">
