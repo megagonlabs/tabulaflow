@@ -10,7 +10,8 @@ artifacts. Artifact data can resolve on demand as parameters change, enabling
 interactive outputs.
 
 You can also use the connectors, formatters, and structured outputs to build
-data applications without an LLM (e.g., interactive dashboards). Choose the building blocks you need:
+data applications without an LLM (e.g., interactive dashboards). Choose the
+building blocks you need:
 
 - [Data connectors](data-connectors.md): inspect schemas and query SQL
   databases, Neo4j, SPARQL endpoints, files, and datasets through a unified
