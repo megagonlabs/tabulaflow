@@ -1164,11 +1164,7 @@ function prepareShellView(shell, key, entry) {
   }
   entry.readyPromise.then(function () {
     if (viewCache[key] !== entry || !isActiveShellView(shell, key) || entry.node.parentNode !== shell) return;
-    requestAnimationFrame(function () {
-      if (viewCache[key] === entry && isActiveShellView(shell, key) && entry.node.parentNode === shell) {
-        commitShellView(shell, entry);
-      }
-    });
+    commitShellView(shell, entry);
   });
 }
 
