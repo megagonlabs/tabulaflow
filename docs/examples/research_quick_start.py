@@ -1,11 +1,9 @@
 import asyncio
 
 from tabulaflow.research.agents import BasicAgentConfig, FullSchemaAgent
-from tabulaflow.research.benchmarks.bird_sql import BirdSQLDatasetLoader
+from tabulaflow.research.benchmarks import BirdSQLDatasetLoader
 from tabulaflow.research.metrics import BirdSQLEx
-from tabulaflow.research.pipelines.evaluate import evaluate_async
-from tabulaflow.research.pipelines.execute import execute_async
-from tabulaflow.research.pipelines.predict import predict_async
+from tabulaflow.research.pipelines import evaluate_async, execute_async, predict_async
 from tabulaflow.research.types import SimpleNL2QTaskOutput
 
 

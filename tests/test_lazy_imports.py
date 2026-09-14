@@ -39,6 +39,19 @@ def test_lazy_public_exports_load_only_their_owners() -> None:
     assert "tabulaflow.output.formatting.sql_ddl" not in modules
 
 
+def test_research_public_exports_are_lazy_and_typed_at_runtime() -> None:
+    modules = _loaded_modules(
+        "import tabulaflow.research.benchmarks, tabulaflow.research.pipelines; "
+        "from tabulaflow.research.benchmarks import BirdSQLDatasetLoader; "
+        "from tabulaflow.research.pipelines import evaluate_async"
+    )
+
+    assert "tabulaflow.research.benchmarks.bird_sql" in modules
+    assert "tabulaflow.research.benchmarks.cypherbench" not in modules
+    assert "tabulaflow.research.pipelines.evaluate" in modules
+    assert "tabulaflow.research.pipelines.predict" not in modules
+
+
 def test_all_lazy_public_exports_resolve() -> None:
     code = """
 import importlib
