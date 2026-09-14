@@ -1,13 +1,10 @@
 # Build with TabulaFlow
 
-The core of TabulaFlow is a minimalist, async-native Python library designed to make
-building and researching data agents easier. It was the first thing we built when we started the project because existing libraries lacked the abstractions we needed. The same library powers the
-[TabulaFlow data agent](../data-agent/quick-start.md).
-
-Its typed building blocks let you write reusable tool logic against a shared
-connector interface and produce tables, charts, maps, and graphs as structured
-artifacts. Artifact data can resolve on demand as parameters change, enabling
-interactive outputs.
+At the core of TabulaFlow is a minimalist, async-native Python library for building
+and researching data agents. It was the first thing we built when we started this project because existing libraries
+lacked the abstractions we needed. Its typed building blocks allow you to write agent
+logic that runs across different database backends and research benchmarks. The same library
+powers the [TabulaFlow data agent](../data-agent/quick-start.md).
 
 You can also use the connectors, formatters, and structured outputs to build
 data applications without an LLM (e.g., interactive dashboards). Choose the
