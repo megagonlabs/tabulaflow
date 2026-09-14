@@ -2,7 +2,7 @@
 
 At the core of TabulaFlow is a minimalist, async-native Python library for building
 and researching data agents. It was the first thing we built when we started this project because existing libraries
-lacked the abstractions we needed. Its typed building blocks allow you to write agent
+lacked the abstractions we needed. Its building blocks allow you to write agent
 logic that runs across different database backends and research benchmarks. The same library
 powers the [TabulaFlow data agent](../data-agent/quick-start.md).
 
@@ -25,7 +25,7 @@ building blocks you need:
   schemas and query results into readable text for LLM prompts or human
   inspection.
 
-These building blocks are organized into four layered packages:
+These building blocks are fully typed and organized into four layered packages:
 `core <- data <- output <- agents`. See the
 [API reference](api-reference.md) for how they fit together.
 
