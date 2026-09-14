@@ -58,7 +58,7 @@ In long-running applications, use `try/finally` so cleanup also runs on errors.
 
 To try TabulaFlow without an API key, start with the
 [Data connectors](data-connectors.md#example-find-products-to-restock) or
-[Structured outputs](structured-outputs.md#example-switch-between-revenue-and-profit)
+[Structured outputs](structured-outputs.md#example-explore-transfers-between-warehouses)
 example. Both run locally without model calls.
 
 Use [uv](https://docs.astral.sh/uv/getting-started/installation/) on macOS or

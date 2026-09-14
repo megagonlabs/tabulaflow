@@ -16,8 +16,15 @@ from tabulaflow.agents import ChatSession
 from tabulaflow.agents.llm import make_agent
 from tabulaflow.core import ErrorInfo, ExecResult
 from tabulaflow.data import SQLConnector
-from tabulaflow.output.resolver import OutputResolver, ResolvedChartArtifact, ResolvedOutput, ResolvedTableArtifact
-from tabulaflow.output.specs import OutputSpec
+from tabulaflow.output.resolver import (
+    OutputResolutionError,
+    OutputResolver,
+    ResolvedGraphArtifact,
+    ResolvedOutput,
+    ResolvedTableArtifact,
+)
+from tabulaflow.output.specs import GraphArtifactSpec, NumberParameter, OutputSpec
+from tabulaflow.output.store import MaterializedResult, OutputStore
 
 
 EXAMPLES = Path(__file__).resolve().parents[1] / "docs/examples"
@@ -139,39 +146,73 @@ async def test_structured_outputs_resolve_lazily_and_reuse_results(
     queries: list[tuple[str, ExecResult]],
     closed_connectors: list[SQLConnector],
 ) -> None:
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
     resolutions: list[ResolvedOutput] = []
+    source_results: list[MaterializedResult] = []
     original_resolve = OutputResolver.resolve
+    original_resolve_source = OutputStore.resolve_artifact_source
+
+    async def record_source(self: OutputStore, source_id: str, selection: Any = None) -> MaterializedResult:
+        result = await original_resolve_source(self, source_id, selection)
+        source_results.append(result)
+        return result
 
     async def record_resolution(self: OutputResolver, output: OutputSpec, selection: Any = None) -> ResolvedOutput:
         if not resolutions:
             assert not queries
+            (parameter,) = output.parameters
+            assert isinstance(parameter, NumberParameter)
+            assert (parameter.min, parameter.max, parameter.step, parameter.default) == (0, 500, 50, 100)
+            assert output.default_selection == {"min_units": 100}
+            graph = output.artifacts[1]
+            assert isinstance(graph, GraphArtifactSpec)
+            assert graph.source_ids == [output.sources[0].id]
         assert OutputSpec.model_validate_json(output.model_dump_json()) == output
         resolved = await original_resolve(self, output, selection)
         resolutions.append(resolved)
         return resolved
 
     monkeypatch.setattr(OutputResolver, "resolve", record_resolution)
+    monkeypatch.setattr(OutputStore, "resolve_artifact_source", record_source)
     example = runpy.run_path(str(EXAMPLES / "structured_outputs.py"))
     await example["main"]()
 
     assert len(queries) == 2
-    assert "SUM(revenue_usd)" in queries[0][0]
-    assert "SUM(profit_usd)" in queries[1][0]
-    for resolved, amounts, result_id in zip(resolutions, ([1500, 2000], [450, 400], [1500, 2000]), ("R1", "R2", "R1")):
-        table, chart = resolved.artifacts
+    assert "units >= 100" in queries[0][0]
+    assert "units >= 300" in queries[1][0]
+    assert len(resolutions) == len(source_results) == 3
+    routes = [
+        ("Chicago", "Dallas", 500),
+        ("Chicago", "Denver", 200),
+        ("Dallas", "Austin", 350),
+    ]
+    for resolved, source_result, threshold, result_id in zip(
+        resolutions, source_results, (100, 300, 100), ("R1", "R2", "R1"), strict=True
+    ):
+        assert resolved.selection == {"min_units": threshold}
+        table, graph = resolved.artifacts
         assert isinstance(table, ResolvedTableArtifact)
-        assert isinstance(chart, ResolvedChartArtifact)
-        assert table.result is chart.result
+        assert isinstance(graph, ResolvedGraphArtifact)
+        assert table.result is source_result
         assert table.result.metadata.id == result_id
-        assert table.result.metadata.connector_alias == "sales"
+        assert table.result.metadata.connector_alias == "logistics"
         assert table.result.df is not None
-        assert table.result.df["region"].tolist() == ["East", "West"]
-        assert table.result.df["amount"].tolist() == amounts
-        assert chart.spec["mark"] == "bar"
-    assert len(resolutions) == 3
+        expected_routes = [route for route in routes if route[2] >= threshold]
+        assert table.result.df.to_dict("records") == [
+            {"origin": origin, "destination": destination, "units": units}
+            for origin, destination, units in expected_routes
+        ]
+        assert {node.id for node in graph.graph.nodes} == {
+            warehouse for origin, destination, _ in expected_routes for warehouse in (origin, destination)
+        }
+        assert [(edge.source, edge.target, edge.label) for edge in graph.graph.edges] == [
+            (origin, destination, str(units)) for origin, destination, units in expected_routes
+        ]
+        assert all(edge.directed for edge in graph.graph.edges)
     printed = capsys.readouterr().out
     assert printed.count("Result ID: R1") == 2
     assert "Unavailable:" not in printed
+    assert printed.count("Graph nodes:") == printed.count("Graph edges:") == 3
     assert "Output JSON:" in printed
     assert len(closed_connectors) == 1
 
@@ -181,17 +222,36 @@ async def test_structured_outputs_report_unavailable_artifacts(
 ) -> None:
     original_query = SQLConnector.run_query_async
 
-    async def fail_profit(self: SQLConnector, query: str, **kwargs: Any) -> ExecResult:
-        if "SUM(profit_usd)" in query:
-            return ExecResult(error=ErrorInfo(exc_type="RuntimeError", message="profit unavailable"))
+    async def fail_threshold(self: SQLConnector, query: str, **kwargs: Any) -> ExecResult:
+        if "units >= 300" in query:
+            return ExecResult(error=ErrorInfo(exc_type="RuntimeError", message="transfers unavailable"))
         return await original_query(self, query, **kwargs)
 
-    monkeypatch.setattr(SQLConnector, "run_query_async", fail_profit)
+    monkeypatch.setattr(SQLConnector, "run_query_async", fail_threshold)
     await runpy.run_path(str(EXAMPLES / "structured_outputs.py"))["main"]()
     printed = capsys.readouterr().out
-    assert "Unavailable: regional_table profit unavailable" in printed
-    assert "Unavailable: regional_chart profit unavailable" in printed
+    assert "Unavailable: transfer_table transfers unavailable" in printed
+    assert "Unavailable: transfer_graph transfers unavailable" in printed
     assert printed.count("Result ID: R1") == 2
+    assert len(closed_connectors) == 1
+
+
+@pytest.mark.parametrize("threshold", [-50, 125, 550])
+async def test_structured_outputs_reject_invalid_thresholds(
+    threshold: int,
+    monkeypatch: pytest.MonkeyPatch,
+    queries: list[tuple[str, ExecResult]],
+    closed_connectors: list[SQLConnector],
+) -> None:
+    original_resolve = OutputResolver.resolve
+
+    async def invalid_selection(self: OutputResolver, output: OutputSpec, selection: Any = None) -> ResolvedOutput:
+        return await original_resolve(self, output, {"min_units": threshold})
+
+    monkeypatch.setattr(OutputResolver, "resolve", invalid_selection)
+    with pytest.raises(OutputResolutionError, match="min_units"):
+        await runpy.run_path(str(EXAMPLES / "structured_outputs.py"))["main"]()
+    assert not queries
     assert len(closed_connectors) == 1
 
 

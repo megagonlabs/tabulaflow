@@ -5,19 +5,24 @@ graphs have structured specifications that your application can inspect,
 serialize, and render. Their data can resolve on demand as parameter selections
 change. Use outputs from a chat session or construct them without an agent.
 
-## Example: Switch between revenue and profit
+## Example: Explore transfers between warehouses
 
-This example gives a table and chart the same parameterized data source.
-Changing the metric resolves a different query; switching back reuses the
-stored result.
+Explore monthly warehouse transfers as a table and a relationship graph, both
+backed by the same SQLite query. A minimum-units parameter filters both
+artifacts. No graph database is needed.
 
 ```python title="structured_outputs.py"
 --8<-- "examples/structured_outputs.py"
 ```
 
-Revenue is **East: $1,500, West: $2,000**; profit is **East: $450, West: $400**.
-The printed result IDs are `R1`, `R2`, then `R1` again. Both artifacts share
-each resolved result. The script prints data and specifications, not a chart window.
+At **100 units**, three routes appear. At **300**, only Chicago to Dallas
+(500 units) and Dallas to Austin (350 units) remain. Returning to 100 reuses
+the first result: the printed result IDs are `R1`, `R2`, then `R1` again.
+
+`GraphArtifactSpec` maps the SQL result's origin and destination columns to
+nodes and directed edges, with units as edge labels. The script prints the
+selection, SQL, DataFrame, graph nodes and edges, and output specification.
+It does not open a graph viewer or slider.
 
 Run the example without a database server or API key:
 
@@ -38,9 +43,21 @@ uv run https://megagonlabs.github.io/tabulaflow/examples/structured_outputs.py
 not be resolved; other artifacts can still be usable. Invalid selections raise
 `OutputResolutionError` instead.
 
-Here, `metric` accepts only the two declared column names. Query templates
-render text; they are not SQL bind parameters. Keep templates under application
-control and use validated choices rather than inserting unchecked input.
+## Add interactive controls
+
+`NumberParameter` defines a range, step, and default. Here, `min_units` accepts
+0 to 500 in steps of 50. TabulaFlow's data agent renders numeric parameters as
+sliders; your own frontend can use the same definition for a slider or numeric
+input and pass the selected value to the resolver.
+
+Changing a parameter resolves the shared data once for both artifacts, without
+another model call. The example changes values in Python to show this behavior
+without a frontend. Use `ChoiceParameter` for a fixed set of options, such as
+revenue versus profit. See [parameters and selections](api/output.md#parameters-and-selections).
+
+Query templates render text; they are not SQL bind parameters. Keep templates
+under application control and use validated parameters rather than unchecked
+input.
 
 ## Use outputs from a session
 

@@ -4,70 +4,72 @@
 # ///
 
 import asyncio
-import json
 
 import pandas as pd
 
 from tabulaflow.data import DataConnectorRegistry, SQLConnector
-from tabulaflow.output.resolver import OutputResolver, ResolvedTableArtifact, UnavailableArtifact
-from tabulaflow.output.specs import ChartArtifactSpec, ChoiceOption, ChoiceParameter, OutputSpec, TableArtifactSpec
+from tabulaflow.output.resolver import OutputResolver, ResolvedGraphArtifact, ResolvedTableArtifact, UnavailableArtifact
+from tabulaflow.output.specs import GraphArtifactSpec, NumberParameter, OutputSpec, TableArtifactSpec
 from tabulaflow.output.store import OutputStore
 
 
-async def load_sample_data(sales):
-    await sales.write_dataframe_async(
+async def load_sample_data(logistics):
+    await logistics.write_dataframe_async(
         pd.DataFrame(
             {
-                "region": ["West", "West", "East"],
-                "revenue_usd": [1200, 800, 1500],
-                "profit_usd": [240, 160, 450],
+                "origin": ["Chicago", "Chicago", "Dallas", "Denver"],
+                "destination": ["Dallas", "Denver", "Austin", "Seattle"],
+                "units": [500, 200, 350, 80],
             }
         ),
-        "sales",
+        "transfers",
     )
 
 
 async def main():
-    sales = await SQLConnector.from_url_async("sqlite+aiosqlite:///:memory:", read_only=False)
+    logistics = await SQLConnector.from_url_async("sqlite+aiosqlite:///:memory:", read_only=False)
     try:
-        await load_sample_data(sales)
+        await load_sample_data(logistics)
         registry = DataConnectorRegistry()
-        registry.register("sales", sales)
+        registry.register("logistics", logistics)
         store = OutputStore(registry=registry)
 
-        metric = ChoiceParameter(
-            id="metric",
-            label="Metric",
-            choices=[
-                ChoiceOption(id="revenue_usd", label="Revenue"),
-                ChoiceOption(id="profit_usd", label="Profit"),
-            ],
+        min_units = NumberParameter(
+            id="min_units",
+            label="Minimum units transferred",
+            min=0,
+            max=500,
+            step=50,
+            default=100,
         )
         source = store.add_parameterized_artifact_source(
-            connector_alias="sales",
-            parameters=[metric],
-            query_template="SELECT region, SUM({{ metric }}) AS amount FROM sales GROUP BY region ORDER BY region",
+            connector_alias="logistics",
+            parameters=[min_units],
+            query_template=(
+                "SELECT origin, destination, units FROM transfers "
+                "WHERE units >= {{ min_units }} ORDER BY origin, destination"
+            ),
         )
-        chart = ChartArtifactSpec(
-            id="regional_chart",
-            source_id=source.id,
+        graph = GraphArtifactSpec(
+            id="transfer_graph",
+            source_ids=[source.id],
             spec={
-                "mark": "bar",
-                "encoding": {
-                    "x": {"field": "region", "type": "nominal"},
-                    "y": {"field": "amount", "type": "quantitative"},
-                },
+                "nodes": [
+                    {"source_id": source.id, "id": "origin"},
+                    {"source_id": source.id, "id": "destination"},
+                ],
+                "edges": [{"source_id": source.id, "source": "origin", "target": "destination", "label": "units"}],
             },
         )
         output = OutputSpec(
-            parameters=[metric],
+            parameters=[min_units],
             sources=[source],
-            artifacts=[TableArtifactSpec(id="regional_table", source_id=source.id), chart],
+            artifacts=[TableArtifactSpec(id="transfer_table", source_id=source.id), graph],
         )
 
         resolver = OutputResolver(store)
-        for metric_id in ("revenue_usd", "profit_usd", "revenue_usd"):
-            resolved = await resolver.resolve(output, {"metric": metric_id})
+        for threshold in (100, 300, 100):
+            resolved = await resolver.resolve(output, {"min_units": threshold})
             print("Selection:", resolved.selection)
             for artifact in resolved.artifacts:
                 if isinstance(artifact, UnavailableArtifact):
@@ -76,11 +78,13 @@ async def main():
                     print("Result ID:", artifact.result.metadata.id)
                     print("SQL:", artifact.result.metadata.query)
                     print("DataFrame:\n", artifact.result.df)
+                elif isinstance(artifact, ResolvedGraphArtifact):
+                    print("Graph nodes:", [node.id for node in artifact.graph.nodes])
+                    print("Graph edges:", [(edge.source, edge.target, edge.label) for edge in artifact.graph.edges])
 
-        print("Vega-Lite:", json.dumps(chart.spec, indent=2))
         print("Output JSON:", output.model_dump_json())
     finally:
-        await sales.close_async()
+        await logistics.close_async()
 
 
 if __name__ == "__main__":
