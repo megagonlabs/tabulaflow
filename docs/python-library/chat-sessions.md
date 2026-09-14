@@ -56,4 +56,4 @@ Close the session with `aclose()` and close your connectors separately. The
 nested `finally` blocks above release both even if a turn fails.
 
 See the [ChatSession reference](api/agents.md#chat-sessions) for configuration,
-or [Agent tools](agent-tools.md) to assemble your own workflow.
+or [Custom agents](custom-agents.md) to assemble your own workflow.

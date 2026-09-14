@@ -1,73 +1,139 @@
 # /// script
 # requires-python = ">=3.11"
-# dependencies = ["tabulaflow==0.1.0", "pandas>=2.2.3"]
+# dependencies = ["tabulaflow==0.1.0", "pandas>=2.2.3", "httpx>=0.28.1"]
 # ///
 
 import asyncio
+from pathlib import Path
+from tempfile import TemporaryDirectory
 
+import httpx
 import pandas as pd
 from pydantic import BaseModel
+from pydantic_ai import ToolReturn
 
 from tabulaflow.agents.llm import make_agent
-from tabulaflow.agents.tools.run_query import RunQueryTool
+from tabulaflow.agents.tools import RunQueryTool, ViewTool
+from tabulaflow.agents.tools.run_query import LLMParameter
 from tabulaflow.data import SQLConnector
-from tabulaflow.output.formatting import SQLDDLSchemaFormatter
 
 
-class RestockPlan(BaseModel):
-    products: list[str]
-    total_units: int
+class SupportReply(BaseModel):
+    message: str
+    suggested_steps: list[str]
+    references: list[str]
+    ticket_id: str | None
 
 
-def order_in_packs(shortfall: int, pack_size: int) -> int:
-    """Round a stock shortfall up to a whole number of supplier packs.
-
-    Args:
-        shortfall: Number of units needed to reach the reorder point.
-        pack_size: Number of units in one supplier pack.
-    """
-    if shortfall < 0 or pack_size < 1:
-        raise ValueError("shortfall must be nonnegative and pack_size must be positive")
-    return ((shortfall + pack_size - 1) // pack_size) * pack_size
-
-
-async def load_sample_data(stock):
-    await stock.write_dataframe_async(
+async def prepare_example(orders, support_dir):
+    await orders.write_dataframe_async(
         pd.DataFrame(
             {
-                "product": ["USB-C dock", "Laptop stand", "HDMI cable"],
-                "on_hand": [3, 18, 4],
-                "reorder_point": [10, 8, 12],
-                "pack_size": [4, 1, 5],
+                "order_id": [1001, 1002, 1003, 1004],
+                "customer_id": [7, 8, 7, 7],
+                "product": ["USB-C dock", "Monitor", "Laptop stand", "USB-C dock"],
+                "purchased_on": ["2026-08-18", "2026-08-20", "2026-08-22", "2025-11-05"],
+                "status": ["delivered", "shipped", "shipped", "delivered"],
             }
         ),
-        "inventory",
+        "orders",
     )
+    bundled = Path(__file__).with_name("support")
+    async with httpx.AsyncClient() as client:
+        for name in ("faq.txt", "dock-guide.pdf"):
+            if bundled.is_dir():
+                data = (bundled / name).read_bytes()
+            else:
+                response = await client.get(f"https://megagonlabs.github.io/tabulaflow/examples/support/{name}")
+                response.raise_for_status()
+                data = response.content
+            (support_dir / name).write_bytes(data)
+
+
+async def run_support_agent(orders, support_dir, customer_id):
+    query_tool = RunQueryTool(orders)
+    view = ViewTool(working_dir=support_dir)
+    tickets = {}
+
+    async def query_order(order_id):
+        # The application owns the SQL and customer scope, not the agent.
+        return await query_tool.execute(
+            "SELECT order_id, product, status FROM orders WHERE order_id = :order_id AND customer_id = :customer_id",
+            parameters=[
+                LLMParameter(parameter_name="order_id", parameter_value=order_id),
+                LLMParameter(parameter_name="customer_id", parameter_value=customer_id),
+            ],
+        )
+
+    async def find_orders(product: str) -> ToolReturn | str:
+        """Find the signed-in customer's orders by product name, newest first."""
+        if not product.strip():
+            return "(error: product must not be empty)"
+        execution = await query_tool.execute(
+            "SELECT order_id, product, purchased_on FROM orders "
+            "WHERE customer_id = :customer_id AND instr(lower(product), lower(:product)) > 0 "
+            "ORDER BY purchased_on DESC, order_id DESC",
+            parameters=[
+                LLMParameter(parameter_name="customer_id", parameter_value=customer_id),
+                LLMParameter(parameter_name="product", parameter_value=product.strip()),
+            ],
+        )
+        return ToolReturn(return_value=execution.output, metadata=execution)
+
+    async def lookup_order(order_id: int) -> ToolReturn:
+        """Look up an order belonging to the signed-in customer."""
+        execution = await query_order(order_id)
+        return ToolReturn(return_value=execution.output, metadata=execution)
+
+    async def open_support_ticket(order_id: int, issue: str) -> dict[str, str | int] | str:
+        """Open a technical-support ticket for a delivered order, reusing any existing ticket."""
+        if not issue.strip():
+            return "(error: issue must not be empty)"
+        # Check ownership even if the agent skipped lookup_order.
+        execution = await query_order(order_id)
+        result = execution.exec_result
+        if result.error is not None:
+            return execution.output
+        if result.df is None or result.df.empty:
+            return "(error: order not found for this customer)"
+        if result.df.iloc[0]["status"] != "delivered":
+            return "(error: technical-support tickets require a delivered order)"
+        return tickets.setdefault(
+            order_id,
+            {"ticket_id": f"SUP-{order_id}", "order_id": order_id, "issue": issue.strip(), "status": "open"},
+        )
+
+    agent = make_agent(
+        "openai-responses:gpt-5-mini",
+        output_type=SupportReply,
+        instructions=(
+            "You are a customer support agent. Follow faq.txt for ticket policy, "
+            "and use order search, order lookup, and illustrated guides to help the customer. Cite your sources."
+        ),
+        tools=[view.as_pydantic_ai_tool(), find_orders, lookup_order, open_support_ticket],
+    )
+    result = await agent.run(
+        "My newer USB-C dock still won't charge my laptop, and I can't find the order number. "
+        "I enabled Laptop charging in Dock settings and reconnected the USB-C cable, "
+        "but neither helped. Can you open a support ticket?"
+    )
+    print("Reply:", result.output.message)
+    print("Suggested steps:", result.output.suggested_steps)
+    print("References:", result.output.references)
+    print("Ticket ID:", result.output.ticket_id)
+    print("Stored tickets:", list(tickets.values()))
+    print("Query calls:", query_tool.metrics().num_calls)
 
 
 async def main():
-    stock = await SQLConnector.from_url_async("sqlite+aiosqlite:///:memory:", read_only=False)
-    try:
-        await load_sample_data(stock)
-        # Reuse the query tool in your own agent, without a ChatSession.
-        query_tool = RunQueryTool(stock)
-        agent = make_agent(
-            "openai-responses:gpt-5-mini",
-            output_type=RestockPlan,
-            instructions=(
-                "Plan restocking from the inventory data. Use order_in_packs to round "
-                "each shortfall to supplier packs.\n" + SQLDDLSchemaFormatter().format(stock.schema)
-            ),
-            # Combine the query tool with your own Python function.
-            tools=[query_tool.as_pydantic_ai_tool(), order_in_packs],
-        )
-        result = await agent.run("Which products need restocking, and how many units should I order in total?")
-        # The response is validated as a RestockPlan, ready for application code.
-        print("Products:", result.output.products)
-        print("Total units:", result.output.total_units)
-        print("Query calls:", query_tool.metrics().num_calls)
-    finally:
-        await stock.close_async()
+    with TemporaryDirectory() as directory:
+        orders = await SQLConnector.from_url_async("sqlite+aiosqlite:///:memory:", read_only=False)
+        try:
+            await prepare_example(orders, Path(directory))
+            # Supplied by your application's authenticated session.
+            await run_support_agent(orders, directory, customer_id=7)
+        finally:
+            await orders.close_async()
 
 
 if __name__ == "__main__":

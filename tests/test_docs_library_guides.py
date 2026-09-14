@@ -1,19 +1,31 @@
 """Run the library guide examples against real SQLite and offline model transports."""
 
 from collections.abc import AsyncIterator
+import ast
+from io import BytesIO
 import json
 from pathlib import Path
 import runpy
 from typing import Any
 
+import httpx
 from pandas.testing import assert_frame_equal
 from pydantic_ai import models
-from pydantic_ai.messages import ModelMessage, ModelResponse, ToolCallPart, ToolReturnPart, UserPromptPart
+from pydantic_ai.messages import (
+    BinaryContent,
+    ModelMessage,
+    ModelResponse,
+    ToolCallPart,
+    ToolReturnPart,
+    UserPromptPart,
+)
 from pydantic_ai.models.function import AgentInfo, DeltaToolCall, FunctionModel
+from pypdf import PdfReader
 import pytest
 
 from tabulaflow.agents import ChatSession
 from tabulaflow.agents.llm import make_agent
+from tabulaflow.agents.tools.run_query import QueryExecution
 from tabulaflow.core import ErrorInfo, ExecResult
 from tabulaflow.data import SQLConnector
 from tabulaflow.output.resolver import (
@@ -332,64 +344,455 @@ async def test_chat_example_closes_after_model_failure(
     assert len(closed_sessions) == len(closed_connectors) == 1
 
 
-async def test_custom_agent_uses_query_and_custom_tools(
+@pytest.fixture
+def support_model(
     monkeypatch: pytest.MonkeyPatch,
-    capsys: pytest.CaptureFixture[str],
-    queries: list[tuple[str, ExecResult]],
-    closed_connectors: list[SQLConnector],
-) -> None:
-    steps: list[tuple[str, dict[str, Any]]] = [
-        (
-            "run_query",
-            {
-                "query": "SELECT product, reorder_point - on_hand AS shortfall, pack_size FROM inventory WHERE on_hand < reorder_point"
-            },
-        ),
-        ("order_in_packs", {"shortfall": 7, "pack_size": 4}),
-        ("order_in_packs", {"shortfall": 8, "pack_size": 5}),
-    ]
+) -> tuple[list[tuple[str, dict[str, Any]]], list[ToolReturnPart], list[BinaryContent]]:
+    steps: list[tuple[str, dict[str, Any]]] = []
+    returns: list[ToolReturnPart] = []
+    media: list[BinaryContent] = []
 
     def respond(messages: list[ModelMessage], info: AgentInfo) -> ModelResponse:
-        assert {tool.name for tool in info.function_tools} == {"run_query", "order_in_packs"}
-        assert info.instructions is not None and "CREATE TABLE inventory" in info.instructions
-        returns = [part for message in messages for part in message.parts if isinstance(part, ToolReturnPart)]
-        if returns:
-            assert isinstance(returns[0].content, str)
-            assert "(error:" not in returns[0].content
-        if len(returns) == len(steps):
-            assert [part.content for part in returns[1:]] == [8, 10]
-            return ModelResponse(
-                parts=[
-                    ToolCallPart(
-                        info.output_tools[0].name, {"products": ["USB-C dock", "HDMI cable"], "total_units": 18}
-                    )
-                ]
-            )
-        name, arguments = steps[len(returns)]
-        return ModelResponse(parts=[ToolCallPart(name, arguments)])
+        tools = {tool.name: tool for tool in info.function_tools}
+        assert set(tools) == {"view", "find_orders", "lookup_order", "open_support_ticket"}
+        assert set(tools["find_orders"].parameters_json_schema["properties"]) == {"product"}
+        assert tools["find_orders"].parameters_json_schema["properties"]["product"]["type"] == "string"
+        assert set(tools["lookup_order"].parameters_json_schema["properties"]) == {"order_id"}
+        assert tools["lookup_order"].parameters_json_schema["properties"]["order_id"]["type"] == "integer"
+        assert set(tools["open_support_ticket"].parameters_json_schema["properties"]) == {"order_id", "issue"}
+        assert set(info.output_tools[0].parameters_json_schema["properties"]) == {
+            "message",
+            "suggested_steps",
+            "references",
+            "ticket_id",
+        }
+        assert info.instructions is not None
+        assert "Follow faq.txt for ticket policy" in info.instructions
+        returns[:] = [part for message in messages for part in message.parts if isinstance(part, ToolReturnPart)]
+        media[:] = [
+            item
+            for message in messages
+            for part in message.parts
+            if isinstance(part, UserPromptPart) and isinstance(part.content, list)
+            for item in part.content
+            if isinstance(item, BinaryContent)
+        ]
+        if len(returns) < len(steps):
+            name, arguments = steps[len(returns)]
+            return ModelResponse(parts=[ToolCallPart(name, arguments)])
+        ticket_id = None
+        references = []
+        for part in returns:
+            if part.tool_name == "open_support_ticket":
+                if isinstance(part.content, dict):
+                    ticket_id = part.content["ticket_id"]
+                else:
+                    assert isinstance(part.content, str) and part.content.startswith("(error:")
+            elif part.tool_name == "view" and isinstance(part.content, str):
+                if part.content.startswith("File: faq.txt"):
+                    references.append("faq.txt")
+                elif part.content.startswith("PDF: dock-guide.pdf"):
+                    references.append("dock-guide.pdf, page 1")
+        return ModelResponse(
+            parts=[
+                ToolCallPart(
+                    info.output_tools[0].name,
+                    {
+                        "message": (
+                            f"The documented steps have not helped. I've opened ticket {ticket_id}."
+                            if ticket_id
+                            else "Please confirm which troubleshooting steps you have tried."
+                        ),
+                        "suggested_steps": []
+                        if ticket_id
+                        else [
+                            "Enable Laptop charging in Dock settings > Power.",
+                            "Reconnect the host USB-C cable.",
+                        ],
+                        "references": references,
+                        "ticket_id": ticket_id,
+                    },
+                )
+            ]
+        )
 
     def make_test_agent(model: Any, **kwargs: Any) -> Any:
         return make_agent(FunctionModel(function=respond), **kwargs)
 
     monkeypatch.setattr("tabulaflow.agents.llm.make_agent", make_test_agent)
+    return steps, returns, media
+
+
+async def test_custom_agent_finds_order_reads_documents_and_opens_ticket(
+    support_model: tuple[list[tuple[str, dict[str, Any]]], list[ToolReturnPart], list[BinaryContent]],
+    capsys: pytest.CaptureFixture[str],
+    queries: list[tuple[str, ExecResult]],
+    closed_connectors: list[SQLConnector],
+) -> None:
+    steps, returns, media = support_model
+    issue = "USB-C dock still not charging after enabling Laptop charging and reconnecting the USB-C cable."
+    steps.extend(
+        [
+            ("view", {"path": "."}),
+            ("view", {"path": "faq.txt"}),
+            ("find_orders", {"product": "dock"}),
+            ("lookup_order", {"order_id": 1001}),
+            ("view", {"path": "dock-guide.pdf", "view_range": [1, 1]}),
+            ("open_support_ticket", {"order_id": 1001, "issue": issue}),
+        ]
+    )
     await runpy.run_path(str(EXAMPLES / "custom_agents.py"))["main"]()
 
+    for part in returns[:-1]:
+        assert isinstance(part.content, str)
+        assert "(error:" not in part.content
+    assert returns[-1].content == {
+        "ticket_id": "SUP-1001",
+        "order_id": 1001,
+        "issue": issue,
+        "status": "open",
+    }
+    assert "faq.txt" in str(returns[0].content)
+    assert "dock-guide.pdf" in str(returns[0].content)
+    assert "Opening a ticket does not issue a refund" in str(returns[1].content)
+    assert "A request alone is not enough" in str(returns[1].content)
+    assert "tried but the problem remains" in str(returns[1].content)
+    search = returns[2].metadata
+    assert isinstance(search, QueryExecution)
+    assert search.parameter_values == {"product": "dock", "customer_id": 7}
+    assert search.exec_result.df is not None
+    assert search.exec_result.df.to_dict("records") == [
+        {"order_id": 1001, "product": "USB-C dock", "purchased_on": "2026-08-18"},
+        {"order_id": 1004, "product": "USB-C dock", "purchased_on": "2025-11-05"},
+    ]
+    execution = returns[3].metadata
+    assert isinstance(execution, QueryExecution)
+    assert execution.parameter_values == {"order_id": 1001, "customer_id": 7}
+    assert execution.parameter_values["order_id"] == search.exec_result.df.iloc[0]["order_id"]
+    assert execution.query == (
+        "SELECT order_id, product, status FROM orders WHERE order_id = :order_id AND customer_id = :customer_id"
+    )
+    assert execution.exec_result.df is not None
+    assert execution.exec_result.df.to_dict("records") == [
+        {"order_id": 1001, "product": "USB-C dock", "status": "delivered"}
+    ]
+    assert len(media) == 1 and media[0].media_type == "application/pdf"
+    pdf = PdfReader(BytesIO(media[0].data))
+    assert len(pdf.pages) == 1
+    assert len(pdf.pages[0].images) == 1
+    screenshot = pdf.pages[0].images[0].image
+    assert screenshot is not None
+    pixels = screenshot.convert("RGB").tobytes()
+    assert (
+        sum(
+            red > 180 and green < 90 and blue < 90
+            for red, green, blue in zip(pixels[::3], pixels[1::3], pixels[2::3], strict=True)
+        )
+        > 1000
+    )
+    assert "Reconnect the laptop" in pdf.pages[0].extract_text()
+    assert len(queries) == 3
+    assert queries[0][0] == search.query
+    assert all(query == execution.query for query, _ in queries[1:])
     printed = capsys.readouterr().out
-    assert "Products: ['USB-C dock', 'HDMI cable']" in printed
-    assert "Total units: 18" in printed
-    assert "Query calls: 1" in printed
-    assert len(queries) == 1
+    assert "Reply: The documented steps have not helped. I've opened ticket SUP-1001." in printed
+    assert "Suggested steps: []" in printed
+    assert "References: ['faq.txt', 'dock-guide.pdf, page 1']" in printed
+    assert "Ticket ID: SUP-1001" in printed
+    tickets = ast.literal_eval(printed.split("Stored tickets: ", 1)[1].splitlines()[0])
+    assert tickets == [
+        {
+            "ticket_id": "SUP-1001",
+            "order_id": 1001,
+            "issue": issue,
+            "status": "open",
+        }
+    ]
+    assert "Query calls: 3" in printed
     assert len(closed_connectors) == 1
 
 
-@pytest.mark.parametrize("shortfall, pack_size, expected", [(7, 4, 8), (8, 5, 10), (0, 4, 0), (8, 4, 8)])
-def test_custom_tool_rounds_to_supplier_packs(shortfall: int, pack_size: int, expected: int) -> None:
-    tool = runpy.run_path(str(EXAMPLES / "custom_agents.py"))["order_in_packs"]
-    assert tool(shortfall, pack_size) == expected
+@pytest.mark.parametrize(
+    "product, expected_ids",
+    [(" DOCK ", [1001, 1004]), ("Monitor", []), ("%", []), ("' OR 1=1 --", [])],
+)
+async def test_order_search_is_customer_scoped_and_uses_literal_product_names(
+    product: str,
+    expected_ids: list[int],
+    support_model: tuple[list[tuple[str, dict[str, Any]]], list[ToolReturnPart], list[BinaryContent]],
+) -> None:
+    steps, returns, _ = support_model
+    steps.append(("find_orders", {"product": product}))
+    await runpy.run_path(str(EXAMPLES / "custom_agents.py"))["main"]()
+    execution = returns[0].metadata
+    assert isinstance(execution, QueryExecution)
+    assert execution.parameter_values == {"product": product.strip(), "customer_id": 7}
+    assert execution.exec_result.error is None
+    assert execution.exec_result.df is not None
+    assert execution.exec_result.df["order_id"].tolist() == expected_ids
+    assert execution.exec_result.df.columns.tolist() == ["order_id", "product", "purchased_on"]
 
 
-@pytest.mark.parametrize("shortfall, pack_size", [(-1, 4), (3, 0), (3, -1)])
-def test_custom_tool_rejects_invalid_quantities(shortfall: int, pack_size: int) -> None:
-    tool = runpy.run_path(str(EXAMPLES / "custom_agents.py"))["order_in_packs"]
-    with pytest.raises(ValueError):
-        tool(shortfall, pack_size)
+async def test_order_search_rejects_blank_product_names(
+    support_model: tuple[list[tuple[str, dict[str, Any]]], list[ToolReturnPart], list[BinaryContent]],
+    queries: list[tuple[str, ExecResult]],
+) -> None:
+    steps, returns, _ = support_model
+    steps.append(("find_orders", {"product": "  "}))
+    await runpy.run_path(str(EXAMPLES / "custom_agents.py"))["main"]()
+    assert returns[0].content == "(error: product must not be empty)"
+    assert not queries
+
+
+async def test_support_reply_can_return_guidance_without_a_ticket(
+    support_model: tuple[list[tuple[str, dict[str, Any]]], list[ToolReturnPart], list[BinaryContent]],
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    steps, returns, _ = support_model
+    steps.extend(
+        [
+            ("view", {"path": "faq.txt"}),
+            ("view", {"path": "dock-guide.pdf"}),
+            ("lookup_order", {"order_id": 1001}),
+        ]
+    )
+    await runpy.run_path(str(EXAMPLES / "custom_agents.py"))["main"]()
+    assert all(part.tool_name != "open_support_ticket" for part in returns)
+    printed = capsys.readouterr().out
+    assert "Reply: Please confirm which troubleshooting steps you have tried." in printed
+    assert "Suggested steps: ['Enable Laptop charging" in printed
+    assert "References: ['faq.txt', 'dock-guide.pdf, page 1']" in printed
+    assert "Ticket ID: None" in printed
+    assert "Stored tickets: []" in printed
+
+
+async def test_ticket_action_rejects_an_undelivered_order(
+    support_model: tuple[list[tuple[str, dict[str, Any]]], list[ToolReturnPart], list[BinaryContent]],
+    capsys: pytest.CaptureFixture[str],
+    queries: list[tuple[str, ExecResult]],
+) -> None:
+    steps, returns, _ = support_model
+    steps.append(("open_support_ticket", {"order_id": 1003, "issue": "Charging stopped."}))
+    await runpy.run_path(str(EXAMPLES / "custom_agents.py"))["main"]()
+    assert returns[0].content == "(error: technical-support tickets require a delivered order)"
+    assert len(queries) == 1
+    printed = capsys.readouterr().out
+    assert "Stored tickets: []" in printed
+    assert "Ticket ID: None" in printed
+
+
+async def test_support_workflow_uses_the_supplied_customer_identity(
+    support_model: tuple[list[tuple[str, dict[str, Any]]], list[ToolReturnPart], list[BinaryContent]],
+    tmp_path: Path,
+    closed_connectors: list[SQLConnector],
+) -> None:
+    steps, returns, _ = support_model
+    steps.extend(
+        [
+            ("find_orders", {"product": "Monitor"}),
+            ("lookup_order", {"order_id": 1002}),
+            ("open_support_ticket", {"order_id": 1001, "issue": "Charging stopped."}),
+        ]
+    )
+    example = runpy.run_path(str(EXAMPLES / "custom_agents.py"))
+    orders = await SQLConnector.from_url_async("sqlite+aiosqlite:///:memory:", read_only=False)
+    try:
+        await example["prepare_example"](orders, tmp_path)
+        await example["run_support_agent"](orders, str(tmp_path), customer_id=8)
+        assert not closed_connectors
+    finally:
+        await orders.close_async()
+    search = returns[0].metadata
+    assert isinstance(search, QueryExecution)
+    assert search.parameter_values == {"product": "Monitor", "customer_id": 8}
+    assert search.exec_result.df is not None
+    assert search.exec_result.df["order_id"].tolist() == [1002]
+    execution = returns[1].metadata
+    assert isinstance(execution, QueryExecution)
+    assert execution.parameter_values == {"order_id": 1002, "customer_id": 8}
+    assert execution.exec_result.df is not None
+    assert execution.exec_result.df.to_dict("records") == [
+        {"order_id": 1002, "product": "Monitor", "status": "shipped"}
+    ]
+    assert returns[2].content == "(error: order not found for this customer)"
+
+
+async def test_support_example_cleans_up_after_model_failure(
+    monkeypatch: pytest.MonkeyPatch, closed_connectors: list[SQLConnector]
+) -> None:
+    directories: list[Path] = []
+
+    def fail_model(messages: list[ModelMessage], info: AgentInfo) -> ModelResponse:
+        raise RuntimeError("model unavailable")
+
+    def make_test_agent(model: Any, **kwargs: Any) -> Any:
+        return make_agent(FunctionModel(function=fail_model), **kwargs)
+
+    monkeypatch.setattr("tabulaflow.agents.llm.make_agent", make_test_agent)
+    example = runpy.run_path(str(EXAMPLES / "custom_agents.py"))
+    original_prepare = example["prepare_example"]
+
+    async def record_prepare(orders: SQLConnector, support_dir: Path) -> None:
+        directories.append(support_dir)
+        await original_prepare(orders, support_dir)
+
+    monkeypatch.setitem(example["main"].__globals__, "prepare_example", record_prepare)
+    with pytest.raises(RuntimeError, match="model unavailable"):
+        await example["main"]()
+    assert len(closed_connectors) == len(directories) == 1
+    assert not directories[0].exists()
+
+
+@pytest.mark.parametrize("order_id", [1002, 9999])
+async def test_custom_agent_cannot_read_or_act_on_unowned_orders(
+    order_id: int,
+    support_model: tuple[list[tuple[str, dict[str, Any]]], list[ToolReturnPart], list[BinaryContent]],
+    capsys: pytest.CaptureFixture[str],
+    queries: list[tuple[str, ExecResult]],
+    closed_connectors: list[SQLConnector],
+) -> None:
+    steps, returns, _ = support_model
+    steps.extend(
+        [
+            ("lookup_order", {"order_id": order_id}),
+            ("open_support_ticket", {"order_id": order_id, "issue": "Delivery problem."}),
+        ]
+    )
+    await runpy.run_path(str(EXAMPLES / "custom_agents.py"))["main"]()
+
+    lookup = returns[0].metadata
+    assert isinstance(lookup, QueryExecution)
+    assert lookup.parameter_values == {"order_id": order_id, "customer_id": 7}
+    assert lookup.exec_result.df is not None and lookup.exec_result.df.empty
+    assert returns[1].content == "(error: order not found for this customer)"
+    assert len(queries) == 2
+    printed = capsys.readouterr().out
+    assert "Stored tickets: []" in printed
+    assert "Ticket ID: None" in printed
+    assert len(closed_connectors) == 1
+
+
+async def test_ticket_action_checks_ownership_without_prior_lookup(
+    support_model: tuple[list[tuple[str, dict[str, Any]]], list[ToolReturnPart], list[BinaryContent]],
+    capsys: pytest.CaptureFixture[str],
+    queries: list[tuple[str, ExecResult]],
+) -> None:
+    steps, returns, _ = support_model
+    steps.append(("open_support_ticket", {"order_id": 1002, "issue": "Delivery problem."}))
+    await runpy.run_path(str(EXAMPLES / "custom_agents.py"))["main"]()
+    assert returns[0].content == "(error: order not found for this customer)"
+    assert len(queries) == 1
+    assert "Stored tickets: []" in capsys.readouterr().out
+
+
+async def test_ticket_action_reuses_existing_ticket(
+    support_model: tuple[list[tuple[str, dict[str, Any]]], list[ToolReturnPart], list[BinaryContent]],
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    steps, returns, _ = support_model
+    steps.extend(
+        [
+            ("open_support_ticket", {"order_id": 1001, "issue": "Charging stopped."}),
+            ("open_support_ticket", {"order_id": 1001, "issue": "Still not charging."}),
+        ]
+    )
+    await runpy.run_path(str(EXAMPLES / "custom_agents.py"))["main"]()
+    assert returns[0].content == returns[1].content
+    printed = capsys.readouterr().out
+    tickets = ast.literal_eval(printed.split("Stored tickets: ", 1)[1].splitlines()[0])
+    assert len(tickets) == 1 and tickets[0]["issue"] == "Charging stopped."
+
+
+async def test_ticket_action_rejects_blank_issue(
+    support_model: tuple[list[tuple[str, dict[str, Any]]], list[ToolReturnPart], list[BinaryContent]],
+    capsys: pytest.CaptureFixture[str],
+    queries: list[tuple[str, ExecResult]],
+) -> None:
+    steps, returns, _ = support_model
+    steps.append(("open_support_ticket", {"order_id": 1001, "issue": "  "}))
+    await runpy.run_path(str(EXAMPLES / "custom_agents.py"))["main"]()
+    assert returns[0].content == "(error: issue must not be empty)"
+    assert not queries
+    assert "Stored tickets: []" in capsys.readouterr().out
+
+
+async def test_support_documents_are_scoped_to_the_support_directory(
+    support_model: tuple[list[tuple[str, dict[str, Any]]], list[ToolReturnPart], list[BinaryContent]],
+) -> None:
+    steps, returns, _ = support_model
+    steps.append(("view", {"path": ".."}))
+    await runpy.run_path(str(EXAMPLES / "custom_agents.py"))["main"]()
+    assert isinstance(returns[0].content, str)
+    assert returns[0].content.startswith("(error:")
+    assert "outside the allowed roots" in returns[0].content
+
+
+async def test_support_tools_report_query_errors_without_creating_tickets(
+    monkeypatch: pytest.MonkeyPatch,
+    support_model: tuple[list[tuple[str, dict[str, Any]]], list[ToolReturnPart], list[BinaryContent]],
+    capsys: pytest.CaptureFixture[str],
+    closed_connectors: list[SQLConnector],
+) -> None:
+    async def fail_query(self: SQLConnector, query: str, **kwargs: Any) -> ExecResult:
+        return ExecResult(error=ErrorInfo(exc_type="RuntimeError", message="orders unavailable"))
+
+    monkeypatch.setattr(SQLConnector, "run_query_async", fail_query)
+    steps, returns, _ = support_model
+    steps.extend(
+        [
+            ("find_orders", {"product": "dock"}),
+            ("lookup_order", {"order_id": 1001}),
+            ("open_support_ticket", {"order_id": 1001, "issue": "Charging stopped."}),
+        ]
+    )
+    await runpy.run_path(str(EXAMPLES / "custom_agents.py"))["main"]()
+    for part in returns:
+        assert isinstance(part.content, str)
+        assert part.content.startswith("(error:") and "orders unavailable" in part.content
+    assert "Stored tickets: []" in capsys.readouterr().out
+    assert len(closed_connectors) == 1
+
+
+@pytest.mark.parametrize("status", [200, 404])
+async def test_remote_support_example_prepares_bundled_assets(
+    status: int,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    support_model: tuple[list[tuple[str, dict[str, Any]]], list[ToolReturnPart], list[BinaryContent]],
+    closed_connectors: list[SQLConnector],
+) -> None:
+    requested: list[str] = []
+    original_client = httpx.AsyncClient
+
+    def download(request: httpx.Request) -> httpx.Response:
+        requested.append(str(request.url))
+        name = request.url.path.rsplit("/", 1)[1]
+        return httpx.Response(status, content=(EXAMPLES / "support" / name).read_bytes())
+
+    def make_client(**kwargs: Any) -> httpx.AsyncClient:
+        return original_client(transport=httpx.MockTransport(download), **kwargs)
+
+    monkeypatch.setattr(httpx, "AsyncClient", make_client)
+    example = runpy.run_path(str(EXAMPLES / "custom_agents.py"))
+    monkeypatch.setitem(example["prepare_example"].__globals__, "__file__", str(tmp_path / "custom_agents.py"))
+    steps, returns, media = support_model
+    steps.extend(
+        [
+            ("view", {"path": "faq.txt"}),
+            ("view", {"path": "dock-guide.pdf"}),
+        ]
+    )
+    if status == 404:
+        with pytest.raises(httpx.HTTPStatusError):
+            await example["main"]()
+        assert len(requested) == 1
+        assert not returns
+    else:
+        await example["main"]()
+        assert "Customer support FAQ" in str(returns[0].content)
+        assert len(media) == 1 and media[0].media_type == "application/pdf"
+        assert requested == [
+            f"https://megagonlabs.github.io/tabulaflow/examples/support/{name}"
+            for name in ("faq.txt", "dock-guide.pdf")
+        ]
+    assert len(closed_connectors) == 1

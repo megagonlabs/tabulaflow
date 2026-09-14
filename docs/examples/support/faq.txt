@@ -1,0 +1,26 @@
+Customer support FAQ
+
+These are fictional products and policies for the TabulaFlow example.
+
+Missing order number
+Find purchases by product name and compare purchase dates. If several orders
+match and it is unclear which one the customer means, ask before proceeding.
+
+USB-C dock not charging a laptop
+Check the order to identify the product. Consult dock-guide.pdf for the
+charging settings and an illustrated troubleshooting step.
+
+Technical-support ticket policy
+Open a ticket only for a delivered order belonging to the signed-in customer,
+when they request support and confirm that the relevant guide's steps were
+tried but the problem remains. A request alone is not enough.
+
+If the steps have not been tried, suggest them first. If the customer has not
+said what they tried or whether it helped, ask before opening a ticket.
+For orders that have not arrived, report the order status instead of opening
+a technical-support ticket.
+
+Include the product, reported issue, and steps already tried in the ticket.
+Reuse an existing open ticket for the same order instead of creating a
+duplicate. Customers should quote the ticket ID when following up.
+Opening a ticket does not issue a refund or arrange a replacement.

@@ -51,7 +51,7 @@ nav:
       - Data connectors: python-library/data-connectors.md
       - Chat sessions: python-library/chat-sessions.md
       - Structured outputs: python-library/structured-outputs.md
-      - Agent tools: python-library/agent-tools.md
+      - Custom agents: python-library/custom-agents.md
       - API reference:
           - Overview: python-library/api-reference.md
           - Core: python-library/api/core.md

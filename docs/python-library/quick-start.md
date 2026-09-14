@@ -22,9 +22,8 @@ building blocks you need:
 - [Structured outputs](structured-outputs.md): let agents produce tables, charts, maps,
   and graphs as structured artifacts, with optional lazy data resolution for
   parameter-driven interaction.
-- [Agent tools](agent-tools.md): use query, visualization, and
-  document-extraction tools in your own agent workflows without adopting
-  `ChatSession`.
+- [Custom agents](custom-agents.md): combine reusable query, visualization, and
+  document tools with your own functions and actions, without adopting `ChatSession`.
 - [Schema and result formatting](api/output.md#formatting): turn structured
   schemas and query results into readable text for LLM prompts or human
   inspection.
@@ -109,4 +108,4 @@ To use TabulaFlow as a library in your own project:
 - [Data connectors](data-connectors.md): connect sources and query them directly.
 - [Chat sessions](chat-sessions.md): add follow-up questions and streaming.
 - [Structured outputs](structured-outputs.md): work with data and interactive artifacts.
-- [Agent tools](agent-tools.md): reuse tools and add your own agent behavior.
+- [Custom agents](custom-agents.md): reuse tools and add your own agent behavior.
