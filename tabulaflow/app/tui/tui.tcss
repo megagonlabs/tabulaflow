@@ -45,7 +45,7 @@ TabulaflowApp {
     height: auto;
     max-height: 8;
     padding: 0 3;
-    background: $surface;
+    background: transparent;
     text-wrap: nowrap;
     text-overflow: ellipsis;
 }
