@@ -1,20 +1,20 @@
-**Recorded run:** ARCS test, QID `001-5`, `gpt-4.1`, 2025-11-21.
+Scores
+simple_ex    0
+executable   1
+found_one    1
 
-> Report the total revenue for each nation in 1995.
+simple_ex: intended-query accuracy
+executable: successful execution
+found_one: matches any valid interpretation
 
-| Metric | Score |
-| --- | --- |
-| Intended-query accuracy (`simple_ex`) | 0 |
-| Executability (`executable`) | 1 |
-| Matches any valid interpretation (`found_one`) | 1 |
+Question
+Report the total revenue for each nation in 1995.
 
-The prediction matches a valid interpretation, but not the selected intent.
-It includes returned items and filters by order date. The reference excludes
-returned items and filters by receipt date.
+Diagnosis
+The prediction includes returned items and filters by order date.
+The selected reference excludes returned items and filters by receipt date.
 
-**Predicted query**
-
-```sql
+Predicted query
 SELECT n.n_name AS nation, SUM(l.l_extendedprice * (1 - l.l_discount)) AS total_revenue
 FROM lineitem l
 JOIN orders o ON l.l_orderkey = o.o_orderkey
@@ -22,11 +22,8 @@ JOIN customer c ON o.o_custkey = c.c_custkey
 JOIN nation n ON c.c_nationkey = n.n_nationkey
 WHERE strftime('%Y', o.o_orderdate) = '1995'
 GROUP BY n.n_name
-```
 
-**Selected reference query**
-
-```sql
+Selected reference query
 WITH revenue AS (
 SELECT n.n_nationkey,
 n.n_name,
@@ -44,37 +41,31 @@ n.n_name,
 COALESCE(r.total_revenue, 0) AS total_revenue
 FROM nation n
 LEFT JOIN revenue r ON r.n_nationkey = n.n_nationkey;
-```
 
-**Result comparison** — all 25 rows, matched by nation and rounded to two decimal places.
-
-| nation         |   Predicted revenue |   Reference revenue |
-|:---------------|--------------------:|--------------------:|
-| ALGERIA        |       1322656353.01 |       1008406234.33 |
-| ARGENTINA      |       1380994011.03 |       1083245579.91 |
-| BRAZIL         |       1312468151.68 |       1023142254.90 |
-| CANADA         |       1399525843.14 |       1079432591.65 |
-| CHINA          |       1384236693.64 |       1076966634.49 |
-| EGYPT          |       1375548780.06 |       1046766701.06 |
-| ETHIOPIA       |       1269372923.47 |        983814044.30 |
-| FRANCE         |       1321809212.41 |       1015139785.75 |
-| GERMANY        |       1342095147.58 |       1029344115.67 |
-| INDIA          |       1273943764.35 |        982329346.92 |
-| INDONESIA      |       1294107289.95 |       1001572805.44 |
-| IRAN           |       1398348311.26 |       1065086114.91 |
-| IRAQ           |       1326825585.04 |       1020025758.81 |
-| JAPAN          |       1314839708.89 |       1015338991.23 |
-| JORDAN         |       1229023712.98 |        945771391.39 |
-| KENYA          |       1303171752.95 |       1013233463.51 |
-| MOROCCO        |       1332033919.98 |       1023278967.26 |
-| MOZAMBIQUE     |       1300668889.60 |       1001313532.28 |
-| PERU           |       1305810388.88 |       1003364016.93 |
-| ROMANIA        |       1328534609.74 |       1020990926.23 |
-| RUSSIA         |       1343824898.93 |       1047659846.27 |
-| SAUDI ARABIA   |       1260482641.56 |        986002725.09 |
-| UNITED KINGDOM |       1293430443.96 |       1004585933.95 |
-| UNITED STATES  |       1388315814.62 |       1065501779.82 |
-| VIETNAM        |       1303430948.97 |       1015163016.63 |
-
-[Download task report](../examples/results/failure-report.txt){download} ·
-[Recorded data](../examples/results/recorded-results.json)
+Result comparison (25 rows, matched by nation; amounts rounded to 2 decimal places)
+        nation  predicted_revenue  reference_revenue
+       ALGERIA   1,322,656,353.01   1,008,406,234.33
+     ARGENTINA   1,380,994,011.03   1,083,245,579.91
+        BRAZIL   1,312,468,151.68   1,023,142,254.90
+        CANADA   1,399,525,843.14   1,079,432,591.65
+         CHINA   1,384,236,693.64   1,076,966,634.49
+         EGYPT   1,375,548,780.06   1,046,766,701.06
+      ETHIOPIA   1,269,372,923.47     983,814,044.30
+        FRANCE   1,321,809,212.41   1,015,139,785.75
+       GERMANY   1,342,095,147.58   1,029,344,115.67
+         INDIA   1,273,943,764.35     982,329,346.92
+     INDONESIA   1,294,107,289.95   1,001,572,805.44
+          IRAN   1,398,348,311.26   1,065,086,114.91
+          IRAQ   1,326,825,585.04   1,020,025,758.81
+         JAPAN   1,314,839,708.89   1,015,338,991.23
+        JORDAN   1,229,023,712.98     945,771,391.39
+         KENYA   1,303,171,752.95   1,013,233,463.51
+       MOROCCO   1,332,033,919.98   1,023,278,967.26
+    MOZAMBIQUE   1,300,668,889.60   1,001,313,532.28
+          PERU   1,305,810,388.88   1,003,364,016.93
+       ROMANIA   1,328,534,609.74   1,020,990,926.23
+        RUSSIA   1,343,824,898.93   1,047,659,846.27
+  SAUDI ARABIA   1,260,482,641.56     986,002,725.09
+UNITED KINGDOM   1,293,430,443.96   1,004,585,933.95
+ UNITED STATES   1,388,315,814.62   1,065,501,779.82
+       VIETNAM   1,303,430,948.97   1,015,163,016.63

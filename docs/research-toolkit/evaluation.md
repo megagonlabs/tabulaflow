@@ -74,9 +74,16 @@ Task reports show queries and results; trajectories show messages and tool calls
 Prediction tracebacks appear in logs, not empty outputs. Check reference-query
 errors as well as prediction errors.
 
-??? example "View example output: ARCS failure analysis"
+??? result "Evaluation result · ARCS 001-5"
 
+    Recorded · test split · gpt-4.1 · 2025-11-21
+
+    ```text
     --8<-- "examples/results/failure.txt"
+    ```
+
+    [Recorded data](../examples/results/recorded-results.json) ·
+    [Download task report](../examples/results/failure-report.txt){download}
 
 For paired comparisons, match QIDs and compare task scores. The
 [comparison example](running-experiments.md#compare-strategies) saves these outputs.

@@ -40,9 +40,15 @@ interpretations. This example uses `gpt-4.1` on ARCS task `001-5`:
 --8<-- "examples/ambiguity_aware_queries.py:prediction"
 ```
 
-??? example "View example output"
+??? result "Example result · ARCS 001-5"
 
+    Recorded · test split · gpt-4.1 · 2025-11-21
+
+    ```text
     --8<-- "examples/results/ambiguity.txt"
+    ```
+
+    [Recorded data](../examples/results/recorded-results.json)
 
 [Download the full script](../examples/ambiguity_aware_queries.py){download}
 to load this task, generate and execute its intended query, evaluate it, and
