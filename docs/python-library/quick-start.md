@@ -25,7 +25,7 @@ building blocks you need:
   schemas and query results into readable text for LLM prompts or human
   inspection.
 
-These building blocks are fully typed and organized into four layered packages:
+These building blocks are fully typed and organized into four layers:
 `core <- data <- output <- agents`. See the
 [API reference](api-reference.md) for how they fit together.
 
