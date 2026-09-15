@@ -14,7 +14,8 @@ from tabulaflow.app.tui.commands import SLASH_COMMANDS, SLASH_COMMAND_DESCRIPTIO
 _CONNECTABLE_EXTENSIONS = frozenset(
     {".csv", ".tsv", ".xlsx", ".xls", ".parquet", ".json", ".jsonl", ".ndjson", ".sqlite", ".sqlite3", ".db", ".duckdb"}
 )
-_MAX_SUGGESTIONS = 8
+_VISIBLE_SUGGESTIONS = 8
+_MAX_PATH_SUGGESTIONS = 1_000
 
 
 @dataclass(frozen=True)
@@ -44,7 +45,7 @@ class InputSuggester:
             )
             for command in SLASH_COMMANDS
             if command.startswith(value) and command != value
-        )[:_MAX_SUGGESTIONS]
+        )
 
     @staticmethod
     def _connect_path_suggestions(value: str) -> tuple[InputSuggestion, ...]:
@@ -82,7 +83,7 @@ class InputSuggester:
         suggestions.extend(
             InputSuggestion(value=f"{prompt_prefix}{entry}/", label=f"{entry}/") for entry in directories
         )
-        return tuple(suggestions[:_MAX_SUGGESTIONS])
+        return tuple(suggestions[:_MAX_PATH_SUGGESTIONS])
 
 
 class InputSuggestionMenu(Static):
@@ -94,6 +95,7 @@ class InputSuggestionMenu(Static):
         super().__init__(id=id)
         self.suggestions: tuple[InputSuggestion, ...] = ()
         self.selected_index = 0
+        self._window_start = 0
 
     @property
     def selected(self) -> InputSuggestion | None:
@@ -104,12 +106,14 @@ class InputSuggestionMenu(Static):
     def set_suggestions(self, suggestions: tuple[InputSuggestion, ...]) -> None:
         self.suggestions = suggestions
         self.selected_index = 0
+        self._window_start = 0
         self.display = bool(suggestions)
         self.refresh()
 
     def dismiss(self) -> None:
         self.suggestions = ()
         self.selected_index = 0
+        self._window_start = 0
         self.display = False
         self.refresh()
 
@@ -117,17 +121,23 @@ class InputSuggestionMenu(Static):
         if not self.suggestions:
             return
         self.selected_index = (self.selected_index + offset) % len(self.suggestions)
+        if self.selected_index < self._window_start:
+            self._window_start = self.selected_index
+        elif self.selected_index >= self._window_start + _VISIBLE_SUGGESTIONS:
+            self._window_start = self.selected_index - _VISIBLE_SUGGESTIONS + 1
         self.refresh()
 
     def render(self) -> Text:
         rendered = Text()
-        label_width = min(24, max((len(item.label) for item in self.suggestions), default=0))
-        for index, suggestion in enumerate(self.suggestions):
+        visible = self.suggestions[self._window_start : self._window_start + _VISIBLE_SUGGESTIONS]
+        label_width = min(24, max((len(item.label) for item in visible), default=0))
+        for visible_index, suggestion in enumerate(visible):
+            index = self._window_start + visible_index
             selected = index == self.selected_index
             style = f"bold {ACCENT}" if selected else ""
             rendered.append(suggestion.label.ljust(label_width), style=style)
             if suggestion.description:
                 rendered.append(f"  {suggestion.description}", style=style if selected else "dim")
-            if index < len(self.suggestions) - 1:
+            if visible_index < len(visible) - 1:
                 rendered.append("\n")
         return rendered

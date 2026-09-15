@@ -7,7 +7,7 @@ from textual.app import App, ComposeResult
 
 from tabulaflow.app.tui.widgets import input as input_module
 from tabulaflow.app.tui.widgets.input import HistoryInput
-from tabulaflow.app.tui.widgets.suggestions import InputSuggester, InputSuggestionMenu
+from tabulaflow.app.tui.widgets.suggestions import InputSuggester, InputSuggestion, InputSuggestionMenu
 
 
 class _InputApp(App[None]):
@@ -165,6 +165,24 @@ def test_connect_path_suggestions_include_supported_files_and_directories(tmp_pa
     suggestions = InputSuggester().get_suggestions(f"/connect {tmp_path}/")
 
     assert [item.label for item in suggestions] == [str(tmp_path / "data.csv"), f"{tmp_path / 'nested'}/"]
+
+
+def test_suggestion_menu_scrolls_through_a_window_of_eight() -> None:
+    menu = InputSuggestionMenu()
+    menu.set_suggestions(tuple(InputSuggestion(str(index), str(index)) for index in range(10)))
+
+    for _ in range(8):
+        menu.move_selection(1)
+
+    assert menu.selected == InputSuggestion("8", "8")
+    assert menu.render().plain.splitlines() == [str(index) for index in range(1, 9)]
+
+    menu.move_selection(1)
+    assert menu.render().plain.splitlines() == [str(index) for index in range(2, 10)]
+
+    menu.move_selection(1)
+    assert menu.selected == InputSuggestion("0", "0")
+    assert menu.render().plain.splitlines() == [str(index) for index in range(8)]
 
 
 async def test_active_references_are_highlighted_and_deleted_atomically(
