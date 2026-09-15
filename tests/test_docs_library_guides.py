@@ -139,68 +139,122 @@ async def test_data_example_closes_after_query_failure(
     assert len(closed_connectors) == 1
 
 
-@pytest.mark.parametrize("existing_category", [False, True])
-async def test_enrichment_updates_selected_tickets(
-    existing_category: bool,
+@pytest.mark.parametrize("existing_job", [False, True])
+async def test_enrichment_finds_remote_jobs_with_matching_experience(
+    existing_job: bool,
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
     queries: list[tuple[str, ExecResult]],
     closed_connectors: list[SQLConnector],
 ) -> None:
-    categories = {
-        "I was charged twice for my last order.": "billing",
-        "I cannot sign in after resetting my password.": "account",
-        "The app crashes when I upload a photo.": "technical",
+    requirements = {
+        "building Python services": {"work_mode": "remote", "min_experience_years": 2},
+        "London office": {"work_mode": "hybrid", "min_experience_years": 3},
+        "our ML team": {"work_mode": "remote", "min_experience_years": 5},
     }
     prompts: list[str] = []
 
     def respond(messages: list[ModelMessage], info: AgentInfo) -> ModelResponse:
         answer = next(tool for tool in info.output_tools if tool.name == "submit_answer")
-        assert answer.parameters_json_schema["properties"]["category"]["anyOf"][0]["enum"] == [
-            "billing",
-            "account",
-            "technical",
-        ]
+        fields = answer.parameters_json_schema["properties"]
+        assert fields["work_mode"]["anyOf"][0]["enum"] == ["remote", "hybrid", "onsite"]
+        assert fields["min_experience_years"]["anyOf"][0]["type"] == "integer"
         prompt = next(
             part.content for message in messages for part in message.parts if isinstance(part, UserPromptPart)
         )
         assert isinstance(prompt, str)
         prompts.append(prompt)
-        category = next(category for message, category in categories.items() if message in prompt)
-        return ModelResponse(parts=[ToolCallPart("submit_answer", {"category": category})])
+        values = next(values for description, values in requirements.items() if description in prompt)
+        return ModelResponse(parts=[ToolCallPart("submit_answer", values)])
 
     def make_test_agent(model: Any, **kwargs: Any) -> Any:
         return make_agent(FunctionModel(function=respond), **kwargs)
 
     original_write = SQLConnector.write_dataframe_async
 
-    async def write_tickets(self: SQLConnector, df: pd.DataFrame, table_name: str, **kwargs: Any) -> int:
-        if existing_category:
+    async def write_jobs(self: SQLConnector, df: pd.DataFrame, table_name: str, **kwargs: Any) -> int:
+        if existing_job:
             df = pd.concat(
-                [df, pd.DataFrame([{"ticket_id": 104, "message": "Already reviewed.", "category": "account"}])],
+                [
+                    df,
+                    pd.DataFrame(
+                        [
+                            {
+                                "job_id": 4,
+                                "title": "Reviewed role",
+                                "description": "Already reviewed.",
+                                "work_mode": "remote",
+                                "min_experience_years": 1,
+                            }
+                        ]
+                    ),
+                ],
                 ignore_index=True,
             )
         return await original_write(self, df, table_name, **kwargs)
 
     monkeypatch.setattr("tabulaflow.agents.tools.run_subagent_for_each_row.make_agent", make_test_agent)
-    monkeypatch.setattr(SQLConnector, "write_dataframe_async", write_tickets)
+    monkeypatch.setattr(SQLConnector, "write_dataframe_async", write_jobs)
     await runpy.run_path(str(EXAMPLES / "data_enrichment.py"))["main"]()
 
     assert len(prompts) == 3
     result = queries[-1][1]
     assert result.error is None and result.df is not None
-    expected = [
-        {"ticket_id": ticket_id, "category": category}
-        for ticket_id, category in zip((101, 102, 103), categories.values(), strict=True)
-    ]
-    if existing_category:
-        expected.append({"ticket_id": 104, "category": "account"})
+    expected = [{"title": "Backend Engineer", "work_mode": "remote", "min_experience_years": 2}]
+    if existing_job:
+        expected.append({"title": "Reviewed role", "work_mode": "remote", "min_experience_years": 1})
     assert result.df.to_dict("records") == expected
     printed = capsys.readouterr().out
     assert "succeeded for 3 rows, failed for 0 rows" in printed
-    if not existing_category:
+    if not existing_job:
         assert (EXAMPLES / "results/library-enrichment.txt").read_text().strip() == printed.strip()
     assert len(closed_connectors) == 1
+
+
+async def test_extraction_turns_travel_guide_into_categorized_places(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    places = [
+        ("Sensoji Temple", "Tokyo", "culture", "Historic temple showcasing religious heritage and architecture"),
+        ("Ueno Park", "Tokyo", "outdoors", "Walk through park to enjoy greenery and relax"),
+        ("Tsukiji Outer Market", "Tokyo", "food", "Browse seafood stalls and enjoy fresh local meals"),
+        ("Kappabashi Kitchenware Town", "Tokyo", "shopping", "Browse and buy kitchen tools, tableware, and displays"),
+        ("Nishiki Market", "Kyoto", "food", "Explore local food, ingredients, and choose tastings"),
+        ("Philosopher's Path", "Kyoto", "outdoors", "Canal-side walk enjoying trees, water, and scenery"),
+        ("Kyoto International Manga Museum", "Kyoto", "culture", "Explore manga as storytelling and visual culture"),
+        ("Kyoto Handicraft Center", "Kyoto", "shopping", "Browse and buy traditional crafts"),
+    ]
+    expected = [dict(zip(("name", "city", "category", "why_visit"), place, strict=True)) for place in places]
+    prompts: list[str] = []
+
+    def respond(messages: list[ModelMessage], info: AgentInfo) -> ModelResponse:
+        tool = info.output_tools[0]
+        fields = tool.parameters_json_schema["$defs"]["ExtractedEntity"]["properties"]
+        assert fields["category"]["anyOf"][0]["enum"] == ["food", "culture", "outdoors", "shopping"]
+        prompt = next(
+            part.content for message in messages for part in message.parts if isinstance(part, UserPromptPart)
+        )
+        assert isinstance(prompt, str)
+        prompts.append(prompt)
+        normalized = " ".join(prompt.split())
+        return ModelResponse(
+            parts=[ToolCallPart(tool.name, {"entities": [place for place in expected if place["name"] in normalized]})]
+        )
+
+    def make_test_agent(model: Any, **kwargs: Any) -> Any:
+        return make_agent(FunctionModel(function=respond), **kwargs)
+
+    monkeypatch.setattr("tabulaflow.agents.extraction.entity.make_agent", make_test_agent)
+    monkeypatch.chdir(EXAMPLES / "support")
+    page = EXAMPLES.parent / "python-library/extraction-and-enrichment.md"
+    snippet = page.read_text().split("```python\n", 1)[1].split("```", 1)[0]
+    code = compile(snippet, str(page), "exec", flags=ast.PyCF_ALLOW_TOP_LEVEL_AWAIT)
+    namespace: dict[str, Any] = {}
+    await eval(code, namespace)
+
+    assert len(prompts) > 1
+    assert namespace["places"] == expected
+    assert (EXAMPLES / "results/library-extraction.txt").read_text().strip() == capsys.readouterr().out.strip()
 
 
 @pytest.mark.parametrize(

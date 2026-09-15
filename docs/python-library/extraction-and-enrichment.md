@@ -1,11 +1,11 @@
 # Extraction and enrichment
 
-Extract typed records from documents and enrich database rows with LLMs.
+Turn long documents into typed records and add useful fields to database rows with LLMs.
 
-## Example: Classify support tickets
+## Example: Find jobs that fit
 
-Select uncategorized tickets with SQL, classify each row concurrently, and
-write the results back to the table:
+Extract work arrangements and experience requirements from saved job descriptions,
+then find remote roles that require at most three years of experience:
 
 ```python title="data_enrichment.py"
 --8<-- "examples/data_enrichment.py:example"
@@ -17,10 +17,11 @@ write the results back to the table:
     --8<-- "examples/results/library-enrichment.txt"
     ```
 
-`key_columns` identify the rows to update. The output columns must already
-exist. Behind the scenes, TabulaFlow uses their types and native enum choices
-to define and validate each subagent's structured output for you. Enum discovery
-depends on the database driver; `CHECK` constraints are not interpreted.
+Rows are processed concurrently, and both fields are written back using
+`key_columns`. The output columns must already exist. Behind the scenes,
+TabulaFlow uses their types and native enum choices to define and validate
+each subagent's structured output for you. Enum discovery depends on the
+database driver; `CHECK` constraints are not interpreted.
 
 Set [`OPENAI_API_KEY`](quick-start.md#try-it-yourself), then run:
 
@@ -30,20 +31,41 @@ uv run https://megagonlabs.github.io/tabulaflow/examples/data_enrichment.py
 
 ## Extract records from documents
 
-Use `EntityExtractor` directly when the input is a document:
+Build a list of places to visit from a travel guide, with a category and a short
+reason for each recommendation. Save the [sample guide](../examples/support/travel_guide.txt)
+as `travel_guide.txt`:
 
 ```python
+from pathlib import Path
+from typing import Literal
+
+import pandas as pd
+
 from tabulaflow.agents.extraction import EntityExtractor
 
+guide = Path("travel_guide.txt").read_text(encoding="utf-8")
 extractor = EntityExtractor(
-    {"product": str, "price_usd": float},
+    {
+        "name": str,
+        "city": str,
+        "category": Literal["food", "culture", "outdoors", "shopping"],
+        "why_visit": str,
+    },
     llm="openai-responses:gpt-5-mini",
 )
-records = await extractor.extract(
-    "USB-C dock: $89. Laptop stand: $45.",
-    instruction="Extract each product and its price in USD.",
+# Long documents are split into chunks and processed concurrently.
+# Results are combined into one list of typed, validated records.
+places = await extractor.extract(
+    guide,
+    instruction=(
+        "Extract one record per recommended place. Use the city from its section. "
+        "Choose the category that best fits the main reason to visit, and summarize "
+        "that reason in at most eight words. Skip background mentions and travel logistics."
+    ),
 )
-print(records)
+df = pd.DataFrame(places)
+assert df["category"].dropna().isin(["food", "culture", "outdoors", "shopping"]).all()
+print(df.to_string(index=False))
 ```
 
 ??? example-output no-copy "Sample output"
@@ -52,6 +74,7 @@ print(records)
     --8<-- "examples/results/library-extraction.txt"
     ```
 
-The extractor chunks long documents automatically. It also accepts images and
-PDFs as `BinaryContent` with a model that supports those inputs. See the
+The extractor splits long documents into chunks and processes them concurrently.
+It also accepts images and PDFs as `BinaryContent` with a model that supports
+those inputs. See the
 [extraction reference](api/agents.md#extraction-and-summarization).

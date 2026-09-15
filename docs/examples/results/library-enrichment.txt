@@ -1,5 +1,3 @@
-Processed 3 rows from "tickets"; subagent updates succeeded for 3 rows, failed for 0 rows.
- ticket_id  category
-       101   billing
-       102   account
-       103 technical
+Processed 3 rows from "jobs"; subagent updates succeeded for 3 rows, failed for 0 rows.
+           title work_mode  min_experience_years
+Backend Engineer    remote                     2

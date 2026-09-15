@@ -1,1 +1,9 @@
-[{'product': 'USB-C dock', 'price_usd': 89.0}, {'product': 'Laptop stand', 'price_usd': 45.0}]
+                            name  city category                                                      why_visit
+                  Sensoji Temple Tokyo  culture Historic temple showcasing religious heritage and architecture
+                       Ueno Park Tokyo outdoors                  Walk through park to enjoy greenery and relax
+            Tsukiji Outer Market Tokyo     food              Browse seafood stalls and enjoy fresh local meals
+     Kappabashi Kitchenware Town Tokyo shopping          Browse and buy kitchen tools, tableware, and displays
+                  Nishiki Market Kyoto     food           Explore local food, ingredients, and choose tastings
+              Philosopher's Path Kyoto outdoors             Canal-side walk enjoying trees, water, and scenery
+Kyoto International Manga Museum Kyoto  culture               Explore manga as storytelling and visual culture
+         Kyoto Handicraft Center Kyoto shopping                              Browse and buy traditional crafts

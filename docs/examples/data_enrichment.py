@@ -15,10 +15,12 @@ from tabulaflow.data import SQLConnector
 async def main():
     database = await SQLConnector.from_url_async("duckdb:///:memory:", read_only=False)
     result = await database.run_query_async("""
-        CREATE TABLE tickets (
-            ticket_id INTEGER PRIMARY KEY,
-            message TEXT,
-            category ENUM ('billing', 'account', 'technical')
+        CREATE TABLE jobs (
+            job_id INTEGER PRIMARY KEY,
+            title TEXT,
+            description TEXT,
+            work_mode ENUM ('remote', 'hybrid', 'onsite'),
+            min_experience_years INTEGER
         )
     """)
     if result.error is not None:
@@ -26,30 +28,45 @@ async def main():
     await database.write_dataframe_async(
         pd.DataFrame(
             {
-                "ticket_id": [101, 102, 103],
-                "message": [
-                    "I was charged twice for my last order.",
-                    "I cannot sign in after resetting my password.",
-                    "The app crashes when I upload a photo.",
+                "job_id": [1, 2, 3],
+                "title": ["Backend Engineer", "Data Analyst", "ML Engineer"],
+                "description": [
+                    "Work from home with no office days. Requires two years building Python services.",
+                    "Join our London office every Tuesday and Thursday. Requires three years of SQL experience.",
+                    "Work from anywhere with our ML team. Requires at least five years in machine learning.",
                 ],
             }
         ),
-        "tickets",
+        "jobs",
         mode="append",
     )
 
     enricher = RunSubagentForEachRowTool(database, subagent_llm="openai-responses:gpt-5-mini")
+    # Column types and enum choices constrain each subagent's output.
+    # Rows are processed concurrently and results are written back automatically.
     summary = await enricher.execute(
         schema_name=None,
-        table_name="tickets",
-        task_query="SELECT ticket_id, message FROM tickets WHERE category IS NULL",
-        task_instruction="Classify this support ticket: {{ message }}",
-        key_columns=["ticket_id"],
-        output_columns=["category"],
+        table_name="jobs",
+        task_query="SELECT job_id, description FROM jobs WHERE work_mode IS NULL",
+        task_instruction=(
+            "Identify the work arrangement and minimum years of experience required. "
+            "Leave unstated requirements null. Job description: {{ description }}"
+        ),
+        key_columns=["job_id"],
+        output_columns=["work_mode", "min_experience_years"],
     )
     print(summary)
 
-    result = await database.run_query_async("SELECT ticket_id, category FROM tickets ORDER BY ticket_id")
+    result = await database.run_query_async("SELECT work_mode FROM jobs")
+    assert result.error is None and result.df is not None
+    assert result.df["work_mode"].dropna().isin(["remote", "hybrid", "onsite"]).all()
+
+    result = await database.run_query_async("""
+        SELECT title, work_mode, min_experience_years
+        FROM jobs
+        WHERE work_mode = 'remote' AND min_experience_years <= 3
+        ORDER BY job_id
+    """)
     if result.error is not None:
         raise RuntimeError(result.error.message)
     print(result.df.to_string(index=False))
