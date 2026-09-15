@@ -40,26 +40,20 @@ TabulaflowApp {
     border-left: heavy #3EB489;
 }
 
-.input-sep {
-    width: 1;
-    height: 1;
-    padding: 0;
-    background: transparent;
-    color: #444444;
-}
-
 #input-bar {
     width: 1fr;
     height: 1;
     max-height: 5;
     scrollbar-size: 0 0;
     border: none;
+    border-right: solid #444444;
     padding: 0 1;
     background: transparent;
 }
 
 #input-bar:focus {
     border: none;
+    border-right: solid #444444;
     background: transparent;
 }
 

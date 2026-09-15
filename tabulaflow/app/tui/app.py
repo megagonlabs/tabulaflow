@@ -300,7 +300,6 @@ class TabulaflowApp(App[None]):
                     placeholder="Ask a question or type /help",
                     id="input-bar",
                 )
-                yield Static("│", classes="input-sep")
                 # Disabled until the background session build + sample auto-connect
                 # completes (re-enabled at the end of ``_ensure_session``), so the user
                 # can't open an empty explorer before any data source is connected. While
