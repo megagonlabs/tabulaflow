@@ -212,6 +212,27 @@ async def test_huggingface_subset_selection_connects_inline(monkeypatch: pytest.
         assert "✓ Connected to glue" in [cast(Text, message.render()).plain for message in app.query(SystemMessage)]
 
 
+async def test_explorer_control_stays_aligned_with_bottom_of_multiline_input(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    app = _app(None)
+    _stub_app_startup(app, monkeypatch)
+    monkeypatch.setattr(app, "_start_llm_activation", lambda _selection: None)
+
+    async with app.run_test(size=(100, 36)) as pilot:
+        input_bar = app.query_one("#input-bar", HistoryInput)
+        input_row = app.query_one("#input-row")
+        assert input_row.size.height == input_bar.size.height == 1
+
+        input_bar.value = "x" * 500
+        await pilot.pause()
+
+        explorer_button = app.query_one("#open-explorer-btn", Button)
+        assert input_bar.size.height == 5
+        assert input_row.size.height == input_bar.size.height
+        assert explorer_button.region.bottom == input_bar.region.bottom
+
+
 async def test_huggingface_subset_connection_uses_submission_worker(monkeypatch: pytest.MonkeyPatch) -> None:
     app = _app(None)
     _stub_app_startup(app, monkeypatch)
