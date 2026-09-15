@@ -8,15 +8,17 @@ import pandas as pd
 from pydantic_ai import models
 from pydantic_ai.messages import ModelMessage, ModelResponse, ToolCallPart, UserPromptPart
 from pydantic_ai.models.function import AgentInfo, FunctionModel
+from pydantic_ai.usage import RequestUsage
 import pytest
 
 from tabulaflow.agents.llm import make_agent
+from tabulaflow.agents.trace import Usage
 from tabulaflow.data import SQLConnector
 from tabulaflow.research.types import GoldQuery, NL2QDataset, NL2QRunResult, SimpleNL2QTask, SimpleNL2QTaskOutput
 
 
-@pytest.mark.parametrize("fail_prediction", [False, True])
-async def test_custom_research_agent(fail_prediction: bool, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+@pytest.mark.parametrize("failure", [None, "table_linking", "sql_generation", "unknown_table"])
+async def test_table_linking_agent(failure: str | None, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     monkeypatch.setenv("OPENAI_API_KEY", "test-not-a-real-key")
     monkeypatch.setenv("TABULAFLOW_SCHEMA_CACHE_MODE", "off")
     monkeypatch.setenv("TABULAFLOW_SQL_QUERY_CACHE_MODE", "off")
@@ -37,6 +39,7 @@ async def test_custom_research_agent(fail_prediction: bool, monkeypatch: pytest.
         "What is the total amount?": "SELECT SUM(amount) FROM orders",
         "What is the largest amount?": "SELECT MAX(amount) FROM orders",
     }
+    calls: list[tuple[str, str]] = []
 
     def respond(messages: list[ModelMessage], info: AgentInfo) -> ModelResponse:
         prompts = [part.content for message in messages for part in message.parts if isinstance(part, UserPromptPart)]
@@ -45,16 +48,33 @@ async def test_custom_research_agent(fail_prediction: bool, monkeypatch: pytest.
         assert "reference-only" not in (info.instructions or "")
         assert "orders" in (info.instructions or "")
         question = next(question for question in questions if question in prompt)
-        if fail_prediction and question == "What is the total amount?":
+        linking = "tables" in info.output_tools[0].parameters_json_schema["properties"]
+        stage = "table_linking" if linking else "sql_generation"
+        calls.append((stage, question))
+        assert ("unrelated_notes" in (info.instructions or "")) == linking
+        assert "unrelated_notes" not in prompt
+        if failure == stage and question == "What is the total amount?":
             raise RuntimeError("offline model failure")
-        return ModelResponse(parts=[ToolCallPart(info.output_tools[0].name, {"query": questions[question]})])
+        output: dict[str, Any]
+        if linking:
+            table = (
+                "missing_table" if failure == "unknown_table" and question == "What is the total amount?" else "orders"
+            )
+            output = {"tables": [{"schema_name": None, "table_name": table}]}
+        else:
+            output = {"query": questions[question]}
+        return ModelResponse(
+            parts=[ToolCallPart(info.output_tools[0].name, output)],
+            usage=RequestUsage(input_tokens=10, output_tokens=5),
+        )
 
     def make_test_agent(model: Any, **kwargs: Any) -> Any:
         return make_agent(FunctionModel(function=respond), **kwargs)
 
     try:
         await connector.write_dataframe_async(pd.DataFrame({"amount": [10, 20]}), "orders")
-        await connector.refresh_schema_async()
+        await connector.write_dataframe_async(pd.DataFrame({"note": ["not needed"]}), "unrelated_notes")
+        original_schema = connector.schema.model_dump_json()
         dataset = NL2QDataset(
             name="bird-sql",
             split="dev",
@@ -79,36 +99,60 @@ async def test_custom_research_agent(fail_prediction: bool, monkeypatch: pytest.
 
         monkeypatch.setattr("tabulaflow.research.benchmarks.BirdSQLDatasetLoader", LocalLoader)
         monkeypatch.setattr("tabulaflow.agents.llm.make_agent", make_test_agent)
-        script = Path(__file__).resolve().parents[1] / "docs/examples/custom_research_agent.py"
+        script = Path(__file__).resolve().parents[1] / "docs/examples/table_linking_agent.py"
         await runpy.run_path(str(script))["main"]()
         assert closed == [connector]
+        assert connector.schema.model_dump_json() == original_schema
 
-        run_dir = tmp_path / "runs" / "structured_query"
+        run_dir = tmp_path / "runs" / "table_linking"
         result = NL2QRunResult.model_validate_json((run_dir / "result.json").read_text())
-        assert result.agent == "structured_query"
+        assert result.agent == "table_linking"
         assert [task.qid for task in result.tasks] == ["0", "1", "2"]
-        expected_accuracy = round(2 / 3, 4) if fail_prediction else 1.0
+        expected_accuracy = round(2 / 3, 4) if failure else 1.0
         assert result.aggregated_eval_metrics["bird_sql_ex"]["avg"] == expected_accuracy
         assert (run_dir / "result_summary.csv").is_file()
         for task in result.tasks:
             assert isinstance(task, SimpleNL2QTaskOutput)
             assert (run_dir / "readable" / task.qid / "task_readable.md").is_file()
-            if fail_prediction and task.qid == "1":
+            stages = [stage for stage, question in calls if question == task.question]
+            if failure and task.qid == "1":
                 assert task.pred_query is None
+                assert stages == (
+                    ["table_linking", "sql_generation"] if failure == "sql_generation" else ["table_linking"]
+                )
                 continue
             assert task.pred_query is not None and task.pred_query.exec_result is not None
             assert task.pred_query.exec_result.error is None
             assert task.usage is not None and task.trajectory is not None
-            assert task.inference_metrics["latency_seconds"] >= 0
+            assert stages == ["table_linking", "sql_generation"]
+            assert task.usage.api_requests == 2
+            assert task.usage.input_tokens == 20
+            assert task.usage.output_tokens == 10
+            assert isinstance(task.trajectory, list)
+            assert [trajectory.id for trajectory in task.trajectory] == ["TRJY-TABLE-LINKING", "TRJY-SQL-GENERATION"]
+            for trajectory in task.trajectory:
+                assert (run_dir / "readable" / task.qid / "trajectory" / f"{trajectory.id}.md").is_file()
 
-        comparison = runpy.run_path(str(script.with_name("compare_research_agents.py")))
-        untracked = result.model_copy(update={"total_usage": None, "aggregated_inference_metrics": {}})
-        summary = comparison["summarize_runs"]([result, untracked])
-        assert summary["Accuracy"].tolist() == [expected_accuracy, expected_accuracy]
-        assert summary.loc[0, "Tokens"] > 0
-        assert pd.isna(summary.loc[1, "Tokens"])
-        assert pd.isna(summary.loc[1, "Cost (USD)"])
-        assert pd.isna(summary.loc[1, "Avg. latency (s)"])
     finally:
         if connector not in closed:
             await connector.close_async()
+
+
+def test_research_run_summary() -> None:
+    script = Path(__file__).resolve().parents[1] / "docs/examples/compare_research_agents.py"
+    comparison = runpy.run_path(str(script))
+    tracked = NL2QRunResult.model_construct(
+        agent="example",
+        aggregated_eval_metrics={"bird_sql_ex": {"avg": 0.8}, "executable": {"avg": 1.0}},
+        total_usage=Usage.create(input_tokens=20, output_tokens=10, api_cost_usd=0.01),
+        aggregated_inference_metrics={"latency_seconds": {"avg": 0.5}},
+    )
+    untracked = tracked.model_copy(update={"total_usage": None, "aggregated_inference_metrics": {}})
+    summary = comparison["summarize_runs"]([tracked, untracked])
+    assert summary["Accuracy"].tolist() == [0.8, 0.8]
+    assert summary["Executable"].tolist() == [1.0, 1.0]
+    assert summary.loc[0, "Tokens"] == 30
+    assert summary.loc[0, "Avg. latency (s)"] == 0.5
+    assert pd.isna(summary.loc[1, "Tokens"])
+    assert pd.isna(summary.loc[1, "Cost (USD)"])
+    assert pd.isna(summary.loc[1, "Avg. latency (s)"])

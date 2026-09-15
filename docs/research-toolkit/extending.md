@@ -3,37 +3,38 @@
 ## Implement an agent
 
 Bring your prediction method and reuse the benchmark loaders, execution,
-metrics, and reports. This agent generates a typed SQL response:
+metrics, and reports. This agent first selects relevant tables, then generates
+SQL using only their schema:
 
-```python title="custom_research_agent.py"
---8<-- "examples/custom_research_agent.py:agent-imports"
+```python title="table_linking_agent.py"
+--8<-- "examples/table_linking_agent.py:agent-imports"
 
---8<-- "examples/custom_research_agent.py:agent"
+--8<-- "examples/table_linking_agent.py:agent"
 ```
 
 The same pipeline accepts your agent class directly:
 
 ```python
---8<-- "examples/custom_research_agent.py:pipeline-imports"
+--8<-- "examples/table_linking_agent.py:pipeline-imports"
 
---8<-- "examples/custom_research_agent.py:integration"
+--8<-- "examples/table_linking_agent.py:integration"
 ```
 
 After [setting up BIRD-SQL and your API key](quick-start.md#try-it-yourself),
 run directly:
 
 ```bash
-uv run https://megagonlabs.github.io/tabulaflow/examples/custom_research_agent.py
+uv run https://megagonlabs.github.io/tabulaflow/examples/table_linking_agent.py
 ```
 
-The script runs three BIRD-SQL tasks and saves results under `runs/structured_query/`.
+The script runs three BIRD-SQL tasks and saves results under `runs/table_linking/`.
 
 ??? info "Run from a source checkout"
 
     From the repository root:
 
     ```bash
-    uv run python docs/examples/custom_research_agent.py
+    uv run python docs/examples/table_linking_agent.py
     ```
 
     This uses your checkout instead of the script's pinned package version.
