@@ -63,6 +63,13 @@ and supports JSON serialization, directory reports, and CSV summaries.
 `to_directory(...)` exports the current run, including available query-result
 DataFrames as CSVs. Reusing a directory updates its reports.
 
+`total_usage` records agent usage; `total_user_simulator_usage` records
+clarification usage. `aggregated_inference_metrics` contains available inference
+statistics, including task latency. These depend on fields returned by each
+agent. Costs depend on available model pricing; missing usage does not mean
+zero cost. Report [preprocessing costs](preprocessing.md#prepare-reusable-inputs)
+separately.
+
 Runs record task QIDs and agent configuration. For reproducibility, set the
 schema formatter explicitly, pin the TabulaFlow version, and record runtime
 settings separately. Reload matching tasks with the original database snapshot,

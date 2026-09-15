@@ -54,6 +54,13 @@ async def main() -> None:
             batch_size=1,
             verbose=False,
         )
+        # --8<-- [start:evaluation-output]
+        task = result.tasks[0]
+        print("Question:", task.question)
+        print("Executable:", task.eval_metrics["executable"])
+        print("Matches any interpretation:", task.eval_metrics["found_one"])
+        print("Matches intended interpretation:", task.eval_metrics["simple_ex"])
+        # --8<-- [end:evaluation-output]
         result.to_directory("runs/arcs-structured")
     finally:
         await asyncio.gather(*(connector.close_async() for connector in dataset.db_connectors.values()))

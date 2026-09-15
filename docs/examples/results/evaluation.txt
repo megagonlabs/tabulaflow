@@ -1,0 +1,4 @@
+Question: Report the total revenue for each nation in 1995.
+Executable: 1.0
+Matches any interpretation: 1.0
+Matches intended interpretation: 0.0

@@ -2,9 +2,14 @@
 
 ## Registry and contracts
 
+A metric scores one task output; an aggregator combines scores across a run.
 Metrics declare `name` and `compatible_output_types`; `compute_async(...)`
-returns a number, `None`, or named values. See
-[the example below](#example-add-a-metric) for an example.
+returns a number, `None`, or named values.
+
+Pass metric instances to `evaluate_async(...)`. Loader `default_metrics` lists
+their registry names; the Python API does not select them automatically or
+filter incompatible output types. Check `compatible_output_types` against the
+agent's output family.
 
 ::: tabulaflow.research.metrics.registry.metric_registry
 
@@ -16,7 +21,7 @@ returns a number, `None`, or named values. See
 
 ## Execution comparison
 
-See [metric selection](../evaluation.md#choose-metrics) for benchmark defaults.
+See [Evaluation and analysis](../evaluation.md) for benchmark metrics.
 
 ::: tabulaflow.research.metrics.simple_ex.SimpleEx
 
@@ -31,6 +36,10 @@ See [metric selection](../evaluation.md#choose-metrics) for benchmark defaults.
 ::: tabulaflow.research.metrics.cypherbench_ex.CypherBenchEx
 
 ## Prediction and execution diagnostics
+
+`PredSuccess` checks whether a query was produced; `Executable` checks whether
+it executed successfully. Gold diagnostics check reference-query execution and
+nonempty results. Raw-prediction metrics evaluate queries from before postprocessing.
 
 ::: tabulaflow.research.metrics.pred_success.PredSuccess
 
@@ -48,6 +57,10 @@ See [metric selection](../evaluation.md#choose-metrics) for benchmark defaults.
 
 ## Ambiguity metrics
 
+`SimpleEx` compares the final prediction with the intended reference; `FoundOne`
+accepts any valid reference interpretation. Ambiguity-point metrics measure
+which phrases and interpretations the agent identified.
+
 ::: tabulaflow.research.metrics.ambig_point_stats.AmbigPointStats
 
 ::: tabulaflow.research.metrics.gold_ambig_point_stats.GoldAmbigPointStats
@@ -59,6 +72,16 @@ See [metric selection](../evaluation.md#choose-metrics) for benchmark defaults.
 ## Aggregators
 
 Pass aggregators to `evaluate_async(..., metric_aggregators=[...])`.
+The default is `SimpleAverageAggregator()`; pass `[]` to skip aggregation.
+
+`SimpleAverageAggregator` includes zeros and excludes `None` from the average.
+`OfficialSplitScoreAggregator` divides by the configured full split size,
+treating missing tasks as zero. Other aggregators group scores by database,
+difficulty, or ambiguity type. Report the task count and missing values with scores.
+
+For paired comparisons, match QIDs and compare task scores. The optional
+[comparison script](../../examples/compare_research_agents.py) also summarizes
+usage and latency.
 
 ::: tabulaflow.research.metrics.aggregators.SimpleAverageAggregator
 
