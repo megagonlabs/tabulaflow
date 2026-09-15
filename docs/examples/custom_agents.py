@@ -3,38 +3,27 @@
 # dependencies = ["tabulaflow==0.1.0", "pandas>=2.2.3", "httpx>=0.28.1"]
 # ///
 
+# --8<-- [start:example]
 import asyncio
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
 import httpx
 import pandas as pd
-
-# --8<-- [start:tool-imports]
+from pydantic import BaseModel
 from pydantic_ai import ToolReturn
 
+from tabulaflow.agents.llm import make_agent
 from tabulaflow.agents.tools import RunQueryTool, ViewTool
 from tabulaflow.agents.tools.run_query import LLMParameter
-
-# --8<-- [end:tool-imports]
-# --8<-- [start:agent-imports]
-from pydantic import BaseModel
-
-from tabulaflow.agents.llm import make_agent
-
-# --8<-- [end:agent-imports]
 from tabulaflow.data import SQLConnector
 
 
-# --8<-- [start:reply]
 class SupportReply(BaseModel):
     message: str
     suggested_steps: list[str]
     references: list[str]
     ticket_id: str | None
-
-
-# --8<-- [end:reply]
 
 
 async def prepare_example(orders, support_dir):
@@ -63,13 +52,10 @@ async def prepare_example(orders, support_dir):
 
 
 async def run_support_agent(orders, support_dir, customer_id):
-    # --8<-- [start:tools]
     query_tool = RunQueryTool(orders)
     view = ViewTool(working_dir=support_dir)
     tickets = []
-    # --8<-- [end:tools]
 
-    # --8<-- [start:query-order]
     async def query_order(order_id):
         # The application owns the SQL and customer scope, not the agent.
         return await query_tool.execute(
@@ -80,9 +66,6 @@ async def run_support_agent(orders, support_dir, customer_id):
             ],
         )
 
-    # --8<-- [end:query-order]
-
-    # --8<-- [start:find-orders]
     async def find_orders(product: str) -> ToolReturn | str:
         """Find the signed-in customer's orders by product name, newest first."""
         if not product.strip():
@@ -98,17 +81,11 @@ async def run_support_agent(orders, support_dir, customer_id):
         )
         return ToolReturn(return_value=execution.output, metadata=execution)
 
-    # --8<-- [end:find-orders]
-
-    # --8<-- [start:lookup-order]
     async def lookup_order(order_id: int) -> ToolReturn:
         """Look up an order belonging to the signed-in customer."""
         execution = await query_order(order_id)
         return ToolReturn(return_value=execution.output, metadata=execution)
 
-    # --8<-- [end:lookup-order]
-
-    # --8<-- [start:ticket]
     async def open_support_ticket(order_id: int, issue: str) -> str:
         """Record a support ticket for the signed-in customer's order and return its ID."""
         if not issue.strip():
@@ -124,9 +101,6 @@ async def run_support_agent(orders, support_dir, customer_id):
         tickets.append({"ticket_id": ticket_id, "order_id": order_id, "issue": issue.strip()})
         return ticket_id
 
-    # --8<-- [end:ticket]
-
-    # --8<-- [start:agent]
     agent = make_agent(
         "openai-responses:gpt-5-mini",
         output_type=SupportReply,
@@ -136,8 +110,6 @@ async def run_support_agent(orders, support_dir, customer_id):
         ),
         tools=[view.as_pydantic_ai_tool(), find_orders, lookup_order, open_support_ticket],
     )
-    # --8<-- [end:agent]
-    # --8<-- [start:request]
     result = await agent.run(
         "The USB-C dock I bought most recently still won't charge my laptop, and I can't find the order number. "
         "I enabled Laptop charging in Dock settings and reconnected the USB-C cable, "
@@ -147,9 +119,7 @@ async def run_support_agent(orders, support_dir, customer_id):
     print("Suggested steps:", result.output.suggested_steps)
     print("References:", result.output.references)
     print("Ticket ID:", result.output.ticket_id)
-    # --8<-- [end:request]
     print("Stored tickets:", tickets)
-    print("Query calls:", query_tool.metrics().num_calls)
 
 
 async def main():
@@ -165,3 +135,4 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
+# --8<-- [end:example]

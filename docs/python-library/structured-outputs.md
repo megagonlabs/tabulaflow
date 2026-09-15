@@ -10,9 +10,22 @@ After `result = await session.run(...)`, resolve the returned artifacts and
 inspect their data and queries:
 
 ```python
---8<-- "examples/quick_start.py:output-imports"
+from tabulaflow.output.resolver import (
+    OutputResolver,
+    ResolvedChartArtifact,
+    ResolvedTableArtifact,
+    UnavailableArtifact,
+)
 
---8<-- "examples/quick_start.py:resolve-output"
+resolved = await OutputResolver(session.output_store).resolve(result.output)
+for artifact in resolved.artifacts:
+    if isinstance(artifact, UnavailableArtifact):
+        print("Unavailable:", artifact.artifact_id, artifact.reason)
+    elif isinstance(artifact, (ResolvedTableArtifact, ResolvedChartArtifact)):
+        print("Artifact:", artifact.label)
+        print("Source:", artifact.result.metadata.connector_alias)
+        print("SQL:", artifact.result.metadata.query)
+        print("DataFrame:\n", artifact.result.df)
 ```
 
 Chart artifacts also expose their Vega-Lite specification as `artifact.spec`.

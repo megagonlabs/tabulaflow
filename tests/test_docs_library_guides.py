@@ -502,7 +502,6 @@ async def test_custom_agent_finds_order_reads_documents_and_opens_ticket(
             "issue": issue,
         }
     ]
-    assert "Query calls: 3" in printed
     assert len(closed_connectors) == 1
 
 

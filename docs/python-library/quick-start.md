@@ -6,32 +6,17 @@ across multiple data sources. Connectors and outputs also work without an LLM.
 
 ## Example: Chat with two data sources
 
-Give a session named sales and support databases, then ask one question across both.
-
-??? info "Create the sample databases"
-
-    ```python
-    --8<-- "examples/quick_start.py:sample-imports"
-
-    --8<-- "examples/quick_start.py:sample-data"
-
-    --8<-- "examples/quick_start.py:sales-connection"
-    --8<-- "examples/quick_start.py:support-connection"
-    --8<-- "examples/quick_start.py:load-data"
-    ```
+Connect two in-memory databases, ask one question across both, and inspect
+the returned chart and table.
 
 ```python title="quick_start.py"
---8<-- "examples/quick_start.py:session-imports"
-
---8<-- "examples/quick_start.py:session"
-
---8<-- "examples/quick_start.py:question"
+--8<-- "examples/quick_start.py:example"
 ```
 
 Expect revenue of **West: $2,000** and **East: $1,500**, plus open high-priority
 tickets **201** and **202**. `result.text` contains the answer; `result.output`
 contains the chart and table specifications. See [Structured outputs](structured-outputs.md)
-to access their data and queries.
+for parameter-driven outputs.
 
 ## Try it yourself
 
