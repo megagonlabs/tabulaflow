@@ -6,7 +6,7 @@ from typing import Any
 
 import pandas as pd
 from pydantic_ai import models
-from pydantic_ai.messages import ModelMessage, ModelResponse, TextPart, ToolCallPart, UserPromptPart
+from pydantic_ai.messages import ModelMessage, ModelResponse, ToolCallPart, UserPromptPart
 from pydantic_ai.models.function import AgentInfo, FunctionModel
 import pytest
 
@@ -16,9 +16,7 @@ from tabulaflow.research.types import GoldQuery, NL2QDataset, NL2QRunResult, Sim
 
 
 @pytest.mark.parametrize("fail_prediction", [False, True])
-async def test_custom_research_agent_comparison(
-    fail_prediction: bool, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
-) -> None:
+async def test_custom_research_agent(fail_prediction: bool, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     monkeypatch.setenv("OPENAI_API_KEY", "test-not-a-real-key")
     monkeypatch.setenv("TABULAFLOW_SCHEMA_CACHE_MODE", "off")
     monkeypatch.setenv("TABULAFLOW_SQL_QUERY_CACHE_MODE", "off")
@@ -47,11 +45,9 @@ async def test_custom_research_agent_comparison(
         assert "reference-only" not in (info.instructions or "")
         assert "orders" in (info.instructions or "")
         question = next(question for question in questions if question in prompt)
-        if info.output_tools:
-            if fail_prediction and question == "What is the total amount?":
-                raise RuntimeError("offline model failure")
-            return ModelResponse(parts=[ToolCallPart(info.output_tools[0].name, {"query": questions[question]})])
-        return ModelResponse(parts=[TextPart(questions[question])])
+        if fail_prediction and question == "What is the total amount?":
+            raise RuntimeError("offline model failure")
+        return ModelResponse(parts=[ToolCallPart(info.output_tools[0].name, {"query": questions[question]})])
 
     def make_test_agent(model: Any, **kwargs: Any) -> Any:
         return make_agent(FunctionModel(function=respond), **kwargs)
@@ -83,29 +79,36 @@ async def test_custom_research_agent_comparison(
 
         monkeypatch.setattr("tabulaflow.research.benchmarks.BirdSQLDatasetLoader", LocalLoader)
         monkeypatch.setattr("tabulaflow.agents.llm.make_agent", make_test_agent)
-        monkeypatch.setattr("tabulaflow.research.agents.direct_prompt.make_agent", make_test_agent)
         script = Path(__file__).resolve().parents[1] / "docs/examples/custom_research_agent.py"
         await runpy.run_path(str(script))["main"]()
         assert closed == [connector]
 
-        for name in ("direct_prompting", "structured_query"):
-            run_dir = tmp_path / "runs" / name
-            result = NL2QRunResult.model_validate_json((run_dir / "result.json").read_text())
-            assert result.agent == name
-            assert [task.qid for task in result.tasks] == ["0", "1", "2"]
-            expected_accuracy = round(2 / 3, 4) if fail_prediction and name == "structured_query" else 1.0
-            assert result.aggregated_eval_metrics["bird_sql_ex"]["avg"] == expected_accuracy
-            assert (run_dir / "result_summary.csv").is_file()
-            for task in result.tasks:
-                assert isinstance(task, SimpleNL2QTaskOutput)
-                assert (run_dir / "readable" / task.qid / "task_readable.md").is_file()
-                if fail_prediction and name == "structured_query" and task.qid == "1":
-                    assert task.pred_query is None
-                    continue
-                assert task.pred_query is not None and task.pred_query.exec_result is not None
-                assert task.pred_query.exec_result.error is None
-                assert task.usage is not None and task.trajectory is not None
-                assert task.inference_metrics["latency_seconds"] >= 0
+        run_dir = tmp_path / "runs" / "structured_query"
+        result = NL2QRunResult.model_validate_json((run_dir / "result.json").read_text())
+        assert result.agent == "structured_query"
+        assert [task.qid for task in result.tasks] == ["0", "1", "2"]
+        expected_accuracy = round(2 / 3, 4) if fail_prediction else 1.0
+        assert result.aggregated_eval_metrics["bird_sql_ex"]["avg"] == expected_accuracy
+        assert (run_dir / "result_summary.csv").is_file()
+        for task in result.tasks:
+            assert isinstance(task, SimpleNL2QTaskOutput)
+            assert (run_dir / "readable" / task.qid / "task_readable.md").is_file()
+            if fail_prediction and task.qid == "1":
+                assert task.pred_query is None
+                continue
+            assert task.pred_query is not None and task.pred_query.exec_result is not None
+            assert task.pred_query.exec_result.error is None
+            assert task.usage is not None and task.trajectory is not None
+            assert task.inference_metrics["latency_seconds"] >= 0
+
+        comparison = runpy.run_path(str(script.with_name("compare_research_agents.py")))
+        untracked = result.model_copy(update={"total_usage": None, "aggregated_inference_metrics": {}})
+        summary = comparison["summarize_runs"]([result, untracked])
+        assert summary["Accuracy"].tolist() == [expected_accuracy, expected_accuracy]
+        assert summary.loc[0, "Tokens"] > 0
+        assert pd.isna(summary.loc[1, "Tokens"])
+        assert pd.isna(summary.loc[1, "Cost (USD)"])
+        assert pd.isna(summary.loc[1, "Avg. latency (s)"])
     finally:
         if connector not in closed:
             await connector.close_async()

@@ -47,8 +47,7 @@ from tabulaflow.research.benchmarks import BirdSQLDatasetLoader
 loader = BirdSQLDatasetLoader()
 dataset = await loader.get_split_async(
     "dev",
-    databases=["california_schools"],
-    subsample_size=10,
+    qids=["3", "17", "42"],
 )
 ```
 
@@ -56,15 +55,8 @@ dataset = await loader.get_split_async(
 each selected database name to a live connector. See
 [resource cleanup](running-experiments.md#release-resources) for closing them.
 
-## Select tasks reproducibly
-
-Use QIDs to select an exact task set:
-
-```python
-dataset = await loader.get_split_async("dev", qids=["3", "17", "42"])
-```
-
-QID filtering precedes sampling, which uses a fixed seed. Unknown QIDs,
+Use `databases=["california_schools"]` to restrict databases or `subsample_size=10`
+for a deterministic sample. QID filtering precedes sampling. Unknown QIDs,
 unsupported splits, and oversized samples raise `ValueError`. Saved runs retain
 the selected QIDs.
 

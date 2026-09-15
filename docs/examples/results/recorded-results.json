@@ -1,0 +1,393 @@
+{
+  "source": "output/paper/gpt-4.1_structured/result.json",
+  "source_sha256": "46175d227e105995bf443371a42725e51c20ed7d8af2d29aa6c6a1c0633eb14b",
+  "start_time": "2025-11-21T09:05:33.129638",
+  "dataset": "arcs",
+  "split": "test",
+  "agent": "ambig_structured_sql_agent",
+  "agent_config": {
+    "llm": "openai-responses:gpt-4.1",
+    "schema_formatter": "sql_default",
+    "compress_schema": true,
+    "temperature": 0.0,
+    "max_steps": 10,
+    "openai_reasoning_effort": null,
+    "openai_reasoning_summary": null,
+    "query_for_intended_only": true,
+    "use_gold_phrases": false,
+    "use_gold_ambiguity_points": false
+  },
+  "selection": "ARCS QID 001-5, the first row of data/arcs/0.parquet; only the selected reference query is included.",
+  "tasks": [
+    {
+      "qid": "001-5",
+      "db": "retails",
+      "question": "Report the total revenue for each nation in 1995.",
+      "gold_ambiguity_points": [
+        {
+          "id": "A",
+          "phrase": "total revenue",
+          "type": "finite",
+          "ambiguity_type": "semantic_computation",
+          "interpretations": [
+            "before discount (Gross revenue)",
+            "after discount (Net revenue)"
+          ],
+          "intended_interpretation_idx": 1
+        },
+        {
+          "id": "B",
+          "phrase": "total revenue",
+          "type": "finite",
+          "ambiguity_type": "semantic_computation",
+          "interpretations": [
+            "include returned items",
+            "exclude returned items"
+          ],
+          "intended_interpretation_idx": 1
+        },
+        {
+          "id": "C",
+          "phrase": "for each nation",
+          "type": "finite",
+          "ambiguity_type": "semantic_table",
+          "interpretations": [
+            "for each customer nation",
+            "for each supplier nation"
+          ],
+          "intended_interpretation_idx": 0
+        },
+        {
+          "id": "D",
+          "phrase": "in 1995",
+          "type": "finite",
+          "ambiguity_type": "semantic_column",
+          "interpretations": [
+            "order date in 1995",
+            "commitment date in 1995",
+            "shipment date in 1995",
+            "receipt date in 1995"
+          ],
+          "intended_interpretation_idx": 3
+        }
+      ],
+      "pred_ambiguity_points": [
+        {
+          "id": "A",
+          "phrase": "total revenue",
+          "type": "finite",
+          "interpretations": [
+            "Sum of l_extendedprice for each nation in 1995",
+            "Sum of l_extendedprice * (1 - l_discount) for each nation in 1995"
+          ],
+          "intended_interpretation_idx": 1,
+          "rejected_by_user": false
+        },
+        {
+          "id": "B",
+          "phrase": "nation",
+          "type": "finite",
+          "interpretations": [
+            "Nation of the customer (customer.c_nationkey)",
+            "Nation of the supplier (supplier.s_nationkey)"
+          ],
+          "intended_interpretation_idx": 0,
+          "rejected_by_user": false
+        }
+      ],
+      "pred_queries": [
+        {
+          "id": "PQRY-A.1-B.0",
+          "query": "SELECT n.n_name AS nation, SUM(l.l_extendedprice * (1 - l.l_discount)) AS total_revenue\nFROM lineitem l\nJOIN orders o ON l.l_orderkey = o.o_orderkey\nJOIN customer c ON o.o_custkey = c.c_custkey\nJOIN nation n ON c.c_nationkey = n.n_nationkey\nWHERE strftime('%Y', o.o_orderdate) = '1995'\nGROUP BY n.n_name",
+          "parameter_names": [],
+          "parameter_values": {},
+          "exec_result": {
+            "df": {
+              "schema": {
+                "dtypes": {
+                  "nation": "object",
+                  "total_revenue": "float64"
+                }
+              },
+              "data": [
+                {
+                  "nation": "ALGERIA",
+                  "total_revenue": 1322656353.0067952
+                },
+                {
+                  "nation": "ARGENTINA",
+                  "total_revenue": 1380994011.0315094
+                },
+                {
+                  "nation": "BRAZIL",
+                  "total_revenue": 1312468151.6839097
+                },
+                {
+                  "nation": "CANADA",
+                  "total_revenue": 1399525843.1365032
+                },
+                {
+                  "nation": "CHINA",
+                  "total_revenue": 1384236693.6356993
+                },
+                {
+                  "nation": "EGYPT",
+                  "total_revenue": 1375548780.0620916
+                },
+                {
+                  "nation": "ETHIOPIA",
+                  "total_revenue": 1269372923.4705007
+                },
+                {
+                  "nation": "FRANCE",
+                  "total_revenue": 1321809212.4050982
+                },
+                {
+                  "nation": "GERMANY",
+                  "total_revenue": 1342095147.584508
+                },
+                {
+                  "nation": "INDIA",
+                  "total_revenue": 1273943764.3454964
+                },
+                {
+                  "nation": "INDONESIA",
+                  "total_revenue": 1294107289.9507985
+                },
+                {
+                  "nation": "IRAN",
+                  "total_revenue": 1398348311.2631083
+                },
+                {
+                  "nation": "IRAQ",
+                  "total_revenue": 1326825585.0414886
+                },
+                {
+                  "nation": "JAPAN",
+                  "total_revenue": 1314839708.8859868
+                },
+                {
+                  "nation": "JORDAN",
+                  "total_revenue": 1229023712.9821062
+                },
+                {
+                  "nation": "KENYA",
+                  "total_revenue": 1303171752.9450004
+                },
+                {
+                  "nation": "MOROCCO",
+                  "total_revenue": 1332033919.9779
+                },
+                {
+                  "nation": "MOZAMBIQUE",
+                  "total_revenue": 1300668889.596888
+                },
+                {
+                  "nation": "PERU",
+                  "total_revenue": 1305810388.8819041
+                },
+                {
+                  "nation": "ROMANIA",
+                  "total_revenue": 1328534609.7374053
+                },
+                {
+                  "nation": "RUSSIA",
+                  "total_revenue": 1343824898.9288018
+                },
+                {
+                  "nation": "SAUDI ARABIA",
+                  "total_revenue": 1260482641.5558865
+                },
+                {
+                  "nation": "UNITED KINGDOM",
+                  "total_revenue": 1293430443.9629042
+                },
+                {
+                  "nation": "UNITED STATES",
+                  "total_revenue": 1388315814.616901
+                },
+                {
+                  "nation": "VIETNAM",
+                  "total_revenue": 1303430948.9703212
+                }
+              ]
+            },
+            "df_is_truncated": false,
+            "error": null,
+            "latency_seconds": 41.318756341934204
+          }
+        }
+      ],
+      "pred_intended_query_id": "PQRY-A.1-B.0",
+      "gold_intended_query_id": "GQRY-A.1-B.1-C.0-D.3",
+      "gold_queries": [
+        {
+          "id": "GQRY-A.1-B.1-C.0-D.3",
+          "query": "WITH revenue AS (\nSELECT n.n_nationkey,\nn.n_name,\nCOALESCE(SUM(l.l_extendedprice * (1 - l.l_discount)), 0) AS total_revenue\nFROM lineitem l\nJOIN orders o ON o.o_orderkey = l.l_orderkey\nJOIN customer c ON o.o_custkey = c.c_custkey\nJOIN nation n ON c.c_nationkey = n.n_nationkey\nWHERE strftime('%Y', l.l_receiptdate) = '1995'\nAND l.l_returnflag <> 'R'\nGROUP BY n.n_nationkey, n.n_name\n)\nSELECT n.n_nationkey,\nn.n_name,\nCOALESCE(r.total_revenue, 0) AS total_revenue\nFROM nation n\nLEFT JOIN revenue r ON r.n_nationkey = n.n_nationkey;",
+          "parameter_names": [],
+          "parameter_values": {},
+          "exec_result": {
+            "df": {
+              "schema": {
+                "dtypes": {
+                  "n_nationkey": "int64",
+                  "n_name": "object",
+                  "total_revenue": "float64"
+                }
+              },
+              "data": [
+                {
+                  "n_nationkey": 0,
+                  "n_name": "ALGERIA",
+                  "total_revenue": 1008406234.3298981
+                },
+                {
+                  "n_nationkey": 1,
+                  "n_name": "ARGENTINA",
+                  "total_revenue": 1083245579.910994
+                },
+                {
+                  "n_nationkey": 2,
+                  "n_name": "BRAZIL",
+                  "total_revenue": 1023142254.8978047
+                },
+                {
+                  "n_nationkey": 3,
+                  "n_name": "CANADA",
+                  "total_revenue": 1079432591.6533968
+                },
+                {
+                  "n_nationkey": 4,
+                  "n_name": "EGYPT",
+                  "total_revenue": 1046766701.0627038
+                },
+                {
+                  "n_nationkey": 5,
+                  "n_name": "ETHIOPIA",
+                  "total_revenue": 983814044.2978987
+                },
+                {
+                  "n_nationkey": 6,
+                  "n_name": "FRANCE",
+                  "total_revenue": 1015139785.7468029
+                },
+                {
+                  "n_nationkey": 7,
+                  "n_name": "GERMANY",
+                  "total_revenue": 1029344115.6720037
+                },
+                {
+                  "n_nationkey": 8,
+                  "n_name": "INDIA",
+                  "total_revenue": 982329346.9204023
+                },
+                {
+                  "n_nationkey": 9,
+                  "n_name": "INDONESIA",
+                  "total_revenue": 1001572805.4428058
+                },
+                {
+                  "n_nationkey": 10,
+                  "n_name": "IRAN",
+                  "total_revenue": 1065086114.9080982
+                },
+                {
+                  "n_nationkey": 11,
+                  "n_name": "IRAQ",
+                  "total_revenue": 1020025758.8086008
+                },
+                {
+                  "n_nationkey": 12,
+                  "n_name": "JAPAN",
+                  "total_revenue": 1015338991.2334981
+                },
+                {
+                  "n_nationkey": 13,
+                  "n_name": "JORDAN",
+                  "total_revenue": 945771391.3869022
+                },
+                {
+                  "n_nationkey": 14,
+                  "n_name": "KENYA",
+                  "total_revenue": 1013233463.5135058
+                },
+                {
+                  "n_nationkey": 15,
+                  "n_name": "MOROCCO",
+                  "total_revenue": 1023278967.2553971
+                },
+                {
+                  "n_nationkey": 16,
+                  "n_name": "MOZAMBIQUE",
+                  "total_revenue": 1001313532.2816943
+                },
+                {
+                  "n_nationkey": 17,
+                  "n_name": "PERU",
+                  "total_revenue": 1003364016.9296988
+                },
+                {
+                  "n_nationkey": 18,
+                  "n_name": "CHINA",
+                  "total_revenue": 1076966634.4921043
+                },
+                {
+                  "n_nationkey": 19,
+                  "n_name": "ROMANIA",
+                  "total_revenue": 1020990926.226409
+                },
+                {
+                  "n_nationkey": 20,
+                  "n_name": "SAUDI ARABIA",
+                  "total_revenue": 986002725.0940971
+                },
+                {
+                  "n_nationkey": 21,
+                  "n_name": "VIETNAM",
+                  "total_revenue": 1015163016.6264105
+                },
+                {
+                  "n_nationkey": 22,
+                  "n_name": "RUSSIA",
+                  "total_revenue": 1047659846.2737013
+                },
+                {
+                  "n_nationkey": 23,
+                  "n_name": "UNITED KINGDOM",
+                  "total_revenue": 1004585933.9541959
+                },
+                {
+                  "n_nationkey": 24,
+                  "n_name": "UNITED STATES",
+                  "total_revenue": 1065501779.8184085
+                }
+              ]
+            },
+            "df_is_truncated": false,
+            "error": null,
+            "latency_seconds": 4.101034164428711
+          },
+          "other_exec_results": [],
+          "required_columns": [
+            1,
+            2
+          ],
+          "required_sorted": false,
+          "extra_info": {
+            "ambiguity_resolution": {
+              "[A] in 1995": "receipt date in 1995",
+              "[B] for each nation": "for each customer nation",
+              "[C] total revenue": "after discount (Net revenue)",
+              "[D] total revenue": "exclude returned items"
+            }
+          }
+        }
+      ],
+      "eval_metrics": {
+        "simple_ex": 0.0,
+        "executable": 1.0,
+        "found_one": 1.0
+      }
+    }
+  ]
+}

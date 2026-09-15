@@ -7,27 +7,37 @@
 | `evaluate_async(...)` | Replaces task evaluation metrics and run-level aggregates in place |
 | `result.to_directory(...)` | Writes the current run and its reports |
 
-For a loaded BIRD-SQL `dataset`, run these stages inside an async function:
-
-```python
-from tabulaflow.research.agents import BasicAgentConfig, FullSchemaAgent
-from tabulaflow.research.metrics import BirdSQLEx, Executable
-from tabulaflow.research.pipelines import evaluate_async, execute_async, predict_async
-
-result = await predict_async(
-    FullSchemaAgent,
-    BasicAgentConfig(llm="openai-responses:gpt-5-mini"),
-    dataset,
-    batch_size=8,
-)
-await execute_async(result, dataset, batch_size=8, timeout=60)
-await evaluate_async(result, dataset, metrics=[BirdSQLEx(), Executable()], batch_size=8)
-```
+The [quick start](quick-start.md#example-evaluate-a-full-schema-agent) covers
+prediction, execution, and evaluation.
 
 Prediction exceptions are logged and recorded as empty outputs. Construction,
 task-contract, and evaluation errors propagate. Query errors appear in
 `ExecResult.error`; see [failure analysis](evaluation.md#inspect-failures).
 For project-based tasks, see [dbt transformations](agents.md#dbt-transformations).
+
+## Compare strategies
+
+Compare direct prompting and schema linking on the same tasks and model:
+
+```python
+--8<-- "examples/compare_research_agents.py:strategies"
+
+--8<-- "examples/compare_research_agents.py:comparison"
+```
+
+[Download the full script](../examples/compare_research_agents.py){download},
+which loads five BIRD-SQL tasks and prints a comparison table with accuracy,
+executability, token usage, estimated cost, and average task latency. Scores are
+fractions from 0 to 1; usage reflects the work performed in that run, including
+any preprocessing cache misses.
+
+After [installing BIRD-SQL](benchmarks.md#install-benchmark-data) and setting
+`OPENAI_API_KEY`, run `uv run compare_research_agents.py`, or
+`uv run docs/examples/compare_research_agents.py` from a checkout. Each method's
+predictions and reports are saved under `runs/<agent>/`.
+
+See [paired analysis](evaluation.md#inspect-failures) and
+[adding your own strategy](extending.md#implement-an-agent).
 
 ## Configure concurrency and caching
 
@@ -94,15 +104,18 @@ from inference.
 See [Preprocessing](api/preprocessing.md) for schema enrichment, question
 embeddings, summaries, and their returned values.
 
-## Save a run
+## Save and restore a run
 
-Save after prediction to preserve completed model work, then save again after
-execution and evaluation:
+Save after prediction to preserve model work, then update the reports after
+execution and evaluation. Restore the typed result from the same directory:
 
 ```python
-result.to_directory(
-    "runs/full-schema",
-    eval_metrics_in_summary=["bird_sql_ex", "executable"],
+from pathlib import Path
+from tabulaflow.research.types import NL2QRunResult
+
+result.to_directory("runs/full-schema", eval_metrics_in_summary=["bird_sql_ex", "executable"])
+result = NL2QRunResult.model_validate_json(
+    Path("runs/full-schema/result.json").read_text()
 )
 ```
 
@@ -113,65 +126,17 @@ runs/full-schema/
 └── readable/
     └── <qid>/
         ├── task_readable.md
-        └── trajectory/        # when the agent recorded a trajectory
+        └── trajectory/        # when recorded by the agent
 ```
 
 Tabular query results are also exported as CSVs. Reusing a directory updates its
 reports. Prediction returns after all batches; it does not checkpoint each batch.
 
-## Continue from a saved run
-
-Restore the typed result from JSON:
-
-```python
-from pathlib import Path
-from tabulaflow.research.types import NL2QRunResult
-
-result = NL2QRunResult.model_validate_json(
-    Path("runs/full-schema/result.json").read_text()
-)
-```
-
-To execute or evaluate it, reload the saved QIDs using the original data paths
-and credentials. For BIRD-SQL:
-
-```python
-import asyncio
-
-loader = BirdSQLDatasetLoader()
-dataset = await loader.get_split_async(
-    result.split,
-    databases=result.databases,
-    qids=[task.qid for task in result.tasks],
-)
-try:
-    await execute_async(result, dataset, batch_size=8)
-    await evaluate_async(result, dataset, metrics=[BirdSQLEx(), Executable()], batch_size=8)
-    result.to_directory("runs/full-schema", eval_metrics_in_summary=["bird_sql_ex", "executable"])
-finally:
-    await asyncio.gather(*(connector.close_async() for connector in dataset.db_connectors.values()))
-```
-
-Execution fills missing results; `force=True` reruns queries, including failures.
-Evaluation replaces scores, so pass the complete metric list. Calling
-`predict_async(...)` starts fresh inference.
-
-## Compare strategies
-
-Hold the benchmark, split, QIDs, model, and evaluation policy fixed while changing
-the method. This example compares direct prompting with schema linking:
-
-```python title="compare_research_agents.py"
---8<-- "examples/compare_research_agents.py"
-```
-
-After [installing BIRD-SQL](benchmarks.md#install-benchmark-data) and setting
-`OPENAI_API_KEY`, save the example and run `uv run compare_research_agents.py`, or
-run `uv run docs/examples/compare_research_agents.py` from a source checkout.
-Results are saved under `runs/direct_prompting/` and `runs/schema_linking/`.
-
-See [paired analysis](evaluation.md#inspect-failures) and
-[adding your own strategy](extending.md#implement-an-agent).
+To continue execution or evaluation, reload `result.split` with the original
+loader and `qids=[task.qid for task in result.tasks]`. Use the same database
+snapshot, paths, and credentials. Execution fills missing results; `force=True`
+reruns queries. Evaluation replaces scores, so pass the complete metric list.
+Calling `predict_async(...)` starts fresh inference.
 
 ## Ensemble predictions
 
@@ -204,5 +169,4 @@ a tracing service.
 ## Release resources
 
 Close every connector in `dataset.db_connectors` in a `finally` block, as in
-the [quick start](quick-start.md#example-evaluate-a-full-schema-agent) and the
-restored-run example above.
+the [quick start](quick-start.md#example-evaluate-a-full-schema-agent).

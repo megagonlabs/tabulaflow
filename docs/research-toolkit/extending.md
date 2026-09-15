@@ -2,8 +2,8 @@
 
 ## Implement an agent
 
-`StructuredQueryAgent` generates a typed SQL response. This example compares it
-with `DirectPromptAgent` on the same three BIRD-SQL tasks, model, and metrics.
+Bring your prediction method and reuse the benchmark loaders, execution,
+metrics, and reports. This agent generates a typed SQL response:
 
 | Member | Purpose |
 | --- | --- |
@@ -19,9 +19,17 @@ instructions, document, and schema; reference queries remain in the output for
 evaluation.
 
 ```python title="custom_research_agent.py"
---8<-- "examples/custom_research_agent.py"
+--8<-- "examples/custom_research_agent.py:agent"
 ```
 
+The same pipeline accepts your agent class directly:
+
+```python
+--8<-- "examples/custom_research_agent.py:integration"
+```
+
+[Download the full script](../examples/custom_research_agent.py){download}
+for imports, dataset loading, and cleanup.
 After [installing TabulaFlow and BIRD-SQL](quick-start.md#try-it-yourself) and
 setting `OPENAI_API_KEY`, save the example and run:
 
@@ -30,8 +38,7 @@ uv run custom_research_agent.py
 ```
 
 From a source checkout, run `uv run docs/examples/custom_research_agent.py`.
-The script prints accuracy and executability and saves results under
-`runs/direct_prompting/` and `runs/structured_query/`.
+The script runs three BIRD-SQL tasks and saves results under `runs/structured_query/`.
 
 Return `pred_query=None` for an intentional abstention. Let unexpected exceptions
 propagate so the pipeline logs them and records empty outputs. Use
@@ -44,36 +51,27 @@ prediction signatures.
 
 ## Add a benchmark
 
-Construct an `NL2QDataset` with unique QIDs and database names matching
-`db_connectors`. Run this inside an async function with an existing SQLite file
-containing an `orders` table:
+For an existing `connector` to a database containing an `orders` table, create
+an `NL2QDataset` and pass it to the same pipeline:
 
 ```python
-from tabulaflow.data import SQLConnector
-from tabulaflow.research.agents import BasicAgentConfig, DirectPromptAgent
-from tabulaflow.research.metrics import SimpleEx
-from tabulaflow.research.pipelines import evaluate_async, execute_async, predict_async
 from tabulaflow.research.types import GoldQuery, NL2QDataset, SimpleNL2QTask
 
-connector = await SQLConnector.from_url_async("sqlite+aiosqlite:///orders.sqlite")
-try:
-    dataset = NL2QDataset(
-        name="orders",
-        split="test",
-        tasks=[SimpleNL2QTask(
-            qid="order-count",
-            db="orders",
-            question="How many orders are there?",
-            gold_query=GoldQuery(query="SELECT COUNT(*) FROM orders"),
-        )],
-        db_connectors={"orders": connector},
-    )
-    result = await predict_async(DirectPromptAgent, BasicAgentConfig(), dataset, batch_size=1)
-    await execute_async(result, dataset, batch_size=1)
-    await evaluate_async(result, dataset, metrics=[SimpleEx()], batch_size=1)
-finally:
-    await connector.close_async()
+dataset = NL2QDataset(
+    name="orders",
+    split="test",
+    tasks=[SimpleNL2QTask(
+        qid="order-count",
+        db="orders",
+        question="How many orders are there?",
+        gold_query=GoldQuery(query="SELECT COUNT(*) FROM orders"),
+    )],
+    db_connectors={"orders": connector},
+)
 ```
+
+Task QIDs must be unique and each task's `db` must match a connector key.
+See [Data connectors](../python-library/data-connectors.md) for connection setup.
 
 For reusable splits, implement `DatasetLoaderProtocol`:
 
@@ -91,46 +89,7 @@ to the current Python process.
 
 ## Add a metric
 
-A metric declares `name` and `compatible_output_types`, and implements
-`compute_async(task, db_connector)`. This diagnostic counts returned rows:
-
-```python
-from typing import ClassVar
-
-from tabulaflow.data import DataConnector
-from tabulaflow.research.types import NL2QTaskOutput, SimpleNL2QTaskOutput
-
-
-class ReturnedRows:
-    name: ClassVar[str] = "returned_rows"
-    compatible_output_types: ClassVar[list[str]] = ["simple"]
-
-    async def compute_async(
-        self, task: NL2QTaskOutput, db_connector: DataConnector | None = None
-    ) -> int | None:
-        if not isinstance(task, SimpleNL2QTaskOutput):
-            raise TypeError("ReturnedRows requires a single-query output.")
-        query = task.pred_query
-        if query is None or query.exec_result is None:
-            return None
-        result = query.exec_result
-        if result.error is not None or result.df is None:
-            return None
-        return len(result.df)
-```
-
-Pass an instance alongside the accuracy metric:
-
-```python
-await evaluate_async(result, dataset, metrics=[SimpleEx(), ReturnedRows()], batch_size=8)
-```
-
-Zero means an empty result; `None` is excluded from the average. Metrics can also
-return a dictionary whose keys become task metric names. Register with
-`metric_registry.register(ReturnedRows)` for name-based lookup.
-
-A custom aggregator implements `aggregate(result: NL2QRunResult)` and returns
-named run-level values. Pass it in `metric_aggregators`, including
-`SimpleAverageAggregator()` if you also want averages. See
-[aggregation](evaluation.md#aggregate-scores) and the
-[metric contracts](api/metrics.md#registry-and-contracts).
+Implement `compute_async(task, db_connector)` and declare the metric's `name`
+and `compatible_output_types`. Pass an instance to `evaluate_async(...)`.
+See the [custom metric example](api/metrics.md#example-add-a-metric) for a
+complete implementation and aggregation options.

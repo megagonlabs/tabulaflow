@@ -34,8 +34,10 @@ queries, and measure execution accuracy:
 --8<-- "examples/research_quick_start.py"
 ```
 
+[Download the script](../examples/research_quick_start.py){download}
+
 The script prints a question, predicted SQL, its DataFrame result, and aggregate
-accuracy. See [saving a run](running-experiments.md#save-a-run) to export the result.
+accuracy. See [saving a run](running-experiments.md#save-and-restore-a-run) to export the result.
 
 ## Try it yourself
 

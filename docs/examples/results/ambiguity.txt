@@ -1,0 +1,56 @@
+**Recorded run:** ARCS test, QID `001-5`, `gpt-4.1`, 2025-11-21.
+The agent generated the clarified interpretation only.
+
+**Detected interpretations**
+
+| Phrase | Model interpretations | Selected |
+| --- | --- | --- |
+| total revenue | A.0: Sum of l_extendedprice for each nation in 1995<br>A.1: Sum of l_extendedprice * (1 - l_discount) for each nation in 1995 | A.1 |
+| nation | B.0: Nation of the customer (customer.c_nationkey)<br>B.1: Nation of the supplier (supplier.s_nationkey) | B.0 |
+
+**Predicted query**
+
+```sql
+SELECT n.n_name AS nation, SUM(l.l_extendedprice * (1 - l.l_discount)) AS total_revenue
+FROM lineitem l
+JOIN orders o ON l.l_orderkey = o.o_orderkey
+JOIN customer c ON o.o_custkey = c.c_custkey
+JOIN nation n ON c.c_nationkey = n.n_nationkey
+WHERE strftime('%Y', o.o_orderdate) = '1995'
+GROUP BY n.n_name
+```
+
+**Query result** — all 25 rows, rounded to two decimal places.
+
+| nation         |   total_revenue |
+|:---------------|----------------:|
+| ALGERIA        |   1322656353.01 |
+| ARGENTINA      |   1380994011.03 |
+| BRAZIL         |   1312468151.68 |
+| CANADA         |   1399525843.14 |
+| CHINA          |   1384236693.64 |
+| EGYPT          |   1375548780.06 |
+| ETHIOPIA       |   1269372923.47 |
+| FRANCE         |   1321809212.41 |
+| GERMANY        |   1342095147.58 |
+| INDIA          |   1273943764.35 |
+| INDONESIA      |   1294107289.95 |
+| IRAN           |   1398348311.26 |
+| IRAQ           |   1326825585.04 |
+| JAPAN          |   1314839708.89 |
+| JORDAN         |   1229023712.98 |
+| KENYA          |   1303171752.95 |
+| MOROCCO        |   1332033919.98 |
+| MOZAMBIQUE     |   1300668889.60 |
+| PERU           |   1305810388.88 |
+| ROMANIA        |   1328534609.74 |
+| RUSSIA         |   1343824898.93 |
+| SAUDI ARABIA   |   1260482641.56 |
+| UNITED KINGDOM |   1293430443.96 |
+| UNITED STATES  |   1388315814.62 |
+| VIETNAM        |   1303430948.97 |
+
+The query executed successfully, but missed the intended return-status and
+date conditions. See [failure analysis](evaluation.md#inspect-failures).
+
+[Recorded queries, results, and run configuration](../examples/results/recorded-results.json)

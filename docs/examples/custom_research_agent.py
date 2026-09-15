@@ -9,7 +9,6 @@ from tabulaflow.agents.trace import Trajectory, Usage
 from tabulaflow.core import SQLSchema
 from tabulaflow.data import DataConnector
 from tabulaflow.output.formatting import SQLDDLSchemaFormatter
-from tabulaflow.research.agents import BasicAgentConfig, DirectPromptAgent
 from tabulaflow.research.benchmarks import BirdSQLDatasetLoader
 from tabulaflow.research.metrics import BirdSQLEx, Executable
 from tabulaflow.research.observability import trace_prediction
@@ -17,6 +16,7 @@ from tabulaflow.research.pipelines import evaluate_async, execute_async, predict
 from tabulaflow.research.types import PredQuery, SimpleNL2QTask, SimpleNL2QTaskOutput
 
 
+# --8<-- [start:agent]
 class StructuredQueryConfig(BaseModel):
     llm: str = "openai-responses:gpt-5-mini"
 
@@ -65,20 +65,19 @@ class StructuredQueryAgent:
         )
 
 
+# --8<-- [end:agent]
+
+
 async def main() -> None:
     dataset = await BirdSQLDatasetLoader().get_split_async("dev", databases=["california_schools"], subsample_size=3)
-    llm = "openai-responses:gpt-5-mini"
-    strategies = [
-        (DirectPromptAgent, BasicAgentConfig(llm=llm)),
-        (StructuredQueryAgent, StructuredQueryConfig(llm=llm)),
-    ]
     try:
-        for agent_cls, config in strategies:
-            result = await predict_async(agent_cls, config, dataset, batch_size=3)
-            await execute_async(result, dataset, batch_size=3)
-            await evaluate_async(result, dataset, metrics=[BirdSQLEx(), Executable()], batch_size=3)
-            result.to_directory(f"runs/{agent_cls.name}", eval_metrics_in_summary=["bird_sql_ex", "executable"])
-            print(agent_cls.name, result.aggregated_eval_metrics)
+        # --8<-- [start:integration]
+        result = await predict_async(StructuredQueryAgent, StructuredQueryConfig(), dataset, batch_size=3)
+        await execute_async(result, dataset, batch_size=3)
+        await evaluate_async(result, dataset, metrics=[BirdSQLEx(), Executable()], batch_size=3)
+        # --8<-- [end:integration]
+        result.to_directory("runs/structured_query", eval_metrics_in_summary=["bird_sql_ex", "executable"])
+        print(result.aggregated_eval_metrics)
     finally:
         await asyncio.gather(*(connector.close_async() for connector in dataset.db_connectors.values()))
 

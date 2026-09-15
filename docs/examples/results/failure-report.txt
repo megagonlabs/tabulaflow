@@ -1,0 +1,103 @@
+# Task: 001-5
+
+**Database:** retails  
+
+## Question
+Report the total revenue for each nation in 1995.
+
+
+## Pred Query
+
+```sql
+SELECT n.n_name AS nation, SUM(l.l_extendedprice * (1 - l.l_discount)) AS total_revenue
+FROM lineitem l
+JOIN orders o ON l.l_orderkey = o.o_orderkey
+JOIN customer c ON o.o_custkey = c.c_custkey
+JOIN nation n ON c.c_nationkey = n.n_nationkey
+WHERE strftime('%Y', o.o_orderdate) = '1995'
+GROUP BY n.n_name
+```
+
+**Execution Result:**
+
+| nation         | total_revenue      |
+|----------------|--------------------|
+| ALGERIA        | 1322656353.0067952 |
+| ARGENTINA      | 1380994011.0315094 |
+| BRAZIL         | 1312468151.6839097 |
+| CANADA         | 1399525843.1365032 |
+| CHINA          | 1384236693.6356993 |
+| EGYPT          | 1375548780.0620916 |
+| ETHIOPIA       | 1269372923.4705007 |
+| FRANCE         | 1321809212.4050982 |
+| GERMANY        | 1342095147.584508  |
+| INDIA          | 1273943764.3454964 |
+| ...            | ...                |
+| KENYA          | 1303171752.9450004 |
+| MOROCCO        | 1332033919.9779    |
+| MOZAMBIQUE     | 1300668889.596888  |
+| PERU           | 1305810388.8819041 |
+| ROMANIA        | 1328534609.7374053 |
+| RUSSIA         | 1343824898.9288018 |
+| SAUDI ARABIA   | 1260482641.5558865 |
+| UNITED KINGDOM | 1293430443.9629042 |
+| UNITED STATES  | 1388315814.616901  |
+| VIETNAM        | 1303430948.9703212 |
+
+*... truncated (25 rows total)*
+
+
+## Gold Query
+
+```sql
+WITH revenue AS (
+SELECT n.n_nationkey,
+n.n_name,
+COALESCE(SUM(l.l_extendedprice * (1 - l.l_discount)), 0) AS total_revenue
+FROM lineitem l
+JOIN orders o ON o.o_orderkey = l.l_orderkey
+JOIN customer c ON o.o_custkey = c.c_custkey
+JOIN nation n ON c.c_nationkey = n.n_nationkey
+WHERE strftime('%Y', l.l_receiptdate) = '1995'
+AND l.l_returnflag <> 'R'
+GROUP BY n.n_nationkey, n.n_name
+)
+SELECT n.n_nationkey,
+n.n_name,
+COALESCE(r.total_revenue, 0) AS total_revenue
+FROM nation n
+LEFT JOIN revenue r ON r.n_nationkey = n.n_nationkey;
+```
+
+**Execution Result:**
+
+| n_nationkey   | n_name         | total_revenue      |
+|---------------|----------------|--------------------|
+| 0             | ALGERIA        | 1008406234.3298981 |
+| 1             | ARGENTINA      | 1083245579.910994  |
+| 2             | BRAZIL         | 1023142254.8978047 |
+| 3             | CANADA         | 1079432591.6533968 |
+| 4             | EGYPT          | 1046766701.0627038 |
+| 5             | ETHIOPIA       | 983814044.2978987  |
+| 6             | FRANCE         | 1015139785.7468029 |
+| 7             | GERMANY        | 1029344115.6720037 |
+| 8             | INDIA          | 982329346.9204023  |
+| 9             | INDONESIA      | 1001572805.4428058 |
+| ...           | ...            | ...                |
+| 15            | MOROCCO        | 1023278967.2553971 |
+| 16            | MOZAMBIQUE     | 1001313532.2816943 |
+| 17            | PERU           | 1003364016.9296988 |
+| 18            | CHINA          | 1076966634.4921043 |
+| 19            | ROMANIA        | 1020990926.226409  |
+| 20            | SAUDI ARABIA   | 986002725.0940971  |
+| 21            | VIETNAM        | 1015163016.6264105 |
+| 22            | RUSSIA         | 1047659846.2737013 |
+| 23            | UNITED KINGDOM | 1004585933.9541959 |
+| 24            | UNITED STATES  | 1065501779.8184085 |
+
+*... truncated (25 rows total)*
+
+## Evaluation Metrics
+- **simple_ex:** 0.0
+- **executable:** 1.0
+- **found_one:** 1.0
