@@ -18,97 +18,17 @@ from rich.text import Text
 from textual import events
 from textual.binding import Binding
 from textual.message import Message
-from textual.suggester import Suggester
+from textual.css.query import NoMatches
 from textual.widgets import TextArea
 from textual.widgets.text_area import Selection
 
 from tabulaflow.app.theme import CODE_FUNCTION
-from tabulaflow.app.tui.commands import SLASH_COMMANDS
 from tabulaflow.app.tui.clipboard import read_clipboard_image
+from tabulaflow.app.tui.widgets.suggestions import InputSuggester, InputSuggestionMenu
 
 if TYPE_CHECKING:
     from tabulaflow.agents.chat import ChatInput
     from tabulaflow.app.tui.app import TabulaflowApp
-
-_CONNECTABLE_EXTENSIONS = frozenset(
-    {".csv", ".tsv", ".xlsx", ".xls", ".parquet", ".json", ".jsonl", ".ndjson", ".sqlite", ".sqlite3", ".db", ".duckdb"}
-)
-
-
-class TabulaflowSuggester(Suggester):
-    """Autocomplete for slash commands and file paths after /connect."""
-
-    def __init__(self) -> None:
-        super().__init__(use_cache=False, case_sensitive=True)
-
-    async def get_suggestion(self, value: str) -> str | None:
-        if not value:
-            return None
-
-        # File path completion after "/connect "
-        if value.startswith("/connect "):
-            return self._suggest_connect_path(value)
-
-        # Slash command completion
-        if value.startswith("/"):
-            return self._suggest_slash_command(value)
-
-        return None
-
-    def _suggest_slash_command(self, value: str) -> str | None:
-        # Only complete the command portion (first word)
-        parts = value.split(" ", 1)
-        prefix = parts[0]
-        for cmd in SLASH_COMMANDS:
-            if cmd.startswith(prefix) and cmd != prefix:
-                # Return just the command if user hasn't typed args yet
-                if len(parts) == 1:
-                    return cmd
-                return None
-        return None
-
-    def _suggest_connect_path(self, value: str) -> str | None:
-        raw = value[len("/connect ") :]
-        if not raw:
-            return None
-
-        # Split to find the last token (supports multiple file args)
-        tokens = raw.split()
-        partial = tokens[-1] if tokens else raw
-        prefix_part = value[: len(value) - len(partial)]
-
-        p = Path(partial)
-        if partial.endswith("/"):
-            parent = p
-            name_prefix = ""
-        else:
-            parent = p.parent
-            name_prefix = p.name
-
-        try:
-            candidates = sorted(parent.iterdir())
-        except (OSError, PermissionError):
-            return None
-
-        files: list[Path] = []
-        dirs: list[Path] = []
-        for entry in candidates:
-            if not entry.name.startswith(name_prefix) or entry.name.startswith("."):
-                continue
-            if entry.name == name_prefix:
-                continue
-            if entry.is_dir():
-                dirs.append(entry)
-            elif entry.suffix.lower() in _CONNECTABLE_EXTENSIONS:
-                files.append(entry)
-
-        # Prioritize files over directories
-        for entry in files:
-            return f"{prefix_part}{entry}"
-        for entry in dirs:
-            return f"{prefix_part}{entry}/"
-        return None
-
 
 _MAX_HISTORY_BYTES = 10 * 1024 * 1024
 _HISTORY_COMPACTION_RATIO = 0.8
@@ -196,6 +116,7 @@ class HistoryInput(TextArea):
         Binding("down", "cursor_down_or_history_next", "Cursor down / next command", show=False),
         Binding("ctrl+d", "confirm_quit", "Quit", show=False, priority=True),
         Binding("tab", "accept_suggestion", "Accept suggestion", show=False),
+        Binding("escape", "dismiss_suggestions", "Dismiss suggestions", show=False),
         Binding("ctrl+o", "open_data_explorer", "Open data explorer"),
         # Option/Alt+Arrow word movement. Textual already binds these
         # actions to ``ctrl+left``/``ctrl+right`` (which is what iTerm2 and
@@ -218,7 +139,8 @@ class HistoryInput(TextArea):
         self._active_images: dict[int, BinaryContent] = {}
         self._image_counter = 0
         self.highlighter = _ReferenceHighlighter(self._pasted_contents, self._active_images)
-        self._suggester = TabulaflowSuggester()
+        self._suggester = InputSuggester()
+        self._dismissed_suggestion_value: str | None = None
         super().__init__(
             placeholder=placeholder,
             id=id,
@@ -258,16 +180,26 @@ class HistoryInput(TextArea):
         if hasattr(self, "wrapped_document"):
             self._sync_height()
         value = self.text
-        if not value or not self.selection.is_empty or self.cursor_location != self.document.end:
-            self.suggestion = ""
+        self.suggestion = ""
+        menu = self._suggestion_menu()
+        if menu is None:
             return
-        if value.startswith("/connect "):
-            completion = self._suggester._suggest_connect_path(value)
-        elif value.startswith("/"):
-            completion = self._suggester._suggest_slash_command(value)
-        else:
-            completion = None
-        self.suggestion = completion[len(value) :] if completion and completion.startswith(value) else ""
+        if not value or not self.selection.is_empty or self.cursor_location != self.document.end:
+            menu.dismiss()
+            return
+        if value == self._dismissed_suggestion_value:
+            menu.dismiss()
+            return
+        self._dismissed_suggestion_value = None
+        menu.set_suggestions(self._suggester.get_suggestions(value))
+
+    def _suggestion_menu(self) -> InputSuggestionMenu | None:
+        if not self.is_attached:
+            return None
+        try:
+            return self.screen.query_one("#input-suggestions", InputSuggestionMenu)
+        except NoMatches:
+            return None
 
     def _on_resize(self) -> None:
         super()._on_resize()
@@ -301,11 +233,19 @@ class HistoryInput(TextArea):
         if event.key == "enter":
             event.stop()
             event.prevent_default()
-            self.action_submit()
+            menu = self._suggestion_menu()
+            if menu is not None and menu.selected is not None:
+                self.action_accept_suggestion()
+            else:
+                self.action_submit()
             return
         await super()._on_key(event)
 
     def action_cursor_up_or_history_prev(self) -> None:
+        menu = self._suggestion_menu()
+        if menu is not None and menu.selected is not None:
+            menu.move_selection(-1)
+            return
         location = self.get_cursor_up_location()
         if location != self.cursor_location:
             self.move_cursor(location)
@@ -313,6 +253,10 @@ class HistoryInput(TextArea):
             self.action_history_prev()
 
     def action_cursor_down_or_history_next(self) -> None:
+        menu = self._suggestion_menu()
+        if menu is not None and menu.selected is not None:
+            menu.move_selection(1)
+            return
         location = self.get_cursor_down_location()
         if location != self.cursor_location:
             self.move_cursor(location)
@@ -451,8 +395,20 @@ class HistoryInput(TextArea):
 
     def action_accept_suggestion(self) -> None:
         """Accept the current autocomplete suggestion, if any."""
-        if self.suggestion:
-            self.insert(self.suggestion)
+        menu = self._suggestion_menu()
+        if menu is None or menu.selected is None:
+            return
+        suggestion = menu.selected
+        self.value = suggestion.value
+        self.cursor_position = len(self.value)
+        menu.dismiss()
+
+    def action_dismiss_suggestions(self) -> None:
+        menu = self._suggestion_menu()
+        if menu is None or menu.selected is None:
+            return
+        self._dismissed_suggestion_value = self.value
+        menu.dismiss()
 
     def action_confirm_quit(self) -> None:
         """Forward Ctrl+D to the app-level quit confirmation when focused."""

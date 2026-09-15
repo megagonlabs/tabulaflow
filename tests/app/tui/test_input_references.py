@@ -7,6 +7,7 @@ from textual.app import App, ComposeResult
 
 from tabulaflow.app.tui.widgets import input as input_module
 from tabulaflow.app.tui.widgets.input import HistoryInput
+from tabulaflow.app.tui.widgets.suggestions import InputSuggester, InputSuggestionMenu
 
 
 class _InputApp(App[None]):
@@ -15,6 +16,7 @@ class _InputApp(App[None]):
         self._history_path = history_path
 
     def compose(self) -> ComposeResult:
+        yield InputSuggestionMenu(id="input-suggestions")
         yield HistoryInput(self._history_path, id="input")
 
 
@@ -128,6 +130,41 @@ async def test_input_soft_wraps_and_grows_to_five_rows(tmp_path: Path) -> None:
 
         assert input_bar.size.height == 5
         assert input_bar.wrapped_document.height > input_bar.size.height
+
+
+async def test_slash_suggestions_can_be_navigated_and_accepted(tmp_path: Path) -> None:
+    app = _InputApp(tmp_path / "history.jsonl")
+
+    async with app.run_test() as pilot:
+        input_bar = app.query_one(HistoryInput)
+        menu = app.query_one(InputSuggestionMenu)
+        input_bar.focus()
+        await pilot.press("/")
+        await pilot.pause()
+
+        assert [item.value for item in menu.suggestions] == [
+            "/help",
+            "/exit",
+            "/clear",
+            "/config",
+            "/connect",
+            "/disconnect",
+        ]
+
+        await pilot.press("down", "enter")
+
+        assert input_bar.value == "/exit"
+        assert not menu.suggestions
+
+
+def test_connect_path_suggestions_include_supported_files_and_directories(tmp_path: Path) -> None:
+    (tmp_path / "data.csv").touch()
+    (tmp_path / "notes.txt").touch()
+    (tmp_path / "nested").mkdir()
+
+    suggestions = InputSuggester().get_suggestions(f"/connect {tmp_path}/")
+
+    assert [item.label for item in suggestions] == [str(tmp_path / "data.csv"), f"{tmp_path / 'nested'}/"]
 
 
 async def test_active_references_are_highlighted_and_deleted_atomically(

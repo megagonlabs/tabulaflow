@@ -40,6 +40,16 @@ TabulaflowApp {
     border-left: heavy #3EB489;
 }
 
+#input-suggestions {
+    display: none;
+    height: auto;
+    max-height: 8;
+    padding: 0 3;
+    background: $surface;
+    text-wrap: nowrap;
+    text-overflow: ellipsis;
+}
+
 #input-bar {
     width: 1fr;
     height: 1;

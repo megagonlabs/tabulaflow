@@ -50,6 +50,7 @@ from tabulaflow.app.tui.widgets.choice import InlineChoiceSelector
 from tabulaflow.app.tui.widgets.input import HistoryInput
 from tabulaflow.app.tui.widgets.progress import AgentProgressWidget
 from tabulaflow.app.tui.widgets.result import AgentResultWidget
+from tabulaflow.app.tui.widgets.suggestions import InputSuggestionMenu
 
 if TYPE_CHECKING:
     import pandas as pd
@@ -293,6 +294,7 @@ class TabulaflowApp(App[None]):
             yield self._banner()
             yield initialization_spinner
         with Vertical(id="bottom-bar"):
+            yield InputSuggestionMenu(id="input-suggestions")
             yield BottomSeparator(classes="bottom-sep")
             with Horizontal(id="input-row"):
                 yield HistoryInput(

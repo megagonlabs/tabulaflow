@@ -358,3 +358,4 @@ _COMMANDS: dict[str, tuple[CommandHandler, str]] = {
 }
 
 SLASH_COMMANDS = tuple(_COMMANDS)
+SLASH_COMMAND_DESCRIPTIONS = {command: details[1].replace("\\[", "[") for command, details in _COMMANDS.items()}
