@@ -1408,59 +1408,65 @@ body {
   box-shadow: none;
 }
 
-.md-typeset details.result {
+.md-typeset details.example-output {
+  margin: 1rem 0;
   padding: 0;
   overflow: hidden;
   background: var(--tf-code-bg);
   border: 1px solid var(--tf-code-border);
   border-radius: 8px;
+  box-shadow: none;
 }
 
-.md-typeset details.result > summary {
+.md-typeset details.example-output > summary {
   margin: 0;
   padding: 12px 40px 12px 16px;
   color: var(--tf-text);
   background: transparent;
+  border-radius: 0;
   font-size: 14px;
   font-weight: 500;
 }
 
-.md-typeset details.result > summary::before {
+.md-typeset details.example-output > summary::before {
   display: none;
 }
 
-.md-typeset details.result > summary::after {
-  top: 12px;
+.md-typeset details.example-output > summary::after {
+  top: 50%;
   right: 12px;
+  width: 16px;
+  height: 16px;
+  margin-top: -8px;
   background-color: var(--tf-text-muted);
 }
 
-.md-typeset details.result > summary:is(:hover, :focus-visible) {
+.md-typeset details.example-output > summary:is(:hover, :focus-visible) {
   background: var(--tf-code-hover);
 }
 
-.md-typeset details.result > summary:focus-visible {
+.md-typeset details.example-output > summary:focus-visible {
   outline: 2px solid var(--tf-accent);
   outline-offset: -2px;
 }
 
-.md-typeset details.result[open] > summary {
+.md-typeset details.example-output[open] > summary {
   border-bottom: 1px solid var(--tf-code-border);
 }
 
-.md-typeset details.result > p {
+.md-typeset details.example-output > p {
   margin: 12px 16px;
   color: var(--tf-text-muted);
   font-size: 13px;
 }
 
-.md-typeset details.result > .highlight {
+.md-typeset details.example-output > .highlight {
   margin: 0;
   border: 0;
   border-radius: 0;
 }
 
-.md-typeset details.result pre > code {
+.md-typeset details.example-output pre > code {
   max-height: min(60vh, 32rem);
   overflow: auto;
 }

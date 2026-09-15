@@ -74,9 +74,7 @@ Task reports show queries and results; trajectories show messages and tool calls
 Prediction tracebacks appear in logs, not empty outputs. Check reference-query
 errors as well as prediction errors.
 
-??? result "Evaluation result · ARCS 001-5"
-
-    Recorded · test split · gpt-4.1 · 2025-11-21
+??? example-output "Evaluation result · ARCS 001-5"
 
     ```text
     --8<-- "examples/results/failure.txt"

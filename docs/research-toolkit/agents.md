@@ -41,9 +41,7 @@ and predicted SQL on the first ARCS task:
 --8<-- "examples/ambiguity_aware_queries.py:prediction"
 ```
 
-??? result "Example result · ARCS 001-5"
-
-    Recorded · test split · gpt-4.1 · 2025-11-21
+??? example-output "Example output"
 
     ```text
     --8<-- "examples/results/ambiguity.txt"
