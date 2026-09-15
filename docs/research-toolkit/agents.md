@@ -50,16 +50,24 @@ interpretations. This example uses `gpt-4.1` on ARCS task `001-5`:
 
     [Recorded data](../examples/results/recorded-results.json)
 
-[Download the full script](../examples/ambiguity_aware_queries.py){download}
-to load this task, generate and execute its intended query, evaluate it, and
-print the report. After [setting up ARCS](benchmarks.md#install-benchmark-data)
-and setting `OPENAI_API_KEY`, run:
+[View source](https://github.com/megagonlabs/tabulaflow/blob/main/docs/examples/ambiguity_aware_queries.py) for dataset loading,
+execution, evaluation, and cleanup. After
+[setting up ARCS](benchmarks.md#install-benchmark-data) and setting
+`OPENAI_API_KEY`, run directly:
 
 ```bash
-uv run ambiguity_aware_queries.py
+uv run https://megagonlabs.github.io/tabulaflow/examples/ambiguity_aware_queries.py
 ```
 
-From a checkout, use `uv run docs/examples/ambiguity_aware_queries.py`.
+??? info "Run from a source checkout"
+
+    From the repository root:
+
+    ```bash
+    uv run python docs/examples/ambiguity_aware_queries.py
+    ```
+
+    This uses your checkout instead of the script's pinned package version.
 
 Agent and user-simulator usage are tracked separately. See
 [ambiguity evaluation](evaluation.md#evaluate-ambiguity) for accuracy, coverage,

@@ -28,17 +28,26 @@ The same pipeline accepts your agent class directly:
 --8<-- "examples/custom_research_agent.py:integration"
 ```
 
-[Download the full script](../examples/custom_research_agent.py){download}
+[View source](https://github.com/megagonlabs/tabulaflow/blob/main/docs/examples/custom_research_agent.py)
 for imports, dataset loading, and cleanup.
-After [installing TabulaFlow and BIRD-SQL](quick-start.md#try-it-yourself) and
-setting `OPENAI_API_KEY`, save the example and run:
+After [setting up BIRD-SQL and your API key](quick-start.md#try-it-yourself),
+run directly:
 
 ```bash
-uv run custom_research_agent.py
+uv run https://megagonlabs.github.io/tabulaflow/examples/custom_research_agent.py
 ```
 
-From a source checkout, run `uv run docs/examples/custom_research_agent.py`.
 The script runs three BIRD-SQL tasks and saves results under `runs/structured_query/`.
+
+??? info "Run from a source checkout"
+
+    From the repository root:
+
+    ```bash
+    uv run python docs/examples/custom_research_agent.py
+    ```
+
+    This uses your checkout instead of the script's pinned package version.
 
 Return `pred_query=None` for an intentional abstention. Let unexpected exceptions
 propagate so the pipeline logs them and records empty outputs. Use

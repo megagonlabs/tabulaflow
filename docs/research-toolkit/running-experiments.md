@@ -25,16 +25,30 @@ Compare direct prompting and schema linking on the same tasks and model:
 --8<-- "examples/compare_research_agents.py:comparison"
 ```
 
-[Download the full script](../examples/compare_research_agents.py){download},
-which loads five BIRD-SQL tasks and prints a comparison table with accuracy,
+The [full script](https://github.com/megagonlabs/tabulaflow/blob/main/docs/examples/compare_research_agents.py) loads five BIRD-SQL
+tasks and prints a comparison table with accuracy,
 executability, token usage, estimated cost, and average task latency. Scores are
 fractions from 0 to 1; usage reflects the work performed in that run, including
 any preprocessing cache misses.
 
-After [installing BIRD-SQL](benchmarks.md#install-benchmark-data) and setting
-`OPENAI_API_KEY`, run `uv run compare_research_agents.py`, or
-`uv run docs/examples/compare_research_agents.py` from a checkout. Each method's
-predictions and reports are saved under `runs/<agent>/`.
+After [setting up BIRD-SQL and your API key](quick-start.md#try-it-yourself),
+run directly:
+
+```bash
+uv run https://megagonlabs.github.io/tabulaflow/examples/compare_research_agents.py
+```
+
+Each method's predictions and reports are saved under `runs/<agent>/`.
+
+??? info "Run from a source checkout"
+
+    From the repository root:
+
+    ```bash
+    uv run python docs/examples/compare_research_agents.py
+    ```
+
+    This uses your checkout instead of the script's pinned package version.
 
 See [paired analysis](evaluation.md#inspect-failures) and
 [adding your own strategy](extending.md#implement-an-agent).

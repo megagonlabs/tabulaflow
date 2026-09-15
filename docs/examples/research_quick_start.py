@@ -1,3 +1,9 @@
+# /// script
+# requires-python = ">=3.11"
+# dependencies = ["tabulaflow==0.1.0"]
+# ///
+
+# --8<-- [start:example]
 import asyncio
 
 from tabulaflow.research.agents import BasicAgentConfig, FullSchemaAgent
@@ -42,3 +48,4 @@ async def main() -> None:
 
 if __name__ == "__main__":
     asyncio.run(main())
+# --8<-- [end:example]
