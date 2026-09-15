@@ -43,11 +43,21 @@ and other task families.
 
 ## Use your own dataset
 
-For an existing `connector` to a database containing an `orders` table, create
-an `NL2QDataset` and pass it to the same pipeline:
+Use your own data with the same prediction and evaluation pipeline:
 
 ```python
+import pandas as pd
+
+from tabulaflow.data import SQLConnector
 from tabulaflow.research.types import GoldQuery, NL2QDataset, SimpleNL2QTask
+
+connector = await SQLConnector.from_url_async(
+    "sqlite+aiosqlite:///:memory:", read_only=False
+)
+await connector.write_dataframe_async(
+    pd.DataFrame({"order_id": [1, 2, 3]}),
+    "orders",
+)
 
 dataset = NL2QDataset(
     name="orders",
@@ -62,8 +72,11 @@ dataset = NL2QDataset(
 )
 ```
 
+Pass `dataset` to the pipeline above, then call `await connector.close_async()`
+when finished.
+
 Task QIDs must be unique and each task's `db` must match a connector key.
-See [Data connectors](../python-library/data-connectors.md) for connection setup.
+See [Data connectors](../python-library/data-connectors.md) to connect an existing database.
 
 For reusable splits, [implement a dataset loader](api/benchmarks.md#implement-a-loader).
 
