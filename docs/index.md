@@ -21,8 +21,9 @@ it can also write code, work with files, run shell commands, and browse the web.
 ## What TabulaFlow can do
 
 Consider TabulaFlow if you regularly analyze data in Jupyter notebooks, explore
-databases with DBeaver, browse Hugging Face datasets, or conduct deep research
-with structured datasets.
+databases with DBeaver or Neo4j Browser, work with Hugging Face datasets or
+Wikidata, or conduct deep research with structured
+datasets.
 
 - **Interactive visualization.** Create charts, maps, and relationship graphs
   backed by queryable, parameterized data, including graphs from Neo4j.
