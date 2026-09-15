@@ -295,7 +295,6 @@ class TabulaflowApp(App[None]):
         with Vertical(id="bottom-bar"):
             yield BottomSeparator(classes="bottom-sep")
             with Horizontal(id="input-row"):
-                yield Static("┃", id="input-prompt")
                 yield HistoryInput(
                     history_path=self._runtime_paths.history_path,
                     placeholder="Ask a question or type /help",

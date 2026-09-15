@@ -37,15 +37,7 @@ TabulaflowApp {
     height: auto;
     max-height: 5;
     align-vertical: bottom;
-}
-
-#input-prompt {
-    width: 1;
-    height: 1;
-    padding: 0;
-    background: transparent;
-    color: #3EB489;
-    text-style: bold;
+    border-left: heavy #3EB489;
 }
 
 .input-sep {
