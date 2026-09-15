@@ -10,8 +10,6 @@ it can also write code, work with files, run shell commands, and browse the web.
 [Documentation](https://megagonlabs.github.io/tabulaflow/) |
 [Python library](#python-library) | [Research toolkit](#research-toolkit)
 
-## Data agent
-
 Requires Python 3.11 or later on macOS or Linux. Install with
 [`uv`](https://docs.astral.sh/uv/), set your API key, and launch from your
 project directory:
@@ -95,6 +93,49 @@ asyncio.run(main())
 `result.text` contains the answer; `result.output` contains structured artifact
 specifications linked to their source data.
 
+Query data and inspect its structured schema without an API key. This example
+creates an in-memory inventory database and finds products to restock:
+
+```python
+import asyncio
+
+import pandas as pd
+
+from tabulaflow.data import SQLConnector
+
+
+async def main():
+    stock = await SQLConnector.from_url_async("sqlite+aiosqlite:///:memory:", read_only=False)
+    try:
+        await stock.write_dataframe_async(
+            pd.DataFrame(
+                {
+                    "product": ["USB-C dock", "Laptop stand", "HDMI cable"],
+                    "on_hand": [3, 18, 4],
+                    "reorder_point": [10, 8, 12],
+                }
+            ),
+            "inventory",
+        )
+        for table in stock.schema.tables:
+            print("Table:", table.name)
+            for column in table.columns:
+                print(f"  {column.name}: {column.dtype}, examples={column.examples}")
+
+        result = await stock.run_query_async(
+            "SELECT product, reorder_point - on_hand AS units_to_order "
+            "FROM inventory WHERE on_hand < reorder_point ORDER BY product"
+        )
+        if result.error is not None:
+            raise RuntimeError(result.error.message)
+        print(result.df)
+    finally:
+        await stock.close_async()
+
+
+asyncio.run(main())
+```
+
 [Python library guide](https://megagonlabs.github.io/tabulaflow/python-library/quick-start/)
 
 ## Research toolkit
@@ -144,8 +185,21 @@ async def main():
 asyncio.run(main())
 ```
 
-Work with typed tasks, schemas, and predictions. Saved runs include JSON
-results, CSV summaries, and readable task reports with queries, scores, and
-agent trajectories. Token usage and latency are tracked for analysis.
+Work with typed tasks, schemas, and predictions. Saved runs keep results and
+readable reports together:
+
+```text
+runs/full-schema/
+├── result.json
+├── result_summary.csv
+└── readable/
+    └── <qid>/
+        ├── task_readable.md
+        └── trajectory/
+            └── <trajectory-id>.md
+```
+
+Inspect queries, scores, agent trajectories, token usage, and latency without
+rerunning the agent.
 
 [Research toolkit guide](https://megagonlabs.github.io/tabulaflow/research-toolkit/quick-start/)
