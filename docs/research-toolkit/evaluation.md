@@ -74,7 +74,7 @@ Task reports show queries and results; trajectories show messages and tool calls
 Prediction tracebacks appear in logs, not empty outputs. Check reference-query
 errors as well as prediction errors.
 
-??? example-output "Evaluation result · ARCS 001-5"
+??? example-output no-copy "Evaluation result · ARCS 001-5"
 
     ```text
     --8<-- "examples/results/failure.txt"
@@ -82,21 +82,21 @@ errors as well as prediction errors.
 
     [Download task report](../examples/results/failure-report.txt){download}
 
-For paired comparisons, match QIDs and compare task scores. The
-[comparison example](running-experiments.md#compare-strategies) saves these outputs.
+For paired comparisons, match QIDs and compare task scores. The optional
+[comparison script](../examples/compare_research_agents.py) also summarizes
+usage and latency.
 
 ## Inspect usage and latency
 
-The [comparison script](running-experiments.md#compare-strategies) includes
-usage and latency in its results table. `result.total_usage` records agent
-usage; `result.total_user_simulator_usage` records clarification usage.
+`result.total_usage` records agent usage; `result.total_user_simulator_usage`
+records clarification usage.
 `result.aggregated_inference_metrics` holds aggregates such as task latency.
 
 These values depend on fields returned by each agent. Per-task latency differs
 from run duration because tasks execute concurrently. Costs depend on available
 model pricing; missing usage does not mean zero cost.
 
-Report [preprocessing costs](running-experiments.md#prepare-reusable-inputs)
+Report [preprocessing costs](api/preprocessing.md#prepare-reusable-inputs)
 separately. For detailed model activity, [enable tracing](running-experiments.md#enable-tracing).
 
 ## Evaluate ambiguity

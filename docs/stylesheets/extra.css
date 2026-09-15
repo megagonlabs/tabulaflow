@@ -385,8 +385,8 @@ body {
   background: transparent;
 }
 
-.md-typeset .highlight::before,
-.md-typeset .highlight::after {
+.md-typeset .highlight:has(.md-code__button)::before,
+.md-typeset .highlight:has(.md-code__button)::after {
   position: absolute;
   z-index: 2;
   box-sizing: border-box;
@@ -1467,6 +1467,7 @@ body {
 }
 
 .md-typeset details.example-output pre > code {
+  padding-right: 16px;
   max-height: min(60vh, 32rem);
   overflow: auto;
 }

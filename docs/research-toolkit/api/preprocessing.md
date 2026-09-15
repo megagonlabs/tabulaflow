@@ -1,7 +1,27 @@
 # Preprocessing
 
-See [Running experiments](../running-experiments.md#prepare-reusable-inputs)
-for cache configuration and an example.
+See [Running experiments](../running-experiments.md#configure-concurrency-and-caching)
+for cache configuration.
+
+## Prepare reusable inputs
+
+With preprocessing caching enabled, prepare ER diagrams before prediction to
+reuse them across runs:
+
+```python
+from tabulaflow.research.pipelines import preprocess_async
+from tabulaflow.research.preprocessing import ERDiagramSynthesizer
+
+preprocessor = ERDiagramSynthesizer()
+await preprocess_async(dataset, [preprocessor])
+print("Preparation usage:", preprocessor.usage())
+```
+
+This fills caches for agents using the same inputs and preprocessor configuration.
+Preprocessing can make model calls; report its usage separately from inference.
+
+`read_write` reuses entries and stores misses, `refresh` recomputes and replaces
+entries, `cache_only` requires existing entries, and `off` bypasses the cache.
 
 ## Contracts and pipeline
 

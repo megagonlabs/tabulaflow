@@ -1,16 +1,24 @@
 # Pipelines
 
-See [Running experiments](../running-experiments.md) for a complete workflow
+See [Running experiments](../running-experiments.md) for saving and scaling runs
 and [Preprocessing](preprocessing.md) for preparing reusable inputs.
 
 ## Prediction
+
+Creates one agent per task and returns an `NL2QRunResult` after all batches;
+it does not checkpoint each batch. Calling it again starts fresh inference.
+
+Prediction exceptions are logged and recorded as empty outputs. Construction
+and task-contract errors propagate. For project-based tasks, see the
+[dbt strategy](agents.md#dbt-strategy).
 
 ::: tabulaflow.research.pipelines.predict.predict_async
 
 ## Query execution
 
 Populates missing reference and predicted query results in place. Pass
-`force=True` to replace existing results.
+`force=True` to replace existing results. Query errors are recorded in
+`ExecResult.error`.
 
 ::: tabulaflow.research.pipelines.execute.execute_async
 
@@ -21,7 +29,8 @@ Populates missing reference and predicted query results in place. Pass
 ## Evaluation
 
 Replaces evaluation metrics in place. Execute queries first for execution-based
-metrics; save results with `NL2QRunResult.to_directory(...)`.
+metrics and pass the complete metric list on each call. Evaluation errors
+propagate. Save results with `NL2QRunResult.to_directory(...)`.
 
 ::: tabulaflow.research.pipelines.evaluate.evaluate_async
 
@@ -29,7 +38,9 @@ metrics; save results with `NL2QRunResult.to_directory(...)`.
 
 ## Ensembling
 
-Candidate runs must share the benchmark, split, and task QIDs.
+Candidate runs must share the benchmark, split, and task QIDs, with an output
+family supported by the ensembler. Task-level exceptions fall back to the
+first candidate and increment `aggregated_inference_metrics["fallback_count"]`.
 
 ::: tabulaflow.research.pipelines.ensemble.ensemble_async
 

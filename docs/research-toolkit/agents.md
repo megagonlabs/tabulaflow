@@ -41,7 +41,7 @@ and predicted SQL on the first ARCS task:
 --8<-- "examples/ambiguity_aware_queries.py:prediction"
 ```
 
-??? example-output "Example output"
+??? example-output no-copy "Example output"
 
     ```text
     --8<-- "examples/results/ambiguity.txt"

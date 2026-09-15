@@ -180,5 +180,5 @@ Use `databases=["california_schools"]` to restrict databases or `subsample_size=
 for a deterministic sample. Filtering precedes sampling.
 
 `dataset.tasks` contains typed tasks. `dataset.db_connectors` maps each selected
-database name to a live connector. See [resource cleanup](running-experiments.md#release-resources)
-for closing them.
+database name to a live connector. Close them in a `finally` block, as shown in
+the [quick start](quick-start.md#example-evaluate-a-full-schema-agent).

@@ -60,6 +60,14 @@ interpretations, or explicitly structured ambiguity points.
 connectors when your program finishes. `NL2QRunResult` stores experiment data
 and supports JSON serialization, directory reports, and CSV summaries.
 
+`to_directory(...)` exports the current run, including available query-result
+DataFrames as CSVs. Reusing a directory updates its reports.
+
+Runs record task QIDs and agent configuration. For reproducibility, set the
+schema formatter explicitly, pin the TabulaFlow version, and record runtime
+settings separately. Reload matching tasks with the original database snapshot,
+paths, and credentials before continuing execution or evaluation.
+
 ::: tabulaflow.research.types.NL2QDataset
 
 ::: tabulaflow.research.types.NL2QRunResult
