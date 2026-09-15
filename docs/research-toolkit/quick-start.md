@@ -2,12 +2,13 @@
 
 TabulaFlow Research extends the main Python library for AI researchers working
 on text-to-SQL and data agents. Its main building blocks include benchmark
-loaders, research agents, evaluation metrics, and experiment pipelines. It is
+loaders, agents, evaluation metrics, and experiment pipelines. It is
 designed around principles that enable flexible, rapid, and transparent
 experiments:
 
 - **Benchmark-ready.** Run BIRD-SQL, Spider 2.0, Beaver, ARCS, AMBROSIA-S, and
   CypherBench with managed setup and official leaderboard metrics.
+- **Reusable agent logic.** One agent implementation runs on all benchmarks.
 - **Transparent and fully typed.** Work with typed tasks, schemas, and
   predictions rather than black-box dictionaries or schema strings. Write
   Python instead of YAML.
