@@ -13,7 +13,7 @@
 
 Schema linking and discovery support SQL databases. Direct prompting and full
 schema also support Cypher. `predict_async(...)` checks
-[task-family compatibility](quick-start.md#how-an-experiment-fits-together)
+[task-family compatibility](api/agents.md#registry-and-contracts)
 before prediction.
 
 ## Configure an agent
