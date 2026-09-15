@@ -63,7 +63,7 @@ Like a coding agent, TabulaFlow is an LLM that calls tools in a loop.
 The main difference is that exiting coding agent harness are built around files and shell,
 while TabulaFlow treats tables as first-class citizens, as its name suggests.
 Our harness is designed to maximize agent and human ergonomics for data tasks, and
-remains fully functional without shell access.
+remains fully functional without filesystem or shell access.
 
 The diagram below shows a simple chat-to-database workflow. You can register
 data sources with `/connect`, or the agent can connect them through a tool call.
