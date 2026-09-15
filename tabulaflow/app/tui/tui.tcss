@@ -22,7 +22,7 @@ TabulaflowApp {
 
 #bottom-bar {
     dock: bottom;
-    height: 4;
+    height: auto;
 }
 
 .bottom-sep {
@@ -34,7 +34,9 @@ TabulaflowApp {
 
 #input-row {
     layout: horizontal;
-    height: 1;
+    height: auto;
+    max-height: 5;
+    align-vertical: bottom;
 }
 
 #input-prompt {
@@ -57,6 +59,8 @@ TabulaflowApp {
 #input-bar {
     width: 1fr;
     height: 1;
+    max-height: 5;
+    scrollbar-size: 0 0;
     border: none;
     padding: 0 1;
     background: transparent;

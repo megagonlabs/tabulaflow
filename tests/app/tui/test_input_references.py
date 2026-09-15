@@ -112,6 +112,24 @@ def test_history_persistence_failure_does_not_reject_submission(
     assert input_bar._history == ["still accepted"]
 
 
+async def test_input_soft_wraps_and_grows_to_five_rows(tmp_path: Path) -> None:
+    app = _InputApp(tmp_path / "history.jsonl")
+
+    async with app.run_test(size=(40, 20)) as pilot:
+        input_bar = app.query_one(HistoryInput)
+        input_bar.value = "x" * 100
+        await pilot.pause()
+
+        assert input_bar.soft_wrap
+        assert input_bar.size.height == 3
+
+        input_bar.value = "x" * 500
+        await pilot.pause()
+
+        assert input_bar.size.height == 5
+        assert input_bar.wrapped_document.height > input_bar.size.height
+
+
 async def test_active_references_are_highlighted_and_deleted_atomically(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

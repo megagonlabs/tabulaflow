@@ -10,7 +10,7 @@ from pydantic_ai.exceptions import UserError
 from rich.text import Text
 from textual import events
 from textual.containers import VerticalScroll
-from textual.widgets import Button, Input, Static
+from textual.widgets import Button, Static
 
 from tabulaflow.app import session as session_module
 from tabulaflow.agents.llm import ReasoningLevel
@@ -201,14 +201,14 @@ async def test_huggingface_subset_selection_connects_inline(monkeypatch: pytest.
 
         selector = app.query_one(InlineChoiceSelector)
         assert selector.has_focus
-        assert app.query_one("#input-bar", Input).disabled
+        assert app.query_one("#input-bar", HistoryInput).disabled
 
         await pilot.press("m", "r", "enter")
         await pilot.pause()
 
         assert selected == ["mrpc"]
         assert len(app.query(InlineChoiceSelector)) == 0
-        assert app.query_one("#input-bar", Input).has_focus
+        assert app.query_one("#input-bar", HistoryInput).has_focus
         assert "✓ Connected to glue" in [cast(Text, message.render()).plain for message in app.query(SystemMessage)]
 
 
@@ -253,7 +253,7 @@ async def test_huggingface_subset_connection_uses_submission_worker(monkeypatch:
         await pilot.press("enter")
         await started.wait()
 
-        input_bar = app.query_one("#input-bar", Input)
+        input_bar = app.query_one("#input-bar", HistoryInput)
         assert app._submission_worker is not None
         assert input_bar.has_focus
         assert not input_bar.disabled
@@ -641,7 +641,7 @@ async def test_starting_llm_off_reports_available_tools(
 
         assert not app._llm_activation_in_progress
         assert app._llm_activation_error is None
-        assert not app.query_one("#input-bar", Input).disabled
+        assert not app.query_one("#input-bar", HistoryInput).disabled
         messages = [str(message.render()) for message in app.query(SystemMessage)]
         assert messages == [
             "✓ LLM off · /connect and the data explorer remain available.",
@@ -717,7 +717,7 @@ async def test_inferred_startup_reports_masked_api_key_in_chat_log(
         messages = [str(message.render()) for message in app.query(SystemMessage)]
         assert messages == ["✓ OPENAI_API_KEY detected (sk-***E0QA) · using Test. Change the preset in /config."]
         assert not app._llm_activation_in_progress
-        assert not app.query_one("#input-bar", Input).disabled
+        assert not app.query_one("#input-bar", HistoryInput).disabled
 
 
 async def test_failed_startup_activation_reports_error_and_unblocks_input(
@@ -749,7 +749,7 @@ async def test_failed_startup_activation_reports_error_and_unblocks_input(
             "Choose another preset in /config. /connect and browsing remain available."
         )
         assert not app._llm_activation_in_progress
-        assert not app.query_one("#input-bar", Input).disabled
+        assert not app.query_one("#input-bar", HistoryInput).disabled
 
 
 async def test_llm_activation_preserves_blocked_submissions(
@@ -1036,4 +1036,4 @@ async def test_closing_config_restores_input_focus(monkeypatch: pytest.MonkeyPat
         app._on_config_closed(None)
         await pilot.pause()
 
-        assert app.query_one("#input-bar", Input).has_focus
+        assert app.query_one("#input-bar", HistoryInput).has_focus

@@ -17,9 +17,10 @@ from rich.highlighter import Highlighter
 from rich.text import Text
 from textual import events
 from textual.binding import Binding
+from textual.message import Message
 from textual.suggester import Suggester
-from textual.widgets import Input
-from textual.widgets._input import Selection
+from textual.widgets import TextArea
+from textual.widgets.text_area import Selection
 
 from tabulaflow.app.theme import CODE_FUNCTION
 from tabulaflow.app.tui.commands import SLASH_COMMANDS
@@ -164,36 +165,48 @@ def _normalize_newlines(text: str) -> str:
     return text.replace("\r\n", "\n").replace("\r", "\n")
 
 
-class HistoryInput(Input):
-    """Input widget with file-backed command history (Up/Down arrows).
+class HistoryInput(TextArea):
+    """Auto-growing prompt editor with file-backed command history.
 
     Multi-line pastes (text containing a newline) are stashed in an in-memory
     registry and replaced with a compact ``[Pasted text #N +M lines]`` reference
-    so the input bar stays single-line. Images use highlighted ``[Image #N]``
+    so pasted payloads remain compact. Images use highlighted ``[Image #N]``
     references backed only for the active composition. :meth:`build_chat_input`
     expands both forms before submission.
     """
+
+    _MAX_HEIGHT = 5
+
+    class Submitted(Message):
+        def __init__(self, input: HistoryInput, value: str) -> None:
+            self.input = input
+            self.value = value
+            super().__init__()
+
+        @property
+        def control(self) -> HistoryInput:
+            return self.input
 
     BINDINGS = [
         # ``priority=False`` so these only fire when the input is actually
         # focused. With ``priority=True`` the bindings would claim ``up`` /
         # ``down`` globally, blocking the AgentResultWidget's own arrow-
         # key navigation between result cards.
-        Binding("up", "history_prev", "Previous command"),
-        Binding("down", "history_next", "Next command"),
+        Binding("up", "cursor_up_or_history_prev", "Cursor up / previous command", show=False),
+        Binding("down", "cursor_down_or_history_next", "Cursor down / next command", show=False),
         Binding("ctrl+d", "confirm_quit", "Quit", show=False, priority=True),
         Binding("tab", "accept_suggestion", "Accept suggestion", show=False),
         Binding("ctrl+o", "open_data_explorer", "Open data explorer"),
-        # Option/Alt+Arrow word movement. Textual's Input already binds these
+        # Option/Alt+Arrow word movement. Textual already binds these
         # actions to ``ctrl+left``/``ctrl+right`` (which is what iTerm2 and
         # Terminal.app's "Use Option as Meta key" deliver, via ESC-b/ESC-f).
         # Modern terminals (gnome-terminal, kitty, Ghostty, WezTerm, ...) emit
         # the modifier-3 sequence that Textual parses as ``alt+left``/
         # ``alt+right`` instead, so bind those names to the same actions.
-        Binding("alt+left", "cursor_left_word", "Move cursor left a word", show=False),
-        Binding("alt+right", "cursor_right_word", "Move cursor right a word", show=False),
-        Binding("alt+shift+left", "cursor_left_word(True)", "Select word left", show=False),
-        Binding("alt+shift+right", "cursor_right_word(True)", "Select word right", show=False),
+        Binding("alt+left", "cursor_word_left", "Move cursor left a word", show=False),
+        Binding("alt+right", "cursor_word_right", "Move cursor right a word", show=False),
+        Binding("alt+shift+left", "cursor_word_left(True)", "Select word left", show=False),
+        Binding("alt+shift+right", "cursor_word_right(True)", "Select word right", show=False),
     ]
 
     def action_open_data_explorer(self) -> None:
@@ -201,19 +214,17 @@ class HistoryInput(Input):
         cast("TabulaflowApp", self.app).action_open_data_explorer()
 
     def __init__(self, history_path: Path, *, placeholder: str = "", id: str | None = None) -> None:
-        # ``select_on_focus=False`` so regaining focus (e.g. via the app's
-        # typeahead handler after the user types a letter while a result
-        # is focused) doesn't replace the in-progress composition with the
-        # next keystroke.
         self._pasted_contents: dict[int, _PasteRecord] = {}
         self._active_images: dict[int, BinaryContent] = {}
         self._image_counter = 0
+        self.highlighter = _ReferenceHighlighter(self._pasted_contents, self._active_images)
+        self._suggester = TabulaflowSuggester()
         super().__init__(
             placeholder=placeholder,
             id=id,
-            highlighter=_ReferenceHighlighter(self._pasted_contents, self._active_images),
-            suggester=TabulaflowSuggester(),
-            select_on_focus=False,
+            soft_wrap=True,
+            compact=True,
+            highlight_cursor_line=False,
         )
         self._history_path = history_path
         self._history: list[str] = []
@@ -221,6 +232,102 @@ class HistoryInput(Input):
         self._saved_input: str = ""
         self._paste_counter: int = 0
         self._load_history()
+
+    @property
+    def value(self) -> str:
+        return self.text
+
+    @value.setter
+    def value(self, value: str) -> None:
+        self.load_text(value)
+
+    @property
+    def cursor_position(self) -> int:
+        return self._location_to_offset(self.cursor_location)
+
+    @cursor_position.setter
+    def cursor_position(self, position: int) -> None:
+        self.move_cursor(self._offset_to_location(position))
+
+    def get_line(self, line_index: int) -> Text:
+        line = super().get_line(line_index)
+        self.highlighter.highlight(line)
+        return line
+
+    def update_suggestion(self) -> None:
+        if hasattr(self, "wrapped_document"):
+            self._sync_height()
+        value = self.text
+        if not value or not self.selection.is_empty or self.cursor_location != self.document.end:
+            self.suggestion = ""
+            return
+        if value.startswith("/connect "):
+            completion = self._suggester._suggest_connect_path(value)
+        elif value.startswith("/"):
+            completion = self._suggester._suggest_slash_command(value)
+        else:
+            completion = None
+        self.suggestion = completion[len(value) :] if completion and completion.startswith(value) else ""
+
+    def _on_resize(self) -> None:
+        super()._on_resize()
+        self._sync_height()
+
+    def _sync_height(self) -> None:
+        height = min(self._MAX_HEIGHT, max(1, self.wrapped_document.height))
+        if self.size.height != height:
+            self.styles.height = height
+
+    def _offset_to_location(self, offset: int) -> tuple[int, int]:
+        remaining = max(0, min(offset, len(self.text)))
+        for row, line in enumerate(self.document.lines):
+            if remaining <= len(line):
+                return row, remaining
+            remaining -= len(line) + 1
+        return self.document.end
+
+    def _location_to_offset(self, location: tuple[int, int]) -> int:
+        row, column = location
+        return sum(len(line) + 1 for line in self.document.lines[:row]) + column
+
+    def insert_text_at_cursor(self, text: str) -> None:
+        result = self.replace(text, *self.selection, maintain_selection_offset=False)
+        self.move_cursor(result.end_location)
+
+    def action_submit(self) -> None:
+        self.post_message(self.Submitted(self, self.text))
+
+    async def _on_key(self, event: events.Key) -> None:
+        if event.key == "enter":
+            event.stop()
+            event.prevent_default()
+            self.action_submit()
+            return
+        await super()._on_key(event)
+
+    def action_cursor_up_or_history_prev(self) -> None:
+        location = self.get_cursor_up_location()
+        if location != self.cursor_location:
+            self.move_cursor(location)
+        else:
+            self.action_history_prev()
+
+    def action_cursor_down_or_history_next(self) -> None:
+        location = self.get_cursor_down_location()
+        if location != self.cursor_location:
+            self.move_cursor(location)
+        else:
+            self.action_history_next()
+
+    def _watch_selection(self, previous: Selection, selection: Selection) -> None:
+        previous_offset = self._location_to_offset(previous.end)
+        start = self._snap_to_reference_boundary(self._location_to_offset(selection.start), previous_offset)
+        end = self._snap_to_reference_boundary(self._location_to_offset(selection.end), previous_offset)
+        normalized = Selection(self._offset_to_location(start), self._offset_to_location(end))
+        if normalized != selection:
+            self.selection = normalized
+            return
+        super()._watch_selection(previous, selection)
 
     def _register_paste(self, content: str) -> int:
         """Stash ``content`` under a fresh paste id and return the id."""
@@ -344,9 +451,8 @@ class HistoryInput(Input):
 
     def action_accept_suggestion(self) -> None:
         """Accept the current autocomplete suggestion, if any."""
-        if self._suggestion:
-            self.value = self._suggestion
-            self.cursor_position = len(self.value)
+        if self.suggestion:
+            self.insert(self.suggestion)
 
     def action_confirm_quit(self) -> None:
         """Forward Ctrl+D to the app-level quit confirmation when focused."""
@@ -354,7 +460,7 @@ class HistoryInput(Input):
         # apply its double-press quit logic.
         cast("TabulaflowApp", self.app).action_confirm_quit()
 
-    def _on_paste(self, event: events.Paste) -> None:
+    async def _on_paste(self, event: events.Paste) -> None:
         """Intercept bracketed-paste events with newlines and stash them.
 
         Textual dispatches ``_on_paste`` for every class in the MRO. For
@@ -406,7 +512,8 @@ class HistoryInput(Input):
         if selection.is_empty:
             self.insert_text_at_cursor(reference)
         else:
-            self.replace(reference, *selection)
+            result = self.replace(reference, *selection, maintain_selection_offset=False)
+            self.move_cursor(result.end_location)
         self._prune_unreferenced_images()
         self.refresh()
 
@@ -431,19 +538,13 @@ class HistoryInput(Input):
                 continue
             adjacent = match.end() == cursor if before_cursor else match.start() == cursor
             if adjacent:
-                self.delete(match.start(), match.end())
+                location = self._offset_to_location(match.start())
+                self.delete(location, self._offset_to_location(match.end()), maintain_selection_offset=False)
+                self.move_cursor(location)
                 self._prune_unreferenced_images()
                 self.refresh()
                 return True
         return False
-
-    def validate_selection(self, selection: Selection) -> Selection:
-        selection = super().validate_selection(selection)
-        previous = self.selection.end
-        return Selection(
-            self._snap_to_reference_boundary(selection.start, previous),
-            self._snap_to_reference_boundary(selection.end, previous),
-        )
 
     def _snap_to_reference_boundary(self, position: int, previous: int) -> int:
         for match in _REFERENCE_PATTERN.finditer(self.value):

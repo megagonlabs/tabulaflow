@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 import os
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 from rich.text import Text
 from textual import events
@@ -14,7 +14,7 @@ from textual.binding import Binding
 from textual.containers import Horizontal, Vertical
 from textual.timer import Timer
 from textual.worker import Worker
-from textual.widgets import Button, Input, Static
+from textual.widgets import Button, Static
 
 from tabulaflow.app.tui.commands import (
     COMMAND_PREFIX,
@@ -320,7 +320,7 @@ class TabulaflowApp(App[None]):
     def on_mount(self) -> None:
         self._setup_logging()
         chat_log = self.query_one("#chat-log", ChatLog)
-        self.query_one("#input-bar", Input).focus()
+        self.query_one("#input-bar", HistoryInput).focus()
         chat_log.follow_new_content(force=True)
         self._refresh_esc_hint()
         self._ensure_pane()
@@ -445,7 +445,7 @@ class TabulaflowApp(App[None]):
             # Move focus to the input before pushing the explorer screen so
             # that popping back lands on the input, not the button (which
             # would otherwise keep its pressed/focus highlight).
-            self.query_one("#input-bar", Input).focus()
+            self.query_one("#input-bar", HistoryInput).focus()
             self.action_open_data_explorer()
             event.stop()
 
@@ -469,7 +469,7 @@ class TabulaflowApp(App[None]):
         input box without an explicit click or Tab.
         """
         focused = self.focused
-        if focused is None or isinstance(focused, Input):
+        if focused is None or isinstance(focused, HistoryInput):
             return
         # Skip when a modal screen (CellBrowserScreen, DataBrowserScreen,
         # etc.) is open — those own their own keystrokes.
@@ -488,12 +488,7 @@ class TabulaflowApp(App[None]):
         # the input instead of triggering the widget's binding.
         if _focused_has_binding_for(focused, event.key):
             return
-        inp = self.query_one("#input-bar", Input)
-        # Textual's ``Input`` auto-selects all existing text on focus, so
-        # ``insert_text_at_cursor`` would *replace* the user's in-progress
-        # composition. Append directly to ``value`` and move the cursor
-        # to the end — keeps any existing text and tacks on the typed
-        # character.
+        inp = self.query_one("#input-bar", HistoryInput)
         new_value = inp.value + ch
         inp.value = new_value
         inp.cursor_position = len(new_value)
@@ -548,7 +543,7 @@ class TabulaflowApp(App[None]):
             self._clear_input_hint()
             return
 
-        inp = self.query_one("#input-bar", Input)
+        inp = self.query_one("#input-bar", HistoryInput)
         if inp.value:
             inp.value = ""
             self._clear_input_hint()
@@ -560,12 +555,12 @@ class TabulaflowApp(App[None]):
 
         self._show_input_hint(inp, "Press Ctrl+D twice to quit")
 
-    def on_input_changed(self, event: Input.Changed) -> None:
+    def on_text_area_changed(self, event: HistoryInput.Changed) -> None:
         """Disarm quit confirmation as soon as the prompt changes."""
-        if event.input.id != "input-bar":
+        if not isinstance(event.text_area, HistoryInput) or event.text_area.id != "input-bar":
             return
         self._last_quit_request_ts = None
-        if event.value:
+        if event.text_area.value:
             self._clear_input_hint()
 
     def action_confirm_quit(self) -> None:
@@ -578,7 +573,7 @@ class TabulaflowApp(App[None]):
             self._clear_input_hint()
             return
 
-        inp = self.query_one("#input-bar", Input)
+        inp = self.query_one("#input-bar", HistoryInput)
         if inp.value:
             self._last_quit_request_ts = None
             self._clear_input_hint()
@@ -586,7 +581,7 @@ class TabulaflowApp(App[None]):
 
         self._confirm_quit(inp)
 
-    def _confirm_quit(self, inp: Input) -> None:
+    def _confirm_quit(self, inp: HistoryInput) -> None:
         """Quit only when Ctrl+D is pressed twice on an idle empty prompt."""
         import time
 
@@ -601,10 +596,10 @@ class TabulaflowApp(App[None]):
         self._last_quit_request_ts = now
         self._show_input_hint(inp, "Press Ctrl+D again to quit")
 
-    def _show_input_hint(self, inp: Input, message: str) -> None:
+    def _show_input_hint(self, inp: HistoryInput, message: str) -> None:
         """Temporarily replace the empty input's placeholder."""
         if self._saved_input_placeholder is None:
-            self._saved_input_placeholder = inp.placeholder
+            self._saved_input_placeholder = cast(str, inp.placeholder)
         inp.placeholder = message
         if self._input_hint_timer is not None:
             self._input_hint_timer.stop()
@@ -801,7 +796,7 @@ class TabulaflowApp(App[None]):
             )
         await self._publish_initialization_status(message)
         self._llm_activation_in_progress = False
-        input_bar = self.query_one("#input-bar", Input)
+        input_bar = self.query_one("#input-bar", HistoryInput)
         if len(self.screen_stack) == 1:
             input_bar.focus()
 
@@ -881,7 +876,7 @@ class TabulaflowApp(App[None]):
         already has content (the user started typing something new during
         the turn), leave it alone."""
         try:
-            inp = self.query_one("#input-bar", Input)
+            inp = self.query_one("#input-bar", HistoryInput)
         except Exception:
             return
         if inp.value:
@@ -895,7 +890,7 @@ class TabulaflowApp(App[None]):
         if self._saved_input_placeholder is None:
             return
         try:
-            inp = self.query_one("#input-bar", Input)
+            inp = self.query_one("#input-bar", HistoryInput)
         except Exception:
             return
         inp.placeholder = self._saved_input_placeholder
@@ -910,7 +905,7 @@ class TabulaflowApp(App[None]):
 
     def action_toggle_focus(self) -> None:
         """Toggle focus between input bar and result widgets."""
-        inp = self.query_one("#input-bar", Input)
+        inp = self.query_one("#input-bar", HistoryInput)
         if inp.has_focus:
             # Jump to the last result widget
             results = self.query(AgentResultWidget)
@@ -963,7 +958,7 @@ class TabulaflowApp(App[None]):
         except Exception:
             pass
 
-    async def on_input_submitted(self, event: Input.Submitted) -> None:
+    async def on_history_input_submitted(self, event: HistoryInput.Submitted) -> None:
         display_text = event.value.strip()
         if not display_text:
             return
@@ -973,18 +968,17 @@ class TabulaflowApp(App[None]):
             inp.focus()
             return
 
-        question = inp.build_chat_input(display_text) if isinstance(inp, HistoryInput) else display_text
+        question = inp.build_chat_input(display_text)
         if not isinstance(question, str) and display_text.startswith(COMMAND_PREFIX):
             inp.notify("Images cannot be attached to slash commands", severity="error")
             return
 
-        if isinstance(inp, HistoryInput):
-            _, contains_credentials = redact_command_credentials(display_text)
-            inp.record_submission(display_text, persist=not contains_credentials)
-        event.input.clear()
+        _, contains_credentials = redact_command_credentials(display_text)
+        inp.record_submission(display_text, persist=not contains_credentials)
+        inp.clear()
 
         self._submission_worker = self.run_worker(
-            self._run_submission(question, display_text, inp if isinstance(inp, HistoryInput) else None),
+            self._run_submission(question, display_text, inp),
             exclusive=True,
             group="submission",
         )
@@ -1114,7 +1108,7 @@ class TabulaflowApp(App[None]):
         if isinstance(result.action, HuggingFaceSubsetSelection):
             selection = result.action
             self._pending_hf_subset_selection = selection
-            self.query_one("#input-bar", Input).disabled = True
+            self.query_one("#input-bar", HistoryInput).disabled = True
             await chat_log.mount(
                 InlineChoiceSelector(
                     "Choose subset",
@@ -1182,12 +1176,12 @@ class TabulaflowApp(App[None]):
         self._restore_input_after_choice()
 
     def _restore_input_after_choice(self) -> None:
-        input_bar = self.query_one("#input-bar", Input)
+        input_bar = self.query_one("#input-bar", HistoryInput)
         input_bar.disabled = False
         input_bar.focus()
 
     def _on_config_closed(self, selection: ResolvedLLMSelection | None) -> None:
-        self.call_after_refresh(self.query_one("#input-bar", Input).focus)
+        self.call_after_refresh(self.query_one("#input-bar", HistoryInput).focus)
         if selection is None:
             return
 
@@ -1291,7 +1285,7 @@ class TabulaflowApp(App[None]):
             # so this doesn't block fast follow-up prompts. Skip the steal
             # when the user is already composing in the input — yanking
             # focus mid-typing would be hostile.
-            inp = self.query_one("#input-bar", Input)
+            inp = self.query_one("#input-bar", HistoryInput)
             if chat_log.following_tail and not inp.value:
                 result_widget.focus()
 
