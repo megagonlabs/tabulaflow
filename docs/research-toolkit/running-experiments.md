@@ -69,8 +69,7 @@ across the process; connector limits apply to database queries.
 
 `read_write` reuses cached schemas and preprocessing outputs across runs.
 You can also [prepare inputs](api/preprocessing.md#prepare-reusable-inputs), such
-as ER diagrams and embeddings, before prediction. Keep cached inputs aligned
-with the database snapshot and query caching off when measuring execution time.
+as ER diagrams and embeddings, before prediction.
 
 See [runtime settings](../python-library/api/agents.md#runtime-and-model-configuration)
 and [connector settings](../python-library/api/data.md#configuration) for all

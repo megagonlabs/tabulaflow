@@ -8,6 +8,8 @@
 | CypherBench | `CypherBenchEx` |
 | Beaver, ARCS, AMBROSIA | `SimpleEx` |
 
+See the [metric reference](api/metrics.md) for all metrics and aggregators.
+
 ## Evaluate and aggregate scores
 
 Execute predictions, then compute overall and per-database BIRD-SQL accuracy:
@@ -29,8 +31,6 @@ print("Accuracy by database:", result.aggregated_eval_metrics["bird_sql_ex_by_db
 ```
 
 `SimpleAverageAggregator` includes zeros and excludes `None` from the average.
-See the [metric reference](api/metrics.md) for diagnostics and grouping by
-difficulty or ambiguity type.
 
 ## Evaluate ambiguity
 
