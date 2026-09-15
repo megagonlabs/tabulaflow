@@ -16,7 +16,7 @@ it can also write code, work with files, run shell commands, and browse the web.
   <figcaption>Production placeholder · Include captions and a text transcript.</figcaption>
 </figure>
 
-[Try TabulaFlow](data-agent/quick-start.md){ .inline-cta }
+[Get started](data-agent/quick-start.md){ .inline-cta }
 
 ## What TabulaFlow can do
 
@@ -143,13 +143,7 @@ directory, so your source data and project directory remain unchanged by
 default. To export results to local files, simply ask the agent in natural
 language.
 
-## Get started
-
-### Use the data agent
-
-Install TabulaFlow, connect a source, and start exploring your data in natural
-language.
-[Open the quick start](data-agent/quick-start.md){ .inline-cta }
+## Build and research with TabulaFlow
 
 ### Build with the Python library
 
