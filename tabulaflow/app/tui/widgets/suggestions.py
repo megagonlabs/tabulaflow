@@ -108,14 +108,14 @@ class InputSuggestionMenu(Static):
         self.selected_index = 0
         self._window_start = 0
         self.display = bool(suggestions)
-        self.refresh()
+        self.refresh(layout=True)
 
     def dismiss(self) -> None:
         self.suggestions = ()
         self.selected_index = 0
         self._window_start = 0
         self.display = False
-        self.refresh()
+        self.refresh(layout=True)
 
     def move_selection(self, offset: int) -> None:
         if not self.suggestions:

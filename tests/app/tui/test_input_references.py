@@ -157,6 +157,22 @@ async def test_slash_suggestions_can_be_navigated_and_accepted(tmp_path: Path) -
         assert not menu.suggestions
 
 
+async def test_slash_suggestion_menu_regrows_when_filter_is_deleted(tmp_path: Path) -> None:
+    app = _InputApp(tmp_path / "history.jsonl")
+
+    async with app.run_test() as pilot:
+        input_bar = app.query_one(HistoryInput)
+        menu = app.query_one(InputSuggestionMenu)
+        input_bar.focus()
+        await pilot.press(*"/connect")
+        await pilot.press(*(["backspace"] * 6))
+        await pilot.pause()
+
+        assert input_bar.value == "/c"
+        assert [item.value for item in menu.suggestions] == ["/clear", "/config", "/connect"]
+        assert menu.size.height == 3
+
+
 def test_connect_path_suggestions_include_supported_files_and_directories(tmp_path: Path) -> None:
     (tmp_path / "data.csv").touch()
     (tmp_path / "notes.txt").touch()
