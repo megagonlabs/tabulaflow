@@ -24,16 +24,6 @@ Consider TabulaFlow if you regularly analyze data in Jupyter notebooks, explore
 databases with DBeaver, browse Hugging Face datasets, or conduct deep research
 with structured datasets.
 
-General-purpose coding agents (e.g., Claude Code) are powerful tools for
-programming and simple data analysis. TabulaFlow is built on a different
-harness (see [How it works](#how-it-works)) that enables workflows such as
-ambitious deep research and large-scale agentic row-wise operations. It also
-provides a UI for browsing large tables and visualizing data.
-
-Many AI database assistants (e.g., Chat2DB) focus on SQL generation for a
-single database. TabulaFlow supports broader, general-purpose workflows across
-relational and graph databases, local files, public datasets, and the web.
-
 - **Interactive visualization.** Create charts, maps, and relationship graphs
   backed by queryable, parameterized data, including graphs from Neo4j.
   [View example](data-agent/examples/compare-spending.md){ .inline-cta }
@@ -54,7 +44,19 @@ relational and graph databases, local files, public datasets, and the web.
   pages that require clicks and forms.
   [View example](data-agent/examples/build-web-dataset.md){ .inline-cta }
 
-## How it works
+## Why TabulaFlow?
+
+General-purpose coding agents (e.g., Claude Code) are powerful tools for
+programming and simple data analysis. TabulaFlow is built on a different
+harness (see [How TabulaFlow is designed](#how-tabulaflow-is-designed)) that enables workflows such as
+ambitious deep research and large-scale agentic row-wise operations. It also
+provides a UI for browsing large tables and visualizing data.
+
+Many AI database assistants (e.g., Chat2DB) focus on SQL generation for a
+single database. TabulaFlow supports broader, general-purpose workflows across
+relational and graph databases, local files, public datasets, and the web.
+
+## How TabulaFlow is designed
 
 Like a coding agent, TabulaFlow is an LLM that calls tools in a loop.
 The main difference is that exiting coding agent harness are built around files and shell,
