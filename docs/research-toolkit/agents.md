@@ -52,7 +52,7 @@ interpretations. This example uses `gpt-4.1` on ARCS task `001-5`:
 
 [View source](https://github.com/megagonlabs/tabulaflow/blob/main/docs/examples/ambiguity_aware_queries.py) for dataset loading,
 execution, evaluation, and cleanup. After
-[setting up ARCS](benchmarks.md#install-benchmark-data) and setting
+[setting up ARCS](benchmarks.md#arcs) and setting
 `OPENAI_API_KEY`, run directly:
 
 ```bash
