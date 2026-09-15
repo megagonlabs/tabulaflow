@@ -23,8 +23,10 @@ reasoning effort, and column descriptions. The
 [comparison example](running-experiments.md#compare-strategies) shows
 method-specific settings for schema linking and postprocessing.
 
-For CypherBench, pass `BasicAgentConfig(schema_formatter="cypher")` to
-`FullSchemaAgent` or `DirectPromptAgent`.
+Schema formatting defaults to `sql_ddl` for SQL and `cypher` for property graphs,
+in both Python and the CLI. To choose another representation, set
+`BasicAgentConfig(schema_formatter="sql_basic")` or use `--schema-formatter sql_basic`.
+Incompatible formatters raise an error before model calls.
 
 See [runtime configuration](running-experiments.md#configure-concurrency-and-caching)
 for concurrency and caching, and the [agent reference](api/agents.md) for all fields.

@@ -2,6 +2,25 @@ import argparse
 from typing import Any, Coroutine
 
 from tqdm.asyncio import tqdm_asyncio
+from pydantic import BaseModel
+
+from tabulaflow.output.formatting import get_schema_formatter_class
+from tabulaflow.research.agents.utils import BasicAgentConfig
+from tabulaflow.research.types import NL2QDataset
+
+
+def validate_run_schema_formatters(config: BaseModel, dataset: NL2QDataset) -> None:
+    """Validate formatter choices for all selected databases before model work.
+
+    Custom configurations that do not use BasicAgentConfig own their formatting.
+    """
+    if not isinstance(config, BasicAgentConfig):
+        return
+    for db in dict.fromkeys(task.db for task in dataset.tasks):
+        kind = dataset.db_connectors[db].schema.kind
+        if kind not in ("sql", "property_graph"):
+            raise TypeError(f"Unsupported research schema kind for {db!r}: {kind!r}")
+        get_schema_formatter_class(kind, config.schema_formatter)
 
 
 def bool_flag(value: str) -> bool:

@@ -2,11 +2,10 @@ import asyncio
 import json
 import jinja2
 import time
-from typing import ClassVar, Literal, Any, cast
+from typing import ClassVar, Literal, Any
 from pydantic import BaseModel
 from pydantic_ai import Agent, ToolOutput
 from tabulaflow.data import SQLConnector
-from tabulaflow.output.formatting import schema_formatter_registry, SQLSchemaFormatter
 from tabulaflow.agents.trace import Usage, Trajectory
 from tabulaflow.research.observability import trace_prediction
 from tabulaflow.research.types import PredQuery
@@ -116,10 +115,7 @@ class AmbigFlatSQLAgent:
         config: AmbigFlatSQLAgentConfig,
     ):
         self.config = config
-        self.formatter = cast(
-            SQLSchemaFormatter,
-            schema_formatter_registry.get_class(config.schema_formatter)(**config.to_formatter_kwargs()),
-        )
+        self.formatter = config.create_schema_formatter("sql")
 
     @classmethod
     async def from_config_async(cls, config: AmbigFlatSQLAgentConfig) -> "AmbigFlatSQLAgent":

@@ -1,7 +1,7 @@
 """Compact text formatting for SQL schemas."""
 
 from dataclasses import dataclass
-from typing import ClassVar
+from typing import ClassVar, Literal
 
 from tabulaflow.core.schema import ForeignKeySchema, SQLColumnSchema, SQLDialect, SQLSchema, SQLTableSchema
 from tabulaflow.output.formatting._core import format_single_line_text
@@ -21,6 +21,7 @@ class SQLBasicSchemaFormatter:
     """Formats SQL schemas as compact text with inline PK/FK markers."""
 
     name: ClassVar[str] = "sql_basic"
+    schema_kind: ClassVar[Literal["sql"]] = "sql"
     example_max_chars: int = 100
     floatfmt: str = ".8g"
     max_total_columns: int | None = None

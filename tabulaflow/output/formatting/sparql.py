@@ -1,6 +1,6 @@
 """RDF schema formatting for SPARQL query generation."""
 
-from typing import ClassVar
+from typing import ClassVar, Literal
 
 from tabulaflow.core.schema import RDFSchema
 from tabulaflow.output.formatting.schema import schema_formatter_registry
@@ -11,6 +11,7 @@ class SPARQLSchemaFormatter:
     """Format a minimal RDF source description for SPARQL queries."""
 
     name: ClassVar[str] = "sparql"
+    schema_kind: ClassVar[Literal["rdf"]] = "rdf"
 
     def format(self, schema: RDFSchema) -> str:
         header = f"Data source: {schema.display_name} (Query language: sparql)"

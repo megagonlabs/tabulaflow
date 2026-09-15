@@ -18,7 +18,7 @@ from tabulaflow.research.agents.ensemblers.dbt import DbtLLMEnsembler, DbtLLMEns
 from tabulaflow.research.metrics import SimpleInferenceMetricsAggregator
 from tabulaflow.research.types import NL2QRunResult, NL2QDataset, NL2QTaskOutput
 from tabulaflow.research.pipelines.utils import bool_flag
-from tabulaflow.research.pipelines.utils import tqdm_gather_with_exceptions
+from tabulaflow.research.pipelines.utils import validate_run_schema_formatters, tqdm_gather_with_exceptions
 
 Ensembler = MajorityEnsembler | LLMEnsembler | AgentEnsembler | DbtLLMEnsembler
 
@@ -135,6 +135,7 @@ async def ensemble_async(
     reference = _validate_results(results, output_type)
     if {task.qid for task in dataset.tasks} != {task.qid for task in reference.tasks}:
         raise ValueError("Dataset tasks must match the result QIDs")
+    validate_run_schema_formatters(ensembler.config, dataset)
     start_time = datetime.datetime.now()
 
     ensembled_outputs, fallback_count = await _ensemble_tasks_async(ensembler, results, dataset, batch_size, verbose)

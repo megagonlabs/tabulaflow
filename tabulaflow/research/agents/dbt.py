@@ -5,7 +5,7 @@ import shutil
 import sys
 import time
 from pathlib import Path
-from typing import Any, ClassVar, cast
+from typing import Any, ClassVar
 
 import jinja2
 
@@ -13,7 +13,6 @@ from tabulaflow.research.observability import trace_prediction
 from tabulaflow.research.agents.registry import agent_registry
 from tabulaflow.research.agents.utils import BasicAgentConfig, get_max_steps_capability
 from tabulaflow.data import SQLConnector
-from tabulaflow.output.formatting import SQLSchemaFormatter, schema_formatter_registry
 from tabulaflow.agents.summarization import DataSourceSummarizer
 from tabulaflow.agents.trace import Usage, Trajectory
 from tabulaflow.research.types import DbtTask, DbtTaskOutput
@@ -130,10 +129,7 @@ class DbtAgent:
 
     def __init__(self, config: DbtAgentConfig):
         self.config = config
-        self.formatter = cast(
-            SQLSchemaFormatter,
-            schema_formatter_registry.get_class(config.schema_formatter)(**config.to_formatter_kwargs()),
-        )
+        self.formatter = config.create_schema_formatter("sql")
 
     @classmethod
     async def from_config_async(cls, config: DbtAgentConfig) -> "DbtAgent":

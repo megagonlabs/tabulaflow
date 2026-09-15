@@ -91,8 +91,9 @@ support `cache_only`, which requires an existing entry. Cached inputs must match
 the database snapshot used for the experiment. Query caching changes what
 execution timings measure.
 
-Runs store task QIDs and agent configuration. Record runtime settings and the
-TabulaFlow version separately for reproducibility.
+Runs store task QIDs and agent configuration. For reproducible experiments,
+set the schema formatter explicitly, pin the TabulaFlow version, and record
+runtime settings separately.
 See [runtime configuration](../python-library/api/agents.md#runtime-and-model-configuration)
 and [connector configuration](../python-library/api/data.md#configuration) for
 all fields and environment-variable settings.

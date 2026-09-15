@@ -1,21 +1,16 @@
 import jinja2
 import time
-from typing import ClassVar, cast
+from typing import ClassVar
 
-from tabulaflow.core import PropertyGraphSchema, SQLSchema
 from tabulaflow.data import DataConnector
 from tabulaflow.agents.trace import Usage, Trajectory
 from tabulaflow.research.observability import trace_prediction
 from tabulaflow.research.types import PredQuery
 from tabulaflow.research.types import SimpleNL2QTask, SimpleNL2QTaskOutput
-from tabulaflow.output.formatting import (
-    PropertyGraphSchemaFormatter,
-    SQLSchemaFormatter,
-    schema_formatter_registry,
-)
 from tabulaflow.research.agents.registry import agent_registry
 from tabulaflow.research.agents.utils import (
     format_question,
+    format_schema_for_prompt,
     extract_code,
     BasicAgentConfig,
 )
@@ -69,27 +64,11 @@ class DirectPromptAgent:
     async def from_config_async(cls, config: BasicAgentConfig) -> "DirectPromptAgent":
         return cls(config)
 
-    def _format_schema_for_prompt(self, db_connector: DataConnector) -> str:
-        schema = db_connector.schema
-        if isinstance(schema, SQLSchema):
-            sql_formatter = cast(
-                SQLSchemaFormatter,
-                schema_formatter_registry.get_class(self.config.schema_formatter)(**self.config.to_formatter_kwargs()),
-            )
-            return sql_formatter.format(schema, include_descriptions=self.config.use_column_descriptions)
-        if isinstance(schema, PropertyGraphSchema):
-            graph_formatter = cast(
-                PropertyGraphSchemaFormatter,
-                schema_formatter_registry.get_class(self.config.schema_formatter)(),
-            )
-            return graph_formatter.format(schema)
-        raise TypeError(f"Unsupported schema type for DirectPromptAgent: {type(schema)!r}")
-
     @trace_prediction
     async def predict_async(self, task: SimpleNL2QTask, db_connector: DataConnector) -> SimpleNL2QTaskOutput:
         t0 = time.time()
 
-        schema_str = self._format_schema_for_prompt(db_connector)
+        schema_str = format_schema_for_prompt(db_connector.schema, self.config)
 
         system_prompt = jinja2.Template(DIRECT_PROMPT_SYSTEM_PROMPT).render(
             language=db_connector.language,

@@ -4,7 +4,7 @@ import json
 import jinja2
 import time
 from dataclasses import dataclass, field
-from typing import ClassVar, Any, cast
+from typing import ClassVar, Any
 import numpy as np
 import numpy.typing as npt
 from pydantic import BaseModel
@@ -19,7 +19,6 @@ from tabulaflow.research.preprocessing import QuestionEmbedder, SchemaPreprocess
 from tabulaflow.agents.tools import AgentTool, RunQueryTool
 from tabulaflow.agents.tools.run_query import latest_query_execution
 from tabulaflow.research.tools import SearchKeywordsTool, FinishTool
-from tabulaflow.output.formatting import SQLSchemaFormatter, schema_formatter_registry
 from tabulaflow.research.agents.registry import agent_registry
 from tabulaflow.research.agents.utils import (
     format_question,
@@ -380,10 +379,7 @@ class SchemaLinkingAgent:
         self.few_shot_dataset = few_shot_dataset
         self.few_shot_embeddings = few_shot_embeddings
 
-        self.formatter = cast(
-            SQLSchemaFormatter,
-            schema_formatter_registry.get_class(config.schema_formatter)(**config.to_formatter_kwargs()),
-        )
+        self.formatter = config.create_schema_formatter("sql")
         self.schema_linker = SchemaLinker(config) if config.do_schema_linking else None
         self.postprocessor = Postprocessor(config) if config.do_postprocessing else None
 
@@ -391,14 +387,13 @@ class SchemaLinkingAgent:
     async def from_config_async(
         cls, config: SchemaLinkingAgentConfig, few_shot_dataset: NL2QDataset | None = None
     ) -> "SchemaLinkingAgent":
+        agent = cls(config, few_shot_dataset)
         if config.num_few_shot_examples > 0:
             if few_shot_dataset is None:
                 raise ValueError("few_shot_dataset is required when num_few_shot_examples is greater than 0")
             question_embedder = QuestionEmbedder(embedding_llm=config.question_embedder_embedding_llm)
-            few_shot_embeddings, _ = await question_embedder.preprocess_async(few_shot_dataset)
-        else:
-            few_shot_embeddings = None
-        return cls(config, few_shot_dataset, few_shot_embeddings)
+            agent.few_shot_embeddings, _ = await question_embedder.preprocess_async(few_shot_dataset)
+        return agent
 
     def _sort_tables(self, preprocessed_schema: SQLSchema, er_diagram: ERDiagram) -> SQLSchema:
         """Reorder the tables in preprocessed_schema to match the order in er_diagram"""

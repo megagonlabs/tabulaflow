@@ -1,6 +1,6 @@
 import jinja2
 import time
-from typing import ClassVar, cast
+from typing import ClassVar
 from tabulaflow.data import DataConnector, SQLConnector
 from tabulaflow.agents.trace import Usage, Trajectory
 from tabulaflow.research.observability import trace_prediction
@@ -10,7 +10,6 @@ from tabulaflow.agents.summarization import DataSourceSummarizer
 from tabulaflow.agents.tools import AgentTool, GetColumnJsonSchemaTool, GetTableSchemaTool, RunQueryTool
 from tabulaflow.agents.tools.run_query import latest_query_execution
 from tabulaflow.research.tools import FinishTool
-from tabulaflow.output.formatting import schema_formatter_registry, SQLSchemaFormatter
 from tabulaflow.research.agents.registry import agent_registry
 from tabulaflow.research.agents.utils import (
     format_question,
@@ -85,10 +84,7 @@ class SchemaDiscoveryAgent:
         config: SchemaDiscoveryAgentConfig,
     ):
         self.config = config
-        self.formatter = cast(
-            SQLSchemaFormatter,
-            schema_formatter_registry.get_class(config.schema_formatter)(**config.to_formatter_kwargs()),
-        )
+        self.formatter = config.create_schema_formatter("sql")
 
     @classmethod
     async def from_config_async(cls, config: SchemaDiscoveryAgentConfig) -> "SchemaDiscoveryAgent":

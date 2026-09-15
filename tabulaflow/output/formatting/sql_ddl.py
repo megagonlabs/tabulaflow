@@ -1,6 +1,6 @@
 """Annotated DDL formatting for SQL schemas."""
 
-from typing import ClassVar
+from typing import ClassVar, Literal
 from dataclasses import dataclass
 from tabulaflow.core.schema import ForeignKeySchema, SQLColumnSchema, SQLDialect, SQLSchema, SQLTableSchema
 from tabulaflow.output.formatting.schema import schema_formatter_registry
@@ -24,6 +24,7 @@ class SQLDDLSchemaFormatter:
     """Formats SQL schemas as annotated DDL with complete table-level constraints."""
 
     name: ClassVar[str] = "sql_ddl"
+    schema_kind: ClassVar[Literal["sql"]] = "sql"
     include_examples: bool = True
     include_sampled_df: bool = True
     include_sampled_df_max_columns: int = 10

@@ -1,6 +1,6 @@
 """Property-graph schema formatting in Text2Cypher form."""
 
-from typing import ClassVar
+from typing import ClassVar, Literal
 
 from tabulaflow.output.formatting.schema import schema_formatter_registry
 from tabulaflow.core.schema import GraphPropertySchema, NodeSchema, PropertyGraphSchema, RelationshipSchema
@@ -27,6 +27,7 @@ class CypherSchemaFormatter:
     """
 
     name: ClassVar[str] = "cypher"
+    schema_kind: ClassVar[Literal["property_graph"]] = "property_graph"
 
     def format(self, schema: PropertyGraphSchema) -> str:
         def _section(title: str, lines: list[str]) -> str:

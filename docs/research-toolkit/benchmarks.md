@@ -52,17 +52,20 @@ task assets and the local SQLite databases:
 uv run tabulaflow benchmark download spider2-lite
 ```
 
-Configure credentials only for the databases you select:
+Configure credentials only for the databases you select. For setup, see the
+[Snowflake access guide](https://github.com/xlang-ai/Spider2/blob/main/assets/Snowflake_Guideline.md)
+or [Google Cloud authentication guide](https://docs.cloud.google.com/docs/authentication/provide-credentials-adc).
 
 === "SQLite"
 
-    No credentials or additional setup are needed.
+    ```bash
+    # No credentials or additional setup are needed.
+    ```
 
 === "Snowflake"
 
-    Obtain access through the [Spider 2.0 Snowflake access guide](https://github.com/xlang-ai/Spider2/blob/main/assets/Snowflake_Guideline.md), then set:
-
     ```bash
+    # Set your Spider 2.0 Snowflake credentials.
     export SF_USER="your-username"
     export SF_PASSWORD="your-programmatic-access-token"
     export SF_ACCOUNT="your-account-identifier"
@@ -70,15 +73,16 @@ Configure credentials only for the databases you select:
 
 === "BigQuery"
 
-    Set a billing project and use the [Google Cloud CLI to configure application-default credentials](https://docs.cloud.google.com/docs/authentication/provide-credentials-adc):
-
     ```bash
+    # Set your billing project.
     export GOOGLE_CLOUD_PROJECT="your-billing-project"
-    gcloud auth application-default login
-    ```
 
-    Alternatively, set `GOOGLE_APPLICATION_CREDENTIALS` to a service-account
-    JSON file you already use for BigQuery.
+    # Sign in with the Google Cloud CLI.
+    gcloud auth application-default login
+
+    # Alternatively, use an existing service account:
+    # export GOOGLE_APPLICATION_CREDENTIALS="/path/to/service-account.json"
+    ```
 
 ## Spider 2.0 dbt
 
@@ -148,7 +152,6 @@ Docker Compose available, download the data and start the test databases:
 uv run tabulaflow benchmark start cypherbench
 ```
 
-Select the [Cypher schema formatter](agents.md#configure-an-agent) for your agent.
 Stop the databases when finished:
 
 ```bash

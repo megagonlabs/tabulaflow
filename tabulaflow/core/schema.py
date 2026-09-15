@@ -32,6 +32,7 @@ SQLDialect: TypeAlias = Literal[
 
 GraphQueryLanguage: TypeAlias = Literal["cypher", "sparql"]
 QueryLanguage: TypeAlias = SQLDialect | GraphQueryLanguage
+SchemaKind: TypeAlias = Literal["sql", "property_graph", "rdf"]
 
 
 # ---------------------------------------------------------------------------

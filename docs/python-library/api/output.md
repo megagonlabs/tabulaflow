@@ -201,8 +201,12 @@ These formatters produce text for people or models. Import them from
 
 ## Custom schema formatters
 
-Implement the protocol for the source's schema family and register the class
-with `schema_formatter_registry`.
+Implement the protocol for the source's schema kind, declare its `schema_kind`
+(such as `"sql"`), and register the class with `schema_formatter_registry`.
+`get_schema_formatter_class` selects and validates a class by kind; construct
+it with the options you need.
+
+::: tabulaflow.output.formatting.get_schema_formatter_class
 
 ::: tabulaflow.output.formatting.SQLSchemaFormatter
 

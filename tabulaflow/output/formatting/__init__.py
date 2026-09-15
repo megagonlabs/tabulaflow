@@ -13,6 +13,7 @@ if TYPE_CHECKING:
         summarize_binary_values,
     )
     from tabulaflow.output.formatting.cypher import CypherSchemaFormatter
+    from tabulaflow.output.formatting.resolution import get_schema_formatter_class
     from tabulaflow.output.formatting.schema import (
         PropertyGraphSchemaFormatter,
         RDFSchemaFormatter,
@@ -41,6 +42,7 @@ _LAZY_EXPORTS = {
     "format_single_line_text": ("tabulaflow.output.formatting._core", "format_single_line_text"),
     "summarize_binary_values": ("tabulaflow.output.formatting._core", "summarize_binary_values"),
     "schema_formatter_registry": ("tabulaflow.output.formatting.schema", "schema_formatter_registry"),
+    "get_schema_formatter_class": ("tabulaflow.output.formatting.resolution", "get_schema_formatter_class"),
 }
 
 __all__ = [
@@ -57,6 +59,7 @@ __all__ = [
     "format_json_schema_type",
     "format_single_line_text",
     "schema_formatter_registry",
+    "get_schema_formatter_class",
     "summarize_binary_values",
 ]
 

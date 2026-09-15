@@ -12,7 +12,7 @@ from pydantic import BaseModel
 from tabulaflow.research.agents.registry import agent_registry
 from tabulaflow.research.benchmarks.registry import dataset_registry, preflight_benchmark
 from tabulaflow.research.metrics import MetricAggregatorProtocol, SimpleInferenceMetricsAggregator
-from tabulaflow.research.pipelines.utils import pprint_dict, tqdm_gather_with_exceptions
+from tabulaflow.research.pipelines.utils import pprint_dict, validate_run_schema_formatters, tqdm_gather_with_exceptions
 from tabulaflow.research.observability import configure_research_observability
 from tabulaflow.research.pipelines.utils import bool_flag
 from tabulaflow.research.agents.user_simulator import UserSimulator
@@ -81,6 +81,7 @@ async def predict_async(
     Returns:
         The collected task outputs, usage, and inference metrics.
     """
+    validate_run_schema_formatters(agent_config, dataset)
     if metric_aggregators is None:
         metric_aggregators = [SimpleInferenceMetricsAggregator()]
     if hasattr(agent_config, "llm") and Usage.create(agent_config.llm, 1, 1000000, 1000000).api_cost_usd == 0:
@@ -238,7 +239,9 @@ async def main_async() -> None:
     model.add_argument("--reasoning", default=None)
     model.add_argument("--service-tier", default=None)
     model.add_argument("--use-column-descriptions", type=bool_flag, nargs="?", const=True, default=None)
-    model.add_argument("-s", "--schema-formatter", default=None)
+    model.add_argument(
+        "-s", "--schema-formatter", default=None, help="Formatter override; default selected by schema kind."
+    )
 
     schema_linking = parser.add_argument_group("schema-linking agent")
     schema_linking.add_argument("--do-schema-linking", type=bool_flag, nargs="?", const=True, default=None)
@@ -299,13 +302,6 @@ async def main_async() -> None:
     if args.split is None:
         args.split = dataset_loader.splits[0]
     await preflight_benchmark(args.dataset, args.split)
-    if args.schema_formatter is None:
-        if args.dataset == "arcs":
-            args.schema_formatter = "sql_basic"
-        elif args.dataset == "cypherbench":
-            args.schema_formatter = "cypher"
-        else:
-            args.schema_formatter = "sql_ddl"
     if args.agent == "schema_linking" and args.num_few_shot_examples is None:
         args.num_few_shot_examples = 5 if args.dataset == "bird-sql" else 0
 

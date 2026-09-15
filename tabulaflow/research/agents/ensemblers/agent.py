@@ -1,6 +1,6 @@
 import asyncio
 import time
-from typing import Any, ClassVar, cast
+from typing import Any, ClassVar
 
 import jinja2
 from pydantic_ai import ModelRetry, RunContext, ToolOutput
@@ -9,7 +9,6 @@ from tabulaflow.research.observability import trace_prediction
 from tabulaflow.research.agents.ensemblers.utils import execution_result_key, format_execution_result
 from tabulaflow.research.agents.utils import BasicAgentConfig, get_max_steps_capability
 from tabulaflow.data import SQLConnector
-from tabulaflow.output.formatting import SQLSchemaFormatter, schema_formatter_registry
 from tabulaflow.research.query_execution import populate_query_exec_result
 from tabulaflow.agents.summarization import DataSourceSummarizer
 from tabulaflow.agents.trace import Trajectory, Usage
@@ -115,10 +114,7 @@ class AgentEnsembler:
 
     def __init__(self, config: AgentEnsemblerConfig):
         self.config = config
-        self.formatter = cast(
-            SQLSchemaFormatter,
-            schema_formatter_registry.get_class(config.schema_formatter)(**config.to_formatter_kwargs()),
-        )
+        self.formatter = config.create_schema_formatter("sql")
 
     @trace_prediction
     async def ensemble_async(
