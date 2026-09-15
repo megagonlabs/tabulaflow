@@ -81,7 +81,7 @@ async def main() -> None:
         await execute_async(result, dataset, batch_size=3)
         await evaluate_async(result, dataset, metrics=[BirdSQLEx(), Executable()], batch_size=3)
         # --8<-- [end:integration]
-        result.to_directory("runs/structured_query", eval_metrics_in_summary=["bird_sql_ex", "executable"])
+        result.to_directory("runs/structured_query")
         print(result.aggregated_eval_metrics)
     finally:
         await asyncio.gather(*(connector.close_async() for connector in dataset.db_connectors.values()))

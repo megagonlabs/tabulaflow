@@ -54,10 +54,7 @@ async def main() -> None:
             batch_size=1,
             verbose=False,
         )
-        result.to_directory(
-            "runs/arcs-structured",
-            eval_metrics_in_summary=["simple_ex", "executable", "found_one"],
-        )
+        result.to_directory("runs/arcs-structured")
     finally:
         await asyncio.gather(*(connector.close_async() for connector in dataset.db_connectors.values()))
 

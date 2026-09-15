@@ -637,12 +637,28 @@ class NL2QRunResult(BaseModel):
     aggregated_eval_metrics: dict[str, Any] = Field(default_factory=dict)
     tasks: list[NL2QTaskOutput]
 
-    def to_directory(self, directory: str, eval_metrics_in_summary: Sequence[str] = ()) -> None:
+    def to_directory(self, directory: str, eval_metrics_in_summary: Sequence[str] | None = None) -> None:
+        """Save the run, summary CSV, and readable task reports.
+
+        Args:
+            directory: Destination directory.
+            eval_metrics_in_summary: Metric columns in the summary. None includes
+                all recorded task metrics in first-seen order; an empty sequence
+                omits metrics. An explicit sequence sets the column order.
+        """
         from tabulaflow.research.reporting import run_result_to_directory
 
         run_result_to_directory(self, directory, eval_metrics_in_summary)
 
-    def to_csv(self, path: str, eval_metrics: Sequence[str] = ()) -> None:
+    def to_csv(self, path: str, eval_metrics: Sequence[str] | None = None) -> None:
+        """Save one summary row per task.
+
+        Args:
+            path: Destination CSV file.
+            eval_metrics: Metric columns to include. None includes all recorded
+                task metrics in first-seen order; an empty sequence omits metrics.
+                An explicit sequence sets the column order.
+        """
         from tabulaflow.research.reporting import run_result_to_csv
 
         run_result_to_csv(self, path, eval_metrics)

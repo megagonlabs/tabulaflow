@@ -363,7 +363,11 @@ def run_result_to_directory(
 
 def run_result_to_csv(result: NL2QRunResult, path: str, eval_metrics: Sequence[str] | None = None) -> None:
     """Write one summary row per task in a run result."""
-    metric_names = list(eval_metrics or ())
+    metric_names = (
+        list(dict.fromkeys(name for task in result.tasks for name in task.eval_metrics))
+        if eval_metrics is None
+        else list(eval_metrics)
+    )
     summaries = [task_to_summary(task, metric_names) for task in result.tasks]
     columns = summaries[0].fields() if summaries else list(CSVSummaryRow.model_fields)[:-1] + metric_names
     df = pd.DataFrame([summary.data() for summary in summaries], columns=columns)

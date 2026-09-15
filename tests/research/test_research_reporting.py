@@ -48,7 +48,7 @@ def test_run_result_directory_layout(tmp_path: Path) -> None:
         tasks=[task],
     )
 
-    result.to_directory(str(tmp_path), eval_metrics_in_summary=["accuracy"])
+    result.to_directory(str(tmp_path))
 
     assert (tmp_path / "result.json").is_file()
     assert (tmp_path / "readable" / "q1" / "task_readable.md").is_file()
@@ -59,7 +59,61 @@ def test_run_result_directory_layout(tmp_path: Path) -> None:
     assert "value" in summary.loc[0, "pred_exec_result"]
 
 
-def test_empty_run_writes_summary_headers(tmp_path: Path) -> None:
+@pytest.mark.parametrize("as_directory", [False, True])
+@pytest.mark.parametrize(
+    ("selected_metrics", "expected_metrics"),
+    [
+        (None, ["accuracy", "executable"]),
+        (["executable", "accuracy"], ["executable", "accuracy"]),
+        (["executable"], ["executable"]),
+        ([], []),
+    ],
+)
+def test_run_summary_metric_selection(
+    tmp_path: Path, as_directory: bool, selected_metrics: list[str] | None, expected_metrics: list[str]
+) -> None:
+    result = NL2QRunResult(
+        start_time=datetime.datetime(2026, 1, 1),
+        end_time=datetime.datetime(2026, 1, 1),
+        dataset="test",
+        split="test",
+        databases=["db"],
+        subsample_size=None,
+        agent="test",
+        agent_config={},
+        tasks=[
+            SimpleNL2QTaskOutput(
+                qid=f"q{i}",
+                db="db",
+                question="Return one.",
+                gold_query=GoldQuery(query="SELECT 1"),
+                pred_query=None,
+                eval_metrics=metrics,
+            )
+            for i, metrics in enumerate(({}, {"accuracy": 0}, {"executable": 1, "accuracy": 1}), start=1)
+        ],
+    )
+    path = tmp_path / "result_summary.csv"
+
+    if as_directory:
+        result.to_directory(str(tmp_path), eval_metrics_in_summary=selected_metrics)
+    else:
+        result.to_csv(str(path), eval_metrics=selected_metrics)
+
+    summary = pd.read_csv(path)
+    assert list(summary.columns[8:]) == expected_metrics
+    assert list(summary["qid"]) == ["q1", "q2", "q3"]
+    for metric in expected_metrics:
+        assert pd.isna(summary.loc[0, metric])
+        assert summary.loc[2, metric] == 1
+    if "accuracy" in expected_metrics:
+        assert summary.loc[1, "accuracy"] == 0
+    if "executable" in expected_metrics:
+        assert pd.isna(summary.loc[1, "executable"])
+
+
+@pytest.mark.parametrize("metrics", [None, [], ["accuracy"]])
+def test_empty_run_writes_summary_headers(tmp_path: Path, metrics: list[str] | None) -> None:
     result = NL2QRunResult(
         start_time=datetime.datetime(2026, 1, 1),
         end_time=datetime.datetime(2026, 1, 1),
@@ -72,7 +126,7 @@ def test_empty_run_writes_summary_headers(tmp_path: Path) -> None:
         tasks=[],
     )
 
-    result.to_csv(str(tmp_path / "summary.csv"), eval_metrics=["accuracy"])
+    result.to_csv(str(tmp_path / "summary.csv"), eval_metrics=metrics)
 
     assert list(pd.read_csv(tmp_path / "summary.csv").columns) == [
         "qid",
@@ -83,8 +137,7 @@ def test_empty_run_writes_summary_headers(tmp_path: Path) -> None:
         "pred_query",
         "gold_exec_result",
         "pred_exec_result",
-        "accuracy",
-    ]
+    ] + (metrics or [])
 
 
 def test_dict_to_df_handles_empty_input_and_forwards_total_column_only() -> None:

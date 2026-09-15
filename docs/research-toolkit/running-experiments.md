@@ -9,7 +9,7 @@ Save again after execution or evaluation to update the reports:
 from pathlib import Path
 from tabulaflow.research.types import NL2QRunResult
 
-result.to_directory("runs/full-schema", eval_metrics_in_summary=["bird_sql_ex"])
+result.to_directory("runs/full-schema")
 result = NL2QRunResult.model_validate_json(
     Path("runs/full-schema/result.json").read_text()
 )
@@ -23,9 +23,11 @@ runs/full-schema/
     └── <qid>/
         ├── task_readable.md
         └── trajectory/
+            └── <trajectory-id>.md
 ```
 
-Reports include queries, tabular results, scores, and available trajectories.
+Reports include queries, tabular results, and scores. Trajectory files contain
+agent messages and tool calls, when available.
 To continue execution or evaluation, reload the original benchmark split with
 `qids=[task.qid for task in result.tasks]` and the same database snapshot.
 

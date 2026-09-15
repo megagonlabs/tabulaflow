@@ -122,7 +122,7 @@ async def main_async() -> None:
     ]
     result = await evaluate_async(result, dataset, metrics, args.batch_size, metric_aggregators)
 
-    result.to_directory(args.result_dir, eval_metrics_in_summary=metric_names)
+    result.to_directory(args.result_dir)
     print(f"Saved evaluated result to {args.result_dir}")
 
     print()

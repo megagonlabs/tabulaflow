@@ -56,7 +56,7 @@ async def main() -> None:
             result = await predict_async(agent_cls, config, dataset, batch_size=5)
             await execute_async(result, dataset, batch_size=5)
             await evaluate_async(result, dataset, metrics=[BirdSQLEx(), Executable()], batch_size=5)
-            result.to_directory(f"runs/{result.agent}", eval_metrics_in_summary=["bird_sql_ex", "executable"])
+            result.to_directory(f"runs/{result.agent}")
             results.append(result)
         # --8<-- [end:comparison]
 
