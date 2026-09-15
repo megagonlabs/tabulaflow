@@ -11,6 +11,21 @@ with `register`, inherited from [`ClassRegistry`][tabulaflow.core.registry.Class
 
 ::: tabulaflow.research.benchmarks.registry.DatasetRegistry
 
+## Implement a loader
+
+For reusable splits, implement `DatasetLoaderProtocol`:
+
+- Declare `name`, available `splits`, `default_metrics`, and a
+  `BenchmarkInstallation` describing the required local data.
+- Implement `get_databases`, `get_tasks_async`, and `get_db_connectors_async`.
+- Implement `get_split_async` to select tasks first, then open only the needed
+  connectors and return an `NL2QDataset`. Reuse `select_tasks` for QID filtering
+  and deterministic sampling, and `selected_databases` to find required databases.
+
+Register the loader with `dataset_registry.register(YourLoader)`. Registrations
+apply to the current Python process. For managed database services, supply a
+`BenchmarkRuntime` with start, stop, and readiness callbacks.
+
 ## Task selection
 
 QID filtering precedes deterministic sampling. Unknown QIDs and invalid sample

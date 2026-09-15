@@ -4,6 +4,8 @@
 # ///
 
 import asyncio
+
+# --8<-- [start:agent-imports]
 import time
 from typing import ClassVar
 
@@ -14,11 +16,16 @@ from tabulaflow.agents.trace import Trajectory, Usage
 from tabulaflow.core import SQLSchema
 from tabulaflow.data import DataConnector
 from tabulaflow.output.formatting import SQLDDLSchemaFormatter
-from tabulaflow.research.benchmarks import BirdSQLDatasetLoader
-from tabulaflow.research.metrics import BirdSQLEx, Executable
 from tabulaflow.research.observability import trace_prediction
-from tabulaflow.research.pipelines import evaluate_async, execute_async, predict_async
 from tabulaflow.research.types import PredQuery, SimpleNL2QTask, SimpleNL2QTaskOutput
+# --8<-- [end:agent-imports]
+
+from tabulaflow.research.benchmarks import BirdSQLDatasetLoader
+
+# --8<-- [start:pipeline-imports]
+from tabulaflow.research.metrics import BirdSQLEx, Executable
+from tabulaflow.research.pipelines import evaluate_async, execute_async, predict_async
+# --8<-- [end:pipeline-imports]
 
 
 # --8<-- [start:agent]

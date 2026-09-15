@@ -6,6 +6,16 @@ A registered strategy declares `name`, `task_type`, `output_type`, and
 `config_cls`. It provides `from_config_async(...)` and the `predict_async(...)`
 method appropriate for its task family.
 
+The pipeline creates one agent per task. Pass the class directly to
+`predict_async(...)`, or register it with `agent_registry.register(YourAgent)`
+for name-based lookup in the current Python process.
+
+Return `pred_query=None` for an intentional abstention in a simple task.
+Let unexpected prediction exceptions propagate so the pipeline logs them and
+records empty outputs. Use `extra_pred_info` to retain predictions from before
+postprocessing. Reference queries remain in task outputs for evaluation;
+include only question context and schema in model prompts.
+
 See [Extending the toolkit](../extending.md#implement-an-agent) for an implementation.
 
 ::: tabulaflow.research.agents.registry.agent_registry
