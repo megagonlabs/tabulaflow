@@ -32,12 +32,12 @@ for all configuration options.
 
 ## Ambiguity-aware agents
 
-The structured agent identifies ambiguity points and generates queries for their
-interpretations. This example uses `gpt-4.1` on ARCS task `001-5`:
-
-> Report the total revenue for each nation in 1995.
+Inspect the structured agent's detected ambiguities, selected interpretations,
+and predicted SQL on the first ARCS task:
 
 ```python
+--8<-- "examples/ambiguity_aware_queries.py:load"
+
 --8<-- "examples/ambiguity_aware_queries.py:prediction"
 ```
 

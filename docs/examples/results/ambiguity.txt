@@ -1,23 +1,14 @@
-Scores
-simple_ex    0
-executable   1
-found_one    1
+Question: Report the total revenue for each nation in 1995.
 
-Question
-Report the total revenue for each nation in 1995.
+total revenue:
+  A.0: Sum of l_extendedprice for each nation in 1995
+  A.1: Sum of l_extendedprice * (1 - l_discount) for each nation in 1995 (selected)
 
-Detected interpretations
-total revenue
-  A.0 Sum of l_extendedprice for each nation in 1995
-  A.1 Sum of l_extendedprice * (1 - l_discount) for each nation in 1995
-  Selected: A.1
+nation:
+  B.0: Nation of the customer (customer.c_nationkey) (selected)
+  B.1: Nation of the supplier (supplier.s_nationkey)
 
-nation
-  B.0 Nation of the customer (customer.c_nationkey)
-  B.1 Nation of the supplier (supplier.s_nationkey)
-  Selected: B.0
-
-Predicted query (clarified interpretation)
+Predicted SQL:
 SELECT n.n_name AS nation, SUM(l.l_extendedprice * (1 - l.l_discount)) AS total_revenue
 FROM lineitem l
 JOIN orders o ON l.l_orderkey = o.o_orderkey
@@ -25,34 +16,3 @@ JOIN customer c ON o.o_custkey = c.c_custkey
 JOIN nation n ON c.c_nationkey = n.n_nationkey
 WHERE strftime('%Y', o.o_orderdate) = '1995'
 GROUP BY n.n_name
-
-Query result (25 rows; amounts rounded to 2 decimal places)
-        nation    total_revenue
-       ALGERIA 1,322,656,353.01
-     ARGENTINA 1,380,994,011.03
-        BRAZIL 1,312,468,151.68
-        CANADA 1,399,525,843.14
-         CHINA 1,384,236,693.64
-         EGYPT 1,375,548,780.06
-      ETHIOPIA 1,269,372,923.47
-        FRANCE 1,321,809,212.41
-       GERMANY 1,342,095,147.58
-         INDIA 1,273,943,764.35
-     INDONESIA 1,294,107,289.95
-          IRAN 1,398,348,311.26
-          IRAQ 1,326,825,585.04
-         JAPAN 1,314,839,708.89
-        JORDAN 1,229,023,712.98
-         KENYA 1,303,171,752.95
-       MOROCCO 1,332,033,919.98
-    MOZAMBIQUE 1,300,668,889.60
-          PERU 1,305,810,388.88
-       ROMANIA 1,328,534,609.74
-        RUSSIA 1,343,824,898.93
-  SAUDI ARABIA 1,260,482,641.56
-UNITED KINGDOM 1,293,430,443.96
- UNITED STATES 1,388,315,814.62
-       VIETNAM 1,303,430,948.97
-
-The query executed and matched a valid interpretation. It missed the selected
-return-status and date conditions, so intended-query accuracy was 0.
