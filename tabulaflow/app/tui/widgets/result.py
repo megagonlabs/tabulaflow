@@ -636,9 +636,7 @@ class AgentResultWidget(Widget):
         hint = Text(no_wrap=True)
         if not self._has_answer_controls:
             # ↑↓ and Enter only do anything when this widget is focused, so
-            # both follow focus-state dimming (bright when focused, dim when
-            # not) — the "way in" comes from the docked bottom-bar hint, not
-            # from the widget itself.
+            # both follow focus-state dimming (bright when focused, dim when not).
             hint.append("↑↓", style=self._focus_key_hint)
             hint.append(" Prev/Next result    ", style="dim")
             hint.append("↵", style=self._focus_key_hint)

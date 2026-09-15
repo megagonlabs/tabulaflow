@@ -301,10 +301,6 @@ class TabulaflowApp(App[None]):
                     id="input-bar",
                 )
                 yield Static("│", classes="input-sep")
-                # Content set by ``_refresh_esc_hint`` once mounted; starts disabled
-                # (faded) until there are results to jump to.
-                yield Static(id="input-esc-hint", disabled=True)
-                yield Static("│", classes="input-sep")
                 # Disabled until the background session build + sample auto-connect
                 # completes (re-enabled at the end of ``_ensure_session``), so the user
                 # can't open an empty explorer before any data source is connected. While
@@ -321,34 +317,8 @@ class TabulaflowApp(App[None]):
         chat_log = self.query_one("#chat-log", ChatLog)
         self.query_one("#input-bar", HistoryInput).focus()
         chat_log.follow_new_content(force=True)
-        self._refresh_esc_hint()
         self._ensure_pane()
         self.call_after_refresh(self._start_llm_activation, self._llm_selection)
-
-    def _refresh_esc_hint(self) -> None:
-        """Update the docked ``Esc`` hint label to match current state.
-
-        The label flips between ``Go to results`` (when focus is on the
-        input) and ``Go to input`` (when focus is on a result widget). When no
-        result widgets exist yet the hint is ``disabled`` — its ``:disabled``
-        CSS fades it exactly like the disabled ``Open data explorer`` button, so
-        the two input-row hints read consistently.
-        """
-        try:
-            hint = self.query_one("#input-esc-hint", Static)
-        except Exception:
-            return
-        has_results = bool(self.query(AgentResultWidget))
-        in_result = isinstance(self.focused, AgentResultWidget)
-        label = Text()
-        label.append("Esc", style=KEY_HINT)
-        label.append("  Go to input" if in_result else "  Go to results", style="dim")
-        hint.update(label)
-        hint.disabled = not has_results
-
-    def on_descendant_focus(self, event: events.DescendantFocus) -> None:
-        """Re-render the Esc hint when focus moves between input/results."""
-        self._refresh_esc_hint()
 
     def on_text_selected(self, event: events.TextSelected) -> None:
         """Auto-copy the chat selection to the clipboard when a drag ends.
@@ -699,7 +669,7 @@ class TabulaflowApp(App[None]):
         if self._llm_service_tier == "priority" and self._llm_selection.preset is not None:
             model_label = f"{model_label} · Priority"
         model_status.update(Text(f"{model_label} · {_compact_project_dir(self._project_dir)}", style="dim"))
-        url_status.update(Text(f"View output in browser: {url}" if url else "", style="dim"))
+        url_status.update(Text(f"View in browser: {url}" if url else "", style="dim"))
 
     def _start_llm_activation(self, selection: ResolvedLLMSelection) -> None:
         """Initialize the confirmed LLM option in the background."""
@@ -1092,7 +1062,6 @@ class TabulaflowApp(App[None]):
                     self._pane.clear()
                 except Exception:
                     logger.warning("clearing output pane failed", exc_info=True)
-            self._refresh_esc_hint()
             return
 
         if result.action == "open_config":
@@ -1277,7 +1246,6 @@ class TabulaflowApp(App[None]):
                 turn_output=turn_output,
             )
             await chat_log.mount(result_widget)
-            self._refresh_esc_hint()
             # Focus the just-mounted result so the user can press Enter to
             # inspect it without first clicking. The typeahead handler in
             # ``on_key`` routes any printable keystroke back to the input,

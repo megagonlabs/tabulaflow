@@ -63,26 +63,6 @@ TabulaflowApp {
     background: transparent;
 }
 
-#input-esc-hint {
-    /* Fixed width sized for the longer label ("Esc  Go to results" = 18
-       chars) + horizontal padding (2 + 2). Prevents the hint from
-       resizing when the label toggles between "Go to results" and
-       "Go to input", which would otherwise shift "Esc" horizontally. */
-    width: 22;
-    height: 1;
-    padding: 0 2;
-    background: transparent;
-}
-
-#input-esc-hint:disabled {
-    /* Fade identically to the disabled "Open data explorer" button. Textual
-       only fades disabled FOCUSABLE widgets (App's `*:disabled:can-focus
-       { opacity: 0.7 }`, plus Button's `text-opacity: 0.6`); this hint is a
-       non-focusable Static, so replicate both values explicitly. */
-    opacity: 0.7;
-    text-opacity: 0.6;
-}
-
 #open-explorer-btn {
     /* Fixed width sized to the longest label ("Ctrl+O  Open data explorer")
        so the button reserves its space up front: the layout doesn't shift when
