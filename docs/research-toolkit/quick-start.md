@@ -85,5 +85,5 @@ The example makes paid model calls; predictions and scores vary between runs.
 - [Agents](agents.md): choose and configure a built-in method.
 - [Running experiments](running-experiments.md): scale, save, and compare runs.
 - [Evaluation and analysis](evaluation.md): choose metrics and inspect results.
-- [Extending the toolkit](extending.md): implement and evaluate your own method.
+- [Extend the toolkit](extending.md): use your own agents, datasets, and metrics.
 - [API reference](api-reference.md): look up contracts, fields, and signatures.

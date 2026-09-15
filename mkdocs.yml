@@ -64,7 +64,7 @@ nav:
       - Agents: research-toolkit/agents.md
       - Running experiments: research-toolkit/running-experiments.md
       - Evaluation and analysis: research-toolkit/evaluation.md
-      - Extending the toolkit: research-toolkit/extending.md
+      - Extend the toolkit: research-toolkit/extending.md
       - API reference:
           - Overview: research-toolkit/api-reference.md
           - Tasks and runs: research-toolkit/api/types.md

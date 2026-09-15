@@ -16,7 +16,7 @@ records empty outputs. Use `extra_pred_info` to retain predictions from before
 postprocessing. Reference queries remain in task outputs for evaluation;
 include only question context and schema in model prompts.
 
-See [Extending the toolkit](../extending.md#implement-an-agent) for an implementation.
+See [Build a custom agent](../extending.md#build-a-custom-agent) for an implementation.
 
 ::: tabulaflow.research.agents.registry.agent_registry
 

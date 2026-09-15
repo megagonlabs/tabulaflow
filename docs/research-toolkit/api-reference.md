@@ -9,6 +9,6 @@
 | [Preprocessing](api/preprocessing.md) | Derived schemas, summaries, embeddings, and ER diagrams |
 | [Metrics](api/metrics.md) | Metric protocol, registered metrics, and aggregation policies |
 
-See [Extending the toolkit](extending.md) for worked examples and the
+See [Extend the toolkit](extending.md) for worked examples and the
 [library reference](../python-library/api-reference.md) for connectors, schemas,
 execution results, and model infrastructure.

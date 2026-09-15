@@ -1,10 +1,12 @@
-# Extending the toolkit
+# Extend the toolkit
 
-## Implement an agent
+Build an agent once and evaluate it across compatible benchmarks with shared
+execution, metrics, and reporting. The same pipeline accepts your own datasets
+and metrics.
 
-Bring your prediction method and reuse the benchmark loaders, execution,
-metrics, and reports. This agent selects relevant tables, then generates SQL
-from their schema with `RunQueryTool` for execution feedback:
+## Build a custom agent
+
+This example selects relevant tables, then generates SQL with execution feedback:
 
 ```python title="table_linking_agent.py"
 --8<-- "examples/table_linking_agent.py:agent-imports"
@@ -81,7 +83,7 @@ See [Data connectors](../python-library/data-connectors.md) to connect an existi
 
 For reusable splits, [implement a dataset loader](api/benchmarks.md#implement-a-loader).
 
-## Add a metric
+## Add a custom metric
 
 Declare `name` and `compatible_output_types`, then implement `compute_async(...)`.
 This diagnostic counts joins in predicted SQL, including CTEs and subqueries:

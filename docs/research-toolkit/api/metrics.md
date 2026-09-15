@@ -110,7 +110,7 @@ requiring an `NL2QRunResult`.
 
 ## Custom metrics and aggregators
 
-See [Add a metric](../extending.md#add-a-metric) for a complete implementation.
+See [Add a custom metric](../extending.md#add-a-custom-metric) for a complete implementation.
 Metrics can also return a dictionary whose keys become task metric names.
 Register with `metric_registry.register(YourMetric)` for name-based lookup.
 
