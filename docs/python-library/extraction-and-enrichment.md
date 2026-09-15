@@ -18,7 +18,8 @@ write the results back to the table:
     ```
 
 `key_columns` identify the rows to update. The output columns must already
-exist; their database types determine the subagents' structured output types.
+exist. Behind the scenes, TabulaFlow uses those column types to define and
+validate each subagent's structured output for you.
 
 Set [`OPENAI_API_KEY`](quick-start.md#try-it-yourself), then run:
 
@@ -34,8 +35,7 @@ Use `EntityExtractor` directly when the input is a document:
 from tabulaflow.agents.extraction import EntityExtractor
 
 extractor = EntityExtractor(
-    ["product", "price_usd"],
-    column_types={"price_usd": float},
+    {"product": str, "price_usd": float},
     llm="openai-responses:gpt-5-mini",
 )
 records = await extractor.extract(

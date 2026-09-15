@@ -290,9 +290,7 @@ class ExtractRowsFromDocumentsTool:
         # (int/float/bool/date) instead of a string the database must coerce on INSERT —
         # an unparseable string would otherwise abort the whole batch append. Best-effort
         # off the connector's introspected schema; unresolved columns default to str.
-        column_types, unsupported = resolve_column_types(
-            self.connector.schema, schema_name, table_name, output_columns
-        )
+        column_types, unsupported = resolve_column_types(self.connector.schema, schema_name, table_name, output_columns)
         if unsupported:
             raise TypeError(
                 f"cannot extract into non-scalar columns {unsupported} in {qualified_target}; "
@@ -305,8 +303,7 @@ class ExtractRowsFromDocumentsTool:
         traj_dir = self.trajectory_log_dir / uuid.uuid4().hex[:12] if self.trajectory_log_dir is not None else None
 
         extractor = EntityExtractor(
-            output_columns,
-            column_types=column_types,
+            {col: column_types.get(col, str) for col in output_columns},
             llm=self.subagent_llm,
             model_settings=self.model_settings,
             max_concurrency=self.max_concurrency,

@@ -66,12 +66,12 @@ def test_python_type_for_dtype() -> None:
 def test_entity_extractor_builds_typed_model() -> None:
     """Per-column types produce a nullable, JSON-typed structured-output model."""
     ex = EntityExtractor(
-        ["name", "qty", "price", "active", "day", "at"],
-        column_types={"qty": int, "price": float, "active": bool, "day": date, "at": datetime},
+        {"name": str, "qty": int, "price": float, "active": bool, "day": date, "at": datetime},
         llm="test",
     )
     entity_model = ex._result_model.model_fields["entities"].annotation.__args__[0]  # type: ignore[union-attr]
     props = entity_model.model_json_schema()["properties"]
+    assert list(props) == ["name", "qty", "price", "active", "day", "at"]
 
     def json_types(col: str) -> set[str | None]:
         spec = props[col]
@@ -93,7 +93,7 @@ def test_entity_extractor_builds_typed_model() -> None:
 def test_entity_extractor_rebuilds_agent_when_profile_changes(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("OPENAI_API_KEY", "sk-test123456789ab4x")
     settings = ModelSettings(temperature=0)
-    ex = EntityExtractor(["name"], llm="test")
+    ex = EntityExtractor({"name": str}, llm="test")
     original_agent = ex._agent
 
     ex.apply_llm_profile(llm="openai-responses:gpt-5", model_settings=settings)
@@ -106,8 +106,7 @@ def test_entity_extractor_rebuilds_agent_when_profile_changes(monkeypatch: pytes
 def test_typed_model_coerces_and_nulls() -> None:
     """Pydantic coerces strings to typed values, accepts null, and rejects junk (no silent pass)."""
     ex = EntityExtractor(
-        ["qty", "price", "active", "day"],
-        column_types={"qty": int, "price": float, "active": bool, "day": date},
+        {"qty": int, "price": float, "active": bool, "day": date},
         llm="test",
     )
     entity_model = ex._result_model.model_fields["entities"].annotation.__args__[0]  # type: ignore[union-attr]
@@ -117,6 +116,7 @@ def test_typed_model_coerces_and_nulls() -> None:
 
     nulled = entity_model(qty=None, price=None, active=None, day=None)
     assert (nulled.qty, nulled.price, nulled.active, nulled.day) == (None, None, None, None)
+    assert entity_model().model_dump() == {"qty": None, "price": None, "active": None, "day": None}
 
     with pytest.raises(ValueError):
         entity_model(qty="N/A")
@@ -124,12 +124,17 @@ def test_typed_model_coerces_and_nulls() -> None:
         entity_model(day="not a date")
 
 
-def test_entity_extractor_rejects_unsupported_column_type() -> None:
+def test_entity_extractor_rejects_empty_fields() -> None:
+    with pytest.raises(ValueError, match="fields must be non-empty"):
+        EntityExtractor({})
+
+
+def test_entity_extractor_rejects_unsupported_field_type() -> None:
     """Only str/int/float/bool/date/datetime are accepted; anything else fails fast."""
     from decimal import Decimal
 
     with pytest.raises(ValueError, match="str/int/float/bool/date/datetime"):
-        EntityExtractor(["amt"], column_types={"amt": Decimal})  # type: ignore[dict-item]
+        EntityExtractor({"amt": Decimal})  # type: ignore[dict-item]
 
 
 def test_document_content_validation_rejects_unknown_values_and_accepts_null() -> None:
@@ -156,7 +161,7 @@ def test_document_content_rejects_path_backed_media_with_guidance(value: object,
 
 
 async def test_entity_extractor_splits_pdfs_into_page_batches(monkeypatch: pytest.MonkeyPatch) -> None:
-    extractor = EntityExtractor(["name"], llm="test")
+    extractor = EntityExtractor({"name": str}, llm="test")
     prompts: list[list[UserContent]] = []
 
     async def capture(prompt: str | Sequence[UserContent], _trajectory: str) -> list[dict[str, Any]]:
@@ -182,7 +187,7 @@ async def test_entity_extractor_splits_pdfs_into_page_batches(monkeypatch: pytes
 async def test_entity_extractor_processes_ordered_mixed_media_collection(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    extractor = EntityExtractor(["name"], llm="test")
+    extractor = EntityExtractor({"name": str}, llm="test")
     prompts: list[list[UserContent]] = []
 
     async def capture(prompt: str | Sequence[UserContent], _trajectory: str) -> list[dict[str, Any]]:
@@ -237,10 +242,8 @@ async def test_tool_resolves_types_and_appends_typed_rows(tmp_path: Path, monkey
     captured: dict[str, dict[str, type]] = {}
 
     class FakeExtractor:
-        def __init__(
-            self, output_columns: list[str], *, column_types: dict[str, type] | None = None, **_: object
-        ) -> None:
-            captured["column_types"] = column_types or {}
+        def __init__(self, fields: dict[str, type], **_: object) -> None:
+            captured["fields"] = fields
 
         async def extract(self, content: str, **_: object) -> list[dict[str, object]]:
             return canned
@@ -258,7 +261,7 @@ async def test_tool_resolves_types_and_appends_typed_rows(tmp_path: Path, monkey
     )
 
     assert "Extracted 2 entities" in summary
-    assert captured["column_types"] == {
+    assert captured["fields"] == {
         "name": str,
         "qty": int,
         "price": float,
