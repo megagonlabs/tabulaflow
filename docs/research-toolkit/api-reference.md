@@ -1,15 +1,17 @@
 # API reference
 
-Start with the part of an experiment you want to extend. Signatures, fields,
+Use [Extending the toolkit](extending.md) for worked examples. Look up the
+contracts below when implementing or configuring an experiment. Signatures, fields,
 and methods are generated from the source.
 
 | Area | APIs |
 | --- | --- |
 | [Tasks and runs](api/types.md) | Queries, task families, predictions, datasets, and serialized runs |
 | [Benchmarks](api/benchmarks.md) | Loader protocol, dataset registry, task selection, installation, and runtimes |
-| [Agents](api/agents.md) | Strategy protocols, built-in agents, configurations, user simulation, and research tools |
+| [Agents and tools](api/agents.md) | Strategy protocols, configurations, user simulation, tools, and tracing |
+| [Pipelines](api/pipelines.md) | Prediction, execution, evaluation, and ensembling |
+| [Preprocessing](api/preprocessing.md) | Derived schemas, summaries, embeddings, and ER diagrams |
 | [Metrics](api/metrics.md) | Metric protocol, registered metrics, and aggregation policies |
-| [Pipelines and preprocessing](api/pipelines.md) | Prediction, execution, evaluation, ensembling, and preprocessing |
 
 Research uses the shared [library APIs](../python-library/api-reference.md)
 for connections, schemas, execution results, tools, and model infrastructure.

@@ -1,21 +1,11 @@
 import asyncio
-from collections.abc import Mapping
 
 from tabulaflow.agents import AgentRuntimeConfig, initialize_agent_runtime
-from tabulaflow.data import DataConnector
-from tabulaflow.research.agents.direct_prompt import DirectPromptAgent
-from tabulaflow.research.agents.schema_linking import SchemaLinkingAgent
-from tabulaflow.research.agents.schema_linking import SchemaLinkingAgentConfig
-from tabulaflow.research.agents.utils import BasicAgentConfig
-from tabulaflow.research.benchmarks.bird_sql import BirdSQLDatasetLoader
+from tabulaflow.research.agents import BasicAgentConfig, DirectPromptAgent
+from tabulaflow.research.agents.schema_linking import SchemaLinkingAgent, SchemaLinkingAgentConfig
+from tabulaflow.research.benchmarks import BirdSQLDatasetLoader
 from tabulaflow.research.metrics import BirdSQLEx, Executable, SimpleAverageAggregator
-from tabulaflow.research.pipelines.evaluate import evaluate_async
-from tabulaflow.research.pipelines.execute import execute_async
-from tabulaflow.research.pipelines.predict import predict_async
-
-
-async def close_connectors(connectors: Mapping[str, DataConnector]) -> None:
-    await asyncio.gather(*(connector.close_async() for connector in connectors.values()))
+from tabulaflow.research.pipelines import evaluate_async, execute_async, predict_async
 
 
 async def main() -> None:
@@ -47,7 +37,7 @@ async def main() -> None:
             )
             print(name, result.aggregated_eval_metrics)
     finally:
-        await close_connectors(dataset.db_connectors)
+        await asyncio.gather(*(connector.close_async() for connector in dataset.db_connectors.values()))
 
 
 if __name__ == "__main__":

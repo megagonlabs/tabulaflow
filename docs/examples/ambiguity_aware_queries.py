@@ -1,18 +1,10 @@
 import asyncio
-from collections.abc import Mapping
 
 from tabulaflow.agents import AgentRuntimeConfig, initialize_agent_runtime
-from tabulaflow.data import DataConnector
 from tabulaflow.research.agents.ambig_structured import AmbigStructuredSQLAgent, AmbigStructuredSQLAgentConfig
-from tabulaflow.research.benchmarks.ambrosia_s import AmbrosiaSDatasetLoader
+from tabulaflow.research.benchmarks import AmbrosiaSDatasetLoader
 from tabulaflow.research.metrics import Executable, FoundOne, SimpleAverageAggregator, SimpleEx
-from tabulaflow.research.pipelines.evaluate import evaluate_async
-from tabulaflow.research.pipelines.execute import execute_async
-from tabulaflow.research.pipelines.predict import predict_async
-
-
-async def close_connectors(connectors: Mapping[str, DataConnector]) -> None:
-    await asyncio.gather(*(connector.close_async() for connector in connectors.values()))
+from tabulaflow.research.pipelines import evaluate_async, execute_async, predict_async
 
 
 async def main() -> None:
@@ -44,7 +36,7 @@ async def main() -> None:
         for task in result.tasks:
             print(task.to_markdown())
     finally:
-        await close_connectors(dataset.db_connectors)
+        await asyncio.gather(*(connector.close_async() for connector in dataset.db_connectors.values()))
 
 
 if __name__ == "__main__":

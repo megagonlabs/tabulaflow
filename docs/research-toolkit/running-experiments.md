@@ -1,126 +1,244 @@
-# Experiment runs
+# Running experiments
 
-An experiment run records its benchmark selection, agent configuration,
-predictions, execution results, usage, and evaluation metrics. Compose the
-stages in Python so each methodological choice remains visible.
+Compose an experiment in Python, keep its configuration explicit, and save
+results between stages. Start with a small, fixed
+[task selection](benchmarks.md#select-tasks-reproducibly) and a compatible
+[agent](agents.md).
 
 ## Run each stage
 
-The [quick-start example](quick-start.md#example-evaluate-a-full-schema-agent)
-uses the complete lifecycle:
+The [quick start](quick-start.md#example-evaluate-a-full-schema-agent) contains a
+complete script. The stages have separate responsibilities:
 
-```text
-benchmark → prediction → execution → evaluation → report
-```
+| Stage | Effect |
+| --- | --- |
+| `predict_async(...)` | Creates one agent per task and returns an `NL2QRunResult` |
+| `execute_async(...)` | Adds missing reference and predicted query results in place |
+| `evaluate_async(...)` | Replaces task evaluation metrics and run-level aggregates in place |
+| `result.to_directory(...)` | Writes the current run and its reports |
 
-`predict_async(...)` creates one agent per task and returns an `NL2QRunResult`.
-`execute_async(...)` adds results to predicted queries. `evaluate_async(...)`
-computes task metrics and run-level aggregates. Keeping the stages separate
-lets you run model inference and database execution in different environments.
+For a loaded `dataset`, a SQL baseline looks like this inside an async function:
 
 ```python
+from tabulaflow.research.agents import BasicAgentConfig, FullSchemaAgent
+from tabulaflow.research.metrics import BirdSQLEx, Executable
+from tabulaflow.research.pipelines import evaluate_async, execute_async, predict_async
+
 result = await predict_async(
-    agent_cls=SchemaLinkingAgent,
-    agent_config=config,
-    dataset=dataset,
-    batch_size=8,
-)
-
-await execute_async(result, dataset, batch_size=8, timeout=60)
-
-await evaluate_async(
-    result,
+    FullSchemaAgent,
+    BasicAgentConfig(llm="openai-responses:gpt-5-mini"),
     dataset,
-    metrics=[BirdSQLEx(), Executable()],
     batch_size=8,
-    metric_aggregators=[SimpleAverageAggregator()],
 )
+await execute_async(result, dataset, batch_size=8, timeout=60)
+await evaluate_async(result, dataset, metrics=[BirdSQLEx(), Executable()], batch_size=8)
 ```
 
-Per-task prediction failures become empty outputs so the rest of the run can
-finish. Contract errors, invalid configuration, and benchmark setup failures
-raise directly.
+Per-task prediction exceptions are logged and represented by empty outputs so
+other predictions can finish. Agent construction and task-contract errors can
+raise directly. Execution stores query errors in `ExecResult.error`; evaluation
+errors propagate to the caller. See [failure analysis](evaluation.md#inspect-failures)
+for distinguishing these cases.
 
-## Select tasks reproducibly
+For dbt, prediction prepares and modifies a project under `output_dir`; evaluate
+it with `Spider2DuckdbMatch`. The query execution stage has no work for dbt tasks.
 
-Use QIDs for an exact task set or `subsample_size` for deterministic sampling.
-Record the benchmark split, selected databases, QIDs, model identifier, agent
-configuration, cache policy, and TabulaFlow version with every published run.
+## Configure concurrency and caching
 
-Develop on a small selection before paying for a full split:
+Initialize the shared agent runtime before creating model resources. For example:
 
 ```python
-dataset = await loader.get_split_async(
-    "dev",
-    databases=["california_schools"],
-    subsample_size=10,
-)
+from tabulaflow.agents import AgentRuntimeConfig, initialize_agent_runtime
+from tabulaflow.data import SQLConnectorConfig
+from tabulaflow.research.benchmarks import BirdSQLDatasetLoader
+
+initialize_agent_runtime(AgentRuntimeConfig(
+    preprocessing_cache_mode="read_write",
+    max_llm_concurrency=16,
+    max_llm_requests_per_minute=120,
+))
+loader = BirdSQLDatasetLoader(connector_config=SQLConnectorConfig(
+    schema_cache_mode="read_write",
+    sql_query_cache_mode="off",
+    max_query_concurrency=4,
+    query_timeout_seconds=60,
+))
 ```
 
-`batch_size` bounds concurrent task work. Connector configuration controls
-database query concurrency, timeouts, result limits, and caching separately.
+`batch_size` bounds concurrent task work in each pipeline stage. A task can make
+multiple model or database calls: the agent runtime limits model requests across
+the process, while connector configuration limits database queries. Embedding
+requests have their own runtime limits. These controls work together.
 
-## Save and restore a run
+Keep cache policies explicit when comparing methods:
 
-Write the structured result, a CSV summary, and readable task reports:
+| Cache | Stores | Configured by |
+| --- | --- | --- |
+| Schema | Introspected database metadata | Connector `schema_cache_mode` |
+| SQL query | Execution results | Connector `sql_query_cache_mode` |
+| Preprocessing | Derived inputs such as ER diagrams and embeddings | Runtime `preprocessing_cache_mode` |
+
+`off` bypasses a cache, `read_write` reuses entries and stores misses, and
+`refresh` recomputes and replaces entries. Schema and preprocessing caches also
+support `cache_only`, which requires an existing entry. Cached inputs must match
+the database snapshot used for the experiment. Query caching changes what
+execution timings measure.
+
+Record the model, agent configuration, task QIDs, cache policies, and TabulaFlow
+version alongside published results. The run stores task QIDs and agent
+configuration, but does not capture every runtime setting or the package version.
+See [runtime configuration](../python-library/api/agents.md#runtime-and-model-configuration)
+and [connector configuration](../python-library/api/data.md#configuration) for
+all fields and environment-variable settings.
+
+## Prepare reusable inputs
+
+Agents can compute derived inputs during prediction. Precompute them when you
+want to separate preparation cost from inference or reuse inputs across runs.
+With the persistent preprocessing cache enabled above, prepare ER diagrams for
+schema linking before prediction:
+
+```python
+from tabulaflow.research.pipelines import preprocess_async
+from tabulaflow.research.preprocessing import ERDiagramSynthesizer
+
+preprocessor = ERDiagramSynthesizer()
+await preprocess_async(dataset, [preprocessor])
+print("Preparation usage:", preprocessor.usage())
+```
+
+Preprocessing can make model calls. Cache reuse requires the same inputs and
+preprocessor configuration as the consuming agent. The preparation stage fills
+caches; it does not replace dataset tasks or globally change connector schemas.
+Keep its usage separate when reporting inference cost.
+
+See [Preprocessing](api/preprocessing.md) for schema enrichment, question
+embeddings, summaries, and their returned values.
+
+## Save a run
+
+Save after prediction to preserve completed model work, then save again after
+execution and evaluation:
 
 ```python
 result.to_directory(
-    "runs/schema-linking",
+    "runs/full-schema",
     eval_metrics_in_summary=["bird_sql_ex", "executable"],
 )
 ```
 
-The directory contains:
-
 ```text
-runs/schema-linking/
+runs/full-schema/
 ├── result.json
 ├── result_summary.csv
 └── readable/
     └── <qid>/
+        ├── task_readable.md
+        └── trajectory/        # when the agent recorded a trajectory
 ```
 
-Restore the complete typed result without reconnecting to a benchmark:
+Query result CSVs are also written when tabular results are available. Calling
+`to_directory(...)` again updates the reports at that path. Use distinct paths
+for independent experiments. Prediction returns its result after all batches;
+it does not automatically checkpoint each batch.
+
+## Continue from a saved run
+
+Restore a run without making model calls or reconnecting to databases:
 
 ```python
 from pathlib import Path
-
 from tabulaflow.research.types import NL2QRunResult
 
 result = NL2QRunResult.model_validate_json(
-    Path("runs/schema-linking/result.json").read_text()
+    Path("runs/full-schema/result.json").read_text()
 )
 ```
 
-Reconnect to the same benchmark tasks before executing unevaluated predictions
-or computing metrics that need live database access.
+To execute or evaluate it, reconstruct its loader with the original data paths
+and credentials, and reload the exact saved QIDs. For the BIRD-SQL example:
 
-## Compare and combine runs
+```python
+import asyncio
 
-Compare runs only when their benchmark, split, and task QIDs match. The
-[agent comparison example](research-agents.md#example-compare-two-strategies)
-holds those inputs constant while changing the prediction strategy.
+loader = BirdSQLDatasetLoader()
+dataset = await loader.get_split_async(
+    result.split,
+    databases=result.databases,
+    qids=[task.qid for task in result.tasks],
+)
+try:
+    await execute_async(result, dataset, batch_size=8)
+    await evaluate_async(result, dataset, metrics=[BirdSQLEx(), Executable()], batch_size=8)
+    result.to_directory("runs/full-schema", eval_metrics_in_summary=["bird_sql_ex", "executable"])
+finally:
+    await asyncio.gather(*(connector.close_async() for connector in dataset.db_connectors.values()))
+```
 
-`ensemble_async(...)` combines compatible candidate runs into a new run.
-Majority, model-based, agent-based, and dbt-specific ensemblers are available.
-Execute and evaluate the returned run through the same pipeline; individual
-ensemble failures fall back to the first candidate and increment
-`fallback_count`.
+Execution fills only missing results by default;
+`force=True` reruns queries, including previously failed ones. Evaluation replaces
+previous scores, so pass the complete desired metric list. These stages reuse
+saved predictions; calling `predict_async(...)` starts fresh inference.
+
+## Compare strategies
+
+Hold the benchmark, split, QIDs, model, and evaluation policy fixed while changing
+the method. This example compares direct prompting with schema linking:
+
+```python title="compare_research_agents.py"
+--8<-- "examples/compare_research_agents.py"
+```
+
+After [installing BIRD-SQL](benchmarks.md#install-benchmark-data) and setting
+`OPENAI_API_KEY`, save the example and run `uv run compare_research_agents.py`, or
+run `uv run docs/examples/compare_research_agents.py` from a source checkout.
+It makes paid model calls and writes one directory per strategy under `runs/`.
+Scores and costs can vary between runs.
+
+Use [Evaluation and analysis](evaluation.md) to inspect per-task differences,
+accuracy, and usage. To add your own strategy to the comparison, follow
+[Extending the toolkit](extending.md#implement-an-agent).
+
+## Ensemble predictions
+
+`ensemble_async(ensembler, results, dataset, batch_size=8)` returns a new run
+from compatible candidate runs. Candidates must use the same benchmark, split,
+and QIDs, with an output family supported by the ensembler. Majority voting,
+model-based selection, agent-based selection, and dbt-specific selection are
+available in the [pipeline reference](api/pipelines.md#ensembling).
+
+Execute and evaluate the returned run through the same stages. Individual
+ensemble exceptions fall back to the first candidate and increment
+`aggregated_inference_metrics["fallback_count"]`.
+
+## Enable tracing
+
+Set `PHOENIX_COLLECTOR_ENDPOINT` (and `PHOENIX_API_KEY` when required), or
+`LANGFUSE_HOST`, `LANGFUSE_PUBLIC_KEY`, and `LANGFUSE_SECRET_KEY`, then configure
+instrumentation before constructing agents:
+
+```python
+from tabulaflow.research.observability import configure_research_observability
+
+configure_research_observability()
+```
+
+Built-in agents attach predictions to task-QID spans. Custom agents can use
+[`trace_prediction`](api/agents.md#tracing) for the same grouping. Local run
+outputs and recorded trajectories remain available without a tracing service.
 
 ## Release resources
 
-Benchmark datasets own live connectors. Close every connector in `finally`,
-including when prediction or evaluation raises:
+Once a dataset is loaded, put the experiment inside `try/finally` so its live
+connectors close even when a stage raises:
 
 ```python
+import asyncio
+
 try:
-    result = await predict_async(...)
+    result = await predict_async(FullSchemaAgent, BasicAgentConfig(), dataset, batch_size=8)
 finally:
-    await asyncio.gather(
-        *(connector.close_async() for connector in dataset.db_connectors.values())
-    )
+    await asyncio.gather(*(connector.close_async() for connector in dataset.db_connectors.values()))
 ```
 
-See the [pipeline API](api/pipelines.md) for stage signatures, ensemblers, and
-preprocessing workflows, or continue to [Research agents](research-agents.md).
+Next, choose the [metrics and analyses](evaluation.md) for your experiment.

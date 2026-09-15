@@ -244,8 +244,12 @@ def task_to_summary(task: NL2QTask | NL2QTaskOutput, eval_metrics: Sequence[str]
         question_instructions=getattr(task, "question_instructions", None),
         gold_query=gold_query.query if gold_query else None,
         pred_query=pred_query.query if pred_query else None,
-        gold_exec_result=gold_query.exec_result.to_markdown() if gold_query and gold_query.exec_result else None,
-        pred_exec_result=pred_query.exec_result.to_markdown() if pred_query and pred_query.exec_result else None,
+        gold_exec_result=format_exec_result_markdown(gold_query.exec_result)
+        if gold_query and gold_query.exec_result
+        else None,
+        pred_exec_result=format_exec_result_markdown(pred_query.exec_result)
+        if pred_query and pred_query.exec_result
+        else None,
         metrics={m: getattr(task, "eval_metrics", {}).get(m) for m in eval_metrics},
     )
 

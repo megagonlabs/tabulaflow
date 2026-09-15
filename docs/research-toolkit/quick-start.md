@@ -1,25 +1,31 @@
 # Quick start
 
-TabulaFlow Research extends the main Python library for AI researchers working
-on text-to-SQL and data agents. Its main building blocks include benchmark
-loaders, research agents, evaluation metrics, and experiment pipelines. It is
-designed around principles that enable flexible, rapid, and transparent
-experiments:
+TabulaFlow's research toolkit lets you run, compare, and develop text-to-query
+methods in Python. It provides benchmark loaders, built-in agents, execution
+and evaluation stages, and typed results with usage and trajectories.
 
-- **Benchmark-ready.** Run BIRD-SQL, Spider 2.0, Beaver, ARCS, AMBROSIA-S, and
-  CypherBench with managed setup and official leaderboard metrics.
-- **Transparent and fully typed.** Work with typed tasks, schemas, and
-  predictions rather than black-box dictionaries or schema strings. Write
-  Python instead of YAML.
-- **Async-native for large-scale concurrency.** Task inference, LLM calls, and
-  database queries are async and parallelizable, with configurable concurrency
-  controls that can make full use of provider limits.
-- **Modular and extensible.** Use any building blocks you need, or extend them by
-  implementing their public protocols.
-- **Built-in tracking.** Record trajectories, token usage, and latency for
-  analysis, with optional Langfuse and Phoenix tracing.
-- **Simple and performant agents.** Simple yet state-of-the-art agent
-  implementations provide a performant starting point.
+## How an experiment fits together
+
+```text
+Load benchmark → Predict → Execute → Evaluate → Save and analyze
+```
+
+A **benchmark loader** returns an `NL2QDataset`: selected tasks and live database
+connectors. Each **task** contains a question and its reference answer. An
+**agent** predicts an output for each task; `predict_async(...)` collects those
+outputs and their usage into an `NL2QRunResult`. Execution attaches query
+results, and evaluation adds task scores and run-level aggregates.
+
+The task family determines which agents and metrics can work together:
+
+| Task family | Agent output | Example benchmarks |
+| --- | --- | --- |
+| Query (`simple`) | One SQL or Cypher query | BIRD-SQL, Spider 2.0 Snow/Lite, Beaver, CypherBench |
+| Ambiguous query (`ambig`) | An intended query, flat interpretations, or structured ambiguity points | ARCS, AMBROSIA-S |
+| Transformation (`dbt`) | A modified dbt project | Spider 2.0 dbt |
+
+`simple` names the single-query contract; it does not describe task difficulty.
+The toolkit reuses the Python library's connectors, schemas, and model runtime.
 
 ## Example: Evaluate a full-schema agent
 
@@ -38,14 +44,9 @@ remain structured and directly accessible throughout the experiment.
 
 Exact predictions and scores can vary between model calls.
 
-To keep the complete run, including structured JSON, a CSV summary, and
-readable per-task reports, add:
-
-```python
-result.to_directory("runs/plan-and-query")
-```
-
-The quick-start script does not write to your project by default.
+The script keeps its result in memory. See
+[saving a run](running-experiments.md#save-a-run) to write structured JSON, a
+CSV summary, and readable task reports.
 
 ## Try it yourself
 
@@ -92,10 +93,9 @@ script closes its database connectors before exiting.
 
 ## Explore the toolkit
 
-- [Benchmarks](benchmarks.md) load questions, reference queries, and database
-  connectors through one async interface.
-- [Experiment runs](running-experiments.md) keep prediction, execution,
-  evaluation, usage, and reports together.
-- [Research agents](research-agents.md) cover direct prompting, schema-aware
-  methods, ambiguity-aware SQL, and dbt transformations.
-- [Evaluation](evaluation.md) combines task metrics with run-level aggregation.
+- [Benchmarks](benchmarks.md): choose, install, and load benchmark tasks.
+- [Agents](agents.md): choose and configure a built-in method.
+- [Running experiments](running-experiments.md): scale, save, and compare runs.
+- [Evaluation and analysis](evaluation.md): choose metrics and inspect results.
+- [Extending the toolkit](extending.md): implement and evaluate your own method.
+- [API reference](api-reference.md): look up contracts, fields, and signatures.

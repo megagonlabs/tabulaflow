@@ -5,6 +5,7 @@ import pandas as pd
 import pytest
 from pydantic import ValidationError
 
+from tabulaflow.core import ExecResult
 from tabulaflow.research.reporting import dict_to_df
 from tabulaflow.research.types import (
     ARCSAmbiguityType,
@@ -31,8 +32,8 @@ def test_run_result_directory_layout(tmp_path: Path) -> None:
         qid="q1",
         db="db",
         question="Return one.",
-        gold_query=GoldQuery(query="SELECT 1"),
-        pred_query=PredQuery(query="SELECT 1"),
+        gold_query=GoldQuery(query="SELECT 1", exec_result=ExecResult(df=pd.DataFrame({"value": [1]}))),
+        pred_query=PredQuery(query="SELECT 1", exec_result=ExecResult(df=pd.DataFrame({"value": [1]}))),
         eval_metrics={"accuracy": 1},
     )
     result = NL2QRunResult(
@@ -54,6 +55,8 @@ def test_run_result_directory_layout(tmp_path: Path) -> None:
     summary = pd.read_csv(tmp_path / "result_summary.csv")
     assert summary.loc[0, "qid"] == "q1"
     assert summary.loc[0, "accuracy"] == 1
+    assert "value" in summary.loc[0, "gold_exec_result"]
+    assert "value" in summary.loc[0, "pred_exec_result"]
 
 
 def test_empty_run_writes_summary_headers(tmp_path: Path) -> None:
