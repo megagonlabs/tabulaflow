@@ -48,7 +48,7 @@ datasets.
 ## Why TabulaFlow?
 
 General-purpose coding agents (e.g., Claude Code) are powerful tools for
-programming and simple data analysis. TabulaFlow is built on a different
+programming and simple data analysis. TabulaFlow is built on a
 harness (see [How TabulaFlow is designed](#how-tabulaflow-is-designed)) that enables workflows such as
 ambitious deep research and large-scale agentic row-wise operations. It also
 provides a UI for browsing large tables and visualizing data.
