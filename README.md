@@ -203,3 +203,95 @@ Inspect queries, scores, agent trajectories, token usage, and latency without
 rerunning the agent.
 
 [Research toolkit guide](https://megagonlabs.github.io/tabulaflow/research-toolkit/quick-start/)
+
+## Disclosures
+
+TabulaFlow is distributed under the [BSD 3-Clause License](LICENSE). That license
+applies to TabulaFlow's original source code; it does not replace the licenses
+of third-party software, services, datasets, models, or other materials used by
+or accessed through TabulaFlow.
+
+TabulaFlow can connect to user-provided data and third-party services and can
+download supported research benchmarks. Most benchmark corpora are downloaded
+separately rather than included in the TabulaFlow distribution. User-provided,
+downloaded, and bundled third-party materials remain subject to their
+providers' terms and licenses. Users are responsible for obtaining any required
+rights and for complying with applicable restrictions on access, use,
+modification, and redistribution.
+
+Third-party open source components retain their respective licenses. If a
+third-party license conflicts with the TabulaFlow license for that component,
+the third-party license controls. All software is provided without warranty as
+described in the applicable license. To report an error or omission in these
+disclosures, contact [contact_oss@megagon.ai](mailto:contact_oss@megagon.ai).
+
+## Open Source Software (OSS) Components
+
+TabulaFlow uses the unmodified direct runtime dependencies below. Transitive
+Python dependencies and exact resolved versions are recorded in
+[`uv.lock`](uv.lock). License notices for JavaScript components bundled with the
+application are included alongside those files under
+[`tabulaflow/app/pane/assets/vendor`](tabulaflow/app/pane/assets/vendor).
+
+| Component | Modified | Upstream | License |
+|---|---:|---|---|
+| aiolimiter | No | [mjpieters/aiolimiter](https://github.com/mjpieters/aiolimiter) | MIT |
+| aiosqlite | No | [omnilib/aiosqlite](https://github.com/omnilib/aiosqlite) | MIT |
+| arize-phoenix-otel | No | [Arize-ai/phoenix](https://github.com/Arize-ai/phoenix) | Apache-2.0 |
+| asyncmy | No | [long2ice/asyncmy](https://github.com/long2ice/asyncmy) | Apache-2.0 |
+| asyncpg | No | [MagicStack/asyncpg](https://github.com/MagicStack/asyncpg) | Apache-2.0 |
+| datasets | No | [huggingface/datasets](https://github.com/huggingface/datasets) | Apache-2.0 |
+| dbt-duckdb | No | [duckdb/dbt-duckdb](https://github.com/duckdb/dbt-duckdb) | Apache-2.0 |
+| duckdb | No | [duckdb/duckdb-python](https://github.com/duckdb/duckdb-python) | MIT |
+| duckdb-engine | No | [Mause/duckdb_engine](https://github.com/Mause/duckdb_engine) | MIT |
+| filelock | No | [tox-dev/filelock](https://github.com/tox-dev/filelock) | Unlicense |
+| gdown | No | [wkentaro/gdown](https://github.com/wkentaro/gdown) | MIT |
+| genai-prices | No | [pydantic/genai-prices](https://github.com/pydantic/genai-prices) | MIT |
+| google-cloud-bigquery-storage | No | [googleapis/python-bigquery-storage](https://github.com/googleapis/python-bigquery-storage) | Apache-2.0 |
+| httpx | No | [encode/httpx](https://github.com/encode/httpx) | BSD-3-Clause |
+| huggingface-hub | No | [huggingface/huggingface_hub](https://github.com/huggingface/huggingface_hub) | Apache-2.0 |
+| Jinja2 | No | [pallets/jinja](https://github.com/pallets/jinja) | BSD-3-Clause |
+| langfuse | No | [langfuse/langfuse-python](https://github.com/langfuse/langfuse-python) | MIT |
+| markdown-it-py | No | [executablebooks/markdown-it-py](https://github.com/executablebooks/markdown-it-py) | MIT |
+| neo4j | No | [neo4j/neo4j-python-driver](https://github.com/neo4j/neo4j-python-driver) | Apache-2.0 and Python-2.0 |
+| pandas | No | [pandas-dev/pandas](https://github.com/pandas-dev/pandas) | BSD-3-Clause |
+| Pillow | No | [python-pillow/Pillow](https://github.com/python-pillow/Pillow) | MIT-CMU |
+| playwright | No | [microsoft/playwright-python](https://github.com/microsoft/playwright-python) | Apache-2.0 |
+| plotext | No | [piccolomo/plotext](https://github.com/piccolomo/plotext) | MIT |
+| pyarrow | No | [apache/arrow](https://github.com/apache/arrow) | Apache-2.0 |
+| pydantic | No | [pydantic/pydantic](https://github.com/pydantic/pydantic) | MIT |
+| pydantic-ai-slim | No | [pydantic/pydantic-ai](https://github.com/pydantic/pydantic-ai) | MIT |
+| pydantic-settings | No | [pydantic/pydantic-settings](https://github.com/pydantic/pydantic-settings) | MIT |
+| Pygments | No | [pygments/pygments](https://github.com/pygments/pygments) | BSD-2-Clause |
+| PyMySQL | No | [PyMySQL/PyMySQL](https://github.com/PyMySQL/PyMySQL) | MIT |
+| pypdf | No | [py-pdf/pypdf](https://github.com/py-pdf/pypdf) | BSD-3-Clause |
+| PyYAML | No | [yaml/pyyaml](https://github.com/yaml/pyyaml) | MIT |
+| rich | No | [Textualize/rich](https://github.com/Textualize/rich) | MIT |
+| snowflake-connector-python | No | [snowflakedb/snowflake-connector-python](https://github.com/snowflakedb/snowflake-connector-python) | Apache-2.0 |
+| snowflake-sqlalchemy | No | [snowflakedb/snowflake-sqlalchemy](https://github.com/snowflakedb/snowflake-sqlalchemy) | Apache-2.0 |
+| SQLAlchemy | No | [sqlalchemy/sqlalchemy](https://github.com/sqlalchemy/sqlalchemy) | MIT |
+| sqlalchemy-bigquery | No | [googleapis/python-bigquery-sqlalchemy](https://github.com/googleapis/python-bigquery-sqlalchemy) | Apache-2.0 |
+| SQLGlot | No | [tobymao/sqlglot](https://github.com/tobymao/sqlglot) | MIT |
+| sqlparse | No | [andialbrecht/sqlparse](https://github.com/andialbrecht/sqlparse) | BSD-3-Clause |
+| tabulate | No | [astanin/python-tabulate](https://github.com/astanin/python-tabulate) | MIT |
+| textual | No | [Textualize/textual](https://github.com/Textualize/textual) | MIT |
+| tiktoken | No | [openai/tiktoken](https://github.com/openai/tiktoken) | MIT |
+| tqdm | No | [tqdm/tqdm](https://github.com/tqdm/tqdm) | MPL-2.0 and MIT |
+| typer | No | [fastapi/typer](https://github.com/fastapi/typer) | MIT |
+| webbrowser-open | No | [minrk/webbrowser_open](https://github.com/minrk/webbrowser_open) | BSD-3-Clause |
+
+The application also bundles the following unmodified browser-side components:
+
+| Component | Modified | Upstream | License |
+|---|---:|---|---|
+| Cytoscape.js | No | [cytoscape/cytoscape.js](https://github.com/cytoscape/cytoscape.js) | MIT |
+| cytoscape-dagre | No | [cytoscape/cytoscape.js-dagre](https://github.com/cytoscape/cytoscape.js-dagre) | MIT |
+| Dagre | No | [dagrejs/dagre](https://github.com/dagrejs/dagre) | MIT |
+| KaTeX | No | [KaTeX/KaTeX](https://github.com/KaTeX/KaTeX) | MIT |
+| MapLibre GL JS | No | [maplibre/maplibre-gl-js](https://github.com/maplibre/maplibre-gl-js) | BSD-3-Clause |
+| markdown-it | No | [markdown-it/markdown-it](https://github.com/markdown-it/markdown-it) | MIT |
+| markdown-it-texmath | No | [goessner/markdown-it-texmath](https://github.com/goessner/markdown-it-texmath) | MIT |
+| Tabulator | No | [olifolkerd/tabulator](https://github.com/olifolkerd/tabulator) | MIT |
+| Vega | No | [vega/vega](https://github.com/vega/vega) | BSD-3-Clause |
+| Vega-Embed | No | [vega/vega-embed](https://github.com/vega/vega-embed) | BSD-3-Clause |
+| Vega-Lite | No | [vega/vega-lite](https://github.com/vega/vega-lite) | BSD-3-Clause |
