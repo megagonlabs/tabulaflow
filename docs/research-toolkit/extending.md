@@ -3,8 +3,8 @@
 ## Implement an agent
 
 Bring your prediction method and reuse the benchmark loaders, execution,
-metrics, and reports. This agent first selects relevant tables, then generates
-SQL using only their schema:
+metrics, and reports. This agent selects relevant tables, then generates SQL
+from their schema with `RunQueryTool` for execution feedback:
 
 ```python title="table_linking_agent.py"
 --8<-- "examples/table_linking_agent.py:agent-imports"

@@ -11,6 +11,7 @@ from typing import ClassVar
 from pydantic import BaseModel, Field
 
 from tabulaflow.agents.llm import make_agent
+from tabulaflow.agents.tools import RunQueryTool
 from tabulaflow.agents.trace import Trajectory, Usage
 from tabulaflow.core import SQLSchema, TableRef
 from tabulaflow.data import DataConnector
@@ -40,7 +41,7 @@ class SQLPrediction(BaseModel):
 
 
 class TableLinkingAgent:
-    """Select relevant tables, then generate SQL from their schema."""
+    """Select relevant tables, then generate SQL with execution feedback."""
 
     name: ClassVar[str] = "table_linking"
     task_type: ClassVar[str] = "simple"
@@ -79,7 +80,9 @@ class TableLinkingAgent:
         sql_generator = make_agent(
             self.config.llm,
             output_type=SQLPrediction,
+            tools=[RunQueryTool(db_connector).as_pydantic_ai_tool()],
             instructions=f"Answer the question with a {db_connector.language} query using only the provided tables.\n"
+            "Use run_query to inspect results and fix errors before returning the final SQL.\n"
             f"Database schema:\n{formatter.format(linked_schema, include_descriptions=True)}",
         )
         prediction = await sql_generator.run(prompt)

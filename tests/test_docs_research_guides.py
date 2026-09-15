@@ -6,7 +6,7 @@ from typing import Any
 
 import pandas as pd
 from pydantic_ai import models
-from pydantic_ai.messages import ModelMessage, ModelResponse, ToolCallPart, UserPromptPart
+from pydantic_ai.messages import ModelMessage, ModelResponse, ToolCallPart, ToolReturnPart, UserPromptPart
 from pydantic_ai.models.function import AgentInfo, FunctionModel
 from pydantic_ai.usage import RequestUsage
 import pytest
@@ -55,16 +55,39 @@ async def test_table_linking_agent(failure: str | None, monkeypatch: pytest.Monk
         assert "unrelated_notes" not in prompt
         if failure == stage and question == "What is the total amount?":
             raise RuntimeError("offline model failure")
+        tool_name = info.output_tools[0].name
         output: dict[str, Any]
         if linking:
+            assert info.function_tools == []
             table = (
                 "missing_table" if failure == "unknown_table" and question == "What is the total amount?" else "orders"
             )
             output = {"tables": [{"schema_name": None, "table_name": table}]}
         else:
-            output = {"query": questions[question]}
+            assert [tool.name for tool in info.function_tools] == ["run_query"]
+            query_results = [
+                part
+                for message in messages
+                for part in message.parts
+                if isinstance(part, ToolReturnPart) and part.tool_name == "run_query"
+            ]
+            if not query_results:
+                tool_name = "run_query"
+                output = {"query": "SELECT missing_amount FROM orders"}
+            elif len(query_results) == 1:
+                assert isinstance(query_results[0].content, str)
+                assert "(error:" in query_results[0].content
+                assert "missing_amount" in query_results[0].content
+                tool_name = "run_query"
+                output = {"query": "SELECT amount FROM orders"}
+            else:
+                assert len(query_results) == 2
+                assert isinstance(query_results[1].content, str)
+                assert "(error:" not in query_results[1].content
+                assert "10" in query_results[1].content and "20" in query_results[1].content
+                output = {"query": questions[question]}
         return ModelResponse(
-            parts=[ToolCallPart(info.output_tools[0].name, output)],
+            parts=[ToolCallPart(tool_name, output)],
             usage=RequestUsage(input_tokens=10, output_tokens=5),
         )
 
@@ -122,16 +145,21 @@ async def test_table_linking_agent(failure: str | None, monkeypatch: pytest.Monk
                 )
                 continue
             assert task.pred_query is not None and task.pred_query.exec_result is not None
+            assert task.pred_query.query == questions[task.question]
             assert task.pred_query.exec_result.error is None
             assert task.usage is not None and task.trajectory is not None
-            assert stages == ["table_linking", "sql_generation"]
-            assert task.usage.api_requests == 2
-            assert task.usage.input_tokens == 20
-            assert task.usage.output_tokens == 10
+            assert stages == ["table_linking", "sql_generation", "sql_generation", "sql_generation"]
+            assert task.usage.api_requests == 4
+            assert task.usage.input_tokens == 40
+            assert task.usage.output_tokens == 20
             assert isinstance(task.trajectory, list)
             assert [trajectory.id for trajectory in task.trajectory] == ["TRJY-TABLE-LINKING", "TRJY-SQL-GENERATION"]
             for trajectory in task.trajectory:
                 assert (run_dir / "readable" / task.qid / "trajectory" / f"{trajectory.id}.md").is_file()
+            sql_trace = task.trajectory[1].to_markdown()
+            assert "SELECT missing_amount FROM orders" in sql_trace
+            assert "(error:" in sql_trace
+            assert "SELECT amount FROM orders" in sql_trace
 
     finally:
         if connector not in closed:
