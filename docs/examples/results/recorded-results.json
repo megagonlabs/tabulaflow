@@ -17,7 +17,7 @@
     "use_gold_phrases": false,
     "use_gold_ambiguity_points": false
   },
-  "selection": "ARCS QID 001-5, the first row of data/arcs/0.parquet; only the selected reference query is included.",
+  "selection": "ARCS QID 001-5, the first row of data/arcs/0.parquet; only the selected reference query and SQL-generation trajectory are included.",
   "tasks": [
     {
       "qid": "001-5",
@@ -387,7 +387,60 @@
         "simple_ex": 0.0,
         "executable": 1.0,
         "found_one": 1.0
-      }
+      },
+      "trajectory": [
+        {
+          "id": "TRJY-GEN-SQL-PQRY-A.1-B.0",
+          "messages": [
+            {
+              "role": "system",
+              "content": "You are a helpful AI database expert that can translate natural language questions into SQLite queries by leveraging the given tools.\n\n- Do not attempt to resolve additional ambiguities with the user. Proceed with the provided information.\n- You need to execute the query at least once before finishing. The last executed query will be the final output.\n- Ensure the query accurately reflects the original question without adding or omitting any conditions.\n- Adhere strictly to the given database schema when constructing queries.\n- If you use any of the provided parameters,\n  - write a parameterized query with placeholders in the format of `<expr> <operator> :<param_name>`\n  - pass in the parameters in the `parameters` field when using the `run_query` tool\n\n=== START OF DATASET INSTRUCTIONS ===\n- Follow these requirements when writing SQL. When disambiguating, do not consider these as ambiguities:\n  - If the question asks for a list of objects, return their names if available (e.g. for students), otherwise return their IDs (e.g. for transactions).\n  - You may include additional relevant columns that are mentioned in the question, even if they are not explicitly requested in the output.\n  - Do not concatenate columns in the results unless explicitly requested.\n  - For percentage values, don't multiply by 100.\n  - Rounding is not needed for numerical values.\n  - If the question asks for the object that achieves the maximum/minimum value, if there is a tie, return all tied objects.\n=== END OF DATASET INSTRUCTIONS ==="
+            },
+            {
+              "role": "user",
+              "content": "Report the total revenue for each nation in 1995.\n- \"total revenue\" means \"Sum of l_extendedprice * (1 - l_discount) for each nation in 1995\"\n- \"nation\" means \"Nation of the customer (customer.c_nationkey)\""
+            },
+            {
+              "role": "assistant",
+              "thinking": null,
+              "content": "",
+              "tool_calls": [
+                {
+                  "tool_call_id": "call_nJUiamzDP49aeqWDIjsIMsnT|fc_08dd7dd6c020301e0069202b6440d4819a904b1fb2934a67bc",
+                  "name": "run_query",
+                  "arguments": {
+                    "query": "SELECT n.n_name AS nation, SUM(l.l_extendedprice * (1 - l.l_discount)) AS total_revenue\nFROM lineitem l\nJOIN orders o ON l.l_orderkey = o.o_orderkey\nJOIN customer c ON o.o_custkey = c.c_custkey\nJOIN nation n ON c.c_nationkey = n.n_nationkey\nWHERE strftime('%Y', o.o_orderdate) = '1995'\nGROUP BY n.n_name"
+                  }
+                }
+              ]
+            },
+            {
+              "role": "tool",
+              "tool_call_id": "call_nJUiamzDP49aeqWDIjsIMsnT|fc_08dd7dd6c020301e0069202b6440d4819a904b1fb2934a67bc",
+              "response": "nation         total_revenue\n-------------  ------------------\nALGERIA        1322656353.0067952\nARGENTINA      1380994011.0315094\nBRAZIL         1312468151.6839097\n...            ...\nUNITED STATES  1388315814.616901\nVIETNAM        1303430948.9703212",
+              "is_retry_prompt": false
+            },
+            {
+              "role": "assistant",
+              "thinking": null,
+              "content": "",
+              "tool_calls": [
+                {
+                  "tool_call_id": "call_q6e7tyJmulqpuMxpno0NR23I|fc_055fe11a781ad0750069202b72a8e4819096724831be4a8d7b",
+                  "name": "finish",
+                  "arguments": {}
+                }
+              ]
+            },
+            {
+              "role": "tool",
+              "tool_call_id": "call_q6e7tyJmulqpuMxpno0NR23I|fc_055fe11a781ad0750069202b72a8e4819096724831be4a8d7b",
+              "response": "Final result processed.",
+              "is_retry_prompt": false
+            }
+          ]
+        }
+      ]
     }
   ]
 }

@@ -26,6 +26,18 @@ runs/full-schema/
             └── <trajectory-id>.md
 ```
 
+??? example-output no-copy "Sample task_readable.md"
+
+    ```````text
+    --8<-- "examples/results/task-report-excerpt.txt"
+    ```````
+
+??? example-output no-copy "Sample trajectory/&lt;trajectory-id&gt;.md"
+
+    ```````text
+    --8<-- "examples/results/agent-trace-excerpt.txt"
+    ```````
+
 Reports include queries, tabular results, and scores. Trajectory files contain
 agent messages and tool calls, when available.
 To continue execution or evaluation, reload the original benchmark split with

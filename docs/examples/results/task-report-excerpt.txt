@@ -1,0 +1,43 @@
+# Task: 001-5
+
+**Database:** retails
+
+## Question
+Report the total revenue for each nation in 1995.
+
+
+## Pred Query
+
+```sql
+SELECT n.n_name AS nation, SUM(l.l_extendedprice * (1 - l.l_discount)) AS total_revenue
+FROM lineitem l
+JOIN orders o ON l.l_orderkey = o.o_orderkey
+JOIN customer c ON o.o_custkey = c.c_custkey
+JOIN nation n ON c.c_nationkey = n.n_nationkey
+WHERE strftime('%Y', o.o_orderdate) = '1995'
+GROUP BY n.n_name
+```
+
+**Execution Result:**
+
+| nation         | total_revenue      |
+|----------------|--------------------|
+| ALGERIA        | 1322656353.0067952 |
+| ARGENTINA      | 1380994011.0315094 |
+...
+
+## Gold Query
+
+```sql
+...
+WHERE strftime('%Y', l.l_receiptdate) = '1995'
+AND l.l_returnflag <> 'R'
+...
+```
+
+...
+
+## Evaluation Metrics
+- **simple_ex:** 0.0
+- **executable:** 1.0
+- **found_one:** 1.0
