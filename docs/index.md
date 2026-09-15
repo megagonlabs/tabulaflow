@@ -18,7 +18,7 @@ it can also write code, work with files, run shell commands, and browse the web.
 
 [Try TabulaFlow](data-agent/quick-start.md){ .inline-cta }
 
-## What you can do
+## What TabulaFlow can do
 
 Consider TabulaFlow if you regularly analyze data in Jupyter notebooks, explore
 databases with DBeaver, browse Hugging Face datasets, or conduct deep research
