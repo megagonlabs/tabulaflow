@@ -8,7 +8,7 @@
 | [Spider 2.0 dbt](#spider-20-dbt) | Data transformation | DuckDB | `test` |
 | [Beaver](#beaver) | Text-to-SQL | MySQL | `test` |
 | [ARCS](#arcs) | Ambiguous text-to-SQL | SQLite | `test`, `test_unsampled` |
-| [AMBROSIA-S](#ambrosia-s) | Ambiguous text-to-SQL | SQLite | `test`, `few_shot_examples` |
+| [AMBROSIA](#ambrosia) | Ambiguous text-to-SQL | SQLite | `test`, `few_shot_examples` |
 | [CypherBench](#cypherbench) | Text-to-Cypher | Neo4j | `test`, `train` |
 
 Run the setup commands from a project with [TabulaFlow installed](quick-start.md#use-in-your-project).
@@ -24,8 +24,6 @@ SQLite databases. The download includes tasks and databases for all splits;
 ```bash
 uv run tabulaflow benchmark download bird-sql
 ```
-
-Loader: [`BirdSQLDatasetLoader`][tabulaflow.research.benchmarks.bird_sql.BirdSQLDatasetLoader].
 
 ## Spider 2.0 Snow
 
@@ -44,8 +42,6 @@ export SF_USER="your-username"
 export SF_PASSWORD="your-programmatic-access-token"
 export SF_ACCOUNT="your-account-identifier"
 ```
-
-Loader: [`Spider2SnowDatasetLoader`][tabulaflow.research.benchmarks.spider2_snow.Spider2SnowDatasetLoader].
 
 ## Spider 2.0 Lite
 
@@ -84,8 +80,6 @@ Configure credentials only for the databases you select:
     Alternatively, set `GOOGLE_APPLICATION_CREDENTIALS` to a service-account
     JSON file you already use for BigQuery.
 
-Loader: [`Spider2LiteDatasetLoader`][tabulaflow.research.benchmarks.spider2_lite.Spider2LiteDatasetLoader].
-
 ## Spider 2.0 dbt
 
 Data transformation tasks in dbt projects backed by DuckDB. The download includes
@@ -96,8 +90,6 @@ uv run tabulaflow benchmark download spider2-dbt
 ```
 
 Use the [dbt agent](agents.md#dbt-transformations) to edit and run these projects.
-
-Loader: [`Spider2DbtDatasetLoader`][tabulaflow.research.benchmarks.spider2_dbt.Spider2DbtDatasetLoader].
 
 ## Beaver
 
@@ -114,8 +106,6 @@ The databases use local ports `3311` and `3312`. Stop them when finished:
 ```bash
 uv run tabulaflow benchmark stop beaver
 ```
-
-Loader: [`BeaverDatasetLoader`][tabulaflow.research.benchmarks.beaver.BeaverDatasetLoader].
 
 ## ARCS
 
@@ -141,18 +131,13 @@ databases in this layout:
 
 For an existing data directory, pass its path as `directory` to the loader.
 
-Loader: [`ARCSDatasetLoader`][tabulaflow.research.benchmarks.arcs.ARCSDatasetLoader].
+## AMBROSIA
 
-## AMBROSIA-S
-
-Structured ambiguity annotations for AMBROSIA, covering scope, attachment, and
-vagueness. The download prepares the tasks and SQLite databases:
+Ambiguous text-to-SQL tasks covering scope, attachment, and vagueness.
 
 ```bash
 uv run tabulaflow benchmark download ambrosia-s
 ```
-
-Loader: [`AmbrosiaSDatasetLoader`][tabulaflow.research.benchmarks.ambrosia_s.AmbrosiaSDatasetLoader].
 
 ## CypherBench
 
@@ -172,13 +157,11 @@ uv run tabulaflow benchmark stop cypherbench
 
 For training databases, add `--split train` to both `start` and `stop`.
 
-Loader: [`CypherBenchDatasetLoader`][tabulaflow.research.benchmarks.cypherbench.CypherBenchDatasetLoader].
-
 ## Load in Python
 
-After setup, load tasks and database connectors through the benchmark's loader.
-All loaders share the same interface; choose the loader, split, and question
-IDs for your benchmark. For example, load three BIRD-SQL tasks:
+After setup, choose a loader from the [loader reference](api/benchmarks.md#built-in-loaders).
+All loaders share the same interface for loading tasks and database connectors.
+For example, load three BIRD-SQL tasks:
 
 ```python
 from tabulaflow.research.benchmarks import BirdSQLDatasetLoader
@@ -191,12 +174,8 @@ dataset = await loader.get_split_async(
 ```
 
 Use `databases=["california_schools"]` to restrict databases or `subsample_size=10`
-for a deterministic sample. Filtering precedes sampling; see the
-[task selection reference](api/benchmarks.md#task-selection) for validation rules.
+for a deterministic sample. Filtering precedes sampling.
 
 `dataset.tasks` contains typed tasks. `dataset.db_connectors` maps each selected
 database name to a live connector. See [resource cleanup](running-experiments.md#release-resources)
-for closing them, and the [loader reference](api/benchmarks.md#built-in-loaders)
-for custom paths and connection settings.
-
-For your own questions and databases, see [adding a benchmark](extending.md#add-a-benchmark).
+for closing them.
