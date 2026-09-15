@@ -193,7 +193,7 @@ These formatters produce text for people or models. Import them from
 
 ::: tabulaflow.output.formatting.SQLDDLSchemaFormatter
 
-::: tabulaflow.output.formatting.SQLBasicSchemaFormatter
+::: tabulaflow.output.formatting.SQLCompactSchemaFormatter
 
 ::: tabulaflow.output.formatting.CypherSchemaFormatter
 

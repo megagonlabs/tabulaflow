@@ -20,7 +20,7 @@ if TYPE_CHECKING:
         SQLSchemaFormatter,
         schema_formatter_registry,
     )
-    from tabulaflow.output.formatting.sql_basic import SQLBasicSchemaFormatter
+    from tabulaflow.output.formatting.sql_compact import SQLCompactSchemaFormatter
     from tabulaflow.output.formatting.sql_ddl import SQLDDLSchemaFormatter
     from tabulaflow.output.formatting.sparql import SPARQLSchemaFormatter
 
@@ -31,7 +31,7 @@ _LAZY_EXPORTS = {
         "PropertyGraphSchemaFormatter",
     ),
     "RDFSchemaFormatter": ("tabulaflow.output.formatting.schema", "RDFSchemaFormatter"),
-    "SQLBasicSchemaFormatter": ("tabulaflow.output.formatting.sql_basic", "SQLBasicSchemaFormatter"),
+    "SQLCompactSchemaFormatter": ("tabulaflow.output.formatting.sql_compact", "SQLCompactSchemaFormatter"),
     "SQLDDLSchemaFormatter": ("tabulaflow.output.formatting.sql_ddl", "SQLDDLSchemaFormatter"),
     "SQLSchemaFormatter": ("tabulaflow.output.formatting.schema", "SQLSchemaFormatter"),
     "SPARQLSchemaFormatter": ("tabulaflow.output.formatting.sparql", "SPARQLSchemaFormatter"),
@@ -49,7 +49,7 @@ __all__ = [
     "CypherSchemaFormatter",
     "PropertyGraphSchemaFormatter",
     "RDFSchemaFormatter",
-    "SQLBasicSchemaFormatter",
+    "SQLCompactSchemaFormatter",
     "SQLDDLSchemaFormatter",
     "SQLSchemaFormatter",
     "SPARQLSchemaFormatter",

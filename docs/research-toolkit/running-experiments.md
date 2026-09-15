@@ -13,7 +13,7 @@ prediction, execution, and evaluation.
 Prediction exceptions are logged and recorded as empty outputs. Construction,
 task-contract, and evaluation errors propagate. Query errors appear in
 `ExecResult.error`; see [failure analysis](evaluation.md#inspect-failures).
-For project-based tasks, see [dbt transformations](agents.md#dbt-transformations).
+For project-based tasks, see the [dbt strategy](api/agents.md#dbt-strategy).
 
 ## Compare strategies
 

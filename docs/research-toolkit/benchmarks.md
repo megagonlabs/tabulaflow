@@ -93,7 +93,7 @@ the projects and their starting and reference databases:
 uv run tabulaflow benchmark download spider2-dbt
 ```
 
-Use the [dbt agent](agents.md#dbt-transformations) to edit and run these projects.
+Use the [dbt agent](api/agents.md#dbt-strategy) to edit and run these projects.
 
 ## Beaver
 

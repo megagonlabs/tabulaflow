@@ -17,10 +17,10 @@ from tabulaflow.output.formatting.schema import schema_formatter_registry
 
 @schema_formatter_registry.register
 @dataclass
-class SQLBasicSchemaFormatter:
+class SQLCompactSchemaFormatter:
     """Formats SQL schemas as compact text with inline PK/FK markers."""
 
-    name: ClassVar[str] = "sql_basic"
+    name: ClassVar[str] = "sql_compact"
     schema_kind: ClassVar[Literal["sql"]] = "sql"
     example_max_chars: int = 100
     floatfmt: str = ".8g"

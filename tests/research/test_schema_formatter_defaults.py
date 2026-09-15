@@ -11,7 +11,7 @@ from pydantic_ai import models
 
 from tabulaflow.core import PropertyGraphSchema, RDFSchema, SQLSchema
 from tabulaflow.data import DataConnector
-from tabulaflow.output.formatting import CypherSchemaFormatter, SQLBasicSchemaFormatter, schema_formatter_registry
+from tabulaflow.output.formatting import CypherSchemaFormatter, SQLCompactSchemaFormatter, schema_formatter_registry
 from tabulaflow.research.agents import (
     AmbigFlatSQLAgent,
     AmbigSimpleSQLAgent,
@@ -49,7 +49,7 @@ def offline(monkeypatch: pytest.MonkeyPatch) -> None:
         SchemaLinkingAgent,
     ],
 )
-@pytest.mark.parametrize("formatter_name", [None, "sql_basic", "cypher"])
+@pytest.mark.parametrize("formatter_name", [None, "sql_compact", "cypher"])
 def test_sql_only_agents_resolve_and_validate_at_construction(agent_cls: type[Any], formatter_name: str | None) -> None:
     config = agent_cls.config_cls(schema_formatter=formatter_name)
     if formatter_name == "cypher":
@@ -63,8 +63,8 @@ def test_sql_only_agents_resolve_and_validate_at_construction(agent_cls: type[An
 
 def test_agent_ensembler_uses_shared_defaults_and_overrides() -> None:
     assert AgentEnsembler(AgentEnsemblerConfig(result_dirs=[])).formatter.name == "sql_ddl"
-    config = AgentEnsemblerConfig(result_dirs=[], schema_formatter="sql_basic")
-    assert AgentEnsembler(config).formatter.name == "sql_basic"
+    config = AgentEnsemblerConfig(result_dirs=[], schema_formatter="sql_compact")
+    assert AgentEnsembler(config).formatter.name == "sql_compact"
     with pytest.raises(ValueError, match="not 'sql'"):
         AgentEnsembler(AgentEnsemblerConfig(result_dirs=[], schema_formatter="cypher"))
 
@@ -88,9 +88,11 @@ def test_research_options_apply_only_to_sql_and_preserve_custom_graph_formatters
 
     monkeypatch.setattr(schema_formatter_registry, "_classes", schema_formatter_registry._classes.copy())
     schema_formatter_registry.register(CustomGraphFormatter)
-    config = BasicAgentConfig(schema_formatter="sql_basic", compact_table_families=False, formatter_max_total_columns=7)
+    config = BasicAgentConfig(
+        schema_formatter="sql_compact", compact_table_families=False, formatter_max_total_columns=7
+    )
     formatter = config.create_schema_formatter("sql")
-    assert isinstance(formatter, SQLBasicSchemaFormatter)
+    assert isinstance(formatter, SQLCompactSchemaFormatter)
     assert formatter.compact_table_families is False
     assert formatter.max_total_columns == 7
 
@@ -198,7 +200,7 @@ async def test_pipeline_formats_mixed_schemas_and_ignores_unused_connectors() ->
 
 
 def test_preflight_validates_without_constructing_formatters(monkeypatch: pytest.MonkeyPatch) -> None:
-    class ValidationOnlyFormatter(SQLBasicSchemaFormatter):
+    class ValidationOnlyFormatter(SQLCompactSchemaFormatter):
         name: ClassVar[str] = "test_validation_only"
 
         def __init__(self) -> None:
@@ -217,7 +219,7 @@ async def test_pipeline_validates_all_databases_before_constructing_any_agent(mo
     monkeypatch.setattr(_FormattingAgent, "from_config_async", construct)
     with pytest.raises(ValueError, match="not 'property_graph'"):
         await predict.predict_async(
-            _FormattingAgent, BasicAgentConfig(schema_formatter="sql_basic"), _dataset(), batch_size=1, verbose=False
+            _FormattingAgent, BasicAgentConfig(schema_formatter="sql_compact"), _dataset(), batch_size=1, verbose=False
         )
     construct.assert_not_called()
 
@@ -228,7 +230,7 @@ async def test_pipeline_validates_all_databases_before_constructing_any_agent(mo
         ("bird-sql", None, "**Data source:** `shop`"),
         ("arcs", None, "**Data source:** `shop`"),
         ("cypherbench", None, "Node properties:"),
-        ("arcs", "sql_basic", "Data source: shop"),
+        ("arcs", "sql_compact", "Data source: shop"),
     ],
 )
 async def test_cli_and_python_use_the_same_formatter_defaults(

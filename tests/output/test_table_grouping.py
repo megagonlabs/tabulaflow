@@ -1,7 +1,7 @@
 import pandas as pd
 
 from tabulaflow.core import ForeignKeySchema, SQLColumnSchema, SQLSchema, SQLTableSchema
-from tabulaflow.output.formatting import SQLBasicSchemaFormatter, SQLDDLSchemaFormatter
+from tabulaflow.output.formatting import SQLCompactSchemaFormatter, SQLDDLSchemaFormatter
 from tabulaflow.output.formatting._table_grouping import group_tables_for_formatting
 
 
@@ -149,7 +149,7 @@ def test_formatter_uses_concrete_representative_and_labels_its_profile() -> None
 def test_disabling_compaction_renders_every_physical_table() -> None:
     schema = _schema(_table("events_1"), _table("events_2"))
 
-    formatted = SQLBasicSchemaFormatter(compact_table_families=False).format(schema)
+    formatted = SQLCompactSchemaFormatter(compact_table_families=False).format(schema)
 
     assert "TABLE: events_1" in formatted
     assert "TABLE: events_2" in formatted
@@ -209,7 +209,7 @@ def test_column_budget_is_applied_after_compaction() -> None:
         _table("customers", columns=columns),
     )
 
-    formatted = SQLBasicSchemaFormatter(compact_table_families=True, max_total_columns=4).format(schema)
+    formatted = SQLCompactSchemaFormatter(compact_table_families=True, max_total_columns=4).format(schema)
 
     assert formatted.count("1 more columns omitted") == 2
 

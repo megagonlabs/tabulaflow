@@ -3,7 +3,7 @@
 from typing import Literal, overload
 
 from tabulaflow.core import SchemaKind
-from tabulaflow.output.formatting import sql_basic  # noqa: F401 -- register the alternative SQL formatter
+from tabulaflow.output.formatting import sql_compact  # noqa: F401 -- register the alternative SQL formatter
 from tabulaflow.output.formatting.cypher import CypherSchemaFormatter
 from tabulaflow.output.formatting.schema import (
     PropertyGraphSchemaFormatter,

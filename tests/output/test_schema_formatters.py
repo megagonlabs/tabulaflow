@@ -4,7 +4,7 @@ import pandas as pd
 
 from tabulaflow.core import ForeignKeySchema, RDFSchema, SQLColumnSchema, SQLSchema, SQLTableSchema
 from tabulaflow.output.formatting._sql import format_column_type
-from tabulaflow.output.formatting import SPARQLSchemaFormatter, SQLBasicSchemaFormatter, SQLDDLSchemaFormatter
+from tabulaflow.output.formatting import SPARQLSchemaFormatter, SQLCompactSchemaFormatter, SQLDDLSchemaFormatter
 
 
 def _col(name: str, dtype: str, native_dtype: str | None, *, nullable: bool = True) -> SQLColumnSchema:
@@ -67,12 +67,12 @@ def test_sparql_formatter_renders_source_description() -> None:
 def test_sql_formatters_do_not_infer_display_name_kind_from_dialect() -> None:
     schema = SQLSchema(display_name="analytics", dialect="bigquery", tables=[])
 
-    basic = SQLBasicSchemaFormatter().format(schema)
+    compact = SQLCompactSchemaFormatter().format(schema)
     ddl = SQLDDLSchemaFormatter().format(schema)
 
-    assert basic == "Data source: analytics (SQL dialect: bigquery)\n(no tables)"
+    assert compact == "Data source: analytics (SQL dialect: bigquery)\n(no tables)"
     assert ddl == "**Data source:** `analytics`\n**SQL dialect:** `bigquery`\n_(no tables)_"
-    assert "Project" not in basic
+    assert "Project" not in compact
     assert "Project" not in ddl
 
 
@@ -98,15 +98,15 @@ def test_format_column_type_cap_is_configurable() -> None:
     assert format_column_type(col, max_native_dtype_chars=20) == "VARCHAR(100)"
 
 
-def test_sql_basic_uses_native_dtype_when_short() -> None:
-    fmt = SQLBasicSchemaFormatter()
+def test_sql_compact_uses_native_dtype_when_short() -> None:
+    fmt = SQLCompactSchemaFormatter()
     line = fmt.format_table(_table(_col("price", "DECIMAL", "DECIMAL(18, 2)")), dialect=None)
     assert "DECIMAL(18, 2)" in line
 
 
-def test_sql_basic_falls_back_for_long_native() -> None:
+def test_sql_compact_falls_back_for_long_native() -> None:
     long_native = "STRUCT(" + ", ".join(f"f{i} VARCHAR" for i in range(40)) + ")"
-    fmt = SQLBasicSchemaFormatter()
+    fmt = SQLCompactSchemaFormatter()
     line = fmt.format_table(_table(_col("events", "STRUCT", long_native)), dialect=None)
     assert long_native not in line
     assert "STRUCT" in line
@@ -140,11 +140,11 @@ def test_sql_ddl_cap_override_at_format_time() -> None:
 def test_existing_columns_without_native_dtype_render_unchanged() -> None:
     """Schemas loaded from old caches won't have native_dtype set —
     must still render via the canonical dtype token."""
-    fmt_basic = SQLBasicSchemaFormatter()
+    fmt_compact = SQLCompactSchemaFormatter()
     fmt_ddl = SQLDDLSchemaFormatter()
 
     col = _col("age", "INTEGER", None)
-    assert "INTEGER" in fmt_basic.format_table(_table(col), dialect=None)
+    assert "INTEGER" in fmt_compact.format_table(_table(col), dialect=None)
     assert "INTEGER" in fmt_ddl.format_table(_table(col), dialect=None)
 
 
@@ -235,7 +235,7 @@ def test_complete_primary_and_foreign_key_formatting() -> None:
     )
     schema = SQLSchema(display_name="shop", dialect="postgresql", tables=[customers, orders])
 
-    basic = SQLBasicSchemaFormatter().format(schema)
+    compact = SQLCompactSchemaFormatter().format(schema)
     ddl = SQLDDLSchemaFormatter(
         include_examples=False,
         include_sampled_df=False,
@@ -244,7 +244,7 @@ def test_complete_primary_and_foreign_key_formatting() -> None:
     ).format(schema)
 
     assert (
-        basic
+        compact
         == """Data source: shop (SQL dialect: postgresql)
 
 === (SCHEMA: public) TABLE: customers ===
@@ -293,7 +293,7 @@ CREATE TABLE public.orders (
     )
 
 
-def test_sql_basic_compacted_family_format() -> None:
+def test_sql_compact_compacted_family_format() -> None:
     schema = SQLSchema(
         display_name="warehouse",
         dialect="duckdb",
@@ -303,7 +303,7 @@ def test_sql_basic_compacted_family_format() -> None:
         ],
     )
 
-    formatted = SQLBasicSchemaFormatter(compact_table_families=True).format(schema)
+    formatted = SQLCompactSchemaFormatter(compact_table_families=True).format(schema)
 
     assert (
         formatted

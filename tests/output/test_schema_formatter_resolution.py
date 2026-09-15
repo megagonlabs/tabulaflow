@@ -7,7 +7,7 @@ import pytest
 from tabulaflow.core import PropertyGraphSchema, RDFSchema, SchemaKind, SQLSchema
 from tabulaflow.output.formatting import (
     CypherSchemaFormatter,
-    SQLBasicSchemaFormatter,
+    SQLCompactSchemaFormatter,
     get_schema_formatter_class,
     schema_formatter_registry,
 )
@@ -41,7 +41,7 @@ def test_default_formatter_renders_its_schema(
 
 
 def test_explicit_sql_formatter() -> None:
-    assert get_schema_formatter_class("sql", "sql_basic") is SQLBasicSchemaFormatter
+    assert get_schema_formatter_class("sql", "sql_compact") is SQLCompactSchemaFormatter
 
 
 @pytest.mark.parametrize("name", ["missing", ""])
@@ -52,7 +52,7 @@ def test_unknown_formatter_is_not_replaced_with_default(name: str) -> None:
 
 @pytest.mark.parametrize(
     ("kind", "name"),
-    [("sql", "cypher"), ("property_graph", "sql_basic"), ("rdf", "sql_ddl")],
+    [("sql", "cypher"), ("property_graph", "sql_compact"), ("rdf", "sql_ddl")],
 )
 def test_incompatible_override_fails(kind: SchemaKind, name: str) -> None:
     with pytest.raises(ValueError, match=f"not {kind!r}"):
