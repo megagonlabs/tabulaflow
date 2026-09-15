@@ -49,6 +49,7 @@ nav:
   - TabulaFlow as a Python Library:
       - Quick start: python-library/quick-start.md
       - Data connectors: python-library/data-connectors.md
+      - Extraction and enrichment: python-library/extraction-and-enrichment.md
       - Chat sessions: python-library/chat-sessions.md
       - Structured outputs: python-library/structured-outputs.md
       - Custom agents: python-library/custom-agents.md

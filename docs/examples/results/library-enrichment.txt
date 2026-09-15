@@ -1,0 +1,5 @@
+Processed 3 rows from "tickets"; subagent updates succeeded for 3 rows, failed for 0 rows.
+ ticket_id  category
+       101   billing
+       102   account
+       103 technical

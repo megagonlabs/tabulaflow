@@ -9,6 +9,7 @@ import runpy
 from typing import Any
 
 import httpx
+import pandas as pd
 from pandas.testing import assert_frame_equal
 from pydantic_ai import models
 from pydantic_ai.messages import (
@@ -135,6 +136,64 @@ async def test_data_example_closes_after_query_failure(
     example = runpy.run_path(str(EXAMPLES / "working_with_data.py"))
     with pytest.raises(RuntimeError, match="query unavailable"):
         await example["main"]()
+    assert len(closed_connectors) == 1
+
+
+@pytest.mark.parametrize("existing_category", [False, True])
+async def test_enrichment_updates_selected_tickets(
+    existing_category: bool,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    queries: list[tuple[str, ExecResult]],
+    closed_connectors: list[SQLConnector],
+) -> None:
+    categories = {
+        "I was charged twice for my last order.": "billing",
+        "I cannot sign in after resetting my password.": "account",
+        "The app crashes when I upload a photo.": "technical",
+    }
+    prompts: list[str] = []
+
+    def respond(messages: list[ModelMessage], info: AgentInfo) -> ModelResponse:
+        prompt = next(
+            part.content for message in messages for part in message.parts if isinstance(part, UserPromptPart)
+        )
+        assert isinstance(prompt, str)
+        prompts.append(prompt)
+        category = next(category for message, category in categories.items() if message in prompt)
+        return ModelResponse(parts=[ToolCallPart("submit_answer", {"category": category})])
+
+    def make_test_agent(model: Any, **kwargs: Any) -> Any:
+        return make_agent(FunctionModel(function=respond), **kwargs)
+
+    original_write = SQLConnector.write_dataframe_async
+
+    async def write_tickets(self: SQLConnector, df: pd.DataFrame, table_name: str, **kwargs: Any) -> int:
+        if existing_category:
+            df = pd.concat(
+                [df, pd.DataFrame([{"ticket_id": 104, "message": "Already reviewed.", "category": "manual"}])],
+                ignore_index=True,
+            )
+        return await original_write(self, df, table_name, **kwargs)
+
+    monkeypatch.setattr("tabulaflow.agents.tools.run_subagent_for_each_row.make_agent", make_test_agent)
+    monkeypatch.setattr(SQLConnector, "write_dataframe_async", write_tickets)
+    await runpy.run_path(str(EXAMPLES / "data_enrichment.py"))["main"]()
+
+    assert len(prompts) == 3
+    result = queries[-1][1]
+    assert result.error is None and result.df is not None
+    expected = [
+        {"ticket_id": ticket_id, "category": category}
+        for ticket_id, category in zip((101, 102, 103), categories.values(), strict=True)
+    ]
+    if existing_category:
+        expected.append({"ticket_id": 104, "category": "manual"})
+    assert result.df.to_dict("records") == expected
+    printed = capsys.readouterr().out
+    assert "succeeded for 3 rows, failed for 0 rows" in printed
+    if not existing_category:
+        assert (EXAMPLES / "results/library-enrichment.txt").read_text().strip() == printed.strip()
     assert len(closed_connectors) == 1
 
 
@@ -321,7 +380,10 @@ async def test_chat_sessions_keep_history_and_stream_followup(
     assert "HDMI cable and USB-C dock are below their reorder points." in printed
     assert "Tool: run_query" in printed
     assert "Order 8 HDMI cables and 7 USB-C docks." in printed
-    assert "Usage:" in printed
+    assert "Requests: 2" in printed
+    assert "Input tokens:" in printed
+    assert "Output tokens:" in printed
+    assert "Estimated cost: $0.000000" in printed
     assert len(queries) == 2
     assert len(closed_sessions) == len(closed_connectors) == 1
 

@@ -38,6 +38,12 @@ Expect **8 HDMI cables** and **7 USB-C docks**. `turn_finished` provides the
 complete result, including its output artifacts and usage. See the
 [event reference](api/agents.md#events-and-turn-results) for all event types.
 
+Inspect the completed turn's token usage and estimated API cost:
+
+```python
+--8<-- "examples/chat_sessions.py:usage"
+```
+
 Set [`OPENAI_API_KEY`](quick-start.md#try-it-yourself), then run both turns:
 
 ```bash

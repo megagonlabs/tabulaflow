@@ -56,8 +56,18 @@ async def main():
                 elif event.kind == "answer_delta":
                     print(event.content, end="", flush=True)
                 elif event.kind == "turn_finished":
-                    print("\nUsage:", event.result.usage)
+                    result = event.result
             # --8<-- [end:stream]
+
+            # --8<-- [start:usage]
+            usage = result.usage
+            if usage is not None:
+                print("\nRequests:", usage.api_requests)
+                print("Input tokens:", usage.input_tokens)
+                print("Output tokens:", usage.output_tokens)
+                print(f"Estimated cost: ${usage.api_cost_usd:.6f}")
+            # --8<-- [end:usage]
+
             # --8<-- [start:reset]
             session.reset_conversation()
             # --8<-- [end:reset]
