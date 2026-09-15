@@ -8,6 +8,7 @@
 | CypherBench | `CypherBenchEx` |
 | Beaver, ARCS, AMBROSIA | `SimpleEx` |
 
+TabulaFlow adapts official benchmark evaluation implementations into a unified API.
 See the [metric reference](api/metrics.md) for all metrics and aggregators.
 
 ## Evaluate and aggregate scores
