@@ -17,6 +17,10 @@ security boundary for SQL connections.
 
 The caller closes each connector when finished.
 
+Check `ExecResult.error` before using its payload. Successful statements such
+as `CREATE TABLE` can have no DataFrame. DataFrame writes and connection
+setup can raise exceptions directly.
+
 ::: tabulaflow.data.protocols.DataConnector
 
 ## Opening sources
@@ -53,6 +57,17 @@ a writable database.
 Connector settings use explicit arguments first, then `TABULAFLOW_*`
 environment variables, then defaults. Pass `DataSourceConnectorConfigs` to
 `connect_data_source` when the source's backend is selected at runtime.
+
+SQL connectors support both sync and async drivers through the same awaited
+API. A query's `timeout` argument overrides the configured deadline. Supported
+backends cancel the database query on timeout or task cancellation; timeouts
+appear in `ExecResult.error`, while task cancellation propagates as
+`asyncio.CancelledError`.
+
+Schema and query caches are off by default. Enable them for reusable database
+snapshots; call `refresh_schema_async()` to refresh the schema explicitly.
+Query caching requires a read-only connector. Share a `dbms_semaphore` across
+SQL connectors to limit concurrency against the same warehouse.
 
 ::: tabulaflow.data.config.DataSourceConnectorConfigs
 

@@ -14,6 +14,11 @@ normal completion. Failures and cancellation propagate as exceptions.
 Close the session with `aclose()` and close the connectors owned by your
 application separately.
 
+For interruption, cancel and await the task consuming the stream before
+starting another turn. `reset_conversation()` clears conversation context
+while keeping connectors and stored outputs. Automatic context compaction
+is enabled by default; pass `compaction=None` to disable it.
+
 ::: tabulaflow.agents.chat.session.ChatSession
     options:
       members:
@@ -37,6 +42,10 @@ application separately.
 ## Events and turn results
 
 These types are also available from `tabulaflow.agents.chat`.
+
+`ToolStarted` identifies a tool call, `AnswerDelta` carries answer text, and
+`TurnFinished` carries the complete result. Other events report narration,
+tool progress, usage, and context compaction.
 
 ::: tabulaflow.agents.chat.events
     options:

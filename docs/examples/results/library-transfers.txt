@@ -1,0 +1,29 @@
+Selection: {'min_units': 100}
+Result ID: R1
+SQL: SELECT origin, destination, units FROM transfers WHERE units >= 100 ORDER BY origin, destination
+DataFrame:
+     origin destination  units
+0  Chicago      Dallas    500
+1  Chicago      Denver    200
+2   Dallas      Austin    350
+Graph nodes: ['Austin', 'Chicago', 'Dallas', 'Denver']
+Graph edges: [('Chicago', 'Dallas', '500'), ('Chicago', 'Denver', '200'), ('Dallas', 'Austin', '350')]
+Selection: {'min_units': 300}
+Result ID: R2
+SQL: SELECT origin, destination, units FROM transfers WHERE units >= 300 ORDER BY origin, destination
+DataFrame:
+     origin destination  units
+0  Chicago      Dallas    500
+1   Dallas      Austin    350
+Graph nodes: ['Austin', 'Chicago', 'Dallas']
+Graph edges: [('Chicago', 'Dallas', '500'), ('Dallas', 'Austin', '350')]
+Selection: {'min_units': 100}
+Result ID: R1
+SQL: SELECT origin, destination, units FROM transfers WHERE units >= 100 ORDER BY origin, destination
+DataFrame:
+     origin destination  units
+0  Chicago      Dallas    500
+1  Chicago      Denver    200
+2   Dallas      Austin    350
+Graph nodes: ['Austin', 'Chicago', 'Dallas', 'Denver']
+Graph edges: [('Chicago', 'Dallas', '500'), ('Chicago', 'Denver', '200'), ('Dallas', 'Austin', '350')]

@@ -1,80 +1,51 @@
 # Build with TabulaFlow
 
-At the core of TabulaFlow is a minimalist, async-native Python library for building
-and researching data agents. It was the first thing we built when we started this project because existing libraries
-lacked the abstractions we needed. Its building blocks allow you to write agent
-logic that runs across different database backends and research benchmarks. The same library
-powers the [TabulaFlow data agent](../data-agent/quick-start.md).
-
-You can use any of these building blocks to create
-data applications with (e.g. data agents) or without an LLM (e.g., interactive dashboards). Choose the
-building blocks you need:
-
-- [Data connectors](data-connectors.md): inspect schemas and query SQL
-  databases, Neo4j, SPARQL endpoints, files, and datasets through a unified
-  async interface.
-- [Chat sessions](chat-sessions.md): use `ChatSession` to converse
-  across multiple data sources, run tools, and stream answers and progress,
-  with automatic context compaction for long conversations.
-- [Structured outputs](structured-outputs.md): let agents produce tables, charts, maps,
-  and graphs as structured artifacts by defining declarative specifications, with optional lazy data resolution for
-  parameter-driven interaction.
-- [Custom agents](custom-agents.md): combine reusable query, visualization, and
-  document tools with your own functions and actions, without adopting `ChatSession`.
-- [Schema and result formatting](api/output.md#formatting): turn structured
-  schemas and query results into readable text for LLM prompts or human
-  inspection.
-
-These building blocks are fully typed and organized into four layers:
-`core <- data <- output <- agents`. See the
-[API reference](api-reference.md) for how they fit together.
+Build data agents with reusable connectors, tools, and structured outputs.
+Use the components independently or combine them in a `ChatSession` to work
+across multiple data sources. Connectors and outputs also work without an LLM.
 
 ## Example: Chat with two data sources
 
-This example connects two in-memory SQLite databases to a chat session to
-compare revenue across regions and find open high-priority support tickets.
-It then inspects the resulting table and chart. No database server or sample
-files are needed.
+Give a session named sales and support databases, then ask one question across both.
+
+??? info "Create the sample databases"
+
+    ```python
+    --8<-- "examples/quick_start.py:sample-imports"
+
+    --8<-- "examples/quick_start.py:sample-data"
+
+    --8<-- "examples/quick_start.py:sales-connection"
+    --8<-- "examples/quick_start.py:support-connection"
+    --8<-- "examples/quick_start.py:load-data"
+    ```
 
 ```python title="quick_start.py"
---8<-- "examples/quick_start.py"
+--8<-- "examples/quick_start.py:session-imports"
+
+--8<-- "examples/quick_start.py:session"
+
+--8<-- "examples/quick_start.py:question"
 ```
 
-`result.text` contains the answer, and `result.output` describes the artifacts.
-The output store provides their DataFrames and query metadata; chart artifacts
-also carry a Vega-Lite specification.
-
-Expect a chart showing **West: $2,000** and **East: $1,500**, plus a table of
-tickets **201** and **202**. Labels and order may vary. The script prints the
-data and Vega-Lite specification; it does not open a chart viewer.
-
-In long-running applications, use `try/finally` so cleanup also runs on errors.
+Expect revenue of **West: $2,000** and **East: $1,500**, plus open high-priority
+tickets **201** and **202**. `result.text` contains the answer; `result.output`
+contains the chart and table specifications. See [Structured outputs](structured-outputs.md)
+to access their data and queries.
 
 ## Try it yourself
 
-To try TabulaFlow without an API key, start with the
-[Data connectors](data-connectors.md#example-find-products-to-restock) or
-[Structured outputs](structured-outputs.md#example-warehouse-transfer-graph)
-example. Both run locally without model calls.
-
-Use [uv](https://docs.astral.sh/uv/getting-started/installation/) on macOS or
-Linux. Set your OpenAI API key:
+Set your API key and run the complete example with
+[uv](https://docs.astral.sh/uv/getting-started/installation/):
 
 ```bash
 export OPENAI_API_KEY="your-api-key"
-```
-
-This example makes paid model calls and sends the questions, schema, and
-relevant query results to the provider.
-
-Run the example directly:
-
-```bash
 uv run https://megagonlabs.github.io/tabulaflow/examples/quick_start.py
 ```
 
-uv downloads the script and prepares Python and its dependencies. No project
-setup or manual file creation is needed.
+The script creates the sample databases, prints the answer and artifact data,
+and closes its resources. It makes paid model calls; wording and artifact labels
+may vary. For a local example without an API key, try [Data connectors](data-connectors.md).
 
 ??? info "Run from a source checkout"
 
@@ -88,8 +59,6 @@ setup or manual file creation is needed.
 
 ## Use in your project
 
-To use TabulaFlow as a library in your own project:
-
 === "uv"
 
     ```bash
@@ -102,7 +71,8 @@ To use TabulaFlow as a library in your own project:
     pip install tabulaflow
     ```
 
-- [Data connectors](data-connectors.md): connect sources and query them directly.
+- [Data connectors](data-connectors.md): query sources and inspect schemas.
 - [Chat sessions](chat-sessions.md): add follow-up questions and streaming.
-- [Structured outputs](structured-outputs.md): work with data and interactive artifacts.
-- [Custom agents](custom-agents.md): reuse tools and add your own agent behavior.
+- [Structured outputs](structured-outputs.md): resolve tables, charts, maps, and graphs.
+- [Custom agents](custom-agents.md): combine reusable tools with your own actions.
+- [API reference](api-reference.md): look up types, configuration, and contracts.

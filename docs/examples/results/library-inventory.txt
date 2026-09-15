@@ -1,0 +1,4 @@
+DataFrame:
+       product  units_to_order
+0  HDMI cable               8
+1  USB-C dock               7

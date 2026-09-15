@@ -112,6 +112,7 @@ async def test_working_with_data(
     assert_frame_equal(restored.df, result.df, check_dtype=False)
     assert restored.model_dump(exclude={"df"}) == result.model_dump(exclude={"df"})
     output = capsys.readouterr().out
+    assert (EXAMPLES / "results/library-inventory.txt").read_text().strip() in output
     for expected in (
         "Tables: ['inventory']",
         "CREATE TABLE inventory",
@@ -222,6 +223,7 @@ async def test_structured_outputs_resolve_lazily_and_reuse_results(
         ]
         assert all(edge.directed for edge in graph.graph.edges)
     printed = capsys.readouterr().out
+    assert (EXAMPLES / "results/library-transfers.txt").read_text().strip() in printed
     assert printed.count("Result ID: R1") == 2
     assert "Unavailable:" not in printed
     assert printed.count("Graph nodes:") == printed.count("Graph edges:") == 3

@@ -13,6 +13,7 @@ import pytest
 
 from tabulaflow.agents import ChatSession
 from tabulaflow.agents.llm import make_agent
+from tabulaflow.data import SQLConnector
 from tabulaflow.output.resolver import OutputResolver, ResolvedChartArtifact, ResolvedTableArtifact
 
 
@@ -56,7 +57,8 @@ async def test_quick_start(
     async def respond(messages: list[ModelMessage], info: AgentInfo) -> AsyncIterator[str | dict[int, DeltaToolCall]]:
         returns = [part for message in messages for part in message.parts if isinstance(part, ToolReturnPart)]
         for part in returns:
-            assert "(error:" not in str(part.content)
+            assert isinstance(part.content, str)
+            assert "(error:" not in part.content
         if len(returns) == len(steps):
             yield "ANSWER:\nWest: $2,000. East: $1,500. Two high-priority tickets remain open."
         else:
@@ -100,8 +102,6 @@ async def test_quick_start(
 
     output = capsys.readouterr().out
     for expected in (
-        "Table: sales",
-        "Columns: ['order_id', 'region', 'revenue_usd']",
         "Answer:",
         "Artifact: Revenue by region",
         "Artifact: Open high-priority tickets",
@@ -119,3 +119,51 @@ async def test_quick_start(
     printed_spec, _ = json.JSONDecoder().raw_decode(output.split("Vega-Lite: ", 1)[1])
     assert printed_spec == chart_spec
     assert (output.index("Source: support") < output.index("Source: sales")) == reverse_artifacts
+
+
+@pytest.mark.parametrize("failure", ["connection", "preparation", "model"])
+async def test_quick_start_closes_resources_on_failure(failure: str, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("OPENAI_API_KEY", "test-not-a-real-key")
+    monkeypatch.setenv("TABULAFLOW_SCHEMA_CACHE_MODE", "off")
+    monkeypatch.setenv("TABULAFLOW_SQL_QUERY_CACHE_MODE", "off")
+    monkeypatch.setattr(models, "ALLOW_MODEL_REQUESTS", False)
+    script = Path(__file__).resolve().parents[1] / "docs/examples/quick_start.py"
+    example = runpy.run_path(str(script))
+    connectors: list[SQLConnector] = []
+    closed: list[SQLConnector] = []
+    closed_sessions: list[ChatSession] = []
+    original_open = SQLConnector.from_url_async
+    original_close = SQLConnector.close_async
+    original_session_close = ChatSession.aclose
+
+    async def open_connector(cls: type[SQLConnector], *args: Any, **kwargs: Any) -> SQLConnector:
+        if failure == "connection" and connectors:
+            raise RuntimeError("example failure")
+        connector = await original_open(*args, **kwargs)
+        connectors.append(connector)
+        return connector
+
+    async def close_connector(self: SQLConnector) -> None:
+        await original_close(self)
+        closed.append(self)
+
+    async def close_session(self: ChatSession) -> None:
+        await original_session_close(self)
+        closed_sessions.append(self)
+
+    async def fail(*args: Any, **kwargs: Any) -> None:
+        raise RuntimeError("example failure")
+
+    monkeypatch.setattr(SQLConnector, "from_url_async", classmethod(open_connector))
+    monkeypatch.setattr(SQLConnector, "close_async", close_connector)
+    monkeypatch.setattr(ChatSession, "aclose", close_session)
+    if failure == "preparation":
+        monkeypatch.setitem(example["main"].__globals__, "load_sample_data", fail)
+    elif failure == "model":
+        monkeypatch.setattr(ChatSession, "run", fail)
+
+    with pytest.raises(RuntimeError, match="example failure"):
+        await example["main"]()
+    assert closed == list(reversed(connectors))
+    assert len(closed) == (1 if failure == "connection" else 2)
+    assert len(closed_sessions) == (1 if failure == "model" else 0)

@@ -1,59 +1,58 @@
 # Chat sessions
 
-`ChatSession` combines source routing, tools, conversation history, and
-structured outputs. Reuse a session for follow-up questions, and stream
-answers and tool progress as they happen.
+Use `ChatSession` for conversations across data sources, with retained context,
+structured outputs, and streaming answers and tool progress.
 
 ## Example: Ask a follow-up question
 
-First identify products that need restocking, then stream a follow-up about
-order quantities. The second question refers to the first answer without
-repeating the inventory details.
+Connect a small inventory database and ask which products need restocking:
 
-```python title="chat_sessions.py"
---8<-- "examples/chat_sessions.py"
+??? info "Create the sample database"
+
+    ```python
+    --8<-- "examples/chat_sessions.py:data-imports"
+
+    --8<-- "examples/chat_sessions.py:connect"
+    --8<-- "examples/chat_sessions.py:sample-data"
+    ```
+
+```python
+--8<-- "examples/chat_sessions.py:session-imports"
+
+--8<-- "examples/chat_sessions.py:session"
+
+--8<-- "examples/chat_sessions.py:first-turn"
 ```
 
-Expect **8 HDMI cables** and **7 USB-C docks** in the follow-up answer. Wording
-and tool calls may vary.
+Reuse the session for the follow-up below; it retains the first question and answer.
 
-Set [`OPENAI_API_KEY`](quick-start.md#try-it-yourself), then run:
+## Stream answers and progress
+
+Ask how much to order, using the previous turn's context:
+
+```python
+--8<-- "examples/chat_sessions.py:stream"
+```
+
+Expect **8 HDMI cables** and **7 USB-C docks**. `turn_finished` provides the
+complete result, including its output artifacts and usage. See the
+[event reference](api/agents.md#events-and-turn-results) for all event types.
+
+Set [`OPENAI_API_KEY`](quick-start.md#try-it-yourself), then run both turns:
 
 ```bash
 uv run https://megagonlabs.github.io/tabulaflow/examples/chat_sessions.py
 ```
 
-## Stream answers and progress
-
-Use `run(...)` for the final `ChatResult`, or `run_stream(...)` for events
-as the turn runs.
-
-The example handles three event kinds:
-
-- `tool_started` identifies a tool call, so you can show progress.
-- `answer_delta` carries a chunk of the answer.
-- `turn_finished` carries the complete `ChatResult`, including text, output
-  artifacts, and usage. It ends a successfully completed turn.
-
-Other [events](api/agents.md#events-and-turn-results) report tool progress,
-narration, and context compaction. See [Structured outputs](structured-outputs.md)
-to resolve the tables, charts, and other artifacts returned with an answer.
-
 ## Manage a conversation
 
-- Create one session per conversation and run one turn at a time. Add sources
-  to its registry for [multi-source conversations](quick-start.md#example-chat-with-two-data-sources).
-- Set `model`, `reasoning`, and `extra_instructions` when constructing the
-  session. For long conversations, automatic context compaction summarizes
-  conversation context to keep the model input manageable; pass `compaction=None`
-  to disable it.
-- Use `reset_conversation()` to clear the conversation while keeping the
-  session environment, including its connectors and stored outputs.
-- Failures propagate as exceptions. To interrupt a turn, cancel and await the
-  task consuming the stream before starting another turn.
+Start a new conversation while keeping the session's connectors and stored outputs:
 
-Close the session with `aclose()` and close your connectors separately. The
-nested `finally` blocks above release both even if a turn fails.
+```python
+--8<-- "examples/chat_sessions.py:reset"
+```
 
-See the [ChatSession reference](api/agents.md#chat-sessions) for configuration,
-or [Custom agents](custom-agents.md) to assemble your own workflow.
+Long conversations use automatic context compaction. Close the session with
+`await session.aclose()` and its connector with `await stock.close_async()` when
+finished. See the [session reference](api/agents.md#chat-sessions) for configuration
+and lifecycle details.

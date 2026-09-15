@@ -10,6 +10,10 @@ Import specification models from `tabulaflow.output.specs`. Models can be
 serialized with Pydantic's `model_dump_json()` and reconstructed with
 `model_validate_json()`.
 
+Serializing an `OutputSpec` saves its declaration, not the underlying
+DataFrames or live connectors. Keep the store and required connectors
+available for later resolution.
+
 ::: tabulaflow.output.specs.OutputSpec
 
 ::: tabulaflow.output.specs.FixedArtifactSource
@@ -33,6 +37,13 @@ serialized with Pydantic's `model_dump_json()` and reconstructed with
 ::: tabulaflow.output.specs.artifact_source_ids
 
 ## Parameters and selections
+
+`NumberParameter` describes a range, step, and default for a slider or numeric
+input. `ChoiceParameter` describes a fixed set of options. The frontend sends
+the selected values to `OutputResolver`; changing a selection needs no model call.
+
+Query templates render text rather than SQL bind parameters. Keep templates
+under application control and use validated parameters instead of unchecked input.
 
 ::: tabulaflow.output.specs.ChoiceOption
 
@@ -59,6 +70,10 @@ serialized with Pydantic's `model_dump_json()` and reconstructed with
 `OutputStore` assigns result and source IDs, retains query provenance, and
 materializes parameterized sources. Configure `spill_dir` to persist result
 DataFrames; otherwise they remain in memory.
+
+Declaring a parameterized source does not execute its query. Results are
+cached by selection and reused across artifacts. They are not automatically
+refreshed when the underlying database changes.
 
 ::: tabulaflow.output.store.OutputStore
 
