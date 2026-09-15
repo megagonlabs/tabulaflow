@@ -18,8 +18,9 @@ write the results back to the table:
     ```
 
 `key_columns` identify the rows to update. The output columns must already
-exist. Behind the scenes, TabulaFlow uses those column types to define and
-validate each subagent's structured output for you.
+exist. Behind the scenes, TabulaFlow uses their types and native enum choices
+to define and validate each subagent's structured output for you. Enum discovery
+depends on the database driver; `CHECK` constraints are not interpreted.
 
 Set [`OPENAI_API_KEY`](quick-start.md#try-it-yourself), then run:
 

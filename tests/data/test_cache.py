@@ -17,7 +17,7 @@ def test_schema_cache_path_is_flat_versioned_and_filename_safe(tmp_path: Path) -
     path = schema_cache_path(tmp_path, "neo4j+movies", variant="fast")
 
     assert path.parent == tmp_path / "schemas"
-    assert path.name == "v3@fast@neo4j+movies.json"
+    assert path.name == "v4@fast@neo4j+movies.json"
 
     with pytest.raises(ValueError, match="Invalid schema cache variant"):
         schema_cache_path(tmp_path, "neo4j+movies", variant="../fast")

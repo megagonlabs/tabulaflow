@@ -4,15 +4,13 @@ from importlib import import_module
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    from tabulaflow.agents.extraction.column_types import ColumnType
     from tabulaflow.agents.extraction.entity import EntityExtractor
 
 _LAZY_EXPORTS = {
-    "ColumnType": ("tabulaflow.agents.extraction.column_types", "ColumnType"),
     "EntityExtractor": ("tabulaflow.agents.extraction.entity", "EntityExtractor"),
 }
 
-__all__ = ["ColumnType", "EntityExtractor"]
+__all__ = ["EntityExtractor"]
 
 
 def __getattr__(name: str) -> Any:

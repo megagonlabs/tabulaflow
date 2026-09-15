@@ -1835,9 +1835,38 @@ async def _build_column_structure_async(
         name=_denorm(t_eng, column["name"]),
         dtype=dtype,
         native_dtype=native_dtype,
+        enum_values=await _native_enum_values_async(t_eng, column, table_name, schema_name),
         nullable=column["nullable"],
         examples=[],
     )
+
+
+async def _native_enum_values_async(
+    t_eng: ThrottledEngine,
+    column: dict[str, Any],
+    table_name: str,
+    schema_name: str | None,
+) -> list[str] | None:
+    """Return declared string labels from native SQLAlchemy enum types.
+
+    Recover missing DuckDB labels with ``enum_range`` over a typed NULL,
+    including for empty tables and anonymous enums. Return ``None`` for
+    emulated or unrecognized types; do not infer choices from ``CHECK``
+    constraints or stored values.
+    """
+    dtype = column["type"]
+    if not isinstance(dtype, sqlalchemy.Enum) or not dtype.native_enum:
+        return None
+    if dtype.enums or t_eng.engine.dialect.name != "duckdb":
+        return list(dtype.enums)
+    column_type = (
+        select(sqlalchemy.column(column["name"]))
+        .select_from(sqlalchemy.table(table_name, schema=schema_name))
+        .limit(0)
+        .scalar_subquery()
+    )
+    result = await t_eng.execute_async(select(func.enum_range(column_type)))
+    return list(result.rows[0][0])
 
 
 def _qualified_name(schema_name: str | None, table_name: str, column_name: str | None = None) -> str:

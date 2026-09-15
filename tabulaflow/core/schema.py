@@ -132,6 +132,8 @@ class SQLColumnSchema(BaseModel):
             such as ``VARCHAR(100)``, ``STRUCT(a INT, b VARCHAR)``, or
             ``ARRAY<STRING>``.
         json_schema: Inferred structure of JSON, JSONB, or VARIANT values.
+        enum_values: Native enum labels, or ``None`` if unavailable. An empty
+            list permits no non-null values.
         null_ratio: Fraction of rows whose value is null.
         num_unique: Number of distinct non-null values when computed.
         unique_ratio: Number of distinct non-null values divided by row count.
@@ -143,6 +145,7 @@ class SQLColumnSchema(BaseModel):
     native_dtype: str | None = None
     description: str | None = None
     json_schema: dict[str, Any] | None = None
+    enum_values: list[str] | None = None
     nullable: bool
     null_ratio: float | None = None
     num_unique: int | None = None

@@ -11,7 +11,7 @@ import io
 from pathlib import Path
 from types import SimpleNamespace
 from collections.abc import Sequence
-from typing import Any
+from typing import Any, Literal
 
 import duckdb
 from PIL import Image
@@ -24,7 +24,7 @@ import tabulaflow.agents.tools.extract_rows_from_documents as mod
 from tabulaflow.data.config import SQLConnectorConfig
 from tabulaflow.data.sql import SQLConnector
 from tabulaflow.agents.extraction import EntityExtractor
-from tabulaflow.agents.extraction.column_types import python_type_for_dtype
+from tabulaflow.agents.extraction.column_types import _python_type_for_dtype
 from tabulaflow.agents.media import select_pdf_pages
 from tabulaflow.agents.tools.extract_rows_from_documents import ExtractRowsFromDocumentsTool
 
@@ -50,17 +50,17 @@ def test_python_type_for_dtype() -> None:
     # plus raw-SQL fallbacks. BIG_INTEGER/SMALL_INTEGER are what BIGINT/SMALLINT columns
     # introspect to — they must not fall through to str.
     for tok in ("TINY_INTEGER", "SMALL_INTEGER", "INTEGER", "BIG_INTEGER", "TINYINT", "SMALLINT", "INT", "BIGINT"):
-        assert python_type_for_dtype(tok) is int, tok
+        assert _python_type_for_dtype(tok) is int, tok
     for tok in ("FLOAT", "DOUBLE", "NUMERIC", "DECIMAL", "REAL", "DOUBLE_PRECISION"):
-        assert python_type_for_dtype(tok) is float, tok
-    assert python_type_for_dtype("BOOLEAN") is bool
-    assert python_type_for_dtype("DATE") is date
+        assert _python_type_for_dtype(tok) is float, tok
+    assert _python_type_for_dtype("BOOLEAN") is bool
+    assert _python_type_for_dtype("DATE") is date
     # All TIMESTAMP variants (and DATETIME) flatten to a naive datetime.
     for tok in ("DATETIME", "TIMESTAMP", "TIMESTAMPTZ", "TIMESTAMP_NTZ", "TIMESTAMP_LTZ"):
-        assert python_type_for_dtype(tok) is datetime
+        assert _python_type_for_dtype(tok) is datetime
     # Text, TIME, and semi-structured types all fall through to str.
     for tok in ("VARCHAR", "TEXT", "TIME", "JSON", "ARRAY", "STRUCT", "UUID", "BINARY"):
-        assert python_type_for_dtype(tok) is str
+        assert _python_type_for_dtype(tok) is str
 
 
 def test_entity_extractor_builds_typed_model() -> None:
@@ -130,11 +130,28 @@ def test_entity_extractor_rejects_empty_fields() -> None:
 
 
 def test_entity_extractor_rejects_unsupported_field_type() -> None:
-    """Only str/int/float/bool/date/datetime are accepted; anything else fails fast."""
     from decimal import Decimal
 
     with pytest.raises(ValueError, match="str/int/float/bool/date/datetime"):
-        EntityExtractor({"amt": Decimal})  # type: ignore[dict-item]
+        EntityExtractor({"amt": Decimal})
+
+
+def test_entity_extractor_validates_literal_choices() -> None:
+    extractor = EntityExtractor({"category": Literal["billing", "account", "technical"]}, llm="test")
+    model = extractor._result_model
+    field = model.model_json_schema()["$defs"]["ExtractedEntity"]["properties"]["category"]
+    assert field["anyOf"][0]["enum"] == ["billing", "account", "technical"]
+    assert model.model_validate({"entities": [{"category": "billing"}, {}]}).model_dump() == {
+        "entities": [{"category": "billing"}, {"category": None}]
+    }
+    with pytest.raises(ValueError, match="literal_error"):
+        model.model_validate({"entities": [{"category": "other"}]})
+
+
+@pytest.mark.parametrize("dtype", [Literal[1, 2], Literal["billing", 1], Literal[()], list[str]])
+def test_entity_extractor_rejects_unsupported_literals(dtype: Any) -> None:
+    with pytest.raises(ValueError, match="string Literal choices"):
+        EntityExtractor({"category": dtype}, llm="test")
 
 
 def test_document_content_validation_rejects_unknown_values_and_accepts_null() -> None:

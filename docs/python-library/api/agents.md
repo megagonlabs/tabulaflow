@@ -190,11 +190,9 @@ the adapters do not all return the same shape.
 ## Extraction and summarization
 
 These services can be used directly without a chat session. Import
-`EntityExtractor` and `ColumnType` from `tabulaflow.agents.extraction`.
+`EntityExtractor` from `tabulaflow.agents.extraction`.
 
 ::: tabulaflow.agents.extraction.entity.EntityExtractor
-
-::: tabulaflow.agents.extraction.column_types.ColumnType
 
 ::: tabulaflow.agents.summarization.DataSourceSummarizer
 

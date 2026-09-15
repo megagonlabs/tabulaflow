@@ -16,7 +16,7 @@ import asyncio
 import logging
 from collections.abc import Callable, Sequence
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal, get_args, get_origin
 
 from pydantic import create_model
 from pydantic_ai.messages import BinaryContent, UserContent
@@ -25,7 +25,7 @@ from pydantic_ai.settings import ModelSettings
 from tabulaflow.agents.llm import make_agent
 from tabulaflow.agents.media import select_pdf_pages
 from tabulaflow.agents.trace import Trajectory
-from tabulaflow.agents.extraction.column_types import ALLOWED_COLUMN_TYPES, ColumnType
+from tabulaflow.agents.extraction.column_types import ALLOWED_COLUMN_TYPES
 from tabulaflow.agents.extraction.markdown import (
     DEFAULT_MAX_CHARS,
     DEFAULT_TARGET_CHARS,
@@ -107,6 +107,17 @@ def _media_prompts(
     return prompts
 
 
+def _is_supported_field_type(annotation: object) -> bool:
+    if annotation in ALLOWED_COLUMN_TYPES:
+        return True
+    choices = get_args(annotation)
+    return (
+        get_origin(annotation) is Literal
+        and bool(choices)
+        and all(isinstance(value, str) or value is None for value in choices)
+    )
+
+
 class EntityExtractor:
     """Extract structured entities from document text or media with an LLM.
 
@@ -125,7 +136,7 @@ class EntityExtractor:
 
     def __init__(
         self,
-        fields: dict[str, ColumnType],
+        fields: dict[str, Any],
         *,
         llm: str | Model = "openai-responses:gpt-5-mini",
         model_settings: ModelSettings | None = None,
@@ -138,8 +149,9 @@ class EntityExtractor:
 
         Args:
             fields: Output field names mapped to their Python types. Must be non-empty.
-                Supported types are ``str``, ``int``, ``float``, ``bool``, ``date``, and
-                ``datetime``. Missing values are returned as ``None``.
+                Supported types are ``str``, ``int``, ``float``, ``bool``, ``date``,
+                ``datetime``, and string-valued ``Literal`` choices. Missing
+                values are returned as ``None``.
             llm: LLM identifier or model object used by per-chunk extraction subagents.
             model_settings: Optional pydantic-ai model settings passed to each
                 subagent run.
@@ -164,9 +176,11 @@ class EntityExtractor:
             raise ValueError("max_concurrency must be greater than 0")
         if chunk_target <= 0 or chunk_max <= 0:
             raise ValueError("chunk_target and chunk_max must be greater than 0")
-        bad_types = {name: dtype for name, dtype in fields.items() if dtype not in ALLOWED_COLUMN_TYPES}
+        bad_types = {name: dtype for name, dtype in fields.items() if not _is_supported_field_type(dtype)}
         if bad_types:
-            raise ValueError(f"field types must be one of str/int/float/bool/date/datetime; got {bad_types}")
+            raise ValueError(
+                f"field types must be str/int/float/bool/date/datetime or string Literal choices; got {bad_types}"
+            )
 
         self.llm = llm
         self.model_settings = model_settings

@@ -1,4 +1,4 @@
-"""Run the library guide examples against real SQLite and offline model transports."""
+"""Run the library guide examples against local databases and offline model transports."""
 
 from collections.abc import AsyncIterator
 import ast
@@ -155,6 +155,12 @@ async def test_enrichment_updates_selected_tickets(
     prompts: list[str] = []
 
     def respond(messages: list[ModelMessage], info: AgentInfo) -> ModelResponse:
+        answer = next(tool for tool in info.output_tools if tool.name == "submit_answer")
+        assert answer.parameters_json_schema["properties"]["category"]["anyOf"][0]["enum"] == [
+            "billing",
+            "account",
+            "technical",
+        ]
         prompt = next(
             part.content for message in messages for part in message.parts if isinstance(part, UserPromptPart)
         )
@@ -171,7 +177,7 @@ async def test_enrichment_updates_selected_tickets(
     async def write_tickets(self: SQLConnector, df: pd.DataFrame, table_name: str, **kwargs: Any) -> int:
         if existing_category:
             df = pd.concat(
-                [df, pd.DataFrame([{"ticket_id": 104, "message": "Already reviewed.", "category": "manual"}])],
+                [df, pd.DataFrame([{"ticket_id": 104, "message": "Already reviewed.", "category": "account"}])],
                 ignore_index=True,
             )
         return await original_write(self, df, table_name, **kwargs)
@@ -188,7 +194,7 @@ async def test_enrichment_updates_selected_tickets(
         for ticket_id, category in zip((101, 102, 103), categories.values(), strict=True)
     ]
     if existing_category:
-        expected.append({"ticket_id": 104, "category": "manual"})
+        expected.append({"ticket_id": 104, "category": "account"})
     assert result.df.to_dict("records") == expected
     printed = capsys.readouterr().out
     assert "succeeded for 3 rows, failed for 0 rows" in printed

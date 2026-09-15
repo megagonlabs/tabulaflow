@@ -18,7 +18,7 @@ from tabulaflow.core._cache import (
 from tabulaflow.core.serialization import json_ready
 from tabulaflow.data.protocols import validate_global_id
 
-_SCHEMA_CACHE_VERSION = "v3"
+_SCHEMA_CACHE_VERSION = "v4"
 _QUERY_CACHE_VERSION = "v2"
 
 

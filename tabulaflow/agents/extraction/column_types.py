@@ -11,17 +11,13 @@ schema; columns it can't resolve default to ``str``.
 from __future__ import annotations
 
 from datetime import date, datetime
-from typing import TypeAlias
+from typing import Any, Literal, TypeAlias
 
 from tabulaflow.core.schema import SQLSchema
 from tabulaflow.agents.tools._sql import find_table
 
-# The Python types a structured-output model can emit for a column. Restricted to
-# what an LLM produces and pydantic can put in a JSON schema: JSON scalars plus
-# date / datetime (serialized as ISO strings). Richer pydantic-supported types
-# (Decimal, time, UUID, ...) are intentionally out of scope.
-ColumnType: TypeAlias = type[str] | type[int] | type[float] | type[bool] | type[date] | type[datetime]
-ALLOWED_COLUMN_TYPES: tuple[ColumnType, ...] = (str, int, float, bool, date, datetime)
+_ScalarType: TypeAlias = type[str] | type[int] | type[float] | type[bool] | type[date] | type[datetime]
+ALLOWED_COLUMN_TYPES: tuple[_ScalarType, ...] = (str, int, float, bool, date, datetime)
 
 # ``SQLColumnSchema.dtype`` tokens (uppercase, parameter-stripped) that map to each Python
 # type. The schema stores *canonical* SQLAlchemy visit-names (e.g. DuckDB ``BIGINT`` →
@@ -49,7 +45,7 @@ UNSUPPORTED_DTYPES = {
 }  # fmt: skip
 
 
-def python_type_for_dtype(dtype: str) -> ColumnType:
+def _python_type_for_dtype(dtype: str) -> _ScalarType:
     """Map a canonical SQL dtype token to the Python type the LLM should emit.
 
     Numeric, boolean, and date/timestamp columns get a native type; ``TIMESTAMP*``
@@ -77,7 +73,7 @@ def resolve_column_types(
     schema_name: str | None,
     table_name: str,
     output_columns: list[str],
-) -> tuple[dict[str, ColumnType], list[str]]:
+) -> tuple[dict[str, Any], list[str]]:
     """Resolve each output column's emit-type off the introspected schema.
 
     Args:
@@ -98,5 +94,8 @@ def resolve_column_types(
         return {}, []
     cols = [c for c in table.columns if c.name in output_columns]
     unsupported = [f"{c.name} ({c.dtype})" for c in cols if c.dtype in UNSUPPORTED_DTYPES]
-    column_types = {c.name: python_type_for_dtype(c.dtype) for c in cols}
+    column_types: dict[str, Any] = {c.name: _python_type_for_dtype(c.dtype) for c in cols}
+    for column in cols:
+        if column.enum_values is not None:
+            column_types[column.name] = Literal[tuple(column.enum_values)] if column.enum_values else Literal[None]
     return column_types, unsupported
