@@ -88,7 +88,6 @@ from dataclasses import dataclass
 import collections
 import pandas as pd
 import pyarrow as pa
-import os
 import time
 import asyncio
 import contextlib
@@ -100,7 +99,7 @@ from sqlalchemy.exc import DBAPIError, SAWarning
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncEngine
 from sqlalchemy.engine.url import URL as SQLAlchemyURL
 from sqlalchemy.engine.url import make_url
-from sqlalchemy.pool import StaticPool
+from sqlalchemy.pool import QueuePool, StaticPool
 from sqlalchemy import create_engine, event, select, func, distinct, inspect, text
 from tabulaflow.core.dataframe import dataframe_to_arrow, normalize_dataframe
 from tabulaflow.core.results import ErrorInfo, ExecResult
@@ -456,8 +455,10 @@ _ASYNC_DRIVERS = frozenset(
 )
 
 
-def _is_sqlite_memory_url(url: str | SQLAlchemyURL) -> bool:
+def _is_memory_url(url: str | SQLAlchemyURL) -> bool:
     parsed = make_url(url)
+    if parsed.get_backend_name() == "duckdb":
+        return not parsed.database or parsed.database.startswith(":memory:") or parsed.database == ":default:"
     return parsed.get_backend_name() == "sqlite" and parsed.database in (None, "", ":memory:")
 
 
@@ -1032,7 +1033,8 @@ class ThrottledEngine:
         Args:
             url: SQLAlchemy database URL, sync or async (e.g.
                 ``"duckdb:///:memory:"`` or
-                ``"postgresql+asyncpg://..."``).
+                ``"postgresql+asyncpg://..."``). Unnamed in-memory databases
+                are private to this engine.
             max_concurrency_per_db: Cap on concurrent queries against
                 this database. Also the underlying pool size, except for
                 in-memory SQLite, which serializes access to one connection.
@@ -1050,16 +1052,32 @@ class ThrottledEngine:
 
         Returns:
             A :class:`ThrottledEngine` wrapping the new engine.
+
+        Raises:
+            ValueError: Unsupported connection-pool settings for an in-memory database.
         """
+        url = make_url(url)
+        backend = url.get_backend_name()
+        in_memory = _is_memory_url(url)
         engine_kwargs.setdefault("echo", False)  # avoid excessive logging from engine
 
+        if backend == "duckdb" and in_memory:
+            # Named databases let pooled connections share one catalog across threads.
+            if url.database in (None, "", ":memory:"):
+                url = url.set(database=f":memory:{uuid4().hex}")
+            pool_class = engine_kwargs.setdefault("poolclass", QueuePool)
+            if not issubclass(pool_class, QueuePool):
+                raise ValueError("In-memory DuckDB requires QueuePool")
+            if engine_kwargs.get("pool_recycle", -1) != -1:
+                raise ValueError("In-memory DuckDB cannot recycle connections without risking data loss")
+
         # Open DuckDB in native read-only mode so it doesn't hold a file lock.
-        if read_only and str(url).startswith("duckdb"):
+        if read_only and backend == "duckdb" and not in_memory:
             connect_args = engine_kwargs.setdefault("connect_args", {})
             connect_args.setdefault("read_only", True)
 
         engine_type: Literal["async", "sync"] = "async" if _is_async_url(url) else "sync"
-        if _is_sqlite_memory_url(url):
+        if backend == "sqlite" and in_memory:
             # A private SQLite database lives on one connection, shared by
             # executor threads and async tasks without overlapping transactions.
             pool_class = engine_kwargs.setdefault("poolclass", StaticPool)
@@ -1080,15 +1098,14 @@ class ThrottledEngine:
         # Also set file_search_path so relative paths inside views
         # (e.g. read_csv_auto('data/foo.csv')) resolve against the
         # database file's directory rather than the process CWD.
-        if str(url).startswith("duckdb"):
-            url_str = str(url)
-            db_dir = os.path.dirname(os.path.abspath(url_str.replace("duckdb:///", "", 1)))
+        if backend == "duckdb":
+            db_dir = str(Path(url.database).resolve().parent) if not in_memory and url.database else None
             sync_engine = engine.sync_engine if isinstance(engine, AsyncEngine) else engine
 
             def _duckdb_on_connect(dbapi_conn: Any, _rec: Any) -> None:
                 dbapi_conn.execute("PRAGMA enable_progress_bar=false")
                 if db_dir:
-                    dbapi_conn.execute(f"SET file_search_path='{db_dir}'")
+                    dbapi_conn.execute("SET file_search_path = ?", [db_dir])
                 for sql in duckdb_init_sql or []:
                     dbapi_conn.execute(sql)
 
@@ -1636,10 +1653,11 @@ async def _load_schema_async(
             collect_column_stats=config.sql_column_stats_enabled,
             query_timeout_seconds=config.query_timeout_seconds,
         )
-        if t_eng.engine_type == "async":
-            await t_eng.engine.dispose()  # type: ignore
-        else:
-            t_eng.engine.dispose()
+        if not _is_memory_url(t_eng.engine.url):
+            if t_eng.engine_type == "async":
+                await t_eng.engine.dispose()  # type: ignore
+            else:
+                t_eng.engine.dispose()
         if description:
             schema.description = description
         if config.schema_cache_mode in ("read_write", "refresh") and schema.tables:
@@ -2316,8 +2334,8 @@ class SQLConnector:
             global_id: Globally unique, filename-safe identifier for this
                 database connection and its caches. Derived from the URL and
                 non-secret authenticated identity, such as its username, when
-                omitted. Private in-memory SQLite databases receive a unique
-                ID per connector instead, since the URL does not identify data.
+                omitted. In-memory databases receive a unique ID per connector
+                instead, since they have no persistent identity.
             read_only: If ``True`` (the default), write statements (INSERT,
                 UPDATE, DELETE, DROP, etc.) recognized by the client guard are
                 rejected before reaching the database. This is not a security
@@ -2351,7 +2369,11 @@ class SQLConnector:
         if display_name is None:
             display_name = schema.display_name if schema is not None else _default_display_name(url)
         if global_id is None:
-            global_id = f"sqlite-memory+{uuid4().hex}" if _is_sqlite_memory_url(url) else _global_id_from_url(str(url))
+            global_id = (
+                f"{make_url(url).get_backend_name()}-memory+{uuid4().hex}"
+                if _is_memory_url(url)
+                else _global_id_from_url(str(url))
+            )
         global_id = validate_global_id(global_id)
         config = SQLConnectorConfig() if config is None else config
         if not read_only and config.sql_query_cache_mode != "off":
@@ -2422,20 +2444,20 @@ class SQLConnector:
         """Release pooled connections while keeping the connector reusable.
 
         Raises:
-            ValueError: The database is private in-memory SQLite, whose data
-                would be destroyed by releasing its connection.
+            ValueError: The database is in memory and releasing its connections
+                could destroy its data.
         """
         self._check_open()
-        if _is_sqlite_memory_url(self._t_eng.engine.url):
-            raise ValueError("Cannot release in-memory SQLite connections without destroying the database")
+        if _is_memory_url(self._t_eng.engine.url):
+            raise ValueError("Releasing in-memory connections risks destroying the database")
         await self._t_eng.aclose()
 
     async def close_async(self) -> None:
         """Permanently close the connector and release its resources.
 
-        For read-write DuckDB connectors, this releases the file-level
+        For read-write DuckDB file connectors, this releases the file-level
         lock so external processes (e.g. ``dbt run``) can acquire a write
-        lock.  Read-only connectors already use DuckDB's native read-only
+        lock.  Read-only file connectors already use DuckDB's native read-only
         mode and do not hold a lock.
 
         A loader-owned cleanup hook, when present, runs after the engine closes.
