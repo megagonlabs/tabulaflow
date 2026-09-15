@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from rich.spinner import Spinner
 from rich.text import Text
 
 from textual.app import ComposeResult
@@ -12,6 +11,7 @@ from textual.widget import Widget
 from textual.widgets import Static
 
 from tabulaflow.app.theme import ACCENT
+from tabulaflow.app.tui.spinner import tool_arrow_spinner
 from tabulaflow.app.tui.theme import MESSAGE_SURFACE
 
 if TYPE_CHECKING:
@@ -100,7 +100,7 @@ class SpinnerWidget(Widget):
     def __init__(self, label: str = "Loading...") -> None:
         super().__init__()
         self._label = label
-        self._spinner = Spinner("dots", text=Text(label, style="dim"), style="dim")
+        self._spinner = tool_arrow_spinner(Text(label, style="dim"), style="dim")
 
     def update_label(self, label: str) -> None:
         self._label = label

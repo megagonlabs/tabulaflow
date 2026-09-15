@@ -21,6 +21,7 @@ from tabulaflow.app.tui.theme import (
     DIFF_ADDED,
     DIFF_REMOVED,
 )
+from tabulaflow.app.tui.spinner import tool_arrow_spinner
 from tabulaflow.agents.chat import (
     AnswerDelta,
     ChatEvent,
@@ -445,7 +446,7 @@ class AgentProgressWidget(Widget):
         self._text_block: "AgentTextBlock | None" = None
         self._status_text: str | None = "Thinking..."
         # Persistent spinner instances so animation state survives across renders.
-        self._status_spinner = Spinner("dots", text=Text("Thinking...", style="dim"), style="dim")
+        self._status_spinner = tool_arrow_spinner(Text("Thinking...", style="dim"), style="dim")
         # Per-tool-call spinners so parallel running steps don't share a single
         # mutable spinner object (which would make every row display the same label).
         self._tool_spinners: dict[str, Spinner] = {}
@@ -477,7 +478,7 @@ class AgentProgressWidget(Widget):
                 else:
                     spinner = self._tool_spinners.get(tool_call_id)
                     if spinner is None:
-                        spinner = Spinner("dots", style="dim")
+                        spinner = tool_arrow_spinner(style="dim")
                         self._tool_spinners[tool_call_id] = spinner
                     spinner.text = _styled_label(_name, label, color_diffstat=False)
                     parts.append(spinner)
