@@ -1,9 +1,5 @@
 # Tasks and runs
 
-Represent benchmark questions, reference queries, predictions, and experiment
-results with typed models. Task families cover straightforward queries,
-ambiguous questions, and dbt workflows.
-
 ## Queries
 
 `GoldQuery` stores a reference query and accepted result variants. `PredQuery`

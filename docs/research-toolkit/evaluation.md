@@ -1,14 +1,11 @@
 # Evaluation and analysis
 
-A metric scores one task output; an aggregator combines those values across an
-experiment run. Use the same evaluation policy when comparing methods, then
-inspect individual predictions to understand differences in their scores.
+A metric scores one task output; an aggregator combines scores across a run.
 
 ## Choose metrics
 
-Benchmark loaders declare `default_metrics` as registry names. The Python
-`evaluate_async(...)` API takes metric instances explicitly; it does not select
-those defaults automatically.
+Pass metric instances to `evaluate_async(...)`. Loader `default_metrics` lists
+their registry names; the Python API does not select them automatically.
 
 | Benchmark | Primary execution metric |
 | --- | --- |
@@ -18,7 +15,7 @@ those defaults automatically.
 | CypherBench | `CypherBenchEx` |
 | Beaver, ARCS, AMBROSIA-S | `SimpleEx` |
 
-Add diagnostics that answer a specific question:
+Diagnostics:
 
 | Metric family | Question answered |
 | --- | --- |
@@ -28,19 +25,15 @@ Add diagnostics that answer a specific question:
 | Schema-linking diagnostics | Did the method identify the relevant schema? |
 | Ambiguity metrics | Did the method find valid interpretations or ambiguity points? |
 
-Execution metrics have different comparison rules; substituting one can change
-the score. See the [metric reference](api/metrics.md) for exact behavior.
-Raw-prediction metrics evaluate pre-postprocessing queries and can execute them
-during metric computation.
+See the [metric reference](api/metrics.md) for comparison rules. Raw-prediction
+metrics execute and evaluate queries from before postprocessing.
 
-Each metric declares `compatible_output_types`. Check these against the agent's
-output family when constructing an experiment; the Python evaluation stage does
-not automatically filter incompatible metrics.
+Check `compatible_output_types` against the agent's output family; the Python
+API does not filter incompatible metrics.
 
 ## Evaluate predictions
 
-For a predicted BIRD-SQL `result` and its loaded `dataset`, first populate query
-results, then evaluate:
+Execute the BIRD-SQL predictions before computing execution accuracy:
 
 ```python
 from tabulaflow.research.metrics import BirdSQLEx, Executable, PredSuccess
@@ -63,15 +56,12 @@ continuing from saved predictions.
 
 ## Aggregate scores
 
-The default `SimpleAverageAggregator` averages available numeric values, ignoring
-`None`. A metric returning zero counts as a failure; returning `None` excludes
-that value from the average. Report the task count and any missing values with
-your scores.
+`SimpleAverageAggregator` includes zeros and excludes `None` from the average.
+Report the task count and missing values with your scores.
 
-`OfficialSplitScoreAggregator` uses the full split size for supported benchmarks,
-so missing tasks count as zero. This differs from sampled-run accuracy. Other
-aggregators group scores by database, BIRD-SQL difficulty, ambiguity-point count,
-or AMBROSIA taxonomy.
+`OfficialSplitScoreAggregator` divides by the full split size, treating missing
+tasks as zero. Other aggregators group scores by database, BIRD-SQL difficulty,
+ambiguity-point count, or AMBROSIA taxonomy.
 
 For a BIRD-SQL database breakdown, request the metric key explicitly:
 
@@ -95,8 +85,7 @@ Pass `metric_aggregators=[]` to compute task scores without aggregation.
 
 ## Inspect failures
 
-For single-query outputs, distinguish missing predictions, execution errors,
-and incorrect results. After execution and evaluation, inspect failed tasks:
+Inspect missing predictions, execution errors, and incorrect results:
 
 ```python
 from tabulaflow.research.types import SimpleNL2QTaskOutput
@@ -116,15 +105,12 @@ for task in result.tasks:
     print(task.to_markdown())
 ```
 
-Task reports include reference and predicted queries and their results. Recorded
-trajectories show the model's messages and tool calls. Prediction exceptions are
-logged; an empty output does not preserve the exception traceback in the run.
-Also inspect reference-query errors before attributing a zero score to the agent.
+Task reports show queries and results; trajectories show messages and tool calls.
+Prediction tracebacks appear in logs, not empty outputs. Check reference-query
+errors as well as prediction errors.
 
-For paired comparisons, match tasks by QID and compare their metric values.
-Report improvements and regressions on the same task set, alongside aggregate
-accuracy. The [comparison example](running-experiments.md#compare-strategies)
-saves the structured outputs needed for this analysis.
+For paired comparisons, match QIDs and compare task scores. The
+[comparison example](running-experiments.md#compare-strategies) saves these outputs.
 
 ## Inspect usage and latency
 
@@ -136,21 +122,14 @@ print("User simulator usage:", result.total_user_simulator_usage)
 print("Inference metrics:", result.aggregated_inference_metrics)
 ```
 
-Agents populate task `usage`, `trajectory`, and `inference_metrics`; custom
-agents should return the fields their analyses need. Built-in prediction
-aggregation combines available inference values. Per-task latency differs from
-wall-clock run duration because tasks execute concurrently. Estimated costs
-depend on available model pricing, and missing usage should not be treated as
-zero-cost inference.
+These aggregates use the fields returned by each agent. Per-task latency differs
+from run duration because tasks execute concurrently. Costs depend on available
+model pricing; missing usage does not mean zero cost.
 
-When preprocessing is run separately, report that cost alongside inference.
-See [reusable inputs](running-experiments.md#prepare-reusable-inputs) and
-[tracing](running-experiments.md#enable-tracing) for collecting those details.
+Report [preprocessing costs](running-experiments.md#prepare-reusable-inputs)
+separately. For detailed model activity, [enable tracing](running-experiments.md#enable-tracing).
 
 ## Evaluate ambiguity
-
-Ambiguity-aware outputs can contain an intended query, several flat
-interpretations, or structured ambiguity points. These support distinct measures:
 
 - `SimpleEx` evaluates the intended query against the intended reference.
 - `FoundOne` checks whether at least one predicted interpretation matches a
@@ -158,9 +137,8 @@ interpretations, or structured ambiguity points. These support distinct measures
 - Ambiguity-point metrics compare the predicted and reference structures.
 - Inference metrics and simulator usage measure clarification effort and cost.
 
-The [ambiguity example](agents.md#ambiguity-aware-agents) combines intended-query
-accuracy and interpretation coverage in a complete run. Choose metrics compatible
-with its output representation; those measures answer different research questions.
+The [ambiguity example](agents.md#ambiguity-aware-agents) measures intended-query
+accuracy and interpretation coverage.
 
 For a new diagnostic or aggregation policy, see
 [adding a metric](extending.md#add-a-metric).

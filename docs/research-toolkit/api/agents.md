@@ -1,18 +1,12 @@
 # Agents and tools
 
-Run built-in research strategies or implement your own against shared task
-and output contracts. These APIs support benchmark prediction rather than
-[interactive chat][tabulaflow.agents.chat.session.ChatSession].
-
 ## Registry and contracts
 
 A registered strategy declares `name`, `task_type`, `output_type`, and
 `config_cls`. It provides `from_config_async(...)` and the `predict_async(...)`
 method appropriate for its task family.
 
-See [Extending the toolkit](../extending.md#implement-an-agent) for a complete
-custom strategy. Construction may prepare model resources; prediction requires
-credentials for the configured provider.
+See [Extending the toolkit](../extending.md#implement-an-agent) for an implementation.
 
 ::: tabulaflow.research.agents.registry.agent_registry
 
@@ -26,12 +20,7 @@ credentials for the configured provider.
 
 ## Simple strategies
 
-| Registry key | Strategy |
-| --- | --- |
-| `direct_prompting` | Direct query generation |
-| `full_schema` | Tool-using agent supplied with the full schema |
-| `schema_linking` | Schema linking with optional postprocessing and few-shot examples |
-| `schema_discovery` | Discover schema information through tools |
+Compare built-in methods in [Agents](../agents.md).
 
 ::: tabulaflow.research.agents.direct_prompt.DirectPromptAgent
 
@@ -46,9 +35,6 @@ credentials for the configured provider.
 ::: tabulaflow.research.agents.schema_discovery.SchemaDiscoveryAgentConfig
 
 ## Schema-linking components
-
-These components and context types support the schema-linking strategy's
-public linking and postprocessing methods.
 
 ::: tabulaflow.research.agents.schema_linking.SchemaLinker
 
@@ -88,9 +74,8 @@ public linking and postprocessing methods.
 
 ## Research tools
 
-These tools support benchmark-specific schema inspection, clarification,
-termination, and dbt execution. General data, browser, and filesystem tools
-are documented in the [library reference](../../python-library/api/agents.md).
+For general data, browser, and filesystem tools, see the
+[library reference](../../python-library/api/agents.md).
 
 ::: tabulaflow.research.tools.ask_user.AskUserTool
 

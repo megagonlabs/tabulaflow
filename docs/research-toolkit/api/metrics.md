@@ -1,14 +1,10 @@
 # Metrics
 
-A metric computes values for one task output. An aggregator combines task
-values into run-level scores. Both are independent of the prediction strategy.
-
 ## Registry and contracts
 
-Registered metrics declare `name` and `compatible_output_types`. Their
-`compute_async(...)` method returns a numeric value, `None`, or a dictionary
-of named values. Select metrics compatible with your task output family when
-calling the evaluation API directly.
+Metrics declare `name` and `compatible_output_types`; `compute_async(...)`
+returns a number, `None`, or named values. See
+[adding a metric](../extending.md#add-a-metric) for an example.
 
 ::: tabulaflow.research.metrics.registry.metric_registry
 
@@ -20,8 +16,7 @@ calling the evaluation API directly.
 
 ## Execution comparison
 
-Use the benchmark loader's `default_metrics` to discover its default metric
-selection. The implementations below define their individual comparison rules.
+See [metric selection](../evaluation.md#choose-metrics) for benchmark defaults.
 
 ::: tabulaflow.research.metrics.simple_ex.SimpleEx
 
@@ -63,8 +58,7 @@ selection. The implementations below define their individual comparison rules.
 
 ## Aggregators
 
-Aggregators consume `NL2QRunResult` and return named aggregate values. Use an
-explicit list of aggregators with `evaluate_async(...)`.
+Pass aggregators to `evaluate_async(..., metric_aggregators=[...])`.
 
 ::: tabulaflow.research.metrics.aggregators.SimpleAverageAggregator
 

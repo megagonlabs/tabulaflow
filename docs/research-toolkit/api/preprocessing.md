@@ -1,16 +1,13 @@
 # Preprocessing
 
-Prepare reusable inputs for research agents. See
-[Running experiments](../running-experiments.md#prepare-reusable-inputs) for
-cache configuration and a preparation example.
+See [Running experiments](../running-experiments.md#prepare-reusable-inputs)
+for cache configuration and an example.
 
 ## Contracts and pipeline
 
-Connector preprocessors receive a SQL connector; dataset preprocessors receive
-an `NL2QDataset`. `preprocess_async(...)` dispatches by each preprocessor's
-`input_type`. Configure the shared
-[`AgentRuntimeConfig`][tabulaflow.agents.config.AgentRuntimeConfig] before
-running preprocessing when you need persistent caching.
+`preprocess_async(...)` dispatches by `input_type`: a SQL connector or an
+`NL2QDataset`. Caching uses
+[`AgentRuntimeConfig`][tabulaflow.agents.config.AgentRuntimeConfig].
 
 ::: tabulaflow.research.pipelines.preprocess.preprocess_async
 
@@ -35,9 +32,6 @@ running preprocessing when you need persistent caching.
 ::: tabulaflow.research.preprocessing.registry.DBSummaryPreprocessor
 
 ## Preprocessing results
-
-These models describe values returned by the preprocessors and their
-per-column or per-task methods.
 
 ::: tabulaflow.research.preprocessing.erd.ERDiagram
 

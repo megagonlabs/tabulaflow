@@ -1,8 +1,7 @@
 # Quick start
 
-TabulaFlow's research toolkit lets you run, compare, and develop text-to-query
-methods in Python. It provides benchmark loaders, built-in agents, execution
-and evaluation stages, and typed results with usage and trajectories.
+Run, compare, and develop text-to-query methods in Python with benchmark
+loaders, agents, evaluation metrics, and typed results.
 
 ## How an experiment fits together
 
@@ -24,33 +23,23 @@ The task family determines which agents and metrics can work together:
 | Ambiguous query (`ambig`) | An intended query, flat interpretations, or structured ambiguity points | ARCS, AMBROSIA-S |
 | Transformation (`dbt`) | A modified dbt project | Spider 2.0 dbt |
 
-`simple` names the single-query contract; it does not describe task difficulty.
-The toolkit reuses the Python library's connectors, schemas, and model runtime.
+`simple` names the single-query contract, not task difficulty.
 
 ## Example: Evaluate a full-schema agent
 
-This example loads three BIRD-SQL tasks and runs a full-schema agent on them
-concurrently. The agent receives the complete database schema and can execute
-queries while working. The pipeline then populates any missing execution
-results and evaluates BIRD-SQL execution accuracy.
+Run a full-schema agent on three BIRD-SQL tasks concurrently, execute its
+queries, and measure execution accuracy:
 
 ```python title="research_quick_start.py"
 --8<-- "examples/research_quick_start.py"
 ```
 
-The script prints a benchmark question, predicted SQL, its DataFrame result,
-and aggregate accuracy. Tasks, predictions, execution results, and metrics
-remain structured and directly accessible throughout the experiment.
-
-Exact predictions and scores can vary between model calls.
-
-The script keeps its result in memory. See
-[saving a run](running-experiments.md#save-a-run) to write structured JSON, a
-CSV summary, and readable task reports.
+The script prints a question, predicted SQL, its DataFrame result, and aggregate
+accuracy. See [saving a run](running-experiments.md#save-a-run) to export the result.
 
 ## Try it yourself
 
-Install TabulaFlow in a new or existing project:
+Install TabulaFlow:
 
 === "uv"
 
@@ -71,25 +60,14 @@ uv run tabulaflow benchmark download bird-sql
 export OPENAI_API_KEY="your-api-key"
 ```
 
-Then save the example in your project and run:
+Save the example as `research_quick_start.py` and run:
 
 ```bash
 uv run python research_quick_start.py
 ```
 
-This makes paid model calls and sends benchmark questions, relevant schema, and
-tool results to the configured provider. BIRD-SQL is downloaded locally. The
-script closes its database connectors before exiting.
-
-??? info "Run from a source checkout"
-
-    From the repository root:
-
-    ```bash
-    uv run python docs/examples/research_quick_start.py
-    ```
-
-    This uses your checkout rather than the installed package.
+From a source checkout, run `uv run docs/examples/research_quick_start.py`.
+The example makes paid model calls; predictions and scores vary between runs.
 
 ## Explore the toolkit
 

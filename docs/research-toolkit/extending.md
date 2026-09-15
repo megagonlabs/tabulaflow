@@ -1,17 +1,9 @@
 # Extending the toolkit
 
-Implement your method against the toolkit's task and output contracts, then use
-the same execution and evaluation stages as a built-in agent. You can also supply
-your own benchmark data, task metrics, or aggregation policy.
-
 ## Implement an agent
 
-This example implements `StructuredQueryAgent`, which asks a model to return a
-typed SQL response. It compares that method with `DirectPromptAgent` on the same
-three BIRD-SQL tasks, model, and metrics. The prompts also differ, so this is a
-method comparison rather than an isolated test of response formatting.
-
-An agent supplies four class attributes and two methods:
+`StructuredQueryAgent` generates a typed SQL response. This example compares it
+with `DirectPromptAgent` on the same three BIRD-SQL tasks, model, and metrics.
 
 | Member | Purpose |
 | --- | --- |
@@ -22,10 +14,9 @@ An agent supplies four class attributes and two methods:
 | `from_config_async(...)` | Constructs an agent from that configuration |
 | `predict_async(...)` | Returns a typed output for one task |
 
-The pipeline creates one agent per task. This example supplies only the question,
-instructions, document, and database schema to the model. Reference queries stay
-in the returned task output for evaluation. Usage, trajectory, and latency are
-returned with each prediction so the usual reports and aggregators can use them.
+The pipeline creates one agent per task. The model receives the question,
+instructions, document, and schema; reference queries remain in the output for
+evaluation.
 
 ```python title="custom_research_agent.py"
 --8<-- "examples/custom_research_agent.py"
@@ -39,26 +30,23 @@ uv run custom_research_agent.py
 ```
 
 From a source checkout, run `uv run docs/examples/custom_research_agent.py`.
-The script makes paid model calls, prints accuracy and executability for each
-method, and writes `runs/direct_prompting/` and `runs/structured_query/`.
-Scores vary between calls; the example does not claim either method is better.
+The script prints accuracy and executability and saves results under
+`runs/direct_prompting/` and `runs/structured_query/`.
 
-Replace the prediction logic with your method while keeping the output contract.
-Return `pred_query=None` if the method intentionally produces no answer. Let
-unexpected exceptions propagate; the prediction pipeline logs them and records
-empty outputs. For a repair or postprocessing method, `extra_pred_info` can also
-retain the raw prediction for later analysis.
+Return `pred_query=None` for an intentional abstention. Let unexpected exceptions
+propagate so the pipeline logs them and records empty outputs. Use
+`extra_pred_info` to retain predictions from before postprocessing.
 
-Passing the class directly to `predict_async(...)` requires no registration.
-Use `agent_registry.register(StructuredQueryAgent)` when you need name-based
-lookup in the same process. Ambiguous and dbt tasks have different prediction
-signatures; see the [agent contracts](api/agents.md#registry-and-contracts).
+Pass the class directly to `predict_async(...)`, or call
+`agent_registry.register(StructuredQueryAgent)` for name-based lookup. See the
+[agent contracts](api/agents.md#registry-and-contracts) for ambiguous and dbt
+prediction signatures.
 
 ## Add a benchmark
 
-For a small experiment, construct an `NL2QDataset` directly. Each task needs a
-unique QID, a database name that resolves in `db_connectors`, and its reference
-answer. For example, with an existing SQLite file containing an `orders` table:
+Construct an `NL2QDataset` with unique QIDs and database names matching
+`db_connectors`. Run this inside an async function with an existing SQLite file
+containing an `orders` table:
 
 ```python
 from tabulaflow.data import SQLConnector
@@ -87,8 +75,7 @@ finally:
     await connector.close_async()
 ```
 
-Run this inside an async function, as in the full example above. To load recurring
-splits, implement `DatasetLoaderProtocol`:
+For reusable splits, implement `DatasetLoaderProtocol`:
 
 - Declare `name`, available `splits`, `default_metrics`, and a
   `BenchmarkInstallation` describing the required local data.
@@ -97,18 +84,15 @@ splits, implement `DatasetLoaderProtocol`:
   connectors and return an `NL2QDataset`. Reuse `select_tasks` for QID filtering
   and deterministic sampling, and `selected_databases` to find required databases.
 
-Use `dataset_registry.register(YourLoader)` for name-based lookup in your process.
-Registration does not install a plugin in other processes. A database service
-can additionally provide a `BenchmarkRuntime` with start, stop, and readiness
-callbacks. See the [benchmark reference](api/benchmarks.md) for these contracts.
+Register the loader with `dataset_registry.register(YourLoader)`. Database
+services can also provide a `BenchmarkRuntime` with start, stop, and readiness
+callbacks; see the [benchmark reference](api/benchmarks.md). Registrations apply
+to the current Python process.
 
 ## Add a metric
 
-A metric declares a unique `name`, its `compatible_output_types`, and an async
-`compute_async(task, db_connector)` method. It returns a number, `None`, or a
-dictionary of named numbers. Dictionary keys become task metric keys directly.
-
-This diagnostic measures the number of rows returned by a successful query:
+A metric declares `name` and `compatible_output_types`, and implements
+`compute_async(task, db_connector)`. This diagnostic counts returned rows:
 
 ```python
 from typing import ClassVar
@@ -141,12 +125,12 @@ Pass an instance alongside the accuracy metric:
 await evaluate_async(result, dataset, metrics=[SimpleEx(), ReturnedRows()], batch_size=8)
 ```
 
-Zero means a successful empty result; `None` means no measured result and is
-excluded from the default average. Use `metric_registry.register(ReturnedRows)`
-only when you need name-based lookup.
+Zero means an empty result; `None` is excluded from the average. Metrics can also
+return a dictionary whose keys become task metric names. Register with
+`metric_registry.register(ReturnedRows)` for name-based lookup.
 
-A custom aggregator implements `aggregate(result: NL2QRunResult)` and returns a
-dictionary of run-level values. Pass it in `metric_aggregators` to replace the
-default aggregation list, or include `SimpleAverageAggregator()` to retain the
-usual averages. See [Evaluation and analysis](evaluation.md#aggregate-scores)
-and the [metric contracts](api/metrics.md#registry-and-contracts).
+A custom aggregator implements `aggregate(result: NL2QRunResult)` and returns
+named run-level values. Pass it in `metric_aggregators`, including
+`SimpleAverageAggregator()` if you also want averages. See
+[aggregation](evaluation.md#aggregate-scores) and the
+[metric contracts](api/metrics.md#registry-and-contracts).

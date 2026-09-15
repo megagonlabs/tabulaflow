@@ -1,14 +1,9 @@
 # Benchmarks
 
-Load benchmark tasks, database connectors, and default metrics. Use the
-built-in loaders or register your own benchmark.
-
 ## Loader registry and contract
 
-The registry supports `get_class(name)`, `list_names()`, and the `register`
-decorator inherited from
-[`ClassRegistry`][tabulaflow.core.registry.ClassRegistry]. Construct the
-selected loader, then await `get_split_async(...)` to load tasks and connectors.
+Look up loaders with `get_class(name)`, list them with `list_names()`, or add one
+with `register`, inherited from [`ClassRegistry`][tabulaflow.core.registry.ClassRegistry].
 
 ::: tabulaflow.research.benchmarks.registry.dataset_registry
 
@@ -27,8 +22,8 @@ sizes raise `ValueError`.
 
 ## Built-in loaders
 
-Loaders are also available from `tabulaflow.research.benchmarks`. Construction
-and database access have dataset-specific prerequisites.
+Loaders are re-exported from `tabulaflow.research.benchmarks`. See
+[Benchmarks](../benchmarks.md) for setup requirements.
 
 ::: tabulaflow.research.benchmarks.bird_sql.BirdSQLDatasetLoader
 
