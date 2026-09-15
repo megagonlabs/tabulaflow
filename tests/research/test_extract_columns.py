@@ -1,8 +1,8 @@
-from tabulaflow.research.query_analysis import _sqlglot_dialect, extract_all_source_columns
+from tabulaflow.research.query_analysis import extract_all_source_columns, sqlglot_dialect
 
 
 def test_postgresql_language_maps_to_sqlglot_postgres_dialect() -> None:
-    assert _sqlglot_dialect("postgresql") == "postgres"
+    assert sqlglot_dialect("postgresql") == "postgres"
 
 
 def test_simple_query() -> None:

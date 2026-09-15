@@ -8,7 +8,8 @@ from sqlglot.optimizer.scope import Scope, build_scope
 _SQLGLOT_DIALECT_BY_LANGUAGE = {"postgresql": "postgres"}
 
 
-def _sqlglot_dialect(language: str) -> str:
+def sqlglot_dialect(language: str) -> str:
+    """Return the SQLGlot dialect name for a query language."""
     return _SQLGLOT_DIALECT_BY_LANGUAGE.get(language, language)
 
 
@@ -18,7 +19,7 @@ def extract_all_source_columns(query: str, language: str = "sqlite") -> list[tup
     Resolves aliases and traces columns through CTEs and subqueries. Returns an
     empty list when the query cannot be parsed.
     """
-    dialect = _sqlglot_dialect(language)
+    dialect = sqlglot_dialect(language)
     try:
         parsed = sqlglot.parse_one(query, dialect=dialect)
         qualified = qualify(parsed, dialect=dialect, validate_qualify_columns=False)

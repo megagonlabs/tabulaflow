@@ -69,7 +69,54 @@ For reusable splits, [implement a dataset loader](api/benchmarks.md#implement-a-
 
 ## Add a metric
 
-Implement `compute_async(task, db_connector)` and declare the metric's `name`
-and `compatible_output_types`. Pass an instance to `evaluate_async(...)`.
-See the [custom metric example](api/metrics.md#example-add-a-metric) for a
-complete implementation and aggregation options.
+Declare `name` and `compatible_output_types`, then implement `compute_async(...)`.
+This diagnostic counts joins in predicted SQL, including CTEs and subqueries:
+
+```python
+from typing import ClassVar
+
+from sqlglot import exp, parse_one
+from sqlglot.errors import SqlglotError
+
+from tabulaflow.data import DataConnector
+from tabulaflow.research.query_analysis import sqlglot_dialect
+from tabulaflow.research.types import NL2QTaskOutput, SimpleNL2QTaskOutput
+
+
+class JoinCount:
+    """Count joins in predicted SQL using the database connector's dialect."""
+
+    name: ClassVar[str] = "join_count"
+    compatible_output_types: ClassVar[list[str]] = ["simple"]
+
+    async def compute_async(
+        self, task: NL2QTaskOutput, db_connector: DataConnector | None = None
+    ) -> int | None:
+        if not isinstance(task, SimpleNL2QTaskOutput):
+            raise TypeError("JoinCount requires a single-query output.")
+        if db_connector is None or db_connector.schema.kind != "sql":
+            raise TypeError("JoinCount requires a SQL connector.")
+        query = task.pred_query
+        if query is None:
+            return None
+        try:
+            parsed = parse_one(query.query, read=sqlglot_dialect(db_connector.language))
+        except SqlglotError:
+            return None
+        return sum(1 for _ in parsed.find_all(exp.Join))
+```
+
+After executing predictions, pass an instance alongside the accuracy metric:
+
+```python
+from tabulaflow.research.metrics import BirdSQLEx
+from tabulaflow.research.pipelines import evaluate_async
+
+await evaluate_async(result, dataset, metrics=[BirdSQLEx(), JoinCount()], batch_size=8)
+print("Average joins:", result.aggregated_eval_metrics["join_count"]["avg"])
+```
+
+Missing or unparseable predictions return `None` and are excluded from the
+average. See the
+[metric reference](api/metrics.md#custom-metrics-and-aggregators) for registration
+and custom aggregation.
