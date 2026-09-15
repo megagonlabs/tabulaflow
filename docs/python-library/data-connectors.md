@@ -36,6 +36,12 @@ that schema for an LLM prompt or inspection:
 --8<-- "examples/working_with_data.py:schema"
 ```
 
+??? example-output no-copy "Sample output"
+
+    ````text
+    --8<-- "examples/results/library-inventory-schema.txt"
+    ````
+
 Save and restore the result, including its DataFrame and execution metadata:
 
 ```python

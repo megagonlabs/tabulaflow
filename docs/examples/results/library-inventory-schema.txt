@@ -1,0 +1,25 @@
+Tables: ['inventory']
+**Data source:** `:memory:`
+**SQL dialect:** `sqlite`
+
+```sql
+/*
+Schema: NULL
+Table: inventory
+Sample rows:
+| product      | on_hand   | reorder_point   |
+|--------------|-----------|-----------------|
+| USB-C dock   | 3         | 10              |
+| Laptop stand | 18        | 8               |
+| HDMI cable   | 4         | 12              |
+| ...          | ...       | ...             |
+*/
+CREATE TABLE inventory (
+    product TEXT NULL,
+        -- <example>'USB-C dock'</example>
+    on_hand BIGINT NULL,
+        -- <example>3</example>
+    reorder_point BIGINT NULL
+        -- <example>10</example>
+);
+```
