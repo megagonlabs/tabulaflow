@@ -82,7 +82,6 @@ errors as well as prediction errors.
     --8<-- "examples/results/failure.txt"
     ```
 
-    [Recorded data](../examples/results/recorded-results.json) ·
     [Download task report](../examples/results/failure-report.txt){download}
 
 For paired comparisons, match QIDs and compare task scores. The

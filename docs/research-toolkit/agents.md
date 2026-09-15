@@ -49,8 +49,6 @@ and predicted SQL on the first ARCS task:
     --8<-- "examples/results/ambiguity.txt"
     ```
 
-    [Recorded data](../examples/results/recorded-results.json)
-
 After [setting up ARCS](benchmarks.md#arcs) and setting
 `OPENAI_API_KEY`, run directly:
 
