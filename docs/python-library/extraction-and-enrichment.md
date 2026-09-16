@@ -1,6 +1,7 @@
 # Extraction and enrichment
 
 Use LLMs to extract typed records from long documents and add fields to existing rows.
+Both extraction and enrichment support text, images, and PDFs.
 
 ## Example: Find jobs that fit
 
