@@ -48,7 +48,10 @@ class BenchmarkInstallation:
     def require(self) -> None:
         """Raise an actionable error when the benchmark is not installed."""
         if not self.is_installed:
-            raise FileNotFoundError(f"{self.name} is not downloaded. Run: tabulaflow benchmark download {self.name}")
+            raise BenchmarkInstallationError(
+                f"{self.name} is not downloaded.\n\n"
+                f"Run:\n  uv run tabulaflow benchmark download {self.name}"
+            )
 
     async def install(self, *, force: bool = False, progress: ProgressCallback | None = None) -> Path:
         """Download, verify, and atomically install the benchmark."""

@@ -112,7 +112,7 @@ def stop(
     try:
         benchmark.installation.require()
         asyncio.run(runtime.stop(split, _progress))
-    except (FileNotFoundError, BenchmarkRuntimeError) as error:
+    except (BenchmarkInstallationError, BenchmarkRuntimeError) as error:
         console.print(f"[red]Error:[/red] {error}")
         raise typer.Exit(1) from None
     resolved_split = runtime.resolve_split(split)

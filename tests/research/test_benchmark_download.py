@@ -99,6 +99,17 @@ def test_manual_download_is_detected_from_required_files(tmp_path: Path, monkeyp
     assert benchmark.is_installed
 
 
+def test_missing_benchmark_error_is_actionable(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(installation, "DEFAULT_BENCHMARK_DIR", tmp_path)
+    benchmark = BenchmarkInstallation(name="example", required_paths=("tasks.json",))
+
+    with pytest.raises(
+        BenchmarkInstallationError,
+        match=r"example is not downloaded\.\s+Run:\s+uv run tabulaflow benchmark download example",
+    ):
+        benchmark.require()
+
+
 @pytest.mark.asyncio
 async def test_manual_setup_error_shows_destination_and_missing_files(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch

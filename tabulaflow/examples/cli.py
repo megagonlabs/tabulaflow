@@ -8,6 +8,8 @@ from typing import Any, Protocol, cast
 
 import typer
 
+from tabulaflow.research.benchmarks.installation import BenchmarkInstallationError
+
 
 class ExampleName(str, Enum):
     AMBIGUITY_AWARE_QUERIES = "ambiguity-aware-queries"
@@ -46,7 +48,11 @@ def run_example(example: ExampleName) -> None:
     """Run an example by name."""
     module_name = example.value.replace("-", "_")
     module = cast(ExampleModule, importlib.import_module(f"tabulaflow.examples.{module_name}"))
-    asyncio.run(module.main())
+    try:
+        asyncio.run(module.main())
+    except BenchmarkInstallationError as error:
+        typer.echo(f"Setup required: {error}", err=True)
+        raise typer.Exit(1) from None
 
 
 __all__ = ["ExampleName", "examples_app"]
