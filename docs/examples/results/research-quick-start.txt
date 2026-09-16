@@ -1,6 +1,11 @@
 Question: In which city can you find the school in the state of California with the lowest latitude coordinates and what is its lowest grade? Indicate the school name.
-Predicted SQL: SELECT T2.City, T1.`Low Grade`, T1.`School Name` FROM frpm AS T1 INNER JOIN schools AS T2 ON T1.CDSCode = T2.CDSCode WHERE T2.State = 'CA' ORDER BY T2.Latitude ASC LIMIT 1
+Predicted SQL: SELECT s.City, f."Low Grade", s.School
+FROM schools s
+INNER JOIN frpm f ON s.CDSCode = f.CDSCode
+WHERE s.State = 'CA' AND s.Latitude IS NOT NULL
+ORDER BY s.Latitude ASC
+LIMIT 1;
 Query result:
-       City Low Grade            School Name
-0  Oroville         7  Central Middle - RISE
-Execution accuracy: 0.6666666666666666
+         City Low Grade             School
+0  San Ysidro         K  Willow Elementary
+Execution accuracy: 0.6667
