@@ -59,7 +59,7 @@ nav:
           - Data: python-library/api/data.md
           - Output: python-library/api/output.md
           - Agents: python-library/api/agents.md
-  - Research toolkit:
+  - TabulaFlow as a Research Toolkit:
       - Quick start: research-toolkit/quick-start.md
       - Benchmarks: research-toolkit/benchmarks.md
       - Agents: research-toolkit/agents.md
