@@ -38,16 +38,6 @@ The script creates the sample databases and closes its resources. It makes paid
 model calls; wording and artifact labels may vary. For a local example without
 an API key, try [Data connectors](data-connectors.md).
 
-??? info "Run from a source checkout"
-
-    From the repository root:
-
-    ```bash
-    uv run python docs/examples/quick_start.py
-    ```
-
-    This uses your checkout instead of the script's pinned package version.
-
 ## Use in your project
 
 === "uv"

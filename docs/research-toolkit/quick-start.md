@@ -59,17 +59,6 @@ uv downloads the script and prepares Python and its dependencies. No project
 setup or manual file creation is needed.
 The example makes paid model calls; predictions and scores vary between runs.
 
-??? info "Run from a source checkout"
-
-    From the repository root:
-
-    ```bash
-    uv run tabulaflow benchmark download bird-sql
-    uv run python docs/examples/research_quick_start.py
-    ```
-
-    This uses your checkout instead of the script's pinned package version.
-
 ## Use in your project
 
 === "uv"

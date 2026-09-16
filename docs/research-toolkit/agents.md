@@ -54,15 +54,5 @@ After [setting up ARCS](benchmarks.md#arcs) and setting
 uv run https://megagonlabs.github.io/tabulaflow/examples/ambiguity_aware_queries.py
 ```
 
-??? info "Run from a source checkout"
-
-    From the repository root:
-
-    ```bash
-    uv run python docs/examples/ambiguity_aware_queries.py
-    ```
-
-    This uses your checkout instead of the script's pinned package version.
-
 See [ambiguity evaluation](evaluation.md#evaluate-ambiguity) for accuracy, coverage,
 and clarification metrics.

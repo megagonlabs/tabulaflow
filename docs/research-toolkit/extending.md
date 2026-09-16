@@ -31,16 +31,6 @@ uv run https://megagonlabs.github.io/tabulaflow/examples/table_linking_agent.py
 
 The script runs three BIRD-SQL tasks and saves results under `runs/table_linking/`.
 
-??? info "Run from a source checkout"
-
-    From the repository root:
-
-    ```bash
-    uv run python docs/examples/table_linking_agent.py
-    ```
-
-    This uses your checkout instead of the script's pinned package version.
-
 See the [agent contracts](api/agents.md#registry-and-contracts) for registration
 and other task families.
 
