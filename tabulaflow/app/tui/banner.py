@@ -59,7 +59,7 @@ _EXAMPLES: list[tuple[str, list[str]]] = [
         ],
     ),
     (
-        "Semantic transformation",
+        "Data enrichment",
         [
             "Tag each review's sentiment and flag any mentioning a refund",
             "Label each failed sample's error pattern as retrieval, reasoning, or output formatting, then visualize the distribution",

@@ -1,4 +1,4 @@
-"""Run a row-wise subagent over a table in a single database."""
+"""Enrich database table rows using concurrent subagents."""
 
 from __future__ import annotations
 
@@ -100,11 +100,11 @@ class ReleaseBrowserBeforeFanout(AbstractCapability[Any]):
 
 
 class RunSubagentForEachRowTool:
-    """Run an LLM subagent for each row and write structured output back.
+    """Enrich table rows with concurrent agents and write structured results back.
 
-    Each subagent emits one value per configured output column. By default it has no
-    tools; optional browser, database, and nested-subagent capabilities extend its
-    reach without changing the row-wise write-back contract.
+    Each agent emits one value per configured output column, with types derived
+    from the target table. Agents use their supplied row content by default;
+    browser, database, and nested-subagent tools can be enabled as needed.
     """
 
     name: ClassVar[str] = "run_subagent_for_each_row"

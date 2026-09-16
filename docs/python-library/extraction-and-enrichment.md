@@ -1,11 +1,11 @@
 # Extraction and enrichment
 
-Turn long documents into typed records and add useful fields to your data with LLMs.
+Use LLMs to extract typed records from long documents and add fields to existing rows.
 
 ## Example: Find jobs that fit
 
-Extract work arrangements and experience requirements from saved job descriptions,
-then find remote roles that require at most three years of experience:
+Add work arrangement and experience fields to saved jobs, then find remote roles
+that require at most three years of experience:
 
 ```python title="data_enrichment.py"
 --8<-- "examples/data_enrichment.py:example"
@@ -23,8 +23,10 @@ Set [`OPENAI_API_KEY`](quick-start.md#try-it-yourself), then run:
 uv run https://megagonlabs.github.io/tabulaflow/examples/data_enrichment.py
 ```
 
-For database tables, [`RunSubagentForEachRowTool`](api/agents.md#extraction-and-enrichment-tools)
-derives output types from the target columns and writes results back automatically.
+For enrichment that needs external information,
+[`RunSubagentForEachRowTool`](api/agents.md#extraction-and-enrichment-tools)
+can give each row's agent browser and database tools, then write the results
+back to the table automatically.
 
 ## Extract records from documents
 

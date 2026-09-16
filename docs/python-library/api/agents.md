@@ -1,8 +1,8 @@
 # Agents
 
 Build stateful chat agents with structured results and streaming events, or
-use individual tools, document extraction, and data-source summarization in
-your own workflows.
+use tools, document extraction, data enrichment, and data-source summarization
+in your own workflows.
 
 ## Chat sessions
 
@@ -189,7 +189,7 @@ the adapters do not all return the same shape.
 
 ## DataFrame enrichment
 
-Add typed columns to an existing DataFrame. See the
+Add typed columns using each row's supplied content. See the
 [job enrichment example](../extraction-and-enrichment.md#example-find-jobs-that-fit).
 
 ::: tabulaflow.agents.enrichment.DataFrameEnricher

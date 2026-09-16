@@ -49,10 +49,11 @@ tabulaflow/
 ├── core/            # stable schema/result primitives, serialization, and class registry
 ├── data/            # connectors, live DB registry, schema services, and external-data loaders
 ├── output/          # output specs, result storage/resolution, formatting, and schema renderers
-├── agents/          # ChatSession, LLM/runtime infrastructure, extraction, summarization, and tools
-│   ├── chat/        #   reusable stateful chat runtime and semantic event stream
-│   ├── extraction/  #   reusable structured document extraction
-│   └── tools/       #   model-facing tools grouped by implementation domain
+├── agents/          # ChatSession, LLM/runtime infrastructure, extraction, enrichment, summarization, and tools
+│   ├── chat/          # reusable stateful chat runtime and semantic event stream
+│   ├── extraction/    # reusable structured document extraction
+│   ├── enrichment.py  # reusable typed DataFrame enrichment
+│   └── tools/         # model-facing tools grouped by implementation domain
 ├── research/        # NL2SQL research — a leaf consumer of the platform layers
 │   ├── agents/  benchmarks/  metrics/  pipelines/  preprocessing/
 │   ├── tools/       #   research-only tools (ask_user, run_dbt, finish, get_schema, ...)

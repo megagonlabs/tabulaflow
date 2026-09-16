@@ -238,10 +238,11 @@ def _pandas_dtype(annotation: Any) -> str | pd.CategoricalDtype:
 
 
 class DataFrameEnricher:
-    """Enrich DataFrame rows using a Pydantic model and an LLM.
+    """Enrich DataFrame rows with typed fields using an LLM.
 
-    Each row produces a validated record. Required fields, defaults, constraints,
-    and nullability come from the supplied model. No database or row key is needed.
+    Rows are processed concurrently using their supplied content. Each row produces
+    a record validated by the supplied Pydantic model, preserving required fields,
+    defaults, constraints, and nullability.
     """
 
     def __init__(

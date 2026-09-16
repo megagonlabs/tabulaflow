@@ -36,9 +36,9 @@ datasets.
   unstructured web pages and documents into structured, normalized tables with
   thousands of rows for deep research.
   [View example](data-agent/examples/build-web-dataset.md){ .inline-cta }
-- **Agentic row-wise operations.** Enrich tables with new columns by
-  coordinating thousands of row-wise subagents in parallel to collect
-  information, classify records, and annotate data.
+- **Agentic data enrichment.** Enrich each row with an agent that can browse
+  the web, query connected databases, and return typed results. Process many
+  rows concurrently.
   [View example](data-agent/examples/extract-receipts.md){ .inline-cta }
 - **Parallel browser use.** TabulaFlow's browser harness lets agents interact
   with many web pages in parallel during complex deep research tasks, including
@@ -50,7 +50,7 @@ datasets.
 General-purpose coding agents (e.g., Claude Code) are powerful tools for
 programming and simple data analysis. TabulaFlow is built on a
 harness (see [How TabulaFlow is designed](#how-tabulaflow-is-designed)) that enables workflows such as
-ambitious deep research and large-scale agentic row-wise operations. It also
+ambitious deep research and large-scale data enrichment. It also
 provides a UI for browsing large tables and visualizing data.
 
 Many AI database assistants (e.g., Chat2DB) focus on SQL generation for a
