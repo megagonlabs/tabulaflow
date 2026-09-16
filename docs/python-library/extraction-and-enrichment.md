@@ -49,6 +49,11 @@ Set [`OPENAI_API_KEY`](quick-start.md#try-it-yourself), then run:
 uv run https://megagonlabs.github.io/tabulaflow/examples/document_extraction.py
 ```
 
-The extractor also accepts images and PDFs as `BinaryContent` with a model
-that supports those inputs. See the
+The extractor splits long text at natural boundaries where possible, keeping
+paragraphs, list items, and table rows together. Section titles and table headers
+carry across chunks, helping each subagent interpret records in context
+(e.g., which city a place belongs to).
+
+Images and PDFs are accepted as `BinaryContent` with a compatible model.
+PDF chunks include their original page ranges. See the
 [extraction reference](api/agents.md#extraction-and-summarization).
