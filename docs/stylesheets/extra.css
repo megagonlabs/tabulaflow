@@ -97,6 +97,11 @@ body {
   font-size: 1.1rem;
 }
 
+.md-header__topic:first-child .md-ellipsis,
+.tf-wordmark {
+  text-transform: lowercase;
+}
+
 .md-header__title--active .md-header__topic:first-child {
   z-index: 0;
   opacity: 1;
@@ -237,10 +242,16 @@ body {
 }
 
 .md-header__title {
-  font-family: "Space Grotesk", "Figtree", sans-serif;
-  font-weight: 600;
-  letter-spacing: -0.015em;
+  font-family: "Figtree", sans-serif;
+  font-weight: 650;
+  letter-spacing: -0.025em;
   margin-left: 8px;
+}
+
+.tf-wordmark {
+  font-family: "Figtree", sans-serif;
+  font-weight: 650;
+  letter-spacing: -0.025em;
 }
 
 .md-typeset h1 {

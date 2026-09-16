@@ -57,10 +57,27 @@ _GITHUB_SVG = (
     ' 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg>'
 )
 
+_BRAND_MARK_SVG = (
+    '<svg id="brand-mark" viewBox="0 0 64 64" aria-hidden="true">'
+    '<rect class="brand-mark-bg" width="64" height="64" rx="14"/>'
+    '<g class="brand-mark-accent">'
+    '<rect x="10" y="10" width="12" height="12" rx="2"/>'
+    '<rect x="26" y="10" width="12" height="12" rx="2"/>'
+    '<rect x="42" y="10" width="12" height="12" rx="2"/>'
+    '<rect x="26" y="26" width="12" height="12" rx="2"/>'
+    '<rect x="26" y="42" width="12" height="12" rx="2"/>'
+    '</g><g class="brand-mark-muted">'
+    '<rect x="10" y="26" width="12" height="12" rx="2"/>'
+    '<rect x="42" y="26" width="12" height="12" rx="2"/>'
+    '<rect x="10" y="42" width="12" height="12" rx="2"/>'
+    '<rect x="42" y="42" width="12" height="12" rx="2"/>'
+    "</g></svg>"
+)
+
 _BANNER = (
     '<header id="banner"><div id="banner-inner">'
     '<div id="brand-group">'
-    '<span id="logo">tabulaflow</span>'
+    f'<span id="brand-lockup">{_BRAND_MARK_SVG}<span id="logo">tabulaflow</span></span>'
     f'<span id="session-id" title="Session id">session <code>{_SESSION_ID_PLACEHOLDER}</code></span>'
     "</div>"
     f'<a id="repo" href="{GITHUB_URL}" target="_blank" rel="noopener">{_GITHUB_SVG}{GITHUB_SLUG}</a>'
