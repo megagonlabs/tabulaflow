@@ -34,8 +34,7 @@ export OPENAI_API_KEY="your-api-key"
 uv run https://megagonlabs.github.io/tabulaflow/examples/quick_start.py
 ```
 
-The script creates the sample databases and closes its resources. It makes paid
-model calls; wording and artifact labels may vary. For a local example without
+For a local example without
 an API key, try [Data connectors](data-connectors.md).
 
 ## Use in your project

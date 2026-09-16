@@ -19,8 +19,6 @@ and opens a support ticket.
     --8<-- "examples/results/library-custom-agent.txt"
     ```
 
-Wording and tool-call order may vary.
-
 Set [`OPENAI_API_KEY`](quick-start.md#try-it-yourself), then run the complete example:
 
 ```bash
